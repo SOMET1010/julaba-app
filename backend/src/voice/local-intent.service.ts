@@ -29,6 +29,10 @@ const PRODUITS_FORMES: Record<string, string> = {
   poulet: "poulet", poulets: "poulet", huile: "huile", sel: "sel", sucre: "sucre",
   riz: "riz", haricot: "haricot", haricots: "haricot", "maïs": "maïs", mais: "maïs",
   foutou: "foutou", orange: "orange", oranges: "orange",
+  // Produits courants entendus au marche (transcriptions terrain)
+  savon: "savon", savons: "savon", farine: "farine", jus: "jus",
+  "bière": "bière", biere: "bière", "bières": "bière", biscuit: "biscuit",
+  biscuits: "biscuit", lait: "lait",
 };
 
 const INTENTIONS_MAP: Record<string, IntentLocal> = {
@@ -38,6 +42,7 @@ const INTENTIONS_MAP: Record<string, IntentLocal> = {
   achète: "depense", achete2: "depense", acheter: "depense",
   dépensé: "depense", depense: "depense", "dépense": "depense", dépenser: "depense",
   payé: "depense", paye: "depense", payer: "depense",
+  pris: "depense", prise: "depense",
   solde: "consulter_solde", reste: "consulter_solde",
   stock: "ajouter_stock", ajouter: "ajouter_stock", ajoute: "ajouter_stock",
   reappro: "ajouter_stock", approvisionner: "ajouter_stock",
@@ -54,7 +59,10 @@ const DIZAINES: Record<string, number> = {
 };
 const MOTS_UNITE = new Set([
   "tas", "sac", "sacs", "kilo", "kilos", "bidon", "bidons", "botte", "bottes",
-  "sachet", "sachets", "boite", "boites", "paquet", "paquets", "de",
+  "sachet", "sachets", "boite", "boites", "paquet", "paquets",
+  "carton", "cartons", "caisse", "caisses", "bouteille", "bouteilles",
+  "panier", "paniers", "régime", "regime", "régimes", "regimes",
+  "litre", "litres", "morceau", "morceaux", "de",
 ]);
 
 function isNumberWord(w: string): boolean {
