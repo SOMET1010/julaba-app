@@ -7,6 +7,9 @@
  */
 import { useState, useRef, useCallback, useEffect } from "react";
 import { API_URL } from "../utils/api";
+// Offline-first : STT sur l'appareil + compréhension locale (sans réseau ni LLM).
+import { transcribeWav, offlineModelReady } from "../voice-offline/offlineStt";
+import { intentLocal } from "../voice-offline/localIntent";
 import { preloadEarlyAudios } from "../services/earlyAudioCache";
 import {
   speakChunked,
@@ -639,6 +642,41 @@ export function useVoiceCore({
         setState("idle"); setLiveTranscript(""); return;
       }
     } catch { setState("idle"); return; }
+
+    // ── OFFLINE-FIRST : transcription sur l'appareil ────────────────────────
+    // Sans réseau, OU dès que le modèle on-device est installé (économie serveur),
+    // on transcrit localement et on comprend la vente sans LLM. Le résultat repart
+    // dans le MÊME flux (confirmation, caisse) via handleResponse.
+    if (!navigator.onLine || offlineModelReady()) {
+      setState("thinking");
+      startThinkingPhrases();
+      try {
+        const texte = await transcribeWav(audioBlob);
+        const local = texte ? intentLocal(texte) : null;
+        if (local) {
+          clearThinkingTimer();
+          setTranscript(texte);
+          await handleResponse(local as Partial<VoiceProcessResponse>, texte);
+          return;
+        }
+        if (!navigator.onLine) {
+          // Hors-ligne et pas compris : on ne peut pas retomber sur le serveur.
+          clearThinkingTimer(); setState("idle"); setLiveTranscript("");
+          await ttsSpeak(texte
+            ? "Je n'ai pas bien compris, redis ta vente autrement."
+            : "Je n'ai rien entendu, réessaie.");
+          return;
+        }
+        // En ligne mais pas compris localement : on laisse le serveur essayer.
+      } catch {
+        if (!navigator.onLine) {
+          clearThinkingTimer(); setState("idle"); setLiveTranscript("");
+          await ttsSpeak("Le mode hors-ligne n'est pas encore prêt. Connecte-toi une fois pour l'installer.");
+          return;
+        }
+        // En ligne : l'échec local n'est pas bloquant, on continue vers le serveur.
+      }
+    }
 
     setState("thinking");
     startThinkingPhrases();
