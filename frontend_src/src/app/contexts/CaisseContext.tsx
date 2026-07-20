@@ -210,9 +210,11 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       // Notifier AppContext de recharger ses transactions
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
     } catch (error: any) {
-      if (error?.message === NOT_AUTHENTICATED) return;
-      // Panne réseau en cours de vente : ne pas perdre la vente, on l'enfile.
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      // Ne JAMAIS perdre une vente : token expiré OU panne réseau -> on l'enfile
+      // (rejeu à la reconnexion / ré-authentification). Avant, NOT_AUTHENTICATED
+      // était avalé silencieusement alors que l'UI affichait un succès.
+      if (error?.message === NOT_AUTHENTICATED ||
+          (typeof navigator !== 'undefined' && navigator.onLine === false)) {
         await enfilerOperation('/caisse/vente', payload);
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
         return;
@@ -235,8 +237,9 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       // Notifier AppContext de recharger ses transactions
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
     } catch (error: any) {
-      if (error?.message === NOT_AUTHENTICATED) return;
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      // Ne JAMAIS perdre une dépense : token expiré OU panne réseau -> on l'enfile.
+      if (error?.message === NOT_AUTHENTICATED ||
+          (typeof navigator !== 'undefined' && navigator.onLine === false)) {
         await enfilerOperation('/caisse/depense', payload);
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
         return;
