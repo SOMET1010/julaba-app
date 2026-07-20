@@ -55,20 +55,27 @@ export class OpenAIService {
     return data.text;
   }
 
-  // LLM — GPT-4o
+  // LLM — endpoint compatible OpenAI, configurable.
+  // Par defaut : OpenAI GPT-4o. Pour un LLM souverain (Mistral auto-heberge via
+  // vLLM/Ollama, API compatible OpenAI), il suffit de definir LLM_BASE_URL /
+  // LLM_MODEL / LLM_API_KEY — aucun changement de code.
   async detectIntent(messages: any[], systemPrompt: string): Promise<any> {
-    const key = this.getKey();
+    const baseUrl = this.config.get<string>('LLM_BASE_URL') || 'https://api.openai.com/v1';
+    const model = this.config.get<string>('LLM_MODEL') || 'gpt-4o';
+    const key = this.config.get<string>('LLM_API_KEY') || this.getKey();
     // Court-circuit : pas d'appel distant avec une cle vide (gere en amont par voice.service).
-    if (!key) throw new Error('OPENAI_API_KEY absente, STT/LLM indisponible');
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Un LLM local peut ne pas exiger de cle : on tolere une cle vide si LLM_BASE_URL est surchargee.
+    const isRemoteOpenAI = baseUrl.includes('api.openai.com');
+    if (!key && isRemoteOpenAI) throw new Error('OPENAI_API_KEY absente, LLM indisponible');
+    const res = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
       method: 'POST',
       signal: AbortSignal.timeout(15000),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`,
+        ...(key ? { 'Authorization': `Bearer ${key}` } : {}),
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model,
         max_tokens: 150,
         response_format: { type: 'json_object' },
         messages: [
@@ -77,10 +84,10 @@ export class OpenAIService {
         ],
       }),
     });
-    if (!res.ok) throw new Error(`OpenAI LLM HTTP ${res.status}: ${await res.text()}`);
+    if (!res.ok) throw new Error(`LLM HTTP ${res.status}: ${await res.text()}`);
     const data = await res.json() as any;
     const raw = data.choices?.[0]?.message?.content || '{}';
-    this.logger.log(`[LLM:OPENAI] Réponse: ${raw.slice(0, 300)}`);
+    this.logger.log(`[LLM:${model}] Réponse: ${raw.slice(0, 300)}`);
     try {
       return JSON.parse(raw);
     } catch (e: any) {
