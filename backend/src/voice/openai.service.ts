@@ -1,13 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PiperService } from './piper.service';
 
 // Service voix : regroupe OpenAI (STT Whisper, LLM GPT-4o) et ElevenLabs (TTS).
-// Le nom OpenAIService est conserve par historique ; le TTS passe par ElevenLabs.
+// Le nom OpenAIService est conserve par historique ; le TTS passe par ElevenLabs,
+// avec un chemin Piper local (offline-first) prioritaire si active.
 @Injectable()
 export class OpenAIService {
   private readonly logger = new Logger(OpenAIService.name);
 
-  constructor(private config: ConfigService) {}
+  constructor(private config: ConfigService, private piper: PiperService) {}
 
   private getKey(): string {
     const key = this.config.get<string>('OPENAI_API_KEY') || '';
@@ -88,8 +90,17 @@ export class OpenAIService {
     }
   }
 
-  // TTS — ElevenLabs
+  // TTS — Piper local (offline-first) puis repli ElevenLabs
   async synthesize(text: string): Promise<Buffer | null> {
+    // Piper local, si actif. Renvoie du WAV ; repli ElevenLabs si null.
+    if (this.config.get<string>('VOICE_LOCAL_TTS') === '1') {
+      try {
+        const wav = await this.piper.synthesize(text);
+        if (wav && wav.length > 44) return wav;
+      } catch (e: any) {
+        this.logger.warn(`[TTS:PIPER] repli ElevenLabs (${e.message})`);
+      }
+    }
     const apiKey = this.getElevenLabsApiKey();
     const voiceId = this.getElevenLabsVoiceId();
     // Court-circuit : pas d'appel distant avec une cle/voiceId vide. L'appelant gere null.

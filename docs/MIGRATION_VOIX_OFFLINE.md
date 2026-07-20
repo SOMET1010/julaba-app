@@ -74,12 +74,26 @@ export VOICE_LOCAL_STT=1
 ```
 - Garder Whisper en repli (le flag suffit à basculer) le temps de valider le WER (test T1).
 
-### Étape 3 — TTS Piper (remplace ElevenLabs)
-- Nouveau `PiperService.synthesize(text): Promise<Buffer>` (voix « Tata Lou », CPU).
-- Point de bascule : `openai.service.ts:synthesize` — remplacer le corps.
-- Vérifier le format de sortie (Piper = WAV) et ajuster le mime côté frontend
-  (`elevenlabs.ts:base64ToBlob`, aujourd'hui `audio/mpeg`).
+### Étape 3 — TTS Piper (remplace ElevenLabs) ✅ (cette PR)
+- Nouveau `backend/src/voice/piper.service.ts` : TTS **local sur CPU** via le binaire
+  Piper (voix « Tata Lou »). Sortie WAV.
+- Branché dans `openai.service.ts:synthesize` **en amont d'ElevenLabs**, derrière le
+  flag `VOICE_LOCAL_TTS` (défaut OFF). Ce point central couvre **tous** les appels TTS
+  (`/voice/process` et `/tts/openai`). Repli ElevenLabs automatique si Piper renvoie null.
+- **Frontend** : `elevenlabs.ts:base64ToBlob` détecte désormais automatiquement le
+  format (WAV « RIFF » → `audio/wav`, sinon `audio/mpeg`). Compatible ElevenLabs ET Piper,
+  aucune autre modification client.
 - `normalizeTTSText` (`voice.service.ts:356-395`) reste utile (FCFA→Francs, nombres).
+
+**Installation en production (serveur backend) :**
+```bash
+# Binaire Piper : https://github.com/rhasspy/piper/releases
+#   ex: /opt/piper/piper
+# Voix : modele .onnx + .onnx.json (voix "Tata Lou" fine-tunee, ou fr_FR generique)
+export PIPER_BIN=/opt/piper/piper
+export PIPER_VOICE=/opt/piper/tata-lou.onnx
+export VOICE_LOCAL_TTS=1
+```
 
 ### Étape 4 — LLM conversationnel souverain
 - Seul l'intent `conversation` nécessite un LLM. Remplacer OpenAI par Mistral
