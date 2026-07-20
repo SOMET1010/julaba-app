@@ -95,10 +95,21 @@ export PIPER_VOICE=/opt/piper/tata-lou.onnx
 export VOICE_LOCAL_TTS=1
 ```
 
-### Étape 4 — LLM conversationnel souverain
-- Seul l'intent `conversation` nécessite un LLM. Remplacer OpenAI par Mistral
-  auto-hébergé (serveur GPU) dans `openai.service.ts:detectIntent`.
-- Les intents métier restent servis par `SpeechBuilder` (templates locaux).
+### Étape 4 — LLM conversationnel souverain ✅ (cette PR)
+- `openai.service.ts:detectIntent` appelle désormais un **endpoint LLM configurable**
+  (compatible OpenAI). Par défaut : OpenAI GPT-4o (comportement inchangé).
+- Pour basculer sur **Mistral souverain** auto-hébergé (vLLM ou Ollama exposent une
+  API compatible OpenAI `/v1/chat/completions`), il suffit de définir des variables —
+  **aucun changement de code** :
+```bash
+export LLM_BASE_URL=http://mistral-gpu.interne:8000/v1   # serveur GPU souverain
+export LLM_MODEL=mistral-small-latest                    # ou le modele servi
+export LLM_API_KEY=...                                    # optionnel si le LLM local n'en exige pas
+```
+- Les intents métier restent servis par `SpeechBuilder` (templates locaux) ; le LLM
+  ne sert plus qu'aux questions ouvertes (`conversation`), et sur le GPU national.
+- Note : le LLM local doit accepter `response_format: json_object` (vLLM/Ollama récents).
+  À défaut, un repli JSON est déjà géré (`detectIntent` renvoie l'intent `conversation`).
 
 ### Transverse — dioula/bambara
 - Passe par le service tiers ANSUT (`voice.service.ts:442,523`). À traiter séparément
