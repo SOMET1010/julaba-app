@@ -1,0 +1,37 @@
+# Compose de production — images tirees depuis l'ACR (pas de build local).
+# Utilise par la pipeline Azure DevOps sur la VM :
+#   ACR_LOGIN_SERVER=xxx.azurecr.io IMAGE_TAG=<buildId> \
+#     docker compose -f docker-compose.prod.yml up -d
+services:
+  backend:
+    image: ${ACR_LOGIN_SERVER}/julaba-backend:${IMAGE_TAG:-latest}
+    container_name: julaba_backend
+    restart: always
+    ports:
+      - "3001:3000"
+    env_file:
+      - ./backend/.env.production
+    volumes:
+      - /var/www/julaba/uploads:/var/www/julaba/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v1/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  frontend:
+    # Le build Vite est integre a l'image (plus de volume ./frontend/dist)
+    image: ${ACR_LOGIN_SERVER}/julaba-frontend:${IMAGE_TAG:-latest}
+    container_name: julaba_frontend
+    restart: always
+    ports:
+      - "8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+networks:
+  default:
+    name: julaba_network

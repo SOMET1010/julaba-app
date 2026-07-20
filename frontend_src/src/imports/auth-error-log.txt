@@ -1,0 +1,55 @@
+index-Du0UbjAy.js:982 
+ GET https://gonfmltqggmrieqqbaya.supabase.co/functions/v1/make-server-488793d3/backoffice/institutions 401 (Unauthorized)
+index-Du0UbjAy.js:982 [BO API] Erreur 401 sur /institutions: Invalid JWT
+index-Du0UbjAy.js:982 [BO] Chargement termine — 
+{zones: 12, acteurs: 0, dossiers: 0, transactions: 0, commissions: 0, …}
+dashboard:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+acteurs:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+4
+enrolement:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+index-Du0UbjAy.js:1074 Uncaught TypeError: l is not a function
+    at index-Du0UbjAy.js:1074:37208
+5
+enrolement:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+index-Du0UbjAy.js:982 
+ POST https://gonfmltqggmrieqqbaya.supabase.co/functions/v1/make-server-488793d3/backoffice/enrolement/identificateur 401 (Unauthorized)
+index-Du0UbjAy.js:982 [BO API] 401 sur /enrolement/identificateur — refresh et retry...
+index-Du0UbjAy.js:982 
+ POST https://gonfmltqggmrieqqbaya.supabase.co/functions/v1/make-server-488793d3/backoffice/enrolement/identificateur 401 (Unauthorized)
+index-Du0UbjAy.js:982 [BO API] Erreur 401 sur /enrolement/identificateur: Invalid JWT
+index-Du0UbjAy.js:982 Erreur createIdentificateur: Error: Invalid JWT
+    at gu (index-Du0UbjAy.js:982:75792)
+    at async K (index-Du0UbjAy.js:982:120347)
+    at async q (index-Du0UbjAy.js:1074:110247)
+index-Du0UbjAy.js:1074 Erreur création identificateur: Error: Invalid JWT
+    at gu (index-Du0UbjAy.js:982:75792)
+    at async K (index-Du0UbjAy.js:982:120347)
+    at async q (index-Du0UbjAy.js:1074:110247)
+enrolement:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+index-Du0UbjAy.js:982 
+ POST https://gonfmltqggmrieqqbaya.supabase.co/functions/v1/make-server-488793d3/backoffice/enrolement/identificateur 401 (Unauthorized)
+index-Du0UbjAy.js:982 [BO API] 401 sur /enrolement/identificateur — refresh et retry...
+index-Du0UbjAy.js:982 
+ POST https://gonfmltqggmrieqqbaya.supabase.co/functions/v1/make-server-488793d3/backoffice/enrolement/identificateur 401 (Unauthorized)
+index-Du0UbjAy.js:982 [BO API] Erreur 401 sur /enrolement/identificateur: Invalid JWT
+index-Du0UbjAy.js:982 Erreur createIdentificateur: Error: Invalid JWT
+    at gu (index-Du0UbjAy.js:982:75792)
+    at async K (index-Du0UbjAy.js:982:120347)
+    at async q (index-Du0UbjAy.js:1074:110247)
+
+index-Du0UbjAy.js:1074 Erreur création identificateur: Error: Invalid JWT
+    at gu (index-Du0UbjAy.js:982:75792)
+    at async K (index-Du0UbjAy.js:982:120347)
+    at async q (index-Du0UbjAy.js:1074:110247)
+enrolement:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+index-Du0UbjAy.js:1074 Uncaught TypeError: l is not a function
+    at index-Du0UbjAy.js:1074:37208
+2
+enrolement:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.
+﻿
+
+Press cmd i to turn on code suggestions. Press cmd x to disable code suggestions.
+cmd
+i
+ to turn on code suggestions. Don't show again
+

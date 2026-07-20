@@ -1,0 +1,40 @@
+frontend_src/node_modules/
+frontend_src/dist/
+backend/node_modules/
+backend/dist/
+backend/.env
+backend/.env.*
+*.log
+.env
+.env.production
+piper-voices/
+frontend/dist/
+frontend/assets/
+*.bak
+backup_pre_fix_*.sql
+
+# Ajouts 2026-05-08 - réconciliation backend serveur
+*.bak2
+*.bak3
+*.bak.*
+backend/node_modules_docker/
+.github/SECRETS.md
+.github/workflows/ci-cd.yml
+uploads/
+node_modules/
+.DS_Store
+
+# Dumps base de donnees (donnees personnelles, ne jamais versionner)
+backup_*.sql
+julaba_db_*.sql
+*_backup.sql
+*_dump.sql
+erreur.txt
+
+# Outils locaux
+.claude/
+.idea/
+
+# Build frontend versionne par erreur (la source est dans frontend_src/, build via frontend_src/Dockerfile)
+frontend/
+frontend_src/tsconfig.tsbuildinfo

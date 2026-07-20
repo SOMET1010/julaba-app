@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Calisga:wght@400;700&display=swap');
+
+.field-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1.5px solid #E5E7EB;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+  outline: none;
+  font-family: inherit;
+  background: #FAFAFA;
+}
+.field-input:focus {
+  border-color: #C4601A;
+  box-shadow: 0 0 0 3px rgba(196,96,26,0.1);
+}

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Julaba — Matrice des permissions</title>
+<style>
+  body{margin:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#111827}
+  .dm-wrap{padding:24px 20px 70px;max-width:1100px;margin:0 auto}
+
+  /* R1 Header */
+  .dm-header{margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .dm-title{font-size:22px;font-weight:500;margin:0;color:#111827}
+  .dm-subtitle{font-size:13px;color:#6B7280;margin:4px 0 0;max-width:560px}
+  .dm-header-actions{display:flex;gap:10px;align-items:center}
+  .dm-savestate{font-size:12px;color:#6B7280;align-self:center}
+  .dm-header-btn{height:40px;display:inline-flex;align-items:center;gap:8px;padding:0 16px;border-radius:14px;background:#fff;border:1px solid #DBD2C5;font-size:13px;font-weight:500;color:#374151;cursor:pointer}
+  .dm-header-btn-primary{background:#5B5248;color:#fff;border-color:#5B5248}
+  .dm-header-btn-primary:disabled{opacity:.4;cursor:not-allowed}
+
+  /* R2 KPI */
+  .dm-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+  .dm-kpi{border-radius:16px;padding:18px;position:relative;border:1px solid;display:flex;flex-direction:column;gap:8px}
+  .dm-kpi-icon-pill{position:absolute;top:14px;right:14px;width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+  .dm-kpi-value{font-size:30px;font-weight:500;line-height:1}
+  .dm-kpi-label{font-size:12px;font-weight:500}
+
+  /* R3 Tabs */
+  .dm-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+  .dm-tab{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 16px;border-radius:16px;border:1px solid #DBD2C5;background:#fff;font-size:13px;font-weight:500;color:#6B7280;cursor:pointer}
+  .dm-tab-active{background:#5B5248;color:#fff;border-color:#5B5248}
+  .dm-tab .ic{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:11px;color:#fff}
+  .dm-tab-counter{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;border-radius:999px;background:#F5F2ED;color:#5B5248;font-size:11px;font-weight:500}
+  .dm-tab-active .dm-tab-counter{background:rgba(255,255,255,.18);color:#fff}
+
+  /* scope segment */
+  .dm-scope{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+  .dm-seg{display:inline-flex;background:#ECE7DF;border-radius:14px;padding:4px}
+  .dm-seg button{border:0;background:transparent;height:36px;padding:0 16px;border-radius:11px;font-size:13px;font-weight:500;color:#6B7280;cursor:pointer}
+  .dm-seg button.on{background:#fff;color:#374151;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .dm-accsel{display:none}
+  .dm-accsel.show{display:block}
+  .dm-accsel select{height:40px;padding:0 14px;border:1px solid #DBD2C5;border-radius:14px;background:#fff;font-size:13px;min-width:300px;max-width:100%;color:#374151}
+
+  /* R4 Section */
+  .dm-section{background:#F5F2ED;border-radius:20px;padding:20px;margin-bottom:20px}
+  /* R5 Section head */
+  .dm-sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+  .dm-seg{display:inline-flex;background:#ECE7DF;border-radius:14px;padding:4px;height:40px}
+  .dm-seg button{border:0;background:transparent;height:32px;padding:0 14px;border-radius:10px;font-size:13px;font-weight:500;color:#6B7280;cursor:pointer;white-space:nowrap}
+  .dm-seg button.on{background:#fff;color:#374151;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .dm-accsel{display:none}
+  .dm-accsel.show{display:block}
+  .dm-accsel select{height:40px;padding:0 14px;border:1px solid #DBD2C5;border-radius:14px;background:#fff;font-size:13px;min-width:240px;max-width:100%;color:#374151}
+  .dm-sec-head-left{display:flex;align-items:center;gap:12px}
+  .dm-sec-icon{width:36px;height:36px;border-radius:10px;background:#fff;border:1px solid #E8DFD0;display:flex;align-items:center;justify-content:center;color:#5B5248}
+  .dm-sec-icon-spin{animation:dmSpin 6s linear infinite}
+  @keyframes dmSpin{to{transform:rotate(360deg)}}
+  .dm-sec-title{font-size:16px;font-weight:500;margin:0}
+  .dm-sec-subtitle{font-size:11px;color:#6B7280;margin:2px 0 0}
+  .dm-sec-btn{height:36px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;border-radius:12px;background:#fff;border:1px solid #DBD2C5;font-size:12px;font-weight:500;color:#374151;cursor:pointer}
+
+  /* R6 Search bar */
+  .dm-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+  .dm-search{flex:1;min-width:180px;height:44px;padding:0 8px 0 6px;background:#fff;border:1px solid #DBD2C5;border-radius:16px;display:flex;align-items:center;gap:10px}
+  .dm-glass{width:32px;height:32px;border-radius:10px;background:rgba(159,129,112,.22);border:1px solid rgba(159,129,112,.45);color:#6B4423;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .dm-search input{flex:1;border:0;outline:0;background:transparent;font-size:13px;color:#374151}
+  .dm-chip{height:44px;padding:0 16px;background:#fff;border:1px solid #DBD2C5;border-radius:16px;display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#374151;cursor:pointer}
+  .dm-chip:hover{border-color:#5B5248}
+
+  /* Module card (R7 style) */
+  .dm-mod{background:#fff;border:1px solid #E8DFD0;border-radius:16px;margin-bottom:12px;overflow:hidden}
+  .dm-mod-h{display:flex;align-items:center;gap:14px;padding:16px;cursor:pointer;user-select:none}
+  .dm-mod-h:hover{background:#FCFBF9}
+  .dm-caret{transition:transform .18s;color:#9CA3AF;display:flex}
+  .dm-mod.open .dm-caret{transform:rotate(90deg)}
+  .dm-mod-ic{width:46px;height:46px;border-radius:14px;background:#5B5248;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .dm-mod-body-h{flex:1;min-width:0}
+  .dm-mod-name{font-size:14px;font-weight:500;margin:0}
+  .dm-mod-name .sup{font-size:10px;color:#7C3AED;font-weight:500;margin-left:7px;background:#F3ECFD;border:1px solid #E0D2F7;padding:2px 7px;border-radius:6px}
+  .dm-mod-desc{font-size:12px;color:#6B7280;margin:3px 0 0}
+  .dm-mod-count{font-size:12px;color:#6B7280;font-weight:500;margin-right:2px}
+
+  .dm-mod-body{display:none;border-top:1px solid #EEE7DC;background:#FCFBF8}
+  .dm-mod.open .dm-mod-body{display:block;padding:4px 0}
+  .dm-subgrp{padding:12px 16px 4px 76px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#A8A294;font-weight:500}
+  .dm-perm{display:flex;align-items:center;gap:12px;padding:11px 16px 11px 76px}
+  .dm-perm:hover{background:#F7F4EF}
+  .dm-perm-body{flex:1;min-width:0}
+  .dm-perm-name{font-size:13.5px;font-weight:500}
+  .dm-perm-code{font-size:11px;color:#AEA89B;margin-left:8px;font-family:ui-monospace,Menlo,monospace}
+  .dm-tag{font-size:10px;font-weight:500;padding:4px 9px;border-radius:999px}
+  .dm-tag.view{background:#F0FDF4;color:#15803D}
+  .dm-tag.write{background:#FFF7ED;color:#9A3412}
+  .dm-tag.danger{background:#FEF2F2;color:#B91C1C}
+
+  /* toggle */
+  .dm-sw{position:relative;width:44px;height:25px;flex-shrink:0}
+  .dm-sw input{display:none}
+  .dm-sw label{position:absolute;inset:0;background:#D7CFC3;border-radius:30px;cursor:pointer;transition:.18s}
+  .dm-sw label:after{content:"";position:absolute;width:19px;height:19px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.18s;box-shadow:0 1px 2px rgba(0,0,0,.22)}
+  .dm-sw input:checked + label{background:#16A34A}
+  .dm-sw input:checked + label:after{left:22px}
+  .dm-sw.ind label{background:linear-gradient(90deg,#16A34A 50%,#D7CFC3 50%)}
+  .dm-mod-h .dm-sw{margin-left:auto}
+  .dm-locked{opacity:.45;pointer-events:none}
+
+  /* R12 banner/toast */
+  .dm-note{font-size:12px;border-radius:12px;padding:12px 16px;margin-top:8px;display:flex;gap:10px;align-items:flex-start}
+  .dm-note.warn{background:#FFFBEB;border:1px solid #FDE68A;color:#92670C}
+  .dm-note.super{background:#F3ECFD;border:1px solid #E0D2F7;color:#5B2BB0}
+
+  .icon-xs{width:14px;height:14px}.icon-sm{width:16px;height:16px}
+  @media(max-width:900px){.dm-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.dm-kpi-grid{grid-template-columns:1fr}.dm-perm,.dm-subgrp{padding-left:16px}}
+</style>
+</head>
+<body>
+<div class="dm-wrap">
+
+  <!-- R1 -->
+  <div class="dm-header">
+    <div>
+      <h1 class="dm-title">Matrice des permissions</h1>
+      <p class="dm-subtitle">Contrôle total des accès, par rôle ou par compte. Un élément désactivé disparaît de l'écran de l'utilisateur.</p>
+    </div>
+    <div class="dm-header-actions">
+      <span class="dm-savestate" id="dirty">Aucune modification</span>
+      <button class="dm-header-btn" id="resetBtn">
+        <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/></svg>
+        Réinitialiser
+      </button>
+      <button class="dm-header-btn dm-header-btn-primary" id="saveBtn" disabled>
+        <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Enregistrer
+      </button>
+    </div>
+  </div>
+
+  <!-- R2 KPI -->
+  <div class="dm-kpi-grid" id="kpis"></div>
+
+  <!-- R3 Tabs rôles -->
+  <div class="dm-tabs" id="tabs"></div>
+
+  <!-- R4 Section -->
+  <div class="dm-section">
+    <!-- R5 -->
+    <div class="dm-sec-head">
+      <div class="dm-sec-head-left">
+        <div class="dm-sec-icon">
+          <svg class="icon-sm dm-sec-icon-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+        <div>
+          <h3 class="dm-sec-title">Permissions détaillées</h3>
+          <p class="dm-sec-subtitle" id="detsub">Modules, actions et éléments d'écran</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="dm-seg">
+          <button class="on" data-scope="role" onclick="setScope('role')">Régler le rôle entier</button>
+          <button data-scope="account" onclick="setScope('account')">Régler un compte précis</button>
+        </div>
+        <div class="dm-accsel" id="accsel"><select id="account" onchange="render()"></select></div>
+      </div>
+    </div>
+
+    <!-- R6 -->
+    <div class="dm-bar">
+      <div class="dm-search">
+        <span class="dm-glass"><svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+        <input id="q" placeholder="Rechercher un module, une action, un élément d'écran…" oninput="render()">
+      </div>
+      <button class="dm-sec-btn" style="height:44px" onclick="bulk(true)">Tout activer</button>
+      <button class="dm-sec-btn" style="height:44px" onclick="bulk(false)">Tout désactiver</button>
+      <button class="dm-sec-btn" style="height:44px" onclick="toggleAll()">Plier / déplier</button>
+    </div>
+
+    <div id="tree"></div>
+
+    <div class="dm-note warn">
+      <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div>L'affichage est piloté ici. Le verrouillage côté serveur (porte API, action par action) est une couche distincte à brancher ensuite.</div>
+    </div>
+    <div class="dm-note super" id="superBanner">
+      <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div>Les lignes grisées « non applicables » sortent du périmètre du rôle et ne peuvent pas être activées ici. Les pré-cochés sont les droits par défaut du rôle, modifiables.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ROLES=[
+  {id:'admin_general',label:'Admin Général',icon:'◆',c:'#7C3AED'},
+  {id:'admin_national',label:'Admin National',icon:'⊕',c:'#2563EB'},
+  {id:'gestionnaire_zone',label:'Gestionnaire de Zone',icon:'⌖',c:'#16A34A'},
+  {id:'operateur_terrain',label:'Opérateur Terrain',icon:'⊙',c:'#EA8A0C'},
+];
+const ACCOUNTS=[
+  {id:'dge',name:"Direction Générale de l'Emploi (DGE)",role:'admin_general'},
+  {id:'an1',name:'Konan Yao — Admin National',role:'admin_national'},
+  {id:'gz1',name:'Firmin Guela — Gestionnaire Abidjan',role:'gestionnaire_zone'},
+  {id:'ot1',name:'Fatou Coulibaly — Opérateur San-Pédro',role:'operateur_terrain'},
+];
+const TREE=[
+  {id:'dashboard',label:'Tableau de bord',icon:'▦',desc:"Indicateurs et vue d'ensemble",groups:[
+    {name:'Accès',perms:[{k:'dashboard.read',label:'Voir le tableau de bord',kind:'view'}]},
+    {name:'Cartes KPI',perms:[
+      {k:'dashboard.kpi.acteurs',label:'Total acteurs',kind:'view'},
+      {k:'dashboard.kpi.actifs',label:'Acteurs actifs',kind:'view'},
+      {k:'dashboard.kpi.volume',label:'Volume total',kind:'view'},
+      {k:'dashboard.kpi.suspendus',label:'Suspendus',kind:'view'},
+      {k:'dashboard.kpi.attente',label:'En attente',kind:'view'},
+      {k:'dashboard.kpi.transactions',label:'Transactions',kind:'view'},
+      {k:'dashboard.kpi.zones',label:'Zones actives',kind:'view'}]},
+    {name:'Panneaux',perms:[
+      {k:'dashboard.live',label:'Bandeau « En direct »',kind:'view'},
+      {k:'dashboard.inscriptions',label:'Inscriptions mensuelles',kind:'view'},
+      {k:'dashboard.repartition',label:'Répartition par type',kind:'view'},
+      {k:'dashboard.acces_rapide',label:'Accès rapide',kind:'view'}]},
+  ]},
+  {id:'acteurs',label:'Acteurs',icon:'☻',desc:'Marchands, producteurs, coopératives',groups:[{name:'Actions',perms:[
+    {k:'acteurs.read',label:'Voir les acteurs',kind:'view'},
+    {k:'acteurs.write',label:'Modifier un acteur',kind:'write'},
+    {k:'acteurs.suspend',label:'Suspendre un acteur',kind:'danger'},
+    {k:'acteurs.delete',label:'Supprimer un acteur',kind:'danger'}]}]},
+  {id:'enrolement',label:'Enrôlement',icon:'✎',desc:'Dossiers et validation',groups:[{name:'Actions',perms:[
+    {k:'enrolement.read',label:"Voir l'enrôlement",kind:'view'},
+    {k:'enrolement.write',label:'Modifier un dossier',kind:'write'},
+    {k:'enrolement.validate',label:'Valider un dossier',kind:'write'}]}]},
+  {id:'supervision',label:'Supervision',icon:'◉',desc:'Transactions et flux',groups:[{name:'Actions',perms:[
+    {k:'supervision.read',label:'Voir les transactions',kind:'view'},
+    {k:'supervision.write',label:'Modifier une transaction',kind:'write'},
+    {k:'supervision.freeze',label:'Geler une transaction',kind:'danger'}]}]},
+  {id:'zones',label:'Zones & Territoires',icon:'⌖',desc:'Découpage géographique',groups:[{name:'Actions',perms:[
+    {k:'zones.read',label:'Voir les zones',kind:'view'},
+    {k:'zones.write',label:'Modifier une zone',kind:'write'}]}]},
+  {id:'moderation',label:'Modération',icon:'⛉',desc:'Contenus signalés',groups:[{name:'Actions',perms:[
+    {k:'moderation.read',label:'Voir la modération',kind:'view'},
+    {k:'moderation.write',label:'Traiter un signalement',kind:'write'}]}]},
+  {id:'mutations',label:'Mutations',icon:'⇄',desc:'Changements de zone',groups:[{name:'Actions',perms:[
+    {k:'mutations.read',label:'Voir les mutations',kind:'view'},
+    {k:'mutations.write',label:"Décider d'une mutation",kind:'write'}]}]},
+  {id:'academy',label:'Academy',icon:'✦',desc:'Formations',groups:[{name:'Actions',perms:[
+    {k:'academy.read',label:'Voir Academy',kind:'view'},
+    {k:'academy.write',label:'Gérer les formations',kind:'write'}]}]},
+  {id:'audit',label:'Audit & Logs',icon:'❖',desc:'Journal des actions',groups:[{name:'Actions',perms:[
+    {k:'audit.read',label:"Consulter l'audit",kind:'view'}]}]},
+  {id:'utilisateurs',label:'Utilisateurs BO',icon:'⚇',desc:'Comptes back-office',superOnly:true,groups:[{name:'Actions',perms:[
+    {k:'utilisateurs.read',label:'Voir les comptes BO',kind:'view'},
+    {k:'utilisateurs.write',label:'Créer / modifier un compte',kind:'write'},
+    {k:'utilisateurs.delete',label:'Supprimer un compte',kind:'danger'}]}]},
+  {id:'parametres',label:'Config Institution',icon:'⚙',desc:'Paramétrage plateforme',superOnly:true,groups:[{name:'Actions',perms:[
+    {k:'parametres.read',label:'Voir les paramètres',kind:'view'},
+    {k:'parametres.write',label:'Modifier les paramètres',kind:'write'}]}]},
+];
+
+let scope='role',currentRole='admin_general',openMods=new Set(TREE.map(m=>m.id)),state={},baseline={};
+const SK=()=>scope==='role'?'role:'+currentRole:'acc:'+document.getElementById('account').value;
+const roleOf=()=>scope==='role'?currentRole:ACCOUNTS.find(a=>a.id===document.getElementById('account').value).role;
+const allKeys=()=>TREE.flatMap(m=>m.groups.flatMap(g=>g.perms.map(p=>p.k)));
+const dangerKeys=()=>TREE.flatMap(m=>m.groups.flatMap(g=>g.perms.filter(p=>p.kind==='danger').map(p=>p.k)));
+
+// CAPS = ce qu'un role peut au maximum recevoir (hors caps = verrouille, grise, non applicable)
+const CAPS={
+  admin_general:k=>!k.startsWith('utilisateurs')&&!k.startsWith('parametres'),
+  admin_national:k=>!k.startsWith('utilisateurs')&&!k.startsWith('parametres')&&k!=='acteurs.delete',
+  gestionnaire_zone:k=>['acteurs.read','acteurs.write','enrolement.read','enrolement.write','enrolement.validate','supervision.read','zones.read','moderation.read','moderation.write','mutations.read','mutations.write','audit.read','academy.read','dashboard.read','dashboard.kpi.acteurs','dashboard.kpi.actifs','dashboard.kpi.attente','dashboard.kpi.zones','dashboard.live','dashboard.inscriptions','dashboard.repartition','dashboard.acces_rapide'].includes(k),
+  operateur_terrain:k=>['acteurs.read','acteurs.write','acteurs.suspend','enrolement.read','enrolement.validate','supervision.read','supervision.write','supervision.freeze','moderation.read','moderation.write','mutations.read','mutations.write','audit.read','academy.read','dashboard.read','dashboard.kpi.acteurs','dashboard.live'].includes(k),
+};
+// DEFAULTS = pre-coche a l'ouverture (sous-ensemble des caps)
+const DEFAULTS={
+  admin_general:k=>CAPS.admin_general(k),
+  admin_national:k=>CAPS.admin_national(k)&&!['acteurs.suspend','supervision.freeze'].includes(k),
+  gestionnaire_zone:k=>['acteurs.read','enrolement.read','enrolement.validate','supervision.read','zones.read','moderation.read','mutations.read','audit.read','academy.read','dashboard.read','dashboard.kpi.acteurs','dashboard.kpi.actifs','dashboard.live'].includes(k),
+  operateur_terrain:k=>['acteurs.read','enrolement.read','enrolement.validate','supervision.read','moderation.read','audit.read','dashboard.read','dashboard.kpi.acteurs'].includes(k),
+};
+const capOf=k=>{const r=roleOf();return CAPS[r]?CAPS[r](k):true;};
+const isLocked=k=>!capOf(k);
+const isSuper=()=>false;
+
+function seed(){
+  ROLES.forEach(r=>{const k='role:'+r.id;state[k]={};allKeys().forEach(x=>state[k][x]=(CAPS[r.id]?CAPS[r.id](x):true)&&(DEFAULTS[r.id]?DEFAULTS[r.id](x):false));});
+  ACCOUNTS.forEach(a=>state['acc:'+a.id]={...(state['role:'+a.role]||{})});
+  baseline=JSON.parse(JSON.stringify(state));
+}
+
+function kpiCard(bg,bd,col,val,label,svg){
+  return `<div class="dm-kpi" style="background:${bg};border-color:${bd}"><div class="dm-kpi-icon-pill" style="background:${bd};color:${col}">${svg}</div><span class="dm-kpi-value" style="color:${col}">${val}</span><span class="dm-kpi-label" style="color:${col}">${label}</span></div>`;
+}
+
+function render(){
+  // tabs
+  const tabs=document.getElementById('tabs');tabs.innerHTML='';
+  ROLES.forEach(r=>{
+    const on=Object.values(state['role:'+r.id]||{}).filter(Boolean).length;
+    const t=document.createElement('button');
+    t.className='dm-tab'+(scope==='role'&&r.id===currentRole?' dm-tab-active':'');
+    t.innerHTML=`<span class="ic" style="background:${r.c}">${r.icon}</span>${r.label}<span class="dm-tab-counter">${on}</span>`;
+    if(scope==='role')t.onclick=()=>{currentRole=r.id;render();};else t.style.opacity=.5;
+    tabs.appendChild(t);
+  });
+
+  const sk=SK(),sup=false,q=document.getElementById('q').value.trim().toLowerCase();
+  const applicable=allKeys().filter(k=>capOf(k));
+  const total=applicable.length,on=applicable.filter(k=>state[sk][k]).length;
+  const dApplic=dangerKeys().filter(k=>capOf(k));
+  const dOn=dApplic.filter(k=>state[sk][k]).length;
+  const modVis=TREE.filter(m=>{const ks=m.groups.flatMap(g=>g.perms.map(p=>p.k));return ks.some(k=>capOf(k)&&state[sk][k]);}).length;
+
+  document.getElementById('kpis').innerHTML=
+    kpiCard('#F0FDF4','#BBF7D0','#15803D',on,'Permissions activées','<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>')+
+    kpiCard('#F5F2ED','#E8DFD0','#5B5248',total,'Permissions applicables','<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>')+
+    kpiCard('#F3ECFD','#E0D2F7','#7C3AED',modVis,'Modules visibles','<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>')+
+    kpiCard('#FEF2F2','#FECACA','#B91C1C',dOn,'Actions sensibles','<svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>');
+
+  document.getElementById('detsub').textContent= scope==='role'
+    ? 'Rôle '+ROLES.find(r=>r.id===currentRole).label
+    : 'Compte '+ACCOUNTS.find(a=>a.id===document.getElementById('account').value).name;
+
+  const tree=document.getElementById('tree');tree.innerHTML='';
+  TREE.forEach(m=>{
+    const match=p=>!q||m.label.toLowerCase().includes(q)||p.label.toLowerCase().includes(q)||p.k.includes(q);
+    const vg=m.groups.map(g=>({...g,perms:g.perms.filter(match)})).filter(g=>g.perms.length);
+    if(!vg.length&&q)return;
+    const perms=m.groups.flatMap(g=>g.perms);
+    const applic=perms.filter(p=>capOf(p.k));
+    const onC=applic.filter(p=>state[sk][p.k]).length;
+    const ind=onC>0&&onC<applic.length,lock=applic.length===0?'dm-locked':'';
+    const mod=document.createElement('div');mod.className='dm-mod'+(openMods.has(m.id)?' open':'');
+    mod.innerHTML=`<div class="dm-mod-h" onclick="toggleMod('${m.id}')">
+      <span class="dm-caret"><svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+      <div class="dm-mod-ic">${m.icon}</div>
+      <div class="dm-mod-body-h"><p class="dm-mod-name">${m.label}${m.superOnly?'<span class="sup">SUPER</span>':''}</p><p class="dm-mod-desc">${applic.length===0?'Non applicable à ce rôle':m.desc}</p></div>
+      <span class="dm-mod-count">${onC}/${applic.length||perms.length}</span>
+      <div class="dm-sw ${ind?'ind':''} ${lock}" onclick="event.stopPropagation()"><input type="checkbox" ${(applic.length>0&&onC===applic.length)?'checked':''} onchange="setModule('${m.id}',this.checked)"><label></label></div>
+    </div><div class="dm-mod-body"></div>`;
+    tree.appendChild(mod);
+    const body=mod.querySelector('.dm-mod-body');
+    vg.forEach(g=>{
+      if(m.groups.length>1){const h=document.createElement('div');h.className='dm-subgrp';h.textContent=g.name;body.appendChild(h);}
+      g.perms.forEach(p=>{
+        const lk=isLocked(p.k);
+        const ck=!lk&&!!state[sk][p.k];
+        const tt=p.kind==='danger'?'sensible':p.kind==='write'?'écriture':'lecture';
+        const row=document.createElement('div');row.className='dm-perm';
+        if(lk)row.style.opacity='.5';
+        const hint=lk?'<span class="dm-perm-code" style="color:#B91C1C">non applicable</span>':`<span class="dm-perm-code">${p.k}</span>`;
+        row.innerHTML=`<div class="dm-perm-body"><span class="dm-perm-name">${p.label}</span>${hint}</div><span class="dm-tag ${p.kind}">${tt}</span><div class="dm-sw ${lk?'dm-locked':''}"><input type="checkbox" ${ck?'checked':''} ${lk?'disabled':''} onchange="setPerm('${p.k}',this.checked)"><label></label></div>`;
+        body.appendChild(row);
+      });
+    });
+  });
+
+  const dirty=JSON.stringify(state)!==JSON.stringify(baseline);
+  document.getElementById('saveBtn').disabled=!dirty;
+  const d=document.getElementById('dirty');d.textContent=dirty?'Modifications non enregistrées':'Aucune modification';d.style.color=dirty?'#9A3412':'#6B7280';
+}
+
+function setScope(s){scope=s;document.querySelectorAll('.dm-seg button').forEach(b=>b.classList.toggle('on',b.dataset.scope===s));document.getElementById('accsel').classList.toggle('show',s==='account');render();}
+function toggleMod(id){openMods.has(id)?openMods.delete(id):openMods.add(id);render();}
+function toggleAll(){openMods.size?openMods.clear():TREE.forEach(m=>openMods.add(m.id));render();}
+function setPerm(k,v){if(isLocked(k))return;state[SK()][k]=v;render();}
+function setModule(id,v){const sk=SK();TREE.find(m=>m.id===id).groups.flatMap(g=>g.perms).forEach(p=>{if(!isLocked(p.k))state[sk][p.k]=v;});render();}
+function bulk(v){const sk=SK();allKeys().forEach(k=>{if(!isLocked(k))state[sk][k]=v;});render();}
+document.getElementById('saveBtn').onclick=()=>{baseline=JSON.parse(JSON.stringify(state));render();const d=document.getElementById('dirty');d.textContent='Enregistré';d.style.color='#15803D';};
+document.getElementById('resetBtn').onclick=()=>{state[SK()]=JSON.parse(JSON.stringify(baseline[SK()]));render();};
+const accSel=document.getElementById('account');ACCOUNTS.forEach(a=>{const o=document.createElement('option');o.value=a.id;o.textContent=a.name;accSel.appendChild(o);});
+seed();render();
+</script>
+</body>
+</html>

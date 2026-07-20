@@ -1,0 +1,29 @@
+name: Miroir Azure DevOps
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  miroir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone miroir depuis GitHub
+        run: git clone --mirror "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Desiralex25/Julabaovh.git" repo.git
+
+      - name: Push master, develop et tags vers Azure
+        working-directory: repo.git
+        env:
+          AZURE_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+        run: |
+          AUTH=$(printf ":%s" "$AZURE_PAT" | base64 -w0)
+          git -c http.extraheader="Authorization: Basic ${AUTH}" \
+            push "https://dev.azure.com/DevOps-ANSUT/Julaba/_git/Julaba" \
+            "refs/heads/master:refs/heads/master" \
+            "refs/heads/develop:refs/heads/develop" \
+            "refs/tags/*:refs/tags/*"
