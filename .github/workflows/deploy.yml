@@ -1,0 +1,87 @@
+name: Deploy JULABA to Production
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend_src/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend_src
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend_src
+        run: npm run build
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy frontend to server
+        run: |
+          rsync -av --delete \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
+            frontend/dist/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/julaba/frontend/dist/
+
+      - name: Sync backend source to server
+        run: |
+          rsync -av --delete \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
+            backend/src/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/backend_src/
+
+      - name: Sync backend build files to server
+        run: |
+          rsync -av \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
+            backend/Dockerfile \
+            backend/.dockerignore \
+            backend/package.json \
+            backend/package-lock.json \
+            backend/tsconfig.json \
+            backend/nest-cli.json \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/julaba/backend/
+
+      - name: Build and restart backend container
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            -o StrictHostKeyChecking=no \
+            -o ServerAliveInterval=60 \
+            -o ServerAliveCountMax=10 \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "sudo rsync -av --delete /tmp/backend_src/ /var/www/julaba/backend/src/ && \
+             cd /var/www/julaba && \
+             sudo docker compose --env-file /var/www/julaba/backend/.env.production build --no-cache backend && \
+             sudo docker compose --env-file /var/www/julaba/backend/.env.production up -d --force-recreate backend"
+
+      - name: Health check
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://julaba.online/api/v1/health || true)
+            echo "Tentative $i : HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "Health check KO apres 6 tentatives - backend non sain"
+          exit 1

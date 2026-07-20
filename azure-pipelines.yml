@@ -1,0 +1,31 @@
+trigger:
+  branches:
+    include:
+      - master
+
+variables:
+  - group: Variables-de-config
+  - group: Variables-sensibles
+
+resources:
+  repositories:
+  - repository: templates
+    type: git
+    name: DevOps/Pipelines-templates
+
+extends:
+  template: main-julaba-pipeline.yml@templates
+  parameters:
+    acrConnection: 'julaba-registry'
+    sonarConnection: 'julaba-sonar-scn'
+    sonarprojectKey: $(SONAR_PROJECT_KEY)
+    acrName: 'acrtestanst'
+    environmentName: 'VMenv'
+    backendImageName: 'julaba-backend'
+    frontendImageName: 'julaba-frontend'
+    ciPoolName: 'ANSUT-JULABA-POOL'
+    cdPoolName: 'ANSUT-JULABA-POOL'
+    backdockerfile: 'backend/Dockerfile'
+    frontdockerfile: 'frontend_src/Dockerfile'
+    backBuildContext: 'backend'
+    appUrl: $(APP_URL)

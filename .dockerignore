@@ -1,0 +1,17 @@
+# Contexte racine (build de l'image frontend) — n'envoyer que le necessaire
+.git
+.github
+node_modules
+**/node_modules
+frontend/
+backend/
+docs/
+scripts/
+tests/
+database/
+nginx/*.conf
+!nginx/frontend.conf
+*.zip
+*.md
+frontend_src/dist
+frontend_src/tsconfig.tsbuildinfo

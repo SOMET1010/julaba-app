@@ -1,0 +1,378 @@
+FILES_SCANNED=687
+MATCHES=375
+
+frontend_src/src/app/components/academy/UniversalAcademy.tsx	148	Débutant	Debutant
+frontend_src/src/app/components/academy/academyQuestions.ts	69	marché	Comment savoir si ton commerce marche bien ?
+frontend_src/src/app/components/academy/academyQuestions.ts	196	Publié	Publie ta récolte sur Jùlaba et reçois des offres d'acheteurs de partout.
+frontend_src/src/app/components/academy/academyQuestions.ts	231	affiché	Jùlaba affiche les prix en temps réel. Consulte avant de vendre !
+frontend_src/src/app/components/academy/academyQuestions.ts	350	Brouillon	4 statuts : Brouillon, Soumis, Validé, Rejeté. Chaque étape compte !
+frontend_src/src/app/components/academy/academyQuestions.ts	355	Brouillon	C'est quoi un dossier en "Brouillon" ?
+frontend_src/src/app/components/academy/academyQuestions.ts	355	Brouillon	Brouillon = tu as commencé le dossier mais tu ne l'as pas encore envoyé.
+frontend_src/src/app/components/academy/academyQuestions.ts	390	Brouillon	Différence entre Brouillon et Soumis ?
+frontend_src/src/app/components/academy/academyQuestions.ts	390	Brouillon	Brouillon = en cours, Soumis = envoyé
+frontend_src/src/app/components/academy/academyQuestions.ts	390	Brouillon	Brouillon = validé
+frontend_src/src/app/components/academy/academyQuestions.ts	390	Brouillon	Brouillon = tu travailles encore dessus. Soumis = tu l'as envoyé au superviseur.
+frontend_src/src/app/components/academy/academyQuestions.ts	427	connexion	Identification = reconnaissance + protection + connexion = meilleure vie !
+frontend_src/src/app/components/assistant/TantieSagesseModal.tsx	37	Générer	Generer un rapport
+frontend_src/src/app/components/assistant/TantieSagesseModal.tsx	76	ma chère	ma chere
+frontend_src/src/app/components/assistant/TantieSagesseModal.tsx	125	marché	marche
+frontend_src/src/app/components/auth/ChangePasswordScreen.tsx	47	connexion	Erreur de connexion
+frontend_src/src/app/components/auth/LoginPassword.tsx	110	connexion	Erreur de connexion
+frontend_src/src/app/components/backoffice/BOAcademy.tsx	40	Publié	Publie
+frontend_src/src/app/components/backoffice/BOAcademy.tsx	41	Brouillon	Brouillon
+frontend_src/src/app/components/backoffice/BOAcademy.tsx	46	Vidéo	Video
+frontend_src/src/app/components/backoffice/BOAcademy.tsx	53	Débutant	Debutant
+frontend_src/src/app/components/backoffice/BOAcademy.tsx	54	Intermédiaire	Intermediaire
+frontend_src/src/app/components/backoffice/BOAcademy.tsx	105	Marché	Mon Marche
+frontend_src/src/app/components/backoffice/BOAcademy.tsx	714	Éditeur	Editeur module
+frontend_src/src/app/components/backoffice/BOActeurDetail.tsx	41	activité	activite
+frontend_src/src/app/components/backoffice/BOActeurDetail.tsx	192	connexion	Le mot de passe de   sera réinitialisé à 0000. L'acteur devra le modifier à sa prochaine connexion.
+frontend_src/src/app/components/backoffice/BOActeurDetail.tsx	252	enrôlement	enrolement.validate
+frontend_src/src/app/components/backoffice/BOActeurDetail.tsx	334	Nationalité	Nationalite
+frontend_src/src/app/components/backoffice/BOActeurDetail.tsx	338	Récépissé	Recepisse
+frontend_src/src/app/components/backoffice/BOActeurDetail.tsx	339	Catégorie	Categorie
+frontend_src/src/app/components/backoffice/BOActeurDetail.tsx	340	Boîte	Boite postale
+frontend_src/src/app/components/backoffice/BOActeurDetail.tsx	382	implémenter	Ajout de document — a implementer avec upload
+frontend_src/src/app/components/backoffice/BOActeurDetail.tsx	392	activité	activite
+frontend_src/src/app/components/backoffice/BOActeurs.tsx	199	enrôlement	enrolement.write
+frontend_src/src/app/components/backoffice/BOCarteActeurs.tsx	161	rôles	Tous roles confondus
+frontend_src/src/app/components/backoffice/BOCarteActeurs.tsx	180	Précise	Adresse introuvable. Precise davantage.
+frontend_src/src/app/components/backoffice/BOCarteActeurs.tsx	412	Marché	Ex: Marche Adjame, Abidjan
+frontend_src/src/app/components/backoffice/BOCommunication.tsx	73	Campagne envoyée	Campagne envoyee (simulation)
+frontend_src/src/app/components/backoffice/BOCommunication.tsx	106	Envoyées	Envoyees
+frontend_src/src/app/components/backoffice/BOCommunication.tsx	107	Programmées	Programmees
+frontend_src/src/app/components/backoffice/BOCommunication.tsx	109	Délivrabilité	Delivrabilite
+frontend_src/src/app/components/backoffice/BOCommunication.tsx	150	Envoyée	Envoyee
+frontend_src/src/app/components/backoffice/BOCommunication.tsx	150	Programmée	Programmee
+frontend_src/src/app/components/backoffice/BOCommunication.tsx	150	Brouillon	Brouillon
+frontend_src/src/app/components/backoffice/BOContenus.tsx	30	Écran	Ecran onboarding
+frontend_src/src/app/components/backoffice/BOContenus.tsx	135	créé	Contenu cree
+frontend_src/src/app/components/backoffice/BOContenus.tsx	140	supprimé	Contenu supprime
+frontend_src/src/app/components/backoffice/BODashboard.tsx	50	enregistrée	Transaction enregistree
+frontend_src/src/app/components/backoffice/BODashboard.tsx	398	enregistrés	enregistres
+frontend_src/src/app/components/backoffice/BODashboard.tsx	422	enregistrées	enregistrees
+frontend_src/src/app/components/backoffice/BODashboard.tsx	792	qualité	Indice de qualite
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	20	Brouillon	Brouillon
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	21	Brouillon	Brouillon
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	74	enrôlement	enrolement.validate
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	75	enrôlement	enrolement.write
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	97	approuvé	approuve
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	97	approuvé	approuve
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	106	approuvé	approuve
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	137	approuvé	approuve
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	138	approuvé	 dossier(s) approuve(s)
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	184	créé	 acteur(s) cree(s) avec succes
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	267	Créer	Creer un compte
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	312	approuvé	approuve
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	316	approuvé	approuve
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	317	approuvé	approuve
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	396	enrôlement	enrolement.validate
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	489	enrôlement	enrolement.validate
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	493	approuvé	approuve
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	494	approuvé	approuve
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	494	Enrôlement	Enrolement
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	497	agrément	Erreur lors de l'agrement
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	562	Téléphone	Telephone
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	615	Téléphone	Telephone * (login app)
+frontend_src/src/app/components/backoffice/BOEnrolement.tsx	687	enrôlement	enrolement.validate
+frontend_src/src/app/components/backoffice/BOInstitutionsPermissions.tsx	120	Connexions	Historique Connexions
+frontend_src/src/app/components/backoffice/BOLayout.tsx	90	enrôlement	enrolement
+frontend_src/src/app/components/backoffice/BOLayout.tsx	90	Enrôlement	Enrolement
+frontend_src/src/app/components/backoffice/BOLayout.tsx	90	enrôlement	enrolement.read
+frontend_src/src/app/components/backoffice/BOLayout.tsx	145	événement	event-monitor
+frontend_src/src/app/components/backoffice/BOMarketplace.tsx	42	Publié	Publie
+frontend_src/src/app/components/backoffice/BOMissions.tsx	40	Brouillon	Brouillon
+frontend_src/src/app/components/backoffice/BOMonitoringIA.tsx	54	Requêtes	Requetes / jour
+frontend_src/src/app/components/backoffice/BOMonitoringIA.tsx	55	Coût	Cout cumule (30j)
+frontend_src/src/app/components/backoffice/BOParametres.tsx	64	fonctionnalités	Activer/desactiver des fonctionnalites
+frontend_src/src/app/components/backoffice/BOParametres.tsx	455	connexion	Alerte inactivité (jours sans connexion)
+frontend_src/src/app/components/backoffice/BOParametres.tsx	540	connexion	Code SMS à chaque connexion BO
+frontend_src/src/app/components/backoffice/BOParametres.tsx	692	modifié	Feature Flag "" modifie (simulation)
+frontend_src/src/app/components/backoffice/BOProfil.tsx	38	données	Consultation et analyse de donnees
+frontend_src/src/app/components/backoffice/BOProfil.tsx	47	rôles	Configurer les roles et droits d'acces
+frontend_src/src/app/components/backoffice/BOProfil.tsx	48	Paramétrage	Parametrage scoring national
+frontend_src/src/app/components/backoffice/BOProfil.tsx	48	Définir	Definir les regles de scoring des acteurs
+frontend_src/src/app/components/backoffice/BOProfil.tsx	49	conformité	Audit et conformite
+frontend_src/src/app/components/backoffice/BOProfil.tsx	49	vérifier	Tracer et verifier toutes les actions
+frontend_src/src/app/components/backoffice/BOProfil.tsx	50	fonctionnalités	Activer/desactiver les fonctionnalites
+frontend_src/src/app/components/backoffice/BOProfil.tsx	51	clés	Superviser les webhooks et cles API
+frontend_src/src/app/components/backoffice/BOProfil.tsx	57	enrôlement	Processus d'enrolement et verification
+frontend_src/src/app/components/backoffice/BOProfil.tsx	67	Enrôlement	Enrolement terrain
+frontend_src/src/app/components/backoffice/BOProfil.tsx	75	données	Interpreter les donnees nationales
+frontend_src/src/app/components/backoffice/BOProfil.tsx	76	marché	Analyser les tendances du marche
+frontend_src/src/app/components/backoffice/BOProfil.tsx	78	données	Export de donnees
+frontend_src/src/app/components/backoffice/BOProfil.tsx	78	Générer	Generer des rapports CSV/Excel
+frontend_src/src/app/components/backoffice/BOProfil.tsx	85	Créer	Creer et gerer les comptes
+frontend_src/src/app/components/backoffice/BOProfil.tsx	98	enrôlement	enrolement.read
+frontend_src/src/app/components/backoffice/BOProfil.tsx	98	enrôlement	Voir enrolement
+frontend_src/src/app/components/backoffice/BOProfil.tsx	99	enrôlement	enrolement.write
+frontend_src/src/app/components/backoffice/BOProfil.tsx	99	enrôlement	Modifier enrolement
+frontend_src/src/app/components/backoffice/BOProfil.tsx	100	enrôlement	enrolement.validate
+frontend_src/src/app/components/backoffice/BOProfil.tsx	117	Créer	Creer utilisateurs BO
+frontend_src/src/app/components/backoffice/BOProfil.tsx	245	modifié	Mot de passe modifie avec succes
+frontend_src/src/app/components/backoffice/BOProfil.tsx	251	Déconnexion	Deconnexion en cours
+frontend_src/src/app/components/backoffice/BOProfil.tsx	256	Déconnexion	Deconnexion reussie
+frontend_src/src/app/components/backoffice/BOProfil.tsx	368	Dernière	Derniere connexion
+frontend_src/src/app/components/backoffice/BOProfil.tsx	523	activité	Mon activite recente
+frontend_src/src/app/components/backoffice/BOProfil.tsx	667	activité	Mon activite recente
+frontend_src/src/app/components/backoffice/BORapports.tsx	108	enrôlement	enrolement
+frontend_src/src/app/components/backoffice/BOScoreFinancier.tsx	88	connexion	Impossible de charger le module PDF. Vérifie ta connexion et réessaie.
+frontend_src/src/app/components/backoffice/BOSupport.tsx	25	connexion	connexion
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	27	enrôlement	Gestion nationale — validation, enrolement, supervision
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	61	conformité	Audit, conformite, controles
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	75	enrôlement	enrolement.read
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	75	enrôlement	Voir enrolement
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	76	enrôlement	enrolement.write
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	76	enrôlement	Modifier enrolement
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	77	enrôlement	enrolement.validate
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	94	Créer	Creer utilisateurs BO
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	216	Compte créé	Compte cree pour  
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	220	création	Erreur lors de la creation du compte
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	402	modifiées	Permissions modifiees localement pour ).label}. Deploiement RBAC backend requis.
+frontend_src/src/app/components/backoffice/BOUtilisateurs.tsx	681	Créer	Creer le compte
+frontend_src/src/app/components/backoffice/CIVLocationPicker.tsx	262	Téléphone	Telephone
+frontend_src/src/app/components/backoffice/EventMonitor.tsx	75	événements	 evenements rejoues
+frontend_src/src/app/components/cooperative/Commandes.tsx	73	Brouillon	Brouillon
+frontend_src/src/app/components/cooperative/Commandes.tsx	111	approuvé	approuve
+frontend_src/src/app/components/cooperative/CooperativeHome.tsx	31	ma chère	ma chere
+frontend_src/src/app/components/cooperative/MarcheHub.tsx	863	marché	marche
+frontend_src/src/app/components/cooperative/Membres.tsx	494	connexion	Erreur de connexion
+frontend_src/src/app/components/dev/AIIntentTester.tsx	25	marché	euh... comment ça marche ?
+frontend_src/src/app/components/identificateur/ActeurDetails.tsx	98	marché	{acteur.marche}
+frontend_src/src/app/components/identificateur/DemandeMutation.tsx	103	marché	marche
+frontend_src/src/app/components/identificateur/DemandeMutation.tsx	237	approuvé	approuve
+frontend_src/src/app/components/identificateur/DemandeMutation.tsx	243	approuvé	approuve
+frontend_src/src/app/components/identificateur/DemandeMutation.tsx	245	approuvé	approuve
+frontend_src/src/app/components/identificateur/FicheIdentificationDynamique.tsx	66	activité	activite
+frontend_src/src/app/components/identificateur/FicheIdentificationDynamique.tsx	87	activité	activite
+frontend_src/src/app/components/identificateur/FicheIdentificationDynamique.tsx	109	activité	activite
+frontend_src/src/app/components/identificateur/FicheIdentificationDynamique.tsx	551	activité	activite
+frontend_src/src/app/components/identificateur/FicheIdentificationDynamique.tsx	596	Brouillon	Brouillon
+frontend_src/src/app/components/identificateur/FicheIdentificationDynamique.tsx	597	Brouillon	Brouillon
+frontend_src/src/app/components/identificateur/FicheIdentificationDynamique.tsx	633	Brouillon	Brouillon
+frontend_src/src/app/components/identificateur/FicheIdentificationDynamique.tsx	1519	Récépissé	Recepisse N
+frontend_src/src/app/components/identificateur/FicheIdentificationDynamique.tsx	1527	Boîte	Boite postale
+frontend_src/src/app/components/identificateur/FicheIdentificationDynamique.tsx	1688	marché	marche
+frontend_src/src/app/components/identificateur/FicheIdentificationDynamique.tsx	1742	activité	activite
+frontend_src/src/app/components/identificateur/FormulaireIdentificationMarchand.tsx	157	succès	Position GPS capturée avec succes
+frontend_src/src/app/components/identificateur/FormulaireIdentificationMarchand.tsx	189	marché	marche
+frontend_src/src/app/components/identificateur/FormulaireIdentificationMarchand.tsx	309	Brouillon	Brouillon
+frontend_src/src/app/components/identificateur/FormulaireIdentificationMarchand.tsx	310	Brouillon	Brouillon
+frontend_src/src/app/components/identificateur/FormulaireIdentificationMarchand.tsx	342	Brouillon	Brouillon enregistré. Tu peux continuer plus tard.
+frontend_src/src/app/components/identificateur/FormulaireIdentificationMarchand.tsx	356	marché	marche
+frontend_src/src/app/components/identificateur/FormulaireIdentificationMarchand.tsx	640	marché	marche
+frontend_src/src/app/components/identificateur/IdentificateurHome.tsx	64	approuvé	approuve
+frontend_src/src/app/components/identificateur/IdentificateurHome.tsx	420	Brouillon	Brouillon
+frontend_src/src/app/components/identificateur/RapportsIdentificateur.tsx	584	approuvé	approuve
+frontend_src/src/app/components/identificateur/RapportsIdentificateur.tsx	586	Brouillon	Brouillon
+frontend_src/src/app/components/identificateur/RapportsIdentificateur.tsx	963	approuvé	approuve
+frontend_src/src/app/components/identificateur/RapportsIdentificateur.tsx	965	Brouillon	Brouillon en cours
+frontend_src/src/app/components/identificateur/RapportsIdentificateur.tsx	1187	approuvé	approuve
+frontend_src/src/app/components/identificateur/RapportsIdentificateur.tsx	1189	Brouillon	Brouillon en cours
+frontend_src/src/app/components/identificateur/RapportsIdentificateur.tsx	1411	approuvé	approuve
+frontend_src/src/app/components/identificateur/RapportsIdentificateur.tsx	1413	Brouillon	Brouillon en cours
+frontend_src/src/app/components/layout/ErrorBoundary.tsx	39	connexion	Pas de connexion
+frontend_src/src/app/components/layout/ErrorBoundary.tsx	43	connexion	Vérifie ta connexion internet et réessaye ma chère.
+frontend_src/src/app/components/marchand/FicheIdentificationModal.tsx	207	Brouillon	Brouillon
+frontend_src/src/app/components/marchand/MarchandAccueil.tsx	129	ma chère	ma chere
+frontend_src/src/app/components/marchand/MarcheVirtuel.tsx	272	affiché	affiche
+frontend_src/src/app/components/marchand/MarcheVirtuel.tsx	395	succès	Paiement de  francs CFA par  effectue avec succes
+frontend_src/src/app/components/marchand/MarcheVirtuel.tsx	418	succès	Paiement de  francs CFA effectue avec succes depuis ton Wallet
+frontend_src/src/app/components/marchand/MarcheVirtuel.tsx	959	Numéro	Numero de carte (16 chiffres)
+frontend_src/src/app/components/marchand/RaccourcisModal.tsx	20	Marché	Marche
+frontend_src/src/app/components/marchand/RaccourcisModal.tsx	55	créé	Raccourci  cree avec succes !
+frontend_src/src/app/components/marchand/RaccourcisModal.tsx	242	Créer	Creer le raccourci
+frontend_src/src/app/components/marchand/VenteVocaleModal.tsx	50	ma chère	ma chere
+frontend_src/src/app/components/marchand/VenteVocaleModal.tsx	77	ma chère	ma chere
+frontend_src/src/app/components/producteur/CommandesProducteurPage.tsx	498	succès	Statut mis a jour avec succes
+frontend_src/src/app/components/producteur/CreerPlantationModal.tsx	87	connexion	Tu dois te connecter à ton compte JÙLABA pour créer une plantation. Vérifie ta connexion internet et réessaie.
+frontend_src/src/app/components/producteur/RecolteDetailModal.tsx	25	Brouillon	Brouillon
+frontend_src/src/app/components/producteur/Stocks.tsx	295	affiché	affiche
+frontend_src/src/app/components/shared/AppError.tsx	18	connexion	Impossible de charger les données. Vérifie ta connexion internet.
+frontend_src/src/app/components/shared/DocumentsCertificationsModalUniversal.tsx	161	activité	attestation-activite
+frontend_src/src/app/components/shared/DocumentsCertificationsModalUniversal.tsx	164	activité	attestation-activite
+frontend_src/src/app/components/shared/DocumentsCertificationsModalUniversal.tsx	165	activité	attestation-activite
+frontend_src/src/app/components/shared/DocumentsCertificationsModalUniversal.tsx	167	activité	attestation-activite
+frontend_src/src/app/components/shared/DocumentsCertificationsModalUniversal.tsx	168	activité	attestation-activite
+frontend_src/src/app/components/shared/DocumentsCertificationsModalUniversal.tsx	176	activité	attestation-activite
+frontend_src/src/app/components/shared/FicheActeurDetailModal.tsx	57	Brouillon	Brouillon
+frontend_src/src/app/components/shared/ProfilUnifieModal.tsx	583	connexion	Téléphone — identifiant de connexion
+frontend_src/src/app/components/shared/ScoreOnboardingModal.tsx	42	enregistrés	Plus tu enregistres tes ventes, plus ton score monte
+frontend_src/src/app/components/shared/UniversalParametres.tsx	869	connexion	Changer le code de connexion
+frontend_src/src/app/components/shared/UniversalParametres.tsx	896	connexion	Changer le code de connexion
+frontend_src/src/app/components/shared/UniversalParametres.tsx	933	connexion	Changer le code de connexion
+frontend_src/src/app/components/shared/UniversalParametres.tsx	971	connexion	Changer le code de connexion
+frontend_src/src/app/components/shared/UniversalParametres.tsx	991	connexion	Changer le code de connexion
+frontend_src/src/app/components/shared/UniversalParametres.tsx	1032	connexion	Retour à la connexion
+frontend_src/src/app/components/shared/UniversalParametres.tsx	1066	connexion	Tu seras redirigé vers la page de connexion Jùlaba.
+frontend_src/src/app/components/shared/universal/UniversalMarche.tsx	89	marché	marche
+frontend_src/src/app/components/voice/VoiceButton.tsx	19	ma chère	ma chere
+frontend_src/src/app/config/tantieSagesseConfig.ts	87	supprimé	supprime
+frontend_src/src/app/config/tantieSagesseConfig.ts	179	affiché	affiche
+frontend_src/src/app/config/tantieSagesseConfig.ts	286	modifié	modifie
+frontend_src/src/app/config/tantieSagesseConfig.ts	370	marché	marche
+frontend_src/src/app/contexts/BackOfficeContext.tsx	489	enrôlement	enrolement.read
+frontend_src/src/app/contexts/BackOfficeContext.tsx	489	enrôlement	enrolement.write
+frontend_src/src/app/contexts/BackOfficeContext.tsx	489	enrôlement	enrolement.validate
+frontend_src/src/app/contexts/BackOfficeContext.tsx	490	enrôlement	enrolement.read
+frontend_src/src/app/contexts/BackOfficeContext.tsx	490	enrôlement	enrolement.write
+frontend_src/src/app/contexts/BackOfficeContext.tsx	490	enrôlement	enrolement.validate
+frontend_src/src/app/contexts/BackOfficeContext.tsx	491	enrôlement	enrolement.read
+frontend_src/src/app/contexts/BackOfficeContext.tsx	491	enrôlement	enrolement.validate
+frontend_src/src/app/contexts/BackOfficeContext.tsx	493	enrôlement	enrolement.read
+frontend_src/src/app/contexts/BackOfficeContext.tsx	493	enrôlement	enrolement.validate
+frontend_src/src/app/contexts/IdentificateurContext.tsx	11	approuvé	approuve
+frontend_src/src/app/contexts/IdentificateurContext.tsx	271	approuvé	approuve
+frontend_src/src/app/contexts/IdentificateurContext.tsx	305	approuvé	approuve
+frontend_src/src/app/contexts/IdentificateurContext.tsx	307	approuvé	approuve
+frontend_src/src/app/contexts/ProducteurContext.tsx	207	création	Erreur creation cycle 
+frontend_src/src/app/contexts/SupportConfigContext.tsx	67	connexion	J'ai un problème de connexion, que faire ?
+frontend_src/src/app/contexts/SupportConfigContext.tsx	67	connexion	Vérifie ta connexion internet. Si le problème persiste, essaie de te déconnecter et reconnecte-toi.
+frontend_src/src/app/contexts/SupportConfigContext.tsx	67	connexion	connexion
+frontend_src/src/app/data/acteursData.ts	26	modifié	modifie
+frontend_src/src/app/data/acteursData.ts	108	modifié	modifie
+frontend_src/src/app/data/quizData.ts	283	qualité	ident-qualite-001
+frontend_src/src/app/hooks/useVoiceCore.ts	151	marché	Ca marche !
+frontend_src/src/app/hooks/useVoiceCore.ts	578	marché	Ca marche, je note !
+frontend_src/src/app/hooks/useVoiceCore.ts	594	ma chère	ma chere
+frontend_src/src/app/hooks/useVoiceCore.ts	660	connexion	Probleme de connexion, reessaie !
+frontend_src/src/app/hooks/useVoiceCore.ts	728	connexion	Probleme de connexion, reessaie !
+frontend_src/src/app/pages/AdminRecovery.tsx	223	Numéro	Numero de telephone (ex: 0700000001)
+frontend_src/src/app/pages/AdminRecovery.tsx	248	connexion	Tester la connexion
+frontend_src/src/app/pages/AdminRecovery.tsx	351	Téléphone	Telephone du Super Admin
+frontend_src/src/app/pages/AdminRecovery.tsx	486	numéro de	Nouveau numero de telephone
+frontend_src/src/app/pages/AdminRecovery.tsx	677	Vérifier	Verifier l'etat du compte Super Admin dans la DB
+frontend_src/src/app/pages/AdminRecovery.tsx	684	connexion	Tester la connexion
+frontend_src/src/app/pages/AuthTestPage.tsx	108	connexion	Erreur de connexion
+frontend_src/src/app/pages/CreateSuperAdmin.tsx	51	connexion	Erreur de connexion au serveur: 
+frontend_src/src/app/pages/DatabaseViewer.tsx	48	connexion	Dernière connexion
+frontend_src/src/app/pages/DatabaseViewer.tsx	73	connexion	Dernière connexion
+frontend_src/src/app/pages/DatabaseViewer.tsx	81	connexion	Codes OTP de connexion
+frontend_src/src/app/pages/SetupMarchand.tsx	133	connexion	Vérifier la connexion à la base de données
+frontend_src/src/app/routes.tsx	56	marché	marche
+frontend_src/src/app/routes.tsx	103	marché	marche
+frontend_src/src/app/routes.tsx	170	enrôlement	enrolement
+frontend_src/src/app/routes.tsx	188	événement	event-monitor
+frontend_src/src/app/services/aiIntentService.ts	115	connexion	Erreur de connexion au serveur
+frontend_src/src/app/services/aiIntentService.ts	229	connexion	Erreur de connexion au serveur
+frontend_src/src/app/services/aiIntentService.ts	229	connexion	Problème de connexion. Vérifie ta connexion internet.
+frontend_src/src/app/services/authService.ts	67	connexion	Erreur de connexion au serveur
+frontend_src/src/app/services/authService.ts	88	connexion	Erreur de connexion au serveur
+frontend_src/src/app/services/backoffice-api.ts	607	Numéro	Numero de telephone requis
+frontend_src/src/app/services/earlyAudioCache.ts	27	enregistrée	Vente enregistree
+frontend_src/src/app/services/elevenlabs.ts	311	ma chère	C est fait ma chere !
+frontend_src/src/app/services/eventLogger.ts	17	événement	julaba-event-logs
+frontend_src/src/app/services/predictiveTTS.ts	14	marché	marche
+frontend_src/src/app/services/predictiveTTS.ts	43	ma chère	Bonjour ma chere ! Comment puis-je t aider aujourd hui ?
+frontend_src/src/app/services/predictiveTTS.ts	44	ma chère	Tu as bien travaille aujourd hui ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	45	ma chère	Ta journee est ouverte, bonne vente ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	47	ma chère	Tu veux ouvrir ta journee ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	48	ma chère	Bonne journee ma chere, on fait quoi aujourd hui ?
+frontend_src/src/app/services/predictiveTTS.ts	50	ma chère	Quoi de neuf ma chere, je suis la !
+frontend_src/src/app/services/predictiveTTS.ts	54	enregistrée	Vente enregistree avec succes ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	55	ma chère	Tu veux vendre quoi exactement ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	56	ma chère	C est combien ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	57	ma chère	Confirme la vente ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	58	enregistrée	C est fait ! Vente enregistree.
+frontend_src/src/app/services/predictiveTTS.ts	59	ma chère	Quel produit tu as vendu ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	60	ma chère	Combien tu en as vendu ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	62	ma chère	Bien recu ma chere, vente notee !
+frontend_src/src/app/services/predictiveTTS.ts	66	ma chère	C est fait ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	67	ma chère	Tu veux noter une depense ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	68	ma chère	C est combien ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	69	enregistrée	Vente enregistree avec succes !
+frontend_src/src/app/services/predictiveTTS.ts	70	ma chère	Depense notee ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	71	ma chère	Confirme l action ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	74	ma chère	Quel produit ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	75	ma chère	Combien tu as vendu ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	76	ma chère	C est bien ca ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	78	ma chère	Ta vente est bien dans le systeme ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	81	ma chère	Je cherche les meilleures offres pour toi ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	82	marché	Voici les prix du marche aujourd hui.
+frontend_src/src/app/services/predictiveTTS.ts	83	ma chère	Tu veux publier une annonce ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	84	ma chère	Je charge les produits disponibles ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	85	marché	Tu cherches quoi au marche ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	86	ma chère	Voici ce qui est disponible pres de toi ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	87	ma chère	Ta publication est en ligne ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	88	ma chère	Tu veux acheter ce produit ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	89	ma chère	Je verifie les offres disponibles ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	92	ma chère	Je verifie ton stock ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	93	succès	Stock mis a jour avec succes !
+frontend_src/src/app/services/predictiveTTS.ts	94	ma chère	Tu veux ajouter du stock ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	96	ma chère	Quel produit tu veux ajouter ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	97	ma chère	Combien de kilos ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	98	succès	Stock enregistre avec succes ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	99	ma chère	Ton stock est bien a jour ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	102	ma chère	Je charge tes commandes ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	104	succès	Commande confirmee avec succes !
+frontend_src/src/app/services/predictiveTTS.ts	105	ma chère	Tu veux confirmer cette commande ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	106	ma chère	Je verifie le statut de ta commande ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	107	ma chère	Ta commande est en cours de traitement ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	108	succès	Commande annulee avec succes ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	109	ma chère	Tu veux voir tes commandes en cours ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	110	ma chère	Voici le detail de ta commande ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	113	ma chère	Je verifie ton solde Keiwa ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	114	succès	Transaction effectuee avec succes !
+frontend_src/src/app/services/predictiveTTS.ts	115	ma chère	Tu veux faire un retrait ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	116	ma chère	Ton solde Keiwa est disponible ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	117	ma chère	Combien tu veux retirer ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	118	succès	Retrait effectue avec succes ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	119	ma chère	Ton Keiwa est bien credite ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	120	ma chère	Je charge ton historique de transactions ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	121	ma chère	Tu veux envoyer de l argent ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	124	ma chère	Voici ton historique de ventes ma chere.
+frontend_src/src/app/services/predictiveTTS.ts	126	ma chère	Voici tes dernieres ventes ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	127	ma chère	Tes transactions sont chargees ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	128	ma chère	Tu veux filtrer par date ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	129	ma chère	Voici tes ventes du mois ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	130	ma chère	Je calcule ton chiffre d affaires ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	131	ma chère	Tu veux voir les ventes d hier ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	134	ma chère	Voici tes cotisations du mois ma chere.
+frontend_src/src/app/services/predictiveTTS.ts	136	ma chère	Je charge tes cotisations ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	137	ma chère	Tu veux payer ta cotisation ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	138	enregistrée	Ta cotisation est bien enregistree ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	139	ma chère	Voici le detail de tes cotisations ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	140	ma chère	Tu es a jour dans tes paiements ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	141	ma chère	Je verifie ton statut de cotisation ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	144	ma chère	Je charge tes produits ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	145	succès	Produit ajoute avec succes !
+frontend_src/src/app/services/predictiveTTS.ts	146	ma chère	Tu veux modifier ce produit ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	147	ma chère	Quel produit tu veux ajouter ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	148	succès	Produit mis a jour avec succes ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	149	supprimé	Produit supprime avec succes ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	150	ma chère	Tu veux voir tous tes produits ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	151	ma chère	Quel est le prix de ce produit ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	152	ma chère	Produit bien enregistre dans ton catalogue ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	155	ma chère	Voici ton profil ma chere.
+frontend_src/src/app/services/predictiveTTS.ts	156	succès	Profil mis a jour avec succes !
+frontend_src/src/app/services/predictiveTTS.ts	157	ma chère	Tu veux modifier tes informations ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	158	ma chère	Ton profil est bien complete ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	159	ma chère	Je mets a jour tes informations ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	160	ma chère	Tu veux changer ta photo de profil ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	161	ma chère	Tes informations sont bien sauvegardees ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	162	numéro de	Tu veux modifier ton numero de telephone ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	165	ma chère	Je charge ton cahier de depenses ma chere.
+frontend_src/src/app/services/predictiveTTS.ts	166	ma chère	Depense notee ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	167	ma chère	C est combien cette depense ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	168	ma chère	Pour quoi cette depense ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	169	ma chère	Ta depense est bien notee ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	170	ma chère	Tu as depense combien ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	171	ma chère	Je calcule tes depenses du jour ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	172	ma chère	Tu veux voir toutes tes depenses ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	173	enregistrée	Ta depense a bien ete enregistree ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	177	ma chère	Un instant ma chere...
+frontend_src/src/app/services/predictiveTTS.ts	179	ma chère	C est fait ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	181	ma chère	Dis encore ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	182	ma chère	Je suis la ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	183	ma chère	Je t ecoute bien ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	184	ma chère	Vas-y ma chere, je t ecoute !
+frontend_src/src/app/services/predictiveTTS.ts	185	ma chère	Tu veux faire quoi ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	192	ma chère	ma chere
+frontend_src/src/app/services/predictiveTTS.ts	204	ma chère	Tu as bien vendu aujourd hui ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	205	ma chère	Encore une vente ? Je t ecoute ma chere !
+frontend_src/src/app/services/predictiveTTS.ts	208	ma chère	Tu veux noter une autre depense ma chere ?
+frontend_src/src/app/services/predictiveTTS.ts	211	ma chère	Excuse-moi ma chere, repete s il te plait !
+frontend_src/src/app/services/predictiveTTS.ts	212	ma chère	Je n ai pas bien compris, essaie autrement ma chere !
+frontend_src/src/app/types/julaba.types.ts	641	Brouillon	Brouillon
+frontend_src/src/examples/document-examples.ts	120	activité	attestation-activite
+frontend_src/src/imports/server.ts	286	connexion	Erreur serveur lors de la connexion

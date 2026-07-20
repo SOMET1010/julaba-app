@@ -1,0 +1,8 @@
+# ============================================================
+# Politique d'exception Trivy - Julaba
+# CVE systeme non corrigeables (fix Alpine non encore publie)
+# ============================================================
+
+# libcrypto3 / libssl3 (OpenSSL) : Heap Use-After-Free PKCS7_verify
+# Fix Alpine 3.5.7-r0 non encore publie dans le depot 3.23
+CVE-2026-45447
