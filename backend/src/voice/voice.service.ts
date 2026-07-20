@@ -7,6 +7,7 @@ import { Injectable, Logger, HttpException, HttpStatus } from "@nestjs/common";
 import { OpenAIService } from "./openai.service";
 import { LocalIntentService } from "./local-intent.service";
 import { VoskService } from "./vosk.service";
+import { WhisperService } from "./whisper.service";
 import { ConfigService } from "@nestjs/config";
 
 
@@ -19,7 +20,7 @@ export interface ConversationMessage {
 export class VoiceService {
   private readonly logger = new Logger(VoiceService.name);
 
-  constructor(private config: ConfigService, private ansutService: AnsutService, private memoryService: UserMemoryService, private conversationState: ConversationStateService, private openaiService: OpenAIService, private localIntent: LocalIntentService, private vosk: VoskService) {}
+  constructor(private config: ConfigService, private ansutService: AnsutService, private memoryService: UserMemoryService, private conversationState: ConversationStateService, private openaiService: OpenAIService, private localIntent: LocalIntentService, private vosk: VoskService, private whisper: WhisperService) {}
 
   private readonly responseCache = new Map<string, { reponse: string; audioBase64: string; intent: string; timestamp: number }>();
   private readonly CACHE_TTL_MS = 5 * 60 * 1000;
@@ -48,21 +49,26 @@ export class VoiceService {
     }
   }
 
-  // 1. STT — Vosk local (offline-first) puis repli OpenAI Whisper-1
+  // 1. STT — moteur local offline-first (whisper.cpp recommande, ou vosk) puis repli cloud.
   async transcribe(audioBuffer: Buffer, mimeType: string, lang = "fr"): Promise<string> {
-    // Vosk local (francais uniquement), si actif. Repli Whisper si null/echec.
-    if (lang === "fr" && this.config.get<string>("VOICE_LOCAL_STT") === "1") {
+    // Moteur choisi par VOICE_STT_ENGINE ('whisper' | 'vosk'). Compat : VOICE_LOCAL_STT=1 -> vosk.
+    const engine =
+      this.config.get<string>("VOICE_STT_ENGINE") ||
+      (this.config.get<string>("VOICE_LOCAL_STT") === "1" ? "vosk" : "");
+    if (lang === "fr" && (engine === "whisper" || engine === "vosk")) {
       try {
-        const local = await this.vosk.transcribe(audioBuffer);
+        const local = engine === "whisper"
+          ? await this.whisper.transcribe(audioBuffer)
+          : await this.vosk.transcribe(audioBuffer);
         if (local && local.trim()) {
-          this.logger.log("[STT:VOSK] ok");
+          this.logger.log(`[STT:${engine.toUpperCase()}] ok`);
           return local;
         }
       } catch (e: any) {
-        this.logger.warn(`[STT:VOSK] repli cloud (${e.message})`);
+        this.logger.warn(`[STT:${engine.toUpperCase()}] repli cloud (${e.message})`);
       }
     }
-    // OpenAI Whisper — STT de repli
+    // OpenAI Whisper (cloud) — STT de repli
     try {
       const text = await this.openaiService.transcribe(audioBuffer, lang);
       if (text?.trim()) return text;
