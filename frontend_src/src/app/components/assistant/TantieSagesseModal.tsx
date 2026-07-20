@@ -35,7 +35,7 @@ const ROLE_SUGGESTIONS: Record<string, string[]> = {
   producteur: ["Ma recolte vaut combien ?", "Declarer ma recolte de cacao", "Quel est mon meilleur produit ?", "Créer une plantation agricole"],
   cooperative: ["Combien de membres actifs ?", "Notre tresorerie est a combien ?", "Faire un achat groupe", "Qui n'a pas paye sa cotisation ?"],
   cooperateur: ["Combien de membres actifs ?", "Notre tresorerie est a combien ?", "Faire un achat groupe", "Qui n'a pas paye sa cotisation ?"],
-  institution: ["Combien d'utilisateurs actifs ?", "Volume total des transactions ?", "Valider un compte", "Generer un rapport"],
+  institution: ["Combien d'utilisateurs actifs ?", "Volume total des transactions ?", "Valider un compte", "Générer un rapport"],
   administrateur: ["Combien d'utilisateurs actifs ?", "Volume total des transactions ?", "Valider un compte", "Generer un rapport"],
   identificateur: ["Identifier un acteur", "Combien d'identifications ce mois ?", "Valider un dossier", "Rechercher un producteur"],
 };
@@ -75,7 +75,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
     confirmAction, cancelAction, pendingResponse, isSpeaking,
   } = useVoiceCore({
     context: {
-      prenom: user?.firstName || user?.prenoms || 'ma chere',
+      prenom: user?.firstName || user?.prenoms || 'ma chère',
       genre: user?.genre || (user as any)?.sex || 'femme',
       userId: user?.id || '',
       lang: selectedLang,

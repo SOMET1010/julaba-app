@@ -24,7 +24,7 @@ export const EARLY_SOUNDS = {
   jecoute:         "J ecoute",
   cestfait:        "C est fait",
   // Caisse / vente
-  vente_ok:        "Vente enregistree",
+  vente_ok:        "Vente enregistrée",
   confirme:        "Confirme",
   jannule:         "J annule",
   cestbon:         "C est bon",

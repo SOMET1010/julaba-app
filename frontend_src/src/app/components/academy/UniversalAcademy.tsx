@@ -144,7 +144,7 @@ function ScoreExplainModal({ open, onClose, score, color, completedLessons }: {
 }) {
   if (!open) return null;
 
-  const level = score >= 80 ? 'Champion' : score >= 50 ? 'Bon joueur' : score >= 20 ? 'Apprenti' : 'Debutant';
+  const level = score >= 80 ? 'Champion' : score >= 50 ? 'Bon joueur' : score >= 20 ? 'Apprenti' : 'Débutant';
   const levelColor = score >= 80 ? '#F59E0B' : score >= 50 ? '#10B981' : score >= 20 ? '#3B82F6' : '#9CA3AF';
 
   return (

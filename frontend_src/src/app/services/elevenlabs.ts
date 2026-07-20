@@ -311,7 +311,7 @@ async function speakWithLang(text: string, lang: TTSLang = "french"): Promise<vo
 
 const WARMUP_PHRASES = [
   "Je t ecoute...", "Un instant...", "Je reflechis...",
-  "C est fait ma chere !", "D accord !", "Bien recu !",
+  "C'est fait ma chère !", "D accord !", "Bien recu !",
   "Je note ca !", "OK, j enregistre !", "D accord, j annule !",
 ];
 
