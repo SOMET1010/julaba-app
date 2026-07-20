@@ -6,6 +6,7 @@ import { UserMemoryService } from "./user-memory.service";
 import { Injectable, Logger, HttpException, HttpStatus } from "@nestjs/common";
 import { OpenAIService } from "./openai.service";
 import { LocalIntentService } from "./local-intent.service";
+import { VoskService } from "./vosk.service";
 import { ConfigService } from "@nestjs/config";
 
 
@@ -18,7 +19,7 @@ export interface ConversationMessage {
 export class VoiceService {
   private readonly logger = new Logger(VoiceService.name);
 
-  constructor(private config: ConfigService, private ansutService: AnsutService, private memoryService: UserMemoryService, private conversationState: ConversationStateService, private openaiService: OpenAIService, private localIntent: LocalIntentService) {}
+  constructor(private config: ConfigService, private ansutService: AnsutService, private memoryService: UserMemoryService, private conversationState: ConversationStateService, private openaiService: OpenAIService, private localIntent: LocalIntentService, private vosk: VoskService) {}
 
   private readonly responseCache = new Map<string, { reponse: string; audioBase64: string; intent: string; timestamp: number }>();
   private readonly CACHE_TTL_MS = 5 * 60 * 1000;
@@ -47,9 +48,21 @@ export class VoiceService {
     }
   }
 
-  // 1. STT — OpenAI Whisper-1
+  // 1. STT — Vosk local (offline-first) puis repli OpenAI Whisper-1
   async transcribe(audioBuffer: Buffer, mimeType: string, lang = "fr"): Promise<string> {
-    // OpenAI Whisper — STT principal
+    // Vosk local (francais uniquement), si actif. Repli Whisper si null/echec.
+    if (lang === "fr" && this.config.get<string>("VOICE_LOCAL_STT") === "1") {
+      try {
+        const local = await this.vosk.transcribe(audioBuffer);
+        if (local && local.trim()) {
+          this.logger.log("[STT:VOSK] ok");
+          return local;
+        }
+      } catch (e: any) {
+        this.logger.warn(`[STT:VOSK] repli cloud (${e.message})`);
+      }
+    }
+    // OpenAI Whisper — STT de repli
     try {
       const text = await this.openaiService.transcribe(audioBuffer, lang);
       if (text?.trim()) return text;

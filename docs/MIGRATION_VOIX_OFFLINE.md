@@ -49,12 +49,30 @@ classifieur regex `voice.controller.ts:intent-fast`.
 - Le reste du pipeline (`IntentParser`, `SpeechBuilder`, confirmation) était déjà local.
 - **Effet** : ~80 % des commandes vocales ne coûtent plus d'appel GPT-4o.
 
-### Étape 2 — STT Vosk (remplace Whisper)
-- Nouveau `VoskService.transcribe(buffer): Promise<string>` (Vosk, modèle fr, CPU).
-- Point de bascule : `voice.service.ts:transcribe` (lignes 50-60) — remplacer
-  `this.openaiService.transcribe(...)` par `this.voskService.transcribe(...)`.
+### Étape 2 — STT Vosk (remplace Whisper) ✅ (cette PR)
+- Nouveau `backend/src/voice/vosk.service.ts` : STT **local sur CPU**. Parse le WAV
+  16 kHz mono envoyé par le frontend et le passe au recognizer Vosk.
+- Branché dans `voice.service.ts:transcribe` **en amont de Whisper**, derrière le flag
+  `VOICE_LOCAL_STT` (défaut OFF), français uniquement. Repli Whisper automatique si
+  Vosk est indisponible, si le WAV est illisible ou si la reconnaissance échoue.
+- Chargement **paresseux et défensif** : si le paquet natif `vosk` ou le modèle est
+  absent, le service se déclare indisponible et `transcribe()` renvoie `null` → repli
+  cloud, **aucune régression**.
 - Le frontend envoie déjà du WAV 16 kHz mono → **aucun changement client**.
-- Garder Whisper en repli optionnel (flag) le temps de valider le WER (test T1).
+
+**Installation en production (serveur backend) :**
+```bash
+# 1. Paquet natif Vosk
+npm i vosk
+# 2. Modèle français (léger ~40 Mo, ou plus grand pour un meilleur WER)
+#    https://alphacephei.com/vosk/models  ->  vosk-model-small-fr-0.22
+curl -L -o /tmp/vosk-fr.zip https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip
+unzip /tmp/vosk-fr.zip -d /opt/vosk/
+# 3. Variables d'environnement
+export VOSK_MODEL_PATH=/opt/vosk/vosk-model-small-fr-0.22
+export VOICE_LOCAL_STT=1
+```
+- Garder Whisper en repli (le flag suffit à basculer) le temps de valider le WER (test T1).
 
 ### Étape 3 — TTS Piper (remplace ElevenLabs)
 - Nouveau `PiperService.synthesize(text): Promise<Buffer>` (voix « Tata Lou », CPU).

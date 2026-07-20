@@ -6,13 +6,14 @@ import { ConversationStateService } from "./conversation.state";
 import { UserMemoryService } from "./user-memory.service";
 import { OpenAIService } from "./openai.service";
 import { LocalIntentService } from "./local-intent.service";
+import { VoskService } from "./vosk.service";
 import { AnsutModule } from "../ansut/ansut.module";
 import { ConfigModule } from "@nestjs/config";
 
 @Module({
   imports: [AnsutModule, ConfigModule, TypeOrmModule.forFeature([])],
   controllers: [VoiceController, TtsController],
-  providers: [VoiceService, UserMemoryService, ConversationStateService, OpenAIService, LocalIntentService],
+  providers: [VoiceService, UserMemoryService, ConversationStateService, OpenAIService, LocalIntentService, VoskService],
   exports: [OpenAIService],
 })
 export class VoiceModule {}
