@@ -5,6 +5,7 @@ import { ConversationStateService } from "./conversation.state";
 import { UserMemoryService } from "./user-memory.service";
 import { Injectable, Logger, HttpException, HttpStatus } from "@nestjs/common";
 import { OpenAIService } from "./openai.service";
+import { LocalIntentService } from "./local-intent.service";
 import { ConfigService } from "@nestjs/config";
 
 
@@ -17,7 +18,7 @@ export interface ConversationMessage {
 export class VoiceService {
   private readonly logger = new Logger(VoiceService.name);
 
-  constructor(private config: ConfigService, private ansutService: AnsutService, private memoryService: UserMemoryService, private conversationState: ConversationStateService, private openaiService: OpenAIService) {}
+  constructor(private config: ConfigService, private ansutService: AnsutService, private memoryService: UserMemoryService, private conversationState: ConversationStateService, private openaiService: OpenAIService, private localIntent: LocalIntentService) {}
 
   private readonly responseCache = new Map<string, { reponse: string; audioBase64: string; intent: string; timestamp: number }>();
   private readonly CACHE_TTL_MS = 5 * 60 * 1000;
@@ -212,17 +213,26 @@ Navigate: "/marchand/caisse" | "/marchand/stock" | "/marchand/commandes" | "/mar
       // Historique des échanges précédents (max 6 pour éviter le dépassement de tokens)
       const recentHistory = history.slice(-6);
 
-      // GPT-4o-mini — LLM principal
-      let parsed: any;
-      try {
-        parsed = await this.openaiService.detectIntent(
-          [...recentHistory, { role: "user", content: text }],
-          systemPrompt
-        );
-        this.logger.log(`[LLM:OPENAI] intent=${parsed.intent}`);
-      } catch (e: any) {
-        this.logger.error(`[LLM:OPENAI] Échec: ${e.message}`);
-        throw new Error(`OpenAI LLM failed: ${e.message}`);
+      // ── Chemin LOCAL offline-first (transactionnel) ──────
+      // Si actif (VOICE_LOCAL_INTENT=1), on reconnait vente/depense/solde/stock
+      // sans appeler GPT-4o. Renvoie null si la phrase est floue -> repli LLM.
+      let parsed: any = null;
+      if (this.config.get<string>("VOICE_LOCAL_INTENT") === "1") {
+        parsed = this.localIntent.classify(text);
+      }
+
+      // GPT-4o — LLM principal (repli si le local n'a pas reconnu l'intention)
+      if (!parsed) {
+        try {
+          parsed = await this.openaiService.detectIntent(
+            [...recentHistory, { role: "user", content: text }],
+            systemPrompt
+          );
+          this.logger.log(`[LLM:OPENAI] intent=${parsed.intent}`);
+        } catch (e: any) {
+          this.logger.error(`[LLM:OPENAI] Échec: ${e.message}`);
+          throw new Error(`OpenAI LLM failed: ${e.message}`);
+        }
       }
       
       // Forcer confirmation_requise selon l'intent
