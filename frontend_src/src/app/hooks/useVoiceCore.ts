@@ -592,11 +592,20 @@ export function useVoiceCore({
   }, [executeAction, clearTypewriter, clearThinkingTimer, trackTimeout]);
 
   // ── Confirmation ─────────────────────────────────────────────
+  // Garde synchrone anti double-clic : sans elle, deux appuis rapides sur "Oui"
+  // voient tous deux pendingResponse != null (setState async) et enregistrent la
+  // vente DEUX fois. Le ref bascule immediatement, avant tout await.
+  const confirmingRef = useRef(false);
   const confirmAction = useCallback(async () => {
-    if (!pendingResponse) return;
-    const data = pendingResponse; setPendingResponse(null);
-    const confirmMsgs = ["OK, j'enregistre !", "Voilà, c'est fait !", "Ça marche, je note !", "C'est enregistré !"]; await ttsSpeak(confirmMsgs[Math.floor(Math.random() * confirmMsgs.length)]);
-    await executeAction(data, data.transcript || "");
+    if (confirmingRef.current || !pendingResponse) return;
+    confirmingRef.current = true;
+    try {
+      const data = pendingResponse; setPendingResponse(null);
+      const confirmMsgs = ["OK, j'enregistre !", "Voilà, c'est fait !", "Ça marche, je note !", "C'est enregistré !"]; await ttsSpeak(confirmMsgs[Math.floor(Math.random() * confirmMsgs.length)]);
+      await executeAction(data, data.transcript || "");
+    } finally {
+      confirmingRef.current = false;
+    }
   }, [pendingResponse, executeAction]);
 
   const cancelAction = useCallback(async () => {
@@ -634,10 +643,15 @@ export function useVoiceCore({
     try { playBip("start"); } catch (e) { console.warn('[voice]', e); }
 
     let audioBlob: Blob;
-    let audioFilename = "audio.wav";
+    let audioFilename = "audio.webm";
     try {
-      const rawBlob = new Blob(chunksRef.current, { type: mimeType });
-      try { audioBlob = await convertToWav(rawBlob); } catch { audioBlob = rawBlob; audioFilename = mimeType.includes("mp4") ? "audio.mp4" : "audio.webm"; }
+      // A1 (audit latence) : envoyer l'Opus NATIF du MediaRecorder tel quel.
+      // Whisper accepte webm/opus et mp4 ; on supprime la conversion en WAV qui
+      // multipliait le poids par 10-40 (2-6 s d'upload en trop sur mobile). Le
+      // chemin offline decode ce meme blob (decodeAudioData gere webm/opus/mp4).
+      // VIGILANCE iOS : le repli mp4 du MediaRecorder est a tester sur appareils reels.
+      audioBlob = new Blob(chunksRef.current, { type: mimeType });
+      audioFilename = mimeType.includes("mp4") ? "audio.mp4" : mimeType.includes("webm") ? "audio.webm" : "audio.wav";
       if (audioBlob.size < 800) {
         setState("idle"); setLiveTranscript(""); return;
       }
