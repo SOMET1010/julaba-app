@@ -7,6 +7,7 @@ import { UserMemoryService } from "./user-memory.service";
 import { OpenAIService } from "./openai.service";
 import { LocalIntentService } from "./local-intent.service";
 import { VoskService } from "./vosk.service";
+import { WhisperService } from "./whisper.service";
 import { PiperService } from "./piper.service";
 import { AnsutModule } from "../ansut/ansut.module";
 import { ConfigModule } from "@nestjs/config";
@@ -14,7 +15,7 @@ import { ConfigModule } from "@nestjs/config";
 @Module({
   imports: [AnsutModule, ConfigModule, TypeOrmModule.forFeature([])],
   controllers: [VoiceController, TtsController],
-  providers: [VoiceService, UserMemoryService, ConversationStateService, OpenAIService, LocalIntentService, VoskService, PiperService],
+  providers: [VoiceService, UserMemoryService, ConversationStateService, OpenAIService, LocalIntentService, VoskService, WhisperService, PiperService],
   exports: [OpenAIService],
 })
 export class VoiceModule {}

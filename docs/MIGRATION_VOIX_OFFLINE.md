@@ -49,30 +49,48 @@ classifieur regex `voice.controller.ts:intent-fast`.
 - Le reste du pipeline (`IntentParser`, `SpeechBuilder`, confirmation) était déjà local.
 - **Effet** : ~80 % des commandes vocales ne coûtent plus d'appel GPT-4o.
 
-### Étape 2 — STT Vosk (remplace Whisper) ✅ (cette PR)
-- Nouveau `backend/src/voice/vosk.service.ts` : STT **local sur CPU**. Parse le WAV
-  16 kHz mono envoyé par le frontend et le passe au recognizer Vosk.
-- Branché dans `voice.service.ts:transcribe` **en amont de Whisper**, derrière le flag
-  `VOICE_LOCAL_STT` (défaut OFF), français uniquement. Repli Whisper automatique si
-  Vosk est indisponible, si le WAV est illisible ou si la reconnaissance échoue.
-- Chargement **paresseux et défensif** : si le paquet natif `vosk` ou le modèle est
-  absent, le service se déclare indisponible et `transcribe()` renvoie `null` → repli
-  cloud, **aucune régression**.
-- Le frontend envoie déjà du WAV 16 kHz mono → **aucun changement client**.
+### Étape 2 — STT local, moteur configurable ✅ (cette PR)
 
-**Installation en production (serveur backend) :**
+Le moteur STT est **branchable** via `VOICE_STT_ENGINE` (`whisper` | `vosk`), avec
+repli cloud automatique. Deux services locaux sont fournis :
+
+- **`whisper.service.ts` — Whisper.cpp (recommandé).** Meilleur sur le français
+  ivoirien et le Dioula (multilingue, robuste au bruit et aux accents). Un seul
+  modèle `base` (~142 Mo) couvre FR + Dioula. Appelle le binaire whisper.cpp.
+- **`vosk.service.ts` — Vosk (alternative légère).** ~40 Mo, latence < 300 ms, mais
+  WER élevé sur le français africain (mesuré ~60 % sur le banc) et un modèle par langue.
+
+Les deux : branchés dans `voice.service.ts:transcribe` **en amont du cloud**, français
+uniquement, **défensifs** (binaire/modèle absent ou échec → `null` → repli cloud, aucune
+régression). Le frontend envoie déjà du WAV 16 kHz mono → **aucun changement client**.
+
+> **Choix de moteur (données du banc).** Vosk small-fr : WER ~60 % sur voix TTS Dioula
+> (CER ~19 %). Whisper.cpp `base` est attendu bien meilleur — **à confirmer sur le banc**
+> (onglet « Corpus Dioula (T1) ») avant de trancher : preuve à l'appui, pas sur estimation.
+
+**Installation — Whisper.cpp (recommandé) :**
 ```bash
-# 1. Paquet natif Vosk
+# Binaire whisper.cpp : https://github.com/ggerganov/whisper.cpp
+#   compiler -> whisper-cli ; modele ggml (base ~142 Mo, multilingue FR + Dioula)
+bash ./models/download-ggml-model.sh base      # -> ggml-base.bin
+export WHISPER_BIN=/opt/whisper/whisper-cli
+export WHISPER_MODEL=/opt/whisper/ggml-base.bin
+export WHISPER_LANG=fr                          # ou "auto"
+export VOICE_STT_ENGINE=whisper
+```
+
+**Installation — Vosk (alternative) :**
+```bash
 npm i vosk
-# 2. Modèle français (léger ~40 Mo, ou plus grand pour un meilleur WER)
-#    https://alphacephei.com/vosk/models  ->  vosk-model-small-fr-0.22
 curl -L -o /tmp/vosk-fr.zip https://alphacephei.com/vosk/models/vosk-model-small-fr-0.22.zip
 unzip /tmp/vosk-fr.zip -d /opt/vosk/
-# 3. Variables d'environnement
 export VOSK_MODEL_PATH=/opt/vosk/vosk-model-small-fr-0.22
-export VOICE_LOCAL_STT=1
+export VOICE_STT_ENGINE=vosk        # (compat : VOICE_LOCAL_STT=1 revient a vosk)
 ```
-- Garder Whisper en repli (le flag suffit à basculer) le temps de valider le WER (test T1).
+
+Raffinement possible : repli cloud si la **confiance** Whisper est faible (< 0,70) via
+la sortie JSON (`-oj`, avg logprob), comme dans l'architecture cible (offline d'abord,
+cloud LAFRICAMOBILE en secours). Non implémenté ici (v1 : repli sur échec/vide).
 
 ### Étape 3 — TTS Piper (remplace ElevenLabs) ✅ (cette PR)
 - Nouveau `backend/src/voice/piper.service.ts` : TTS **local sur CPU** via le binaire
