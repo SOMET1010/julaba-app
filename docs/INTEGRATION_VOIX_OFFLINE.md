@@ -44,17 +44,22 @@ await ensureOfflineModel(); // télécharge + met en cache ; ensuite offlineMode
 Tant que ce n'est pas fait, `processAudio` hors-ligne prévient l'utilisateur
 (« connecte-toi une fois pour l'installer »).
 
-## 3. ⚠️ Changement backend REQUIS pour la sécurité de l'argent
+## 3. ✅ Garde-fou backend anti double-comptage (IMPLÉMENTÉ)
 
-La couche 2 rejoue les opérations à la reconnexion. Pour **ne jamais compter une
-vente deux fois** (si le 1er envoi avait réussi mais la réponse a été perdue), le
-frontend envoie un champ **`idempotency_key`** (uuid stable par opération) dans le
-corps de `/caisse/vente` et `/caisse/depense`.
+La couche 2 rejoue les opérations à la reconnexion avec un champ **`idempotency_key`**
+(uuid stable par opération). Le backend le gère désormais :
 
-**Le backend doit :** mémoriser les `idempotency_key` déjà traitées et, si une clé
-est revue, **renvoyer la transaction existante sans en créer une nouvelle**.
-Sans ce garde-fou, un rejeu ambigu pourrait double-compter. C'est un petit ajout
-(un index unique sur `idempotency_key` + court-circuit à l'entrée du contrôleur caisse).
+- **Entité** `caisse-transaction.entity.ts` : nouvelle colonne `idempotency_key`.
+- **Migration** `1778700200000-AddCaisseTransactionIdempotencyKey.ts` : colonne +
+  **index UNIQUE PARTIEL** (`WHERE idempotency_key IS NOT NULL` — autorise les lignes
+  existantes sans clé, interdit deux fois la même clé).
+- **Contrôleur** `caisse-rest.controller.ts` (`/caisse/vente`, `/caisse/depense`) :
+  si la clé existe déjà → renvoie la transaction existante **sans en créer une
+  nouvelle**. Course concurrente gérée (violation d'unicité `23505` → on renvoie
+  l'existante).
+
+⚙️ **À l'exploitation :** exécuter la migration (`npm run migration:run` ou équivalent
+du pipeline) lors du déploiement.
 
 ## 4. Où regarder dans le code
 
