@@ -27,12 +27,16 @@ async function prepareDatabase(logger: Logger) {
     await client.connect();
     const res = await client.query("SELECT to_regclass('public.users') AS t");
     const vierge = !res.rows[0].t;
-    if (vierge) {
-      await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-      process.env.DB_SYNCHRONIZE = 'true';   // -> construit le schéma au démarrage
-      process.env.DB_MIGRATIONS_RUN = 'false';
-      logger.log('[DB] Base vierge détectée -> construction automatique du schéma.');
-    }
+    if (vierge) await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    // AUTORITAIRE : on impose l'état, en ignorant toute variable d'env résiduelle.
+    // Base vierge -> on construit le schéma ; base déjà remplie -> surtout PAS de
+    // reconstruction (sinon "relation ... already exists"). Migrations jamais
+    // auto (historique incomplet).
+    process.env.DB_SYNCHRONIZE = vierge ? 'true' : 'false';
+    process.env.DB_MIGRATIONS_RUN = 'false';
+    logger.log(vierge
+      ? '[DB] Base vierge -> construction automatique du schéma.'
+      : '[DB] Base existante -> schéma conservé (pas de reconstruction).');
   } catch (e: unknown) {
     // Non bloquant : si l'inspection échoue, on laisse TypeORM tenter sa connexion.
     logger.warn('[DB] Inspection base ignorée: ' + (e instanceof Error ? e.message : String(e)));
