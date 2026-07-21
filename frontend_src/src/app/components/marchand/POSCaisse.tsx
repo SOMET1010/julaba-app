@@ -74,6 +74,9 @@ export function POSCaisse() {
       setPaymentMethod('cash');
       setShowCart(false);
       setShowSuccess(true);
+      // Confirmation PARLÉE (comme la vente vocale) : une non-lectrice entend que
+      // sa vente est bien enregistrée, sans avoir à lire le petit texte.
+      speak(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs`);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (e) {
       console.error(e);
