@@ -994,6 +994,13 @@ export function LoginPassword() {
         style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: 10 }}
       >
         <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>BY ICÔNE SOLUTION</p>
+        <p
+          onClick={() => parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)}
+          title="Version de l'application"
+          style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', margin: 0, cursor: 'pointer' }}
+        >
+          v{__APP_VERSION__} · {__BUILD_ID__}
+        </p>
         <button
           type="button"
           onClick={() => { localStorage.removeItem('julaba_completed_onboarding'); window.location.href = '/'; }}
