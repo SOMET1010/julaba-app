@@ -63,6 +63,13 @@ services:
       # URL du frontend autorisée (CORS + cookies cross-domaine)
       - key: CORS_ORIGIN
         value: https://julaba-web.onrender.com
+      # Comptes de démo (serveur de TEST) : crée au démarrage 3 comptes marchands
+      # prêts à l'emploi + un jeu de données d'exemple. Mettre à "false" (ou
+      # supprimer) sur un vrai serveur de production.
+      - key: SEED_DEMO
+        value: "true"
+      - key: SEED_DEMO_PASSWORD
+        value: julaba2026
       # Optionnel (voix cloud) — le cœur marche sans
       - key: OPENAI_API_KEY
         sync: false

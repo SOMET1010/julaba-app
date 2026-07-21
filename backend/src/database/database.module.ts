@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DbInitService } from './db-init.service';
+import { SeedDemoService } from './seed-demo.service';
 
 @Module({
   imports: [
@@ -35,7 +36,9 @@ import { DbInitService } from './db-init.service';
       }),
     }),
   ],
-  providers: [DbInitService],
+  // DbInitService AVANT SeedDemoService : les tables (caisse_sessions, produits,
+  // index) doivent exister avant d'y insérer le jeu de démo.
+  providers: [DbInitService, SeedDemoService],
   exports: [DbInitService],
 })
 export class DatabaseModule {}
