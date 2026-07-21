@@ -145,12 +145,14 @@ export class TtsController {
       const buf = await this.piperService.synthesize("Test.");
       piperWorks = !!buf && buf.length > 44;
     } catch { piperWorks = false; }
-    const cloudDisabled = process.env.TTS_DISABLE_CLOUD === "true";
-    const moteur = piperWorks ? "piper" : (cloudDisabled ? "navigateur (gratuit)" : "elevenlabs (cloud)");
+    // Cloud (ElevenLabs) COUPÉ PAR DÉFAUT (choix produit : souveraineté, zéro coût).
+    // Ne s'active que si quelqu'un pose explicitement TTS_ENABLE_CLOUD=true.
+    const cloudEnabled = process.env.TTS_ENABLE_CLOUD === "true";
+    const moteur = piperWorks ? "piper" : (cloudEnabled ? "elevenlabs (cloud)" : "navigateur (gratuit)");
     return {
       piperConfigured,   // les variables PIPER_BIN/PIPER_VOICE sont-elles posées ?
       piperWorks,        // Piper synthétise-t-il vraiment de l'audio ?
-      cloudDisabled,     // le cloud payant est-il coupé ?
+      cloudEnabled,      // le cloud payant est-il autorisé ? (faux = jamais d'ElevenLabs)
       moteurActif: moteur,
     };
   }
@@ -167,9 +169,9 @@ export class TtsController {
       this.logger.log(`[TTS] ${piperBuf.length} bytes (piper)`);
       return { success: true, audio: piperBuf.toString("base64"), engine: "piper" };
     }
-    // 2) Repli ElevenLabs UNIQUEMENT si le cloud payant n'est pas coupé.
-    //    Poser TTS_DISABLE_CLOUD=true pour garantir zéro coût cloud.
-    if (process.env.TTS_DISABLE_CLOUD !== "true") {
+    // 2) ElevenLabs : COUPÉ PAR DÉFAUT (décision : zéro ElevenLabs, souveraineté).
+    //    Ne s'active QUE si quelqu'un pose explicitement TTS_ENABLE_CLOUD=true.
+    if (process.env.TTS_ENABLE_CLOUD === "true") {
       const buf = await this.openaiService.synthesize(dto.text);
       if (buf) {
         this.logger.log(`[TTS] ${buf.length} bytes (elevenlabs)`);
