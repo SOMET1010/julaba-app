@@ -17,10 +17,12 @@ import {
   stopAllAudio,
   stopSpeaking as elStop,
   playBase64Audio,
+  playAudioUrl,
   preloadAudioContext,
   getSharedAudioContext,
   type TTSLang,
 } from "../services/elevenlabs";
+import { tataClipUrl } from "../services/tataVoice";
 import { useOfflineVoiceQueue } from "./useOfflineVoiceQueue";
 
 // ─── TYPES ───────────────────────────────────────────────────────
@@ -240,9 +242,18 @@ function startTypewriter(
   }, speedMs);
 }
 
-// TTS unifie - ElevenLabs uniquement
-async function ttsSpeak(text: string, lang: TTSLang = "french"): Promise<void> {
+// TTS unifié. `clip` (optionnel) = clé d'un clip pré-enregistré « Tata Nanti Lou » :
+// pour une phrase FIXE, on joue la vraie voix ivoirienne (sur l'appareil, zéro
+// cloud) au lieu de la voix de synthèse. Sinon on retombe sur le flux normal.
+async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): Promise<void> {
   if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') return;
+  if (clip) {
+    const url = tataClipUrl(clip);
+    if (url) {
+      try { await playAudioUrl(url); return; }
+      catch { /* clip indisponible → on continue vers la voix de secours */ }
+    }
+  }
   if (lang === "french") {
     await speakChunked(text);
     return;
@@ -619,7 +630,8 @@ export function useVoiceCore({
     confirmingRef.current = true;
     try {
       const data = pendingResponse; setPendingResponse(null);
-      const confirmMsgs = ["OK, j'enregistre !", "Voilà, c'est fait !", "Ça marche, je note !", "C'est enregistré !"]; await ttsSpeak(confirmMsgs[Math.floor(Math.random() * confirmMsgs.length)]);
+      // Voix réelle de Tata Nanti Lou pour l'accusé de réception (phrase fixe).
+      await ttsSpeak("C'est noté, ta vente est bien enregistrée.", "french", "vente_enregistree");
       await executeAction(data, data.transcript || "", true); // déjà confirmé -> enregistrer
     } finally {
       confirmingRef.current = false;
@@ -629,8 +641,8 @@ export function useVoiceCore({
   const cancelAction = useCallback(async () => {
     if (!pendingResponse) return;
     setPendingResponse(null); setState("idle"); setLiveTranscript("");
-    const cancelMsgs = ["D'accord, j'annule !", "Pas de problème, j'annule !", "OK, on laisse ça !", "Annulé !"];
-    await ttsSpeak(cancelMsgs[Math.floor(Math.random() * cancelMsgs.length)]);
+    // Voix réelle de Tata Nanti Lou pour l'annulation (phrase fixe).
+    await ttsSpeak("D'accord, j'annule. Pas de souci.", "french", "annule");
   }, [pendingResponse]);
 
   // ── Context ──────────────────────────────────────────────────
@@ -700,11 +712,10 @@ export function useVoiceCore({
         await handleResponse(local as Partial<VoiceProcessResponse>, texte);
         return;
       }
-      // Entendu mais pas compris (ou rien entendu) : on guide avec un exemple.
+      // Entendu mais pas compris (ou rien entendu) : voix réelle de Tata Nanti Lou.
       clearThinkingTimer(); setState("idle"); setLiveTranscript("");
-      await ttsSpeak(texte
-        ? "Je n'ai pas bien compris. Dis par exemple : j'ai vendu dix tomates à deux mille francs."
-        : "Je n'ai rien entendu, réessaie en parlant bien fort.");
+      if (texte) await ttsSpeak("Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît.", "french", "pas_compris");
+      else await ttsSpeak("Je n'ai rien entendu. Réessaie, parle un peu plus fort.", "french", "rien_entendu");
       return;
     } catch {
       clearThinkingTimer(); setState("idle"); setLiveTranscript("");
@@ -732,9 +743,9 @@ export function useVoiceCore({
         await handleResponse(local as Partial<VoiceProcessResponse>, text);
         return;
       }
-      // Pas une opération financière reconnue : on guide avec un exemple concret.
+      // Pas une opération financière reconnue : voix réelle de Tata Nanti Lou.
       clearThinkingTimer(); setState("idle"); setLiveTranscript("");
-      await ttsSpeak("Je n'ai pas bien compris. Dis par exemple : j'ai vendu dix tomates à deux mille francs.");
+      await ttsSpeak("Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît.", "french", "pas_compris");
     } catch {
       clearThinkingTimer(); setState("idle"); setLiveTranscript("");
       await ttsSpeak("Je n'ai pas réussi, réessaie.");
