@@ -36,5 +36,9 @@ export class CaisseTransaction {
   })
   statut: TransactionStatus;
   @Column({ type: 'text', nullable: true }) motif: string | null;
+  // Idempotence : clé fournie par le client (rejeu offline) pour ne jamais
+  // enregistrer deux fois la même vente/dépense. L'unicité est garantie par un
+  // index UNIQUE PARTIEL (idempotency_key IS NOT NULL), posé par migration.
+  @Column({ type: 'text', nullable: true }) idempotency_key: string | null;
   @CreateDateColumn() created_at: Date;
 }

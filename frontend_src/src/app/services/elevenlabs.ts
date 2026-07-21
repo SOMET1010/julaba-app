@@ -56,10 +56,15 @@ export function getSharedAudioContext(): AudioContext {
   return _sharedAudioContext;
 }
 
-function base64ToBlob(base64: string, mime = "audio/mpeg"): Blob {
+function base64ToBlob(base64: string, mime?: string): Blob {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  // Détection du format si non imposé : WAV (Piper, en-tête "RIFF") vs MP3 (ElevenLabs).
+  if (!mime) {
+    const isWav = bytes.length > 4 && bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46;
+    mime = isWav ? "audio/wav" : "audio/mpeg";
+  }
   return new Blob([bytes], { type: mime });
 }
 

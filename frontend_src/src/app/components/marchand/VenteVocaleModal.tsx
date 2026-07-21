@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useLangPref } from "../../hooks/useLangPref";
 import { useVoiceCore } from "../../hooks/useVoiceCore";
 import { usePredictiveTTS } from "../../services/predictiveTTS";
-import { useOfflineVoiceQueue } from "../../hooks/useOfflineVoiceQueue";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Loader, CheckCircle, AlertCircle, ShieldCheck, WifiOff, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -11,6 +10,7 @@ import { useRaccourcis } from "../../contexts/RaccourcisContext";
 import { useCaisse } from "../../contexts/CaisseContext";
 import { useObjectif, ObjectifProvider } from "../../contexts/ObjectifContext";
 import { useStock, type StockItem } from "../../contexts/StockContext";
+import { InstallerOffline } from "../../voice-offline/InstallerOffline";
 import tantieImg from "../../../assets/images/tantie-vente-vocale.png";
 
 const P = "#C66A2C";
@@ -42,6 +42,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
 
   const { state, response, pendingResponse, transcript, liveTranscript, error, volume,
     handleMicClick, reset, resetHistory, confirmAction, cancelAction, isSpeaking, sendText,
+    pendingCount, isReplaying,
   } = useVoiceCore({
     maxRecordingSeconds: 60,
     context: {
@@ -59,7 +60,9 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
     onAction: async (data) => {
       const action = data.action;
       if (action?.type === "vendre") {
-        if (!currentSession?.opened) return;
+        // #4 : ne plus abandonner en silence (Tata Lou disait « c'est enregistré »
+        // alors que rien n'était sauvé). On remonte une erreur explicite.
+        if (!currentSession?.opened) throw new Error("Ouvre ta journée d'abord pour enregistrer une vente.");
         const montant = action.montant || 0;
         const quantite = action.quantite || 1;
         if (!montant || montant <= 0 || isNaN(montant)) return;
@@ -72,7 +75,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
       } else if (action?.type === "utiliser_raccourci") {
         const r = matchRaccourci ? matchRaccourci(action.declencheur || data.transcript || "") : null;
         if (r?.action?.type === "vendre") {
-          if (!currentSession?.opened) return;
+          if (!currentSession?.opened) throw new Error("Ouvre ta journée d'abord pour enregistrer une vente.");
           const montant = r.action.montant || 0;
           const quantite = r.action.quantite || 1;
           if (!montant || montant <= 0 || isNaN(montant)) return;
@@ -108,7 +111,8 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   });
 
   usePredictiveTTS({ module: "caisse", sessionOpen: !!(currentSession?.opened), hasVentes: (stats.ventes || 0) > 0, prenom: user?.prenoms || "ma chere", recentIntents: response ? [response.intent] : [] });
-  const { pendingCount, isReplaying } = useOfflineVoiceQueue(async (cmd) => { try { await sendText(cmd.text); return true; } catch { return false; } });
+  // #2 : pendingCount/isReplaying viennent de l'UNIQUE file de useVoiceCore
+  // (plus de seconde instance qui rejouait la file en double à la reconnexion).
   useEffect(() => { if (!isOpen) resetHistory(); }, [isOpen, resetHistory]);
   useEffect(() => { setIsModalOpen(isOpen); return () => setIsModalOpen(false); }, [isOpen, setIsModalOpen]);
 
@@ -245,6 +249,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
             {isConfirming && pendingResponse && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#FFF8F0", border: `2px solid ${P}`, borderRadius: 20, padding: 16 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><ShieldCheck style={{ width: 18, height: 18, color: P }} /><p style={{ fontSize: 12, fontWeight: 700, color: P }}>Confirmer l'action</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937", marginBottom: 12 }}>{pendingResponse.response || pendingResponse.reponse}</p>{pendingResponse.resume_action && (<p style={{ fontSize: 11, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.1em", marginBottom: 12 }}>{pendingResponse.resume_action}</p>)}<div style={{ display: "flex", gap: 10 }}><motion.button whileTap={{ scale: 0.97 }} onClick={cancelAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, border: `2px solid ${P}`, color: P, background: "white", cursor: "pointer" }}>Non</motion.button><motion.button whileTap={{ scale: 0.97 }} onClick={confirmAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Oui, confirmer</motion.button></div></motion.div>)}
             {(isDone || isError) && (<motion.button whileTap={{ scale: 0.97 }} onClick={reset} style={{ width: "100%", padding: "14px 0", borderRadius: 16, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Reparler à Tata Lou</motion.button>)}
             {isIdle && (<div><p style={{ fontSize: 10, fontWeight: 700, color: "#C5C5C5", letterSpacing: "0.1em", marginBottom: 10 }}>CE QUE TU PEUX DIRE</p><div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{examples.map((ex, i) => (<motion.button key={i} whileTap={{ scale: 0.97 }} onClick={() => sendText(ex.text)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderRadius: 14, cursor: "pointer", background: ex.highlight ? "#FFF3EB" : "#F8F8F8", border: ex.highlight ? "1px solid #FDDEC4" : "1px solid #F0F0F0", textAlign: "left", width: "100%" }}><div style={{ flex: 1 }}><p style={{ fontSize: 15, fontWeight: 700, color: ex.highlight ? "#6B2400" : "#111", margin: 0 }}>{ex.text}</p><p style={{ fontSize: 12, color: ex.highlight ? "#C4703A" : "#999", margin: "3px 0 0" }}>{ex.desc}</p></div><ChevronRight style={{ color: ex.highlight ? "#C4703A" : "#D0D0D0", width: 16, height: 16, flexShrink: 0 }} /></motion.button>))}</div></div>)}
+            {isIdle && (<div style={{ marginTop: 4 }}><InstallerOffline /></div>)}
           </div>
         </motion.div>
       </motion.div>

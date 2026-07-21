@@ -87,8 +87,25 @@ export class CaisseRestController {
     return { session: result[0] };
   }
 
+  // Idempotence : si la clé a déjà été traitée (rejeu offline), renvoyer la
+  // transaction existante SANS en créer une nouvelle. Garde-fou anti double-comptage.
+  private async transactionExistante(idemKey: string | null, userId: string) {
+    if (!idemKey) return null;
+    return this.repo.findOne({ where: { idempotency_key: idemKey, user_id: userId } as any });
+  }
+  // Course : deux requêtes concurrentes avec la même clé -> la 2e viole l'unicité,
+  // on renvoie alors la transaction déjà enregistrée au lieu de propager l'erreur.
+  private estViolationUnicite(e: any): boolean {
+    return e?.code === '23505' || /duplicate key|unique/i.test(e?.message || '');
+  }
+
   @Post('vente')
   async enregistrerVente(@Body() body: any, @CurrentUser() user: User) {
+    // Idempotence (rejeu offline) : ne jamais compter deux fois la même vente.
+    const idemKey = body.idempotency_key || null;
+    const deja = await this.transactionExistante(idemKey, user.id);
+    if (deja) return { transaction: deja };
+
     // Validation stricte — rejeter si montant manquant ou invalide
     const montantParsed = parseFloat(body.montant);
     if (!body.montant || isNaN(montantParsed) || montantParsed <= 0) {
@@ -109,15 +126,24 @@ export class CaisseRestController {
     const prixAchat = parseFloat(body.prix_achat) || 0;
     const marge = prixAchat > 0 ? prixVente - prixAchat : 0;
 
-    const result = await this.repo.save(this.repo.create({
-      user_id: user.id, marchand_id: user.id,
-      session_id: body.session_id || '', montant: body.montant,
-      type: 'vente', produit: nomProduit, source: body.source || 'kassa', details: body.details || null,
-      quantite: qteTotale, mode_paiement: body.mode_paiement || 'especes',
-      description: nomProduit,
-      prix_vente: prixVente, prix_achat: prixAchat, marge, benefice: marge,
-      category: body.category || '',
-    } as any));
+    let result;
+    try {
+      result = await this.repo.save(this.repo.create({
+        user_id: user.id, marchand_id: user.id,
+        session_id: body.session_id || '', montant: body.montant,
+        type: 'vente', produit: nomProduit, source: body.source || 'kassa', details: body.details || null,
+        quantite: qteTotale, mode_paiement: body.mode_paiement || 'especes',
+        description: nomProduit,
+        prix_vente: prixVente, prix_achat: prixAchat, marge, benefice: marge,
+        category: body.category || '', idempotency_key: idemKey,
+      } as any));
+    } catch (e: any) {
+      if (this.estViolationUnicite(e)) {
+        const existante = await this.transactionExistante(idemKey, user.id);
+        if (existante) return { transaction: existante };
+      }
+      throw e;
+    }
     this.eventsGateway?.emitTransactionCreated({ ...result, type: 'vente', userId: user.id });
     // Vérifier stock après vente (event-driven)
     this.alertesService?.checkStockApreVente(user.id, nomProduit).catch((e: any) => this.logger?.warn(`[CAISSE] checkStock: ${e.message}`));
@@ -126,13 +152,27 @@ export class CaisseRestController {
 
   @Post('depense')
   async enregistrerDepense(@Body() body: any, @CurrentUser() user: User) {
+    // Idempotence (rejeu offline) : ne jamais compter deux fois la même dépense.
+    const idemKey = body.idempotency_key || null;
+    const deja = await this.transactionExistante(idemKey, user.id);
+    if (deja) return { transaction: deja };
+
     if (!body.montant || parseFloat(body.montant) <= 0) throw new BadRequestException('Le montant doit être positif');
-    const result = await this.repo.save(this.repo.create({
-      user_id: user.id, marchand_id: user.id,
-      session_id: body.session_id || '', montant: body.montant,
-      type: 'depense', description: body.description || '', source: body.source || 'kassa',
-      mode_paiement: body.mode_paiement || 'especes',
-    }));
+    let result;
+    try {
+      result = await this.repo.save(this.repo.create({
+        user_id: user.id, marchand_id: user.id,
+        session_id: body.session_id || '', montant: body.montant,
+        type: 'depense', description: body.description || '', source: body.source || 'kassa',
+        mode_paiement: body.mode_paiement || 'especes', idempotency_key: idemKey,
+      } as any));
+    } catch (e: any) {
+      if (this.estViolationUnicite(e)) {
+        const existante = await this.transactionExistante(idemKey, user.id);
+        if (existante) return { transaction: existante };
+      }
+      throw e;
+    }
     this.eventsGateway?.emitTransactionCreated({ ...result, type: 'depense', userId: user.id });
     return { transaction: result };
   }

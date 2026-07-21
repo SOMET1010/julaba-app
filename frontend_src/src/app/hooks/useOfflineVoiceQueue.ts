@@ -17,15 +17,17 @@ const STORAGE_KEY = "julaba_offline_voice_queue";
 const MAX_QUEUE = 20;
 const MAX_RETRIES = 3;
 
+// #7 : localStorage (durable) au lieu de sessionStorage (perdu à la fermeture de
+// l'onglet — exactement quand la vendeuse perd le réseau et ferme l'appli).
 function loadQueue(): OfflineCommand[] {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch { return []; }
 }
 
 function saveQueue(queue: OfflineCommand[]): void {
-  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(queue.slice(0, MAX_QUEUE))); } catch (e) { void e; }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(queue.slice(0, MAX_QUEUE))); } catch (e) { void e; }
 }
 
 export function useOfflineVoiceQueue(
@@ -56,7 +58,10 @@ export function useOfflineVoiceQueue(
       (async () => {
         const remaining: OfflineCommand[] = [];
         for (const cmd of queue) {
-          if (cmd.retries >= MAX_RETRIES) continue; // Abandon après 3 tentatives
+          // #9 : après 3 échecs, on ne RETENTE plus, mais on ne JETTE plus en
+          // silence : la commande reste dans la file (visible en "en attente")
+          // au lieu de disparaître sans que la vendeuse le sache.
+          if (cmd.retries >= MAX_RETRIES) { remaining.push(cmd); continue; }
           try {
             const success = await onReplay(cmd);
             if (!success) {

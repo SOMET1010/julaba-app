@@ -7,6 +7,9 @@
  */
 import { useState, useRef, useCallback, useEffect } from "react";
 import { API_URL } from "../utils/api";
+// Offline-first : STT sur l'appareil + compréhension locale (sans réseau ni LLM).
+import { transcribeWav, offlineModelReady } from "../voice-offline/offlineStt";
+import { intentLocal } from "../voice-offline/localIntent";
 import { preloadEarlyAudios } from "../services/earlyAudioCache";
 import {
   speakChunked,
@@ -104,6 +107,8 @@ export interface VoiceCoreResult {
   isListening: boolean;
   isProcessing: boolean;
   isSupported: boolean;
+  pendingCount: number;
+  isReplaying: boolean;
 }
 
 // Aliases legacy
@@ -350,7 +355,10 @@ export function useVoiceCore({
     return timeout;
   }, []);
 
-  const { enqueue } = useOfflineVoiceQueue(async (cmd) => {
+  // #2 : UNE seule instance de la file hors-ligne (ici). Avant, le modal en
+  // créait une seconde -> les deux rejouaient la même file à la reconnexion ->
+  // ventes offline dupliquées. On expose pendingCount/isReplaying à la place.
+  const { enqueue, pendingCount: offlinePending, isReplaying: offlineReplaying } = useOfflineVoiceQueue(async (cmd) => {
     try {
       if (!sendTextRef.current) return false;
       await sendTextRef.current(cmd.text);
@@ -491,7 +499,7 @@ export function useVoiceCore({
   }, [reset]);
 
   // ── Execute action ───────────────────────────────────────────
-  const executeAction = useCallback(async (data: VoiceProcessResponse, userText: string) => {
+  const executeAction = useCallback(async (data: VoiceProcessResponse, userText: string, confirmed = false) => {
     if (interruptRef.current) {
       return;
     }
@@ -534,14 +542,27 @@ export function useVoiceCore({
     } finally { clearTypewriter(); setIsSpeaking(false); }
 
     const FINANCIAL_INTENTS = ['vendre', 'depense', 'ouvrir_journee', 'fermer_journee', 'utiliser_raccourci'];
-    const requiresLocalConfirm = FINANCIAL_INTENTS.includes(data.intent) && !data.needsConfirmation;
+    // `confirmed` = appel venant de confirmAction (l'utilisateur a déjà dit Oui) :
+    // sans ce court-circuit, on re-demandait confirmation à l'infini et la vente
+    // n'était jamais enregistrée quand le backend renvoyait needsConfirmation=false.
+    const requiresLocalConfirm = !confirmed && FINANCIAL_INTENTS.includes(data.intent) && !data.needsConfirmation;
     if (requiresLocalConfirm) {
       setPendingResponse(data);
       setState("confirming");
       return;
     }
     if (!interruptRef.current && onAction && data.action?.type !== "none") {
-      try { await onAction(data); } catch (e) { console.warn('[voice]', e); }
+      // #4 : ne plus avaler une erreur d'enregistrement en silence -> la montrer
+      // et la dire (ex. « ouvre ta journée d'abord »), au lieu d'un faux succès.
+      try {
+        await onAction(data);
+      } catch (e) {
+        const m = e instanceof Error ? e.message : "Enregistrement impossible.";
+        console.warn('[voice]', e);
+        setError(m);
+        await ttsSpeak(m);
+        if (onError) onError(m);
+      }
     } else {
       // TRACE
     }
@@ -589,11 +610,20 @@ export function useVoiceCore({
   }, [executeAction, clearTypewriter, clearThinkingTimer, trackTimeout]);
 
   // ── Confirmation ─────────────────────────────────────────────
+  // Garde synchrone anti double-clic : sans elle, deux appuis rapides sur "Oui"
+  // voient tous deux pendingResponse != null (setState async) et enregistrent la
+  // vente DEUX fois. Le ref bascule immediatement, avant tout await.
+  const confirmingRef = useRef(false);
   const confirmAction = useCallback(async () => {
-    if (!pendingResponse) return;
-    const data = pendingResponse; setPendingResponse(null);
-    const confirmMsgs = ["OK, j'enregistre !", "Voilà, c'est fait !", "Ça marche, je note !", "C'est enregistré !"]; await ttsSpeak(confirmMsgs[Math.floor(Math.random() * confirmMsgs.length)]);
-    await executeAction(data, data.transcript || "");
+    if (confirmingRef.current || !pendingResponse) return;
+    confirmingRef.current = true;
+    try {
+      const data = pendingResponse; setPendingResponse(null);
+      const confirmMsgs = ["OK, j'enregistre !", "Voilà, c'est fait !", "Ça marche, je note !", "C'est enregistré !"]; await ttsSpeak(confirmMsgs[Math.floor(Math.random() * confirmMsgs.length)]);
+      await executeAction(data, data.transcript || "", true); // déjà confirmé -> enregistrer
+    } finally {
+      confirmingRef.current = false;
+    }
   }, [pendingResponse, executeAction]);
 
   const cancelAction = useCallback(async () => {
@@ -631,14 +661,54 @@ export function useVoiceCore({
     try { playBip("start"); } catch (e) { console.warn('[voice]', e); }
 
     let audioBlob: Blob;
-    let audioFilename = "audio.wav";
+    let audioFilename = "audio.webm";
     try {
-      const rawBlob = new Blob(chunksRef.current, { type: mimeType });
-      try { audioBlob = await convertToWav(rawBlob); } catch { audioBlob = rawBlob; audioFilename = mimeType.includes("mp4") ? "audio.mp4" : "audio.webm"; }
+      // A1 (audit latence) : envoyer l'Opus NATIF du MediaRecorder tel quel.
+      // Whisper accepte webm/opus et mp4 ; on supprime la conversion en WAV qui
+      // multipliait le poids par 10-40 (2-6 s d'upload en trop sur mobile). Le
+      // chemin offline decode ce meme blob (decodeAudioData gere webm/opus/mp4).
+      // VIGILANCE iOS : le repli mp4 du MediaRecorder est a tester sur appareils reels.
+      audioBlob = new Blob(chunksRef.current, { type: mimeType });
+      audioFilename = mimeType.includes("mp4") ? "audio.mp4" : mimeType.includes("webm") ? "audio.webm" : "audio.wav";
       if (audioBlob.size < 800) {
         setState("idle"); setLiveTranscript(""); return;
       }
     } catch { setState("idle"); return; }
+
+    // ── OFFLINE-FIRST : transcription sur l'appareil ────────────────────────
+    // Sans réseau, OU dès que le modèle on-device est installé (économie serveur),
+    // on transcrit localement et on comprend la vente sans LLM. Le résultat repart
+    // dans le MÊME flux (confirmation, caisse) via handleResponse.
+    if (!navigator.onLine || offlineModelReady()) {
+      setState("thinking");
+      startThinkingPhrases();
+      try {
+        const texte = await transcribeWav(audioBlob);
+        const local = texte ? intentLocal(texte) : null;
+        if (local) {
+          clearThinkingTimer();
+          setTranscript(texte);
+          await handleResponse(local as Partial<VoiceProcessResponse>, texte);
+          return;
+        }
+        if (!navigator.onLine) {
+          // Hors-ligne et pas compris : on ne peut pas retomber sur le serveur.
+          clearThinkingTimer(); setState("idle"); setLiveTranscript("");
+          await ttsSpeak(texte
+            ? "Je n'ai pas bien compris, redis ta vente autrement."
+            : "Je n'ai rien entendu, réessaie.");
+          return;
+        }
+        // En ligne mais pas compris localement : on laisse le serveur essayer.
+      } catch {
+        if (!navigator.onLine) {
+          clearThinkingTimer(); setState("idle"); setLiveTranscript("");
+          await ttsSpeak("Le mode hors-ligne n'est pas encore prêt. Connecte-toi une fois pour l'installer.");
+          return;
+        }
+        // En ligne : l'échec local n'est pas bloquant, on continue vers le serveur.
+      }
+    }
 
     setState("thinking");
     startThinkingPhrases();
@@ -679,6 +749,7 @@ export function useVoiceCore({
         ];
         await ttsSpeak(errMsgs[Math.floor(Math.random() * errMsgs.length)]);
         if (onError) onError(msg);
+        break; // erreur non-abort : ne pas relancer la requete (evitait un double message)
       } finally {
         if (timeout) {
           clearTimeout(timeout);
@@ -857,6 +928,7 @@ try {
     startRecording, stopRecording, handleMicClick, sendText,
     speak, stopSpeaking, isSpeaking,
     confirmAction, cancelAction, reset, resetHistory,
+    pendingCount: offlinePending, isReplaying: offlineReplaying,
     isListening: state === "listening",
     isProcessing: state === "processing" || state === "thinking",
     isSupported: typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia,
