@@ -7,6 +7,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { VoiceService, ConversationMessage } from "./voice.service";
 import { OpenAIService } from "./openai.service";
+import { PiperService } from "./piper.service";
 import { TtsRequestDto } from "./dto/tts-request.dto";
 import { Throttle } from "@nestjs/throttler";
 
@@ -130,6 +131,7 @@ export class TtsController {
 
   constructor(
     private openaiService: OpenAIService,
+    private piperService: PiperService,
   ) {}
 
   @Throttle({ voice: { limit: 60, ttl: 60000 } })
@@ -137,9 +139,24 @@ export class TtsController {
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   async openaiTTS(@Body() dto: TtsRequestDto) {
-    const buf = await this.openaiService.synthesize(dto.text);
-    if (!buf) return { success: false, error: "TTS échoué" };
-    this.logger.log(`[TTS] ${buf.length} bytes`);
-    return { success: true, audio: buf.toString("base64"), engine: "elevenlabs" };
+    // 1) PIPER d'abord : auto-hébergé, GRATUIT à l'usage, souverain (voix ivoirienne).
+    //    Dès que PIPER_BIN + PIPER_VOICE sont configurés, aucun appel cloud payant.
+    const piperBuf = await this.piperService.synthesize(dto.text);
+    if (piperBuf) {
+      this.logger.log(`[TTS] ${piperBuf.length} bytes (piper)`);
+      return { success: true, audio: piperBuf.toString("base64"), engine: "piper" };
+    }
+    // 2) Repli ElevenLabs UNIQUEMENT si le cloud payant n'est pas coupé.
+    //    Poser TTS_DISABLE_CLOUD=true pour garantir zéro coût cloud.
+    if (process.env.TTS_DISABLE_CLOUD !== "true") {
+      const buf = await this.openaiService.synthesize(dto.text);
+      if (buf) {
+        this.logger.log(`[TTS] ${buf.length} bytes (elevenlabs)`);
+        return { success: true, audio: buf.toString("base64"), engine: "elevenlabs" };
+      }
+    }
+    // 3) Aucun audio serveur : le frontend parle avec la voix intégrée du
+    //    navigateur (gratuite, hors-ligne) — l'assistante n'est jamais muette.
+    return { success: false, error: "TTS indisponible" };
   }
 }
