@@ -17,12 +17,18 @@ import { DbInitService } from './db-init.service';
         database: config.get<string>('DB_NAME', 'julaba_db'),
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
-        synchronize: false,
+        // synchronize : construit le schéma directement depuis les entités.
+        // Utile pour une base VIERGE (ex. nouvelle instance) car l'historique de
+        // migrations est incomplet (il suppose des tables déjà présentes). Réglé
+        // via DB_SYNCHRONIZE=true. Défaut false (jamais sur une base existante).
+        synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
         // Déploiement auto-sûr : les migrations en attente s'appliquent au
-        // démarrage du backend (TypeORM ne rejoue jamais une migration déjà
-        // enregistrée). Garantit que la colonne idempotency_key existe AVANT la
-        // première vente, sans étape manuelle. Désactivable via DB_MIGRATIONS_RUN=false.
-        migrationsRun: config.get<string>('DB_MIGRATIONS_RUN', 'true') !== 'false',
+        // démarrage. Désactivé quand synchronize est actif (les deux ensemble
+        // se marcheraient dessus : synchronize crée déjà les colonnes). Réglable
+        // via DB_MIGRATIONS_RUN=false.
+        migrationsRun:
+          config.get<string>('DB_SYNCHRONIZE') !== 'true' &&
+          config.get<string>('DB_MIGRATIONS_RUN', 'true') !== 'false',
         logging: config.get<boolean>('DB_LOGGING', false),
         ssl:
           config.get<string>('DB_SSL') === 'true'
