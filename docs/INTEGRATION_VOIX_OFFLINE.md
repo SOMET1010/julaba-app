@@ -58,8 +58,18 @@ La couche 2 rejoue les opérations à la reconnexion avec un champ **`idempotenc
   nouvelle**. Course concurrente gérée (violation d'unicité `23505` → on renvoie
   l'existante).
 
-⚙️ **À l'exploitation :** exécuter la migration (`npm run migration:run` ou équivalent
-du pipeline) lors du déploiement.
+⚙️ **À l'exploitation : rien à faire.** Les migrations en attente s'appliquent
+**automatiquement au démarrage du backend** (`migrationsRun: true` dans
+`database.module.ts`) → la colonne `idempotency_key` est créée avant la 1ʳᵉ vente,
+sans étape manuelle. Désactivable via `DB_MIGRATIONS_RUN=false` (repli : lancer
+`npm run migration:run` manuellement).
+
+> ⚠️ **Topologie de déploiement** (à confirmer côté équipe) : les workflows GitHub
+> `deploy.yml` / `mirror-azure.yml` se déclenchent sur la branche **`master`**, or ce
+> dépôt utilise **`main`** (pas de `master`). Le miroir pousse aussi vers un autre
+> dépôt (`Desiralex25/Julabaovh`) puis Azure DevOps. Merger cette PR dans `main` ne
+> déclenchera donc pas le déploiement tel quel : c'est à l'équipe d'aiguiller vers le
+> bon dépôt/branche de production.
 
 ## 4. Où regarder dans le code
 
