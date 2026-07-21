@@ -1,4 +1,4 @@
-const CACHE_NAME = 'julaba-v2';
+const CACHE_NAME = 'julaba-v3';
 const STATIC_ASSETS = ['/', '/index.html'];
 
 // ── INSTALL ────────────────────────────────────────────────────
@@ -21,13 +21,41 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// ── FETCH (cache) ──────────────────────────────────────────────
+// ── FETCH ──────────────────────────────────────────────────────
+// Stratégie pensée pour le HORS-LIGNE d'une vendeuse au réseau instable :
+//  • /assets/* (fichiers de build au nom haché, donc immuables) → CACHE D'ABORD :
+//    servis instantanément, même hors-ligne ou en réseau très faible. Une nouvelle
+//    version = de nouveaux noms de fichiers, donc aucun risque de servir du périmé.
+//  • navigation / le reste (index.html…) → RÉSEAU D'ABORD, repli sur le cache :
+//    on récupère les mises à jour en ligne, et l'appli s'ouvre quand même hors-ligne.
+//  • /api et /backoffice → jamais mis en cache (données fraîches / sécurité).
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.origin !== location.origin) return;
   if (url.pathname.startsWith('/api')) return;
   if (url.pathname.startsWith('/backoffice')) return;
+
+  const isHashedAsset = url.pathname.startsWith('/assets/');
+
+  if (isHashedAsset) {
+    // CACHE D'ABORD
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // RÉSEAU D'ABORD (navigation, index.html, images publiques…)
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -38,7 +66,10 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() =>
+        // Hors-ligne : on sert la ressource en cache, sinon l'index (SPA).
+        caches.match(event.request).then((cached) => cached || caches.match('/index.html'))
+      )
   );
 });
 

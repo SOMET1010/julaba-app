@@ -226,8 +226,24 @@ function caisseAuthHeaders(accessToken: string | null): HeadersInit {
 export function AppProvider({ children }: { children: ReactNode }) {
   const { setUser: setUserContext } = useUser();
   // État principal
-  const [user, setUser] = useState<User | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  // Hydratation optimiste depuis le cache local : permet de RESTER CONNECTÉE
+  // HORS-LIGNE. Sans ça, au démarrage sans réseau, /auth/me échoue et la vendeuse
+  // est éjectée vers l'écran de connexion (impossible d'entrer). checkSession
+  // confirmera/infirmera ensuite dès qu'il y a du réseau.
+  const readCachedUser = (): User | null => {
+    try { const raw = localStorage.getItem('julaba_auth_user'); return raw ? (JSON.parse(raw) as User) : null; } catch { return null; }
+  };
+  const [user, setUser] = useState<User | null>(() => readCachedUser());
+  const [accessToken, setAccessToken] = useState<string | null>(() => (readCachedUser() ? 'cookie' : null));
+
+  // Persiste la session en cache à chaque changement (pour l'hydratation
+  // hors-ligne au prochain démarrage). Effacée à la déconnexion (user = null).
+  useEffect(() => {
+    try {
+      if (user) localStorage.setItem('julaba_auth_user', JSON.stringify(user));
+      else localStorage.removeItem('julaba_auth_user');
+    } catch { /* ignore */ }
+  }, [user]);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [marketplaceItems, setMarketplaceItems] = useState<MarketplaceItem[]>([]);
@@ -496,10 +512,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setAccessToken('cookie');
           await loadUserData(userData.id, 'cookie');
         } else {
+          // Le serveur a RÉPONDU. On ne déconnecte QUE sur un refus d'auth
+          // explicite (401/403). Les autres codes (ex. 5xx pendant le réveil du
+          // serveur Render) ne doivent pas éjecter une session en cache.
+          if (res.status === 401 || res.status === 403) {
+            try { localStorage.removeItem('julaba_auth_user'); } catch { /* ignore */ }
+            setUser(null); setAccessToken(null);
+          }
           setLoading(false);
         }
       } catch (e: any) {
-        console.warn('[AppContext] checkSession failed:', e?.message);
+        // Erreur RÉSEAU (hors-ligne) : on GARDE la session en cache pour rester
+        // connectée hors-ligne — surtout ne pas éjecter vers l'écran de connexion.
+        console.warn('[AppContext] checkSession réseau KO (hors-ligne?):', e?.message);
+        const cached = readCachedUser();
+        if (cached) { setUser(cached); setAccessToken('cookie'); }
         setLoading(false);
       }
     };
