@@ -46,14 +46,40 @@ ReactDOM.createRoot(root).render(
 
 );
 
+// Numéro de version accessible partout (affiché à l'écran de connexion, et
+// consultable via la console pour le support).
+try { (window as unknown as { __JULABA_VERSION__?: string }).__JULABA_VERSION__ = __BUILD_ID__; } catch { /* ignore */ }
+
 // Service worker enregistré DÈS LE DÉMARRAGE (et plus seulement après connexion) :
 // il met l'appli en cache dès la première visite en ligne, pour qu'elle puisse
 // s'ouvrir HORS-LIGNE ensuite. La souscription aux notifications push reste, elle,
 // gérée après connexion (elle réutilise ce même service worker).
 if ('serviceWorker' in navigator) {
+  // MISE À JOUR AUTOMATIQUE : quand un nouveau service worker prend la main
+  // (nouveau déploiement détecté), on recharge une seule fois pour afficher la
+  // dernière version — fini le « je ne sais jamais quelle version j'utilise ».
+  // On ne recharge PAS à la toute première visite (aucun contrôleur précédent).
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading || !hadController) return;
+    reloading = true;
+    window.location.reload();
+  });
+
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((e) => {
-      console.warn('[SW] enregistrement échoué:', e?.message);
-    });
+    navigator.serviceWorker
+      .register('/sw.js', { updateViaCache: 'none' })
+      .then((reg) => {
+        // Vérifie tout de suite s'il existe une version plus récente…
+        reg.update?.().catch(() => { /* ignore */ });
+        // …et à chaque retour au premier plan (réveil du téléphone).
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg.update?.().catch(() => { /* ignore */ });
+        });
+      })
+      .catch((e) => {
+        console.warn('[SW] enregistrement échoué:', e?.message);
+      });
   });
 }
