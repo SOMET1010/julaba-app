@@ -1,4 +1,9 @@
-const CACHE_NAME = 'julaba-v3';
+// __SW_BUILD__ est remplacé au build par « <hash> · <date> » (voir vite.config).
+// Chaque déploiement change donc ces octets → le navigateur détecte la nouvelle
+// version et l'appli se met à jour toute seule. En dev (placeholder non remplacé)
+// on retombe sur une valeur fixe.
+const BUILD = '__SW_BUILD__'.indexOf('__SW') === 0 ? 'dev' : '__SW_BUILD__';
+const CACHE_NAME = 'julaba-' + BUILD;
 const STATIC_ASSETS = ['/', '/index.html'];
 
 // ── INSTALL ────────────────────────────────────────────────────
