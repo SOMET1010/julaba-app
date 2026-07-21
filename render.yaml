@@ -75,7 +75,7 @@ services:
   - type: web
     runtime: static
     name: julaba-web
-    plan: free
+    # (pas de `plan` : les sites statiques Render sont gratuits par nature)
     buildCommand: cd frontend_src && npm ci --include=dev && npm run build
     staticPublishPath: frontend/dist
     envVars:
