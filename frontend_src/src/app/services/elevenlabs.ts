@@ -75,6 +75,27 @@ export function stopAllAudio(): void {
     try { _currentAudio.src = ""; } catch (e) { console.warn('[voice]', e); }
     _currentAudio = null;
   }
+  try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+}
+
+// Voix de SECOURS GRATUITE : la voix intégrée du navigateur (aucun coût, tourne
+// sur l'appareil, marche hors-ligne). Utilisée quand le serveur ne renvoie pas
+// d'audio (Piper pas encore déployé + cloud coupé, ou hors-ligne) : garantit que
+// l'assistante n'est JAMAIS muette. Qualité moindre que Piper, mais gratuite.
+export function speakBrowser(text: string): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth || !text?.trim()) return resolve();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "fr-FR";
+      u.rate = 0.98;
+      u.onend = () => resolve();
+      u.onerror = () => resolve();
+      synth.cancel();
+      synth.speak(u);
+    } catch { resolve(); }
+  });
 }
 
 export function stopSpeaking(): void {
@@ -173,12 +194,13 @@ export async function fetchTTS(text: string, signal?: AbortSignal, timeoutMs = 8
 export async function speak(text: string): Promise<void> {
   const base64 = await fetchTTS(text);
   if (base64) await playBase64Audio(base64);
+  else await speakBrowser(text); // repli gratuit : jamais muet
 }
 
 export async function speakWithFallback(text: string, _isOnline?: boolean, onDone?: () => void): Promise<void> {
   const base64 = await fetchTTS(text);
   if (base64) await playBase64Audio(base64, onDone);
-  else onDone?.();
+  else { await speakBrowser(text); onDone?.(); }
 }
 
 // Alias conservés pour compatibilité imports existants (migré vers OpenAI)
@@ -247,7 +269,10 @@ export async function speakChunked(
 
   if (chunks.length === 1) {
     const b64 = await fetchTTS(chunks[0]);
-    if (b64 && !_chunkAborted) await playBase64Audio(b64);
+    if (!_chunkAborted) {
+      if (b64) await playBase64Audio(b64);
+      else await speakBrowser(chunks[0]); // repli gratuit
+    }
     onDone?.();
     return;
   }
@@ -258,6 +283,7 @@ export async function speakChunked(
     const base64 = await fetchTTS(chunks[i]);
     if (_chunkAborted) break;
     if (base64) await playBase64Audio(base64);
+    else await speakBrowser(chunks[i]); // repli gratuit : jamais muet
   }
 
   if (!_chunkAborted) onDone?.();
