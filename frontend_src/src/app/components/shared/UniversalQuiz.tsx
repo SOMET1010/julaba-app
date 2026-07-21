@@ -6,7 +6,7 @@
  * - Feedback animé (bravo, encouragements)
  * - Système de points
  * - Badges et récompenses
- * - Support vocal avec Tata Lou
+ * - Support vocal avec Tata Nanti Lou
  */
 
 import React, { useState, useEffect } from 'react';

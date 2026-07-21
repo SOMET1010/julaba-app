@@ -378,7 +378,7 @@ function MarchandAccueilInner({ onSwitchToAdvanced }: { onSwitchToAdvanced: () =
                 <div style={{ position:'absolute', top:10, right:10, width:34, height:34, borderRadius:'50%', background:'white', display:'flex', alignItems:'center', justifyContent:'center', zIndex:2, boxShadow:'0 2px 8px rgba(0,0,0,0.25)' }}>
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg>
                 </div>
-                <motion.img src={TATA_BLEU} alt="Tata Lou"
+                <motion.img src={TATA_BLEU} alt="Tata Nanti Lou"
                   style={{ width:96, height:96, objectFit:'contain', filter:'drop-shadow(0 4px 12px rgba(0,0,0,0.3))', position:'relative', zIndex:1 }}
                   animate={{ y:[0,-4,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut' }} />
                 <span style={{ fontSize:12, fontWeight:700, color:'white', letterSpacing:'0.5px', position:'relative', zIndex:1 }}>Parler pour vendre</span>
@@ -400,7 +400,7 @@ function MarchandAccueilInner({ onSwitchToAdvanced }: { onSwitchToAdvanced: () =
                 <div style={{ position:'absolute', top:10, right:10, width:34, height:34, borderRadius:'50%', background:P, display:'flex', alignItems:'center', justifyContent:'center', zIndex:2, boxShadow:'0 2px 8px rgba(175,91,35,0.3)' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><circle cx="6" cy="6" r="1.7"/><circle cx="12" cy="6" r="1.7"/><circle cx="18" cy="6" r="1.7"/><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/><circle cx="6" cy="18" r="1.7"/><circle cx="12" cy="18" r="1.7"/><circle cx="18" cy="18" r="1.7"/></svg>
                 </div>
-                <motion.img src={TATA_ORANGE} alt="Tata Lou"
+                <motion.img src={TATA_ORANGE} alt="Tata Nanti Lou"
                   style={{ width:96, height:96, objectFit:'contain', filter:`drop-shadow(0 4px 12px rgba(175,91,35,0.25))`, position:'relative', zIndex:1 }}
                   animate={{ y:[0,-4,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut', delay:0.4 }} />
                 <span style={{ fontSize:12, fontWeight:700, color:P, letterSpacing:'0.5px', position:'relative', zIndex:1 }}>Saisir pour vendre</span>
@@ -520,9 +520,9 @@ function MarchandAccueilInner({ onSwitchToAdvanced }: { onSwitchToAdvanced: () =
           <div style={{ background:'#fff', borderRadius:28, width:'100%', maxWidth:400, overflow:'hidden' }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <div style={{ width:40, height:4, borderRadius:2, background:'#E5E5E5', margin:'14px auto 0' }} />
             <div style={{ padding:'18px 22px 16px', display:'flex', alignItems:'flex-start', gap:14 }}>
-              <img src={TATA_BLEU} style={{ width:62, height:62, objectFit:'contain', flexShrink:0, marginTop:-4 }} alt="Tata Lou" />
+              <img src={TATA_BLEU} style={{ width:62, height:62, objectFit:'contain', flexShrink:0, marginTop:-4 }} alt="Tata Nanti Lou" />
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:20, fontWeight:700, color:'#111', letterSpacing:'-0.3px', lineHeight:1.2, margin:0 }}>Langue de Tata Lou</p>
+                <p style={{ fontSize:20, fontWeight:700, color:'#111', letterSpacing:'-0.3px', lineHeight:1.2, margin:0 }}>Langue de Tata Nanti Lou</p>
                 <p style={{ fontSize:13, color:'#999', marginTop:4, lineHeight:1.4, margin:'4px 0 0' }}>Dans quelle langue tu veux me parler aujourd&apos;hui ?</p>
               </div>
               <button type="button" onClick={() => setShowLangModal(false)}

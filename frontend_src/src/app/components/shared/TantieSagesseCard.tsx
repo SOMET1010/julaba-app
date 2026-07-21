@@ -81,7 +81,7 @@ function ListenBtn({ primaryColor, onListen }: { primaryColor: string; onListen:
 // ─── PROPOSITION A ─────────────────────────────────────────────────────────────
 // Deux zones flex indépendantes : le titre remplit sa zone (40%), le message
 // remplit sa zone (60%). Chaque bloc a son propre fit-text.
-function VariantA({ title = 'Tata Lou', message, primaryColor, onListen, messageKey }: TantieSagesseCardProps) {
+function VariantA({ title = 'Tata Nanti Lou', message, primaryColor, onListen, messageKey }: TantieSagesseCardProps) {
   const titleContainerRef = useRef<HTMLDivElement>(null);
   const titleTextRef = useRef<HTMLDivElement>(null);
   const msgContainerRef = useRef<HTMLDivElement>(null);
@@ -133,7 +133,7 @@ function VariantA({ title = 'Tata Lou', message, primaryColor, onListen, message
 // ─── PROPOSITION B ─────────────────────────────────────────────────────────────
 // Titre = badge coloré compact et fixe en haut.
 // Le message occupe TOUT le reste et grandit pour remplir l'espace.
-function VariantB({ title = 'Tata Lou', message, primaryColor, onListen, messageKey }: TantieSagesseCardProps) {
+function VariantB({ title = 'Tata Nanti Lou', message, primaryColor, onListen, messageKey }: TantieSagesseCardProps) {
   const msgContainerRef = useRef<HTMLDivElement>(null);
   const msgTextRef = useRef<HTMLDivElement>(null);
   useFitText(msgContainerRef, msgTextRef, [message]);
@@ -178,7 +178,7 @@ function VariantB({ title = 'Tata Lou', message, primaryColor, onListen, message
 // ─── PROPOSITION C ─────────────────────────────────────────────────────────────
 // Un seul bloc fit-text centré verticalement.
 // Titre en proportion 1.6× du message via em — les deux grandissent ensemble.
-function VariantC({ title = 'Tata Lou', message, primaryColor, onListen, messageKey }: TantieSagesseCardProps) {
+function VariantC({ title = 'Tata Nanti Lou', message, primaryColor, onListen, messageKey }: TantieSagesseCardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   useFitText(containerRef, textRef, [message, title]);

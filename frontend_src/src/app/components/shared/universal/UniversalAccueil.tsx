@@ -43,7 +43,7 @@ export function UniversalAccueil({ role }: UniversalAccueilProps) {
   const [showAction2Modal, setShowAction2Modal] = useState(false);
   const [showCoachMark, setShowCoachMark] = useState(false);
   
-  // 🆕 Tata Lou Modal
+  // 🆕 Tata Nanti Lou Modal
   const [showTantieSagesseModal, setShowTantieSagesseModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -183,7 +183,7 @@ export function UniversalAccueil({ role }: UniversalAccueilProps) {
     return `Bonjour ${user?.firstName} ! ${roleConfig.greeting}`;
   };
 
-  // 🆕 Handler Tata Lou (clone du comportement Marchand)
+  // 🆕 Handler Tata Nanti Lou (clone du comportement Marchand)
   const handleTataLouClick = () => {
     setShowTantieSagesseModal(true);
     speak('Bonjour ! Tu veux écrire ou parler avec moi ?');
@@ -220,7 +220,7 @@ export function UniversalAccueil({ role }: UniversalAccueilProps) {
         showKeiwa={true} // Tous les profils ont un keiwa
       />
 
-      {/* 🆕 Modal Tata Lou (universelle pour tous les profils) */}
+      {/* 🆕 Modal Tata Nanti Lou (universelle pour tous les profils) */}
       <TantieSagesseModal 
         isOpen={showTantieSagesseModal} 
         onClose={() => setShowTantieSagesseModal(false)}

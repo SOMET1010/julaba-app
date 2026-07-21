@@ -86,7 +86,7 @@ export function AIIntentTester() {
             </h1>
           </div>
           <p className="text-gray-600">
-            Testez le moteur d'analyse Tata Lou avec différents messages
+            Testez le moteur d'analyse Tata Nanti Lou avec différents messages
           </p>
         </div>
 

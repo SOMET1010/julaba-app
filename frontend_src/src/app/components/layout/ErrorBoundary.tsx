@@ -32,7 +32,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
         }}>
           <img
             src={tataLouImg}
-            alt="Tata Lou"
+            alt="Tata Nanti Lou"
             style={{ width: 140, marginBottom: '1rem', filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.15))' }}
           />
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', marginBottom: '0.5rem' }}>

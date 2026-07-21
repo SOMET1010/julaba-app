@@ -420,7 +420,7 @@ export function DocumentModal({
                 <div className="p-4 rounded-2xl bg-blue-50 border-2 border-blue-200">
                   <p className="text-xs font-bold text-blue-800 mb-2 flex items-center gap-2">
                     <Sparkles className="w-4 h-4" />
-                    Conseils de Tata Lou
+                    Conseils de Tata Nanti Lou
                   </p>
                   <ul className="space-y-1 text-xs text-blue-700">
                     <li>• Placez votre document à plat sur une surface</li>

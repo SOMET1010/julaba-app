@@ -7,7 +7,7 @@ import { useApp } from '../../contexts/AppContext';
 import { useModal } from '../../contexts/ModalContext';
 import { TantieSagesseModal } from '../assistant/TantieSagesseModal';
 import { getRoleConfig, getRoleColor } from '../../config/roleConfig';
-// Import des images Tata Lou
+// Import des images Tata Nanti Lou
 import tataLouIcon from "../../../assets/images/tantie-icon-marchand.png";
 import tataLouCooperativeIcon from "../../../assets/images/tantie-icon-cooperative.png";
 import tataLouProducteurIcon from "../../../assets/images/tantie-icon-producteur.png";
@@ -86,7 +86,7 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
 
   const handleTabClick = (tab: typeof tabs[0]) => {
     if (tab.isMic) {
-      // Ouvrir le modal Tata Lou
+      // Ouvrir le modal Tata Nanti Lou
       setIsTantieOpen(true);
       if (onMicClick) {
         onMicClick();
@@ -105,7 +105,7 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
   if (location.pathname.endsWith('/keiwa')) return null;
   if (isAnyModalOpen) return null;
 
-  // Sélectionner l'image Tata Lou selon le rôle
+  // Sélectionner l'image Tata Nanti Lou selon le rôle
   const tataLouImage = 
     isCooperatif(role) ? tataLouCooperativeIcon :
     role === 'producteur' ? tataLouProducteurIcon :
@@ -239,7 +239,7 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
                           >
                             <motion.img
                               src={tataLouImage}
-                              alt="Tata Lou"
+                              alt="Tata Nanti Lou"
                               className="w-full h-full object-cover"
                               animate={isListening ? { 
                                 scale: [1, 1.1, 1],
@@ -339,7 +339,7 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
         )}
       </AnimatePresence>
 
-      {/* Tata Lou Modal */}
+      {/* Tata Nanti Lou Modal */}
       <TantieSagesseModal
         isOpen={isTantieOpen}
         onClose={() => setIsTantieOpen(false)}

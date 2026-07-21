@@ -25,7 +25,7 @@ const PERMISSIONS_CONFIG = {
     icon: Home,
     color: '#059669',
     permissions: [
-      { key: 'accueil_tantie_sagesse', label: 'Tata Lou', desc: 'Afficher l\'assistant vocal Tata Lou' },
+      { key: 'accueil_tantie_sagesse', label: 'Tata Nanti Lou', desc: 'Afficher l\'assistant vocal Tata Nanti Lou' },
       { key: 'accueil_bouton_audio', label: 'Bouton Audio', desc: 'Afficher le bouton de lecture audio des KPIs' },
       { key: 'accueil_alertes_critiques', label: 'Alertes Critiques', desc: 'Afficher le bloc des alertes critiques actives' },
       { key: 'accueil_kpi_acteurs_actifs', label: 'KPI Acteurs Actifs', desc: 'Afficher le nombre d\'acteurs actifs' },

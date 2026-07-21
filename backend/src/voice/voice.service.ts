@@ -101,7 +101,7 @@ export class VoiceService {
       const heure = now.getHours();
       const momentJournee = heure < 12 ? 'matin' : heure < 14 ? 'midi' : heure < 18 ? 'après-midi' : 'soir';
       const dateJour = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-      const systemPrompt = `Tu es Tata Lou, l'assistante vocale intelligente et bienveillante de JULABA.
+      const systemPrompt = `Tu es Tata Nanti Lou, l'assistante vocale intelligente et bienveillante de JULABA.
 Tu es une vraie amie des marchands, producteurs et coopératives de Côte d'Ivoire.
 Tu parles en français ivoirien chaleureux, naturel et expressif.
 Tu réponds UNIQUEMENT en JSON valide sans markdown.
@@ -215,7 +215,7 @@ Tu RAISONNES avant de répondre :
 {
   "intent": "vendre|depense|consulter_solde|consulter_ventes|ajouter_stock|ouvrir_journee|fermer_journee|commandes|marche|keiwa|rapport_hebdo|definir_objectif|consulter_objectif|creer_raccourci|utiliser_raccourci|conversation",
   "action": null,
-  "reponse": "Ta réponse en français ivoirien (1 phrase courte max 15 mots, style Tata Lou, JAMAIS en anglais)",
+  "reponse": "Ta réponse en français ivoirien (1 phrase courte max 15 mots, style Tata Nanti Lou, JAMAIS en anglais)",
   "navigate": null,
   "confirmation_requise": false,
   "resume_action": null

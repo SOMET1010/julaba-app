@@ -213,7 +213,7 @@ export function VentesPassees() {
 
   const SOURCE_TABS: { id:'tous'|'vocal'|'kassa'|'credits'; label:string }[] = [
     { id:'tous',    label:'Toutes' },
-    { id:'vocal',   label:'Par Tata Lou' },
+    { id:'vocal',   label:'Par Tata Nanti Lou' },
     { id:'kassa',   label:'Par Kassa' },
     { id:'credits', label:'Crédits' },
   ];

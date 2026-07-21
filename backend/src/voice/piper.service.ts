@@ -9,7 +9,7 @@ import { join } from "path";
 // TTS Piper (offline-first) — remplace ElevenLabs, sur CPU.
 //
 // Piper est un moteur TTS neuronal leger qui tourne en local. La voix cible est
-// "Tata Lou" (fine-tunee ivoirienne), atout d'identite et de souverainete.
+// "Tata Nanti Lou" (fine-tunee ivoirienne), atout d'identite et de souverainete.
 //
 // Production :
 //   - binaire piper (PIPER_BIN, ex: /opt/piper/piper)

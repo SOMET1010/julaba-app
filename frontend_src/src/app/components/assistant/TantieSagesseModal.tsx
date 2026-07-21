@@ -44,8 +44,8 @@ const STEP_CONFIG: Record<VoiceStep, { label: string; icon: React.ReactNode; col
   idle:         { label: '',                      icon: null,                                              color: '' },
   listening:  { label: "Je t'ecoute...",         icon: <Mic className="w-5 h-5" />,                      color: '#EF4444' },
   processing: { label: 'Je traite...',   icon: <Loader2 className="w-5 h-5 animate-spin" />,     color: '#F59E0B' },
-  thinking:     { label: 'Tata Lou réfléchit...',    icon: <Brain className="w-5 h-5" />,                    color: '#8B5CF6' },
-  speaking:     { label: 'Tata Lou te parle...',     icon: <Volume2 className="w-5 h-5 animate-pulse" />,    color: '#10B981' },
+  thinking:     { label: 'Tata Nanti Lou réfléchit...',    icon: <Brain className="w-5 h-5" />,                    color: '#8B5CF6' },
+  speaking:     { label: 'Tata Nanti Lou te parle...',     icon: <Volume2 className="w-5 h-5 animate-pulse" />,    color: '#10B981' },
   confirming:   { label: 'Confirme l action...',    icon: <Volume2 className="w-5 h-5" />,                  color: '#F59E0B' },
 
   error:        { label: 'Aie, un souci...',       icon: <AlertTriangle className="w-5 h-5" />,            color: '#EF4444' },
@@ -202,7 +202,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
                     animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.7, 0.3] }}
                     transition={{ duration: 1.5, repeat: Infinity }} />
                 )}
-                <motion.img src={tataLouImg} alt="Tata Lou" className="w-36 h-auto object-contain drop-shadow-2xl"
+                <motion.img src={tataLouImg} alt="Tata Nanti Lou" className="w-36 h-auto object-contain drop-shadow-2xl"
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{
                     scale: step === 'speaking' ? [1, 1.04, 1] : step === 'listening' ? [1, 1.02, 1] : 1,
@@ -307,7 +307,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
                   <motion.div className="mb-3 rounded-2xl p-4 shadow-lg border-2"
                     style={{ backgroundColor: `${activeColor}15`, borderColor: `${activeColor}40` }}
                     initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }}>
-                    <p className="text-xs font-medium mb-1" style={{ color: activeColor }}>Tata Lou :</p>
+                    <p className="text-xs font-medium mb-1" style={{ color: activeColor }}>Tata Nanti Lou :</p>
                     <p className="text-sm font-semibold text-gray-800 leading-relaxed">{result.reponse}</p>
                     {result.intent && (
                       <div className="mt-3 flex flex-wrap gap-2">
@@ -376,7 +376,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
                           }}
                         >
                           {msg.role === 'assistant' && (
-                            <span className="text-white/50 text-[10px] block mb-1">Tata Lou</span>
+                            <span className="text-white/50 text-[10px] block mb-1">Tata Nanti Lou</span>
                           )}
                           {msg.content}
                         </div>
@@ -466,13 +466,13 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
                       transition={(step === 'listening' || isSpeaking) ? { duration: 0.8, repeat: Infinity } : {}}>
                       {isProcessing && step !== 'listening' && step !== 'speaking'
                         ? <div style={{width:'100%',height:'100%',background:activeColor,display:'flex',alignItems:'center',justifyContent:'center'}}><Loader2 className="w-9 h-9 text-white animate-spin" strokeWidth={2.5} /></div>
-                        : <img src={tantieVenteImg} alt="Tata Lou" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top'}} />
+                        : <img src={tantieVenteImg} alt="Tata Nanti Lou" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top'}} />
                       }
                     </motion.button>
                   </div>
                   <motion.p className="mt-2 text-white/90 text-xs font-medium text-center"
                     animate={{ opacity: [0.7, 1, 0.7] }} transition={{ duration: 2, repeat: Infinity }}>
-                    {step === 'listening' ? "Appuie pour terminer" : isSpeaking ? "Appuie pour interrompre" : isProcessing ? STEP_CONFIG[step].label : "Appuie sur Tata Lou"}
+                    {step === 'listening' ? "Appuie pour terminer" : isSpeaking ? "Appuie pour interrompre" : isProcessing ? STEP_CONFIG[step].label : "Appuie sur Tata Nanti Lou"}
                   </motion.p>
                 </motion.div>
               )}

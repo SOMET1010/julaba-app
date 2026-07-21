@@ -489,7 +489,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                 {/* Note vocale */}
                 <div style={{ background:'#F0FAF5', border:'1px solid #9fe1cb', borderRadius:12, padding:'12px 14px', display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
-                  <span style={{ fontSize:13, color:'#1D9E75', fontWeight:600 }}>Tata Lou confirmera vocalement après l'enregistrement</span>
+                  <span style={{ fontSize:13, color:'#1D9E75', fontWeight:600 }}>Tata Nanti Lou confirmera vocalement après l'enregistrement</span>
                 </div>
 
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:8 }}>

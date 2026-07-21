@@ -84,7 +84,7 @@ interface RoleDashboardProps {
   onDismissCoachMark?: () => void;
   customGreeting?: React.ReactNode;
   hasSessionManagement?: boolean;
-  hideTataLouImage?: boolean; // Nouvelle prop pour cacher l'image Tata Lou
+  hideTataLouImage?: boolean; // Nouvelle prop pour cacher l'image Tata Nanti Lou
   showProfileCard?: boolean; // Nouvelle prop pour afficher la carte de profil compacte
   showKeiwa?: boolean; // Nouvelle prop pour afficher le keiwa
   showAcademyWidget?: boolean; // Nouvelle prop pour afficher le widget Academy
@@ -179,7 +179,7 @@ export function RoleDashboard({
   // Calculer la "marge" (différence entre KPI1 et KPI2 pour certains rôles)
   const difference = stats.kpi1Value - stats.kpi2Value;
 
-  // Ref Tata Lou (image bounce)
+  // Ref Tata Nanti Lou (image bounce)
   const tataLouRef = useRef<HTMLDivElement | null>(null);
 
   return (
@@ -191,7 +191,7 @@ export function RoleDashboard({
         <CompactProfileCard role={roleConfig.role} showScore={true} />
       )}
 
-      {/* Card Tata Lou */}
+      {/* Card Tata Nanti Lou */}
       {!hideTataLouImage && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9, y: -20 }}
@@ -200,7 +200,7 @@ export function RoleDashboard({
           className="mb-8"
         >
           <div className="flex items-stretch gap-2">
-            {/* Image Tata Lou à gauche */}
+            {/* Image Tata Nanti Lou à gauche */}
             <motion.div
               className="flex-shrink-0 flex items-center"
               animate={isSpeaking ? { y: [0, -8, 0] } : {}}
@@ -208,7 +208,7 @@ export function RoleDashboard({
             >
               <motion.img
                 src={tataLouImgSrc || tataLouImg}
-                alt="Tata Lou"
+                alt="Tata Nanti Lou"
                 className="w-36 h-auto object-contain"
                 whileHover={{ scale: 1.05, rotate: 2 }}
                 whileTap={{ scale: 0.95 }}
@@ -239,7 +239,7 @@ export function RoleDashboard({
                     transition={{ delay: 0.2 }}
                     key={currentSession?.opened ? 'opened' : 'closed'}
                   >
-                    Tata Lou
+                    Tata Nanti Lou
                   </motion.h3>
                 </div>
 

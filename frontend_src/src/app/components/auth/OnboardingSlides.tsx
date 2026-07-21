@@ -47,7 +47,7 @@ const slides = [
   {
     id: 'assistante',
     title: 'VOTRE ASSISTANTE VOCALE',
-    description: "Tata Lou t'accompagne partout, a chaque etape.",
+    description: "Tata Nanti Lou t'accompagne partout, a chaque etape.",
     bgImage: bgTataLou,
     accent: '#7c3aed',
     dotActive: '#7c3aed',
@@ -102,7 +102,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     setCurrentSlide(index);
   };
 
-  /* -- Ecouter avec Tata Lou : LIT vraiment la diapo à voix haute ------------
+  /* -- Ecouter avec Tata Nanti Lou : LIT vraiment la diapo à voix haute ------------
    * Avant, ce bouton ne faisait qu'ARRÊTER la voix (il ne lisait jamais) : le
    * tutoriel était donc muet pour une non-lectrice. On utilise la voix intégrée
    * du navigateur (fonctionne avant connexion, sans réseau). */

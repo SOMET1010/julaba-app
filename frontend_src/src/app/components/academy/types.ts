@@ -85,7 +85,7 @@ export interface FormationSlide {
   title: string;
   content: string;
   imageUrl?: string;
-  audioUrl?: string;      // Pour Tata Lou
+  audioUrl?: string;      // Pour Tata Nanti Lou
   bulletPoints?: string[]; // Points clés
 }
 

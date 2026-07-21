@@ -15,9 +15,9 @@ const LEVELS = [
 ] as const;
 
 const DESCRIPTIONS = [
-  'Tata Lou reste silencieuse. Tu navigues seul, sans assistance vocale.',
-  'Tata Lou te parle uniquement pour les alertes importantes et les confirmations.',
-  "Tata Lou t'accompagne sur toutes les actions — ventes, navigation et conseils.",
+  'Tata Nanti Lou reste silencieuse. Tu navigues seul, sans assistance vocale.',
+  'Tata Nanti Lou te parle uniquement pour les alertes importantes et les confirmations.',
+  "Tata Nanti Lou t'accompagne sur toutes les actions — ventes, navigation et conseils.",
 ];
 
 function WaveBars({ active, level, color }: { active: boolean; level: number; color: string }) {
@@ -69,8 +69,8 @@ function WaveBars({ active, level, color }: { active: boolean; level: number; co
 export function VoiceLevelSelector({ value, onChange, color }: VoiceLevelSelectorProps) {
   return (
     <div style={{ padding: '16px 20px' }}>
-      <p style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Voix de Tata Lou</p>
-      <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>Choisir quand Tata Lou te parle</p>
+      <p style={{ fontWeight: 700, color: '#111827', marginBottom: 4 }}>Voix de Tata Nanti Lou</p>
+      <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 12 }}>Choisir quand Tata Nanti Lou te parle</p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
         {LEVELS.map((level, idx) => {

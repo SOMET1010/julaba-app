@@ -1300,7 +1300,7 @@ export function MarcheVirtuel() {
         </div>
       )}
 
-      {/* Tata Lou */}
+      {/* Tata Nanti Lou */}
 
       <ToastContainer />
     </SubPageLayout>

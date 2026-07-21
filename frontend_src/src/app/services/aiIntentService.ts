@@ -4,7 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════
  * 
  * Service frontend pour communiquer avec le moteur d'intention IA
- * Utilisé par Tata Lou pour interpréter les messages utilisateur
+ * Utilisé par Tata Nanti Lou pour interpréter les messages utilisateur
  */
 
 import { API_URL } from '../utils/api';
