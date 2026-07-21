@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useLangPref } from "../../hooks/useLangPref";
 import { useVoiceCore } from "../../hooks/useVoiceCore";
 import { usePredictiveTTS } from "../../services/predictiveTTS";
-import { useOfflineVoiceQueue } from "../../hooks/useOfflineVoiceQueue";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Loader, CheckCircle, AlertCircle, ShieldCheck, WifiOff, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -43,6 +42,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
 
   const { state, response, pendingResponse, transcript, liveTranscript, error, volume,
     handleMicClick, reset, resetHistory, confirmAction, cancelAction, isSpeaking, sendText,
+    pendingCount, isReplaying,
   } = useVoiceCore({
     maxRecordingSeconds: 60,
     context: {
@@ -60,7 +60,9 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
     onAction: async (data) => {
       const action = data.action;
       if (action?.type === "vendre") {
-        if (!currentSession?.opened) return;
+        // #4 : ne plus abandonner en silence (Tata Lou disait « c'est enregistré »
+        // alors que rien n'était sauvé). On remonte une erreur explicite.
+        if (!currentSession?.opened) throw new Error("Ouvre ta journée d'abord pour enregistrer une vente.");
         const montant = action.montant || 0;
         const quantite = action.quantite || 1;
         if (!montant || montant <= 0 || isNaN(montant)) return;
@@ -73,7 +75,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
       } else if (action?.type === "utiliser_raccourci") {
         const r = matchRaccourci ? matchRaccourci(action.declencheur || data.transcript || "") : null;
         if (r?.action?.type === "vendre") {
-          if (!currentSession?.opened) return;
+          if (!currentSession?.opened) throw new Error("Ouvre ta journée d'abord pour enregistrer une vente.");
           const montant = r.action.montant || 0;
           const quantite = r.action.quantite || 1;
           if (!montant || montant <= 0 || isNaN(montant)) return;
@@ -109,7 +111,8 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   });
 
   usePredictiveTTS({ module: "caisse", sessionOpen: !!(currentSession?.opened), hasVentes: (stats.ventes || 0) > 0, prenom: user?.prenoms || "ma chere", recentIntents: response ? [response.intent] : [] });
-  const { pendingCount, isReplaying } = useOfflineVoiceQueue(async (cmd) => { try { await sendText(cmd.text); return true; } catch { return false; } });
+  // #2 : pendingCount/isReplaying viennent de l'UNIQUE file de useVoiceCore
+  // (plus de seconde instance qui rejouait la file en double à la reconnexion).
   useEffect(() => { if (!isOpen) resetHistory(); }, [isOpen, resetHistory]);
   useEffect(() => { setIsModalOpen(isOpen); return () => setIsModalOpen(false); }, [isOpen, setIsModalOpen]);
 

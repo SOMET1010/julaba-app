@@ -107,6 +107,8 @@ export interface VoiceCoreResult {
   isListening: boolean;
   isProcessing: boolean;
   isSupported: boolean;
+  pendingCount: number;
+  isReplaying: boolean;
 }
 
 // Aliases legacy
@@ -353,7 +355,10 @@ export function useVoiceCore({
     return timeout;
   }, []);
 
-  const { enqueue } = useOfflineVoiceQueue(async (cmd) => {
+  // #2 : UNE seule instance de la file hors-ligne (ici). Avant, le modal en
+  // créait une seconde -> les deux rejouaient la même file à la reconnexion ->
+  // ventes offline dupliquées. On expose pendingCount/isReplaying à la place.
+  const { enqueue, pendingCount: offlinePending, isReplaying: offlineReplaying } = useOfflineVoiceQueue(async (cmd) => {
     try {
       if (!sendTextRef.current) return false;
       await sendTextRef.current(cmd.text);
@@ -494,7 +499,7 @@ export function useVoiceCore({
   }, [reset]);
 
   // ── Execute action ───────────────────────────────────────────
-  const executeAction = useCallback(async (data: VoiceProcessResponse, userText: string) => {
+  const executeAction = useCallback(async (data: VoiceProcessResponse, userText: string, confirmed = false) => {
     if (interruptRef.current) {
       return;
     }
@@ -537,14 +542,27 @@ export function useVoiceCore({
     } finally { clearTypewriter(); setIsSpeaking(false); }
 
     const FINANCIAL_INTENTS = ['vendre', 'depense', 'ouvrir_journee', 'fermer_journee', 'utiliser_raccourci'];
-    const requiresLocalConfirm = FINANCIAL_INTENTS.includes(data.intent) && !data.needsConfirmation;
+    // `confirmed` = appel venant de confirmAction (l'utilisateur a déjà dit Oui) :
+    // sans ce court-circuit, on re-demandait confirmation à l'infini et la vente
+    // n'était jamais enregistrée quand le backend renvoyait needsConfirmation=false.
+    const requiresLocalConfirm = !confirmed && FINANCIAL_INTENTS.includes(data.intent) && !data.needsConfirmation;
     if (requiresLocalConfirm) {
       setPendingResponse(data);
       setState("confirming");
       return;
     }
     if (!interruptRef.current && onAction && data.action?.type !== "none") {
-      try { await onAction(data); } catch (e) { console.warn('[voice]', e); }
+      // #4 : ne plus avaler une erreur d'enregistrement en silence -> la montrer
+      // et la dire (ex. « ouvre ta journée d'abord »), au lieu d'un faux succès.
+      try {
+        await onAction(data);
+      } catch (e) {
+        const m = e instanceof Error ? e.message : "Enregistrement impossible.";
+        console.warn('[voice]', e);
+        setError(m);
+        await ttsSpeak(m);
+        if (onError) onError(m);
+      }
     } else {
       // TRACE
     }
@@ -602,7 +620,7 @@ export function useVoiceCore({
     try {
       const data = pendingResponse; setPendingResponse(null);
       const confirmMsgs = ["OK, j'enregistre !", "Voilà, c'est fait !", "Ça marche, je note !", "C'est enregistré !"]; await ttsSpeak(confirmMsgs[Math.floor(Math.random() * confirmMsgs.length)]);
-      await executeAction(data, data.transcript || "");
+      await executeAction(data, data.transcript || "", true); // déjà confirmé -> enregistrer
     } finally {
       confirmingRef.current = false;
     }
@@ -731,6 +749,7 @@ export function useVoiceCore({
         ];
         await ttsSpeak(errMsgs[Math.floor(Math.random() * errMsgs.length)]);
         if (onError) onError(msg);
+        break; // erreur non-abort : ne pas relancer la requete (evitait un double message)
       } finally {
         if (timeout) {
           clearTimeout(timeout);
@@ -909,6 +928,7 @@ try {
     startRecording, stopRecording, handleMicClick, sendText,
     speak, stopSpeaking, isSpeaking,
     confirmAction, cancelAction, reset, resetHistory,
+    pendingCount: offlinePending, isReplaying: offlineReplaying,
     isListening: state === "listening",
     isProcessing: state === "processing" || state === "thinking",
     isSupported: typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia,
