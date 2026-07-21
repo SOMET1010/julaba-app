@@ -124,7 +124,7 @@ export function RaccourcisModal({ isOpen, onClose }: Props) {
                 ) : (
                   <div className="space-y-3">
                     <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">
-                      Dis le déclencheur à Tata Lou pour l'activer
+                      Dis le déclencheur à Tata Nanti Lou pour l'activer
                     </p>
                     {raccourcis.map(r => {
                       const typeInfo = TYPES.find(t => t.id === r.type);
@@ -208,7 +208,7 @@ export function RaccourcisModal({ isOpen, onClose }: Props) {
                   <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Phrase déclencheur</p>
                   <input value={declencheur} onChange={e => setDeclencheur(e.target.value)} placeholder="Ex: tomates habituelles"
                     className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 text-sm font-medium outline-none focus:border-orange-400" />
-                  <p className="text-xs text-gray-400 mt-1">Ce que tu dis à Tata Lou pour activer ce raccourci</p>
+                  <p className="text-xs text-gray-400 mt-1">Ce que tu dis à Tata Nanti Lou pour activer ce raccourci</p>
                 </div>
 
                 {/* Champs selon type */}

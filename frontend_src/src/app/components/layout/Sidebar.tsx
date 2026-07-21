@@ -72,10 +72,10 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
       path: item.path,
       isMic: false,
     })),
-    // Ajouter Tata Lou à la fin pour Desktop
+    // Ajouter Tata Nanti Lou à la fin pour Desktop
     {
       id: 'mic',
-      label: 'Tata Lou',
+      label: 'Tata Nanti Lou',
       icon: Mic,
       path: null,
       isMic: true,
@@ -84,7 +84,7 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
 
   const handleTabClick = (tab: typeof tabs[0]) => {
     if (tab.isMic) {
-      // Activate Tata Lou
+      // Activate Tata Nanti Lou
       setIsListening(!isListening);
       if (onMicClick) {
         onMicClick();
@@ -250,7 +250,7 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
           </div>
         </div>
 
-        {/* Tata Lou Card - En bas */}
+        {/* Tata Nanti Lou Card - En bas */}
         <div className="px-4 pb-3 border-t border-gray-100">
           <motion.button
             onClick={() => {
@@ -331,7 +331,7 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
                 exit={{ opacity: 0 }}
               >
                 <p className="font-bold text-sm" style={{ color: activeColor }}>
-                  Tata Lou
+                  Tata Nanti Lou
                 </p>
                 <p className="text-xs text-gray-600 mt-0.5">
                   {isListening ? "Je t'écoute..." : "Besoin d'aide ?"}

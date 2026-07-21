@@ -61,7 +61,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
     onAction: async (data) => {
       const action = data.action;
       if (action?.type === "vendre") {
-        // #4 : ne plus abandonner en silence (Tata Lou disait « c'est enregistré »
+        // #4 : ne plus abandonner en silence (Tata Nanti Lou disait « c'est enregistré »
         // alors que rien n'était sauvé). On remonte une erreur explicite.
         if (!currentSession?.opened) throw new Error("Ouvre ta journée d'abord pour enregistrer une vente.");
         const montant = action.montant || 0;
@@ -167,12 +167,12 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   });
 
   const statusLabel = isRecording ? "Appuie pour terminer"
-    : isSpeaking ? "Tata Lou répond..."
+    : isSpeaking ? "Tata Nanti Lou répond..."
     : isLoading ? liveTranscript || "Analyse en cours..."
     : isDone ? "Message enregistré !"
     : isError ? "Erreur — réessaie"
     : mainsLibres && wakeSupported ? "Dis « Julaba » pour vendre"
-    : "Appuie sur Tata Lou pour parler";
+    : "Appuie sur Tata Nanti Lou pour parler";
 
   if (!isOpen) return null;
 
@@ -200,7 +200,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
               <X className="w-4 h-4 text-white" />
             </motion.button>
 
-            {/* Bouton Tata Lou — photo pleine */}
+            {/* Bouton Tata Nanti Lou — photo pleine */}
             <div className="relative flex items-center justify-center mb-4" style={{ width: 150, height: 150 }}>
               {/* Anneaux pulse */}
               {(isRecording || isSpeaking) && [1, 2, 3].map((ring) => (
@@ -210,7 +210,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
                   transition={{ duration: 1.5, repeat: Infinity, delay: ring * 0.25, ease: "easeOut" }} />
               ))}
 
-              {/* Photo Tata Lou = bouton */}
+              {/* Photo Tata Nanti Lou = bouton */}
               <motion.button whileTap={{ scale: 0.93 }} onClick={handleMicClick}
                 onTouchStart={() => { try { const AC = window.AudioContext || (window as any).webkitAudioContext; const a = new AC(); if (a.state === "suspended") a.resume(); } catch (e) { void e; } }}
                 disabled={isLoading}
@@ -234,25 +234,25 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
                   </div>
                 ) : isDone ? (
                   <div style={{ width: "100%", height: "100%", position: "relative" }}>
-                    <img src={tantieImg} alt="Tata Lou" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
+                    <img src={tantieImg} alt="Tata Nanti Lou" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
                     <div style={{ position: "absolute", inset: 0, background: "rgba(22,163,74,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <CheckCircle style={{ width: 40, height: 40, color: "white" }} />
                     </div>
                   </div>
                 ) : isError ? (
                   <div style={{ width: "100%", height: "100%", position: "relative" }}>
-                    <img src={tantieImg} alt="Tata Lou" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
+                    <img src={tantieImg} alt="Tata Nanti Lou" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
                     <div style={{ position: "absolute", inset: 0, background: "rgba(239,68,68,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <AlertCircle style={{ width: 40, height: 40, color: "white" }} />
                     </div>
                   </div>
                 ) : (
-                  <img src={tantieImg} alt="Tata Lou" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
+                  <img src={tantieImg} alt="Tata Nanti Lou" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
                 )}
               </motion.button>
             </div>
 
-            <p style={{ color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", marginBottom: 10 }}>TATA LOU</p>
+            <p style={{ color: "rgba(255,255,255,0.9)", fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", marginBottom: 10 }}>TATA NANTI LOU</p>
 
             {/* Waveform */}
             <div className="flex items-center justify-center gap-1 mb-3" style={{ height: 24 }}>
@@ -296,7 +296,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
             {response && !isLoading && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: PL, border: `1.5px solid ${P}30`, borderRadius: 16, padding: "12px 14px" }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ fontSize: 18 }}>{intentEmoji[response.intent] || "💬"}</span><p style={{ fontSize: 10, fontWeight: 700, color: P, letterSpacing: "0.1em" }}>{response.intent.replace(/_/g, " ").toUpperCase()}</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>{response.response || response.reponse}</p>{response.action?.type === "vendre" && response.action.montant && (<div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${P}25` }}><p style={{ fontSize: 13, color: "#6B7280" }}>{response.action.quantite}× {response.action.produit} =&nbsp;<strong style={{ color: P }}>{response.action.montant?.toLocaleString("fr-FR")} FCFA</strong></p></div>)}</motion.div>)}
             {isError && error && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 16, padding: "12px 14px" }}><p style={{ fontSize: 13, fontWeight: 600, color: "#B91C1C" }}>{error}</p></motion.div>)}
             {isConfirming && pendingResponse && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#FFF8F0", border: `2px solid ${P}`, borderRadius: 20, padding: 16 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><ShieldCheck style={{ width: 18, height: 18, color: P }} /><p style={{ fontSize: 12, fontWeight: 700, color: P }}>Confirmer l'action</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937", marginBottom: 12 }}>{pendingResponse.response || pendingResponse.reponse}</p>{pendingResponse.resume_action && (<p style={{ fontSize: 11, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.1em", marginBottom: 12 }}>{pendingResponse.resume_action}</p>)}<div style={{ display: "flex", gap: 10 }}><motion.button whileTap={{ scale: 0.97 }} onClick={cancelAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, border: `2px solid ${P}`, color: P, background: "white", cursor: "pointer" }}>Non</motion.button><motion.button whileTap={{ scale: 0.97 }} onClick={confirmAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Oui, confirmer</motion.button></div></motion.div>)}
-            {(isDone || isError) && (<motion.button whileTap={{ scale: 0.97 }} onClick={reset} style={{ width: "100%", padding: "14px 0", borderRadius: 16, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Reparler à Tata Lou</motion.button>)}
+            {(isDone || isError) && (<motion.button whileTap={{ scale: 0.97 }} onClick={reset} style={{ width: "100%", padding: "14px 0", borderRadius: 16, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Reparler à Tata Nanti Lou</motion.button>)}
             {isIdle && (<div><p style={{ fontSize: 10, fontWeight: 700, color: "#C5C5C5", letterSpacing: "0.1em", marginBottom: 10 }}>CE QUE TU PEUX DIRE</p><div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{examples.map((ex, i) => (<motion.button key={i} whileTap={{ scale: 0.97 }} onClick={() => sendText(ex.text)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderRadius: 14, cursor: "pointer", background: ex.highlight ? "#FFF3EB" : "#F8F8F8", border: ex.highlight ? "1px solid #FDDEC4" : "1px solid #F0F0F0", textAlign: "left", width: "100%" }}><div style={{ flex: 1 }}><p style={{ fontSize: 15, fontWeight: 700, color: ex.highlight ? "#6B2400" : "#111", margin: 0 }}>{ex.text}</p><p style={{ fontSize: 12, color: ex.highlight ? "#C4703A" : "#999", margin: "3px 0 0" }}>{ex.desc}</p></div><ChevronRight style={{ color: ex.highlight ? "#C4703A" : "#D0D0D0", width: 16, height: 16, flexShrink: 0 }} /></motion.button>))}</div></div>)}
             {isIdle && (<div style={{ marginTop: 4 }}><InstallerOffline /></div>)}
           </div>

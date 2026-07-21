@@ -1070,7 +1070,7 @@ export function BOLayout() {
             <motion.div animate={isSpeaking ? { scale: [1, 1.2, 1] } : {}} transition={{ duration: 0.5, repeat: isSpeaking ? Infinity : 0 }}>
               <Volume2 className="w-5 h-5" style={{ color: BO_PRIMARY }} />
             </motion.div>
-            <span className="font-semibold text-sm" style={{ color: BO_PRIMARY }}>Tata Lou</span>
+            <span className="font-semibold text-sm" style={{ color: BO_PRIMARY }}>Tata Nanti Lou</span>
           </motion.button>
           <motion.button
             onClick={handleLogout}

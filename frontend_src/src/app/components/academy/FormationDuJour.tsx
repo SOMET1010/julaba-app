@@ -168,7 +168,7 @@ export function FormationDuJour({
               style={{ color: roleColor, backgroundColor: `${roleColor}10` }}
             >
               <Volume2 className="w-4 h-4" />
-              Écouter avec Tata Lou
+              Écouter avec Tata Nanti Lou
             </button>
           </div>
         </div>

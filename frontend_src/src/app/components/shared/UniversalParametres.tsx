@@ -537,7 +537,7 @@ function ModalLang({ isOpen, onClose, lang, setLang, color }: {
             className="bg-white rounded-t-3xl w-full p-6 pb-10"
           >
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-5" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Langue de Tata Lou</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Langue de Tata Nanti Lou</h3>
             <p className="text-sm text-gray-500 mb-6">Dans quelle langue tu veux me parler aujourd&apos;hui ?</p>
             <div className="space-y-3">
               {LANGS.map(id => {
@@ -1031,7 +1031,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <RowToggle color={color} label="Réduire les animations" sublabel="Améliore les performances sur téléphones bas de gamme" value={reduceAnimations} onChange={setReduceAnimations} />
             <RowToggle color={color} label="Vibrations" sublabel="Retour haptique lors des actions" value={vibrations} onChange={setVibrations} />
             {role !== 'institution' && (
-              <RowAction label="Langue de Tata Lou" sublabel={LANG_FLAGS[lang] + ' ' + LANG_LABELS[lang]} icon={Globe} onClick={() => setShowLang(true)} />
+              <RowAction label="Langue de Tata Nanti Lou" sublabel={LANG_FLAGS[lang] + ' ' + LANG_LABELS[lang]} icon={Globe} onClick={() => setShowLang(true)} />
             )}
           </Section>
 

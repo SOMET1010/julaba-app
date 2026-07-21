@@ -358,7 +358,7 @@ export function MarchandAlertes() {
               <AlertTriangle className="w-5 h-5" style={{ color: COLOR }} />
             </div>
             <div>
-              <p className="font-bold text-gray-800 text-sm">Conseil Tata Lou</p>
+              <p className="font-bold text-gray-800 text-sm">Conseil Tata Nanti Lou</p>
               <p className="text-xs text-gray-500 mt-0.5">
                 Traitez d'abord les alertes critiques pour éviter les pertes de ventes. 
                 Un stock bien géré, c'est un marchand prospère !

@@ -1,4 +1,4 @@
-// tantieVoice.ts - Tata Lou via ElevenLabs
+// tantieVoice.ts - Tata Nanti Lou via ElevenLabs
 import { speakChunked, stopSpeaking, stopChunkedSpeaking } from '../services/elevenlabs';
 
 // Utilitaire non utilise actuellement

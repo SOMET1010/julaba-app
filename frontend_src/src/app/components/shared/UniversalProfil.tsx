@@ -156,7 +156,7 @@ function ModalLang({
             className="bg-white rounded-t-3xl w-full p-6 pb-10"
           >
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-5" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Langue de Tata Lou</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Langue de Tata Nanti Lou</h3>
             <p className="text-sm text-gray-500 mb-6">Dans quelle langue tu veux me parler aujourd&apos;hui ?</p>
             <div className="space-y-3">
               {LANGS.map((id) => {

@@ -9,7 +9,7 @@
  * Structure :
  * - /public/images/logos/       → Logos institutionnels et partenaires
  * - /public/images/icons/        → Icônes interface
- * - /public/images/avatars/      → Avatars Tata Lou
+ * - /public/images/avatars/      → Avatars Tata Nanti Lou
  * - /public/images/products/     → Images de produits vivriers
  * - /public/images/backgrounds/  → Fonds d'écran
  * - /public/images/money/        → Billets et pièces CFA
@@ -149,7 +149,7 @@ export const IMG_LOGO_MOOV = MOBILE_MONEY.moov;
 export const IMG_LOGO_WAVE = MOBILE_MONEY.wave;
 export const IMG_LOGO_TONDJE = MOBILE_MONEY.tondje;
 
-// Tata Lou - Avatars complets
+// Tata Nanti Lou - Avatars complets
 export const IMG_TANTIE_SAGESSE = AVATARS_TANTIE.marchand;
 export const IMG_TANTIE_SAGESSE_ADMIN = AVATARS_TANTIE.marchand;
 export const IMG_TANTIE_SAGESSE_COOPERATIVE = AVATARS_TANTIE.cooperative;
@@ -158,7 +158,7 @@ export const IMG_TANTIE_SAGESSE_PRODUCTEUR = AVATARS_TANTIE.producteur;
 export const IMG_TANTIE_SAGESSE_INSTITUTION = AVATARS_TANTIE.institution;
 export const IMG_TANTIE_SAGESSE_VENTE = AVATARS_TANTIE.marchand;
 
-// Tata Lou - Icônes BottomBar
+// Tata Nanti Lou - Icônes BottomBar
 export const IMG_TANTIE_SAGESSE_ICON = ICONS_TANTIE.marchand;
 export const IMG_TANTIE_SAGESSE_ICON_COOPERATIVE = ICONS_TANTIE.cooperative;
 export const IMG_TANTIE_SAGESSE_ICON_PRODUCTEUR = ICONS_TANTIE.producteur;
@@ -212,7 +212,7 @@ export const IMG_BG_MARCHE_VENTE = BACKGROUNDS.onboarding.marketplace;
 // ══════════════════════════════════════════════════════════════════
 
 /**
- * Obtenir l'avatar Tata Lou selon le rôle
+ * Obtenir l'avatar Tata Nanti Lou selon le rôle
  */
 export function getTataLouAvatar(role: string): string {
   const roleMap: Record<string, string> = {
@@ -227,7 +227,7 @@ export function getTataLouAvatar(role: string): string {
 }
 
 /**
- * Obtenir l'icône Tata Lou selon le rôle
+ * Obtenir l'icône Tata Nanti Lou selon le rôle
  */
 export function getTataLouIcon(role: string): string {
   const roleMap: Record<string, string> = {

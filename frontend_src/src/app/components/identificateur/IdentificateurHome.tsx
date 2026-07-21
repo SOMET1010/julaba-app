@@ -241,7 +241,7 @@ export function IdentificateurHome() {
         />
       </div>
       <div className="mx-auto min-h-screen max-w-2xl bg-gradient-to-b from-[#9F8170]/5 via-white to-gray-50 px-4 pb-32 pt-16 lg:max-w-7xl lg:pb-8 lg:pl-[320px] lg:pt-10">
-        {/* Card Tata Lou */}
+        {/* Card Tata Nanti Lou */}
         <motion.div
           initial={prefersReducedMotion ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.9, y: -20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -252,7 +252,7 @@ export function IdentificateurHome() {
             <motion.div className="flex flex-shrink-0 items-center">
               <motion.img
                 src={tataLouImg}
-                alt="Tata Lou"
+                alt="Tata Nanti Lou"
                 className="h-auto w-36 object-contain"
                 whileHover={prefersReducedMotion ? {} : { scale: 1.05, rotate: 2 }}
                 whileTap={prefersReducedMotion ? {} : { scale: 0.95 }}
@@ -281,7 +281,7 @@ export function IdentificateurHome() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={prefersReducedMotion ? {} : { delay: 0.2 }}
                 >
-                  Tata Lou
+                  Tata Nanti Lou
                 </motion.h3>
 
                 <motion.p
