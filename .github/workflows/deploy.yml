@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+  # Déclenchement MANUEL depuis l'onglet Actions (bouton « Run workflow »).
+  # Déploie la branche choisie (par défaut : la branche par défaut du dépôt).
+  workflow_dispatch:
 
 jobs:
   deploy:
