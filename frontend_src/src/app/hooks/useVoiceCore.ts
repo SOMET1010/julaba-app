@@ -679,34 +679,35 @@ export function useVoiceCore({
     // Sans réseau, OU dès que le modèle on-device est installé (économie serveur),
     // on transcrit localement et on comprend la vente sans LLM. Le résultat repart
     // dans le MÊME flux (confirmation, caisse) via handleResponse.
-    if (!navigator.onLine || offlineModelReady()) {
+    // Reconnaissance SUR L'APPAREIL (souverain, zéro cloud) dès que le modèle est
+    // prêt OU qu'on est hors-ligne. IMPORTANT : quand le modèle est prêt, on NE
+    // retombe JAMAIS sur le serveur cloud (volontairement désactivé) — sinon toute
+    // phrase non comprise finissait en « souci technique ». On montre aussi ce que
+    // l'appli a entendu, pour voir si c'est la transcription ou la compréhension.
+    const useLocal = !navigator.onLine || offlineModelReady();
+    if (useLocal) {
       setState("thinking");
       startThinkingPhrases();
       try {
         const texte = await transcribeWav(audioBlob);
+        if (texte) setTranscript(texte); // affiche « tu as dit … »
         const local = texte ? intentLocal(texte) : null;
         if (local) {
           clearThinkingTimer();
-          setTranscript(texte);
           await handleResponse(local as Partial<VoiceProcessResponse>, texte);
           return;
         }
-        if (!navigator.onLine) {
-          // Hors-ligne et pas compris : on ne peut pas retomber sur le serveur.
-          clearThinkingTimer(); setState("idle"); setLiveTranscript("");
-          await ttsSpeak(texte
-            ? "Je n'ai pas bien compris, redis ta vente autrement."
-            : "Je n'ai rien entendu, réessaie.");
-          return;
-        }
-        // En ligne mais pas compris localement : on laisse le serveur essayer.
+        // Entendu mais pas compris (ou rien entendu) : on RESTE en local (pas de
+        // cloud), on guide avec un exemple concret.
+        clearThinkingTimer(); setState("idle"); setLiveTranscript("");
+        await ttsSpeak(texte
+          ? "Je n'ai pas bien compris. Dis par exemple : j'ai vendu dix tomates à deux mille francs."
+          : "Je n'ai rien entendu, réessaie en parlant bien fort.");
+        return;
       } catch {
-        if (!navigator.onLine) {
-          clearThinkingTimer(); setState("idle"); setLiveTranscript("");
-          await ttsSpeak("Le mode hors-ligne n'est pas encore prêt. Connecte-toi une fois pour l'installer.");
-          return;
-        }
-        // En ligne : l'échec local n'est pas bloquant, on continue vers le serveur.
+        clearThinkingTimer(); setState("idle"); setLiveTranscript("");
+        await ttsSpeak("Je n'ai pas réussi à t'écouter, réessaie.");
+        return;
       }
     }
 
