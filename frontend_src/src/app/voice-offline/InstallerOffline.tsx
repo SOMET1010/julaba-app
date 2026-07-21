@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ensureOfflineModel, offlineModelReady } from './offlineStt';
+import { ensureOfflineModel, offlineModelReady, offlineModelInstalled } from './offlineStt';
 
 // Bouton autonome « Installer le mode hors-ligne ».
 // Télécharge le modèle vocal (~40 Mo) UNE fois (en ligne), puis mis en cache par
@@ -21,7 +21,9 @@ const MESSAGES = [
 type Etat = 'absent' | 'chargement' | 'pret' | 'erreur';
 
 export function InstallerOffline() {
-  const [etat, setEtat] = useState<Etat>(() => (offlineModelReady() ? 'pret' : 'absent'));
+  // « prêt » si le modèle est chargé en mémoire OU déjà installé sur l'appareil
+  // (il se ré-active tout seul en tâche de fond, inutile de re-télécharger 40 Mo).
+  const [etat, setEtat] = useState<Etat>(() => (offlineModelReady() || offlineModelInstalled() ? 'pret' : 'absent'));
   const [erreur, setErreur] = useState<string | null>(null);
   const [i, setI] = useState(0);
   const [sec, setSec] = useState(0);
