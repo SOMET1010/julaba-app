@@ -275,6 +275,17 @@ function ttsStop(): void {
   elStop();
 }
 
+// Interprète une réponse de confirmation dictée : « oui » / « non » / incertain.
+// On teste le NON d'abord (« non », « pas ça », « annule »…), sinon le OUI.
+function interpretYesNo(texte: string): "oui" | "non" | null {
+  const t = " " + (texte || "").toLowerCase().replace(/['']/g, "'").replace(/[.,!?;:]/g, " ").replace(/\s+/g, " ") + " ";
+  const NON = [" non ", " pas ", " faux ", " annule", " efface", " recommence"];
+  const OUI = [" oui ", " ouais ", " voila ", " voilà ", " exact ", " accord ", " ok ", " okay ", " c'est bon ", " c'est ca ", " c'est ça ", " bon ", " ca ", " ça "];
+  if (NON.some((w) => t.includes(w))) return "non";
+  if (OUI.some((w) => t.includes(w))) return "oui";
+  return null;
+}
+
 // ─── BIP AUDIO ────────────────────────────────────────────────────
 // Priorité voix : bip uniquement si aucun audio principal en cours
 // iOS Safari : AudioContext.resume() obligatoire après interaction user
@@ -356,6 +367,13 @@ export function useVoiceCore({
   const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
   const sendTextRef = useRef<((text: string) => Promise<void>) | null>(null);
+  // Confirmation vocale (« c'est bien ça ? » → oui/non). Refs pour appeler ces
+  // fonctions depuis processAudio sans dépendances circulaires.
+  const pendingResponseRef = useRef<VoiceProcessResponse | null>(null);
+  const confirmActionRef = useRef<(() => Promise<void>) | null>(null);
+  const cancelActionRef = useRef<(() => Promise<void>) | null>(null);
+  const startRecordingRef = useRef<(() => Promise<void>) | null>(null);
+  const confirmAttemptsRef = useRef(0);
 
   const trackTimeout = useCallback((cb: () => void, delay: number) => {
     const timeout = setTimeout(() => {
@@ -598,6 +616,8 @@ export function useVoiceCore({
       clearTypewriter();
       typewriterRef.current = startTypewriter(data.response || "", setLiveTranscript, 25);
       setPendingResponse(data); setResponse(data); setState("confirming"); setIsSpeaking(true);
+      pendingResponseRef.current = data; // dispo tout de suite pour la réponse vocale
+      confirmAttemptsRef.current = 0;
       ttsStop();
       await new Promise((r) => {
         trackTimeout(() => r(undefined), 250);
@@ -615,6 +635,9 @@ export function useVoiceCore({
           }
         }
       } finally { clearTypewriter(); setIsSpeaking(false); }
+      // AUTO-ÉCOUTE : juste après la question, on écoute la réponse (oui/non) pour
+      // que la vendeuse n'ait rien à toucher. Les boutons Oui/Non restent dispo.
+      if (!interruptRef.current) { setState("confirming"); void startRecordingRef.current?.(); }
       return;
     }
     await executeAction(data, userText);
@@ -683,9 +706,11 @@ export function useVoiceCore({
       audioBlob = new Blob(chunksRef.current, { type: mimeType });
       audioFilename = mimeType.includes("mp4") ? "audio.mp4" : mimeType.includes("webm") ? "audio.webm" : "audio.wav";
       if (audioBlob.size < 800) {
-        setState("idle"); setLiveTranscript(""); return;
+        // Rien capté : si une confirmation est en attente, on y reste (les boutons
+        // Oui/Non restent visibles) au lieu de retomber en veille et bloquer.
+        setState(pendingResponseRef.current ? "confirming" : "idle"); setLiveTranscript(""); return;
       }
-    } catch { setState("idle"); return; }
+    } catch { setState(pendingResponseRef.current ? "confirming" : "idle"); return; }
 
     // ── RECONNAISSANCE 100 % SUR L'APPAREIL (souverain, zéro cloud) ─────────
     // On transcrit TOUJOURS sur le téléphone et on comprend la vente sans LLM.
@@ -706,6 +731,28 @@ export function useVoiceCore({
       }
       const texte = await transcribeWav(audioBlob);
       if (texte) setTranscript(texte); // affiche « tu as dit … »
+
+      // ── RÉPONSE À UNE CONFIRMATION EN COURS (« c'est bien ça ? ») ──────────
+      // Si l'assistante attend un oui/non, on interprète la réponse dictée au
+      // lieu de la traiter comme une nouvelle vente.
+      if (pendingResponseRef.current) {
+        const rep = interpretYesNo(texte || "");
+        clearThinkingTimer();
+        if (rep === "oui") { confirmAttemptsRef.current = 0; await confirmActionRef.current?.(); return; }
+        if (rep === "non") { confirmAttemptsRef.current = 0; await cancelActionRef.current?.(); return; }
+        // Pas clair : on redemande, puis on ré-écoute (max 2 fois), sinon on
+        // laisse la vendeuse toucher les boutons Oui / Non.
+        confirmAttemptsRef.current += 1;
+        setState("confirming");
+        if (confirmAttemptsRef.current <= 2) {
+          await ttsSpeak("Dis oui pour valider, ou non pour annuler.");
+          if (!interruptRef.current) void startRecordingRef.current?.();
+        } else {
+          await ttsSpeak("Touche Oui ou Non à l'écran, s'il te plaît.");
+        }
+        return;
+      }
+
       const local = texte ? intentLocal(texte) : null;
       if (local) {
         clearThinkingTimer();
@@ -849,6 +896,12 @@ try {
   useEffect(() => {
     sendTextRef.current = sendText;
   }, [sendText]);
+
+  // Garde les refs de confirmation vocale à jour (appelées depuis processAudio).
+  useEffect(() => { pendingResponseRef.current = pendingResponse; }, [pendingResponse]);
+  useEffect(() => { confirmActionRef.current = confirmAction; }, [confirmAction]);
+  useEffect(() => { cancelActionRef.current = cancelAction; }, [cancelAction]);
+  useEffect(() => { startRecordingRef.current = startRecording; }, [startRecording]);
 
   useEffect(() => { return () => { stopAll(); }; }, [stopAll]);
 
