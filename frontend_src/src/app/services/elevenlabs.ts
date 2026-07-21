@@ -114,6 +114,26 @@ export function preloadAudioContext(): void {
   } catch (e) { console.warn('[voice]', e); }
 }
 
+// Joue un fichier audio par URL (clips pré-enregistrés « Tata Nanti Lou »).
+// Passe par le MÊME `_currentAudio` que le reste → stopAllAudio() l'interrompt
+// proprement (barge-in, changement d'écran, nouvelle question…).
+export async function playAudioUrl(url: string, onDone?: () => void): Promise<void> {
+  stopAllAudio();
+  _chunkAborted = false;
+  return new Promise((resolve) => {
+    const audio = new Audio(url);
+    _currentAudio = audio;
+    const finish = () => {
+      if (_currentAudio === audio) _currentAudio = null;
+      onDone?.();
+      resolve();
+    };
+    audio.onended = finish;
+    audio.onerror = finish;
+    audio.play().catch(finish);
+  });
+}
+
 export async function playBase64Audio(base64: string, onDone?: () => void): Promise<void> {
   stopAllAudio();
   _chunkAborted = false;

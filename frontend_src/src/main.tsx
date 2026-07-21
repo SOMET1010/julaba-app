@@ -46,6 +46,16 @@ import('./app/voice-offline/offlineStt')
   })
   .catch(() => { /* ignore */ });
 
+// Précharge les clips de la voix « Tata Nanti Lou » (lecture instantanée + cache
+// hors-ligne). Différé pour ne pas ralentir le premier affichage.
+import('./app/services/tataVoice')
+  .then(({ preloadTataClips }) => {
+    const go = () => preloadTataClips();
+    if ('requestIdleCallback' in window) (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(go);
+    else setTimeout(go, 2500);
+  })
+  .catch(() => { /* ignore */ });
+
 const root = document.getElementById('root');
 
 if (!root) {
