@@ -41,14 +41,17 @@ export class SeedDemoService implements OnApplicationBootstrap {
 
   async onApplicationBootstrap(): Promise<void> {
     if (process.env.SEED_DEMO === 'false') return; // désactivable en production
-    const motDePasse = process.env.SEED_DEMO_PASSWORD || 'julaba2026';
+    // Le mot de passe marchand se saisit sur un PAVÉ À 4 CHIFFRES : il DOIT être
+    // un code numérique à 4 chiffres, sinon il est impossible à taper à l'écran.
+    const brut = (process.env.SEED_DEMO_PASSWORD || '').trim();
+    const motDePasse = /^[0-9]{4}$/.test(brut) ? brut : '1234';
     const users = this.dataSource.getRepository(User);
 
     for (const c of COMPTES) {
       try {
         let user = await users.findOne({ where: { phone: c.phone } });
+        const passwordHash = await bcrypt.hash(motDePasse, 10);
         if (!user) {
-          const passwordHash = await bcrypt.hash(motDePasse, 10);
           const nouveau = users.create({
             phone: c.phone,
             passwordHash,
@@ -64,6 +67,13 @@ export class SeedDemoService implements OnApplicationBootstrap {
           } as Partial<User>) as User;
           user = await users.save(nouveau);
           this.logger.log(`Compte démo créé : ${c.phone} (${c.firstName} ${c.lastName})`);
+        } else {
+          // Compte déjà présent : on réaligne le mot de passe de démo connu (utile
+          // si SEED_DEMO_PASSWORD change ou si un testeur l'a modifié). Idempotent.
+          await users.update(user.id, {
+            passwordHash,
+            mustChangePassword: false,
+          } as Partial<User>);
         }
         if (c.avecDonnees) await this.seedDonnees(user.id);
       } catch (e: unknown) {

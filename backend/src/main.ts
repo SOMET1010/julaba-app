@@ -103,9 +103,16 @@ async function bootstrap() {
   // Rate limiting specifique endpoints sensibles
   const { ThrottlerGuard } = require('@nestjs/throttler');
 
-  // CORS
+  // CORS — frontend et backend V2 sont sur des domaines DIFFÉRENTS. On autorise
+  // explicitement le frontend V2 en plus de CORS_ORIGIN, pour rester fonctionnel
+  // même si la variable d'env n'a pas été appliquée par l'hébergeur.
+  const corsOrigins = [
+    process.env.CORS_ORIGIN,
+    'https://julaba-web.onrender.com',
+    'https://julaba.online',
+  ].filter((o): o is string => Boolean(o));
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'https://julaba.online',
+    origin: corsOrigins,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,

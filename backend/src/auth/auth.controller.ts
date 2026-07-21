@@ -704,10 +704,15 @@ export class AuthController {
 
   private getTokenCookieBaseOptions() {
     const isProd = process.env.NODE_ENV === 'production';
-    // Multi-domaines (frontend et backend sur des domaines DIFFÉRENTS, ex. Render) :
+    // Multi-domaines (frontend et backend sur des domaines DIFFÉRENTS, ex. Render V2) :
     // le navigateur n'envoie le cookie cross-site que si SameSite=None + Secure.
-    // Défaut 'lax' (même domaine, inchangé). Réglable via COOKIE_SAMESITE=none.
-    const sameSite = (process.env.COOKIE_SAMESITE as 'lax' | 'none' | 'strict') || 'lax';
+    // En PRODUCTION on prend donc 'none' par défaut (le déploiement V2 est cross-domaine
+    // et sert en HTTPS) — sans quoi le cookie de session n'est jamais renvoyé et
+    // l'utilisateur paraît « jamais connecté ». En dev : 'lax' (même origine).
+    // Toujours surchargeable via COOKIE_SAMESITE.
+    const sameSite =
+      (process.env.COOKIE_SAMESITE as 'lax' | 'none' | 'strict') ||
+      (isProd ? 'none' : 'lax');
     const secure = isProd || sameSite === 'none';
     return { httpOnly: true, secure, sameSite, path: '/' };
   }
