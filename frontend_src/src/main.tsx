@@ -20,3 +20,15 @@ ReactDOM.createRoot(root).render(
   <App />
 
 );
+
+// Service worker enregistré DÈS LE DÉMARRAGE (et plus seulement après connexion) :
+// il met l'appli en cache dès la première visite en ligne, pour qu'elle puisse
+// s'ouvrir HORS-LIGNE ensuite. La souscription aux notifications push reste, elle,
+// gérée après connexion (elle réutilise ce même service worker).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((e) => {
+      console.warn('[SW] enregistrement échoué:', e?.message);
+    });
+  });
+}
