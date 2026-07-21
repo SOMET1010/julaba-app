@@ -718,61 +718,28 @@ export function useVoiceCore({
   // ── sendText ─────────────────────────────────────────────────
   const sendText = useCallback(async (text: string) => {
     if (!text.trim()) return;
-
-    // Mode hors-ligne : feedback immédiat
-    if (!navigator.onLine) {
-      enqueue(text, buildContext());
-      setState("idle");
-      setLiveTranscript("Hors-ligne - message sauvegardé !");
-      await ttsSpeak("Je suis hors-ligne, je garde ta demande et je la traite dès que le réseau revient !");
-      trackTimeout(() => setLiveTranscript(""), 3000);
-      return;
-    }
-
     interruptRef.current = false;
     setState("thinking"); setTranscript(text);
     startThinkingPhrases();
     try {
-      const controller = new AbortController();
-      abortRef.current = controller;
-      const timeout = trackTimeout(() => { setLiveTranscript('Un instant...'); controller.abort(); }, 15000);
-      const res = await fetch(`${API_URL}/voice/intent`, {
-        method: "POST", credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          context: buildContext(),
-          history: historyRef.current.slice(-10),
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      timeoutRefs.current = timeoutRefs.current.filter((t) => t !== timeout);
-      abortRef.current = null;
-      if (!res.ok) throw new Error("Erreur serveur " + res.status);
-      const data = await res.json();
-      await handleResponse(data, text);
-    } catch (e: unknown) {
-      clearThinkingTimer();
-      const isOffline = !navigator.onLine || (e instanceof Error && e.name === "AbortError");
-      if (isOffline) {
-        enqueue(text, buildContext());
-        setLiveTranscript("Hors-ligne - message sauvegardé !");
-        await ttsSpeak("Pas de réseau, je garde ta demande !");
-        trackTimeout(() => { setState("idle"); setLiveTranscript(""); }, 3000);
-      } else {
-        const msg = e instanceof Error ? e.message : "Erreur réseau";
-        setError(msg); setState("idle"); setLiveTranscript("");
-        const errMsgs = [
-          "Un souci réseau, réessaie s'il te plaît !",
-          "Je n'ai pas reçu ta voix, réessaie !",
-          "Problème de connexion, réessaie !"
-        ];
-        await ttsSpeak(errMsgs[Math.floor(Math.random() * errMsgs.length)]);
-        if (onError) onError(msg);
+      // Compréhension SUR L'APPAREIL — même moteur que la voix, aucun serveur.
+      // C'est ce chemin qu'empruntent les exemples « ce que tu peux dire » et le
+      // mot-réveil : avant, il passait par le serveur (mort) et donnait « souci
+      // technique » au tout début. Désormais, tout est compris localement.
+      const local = intentLocal(text);
+      if (local) {
+        clearThinkingTimer();
+        await handleResponse(local as Partial<VoiceProcessResponse>, text);
+        return;
       }
+      // Pas une opération financière reconnue : on guide avec un exemple concret.
+      clearThinkingTimer(); setState("idle"); setLiveTranscript("");
+      await ttsSpeak("Je n'ai pas bien compris. Dis par exemple : j'ai vendu dix tomates à deux mille francs.");
+    } catch {
+      clearThinkingTimer(); setState("idle"); setLiveTranscript("");
+      await ttsSpeak("Je n'ai pas réussi, réessaie.");
     }
-  }, [buildContext, handleResponse, onError, startThinkingPhrases, clearThinkingTimer, enqueue, trackTimeout]);
+  }, [handleResponse, startThinkingPhrases, clearThinkingTimer]);
 
   // ── startRecording ───────────────────────────────────────────
   const startRecording = useCallback(async () => {
