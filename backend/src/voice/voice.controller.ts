@@ -1,6 +1,6 @@
 import {
   HttpCode, Logger,
-  Controller, Post, UploadedFile, UseInterceptors,
+  Controller, Post, Get, UploadedFile, UseInterceptors,
   Body, UseGuards, HttpException, HttpStatus
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
@@ -133,6 +133,27 @@ export class TtsController {
     private openaiService: OpenAIService,
     private piperService: PiperService,
   ) {}
+
+  // Point de contrôle PUBLIC (à ouvrir dans un navigateur) : teste RÉELLEMENT
+  // Piper et dit quel moteur de voix est actif. Sert à vérifier le déploiement.
+  @Get("status")
+  @HttpCode(200)
+  async ttsStatus() {
+    const piperConfigured = this.piperService.available();
+    let piperWorks = false;
+    try {
+      const buf = await this.piperService.synthesize("Test.");
+      piperWorks = !!buf && buf.length > 44;
+    } catch { piperWorks = false; }
+    const cloudDisabled = process.env.TTS_DISABLE_CLOUD === "true";
+    const moteur = piperWorks ? "piper" : (cloudDisabled ? "navigateur (gratuit)" : "elevenlabs (cloud)");
+    return {
+      piperConfigured,   // les variables PIPER_BIN/PIPER_VOICE sont-elles posées ?
+      piperWorks,        // Piper synthétise-t-il vraiment de l'audio ?
+      cloudDisabled,     // le cloud payant est-il coupé ?
+      moteurActif: moteur,
+    };
+  }
 
   @Throttle({ voice: { limit: 60, ttl: 60000 } })
   @Post("openai")
