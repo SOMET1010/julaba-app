@@ -46,15 +46,22 @@ function CountUp({ value }: { value: number }) {
     const from = prev.current;
     const to = value;
     prev.current = value;
-    if (from === to) return;
+    if (from === to) { setDisplay(to); return; }
     const start = performance.now();
+    let rafId = 0;
     const tick = (now: number) => {
       const p = Math.min((now - start) / 1000, 1);
       const e = 1 - Math.pow(1 - p, 3);
       setDisplay(Math.round(from + (to - from) * e));
-      if (p < 1) requestAnimationFrame(tick);
+      if (p < 1) rafId = requestAnimationFrame(tick);
+      else setDisplay(to); // fige sur la valeur exacte à la fin
     };
-    requestAnimationFrame(tick);
+    rafId = requestAnimationFrame(tick);
+    // IMPORTANT : annuler l'animation en cours si `value` change à nouveau (les
+    // données chargent en 2 temps : ventes puis session). Sans ça, plusieurs
+    // boucles se chevauchaient et le montant affiché restait bloqué sur une
+    // frame intermédiaire ALÉATOIRE (montant faux et différent à chaque fois).
+    return () => cancelAnimationFrame(rafId);
   }, [value]);
   return <>{display.toLocaleString('fr-FR')}</>;
 }

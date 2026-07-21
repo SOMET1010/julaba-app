@@ -99,6 +99,33 @@ export class CaisseRestController {
     return e?.code === '23505' || /duplicate key|unique/i.test(e?.message || '');
   }
 
+  // Journée toujours ouverte : si aucune journée n'est ouverte aujourd'hui, on
+  // l'ouvre automatiquement (choix produit : la vendeuse n'est jamais bloquée,
+  // l'argent reste toujours rattaché à une journée). Idempotent via l'index
+  // unique (marchand_id, date).
+  private async ensureSessionOuverte(marchandId: string) {
+    const today = new Date().toISOString().split('T')[0];
+    await this.dataSource.query(
+      `INSERT INTO caisse_sessions (marchand_id, date, fond_initial, ouvert, heure_ouverture)
+       VALUES ($1, $2, 0, true, NOW())
+       ON CONFLICT (marchand_id, date) DO UPDATE SET ouvert = true, updated_at = NOW()`,
+      [marchandId, today],
+    ).catch((e: any) => this.logger?.warn(`[CAISSE] ensureSession: ${e.message}`));
+  }
+
+  // Décrémente le stock des produits vendus (match par nom, insensible à la
+  // casse). Sans effet si le nom ne correspond à aucun produit (vente libre/voix).
+  private async decrementerStock(marchandId: string, lignes: Array<{ nom: string; qte: number }>) {
+    for (const l of lignes) {
+      if (!l.nom || !(l.qte > 0)) continue;
+      await this.dataSource.query(
+        `UPDATE produits SET stock = GREATEST(0, COALESCE(stock,0) - $1), updated_at = NOW()
+         WHERE marchand_id = $2::text AND lower(nom) = lower($3) AND actif = true`,
+        [l.qte, marchandId, l.nom],
+      ).catch((e: any) => this.logger?.warn(`[CAISSE] decrementStock: ${e.message}`));
+    }
+  }
+
   @Post('vente')
   async enregistrerVente(@Body() body: any, @CurrentUser() user: User) {
     // Idempotence (rejeu offline) : ne jamais compter deux fois la même vente.
@@ -126,6 +153,9 @@ export class CaisseRestController {
     const prixAchat = parseFloat(body.prix_achat) || 0;
     const marge = prixAchat > 0 ? prixVente - prixAchat : 0;
 
+    // Journée toujours ouverte (vente jamais bloquée, argent rattaché au jour).
+    await this.ensureSessionOuverte(user.id);
+
     let result;
     try {
       result = await this.repo.save(this.repo.create({
@@ -144,6 +174,11 @@ export class CaisseRestController {
       }
       throw e;
     }
+    // Décrémenter le stock des produits vendus.
+    const lignesVendues = lignes.length > 0
+      ? lignes.map((p: any) => ({ nom: p.nom || p.name || '', qte: Number(p.quantite) || 1 }))
+      : (nomProduit ? [{ nom: nomProduit, qte: Number(qteTotale) || 1 }] : []);
+    await this.decrementerStock(user.id, lignesVendues);
     this.eventsGateway?.emitTransactionCreated({ ...result, type: 'vente', userId: user.id });
     // Vérifier stock après vente (event-driven)
     this.alertesService?.checkStockApreVente(user.id, nomProduit).catch((e: any) => this.logger?.warn(`[CAISSE] checkStock: ${e.message}`));
@@ -158,6 +193,8 @@ export class CaisseRestController {
     if (deja) return { transaction: deja };
 
     if (!body.montant || parseFloat(body.montant) <= 0) throw new BadRequestException('Le montant doit être positif');
+    // Journée toujours ouverte (dépense rattachée au jour, comme la vente).
+    await this.ensureSessionOuverte(user.id);
     let result;
     try {
       result = await this.repo.save(this.repo.create({

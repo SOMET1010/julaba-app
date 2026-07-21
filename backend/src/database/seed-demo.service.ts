@@ -100,6 +100,27 @@ export class SeedDemoService implements OnApplicationBootstrap {
   // Jeu de données d'exemple pour un marchand : produits + journée ouverte +
   // quelques opérations. N'insère rien s'il y a déjà des produits (idempotent).
   private async seedDonnees(marchandId: string): Promise<void> {
+    // Garantit que les tables existent même si ce service tourne AVANT DbInit
+    // (l'ordre des hooks n'est pas garanti) — sinon le jeu de démo était sauté
+    // et le compte restait vide. IF NOT EXISTS = no-op si déjà là.
+    await this.dataSource.query(`
+      CREATE TABLE IF NOT EXISTS produits (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(), marchand_id text NOT NULL,
+        nom text NOT NULL, prix numeric DEFAULT 0, prix_achat numeric DEFAULT 0,
+        categorie text, stock numeric DEFAULT 0, unite text, image text,
+        actif boolean DEFAULT true, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
+      );`);
+    await this.dataSource.query(`
+      CREATE TABLE IF NOT EXISTS caisse_sessions (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(), marchand_id text NOT NULL, date date NOT NULL,
+        fond_initial numeric DEFAULT 0, fond_final numeric DEFAULT 0, ouvert boolean DEFAULT true,
+        heure_ouverture timestamptz, heure_fermeture timestamptz, notes text,
+        created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
+      );`);
+    await this.dataSource.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS ux_caisse_sessions_marchand_date ON caisse_sessions (marchand_id, date);`,
+    );
+
     const dejaDesProduits = await this.dataSource.query(
       'SELECT 1 FROM produits WHERE marchand_id = $1 LIMIT 1',
       [marchandId],
