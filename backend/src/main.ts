@@ -7,8 +7,28 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+// Sur une base VIERGE en mode synchronize, TypeORM crée des colonnes uuid avec
+// DEFAULT uuid_generate_v4() : l'extension "uuid-ossp" doit exister AVANT. On la
+// crée ici, avant que Nest (et TypeORM) démarrent. Idempotent, sans effet si déjà là.
+async function ensureUuidExtension() {
+  if (process.env.DB_SYNCHRONIZE !== 'true') return;
+  const { Client } = require('pg');
+  const client = new Client({
+    host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT || 5432),
+    user: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  });
+  await client.connect();
+  await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+  await client.end();
+}
+
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  await ensureUuidExtension();
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
     bodyParser: false,  // Désactivé — on gère manuellement ci-dessous
