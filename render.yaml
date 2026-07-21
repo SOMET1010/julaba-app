@@ -29,12 +29,23 @@ services:
     name: julaba-api
     rootDir: backend
     plan: free
-    buildCommand: npm ci --include=dev && npm run build
+    # setup-piper.sh est DÉFENSIF (sort en 0 même s'il échoue) : le build ne peut
+    # pas casser à cause de Piper ; sans Piper, l'appli parle via le navigateur.
+    buildCommand: bash scripts/setup-piper.sh; npm ci --include=dev && npm run build
     startCommand: npm run start:prod
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
         value: production
+      # ── Voix Piper (TTS souverain, gratuit à l'usage) ──
+      # Chemins où setup-piper.sh installe le binaire + la voix (rootDir = backend).
+      - key: PIPER_BIN
+        value: /opt/render/project/src/backend/.piper/piper/piper
+      - key: PIPER_VOICE
+        value: /opt/render/project/src/backend/.piper/voice.onnx
+      # Coupe le TTS cloud payant : Piper (ou la voix navigateur) suffit.
+      - key: TTS_DISABLE_CLOUD
+        value: "true"
       # Base de données (câblée automatiquement depuis julaba-db)
       - key: DB_HOST
         fromDatabase: { name: julaba-db, property: host }
