@@ -8,7 +8,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { API_URL } from "../utils/api";
 // Offline-first : STT sur l'appareil + compréhension locale (sans réseau ni LLM).
-import { transcribeWav, offlineModelReady, offlineModelInstalled } from "../voice-offline/offlineStt";
+import { transcribeWav, offlineModelReady, ensureOfflineModel } from "../voice-offline/offlineStt";
 import { intentLocal } from "../voice-offline/localIntent";
 import { preloadEarlyAudios } from "../services/earlyAudioCache";
 import {
@@ -675,99 +675,45 @@ export function useVoiceCore({
       }
     } catch { setState("idle"); return; }
 
-    // ── OFFLINE-FIRST : transcription sur l'appareil ────────────────────────
-    // Sans réseau, OU dès que le modèle on-device est installé (économie serveur),
-    // on transcrit localement et on comprend la vente sans LLM. Le résultat repart
-    // dans le MÊME flux (confirmation, caisse) via handleResponse.
-    // Reconnaissance SUR L'APPAREIL (souverain, zéro cloud) dès que le modèle est
-    // prêt OU qu'on est hors-ligne. IMPORTANT : quand le modèle est prêt, on NE
-    // retombe JAMAIS sur le serveur cloud (volontairement désactivé) — sinon toute
-    // phrase non comprise finissait en « souci technique ». On montre aussi ce que
-    // l'appli a entendu, pour voir si c'est la transcription ou la compréhension.
-    // On transcrit SUR L'APPAREIL dès qu'on est hors-ligne, OU que le modèle est
-    // prêt, OU qu'il a déjà été installé (même s'il n'est pas encore ré-échauffé
-    // après un reload — transcribeWav le ré-active alors depuis le cache). Le
-    // chemin cloud est mort (souverain, zéro clé) : on ne DOIT jamais y retomber
-    // pour une utilisatrice qui a installé le hors-ligne, sinon → « souci technique ».
-    const useLocal = !navigator.onLine || offlineModelReady() || offlineModelInstalled();
-    if (useLocal) {
-      setState("thinking");
-      startThinkingPhrases();
-      try {
-        const texte = await transcribeWav(audioBlob);
-        if (texte) setTranscript(texte); // affiche « tu as dit … »
-        const local = texte ? intentLocal(texte) : null;
-        if (local) {
-          clearThinkingTimer();
-          await handleResponse(local as Partial<VoiceProcessResponse>, texte);
-          return;
-        }
-        // Entendu mais pas compris (ou rien entendu) : on RESTE en local (pas de
-        // cloud), on guide avec un exemple concret.
-        clearThinkingTimer(); setState("idle"); setLiveTranscript("");
-        await ttsSpeak(texte
-          ? "Je n'ai pas bien compris. Dis par exemple : j'ai vendu dix tomates à deux mille francs."
-          : "Je n'ai rien entendu, réessaie en parlant bien fort.");
-        return;
-      } catch {
-        clearThinkingTimer(); setState("idle"); setLiveTranscript("");
-        await ttsSpeak("Je n'ai pas réussi à t'écouter, réessaie.");
-        return;
-      }
-    }
-
+    // ── RECONNAISSANCE 100 % SUR L'APPAREIL (souverain, zéro cloud) ─────────
+    // On transcrit TOUJOURS sur le téléphone et on comprend la vente sans LLM.
+    // Le chemin serveur pour la voix est ABANDONNÉ : il n'a pas de clé (par choix
+    // — zéro coût, zéro dépendance cloud), donc il ne faisait que produire des
+    // « souci technique ». Désormais : soit on comprend, soit on guide gentiment,
+    // jamais d'erreur réseau.
+    // À la toute première utilisation (ou après vidage du cache), le modèle
+    // (~40 Mo) se télécharge tout seul une fois, puis reste en cache.
     setState("thinking");
     startThinkingPhrases();
-
-    const fd = new FormData();
-    fd.append("audio", audioBlob, audioFilename);
-    fd.append("context", JSON.stringify(buildContext()));
-    fd.append("history", JSON.stringify(historyRef.current.slice(-10)));
-
-    let data: Partial<VoiceProcessResponse> | null = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      if (interruptRef.current) return;
-      let timeout: ReturnType<typeof setTimeout> | null = null;
-      try {
-        const controller = new AbortController();
-        abortRef.current = controller;
-        timeout = trackTimeout(() => { setLiveTranscript('Un instant...'); controller.abort(); }, 15000);
-        const res = await fetch(`${API_URL}/voice/process`, {
-          method: "POST", credentials: "include",
-          body: fd, signal: controller.signal,
-        });
-        abortRef.current = null;
-        if (!res.ok) throw new Error("Erreur serveur " + res.status);
-        data = await res.json();
-        break;
-      } catch (e: unknown) {
-        if (e instanceof Error && e.name === "AbortError" && attempt === 0) {
-          setLiveTranscript("Réessai...");
-          continue;
-        }
-        clearThinkingTimer();
-        const msg = e instanceof Error ? e.message : "Erreur réseau";
-        setError(msg); setState("idle"); setLiveTranscript("");
-        const errMsgs = [
-          "Un souci réseau, réessaie s'il te plaît !",
-          "Je n'ai pas reçu ta voix, réessaie !",
-          "Problème de connexion, réessaie !"
-        ];
-        await ttsSpeak(errMsgs[Math.floor(Math.random() * errMsgs.length)]);
-        if (onError) onError(msg);
-        break; // erreur non-abort : ne pas relancer la requete (evitait un double message)
-      } finally {
-        if (timeout) {
-          clearTimeout(timeout);
-          timeoutRefs.current = timeoutRefs.current.filter((t) => t !== timeout);
-        }
+    try {
+      if (!offlineModelReady()) {
+        // Pas encore prêt : première fois, ou après un rechargement de page.
+        setLiveTranscript("Je prépare ta voix…");
+        void ttsSpeak("Je prépare ta voix, un petit instant.");
+        await ensureOfflineModel(); // télécharge si besoin, sinon ré-active depuis le cache
       }
+      const texte = await transcribeWav(audioBlob);
+      if (texte) setTranscript(texte); // affiche « tu as dit … »
+      const local = texte ? intentLocal(texte) : null;
+      if (local) {
+        clearThinkingTimer();
+        await handleResponse(local as Partial<VoiceProcessResponse>, texte);
+        return;
+      }
+      // Entendu mais pas compris (ou rien entendu) : on guide avec un exemple.
+      clearThinkingTimer(); setState("idle"); setLiveTranscript("");
+      await ttsSpeak(texte
+        ? "Je n'ai pas bien compris. Dis par exemple : j'ai vendu dix tomates à deux mille francs."
+        : "Je n'ai rien entendu, réessaie en parlant bien fort.");
+      return;
+    } catch {
+      clearThinkingTimer(); setState("idle"); setLiveTranscript("");
+      await ttsSpeak(navigator.onLine
+        ? "Je n'ai pas réussi à préparer ta voix. Vérifie le réseau et réessaie."
+        : "Je n'ai pas réussi à t'écouter, réessaie.");
+      return;
     }
-    if (!data) { setState("error"); return; }
-    const txt = (data as any).transcript || (data as any).transcription || "";
-    if (txt) { clearThinkingTimer(); setTranscript(txt); }
-    await handleResponse(data, txt);
-  }, [buildContext, handleResponse, onError, stopSilenceDetection, startThinkingPhrases, clearThinkingTimer, trackTimeout]);
+  }, [handleResponse, stopSilenceDetection, startThinkingPhrases, clearThinkingTimer]);
 
   // ── sendText ─────────────────────────────────────────────────
   const sendText = useCallback(async (text: string) => {
