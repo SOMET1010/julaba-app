@@ -6,6 +6,14 @@ import * as caisseApi from '../../imports/caisse-api';
 import { getImageByNom } from '../data/catalogue-produits';
 import { NOT_AUTHENTICATED } from '../../imports/api-client';
 import { API_URL } from '../utils/api';
+// Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.
+import { enfilerOperation, synchroniser, type CaisseEndpoint } from '../voice-offline/offlineCaisse';
+
+// Rejoue une opération en attente vers la bonne route caisse (avec idempotency_key).
+async function posterOperation(endpoint: CaisseEndpoint, payload: unknown): Promise<void> {
+  if (endpoint === '/caisse/vente') await caisseApi.enregistrerVente(payload as caisseApi.EnregistrerVenteData);
+  else await caisseApi.enregistrerDepense(payload as caisseApi.EnregistrerDepenseData);
+}
 
 export interface CaisseTransaction {
   id: string;
@@ -137,6 +145,19 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     }
   }, [appUser?.id]);
 
+  // Synchro des ventes/dépenses faites hors-ligne : au retour du réseau + au montage.
+  useEffect(() => {
+    const sync = async () => {
+      try {
+        const { ok } = await synchroniser(posterOperation);
+        if (ok > 0) await loadTransactions();
+      } catch { /* on retentera au prochain 'online' */ }
+    };
+    sync(); // rattrape une file laissée par une session hors-ligne précédente
+    window.addEventListener('online', sync);
+    return () => window.removeEventListener('online', sync);
+  }, []);
+
   // ── Stats calculees ────────────────────────────────────────
   const getToday = () => new Date().toISOString().split('T')[0];
 
@@ -161,44 +182,68 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     notes?: string
   ) => {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de vente invalide');
+    // Calculer prix_achat depuis les produits du panier
+    const lignes = Array.isArray(produits) ? produits : [];
+    const prixAchatTotal = lignes.reduce((sum: number, p: any) => {
+      const qte = Number(p.quantite || p.quantity || 1);
+      const pa = Number(p.prix_achat || p.prixAchat || p.purchasePrice || 0);
+      return sum + (pa * qte);
+    }, 0);
+    const payload: caisseApi.EnregistrerVenteData = {
+      montant,
+      produits,
+      details: produits,
+      mode_paiement: modePaiement,
+      notes,
+      prix_achat: prixAchatTotal > 0 ? prixAchatTotal : undefined,
+      prix_vente: montant,
+    };
+    // Hors-ligne : on met la vente dans la file durable (rejeu à la reconnexion).
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      await enfilerOperation('/caisse/vente', payload);
+      eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
+      return;
+    }
     try {
-      // Calculer prix_achat depuis les produits du panier
-      const lignes = Array.isArray(produits) ? produits : [];
-      const prixAchatTotal = lignes.reduce((sum: number, p: any) => {
-        const qte = Number(p.quantite || p.quantity || 1);
-        const pa = Number(p.prix_achat || p.prixAchat || p.purchasePrice || 0);
-        return sum + (pa * qte);
-      }, 0);
-      await caisseApi.enregistrerVente({
-        montant,
-        produits,
-        details: produits,
-        mode_paiement: modePaiement,
-        notes,
-        prix_achat: prixAchatTotal > 0 ? prixAchatTotal : undefined,
-        prix_vente: montant,
-      });
+      await caisseApi.enregistrerVente(payload);
       await loadTransactions();
       // Notifier AppContext de recharger ses transactions
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
     } catch (error: any) {
-      if (error?.message === NOT_AUTHENTICATED) return;
+      // Ne JAMAIS perdre une vente : token expiré OU panne réseau -> on l'enfile
+      // (rejeu à la reconnexion / ré-authentification). Avant, NOT_AUTHENTICATED
+      // était avalé silencieusement alors que l'UI affichait un succès.
+      if (error?.message === NOT_AUTHENTICATED ||
+          (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+        await enfilerOperation('/caisse/vente', payload);
+        eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
+        return;
+      }
       throw error;
     }
   };
 
   const enregistrerDepense = async (montant: number, notes?: string) => {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de dépense invalide');
+    const payload: caisseApi.EnregistrerDepenseData = { montant, notes };
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      await enfilerOperation('/caisse/depense', payload);
+      eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
+      return;
+    }
     try {
-      await caisseApi.enregistrerDepense({
-        montant,
-        notes,
-      });
+      await caisseApi.enregistrerDepense(payload);
       await loadTransactions();
       // Notifier AppContext de recharger ses transactions
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
     } catch (error: any) {
-      if (error?.message === NOT_AUTHENTICATED) return;
+      // Ne JAMAIS perdre une dépense : token expiré OU panne réseau -> on l'enfile.
+      if (error?.message === NOT_AUTHENTICATED ||
+          (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+        await enfilerOperation('/caisse/depense', payload);
+        eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
+        return;
+      }
       throw error;
     }
   };

@@ -18,6 +18,7 @@ import { normalizeRole } from '../types/constants';
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { speakChunked, stopChunkedSpeaking } from '../services/elevenlabs';
 import { API_URL } from '../utils/api';
+import { enfilerOperation } from '../voice-offline/offlineCaisse';
 import { clearAuthClientState } from '../utils/clearAuthClientState';
 import { toProperCase } from '../utils/stringUtils';
 import { useUser } from './UserContext';
@@ -678,26 +679,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Sync avec API si connecté
     if (accessToken && user) {
+      const isDepense = transaction.type === 'depense';
+      const endpoint = isDepense ? '/caisse/depense' : '/caisse/vente';
+      const payload = isDepense
+        ? {
+            montant: transaction.price * transaction.quantity,
+            description: transaction.productName || '',
+            categorie: (transaction as any).category || 'autre',
+            mode_paiement: transaction.paymentMethod || 'especes',
+          }
+        : {
+            montant: (transaction as any).montant || transaction.price * transaction.quantity,
+            produit: transaction.productName,
+            produits: (transaction as any).produits || [{ nom: transaction.productName, quantite: transaction.quantity }],
+            quantite: transaction.quantity,
+            mode_paiement: transaction.paymentMethod,
+            source: (transaction as any).source || 'kassa',
+          };
       try {
-        const isDepense = transaction.type === 'depense';
-        const endpoint = isDepense ? '/caisse/depense' : '/caisse/vente';
-        const payload = isDepense
-          ? {
-              montant: transaction.price * transaction.quantity,
-              description: transaction.productName || '',
-              categorie: (transaction as any).category || 'autre',
-              mode_paiement: transaction.paymentMethod || 'especes',
-            }
-          : {
-              montant: (transaction as any).montant || transaction.price * transaction.quantity,
-              produit: transaction.productName,
-              produits: (transaction as any).produits || [{ nom: transaction.productName, quantite: transaction.quantity }],
-              quantite: transaction.quantity,
-              mode_paiement: transaction.paymentMethod,
-              source: (transaction as any).source || 'kassa',
-            };
-
-        await fetch(
+        const res = await fetch(
           `${API_URL}${endpoint}`,
           {
             method: 'POST',
@@ -706,6 +706,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             body: JSON.stringify(payload),
           }
         );
+        // #6 : un POST en erreur (4xx/5xx) ne "réussissait" plus en silence.
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         // Marquer comme synchronisé
         setTransactions((prev) =>
@@ -713,7 +715,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
         eventBus.emit(EVENTS.CAISSE_VENTE, { ...newTransaction, synced: true }, { idempotencyKey: newTransaction.id + '-synced', priority: 'high' });
       } catch (error: any) {
-        console.warn('[AppContext] addTransaction sync failed:', error?.message);
+        // #6 : ne plus perdre la transaction -> file durable, rejeu à la reconnexion.
+        console.warn('[AppContext] addTransaction sync failed, mise en file:', error?.message);
+        try { await enfilerOperation(endpoint, payload); } catch (e) { void e; }
       }
     }
   };
