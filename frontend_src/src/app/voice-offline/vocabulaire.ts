@@ -127,6 +127,10 @@ function buildGrammarWords(): string[] {
     'je', 'j', 'ai', 'de', 'du', 'des', 'le', 'la', 'les', 'à', 'a', 'pour', 'd',
     // Unités commerciales
     'franc', 'francs', 'tas', 'sac', 'sacs', 'kilo', 'kilos',
+    // Réponses de CONFIRMATION (« c'est bien ça ? » → oui / non). Sans ces mots
+    // dans la grammaire, Vosk ne pouvait PAS transcrire la réponse de la vendeuse.
+    'oui', 'ouais', 'voilà', 'voila', 'exact', 'accord', 'ok', 'okay', 'bon', 'ça', 'ca',
+    'non', 'pas', 'faux', 'annule', 'annuler', 'efface', 'recommence',
   ]);
 
   // 3. Toutes les flexions verbales d'intention : vendu/vendus/vendue/vendues/vends,
