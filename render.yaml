@@ -68,8 +68,10 @@ services:
       # supprimer) sur un vrai serveur de production.
       - key: SEED_DEMO
         value: "true"
+      # Code marchand = pavé à 4 chiffres -> le mot de passe de démo DOIT être
+      # un code numérique à 4 chiffres.
       - key: SEED_DEMO_PASSWORD
-        value: julaba2026
+        value: "1234"
       # Optionnel (voix cloud) — le cœur marche sans
       - key: OPENAI_API_KEY
         sync: false
