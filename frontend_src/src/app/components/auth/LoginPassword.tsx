@@ -84,6 +84,24 @@ export function LoginPassword() {
     phoneRef.current = phone;
   }, [phone]);
 
+  // Voix pour la connexion (écran AVANT connexion → on utilise la voix intégrée
+  // du navigateur). Une vendeuse qui ne lit pas peut ainsi entendre les consignes
+  // et les erreurs au lieu de devoir lire un petit texte.
+  const parle = (texte: string) => {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth || !texte) return;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(texte);
+      u.lang = 'fr-FR';
+      u.rate = 0.95;
+      synth.speak(u);
+    } catch { /* ignore */ }
+  };
+  // Prononce chaque message d'erreur dès qu'il apparaît (après une action de
+  // l'utilisatrice, donc la lecture audio est autorisée par le navigateur).
+  useEffect(() => { if (error) parle(error); }, [error]);
+
   const scheduleTransitionToPasswordAfterCheck = () => {
     if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
     phoneToPasswordTimeout.current = setTimeout(async () => {
@@ -653,7 +671,11 @@ export function LoginPassword() {
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
                 </motion.button>
               </div>
-              <p style={{ fontSize: 11, color: 'rgba(150,80,30,0.4)', textAlign: 'center', paddingBottom: 20 }}>Entre ton numéro de téléphone</p>
+              <p onClick={() => parle('Entre ton numéro de téléphone')} title="Touche pour écouter"
+                 style={{ fontSize: 11, color: 'rgba(150,80,30,0.55)', textAlign: 'center', paddingBottom: 20, cursor: 'pointer', display:'inline-flex', alignItems:'center', gap:5, justifyContent:'center' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+                Entre ton numéro de téléphone
+              </p>
             </div>
             </motion.div>
           ) : (
@@ -814,8 +836,12 @@ export function LoginPassword() {
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
                 </motion.button>
               </div>
-              <p style={{ fontSize: 11, color: 'rgba(150,80,30,0.4)', textAlign: 'center', paddingBottom: 14, position: 'relative', zIndex: 1 }}>
-                {error ? '' : 'Entre ton code secret'}
+              <p onClick={() => !error && parle('Entre ton code secret à 4 chiffres')} title="Touche pour écouter"
+                 style={{ fontSize: 11, color: 'rgba(150,80,30,0.55)', textAlign: 'center', paddingBottom: 14, position: 'relative', zIndex: 1, cursor: 'pointer', display:'inline-flex', alignItems:'center', gap:5, justifyContent:'center' }}>
+                {error ? '' : (<>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+                  Entre ton code secret
+                </>)}
               </p>
             </div>
             </motion.div>

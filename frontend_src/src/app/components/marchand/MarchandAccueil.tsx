@@ -265,7 +265,10 @@ function MarchandAccueilInner({ onSwitchToAdvanced }: { onSwitchToAdvanced: () =
 
             {/* Ligne 2 : montant + FCFA + œil */}
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-              <span style={{ fontSize:38, fontWeight:800, color:'#fff', letterSpacing:'-2px', lineHeight:1 }}>
+              <span
+                onClick={() => { if (sessionOpen && soldeVisible) speak(`Ta caisse : ${Math.round(caisse).toLocaleString('fr-FR')} francs`); }}
+                title="Touche pour écouter"
+                style={{ fontSize:38, fontWeight:800, color:'#fff', letterSpacing:'-2px', lineHeight:1, cursor:'pointer' }}>
                 {soldeVisible && sessionOpen ? <CountUp value={caisse} /> : '●●●●●'}
               </span>
               <span style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.6)', alignSelf:'flex-end', marginBottom:4 }}>FCFA</span>
@@ -371,6 +374,10 @@ function MarchandAccueilInner({ onSwitchToAdvanced }: { onSwitchToAdvanced: () =
                 <motion.div style={{ position:'absolute', top:-15, left:-15, width:80, height:80, borderRadius:'50%', background:'radial-gradient(circle,rgba(255,200,100,0.3),transparent 70%)', pointerEvents:'none' }}
                   animate={{ scale:[1,1.2,1], opacity:[0.15,0.35,0.15] }}
                   transition={{ duration:2.8, repeat:Infinity, ease:'easeInOut' }} />
+                {/* Badge MICRO — distingue clairement « Parler » de « Saisir » sans lire */}
+                <div style={{ position:'absolute', top:10, right:10, width:34, height:34, borderRadius:'50%', background:'white', display:'flex', alignItems:'center', justifyContent:'center', zIndex:2, boxShadow:'0 2px 8px rgba(0,0,0,0.25)' }}>
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg>
+                </div>
                 <motion.img src={TATA_BLEU} alt="Tata Lou"
                   style={{ width:96, height:96, objectFit:'contain', filter:'drop-shadow(0 4px 12px rgba(0,0,0,0.3))', position:'relative', zIndex:1 }}
                   animate={{ y:[0,-4,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut' }} />
@@ -389,6 +396,10 @@ function MarchandAccueilInner({ onSwitchToAdvanced }: { onSwitchToAdvanced: () =
                 <motion.div style={{ position:'absolute', top:-15, right:-10, width:75, height:75, borderRadius:'50%', background:`radial-gradient(circle,rgba(175,91,35,0.2),transparent 70%)`, pointerEvents:'none' }}
                   animate={{ scale:[1,1.25,1], opacity:[0.12,0.3,0.12] }}
                   transition={{ duration:3.2, repeat:Infinity, ease:'easeInOut', delay:0.8 }} />
+                {/* Badge CLAVIER (3×3) — distingue clairement « Saisir » de « Parler » */}
+                <div style={{ position:'absolute', top:10, right:10, width:34, height:34, borderRadius:'50%', background:P, display:'flex', alignItems:'center', justifyContent:'center', zIndex:2, boxShadow:'0 2px 8px rgba(175,91,35,0.3)' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><circle cx="6" cy="6" r="1.7"/><circle cx="12" cy="6" r="1.7"/><circle cx="18" cy="6" r="1.7"/><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/><circle cx="6" cy="18" r="1.7"/><circle cx="12" cy="18" r="1.7"/><circle cx="18" cy="18" r="1.7"/></svg>
+                </div>
                 <motion.img src={TATA_ORANGE} alt="Tata Lou"
                   style={{ width:96, height:96, objectFit:'contain', filter:`drop-shadow(0 4px 12px rgba(175,91,35,0.25))`, position:'relative', zIndex:1 }}
                   animate={{ y:[0,-4,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut', delay:0.4 }} />
@@ -457,13 +468,13 @@ function MarchandAccueilInner({ onSwitchToAdvanced }: { onSwitchToAdvanced: () =
                 </motion.button>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowStatsVentesModal(true)}
+                <motion.button whileTap={{ scale:0.97 }} onClick={() => { speak(`Ventes : ${Math.round(ventes).toLocaleString('fr-FR')} francs`); setShowStatsVentesModal(true); }}
                   style={{ background:'#f0faf4', border:'1.5px solid #a7f3c4', borderRadius:16, padding:'16px 12px', display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer', fontFamily:'inherit' }}>
                   <span style={{ fontSize:11, fontWeight:800, color:'#16a34a', textTransform:'uppercase', letterSpacing:'0.1em' }}>Ventes</span>
                   <span style={{ fontSize:36, fontWeight:800, color:'#16a34a', lineHeight:1 }}><CountUp value={ventes} /></span>
                   <span style={{ fontSize:11, fontWeight:600, color:'#86efac' }}>FCFA</span>
                 </motion.button>
-                <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowStatsMargeModal(true)}
+                <motion.button whileTap={{ scale:0.97 }} onClick={() => { speak(`Dépenses : ${Math.round(cahier).toLocaleString('fr-FR')} francs`); setShowStatsMargeModal(true); }}
                   style={{ background:'#fef2f2', border:'1.5px solid #fca5a5', borderRadius:16, padding:'16px 12px', display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer', fontFamily:'inherit' }}>
                   <span style={{ fontSize:11, fontWeight:800, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.1em' }}>Dépenses</span>
                   <span style={{ fontSize:36, fontWeight:800, color:'#dc2626', lineHeight:1 }}><CountUp value={cahier} /></span>

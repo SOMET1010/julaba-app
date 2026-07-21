@@ -70,9 +70,15 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   const isLastSlide = currentSlide === slides.length - 1;
   const slide = slides[currentSlide];
 
-  const handleNext = () => {
-    if (isSpeaking) stopSpeaking();
+  // Coupe toute lecture en cours (voix du navigateur + TTS serveur).
+  const stopLocal = useCallback(() => {
+    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+    stopSpeaking();
     setIsSpeaking(false);
+  }, []);
+
+  const handleNext = () => {
+    stopLocal();
     if (isLastSlide) {
       onComplete?.();
     } else {
@@ -82,8 +88,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   };
 
   const handlePrevious = () => {
-    if (isSpeaking) stopSpeaking();
-    setIsSpeaking(false);
+    stopLocal();
     if (currentSlide > 0) {
       setDirection(-1);
       setCurrentSlide((prev) => prev - 1);
@@ -92,19 +97,34 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
 
   const handleDot = (index: number) => {
     if (index === currentSlide) return;
-    if (isSpeaking) stopSpeaking();
-    setIsSpeaking(false);
+    stopLocal();
     setDirection(index > currentSlide ? 1 : -1);
     setCurrentSlide(index);
   };
 
-  /* -- Ecouter avec Tata Lou ---------------------------------------- */
+  /* -- Ecouter avec Tata Lou : LIT vraiment la diapo à voix haute ------------
+   * Avant, ce bouton ne faisait qu'ARRÊTER la voix (il ne lisait jamais) : le
+   * tutoriel était donc muet pour une non-lectrice. On utilise la voix intégrée
+   * du navigateur (fonctionne avant connexion, sans réseau). */
   const handleListen = useCallback(() => {
-    if (isSpeaking) {
-      stopSpeaking();
+    const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
+    if (!synth) return;
+    if (isSpeaking) { stopLocal(); return; }
+    const texte = `${slide.title}. ${slide.description}`;
+    try {
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(texte);
+      u.lang = 'fr-FR';
+      u.rate = 0.95;
+      u.pitch = 1.05;
+      u.onend = () => setIsSpeaking(false);
+      u.onerror = () => setIsSpeaking(false);
+      setIsSpeaking(true);
+      synth.speak(u);
+    } catch {
       setIsSpeaking(false);
     }
-  }, [isSpeaking]);
+  }, [isSpeaking, slide, stopLocal]);
 
   /* -- Variants d'animation ----------------------------------------------- */
   const bgVariants = {
