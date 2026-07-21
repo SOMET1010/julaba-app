@@ -48,8 +48,13 @@ services:
         fromDatabase: { name: julaba-db, property: database }
       - key: DB_SSL
         value: "true"
+      # Base VIERGE : on construit le schéma depuis les entités (l'historique de
+      # migrations est incomplet et échoue sur une base neuve). idempotency_key
+      # est créée directement depuis l'entité. On désactive donc les migrations.
+      - key: DB_SYNCHRONIZE
+        value: "true"
       - key: DB_MIGRATIONS_RUN
-        value: "true"        # applique la migration idempotency_key au démarrage
+        value: "false"
       # Cookies cross-domaine (frontend et backend sur des domaines différents)
       - key: COOKIE_SAMESITE
         value: none
