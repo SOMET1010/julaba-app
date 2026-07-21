@@ -7,11 +7,13 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
-// Sur une base VIERGE en mode synchronize, TypeORM crée des colonnes uuid avec
-// DEFAULT uuid_generate_v4() : l'extension "uuid-ossp" doit exister AVANT. On la
-// crée ici, avant que Nest (et TypeORM) démarrent. Idempotent, sans effet si déjà là.
-async function ensureUuidExtension() {
-  if (process.env.DB_SYNCHRONIZE !== 'true') return;
+// Préparation automatique de la base — AUCUN réglage manuel requis.
+// Si la base est VIERGE (pas de table "users"), on construit le schéma depuis les
+// entités (synchronize) car l'historique de migrations est incomplet et échoue sur
+// une base neuve. On crée aussi l'extension uuid-ossp (requise par les colonnes
+// uuid). Sur une base déjà peuplée : on ne touche à rien.
+async function prepareDatabase(logger: Logger) {
+  if (!process.env.DB_HOST) return; // pas de base distante configurée
   const { Client } = require('pg');
   const client = new Client({
     host: process.env.DB_HOST,
@@ -21,14 +23,27 @@ async function ensureUuidExtension() {
     database: process.env.DB_NAME,
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   });
-  await client.connect();
-  await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-  await client.end();
+  try {
+    await client.connect();
+    const res = await client.query("SELECT to_regclass('public.users') AS t");
+    const vierge = !res.rows[0].t;
+    if (vierge) {
+      await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+      process.env.DB_SYNCHRONIZE = 'true';   // -> construit le schéma au démarrage
+      process.env.DB_MIGRATIONS_RUN = 'false';
+      logger.log('[DB] Base vierge détectée -> construction automatique du schéma.');
+    }
+  } catch (e: unknown) {
+    // Non bloquant : si l'inspection échoue, on laisse TypeORM tenter sa connexion.
+    logger.warn('[DB] Inspection base ignorée: ' + (e instanceof Error ? e.message : String(e)));
+  } finally {
+    try { await client.end(); } catch { /* ignore */ }
+  }
 }
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  await ensureUuidExtension();
+  await prepareDatabase(logger);
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
     bodyParser: false,  // Désactivé — on gère manuellement ci-dessous
