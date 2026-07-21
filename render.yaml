@@ -60,9 +60,9 @@ services:
         generateValue: true
       - key: REFRESH_TOKEN_SALT
         generateValue: true
-      # À saisir après le 1er déploiement : l'URL du frontend
+      # URL du frontend autorisée (CORS + cookies cross-domaine)
       - key: CORS_ORIGIN
-        sync: false
+        value: https://julaba-web.onrender.com
       # Optionnel (voix cloud) — le cœur marche sans
       - key: OPENAI_API_KEY
         sync: false
@@ -79,9 +79,9 @@ services:
     buildCommand: cd frontend_src && npm ci --include=dev && npm run build
     staticPublishPath: frontend/dist
     envVars:
-      # À saisir après le 1er déploiement : l'URL du backend + /api/v1
+      # URL du backend (utilisée au BUILD du frontend)
       - key: VITE_API_URL
-        sync: false
+        value: https://julaba-api.onrender.com/api/v1
     routes:
       # Routage d'une SPA : toutes les routes retombent sur index.html
       - type: rewrite
