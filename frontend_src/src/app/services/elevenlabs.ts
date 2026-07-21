@@ -78,18 +78,46 @@ export function stopAllAudio(): void {
   try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
 }
 
+// Choix d'une voix FRANÇAISE FÉMININE pour la voix de secours : Tata Nanti Lou
+// est une femme. Par défaut le navigateur choisit souvent une voix masculine —
+// on force donc une voix de femme quand l'appareil en propose une.
+let _voicesCache: SpeechSynthesisVoice[] = [];
+function refreshVoices(): void {
+  try { _voicesCache = window.speechSynthesis?.getVoices?.() || []; } catch { _voicesCache = []; }
+}
+if (typeof window !== "undefined" && window.speechSynthesis) {
+  refreshVoices();
+  try { window.speechSynthesis.addEventListener("voiceschanged", refreshVoices); } catch { /* ignore */ }
+}
+function pickFrenchFemaleVoice(): SpeechSynthesisVoice | null {
+  if (_voicesCache.length === 0) refreshVoices();
+  const fr = _voicesCache.filter((v) => /^fr/i.test(v.lang));
+  if (fr.length === 0) return null;
+  const FEMME = ["amelie", "amélie", "audrey", "aurelie", "aurélie", "virginie", "julie",
+    "marie", "celine", "céline", "lea", "léa", "manon", "chloe", "chloé", "sandrine",
+    "female", "femme", "google français", "google france"];
+  const HOMME = ["thomas", "nicolas", "paul", "daniel", "male", "homme", "guillaume", "mathieu"];
+  const parNom = fr.find((v) => FEMME.some((h) => v.name.toLowerCase().includes(h)));
+  if (parNom) return parNom;
+  const nonMasculin = fr.find((v) => !HOMME.some((h) => v.name.toLowerCase().includes(h)));
+  return nonMasculin || fr[0];
+}
+
 // Voix de SECOURS GRATUITE : la voix intégrée du navigateur (aucun coût, tourne
-// sur l'appareil, marche hors-ligne). Utilisée quand le serveur ne renvoie pas
-// d'audio (Piper pas encore déployé + cloud coupé, ou hors-ligne) : garantit que
-// l'assistante n'est JAMAIS muette. Qualité moindre que Piper, mais gratuite.
+// sur l'appareil, marche hors-ligne). Utilisée quand un clip pré-enregistré n'est
+// pas disponible ou pour les phrases dynamiques (montants). On force une voix de
+// FEMME pour rester cohérent avec Tata Nanti Lou. Jamais muette.
 export function speakBrowser(text: string): Promise<void> {
   return new Promise((resolve) => {
     try {
       const synth = window.speechSynthesis;
       if (!synth || !text?.trim()) return resolve();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = "fr-FR";
+      const voix = pickFrenchFemaleVoice();
+      if (voix) u.voice = voix;
+      u.lang = voix?.lang || "fr-FR";
       u.rate = 0.98;
+      u.pitch = 1.1; // léger + aigu → timbre plus féminin (discret, sans déformer)
       u.onend = () => resolve();
       u.onerror = () => resolve();
       synth.cancel();
@@ -120,17 +148,26 @@ export function preloadAudioContext(): void {
 export async function playAudioUrl(url: string, onDone?: () => void): Promise<void> {
   stopAllAudio();
   _chunkAborted = false;
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const audio = new Audio(url);
     _currentAudio = audio;
-    const finish = () => {
+    let played = false;
+    const done = () => {
       if (_currentAudio === audio) _currentAudio = null;
       onDone?.();
       resolve();
     };
-    audio.onended = finish;
-    audio.onerror = finish;
-    audio.play().catch(finish);
+    // Échec de CHARGEMENT/lecture (clip absent, décodage) → on REJETTE pour que
+    // l'appelant bascule sur la voix de secours (au lieu de rester muet).
+    const fail = () => {
+      if (_currentAudio === audio) _currentAudio = null;
+      if (played) { done(); return; } // erreur après lecture → considérer fini
+      reject(new Error("clip audio indisponible"));
+    };
+    audio.onended = done;
+    audio.onerror = fail;
+    audio.onplaying = () => { played = true; };
+    audio.play().catch(fail);
   });
 }
 
