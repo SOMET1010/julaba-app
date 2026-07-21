@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useLangPref } from "../../hooks/useLangPref";
 import { useVoiceCore } from "../../hooks/useVoiceCore";
+import { useWakeWord } from "../../hooks/useWakeWord";
 import { usePredictiveTTS } from "../../services/predictiveTTS";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Loader, CheckCircle, AlertCircle, ShieldCheck, WifiOff, ChevronRight } from "lucide-react";
@@ -136,11 +137,41 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
     return { delay: i * 0.07, height: baseH, active };
   });
 
+  // ── MAINS LIBRES : mot-réveil « Julaba » ──────────────────────────────────
+  // Pour vendre sans toucher l'écran (deux mains prises). Écoute en continu et
+  // se déclenche sur « Julaba … ». Se met en pause pendant que l'assistante
+  // réfléchit/parle (pas de conflit micro, pas de boucle sur sa propre voix).
+  const [mainsLibres, setMainsLibres] = useState(() => {
+    try { return localStorage.getItem("julaba_mains_libres") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("julaba_mains_libres", mainsLibres ? "1" : "0"); } catch { /* ignore */ }
+  }, [mainsLibres]);
+  const bipReveil = useCallback(() => {
+    try {
+      const AC = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AC();
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.15, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+      o.start(); o.stop(ctx.currentTime + 0.18);
+    } catch { /* ignore */ }
+  }, []);
+  const { supported: wakeSupported } = useWakeWord({
+    enabled: mainsLibres && isOpen,
+    active: mainsLibres && isOpen && state === "idle" && !isSpeaking,
+    onWake: () => { bipReveil(); },
+    onCommand: (texte) => { bipReveil(); void sendText(texte); },
+    lang: "fr-FR",
+  });
+
   const statusLabel = isRecording ? "Appuie pour terminer"
     : isSpeaking ? "Tata Lou répond..."
     : isLoading ? liveTranscript || "Analyse en cours..."
     : isDone ? "Message enregistré !"
     : isError ? "Erreur — réessaie"
+    : mainsLibres && wakeSupported ? "Dis « Julaba » pour vendre"
     : "Appuie sur Tata Lou pour parler";
 
   if (!isOpen) return null;
@@ -239,6 +270,24 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
                 {isRecording && liveTranscript ? `"${liveTranscript}"` : statusLabel}
               </motion.p>
             </AnimatePresence>
+
+            {/* Bascule MAINS LIBRES (mot-réveil « Julaba ») — vendre sans toucher l'écran */}
+            <div style={{ marginTop: 12 }}>
+              {wakeSupported ? (
+                <motion.button whileTap={{ scale: 0.96 }} onClick={() => setMainsLibres(v => !v)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, border: "none", cursor: "pointer",
+                    background: mainsLibres ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.16)",
+                    color: mainsLibres ? P : "white", fontWeight: 800, fontSize: 13, fontFamily: "inherit" }}>
+                  <motion.span style={{ width: 10, height: 10, borderRadius: "50%", background: mainsLibres ? "#16a34a" : "rgba(255,255,255,0.5)" }}
+                    animate={mainsLibres ? { opacity: [1, 0.3, 1] } : { opacity: 1 }} transition={{ duration: 1.4, repeat: Infinity }} />
+                  {mainsLibres ? "Mains libres activé — dis « Julaba »" : "Activer les mains libres"}
+                </motion.button>
+              ) : (
+                <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, textAlign: "center", margin: 0 }}>
+                  Mains libres indisponible sur ce navigateur (nécessite internet)
+                </p>
+              )}
+            </div>
           </div>
 
           {/* CORPS BLANC */}
