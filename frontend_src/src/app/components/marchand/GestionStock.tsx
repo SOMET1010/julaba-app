@@ -365,7 +365,7 @@ export function GestionStock() {
     if (newStock.quantity < 0) { toast.error('Quantité invalide'); return; }
     const cat = rechercherProduitCatalogue(newStock.name);
     try {
-      await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'' });
+      await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'' } as any);
       toast.success('Produit ajouté');
       speak(`${newStock.name} ajouté`);
       showToast(`${newStock.name} ajouté au stock`, 'success');
@@ -431,17 +431,25 @@ export function GestionStock() {
   const saveInlineEdit = async () => {
     if (!selectedStock) return;
     const id = selectedStock.id;
+    // La liste affichée fusionne DEUX sources (Kassa /caisse/produits et /stocks).
+    // L'id de la ligne peut donc être un id /stocks : dans ce cas un PUT
+    // /caisse/produits/:id ne trouve rien et la modif est perdue au rechargement.
+    // On résout le vrai produit Kassa (par id OU par nom) ; s'il n'existe pas
+    // encore côté Kassa, on le crée pour que la modification soit bien persistée.
+    const kassa = products.find((x: any) => x.id === id || x.nom === selectedStock.name);
+    const champs = {
+      nom: editForm.name,
+      prix: editForm.salePrice,
+      stock: editForm.quantity,
+      unite: editForm.unit,
+      categorie: editForm.category,
+      image: editForm.image || undefined,
+      seuil_alerte: editForm.threshold,
+      prix_achat: editForm.purchasePrice,
+    } as any;
     try {
-      await updateProduct(id, {
-        nom: editForm.name,
-        prix: editForm.salePrice,
-        stock: editForm.quantity,
-        unite: editForm.unit,
-        categorie: editForm.category,
-        image: editForm.image || undefined,
-        seuil_alerte: editForm.threshold,
-        prix_achat: editForm.purchasePrice,
-      } as any);
+      if (kassa) await updateProduct(kassa.id, champs);
+      else await addProduct(champs);
       void stockCtx.updateStock(id, { quantite: editForm.quantity, prixUnitaire: editForm.salePrice })
         .catch((e: any) => console.warn('[GestionStock] stockCtx.updateStock failed:', e?.message));
       setSelectedStock({
