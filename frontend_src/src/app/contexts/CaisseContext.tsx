@@ -115,10 +115,11 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const [selectedProduct, setSelectedProduct] = useState<CaisseProduct | null>(null);
 
   const loadTransactions = async () => {
+    const cacheKey = `julaba_cache_tx_${appUser?.id || 'anon'}`;
     try {
       setLoading(true);
       const { transactions: data } = await caisseApi.fetchCaisseTransactions();
-      
+
       const txList: CaisseTransaction[] = data.map((tx: any) => ({
         id: tx.id,
         marchandId: tx.marchand_id,
@@ -130,8 +131,15 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         date: tx.created_at,
       }));
       setTransactions(txList);
+      // Cache local : dernière version connue de l'historique (lecture hors-ligne).
+      try { localStorage.setItem(cacheKey, JSON.stringify(txList)); } catch { /* ignore */ }
     } catch (error: any) {
       if (error?.message === NOT_AUTHENTICATED) return;
+      // Hors-ligne (ou serveur injoignable) : on sert le dernier historique connu.
+      try {
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) setTransactions(JSON.parse(raw));
+      } catch { /* ignore */ }
     } finally {
       setLoading(false);
     }
@@ -291,18 +299,29 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
 
   // ── Products ───────────────────────────────────────────────
   const loadProducts = useCallback(async () => {
+    const cacheKey = (() => {
+      try { const r = localStorage.getItem('julaba_auth_user'); const id = r ? (JSON.parse(r).id || 'anon') : 'anon'; return `julaba_cache_produits_${id}`; }
+      catch { return 'julaba_cache_produits_anon'; }
+    })();
     try {
       const res = await fetch(`${API_URL}/caisse/produits`, { credentials: 'include' });
       if (!res.ok) return;
       const data = await res.json();
       const produits = data.produits || [];
-      setProducts(produits.map((p: any) => ({
+      const mapped = produits.map((p: any) => ({
         id: p.id, nom: p.nom, prix: Number(p.prix),
         prix_achat: Number(p.prix_achat ?? p.prixAchat ?? 0) || 0,
         categorie: p.categorie, stock: Number(p.stock),
         unite: p.unite, image: p.image || getImageByNom(p.nom)
-      })));
-    } catch (err: unknown) { console.warn('[CaisseContext] loadProducts failed:', err instanceof Error ? err.message : err); }
+      }));
+      setProducts(mapped);
+      // Cache local : derniers produits connus (vente/stock consultables hors-ligne).
+      try { localStorage.setItem(cacheKey, JSON.stringify(mapped)); } catch { /* ignore */ }
+    } catch (err: unknown) {
+      console.warn('[CaisseContext] loadProducts failed:', err instanceof Error ? err.message : err);
+      // Hors-ligne : servir les derniers produits connus.
+      try { const raw = localStorage.getItem(cacheKey); if (raw) setProducts(JSON.parse(raw)); } catch { /* ignore */ }
+    }
   }, []);
 
   useEffect(() => {

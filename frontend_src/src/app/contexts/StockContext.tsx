@@ -70,14 +70,26 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   const refreshStocks = useCallback(async () => {
+    // Clé de cache par utilisateur (lue depuis la session en cache).
+    const cacheKey = (() => {
+      try { const r = localStorage.getItem('julaba_auth_user'); const id = r ? (JSON.parse(r).id || 'anon') : 'anon'; return `julaba_cache_stocks_${id}`; }
+      catch { return 'julaba_cache_stocks_anon'; }
+    })();
     if (!stocks?.length) setLoading(true);
     try {
       const res = await fetch(`${API_URL}/stocks`, { credentials: 'include', headers: headers() });
       if (!res.ok) return;
       const data = await res.json();
       const list = data.stocks || data.data || (Array.isArray(data) ? data : []);
-      setStocks(list.map(normalize));
-    } catch (e) { void e; }
+      const normalized = list.map(normalize);
+      setStocks(normalized);
+      // Cache local : dernier stock connu (consultation hors-ligne).
+      try { localStorage.setItem(cacheKey, JSON.stringify(normalized)); } catch { /* ignore */ }
+    } catch (e) {
+      void e;
+      // Hors-ligne : on sert le dernier stock connu.
+      try { const raw = localStorage.getItem(cacheKey); if (raw) setStocks(JSON.parse(raw)); } catch { /* ignore */ }
+    }
     finally { setLoading(false); }
   }, []);
 
