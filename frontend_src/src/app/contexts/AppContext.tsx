@@ -457,13 +457,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         let res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
 
-        // Token expiré → tenter refresh silencieux
+        // Token expiré → tenter refresh silencieux. On envoie le refresh token
+        // stocké dans le corps (le cookie refresh est bloqué cross-domaine mobile).
         if (res.status === 401) {
+          let storedRefresh: string | null = null;
+          try { storedRefresh = localStorage.getItem('julaba_refresh_token'); } catch { /* ignore */ }
           const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
             method: 'POST',
             credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(storedRefresh ? { refreshToken: storedRefresh } : {}),
           });
           if (refreshRes.ok) {
+            try {
+              const j = await refreshRes.clone().json();
+              if (j?.accessToken) localStorage.setItem('julaba_access_token', j.accessToken);
+            } catch { /* ignore */ }
             res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
           }
         }
@@ -516,7 +525,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // explicite (401/403). Les autres codes (ex. 5xx pendant le réveil du
           // serveur Render) ne doivent pas éjecter une session en cache.
           if (res.status === 401 || res.status === 403) {
-            try { localStorage.removeItem('julaba_auth_user'); } catch { /* ignore */ }
+            try {
+              localStorage.removeItem('julaba_auth_user');
+              localStorage.removeItem('julaba_access_token');
+              localStorage.removeItem('julaba_refresh_token');
+            } catch { /* ignore */ }
             setUser(null); setAccessToken(null);
           }
           setLoading(false);
@@ -601,6 +614,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Nettoyer uniquement les données non-sensibles
     localStorage.removeItem('julaba_user_data');
     localStorage.removeItem('julaba_voice_disabled');
+    // Jetons d'auth mobile + session en cache
+    localStorage.removeItem('julaba_access_token');
+    localStorage.removeItem('julaba_refresh_token');
+    localStorage.removeItem('julaba_auth_user');
   };
 
   const logoutRef = useRef(logout);
