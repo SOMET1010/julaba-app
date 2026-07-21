@@ -34,6 +34,18 @@ import './styles/index.css';
   };
 })();
 
+// Ré-échauffe le modèle vocal hors-ligne s'il a déjà été installé sur cet appareil.
+// (Le drapeau d'installation est persistant ; le modèle en mémoire, lui, est perdu
+// à chaque rechargement — sans ça la voix retombait sur le cloud mort.)
+// Différé et non-bloquant pour ne pas gêner le premier affichage.
+import('./app/voice-offline/offlineStt')
+  .then(({ warmOfflineModelIfInstalled }) => {
+    const warm = () => warmOfflineModelIfInstalled();
+    if ('requestIdleCallback' in window) (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(warm);
+    else setTimeout(warm, 2000);
+  })
+  .catch(() => { /* ignore */ });
+
 const root = document.getElementById('root');
 
 if (!root) {

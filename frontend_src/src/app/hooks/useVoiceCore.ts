@@ -8,7 +8,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { API_URL } from "../utils/api";
 // Offline-first : STT sur l'appareil + compréhension locale (sans réseau ni LLM).
-import { transcribeWav, offlineModelReady } from "../voice-offline/offlineStt";
+import { transcribeWav, offlineModelReady, offlineModelInstalled } from "../voice-offline/offlineStt";
 import { intentLocal } from "../voice-offline/localIntent";
 import { preloadEarlyAudios } from "../services/earlyAudioCache";
 import {
@@ -684,7 +684,12 @@ export function useVoiceCore({
     // retombe JAMAIS sur le serveur cloud (volontairement désactivé) — sinon toute
     // phrase non comprise finissait en « souci technique ». On montre aussi ce que
     // l'appli a entendu, pour voir si c'est la transcription ou la compréhension.
-    const useLocal = !navigator.onLine || offlineModelReady();
+    // On transcrit SUR L'APPAREIL dès qu'on est hors-ligne, OU que le modèle est
+    // prêt, OU qu'il a déjà été installé (même s'il n'est pas encore ré-échauffé
+    // après un reload — transcribeWav le ré-active alors depuis le cache). Le
+    // chemin cloud est mort (souverain, zéro clé) : on ne DOIT jamais y retomber
+    // pour une utilisatrice qui a installé le hors-ligne, sinon → « souci technique ».
+    const useLocal = !navigator.onLine || offlineModelReady() || offlineModelInstalled();
     if (useLocal) {
       setState("thinking");
       startThinkingPhrases();

@@ -20,9 +20,21 @@ let modelPromise: Promise<Any> | null = null;
 let modelReady = false;
 let sharedCtx: AudioContext | null = null;
 
-/** Vrai une fois le modèle chargé (utilisable pour afficher un état). */
+// Drapeau PERSISTANT : le modèle (~40 Mo) a déjà été téléchargé une fois sur cet
+// appareil (il reste en cache navigateur). `modelReady`, lui, est une variable
+// mémoire remise à zéro à CHAQUE rechargement de page — sans ce drapeau, l'appli
+// « oubliait » le mode hors-ligne après un reload et retombait sur le cloud (mort),
+// d'où le « petit souci technique ». On mémorise donc l'installation durablement.
+const INSTALL_KEY = 'julaba_offline_installed';
+
+/** Vrai si le modèle est chargé EN MÉMOIRE, prêt à transcrire tout de suite. */
 export function offlineModelReady(): boolean {
   return modelReady;
+}
+
+/** Vrai si le modèle a déjà été installé sur cet appareil (persistant, survit au reload). */
+export function offlineModelInstalled(): boolean {
+  try { return localStorage.getItem(INSTALL_KEY) === '1'; } catch { return false; }
 }
 
 /** Télécharge + initialise le modèle une seule fois (idempotent). */
@@ -32,6 +44,7 @@ export function ensureOfflineModel(): Promise<Any> {
       const { createModel } = await import('vosk-browser'); // code-split ici
       const model = await createModel(VOSK_MODEL_URL);
       modelReady = true;
+      try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ }
       return model;
     })().catch((e) => {
       modelPromise = null;
@@ -40,6 +53,17 @@ export function ensureOfflineModel(): Promise<Any> {
     });
   }
   return modelPromise;
+}
+
+/**
+ * Au démarrage : si le mode hors-ligne a déjà été installé, on RÉ-ACTIVE le modèle
+ * en tâche de fond (rapide, depuis le cache navigateur) pour qu'il soit prêt sans
+ * que la marchande ait à ré-installer. Ne fait rien si jamais installé.
+ */
+export function warmOfflineModelIfInstalled(): void {
+  if (modelReady || modelPromise) return;
+  if (!offlineModelInstalled()) return;
+  ensureOfflineModel().catch(() => { /* ré-échauffement silencieux */ });
 }
 
 function getCtx(): AudioContext {
