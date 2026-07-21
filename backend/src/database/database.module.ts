@@ -17,18 +17,16 @@ import { DbInitService } from './db-init.service';
         database: config.get<string>('DB_NAME', 'julaba_db'),
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
-        // synchronize : construit le schéma directement depuis les entités.
-        // Utile pour une base VIERGE (ex. nouvelle instance) car l'historique de
-        // migrations est incomplet (il suppose des tables déjà présentes). Réglé
-        // via DB_SYNCHRONIZE=true. Défaut false (jamais sur une base existante).
-        synchronize: config.get<string>('DB_SYNCHRONIZE') === 'true',
-        // Déploiement auto-sûr : les migrations en attente s'appliquent au
-        // démarrage. Désactivé quand synchronize est actif (les deux ensemble
-        // se marcheraient dessus : synchronize crée déjà les colonnes). Réglable
-        // via DB_MIGRATIONS_RUN=false.
+        // synchronize : construit le schéma depuis les entités (base VIERGE).
+        // Activé AUTOMATIQUEMENT par prepareDatabase() dans main.ts quand la base
+        // est vide — aucun réglage manuel requis. Jamais sur une base peuplée.
+        synchronize: process.env.DB_SYNCHRONIZE === 'true',
+        // Migrations : uniquement si explicitement demandé (l'historique est
+        // incomplet et échouerait sur une base neuve). Jamais en même temps que
+        // synchronize. Défaut : off.
         migrationsRun:
-          config.get<string>('DB_SYNCHRONIZE') !== 'true' &&
-          config.get<string>('DB_MIGRATIONS_RUN', 'true') !== 'false',
+          process.env.DB_SYNCHRONIZE !== 'true' &&
+          process.env.DB_MIGRATIONS_RUN === 'true',
         logging: config.get<boolean>('DB_LOGGING', false),
         ssl:
           config.get<string>('DB_SSL') === 'true'
