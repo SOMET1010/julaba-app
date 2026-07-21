@@ -1,0 +1,89 @@
+# ──────────────────────────────────────────────────────────────────────────
+# Blueprint Render — Julaba V2 INDÉPENDANT (serveur à soi, séparé de la V1)
+#
+# Monte 3 briques d'un coup depuis ce dépôt :
+#   1) julaba-db   : base PostgreSQL managée
+#   2) julaba-api  : backend NestJS (API caisse)  -> migrations auto au démarrage
+#   3) julaba-web  : frontend React (site statique)
+#
+# Le CŒUR (vendre / dépenser, y compris hors-ligne) tourne SANS clé API payante.
+# Les clés OpenAI / ElevenLabs sont optionnelles (conversation libre + belle voix
+# cloud) et se saisissent plus tard.
+#
+# ⚠️ Deux valeurs se saisissent APRÈS le 1er déploiement (voir docs/DEPLOIEMENT_RENDER.md) :
+#    - julaba-api : CORS_ORIGIN  = l'URL du frontend (https://julaba-web.onrender.com)
+#    - julaba-web : VITE_API_URL = l'URL du backend + /api/v1
+#      (https://julaba-api.onrender.com/api/v1) puis relancer le build du frontend.
+# ──────────────────────────────────────────────────────────────────────────
+
+databases:
+  - name: julaba-db
+    databaseName: julaba
+    user: julaba
+    plan: free   # test/MVP (la base gratuite Render expire ~90 j ; passer en payant pour durer)
+
+services:
+  # ── Backend NestJS ──────────────────────────────────────────────────────
+  - type: web
+    runtime: node
+    name: julaba-api
+    rootDir: backend
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Base de données (câblée automatiquement depuis julaba-db)
+      - key: DB_HOST
+        fromDatabase: { name: julaba-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: julaba-db, property: port }
+      - key: DB_USERNAME
+        fromDatabase: { name: julaba-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: julaba-db, property: password }
+      - key: DB_NAME
+        fromDatabase: { name: julaba-db, property: database }
+      - key: DB_SSL
+        value: "true"
+      - key: DB_MIGRATIONS_RUN
+        value: "true"        # applique la migration idempotency_key au démarrage
+      # Cookies cross-domaine (frontend et backend sur des domaines différents)
+      - key: COOKIE_SAMESITE
+        value: none
+      # Secrets générés automatiquement par Render
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PIN_ENCRYPTION_KEY
+        generateValue: true
+      - key: REFRESH_TOKEN_SALT
+        generateValue: true
+      # À saisir après le 1er déploiement : l'URL du frontend
+      - key: CORS_ORIGIN
+        sync: false
+      # Optionnel (voix cloud) — le cœur marche sans
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+
+  # ── Frontend React (site statique) ──────────────────────────────────────
+  - type: web
+    runtime: static
+    name: julaba-web
+    plan: free
+    buildCommand: cd frontend_src && npm ci --include=dev && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      # À saisir après le 1er déploiement : l'URL du backend + /api/v1
+      - key: VITE_API_URL
+        sync: false
+    routes:
+      # Routage d'une SPA : toutes les routes retombent sur index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
