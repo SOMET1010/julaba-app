@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
-import { suggererProduits, getImageByNom, rechercherProduitCatalogue } from '../../data/catalogue-produits';
+import { suggererProduits, getImageByNom, rechercherProduitCatalogue, CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
 import { Package, TrendingUp, AlertCircle, Plus, Search, Trash2, X, Mic, MicOff, Edit3, Receipt, Wallet, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router';
@@ -367,7 +367,7 @@ export function GestionStock() {
     try {
       await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'' } as any);
       toast.success('Produit ajouté');
-      speak(`${newStock.name} ajouté`);
+      speak(`${newStock.quantity || 0} ${newStock.unit} de ${newStock.name} ajouté au stock`);
       showToast(`${newStock.name} ajouté au stock`, 'success');
       setShowAdd(false);
       setNewStock({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales' });
@@ -608,6 +608,34 @@ export function GestionStock() {
                 </div>
               </div>
               <div style={{ padding:16, display:'flex', flexDirection:'column', gap:14 }}>
+                {/* Catalogue 100 % IMAGES : toucher une photo remplit tout (nom, unité,
+                    prix, catégorie) et dit le nom à voix haute — aucun texte à taper.
+                    Conçu pour une vendeuse qui ne lit pas. */}
+                <div>
+                  <div style={{ fontSize:14, fontWeight:800, color:'#5a4030', marginBottom:8 }}>👇 Touche ton produit</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8 }}>
+                    {CATALOGUE_PRODUITS.filter(p => p.nom !== 'Autre').map(p => {
+                      const actif = newStock.name === p.nom;
+                      return (
+                        <motion.button key={p.nom} whileTap={{ scale:0.94 }}
+                          onClick={() => {
+                            setNewStock({ ...newStock, name:p.nom, image:p.image, unit:p.unite, purchasePrice:p.prixAchat, salePrice:p.prixVente, category:p.categorie });
+                            speak(p.nom);
+                          }}
+                          style={{ border: actif ? `3px solid ${P}` : '2px solid #EDE7DE', borderRadius:14, padding:6, background: actif ? '#FFF3EA' : 'white', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, fontFamily:'inherit' }}>
+                          <img src={p.image} alt={p.nom} style={{ width:'100%', aspectRatio:'1', borderRadius:10, objectFit:'cover' }} />
+                          <div style={{ fontSize:12, fontWeight:700, color:'#1a1206' }}>{p.nom}</div>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                  {newStock.name && (
+                    <div style={{ marginTop:10, fontSize:13, fontWeight:700, color:P, textAlign:'center' }}>
+                      ✓ {newStock.name} — indique la quantité puis « Ajouter »
+                    </div>
+                  )}
+                  <div style={{ fontSize:12, color:'#aaa', textAlign:'center', marginTop:10 }}>Pas dans la liste ? Écris son nom ci-dessous.</div>
+                </div>
                 {(() => {
                   const cat = rechercherProduitCatalogue(newStock.name);
                   return cat ? (
@@ -644,8 +672,17 @@ export function GestionStock() {
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                   <div>
                     <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Quantité</label>
-                    <input type="number" value={newStock.quantity} onChange={e => setNewStock({...newStock, quantity:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                    {/* Réglage au doigt (− / +) pour éviter de taper un nombre. */}
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <motion.button type="button" whileTap={{ scale:0.9 }} aria-label="Moins"
+                        onClick={() => setNewStock({...newStock, quantity: Math.max(0, (Number(newStock.quantity)||0) - 1)})}
+                        style={{ width:44, height:46, flexShrink:0, borderRadius:12, border:'none', background:'#F0E7DE', color:P, fontSize:24, fontWeight:900, cursor:'pointer' }}>−</motion.button>
+                      <input type="number" value={newStock.quantity} onChange={e => setNewStock({...newStock, quantity:e.target.value === '' ? '' as any : Number(e.target.value)})}
+                        style={{ width:'100%', minWidth:0, padding:'12px 6px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:18, fontWeight:800, textAlign:'center', fontFamily:'inherit', boxSizing:'border-box' }} />
+                      <motion.button type="button" whileTap={{ scale:0.9 }} aria-label="Plus"
+                        onClick={() => setNewStock({...newStock, quantity: (Number(newStock.quantity)||0) + 1})}
+                        style={{ width:44, height:46, flexShrink:0, borderRadius:12, border:'none', background:P, color:'white', fontSize:24, fontWeight:900, cursor:'pointer' }}>+</motion.button>
+                    </div>
                   </div>
                   <SelectWithAutre label="Unité" value={newStock.unit} onChange={v => setNewStock({...newStock, unit:v})} options={['kg','L','tas','régimes','sac','tonne','carton']} primaryColor={P} placeholder="Ex: bouteille..." />
                 </div>
