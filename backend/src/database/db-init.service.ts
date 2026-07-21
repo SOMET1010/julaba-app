@@ -64,5 +64,75 @@ export class DbInitService implements OnApplicationBootstrap {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('FK cooperative_membres déjà correcte ou erreur: ' + message);
     }
+
+    // ── Tables « caisse » accédées en SQL brut (sans entité TypeORM) ──────────
+    // caisse_sessions (ouverture/fermeture de la journée) et produits (stock)
+    // n'ont PAS d'entité : `synchronize` ne les crée donc jamais. Sur une base
+    // NEUVE (nouveau serveur indépendant), la caisse renvoyait 500. On les crée
+    // ici en IF NOT EXISTS : no-op sur la base V1 existante, auto-réparation sur
+    // une base vierge. Le cœur « une vendeuse peut vendre » en dépend.
+    try {
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS caisse_sessions (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          marchand_id text NOT NULL,
+          date date NOT NULL,
+          fond_initial numeric DEFAULT 0,
+          fond_final numeric DEFAULT 0,
+          ouvert boolean DEFAULT true,
+          heure_ouverture timestamptz,
+          heure_fermeture timestamptz,
+          notes text,
+          created_at timestamptz DEFAULT now(),
+          updated_at timestamptz DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS ux_caisse_sessions_marchand_date
+         ON caisse_sessions (marchand_id, date);`,
+      );
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS produits (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          marchand_id text NOT NULL,
+          nom text NOT NULL,
+          prix numeric DEFAULT 0,
+          prix_achat numeric DEFAULT 0,
+          categorie text,
+          stock numeric DEFAULT 0,
+          unite text,
+          image text,
+          actif boolean DEFAULT true,
+          created_at timestamptz DEFAULT now(),
+          updated_at timestamptz DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_produits_marchand ON produits (marchand_id);`,
+      );
+      this.logger.log('Tables caisse_sessions et produits vérifiées');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur création tables caisse_sessions/produits: ' + message);
+    }
+
+    // ── Garde-fou anti double-comptage (idempotence) ─────────────────────────
+    // Le contrôleur vérifie la clé avant d'insérer (SELECT puis INSERT), mais ce
+    // motif est vulnérable à une course : deux requêtes concurrentes (double-tap,
+    // rejeu offline) passent le SELECT avant que l'autre n'ait inséré, d'où des
+    // DOUBLONS d'argent. Seul un index UNIQUE au niveau base élimine la course.
+    // La migration le pose, mais elle ne tourne pas sur une base construite par
+    // `synchronize` ; on le garantit donc ici aussi (IF NOT EXISTS, idempotent).
+    try {
+      await this.dataSource.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_caisse_tx_idempotency_key
+        ON caisse_transactions (idempotency_key)
+        WHERE idempotency_key IS NOT NULL;
+      `);
+      this.logger.log('Index unique idempotency_key vérifié (anti double-comptage)');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur index idempotency_key: ' + message);
+    }
   }
 }
