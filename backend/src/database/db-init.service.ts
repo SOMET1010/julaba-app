@@ -134,5 +134,49 @@ export class DbInitService implements OnApplicationBootstrap {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur index idempotency_key: ' + message);
     }
+
+    // ── Colonnes/tables secondaires manquantes sur base neuve ────────────────
+    // Des tâches de fond (cron) attendent des colonnes/tables que `synchronize`
+    // ne crée pas (entités incomplètes ou tables en SQL brut). Non bloquant, mais
+    // ça polluait les logs (alertes stock, cycles récoltes, B-Pay). On complète.
+    try {
+      // stocks : l'entité ne déclare pas toutes les colonnes utilisées en SQL brut.
+      await this.dataSource.query(`
+        ALTER TABLE stocks ADD COLUMN IF NOT EXISTS seuil_alerte numeric;
+        ALTER TABLE stocks ADD COLUMN IF NOT EXISTS prix_achat numeric;
+        ALTER TABLE stocks ADD COLUMN IF NOT EXISTS prix_vente numeric;
+        ALTER TABLE stocks ADD COLUMN IF NOT EXISTS categorie text;
+        ALTER TABLE stocks ADD COLUMN IF NOT EXISTS image text;
+        ALTER TABLE stocks ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+        ALTER TABLE stocks ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+      `);
+      // cycles : colonne statut manquante (checkRecoltesProches).
+      await this.dataSource.query(`ALTER TABLE cycles ADD COLUMN IF NOT EXISTS statut varchar;`);
+      this.logger.log('Colonnes stocks (seuil_alerte…) et cycles.statut vérifiées');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur colonnes stocks/cycles: ' + message);
+    }
+
+    // bpay_transactions : table en SQL brut (paiement B-Pay), sans entité.
+    try {
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS bpay_transactions (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id text,
+          pay_token text,
+          status text,
+          bpay_status text,
+          source text,
+          montant numeric,
+          created_at timestamptz DEFAULT now(),
+          updated_at timestamptz DEFAULT now()
+        );
+      `);
+      this.logger.log('Table bpay_transactions vérifiée');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur table bpay_transactions: ' + message);
+    }
   }
 }
