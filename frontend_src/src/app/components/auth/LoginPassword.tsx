@@ -2,7 +2,7 @@ import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, AlertCircle, Fingerprint } from 'lucide-react';
+import { CheckCircle, AlertCircle, Fingerprint, Mic } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
@@ -10,6 +10,7 @@ import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import logoJulaba from '../../../assets/images/logo-julaba.png';
 import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
+import { extractPhoneDigits } from '../../utils/frenchDigits';
 /**
  * BACKLOG ESCALATION P0 BACKEND (à traiter côté serveur, hors périmètre frontend) :
  * 1. /auth/check-phone : timing attack possible (énumération comptes existants)
@@ -75,10 +76,13 @@ export function LoginPassword() {
   const [showDevButton, setShowDevButton] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [step, setStep] = useState<'phone' | 'password'>('phone');
+  const [isListening, setIsListening] = useState(false);
   const phoneToPasswordTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const navigateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusPinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recognitionRef = useRef<{ stop: () => void; abort: () => void } | null>(null);
+  const micStartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phoneRef = useRef(phone);
   useEffect(() => {
     phoneRef.current = phone;
@@ -175,6 +179,103 @@ export function LoginPassword() {
     }, 500);
   };
 
+  // Remplit le champ numéro à partir d'une suite de chiffres (dictée vocale ou clavier).
+  const remplirNumero = (sliced: string) => {
+    setPhone(sliced);
+    setError('');
+    if (sliced.length === 10) {
+      if (!TEST_PHONES.has(sliced) && !/^(01|05|07|09|21|25|27)/.test(sliced)) {
+        setError('Numéro non reconnu, réessaie ou tape-le');
+        return;
+      }
+      if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
+      scheduleTransitionToPasswordAfterCheck();
+    }
+  };
+
+  // Dictée vocale du numéro : la marchande DIT son numéro, l'appli le remplit.
+  // On utilise la reconnaissance vocale intégrée au navigateur (gratuite, aucun
+  // service payant). On l'annonce à voix haute AVANT d'écouter (une utilisatrice
+  // qui ne lit pas comprend qu'on attend qu'elle parle), puis on démarre le micro
+  // seulement quand la voix a fini, pour ne pas capter notre propre annonce.
+  const dicterNumero = () => {
+    const SR = (window as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition
+      || (window as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition;
+    if (!SR) { setError("La dictée vocale n'est pas disponible sur ce téléphone"); return; }
+    if (isListening) { try { recognitionRef.current?.stop(); } catch { /* ignore */ } return; }
+
+    const demarrer = () => {
+      try {
+        const RecCtor = SR as new () => {
+          lang: string; interimResults: boolean; maxAlternatives: number; continuous: boolean;
+          start: () => void; stop: () => void; abort: () => void;
+          onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+          onerror: ((e: { error?: string }) => void) | null;
+          onend: (() => void) | null;
+        };
+        const rec = new RecCtor();
+        recognitionRef.current = rec;
+        rec.lang = 'fr-FR';
+        rec.interimResults = false;
+        rec.maxAlternatives = 4;
+        rec.continuous = false;
+        setIsListening(true);
+        rec.onresult = (e) => {
+          let best = '';
+          for (let i = 0; i < e.results.length; i++) {
+            const alts = e.results[i];
+            for (let j = 0; j < alts.length; j++) {
+              const d = extractPhoneDigits(alts[j].transcript || '');
+              if (d.length > best.length) best = d;
+            }
+          }
+          if (best.length === 0) {
+            setError("Je n'ai pas compris, réessaie ou tape ton numéro");
+            parle("Je n'ai pas compris, réessaie");
+            return;
+          }
+          remplirNumero(best);
+          if (best.length < 10) {
+            parle("J'ai compris " + best.split('').join(' ') + '. Continue ou tape le reste.');
+          }
+        };
+        rec.onerror = (ev) => {
+          setIsListening(false);
+          if (ev?.error === 'not-allowed' || ev?.error === 'service-not-allowed') {
+            setError('Autorise le micro pour dicter ton numéro');
+          } else if (ev?.error === 'no-speech') {
+            setError("Je n'ai rien entendu, réessaie");
+          }
+        };
+        rec.onend = () => { setIsListening(false); recognitionRef.current = null; };
+        rec.start();
+      } catch {
+        setIsListening(false);
+        setError("La dictée vocale n'est pas disponible");
+      }
+    };
+
+    try {
+      const synth = window.speechSynthesis;
+      if (synth) {
+        synth.cancel();
+        const u = new SpeechSynthesisUtterance('Dis ton numéro maintenant');
+        u.lang = 'fr-FR';
+        u.rate = 1;
+        let started = false;
+        const go = () => { if (!started) { started = true; demarrer(); } };
+        u.onend = go;
+        synth.speak(u);
+        if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
+        micStartTimeoutRef.current = setTimeout(go, 2500); // filet si onend ne se déclenche pas
+      } else {
+        demarrer();
+      }
+    } catch {
+      demarrer();
+    }
+  };
+
   useEffect(() => {
     const tel = document.querySelector('input[autocomplete="tel"]') as HTMLInputElement | null;
     tel?.focus();
@@ -182,6 +283,8 @@ export function LoginPassword() {
       abortRef.current?.abort();
       if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
       if (focusPinTimeoutRef.current) clearTimeout(focusPinTimeoutRef.current);
+      if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
+      try { recognitionRef.current?.abort(); } catch { /* ignore */ }
       if (phoneToPasswordTimeout.current) {
         clearTimeout(phoneToPasswordTimeout.current);
         phoneToPasswordTimeout.current = null;
@@ -215,6 +318,11 @@ export function LoginPassword() {
       if (result.success && result.user) {
         setAppUser(result.user);
         setUserProfile(result.user);
+        // Persiste le jeton (auth mobile sans cookie cross-domaine), comme la connexion par code.
+        try {
+          if (result.accessToken) localStorage.setItem('julaba_access_token', result.accessToken);
+          if ((result as { refreshToken?: string }).refreshToken) localStorage.setItem('julaba_refresh_token', (result as { refreshToken?: string }).refreshToken!);
+        } catch { /* ignore */ }
         if (result.accessToken) { setAccessToken(result.accessToken); setTimeout(() => refreshUserData(), 100); }
         window.dispatchEvent(new CustomEvent('julaba:token-ready'));
         const roleRoutes: Record<string, string> = {
@@ -337,9 +445,17 @@ export function LoginPassword() {
 
       } else {
         setAppUser(user); setUserProfile(user);
+        // Auth mobile : on STOCKE le jeton (cookie cross-domaine bloqué sur mobile).
+        // L'intercepteur fetch l'enverra en en-tête Authorization sur chaque appel.
+        try {
+          if (result.accessToken) localStorage.setItem('julaba_access_token', result.accessToken);
+          if ((result as any).refreshToken) localStorage.setItem('julaba_refresh_token', (result as any).refreshToken);
+        } catch { /* ignore */ }
         if (result.accessToken) {
           setAccessToken(result.accessToken);
           setTimeout(() => refreshUserData(), 100);
+        } else {
+          setAccessToken('cookie'); // au cas où (desktop même-domaine)
         }
         window.dispatchEvent(new CustomEvent('julaba:token-ready'));
       }
@@ -671,11 +787,33 @@ export function LoginPassword() {
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
                 </motion.button>
               </div>
-              <p onClick={() => parle('Entre ton numéro de téléphone')} title="Touche pour écouter"
-                 style={{ fontSize: 11, color: 'rgba(150,80,30,0.55)', textAlign: 'center', paddingBottom: 20, cursor: 'pointer', display:'inline-flex', alignItems:'center', gap:5, justifyContent:'center' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
-                Entre ton numéro de téléphone
-              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, paddingBottom: 16, position: 'relative', zIndex: 1 }}>
+                <motion.button
+                  type="button"
+                  aria-label="Dicter mon numéro à la voix"
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={dicterNumero}
+                  animate={isListening ? { scale: [1, 1.06, 1] } : { scale: 1 }}
+                  transition={isListening ? { duration: 1, repeat: Infinity } : { duration: 0.2 }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    background: isListening ? '#C66A2C' : 'rgba(198,106,44,0.10)',
+                    color: isListening ? '#fff' : '#C66A2C',
+                    border: '1px solid rgba(198,106,44,0.25)',
+                    borderRadius: 22, padding: '10px 18px', cursor: 'pointer',
+                    fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
+                  }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Mic style={{ width: 18, height: 18 }} />
+                  {isListening ? "J'écoute…" : 'Dire mon numéro'}
+                </motion.button>
+                <p onClick={() => parle('Entre ton numéro de téléphone, ou touche le micro et dis-le')} title="Touche pour écouter"
+                   style={{ fontSize: 11, color: 'rgba(150,80,30,0.55)', textAlign: 'center', cursor: 'pointer', display:'inline-flex', alignItems:'center', gap:5, justifyContent:'center', margin: 0 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+                  Entre ton numéro de téléphone
+                </p>
+              </div>
             </div>
             </motion.div>
           ) : (

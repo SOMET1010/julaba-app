@@ -9,6 +9,31 @@ import './styles/theme.css';
 import './styles/tailwind.css';
 import './styles/index.css';
 
+// ── Auth mobile : jeton en en-tête Authorization ──────────────────────────────
+// Les cookies cross-domaine (julaba-web ↔ julaba-api) sont BLOQUÉS par les
+// navigateurs mobiles (surtout en navigation privée) → la connexion « réussissait »
+// puis l'appli te croyait déconnectée (« retour au début »). On envoie donc le
+// jeton stocké (localStorage) en en-tête sur chaque appel à NOTRE API. Le backend
+// accepte déjà « Authorization: Bearer … » en plus du cookie → connexion fiable
+// partout, sans dépendre du cookie.
+(() => {
+  const origFetch = window.fetch.bind(window);
+  window.fetch = (input: any, init: any = {}) => {
+    try {
+      const url = typeof input === 'string' ? input : (input?.url || '');
+      if (url && url.includes('/api/v1')) {
+        const token = localStorage.getItem('julaba_access_token');
+        if (token) {
+          const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined));
+          if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+          init = { ...init, headers };
+        }
+      }
+    } catch { /* ignore */ }
+    return origFetch(input, init);
+  };
+})();
+
 const root = document.getElementById('root');
 
 if (!root) {

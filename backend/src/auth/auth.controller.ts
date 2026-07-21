@@ -61,7 +61,8 @@ export class AuthController {
     const ipAddress = req.ip || req.headers['x-forwarded-for'];
     const result = await this.authService.signup(signupDto, deviceInfo, ipAddress);
     this.setTokenCookies(res, result.accessToken, result.refreshToken);
-    return { user: { ...result.user, mustChangePassword: result.user.mustChangePassword ?? false }, success: true };
+    // Jetons aussi dans le corps (auth mobile sans cookie cross-domaine).
+    return { user: { ...result.user, mustChangePassword: result.user.mustChangePassword ?? false }, success: true, accessToken: result.accessToken, refreshToken: result.refreshToken };
   }
 
   @Throttle({ auth: { limit: 10, ttl: 60000 } })
@@ -98,7 +99,10 @@ export class AuthController {
     const result = await this.authService.login(loginDto, deviceInfo, ipAddress);
     const isBO = BO_ROLES.includes(result.user?.role);
     this.setTokenCookies(res, result.accessToken, result.refreshToken, isBO);
-    return { user: result.user, success: true };
+    // On renvoie AUSSI les jetons dans le corps : sur mobile, les cookies
+    // cross-domaine (julaba-web ↔ julaba-api) sont bloqués. Le frontend stocke
+    // ces jetons et les envoie en en-tête Authorization -> connexion fiable partout.
+    return { user: result.user, success: true, accessToken: result.accessToken, refreshToken: result.refreshToken };
   }
 
   @Post('refresh')
