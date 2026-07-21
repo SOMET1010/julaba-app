@@ -24,13 +24,30 @@ interface CompteDemo {
   firstName: string;
   lastName: string;
   genre: 'femme' | 'homme';
-  avecDonnees: boolean;
+  role: UserRole;
+  // Code de connexion. Rôles « acteur » = pavé à 4 chiffres -> 4 chiffres.
+  // Rôles back-office = écran /backoffice/login (champ texte) -> 6 chiffres.
+  password: string;
+  avecDonnees?: boolean; // jeu de données caisse (marchand uniquement)
 }
 
+// Un compte de démo par univers, pour que les équipes testent CHAQUE rôle.
+// Acteurs (connexion sur /login, code à 4 chiffres = 1234) :
 const COMPTES: CompteDemo[] = [
-  { phone: '+2250700000009', firstName: 'Awa', lastName: 'Koné', genre: 'femme', avecDonnees: true },
-  { phone: '+2250700000010', firstName: 'Kouassi', lastName: 'Yao', genre: 'homme', avecDonnees: false },
-  { phone: '+2250700000011', firstName: 'Fatou', lastName: 'Traoré', genre: 'femme', avecDonnees: false },
+  // ── Marchand (caisse) ──
+  { phone: '+2250700000009', firstName: 'Awa', lastName: 'Koné', genre: 'femme', role: UserRole.MARCHAND, password: '1234', avecDonnees: true },
+  { phone: '+2250700000010', firstName: 'Kouassi', lastName: 'Yao', genre: 'homme', role: UserRole.MARCHAND, password: '1234' },
+  { phone: '+2250700000011', firstName: 'Fatou', lastName: 'Traoré', genre: 'femme', role: UserRole.MARCHAND, password: '1234' },
+  // ── Producteur (récoltes / marché) ──
+  { phone: '+2250700000012', firstName: 'Yao', lastName: 'Kouadio', genre: 'homme', role: UserRole.PRODUCTEUR, password: '1234' },
+  // ── Coopérateur (coopérative) ──
+  { phone: '+2250700000013', firstName: 'Mariam', lastName: 'Diallo', genre: 'femme', role: UserRole.COOPERATEUR, password: '1234' },
+  // ── Identificateur (enrôlement) ──
+  { phone: '+2250700000014', firstName: 'Ibrahim', lastName: 'Touré', genre: 'homme', role: UserRole.IDENTIFICATEUR, password: '1234' },
+  // ── Institution (supervision / analytics) ──
+  { phone: '+2250700000015', firstName: 'Aïcha', lastName: 'Bamba', genre: 'femme', role: UserRole.INSTITUTION, password: '1234' },
+  // ── Back-office admin (connexion sur /backoffice/login, code à 6 chiffres = 123456) ──
+  { phone: '+2250700000016', firstName: 'Admin', lastName: 'Julaba', genre: 'homme', role: UserRole.ADMIN_GENERAL, password: '123456' },
 ];
 
 @Injectable()
@@ -41,16 +58,12 @@ export class SeedDemoService implements OnApplicationBootstrap {
 
   async onApplicationBootstrap(): Promise<void> {
     if (process.env.SEED_DEMO === 'false') return; // désactivable en production
-    // Le mot de passe marchand se saisit sur un PAVÉ À 4 CHIFFRES : il DOIT être
-    // un code numérique à 4 chiffres, sinon il est impossible à taper à l'écran.
-    const brut = (process.env.SEED_DEMO_PASSWORD || '').trim();
-    const motDePasse = /^[0-9]{4}$/.test(brut) ? brut : '1234';
     const users = this.dataSource.getRepository(User);
 
     for (const c of COMPTES) {
       try {
         let user = await users.findOne({ where: { phone: c.phone } });
-        const passwordHash = await bcrypt.hash(motDePasse, 10);
+        const passwordHash = await bcrypt.hash(c.password, 10);
         if (!user) {
           const nouveau = users.create({
             phone: c.phone,
@@ -58,7 +71,7 @@ export class SeedDemoService implements OnApplicationBootstrap {
             firstName: c.firstName,
             lastName: c.lastName,
             genre: c.genre,
-            role: UserRole.MARCHAND,
+            role: c.role,
             status: UserStatus.ACTIF,
             validated: true,
             // Compte de démo : directement utilisable, pas d'écran « changez
@@ -66,12 +79,13 @@ export class SeedDemoService implements OnApplicationBootstrap {
             mustChangePassword: false,
           } as Partial<User>) as User;
           user = await users.save(nouveau);
-          this.logger.log(`Compte démo créé : ${c.phone} (${c.firstName} ${c.lastName})`);
+          this.logger.log(`Compte démo créé : ${c.phone} (${c.firstName} ${c.lastName} — ${c.role})`);
         } else {
-          // Compte déjà présent : on réaligne le mot de passe de démo connu (utile
-          // si SEED_DEMO_PASSWORD change ou si un testeur l'a modifié). Idempotent.
+          // Compte déjà présent : on réaligne le mot de passe de démo connu et le
+          // rôle (utile si un testeur les a modifiés). Idempotent.
           await users.update(user.id, {
             passwordHash,
+            role: c.role,
             mustChangePassword: false,
           } as Partial<User>);
         }
