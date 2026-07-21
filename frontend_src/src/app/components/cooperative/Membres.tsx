@@ -388,7 +388,7 @@ export function Membres() {
   const voiceLecture = () => {
     const msg = `Vous avez ${kpis.actifs} membres actifs, ${kpis.suspendus} suspendus, et ${kpis.enAttente} en attente de confirmation. Le volume total ce ${periode === 'mois' ? 'mois' : periode === 'annuel' ? 'an' : 'historique'} est de ${(kpis.volumeFCFA / 1000000).toFixed(1)} millions de francs CFA.`;
     speak(msg);
-    toast.info('Tata Lou parle...');
+    toast.info('Tata Nanti Lou parle...');
   };
 
   // ─── Actions membres ─────────────────────────────────────────────────────

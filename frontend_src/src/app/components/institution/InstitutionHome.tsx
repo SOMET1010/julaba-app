@@ -86,7 +86,7 @@ export function InstitutionHome() {
       </div>
       <div className="pb-32 lg:pb-8 pt-16 lg:pt-10 px-4 lg:pl-[320px] max-w-2xl lg:max-w-7xl mx-auto min-h-screen bg-gradient-to-b from-purple-50 via-white to-gray-50">
 
-        {/* ── Tata Lou — IDENTIQUE à IdentificateurHome ─────────────── */}
+        {/* ── Tata Nanti Lou — IDENTIQUE à IdentificateurHome ─────────────── */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9, y: -20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -94,7 +94,7 @@ export function InstitutionHome() {
           className="mb-8"
         >
           <div className="flex items-stretch gap-2">
-            {/* Image Tata Lou à gauche — MÊME position/taille/animation */}
+            {/* Image Tata Nanti Lou à gauche — MÊME position/taille/animation */}
             <motion.div
               className="flex-shrink-0 flex items-center"
               animate={isSpeaking ? { y: [0, -8, 0] } : {}}
@@ -102,7 +102,7 @@ export function InstitutionHome() {
             >
               <motion.img
                 src={tataLouImg}
-                alt="Tata Lou"
+                alt="Tata Nanti Lou"
                 className="w-36 h-auto object-contain"
                 whileHover={{ scale: 1.05, rotate: 2 }}
                 whileTap={{ scale: 0.95 }}
@@ -129,7 +129,7 @@ export function InstitutionHome() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 }}
                 >
-                  Tata Lou
+                  Tata Nanti Lou
                 </motion.h3>
                 
                 {/* Message */}

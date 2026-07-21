@@ -160,7 +160,7 @@ export function VoiceButton({ onVoiceCommand }: VoiceButtonProps) {
             animate={{ opacity: 1 }}
             style={{ fontSize: 11, color: '#aaa', textAlign: 'center' }}
           >
-            {isListening ? 'Appuie pour arrêter' : 'Parler à Tata Lou'}
+            {isListening ? 'Appuie pour arrêter' : 'Parler à Tata Nanti Lou'}
           </motion.div>
         )}
       </AnimatePresence>

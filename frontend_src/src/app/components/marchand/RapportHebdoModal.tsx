@@ -68,7 +68,7 @@ export function RapportHebdoModal({ isOpen, onClose }: Props) {
                 <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
                   <Loader className="w-10 h-10" style={{ color: P }} />
                 </motion.div>
-                <p className="text-gray-500 font-medium">Tata Lou analyse ta semaine...</p>
+                <p className="text-gray-500 font-medium">Tata Nanti Lou analyse ta semaine...</p>
               </div>
             ) : rapport ? (
               <>
@@ -148,12 +148,12 @@ export function RapportHebdoModal({ isOpen, onClose }: Props) {
                   </div>
                 )}
 
-                {/* Rapport vocal Tata Lou */}
+                {/* Rapport vocal Tata Nanti Lou */}
                 {rapport.rapportVocal && (
                   <div className="rounded-2xl p-4" style={{ background: `${P}08`, border: `1.5px solid ${P}20` }}>
                     <div className="flex items-center gap-2 mb-2">
                       <BookOpen className="w-4 h-4" style={{ color: P }} />
-                      <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: P }}>Message de Tata Lou</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: P }}>Message de Tata Nanti Lou</p>
                     </div>
                     <p className="text-sm text-gray-700 leading-relaxed">{rapport.rapportVocal}</p>
                     {rapport.audioBase64 && (
@@ -161,7 +161,7 @@ export function RapportHebdoModal({ isOpen, onClose }: Props) {
                         className="mt-3 w-full py-2.5 rounded-xl flex items-center justify-center gap-2 font-bold text-sm"
                         style={{ background: P, color: 'white' }}>
                         <Volume2 className="w-4 h-4" />
-                        Écouter Tata Lou
+                        Écouter Tata Nanti Lou
                       </motion.button>
                     )}
                   </div>

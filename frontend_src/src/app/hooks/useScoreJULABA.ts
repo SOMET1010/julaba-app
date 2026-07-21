@@ -53,7 +53,7 @@ export const SCORE_LEVELS: ScoreLevel[] = [
     benefits: [
       'Accès à la plateforme JULABA',
       'Formations de base',
-      'Support Tata Lou',
+      'Support Tata Nanti Lou',
     ],
   },
   {
@@ -192,7 +192,7 @@ export function getRecommendedActions(
       },
       {
         id: 'enable_voice',
-        label: 'Active Tata Lou',
+        label: 'Active Tata Nanti Lou',
         description: 'Utilise l\'assistant vocal',
         points: 5,
         completed: completedActions.includes('enable_voice'),
@@ -285,7 +285,7 @@ export function getRecommendedActions(
       },
       {
         id: 'enable_voice',
-        label: 'Active Tata Lou',
+        label: 'Active Tata Nanti Lou',
         description: 'Utilise l\'assistant vocal',
         points: 5,
         completed: completedActions.includes('enable_voice'),
@@ -362,7 +362,7 @@ export function getRecommendedActions(
       },
       {
         id: 'enable_voice',
-        label: 'Active Tata Lou',
+        label: 'Active Tata Nanti Lou',
         description: 'Utilise l\'assistant vocal',
         points: 5,
         completed: completedActions.includes('enable_voice'),
@@ -439,7 +439,7 @@ export function getRecommendedActions(
       },
       {
         id: 'enable_voice',
-        label: 'Active Tata Lou',
+        label: 'Active Tata Nanti Lou',
         description: 'Utilise l\'assistant vocal',
         points: 5,
         completed: completedActions.includes('enable_voice'),
@@ -516,7 +516,7 @@ export function getRecommendedActions(
       },
       {
         id: 'enable_voice',
-        label: 'Active Tata Lou',
+        label: 'Active Tata Nanti Lou',
         description: 'Utilise l\'assistant vocal',
         points: 5,
         completed: completedActions.includes('enable_voice'),
@@ -585,7 +585,7 @@ export function getRecommendedActions(
       },
       {
         id: 'enable_voice',
-        label: 'Active Tata Lou',
+        label: 'Active Tata Nanti Lou',
         description: 'Utilise l\'assistant vocal',
         points: 5,
         completed: completedActions.includes('enable_voice'),
@@ -646,7 +646,7 @@ export function getRecommendedActions(
       },
       {
         id: 'enable_voice',
-        label: 'Active Tata Lou',
+        label: 'Active Tata Nanti Lou',
         description: 'Utilise l\'assistant vocal',
         points: 5,
         completed: completedActions.includes('enable_voice'),

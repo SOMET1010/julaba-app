@@ -108,7 +108,7 @@ function computeJulabaScore(totalCorrect: number): number {
   return Math.min(100, Math.round((totalCorrect / MAX_CORRECT) * 100));
 }
 
-// Messages Tata Lou
+// Messages Tata Nanti Lou
 const TANTIE_CORRECT = [
   'Bravo ! Tu es trop fort !', 'Waaaah ! Bonne reponse !',
   'C\'est ca ! Tu geres bien !', 'Oui ! Continue comme ca !',
@@ -468,7 +468,7 @@ export function UniversalAcademy() {
         </motion.button>
       </div>
 
-      {/* Tata Lou */}
+      {/* Tata Nanti Lou */}
       <div className="flex flex-col items-center px-6 pt-2 pb-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
@@ -490,7 +490,7 @@ export function UniversalAcademy() {
           transition={{ type: 'spring', stiffness: 200, damping: 15 }}
         >
           <motion.img
-            src={tataLouImg} alt="Tata Lou"
+            src={tataLouImg} alt="Tata Nanti Lou"
             className="w-40 h-auto object-contain"
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
@@ -823,7 +823,7 @@ export function UniversalAcademy() {
           </div>
         </div>
 
-        {/* Tata Lou */}
+        {/* Tata Nanti Lou */}
         <div className="flex flex-col items-center px-6 pt-1 pb-2">
           <AnimatePresence mode="wait">
             {tantieMsg && (

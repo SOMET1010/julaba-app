@@ -14,7 +14,7 @@ import { useEffect, useRef } from 'react';
 //    aucun téléchargement. NÉCESSITE INTERNET (le cœur de la vente reste, lui,
 //    utilisable hors-ligne en appui-pour-parler).
 //  - `active` doit être coupé pendant que l'assistante réfléchit/parle : sinon le
-//    micro réentend la voix de Tata Lou (boucle) et entre en conflit avec
+//    micro réentend la voix de Tata Nanti Lou (boucle) et entre en conflit avec
 //    l'enregistrement audio. La modale ne met `active` à vrai qu'à l'état "idle".
 // ─────────────────────────────────────────────────────────────────────────────
 

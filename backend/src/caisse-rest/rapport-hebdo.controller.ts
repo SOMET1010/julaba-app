@@ -88,7 +88,7 @@ export class RapportHebdoController {
     // Générer texte avec OpenAI GPT-4o
     let rapportVocal = '';
     try {
-      const prompt = `Tu es Tata Lou, assistante vocale JULABA pour marchands ivoiriens.
+      const prompt = `Tu es Tata Nanti Lou, assistante vocale JULABA pour marchands ivoiriens.
 Génère un rapport vocal hebdomadaire chaleureux et motivant en français ivoirien simple.
 Données de la semaine:
 - Total ventes: ${ventesCurrent.toLocaleString('fr-FR')} FCFA
