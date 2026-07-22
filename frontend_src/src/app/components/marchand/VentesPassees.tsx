@@ -9,6 +9,8 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { fetchCredits, marquerCreditPaye, type Credit } from '../../../imports/caisse-api';
 import { fr } from 'date-fns/locale';
 import { exportSimplePDF, formatCurrency, formatDate } from '../../utils/export.utils';
+import { partagerRecu, telechargerRecuPDF } from '../../utils/recu.utils';
+import { toast } from 'sonner';
 import { NotificationButton } from './NotificationButton';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { toast } from 'sonner';
@@ -26,6 +28,8 @@ function dayLabel(date: Date): string {
 // ── Card vente dépliable ──────────────────────────────────────
 function VenteCard({ sale, index, query }: { sale: any; index: number; query: string }) {
   const [open, setOpen] = useState(false);
+  const { user } = useApp();
+  const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Marchande';
   const montant = sale.montant || sale.price || 0;
   const marge = sale.totalMargin || 0;
   const source = sale.source || 'kassa';
@@ -108,6 +112,24 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
                   <span style={{ fontSize:12, fontWeight:700, color:'#16a34a' }}>+{marge.toLocaleString('fr-FR')} FCFA</span>
                 </div>
               )}
+              {/* Reçu numérique : partager (WhatsApp) ou télécharger en PDF */}
+              <div style={{ display:'flex', gap:8, marginTop:4 }}>
+                <button type="button"
+                  onClick={async () => {
+                    const r = await partagerRecu(sale, marchandNom);
+                    if (r === 'copie') toast.success('Reçu copié'); else if (r === 'echec') toast.error('Partage indisponible');
+                  }}
+                  style={{ flex:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, padding:'11px 0', borderRadius:14, border:'none', background:'#1FA463', color:'#fff', fontWeight:800, fontSize:13, cursor:'pointer' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                  Partager le reçu
+                </button>
+                <button type="button"
+                  onClick={() => telechargerRecuPDF(sale, marchandNom).catch(() => toast.error('Téléchargement impossible'))}
+                  aria-label="Télécharger le reçu en PDF"
+                  style={{ width:48, display:'grid', placeItems:'center', borderRadius:14, border:'1.5px solid #EAD9C6', background:'#fff', color:'#B85C1B', cursor:'pointer' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
