@@ -179,6 +179,29 @@ export class DbInitService implements OnApplicationBootstrap {
       `);
       await this.dataSource.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_evaluations_cmd_auteur ON evaluations (commande_id, auteur_id);`);
       await this.dataSource.query(`CREATE INDEX IF NOT EXISTS idx_evaluations_cible ON evaluations (cible_id);`);
+      // Fidélité : barème paramétrable + points par client (CDC 8.1.2).
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS fidelite_config (
+          marchand_id uuid PRIMARY KEY,
+          actif boolean DEFAULT false,
+          points_par_cent numeric DEFAULT 1,
+          seuil_points numeric DEFAULT 100,
+          recompense_fcfa numeric DEFAULT 1000,
+          updated_at timestamptz DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS fidelite_clients (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          marchand_id uuid NOT NULL,
+          telephone varchar(40) NOT NULL,
+          nom varchar(160) NULL,
+          points numeric DEFAULT 0,
+          total_achats numeric DEFAULT 0,
+          updated_at timestamptz DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_fidelite_client ON fidelite_clients (marchand_id, telephone);`);
       this.logger.log('Colonnes stocks (seuil_alerte…) et cycles.statut vérifiées');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);

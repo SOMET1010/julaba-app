@@ -34,6 +34,7 @@ import { AdminModule } from './admin/admin.module';
 
 import { CyclesRestModule } from './cycles-rest/cycles-rest.module';
 import { EvaluationsRestModule } from './evaluations-rest/evaluations-rest.module';
+import { FideliteRestModule } from './fidelite-rest/fidelite-rest.module';
 import { TicketsRestModule } from './tickets-rest/tickets-rest.module';
 import { PublicationsRestModule } from './publications-rest/publications-rest.module';
 import { CommandesRestModule } from './commandes-rest/commandes-rest.module';
@@ -94,6 +95,7 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
     MarchesModule,
     CyclesRestModule,
     EvaluationsRestModule,
+    FideliteRestModule,
     RecoltesRestModule,
     TicketsRestModule,
     PublicationsRestModule,

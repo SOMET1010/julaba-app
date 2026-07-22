@@ -63,6 +63,7 @@ export const router = createBrowserRouter([
         { path: "cooperative", element: L(() => import("./components/marchand/MaCooperative").then(m => ({ default: m.MaCooperative }))), errorElement: <ErrorFallback /> },
         { path: "cooperative/besoin", element: L(() => import("./components/marchand/BesoinMarchand").then(m => ({ default: m.BesoinMarchand }))), errorElement: <ErrorFallback /> },
         { path: "protection-sociale", element: L(() => import("./components/marchand/ProtectionSociale").then(m => ({ default: m.ProtectionSociale }))), errorElement: <ErrorFallback /> },
+        { path: "fidelite", element: L(() => import("./components/marchand/Fidelite").then(m => ({ default: m.Fidelite }))), errorElement: <ErrorFallback /> },
         { path: "academy", element: L(() => import("./components/academy/UniversalAcademy").then(m => ({ default: m.UniversalAcademy }))), errorElement: <ErrorFallback /> },
         { path: "keiwa", element: L(() => import("./components/wallet/WalletPage").then(m => ({ default: m.WalletPage }))), errorElement: <ErrorFallback /> },
         { path: "keiwa/transfert", element: L(() => import("./components/wallet/TransfertPage").then(m => ({ default: m.TransfertPage }))), errorElement: <ErrorFallback /> },
