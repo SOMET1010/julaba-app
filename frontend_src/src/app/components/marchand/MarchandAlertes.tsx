@@ -223,6 +223,29 @@ export function MarchandAlertes() {
     });
   });
 
+  // Produits proches de la péremption (≤ 7 jours) ou déjà périmés (écart CDC 8.1.2).
+  const auj = new Date(); auj.setHours(0, 0, 0, 0);
+  stock.forEach(s => {
+    if (!s.datePeremption) return;
+    const dp = new Date(s.datePeremption);
+    if (isNaN(dp.getTime())) return;
+    const jours = Math.ceil((dp.getTime() - auj.getTime()) / 86400000);
+    if (jours > 7) return;
+    const perime = jours < 0;
+    items.push({
+      id: `peremption-${s.id}`,
+      urgence: (perime || jours <= 2) ? 'haute' : 'moyenne',
+      icon: Clock,
+      title: perime ? `${s.produit} — Périmé` : `${s.produit} — Bientôt périmé`,
+      subtitle: perime
+        ? `Périmé depuis ${Math.abs(jours)} jour${Math.abs(jours) > 1 ? 's' : ''}`
+        : (jours === 0 ? 'Se périme aujourd’hui' : `Se périme dans ${jours} jour${jours > 1 ? 's' : ''}`),
+      detail: perime ? 'À retirer de la vente' : 'À vendre en priorité',
+      actionLabel: 'Voir le stock',
+      onAction: () => navigate('/marchand/stock'),
+    });
+  });
+
   // Journée non ouverte
   if (!currentSession?.opened) {
     items.push({
