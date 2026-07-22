@@ -250,48 +250,83 @@ export function LoginPassword() {
         // l'impression que rien ne se passe).
         rec.interimResults = true;
         rec.maxAlternatives = 4;
-        rec.continuous = false;
+        // continuous = true → on continue d'écouter À TRAVERS LES PAUSES (un numéro
+        // se dit par groupes : « zéro sept … quarante-cinq … »). On accumule les
+        // chiffres jusqu'à 10, puis on arrête tout seul. Sans ça, la reconnaissance
+        // s'arrêtait après le 1er groupe et bloquait la vendeuse.
+        rec.continuous = true;
         setIsListening(true);
-        let dernierAffiche = 0; // nb de chiffres déjà affichés (pour la vibration)
+        let acc = '';            // chiffres finalisés, accumulés dans l'ordre
+        let processed = 0;       // nb de segments finaux déjà intégrés
+        let dernierAffiche = 0;  // pour la vibration
+        let fini = false;
+
+        // Filet : si la reconnaissance ne se termine jamais (silence prolongé),
+        // on l'arrête au bout de 12 s et on valide ce qu'on a.
+        const stopTimer = setTimeout(() => { try { rec.stop(); } catch { /* ignore */ } }, 12000);
+
+        const finaliser = () => {
+          if (fini) return;
+          fini = true;
+          clearTimeout(stopTimer);
+          setIsListening(false);
+          const num = acc.slice(0, 10);
+          if (num.length === 0) {
+            setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
+            parle("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+            setShowKeypad(true);
+            return;
+          }
+          remplirNumero(num);
+          if (num.length < 10) {
+            // On GARDE les chiffres captés et on ouvre le clavier pour compléter
+            // (la saisie s'ajoute aux chiffres déjà là, elle ne les efface pas).
+            setShowKeypad(true);
+            parle("J'ai compris " + num.split('').join(' ') + '. Tape la suite.');
+          }
+        };
+
         rec.onresult = (e) => {
-          // Meilleure suite de chiffres sur TOUS les résultats (aperçus + final).
-          let best = '';
-          let final = false;
-          for (let i = 0; i < e.results.length; i++) {
+          // 1) Intègre les nouveaux segments FINAUX (chiffres ajoutés dans l'ordre).
+          for (let i = processed; i < e.results.length; i++) {
             const res = e.results[i];
-            if (res.isFinal) final = true;
-            for (let j = 0; j < res.length; j++) {
-              const d = extractPhoneDigits(res[j]?.transcript || '');
-              if (d.length > best.length) best = d;
+            if (res.isFinal) {
+              let seg = '';
+              for (let j = 0; j < res.length; j++) {
+                const d = extractPhoneDigits(res[j]?.transcript || '');
+                if (d.length > seg.length) seg = d;
+              }
+              acc = (acc + seg).slice(0, 10);
+              processed = i + 1;
             }
           }
-          // RETOUR EN DIRECT : on affiche les chiffres au fur et à mesure + une
-          // petite vibration à chaque nouveau chiffre entendu (confirmation tactile).
-          if (best.length > 0) {
-            setPhone(best.slice(0, 10));
+          // 2) Aperçu vivant = dernier segment PAS ENCORE finalisé.
+          let interim = '';
+          const last = e.results[e.results.length - 1];
+          if (last && !last.isFinal) {
+            for (let j = 0; j < last.length; j++) {
+              const d = extractPhoneDigits(last[j]?.transcript || '');
+              if (d.length > interim.length) interim = d;
+            }
+          }
+          const affiche = (acc + interim).slice(0, 10);
+          if (affiche.length > 0) {
+            setPhone(affiche);
             setError('');
-            if (best.length > dernierAffiche) {
-              dernierAffiche = best.length;
+            if (affiche.length > dernierAffiche) {
+              dernierAffiche = affiche.length;
               try { navigator.vibrate?.(30); } catch { /* ignore */ }
             }
           }
-          // Tant que ce n'est pas le résultat FINAL, on garde juste l'aperçu vivant
-          // (pas de transition ni de message — la vendeuse est peut-être encore en
-          // train de dire la suite).
-          if (!final) return;
-          if (best.length === 0) {
-            setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
-            parle("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
-            setShowKeypad(true); // on ne laisse jamais la vendeuse bloquée : clavier ouvert
-            return;
-          }
-          remplirNumero(best);
-          if (best.length < 10) {
-            parle("J'ai compris " + best.split('').join(' ') + '. Continue ou tape le reste.');
-          }
+          // 3) Numéro complet → on arrête d'écouter et on valide.
+          if (acc.length >= 10) { try { rec.stop(); } catch { /* ignore */ } finaliser(); }
         };
+
         rec.onerror = (ev) => {
+          clearTimeout(stopTimer);
           setIsListening(false);
+          // Silence après quelques chiffres → on garde ce qu'on a plutôt que d'échouer.
+          if (ev?.error === 'no-speech' && acc.length > 0) { finaliser(); return; }
           if (ev?.error === 'not-allowed' || ev?.error === 'service-not-allowed') {
             setError('Autorise le micro, ou tape ton numéro 👇');
             setShowKeypad(true);
@@ -303,7 +338,14 @@ export function LoginPassword() {
             setShowKeypad(true);
           }
         };
-        rec.onend = () => { setIsListening(false); recognitionRef.current = null; };
+
+        // Fin d'écoute (arrêt manuel, silence, ou stop programmé) → on valide ce
+        // qui a été capté (gère proprement le cas « moins de 10 chiffres »).
+        rec.onend = () => {
+          clearTimeout(stopTimer);
+          recognitionRef.current = null;
+          finaliser();
+        };
         rec.start();
       } catch {
         setIsListening(false);
