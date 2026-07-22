@@ -20,6 +20,7 @@ import {
 } from './MarchandModals';
 import tataLouImgMarchand from "../../../assets/images/tantie-marchand.png";
 import { MarchandAccueil } from './MarchandAccueil';
+import { MarchandAccueilVoice } from './MarchandAccueilVoice';
 import { NotifBellButton, NotificationsPanel } from '../shared/NotificationsPanel';
 
 export function MarchandHome() {
@@ -104,7 +105,7 @@ export function MarchandHome() {
 
   if (modeSimple) {
     return (
-      <MarchandAccueil
+      <MarchandAccueilVoice
         onSwitchToAdvanced={() => {
           setModeSimple(false);
           safeSetItem('julaba_marchand_mode', 'advanced');
