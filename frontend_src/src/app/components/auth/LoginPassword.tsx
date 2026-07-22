@@ -238,26 +238,47 @@ export function LoginPassword() {
         const RecCtor = SR as new () => {
           lang: string; interimResults: boolean; maxAlternatives: number; continuous: boolean;
           start: () => void; stop: () => void; abort: () => void;
-          onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+          onresult: ((e: { results: ArrayLike<{ isFinal?: boolean } & ArrayLike<{ transcript: string }>> }) => void) | null;
           onerror: ((e: { error?: string }) => void) | null;
           onend: (() => void) | null;
         };
         const rec = new RecCtor();
         recognitionRef.current = rec;
         rec.lang = 'fr-FR';
-        rec.interimResults = false;
+        // interimResults = true → on reçoit les chiffres AU FUR ET À MESURE que la
+        // vendeuse parle, pour lui montrer en direct qu'on l'entend (sinon elle a
+        // l'impression que rien ne se passe).
+        rec.interimResults = true;
         rec.maxAlternatives = 4;
         rec.continuous = false;
         setIsListening(true);
+        let dernierAffiche = 0; // nb de chiffres déjà affichés (pour la vibration)
         rec.onresult = (e) => {
+          // Meilleure suite de chiffres sur TOUS les résultats (aperçus + final).
           let best = '';
+          let final = false;
           for (let i = 0; i < e.results.length; i++) {
-            const alts = e.results[i];
-            for (let j = 0; j < alts.length; j++) {
-              const d = extractPhoneDigits(alts[j].transcript || '');
+            const res = e.results[i];
+            if (res.isFinal) final = true;
+            for (let j = 0; j < res.length; j++) {
+              const d = extractPhoneDigits(res[j]?.transcript || '');
               if (d.length > best.length) best = d;
             }
           }
+          // RETOUR EN DIRECT : on affiche les chiffres au fur et à mesure + une
+          // petite vibration à chaque nouveau chiffre entendu (confirmation tactile).
+          if (best.length > 0) {
+            setPhone(best.slice(0, 10));
+            setError('');
+            if (best.length > dernierAffiche) {
+              dernierAffiche = best.length;
+              try { navigator.vibrate?.(30); } catch { /* ignore */ }
+            }
+          }
+          // Tant que ce n'est pas le résultat FINAL, on garde juste l'aperçu vivant
+          // (pas de transition ni de message — la vendeuse est peut-être encore en
+          // train de dire la suite).
+          if (!final) return;
           if (best.length === 0) {
             setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
             parle("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
@@ -703,6 +724,24 @@ export function LoginPassword() {
               transition={{ duration: 0.25 }}
               style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, pointerEvents: step === 'phone' ? 'auto' : 'none' }}
             >
+            {/* Chiffres EN DIRECT — on voit les nombres apparaître au fur et à mesure.
+                Les chiffres se lisent même sans savoir lire ; c'est le vrai contrôle
+                « elle m'entend ». « J'écoute… » quand le micro est ouvert sans chiffre. */}
+            <div style={{ textAlign: 'center', minHeight: 40, marginBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {phone.length > 0 ? (
+                <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: 3, color: isListening ? '#1C7A4B' : '#7A4A22', fontVariantNumeric: 'tabular-nums' }}>
+                  {(phone.match(/.{1,2}/g) || []).join(' ')}
+                </span>
+              ) : isListening ? (
+                <motion.span
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.2, repeat: Infinity }}
+                  style={{ fontSize: 18, fontWeight: 800, color: '#1C7A4B', letterSpacing: 1 }}
+                >
+                  J'écoute… dis ton numéro
+                </motion.span>
+              ) : null}
+            </div>
             {/* Un point vert par chiffre entendu — on voit que ça avance, sans lire */}
             <div style={{ display: 'flex', gap: 9, justifyContent: 'center', minHeight: 16, marginBottom: 2 }}>
               {Array.from({ length: 10 }).map((_, i) => (
