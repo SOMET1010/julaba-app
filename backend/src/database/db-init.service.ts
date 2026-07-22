@@ -165,6 +165,20 @@ export class DbInitService implements OnApplicationBootstrap {
       `);
       // cycles : colonne statut manquante (checkRecoltesProches).
       await this.dataSource.query(`ALTER TABLE cycles ADD COLUMN IF NOT EXISTS statut varchar;`);
+      // evaluations : notation acheteur/vendeur après une commande livrée (CDC 8.1.5).
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS evaluations (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          commande_id uuid NOT NULL,
+          auteur_id uuid NOT NULL,
+          cible_id uuid NOT NULL,
+          note smallint NOT NULL CHECK (note BETWEEN 1 AND 5),
+          commentaire text NULL,
+          created_at timestamptz DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_evaluations_cmd_auteur ON evaluations (commande_id, auteur_id);`);
+      await this.dataSource.query(`CREATE INDEX IF NOT EXISTS idx_evaluations_cible ON evaluations (cible_id);`);
       this.logger.log('Colonnes stocks (seuil_alerte…) et cycles.statut vérifiées');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);

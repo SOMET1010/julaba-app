@@ -27,6 +27,8 @@ import {
   IMG_PRODUIT_PLANTAIN, IMG_PRODUIT_PIMENT, IMG_PRODUIT_AUBERGINE, IMG_PRODUIT_GOMBO
 } from '../../assets/images';
 import { Montant } from '../shared/Montant';
+import { EtoilesMoyenne } from '../shared/Etoiles';
+import { getNoteUtilisateur } from '../../services/evaluations.service';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { API_URL } from '../../utils/api';
 import { apiRequest } from '../../../imports/api-client';
@@ -162,6 +164,23 @@ export function MarcheVirtuel() {
   };
 
   const allProducts = React.useMemo(() => apiProducts, [apiProducts]);
+
+  // Notes moyennes des vendeurs (CDC 8.1.5) : une requête par vendeur unique visible.
+  const [sellerNotes, setSellerNotes] = useState<Record<string, { moyenne: number; total: number }>>({});
+  useEffect(() => {
+    const ids = Array.from(new Set(apiProducts.map(p => p.sellerId).filter(Boolean)));
+    const manquants = ids.filter(id => !(id in sellerNotes));
+    if (manquants.length === 0) return;
+    let vivant = true;
+    Promise.all(manquants.map(async (id) => {
+      const n = await getNoteUtilisateur(id);
+      return [id, { moyenne: n.moyenne, total: n.total }] as const;
+    })).then((paires) => {
+      if (!vivant) return;
+      setSellerNotes(prev => { const next = { ...prev }; for (const [id, v] of paires) next[id] = v; return next; });
+    });
+    return () => { vivant = false; };
+  }, [apiProducts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
     apiRequest<{ publications?: any[] } | null>(API_URL, '/publications/marche', { method: 'GET' })
@@ -729,7 +748,10 @@ export function MarcheVirtuel() {
                     {product.cooperativeInfo && <span className="text-[9px]">• {product.cooperativeInfo.nombreMembres} membres</span>}
                   </div>
                   <h3 className="font-bold text-sm text-gray-900 mb-0.5 leading-tight">{product.name}</h3>
-                  <p className="text-[10px] text-gray-500 mb-1.5">{product.sellerName}</p>
+                  <p className="text-[10px] text-gray-500 mb-0.5">{product.sellerName}</p>
+                  {sellerNotes[product.sellerId]?.total > 0 && (
+                    <div className="mb-1.5"><EtoilesMoyenne note={sellerNotes[product.sellerId].moyenne} total={sellerNotes[product.sellerId].total} size={12} /></div>
+                  )}
                   <p className="text-2xl font-bold text-[#C46210] mb-3"><Montant value={product.price} unit={product.unit} size="xl" color="#C46210" /></p>
                   <motion.button onClick={(e) => { e.stopPropagation(); addToCart(product.id); showToast(`${product.name} ajouté au panier`, 'success'); speakSilent(`${product.name} ajouté au panier`); }} className="w-full py-2.5 rounded-xl bg-[#C46210] text-white font-bold text-sm flex items-center justify-center gap-1.5 shadow-md" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02, boxShadow: '0 8px 20px rgba(196, 98, 16, 0.3)' }}>
                     <Plus className="w-4 h-4" strokeWidth={3} />Ajouter
