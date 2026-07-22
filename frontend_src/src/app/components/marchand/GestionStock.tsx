@@ -29,6 +29,7 @@ interface Stock {
   quantity: number; unit: string;
   purchasePrice: number; salePrice: number;
   threshold: number; category: string;
+  promoPrice?: number | null; promoFin?: string | null;
 }
 
 function AnimatedNumber({ value, color, size = 28 }: { value: number; color: string; size?: number }) {
@@ -263,6 +264,8 @@ export function GestionStock() {
         salePrice: p.prix || 0,
         threshold: (p as any).seuil_alerte || 10,
         category: (p.categorie || 'autres').toLowerCase(),
+        promoPrice: (p as any).prix_promo != null ? Number((p as any).prix_promo) : null,
+        promoFin: (p as any).promo_fin || null,
       }));
     const fromApi: Stock[] = stockCtx.stock.map(s => ({
       id: s.id, name: s.produit, image: '',
@@ -288,9 +291,9 @@ export function GestionStock() {
   const [showVente, setShowVente] = useState(false);
   const [reappQty, setReappQty] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const [newStock, setNewStock] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'' });
+  const [newStock, setNewStock] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
   const [inlineEdit, setInlineEdit] = useState(false);
-  const [editForm, setEditForm] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'' });
+  const [editForm, setEditForm] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -311,6 +314,9 @@ export function GestionStock() {
         threshold: selectedStock.threshold,
         category: selectedStock.category,
         image: selectedStock.image || '',
+        datePeremption: '',
+        promoPrice: selectedStock.promoPrice != null ? selectedStock.promoPrice : '',
+        promoFin: selectedStock.promoFin || '',
       });
     }
   }, [inlineEdit, selectedStock]);
@@ -365,12 +371,12 @@ export function GestionStock() {
     if (newStock.quantity < 0) { toast.error('Quantité invalide'); return; }
     const cat = rechercherProduitCatalogue(newStock.name);
     try {
-      await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null } as any);
+      await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
       toast.success('Produit ajouté');
       speak(`${newStock.quantity || 0} ${newStock.unit} de ${newStock.name} ajouté au stock`);
       showToast(`${newStock.name} ajouté au stock`, 'success');
       setShowAdd(false);
-      setNewStock({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'' });
+      setNewStock({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'', promoPrice:'', promoFin:'' });
     } catch {
       toast.error('Opération impossible. Réessaie.');
     }
@@ -446,6 +452,8 @@ export function GestionStock() {
       image: editForm.image || undefined,
       seuil_alerte: editForm.threshold,
       prix_achat: editForm.purchasePrice,
+      prix_promo: editForm.promoPrice !== '' ? Number(editForm.promoPrice) : null,
+      promo_fin: editForm.promoFin || null,
     } as any;
     try {
       if (kassa) await updateProduct(kassa.id, champs);
@@ -462,6 +470,8 @@ export function GestionStock() {
         threshold: editForm.threshold,
         category: editForm.category,
         image: editForm.image,
+        promoPrice: editForm.promoPrice !== '' ? Number(editForm.promoPrice) : null,
+        promoFin: editForm.promoFin || null,
       });
       setInlineEdit(false);
       speak(`${editForm.name} mis à jour`);
@@ -707,6 +717,18 @@ export function GestionStock() {
                   <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Date de péremption <span style={{ color:'#aaa', fontWeight:500 }}>(facultatif)</span></label>
                   <input type="date" value={newStock.datePeremption} onChange={e => setNewStock({...newStock, datePeremption:e.target.value})}
                     style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  <div>
+                    <label style={{ fontSize:13, fontWeight:700, color:'#C0392B', display:'block', marginBottom:6 }}>🏷️ Prix promo <span style={{ color:'#aaa', fontWeight:500 }}>(facultatif)</span></label>
+                    <input type="number" value={newStock.promoPrice} placeholder="ex : 400" onChange={e => setNewStock({...newStock, promoPrice:e.target.value === '' ? '' : Number(e.target.value)})}
+                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #F1D3CE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Fin promo</label>
+                    <input type="date" value={newStock.promoFin} onChange={e => setNewStock({...newStock, promoFin:e.target.value})}
+                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                  </div>
                 </div>
                 <motion.button whileTap={{ scale:0.97 }} onClick={addStockItem}
                   style={{ width:'100%', background:P, border:'none', borderRadius:16, padding:'17px 0', fontSize:17, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit' }}>
@@ -1062,6 +1084,22 @@ export function GestionStock() {
                       onChange={e => setEditForm({ ...editForm, threshold: e.target.value === '' ? '' as any : Number(e.target.value) })}
                       style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid #EDE7DE', outline: 'none', fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box', color: '#1a1a1a' }}
                     />
+                  </div>
+                  <div style={{ gridColumn:'1 / -1', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                    <div>
+                      <label style={{ fontSize:12, fontWeight:700, color:'#C0392B', display:'block', marginBottom:6 }}>🏷️ Prix promo <span style={{ color:'#aaa', fontWeight:500 }}>(vide = aucune)</span></label>
+                      <input type="number" value={editForm.promoPrice} placeholder="ex : 400"
+                        onChange={e => setEditForm({ ...editForm, promoPrice: e.target.value === '' ? '' : Number(e.target.value) })}
+                        style={{ width:'100%', padding:'11px 14px', borderRadius:12, border:'1.5px solid #F1D3CE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box', color:'#1a1a1a' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize:12, fontWeight:700, color:'#555', display:'block', marginBottom:6 }}>Fin promo</label>
+                      <input type="date" value={editForm.promoFin}
+                        onChange={e => setEditForm({ ...editForm, promoFin: e.target.value })}
+                        style={{ width:'100%', padding:'11px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box', color:'#1a1a1a' }}
+                      />
+                    </div>
                   </div>
                 </div>
                 )}

@@ -18,6 +18,8 @@ import {
   Store,
   Leaf,
   ArrowRightLeft,
+  Shield,
+  Gift,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
@@ -341,6 +343,48 @@ function ProfilMarchandExtras({ color, navigate, sousProfil }: { color: string; 
           </motion.button>
         </div>
       </motion.div>
+      {/* Protection sociale — socle CNPS/CNAM (CDC 8.1.2) */}
+      <motion.button
+        type="button"
+        onClick={() => navigate('/marchand/protection-sociale')}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.06, type: 'spring', stiffness: 200 }}
+        whileTap={{ scale: 0.98 }}
+        className="w-full mb-4 p-4 rounded-2xl border-2 shadow-md flex items-center gap-3 text-left"
+        style={{ borderColor: `${color}40`, background: `linear-gradient(to bottom right, ${color}14, #ffffff, ${color}14)` }}
+      >
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}25` }}>
+          <Shield className="w-6 h-6" style={{ color }} />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-gray-900">Ma protection sociale</h3>
+          <p className="text-xs text-gray-500">Cotisations CNPS (retraite) & CNAM (santé)</p>
+        </div>
+        <ChevronRight className="w-6 h-6 text-gray-400 ml-auto" />
+      </motion.button>
+
+      {/* Programme de fidélité paramétrable (CDC 8.1.2) */}
+      <motion.button
+        type="button"
+        onClick={() => navigate('/marchand/fidelite')}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.07, type: 'spring', stiffness: 200 }}
+        whileTap={{ scale: 0.98 }}
+        className="w-full mb-4 p-4 rounded-2xl border-2 shadow-md flex items-center gap-3 text-left"
+        style={{ borderColor: `${color}40`, background: `linear-gradient(to bottom right, ${color}14, #ffffff, ${color}14)` }}
+      >
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}25` }}>
+          <Gift className="w-6 h-6" style={{ color }} />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-gray-900">Fidélité clients</h3>
+          <p className="text-xs text-gray-500">Points & récompenses — barème réglable</p>
+        </div>
+        <ChevronRight className="w-6 h-6 text-gray-400 ml-auto" />
+      </motion.button>
+
       {sousProfilLabel && (
         <div className="w-full p-4 rounded-2xl border-2 shadow-md mb-4" style={{ borderColor: `${color}55`, background: `linear-gradient(to bottom right, ${color}14, #ffffff)` }}>
           <p className="text-xs text-gray-500 mb-1">Sous-profil marchand</p>

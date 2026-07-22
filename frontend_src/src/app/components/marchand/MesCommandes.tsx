@@ -16,6 +16,7 @@ import {
   marchandRepondreNegociation,
 } from '../../../imports/commandes-api';
 import { ReceptionPaiementModal } from '../shared/ReceptionPaiementModal';
+import { NoterCommande } from '../shared/NoterCommande';
 import { toast } from 'sonner';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -650,6 +651,17 @@ export function MesCommandes() {
                           <CheckCircle className="w-4 h-4 mr-2" />
                           Marquer comme payée
                         </Button>
+                      )}
+                      {/* Notation de la contrepartie sur une commande livrée (CDC 8.1.5) */}
+                      {commande.statut === 'livree' && (commande.acheteurId === user?.id || commande.vendeurId === user?.id) && (
+                        <NoterCommande
+                          commandeId={commande.id}
+                          cibleNom={commande.acheteurId === user?.id
+                            ? (commande.vendeurNom?.trim() || 'le vendeur')
+                            : ((commande as any).acheteurNom?.trim() || "l'acheteur")}
+                          color="#E67E22"
+                          onNoted={() => { void refreshCommandes(); }}
+                        />
                       )}
                     </div>
                   </div>
