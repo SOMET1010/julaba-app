@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { CreditModal } from './CreditModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
+import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 
 const P = '#AF5B23';
 const BG = '#FFF2E9';
@@ -225,7 +226,8 @@ export function POSCaisse() {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
               {filtered.map((p, i) => {
                 const inCart = cart.find(c => c.productId === p.id);
-                const cartTotal = inCart ? inCart.quantite * p.prix : 0;
+                const enPromo = promoActive(p as any);
+                const cartTotal = inCart ? inCart.quantite * inCart.prix : 0;
                 return (
                   <motion.div key={p.id} initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} transition={{ delay: i*0.04 }}
                     style={{ background:'white', border:`1.5px solid ${inCart ? P : '#EDE7DE'}`, borderRadius:20, overflow:'hidden', boxShadow: inCart ? `0 4px 20px rgba(175,91,35,0.18)` : 'none' }}>
@@ -233,6 +235,11 @@ export function POSCaisse() {
                       <ImageWithFallback src={p.image} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                       <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.55) 100%)' }} />
                       <StockBadge stock={p.stock || 0} />
+                      {enPromo && (
+                        <div style={{ position:'absolute', top:8, left:8, background:'#C0392B', borderRadius:10, padding:'3px 9px', fontSize:11, fontWeight:900, color:'white', boxShadow:'0 2px 8px rgba(192,57,43,0.4)' }}>
+                          -{remisePct(p as any)}%
+                        </div>
+                      )}
                       {inCart && (
                         <div style={{ position:'absolute', top:8, right:8, background:P, borderRadius:10, padding:'3px 10px', fontSize:11, fontWeight:800, color:'white' }}>
                           {cartTotal.toLocaleString('fr-FR')} FCFA
@@ -241,7 +248,15 @@ export function POSCaisse() {
                     </div>
                     <div style={{ padding:'11px 12px' }}>
                       <div style={{ fontSize:16, fontWeight:800, color:'#1a1206' }}>{p.nom}</div>
-                      <Prix prix={p.prix||0} unite={p.unite} />
+                      {enPromo ? (
+                        <div style={{ margin:'3px 0', display:'flex', alignItems:'baseline', gap:6, flexWrap:'wrap' }}>
+                          <span style={{ fontSize:20, fontWeight:900, color:'#C0392B' }}>{prixEffectif(p as any).toLocaleString('fr-FR')}</span>
+                          <span style={{ fontSize:11, fontWeight:700, color:'#C0392B' }}>FCFA/{p.unite}</span>
+                          <span style={{ fontSize:12, fontWeight:700, color:'#aaa', textDecoration:'line-through' }}>{(p.prix||0).toLocaleString('fr-FR')}</span>
+                        </div>
+                      ) : (
+                        <Prix prix={p.prix||0} unite={p.unite} />
+                      )}
                       {inCart ? (
                         <div style={{ display:'flex', alignItems:'center', background:'#FFF3EA', borderRadius:12, padding:4, marginTop:8, gap:4 }}>
                           <motion.button whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(p.id, inCart.quantite-1)}

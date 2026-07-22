@@ -6,6 +6,7 @@ import * as caisseApi from '../../imports/caisse-api';
 import { getImageByNom } from '../data/catalogue-produits';
 import { NOT_AUTHENTICATED } from '../../imports/api-client';
 import { API_URL } from '../utils/api';
+import { prixEffectif } from '../utils/promo.utils';
 // Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.
 import { enfilerOperation, synchroniser, type CaisseEndpoint } from '../voice-offline/offlineCaisse';
 
@@ -43,6 +44,10 @@ export interface CaisseProduct {
   seuil_alerte?: number;
   /** Date de péremption AAAA-MM-JJ (API: date_peremption) */
   date_peremption?: string | null;
+  /** Prix promotionnel (API: prix_promo) — appliqué s'il est actif */
+  prix_promo?: number | null;
+  /** Fin de promo AAAA-MM-JJ (API: promo_fin) — null = sans date de fin */
+  promo_fin?: string | null;
 }
 
 export interface CartItem {
@@ -279,7 +284,8 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
             : item
         );
       }
-      return [...prev, { productId: product.id, nom: product.nom, prix: product.prix, quantite }];
+      // Prix effectif : applique automatiquement le prix promo s'il est actif.
+      return [...prev, { productId: product.id, nom: product.nom, prix: prixEffectif(product), quantite }];
     });
   };
 
@@ -319,6 +325,8 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         unite: p.unite, image: p.image || getImageByNom(p.nom),
         seuil_alerte: p.seuil_alerte != null ? Number(p.seuil_alerte) : undefined,
         date_peremption: p.date_peremption || null,
+        prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
+        promo_fin: p.promo_fin || null,
       }));
       setProducts(mapped);
       // Cache local : derniers produits connus (vente/stock consultables hors-ligne).
@@ -343,6 +351,9 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         ...((product as any).seuil_alerte != null || (product as any).seuilAlerte != null || (product as any).threshold != null
           ? { seuil_alerte: Number((product as any).seuil_alerte ?? (product as any).seuilAlerte ?? (product as any).threshold) } : {}),
         ...((product as any).date_peremption || (product as any).datePeremption ? { date_peremption: (product as any).date_peremption ?? (product as any).datePeremption } : {}),
+        ...((product as any).prix_promo != null || (product as any).prixPromo != null
+          ? { prix_promo: Number((product as any).prix_promo ?? (product as any).prixPromo) || null } : {}),
+        ...((product as any).promo_fin || (product as any).promoFin ? { promo_fin: (product as any).promo_fin ?? (product as any).promoFin } : {}),
       };
       const res = await fetch(`${API_URL}/caisse/produits`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(produitData) });
       if (res.ok) eventBus.emit(EVENTS.PRODUCT_CREATED, produitData, { priority: 'medium' });
@@ -358,6 +369,8 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
           stock: Number(p.stock),
           unite: p.unite,
           image: p.image || getImageByNom(p.nom),
+          prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
+          promo_fin: p.promo_fin || null,
         }]);
       } else {
         throw new Error(`Erreur ${res.status} lors de la création du produit`);
@@ -380,11 +393,19 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       );
       const seuil = (updates as any).seuil_alerte ?? (updates as any).seuilAlerte ?? (updates as any).threshold;
       const peremption = (updates as any).date_peremption ?? (updates as any).datePeremption;
+      // Promo : présente dans `updates` seulement si le formulaire l'a envoyée.
+      // On la transmet alors explicitement (valeur ou null pour la retirer).
+      const promoFournie = 'prix_promo' in updates || 'prixPromo' in (updates as any);
+      const prixPromoRaw = (updates as any).prix_promo ?? (updates as any).prixPromo;
+      const promoFin = (updates as any).promo_fin ?? (updates as any).promoFin ?? null;
       const updatedWithPrixAchat = {
         ...updated,
         prix_achat: prixAchat,
         ...(seuil != null ? { seuil_alerte: Number(seuil) } : {}),
         ...(peremption ? { date_peremption: peremption } : {}),
+        ...(promoFournie
+          ? { prix_promo: prixPromoRaw != null && prixPromoRaw !== '' ? Number(prixPromoRaw) : null, promo_fin: promoFin || null }
+          : {}),
       };
       const res = await fetch(`${API_URL}/caisse/produits/${id}`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedWithPrixAchat) });
       if (!res.ok) throw new Error(`Erreur ${res.status} lors de la mise à jour`);

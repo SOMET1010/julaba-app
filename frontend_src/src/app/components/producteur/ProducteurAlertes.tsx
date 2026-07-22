@@ -2,7 +2,7 @@
  * ProducteurAlertes — Tableau de bord des alertes agricoles temps-réel.
  * Connecté au ProducteurContext.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -16,10 +16,19 @@ import {
   Zap,
   RefreshCw,
   X,
+  CloudRain,
+  Volume2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useProducteur } from '../../contexts/ProducteurContext';
 import { useApp } from '../../contexts/AppContext';
+import {
+  getMeteo,
+  conseilsAgricoles,
+  libelleMeteo,
+  resumeVocalMeteo,
+  type Meteo,
+} from '../../services/meteo.service';
 
 const COLOR = '#2E8B57';
 
@@ -159,12 +168,95 @@ function EcranVide() {
   );
 }
 
+// ── Carte météo & conseils agricoles (CDC 8.1.3) ────────────────
+
+function jourCourt(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '');
+}
+
+function MeteoCard({ meteo, onSpeak }: { meteo: Meteo | null; onSpeak: (t: string) => void }) {
+  if (!meteo) return null;
+  const auj = meteo.jours[0];
+  const info = libelleMeteo(auj?.code ?? 0);
+  const conseils = conseilsAgricoles(meteo);
+  const conseilPrincipal = conseils[0];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-3xl border-2 p-4"
+      style={{ backgroundColor: `${COLOR}0D`, borderColor: `${COLOR}33` }}
+    >
+      {/* En-tête : temps actuel */}
+      <div className="flex items-center gap-3">
+        <div className="text-4xl leading-none">{info.emoji}</div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-gray-900">
+            {meteo.actuel ? `${meteo.actuel.temperature}°` : `${auj?.tmax ?? ''}°`}
+            <span className="ml-2 text-sm font-medium text-gray-600">{info.label}</span>
+          </p>
+          <p className="text-xs text-gray-500">
+            {auj ? `${auj.tmin}° / ${auj.tmax}°` : ''}
+            {auj?.pluieProba ? ` · pluie ${auj.pluieProba}%` : ''}
+            {meteo.horsLigne ? ' · hors-ligne' : ''}
+          </p>
+        </div>
+        <motion.button
+          onClick={() => onSpeak(resumeVocalMeteo(meteo))}
+          className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: `${COLOR}22` }}
+          whileTap={{ scale: 0.9 }}
+          aria-label="Écouter la météo"
+        >
+          <Volume2 className="w-5 h-5" style={{ color: COLOR }} />
+        </motion.button>
+      </div>
+
+      {/* Prévisions 3 jours suivants */}
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {meteo.jours.slice(1, 4).map((j) => {
+          const wi = libelleMeteo(j.code);
+          return (
+            <div key={j.date} className="rounded-2xl bg-white/70 py-2 text-center">
+              <p className="text-xs font-semibold text-gray-500 capitalize">{jourCourt(j.date)}</p>
+              <p className="text-xl leading-tight">{wi.emoji}</p>
+              <p className="text-xs font-bold text-gray-800">{j.tmax}°<span className="text-gray-400 font-medium">/{j.tmin}°</span></p>
+              {j.pluieProba >= 30 && <p className="text-[10px] text-blue-500">💧{j.pluieProba}%</p>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Conseil agricole principal */}
+      {conseilPrincipal && (
+        <div className="mt-3 flex items-start gap-2 rounded-2xl bg-white/80 p-3">
+          <span className="text-lg leading-none">{conseilPrincipal.emoji}</span>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-gray-800">{conseilPrincipal.titre}</p>
+            <p className="text-xs text-gray-600">{conseilPrincipal.texte}</p>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 // ── Page principale ─────────────────────────────────────────────
 
 export function ProducteurAlertes() {
   const navigate = useNavigate();
   const { speak } = useApp();
   const { cycles, recoltes, publications } = useProducteur();
+
+  const [meteo, setMeteo] = useState<Meteo | null>(null);
+  useEffect(() => {
+    let vivant = true;
+    getMeteo().then((m) => { if (vivant) setMeteo(m); }).catch(() => { /* silencieux */ });
+    return () => { vivant = false; };
+  }, []);
 
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => {
     try {
@@ -275,6 +367,29 @@ export function ProducteurAlertes() {
     }
   });
 
+  // Alertes météo dérivées du bulletin (fortes pluies / orage sous 48h) — CDC 8.1.3
+  if (meteo) {
+    const prochains = meteo.jours.slice(0, 2);
+    const orage = prochains.find(j => j.code >= 95);
+    const grossePluie = prochains.find(j => j.pluieMm >= 20 || j.code >= 80);
+    if (orage || grossePluie) {
+      const id = 'meteo-pluie';
+      if (!dismissedIds.has(id)) {
+        const quand = (orage || grossePluie) === prochains[0] ? "aujourd'hui" : 'demain';
+        items.push({
+          id,
+          urgence: orage ? 'haute' : 'moyenne',
+          icon: CloudRain,
+          title: orage ? `Orage prévu ${quand}` : `Fortes pluies prévues ${quand}`,
+          subtitle: 'Protégez les récoltes séchées (cacao, café) et sécurisez les bâches',
+          detail: 'Différez les semis et vérifiez le drainage des parcelles',
+          actionLabel: 'Écouter le conseil',
+          onAction: () => speak(resumeVocalMeteo(meteo)),
+        });
+      }
+    }
+  }
+
   const visibles = items.filter(a => !dismissedIds.has(a.id));
   const count = visibles.length;
 
@@ -313,6 +428,9 @@ export function ProducteurAlertes() {
       ) : undefined}
     >
       <div className="pb-32 space-y-3">
+        {/* Météo & conseils agricoles (CDC 8.1.3) — toujours visible */}
+        <MeteoCard meteo={meteo} onSpeak={speak} />
+
         {count === 0 ? (
           <EcranVide />
         ) : (

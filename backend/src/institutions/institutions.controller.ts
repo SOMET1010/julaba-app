@@ -16,15 +16,15 @@ export class InstitutionsController {
     private readonly auditService: AuditService,
   ) {}
   @Get()
-  @Roles('super_admin', 'admin', 'institution')
+  @Roles('super_admin', 'admin_general', 'institution')
   async findAll(@Query() query: any) {
     return paginate(this.repo, query, { order: { created_at: 'DESC' } as any });
   }
   @Get(':id')
-  @Roles('super_admin', 'admin', 'institution')
+  @Roles('super_admin', 'admin_general', 'institution')
   findOne(@Param('id') id: string) { return this.repo.findOne({ where: { id } }); }
   @Post()
-  @Roles('super_admin', 'admin')
+  @Roles('super_admin', 'admin_general')
   async create(@Body() body: any, @Request() req: any) {
     const allowed = ['nom', 'type', 'description', 'adresse', 'telephone', 'email', 'logo', 'statut', 'zone_id', 'modules'];
     const safeBody = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
@@ -47,7 +47,7 @@ export class InstitutionsController {
     return saved;
   }
   @Patch(':id')
-  @Roles('super_admin', 'admin')
+  @Roles('super_admin', 'admin_general')
   async update(@Param('id') id: string, @Body() body: any, @Request() req: any) {
     const allowed = ['nom', 'type', 'description', 'adresse', 'telephone', 'email', 'logo', 'statut', 'zone_id', 'modules'];
     const safeBody = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));

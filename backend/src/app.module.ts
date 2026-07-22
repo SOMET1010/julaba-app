@@ -33,6 +33,8 @@ import { AdminModule } from './admin/admin.module';
 
 
 import { CyclesRestModule } from './cycles-rest/cycles-rest.module';
+import { EvaluationsRestModule } from './evaluations-rest/evaluations-rest.module';
+import { FideliteRestModule } from './fidelite-rest/fidelite-rest.module';
 import { TicketsRestModule } from './tickets-rest/tickets-rest.module';
 import { PublicationsRestModule } from './publications-rest/publications-rest.module';
 import { CommandesRestModule } from './commandes-rest/commandes-rest.module';
@@ -92,6 +94,8 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
     ZonesModule,
     MarchesModule,
     CyclesRestModule,
+    EvaluationsRestModule,
+    FideliteRestModule,
     RecoltesRestModule,
     TicketsRestModule,
     PublicationsRestModule,
@@ -127,8 +131,10 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
   ],
   controllers: [HealthController],
   providers: [
-
-
+    // Rate limiting global — active les décorateurs @Throttle/@SkipThrottle
+    // (login limit 3, recovery limit 5, voice…). Sans ce guard, ThrottlerModule
+    // est configuré mais AUCUN throttle n'est appliqué (brute-force possible).
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

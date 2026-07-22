@@ -9,7 +9,7 @@ import { User } from '../users/entities/user.entity';
 import { WalletTransaction } from '../wallets/entities/wallet-transaction.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('institution', 'super_admin', 'admin')
+@Roles('institution', 'super_admin', 'admin_general')
 @Controller('institution')
 export class InstitutionDashboardController {
   private readonly logger = new Logger(InstitutionDashboardController.name);

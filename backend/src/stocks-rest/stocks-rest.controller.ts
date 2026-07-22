@@ -14,7 +14,7 @@ export class StocksRestController {
   @Get()
   async findAll(@CurrentUser() user: User) {
     const produits = await this.repo.manager.query(
-      'SELECT id, nom, stock, prix, prix_achat, unite, categorie, actif, image, seuil_alerte, date_peremption, created_at FROM produits WHERE marchand_id = $1',
+      'SELECT id, nom, stock, prix, prix_achat, unite, categorie, actif, image, seuil_alerte, date_peremption, prix_promo, promo_fin, created_at FROM produits WHERE marchand_id = $1',
       [user.id]
     );
     if (produits && produits.length > 0) {
@@ -32,6 +32,8 @@ export class StocksRestController {
           image: p.image || null,
           seuil_alerte: p.seuil_alerte != null ? Number(p.seuil_alerte) : 10,
           date_peremption: p.date_peremption || null,
+          prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
+          promo_fin: p.promo_fin || null,
           proprietaire_id: user.id,
           created_at: p.created_at,
         })),
@@ -74,11 +76,12 @@ export class StocksRestController {
       return rows[0];
     }
     return this.repo.manager.query(
-      `INSERT INTO produits (marchand_id, nom, stock, prix, prix_achat, unite, categorie, image, seuil_alerte, date_peremption, actif)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true) RETURNING *`,
+      `INSERT INTO produits (marchand_id, nom, stock, prix, prix_achat, unite, categorie, image, seuil_alerte, date_peremption, prix_promo, promo_fin, actif)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true) RETURNING *`,
       [user.id, body.nom || body.produit, Number(body.quantite) || 0, Number(body.prix) || 0,
        Number(body.prix_achat) || 0, body.unite || 'unite', body.categorie || 'General', body.image || null,
-       body.seuil_alerte != null ? Number(body.seuil_alerte) : 10, body.date_peremption || null]
+       body.seuil_alerte != null ? Number(body.seuil_alerte) : 10, body.date_peremption || null,
+       body.prix_promo != null && body.prix_promo !== '' ? Number(body.prix_promo) : null, body.promo_fin || null]
     ).then((r: any) => r[0]);
   }
 
@@ -103,14 +106,20 @@ export class StocksRestController {
     await this.repo.manager.query(
       `UPDATE produits SET nom=COALESCE($1,nom), stock=COALESCE($2,stock), prix=COALESCE($3,prix),
        prix_achat=COALESCE($4,prix_achat), unite=COALESCE($5,unite), categorie=COALESCE($6,categorie),
-       seuil_alerte=COALESCE($7,seuil_alerte), date_peremption=COALESCE($8,date_peremption), updated_at=now()
-       WHERE id=$9 AND marchand_id=$10`,
+       seuil_alerte=COALESCE($7,seuil_alerte), date_peremption=COALESCE($8,date_peremption),
+       prix_promo=CASE WHEN $11::boolean THEN $9 ELSE prix_promo END,
+       promo_fin=CASE WHEN $11::boolean THEN $10 ELSE promo_fin END, updated_at=now()
+       WHERE id=$12 AND marchand_id=$13`,
       [body.nom||body.produit||null, body.quantite!=null?Number(body.quantite):null,
        body.prix!=null?Number(body.prix):null,
        body.prix_achat!=null?Number(body.prix_achat):null,
        body.unite||null, body.categorie||null,
        body.seuil_alerte!=null?Number(body.seuil_alerte):null,
-       body.date_peremption||null, id, user.id]
+       body.date_peremption||null,
+       body.prix_promo != null && body.prix_promo !== '' ? Number(body.prix_promo) : null,
+       body.promo_fin || null,
+       Object.prototype.hasOwnProperty.call(body, 'prix_promo'), // ne touche à la promo que si le champ est fourni
+       id, user.id]
     );
     return { success: true };
   }

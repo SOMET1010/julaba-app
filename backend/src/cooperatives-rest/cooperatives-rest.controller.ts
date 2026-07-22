@@ -279,6 +279,11 @@ export class CooperativesRestController {
     if (!userId) return { success: false };
     try {
       await this.ensureCooperativeBesoinsTable();
+      // Sécurité : on rattache le besoin à LA coopérative de l'utilisateur
+      // (résolue côté serveur), jamais à un cooperative_id fourni par le client
+      // — sinon un membre pourrait injecter un besoin dans une autre coopérative.
+      const { coop } = await this.resolveUserCooperative(userId);
+      if (!coop) return { success: false, message: 'Coopérative introuvable' };
       const [inserted] = await this.repo.query(
         `INSERT INTO cooperative_besoins (
            cooperative_id, marchand_id, produit, categorie, quantite, unite,
@@ -287,7 +292,7 @@ export class CooperativesRestController {
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9, 'en_attente'), $10, $11)
          RETURNING *`,
         [
-          body.cooperative_id,
+          coop.id,
           userId,
           body.produit,
           body.categorie || 'autre',

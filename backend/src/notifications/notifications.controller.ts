@@ -90,7 +90,7 @@ export class NotificationsController {
   // ─── ENDPOINT BACKOFFICE ───────────────────────────────────────
   // Envoyer une notif à un userId spécifique (admin/BO seulement)
   @Post("send")
-  @Roles('admin', 'institution', 'identificateur', 'super_admin')
+  @Roles('admin_general', 'institution', 'identificateur', 'super_admin')
   @UseGuards(JwtAuthGuard, RolesGuard)
   async sendToUser(@Body() body: {
     userId: string;
@@ -138,7 +138,7 @@ export class NotificationsController {
   }
 
   @Post("send-bulk")
-  @Roles('admin', 'institution', 'super_admin')
+  @Roles('admin_general', 'institution', 'super_admin')
   @UseGuards(JwtAuthGuard, RolesGuard)
   async sendBulk(@Body() body: {
     userIds: string[];
@@ -175,7 +175,7 @@ export class NotificationsController {
 
   // Envoyer une notif de validation de dossier
   @Post("dossier-valide")
-  @Roles('super_admin', 'admin')
+  @Roles('super_admin', 'admin_general')
   @UseGuards(JwtAuthGuard, RolesGuard)
   async notifyDossierValide(@Body() body: {
     identificateurId: string;
@@ -188,7 +188,7 @@ export class NotificationsController {
 
   // Envoyer une notif de rejet de dossier
   @Post("dossier-rejete")
-  @Roles('super_admin', 'admin')
+  @Roles('super_admin', 'admin_general')
   @UseGuards(JwtAuthGuard, RolesGuard)
   async notifyDossierRejete(@Body() body: {
     identificateurId: string;
@@ -201,7 +201,7 @@ export class NotificationsController {
 
   // Envoyer une notif de changement de statut
   @Post('alertes/run')
-  @Roles('super_admin', 'admin')
+  @Roles('super_admin', 'admin_general')
   @UseGuards(JwtAuthGuard, RolesGuard)
   async runAlertes() {
     await this.alertesSvc.runCronAlertes();
@@ -223,7 +223,7 @@ export class NotificationsController {
   }
 
   @Post("statut-change")
-  @Roles('super_admin', 'admin')
+  @Roles('super_admin', 'admin_general')
   @UseGuards(JwtAuthGuard, RolesGuard)
   async notifyStatutChange(@Body() body: {
     userId: string;
