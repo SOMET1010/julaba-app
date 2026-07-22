@@ -17,7 +17,7 @@ import { AdminMontantOperationDto, BloquerWalletDto, ReinitialiserSoldeDto } fro
 @ApiTags('Admin - Wallets')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin', 'super_admin')
+@Roles('admin_general', 'super_admin')
 @Controller('admin/wallets')
 export class WalletsAdminController {
   constructor(
