@@ -13,7 +13,6 @@ import { partagerRecu, telechargerRecuPDF } from '../../utils/recu.utils';
 import { toast } from 'sonner';
 import { NotificationButton } from './NotificationButton';
 import { SubPageLayout } from '../layout/SubPageLayout';
-import { toast } from 'sonner';
 
 const P = '#AF5B23';
 const BG = '#FFF2E9';

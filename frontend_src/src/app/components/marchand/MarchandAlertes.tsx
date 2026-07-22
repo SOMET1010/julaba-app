@@ -18,10 +18,13 @@ import {
   AlertTriangle,
   DollarSign,
 } from 'lucide-react';
+import { Share2, FileDown } from 'lucide-react';
+import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { useStock } from '../../contexts/StockContext';
 import { useApp } from '../../contexts/AppContext';
+import { construireReappro, coutTotalReappro, partagerReappro, telechargerReapproPDF } from '../../utils/reappro.utils';
 
 const COLOR = '#E67E22'; // couleur marchand orange
 
@@ -155,8 +158,26 @@ function EcranVide() {
 
 export function MarchandAlertes() {
   const navigate = useNavigate();
-  const { speak, currentSession } = useApp();
+  const { speak, currentSession, user } = useApp();
   const { stock, getStockFaible, getValeurTotaleStock } = useStock();
+
+  const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Marchande';
+
+  // Liste de réapprovisionnement automatique (dérivée des seuils) — écart CDC 8.1.2.
+  const reappro = construireReappro(stock);
+  const coutReappro = coutTotalReappro(reappro);
+  const [partageEnCours, setPartageEnCours] = useState(false);
+  const envoyerReappro = async () => {
+    if (partageEnCours || reappro.length === 0) return;
+    setPartageEnCours(true);
+    try {
+      const r = await partagerReappro(reappro, marchandNom);
+      if (r === 'copie') toast.success('Liste copiée — collez-la dans WhatsApp');
+      else if (r === 'echec') toast.error('Partage impossible');
+    } finally {
+      setPartageEnCours(false);
+    }
+  };
 
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => {
     try {
@@ -348,6 +369,66 @@ export function MarchandAlertes() {
             Rafraîchir
           </motion.button>
         </div>
+
+        {/* Liste de réapprovisionnement automatique (dérivée des seuils) — CDC 8.1.2 */}
+        {reappro.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl border-2 p-4"
+            style={{ backgroundColor: `${COLOR}0D`, borderColor: `${COLOR}44` }}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${COLOR}22` }}>
+                <ShoppingCart className="w-5 h-5" style={{ color: COLOR }} strokeWidth={2.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold" style={{ color: COLOR }}>Liste de réappro prête</p>
+                <p className="text-sm text-gray-700">
+                  {reappro.length} produit{reappro.length > 1 ? 's' : ''} à commander
+                  {coutReappro > 0 && <> · ≈ {coutReappro.toLocaleString('fr-FR')} FCFA</>}
+                </p>
+              </div>
+            </div>
+
+            {/* Aperçu des 3 premières lignes */}
+            <div className="mt-3 space-y-1">
+              {reappro.slice(0, 3).map((l) => (
+                <div key={l.produit} className="flex justify-between text-sm text-gray-600">
+                  <span className="truncate">{l.produit}{l.rupture && <span className="text-red-500 font-semibold"> (rupture)</span>}</span>
+                  <span className="font-semibold text-gray-800 flex-shrink-0 ml-2">{l.suggere} {l.unite}</span>
+                </div>
+              ))}
+              {reappro.length > 3 && (
+                <p className="text-xs text-gray-400">+ {reappro.length - 3} autre{reappro.length - 3 > 1 ? 's' : ''}…</p>
+              )}
+            </div>
+
+            {/* Actions : envoyer au fournisseur / PDF */}
+            <div className="mt-3 flex gap-2">
+              <motion.button
+                onClick={envoyerReappro}
+                disabled={partageEnCours}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl text-white font-semibold text-sm disabled:opacity-60"
+                style={{ backgroundColor: COLOR }}
+                whileTap={{ scale: 0.96 }}
+              >
+                <Share2 className="w-4 h-4" />
+                Envoyer au fournisseur
+              </motion.button>
+              <motion.button
+                onClick={() => telechargerReapproPDF(reappro, marchandNom).catch(() => toast.error('Téléchargement impossible'))}
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl font-semibold text-sm bg-white border-2"
+                style={{ color: COLOR, borderColor: `${COLOR}44` }}
+                whileTap={{ scale: 0.96 }}
+              >
+                <FileDown className="w-4 h-4" />
+                PDF
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
 
         {/* Alertes ou écran vide */}
         <AnimatePresence mode="popLayout">
