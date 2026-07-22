@@ -288,9 +288,9 @@ export function GestionStock() {
   const [showVente, setShowVente] = useState(false);
   const [reappQty, setReappQty] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const [newStock, setNewStock] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales' });
+  const [newStock, setNewStock] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'' });
   const [inlineEdit, setInlineEdit] = useState(false);
-  const [editForm, setEditForm] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales' });
+  const [editForm, setEditForm] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'' });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -365,12 +365,12 @@ export function GestionStock() {
     if (newStock.quantity < 0) { toast.error('Quantité invalide'); return; }
     const cat = rechercherProduitCatalogue(newStock.name);
     try {
-      await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10 } as any);
+      await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null } as any);
       toast.success('Produit ajouté');
       speak(`${newStock.quantity || 0} ${newStock.unit} de ${newStock.name} ajouté au stock`);
       showToast(`${newStock.name} ajouté au stock`, 'success');
       setShowAdd(false);
-      setNewStock({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales' });
+      setNewStock({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'' });
     } catch {
       toast.error('Opération impossible. Réessaie.');
     }
@@ -701,6 +701,11 @@ export function GestionStock() {
                 <div>
                   <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Seuil d'alerte</label>
                   <input type="number" value={newStock.threshold} onChange={e => setNewStock({...newStock, threshold:e.target.value === '' ? '' as any : Number(e.target.value)})}
+                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Date de péremption <span style={{ color:'#aaa', fontWeight:500 }}>(facultatif)</span></label>
+                  <input type="date" value={newStock.datePeremption} onChange={e => setNewStock({...newStock, datePeremption:e.target.value})}
                     style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
                 </div>
                 <motion.button whileTap={{ scale:0.97 }} onClick={addStockItem}
