@@ -203,17 +203,20 @@ export function MarchandAlertes() {
     });
   });
 
-  // Produits à stock bas (quantité > 0 mais sous le seuil par défaut = 5)
+  // Produits à stock bas : quantité > 0 mais sous le SEUIL DU PRODUIT (seuil_alerte
+  // configuré ; à défaut 5). C'est l'alerte de rupture demandée au CDC, basée sur
+  // les seuils de stock.
   const SEUIL_DEFAUT = 5;
   const basMaisNonVides = stockFaible.filter(s => s.quantite > 0);
   basMaisNonVides.forEach(s => {
-    const pct = Math.round((s.quantite / SEUIL_DEFAUT) * 100);
+    const seuil = s.seuilAlerte ?? SEUIL_DEFAUT;
+    const pct = seuil > 0 ? Math.round((s.quantite / seuil) * 100) : 100;
     items.push({
       id: `stock-bas-${s.id}`,
       urgence: pct < 50 ? 'haute' : 'moyenne',
       icon: TrendingDown,
       title: `${s.produit} — Stock faible`,
-      subtitle: `${s.quantite} ${s.unite} restant(s) · seuil : ${SEUIL_DEFAUT} ${s.unite}`,
+      subtitle: `${s.quantite} ${s.unite} restant(s) · seuil : ${seuil} ${s.unite}`,
       detail: 'Pensez à commander avant la rupture',
       actionLabel: 'Voir le stock',
       onAction: () => navigate('/marchand/stock'),

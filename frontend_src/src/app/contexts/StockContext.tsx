@@ -16,6 +16,10 @@ export interface StockItem {
   prixUnitaire: number;
   prixAchat?: number;   // alias prixUnitaire
   prixVente?: number;
+  seuilAlerte?: number; // seuil d'alerte de stock bas (par produit)
+  categorie?: string;   // catégorie du produit
+  image?: string | null;
+  datePeremption?: string | null; // date de péremption (AAAA-MM-JJ)
   updatedAt?: string;   // alias derniereModification
   derniereModification: string;
 }
@@ -47,6 +51,10 @@ function normalize(s: any): StockItem {
     quantite: parseFloat(s.quantite) || 0,
     unite: s.unite || 'unité',
     prixUnitaire: parseFloat(s.prix_unitaire || s.prix) || 0,
+    seuilAlerte: s.seuil_alerte != null ? (parseFloat(s.seuil_alerte) || 0) : undefined,
+    categorie: s.categorie || undefined,
+    image: s.image || null,
+    datePeremption: s.date_peremption || null,
     derniereModification: s.updated_at || s.created_at || new Date().toISOString(),
   };
 }
@@ -99,7 +107,7 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
   const addStock = async (data: Omit<StockItem, 'id' | 'derniereModification'>) => {
     await fetch(`${API_URL}/stocks`, {
       method: 'POST', headers: headers(),
-      body: JSON.stringify({ nom: data.nom || data.produit, produit: data.nom || data.produit, quantite: data.quantite, unite: data.unite, prix: (data as any).prixVente || data.prixUnitaire || 0, prix_achat: (data as any).prix_achat || (data as any).prixAchat || (data as any).purchasePrice || 0, categorie: (data as any).categorie || 'General', image: (data as any).image || null }),
+      body: JSON.stringify({ nom: data.nom || data.produit, produit: data.nom || data.produit, quantite: data.quantite, unite: data.unite, prix: (data as any).prixVente || data.prixUnitaire || 0, prix_achat: (data as any).prix_achat || (data as any).prixAchat || (data as any).purchasePrice || 0, categorie: (data as any).categorie || 'General', image: (data as any).image || null, seuil_alerte: (data as any).seuilAlerte ?? (data as any).seuil_alerte ?? null, date_peremption: (data as any).datePeremption ?? (data as any).date_peremption ?? null }),
     });
     eventBus.emit(EVENTS.STOCK_CREATED, data, { priority: 'medium' });
     await refreshStocks();
@@ -108,7 +116,12 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
   const updateStock = async (id: string, data: Partial<StockItem>) => {
     await fetch(`${API_URL}/stocks/${id}`, {
       method: 'PATCH', headers: headers(),
-      body: JSON.stringify({ quantite: data.quantite, prix_unitaire: data.prixUnitaire }),
+      body: JSON.stringify({
+        quantite: data.quantite, prix_unitaire: data.prixUnitaire,
+        ...(data.seuilAlerte !== undefined ? { seuil_alerte: data.seuilAlerte } : {}),
+        ...(data.categorie !== undefined ? { categorie: data.categorie } : {}),
+        ...(data.datePeremption !== undefined ? { date_peremption: data.datePeremption } : {}),
+      }),
     });
     eventBus.emit(EVENTS.STOCK_UPDATED, { id, ...data }, { idempotencyKey: 'stock-' + id, priority: 'medium' });
     await refreshStocks();
@@ -125,7 +138,9 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
     addStock, updateStock, deleteStock, refreshStocks,
     getStockByProduit: (produit) => stocks.find(s => s.produit === produit),
     getStockTotal: () => stocks.reduce((sum, s) => sum + s.quantite, 0),
-    getStockFaible: (seuil = 5) => stocks.filter(s => s.quantite <= seuil),
+    // Stock faible = sous le SEUIL DU PRODUIT (seuil_alerte configuré), ou à
+    // défaut le seuil global passé (5). Base des alertes de rupture marchand.
+    getStockFaible: (seuil = 5) => stocks.filter(s => s.quantite <= (s.seuilAlerte ?? seuil)),
     getValeurTotaleStock: () => stocks.reduce((sum, s) => sum + s.quantite * s.prixUnitaire, 0),
     getStock: () => stocks,
     addProduct: addStock,
