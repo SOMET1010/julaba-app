@@ -14,7 +14,7 @@ export class StocksRestController {
   @Get()
   async findAll(@CurrentUser() user: User) {
     const produits = await this.repo.manager.query(
-      'SELECT id, nom, stock, prix, unite, categorie, actif, image, created_at FROM produits WHERE marchand_id = $1',
+      'SELECT id, nom, stock, prix, prix_achat, unite, categorie, actif, image, seuil_alerte, date_peremption, created_at FROM produits WHERE marchand_id = $1',
       [user.id]
     );
     if (produits && produits.length > 0) {
@@ -25,10 +25,13 @@ export class StocksRestController {
           nom: p.nom,
           quantite: Number(p.stock) || 0,
           prix: Number(p.prix) || 0,
+          prix_achat: Number(p.prix_achat) || 0,
           unite: p.unite || 'unite',
           categorie: p.categorie || 'General',
           actif: p.actif !== false,
           image: p.image || null,
+          seuil_alerte: p.seuil_alerte != null ? Number(p.seuil_alerte) : 10,
+          date_peremption: p.date_peremption || null,
           proprietaire_id: user.id,
           created_at: p.created_at,
         })),
@@ -71,10 +74,11 @@ export class StocksRestController {
       return rows[0];
     }
     return this.repo.manager.query(
-      `INSERT INTO produits (marchand_id, nom, stock, prix, prix_achat, unite, categorie, image, actif)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true) RETURNING *`,
+      `INSERT INTO produits (marchand_id, nom, stock, prix, prix_achat, unite, categorie, image, seuil_alerte, date_peremption, actif)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true) RETURNING *`,
       [user.id, body.nom || body.produit, Number(body.quantite) || 0, Number(body.prix) || 0,
-       Number(body.prix_achat) || 0, body.unite || 'unite', body.categorie || 'General', body.image || null]
+       Number(body.prix_achat) || 0, body.unite || 'unite', body.categorie || 'General', body.image || null,
+       body.seuil_alerte != null ? Number(body.seuil_alerte) : 10, body.date_peremption || null]
     ).then((r: any) => r[0]);
   }
 
@@ -98,12 +102,15 @@ export class StocksRestController {
     }
     await this.repo.manager.query(
       `UPDATE produits SET nom=COALESCE($1,nom), stock=COALESCE($2,stock), prix=COALESCE($3,prix),
-       prix_achat=COALESCE($4,prix_achat), unite=COALESCE($5,unite), categorie=COALESCE($6,categorie), updated_at=now()
-       WHERE id=$7 AND marchand_id=$8`,
+       prix_achat=COALESCE($4,prix_achat), unite=COALESCE($5,unite), categorie=COALESCE($6,categorie),
+       seuil_alerte=COALESCE($7,seuil_alerte), date_peremption=COALESCE($8,date_peremption), updated_at=now()
+       WHERE id=$9 AND marchand_id=$10`,
       [body.nom||body.produit||null, body.quantite!=null?Number(body.quantite):null,
        body.prix!=null?Number(body.prix):null,
        body.prix_achat!=null?Number(body.prix_achat):null,
-       body.unite||null, body.categorie||null, id, user.id]
+       body.unite||null, body.categorie||null,
+       body.seuil_alerte!=null?Number(body.seuil_alerte):null,
+       body.date_peremption||null, id, user.id]
     );
     return { success: true };
   }
