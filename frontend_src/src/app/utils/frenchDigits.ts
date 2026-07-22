@@ -5,7 +5,7 @@
 // en une suite de chiffres.
 
 const SMALL: Record<string, number> = {
-  zero: 0, 'zéro': 0,
+  zero: 0, 'zéro': 0, 'zéros': 0, o: 0, oh: 0, ho: 0, // « o »/« oh » : ratés fréquents du moteur pour « zéro »
   un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5,
   six: 6, sept: 7, huit: 8, neuf: 9,
   dix: 10, onze: 11, douze: 12, treize: 13, quatorze: 14, quinze: 15, seize: 16,
@@ -31,12 +31,24 @@ export function frenchWordsToDigits(text: string): string {
     // Déjà un nombre (ex. « 07 »)
     if (/^\d+$/.test(tok)) { out.push(tok); i++; continue; }
 
-    // quatre-vingt(s) → 80, éventuellement 81–99
+    // Lit une valeur 0–19 à partir de l'index j, en gérant « dix-sept/huit/neuf »
+    // (deux tokens) → 17/18/19. Renvoie [valeur|undefined, tokensConsommés].
+    const lirePetit = (j: number): [number | undefined, number] => {
+      const v = tokens[j] !== undefined ? SMALL[tokens[j]] : undefined;
+      if (v === undefined) return [undefined, 0];
+      if (v === 10) { // « dix » éventuellement suivi de 7/8/9 → 17/18/19
+        const u = tokens[j + 1] !== undefined ? SMALL[tokens[j + 1]] : undefined;
+        if (u !== undefined && u >= 7 && u <= 9) return [10 + u, 2];
+      }
+      return [v, 1];
+    };
+
+    // quatre-vingt(s) → 80, éventuellement 81–99 (dont quatre-vingt-dix-neuf = 99)
     if (tok === 'quatre' && tokens[i + 1] && tokens[i + 1].startsWith('vingt')) {
       let val = 80;
       i += 2;
-      const nx = tokens[i] !== undefined ? SMALL[tokens[i]] : undefined;
-      if (nx !== undefined && nx <= 19) { val = 80 + nx; i++; }
+      const [nx, used] = lirePetit(i);
+      if (nx !== undefined && nx <= 19) { val = 80 + nx; i += used; }
       out.push(String(val));
       continue;
     }
@@ -46,10 +58,10 @@ export function frenchWordsToDigits(text: string): string {
       let val = TENS[tok];
       i++;
       if (tokens[i] === 'et') i++; // « vingt et un »
-      const nx = tokens[i] !== undefined ? SMALL[tokens[i]] : undefined;
+      const [nx, used] = lirePetit(i);
       if (nx !== undefined) {
-        if (val === 60 && nx >= 10 && nx <= 16) { val = 60 + nx; i++; }        // soixante-dix…seize → 70–76
-        else if (nx <= 9) { val = val + nx; i++; }                             // vingt-deux, soixante-cinq…
+        if (val === 60 && nx >= 10 && nx <= 19) { val = 60 + nx; i += used; }  // soixante-dix…dix-neuf → 70–79
+        else if (nx <= 9) { val = val + nx; i += used; }                       // vingt-deux, soixante-cinq…
       }
       out.push(String(val));
       continue;
@@ -69,7 +81,12 @@ export function frenchWordsToDigits(text: string): string {
  * Priorité aux chiffres déjà reconnus par le moteur ; sinon on lit les mots.
  */
 export function extractPhoneDigits(transcript: string): string {
-  const direct = (transcript || '').replace(/\D/g, '');
-  const digits = direct.length >= 8 ? direct : frenchWordsToDigits(transcript || '');
-  return digits.slice(0, 10);
+  const t = transcript || '';
+  // frenchWordsToDigits gère À LA FOIS les mots (« zéro sept ») ET les chiffres
+  // déjà reconnus (« 07 »). On garde en plus les chiffres bruts comme filet, et
+  // on retient la version qui donne le plus de chiffres.
+  const parMots = frenchWordsToDigits(t);
+  const bruts = t.replace(/\D/g, '');
+  const best = parMots.length >= bruts.length ? parMots : bruts;
+  return best.slice(0, 10);
 }
