@@ -259,8 +259,9 @@ export function LoginPassword() {
             }
           }
           if (best.length === 0) {
-            setError("Je n'ai pas compris, réessaie ou tape ton numéro");
-            parle("Je n'ai pas compris, réessaie");
+            setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
+            parle("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+            setShowKeypad(true); // on ne laisse jamais la vendeuse bloquée : clavier ouvert
             return;
           }
           remplirNumero(best);
@@ -271,9 +272,14 @@ export function LoginPassword() {
         rec.onerror = (ev) => {
           setIsListening(false);
           if (ev?.error === 'not-allowed' || ev?.error === 'service-not-allowed') {
-            setError('Autorise le micro pour dicter ton numéro');
+            setError('Autorise le micro, ou tape ton numéro 👇');
+            setShowKeypad(true);
           } else if (ev?.error === 'no-speech') {
-            setError("Je n'ai rien entendu, réessaie");
+            setError("Je n'ai rien entendu. Réessaie, ou tape 👇");
+            setShowKeypad(true);
+          } else if (ev?.error === 'network' || ev?.error === 'audio-capture') {
+            setError('Pas de réseau pour la voix. Tape ton numéro 👇');
+            setShowKeypad(true);
           }
         };
         rec.onend = () => { setIsListening(false); recognitionRef.current = null; };
