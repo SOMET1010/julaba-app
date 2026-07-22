@@ -39,6 +39,10 @@ export interface CaisseProduct {
   stock: number;
   unite: string;
   image?: string;
+  /** Seuil d'alerte de stock bas (API: seuil_alerte) */
+  seuil_alerte?: number;
+  /** Date de péremption AAAA-MM-JJ (API: date_peremption) */
+  date_peremption?: string | null;
 }
 
 export interface CartItem {
@@ -312,7 +316,9 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         id: p.id, nom: p.nom, prix: Number(p.prix),
         prix_achat: Number(p.prix_achat ?? p.prixAchat ?? 0) || 0,
         categorie: p.categorie, stock: Number(p.stock),
-        unite: p.unite, image: p.image || getImageByNom(p.nom)
+        unite: p.unite, image: p.image || getImageByNom(p.nom),
+        seuil_alerte: p.seuil_alerte != null ? Number(p.seuil_alerte) : undefined,
+        date_peremption: p.date_peremption || null,
       }));
       setProducts(mapped);
       // Cache local : derniers produits connus (vente/stock consultables hors-ligne).
@@ -334,6 +340,9 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       const produitData = {
         nom: product.nom, prix: product.prix, categorie: product.categorie, stock: product.stock || 0, unite: product.unite, image: imageToStore,
         ...((() => { const pa = Number(product.prix_achat ?? (product as any).prixAchat ?? (product as any).purchasePrice ?? 0); return pa > 0 ? { prix_achat: pa } : {}; })()),
+        ...((product as any).seuil_alerte != null || (product as any).seuilAlerte != null || (product as any).threshold != null
+          ? { seuil_alerte: Number((product as any).seuil_alerte ?? (product as any).seuilAlerte ?? (product as any).threshold) } : {}),
+        ...((product as any).date_peremption || (product as any).datePeremption ? { date_peremption: (product as any).date_peremption ?? (product as any).datePeremption } : {}),
       };
       const res = await fetch(`${API_URL}/caisse/produits`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(produitData) });
       if (res.ok) eventBus.emit(EVENTS.PRODUCT_CREATED, produitData, { priority: 'medium' });
@@ -369,9 +378,13 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         (updates as any).purchasePrice ??
         current?.prix_achat ?? 0
       );
+      const seuil = (updates as any).seuil_alerte ?? (updates as any).seuilAlerte ?? (updates as any).threshold;
+      const peremption = (updates as any).date_peremption ?? (updates as any).datePeremption;
       const updatedWithPrixAchat = {
         ...updated,
         prix_achat: prixAchat,
+        ...(seuil != null ? { seuil_alerte: Number(seuil) } : {}),
+        ...(peremption ? { date_peremption: peremption } : {}),
       };
       const res = await fetch(`${API_URL}/caisse/produits/${id}`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedWithPrixAchat) });
       if (!res.ok) throw new Error(`Erreur ${res.status} lors de la mise à jour`);

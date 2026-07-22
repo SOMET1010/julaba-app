@@ -228,8 +228,9 @@ export class CaisseRestController {
   @Post('produits')
   async createProduit(@Body() body: any, @CurrentUser() user: User) {
     const result = await this.dataSource.query(
-      'INSERT INTO produits (marchand_id, nom, prix, prix_achat, categorie, stock, unite, image) VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [user.id, body.nom, body.prix || 0, Number(body.prix_achat) || 0, body.categorie || 'Général', body.stock || 0, body.unite || 'unité', body.image || null]
+      'INSERT INTO produits (marchand_id, nom, prix, prix_achat, categorie, stock, unite, image, seuil_alerte, date_peremption) VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [user.id, body.nom, body.prix || 0, Number(body.prix_achat) || 0, body.categorie || 'Général', body.stock || 0, body.unite || 'unité', body.image || null,
+       body.seuil_alerte != null ? Number(body.seuil_alerte) : 10, body.date_peremption || null]
     );
     return { produit: result[0] };
   }
@@ -237,8 +238,11 @@ export class CaisseRestController {
   @Put('produits/:id')
   async updateProduit(@Param('id') id: string, @Body() body: any, @CurrentUser() user: User) {
     const result = await this.dataSource.query(
-      'UPDATE produits SET nom=$1, prix=$2, prix_achat=$3, categorie=$4, stock=$5, unite=$6, updated_at=NOW() WHERE id=$7 AND marchand_id=$8::text RETURNING *',
-      [body.nom, body.prix, Number(body.prix_achat) || 0, body.categorie, body.stock, body.unite, id, user.id]
+      `UPDATE produits SET nom=$1, prix=$2, prix_achat=$3, categorie=$4, stock=$5, unite=$6,
+       seuil_alerte=COALESCE($7, seuil_alerte), date_peremption=COALESCE($8, date_peremption), updated_at=NOW()
+       WHERE id=$9 AND marchand_id=$10::text RETURNING *`,
+      [body.nom, body.prix, Number(body.prix_achat) || 0, body.categorie, body.stock, body.unite,
+       body.seuil_alerte != null ? Number(body.seuil_alerte) : null, body.date_peremption || null, id, user.id]
     );
     return { produit: result[0] };
   }
