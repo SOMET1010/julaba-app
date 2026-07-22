@@ -8,6 +8,7 @@ import { useUser } from '../../contexts/UserContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
 import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import logoJulaba from '../../../assets/images/logo-julaba.png';
+import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits } from '../../utils/frenchDigits';
@@ -77,6 +78,34 @@ export function LoginPassword() {
   const [pinInput, setPinInput] = useState('');
   const [step, setStep] = useState<'phone' | 'password'>('phone');
   const [isListening, setIsListening] = useState(false);
+  const [showKeypad, setShowKeypad] = useState(false); // clavier caché par défaut (voix d'abord)
+  const [tataSpeaking, setTataSpeaking] = useState(false);
+
+  // Accueil personnalisé : si une marchande est déjà connue sur ce téléphone, on
+  // la salue par son prénom (ton « vous », chaleureux et respectueux).
+  const cachedPrenom = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('julaba_auth_user') || 'null');
+      return (u?.firstName || u?.first_name || u?.prenom || '').toString().trim();
+    } catch { return ''; }
+  })();
+  const greetTitle = cachedPrenom ? `Bonjour Maman ${cachedPrenom}` : 'Bonjour ma sœur !';
+  const greetSub = cachedPrenom
+    ? 'Je suis heureuse de vous revoir aujourd’hui.'
+    : 'Je suis Tata Nanti Lou. Je serai à vos côtés pour vous aider.';
+
+  // « Écouter Tata » : on joue sa VRAIE voix enregistrée (Manuela) ; à défaut, la
+  // voix du navigateur. On anime pendant qu'elle parle.
+  const ecouterTata = () => {
+    setTataSpeaking(true);
+    const finish = () => setTataSpeaking(false);
+    try {
+      const a = new Audio('/voix/tata/phrase-1.mp3');
+      a.onended = finish;
+      a.onerror = () => { finish(); parle(`${greetTitle}. ${greetSub}`); };
+      a.play().catch(() => { finish(); parle(`${greetTitle}. ${greetSub}`); });
+    } catch { finish(); parle(`${greetTitle}. ${greetSub}`); }
+  };
   const phoneToPasswordTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const navigateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -275,6 +304,22 @@ export function LoginPassword() {
       demarrer();
     }
   };
+
+  // Tata parle AU PREMIER CONTACT (les navigateurs bloquent le son avant tout
+  // geste). On accueille dès que la marchande touche l'écran — sauf si elle
+  // touche directement Tata ou un bouton (ceux-là gèrent déjà leur propre voix),
+  // pour ne pas se chevaucher. Une seule fois.
+  useEffect(() => {
+    if (step !== 'phone') return;
+    const greet = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && t.closest && t.closest('button, img')) return;
+      ecouterTata();
+    };
+    window.addEventListener('pointerdown', greet, { once: true });
+    return () => window.removeEventListener('pointerdown', greet);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   useEffect(() => {
     const tel = document.querySelector('input[autocomplete="tel"]') as HTMLInputElement | null;
@@ -537,13 +582,19 @@ export function LoginPassword() {
     <div style={{
       height: '100vh',
       minHeight: '100dvh',
-      backgroundColor: '#C66A2C',
+      background: 'radial-gradient(120% 60% at 50% -8%, rgba(219,122,44,0.14), transparent 55%), #FFFDF9',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       overflow: 'hidden',
       position: 'relative',
     }}>
+      {/* Bandeau ivoirien orange-blanc-vert */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, display: 'flex', zIndex: 50 }}>
+        <div style={{ flex: 1, background: '#F77F00' }} />
+        <div style={{ flex: 1, background: '#FFFFFF' }} />
+        <div style={{ flex: 1, background: '#009E60' }} />
+      </div>
       {import.meta.env.DEV && showDevButton && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
@@ -556,25 +607,61 @@ export function LoginPassword() {
       )}
 
       <motion.div
-        initial={{ opacity: 0, y: -30 }}
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
         style={{
-          flex: 1,
+          flex: '0 0 auto',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
           width: '100%',
-          paddingTop: 8,
+          boxSizing: 'border-box',
+          padding: '22px 24px 4px',
         }}
       >
+        {/* TATA NANTI LOU — présence vivante ; elle parle d'elle-même, on touche son visage pour réécouter */}
+        <div style={{ position: 'relative', display: 'grid', placeItems: 'center' }}>
+          {tataSpeaking && (
+            <motion.span
+              aria-hidden
+              style={{ position: 'absolute', width: 'clamp(140px, 40vw, 178px)', height: 'clamp(140px, 40vw, 178px)', borderRadius: '50%', border: '3px solid rgba(31,164,99,0.5)' }}
+              animate={{ scale: [0.85, 1.18], opacity: [0.7, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
+            />
+          )}
+          <motion.img
+            src={tataNantiLou}
+            alt="Tata Nanti Lou"
+            fetchPriority="high"
+            onClick={import.meta.env.DEV ? handleLogoClick : ecouterTata}
+            aria-label="Tata Nanti Lou — touchez pour l'entendre"
+            animate={{ scale: tataSpeaking ? [1, 1.05, 1] : [1, 1.03, 1] }}
+            transition={{ duration: tataSpeaking ? 1 : 3.4, repeat: Infinity, ease: 'easeInOut' }}
+            style={{
+              width: 'clamp(124px, 36vw, 164px)',
+              height: 'clamp(124px, 36vw, 164px)',
+              borderRadius: '50%',
+              objectFit: 'cover',
+              cursor: 'pointer',
+              position: 'relative',
+              zIndex: 2,
+              boxShadow: '0 16px 34px -14px rgba(184,92,27,0.5), 0 0 0 6px #fff, 0 0 0 9px rgba(219,122,44,0.24)',
+            }}
+          />
+        </div>
+        {/* Texte minuscule, gris clair — jamais nécessaire (pour celles qui lisent) */}
+        <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(124,98,80,0.5)' }}>Tata Nanti Lou</span>
+        <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'rgba(124,98,80,0.65)', textAlign: 'center', maxWidth: 280 }}>
+          {step === 'phone' ? (cachedPrenom ? `Bonjour Maman ${cachedPrenom}` : 'Bonjour ma sœur') : 'Votre code secret'}
+        </p>
+      </motion.div>
+
+      <motion.div style={{ display: 'none' }}>
         <img
           src={logoJulaba}
           alt="Jùlaba"
-          fetchPriority="high"
           onClick={import.meta.env.DEV ? handleLogoClick : undefined}
-          role={import.meta.env.DEV ? 'button' : undefined}
-          aria-label={import.meta.env.DEV ? 'Logo Jùlaba (cliquer 5 fois pour mode développeur)' : undefined}
           style={{
             width: 'clamp(140px, 45vw, 200px)',
             objectFit: 'contain',
@@ -593,6 +680,7 @@ export function LoginPassword() {
           padding: '0 24px',
           margin: '0 auto',
           flex: 1,
+          boxSizing: 'border-box',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -609,94 +697,35 @@ export function LoginPassword() {
               transition={{ duration: 0.25 }}
               style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, pointerEvents: step === 'phone' ? 'auto' : 'none' }}
             >
-            <div style={{
-              width: '100%', background: '#fff', borderRadius: 16,
-              padding: '0', display: 'flex', alignItems: 'center', gap: 0,
-              boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-              overflow: 'hidden',
-            }}>
-              <span style={{ fontSize: 15, color: '#C66A2C', fontWeight: 700, padding: '18px 0 18px 18px', flexShrink: 0 }}>+225</span>
-              <div style={{ width: 1, height: 20, background: 'rgba(198,106,44,0.2)', flexShrink: 0, margin: '0 10px' }} />
-              <input
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                readOnly={true}
-                aria-label="Numéro de téléphone (10 chiffres)"
-                placeholder="Saisis ton numéro"
-                value={formatPhoneNumber(phone)}
-                disabled={isLoading}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const text = e.clipboardData.getData('text');
-                  let cleaned = text.replace(/\D/g, '');
-                  if (cleaned.startsWith('225') && cleaned.length > 10) cleaned = cleaned.slice(3);
-                  if (cleaned.startsWith('00225')) cleaned = cleaned.slice(5);
-                  if (cleaned.length === 11 && cleaned.startsWith('0')) cleaned = cleaned.slice(1);
-                  const sliced = cleaned.slice(0, 10);
-                  setPhone(sliced);
-                  if (import.meta.env.DEV && sliced === '0501604040') setShowDevButton(true);
-                  setError('');
-                  if (sliced.length === 10) {
-                    if (!TEST_PHONES.has(sliced) && !/^(01|05|07|09|21|25|27)/.test(sliced)) {
-                      setError('Préfixe invalide');
-                      return;
-                    }
-                    if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
-                    scheduleTransitionToPasswordAfterCheck();
-                  }
-                }}
-                onChange={(e) => {
-                  let cleaned = e.target.value.replace(/\D/g, '');
-                  if (cleaned.startsWith('225') && cleaned.length > 10) cleaned = cleaned.slice(3);
-                  if (cleaned.startsWith('00225')) cleaned = cleaned.slice(5);
-                  if (cleaned.length === 11 && cleaned.startsWith('0')) cleaned = cleaned.slice(1);
-                  if (cleaned.length > 10) {
-                    setError('Numéro limité à 10 chiffres');
-                    setTimeout(() => setError(''), 1500);
-                  } else {
-                    setError('');
-                  }
-                  const sliced = cleaned.slice(0, 10);
-                  setPhone(sliced);
-                  if (import.meta.env.DEV && sliced === '0501604040') setShowDevButton(true);
-                  if (sliced.length === 10) {
-                    if (!TEST_PHONES.has(sliced) && !/^(01|05|07|09|21|25|27)/.test(sliced)) {
-                      setError('Préfixe invalide');
-                      return;
-                    }
-                    if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
-                    scheduleTransitionToPasswordAfterCheck();
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Backspace' && phone.length === 0) setError('');
-                }}
-                style={{
-                  flex: '1 1 auto',
-                  minWidth: 0,
-                  border: 'none',
-                  outline: 'none',
-                  background: 'transparent',
-                  fontSize: 16,
-                  color: phone ? '#3d1a08' : 'rgba(150,80,30,0.3)',
-                  letterSpacing: phone ? 2 : 0,
-                  fontWeight: phone ? 500 : 300,
-                  padding: '18px 18px 18px 0',
-                  fontFamily: 'inherit',
-                  opacity: isLoading ? 0.5 : 1,
-                  overflow: 'hidden',
-                  textOverflow: 'clip',
-                  whiteSpace: 'nowrap',
-                }}
-              />
-              {phone.length === 10 && (
-                <CheckCircle style={{ width: 16, height: 16, color: '#2E8B57', marginRight: 18, flexShrink: 0 }} />
-              )}
+            {/* Un point vert par chiffre entendu — on voit que ça avance, sans lire */}
+            <div style={{ display: 'flex', gap: 9, justifyContent: 'center', minHeight: 16, marginBottom: 2 }}>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <motion.span key={i}
+                  animate={i === phone.length - 1 ? { scale: [1, 1.4, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                  style={{ width: 14, height: 14, borderRadius: '50%', background: i < phone.length ? '#2F8F63' : '#EDE0CE', boxShadow: i < phone.length ? '0 0 0 4px rgba(47,143,99,0.14)' : 'none' }}
+                />
+              ))}
             </div>
+            {/* GRAND MICRO — l'action. On touche, Tata dit « dis ton numéro », le micro devient vert. */}
+            <motion.button
+              type="button"
+              aria-label="Touchez et dites votre numéro"
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={dicterNumero}
+              animate={{ scale: isListening ? [1, 1.05, 1] : [1, 1.02, 1] }}
+              transition={{ duration: isListening ? 1 : 2.6, repeat: Infinity, ease: 'easeInOut' }}
+              style={{
+                width: 'clamp(184px, 62vw, 214px)', height: 'clamp(184px, 62vw, 214px)',
+                alignSelf: 'center', borderRadius: '50%', border: 'none', cursor: 'pointer', color: '#fff',
+                background: isListening ? 'radial-gradient(125% 125% at 30% 20%, #38A870, #1C7A4B)' : 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
+                boxShadow: isListening ? '0 26px 46px -14px rgba(28,122,75,0.7), inset 0 4px 0 rgba(255,255,255,0.35)' : '0 26px 46px -14px rgba(184,92,27,0.75), inset 0 4px 0 rgba(255,255,255,0.4)',
+                display: 'grid', placeItems: 'center', marginTop: 6,
+              }}
+              whileTap={{ scale: 0.96 }}
+            >
+              <Mic style={{ width: '42%', height: '42%' }} />
+            </motion.button>
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -734,30 +763,28 @@ export function LoginPassword() {
                 </p>
               </motion.div>
             )}
+            {/* Actions secondaires : clavier (taper) + bouclier (protégé) — icônes, aucun texte */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28, marginTop: 22 }}>
+              <button type="button" aria-label="Taper mon numéro sur le clavier" onClick={() => setShowKeypad(v => !v)}
+                style={{ width: 58, height: 58, borderRadius: 18, background: showKeypad ? '#DB7A2C' : '#F3E7D8', color: showKeypad ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+                <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 13h6"/></svg>
+              </button>
+              <div aria-label="Vos informations sont protégées" title="Protégé" style={{ width: 58, height: 58, borderRadius: 18, background: 'rgba(47,143,99,0.14)', color: '#1FA463', display: 'grid', placeItems: 'center' }}>
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+              </div>
+            </div>
+
+            {showKeypad && (
+            <>
+            <div style={{ textAlign: 'center', marginTop: 14, fontSize: 24, fontWeight: 700, letterSpacing: 3, color: '#3d1a08', minHeight: 30, fontVariantNumeric: 'tabular-nums' }}>{formatPhoneNumber(phone) || ' '}</div>
             <div style={{
-              width: '100%', background: '#fff', borderRadius: 22,
-              overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
-              position: 'relative',
-              paddingBottom: 8,
+              width: '100%', boxSizing: 'border-box', background: '#FFF9F2', borderRadius: 22, marginTop: 6,
+              overflow: 'hidden', boxShadow: '0 2px 12px rgba(120,60,20,0.08)', border: '1px solid #F0E0CD',
+              position: 'relative', paddingBottom: 12,
             }}>
-              <motion.div
-                style={{
-                  position: 'absolute', top: 0, left: 0, width: '45%', height: '100%',
-                  background: 'linear-gradient(90deg, transparent, rgba(198,106,44,0.04), transparent)',
-                  pointerEvents: 'none', zIndex: 0,
-                }}
-                animate={{ x: ['-100%', '300%'] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'linear', repeatDelay: 3 }}
-              />
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 72px)',
-                gap: 8,
-                padding: '8px 0',
-                justifyContent: 'center',
-                justifyItems: 'center',
-                position: 'relative',
-                zIndex: 1,
+                display: 'grid', gridTemplateColumns: 'repeat(3, 72px)', gap: 8, padding: '12px 0 8px',
+                justifyContent: 'center', justifyItems: 'center', position: 'relative', zIndex: 1,
               }}>
                 {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
                   <motion.button type="button" key={d} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress(d)}
@@ -765,56 +792,23 @@ export function LoginPassword() {
                     whileTap={{ scale: 0.9 }}
                   >{d}</motion.button>
                 ))}
-                <motion.button
-                  type="button"
-                  disabled={isLoading || phone.length === 0}
-                  aria-label="Connexion biométrique"
-                  onPointerDown={(e) => e.preventDefault()}
-                  onClick={handleBiometric}
+                <motion.button type="button" disabled={isLoading || phone.length === 0} aria-label="Connexion par empreinte" onPointerDown={(e) => e.preventDefault()} onClick={handleBiometric}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.04)', border: '1px solid rgba(198,106,44,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: isLoading || phone.length === 0 ? 0.3 : 0.65 }}
-                  whileTap={{ scale: 0.9, opacity: 1 }}
-                >
+                  whileTap={{ scale: 0.9, opacity: 1 }}>
                   <Fingerprint style={{ width: 22, height: 22, color: '#C66A2C' }} />
                 </motion.button>
                 <motion.button type="button" onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.08)', border: '1px solid rgba(198,106,44,0.15)', borderTop: '1px solid rgba(255,255,255,0.9)', fontSize: 22, fontWeight: 500, color: '#5a2e0a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(198,106,44,0.06)' }}
-                  whileTap={{ scale: 0.9 }}
-                >0</motion.button>
+                  whileTap={{ scale: 0.9 }}>0</motion.button>
                 <motion.button type="button" aria-label="Effacer le dernier chiffre" onPointerDown={(e) => e.preventDefault()} onClick={handleKeyDelete}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.04)', border: '1px solid rgba(198,106,44,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0.65 }}
-                  whileTap={{ scale: 0.9, opacity: 1 }}
-                >
+                  whileTap={{ scale: 0.9, opacity: 1 }}>
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
                 </motion.button>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, paddingBottom: 16, position: 'relative', zIndex: 1 }}>
-                <motion.button
-                  type="button"
-                  aria-label="Dicter mon numéro à la voix"
-                  onPointerDown={(e) => e.preventDefault()}
-                  onClick={dicterNumero}
-                  animate={isListening ? { scale: [1, 1.06, 1] } : { scale: 1 }}
-                  transition={isListening ? { duration: 1, repeat: Infinity } : { duration: 0.2 }}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    background: isListening ? '#C66A2C' : 'rgba(198,106,44,0.10)',
-                    color: isListening ? '#fff' : '#C66A2C',
-                    border: '1px solid rgba(198,106,44,0.25)',
-                    borderRadius: 22, padding: '10px 18px', cursor: 'pointer',
-                    fontSize: 14, fontWeight: 600, fontFamily: 'inherit',
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Mic style={{ width: 18, height: 18 }} />
-                  {isListening ? "J'écoute…" : 'Dire mon numéro'}
-                </motion.button>
-                <p onClick={() => parle('Entre ton numéro de téléphone, ou touche le micro et dis-le')} title="Touche pour écouter"
-                   style={{ fontSize: 11, color: 'rgba(150,80,30,0.55)', textAlign: 'center', cursor: 'pointer', display:'inline-flex', alignItems:'center', gap:5, justifyContent:'center', margin: 0 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
-                  Entre ton numéro de téléphone
-                </p>
-              </div>
             </div>
+            </>
+            )}
             </motion.div>
           ) : (
             <motion.div
@@ -991,29 +985,29 @@ export function LoginPassword() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.4 }}
-        style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: 10 }}
+        style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: 8, padding: '14px 0 18px' }}
       >
-        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>BY ICÔNE SOLUTION</p>
-        <p
-          onClick={() => parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)}
-          title="Version de l'application"
-          style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.05em', margin: 0, cursor: 'pointer' }}
-        >
-          v{__APP_VERSION__} · {__BUILD_ID__}
-        </p>
         <button
           type="button"
           onClick={() => { localStorage.removeItem('julaba_completed_onboarding'); window.location.href = '/'; }}
-          style={{ border: '1px solid rgba(255,255,255,0.35)', borderRadius: 22, padding: '9px 22px', color: '#fff', fontSize: 12, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          style={{ border: '1px solid rgba(124,98,80,0.3)', borderRadius: 22, padding: '9px 22px', color: '#7C6250', fontSize: 12, fontWeight: 600, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#7C6250" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
           Revoir le tutoriel
         </button>
         {window.location.pathname.includes('backoffice') && (
-          <a href="/admin-recovery" style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, textDecoration: 'none' }}>
+          <a href="/admin-recovery" style={{ color: 'rgba(124,98,80,0.6)', fontSize: 11, textDecoration: 'none' }}>
             Problème de connexion admin ?
           </a>
         )}
+        <p style={{ fontSize: 10, color: 'rgba(124,98,80,0.5)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>By Icône Solution</p>
+        <p
+          onClick={() => parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)}
+          title="Version de l'application"
+          style={{ fontSize: 9, color: 'rgba(124,98,80,0.45)', letterSpacing: '0.05em', margin: 0, cursor: 'pointer' }}
+        >
+          v{__APP_VERSION__} · {__BUILD_ID__}
+        </p>
       </motion.div>
     </div>
   );
