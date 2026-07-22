@@ -150,6 +150,8 @@ export class DbInitService implements OnApplicationBootstrap {
         ALTER TABLE stocks ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
         ALTER TABLE stocks ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
         ALTER TABLE stocks ADD COLUMN IF NOT EXISTS date_peremption date;
+        ALTER TABLE stocks ADD COLUMN IF NOT EXISTS prix_promo numeric;
+        ALTER TABLE stocks ADD COLUMN IF NOT EXISTS promo_fin date;
       `);
       // produits (table du MARCHAND) : seuil d'alerte + date de péremption.
       // Sans ça, les alertes de rupture marchand ne peuvent pas s'appuyer sur un
@@ -158,6 +160,8 @@ export class DbInitService implements OnApplicationBootstrap {
         ALTER TABLE produits ADD COLUMN IF NOT EXISTS seuil_alerte numeric;
         ALTER TABLE produits ADD COLUMN IF NOT EXISTS date_peremption date;
         ALTER TABLE produits ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+        ALTER TABLE produits ADD COLUMN IF NOT EXISTS prix_promo numeric;
+        ALTER TABLE produits ADD COLUMN IF NOT EXISTS promo_fin date;
       `);
       // cycles : colonne statut manquante (checkRecoltesProches).
       await this.dataSource.query(`ALTER TABLE cycles ADD COLUMN IF NOT EXISTS statut varchar;`);
