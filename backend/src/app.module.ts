@@ -127,8 +127,10 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
   ],
   controllers: [HealthController],
   providers: [
-
-
+    // Rate limiting global — active les décorateurs @Throttle/@SkipThrottle
+    // (login limit 3, recovery limit 5, voice…). Sans ce guard, ThrottlerModule
+    // est configuré mais AUCUN throttle n'est appliqué (brute-force possible).
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

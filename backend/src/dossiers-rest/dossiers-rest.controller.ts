@@ -10,7 +10,7 @@ import { Identification } from '../identifications/identification.entity';
 import { User } from '../users/entities/user.entity';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('identificateur', 'admin', 'super_admin')
+@Roles('identificateur', 'admin_general', 'super_admin')
 @Controller('dossiers')
 export class DossiersRestController {
   constructor(

@@ -100,8 +100,8 @@ async function bootstrap() {
 
   // Limite taille requêtes (photos base64) — via NestFactory options
 
-  // Rate limiting specifique endpoints sensibles
-  const { ThrottlerGuard } = require('@nestjs/throttler');
+  // Rate limiting : le ThrottlerGuard est enregistré globalement via APP_GUARD
+  // dans AppModule (voir providers), ce qui active les décorateurs @Throttle.
 
   // CORS — frontend et backend V2 sont sur des domaines DIFFÉRENTS. On autorise
   // explicitement le frontend V2 en plus de CORS_ORIGIN, pour rester fonctionnel
