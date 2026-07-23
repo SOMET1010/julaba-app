@@ -254,15 +254,14 @@ export function LoginPassword() {
       onend: (() => void) | null;
     };
 
-    // État PARTAGÉ de la session de dictée (conservé à travers les relances du micro).
+    // État PARTAGÉ de la session de dictée.
     dicterStopRef.current = false;
     let acc = '';            // chiffres finalisés, accumulés dans l'ordre
     let dernierAffiche = 0;  // pour la vibration
     let fini = false;
-    let restarts = 0;
-    const debut = Date.now();
-    const MAX_MS = 22000;    // durée totale d'écoute max
-    const MAX_RESTARTS = 8;  // nb max de ré-ouvertures du micro
+    let lastSeg = '';        // dernier groupe ajouté (anti-doublon)
+    let lastSegT = -99999;   // horodatage du dernier groupe (anti-doublon)
+    const MAX_MS = 12000;    // durée d'écoute max d'une session (filet)
     let stopTimer: ReturnType<typeof setTimeout> | null = null;
 
     const finaliser = () => {
@@ -289,9 +288,9 @@ export function LoginPassword() {
       }
     };
 
-    // Crée et démarre UNE écoute. Se RELANCE tout seul (onend) tant qu'on n'a pas
-    // 10 chiffres : sur mobile la reconnaissance se coupe à chaque pause, donc on
-    // ré-ouvre le micro pour capter le groupe suivant, en gardant les chiffres déjà là.
+    // Une SEULE écoute (pas de relance automatique : elle captait l'utilisatrice
+    // qui parle après coup et fabriquait de faux chiffres). On capte ce qui est dit
+    // d'un trait ; ce qui manque se complète au clavier (qui s'ajoute aux chiffres).
     const creerReco = () => {
       let rec: InstanceType<typeof RecCtor>;
       try { rec = new RecCtor(); } catch { vlog('REC_CTOR_FAIL'); finaliser(); return; }
@@ -301,7 +300,7 @@ export function LoginPassword() {
       rec.maxAlternatives = 4;
       rec.continuous = true;
       let processed = 0;
-      vlog('RECO_START', { restarts, acc });
+      vlog('RECO_START', { acc });
 
       rec.onresult = (e) => {
         for (let i = processed; i < e.results.length; i++) {
@@ -314,9 +313,18 @@ export function LoginPassword() {
               vlog('FINAL_ALT', { tr, d });
               if (d.length > seg.length) seg = d;
             }
-            acc = (acc + seg).slice(0, 10);
             processed = i + 1;
-            vlog('SEG', { seg, acc });
+            // Anti-doublon : le moteur ré-émet parfois le même groupe (« 07 » deux
+            // fois → « 0707 »). On ignore un groupe identique au précédent s'il
+            // arrive dans les 1,5 s.
+            const tnow = Date.now();
+            if (seg && seg === lastSeg && (tnow - lastSegT) < 1500) {
+              vlog('SEG_DUP', { seg });
+            } else if (seg) {
+              acc = (acc + seg).slice(0, 10);
+              lastSeg = seg; lastSegT = tnow;
+              vlog('SEG', { seg, acc });
+            }
           }
         }
         let interim = '';
@@ -351,18 +359,15 @@ export function LoginPassword() {
           setError('Pas de réseau pour la voix. Tape ton numéro 👇');
           setShowKeypad(true);
         }
-        // 'no-speech' / 'aborted' → on laisse onend décider (relance ou fin).
+        // 'no-speech' / 'aborted' → onend finalisera avec ce qui a été capté.
       };
 
+      // Fin de la session d'écoute → on valide ce qui a été capté. PAS de relance
+      // (elle captait des sons parasites). Le reste se tape au clavier.
       rec.onend = () => {
         if (fini) return;
-        const stop = dicterStopRef.current || acc.length >= 10 || restarts >= MAX_RESTARTS || (Date.now() - debut) >= MAX_MS;
-        vlog('ONEND', { acc, restarts, stop });
-        // Fin de session : numéro complet, arrêt demandé, trop de relances, ou temps écoulé.
-        if (stop) { finaliser(); return; }
-        // Sinon on RELANCE pour capter le groupe suivant (en silence, sans ré-annonce).
-        restarts++;
-        setTimeout(() => { if (!fini && !dicterStopRef.current) creerReco(); }, 250);
+        vlog('ONEND', { acc });
+        finaliser();
       };
 
       try { rec.start(); }
