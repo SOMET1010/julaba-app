@@ -96,6 +96,9 @@ services:
     runtime: static
     name: julaba-web
     # (pas de `plan` : les sites statiques Render sont gratuits par nature)
+    # Déploiement AUTOMATIQUE à chaque push sur la branche suivie (plus besoin de
+    # cliquer « Manual Deploy » après chaque correction).
+    autoDeploy: true
     buildCommand: cd frontend_src && npm ci --include=dev && npm run build
     staticPublishPath: frontend/dist
     envVars:
