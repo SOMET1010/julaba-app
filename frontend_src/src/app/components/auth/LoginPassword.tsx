@@ -649,13 +649,18 @@ export function LoginPassword() {
 
   return (
     <div style={{
-      height: '100vh',
       minHeight: '100dvh',
       background: 'radial-gradient(120% 60% at 50% -8%, rgba(219,122,44,0.14), transparent 55%), #FFFDF9',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      overflow: 'hidden',
+      // Défilement vertical autorisé : quand le clavier s'ouvre, l'écran devient
+      // plus haut que le téléphone → il faut pouvoir descendre jusqu'aux touches
+      // (sinon le clavier était coupé sous la barre du téléphone).
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      // On garde de la place sous le clavier pour la barre de navigation Android.
+      paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
       position: 'relative',
     }}>
       {/* Bandeau ivoirien orange-blanc-vert */}
@@ -753,7 +758,10 @@ export function LoginPassword() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
+          // Centré quand il n'y a que le micro ; aligné en haut quand le clavier
+          // est ouvert (sinon le haut sortait de l'écran, non atteignable).
+          justifyContent: showKeypad ? 'flex-start' : 'center',
+          paddingTop: showKeypad ? 12 : 0,
         }}
       >
         <AnimatePresence mode="wait">
@@ -803,7 +811,10 @@ export function LoginPassword() {
               animate={{ scale: isListening ? [1, 1.05, 1] : [1, 1.02, 1] }}
               transition={{ duration: isListening ? 1 : 2.6, repeat: Infinity, ease: 'easeInOut' }}
               style={{
-                width: 'clamp(184px, 62vw, 214px)', height: 'clamp(184px, 62vw, 214px)',
+                // Micro géant quand c'est l'action principale ; réduit quand le
+                // clavier est ouvert (l'utilisatrice veut taper → on libère la place).
+                width: showKeypad ? 'clamp(96px, 30vw, 120px)' : 'clamp(184px, 62vw, 214px)',
+                height: showKeypad ? 'clamp(96px, 30vw, 120px)' : 'clamp(184px, 62vw, 214px)',
                 alignSelf: 'center', borderRadius: '50%', border: 'none', cursor: 'pointer', color: '#fff',
                 background: isListening ? 'radial-gradient(125% 125% at 30% 20%, #38A870, #1C7A4B)' : 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
                 boxShadow: isListening ? '0 26px 46px -14px rgba(28,122,75,0.7), inset 0 4px 0 rgba(255,255,255,0.35)' : '0 26px 46px -14px rgba(184,92,27,0.75), inset 0 4px 0 rgba(255,255,255,0.4)',
