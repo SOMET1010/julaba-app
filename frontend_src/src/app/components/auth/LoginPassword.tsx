@@ -144,6 +144,8 @@ export function LoginPassword() {
   // Prononce chaque message d'erreur dès qu'il apparaît (après une action de
   // l'utilisatrice, donc la lecture audio est autorisée par le navigateur).
   useEffect(() => { if (error) parle(error); }, [error]);
+  // À l'arrivée sur l'étape mot de passe : on annonce clairement quoi faire.
+  useEffect(() => { if (step === 'password') parle('Entre ton code secret à 4 chiffres'); }, [step]);
 
   const scheduleTransitionToPasswordAfterCheck = () => {
     if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
@@ -256,11 +258,12 @@ export function LoginPassword() {
 
     // État PARTAGÉ de la session de dictée.
     dicterStopRef.current = false;
-    let acc = '';            // chiffres finalisés, accumulés dans l'ordre
+    // Le moteur renvoie des résultats qui SE CHEVAUCHENT (« 07 », « 07 00 »,
+    // « 07 002 »…). On ne les additionne PAS (ça donnait « 0707070007 ») : on garde
+    // la MEILLEURE interprétation, c.-à-d. la plus longue suite de chiffres vue.
+    let meilleur = '';
     let dernierAffiche = 0;  // pour la vibration
     let fini = false;
-    let lastSeg = '';        // dernier groupe ajouté (anti-doublon)
-    let lastSegT = -99999;   // horodatage du dernier groupe (anti-doublon)
     const MAX_MS = 12000;    // durée d'écoute max d'une session (filet)
     let stopTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -271,7 +274,7 @@ export function LoginPassword() {
       if (stopTimer) clearTimeout(stopTimer);
       setIsListening(false);
       recognitionRef.current = null;
-      const num = acc.slice(0, 10);
+      const num = meilleur.slice(0, 10);
       if (num.length === 0) {
         setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
         parle("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
@@ -299,43 +302,27 @@ export function LoginPassword() {
       rec.interimResults = true;
       rec.maxAlternatives = 4;
       rec.continuous = true;
-      let processed = 0;
-      vlog('RECO_START', { acc });
+      vlog('RECO_START', { meilleur });
 
       rec.onresult = (e) => {
-        for (let i = processed; i < e.results.length; i++) {
+        // On parcourt TOUS les résultats (finaux + aperçus) et on retient la plus
+        // LONGUE suite de chiffres. Les résultats se chevauchent (cumulatifs) →
+        // on ne les additionne pas, on garde le plus complet.
+        let candidat = meilleur;
+        for (let i = 0; i < e.results.length; i++) {
           const res = e.results[i];
-          if (res.isFinal) {
-            let seg = '';
-            for (let j = 0; j < res.length; j++) {
-              const tr = res[j]?.transcript || '';
-              const d = extractPhoneDigits(tr);
-              vlog('FINAL_ALT', { tr, d });
-              if (d.length > seg.length) seg = d;
-            }
-            processed = i + 1;
-            // Anti-doublon : le moteur ré-émet parfois le même groupe (« 07 » deux
-            // fois → « 0707 »). On ignore un groupe identique au précédent s'il
-            // arrive dans les 1,5 s.
-            const tnow = Date.now();
-            if (seg && seg === lastSeg && (tnow - lastSegT) < 1500) {
-              vlog('SEG_DUP', { seg });
-            } else if (seg) {
-              acc = (acc + seg).slice(0, 10);
-              lastSeg = seg; lastSegT = tnow;
-              vlog('SEG', { seg, acc });
-            }
+          for (let j = 0; j < res.length; j++) {
+            const tr = res[j]?.transcript || '';
+            const d = extractPhoneDigits(tr);
+            if (res.isFinal) vlog('FINAL_ALT', { tr, d });
+            if (d.length > candidat.length) candidat = d;
           }
         }
-        let interim = '';
-        const last = e.results[e.results.length - 1];
-        if (last && !last.isFinal) {
-          for (let j = 0; j < last.length; j++) {
-            const d = extractPhoneDigits(last[j]?.transcript || '');
-            if (d.length > interim.length) interim = d;
-          }
+        if (candidat.length > meilleur.length) {
+          meilleur = candidat;
+          vlog('MEILLEUR', { meilleur });
         }
-        const affiche = (acc + interim).slice(0, 10);
+        const affiche = meilleur.slice(0, 10);
         if (affiche.length > 0) {
           setPhone(affiche);
           setError('');
@@ -345,11 +332,11 @@ export function LoginPassword() {
           }
         }
         // Numéro complet → on arrête (onend finalisera).
-        if (acc.length >= 10) { dicterStopRef.current = true; try { rec.stop(); } catch { /* ignore */ } }
+        if (meilleur.length >= 10) { dicterStopRef.current = true; try { rec.stop(); } catch { /* ignore */ } }
       };
 
       rec.onerror = (ev) => {
-        vlog('ERROR', { error: ev?.error, acc });
+        vlog('ERROR', { error: ev?.error, meilleur });
         if (ev?.error === 'not-allowed' || ev?.error === 'service-not-allowed') {
           dicterStopRef.current = true;
           setError('Autorise le micro, ou tape ton numéro 👇');
@@ -366,7 +353,7 @@ export function LoginPassword() {
       // (elle captait des sons parasites). Le reste se tape au clavier.
       rec.onend = () => {
         if (fini) return;
-        vlog('ONEND', { acc });
+        vlog('ONEND', { meilleur });
         finaliser();
       };
 
@@ -997,6 +984,17 @@ export function LoginPassword() {
                 </motion.div>
               )}
             </AnimatePresence>
+            {/* Consigne CLAIRE et grande (avant, l'instruction « tape ton code »
+                était minuscule tout en bas → on ne savait pas quoi faire). */}
+            <button
+              type="button"
+              onClick={() => parle('Entre ton code secret à 4 chiffres')}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '2px 0 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%' }}
+            >
+              <span style={{ fontSize: 26, lineHeight: 1 }}>🔒</span>
+              <span style={{ fontSize: 19, fontWeight: 800, color: '#3d1a08' }}>Entre ton code secret</span>
+              <span style={{ fontSize: 13, color: '#8A5A34', fontWeight: 600 }}>Tes 4 chiffres 👇</span>
+            </button>
             <div style={{
               width: '100%', background: '#fff', borderRadius: 22,
               overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
