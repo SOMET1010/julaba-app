@@ -12,6 +12,7 @@ import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits } from '../../utils/frenchDigits';
+import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
 /**
  * BACKLOG ESCALATION P0 BACKEND (à traiter côté serveur, hors périmètre frontend) :
  * 1. /auth/check-phone : timing attack possible (énumération comptes existants)
@@ -94,17 +95,25 @@ export function LoginPassword() {
     ? 'Je suis heureuse de vous revoir aujourd’hui.'
     : 'Je suis Tata Nanti Lou. Je serai à vos côtés pour vous aider.';
 
-  // « Écouter Tata » : on joue sa VRAIE voix enregistrée (Manuela) ; à défaut, la
-  // voix du navigateur. On anime pendant qu'elle parle.
+  // « Écouter Tata » : accueil vocal. On utilise la VOIX DU NAVIGATEUR (fiable et
+  // correcte) — le clip enregistré /voix/tata/phrase-1.mp3 côté serveur contenait
+  // une phrase de CAISSE (« vendu 10 tomates… »), rien à voir avec le login.
+  // Quand un vrai enregistrement d'accueil sera fourni, on pourra le rebrancher.
   const ecouterTata = () => {
     setTataSpeaking(true);
-    const finish = () => setTataSpeaking(false);
     try {
-      const a = new Audio('/voix/tata/phrase-1.mp3');
-      a.onended = finish;
-      a.onerror = () => { finish(); parle(`${greetTitle}. ${greetSub}`); };
-      a.play().catch(() => { finish(); parle(`${greetTitle}. ${greetSub}`); });
-    } catch { finish(); parle(`${greetTitle}. ${greetSub}`); }
+      const synth = window.speechSynthesis;
+      if (!synth) { setTataSpeaking(false); return; }
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(`${greetTitle}. ${greetSub}. Dis ton numéro, ou tape-le.`);
+      u.lang = 'fr-FR';
+      u.rate = 0.95;
+      u.onend = () => setTataSpeaking(false);
+      u.onerror = () => setTataSpeaking(false);
+      synth.speak(u);
+      // Filet si onend ne se déclenche pas (certains navigateurs) :
+      setTimeout(() => setTataSpeaking(false), 6000);
+    } catch { setTataSpeaking(false); }
   };
   const phoneToPasswordTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -112,6 +121,7 @@ export function LoginPassword() {
   const focusPinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recognitionRef = useRef<{ stop: () => void; abort: () => void } | null>(null);
   const micStartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dicterStopRef = useRef(false); // demande d'arrêt de la dictée en cours (re-tap micro)
   const phoneRef = useRef(phone);
   useEffect(() => {
     phoneRef.current = phone;
@@ -230,129 +240,141 @@ export function LoginPassword() {
   const dicterNumero = () => {
     const SR = (window as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition
       || (window as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition;
-    if (!SR) { setError("La dictée vocale n'est pas disponible sur ce téléphone"); return; }
-    if (isListening) { try { recognitionRef.current?.stop(); } catch { /* ignore */ } return; }
+    if (!SR) { setError("La dictée vocale n'est pas disponible sur ce téléphone"); vlogStart('dictée'); vlog('NO_SR'); return; }
+    // Re-tap pendant l'écoute → on ARRÊTE (et on valide ce qui a été capté), sans
+    // relancer. Le drapeau empêche la relance automatique du micro.
+    if (isListening) { dicterStopRef.current = true; vlog('RE_TAP_STOP'); try { recognitionRef.current?.stop(); } catch { /* ignore */ } return; }
+    vlogStart('dictée');
 
-    const demarrer = () => {
-      try {
-        const RecCtor = SR as new () => {
-          lang: string; interimResults: boolean; maxAlternatives: number; continuous: boolean;
-          start: () => void; stop: () => void; abort: () => void;
-          onresult: ((e: { results: ArrayLike<{ isFinal?: boolean } & ArrayLike<{ transcript: string }>> }) => void) | null;
-          onerror: ((e: { error?: string }) => void) | null;
-          onend: (() => void) | null;
-        };
-        const rec = new RecCtor();
-        recognitionRef.current = rec;
-        rec.lang = 'fr-FR';
-        // interimResults = true → on reçoit les chiffres AU FUR ET À MESURE que la
-        // vendeuse parle, pour lui montrer en direct qu'on l'entend (sinon elle a
-        // l'impression que rien ne se passe).
-        rec.interimResults = true;
-        rec.maxAlternatives = 4;
-        // continuous = true → on continue d'écouter À TRAVERS LES PAUSES (un numéro
-        // se dit par groupes : « zéro sept … quarante-cinq … »). On accumule les
-        // chiffres jusqu'à 10, puis on arrête tout seul. Sans ça, la reconnaissance
-        // s'arrêtait après le 1er groupe et bloquait la vendeuse.
-        rec.continuous = true;
-        setIsListening(true);
-        let acc = '';            // chiffres finalisés, accumulés dans l'ordre
-        let processed = 0;       // nb de segments finaux déjà intégrés
-        let dernierAffiche = 0;  // pour la vibration
-        let fini = false;
+    const RecCtor = SR as new () => {
+      lang: string; interimResults: boolean; maxAlternatives: number; continuous: boolean;
+      start: () => void; stop: () => void; abort: () => void;
+      onresult: ((e: { results: ArrayLike<{ isFinal?: boolean } & ArrayLike<{ transcript: string }>> }) => void) | null;
+      onerror: ((e: { error?: string }) => void) | null;
+      onend: (() => void) | null;
+    };
 
-        // Filet : si la reconnaissance ne se termine jamais (silence prolongé),
-        // on l'arrête au bout de 12 s et on valide ce qu'on a.
-        const stopTimer = setTimeout(() => { try { rec.stop(); } catch { /* ignore */ } }, 12000);
+    // État PARTAGÉ de la session de dictée (conservé à travers les relances du micro).
+    dicterStopRef.current = false;
+    let acc = '';            // chiffres finalisés, accumulés dans l'ordre
+    let dernierAffiche = 0;  // pour la vibration
+    let fini = false;
+    let restarts = 0;
+    const debut = Date.now();
+    const MAX_MS = 22000;    // durée totale d'écoute max
+    const MAX_RESTARTS = 8;  // nb max de ré-ouvertures du micro
+    let stopTimer: ReturnType<typeof setTimeout> | null = null;
 
-        const finaliser = () => {
-          if (fini) return;
-          fini = true;
-          clearTimeout(stopTimer);
-          setIsListening(false);
-          const num = acc.slice(0, 10);
-          if (num.length === 0) {
-            setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
-            parle("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
-            setShowKeypad(true);
-            return;
-          }
-          remplirNumero(num);
-          if (num.length < 10) {
-            // On GARDE les chiffres captés et on ouvre le clavier pour compléter
-            // (la saisie s'ajoute aux chiffres déjà là, elle ne les efface pas).
-            setShowKeypad(true);
-            parle("J'ai compris " + num.split('').join(' ') + '. Tape la suite.');
-          }
-        };
-
-        rec.onresult = (e) => {
-          // 1) Intègre les nouveaux segments FINAUX (chiffres ajoutés dans l'ordre).
-          for (let i = processed; i < e.results.length; i++) {
-            const res = e.results[i];
-            if (res.isFinal) {
-              let seg = '';
-              for (let j = 0; j < res.length; j++) {
-                const d = extractPhoneDigits(res[j]?.transcript || '');
-                if (d.length > seg.length) seg = d;
-              }
-              acc = (acc + seg).slice(0, 10);
-              processed = i + 1;
-            }
-          }
-          // 2) Aperçu vivant = dernier segment PAS ENCORE finalisé.
-          let interim = '';
-          const last = e.results[e.results.length - 1];
-          if (last && !last.isFinal) {
-            for (let j = 0; j < last.length; j++) {
-              const d = extractPhoneDigits(last[j]?.transcript || '');
-              if (d.length > interim.length) interim = d;
-            }
-          }
-          const affiche = (acc + interim).slice(0, 10);
-          if (affiche.length > 0) {
-            setPhone(affiche);
-            setError('');
-            if (affiche.length > dernierAffiche) {
-              dernierAffiche = affiche.length;
-              try { navigator.vibrate?.(30); } catch { /* ignore */ }
-            }
-          }
-          // 3) Numéro complet → on arrête d'écouter et on valide.
-          if (acc.length >= 10) { try { rec.stop(); } catch { /* ignore */ } finaliser(); }
-        };
-
-        rec.onerror = (ev) => {
-          clearTimeout(stopTimer);
-          setIsListening(false);
-          // Silence après quelques chiffres → on garde ce qu'on a plutôt que d'échouer.
-          if (ev?.error === 'no-speech' && acc.length > 0) { finaliser(); return; }
-          if (ev?.error === 'not-allowed' || ev?.error === 'service-not-allowed') {
-            setError('Autorise le micro, ou tape ton numéro 👇');
-            setShowKeypad(true);
-          } else if (ev?.error === 'no-speech') {
-            setError("Je n'ai rien entendu. Réessaie, ou tape 👇");
-            setShowKeypad(true);
-          } else if (ev?.error === 'network' || ev?.error === 'audio-capture') {
-            setError('Pas de réseau pour la voix. Tape ton numéro 👇');
-            setShowKeypad(true);
-          }
-        };
-
-        // Fin d'écoute (arrêt manuel, silence, ou stop programmé) → on valide ce
-        // qui a été capté (gère proprement le cas « moins de 10 chiffres »).
-        rec.onend = () => {
-          clearTimeout(stopTimer);
-          recognitionRef.current = null;
-          finaliser();
-        };
-        rec.start();
-      } catch {
-        setIsListening(false);
-        setError("La dictée vocale n'est pas disponible");
+    const finaliser = () => {
+      if (fini) return;
+      fini = true;
+      dicterStopRef.current = true;
+      if (stopTimer) clearTimeout(stopTimer);
+      setIsListening(false);
+      recognitionRef.current = null;
+      const num = acc.slice(0, 10);
+      if (num.length === 0) {
+        setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
+        parle("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+        setShowKeypad(true);
+        return;
+      }
+      vlog('FINALISER', { num, len: num.length });
+      remplirNumero(num);
+      if (num.length < 10) {
+        // On GARDE les chiffres captés et on ouvre le clavier pour compléter
+        // (la saisie s'ajoute aux chiffres déjà là, elle ne les efface pas).
+        setShowKeypad(true);
+        parle("J'ai compris " + num.split('').join(' ') + '. Tape la suite.');
       }
     };
 
+    // Crée et démarre UNE écoute. Se RELANCE tout seul (onend) tant qu'on n'a pas
+    // 10 chiffres : sur mobile la reconnaissance se coupe à chaque pause, donc on
+    // ré-ouvre le micro pour capter le groupe suivant, en gardant les chiffres déjà là.
+    const creerReco = () => {
+      let rec: InstanceType<typeof RecCtor>;
+      try { rec = new RecCtor(); } catch { vlog('REC_CTOR_FAIL'); finaliser(); return; }
+      recognitionRef.current = rec;
+      rec.lang = 'fr-FR';
+      rec.interimResults = true;
+      rec.maxAlternatives = 4;
+      rec.continuous = true;
+      let processed = 0;
+      vlog('RECO_START', { restarts, acc });
+
+      rec.onresult = (e) => {
+        for (let i = processed; i < e.results.length; i++) {
+          const res = e.results[i];
+          if (res.isFinal) {
+            let seg = '';
+            for (let j = 0; j < res.length; j++) {
+              const tr = res[j]?.transcript || '';
+              const d = extractPhoneDigits(tr);
+              vlog('FINAL_ALT', { tr, d });
+              if (d.length > seg.length) seg = d;
+            }
+            acc = (acc + seg).slice(0, 10);
+            processed = i + 1;
+            vlog('SEG', { seg, acc });
+          }
+        }
+        let interim = '';
+        const last = e.results[e.results.length - 1];
+        if (last && !last.isFinal) {
+          for (let j = 0; j < last.length; j++) {
+            const d = extractPhoneDigits(last[j]?.transcript || '');
+            if (d.length > interim.length) interim = d;
+          }
+        }
+        const affiche = (acc + interim).slice(0, 10);
+        if (affiche.length > 0) {
+          setPhone(affiche);
+          setError('');
+          if (affiche.length > dernierAffiche) {
+            dernierAffiche = affiche.length;
+            try { navigator.vibrate?.(30); } catch { /* ignore */ }
+          }
+        }
+        // Numéro complet → on arrête (onend finalisera).
+        if (acc.length >= 10) { dicterStopRef.current = true; try { rec.stop(); } catch { /* ignore */ } }
+      };
+
+      rec.onerror = (ev) => {
+        vlog('ERROR', { error: ev?.error, acc });
+        if (ev?.error === 'not-allowed' || ev?.error === 'service-not-allowed') {
+          dicterStopRef.current = true;
+          setError('Autorise le micro, ou tape ton numéro 👇');
+          setShowKeypad(true);
+        } else if (ev?.error === 'network' || ev?.error === 'audio-capture') {
+          dicterStopRef.current = true;
+          setError('Pas de réseau pour la voix. Tape ton numéro 👇');
+          setShowKeypad(true);
+        }
+        // 'no-speech' / 'aborted' → on laisse onend décider (relance ou fin).
+      };
+
+      rec.onend = () => {
+        if (fini) return;
+        const stop = dicterStopRef.current || acc.length >= 10 || restarts >= MAX_RESTARTS || (Date.now() - debut) >= MAX_MS;
+        vlog('ONEND', { acc, restarts, stop });
+        // Fin de session : numéro complet, arrêt demandé, trop de relances, ou temps écoulé.
+        if (stop) { finaliser(); return; }
+        // Sinon on RELANCE pour capter le groupe suivant (en silence, sans ré-annonce).
+        restarts++;
+        setTimeout(() => { if (!fini && !dicterStopRef.current) creerReco(); }, 250);
+      };
+
+      try { rec.start(); }
+      catch (e) { vlog('START_THROW', String(e)); setTimeout(() => { try { rec.start(); } catch { finaliser(); } }, 300); }
+    };
+
+    setIsListening(true);
+    // Filet global : au bout de MAX_MS, on arrête et on valide ce qu'on a.
+    stopTimer = setTimeout(() => { dicterStopRef.current = true; try { recognitionRef.current?.stop(); } catch { /* ignore */ } finaliser(); }, MAX_MS);
+
+    // On annonce « dis ton numéro » UNE fois, puis on écoute (les relances suivantes
+    // s'enchaînent en silence, sans ré-annoncer).
     try {
       const synth = window.speechSynthesis;
       if (synth) {
@@ -361,16 +383,16 @@ export function LoginPassword() {
         u.lang = 'fr-FR';
         u.rate = 1;
         let started = false;
-        const go = () => { if (!started) { started = true; demarrer(); } };
+        const go = () => { if (!started) { started = true; creerReco(); } };
         u.onend = go;
         synth.speak(u);
         if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
         micStartTimeoutRef.current = setTimeout(go, 2500); // filet si onend ne se déclenche pas
       } else {
-        demarrer();
+        creerReco();
       }
     } catch {
-      demarrer();
+      creerReco();
     }
   };
 
@@ -1106,6 +1128,19 @@ export function LoginPassword() {
         >
           v{__APP_VERSION__} · {__BUILD_ID__}
         </p>
+        {/* Rapport de test : copie le journal de la dernière dictée pour l'envoyer
+            à Claude et déboguer précisément (phase de test). */}
+        <button
+          type="button"
+          onClick={async () => {
+            const r = await vlogPartager();
+            if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
+            else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
+          }}
+          style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: '#8A5A34', background: '#F3E7D8', border: 'none', borderRadius: 10, padding: '7px 14px', cursor: 'pointer' }}
+        >
+          🐞 Rapport de test
+        </button>
       </motion.div>
     </div>
   );
