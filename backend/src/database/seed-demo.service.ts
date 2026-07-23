@@ -29,6 +29,9 @@ interface CompteDemo {
   // Rôles back-office = écran /backoffice/login (champ texte) -> 6 chiffres.
   password: string;
   avecDonnees?: boolean; // jeu de données caisse (marchand uniquement)
+  email?: string;        // back-office : connexion par email
+  sousProfilMarchand?: string; // marchand : grossiste | demi_grossiste | detaillant
+  cooperativeName?: string;
 }
 
 // Un compte de démo par univers, pour que les équipes testent CHAQUE rôle.
@@ -48,6 +51,19 @@ const COMPTES: CompteDemo[] = [
   { phone: '+2250700000015', firstName: 'Aïcha', lastName: 'Bamba', genre: 'femme', role: UserRole.INSTITUTION, password: '1234' },
   // ── Back-office admin (connexion sur /backoffice/login, code à 6 chiffres = 123456) ──
   { phone: '+2250700000016', firstName: 'Admin', lastName: 'Julaba', genre: 'homme', role: UserRole.ADMIN_GENERAL, password: '123456' },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Comptes de démonstration OFFICIELS (numéros distribués pour la présentation).
+  // Mots de passe : acteurs = 0000 · administration = 123456.
+  // ─────────────────────────────────────────────────────────────────────────
+  { phone: '+2250726262626', firstName: 'Michelle', lastName: 'Walebo', genre: 'femme', role: UserRole.MARCHAND, password: '0000', sousProfilMarchand: 'grossiste', avecDonnees: true },
+  { phone: '+2250725252525', firstName: 'Adjoua', lastName: 'Kouamé', genre: 'femme', role: UserRole.MARCHAND, password: '0000', sousProfilMarchand: 'demi_grossiste', avecDonnees: true },
+  { phone: '+2250790909090', firstName: 'Aya', lastName: 'Koffi', genre: 'femme', role: UserRole.MARCHAND, password: '0000', sousProfilMarchand: 'detaillant', avecDonnees: true },
+  { phone: '+2250960606060', firstName: 'Bénito', lastName: 'Bomisso', genre: 'homme', role: UserRole.PRODUCTEUR, password: '0000' },
+  { phone: '+2250970707070', firstName: 'Coopérative', lastName: 'Daloa', genre: 'femme', role: UserRole.COOPERATEUR, password: '0000', cooperativeName: 'COOP-CACAO Daloa' },
+  { phone: '+2250710101010', firstName: 'Hervé', lastName: 'Koffi', genre: 'homme', role: UserRole.IDENTIFICATEUR, password: '0000' },
+  // Administration (connexion back-office par EMAIL) :
+  { phone: '+2250700000017', email: 'dge-test@julaba.ci', firstName: 'Direction', lastName: 'Générale', genre: 'homme', role: UserRole.ADMIN_GENERAL, password: '123456' },
 ];
 
 @Injectable()
@@ -74,18 +90,24 @@ export class SeedDemoService implements OnApplicationBootstrap {
             role: c.role,
             status: UserStatus.ACTIF,
             validated: true,
+            ...(c.email ? { email: c.email } : {}),
+            ...(c.sousProfilMarchand ? { sousProfilMarchand: c.sousProfilMarchand } : {}),
+            ...(c.cooperativeName ? { cooperativeName: c.cooperativeName } : {}),
             // Compte de démo : directement utilisable, pas d'écran « changez
             // votre mot de passe » à la première connexion.
             mustChangePassword: false,
           } as Partial<User>) as User;
           user = await users.save(nouveau);
-          this.logger.log(`Compte démo créé : ${c.phone} (${c.firstName} ${c.lastName} — ${c.role})`);
+          this.logger.log(`Compte démo créé : ${c.email || c.phone} (${c.firstName} ${c.lastName} — ${c.role})`);
         } else {
-          // Compte déjà présent : on réaligne le mot de passe de démo connu et le
-          // rôle (utile si un testeur les a modifiés). Idempotent.
+          // Compte déjà présent : on réaligne le mot de passe de démo connu, le
+          // rôle et les attributs de démo (utile si un testeur les a modifiés).
           await users.update(user.id, {
             passwordHash,
             role: c.role,
+            ...(c.email ? { email: c.email } : {}),
+            ...(c.sousProfilMarchand ? { sousProfilMarchand: c.sousProfilMarchand } : {}),
+            ...(c.cooperativeName ? { cooperativeName: c.cooperativeName } : {}),
             mustChangePassword: false,
           } as Partial<User>);
         }
