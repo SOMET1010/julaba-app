@@ -250,7 +250,7 @@ export function LoginPassword() {
     // Marqueur de version : si cette ligne apparaît dans le journal, c'est BIEN ce
     // code-ci (Render, micro immédiat) qui tourne — pas une ancienne build en cache
     // ni un autre déploiement (julaba.online). Repère décisif pour lever le doute.
-    vlog('BUILD', 'render-2026-07-24-micro-immediat');
+    vlog('BUILD', 'render-2026-07-24-v2-sans-annonce');
 
     const RecCtor = SR as new () => {
       lang: string; interimResults: boolean; maxAlternatives: number; continuous: boolean;
@@ -378,16 +378,13 @@ export function LoginPassword() {
     // lit pas) : elle ne contient aucun chiffre, donc elle ne peut pas polluer la
     // reconnaissance (on n'extrait que les chiffres).
     creerReco();
-    try {
-      const synth = window.speechSynthesis;
-      if (synth) {
-        synth.cancel();
-        const u = new SpeechSynthesisUtterance('Dis ton numéro maintenant');
-        u.lang = 'fr-FR';
-        u.rate = 1;
-        synth.speak(u);
-      }
-    } catch { /* la voix est un plus ; le micro écoute déjà */ }
+    // PAS d'annonce vocale pendant l'écoute : le micro la captait (« dis ton numéro
+    // maintenant »), ce qui occupait le moteur ~3 s avant les vrais chiffres et
+    // coupait parfois la fin du numéro. Désormais le micro écoute UNIQUEMENT
+    // l'utilisatrice dès la 1re seconde. Repères non sonores : la vibration
+    // (ci-dessus) + la pastille verte « J'écoute… ». On coupe aussi toute voix de
+    // Tata encore en cours, pour qu'elle ne soit pas captée.
+    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
   };
 
   // Tata parle AU PREMIER CONTACT (les navigateurs bloquent le son avant tout
