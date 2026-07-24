@@ -117,6 +117,200 @@ export class SeedDemoService implements OnApplicationBootstrap {
         this.logger.warn(`Seed compte ${c.phone} ignoré : ${message}`);
       }
     }
+
+    // Scénario de démonstration COHÉRENT : relie les comptes entre eux pour que
+    // le parcours raconte une vraie histoire (Hervé enrôle → Bénito récolte →
+    // la COOP achète ses tomates → Michelle vend → la DG valide). Défensif :
+    // n'interrompt jamais le démarrage si une table diffère.
+    try {
+      await this.seedScenario();
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`Seed scénario ignoré : ${message}`);
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Scénario lié bout-à-bout, pour une démonstration où chaque écran découle du
+  // précédent. Idempotent : UUIDs fixes + ON CONFLICT DO NOTHING. Chaque bloc
+  // est isolé (un échec local n'empêche pas les autres).
+  // ───────────────────────────────────────────────────────────────────────────
+  private async seedScenario(): Promise<void> {
+    const users = this.dataSource.getRepository(User);
+    const idByPhone = async (phone: string): Promise<string | null> => {
+      const u = await users.findOne({ where: { phone } });
+      return u ? u.id : null;
+    };
+
+    const herve = await idByPhone('+2250710101010');   // identificateur
+    const benito = await idByPhone('+2250960606060');   // producteur (Korhogo)
+    const michelle = await idByPhone('+2250726262626'); // marchand grossiste
+    const coop = await idByPhone('+2250970707070');     // coopérative (COOP-CACAO)
+    const adjoua = await idByPhone('+2250725252525');   // demi-grossiste
+    const aya = await idByPhone('+2250790909090');      // détaillant
+
+    const run = async (label: string, fn: () => Promise<void>): Promise<void> => {
+      try {
+        await fn();
+      } catch (e: unknown) {
+        const m = e instanceof Error ? e.message : String(e);
+        this.logger.warn(`Seed scénario · ${label} ignoré : ${m}`);
+      }
+    };
+
+    // 1) Un acteur EN ATTENTE de validation, enrôlé par Hervé, que la DG valide
+    //    en direct pendant la démo (marchande détaillante non encore validée).
+    let awa: string | null = null;
+    await run('acteur en attente', async () => {
+      const phone = '+2250799999999';
+      let u = await users.findOne({ where: { phone } });
+      if (!u) {
+        const passwordHash = await bcrypt.hash('0000', 10);
+        u = await users.save(
+          users.create({
+            phone,
+            passwordHash,
+            firstName: 'Awa',
+            lastName: 'Nénè',
+            genre: 'femme',
+            role: UserRole.MARCHAND,
+            status: UserStatus.EN_ATTENTE_VALIDATION,
+            validated: false,
+            sousProfilMarchand: 'detaillant',
+            mustChangePassword: false,
+          } as Partial<User>) as User,
+        );
+      }
+      awa = u.id;
+    });
+
+    // 2) Dossiers d'identification d'Hervé : 3 validés (Bénito, Michelle, la COOP)
+    //    + 1 en attente (Awa). Alimente son tableau de bord territoire ET la
+    //    "Performance des identificateurs" du back-office national.
+    if (herve) {
+      const dossiers: Array<[string, string | null, string, string, string]> = [
+        // id fixe, acteur_id, type_acteur, statut, nom
+        ['dede0000-0000-4000-8000-000000000001', benito, 'producteur', 'valide', 'Bénito Bomisso'],
+        ['dede0000-0000-4000-8000-000000000002', michelle, 'marchand', 'valide', 'Michelle Walebo'],
+        ['dede0000-0000-4000-8000-000000000003', coop, 'cooperateur', 'valide', 'COOP-CACAO Daloa'],
+        ['dede0000-0000-4000-8000-000000000004', awa, 'marchand', 'en_attente', 'Awa Nénè'],
+      ];
+      for (const [id, acteurId, typeActeur, statut, nom] of dossiers) {
+        if (!acteurId) continue;
+        await run(`dossier ${nom}`, async () => {
+          await this.dataSource.query(
+            `INSERT INTO identifications
+               (id, identificateur_id, acteur_id, type_acteur, statut, acteur_nom,
+                region, commune, source, date_identification, created_at, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,'Poro','Korhogo','terrain', now(), now(), now())
+             ON CONFLICT DO NOTHING`,
+            [id, herve, acteurId, typeActeur, statut, nom],
+          );
+        });
+      }
+    }
+
+    // 3) Bénito déclare une récolte de TOMATES à Korhogo, publiée sur le marché.
+    const recolteId = 'dede0000-0000-4000-8000-000000000101';
+    const pubId = 'dede0000-0000-4000-8000-000000000201';
+    if (benito) {
+      await run('récolte Bénito', async () => {
+        await this.dataSource.query(
+          `INSERT INTO recoltes
+             (id, user_id, produit, quantite, unite, qualite, date_recolte, statut,
+              prix_unitaire, parcelle, notes, stock_disponible, stock_vendu, created_at, updated_at)
+           VALUES ($1,$2,'Tomate',400,'kg','standard', CURRENT_DATE - 3, 'validee',
+                   500,'Parcelle Korhogo','Récolte de démonstration',200,200, now(), now())
+           ON CONFLICT DO NOTHING`,
+          [recolteId, benito],
+        );
+      });
+      await run('publication Bénito', async () => {
+        await this.dataSource.query(
+          `INSERT INTO publications
+             (id, user_id, recolte_id, produit, culture, quantite_disponible, quantite_initiale,
+              unite, prix_unitaire, qualite, localisation, active, statut, type_marche,
+              date_publication, date_recolte, description, created_at, updated_at)
+           VALUES ($1,$2,$3,'Tomate','Tomate',200,400,'kg',500,'standard','Korhogo',
+                   true,'disponible','producteur', now(), CURRENT_DATE - 3,
+                   'Tomates fraîches de Korhogo', now(), now())
+           ON CONFLICT DO NOTHING`,
+          [pubId, benito, recolteId],
+        );
+      });
+    }
+
+    // 4) La COOP-CACAO achète les tomates de Bénito : 2 commandes (120 kg + 80 kg)
+    //    = 200 kg cumulés · 100 000 FCFA. Alimente "Achats groupés" (cumul par
+    //    produit) et les cartes "Mes commandes / En attente / Livrées".
+    if (coop && benito) {
+      const cmds: Array<[string, number, number, string]> = [
+        // id fixe, quantite, total, statut
+        ['dede0000-0000-4000-8000-000000000301', 120, 60000, 'en_attente'],
+        ['dede0000-0000-4000-8000-000000000302', 80, 40000, 'livree'],
+      ];
+      for (const [id, quantite, total, statut] of cmds) {
+        await run(`commande COOP ${quantite}kg`, async () => {
+          await this.dataSource.query(
+            `INSERT INTO commandes
+               (id, acheteur_id, acheteur_nom, vendeur_id, publication_id, type, produit,
+                quantite, prix_unitaire, total, statut, date_commande, created_at, updated_at)
+             VALUES ($1,$2,'COOP-CACAO Daloa',$3,$4,'achat','Tomate',$5,500,$6,$7, now(), now(), now())
+             ON CONFLICT DO NOTHING`,
+            [id, coop, benito, pubId, quantite, total, statut],
+          );
+        });
+      }
+    }
+
+    // 5) La coopérative elle-même : fiche + membres + quelques besoins, pour que
+    //    les écrans "Membres" et "Besoins" soient peuplés et cohérents.
+    const coopId = 'dede0000-0000-4000-8000-000000000401';
+    if (coop) {
+      await run('fiche coopérative', async () => {
+        await this.dataSource.query(
+          `INSERT INTO cooperatives (id, nom, responsable_id, actif, created_at, updated_at)
+           VALUES ($1,'COOP-CACAO Daloa',$2,true, now(), now())
+           ON CONFLICT DO NOTHING`,
+          [coopId, coop],
+        );
+      });
+      const membres: Array<[string, string | null]> = [
+        ['dede0000-0000-4000-8000-000000000501', benito],
+        ['dede0000-0000-4000-8000-000000000502', adjoua],
+        ['dede0000-0000-4000-8000-000000000503', aya],
+      ];
+      for (const [id, membreId] of membres) {
+        if (!membreId) continue;
+        await run('membre coopérative', async () => {
+          await this.dataSource.query(
+            `INSERT INTO cooperative_membres
+               (id, cooperative_id, membre_id, statut, role, actif, date_adhesion)
+             VALUES ($1,$2,$3,'actif','membre',true, now())
+             ON CONFLICT DO NOTHING`,
+            [id, coopId, membreId],
+          );
+        });
+      }
+      const besoins: Array<[string, string, string, number, string | null]> = [
+        ['dede0000-0000-4000-8000-000000000601', 'Tomate', 'Légumes', 200, benito],
+        ['dede0000-0000-4000-8000-000000000602', 'Maïs', 'Céréales', 180, adjoua],
+      ];
+      for (const [id, produit, categorie, quantite, membreId] of besoins) {
+        await run(`besoin ${produit}`, async () => {
+          await this.dataSource.query(
+            `INSERT INTO cooperative_besoins
+               (id, cooperative_id, marchand_id, produit, categorie, quantite, unite,
+                priorite, statut, date_besoin, created_at, updated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,'kg','normale','en_attente', now(), now(), now())
+             ON CONFLICT DO NOTHING`,
+            [id, coopId, membreId, produit, categorie, quantite],
+          );
+        });
+      }
+    }
+
+    this.logger.log('Scénario de démonstration cohérent chargé (Hervé → Bénito → COOP → Michelle → DG).');
   }
 
   // Jeu de données d'exemple pour un marchand : produits + journée ouverte +
