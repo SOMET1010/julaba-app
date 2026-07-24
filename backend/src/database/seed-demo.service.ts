@@ -1,4 +1,4 @@
-import { Injectable, OnApplicationBootstrap, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
@@ -67,12 +67,14 @@ const COMPTES: CompteDemo[] = [
 ];
 
 @Injectable()
-export class SeedDemoService implements OnApplicationBootstrap {
+export class SeedDemoService {
   private readonly logger = new Logger(SeedDemoService.name);
 
   constructor(@InjectDataSource() private dataSource: DataSource) {}
 
-  async onApplicationBootstrap(): Promise<void> {
+  // Appelé APRÈS le bind du port (depuis main.ts), en arrière-plan. Le seed est
+  // idempotent : s'il échoue, l'app reste debout et sert quand même.
+  async runSeed(): Promise<void> {
     if (process.env.SEED_DEMO === 'false') return; // désactivable en production
     const users = this.dataSource.getRepository(User);
 
