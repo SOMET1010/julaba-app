@@ -40,7 +40,7 @@ export async function registerWebAuthn(): Promise<{ success: boolean; error?: st
   }
 }
 
-export async function authenticateWebAuthn(phone: string): Promise<{ success: boolean; user?: any; error?: string }> {
+export async function authenticateWebAuthn(phone: string): Promise<{ success: boolean; user?: any; accessToken?: string; refreshToken?: string; error?: string }> {
   try {
     const optRes = await fetch(`${API_URL}/auth/webauthn/authenticate/options`, {
       method: 'POST',
@@ -58,7 +58,9 @@ export async function authenticateWebAuthn(phone: string): Promise<{ success: bo
       body: JSON.stringify({ response: authResponse, userId }),
     });
     const verData = await verRes.json();
-    if (verData.verified) return { success: true, user: verData.user };
+    // On remonte AUSSI les jetons (mobile : cookies cross-domaine bloqués) pour
+    // que handleBiometric les stocke -> les requêtes suivantes restent authentifiées.
+    if (verData.verified) return { success: true, user: verData.user, accessToken: verData.accessToken, refreshToken: verData.refreshToken };
     return { success: false, error: 'Authentification échouée' };
   } catch (e: any) {
     return { success: false, error: e.message };
