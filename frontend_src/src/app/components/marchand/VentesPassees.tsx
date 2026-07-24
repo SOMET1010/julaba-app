@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ChevronDown, Search, Filter, FileDown, TrendingUp, Banknote, Package, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Search, Filter, FileDown, TrendingUp, Banknote, Package, ShoppingBag, Volume2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
@@ -140,7 +140,7 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
 // ── Composant principal ───────────────────────────────────────
 export function VentesPassees() {
   const navigate = useNavigate();
-  const { getSalesHistory, reloadTransactions } = useApp();
+  const { getSalesHistory, reloadTransactions, speak } = useApp();
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<'tous'|'vocal'|'kassa'|'credits'>('tous');
   const [credits, setCredits] = useState<Credit[]>([]);
@@ -189,6 +189,22 @@ export function VentesPassees() {
   const animBenefices = useCountUp(totalBenefices, 1000);
   const animCount     = useCountUp(totalCount, 800);
   const animPanier    = useCountUp(panierMoyen, 900);
+
+  // Écran « Mes ventes » : une non-lectrice arrive ici pour SAVOIR combien elle a
+  // fait -> on l'annonce à voix haute dès que les données sont là (une seule fois).
+  const dejaAnnonce = useRef(false);
+  useEffect(() => {
+    if (dejaAnnonce.current || allSales.length === 0) return;
+    dejaAnnonce.current = true;
+    speak(totalCount > 0
+      ? `Tu as vendu ${totalVentes.toLocaleString('fr-FR')} francs en tout, sur ${totalCount} vente${totalCount > 1 ? 's' : ''}.`
+      : "Tu n'as pas encore de vente.");
+  }, [allSales, totalVentes, totalCount, speak]);
+
+  // Ré-écouter le total (bouton haut-parleur).
+  const direTotal = () => speak(totalCount > 0
+    ? `Tu as vendu ${totalVentes.toLocaleString('fr-FR')} francs, sur ${totalCount} vente${totalCount > 1 ? 's' : ''}.`
+    : "Tu n'as pas encore de vente.");
 
   // Filtrage
   const filtered = useMemo(() => {
@@ -248,12 +264,16 @@ export function VentesPassees() {
       subtitle={ventesDuJour > 0 ? `${ventesDuJour} vente${ventesDuJour > 1 ? 's' : ''} aujourd'hui` : undefined}
       rightContent={
         <div style={{ display:'flex', gap:7 }}>
-          <motion.button whileTap={{ scale:0.9 }} onClick={handleExport}
-            style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+          <motion.button whileTap={{ scale:0.9 }} onClick={direTotal} aria-label="Écouter le total des ventes"
+            style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+            <Volume2 size={18} color="white" />
+          </motion.button>
+          <motion.button whileTap={{ scale:0.9 }} onClick={handleExport} aria-label="Exporter en PDF"
+            style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
             <FileDown size={16} color="white" />
           </motion.button>
-          <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')}
-            style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
+          <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')} aria-label="Voir les alertes"
+            style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid #8f4418' }} />
           </motion.button>

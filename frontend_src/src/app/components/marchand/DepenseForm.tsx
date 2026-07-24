@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Delete } from 'lucide-react';
@@ -102,6 +102,15 @@ export function DepenseForm() {
   };
 
   const montantNum = montant ? Number(montant) : 0;
+
+  // Alerte « montant élevé » VOCALISÉE : c'est justement le moment où une
+  // non-lectrice a besoin d'entendre l'avertissement. Dit une fois par franchissement.
+  const avertEleveRef = useRef(false);
+  useEffect(() => {
+    const eleve = montantNum > 20000;
+    if (eleve && !avertEleveRef.current) { avertEleveRef.current = true; speak('Attention, le montant est élevé. Vérifie bien.'); }
+    if (!eleve) avertEleveRef.current = false;
+  }, [montantNum, speak]);
   const montantColor = montantNum === 0 ? P : montantNum <= 2000 ? '#1D9E75' : montantNum > 20000 ? '#E24B4A' : P;
   const montantHint = montantNum > 20000 ? 'Montant élevé — vérifie !' : montantNum > 0 && montantNum <= 2000 ? 'Petit montant' : '';
   const canProceed = description.trim().length > 0;

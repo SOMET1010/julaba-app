@@ -153,7 +153,7 @@ function DepenseCard({ d, index, query }: { d: any; index: number; query: string
 // ── Composant principal ───────────────────────────────────────
 export function MarchandDepenses() {
   const navigate = useNavigate();
-  const { transactions, reloadTransactions } = useApp();
+  const { transactions, reloadTransactions, speak } = useApp();
   const [period, setPeriod] = useState<Period>('today');
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -196,6 +196,21 @@ export function MarchandDepenses() {
   const kpiMonth = useMemo(() => allDepenses.filter((t: any) => { const d = new Date(t.date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }).reduce((s: number, t: any) => s + (t.montant || t.price || 0), 0), [allDepenses]);
   const kpiTotal = useMemo(() => allDepenses.reduce((s: number, t: any) => s + (t.montant || t.price || 0), 0), [allDepenses]);
 
+  // Écran « Mes dépenses » : on annonce à voix haute les dépenses du jour dès que
+  // les données arrivent (une seule fois) -> une non-lectrice sait sans lire.
+  const dejaAnnonce = useRef(false);
+  useEffect(() => {
+    if (dejaAnnonce.current || allDepenses.length === 0) return;
+    dejaAnnonce.current = true;
+    speak(kpiToday > 0
+      ? `Aujourd'hui tu as dépensé ${kpiToday.toLocaleString('fr-FR')} francs.`
+      : "Tu n'as pas encore de dépense aujourd'hui.");
+  }, [allDepenses, kpiToday, speak]);
+
+  const direTotal = () => speak(kpiToday > 0
+    ? `Aujourd'hui tu as dépensé ${kpiToday.toLocaleString('fr-FR')} francs.`
+    : "Tu n'as pas encore de dépense aujourd'hui.");
+
   // Filtrage par période
   const byPeriod = useMemo(() => {
     return allDepenses.filter((t: any) => {
@@ -231,17 +246,23 @@ export function MarchandDepenses() {
         <div style={{ height:16 }} />
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate(-1)}
-              style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+            <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate(-1)} aria-label="Revenir en arrière"
+              style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
             </motion.button>
             <span style={{ fontSize:19, fontWeight:900, color:'white', letterSpacing:'-0.3px' }}>Mes dépenses</span>
           </div>
-          <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')}
-            style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid #8f4418' }} />
-          </motion.button>
+          <div style={{ display:'flex', gap:7 }}>
+            <motion.button whileTap={{ scale:0.9 }} onClick={direTotal} aria-label="Écouter les dépenses du jour"
+              style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            </motion.button>
+            <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')} aria-label="Voir les alertes"
+              style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid #8f4418' }} />
+            </motion.button>
+          </div>
         </div>
       </div>
 
