@@ -333,7 +333,49 @@ export function GestionStock() {
     context: { module: 'stock', prenom: user?.firstName || user?.prenoms || 'ma chere', genre: (user as any)?.genre || 'femme', userId: user?.id },
     onAction: async (data) => {
       setIsListening(false);
+      const a: any = data.action || {};
       const text = (data.transcript || '').toLowerCase();
+
+      // ── AJOUT / RÉAPPRO PAR LA VOIX ────────────────────────────────────────
+      // « Ajoute 10 piments à 500 » : plus besoin de taper le formulaire. Si le
+      // produit existe déjà -> on réapprovisionne ; sinon on le CRÉE (avec le prix
+      // dit, ou le prix du catalogue), et sa photo est trouvée automatiquement.
+      if (a.type === 'ajouter_stock' || data.intent === 'ajouter_stock') {
+        const nom = String(a.produit || '').trim();
+        const qte = Number(a.quantite) || 0;
+        const prix = Number(a.prix ?? a.montant) || 0;
+        if (!nom) { speak('Quel produit veux-tu ajouter ?'); return; }
+        if (qte <= 0) { speak(`Combien de ${nom} veux-tu ajouter ?`); return; }
+
+        const existant = stocks.find(s =>
+          s.name?.toLowerCase() === nom.toLowerCase() ||
+          s.name?.toLowerCase().includes(nom.toLowerCase()));
+        if (existant) {
+          const newQty = (existant.quantity || 0) + qte;
+          try {
+            await updateProduct(existant.id, { stock: newQty });
+            stockCtx.updateStock(existant.id, { quantite: newQty });
+            speak(`${qte} ${existant.unit} de ${existant.name} ajoutés. Tu as maintenant ${newQty} ${existant.unit}.`);
+          } catch { speak("Ça n'a pas marché. Réessaie, s'il te plaît."); }
+          return;
+        }
+        // Nouveau produit -> création (prix dit, sinon prix du catalogue).
+        const cat = rechercherProduitCatalogue(nom);
+        const prixVente = prix > 0 ? prix : (cat?.prixVente || 0);
+        try {
+          await addProduct({
+            nom, categorie: cat?.categorie || 'autre',
+            prix: prixVente, prix_achat: cat?.prixAchat || 0,
+            stock: qte, unite: cat?.unite || 'kg',
+            image: cat?.image || getImageByNom(nom), seuil_alerte: 10,
+          } as any);
+          speak(prixVente > 0
+            ? `C'est fait ! ${qte} ${cat?.unite || 'kg'} de ${nom} à ${prixVente.toLocaleString('fr-FR')} francs, ajoutés au stock.`
+            : `${nom} ajouté au stock. Dis-moi son prix quand tu veux.`);
+        } catch { speak("Ça n'a pas marché. Réessaie, s'il te plaît."); }
+        return;
+      }
+
       if (text.includes('alerte') || text.includes('stock bas')) {
         const low = stocks.filter(s => s.quantity < s.threshold);
         speak(low.length === 0 ? 'Tous tes stocks sont bons' : `${low.length} produits en stock bas : ${low.map(s => s.name).join(', ')}`);
@@ -539,11 +581,25 @@ export function GestionStock() {
             </motion.button>
           </div>
 
+          {/* Ajout PAR LA VOIX — la voie principale pour une non-lectrice.
+              Elle appuie, dit « ajoute 10 piments à 500 », et c'est créé. */}
+          <motion.button whileTap={{ scale:0.98 }} onClick={toggleMic}
+            aria-label={isListening ? 'J\'écoute, parle' : 'Ajouter un produit en parlant'}
+            style={{ width:'100%', minHeight:56, marginBottom:10, borderRadius:16, border:'none', cursor:'pointer', fontFamily:'inherit',
+              background: isListening ? '#1D9E75' : `linear-gradient(145deg, ${P}, #8f4418)`, color:'white',
+              display:'flex', alignItems:'center', justifyContent:'center', gap:10, padding:'10px 16px', boxShadow:'0 4px 16px rgba(175,91,35,0.28)' }}>
+            {isListening ? <MicOff size={22} /> : <Mic size={22} />}
+            <div style={{ textAlign:'left', lineHeight:1.15 }}>
+              <div style={{ fontSize:16, fontWeight:900 }}>{isListening ? 'Je t\'écoute…' : 'Ajouter en parlant'}</div>
+              <div style={{ fontSize:11.5, fontWeight:600, opacity:0.9 }}>{isListening ? 'dis : « ajoute 10 piments à 500 »' : 'appuie et dis ton produit'}</div>
+            </div>
+          </motion.button>
+
           {/* Boutons action */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
             <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowAdd(true)}
               style={{ background:'white', border:`2px solid ${P}`, borderRadius:14, padding:'12px 0', fontSize:14, fontWeight:800, color:P, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-              <Package size={16} /> Ajouter
+              <Package size={16} /> Écrire
             </motion.button>
             <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowVente(true)}
               style={{ background:P, border:'none', borderRadius:14, padding:'12px 0', fontSize:14, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
