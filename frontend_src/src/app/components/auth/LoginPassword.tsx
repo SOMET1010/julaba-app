@@ -147,6 +147,20 @@ export function LoginPassword() {
   // À l'arrivée sur l'étape mot de passe : on annonce clairement quoi faire.
   useEffect(() => { if (step === 'password') parle('Entre ton code secret à 4 chiffres'); }, [step]);
 
+  // Pré-réveil du backend. Sur Render gratuit, le serveur se met EN VEILLE après
+  // inactivité et met ~50 s à redémarrer ; la 1re requête de login tombait alors
+  // dans le vide → « Erreur de connexion ». On envoie un ping /health dès que
+  // l'écran s'affiche (pendant que l'utilisatrice tape son numéro/code), pour que
+  // le serveur soit déjà réveillé au moment du « Se connecter ». Silencieux.
+  useEffect(() => {
+    let annule = false;
+    const reveiller = () => { try { fetch(`${API_URL}/health`, { method: 'GET', cache: 'no-store' }).catch(() => {}); } catch { /* ignore */ } };
+    reveiller();
+    // Un 2e ping ~8 s après, au cas où le 1er a lancé le démarrage sans le finir.
+    const t = setTimeout(() => { if (!annule) reveiller(); }, 8000);
+    return () => { annule = true; clearTimeout(t); };
+  }, []);
+
   const scheduleTransitionToPasswordAfterCheck = () => {
     if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
     phoneToPasswordTimeout.current = setTimeout(async () => {
@@ -250,7 +264,7 @@ export function LoginPassword() {
     // Marqueur de version : si cette ligne apparaît dans le journal, c'est BIEN ce
     // code-ci (Render, micro immédiat) qui tourne — pas une ancienne build en cache
     // ni un autre déploiement (julaba.online). Repère décisif pour lever le doute.
-    vlog('BUILD', 'render-2026-07-24-v3-login-spy');
+    vlog('BUILD', 'render-2026-07-24-v4-prewarm-retry');
 
     const RecCtor = SR as new () => {
       lang: string; interimResults: boolean; maxAlternatives: number; continuous: boolean;
@@ -469,7 +483,7 @@ export function LoginPassword() {
     }
   };
 
-  const handleLogin = async (pinOverride?: string) => {
+  const handleLogin = async (pinOverride?: string, retry = 0) => {
     const pwd = pinOverride ?? pinInput;
     if (phone.length !== 10) { setError('Le numéro doit contenir 10 chiffres'); return; }
     if (import.meta.env.DEV && phone === '0501604040') { setShowDevButton(true); setError(''); return; }
@@ -606,8 +620,17 @@ export function LoginPassword() {
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       console.warn('[LoginPassword] login failed:', err instanceof Error ? err.message : err);
-      vlog('LOGIN_FAIL', { name: err instanceof Error ? err.name : '', msg: err instanceof Error ? err.message : String(err) });
-      setError('Erreur de connexion');
+      vlog('LOGIN_FAIL', { name: err instanceof Error ? err.name : '', msg: err instanceof Error ? err.message : String(err), retry });
+      // « Failed to fetch » = souvent le backend gratuit encore en train de se
+      // réveiller. On RETENTE automatiquement (jusqu'à 2 fois) en laissant le
+      // temps au serveur de démarrer, plutôt que d'échouer sèchement.
+      const estReseau = err instanceof TypeError;
+      if (estReseau && retry < 2) {
+        setError('Réveil du serveur… reconnexion automatique, patiente 🔄');
+        setTimeout(() => { handleLogin(pwd, retry + 1); }, 7000);
+        return;
+      }
+      setError('Connexion impossible. Le serveur se réveille (~1 min) — réessaie dans un instant.');
       setIsLoading(false);
     } finally {
       setIsLoading(false);
