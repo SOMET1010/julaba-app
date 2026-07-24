@@ -23,6 +23,7 @@ import {
   type TTSLang,
 } from "../services/elevenlabs";
 import { tataClipUrl } from "../services/tataVoice";
+import { tataUiClipForText } from "../services/tataUiClips";
 import { useOfflineVoiceQueue } from "./useOfflineVoiceQueue";
 
 // ─── TYPES ───────────────────────────────────────────────────────
@@ -255,6 +256,15 @@ async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): 
     }
   }
   if (lang === "french") {
+    // Voix de Tata Nanti Lou pour les messages FIXES de l'appli : si le texte à
+    // dire correspond EXACTEMENT à un clip enregistré (128 phrases), on joue la
+    // vraie voix ivoirienne au lieu de la synthèse. Sinon (phrase dynamique,
+    // montant, nom…), on retombe sans bruit sur la voix de secours habituelle.
+    const uiUrl = tataUiClipForText(text);
+    if (uiUrl) {
+      try { await playAudioUrl(uiUrl); return; }
+      catch { /* clip indisponible → voix de secours */ }
+    }
     await speakChunked(text);
     return;
   }
