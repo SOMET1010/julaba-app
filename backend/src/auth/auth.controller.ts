@@ -698,7 +698,15 @@ export class AuthController {
         const result = await this.authService.loginById(user.id, req.headers['user-agent'], ipAddress as string);
         const isBO = BO_ROLES.includes(result.user?.role);
         this.setTokenCookies(res, result.accessToken, result.refreshToken, isBO);
-        return { verified: true, user: result.user };
+        // Jetons AUSSI dans le corps (comme /login) : sur mobile les cookies
+        // cross-domaine sont bloqués -> sans ça, l'empreinte « réussit » puis la
+        // requête suivante est 401 et l'utilisateur retombe sur l'écran de login.
+        return {
+          verified: true,
+          user: result.user,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+        };
       }
       return { verified: false };
     } catch (e: any) {

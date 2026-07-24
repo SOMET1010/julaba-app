@@ -248,11 +248,16 @@ function startTypewriter(
 // cloud) au lieu de la voix de synthèse. Sinon on retombe sur le flux normal.
 async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): Promise<void> {
   if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') return;
+  // « Époque » d'arrêt : si l'utilisateur coupe la voix (tape le micro) PENDANT
+  // qu'un clip charge, playAudioUrl est rejeté ; sans ce garde-fou, on enchaînait
+  // sur la voix de secours qui repartait par-dessus l'enregistrement du micro.
+  const epoch = _ttsStopEpoch;
+  const stoppe = () => _ttsStopEpoch !== epoch;
   if (clip) {
     const url = tataClipUrl(clip);
     if (url) {
       try { await playAudioUrl(url); return; }
-      catch { /* clip indisponible → on continue vers la voix de secours */ }
+      catch { if (stoppe()) return; /* clip indisponible → voix de secours */ }
     }
   }
   if (lang === "french") {
@@ -263,8 +268,9 @@ async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): 
     const uiUrl = tataUiClipForText(text);
     if (uiUrl) {
       try { await playAudioUrl(uiUrl); return; }
-      catch { /* clip indisponible → voix de secours */ }
+      catch { if (stoppe()) return; /* clip indisponible → voix de secours */ }
     }
+    if (stoppe()) return; // voix coupée entre-temps → ne pas relancer
     await speakChunked(text);
     return;
   }
@@ -279,7 +285,11 @@ async function ttsPlayBase64(base64: string, fallback: string): Promise<void> {
   try { await playBase64Audio(base64); } catch { await ttsSpeak(fallback); }
 }
 
+// Incrémenté à chaque arrêt de la voix : permet à ttsSpeak de savoir qu'une
+// coupure est survenue pendant un chargement de clip et de NE PAS enchaîner.
+let _ttsStopEpoch = 0;
 function ttsStop(): void {
+  _ttsStopEpoch++;
   stopAllAudio();
   stopChunkedSpeaking();
   elStop();

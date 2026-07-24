@@ -540,6 +540,12 @@ export function LoginPassword() {
         return;
       }
       if (!response.ok || result.error) {
+        // Trop de tentatives en 1 minute (rate-limiter) : ce N'EST PAS un mauvais
+        // code -> on ne compte pas d'échec et on affiche un message clair.
+        if (response.status === 429) {
+          setError('Trop d\'essais. Attends une minute puis réessaie.');
+          setPinInput(""); setIsLoading(false); return;
+        }
         // Source de vérité backend : verrouillage total après 9 échecs cumulés.
         // Prioritaire sur le compteur RAM (qui ne sert qu'à l'affichage progressif 5/15 min).
         if (result.locked === true) {
