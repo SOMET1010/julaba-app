@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Plus, Minus, Trash2, ShoppingCart, X, Check, ArrowLeft, Package, FileText } from 'lucide-react';
 import { useCaisse } from '../../contexts/CaisseContext';
@@ -24,6 +24,9 @@ export function POSCaisse() {
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  // Verrou SYNCHRONE anti double-clic : l'état React (et donc `disabled`) ne se
+  // met à jour qu'au render suivant ; un ref bloque le 2e tap dès la même frame.
+  const paiementEnCoursRef = useRef(false);
 
   const total = getTotalCart();
   const nbItems = cart.reduce((s, i) => s + i.quantite, 0);
@@ -50,13 +53,14 @@ export function POSCaisse() {
 
 
   const handlePay = async () => {
-    if (isProcessing) return; // anti double-clic : le bouton disabled n'agit qu'au render suivant
+    if (paiementEnCoursRef.current) return; // anti double-clic (synchrone)
     if (cart.length === 0) return;
     if (total <= 0) {
       speak('Montant total invalide');
       return;
     }
     if (paymentMethod === 'credit') return;
+    paiementEnCoursRef.current = true;
     setIsProcessing(true);
     try {
       const details = cart.map(i => ({
@@ -84,7 +88,7 @@ export function POSCaisse() {
       console.error(e);
       speak("Erreur lors de l'enregistrement de la vente");
     }
-    finally { setIsProcessing(false); }
+    finally { paiementEnCoursRef.current = false; setIsProcessing(false); }
   };
 
   const handleCreditSuccess = () => {

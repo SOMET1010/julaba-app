@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Delete } from 'lucide-react';
@@ -40,6 +40,8 @@ export function DepenseForm() {
   const [description, setDescription] = useState('');
   const [montant, setMontant]         = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  // Verrou SYNCHRONE anti double-clic (l'état React ne bloque qu'au render suivant).
+  const enregEnCoursRef = useRef(false);
   const [showOthers, setShowOthers]   = useState(false);
   const vocalHint = useMemo(() => getVocalHint(), []);
 
@@ -84,10 +86,11 @@ export function DepenseForm() {
   };
 
   const handleSave = async () => {
-    if (isProcessing) return; // anti double-clic : le bouton disabled n'agit qu'au render suivant
+    if (enregEnCoursRef.current) return; // anti double-clic (synchrone)
     if (!description.trim() || !montant || montant === '0') return;
     const m = Number(montant);
     if (!m || m <= 0 || isNaN(m)) return;
+    enregEnCoursRef.current = true;
     setIsProcessing(true);
     try {
       await enregistrerDepense(m, description.trim());
@@ -95,7 +98,7 @@ export function DepenseForm() {
       speak('Dépense de ' + m.toLocaleString() + ' francs enregistrée');
       navigate(-1);
     } catch (e: any) { console.warn('[DepenseForm] handleSave failed:', e?.message); speak("Erreur lors de l'enregistrement"); }
-    finally { setIsProcessing(false); }
+    finally { enregEnCoursRef.current = false; setIsProcessing(false); }
   };
 
   const montantNum = montant ? Number(montant) : 0;
