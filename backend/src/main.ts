@@ -233,4 +233,12 @@ async function bootstrap() {
   })();
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  // Échec AVANT l'ouverture du port (base injoignable après les tentatives, port
+  // déjà pris, helmet…). Les garde-fous de process ne visent que les erreurs
+  // APRÈS démarrage ; ici on sort en code 1 pour que Render redémarre proprement
+  // l'instance, au lieu de laisser un process vivant qui n'écoute sur rien.
+  // eslint-disable-next-line no-console
+  console.error('[BOOT] Échec du démarrage — sortie pour redémarrage propre :', err);
+  process.exit(1);
+});

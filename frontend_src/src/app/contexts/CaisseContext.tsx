@@ -16,6 +16,29 @@ async function posterOperation(endpoint: CaisseEndpoint, payload: unknown): Prom
   else await caisseApi.enregistrerDepense(payload as caisseApi.EnregistrerDepenseData);
 }
 
+// Clé d'idempotence : une par vente/dépense. Envoyée EN LIGNE (le backend
+// déduplique) ET conservée dans le payload : si l'envoi échoue et qu'on enfile,
+// le rejeu réutilise la MÊME clé → jamais de double-comptage, même si la vente
+// avait en réalité déjà atteint le serveur.
+function genererCle(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return 'op-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+}
+
+// Faut-il mettre l'opération dans la file durable plutôt que de la perdre ?
+// OUI pour : hors-ligne, session expirée, panne réseau (fetch KO), passerelle ou
+// serveur temporairement KO (5xx). NON pour une vraie erreur métier 4xx (montant
+// refusé…) qu'il faut remonter à l'utilisateur (rejouer en boucle n'aiderait pas).
+function doitEnfiler(error: unknown): boolean {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  if (error instanceof TypeError) return true; // « Failed to fetch » : réseau coupé
+  const msg = String((error as { message?: string })?.message ?? error ?? '');
+  if (msg === NOT_AUTHENTICATED) return true;
+  if (/failed to fetch|networkerror|load failed|réponse serveur invalide/i.test(msg)) return true;
+  if (/erreur http 5\d\d/i.test(msg)) return true; // 500/502/503/504
+  return false;
+}
+
 export interface CaisseTransaction {
   id: string;
   marchandId: string;
@@ -214,6 +237,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       notes,
       prix_achat: prixAchatTotal > 0 ? prixAchatTotal : undefined,
       prix_vente: montant,
+      idempotency_key: genererCle(),
     };
     // Hors-ligne : on met la vente dans la file durable (rejeu à la reconnexion).
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -227,11 +251,11 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       // Notifier AppContext de recharger ses transactions
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
     } catch (error: any) {
-      // Ne JAMAIS perdre une vente : token expiré OU panne réseau -> on l'enfile
-      // (rejeu à la reconnexion / ré-authentification). Avant, NOT_AUTHENTICATED
-      // était avalé silencieusement alors que l'UI affichait un succès.
-      if (error?.message === NOT_AUTHENTICATED ||
-          (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      // Ne JAMAIS perdre une vente : hors-ligne, token expiré, panne réseau ou
+      // serveur temporairement KO -> on l'enfile (rejeu avec la MÊME clé, donc
+      // pas de double-comptage même si la vente était déjà passée). Une vraie
+      // erreur métier 4xx est remontée à l'utilisateur.
+      if (doitEnfiler(error)) {
         await enfilerOperation('/caisse/vente', payload);
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
         return;
@@ -242,7 +266,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
 
   const enregistrerDepense = async (montant: number, notes?: string) => {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de dépense invalide');
-    const payload: caisseApi.EnregistrerDepenseData = { montant, notes };
+    const payload: caisseApi.EnregistrerDepenseData = { montant, notes, idempotency_key: genererCle() };
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       await enfilerOperation('/caisse/depense', payload);
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
@@ -254,9 +278,9 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       // Notifier AppContext de recharger ses transactions
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
     } catch (error: any) {
-      // Ne JAMAIS perdre une dépense : token expiré OU panne réseau -> on l'enfile.
-      if (error?.message === NOT_AUTHENTICATED ||
-          (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      // Ne JAMAIS perdre une dépense : hors-ligne, token expiré, panne réseau ou
+      // serveur temporairement KO -> on l'enfile (rejeu avec la MÊME clé).
+      if (doitEnfiler(error)) {
         await enfilerOperation('/caisse/depense', payload);
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
         return;

@@ -32,11 +32,15 @@ export interface EnregistrerVenteData {
   notes?: string;
   prix_achat?: number;
   prix_vente?: number;
+  /** Clé d'idempotence : le backend ne compte pas deux fois la même vente. */
+  idempotency_key?: string;
 }
 
 export interface EnregistrerDepenseData {
   montant: number;
   notes?: string;
+  /** Clé d'idempotence : le backend ne compte pas deux fois la même dépense. */
+  idempotency_key?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

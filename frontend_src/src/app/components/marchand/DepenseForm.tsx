@@ -84,6 +84,7 @@ export function DepenseForm() {
   };
 
   const handleSave = async () => {
+    if (isProcessing) return; // anti double-clic : le bouton disabled n'agit qu'au render suivant
     if (!description.trim() || !montant || montant === '0') return;
     const m = Number(montant);
     if (!m || m <= 0 || isNaN(m)) return;

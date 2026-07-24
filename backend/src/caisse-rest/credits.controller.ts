@@ -114,18 +114,21 @@ export class CreditsController {
     const montantRestant = parseFloat(credit[0].montant_total) - parseFloat(credit[0].acompte);
     if (montant > montantRestant) throw new BadRequestException(`Montant dépasse le restant dû (${montantRestant} FCFA)`);
 
-    const nouvelAcompte = parseFloat(credit[0].acompte) + montant;
-    const estSolde = nouvelAcompte >= parseFloat(credit[0].montant_total);
-
-    await this.ds.query(
+    // Mise à jour ATOMIQUE et RELATIVE (acompte = acompte + montant) directement
+    // en base : deux paiements partiels simultanés s'additionnent correctement.
+    // Avant, on lisait l'acompte puis on réécrivait sa valeur absolue -> deux
+    // paiements concurrents s'écrasaient et de l'argent encaissé disparaissait.
+    const maj = await this.ds.query(
       `UPDATE credits SET
-         acompte = $1,
-         statut = CASE WHEN $2 THEN 'paye' ELSE statut END,
-         paye_le = CASE WHEN $2 THEN now() ELSE paye_le END,
+         acompte = COALESCE(acompte,0) + $1,
+         statut = CASE WHEN COALESCE(acompte,0) + $1 >= montant_total THEN 'paye' ELSE statut END,
+         paye_le = CASE WHEN COALESCE(acompte,0) + $1 >= montant_total THEN now() ELSE paye_le END,
          updated_at = now()
-       WHERE id=$3 AND marchand_id=$4`,
-      [nouvelAcompte, estSolde, id, user.id]
+       WHERE id=$2 AND marchand_id=$3
+       RETURNING (COALESCE(acompte,0) >= montant_total) AS solde`,
+      [montant, id, user.id]
     );
+    const estSolde = maj?.[0]?.solde === true;
 
     return { success: true, solde: estSolde };
   }
