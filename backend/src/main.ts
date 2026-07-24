@@ -192,8 +192,13 @@ async function bootstrap() {
   // app.use(Sentry.expressErrorHandler());
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
-  logger.log(`Application démarrée sur : http://localhost:${port}/${prefix}`);
+  // IMPÉRATIF Render : écouter sur 0.0.0.0 (toutes les interfaces IPv4), sinon
+  // Node se lie par défaut à '::' (IPv6) et le proxy Render, qui se connecte en
+  // IPv4, ne peut JAMAIS joindre l'appli -> 502 permanent alors même que le
+  // process tourne (et garde ses connexions SORTANTES vers la base). Symptôme
+  // vérifié : backend vivant + connecté à Supabase, mais /health injoignable.
+  await app.listen(port as number, '0.0.0.0');
+  logger.log(`Application démarrée sur : http://0.0.0.0:${port}/${prefix}`);
 
   // ── Initialisation base + seed EN ARRIÈRE-PLAN (après le bind du port) ─────
   // AVANT : db-init + seed tournaient dans onApplicationBootstrap, donc AVANT que
