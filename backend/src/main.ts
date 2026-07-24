@@ -76,6 +76,38 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug'],
     bodyParser: false,  // Désactivé — on gère manuellement ci-dessous
   });
+
+  // ── CORS infaillible (préflight garanti) ──────────────────────────────────
+  // Symptôme observé : les GET passaient mais tout POST (login, check-phone)
+  // était bloqué « No 'Access-Control-Allow-Origin' » sur la requête PRÉPARATOIRE
+  // (OPTIONS, envoyée automatiquement par le navigateur avant un POST). Selon
+  // l'ordre interne des middlewares (helmet, body-parser…), le paquet `cors`
+  // pouvait ne pas répondre correctement au préflight. On règle ça une bonne
+  // fois : on répond NOUS-MÊMES, en TOUT PREMIER, avant helmet et le reste.
+  const allowedOrigins = [
+    process.env.CORS_ORIGIN,
+    'https://julaba-web.onrender.com',
+    'https://julaba.online',
+  ].filter((o): o is string => Boolean(o));
+  app.use((req: any, res: any, next: any) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+      res.setHeader('Vary', 'Origin');
+    }
+    // Requête préparatoire : on répond 204 immédiatement, sans passer par la
+    // suite (helmet, guards, routeur) — c'est exactement ce que le navigateur
+    // attend pour autoriser le POST qui suit.
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204;
+      return res.end();
+    }
+    return next();
+  });
+
   // Body parser UNIQUE — avant tous les middlewares
   const express = require('express');
   app.use(express.json({ limit: '10mb' }));
