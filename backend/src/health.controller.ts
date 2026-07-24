@@ -1,6 +1,8 @@
 import { Controller, Get } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 
+// (Test déploiement automatique — commentaire sans effet.)
+
 // Le contrôle de santé de Render frappe cet endpoint en boucle. Il ne doit
 // JAMAIS être soumis au rate-limiter : sinon il finit par recevoir un 429,
 // Render croit l'instance en panne, la redémarre -> fenêtre de 502 pour les
