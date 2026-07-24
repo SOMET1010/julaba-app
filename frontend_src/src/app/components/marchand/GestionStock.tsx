@@ -107,7 +107,8 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
           {/* Image */}
           <div style={{ position: 'relative', height: 115, overflow: 'hidden' }}>
             <ImageWithFallback
-              src={stock.image || getImageByNom(stock.name)}
+              src={stock.image || undefined}
+              fallbackSrc={getImageByNom(stock.name)}
               alt={stock.name}
               className="w-full h-full object-cover"
             />

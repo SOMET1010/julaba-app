@@ -8,6 +8,7 @@ import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { CreditModal } from './CreditModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
+import { getImageByNom } from '../../data/catalogue-produits';
 
 const P = '#AF5B23';
 const BG = '#FFF2E9';
@@ -203,7 +204,7 @@ export function POSCaisse() {
                 <motion.button key={p.id} whileTap={{ scale:0.97 }}
                   onClick={() => ajouterAuPanier(p)}
                   style={{ borderRadius:18, overflow:'hidden', position:'relative', height:96, border:'none', cursor:'pointer', padding:0 }}>
-                  <ImageWithFallback src={p.image} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', position:'absolute', top:0, left:0 }} />
+                  <ImageWithFallback src={p.image || undefined} fallbackSrc={getImageByNom(p.nom)} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', position:'absolute', top:0, left:0 }} />
                   <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right,rgba(0,0,0,0.72) 0%,rgba(0,0,0,0.25) 55%,transparent 100%)' }} />
                   <div style={{ position:'absolute', inset:0, padding:'0 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                     <div style={{ textAlign:'left' }}>
@@ -246,7 +247,7 @@ export function POSCaisse() {
                   <motion.div key={p.id} initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} transition={{ delay: i*0.04 }}
                     style={{ background:'white', border:`1.5px solid ${inCart ? P : '#EDE7DE'}`, borderRadius:20, overflow:'hidden', boxShadow: inCart ? `0 4px 20px rgba(175,91,35,0.18)` : 'none' }}>
                     <div style={{ position:'relative', height:110 }}>
-                      <ImageWithFallback src={p.image} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getImageByNom(p.nom)} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                       <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.55) 100%)' }} />
                       <StockBadge stock={p.stock || 0} />
                       {enPromo && (
