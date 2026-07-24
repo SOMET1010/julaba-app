@@ -247,6 +247,10 @@ export function LoginPassword() {
     // relancer. Le drapeau empêche la relance automatique du micro.
     if (isListening) { dicterStopRef.current = true; vlog('RE_TAP_STOP'); try { recognitionRef.current?.stop(); } catch { /* ignore */ } return; }
     vlogStart('dictée');
+    // Marqueur de version : si cette ligne apparaît dans le journal, c'est BIEN ce
+    // code-ci (Render, micro immédiat) qui tourne — pas une ancienne build en cache
+    // ni un autre déploiement (julaba.online). Repère décisif pour lever le doute.
+    vlog('BUILD', 'render-2026-07-24-micro-immediat');
 
     const RecCtor = SR as new () => {
       lang: string; interimResults: boolean; maxAlternatives: number; continuous: boolean;
