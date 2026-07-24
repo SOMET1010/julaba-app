@@ -28,6 +28,13 @@ export function POSCaisse() {
   // met à jour qu'au render suivant ; un ref bloque le 2e tap dès la même frame.
   const paiementEnCoursRef = useRef(false);
 
+  // Ajout au panier VOCALISÉ : une non-lectrice entend ce qu'elle vient d'ajouter
+  // et peut vérifier son panier avant d'encaisser.
+  const ajouterAuPanier = (p: any) => {
+    addToCart(p, 1);
+    speak(`${p?.nom || p?.name || 'Produit'} ajouté`);
+  };
+
   const total = getTotalCart();
   const nbItems = cart.reduce((s, i) => s + i.quantite, 0);
 
@@ -106,6 +113,8 @@ export function POSCaisse() {
       const prod = products.find((p) => p.id === item.productId);
       if (prod) updateProduct(prod.id, { stock: Math.max(0, (prod.stock || 0) - item.quantite) });
     });
+    // Confirmation PARLÉE aussi pour la vente à crédit (avant de vider le panier).
+    speak(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
     clearCart();
     setPaymentMethod('cash');
     setShowCredit(false);
@@ -192,7 +201,7 @@ export function POSCaisse() {
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {topProducts.map((p, i) => (
                 <motion.button key={p.id} whileTap={{ scale:0.97 }}
-                  onClick={() => addToCart(p, 1)}
+                  onClick={() => ajouterAuPanier(p)}
                   style={{ borderRadius:18, overflow:'hidden', position:'relative', height:96, border:'none', cursor:'pointer', padding:0 }}>
                   <ImageWithFallback src={p.image} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', position:'absolute', top:0, left:0 }} />
                   <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right,rgba(0,0,0,0.72) 0%,rgba(0,0,0,0.25) 55%,transparent 100%)' }} />
@@ -264,18 +273,18 @@ export function POSCaisse() {
                       )}
                       {inCart ? (
                         <div style={{ display:'flex', alignItems:'center', background:'#FFF3EA', borderRadius:12, padding:4, marginTop:8, gap:4 }}>
-                          <motion.button whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(p.id, inCart.quantite-1)}
-                            style={{ width:36, height:36, background:'white', border:'none', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'0 1px 4px rgba(0,0,0,0.08)' }}>
-                            <Minus size={16} color={P} />
+                          <motion.button whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(p.id, inCart.quantite-1)} aria-label="Enlever un"
+                            style={{ width:44, height:44, background:'white', border:'none', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'0 1px 4px rgba(0,0,0,0.08)' }}>
+                            <Minus size={18} color={P} />
                           </motion.button>
                           <span style={{ flex:1, textAlign:'center', fontSize:20, fontWeight:900, color:P }}>{inCart.quantite}</span>
-                          <motion.button whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(p.id, inCart.quantite+1)}
-                            style={{ width:36, height:36, background:P, border:'none', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-                            <Plus size={16} color="white" />
+                          <motion.button whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(p.id, inCart.quantite+1)} aria-label="Ajouter un"
+                            style={{ width:44, height:44, background:P, border:'none', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                            <Plus size={18} color="white" />
                           </motion.button>
                         </div>
                       ) : (
-                        <motion.button whileTap={{ scale:0.97 }} onClick={() => addToCart(p, 1)}
+                        <motion.button whileTap={{ scale:0.97 }} onClick={() => ajouterAuPanier(p)}
                           style={{ width:'100%', background:P, border:'none', borderRadius:12, padding:'11px 0', fontSize:15, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit', marginTop:8 }}>
                           + Ajouter
                         </motion.button>
@@ -300,9 +309,9 @@ export function POSCaisse() {
               <div style={{ width:40, height:4, borderRadius:2, background:'#EDE7DE', margin:'14px auto 0' }} />
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px 10px' }}>
                 <span style={{ fontSize:19, fontWeight:900, color:'#1a1206' }}>Panier <span style={{ fontSize:14, fontWeight:400, color:'#aaa' }}>({nbItems} article{nbItems>1?'s':''})</span></span>
-                <motion.button whileTap={{ scale:0.9 }} onClick={() => setShowCart(false)}
-                  style={{ width:32, height:32, borderRadius:10, background:'#f0f0f0', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <X size={14} color="#888" />
+                <motion.button whileTap={{ scale:0.9 }} onClick={() => setShowCart(false)} aria-label="Fermer le panier"
+                  style={{ width:44, height:44, borderRadius:10, background:'#f0f0f0', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <X size={16} color="#888" />
                 </motion.button>
               </div>
               <div style={{ flex:1, overflowY:'auto', padding:'0 16px' }}>
@@ -313,9 +322,9 @@ export function POSCaisse() {
                       <div style={{ fontSize:12, color:'#aaa', marginTop:2 }}>{item.prix.toLocaleString('fr-FR')} FCFA × {item.quantite}</div>
                     </div>
                     <div style={{ fontSize:15, fontWeight:800, color:P }}>{(item.prix * item.quantite).toLocaleString('fr-FR')} FCFA</div>
-                    <motion.button whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)}
-                      style={{ width:30, height:30, background:'#FEF2F2', border:'none', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-                      <Trash2 size={14} color="#ef4444" />
+                    <motion.button whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={`Enlever ${item.nom}`}
+                      style={{ width:44, height:44, background:'#FEF2F2', border:'none', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                      <Trash2 size={16} color="#ef4444" />
                     </motion.button>
                   </div>
                 ))}

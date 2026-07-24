@@ -367,8 +367,8 @@ export function GestionStock() {
 
   const addStockItem = async () => {
     if (!newStock.name?.trim()) { toast.error('Nom du produit requis'); speak('Saisis le nom du produit'); return; }
-    if (newStock.salePrice <= 0) { toast.error('Prix de vente invalide'); return; }
-    if (newStock.quantity < 0) { toast.error('Quantité invalide'); return; }
+    if (newStock.salePrice <= 0) { toast.error('Prix de vente invalide'); speak('Le prix de vente n\'est pas bon. Redis le prix.'); return; }
+    if (newStock.quantity < 0) { toast.error('Quantité invalide'); speak('La quantité n\'est pas bonne.'); return; }
     const cat = rechercherProduitCatalogue(newStock.name);
     try {
       await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
@@ -379,6 +379,7 @@ export function GestionStock() {
       setNewStock({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'', promoPrice:'', promoFin:'' });
     } catch {
       toast.error('Opération impossible. Réessaie.');
+      speak("Ça n'a pas marché. Réessaie, s'il te plaît.");
     }
   };
 
@@ -387,8 +388,10 @@ export function GestionStock() {
     try {
       await updateProduct(id, { stock: qty });
       toast.success('Produit mis à jour');
+      speak('C\'est mis à jour.');
     } catch {
       toast.error('Opération impossible. Réessaie.');
+      speak("Ça n'a pas marché. Réessaie, s'il te plaît.");
     }
     setSelectedStock(prev => prev?.id === id ? { ...prev, quantity: qty } : prev);
     const s = stocks.find(x => x.id === id);
@@ -426,6 +429,7 @@ export function GestionStock() {
       } catch (e: any) {
         console.warn('[GestionStock] deleteProduct failed:', e?.message);
         toast.error('Opération impossible. Réessaie.');
+        speak("Ça n'a pas marché. Réessaie, s'il te plaît.");
       }
     }
     showToast(`${s?.name} supprimé`, 'info');
@@ -478,6 +482,7 @@ export function GestionStock() {
       showToast('Produit mis à jour', 'success');
     } catch (err: unknown) {
       toast.error('Erreur lors de la sauvegarde');
+      speak("Ça n'a pas été enregistré. Réessaie, s'il te plaît.");
       console.warn('[GestionStock] saveInlineEdit failed:', err instanceof Error ? err.message : err);
     }
   };
