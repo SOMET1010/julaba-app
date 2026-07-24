@@ -33,6 +33,28 @@ import { SeedDemoService } from './seed-demo.service';
           config.get<string>('DB_SSL') === 'true'
             ? { rejectUnauthorized: false }
             : false,
+        // Résilience du lien transatlantique (backend Oregon ↔ base Paris).
+        // Sans reconnexion, une coupure réseau au démarrage tue le boot ; on
+        // laisse TypeORM réessayer plusieurs fois avant d'abandonner.
+        retryAttempts: 10,
+        retryDelay: 3000,
+        // keepConnectionAlive : ne ferme pas le pool entre les cycles de vie Nest.
+        keepConnectionAlive: true,
+        // Options passées directement au pool node-postgres.
+        extra: {
+          // TCP keep-alive : empêche les intermédiaires (Supabase pooler, NAT)
+          // de couper une connexion « inactive » qui, en tombant, émettait un
+          // 'error' non géré et faisait crasher le processus.
+          keepAlive: true,
+          keepAliveInitialDelayMillis: 10000,
+          // Un client inactif est recyclé au bout de 30 s : on préfère ré-ouvrir
+          // une connexion fraîche plutôt que de traîner une socket morte.
+          idleTimeoutMillis: 30000,
+          // Plafond d'attente d'une connexion libre (évite les requêtes qui
+          // pendent indéfiniment si le pool est saturé).
+          connectionTimeoutMillis: 15000,
+          max: 10,
+        },
       }),
     }),
   ],
