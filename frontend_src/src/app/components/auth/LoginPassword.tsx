@@ -236,9 +236,9 @@ export function LoginPassword() {
 
   // Dictée vocale du numéro : la marchande DIT son numéro, l'appli le remplit.
   // On utilise la reconnaissance vocale intégrée au navigateur (gratuite, aucun
-  // service payant). On l'annonce à voix haute AVANT d'écouter (une utilisatrice
-  // qui ne lit pas comprend qu'on attend qu'elle parle), puis on démarre le micro
-  // seulement quand la voix a fini, pour ne pas capter notre propre annonce.
+  // service payant). Le micro démarre IMMÉDIATEMENT au tap (vibration = « parle »),
+  // et l'annonce vocale « dis ton numéro » joue en parallèle pour qui ne lit pas :
+  // elle ne contient aucun chiffre, donc n'altère pas la reconnaissance.
   const dicterNumero = () => {
     const SR = (window as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition
       || (window as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition;
@@ -362,11 +362,18 @@ export function LoginPassword() {
     };
 
     setIsListening(true);
+    // Repère HAPTIQUE immédiat = « c'est parti, parle » (compris même sans lire).
+    try { navigator.vibrate?.(60); } catch { /* ignore */ }
     // Filet global : au bout de MAX_MS, on arrête et on valide ce qu'on a.
     stopTimer = setTimeout(() => { dicterStopRef.current = true; try { recognitionRef.current?.stop(); } catch { /* ignore */ } finaliser(); }, MAX_MS);
 
-    // On annonce « dis ton numéro » UNE fois, puis on écoute (les relances suivantes
-    // s'enchaînent en silence, sans ré-annoncer).
+    // On DÉMARRE le micro TOUT DE SUITE. Avant, on attendait la fin de l'annonce
+    // vocale (jusqu'à 2,5 s via un filet) : sur PC la fin de la voix ne se signalait
+    // pas, le micro s'ouvrait 2,5 s trop tard, et le numéro dit pendant ce délai
+    // était PERDU. L'annonce « dis ton numéro » est jouée EN PARALLÈLE (pour qui ne
+    // lit pas) : elle ne contient aucun chiffre, donc elle ne peut pas polluer la
+    // reconnaissance (on n'extrait que les chiffres).
+    creerReco();
     try {
       const synth = window.speechSynthesis;
       if (synth) {
@@ -374,18 +381,9 @@ export function LoginPassword() {
         const u = new SpeechSynthesisUtterance('Dis ton numéro maintenant');
         u.lang = 'fr-FR';
         u.rate = 1;
-        let started = false;
-        const go = () => { if (!started) { started = true; creerReco(); } };
-        u.onend = go;
         synth.speak(u);
-        if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
-        micStartTimeoutRef.current = setTimeout(go, 2500); // filet si onend ne se déclenche pas
-      } else {
-        creerReco();
       }
-    } catch {
-      creerReco();
-    }
+    } catch { /* la voix est un plus ; le micro écoute déjà */ }
   };
 
   // Tata parle AU PREMIER CONTACT (les navigateurs bloquent le son avant tout
