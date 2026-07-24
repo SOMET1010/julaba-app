@@ -77,14 +77,10 @@ async function bootstrap() {
     bodyParser: false,  // Désactivé — on gère manuellement ci-dessous
   });
 
-  // ── Confiance au proxy Render ─────────────────────────────────────────────
-  // Derrière Render, toutes les requêtes arrivent via un proxy : sans ceci,
-  // req.ip = l'IP du proxy pour TOUT LE MONDE, donc le rate-limiter compte tous
-  // les utilisateurs dans un SEUL compteur (le quota login de 5/min était partagé
-  // par tous → connexions bloquées, et le health-check finissait en 429). En
-  // faisant confiance au 1er hop, req.ip redevient l'IP réelle du client (via
-  // X-Forwarded-For) : chacun a son propre quota.
-  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  // (Note : « trust proxy » retiré volontairement — il n'est pas nécessaire pour
+  //  le health-check, désormais exempté du rate-limiter via @SkipThrottle. On le
+  //  réintroduira plus tard, prudemment, si le partage de quota entre utilisateurs
+  //  pose problème en charge réelle.)
 
   // ── CORS infaillible (préflight garanti) ──────────────────────────────────
   // Symptôme observé : les GET passaient mais tout POST (login, check-phone)
@@ -168,20 +164,10 @@ async function bootstrap() {
   // Rate limiting : le ThrottlerGuard est enregistré globalement via APP_GUARD
   // dans AppModule (voir providers), ce qui active les décorateurs @Throttle.
 
-  // CORS — frontend et backend V2 sont sur des domaines DIFFÉRENTS. On autorise
-  // explicitement le frontend V2 en plus de CORS_ORIGIN, pour rester fonctionnel
-  // même si la variable d'env n'a pas été appliquée par l'hébergeur.
-  const corsOrigins = [
-    process.env.CORS_ORIGIN,
-    'https://julaba-web.onrender.com',
-    'https://julaba.online',
-  ].filter((o): o is string => Boolean(o));
-  app.enableCors({
-    origin: corsOrigins,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-  });
+  // CORS : géré UNIQUEMENT par le middleware manuel tout en haut de bootstrap
+  // (voir plus haut). On n'appelle PLUS app.enableCors() ici : avoir deux
+  // mécanismes CORS en même temps posait les en-têtes deux fois et cassait aussi
+  // bien le préflight que les GET. Un seul point de vérité = comportement fiable.
 
   // Swagger (désactivé en production)
   if (process.env.NODE_ENV !== 'production') {

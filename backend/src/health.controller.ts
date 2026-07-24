@@ -15,6 +15,10 @@ export class HealthController {
       timestamp: new Date().toISOString(),
       service: 'julaba-backend',
       version: '1.0.0',
+      // Marqueur de version : permet de vérifier EXACTEMENT quel commit tourne en
+      // production (Render injecte RENDER_GIT_COMMIT). Fini de deviner si le bon
+      // code est déployé — il suffit d'ouvrir /api/v1/health.
+      commit: (process.env.RENDER_GIT_COMMIT || 'dev').slice(0, 7),
     };
   }
 }
