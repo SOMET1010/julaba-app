@@ -46,6 +46,7 @@ import { FeedbakSmsModule } from './feedbak-sms/feedbak-sms.module';
 import { EventsModule } from './events/events.module';
 import { OneciModule } from './oneci/oneci.module';
 import { VoiceModule } from './voice/voice.module';
+import { BoutiqueModule } from './boutique/boutique.module';
 import { RevenusModule } from './revenus/revenus.module';
 import { MiscRestModule } from './misc-rest/misc-rest.module';
 import { FinancialScoreModule } from './financial-score/financial-score.module';
@@ -123,6 +124,7 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
     // ONECI — Vérification identité
     OneciModule,
     VoiceModule,
+    BoutiqueModule,
     RevenusModule,
     MiscRestModule,
     FinancialScoreModule,
