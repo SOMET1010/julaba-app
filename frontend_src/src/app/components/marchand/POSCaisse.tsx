@@ -50,6 +50,7 @@ export function POSCaisse() {
 
 
   const handlePay = async () => {
+    if (isProcessing) return; // anti double-clic : le bouton disabled n'agit qu'au render suivant
     if (cart.length === 0) return;
     if (total <= 0) {
       speak('Montant total invalide');

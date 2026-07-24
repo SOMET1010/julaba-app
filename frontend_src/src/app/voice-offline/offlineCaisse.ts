@@ -44,9 +44,14 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-/** Ajoute une opération à la file durable. Renvoie la clé d'idempotence. */
+/** Ajoute une opération à la file durable. Renvoie la clé d'idempotence.
+ *  Si le payload porte déjà une `idempotency_key` (cas d'un envoi EN LIGNE qui a
+ *  échoué : la même clé a peut-être déjà atteint le serveur), on la RÉUTILISE
+ *  comme id d'opération. Ainsi le rejeu envoie EXACTEMENT la même clé, et le
+ *  backend déduplique — pas de double-comptage si la vente était déjà passée. */
 export async function enfilerOperation(endpoint: CaisseEndpoint, payload: unknown): Promise<string> {
-  const op: OperationCaisse = { id: uuid(), endpoint, payload, ts: Date.now() };
+  const cle = (payload as { idempotency_key?: string } | null)?.idempotency_key;
+  const op: OperationCaisse = { id: cle || uuid(), endpoint, payload, ts: Date.now() };
   const db = await openDb();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
