@@ -17,6 +17,18 @@ export interface ProduitCatalogue {
   mots_cles: string[];
 }
 
+// Vignette LOCALE à partir d'un emoji (pictogramme reconnaissable, marche
+// HORS-LIGNE, aucune image distante). Pour les produits vivriers sans vraie photo
+// dans le catalogue : bien mieux qu'un panier générique pour une non-lectrice —
+// une carotte 🥕, un citron 🍋 se reconnaissent d'un coup d'œil.
+function emojiTile(emoji: string): string {
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'>" +
+    "<rect width='96' height='96' fill='#FBEEE1'/>" +
+    "<text x='48' y='52' font-size='54' text-anchor='middle' dominant-baseline='central'>" + emoji + "</text></svg>"
+  );
+}
+
 export const CATALOGUE_PRODUITS: ProduitCatalogue[] = [
   { nom: 'Riz', categorie: 'cereales', unite: 'kg', prixAchat: 400, prixVente: 500, image: IMG_PRODUIT_RIZ, mots_cles: ['riz', 'rice'] },
   { nom: 'Tomate', categorie: 'legumes', unite: 'kg', prixAchat: 300, prixVente: 400, image: IMG_PRODUIT_TOMATE, mots_cles: ['tomate', 'tomato'] },
@@ -34,6 +46,27 @@ export const CATALOGUE_PRODUITS: ProduitCatalogue[] = [
   { nom: 'Mangue', categorie: 'fruits', unite: 'kg', prixAchat: 200, prixVente: 300, image: IMG_PRODUIT_MANGUE, mots_cles: ['mangue', 'mango'] },
   { nom: 'Ananas', categorie: 'fruits', unite: 'pièce', prixAchat: 300, prixVente: 400, image: IMG_PRODUIT_ANANAS, mots_cles: ['ananas', 'pineapple'] },
   { nom: 'Arachide', categorie: 'cereales', unite: 'kg', prixAchat: 600, prixVente: 700, image: IMG_PRODUIT_ARACHIDE, mots_cles: ['arachide', 'cacahuete', 'peanut'] },
+  // ── Produits vivriers courants (pictogrammes emoji, hors-ligne) ──────────────
+  { nom: 'Carotte', categorie: 'legumes', unite: 'kg', prixAchat: 300, prixVente: 400, image: emojiTile('🥕'), mots_cles: ['carotte', 'carrot'] },
+  { nom: 'Concombre', categorie: 'legumes', unite: 'kg', prixAchat: 200, prixVente: 300, image: emojiTile('🥒'), mots_cles: ['concombre', 'cucumber'] },
+  { nom: 'Courgette', categorie: 'legumes', unite: 'kg', prixAchat: 250, prixVente: 350, image: emojiTile('🥒'), mots_cles: ['courgette', 'zucchini'] },
+  { nom: 'Chou', categorie: 'legumes', unite: 'pièce', prixAchat: 300, prixVente: 500, image: emojiTile('🥬'), mots_cles: ['chou', 'cabbage'] },
+  { nom: 'Laitue', categorie: 'legumes', unite: 'pièce', prixAchat: 150, prixVente: 250, image: emojiTile('🥬'), mots_cles: ['laitue', 'salade', 'lettuce'] },
+  { nom: 'Brocoli', categorie: 'legumes', unite: 'kg', prixAchat: 500, prixVente: 700, image: emojiTile('🥦'), mots_cles: ['brocoli', 'broccoli'] },
+  { nom: 'Patate douce', categorie: 'tubercules', unite: 'kg', prixAchat: 200, prixVente: 300, image: emojiTile('🍠'), mots_cles: ['patate', 'patate douce', 'sweet potato'] },
+  { nom: 'Pomme de terre', categorie: 'tubercules', unite: 'kg', prixAchat: 350, prixVente: 450, image: emojiTile('🥔'), mots_cles: ['pomme de terre', 'patate irlandaise', 'potato'] },
+  { nom: 'Haricot', categorie: 'cereales', unite: 'kg', prixAchat: 500, prixVente: 700, image: emojiTile('🫘'), mots_cles: ['haricot', 'niebe', 'bean'] },
+  { nom: 'Citron', categorie: 'fruits', unite: 'pièce', prixAchat: 25, prixVente: 50, image: emojiTile('🍋'), mots_cles: ['citron', 'lemon', 'lime'] },
+  { nom: 'Orange', categorie: 'fruits', unite: 'pièce', prixAchat: 50, prixVente: 100, image: emojiTile('🍊'), mots_cles: ['orange'] },
+  { nom: 'Pastèque', categorie: 'fruits', unite: 'pièce', prixAchat: 500, prixVente: 800, image: emojiTile('🍉'), mots_cles: ['pasteque', 'pastèque', 'watermelon'] },
+  { nom: 'Papaye', categorie: 'fruits', unite: 'pièce', prixAchat: 200, prixVente: 300, image: emojiTile('🍈'), mots_cles: ['papaye', 'papaya'] },
+  { nom: 'Fraise', categorie: 'fruits', unite: 'kg', prixAchat: 800, prixVente: 1200, image: emojiTile('🍓'), mots_cles: ['fraise', 'strawberry'] },
+  { nom: 'Noix de coco', categorie: 'fruits', unite: 'pièce', prixAchat: 150, prixVente: 250, image: emojiTile('🥥'), mots_cles: ['coco', 'noix de coco', 'coconut'] },
+  { nom: 'Café', categorie: 'autre', unite: 'kg', prixAchat: 1500, prixVente: 2000, image: emojiTile('☕'), mots_cles: ['cafe', 'café', 'coffee'] },
+  { nom: 'Poisson', categorie: 'autre', unite: 'kg', prixAchat: 1000, prixVente: 1500, image: emojiTile('🐟'), mots_cles: ['poisson', 'fish'] },
+  { nom: 'Poulet', categorie: 'autre', unite: 'pièce', prixAchat: 2000, prixVente: 2800, image: emojiTile('🍗'), mots_cles: ['poulet', 'poule', 'chicken'] },
+  { nom: 'Œuf', categorie: 'autre', unite: 'plateau', prixAchat: 2000, prixVente: 2500, image: emojiTile('🥚'), mots_cles: ['oeuf', 'œuf', 'egg'] },
+  { nom: 'Pain', categorie: 'autre', unite: 'pièce', prixAchat: 125, prixVente: 150, image: emojiTile('🍞'), mots_cles: ['pain', 'bread', 'baguette'] },
   { nom: 'Autre', categorie: 'autre', unite: 'unité', prixAchat: 0, prixVente: 0, image: IMG_PRODUIT_AUTRE, mots_cles: ['autre', 'divers'] },
 ];
 
