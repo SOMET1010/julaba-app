@@ -45,8 +45,32 @@ async function prepareDatabase(logger: Logger) {
   }
 }
 
+// ── Filet de survie du processus ────────────────────────────────────────────
+// Sur un lien transatlantique (backend Oregon ↔ base Supabase Paris), Supabase
+// ferme parfois une connexion inactive du pool. node-postgres émet alors un
+// événement 'error' sur le pool ; SANS écouteur, Node considère cela comme une
+// exception non gérée et TUE le processus -> le service tombe (502) juste après
+// être passé « live », jusqu'au redémarrage Render. On journalise et on CONTINUE :
+// une connexion perdue est ré-ouverte automatiquement par le pool à la requête
+// suivante ; il n'y a aucune raison d'abattre tout le serveur.
+function installProcessGuards(logger: Logger) {
+  process.on('unhandledRejection', (reason) => {
+    logger.error(
+      '[GUARD] Promesse rejetée non gérée (serveur maintenu en vie): ' +
+        (reason instanceof Error ? reason.stack || reason.message : String(reason)),
+    );
+  });
+  process.on('uncaughtException', (err) => {
+    logger.error(
+      '[GUARD] Exception non gérée (serveur maintenu en vie): ' +
+        (err instanceof Error ? err.stack || err.message : String(err)),
+    );
+  });
+}
+
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  installProcessGuards(logger);
   await prepareDatabase(logger);
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],
