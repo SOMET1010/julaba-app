@@ -404,10 +404,14 @@ export function Commandes() {
         }),
       }).catch(() => null);
       if (!distributionRes) {
-        toast.error('Distribution non persistée côté serveur');
+        // La distribution n'a PAS été enregistrée : ne pas annoncer un succès
+        // mensonger (le manager croirait la marchandise répartie alors que non).
+        toast.error('La distribution n\'a pas pu être enregistrée. Réessaie.');
+        speak("La distribution n'a pas marché. Réessaie, s'il te plaît.");
+        return;
       }
       toast.success('Besoin mis à jour');
-      speak('Besoin mis à jour');
+      speak('Besoin mis à jour.');
       closeDispatchModal();
       await loadBesoinsCoop();
     } catch (e: unknown) {
@@ -1810,6 +1814,7 @@ export function Commandes() {
           setSelectedCommande(null);
           await reloadCommandes();
           toast.success("Commande clôturée et payée");
+          speak("C'est fait ! La commande est clôturée et payée.");
         }}
       />
 

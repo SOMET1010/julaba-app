@@ -2403,6 +2403,7 @@ export function ProducteurCommandes() {
           setSelectedCmdForReception(null);
           await refreshCommandes();
           toast.success("Paiement encaissé avec succès !");
+          speak("Paiement encaissé ! L'argent est dans ton Keiwa.");
         }}
       />
 

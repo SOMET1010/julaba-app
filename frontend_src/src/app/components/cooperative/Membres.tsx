@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   Star,
   Award,
+  Volume2,
   Crown,
   AlertTriangle,
   CheckCircle,
@@ -1379,7 +1380,15 @@ export function Membres() {
     <SubPageLayout
       role="cooperateur"
       title="Gestion de Membres"
-      rightContent={<NotificationButton />}
+      rightContent={
+        <div style={{ display:'flex', gap:7, alignItems:'center' }}>
+          <button type="button" onClick={voiceLecture} aria-label="Écouter le résumé des membres"
+            style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+            <Volume2 size={18} color="white" />
+          </button>
+          <NotificationButton />
+        </div>
+      }
     >
       <div className="pb-32 lg:pb-8 max-w-2xl lg:max-w-7xl mx-auto min-h-screen">
         <KPIGrid cols={2} className="mb-3">
