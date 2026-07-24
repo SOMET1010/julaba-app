@@ -29,6 +29,9 @@ services:
     name: julaba-api
     rootDir: backend
     plan: free
+    # Redéploiement AUTOMATIQUE à chaque push sur la branche suivie : indispensable
+    # pour que le seed (comptes + scénario de démo) se rejoue au démarrage.
+    autoDeploy: true
     # setup-piper.sh est DÉFENSIF (sort en 0 même s'il échoue) : le build ne peut
     # pas casser à cause de Piper ; sans Piper, l'appli parle via le navigateur.
     buildCommand: bash scripts/setup-piper.sh; npm ci --include=dev && npm run build
