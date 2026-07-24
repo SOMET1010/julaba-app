@@ -1,7 +1,8 @@
 import { useProducteur } from '../../contexts/ProducteurContext';
-import React, { useState } from 'react';
+import { useApp } from '../../contexts/AppContext';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { 
+import {
   Wallet,
   CreditCard,
   TrendingUp,
@@ -9,6 +10,7 @@ import {
   Calendar,
   Download,
   Sparkles,
+  Volume2,
 } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
@@ -94,8 +96,24 @@ export function Revenus() {
   const [periodeFiltree, setPeriodeFiltree] = useState<PeriodeFiltreType>('7jours');
 
   const { recoltes, stats } = useProducteur();
+  const { speak } = useApp();
   const revenuTotal = stats?.revenusTotal || 0;
   const nbTransactions = recoltes.length;
+
+  // Le producteur vient ici pour SAVOIR combien il a gagné : on l'annonce à voix
+  // haute dès l'arrivée (une fois), et un bouton haut-parleur permet de ré-écouter.
+  const direRevenu = () => speak(revenuTotal > 0
+    ? `Tu as gagné ${revenuTotal.toLocaleString('fr-FR')} francs en tout.`
+    : "Tu n'as pas encore de revenu.");
+  const dejaDit = useRef(false);
+  useEffect(() => {
+    // On attend que les données soient là (évite d'annoncer « pas de revenu »
+    // pendant le chargement).
+    if (dejaDit.current || (revenuTotal === 0 && recoltes.length === 0)) return;
+    dejaDit.current = true;
+    direRevenu();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revenuTotal, recoltes.length]);
   const enAttente = 0;
   const croissance = 0;
   const transactions = recoltes.map((r:any) => ({ id: r.id, client: 'Client', date: r.dateRecolte ? new Date(r.dateRecolte).toLocaleDateString('fr-FR') : '—', statut: r.statut === 'vendue' ? 'recu' : 'en_attente', icon: '🌾', produit: r.produit, quantite: r.quantite + ' kg', mode: 'Cash', montant: Number(r.prixUnitaire||0)*Number(r.quantite||0) }));
@@ -125,6 +143,12 @@ export function Revenus() {
         />
 
         <div className="relative z-10">
+          {/* Bouton ÉCOUTER le revenu — le producteur entend son argent sans lire */}
+          <button type="button" onClick={direRevenu} aria-label="Écouter mon revenu total"
+            className="absolute top-0 right-0 z-20 flex items-center justify-center rounded-2xl bg-white/20 border border-white/30"
+            style={{ width:44, height:44 }}>
+            <Volume2 className="w-5 h-5 text-white" strokeWidth={2.5} />
+          </button>
           {/* Label avec icône animée */}
           <div className="flex items-center gap-2 mb-3">
             <motion.div 

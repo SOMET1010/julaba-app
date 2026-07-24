@@ -54,17 +54,18 @@ export function CreerPlantationModal({ isOpen, onClose }: CreerPlantationModalPr
   const handleCreer = async () => {
     if (!culture.trim()) {
       toast.error('Choisis un type de culture avant de continuer.');
+      speak('Choisis d\'abord une culture.'); // voix : le producteur ne lit pas le bandeau
       return;
     }
     if (culture === 'autre' && !autreCulture.trim()) {
       toast.error('Précise le nom de la culture dans le champ "Autre".');
+      speak('Dis-moi le nom de la culture.');
       return;
     }
     setIsSubmitting(true);
-    // speak('Création en cours...');
     const dateRecolte = new Date(datePlantation);
     dateRecolte.setMonth(dateRecolte.getMonth() + moisAvantRecolte);
-    
+
     try {
       await createCycle({
         culture: culture === 'autre' ? autreCulture.trim() : culture.trim(),
@@ -74,7 +75,7 @@ export function CreerPlantationModal({ isOpen, onClose }: CreerPlantationModalPr
         quantite_estimee: quantiteEstimee,
       });
       setIsSubmitting(false);
-      // speak('Plantation créée avec succès !');
+      speak('C\'est fait ! Ta plantation est créée.'); // confirmation parlée
       onClose();
       setCulture('');
       setAutreCulture('');
@@ -86,8 +87,10 @@ export function CreerPlantationModal({ isOpen, onClose }: CreerPlantationModalPr
       const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la création de la plantation';
       if (errorMessage.toLowerCase().includes('connecter') || errorMessage.toLowerCase().includes('auth')) {
         toast.error('Tu dois te connecter à ton compte JULABA pour créer une plantation. Vérifie ta connexion internet et réessaie.');
+        speak('Tu dois être connectée. Vérifie ton réseau et réessaie.');
       } else {
         toast.error(errorMessage);
+        speak("Ça n'a pas marché. Réessaie, s'il te plaît.");
       }
     }
   };

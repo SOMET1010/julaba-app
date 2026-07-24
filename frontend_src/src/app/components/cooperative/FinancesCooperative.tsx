@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Volume2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft,
@@ -244,6 +245,16 @@ export function FinancesCooperative() {
     membres,
   } = useCooperative();
 
+  // Le/la responsable doit pouvoir ENTENDRE la trésorerie (pas seulement la lire).
+  const direSolde = () => speak(`Trésorerie actuelle : ${(soldeActuel || 0).toLocaleString('fr-FR')} francs.`);
+  const soldeDit = useRef(false);
+  useEffect(() => {
+    if (soldeDit.current || (soldeActuel === 0)) return;
+    soldeDit.current = true;
+    direSolde();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [soldeActuel]);
+
   const [filtrePeriode, setFiltrePeriode] = useState<FiltrePeriode>('tout');
   const [filtreType, setFiltreType]       = useState<FiltreType>('tout');
   const [showModal, setShowModal]         = useState(false);
@@ -296,6 +307,13 @@ export function FinancesCooperative() {
       >
         <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/10 -translate-y-8 translate-x-8" />
         <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-white/10 translate-y-4 -translate-x-4" />
+
+        {/* Écouter la trésorerie */}
+        <button type="button" onClick={direSolde} aria-label="Écouter la trésorerie"
+          className="absolute top-3 right-4 z-20 flex items-center justify-center rounded-2xl bg-white/20 border border-white/30"
+          style={{ width:44, height:44 }}>
+          <Volume2 className="w-5 h-5 text-white" strokeWidth={2.5} />
+        </button>
 
         {/* Solde */}
         <div className="relative px-5 text-center">

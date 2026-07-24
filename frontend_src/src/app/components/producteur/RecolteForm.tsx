@@ -260,6 +260,7 @@ export function RecolteForm() {
   const handleSubmit = async () => {
     if (!quantite) {
       toast.error('Veuillez saisir une quantité');
+      speak('Dis-moi la quantité que tu as récoltée.'); // voix : le producteur ne lit pas le bandeau
       return;
     }
     setIsSubmitting(true);
@@ -279,12 +280,16 @@ export function RecolteForm() {
       });
       setIsSubmitting(false);
       setVisible(false);
+      // Confirmation PARLÉE : sans ça, une non-lectrice ne sait même pas que sa
+      // récolte est enregistrée (l'écran se ferme simplement).
+      speak(`C'est enregistré ! ${quantiteEnKg} kilos de ${cultureName}.`);
       scheduleTimeout(() => navigate('/producteur/production'), 320);
     } catch (err: unknown) {
       setIsSubmitting(false);
       const message = err instanceof Error ? err.message : 'Erreur lors de l\'enregistrement de la récolte';
       console.warn('[RecolteForm] createRecolte failed:', err instanceof Error ? err.message : err);
       toast.error(message);
+      speak("Ça n'a pas marché. Réessaie, s'il te plaît.");
     }
   };
 
