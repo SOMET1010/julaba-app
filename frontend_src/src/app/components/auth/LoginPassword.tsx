@@ -250,7 +250,7 @@ export function LoginPassword() {
     // Marqueur de version : si cette ligne apparaît dans le journal, c'est BIEN ce
     // code-ci (Render, micro immédiat) qui tourne — pas une ancienne build en cache
     // ni un autre déploiement (julaba.online). Repère décisif pour lever le doute.
-    vlog('BUILD', 'render-2026-07-24-v2-sans-annonce');
+    vlog('BUILD', 'render-2026-07-24-v3-login-spy');
 
     const RecCtor = SR as new () => {
       lang: string; interimResults: boolean; maxAlternatives: number; continuous: boolean;
@@ -485,6 +485,10 @@ export function LoginPassword() {
       return;
     }
     setIsLoading(true); setError('');
+    // Espion de connexion : trace l'URL réellement appelée + le résultat, visible
+    // dans « 🐞 Rapport de test ». Permet de diagnostiquer « Erreur de connexion »
+    // (URL fausse ? CORS ? statut HTTP ?) sans outils développeur.
+    vlog('LOGIN_TRY', { url: `${API_URL}/auth/login` });
     try {
       const controller = new AbortController();
       const response = await fetch(`${API_URL}/auth/login`, {
@@ -494,6 +498,7 @@ export function LoginPassword() {
         body: JSON.stringify({ phone: phone.startsWith("+225") ? phone : "+225" + phone, password: pwd }),
         signal: controller.signal,
       });
+      vlog('LOGIN_HTTP', { status: response.status, ok: response.ok });
       let result: {
         error?: string;
         user?: {
@@ -515,6 +520,7 @@ export function LoginPassword() {
         result = await response.json();
       } catch (err) {
         console.warn('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
+        vlog('LOGIN_JSON_FAIL', { msg: err instanceof Error ? err.message : String(err) });
         setError('Erreur serveur : réponse inattendue');
         setIsLoading(false);
         return;
@@ -600,6 +606,7 @@ export function LoginPassword() {
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       console.warn('[LoginPassword] login failed:', err instanceof Error ? err.message : err);
+      vlog('LOGIN_FAIL', { name: err instanceof Error ? err.name : '', msg: err instanceof Error ? err.message : String(err) });
       setError('Erreur de connexion');
       setIsLoading(false);
     } finally {
