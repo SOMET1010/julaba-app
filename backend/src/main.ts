@@ -77,6 +77,15 @@ async function bootstrap() {
     bodyParser: false,  // Désactivé — on gère manuellement ci-dessous
   });
 
+  // ── Confiance au proxy Render ─────────────────────────────────────────────
+  // Derrière Render, toutes les requêtes arrivent via un proxy : sans ceci,
+  // req.ip = l'IP du proxy pour TOUT LE MONDE, donc le rate-limiter compte tous
+  // les utilisateurs dans un SEUL compteur (le quota login de 5/min était partagé
+  // par tous → connexions bloquées, et le health-check finissait en 429). En
+  // faisant confiance au 1er hop, req.ip redevient l'IP réelle du client (via
+  // X-Forwarded-For) : chacun a son propre quota.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   // ── CORS infaillible (préflight garanti) ──────────────────────────────────
   // Symptôme observé : les GET passaient mais tout POST (login, check-phone)
   // était bloqué « No 'Access-Control-Allow-Origin' » sur la requête PRÉPARATOIRE
