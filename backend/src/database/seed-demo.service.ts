@@ -292,6 +292,23 @@ export class SeedDemoService implements OnApplicationBootstrap {
           );
         });
       }
+      // La table cooperative_besoins est créée à la demande par le contrôleur
+      // coopérative ; au moment du seed elle peut ne pas exister encore. On la crée
+      // ici (IF NOT EXISTS) pour que les besoins de démo s'insèrent bien.
+      await run('table cooperative_besoins', async () => {
+        await this.dataSource.query(
+          `CREATE TABLE IF NOT EXISTS cooperative_besoins (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            cooperative_id UUID NOT NULL,
+            marchand_id UUID NOT NULL,
+            produit VARCHAR(255), categorie VARCHAR(120), quantite NUMERIC, unite VARCHAR(50),
+            prix_max NUMERIC NULL, priorite VARCHAR(30) DEFAULT 'normale',
+            statut VARCHAR(50) DEFAULT 'en_attente', notes TEXT NULL, date_besoin TIMESTAMPTZ NULL,
+            prix_achat NUMERIC NULL, prix_dispatch NUMERIC NULL, quantite_attribuee NUMERIC NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()
+          )`,
+        );
+      });
       const besoins: Array<[string, string, string, number, string | null]> = [
         ['dede0000-0000-4000-8000-000000000601', 'Tomate', 'Légumes', 200, benito],
         ['dede0000-0000-4000-8000-000000000602', 'Maïs', 'Céréales', 180, adjoua],
