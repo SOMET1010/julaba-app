@@ -28,7 +28,7 @@ export function CooperativeHome() {
 
   usePredictiveTTS({
     module: 'dashboard',
-    prenom: user?.prenoms || user?.prenoms || 'ma chere',
+    prenom: user?.prenoms || user?.prenoms || 'ma chère',
     hasVentes: (getMembresActifs?.().length || 0) > 0,
     recentIntents: [],
   });

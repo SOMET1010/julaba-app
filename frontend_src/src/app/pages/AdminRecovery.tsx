@@ -220,7 +220,7 @@ function TestLoginPanel({ onBack }: { onBack: () => void }) {
           <input
             value={phone}
             onChange={e => setPhone(e.target.value)}
-            placeholder="Numero de telephone (ex: 0700000001)"
+            placeholder="Numéro de téléphone (ex: 0700000001)"
             className="w-full pl-10 pr-4 py-3 rounded-3xl border-2 border-gray-200 focus:border-indigo-500 focus:ring-0 text-sm"
           />
         </div>
@@ -348,7 +348,7 @@ function ResetPasswordPanel({ onBack }: { onBack: () => void }) {
           <input
             value={phone}
             onChange={e => setPhone(e.target.value)}
-            placeholder="Telephone du Super Admin"
+            placeholder="Téléphone du Super Admin"
             className="w-full pl-10 pr-4 py-3 rounded-3xl border-2 border-gray-200 focus:border-amber-500 focus:ring-0 text-sm"
           />
         </div>
@@ -483,7 +483,7 @@ function FullRecoveryPanel({ onBack }: { onBack: () => void }) {
           <input
             value={phone}
             onChange={e => setPhone(e.target.value)}
-            placeholder="Nouveau numero de telephone"
+            placeholder="Nouveau numéro de téléphone"
             className="w-full pl-10 pr-4 py-3 rounded-3xl border-2 border-gray-200 focus:border-red-400 focus:ring-0 text-sm"
           />
         </div>

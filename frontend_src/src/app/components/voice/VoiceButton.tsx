@@ -16,7 +16,7 @@ export function VoiceButton({ onVoiceCommand }: VoiceButtonProps) {
   const { state, handleMicClick, isListening, isProcessing, liveTranscript } = useVoiceCore({
     context: {
       module: role,
-      prenom: user?.firstName || user?.prenoms || 'ma chere',
+      prenom: user?.firstName || user?.prenoms || 'ma chère',
       genre: (user as any)?.genre || 'femme',
       userId: user?.id,
     },
