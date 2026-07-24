@@ -76,6 +76,25 @@ export class SeedDemoService {
   // idempotent : s'il échoue, l'app reste debout et sert quand même.
   async runSeed(): Promise<void> {
     if (process.env.SEED_DEMO === 'false') return; // désactivable en production
+
+    // Démarrage rapide : si le jeu de démo est DÉJÀ chargé (acteur en attente
+    // « Awa Nénè », créé en fin de scénario), on ne rejoue RIEN. Rejouer le seed
+    // à chaque redémarrage (bcrypt + dizaines de requêtes vers Paris) chargeait
+    // inutilement l'instance après « live » et pouvait entretenir une boucle de
+    // redémarrage. Une fois la base peuplée, le redémarrage devient quasi gratuit.
+    try {
+      const done = await this.dataSource.query(
+        `SELECT 1 FROM users WHERE phone = $1 LIMIT 1`,
+        ['+2250799999999'],
+      );
+      if (done && done.length > 0) {
+        this.logger.log('Seed déjà présent en base — démarrage rapide (aucun rechargement).');
+        return;
+      }
+    } catch {
+      // Table users pas encore prête : on laisse le seed s'exécuter normalement.
+    }
+
     const users = this.dataSource.getRepository(User);
 
     for (const c of COMPTES) {
