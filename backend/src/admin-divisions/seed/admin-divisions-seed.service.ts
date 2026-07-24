@@ -1,4 +1,4 @@
-import { Injectable, OnApplicationBootstrap, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { District } from '../entities/district.entity';
@@ -13,7 +13,7 @@ import {
 } from './admin-divisions.seed';
 
 @Injectable()
-export class AdminDivisionsSeedService implements OnApplicationBootstrap {
+export class AdminDivisionsSeedService {
   private readonly logger = new Logger(AdminDivisionsSeedService.name);
 
   constructor(
@@ -58,7 +58,8 @@ export class AdminDivisionsSeedService implements OnApplicationBootstrap {
     `);
   }
 
-  async onApplicationBootstrap() {
+  // Appelé APRÈS le bind du port (depuis main.ts), en arrière-plan.
+  async runSeed() {
     try {
       await this.ensureTables();
       const districtCount = await this.districtRepo.count();

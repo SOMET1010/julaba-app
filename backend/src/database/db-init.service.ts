@@ -1,14 +1,17 @@
-import { Injectable, OnApplicationBootstrap, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
 @Injectable()
-export class DbInitService implements OnApplicationBootstrap {
+export class DbInitService {
   private readonly logger = new Logger(DbInitService.name);
 
   constructor(@InjectDataSource() private dataSource: DataSource) {}
 
-  async onApplicationBootstrap() {
+  // Appelé APRÈS le bind du port (depuis main.ts), plus dans un hook de
+  // démarrage : le port s'ouvre vite, le health-check passe, Render garde le
+  // service en vie ; l'init tourne ensuite en arrière-plan.
+  async runInit() {
     try {
       await this.dataSource.query(`
         ALTER TABLE users

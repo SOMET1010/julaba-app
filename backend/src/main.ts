@@ -6,6 +6,9 @@ import helmet from 'helmet';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { DbInitService } from './database/db-init.service';
+import { SeedDemoService } from './database/seed-demo.service';
+import { AdminDivisionsSeedService } from './admin-divisions/seed/admin-divisions-seed.service';
 
 // Préparation automatique de la base — AUCUN réglage manuel requis.
 // Si la base est VIERGE (pas de table "users"), on construit le schéma depuis les
@@ -191,6 +194,38 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
   logger.log(`Application démarrée sur : http://localhost:${port}/${prefix}`);
+
+  // ── Initialisation base + seed EN ARRIÈRE-PLAN (après le bind du port) ─────
+  // AVANT : db-init + seed tournaient dans onApplicationBootstrap, donc AVANT que
+  // le port ne s'ouvre. Sur le lien transatlantique (Oregon ↔ Paris), ces
+  // centaines de requêtes lentes retardaient — voire faisaient échouer — le bind :
+  // le health-check de Render échouait, Render redémarrait en boucle -> 502.
+  // MAINTENANT : le port est déjà ouvert, /health répond 200 tout de suite, Render
+  // garde le service en vie. L'init et le seed s'exécutent ensuite, sans bloquer,
+  // et une erreur éventuelle est seulement journalisée (l'app continue de servir).
+  void (async () => {
+    try {
+      await app.get(AdminDivisionsSeedService, { strict: false }).runSeed();
+      logger.log('[BOOT] Divisions administratives vérifiées (arrière-plan).');
+    } catch (e: unknown) {
+      logger.error('[BOOT] seed divisions a échoué (app maintenue en vie): ' +
+        (e instanceof Error ? e.message : String(e)));
+    }
+    try {
+      await app.get(DbInitService, { strict: false }).runInit();
+      logger.log('[BOOT] Initialisation base terminée (arrière-plan).');
+    } catch (e: unknown) {
+      logger.error('[BOOT] db-init a échoué (app maintenue en vie): ' +
+        (e instanceof Error ? e.message : String(e)));
+    }
+    try {
+      await app.get(SeedDemoService, { strict: false }).runSeed();
+      logger.log('[BOOT] Seed de démonstration terminé (arrière-plan).');
+    } catch (e: unknown) {
+      logger.error('[BOOT] seed a échoué (app maintenue en vie): ' +
+        (e instanceof Error ? e.message : String(e)));
+    }
+  })();
 }
 
 bootstrap();
