@@ -53,13 +53,27 @@ function stampServiceWorker(outDir: string): Plugin {
         } catch (e) {
           console.warn("[stamp-sw] liste de pré-cache indisponible:", (e as Error)?.message)
         }
+        // Clips de la VOIX de Tata Nanti Lou (public/voix/tata/*.mp3) : c'est l'ADN
+        // vocal de l'appli. On les PRÉ-CACHE à l'installation du service worker pour
+        // qu'une marchande hors-ligne DÈS LE PREMIER JOUR entende quand même Tata.
+        // ~7 Mo, fichiers immuables → aucun coût récurrent, servis ensuite sans réseau.
+        let voicePrecache: string[] = []
+        try {
+          const voiceDir = join(outDir, "voix", "tata")
+          voicePrecache = readdirSync(voiceDir)
+            .filter((f) => f.endsWith(".mp3"))
+            .map((f) => `/voix/tata/${f}`)
+        } catch (e) {
+          console.warn("[stamp-sw] liste de pré-cache voix indisponible:", (e as Error)?.message)
+        }
         const swPath = join(outDir, "sw.js")
         const src = readFileSync(swPath, "utf-8")
         const stamped = src
           .replace(/__SW_BUILD__/g, buildId)
           .replace(/__PRECACHE_JSON__/g, JSON.stringify(precache))
+          .replace(/__PRECACHE_VOICE_JSON__/g, JSON.stringify(voicePrecache))
         writeFileSync(swPath, stamped)
-        console.log(`[stamp-sw] ${precache.length} chunks pré-cachés pour le hors-ligne`)
+        console.log(`[stamp-sw] ${precache.length} chunks + ${voicePrecache.length} clips voix pré-cachés pour le hors-ligne`)
       } catch (e) {
         console.warn("[stamp-sw] impossible de tamponner sw.js:", (e as Error)?.message)
       }
