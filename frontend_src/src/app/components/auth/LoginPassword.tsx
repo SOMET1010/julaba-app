@@ -13,7 +13,7 @@ import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits } from '../../utils/frenchDigits';
 import { tataUiClipForText } from '../../services/tataUiClips';
-import { startLiveDictation, offlineModelReady, ensureOfflineModel } from '../../voice-offline/offlineStt';
+import { startLiveDictation, offlineModelReady, offlineModelInstalled, ensureOfflineModel } from '../../voice-offline/offlineStt';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
 
 // Grammaire CHIFFRES pour Vosk : dictée d'un numéro de téléphone → on limite le
@@ -293,6 +293,7 @@ export function LoginPassword() {
   const finaliserDictee = (digitsBruts: string) => {
     if (dictDoneRef.current) return;
     dictDoneRef.current = true;
+    vlog('FINALISE', { digits: digitsBruts, n: digitsBruts.length, valide: numeroCIComplet(digitsBruts.slice(0, 10), TEST_PHONES) });
     if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
     if (micStartTimeoutRef.current) { clearTimeout(micStartTimeoutRef.current); micStartTimeoutRef.current = null; }
     void liveStopRef.current?.(); liveStopRef.current = null;
@@ -332,7 +333,8 @@ export function LoginPassword() {
   const dicterNumero = async () => {
     // Re-tap pendant l'écoute → on termine avec ce qu'on a compris.
     if (isListening) { vlog('RE_TAP_STOP'); arreterEcoute(); return; }
-    vlogStart('dictée'); vlog('BUILD', 'vosk-login-live-v1');
+    vlogStart('dictée'); vlog('BUILD', 'vosk-login-live-v2');
+    vlog('MODEL_READY', { ready: offlineModelReady(), installed: offlineModelInstalled() });
 
     // Modèle Vosk pas encore prêt (jamais téléchargé) : PAS d'Internet. On ouvre le
     // clavier et on prépare le modèle en tâche de fond pour la prochaine fois.
@@ -344,9 +346,11 @@ export function LoginPassword() {
       return;
     }
 
+    vlog('MIC_ASK');
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      vlog('MIC_OK');
     } catch (e) {
       vlog('MIC_DENIED', String(e));
       setError('Autorise le micro, ou tape ton numéro 👇');
@@ -369,6 +373,10 @@ export function LoginPassword() {
       handle = await startLiveDictation(stream, (texte, estFinal) => {
         if (dictDoneRef.current) return;
         const digits = extractPhoneDigits(texte || '').slice(0, 10);
+        // Trace : on voit ce que le moteur entend (texte brut) et les chiffres extraits.
+        if (estFinal || digits.length > bestDigitsRef.current.length) {
+          vlog('TXT', { fin: estFinal, brut: (texte || '').slice(0, 40), digits });
+        }
         // Le résultat FINAL fait autorité (corrige) ; un partiel ne fait que grandir
         // (les partiels hésitent, on évite le clignotement en arrière).
         if (estFinal) bestDigitsRef.current = digits;
@@ -387,7 +395,8 @@ export function LoginPassword() {
         if (estFinal) {
           settleTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 1600);
         }
-      }, DIGIT_GRAMMAR);
+      }, DIGIT_GRAMMAR, (tag, data) => vlog(tag, data));
+      vlog('LIVE_START');
     } catch (e) {
       vlog('LIVE_FAIL', String(e));
       try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }

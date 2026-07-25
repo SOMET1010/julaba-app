@@ -79,10 +79,21 @@ export async function startLiveDictation(
   stream: MediaStream,
   onText: (texte: string, estFinal: boolean) => void,
   customGrammar?: string[],
+  onDebug?: (tag: string, data?: unknown) => void,
 ): Promise<{ stop: () => Promise<void> }> {
+  const dbg = (t: string, d?: unknown) => { try { onDebug?.(t, d); } catch { /* ignore */ } };
   const model = await ensureOfflineModel();
+  dbg('LIVE_MODEL_OK');
   const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const ctx = new AC();
+  dbg('LIVE_CTX', { state: ctx.state, sampleRate: ctx.sampleRate });
+  // ANDROID : l'AudioContext démarre souvent « suspended » après le getUserMedia
+  // (le geste tactile est « consommé »). Sans resume(), onaudioprocess ne se
+  // déclenche JAMAIS → le moteur ne reçoit aucun son → transcription muette.
+  if (ctx.state === 'suspended') {
+    try { await ctx.resume(); } catch { /* ignore */ }
+    dbg('LIVE_RESUME', { state: ctx.state });
+  }
   const grammar = customGrammar ? JSON.stringify(customGrammar)
     : JSON.stringify(GRAMMAR_WORDS);
   const recognizer: Any = new model.KaldiRecognizer(ctx.sampleRate, grammar);
@@ -108,9 +119,13 @@ export async function startLiveDictation(
   source.connect(processor);
   processor.connect(mute);
   mute.connect(ctx.destination);
+  let framesSeen = 0;
   processor.onaudioprocess = (ev: AudioProcessingEvent) => {
+    if (framesSeen === 0) dbg('LIVE_AUDIO_FIRST'); // 1re trame audio reçue = le micro pousse bien
+    framesSeen++;
     try { recognizer.acceptWaveform(ev.inputBuffer); } catch { /* ignore une trame */ }
   };
+  dbg('LIVE_WIRED');
 
   let stopped = false;
   const stop = async (): Promise<void> => {
