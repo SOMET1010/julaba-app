@@ -13,7 +13,8 @@ import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits } from '../../utils/frenchDigits';
 import { tataUiClipForText } from '../../services/tataUiClips';
-import { startLiveDictation, offlineModelReady, offlineModelInstalled, ensureOfflineModel } from '../../voice-offline/offlineStt';
+import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
+import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
 
 // Grammaire CHIFFRES pour Vosk : dictée d'un numéro de téléphone → on limite le
@@ -94,6 +95,7 @@ export function LoginPassword() {
   const [showKeypad, setShowKeypad] = useState(false); // clavier caché par défaut (voix d'abord)
   const [tataSpeaking, setTataSpeaking] = useState(false);
   const [operateur, setOperateur] = useState<Operateur | null>(null); // opérateur déduit du numéro
+  const [showVoiceInstall, setShowVoiceInstall] = useState(false);    // proposer d'installer la voix (consenti)
 
   // Accueil personnalisé : si une marchande est déjà connue sur ce téléphone, on
   // la salue par son prénom (ton « vous », chaleureux et respectueux).
@@ -336,13 +338,14 @@ export function LoginPassword() {
     vlogStart('dictée'); vlog('BUILD', 'vosk-login-live-v2');
     vlog('MODEL_READY', { ready: offlineModelReady(), installed: offlineModelInstalled() });
 
-    // Modèle Vosk pas encore prêt (jamais téléchargé) : PAS d'Internet. On ouvre le
-    // clavier et on prépare le modèle en tâche de fond pour la prochaine fois.
+    // Voix pas encore installée : on ne peut PAS l'écouter. RÈGLE : on ne télécharge
+    // JAMAIS les 40 Mo en douce. À la place, Tata l'explique à voix haute (ses clips
+    // marchent sans le moteur) et on PROPOSE l'installation consentie. Le clavier
+    // reste dispo comme filet, mais ce n'est pas un mur muet : la voix guide.
     if (!offlineModelReady()) {
       vlog('VOSK_NOT_READY');
-      setShowKeypad(true);
-      parle('Tape ton numéro juste ici.');
-      ensureOfflineModel().catch(() => { /* préparation silencieuse */ });
+      setShowVoiceInstall(true);
+      parle("Pour que je puisse t'écouter, il faut installer ma voix une fois. Touche le bouton, ou tape ton numéro.");
       return;
     }
 
@@ -934,6 +937,22 @@ export function LoginPassword() {
                 <p style={{ fontSize: 11, color: 'rgba(198,106,44,0.6)', margin: 0 }}>
                   Vérification...
                 </p>
+              </motion.div>
+            )}
+            {/* Installer la VOIX (consenti) — apparaît quand la voix n'est pas encore
+                là. Tata a déjà expliqué à voix haute ; ici le bouton d'installation
+                avec l'avertissement coût + double validation. Après installation,
+                Tata invite à parler. Le clavier reste dispo comme filet en dessous. */}
+            {showVoiceInstall && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{ width: '100%', marginBottom: 8 }}
+              >
+                <InstallerOffline onReady={() => {
+                  setShowVoiceInstall(false);
+                  parle('Voilà, tu peux parler maintenant. Touche le micro et dis ton numéro.');
+                }} />
               </motion.div>
             )}
             {/* Actions secondaires : clavier (taper) + bouclier (protégé) — icônes, aucun texte */}

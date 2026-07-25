@@ -5,7 +5,7 @@
  * Transitions fluides et animations dynamiques
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Volume2,
@@ -14,6 +14,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { Button } from '../ui/button';
+import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 
 // Images de fond des 4 ecrans
 import bgBienvenue from "../../../assets/images/bg-marketplace.png";
@@ -67,6 +68,9 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  // Étape finale : installer la VOIX de Tata (pour que l'app écoute la marchande —
+  // essentiel pour celles qui ne lisent pas). Consenti, jamais imposé.
+  const [voiceStep, setVoiceStep] = useState(false);
   const isLastSlide = currentSlide === slides.length - 1;
   const slide = slides[currentSlide];
 
@@ -80,12 +84,33 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   const handleNext = () => {
     stopLocal();
     if (isLastSlide) {
-      onComplete?.();
+      // Dernière diapo → étape « installer la voix », pas encore la fin.
+      setVoiceStep(true);
     } else {
       setDirection(1);
       setCurrentSlide((prev) => prev + 1);
     }
   };
+
+  // À l'entrée de l'étape voix : Tata explique de vive voix (ses clips/voix marchent
+  // déjà sans le moteur). On ne récite pas, on rassure et on guide.
+  const parleInstallVoix = useCallback(() => {
+    const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
+    if (!synth) return;
+    try {
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(
+        "Pour que je puisse t'écouter et te parler partout, même sans réseau, on installe ma voix une fois. C'est mieux avec le wifi.",
+      );
+      u.lang = 'fr-FR'; u.rate = 0.95; u.pitch = 1.05;
+      u.onend = () => setIsSpeaking(false);
+      u.onerror = () => setIsSpeaking(false);
+      setIsSpeaking(true);
+      synth.speak(u);
+    } catch { setIsSpeaking(false); }
+  }, []);
+
+  useEffect(() => { if (voiceStep) parleInstallVoix(); }, [voiceStep, parleInstallVoix]);
 
   const handlePrevious = () => {
     stopLocal();
@@ -153,6 +178,53 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
       rotateY: dir > 0 ? -15 : 15,
     }),
   };
+
+  /* -- ÉTAPE FINALE : installer la voix de Tata (consenti) ---------------- */
+  if (voiceStep) {
+    return (
+      <div className="fixed inset-0 overflow-hidden bg-black">
+        <img src={bgTataLou} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-black/45" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-6 px-4 z-20">
+          <div className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl border-2 border-white/80 shadow-2xl p-5" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+            <h2 className="text-center text-2xl font-extrabold tracking-wide mb-1" style={{ color: '#7c3aed' }}>
+              LA VOIX DE TATA
+            </h2>
+            <div className="mx-auto h-1 w-12 rounded-full mb-3" style={{ backgroundColor: '#7c3aed' }} />
+            <p className="text-center text-gray-600 px-1 leading-relaxed mb-3">
+              Pour que Tata puisse <b>t'écouter</b> et <b>te parler</b> partout — même
+              sans réseau. Une seule fois. Mieux en Wi-Fi.
+            </p>
+
+            {/* Réécouter la consigne (voix, pour celles qui ne lisent pas) */}
+            <div className="flex justify-center mb-4">
+              <motion.button
+                onClick={() => { if (isSpeaking) { stopLocal(); } else { parleInstallVoix(); } }}
+                whileTap={{ scale: 0.9 }}
+                className="flex items-center justify-center w-12 h-12 rounded-full border-2"
+                style={{ borderColor: isSpeaking ? '#ef4444' : '#7c3aed', color: isSpeaking ? '#ef4444' : '#7c3aed', backgroundColor: (isSpeaking ? '#ef4444' : '#7c3aed') + '10' }}
+                aria-label="Écouter Tata"
+              >
+                {isSpeaking ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </motion.button>
+            </div>
+
+            {/* Bouton d'installation consenti (avertissement coût + double validation) */}
+            <InstallerOffline onReady={() => { stopLocal(); onComplete?.(); }} />
+
+            {/* Filet : continuer sans installer maintenant (elle pourra le faire au login) */}
+            <button
+              onClick={() => { stopLocal(); onComplete?.(); }}
+              className="w-full mt-3 text-sm text-gray-500 font-semibold py-2"
+            >
+              Plus tard — continuer
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-black">
