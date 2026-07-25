@@ -26,6 +26,15 @@ export function vlogStart(label: string): void {
     SR: typeof window !== 'undefined' && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition),
     synth: typeof window !== 'undefined' && !!window.speechSynthesis,
   });
+  // Liste des voix du téléphone (pour voir « Manuela » & Cie et choisir la bonne).
+  try {
+    const vs = window.speechSynthesis?.getVoices?.() || [];
+    vlog('VOICES', {
+      total: vs.length,
+      fr: vs.filter((v) => /^fr/i.test(v.lang)).map((v) => `${v.name}(${v.lang})`),
+      defaut: vs.find((v) => v.default)?.name || null,
+    });
+  } catch { /* ignore */ }
 }
 
 /** Ajoute un événement au journal. */

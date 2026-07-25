@@ -22,7 +22,7 @@ import bgMarcketplace from "../../../assets/images/bg-marche-vente.png";
 import bgTataLou from "../../../assets/images/bg-tantie.png";
 import bgCnpsCmu from "../../../assets/images/bg-market.png";
 
-import { stopSpeaking } from '../../services/elevenlabs';
+import { stopSpeaking, speakBrowser } from '../../services/elevenlabs';
 
 interface OnboardingSlidesProps {
   onComplete?: () => void;
@@ -95,18 +95,11 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   // À l'entrée de l'étape voix : Tata explique de vive voix (ses clips/voix marchent
   // déjà sans le moteur). On ne récite pas, on rassure et on guide.
   const parleInstallVoix = useCallback(() => {
-    const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
-    if (!synth) return;
+    setIsSpeaking(true);
     try {
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(
+      speakBrowser(
         "Pour que je puisse t'écouter et te parler partout, même sans réseau, on installe ma voix une fois. C'est mieux avec le wifi.",
-      );
-      u.lang = 'fr-FR'; u.rate = 0.95; u.pitch = 1.05;
-      u.onend = () => setIsSpeaking(false);
-      u.onerror = () => setIsSpeaking(false);
-      setIsSpeaking(true);
-      synth.speak(u);
+      ).finally(() => setIsSpeaking(false));
     } catch { setIsSpeaking(false); }
   }, []);
 
@@ -132,23 +125,11 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
    * tutoriel était donc muet pour une non-lectrice. On utilise la voix intégrée
    * du navigateur (fonctionne avant connexion, sans réseau). */
   const handleListen = useCallback(() => {
-    const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
-    if (!synth) return;
     if (isSpeaking) { stopLocal(); return; }
-    const texte = `${slide.title}. ${slide.description}`;
-    try {
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(texte);
-      u.lang = 'fr-FR';
-      u.rate = 0.95;
-      u.pitch = 1.05;
-      u.onend = () => setIsSpeaking(false);
-      u.onerror = () => setIsSpeaking(false);
-      setIsSpeaking(true);
-      synth.speak(u);
-    } catch {
-      setIsSpeaking(false);
-    }
+    // Voix de secours UNIQUE (speakBrowser) : même voix FR partout, jamais « Manuela ».
+    setIsSpeaking(true);
+    try { speakBrowser(`${slide.title}. ${slide.description}`).finally(() => setIsSpeaking(false)); }
+    catch { setIsSpeaking(false); }
   }, [isSpeaking, slide, stopLocal]);
 
   /* -- Variants d'animation ----------------------------------------------- */

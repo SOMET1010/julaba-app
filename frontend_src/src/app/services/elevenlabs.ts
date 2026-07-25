@@ -89,18 +89,41 @@ if (typeof window !== "undefined" && window.speechSynthesis) {
   refreshVoices();
   try { window.speechSynthesis.addEventListener("voiceschanged", refreshVoices); } catch { /* ignore */ }
 }
+// Voix de secours CHOISIE UNE FOIS puis mémorisée : toute l'appli parle avec LA
+// MÊME voix (sinon on entend « un mélange de voix »). On ne retombe JAMAIS sur une
+// voix non-française (ex. « Manuela », portugaise) : plutôt fr-CI, sinon fr-FR,
+// sinon n'importe quelle fr-*, en préférant une voix de femme (Tata est une femme).
+let _chosenVoice: SpeechSynthesisVoice | null = null;
 function pickFrenchFemaleVoice(): SpeechSynthesisVoice | null {
+  if (_chosenVoice) return _chosenVoice; // stable : jamais deux voix différentes
   if (_voicesCache.length === 0) refreshVoices();
-  const fr = _voicesCache.filter((v) => /^fr/i.test(v.lang));
-  if (fr.length === 0) return null;
+  // UNIQUEMENT des voix françaises (exclut Manuela/pt, es, en…).
+  const fr = _voicesCache.filter((v) => /^fr(-|_|$)/i.test(v.lang));
+  if (fr.length === 0) return null; // aucune voix FR sur l'appareil → on ne force rien de faux
   const FEMME = ["amelie", "amélie", "audrey", "aurelie", "aurélie", "virginie", "julie",
     "marie", "celine", "céline", "lea", "léa", "manon", "chloe", "chloé", "sandrine",
     "female", "femme", "google français", "google france"];
   const HOMME = ["thomas", "nicolas", "paul", "daniel", "male", "homme", "guillaume", "mathieu"];
-  const parNom = fr.find((v) => FEMME.some((h) => v.name.toLowerCase().includes(h)));
-  if (parNom) return parNom;
-  const nonMasculin = fr.find((v) => !HOMME.some((h) => v.name.toLowerCase().includes(h)));
-  return nonMasculin || fr[0];
+  // Priorité au dialecte : fr-CI (Côte d'Ivoire) > fr-FR > autre fr.
+  const parLangue = (pred: (v: SpeechSynthesisVoice) => boolean) =>
+    fr.find((v) => /fr[-_]ci/i.test(v.lang) && pred(v))
+    || fr.find((v) => /fr[-_]fr/i.test(v.lang) && pred(v))
+    || fr.find((v) => pred(v));
+  const femme = parLangue((v) => FEMME.some((h) => v.name.toLowerCase().includes(h)));
+  const nonHomme = parLangue((v) => !HOMME.some((h) => v.name.toLowerCase().includes(h)));
+  _chosenVoice = femme || nonHomme || fr[0];
+  return _chosenVoice;
+}
+
+/** Nom de la voix de secours retenue (diagnostic « Rapport de test »). */
+export function voixSecoursNom(): string {
+  try { return pickFrenchFemaleVoice()?.name || 'aucune-fr'; } catch { return 'err'; }
+}
+// Si les voix arrivent après coup (Android), on réévalue le choix une fois.
+if (typeof window !== "undefined" && window.speechSynthesis) {
+  try {
+    window.speechSynthesis.addEventListener("voiceschanged", () => { _chosenVoice = null; refreshVoices(); });
+  } catch { /* ignore */ }
 }
 
 // Voix de SECOURS GRATUITE : la voix intégrée du navigateur (aucun coût, tourne

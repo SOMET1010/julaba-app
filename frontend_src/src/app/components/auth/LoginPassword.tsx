@@ -13,6 +13,7 @@ import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits } from '../../utils/frenchDigits';
 import { tataUiClipForText } from '../../services/tataUiClips';
+import { speakBrowser, voixSecoursNom } from '../../services/elevenlabs';
 import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
@@ -116,19 +117,11 @@ export function LoginPassword() {
   // Quand un vrai enregistrement d'accueil sera fourni, on pourra le rebrancher.
   const ecouterTata = () => {
     setTataSpeaking(true);
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) { setTataSpeaking(false); return; }
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(`${greetTitle}. ${greetSub}. Dis ton numéro, ou tape-le.`);
-      u.lang = 'fr-FR';
-      u.rate = 0.95;
-      u.onend = () => setTataSpeaking(false);
-      u.onerror = () => setTataSpeaking(false);
-      synth.speak(u);
-      // Filet si onend ne se déclenche pas (certains navigateurs) :
-      setTimeout(() => setTataSpeaking(false), 6000);
-    } catch { setTataSpeaking(false); }
+    // UNE SEULE voix de secours dans toute l'appli (speakBrowser) : même voix FR,
+    // même débit, même timbre partout → fini le « mélange de voix ».
+    try { speakBrowser(`${greetTitle}. ${greetSub}. Dis ton numéro, ou tape-le.`).finally(() => setTataSpeaking(false)); }
+    catch { setTataSpeaking(false); }
+    setTimeout(() => setTataSpeaking(false), 8000); // filet
   };
   const phoneToPasswordTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -155,17 +148,11 @@ export function LoginPassword() {
   // Voix pour la connexion (écran AVANT connexion → on utilise la voix intégrée
   // du navigateur). Une vendeuse qui ne lit pas peut ainsi entendre les consignes
   // et les erreurs au lieu de devoir lire un petit texte.
-  // Voix intégrée du téléphone (hors-ligne, PAS Internet) — dernier recours.
+  // Voix intégrée du téléphone (hors-ligne, PAS Internet) — dernier recours. On
+  // passe par LE point unique speakBrowser (voix FR stable, jamais « Manuela »).
   const parleRobot = (texte: string) => {
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth || !texte) return;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(texte);
-      u.lang = 'fr-FR';
-      u.rate = 0.95;
-      synth.speak(u);
-    } catch { /* ignore */ }
+    if (!texte) return;
+    try { void speakBrowser(texte); } catch { /* ignore */ }
   };
   // On PARLE d'abord avec la VRAIE voix de Tata (clip embarqué) quand la phrase
   // correspond exactement à un clip enregistré (« Entre ton code secret… »,
@@ -343,6 +330,7 @@ export function LoginPassword() {
     if (isListening) { vlog('RE_TAP_STOP'); arreterEcoute(); return; }
     vlogStart('dictée'); vlog('BUILD', 'vosk-login-live-v2');
     vlog('MODEL_READY', { ready: offlineModelReady(), installed: offlineModelInstalled() });
+    vlog('TTS_VOICE', voixSecoursNom()); // voix de secours retenue (doit être FR, jamais « Manuela »)
 
     // Voix pas encore installée : on ne peut PAS l'écouter. RÈGLE : on ne télécharge
     // JAMAIS les 40 Mo en douce. À la place, Tata l'explique à voix haute (ses clips
