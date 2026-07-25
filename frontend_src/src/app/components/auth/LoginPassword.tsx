@@ -16,6 +16,7 @@ import { tataUiClipForText } from '../../services/tataUiClips';
 import { speakBrowser, voixSecoursNom } from '../../services/elevenlabs';
 import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
+import { getAccessMode, guidageVocal, clavierParDefaut } from '../../utils/accessMode';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
 
 // Grammaire CHIFFRES pour Vosk : dictée d'un numéro de téléphone → on limite le
@@ -106,7 +107,10 @@ export function LoginPassword() {
   const [pinInput, setPinInput] = useState('');
   const [step, setStep] = useState<'phone' | 'password'>('phone');
   const [isListening, setIsListening] = useState(false);
-  const [showKeypad, setShowKeypad] = useState(false); // clavier caché par défaut (voix d'abord)
+  // Mode d'accès choisi à l'onboarding : l'écran S'ADAPTE (lecture = clavier direct,
+  // mixte = les deux, voix = micro au centre). Modifiable ensuite.
+  const accessMode = getAccessMode();
+  const [showKeypad, setShowKeypad] = useState(clavierParDefaut(accessMode)); // ouvert d'office en mode lecture
   const [tataSpeaking, setTataSpeaking] = useState(false);
   const [operateur, setOperateur] = useState<Operateur | null>(null); // opérateur déduit du numéro
   const [showVoiceInstall, setShowVoiceInstall] = useState(false);    // proposer d'installer la voix (consenti)
@@ -205,11 +209,11 @@ export function LoginPassword() {
     } catch { /* ignore */ }
     parleRobot(texte);
   };
-  // Prononce chaque message d'erreur dès qu'il apparaît (après une action de
-  // l'utilisatrice, donc la lecture audio est autorisée par le navigateur).
-  useEffect(() => { if (error) parle(error); }, [error]);
-  // À l'arrivée sur l'étape mot de passe : on annonce clairement quoi faire.
-  useEffect(() => { if (step === 'password') parle('Entre ton code secret à 4 chiffres'); }, [step]);
+  // GUIDAGE VOCAL selon le mode : en mode « lecture » (elle lit vite), on ne parle
+  // PAS automatiquement (le texte suffit). En mixte/voix, Tata annonce erreurs et
+  // consignes. La lecture manuelle (toucher Tata, le cadenas…) reste toujours possible.
+  useEffect(() => { if (error && guidageVocal(accessMode)) parle(error); }, [error]);
+  useEffect(() => { if (step === 'password' && guidageVocal(accessMode)) parle('Entre ton code secret à 4 chiffres'); }, [step]);
 
   // Pré-réveil du backend. Sur Render gratuit, le serveur se met EN VEILLE après
   // inactivité et met ~50 s à redémarrer ; la 1re requête de login tombait alors
@@ -479,6 +483,7 @@ export function LoginPassword() {
   // pour ne pas se chevaucher. Une seule fois.
   useEffect(() => {
     if (step !== 'phone') return;
+    if (!guidageVocal(accessMode)) return; // mode lecture : pas d'accueil vocal auto
     const greet = (e: PointerEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && t.closest && t.closest('button, img')) return;

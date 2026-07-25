@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
+import { setAccessMode, type AccessMode } from '../../utils/accessMode';
 
 // Images de fond des 4 ecrans
 import bgBienvenue from "../../../assets/images/bg-marketplace.png";
@@ -68,8 +69,9 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  // Étape finale : installer la VOIX de Tata (pour que l'app écoute la marchande —
-  // essentiel pour celles qui ne lisent pas). Consenti, jamais imposé.
+  // Étape « comment préfères-tu utiliser Julaba ? » (mode d'accès) puis, si la voix
+  // est utile (mixte/voix), l'installation de la voix de Tata. Consenti, jamais imposé.
+  const [modeStep, setModeStep] = useState(false);
   const [voiceStep, setVoiceStep] = useState(false);
   const isLastSlide = currentSlide === slides.length - 1;
   const slide = slides[currentSlide];
@@ -84,12 +86,41 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   const handleNext = () => {
     stopLocal();
     if (isLastSlide) {
-      // Dernière diapo → étape « installer la voix », pas encore la fin.
-      setVoiceStep(true);
+      // Dernière diapo → on demande d'abord COMMENT elle préfère utiliser Julaba.
+      setModeStep(true);
     } else {
       setDirection(1);
       setCurrentSlide((prev) => prev + 1);
     }
+  };
+
+  // Tata lit la question du mode + les 3 choix (pour celles qui ne lisent pas).
+  const parleModeQuestion = useCallback(() => {
+    const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
+    if (!synth) return;
+    try {
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(
+        'Comment préfères-tu utiliser Julaba ? Choix un : je sais lire et écrire. ' +
+        'Choix deux : je lis un peu. Choix trois : je préfère parler, et je t\'accompagne.',
+      );
+      u.lang = 'fr-FR'; u.rate = 0.95; u.pitch = 1.05;
+      u.onend = () => setIsSpeaking(false);
+      u.onerror = () => setIsSpeaking(false);
+      setIsSpeaking(true);
+      synth.speak(u);
+    } catch { setIsSpeaking(false); }
+  }, []);
+  useEffect(() => { if (modeStep) parleModeQuestion(); }, [modeStep, parleModeQuestion]);
+
+  // Choix du mode → mémorise, puis : lecture → fin directe ; mixte/voix → on propose
+  // d'installer la voix de Tata (elle en a besoin pour écouter/parler).
+  const choisirMode = (m: AccessMode) => {
+    stopLocal();
+    setAccessMode(m);
+    setModeStep(false);
+    if (m === 'lecture') { onComplete?.(); }
+    else { setVoiceStep(true); }
   };
 
   // À l'entrée de l'étape voix : Tata explique de vive voix (ses clips/voix marchent
@@ -160,7 +191,49 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     }),
   };
 
-  /* -- ÉTAPE FINALE : installer la voix de Tata (consenti) ---------------- */
+  /* -- ÉTAPE : comment préfères-tu utiliser Julaba ? (mode d'accès) -------- */
+  if (modeStep) {
+    const choix: { m: AccessMode; emoji: string; couleur: string; titre: string; sous: string }[] = [
+      { m: 'lecture', emoji: '🟢', couleur: '#16a34a', titre: 'Je sais lire et écrire', sous: 'Je tape vite, clavier direct' },
+      { m: 'mixte',   emoji: '🟡', couleur: '#C46210', titre: 'Je lis un peu',          sous: 'Parfois je lis, parfois je parle' },
+      { m: 'voix',    emoji: '🟠', couleur: '#DB7A2C', titre: 'Je préfère parler',      sous: 'Tata m\'accompagne, je parle' },
+    ];
+    return (
+      <div className="fixed inset-0 overflow-hidden bg-black">
+        <img src={bgTataLou} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-6 px-4 z-20">
+          <div className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl border-2 border-white/80 shadow-2xl p-5" style={{ maxHeight: '86vh', overflowY: 'auto' }}>
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <h2 className="text-center text-xl font-extrabold" style={{ color: '#3d1a08' }}>Comment veux-tu utiliser Julaba&nbsp;?</h2>
+              <button onClick={() => (isSpeaking ? stopLocal() : parleModeQuestion())} aria-label="Écouter" className="shrink-0 w-9 h-9 rounded-full grid place-items-center" style={{ color: isSpeaking ? '#ef4444' : '#C46210', background: (isSpeaking ? '#ef4444' : '#C46210') + '15' }}>
+                {isSpeaking ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              </button>
+            </div>
+            <div className="mx-auto h-1 w-12 rounded-full mb-4" style={{ backgroundColor: '#C46210' }} />
+            <div className="flex flex-col gap-3">
+              {choix.map((c) => (
+                <motion.button key={c.m} whileTap={{ scale: 0.97 }} onClick={() => choisirMode(c.m)}
+                  className="flex items-center gap-3 w-full text-left rounded-2xl p-4 border-2 transition"
+                  style={{ borderColor: c.couleur + '55', background: c.couleur + '0d' }}>
+                  <span style={{ fontSize: 30, lineHeight: 1 }}>{c.emoji}</span>
+                  <span className="flex-1">
+                    <span className="block text-[17px] font-extrabold" style={{ color: '#2b1608' }}>{c.titre}</span>
+                    <span className="block text-[13px]" style={{ color: '#7a5638' }}>{c.sous}</span>
+                  </span>
+                  <ChevronRight className="w-5 h-5 shrink-0" style={{ color: c.couleur }} />
+                </motion.button>
+              ))}
+            </div>
+            <p className="text-center text-[11px] text-gray-400 mt-4">Tu pourras changer quand tu veux.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* -- ÉTAPE : installer la voix de Tata (consenti, si mixte/voix) --------- */
   if (voiceStep) {
     return (
       <div className="fixed inset-0 overflow-hidden bg-black">
