@@ -22,6 +22,7 @@ import tataLouImgMarchand from "../../../assets/images/tantie-marchand.png";
 import { MarchandAccueil } from './MarchandAccueil';
 import { MarchandAccueilVoice } from './MarchandAccueilVoice';
 import { NotifBellButton, NotificationsPanel } from '../shared/NotificationsPanel';
+import { getEffectiveMode, guidageVocal } from '../../utils/accessMode';
 
 export function MarchandHome() {
   const navigate = useNavigate();
@@ -50,10 +51,15 @@ export function MarchandHome() {
 
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // Mode simple/avancé : localStorage uniquement (User backend sans champ preferences)
+  // Vue simple (voix-d'abord) vs avancée (tableau tactile). RÈGLE JULABA : par
+  // défaut, on SUIT LE PROFIL D'ACCÈS (le même partout) — mode 'lecture' → vue
+  // avancée tactile ; 'voix'/'mixte' → vue simple voix-d'abord. Un choix manuel
+  // (bouton « Vue simple / avancée ») reste prioritaire s'il a été fait.
   const [modeSimple, setModeSimple] = useState<boolean>(() => {
     const saved = safeGetItem('julaba_marchand_mode');
-    return saved !== 'advanced';
+    if (saved === 'advanced') return false;
+    if (saved === 'simple') return true;
+    return getEffectiveMode() !== 'lecture'; // pas de choix manuel → profil d'accès
   });
 
   const roleConfig = getRoleConfig('marchand');
@@ -71,7 +77,8 @@ export function MarchandHome() {
       const timer = setTimeout(() => {
         if (!isMountedRef.current) return;
         setShowCoachMark(true);
-        speak('Ouvre ta journée pour activer ta caisse');
+        // Guidage vocal AUTO selon le profil : silencieux en mode 'lecture'.
+        if (guidageVocal()) speak('Ouvre ta journée pour activer ta caisse');
       }, 5000);
       return () => {
         isMountedRef.current = false;

@@ -9,6 +9,7 @@ import { CreditModal } from './CreditModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { getImageByNom } from '../../data/catalogue-produits';
+import { guidageVocal } from '../../utils/accessMode';
 
 const P = '#AF5B23';
 const BG = '#FFF2E9';
@@ -17,6 +18,9 @@ export function POSCaisse() {
   const navigate = useNavigate();
   const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, clearCart, getTotalCart, enregistrerVente, updateProduct, transactions } = useCaisse();
   const { speak } = useApp();
+  // Confirmations vocales AUTO selon le profil (le même que la connexion) :
+  // silencieuses en mode 'lecture' (l'écran affiche déjà tout), parlées en voix/mixte.
+  const dire = (t: string) => { if (guidageVocal()) speak(t); };
 
   const [search, setSearch] = useState('');
   const [showCart, setShowCart] = useState(false);
@@ -33,7 +37,7 @@ export function POSCaisse() {
   // et peut vérifier son panier avant d'encaisser.
   const ajouterAuPanier = (p: any) => {
     addToCart(p, 1);
-    speak(`${p?.nom || p?.name || 'Produit'} ajouté`);
+    dire(`${p?.nom || p?.name || 'Produit'} ajouté`);
   };
 
   const total = getTotalCart();
@@ -64,7 +68,7 @@ export function POSCaisse() {
     if (paiementEnCoursRef.current) return; // anti double-clic (synchrone)
     if (cart.length === 0) return;
     if (total <= 0) {
-      speak('Montant total invalide');
+      dire('Montant total invalide');
       return;
     }
     if (paymentMethod === 'credit') return;
@@ -90,11 +94,11 @@ export function POSCaisse() {
       setShowSuccess(true);
       // Confirmation PARLÉE (comme la vente vocale) : une non-lectrice entend que
       // sa vente est bien enregistrée, sans avoir à lire le petit texte.
-      speak(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs`);
+      dire(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs`);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (e) {
       console.error(e);
-      speak("Erreur lors de l'enregistrement de la vente");
+      dire("Erreur lors de l'enregistrement de la vente");
     }
     finally { paiementEnCoursRef.current = false; setIsProcessing(false); }
   };
@@ -115,7 +119,7 @@ export function POSCaisse() {
       if (prod) updateProduct(prod.id, { stock: Math.max(0, (prod.stock || 0) - item.quantite) });
     });
     // Confirmation PARLÉE aussi pour la vente à crédit (avant de vider le panier).
-    speak(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
+    dire(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
     clearCart();
     setPaymentMethod('cash');
     setShowCredit(false);
