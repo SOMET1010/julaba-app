@@ -142,6 +142,11 @@ export function LoginPassword() {
   const dictDoneRef = useRef(false);
   const bestDigitsRef = useRef('');
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Minuteur de STABILITÉ des 10 chiffres : quand on atteint 10 sur un partiel, on
+  // attend que la valeur ne bouge plus (le temps qu'un « vingt » devienne « vingt-six »)
+  // avant de figer. Évite de couper un nombre composé à moitié formé.
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTenRef = useRef('');
   const phoneRef = useRef(phone);
   useEffect(() => {
     phoneRef.current = phone;
@@ -297,6 +302,7 @@ export function LoginPassword() {
     dictDoneRef.current = true;
     vlog('FINALISE', { digits: digitsBruts, n: digitsBruts.length, valide: numeroCIComplet(digitsBruts.slice(0, 10), TEST_PHONES) });
     if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
+    if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
     if (micStartTimeoutRef.current) { clearTimeout(micStartTimeoutRef.current); micStartTimeoutRef.current = null; }
     void liveStopRef.current?.(); liveStopRef.current = null;
     try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
@@ -366,6 +372,8 @@ export function LoginPassword() {
     // Réinitialise l'état de dictée pour cette session d'écoute.
     dictDoneRef.current = false;
     bestDigitsRef.current = '';
+    lastTenRef.current = '';
+    if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
     setOperateur(null);
     setPhone('');
     setError('');
@@ -387,11 +395,32 @@ export function LoginPassword() {
         const best = bestDigitsRef.current;
         setPhone(best);                       // remplissage EN DIRECT (contrôle à l'œil)
         setOperateur(operateurDe(best));       // repère opérateur dès 2 chiffres
-        // ── LA RÈGLE : numéro COMPLET et valide → on s'arrête AUSSITÔT.
+        // ── LA RÈGLE : 10 chiffres valides → on s'arrête. MAIS un nombre composé
+        // (« vingt-six ») arrive en deux temps : d'abord « vingt » (20), puis « six »
+        // (→ 26). Si on fige pile sur le « vingt », on garde un 20 faux. On ne fige
+        // donc PAS sur un partiel : on attend la fin de phrase du moteur, OU que la
+        // valeur des 10 chiffres reste STABLE un court instant (le « six » a le temps
+        // d'arriver et de corriger).
         if (best.length >= 10 && numeroCIComplet(best, TEST_PHONES)) {
-          finaliserDictee(best);
+          if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
+          if (estFinal) {
+            // Le moteur dit « phrase finie » → valeur sûre, on fige tout de suite.
+            finaliserDictee(best);
+            return;
+          }
+          // Partiel : on (re)lance un minuteur de stabilité. Tant que les 10 chiffres
+          // changent (vingt → vingt-six), on repousse ; dès qu'ils ne bougent plus
+          // ~0,8 s, on fige la valeur stable.
+          if (best !== lastTenRef.current) {
+            lastTenRef.current = best;
+            if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+            confirmTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 800);
+          }
           return;
         }
+        // Moins de 10 chiffres → la valeur « 10 stable » précédente n'a plus lieu d'être.
+        if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
+        lastTenRef.current = '';
         // Fin de phrase mais numéro incomplet : on lui laisse ~1,6 s pour continuer
         // (sans jamais la couper), sinon on termine avec ce qu'on a → clavier.
         if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
@@ -444,6 +473,7 @@ export function LoginPassword() {
       if (focusPinTimeoutRef.current) clearTimeout(focusPinTimeoutRef.current);
       if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
       if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
       // Coupe une dictée EN DIRECT en cours (moteur Vosk + micro) au démontage.
       try { void liveStopRef.current?.(); } catch { /* ignore */ }
       try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
