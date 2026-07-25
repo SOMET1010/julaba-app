@@ -17,7 +17,7 @@ const BG = '#FFF2E9';
 export function POSCaisse() {
   const navigate = useNavigate();
   const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, clearCart, getTotalCart, enregistrerVente, updateProduct, transactions } = useCaisse();
-  const { speak } = useApp();
+  const { speak, reloadTransactions } = useApp();
   // Confirmations vocales AUTO selon le profil (le même que la connexion) :
   // silencieuses en mode 'lecture' (l'écran affiche déjà tout), parlées en voix/mixte.
   const dire = (t: string) => { if (guidageVocal()) speak(t); };
@@ -120,6 +120,8 @@ export function POSCaisse() {
     });
     // Confirmation PARLÉE aussi pour la vente à crédit (avant de vider le panier).
     dire(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
+    // Recharge les totaux du jour (la vente à crédit doit apparaître : convention A).
+    void reloadTransactions?.();
     clearCart();
     setPaymentMethod('cash');
     setShowCredit(false);
