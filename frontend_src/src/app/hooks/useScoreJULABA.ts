@@ -715,7 +715,11 @@ export function useScoreJULABA(
   const benefits: ScoreBenefit[] = [
     {
       icon: 'Keiwa',
-      label: `Microcrédits jusqu'à ${score >= 90 ? '500 000' : score >= 70 ? '250 000' : score >= 40 ? '100 000' : '0'} FCFA`,
+      // En dessous de 40, le microcrédit n'est pas encore débloqué : on évite le
+      // « jusqu'à 0 FCFA » qui sonne mal → message d'encouragement (B16).
+      label: score >= 40
+        ? `Microcrédits jusqu'à ${score >= 90 ? '500 000' : score >= 70 ? '250 000' : '100 000'} FCFA`
+        : 'Microcrédits — continue pour débloquer',
       unlocked: score >= 40,
     },
     {

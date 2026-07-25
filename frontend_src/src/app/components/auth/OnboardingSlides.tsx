@@ -113,6 +113,14 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   }, []);
   useEffect(() => { if (modeStep) parleModeQuestion(); }, [modeStep, parleModeQuestion]);
 
+  // Préchargement des images de fond : évite l'écran nu (texte illisible) pendant
+  // les transitions de diapo, surtout en réseau lent (B14).
+  useEffect(() => {
+    [bgCnpsCmu, bgMarcketplace, bgTataLou, bgBienvenue].forEach((src) => {
+      const img = new Image(); img.src = src;
+    });
+  }, []);
+
   // Choix du mode → mémorise, puis : lecture → fin directe ; mixte/voix → on propose
   // d'installer la voix de Tata (elle en a besoin pour écouter/parler).
   const choisirMode = (m: AccessMode) => {
@@ -287,7 +295,11 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-black">
+    <div className="fixed inset-0 overflow-hidden"
+      // Dégradé de secours (couleur de la diapo) DERRIÈRE l'image : plus d'écran
+      // noir + texte illisible pendant le chargement de l'image (B14).
+      style={{ background: `linear-gradient(160deg, ${slide.accent}, #2b1608)` }}
+    >
       {/* -- Image de fond plein ecran avec transition -------------------- */}
       <AnimatePresence mode="wait">
         <motion.div

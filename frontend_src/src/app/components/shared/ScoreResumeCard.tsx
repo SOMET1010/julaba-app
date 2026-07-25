@@ -159,6 +159,9 @@ export function ScoreResumeCard({
       // Délai pour laisser le dashboard se charger
       const timer = setTimeout(() => {
         setShowOnboarding(true);
+        // On marque « vu » DÈS l'affichage (pas seulement à la fermeture) : ainsi la
+        // modale ne réapparaît jamais, quel que soit le chemin de sortie (B7).
+        try { localStorage.setItem(`julaba_score_onboarding_${role}`, 'true'); } catch { /* ignore */ }
       }, 1000);
       return () => clearTimeout(timer);
     }
