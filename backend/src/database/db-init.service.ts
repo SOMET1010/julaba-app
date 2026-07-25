@@ -276,7 +276,10 @@ export class DbInitService {
           c.id, c.marchand_id, c.client_nom, c.client_phone, c.montant_total,
           c.acompte, c.echeance, c.articles, c.notes, c.transaction_id,
           c.paye_le, c.created_at, c.updated_at,
-          GREATEST(c.montant_total - COALESCE(c.acompte, 0), 0) AS montant_restant,
+          CASE
+            WHEN c.statut = 'paye' OR COALESCE(c.acompte, 0) >= c.montant_total THEN 0
+            ELSE GREATEST(c.montant_total - COALESCE(c.acompte, 0), 0)
+          END AS montant_restant,
           CASE
             WHEN c.statut = 'paye' OR COALESCE(c.acompte, 0) >= c.montant_total THEN 'paye'
             WHEN c.echeance < CURRENT_DATE THEN 'en_retard'
