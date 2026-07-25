@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { ensureOfflineModel, offlineModelReady, offlineModelInstalled } from './offlineStt';
+import { speakBrowser } from '../services/elevenlabs';
 
 // Bouton autonome « Installer le mode hors-ligne ».
 // Télécharge le modèle vocal (~40 Mo) UNE fois (en ligne), puis mis en cache par
@@ -26,15 +27,8 @@ type Etat = 'absent' | 'avert1' | 'avert2' | 'chargement' | 'pret' | 'erreur';
 // Voix du téléphone (hors-ligne, jamais Internet) — pour prévenir à voix haute
 // une marchande qui ne lit pas. Silencieux si le navigateur ne peut pas parler.
 function dire(texte: string) {
-  try {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    synth.cancel();
-    const u = new SpeechSynthesisUtterance(texte);
-    u.lang = 'fr-FR';
-    u.rate = 0.95;
-    synth.speak(u);
-  } catch { /* ignore */ }
+  // Voix de secours UNIQUE (speakBrowser) : même voix FR partout, jamais « Manuela ».
+  try { void speakBrowser(texte); } catch { /* ignore */ }
 }
 
 // Vrai si la connexion actuelle est probablement FACTURÉE (données mobiles) ou
