@@ -12,6 +12,12 @@ const STATIC_ASSETS = ['/', '/index.html'];
 function _safeParse(s) { try { return JSON.parse(s); } catch { return []; } }
 const PRECACHE = _safeParse('__PRECACHE_JSON__');
 
+// Clips de la VOIX de Tata Nanti Lou (~7 Mo, injectés au build). Pré-chargés à
+// l'installation → la marchande entend Tata même HORS-LIGNE dès le premier jour.
+// (Le modèle Vosk ~40 Mo reste, lui, à installation consentie : trop lourd pour
+// être poussé d'office sur des données mobiles.)
+const PRECACHE_VOICE = _safeParse('__PRECACHE_VOICE_JSON__');
+
 // ── INSTALL ────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -20,6 +26,10 @@ self.addEventListener('install', (event) => {
     // Pré-cache des pages : tolérant aux échecs (un chunk manquant ne bloque pas
     // l'installation). addAll échouerait en bloc → on ajoute un par un.
     await Promise.allSettled(PRECACHE.map((u) => cache.add(u)));
+    // Pré-cache de la VOIX de Tata : idem, un par un et tolérant. On n'attend PAS
+    // que ce soit fini pour activer (waitUntil ci-dessus couvre déjà l'essentiel) ;
+    // ces 7 Mo se remplissent en tâche de fond sans retarder la 1re ouverture.
+    Promise.allSettled(PRECACHE_VOICE.map((u) => cache.add(u)));
   })());
   self.skipWaiting();
 });
@@ -51,7 +61,11 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api')) return;
   if (url.pathname.startsWith('/backoffice')) return;
 
-  const isHashedAsset = url.pathname.startsWith('/assets/');
+  // /assets/* = build haché immuable ; /voix/* = clips vocaux immuables (la voix
+  // de Tata). Les deux → CACHE D'ABORD : lecture INSTANTANÉE et hors-ligne. Un clip
+  // absent du cache est récupéré puis mémorisé (garnissage progressif si l'install
+  // n'a pas tout pris).
+  const isHashedAsset = url.pathname.startsWith('/assets/') || url.pathname.startsWith('/voix/');
 
   if (isHashedAsset) {
     // CACHE D'ABORD
