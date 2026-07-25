@@ -39,10 +39,14 @@ export function useWakeWord({ enabled, active, onWake, onCommand, lang = 'fr-FR'
   enabledRef.current = enabled;
   activeRef.current = active;
 
-  const SR: any = typeof window !== 'undefined'
-    ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    : null;
-  const supported = !!SR;
+  // ── MOT-RÉVEIL DÉSACTIVÉ (voix 100 % sur le téléphone) ─────────────────────
+  // Le mains-libres « Julaba… » reposait sur la reconnaissance vocale du NAVIGATEUR
+  // (SpeechRecognition), qui NÉCESSITE Internet. Décision produit : aucune voix ni
+  // écoute par Internet. On coupe donc ce moteur et on renvoie `supported: false`
+  // → l'interface bascule sur l'appui-pour-parler (qui, lui, écoute via Vosk, sur
+  // l'appareil). Un mot-réveil hors-ligne via Vosk pourra être ajouté plus tard.
+  const SR: any = null;
+  const supported = false;
 
   // Création unique de l'instance de reconnaissance.
   useEffect(() => {

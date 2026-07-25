@@ -95,16 +95,12 @@ const SECONDARY_SOUNDS: EarlySound[] = [
 ];
 
 export async function preloadEarlyAudios(): Promise<void> {
-  // Phase 1 : sons prioritaires en parallèle
-  const p1 = PRIORITY_SOUNDS.map(key => preloadOne(key, EARLY_SOUNDS[key]));
-  await Promise.allSettled(p1);
-
-  // Phase 2 : sons secondaires après 2s (ne bloque pas)
-  setTimeout(() => {
-    const p2 = SECONDARY_SOUNDS.map(key => preloadOne(key, EARLY_SOUNDS[key]));
-    Promise.allSettled(p2).then(() => {
-    });
-  }, 5000);
+  // ── DÉSACTIVÉ (voix 100 % sur le téléphone) ────────────────────────────────
+  // Ces « early sounds » étaient pré-générés par le cloud (/tts/openai = Internet).
+  // Décision produit : AUCUNE voix par Internet. On ne pré-charge donc plus rien
+  // par le réseau. Le retour audio passe par les clips embarqués de Tata + la voix
+  // intégrée du téléphone (hors-ligne). Fonction gardée en no-op pour compatibilité.
+  return;
 }
 
 async function preloadOne(key: EarlySound, text: string): Promise<void> {
