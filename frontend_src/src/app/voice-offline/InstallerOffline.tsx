@@ -51,7 +51,7 @@ function connexionChere(): boolean {
   } catch { return true; }
 }
 
-export function InstallerOffline() {
+export function InstallerOffline({ onReady }: { onReady?: () => void } = {}) {
   // « prêt » si le modèle est chargé en mémoire OU déjà installé sur l'appareil
   // (il se ré-active tout seul en tâche de fond, inutile de re-télécharger 40 Mo).
   const [etat, setEtat] = useState<Etat>(() => (offlineModelReady() || offlineModelInstalled() ? 'pret' : 'absent'));
@@ -94,6 +94,7 @@ export function InstallerOffline() {
       await ensureOfflineModel();
       setEtat('pret');
       dire('C\'est bon. La voix marche maintenant sans réseau.');
+      try { onReady?.(); } catch { /* ignore */ }
     } catch (e) {
       setErreur(e instanceof Error ? e.message : String(e));
       setEtat('erreur');
