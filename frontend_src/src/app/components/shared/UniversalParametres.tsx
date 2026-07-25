@@ -8,6 +8,7 @@ import {
   Building2, Store, UserCheck,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { ModeAccesSwitcher } from './ModeAccesSwitcher';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -796,6 +797,11 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
           </div>
 
           {role === 'identificateur' && <IdentificateurPinChangeSection />}
+
+          {/* Mode d'accès : l'app s'adapte à la façon de travailler de chacune. */}
+          <Section title="Ma façon d'utiliser Julaba" icon={Headphones} color={color}>
+            <ModeAccesSwitcher />
+          </Section>
 
           <Section title="Notifications" icon={Bell} color={color}>
             {role === 'marchand' && <>

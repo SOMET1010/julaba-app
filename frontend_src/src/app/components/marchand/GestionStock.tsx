@@ -20,6 +20,7 @@ import { useStock } from '../../contexts/StockContext';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { eventBus, EVENTS } from '../../services/eventBus';
+import { guidageVocal } from '../../utils/accessMode';
 import { toast } from 'sonner';
 
 const P = '#AF5B23';
@@ -247,6 +248,9 @@ export function GestionStock() {
   const { showToast, ToastContainer } = useToast();
   const { products, addProduct, updateProduct, deleteProduct, refreshProducts, stats: caisseStats } = useCaisse();
   const { speak, setIsModalOpen } = useApp();
+  // Retour vocal des ERREURS DE FORMULAIRE selon le profil (muet en 'lecture', où
+  // le toast suffit). Les réponses aux COMMANDES VOCALES, elles, parlent toujours.
+  const dire = (t: string) => { if (guidageVocal()) speak(t); };
   const stockCtx = useStock();
 
   /** Caisse (Kassa) + API /stocks : fusion par nom, la caisse prime pour qu'un produit créé en Kassa apparaisse même si /stocks n'est pas vide. */
@@ -409,8 +413,8 @@ export function GestionStock() {
   })), [stocks]);
 
   const addStockItem = async () => {
-    if (!newStock.name?.trim()) { toast.error('Nom du produit requis'); speak('Saisis le nom du produit'); return; }
-    if (newStock.salePrice <= 0) { toast.error('Prix de vente invalide'); speak('Le prix de vente n\'est pas bon. Redis le prix.'); return; }
+    if (!newStock.name?.trim()) { toast.error('Nom du produit requis'); dire('Saisis le nom du produit'); return; }
+    if (newStock.salePrice <= 0) { toast.error('Prix de vente invalide'); dire('Le prix de vente n\'est pas bon. Redis le prix.'); return; }
     if (newStock.quantity < 0) { toast.error('Quantité invalide'); speak('La quantité n\'est pas bonne.'); return; }
     const cat = rechercherProduitCatalogue(newStock.name);
     try {
