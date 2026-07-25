@@ -87,13 +87,16 @@ function makeAudioBuffer(sampleRate: number, data: Float32Array): AudioBuffer {
  * @param wav      le WAV (16 kHz mono attendu, mais tout format décodable marche)
  * @param useGrammar limite au vocabulaire du marché (améliore la précision)
  */
-export async function transcribeWav(wav: Blob | ArrayBuffer, useGrammar = true): Promise<string> {
+export async function transcribeWav(wav: Blob | ArrayBuffer, useGrammar = true, customGrammar?: string[]): Promise<string> {
   const model = await ensureOfflineModel();
   const arrayBuf = wav instanceof Blob ? await wav.arrayBuffer() : wav.slice(0);
   const audioBuf = await getCtx().decodeAudioData(arrayBuf as ArrayBuffer);
 
   const sampleRate = audioBuf.sampleRate;
-  const grammar = useGrammar ? JSON.stringify(GRAMMAR_WORDS) : undefined;
+  // customGrammar : liste de mots ciblée (ex. chiffres pour un numéro de tel) →
+  // précision maximale. Sinon grammaire marché, sinon modèle complet.
+  const grammar = customGrammar ? JSON.stringify(customGrammar)
+    : useGrammar ? JSON.stringify(GRAMMAR_WORDS) : undefined;
   const recognizer: Any = grammar
     ? new model.KaldiRecognizer(sampleRate, grammar)
     : new model.KaldiRecognizer(sampleRate);
