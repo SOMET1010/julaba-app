@@ -246,6 +246,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user]);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Crédits du jour : la vente à crédit vit dans une table à part (pas dans
+  // transactions). Convention comptable A : la vente compte au TOTAL dans les
+  // ventes du jour, mais seul l'ACOMPTE (espèces reçues) entre dans la caisse.
+  const [creditsJour, setCreditsJour] = useState<{ montant_total: number; acompte: number; created_at: string }[]>([]);
   const [marketplaceItems, setMarketplaceItems] = useState<MarketplaceItem[]>([]);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -418,6 +422,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         setTransactions(mappedTx);
       }
+
+      // Crédits du jour (compta convention A) — chargés en parallèle.
+      void reloadCreditsJour();
 
       // Charger session du jour
       const today = new Date().toISOString().split('T')[0];
@@ -876,21 +883,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
 
     const ventesTransactions = todayTransactions.filter((t) => t.type === 'vente');
-    
-    const ventes = ventesTransactions.reduce((acc, t) => acc + (t.montant || t.price * t.quantity || 0), 0);
-    const nombreVentes = ventesTransactions.length;
+
+    // Ventes ESPÈCES (transactions) : entrent en caisse ET dans les ventes.
+    const ventesEspeces = ventesTransactions.reduce((acc, t) => acc + (t.montant || t.price * t.quantity || 0), 0);
+
+    // Ventes À CRÉDIT du jour (table à part). Convention A :
+    //  • le TOTAL s'ajoute aux « ventes du jour » (elle a bien vendu) ;
+    //  • seul l'ACOMPTE reçu entre dans la caisse (le reste = créance au carnet).
+    const creditsAujourdhui = (creditsJour || []).filter((c) => (c.created_at || '').split('T')[0] === today);
+    const ventesCredit = creditsAujourdhui.reduce((acc, c) => acc + (c.montant_total || 0), 0);
+    const acomptesCredit = creditsAujourdhui.reduce((acc, c) => acc + (c.acompte || 0), 0);
+
+    const ventes = ventesEspeces + ventesCredit;              // volume d'affaires
+    const nombreVentes = ventesTransactions.length + creditsAujourdhui.length;
 
     const cahier = todayTransactions
       .filter((t) => t.type === 'depense')
       .reduce((acc, t) => acc + (t.montant || t.price * t.quantity || 0), 0);
 
-    const caisse = (currentSession?.fondInitial || 0) + ventes - cahier;
+    // « Ce que tu devrais avoir » = argent RÉELLEMENT reçu : fond + espèces
+    // (ventes espèces + acomptes crédit) − dépenses. La créance n'est PAS du cash.
+    const encaisse = ventesEspeces + acomptesCredit;
+    const caisse = (currentSession?.fondInitial || 0) + encaisse - cahier;
 
     return { ventes, cahier, caisse, nombreVentes };
   };
 
   // Recharger les transactions depuis l'API — appelable depuis n'importe où
+  // Recharge les crédits (pour la compta du jour). Silencieux : si l'appel échoue,
+  // les stats espèces restent justes, seul l'apport crédit manque temporairement.
+  const reloadCreditsJour = async () => {
+    try {
+      const res = await fetch(`${API_URL}/caisse/credits`,
+        { credentials: 'include', headers: caisseAuthHeaders(accessToken) });
+      if (!res.ok) return;
+      const json = await res.json();
+      const rows = Array.isArray(json?.credits) ? json.credits : [];
+      setCreditsJour(rows.map((c: any) => ({
+        montant_total: Number(c.montant_total) || 0,
+        acompte: Number(c.acompte) || 0,
+        created_at: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
+      })));
+    } catch { /* silencieux */ }
+  };
+
   const reloadTransactions = async () => {
+    void reloadCreditsJour(); // en parallèle : crédits du jour pour la compta
     try {
       const txResponse = await fetch(
         `${API_URL}/caisse/transactions`,
