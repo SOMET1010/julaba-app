@@ -124,7 +124,7 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
       },
       action2: {
         label: "Je dépense",
-        subtitle: 'Saisir tes cahier',
+        subtitle: 'Saisir tes cahiers',
         route: '/marchand/cahier',
         color: '#DC2626',
         icon: 'TrendingDown',

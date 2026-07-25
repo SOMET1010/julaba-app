@@ -33,7 +33,7 @@ const slides = [
   {
     id: 'bienvenue',
     title: 'BIENVENUE',
-    description: "Julaba t'aide a bien gerer ton argent au quotidien.",
+    description: "Julaba t'aide à bien gérer ton argent au quotidien.",
     bgImage: bgCnpsCmu,
     accent: '#C46210',
     dotActive: '#C46210',
@@ -49,7 +49,7 @@ const slides = [
   {
     id: 'assistante',
     title: 'VOTRE ASSISTANTE VOCALE',
-    description: "Tata Nanti Lou t'accompagne partout, a chaque etape.",
+    description: "Tata Nanti Lou t'accompagne partout, à chaque étape.",
     bgImage: bgTataLou,
     accent: '#7c3aed',
     dotActive: '#7c3aed',
@@ -57,7 +57,7 @@ const slides = [
   {
     id: 'cotisations',
     title: 'COTISATIONS SOCIALES',
-    description: 'Gere tes cotisations CNPS et CMU facilement ici.',
+    description: 'Gère tes cotisations CNPS et CMU facilement ici.',
     bgImage: bgBienvenue,
     accent: '#2563eb',
     dotActive: '#2563eb',
@@ -321,7 +321,9 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
         <button
           onClick={() => {
             if (isSpeaking) stopSpeaking();
-            onComplete?.();
+            // « Passer » saute la présentation, PAS le choix du mode (clé de voûte
+            // de l'adaptation) : on va directement à l'écran des modes.
+            setModeStep(true);
           }}
           className="px-5 py-2 rounded-full border-2 border-white/60 text-white/90 text-sm font-semibold backdrop-blur-sm bg-white/10 transition-all duration-300 hover:bg-white/20 hover:border-white active:scale-95"
         >
