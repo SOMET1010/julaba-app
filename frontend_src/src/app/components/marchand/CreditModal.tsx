@@ -476,7 +476,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                   {/* Montant */}
                   <div style={{ padding:'16px 18px', background:'white', borderBottom:'1.5px solid #EDE7DE', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div>
-                      <div style={{ fontSize:13, color:'#aaa', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Montant dû</div>
+                      <div style={{ fontSize:13, color:'#aaa', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Reste à payer</div>
                       <div style={{ fontSize:30, fontWeight:900, color:P }}>{montantDu.toLocaleString('fr-FR')} FCFA</div>
                     </div>
                     {aADonne && acompte && (
