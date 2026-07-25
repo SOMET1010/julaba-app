@@ -283,11 +283,16 @@ export function LoginPassword() {
   const arreterEcoute = () => {
     try { if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop(); } catch { /* ignore */ }
   };
+  // Coupe l'analyse audio de fin-de-parole ; posé à chaque dictée, appelé sur tous
+  // les chemins de sortie pour ne jamais laisser un AudioContext ouvert.
+  const vadStopRef = useRef<(() => void) | null>(null);
 
   const dicterNumero = async () => {
     // Re-tap pendant l'écoute → on arrête et on transcrit ce qui a été dit.
     if (isListening) { vlog('RE_TAP_STOP'); arreterEcoute(); return; }
-    vlogStart('dictée'); vlog('BUILD', 'vosk-login-v1');
+    // Déjà en train de transcrire : on n'empile pas une 2e dictée (source de bugs).
+    if (isTranscribing) { vlog('BUSY_IGNORE'); return; }
+    vlogStart('dictée'); vlog('BUILD', 'vosk-login-v2');
 
     // Modèle Vosk pas encore prêt (jamais téléchargé) : PAS d'Internet. On ouvre le
     // clavier et on prépare le modèle en tâche de fond pour la prochaine fois.
@@ -323,7 +328,52 @@ export function LoginPassword() {
     const chunks: Blob[] = [];
     rec.ondataavailable = (ev) => { if (ev.data && ev.data.size > 0) chunks.push(ev.data); };
 
+    // ── DÉTECTION DE FIN DE PAROLE — on NE COUPE JAMAIS la marchande ───────────
+    // Avant, un couperet fixe à 7 s la coupait en plein milieu de son numéro. Ici,
+    // on écoute le niveau sonore : on s'arrête ~1,5 s APRÈS qu'elle a fini de parler.
+    // Filet dur à 12 s, et arrêt si rien n'est dit du tout (5 s). 100 % sur l'appareil.
+    let audioCtx: AudioContext | null = null;
+    let vadTimer: ReturnType<typeof setTimeout> | null = null;
+    const teardownVAD = () => {
+      if (vadTimer) { clearTimeout(vadTimer); vadTimer = null; }
+      try { audioCtx?.close(); } catch { /* ignore */ }
+      audioCtx = null;
+    };
+    vadStopRef.current = teardownVAD;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const AC = window.AudioContext || (window as any).webkitAudioContext;
+      audioCtx = new AC();
+      const srcNode = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      srcNode.connect(analyser);
+      const buf = new Uint8Array(analyser.fftSize);
+      const t0 = Date.now();
+      let lastLoud = t0;
+      let hasSpoken = false;
+      const SIL_MS = 1500;      // silence APRÈS parole → on arrête (on la laisse finir)
+      const MAX_MS = 12000;     // filet dur
+      const NOSPEAK_MS = 5000;  // rien dit du tout → clavier
+      const SPEECH_RMS = 0.03;  // seuil « elle parle »
+      const tick = () => {
+        if (!audioCtx) return;
+        analyser.getByteTimeDomainData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
+        const rms = Math.sqrt(sum / buf.length);
+        const now = Date.now();
+        if (rms > SPEECH_RMS) { hasSpoken = true; lastLoud = now; }
+        if (hasSpoken && now - lastLoud > SIL_MS) { arreterEcoute(); return; }
+        if (!hasSpoken && now - t0 > NOSPEAK_MS) { arreterEcoute(); return; }
+        if (now - t0 > MAX_MS) { arreterEcoute(); return; }
+        vadTimer = setTimeout(tick, 120);
+      };
+      vadTimer = setTimeout(tick, 120);
+    } catch { /* analyse indisponible → le filet dur de 12 s ci-dessous suffit */ }
+
     rec.onstop = async () => {
+      teardownVAD();
       try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
       mediaStreamRef.current = null;
       mediaRecorderRef.current = null;
@@ -331,7 +381,7 @@ export function LoginPassword() {
       setIsListening(false);
 
       const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
-      if (blob.size < 1200) {
+      if (blob.size < 1400) {
         setError("Je n'ai pas entendu. Réessaie, ou tape ton numéro 👇");
         parle("Je n'ai pas entendu. Réessaie, ou tape ton numéro.");
         setShowKeypad(true);
@@ -344,18 +394,27 @@ export function LoginPassword() {
         vlog('VOSK_TEXT', { texte });
         const num = extractPhoneDigits(texte || '').slice(0, 10);
         setIsTranscribing(false);
+        // RÈGLE : on ne RÉCITE JAMAIS les chiffres captés (« 0 7… ») — c'était la
+        // source de confusion/bug. Le contrôle se fait à l'ŒIL (grands chiffres +
+        // points verts). La voix accompagne seulement, sans réciter, sans couper.
         if (num.length === 0) {
           setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
-          parle("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+          parle("Je n'ai pas compris. Tape ton numéro juste ici.");
           setShowKeypad(true);
           return;
         }
         try { navigator.vibrate?.(30); } catch { /* ignore */ }
-        remplirNumero(num);
         if (num.length < 10) {
+          // Numéro incomplet : on remplit ce qu'on a et on ouvre le clavier pour
+          // COMPLÉTER — sans réciter, sans repartir en écoute (pas de boucle).
+          setPhone(num);
+          setError('');
           setShowKeypad(true);
-          parle("J'ai compris " + num.split('').join(' ') + '. Tape la suite.');
+          parle('Complète ton numéro sur le clavier.');
+          return;
         }
+        // 10 chiffres captés : on remplit → la vérification habituelle enchaîne.
+        remplirNumero(num);
       } catch (e) {
         vlog('VOSK_FAIL', String(e));
         setIsTranscribing(false);
@@ -370,10 +429,10 @@ export function LoginPassword() {
     try { navigator.vibrate?.(60); } catch { /* ignore */ }
     try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
     try { rec.start(); }
-    catch (e) { vlog('START_THROW', String(e)); setIsListening(false); setShowKeypad(true); return; }
-    // Filet : arrêt automatique au bout de 7 s (elle a fini de parler).
+    catch (e) { vlog('START_THROW', String(e)); teardownVAD(); setIsListening(false); setShowKeypad(true); return; }
+    // Filet DUR si l'analyse audio n'a pas pu démarrer : arrêt à 12 s (jamais avant).
     if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
-    micStartTimeoutRef.current = setTimeout(() => { arreterEcoute(); }, 7000);
+    micStartTimeoutRef.current = setTimeout(() => { arreterEcoute(); }, 12000);
   };
 
   // Tata parle AU PREMIER CONTACT (les navigateurs bloquent le son avant tout
@@ -400,7 +459,8 @@ export function LoginPassword() {
       if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
       if (focusPinTimeoutRef.current) clearTimeout(focusPinTimeoutRef.current);
       if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
-      // Coupe une dictée Vosk en cours (micro + enregistreur) au démontage.
+      // Coupe une dictée Vosk en cours (analyse audio + micro + enregistreur) au démontage.
+      try { vadStopRef.current?.(); } catch { /* ignore */ }
       try { if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop(); } catch { /* ignore */ }
       try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
       if (phoneToPasswordTimeout.current) {
