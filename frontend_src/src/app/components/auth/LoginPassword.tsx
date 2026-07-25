@@ -26,6 +26,19 @@ const DIGIT_GRAMMAR = [
   'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'quatre-vingt', 'quatre-vingts', 'quatre-vingt-dix',
   'cent', 'et', '[unk]',
 ];
+
+// Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
+// le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
+type DicteeCfg = {
+  max: number;                       // nb de chiffres attendus (10 = numéro, 4 = code)
+  estComplet: (d: string) => boolean; // quand la valeur est « bonne » → on s'arrête
+  onLive: (d: string) => void;        // remplissage à l'écran au fil de la voix
+  onFinal: (d: string) => void;       // valeur figée → aiguillage
+  buildTag: string;
+  siPasPrete: () => void;             // moteur pas installé
+  siMicRefuse: () => void;            // micro refusé
+  siEchec: () => void;                // démarrage moteur échoué
+};
 import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
 /**
  * BACKLOG ESCALATION P0 BACKEND (à traiter côté serveur, hors périmètre frontend) :
@@ -140,6 +153,7 @@ export function LoginPassword() {
   // avant de figer. Évite de couper un nombre composé à moitié formé.
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTenRef = useRef('');
+  const dictCfgRef = useRef<DicteeCfg | null>(null); // config de la dictée en cours
   const phoneRef = useRef(phone);
   useEffect(() => {
     phoneRef.current = phone;
@@ -283,11 +297,13 @@ export function LoginPassword() {
   // minuteur. Clavier = filet. Aucune reconnaissance navigateur (Internet).
 
   // Termine la dictée avec les chiffres retenus : range le micro, coupe le moteur,
-  // et aiguille (numéro valide → vérification ; incomplet/erroné → clavier).
+  // puis AIGUILLE selon la config en cours (numéro ou code).
   const finaliserDictee = (digitsBruts: string) => {
     if (dictDoneRef.current) return;
     dictDoneRef.current = true;
-    vlog('FINALISE', { digits: digitsBruts, n: digitsBruts.length, valide: numeroCIComplet(digitsBruts.slice(0, 10), TEST_PHONES) });
+    const cfg = dictCfgRef.current;
+    const digits = digitsBruts.slice(0, cfg?.max ?? 10);
+    vlog('FINALISE', { digits, n: digits.length, ok: cfg ? cfg.estComplet(digits) : false });
     if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
     if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
     if (micStartTimeoutRef.current) { clearTimeout(micStartTimeoutRef.current); micStartTimeoutRef.current = null; }
@@ -295,53 +311,23 @@ export function LoginPassword() {
     try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
     mediaStreamRef.current = null;
     setIsListening(false);
-
-    const num = digitsBruts.slice(0, 10);
-    // RÈGLE : on ne s'arrête PAS sur le temps mais sur LES 10 CHIFFRES. On ne récite
-    // jamais les chiffres (source de bug) : contrôle à l'œil (grands chiffres +
-    // points verts + opérateur). La voix accompagne, sans énumérer.
-    if (num.length >= 10 && numeroCIComplet(num, TEST_PHONES)) {
-      try { navigator.vibrate?.(30); } catch { /* ignore */ }
-      remplirNumero(num); // enchaîne la vérification du numéro
-      return;
-    }
-    if (num.length >= 10) {
-      // 10 chiffres mais numéro non valide (mal entendu) → corriger au clavier.
-      setPhone(num); setError('Vérifie ton numéro et corrige 👇');
-      setShowKeypad(true); parle('Vérifie ton numéro, corrige sur le clavier.');
-      return;
-    }
-    if (num.length > 0) {
-      // Incomplet → on garde ce qui est sûr, clavier pour compléter (sans réciter).
-      setPhone(num); setError(''); setShowKeypad(true);
-      parle('Complète ton numéro sur le clavier.');
-      return;
-    }
-    // Rien compris du tout.
-    setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
-    setShowKeypad(true); parle("Je n'ai pas compris. Tape ton numéro juste ici.");
+    cfg?.onFinal(digits);
   };
 
   // Re-tap micro / filet → on termine avec ce qui a été compris jusqu'ici.
   const arreterEcoute = () => { finaliserDictee(bestDigitsRef.current); };
 
-  const dicterNumero = async () => {
-    // Re-tap pendant l'écoute → on termine avec ce qu'on a compris.
+  // ── LE ROUAGE UNIQUE de dictée EN DIRECT (numéro ET code) ───────────────────
+  // On transcrit pendant qu'elle parle ; les chiffres se remplissent à l'écran ;
+  // on s'ARRÊTE dès que la valeur est complète et valide (jamais sur un minuteur).
+  // Gère les nombres composés (« vingt-six » : on ne fige pas sur le « vingt »).
+  const demarrerDictee = async (cfg: DicteeCfg) => {
     if (isListening) { vlog('RE_TAP_STOP'); arreterEcoute(); return; }
-    vlogStart('dictée'); vlog('BUILD', 'vosk-login-live-v2');
+    vlogStart('dictée'); vlog('BUILD', cfg.buildTag);
     vlog('MODEL_READY', { ready: offlineModelReady(), installed: offlineModelInstalled() });
-    vlog('TTS_VOICE', voixSecoursNom()); // voix de secours retenue (doit être FR, jamais « Manuela »)
+    vlog('TTS_VOICE', voixSecoursNom());
 
-    // Voix pas encore installée : on ne peut PAS l'écouter. RÈGLE : on ne télécharge
-    // JAMAIS les 40 Mo en douce. À la place, Tata l'explique à voix haute (ses clips
-    // marchent sans le moteur) et on PROPOSE l'installation consentie. Le clavier
-    // reste dispo comme filet, mais ce n'est pas un mur muet : la voix guide.
-    if (!offlineModelReady()) {
-      vlog('VOSK_NOT_READY');
-      setShowVoiceInstall(true);
-      parle("Pour que je puisse t'écouter, il faut installer ma voix une fois. Touche le bouton, ou tape ton numéro.");
-      return;
-    }
+    if (!offlineModelReady()) { vlog('VOSK_NOT_READY'); cfg.siPasPrete(); return; }
 
     vlog('MIC_ASK');
     let stream: MediaStream;
@@ -350,20 +336,18 @@ export function LoginPassword() {
       vlog('MIC_OK');
     } catch (e) {
       vlog('MIC_DENIED', String(e));
-      setError('Autorise le micro, ou tape ton numéro 👇');
-      parle('Autorise le micro, ou tape ton numéro.');
-      setShowKeypad(true);
+      cfg.siMicRefuse();
       return;
     }
     mediaStreamRef.current = stream;
+    dictCfgRef.current = cfg;
 
     // Réinitialise l'état de dictée pour cette session d'écoute.
     dictDoneRef.current = false;
     bestDigitsRef.current = '';
     lastTenRef.current = '';
     if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
-    setOperateur(null);
-    setPhone('');
+    if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
     setError('');
     try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } // que le micro n'entende pas Tata
 
@@ -371,34 +355,21 @@ export function LoginPassword() {
     try {
       handle = await startLiveDictation(stream, (texte, estFinal) => {
         if (dictDoneRef.current) return;
-        const digits = extractPhoneDigits(texte || '').slice(0, 10);
-        // Trace : on voit ce que le moteur entend (texte brut) et les chiffres extraits.
+        const digits = extractPhoneDigits(texte || '').slice(0, cfg.max);
         if (estFinal || digits.length > bestDigitsRef.current.length) {
           vlog('TXT', { fin: estFinal, brut: (texte || '').slice(0, 40), digits });
         }
-        // Le résultat FINAL fait autorité (corrige) ; un partiel ne fait que grandir
-        // (les partiels hésitent, on évite le clignotement en arrière).
+        // Le résultat FINAL fait autorité (corrige) ; un partiel ne fait que grandir.
         if (estFinal) bestDigitsRef.current = digits;
         else if (digits.length >= bestDigitsRef.current.length) bestDigitsRef.current = digits;
         const best = bestDigitsRef.current;
-        setPhone(best);                       // remplissage EN DIRECT (contrôle à l'œil)
-        setOperateur(operateurDe(best));       // repère opérateur dès 2 chiffres
-        // ── LA RÈGLE : 10 chiffres valides → on s'arrête. MAIS un nombre composé
-        // (« vingt-six ») arrive en deux temps : d'abord « vingt » (20), puis « six »
-        // (→ 26). Si on fige pile sur le « vingt », on garde un 20 faux. On ne fige
-        // donc PAS sur un partiel : on attend la fin de phrase du moteur, OU que la
-        // valeur des 10 chiffres reste STABLE un court instant (le « six » a le temps
-        // d'arriver et de corriger).
-        if (best.length >= 10 && numeroCIComplet(best, TEST_PHONES)) {
+        cfg.onLive(best); // remplissage EN DIRECT (contrôle à l'œil)
+        // Valeur complète + valide → on s'arrête. Nombre composé (« vingt-six »)
+        // arrive en 2 temps : on ne fige PAS sur un partiel, on attend la fin de
+        // phrase du moteur OU une valeur STABLE ~0,8 s (le « six » corrige le « vingt »).
+        if (best.length >= cfg.max && cfg.estComplet(best)) {
           if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
-          if (estFinal) {
-            // Le moteur dit « phrase finie » → valeur sûre, on fige tout de suite.
-            finaliserDictee(best);
-            return;
-          }
-          // Partiel : on (re)lance un minuteur de stabilité. Tant que les 10 chiffres
-          // changent (vingt → vingt-six), on repousse ; dès qu'ils ne bougent plus
-          // ~0,8 s, on fige la valeur stable.
+          if (estFinal) { finaliserDictee(best); return; }
           if (best !== lastTenRef.current) {
             lastTenRef.current = best;
             if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
@@ -406,11 +377,9 @@ export function LoginPassword() {
           }
           return;
         }
-        // Moins de 10 chiffres → la valeur « 10 stable » précédente n'a plus lieu d'être.
         if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
         lastTenRef.current = '';
-        // Fin de phrase mais numéro incomplet : on lui laisse ~1,6 s pour continuer
-        // (sans jamais la couper), sinon on termine avec ce qu'on a → clavier.
+        // Incomplet : ~1,6 s pour continuer (sans jamais couper), sinon on termine.
         if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
         if (estFinal) {
           settleTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 1600);
@@ -421,19 +390,66 @@ export function LoginPassword() {
       vlog('LIVE_FAIL', String(e));
       try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
       mediaStreamRef.current = null;
-      setShowKeypad(true);
-      parle('Tape ton numéro juste ici.');
+      cfg.siEchec();
       return;
     }
     liveStopRef.current = handle.stop;
 
     setIsListening(true);
     try { navigator.vibrate?.(60); } catch { /* ignore */ }
-    // Filet DUR ultime : au bout de 15 s on termine avec ce qu'on a. Ce n'est PAS un
-    // couperet de dictée (le vrai arrêt, c'est les 10 chiffres) — juste un garde-fou
-    // contre un micro qui traînerait ouvert.
+    // Filet DUR ultime : 15 s (garde-fou anti micro-ouvert, PAS un couperet de dictée).
     if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
     micStartTimeoutRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 15000);
+  };
+
+  // Dictée du NUMÉRO (10 chiffres, règle CI).
+  const dicterNumero = () => demarrerDictee({
+    max: 10,
+    estComplet: (d) => numeroCIComplet(d, TEST_PHONES),
+    onLive: (d) => { setPhone(d); setOperateur(operateurDe(d)); },
+    onFinal: (num) => {
+      if (num.length >= 10 && numeroCIComplet(num, TEST_PHONES)) {
+        try { navigator.vibrate?.(30); } catch { /* ignore */ }
+        remplirNumero(num); return;
+      }
+      if (num.length >= 10) { setPhone(num); setError('Vérifie ton numéro et corrige 👇'); setShowKeypad(true); parle('Vérifie ton numéro, corrige sur le clavier.'); return; }
+      if (num.length > 0) { setPhone(num); setError(''); setShowKeypad(true); parle('Complète ton numéro sur le clavier.'); return; }
+      setError("Je n'ai pas compris. Tape ton numéro juste ici 👇"); setShowKeypad(true); parle("Je n'ai pas compris. Tape ton numéro juste ici.");
+    },
+    buildTag: 'vosk-login-live-v2',
+    siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, il faut installer ma voix une fois. Touche le bouton, ou tape ton numéro."); },
+    siMicRefuse: () => { setError('Autorise le micro, ou tape ton numéro 👇'); parle('Autorise le micro, ou tape ton numéro.'); setShowKeypad(true); },
+    siEchec: () => { setShowKeypad(true); parle('Tape ton numéro juste ici.'); },
+  });
+
+  // Dictée du CODE secret (4 chiffres). Le code est SECRET → Tata PRÉVIENT à voix
+  // haute de rester discrète AVANT d'ouvrir le micro, puis écoute. Clavier = filet.
+  const codeCfg: DicteeCfg = {
+    max: 4,
+    estComplet: (d) => d.length === 4,
+    onLive: (d) => setPinInput(d),
+    onFinal: (code) => {
+      if (code.length === 4) {
+        try { navigator.vibrate?.(30); } catch { /* ignore */ }
+        setPinInput(code);
+        setTimeout(() => { void handleLogin(code); }, 250);
+        return;
+      }
+      if (code.length > 0) { setPinInput(code); parle('Complète ton code sur le clavier.'); return; }
+      parle("Je n'ai pas compris. Chuchote ton code, ou tape-le.");
+    },
+    buildTag: 'vosk-code-live-v1',
+    siPasPrete: () => { parle('Tape ton code juste ici.'); },
+    siMicRefuse: () => { parle('Autorise le micro, ou tape ton code.'); },
+    siEchec: () => { parle('Tape ton code juste ici.'); },
+  };
+  const dicterCode = () => {
+    // Re-tap pendant l'écoute → on termine avec ce qu'on a.
+    if (isListening) { arreterEcoute(); return; }
+    // ⚠️ Le code est secret : Tata rappelle la discrétion, PUIS on ouvre le micro
+    // (après la phrase, pour ne pas s'entendre soi-même).
+    parle('Chuchote ton code tout bas, ou tape-le.');
+    setTimeout(() => { void demarrerDictee(codeCfg); }, 1500);
   };
 
   // Tata parle AU PREMIER CONTACT (les navigateurs bloquent le son avant tout
@@ -1093,6 +1109,31 @@ export function LoginPassword() {
               <span style={{ fontSize: 19, fontWeight: 800, color: '#3d1a08' }}>Entre ton code secret</span>
               <span style={{ fontSize: 13, color: '#8A5A34', fontWeight: 600 }}>Tes 4 chiffres 👇</span>
             </button>
+            {/* Micro pour DIRE son code (Tata rappelle de chuchoter). Le clavier reste
+                dessous comme filet. Devient vert pendant l'écoute. */}
+            <motion.button
+              type="button"
+              aria-label="Chuchote ton code, ou tape-le"
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={dicterCode}
+              animate={{ scale: isListening ? [1, 1.05, 1] : 1 }}
+              transition={{ duration: 1, repeat: isListening ? Infinity : 0, ease: 'easeInOut' }}
+              style={{
+                alignSelf: 'center', width: 'clamp(80px, 24vw, 100px)', height: 'clamp(80px, 24vw, 100px)',
+                borderRadius: '50%', border: 'none', cursor: 'pointer', color: '#fff', margin: '4px 0 2px',
+                background: isListening ? 'radial-gradient(125% 125% at 30% 20%, #38A870, #1C7A4B)' : 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
+                boxShadow: isListening ? '0 16px 30px -12px rgba(28,122,75,0.7)' : '0 16px 30px -12px rgba(184,92,27,0.65)',
+                display: 'grid', placeItems: 'center',
+              }}
+              whileTap={{ scale: 0.96 }}
+            >
+              <Mic style={{ width: '40%', height: '40%' }} />
+            </motion.button>
+            {isListening && (
+              <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#1C7A4B', marginBottom: 2 }}>
+                J'écoute… chuchote ton code
+              </div>
+            )}
             <div style={{
               width: '100%', background: '#fff', borderRadius: 22,
               overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
