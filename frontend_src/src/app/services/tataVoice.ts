@@ -7,8 +7,15 @@
 // Les phrases dynamiques (montants qui changent : « 2 000 francs ») ne peuvent
 // pas être pré-enregistrées → elles restent dites par la voix de secours.
 //
-// Les clips vivent dans public/voix/tata/phrase-N.mp3 et sont mis en cache par
-// le service worker après la première lecture (donc dispo hors-ligne ensuite).
+// Les clips vivent dans public/voix/tata/ui-N.mp3 et sont mis en cache par le
+// service worker (donc dispo hors-ligne).
+//
+// ⚠️ HISTORIQUE : un ancien lot `phrase-*.mp3` (24 fichiers, 64 kb/s, ~7,5 s) était
+// une VOIX SYNTHÉTIQUE de test (« Manuela ») — PAS Tata. Il parlait à la caisse
+// (« C'est noté… ») → d'où la fausse voix entendue à la vente. Ce lot a été
+// SUPPRIMÉ. On ne pointe plus QUE vers les 137 vrais clips de Tata (`ui-*.mp3`,
+// 96 kb/s). Les clés sans clip enregistré équivalent sont retirées → elles passent
+// par la voix de secours FR (jamais « Manuela »).
 // ──────────────────────────────────────────────────────────────────────────
 
 const BASE = '/voix/tata';
@@ -19,21 +26,19 @@ export interface TataClip {
   texte: string;
 }
 
-// clé → { fichier, texte prononcé }. Numéro = ligne du script d'enregistrement.
+// clé → VRAI clip de Tata (ui-*.mp3). Le moment clé « vente confirmée » est bien
+// sa vraie voix. Les clés absentes retombent sur la voix de secours FR.
 export const TATA_CLIPS: Record<string, TataClip> = {
-  bonjour:            { file: `${BASE}/phrase-1.mp3`,  texte: "Bonjour ma chérie ! Contente de te voir. On va bien travailler aujourd'hui." },
-  vente_enregistree:  { file: `${BASE}/phrase-2.mp3`,  texte: "C'est noté. Ta vente est bien enregistrée." },
-  cest_fait:          { file: `${BASE}/phrase-3.mp3`,  texte: "Voilà, c'est fait ! Bravo, continue comme ça." },
-  bien_recu:          { file: `${BASE}/phrase-5.mp3`,  texte: "Bien reçu ! J'enregistre tout de suite." },
-  annule:             { file: `${BASE}/phrase-6.mp3`,  texte: "D'accord, j'annule. Pas de souci." },
-  reflexion:          { file: `${BASE}/phrase-7.mp3`,  texte: "Je réfléchis un instant… je calcule ça pour toi." },
-  je_note:            { file: `${BASE}/phrase-8.mp3`,  texte: "Je note ta vente." },
-  pas_compris:        { file: `${BASE}/phrase-9.mp3`,  texte: "Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît." },
-  rien_entendu:       { file: `${BASE}/phrase-10.mp3`, texte: "Je n'ai rien entendu. Réessaie, parle un peu plus fort." },
-  souci_reseau:       { file: `${BASE}/phrase-11.mp3`, texte: "Il y a un petit souci de réseau. Réessaie, s'il te plaît." },
-  hors_ligne:         { file: `${BASE}/phrase-12.mp3`, texte: "Tu es hors-ligne, mais ne t'inquiète pas : je garde ta demande et je l'enregistre dès que le réseau revient." },
-  ouvre_journee:      { file: `${BASE}/phrase-13.mp3`, texte: "Ouvre d'abord ta journée pour enregistrer une vente." },
-  felicitations:      { file: `${BASE}/phrase-18.mp3`, texte: "Félicitations ! Tu as atteint ton objectif du jour." },
+  vente_enregistree:  { file: `${BASE}/ui-128.mp3`, texte: "Vente confirmée" },
+  cest_fait:          { file: `${BASE}/ui-128.mp3`, texte: "Vente confirmée" },
+  je_note:            { file: `${BASE}/ui-128.mp3`, texte: "Vente confirmée" },
+  vente_refusee:      { file: `${BASE}/ui-129.mp3`, texte: "Vente refusée" },
+  depense_enregistree:{ file: `${BASE}/ui-034.mp3`, texte: "Dépense enregistrée" },
+  bien_recu:          { file: `${BASE}/ui-057.mp3`, texte: "J'ai compris" },
+  annule:             { file: `${BASE}/ui-011.mp3`, texte: "Commande annulée" },
+  souci_reseau:       { file: `${BASE}/ui-047.mp3`, texte: "Erreur réseau. Réessaie." },
+  hors_ligne:         { file: `${BASE}/ui-073.mp3`, texte: "Mode hors ligne" },
+  ouvre_journee:      { file: `${BASE}/ui-091.mp3`, texte: "Ouvre ta journée pour activer ta caisse" },
 };
 
 /** URL du clip pour une clé donnée, ou null si inconnue. */
