@@ -996,11 +996,12 @@ export function LoginPassword() {
               animate={{ scale: isListening ? [1, 1.05, 1] : [1, 1.02, 1] }}
               transition={{ duration: isListening ? 1 : 2.6, repeat: Infinity, ease: 'easeInOut' }}
               style={{
-                // Micro géant quand c'est l'action principale ; réduit quand le
-                // clavier est ouvert (l'utilisatrice veut taper → on libère la place).
-                width: showKeypad ? 'clamp(96px, 30vw, 120px)' : 'clamp(184px, 62vw, 214px)',
-                height: showKeypad ? 'clamp(96px, 30vw, 120px)' : 'clamp(184px, 62vw, 214px)',
-                alignSelf: 'center', borderRadius: '50%', border: 'none', cursor: 'pointer', color: '#fff',
+                // Taille selon le PROFIL : en mode 'lecture' (clavier d'abord), le
+                // micro devient un petit bouton SECONDAIRE (le pavé est la vedette).
+                // Sinon : géant quand c'est l'action principale, réduit si clavier ouvert.
+                width: accessMode === 'lecture' ? 64 : (showKeypad ? 'clamp(96px, 30vw, 120px)' : 'clamp(184px, 62vw, 214px)'),
+                height: accessMode === 'lecture' ? 64 : (showKeypad ? 'clamp(96px, 30vw, 120px)' : 'clamp(184px, 62vw, 214px)'),
+                alignSelf: 'center', borderRadius: accessMode === 'lecture' ? 18 : '50%', border: 'none', cursor: 'pointer', color: '#fff',
                 background: isListening ? 'radial-gradient(125% 125% at 30% 20%, #38A870, #1C7A4B)' : 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
                 boxShadow: isListening ? '0 26px 46px -14px rgba(28,122,75,0.7), inset 0 4px 0 rgba(255,255,255,0.35)' : '0 26px 46px -14px rgba(184,92,27,0.75), inset 0 4px 0 rgba(255,255,255,0.4)',
                 display: 'grid', placeItems: 'center', marginTop: 6,
@@ -1188,8 +1189,10 @@ export function LoginPassword() {
               animate={{ scale: isListening ? [1, 1.05, 1] : 1 }}
               transition={{ duration: 1, repeat: isListening ? Infinity : 0, ease: 'easeInOut' }}
               style={{
-                alignSelf: 'center', width: 'clamp(80px, 24vw, 100px)', height: 'clamp(80px, 24vw, 100px)',
-                borderRadius: '50%', border: 'none', cursor: 'pointer', color: '#fff', margin: '4px 0 2px',
+                alignSelf: 'center',
+                width: accessMode === 'lecture' ? 58 : 'clamp(80px, 24vw, 100px)',
+                height: accessMode === 'lecture' ? 58 : 'clamp(80px, 24vw, 100px)',
+                borderRadius: accessMode === 'lecture' ? 16 : '50%', border: 'none', cursor: 'pointer', color: '#fff', margin: '4px 0 2px',
                 background: isListening ? 'radial-gradient(125% 125% at 30% 20%, #38A870, #1C7A4B)' : 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
                 boxShadow: isListening ? '0 16px 30px -12px rgba(28,122,75,0.7)' : '0 16px 30px -12px rgba(184,92,27,0.65)',
                 display: 'grid', placeItems: 'center',

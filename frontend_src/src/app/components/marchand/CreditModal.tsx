@@ -333,7 +333,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                 }
 
                 <motion.button whileTap={{ scale:0.97 }}
-                  onClick={() => { if (clientNom.trim()) setStep(2); }}
+                  onClick={() => { if (clientNom.trim()) setStep(2); else { toast.error('Dis-moi le nom du client'); dire('Dis-moi d\'abord le nom du client.'); } }}
                   style={{ width:'100%', background: clientNom.trim() ? P : '#E0E0E0', color: clientNom.trim() ? 'white' : '#aaa', border:'none', borderRadius:16, padding:'18px 0', fontSize:18, fontWeight:800, cursor: clientNom.trim() ? 'pointer' : 'default', fontFamily:'inherit', transition:'all 0.2s' }}>
                   Suivant →
                 </motion.button>
@@ -433,7 +433,16 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                     style={{ background:'#f0f0f0', border:'none', borderRadius:14, padding:'16px', fontSize:15, fontWeight:700, color:'#888', cursor:'pointer', fontFamily:'inherit' }}>
                     ← Retour
                   </motion.button>
-                  <motion.button whileTap={{ scale:0.97 }} onClick={() => setStep(3)}
+                  <motion.button whileTap={{ scale:0.97 }} onClick={() => {
+                    // B3 : on BLOQUE dès l'étape 2 si l'acompte dépasse/égale le total
+                    // (au lieu de laisser passer jusqu'à la confirmation).
+                    if (aADonne && acompte) {
+                      const a = Number(acompte);
+                      if (isNaN(a) || a < 0) { toast.error('Acompte invalide'); return; }
+                      if (a >= total) { toast.error('L\'acompte ne peut pas dépasser le total'); dire('L\'acompte ne peut pas dépasser le total. Enregistre plutôt une vente.'); return; }
+                    }
+                    setStep(3);
+                  }}
                     style={{ background:P, border:'none', borderRadius:14, padding:'16px', fontSize:16, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit' }}>
                     Continuer →
                   </motion.button>

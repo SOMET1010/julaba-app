@@ -149,8 +149,13 @@ export function POSCaisse() {
       title="Caisse du jour"
       rightContent={
         <div style={{ display:'flex', gap:7 }}>
-          <motion.button whileTap={{ scale:0.95 }} onClick={() => { setPaymentMethod('credit'); setShowCredit(true); }}
-            style={{ height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 12px', gap:6, cursor:'pointer' }}>
+          <motion.button whileTap={{ scale: nbItems > 0 ? 0.95 : 1 }}
+            onClick={() => {
+              // On n'ouvre le crédit QUE si le panier n'est pas vide (B4).
+              if (nbItems === 0) { dire('Ajoute d\'abord des produits au panier.'); return; }
+              setPaymentMethod('credit'); setShowCredit(true);
+            }}
+            style={{ height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 12px', gap:6, cursor: nbItems > 0 ? 'pointer' : 'not-allowed', opacity: nbItems > 0 ? 1 : 0.5 }}>
             <FileText size={13} color="white" />
             <span style={{ fontSize:12, fontWeight:700, color:'white' }}>À crédit</span>
           </motion.button>

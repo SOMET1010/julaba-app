@@ -125,8 +125,30 @@ export interface CreerCreditData {
 // FONCTIONS CREDITS
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Le backend renvoie statut/montant_restant/echeance ; l'UI attend en plus
+// statut_calcule + jours_restants. On les DÉRIVE ici pour tous les consommateurs
+// (corrige le badge « undefinedj restants »).
+function enrichirCredit(c: any): Credit {
+  let jours_restants = 0;
+  if (c?.echeance) {
+    const d = new Date(c.echeance);
+    if (!isNaN(d.getTime())) {
+      // minuit à minuit : nombre de jours calendaires jusqu'à l'échéance.
+      const j0 = new Date(); j0.setHours(0, 0, 0, 0);
+      jours_restants = Math.round((d.setHours(0, 0, 0, 0) - j0.getTime()) / 86400000);
+    }
+  }
+  const paye = c?.statut === 'paye';
+  const statut_calcule: Credit['statut_calcule'] = paye ? 'paye'
+    : jours_restants < 0 ? 'en_retard'
+    : jours_restants <= 2 ? 'bientot'
+    : 'en_attente';
+  return { ...c, jours_restants, statut_calcule };
+}
+
 export async function fetchCredits(): Promise<{ credits: Credit[]; total_du: number }> {
-  return apiRequest<{ credits: Credit[]; total_du: number }>('/caisse/credits');
+  const r = await apiRequest<{ credits: any[]; total_du: number }>('/caisse/credits');
+  return { credits: (r.credits || []).map(enrichirCredit), total_du: r.total_du };
 }
 
 export async function creerCredit(data: CreerCreditData): Promise<{ credit: Credit }> {
