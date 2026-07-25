@@ -110,6 +110,27 @@ export function LoginPassword() {
   const [tataSpeaking, setTataSpeaking] = useState(false);
   const [operateur, setOperateur] = useState<Operateur | null>(null); // opérateur déduit du numéro
   const [showVoiceInstall, setShowVoiceInstall] = useState(false);    // proposer d'installer la voix (consenti)
+  // MODE DÉVELOPPEUR (caché) : outils de test (rapport, version, tutoriel…). Masqué
+  // pour la marchande (expérience simple). On l'active en tapant 5× le bandeau ivoirien.
+  const [devMode, setDevMode] = useState<boolean>(() => {
+    try { return import.meta.env.DEV || localStorage.getItem('julaba_dev_mode') === '1'; } catch { return false; }
+  });
+  const devTapRef = useRef<{ n: number; t: number }>({ n: 0, t: 0 });
+  const toggleDevMode = () => {
+    const now = Date.now();
+    const s = devTapRef.current;
+    s.n = (now - s.t < 600) ? s.n + 1 : 1;
+    s.t = now;
+    if (s.n >= 5) {
+      s.n = 0;
+      setDevMode((v) => {
+        const nv = !v;
+        try { localStorage.setItem('julaba_dev_mode', nv ? '1' : '0'); } catch { /* ignore */ }
+        try { navigator.vibrate?.(nv ? [30, 40, 30] : 20); } catch { /* ignore */ }
+        return nv;
+      });
+    }
+  };
 
   // Accueil personnalisé : si une marchande est déjà connue sur ce téléphone, on
   // la salue par son prénom (ton « vous », chaleureux et respectueux).
@@ -773,6 +794,8 @@ export function LoginPassword() {
         <div style={{ flex: 1, background: '#FFFFFF' }} />
         <div style={{ flex: 1, background: '#009E60' }} />
       </div>
+      {/* Zone invisible (coin haut-gauche) : 5 tapes = mode développeur (caché à la marchande) */}
+      <div onClick={toggleDevMode} aria-hidden style={{ position: 'absolute', top: 0, left: 0, width: 54, height: 54, zIndex: 60 }} />
       {import.meta.env.DEV && showDevButton && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
@@ -828,11 +851,12 @@ export function LoginPassword() {
             }}
           />
         </div>
-        {/* Texte minuscule, gris clair — jamais nécessaire (pour celles qui lisent) */}
-        <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(124,98,80,0.5)' }}>Tata Nanti Lou</span>
-        <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'rgba(124,98,80,0.65)', textAlign: 'center', maxWidth: 280 }}>
-          {step === 'phone' ? (cachedPrenom ? `Bonjour Maman ${cachedPrenom}` : 'Bonjour ma sœur') : 'Votre code secret'}
-        </p>
+        {/* RÈGLE JULABA : « si Tata peut le dire, l'écran n'a pas besoin de l'écrire. »
+            Le nom et l'accueil sont DITS par Tata (on touche son visage) — pas écrits.
+            En mode dev seulement, on garde un mini-repère. */}
+        {devMode && (
+          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(124,98,80,0.5)' }}>Tata Nanti Lou · dev</span>
+        )}
       </motion.div>
 
       <motion.div style={{ display: 'none' }}>
@@ -895,13 +919,16 @@ export function LoginPassword() {
                   )}
                 </>
               ) : isListening ? (
-                <motion.span
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 1.2, repeat: Infinity }}
-                  style={{ fontSize: 18, fontWeight: 800, color: '#1C7A4B', letterSpacing: 1 }}
-                >
-                  J'écoute… dis ton numéro
-                </motion.span>
+                // Écoute en cours : ondes animées, PAS de texte (Tata l'a dit à voix haute).
+                <div aria-label="J'écoute" style={{ display: 'flex', gap: 6, alignItems: 'center', height: 24 }}>
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <motion.span key={i}
+                      animate={{ scaleY: [0.4, 1.4, 0.4] }}
+                      transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.12, ease: 'easeInOut' }}
+                      style={{ width: 5, height: 16, borderRadius: 3, background: '#1C7A4B', display: 'inline-block' }}
+                    />
+                  ))}
+                </div>
               ) : null}
             </div>
             {/* Un point vert par chiffre entendu — on voit que ça avance, sans lire */}
@@ -989,15 +1016,12 @@ export function LoginPassword() {
                 }} />
               </motion.div>
             )}
-            {/* Actions secondaires : clavier (taper) + bouclier (protégé) — icônes, aucun texte */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28, marginTop: 22 }}>
+            {/* Une seule action secondaire : le clavier (filet). Rien d'autre. */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 22 }}>
               <button type="button" aria-label="Taper mon numéro sur le clavier" onClick={() => setShowKeypad(v => !v)}
                 style={{ width: 58, height: 58, borderRadius: 18, background: showKeypad ? '#DB7A2C' : '#F3E7D8', color: showKeypad ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
                 <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 13h6"/></svg>
               </button>
-              <div aria-label="Vos informations sont protégées" title="Protégé" style={{ width: 58, height: 58, borderRadius: 18, background: 'rgba(47,143,99,0.14)', color: '#1FA463', display: 'grid', placeItems: 'center' }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
-              </div>
             </div>
 
             {showKeypad && (
@@ -1098,16 +1122,15 @@ export function LoginPassword() {
                 </motion.div>
               )}
             </AnimatePresence>
-            {/* Consigne CLAIRE et grande (avant, l'instruction « tape ton code »
-                était minuscule tout en bas → on ne savait pas quoi faire). */}
+            {/* Cadenas SEUL (icône) — Tata dit « entre ton code », l'écran ne l'écrit pas.
+                On touche le cadenas pour réentendre la consigne. */}
             <button
               type="button"
+              aria-label="Ton code secret — touche pour écouter"
               onClick={() => parle('Entre ton code secret à 4 chiffres')}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '2px 0 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '2px 0 4px', display: 'flex', justifyContent: 'center', width: '100%' }}
             >
-              <span style={{ fontSize: 26, lineHeight: 1 }}>🔒</span>
-              <span style={{ fontSize: 19, fontWeight: 800, color: '#3d1a08' }}>Entre ton code secret</span>
-              <span style={{ fontSize: 13, color: '#8A5A34', fontWeight: 600 }}>Tes 4 chiffres 👇</span>
+              <span style={{ fontSize: 30, lineHeight: 1 }}>🔒</span>
             </button>
             {/* Micro pour DIRE son code (Tata rappelle de chuchoter). Le clavier reste
                 dessous comme filet. Devient vert pendant l'écoute. */}
@@ -1129,11 +1152,6 @@ export function LoginPassword() {
             >
               <Mic style={{ width: '40%', height: '40%' }} />
             </motion.button>
-            {isListening && (
-              <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#1C7A4B', marginBottom: 2 }}>
-                J'écoute… chuchote ton code
-              </div>
-            )}
             <div style={{
               width: '100%', background: '#fff', borderRadius: 22,
               overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
@@ -1236,6 +1254,15 @@ export function LoginPassword() {
         </AnimatePresence>
       </motion.div>
 
+      {/* Lien secours admin — uniquement sur le portail backoffice (jamais marchande). */}
+      {window.location.pathname.includes('backoffice') && (
+        <a href="/admin-recovery" style={{ margin: '12px 0', color: 'rgba(124,98,80,0.6)', fontSize: 11, textDecoration: 'none' }}>
+          Problème de connexion admin ?
+        </a>
+      )}
+      {/* Pied de page OUTILS — MODE DÉVELOPPEUR uniquement (5 tapes coin haut-gauche).
+          Masqué pour la marchande : l'écran ne montre que Tata + champ + micro + clavier. */}
+      {devMode && (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -1250,11 +1277,6 @@ export function LoginPassword() {
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#7C6250" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
           Revoir le tutoriel
         </button>
-        {window.location.pathname.includes('backoffice') && (
-          <a href="/admin-recovery" style={{ color: 'rgba(124,98,80,0.6)', fontSize: 11, textDecoration: 'none' }}>
-            Problème de connexion admin ?
-          </a>
-        )}
         <p style={{ fontSize: 10, color: 'rgba(124,98,80,0.5)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>By Icône Solution</p>
         <p
           onClick={() => parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)}
@@ -1277,6 +1299,7 @@ export function LoginPassword() {
           🐞 Rapport de test
         </button>
       </motion.div>
+      )}
     </div>
   );
 }
