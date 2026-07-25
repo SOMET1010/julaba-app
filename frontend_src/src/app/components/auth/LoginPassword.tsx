@@ -13,7 +13,8 @@ import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits } from '../../utils/frenchDigits';
 import { tataUiClipForText } from '../../services/tataUiClips';
-import { transcribeWav, offlineModelReady, ensureOfflineModel } from '../../voice-offline/offlineStt';
+import { startLiveDictation, offlineModelReady, ensureOfflineModel } from '../../voice-offline/offlineStt';
+import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
 
 // Grammaire CHIFFRES pour Vosk : dictée d'un numéro de téléphone → on limite le
 // moteur aux mots-nombres (précision maximale, pas de confusion avec du vocabulaire).
@@ -90,9 +91,9 @@ export function LoginPassword() {
   const [pinInput, setPinInput] = useState('');
   const [step, setStep] = useState<'phone' | 'password'>('phone');
   const [isListening, setIsListening] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false); // Vosk transcrit après l'écoute
   const [showKeypad, setShowKeypad] = useState(false); // clavier caché par défaut (voix d'abord)
   const [tataSpeaking, setTataSpeaking] = useState(false);
+  const [operateur, setOperateur] = useState<Operateur | null>(null); // opérateur déduit du numéro
 
   // Accueil personnalisé : si une marchande est déjà connue sur ce téléphone, on
   // la salue par son prénom (ton « vous », chaleureux et respectueux).
@@ -131,9 +132,14 @@ export function LoginPassword() {
   const abortRef = useRef<AbortController | null>(null);
   const navigateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusPinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const micStartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Dictée EN DIRECT : poignée d'arrêt du moteur, garde anti-double-fin, meilleurs
+  // chiffres entendus jusqu'ici, minuteur d'apaisement (fin de phrase incomplète).
+  const liveStopRef = useRef<null | (() => Promise<void>)>(null);
+  const dictDoneRef = useRef(false);
+  const bestDigitsRef = useRef('');
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phoneRef = useRef(phone);
   useEffect(() => {
     phoneRef.current = phone;
@@ -194,7 +200,7 @@ export function LoginPassword() {
     if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
     phoneToPasswordTimeout.current = setTimeout(async () => {
       const curr = phoneRef.current;
-      if (curr.length !== 10 || (!TEST_PHONES.has(curr) && !/^(01|05|07|09|21|25|27)/.test(curr))) return;
+      if (curr.length !== 10 || !numeroCIComplet(curr, TEST_PHONES)) return;
 
       if (import.meta.env.DEV && curr === '0501604040') {
         setStep('password');
@@ -268,7 +274,7 @@ export function LoginPassword() {
     setPhone(sliced);
     setError('');
     if (sliced.length === 10) {
-      if (!TEST_PHONES.has(sliced) && !/^(01|05|07|09|21|25|27)/.test(sliced)) {
+      if (!numeroCIComplet(sliced, TEST_PHONES)) {
         setError('Numéro non reconnu, réessaie ou tape-le');
         return;
       }
@@ -277,22 +283,56 @@ export function LoginPassword() {
     }
   };
 
-  // Dictée vocale du numéro — 100 % HORS-LIGNE via Vosk (le moteur souverain du
-  // reste de l'appli). Plus AUCUNE reconnaissance navigateur (Internet). Elle DIT
-  // son numéro ; à la fin, Vosk le transcrit sur l'appareil. Clavier = filet.
-  const arreterEcoute = () => {
-    try { if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop(); } catch { /* ignore */ }
+  // Dictée vocale du numéro — 100 % HORS-LIGNE via Vosk, EN DIRECT. On transcrit
+  // pendant qu'elle parle : les chiffres se remplissent à l'écran et on s'ARRÊTE
+  // DÈS QU'ON A UN NUMÉRO COMPLET ET VALIDE (10 chiffres, règle CI) — jamais sur un
+  // minuteur. Clavier = filet. Aucune reconnaissance navigateur (Internet).
+
+  // Termine la dictée avec les chiffres retenus : range le micro, coupe le moteur,
+  // et aiguille (numéro valide → vérification ; incomplet/erroné → clavier).
+  const finaliserDictee = (digitsBruts: string) => {
+    if (dictDoneRef.current) return;
+    dictDoneRef.current = true;
+    if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
+    if (micStartTimeoutRef.current) { clearTimeout(micStartTimeoutRef.current); micStartTimeoutRef.current = null; }
+    void liveStopRef.current?.(); liveStopRef.current = null;
+    try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+    mediaStreamRef.current = null;
+    setIsListening(false);
+
+    const num = digitsBruts.slice(0, 10);
+    // RÈGLE : on ne s'arrête PAS sur le temps mais sur LES 10 CHIFFRES. On ne récite
+    // jamais les chiffres (source de bug) : contrôle à l'œil (grands chiffres +
+    // points verts + opérateur). La voix accompagne, sans énumérer.
+    if (num.length >= 10 && numeroCIComplet(num, TEST_PHONES)) {
+      try { navigator.vibrate?.(30); } catch { /* ignore */ }
+      remplirNumero(num); // enchaîne la vérification du numéro
+      return;
+    }
+    if (num.length >= 10) {
+      // 10 chiffres mais numéro non valide (mal entendu) → corriger au clavier.
+      setPhone(num); setError('Vérifie ton numéro et corrige 👇');
+      setShowKeypad(true); parle('Vérifie ton numéro, corrige sur le clavier.');
+      return;
+    }
+    if (num.length > 0) {
+      // Incomplet → on garde ce qui est sûr, clavier pour compléter (sans réciter).
+      setPhone(num); setError(''); setShowKeypad(true);
+      parle('Complète ton numéro sur le clavier.');
+      return;
+    }
+    // Rien compris du tout.
+    setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
+    setShowKeypad(true); parle("Je n'ai pas compris. Tape ton numéro juste ici.");
   };
-  // Coupe l'analyse audio de fin-de-parole ; posé à chaque dictée, appelé sur tous
-  // les chemins de sortie pour ne jamais laisser un AudioContext ouvert.
-  const vadStopRef = useRef<(() => void) | null>(null);
+
+  // Re-tap micro / filet → on termine avec ce qui a été compris jusqu'ici.
+  const arreterEcoute = () => { finaliserDictee(bestDigitsRef.current); };
 
   const dicterNumero = async () => {
-    // Re-tap pendant l'écoute → on arrête et on transcrit ce qui a été dit.
+    // Re-tap pendant l'écoute → on termine avec ce qu'on a compris.
     if (isListening) { vlog('RE_TAP_STOP'); arreterEcoute(); return; }
-    // Déjà en train de transcrire : on n'empile pas une 2e dictée (source de bugs).
-    if (isTranscribing) { vlog('BUSY_IGNORE'); return; }
-    vlogStart('dictée'); vlog('BUILD', 'vosk-login-v2');
+    vlogStart('dictée'); vlog('BUILD', 'vosk-login-live-v1');
 
     // Modèle Vosk pas encore prêt (jamais téléchargé) : PAS d'Internet. On ouvre le
     // clavier et on prépare le modèle en tâche de fond pour la prochaine fois.
@@ -316,123 +356,55 @@ export function LoginPassword() {
     }
     mediaStreamRef.current = stream;
 
-    let rec: MediaRecorder;
-    try { rec = new MediaRecorder(stream); }
-    catch (e) {
-      vlog('REC_CTOR_FAIL', String(e));
-      try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
-      setShowKeypad(true);
-      return;
-    }
-    mediaRecorderRef.current = rec;
-    const chunks: Blob[] = [];
-    rec.ondataavailable = (ev) => { if (ev.data && ev.data.size > 0) chunks.push(ev.data); };
+    // Réinitialise l'état de dictée pour cette session d'écoute.
+    dictDoneRef.current = false;
+    bestDigitsRef.current = '';
+    setOperateur(null);
+    setPhone('');
+    setError('');
+    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } // que le micro n'entende pas Tata
 
-    // ── DÉTECTION DE FIN DE PAROLE — on NE COUPE JAMAIS la marchande ───────────
-    // Avant, un couperet fixe à 7 s la coupait en plein milieu de son numéro. Ici,
-    // on écoute le niveau sonore : on s'arrête ~1,5 s APRÈS qu'elle a fini de parler.
-    // Filet dur à 12 s, et arrêt si rien n'est dit du tout (5 s). 100 % sur l'appareil.
-    let audioCtx: AudioContext | null = null;
-    let vadTimer: ReturnType<typeof setTimeout> | null = null;
-    const teardownVAD = () => {
-      if (vadTimer) { clearTimeout(vadTimer); vadTimer = null; }
-      try { audioCtx?.close(); } catch { /* ignore */ }
-      audioCtx = null;
-    };
-    vadStopRef.current = teardownVAD;
+    let handle: { stop: () => Promise<void> };
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const AC = window.AudioContext || (window as any).webkitAudioContext;
-      audioCtx = new AC();
-      const srcNode = audioCtx.createMediaStreamSource(stream);
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 2048;
-      srcNode.connect(analyser);
-      const buf = new Uint8Array(analyser.fftSize);
-      const t0 = Date.now();
-      let lastLoud = t0;
-      let hasSpoken = false;
-      const SIL_MS = 1500;      // silence APRÈS parole → on arrête (on la laisse finir)
-      const MAX_MS = 12000;     // filet dur
-      const NOSPEAK_MS = 5000;  // rien dit du tout → clavier
-      const SPEECH_RMS = 0.03;  // seuil « elle parle »
-      const tick = () => {
-        if (!audioCtx) return;
-        analyser.getByteTimeDomainData(buf);
-        let sum = 0;
-        for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; }
-        const rms = Math.sqrt(sum / buf.length);
-        const now = Date.now();
-        if (rms > SPEECH_RMS) { hasSpoken = true; lastLoud = now; }
-        if (hasSpoken && now - lastLoud > SIL_MS) { arreterEcoute(); return; }
-        if (!hasSpoken && now - t0 > NOSPEAK_MS) { arreterEcoute(); return; }
-        if (now - t0 > MAX_MS) { arreterEcoute(); return; }
-        vadTimer = setTimeout(tick, 120);
-      };
-      vadTimer = setTimeout(tick, 120);
-    } catch { /* analyse indisponible → le filet dur de 12 s ci-dessous suffit */ }
-
-    rec.onstop = async () => {
-      teardownVAD();
+      handle = await startLiveDictation(stream, (texte, estFinal) => {
+        if (dictDoneRef.current) return;
+        const digits = extractPhoneDigits(texte || '').slice(0, 10);
+        // Le résultat FINAL fait autorité (corrige) ; un partiel ne fait que grandir
+        // (les partiels hésitent, on évite le clignotement en arrière).
+        if (estFinal) bestDigitsRef.current = digits;
+        else if (digits.length >= bestDigitsRef.current.length) bestDigitsRef.current = digits;
+        const best = bestDigitsRef.current;
+        setPhone(best);                       // remplissage EN DIRECT (contrôle à l'œil)
+        setOperateur(operateurDe(best));       // repère opérateur dès 2 chiffres
+        // ── LA RÈGLE : numéro COMPLET et valide → on s'arrête AUSSITÔT.
+        if (best.length >= 10 && numeroCIComplet(best, TEST_PHONES)) {
+          finaliserDictee(best);
+          return;
+        }
+        // Fin de phrase mais numéro incomplet : on lui laisse ~1,6 s pour continuer
+        // (sans jamais la couper), sinon on termine avec ce qu'on a → clavier.
+        if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
+        if (estFinal) {
+          settleTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 1600);
+        }
+      }, DIGIT_GRAMMAR);
+    } catch (e) {
+      vlog('LIVE_FAIL', String(e));
       try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
       mediaStreamRef.current = null;
-      mediaRecorderRef.current = null;
-      if (micStartTimeoutRef.current) { clearTimeout(micStartTimeoutRef.current); micStartTimeoutRef.current = null; }
-      setIsListening(false);
-
-      const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
-      if (blob.size < 1400) {
-        setError("Je n'ai pas entendu. Réessaie, ou tape ton numéro 👇");
-        parle("Je n'ai pas entendu. Réessaie, ou tape ton numéro.");
-        setShowKeypad(true);
-        return;
-      }
-
-      setIsTranscribing(true); // « Je réfléchis… »
-      try {
-        const texte = await transcribeWav(blob, false, DIGIT_GRAMMAR);
-        vlog('VOSK_TEXT', { texte });
-        const num = extractPhoneDigits(texte || '').slice(0, 10);
-        setIsTranscribing(false);
-        // RÈGLE : on ne RÉCITE JAMAIS les chiffres captés (« 0 7… ») — c'était la
-        // source de confusion/bug. Le contrôle se fait à l'ŒIL (grands chiffres +
-        // points verts). La voix accompagne seulement, sans réciter, sans couper.
-        if (num.length === 0) {
-          setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
-          parle("Je n'ai pas compris. Tape ton numéro juste ici.");
-          setShowKeypad(true);
-          return;
-        }
-        try { navigator.vibrate?.(30); } catch { /* ignore */ }
-        if (num.length < 10) {
-          // Numéro incomplet : on remplit ce qu'on a et on ouvre le clavier pour
-          // COMPLÉTER — sans réciter, sans repartir en écoute (pas de boucle).
-          setPhone(num);
-          setError('');
-          setShowKeypad(true);
-          parle('Complète ton numéro sur le clavier.');
-          return;
-        }
-        // 10 chiffres captés : on remplit → la vérification habituelle enchaîne.
-        remplirNumero(num);
-      } catch (e) {
-        vlog('VOSK_FAIL', String(e));
-        setIsTranscribing(false);
-        setError("La dictée n'a pas marché. Tape ton numéro 👇");
-        parle('Tape ton numéro juste ici.');
-        setShowKeypad(true);
-      }
-    };
+      setShowKeypad(true);
+      parle('Tape ton numéro juste ici.');
+      return;
+    }
+    liveStopRef.current = handle.stop;
 
     setIsListening(true);
-    setError('');
     try { navigator.vibrate?.(60); } catch { /* ignore */ }
-    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
-    try { rec.start(); }
-    catch (e) { vlog('START_THROW', String(e)); teardownVAD(); setIsListening(false); setShowKeypad(true); return; }
-    // Filet DUR si l'analyse audio n'a pas pu démarrer : arrêt à 12 s (jamais avant).
+    // Filet DUR ultime : au bout de 15 s on termine avec ce qu'on a. Ce n'est PAS un
+    // couperet de dictée (le vrai arrêt, c'est les 10 chiffres) — juste un garde-fou
+    // contre un micro qui traînerait ouvert.
     if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
-    micStartTimeoutRef.current = setTimeout(() => { arreterEcoute(); }, 12000);
+    micStartTimeoutRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 15000);
   };
 
   // Tata parle AU PREMIER CONTACT (les navigateurs bloquent le son avant tout
@@ -459,9 +431,9 @@ export function LoginPassword() {
       if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
       if (focusPinTimeoutRef.current) clearTimeout(focusPinTimeoutRef.current);
       if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
-      // Coupe une dictée Vosk en cours (analyse audio + micro + enregistreur) au démontage.
-      try { vadStopRef.current?.(); } catch { /* ignore */ }
-      try { if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop(); } catch { /* ignore */ }
+      if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+      // Coupe une dictée EN DIRECT en cours (moteur Vosk + micro) au démontage.
+      try { void liveStopRef.current?.(); } catch { /* ignore */ }
       try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
       if (phoneToPasswordTimeout.current) {
         clearTimeout(phoneToPasswordTimeout.current);
@@ -700,7 +672,7 @@ export function LoginPassword() {
         setError('');
         if (import.meta.env.DEV && next === '0501604040') setShowDevButton(true);
         if (next.length === 10) {
-          if (!TEST_PHONES.has(next) && !/^(01|05|07|09|21|25|27)/.test(next)) {
+          if (!numeroCIComplet(next, TEST_PHONES)) {
             setError('Préfixe invalide');
             return;
           }
@@ -863,19 +835,19 @@ export function LoginPassword() {
             {/* Chiffres EN DIRECT — on voit les nombres apparaître au fur et à mesure.
                 Les chiffres se lisent même sans savoir lire ; c'est le vrai contrôle
                 « elle m'entend ». « J'écoute… » quand le micro est ouvert sans chiffre. */}
-            <div style={{ textAlign: 'center', minHeight: 40, marginBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ textAlign: 'center', minHeight: 40, marginBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
               {phone.length > 0 ? (
-                <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: 3, color: isListening ? '#1C7A4B' : '#7A4A22', fontVariantNumeric: 'tabular-nums' }}>
-                  {(phone.match(/.{1,2}/g) || []).join(' ')}
-                </span>
-              ) : isTranscribing ? (
-                <motion.span
-                  animate={{ opacity: [0.4, 1, 0.4] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                  style={{ fontSize: 18, fontWeight: 800, color: '#B8651B', letterSpacing: 1 }}
-                >
-                  Je réfléchis…
-                </motion.span>
+                <>
+                  <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: 3, color: isListening ? '#1C7A4B' : '#7A4A22', fontVariantNumeric: 'tabular-nums' }}>
+                    {(phone.match(/.{1,2}/g) || []).join(' ')}
+                  </span>
+                  {/* Repère opérateur déduit du préfixe (aide visuelle, aucun clic) */}
+                  {operateur && (
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: OP_COULEUR[operateur], borderRadius: 999, padding: '3px 9px', letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
+                      {operateur}
+                    </span>
+                  )}
+                </>
               ) : isListening ? (
                 <motion.span
                   animate={{ opacity: [0.4, 1, 0.4] }}
