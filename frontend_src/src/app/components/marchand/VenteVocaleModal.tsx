@@ -271,9 +271,12 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
               </motion.p>
             </AnimatePresence>
 
-            {/* Bascule MAINS LIBRES (mot-réveil « Julaba ») — vendre sans toucher l'écran */}
-            <div style={{ marginTop: 12 }}>
-              {wakeSupported ? (
+            {/* Mains libres (mot-réveil « Julaba ») : DÉSACTIVÉ tant qu'il n'y a pas
+                de version hors-ligne (l'ancienne nécessitait Internet). On n'affiche
+                donc rien ici — l'appui-pour-parler (écoute Vosk sur l'appareil) reste
+                le mode de vente vocale. `wakeSupported` est toujours faux. */}
+            {wakeSupported && (
+              <div style={{ marginTop: 12 }}>
                 <motion.button whileTap={{ scale: 0.96 }} onClick={() => setMainsLibres(v => !v)}
                   style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, border: "none", cursor: "pointer",
                     background: mainsLibres ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.16)",
@@ -282,12 +285,8 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
                     animate={mainsLibres ? { opacity: [1, 0.3, 1] } : { opacity: 1 }} transition={{ duration: 1.4, repeat: Infinity }} />
                   {mainsLibres ? "Mains libres activé — dis « Julaba »" : "Activer les mains libres"}
                 </motion.button>
-              ) : (
-                <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, textAlign: "center", margin: 0 }}>
-                  Mains libres indisponible sur ce navigateur (nécessite internet)
-                </p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* CORPS BLANC */}
