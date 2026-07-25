@@ -12,6 +12,7 @@ import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits } from '../../utils/frenchDigits';
+import { tataUiClipForText } from '../../services/tataUiClips';
 import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
 /**
  * BACKLOG ESCALATION P0 BACKEND (à traiter côté serveur, hors périmètre frontend) :
@@ -130,7 +131,8 @@ export function LoginPassword() {
   // Voix pour la connexion (écran AVANT connexion → on utilise la voix intégrée
   // du navigateur). Une vendeuse qui ne lit pas peut ainsi entendre les consignes
   // et les erreurs au lieu de devoir lire un petit texte.
-  const parle = (texte: string) => {
+  // Voix intégrée du téléphone (hors-ligne, PAS Internet) — dernier recours.
+  const parleRobot = (texte: string) => {
     try {
       const synth = window.speechSynthesis;
       if (!synth || !texte) return;
@@ -140,6 +142,22 @@ export function LoginPassword() {
       u.rate = 0.95;
       synth.speak(u);
     } catch { /* ignore */ }
+  };
+  // On PARLE d'abord avec la VRAIE voix de Tata (clip embarqué) quand la phrase
+  // correspond exactement à un clip enregistré (« Entre ton code secret… »,
+  // « Connexion refusée… », etc.). Sinon, voix du téléphone. Jamais Internet.
+  const parle = (texte: string) => {
+    if (!texte) return;
+    try {
+      const clip = tataUiClipForText(texte);
+      if (clip) {
+        try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+        const a = new Audio(clip);
+        a.play().catch(() => parleRobot(texte));
+        return;
+      }
+    } catch { /* ignore */ }
+    parleRobot(texte);
   };
   // Prononce chaque message d'erreur dès qu'il apparaît (après une action de
   // l'utilisatrice, donc la lecture audio est autorisée par le navigateur).

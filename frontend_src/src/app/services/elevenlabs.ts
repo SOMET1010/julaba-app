@@ -195,6 +195,14 @@ export async function playBase64Audio(base64: string, onDone?: () => void): Prom
 // ─────────────────────────────────────────────────────────────────
 
 export async function fetchTTS(text: string, signal?: AbortSignal, timeoutMs = 8000): Promise<string | null> {
+  // ── VOIX INTERNET DÉSACTIVÉE (décision produit) ────────────────────────────
+  // Plus AUCUNE voix par le cloud (OpenAI/Internet) : source de désordre (attente
+  // de 8 s, réseau qui passe avant le téléphone). La hiérarchie est désormais :
+  // clip de Tata embarqué → voix intégrée du téléphone (hors-ligne). En renvoyant
+  // null tout de suite, tous les appels (speak/speakChunked/…) basculent
+  // immédiatement sur la voix locale, sans jamais toucher Internet ni attendre.
+  return null;
+  // eslint-disable-next-line no-unreachable
   if (!text?.trim()) return null;
   const key = normalizeKey(text);
 
