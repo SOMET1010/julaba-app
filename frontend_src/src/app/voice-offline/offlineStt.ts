@@ -66,6 +66,67 @@ export function warmOfflineModelIfInstalled(): void {
   ensureOfflineModel().catch(() => { /* ré-échauffement silencieux */ });
 }
 
+/**
+ * Écoute EN DIRECT et transcrit au fil de l'eau (100 % sur l'appareil). Sert à la
+ * dictée d'un numéro : on veut voir les chiffres se remplir et s'ARRÊTER dès qu'on
+ * a le numéro complet — pas attendre un minuteur.
+ *
+ * `onText(texte, estFinal)` est appelé à chaque résultat partiel (estFinal=false)
+ * et à chaque fin de phrase détectée par le moteur (estFinal=true).
+ * Renvoie `{ stop }` : appeler `stop()` coupe tout proprement (micro compris).
+ */
+export async function startLiveDictation(
+  stream: MediaStream,
+  onText: (texte: string, estFinal: boolean) => void,
+  customGrammar?: string[],
+): Promise<{ stop: () => Promise<void> }> {
+  const model = await ensureOfflineModel();
+  const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  const ctx = new AC();
+  const grammar = customGrammar ? JSON.stringify(customGrammar)
+    : JSON.stringify(GRAMMAR_WORDS);
+  const recognizer: Any = new model.KaldiRecognizer(ctx.sampleRate, grammar);
+
+  let acc = ''; // texte des phrases DÉJÀ finalisées (on y ajoute chaque 'result')
+  recognizer.on('result', (m: { result?: { text?: string } }) => {
+    const t = (m?.result?.text || '').trim();
+    if (t) acc = (acc + ' ' + t).trim();
+    onText(acc, true);
+  });
+  recognizer.on('partialresult', (m: { result?: { partial?: string } }) => {
+    const p = (m?.result?.partial || '').trim();
+    onText((acc + ' ' + p).trim(), false);
+  });
+
+  const source = ctx.createMediaStreamSource(stream);
+  // ScriptProcessor : simple et fiable sur Android/WebView (cible Julaba). On le
+  // relie à un gain MUET → destination (certains navigateurs n'exécutent le
+  // traitement que si le nœud est connecté ; le gain 0 évite tout retour son).
+  const processor = ctx.createScriptProcessor(4096, 1, 1);
+  const mute = ctx.createGain();
+  mute.gain.value = 0;
+  source.connect(processor);
+  processor.connect(mute);
+  mute.connect(ctx.destination);
+  processor.onaudioprocess = (ev: AudioProcessingEvent) => {
+    try { recognizer.acceptWaveform(ev.inputBuffer); } catch { /* ignore une trame */ }
+  };
+
+  let stopped = false;
+  const stop = async (): Promise<void> => {
+    if (stopped) return;
+    stopped = true;
+    try { processor.onaudioprocess = null as unknown as (ev: AudioProcessingEvent) => void; } catch { /* */ }
+    try { processor.disconnect(); } catch { /* */ }
+    try { source.disconnect(); } catch { /* */ }
+    try { mute.disconnect(); } catch { /* */ }
+    try { if (typeof recognizer.remove === 'function') recognizer.remove(); } catch { /* */ }
+    try { await ctx.close(); } catch { /* */ }
+  };
+
+  return { stop };
+}
+
 function getCtx(): AudioContext {
   if (!sharedCtx || sharedCtx.state === 'closed') {
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
