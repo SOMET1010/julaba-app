@@ -101,8 +101,8 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     try {
       synth.cancel();
       const u = new SpeechSynthesisUtterance(
-        'Comment préfères-tu utiliser Julaba ? Choix un : je sais lire et écrire. ' +
-        'Choix deux : je lis un peu. Choix trois : je préfère parler, et je t\'accompagne.',
+        'Comment préfères-tu utiliser Julaba ? Le plus simple : laisse-moi choisir, je m\'adapte à ta façon de faire. ' +
+        'Sinon : je sais lire et écrire, ou je lis un peu, ou je préfère parler.',
       );
       u.lang = 'fr-FR'; u.rate = 0.95; u.pitch = 1.05;
       u.onend = () => setIsSpeaking(false);
@@ -193,7 +193,8 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
 
   /* -- ÉTAPE : comment préfères-tu utiliser Julaba ? (mode d'accès) -------- */
   if (modeStep) {
-    const choix: { m: AccessMode; emoji: string; couleur: string; titre: string; sous: string }[] = [
+    const choix: { m: AccessMode; emoji: string; couleur: string; titre: string; sous: string; reco?: boolean }[] = [
+      { m: 'auto',    emoji: '🔵', couleur: '#2563eb', titre: 'Laisse Julaba choisir', sous: 'Je m\'adapte à ta façon de faire', reco: true },
       { m: 'lecture', emoji: '🟢', couleur: '#16a34a', titre: 'Je sais lire et écrire', sous: 'Je tape vite, clavier direct' },
       { m: 'mixte',   emoji: '🟡', couleur: '#C46210', titre: 'Je lis un peu',          sous: 'Parfois je lis, parfois je parle' },
       { m: 'voix',    emoji: '🟠', couleur: '#DB7A2C', titre: 'Je préfère parler',      sous: 'Tata m\'accompagne, je parle' },
@@ -219,7 +220,12 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
                   style={{ borderColor: c.couleur + '55', background: c.couleur + '0d' }}>
                   <span style={{ fontSize: 30, lineHeight: 1 }}>{c.emoji}</span>
                   <span className="flex-1">
-                    <span className="block text-[17px] font-extrabold" style={{ color: '#2b1608' }}>{c.titre}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-[17px] font-extrabold" style={{ color: '#2b1608' }}>{c.titre}</span>
+                      {c.reco && (
+                        <span className="text-[10px] font-extrabold text-white rounded-full px-2 py-0.5" style={{ background: c.couleur }}>RECOMMANDÉ</span>
+                      )}
+                    </span>
                     <span className="block text-[13px]" style={{ color: '#7a5638' }}>{c.sous}</span>
                   </span>
                   <ChevronRight className="w-5 h-5 shrink-0" style={{ color: c.couleur }} />

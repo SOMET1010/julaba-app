@@ -16,7 +16,7 @@ import { tataUiClipForText } from '../../services/tataUiClips';
 import { speakBrowser, voixSecoursNom } from '../../services/elevenlabs';
 import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
-import { getAccessMode, guidageVocal, clavierParDefaut } from '../../utils/accessMode';
+import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
 
 // Grammaire CHIFFRES pour Vosk : dictée d'un numéro de téléphone → on limite le
@@ -107,10 +107,15 @@ export function LoginPassword() {
   const [pinInput, setPinInput] = useState('');
   const [step, setStep] = useState<'phone' | 'password'>('phone');
   const [isListening, setIsListening] = useState(false);
-  // Mode d'accès choisi à l'onboarding : l'écran S'ADAPTE (lecture = clavier direct,
-  // mixte = les deux, voix = micro au centre). Modifiable ensuite.
-  const accessMode = getAccessMode();
+  // Mode d'accès EFFECTIF (résout 'auto' via l'usage observé) : l'écran S'ADAPTE
+  // (lecture = clavier direct, mixte = les deux, voix = micro au centre).
+  const accessMode: EffectiveMode = getEffectiveMode();
   const [showKeypad, setShowKeypad] = useState(clavierParDefaut(accessMode)); // ouvert d'office en mode lecture
+  // Canal utilisé pour CETTE identification (clavier / voix) → apprentissage 'auto'.
+  const dernierCanalRef = useRef<'clavier' | 'voix' | null>(null);
+  // Proposition d'adaptation de Tata (mode 'auto' + préférence franche observée).
+  const [suggestion] = useState(() => suggestionAuto());
+  const [suggReponse, setSuggReponse] = useState(false); // déjà répondu → on masque
   const [tataSpeaking, setTataSpeaking] = useState(false);
   const [operateur, setOperateur] = useState<Operateur | null>(null); // opérateur déduit du numéro
   const [showVoiceInstall, setShowVoiceInstall] = useState(false);    // proposer d'installer la voix (consenti)
@@ -214,6 +219,24 @@ export function LoginPassword() {
   // consignes. La lecture manuelle (toucher Tata, le cadenas…) reste toujours possible.
   useEffect(() => { if (error && guidageVocal(accessMode)) parle(error); }, [error]);
   useEffect(() => { if (step === 'password' && guidageVocal(accessMode)) parle('Entre ton code secret à 4 chiffres'); }, [step]);
+  // Tata propose l'adaptation (mode 'auto') : elle le DIT (une fois) — c'est une
+  // question, pas un réglage à trouver. On l'énonce dès l'affichage.
+  useEffect(() => {
+    if (suggestion && !suggReponse) { try { parleRobot(suggestion.texte); } catch { /* ignore */ } }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Réponse à la proposition de Tata : oui → on adopte le mode ; non → on met en pause.
+  const repondreSuggestion = (oui: boolean) => {
+    if (!suggestion) return;
+    if (oui) {
+      setAccessMode(suggestion.mode);
+      parle('C\'est fait. Je m\'adapte à toi.');
+    } else {
+      marquerDemande();
+      parle('D\'accord, on ne change rien.');
+    }
+    setSuggReponse(true);
+  };
 
   // Pré-réveil du backend. Sur Render gratuit, le serveur se met EN VEILLE après
   // inactivité et met ~50 s à redémarrer ; la 1re requête de login tombait alors
@@ -366,6 +389,7 @@ export function LoginPassword() {
     }
     mediaStreamRef.current = stream;
     dictCfgRef.current = cfg;
+    dernierCanalRef.current = 'voix'; // elle a choisi de PARLER (apprentissage 'auto')
 
     // Réinitialise l'état de dictée pour cette session d'écoute.
     dictDoneRef.current = false;
@@ -650,6 +674,8 @@ export function LoginPassword() {
         setPinInput(""); setIsLoading(false); return;
       }
       resetAttempts(phone);
+      // Apprentissage 'auto' : on note comment elle s'est identifiée (clavier/voix).
+      try { if (dernierCanalRef.current) noterCanal(dernierCanalRef.current); } catch { /* ignore */ }
       const user = result.user;
       if (!user) {
         setError('Réponse serveur invalide');
@@ -737,6 +763,7 @@ export function LoginPassword() {
   };
 
   const handleKeyPress = (digit: string) => {
+    dernierCanalRef.current = 'clavier'; // elle TAPE (apprentissage 'auto')
     if (step === 'phone') {
       if (phone.length < 10) {
         const next = phone + digit;
@@ -907,6 +934,20 @@ export function LoginPassword() {
               transition={{ duration: 0.25 }}
               style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, pointerEvents: step === 'phone' ? 'auto' : 'none' }}
             >
+            {/* TATA PROPOSE de s'adapter (mode auto + préférence franche). Une question,
+                pas un réglage : elle l'a dite, ici les deux réponses. */}
+            {suggestion && !suggReponse && (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                style={{ background: '#EEF4FF', border: '1px solid #C7D8FF', borderRadius: 16, padding: '12px 14px', marginBottom: 6 }}>
+                <p style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#1e3a8a', textAlign: 'center' }}>{suggestion.texte}</p>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button type="button" onClick={() => repondreSuggestion(false)}
+                    style={{ flex: 1, padding: '11px 0', borderRadius: 12, fontWeight: 800, fontSize: 14, color: '#1e3a8a', background: '#fff', border: '2px solid #C7D8FF', cursor: 'pointer' }}>Non</button>
+                  <button type="button" onClick={() => repondreSuggestion(true)}
+                    style={{ flex: 1, padding: '11px 0', borderRadius: 12, fontWeight: 800, fontSize: 14, color: '#fff', background: '#2563eb', border: 'none', cursor: 'pointer' }}>Oui, adapte</button>
+                </div>
+              </motion.div>
+            )}
             {/* Chiffres EN DIRECT — on voit les nombres apparaître au fur et à mesure.
                 Les chiffres se lisent même sans savoir lire ; c'est le vrai contrôle
                 « elle m'entend ». « J'écoute… » quand le micro est ouvert sans chiffre. */}
