@@ -1230,13 +1230,6 @@ export function LoginPassword() {
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
                 </motion.button>
               </div>
-              <p onClick={() => !error && parle('Entre ton code secret à 4 chiffres')} title="Touche pour écouter"
-                 style={{ fontSize: 11, color: 'rgba(150,80,30,0.55)', textAlign: 'center', paddingBottom: 14, position: 'relative', zIndex: 1, cursor: 'pointer', display:'inline-flex', alignItems:'center', gap:5, justifyContent:'center' }}>
-                {error ? '' : (<>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
-                  Entre ton code secret
-                </>)}
-              </p>
             </div>
             </motion.div>
           )}
