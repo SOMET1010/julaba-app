@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { creerCredit, fetchClientsRecents, type ClientMarchand } from '../../../imports/caisse-api';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
+import { guidageVocal } from '../../utils/accessMode';
 import { toast } from 'sonner';
 
 const P = '#AF5B23';
@@ -38,6 +39,8 @@ interface Props {
 
 export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) {
   const { speak } = useApp();
+  // Confirmations/erreurs vocales selon le profil : muettes en 'lecture', dites en voix/mixte.
+  const dire = (t: string) => { if (guidageVocal()) speak(t); };
   const { user } = useUser();
   const [step, setStep] = useState<1|2|3>(1);
 
@@ -159,7 +162,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
     if (clientPhone.trim()) {
       const digits = clientPhone.replace(/\D/g, '');
       if (digits.length > 0 && !/^(01|05|07|25|27)\d{8}$/.test(digits)) {
-        speak('Numéro de téléphone invalide. Format attendu : 07XXXXXXXX');
+        dire('Numéro de téléphone invalide. Format attendu : 07XXXXXXXX');
         return;
       }
     }
@@ -174,11 +177,11 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
         return;
       }
       if (isNaN(acompteNum) || acompteNum <= 0) {
-        speak('Le montant de l\'acompte est invalide');
+        dire('Le montant de l\'acompte est invalide');
         return;
       }
       if (acompteNum >= total) {
-        speak('L\'acompte ne peut pas être égal ou supérieur au total. Enregistre plutôt une vente.');
+        dire('L\'acompte ne peut pas être égal ou supérieur au total. Enregistre plutôt une vente.');
         return;
       }
     }
@@ -196,13 +199,13 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
       if (navigator.vibrate && user?.preferences?.vibrations !== false) navigator.vibrate([50, 30, 50]);
       setShowSuccess(true);
       setTimeout(() => {
-        speak(`Crédit de ${total.toLocaleString('fr-FR')} francs noté pour ${clientNom}. Elle rembourse le ${echeanceLong}`);
+        dire(`Crédit de ${total.toLocaleString('fr-FR')} francs noté pour ${clientNom}. Elle rembourse le ${echeanceLong}`);
         onSuccess();
         onClose();
       }, 1800);
     } catch (e: any) {
       console.warn('[CreditModal] handleSave failed:', e?.message);
-      speak('Erreur lors de l\'enregistrement');
+      dire('Erreur lors de l\'enregistrement');
     } finally {
       setIsSaving(false);
     }

@@ -231,5 +231,63 @@ export class DbInitService {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur table bpay_transactions: ' + message);
     }
+
+    // ── Carnet de CRÉDIT (vendre à crédit) ────────────────────────────────
+    // Ces tables/vue étaient absentes du pipeline → tout /caisse/credits* plantait
+    // en 500. On les crée ici, idempotent (IF NOT EXISTS / OR REPLACE).
+    try {
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS clients (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          marchand_id uuid NOT NULL,
+          nom varchar(160) NOT NULL,
+          phone varchar(40) DEFAULT '',
+          nb_credits integer DEFAULT 0,
+          montant_du numeric DEFAULT 0,
+          derniere_visite timestamptz DEFAULT now(),
+          created_at timestamptz DEFAULT now(),
+          updated_at timestamptz DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_clients_marchand_nom ON clients (marchand_id, nom);`);
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS credits (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          marchand_id uuid NOT NULL,
+          client_nom varchar(160) NOT NULL,
+          client_phone varchar(40) DEFAULT '',
+          montant_total numeric NOT NULL,
+          acompte numeric DEFAULT 0,
+          echeance date NOT NULL,
+          articles jsonb DEFAULT '[]'::jsonb,
+          notes text DEFAULT '',
+          transaction_id uuid NULL,
+          statut varchar(20) DEFAULT 'en_cours',
+          paye_le timestamptz NULL,
+          created_at timestamptz DEFAULT now(),
+          updated_at timestamptz DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(`CREATE INDEX IF NOT EXISTS idx_credits_marchand ON credits (marchand_id);`);
+      // Vue : statut EFFECTIF (paye / en_retard / en_cours) + montant_restant.
+      await this.dataSource.query(`
+        CREATE OR REPLACE VIEW credits_avec_statut AS
+        SELECT
+          c.id, c.marchand_id, c.client_nom, c.client_phone, c.montant_total,
+          c.acompte, c.echeance, c.articles, c.notes, c.transaction_id,
+          c.paye_le, c.created_at, c.updated_at,
+          GREATEST(c.montant_total - COALESCE(c.acompte, 0), 0) AS montant_restant,
+          CASE
+            WHEN c.statut = 'paye' OR COALESCE(c.acompte, 0) >= c.montant_total THEN 'paye'
+            WHEN c.echeance < CURRENT_DATE THEN 'en_retard'
+            ELSE 'en_cours'
+          END AS statut
+        FROM credits c;
+      `);
+      this.logger.log('Tables credits/clients + vue credits_avec_statut vérifiées');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur tables credits/clients: ' + message);
+    }
   }
 }
