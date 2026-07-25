@@ -147,6 +147,9 @@ export function VentesPassees() {
   const [totalDu, setTotalDu] = useState(0);
   const [creditsLoading, setCreditsLoading] = useState(false);
   const [payingIds, setPayingIds] = useState<Set<string>>(new Set());
+  // Confirmation avant de solder un crédit (évite un solde par clic accidentel) :
+  // 1er clic = « Confirmer ? » (Tata prévient) ; 2e clic = on marque payé.
+  const [confirmPayId, setConfirmPayId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -492,13 +495,22 @@ export function VentesPassees() {
                         <motion.button whileTap={{ scale:0.97 }}
                           onClick={async () => {
                             if (payingIds.has(credit.id)) return;
+                            // 1er clic : on demande confirmation (Tata prévient).
+                            if (confirmPayId !== credit.id) {
+                              setConfirmPayId(credit.id);
+                              try { speak('C\'est bien payé ? Touche encore pour confirmer.'); } catch { /* ignore */ }
+                              setTimeout(() => setConfirmPayId(id => id === credit.id ? null : id), 4000);
+                              return;
+                            }
+                            // 2e clic : on solde.
+                            setConfirmPayId(null);
                             setPayingIds(prev => new Set(prev).add(credit.id));
                             await handleMarquerPaye(credit.id);
                             setPayingIds(prev => { const s = new Set(prev); s.delete(credit.id); return s; });
                           }}
                           disabled={payingIds.has(credit.id)}
-                          style={{ background:P, border:'none', borderRadius:10, padding:'8px 14px', fontSize:12, fontWeight:700, color:'white', cursor:'pointer', fontFamily:'inherit' }}>
-                          Marquer payé
+                          style={{ background: confirmPayId === credit.id ? '#16a34a' : P, border:'none', borderRadius:10, padding:'8px 14px', fontSize:12, fontWeight:700, color:'white', cursor:'pointer', fontFamily:'inherit' }}>
+                          {confirmPayId === credit.id ? 'Confirmer ?' : 'Marquer payé'}
                         </motion.button>
                       )}
                     </div>
