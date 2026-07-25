@@ -13,6 +13,16 @@ import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits } from '../../utils/frenchDigits';
 import { tataUiClipForText } from '../../services/tataUiClips';
+import { transcribeWav, offlineModelReady, ensureOfflineModel } from '../../voice-offline/offlineStt';
+
+// Grammaire CHIFFRES pour Vosk : dictée d'un numéro de téléphone → on limite le
+// moteur aux mots-nombres (précision maximale, pas de confusion avec du vocabulaire).
+const DIGIT_GRAMMAR = [
+  'zéro', 'zero', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
+  'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf',
+  'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'quatre-vingt', 'quatre-vingts', 'quatre-vingt-dix',
+  'cent', 'et', '[unk]',
+];
 import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
 /**
  * BACKLOG ESCALATION P0 BACKEND (à traiter côté serveur, hors périmètre frontend) :
@@ -80,6 +90,7 @@ export function LoginPassword() {
   const [pinInput, setPinInput] = useState('');
   const [step, setStep] = useState<'phone' | 'password'>('phone');
   const [isListening, setIsListening] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false); // Vosk transcrit après l'écoute
   const [showKeypad, setShowKeypad] = useState(false); // clavier caché par défaut (voix d'abord)
   const [tataSpeaking, setTataSpeaking] = useState(false);
 
@@ -120,9 +131,9 @@ export function LoginPassword() {
   const abortRef = useRef<AbortController | null>(null);
   const navigateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusPinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const recognitionRef = useRef<{ stop: () => void; abort: () => void } | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const micStartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dicterStopRef = useRef(false); // demande d'arrêt de la dictée en cours (re-tap micro)
   const phoneRef = useRef(phone);
   useEffect(() => {
     phoneRef.current = phone;
@@ -266,157 +277,103 @@ export function LoginPassword() {
     }
   };
 
-  // Dictée vocale du numéro : la marchande DIT son numéro, l'appli le remplit.
-  // On utilise la reconnaissance vocale intégrée au navigateur (gratuite, aucun
-  // service payant). Le micro démarre IMMÉDIATEMENT au tap (vibration = « parle »),
-  // et l'annonce vocale « dis ton numéro » joue en parallèle pour qui ne lit pas :
-  // elle ne contient aucun chiffre, donc n'altère pas la reconnaissance.
-  const dicterNumero = () => {
-    const SR = (window as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }).SpeechRecognition
-      || (window as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition;
-    if (!SR) { setError("La dictée vocale n'est pas disponible sur ce téléphone"); vlogStart('dictée'); vlog('NO_SR'); return; }
-    // Re-tap pendant l'écoute → on ARRÊTE (et on valide ce qui a été capté), sans
-    // relancer. Le drapeau empêche la relance automatique du micro.
-    if (isListening) { dicterStopRef.current = true; vlog('RE_TAP_STOP'); try { recognitionRef.current?.stop(); } catch { /* ignore */ } return; }
-    vlogStart('dictée');
-    // Marqueur de version : si cette ligne apparaît dans le journal, c'est BIEN ce
-    // code-ci (Render, micro immédiat) qui tourne — pas une ancienne build en cache
-    // ni un autre déploiement (julaba.online). Repère décisif pour lever le doute.
-    vlog('BUILD', 'render-2026-07-24-v4-prewarm-retry');
+  // Dictée vocale du numéro — 100 % HORS-LIGNE via Vosk (le moteur souverain du
+  // reste de l'appli). Plus AUCUNE reconnaissance navigateur (Internet). Elle DIT
+  // son numéro ; à la fin, Vosk le transcrit sur l'appareil. Clavier = filet.
+  const arreterEcoute = () => {
+    try { if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop(); } catch { /* ignore */ }
+  };
 
-    const RecCtor = SR as new () => {
-      lang: string; interimResults: boolean; maxAlternatives: number; continuous: boolean;
-      start: () => void; stop: () => void; abort: () => void;
-      onresult: ((e: { results: ArrayLike<{ isFinal?: boolean } & ArrayLike<{ transcript: string }>> }) => void) | null;
-      onerror: ((e: { error?: string }) => void) | null;
-      onend: (() => void) | null;
-    };
+  const dicterNumero = async () => {
+    // Re-tap pendant l'écoute → on arrête et on transcrit ce qui a été dit.
+    if (isListening) { vlog('RE_TAP_STOP'); arreterEcoute(); return; }
+    vlogStart('dictée'); vlog('BUILD', 'vosk-login-v1');
 
-    // État PARTAGÉ de la session de dictée.
-    dicterStopRef.current = false;
-    // Le moteur renvoie des résultats qui SE CHEVAUCHENT (« 07 », « 07 00 »,
-    // « 07 002 »…). On ne les additionne PAS (ça donnait « 0707070007 ») : on garde
-    // la MEILLEURE interprétation, c.-à-d. la plus longue suite de chiffres vue.
-    let meilleur = '';
-    let dernierAffiche = 0;  // pour la vibration
-    let fini = false;
-    const MAX_MS = 12000;    // durée d'écoute max d'une session (filet)
-    let stopTimer: ReturnType<typeof setTimeout> | null = null;
+    // Modèle Vosk pas encore prêt (jamais téléchargé) : PAS d'Internet. On ouvre le
+    // clavier et on prépare le modèle en tâche de fond pour la prochaine fois.
+    if (!offlineModelReady()) {
+      vlog('VOSK_NOT_READY');
+      setShowKeypad(true);
+      parle('Tape ton numéro juste ici.');
+      ensureOfflineModel().catch(() => { /* préparation silencieuse */ });
+      return;
+    }
 
-    const finaliser = () => {
-      if (fini) return;
-      fini = true;
-      dicterStopRef.current = true;
-      if (stopTimer) clearTimeout(stopTimer);
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      vlog('MIC_DENIED', String(e));
+      setError('Autorise le micro, ou tape ton numéro 👇');
+      parle('Autorise le micro, ou tape ton numéro.');
+      setShowKeypad(true);
+      return;
+    }
+    mediaStreamRef.current = stream;
+
+    let rec: MediaRecorder;
+    try { rec = new MediaRecorder(stream); }
+    catch (e) {
+      vlog('REC_CTOR_FAIL', String(e));
+      try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+      setShowKeypad(true);
+      return;
+    }
+    mediaRecorderRef.current = rec;
+    const chunks: Blob[] = [];
+    rec.ondataavailable = (ev) => { if (ev.data && ev.data.size > 0) chunks.push(ev.data); };
+
+    rec.onstop = async () => {
+      try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+      mediaStreamRef.current = null;
+      mediaRecorderRef.current = null;
+      if (micStartTimeoutRef.current) { clearTimeout(micStartTimeoutRef.current); micStartTimeoutRef.current = null; }
       setIsListening(false);
-      recognitionRef.current = null;
-      const num = meilleur.slice(0, 10);
-      if (num.length === 0) {
-        setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
-        parle("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+
+      const blob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' });
+      if (blob.size < 1200) {
+        setError("Je n'ai pas entendu. Réessaie, ou tape ton numéro 👇");
+        parle("Je n'ai pas entendu. Réessaie, ou tape ton numéro.");
         setShowKeypad(true);
         return;
       }
-      vlog('FINALISER', { num, len: num.length });
-      remplirNumero(num);
-      if (num.length < 10) {
-        // On GARDE les chiffres captés et on ouvre le clavier pour compléter
-        // (la saisie s'ajoute aux chiffres déjà là, elle ne les efface pas).
+
+      setIsTranscribing(true); // « Je réfléchis… »
+      try {
+        const texte = await transcribeWav(blob, false, DIGIT_GRAMMAR);
+        vlog('VOSK_TEXT', { texte });
+        const num = extractPhoneDigits(texte || '').slice(0, 10);
+        setIsTranscribing(false);
+        if (num.length === 0) {
+          setError("Je n'ai pas compris. Tape ton numéro juste ici 👇");
+          parle("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+          setShowKeypad(true);
+          return;
+        }
+        try { navigator.vibrate?.(30); } catch { /* ignore */ }
+        remplirNumero(num);
+        if (num.length < 10) {
+          setShowKeypad(true);
+          parle("J'ai compris " + num.split('').join(' ') + '. Tape la suite.');
+        }
+      } catch (e) {
+        vlog('VOSK_FAIL', String(e));
+        setIsTranscribing(false);
+        setError("La dictée n'a pas marché. Tape ton numéro 👇");
+        parle('Tape ton numéro juste ici.');
         setShowKeypad(true);
-        parle("J'ai compris " + num.split('').join(' ') + '. Tape la suite.');
       }
     };
 
-    // Une SEULE écoute (pas de relance automatique : elle captait l'utilisatrice
-    // qui parle après coup et fabriquait de faux chiffres). On capte ce qui est dit
-    // d'un trait ; ce qui manque se complète au clavier (qui s'ajoute aux chiffres).
-    const creerReco = () => {
-      let rec: InstanceType<typeof RecCtor>;
-      try { rec = new RecCtor(); } catch { vlog('REC_CTOR_FAIL'); finaliser(); return; }
-      recognitionRef.current = rec;
-      rec.lang = 'fr-FR';
-      rec.interimResults = true;
-      rec.maxAlternatives = 4;
-      rec.continuous = true;
-      vlog('RECO_START', { meilleur });
-
-      rec.onresult = (e) => {
-        // On parcourt TOUS les résultats (finaux + aperçus) et on retient la plus
-        // LONGUE suite de chiffres. Les résultats se chevauchent (cumulatifs) →
-        // on ne les additionne pas, on garde le plus complet.
-        let candidat = meilleur;
-        for (let i = 0; i < e.results.length; i++) {
-          const res = e.results[i];
-          for (let j = 0; j < res.length; j++) {
-            const tr = res[j]?.transcript || '';
-            const d = extractPhoneDigits(tr);
-            if (res.isFinal) vlog('FINAL_ALT', { tr, d });
-            if (d.length > candidat.length) candidat = d;
-          }
-        }
-        if (candidat.length > meilleur.length) {
-          meilleur = candidat;
-          vlog('MEILLEUR', { meilleur });
-        }
-        const affiche = meilleur.slice(0, 10);
-        if (affiche.length > 0) {
-          setPhone(affiche);
-          setError('');
-          if (affiche.length > dernierAffiche) {
-            dernierAffiche = affiche.length;
-            try { navigator.vibrate?.(30); } catch { /* ignore */ }
-          }
-        }
-        // Numéro complet → on arrête (onend finalisera).
-        if (meilleur.length >= 10) { dicterStopRef.current = true; try { rec.stop(); } catch { /* ignore */ } }
-      };
-
-      rec.onerror = (ev) => {
-        vlog('ERROR', { error: ev?.error, meilleur });
-        if (ev?.error === 'not-allowed' || ev?.error === 'service-not-allowed') {
-          dicterStopRef.current = true;
-          setError('Autorise le micro, ou tape ton numéro 👇');
-          setShowKeypad(true);
-        } else if (ev?.error === 'network' || ev?.error === 'audio-capture') {
-          dicterStopRef.current = true;
-          setError('Pas de réseau pour la voix. Tape ton numéro 👇');
-          setShowKeypad(true);
-        }
-        // 'no-speech' / 'aborted' → onend finalisera avec ce qui a été capté.
-      };
-
-      // Fin de la session d'écoute → on valide ce qui a été capté. PAS de relance
-      // (elle captait des sons parasites). Le reste se tape au clavier.
-      rec.onend = () => {
-        if (fini) return;
-        vlog('ONEND', { meilleur });
-        finaliser();
-      };
-
-      try { rec.start(); }
-      catch (e) { vlog('START_THROW', String(e)); setTimeout(() => { try { rec.start(); } catch { finaliser(); } }, 300); }
-    };
-
     setIsListening(true);
-    // Repère HAPTIQUE immédiat = « c'est parti, parle » (compris même sans lire).
+    setError('');
     try { navigator.vibrate?.(60); } catch { /* ignore */ }
-    // Filet global : au bout de MAX_MS, on arrête et on valide ce qu'on a.
-    stopTimer = setTimeout(() => { dicterStopRef.current = true; try { recognitionRef.current?.stop(); } catch { /* ignore */ } finaliser(); }, MAX_MS);
-
-    // On DÉMARRE le micro TOUT DE SUITE. Avant, on attendait la fin de l'annonce
-    // vocale (jusqu'à 2,5 s via un filet) : sur PC la fin de la voix ne se signalait
-    // pas, le micro s'ouvrait 2,5 s trop tard, et le numéro dit pendant ce délai
-    // était PERDU. L'annonce « dis ton numéro » est jouée EN PARALLÈLE (pour qui ne
-    // lit pas) : elle ne contient aucun chiffre, donc elle ne peut pas polluer la
-    // reconnaissance (on n'extrait que les chiffres).
-    creerReco();
-    // PAS d'annonce vocale pendant l'écoute : le micro la captait (« dis ton numéro
-    // maintenant »), ce qui occupait le moteur ~3 s avant les vrais chiffres et
-    // coupait parfois la fin du numéro. Désormais le micro écoute UNIQUEMENT
-    // l'utilisatrice dès la 1re seconde. Repères non sonores : la vibration
-    // (ci-dessus) + la pastille verte « J'écoute… ». On coupe aussi toute voix de
-    // Tata encore en cours, pour qu'elle ne soit pas captée.
     try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+    try { rec.start(); }
+    catch (e) { vlog('START_THROW', String(e)); setIsListening(false); setShowKeypad(true); return; }
+    // Filet : arrêt automatique au bout de 7 s (elle a fini de parler).
+    if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
+    micStartTimeoutRef.current = setTimeout(() => { arreterEcoute(); }, 7000);
   };
 
   // Tata parle AU PREMIER CONTACT (les navigateurs bloquent le son avant tout
@@ -443,7 +400,9 @@ export function LoginPassword() {
       if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
       if (focusPinTimeoutRef.current) clearTimeout(focusPinTimeoutRef.current);
       if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
-      try { recognitionRef.current?.abort(); } catch { /* ignore */ }
+      // Coupe une dictée Vosk en cours (micro + enregistreur) au démontage.
+      try { if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop(); } catch { /* ignore */ }
+      try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
       if (phoneToPasswordTimeout.current) {
         clearTimeout(phoneToPasswordTimeout.current);
         phoneToPasswordTimeout.current = null;
@@ -849,6 +808,14 @@ export function LoginPassword() {
                 <span style={{ fontSize: 30, fontWeight: 900, letterSpacing: 3, color: isListening ? '#1C7A4B' : '#7A4A22', fontVariantNumeric: 'tabular-nums' }}>
                   {(phone.match(/.{1,2}/g) || []).join(' ')}
                 </span>
+              ) : isTranscribing ? (
+                <motion.span
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  style={{ fontSize: 18, fontWeight: 800, color: '#B8651B', letterSpacing: 1 }}
+                >
+                  Je réfléchis…
+                </motion.span>
               ) : isListening ? (
                 <motion.span
                   animate={{ opacity: [0.4, 1, 0.4] }}
