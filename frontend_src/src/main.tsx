@@ -46,23 +46,12 @@ import('./app/voice-offline/offlineStt')
   })
   .catch(() => { /* ignore */ });
 
-// Pré-installe le MOTEUR VOSK (~40 Mo) « dès le premier jour » — mais UNIQUEMENT
-// en Wi-Fi (connexion non facturée). Sur données mobiles, on ne surprend JAMAIS
-// la marchande avec 40 Mo : le bouton « Installer le mode hors-ligne » (consenti)
-// reste le chemin. Objectif : une vendeuse installée au marché sur Wi-Fi a déjà
-// tout, sans rien faire ; celle en 4G décide elle-même.
-import('./app/voice-offline/offlineStt')
-  .then(({ ensureOfflineModel, offlineModelInstalled }) => {
-    if (offlineModelInstalled()) return; // déjà là
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const conn = (navigator as any).connection;
-    const wifi = !!conn && conn.type === 'wifi' && conn.saveData !== true;
-    if (!navigator.onLine || !wifi) return; // pas de réseau, ou données mobiles → on attend le consentement
-    const go = () => ensureOfflineModel().catch(() => { /* silencieux : le bouton consenti reste dispo */ });
-    // Bien après le 1er affichage (les clips + l'appli d'abord).
-    setTimeout(go, 8000);
-  })
-  .catch(() => { /* ignore */ });
+// NB : le MOTEUR VOSK (~40 Mo) n'est JAMAIS téléchargé tout seul — même en Wi-Fi.
+// C'est un choix qui appartient à la marchande (40 Mo, c'est cher) : elle l'installe
+// via le bouton « Installer le mode hors-ligne » (double validation + avertissement
+// clair). On ne décide jamais à sa place, on ne bloque jamais. Les CLIPS de la voix
+// (~7 Mo, même origine) restent, eux, embarqués d'office (ci-dessous) : c'est la
+// voix propre de l'appli, pas de coût de données à surprise.
 
 // Précharge les clips de la voix « Tata Nanti Lou » (lecture instantanée + cache
 // hors-ligne). Différé pour ne pas ralentir le premier affichage.
