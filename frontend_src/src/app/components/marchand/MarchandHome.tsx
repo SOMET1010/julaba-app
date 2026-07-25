@@ -65,6 +65,13 @@ export function MarchandHome() {
   const roleConfig = getRoleConfig('marchand');
   const stats = getTodayStats();
 
+  // Message d'accueil CONTEXTUEL : recalculé selon l'état de la session (B12).
+  // Avant, la bulle affichait toujours « Ouvre ta journée » même journée ouverte.
+  const prenomAccueil = user?.prenoms || user?.firstName || 'toi';
+  const accueilGreeting = currentSession?.opened
+    ? `Bonjour ${prenomAccueil} ! Ta journée est ouverte, bonne vente !`
+    : `Bonjour ${prenomAccueil} ! Ouvre ta journée pour commencer`;
+
   const dashboardStats = {
     kpi1Value: stats.ventes,
     kpi2Value: stats.cahier,
@@ -91,6 +98,25 @@ export function MarchandHome() {
   // speak ref instable dans AppContext (recreee a chaque render provider), exclue volontairement pour eviter boucle re-render
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSession?.opened]);
+
+  // B11 : le mode Auto peut changer la présentation (simple ↔ avancée) quand il
+  // apprend. Le problème n'est pas le changement (c'est la promesse produit) mais
+  // le changement SILENCIEUX. Tata l'ANNONCE donc quand la vue diffère de la
+  // dernière fois, et pointe le bouton pour revenir en arrière.
+  useEffect(() => {
+    try {
+      const now = modeSimple ? 'simple' : 'avancee';
+      const last = localStorage.getItem('julaba_last_view');
+      if (last && last !== now && guidageVocal()) {
+        const t = now === 'avancee'
+          ? "J'ai remarqué que tu lis bien : je t'ai préparé l'écran complet. Tu peux revenir à l'écran simple en haut à droite."
+          : "Je t'ai remis l'écran simple. Tu peux passer à l'écran complet quand tu veux.";
+        setTimeout(() => speak(t), 1200);
+      }
+      localStorage.setItem('julaba_last_view', now);
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleListenMessage = () => {
     if (!currentSession?.opened) {
@@ -130,6 +156,7 @@ export function MarchandHome() {
         role="marchand"
         user={user}
         currentSession={currentSession}
+        customGreeting={accueilGreeting}
         stats={dashboardStats}
         isSpeaking={isSpeaking}
         isJourneeExpanded={isJourneeExpanded}
