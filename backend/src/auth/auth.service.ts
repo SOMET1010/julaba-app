@@ -21,7 +21,11 @@ const MAX_SESSIONS_PER_USER = 5;
 // Verrouillage PIN/connexion acteur : 9 échecs cumulés -> blocage SANS expiration.
 // Matérialisé par une date très lointaine ; seul un identificateur le lève.
 const PIN_MAX_FAILED_ATTEMPTS = 9;
-const PIN_LOCK_FAR_FUTURE_MS = 100 * 365 * 24 * 60 * 60 * 1000;
+// Verrou TEMPORAIRE (et non définitif) : après trop d'échecs, la connexion est
+// bloquée quelques minutes PUIS se lève d'elle-même. On ne brique jamais à vie
+// une marchande (souvent non-lectrice) qui se trompe de code. 5 min = cohérent
+// avec le message affiché « Réessaie dans 5 minutes ».
+const PIN_LOCK_DURATION_MS = 5 * 60 * 1000;
 const BO_ROLES = ['super_admin', 'admin_general', 'admin_national', 'gestionnaire_zone', 'operateur_terrain'];
 const ACTEUR_ROLES = ['marchand', 'producteur', 'cooperateur', 'institution', 'identificateur'];
 const DEFAULT_PASSWORD_BO = '123456';
@@ -171,13 +175,21 @@ export class AuthService {
       throw new UnauthorizedException('Identifiants incorrects');
     }
 
-    // Verrouillage actif (sans expiration) : levé uniquement par un identificateur.
+    // Verrou TEMPORAIRE actif : on refuse, mais il se lèvera tout seul.
     if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+      const minutes = Math.max(1, Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000));
       throw new UnauthorizedException({
-        message: 'Compte bloqué. Contacte ton identificateur pour le débloquer.',
+        message: `Trop d'essais. Réessaie dans ${minutes} minute(s).`,
         error: 'Unauthorized',
         locked: true,
+        retryAfterMinutes: minutes,
       });
+    }
+    // Le délai de verrou est passé -> on repart avec un compteur NEUF (sinon un
+    // seul nouvel échec re-bloquerait aussitôt, ce qui revenait à un blocage à vie).
+    if (user.lockedUntil) {
+      user.failedPinAttempts = 0;
+      user.lockedUntil = null;
     }
 
     const valid = await bcrypt.compare(loginDto.password, user.passwordHash);
@@ -185,13 +197,15 @@ export class AuthService {
       this.logger.warn(`Echec login: ${loginDto.email || loginDto.phone} depuis ${ipAddress}`);
       const attempts = (user.failedPinAttempts ?? 0) + 1;
       if (attempts >= PIN_MAX_FAILED_ATTEMPTS) {
-        const farFuture = new Date(Date.now() + PIN_LOCK_FAR_FUTURE_MS);
-        await this.userRepository.update(user.id, { failedPinAttempts: attempts, lockedUntil: farFuture });
+        const until = new Date(Date.now() + PIN_LOCK_DURATION_MS);
+        await this.userRepository.update(user.id, { failedPinAttempts: attempts, lockedUntil: until });
         await this.notifyIdentificateursVerrouillage(user);
+        const minutes = Math.ceil(PIN_LOCK_DURATION_MS / 60000);
         throw new UnauthorizedException({
-          message: 'Compte bloqué. Contacte ton identificateur pour le débloquer.',
+          message: `Trop d'essais. Réessaie dans ${minutes} minute(s).`,
           error: 'Unauthorized',
           locked: true,
+          retryAfterMinutes: minutes,
         });
       }
       await this.userRepository.update(user.id, { failedPinAttempts: attempts });

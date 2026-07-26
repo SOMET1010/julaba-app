@@ -31,7 +31,8 @@ import { PinCryptoService } from './pin-crypto.service';
 // Le blocage est matérialisé par une date très lointaine (~100 ans) ; seul
 // l'endpoint de déblocage identificateur le lève (remise à zéro).
 const PIN_MAX_FAILED_ATTEMPTS = 9;
-const PIN_LOCK_FAR_FUTURE_MS = 100 * 365 * 24 * 60 * 60 * 1000;
+// Verrou TEMPORAIRE (jamais définitif) : voir auth.service.ts. 5 minutes.
+const PIN_LOCK_DURATION_MS = 5 * 60 * 1000;
 
 @Controller('auth')
 export class AuthController {
@@ -225,9 +226,15 @@ export class AuthController {
     const user = await this.userRepo.findOne({ where: { id: req.user.id } });
     if (!user || !user.pinCodeHash) return { valid: false };
 
-    // Blocage actif (sans expiration) : on ne vérifie même pas le PIN.
+    // Verrou TEMPORAIRE actif : on refuse, mais il se lèvera tout seul.
     if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
-      return { valid: false, locked: true };
+      const minutes = Math.max(1, Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000));
+      return { valid: false, locked: true, retryAfterMinutes: minutes };
+    }
+    // Délai passé -> compteur neuf (sinon un seul échec re-bloquerait aussitôt).
+    if (user.lockedUntil) {
+      await this.userRepo.update(user.id, { failedPinAttempts: 0, lockedUntil: null });
+      user.failedPinAttempts = 0;
     }
 
     const valid = await bcrypt.compare(body.pin, user.pinCodeHash);
@@ -238,10 +245,11 @@ export class AuthController {
 
     const attempts = (user.failedPinAttempts ?? 0) + 1;
     if (attempts >= PIN_MAX_FAILED_ATTEMPTS) {
-      // Date très lointaine = blocage sans expiration (déblocage identificateur uniquement).
-      const farFuture = new Date(Date.now() + PIN_LOCK_FAR_FUTURE_MS);
-      await this.userRepo.update(user.id, { failedPinAttempts: attempts, lockedUntil: farFuture });
-      return { valid: false, locked: true };
+      // Verrou temporaire : la vérification redevient possible après le délai.
+      const until = new Date(Date.now() + PIN_LOCK_DURATION_MS);
+      await this.userRepo.update(user.id, { failedPinAttempts: attempts, lockedUntil: until });
+      const minutes = Math.ceil(PIN_LOCK_DURATION_MS / 60000);
+      return { valid: false, locked: true, retryAfterMinutes: minutes };
     }
     await this.userRepo.update(user.id, { failedPinAttempts: attempts });
     return { valid: false, locked: false };
@@ -256,8 +264,11 @@ export class AuthController {
     }
     const acteur = await this.userRepo.findOne({ where: { id } });
     if (!acteur) return { success: false, message: 'Acteur introuvable' };
-    // L'identificateur ne peut débloquer qu'un acteur de SA zone.
-    if (!acteur.zoneId || !req.user?.zoneId || acteur.zoneId !== req.user.zoneId) {
+    // L'identificateur ne peut débloquer qu'un acteur de SA zone — MAIS un acteur
+    // sans zone (marchande auto-inscrite, ou enrôlée par un identificateur sans
+    // zone) doit rester débloquable, sinon personne ne peut la secourir. On
+    // n'interdit donc que le cas « les deux ont une zone ET elles diffèrent ».
+    if (acteur.zoneId && req.user?.zoneId && acteur.zoneId !== req.user.zoneId) {
       throw new ForbiddenException('Acteur hors de votre zone');
     }
     await this.userRepo.update(id, { failedPinAttempts: 0, lockedUntil: null });
@@ -356,6 +367,10 @@ export class AuthController {
     await this.userRepo.update(user.id, {
       passwordHash: await bcrypt.hash(body.newPassword, 10),
       mustChangePassword: true,
+      // Un reset admin doit VRAIMENT débloquer : on lève aussi le verrou et on
+      // remet le compteur d'échecs à zéro (sinon la personne restait bloquée).
+      failedPinAttempts: 0,
+      lockedUntil: null,
     } as any);
     return { success: true, message: 'Mot de passe réinitialisé' };
   }
