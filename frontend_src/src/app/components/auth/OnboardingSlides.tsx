@@ -21,8 +21,15 @@ import {
   ChevronRight,
   ChevronLeft,
   VolumeX,
+  Hand,
+  Mic,
+  Keyboard,
+  Store,
 } from 'lucide-react';
 import { Button } from '../ui/button';
+// Symboles reconnaissables par une non-lectrice : le visage de Tata (une
+// personne) et l'ARGENT CFA qu'elle manipule chaque jour.
+import { IMG_TANTIE_SAGESSE, IMG_BILLET_2000, IMG_PIECE_100 } from '../../assets/images';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import {
   setAccessMode,
@@ -311,6 +318,47 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     );
   }
 
+  /* -- EMBLÈME : un grand SYMBOLE reconnaissable par une non-lectrice --------
+   * Elle ne lit pas le titre → l'image doit tout dire. On montre son monde :
+   * le VISAGE de Tata (une personne), l'ARGENT CFA qu'elle manipule chaque jour,
+   * le MICRO + CLAVIER (parler ou taper), la BOUTIQUE. */
+  const embleme = () => {
+    const c = slide.accent;
+    if (slide.id === 'tata') {
+      return (
+        <div className="mx-auto mb-4 rounded-full overflow-hidden border-4 shadow-md" style={{ width: 120, height: 120, borderColor: c + '55' }}>
+          <img src={IMG_TANTIE_SAGESSE} alt="" className="w-full h-full object-cover" />
+        </div>
+      );
+    }
+    if (slide.id === 'vente') {
+      return (
+        <div className="mx-auto mb-4 flex items-end justify-center gap-2" style={{ height: 120 }}>
+          <img src={IMG_BILLET_2000} alt="" style={{ width: 168 }} className="rounded-lg shadow-md -rotate-6" />
+          <img src={IMG_PIECE_100} alt="" style={{ width: 58 }} className="drop-shadow-md -mb-1" />
+        </div>
+      );
+    }
+    if (slide.id === 'choix') {
+      return (
+        <div className="mx-auto mb-4 flex items-center justify-center gap-3" style={{ height: 120 }}>
+          <div className="grid place-items-center rounded-full shadow-sm" style={{ width: 92, height: 92, background: c + '18', color: c }}>
+            <Mic style={{ width: 44, height: 44 }} />
+          </div>
+          <span className="text-lg font-extrabold" style={{ color: c }}>ou</span>
+          <div className="grid place-items-center rounded-full shadow-sm" style={{ width: 92, height: 92, background: c + '18', color: c }}>
+            <Keyboard style={{ width: 44, height: 44 }} />
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="mx-auto mb-4 grid place-items-center rounded-full shadow-md" style={{ width: 120, height: 120, background: c + '18', color: c }}>
+        <Store style={{ width: 60, height: 60 }} />
+      </div>
+    );
+  };
+
   /* -- ÉCRANS DE L'HISTOIRE ------------------------------------------------
    * INTERRUPTION : un tap N'IMPORTE OÙ arrête Tata et passe à la suite. Les
    * commandes précises (retour, passer, points, haut-parleur) coupent la
@@ -352,6 +400,25 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
         </button>
       </motion.div>
 
+      {/* GESTE « touche l'écran » — universel, pour celles qui ne lisent pas.
+          Une main qui tape, au-dessus de la carte : elle comprend qu'on touche. */}
+      <motion.div
+        className="absolute left-1/2 z-20 flex flex-col items-center"
+        style={{ top: '26%', transform: 'translateX(-50%)', pointerEvents: 'none' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.9, duration: 0.6 }}
+      >
+        <motion.div
+          animate={{ y: [0, 16, 0], scale: [1, 0.88, 1] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+          className="grid place-items-center rounded-full border border-white/40"
+          style={{ width: 68, height: 68, background: 'rgba(255,255,255,0.22)' }}
+        >
+          <Hand className="text-white" style={{ width: 36, height: 36 }} />
+        </motion.div>
+      </motion.div>
+
       <div className="absolute inset-0 flex flex-col items-center justify-end pb-4 px-4 z-20">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
@@ -366,6 +433,15 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
             style={{ perspective: 1000 }}
           >
             <div className="bg-white/95 backdrop-blur-xl rounded-3xl border-2 border-white/80 shadow-2xl p-5 pb-4" style={{ maxHeight: "70vh", overflowY: "auto" }}>
+              {/* Le SYMBOLE d'abord (elle ne lit pas le titre) */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+              >
+                {embleme()}
+              </motion.div>
+
               <motion.h2
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
