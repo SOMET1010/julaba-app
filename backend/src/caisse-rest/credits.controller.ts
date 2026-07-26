@@ -10,6 +10,32 @@ import { InjectDataSource } from '@nestjs/typeorm';
 export class CreditsController {
   constructor(@InjectDataSource() private ds: DataSource) {}
 
+  // Matérialise l'argent RÉELLEMENT encaissé sur un crédit (acompte à la vente
+  // ou remboursement) comme un mouvement de caisse de type 'encaissement_credit'.
+  // Ce type est volontairement IGNORÉ des agrégats « ventes » et « dépenses » :
+  // il n'alimente QUE la caisse (Convention A : le total de la vente à crédit
+  // compte comme volume, mais seul le cash reçu entre en caisse). Idempotent
+  // quand une clé est fournie (rejeu offline / backfill) ; sans clé, chaque
+  // appel crée un mouvement distinct (paiements partiels successifs).
+  private async enregistrerEncaissementCredit(
+    userId: string, montant: number, description: string, idempotencyKey: string | null,
+  ): Promise<void> {
+    if (!(montant > 0)) return;
+    try {
+      await this.ds.query(
+        `INSERT INTO caisse_transactions
+           (type, montant, description, user_id, marchand_id, source, mode_paiement, produit, idempotency_key)
+         SELECT 'encaissement_credit', $1, $2, $3, $3, 'credit', 'especes', $2, $4
+         WHERE $4::text IS NULL
+            OR NOT EXISTS (SELECT 1 FROM caisse_transactions WHERE idempotency_key = $4)`,
+        [montant, description, userId, idempotencyKey],
+      );
+    } catch (e: any) {
+      // Course sur la clé d'idempotence : le mouvement existe déjà -> on ignore.
+      if (e?.code !== '23505') throw e;
+    }
+  }
+
   // ── GET tous les crédits du marchand ──────────────────
   @Get()
   async findAll(@CurrentUser() user: User) {
@@ -69,7 +95,16 @@ export class CreditsController {
       ]
     );
 
-    return { credit: result[0] };
+    const creditCree = result[0];
+    // L'acompte reçu à la vente est de l'argent encaissé -> mouvement de caisse.
+    await this.enregistrerEncaissementCredit(
+      user.id,
+      parseFloat(String(acompte)) || 0,
+      `Acompte crédit — ${client_nom.trim()}`,
+      `credit-acompte-${creditCree.id}`,
+    );
+
+    return { credit: creditCree };
   }
 
   // ── PATCH marquer payé ────────────────────────────────
@@ -94,6 +129,15 @@ export class CreditsController {
          updated_at = now()
        WHERE marchand_id=$2 AND nom=$3`,
       [parseFloat(credit[0].montant_restant || 0), user.id, credit[0].client_nom]
+    );
+
+    // Le solde payé est de l'argent encaissé aujourd'hui -> mouvement de caisse.
+    // Clé par crédit : un crédit ne se solde qu'une fois (idempotent).
+    await this.enregistrerEncaissementCredit(
+      user.id,
+      parseFloat(credit[0].montant_restant || 0),
+      `Solde crédit — ${credit[0].client_nom}`,
+      `credit-solde-${id}`,
     );
 
     return { success: true };
@@ -129,6 +173,20 @@ export class CreditsController {
       [montant, id, user.id]
     );
     const estSolde = maj?.[0]?.solde === true;
+
+    // Décrémenter aussi la dette agrégée du client (oubli historique : seul
+    // marquerPaye le faisait -> la dette restait figée après un paiement partiel).
+    await this.ds.query(
+      `UPDATE clients SET montant_du = GREATEST(0, COALESCE(montant_du,0) - $1), updated_at = now()
+       WHERE marchand_id = $2 AND nom = $3`,
+      [montant, user.id, credit[0].client_nom],
+    );
+
+    // Paiement partiel = argent encaissé -> mouvement de caisse (clé nulle :
+    // chaque versement est un événement distinct, non idempotent).
+    await this.enregistrerEncaissementCredit(
+      user.id, montant, `Paiement crédit — ${credit[0].client_nom}`, null,
+    );
 
     return { success: true, solde: estSolde };
   }

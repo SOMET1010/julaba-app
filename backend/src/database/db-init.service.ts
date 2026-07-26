@@ -292,5 +292,37 @@ export class DbInitService {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur tables credits/clients: ' + message);
     }
+
+    // ── Backfill : l'acompte reçu à la création d'un crédit est de l'argent
+    // RÉELLEMENT encaissé, mais il ne vivait que dans credits.acompte (aucun
+    // mouvement de caisse) -> les écrans qui lisent caisse_transactions
+    // l'ignoraient. On matérialise désormais chaque acompte comme un mouvement
+    // de type 'encaissement_credit' (voir credits.controller). Pour ne pas
+    // perdre l'historique au déploiement, on crée rétroactivement le mouvement
+    // manquant pour chaque crédit existant, daté à la création du crédit.
+    // Idempotent (garde NOT EXISTS sur idempotency_key) -> rejouable à chaque boot.
+    try {
+      await this.dataSource.query(`
+        INSERT INTO caisse_transactions
+          (type, montant, description, user_id, marchand_id, source, mode_paiement, produit, created_at, idempotency_key)
+        SELECT
+          'encaissement_credit', c.acompte,
+          'Acompte crédit — ' || c.client_nom,
+          c.marchand_id, c.marchand_id, 'credit', 'especes',
+          'Acompte crédit — ' || c.client_nom,
+          c.created_at,
+          'credit-acompte-' || c.id::text
+        FROM credits c
+        WHERE COALESCE(c.acompte, 0) > 0
+          AND NOT EXISTS (
+            SELECT 1 FROM caisse_transactions t
+            WHERE t.idempotency_key = 'credit-acompte-' || c.id::text
+          );
+      `);
+      this.logger.log('Backfill encaissements crédit (acomptes) vérifié');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur backfill encaissements crédit: ' + message);
+    }
   }
 }
