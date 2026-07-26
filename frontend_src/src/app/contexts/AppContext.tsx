@@ -44,6 +44,28 @@ function lireSessionLocale(uid: string | undefined): any | null {
   } catch { return null; }
 }
 
+// ── Résumé du jour (dérivé côté serveur, ADR-001). L'accueil le consomme au lieu
+// de télécharger tout le journal. Persisté pour rester lisible hors-ligne.
+interface ResumeJour { ventes: number; cahier: number; caisse: number; marge: number; nombreVentes: number; fondInitial?: number; encaissementsCredit?: number; date?: string }
+const cleResumeLocal = (uid?: string) => `julaba_resume_${uid || 'anon'}`;
+function persisterResume(uid: string | undefined, r: ResumeJour | null): void {
+  try {
+    if (r) localStorage.setItem(cleResumeLocal(uid), JSON.stringify(r));
+    else localStorage.removeItem(cleResumeLocal(uid));
+  } catch { /* ignore */ }
+}
+function lireResumeLocal(uid: string | undefined): ResumeJour | null {
+  try {
+    const raw = localStorage.getItem(cleResumeLocal(uid));
+    if (!raw) return null;
+    const r = JSON.parse(raw);
+    // Ne pas afficher un résumé d'un autre jour.
+    const today = new Date().toISOString().split('T')[0];
+    if (r?.date && String(r.date).slice(0, 10) !== today) return null;
+    return r;
+  } catch { return null; }
+}
+
 export type UserRole = 'marchand' | 'producteur' | 'cooperative' | 'cooperateur' | 'institution' | 'identificateur' | 'administrateur';
 
 export interface User {
@@ -282,6 +304,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [user]);
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Résumé du jour dérivé côté serveur : source des chiffres de l'ACCUEIL (caisse,
+  // ventes, marge…) sans télécharger tout le journal. Le journal complet n'est
+  // chargé QUE par les écrans d'historique (Résumé caisse, Ventes passées).
+  const [todayResume, setTodayResume] = useState<ResumeJour | null>(null);
   // Crédits du jour : la vente à crédit vit dans une table à part (pas dans
   // transactions). Convention comptable A : la vente compte au TOTAL dans les
   // ventes du jour, mais seul l'ACOMPTE (espèces reçues) entre dans la caisse.
@@ -426,40 +452,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }).catch((e: any) => { console.warn('[AppContext] alertes check-user failed:', e?.message); });
       }
 
-      // Charger transactions
-      const txResponse = await fetch(
-        `${API_URL}/caisse/transactions`,
-        {
-          credentials: 'include',
-          headers: caisseAuthHeaders(token),
-        },
-      );
-
-      if (txResponse.ok) {
-        const txJson = await txResponse.json();
-        const txData = Array.isArray(txJson) ? txJson : (txJson.transactions || []);
-        
-        const mappedTx: Transaction[] = txData.map((tx: any) => ({
-          id: tx.id,
-          userId: tx.marchand_id || tx.user_id,
-          type: tx.type,
-          productName: tx.description || tx.produit || 'Depense',
-          quantity: 1,
-          price: Number(tx.montant) || 0,
-          montant: Number(tx.montant) || 0,
-          source: tx.source || 'kassa',
-          category: tx.description ? tx.description.toLowerCase() : (tx.produit || '').toLowerCase(),
-          details: tx.details || null,
-          totalBenefice: Number(tx.benefice) || beneficeDepuisDetails(tx.details),
-          totalMargin: Number(tx.marge) || beneficeDepuisDetails(tx.details),
-          date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
-          paymentMethod: tx.mode_paiement,
-          synced: true,
-        }));
-
-
-        setTransactions(mappedTx);
-      }
+      // ACCUEIL : on charge le RÉSUMÉ du jour (quelques nombres dérivés serveur),
+      // PAS le journal complet. Le détail des mouvements est chargé à la demande
+      // par les écrans d'historique (Résumé caisse, Ventes passées) à leur montage.
+      // -> l'ouverture de l'accueil ne dépend plus du nombre de transactions.
+      await reloadResume(token);
 
       // Crédits du jour (compta convention A) — chargés en parallèle.
       void reloadCreditsJour();
@@ -516,6 +513,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (local && String(local.date).slice(0, 10) === today) {
       setCurrentSession((cur) => cur || local);
     }
+    // Résumé du jour : repli hors-ligne (dernier connu) en attendant le serveur.
+    const localResume = lireResumeLocal(user.id);
+    if (localResume) setTodayResume((cur) => cur || localResume);
   }, [user?.id]);
 
   // Vérifier session au démarrage via cookie httpOnly → /auth/me
@@ -961,6 +961,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ═══════════════════════════════════════════════════════════════════
 
   const getTodayStats = () => {
+    // Source PRIMAIRE : le résumé dérivé côté serveur (accueil léger, ADR-001).
+    // Repli sur un calcul LOCAL depuis les transactions (hors-ligne, ou résumé pas
+    // encore chargé) pour ne rien afficher de faux si le réseau manque.
+    if (todayResume) {
+      return {
+        ventes: todayResume.ventes,
+        cahier: todayResume.cahier,
+        caisse: todayResume.caisse,
+        nombreVentes: todayResume.nombreVentes,
+        marge: todayResume.marge,
+      };
+    }
     const today = new Date().toISOString().split('T')[0];
     const todayTransactions = transactions.filter(
       (t) => t.date.split('T')[0] === today
@@ -1025,6 +1037,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch { /* silencieux */ }
   };
 
+  // Recharge le RÉSUMÉ du jour (léger, dérivé serveur) — pour l'accueil.
+  const reloadResume = async (token?: string | null) => {
+    const t = token ?? accessToken;
+    try {
+      const res = await fetch(`${API_URL}/caisse/resume`, {
+        credentials: 'include',
+        headers: caisseAuthHeaders(t),
+      });
+      if (res.ok) {
+        const j = await res.json();
+        if (j?.resume) {
+          const r: ResumeJour = { ...j.resume, date: new Date().toISOString().split('T')[0] };
+          setTodayResume(r);
+          persisterResume(user?.id, r);
+        }
+      }
+    } catch (e: any) { console.warn('[AppContext] reloadResume failed:', e?.message); }
+  };
+
   const reloadTransactions = async () => {
     void reloadCreditsJour(); // en parallèle : crédits du jour pour la compta
     try {
@@ -1058,8 +1089,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Écouter les événements de vente depuis CaisseContext via eventBus
   useEffect(() => {
-    const unsub1 = eventBus.subscribe(EVENTS.CAISSE_VENTE, () => { reloadTransactions(); });
-    const unsub2 = eventBus.subscribe(EVENTS.TRANSACTION_CREATED, () => { reloadTransactions(); });
+    // Après une vente/dépense, on rafraîchit le RÉSUMÉ de l'accueil (léger), pas
+    // tout le journal. Les écrans d'historique rechargent le détail à leur montage.
+    const unsub1 = eventBus.subscribe(EVENTS.CAISSE_VENTE, () => { reloadResume(); reloadCreditsJour(); });
+    const unsub2 = eventBus.subscribe(EVENTS.TRANSACTION_CREATED, () => { reloadResume(); });
     return () => { unsub1?.(); unsub2?.(); };
   }, []);
 

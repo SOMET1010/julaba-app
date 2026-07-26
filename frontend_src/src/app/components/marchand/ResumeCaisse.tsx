@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Wallet,
@@ -39,7 +39,12 @@ import { Montant, MontantCard } from '../shared/Montant';
 type Period = 'today' | '7days' | '30days' | 'custom';
 
 export function ResumeCaisse() {
-  const { getFinancialSummary, getTodayStats, getSalesHistory, transactions, currentSession, speak, isOnline } = useApp();
+  const { getFinancialSummary, getTodayStats, getSalesHistory, transactions, reloadTransactions, currentSession, speak, isOnline } = useApp();
+
+  // Le journal complet n'est plus chargé au démarrage (l'accueil utilise un résumé
+  // serveur léger). Cet écran d'HISTORIQUE le charge donc à son montage.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { reloadTransactions(); }, []);
   const { stocks } = useStock();
   
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('today');
