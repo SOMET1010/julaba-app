@@ -180,7 +180,24 @@ export function VentesPassees() {
     }
   };
 
-  const allSales = useMemo(() => getSalesHistory({}), [getSalesHistory]);
+  // « Toutes » = ventes espèces + ventes À CRÉDIT (convention A) → cohérent avec
+  // l'accueil qui compte le crédit au total. Chaque crédit devient une ligne de
+  // vente (le carnet reste géré à part dans l'onglet « Crédits »).
+  const cashSales = useMemo(() => getSalesHistory({}), [getSalesHistory]);
+  const allSales = useMemo(() => {
+    const ventesCredit = (credits || []).map((c) => ({
+      id: `credit-${c.id}`,
+      type: 'vente' as const,
+      productName: `Crédit — ${c.client_nom}`,
+      montant: Number(c.montant_total) || 0,
+      price: Number(c.montant_total) || 0,
+      source: 'credit',
+      date: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
+      totalBenefice: 0,
+      totalMargin: 0,
+    }));
+    return [...cashSales, ...ventesCredit];
+  }, [cashSales, credits]);
 
   // KPIs
   const totalVentes = useMemo(() => allSales.reduce((s, t) => s + (t.montant || t.price || 0), 0), [allSales]);
