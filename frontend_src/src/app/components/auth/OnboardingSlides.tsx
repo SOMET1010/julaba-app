@@ -171,6 +171,30 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     catch { setIsSpeaking(false); }
   }, [isSpeaking, slide, stopLocal]);
 
+  // LIT la diapo à voix haute SANS bascule (pour l'auto-narration).
+  const lireDiapo = useCallback(() => {
+    setIsSpeaking(true);
+    try { speakBrowser(`${slide.title}. ${slide.description}`).finally(() => setIsSpeaking(false)); }
+    catch { setIsSpeaking(false); }
+  }, [slide]);
+
+  // AUTO-NARRATION (voix d'abord) : Tata LIT chaque écran toute seule, dès que
+  // possible — plus besoin de chercher l'icône haut-parleur. Le son est débloqué
+  // par le 1er geste (le navigateur interdit l'audio avant) : on relance donc
+  // aussi au tout premier contact.
+  useEffect(() => {
+    if (modeStep || voiceStep) return;
+    const t = setTimeout(() => lireDiapo(), 450);
+    return () => clearTimeout(t);
+  }, [currentSlide, modeStep, voiceStep, lireDiapo]);
+  useEffect(() => {
+    if (modeStep || voiceStep) return;
+    const onFirst = () => lireDiapo();
+    window.addEventListener('pointerdown', onFirst, { once: true });
+    return () => window.removeEventListener('pointerdown', onFirst);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /* -- Variants d'animation ----------------------------------------------- */
   const bgVariants = {
     enter: { opacity: 0, scale: 1.1 },
