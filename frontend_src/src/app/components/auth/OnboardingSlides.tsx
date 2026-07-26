@@ -456,18 +456,12 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
                 transition={{ delay: 0.4, duration: 0.6, ease: 'easeOut' }}
-                className="mx-auto h-1 w-12 rounded-full mb-4"
+                className="mx-auto h-1 w-12 rounded-full mb-5"
                 style={{ backgroundColor: slide.accent }}
               />
 
-              <motion.p
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.45, duration: 0.4 }}
-                className="text-center text-gray-600 px-2 leading-relaxed mb-5"
-              >
-                {slide.description}
-              </motion.p>
+              {/* Pas de paragraphe : c'est Tata qui parle, l'image qui montre.
+                  L'écran ne SURCHARGE pas une non-lectrice de texte. */}
 
               {/* Haut-parleur : réécouter (ne fait PAS avancer) */}
               <motion.div
