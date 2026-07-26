@@ -1,13 +1,35 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { motion } from 'motion/react';
 
 import logoJulabaBlanc from "../../../assets/images/logo-julaba.png";
+import { speakBrowser, stopSpeaking } from '../../services/elevenlabs';
 
 interface WelcomeProps {
   onComplete?: () => void;
 }
 
 export function Welcome({ onComplete }: WelcomeProps) {
+  // Voix d'abord, DÈS LE PREMIER ÉCRAN : Tata accueille et dit quoi faire, pour
+  // celles qui ne lisent pas (« Commencer » ne leur parle pas). Le navigateur
+  // bloque l'audio avant tout geste → on tente à l'ouverture (marche déjà si un
+  // geste a eu lieu) ET on débloque au tout premier contact.
+  const accueille = useCallback(() => {
+    try {
+      speakBrowser("Bienvenue sur Julaba. Touche l'écran pour commencer.");
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(accueille, 350);
+    const onFirst = () => accueille();
+    window.addEventListener('pointerdown', onFirst, { once: true });
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('pointerdown', onFirst);
+      stopSpeaking();
+    };
+  }, [accueille]);
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-between p-8"
