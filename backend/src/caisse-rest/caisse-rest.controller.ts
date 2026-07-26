@@ -53,6 +53,46 @@ export class CaisseRestController {
     }));
   }
 
+  // Résumé du jour DÉRIVÉ du journal (ADR-001) : quelques nombres, PAS le journal
+  // complet. L'accueil consomme ceci au lieu de télécharger toutes les transactions
+  // (le poids ne dépend plus du nombre de mouvements). Convention A : le total des
+  // ventes à crédit compte comme « ventes » (volume) ; seul le cash reçu (espèces
+  // + encaissements crédit) entre en caisse.
+  @Get('resume')
+  async resumeDuJour(@CurrentUser() user: User) {
+    const rows = await this.dataSource.query(
+      `SELECT
+         coalesce((SELECT fond_initial FROM caisse_sessions WHERE marchand_id=$1 AND date=CURRENT_DATE LIMIT 1),0) AS fond,
+         coalesce((SELECT sum(montant) FROM caisse_transactions WHERE marchand_id=$1 AND type='vente' AND created_at::date=CURRENT_DATE),0) AS especes,
+         coalesce((SELECT sum(montant) FROM caisse_transactions WHERE marchand_id=$1 AND type='encaissement_credit' AND created_at::date=CURRENT_DATE),0) AS enc,
+         coalesce((SELECT sum(montant) FROM caisse_transactions WHERE marchand_id=$1 AND type='depense' AND created_at::date=CURRENT_DATE),0) AS depenses,
+         coalesce((SELECT sum(coalesce(NULLIF(marge,0), benefice, 0)) FROM caisse_transactions WHERE marchand_id=$1 AND type='vente' AND created_at::date=CURRENT_DATE),0) AS marge,
+         coalesce((SELECT count(*) FROM caisse_transactions WHERE marchand_id=$1 AND type='vente' AND created_at::date=CURRENT_DATE),0) AS nb_ventes_especes,
+         coalesce((SELECT sum(montant_total) FROM credits WHERE marchand_id::text=$1 AND created_at::date=CURRENT_DATE),0) AS credit_total,
+         coalesce((SELECT count(*) FROM credits WHERE marchand_id::text=$1 AND created_at::date=CURRENT_DATE),0) AS nb_credits`,
+      [user.id],
+    );
+    const r = rows[0] || {};
+    const fond = Number(r.fond) || 0;
+    const especes = Number(r.especes) || 0;
+    const enc = Number(r.enc) || 0;
+    const depenses = Number(r.depenses) || 0;
+    const marge = Number(r.marge) || 0;
+    const creditTotal = Number(r.credit_total) || 0;
+    const nombreVentes = (Number(r.nb_ventes_especes) || 0) + (Number(r.nb_credits) || 0);
+    return {
+      resume: {
+        ventes: especes + creditTotal,            // volume d'affaires (Convention A)
+        cahier: depenses,
+        caisse: fond + especes + enc - depenses,  // argent réellement en caisse
+        marge,
+        nombreVentes,
+        fondInitial: fond,
+        encaissementsCredit: enc,
+      },
+    };
+  }
+
   @Get('session/:date')
   async getSession(@Param('date') date: string, @CurrentUser() user: User) {
     const session = await this.dataSource.query(
