@@ -267,7 +267,7 @@ export function GestionStock() {
         quantity: p.stock || 0, unit: p.unite,
         purchasePrice: Number(p.prix_achat ?? 0) || 0,
         salePrice: p.prix || 0,
-        threshold: (p as any).seuil_alerte || 10,
+        threshold: (p as any).seuil_alerte ?? 10,
         category: (p.categorie || 'autres').toLowerCase(),
         promoPrice: (p as any).prix_promo != null ? Number((p as any).prix_promo) : null,
         promoFin: (p as any).promo_fin || null,
@@ -277,7 +277,7 @@ export function GestionStock() {
       quantity: s.quantite, unit: s.unite,
       purchasePrice: (s as any).prixAchat || 0,
       salePrice: s.prixUnitaire || 0,
-      threshold: (s as any).seuilAlerte || 10,
+      threshold: (s as any).seuilAlerte ?? 10,
       category: ((s as any).categorie || 'autres').toLowerCase(),
     }));
     const byName = new Map<string, Stock>();
@@ -418,7 +418,7 @@ export function GestionStock() {
     if (newStock.quantity < 0) { toast.error('Quantité invalide'); speak('La quantité n\'est pas bonne.'); return; }
     const cat = rechercherProduitCatalogue(newStock.name);
     try {
-      await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
+      await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: (newStock.threshold as any) === '' ? 10 : Number(newStock.threshold), date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
       toast.success('Produit ajouté');
       speak(`${newStock.quantity || 0} ${newStock.unit} de ${newStock.name} ajouté au stock`);
       showToast(`${newStock.name} ajouté au stock`, 'success');

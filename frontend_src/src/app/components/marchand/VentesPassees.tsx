@@ -156,17 +156,19 @@ export function VentesPassees() {
 
   useEffect(() => { reloadTransactions(); }, []);
 
+  // Charger les crédits DÈS le montage (et pas seulement quand on ouvre l'onglet
+  // « Crédits ») : ils alimentent les KPIs et la liste « Toutes » (convention A).
+  // Sans ça, l'écran affichait « Ventes : 0 » / « Aucune vente » tant qu'on
+  // n'avait pas tapé une fois l'onglet Crédits.
   useEffect(() => {
-    if (sourceFilter === 'credits') {
-      setCreditsLoading(true);
-      fetchCredits()
-        .then(r => { setCredits(r.credits || []); setTotalDu(r.total_du || 0); })
-        .catch((err: unknown) => {
-          console.error('[VentesPassees] erreur chargement crédits', err);
-        })
-        .finally(() => setCreditsLoading(false));
-    }
-  }, [sourceFilter]);
+    setCreditsLoading(true);
+    fetchCredits()
+      .then(r => { setCredits(r.credits || []); setTotalDu(r.total_du || 0); })
+      .catch((err: unknown) => {
+        console.error('[VentesPassees] erreur chargement crédits', err);
+      })
+      .finally(() => setCreditsLoading(false));
+  }, []);
 
   const handleMarquerPaye = async (id: string) => {
     try {
