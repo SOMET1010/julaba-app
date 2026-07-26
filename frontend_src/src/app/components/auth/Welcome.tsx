@@ -2,7 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import { motion } from 'motion/react';
 
 import logoJulabaBlanc from "../../../assets/images/logo-julaba.png";
-import { speakBrowser, stopSpeaking } from '../../services/elevenlabs';
+import { direIntro, stopIntro } from '../../services/onboardingVoix';
 import { estHabituee } from '../../utils/parcours';
 
 interface WelcomeProps {
@@ -11,18 +11,11 @@ interface WelcomeProps {
 
 export function Welcome({ onComplete }: WelcomeProps) {
   // Tata ACCUEILLE (elle ne présente pas une appli) : elle parle du COMMERCE de
-  // la marchande, et crée tout de suite un lien d'appartenance. Le navigateur
-  // bloque l'audio avant tout geste → on tente à l'ouverture ET on débloque au
-  // tout premier contact. Dès qu'elle touche l'écran, on entre.
+  // la marchande, et crée tout de suite un lien d'appartenance. VRAIE voix
+  // (clip enregistré), le robot n'est qu'un filet. Le navigateur bloque l'audio
+  // avant tout geste → on tente à l'ouverture ET on débloque au 1er contact.
   const accueille = useCallback(() => {
-    try {
-      const texte = estHabituee()
-        ? 'Re-bonjour ! On y va.'
-        : "Bonjour ! Moi, c'est Tata. Je serai avec toi pour vendre, compter ton argent " +
-          'et faire grandir ton commerce. Beaucoup de commerçantes travaillent déjà avec moi. ' +
-          "Maintenant, c'est ton tour. On commence ?";
-      speakBrowser(texte);
-    } catch { /* ignore */ }
+    try { direIntro(estHabituee() ? 'retour' : 'accueil'); } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
@@ -32,12 +25,12 @@ export function Welcome({ onComplete }: WelcomeProps) {
     return () => {
       clearTimeout(t);
       window.removeEventListener('pointerdown', onFirst);
-      stopSpeaking();
+      stopIntro();
     };
   }, [accueille]);
 
   // Toucher l'écran = commencer (Tata s'arrête, on entre).
-  const commencer = () => { stopSpeaking(); onComplete?.(); };
+  const commencer = () => { stopIntro(); onComplete?.(); };
 
   return (
     <div
