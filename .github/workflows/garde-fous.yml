@@ -53,14 +53,25 @@ jobs:
           PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d julaba_ci <<'SQL'
           CREATE TABLE IF NOT EXISTS caisse_sessions (
             marchand_id text NOT NULL, date date NOT NULL, fond_initial numeric DEFAULT 0,
+            heure_ouverture timestamp, heure_fermeture timestamp,
             UNIQUE (marchand_id, date));
           CREATE TABLE IF NOT EXISTS caisse_transactions (
             id serial PRIMARY KEY, type varchar, montant numeric,
             marchand_id text, created_at timestamp DEFAULT now());
-          INSERT INTO caisse_sessions (marchand_id, date, fond_initial) VALUES ('m1', CURRENT_DATE, 10000)
-            ON CONFLICT DO NOTHING;
+          CREATE TABLE IF NOT EXISTS credits (
+            id serial PRIMARY KEY, marchand_id text, client_nom text,
+            montant_total numeric, acompte numeric, statut text);
+          CREATE TABLE IF NOT EXISTS produits (
+            id serial PRIMARY KEY, marchand_id text, nom text, stock numeric, seuil_alerte numeric);
+          INSERT INTO caisse_sessions (marchand_id, date, fond_initial, heure_ouverture)
+            VALUES ('m1', CURRENT_DATE, 10000, now()) ON CONFLICT DO NOTHING;
           INSERT INTO caisse_transactions (type, montant, marchand_id) VALUES
             ('vente', 5000, 'm1'), ('encaissement_credit', 2000, 'm1'), ('depense', 1000, 'm1');
+          INSERT INTO credits (marchand_id, client_nom, montant_total, acompte, statut)
+            VALUES ('m1', 'Awa', 10000, 3000, 'en_cours');
+          INSERT INTO produits (marchand_id, nom, stock, seuil_alerte) VALUES ('m1', 'Riz', 12, 5);
           SQL
       - name: Vérifier l'invariante d'argent
         run: node scripts/verifier-invariante-argent.mjs
+      - name: Vérifier les invariantes métier
+        run: node scripts/verifier-invariantes-metier.mjs
