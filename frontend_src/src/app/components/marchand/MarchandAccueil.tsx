@@ -506,7 +506,7 @@ function MarchandAccueilInner({ onSwitchToAdvanced }: { onSwitchToAdvanced: () =
       <EditFondModal isOpen={showEditFondModal} onClose={() => setShowEditFondModal(false)} currentFond={currentSession?.fondInitial || 0} />
       <CloseDayModal isOpen={showCloseDayModal} onClose={() => setShowCloseDayModal(false)} stats={stats} />
       <StatsVentesModal isOpen={showStatsVentesModal} onClose={() => setShowStatsVentesModal(false)} montant={stats.ventes} />
-      <StatsMargeModal isOpen={showStatsMargeModal} onClose={() => setShowStatsMargeModal(false)} marge={stats.ventes - stats.cahier} />
+      <StatsMargeModal isOpen={showStatsMargeModal} onClose={() => setShowStatsMargeModal(false)} marge={stats.marge} />
       <ScoreModal isOpen={showScoreModal} onClose={() => setShowScoreModal(false)} />
       <ResumeModal isOpen={showResumeModal} onClose={() => setShowResumeModal(false)} stats={stats} />
       <VenteVocaleModal isOpen={showVenteVocaleModal} onClose={() => setShowVenteVocaleModal(false)} />

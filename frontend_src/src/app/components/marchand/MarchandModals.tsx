@@ -550,6 +550,7 @@ interface CloseDayModalProps {
     cahier: number;
     caisse: number;
     nombreVentes: number;
+    marge: number;
   };
 }
 
@@ -589,7 +590,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
     navigate('/marchand/resume-caisse');
   };
 
-  const marge = stats.ventes - stats.cahier;
+  const marge = stats.marge; // VRAIE marge (vente − achat), pas ventes − dépenses
   const ecart = parseFloat(comptageReel || '0') - stats.caisse;
 
   const day = new Date().toISOString().split('T')[0];
@@ -993,11 +994,12 @@ interface ResumeModalProps {
     cahier: number;
     caisse: number;
     nombreVentes: number;
+    marge: number;
   };
 }
 
 export function ResumeModal({ isOpen, onClose, stats }: ResumeModalProps) {
-  const marge = stats.ventes - stats.cahier;
+  const marge = stats.marge; // VRAIE marge (vente − achat), pas ventes − dépenses
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>

@@ -214,7 +214,7 @@ export function MarchandHome() {
       <StatsMargeModal
         isOpen={showStatsMargeModal}
         onClose={() => setShowStatsMargeModal(false)}
-        marge={stats.ventes - stats.cahier}
+        marge={stats.marge}
       />
       <ScoreModal isOpen={showScoreModal} onClose={() => setShowScoreModal(false)} />
       <ResumeModal

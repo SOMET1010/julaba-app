@@ -204,7 +204,10 @@ export function ResumeCaisse() {
   const todayStats = getTodayStats();
   const ventesAffichees = isToday ? todayStats.ventes : financialData.totalVentes;
   const nombreVentesAff = isToday ? todayStats.nombreVentes : financialData.nombreVentes;
-  const beneficeNetAff = ventesAffichees - financialData.totalCahier;
+  // Bénéfice net HONNÊTE = vraie marge (Prix vente − Prix achat) − dépenses,
+  // et non « ventes − dépenses » qui ignorait le coût d'achat et surestimait.
+  const margeAffichee = isToday ? todayStats.marge : financialData.totalMarge;
+  const beneficeNetAff = margeAffichee - financialData.totalCahier;
   const soldeActuel = isToday
     ? todayStats.caisse
     : (currentSession?.fondInitial || 0) + financialData.totalVentes + (financialData.totalEncaissementsCredit || 0) - financialData.totalCahier;
@@ -291,7 +294,7 @@ export function ResumeCaisse() {
               borderColor={beneficeNetAff >= 0 ? 'rgba(59,130,246,0.4)' : 'rgba(239,68,68,0.4)'}
               iconAnimation="spin"
               explication={beneficeNetAff >= 0 ? "Bravo ! Tu as gagné plus que tu as dépensé." : "Attention ! Tu as dépensé plus que tu as gagné."}
-              formule="Bénéfice = Ventes − Dépenses"
+              formule="Bénéfice = Marge (vente − achat) − Dépenses"
             />
             <UniversalKPI
               label="Dans ta caisse"

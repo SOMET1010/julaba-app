@@ -57,7 +57,7 @@ export function UniversalAccueil({ role }: UniversalAccueilProps) {
       case 'marchand':
         return {
           kpi1Value: stats.ventes,
-          kpi2Value: stats.ventes - stats.cahier, // Marge
+          kpi2Value: stats.marge, // VRAIE marge (vente − achat), pas ventes − dépenses
           caisse: stats.caisse,
         };
       

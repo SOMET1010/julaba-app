@@ -200,12 +200,13 @@ interface AppContextType {
   updateFondInitial: (newFond: number) => Promise<void>;
   
   // Stats
-  getTodayStats: () => { ventes: number; cahier: number; caisse: number; nombreVentes: number };
+  getTodayStats: () => { ventes: number; cahier: number; caisse: number; nombreVentes: number; marge: number };
   getSalesHistory: (filters?: { startDate?: string; endDate?: string; productName?: string; paymentMethod?: string }) => Transaction[];
   getFinancialSummary: (period: 'today' | '7days' | '30days' | 'custom', customStart?: string, customEnd?: string) => {
     totalVentes: number;
     totalCahier: number;
     totalEncaissementsCredit: number;
+    totalMarge: number;
     beneficeNet: number;
     nombreVentes: number;
     nombreCahier: number;
@@ -931,7 +932,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const encaisse = ventesEspeces + encaissementsCredit;
     const caisse = (currentSession?.fondInitial || 0) + encaisse - cahier;
 
-    return { ventes, cahier, caisse, nombreVentes };
+    // VRAIE marge commerciale = Prix de vente − Prix d'achat (agrégée par le
+    // backend, champ benefice/marge). À NE PAS confondre avec « ventes − dépenses »
+    // qui surestimait le bénéfice (ignorait le coût d'achat). Vaut 0 tant que la
+    // marchande n'a pas renseigné ses prix d'achat — c'est honnête (l'app ne peut
+    // pas inventer un coût). Même chiffre que l'écran « Ventes passées ».
+    const marge = ventesTransactions.reduce((acc, t) => acc + (t.totalMargin || t.totalBenefice || 0), 0);
+
+    return { ventes, cahier, caisse, nombreVentes, marge };
   };
 
   // Recharger les transactions depuis l'API — appelable depuis n'importe où
@@ -1057,7 +1065,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .filter((t) => t.type === 'encaissement_credit')
       .reduce((acc, t) => acc + (t.montant || t.price || 0), 0);
 
-    const beneficeNet = totalVentes - totalCahier;
+    // VRAIE marge commerciale de la période = Σ (Prix vente − Prix achat) des
+    // ventes (champ backend). Base du bénéfice net honnête, à la place de
+    // « ventes − dépenses » qui ignorait le coût d'achat.
+    const totalMarge = filteredTransactions
+      .filter((t) => t.type === 'vente')
+      .reduce((acc, t) => acc + (t.totalMargin || t.totalBenefice || 0), 0);
+
+    // Bénéfice net = marge commerciale − dépenses (et non ventes − dépenses).
+    const beneficeNet = totalMarge - totalCahier;
 
     const nombreVentes = filteredTransactions.filter((t) => t.type === 'vente').length;
     const nombreCahier = filteredTransactions.filter((t) => t.type === 'depense').length;
@@ -1083,6 +1099,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       totalVentes,
       totalCahier,
       totalEncaissementsCredit,
+      totalMarge,
       beneficeNet,
       nombreVentes,
       nombreCahier,
@@ -1233,12 +1250,13 @@ export function useApp() {
       openDay: async () => {},
       closeDay: async () => {},
       updateFondInitial: async () => {},
-      getTodayStats: () => ({ ventes: 0, cahier: 0, caisse: 0, nombreVentes: 0 }),
+      getTodayStats: () => ({ ventes: 0, cahier: 0, caisse: 0, nombreVentes: 0, marge: 0 }),
       getSalesHistory: () => [],
       getFinancialSummary: () => ({
         totalVentes: 0,
         totalCahier: 0,
         totalEncaissementsCredit: 0,
+        totalMarge: 0,
         beneficeNet: 0,
         nombreVentes: 0,
         nombreCahier: 0,
