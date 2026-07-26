@@ -296,6 +296,7 @@ export function POSCaisse() {
                         </div>
                       ) : (
                         <motion.button whileTap={{ scale:0.97 }} onClick={() => ajouterAuPanier(p)}
+                          data-testid={`pos-ajouter-${p.nom}`}
                           style={{ width:'100%', background:P, border:'none', borderRadius:12, padding:'11px 0', fontSize:15, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit', marginTop:8 }}>
                           + Ajouter
                         </motion.button>

@@ -82,6 +82,15 @@ function stampServiceWorker(outDir: string): Plugin {
 }
 
 export default defineConfig({
+  // Proxy activé UNIQUEMENT pour les tests E2E (E2E=1) : l'app appelle "/api/v1"
+  // en same-origin et Vite relaie vers le backend local -> pas de CORS, cookies OK.
+  // Aucun effet sur le dev/build normal (variable absente).
+  server: process.env.E2E === '1'
+    ? { proxy: { '/api/v1': { target: process.env.E2E_API || 'http://127.0.0.1:3000', changeOrigin: true } } }
+    : undefined,
+  preview: process.env.E2E === '1'
+    ? { proxy: { '/api/v1': { target: process.env.E2E_API || 'http://127.0.0.1:3000', changeOrigin: true } } }
+    : undefined,
   plugins: [react(), tailwindcss(), stampServiceWorker(path.resolve(__dirname, "../frontend/dist"))],
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),

@@ -510,7 +510,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user?.id) return;
     const today = new Date().toISOString().split('T')[0];
     const local = lireSessionLocale(user.id);
-    if (local && local.date === today) {
+    // Comparer uniquement la partie date (YYYY-MM-DD) : la session issue du
+    // serveur peut porter une date ISO complète (…T00:00:00Z) alors que openDay
+    // stocke YYYY-MM-DD -> sans ce slice, la restauration hors-ligne échouait.
+    if (local && String(local.date).slice(0, 10) === today) {
       setCurrentSession((cur) => cur || local);
     }
   }, [user?.id]);
@@ -582,8 +585,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setSuspendRefresh(false);
           setUser(userDataMapped);
           setUserContext(userDataMapped);
-          setAccessToken('cookie');
-          await loadUserData(userData.id, 'cookie');
+          // RÉOUVERTURE : privilégier le jeton stocké (Bearer) plutôt que le cookie.
+          // Sur mobile, le cookie cross-domaine (julaba-web ↔ julaba-api) est bloqué :
+          // sans ce Bearer, les appels authentifiés (transactions, session…) échouent
+          // en 401 après réouverture -> la caisse et l'historique ne se rechargent
+          // pas (la marchande revoit un fond seul, ventes du jour disparues).
+          let storedToken: string | null = null;
+          try { storedToken = localStorage.getItem('julaba_access_token'); } catch { /* ignore */ }
+          setAccessToken(storedToken || 'cookie');
+          await loadUserData(userData.id, storedToken || 'cookie');
         } else {
           // Le serveur a RÉPONDU. On ne déconnecte QUE sur un refus d'auth
           // explicite (401/403). Les autres codes (ex. 5xx pendant le réveil du

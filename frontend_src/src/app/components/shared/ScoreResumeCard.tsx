@@ -461,7 +461,7 @@ export function ScoreResumeCard({
                         )}
                       </p>
                     </div>
-                    <p className={`text-sm font-bold ${l.textColor}`}>
+                    <p className={`text-sm font-bold ${l.textColor}`} data-testid="caisse-value">
                       {(dailySummary?.caisse ?? 0).toLocaleString()} {l.unit}
                     </p>
                   </div>

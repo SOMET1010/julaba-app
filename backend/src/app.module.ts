@@ -63,11 +63,14 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
     }),
 
     // Rate limiting global
+    // Limites configurables par env (défauts de PROD conservés). Permet de les
+    // relâcher pour les tests E2E (qui rejouent beaucoup de /auth/me) sans toucher
+    // à la sécurité en production.
     ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60000, limit: 1000 },
-      { name: 'auth', ttl: 60000, limit: 5 },
-      { name: 'voice', ttl: 60000, limit: 10 },
-      { name: 'recovery', ttl: 60000, limit: 5 },
+      { name: 'default', ttl: 60000, limit: Number(process.env.THROTTLE_DEFAULT || 1000) },
+      { name: 'auth', ttl: 60000, limit: Number(process.env.THROTTLE_AUTH || 5) },
+      { name: 'voice', ttl: 60000, limit: Number(process.env.THROTTLE_VOICE || 10) },
+      { name: 'recovery', ttl: 60000, limit: Number(process.env.THROTTLE_RECOVERY || 5) },
     ]),
 
     // Database
