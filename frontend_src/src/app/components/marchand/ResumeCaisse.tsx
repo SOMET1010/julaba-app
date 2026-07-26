@@ -39,7 +39,7 @@ import { Montant, MontantCard } from '../shared/Montant';
 type Period = 'today' | '7days' | '30days' | 'custom';
 
 export function ResumeCaisse() {
-  const { getFinancialSummary, getSalesHistory, transactions, currentSession, speak, isOnline } = useApp();
+  const { getFinancialSummary, getTodayStats, getSalesHistory, transactions, currentSession, speak, isOnline } = useApp();
   const { stocks } = useStock();
   
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('today');
@@ -191,7 +191,23 @@ export function ResumeCaisse() {
     return transactions.filter((t) => new Date(t.date) >= startDate).slice(0, 20);
   }, [transactions, selectedPeriod, customStart, customEnd]);
 
-  const soldeActuel = (currentSession?.fondInitial || 0) + financialData.totalVentes - financialData.totalCahier;
+  // Convention A : pour AUJOURD'HUI, on affiche exactement les mêmes chiffres
+  // que l'écran d'accueil (getTodayStats), qui est la source de vérité :
+  //  • « ventes » = ventes espèces + TOTAL des ventes à crédit du jour ;
+  //  • « caisse » = fond + (espèces + ACOMPTES crédit) − dépenses (la créance
+  //    n'est PAS du cash).
+  // getFinancialSummary ne lit que les transactions espèces et ignore donc
+  // l'argent des crédits -> sans ça, « Dans ta caisse » et « Tu as gagné »
+  // contredisaient l'accueil le même jour. Les périodes 7/30 jours gardent le
+  // calcul historique (les crédits multi-jours ne sont pas chargés ici).
+  const isToday = selectedPeriod === 'today';
+  const todayStats = getTodayStats();
+  const ventesAffichees = isToday ? todayStats.ventes : financialData.totalVentes;
+  const nombreVentesAff = isToday ? todayStats.nombreVentes : financialData.nombreVentes;
+  const beneficeNetAff = ventesAffichees - financialData.totalCahier;
+  const soldeActuel = isToday
+    ? todayStats.caisse
+    : (currentSession?.fondInitial || 0) + financialData.totalVentes - financialData.totalCahier;
 
   const COLORS = ['#C46210', '#00563B', '#2072AF', '#702963', '#F59E0B', '#EF4444'];
 
@@ -243,7 +259,7 @@ export function ResumeCaisse() {
           <KPIGrid cols={2}>
             <UniversalKPI
               label="Tu as gagné"
-              animatedTarget={financialData.totalVentes}
+              animatedTarget={ventesAffichees}
               suffix="FCFA"
               icon={TrendingUp}
               color="#16a34a"
@@ -251,7 +267,7 @@ export function ResumeCaisse() {
               borderColor="rgba(34,197,94,0.4)"
               iconAnimation="bounce"
               explication="C'est tout l'argent que tu as encaissé sur tes ventes pendant cette période."
-              details={[{ label: 'Nombre de ventes', value: financialData.nombreVentes }]}
+              details={[{ label: 'Nombre de ventes', value: nombreVentesAff }]}
             />
             <UniversalKPI
               label="Tu as dépensé"
@@ -267,14 +283,14 @@ export function ResumeCaisse() {
             />
             <UniversalKPI
               label="Tu as gagné net"
-              animatedTarget={Math.abs(financialData.beneficeNet)}
+              animatedTarget={Math.abs(beneficeNetAff)}
               suffix="FCFA"
               icon={Banknote}
-              color={financialData.beneficeNet >= 0 ? '#2563eb' : '#dc2626'}
-              bgColor={financialData.beneficeNet >= 0 ? 'rgba(239,246,255,0.85)' : 'rgba(254,242,242,0.85)'}
-              borderColor={financialData.beneficeNet >= 0 ? 'rgba(59,130,246,0.4)' : 'rgba(239,68,68,0.4)'}
+              color={beneficeNetAff >= 0 ? '#2563eb' : '#dc2626'}
+              bgColor={beneficeNetAff >= 0 ? 'rgba(239,246,255,0.85)' : 'rgba(254,242,242,0.85)'}
+              borderColor={beneficeNetAff >= 0 ? 'rgba(59,130,246,0.4)' : 'rgba(239,68,68,0.4)'}
               iconAnimation="spin"
-              explication={financialData.beneficeNet >= 0 ? "Bravo ! Tu as gagné plus que tu as dépensé." : "Attention ! Tu as dépensé plus que tu as gagné."}
+              explication={beneficeNetAff >= 0 ? "Bravo ! Tu as gagné plus que tu as dépensé." : "Attention ! Tu as dépensé plus que tu as gagné."}
               formule="Bénéfice = Ventes − Dépenses"
             />
             <UniversalKPI
@@ -330,7 +346,7 @@ export function ResumeCaisse() {
             </div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:12, fontWeight:700, color:'#1a1a1a', lineHeight:1.5 }}>
-                {financialData.beneficeNet >= 0
+                {beneficeNetAff >= 0
                   ? `Aujourd'hui tu as gagné ${financialData.totalVentes.toLocaleString('fr-FR')} francs. ${financialData.totalCahier === 0 ? "Tu as rien dépensé. Bravo !" : `Tu as dépensé ${financialData.totalCahier.toLocaleString('fr-FR')} francs.`}`
                   : `Attention ! Tu as plus dépensé que gagné aujourd'hui. Fais attention à tes dépenses.`
                 }
@@ -338,7 +354,7 @@ export function ResumeCaisse() {
               <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>Tata Nanti Lou · appuie sur lecture</div>
             </div>
             <motion.button whileTap={{ scale:0.9 }} onClick={() => {
-              const resume = financialData.beneficeNet >= 0
+              const resume = beneficeNetAff >= 0
                 ? `Résumé du jour. Ventes: ${financialData.totalVentes.toLocaleString('fr-FR')} francs. Dépenses: ${financialData.totalCahier.toLocaleString('fr-FR')} francs. Solde actuel: ${soldeActuel.toLocaleString('fr-FR')} francs. Heure de pointe: ${heurePointe}.`
                 : `Attention. Tu as plus dépensé que gagné. Ventes: ${financialData.totalVentes.toLocaleString('fr-FR')} francs. Dépenses: ${financialData.totalCahier.toLocaleString('fr-FR')} francs. Solde actuel: ${soldeActuel.toLocaleString('fr-FR')} francs.`;
               speak(resume);
