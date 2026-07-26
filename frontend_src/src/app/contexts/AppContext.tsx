@@ -97,7 +97,7 @@ export interface User {
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'vente' | 'depense' | 'recolte';
+  type: 'vente' | 'depense' | 'recolte' | 'encaissement_credit';
   productName: string;
   quantity: number;
   price: number;
@@ -205,6 +205,7 @@ interface AppContextType {
   getFinancialSummary: (period: 'today' | '7days' | '30days' | 'custom', customStart?: string, customEnd?: string) => {
     totalVentes: number;
     totalCahier: number;
+    totalEncaissementsCredit: number;
     beneficeNet: number;
     nombreVentes: number;
     nombreCahier: number;
@@ -904,12 +905,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Ventes ESPÈCES (transactions) : entrent en caisse ET dans les ventes.
     const ventesEspeces = ventesTransactions.reduce((acc, t) => acc + (t.montant || t.price * t.quantity || 0), 0);
 
-    // Ventes À CRÉDIT du jour (table à part). Convention A :
-    //  • le TOTAL s'ajoute aux « ventes du jour » (elle a bien vendu) ;
-    //  • seul l'ACOMPTE reçu entre dans la caisse (le reste = créance au carnet).
+    // Ventes À CRÉDIT du jour (table à part) — VOLUME uniquement (Convention A) :
+    // le TOTAL s'ajoute aux « ventes du jour » (elle a bien vendu). Le cash
+    // effectivement reçu n'est PLUS lu ici : il entre en caisse via des
+    // transactions dédiées 'encaissement_credit' (source unique de vérité).
     const creditsAujourdhui = (creditsJour || []).filter((c) => (c.created_at || '').split('T')[0] === today);
     const ventesCredit = creditsAujourdhui.reduce((acc, c) => acc + (c.montant_total || 0), 0);
-    const acomptesCredit = creditsAujourdhui.reduce((acc, c) => acc + (c.acompte || 0), 0);
+
+    // Cash reçu sur crédits aujourd'hui = mouvements 'encaissement_credit' du jour
+    // (acompte à la vente ET remboursements d'anciens crédits). Type distinct de
+    // 'vente' -> aucun double-comptage avec ventesEspeces.
+    const encaissementsCredit = todayTransactions
+      .filter((t) => t.type === 'encaissement_credit')
+      .reduce((acc, t) => acc + (t.montant || t.price * t.quantity || 0), 0);
 
     const ventes = ventesEspeces + ventesCredit;              // volume d'affaires
     const nombreVentes = ventesTransactions.length + creditsAujourdhui.length;
@@ -919,8 +927,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .reduce((acc, t) => acc + (t.montant || t.price * t.quantity || 0), 0);
 
     // « Ce que tu devrais avoir » = argent RÉELLEMENT reçu : fond + espèces
-    // (ventes espèces + acomptes crédit) − dépenses. La créance n'est PAS du cash.
-    const encaisse = ventesEspeces + acomptesCredit;
+    // (ventes espèces + encaissements crédit) − dépenses. La créance n'est PAS du cash.
+    const encaisse = ventesEspeces + encaissementsCredit;
     const caisse = (currentSession?.fondInitial || 0) + encaisse - cahier;
 
     return { ventes, cahier, caisse, nombreVentes };
@@ -1041,6 +1049,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .filter((t) => t.type === 'depense')
       .reduce((acc, t) => acc + (t.montant || t.price || 0), 0);
 
+    // Cash reçu sur crédits (acompte + remboursements) sur la période — mouvements
+    // 'encaissement_credit'. Entre en CAISSE mais n'est pas une « vente » de plus
+    // (le volume crédit est déjà compté à part). Disponible pour toutes les
+    // périodes car lu depuis les transactions.
+    const totalEncaissementsCredit = filteredTransactions
+      .filter((t) => t.type === 'encaissement_credit')
+      .reduce((acc, t) => acc + (t.montant || t.price || 0), 0);
+
     const beneficeNet = totalVentes - totalCahier;
 
     const nombreVentes = filteredTransactions.filter((t) => t.type === 'vente').length;
@@ -1066,6 +1082,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       totalVentes,
       totalCahier,
+      totalEncaissementsCredit,
       beneficeNet,
       nombreVentes,
       nombreCahier,
@@ -1221,6 +1238,7 @@ export function useApp() {
       getFinancialSummary: () => ({
         totalVentes: 0,
         totalCahier: 0,
+        totalEncaissementsCredit: 0,
         beneficeNet: 0,
         nombreVentes: 0,
         nombreCahier: 0,

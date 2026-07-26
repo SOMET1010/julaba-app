@@ -207,7 +207,7 @@ export function ResumeCaisse() {
   const beneficeNetAff = ventesAffichees - financialData.totalCahier;
   const soldeActuel = isToday
     ? todayStats.caisse
-    : (currentSession?.fondInitial || 0) + financialData.totalVentes - financialData.totalCahier;
+    : (currentSession?.fondInitial || 0) + financialData.totalVentes + (financialData.totalEncaissementsCredit || 0) - financialData.totalCahier;
 
   const COLORS = ['#C46210', '#00563B', '#2072AF', '#702963', '#F59E0B', '#EF4444'];
 
