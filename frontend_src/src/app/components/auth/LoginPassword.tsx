@@ -685,6 +685,19 @@ export function LoginPassword() {
       const boRoles = ['super_admin', 'admin'];
       const isBackOffice = boRoles.includes(user.role);
       if (result.user?.mustChangePassword) {
+        // Auth mobile : STOCKER le jeton AVANT de rediriger vers /change-password.
+        // Sur mobile le cookie cross-domaine (julaba-web ↔ julaba-api) est bloqué ;
+        // sans jeton en localStorage, l'intercepteur fetch n'ajoute aucun en-tête
+        // Authorization -> /auth/change-password (protégé par JwtAuthGuard) répond
+        // 401, la marchande reste bloquée et voit le message trompeur « Mot de passe
+        // actuel incorrect ». On persiste donc le jeton pour que le 1er changement
+        // de code obligatoire aboutisse.
+        try {
+          if (result.accessToken) localStorage.setItem('julaba_access_token', result.accessToken);
+          if ((result as any).refreshToken) localStorage.setItem('julaba_refresh_token', (result as any).refreshToken);
+        } catch { /* ignore */ }
+        if (result.accessToken) setAccessToken(result.accessToken);
+        window.dispatchEvent(new CustomEvent('julaba:token-ready'));
         setError('Mot de passe temporaire, redirection en cours...');
         if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
         navigateTimeoutRef.current = setTimeout(() => {
