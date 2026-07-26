@@ -12,6 +12,7 @@ import {
 import { useApp } from '../../contexts/AppContext';
 import { stopAllAudio } from '../../services/elevenlabs';
 import { Montant, MontantCard } from '../shared/Montant';
+import { agregerVentesParProduit } from '../../utils/ventesParProduit';
 
 import {
   IMG_BILLET_500, IMG_BILLET_1000, IMG_BILLET_2000, IMG_BILLET_5000, IMG_BILLET_10000,
@@ -601,20 +602,12 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
     [getSalesHistory, day]
   );
 
-  // Top 3 produits vendus
+  // Top 3 produits vendus — ventilés par produit réel (lignes du panier), et
+  // non par transaction au nom concaténé comptée « 1 ».
   const topProducts = useMemo(
-    () => todaySales.reduce((acc, sale) => {
-      const existing = acc.find(p => p.name === sale.productName);
-      if (existing) {
-        existing.quantity += sale.quantity;
-        existing.total += sale.price * sale.quantity;
-      } else {
-        acc.push({ name: sale.productName, quantity: sale.quantity, total: sale.price * sale.quantity });
-      }
-      return acc;
-    }, [] as { name: string; quantity: number; total: number }[])
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 3),
+    () => agregerVentesParProduit(todaySales)
+      .slice(0, 3)
+      .map(p => ({ name: p.productName, quantity: p.quantity, total: p.total })),
     [todaySales]
   );
 

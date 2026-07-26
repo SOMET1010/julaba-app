@@ -24,6 +24,7 @@ import { toProperCase } from '../utils/stringUtils';
 import { useUser } from './UserContext';
 import { setSuspendRefresh } from '../../imports/api-client';
 import type { SousProfilMarchand } from '../types/sousProfilMarchand';
+import { agregerVentesParProduit } from '../utils/ventesParProduit';
 
 export type UserRole = 'marchand' | 'producteur' | 'cooperative' | 'cooperateur' | 'institution' | 'identificateur' | 'administrateur';
 
@@ -1080,20 +1081,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const moyenneVente = nombreVentes > 0 ? totalVentes / nombreVentes : 0;
 
-    const topProduits = filteredTransactions
-      .filter((t) => t.type === 'vente')
-      .reduce((acc, t) => {
-        const existingProduct = acc.find((p) => p.productName === t.productName);
-        if (existingProduct) {
-          existingProduct.quantity += t.quantity;
-          existingProduct.total += t.price * t.quantity;
-        } else {
-          acc.push({ productName: t.productName, quantity: t.quantity, total: t.price * t.quantity });
-        }
-        return acc;
-      }, [] as { productName: string; quantity: number; total: number }[])
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
+    // Top produits par produit RÉEL (ventilé depuis les lignes du panier), et
+    // non par transaction au nom concaténé comptée « 1 ».
+    const topProduits = agregerVentesParProduit(filteredTransactions).slice(0, 5);
 
     return {
       totalVentes,

@@ -45,6 +45,8 @@ export interface CaisseTransaction {
   type: 'vente' | 'depense' | 'approvisionnement';
   montant: number;
   produits?: any;
+  produit?: string;
+  details?: any;
   mode_paiement?: string;
   notes?: string;
   date: string;
@@ -158,6 +160,8 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         type: tx.type,
         montant: parseFloat(tx.montant) || 0,
         produits: tx.produits,
+        produit: tx.produit,
+        details: tx.details,
         mode_paiement: tx.mode_paiement,
         notes: tx.notes,
         date: tx.created_at,

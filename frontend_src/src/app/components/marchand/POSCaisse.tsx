@@ -10,6 +10,7 @@ import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
+import { agregerVentesParProduit } from '../../utils/ventesParProduit';
 
 const P = '#AF5B23';
 const BG = '#FFF2E9';
@@ -45,15 +46,13 @@ export function POSCaisse() {
 
 
   const topProducts = useMemo(() => {
-    const salesCount: Record<string, number> = {};
-    (transactions || []).forEach((t: any) => {
-      if (t.type === 'vente' && t.productName) {
-        const prod = products.find(p => p.nom === t.productName);
-        if (prod) salesCount[prod.id] = (salesCount[prod.id] || 0) + 1;
-      }
-    });
+    // Quantités vendues par produit RÉEL (ventilées depuis les lignes du panier),
+    // au lieu de matcher un nom concaténé qui ne correspondait à aucun produit
+    // (l'ancien tri ne matchait jamais -> ordre inchangé).
+    const ventes = agregerVentesParProduit(transactions || []);
+    const qteParNom = new Map(ventes.map(v => [v.productName.toLowerCase(), v.quantity]));
     return [...products]
-      .sort((a, b) => (salesCount[b.id] || 0) - (salesCount[a.id] || 0))
+      .sort((a, b) => (qteParNom.get((b.nom || '').toLowerCase()) || 0) - (qteParNom.get((a.nom || '').toLowerCase()) || 0))
       .slice(0, 2);
   }, [products, transactions]);
 
