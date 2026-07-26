@@ -75,6 +75,25 @@ export async function enregistrerDepense(data: EnregistrerDepenseData): Promise<
     body: JSON.stringify(data),
   });
 }
+
+export interface OuvrirSessionData {
+  fond_initial: number;
+  notes?: string;
+  /** Clé d'idempotence stable par (marchand, jour) : le fond n'est créé qu'une fois. */
+  idempotency_key?: string;
+}
+
+/**
+ * Ouvrir la journée (créer la session de caisse). Idempotent côté serveur :
+ * une seule session par marchand et par jour (le fond initial n'est jamais
+ * recréé ni réinitialisé). Rejouable depuis la file hors-ligne.
+ */
+export async function ouvrirSession(data: OuvrirSessionData): Promise<{ session: any }> {
+  return apiRequest<{ session: any }>('/caisse/session/ouvrir', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES CREDITS & CLIENTS
 // ─────────────────────────────────────────────────────────────────────────────

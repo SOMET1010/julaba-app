@@ -65,16 +65,22 @@ export class CaisseRestController {
   @Post('session/ouvrir')
   async ouvrirSession(@Body() body: any, @CurrentUser() user: User) {
     const today = new Date().toISOString().split('T')[0];
-    const existing = await this.dataSource.query(
+    // Idempotent ET race-safe : une seule session par (marchand, jour). Le
+    // SELECT-puis-INSERT laissait passer deux ouvertures concurrentes (double-clic,
+    // rejeu hors-ligne) -> la 2e plantait sur la contrainte unique. ON CONFLICT
+    // DO NOTHING garantit que le fond initial n'est créé qu'UNE fois et n'est
+    // jamais réinitialisé par un second appel.
+    await this.dataSource.query(
+      `INSERT INTO caisse_sessions (marchand_id, date, fond_initial, ouvert, heure_ouverture, notes)
+       VALUES ($1, $2, $3, true, NOW(), $4)
+       ON CONFLICT (marchand_id, date) DO NOTHING`,
+      [user.id, today, body.fond_initial || 0, body.notes || '']
+    );
+    const rows = await this.dataSource.query(
       'SELECT * FROM caisse_sessions WHERE marchand_id = $1 AND date = $2 LIMIT 1',
       [user.id, today]
     );
-    if (existing[0]) return { session: existing[0] };
-    const result = await this.dataSource.query(
-      'INSERT INTO caisse_sessions (marchand_id, date, fond_initial, ouvert, heure_ouverture, notes) VALUES ($1, $2, $3, true, NOW(), $4) RETURNING *',
-      [user.id, today, body.fond_initial || 0, body.notes || '']
-    );
-    return { session: result[0] };
+    return { session: rows[0] };
   }
 
   @Post('session/fermer')

@@ -17,7 +17,7 @@ const DB_NAME = 'julaba_offline';
 const STORE = 'caisse_outbox';
 const DB_VERSION = 1;
 
-export type CaisseEndpoint = '/caisse/vente' | '/caisse/depense';
+export type CaisseEndpoint = '/caisse/vente' | '/caisse/depense' | '/caisse/session/ouvrir';
 
 export interface OperationCaisse {
   id: string;                 // clé d'idempotence (uuid)

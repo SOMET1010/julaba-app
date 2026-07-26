@@ -13,7 +13,8 @@ import { enfilerOperation, synchroniser, type CaisseEndpoint } from '../voice-of
 // Rejoue une opération en attente vers la bonne route caisse (avec idempotency_key).
 async function posterOperation(endpoint: CaisseEndpoint, payload: unknown): Promise<void> {
   if (endpoint === '/caisse/vente') await caisseApi.enregistrerVente(payload as caisseApi.EnregistrerVenteData);
-  else await caisseApi.enregistrerDepense(payload as caisseApi.EnregistrerDepenseData);
+  else if (endpoint === '/caisse/depense') await caisseApi.enregistrerDepense(payload as caisseApi.EnregistrerDepenseData);
+  else await caisseApi.ouvrirSession(payload as caisseApi.OuvrirSessionData);
 }
 
 // Clé d'idempotence : une par vente/dépense. Envoyée EN LIGNE (le backend

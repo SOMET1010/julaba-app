@@ -26,6 +26,24 @@ import { setSuspendRefresh } from '../../imports/api-client';
 import type { SousProfilMarchand } from '../types/sousProfilMarchand';
 import { agregerVentesParProduit } from '../utils/ventesParProduit';
 
+// ── Persistance locale de la session du jour (parcours « Je commence ma journée »)
+// Permet la RÉOUVERTURE hors-ligne après fermeture forcée : la session ouverte
+// hors réseau n'est pas perdue. Le backend reste la source de vérité : au retour
+// du réseau, la session serveur écrase la locale.
+const cleSessionLocale = (uid?: string) => `julaba_session_${uid || 'anon'}`;
+function persisterSession(uid: string | undefined, s: { date: string } | null): void {
+  try {
+    if (s) localStorage.setItem(cleSessionLocale(uid), JSON.stringify(s));
+    else localStorage.removeItem(cleSessionLocale(uid));
+  } catch { /* stockage indisponible : on ignore */ }
+}
+function lireSessionLocale(uid: string | undefined): any | null {
+  try {
+    const raw = localStorage.getItem(cleSessionLocale(uid));
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
 export type UserRole = 'marchand' | 'producteur' | 'cooperative' | 'cooperateur' | 'institution' | 'identificateur' | 'administrateur';
 
 export interface User {
@@ -459,7 +477,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (sessionResponse.ok) {
         const { session: sessionData } = await sessionResponse.json();
         if (sessionData) {
-          setCurrentSession({
+          // Le serveur fait AUTORITÉ : il écrase et re-persiste la session locale.
+          const serverSession: DaySession = {
             id: sessionData.id,
             userId: sessionData.marchand_id,
             date: sessionData.date,
@@ -468,8 +487,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             openedAt: sessionData.heure_ouverture,
             closedAt: sessionData.heure_fermeture,
             notes: sessionData.notes,
-          });
+          };
+          setCurrentSession(serverSession);
+          persisterSession(sessionData.marchand_id, serverSession);
         }
+        // Si le serveur ne renvoie PAS de session (null), on NE touche pas à la
+        // session locale : une journée ouverte hors-ligne et pas encore
+        // synchronisée reste valable (sa file de rejeu la créera au retour réseau).
       }
     } catch (error: any) {
       console.warn('[AppContext] loadUserData failed:', error?.message);
@@ -477,6 +501,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   };
+
+  // Réouverture hors-ligne : dès que l'utilisateur est connu, on restaure la
+  // session du jour depuis le stockage local si aucune n'est déjà chargée. Ainsi,
+  // après une fermeture forcée SANS réseau, la journée reste ouverte (le backend,
+  // quand il répond, reste prioritaire et écrase cette valeur).
+  useEffect(() => {
+    if (!user?.id) return;
+    const today = new Date().toISOString().split('T')[0];
+    const local = lireSessionLocale(user.id);
+    if (local && local.date === today) {
+      setCurrentSession((cur) => cur || local);
+    }
+  }, [user?.id]);
 
   // Vérifier session au démarrage via cookie httpOnly → /auth/me
   useEffect(() => {
@@ -808,44 +845,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ═══════════════════════════════════════════════════════════════════
 
   const openDay = async (fondInitial: number, notes?: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    // Clé d'idempotence STABLE par (marchand, jour) : rejouée depuis la file
+    // hors-ligne (ou par un double appel), elle ne crée jamais une 2e session ->
+    // le fond initial est créé une seule fois.
+    const idempotency_key = `session-ouvrir-${user?.id || 'anon'}-${today}`;
     const newSession: DaySession = {
-      id: Date.now().toString(),
+      id: idempotency_key,
       userId: user?.id || '',
-      date: new Date().toISOString().split('T')[0],
+      date: today,
       fondInitial,
       opened: true,
       openedAt: new Date().toISOString(),
       notes,
     };
-    
-    setCurrentSession(newSession);
 
-    // Sync avec API
-    if (accessToken) {
-      try {
-        await fetch(
-          `${API_URL}/caisse/session/ouvrir`,
-          {
-            method: 'POST',
-            credentials: 'include',
-            headers: caisseAuthHeaders(accessToken),
-            body: JSON.stringify({
-              fond_initial: fondInitial,
-              notes,
-            }),
-          }
-        );
-      } catch (error: any) {
-        console.warn('[AppContext] openDay sync failed:', error?.message);
-      }
+    setCurrentSession(newSession);
+    // Persister tout de suite : si l'app est fermée de force avant la synchro,
+    // la réouverture (même hors-ligne) retrouvera la journée déjà ouverte.
+    persisterSession(user?.id, newSession);
+
+    const payload = { fond_initial: fondInitial, notes, idempotency_key };
+
+    // Hors-ligne / pas de token : on met directement dans la file durable.
+    if (!accessToken || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      try { await enfilerOperation('/caisse/session/ouvrir', payload); } catch (e) { void e; }
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/caisse/session/ouvrir`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: caisseAuthHeaders(accessToken),
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (error: any) {
+      // Ne JAMAIS perdre l'ouverture : file durable, rejeu à la reconnexion
+      // (même clé d'idempotence -> le backend ne crée pas de 2e session).
+      console.warn('[AppContext] openDay sync failed, mise en file:', error?.message);
+      try { await enfilerOperation('/caisse/session/ouvrir', payload); } catch (e) { void e; }
     }
   };
 
   const closeDay = async (comptageReel: number, closingNotes?: string) => {
     if (!currentSession) return;
 
+    // Source UNIQUE de la caisse (ADR-001) : getTodayStats().caisse dérive du
+    // journal (fond + espèces + encaissements crédit − dépenses). On ne
+    // recalcule PLUS « fond + ventes − dépenses » ici (ventes incluait le crédit
+    // -> caisse théorique fausse et calcul parallèle interdit).
     const stats = getTodayStats();
-    const caisseTheorique = currentSession.fondInitial + stats.ventes - stats.cahier;
+    const caisseTheorique = stats.caisse;
     const ecart = comptageReel - caisseTheorique;
 
     const updatedSession: DaySession = {
@@ -856,6 +908,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ecart,
       closingNotes,
     };
+    // Persister la fermeture : une réouverture retrouve la journée fermée.
+    persisterSession(user?.id, updatedSession);
 
     // Sync avec API
     if (accessToken) {
