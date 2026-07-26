@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { Welcome } from './Welcome';
 import { OnboardingSlides } from './OnboardingSlides';
 import { LoginPassword } from './LoginPassword';
+import { noterLancement } from '../../utils/parcours';
 
 // Clés localStorage
 const STORAGE_KEYS = {
@@ -70,6 +71,10 @@ export function EntryGate() {
     }
     setHasCompletedOnboarding(true);
   };
+
+  // Compte 1 lancement d'app par ouverture (sert au « fondu » de Tata : elle
+  // accompagne au début, puis s'efface avec l'habitude). Une seule fois au mount.
+  useEffect(() => { noterLancement(); }, []);
 
   // Si utilisateur authentifié, rediriger vers son interface
   useEffect(() => {
