@@ -1,0 +1,66 @@
+name: Garde-fous Constitution
+
+# Fait respecter la Constitution de Jùlaba sur chaque push / PR.
+#  - §1/§4 : aucune duplication versionnée (V2/New/Bis…).
+#  - §7 / ADR-001 : invariante d'argent (caisse = fond + Σ mouvements).
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  anti-doublon:
+    name: §1/§4 — Anti-doublon
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Vérifier l'absence de doublon versionné
+        run: node scripts/check-no-duplicates.mjs
+
+  invariante-argent:
+    name: §7/ADR-001 — Invariante d'argent
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: julaba_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: julaba_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer pg (dépendance du script)
+        run: cd backend && npm install pg --no-save --no-audit --no-fund
+      - name: Fixture minimale (schéma + une journée équilibrée)
+        run: |
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d julaba_ci <<'SQL'
+          CREATE TABLE IF NOT EXISTS caisse_sessions (
+            marchand_id text NOT NULL, date date NOT NULL, fond_initial numeric DEFAULT 0,
+            UNIQUE (marchand_id, date));
+          CREATE TABLE IF NOT EXISTS caisse_transactions (
+            id serial PRIMARY KEY, type varchar, montant numeric,
+            marchand_id text, created_at timestamp DEFAULT now());
+          INSERT INTO caisse_sessions (marchand_id, date, fond_initial) VALUES ('m1', CURRENT_DATE, 10000)
+            ON CONFLICT DO NOTHING;
+          INSERT INTO caisse_transactions (type, montant, marchand_id) VALUES
+            ('vente', 5000, 'm1'), ('encaissement_credit', 2000, 'm1'), ('depense', 1000, 'm1');
+          SQL
+      - name: Vérifier l'invariante d'argent
+        run: node scripts/verifier-invariante-argent.mjs
