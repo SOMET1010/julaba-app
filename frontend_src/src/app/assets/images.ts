@@ -5,6 +5,7 @@
 
 // ── Imports locaux (tous en haut) ────────────────────────────
 import _logoJulaba from "../../assets/images/logo-julaba.png";
+import _rizProduit from "./images/produits/riz.jpg"; // photo fournie (sac de riz, fond blanc)
 
 import _tantieMarchand          from "../../assets/images/tantie-marchand.png";
 import _tantieProducteur        from "../../assets/images/tantie-producteur.png";
@@ -86,7 +87,7 @@ export const IMG_PIECE_100            = _piece100;
 export const IMG_PIECE_200            = _piece200;
 
 // ── Produits vivriers ─────────────────────────────────────────
-export const IMG_PRODUIT_RIZ = 'https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/L8PxJBhk/Image-riz.webp';
+export const IMG_PRODUIT_RIZ = _rizProduit; // photo locale (embarquée, hors-ligne), plus le visuel générique distant
 export const IMG_PRODUIT_TOMATE = 'https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/8CVtMJrW/tomate.jpg';
 export const IMG_PRODUIT_AUBERGINE = 'https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/VktKJB50/image-aubergine.jpg';
 export const IMG_PRODUIT_PIMENT = 'https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/vZn04LDf/Image-piment.jpg';
