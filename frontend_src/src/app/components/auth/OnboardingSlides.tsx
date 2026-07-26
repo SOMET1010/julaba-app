@@ -38,14 +38,15 @@ import bgVente from "../../../assets/images/bg-marche-vente.png";
 import bgChoix from "../../../assets/images/bg-market.png";
 import bgBoutique from "../../../assets/images/bg-marketplace.png";
 
-import { stopSpeaking, speakBrowser } from '../../services/elevenlabs';
+import { stopSpeaking } from '../../services/elevenlabs';
+import { direIntro, stopIntro } from '../../services/onboardingVoix';
 
 interface OnboardingSlidesProps {
   onComplete?: () => void;
 }
 
 /* -- L'HISTOIRE en 4 temps ------------------------------------------------
- * Chaque écran : un texte court affiché + ce que Tata DIT (2 longueurs).
+ * Chaque écran : un texte court affiché + la clé du CLIP de la vraie Tata.
  * On parle de SON commerce, jamais de « l'application ». */
 interface Slide {
   id: string;
@@ -53,8 +54,7 @@ interface Slide {
   description: string;
   bgImage: string;
   accent: string;
-  voix: string;   // version complète (mode voix / 1re fois)
-  mixte: string;  // version courte (mode mixte)
+  clip: 'histoire1' | 'histoire2' | 'histoire3' | 'histoire4'; // clip de la VRAIE Tata
 }
 
 const slides: Slide[] = [
@@ -64,8 +64,7 @@ const slides: Slide[] = [
     description: 'Je serai avec toi chaque jour dans ton commerce.',
     bgImage: bgTataLou,
     accent: '#7c3aed',
-    voix: 'Je serai avec toi chaque jour dans ton commerce. On est ensemble.',
-    mixte: 'Je serai avec toi chaque jour dans ton commerce.',
+    clip: 'histoire1',
   },
   {
     id: 'vente',
@@ -73,8 +72,7 @@ const slides: Slide[] = [
     description: 'Tu vends. J\'enregistre. Je compte. Tu sais toujours ce que tu gagnes.',
     bgImage: bgVente,
     accent: '#16a34a',
-    voix: 'Tu vends. J\'enregistre. Je compte. Tu sais toujours combien tu gagnes.',
-    mixte: 'Tu vends, je compte. Tu sais ce que tu gagnes.',
+    clip: 'histoire2',
   },
   {
     id: 'choix',
@@ -82,8 +80,7 @@ const slides: Slide[] = [
     description: 'Tu me parles, ou tu tapes. C\'est toi qui décides.',
     bgImage: bgChoix,
     accent: '#C46210',
-    voix: 'Tu peux me parler, ou utiliser le clavier. C\'est toi qui décides.',
-    mixte: 'Parle-moi, ou tape. C\'est toi qui décides.',
+    clip: 'histoire3',
   },
   {
     id: 'boutique',
@@ -91,8 +88,7 @@ const slides: Slide[] = [
     description: 'Tout est prêt. Ouvrons ta boutique.',
     bgImage: bgBoutique,
     accent: '#2563eb',
-    voix: 'Tout est prêt. Ouvrons ta boutique.',
-    mixte: 'Tout est prêt. Ouvrons ta boutique.',
+    clip: 'histoire4',
   },
 ];
 
@@ -114,22 +110,18 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     [],
   );
 
-  // Coupe toute lecture en cours.
+  // Coupe toute lecture en cours (clip de Tata + robot de secours).
   const stopLocal = useCallback(() => {
-    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+    stopIntro();
     stopSpeaking();
     setIsSpeaking(false);
   }, []);
 
-  // LIT la diapo à voix haute selon le profil (auto-narration, sans bascule).
+  // LIT la diapo avec la VRAIE voix de Tata (auto-narration, sans bascule).
   const lireDiapo = useCallback(() => {
-    const lvl = niveauVoix();
-    if (lvl === 'lecture') return;              // lectrice : on la laisse lire
-    const texte = lvl === 'voix' ? slide.voix : slide.mixte;
-    if (!texte) return;
+    if (niveauVoix() === 'lecture') return;     // lectrice : on la laisse lire
     setIsSpeaking(true);
-    try { speakBrowser(texte).finally(() => setIsSpeaking(false)); }
-    catch { setIsSpeaking(false); }
+    direIntro(slide.clip).finally(() => setIsSpeaking(false));
   }, [slide, niveauVoix]);
 
   const handleNext = () => {
@@ -157,12 +149,11 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     setCurrentSlide(index);
   };
 
-  // Bouton haut-parleur : RÉÉCOUTER l'écran (version complète, même en lecture).
+  // Bouton haut-parleur : RÉÉCOUTER l'écran (vraie voix, même en mode lecture).
   const handleListen = useCallback(() => {
     if (isSpeaking) { stopLocal(); return; }
     setIsSpeaking(true);
-    try { speakBrowser(slide.voix).finally(() => setIsSpeaking(false)); }
-    catch { setIsSpeaking(false); }
+    direIntro(slide.clip).finally(() => setIsSpeaking(false));
   }, [isSpeaking, slide, stopLocal]);
 
   // AUTO-NARRATION : Tata lit chaque écran toute seule (l'audio est déjà
@@ -180,28 +171,17 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     });
   }, []);
 
-  // Tata lit la question du mode (pour celles qui ne lisent pas).
+  // Tata lit la question du mode (vraie voix, pour celles qui ne lisent pas).
   const parleModeQuestion = useCallback(() => {
     setIsSpeaking(true);
-    try {
-      speakBrowser(
-        'Comment préfères-tu travailler avec moi ? Le plus simple : laisse-moi choisir, ' +
-        'je m\'adapte à toi. Sinon : je sais lire et écrire, ou je lis un peu, ou je préfère parler. ' +
-        'Il n\'y a pas de mauvais choix.',
-      ).finally(() => setIsSpeaking(false));
-    } catch { setIsSpeaking(false); }
+    direIntro('mode').finally(() => setIsSpeaking(false));
   }, []);
   useEffect(() => { if (modeStep) parleModeQuestion(); }, [modeStep, parleModeQuestion]);
 
   // Étape voix : Tata rassure (coût, wifi, rien ne presse).
   const parleInstallVoix = useCallback(() => {
     setIsSpeaking(true);
-    try {
-      speakBrowser(
-        'Pour que je puisse t\'écouter et te parler partout, même sans réseau, on installe ma voix une fois. ' +
-        'C\'est un gros fichier, alors fais-le tranquillement, quand tu as le wifi. Rien ne presse.',
-      ).finally(() => setIsSpeaking(false));
-    } catch { setIsSpeaking(false); }
+    direIntro('voixInstall').finally(() => setIsSpeaking(false));
   }, []);
   useEffect(() => { if (voiceStep) parleInstallVoix(); }, [voiceStep, parleInstallVoix]);
 
@@ -209,16 +189,11 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   // (sinon l'écran suivant la coupe) grâce à un petit filet de sécurité.
   const terminer = useCallback(() => {
     if (doneRef.current) return;
-    const lvl = niveauVoix();
     const go = () => { if (!doneRef.current) { doneRef.current = true; onComplete?.(); } };
-    if (lvl === 'lecture') { stopLocal(); go(); return; }
-    const reward = lvl === 'voix'
-      ? 'Bravo ! Nous sommes prêtes. Ouvrons ta boutique.'
-      : 'C\'est prêt. Ouvrons ta boutique !';
+    if (niveauVoix() === 'lecture') { stopLocal(); go(); return; }
     setIsSpeaking(true);
-    try { speakBrowser(reward).finally(go); } catch { go(); }
-    const filet = setTimeout(go, 4000);
-    return () => clearTimeout(filet);
+    direIntro('bravo').finally(go);       // vraie voix : « Bravo ! Ouvrons ta boutique. »
+    setTimeout(go, 6000);                 // filet si l'audio ne se termine pas
   }, [niveauVoix, onComplete, stopLocal]);
 
   // Choix du mode → mémorise, puis : lecture → on entre ; mixte/voix → on
