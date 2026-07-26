@@ -80,9 +80,22 @@ export class CaisseRestController {
   @Post('session/fermer')
   async fermerSession(@Body() body: any, @CurrentUser() user: User) {
     const today = new Date().toISOString().split('T')[0];
+    // Le frontend envoie le comptage réel de fin de journée sous la clé
+    // `comptage_reel` (+ `notes`). On ne lisait que `fond_final` -> le vrai
+    // comptage n'était JAMAIS enregistré (stocké à 0) et les notes étaient
+    // perdues. On accepte les deux clés (compat) et on persiste le comptage
+    // dans fond_final (colonne « argent réellement compté à la fermeture »).
+    const comptage = parseFloat(String(body.comptage_reel ?? body.fond_final ?? 0)) || 0;
+    const notes = typeof body.notes === 'string' ? body.notes : '';
     const result = await this.dataSource.query(
-      'UPDATE caisse_sessions SET ouvert = false, heure_fermeture = NOW(), fond_final = $1, updated_at = NOW() WHERE marchand_id = $2 AND date = $3 RETURNING *',
-      [body.fond_final || 0, user.id, today]
+      `UPDATE caisse_sessions
+         SET ouvert = false, heure_fermeture = NOW(),
+             fond_final = $1,
+             notes = COALESCE(NULLIF($2, ''), notes),
+             updated_at = NOW()
+       WHERE marchand_id = $3 AND date = $4
+       RETURNING *`,
+      [comptage, notes, user.id, today]
     );
     return { session: result[0] };
   }
