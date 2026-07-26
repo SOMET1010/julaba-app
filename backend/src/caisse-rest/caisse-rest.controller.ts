@@ -150,8 +150,14 @@ export class CaisseRestController {
     // Validation montant
     const prixVente = parseFloat(body.montant) || 0;
     if (prixVente <= 0) throw new BadRequestException('Le montant doit être positif');
-    const prixAchat = parseFloat(body.prix_achat) || 0;
-    const marge = prixAchat > 0 ? prixVente - prixAchat : 0;
+    // Coût total : le prix_achat de premier niveau valait 0 → marge/bénéfice
+    // toujours nuls. On AGRÈGE depuis les articles (prix_achat × quantité).
+    let prixAchat = parseFloat(body.prix_achat) || 0;
+    if (prixAchat <= 0 && Array.isArray(lignes)) {
+      prixAchat = lignes.reduce((s: number, p: any) =>
+        s + (Number(p.prix_achat ?? p.prixAchat) || 0) * (Number(p.quantite) || 1), 0);
+    }
+    const marge = prixAchat > 0 ? Math.max(0, prixVente - prixAchat) : 0;
 
     // Journée toujours ouverte (vente jamais bloquée, argent rattaché au jour).
     await this.ensureSessionOuverte(user.id);

@@ -108,8 +108,23 @@ export interface Transaction {
   purchasePrice?: number;
   margin?: number;
   totalMargin?: number;
+  totalBenefice?: number;
+  source?: string;
   synced?: boolean;
   montant?: number;
+}
+
+// Bénéfice d'une vente = somme des (total article − prix_achat × quantité) sur
+// ses articles (details). Le niveau transaction stockait 0 → on recalcule ici
+// pour l'affichage marge/bénéfice, y compris sur les ventes existantes.
+function beneficeDepuisDetails(details: unknown): number {
+  if (!Array.isArray(details)) return 0;
+  return details.reduce((s: number, it: any) => {
+    const q = Number(it?.quantite) || 1;
+    const total = Number(it?.total) || (Number(it?.prix) || 0) * q;
+    const cout = (Number(it?.prix_achat ?? it?.prixAchat) || 0) * q;
+    return s + Math.max(0, total - cout);
+  }, 0);
 }
 
 export interface DaySession {
@@ -414,6 +429,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           source: tx.source || 'kassa',
           category: tx.description ? tx.description.toLowerCase() : (tx.produit || '').toLowerCase(),
           details: tx.details || null,
+          totalBenefice: Number(tx.benefice) || beneficeDepuisDetails(tx.details),
+          totalMargin: Number(tx.marge) || beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
           synced: true,
@@ -947,6 +964,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           montant: Number(tx.montant) || 0,
           source: tx.source || 'kassa',
           details: tx.details || null,
+          totalBenefice: Number(tx.benefice) || beneficeDepuisDetails(tx.details),
+          totalMargin: Number(tx.marge) || beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
           synced: true,
