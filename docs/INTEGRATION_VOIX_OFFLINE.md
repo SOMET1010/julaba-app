@@ -10,19 +10,21 @@ Statut : **compile** (typecheck 0 erreur sur les fichiers ajoutés/modifiés ; `
 historique, stock) est **inchangé** : on branche l'offline en amont et en aval.
 
 **Couche 1 — comprendre sans réseau** (`useVoiceCore.processAudio`)
-- Nouveau dossier `frontend_src/src/app/voice-offline/` :
-  - `offlineStt.ts` — STT Vosk 100 % sur l'appareil (`transcribeWav(blob)`),
-    `vosk-browser` en **import dynamique** (chunk séparé, chargé à la demande).
-  - `extraction.ts` + `vocabulaire.ts` — compréhension locale (produits, nombres,
-    intentions) éprouvée sur le banc de test.
-  - `localIntent.ts` — transforme la transcription en la **même forme** que la
-    réponse serveur (`intent`, `action`, `response`, `needsConfirmation`).
-  - `voskModel.ts` — URL du modèle (une seule constante à changer).
+
+- Nouveau dossier `frontend/src/app/voice-offline/` :
+    - `offlineStt.ts` — STT Vosk 100 % sur l'appareil (`transcribeWav(blob)`),
+      `vosk-browser` en **import dynamique** (chunk séparé, chargé à la demande).
+    - `extraction.ts` + `vocabulaire.ts` — compréhension locale (produits, nombres,
+      intentions) éprouvée sur le banc de test.
+    - `localIntent.ts` — transforme la transcription en la **même forme** que la
+      réponse serveur (`intent`, `action`, `response`, `needsConfirmation`).
+    - `voskModel.ts` — URL du modèle (une seule constante à changer).
 - Dans `processAudio` : si **hors-ligne** OU si le modèle on-device est **installé**,
   on transcrit + comprend localement, puis on repart dans le flux existant via
   `handleResponse(...)`. En ligne et non reconnu → repli serveur (inchangé).
 
 **Couche 2 — enregistrer sans réseau** (`CaisseContext`)
+
 - `voice-offline/offlineCaisse.ts` — **file d'attente durable** (IndexedDB) des
   ventes/dépenses, chaque opération portant une **clé d'idempotence** (uuid).
 - `enregistrerVente` / `enregistrerDepense` : hors-ligne → on **enfile** au lieu de
@@ -37,8 +39,8 @@ le navigateur → offline ensuite). Ajouter un bouton « Installer le mode hors-
 qui appelle :
 
 ```ts
-import { ensureOfflineModel } from '../voice-offline/offlineStt';
-await ensureOfflineModel(); // télécharge + met en cache ; ensuite offlineModelReady() = true
+import { ensureOfflineModel } from "../voice-offline/offlineStt"
+await ensureOfflineModel() // télécharge + met en cache ; ensuite offlineModelReady() = true
 ```
 
 Tant que ce n'est pas fait, `processAudio` hors-ligne prévient l'utilisateur
@@ -73,14 +75,14 @@ sans étape manuelle. Désactivable via `DB_MIGRATIONS_RUN=false` (repli : lance
 
 ## 4. Où regarder dans le code
 
-| Rôle | Fichier |
-|---|---|
-| STT on-device | `voice-offline/offlineStt.ts` |
-| Compréhension locale | `voice-offline/extraction.ts`, `vocabulaire.ts`, `localIntent.ts` |
-| File d'attente durable | `voice-offline/offlineCaisse.ts` |
-| Branche offline (comprendre) | `hooks/useVoiceCore.ts` → `processAudio` |
+| Rôle                          | Fichier                                                                    |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| STT on-device                 | `voice-offline/offlineStt.ts`                                              |
+| Compréhension locale          | `voice-offline/extraction.ts`, `vocabulaire.ts`, `localIntent.ts`          |
+| File d'attente durable        | `voice-offline/offlineCaisse.ts`                                           |
+| Branche offline (comprendre)  | `hooks/useVoiceCore.ts` → `processAudio`                                   |
 | Branche offline (enregistrer) | `contexts/CaisseContext.tsx` → `enregistrerVente/Depense` + effet `online` |
-| URL du modèle | `voice-offline/voskModel.ts` |
+| URL du modèle                 | `voice-offline/voskModel.ts`                                               |
 
 ## 5. À valider en conditions réelles (non testable hors appareil)
 

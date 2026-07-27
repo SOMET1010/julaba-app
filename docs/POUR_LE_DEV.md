@@ -28,11 +28,11 @@ avec repli cloud automatique.** Rien n'est actif tant qu'une variable d'env n'es
 
 ### Les Pull Requests
 
-| PR | Objet | Fichiers clés |
-|----|-------|---------------|
-| #1 | 128 accents dans les chaînes UI/TTS | `frontend_src/...` |
-| #2 | Voix offline : intent local, STT (Whisper.cpp/Vosk), TTS Piper, LLM configurable | `backend/src/voice/...` |
-| #3 | Synchro append-only de la boutique vocale | `backend/src/boutique/...` + migration |
+| PR  | Objet                                                                            | Fichiers clés                          |
+| --- | -------------------------------------------------------------------------------- | -------------------------------------- |
+| #1  | 128 accents dans les chaînes UI/TTS                                              | `frontend/...`                         |
+| #2  | Voix offline : intent local, STT (Whisper.cpp/Vosk), TTS Piper, LLM configurable | `backend/src/voice/...`                |
+| #3  | Synchro append-only de la boutique vocale                                        | `backend/src/boutique/...` + migration |
 
 ### Activation (après revue + build + tests d'intégration)
 

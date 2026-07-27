@@ -17,99 +17,99 @@
 # ──────────────────────────────────────────────────────────────────────────
 
 databases:
-  - name: julaba-db
-    databaseName: julaba
-    user: julaba
-    plan: free   # test/MVP (la base gratuite Render expire ~90 j ; passer en payant pour durer)
+    - name: julaba-db
+      databaseName: julaba
+      user: julaba
+      plan: free # test/MVP (la base gratuite Render expire ~90 j ; passer en payant pour durer)
 
 services:
-  # ── Backend NestJS ──────────────────────────────────────────────────────
-  - type: web
-    runtime: node
-    name: julaba-api
-    rootDir: backend
-    plan: free
-    # Redéploiement AUTOMATIQUE à chaque push sur la branche suivie : indispensable
-    # pour que le seed (comptes + scénario de démo) se rejoue au démarrage.
-    autoDeploy: true
-    # setup-piper.sh est DÉFENSIF (sort en 0 même s'il échoue) : le build ne peut
-    # pas casser à cause de Piper ; sans Piper, l'appli parle via le navigateur.
-    buildCommand: bash scripts/setup-piper.sh; npm ci --include=dev && npm run build
-    startCommand: npm run start:prod
-    healthCheckPath: /api/v1/health
-    envVars:
-      - key: NODE_ENV
-        value: production
-      # ── Voix Piper (TTS souverain, gratuit à l'usage) ──
-      # Chemins où setup-piper.sh installe le binaire + la voix (rootDir = backend).
-      - key: PIPER_BIN
-        value: /opt/render/project/src/backend/.piper/piper/piper
-      - key: PIPER_VOICE
-        value: /opt/render/project/src/backend/.piper/voice.onnx
-      # Coupe le TTS cloud payant : Piper (ou la voix navigateur) suffit.
-      - key: TTS_DISABLE_CLOUD
-        value: "true"
-      # Base de données (câblée automatiquement depuis julaba-db)
-      - key: DB_HOST
-        fromDatabase: { name: julaba-db, property: host }
-      - key: DB_PORT
-        fromDatabase: { name: julaba-db, property: port }
-      - key: DB_USERNAME
-        fromDatabase: { name: julaba-db, property: user }
-      - key: DB_PASSWORD
-        fromDatabase: { name: julaba-db, property: password }
-      - key: DB_NAME
-        fromDatabase: { name: julaba-db, property: database }
-      - key: DB_SSL
-        value: "true"
-      # (Schéma : construit automatiquement au 1er démarrage si la base est vide
-      #  — géré par prepareDatabase() dans main.ts. Aucun réglage manuel requis.)
-      # Cookies cross-domaine (frontend et backend sur des domaines différents)
-      - key: COOKIE_SAMESITE
-        value: none
-      # Secrets générés automatiquement par Render
-      - key: JWT_SECRET
-        generateValue: true
-      - key: PIN_ENCRYPTION_KEY
-        generateValue: true
-      - key: REFRESH_TOKEN_SALT
-        generateValue: true
-      # URL du frontend autorisée (CORS + cookies cross-domaine)
-      - key: CORS_ORIGIN
-        value: https://julaba-web.onrender.com
-      # Comptes de démo (serveur de TEST) : crée au démarrage 3 comptes marchands
-      # prêts à l'emploi + un jeu de données d'exemple. Mettre à "false" (ou
-      # supprimer) sur un vrai serveur de production.
-      - key: SEED_DEMO
-        value: "true"
-      # Code marchand = pavé à 4 chiffres -> le mot de passe de démo DOIT être
-      # un code numérique à 4 chiffres.
-      - key: SEED_DEMO_PASSWORD
-        value: "1234"
-      # Optionnel (voix cloud) — le cœur marche sans
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ELEVENLABS_API_KEY
-        sync: false
-      - key: ELEVENLABS_VOICE_ID
-        sync: false
+    # ── Backend NestJS ──────────────────────────────────────────────────────
+    - type: web
+      runtime: node
+      name: julaba-api
+      rootDir: backend
+      plan: free
+      # Redéploiement AUTOMATIQUE à chaque push sur la branche suivie : indispensable
+      # pour que le seed (comptes + scénario de démo) se rejoue au démarrage.
+      autoDeploy: true
+      # setup-piper.sh est DÉFENSIF (sort en 0 même s'il échoue) : le build ne peut
+      # pas casser à cause de Piper ; sans Piper, l'appli parle via le navigateur.
+      buildCommand: bash scripts/setup-piper.sh; npm ci --include=dev && npm run build
+      startCommand: npm run start:prod
+      healthCheckPath: /api/v1/health
+      envVars:
+          - key: NODE_ENV
+            value: production
+          # ── Voix Piper (TTS souverain, gratuit à l'usage) ──
+          # Chemins où setup-piper.sh installe le binaire + la voix (rootDir = backend).
+          - key: PIPER_BIN
+            value: /opt/render/project/src/backend/.piper/piper/piper
+          - key: PIPER_VOICE
+            value: /opt/render/project/src/backend/.piper/voice.onnx
+          # Coupe le TTS cloud payant : Piper (ou la voix navigateur) suffit.
+          - key: TTS_DISABLE_CLOUD
+            value: "true"
+          # Base de données (câblée automatiquement depuis julaba-db)
+          - key: DB_HOST
+            fromDatabase: { name: julaba-db, property: host }
+          - key: DB_PORT
+            fromDatabase: { name: julaba-db, property: port }
+          - key: DB_USERNAME
+            fromDatabase: { name: julaba-db, property: user }
+          - key: DB_PASSWORD
+            fromDatabase: { name: julaba-db, property: password }
+          - key: DB_NAME
+            fromDatabase: { name: julaba-db, property: database }
+          - key: DB_SSL
+            value: "true"
+          # (Schéma : construit automatiquement au 1er démarrage si la base est vide
+          #  — géré par prepareDatabase() dans main.ts. Aucun réglage manuel requis.)
+          # Cookies cross-domaine (frontend et backend sur des domaines différents)
+          - key: COOKIE_SAMESITE
+            value: none
+          # Secrets générés automatiquement par Render
+          - key: JWT_SECRET
+            generateValue: true
+          - key: PIN_ENCRYPTION_KEY
+            generateValue: true
+          - key: REFRESH_TOKEN_SALT
+            generateValue: true
+          # URL du frontend autorisée (CORS + cookies cross-domaine)
+          - key: CORS_ORIGIN
+            value: https://julaba-web.onrender.com
+          # Comptes de démo (serveur de TEST) : crée au démarrage 3 comptes marchands
+          # prêts à l'emploi + un jeu de données d'exemple. Mettre à "false" (ou
+          # supprimer) sur un vrai serveur de production.
+          - key: SEED_DEMO
+            value: "true"
+          # Code marchand = pavé à 4 chiffres -> le mot de passe de démo DOIT être
+          # un code numérique à 4 chiffres.
+          - key: SEED_DEMO_PASSWORD
+            value: "1234"
+          # Optionnel (voix cloud) — le cœur marche sans
+          - key: OPENAI_API_KEY
+            sync: false
+          - key: ELEVENLABS_API_KEY
+            sync: false
+          - key: ELEVENLABS_VOICE_ID
+            sync: false
 
-  # ── Frontend React (site statique) ──────────────────────────────────────
-  - type: web
-    runtime: static
-    name: julaba-web
-    # (pas de `plan` : les sites statiques Render sont gratuits par nature)
-    # Déploiement AUTOMATIQUE à chaque push sur la branche suivie (plus besoin de
-    # cliquer « Manual Deploy » après chaque correction).
-    autoDeploy: true
-    buildCommand: cd frontend_src && npm ci --include=dev && npm run build
-    staticPublishPath: frontend/dist
-    envVars:
-      # URL du backend (utilisée au BUILD du frontend)
-      - key: VITE_API_URL
-        value: https://julaba-api.onrender.com/api/v1
-    routes:
-      # Routage d'une SPA : toutes les routes retombent sur index.html
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    # ── Frontend React (site statique) ──────────────────────────────────────
+    - type: web
+      runtime: static
+      name: julaba-web
+      # (pas de `plan` : les sites statiques Render sont gratuits par nature)
+      # Déploiement AUTOMATIQUE à chaque push sur la branche suivie (plus besoin de
+      # cliquer « Manual Deploy » après chaque correction).
+      autoDeploy: true
+      buildCommand: cd frontend && npm ci --include=dev && npm run build
+      staticPublishPath: frontend/dist
+      envVars:
+          # URL du backend (utilisée au BUILD du frontend)
+          - key: VITE_API_URL
+            value: https://julaba-api.onrender.com/api/v1
+      routes:
+          # Routage d'une SPA : toutes les routes retombent sur index.html
+          - type: rewrite
+            source: /*
+            destination: /index.html

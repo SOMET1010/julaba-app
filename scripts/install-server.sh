@@ -50,7 +50,7 @@ log "Node.js installé : $(node --version)"
 
 # ── 5. Structure des dossiers ─────────────────────────────────
 info "Création de la structure des dossiers..."
-mkdir -p /var/www/julaba/{backend,frontend/dist,frontend_src,nginx,database,scripts,logs}
+mkdir -p /var/www/julaba/{backend,frontend/dist,frontend,nginx,database,scripts,logs}
 log "Dossiers créés"
 
 # ── 6. Firewall UFW ──────────────────────────────────────────

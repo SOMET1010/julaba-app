@@ -1,5 +1,5 @@
-frontend_src/node_modules/
-frontend_src/dist/
+frontend/node_modules/
+frontend/dist/
 backend/node_modules/
 backend/dist/
 backend/.env
@@ -35,6 +35,6 @@ erreur.txt
 .claude/
 .idea/
 
-# Build frontend versionne par erreur (la source est dans frontend_src/, build via frontend_src/Dockerfile)
+# Build frontend versionne par erreur (la source est dans frontend/, build via frontend/Dockerfile)
 frontend/
-frontend_src/tsconfig.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
