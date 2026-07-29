@@ -53,6 +53,7 @@ export const router = createBrowserRouter([
         { path: "depense", element: L(() => import("./components/marchand/DepenseForm").then(m => ({ default: m.DepenseForm }))), errorElement: <ErrorFallback /> },
         { path: "stock", element: L(() => import("./components/marchand/GestionStock").then(m => ({ default: m.GestionStock }))), errorElement: <ErrorFallback /> },
         { path: "marche", element: L(() => import("./components/marchand/MarcheVirtuel").then(m => ({ default: m.MarcheVirtuel }))), errorElement: <ErrorFallback /> },
+        { path: "veille", element: L(() => import("./components/shared/veille/VeilleTrenteJours").then(m => ({ default: m.VeilleTrenteJours }))), errorElement: <ErrorFallback /> },
         { path: "recoltes-prevues", element: L(() => import("./components/marchand/RecoltesPrevues").then(m => ({ default: m.RecoltesPrevues }))), errorElement: <ErrorFallback /> },
         { path: "profil", element: L(() => import("./components/marchand/MarchandProfil").then(m => ({ default: m.MarchandProfil }))), errorElement: <ErrorFallback /> },
         { path: "ventes-passees", element: L(() => import("./components/marchand/VentesPassees").then(m => ({ default: m.VentesPassees }))), errorElement: <ErrorFallback /> },
