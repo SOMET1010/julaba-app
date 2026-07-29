@@ -641,6 +641,22 @@ export function MarcheVirtuel() {
           />
         </KPIGrid>
 
+        <motion.button
+          onClick={() => navigate('/marchand/veille')}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileTap={{ scale: 0.99 }}
+          className="w-full flex items-center gap-3 mb-4 text-left"
+          style={{ background: 'linear-gradient(135deg,#C66A2C,#9c4f1e)', borderRadius: 18, padding: '14px 16px', border: 'none', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: 24 }}>🌐</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 14, fontWeight: 800, color: 'white' }}>Veille 30 jours</span>
+            <span style={{ display: 'block', fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>Ce qui se dit sur vos marches, toutes sources reunies</span>
+          </span>
+          <ChevronRight className="w-5 h-5" style={{ color: 'white', flexShrink: 0 }} />
+        </motion.button>
+
         <motion.div className={`grid ${visibleTabs.length === 1 ? 'grid-cols-1' : visibleTabs.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-3 mb-4`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           {visibleTabs.includes('cooperatives') && (
           <motion.button onClick={() => { setActiveTab('cooperatives'); }} className={`flex items-center justify-center px-4 py-3.5 rounded-2xl border-2 transition-colors ${activeTab === 'cooperatives' ? 'bg-[#C46210] border-[#C46210] text-white' : 'bg-white border-gray-200 hover:border-[#C46210] text-gray-700'}`} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
