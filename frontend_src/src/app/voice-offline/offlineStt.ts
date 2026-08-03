@@ -12,6 +12,7 @@
 
 import { GRAMMAR_WORDS } from './vocabulaire';
 import { VOSK_MODEL_URL } from './voskModel';
+import { estNatif, transcribeNative } from './nativeStt';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
@@ -29,16 +30,22 @@ const INSTALL_KEY = 'julaba_offline_installed';
 
 /** Vrai si le modèle est chargé EN MÉMOIRE, prêt à transcrire tout de suite. */
 export function offlineModelReady(): boolean {
+  // Coquille native (Route B) : le moteur Sherpa + son modèle sont EMBARQUÉS
+  // dans l'APK → toujours prêts, aucun téléchargement, aucune installation.
+  if (estNatif()) return true;
   return modelReady;
 }
 
 /** Vrai si le modèle a déjà été installé sur cet appareil (persistant, survit au reload). */
 export function offlineModelInstalled(): boolean {
+  if (estNatif()) return true; // embarqué dans l'APK
   try { return localStorage.getItem(INSTALL_KEY) === '1'; } catch { return false; }
 }
 
 /** Télécharge + initialise le modèle une seule fois (idempotent). */
 export function ensureOfflineModel(): Promise<Any> {
+  // Sur natif, rien à charger côté web : le moteur vit dans le plugin Kotlin.
+  if (estNatif()) return Promise.resolve({ native: true });
   if (!modelPromise) {
     modelPromise = (async () => {
       const { createModel } = await import('vosk-browser'); // code-split ici
@@ -61,6 +68,7 @@ export function ensureOfflineModel(): Promise<Any> {
  * que la marchande ait à ré-installer. Ne fait rien si jamais installé.
  */
 export function warmOfflineModelIfInstalled(): void {
+  if (estNatif()) return; // rien à préchauffer : le moteur natif est déjà là
   if (modelReady || modelPromise) return;
   if (!offlineModelInstalled()) return;
   ensureOfflineModel().catch(() => { /* ré-échauffement silencieux */ });
@@ -82,6 +90,12 @@ export async function startLiveDictation(
   onDebug?: (tag: string, data?: unknown) => void,
 ): Promise<{ stop: () => Promise<void> }> {
   const dbg = (t: string, d?: unknown) => { try { onDebug?.(t, d); } catch { /* ignore */ } };
+  // Route B : la dictée EN DIRECT (numéro de connexion) n'est PAS portée sur le
+  // natif — la saisie d'un numéro à 10 chiffres à la voix n'est pas fiable et on
+  // la retire (le pavé + PIN reste le chemin). Sur natif, on échoue proprement →
+  // l'écran de connexion retombe sur le clavier. (Retrait du bouton micro de
+  // connexion = suite dédiée, chantier auth.)
+  if (estNatif()) throw new Error('startLiveDictation indisponible sur natif (dictée numéro retirée)');
   const model = await ensureOfflineModel();
   dbg('LIVE_MODEL_OK');
   const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -164,11 +178,18 @@ function makeAudioBuffer(sampleRate: number, data: Float32Array): AudioBuffer {
  * @param useGrammar limite au vocabulaire du marché (améliore la précision)
  */
 export async function transcribeWav(wav: Blob | ArrayBuffer, useGrammar = true, customGrammar?: string[]): Promise<string> {
-  const model = await ensureOfflineModel();
   const arrayBuf = wav instanceof Blob ? await wav.arrayBuffer() : wav.slice(0);
   const audioBuf = await getCtx().decodeAudioData(arrayBuf as ArrayBuffer);
-
   const sampleRate = audioBuf.sampleRate;
+
+  // ── ROUTE B : coquille native → moteur Sherpa NATIF (aucun Vosk, aucun modèle
+  // web). Même clip décodé, transmis au plugin Kotlin. ────────────────────────
+  if (estNatif()) {
+    return transcribeNative(audioBuf.getChannelData(0), sampleRate);
+  }
+
+  // ── WEB : Vosk WASM (inchangé). ─────────────────────────────────────────────
+  const model = await ensureOfflineModel();
   // customGrammar : liste de mots ciblée (ex. chiffres pour un numéro de tel) →
   // précision maximale. Sinon grammaire marché, sinon modèle complet.
   const grammar = customGrammar ? JSON.stringify(customGrammar)
