@@ -19,4 +19,5 @@
 | **P1** | `useAcademyTracking` utilise des chemins **relatifs** `/api/v1/...` (ignore `API_URL`) | `hooks/useAcademyTracking.ts:4,23` | En prod à deux domaines, tape le site statique → suivi silencieusement cassé. |
 | **P2** | Vues **multi-jours** du crédit calculées côté client (données partielles) | `getFinancialSummary` (7/30 j) | Le cash crédit multi-jours n'est pas dérivé du journal complet. |
 | **P2** | `caisseTheorique = fond + ventes − cahier` (non affiché, mais faux car `ventes` inclut le crédit) | `contexts/AppContext.tsx` (closeDay) | Latent ; à dériver de `getTodayStats.caisse`. |
+| **P2** | Parseur de nombres vocal **ne gère pas « million(s) »** (« quatre cents millions » → 400) | `voice-offline/extraction.ts` | Sous-évalue les gros montants ; rattrapé par la confirmation, mais à couvrir dans la grammaire des nombres (le vrai chantier « nombres par langue »). |
 | **P2** | Erreurs TS **préexistantes** (n'empêchent pas `vite build` mais s'accumulent) | `getSalesHistory` (Date\|undefined), `MarchandAccueil` (index image), `GestionStock:337` (firstName), `LoginPassword:686/720` | Viole l'esprit de §3. À nettoyer parcours par parcours. |

@@ -8,7 +8,7 @@
 // confiance -> l'appelant peut alors retomber sur le serveur (si en ligne).
 // ──────────────────────────────────────────────────────────────────────────
 
-import { extraire } from './extraction';
+import { validerOperationVocale } from './validationVocale';
 
 const fmt = (n: number) => n.toLocaleString('fr-FR');
 
@@ -31,27 +31,26 @@ export interface LocalVoiceResult {
  */
 export function intentLocal(texte: string): LocalVoiceResult | null {
   if (!texte || !texte.trim()) return null;
-  const p = extraire(texte);
-  if (!p.intention) return null;
 
-  // On ne traite localement que le transactionnel financier sûr (vente/dépense).
-  // Le reste (soldes, questions ouvertes) reste au serveur quand on est en ligne.
-  let type: string | null = null;
-  let intent: string | null = null;
-  if (p.intention === 'vente' && p.montant != null) { type = 'vendre'; intent = 'vendre'; }
-  else if (p.intention === 'depense' && p.montant != null) { type = 'depense'; intent = 'depense'; }
-  if (!type || !intent) return null;
+  // POST-FILTRE STRICT anti-hallucination : n'accepte l'opération que si le montant
+  // est propre ET ancré dans une vraie tournure de commande. Sinon null -> on
+  // redemande (aucun montant halluciné n'est enregistré).
+  const p = validerOperationVocale(texte);
+  if (!p) return null;
+
+  const type = p.intention === 'vente' ? 'vendre' : 'depense';
+  const intent = type;
 
   const action: LocalVoiceResult['action'] = { type };
   if (p.produit) action.produit = p.produit;
   if (p.quantite != null) action.quantite = p.quantite;
-  if (p.montant != null) action.montant = p.montant;
+  action.montant = p.montant;
   if (intent === 'depense' && p.produit) action.description = p.produit;
 
   const response =
     intent === 'vendre'
-      ? `Vente de ${p.quantite ? `${p.quantite} ` : ''}${p.produit ?? 'produit'} pour ${fmt(p.montant!)} francs, c'est bien ça ?`
-      : `Dépense de ${fmt(p.montant!)} francs${p.produit ? ` pour ${p.produit}` : ''}, c'est bien ça ?`;
+      ? `Vente de ${p.quantite ? `${p.quantite} ` : ''}${p.produit ?? 'produit'} pour ${fmt(p.montant)} francs, c'est bien ça ?`
+      : `Dépense de ${fmt(p.montant)} francs${p.produit ? ` pour ${p.produit}` : ''}, c'est bien ça ?`;
 
   return {
     transcript: texte,

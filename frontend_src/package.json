@@ -8,7 +8,8 @@
     "build": "vite build",
     "typecheck": "tsc -b",
     "preview": "vite preview",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "test:voix": "tsx src/app/voice-offline/validationVocale.test.mts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "*",
