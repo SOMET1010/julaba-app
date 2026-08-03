@@ -9,7 +9,7 @@
     "typecheck": "tsc -b",
     "preview": "vite preview",
     "e2e": "playwright test",
-    "test:voix": "tsx src/app/voice-offline/validationVocale.test.mts"
+    "test:voix": "npx --yes tsx src/app/voice-offline/validationVocale.test.mts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "*",
