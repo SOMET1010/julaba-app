@@ -12,6 +12,7 @@
 
 import { GRAMMAR_WORDS } from './vocabulaire';
 import { VOSK_MODEL_URL } from './voskModel';
+import { nativeStt } from './nativeStt';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
@@ -164,6 +165,19 @@ function makeAudioBuffer(sampleRate: number, data: Float32Array): AudioBuffer {
  * @param useGrammar limite au vocabulaire du marché (améliore la précision)
  */
 export async function transcribeWav(wav: Blob | ArrayBuffer, useGrammar = true, customGrammar?: string[]): Promise<string> {
+  // APK Android : on PRÉFÈRE le moteur sherpa-onnx NATIF (charge les échantillons
+  // bruts, rééchantillonne à 16 kHz). Le WAV est décodé ici pour extraire les
+  // Float32 ; la bascule reste à la même interface pour tous les appelants.
+  if (await nativeStt.isAvailable()) {
+    try {
+      const arrayBuf = wav instanceof Blob ? await wav.arrayBuffer() : wav.slice(0);
+      const audioBuf = await getCtx().decodeAudioData(arrayBuf as ArrayBuffer);
+      const samples = audioBuf.getChannelData(0);
+      const nativeText = await nativeStt.transcribe(samples, audioBuf.sampleRate);
+      if (nativeText) return nativeText;
+    } catch { /* repli Vosk si le natif échoue */}
+  }
+
   const model = await ensureOfflineModel();
   const arrayBuf = wav instanceof Blob ? await wav.arrayBuffer() : wav.slice(0);
   const audioBuf = await getCtx().decodeAudioData(arrayBuf as ArrayBuffer);
