@@ -1,0 +1,38 @@
+{
+  "name": "julaba-app",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend_src",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n frontend,backend -c cyan,green \"npm run dev --workspace frontend_src\" \"npm run start:dev --workspace backend\"",
+    "build": "npm run build --workspace frontend_src && npm run build --workspace backend",
+    "install:all": "npm install",
+    "typecheck": "npm run typecheck --workspace frontend_src"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
+    "@nestjs/config": "4.0.4",
+    "@nestjs/core": "11.1.28",
+    "@nestjs/platform-express": "11.1.28",
+    "@nestjs/platform-socket.io": "11.1.28",
+    "@nestjs/schedule": "6.1.3",
+    "@nestjs/swagger": "11.4.6",
+    "@nestjs/testing": "11.1.28",
+    "@nestjs/throttler": "6.5.0",
+    "@nestjs/typeorm": "11.0.3",
+    "@nestjs/websockets": "11.1.28",
+    "@sentry/node": "10.69.0",
+    "exceljs": "3.4.0",
+    "jspdf": "4.2.1",
+    "react-router": "8.3.0"
+  }
+}
