@@ -16,7 +16,7 @@ import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { normalizeRole } from '../types/constants';
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { speakChunked, stopChunkedSpeaking } from '../services/elevenlabs';
+import * as audioManager from '../services/audioManager';
 import { API_URL } from '../utils/api';
 import { enfilerOperation } from '../voice-offline/offlineCaisse';
 import { clearAuthClientState } from '../utils/clearAuthClientState';
@@ -237,6 +237,11 @@ function caisseAuthHeaders(accessToken: string | null): HeadersInit {
   }
   return h;
 }
+
+// Génération pour l'état visuel « isSpeaking » : seule la voix la plus récente
+// réinitialise l'animation (évite le clignotement quand une voix en interrompt
+// une autre). Module-level : il n'y a qu'un seul AppProvider.
+let _speakUiGen = 0;
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { setUser: setUserContext } = useUser();
@@ -668,18 +673,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!text?.trim()) return;
     if (user?.role !== 'marchand') return;
     if (voiceMuted) return;
-    if (isSpeaking) return;
+    // Plus de garde « if (isSpeaking) return » : une action utilisateur DOIT
+    // pouvoir interrompre l'annonce en cours. Le chef d'orchestre (audioManager)
+    // sérialise et coupe tout le reste (voix + clips) avant de parler.
     const safeText = text.replace(/[<>]/g, "");
-    stopChunkedSpeaking();
+    const gen = ++_speakUiGen;
     setSpeakingText(safeText);
     setIsSpeaking(true);
     try {
-      await speakChunked(safeText);
+      await audioManager.speak(safeText, { priority: "user" });
     } finally {
-      setSpeakingText("");
-      setIsSpeaking(false);
+      // Ne réinitialise l'état visuel que si aucune voix plus récente n'a démarré.
+      if (_speakUiGen === gen) {
+        setSpeakingText("");
+        setIsSpeaking(false);
+      }
     }
   };
+
+  // Synchronise le mute global du chef d'orchestre : couvre AUSSI les annonces
+  // automatiques (ObjectifContext) et le rapport hebdo, qui appellent l'audioManager
+  // en direct sans passer par ce `speak`.
+  useEffect(() => { audioManager.setVoiceMuted(voiceMuted); }, [voiceMuted]);
 
   // Activer la voix après la première interaction utilisateur
   useEffect(() => {
