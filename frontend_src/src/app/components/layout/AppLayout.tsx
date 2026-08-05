@@ -11,6 +11,7 @@ import { ScrollToTop } from './ScrollToTop';
 import { getRoleConfig } from '../../config/roleConfig';
 import { ROLE_ROUTES, normalizeRole } from '../../types/constants';
 import { NotificationToastContainer } from '../shared/NotificationToast';
+import * as audioManager from '../../services/audioManager';
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -42,6 +43,15 @@ export function AppLayout() {
       setUserProfile(user);
     }
   }, [user]);
+
+  // Chef d'orchestre voix — on annule la voix de l'ANCIEN écran dans le CLEANUP lié à
+  // l'ancien pathname. React exécute tous les cleanups d'un commit AVANT les nouveaux
+  // effets : l'annulation précède donc le démarrage d'une voix par le nouvel écran, et
+  // une voix du nouvel écran SURVIT. (Ne pas annuler dans le corps de l'effet : il
+  // s'exécute APRÈS les effets enfants du nouvel écran et les couperait.)
+  useEffect(() => {
+    return () => audioManager.cancelObsoleteVoice();
+  }, [location.pathname]);
 
   // NOTIF_NEW : toast Sonner retiré du layout (géré par NotificationsContext + NotificationToastContainer).
 
