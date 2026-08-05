@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
-import { stopChunkedSpeaking } from '../../services/elevenlabs';
+import * as audioManager from '../../services/audioManager';
 import { safeGetItem, safeSetItem } from '../../utils/safeLocalStorage';
 import { Navigation } from '../layout/Navigation';
 import { RoleDashboard } from '../shared/RoleDashboard';
@@ -22,7 +22,7 @@ import tataLouImgMarchand from "../../../assets/images/tantie-marchand.png";
 import { MarchandAccueil } from './MarchandAccueil';
 import { MarchandAccueilVoice } from './MarchandAccueilVoice';
 import { NotifBellButton, NotificationsPanel } from '../shared/NotificationsPanel';
-import { getEffectiveMode, guidageVocal } from '../../utils/accessMode';
+import { getEffectiveMode } from '../../utils/accessMode';
 
 export function MarchandHome() {
   const navigate = useNavigate();
@@ -81,22 +81,20 @@ export function MarchandHome() {
   useEffect(() => {
     const isMountedRef = { current: true };
     if (!currentSession?.opened) {
+      // Bonus « zéro voix automatique au chargement » : on garde le coach-mark
+      // VISUEL après 5 s, mais PLUS AUCUNE voix ne se déclenche seule ici.
       const timer = setTimeout(() => {
         if (!isMountedRef.current) return;
         setShowCoachMark(true);
-        // Guidage vocal AUTO selon le profil : silencieux en mode 'lecture'.
-        if (guidageVocal()) speak('Ouvre ta journée pour activer ta caisse');
       }, 5000);
       return () => {
         isMountedRef.current = false;
         clearTimeout(timer);
-        stopChunkedSpeaking();
+        audioManager.stopAllVoice(); // règle 6 : arrêt/nettoyage au démontage
       };
     } else {
       setShowCoachMark(false);
     }
-  // speak ref instable dans AppContext (recreee a chaque render provider), exclue volontairement pour eviter boucle re-render
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSession?.opened]);
 
   // B11 : le mode Auto peut changer la présentation (simple ↔ avancée) quand il
@@ -104,15 +102,10 @@ export function MarchandHome() {
   // le changement SILENCIEUX. Tata l'ANNONCE donc quand la vue diffère de la
   // dernière fois, et pointe le bouton pour revenir en arrière.
   useEffect(() => {
+    // Bonus : plus d'annonce vocale automatique au changement de vue simple/avancée.
+    // On mémorise seulement la dernière vue (aucune voix déclenchée seule).
     try {
       const now = modeSimple ? 'simple' : 'avancee';
-      const last = localStorage.getItem('julaba_last_view');
-      if (last && last !== now && guidageVocal()) {
-        const t = now === 'avancee'
-          ? "J'ai remarqué que tu lis bien : je t'ai préparé l'écran complet. Tu peux revenir à l'écran simple en haut à droite."
-          : "Je t'ai remis l'écran simple. Tu peux passer à l'écran complet quand tu veux.";
-        setTimeout(() => speak(t), 1200);
-      }
       localStorage.setItem('julaba_last_view', now);
     } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
