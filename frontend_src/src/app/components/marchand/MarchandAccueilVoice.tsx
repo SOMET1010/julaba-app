@@ -6,7 +6,7 @@ import { useCaisse } from '../../contexts/CaisseContext';
 import { RACC_IMG as MOD_IMAGES } from '../../assets/cloudinary-images';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { VenteVocaleModal } from './VenteVocaleModal';
-import { ResumeModal } from './MarchandModals';
+import { ResumeModal, CloseDayModal, EditFondModal } from './MarchandModals';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
@@ -21,7 +21,7 @@ import { ObjectifProvider } from '../../contexts/ObjectifContext';
  */
 function MarchandAccueilVoiceInner() {
   const navigate = useNavigate();
-  const { user, speak, getTodayStats } = useApp();
+  const { user, speak, getTodayStats, currentSession } = useApp();
   const stats = getTodayStats();
   const caisse = stats?.caisse || 0;
   const prenom = user?.firstName || user?.prenoms || user?.prenom || user?.nom || '';
@@ -29,6 +29,8 @@ function MarchandAccueilVoiceInner() {
   const [soldeVisible, setSoldeVisible] = useState(true);
   const [showVente, setShowVente] = useState(false);
   const [showResume, setShowResume] = useState(false);
+  const [showClose, setShowClose] = useState(false);
+  const [showEditFond, setShowEditFond] = useState(false);
 
   // Panier en cours (Lot 3) : accès « Nouvelle vente » + bannière de reprise.
   const { venteEnCours, cart, getTotalCart, staleCart, resumeStaleCart, discardStaleCart, clearCart } = useCaisse();
@@ -236,11 +238,24 @@ function MarchandAccueilVoiceInner() {
 
       <VenteVocaleModal isOpen={showVente} onClose={() => setShowVente(false)} />
 
-      {/* Résumé du jour — ouvert en touchant la carte caisse (Phase 2) */}
+      {/* Résumé du jour — ouvert en touchant la carte caisse (Phase 2).
+          La clôture de journée + le fond y sont relogés (Q-C). */}
       <ResumeModal
         isOpen={showResume}
         onClose={() => setShowResume(false)}
         stats={{ ventes: stats?.ventes || 0, cahier: stats?.cahier || 0, caisse: stats?.caisse || 0, nombreVentes: stats?.nombreVentes || 0 }}
+        onFermerJournee={() => { setShowResume(false); setShowClose(true); }}
+        onModifierFond={() => { setShowResume(false); setShowEditFond(true); }}
+      />
+      <CloseDayModal
+        isOpen={showClose}
+        onClose={() => setShowClose(false)}
+        stats={{ ventes: stats?.ventes || 0, cahier: stats?.cahier || 0, caisse: stats?.caisse || 0, nombreVentes: stats?.nombreVentes || 0 }}
+      />
+      <EditFondModal
+        isOpen={showEditFond}
+        onClose={() => setShowEditFond(false)}
+        currentFond={currentSession?.fondInitial || 0}
       />
     </div>
   );
