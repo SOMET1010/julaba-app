@@ -319,7 +319,7 @@ export function ensureOfflineModel(
           const mod = await loadSherpaRuntime();
           await ensureModelInFs(mod, onProgress);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          sherpaRecognizer = (window as any).createOnlineRecognizer(buildSherpaOnlineConfig(), mod);
+          sherpaRecognizer = (window as any).createOnlineRecognizer(mod, buildSherpaOnlineConfig());
           modelReady = true;
           try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ }
           writeEngine('sherpa');

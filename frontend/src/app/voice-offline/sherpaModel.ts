@@ -93,7 +93,9 @@ export const SHERPA_NATIVE_FILES: { name: string; url: string; size: number }[] 
 /**
  * Config du OnlineRecognizer (streaming zipformer transducer).
  * Mêmes champs que les defaults du glue officiel — on ne change que les chemins
- * FS, le provider WASM et le modelingUnit « bpe » (tokens.txt = BPE, 502 tokens).
+ * FS et le provider CPU (le build WASM ne supporte que 'cpu'). modelingUnit
+ * reste à la valeur officielle ('cjkchar') : 'bpe' exigerait bpe-vocab, or le
+ * modèle FR n'en fournit pas (testé E2E : 'bpe' → recognizer null, 'cjkchar' ✓).
  */
 export function buildSherpaOnlineConfig(): Record<string, unknown> {
   return {
@@ -110,10 +112,10 @@ export function buildSherpaOnlineConfig(): Record<string, unknown> {
       toneCtc: { model: '' },
       tokens: SHERPA_FS.tokens,
       numThreads: 1,
-      provider: 'wasm',
+      provider: 'cpu',
       debug: 0,
       modelType: '',
-      modelingUnit: 'bpe',
+      modelingUnit: 'cjkchar',
       bpeVocab: '',
     },
     decodingMethod: 'greedy_search',
