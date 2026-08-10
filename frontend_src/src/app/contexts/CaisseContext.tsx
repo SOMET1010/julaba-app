@@ -1,6 +1,7 @@
 import { eventBus, EVENTS } from '../services/eventBus';
 import { useApp } from './AppContext';
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { toast } from 'sonner';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import * as caisseApi from '../../imports/caisse-api';
 import { getImageByNom } from '../data/catalogue-produits';
@@ -9,6 +10,11 @@ import { API_URL } from '../utils/api';
 import { prixEffectif } from '../utils/promo.utils';
 // Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.
 import { enfilerOperation, synchroniser, type CaisseEndpoint } from '../voice-offline/offlineCaisse';
+// Persistance locale du panier (Phase 1) : module pur, stockage injecté.
+import { loadCart, saveCart, clearStoredCart, type KVStore } from '../services/cartStorage';
+
+// localStorage respecte l'interface KVStore ; null en environnement sans window.
+const cartStore: KVStore | null = typeof window !== 'undefined' ? window.localStorage : null;
 
 // Rejoue une opération en attente vers la bonne route caisse (avec idempotency_key).
 async function posterOperation(endpoint: CaisseEndpoint, payload: unknown): Promise<void> {
@@ -116,7 +122,17 @@ interface CaisseContextType {
   updateCartItemQuantity: (productId: string, quantite: number) => void;
   clearCart: () => void;
   getTotalCart: () => number;
-  
+
+  // Persistance / reprise du panier (Phase 1)
+  venteEnCours: boolean;
+  cartUpdatedAt: string | null;
+  /** Panier « ancien » (> seuil) en attente de décision reprendre/effacer (R5). */
+  staleCart: { items: CartItem[]; updatedAt: string } | null;
+  resumeStaleCart: () => void;
+  discardStaleCart: () => void;
+  /** Efface le panier ET sa clé locale (déconnexion volontaire — R3). */
+  clearCartAndStorage: () => void;
+
   // Products
   addProduct: (product: Omit<CaisseProduct, 'id'>) => Promise<void>;
   updateProduct: (id: string, updates: Partial<CaisseProduct>) => Promise<void>;
@@ -145,6 +161,15 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [mouvements, setMouvements] = useState<StockMovement[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<CaisseProduct | null>(null);
+
+  // Persistance du panier (Phase 1) : drapeau d'hydratation par utilisateur (R1 —
+  // empêche d'écraser le panier sauvegardé par un panier vide au montage ou au
+  // changement de compte), alerte d'échec unique (R4), panier « ancien » en
+  // attente de décision (R5).
+  const hydratedForRef = useRef<string | null>(null);
+  const saveWarnedRef = useRef(false);
+  const [staleCart, setStaleCart] = useState<{ items: CartItem[]; updatedAt: string } | null>(null);
+  const [cartUpdatedAt, setCartUpdatedAt] = useState<string | null>(null);
 
   const loadTransactions = async () => {
     const cacheKey = `julaba_cache_tx_${appUser?.id || 'anon'}`;
@@ -197,6 +222,55 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     window.addEventListener('online', sync);
     return () => window.removeEventListener('online', sync);
   }, []);
+
+  // ── Persistance du panier ──────────────────────────────────
+  // HYDRATATION (R1) : au montage et à CHAQUE changement d'utilisateur. On coupe
+  // d'abord l'écriture (hydratedForRef = null), on lit la clé DU BON utilisateur,
+  // puis on ré-autorise l'écriture. Garantit qu'un panier n'est jamais écrit sous
+  // la clé d'un autre compte (A → B), ni écrasé par l'état initial vide.
+  useEffect(() => {
+    const id = appUser?.id ?? null;
+    hydratedForRef.current = null;   // écriture bloquée pendant l'hydratation
+    saveWarnedRef.current = false;
+    setStaleCart(null);
+    if (!id || !cartStore) {
+      setCart([]);
+      setCartUpdatedAt(null);
+      hydratedForRef.current = id;
+      return;
+    }
+    const loaded = loadCart(cartStore, id, Date.now());
+    if (loaded && loaded.age === 'recent') {
+      setCart(loaded.items);
+      setCartUpdatedAt(loaded.updatedAt);
+    } else if (loaded && loaded.age === 'stale') {
+      // Panier ancien : on ne restaure PAS ; on propose reprendre/effacer (R5).
+      // On garde la clé intacte tant que la décision n'est pas prise.
+      setCart([]);
+      setCartUpdatedAt(null);
+      setStaleCart({ items: loaded.items, updatedAt: loaded.updatedAt });
+    } else {
+      setCart([]);
+      setCartUpdatedAt(null);
+    }
+    hydratedForRef.current = id;      // écriture ré-autorisée
+  }, [appUser?.id]);
+
+  // SAUVEGARDE : à chaque changement du panier, seulement après hydratation du bon
+  // utilisateur, et jamais tant qu'une décision « panier ancien » est en attente
+  // (sinon on effacerait la clé avant que l'utilisatrice ne choisisse). Un échec
+  // de stockage n'interrompt rien : on prévient une seule fois (R4).
+  useEffect(() => {
+    const id = appUser?.id;
+    if (!id || !cartStore) return;
+    if (hydratedForRef.current !== id) return; // hydratation en cours
+    if (staleCart) return;                     // décision reprendre/effacer en attente
+    const res = saveCart(cartStore, id, cart, new Date().toISOString());
+    if (!res.ok && !saveWarnedRef.current) {
+      saveWarnedRef.current = true;
+      toast.warning('Cette vente ne pourra peut-être pas être retrouvée si l\'application se ferme.');
+    }
+  }, [cart, appUser?.id, staleCart]);
 
   // ── Stats calculees ────────────────────────────────────────
   const getToday = () => new Date().toISOString().split('T')[0];
@@ -330,6 +404,34 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const clearCart = () => setCart([]);
 
   const getTotalCart = () => cart.reduce((sum, item) => sum + item.prix * item.quantite, 0);
+
+  // ── Persistance / reprise du panier (Phase 1) ──────────────
+  const venteEnCours = cart.length > 0;
+
+  // Reprendre un panier « ancien » proposé au démarrage (R5) → il redevient actif
+  // (l'effet de sauvegarde le ré-enregistrera avec un horodatage frais).
+  const resumeStaleCart = useCallback(() => {
+    setStaleCart(prev => {
+      if (prev) setCart(prev.items);
+      return null;
+    });
+  }, []);
+
+  // Effacer un panier « ancien » sans le reprendre (R5).
+  const discardStaleCart = useCallback(() => {
+    const id = appUser?.id;
+    if (id && cartStore) clearStoredCart(cartStore, id);
+    setStaleCart(null);
+    setCart([]);
+  }, [appUser?.id]);
+
+  // Effacer le panier ET sa clé locale (déconnexion volontaire — R3).
+  const clearCartAndStorage = useCallback(() => {
+    const id = appUser?.id;
+    if (id && cartStore) clearStoredCart(cartStore, id);
+    setStaleCart(null);
+    setCart([]);
+  }, [appUser?.id]);
 
   // ── Products ───────────────────────────────────────────────
   const loadProducts = useCallback(async () => {
@@ -498,6 +600,12 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     updateCartItemQuantity,
     clearCart,
     getTotalCart,
+    venteEnCours,
+    cartUpdatedAt,
+    staleCart,
+    resumeStaleCart,
+    discardStaleCart,
+    clearCartAndStorage,
     addProduct,
     updateProduct,
     deleteProduct,
