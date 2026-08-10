@@ -12,16 +12,11 @@ import { transcribeWav, offlineModelReady, ensureOfflineModel } from "../voice-o
 import { intentLocal } from "../voice-offline/localIntent";
 import { preloadEarlyAudios } from "../services/earlyAudioCache";
 import {
-  speakChunked,
-  stopChunkedSpeaking,
-  stopAllAudio,
-  stopSpeaking as elStop,
-  playBase64Audio,
-  playAudioUrl,
   preloadAudioContext,
   getSharedAudioContext,
   type TTSLang,
 } from "../services/elevenlabs";
+import * as audioManager from "../services/audioManager";
 import { tataClipUrl } from "../services/tataVoice";
 import { tataUiClipForText } from "../services/tataUiClips";
 import { useOfflineVoiceQueue } from "./useOfflineVoiceQueue";
@@ -248,51 +243,33 @@ function startTypewriter(
 // cloud) au lieu de la voix de synthèse. Sinon on retombe sur le flux normal.
 async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): Promise<void> {
   if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') return;
-  // « Époque » d'arrêt : si l'utilisateur coupe la voix (tape le micro) PENDANT
-  // qu'un clip charge, playAudioUrl est rejeté ; sans ce garde-fou, on enchaînait
-  // sur la voix de secours qui repartait par-dessus l'enregistrement du micro.
-  const epoch = _ttsStopEpoch;
-  const stoppe = () => _ttsStopEpoch !== epoch;
-  if (clip) {
-    const url = tataClipUrl(clip);
-    if (url) {
-      try { await playAudioUrl(url); return; }
-      catch { if (stoppe()) return; /* clip indisponible → voix de secours */ }
-    }
-  }
   if (lang === "french") {
-    // Voix de Tata Nanti Lou pour les messages FIXES de l'appli : si le texte à
-    // dire correspond EXACTEMENT à un clip enregistré (128 phrases), on joue la
-    // vraie voix ivoirienne au lieu de la synthèse. Sinon (phrase dynamique,
-    // montant, nom…), on retombe sans bruit sur la voix de secours habituelle.
-    const uiUrl = tataUiClipForText(text);
-    if (uiUrl) {
-      try { await playAudioUrl(uiUrl); return; }
-      catch { if (stoppe()) return; /* clip indisponible → voix de secours */ }
-    }
-    if (stoppe()) return; // voix coupée entre-temps → ne pas relancer
-    await speakChunked(text);
+    // Clip enregistré prioritaire : clé explicite, sinon correspondance auto du texte.
+    // Le chef d'orchestre joue le clip et, s'il est INDISPONIBLE, bascule sur la voix
+    // de secours DANS LE MÊME créneau exclusif (pas de chevauchement ; l'annulation
+    // — micro tapé, navigation… — est gérée par le manager, plus d'« époque » ad hoc).
+    const clipUrl = (clip ? tataClipUrl(clip) : null) || tataUiClipForText(text) || undefined;
+    await audioManager.speakClipOrText({ clipUrl, text }, { priority: "user" });
     return;
   }
-  // Dioula/Bambara : passer par fetchTTSLocal (ANSUT)
-  const { fetchTTSLocal } = await import("../services/elevenlabs");
-  const base64 = await fetchTTSLocal(text, lang);
-  if (base64) await playBase64Audio(base64);
+  // Dioula/Bambara : la requête réseau (fetchTTSLocal/ANSUT) ET la lecture sont dans
+  // UN SEUL job annulable. Si l'utilisatrice coupe la voix (micro, navigation) PENDANT
+  // la requête, la génération capturée est périmée → rien ne repart après le Stop.
+  await audioManager.speakDynamic(async () => {
+    const { fetchTTSLocal } = await import("../services/elevenlabs");
+    const base64 = await fetchTTSLocal(text, lang);
+    return base64 ? { base64 } : { text };
+  }, { priority: "user" });
 }
 
 async function ttsPlayBase64(base64: string, fallback: string): Promise<void> {
   if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') return;
-  try { await playBase64Audio(base64); } catch { await ttsSpeak(fallback); }
+  // Joue le clip base64 ; s'il échoue, la voix de secours dit `fallback` (même créneau).
+  await audioManager.speakClipOrText({ base64, text: fallback }, { priority: "user" });
 }
 
-// Incrémenté à chaque arrêt de la voix : permet à ttsSpeak de savoir qu'une
-// coupure est survenue pendant un chargement de clip et de NE PAS enchaîner.
-let _ttsStopEpoch = 0;
 function ttsStop(): void {
-  _ttsStopEpoch++;
-  stopAllAudio();
-  stopChunkedSpeaking();
-  elStop();
+  audioManager.stopAllVoice();
 }
 
 // Interprète une réponse de confirmation dictée : « oui » / « non » / incertain.
