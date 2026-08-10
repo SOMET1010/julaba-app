@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { playBase64Audio, stopAllAudio } from '../services/elevenlabs';
+import * as audioManager from '../services/audioManager';
 
 export interface RapportHebdo {
   semaine: { debut: string; fin: string };
@@ -46,8 +46,8 @@ export function RapportHebdoProvider({ children }: { children: React.ReactNode }
 
   const playRapport = useCallback(() => {
     if (!rapport?.audioBase64) return;
-    stopAllAudio();
-    playBase64Audio(rapport.audioBase64).catch(() => {});
+    // Le chef d'orchestre coupe déjà tout (voix + clips) avant de jouer.
+    audioManager.playClip({ base64: rapport.audioBase64 }, { priority: 'user' }).catch(() => {});
   }, [rapport]);
 
   return (

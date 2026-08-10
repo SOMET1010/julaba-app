@@ -1,6 +1,7 @@
 import { useApp } from './AppContext';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { speakChunked } from '../services/elevenlabs';
+import * as audioManager from '../services/audioManager';
+import { nextObjectifAlert } from './objectifAlerts';
 
 interface ObjectifState {
   objectif: number;
@@ -24,6 +25,9 @@ export function ObjectifProvider({ children, ventes }: { children: React.ReactNo
   const [loading, setLoading] = useState(false);
   const ventesRef = useRef(ventes);
   ventesRef.current = ventes;
+  // Base pour détecter un FRANCHISSEMENT (et non la simple hydratation de l'état).
+  const prevPctRef = useRef<number | null>(null);
+  const prevObjectifRef = useRef<number | null>(null);
 
 
   const headers = () => ({ 'Content-Type': 'application/json' });
@@ -41,25 +45,39 @@ export function ObjectifProvider({ children, ventes }: { children: React.ReactNo
   const { user: appUser } = useApp();
   useEffect(() => { if (appUser?.id) refresh(); }, [appUser?.id]);
 
-  // Vérifier alertes à chaque changement de ventes
+  // Alertes d'objectif : UNIQUEMENT sur un franchissement ASCENDANT pendant la
+  // session — jamais à l'hydratation (chargement de l'état), ni à un changement
+  // d'objectif. Cf. objectifAlerts.ts (logique pure, testée).
   useEffect(() => {
-    if (!state.objectif || state.objectif === 0) return;
+    if (!state.objectif || state.objectif === 0) {
+      prevPctRef.current = null;
+      prevObjectifRef.current = state.objectif;
+      return;
+    }
     const pct = (ventes / state.objectif) * 100;
 
-    if (pct >= 50 && pct < 80 && !state.alerte50) {
-      speakChunked(`Félicitations ! Tu as atteint 50% de ton objectif. Continue ma chère, tu es sur la bonne voie !`);
+    // Hydratation initiale OU objectif qui vient de changer → on pose la base sans
+    // annoncer (distingue « état chargé » d'un « vrai franchissement »).
+    if (prevObjectifRef.current !== state.objectif || prevPctRef.current === null) {
+      prevObjectifRef.current = state.objectif;
+      prevPctRef.current = pct;
+      return;
+    }
+
+    const prev = prevPctRef.current;
+    prevPctRef.current = pct;
+
+    const alert = nextObjectifAlert(prev, pct, state.alerte50, state.alerte80);
+    if (alert === 'p50') {
+      audioManager.speakAuto(`Félicitations ! Tu as atteint 50% de ton objectif. Continue ma chère, tu es sur la bonne voie !`, { dedupeKey: 'objectif-50', minRepeatMs: 5 * 60 * 1000 });
       setState(s => ({ ...s, alerte50: true }));
       fetch('/api/v1/objectifs/alerte', { method: 'PATCH', credentials: 'include', headers: headers(), body: JSON.stringify({ alerte50: true }) });
-    }
-
-    if (pct >= 80 && !state.alerte80) {
-      speakChunked(`Bravo ! Tu es à 80% de ton objectif. Plus que ${Math.round(state.objectif - ventes).toLocaleString('fr-FR')} FCFA, allez courage !`);
+    } else if (alert === 'p80') {
+      audioManager.speakAuto(`Bravo ! Tu es à 80% de ton objectif. Plus que ${Math.round(state.objectif - ventes).toLocaleString('fr-FR')} FCFA, allez courage !`, { dedupeKey: 'objectif-80', minRepeatMs: 5 * 60 * 1000 });
       setState(s => ({ ...s, alerte80: true }));
       fetch('/api/v1/objectifs/alerte', { method: 'PATCH', credentials: 'include', headers: headers(), body: JSON.stringify({ alerte80: true }) });
-    }
-
-    if (pct >= 100 && state.alerte80) {
-      speakChunked(`Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère !`);
+    } else if (alert === 'p100') {
+      audioManager.speakAuto(`Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère !`, { dedupeKey: 'objectif-100', minRepeatMs: 10 * 60 * 1000 });
     }
   }, [ventes, state.objectif]);
 
@@ -74,7 +92,7 @@ export function ObjectifProvider({ children, ventes }: { children: React.ReactNo
       if (res.ok) {
         const data = await res.json();
         setState(data);
-        speakChunked(`Super ! Ton objectif du jour est fixé à ${montant.toLocaleString('fr-FR')} FCFA. Bonne chance ma chère !`);
+        audioManager.speak(`Super ! Ton objectif du jour est fixé à ${montant.toLocaleString('fr-FR')} FCFA. Bonne chance ma chère !`, { priority: 'user' });
       }
     } catch (e) { void e; }
     setLoading(false);
