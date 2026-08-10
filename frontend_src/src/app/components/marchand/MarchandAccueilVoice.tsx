@@ -6,6 +6,7 @@ import { useCaisse } from '../../contexts/CaisseContext';
 import { RACC_IMG as MOD_IMAGES } from '../../assets/cloudinary-images';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { VenteVocaleModal } from './VenteVocaleModal';
+import { ResumeModal } from './MarchandModals';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
@@ -18,7 +19,7 @@ import { ObjectifProvider } from '../../contexts/ObjectifContext';
  * belles icônes existantes de l'app pour le reste. La vue riche complète reste
  * accessible via « Vue avancée ».
  */
-function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced: () => void }) {
+function MarchandAccueilVoiceInner() {
   const navigate = useNavigate();
   const { user, speak, getTodayStats } = useApp();
   const stats = getTodayStats();
@@ -27,6 +28,7 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
 
   const [soldeVisible, setSoldeVisible] = useState(true);
   const [showVente, setShowVente] = useState(false);
+  const [showResume, setShowResume] = useState(false);
 
   // Panier en cours (Lot 3) : accès « Nouvelle vente » + bannière de reprise.
   const { venteEnCours, cart, getTotalCart, staleCart, resumeStaleCart, discardStaleCart, clearCart } = useCaisse();
@@ -56,7 +58,7 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
     { img: MOD_IMAGES.marchandise, label: 'Mon stock',    parle: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: '#0E7A47' },
     { img: MOD_IMAGES.cahier,      label: 'Mes dépenses', parle: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: '#B85C1B' },
     { img: MOD_IMAGES.bilan,       label: 'Mes ventes',   parle: 'Mes ventes',   go: () => navigate('/marchand/ventes-passees'), teinte: '#2C6E9E' },
-    { img: MOD_IMAGES.keiwa,       label: 'Keiwa',        parle: 'Mon argent Keiwa', go: () => navigate('/marchand/keiwa'),      teinte: '#7A3B12' },
+    { img: MOD_IMAGES.keiwa,       label: 'Mon argent',   parle: 'Mon argent Keiwa', go: () => navigate('/marchand/keiwa'),      teinte: '#7A3B12' },
   ];
 
   return (
@@ -94,7 +96,7 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
 
         {/* Caisse — verte, se dit à voix haute */}
         <div style={{ borderRadius: 22, padding: '16px 18px', background: 'linear-gradient(150deg,#1FA463,#0E7A47)', color: '#fff', boxShadow: '0 16px 30px -16px rgba(14,122,71,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-          <div style={{ minWidth: 0 }} onClick={direCaisse}>
+          <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => setShowResume(true)} role="button" aria-label="Voir le résumé du jour">
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.85 }}>Ma caisse aujourd'hui</div>
             <div style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, marginTop: 4, fontVariantNumeric: 'tabular-nums', cursor: 'pointer' }}>
               {soldeVisible ? Math.round(caisse).toLocaleString('fr-FR') : '●●●●●'}<small style={{ fontSize: 16, fontWeight: 700, opacity: 0.85 }}> F</small>
@@ -185,11 +187,6 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
           ))}
         </div>
 
-        {/* Accès à la vue riche complète */}
-        <button type="button" onClick={onSwitchToAdvanced}
-          style={{ display: 'block', margin: '20px auto 0', background: 'none', border: 'none', fontSize: 13, fontWeight: 700, color: 'rgba(124,98,80,0.7)', borderBottom: '2px dotted rgba(124,98,80,0.4)', padding: '2px 0', cursor: 'pointer' }}>
-          Vue avancée
-        </button>
       </div>
 
       {/* Garde : « Nouvelle vente » alors qu'un panier récent existe (Lot 3) */}
@@ -238,20 +235,27 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
       </AnimatePresence>
 
       <VenteVocaleModal isOpen={showVente} onClose={() => setShowVente(false)} />
+
+      {/* Résumé du jour — ouvert en touchant la carte caisse (Phase 2) */}
+      <ResumeModal
+        isOpen={showResume}
+        onClose={() => setShowResume(false)}
+        stats={{ ventes: stats?.ventes || 0, cahier: stats?.cahier || 0, caisse: stats?.caisse || 0, nombreVentes: stats?.nombreVentes || 0 }}
+      />
     </div>
   );
 }
 
 // La vente vocale a besoin des contextes Raccourcis / Rapport / Objectif
 // (mêmes providers que l'ancien accueil).
-export function MarchandAccueilVoice({ onSwitchToAdvanced }: { onSwitchToAdvanced: () => void }) {
+export function MarchandAccueilVoice() {
   const { getTodayStats } = useApp();
   const stats = getTodayStats();
   return (
     <RaccourcisProvider>
       <RapportHebdoProvider>
         <ObjectifProvider ventes={stats?.ventes || 0}>
-          <MarchandAccueilVoiceInner onSwitchToAdvanced={onSwitchToAdvanced} />
+          <MarchandAccueilVoiceInner />
         </ObjectifProvider>
       </RapportHebdoProvider>
     </RaccourcisProvider>
