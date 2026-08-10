@@ -11,6 +11,8 @@ import { useNavigate } from 'react-router';
 import { ModeAccesSwitcher } from './ModeAccesSwitcher';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
+import { useVoluntaryLogout } from '../../hooks/useVoluntaryLogout';
+import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLangPref, LANG_FLAGS, LANG_LABELS, type AppLang } from '../../hooks/useLangPref';
 import { SubPageLayout } from '../layout/SubPageLayout';
@@ -577,8 +579,10 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
   const cfg = ROLE_CONFIG[role];
   const { color } = cfg;
 
-  const { speak, isOnline, user, setUser, logout: appLogout } = useApp();
-  const { updateUser, logout: userLogout } = useUser();
+  const { speak, isOnline, user, setUser } = useApp();
+  const { updateUser } = useUser();
+  // Déconnexion volontaire — orchestration centralisée (hook réutilisable).
+  const logout = useVoluntaryLogout();
   const { isDark, toggleDark, mode, setMode } = useTheme();
   const { lang, setLang } = useLangPref();
 
@@ -1052,7 +1056,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <RowAction label="Supprimer mon compte" sublabel="Suppression définitive et irréversible" danger icon={Trash2}
               onClick={() => setShowDeleteAccount(true)} />
             <RowAction label="Se déconnecter" sublabel="Retour à la connexion" danger icon={LogOut}
-              onClick={() => setShowLogout(true)} />
+              onClick={() => { if (logout.venteEnCours) logout.openCartConfirm(); else setShowLogout(true); }} />
           </Section>
 
           <div className="p-4 rounded-2xl border-2 flex items-start gap-3"
@@ -1087,8 +1091,15 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
         title="Se déconnecter ?"
         message="Tu seras redirigé vers la page de connexion Jùlaba."
         confirmLabel="Se déconnecter"
-        onConfirm={async () => { speak('Déconnexion en cours'); await appLogout(); userLogout(); }}
+        onConfirm={async () => { speak('Déconnexion en cours'); await logout.performLogout(); }}
         onClose={() => setShowLogout(false)}
+      />
+      {/* R3 — confirmation « panier en cours » (uniquement si une vente est en cours) */}
+      <LogoutConfirmDialog
+        open={logout.confirmOpen}
+        onConfirm={logout.confirmAndClear}
+        onCancel={logout.cancel}
+        color={color}
       />
     </>
   );
