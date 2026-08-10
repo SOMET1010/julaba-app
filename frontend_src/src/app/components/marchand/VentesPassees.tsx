@@ -271,7 +271,7 @@ export function VentesPassees() {
   const SOURCE_TABS: { id:'tous'|'vocal'|'kassa'|'credits'; label:string }[] = [
     { id:'tous',    label:'Toutes' },
     { id:'vocal',   label:'Par Tata Nanti Lou' },
-    { id:'kassa',   label:'Par Kassa' },
+    { id:'kassa',   label:'Par caisse' },
     { id:'credits', label:'Crédits' },
   ];
   const sliderIndex = SOURCE_TABS.findIndex(t => t.id === sourceFilter);
