@@ -9,6 +9,7 @@ import { CreditModal } from './CreditModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { partagerRecu } from '../../utils/recu.utils';
+import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
 import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 
@@ -37,6 +38,8 @@ export function POSCaisse() {
   // Encaissement (Phase 3, lots 2-4) : montant reçu (espèces) + écran « Vente réussie ».
   const [montantRecu, setMontantRecu] = useState('');
   const [lastSale, setLastSale] = useState<{ montant: number; moyen: string; monnaie: number; produits: any[] } | null>(null);
+  // Mobile money DÉCLARÉ (Chemin A) : opérateur choisi, aucune intégration/argent.
+  const [mmOperator, setMmOperator] = useState<string | null>(null);
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -110,7 +113,10 @@ export function POSCaisse() {
       return;
     }
     if (paymentMethod === 'credit') return;
-    if (insuffisant) { dire('Montant reçu insuffisant'); return; }
+    if (paymentMethod === 'cash' && insuffisant) { dire('Montant reçu insuffisant'); return; }
+    if (paymentMethod === 'mobile_money' && !mmOperator) { dire('Choisis l\'opérateur'); return; }
+    const estMM = paymentMethod === 'mobile_money';
+    const moyen = estMM ? getMobileOperator(mmOperator as string).name : 'Espèces';
     paiementEnCoursRef.current = true;
     setIsProcessing(true);
     try {
@@ -122,15 +128,16 @@ export function POSCaisse() {
         total: i.prix * i.quantite,
         prix_achat: (i as any).prixAchat ?? (i as any).prix_achat ?? 0,
       }));
-      await enregistrerVente(total, details, paymentMethod, undefined);
+      await enregistrerVente(total, details, moyen, undefined);
       details.forEach((item) => {
         const prod = products.find((p) => p.id === item.productId);
         if (prod) updateProduct(prod.id, { stock: Math.max(0, (prod.stock || 0) - item.quantite) });
       });
       // Écran « Vente réussie » (Phase 3, lot 4) — capturé AVANT de vider le panier.
-      setLastSale({ montant: total, moyen: 'Espèces', monnaie, produits: details });
+      setLastSale({ montant: total, moyen, monnaie: estMM ? 0 : monnaie, produits: details });
       clearCart();
       setPaymentMethod('cash');
+      setMmOperator(null);
       setMontantRecu('');
       setShowCart(false);
       setShowSuccess(true);
@@ -399,22 +406,43 @@ export function POSCaisse() {
                   <span style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} FCFA</span>
                 </div>
 
-                {/* Moyen de paiement (Phase 3) — espèces / crédit */}
+                {/* Moyen de paiement — espèces / mobile money (déclaré) / crédit */}
                 <div style={{ display:'flex', gap:8, marginBottom:12 }}>
                   <button type="button" onClick={() => setPaymentMethod('cash')}
-                    style={{ flex:1, padding:'12px', borderRadius:12, fontWeight:800, fontSize:14, cursor:'pointer',
+                    style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
                       border: paymentMethod==='cash' ? `2px solid ${P}` : '1.5px solid #EDE7DE',
                       background: paymentMethod==='cash' ? '#FFF3E9' : '#fff', color: paymentMethod==='cash' ? P : '#8A7A6A' }}>
                     Espèces
                   </button>
+                  <button type="button" onClick={() => setPaymentMethod('mobile_money')}
+                    style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer', lineHeight:1.15,
+                      border: paymentMethod==='mobile_money' ? `2px solid ${P}` : '1.5px solid #EDE7DE',
+                      background: paymentMethod==='mobile_money' ? '#FFF3E9' : '#fff', color: paymentMethod==='mobile_money' ? P : '#8A7A6A' }}>
+                    Mobile money
+                  </button>
                   <button type="button" onClick={() => { setShowCart(false); setPaymentMethod('credit'); setShowCredit(true); }}
-                    style={{ flex:1, padding:'12px', borderRadius:12, fontWeight:800, fontSize:14, cursor:'pointer',
+                    style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
                       border:'1.5px solid #EDE7DE', background:'#fff', color:'#8A7A6A' }}>
                     Crédit
                   </button>
                 </div>
 
+                {/* Mobile money DÉCLARÉ : choix de l'opérateur (aucune intégration) */}
+                {paymentMethod === 'mobile_money' && (
+                  <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
+                    {MOBILE_OPERATORS.map(op => (
+                      <button type="button" key={op.id} onClick={() => setMmOperator(op.id)}
+                        style={{ flex:'1 0 30%', padding:'11px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
+                          border: mmOperator===op.id ? `2px solid ${op.color}` : '1.5px solid #EDE7DE',
+                          background: mmOperator===op.id ? op.color : '#fff', color: mmOperator===op.id ? op.textColor : '#5a4a3a' }}>
+                        {op.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {/* Espèces : montant reçu + rapides + monnaie à rendre */}
+                {paymentMethod === 'cash' && (
                 <div style={{ marginBottom:12 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid #EDE7DE', borderRadius:12, padding:'10px 12px' }}>
                     <span style={{ fontSize:12, fontWeight:700, color:'#8A7A6A', whiteSpace:'nowrap' }}>Montant reçu</span>
@@ -443,11 +471,23 @@ export function POSCaisse() {
                     <div style={{ marginTop:8, fontSize:13, fontWeight:700, color:'#c0392b' }}>Montant reçu insuffisant</div>
                   )}
                 </div>
+                )}
 
-                <motion.button whileTap={{ scale:0.97 }} onClick={handlePay} disabled={isProcessing || insuffisant}
-                  style={{ width:'100%', border:'none', borderRadius:18, padding:'17px 0', fontSize:16, fontWeight:800, color:'white', cursor: (isProcessing||insuffisant) ? 'not-allowed':'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, background: (isProcessing||insuffisant) ? '#CBB9A8' : P }}>
-                  {isProcessing ? 'Traitement...' : (monnaie > 0 ? `Valider · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Valider la vente')}
-                </motion.button>
+                {(() => {
+                  const bloque = isProcessing
+                    || (paymentMethod === 'cash' && insuffisant)
+                    || (paymentMethod === 'mobile_money' && !mmOperator);
+                  const label = isProcessing ? 'Traitement...'
+                    : paymentMethod === 'mobile_money'
+                      ? (mmOperator ? `Valider — payé par ${getMobileOperator(mmOperator).name}` : 'Choisis l\'opérateur')
+                      : (monnaie > 0 ? `Valider · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Valider la vente');
+                  return (
+                    <motion.button whileTap={{ scale: bloque ? 1 : 0.97 }} onClick={handlePay} disabled={bloque}
+                      style={{ width:'100%', border:'none', borderRadius:18, padding:'17px 0', fontSize:16, fontWeight:800, color:'white', cursor: bloque ? 'not-allowed':'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, background: bloque ? '#CBB9A8' : P }}>
+                      {label}
+                    </motion.button>
+                  );
+                })()}
               </div>
             </motion.div>
           </>
