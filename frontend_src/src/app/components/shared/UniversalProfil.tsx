@@ -24,6 +24,8 @@ import {
 import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
+import { useVoluntaryLogout } from '../../hooks/useVoluntaryLogout';
+import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 import { SOUS_PROFILS_MARCHAND } from '../../types/sousProfilMarchand';
 import { useLangPref, LANG_FLAGS, LANG_LABELS, type AppLang } from '../../hooks/useLangPref';
 import { SubPageLayout } from '../layout/SubPageLayout';
@@ -517,9 +519,12 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
   const navigate = useNavigate();
   const cfg = ROLE_CONFIG[role];
   const { color, routes, version } = cfg;
-  const { speak, setIsModalOpen, logout: appLogout, user: appUser } = useApp();
-  const { user, updateUser, logout: userLogout } = useUser();
+  const { speak, setIsModalOpen, user: appUser } = useApp();
+  const { user, updateUser } = useUser();
   const { lang, setLang } = useLangPref();
+
+  // Déconnexion volontaire (R3) — orchestration centralisée (hook réutilisable).
+  const logout = useVoluntaryLogout();
 
   const [showProfilUnifie, setShowProfilUnifie] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -655,16 +660,21 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
 
           <motion.button
             type="button"
-            onClick={async () => {
-              await appLogout();
-              userLogout();
-            }}
+            onClick={logout.requestLogout}
             className="w-full mb-2 py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold flex items-center justify-center gap-2"
             whileTap={{ scale: 0.98 }}
           >
             <LogOut className="w-5 h-5" />
             Se déconnecter
           </motion.button>
+
+          {/* R3 — confirmation avant d'effacer un panier en cours à la déconnexion */}
+          <LogoutConfirmDialog
+            open={logout.confirmOpen}
+            onConfirm={logout.confirmAndClear}
+            onCancel={logout.cancel}
+            color={color}
+          />
 
           <PartenairesLogos />
 
