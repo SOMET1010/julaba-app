@@ -24,6 +24,8 @@ import {
 import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
+import { useVoluntaryLogout } from '../../hooks/useVoluntaryLogout';
+import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 import { SOUS_PROFILS_MARCHAND } from '../../types/sousProfilMarchand';
 import { useLangPref, LANG_FLAGS, LANG_LABELS, type AppLang } from '../../hooks/useLangPref';
 import { SubPageLayout } from '../layout/SubPageLayout';
@@ -517,20 +519,12 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
   const navigate = useNavigate();
   const cfg = ROLE_CONFIG[role];
   const { color, routes, version } = cfg;
-  const { speak, setIsModalOpen, logout: appLogout, user: appUser } = useApp();
-  const { user, updateUser, logout: userLogout } = useUser();
-  const { venteEnCours, clearCartAndStorage } = useCaisse();
+  const { speak, setIsModalOpen, user: appUser } = useApp();
+  const { user, updateUser } = useUser();
   const { lang, setLang } = useLangPref();
 
-  // Déconnexion volontaire (R3) : si une vente est en cours, on confirme avant
-  // d'effacer le panier. La déconnexion forcée (expiration) ne passe pas par ici,
-  // donc le panier y est préservé.
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const doLogout = async () => { await appLogout(); userLogout(); };
-  const onLogoutClick = () => {
-    if (venteEnCours) setShowLogoutConfirm(true);
-    else void doLogout();
-  };
+  // Déconnexion volontaire (R3) — orchestration centralisée (hook réutilisable).
+  const logout = useVoluntaryLogout();
 
   const [showProfilUnifie, setShowProfilUnifie] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -666,7 +660,7 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
 
           <motion.button
             type="button"
-            onClick={onLogoutClick}
+            onClick={logout.requestLogout}
             className="w-full mb-2 py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold flex items-center justify-center gap-2"
             whileTap={{ scale: 0.98 }}
           >
@@ -675,40 +669,12 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
           </motion.button>
 
           {/* R3 — confirmation avant d'effacer un panier en cours à la déconnexion */}
-          <AnimatePresence>
-            {showLogoutConfirm && (
-              <motion.div
-                className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 p-4"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                onClick={() => setShowLogoutConfirm(false)}
-                role="dialog" aria-modal="true" aria-label="Confirmer la déconnexion"
-              >
-                <motion.div
-                  className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl"
-                  initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <p className="text-lg font-bold text-gray-900 mb-1">Une vente est en cours.</p>
-                  <p className="text-gray-600 mb-5">Si tu te déconnectes, ce panier sera effacé.</p>
-                  <button
-                    type="button"
-                    onClick={() => setShowLogoutConfirm(false)}
-                    className="w-full mb-2 py-4 rounded-2xl font-bold text-white"
-                    style={{ background: color }}
-                  >
-                    Continuer la vente
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { clearCartAndStorage(); setShowLogoutConfirm(false); void doLogout(); }}
-                    className="w-full py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold"
-                  >
-                    Se déconnecter et effacer
-                  </button>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          <LogoutConfirmDialog
+            open={logout.confirmOpen}
+            onConfirm={logout.confirmAndClear}
+            onCancel={logout.cancel}
+            color={color}
+          />
 
           <PartenairesLogos />
 

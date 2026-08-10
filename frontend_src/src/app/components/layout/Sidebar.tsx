@@ -5,6 +5,8 @@ import { Home, ShoppingCart, Mic, Package, User, Menu, X, ShoppingBag, Warehouse
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useCooperative } from '../../contexts/CooperativeContext';
+import { useVoluntaryLogout } from '../../hooks/useVoluntaryLogout';
+import { LogoutConfirmDialog } from '../shared/LogoutConfirmDialog';
 import { getRoleConfig, getRoleColor } from '../../config/roleConfig';
 import { SIDEBAR_WIDTH } from '../../config/responsive';
 
@@ -31,8 +33,9 @@ const ICON_MAP: Record<string, any> = {
 export function Sidebar({ role, onMicClick }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { speak, user: appUser, setUser: setAppUser, logout: appLogout } = useApp();
-  const { user: profileUser, setUser: setProfileUser, logout: userLogout } = useUser();
+  const { speak, user: appUser, setUser: setAppUser } = useApp();
+  const { user: profileUser, setUser: setProfileUser } = useUser();
+  const logout = useVoluntaryLogout();
   const { cooperative } = useCooperative();
   const isCooperateur = appUser?.role === 'cooperateur' || appUser?.role === 'cooperative';
   const displayName = appUser
@@ -55,11 +58,10 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
   const roleConfig = getRoleConfig(role);
   const activeColor = getRoleColor(role);
 
-  // Fonction de déconnexion
-  const handleLogout = async () => {
+  // Déconnexion volontaire — orchestration centralisée (confirme si panier en cours).
+  const handleLogout = () => {
     speak('À bientôt sur Jùlaba');
-    await appLogout();
-    userLogout();
+    logout.requestLogout();
   };
 
   // Construire les tabs depuis roleConfig.bottomBar.items + Mic
@@ -409,6 +411,14 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
           )}
         </div>
       </div>
+
+      {/* R3 — confirmation si une vente est en cours */}
+      <LogoutConfirmDialog
+        open={logout.confirmOpen}
+        onConfirm={logout.confirmAndClear}
+        onCancel={logout.cancel}
+        color={activeColor}
+      />
     </div>
   );
 }
