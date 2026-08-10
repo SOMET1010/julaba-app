@@ -164,7 +164,7 @@ export function BOCarteActeurs() {
   const recents = [...allActeurs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
 
   const kpis = [
-    { key: "all", label: "Total acteurs", value: totalActeurs, sub: "Tous roles confondus", subColor: "#16a34a", subBg: "#DCFCE7" },
+    { key: "all", label: "Total acteurs", value: totalActeurs, sub: "Tous rôles confondus", subColor: "#16a34a", subBg: "#DCFCE7" },
     { key: "geo", label: "Géolocalisés", value: totalGeo, sub: `${pctGeo}% de couverture`, subColor: "#888", subBg: "#f5f5f5" },
     { key: "zones", label: "Zones actives", value: zonesActives, sub: `sur ${zones.length} zones`, subColor: "#888", subBg: "#f5f5f5" },
     { key: "sans_gps", label: "Sans GPS", value: sansGPS.length, sub: "A géolocaliser", subColor: "#d97706", subBg: "#FEF3C7" },
@@ -417,7 +417,7 @@ export function BOCarteActeurs() {
                   <input
                     value={locForm.adresse}
                     onChange={e => setLocForm({ ...locForm, adresse: e.target.value })}
-                    placeholder="Ex: Marche Adjame, Abidjan"
+                    placeholder="Ex: Marché Adjame, Abidjan"
                     style={{ flex: 1, border: "1.5px solid #EDE7DE", borderRadius: 10, padding: "8px 12px", fontSize: 13, outline: "none", fontFamily: "inherit" }}
                   />
                   <button onClick={handleSearchAdresse} disabled={locLoading} style={{ background: BO_PRIMARY, color: "white", border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>

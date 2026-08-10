@@ -259,7 +259,7 @@ export function CIVLocationPicker({
 export function CIVPhoneInput({
   value,
   onChange,
-  label = 'Telephone',
+  label = 'Téléphone',
   required = false,
   disabled = false,
   placeholder = '07 XX XX XX XX',

@@ -45,15 +45,15 @@ const STATUT_CONFIG = {
 } as const;
 
 const TYPE_CONFIG = {
-  video: { label: 'Video', icon: Video, color: '#3B82F6' },
+  video: { label: 'Vidéo', icon: Video, color: '#3B82F6' },
   audio: { label: 'Audio', icon: Mic, color: '#8B5CF6' },
   quiz: { label: 'Quiz', icon: HelpCircle, color: '#F59E0B' },
   texte: { label: 'Texte', icon: FileText, color: '#10B981' },
 } as const;
 
 const NIVEAU_CONFIG = {
-  debutant: { label: 'Debutant', color: '#10B981' },
-  intermediaire: { label: 'Intermediaire', color: '#F59E0B' },
+  debutant: { label: 'Débutant', color: '#10B981' },
+  intermediaire: { label: 'Intermédiaire', color: '#F59E0B' },
   avance: { label: 'Avance', color: '#EF4444' },
 } as const;
 
@@ -104,7 +104,7 @@ const ROLE_ICONS: Record<UserRole, React.ElementType> = {
 
 const CHAPTER_THEMES: Record<string, {ch1:string;ch2:string;ch3:string;icons:[string,string,string]}> = {
   marchand:       {ch1:'Mes Ventes',    ch2:'Marchandise',     ch3:'Keiwa',         icons:['ShoppingBag','Package','Wallet']},
-  producteur:     {ch1:'Ma Culture',    ch2:'Ma Recolte',      ch3:'Mon Marche',     icons:['Leaf','Sprout','Store']},
+  producteur:     {ch1:'Ma Culture',    ch2:'Ma Recolte',      ch3:'Mon Marché',     icons:['Leaf','Sprout','Store']},
   cooperative:    {ch1:'Mes Membres',   ch2:'Mes Commandes',   ch3:'Ma Gestion',     icons:['Users','Layers','BarChart2']},
   identificateur: {ch1:'Mon Terrain',   ch2:'Mes Dossiers',    ch3:'Ma Validation',  icons:['MapPin','FileText','CheckCircle']},
   institution:    {ch1:'Mes Donnees',   ch2:'Mes Rapports',    ch3:'Ma Strategie',   icons:['Database','BarChart2','Target']},
@@ -736,7 +736,7 @@ export function BOAcademy() {
                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden">
                         <div className="px-4 pb-4 border-t-2 border-gray-100 pt-4 flex flex-wrap gap-2">
-                          <motion.button onClick={() => toast.info('Editeur module')}
+                          <motion.button onClick={() => toast.info('Éditeur module')}
                             className="flex items-center gap-1.5 px-4 py-2 rounded-2xl font-bold text-sm border-2 border-gray-200 text-gray-700"
                             whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}>
                             <Edit2 className="w-4 h-4" />Modifier
