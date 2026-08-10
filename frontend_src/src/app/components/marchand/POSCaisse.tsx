@@ -27,6 +27,11 @@ export function POSCaisse() {
   const [showCredit, setShowCredit] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
 
+  // Montant libre « Autre article » (Phase 3, lot 1) : vendre sans produit listé.
+  const [showLibre, setShowLibre] = useState(false);
+  const [libreMontant, setLibreMontant] = useState('');
+  const [libreDesc, setLibreDesc] = useState('');
+
   const [showSuccess, setShowSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   // Verrou SYNCHRONE anti double-clic : l'état React (et donc `disabled`) ne se
@@ -38,6 +43,21 @@ export function POSCaisse() {
   const ajouterAuPanier = (p: any) => {
     addToCart(p, 1);
     dire(`${p?.nom || p?.name || 'Produit'} ajouté`);
+  };
+
+  // Ajoute une ligne « montant libre » : produit synthétique (id unique) au prix
+  // saisi. N'affecte PAS le stock (aucun produit du catalogue n'y correspond).
+  const ajouterMontantLibre = () => {
+    const montant = Number(libreMontant);
+    if (!montant || montant <= 0) return;
+    const nom = libreDesc.trim() || 'Autre article';
+    const produitLibre: any = {
+      id: `libre-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+      nom, prix: montant, prix_achat: 0, categorie: 'Autre', stock: 0, unite: 'unite',
+    };
+    addToCart(produitLibre, 1);
+    dire(`${nom} ajouté`);
+    setLibreMontant(''); setLibreDesc(''); setShowLibre(false);
   };
 
   const total = getTotalCart();
@@ -202,6 +222,12 @@ export function POSCaisse() {
           </motion.button>}
         </div>
 
+        {/* AUTRE ARTICLE — vendre un montant libre, sans produit listé (Phase 3) */}
+        <motion.button whileTap={{ scale:0.98 }} onClick={() => setShowLibre(true)}
+          style={{ width:'100%', marginBottom:14, padding:'12px', borderRadius:13, border:`1.5px dashed ${P}`, background:'#fff', color:P, fontWeight:800, fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+          <Plus size={16} /> Autre article
+        </motion.button>
+
         {/* VENTE RAPIDE */}
         {search === '' && topProducts.length > 0 && (
           <div style={{ marginBottom:16 }}>
@@ -244,9 +270,13 @@ export function POSCaisse() {
             <span style={{ fontSize:11, fontWeight:700, color:'#aaa', textTransform:'uppercase', letterSpacing:'0.1em' }}>Tous les produits</span>
           </div>
           {filtered.length === 0 ? (
-            <div style={{ textAlign:'center', padding:'48px 0', color:'#aaa' }}>
+            <div style={{ textAlign:'center', padding:'40px 0', color:'#aaa' }}>
               <Package size={48} style={{ margin:'0 auto 12px', opacity:0.3 }} />
-              <p>Aucun produit</p>
+              <p style={{ marginBottom:16 }}>Aucun produit</p>
+              <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowLibre(true)}
+                style={{ padding:'12px 22px', borderRadius:14, border:'none', background:P, color:'#fff', fontWeight:800, fontSize:15, cursor:'pointer' }}>
+                + Autre article
+              </motion.button>
             </div>
           ) : (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
@@ -363,6 +393,51 @@ export function POSCaisse() {
         total={total}
         onSuccess={handleCreditSuccess}
       />
+
+      {/* Feuille « Autre article » — montant libre (Phase 3, lot 1) */}
+      <AnimatePresence>
+        {showLibre && (
+          <motion.div
+            initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+            onClick={() => setShowLibre(false)}
+            style={{ position:'fixed', inset:0, zIndex:110, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}
+            role="dialog" aria-modal="true" aria-label="Autre article"
+          >
+            <motion.div
+              initial={{ y:40 }} animate={{ y:0 }} exit={{ y:40 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width:'100%', maxWidth:480, background:'#fff', borderTopLeftRadius:24, borderTopRightRadius:24, padding:'20px 18px calc(20px + env(safe-area-inset-bottom))' }}
+            >
+              <div style={{ fontSize:18, fontWeight:800, color:'#2E1B10', marginBottom:14 }}>Autre article</div>
+              <label style={{ fontSize:12, fontWeight:700, color:'#8A7A6A' }}>Montant</label>
+              <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid #EDE7DE', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:14 }}>
+                <input
+                  value={libreMontant}
+                  onChange={e => setLibreMontant(e.target.value.replace(/[^\d]/g, ''))}
+                  inputMode="numeric" autoFocus placeholder="0"
+                  style={{ flex:1, border:'none', outline:'none', fontSize:26, fontWeight:800, color:'#2E1B10', background:'transparent', fontVariantNumeric:'tabular-nums' }}
+                />
+                <span style={{ fontSize:16, fontWeight:700, color:'#8A7A6A' }}>F</span>
+              </div>
+              <label style={{ fontSize:12, fontWeight:700, color:'#8A7A6A' }}>Quoi ? (facultatif)</label>
+              <input
+                value={libreDesc}
+                onChange={e => setLibreDesc(e.target.value)}
+                placeholder="ex. bananes"
+                style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid #EDE7DE', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:18, fontSize:15, color:'#2E1B10', outline:'none', fontFamily:'inherit' }}
+              />
+              <button
+                type="button"
+                onClick={ajouterMontantLibre}
+                disabled={!libreMontant || Number(libreMontant) <= 0}
+                style={{ width:'100%', padding:'16px', borderRadius:16, border:'none', color:'#fff', fontWeight:800, fontSize:16, cursor:'pointer', background: (!libreMontant || Number(libreMontant) <= 0) ? '#CBB9A8' : P }}
+              >
+                Ajouter
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showSuccess && (
