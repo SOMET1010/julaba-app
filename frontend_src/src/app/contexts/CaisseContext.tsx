@@ -162,11 +162,10 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const [mouvements, setMouvements] = useState<StockMovement[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<CaisseProduct | null>(null);
 
-  // Persistance du panier (Phase 1) : drapeau d'hydratation par utilisateur (R1 —
-  // empêche d'écraser le panier sauvegardé par un panier vide au montage ou au
-  // changement de compte), alerte d'échec unique (R4), panier « ancien » en
-  // attente de décision (R5).
-  const hydratedForRef = useRef<string | null>(null);
+  // Persistance du panier (Phase 1) : alerte d'échec unique (R4), panier « ancien »
+  // en attente de décision (R5). La sauvegarde se fait à la MUTATION (voir
+  // persistCart) et non via un effet sur `cart` — un effet créait une course au
+  // montage qui effaçait un panier ancien avant que l'utilisatrice ne choisisse.
   const saveWarnedRef = useRef(false);
   const [staleCart, setStaleCart] = useState<{ items: CartItem[]; updatedAt: string } | null>(null);
   const [cartUpdatedAt, setCartUpdatedAt] = useState<string | null>(null);
@@ -224,19 +223,17 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Persistance du panier ──────────────────────────────────
-  // HYDRATATION (R1) : au montage et à CHAQUE changement d'utilisateur. On coupe
-  // d'abord l'écriture (hydratedForRef = null), on lit la clé DU BON utilisateur,
-  // puis on ré-autorise l'écriture. Garantit qu'un panier n'est jamais écrit sous
-  // la clé d'un autre compte (A → B), ni écrasé par l'état initial vide.
+  // HYDRATATION : au montage et à CHAQUE changement d'utilisateur. LECTURE SEULE
+  // (ne supprime jamais la clé) : on lit la clé DU BON utilisateur et on peuple
+  // l'état. Comme la sauvegarde se fait à la mutation, aucune course ne peut
+  // effacer un panier ancien avant la décision de l'utilisatrice.
   useEffect(() => {
     const id = appUser?.id ?? null;
-    hydratedForRef.current = null;   // écriture bloquée pendant l'hydratation
     saveWarnedRef.current = false;
     setStaleCart(null);
     if (!id || !cartStore) {
       setCart([]);
       setCartUpdatedAt(null);
-      hydratedForRef.current = id;
       return;
     }
     const loaded = loadCart(cartStore, id, Date.now());
@@ -245,7 +242,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       setCartUpdatedAt(loaded.updatedAt);
     } else if (loaded && loaded.age === 'stale') {
       // Panier ancien : on ne restaure PAS ; on propose reprendre/effacer (R5).
-      // On garde la clé intacte tant que la décision n'est pas prise.
+      // La clé reste intacte tant que la décision n'est pas prise.
       setCart([]);
       setCartUpdatedAt(null);
       setStaleCart({ items: loaded.items, updatedAt: loaded.updatedAt });
@@ -253,24 +250,20 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       setCart([]);
       setCartUpdatedAt(null);
     }
-    hydratedForRef.current = id;      // écriture ré-autorisée
   }, [appUser?.id]);
 
-  // SAUVEGARDE : à chaque changement du panier, seulement après hydratation du bon
-  // utilisateur, et jamais tant qu'une décision « panier ancien » est en attente
-  // (sinon on effacerait la clé avant que l'utilisatrice ne choisisse). Un échec
-  // de stockage n'interrompt rien : on prévient une seule fois (R4).
-  useEffect(() => {
+  // SAUVEGARDE à la MUTATION (jamais via un effet sur `cart`, pour éviter la course
+  // au montage). Un panier vide EFFACE la clé (saveCart). Échec de stockage non
+  // bloquant, averti une seule fois (R4).
+  const persistCart = useCallback((items: CartItem[]) => {
     const id = appUser?.id;
     if (!id || !cartStore) return;
-    if (hydratedForRef.current !== id) return; // hydratation en cours
-    if (staleCart) return;                     // décision reprendre/effacer en attente
-    const res = saveCart(cartStore, id, cart, new Date().toISOString());
+    const res = saveCart(cartStore, id, items, new Date().toISOString());
     if (!res.ok && !saveWarnedRef.current) {
       saveWarnedRef.current = true;
       toast.warning('Cette vente ne pourra peut-être pas être retrouvée si l\'application se ferme.');
     }
-  }, [cart, appUser?.id, staleCart]);
+  }, [appUser?.id]);
 
   // ── Stats calculees ────────────────────────────────────────
   const getToday = () => new Date().toISOString().split('T')[0];
@@ -373,22 +366,20 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
 
   // ── POS Cart ───────────────────────────────────────────────
   const addToCart = (product: CaisseProduct, quantite: number = 1) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.productId === product.id);
-      if (existing) {
-        return prev.map(item =>
-          item.productId === product.id
-            ? { ...item, quantite: item.quantite + quantite }
-            : item
-        );
-      }
+    const existing = cart.find(item => item.productId === product.id);
+    const next = existing
+      ? cart.map(item =>
+          item.productId === product.id ? { ...item, quantite: item.quantite + quantite } : item)
       // Prix effectif : applique automatiquement le prix promo s'il est actif.
-      return [...prev, { productId: product.id, nom: product.nom, prix: prixEffectif(product), quantite }];
-    });
+      : [...cart, { productId: product.id, nom: product.nom, prix: prixEffectif(product), quantite }];
+    setCart(next);
+    persistCart(next);
   };
 
   const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.productId !== productId));
+    const next = cart.filter(item => item.productId !== productId);
+    setCart(next);
+    persistCart(next);
   };
 
   const updateCartItemQuantity = (productId: string, quantite: number) => {
@@ -396,12 +387,13 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       removeFromCart(productId);
       return;
     }
-    setCart(prev => prev.map(item =>
-      item.productId === productId ? { ...item, quantite } : item
-    ));
+    const next = cart.map(item =>
+      item.productId === productId ? { ...item, quantite } : item);
+    setCart(next);
+    persistCart(next);
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => { setCart([]); persistCart([]); };
 
   const getTotalCart = () => cart.reduce((sum, item) => sum + item.prix * item.quantite, 0);
 
@@ -409,13 +401,14 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const venteEnCours = cart.length > 0;
 
   // Reprendre un panier « ancien » proposé au démarrage (R5) → il redevient actif
-  // (l'effet de sauvegarde le ré-enregistrera avec un horodatage frais).
+  // et est ré-enregistré avec un horodatage frais.
   const resumeStaleCart = useCallback(() => {
-    setStaleCart(prev => {
-      if (prev) setCart(prev.items);
-      return null;
-    });
-  }, []);
+    if (!staleCart) return;
+    const items = staleCart.items;
+    setCart(items);
+    setStaleCart(null);
+    persistCart(items);
+  }, [staleCart, persistCart]);
 
   // Effacer un panier « ancien » sans le reprendre (R5).
   const discardStaleCart = useCallback(() => {
