@@ -1,0 +1,231 @@
+/* JULABA Global Styles — fonts/theme/tailwind chargés depuis main.tsx (ordre @import PostCSS) */
+
+* {
+  font-family: 'Inter', sans-serif;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Safe area for mobile devices */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Onboarding animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+/* Alternative class name */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+/* ═══════════════════════════════════════════════════════════
+   JULABA DARK MODE — Global styles for .dark on <html>
+   ═══════════════════════════════════════════════════════════ */
+
+/* Base body */
+.dark body,
+.dark {
+  background-color: #1A1614;
+  color: #E8E0D8;
+}
+
+/* Cards, panels, modals */
+.dark .bg-white {
+  background-color: #2A2420 !important;
+}
+.dark .bg-gray-50 {
+  background-color: #231F1B !important;
+}
+.dark .bg-gray-100 {
+  background-color: #2A2420 !important;
+}
+
+/* Text colors */
+.dark .text-gray-900 {
+  color: #F5F0EB !important;
+}
+.dark .text-gray-800 {
+  color: #E8E0D8 !important;
+}
+.dark .text-gray-700 {
+  color: #D4C8BC !important;
+}
+.dark .text-gray-600 {
+  color: #B8A898 !important;
+}
+.dark .text-gray-500 {
+  color: #9F8F7F !important;
+}
+.dark .text-gray-400 {
+  color: #8A7A6A !important;
+}
+
+/* Borders */
+.dark .border-gray-100 {
+  border-color: #5B5248 !important;
+}
+.dark .border-gray-200 {
+  border-color: #5B5248 !important;
+}
+.dark .border-gray-300 {
+  border-color: #5A4D44 !important;
+}
+
+/* Inputs */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #2A2420 !important;
+  color: #E8E0D8 !important;
+  border-color: #5B5248 !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #7A6A5A !important;
+}
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: #9F8170 !important;
+}
+
+/* Navigation bar (mobile) */
+.dark nav,
+.dark .bg-white\/95 {
+  background-color: rgba(42, 36, 32, 0.95) !important;
+}
+
+/* Shadows — softer in dark mode */
+.dark .shadow-sm {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+}
+.dark .shadow-md {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+.dark .shadow-lg {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Scrollbar for dark mode */
+.dark ::-webkit-scrollbar {
+  width: 6px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #1A1614;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #5B5248;
+  border-radius: 3px;
+}
+
+/* Status badges preserve their colors */
+.dark .bg-green-100 { background-color: rgba(16, 185, 129, 0.15) !important; }
+.dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.15) !important; }
+.dark .bg-orange-100 { background-color: rgba(245, 158, 11, 0.15) !important; }
+.dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.15) !important; }
+.dark .bg-cyan-100 { background-color: rgba(6, 182, 212, 0.15) !important; }
+.dark .bg-purple-100 { background-color: rgba(139, 92, 246, 0.15) !important; }
+.dark .bg-green-50 { background-color: rgba(16, 185, 129, 0.08) !important; }
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.08) !important; }
+.dark .bg-orange-50 { background-color: rgba(245, 158, 11, 0.08) !important; }
+.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.08) !important; }
+.dark .bg-purple-50 { background-color: rgba(139, 92, 246, 0.08) !important; }
+
+/* Modals backdrop */
+.dark .bg-black\/50 {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Dividers */
+.dark .divide-gray-100 > * + * {
+  border-color: #5B5248 !important;
+}
+.dark .border-b {
+  border-color: #5B5248 !important;
+}
+
+/* Fixed bottom bars */
+.dark .fixed.bottom-0 {
+  background-color: #2A2420 !important;
+}
+/* Safe area pour mobile WebView */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+@media (prefers-color-scheme: dark) {
+  .bo-login-page-dark-aware {
+    background-color: #2C2C2A;
+  }
+  .bo-login-page-dark-aware .bo-login-card {
+    background-color: #3A3A38;
+    color: #F1EFE8;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bo-login-pulse-icon {
+  0%,
+  100% {
+    transform: translateY(-50%) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-50%) scale(1.1);
+    opacity: 0.85;
+  }
+}
+
+.bo-login-icon-user {
+  animation: bo-login-pulse-icon 2.5s ease-in-out infinite;
+}
+
+@keyframes bo-login-float-icon {
+  0%,
+  100% {
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    transform: translateY(-50%) scale(1.08);
+  }
+}
+
+.bo-login-icon-lock {
+  animation: bo-login-float-icon 2s ease-in-out infinite;
+}

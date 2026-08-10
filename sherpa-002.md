@@ -15,7 +15,7 @@
 
 | | Aujourd'hui | Après sherpa-002 |
 |---|---|---|
-| **STT web** | `vosk-browser` (WASM, paquet quasi abandonné, modèle ~40 Mo GitHub Pages tiers) | `sherpa-onnx` WASM (npm officiel v1.13.x, maintenu) |
+| **STT web** | `vosk-browser` (WASM, paquet quasi abandonné, modèle ~40 Mo GitHub Pages tiers) | ✅ **IMPLÉMENTÉ (Phase 1)** : `sherpa-onnx` WASM v1.13.4 (runtime vendored + modèle FR zipformer int8 ~128 Mo) ; Vosk conservé en **repli automatique** (WebView/Safari sans COOP/COEP) |
 | **STT Android** | Plugin `SherpaSttPlugin.kt` **factice** (non compilé) | Vrai plugin AAR `com.k2fsa.sherpa.onnx:sherpa-onnx-android` |
 | **TTS web/APK** | Clips Tata pré-enregistrés (137) + voix navigateur `speechSynthesis` | + **TTS neuronal sherpa-onnx** (modèle vits FR) pour les phrases dynamiques |
 | **Mot-réveil** | `useWakeWord` présent mais **désactivé** (`wakeSupported` toujours faux) | Keyword spotting sherpa-onnx → « mains libres » réel |
@@ -107,14 +107,23 @@ handleMicClick → startRecording (getUserMedia → MediaRecorder webm/opus)
 
 ### 2.3 Natif Android — l'état réel
 
-- `frontend/native/android/SherpaSttPlugin.kt` : **plugin Capacitor factice**.
-  `OnlineRecognizerShim` est une interface **vide** ; les commentaires indiquent que
-  l'API `com.k2fsa.sherpa.onnx.*` doit être alignée sur la version d'AAR intégrée.
-- ⚠️ **Il n'y a pas de projet Android complet** : pas de `android/` (racine) généré
-  par `npx cap add android`, pas de `MainActivity`, pas de build.gradle. Le plugin
-  n'est **pas compilable** aujourd'hui.
-- `capacitor.config.ts` contient un bug : `webDir: "webDir=./frontend/dist"` (le
-  préfixe `webDir=` est en trop → `"./frontend/dist"`).
+- ✅ **Projet Capacitor généré (août 2026)** : `android/` à la racine
+  (`npx cap add android`, Capacitor 8.5). `MainActivity.java` standard,
+  `applicationId = ci.julaba.app`, web assets (dont le runtime sherpa WASM) déjà
+  copiés dans `android/app/src/main/assets/public/`. Build APK = étape suivante
+  (Android Studio / SDK).
+- ✅ `capacitor.config.ts` corrigé : `webDir: "frontend/dist"` (le préfixe
+  `webDir=` en trop a été retiré).
+- ✅ **Phase 2 faite (août 2026)** : AAR `sherpa-onnx-1.13.4.aar` intégré dans
+  `android/app/libs/` (déclaré dans `build.gradle`), vrai plugin
+  `SherpaSttPlugin.java` (OnlineRecognizer natif) enregistré dans
+  `MainActivity.java`. Le brouillon `frontend/native/android/SherpaSttPlugin.kt`
+  a été **supprimé** (remplacé par le plugin Java, le projet Android n'étant pas
+  configuré Kotlin).
+- ⚠️ **L'AAR n'est PAS sur Maven Central** (vérifié : 404). Il se télécharge
+  depuis les releases GitHub (`sherpa-onnx-1.13.4.aar`, ~48 Mo, 4 ABI jniLibs +
+  classes) via `scripts/fetch-sherpa-aar.sh`. Le fichier est gitignoré
+  (`android/app/libs/*.aar`) — relancer le script avant un build Android.
 
 ---
 
@@ -134,10 +143,11 @@ handleMicClick → startRecording (getUserMedia → MediaRecorder webm/opus)
 **Modèle FR STT (officiel, HuggingFace) :**
 - `shaojieli/sherpa-onnx-streaming-zipformer-fr-2023-04-14` — streaming zipformer
   (transducer), variantes **fp32** et **int8**. Fichiers : `encoder.onnx`,
-  `decoder.onnx`, `joiner.onnx`, `tokens.txt`. Taille totale **~100 Mo (fp32) /
-  ~60 Mo (int8)** à confirmer au téléchargement.
+  `decoder.onnx`, `joiner.onnx`, `tokens.txt`. Taille totale **vérifiée (août
+  2026) : ~128 Mo en int8** — encoder 126,6 Mo, decoder 1,3 Mo, joiner 0,26 Mo,
+  tokens 4,8 Ko. Le fp32 (encoder seul ~292 Mo) est inutilisable sur mobile.
 - Existe aussi un modèle Kaldi/Vosk FR convertible (`sherpa-onnx-k2-vosk-fr`) —
-  plus léger, à tester comme fallback RAM faible.
+  plus léger, à tester comme fallback RAM faible (moteur offline, Phase 3).
 
 **TTS FR (officiel) :**
 - Les voix **Piper FR** (fr_FR-siwis-low, fr_FR-upmc, fr_FR-gilles…) sont
@@ -151,86 +161,126 @@ handleMicClick → startRecording (getUserMedia → MediaRecorder webm/opus)
 
 ## 4. Points d'ancrage — OÙ brancher exactement
 
-### 4.1 Web / PWA — remplacer Vosk WASM (fichier central : `voice-offline/offlineStt.ts`)
+### 4.1 Web / PWA — remplacer Vosk WASM (fichier central : `voice-offline/offlineStt.ts`) ✅ FAIT
 
-On **conserve toutes les fonctions publiques** et on change l'intérieur :
+On **conserve toutes les fonctions publiques** et on change l'intérieur.
+Réalité technique (différente du plan initial, cf. §9.1) :
 
 ```ts
-// AVANT (actuel)
-const { createModel } = await import('vosk-browser');
-const model = await createModel(VOSK_MODEL_URL);
-
-// APRÈS (sherpa-onnx)
-const onnx = await import('sherpa-onnx/dist/sherpa-onnx-wasm.online.js'); // code-split
-const recognizer = onnx.createOnlineRecognizer({
-  modelType: 'zipformer',
-  tokens:    urlTokens,                    // tokens.txt
-  numThreads: 1,                           // conservateur sur mobile
-  provider: 'wasm',                        // ou 'webgpu'
-  transducer: { encoder: urlEncoder, decoder: urlDecoder, joiner: urlJoiner },
-}, onnx);
+// offlineStt.ts (extrait) — chargement du runtime + modèle FR
+const w = window as any;
+w.Module = { getPreloadedPackage: () => new ArrayBuffer(0) }; // saute le .data EN de 190 Mo
+await loadScript(SHERPA_API_JS);          // définit createOnlineRecognizer (global)
+await loadScript(SHERPA_RUNTIME_GLUE_JS); // instancie le module WASM (pthreads)
+// après onRuntimeInitialized : écriture du modèle FR dans la FS virtuelle
+mod.FS_createDataFile('/model-encoder.onnx', null, bytes, true, true, true);
+const recognizer = w.createOnlineRecognizer(buildSherpaOnlineConfig(), mod);
+// transcription : stream.acceptWaveform(16000, Float32Array) → while(isReady) decode → getResult().text
 ```
 
-Fichiers à modifier :
-1. **`voice-offline/offlineStt.ts`** — `ensureOfflineModel()` : télécharger les
-   4 fichiers `.onnx/.txt` (au lieu du `.tar.gz` Vosk), instancier le recognizer.
-   `transcribeWav()` : `stream.acceptWaveform(Int16Array)` + `getResult().text`.
-   `startLiveDictation()` : réutiliser l'existant (déjà streaming) mais avec le
-   nouveau moteur → **live transcript gratuit**.
-2. **`voice-offline/voskModel.ts`** → renommer la constante / le fichier en
-   `sherpaModel.ts` (URLs des 4 fichiers). Garder un seul point de changement.
-3. **`voice-offline/InstallerOffline.tsx`** — agnostique moteur : titre, taille
-   (~60 Mo int8 au lieu de ~40), messages vocaux inchangés (déjà génériques).
-4. **`frontend/package.json`** — `"sherpa-onnx": "1.13.4"` (épingler la version
-   exacte, l'API WASM bouge entre versions), retirer `vosk-browser` **en fin de
-   phase 1** (après validation).
-5. **`main.tsx`** — `warmOfflineModelIfInstalled()` conserve sa signature ;
-   juste re-tester l'installation persistante (clé `julaba_offline_installed`).
+Fichiers touchés (faits) :
+1. **`voice-offline/sherpaModel.ts`** *(nouveau)* — URLs du modèle FR int8
+   (HuggingFace, CORS ouvert), tailles, chemins FS virtuels, `buildSherpaOnlineConfig()`.
+2. **`voice-offline/offlineStt.ts`** — moteur sherpa en principal : chargement
+   runtime (scripts classiques), téléchargement 4 fichiers avec progression →
+   Cache API → FS Emscripten, `transcribeWav` + `startLiveDictation` (streaming).
+   **Repli Vosk automatique** (code Vosk conservé tel quel) si pas d'isolation
+   cross-origin, runtime absent ou erreur. API publique identique.
+3. **`voice-offline/InstallerOffline.tsx`** — agnostique moteur : taille réelle
+   (~128 Mo sherpa / ~40 Mo Vosk) + nom du moteur affiché.
+4. **`scripts/install-sherpa-stt.sh`** *(nouveau)* — vendore le runtime WASM
+   (3 fichiers, ~19 Mo, SANS le .data EN) dans `public/voix/sherpa/`. Défensif
+   (exit 0). Appelé par `deploy-frontend.sh` et le build Render.
+5. **Headers COOP/COEP** *(exigence déploiement)* — `Cross-Origin-Opener-Policy:
+   same-origin` + `Cross-Origin-Embedder-Policy: credentialless` posés dans
+   `nginx/julaba.conf`, `nginx/frontend.conf`, `render.yaml` et le dev server Vite.
+6. **`main.tsx`** — signature conservée ; le ré-échauffement sherpa est **sans
+   réseau** (cache uniquement, on ne télécharge jamais 128 Mo en silence).
+   `vosk-browser` reste dans package.json (repli) — à retirer seulement si l'on
+   abandonne les contextes non isolés.
 
-### 4.2 Android natif — réaliser le vrai plugin (`frontend/native/android/SherpaSttPlugin.kt`)
+### 4.2 Android natif — réaliser le vrai plugin (`SherpaSttPlugin.java`) ✅ FAIT
 
-Le contrat JS (nativeStt.ts) est **déjà bon**. Il manque :
-
-1. **Créer le projet Android Capacitor** : `npx cap add android` (racine `android/`),
-   `MainActivity.kt`, `build.gradle` avec l'AAR :
-   ```gradle
-   implementation 'com.k2fsa.sherpa.onnx:sherpa-onnx-android:1.13.4'  // Maven Central
-   ```
-2. **Implémenter `SherpaSttPlugin.kt`** : remplacer `OnlineRecognizerShim` par
-   l'API réelle (`OnlineRecognizer`, `OnlineRecognizerConfig`, `FeatureConfig`,
-   `OnlineModelConfig`, `OnlineTransducerModelConfig`).
-   - `isAvailable()` : vrai si le modèle est chargé (assets ou filesDir).
-   - `transcribe({pcm, sampleRate})` : décoder base64 Float32 LE (déjà écrit) →
-     rééchantillonner à 16 kHz si besoin → `acceptWaveform(samples, sampleRate)`
-     par blocs → `getResult().text`.
-3. **Modèle FR** : embarquer les 4 fichiers dans `android/app/src/main/assets/`
-   (offline immédiat, ~60 Mo int8) OU télécharger une fois + copier dans `filesDir`
-   (pattern InstallerOffline réutilisable via un `PluginMethod` dédié).
-4. Corriger `capacitor.config.ts` (`webDir: "./frontend/dist"`).
+1. ✅ **Projet Android** : `npx cap add android` (racine `android/`, Capacitor 8.5,
+   `MainActivity.java` avec `registerPlugin(SherpaSttPlugin.class)`,
+   `applicationId ci.julaba.app`).
+2. ✅ **AAR** : pas de coordonnée Maven (404 vérifié) → AAR téléchargé depuis les
+   releases GitHub (48,8 Mo, 4 ABI : arm64-v8a, armeabi-v7a, x86, x86_64) dans
+   `android/app/libs/sherpa-onnx-1.13.4.aar` (gitignoré, script
+   `scripts/fetch-sherpa-aar.sh`), déclaré via
+   `implementation files('libs/sherpa-onnx-1.13.4.aar')`.
+3. ✅ **`SherpaSttPlugin.java`** (Java — le projet Android n'est pas configuré
+   Kotlin, et le demo officiel de l'API est en Java) :
+   - `isAvailable()` → `{ available }` (recognizer construit).
+   - `prepare({ dir, files })` → télécharge les fichiers absents/incorrects
+     (HTTP, écriture atomique `.tmp`, events `modelProgress` par % par fichier)
+     puis construit `OnlineRecognizer(null, config)` (transducer zipformer FR
+     int8, `modelType: zipformer`, `numThreads: 2`). Idempotent : si les 4
+     fichiers sont déjà dans `filesDir` (taille vérifiée), aucun réseau.
+   - `transcribe({ pcm, sampleRate })` → base64 Float32 LE décodé,
+     rééchantillonnage linéaire → 16 kHz, `createStream("")` →
+     `acceptWaveform` + `inputFinished` + `while(isReady) decode` →
+     `getResult().getText()` ; `stream.release()` en finally.
+   - `release()` + `handleOnDestroy()` → libère le recognizer (mémoire ~128 Mo).
+   - Exécution sur un **thread unique** (`ExecutorService`) : téléchargements et
+     transcriptions sérialisés (recognizer non thread-safe).
+4. ✅ **Modèle FR** : téléchargé par le plugin dans `filesDir/sherpa-stt/`
+   (encoder.onnx, decoder.onnx, joiner.onnx, tokens.txt) — mêmes URLs/tailles
+   que le WASM (`SHERPA_NATIVE_FILES`). Pas d'assets embarqués (128 Mo).
+5. ✅ **JS branché** : `nativeStt.ts` (+`prepare`/`release`/`present`),
+   `offlineStt.ts` — le moteur NATIF est choisi en premier sur APK dans
+   `ensureOfflineModel` (même garde anti-téléchargement silencieux que le WASM),
+   ré-échauffé au boot (idempotent, sans réseau si déjà installé), dictée live
+   « par lots » (~2 s) pour `startLiveDictation`.
 
 > 🔁 **Topologie** : sur APK, `nativeStt.isAvailable()` → vrai → `offlineStt.ts`
-> **bascule automatiquement** (déjà en place, l.55-65). Zéro changement dans
+> **bascule automatiquement** (transcribeWav l.~65). Zéro changement dans
 > `useVoiceCore.ts` pour le STT.
 
-### 4.3 TTS offline — brancher sherpa TTS dans le chef d'orchestre
+### 4.3 TTS offline — brancher sherpa TTS dans le chef d'orchestre (⚠️ code prêt, PAS livré)
 
-Point d'ancrage : **`services/elevenlabs.ts` → `speakBrowser()`** et/ou
-**`services/audioManager.ts` → `_ttsPlayer`** (joueurs injectables).
+Point d'ancrage : **`services/audioManager.ts` → `defaultTtsSpeakChunk`** (le bas-niveau
+utilisé par `realStartTts`, le lecteur TTS injectable). Désormais :
 
 ```ts
-// Nouveau : services/sherpaTts.ts
-export async function sherpaTtsSpeak(text: string): Promise<void> {
-  const { createOfflineTts } = await import('sherpa-onnx/dist/sherpa-onnx-wasm.offline.js');
-  const tts = createOfflineTts({ model: { vits: { model: urlVits, tokens: urlTokens,
-    lexicon: urlLexicon, dataDir: urlEspeakData } }, });
-  const samples = tts.generate({ text, sid: 0, speed: 1.0 }); // Float32Array
-  // → jouer via AudioContext (réutiliser le pipeline audioManager)
-}
+// services/audioManager.ts (extrait) — TTS neuronal AVANT la voix navigateur
+const defaultTtsSpeakChunk = async (chunk: string): Promise<void> => {
+  try {
+    const { speakChunkSherpaOrBrowser } = await import("./sherpaTts");
+    await speakChunkSherpaOrBrowser(chunk);
+  } catch {
+    const { speakBrowser } = await import("./elevenlabs");
+    await speakBrowser(chunk); // repli même si l'import échoue
+  }
+};
 ```
+
+Nouveau **`services/sherpaTts.ts`** (implanté, défensif) :
+- Charge le runtime WASM officiel sherpa-onnx via un **Worker module**
+  (`sherpa-onnx-tts.worker.js`, fourni avec le build Emscripten) — ne bloque pas l'UI.
+- `createOfflineTts(Module)` → `tts.generate({ text, sid, speed })` →
+  `{ samples: Float32Array, sampleRate }` joué via le **contexte audio partagé**
+  (`getSharedAudioContext` d'elevenlabs) → aucune re-création coûteuse.
+- `speakChunkSherpaOrBrowser(chunk)` : essaie sherpa → sinon `speakBrowser` (jamais muet).
+- `stopSherpaTts()` coupe `activeSource` (source.stop() → onended) — appelé par
+  `realStartTts.stop()` pour une annulation propre (barge-in, navigation).
+- Installation : `installSherpaTtsModel()` (HEAD sur le worker + drapeau localStorage
+  `julaba_tts_installed`) + `warmSherpaTtsIfInstalled()` (réchauffé à chaque boot,
+  cf. `src/main.tsx`). ⚠️ Le null de « non installé » n'est JAMAIS mis en cache :
+  une installation après une première phrase fonctionne.
+
+> ⚠️ **ÉTAT RÉEL (août 2026)** : ce code est écrit mais **JAMAIS livré**.
+> `deploy-frontend.sh` et `render.yaml` ne déploient que le runtime **STT**
+> (`install-sherpa-stt.sh`), jamais le TTS — et `frontend/public/voix/sherpa/`
+> ne contient que les 3 fichiers ASR. Le worker `sherpa-onnx-tts.worker.js` est
+> donc ABSENT (404) → `installSherpaTtsModel()` renvoie false et le bouton
+> « Installer la voix neuronale » affiche toujours « non prêt ». La voix RÉELLE
+> reste `speakBrowser` (repli garanti). Le build WASM custom FR est requis
+> (voir Phase 4) — le pocket-tts officiel est refusé (démo multilingue ~200 Mo).
 
 Hiérarchie TTS après intégration (sans casser l'existant) :
 1. **Clip Tata pré-enregistré** (phrase fixe) — inchangé, prioritaire.
-2. **sherpa TTS** (phrase dynamique : montants, questions) — nouveau.
+2. **sherpa TTS** (phrase dynamique : montants, questions) — **nouveau, avant le navigateur**.
 3. **`speakBrowser`** (voix navigateur) — dernier repli, jamais muet.
 
 ### 4.4 Mot-réveil « mains libres » — activer réellement
@@ -254,7 +304,7 @@ La UI mains libres se **débloque toute seule** quand `wakeSupported` devient vr
 | # | Fonctionnalité | Moteur | Impact | Priorité |
 |---|---|---|---|---|
 | F1 | STT offline web (remplace Vosk WASM) | sherpa-onnx WASM zipformer FR int8 | Précision ++, streaming live | **P0** |
-| F2 | STT offline APK Android natif | AAR sherpa-onnx + plugin Kotlin | Vraie offline mobile, rapidité | **P0** |
+| F2 | STT offline APK Android natif | AAR sherpa-onnx + plugin Java (`SherpaSttPlugin.java`) | Vraie offline mobile, rapidité | **P0 — ✅ FAIT** (build/test APK réel restant) |
 | F3 | Transcription au fil de l'eau (live transcript) | `OnlineRecognizer` + `startLiveDictation` | UX : on voit ce qu'on dit | P1 |
 | F4 | Mot-réveil « Julaba » (mains libres) | Keyword spotter | 2 mains prises → parler | P1 |
 | F5 | TTS neuronal offline (phrases dynamiques) | vits-piper FR via WASM | Voix naturelle hors-ligne | P2 |
@@ -270,7 +320,7 @@ La UI mains libres se **débloque toute seule** quand `wakeSupported` devient vr
 
 | Vue | Fichier | Modification |
 |---|---|---|
-| Installation modèle | `voice-offline/InstallerOffline.tsx` | Agnostique moteur : libellé dynamique (sherpa int8 ~60 Mo), progression réelle (octets/%), reprise, hash. **Déjà utilisé** par VenteVocaleModal/OnboardingSlides/LoginPassword → mise à jour automatique partout. |
+| Installation modèle | `voice-offline/InstallerOffline.tsx` | Agnostique moteur : libellé dynamique (sherpa int8 ~60 Mo), progression réelle (octets/%), reprise, hash. **Déjà utilisé** par VenteVocaleModal/OnboardingSlides/LoginPassword → mise à jour automatique partout. **Écrit mais non opérationnel (TTS)** : section `InstallerVoixNeuronale` (bouton « Installer la voix neuronale », double validation, statut prêt/erreur) présente sous le bloc STT, mais le runtime TTS n'est pas déployé → toujours « non prêt » |
 | Modale vente vocale | `marchand/VenteVocaleModal.tsx` | Badge moteur (sherpa/vosk/natif), **réactiver le bloc mains libres**, afficher le live transcript pendant l'enregistrement, état du téléchargement modèle. |
 | Assistante Tata | `assistant/TantieSagesseModal.tsx` | Idem badge moteur + live transcript. |
 | Bouton micro | `voice/VoiceButton.tsx` | Afficher le live transcript (déjà géré via `liveTranscript`). |
@@ -346,31 +396,123 @@ exports/modules**, pas de rupture des contrats ci-dessus.
 
 ## 9. Plan d'exécution recommandé
 
-### Phase 1 — Web WASM (sans APK) — *déployable*
-1. `npm i sherpa-onnx@1.13.4` (frontend), créer `voice-offline/sherpaModel.ts`.
-2. Réécrire `offlineStt.ts` : téléchargement 4 fichiers + `createOnlineRecognizer`
-   + `transcribeWav` + `startLiveDictation`.
-3. Adapter `InstallerOffline.tsx` (libellés/progression) — l'UI se met à jour
-   partout automatiquement.
-4. Valider : PWA en ligne → installer modèle → mode avion → vendre vocalement.
-   Comparer WER sur les 42 phrases de `vocabulaire.ts` (PHRASES_T1).
-5. Supprimer `vosk-browser` de package.json **seulement après validation**.
+### Phase 1 — Web WASM (sans APK) — ✅ FAIT (août 2026)
 
-### Phase 2 — Android natif
-1. Corriger `capacitor.config.ts` ; `npx cap add android`.
-2. Ajouter l'AAR Maven, implémenter `SherpaSttPlugin.kt` (API réelle).
-3. Embarquer le modèle int8 dans les assets (ou téléchargement à la 1ʳᵉ install).
-4. Valider sur vrai téléphone Android (mode avion) : transcription + vente.
-   Vérifier `nativeStt.isAvailable()` → bascule auto (déjà codée).
+1. ✅ `voice-offline/sherpaModel.ts` créé (URLs + tailles vérifiées + config).
+2. ✅ `offlineStt.ts` réécrit : `createOnlineRecognizer` (streaming zipformer FR
+   int8) + `transcribeWav` + `startLiveDictation`, **repli Vosk automatique**.
+3. ✅ `InstallerOffline.tsx` agnostique moteur (taille ~128 Mo sherpa / ~40 Mo Vosk).
+4. ✅ `scripts/install-sherpa-stt.sh` (runtime vendored, ~19 Mo, défensif) +
+   headers **COOP/COEP** (nginx, render.yaml, dev Vite) + intégration déploiement.
+   ⚠️ Le bloc `headers:` de render.yaml (nouveau schéma `routes:`) est à VÉRIFIER
+   au 1er déploiement Render — sur le VPS nginx c'est déjà en place.
+5. ⏳ À valider en réel : PWA en ligne → installer le modèle → mode avion → vendre
+   vocalement. Comparer WER sur les 42 phrases de `vocabulaire.ts` (PHRASES_T1).
+   ⚠️ Config runtime à confirmer en smoke test : `provider: 'wasm'` +
+   `modelingUnit: 'bpe'` (les defaults démo connus-bons sont `'cpu'` + `'cjkchar'`
+   — revenir à ces valeurs si le modèle FR refuse de s'initialiser).
+6. ⏳ `vosk-browser` conservé comme REPLI (contextes non isolés : WebView, Safari
+   sans credentialless) — retirer seulement si on abandonne ces contextes.
+
+**Préférence de moteur (garde-fous données) :** le moteur installé est mémorisé
+(`julaba_offline_engine`) et un échec sherpa marqué (`julaba_sherpa_unavailable`)
+— jamais de téléchargement silencieux de ~128 Mo pour un appareil déjà Vosk, ni
+de re-tentatives infinies. Le bouton d'installation explicite force sherpa et le
+ré-échauffement au boot reste SANS RÉSEAU (cache uniquement).
+
+### Phase 2 — Android natif ✅ FAIT (sauf build/test APK réel)
+1. ✅ `capacitor.config.ts` corrigé (`webDir`) ; `npx cap add android` (racine).
+2. ✅ AAR depuis les releases GitHub (`sherpa-onnx-1.13.4.aar`, pas de Maven
+   Central) + `SherpaSttPlugin.java` (OnlineRecognizer réel) + enregistrement
+   dans `MainActivity.java`.
+3. ✅ Modèle FR téléchargé par le plugin dans `filesDir` (progression, idempotent)
+   + branchement JS complet (`prepare`, moteur natif prioritaire, dictée live).
+4. ⏳ **À valider sur vrai téléphone** (build APK : `bash scripts/fetch-sherpa-aar.sh`
+   puis Android Studio / `./gradlew assembleDebug`) : installer le mode hors-ligne
+   → mode avion → vente vocale. Vérifier `nativeStt.isAvailable()` → bascule auto.
+   ⚠️ Pas de JDK/SDK Android dans cet environnement → aucune compilation Java/Gradle
+   vérifiée ici ; la relecture s'est faite contre les signatures officielles de l'AAR.
+   ⚠️ Le fichier `android/app/libs/*.aar` est gitignoré → exécuter
+   `scripts/fetch-sherpa-aar.sh` avant chaque build (intégrer au CI si besoin).
 
 ### Phase 3 — UX (streaming + mot-réveil)
-1. Brancher `startLiveDictation` live transcript dans `VenteVocaleModal`.
-2. Keyword spotter « julaba » → réactiver le bloc mains libres existant.
+1. ✅ Brancher `startLiveDictation` live transcript dans `VenteVocaleModal`.
+2. ✅ Mot-réveil « julaba » → réactiver le bloc mains libres existant : `useWakeWord`
+   réutilise l'écoute streaming du moteur hors-ligne installé (sherpa → Vosk) via
+   `startLiveDictation`, 100 % hors-ligne, activé dès que le modèle est installé.
+   ⚠️ Un vrai keyword spotter dédié (léger, modèle ~6 Mo) est documenté dans
+   **Phase 3 bis** ci-dessous. Non fait : nécessite un build WASM KWS one-shot +
+   un modèle anglais (il n'existe pas de KWS français). L'écoute streaming du
+   modèle déjà installé suffit pour le MVP.
 
-### Phase 4 — TTS offline
-1. `services/sherpaTts.ts` + brancher dans `audioManager` (après clips, avant
-   `speakBrowser`).
-2. Réutiliser la voix Piper FR (`fr_FR-siwis`) → convergence backend/appareil.
+### Phase 3 bis — Keyword spotter dédié « Julaba » (plan détaillé)
+
+**Verdict de faisabilité (vérifié 10 août 2026) :**
+1. **Runtime** : sherpa-onnx ne publie **aucun build WASM KWS précompilé**
+   (issue k2-fsa/sherpa-onnx#3112 — pas d'artefact `*kws*` wasm dans les
+   releases v1.13.x). Le runtime ASR vendored n'exporte que
+   `createOnlineRecognizer`. Il faut donc **compiler une fois** le build KWS
+   (`wasm/build-wasm-simd-kws.sh` ou le Colab officiel) → `sherpa-onnx-kws.js`
+   + `sherpa-onnx-wasm-main-kws.js` + `.wasm` (~10-12 Mo), puis vendorer ces 3
+   fichiers comme les 3 ASR actuels.
+2. **Modèle** : il n'existe **pas de modèle KWS français**. Officiels :
+   `gigaspeech-3.3M-2024-01-01` (anglais), `wenetspeech-3.3M-2024-01-01`
+   (chinois), `zh-en-3M-2025-12-20` (chinois+anglais). Le KWS étant
+   « open-vocabulary » (mini-ASR qui ne décode que les mots donnés), tester
+   « julaba » sur **gigaspeech** (BPE anglais) — à valider au micro réel :
+   sensibilité, fausses alertes, variantes d'orthographe.
+3. **Poids** : ~6 Mo seulement (encoder int8 ~4,4 Mo + decoder fp32 ~1,1 Mo +
+   joiner int8 ~85 Ko + tokens/bpe) → **vendorable dans `public/`** sans double
+   validation (léger, contrairement au 128 Mo STT → pas de consentement requis).
+
+**Pourquoi le faire malgré le MVP fonctionnel (écoute streaming actuelle) :**
+- Aujourd'hui `useWakeWord` fait tourner le **ASR streaming 128 Mo en continu**
+  (micro + zipformer toujours chauds) → batterie/RAM pénalisées sur téléphone
+  entrée de gamme. Le KWS = 3,3 M de paramètres (~40× plus petit), dédié à un
+  seul mot → consommation minime pendant l'idle.
+- Architecture cible : spotter continu (idle) → « Julaba » entendu → bip +
+  bascule en **dictée ASR** (`startLiveDictation`) pour la commande → retour au
+  spotter.
+
+**Étapes :**
+1. Build WASM KWS one-shot (épinglé `v1.13.4`, cohérent avec l'ASR) → vendorer
+   `sherpa-onnx-kws.js`, `sherpa-onnx-wasm-main-kws.js`,
+   `sherpa-onnx-wasm-main-kws.wasm` dans `public/voix/sherpa/`
+   (`scripts/install-sherpa-kws.sh`, défensif exit 0) ; stocker l'artefact
+   compilé sur le stockage de l'organisation (§7) pour ne pas recompiler.
+2. Vendorer le modèle `gigaspeech-3.3M` int8 (~6 Mo) dans `public/voix/kws/` +
+   `voice-offline/kwsModel.ts` (constantes chemins FS virtuelle + config, calqué
+   sur `sherpaModel.ts`).
+3. Générer `keywords.txt` (`python3 scripts/text2token.py`, bpe.model + tokens)
+   → ligne `julaba <ids BPE> <trigger threshold>` + variantes ; régler le
+   boosting score (compromis fausses alertes / sensibilité).
+4. Nouveau module dans `offlineStt.ts` **sans casser le contrat §8** :
+   `startWakeWordStreaming(mic, onKeyword)` → boucle `acceptWaveform(16000, f32)`
+   + `while (isReady(stream)) decode(stream)` + `getResult(stream).keyword`.
+5. `useWakeWord.ts` : remplacer l'écoute ASR continue par le spotter dédié +
+   bascule dictée ASR à la détection ; conserver `active` (pause quand Tata
+   parle, sinon le spotter s'allume sur sa voix) ; **repli** sur l'écoute
+   streaming actuelle si le spotter est indisponible.
+
+**Risques & garde-fous :** précision du spotter sur « julaba » (BPE anglais,
+marché bruyant) → calibrage du seuil sur enregistrements réels ; build wasm
+one-shot à versionner (jamais de recompilation au déploiement) ; pas de
+téléchargement silencieux (modèle vendored) ; `numThreads: 1`.
+
+### Phase 4 — TTS offline (⚠️ PAS LIVRÉ — build WASM custom FR requis)
+
+1. `sherpaTts.ts` est écrit et branché dans `audioManager` (après clips, avant
+   `speakBrowser`), mais le runtime TTS n'est **jamais déployé** (seul le STT
+   l'est). En l'état, tout le chemin sherpa TTS retombe sur `speakBrowser` :
+   aucune régression, mais la « voix neuronale » de l'UI n'est pas disponible.
+2. ❌ **Ne PAS brancher le build officiel « pocket-tts »** : démo multilingue,
+   `.data` ~200 Mo décompressé, pas la voix française → inacceptable sur forfait
+   ivoirien et mauvaise voix.
+3. 🔧 **Solution** : build WASM CUSTOM (`wasm/build-wasm-simd-tts.sh`, sources
+   épinglées v1.13.4) embarquant `vits-piper-fr_FR-siwis-low-int8` (~13 Mo), puis
+   déposer les 5 fichiers dans `public/voix/sherpa/` et ajouter
+   `install-sherpa-tts.sh` aux deux déploiements (`deploy-frontend.sh` +
+   `render.yaml`). La convergence voix Piper FR (F8) suit ensuite.
 
 ### Phase 5 — (option) backend `sherpa-onnx-node`
 `SherpaNodeService` branché dans `voice.service.ts` comme 3ᵉ moteur de
@@ -382,8 +524,9 @@ exports/modules**, pas de rupture des contrats ci-dessus.
 
 1. **API WASM mouvante** → épingler `sherpa-onnx@1.13.4` exactement, documenter
    les exports utilisés (comme le doc n°1 le demandait).
-2. **Taille modèle ~60 Mo (int8)** → double validation + Wi-Fi conseillé + reprise
-   + hash (pattern InstallerOffline existant, mis à jour).
+2. **Taille modèle ~128 Mo (int8, vérifié)** → double validation + Wi-Fi conseillé
+   + progression octets réels (InstallerOffline, mis à jour). Le fp32 (292 Mo)
+   est exclu sur mobile.
 3. **RAM/CPU mobile entrée de gamme** → `numThreads: 1`, privilégier int8, tester
    `sherpa-onnx-k2-vosk-fr` (plus léger) comme fallback, streaming optionnel.
 4. **Pas de projet Android aujourd'hui** → Phase 2 = gros chantier (build APK
@@ -396,6 +539,14 @@ exports/modules**, pas de rupture des contrats ci-dessus.
    sherpa zipformer est vocabulaire ouvert → `localIntent.ts`/`extraction.ts`
    restent le filtre sémantique (inchangés), mais on peut retirer la grammaire
    fermée et gagner en généralité.
+8. **COOP/COEP (nouveau, Phase 1)** : le runtime officiel est compilé avec
+   pthreads → SharedArrayBuffer → l'origine doit être « cross-origin isolated ».
+   On pose `COOP: same-origin` + `COEP: credentialless` (nginx, Render, dev Vite)
+   — `credentialless` n'impacte pas les ressources tierces (images…). Contextes
+   sans support (Safari < 16.4, WebView sans headers) → **repli Vosk automatique**.
+9. **Runtime vendored ~19 Mo dans public/** → le build/deploy grossit (~175 Mo
+   à télécharger au déploiement pour extraire 3 fichiers). Amélioration future :
+   héberger les 3 fichiers sur le stockage de l'organisation (cf. §7).
 
 ---
 
@@ -403,21 +554,37 @@ exports/modules**, pas de rupture des contrats ci-dessus.
 
 | Fichier | Action |
 |---|---|
-| `frontend/package.json` | +`sherpa-onnx@1.13.4`, −`vosk-browser` (fin P1) |
-| `voice-offline/offlineStt.ts` | Réécriture moteur (interface conservée) |
-| `voice-offline/voskModel.ts` → `sherpaModel.ts` | URLs modèles (1 constante) |
-| `voice-offline/InstallerOffline.tsx` | Agnostique + progression réelle |
-| `voice-offline/nativeStt.ts` | **Inchangé** (contrat déjà bon) |
+| `frontend/package.json` | `vosk-browser` **conservé** (repli) ; pas de dép npm `sherpa-onnx` (build Node) — le runtime WASM est vendored par script |
+| `voice-offline/offlineStt.ts` | ✅ **FAIT** : moteur sherpa-onnx + repli Vosk (interface conservée) |
+| `voice-offline/sherpaModel.ts` | ✅ **NOUVEAU** : URLs modèle FR int8, tailles vérifiées, config recognizer |
+| `scripts/install-sherpa-stt.sh` | ✅ **NOUVEAU** : runtime WASM ASR vendored (3 fichiers, ~19 Mo) |
+| `voice-offline/InstallerOffline.tsx` | ✅ **FAIT** : agnostique moteur (taille + nom du moteur) |
+| `nginx/*.conf`, `render.yaml`, `vite.config.ts` | ✅ **FAIT** : headers COOP/COEP (`credentialless`) |
+| `scripts/deploy-frontend.sh`, `render.yaml` | ✅ **FAIT** : exécution de `install-sherpa-stt.sh` au build |
+| `voice-offline/nativeStt.ts` | ✅ **FAIT** : + `prepare`/`release`/`present` (contrat conservé) |
 | `voice-offline/localIntent.ts`, `extraction.ts`, `vocabulaire.ts` | Inchangés (post-traitement) |
-| `services/sherpaTts.ts` | **Nouveau** (TTS vits) |
-| `services/audioManager.ts` / `elevenlabs.ts` | Brancher sherpa TTS avant `speakBrowser` |
-| `hooks/useWakeWord.ts` | Branché sur keyword spotter |
-| `components/marchand/VenteVocaleModal.tsx` | Badge moteur, live transcript, mains libres réactivé |
+| `services/sherpaTts.ts` | ⚠️ **Écrit + branché** (`audioManager`), mais **jamais livré** : runtime TTS non déployé (voir Phase 4) |
+| `services/audioManager.ts` / `elevenlabs.ts` | **Fait** : `defaultTtsSpeakChunk` essaie sherpa puis `speakBrowser` ; `realStartTts.stop()` appelle `stopSherpaTts()` |
+| `scripts/install-sherpa-tts.sh` | ⚠️ **Durci (août 2026)** : ne déploie PLUS rien dans `public/` (le pocket-tts était une démo hors-sujet, refusée) ; prépare le modèle FR dans `scripts/.tts-fr-model/` pour le futur build custom + affiche la procédure. Voix FR = build WASM custom requis |
+| `voice-offline/InstallerOffline.tsx` | ⚠️ Section `InstallerVoixNeuronale` écrite mais **non opérationnelle** tant que le runtime TTS n'est pas déployé (bouton → « non prêt ») |
+| `src/main.tsx` | **Fait** : `warmSherpaTtsIfInstalled()` au boot (idle/timeout différé) |
+| `hooks/useWakeWord.ts` | ✅ Branché sur l'écoute streaming hors-ligne (`startLiveDictation`) — `supported` redevenu vrai dès que le modèle est installé |
+| `components/marchand/VenteVocaleModal.tsx` | ✅ Badge moteur (`EngineBadge`), live transcript, mains libres réactivé |
+| `components/assistant/TantieSagesseModal.tsx` | ✅ Badge moteur (`EngineBadge`) + live transcript pendant l'écoute |
+| `voice-offline/EngineBadge.tsx` | **NOUVEAU** : indicateur moteur (sherpa/Vosk/natif), auto-rafraîchi via `subscribeModelReady` |
+| `scripts/install-sherpa-kws.sh` + `public/voix/kws/` | **Phase 3 bis** : build WASM KWS one-shot vendored + modèle gigaspeech ~6 Mo |
+| `voice-offline/kwsModel.ts` | **Phase 3 bis** : constantes modèle KWS ; `startWakeWordStreaming` ajouté à `offlineStt.ts` |
 | `components/auth/OnboardingSlides.tsx`, `LoginPassword.tsx` | Aucune (InstallerOffline auto) |
 | `src/main.tsx` | Aucune (signature conservée) |
-| `capacitor.config.ts` | Fix `webDir` |
-| `android/` (racine) | **Nouveau** projet Capacitor (`cap add android`) |
-| `frontend/native/android/SherpaSttPlugin.kt` | Implémentation API réelle |
+| `capacitor.config.ts` | ✅ **FAIT** : fix `webDir` → `"frontend/dist"` |
+| `android/` (racine) | ✅ **FAIT** : projet Capacitor généré (`cap add android`, Capacitor 8.5) |
+| `android/app/src/main/java/ci/julaba/app/SherpaSttPlugin.java` | ✅ **NOUVEAU** : vrai plugin Capacitor (prepare/téléchargement modèles, transcribe OnlineRecognizer, release, handleOnDestroy) |
+| `android/app/src/main/java/ci/julaba/app/MainActivity.java` | ✅ **FAIT** : `registerPlugin(SherpaSttPlugin.class)` |
+| `android/app/build.gradle` | ✅ **FAIT** : `implementation files('libs/sherpa-onnx-1.13.4.aar')` |
+| `android/app/libs/sherpa-onnx-1.13.4.aar` | ✅ **FAIT** : AAR 48 Mo (gitignoré, récupéré par `scripts/fetch-sherpa-aar.sh`) |
+| `scripts/fetch-sherpa-aar.sh` | ✅ **NOUVEAU** : téléchargement reproductible de l'AAR (releases GitHub) |
+| `frontend/native/android/SherpaSttPlugin.kt` | **Supprimé** (brouillon Kotlin remplacé par le plugin Java) |
+| `voice-offline/sherpaModel.ts` | ✅ **FAIT** : + `SHERPA_NATIVE_FILES` (noms courts natifs) |
 | `backend/src/voice/` | Inchangé (repli) ; +`SherpaNodeService` (Phase 5, option) |
 
 ---
@@ -428,7 +595,10 @@ exports/modules**, pas de rupture des contrats ci-dessus.
    CORS — qui s'en occupe ? (condition pour ne pas dépendre de HuggingFace/GitHub Pages).
 2. **Voix Tata Lou** : le fine-tune Piper existant peut-il être embarqué comme
    vits-piper dans sherpa-onnx, ou garde-t-on `fr_FR-siwis` (générique) ?
-3. **APK Android** : un build Capacitor est-il planifié (Play Store / APK direct) ?
-   Sans lui, la Phase 2 (natif) n'a pas de cible.
-4. **Backend** : garde-t-on le repli `/voice/process` tel quel (whisper.cpp/vosk/
+3. **APK Android** : qui lance le premier build (`scripts/fetch-sherpa-aar.sh` +
+   Android Studio / `./gradlew assembleDebug`) et le smoke test en mode avion ?
+   C'est l'ultime validation de la Phase 2 (aucun JDK/SDK Android ici).
+4. **ABI Android** : garder les 4 ABI (APK ~40 Mo de .so) ou filtrer
+   `arm64-v8a` + `armeabi-v7a` (APK réduit de moitié, émulateur x86 exclu) ?
+5. **Backend** : garde-t-on le repli `/voice/process` tel quel (whisper.cpp/vosk/
    cloud) ou l'aligne-t-on aussi sur sherpa (Phase 5) ?

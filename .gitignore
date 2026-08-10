@@ -35,6 +35,10 @@ erreur.txt
 .claude/
 .idea/
 
-# Build frontend versionne par erreur (la source est dans frontend/, build via frontend/Dockerfile)
-frontend/
-frontend/tsconfig.tsbuildinfo
+# AAR sherpa-onnx natif (48 Mo) — re-téléchargé par scripts/fetch-sherpa-aar.sh
+# avant le build Android. À committer explicitement si vous préférez le versionner.
+android/app/libs/*.aar
+
+
+# Artefact de build TypeScript
+*.tsbuildinfo

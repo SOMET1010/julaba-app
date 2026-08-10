@@ -102,8 +102,21 @@ services:
       # Déploiement AUTOMATIQUE à chaque push sur la branche suivie (plus besoin de
       # cliquer « Manual Deploy » après chaque correction).
       autoDeploy: true
-      buildCommand: cd frontend && npm ci --include=dev && npm run build
+      # install-sherpa-stt.sh est DÉFENSIF (sort en 0 même s'il échoue) : le build
+      # ne peut pas casser à cause du runtime voix hors-ligne (repli Vosk sinon).
+      buildCommand: cd frontend && bash ../scripts/install-sherpa-stt.sh && npm ci --include=dev && npm run build
       staticPublishPath: frontend/dist
+      headers:
+          # Isolation cross-origin (COOP/COEP) — requise par le runtime WASM
+          # sherpa-onnx (voix hors-ligne, pthreads → SharedArrayBuffer).
+          # `credentialless` n'impacte pas les ressources tierces. Sinon, le
+          # STT retombe sur Vosk (repli) : aucun impact sur le reste de l'appli.
+          - path: /*
+            name: Cross-Origin-Opener-Policy
+            value: same-origin
+          - path: /*
+            name: Cross-Origin-Embedder-Policy
+            value: credentialless
       envVars:
           # URL du backend (utilisée au BUILD du frontend)
           - key: VITE_API_URL

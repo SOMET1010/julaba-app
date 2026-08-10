@@ -155,6 +155,61 @@ bash scripts/deploy.sh
 
 ---
 
+## 📱 Build de l'APK Android (Capacitor + sherpa-onnx natif)
+
+Le projet contient un projet Android Capacitor 8 (`android/`) avec la voix
+hors-ligne **native** : transcription sherpa-onnx via le plugin `SherpaSttPlugin.java`
+(AAR `sherpa-onnx-1.13.4.aar`). L'APK se construit sur une machine avec
+Android SDK — pas sur le VPS.
+
+### Prérequis (machine de build)
+
+- Node.js ≥ 20 (workspaces npm à la racine)
+- JDK 17+ (`java -version`)
+- Android Studio (SDK + `ANDROID_HOME` configuré) ou SDK Android en ligne de
+  commande (`sdkmanager`)
+
+### Étapes
+
+```bash
+# 1. Dépendances npm (racine — workspaces frontend/backend)
+npm install
+
+# 2. (Au premier build uniquement) Télécharger l'AAR sherpa-onnx (~48 Mo,
+#    gitignoré — pas de coordonnée Maven, source = releases GitHub k2-fsa)
+bash scripts/fetch-sherpa-aar.sh
+
+# 3. Build du web + copie des assets dans le projet Android
+npm run android:sync          # = npm run build --workspace frontend && npx cap sync android
+
+# 4. Compiler l'APK debug
+cd android && ./gradlew assembleDebug
+
+# 5. Récupérer l'APK
+#    android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+> 💡 **Alternative** : ouvrir le dossier `android/` dans Android Studio et
+> lancer `Build ▸ Build App Bundle(s) / APK(s) ▸ Build APK(s)` (le sync des
+> assets se refait via `npm run android:sync` avant chaque build).
+
+### Vérifier la voix hors-ligne sur l'APK
+
+1. Installer l'APK sur un téléphone Android (≥ API 24).
+2. Ouvrir l'appli → installer le **mode hors-ligne** (la voix : téléchargement
+   du modèle FR ~128 Mo dans `filesDir`, progression affichée, puis
+   `OnlineRecognizer` natif prêt).
+3. **Mode avion** → vente vocale : la transcription doit fonctionner 100 %
+   hors-ligne (moteur natif ; repli Vosk WASM si le plugin est absent).
+
+> ℹ️ **Particularités** : le natif ne requiert pas les headers COOP/COEP (le
+> WASM les exige — c'est le cas du web, voir `nginx/*.conf`). L'APK embarque le
+> runtime WASM dans `assets/public/` (repli navigateur dans la WebView). Les 4
+> ABI sont packagées par défaut (~40 Mo de `.so`) ; pour réduire l'APK de moitié,
+> filtrer dans `android/app/build.gradle` : `ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }`.
+
+---
+
 ## 🛟 Commandes utiles
 
 ```bash

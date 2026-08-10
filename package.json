@@ -10,7 +10,8 @@
         "dev": "concurrently -n frontend,backend -c cyan,green \"npm run dev --workspace frontend\" \"npm run start:dev --workspace backend\"",
         "build": "npm run build --workspace frontend && npm run build --workspace backend",
         "install:all": "npm install",
-        "typecheck": "npm run typecheck --workspace frontend"
+        "typecheck": "npm run typecheck --workspace frontend",
+        "android:sync": "npm run build --workspace frontend && npx cap sync android"
     },
     "devDependencies": {
         "concurrently": "^9.1.2"
