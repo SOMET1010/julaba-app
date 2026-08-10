@@ -8,6 +8,7 @@ import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { CreditModal } from './CreditModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
+import { partagerRecu } from '../../utils/recu.utils';
 import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 
@@ -17,7 +18,8 @@ const BG = '#FFF2E9';
 export function POSCaisse() {
   const navigate = useNavigate();
   const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, clearCart, getTotalCart, enregistrerVente, updateProduct, transactions } = useCaisse();
-  const { speak, reloadTransactions } = useApp();
+  const { speak, reloadTransactions, user } = useApp();
+  const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Ma boutique';
   // Confirmations vocales AUTO selon le profil (le même que la connexion) :
   // silencieuses en mode 'lecture' (l'écran affiche déjà tout), parlées en voix/mixte.
   const dire = (t: string) => { if (guidageVocal()) speak(t); };
@@ -31,6 +33,10 @@ export function POSCaisse() {
   const [showLibre, setShowLibre] = useState(false);
   const [libreMontant, setLibreMontant] = useState('');
   const [libreDesc, setLibreDesc] = useState('');
+
+  // Encaissement (Phase 3, lots 2-4) : montant reçu (espèces) + écran « Vente réussie ».
+  const [montantRecu, setMontantRecu] = useState('');
+  const [lastSale, setLastSale] = useState<{ montant: number; moyen: string; monnaie: number; produits: any[] } | null>(null);
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -63,6 +69,18 @@ export function POSCaisse() {
   const total = getTotalCart();
   const nbItems = cart.reduce((s, i) => s + i.quantite, 0);
 
+  // Espèces : monnaie à rendre + montants rapides (arrondis au-dessus du total).
+  const recu = Number(montantRecu) || 0;
+  const monnaie = Math.max(0, recu - total);
+  const insuffisant = recu > 0 && recu < total;
+  const montantsRapides = useMemo(() => {
+    const s = new Set<number>();
+    const ceil = (n: number) => Math.ceil(total / n) * n;
+    [500, 1000, 2000, 5000, 10000].forEach(n => { if (n > total) s.add(n); });
+    [1000, 5000, 10000].forEach(n => s.add(ceil(n)));
+    return [...s].filter(v => v > total).sort((a, b) => a - b).slice(0, 3);
+  }, [total]);
+
 
   const topProducts = useMemo(() => {
     const salesCount: Record<string, number> = {};
@@ -92,6 +110,7 @@ export function POSCaisse() {
       return;
     }
     if (paymentMethod === 'credit') return;
+    if (insuffisant) { dire('Montant reçu insuffisant'); return; }
     paiementEnCoursRef.current = true;
     setIsProcessing(true);
     try {
@@ -108,14 +127,16 @@ export function POSCaisse() {
         const prod = products.find((p) => p.id === item.productId);
         if (prod) updateProduct(prod.id, { stock: Math.max(0, (prod.stock || 0) - item.quantite) });
       });
+      // Écran « Vente réussie » (Phase 3, lot 4) — capturé AVANT de vider le panier.
+      setLastSale({ montant: total, moyen: 'Espèces', monnaie, produits: details });
       clearCart();
       setPaymentMethod('cash');
+      setMontantRecu('');
       setShowCart(false);
       setShowSuccess(true);
       // Confirmation PARLÉE (comme la vente vocale) : une non-lectrice entend que
       // sa vente est bien enregistrée, sans avoir à lire le petit texte.
       dire(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs`);
-      setTimeout(() => setShowSuccess(false), 3000);
     } catch (e) {
       console.error(e);
       dire("Erreur lors de l'enregistrement de la vente");
@@ -142,11 +163,12 @@ export function POSCaisse() {
     dire(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
     // Recharge les totaux du jour (la vente à crédit doit apparaître : convention A).
     void reloadTransactions?.();
+    setLastSale({ montant: total, moyen: 'Crédit', monnaie: 0, produits: details });
     clearCart();
     setPaymentMethod('cash');
+    setMontantRecu('');
     setShowCredit(false);
     setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
   };
 
   const Prix = ({ prix, unite }: { prix: number; unite: string }) => (
@@ -202,7 +224,7 @@ export function POSCaisse() {
                 </div>
                 <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowCart(true)}
                   style={{ background:P, border:'none', borderRadius:14, padding:'13px 20px', fontSize:15, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', boxShadow:`0 4px 14px ${P}55` }}>
-                  Encaisser
+                  Encaisser {total.toLocaleString('fr-FR')} F
                 </motion.button>
               </div>
             </motion.div>
@@ -372,13 +394,59 @@ export function POSCaisse() {
                 ))}
               </div>
               <div style={{ padding:'14px 16px 32px' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:14 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
                   <span style={{ fontSize:16, fontWeight:700, color:'#1a1206' }}>Total</span>
                   <span style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} FCFA</span>
                 </div>
-                <motion.button whileTap={{ scale:0.97 }} onClick={handlePay} disabled={isProcessing}
-                  style={{ width:'100%', background:P, border:'none', borderRadius:18, padding:'17px 0', fontSize:16, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55` }}>
-                  {isProcessing ? 'Traitement...' : 'Valider la vente'}
+
+                {/* Moyen de paiement (Phase 3) — espèces / crédit */}
+                <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+                  <button type="button" onClick={() => setPaymentMethod('cash')}
+                    style={{ flex:1, padding:'12px', borderRadius:12, fontWeight:800, fontSize:14, cursor:'pointer',
+                      border: paymentMethod==='cash' ? `2px solid ${P}` : '1.5px solid #EDE7DE',
+                      background: paymentMethod==='cash' ? '#FFF3E9' : '#fff', color: paymentMethod==='cash' ? P : '#8A7A6A' }}>
+                    Espèces
+                  </button>
+                  <button type="button" onClick={() => { setShowCart(false); setPaymentMethod('credit'); setShowCredit(true); }}
+                    style={{ flex:1, padding:'12px', borderRadius:12, fontWeight:800, fontSize:14, cursor:'pointer',
+                      border:'1.5px solid #EDE7DE', background:'#fff', color:'#8A7A6A' }}>
+                    Crédit
+                  </button>
+                </div>
+
+                {/* Espèces : montant reçu + rapides + monnaie à rendre */}
+                <div style={{ marginBottom:12 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid #EDE7DE', borderRadius:12, padding:'10px 12px' }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:'#8A7A6A', whiteSpace:'nowrap' }}>Montant reçu</span>
+                    <input value={montantRecu} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—"
+                      style={{ flex:1, border:'none', outline:'none', textAlign:'right', fontSize:18, fontWeight:800, color:'#1a1206', background:'transparent', fontVariantNumeric:'tabular-nums' }} />
+                    <span style={{ fontSize:13, fontWeight:700, color:'#8A7A6A' }}>F</span>
+                  </div>
+                  <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
+                    <button type="button" onClick={() => setMontantRecu(String(total))}
+                      style={{ padding:'8px 12px', borderRadius:10, border:'1.5px solid #A8D8B9', background:'#EAF7EE', color:'#0E7A47', fontWeight:800, fontSize:13, cursor:'pointer' }}>
+                      Compte juste
+                    </button>
+                    {montantsRapides.map(v => (
+                      <button type="button" key={v} onClick={() => setMontantRecu(String(v))}
+                        style={{ padding:'8px 12px', borderRadius:10, border:'1.5px solid #EDE7DE', background:'#fff', color:'#5a4a3a', fontWeight:700, fontSize:13, cursor:'pointer' }}>
+                        {v.toLocaleString('fr-FR')}
+                      </button>
+                    ))}
+                  </div>
+                  {recu > 0 && !insuffisant && (
+                    <div style={{ display:'flex', justifyContent:'space-between', marginTop:10, fontSize:15, fontWeight:800, color:'#0E7A47' }}>
+                      <span>Monnaie à rendre</span><span style={{ fontVariantNumeric:'tabular-nums' }}>{monnaie.toLocaleString('fr-FR')} F</span>
+                    </div>
+                  )}
+                  {insuffisant && (
+                    <div style={{ marginTop:8, fontSize:13, fontWeight:700, color:'#c0392b' }}>Montant reçu insuffisant</div>
+                  )}
+                </div>
+
+                <motion.button whileTap={{ scale:0.97 }} onClick={handlePay} disabled={isProcessing || insuffisant}
+                  style={{ width:'100%', border:'none', borderRadius:18, padding:'17px 0', fontSize:16, fontWeight:800, color:'white', cursor: (isProcessing||insuffisant) ? 'not-allowed':'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, background: (isProcessing||insuffisant) ? '#CBB9A8' : P }}>
+                  {isProcessing ? 'Traitement...' : (monnaie > 0 ? `Valider · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Valider la vente')}
                 </motion.button>
               </div>
             </motion.div>
@@ -439,12 +507,31 @@ export function POSCaisse() {
         )}
       </AnimatePresence>
 
+      {/* Écran « Vente réussie » (Phase 3, lot 4) */}
       <AnimatePresence>
-        {showSuccess && (
-          <motion.div initial={{ opacity:0, y:-20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-20 }}
-            style={{ position:'fixed', top:20, left:'50%', transform:'translateX(-50%)', zIndex:100, background:P, color:'white', padding:'12px 24px', borderRadius:20, fontSize:14, fontWeight:700, boxShadow:`0 4px 20px ${P}55`, display:'flex', alignItems:'center', gap:8 }}>
-            <Check size={16} color="white" />
-            Vente enregistrée !
+        {showSuccess && lastSale && (
+          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+            style={{ position:'fixed', inset:0, zIndex:120, background:'#FFFDF9', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px', textAlign:'center' }}>
+            <div style={{ width:88, height:88, borderRadius:'50%', background:'#EAF7EE', display:'grid', placeItems:'center', marginBottom:16 }}>
+              <Check size={48} color="#0E7A47" />
+            </div>
+            <div style={{ fontSize:24, fontWeight:900, color:'#0E7A47', marginBottom:8 }}>Vente réussie</div>
+            <div style={{ fontSize:34, fontWeight:900, color:'#1a1206', fontVariantNumeric:'tabular-nums' }}>{lastSale.montant.toLocaleString('fr-FR')} F</div>
+            <div style={{ fontSize:14, color:'#8A7A6A', marginTop:6 }}>
+              {lastSale.moyen}{lastSale.monnaie > 0 ? ` · rendu ${lastSale.monnaie.toLocaleString('fr-FR')} F` : ''}
+            </div>
+            <div style={{ width:'100%', maxWidth:360, marginTop:28, display:'flex', flexDirection:'column', gap:10 }}>
+              <button type="button"
+                onClick={() => { void partagerRecu({ montant: lastSale.montant, produits: lastSale.produits, mode_paiement: lastSale.moyen, created_at: new Date().toISOString() } as any, marchandNom); }}
+                style={{ width:'100%', padding:'14px', borderRadius:16, border:'1.5px solid #25D366', background:'#fff', color:'#128C4B', fontWeight:800, fontSize:15, cursor:'pointer' }}>
+                Envoyer le reçu (WhatsApp)
+              </button>
+              <button type="button"
+                onClick={() => { setShowSuccess(false); setLastSale(null); }}
+                style={{ width:'100%', padding:'16px', borderRadius:16, border:'none', background:P, color:'#fff', fontWeight:800, fontSize:16, cursor:'pointer' }}>
+                Nouvelle vente
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
