@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../contexts/AppContext';
+import { useCaisse } from '../../contexts/CaisseContext';
 import { RACC_IMG as MOD_IMAGES } from '../../assets/cloudinary-images';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { VenteVocaleModal } from './VenteVocaleModal';
@@ -26,6 +27,23 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
 
   const [soldeVisible, setSoldeVisible] = useState(true);
   const [showVente, setShowVente] = useState(false);
+
+  // Panier en cours (Lot 3) : accès « Nouvelle vente » + bannière de reprise.
+  const { venteEnCours, cart, getTotalCart, staleCart, resumeStaleCart, discardStaleCart, clearCart } = useCaisse();
+  const nbItems = cart.reduce((s, i) => s + i.quantite, 0);
+  const totalPanier = getTotalCart();
+  const [showNewConfirm, setShowNewConfirm] = useState(false);
+  const allerCaisse = () => navigate('/marchand/caisse');
+
+  // « Nouvelle vente » : ne JAMAIS démarrer par-dessus un panier existant sans
+  // demander. Panier récent → on propose reprendre/nouvelle. Panier ancien mis de
+  // côté → « Nouvelle vente » choisit implicitement de ne pas le reprendre.
+  const handleNouvelleVente = () => {
+    if (venteEnCours) { setShowNewConfirm(true); return; }
+    if (staleCart) discardStaleCart();
+    allerCaisse();
+  };
+  const reprendreStale = () => { resumeStaleCart(); allerCaisse(); };
 
   const direCaisse = () => {
     if (!soldeVisible) return;
@@ -96,9 +114,41 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
           </div>
         </div>
 
-        {/* GRAND VENDRE */}
+        {/* Bannière de reprise (Lot 3) — deux états distincts */}
+        {staleCart ? (
+          <div style={{ marginTop: 16, borderRadius: 18, padding: '14px 16px', background: '#FFF4E5',
+            border: '1.5px solid #F0C48A', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#8A4B12' }}>Une ancienne vente a été retrouvée</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <motion.button whileTap={{ scale: 0.95 }} onClick={reprendreStale}
+                style={{ padding: '9px 16px', borderRadius: 12, border: 'none', background: '#C55C18', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
+                Reprendre
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.95 }} onClick={discardStaleCart} aria-label="Effacer l'ancienne vente"
+                style={{ padding: '9px 16px', borderRadius: 12, border: '1.5px solid #E0B58A', background: '#fff', color: '#8A4B12', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
+                Effacer
+              </motion.button>
+            </div>
+          </div>
+        ) : venteEnCours ? (
+          <motion.button whileTap={{ scale: 0.98 }} onClick={allerCaisse} aria-label="Reprendre la vente en cours"
+            style={{ width: '100%', boxSizing: 'border-box', marginTop: 16, borderRadius: 18, padding: '14px 16px',
+              background: '#EAF7EE', border: '1.5px solid #A8D8B9', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#0E7A47' }}>Vente en cours</div>
+              <div style={{ fontSize: 13, color: '#2E6B4A', fontVariantNumeric: 'tabular-nums' }}>
+                {nbItems} article{nbItems > 1 ? 's' : ''} · {Math.round(totalPanier).toLocaleString('fr-FR')} F
+              </div>
+            </div>
+            <span style={{ padding: '8px 16px', borderRadius: 12, background: '#0E7A47', color: '#fff', fontWeight: 800, fontSize: 14 }}>Reprendre</span>
+          </motion.button>
+        ) : null}
+
+        {/* ACTION PRINCIPALE — Nouvelle vente (→ caisse à panier) */}
         <motion.button
-          whileTap={{ scale: 0.97 }} onClick={() => setShowVente(true)} aria-label="Vendre — touche et parle"
+          whileTap={{ scale: 0.97 }} onClick={handleNouvelleVente} aria-label="Nouvelle vente"
           style={{ width: '100%', boxSizing: 'border-box', marginTop: 16, borderRadius: 26, padding: '24px', border: 'none', cursor: 'pointer',
             background: 'radial-gradient(130% 130% at 30% 15%, #EE8E3C, #C55C18)', color: '#fff',
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
@@ -106,10 +156,19 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
           <motion.span aria-hidden style={{ position: 'absolute', inset: 0, borderRadius: 26, border: '3px solid rgba(255,255,255,0.45)' }}
             animate={{ scale: [0.99, 1.02], opacity: [0.5, 0] }} transition={{ duration: 2.2, repeat: Infinity, ease: 'easeOut' }} />
           <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', display: 'grid', placeItems: 'center' }}>
-            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg>
+            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
           </div>
-          <span style={{ fontSize: 24, fontWeight: 800 }}>Vendre</span>
-          <span style={{ fontSize: 13, opacity: 0.92 }}>Touche et parle</span>
+          <span style={{ fontSize: 24, fontWeight: 800 }}>Nouvelle vente</span>
+        </motion.button>
+
+        {/* Secondaire — vente à la voix (comportement inchangé) */}
+        <motion.button
+          whileTap={{ scale: 0.97 }} onClick={() => setShowVente(true)} aria-label="Vendre à la voix"
+          style={{ width: '100%', boxSizing: 'border-box', marginTop: 10, borderRadius: 16, padding: '12px', cursor: 'pointer',
+            background: '#fff', border: '1.5px solid rgba(198,100,44,0.35)', color: '#B85C1B',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 800, fontSize: 15 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg>
+          Vendre à la voix
         </motion.button>
 
         {/* Tuiles — belles icônes de l'app */}
@@ -132,6 +191,45 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
           Vue avancée
         </button>
       </div>
+
+      {/* Garde : « Nouvelle vente » alors qu'un panier récent existe (Lot 3) */}
+      <AnimatePresence>
+        {showNewConfirm && (
+          <motion.div
+            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setShowNewConfirm(false)}
+            role="dialog" aria-modal="true" aria-label="Une vente est déjà en cours"
+          >
+            <motion.div
+              className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl"
+              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-lg font-bold text-gray-900 mb-1">Une vente est déjà en cours.</p>
+              <p className="text-gray-600 mb-5">
+                {nbItems} article{nbItems > 1 ? 's' : ''} · {Math.round(totalPanier).toLocaleString('fr-FR')} F.
+                Reprends-la, ou commence une nouvelle vente (le panier actuel sera effacé).
+              </p>
+              <button
+                type="button"
+                onClick={() => { setShowNewConfirm(false); allerCaisse(); }}
+                className="w-full mb-2 py-4 rounded-2xl font-bold text-white"
+                style={{ background: '#0E7A47' }}
+              >
+                Reprendre la vente
+              </button>
+              <button
+                type="button"
+                onClick={() => { clearCart(); setShowNewConfirm(false); allerCaisse(); }}
+                className="w-full py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold"
+              >
+                Nouvelle vente (efface l'actuelle)
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <VenteVocaleModal isOpen={showVente} onClose={() => setShowVente(false)} />
     </div>

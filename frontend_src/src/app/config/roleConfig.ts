@@ -118,7 +118,8 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
       action1: {
         label: "Je vends",
         subtitle: 'Encaisser une vente',
-        route: '/marchand/vendre',
+        // Route corrigée (Lot 3) : l'ancienne '/marchand/vendre' n'existait pas.
+        route: '/marchand/caisse',
         color: '#16A34A',
         icon: 'TrendingUp',
       },
