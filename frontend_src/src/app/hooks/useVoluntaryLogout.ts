@@ -34,11 +34,23 @@ export function useVoluntaryLogout() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Séquence complète (sans effacer le panier : l'effacement n'a lieu que sur
-  // confirmation explicite, via confirmAndClear).
+  // confirmation explicite, via confirmAndClear). Le nettoyage du 2ᵉ contexte et
+  // la redirection sont dans un `finally` : ils s'exécutent MÊME SI appLogout
+  // échoue (rejet réseau, etc.), pour ne jamais laisser une session à moitié
+  // déconnectée. Chaque étape est isolée pour qu'une erreur n'en bloque pas une autre.
   const performLogout = useCallback(async () => {
-    await appLogout();   // AppContext : logout serveur + purge locale (user = null)
-    userLogout();        // UserContext : purge de son propre état (synchrone)
-    navigate('/', { replace: true });
+    try {
+      await appLogout();   // AppContext : logout serveur + purge locale (user = null)
+    } catch (e) {
+      console.warn('[logout] appLogout a échoué — on poursuit le nettoyage local:', e);
+    } finally {
+      try {
+        userLogout();      // UserContext : purge de son propre état (synchrone)
+      } catch (e) {
+        console.warn('[logout] userLogout a échoué:', e);
+      }
+      navigate('/', { replace: true });
+    }
   }, [appLogout, userLogout, navigate]);
 
   /** Ouvre explicitement la confirmation « panier en cours » (R3). */

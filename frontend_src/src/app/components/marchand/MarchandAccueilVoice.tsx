@@ -209,7 +209,6 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
               <p className="text-lg font-bold text-gray-900 mb-1">Une vente est déjà en cours.</p>
               <p className="text-gray-600 mb-5">
                 {nbItems} article{nbItems > 1 ? 's' : ''} · {Math.round(totalPanier).toLocaleString('fr-FR')} F.
-                Reprends-la, ou commence une nouvelle vente (le panier actuel sera effacé).
               </p>
               <button
                 type="button"
@@ -222,9 +221,16 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
               <button
                 type="button"
                 onClick={() => { clearCart(); setShowNewConfirm(false); allerCaisse(); }}
-                className="w-full py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold"
+                className="w-full mb-2 py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold"
               >
-                Nouvelle vente (efface l'actuelle)
+                Effacer et recommencer
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNewConfirm(false)}
+                className="w-full py-3 rounded-2xl text-gray-500 font-semibold"
+              >
+                Annuler
               </button>
             </motion.div>
           </motion.div>
