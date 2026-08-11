@@ -25,6 +25,12 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.19 — 11/08/2026 : cartographie complète des parcours
+  (docs/PARCOURS.md) — écrans, textes et voix de chaque rôle, inventaire
+  des 137 clips + 8 clips d'histoire, zones SANS voix, et analyse d'écarts
+  avec la présentation DG du 24/07 (oreillette/mains-libres, paiement,
+  CNPS/CNAM, livraison). Bug corrigé (trouvé en recette séance 4) :
+  « Bonjour undefined ! » sur l'accueil producteur quand le prénom manque.
 - v5.0.0.18 — 11/08/2026 : recette runtime au Chromium (atterrissage,
   connexion, sombre, soleil, taille) + l'écran d'entrée porte le PROJET :
   bandeau République CI / DGE / ANSUT / Icone, « Un projet de la Direction
