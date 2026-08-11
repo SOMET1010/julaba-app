@@ -25,6 +25,11 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.15 — 11/08/2026 : deux mensonges d'interface réparés — le curseur
+  « Taille du texte » agit VRAIMENT (zoom réel 85-130 % sur le corps, même
+  mécanique que le mode soleil, garde-fou test:taille — avant il écrasait
+  même la base du mode soleil), et l'accueil de la connexion salue depuis le
+  compte mémorisé (source de vérité) au lieu d'une clé effacée au logout.
 - v5.0.0.14 — 11/08/2026 : confort visuel UNIFIÉ — normal / soleil / sombre
   sous un seul arbitre (utils/confortVisuel) : plus jamais deux modes à la
   fois, migration de l'ancien réglage sombre, et surcharge `html.dark` des
