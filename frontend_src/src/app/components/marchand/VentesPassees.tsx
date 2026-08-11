@@ -10,6 +10,7 @@ import { fetchCredits, marquerCreditPaye, type Credit } from '../../../imports/c
 import { fr } from 'date-fns/locale';
 import { exportSimplePDF, formatCurrency, formatDate } from '../../utils/export.utils';
 import { partagerRecu, telechargerRecuPDF } from '../../utils/recu.utils';
+import { guidageVocal } from '../../utils/accessMode';
 import { toast } from 'sonner';
 import { NotificationButton } from './NotificationButton';
 import { SubPageLayout } from '../layout/SubPageLayout';
@@ -27,12 +28,24 @@ function dayLabel(date: Date): string {
 // ── Card vente dépliable ──────────────────────────────────────
 function VenteCard({ sale, index, query }: { sale: any; index: number; query: string }) {
   const [open, setOpen] = useState(false);
-  const { user } = useApp();
+  const { user, speak } = useApp();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Marchande';
   const montant = sale.montant || sale.price || 0;
   const marge = sale.totalMargin || 0;
   const source = sale.source || 'kassa';
   const dateObj = new Date(sale.date);
+
+  // À l'OUVERTURE de la carte, la vente se DIT (inclusion §2.2 : tout montant
+  // affiché doit pouvoir être entendu) — produit, montant, marge, moment.
+  const basculer = () => {
+    const prochainOuvert = !open;
+    setOpen(prochainOuvert);
+    if (prochainOuvert && guidageVocal()) {
+      const quand = format(dateObj, "d MMMM 'à' HH'h'mm", { locale: fr });
+      const texteMarge = marge > 0 ? `, marge ${marge.toLocaleString('fr-FR')} francs` : '';
+      try { speak(`${sale.productName || 'Vente'} : ${montant.toLocaleString('fr-FR')} francs${texteMarge}, le ${quand}.`); } catch { /* ignore */ }
+    }
+  };
 
   function Highlight({ text }: { text: string }) {
     if (!query.trim()) return <>{text}</>;
@@ -44,7 +57,7 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
 
   return (
     <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay: index * 0.04 }}
-      onClick={() => setOpen(v => !v)}
+      onClick={basculer}
       style={{ background:'white', border:'1.5px solid #EDE7DE', borderRadius:16, overflow:'hidden', cursor:'pointer', marginBottom:8 }}>
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 14px' }}>
         {/* Icône */}
