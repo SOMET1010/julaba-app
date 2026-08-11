@@ -332,7 +332,7 @@ export function buildAlertesCooperative(data?: {
       type: 'generique',
       label: `${data.membresInactifs.length} membre(s) inactif(s)`,
       detail: 'Ces membres n\'ont pas de production active',
-      color: '#6B7280',
+      color: 'var(--encre-3)',
       textColor: '#374151',
       actionPath: '/cooperative/membres',
       actionLabel: 'Relancer',

@@ -273,7 +273,7 @@ export function InstitutionHome() {
                 { label: 'Suspensions fraude', value: '124', color: '#DC2626' },
                 { label: 'Suspensions inactivité', value: '98', color: '#F59E0B' },
                 { label: 'Suspensions documents', value: '67', color: '#EAB308' },
-                { label: 'Suspensions autres', value: '23', color: '#6B7280' },
+                { label: 'Suspensions autres', value: '23', color: 'var(--encre-3)' },
                 { label: 'Taux de suspension', value: '1.69%', color: '#EF4444' },
               ]}
             />
@@ -305,7 +305,7 @@ export function InstitutionHome() {
                 { label: 'Valeur totale (FCFA)', value: '4,862,500,000', color: '#059669' },
                 { label: 'Moyenne transaction', value: '523,450 FCFA', color: '#3B82F6' },
                 { label: 'Transaction max', value: '8,900,000 FCFA', color: '#8B5CF6' },
-                { label: 'Transaction min', value: '1,500 FCFA', color: '#6B7280' },
+                { label: 'Transaction min', value: '1,500 FCFA', color: 'var(--encre-3)' },
                 { label: 'Croissance valeur', value: '+22.1%', color: '#10B981' },
               ]}
             />
@@ -320,7 +320,7 @@ export function InstitutionHome() {
               explication={`${4.2}% vs mois dernier`}
               details={[
                 { label: 'Acteurs avec smartphone', value: '12,539', color: '#06B6D4' },
-                { label: 'Acteurs sans smartphone', value: '5,901', color: '#6B7280' },
+                { label: 'Acteurs sans smartphone', value: '5,901', color: 'var(--encre-3)' },
                 { label: 'Utilisant l\'app mobile', value: '9,847', color: '#10B981' },
                 { label: 'Web uniquement', value: '2,692', color: '#F59E0B' },
                 { label: 'Taux adoption app', value: '78.5%', color: '#06B6D4' },
@@ -337,7 +337,7 @@ export function InstitutionHome() {
               explication={`${6.8}% vs mois dernier`}
               details={[
                 { label: 'Acteurs affiliés CNPS', value: '7,745', color: '#F97316' },
-                { label: 'Acteurs non-affiliés', value: '10,695', color: '#6B7280' },
+                { label: 'Acteurs non-affiliés', value: '10,695', color: 'var(--encre-3)' },
                 { label: 'Dossiers en cours', value: '492', color: '#F59E0B' },
                 { label: 'Cotisations actives', value: '6,823', color: '#10B981' },
                 { label: 'Objectif 2026', value: '60%', color: '#3B82F6' },
@@ -354,7 +354,7 @@ export function InstitutionHome() {
               explication={`${9.2}% vs mois dernier`}
               details={[
                 { label: 'Acteurs affiliés CNAM', value: '6,823', color: '#EC4899' },
-                { label: 'Acteurs non-affiliés', value: '11,617', color: '#6B7280' },
+                { label: 'Acteurs non-affiliés', value: '11,617', color: 'var(--encre-3)' },
                 { label: 'Dossiers en cours', value: '618', color: '#F59E0B' },
                 { label: 'Cartes activées', value: '5,942', color: '#10B981' },
                 { label: 'Objectif 2026', value: '55%', color: '#3B82F6' },

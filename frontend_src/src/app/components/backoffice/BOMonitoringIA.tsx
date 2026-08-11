@@ -133,7 +133,7 @@ export function BOMonitoringIA() {
           {(['7j', '30j'] as const).map(p => (
             <motion.button key={p} onClick={() => setPeriod(p)} whileTap={{ scale: 0.95 }}
               className="px-4 py-2 rounded-2xl border-2 text-xs font-bold"
-              style={period === p ? { backgroundColor: BO_PRIMARY, color: '#fff', borderColor: BO_PRIMARY } : { borderColor: '#E5E7EB', color: '#6B7280' }}>
+              style={period === p ? { backgroundColor: BO_PRIMARY, color: '#fff', borderColor: BO_PRIMARY } : { borderColor: '#E5E7EB', color: 'var(--encre-3)' }}>
               {p === '7j' ? '7 derniers jours' : '30 derniers jours'}
             </motion.button>
           ))}

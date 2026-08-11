@@ -941,7 +941,7 @@ export function LoginPassword() {
             Le nom et l'accueil sont DITS par Tata (on touche son visage) — pas écrits.
             En mode dev seulement, on garde un mini-repère. */}
         {devMode && (
-          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(124,98,80,0.5)' }}>Tata Nanti Lou · dev</span>
+          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tata Nanti Lou · dev</span>
         )}
       </motion.div>
 
@@ -1062,7 +1062,7 @@ export function LoginPassword() {
               {/* Téléphone partagé : quelqu'un d'autre peut entrer — sans rien effacer. */}
               <button type="button"
                 onClick={() => { setStep('phone'); setPhone(''); setPinInput(''); setError(''); }}
-                style={{ marginTop: 2, background: 'none', border: 'none', color: 'rgba(124,98,80,0.75)', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '8px 12px' }}>
+                style={{ marginTop: 2, background: 'none', border: 'none', color: 'var(--encre-3)', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '8px 12px' }}>
                 Ce n'est pas moi
               </button>
             </motion.div>
@@ -1444,7 +1444,7 @@ export function LoginPassword() {
 
       {/* Lien secours admin — uniquement sur le portail backoffice (jamais marchande). */}
       {window.location.pathname.includes('backoffice') && (
-        <a href="/admin-recovery" style={{ margin: '12px 0', color: 'rgba(124,98,80,0.6)', fontSize: 11, textDecoration: 'none' }}>
+        <a href="/admin-recovery" style={{ margin: '12px 0', color: 'var(--encre-4)', fontSize: 11, textDecoration: 'none' }}>
           Problème de connexion admin ?
         </a>
       )}
@@ -1465,11 +1465,11 @@ export function LoginPassword() {
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#7C6250" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
           Revoir le tutoriel
         </button>
-        <p style={{ fontSize: 10, color: 'rgba(124,98,80,0.5)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>By Icône Solution</p>
+        <p style={{ fontSize: 10, color: 'var(--encre-4)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>By Icône Solution</p>
         <p
           onClick={() => parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)}
           title="Version de l'application"
-          style={{ fontSize: 9, color: 'rgba(124,98,80,0.45)', letterSpacing: '0.05em', margin: 0, cursor: 'pointer' }}
+          style={{ fontSize: 9, color: 'var(--encre-4)', letterSpacing: '0.05em', margin: 0, cursor: 'pointer' }}
         >
           v{__APP_VERSION__} · {__BUILD_ID__}
         </p>

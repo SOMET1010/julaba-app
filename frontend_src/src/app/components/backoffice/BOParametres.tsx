@@ -64,7 +64,7 @@ const ALL_SECTIONS: ParamSection[] = [
   { id: 'feature_flags', titre: 'Feature Flags', description: 'Activer ou désactiver des fonctionnalités', icon: Flag, color: '#10B981' },
   { id: 'ab_testing', titre: 'A/B Testing', description: 'Variantes et tests utilisateurs', icon: FlaskConical, color: '#8B5CF6' },
   { id: 'sante', titre: 'Santé des services', description: 'Statut Supabase, ElevenLabs, OpenAI', icon: Activity, color: '#3B82F6' },
-  { id: 'changelog', titre: 'Historique versions', description: 'Journal des mises à jour', icon: History, color: '#6B7280' },
+  { id: 'changelog', titre: 'Historique versions', description: 'Journal des mises à jour', icon: History, color: 'var(--encre-3)' },
 ];
 
 const DEV_ONLY_SECTIONS = new Set(['feature_flags', 'ab_testing', 'changelog']);

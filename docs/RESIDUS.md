@@ -117,10 +117,19 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
   (v5.0.0.7 → v5.0.0.10, cinq paquets, zéro erreur introduite). Nouvelle
   règle : `npm run verify` (typecheck 0 + 9 suites) doit être vert avant
   tout push — le zéro est un invariant, plus une baseline.
-- **`styles/soleil.css` v1 (sélecteurs d'attribut)** : encore NÉCESSAIRE pour
-  les écrans non migrés vers les tokens (connexion, partagés, producteur,
-  coopérative, institution). À retirer quand la migration tokens sera
-  complète — c'est le critère de fin explicite.
+- ~~`styles/soleil.css` v1 (sélecteurs d'attribut)~~ : **RETIRÉ le
+  11/08/2026 (v5.0.0.16)**, avec une découverte : preuve au Chromium que le
+  navigateur normalise les hex en rgb() dans l'attribut style — les 8
+  sélecteurs `[style*="color:#…"]` n'ont JAMAIS matché (seuls les rgba
+  fonctionnaient). La vraie couverture est la migration tokens, achevée
+  pour les `color:` inline : ~180 usages des gris pâles (#6B7280, #9CA3AF,
+  #aaa, rgba(124,98,80,α)) migrés vers var(--encre-3)/var(--encre-4) sur
+  toute l'app (BO compris), ternaires inclus. soleil.css ne garde que le
+  zoom et la base rem. RESTE hors périmètre (le bloc v1 ne les couvrait
+  pas non plus) : les gris affectés à des VARIABLES (`const color = …`,
+  souvent alpha-concaténées `${color}15` — un var() casserait), les props
+  d'icônes/Badge (`color="#6B7280"`, attribut SVG sans var()), et les
+  fonds/bordures. À reprendre écran par écran, à froid.
 - **`imports/*-api.ts`** (api-client, caisse-api, backoffice-api…) :
   réellement importés partout ; leur place est `app/services/api/`. À
   reloger « à froid » (gros renommage transverse, hors session de livraison).

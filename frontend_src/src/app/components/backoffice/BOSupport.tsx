@@ -65,10 +65,10 @@ const STATUT_CONFIG: Record<TicketStatut, { label: string; color: string; bg: st
   ouvert: { label: 'Nouveau', color: '#EF4444', bg: '#FEF2F2' },
   en_cours: { label: 'En cours', color: '#F59E0B', bg: '#FFFBEB' },
   resolu: { label: 'Résolu', color: '#10B981', bg: '#F0FDF4' },
-  ferme: { label: 'Fermé', color: '#6B7280', bg: '#F9FAFB' },
+  ferme: { label: 'Fermé', color: 'var(--encre-3)', bg: '#F9FAFB' },
 };
 
-const STATUT_FALLBACK = { label: 'Inconnu', color: '#6B7280', bg: '#F9FAFB' };
+const STATUT_FALLBACK = { label: 'Inconnu', color: 'var(--encre-3)', bg: '#F9FAFB' };
 
 function getStatutConfig(statut: string) {
   return STATUT_CONFIG[statut as TicketStatut] || STATUT_FALLBACK;
@@ -616,7 +616,7 @@ export function BOSupport() {
                         className="w-4 h-4 rounded-full text-xs flex items-center justify-center font-black"
                         style={{
                           backgroundColor: ticketFilter === f.key ? 'rgba(255,255,255,0.3)' : '#F3F4F6',
-                          color: ticketFilter === f.key ? 'white' : '#6B7280',
+                          color: ticketFilter === f.key ? 'white' : 'var(--encre-3)',
                         }}
                       >
                         {tickets.filter(t => f.key === 'nouveau' ? (t.statut === 'nouveau' || t.statut === 'ouvert') : t.statut === f.key).length}
@@ -750,7 +750,7 @@ export function BOSupport() {
                   style={{ borderColor: isEditing ? BO_PRIMARY : (channel.actif ? '#E5E7EB' : '#F3F4F6') }}>
                   <div className="flex items-center gap-3 p-4">
                     <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: channel.actif ? `${BO_PRIMARY}15` : '#F3F4F6' }}>
-                      <Icon className="w-5 h-5" style={{ color: channel.actif ? BO_PRIMARY : '#9CA3AF' }} />
+                      <Icon className="w-5 h-5" style={{ color: channel.actif ? BO_PRIMARY : 'var(--encre-4)' }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-gray-800 text-sm truncate">{channel.label}</p>

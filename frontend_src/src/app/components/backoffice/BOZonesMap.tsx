@@ -126,7 +126,7 @@ export default function BOZonesMap({
       return {
         fillColor: getFillColorByTaux(taux),
         fillOpacity: isSelected ? 0.55 : 0.35,
-        color: isSelected ? '#5B5248' : '#9CA3AF',
+        color: isSelected ? '#5B5248' : 'var(--encre-4)',
         weight: isSelected ? 3 : 1.5,
         dashArray: agg ? undefined : '3',
       };
@@ -286,7 +286,7 @@ export default function BOZonesMap({
           >
             <span style={{ fontWeight: 600 }}>
               Région sélectionnée : {selectedRegion}
-              <span style={{ fontWeight: 500, color: '#6B7280' }}>
+              <span style={{ fontWeight: 500, color: 'var(--encre-3)' }}>
                 {' '}
                 · Cliquez sur × pour réinitialiser
               </span>
@@ -379,7 +379,7 @@ export default function BOZonesMap({
             flexShrink: 0,
           }}
         >
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', marginBottom: 8 }}>
             Top districts actifs
           </div>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -414,7 +414,7 @@ export default function BOZonesMap({
             flexShrink: 0,
           }}
         >
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', marginBottom: 8 }}>
             Alertes territoriales
           </div>
           <div
@@ -457,11 +457,11 @@ export default function BOZonesMap({
             overflow: 'auto',
           }}
         >
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', marginBottom: 8 }}>
             Région sélectionnée
           </div>
           {!selAgg && (
-            <p style={{ margin: 0, fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--encre-3)', lineHeight: 1.5 }}>
               Cliquez sur un district sur la carte pour voir les détails.
             </p>
           )}
@@ -471,18 +471,18 @@ export default function BOZonesMap({
                 <MapPin size={18} style={{ color: BO_PRIMARY }} />
                 <span style={{ fontWeight: 700, fontSize: 14, color: '#1F1F1F' }}>{selAgg.region}</span>
               </div>
-              <p style={{ margin: '0 0 8px', fontSize: 11, color: '#6B7280' }}>
+              <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--encre-3)' }}>
                 {selAgg.nbCommunes} commune{selAgg.nbCommunes > 1 ? 's' : ''}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
                 <div style={{ background: BO_TINT, borderRadius: 8, padding: 8, textAlign: 'center' }}>
                   <Users size={14} style={{ color: BO_PRIMARY, marginBottom: 4 }} />
-                  <div style={{ fontSize: 10, color: '#6B7280' }}>Acteurs</div>
+                  <div style={{ fontSize: 10, color: 'var(--encre-3)' }}>Acteurs</div>
                   <div style={{ fontWeight: 800, fontSize: 14, color: BO_PRIMARY }}>{selAgg.nbActeurs}</div>
                 </div>
                 <div style={{ background: '#E6F1FB', borderRadius: 8, padding: 8, textAlign: 'center' }}>
                   <TrendingUp size={14} style={{ color: '#185FA5', marginBottom: 4 }} />
-                  <div style={{ fontSize: 10, color: '#6B7280' }}>Volume</div>
+                  <div style={{ fontSize: 10, color: 'var(--encre-3)' }}>Volume</div>
                   <div style={{ fontWeight: 800, fontSize: 12, color: '#185FA5' }}>{formatVol(selAgg.volume)}</div>
                 </div>
               </div>
@@ -505,7 +505,7 @@ export default function BOZonesMap({
               >
                 Voir détails {selAgg.region}
               </button>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#9CA3AF', marginBottom: 4 }}>Communes</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--encre-4)', marginBottom: 4 }}>Communes</div>
               <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                 {zonesInSelectedDistrict.slice(0, 6).map((z) => (
                   <li key={String(z.id)}>

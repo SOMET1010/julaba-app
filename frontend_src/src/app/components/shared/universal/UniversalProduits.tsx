@@ -164,7 +164,7 @@ export function UniversalProduits({ role }: UniversalProduitsProps) {
                 className="px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap"
                 style={{
                   backgroundColor: activeTab === tab.toLowerCase() ? roleConfig.primaryColor : '#F3F4F6',
-                  color: activeTab === tab.toLowerCase() ? '#FFFFFF' : '#6B7280',
+                  color: activeTab === tab.toLowerCase() ? '#FFFFFF' : 'var(--encre-3)',
                 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}

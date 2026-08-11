@@ -21,7 +21,7 @@ const QUALITE_CONFIG: Record<string, { label: string; color: string; bg: string 
 };
 
 const STATUT_CONFIG: Record<string, { label: string; color: string; bg: string; Icon: React.ElementType }> = {
-  declaree: { label: 'Déclarée',  color: '#6B7280', bg: '#F3F4F6', Icon: Clock },
+  declaree: { label: 'Déclarée',  color: 'var(--encre-3)', bg: '#F3F4F6', Icon: Clock },
   validee:  { label: 'Validée',   color: '#2E8B57', bg: '#D1FAE5', Icon: Check },
   vendue:   { label: 'Vendue',    color: '#DC2626', bg: '#FEE2E2', Icon: ShoppingCart },
 };
@@ -218,7 +218,7 @@ export function MesRecoltesPage() {
                 className="px-4 py-2 rounded-full border-2 text-sm font-semibold whitespace-nowrap flex-shrink-0"
                 style={filtreStatut === f.id
                   ? { backgroundColor: COLOR, borderColor: COLOR, color: 'white' }
-                  : { backgroundColor: 'white', borderColor: '#E5E7EB', color: '#6B7280' }
+                  : { backgroundColor: 'white', borderColor: '#E5E7EB', color: 'var(--encre-3)' }
                 }
                 whileTap={{ scale: 0.95 }}
               >

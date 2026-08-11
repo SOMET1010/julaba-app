@@ -168,7 +168,7 @@ export const NOTIFS_MARCHE: NotifMarche[] = [
 export const Q_LABELS: Record<QualiteType, { label: string; color: string; bg: string }> = {
   A: { label: 'Qualité A', color: '#16A34A', bg: '#F0FDF4' },
   B: { label: 'Qualité B', color: '#D97706', bg: '#FFFBEB' },
-  C: { label: 'Qualité C', color: '#9CA3AF', bg: '#F9FAFB' },
+  C: { label: 'Qualité C', color: 'var(--encre-4)', bg: '#F9FAFB' },
 };
 
 export const STATUT_CMD_LABELS: Record<StatutCommande, { label: string; color: string; bg: string; border: string }> = {
@@ -177,7 +177,7 @@ export const STATUT_CMD_LABELS: Record<StatutCommande, { label: string; color: s
   en_negociation: { label: 'Négociation',   color: '#8B5CF6', bg: '#F5F3FF', border: '#DDD6FE' },
   refusee:        { label: 'Refusée',       color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
   livree:         { label: 'Livrée',        color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
-  annulee:        { label: 'Annulée',       color: '#6B7280', bg: '#F9FAFB', border: '#E5E7EB' },
+  annulee:        { label: 'Annulée',       color: 'var(--encre-3)', bg: '#F9FAFB', border: '#E5E7EB' },
 };
 
 // Thèmes couleur par profil

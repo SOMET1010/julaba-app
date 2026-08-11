@@ -165,7 +165,7 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
               />
               <span style={{
                 fontSize: 13, fontWeight: 700,
-                color: isEmpty ? '#dc2626' : isLow ? '#ef4444' : '#aaa',
+                color: isEmpty ? '#dc2626' : isLow ? '#ef4444' : 'var(--encre-4)',
               }}>
                 {stock.unit}
               </span>
@@ -1095,7 +1095,7 @@ export function GestionStock() {
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--encre-4)', marginBottom: 2 }}>%</div>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: editForm.purchasePrice > 0 ? '#16a34a' : '#aaa' }}>
+                        <div style={{ fontSize: 17, fontWeight: 900, color: editForm.purchasePrice > 0 ? '#16a34a' : 'var(--encre-4)' }}>
                           {editForm.purchasePrice > 0
                             ? `+${Math.round(((editForm.salePrice - editForm.purchasePrice) / editForm.purchasePrice) * 100)}%`
                             : '—'

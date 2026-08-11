@@ -199,8 +199,8 @@ function OngletBtn({ label, Icon, active, onClick }: {
       className="relative flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl transition-all"
       style={active ? { background: `linear-gradient(135deg, ${C}, ${C_DARK})` } : { backgroundColor: 'white' }}
       whileTap={{ scale: 0.97 }}>
-      <Icon className="w-5 h-5" style={{ color: active ? 'white' : '#9CA3AF' }} />
-      <span className="text-[11px] font-bold" style={{ color: active ? 'white' : '#6B7280' }}>{label}</span>
+      <Icon className="w-5 h-5" style={{ color: active ? 'white' : 'var(--encre-4)' }} />
+      <span className="text-[11px] font-bold" style={{ color: active ? 'white' : 'var(--encre-3)' }}>{label}</span>
     </motion.button>
   );
 }
@@ -210,7 +210,7 @@ function SousOnglet({ label, active, onClick }: { label: string; active: boolean
   return (
     <motion.button onClick={onClick} whileTap={{ scale: 0.97 }}
       className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all text-center"
-      style={active ? { background: `linear-gradient(135deg, ${C}, ${C_DARK})`, color: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' } : { color: '#6B7280', background: 'transparent' }}>
+      style={active ? { background: `linear-gradient(135deg, ${C}, ${C_DARK})`, color: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' } : { color: 'var(--encre-3)', background: 'transparent' }}>
       {label}
     </motion.button>
   );
@@ -1235,7 +1235,7 @@ export function MarcheHub() {
                       className="w-8 h-8 rounded-full flex items-center justify-center border-2"
                       style={showFilters ? { backgroundColor: C, borderColor: C } : { borderColor: '#E5E7EB', backgroundColor: 'white' }}
                       whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                      <Filter className="w-3.5 h-3.5" style={{ color: showFilters ? 'white' : '#9CA3AF' }} />
+                      <Filter className="w-3.5 h-3.5" style={{ color: showFilters ? 'white' : 'var(--encre-4)' }} />
                     </motion.button>
                   )}
                 </div>
@@ -2203,7 +2203,7 @@ function ModalNouvelleAnnonce({ onClose, onPublier }: {
                   style={{
                     borderColor: qualite === q ? Q_LABELS[q].color : '#E5E7EB',
                     backgroundColor: qualite === q ? Q_LABELS[q].bg : 'white',
-                    color: qualite === q ? Q_LABELS[q].color : '#9CA3AF',
+                    color: qualite === q ? Q_LABELS[q].color : 'var(--encre-4)',
                   }}>
                   {Q_LABELS[q].label}
                 </motion.button>

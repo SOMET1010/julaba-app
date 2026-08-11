@@ -202,7 +202,7 @@ export function UniversalRechercheBO({
           }}
         >
           {filteredSuggestions.length === 0 ? (
-            <div style={{ padding: 16, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
+            <div style={{ padding: 16, textAlign: 'center', color: 'var(--encre-3)', fontSize: 13 }}>
               {emptyMessage}
             </div>
           ) : (
@@ -234,7 +234,7 @@ export function UniversalRechercheBO({
               >
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{suggestion.label}</span>
                 {suggestion.sublabel && (
-                  <span style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{suggestion.sublabel}</span>
+                  <span style={{ fontSize: 11, color: 'var(--encre-3)', marginTop: 2 }}>{suggestion.sublabel}</span>
                 )}
               </button>
             ))

@@ -106,7 +106,7 @@ export function UniversalActionWithReasonModalBO({
               background: !isValid ? '#E5E7EB' : severityColor,
               border: 'none',
               borderRadius: 10,
-              color: !isValid ? '#9CA3AF' : '#FFFFFF',
+              color: !isValid ? 'var(--encre-4)' : '#FFFFFF',
               fontWeight: 600,
               fontSize: 13,
               cursor: loading || !isValid ? 'not-allowed' : 'pointer',
@@ -165,7 +165,7 @@ export function UniversalActionWithReasonModalBO({
             ) : (
               <span />
             )}
-            <span style={{ fontSize: 11, color: '#9CA3AF' }}>
+            <span style={{ fontSize: 11, color: 'var(--encre-4)' }}>
               {reason.length} / {reasonMaxLength}
             </span>
           </div>
