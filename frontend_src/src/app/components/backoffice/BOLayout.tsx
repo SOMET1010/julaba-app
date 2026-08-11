@@ -889,7 +889,7 @@ export function BOLayout() {
   const visibleItems = SIDEBAR_MENU.filter(item =>
     'permission' in item
       ? (item.superOnly ? isSuperUser : true)
-        && (!item.roles || isSuperUser || item.roles.includes(boUser?.role ?? ''))
+        && (!item.roles || isSuperUser || (item.roles as readonly string[]).includes(boUser?.role ?? ''))
         && (item.permission === null || hasPermission(item.permission))
       : true
   );

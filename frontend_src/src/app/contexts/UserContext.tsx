@@ -20,6 +20,11 @@ export interface UserData {
   scoreCredit: number;
   niveauMembre: string;
   role: UserRoleUI;
+  // Alias hérités (anciens écrans / réponses API) — optionnels.
+  firstName?: string;
+  lastName?: string;
+  activity?: string;
+  phone?: string;
   market?: string; // Marché assigné pour identificateur/marchand
   zoneId?: string;
   zoneNom?: string;
@@ -172,19 +177,19 @@ export function UserProvider({ children }: { children: ReactNode }) {
       // Convert User to UserData
       const convertedUser: UserData = {
         id: userData.id,
-        nom: userData.lastName.toUpperCase(),
-        prenoms: userData.firstName,
+        nom: (userData.lastName ?? '').toUpperCase(),
+        prenoms: userData.firstName ?? '',
         genre: userData.genre || 'femme',
         telephone: userData.phone || '',
-        email: `${userData.firstName.toLowerCase()}.${userData.lastName.toLowerCase()}@julaba.ci`,
+        email: `${(userData.firstName ?? '').toLowerCase()}.${(userData.lastName ?? '').toLowerCase()}@julaba.ci`,
         localisation: [userData.commune, userData.region].filter(Boolean).join(', ') || '',
-        typeActivite: userData.activity,
-        dateInscription: userData.createdAt,
-        numeroMarchand: `JLB-${(userData.role || 'USR').toUpperCase().slice(0, 3)}-${(userData.createdAt || '2026').split('-')[0]}-${(userData.id || '00000').slice(-5)}`,
-        statut: userData.validated ? 'Vérifié' : 'En attente',
-        scoreCredit: (userData.score || 0) * 10, // Convert score to credit score
-        niveauMembre: userData.score >= 90 ? 'Platinum' : userData.score >= 80 ? 'Gold' : userData.score >= 70 ? 'Silver' : 'Bronze',
-        role: userData.role,
+        typeActivite: userData.activity ?? '',
+        dateInscription: ('createdAt' in userData ? userData.createdAt : '') ?? '',
+        numeroMarchand: `JLB-${(userData.role || 'USR').toUpperCase().slice(0, 3)}-${((('createdAt' in userData ? userData.createdAt : '') || '2026')).split('-')[0]}-${(userData.id || '00000').slice(-5)}`,
+        statut: ('validated' in userData && userData.validated) ? 'Vérifié' : 'En attente',
+        scoreCredit: ((('score' in userData ? userData.score : 0) || 0)) * 10, // Convert score to credit score
+        niveauMembre: (() => { const sc = ('score' in userData ? userData.score : 0) ?? 0; return sc >= 90 ? 'Platinum' : sc >= 80 ? 'Gold' : sc >= 70 ? 'Silver' : 'Bronze'; })(),
+        role: userData.role as UserData['role'],
         market: userData.market, // Conserver le marché
         zoneId: userData.zoneId || (userData as any).zone_id || '',
         zoneNom: userData.zoneNom || '',

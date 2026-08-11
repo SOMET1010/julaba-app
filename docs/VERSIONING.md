@@ -25,6 +25,12 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.9 — 11/08/2026 : résorption TypeScript paquet 3 — 55 erreurs en
+  moins (145 → 90). Trois bugs réels corrigés au passage : titre des
+  notifications coopérative jamais transmis (titre → title), tuiles du
+  tableau de bord identificateur affichant du vide (champs inexistants),
+  section stats du modal institution qui lisait une promesse (plantage).
+  @types/leaflet installé (carte BO typée).
 - v5.0.0.8 — 11/08/2026 : résorption TypeScript paquet 2 — 45 erreurs en
   moins (190 → 145) : back-office (Dashboard, Institutions) et MarcheHub.
   Mensonge de type corrigé : InstitutionBO.modules était déclaré string[]

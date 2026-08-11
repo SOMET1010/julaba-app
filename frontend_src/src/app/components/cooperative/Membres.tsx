@@ -417,7 +417,8 @@ export function Membres() {
     if (selectedMembre?.userId || selectedMembre?.id) {
       addNotification({
         type: 'statut_change',
-        titre: 'Accès suspendu',
+        role: 'cooperative',
+        title: 'Accès suspendu',
         message: `Votre accès à la coopérative a été suspendu. ${motifSuspension ? 'Motif : ' + motifSuspension : ''}`,
         priority: 'high',
         category: 'compte',
@@ -447,7 +448,8 @@ export function Membres() {
     if (m?.userId || m?.id) {
       addNotification({
         type: 'statut_change',
-        titre: 'Accès réactivé',
+        role: 'cooperative',
+        title: 'Accès réactivé',
         message: `Votre accès à la coopérative a été réactivé. Bienvenue !`,
         priority: 'medium',
         category: 'compte',
@@ -1542,7 +1544,7 @@ export function Membres() {
                   <div>
                     <label className="text-xs font-bold text-gray-600 block mb-1.5">Performance (Mes Points Jùlaba)</label>
                     <div className="grid grid-cols-4 gap-1.5">
-                      {([{ id: 'all', label: 'Tous' }, { id: 'haut', label: '71-100', color: 'text-green-700 bg-green-50 border-green-200' }, { id: 'moyen', label: '41-70', color: 'text-orange-700 bg-orange-50 border-orange-200' }, { id: 'bas', label: '0-40', color: 'text-red-700 bg-red-50 border-red-200' }] as const).map(({ id, label, color }) => (
+                      {([{ id: 'all', label: 'Tous', color: '' }, { id: 'haut', label: '71-100', color: 'text-green-700 bg-green-50 border-green-200' }, { id: 'moyen', label: '41-70', color: 'text-orange-700 bg-orange-50 border-orange-200' }, { id: 'bas', label: '0-40', color: 'text-red-700 bg-red-50 border-red-200' }] as const).map(({ id, label, color }) => (
                         <motion.button key={id} onClick={() => { setFilterPerf(id); setPage(1); }}
                           className={`py-2 rounded-xl border-2 text-xs font-bold text-center ${filterPerf === id ? (id === 'all' ? 'text-white border-transparent' : (color || '')) : 'border-gray-200 text-gray-500'}`}
                           style={filterPerf === id && id === 'all' ? { background: `linear-gradient(135deg, ${C}, ${C_DARK})` } : {}} whileTap={{ scale: 0.95 }}

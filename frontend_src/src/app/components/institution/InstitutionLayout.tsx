@@ -373,7 +373,7 @@ export function InstitutionLayout() {
   // Construire la liste de navigation filtrée
   const navItems = ALL_NAV_ITEMS.filter(item => {
     if (!item.module) return true; // "Moi" toujours visible
-    return canAccess(item.module);
+    return canAccess(String(item.module));
   });
 
   // Vérifier si l'institution est suspendue
@@ -393,7 +393,7 @@ export function InstitutionLayout() {
       const matches = item.exact
         ? location.pathname === item.path
         : location.pathname.startsWith(item.path);
-      if (matches && !canAccess(item.module)) {
+      if (matches && !canAccess(String(item.module))) {
         return item.label;
       }
     }
