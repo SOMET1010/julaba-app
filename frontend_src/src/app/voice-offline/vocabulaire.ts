@@ -68,7 +68,7 @@ export const INTENTIONS_MAP: Record<string, Intention> = {
   vente: 'vente', vends: 'vente',
   acheté: 'depense', achetée: 'depense', achetés: 'depense', achetées: 'depense',
   achète: 'depense', achete: 'depense', acheter: 'depense',
-  // Formes réelles entendues au marché (transcriptions Vosk terrain) :
+  // Formes réelles entendues au marché (transcriptions terrain) :
   pris: 'depense', prise: 'depense',
   dépensé: 'depense', dépensée: 'depense', depensé: 'depense', depense: 'depense',
   dépense: 'depense',
@@ -88,82 +88,6 @@ export const INTENTIONS_MAP: Record<string, Intention> = {
   arrivé: 'reappro', arrivés: 'reappro', arrivée: 'reappro', arrivées: 'reappro',
   épuisé: 'reappro', epuise: 'reappro',
 };
-
-// Dérive la grammaire Vosk directement depuis les phrases de référence +
-// les tables de vocabulaire. Garantit qu'aucun mot dicté ne peut être absent
-// de la grammaire par construction — ce qui empêche les substitutions phonétiques
-// parasites (ex : "j'ai" → "riz" faute de token correspondant).
-function buildGrammarWords(): string[] {
-  const acc = new Set<string>();
-
-  function add(word: string) { if (word) acc.add(word.toLowerCase()); }
-  function addAll(words: string[]) { words.forEach(add); }
-
-  // 1. Tous les tokens issus des phrases de référence.
-  //    L'apostrophe est splittée : "j'ai" → ["j", "ai"].
-  //    Les traits d'union sont conservés comme token unique (quatre-vingt-dix).
-  for (const p of PHRASES_T1) {
-    p.texte
-      .toLowerCase()
-      .replace(/['']/g, "'")
-      .split(/[\s']+/)
-      .map((t) => t.replace(/[.,!?;:]/g, ''))
-      .filter(Boolean)
-      .forEach(add);
-  }
-
-  // 2. Nombres absents des 16 phrases de référence + mots fonctionnels stricts.
-  //    Règle : rien qui ne soit pas susceptible d'apparaître dans une dictée SAD
-  //    réelle. Chaque mot superflu est un candidat de substitution phonétique.
-  addAll([
-    // Nombres hors corpus
-    'zéro', 'zero',
-    'onze', 'douze', 'treize', 'quatorze', 'seize',
-    'dix-sept', 'dix-huit', 'dix-neuf',
-    'trente', 'quarante', 'soixante',
-    'soixante-dix', 'quatre-vingts', 'quatre-vingt', 'quatre-vingt-dix',
-    'cent', 'cents', 'mille', 'et',
-    // Mots fonctionnels (prépositions, articles, pronoms)
-    'je', 'j', 'ai', 'de', 'du', 'des', 'le', 'la', 'les', 'à', 'a', 'pour', 'd',
-    // Unités commerciales
-    'franc', 'francs', 'tas', 'sac', 'sacs', 'kilo', 'kilos',
-    // Réponses de CONFIRMATION (« c'est bien ça ? » → oui / non). Sans ces mots
-    // dans la grammaire, Vosk ne pouvait PAS transcrire la réponse de la vendeuse.
-    'oui', 'ouais', 'voilà', 'voila', 'exact', 'accord', 'ok', 'okay', 'bon', 'ça', 'ca',
-    'non', 'pas', 'faux', 'annule', 'annuler', 'efface', 'recommence',
-  ]);
-
-  // 3. Toutes les flexions verbales d'intention : vendu/vendus/vendue/vendues/vends,
-  //    acheté/achetés/achetée/achetées/achète, dépensé/…, payé/…
-  //    Règle : la grammaire doit contenir TOUTES les formes que le locuteur peut
-  //    prononcer ; c'est le parseur (INTENTIONS_MAP) qui normalise ensuite.
-  addAll(Object.keys(INTENTIONS_MAP));
-
-  // 4. Formes singulier ET pluriel de chaque produit dans le périmètre.
-  //    Les phrases de référence ne couvrent pas toutes les formes (ex. « tomate »
-  //    singulier n'apparaît dans aucune phrase → absent de la grammaire → Vosk
-  //    se rabat sur « riz »). On garantit ici la couverture complète.
-  //    Hors périmètre intentionnellement absents : sel, poulet, viande, sucre,
-  //    ail, foutou, haricot, bénéfice.
-  addAll([
-    'tomate', 'tomates',
-    'piment', 'piments',
-    'gombo', 'gombos',
-    'attieke', 'attiéké',
-    'banane', 'bananes', 'plantain',
-    'igname', 'ignames',
-    'manioc',
-    'oignon', 'oignons',
-    'orange', 'oranges',
-    'poisson',
-    'riz',
-  ]);
-
-  // 5. Token spécial Vosk pour les mots hors-vocabulaire.
-  acc.add('[unk]');
-
-  return [...acc].sort();
-}
 
 export const PHRASES_T1: PhraseCible[] = [
   {
@@ -397,4 +321,3 @@ export const PHRASES_T1: PhraseCible[] = [
   },
 ];
 
-export const GRAMMAR_WORDS: string[] = buildGrammarWords();

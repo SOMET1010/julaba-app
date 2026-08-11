@@ -8,6 +8,10 @@ import './styles/fonts.css';
 import './styles/theme.css';
 import './styles/tailwind.css';
 import './styles/index.css';
+import './styles/soleil.css';
+// Mode SOLEIL (confort visuel) : ré-applique le choix mémorisé dès le démarrage.
+import { appliquerConfortAuDemarrage } from './app/utils/confortVisuel';
+appliquerConfortAuDemarrage();
 
 // ── Auth mobile : jeton en en-tête Authorization ──────────────────────────────
 // Les cookies cross-domaine (julaba-web ↔ julaba-api) sont BLOQUÉS par les
@@ -46,12 +50,11 @@ import('./app/voice-offline/offlineStt')
   })
   .catch(() => { /* ignore */ });
 
-// NB : le MOTEUR VOSK (~40 Mo) n'est JAMAIS téléchargé tout seul — même en Wi-Fi.
-// C'est un choix qui appartient à la marchande (40 Mo, c'est cher) : elle l'installe
-// via le bouton « Installer le mode hors-ligne » (double validation + avertissement
-// clair). On ne décide jamais à sa place, on ne bloque jamais. Les CLIPS de la voix
-// (~7 Mo, même origine) restent, eux, embarqués d'office (ci-dessous) : c'est la
-// voix propre de l'appli, pas de coût de données à surprise.
+// NB : le moteur vocal (sherpa-onnx) est EMBARQUÉ dans l'application Android —
+// plus aucun téléchargement de modèle (l'ancien moteur Vosk et ses ~40 Mo sont
+// retirés, voir docs/INCLUSION.md). Les CLIPS de la voix (~7 Mo) restent, eux,
+// embarqués d'office (ci-dessous) : c'est la voix propre de l'appli, pas de coût
+// de données à surprise.
 
 // Précharge les clips de la voix « Tata Nanti Lou » (lecture instantanée + cache
 // hors-ligne). Différé pour ne pas ralentir le premier affichage.

@@ -5,7 +5,7 @@
 interface RecuTx {
   id?: string;
   montant?: number;
-  produits?: Array<{ nom?: string; produit?: string; quantite?: number; prix_unitaire?: number }> | any;
+  produits?: Array<{ nom?: string; produit?: string; quantite?: number; prix_unitaire?: number; prix?: number }> | any;
   date?: string;
   mode_paiement?: string;
   notes?: string;
@@ -22,7 +22,8 @@ function lignesProduits(tx: RecuTx): string[] {
   return arr.map((p) => {
     const nom = p.nom || p.produit || 'Produit';
     const q = p.quantite != null ? p.quantite : 1;
-    const pu = p.prix_unitaire != null ? p.prix_unitaire : (tx.montant || 0);
+    // Lignes voix (prix_unitaire) ET panier (prix) : même reçu pour les deux circuits.
+    const pu = p.prix_unitaire ?? p.prix ?? (tx.montant || 0);
     return `${q} × ${nom} — ${Number(pu).toLocaleString('fr-FR')} F`;
   });
 }

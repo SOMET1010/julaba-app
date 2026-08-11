@@ -1,6 +1,6 @@
 {
   "name": "julaba-app",
-  "version": "1.0.0",
+  "version": "5.0.0",
   "private": true,
   "workspaces": [
     "frontend_src",

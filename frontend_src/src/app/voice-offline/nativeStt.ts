@@ -3,7 +3,8 @@
 // hors-ligne sur l'APK Android.
 //
 // Sur le web (navigateur), ce module est une NON-opération : il n'y a pas de
-// plugin natif, le repli reste Vosk WASM (voir offlineStt.ts). Sur l'APK
+// plugin natif, donc pas de STT hors-ligne (moteur unique, voir offlineStt.ts
+// et docs/INCLUSION.md). Sur l'APK
 // Capacitor, on appelle le plugin natif enregistré dans SherpaSttPlugin.kt
 // via le mécanisme officiel `Capacitor.getPlatform() === 'android'` +
 // `registerPlugin`.

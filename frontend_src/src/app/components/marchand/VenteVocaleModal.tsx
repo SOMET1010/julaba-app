@@ -12,6 +12,7 @@ import { useCaisse } from "../../contexts/CaisseContext";
 import { useObjectif, ObjectifProvider } from "../../contexts/ObjectifContext";
 import { useStock, type StockItem } from "../../contexts/StockContext";
 import { InstallerOffline } from "../../voice-offline/InstallerOffline";
+import { apparierProduit, construireLigneVocale } from "../../services/venteVocale";
 import tantieImg from "../../../assets/images/tantie-vente-vocale.png";
 
 const P = "#C66A2C";
@@ -24,7 +25,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, setIsModalOpen } = useApp();
-  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats } = useCaisse();
+  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats, products, updateProduct } = useCaisse();
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
   const progression = objectifCtx?.progression ?? 0;
@@ -58,7 +59,22 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
       topStocks: topStocks || '',
       dernierProduit: dernierProduit || '',
     },
+    // Vente vocale UNIFIÉE avec le panier (Phase 5, lot 1) : le produit dicté est
+    // apparié au catalogue → la ligne porte productId, total (source de vérité)
+    // et prix d'achat unitaire (marge réelle), et le stock est décrémenté comme
+    // à la caisse. Sans appariement, la vente passe quand même (ligne libre).
     onAction: async (data) => {
+      const vendreUnifie = async (nomParle: string | undefined, quantite: number, montant: number, note: string) => {
+        const produitCat = apparierProduit(nomParle || "", products);
+        const ligne = construireLigneVocale({ nomParle, quantite, montant, produit: produitCat });
+        await enregistrerVente(montant, [ligne], "cash", note);
+        if (produitCat) {
+          // Décrément optimiste, comme POSCaisse. S'il échoue (hors-ligne…), la
+          // vente reste enregistrée ; le stock se resynchronisera au rechargement.
+          try { await updateProduct(produitCat.id, { stock: Math.max(0, (produitCat.stock || 0) - quantite) }); }
+          catch (e: any) { console.warn("[VenteVocaleModal] décrément stock impossible:", e?.message); }
+        }
+      };
       const action = data.action;
       if (action?.type === "vendre") {
         // #4 : ne plus abandonner en silence (Tata Nanti Lou disait « c'est enregistré »
@@ -67,12 +83,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
         const montant = action.montant || 0;
         const quantite = action.quantite || 1;
         if (!montant || montant <= 0 || isNaN(montant)) return;
-        await enregistrerVente(
-          montant,
-          [{ nom: action.produit || "Produit vocal", quantite, prix_unitaire: Math.round(montant / quantite) }],
-          "cash",
-          "Vente " + (action.produit || "vocale")
-        );
+        await vendreUnifie(action.produit, quantite, montant, "Vente " + (action.produit || "vocale"));
       } else if (action?.type === "utiliser_raccourci") {
         const r = matchRaccourci ? matchRaccourci(action.declencheur || data.transcript || "") : null;
         if (r?.action?.type === "vendre") {
@@ -80,7 +91,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
           const montant = r.action.montant || 0;
           const quantite = r.action.quantite || 1;
           if (!montant || montant <= 0 || isNaN(montant)) return;
-          await enregistrerVente(montant, [{ nom: r.action.produit || "Produit", quantite, prix_unitaire: Math.round(montant / quantite) }], "cash", r.nom);
+          await vendreUnifie(r.action.produit, quantite, montant, r.nom);
         } else if (r?.action?.type === "depense") {
           const montant = r.action.montant || 0;
           if (!montant || montant <= 0 || isNaN(montant)) return;
@@ -273,7 +284,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
 
             {/* Mains libres (mot-réveil « Julaba ») : DÉSACTIVÉ tant qu'il n'y a pas
                 de version hors-ligne (l'ancienne nécessitait Internet). On n'affiche
-                donc rien ici — l'appui-pour-parler (écoute Vosk sur l'appareil) reste
+                donc rien ici — l'appui-pour-parler (écoute sherpa sur l'appareil) reste
                 le mode de vente vocale. `wakeSupported` est toujours faux. */}
             {wakeSupported && (
               <div style={{ marginTop: 12 }}>
