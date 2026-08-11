@@ -6,7 +6,11 @@
  * inclusion non ambiguë) et la construction de la ligne de vente unifiée
  * (total source de vérité, prix d'achat unitaire, productId).
  */
-import { normaliserNom, apparierProduit, construireLigneVocale, type ProduitAppariable } from "./venteVocale.js";
+import {
+  normaliserNom, apparierProduit, construireLigneVocale,
+  doitProposerCreation, noterRefusCreation, CLE_REFUS_PRODUITS,
+  type ProduitAppariable, type KVStore,
+} from "./venteVocale.js";
 
 let failures = 0;
 function ok(cond: boolean, label: string) {
@@ -84,6 +88,29 @@ function main() {
     eq(l.prix_achat, undefined, "prix_achat 0 → omis (le backend agrège pa × qte)");
     const l2 = construireLigneVocale({ nomParle: "sel", quantite: 1, montant: 100, produit: PROD({ prix_achat: undefined }) });
     eq(l2.prix_achat, undefined, "prix_achat absent → omis");
+  }
+
+  console.log("\n[7] « J'ajoute ce produit à ta boutique ? » (lot 2)");
+  {
+    const makeStore = (seed: Record<string, string> = {}): KVStore & { data: Record<string, string> } => {
+      const data: Record<string, string> = { ...seed };
+      return { data, getItem: (k) => (k in data ? data[k] : null), setItem: (k, v) => { data[k] = v; } };
+    };
+    const cat = [PROD()];
+    const s = makeStore();
+    ok(doitProposerCreation(s, "attiéké", cat), "produit inconnu + nom exploitable → on propose");
+    ok(!doitProposerCreation(s, "tomates", cat), "produit apparié au catalogue → rien à proposer");
+    ok(!doitProposerCreation(s, "ta", cat), "nom trop court → pas de proposition");
+    ok(!doitProposerCreation(s, "Produit vocal", cat), "nom générique → pas de proposition");
+    ok(!doitProposerCreation(s, "", cat), "nom vide → pas de proposition");
+    ok(noterRefusCreation(s, "Attiéké"), "refus mémorisé");
+    ok(!doitProposerCreation(s, "attieke", cat), "refus respecté, accents/casse confondus");
+    ok(doitProposerCreation(s, "gombo", cat), "un refus ne bloque QUE ce produit");
+    const s2 = makeStore({ [CLE_REFUS_PRODUITS]: "{pas du json" });
+    ok(doitProposerCreation(s2, "gombo", cat), "mémoire illisible → on propose (jamais de casse)");
+    ok(!noterRefusCreation(makeStore(), ""), "nom vide → refus non enregistré");
+    const casse: KVStore = { getItem: () => null, setItem: () => { throw new Error("quota"); } };
+    ok(!noterRefusCreation(casse, "gombo"), "quota plein → false, pas d'exception");
   }
 
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
