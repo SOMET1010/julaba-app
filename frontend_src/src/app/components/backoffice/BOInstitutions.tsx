@@ -72,6 +72,8 @@ const TYPE_CONFIG: Record<TypeInstitution, { label: string; color: string; bg: s
   
   // Autres
   partenaire_tech: { label: 'Partenaire Technologique', color: '#6B7280', bg: 'bg-gray-50' },
+  cooperative: { label: 'Coopérative', color: '#2072AF', bg: 'bg-blue-50' },
+  gouvernement: { label: 'Gouvernement', color: '#B91C1C', bg: 'bg-red-50' },
   autre: { label: 'Autre', color: '#9CA3AF', bg: 'bg-gray-50' },
 };
 
@@ -113,9 +115,11 @@ const ACCES_DOCUMENTATION: Record<keyof ModuleAcces, { lecture: string; complet:
 };
 
 const NIVEAU_CONFIG: Record<NiveauAcces, { label: string; color: string; bg: string; border: string }> = {
-  aucun:   { label: 'Aucun accès',   color: '#6B7280', bg: 'bg-gray-100',  border: 'border-gray-200' },
-  lecture: { label: 'Lecture seule', color: '#D97706', bg: 'bg-amber-50',  border: 'border-amber-200' },
-  complet: { label: 'Accès complet', color: '#059669', bg: 'bg-green-50',  border: 'border-green-200' },
+  aucun:    { label: 'Aucun accès',    color: '#6B7280', bg: 'bg-gray-100',  border: 'border-gray-200' },
+  lecture:  { label: 'Lecture seule',  color: '#D97706', bg: 'bg-amber-50',  border: 'border-amber-200' },
+  ecriture: { label: 'Lecture et écriture', color: '#2563EB', bg: 'bg-blue-50', border: 'border-blue-200' },
+  complet:  { label: 'Accès complet',  color: '#059669', bg: 'bg-green-50',  border: 'border-green-200' },
+  admin_general: { label: 'Administrateur général', color: '#7C3AED', bg: 'bg-purple-50', border: 'border-purple-200' },
 };
 
 const inputCls = 'w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#712864] transition-all bg-white';
@@ -165,8 +169,8 @@ function InstitutionCard({
   onDelete: (inst: InstitutionBO) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const typeCfg = TYPE_CONFIG[inst.type];
-  const actifs = Object.values(inst.modules).filter(v => v !== 'aucun').length;
+  const typeCfg = TYPE_CONFIG[inst.type ?? 'autre'];
+  const actifs = Object.values(inst.modules ?? {}).filter(v => v !== 'aucun').length;
 
   return (
     <motion.div
@@ -235,7 +239,7 @@ function InstitutionCard({
         {/* Mini pills modules */}
         <div className="flex flex-wrap gap-1.5 mt-3">
           {MODULES_CONFIG.map(m => {
-            const niv = inst.modules[m.key];
+            const niv = (inst.modules ?? {})[m.key] ?? 'aucun';
             const cfg = NIVEAU_CONFIG[niv];
             if (niv === 'aucun') return null;
             return (
@@ -271,7 +275,7 @@ function InstitutionCard({
                   { icon: User, label: inst.referentNom, sub: 'Référent' },
                   { icon: Phone, label: inst.referentTelephone, sub: 'Téléphone' },
                   { icon: Mail, label: inst.email, sub: 'Email' },
-                  { icon: Calendar, label: new Date(inst.dateCreation).toLocaleDateString('fr-FR'), sub: 'Créée le' },
+                  { icon: Calendar, label: new Date(inst.dateCreation ?? '').toLocaleDateString('fr-FR'), sub: 'Créée le' },
                   { icon: User, label: inst.creePar, sub: 'Créée par' },
                 ].map(item => (
                   <div key={item.sub} className="flex items-center gap-3 bg-gray-50 rounded-2xl px-3 py-2.5">
@@ -288,7 +292,7 @@ function InstitutionCard({
               <div className="space-y-2">
                 <p className="text-xs font-black text-gray-600 uppercase tracking-wider">Accès modules</p>
                 {MODULES_CONFIG.map(m => {
-                  const niv = inst.modules[m.key];
+                  const niv = (inst.modules ?? {})[m.key] ?? 'aucun';
                   const cfg = NIVEAU_CONFIG[niv];
                   return (
                     <div key={m.key} className={`flex items-center justify-between rounded-2xl px-3 py-2.5 border-2 ${cfg.bg} ${cfg.border}`}>
@@ -468,7 +472,7 @@ export function BOInstitutions() {
 
   const openEditModules = (inst: InstitutionBO) => {
     setEditTarget(inst);
-    setEditModules({ ...inst.modules });
+    setEditModules({ ...(inst.modules ?? {}) });
   };
 
   return (
@@ -761,7 +765,7 @@ export function BOInstitutions() {
                         </div>
                       </div>
                       <ModuleNiveauPicker
-                        niveau={formModules[m.key]}
+                        niveau={formModules[m.key] ?? 'aucun'}
                         onChange={n => setFormModules(prev => ({ ...prev, [m.key]: n }))}
                       />
                       {/* Aide contextuelle selon le niveau sélectionné */}
@@ -878,7 +882,7 @@ export function BOInstitutions() {
                       </div>
                     </div>
                     <ModuleNiveauPicker
-                      niveau={editModules[m.key]}
+                      niveau={editModules[m.key] ?? 'aucun'}
                       onChange={n => setEditModules(prev => ({ ...prev, [m.key]: n }))}
                     />
                   </div>

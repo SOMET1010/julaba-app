@@ -25,6 +25,10 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.8 — 11/08/2026 : résorption TypeScript paquet 2 — 45 erreurs en
+  moins (190 → 145) : back-office (Dashboard, Institutions) et MarcheHub.
+  Mensonge de type corrigé : InstitutionBO.modules était déclaré string[]
+  alors que tous les écrans le lisent en dictionnaire module → niveau.
 - v5.0.0.7 — 11/08/2026 : résorption TypeScript paquet 1 — 49 erreurs en
   moins (239 → 190) : chaîne academy morte supprimée, types d'API
   complétés (producteur), enveloppe StockContext cassée retirée. Un bug
