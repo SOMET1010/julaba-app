@@ -2,6 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import { motion } from 'motion/react';
 
 import logoJulabaBlanc from "../../../assets/images/logo-julaba.png";
+import { IMG_LOGO_PARTENAIRES } from '../../assets/images';
 import { direIntro, stopIntro } from '../../services/onboardingVoix';
 import { estHabituee } from '../../utils/parcours';
 
@@ -52,8 +53,28 @@ export function Welcome({ onComplete }: WelcomeProps) {
 
       <div className="flex-1" />
 
+      {/* Le projet est porté par la DGE et l'ANSUT ; Icone Solution est l'éditeur. */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.5 }}
+        style={{ width: '100%', maxWidth: 320, marginBottom: 12 }}
+      >
+        <div style={{ background: 'rgba(255,255,255,0.94)', borderRadius: 16, padding: '8px 14px' }}>
+          <img
+            src={IMG_LOGO_PARTENAIRES}
+            alt="République de Côte d'Ivoire — Direction Générale de l'Emploi, ANSUT, Icone Solutions"
+            style={{ width: '100%', height: 'auto', maxHeight: 48, objectFit: 'contain', display: 'block' }}
+          />
+        </div>
+        <p style={{ color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: 700, textAlign: 'center', margin: '10px 0 0', lineHeight: 1.35 }}>
+          Un projet de la Direction Générale de l'Emploi et de l'ANSUT
+        </p>
+        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, textAlign: 'center', margin: '3px 0 0' }}>
+          Édité par Icone Solution
+        </p>
+      </motion.div>
+
       {/* Bouton Commencer */}
-      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, textAlign: "center", marginBottom: 8 }}>By ICONE SOLUTION</p>
       <motion.div
         className="w-full max-w-xs pb-6"
         initial={{ opacity: 0, y: 30 }}
