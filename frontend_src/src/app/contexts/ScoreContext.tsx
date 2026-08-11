@@ -6,9 +6,9 @@ import {
   SCORING_WEIGHTS,
   getBadgeLevel 
 } from '../types/julaba.types';
-import * as scoresApi from '../../imports/scores-api';
+import * as scoresApi from '../services/api/scores-api';
 import { DEV_MODE, devLog } from '../config/devMode';
-import { NOT_AUTHENTICATED } from '../../imports/api-client';
+import { NOT_AUTHENTICATED } from '../services/api/api-client';
 
 interface ScoreContextType {
   scores: Map<string, ScoreJulaba>;

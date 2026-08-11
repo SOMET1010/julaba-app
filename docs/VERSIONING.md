@@ -25,6 +25,11 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.17 — 11/08/2026 : la couche API rentre à la maison ET sous le
+  typecheck — `imports/*-api.ts` relogés dans `app/services/api/` (17
+  modules, 49 importeurs), l'exclusion `src/imports` du tsconfig est levée
+  (la couche API n'avait JAMAIS été typée — zéro erreur au passage), 4
+  fichiers morts supprimés dont un vestige d'edge function Deno/Supabase.
 - v5.0.0.16 — 11/08/2026 : migration tokens ACHEVÉE pour les couleurs de
   texte inline — ~180 gris pâles migrés vers var(--encre-3/4) sur toute
   l'app (partagés, coopérative, institution, identificateur, back-office).

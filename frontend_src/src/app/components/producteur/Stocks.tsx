@@ -36,7 +36,7 @@ import { NotificationButton } from '../marchand/NotificationButton';
 import { SearchBar } from '../shared/SearchBar';
 import { matchesSearch } from '../../utils/searchUtils';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { toast } from 'sonner';
 import {
   IMG_PRODUIT_TOMATE, IMG_PRODUIT_AUBERGINE, IMG_PRODUIT_OIGNON,

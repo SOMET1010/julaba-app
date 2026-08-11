@@ -22,7 +22,7 @@ import { enfilerOperation } from '../voice-offline/offlineCaisse';
 import { clearAuthClientState } from '../utils/clearAuthClientState';
 import { toProperCase } from '../utils/stringUtils';
 import { useUser } from './UserContext';
-import { setSuspendRefresh } from '../../imports/api-client';
+import { setSuspendRefresh } from '../services/api/api-client';
 import type { SousProfilMarchand } from '../types/sousProfilMarchand';
 
 export type UserRole = 'marchand' | 'producteur' | 'cooperative' | 'cooperateur' | 'institution' | 'identificateur' | 'administrateur';

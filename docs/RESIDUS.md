@@ -130,9 +130,14 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
   souvent alpha-concaténées `${color}15` — un var() casserait), les props
   d'icônes/Badge (`color="#6B7280"`, attribut SVG sans var()), et les
   fonds/bordures. À reprendre écran par écran, à froid.
-- **`imports/*-api.ts`** (api-client, caisse-api, backoffice-api…) :
-  réellement importés partout ; leur place est `app/services/api/`. À
-  reloger « à froid » (gros renommage transverse, hors session de livraison).
+- ~~`imports/*-api.ts`~~ : **RELOGÉS le 11/08/2026 (v5.0.0.17)** dans
+  `app/services/api/` (17 modules, 49 importeurs réécrits), avec DEUX
+  découvertes : (1) `tsconfig.json` EXCLUAIT `src/imports` du typecheck —
+  toute la couche API n'a jamais été typée ; l'exclusion est levée et la
+  couche entre au portail avec ZÉRO erreur ; (2) quatre fichiers morts
+  supprimés : academy-api, backoffice-api, backoffice-color-theme (aucun
+  importeur) et `server.ts` — un vestige d'edge function Deno/Hono/Supabase
+  qui importait `npm:hono` et un `kv_store.tsx` inexistant.
 - ~~`TextSizeSlider` quasi cosmétique~~ : **BRANCHÉ POUR DE VRAI le
   11/08/2026 (v5.0.0.15).** Décision : ni rem partout (gros chantier), ni
   retrait (la fonctionnalité a du sens) — le curseur pilote un ZOOM réel sur

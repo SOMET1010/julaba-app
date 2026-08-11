@@ -2,7 +2,7 @@ import { motion } from 'motion/react';
 import { X, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 
 interface PinConfirmModalProps {
   onClose: () => void;

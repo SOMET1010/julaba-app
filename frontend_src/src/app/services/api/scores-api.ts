@@ -1,10 +1,9 @@
 /**
- * Client API Academy - JÙLABA
+ * Client API Scores - JÙLABA
  */
 
 import { apiRequest as _apiRequest } from './api-client';
-
-import { API_URL } from '../app/utils/api';
+import { API_URL } from '../../utils/api';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);
@@ -14,21 +13,30 @@ function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> 
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface AcademyProgress {
+export interface Score {
   id: string;
   user_id: string;
-  module_id: string;
-  progres: number;
-  complete: boolean;
-  score?: number;
+  score_total: number;
+  score_fiabilite: number;
+  score_qualite: number;
+  score_ponctualite: number;
+  nb_transactions: number;
+  nb_avis: number;
   created_at: string;
   updated_at: string;
+  /** FCFA — renvoyé par GET /scores/me */
+  volume_total?: number;
+  /** Jours distincts avec activité caisse sur 30 j */
+  jours_actifs_30j?: number;
 }
 
-export interface UpdateModuleProgressData {
-  progres?: number;
-  complete?: boolean;
-  score?: number;
+export interface UpdateScoreData {
+  score_total?: number;
+  score_fiabilite?: number;
+  score_qualite?: number;
+  score_ponctualite?: number;
+  nb_transactions?: number;
+  nb_avis?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,17 +44,17 @@ export interface UpdateModuleProgressData {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Récupérer la progression academy de l'utilisateur
+ * Récupérer le score d'un utilisateur
  */
-export async function fetchAcademyProgress(): Promise<{ progress: AcademyProgress[] }> {
-  return apiRequest<{ progress: AcademyProgress[] }>('/academy/progress');
+export async function fetchScore(userId: string): Promise<{ score: Score }> {
+  return apiRequest<{ score: Score }>(`/scores/me`);
 }
 
 /**
- * Mettre à jour la progression d'un module
+ * Mettre à jour le score d'un utilisateur
  */
-export async function updateModuleProgress(moduleId: string, data: UpdateModuleProgressData): Promise<{ progress: AcademyProgress }> {
-  return apiRequest<{ progress: AcademyProgress }>(`/academy/${moduleId}`, {
+export async function updateScore(userId: string, data: UpdateScoreData): Promise<{ score: Score }> {
+  return apiRequest<{ score: Score }>(`/scores/${userId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });

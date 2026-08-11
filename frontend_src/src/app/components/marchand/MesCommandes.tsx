@@ -14,7 +14,7 @@ import { NotificationButton } from './NotificationButton';
 import {
   fetchNegociations,
   marchandRepondreNegociation,
-} from '../../../imports/commandes-api';
+} from '../../services/api/commandes-api';
 import { ReceptionPaiementModal } from '../shared/ReceptionPaiementModal';
 import { NoterCommande } from '../shared/NoterCommande';
 import { toast } from 'sonner';

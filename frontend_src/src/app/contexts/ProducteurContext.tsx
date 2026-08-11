@@ -15,7 +15,7 @@ type CreatePublicationData = cyclesApiAdapterMod.CreatePublicationData;
 type UpdatePublicationData = cyclesApiAdapterMod.UpdatePublicationData;
 import { DEV_MODE, devLog } from '../config/devMode';
 import { useApp } from './AppContext';
-import { NOT_AUTHENTICATED, apiRequest } from '../../imports/api-client';
+import { NOT_AUTHENTICATED, apiRequest } from '../services/api/api-client';
 
 /**
  * ═══════════════════════════════════════════════════════════════════

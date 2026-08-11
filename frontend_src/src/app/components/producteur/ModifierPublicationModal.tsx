@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Edit3, Upload, DollarSign, Package } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { toast } from 'sonner';
 
 interface ModifierPublicationModalProps {

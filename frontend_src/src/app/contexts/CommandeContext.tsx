@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
-import * as commandesApi from '../../imports/commandes-api';
-import type { NegociationApi } from '../../imports/commandes-api';
+import * as commandesApi from '../services/api/commandes-api';
+import type { NegociationApi } from '../services/api/commandes-api';
 import { useApp } from './AppContext';
 
 import type { PaymentMethodId, MobileOperatorId } from '../types/payment';

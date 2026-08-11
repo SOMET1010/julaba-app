@@ -1,7 +1,7 @@
 // ── Notation acheteur / vendeur (écart CDC 8.1.5) ────────────────────────────
 // On ne peut noter que la contrepartie d'une commande LIVRÉE. La moyenne d'un
 // utilisateur s'affiche ensuite sur le marché virtuel.
-import { apiRequest } from '../../imports/api-client';
+import { apiRequest } from './api/api-client';
 import { API_URL } from '../utils/api';
 
 export interface NoteUtilisateur {

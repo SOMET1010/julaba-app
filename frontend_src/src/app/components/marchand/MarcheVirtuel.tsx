@@ -14,7 +14,7 @@ import { useToast } from '../../hooks/useToast';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { NotificationButton } from './NotificationButton';
 import { useCommande, type Commande as CommandeContextShape } from '../../contexts/CommandeContext';
-import { proposerNegociation } from '../../../imports/commandes-api';
+import { proposerNegociation } from '../../services/api/commandes-api';
 import { HistoriqueList } from '../marche/HistoriqueList';
 import { CommandeMarche } from '../marche/marketplace-data';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
@@ -31,7 +31,7 @@ import { EtoilesMoyenne } from '../shared/Etoiles';
 import { getNoteUtilisateur } from '../../services/evaluations.service';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 
 interface Product {
   id: string; name: string; emoji: string; image: string;

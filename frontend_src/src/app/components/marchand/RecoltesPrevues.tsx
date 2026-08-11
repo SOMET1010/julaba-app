@@ -4,7 +4,7 @@ import { Sprout, MapPin, CalendarClock, Package, Navigation as NavIcon, Store } 
 import { useApp } from '../../contexts/AppContext';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 
 interface RecoltedPrevue {
   producteurId: string;

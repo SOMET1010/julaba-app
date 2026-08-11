@@ -22,7 +22,7 @@ import { NotifBellButton, NotificationsPanel } from '../shared/NotificationsPane
 import { BarreRechercheDynamique, ActeurRecherche } from '../shared/BarreRechercheDynamique';
 import tataLouImg from '../../../assets/images/tantie-identificateur.png';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 
 const LOG_PREFIX = '[IdentificateurHome]';
 

@@ -8,7 +8,7 @@ import {
   Truck, UserCheck, Package, ClipboardList, Tablet, Navigation,
 } from 'lucide-react';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { useCooperativesListe } from '../../hooks/useCooperativesListe';
 
 /* ─── Couleur selon rôle ────────────────────────────────────── */
