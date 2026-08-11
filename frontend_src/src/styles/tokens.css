@@ -7,8 +7,10 @@
    historique → zéro changement visuel.
 
    Migration PROGRESSIVE : écrans migrés à ce jour — POSCaisse,
-   MarchandAccueilVoice, VentesPassees, ResumeCaisse. Les écrans non migrés
-   restent couverts par les sélecteurs d'attribut de soleil.css.
+   MarchandAccueilVoice, VentesPassees, ResumeCaisse (v5.0.0.3), puis
+   GestionStock, MarchandDepenses, CreditModal, DepenseForm, WalletPage,
+   WalletInline (v5.0.0.5). Les écrans non migrés restent couverts par les
+   sélecteurs d'attribut de soleil.css.
    Cohérence vérifiée par `npm run test:tokens`.
    ──────────────────────────────────────────────────────────────────────── */
 

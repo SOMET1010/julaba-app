@@ -234,8 +234,8 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                   style={{ width:100, height:100, borderRadius:'50%', background:'#1D9E75', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:20 }}>
                   <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                 </motion.div>
-                <div style={{ fontSize:22, fontWeight:900, color:'#1a1206' }}>Crédit enregistré !</div>
-                <div style={{ fontSize:15, color:'#aaa', marginTop:6 }}>{clientNom} · {montantDu.toLocaleString('fr-FR')} FCFA</div>
+                <div style={{ fontSize:22, fontWeight:900, color:'var(--encre)' }}>Crédit enregistré !</div>
+                <div style={{ fontSize:15, color:'var(--encre-4)', marginTop:6 }}>{clientNom} · {montantDu.toLocaleString('fr-FR')} FCFA</div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -256,14 +256,14 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
               <div style={{ padding:'18px' }}>
                 {/* Résumé */}
                 <div style={{ background:'#FFF3EA', borderRadius:14, padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
-                  <span style={{ fontSize:14, color:'#5a4030', fontWeight:600 }}>{cart.map(i=>`${i.nom} ×${i.quantite}`).join(' · ')}</span>
+                  <span style={{ fontSize:14, color:'var(--encre-2)', fontWeight:600 }}>{cart.map(i=>`${i.nom} ×${i.quantite}`).join(' · ')}</span>
                   <span style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} FCFA</span>
                 </div>
 
                 {/* Clients filtrés */}
                 {clientsFiltres.length > 0 && (
                   <div style={{ marginBottom:14 }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#aaa', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>
                       {clientNom ? 'Résultats' : 'Clients récents'}
                     </div>
                     {clientsFiltres.slice(0,4).map(c => (
@@ -286,7 +286,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                   <input value={clientNom}
                     onChange={e => setClientNom(capitalize(e.target.value))}
                     placeholder="Nouveau client — tape son nom..."
-                    style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:16, color:'#333', fontFamily:'inherit' }} />
+                    style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:16, color:'var(--encre)', fontFamily:'inherit' }} />
                   {clientNom && <motion.button whileTap={{ scale:0.9 }} onClick={() => setClientNom('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}>
                     <X size={14} color="#aaa" />
                   </motion.button>}
@@ -308,11 +308,11 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                       style={{ background:'none', border:'none', fontSize:13, color:P, fontWeight:700, cursor:'pointer', fontFamily:'inherit', padding:'4px 0', marginBottom:18 }}>
                       + Ajouter un numéro de téléphone
                     </motion.button>
-                  : <div style={{ background:'#f5f0eb', border:'1.5px solid #EDE7DE', borderRadius:14, padding:'13px 16px', display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
+                  : <div style={{ background:'#f5f0eb', border:'1.5px solid var(--trait)', borderRadius:14, padding:'13px 16px', display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                       <span
                         aria-hidden
-                        style={{ fontSize: 13, fontWeight: 900, color: '#2a1a0a', padding: '8px 10px', borderRadius: 12, background: 'rgba(198,106,44,0.08)', userSelect: 'none' }}
+                        style={{ fontSize: 13, fontWeight: 900, color: 'var(--encre)', padding: '8px 10px', borderRadius: 12, background: 'rgba(198,106,44,0.08)', userSelect: 'none' }}
                       >
                         +225
                       </span>
@@ -326,9 +326,9 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                         type="tel"
                         maxLength={14}
                         inputMode="numeric"
-                        style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:15, color:'#333', fontFamily:'inherit' }}
+                        style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:15, color:'var(--encre)', fontFamily:'inherit' }}
                       />
-                      <span style={{ fontSize:10, color:'#bbb', fontWeight:600 }}>Optionnel</span>
+                      <span style={{ fontSize:10, color:'var(--encre-4)', fontWeight:600 }}>Optionnel</span>
                     </div>
                 }
 
@@ -361,7 +361,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                     style={{ fontSize:72, fontWeight:900, color:P, lineHeight:1 }}>
                     {jours}
                   </motion.div>
-                  <div style={{ fontSize:16, color:'#aaa', fontWeight:600, marginTop:6 }}>
+                  <div style={{ fontSize:16, color:'var(--encre-4)', fontWeight:600, marginTop:6 }}>
                     jour{jours > 1 ? 's' : ''} — {echeanceLong}
                   </div>
                 </div>
@@ -378,7 +378,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                 </div>
 
                 {/* Drum roller snap — cadre fixe + chips défilent dessous */}
-                <div style={{ fontSize:11, fontWeight:700, color:'#aaa', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10, textAlign:'center' }}>Ou glisse pour choisir</div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10, textAlign:'center' }}>Ou glisse pour choisir</div>
                 <div style={{ position:'relative', height:96, marginBottom:20 }}>
                   {/* Cadre orange fixe */}
                   <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:76, height:88, borderRadius:18, border:`3px solid ${P}`, zIndex:5, pointerEvents:'none', background:'transparent' }} />
@@ -404,7 +404,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
 
                 {/* Acompte */}
                 <div style={{ background:'#FFF3EA', border:'1.5px solid #f5d5a8', borderRadius:16, padding:'16px', marginBottom:8 }}>
-                  <div style={{ fontSize:17, fontWeight:800, color:'#1a1206', marginBottom:12 }}>Elle t'a déjà donné quelque chose ?</div>
+                  <div style={{ fontSize:17, fontWeight:800, color:'var(--encre)', marginBottom:12 }}>Elle t'a déjà donné quelque chose ?</div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                     <motion.button whileTap={{ scale:0.97 }} onClick={() => { setAADonne(false); setAcompte(''); }}
                       style={{ borderRadius:12, padding:'14px', textAlign:'center', background: !aADonne ? '#E8E8E8' : 'white', border:`1.5px solid ${!aADonne ? '#999' : '#EDE7DE'}`, cursor:'pointer', fontFamily:'inherit', fontSize:17, fontWeight:800, color: !aADonne ? '#555' : '#aaa' }}>
@@ -415,7 +415,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                       <input value={acompte} onChange={e => { setAcompte(e.target.value); setAADonne(true); }}
                         placeholder="Montant" type="number"
                         style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:16, color:P, fontWeight:700, fontFamily:'inherit', width:60 }} />
-                      <span style={{ fontSize:12, color:'#aaa', fontWeight:600 }}>FCFA</span>
+                      <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>FCFA</span>
                     </div>
                   </div>
                   {aADonne && acompte && (
@@ -426,11 +426,11 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                     </div>
                   )}
                 </div>
-                <div style={{ fontSize:11, color:'#bbb', paddingLeft:4, marginBottom:20 }}>Si oui, note le montant qu'elle t'a donné</div>
+                <div style={{ fontSize:11, color:'var(--encre-4)', paddingLeft:4, marginBottom:20 }}>Si oui, note le montant qu'elle t'a donné</div>
 
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:8 }}>
                   <motion.button whileTap={{ scale:0.97 }} onClick={() => setStep(1)}
-                    style={{ background:'#f0f0f0', border:'none', borderRadius:14, padding:'16px', fontSize:15, fontWeight:700, color:'#888', cursor:'pointer', fontFamily:'inherit' }}>
+                    style={{ background:'#f0f0f0', border:'none', borderRadius:14, padding:'16px', fontSize:15, fontWeight:700, color:'var(--encre-3)', cursor:'pointer', fontFamily:'inherit' }}>
                     ← Retour
                   </motion.button>
                   <motion.button whileTap={{ scale:0.97 }} onClick={() => {
@@ -466,22 +466,22 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
               </div>
               <div style={{ padding:'18px' }}>
                 {/* Récap lisible */}
-                <div style={{ borderRadius:18, overflow:'hidden', border:'1.5px solid #EDE7DE', marginBottom:20 }}>
+                <div style={{ borderRadius:18, overflow:'hidden', border:'1.5px solid var(--trait)', marginBottom:20 }}>
                   {/* Client */}
                   <div style={{ padding:'18px', background:'#FFF3EA', borderBottom:'1.5px solid #f5d5a8' }}>
-                    <div style={{ fontSize:13, color:'#aaa', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Client</div>
-                    <div style={{ fontSize:26, fontWeight:900, color:'#1a1206' }}>{clientNom}</div>
-                    {clientPhone && <div style={{ fontSize:13, color:'#aaa', marginTop:2 }}>{clientPhone}</div>}
+                    <div style={{ fontSize:13, color:'var(--encre-4)', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Client</div>
+                    <div style={{ fontSize:26, fontWeight:900, color:'var(--encre)' }}>{clientNom}</div>
+                    {clientPhone && <div style={{ fontSize:13, color:'var(--encre-4)', marginTop:2 }}>{clientPhone}</div>}
                   </div>
                   {/* Montant */}
-                  <div style={{ padding:'16px 18px', background:'white', borderBottom:'1.5px solid #EDE7DE', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <div style={{ padding:'16px 18px', background:'white', borderBottom:'1.5px solid var(--trait)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div>
-                      <div style={{ fontSize:13, color:'#aaa', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Reste à payer</div>
+                      <div style={{ fontSize:13, color:'var(--encre-4)', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Reste à payer</div>
                       <div style={{ fontSize:30, fontWeight:900, color:P }}>{montantDu.toLocaleString('fr-FR')} FCFA</div>
                     </div>
                     {aADonne && acompte && (
                       <div style={{ textAlign:'right' }}>
-                        <div style={{ fontSize:13, color:'#aaa', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Acompte versé</div>
+                        <div style={{ fontSize:13, color:'var(--encre-4)', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Acompte versé</div>
                         <div style={{ fontSize:20, fontWeight:800, color:'#1D9E75' }}>{Number(acompte).toLocaleString('fr-FR')} FCFA</div>
                       </div>
                     )}
@@ -489,8 +489,8 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                   {/* Date */}
                   <div style={{ padding:'16px 18px', background:'white', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div>
-                      <div style={{ fontSize:13, color:'#aaa', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Remboursement</div>
-                      <div style={{ fontSize:19, fontWeight:800, color:'#1a1206' }}>{echeanceLong}</div>
+                      <div style={{ fontSize:13, color:'var(--encre-4)', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Remboursement</div>
+                      <div style={{ fontSize:19, fontWeight:800, color:'var(--encre)' }}>{echeanceLong}</div>
                     </div>
                     <div style={{ background:'#FFF3EA', borderRadius:10, padding:'6px 14px' }}>
                       <div style={{ fontSize:14, fontWeight:700, color:P }}>dans {jours}j</div>
@@ -506,7 +506,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
 
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:8 }}>
                   <motion.button whileTap={{ scale:0.97 }} onClick={() => setStep(2)}
-                    style={{ background:'#f0f0f0', border:'none', borderRadius:14, padding:'16px', fontSize:15, fontWeight:700, color:'#888', cursor:'pointer', fontFamily:'inherit' }}>
+                    style={{ background:'#f0f0f0', border:'none', borderRadius:14, padding:'16px', fontSize:15, fontWeight:700, color:'var(--encre-3)', cursor:'pointer', fontFamily:'inherit' }}>
                     ← Retour
                   </motion.button>
                   <motion.button whileTap={{ scale:0.97 }} onClick={handleSave} disabled={isSaving}
