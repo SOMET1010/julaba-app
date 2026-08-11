@@ -37,7 +37,7 @@ dès maintenant pour le Web (l'APK reste à recetter sur appareil).
 | Tata lit des clips fixes | **OUI** (recetté) | OUI (mêmes assets, pré-cachés sw) | OUI — à re-vérifier appareil |
 | Synthèse des montants | **OUI** (recetté) | OUI | OUI — à re-vérifier appareil |
 | Reconnaissance vocale en ligne | NON (retirée : un seul moteur, sherpa) | NON | NON (sherpa = hors-ligne) |
-| Reconnaissance sherpa hors-ligne | **NON** (prouvé : moteur natif absent, message honnête + clavier) | NON | ATTENDUE — à recetter appareil |
+| Reconnaissance sherpa hors-ligne | **NON** (prouvé) | NON | **ABSENTE — plugin natif à construire** (cf. REPONSE_SHERPA.md : ni moteur ni modèle dans l'APK) |
 | Vente espèces en ligne | **OUI** (recettée bout-en-bout) | OUI | à recetter |
 | Vente espèces hors-ligne | Panier local OUI (cartStorage) ; l'ENREGISTREMENT hors-ligne + synchro idempotente : à recetter | idem | idem |
 | Crédit hors-ligne | NON CONFIRMÉ (et non atomique, cf. B3) | idem | idem |
