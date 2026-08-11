@@ -1,24 +1,20 @@
 // ──────────────────────────────────────────────────────────────────────────
 // STT hors-ligne pour Julaba — transcription 100 % SUR L'APPAREIL.
 //
-// MOTEUR PRINCIPAL (Phase 1) : sherpa-onnx WASM (streaming zipformer FR int8).
-//   - Runtime vendored dans public/voix/sherpa/ (scripts/install-sherpa-stt.sh)
-//   - Modèle FR (~128 Mo int8) téléchargé à l'installation (consentement) puis
-//     persisté dans la Cache API → recharge hors-ligne instantanée.
-//   - ⚠️ Exige une origine « cross-origin isolated » (headers COOP + COEP,
-//     SharedArrayBuffer). Sinon on bascule AUTOMATIQUEMENT sur Vosk : jamais
-//     de régression, le mode hors-ligne continue de marcher partout.
+// MOTEUR UNIQUE : sherpa-onnx (vocs. Vosk définitivement retiré, août 2026).
+//   - APK Android : plugin NATIF (SherpaSttPlugin.java, OnlineRecognizer).
+//   - Web/PWA : WASM (streaming zipformer FR int8) — runtime vendored dans
+//     public/voix/sherpa/, modèle FR (~128 Mo) téléchargé à l'installation
+//     (consentement) puis persisté dans la Cache API.
+//     Le WASM exige une origine « cross-origin isolated » (COOP + COEP,
+//     SharedArrayBuffer) : sans elle, le mode hors-ligne est simplement
+//     indisponible (plus de repli Vosk — message clair dans InstallerOffline).
 //
-// MOTEUR DE REPLI : vosk-browser (WASM, modèle ~40 Mo) — import DYNAMIQUE,
-// n'entre dans le bundle que si le mode hors-ligne est utilisé.
-//
-// Interface publique IDENTIQUE à l'ancienne version (transcribeWav,
-// ensureOfflineModel, offlineModelReady, offlineModelInstalled,
-// warmOfflineModelIfInstalled, startLiveDictation) : rien d'autre ne change.
+// Interface publique conservée (transcribeWav, ensureOfflineModel,
+// offlineModelReady, offlineModelInstalled, warmOfflineModelIfInstalled,
+// startLiveDictation) : rien d'autre ne change pour les consommateurs.
 // ──────────────────────────────────────────────────────────────────────────
 
-import { GRAMMAR_WORDS } from './vocabulaire';
-import { VOSK_MODEL_URL } from './voskModel';
 import { nativeStt } from './nativeStt';
 import {
   SHERPA_API_JS,
@@ -36,27 +32,43 @@ let modelPromise: Promise<Any> | null = null;
 let modelReady = false;
 let sharedCtx: AudioContext | null = null;
 
+/**
+ * Télémétrie d'init du moteur STT (event `stt_init` → EventMonitor backoffice).
+ * Défensive : ne casse JAMAIS l'init (import différé, échec avalé).
+ */
+function trackInit(
+  engine: 'native' | 'wasm',
+  success: boolean,
+  phase: 'prepare' | 'load' | 'recognizer',
+  durationMs: number,
+  error?: string,
+): void {
+  import('../services/voiceTelemetry')
+    .then((m) => m.trackSttInit(engine, success, phase, durationMs, error))
+    .catch(() => { /* la télémétrie ne casse jamais la voix */ });
+}
+
 // Drapeau PERSISTANT : le modèle a déjà été installé une fois sur cet appareil
 // (il reste en cache navigateur). `modelReady`, lui, est une variable mémoire
 // remise à zéro à CHAQUE rechargement de page — sans ce drapeau, l'appli
 // « oubliait » le mode hors-ligne après un reload et retombait sur le cloud.
 const INSTALL_KEY = 'julaba_offline_installed';
 
-// ── Préférence de moteur (persistante) ─────────────────────────────────────
-// Évite les surprises de données : un appareil qui a déjà installé Vosk ne
-// re-télécharge PAS ~128 Mo de sherpa en silence. Le moteur installé est
-// mémorisé, et un échec sherpa est marqué pour ne pas re-tenter sans cesse.
-const ENGINE_KEY = 'julaba_offline_engine';            // 'sherpa' | 'vosk'
+// ── Moteur installé (persistant) ───────────────────────────────────────────
+// Seul sherpa existe désormais (natif APK ou WASM web) : le drapeau mémorise
+// que le mode hors-ligne a été installé pour ré-échauffer sans re-télécharger.
+// Un ancien appareil Vosk (INSTALL_KEY posé, moteur 'vosk') n'est pas considéré
+// comme installé : il devra (re)installer sherpa via InstallerOffline (migration).
+const ENGINE_KEY = 'julaba_offline_engine';            // 'sherpa' uniquement
 const SHERPA_UNAVAILABLE_KEY = 'julaba_sherpa_unavailable';
 
-function readEngine(): 'sherpa' | 'vosk' | null {
+function readEngine(): 'sherpa' | null {
   try {
-    const v = localStorage.getItem(ENGINE_KEY);
-    return v === 'sherpa' || v === 'vosk' ? v : null;
+    return localStorage.getItem(ENGINE_KEY) === 'sherpa' ? 'sherpa' : null;
   } catch { return null; }
 }
-function writeEngine(e: 'sherpa' | 'vosk'): void {
-  try { localStorage.setItem(ENGINE_KEY, e); } catch { /* ignore */ }
+function writeEngine(): void {
+  try { localStorage.setItem(ENGINE_KEY, 'sherpa'); } catch { /* ignore */ }
 }
 function sherpaUnavailable(): boolean {
   try { return localStorage.getItem(SHERPA_UNAVAILABLE_KEY) === '1'; } catch { return false; }
@@ -66,22 +78,31 @@ function setSherpaUnavailable(): void {
 }
 
 /**
- * Oublie un échec sherpa précédent → permet de re-tenter (bouton UI).
- * Réinitialise aussi la préférence et l'état mémoire : sinon le prochain
- * install réutiliserait le repli Vosk déjà résolu (modelPromise) au lieu de
- * re-tenter réellement sherpa.
+ * Oublie un échec sherpa précédent permet de re-tenter (bouton UI).
+ *
+ * IMPORTANT (race condition) : on ne touche PAS à un `modelPromise` en vol.
+ * Si une init est en cours, l'invalider maintenant lancerait une DEUXIÈME init
+ * en parallèle au prochain `ensureOfflineModel()` double `createOnlineRecognizer`,
+ * fuite du premier recognizer (jamais `.free()`). On bump juste un numéro de
+ * génération : l'init en cours reste valide, mais son succès ne marquera plus
+ * sherpa « disponible » si une nouvelle génération a démarré entre-temps.
  */
+let initGeneration = 0;
 export function clearSherpaUnavailable(): void {
   try { localStorage.removeItem(SHERPA_UNAVAILABLE_KEY); } catch { /* ignore */ }
   try { localStorage.removeItem(ENGINE_KEY); } catch { /* ignore */ }
-  modelPromise = null;
+  // On n'invalide une promesse en vol que si elle a déjà résolu/rejeté
+  // (sinon on crée la double-init décrite ci-dessus). Comme on ne peut pas le
+  // savoir synchroniquement, on ne reset QUE les flags persistants + mémoire
+  // d'échec — la promesse en cours se terminera et fixera `modelReady` à son
+  // résultat réel. Un NOUVEL appel `ensureOfflineModel` (via le bouton) trouvera
+  // `modelPromise` non null et attendra la fin de l'init courante.
   modelReady = false;
 }
 
 // ── Moteur sherpa-onnx (état) ──────────────────────────────────────────────
 let sherpaRuntime: Promise<Any> | null = null; // résout vers le Module Emscripten
 let sherpaRecognizer: Any | null = null;       // OnlineRecognizer (créé 1×/page)
-let voskModel: Any | null = null;              // modèle vosk-browser (repli)
 const MODEL_CACHE = 'julaba-sherpa-stt-v1';
 
 // Marqueur : le moteur actif est le sherpa NATIF (APK Capacitor). La
@@ -97,7 +118,7 @@ async function prepareNativeEngine(
   onProgress?: (doneBytes: number, totalBytes: number) => void,
 ): Promise<boolean> {
   const grandTotal = SHERPA_NATIVE_FILES.reduce((s, f) => s + f.size, 0);
-  // Sommes cumulées avant chaque fichier → progression GLOBALE pour l'UI
+  // Sommes cumulées avant chaque fichier progression GLOBALE pour l'UI
   // (le plugin rapporte la progression par fichier).
   const prefix: number[] = [];
   let acc = 0;
@@ -125,19 +146,23 @@ function emitModelReady(): void {
   modelListeners.forEach((l) => { try { l(); } catch { /* ignore */ } });
 }
 
-/** Vrai si le navigateur peut charger le runtime sherpa (SAB → COOP/COEP). */
+/** Vrai si le navigateur peut charger le runtime sherpa (SAB COOP/COEP). */
 export function sherpaSupported(): boolean {
   try {
     return typeof crossOriginIsolated === 'boolean' && crossOriginIsolated;
   } catch { return false; }
 }
 
-/** Nom du moteur visé pour l'UI (InstallerOffline) : sherpa ou vosk. */
-export function sttEngine(): 'sherpa' | 'vosk' {
+/**
+ * Nom du moteur visé pour l'UI (InstallerOffline) : 'sherpa' si le contexte le
+ * permet (natif APK, ou WASM sur origine isolée, et pas en échec), sinon null
+ * (le mode hors-ligne est indisponible — plus de repli Vosk).
+ */
+export function sttEngine(): 'sherpa' | null {
   // APK Capacitor : sherpa NATIF (aucune exigence COOP/COEP).
   if (nativeStt.present()) return 'sherpa';
-  if (!sherpaSupported() || sherpaUnavailable()) return 'vosk';
-  return 'sherpa';
+  if (sherpaSupported() && !sherpaUnavailable()) return 'sherpa';
+  return null;
 }
 
 function loadScript(src: string): Promise<void> {
@@ -163,7 +188,7 @@ async function loadSherpaRuntime(): Promise<Any> {
     // Court-circuite le téléchargement du .data anglais embarqué (~190 Mo) :
     // le runtime démarre avec une FS virtuelle vide, on y écrit le modèle FR.
     w.Module.getPreloadedPackage = () => new ArrayBuffer(0);
-    // La glue API (createOnlineRecognizer…) est un script classique → global.
+    // La glue API (createOnlineRecognizer…) est un script classique global.
     if (typeof w.createOnlineRecognizer !== 'function') {
       await loadScript(SHERPA_API_JS);
     }
@@ -231,12 +256,13 @@ async function ensureModelInFs(
     const bytes = new Uint8Array(await resp.arrayBuffer());
     // Même appel que le runtime officiel : chemin complet + null + data.
     // Idempotent : si un essai précédent a déjà écrit ce fichier (reprise),
-    // FS_createDataFile lèverait EEXIST → on continue.
+    // FS_createDataFile lèverait EEXIST on continue.
     try {
       mod.FS_createDataFile(f.fsPath, null, bytes, true, true, true);
     } catch (e) {
       // Fichier déjà présent (reprise après échec partiel) ou FS pleine — on
-      // continue ; un fichier manquant se verra à l'init du recognizer → repli Vosk.
+      // continue ; un fichier manquant fera échouer l'init du recognizer
+      // (l'erreur remonte à ensureOfflineModel — plus de repli Vosk).
       // eslint-disable-next-line no-console
       console.warn('[offlineStt] écriture FS modèle ignorée :', f.fsPath, e);
     }
@@ -250,92 +276,118 @@ export function offlineModelReady(): boolean {
   return modelReady;
 }
 
-/** Vrai si le modèle a déjà été installé sur cet appareil (persistant, survit au reload). */
+/**
+ * Vrai si le mode hors-ligne sherpa a été installé sur cet appareil
+ * (persistant, survit au reload). Exige le moteur sherpa : un ancien appareil
+ * Vosk (INSTALL_KEY posé, moteur mémorisé 'vosk') est considéré comme NON
+ * installé : l'UI propose de (ré)installer sherpa (migration automatique).
+ */
 export function offlineModelInstalled(): boolean {
-  try { return localStorage.getItem(INSTALL_KEY) === '1'; } catch { return false; }
-}
-
-/** Charge le moteur Vosk (repli) et mémorise la préférence. */
-async function loadVosk(): Promise<Any> {
-  const { createModel } = await import('vosk-browser');
-  voskModel = await createModel(VOSK_MODEL_URL);
-  modelReady = true;
-  try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ }
-  writeEngine('vosk');
-  emitModelReady();
-  return voskModel;
+  try { return localStorage.getItem(INSTALL_KEY) === '1' && readEngine() === 'sherpa'; } catch { return false; }
 }
 
 /**
  * Télécharge + initialise le moteur une seule fois (idempotent).
  * @param onProgress  callback de progression du téléchargement modèle (sherpa) :
  *                    (octets faits, octets totaux) — appelé après chaque fichier.
- * @param preferSherpa force sherpa même si le moteur installé est Vosk (appel
- *                    depuis le bouton d'installation explicite — l'utilisatrice
- *                    a choisi). L'auto (transcription) respecte le moteur déjà
- *                    installé pour ne jamais télécharger ~128 Mo en silence.
+ * @param forcer     true si appelé depuis une installation EXPLICITE (bouton
+ *                    InstallerOffline) : on réessaie même si un échec précédent
+ *                    a marqué sherpa indisponible. En auto, un échec marqué
+ *                    évite de re-télécharger ~128 Mo à chaque tentative.
+ * @throws si aucun moteur ne peut être chargé (contexte non isolé sans APK,
+ *         échec réseau…) — l'appelant affiche le message.
  */
 export function ensureOfflineModel(
   onProgress?: (doneBytes: number, totalBytes: number) => void,
-  preferSherpa = false,
+  forcer = false,
 ): Promise<Any> {
   if (!modelPromise) {
     modelPromise = (async () => {
-      const engine = readEngine();
+      let dernierEchec: unknown = null;
+
+      // ── Garde connectivité (offline-first) ────────────────────────────────
+      // Avant de tenter un téléchargement de ~128 Mo (STT) ou l'init du plugin
+      // natif (qui télécharge aussi les modèles s'ils manquent), on vérifie
+      // qu'Internet est VRAIMENT joignable — pas juste navigator.onLine (qui
+      // ment sur les portails captifs / Wi-Fi sans Internet). Si le modèle est
+      // DÉJÀ en cache (ré-installation), on saute le garde (pas de réseau requis).
+      // On ne bloque jamais le ré-échauffement (warmOfflineModelIfInstalled).
+      const dejaEnCacheWeb = await sherpaModelCached();
+      if (!dejaEnCacheWeb && !nativeStt.present()) {
+        const { hasInternet } = await import('../utils/connectivity');
+        if (!(await hasInternet())) {
+          throw new Error(
+            "Pas de connexion Internet. Le téléchargement de la voix (~128 Mo) " +
+            "nécessite du réseau. Branche du Wi-Fi (gratuit) et réessaie."
+          );
+        }
+      }
 
       // APK Android : moteur sherpa NATIF d'abord (meilleure perf CPU que le
       // WASM dans la WebView, qui exige COOP/COEP absents de Capacitor).
-      // MÊME GARDE que le WASM : jamais de téléchargement de ~128 Mo en silence
-      // sur un appareil qui a déjà installé Vosk (moteur mémorisé), sauf demande
-      // explicite (preferSherpa).
-      const canNative = nativeStt.present()
-        && (preferSherpa || (engine !== 'vosk' && !sherpaUnavailable()));
-      if (canNative) {
+      if (nativeStt.present() && (forcer || !sherpaUnavailable())) {
+        const t0 = Date.now();
         try {
           const ok = await prepareNativeEngine(onProgress);
           if (ok) {
+            trackInit('native', true, 'prepare', Date.now() - t0);
             modelReady = true;
             try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ }
-            writeEngine('sherpa');
+            writeEngine();
             try { localStorage.removeItem(SHERPA_UNAVAILABLE_KEY); } catch { /* ignore */ }
             emitModelReady();
             return NATIVE_ENGINE;
           }
+          dernierEchec = new Error('modèle non prêt (plugin natif)');
+          trackInit('native', false, 'prepare', Date.now() - t0, 'modèle non prêt (plugin natif)');
         } catch (e) {
-          // Repli local (plugin absent/erreur) — on ne casse jamais le hors-ligne.
+          dernierEchec = e;
           // eslint-disable-next-line no-console
-          console.warn('[offlineStt] sherpa natif indisponible, repli local :', e);
+          console.warn('[offlineStt] sherpa natif indisponible :', e);
+          trackInit('native', false, 'prepare', Date.now() - t0, e instanceof Error ? e.message : String(e));
         }
-        // Échec (rejet ou prepare false) → on marque sherpa indisponible pour
-        // éviter des re-téléchargements de 128 Mo à chaque tentative (l'UI peut
-        // réessayer explicitement via clearSherpaUnavailable).
+        // Échec (rejet ou prepare false) : on marque sherpa indisponible pour éviter des
+        // re-téléchargements de 128 Mo à chaque tentative (l'UI peut réessayer
+        // explicitement via clearSherpaUnavailable).
         setSherpaUnavailable();
       }
 
-      const canSherpa = sherpaSupported()
-        && (preferSherpa || (engine !== 'vosk' && !sherpaUnavailable()));
-      if (canSherpa) {
+      if (sherpaSupported() && (forcer || !sherpaUnavailable())) {
+        let t0 = Date.now();
+        let phase: 'load' | 'recognizer' = 'load';
         try {
           const mod = await loadSherpaRuntime();
+          trackInit('wasm', true, 'load', Date.now() - t0);
+          t0 = Date.now();
+          phase = 'recognizer';
           await ensureModelInFs(mod, onProgress);
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           sherpaRecognizer = (window as any).createOnlineRecognizer(mod, buildSherpaOnlineConfig());
+          trackInit('wasm', true, 'recognizer', Date.now() - t0);
           modelReady = true;
           try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ }
-          writeEngine('sherpa');
+          writeEngine();
           try { localStorage.removeItem(SHERPA_UNAVAILABLE_KEY); } catch { /* ignore */ }
           emitModelReady();
           return sherpaRecognizer;
         } catch (e) {
-          // Repli Vosk (WebView sans COOP/COEP, runtime absent, réseau…) — on
-          // ne casse JAMAIS le mode hors-ligne.
+          dernierEchec = e;
           // eslint-disable-next-line no-console
-          console.warn('[offlineStt] sherpa indisponible, repli Vosk :', e);
+          console.warn('[offlineStt] sherpa WASM indisponible :', e);
+          trackInit('wasm', false, phase, Date.now() - t0, e instanceof Error ? e.message : String(e));
           setSherpaUnavailable();
-          // (writeEngine('vosk') est fait par loadVosk ci-dessous)
         }
       }
-      return loadVosk();
+
+      // Plus de repli Vosk : si aucun moteur n'a pu se charger, on échoue avec
+      // un message clair (cause réelle si un essai a eu lieu).
+      if (dernierEchec) {
+        const cause = dernierEchec instanceof Error && dernierEchec.message
+          ? `: ${dernierEchec.message}`
+          : '';
+        throw new Error(`La voix hors-ligne n'a pas pu démarrer${cause}.`);
+      }
+      throw new Error('La voix hors-ligne exige sherpa (APK Android, ou navigateur isolé COOP/COEP).');
     })().catch((e) => {
       modelPromise = null;
       modelReady = false;
@@ -346,28 +398,59 @@ export function ensureOfflineModel(
 }
 
 /**
- * Au démarrage : si le mode hors-ligne a déjà été installé, on RÉ-ACTIVE le
- * moteur en tâche de fond pour qu'il soit prêt sans ré-installer. Pour sherpa,
- * le ré-échauffement est SANS RÉSEAU (cache uniquement) : on ne déclenche
+ * Au démarrage : si le mode hors-ligne sherpa a déjà été installé, on RÉ-ACTIVE
+ * le moteur en tâche de fond pour qu'il soit prêt sans ré-installer. Le
+ * ré-échauffement est SANS RÉSEAU (cache/filesDir uniquement) : on ne déclenche
  * jamais un téléchargement de 128 Mo en silence — c'est le choix de la marchande.
+ * Un ancien appareil Vosk est migré via InstallerOffline (le modèle n'est plus utilisable).
  */
 export function warmOfflineModelIfInstalled(): void {
   if (modelReady || modelPromise) return;
   if (!offlineModelInstalled()) return;
   const engine = readEngine();
+  if (engine !== 'sherpa' || sherpaUnavailable()) return; // pas de sherpa installé
   // APK : ré-échauffement du moteur NATIF (idempotent, sans réseau si les
   // modèles sont déjà dans filesDir).
-  if (nativeStt.present() && engine !== 'vosk' && !sherpaUnavailable()) {
+  if (nativeStt.present()) {
     ensureOfflineModel().catch(() => { /* ré-échauffement silencieux */ });
     return;
   }
-  if (sherpaSupported() && engine !== 'vosk' && !sherpaUnavailable()) {
+  // Web : ré-échauffement du WASM, cache uniquement.
+  if (sherpaSupported()) {
     sherpaModelCached()
       .then((ok) => { if (ok) ensureOfflineModel().catch(() => { /* silencieux */ }); })
       .catch(() => { /* silencieux */ });
-    return;
   }
-  ensureOfflineModel().catch(() => { /* ré-échauffement silencieux */ });
+}
+
+/**
+ * Libère les ressources WASM/audioclients du moteur STT hors-ligne (reconizer
+ * sherpa + AudioContext partagé). À appeler au déchargement de la page (SPA
+ * logout) pour éviter les fuites : un AudioContext ouvert consomme un slot
+ * (limité à ~6 sur Chrome) et le recognizer sherpa occupe la mémoire WASM.
+ * Idempotent. Ne détruit PAS le cache modèle (re-téléchargement inutile).
+ */
+export function disposeOfflineStt(): void {
+  // Reconizer sherpa (WASM) — libération défensive.
+  if (sherpaRecognizer) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const r = sherpaRecognizer as any;
+      if (typeof r.free === 'function') r.free();
+      else if (typeof r.release === 'function') r.release();
+    } catch { /* déjà libéré */ }
+    sherpaRecognizer = null;
+  }
+  // Runtime Emscripten (Module) — reset pour permettre un re-chargement propre.
+  sherpaRuntime = null;
+  // AudioContext partagé du décodage WAV (un par page sinon).
+  if (sharedCtx && sharedCtx.state !== 'closed') {
+    try { void sharedCtx.close(); } catch { /* déjà fermé */ }
+  }
+  sharedCtx = null;
+  // États mémoire : un prochain ensureOfflineModel rechargera depuis le cache.
+  modelPromise = null;
+  modelReady = false;
 }
 
 // ── Utilitaires audio ──────────────────────────────────────────────────────
@@ -395,15 +478,7 @@ function resampleTo16k(samples: Float32Array, srcRate: number): Float32Array {
   return out;
 }
 
-/** Enveloppe un Float32Array en AudioBuffer au sample rate donné (Vosk). */
-function makeAudioBuffer(sampleRate: number, data: Float32Array): AudioBuffer {
-  const ctx = new OfflineAudioContext(1, data.length, sampleRate);
-  const ab = ctx.createBuffer(1, data.length, sampleRate);
-  ab.getChannelData(0).set(data); // évite la contrainte de type de copyToChannel
-  return ab;
-}
-
-/** Décodage WAV → échantillons Float32 + sample rate (fait une seule fois par transcription). */
+/** Décodage WAV échantillons Float32 + sample rate (fait une seule fois par transcription). */
 async function decodeWavToSamples(wav: Blob | ArrayBuffer): Promise<{ samples: Float32Array; sampleRate: number }> {
   const arrayBuf = wav instanceof Blob ? await wav.arrayBuffer() : wav.slice(0);
   const audioBuf = await getCtx().decodeAudioData(arrayBuf as ArrayBuffer);
@@ -420,6 +495,9 @@ async function transcribeSherpa(samples: Float32Array, sampleRate: number): Prom
 
   const stream = rec.createStream();
   const CHUNK = 4096;
+  const t0 = Date.now();
+  let resultText = '';
+  let failed = false;
   try {
     for (let off = 0; off < pcm16.length; off += CHUNK) {
       stream.acceptWaveform(SHERPA_SAMPLE_RATE, pcm16.subarray(off, off + CHUNK));
@@ -430,9 +508,22 @@ async function transcribeSherpa(samples: Float32Array, sampleRate: number): Prom
     stream.inputFinished();
     while (rec.isReady(stream)) rec.decode(stream);
     const res = rec.getResult(stream);
-    return (res?.text || '').trim();
+    resultText = (res?.text || '').trim();
+    return resultText;
+  } catch (e) {
+    failed = true;
+    // Télémétrie : on logge l'échec AVANT de relancer (sinon le finally le masque).
+    import('../services/voiceTelemetry')
+      .then((m) => m.trackSttTranscribe('wasm', false, Date.now() - t0, 0, e instanceof Error ? e.message : String(e)))
+      .catch(() => { /* télémétrie défensive */ });
+    throw e;
   } finally {
     try { stream.free(); } catch { /* déjà libéré */ }
+    if (!failed) {
+      import('../services/voiceTelemetry')
+        .then((m) => m.trackSttTranscribe('wasm', true, Date.now() - t0, resultText.length))
+        .catch(() => { /* télémétrie défensive */ });
+    }
   }
 }
 
@@ -465,7 +556,8 @@ async function startSherpaLiveDictation(
   mute.connect(ctx.destination);
 
   const recStream = rec.createStream();
-  let acc = ''; // phrases DÉJÀ finalisées (endpoint)
+  let lastText = '';     // dernier texte cumulé émis (dédoublonnage)
+  let endpointOn = false; // flag d'endpoint en cours (front montant = phrase finalisée)
   let framesSeen = 0;
   processor.onaudioprocess = (ev: AudioProcessingEvent) => {
     if (framesSeen === 0) dbg('LIVE_AUDIO_FIRST');
@@ -474,21 +566,36 @@ async function startSherpaLiveDictation(
       const chunk = resampleTo16k(ev.inputBuffer.getChannelData(0), ctx.sampleRate);
       recStream.acceptWaveform(SHERPA_SAMPLE_RATE, chunk);
       while (rec.isReady(recStream)) rec.decode(recStream);
+      // NB : on NE resets JAMAIS le stream (les 2 chiffres puis « plus rien »
+      // venaient d'un reset au premier endpoint : la reconnaissance ne repartait
+      // pas dans ce build WASM). Le texte partiel sherpa s'ACCUMULE tout seul
+      // d'une phrase à l'autre — exactement ce qu'il faut pour une dictée.
       const text = (rec.getResult(recStream).text || '').trim();
-      onText((acc + ' ' + text).trim(), false);
-      if (rec.isEndpoint(recStream)) {
-        if (text) acc = (acc + ' ' + text).trim();
-        rec.reset(recStream);
-        onText(acc, true);
+      const ep = rec.isEndpoint(recStream);
+      // Front montant d'endpoint = fin de phrase : on la notifie en « final ».
+      if (ep && !endpointOn) {
+        if (text) onText(text, true);
+      } else if (text && text !== lastText) {
+        onText(text, false); // partiel cumulé
       }
+      endpointOn = ep;
+      if (text) lastText = text;
     } catch { /* ignore une trame */ }
   };
   dbg('LIVE_WIRED');
 
   let stopped = false;
+  // Garde-fou anti-fuite : si l'appelant oublie d'appeler stop() (effet React
+  // qui se démonte avant l'affectation de `session`, crash…), on ferme tout
+  // après 10 min. Le timer est annulé par stop(). Sans ça, l'AudioContext, le
+  // ScriptProcessor ET le stream WASM (recStream.free()) fuient pour la durée
+  // de vie de la page.
+  const safety = setTimeout(() => { void stop(); }, 10 * 60 * 1000);
+
   const stop = async (): Promise<void> => {
     if (stopped) return;
     stopped = true;
+    clearTimeout(safety);
     try { processor.onaudioprocess = null as unknown as (ev: AudioProcessingEvent) => void; } catch { /* */ }
     try { processor.disconnect(); } catch { /* */ }
     try { source.disconnect(); } catch { /* */ }
@@ -532,13 +639,15 @@ async function startNativeLiveDictation(
   let acc = '';                         // texte déjà reconnu (concaténé)
   let pending: Float32Array[] = [];     // blocs audio en attente d'envoi
   let framesSeen = 0;
+  let stopped = false;                   // mis à vrai par stop() : bloque onText post-stop
   let chain: Promise<void> = Promise.resolve(); // sérialise les transcriptions
 
   const flush = (final: boolean): Promise<void> => {
     const batch = pending;
     pending = [];
     if (batch.length === 0) {
-      if (final) { try { onText(acc.trim(), true); } catch { /* ignore */ } }
+      // Pas d'event final après stop() : le caller croit la dictée terminée.
+      if (final && !stopped) { try { onText(acc.trim(), true); } catch { /* ignore */ } }
       return chain;
     }
     const run = async (): Promise<void> => {
@@ -553,7 +662,10 @@ async function startNativeLiveDictation(
       } catch {
         // Un lot raté ne bloque pas la dictée.
       }
-      if (text) acc = (acc + ' ' + text).trim();
+      // Guard post-stop : une transcription en vol peut se terminer APRÈS que
+      // stop() a été appelé. On n'émet pas l'event (le caller a déjà bouclé).
+      if (stopped) return;
+      if (text) acc = (acc + '' + text).trim();
       try { onText(acc, final); } catch { /* ignore */ }
     };
     chain = chain.then(run);
@@ -569,16 +681,19 @@ async function startNativeLiveDictation(
   };
   dbg('LIVE_WIRED');
 
-  let stopped = false;
+  // Garde-fou anti-fuite (cf. startSherpaLiveDictation) : stop auto après 10 min.
+  const safety = setTimeout(() => { void stop(); }, 10 * 60 * 1000);
+
   const stop = async (): Promise<void> => {
     if (stopped) return;
     stopped = true;
+    clearTimeout(safety);
     try { processor.onaudioprocess = null as unknown as (ev: AudioProcessingEvent) => void; } catch { /* */ }
     try { processor.disconnect(); } catch { /* */ }
     try { source.disconnect(); } catch { /* */ }
     try { mute.disconnect(); } catch { /* */ }
     await chain;      // attend les lots déjà en cours
-    await flush(true); // dernier lot → texte final
+    await flush(true); // dernier lot : texte final
     await chain;
     try { await ctx.close(); } catch { /* */ }
   };
@@ -597,7 +712,7 @@ async function startNativeLiveDictation(
 export async function startLiveDictation(
   stream: MediaStream,
   onText: (texte: string, estFinal: boolean) => void,
-  customGrammar?: string[],
+  _customGrammar?: string[],
   onDebug?: (tag: string, data?: unknown) => void,
 ): Promise<{ stop: () => Promise<void> }> {
   const dbg = (t: string, d?: unknown) => { try { onDebug?.(t, d); } catch { /* ignore */ } };
@@ -612,12 +727,9 @@ export async function startLiveDictation(
     return startSherpaLiveDictation(stream, onText, onDebug);
   }
 
-  // ── Repli Vosk (ancien moteur, inchangé) ────────────────────────────────
+  // ensureOfflineModel peut faire GAGNER sherpa (installation en cours au
+  // premier appel, ou moteur natif qui se prépare) : on re-teste après.
   dbg('LIVE_MODEL_OK');
-  // ensureOfflineModel peut faire GAGNER sherpa (moteur installé = sherpa après
-  // un reload) : on redirige alors vers la dictée sherpa (le recognizer Vosk
-  // n'existe pas dans ce cas → sinon crash `model.KaldiRecognizer`). Idem pour
-  // le NATIF : le modèle résolu peut être le moteur natif de l'APK.
   await ensureOfflineModel();
   if (sherpaRecognizer) {
     return startSherpaLiveDictation(stream, onText, onDebug);
@@ -625,76 +737,26 @@ export async function startLiveDictation(
   if (nativeStt.present() && await nativeStt.isAvailable()) {
     return startNativeLiveDictation(stream, onText, onDebug);
   }
-  const model = voskModel;
-  if (!model) throw new Error('aucun moteur de dictée disponible');
-  const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  const ctx = new AC();
-  dbg('LIVE_CTX', { state: ctx.state, sampleRate: ctx.sampleRate });
-  if (ctx.state === 'suspended') {
-    try { await ctx.resume(); } catch { /* ignore */ }
-    dbg('LIVE_RESUME', { state: ctx.state });
-  }
-  const grammar = customGrammar ? JSON.stringify(customGrammar)
-    : JSON.stringify(GRAMMAR_WORDS);
-  const recognizer: Any = new model.KaldiRecognizer(ctx.sampleRate, grammar);
-
-  let acc = '';
-  recognizer.on('result', (m: { result?: { text?: string } }) => {
-    const t = (m?.result?.text || '').trim();
-    if (t) acc = (acc + ' ' + t).trim();
-    onText(acc, true);
-  });
-  recognizer.on('partialresult', (m: { result?: { partial?: string } }) => {
-    const p = (m?.result?.partial || '').trim();
-    onText((acc + ' ' + p).trim(), false);
-  });
-
-  const source = ctx.createMediaStreamSource(stream);
-  const processor = ctx.createScriptProcessor(4096, 1, 1);
-  const mute = ctx.createGain();
-  mute.gain.value = 0;
-  source.connect(processor);
-  processor.connect(mute);
-  mute.connect(ctx.destination);
-  let framesSeen = 0;
-  processor.onaudioprocess = (ev: AudioProcessingEvent) => {
-    if (framesSeen === 0) dbg('LIVE_AUDIO_FIRST');
-    framesSeen++;
-    try { recognizer.acceptWaveform(ev.inputBuffer); } catch { /* ignore une trame */ }
-  };
-  dbg('LIVE_WIRED');
-
-  let stopped = false;
-  const stop = async (): Promise<void> => {
-    if (stopped) return;
-    stopped = true;
-    try { processor.onaudioprocess = null as unknown as (ev: AudioProcessingEvent) => void; } catch { /* */ }
-    try { processor.disconnect(); } catch { /* */ }
-    try { source.disconnect(); } catch { /* */ }
-    try { mute.disconnect(); } catch { /* */ }
-    try { if (typeof recognizer.remove === 'function') recognizer.remove(); } catch { /* */ }
-    try { await ctx.close(); } catch { /* */ }
-  };
-
-  return { stop };
+  throw new Error('aucun moteur de dictée disponible');
 }
 
 /**
  * Transcrit un blob/ArrayBuffer WAV hors-ligne et renvoie le texte final.
- * @param wav      le WAV (16 kHz mono attendu, mais tout format décodable marche)
- * @param useGrammar limite au vocabulaire du marché (moteur Vosk uniquement —
- *        sherpa est à vocabulaire ouvert, le paramètre est alors ignoré)
+ * Moteurs (plus de Vosk) : sherpa natif (APK) puis sherpa WASM (web).
+ * `useGrammar` / `customGrammar` sont conservés pour la compatibilité d'appel
+ * mais IGNORÉS : sherpa est à vocabulaire ouvert (l'ancienne grammaire fermée
+ * Vosk a disparu).
  */
-export async function transcribeWav(wav: Blob | ArrayBuffer, useGrammar = true, customGrammar?: string[]): Promise<string> {
-  // Décodage UNIQUE du WAV — partagé par le natif, sherpa et Vosk.
+export async function transcribeWav(wav: Blob | ArrayBuffer, _useGrammar = true, _customGrammar?: string[]): Promise<string> {
+  // Décodage UNIQUE du WAV — partagé par le natif et le WASM.
   const { samples, sampleRate } = await decodeWavToSamples(wav);
 
-  // APK Android : on PRÉFÈRE le moteur sherpa-onnx NATIF (bascule automatique).
+  // APK Android : moteur sherpa-onnx NATIF (bascule automatique).
   if (await nativeStt.isAvailable()) {
     try {
       const nativeText = await nativeStt.transcribe(samples, sampleRate);
       if (nativeText) return nativeText;
-    } catch { /* repli local si le natif échoue */ }
+    } catch { /* le WASM reprend la main */ }
   }
 
   // Moteur sherpa WASM (prêt) — vocabulaire ouvert.
@@ -702,49 +764,9 @@ export async function transcribeWav(wav: Blob | ArrayBuffer, useGrammar = true, 
     try {
       const text = await transcribeSherpa(samples, sampleRate);
       if (text) return text;
-      if (!voskModel) return ''; // silence — inutile de charger Vosk
-    } catch { /* repli Vosk */ }
+      return ''; // texte vide pas de transcription
+    } catch { /* le WASM a échoué (plus de repli Vosk) */ }
   }
-
-  // ── Repli Vosk (ancien moteur, inchangé) ────────────────────────────────
-  if (!voskModel) {
-    try { await loadVosk(); } catch { return ''; }
-  }
-  const grammar = customGrammar ? JSON.stringify(customGrammar)
-    : useGrammar ? JSON.stringify(GRAMMAR_WORDS) : undefined;
-  const recognizer: Any = grammar
-    ? new voskModel.KaldiRecognizer(sampleRate, grammar)
-    : new voskModel.KaldiRecognizer(sampleRate);
-
-  const channel = samples;
-  const CHUNK = 4096;
-
-  return new Promise<string>((resolve, reject) => {
-    let finalText = '';
-    let resolved = false;
-
-    const cleanup = () => { if (typeof recognizer.remove === 'function') { try { recognizer.remove(); } catch { /* */ } } };
-    const done = (t: string) => { if (resolved) return; resolved = true; cleanup(); resolve((t || '').trim()); };
-
-    recognizer.on('result', (m: { result: { text: string } }) => {
-      const t = m?.result?.text ?? '';
-      if (t) finalText = t;
-    });
-
-    (async () => {
-      try {
-        for (let off = 0; off < channel.length; off += CHUNK) {
-          const slice = channel.slice(off, off + CHUNK);
-          recognizer.acceptWaveform(makeAudioBuffer(sampleRate, slice));
-          // Laisser tourner la boucle d'évènements pour les callbacks WASM.
-          await new Promise<void>((r) => setTimeout(r, 0));
-        }
-        // Laisser le dernier 'result' arriver, puis finaliser.
-        await new Promise<void>((r) => setTimeout(r, 350));
-        done(finalText);
-      } catch (e) {
-        if (!resolved) { resolved = true; cleanup(); reject(e); }
-      }
-    })();
-  });
+  // Aucun moteur de transcription disponible (le WASM n'est pas prêt).
+  return '';
 }

@@ -10,11 +10,11 @@ import './styles/tailwind.css';
 import './styles/index.css';
 
 // ── Auth mobile : jeton en en-tête Authorization ──────────────────────────────
-// Les cookies cross-domaine (julaba-web ↔ julaba-api) sont BLOQUÉS par les
-// navigateurs mobiles (surtout en navigation privée) → la connexion « réussissait »
+// Les cookies cross-domaine (julaba-web julaba-api) sont BLOQUÉS par les
+// navigateurs mobiles (surtout en navigation privée) la connexion « réussissait »
 // puis l'appli te croyait déconnectée (« retour au début »). On envoie donc le
 // jeton stocké (localStorage) en en-tête sur chaque appel à NOTRE API. Le backend
-// accepte déjà « Authorization: Bearer … » en plus du cookie → connexion fiable
+// accepte déjà « Authorization: Bearer … » en plus du cookie connexion fiable
 // partout, sans dépendre du cookie.
 (() => {
   const origFetch = window.fetch.bind(window);
@@ -105,6 +105,15 @@ if ('serviceWorker' in navigator) {
     if (reloading || !hadController) return;
     reloading = true;
     window.location.reload();
+  });
+
+  window.addEventListener('pagehide', () => {
+    // Fermeture / navigation de l'onglet : libère les moteurs vocaux hors-ligne
+    // (recognizer STT + worker TTS) pour ne pas laisser le WASM et l'AudioContext
+    // vivre au-delà de la page. Sans effet visible — juste du nettoyage.
+    import('./app/voice-offline/disposeVoice')
+      .then((m) => m.disposeVoiceEngines())
+      .catch(() => { /* silencieux */ });
   });
 
   window.addEventListener('load', () => {

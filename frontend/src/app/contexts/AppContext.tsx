@@ -3,12 +3,12 @@
  * JÙLABA — AppContext v3.0 (100% PostgreSQL via NestJS)
  * ═══════════════════════════════════════════════════════════════════
  * 
- * ✅ Auth JWT custom via NestJS
- * ✅ Authentification JWT
- * ✅ Chargement automatique données utilisateur
- * ✅ Synchronisation temps réel
- * ✅ Support offline/online
- * ✅ Tata Nanti Lou (ElevenLabs TTS)
+ * Auth JWT custom via NestJS
+ * Authentification JWT
+ * Chargement automatique données utilisateur
+ * Synchronisation temps réel
+ * Support offline/online
+ * Tata Nanti Lou (ElevenLabs TTS)
  */
 
 import { eventBus, EVENTS } from '../services/eventBus';
@@ -115,7 +115,7 @@ export interface Transaction {
 }
 
 // Bénéfice d'une vente = somme des (total article − prix_achat × quantité) sur
-// ses articles (details). Le niveau transaction stockait 0 → on recalcule ici
+// ses articles (details). Le niveau transaction stockait 0 on recalcule ici
 // pour l'affichage marge/bénéfice, y compris sur les ventes existantes.
 function beneficeDepuisDetails(details: unknown): number {
   if (!Array.isArray(details)) return 0;
@@ -306,7 +306,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let finalUserResponse = userResponse;
 
       if (userResponse.status === 401) {
-        // Token expiré → tenter refresh silencieux
+        // Token expiré tenter refresh silencieux
         const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
@@ -480,13 +480,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Vérifier session au démarrage via cookie httpOnly → /auth/me
+  // Vérifier session au démarrage via cookie httpOnly /auth/me
   useEffect(() => {
     const checkSession = async () => {
       try {
         let res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
 
-        // Token expiré → tenter refresh silencieux. On envoie le refresh token
+        // Token expiré tenter refresh silencieux. On envoie le refresh token
         // stocké dans le corps (le cookie refresh est bloqué cross-domaine mobile).
         if (res.status === 401) {
           let storedRefresh: string | null = null;
@@ -621,6 +621,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Déconnexion
   const logout = async () => {
+    // Libère les moteurs vocaux hors-ligne (recognizer STT + worker TTS) :
+    // sans ça, un AudioContext ouvert consomme un slot Chrome et le WASM reste
+    // en mémoire après chaque déconnexion. Volontaire OU forcé (julaba:force-logout).
+    import('../voice-offline/disposeVoice')
+      .then((m) => m.disposeVoiceEngines())
+      .catch(() => { /* silencieux */ });
     try {
       await fetch(`${API_URL}/auth/logout`, {
         method: 'POST',
