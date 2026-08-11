@@ -25,6 +25,13 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.12 — 11/08/2026 : câblage des fonctions mortes du registre — le
+  compteur « réponses du support non lues » devient réel (mémoire de lecture
+  locale, `test:support`, 9 suites au portail verify), bandeau d'explication
+  pour le marchand sans sous-profil (marché virtuel). Distribution de stock
+  laissée non câblée (backend neutralisé, preuve au registre) ; « bug
+  latent » publications classé non-bug (le serveur filtre déjà par
+  utilisatrice).
 - v5.0.0.11 — 11/08/2026 : la caisse suit le sous-profil marchand
   (docs/SOUS_PROFILS_MARCHAND.md) — prix convenu par ligne en négoce
   (demi-grossiste/grossiste), quantité tapée directement pour tous.

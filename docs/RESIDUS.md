@@ -76,31 +76,40 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
   rôle « cooperateur » sans entrée sur les pages universelles Marché et
   Produits (écran cassé pour ce rôle), garde-fous divers.
 
-## Fonctions jamais câblées, découvertes par le typage (à construire avec runtime)
+## Nettoyé (passe 6 — v5.0.0.12, 11/08/2026) : câblage des fonctions mortes
 
-- Distribution de stock (coopérative) : référençait une variable
-  inexistante — chaque clic finissait en toast d'erreur. Même issue rendue
-  explicite ; la saisie de quantité reste à construire.
+- **Compteur « réponses du support non lues » : CÂBLÉ.** Le backend n'offre
+  aucun endpoint « lu » côté utilisatrice (seul `PATCH :id/lu` existe, côté
+  back-office → `lu_par_bo`) : un compteur branché sur `reponses[].lu` ne se
+  serait JAMAIS vidé. Solution honnête : mémoire de lecture LOCALE
+  (`services/supportLu.ts`, module pur testé — `npm run test:support`).
+  Ouvrir l'écran Support marque tout vu ; SupportCardProfil affiche le vrai
+  compte (fini le `0` en dur), SupportContact utilise la même source.
+- **Marché virtuel sans sous-profil : EXPLIQUÉ.** Un marchand sans
+  `sous_profil_marchand` voyait des onglets vides sans comprendre pourquoi.
+  Bandeau clair ajouté (MarcheVirtuel) : « vois ton identificateur… ».
+- **Distribution de stock (coopérative) : NON câblée, décision motivée.**
+  Le backend NEUTRALISE volontairement `POST cooperatives/distribution`
+  (« feature stock non finalisée… aucune écriture », cooperatives-rest.
+  controller.ts) : câbler la saisie de quantité côté frontend simulerait un
+  succès mensonger. À construire backend d'abord, frontend ensuite.
+- **« Bug latent » publications : CLASSÉ NON-BUG, preuve backend.**
+  L'intention « mes publications actives » est déjà honorée côté serveur :
+  `GET /publications` force `WHERE p.user_id = $1` (publications-rest).
+  L'adaptateur sans filtre renvoie donc DÉJÀ uniquement les publications de
+  l'utilisatrice. Ligne fermée.
+
+## Fonctions jamais câblées, restantes (à construire avec runtime)
+
 - Saisie vocale de l'objectif (ObjectifModal) : l'option `onResult` n'a
-  jamais existé sur useVoiceCore — le rappel n'était jamais appelé.
-- Compteur « réponses du support non lues » (SupportCardProfil) : 0 en dur.
-
-## Bug latent découvert par le typage (à corriger avec test runtime)
-
-- `publicationsApiAdapter.fetchPublications()` IGNORE ses filtres : le
-  contexte producteur appelait `fetchPublications(true, false)` (« mes
-  publications actives ») mais l'adaptateur n'accepte aucun argument et
-  appelle l'API sans filtre. Les arguments (morts) ont été retirés — le
-  COMPORTEMENT est inchangé, mais l'intention d'origine (filtrer sur ses
-  propres publications) reste non honorée. À corriger en passant les
-  filtres à travers l'adaptateur, AVEC vérification runtime de l'écran
-  Publications du producteur.
+  jamais existé sur useVoiceCore — le rappel n'était jamais appelé. À
+  rebrancher sur `startLiveDictation` (sherpa) lors d'une passe vocale.
 
 ## Résidus connus, assumés, à traiter
 
 - ~~241 erreurs TypeScript baseline~~ : **ÉLIMINÉES le 11/08/2026**
   (v5.0.0.7 → v5.0.0.10, cinq paquets, zéro erreur introduite). Nouvelle
-  règle : `npm run verify` (typecheck 0 + 8 suites) doit être vert avant
+  règle : `npm run verify` (typecheck 0 + 9 suites) doit être vert avant
   tout push — le zéro est un invariant, plus une baseline.
 - **`styles/soleil.css` v1 (sélecteurs d'attribut)** : encore NÉCESSAIRE pour
   les écrans non migrés vers les tokens (connexion, partagés, producteur,

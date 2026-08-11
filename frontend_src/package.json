@@ -2,13 +2,13 @@
   "name": "julaba-frontend",
   "private": true,
   "version": "5.0.0",
-  "appVersion": "5.0.0.11",
+  "appVersion": "5.0.0.12",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc -b",
-    "verify": "npm run typecheck && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:tokens",
+    "verify": "npm run typecheck && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:tokens && npm run test:support",
     "preview": "vite preview",
     "test:audio": "tsx src/app/services/audioManager.test.mts",
     "test:cart": "tsx src/app/services/cartStorage.test.mts",
@@ -18,7 +18,8 @@
     "test:fcfa": "tsx src/app/utils/fcfa.test.mts",
     "test:jargon": "tsx src/app/services/antiJargon.test.mts",
     "test:confort": "tsx src/app/utils/confortVisuel.test.mts",
-    "test:tokens": "tsx src/app/services/tokens.test.mts"
+    "test:tokens": "tsx src/app/services/tokens.test.mts",
+    "test:support": "tsx src/app/services/supportLu.test.mts"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",

@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { useSupportConfig, ContactChannel } from '../../contexts/SupportConfigContext';
 import { useTickets } from '../../contexts/TicketsContext';
+import { compterReponsesNonVues } from '../../services/supportLu';
 import { useUser } from '../../contexts/UserContext';
 import { getRoleColor } from '../../config/roleConfig';
 
@@ -59,8 +60,12 @@ export function SupportCardProfil({ role, delay = 0.45 }: SupportCardProfilProps
 
   // Mes tickets avec réponses non lues du BO
   const mesTickets = tickets;
-  // Compteur jamais branché (0 en dur) — voir docs/RESIDUS.md.
-  const reponsesNonLues: number = 0;
+  // Compteur LOCAL des réponses du support non vues (services/supportLu.ts) :
+  // se vide quand elle ouvre l'écran Support, repart à la prochaine réponse.
+  const reponsesNonLues = compterReponsesNonVues(
+    typeof window !== 'undefined' ? window.localStorage : null,
+    tickets || [],
+  );
   const activeContacts = (config.contacts || []).filter(c => c.actif).slice(0, 3);
 
   const handleTicketSubmit = async () => {

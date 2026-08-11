@@ -79,6 +79,10 @@ export function MarcheVirtuel() {
   const sousProfil = appUser?.sousProfilMarchand ?? null;
   const isDemiGrossiste = sousProfil === 'demi_grossiste';
   const isMarchand = appUser?.role === 'marchand';
+  // Marchand SANS sous-profil (compte d'avant la migration) : il ne voit aucun
+  // marché — on le lui DIT au lieu de le laisser dans le silence
+  // (docs/SOUS_PROFILS_MARCHAND.md, point 4).
+  const profilIncomplet = isMarchand && !sousProfil;
   const visibleTabs = React.useMemo<Array<'cooperatives' | 'producteurs' | 'historique'>>(() => {
     if (isMarchand && isGrossiste) return ['producteurs', 'historique'];
     if (isMarchand && isDemiGrossiste) return ['cooperatives', 'historique'];
@@ -604,6 +608,14 @@ export function MarcheVirtuel() {
     >
       <div className="pt-2 pb-32 lg:pb-8 lg:pl-[320px] max-w-2xl lg:max-w-7xl mx-auto min-h-screen"
         style={{ backgroundColor: '#FFF2E9' }}>
+        {profilIncomplet && (
+          <div role="alert" style={{ margin:'0 0 12px', background:'#FFF4E5', border:'1.5px solid #F0C48A', borderRadius:16, padding:'12px 16px' }}>
+            <p style={{ margin:0, fontSize:14, fontWeight:800, color:'#8A4B12' }}>Ton profil marchand n'est pas complet</p>
+            <p style={{ margin:'4px 0 0', fontSize:13, color:'#8A5A34' }}>
+              Pour accéder au marché, vois ton identificateur : il précisera si tu es détaillante, demi-grossiste ou grossiste.
+            </p>
+          </div>
+        )}
         <KPIGrid cols={2}>
           <UniversalKPI
             label={activeTab === 'cooperatives' ? 'Coopératives' : activeTab === 'producteurs' ? 'Producteurs' : 'Commandes'}
