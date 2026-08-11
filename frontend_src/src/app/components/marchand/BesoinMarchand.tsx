@@ -7,7 +7,7 @@ import { useApp } from '../../contexts/AppContext';
 import { toast } from 'sonner';
 import { CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 
 const COLOR = '#C46210';
 

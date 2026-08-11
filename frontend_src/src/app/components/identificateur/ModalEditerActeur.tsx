@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { ROLE_COLORS } from '../../config/roleConfig';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { compressImage } from '../../utils/imageCompression';
 
 const PRIMARY = ROLE_COLORS.identificateur;

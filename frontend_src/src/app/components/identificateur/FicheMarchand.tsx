@@ -9,7 +9,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ROLE_COLORS } from '../../config/roleConfig';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { toast } from 'sonner';
 
 /**

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AuditEvent, AuditAction, AuditEntityType } from '../types/julaba.types';
-import * as auditApi from '../../imports/audit-api';
-import { NOT_AUTHENTICATED } from '../../imports/api-client';
+import * as auditApi from '../services/api/audit-api';
+import { NOT_AUTHENTICATED } from '../services/api/api-client';
 
 interface AuditContextType {
   events: AuditEvent[];

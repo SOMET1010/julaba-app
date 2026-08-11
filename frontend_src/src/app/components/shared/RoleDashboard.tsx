@@ -33,7 +33,7 @@ import { ScoreResumeCard } from './ScoreResumeCard';
 import { RoleType } from '../../config/roleConfig';
 import type { User, DaySession } from '../../contexts/AppContext';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 // NotificationToastContainer retiré — monté dans AppLayout
 
 // Map des icônes disponibles

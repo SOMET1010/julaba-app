@@ -1,6 +1,6 @@
 // ── Programme de fidélité paramétrable (écart CDC 8.1.2) ─────────────────────
 // Barème réglable par le marchand + points par client (suivi par téléphone).
-import { apiRequest } from '../../imports/api-client';
+import { apiRequest } from './api/api-client';
 import { API_URL } from '../utils/api';
 
 export interface FideliteConfig {

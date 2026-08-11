@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { MapPin, Calendar, Package, DollarSign, Image as ImageIcon, Upload } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { toast } from 'sonner';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
