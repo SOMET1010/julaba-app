@@ -29,6 +29,11 @@ export interface Recolte {
   notes?: string;
   created_at: string;
   updated_at: string;
+  // Variantes de stock renvoyées par le backend selon les routes (optionnelles).
+  stock_disponible?: number | string;
+  stock_vendu?: number | string;
+  stockDisponible?: number;
+  stockVendu?: number;
 }
 
 export interface CreateRecolteData {
