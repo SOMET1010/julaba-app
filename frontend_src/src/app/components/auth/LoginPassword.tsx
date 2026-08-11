@@ -495,35 +495,11 @@ export function LoginPassword() {
     siEchec: () => { setShowKeypad(true); parle('Tape ton numéro juste ici.'); },
   });
 
-  // Dictée du CODE secret (4 chiffres). Le code est SECRET → Tata PRÉVIENT à voix
-  // haute de rester discrète AVANT d'ouvrir le micro, puis écoute. Clavier = filet.
-  const codeCfg: DicteeCfg = {
-    max: 4,
-    estComplet: (d) => d.length === 4,
-    onLive: (d) => setPinInput(d),
-    onFinal: (code) => {
-      if (code.length === 4) {
-        try { navigator.vibrate?.(30); } catch { /* ignore */ }
-        setPinInput(code);
-        setTimeout(() => { void handleLogin(code); }, 250);
-        return;
-      }
-      if (code.length > 0) { setPinInput(code); parle('Complète ton code sur le clavier.'); return; }
-      parle("Je n'ai pas compris. Chuchote ton code, ou tape-le.");
-    },
-    buildTag: 'sherpa-code-live-v1',
-    siPasPrete: () => { parle('Tape ton code juste ici.'); },
-    siMicRefuse: () => { parle('Autorise le micro, ou tape ton code.'); },
-    siEchec: () => { parle('Tape ton code juste ici.'); },
-  };
-  const dicterCode = () => {
-    // Re-tap pendant l'écoute → on termine avec ce qu'on a.
-    if (isListening) { arreterEcoute(); return; }
-    // ⚠️ Le code est secret : Tata rappelle la discrétion, PUIS on ouvre le micro
-    // (après la phrase, pour ne pas s'entendre soi-même).
-    parle('Chuchote ton code tout bas, ou tape-le.');
-    setTimeout(() => { void demarrerDictee(codeCfg); }, 1500);
-  };
+  // AUDIT UX B5 (11/08/2026) : le CODE SECRET ne se dicte JAMAIS à voix
+  // haute — un marché est un lieu public, même chuchoté c'est un secret
+  // divulgué. L'ancienne dictée du code est SUPPRIMÉE : le code s'entre au
+  // pavé (ou par la reconnaissance « Tata me reconnaît »). La dictée
+  // vocale reste réservée au NUMÉRO de téléphone.
 
   // Tata parle AU PREMIER CONTACT (les navigateurs bloquent le son avant tout
   // geste). On accueille dès que la marchande touche l'écran — sauf si elle
@@ -1320,28 +1296,8 @@ export function LoginPassword() {
             >
               <span style={{ fontSize: 30, lineHeight: 1 }}>🔒</span>
             </button>
-            {/* Micro pour DIRE son code (Tata rappelle de chuchoter). Le clavier reste
-                dessous comme filet. Devient vert pendant l'écoute. */}
-            <motion.button
-              type="button"
-              aria-label="Chuchote ton code, ou tape-le"
-              onPointerDown={(e) => e.preventDefault()}
-              onClick={dicterCode}
-              animate={{ scale: isListening ? [1, 1.05, 1] : 1 }}
-              transition={{ duration: 1, repeat: isListening ? Infinity : 0, ease: 'easeInOut' }}
-              style={{
-                alignSelf: 'center',
-                width: accessMode === 'lecture' ? 58 : 'clamp(80px, 24vw, 100px)',
-                height: accessMode === 'lecture' ? 58 : 'clamp(80px, 24vw, 100px)',
-                borderRadius: accessMode === 'lecture' ? 16 : '50%', border: 'none', cursor: 'pointer', color: '#fff', margin: '4px 0 2px',
-                background: isListening ? 'radial-gradient(125% 125% at 30% 20%, #38A870, #1C7A4B)' : 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
-                boxShadow: isListening ? '0 16px 30px -12px rgba(28,122,75,0.7)' : '0 16px 30px -12px rgba(184,92,27,0.65)',
-                display: 'grid', placeItems: 'center',
-              }}
-              whileTap={{ scale: 0.96 }}
-            >
-              <Mic style={{ width: '40%', height: '40%' }} />
-            </motion.button>
+            {/* AUDIT B5 : plus de micro sur le code — un secret ne se dit pas.
+                Le pavé reste le chemin ; la reconnaissance évite même le code. */}
             <div style={{
               width: '100%', background: '#fff', borderRadius: 22,
               overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
