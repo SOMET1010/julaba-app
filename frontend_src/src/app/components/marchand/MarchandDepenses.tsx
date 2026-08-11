@@ -59,7 +59,7 @@ const CAT_RULES: { id: string; label: string; keywords: string[]; color: string;
 ];
 
 const CAT_AUTRE = {
-  id: 'autre', label: 'Autre', color: '#888', bg: '#F5F5F5', border: '#ddd',
+  id: 'autre', label: 'Autre', color: 'var(--encre-3)', bg: '#F5F5F5', border: '#ddd',
   icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
 };
 
@@ -97,7 +97,7 @@ function DepenseCard({ d, index, query }: { d: any; index: number; query: string
     <motion.div
       initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay: index * 0.04 }}
       onClick={() => setOpen(v => !v)}
-      style={{ background:'white', border:'1.5px solid #EDE7DE', borderRadius:16, overflow:'hidden', cursor:'pointer' }}>
+      style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, overflow:'hidden', cursor:'pointer' }}>
 
       {/* Ligne principale */}
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 14px' }}>
@@ -105,10 +105,10 @@ function DepenseCard({ d, index, query }: { d: any; index: number; query: string
           {cat.icon}
         </div>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:15, fontWeight:800, color:'#1a1206', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+          <div style={{ fontSize:15, fontWeight:800, color:'var(--encre)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
             <Highlight text={d.productName || d.description || cat.label} query={query} />
           </div>
-          <div style={{ fontSize:11, color:'#aaa', fontWeight:600 }}>
+          <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:600 }}>
             {cat.label} · {format(dateObj, 'HH:mm', { locale:fr })}
           </div>
         </div>
@@ -129,17 +129,17 @@ function DepenseCard({ d, index, query }: { d: any; index: number; query: string
             style={{ overflow:'hidden' }}>
             <div style={{ borderTop:'1px solid #f5f0eb', padding:'12px 14px', background:'#FDFAF7', display:'flex', flexDirection:'column', gap:8 }}>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
-                <span style={{ fontSize:12, color:'#aaa', fontWeight:600 }}>Date complète</span>
-                <span style={{ fontSize:12, fontWeight:700, color:'#333' }}>{format(dateObj, 'dd MMMM yyyy à HH:mm', { locale:fr })}</span>
+                <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Date complète</span>
+                <span style={{ fontSize:12, fontWeight:700, color:'var(--encre)' }}>{format(dateObj, 'dd MMMM yyyy à HH:mm', { locale:fr })}</span>
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
-                <span style={{ fontSize:12, color:'#aaa', fontWeight:600 }}>Catégorie</span>
+                <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Catégorie</span>
                 <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:cat.bg, border:`1px solid ${cat.border}`, borderRadius:8, padding:'3px 8px' }}>
                   <span style={{ fontSize:11, fontWeight:700, color:cat.color }}>{cat.label}</span>
                 </div>
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
-                <span style={{ fontSize:12, color:'#aaa', fontWeight:600 }}>Montant</span>
+                <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Montant</span>
                 <span style={{ fontSize:14, fontWeight:900, color:'#ef4444' }}>{montant.toLocaleString('fr-FR')} FCFA</span>
               </div>
             </div>
@@ -326,23 +326,23 @@ export function MarchandDepenses() {
         </KPIGrid>
 
         {/* Barre recherche */}
-        <div style={{ background:'white', border:'1.5px solid #EDE7DE', borderRadius:14, padding:'11px 14px', display:'flex', alignItems:'center', gap:8 }}>
+        <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'11px 14px', display:'flex', alignItems:'center', gap:8 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher une dépense..."
-            style={{ flex:1, border:'none', outline:'none', fontSize:13, color:'#333', background:'transparent', fontFamily:'inherit' }}
+            style={{ flex:1, border:'none', outline:'none', fontSize:13, color:'var(--encre)', background:'transparent', fontFamily:'inherit' }}
           />
           {search && (
             <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')}
-              style={{ background:'none', border:'none', cursor:'pointer', padding:0, color:'#aaa' }}>
+              style={{ background:'none', border:'none', cursor:'pointer', padding:0, color:'var(--encre-4)' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </motion.button>
           )}
         </div>
 
         {/* Sélecteur iOS */}
-        <div ref={sliderRef} style={{ background:'white', border:'1.5px solid #EDE7DE', borderRadius:16, padding:4, display:'flex', position:'relative' }}>
+        <div ref={sliderRef} style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:4, display:'flex', position:'relative' }}>
           <motion.div
             style={{ position:'absolute', top:4, height:'calc(100% - 8px)', background:P, borderRadius:12, boxShadow:`0 2px 8px ${P}40` }}
             animate={{ left: `calc(${sliderIndex * 33.33}% + 4px)`, width:'calc(33.33% - 3px)' }}
@@ -359,7 +359,7 @@ export function MarchandDepenses() {
         {/* Filtres avancés */}
         <div>
           <motion.button whileTap={{ scale:0.99 }} onClick={() => setShowFilters(v => !v)}
-            style={{ width:'100%', background:'white', border:'1.5px solid #EDE7DE', borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
+            style={{ width:'100%', background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
               <span style={{ fontSize:13, fontWeight:600, color:'#555' }}>Filtres avancés</span>
@@ -371,20 +371,20 @@ export function MarchandDepenses() {
           <AnimatePresence>
             {showFilters && (
               <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.25 }} style={{ overflow:'hidden' }}>
-                <div style={{ background:'white', border:'1.5px solid #EDE7DE', borderTop:'none', borderRadius:'0 0 14px 14px', padding:'12px 14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div style={{ background:'white', border:'1.5px solid var(--trait)', borderTop:'none', borderRadius:'0 0 14px 14px', padding:'12px 14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:'#aaa', display:'block', marginBottom:4 }}>Date début</label>
+                    <label style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', display:'block', marginBottom:4 }}>Date début</label>
                     <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                      style={{ width:'100%', border:'1.5px solid #EDE7DE', borderRadius:10, padding:'8px 10px', fontSize:12, fontFamily:'inherit', outline:'none', boxSizing:'border-box' }} />
+                      style={{ width:'100%', border:'1.5px solid var(--trait)', borderRadius:10, padding:'8px 10px', fontSize:12, fontFamily:'inherit', outline:'none', boxSizing:'border-box' }} />
                   </div>
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:'#aaa', display:'block', marginBottom:4 }}>Date fin</label>
+                    <label style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', display:'block', marginBottom:4 }}>Date fin</label>
                     <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                      style={{ width:'100%', border:'1.5px solid #EDE7DE', borderRadius:10, padding:'8px 10px', fontSize:12, fontFamily:'inherit', outline:'none', boxSizing:'border-box' }} />
+                      style={{ width:'100%', border:'1.5px solid var(--trait)', borderRadius:10, padding:'8px 10px', fontSize:12, fontFamily:'inherit', outline:'none', boxSizing:'border-box' }} />
                   </div>
                   {(startDate || endDate) && (
                     <motion.button whileTap={{ scale:0.97 }} onClick={() => { setStartDate(''); setEndDate(''); }}
-                      style={{ gridColumn:'1/-1', background:'#f5f0eb', border:'none', borderRadius:10, padding:'8px', fontSize:12, fontWeight:700, color:'#888', cursor:'pointer', fontFamily:'inherit' }}>
+                      style={{ gridColumn:'1/-1', background:'#f5f0eb', border:'none', borderRadius:10, padding:'8px', fontSize:12, fontWeight:700, color:'var(--encre-3)', cursor:'pointer', fontFamily:'inherit' }}>
                       Réinitialiser
                     </motion.button>
                   )}
@@ -399,10 +399,10 @@ export function MarchandDepenses() {
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }}
             style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:'40px 24px', textAlign:'center' }}>
             <img src={TATA_BLEU} style={{ width:120, height:120, objectFit:'contain' }} alt="Tata Nanti Lou" />
-            <p style={{ fontSize:16, fontWeight:800, color:'#333', margin:0 }}>
+            <p style={{ fontSize:16, fontWeight:800, color:'var(--encre)', margin:0 }}>
               {search ? 'Aucune dépense trouvée' : 'Aucune dépense'}
             </p>
-            <p style={{ fontSize:13, color:'#aaa', lineHeight:1.5, margin:0 }}>
+            <p style={{ fontSize:13, color:'var(--encre-4)', lineHeight:1.5, margin:0 }}>
               {search ? `Aucun résultat pour "${search}"` : "Note tes dépenses pour mieux gérer ton argent"}
             </p>
           </motion.div>

@@ -136,8 +136,8 @@ export function DepenseForm() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={PC} strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="10 16 12 18 16 14"/></svg>
           <p style={{fontSize:13,fontWeight:700,color:PC,margin:0}}>Confirmer la dépense</p>
         </div>
-        <p style={{fontSize:16,fontWeight:600,color:'#1F2937',marginBottom:8}}>{pendingResponse.response || pendingResponse.reponse}</p>
-        {pendingResponse.resume_action && <p style={{fontSize:12,fontWeight:700,color:'#9CA3AF',marginBottom:16}}>{pendingResponse.resume_action}</p>}
+        <p style={{fontSize:16,fontWeight:600,color:'var(--encre)',marginBottom:8}}>{pendingResponse.response || pendingResponse.reponse}</p>
+        {pendingResponse.resume_action && <p style={{fontSize:12,fontWeight:700,color:'var(--encre-4)',marginBottom:16}}>{pendingResponse.resume_action}</p>}
         <div style={{display:'flex',gap:10}}>
           <button onClick={cancelAction} style={{flex:1,padding:'14px 0',borderRadius:14,fontWeight:700,fontSize:15,border:'2px solid '+PC,color:PC,background:'white',cursor:'pointer'}}>Non</button>
           <button onClick={confirmAction} style={{flex:1,padding:'14px 0',borderRadius:14,fontWeight:700,fontSize:15,color:'white',background:PC,cursor:'pointer',border:'none'}}>Oui, enregistrer</button>
@@ -158,7 +158,7 @@ export function DepenseForm() {
         </motion.button>
       }
       bottomAction={
-        <div style={{ flexShrink:0, padding:'12px 14px 28px', background:BG, borderTop:'1px solid #EDE7DE' }}>
+        <div style={{ flexShrink:0, padding:'12px 14px 28px', background:BG, borderTop:'1px solid var(--trait)' }}>
           <motion.button whileTap={{ scale:0.97 }} onClick={() => { if (canProceed) setStep(2); }}
             style={{ width:'100%', background: canProceed ? P : '#E0E0E0', color: canProceed ? 'white' : '#aaa', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor: canProceed ? 'pointer' : 'default', fontFamily:'inherit', boxShadow: canProceed ? `0 4px 16px ${P}55` : 'none', transition:'all 0.2s' }}>
             + Noter une dépense
@@ -194,7 +194,7 @@ export function DepenseForm() {
 
         {/* CHAMP MANUEL */}
         <div>
-          <div style={{ fontSize:11, fontWeight:700, color:'#aaa', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Ou décris ta dépense</div>
+          <div style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Ou décris ta dépense</div>
           <div style={{ background:'white', border:`1.5px solid ${canProceed ? P : '#EDE7DE'}`, borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', gap:10, transition:'border-color 0.2s' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={canProceed ? P : '#aaa'} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             <input
@@ -202,7 +202,7 @@ export function DepenseForm() {
               onChange={e => setDescription(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && canProceed) setStep(2); }}
               placeholder='Ex: "Médicaments", "Électricité"...'
-              style={{ flex:1, border:'none', outline:'none', fontSize:13, color:'#333', background:'transparent', fontFamily:'inherit' }}
+              style={{ flex:1, border:'none', outline:'none', fontSize:13, color:'var(--encre)', background:'transparent', fontFamily:'inherit' }}
             />
             {description && (
               <motion.button whileTap={{ scale:0.9 }} onClick={() => setDescription('')}
@@ -211,13 +211,13 @@ export function DepenseForm() {
               </motion.button>
             )}
           </div>
-          <div style={{ fontSize:10, color:'#bbb', marginTop:5, paddingLeft:4 }}>Appuie sur Entrée ou choisis une catégorie</div>
+          <div style={{ fontSize:10, color:'var(--encre-4)', marginTop:5, paddingLeft:4 }}>Appuie sur Entrée ou choisis une catégorie</div>
         </div>
 
         {/* AUTRES CATÉGORIES */}
         <div>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#aaa', textTransform:'uppercase', letterSpacing:'0.1em' }}>Autres catégories</div>
+            <div style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Autres catégories</div>
             <motion.button whileTap={{ scale:0.95 }} onClick={() => setShowOthers(v => !v)}
               style={{ background:'none', border:'none', fontSize:11, fontWeight:700, color:P, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', gap:3 }}>
               {showOthers ? 'Voir moins' : 'Voir plus'}
@@ -244,7 +244,7 @@ export function DepenseForm() {
         </div>
 
         {/* TATA NANTI LOU + MICRO */}
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, paddingTop:8, borderTop:'1px solid #EDE7DE' }}>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, paddingTop:8, borderTop:'1px solid var(--trait)' }}>
           <motion.img src={TATA_BLEU} alt="Tata Nanti Lou"
             style={{ width:160, height:160, objectFit:'contain', filter:'drop-shadow(0 12px 28px rgba(175,91,35,0.2))' }}
             animate={{ y:[0,-7,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut' }} />
@@ -309,7 +309,7 @@ export function DepenseForm() {
 
         {/* Historique */}
         <div style={{ textAlign:'center', marginBottom:14 }}>
-          <span style={{ fontSize:11, color:'#bbb' }}>Dernier {description.toLowerCase()} : </span>
+          <span style={{ fontSize:11, color:'var(--encre-4)' }}>Dernier {description.toLowerCase()} : </span>
           <span style={{ fontSize:11, color:P, fontWeight:700 }}>
             {derniereDepense ? `${derniereDepense.toLocaleString('fr-FR')} F` : '—'}
           </span>
