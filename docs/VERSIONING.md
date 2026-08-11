@@ -25,6 +25,10 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.6 — 11/08/2026 : nettoyage des résidus legacy, passe 1 — 41
+  fichiers morts supprimés (specs/logs/SVG de imports/, ancien accueil,
+  mot-réveil désactivé, artefact Ollama), registre docs/RESIDUS.md ouvert.
+  Baseline TypeScript : 241 → 239.
 - v5.0.0.5 — 11/08/2026 : tokens de contraste étendus à tout le parcours
   marchande — stock, dépenses, crédit, formulaire de dépense, Keiwa
   (228 usages au total, garde-fou test:tokens).
