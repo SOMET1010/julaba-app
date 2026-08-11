@@ -346,7 +346,7 @@ export interface BOInstitution {
   name?: string;
   region?: string;
   statut?: string;
-  modules?: string[];
+  modules?: Record<string, 'lecture' | 'ecriture' | 'complet' | 'admin_general' | 'aucun'>;
   created_at?: string;
   email?: string;
   referentNom?: string;

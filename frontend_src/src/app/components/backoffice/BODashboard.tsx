@@ -146,7 +146,7 @@ export function BODashboard() {
       institution: { label: 'Institutions', color: '#8B5CF6' },
     };
     const map: Record<string, number> = {};
-    acteurs.forEach(a => { map[a.type] = (map[a.type] || 0) + 1; });
+    acteurs.forEach(a => { map[`${a.type}`] = (map[`${a.type}`] || 0) + 1; });
     return Object.entries(map)
       .filter(([_, v]) => v > 0)
       .map(([type, value]) => ({
@@ -218,7 +218,7 @@ export function BODashboard() {
 
   // ─── Ticker : dernières transactions réelles ──────────────────────────────
   const tickerItems = useMemo(() => {
-    const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 10);
+    const sorted = [...transactions].sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime()).slice(0, 10);
     if (sorted.length === 0) return [{ nom: 'Aucune transaction', type: '', montant: '0', region: '', positif: true }];
     return sorted.map(t => ({
       nom: t.acteurNom || 'Acteur',
@@ -235,7 +235,7 @@ export function BODashboard() {
     if (identActeurs.length === 0) return [];
     const dossiersParIdent: Record<string, number> = {};
     dossiers.forEach(d => {
-      const key = d.identificateurNom;
+      const key = typeof d.identificateurNom === 'string' ? d.identificateurNom : '';
       if (key && key !== 'Non assigné') {
         dossiersParIdent[key] = (dossiersParIdent[key] || 0) + 1;
       }
@@ -1032,7 +1032,7 @@ export function BODashboard() {
           />
           <UniversalKPI
             label="Dossiers > 72h"
-            value={String(dossiers.filter(d => d.statut === 'en_attente' && (Date.now() - new Date(d.dateCreation).getTime()) > 72 * 3600000).length)}
+            value={String(dossiers.filter(d => d.statut === 'en_attente' && (Date.now() - new Date(typeof d.dateCreation === 'string' ? d.dateCreation : '').getTime()) > 72 * 3600000).length)}
             icon={Clock}
             color="#F59E0B"
             delay={0.5}

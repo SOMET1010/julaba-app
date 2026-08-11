@@ -29,14 +29,24 @@ export interface ProduitMarche {
   vendeurNom: string;
   vendeurId: string;
   village: string;
-  region: string;
-  telephone: string;
-  scoreVendeur: number;
-  datePublication: string;
+  // Absents du flux /publications réel → optionnels (affichés avec repli).
+  region?: string;
+  telephone?: string;
+  scoreVendeur?: number;
+  datePublication?: string;
   image?: string;
   // Pour les produits re-publiés par la coop
   prixOrigine?: number;
   vendeurOrigineNom?: string;
+  // Champs du flux marché réel (snake_case mappé), lus par MarcheHub.
+  producteurId?: string;
+  culture?: string;
+  quantiteDispo?: number;
+  localisation?: string;
+  statut?: string;
+  dateRecolte?: string;
+  description?: string;
+  photoUrl?: string | null;
 }
 
 export interface CommandeMarche {
