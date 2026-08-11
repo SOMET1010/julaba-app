@@ -112,7 +112,7 @@ const PERMISSION_LABELS: Record<string, string> = {
 };
 
 function RoleBadge({ role }: { role: BORoleType }) {
-  const conf = ROLE_CONFIG[role] || { label: role, color: '#9CA3AF', icon: Zap, desc: '' };
+  const conf = ROLE_CONFIG[role] || { label: role, color: 'var(--encre-4)', icon: Zap, desc: '' };
   const Icon = conf.icon || Zap;
   return (
     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold"
@@ -436,7 +436,7 @@ function MatricePermissions() {
       {/* Onglets de role (4 roles BO, sans super_admin) */}
       <div className="flex gap-2 mb-4 flex-wrap">
         {MATRIX_ROLE_IDS.map((rid) => {
-          const conf = ROLE_CONFIG[rid] ?? { label: rid, color: '#9CA3AF', icon: Zap, desc: '' };
+          const conf = ROLE_CONFIG[rid] ?? { label: rid, color: 'var(--encre-4)', icon: Zap, desc: '' };
           const Icon = conf.icon || Zap;
           const active = role === rid;
           return (
@@ -453,7 +453,7 @@ function MatricePermissions() {
               <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full"
                 style={{
                   backgroundColor: active ? 'rgba(255,255,255,0.25)' : '#F3F4F6',
-                  color: active ? 'white' : '#6B7280',
+                  color: active ? 'white' : 'var(--encre-3)',
                 }}>
                 {roleActiveCount(rid)}
               </span>
@@ -713,7 +713,7 @@ export function BOUtilisateurs() {
       {/* Liste utilisateurs */}
       <div className="space-y-3">
         {filteredUsers.map((user, index) => {
-          const conf = ROLE_CONFIG[user.role as BORoleType] || { label: user.role, color: '#9CA3AF', icon: Zap, desc: '' };
+          const conf = ROLE_CONFIG[user.role as BORoleType] || { label: user.role, color: 'var(--encre-4)', icon: Zap, desc: '' };
           const Icon = conf.icon || Zap;
           const isExpanded = expanded === user.id;
           const isCurrentUser = boUser?.id === user.id;
@@ -965,7 +965,7 @@ export function BOUtilisateurs() {
                 {/* Permissions preview */}
                 <div className="bg-gray-50 rounded-2xl p-4 border-2 border-gray-100">
                   <p className="text-xs font-bold text-gray-600 mb-2">Permissions accordées automatiquement ({PERMISSIONS[form.role]?.length})</p>
-                  <p className="text-xs text-gray-500">{(ROLE_CONFIG[form.role] || { label: 'Inconnu', color: '#9CA3AF', icon: Zap, desc: '' }).desc}</p>
+                  <p className="text-xs text-gray-500">{(ROLE_CONFIG[form.role] || { label: 'Inconnu', color: 'var(--encre-4)', icon: Zap, desc: '' }).desc}</p>
                 </div>
 
                 <div className="flex gap-3 pt-2">

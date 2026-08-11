@@ -912,7 +912,7 @@ function BigSelect({ value, onChange, options, placeholder, color, disabled, id,
         disabled={disabled}
         value={value} onChange={(e) => onChange(e.target.value)}
         className={`w-full px-5 h-16 rounded-3xl border-2 border-gray-200 bg-white focus:outline-none appearance-none transition-all ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-        style={{ fontSize: '1.05rem', fontWeight: 500, color: value ? '#111827' : '#9CA3AF' }}
+        style={{ fontSize: '1.05rem', fontWeight: 500, color: value ? '#111827' : 'var(--encre-4)' }}
         aria-invalid={ariaProps['aria-invalid']}
         aria-describedby={ariaProps['aria-describedby']}
         aria-required={ariaProps['aria-required']}
@@ -2571,10 +2571,10 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
                       )}
                     </div>
                     <div className="flex-1 pb-4 pt-1">
-                      <p style={{ fontWeight: 700, fontSize: '0.92rem', color: item.done ? '#16A34A' : item.active ? '#D97706' : '#9CA3AF' }}>
+                      <p style={{ fontWeight: 700, fontSize: '0.92rem', color: item.done ? '#16A34A' : item.active ? '#D97706' : 'var(--encre-4)' }}>
                         {item.label}
                       </p>
-                      <p style={{ fontSize: '0.78rem', color: '#9CA3AF' }}>{item.desc}</p>
+                      <p style={{ fontSize: '0.78rem', color: 'var(--encre-4)' }}>{item.desc}</p>
                     </div>
                   </div>
                 );
@@ -2626,13 +2626,13 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
           )}
 
           <div className="bg-gray-50 rounded-2xl border-2 border-gray-200 p-4 text-center">
-            <p style={{ fontSize: '0.75rem', color: '#9CA3AF', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--encre-4)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Numéro de référence
             </p>
             <p className="font-black text-gray-900 mt-1" style={{ fontSize: '1.3rem', letterSpacing: '0.08em' }}>
               {data.numeroId || submittedNumeroRef.current}
             </p>
-            <p style={{ fontSize: '0.75rem', color: '#9CA3AF', marginTop: 4 }}>Conserve ce numéro pour le suivi</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--encre-4)', marginTop: 4 }}>Conserve ce numéro pour le suivi</p>
           </div>
 
           {createdPassword ? (
@@ -2645,7 +2645,7 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
               Terminer
             </button>
           ) : (
-            <p className="text-center mt-5" style={{ fontSize: '0.82rem', color: '#9CA3AF' }}>
+            <p className="text-center mt-5" style={{ fontSize: '0.82rem', color: 'var(--encre-4)' }}>
               Retour automatique dans quelques secondes...
             </p>
           )}
@@ -2729,7 +2729,7 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
               <span style={{ fontSize: '0.72rem', color: cfg!.color, fontWeight: 700 }}>
                 {Math.round(progressPct)}% accompli
               </span>
-              <span style={{ fontSize: '0.72rem', color: '#9CA3AF' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--encre-4)' }}>
                 {totalSteps - step - 1} étape{totalSteps - step - 1 !== 1 ? 's' : ''} restante{totalSteps - step - 1 !== 1 ? 's' : ''}
               </span>
             </div>
@@ -2792,13 +2792,13 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
                   >
                     {done
                       ? <CheckCircle className="w-5 h-5 text-white" aria-hidden="true" />
-                      : <Icon className="w-5 h-5" style={{ color: active ? cfg!.color : '#9CA3AF' }} aria-hidden="true" />
+                      : <Icon className="w-5 h-5" style={{ color: active ? cfg!.color : 'var(--encre-4)' }} aria-hidden="true" />
                     }
                   </motion.div>
                   <span style={{
                     fontSize: cfg!.steps.length > 7 ? '0.55rem' : '0.6rem',
                     fontWeight: active || done ? 800 : 500,
-                    color: active ? cfg!.color : done ? cfg!.color : '#9CA3AF',
+                    color: active ? cfg!.color : done ? cfg!.color : 'var(--encre-4)',
                     textAlign: 'center',
                     lineHeight: '1.2',
                     whiteSpace: 'nowrap',
@@ -3807,7 +3807,7 @@ function LieuStep({
             background: 'transparent',
             border: `1.5px dashed ${color}55`,
             borderRadius: '12px',
-            color: '#6B7280',
+            color: 'var(--encre-3)',
             fontSize: '0.85rem',
             fontWeight: 600,
             cursor: 'pointer',
@@ -5393,31 +5393,31 @@ function StepContent({
                         <motion.div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                           {data.cooperativeMarche && (
                             <motion.div>
-                              <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Marché</p>
+                              <p style={{ fontSize: '10px', color: 'var(--encre-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Marché</p>
                               <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, color: '#111827' }}>{data.cooperativeMarche}</p>
                             </motion.div>
                           )}
                           {data.cooperativeCommune && (
                             <motion.div>
-                              <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Commune</p>
+                              <p style={{ fontSize: '10px', color: 'var(--encre-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Commune</p>
                               <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, color: '#111827' }}>{data.cooperativeCommune}</p>
                             </motion.div>
                           )}
                           {data.cooperativeResponsable && (
                             <motion.div>
-                              <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Responsable</p>
+                              <p style={{ fontSize: '10px', color: 'var(--encre-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Responsable</p>
                               <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, color: '#111827' }}>{data.cooperativeResponsable}</p>
                             </motion.div>
                           )}
                           {data.cooperativeFonction && (
                             <motion.div>
-                              <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fonction</p>
+                              <p style={{ fontSize: '10px', color: 'var(--encre-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fonction</p>
                               <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, color: '#111827' }}>{data.cooperativeFonction}</p>
                             </motion.div>
                           )}
                           {data.cooperativeContact && (
                             <motion.div style={{ gridColumn: '1 / -1' }}>
-                              <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Contact</p>
+                              <p style={{ fontSize: '10px', color: 'var(--encre-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Contact</p>
                               <motion.div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <i className="ti ti-phone" style={{ fontSize: '13px', color: '#2072AF' }} aria-hidden="true" />
                                 <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, color: '#2072AF' }}>{data.cooperativeContact}</p>
@@ -5724,7 +5724,7 @@ function StepContent({
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#111827' }}>{roleLabel}</div>
-            <div style={{ fontSize: '0.85rem', color: '#6B7280', marginTop: '2px' }}>{cfg.desc}</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--encre-3)', marginTop: '2px' }}>{cfg.desc}</div>
           </div>
         </div>
         <div
@@ -5735,7 +5735,7 @@ function StepContent({
           }}
         >
           <Info className="w-4 h-4 flex-shrink-0" style={{ color, marginTop: '2px' }} aria-hidden="true" />
-          <span style={{ fontSize: '0.82rem', color: '#6B7280' }}>
+          <span style={{ fontSize: '0.82rem', color: 'var(--encre-3)' }}>
             Le rôle est défini par le type de compte sélectionné au début et ne peut pas être modifié ici.
           </span>
         </div>
@@ -5788,7 +5788,7 @@ function StepContent({
             }}
           >
             <Info className="w-4 h-4 flex-shrink-0" style={{ color, marginTop: '2px' }} aria-hidden="true" />
-            <span style={{ fontSize: '0.82rem', color: '#6B7280' }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--encre-3)' }}>
               La zone est optionnelle pour ce rôle. Laisse vide pour un accès national.
             </span>
           </div>
@@ -6247,7 +6247,7 @@ function StepContent({
               background: '#fff',
               border: `1.5px dashed ${color}55`,
               borderRadius: '12px',
-              color: '#6B7280',
+              color: 'var(--encre-3)',
               fontSize: '0.85rem',
               fontWeight: 600,
               cursor: 'pointer',

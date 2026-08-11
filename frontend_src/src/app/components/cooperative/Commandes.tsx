@@ -71,7 +71,7 @@ interface Commande {
 }
 
 const STATUT_CONFIG: Record<StatutCommande, { label: string; icon: React.ElementType; color: string; bg: string; border: string; gradient: string }> = {
-  brouillon:    { label: 'Brouillon',    icon: Edit3,       color: '#9CA3AF', bg: 'bg-gray-100',   border: 'border-gray-300',  gradient: 'from-gray-50 via-white to-gray-50'   },
+  brouillon:    { label: 'Brouillon',    icon: Edit3,       color: 'var(--encre-4)', bg: 'bg-gray-100',   border: 'border-gray-300',  gradient: 'from-gray-50 via-white to-gray-50'   },
   envoyee:      { label: 'Envoyée',      icon: Send,        color: '#EA580C', bg: 'bg-orange-100', border: 'border-orange-300', gradient: 'from-orange-50 via-white to-orange-50' },
   confirmee:    { label: 'Confirmée',    icon: CheckCircle, color: '#2072AF', bg: 'bg-blue-100',   border: 'border-blue-300',   gradient: 'from-blue-50 via-white to-blue-50'   },
   en_livraison: { label: 'En livraison', icon: Truck,       color: '#8B5CF6', bg: 'bg-purple-100', border: 'border-purple-300', gradient: 'from-purple-50 via-white to-purple-50' },
@@ -1090,9 +1090,9 @@ export function Commandes() {
                               animate={isCurrent ? { scale: [1, 1.15, 1] } : {}}
                               transition={{ duration: 1.5, repeat: Infinity }}
                             >
-                              {React.createElement(cfg.icon, { className: 'w-4 h-4', style: { color: isDone ? '#fff' : '#9CA3AF' } })}
+                              {React.createElement(cfg.icon, { className: 'w-4 h-4', style: { color: isDone ? '#fff' : 'var(--encre-4)' } })}
                             </motion.div>
-                            <p className="text-[9px] font-bold mt-1 text-center leading-tight" style={{ color: isDone ? cfg.color : '#9CA3AF', maxWidth: 40 }}>{cfg.label}</p>
+                            <p className="text-[9px] font-bold mt-1 text-center leading-tight" style={{ color: isDone ? cfg.color : 'var(--encre-4)', maxWidth: 40 }}>{cfg.label}</p>
                           </div>
                           {i < arr.length - 1 && (
                             <div className="flex-1 h-0.5 mb-4 rounded-full" style={{ backgroundColor: i < order ? STATUT_CONFIG[arr[i]].color : '#E5E7EB' }} />

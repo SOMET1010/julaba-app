@@ -160,7 +160,7 @@ export function DepenseForm() {
       bottomAction={
         <div style={{ flexShrink:0, padding:'12px 14px 28px', background:BG, borderTop:'1px solid var(--trait)' }}>
           <motion.button whileTap={{ scale:0.97 }} onClick={() => { if (canProceed) setStep(2); }}
-            style={{ width:'100%', background: canProceed ? P : '#E0E0E0', color: canProceed ? 'white' : '#aaa', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor: canProceed ? 'pointer' : 'default', fontFamily:'inherit', boxShadow: canProceed ? `0 4px 16px ${P}55` : 'none', transition:'all 0.2s' }}>
+            style={{ width:'100%', background: canProceed ? P : '#E0E0E0', color: canProceed ? 'white' : 'var(--encre-4)', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor: canProceed ? 'pointer' : 'default', fontFamily:'inherit', boxShadow: canProceed ? `0 4px 16px ${P}55` : 'none', transition:'all 0.2s' }}>
             + Noter une dépense
           </motion.button>
         </div>
@@ -279,7 +279,7 @@ export function DepenseForm() {
       bottomAction={
         <div style={{ flexShrink:0, padding:'8px 16px 32px', background:BG }}>
           <motion.button whileTap={{ scale:0.97 }} onClick={handleSave} disabled={isProcessing || !canSave}
-            style={{ width:'100%', background: !canSave ? '#E0E0E0' : P, color: !canSave ? '#aaa' : 'white', border:'none', borderRadius:20, padding:'18px 0', fontSize:16, fontWeight:800, cursor: !canSave ? 'default' : 'pointer', fontFamily:'inherit', boxShadow: !canSave ? 'none' : `0 4px 16px ${P}55`, transition:'all 0.2s' }}>
+            style={{ width:'100%', background: !canSave ? '#E0E0E0' : P, color: !canSave ? 'var(--encre-4)' : 'white', border:'none', borderRadius:20, padding:'18px 0', fontSize:16, fontWeight:800, cursor: !canSave ? 'default' : 'pointer', fontFamily:'inherit', boxShadow: !canSave ? 'none' : `0 4px 16px ${P}55`, transition:'all 0.2s' }}>
             {isProcessing ? 'Enregistrement...' : 'Enregistrer la dépense'}
           </motion.button>
         </div>

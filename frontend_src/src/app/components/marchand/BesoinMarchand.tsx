@@ -161,7 +161,7 @@ export function BesoinMarchand() {
                       className="flex-1 py-2.5 rounded-xl border-2 text-sm font-bold"
                       style={priorite === p
                         ? { backgroundColor: p === 'urgente' ? '#DC2626' : COLOR, borderColor: 'transparent', color: 'white' }
-                        : { backgroundColor: 'white', borderColor: '#E5E7EB', color: '#6B7280' }
+                        : { backgroundColor: 'white', borderColor: '#E5E7EB', color: 'var(--encre-3)' }
                       }>
                       {p === 'urgente' ? 'Urgente' : 'Normale'}
                     </motion.button>

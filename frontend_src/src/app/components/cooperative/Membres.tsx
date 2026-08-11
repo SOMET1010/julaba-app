@@ -1517,7 +1517,7 @@ export function Membres() {
                 className={`w-9 h-9 rounded-full flex items-center justify-center border-2 ${showFilters ? '' : 'border-gray-200 bg-white'}`}
                 style={showFilters ? { backgroundColor: C_LIGHT, borderColor: C } : {}} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
               >
-                <Filter className="w-4 h-4" style={showFilters ? { color: C } : { color: '#9CA3AF' }} />
+                <Filter className="w-4 h-4" style={showFilters ? { color: C } : { color: 'var(--encre-4)' }} />
               </motion.button>
             </div>
           </div>

@@ -414,7 +414,7 @@ export function BOAcademy() {
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm whitespace-nowrap transition-all"
             style={{
               backgroundColor: activeTab === tab ? 'white' : 'transparent',
-              color: activeTab === tab ? BO_DARK : '#6B7280',
+              color: activeTab === tab ? BO_DARK : 'var(--encre-3)',
               boxShadow: activeTab === tab ? '0 2px 8px rgba(0,0,0,0.10)' : 'none',
             }}
             whileHover={activeTab !== tab ? { y: -1 } : {}} whileTap={{ scale: 0.97 }}>

@@ -162,7 +162,7 @@ export function ProtectionSociale() {
                 <span
                   className="text-xs px-2.5 py-1 rounded-full font-semibold"
                   style={{
-                    color: a.statut === 'actif' ? '#166534' : a.statut === 'en_cours' ? st.color : '#6B7280',
+                    color: a.statut === 'actif' ? '#166534' : a.statut === 'en_cours' ? st.color : 'var(--encre-3)',
                     backgroundColor: a.statut === 'non_enrole' ? '#F3F4F6' : `${st.color}18`,
                   }}
                 >
@@ -277,7 +277,7 @@ export function ProtectionSociale() {
                       style={{
                         borderColor: actif ? st.color : '#E5E7EB',
                         backgroundColor: actif ? `${st.color}12` : '#fff',
-                        color: actif ? st.color : '#6B7280',
+                        color: actif ? st.color : 'var(--encre-3)',
                       }}
                     >
                       {o}
@@ -314,7 +314,7 @@ export function ProtectionSociale() {
                     style={{
                       borderColor: mode === mp ? COLOR : '#E5E7EB',
                       backgroundColor: mode === mp ? `${COLOR}12` : '#fff',
-                      color: mode === mp ? COLOR : '#6B7280',
+                      color: mode === mp ? COLOR : 'var(--encre-3)',
                     }}
                   >
                     {mp}

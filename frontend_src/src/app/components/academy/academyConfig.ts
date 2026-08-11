@@ -9,7 +9,7 @@ export const LEVEL_CONFIG: LevelConfig[] = [
     minPoints: 0,
     maxPoints: 199,
     badge: 'Débutant',
-    color: '#9CA3AF',
+    color: 'var(--encre-4)',
     benefits: ['Accès formations de base'],
   },
   {

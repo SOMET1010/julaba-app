@@ -145,7 +145,7 @@ function KPIDetailModal({
               {/* Formule */}
               {formule && (
                 <div style={{ background:'#f9f6f3', borderRadius:12, padding:'10px 14px' }}>
-                  <div style={{ fontSize:10, fontWeight:900, color:'#aaa', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:4 }}>Formule</div>
+                  <div style={{ fontSize:10, fontWeight:900, color:'var(--encre-4)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:4 }}>Formule</div>
                   <div style={{ fontSize:13, fontWeight:800, color:'#333' }}>{formule}</div>
                 </div>
               )}

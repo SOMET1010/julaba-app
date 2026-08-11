@@ -38,7 +38,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
           <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', marginBottom: '0.5rem' }}>
             {isNetworkFetchError ? 'Pas de connexion' : 'Aïe, quelque chose a raté !'}
           </h2>
-          <p style={{ color: '#6B7280', fontSize: '0.95rem', marginBottom: '1.5rem', maxWidth: 300 }}>
+          <p style={{ color: 'var(--encre-3)', fontSize: '0.95rem', marginBottom: '1.5rem', maxWidth: 300 }}>
             {isNetworkFetchError
               ? 'Vérifie ta connexion internet et réessaye ma chère.'
               : 'Pas d\'inquiétude, ça arrive. Clique sur réessayer pour continuer.'

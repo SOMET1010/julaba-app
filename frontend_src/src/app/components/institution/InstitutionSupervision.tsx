@@ -218,7 +218,7 @@ export function InstitutionSupervision() {
                   key={p.key}
                   onClick={() => setPeriode(p.key)}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all`}
-                  style={periode === p.key ? { backgroundColor: C, color: '#fff' } : { color: '#6B7280' }}
+                  style={periode === p.key ? { backgroundColor: C, color: '#fff' } : { color: 'var(--encre-3)' }}
                   whileTap={{ scale: 0.97 }}
                 >
                   {p.label}
@@ -345,7 +345,7 @@ export function InstitutionSupervision() {
                     ] as const).map(p => (
                       <motion.button key={p.key} onClick={() => setPeriode(p.key)}
                         className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-                        style={periode === p.key ? { backgroundColor: C, color: '#fff' } : { color: '#6B7280' }}
+                        style={periode === p.key ? { backgroundColor: C, color: '#fff' } : { color: 'var(--encre-3)' }}
                         whileTap={{ scale: 0.97 }}>
                         {p.label}
                       </motion.button>
@@ -402,7 +402,7 @@ export function InstitutionSupervision() {
                   key={t.key}
                   onClick={() => setTab(t.key)}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold transition-all`}
-                  style={tab === t.key ? { backgroundColor: C, color: '#fff' } : { color: '#6B7280' }}
+                  style={tab === t.key ? { backgroundColor: C, color: '#fff' } : { color: 'var(--encre-3)' }}
                   whileTap={{ scale: 0.97 }}
                 >
                   {t.label}

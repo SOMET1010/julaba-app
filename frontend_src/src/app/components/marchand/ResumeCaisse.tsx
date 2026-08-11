@@ -304,7 +304,7 @@ export function ResumeCaisse() {
             />
             {(['today','7days','30days','custom'] as Period[]).map((p) => (
               <button key={p} onClick={() => { setSelectedPeriod(p); }}
-                style={{ flex:1, padding:'10px 4px', fontSize:11, fontWeight:800, color: selectedPeriod===p ? 'white' : '#aaa', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                style={{ flex:1, padding:'10px 4px', fontSize:11, fontWeight:800, color: selectedPeriod===p ? 'white' : 'var(--encre-4)', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                 {p === 'today' ? "Aujourd'hui" : p === '7days' ? '7 jours' : p === '30days' ? 'Ce mois' : 'Perso'}
               </button>
             ))}
