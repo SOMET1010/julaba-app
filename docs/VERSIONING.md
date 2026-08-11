@@ -25,6 +25,10 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.11 — 11/08/2026 : la caisse suit le sous-profil marchand
+  (docs/SOUS_PROFILS_MARCHAND.md) — prix convenu par ligne en négoce
+  (demi-grossiste/grossiste), quantité tapée directement pour tous.
+  Parcours détaillante inchangé.
 - v5.0.0.10 — 11/08/2026 : ZÉRO ERREUR TypeScript (90 → 0 ; 241 → 0 sur la
   session). Le shim `leaflet.d.ts` qui écrasait @types/leaflet est supprimé,
   4 fichiers morts retirés (ui/carousel, drawer, input-otp, examples), et
