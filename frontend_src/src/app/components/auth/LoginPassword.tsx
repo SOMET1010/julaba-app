@@ -19,6 +19,7 @@ import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
 import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../services/comptesMemorises';
+import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
@@ -222,7 +223,9 @@ export function LoginPassword() {
   // GUIDAGE VOCAL selon le mode : en mode « lecture » (elle lit vite), on ne parle
   // PAS automatiquement (le texte suffit). En mixte/voix, Tata annonce erreurs et
   // consignes. La lecture manuelle (toucher Tata, le cadenas…) reste toujours possible.
-  useEffect(() => { if (error && guidageVocal(accessMode)) parle(error); }, [error]);
+  // L'erreur se SENT (vibration longue) quel que soit le profil — et se dit
+  // en guidage vocal. Une sourde ou une marchande dans le bruit la perçoit.
+  useEffect(() => { if (error) { vibrerErreur(); if (guidageVocal(accessMode)) parle(error); } }, [error]);
   useEffect(() => { if (step === 'password' && guidageVocal(accessMode)) parle('Entre ton code secret à 4 chiffres'); }, [step]);
   // « Tata se souvient de moi » : à l'arrivée, Tata SALUE par le prénom et dit le
   // geste à faire — l'écran n'a rien à lire. (Une seule fois, au montage.)
@@ -594,6 +597,7 @@ export function LoginPassword() {
         setUserProfile(result.user);
         // La reconnaissance a marché ICI → au prochain retour, geste unique.
         memoriserApresEntree(result.user as Record<string, unknown>, true);
+        vibrerSucces();
         // Persiste le jeton (auth mobile sans cookie cross-domaine), comme la connexion par code.
         try {
           if (result.accessToken) localStorage.setItem('julaba_access_token', result.accessToken);
@@ -740,6 +744,7 @@ export function LoginPassword() {
         // Entrée par code réussie → Tata se souvient d'elle sur ce téléphone
         // (le drapeau « la reconnaissance marche ici » déjà acquis est conservé).
         memoriserApresEntree(user as Record<string, unknown>, false);
+        vibrerSucces();
         // Auth mobile : on STOCKE le jeton (cookie cross-domaine bloqué sur mobile).
         // L'intercepteur fetch l'enverra en en-tête Authorization sur chaque appel.
         try {
