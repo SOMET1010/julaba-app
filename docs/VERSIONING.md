@@ -25,6 +25,13 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.20 — 11/08/2026 : l'audit UX d'Alex devient LE document de
+  gouvernance (docs/AUDIT_UX.md) avec réponse d'architecte point par point
+  (docs/REPONSE_AUDIT.md) : B1 panier double CONFIRMÉ dans le code, B3
+  crédit non atomique CONFIRMÉ, matrice de capacités Web/PWA/APK remplie
+  depuis les recettes, positions sur les 10 décisions métier. Geste
+  immédiat B5 : la dictée du CODE SECRET est supprimée (un secret ne se
+  dit pas en public) — le code s'entre au pavé, la reconnaissance l'évite.
 - v5.0.0.19 — 11/08/2026 : cartographie complète des parcours
   (docs/PARCOURS.md) — écrans, textes et voix de chaque rôle, inventaire
   des 137 clips + 8 clips d'histoire, zones SANS voix, et analyse d'écarts
