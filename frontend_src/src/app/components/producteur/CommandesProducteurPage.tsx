@@ -1308,7 +1308,8 @@ export function ProducteurCommandes() {
                           onChange={(e) =>
                             setNewForm((prev) => ({
                               ...prev,
-                              prixUnitaire: e.target.value === '' ? '' : parseInt(e.target.value),
+                              // Champ vidé = '' à l'écran (état hérité plus large que le type déclaré).
+                              prixUnitaire: (e.target.value === '' ? '' : parseInt(e.target.value)) as unknown as number,
                             }))
                           }
                           className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 font-black text-2xl text-gray-900"
@@ -2215,7 +2216,7 @@ export function ProducteurCommandes() {
                     <input
                       type="number"
                       value={nouveauPrix || ''}
-                      onChange={e => setNouveauPrix(e.target.value === '' ? '' : parseInt(e.target.value))}
+                      onChange={e => setNouveauPrix((e.target.value === '' ? '' : parseInt(e.target.value)) as unknown as number)}
                       className="flex-1 px-4 py-4 rounded-2xl border-2 focus:outline-none font-black text-3xl text-gray-900 text-center bg-white"
                       style={{ borderColor: '#8b5cf6' }}
                     />

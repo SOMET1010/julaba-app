@@ -25,6 +25,10 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.10 — 11/08/2026 : ZÉRO ERREUR TypeScript (90 → 0 ; 241 → 0 sur la
+  session). Le shim `leaflet.d.ts` qui écrasait @types/leaflet est supprimé,
+  4 fichiers morts retirés (ui/carousel, drawer, input-otp, examples), et
+  `npm run verify` (typecheck 0 + 8 suites) devient LE portail avant push.
 - v5.0.0.9 — 11/08/2026 : résorption TypeScript paquet 3 — 55 erreurs en
   moins (145 → 90). Trois bugs réels corrigés au passage : titre des
   notifications coopérative jamais transmis (titre → title), tuiles du

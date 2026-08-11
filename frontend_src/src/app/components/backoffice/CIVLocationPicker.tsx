@@ -36,7 +36,7 @@ function FilterableSelect({
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Debounce de la recherche (150ms)
   const handleSearchChange = useCallback((val: string) => {

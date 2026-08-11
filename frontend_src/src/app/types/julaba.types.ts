@@ -68,7 +68,7 @@ export interface EscrowPayment {
   payerId: string; // Marchand qui paie
   receiverId: string; // Producteur/Coop qui reçoit
   amount: number;
-  status: 'BLOCKED' | 'RELEASED' | 'REFUNDED';
+  status: 'PENDING' | 'BLOCKED' | 'RELEASED' | 'REFUNDED';
   createdAt: string;
   releasedAt?: string;
   releaseTrigger?: 'MANUAL' | 'AUTO_TIMEOUT' | 'VALIDATION';

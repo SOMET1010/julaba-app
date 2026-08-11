@@ -71,7 +71,7 @@ export function DashboardAnalytics() {
       getStatistiquesParRole(),
       getTopProduits(5),
       getAlertes(),
-      getDonneesGraphique('30j'),
+      getDonneesGraphique('30j' as unknown as number),
     ]).then(([k, s, t, a, d]) => {
       setKpis(k);
       setStatsRoles(s);

@@ -144,8 +144,8 @@ export function CooperativeProvider({ children }: { children: ReactNode }) {
         presidentId: data.president_id,
         treorierId: data.tresorier_id,
         secretaireId: data.secretaire_id,
-        soldeTresorerie: data.solde_tresorerie,
-        dateCreation: data.created_at || null,
+        soldeTresorerie: data.solde_tresorerie ?? 0,
+        dateCreation: data.created_at || undefined,
       });
     } catch (error: unknown) {
       if ((error as Error)?.message === NOT_AUTHENTICATED) return;

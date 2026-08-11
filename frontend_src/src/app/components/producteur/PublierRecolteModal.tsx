@@ -53,7 +53,7 @@ export function PublierRecolteModal({ recolte, cycle, isOpen, onClose }: Publier
         prix_unitaire: prixUnitaire,
         qualite: recolte.qualite || 'standard',
         localisation: localisation || '',
-        photo_url: recolte.photoUrl || null,
+        photo_url: recolte.photoUrl || undefined,
         date_expiration: new Date(Date.now() + dureeJours * 86400000).toISOString().split('T')[0],
       });
       void speak('Récolte publiée avec succès !');

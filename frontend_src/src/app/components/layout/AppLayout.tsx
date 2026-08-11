@@ -81,7 +81,7 @@ export function AppLayout() {
         userRole={user.role}
       />
       {/* Sidebar Desktop Unifié */}
-      <Sidebar role={user.role} />
+      <Sidebar role={user.role as 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur'} />
 
       {/* Offline Badge */}
       <AnimatePresence>
@@ -105,7 +105,7 @@ export function AppLayout() {
       </main>
 
       {/* Bottom Navigation Mobile — masquée sur Academy */}
-      {!hideBottomBar && <BottomBar role={user.role} />}
+      {!hideBottomBar && <BottomBar role={user.role as 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur'} />}
 
       {/* Dev Profile Switcher - Only in development */}
       {import.meta.env.DEV && <ProfileSwitcher />}

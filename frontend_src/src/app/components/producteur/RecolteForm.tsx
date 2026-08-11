@@ -270,7 +270,7 @@ export function RecolteForm() {
         produit: cultureName,
         quantite: quantiteEnKg,
         unite: 'kg',
-        qualite: qualite || 'standard',
+        qualite: (qualite || 'standard') as 'standard' | 'premium' | 'bio',
         date_recolte: dateRecolte || new Date().toISOString().split('T')[0],
         localisation: localisation || '',
         prix_unitaire: prixUnitaire !== '' ? Number(prixUnitaire) : 0,

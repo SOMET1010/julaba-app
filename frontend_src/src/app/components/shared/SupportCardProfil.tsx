@@ -59,7 +59,8 @@ export function SupportCardProfil({ role, delay = 0.45 }: SupportCardProfilProps
 
   // Mes tickets avec réponses non lues du BO
   const mesTickets = tickets;
-  const reponsesNonLues = 0;
+  // Compteur jamais branché (0 en dur) — voir docs/RESIDUS.md.
+  const reponsesNonLues: number = 0;
   const activeContacts = (config.contacts || []).filter(c => c.actif).slice(0, 3);
 
   const handleTicketSubmit = async () => {

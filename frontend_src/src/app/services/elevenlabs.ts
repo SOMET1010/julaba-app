@@ -234,7 +234,7 @@ export async function fetchTTS(text: string, signal?: AbortSignal, timeoutMs = 8
 
   if (!signal) {
     const existing = _inflight.get(key);
-    if (existing) return existing;
+    if (existing) return existing ?? null;
   }
 
   const promise = (async (): Promise<string | null> => {

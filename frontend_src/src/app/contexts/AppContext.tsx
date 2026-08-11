@@ -160,7 +160,7 @@ export interface MarketplaceItem {
 interface AppContextType {
   // User & Auth
   user: User | null;
-  setUser: (user: User | null) => void;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
   isAuthenticated: boolean;
   accessToken: string | null;
   setAccessToken: (token: string | null) => void;
@@ -1000,11 +1000,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getSalesHistory = (filters?: { startDate?: string; endDate?: string; productName?: string; paymentMethod?: string }) => {
     let filteredTransactions = transactions.filter((t) => t.type === 'vente');
 
-    if (filters?.startDate) {
-      filteredTransactions = filteredTransactions.filter((t) => new Date(t.date) >= new Date(filters.startDate));
+    const dateDebut = filters?.startDate;
+    if (dateDebut) {
+      filteredTransactions = filteredTransactions.filter((t) => new Date(t.date) >= new Date(dateDebut));
     }
-    if (filters?.endDate) {
-      filteredTransactions = filteredTransactions.filter((t) => new Date(t.date) <= new Date(filters.endDate));
+    const dateFin = filters?.endDate;
+    if (dateFin) {
+      filteredTransactions = filteredTransactions.filter((t) => new Date(t.date) <= new Date(dateFin));
     }
     if (filters?.productName) {
       filteredTransactions = filteredTransactions.filter((t) => t.productName.toLowerCase().includes((filters.productName ?? '').toLowerCase()));
