@@ -25,6 +25,9 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.4 — 11/08/2026 : unification vocale lot 2 — après la vente d'un
+  produit inconnu, Tata propose de l'ajouter à la boutique (prix dicté,
+  refus mémorisé par produit) ; les ventes suivantes sont appariées.
 - v5.0.0.3 — 11/08/2026 : contraste v2 — couche de tokens CSS (`--encre*`,
   `--trait`, styles/tokens.css) surchargée proprement par le mode soleil ;
   4 écrans cœur marchande migrés (caisse, accueil, ventes, résumé),
