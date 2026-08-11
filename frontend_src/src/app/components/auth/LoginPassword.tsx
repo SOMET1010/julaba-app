@@ -143,7 +143,11 @@ export function LoginPassword() {
 
   // Accueil personnalisé : si une marchande est déjà connue sur ce téléphone, on
   // la salue par son prénom (ton « vous », chaleureux et respectueux).
+  // Source de vérité : le COMPTE MÉMORISÉ (comptesMemorises, survit à la
+  // déconnexion) ; julaba_auth_user en simple repli (effacé au logout).
   const cachedPrenom = (() => {
+    const memorise = (compteConnu?.prenom || '').trim();
+    if (memorise) return memorise;
     try {
       const u = JSON.parse(localStorage.getItem('julaba_auth_user') || 'null');
       return (u?.firstName || u?.first_name || u?.prenom || '').toString().trim();

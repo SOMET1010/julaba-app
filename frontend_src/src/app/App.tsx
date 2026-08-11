@@ -31,8 +31,7 @@ import { InstitutionAccessProvider } from './contexts/InstitutionAccessContext';
 import { ProducteurProvider } from './contexts/ProducteurContext';
 import { ShortcutsProvider } from './contexts/ShortcutsContext';
 import { MotionConfig } from 'motion/react';
-
-const TEXT_FONT_SIZES = [11, 12, 13, 15, 17, 19, 22];
+import { appliquerTailleTexteAuDocument } from './utils/tailleTexte';
 
 function AnimationWrapper({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
@@ -42,8 +41,10 @@ function AnimationWrapper({ children }: { children: React.ReactNode }) {
     ? (user.preferences.text_size as number)
     : 3;
 
+  // Taille du texte = ZOOM réel (utils/tailleTexte). On n'écrit plus
+  // --font-size inline : la valeur écrasait la base relevée du mode soleil.
   React.useEffect(() => {
-    document.documentElement.style.setProperty('--font-size', TEXT_FONT_SIZES[textSize] + 'px');
+    appliquerTailleTexteAuDocument(textSize);
   }, [textSize]);
 
   React.useEffect(() => {
