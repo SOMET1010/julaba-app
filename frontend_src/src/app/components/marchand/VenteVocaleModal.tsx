@@ -284,7 +284,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
 
             {/* Mains libres (mot-réveil « Julaba ») : DÉSACTIVÉ tant qu'il n'y a pas
                 de version hors-ligne (l'ancienne nécessitait Internet). On n'affiche
-                donc rien ici — l'appui-pour-parler (écoute Vosk sur l'appareil) reste
+                donc rien ici — l'appui-pour-parler (écoute sherpa sur l'appareil) reste
                 le mode de vente vocale. `wakeSupported` est toujours faux. */}
             {wakeSupported && (
               <div style={{ marginTop: 12 }}>

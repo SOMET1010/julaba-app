@@ -715,8 +715,8 @@ export function useVoiceCore({
     // — zéro coût, zéro dépendance cloud), donc il ne faisait que produire des
     // « souci technique ». Désormais : soit on comprend, soit on guide gentiment,
     // jamais d'erreur réseau.
-    // À la toute première utilisation (ou après vidage du cache), le modèle
-    // (~40 Mo) se télécharge tout seul une fois, puis reste en cache.
+    // Le moteur (sherpa-onnx) est EMBARQUÉ dans l'application : rien à
+    // télécharger, on vérifie juste qu'il répond avant de transcrire.
     setState("thinking");
     startThinkingPhrases();
     try {

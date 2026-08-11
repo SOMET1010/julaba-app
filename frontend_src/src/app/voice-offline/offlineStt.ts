@@ -1,90 +1,92 @@
 // ──────────────────────────────────────────────────────────────────────────
-// STT hors-ligne pour Julaba — transcription 100 % SUR L'APPAREIL (Vosk WASM).
+// STT hors-ligne pour Julaba — moteur UNIQUE : sherpa-onnx NATIF (APK Android).
 //
-// Le flux voix de Julaba enregistre un blob WAV (MediaRecorder -> convertToWav)
-// puis l'envoie au serveur. Ce module fournit la version OFFLINE : on transcrit
-// le même blob dans le navigateur, sans réseau.
+// Décision du 11/08/2026 (docs/INCLUSION.md) : Vosk WASM est RETIRÉ. Il créait
+// un conflit de double moteur — sur l'APK, la dictée en direct téléchargeait
+// encore le modèle Vosk (~40 Mo) alors que sherpa-onnx est déjà embarqué et lit
+// « 12 500 » directement, hors-ligne, sans grammaire.
 //
-// vosk-browser (~5,8 Mo) est chargé par un import DYNAMIQUE : il n'entre dans le
-// bundle que lorsqu'on active/utilise le mode hors-ligne. Le modèle (~40 Mo) est
-// téléchargé une fois puis mis en cache par le navigateur (offline ensuite).
+// Ce module garde la MÊME interface qu'avant (les appelants ne changent pas) :
+// - offlineModelReady()/offlineModelInstalled() : sherpa natif disponible ?
+// - ensureOfflineModel() : vérifie le moteur (plus aucun téléchargement).
+// - startLiveDictation() : dictée « en direct » re-transcrite par lots courts
+//   (pseudo-live) via le moteur natif — les chiffres se remplissent à l'écran.
+// - transcribeWav() : transcription d'un blob complet.
+//
+// Sur le WEB (navigateur, pas d'APK) : pas de moteur natif → pas de STT
+// hors-ligne. Le clavier reste le filet ; la voix complète vit dans l'appli
+// Android. C'est un choix assumé (un seul moteur, zéro téléchargement surprise).
 // ──────────────────────────────────────────────────────────────────────────
 
-import { GRAMMAR_WORDS } from './vocabulaire';
-import { VOSK_MODEL_URL } from './voskModel';
 import { nativeStt } from './nativeStt';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Any = any;
-
-let modelPromise: Promise<Any> | null = null;
-let modelReady = false;
-let sharedCtx: AudioContext | null = null;
-
-// Drapeau PERSISTANT : le modèle (~40 Mo) a déjà été téléchargé une fois sur cet
-// appareil (il reste en cache navigateur). `modelReady`, lui, est une variable
-// mémoire remise à zéro à CHAQUE rechargement de page — sans ce drapeau, l'appli
-// « oubliait » le mode hors-ligne après un reload et retombait sur le cloud (mort),
-// d'où le « petit souci technique ». On mémorise donc l'installation durablement.
+// Drapeau PERSISTANT : le moteur natif a déjà répondu « disponible » sur cet
+// appareil. Permet à offlineModelInstalled() (synchrone) d'être juste dès le
+// lancement, avant que la sonde asynchrone n'ait re-confirmé.
 const INSTALL_KEY = 'julaba_offline_installed';
 
-/** Vrai si le modèle est chargé EN MÉMOIRE, prêt à transcrire tout de suite. */
+let engineReady = false;          // sherpa natif confirmé DISPONIBLE (sonde ok)
+let probePromise: Promise<boolean> | null = null;
+
+/** Vrai si le moteur natif est confirmé disponible, prêt à transcrire. */
 export function offlineModelReady(): boolean {
-  return modelReady;
+  return engineReady;
 }
 
-/** Vrai si le modèle a déjà été installé sur cet appareil (persistant, survit au reload). */
+/** Vrai si le moteur a déjà été vu disponible sur cet appareil (persistant). */
 export function offlineModelInstalled(): boolean {
+  if (engineReady) return true;
   try { return localStorage.getItem(INSTALL_KEY) === '1'; } catch { return false; }
 }
 
-/** Télécharge + initialise le modèle une seule fois (idempotent). */
-export function ensureOfflineModel(): Promise<Any> {
-  if (!modelPromise) {
-    modelPromise = (async () => {
-      const { createModel } = await import('vosk-browser'); // code-split ici
-      const model = await createModel(VOSK_MODEL_URL);
-      modelReady = true;
-      try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ }
-      return model;
-    })().catch((e) => {
-      modelPromise = null;
-      modelReady = false;
-      throw e;
-    });
+/** Sonde le moteur natif (idempotent, partagé). Met à jour les drapeaux. */
+function probeEngine(): Promise<boolean> {
+  if (!probePromise) {
+    probePromise = (async () => {
+      const ok = await nativeStt.isAvailable();
+      engineReady = ok;
+      if (ok) { try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ } }
+      return ok;
+    })().catch(() => { probePromise = null; return false; });
   }
-  return modelPromise;
+  return probePromise;
 }
 
 /**
- * Au démarrage : si le mode hors-ligne a déjà été installé, on RÉ-ACTIVE le modèle
- * en tâche de fond (rapide, depuis le cache navigateur) pour qu'il soit prêt sans
- * que la marchande ait à ré-installer. Ne fait rien si jamais installé.
+ * Vérifie que le moteur est là (plus AUCUN téléchargement : sherpa est embarqué
+ * dans l'APK). Rejette avec un message simple si on n'est pas dans l'appli.
  */
+export async function ensureOfflineModel(): Promise<void> {
+  const ok = await probeEngine();
+  if (!ok) throw new Error("La voix marche dans l'application Julaba installée sur le téléphone.");
+}
+
+/** Au démarrage : sonde le moteur en tâche de fond (rapide, aucun réseau). */
 export function warmOfflineModelIfInstalled(): void {
-  if (modelReady || modelPromise) return;
-  if (!offlineModelInstalled()) return;
-  ensureOfflineModel().catch(() => { /* ré-échauffement silencieux */ });
+  void probeEngine();
 }
 
 /**
- * Écoute EN DIRECT et transcrit au fil de l'eau (100 % sur l'appareil). Sert à la
- * dictée d'un numéro : on veut voir les chiffres se remplir et s'ARRÊTER dès qu'on
- * a le numéro complet — pas attendre un minuteur.
+ * Écoute EN DIRECT et transcrit au fil de l'eau, 100 % sur l'appareil.
+ * Sherpa natif ne fait que du « par lots » : on accumule le son du micro et on
+ * re-transcrit TOUT le tampon à intervalles courts (~0,9 s) — à l'écran, les
+ * chiffres se remplissent comme avant. `stop()` fait la passe finale.
  *
- * `onText(texte, estFinal)` est appelé à chaque résultat partiel (estFinal=false)
- * et à chaque fin de phrase détectée par le moteur (estFinal=true).
- * Renvoie `{ stop }` : appeler `stop()` coupe tout proprement (micro compris).
+ * `grammaireIgnoree` : l'ancien moteur (Vosk) acceptait une liste de mots ;
+ * sherpa n'en a pas besoin (il écrit « 12 500 » directement). Paramètre gardé
+ * pour ne pas casser les appelants, valeur ignorée.
  */
 export async function startLiveDictation(
   stream: MediaStream,
   onText: (texte: string, estFinal: boolean) => void,
-  customGrammar?: string[],
+  grammaireIgnoree?: string[],
   onDebug?: (tag: string, data?: unknown) => void,
 ): Promise<{ stop: () => Promise<void> }> {
+  void grammaireIgnoree;
   const dbg = (t: string, d?: unknown) => { try { onDebug?.(t, d); } catch { /* ignore */ } };
-  const model = await ensureOfflineModel();
-  dbg('LIVE_MODEL_OK');
+  await ensureOfflineModel();
+  dbg('LIVE_MODEL_OK', { engine: 'sherpa-native' });
+
   const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const ctx = new AC();
   dbg('LIVE_CTX', { state: ctx.state, sampleRate: ctx.sampleRate });
@@ -95,20 +97,12 @@ export async function startLiveDictation(
     try { await ctx.resume(); } catch { /* ignore */ }
     dbg('LIVE_RESUME', { state: ctx.state });
   }
-  const grammar = customGrammar ? JSON.stringify(customGrammar)
-    : JSON.stringify(GRAMMAR_WORDS);
-  const recognizer: Any = new model.KaldiRecognizer(ctx.sampleRate, grammar);
 
-  let acc = ''; // texte des phrases DÉJÀ finalisées (on y ajoute chaque 'result')
-  recognizer.on('result', (m: { result?: { text?: string } }) => {
-    const t = (m?.result?.text || '').trim();
-    if (t) acc = (acc + ' ' + t).trim();
-    onText(acc, true);
-  });
-  recognizer.on('partialresult', (m: { result?: { partial?: string } }) => {
-    const p = (m?.result?.partial || '').trim();
-    onText((acc + ' ' + p).trim(), false);
-  });
+  // Tampon d'échantillons bruts (mono). Borné à 90 s : au-delà on garde la fin
+  // (les dictées Julaba durent quelques secondes, c'est un simple garde-fou).
+  const MAX_SAMPLES = ctx.sampleRate * 90;
+  let chunks: Float32Array[] = [];
+  let totalSamples = 0;
 
   const source = ctx.createMediaStreamSource(stream);
   // ScriptProcessor : simple et fiable sur Android/WebView (cible Julaba). On le
@@ -122,27 +116,68 @@ export async function startLiveDictation(
   mute.connect(ctx.destination);
   let framesSeen = 0;
   processor.onaudioprocess = (ev: AudioProcessingEvent) => {
-    if (framesSeen === 0) dbg('LIVE_AUDIO_FIRST'); // 1re trame audio reçue = le micro pousse bien
+    if (framesSeen === 0) dbg('LIVE_AUDIO_FIRST'); // 1re trame reçue = le micro pousse bien
     framesSeen++;
-    try { recognizer.acceptWaveform(ev.inputBuffer); } catch { /* ignore une trame */ }
+    chunks.push(new Float32Array(ev.inputBuffer.getChannelData(0)));
+    totalSamples += ev.inputBuffer.length;
+    while (totalSamples > MAX_SAMPLES && chunks.length > 1) {
+      totalSamples -= chunks[0].length;
+      chunks.shift();
+    }
   };
   dbg('LIVE_WIRED');
 
+  const concat = (): Float32Array => {
+    const out = new Float32Array(totalSamples);
+    let off = 0;
+    for (const c of chunks) { out.set(c, off); off += c.length; }
+    return out;
+  };
+
+  // Re-transcription périodique du tampon complet. Une seule passe à la fois :
+  // si le moteur est encore occupé, on saute le tour (le suivant rattrape).
   let stopped = false;
+  let busy = false;
+  let lastLen = 0;
+  const INTERVAL_MS = 900;
+  const passe = async (finale: boolean): Promise<string> => {
+    if (busy) return '';
+    busy = true;
+    try {
+      const texte = await nativeStt.transcribe(concat(), ctx.sampleRate);
+      if (!stopped || finale) onText(texte, finale);
+      return texte;
+    } catch { return ''; }
+    finally { busy = false; }
+  };
+  const timer = setInterval(() => {
+    if (stopped) return;
+    if (totalSamples === lastLen) return; // rien de neuf depuis la dernière passe
+    lastLen = totalSamples;
+    void passe(false);
+  }, INTERVAL_MS);
+
   const stop = async (): Promise<void> => {
     if (stopped) return;
     stopped = true;
+    clearInterval(timer);
     try { processor.onaudioprocess = null as unknown as (ev: AudioProcessingEvent) => void; } catch { /* */ }
     try { processor.disconnect(); } catch { /* */ }
     try { source.disconnect(); } catch { /* */ }
     try { mute.disconnect(); } catch { /* */ }
-    try { if (typeof recognizer.remove === 'function') recognizer.remove(); } catch { /* */ }
+    // Passe FINALE sur tout ce qui a été entendu (attend la fin d'une passe en
+    // cours : petite boucle de politesse, jamais plus de ~1,5 s).
+    for (let i = 0; busy && i < 15; i++) await new Promise<void>(r => setTimeout(r, 100));
+    await passe(true);
+    chunks = [];
+    totalSamples = 0;
     try { await ctx.close(); } catch { /* */ }
   };
 
   return { stop };
 }
 
+let sharedCtx: AudioContext | null = null;
 function getCtx(): AudioContext {
   if (!sharedCtx || sharedCtx.state === 'closed') {
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -151,75 +186,15 @@ function getCtx(): AudioContext {
   return sharedCtx;
 }
 
-/** Enveloppe un Float32Array en AudioBuffer au sample rate donné. */
-function makeAudioBuffer(sampleRate: number, data: Float32Array): AudioBuffer {
-  const ctx = new OfflineAudioContext(1, data.length, sampleRate);
-  const ab = ctx.createBuffer(1, data.length, sampleRate);
-  ab.getChannelData(0).set(data); // évite la contrainte de type de copyToChannel
-  return ab;
-}
-
 /**
- * Transcrit un blob/ArrayBuffer WAV hors-ligne et renvoie le texte final.
- * @param wav      le WAV (16 kHz mono attendu, mais tout format décodable marche)
- * @param useGrammar limite au vocabulaire du marché (améliore la précision)
+ * Transcrit un blob/ArrayBuffer audio hors-ligne et renvoie le texte final.
+ * Les paramètres de grammaire de l'ancien moteur sont gardés (ignorés) pour ne
+ * pas casser les appelants.
  */
 export async function transcribeWav(wav: Blob | ArrayBuffer, useGrammar = true, customGrammar?: string[]): Promise<string> {
-  // APK Android : on PRÉFÈRE le moteur sherpa-onnx NATIF (charge les échantillons
-  // bruts, rééchantillonne à 16 kHz). Le WAV est décodé ici pour extraire les
-  // Float32 ; la bascule reste à la même interface pour tous les appelants.
-  if (await nativeStt.isAvailable()) {
-    try {
-      const arrayBuf = wav instanceof Blob ? await wav.arrayBuffer() : wav.slice(0);
-      const audioBuf = await getCtx().decodeAudioData(arrayBuf as ArrayBuffer);
-      const samples = audioBuf.getChannelData(0);
-      const nativeText = await nativeStt.transcribe(samples, audioBuf.sampleRate);
-      if (nativeText) return nativeText;
-    } catch { /* repli Vosk si le natif échoue */}
-  }
-
-  const model = await ensureOfflineModel();
+  void useGrammar; void customGrammar;
+  await ensureOfflineModel();
   const arrayBuf = wav instanceof Blob ? await wav.arrayBuffer() : wav.slice(0);
   const audioBuf = await getCtx().decodeAudioData(arrayBuf as ArrayBuffer);
-
-  const sampleRate = audioBuf.sampleRate;
-  // customGrammar : liste de mots ciblée (ex. chiffres pour un numéro de tel) →
-  // précision maximale. Sinon grammaire marché, sinon modèle complet.
-  const grammar = customGrammar ? JSON.stringify(customGrammar)
-    : useGrammar ? JSON.stringify(GRAMMAR_WORDS) : undefined;
-  const recognizer: Any = grammar
-    ? new model.KaldiRecognizer(sampleRate, grammar)
-    : new model.KaldiRecognizer(sampleRate);
-
-  const channel = audioBuf.getChannelData(0);
-  const CHUNK = 4096;
-
-  return new Promise<string>((resolve, reject) => {
-    let finalText = '';
-    let resolved = false;
-
-    const cleanup = () => { if (typeof recognizer.remove === 'function') { try { recognizer.remove(); } catch { /* */ } } };
-    const done = (t: string) => { if (resolved) return; resolved = true; cleanup(); resolve((t || '').trim()); };
-
-    recognizer.on('result', (m: { result: { text: string } }) => {
-      const t = m?.result?.text ?? '';
-      if (t) finalText = t;
-    });
-
-    (async () => {
-      try {
-        for (let off = 0; off < channel.length; off += CHUNK) {
-          const slice = channel.slice(off, off + CHUNK);
-          recognizer.acceptWaveform(makeAudioBuffer(sampleRate, slice));
-          // Laisser tourner la boucle d'évènements pour les callbacks WASM.
-          await new Promise<void>((r) => setTimeout(r, 0));
-        }
-        // Laisser le dernier 'result' arriver, puis finaliser.
-        await new Promise<void>((r) => setTimeout(r, 350));
-        done(finalText);
-      } catch (e) {
-        if (!resolved) { resolved = true; cleanup(); reject(e); }
-      }
-    })();
-  });
+  return nativeStt.transcribe(audioBuf.getChannelData(0), audioBuf.sampleRate);
 }

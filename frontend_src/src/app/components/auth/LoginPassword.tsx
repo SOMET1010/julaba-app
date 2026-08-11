@@ -20,15 +20,6 @@ import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestio
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
 import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../services/comptesMemorises';
 
-// Grammaire CHIFFRES pour Vosk : dictée d'un numéro de téléphone → on limite le
-// moteur aux mots-nombres (précision maximale, pas de confusion avec du vocabulaire).
-const DIGIT_GRAMMAR = [
-  'zéro', 'zero', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
-  'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf',
-  'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'quatre-vingt', 'quatre-vingts', 'quatre-vingt-dix',
-  'cent', 'et', '[unk]',
-];
-
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
 type DicteeCfg = {
@@ -365,7 +356,7 @@ export function LoginPassword() {
     }
   };
 
-  // Dictée vocale du numéro — 100 % HORS-LIGNE via Vosk, EN DIRECT. On transcrit
+  // Dictée vocale du numéro — 100 % HORS-LIGNE via sherpa-onnx (natif), EN DIRECT. On transcrit
   // pendant qu'elle parle : les chiffres se remplissent à l'écran et on s'ARRÊTE
   // DÈS QU'ON A UN NUMÉRO COMPLET ET VALIDE (10 chiffres, règle CI) — jamais sur un
   // minuteur. Clavier = filet. Aucune reconnaissance navigateur (Internet).
@@ -401,7 +392,7 @@ export function LoginPassword() {
     vlog('MODEL_READY', { ready: offlineModelReady(), installed: offlineModelInstalled() });
     vlog('TTS_VOICE', voixSecoursNom());
 
-    if (!offlineModelReady()) { vlog('VOSK_NOT_READY'); cfg.siPasPrete(); return; }
+    if (!offlineModelReady()) { vlog('STT_NOT_READY'); cfg.siPasPrete(); return; }
 
     vlog('MIC_ASK');
     let stream: MediaStream;
@@ -459,7 +450,7 @@ export function LoginPassword() {
         if (estFinal) {
           settleTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 1600);
         }
-      }, DIGIT_GRAMMAR, (tag, data) => vlog(tag, data));
+      }, undefined, (tag, data) => vlog(tag, data));
       vlog('LIVE_START');
     } catch (e) {
       vlog('LIVE_FAIL', String(e));
@@ -491,7 +482,7 @@ export function LoginPassword() {
       if (num.length > 0) { setPhone(num); setError(''); setShowKeypad(true); parle('Complète ton numéro sur le clavier.'); return; }
       setError("Je n'ai pas compris. Tape ton numéro juste ici 👇"); setShowKeypad(true); parle("Je n'ai pas compris. Tape ton numéro juste ici.");
     },
-    buildTag: 'vosk-login-live-v2',
+    buildTag: 'sherpa-login-live-v1',
     siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, il faut installer ma voix une fois. Touche le bouton, ou tape ton numéro."); },
     siMicRefuse: () => { setError('Autorise le micro, ou tape ton numéro 👇'); parle('Autorise le micro, ou tape ton numéro.'); setShowKeypad(true); },
     siEchec: () => { setShowKeypad(true); parle('Tape ton numéro juste ici.'); },
@@ -513,7 +504,7 @@ export function LoginPassword() {
       if (code.length > 0) { setPinInput(code); parle('Complète ton code sur le clavier.'); return; }
       parle("Je n'ai pas compris. Chuchote ton code, ou tape-le.");
     },
-    buildTag: 'vosk-code-live-v1',
+    buildTag: 'sherpa-code-live-v1',
     siPasPrete: () => { parle('Tape ton code juste ici.'); },
     siMicRefuse: () => { parle('Autorise le micro, ou tape ton code.'); },
     siEchec: () => { parle('Tape ton code juste ici.'); },
@@ -554,7 +545,7 @@ export function LoginPassword() {
       if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
       if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
-      // Coupe une dictée EN DIRECT en cours (moteur Vosk + micro) au démontage.
+      // Coupe une dictée EN DIRECT en cours (moteur + micro) au démontage.
       try { void liveStopRef.current?.(); } catch { /* ignore */ }
       try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
       if (phoneToPasswordTimeout.current) {
