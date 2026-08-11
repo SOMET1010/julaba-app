@@ -25,6 +25,11 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.7 — 11/08/2026 : résorption TypeScript paquet 1 — 49 erreurs en
+  moins (239 → 190) : chaîne academy morte supprimée, types d'API
+  complétés (producteur), enveloppe StockContext cassée retirée. Un bug
+  latent découvert et consigné (filtres de publications ignorés par
+  l'adaptateur).
 - v5.0.0.6 — 11/08/2026 : nettoyage des résidus legacy, passe 1 — 41
   fichiers morts supprimés (specs/logs/SVG de imports/, ancien accueil,
   mot-réveil désactivé, artefact Ollama), registre docs/RESIDUS.md ouvert.
