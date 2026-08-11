@@ -5,6 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 import { registerWebAuthn } from '../../hooks/useWebAuthn';
 import { doitProposerReconnaissance, marquerBiometrie, noterRefusProposition } from '../../services/comptesMemorises';
 import { guidageVocal } from '../../utils/accessMode';
+import { vibrerSucces } from '../../utils/haptique';
 
 /**
  * « Tata propose de me reconnaître » (connexion inclusive, lot 2).
@@ -55,6 +56,7 @@ export function PropositionReconnaissance() {
       const result = await registerWebAuthn();
       if (result.success) {
         try { marquerBiometrie(window.localStorage, phoneRef.current, true); } catch { /* ignore */ }
+        vibrerSucces();
         if (guidageVocal()) speak('C\'est fait ! La prochaine fois, ton téléphone te reconnaîtra.');
       } else {
         // Échec ou annulation : on n'insiste pas (même politesse qu'un « Non »).

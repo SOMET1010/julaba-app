@@ -11,6 +11,7 @@ import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { partagerRecu } from '../../utils/recu.utils';
 import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
 import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/fcfa';
+import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
 import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 
@@ -81,6 +82,7 @@ export function POSCaisse() {
   const insuffisant = recu > 0 && recu < total;
   const ajouterCoupure = (valeur: number) => {
     setMontantRecu(String(recu + valeur));
+    vibrerTic(); // se SENT aussi (bruit du marché, marchande qui n'entend pas)
     dire(direCoupure(valeur));
   };
   const monnaieDecomposee = useMemo(() => decomposerMonnaie(monnaie), [monnaie]);
@@ -142,12 +144,14 @@ export function POSCaisse() {
       setMontantRecu('');
       setShowCart(false);
       setShowSuccess(true);
-      // Confirmation PARLÉE (comme la vente vocale) : une non-lectrice entend que
-      // sa vente est bien enregistrée, sans avoir à lire le petit texte.
+      // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
+      // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
+      vibrerSucces();
       dire(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs`);
     } catch (e) {
       console.error(e);
-      dire("Erreur lors de l'enregistrement de la vente");
+      vibrerErreur();
+      dire("La vente n'a pas pu être enregistrée. Réessaie.");
     }
     finally { paiementEnCoursRef.current = false; setIsProcessing(false); }
   };
@@ -167,7 +171,8 @@ export function POSCaisse() {
       const prod = products.find((p) => p.id === item.productId);
       if (prod) updateProduct(prod.id, { stock: Math.max(0, (prod.stock || 0) - item.quantite) });
     });
-    // Confirmation PARLÉE aussi pour la vente à crédit (avant de vider le panier).
+    // Confirmation parlée ET sentie aussi pour la vente à crédit.
+    vibrerSucces();
     dire(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
     // Recharge les totaux du jour (la vente à crédit doit apparaître : convention A).
     void reloadTransactions?.();
@@ -402,10 +407,14 @@ export function POSCaisse() {
                 ))}
               </div>
               <div style={{ padding:'14px 16px 32px' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:12 }}>
+                {/* Le total s'ENTEND d'un toucher (tout montant affiché doit
+                    pouvoir être entendu — docs/INCLUSION.md §2.2). */}
+                <button type="button" onClick={() => dire(`Total : ${total.toLocaleString('fr-FR')} francs`)}
+                  aria-label={`Total ${total.toLocaleString('fr-FR')} francs — touche pour entendre`}
+                  style={{ width:'100%', display:'flex', justifyContent:'space-between', marginBottom:12, background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit' }}>
                   <span style={{ fontSize:16, fontWeight:700, color:'#1a1206' }}>Total</span>
                   <span style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} FCFA</span>
-                </div>
+                </button>
 
                 {/* Moyen de paiement — espèces / mobile money (déclaré) / crédit */}
                 <div style={{ display:'flex', gap:8, marginBottom:12 }}>
