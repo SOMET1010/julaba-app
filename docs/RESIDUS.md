@@ -124,13 +124,17 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
 - **`imports/*-api.ts`** (api-client, caisse-api, backoffice-api…) :
   réellement importés partout ; leur place est `app/services/api/`. À
   reloger « à froid » (gros renommage transverse, hors session de livraison).
-- **`TextSizeSlider` quasi cosmétique** : il pilote `--font-size` qui n'a
-  qu'UN consommateur CSS — l'app écrit ses tailles en px inline. Le mode
-  soleil (zoom) fait le vrai travail. À décider : brancher réellement le
-  curseur (rem partout = gros chantier) ou le retirer des Paramètres.
-- **Doublon d'accueil `greetTitle` (connexion)** : lit `julaba_auth_user`
-  alors que `comptesMemorises` est la source de vérité depuis le lot 1 de la
-  reconnaissance. Unifier à la prochaine passe connexion.
+- ~~`TextSizeSlider` quasi cosmétique~~ : **BRANCHÉ POUR DE VRAI le
+  11/08/2026 (v5.0.0.15).** Décision : ni rem partout (gros chantier), ni
+  retrait (la fonctionnalité a du sens) — le curseur pilote un ZOOM réel sur
+  `<body>` (`utils/tailleTexte`, 85 % → 130 %, testé au tsx), la même
+  mécanique éprouvée que le mode soleil sur `<html>` (les deux se
+  multiplient). L'écriture inline de `--font-size` est supprimée — elle
+  écrasait la base relevée du mode soleil (bug silencieux).
+- ~~Doublon d'accueil `greetTitle` (connexion)~~ : **UNIFIÉ le 11/08/2026
+  (v5.0.0.15).** Le prénom d'accueil lit d'abord le compte mémorisé
+  (`comptesMemorises`, source de vérité, survit à la déconnexion),
+  `julaba_auth_user` en simple repli.
 - ~~`ThemeContext` (mode sombre 18h-6h) coexistant avec le mode soleil~~ :
   **UNIFIÉS le 11/08/2026 (v5.0.0.14).** `utils/confortVisuel` est l'arbitre
   UNIQUE des trois modes (normal / soleil / sombre) : une seule classe sur

@@ -7,6 +7,10 @@
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Taille du texte (Paramètres) : ZOOM réel piloté par utils/tailleTexte —
+     tout grandit, cibles comprises. Se MULTIPLIE avec le zoom du mode soleil
+     (posé sur <html> par soleil.css). */
+  zoom: var(--zoom-texte, 1);
 }
 
 /* Safe area for mobile devices */
