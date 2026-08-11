@@ -58,7 +58,7 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
   return (
     <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay: index * 0.04 }}
       onClick={basculer}
-      style={{ background:'white', border:'1.5px solid #EDE7DE', borderRadius:16, overflow:'hidden', cursor:'pointer', marginBottom:8 }}>
+      style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, overflow:'hidden', cursor:'pointer', marginBottom:8 }}>
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 14px' }}>
         {/* Icône */}
         <div style={{ width:46, height:46, borderRadius:14, background:'#F0FAF5', border:'1.5px solid #9fe1cb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -70,11 +70,11 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
         </div>
         {/* Infos */}
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:15, fontWeight:800, color:'#1a1206', marginBottom:5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+          <div style={{ fontSize:15, fontWeight:800, color:'var(--encre)', marginBottom:5, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
             <Highlight text={sale.productName || 'Vente'} />
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <span style={{ fontSize:11, color:'#aaa', fontWeight:600 }}>
+            <span style={{ fontSize:11, color:'var(--encre-4)', fontWeight:600 }}>
               {format(dateObj, 'HH:mm', { locale:fr })}
             </span>
             {/* Badge source — espacé à droite */}
@@ -107,20 +107,20 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
           <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.25 }} style={{ overflow:'hidden' }}>
             <div style={{ borderTop:'1px solid #f5f0eb', padding:'12px 14px', background:'#FDFAF7', display:'flex', flexDirection:'column', gap:8 }}>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
-                <span style={{ fontSize:12, color:'#aaa', fontWeight:600 }}>Date complète</span>
-                <span style={{ fontSize:12, fontWeight:700, color:'#333' }}>{format(dateObj, 'dd MMMM yyyy à HH:mm', { locale:fr })}</span>
+                <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Date complète</span>
+                <span style={{ fontSize:12, fontWeight:700, color:'var(--encre)' }}>{format(dateObj, 'dd MMMM yyyy à HH:mm', { locale:fr })}</span>
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
-                <span style={{ fontSize:12, color:'#aaa', fontWeight:600 }}>Source</span>
+                <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Source</span>
                 <span style={{ fontSize:12, fontWeight:700, color: source==='vocal' ? '#378ADD' : P }}>{source}</span>
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
-                <span style={{ fontSize:12, color:'#aaa', fontWeight:600 }}>Montant</span>
+                <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Montant</span>
                 <span style={{ fontSize:14, fontWeight:900, color:'#1D9E75' }}>{montant.toLocaleString('fr-FR')} FCFA</span>
               </div>
               {marge > 0 && (
                 <div style={{ display:'flex', justifyContent:'space-between' }}>
-                  <span style={{ fontSize:12, color:'#aaa', fontWeight:600 }}>Marge</span>
+                  <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Marge</span>
                   <span style={{ fontSize:12, fontWeight:700, color:'#16a34a' }}>+{marge.toLocaleString('fr-FR')} FCFA</span>
                 </div>
               )}
@@ -381,17 +381,17 @@ export function VentesPassees() {
 
 
         {/* Recherche */}
-        <div style={{ background:'white', border:'1.5px solid #EDE7DE', borderRadius:14, padding:'11px 14px', display:'flex', alignItems:'center', gap:8 }}>
+        <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'11px 14px', display:'flex', alignItems:'center', gap:8 }}>
           <Search size={14} color="#aaa" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une vente..."
-            style={{ flex:1, border:'none', outline:'none', fontSize:13, color:'#333', background:'transparent', fontFamily:'inherit' }} />
+            style={{ flex:1, border:'none', outline:'none', fontSize:13, color:'var(--encre)', background:'transparent', fontFamily:'inherit' }} />
           {search && <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </motion.button>}
         </div>
 
         {/* Sélecteur iOS */}
-        <div style={{ background:'white', border:'1.5px solid #EDE7DE', borderRadius:16, padding:4, display:'flex', position:'relative' }}>
+        <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:4, display:'flex', position:'relative' }}>
           <motion.div
             style={{ position:'absolute', top:4, height:'calc(100% - 8px)', background:P, borderRadius:12, boxShadow:`0 2px 8px ${P}40` }}
             animate={{ left:`calc(${sliderIndex * 25}% + 4px)`, width:'calc(25% - 6px)' }}
@@ -408,7 +408,7 @@ export function VentesPassees() {
         {/* Filtres avancés */}
         <div>
           <motion.button whileTap={{ scale:0.99 }} onClick={() => setShowFilters(v => !v)}
-            style={{ width:'100%', background:'white', border:'1.5px solid #EDE7DE', borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
+            style={{ width:'100%', background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <Filter size={14} color={P} />
               <span style={{ fontSize:13, fontWeight:600, color:'#555' }}>Filtres avancés</span>
@@ -420,16 +420,16 @@ export function VentesPassees() {
           <AnimatePresence>
             {showFilters && (
               <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.25 }} style={{ overflow:'hidden' }}>
-                <div style={{ background:'white', border:'1.5px solid #EDE7DE', borderTop:'none', borderRadius:'0 0 14px 14px', padding:'12px 14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div style={{ background:'white', border:'1.5px solid var(--trait)', borderTop:'none', borderRadius:'0 0 14px 14px', padding:'12px 14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:'#aaa', display:'block', marginBottom:4 }}>Date début</label>
+                    <label style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', display:'block', marginBottom:4 }}>Date début</label>
                     <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                      style={{ width:'100%', border:'1.5px solid #EDE7DE', borderRadius:10, padding:'8px 10px', fontSize:12, fontFamily:'inherit', outline:'none', boxSizing:'border-box' as any }} />
+                      style={{ width:'100%', border:'1.5px solid var(--trait)', borderRadius:10, padding:'8px 10px', fontSize:12, fontFamily:'inherit', outline:'none', boxSizing:'border-box' as any }} />
                   </div>
                   <div>
-                    <label style={{ fontSize:11, fontWeight:700, color:'#aaa', display:'block', marginBottom:4 }}>Date fin</label>
+                    <label style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', display:'block', marginBottom:4 }}>Date fin</label>
                     <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                      style={{ width:'100%', border:'1.5px solid #EDE7DE', borderRadius:10, padding:'8px 10px', fontSize:12, fontFamily:'inherit', outline:'none', boxSizing:'border-box' as any }} />
+                      style={{ width:'100%', border:'1.5px solid var(--trait)', borderRadius:10, padding:'8px 10px', fontSize:12, fontFamily:'inherit', outline:'none', boxSizing:'border-box' as any }} />
                   </div>
                   {(startDate || endDate) && (
                     <motion.button whileTap={{ scale:0.97 }} onClick={() => { setStartDate(''); setEndDate(''); }}
@@ -451,20 +451,20 @@ export function VentesPassees() {
               <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:'#ef4444', borderRadius:'2px 2px 0 0' }} />
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div>
-                  <div style={{ fontSize:10, fontWeight:700, color:'#aaa', textTransform:'uppercase', marginBottom:4 }}>Total dû</div>
+                  <div style={{ fontSize:10, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', marginBottom:4 }}>Total dû</div>
                   <div style={{ fontSize:24, fontWeight:900, color:'#ef4444' }}>{totalDu.toLocaleString('fr-FR')} <span style={{ fontSize:12 }}>FCFA</span></div>
-                  <div style={{ fontSize:11, color:'#aaa', marginTop:2 }}>{credits.filter(c => c.statut !== 'paye').length} client(s) en attente</div>
+                  <div style={{ fontSize:11, color:'var(--encre-4)', marginTop:2 }}>{credits.filter(c => c.statut !== 'paye').length} client(s) en attente</div>
                 </div>
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               </div>
             </div>
 
-            {creditsLoading && <div style={{ textAlign:'center', color:'#aaa', padding:24 }}>Chargement...</div>}
+            {creditsLoading && <div style={{ textAlign:'center', color:'var(--encre-4)', padding:24 }}>Chargement...</div>}
 
             {!creditsLoading && credits.length === 0 && (
               <div style={{ textAlign:'center', padding:'40px 0' }}>
-                <div style={{ fontSize:16, fontWeight:800, color:'#333', marginBottom:8 }}>Aucun crédit en cours</div>
-                <div style={{ fontSize:13, color:'#aaa' }}>Les ventes à crédit apparaîtront ici</div>
+                <div style={{ fontSize:16, fontWeight:800, color:'var(--encre)', marginBottom:8 }}>Aucun crédit en cours</div>
+                <div style={{ fontSize:13, color:'var(--encre-4)' }}>Les ventes à crédit apparaîtront ici</div>
               </div>
             )}
 
@@ -484,7 +484,7 @@ export function VentesPassees() {
 
               return (
                 <motion.div key={credit.id} initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }}
-                  style={{ background:'white', border:'1.5px solid #EDE7DE', borderRadius:16, overflow:'hidden' }}>
+                  style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, overflow:'hidden' }}>
                   <div style={{ padding:'13px 14px' }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -492,8 +492,8 @@ export function VentesPassees() {
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={statutColor} strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                         </div>
                         <div>
-                          <div style={{ fontSize:15, fontWeight:800, color:'#1a1206' }}>{credit.client_nom}</div>
-                          {credit.client_phone && <div style={{ fontSize:11, color:'#aaa' }}>{credit.client_phone}</div>}
+                          <div style={{ fontSize:15, fontWeight:800, color:'var(--encre)' }}>{credit.client_nom}</div>
+                          {credit.client_phone && <div style={{ fontSize:11, color:'var(--encre-4)' }}>{credit.client_phone}</div>}
                         </div>
                       </div>
                       <span style={{ background:statutBg, color:statutColor, border:`1px solid ${statutColor}33`, borderRadius:8, padding:'3px 10px', fontSize:10, fontWeight:700 }}>
@@ -503,16 +503,16 @@ export function VentesPassees() {
 
                     <div style={{ background:'#f9f9f9', borderRadius:10, padding:'10px 12px', marginBottom:10 }}>
                       {(credit.articles || []).length > 0 && (
-                        <div style={{ fontSize:12, color:'#aaa', marginBottom:6 }}>
+                        <div style={{ fontSize:12, color:'var(--encre-4)', marginBottom:6 }}>
                           {credit.articles.map((a:any) => `${a.nom} ×${a.quantite}`).join(' · ')}
                         </div>
                       )}
                       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
-                        <span style={{ fontSize:12, color:'#aaa' }}>Acompte versé</span>
+                        <span style={{ fontSize:12, color:'var(--encre-4)' }}>Acompte versé</span>
                         <span style={{ fontSize:12, fontWeight:700, color:'#1D9E75' }}>{Number(credit.acompte).toLocaleString('fr-FR')} FCFA</span>
                       </div>
                       <div style={{ display:'flex', justifyContent:'space-between' }}>
-                        <span style={{ fontSize:13, fontWeight:700, color:'#1a1206' }}>Reste dû</span>
+                        <span style={{ fontSize:13, fontWeight:700, color:'var(--encre)' }}>Reste dû</span>
                         <span style={{ fontSize:16, fontWeight:900, color:statutColor }}>{Number(credit.montant_restant).toLocaleString('fr-FR')} FCFA</span>
                       </div>
                     </div>
@@ -556,16 +556,16 @@ export function VentesPassees() {
         {/* Liste groupée par jour */}
         {grouped.length === 0 ? (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ textAlign:'center', padding:'48px 24px' }}>
-            <p style={{ fontSize:16, fontWeight:800, color:'#333', margin:'0 0 8px' }}>Aucune vente trouvée</p>
-            <p style={{ fontSize:13, color:'#aaa', margin:0 }}>{search ? `Aucun résultat pour "${search}"` : 'Pas encore de ventes enregistrées'}</p>
+            <p style={{ fontSize:16, fontWeight:800, color:'var(--encre)', margin:'0 0 8px' }}>Aucune vente trouvée</p>
+            <p style={{ fontSize:13, color:'var(--encre-4)', margin:0 }}>{search ? `Aucun résultat pour "${search}"` : 'Pas encore de ventes enregistrées'}</p>
           </motion.div>
         ) : (
           grouped.map(group => (
             <div key={group.key}>
               {/* Header jour */}
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:11, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.1em', padding:'4px 0 8px', borderBottom:'1px solid #EDE7DE', marginBottom:8 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:11, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.1em', padding:'4px 0 8px', borderBottom:'1px solid var(--trait)', marginBottom:8 }}>
                 <span>{group.label}</span>
-                <span style={{ color:'#aaa', fontWeight:600 }}>{group.sales.length} vente{group.sales.length > 1 ? 's' : ''} · {group.total.toLocaleString('fr-FR')} F</span>
+                <span style={{ color:'var(--encre-4)', fontWeight:600 }}>{group.sales.length} vente{group.sales.length > 1 ? 's' : ''} · {group.total.toLocaleString('fr-FR')} F</span>
               </div>
               {group.sales.map((sale, i) => <VenteCard key={sale.id || i} sale={sale} index={i} query={search} />)}
             </div>
