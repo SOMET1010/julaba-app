@@ -19,17 +19,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Volume2,
   ChevronRight,
-  ChevronLeft,
   VolumeX,
-  Hand,
   Mic,
-  Keyboard,
-  Store,
 } from 'lucide-react';
-import { Button } from '../ui/button';
-// Symboles reconnaissables par une non-lectrice : le visage de Tata (une
-// personne) et l'ARGENT CFA qu'elle manipule chaque jour.
-import { IMG_TANTIE_SAGESSE, IMG_BILLET_2000, IMG_PIECE_100 } from '../../assets/images';
+// Picto local (hors-ligne) : la tomate, produit que toute marchande reconnaît.
+import imgTomate from "../../../assets/images/produit-tomate.png";
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import {
   setAccessMode,
@@ -39,11 +33,9 @@ import {
   type EffectiveMode,
 } from '../../utils/accessMode';
 
-// Images de fond — suivent l'HISTOIRE (Tata → vente → choix → boutique)
+// Images de fond — Tata (visage), puis le marché (le geste de vente)
 import bgTataLou from "../../../assets/images/bg-tantie.png";
 import bgVente from "../../../assets/images/bg-marche-vente.png";
-import bgChoix from "../../../assets/images/bg-market.png";
-import bgBoutique from "../../../assets/images/bg-marketplace.png";
 
 import { stopSpeaking } from '../../services/elevenlabs';
 import { direIntro, stopIntro } from '../../services/onboardingVoix';
@@ -64,38 +56,26 @@ interface Slide {
   clip: 'histoire1' | 'histoire2' | 'histoire3' | 'histoire4'; // clip de la VRAIE Tata
 }
 
+// Maquette d'Alex (11/08/2026) : DEUX écrans, palette chaude unique.
+// 1. « Moi, c'est Tata » — le visage + la voix (elle écoute qui lui parle).
+// 2. « Touche et parle » — LE geste de l'appli : micro + pictos (3 tomates
+//    → 1 500 F → ✓), puis « Commencer ».
 const slides: Slide[] = [
   {
     id: 'tata',
-    title: "MOI, C'EST TATA",
+    title: "Moi, c'est Tata",
     description: 'Je serai avec toi chaque jour dans ton commerce.',
     bgImage: bgTataLou,
-    accent: '#7c3aed',
+    accent: '#C46210',
     clip: 'histoire1',
   },
   {
-    id: 'vente',
-    title: 'TU VENDS',
-    description: 'Tu vends. J\'enregistre. Je compte. Tu sais toujours ce que tu gagnes.',
-    bgImage: bgVente,
-    accent: '#16a34a',
-    clip: 'histoire2',
-  },
-  {
-    id: 'choix',
-    title: 'TU CHOISIS',
+    id: 'parle',
+    title: 'Touche et parle',
     description: 'Tu me parles, ou tu tapes. C\'est toi qui décides.',
-    bgImage: bgChoix,
+    bgImage: bgVente,
     accent: '#C46210',
     clip: 'histoire3',
-  },
-  {
-    id: 'boutique',
-    title: "TA BOUTIQUE T'ATTEND",
-    description: 'Tout est prêt. Ouvrons ta boutique.',
-    bgImage: bgBoutique,
-    accent: '#2563eb',
-    clip: 'histoire4',
   },
 ];
 
@@ -173,7 +153,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
 
   // Préchargement des fonds (évite l'écran nu en réseau lent).
   useEffect(() => {
-    [bgTataLou, bgVente, bgChoix, bgBoutique].forEach((src) => {
+    [bgTataLou, bgVente].forEach((src) => {
       const img = new Image(); img.src = src;
     });
   }, []);
@@ -282,10 +262,10 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-6 px-4 z-20">
           <div className="w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl border-2 border-white/80 shadow-2xl p-5" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
-            <h2 className="text-center text-2xl font-extrabold tracking-wide mb-1" style={{ color: '#7c3aed' }}>
+            <h2 className="text-center text-2xl font-extrabold tracking-wide mb-1" style={{ color: '#C46210' }}>
               MA VOIX
             </h2>
-            <div className="mx-auto h-1 w-12 rounded-full mb-3" style={{ backgroundColor: '#7c3aed' }} />
+            <div className="mx-auto h-1 w-12 rounded-full mb-3" style={{ backgroundColor: '#C46210' }} />
             <p className="text-center text-gray-600 px-1 leading-relaxed mb-3">
               Pour que je puisse <b>t'écouter</b> et <b>te parler</b> partout — même
               sans réseau. Une seule fois. C'est un gros fichier&nbsp;: fais-le
@@ -297,7 +277,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
                 onClick={() => { if (isSpeaking) { stopLocal(); } else { parleInstallVoix(); } }}
                 whileTap={{ scale: 0.9 }}
                 className="flex items-center justify-center w-12 h-12 rounded-full border-2"
-                style={{ borderColor: isSpeaking ? '#ef4444' : '#7c3aed', color: isSpeaking ? '#ef4444' : '#7c3aed', backgroundColor: (isSpeaking ? '#ef4444' : '#7c3aed') + '10' }}
+                style={{ borderColor: isSpeaking ? '#ef4444' : '#C46210', color: isSpeaking ? '#ef4444' : '#C46210', backgroundColor: (isSpeaking ? '#ef4444' : '#C46210') + '10' }}
                 aria-label="Écouter Tata"
               >
                 {isSpeaking ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
@@ -318,46 +298,20 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     );
   }
 
-  /* -- EMBLÈME : un grand SYMBOLE reconnaissable par une non-lectrice --------
-   * Elle ne lit pas le titre → l'image doit tout dire. On montre son monde :
-   * le VISAGE de Tata (une personne), l'ARGENT CFA qu'elle manipule chaque jour,
-   * le MICRO + CLAVIER (parler ou taper), la BOUTIQUE. */
-  const embleme = () => {
-    const c = slide.accent;
-    if (slide.id === 'tata') {
-      return (
-        <div className="mx-auto mb-4 rounded-full overflow-hidden border-4 shadow-md" style={{ width: 120, height: 120, borderColor: c + '55' }}>
-          <img src={IMG_TANTIE_SAGESSE} alt="" className="w-full h-full object-cover" />
-        </div>
-      );
-    }
-    if (slide.id === 'vente') {
-      return (
-        <div className="mx-auto mb-4 flex items-end justify-center gap-2" style={{ height: 120 }}>
-          <img src={IMG_BILLET_2000} alt="" style={{ width: 168 }} className="rounded-lg shadow-md -rotate-6" />
-          <img src={IMG_PIECE_100} alt="" style={{ width: 58 }} className="drop-shadow-md -mb-1" />
-        </div>
-      );
-    }
-    if (slide.id === 'choix') {
-      return (
-        <div className="mx-auto mb-4 flex items-center justify-center gap-3" style={{ height: 120 }}>
-          <div className="grid place-items-center rounded-full shadow-sm" style={{ width: 92, height: 92, background: c + '18', color: c }}>
-            <Mic style={{ width: 44, height: 44 }} />
-          </div>
-          <span className="text-lg font-extrabold" style={{ color: c }}>ou</span>
-          <div className="grid place-items-center rounded-full shadow-sm" style={{ width: 92, height: 92, background: c + '18', color: c }}>
-            <Keyboard style={{ width: 44, height: 44 }} />
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className="mx-auto mb-4 grid place-items-center rounded-full shadow-md" style={{ width: 120, height: 120, background: c + '18', color: c }}>
-        <Store style={{ width: 60, height: 60 }} />
-      </div>
-    );
-  };
+  /* -- ONDES : anneaux qui rayonnent autour d'un bouton rond (maquette). */
+  const Ondes = ({ taille }: { taille: number }) => (
+    <>
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="absolute rounded-full border-2 border-white/70"
+          style={{ width: taille, height: taille, left: '50%', top: '50%', translateX: '-50%', translateY: '-50%', pointerEvents: 'none' }}
+          animate={{ scale: [1, 1.55], opacity: [0.7, 0] }}
+          transition={{ duration: 1.8, repeat: Infinity, delay: i * 0.55, ease: 'easeOut' }}
+        />
+      ))}
+    </>
+  );
 
   /* -- ÉCRANS DE L'HISTOIRE ------------------------------------------------
    * INTERRUPTION : un tap N'IMPORTE OÙ arrête Tata et passe à la suite. Les
@@ -367,7 +321,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     <div
       className="fixed inset-0 overflow-hidden cursor-pointer"
       onClick={handleNext}
-      style={{ background: `linear-gradient(160deg, ${slide.accent}, #2b1608)` }}
+      style={{ background: '#C46210' }}
     >
       <AnimatePresence mode="wait">
         <motion.div
@@ -380,205 +334,145 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
           className="absolute inset-0"
         >
           <img src={slide.bgImage} alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          {/* Voile CHAUD (maquette) : photo lisible en haut, orange franc en bas */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(196,98,16,0.20) 0%, rgba(196,98,16,0.40) 45%, rgba(196,97,15,0.90) 82%, #C4610F 100%)' }} />
         </motion.div>
       </AnimatePresence>
 
-      {/* Passer -> va directement au choix du mode */}
+      {/* Écran 2 : haut-parleur en haut à droite (maquette). Écran 1 : Passer. */}
       <motion.div
         className="absolute top-6 right-6 z-30"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.5 }}
       >
-        <button
-          onClick={(e) => { e.stopPropagation(); stopLocal(); setModeStep(true); }}
-          className="px-5 py-2 rounded-full border-2 border-white/60 text-white/90 text-sm font-semibold backdrop-blur-sm bg-white/10 transition-all duration-300 hover:bg-white/20 hover:border-white active:scale-95"
-        >
-          Passer
-        </button>
+        {slide.id === 'tata' ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); stopLocal(); setModeStep(true); }}
+            className="px-5 py-2 rounded-full border-2 border-white/60 text-white/90 text-sm font-semibold backdrop-blur-sm bg-white/10 transition-all duration-300 hover:bg-white/20 active:scale-95"
+          >
+            Passer
+          </button>
+        ) : (
+          <motion.button
+            onClick={(e) => { e.stopPropagation(); handleListen(); }}
+            whileTap={{ scale: 0.9 }}
+            aria-label={isSpeaking ? 'Arrêter Tata' : 'Écouter Tata'}
+            className="grid place-items-center w-11 h-11 rounded-full bg-white shadow-lg"
+            style={{ color: isSpeaking ? '#ef4444' : '#C46210' }}
+          >
+            {isSpeaking ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </motion.button>
+        )}
       </motion.div>
 
-      {/* GESTE « touche l'écran » — universel, pour celles qui ne lisent pas.
-          Une main qui tape, au-dessus de la carte : elle comprend qu'on touche. */}
-      <motion.div
-        className="absolute left-1/2 z-20 flex flex-col items-center"
-        style={{ top: '26%', transform: 'translateX(-50%)', pointerEvents: 'none' }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.9, duration: 0.6 }}
-      >
-        <motion.div
-          animate={{ y: [0, 16, 0], scale: [1, 0.88, 1] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-          className="grid place-items-center rounded-full border border-white/40"
-          style={{ width: 68, height: 68, background: 'rgba(255,255,255,0.22)' }}
-        >
-          <Hand className="text-white" style={{ width: 36, height: 36 }} />
-        </motion.div>
-      </motion.div>
-
-      <div className="absolute inset-0 flex flex-col items-center justify-end pb-4 px-4 z-20">
+      <div className="absolute inset-0 flex flex-col items-center justify-end pb-6 px-6 z-20">
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
-            key={`card-${currentSlide}`}
+            key={`corps-${currentSlide}`}
             custom={direction}
             variants={cardVariants}
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94], rotateY: { duration: 0.6 } }}
-            className="w-full max-w-md"
-            style={{ perspective: 1000 }}
+            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="w-full max-w-md flex flex-col items-center"
           >
-            <div className="bg-white/95 backdrop-blur-xl rounded-3xl border-2 border-white/80 shadow-2xl p-5 pb-4" style={{ maxHeight: "70vh", overflowY: "auto" }}>
-              {/* Le SYMBOLE d'abord (elle ne lit pas le titre) */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.4 }}
-              >
-                {embleme()}
-              </motion.div>
+            {slide.id === 'tata' ? (
+              <>
+                {/* ÉCRAN 1 — le haut-parleur rayonne : Tata PARLE. */}
+                <div className="relative mb-5" style={{ width: 96, height: 96 }}>
+                  <Ondes taille={96} />
+                  <motion.button
+                    onClick={(e) => { e.stopPropagation(); handleListen(); }}
+                    whileTap={{ scale: 0.9 }}
+                    aria-label={isSpeaking ? 'Arrêter Tata' : 'Écouter Tata'}
+                    className="relative grid place-items-center w-24 h-24 rounded-full bg-white shadow-2xl"
+                    style={{ color: isSpeaking ? '#ef4444' : '#C46210' }}
+                  >
+                    {isSpeaking ? <VolumeX style={{ width: 40, height: 40 }} /> : <Volume2 style={{ width: 40, height: 40 }} />}
+                  </motion.button>
+                </div>
+                <p className="text-white font-extrabold mb-6" style={{ fontSize: 24, textShadow: '0 1px 10px rgba(0,0,0,0.3)' }}>
+                  {slide.title}
+                </p>
+              </>
+            ) : (
+              <>
+                {/* ÉCRAN 2 — LE geste : touche le micro et parle. */}
+                <p className="text-white font-bold mb-4 px-4 py-1.5 rounded-full"
+                  style={{ fontSize: 17, background: 'rgba(255,255,255,0.18)', textShadow: '0 1px 6px rgba(0,0,0,0.3)' }}>
+                  {slide.title}
+                </p>
+                <div className="relative mb-5" style={{ width: 116, height: 116 }}>
+                  <Ondes taille={116} />
+                  <div
+                    className="relative grid place-items-center rounded-full shadow-2xl"
+                    style={{ width: 116, height: 116, background: 'linear-gradient(135deg, #F08A24, #C46210)', border: '4px solid rgba(255,255,255,0.9)' }}
+                  >
+                    <Mic className="text-white" style={{ width: 52, height: 52 }} />
+                  </div>
+                  {/* La main qui montre le geste */}
+                  <motion.span
+                    className="absolute"
+                    style={{ right: -26, bottom: -8, fontSize: 40, pointerEvents: 'none' }}
+                    animate={{ x: [0, -8, 0], y: [0, -6, 0] }}
+                    transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    👆🏾
+                  </motion.span>
+                </div>
+                {/* L'histoire en PICTOS : je parle → 3 tomates → 1 500 F → c'est noté */}
+                <div className="flex items-center justify-center gap-2 bg-white/95 rounded-2xl shadow-xl px-4 py-2.5 mb-5">
+                  <Mic style={{ width: 22, height: 22, color: '#C46210' }} />
+                  <span className="relative inline-flex items-center">
+                    <img src={imgTomate} alt="tomates" style={{ width: 30, height: 30, objectFit: 'contain' }} />
+                    <span className="font-extrabold" style={{ color: '#2b1608', fontSize: 13, marginLeft: 2 }}>×3</span>
+                  </span>
+                  <span style={{ color: '#C46210', fontWeight: 800 }}>→</span>
+                  <span className="font-extrabold rounded-full px-2.5 py-1" style={{ background: '#C4621018', color: '#C46210', fontSize: 14 }}>
+                    1 500 F
+                  </span>
+                  <span className="grid place-items-center rounded-full" style={{ width: 26, height: 26, background: '#16a34a' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                  </span>
+                </div>
+              </>
+            )}
 
-              <motion.h2
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.4 }}
-                className="text-center text-2xl font-extrabold tracking-wide mb-3"
-                style={{ color: slide.accent }}
-              >
-                {slide.title}
-              </motion.h2>
+            {/* Bouton principal — pilule blanche (maquette) */}
+            <motion.button
+              onClick={(e) => { e.stopPropagation(); handleNext(); }}
+              whileTap={{ scale: 0.96 }}
+              className="w-full max-w-xs h-14 rounded-full bg-white shadow-2xl flex items-center justify-center gap-3 font-extrabold"
+              style={{ color: '#C46210', fontSize: 18 }}
+            >
+              <span className="grid place-items-center rounded-full" style={{ width: 34, height: 34, background: 'linear-gradient(135deg, #F08A24, #C46210)' }}>
+                {isLastSlide
+                  ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+                  : <ChevronRight className="text-white" style={{ width: 20, height: 20 }} />}
+              </span>
+              {isLastSlide ? 'Commencer' : 'Suivant'}
+            </motion.button>
 
-              <motion.div
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ delay: 0.4, duration: 0.6, ease: 'easeOut' }}
-                className="mx-auto h-1 w-12 rounded-full mb-5"
-                style={{ backgroundColor: slide.accent }}
-              />
-
-              {/* Pas de paragraphe : c'est Tata qui parle, l'image qui montre.
-                  L'écran ne SURCHARGE pas une non-lectrice de texte. */}
-
-              {/* Haut-parleur : réécouter (ne fait PAS avancer) */}
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55, duration: 0.4 }}
-                className="flex justify-center"
-              >
+            {/* Points (2 écrans) */}
+            <div className="flex justify-center gap-2.5 mt-5">
+              {slides.map((s, index) => (
                 <motion.button
-                  onClick={(e) => { e.stopPropagation(); handleListen(); }}
-                  whileTap={{ scale: 0.9 }}
-                  whileHover={{ scale: 1.1 }}
-                  className="flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300"
-                  style={{
-                    borderColor: isSpeaking ? '#ef4444' : slide.accent,
-                    color: isSpeaking ? '#ef4444' : slide.accent,
-                    backgroundColor: isSpeaking ? '#fef2f2' : slide.accent + '10',
+                  key={s.id}
+                  onClick={(e) => { e.stopPropagation(); handleDot(index); }}
+                  aria-label={`Écran ${index + 1}`}
+                  animate={{
+                    width: index === currentSlide ? 30 : 10,
+                    backgroundColor: index === currentSlide ? '#ffffff' : 'rgba(255,255,255,0.45)',
                   }}
-                >
-                  {isSpeaking ? (
-                    <div className="flex items-end gap-0.5 h-5">
-                      {[0, 1, 2, 3].map((i) => (
-                        <motion.div
-                          key={i}
-                          className="w-1 rounded-full"
-                          style={{ backgroundColor: '#ef4444' }}
-                          animate={{ height: ['4px', '16px', '6px', '14px', '4px'] }}
-                          transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <motion.div
-                      animate={{ scale: [1, 1.15, 1] }}
-                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                    >
-                      <Volume2 className="w-5 h-5" />
-                    </motion.div>
-                  )}
-                </motion.button>
-              </motion.div>
+                  transition={{ duration: 0.35, ease: 'easeInOut' }}
+                  className="h-2.5 rounded-full"
+                />
+              ))}
             </div>
           </motion.div>
         </AnimatePresence>
-
-        {/* Navigation (points + boutons) */}
-        <motion.div
-          className="w-full max-w-md mt-6 space-y-4"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.5 }}
-        >
-          <div className="flex justify-center gap-3">
-            {slides.map((s, index) => (
-              <motion.button
-                key={s.id}
-                onClick={(e) => { e.stopPropagation(); handleDot(index); }}
-                animate={{
-                  width: index === currentSlide ? 32 : 10,
-                  backgroundColor: index === currentSlide ? slide.accent : 'rgba(255,255,255,0.5)',
-                }}
-                whileHover={{ scale: 1.2 }}
-                transition={{ duration: 0.35, ease: 'easeInOut' }}
-                className="h-2.5 rounded-full"
-              />
-            ))}
-          </div>
-
-          <div className="flex gap-3">
-            <AnimatePresence>
-              {currentSlide > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, x: -30, width: 0 }}
-                  animate={{ opacity: 1, x: 0, width: 'auto', flex: 1 }}
-                  exit={{ opacity: 0, x: -30, width: 0 }}
-                  transition={{ duration: 0.35 }}
-                  className="overflow-hidden"
-                >
-                  <Button
-                    onClick={(e) => { e.stopPropagation(); handlePrevious(); }}
-                    variant="outline"
-                    className="w-full h-14 rounded-3xl border-2 border-white/60 text-white text-base font-semibold backdrop-blur-sm bg-white/10 hover:bg-white/20 transition-all"
-                  >
-                    <ChevronLeft className="w-5 h-5 mr-1" />
-                    Retour
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <motion.div className="flex-1" whileTap={{ scale: 0.97 }}>
-              <Button
-                onClick={(e) => { e.stopPropagation(); handleNext(); }}
-                className="w-full h-14 rounded-3xl text-base font-bold text-white shadow-xl border-0 transition-all"
-                style={{
-                  background: `linear-gradient(135deg, ${slide.accent}, ${slide.accent}dd)`,
-                  boxShadow: `0 8px 24px ${slide.accent}40`,
-                }}
-              >
-                {isLastSlide ? (
-                  'Ouvrons ma boutique'
-                ) : (
-                  <>
-                    Suivant
-                    <motion.span
-                      animate={{ x: [0, 5, 0] }}
-                      transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
-                      className="ml-1 inline-flex"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </motion.span>
-                  </>
-                )}
-              </Button>
-            </motion.div>
-          </div>
-        </motion.div>
       </div>
     </div>
   );

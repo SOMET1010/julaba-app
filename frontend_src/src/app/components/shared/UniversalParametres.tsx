@@ -1090,7 +1090,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
 
           <div className="flex items-center justify-center gap-2 py-2">
             <Smartphone className="w-4 h-4 text-gray-400" />
-            <p className="text-xs text-gray-400">{cfg.version} · By ICONE SOLUTION</p>
+            <p className="text-xs text-gray-400">{cfg.version} · Projet DGE × ANSUT · édité par Icone Solution</p>
           </div>
 
         </div>
