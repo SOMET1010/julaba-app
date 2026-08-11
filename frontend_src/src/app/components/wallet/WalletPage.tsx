@@ -163,7 +163,7 @@ function DrawerMenu({ isOpen, onClose, solde, showSolde, onToggleSolde, onOpenRe
                     {item.icon}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: '#2a1a0a' }}>{item.label}</p>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--encre)' }}>{item.label}</p>
                     <p style={{ fontSize: 11, color: '#b8956a', marginTop: 1 }}>{item.sub}</p>
                   </div>
                   {!item.disabled
@@ -599,10 +599,10 @@ export function WalletPage() {
   const PinNumpad = ({ onPress, onDelete }: { onPress: (d: string) => void; onDelete: () => void }) => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
       {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
-        <motion.button key={d} onClick={() => onPress(d)} style={{ height: 52, borderRadius: 14, background: '#f9fafb', border: '0.5px solid #ebebeb', fontSize: 22, fontWeight: 600, color: '#111', cursor: 'pointer' }} whileTap={{ scale: 0.92 }}>{d}</motion.button>
+        <motion.button key={d} onClick={() => onPress(d)} style={{ height: 52, borderRadius: 14, background: '#f9fafb', border: '0.5px solid #ebebeb', fontSize: 22, fontWeight: 600, color: 'var(--encre)', cursor: 'pointer' }} whileTap={{ scale: 0.92 }}>{d}</motion.button>
       ))}
       <div style={{ height: 52 }} />
-      <motion.button onClick={() => onPress('0')} style={{ height: 52, borderRadius: 14, background: '#f9fafb', border: '0.5px solid #ebebeb', fontSize: 22, fontWeight: 600, color: '#111', cursor: 'pointer' }} whileTap={{ scale: 0.92 }}>0</motion.button>
+      <motion.button onClick={() => onPress('0')} style={{ height: 52, borderRadius: 14, background: '#f9fafb', border: '0.5px solid #ebebeb', fontSize: 22, fontWeight: 600, color: 'var(--encre)', cursor: 'pointer' }} whileTap={{ scale: 0.92 }}>0</motion.button>
       <motion.button onClick={onDelete} style={{ height: 52, borderRadius: 14, background: '#f9fafb', border: '0.5px solid #ebebeb', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} whileTap={{ scale: 0.92 }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
       </motion.button>
@@ -646,10 +646,10 @@ export function WalletPage() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16 }}>
               {KEIWA_SVG}
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#111', marginTop: 10, textAlign: 'center' }}>
+              <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--encre)', marginTop: 10, textAlign: 'center' }}>
                 {createStep === 1 ? 'Sécurise ton Keiwa' : 'Encore une fois'}
               </p>
-              <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', marginTop: 3 }}>
+              <p style={{ fontSize: 12, color: 'var(--encre-4)', textAlign: 'center', marginTop: 3 }}>
                 {createStep === 1 ? 'Choisis un code à 4 chiffres' : 'Saisis-le à nouveau pour confirmer'}
               </p>
             </div>
@@ -703,9 +703,9 @@ export function WalletPage() {
             <p style={{ fontSize: 13, fontWeight: 700, textAlign: 'center', color: C, marginBottom: 14 }}>Entre ton code PIN</p>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16 }}>
               {KEIWA_SVG}
-              {prenom ? <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', marginTop: 8 }}>Bonjour {prenom}</p> : null}
-              <p style={{ fontSize: 18, fontWeight: 700, color: '#111', marginTop: 4, textAlign: 'center' }}>Keiwa verrouillé</p>
-              <p style={{ fontSize: 12, color: '#9ca3af', textAlign: 'center', marginTop: 3 }}>Entre ton code pour accéder</p>
+              {prenom ? <p style={{ fontSize: 12, color: 'var(--encre-4)', textAlign: 'center', marginTop: 8 }}>Bonjour {prenom}</p> : null}
+              <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--encre)', marginTop: 4, textAlign: 'center' }}>Keiwa verrouillé</p>
+              <p style={{ fontSize: 12, color: 'var(--encre-4)', textAlign: 'center', marginTop: 3 }}>Entre ton code pour accéder</p>
             </div>
             <PinDots value={pinInput} />
             <p style={{ fontSize: 11, color: pinError ? '#dc2626' : '#9ca3af', textAlign: 'center', marginBottom: 14, minHeight: 16 }}>
@@ -848,7 +848,7 @@ export function WalletPage() {
                   </svg>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2a1a0a' }}>{cfg.label}</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--encre)' }}>{cfg.label}</p>
                   <p style={{ fontSize: 11, color: '#b8956a', marginTop: 1 }}>{formatDate(tx.createdAt)}</p>
                 </div>
                 <p style={{ fontSize: 14, fontWeight: 700, color: cfg.isCredit ? '#1a8c5a' : C, flexShrink: 0 }}>
@@ -907,7 +907,7 @@ export function WalletPage() {
                     { label: 'Description', value: selectedTx.description || '—' },
                   ].map(({ label, value }, i, arr) => (
                     <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < arr.length - 1 ? '1px solid rgba(198,106,44,0.08)' : 'none' }}>
-                      <span style={{ fontSize: 14, color: '#888' }}>{label}</span>
+                      <span style={{ fontSize: 14, color: 'var(--encre-3)' }}>{label}</span>
                       <span style={{ fontSize: 14, fontWeight: 600, color: label === 'Statut' ? ((value === 'completed' || value === 'COMPLETED') ? '#1a8c5a' : '#e53e3e') : label === 'Montant' ? C : '#111', maxWidth: '55%', textAlign: 'right' }}>
                         {label === 'Statut' ? ((value === 'completed' || value === 'COMPLETED') ? '✓ Effectué' : '✗ Rejeté') : value}
                       </span>
