@@ -99,7 +99,7 @@ function MarchandAccueilVoiceInner() {
           />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(124,98,80,0.5)' }}>Tata Nanti Lou</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#2E1B10', lineHeight: 1.1 }}>{prenom ? `Bonjour Maman ${prenom}` : 'Bonjour ma sœur'}</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--encre)', lineHeight: 1.1 }}>{prenom ? `Bonjour Maman ${prenom}` : 'Bonjour ma sœur'}</div>
           </div>
           <motion.button whileTap={{ scale: 0.92 }} onClick={basculerSoleil}
             aria-label={soleil ? 'Repasser en affichage normal' : 'Mode soleil — tout plus grand'}
