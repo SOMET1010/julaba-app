@@ -25,6 +25,11 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.13 — 11/08/2026 : la dernière « fonction jamais câblée » du
+  registre tombe — le bouton « Dis ton objectif » (ObjectifModal) marche
+  vraiment : dictée sherpa hors-ligne + nombres bambara, montant rempli en
+  direct, micro rangé après 2 s de silence. Section « fonctions jamais
+  câblées » du registre : VIDE.
 - v5.0.0.12 — 11/08/2026 : câblage des fonctions mortes du registre — le
   compteur « réponses du support non lues » devient réel (mémoire de lecture
   locale, `test:support`, 9 suites au portail verify), bandeau d'explication

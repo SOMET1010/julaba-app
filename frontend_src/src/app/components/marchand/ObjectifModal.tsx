@@ -1,9 +1,11 @@
-import { useVoiceCore } from '../../hooks/useVoiceCore';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
-import { X, Target, Mic, MicOff, Loader } from 'lucide-react';
+import { X, Target, Mic, MicOff } from 'lucide-react';
 import { useObjectif } from '../../contexts/ObjectifContext';
+import { startLiveDictation, offlineModelReady } from '../../voice-offline/offlineStt';
+import { extraireNombreBambara } from '../../voice-offline/nombresBambara';
+import { vibrerSucces, vibrerTic } from '../../utils/haptique';
 
 const P = '#C46210';
 const SUGGESTIONS = [10000, 25000, 50000, 100000, 200000];
@@ -22,15 +24,82 @@ export function ObjectifModal({ isOpen, onClose }: Props) {
     setInput(num > 0 ? num.toLocaleString('fr-FR') : '');
   };
 
-  // L'ancienne option `onResult` n'a jamais existé sur useVoiceCore : la
-  // saisie vocale de l'objectif était INOPÉRANTE (le rappel n'était jamais
-  // appelé). Câblage réel à construire — voir docs/RESIDUS.md.
-  const { startRecording, isListening: isListeningVoice } = useVoiceCore({});
-  const handleVoiceObjectif = () => startRecording();
+  // Dictée de l'objectif — même rouage que la connexion : sherpa hors-ligne
+  // (startLiveDictation) + extraireNombreBambara, qui lit « 12 500 » (chiffres
+  // écrits par sherpa) ET les nombres bambara (« waa duuru »). Le montant se
+  // remplit à l'écran au fil de la voix ; ~2 s de silence ferment le micro.
+  const [isListeningVoice, setIsListeningVoice] = useState(false);
+  const stopRef = useRef<(() => Promise<void>) | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const doneRef = useRef(false);
+  const bestRef = useRef(0);
+  const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hardStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleMic = () => {
-    if (isListeningVoice) return;
-    handleVoiceObjectif();
+  const couperMicro = () => {
+    if (settleRef.current) { clearTimeout(settleRef.current); settleRef.current = null; }
+    if (hardStopRef.current) { clearTimeout(hardStopRef.current); hardStopRef.current = null; }
+    void stopRef.current?.(); stopRef.current = null; // stop() fait la passe finale
+    try { streamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+    streamRef.current = null;
+    setIsListeningVoice(false);
+  };
+
+  const finaliserDictee = () => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    couperMicro();
+  };
+
+  // Modal fermé pendant l'écoute (ou démontage) → jamais de micro fantôme.
+  useEffect(() => { if (!isOpen) finaliserDictee(); }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => finaliserDictee(), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleMic = async () => {
+    if (isListeningVoice) { finaliserDictee(); return; } // re-tap = je garde ce montant
+    if (!offlineModelReady()) {
+      toast("La voix marche dans l'application Julaba sur le téléphone. Ici, tape ton objectif.");
+      return;
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      toast.error('Le micro est fermé. Tape ton objectif au clavier.');
+      return;
+    }
+    streamRef.current = stream;
+    doneRef.current = false;
+    bestRef.current = 0;
+    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } // que le micro n'entende pas Tata
+    try {
+      const handle = await startLiveDictation(stream, (texte, estFinal) => {
+        // La passe FINALE (tout le tampon) fait autorité, même après l'arrêt.
+        if (doneRef.current && !estFinal) return;
+        const n = extraireNombreBambara(texte || '');
+        if (n && n > 0) {
+          bestRef.current = n;
+          setMontant(n);
+          setInput(n.toLocaleString('fr-FR'));
+          if (estFinal) vibrerSucces();
+          else {
+            // Un montant est là : ~2 s sans correction → on range le micro.
+            if (settleRef.current) clearTimeout(settleRef.current);
+            settleRef.current = setTimeout(finaliserDictee, 2000);
+          }
+        }
+      });
+      stopRef.current = handle.stop;
+    } catch {
+      try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+      streamRef.current = null;
+      toast.error("La voix n'a pas démarré. Tape ton objectif au clavier.");
+      return;
+    }
+    setIsListeningVoice(true);
+    vibrerTic();
+    // Filet dur anti micro-ouvert (jamais un couperet : 15 s, largement assez).
+    hardStopRef.current = setTimeout(finaliserDictee, 15000);
   };
 
   const handleSave = async () => {
