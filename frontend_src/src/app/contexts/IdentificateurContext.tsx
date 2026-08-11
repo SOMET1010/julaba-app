@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useApp } from './AppContext';
-import * as identificationsApi from '../../imports/identifications-api';
-import * as missionsApi from '../../imports/missions-api';
-import { fetchMutations, createMutation, type Mutation as ApiMutation } from '../../imports/mutations-api';
-import { NOT_AUTHENTICATED, apiRequest } from '../../imports/api-client';
+import * as identificationsApi from '../services/api/identifications-api';
+import * as missionsApi from '../services/api/missions-api';
+import { fetchMutations, createMutation, type Mutation as ApiMutation } from '../services/api/mutations-api';
+import { NOT_AUTHENTICATED, apiRequest } from '../services/api/api-client';
 import { API_URL } from '../utils/api';
 
 export type DemandeMutationRow = ApiMutation & {

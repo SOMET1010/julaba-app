@@ -5,7 +5,7 @@
 
 import { apiRequest as _apiRequest } from './api-client';
 
-import { API_URL } from '../app/utils/api';
+import { API_URL } from '../../utils/api';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);

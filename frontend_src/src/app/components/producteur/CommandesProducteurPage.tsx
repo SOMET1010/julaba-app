@@ -46,7 +46,7 @@ import { SubPageLayout } from '../layout/SubPageLayout';
 import { useUser } from '../../contexts/UserContext';
 import { useApp } from '../../contexts/AppContext';
 import { useCommande, type Commande as ApiCommande } from '../../contexts/CommandeContext';
-import { createCommande, cancelCommande } from '../../../imports/commandes-api';
+import { createCommande, cancelCommande } from '../../services/api/commandes-api';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { NotificationButton } from '../marchand/NotificationButton';
 import { ReceptionPaiementModal } from '../shared/ReceptionPaiementModal';

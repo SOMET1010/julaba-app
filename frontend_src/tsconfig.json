@@ -31,7 +31,6 @@
     "src"
   ],
   "exclude": [
-    "src/imports",
     "node_modules"
   ]
 }

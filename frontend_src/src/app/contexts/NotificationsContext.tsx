@@ -5,8 +5,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useApp } from './AppContext';
-import * as notificationsApi from '../../imports/notifications-api';
-import { NOT_AUTHENTICATED } from '../../imports/api-client';
+import * as notificationsApi from '../services/api/notifications-api';
+import { NOT_AUTHENTICATED } from '../services/api/api-client';
 import { WebSocketTransport } from '../services/WebSocketTransport';
 import { eventBus, EVENTS } from '../services/eventBus';
 import { API_URL } from '../utils/api';

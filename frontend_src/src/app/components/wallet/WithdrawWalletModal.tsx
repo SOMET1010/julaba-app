@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowLeft, Check, AlertCircle } from 'lucide-react';
-import { retraitViaBpay, verifierStatutBpay } from '../../../imports/wallets-api';
+import { retraitViaBpay, verifierStatutBpay } from '../../services/api/wallets-api';
 import { useWallet } from '../../contexts/WalletContext';
 import { useApp } from '../../contexts/AppContext';
 

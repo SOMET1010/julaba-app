@@ -3,9 +3,9 @@
  * API réelle uniquement — pas de fallback mock
  */
 
-import * as cyclesApi from '../../../imports/cycles-api';
-import * as recoltesApi from '../../../imports/recoltes-api';
-import * as publicationsApi from '../../../imports/publications-api';
+import * as cyclesApi from './cycles-api';
+import * as recoltesApi from './recoltes-api';
+import * as publicationsApi from './publications-api';
 
 
 // ============================================================================

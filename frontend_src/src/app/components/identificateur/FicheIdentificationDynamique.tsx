@@ -23,7 +23,7 @@ import { useZones, type Zone } from '../../contexts/ZoneContext';
 import { useCooperativesListe } from '../../hooks/useCooperativesListe';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { toast } from 'sonner';
 import { SOUS_PROFILS_MARCHAND, type SousProfilMarchand } from '../../types/sousProfilMarchand';
 /* ═══════════════════════════════════════════════════

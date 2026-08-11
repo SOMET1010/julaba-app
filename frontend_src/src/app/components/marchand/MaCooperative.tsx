@@ -6,7 +6,7 @@ import { useApp } from '../../contexts/AppContext';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { useCooperativesListe } from '../../hooks/useCooperativesListe';
 
 const COLOR = '#C46210';

@@ -24,7 +24,7 @@ import { useUser } from '../../contexts/UserContext';
 import { useModalRegister } from '../../contexts/ModalContext';
 import { NotificationButton } from '../marchand/NotificationButton';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { toast } from 'sonner';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import {

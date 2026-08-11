@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
-import * as ticketsApi from '../../imports/tickets-api';
+import * as ticketsApi from '../services/api/tickets-api';
 import { DEV_MODE, devLog } from '../config/devMode';
-import { NOT_AUTHENTICATED } from '../../imports/api-client';
+import { NOT_AUTHENTICATED } from '../services/api/api-client';
 import { useApp } from './AppContext';
 import { useBackOfficeOptional } from './BackOfficeContext';
 import { isBORole } from '../types/constants';

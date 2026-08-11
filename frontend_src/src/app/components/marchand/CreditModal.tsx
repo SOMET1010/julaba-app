@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
-import { creerCredit, fetchClientsRecents, type ClientMarchand } from '../../../imports/caisse-api';
+import { creerCredit, fetchClientsRecents, type ClientMarchand } from '../../services/api/caisse-api';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { guidageVocal } from '../../utils/accessMode';

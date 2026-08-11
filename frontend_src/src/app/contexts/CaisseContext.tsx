@@ -3,9 +3,9 @@ import { useApp } from './AppContext';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { toast } from 'sonner';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
-import * as caisseApi from '../../imports/caisse-api';
+import * as caisseApi from '../services/api/caisse-api';
 import { getImageByNom } from '../data/catalogue-produits';
-import { NOT_AUTHENTICATED } from '../../imports/api-client';
+import { NOT_AUTHENTICATED } from '../services/api/api-client';
 import { API_URL } from '../utils/api';
 import { prixEffectif } from '../utils/promo.utils';
 // Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.

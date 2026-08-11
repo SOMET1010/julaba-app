@@ -1,9 +1,10 @@
 /**
- * Client API Scores - JÙLABA
+ * Client API Missions - JÙLABA
  */
 
 import { apiRequest as _apiRequest } from './api-client';
-import { API_URL } from '../app/utils/api';
+
+import { API_URL } from '../../utils/api';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);
@@ -13,30 +14,20 @@ function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> 
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface Score {
+export interface Mission {
   id: string;
-  user_id: string;
-  score_total: number;
-  score_fiabilite: number;
-  score_qualite: number;
-  score_ponctualite: number;
-  nb_transactions: number;
-  nb_avis: number;
+  identificateur_id: string;
+  titre: string;
+  description?: string;
+  zone_id?: string;
+  objectif?: number;
+  progres: number;
+  statut: 'en_cours' | 'terminee' | 'annulee';
+  date_debut?: string;
+  date_fin?: string;
+  recompense?: number;
   created_at: string;
   updated_at: string;
-  /** FCFA — renvoyé par GET /scores/me */
-  volume_total?: number;
-  /** Jours distincts avec activité caisse sur 30 j */
-  jours_actifs_30j?: number;
-}
-
-export interface UpdateScoreData {
-  score_total?: number;
-  score_fiabilite?: number;
-  score_qualite?: number;
-  score_ponctualite?: number;
-  nb_transactions?: number;
-  nb_avis?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,18 +35,18 @@ export interface UpdateScoreData {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Récupérer le score d'un utilisateur
+ * Récupérer toutes les missions de l'identificateur
  */
-export async function fetchScore(userId: string): Promise<{ score: Score }> {
-  return apiRequest<{ score: Score }>(`/scores/me`);
+export async function fetchMissions(): Promise<{ missions: Mission[] }> {
+  return apiRequest<{ missions: Mission[] }>('/missions');
 }
 
 /**
- * Mettre à jour le score d'un utilisateur
+ * Mettre à jour le progrès d'une mission
  */
-export async function updateScore(userId: string, data: UpdateScoreData): Promise<{ score: Score }> {
-  return apiRequest<{ score: Score }>(`/scores/${userId}`, {
+export async function updateMissionProgres(id: string, progres: number): Promise<{ mission: Mission }> {
+  return apiRequest<{ mission: Mission }>(`/missions/${id}/progres`, {
     method: 'PATCH',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ progres }),
   });
 }

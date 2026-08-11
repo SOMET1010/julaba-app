@@ -29,7 +29,7 @@ import { useInstitutionData } from '../../hooks/useInstitutionData';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 
 const PRIMARY_COLOR = '#712864';
 

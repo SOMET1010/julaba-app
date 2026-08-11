@@ -6,7 +6,7 @@ import { useApp } from '../../contexts/AppContext';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useCountUp } from '../../hooks/useCountUp';
 import { format, isToday, isYesterday } from 'date-fns';
-import { fetchCredits, marquerCreditPaye, type Credit } from '../../../imports/caisse-api';
+import { fetchCredits, marquerCreditPaye, type Credit } from '../../services/api/caisse-api';
 import { fr } from 'date-fns/locale';
 import { exportSimplePDF, formatCurrency, formatDate } from '../../utils/export.utils';
 import { partagerRecu, telechargerRecuPDF } from '../../utils/recu.utils';

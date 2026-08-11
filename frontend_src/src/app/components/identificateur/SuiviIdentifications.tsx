@@ -25,7 +25,7 @@ import { toast } from 'sonner';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { NotificationButton } from '../marchand/NotificationButton';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 
 const PRIMARY_COLOR = '#9F8170';
 
