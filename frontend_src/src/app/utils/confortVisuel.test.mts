@@ -1,8 +1,8 @@
 /**
- * Tests du mode SOLEIL (confort visuel, inclusion §2.4).
+ * Tests du CONFORT VISUEL (normal / soleil / sombre, inclusion §2.4).
  * Lancer : npm run test:confort   (tsx, cœur pur, sans DOM)
  */
-import { lireConfort, appliquerClasse, ecrireConfort, CLE_CONFORT } from "./confortVisuel.js";
+import { lireConfort, appliquerClasse, ecrireConfort, CLE_CONFORT, ANCIENNE_CLE_SOMBRE } from "./confortVisuel.js";
 
 let failures = 0;
 function ok(cond: boolean, label: string) {
@@ -30,31 +30,45 @@ function main() {
   {
     eq(lireConfort(makeStore()), "normal", "rien de mémorisé → normal");
     eq(lireConfort(makeStore({ [CLE_CONFORT]: "soleil" })), "soleil", "soleil mémorisé → soleil");
+    eq(lireConfort(makeStore({ [CLE_CONFORT]: "sombre" })), "sombre", "sombre mémorisé → sombre");
     eq(lireConfort(makeStore({ [CLE_CONFORT]: "n'importe quoi" })), "normal", "valeur inconnue → normal (jamais de casse)");
     eq(lireConfort(null), "normal", "pas de stockage → normal");
   }
 
-  console.log("\n[2] Application de la classe");
+  console.log("\n[2] Migration depuis l'ancien mode sombre (ThemeContext historique)");
+  {
+    eq(lireConfort(makeStore({ [ANCIENNE_CLE_SOMBRE]: "true" })), "sombre",
+      "ancien sombre actif, rien dans le nouveau réglage → sombre (elle retrouve son écran)");
+    eq(lireConfort(makeStore({ [ANCIENNE_CLE_SOMBRE]: "false" })), "normal", "ancien sombre éteint → normal");
+    eq(lireConfort(makeStore({ [CLE_CONFORT]: "soleil", [ANCIENNE_CLE_SOMBRE]: "true" })), "soleil",
+      "le NOUVEAU réglage gagne toujours sur l'ancien");
+  }
+
+  console.log("\n[3] Application : une classe à la fois, JAMAIS deux");
   {
     const r = makeRacine();
     appliquerClasse(r, "soleil");
-    ok(r.classes.has("soleil"), "soleil → classe posée");
+    ok(r.classes.has("soleil") && !r.classes.has("dark"), "soleil → classe soleil seule");
+    appliquerClasse(r, "sombre");
+    ok(r.classes.has("dark") && !r.classes.has("soleil"), "sombre → dark posée, soleil RETIRÉE");
+    appliquerClasse(r, "soleil");
+    ok(r.classes.has("soleil") && !r.classes.has("dark"), "retour soleil → dark RETIRÉE");
     appliquerClasse(r, "normal");
-    ok(!r.classes.has("soleil"), "normal → classe retirée");
+    ok(!r.classes.has("soleil") && !r.classes.has("dark"), "normal → aucune classe");
   }
 
-  console.log("\n[3] Écriture : mémorise ET applique");
+  console.log("\n[4] Écriture : mémorise ET applique");
   {
     const r = makeRacine();
     const s = makeStore();
-    ok(ecrireConfort(s, r, "soleil"), "écriture réussie");
-    eq(s.data[CLE_CONFORT], "soleil", "mode mémorisé");
-    ok(r.classes.has("soleil"), "classe posée");
+    ok(ecrireConfort(s, r, "sombre"), "écriture réussie");
+    eq(s.data[CLE_CONFORT], "sombre", "mode mémorisé");
+    ok(r.classes.has("dark"), "classe posée");
     ok(ecrireConfort(s, r, "normal"), "retour au normal");
-    ok(!r.classes.has("soleil"), "classe retirée");
+    ok(!r.classes.has("dark") && !r.classes.has("soleil"), "classes retirées");
   }
 
-  console.log("\n[4] Stockage en panne : l'écran change quand même");
+  console.log("\n[5] Stockage en panne : l'écran change quand même");
   {
     const r = makeRacine();
     const casse = { getItem: () => null, setItem: () => { throw new Error("quota"); } };

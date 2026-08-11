@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../utils/confortVisuel';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -22,64 +23,60 @@ function isNightTime(): boolean {
 }
 
 // ─── Provider ────────────────────────────────────────────────────────────────
+// Depuis v5.0.0.14, le mode sombre est un des trois CONFORTS VISUELS
+// (normal / soleil / sombre) arbitrés par utils/confortVisuel — SEUL ce
+// module pose/retire les classes sur <html>, jamais deux modes à la fois.
+// Ce contexte garde son API (isDark/toggleDark/mode auto 18h-6h) mais
+// délègue toute l'application visuelle à l'arbitre.
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [isDark, setIsDark] = useState<boolean>(() => {
-    const stored = localStorage.getItem('julaba_dark_mode');
-    if (stored !== null) return stored === 'true';
-    return false;
-  });
+  const [isDark, setIsDarkState] = useState<boolean>(() => getConfortVisuel() === 'sombre');
 
   const [mode, setModeState] = useState<ThemeMode>(() => {
-    const stored = localStorage.getItem('julaba_theme_mode');
-    return (stored === 'auto' ? 'auto' : 'manuel') as ThemeMode;
+    try { return localStorage.getItem('julaba_theme_mode') === 'auto' ? 'auto' : 'manuel'; }
+    catch { return 'manuel'; }
   });
 
-  // Appliquer la classe .dark sur <html>
+  // Le bouton ☀️ de l'accueil (ou tout autre écran) peut changer le confort :
+  // on se resynchronise sur l'événement de l'arbitre (soleil posé → sombre ôté).
   useEffect(() => {
-    const root = document.documentElement;
-    if (isDark) {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem('julaba_dark_mode', String(isDark));
-  }, [isDark]);
+    const sync = () => setIsDarkState(getConfortVisuel() === 'sombre');
+    window.addEventListener(CONFORT_EVENT, sync);
+    return () => window.removeEventListener(CONFORT_EVENT, sync);
+  }, []);
 
-  // Persister le mode
+  // Persister le mode (manuel / auto)
   useEffect(() => {
-    localStorage.setItem('julaba_theme_mode', mode);
-  }, [mode]);
-
-  // Mode auto : verifier toutes les minutes si on est entre 18h et 6h
-  useEffect(() => {
-    if (mode !== 'auto') return;
-    // Appliquer immediatement
-    setIsDark(isNightTime());
-    const interval = setInterval(() => {
-      setIsDark(isNightTime());
-    }, 60000); // verifier chaque minute
-    return () => clearInterval(interval);
-  }, [mode]);
-
-  const toggleDark = useCallback(() => {
-    if (mode === 'auto') {
-      // Passer en mode manuel quand l'utilisateur toggle manuellement
-      setModeState('manuel');
-    }
-    setIsDark(prev => !prev);
+    try { localStorage.setItem('julaba_theme_mode', mode); } catch { /* ignore */ }
   }, [mode]);
 
   const setDark = useCallback((v: boolean) => {
-    setIsDark(v);
+    const actuel = getConfortVisuel();
+    // Allumer le sombre remplace TOUT autre mode (exclusif) ; l'éteindre ne
+    // rend le 'normal' que si le sombre était bien le mode en place — on ne
+    // clobbe jamais un mode soleil choisi ailleurs.
+    if (v && actuel !== 'sombre') setConfortVisuel('sombre');
+    else if (!v && actuel === 'sombre') setConfortVisuel('normal');
+    setIsDarkState(v);
   }, []);
+
+  // Mode auto : vérifier chaque minute si on est entre 18h et 6h
+  useEffect(() => {
+    if (mode !== 'auto') return;
+    setDark(isNightTime());
+    const interval = setInterval(() => { setDark(isNightTime()); }, 60000);
+    return () => clearInterval(interval);
+  }, [mode, setDark]);
+
+  const toggleDark = useCallback(() => {
+    if (mode === 'auto') setModeState('manuel'); // un geste manuel reprend la main
+    setDark(getConfortVisuel() !== 'sombre');
+  }, [mode, setDark]);
 
   const setMode = useCallback((m: ThemeMode) => {
     setModeState(m);
-    if (m === 'auto') {
-      setIsDark(isNightTime());
-    }
-  }, []);
+    if (m === 'auto') setDark(isNightTime());
+  }, [setDark]);
 
   return (
     <ThemeContext.Provider value={{ isDark, mode, toggleDark, setMode, setDark }}>
@@ -93,7 +90,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 export function useTheme(): ThemeContextType {
   const ctx = useContext(ThemeContext);
   if (!ctx) {
-    // Fallback gracieux si utilise hors du provider
+    // Fallback gracieux si utilisé hors du provider
     return {
       isDark: false,
       mode: 'manuel',
