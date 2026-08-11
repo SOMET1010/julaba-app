@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test:audio": "tsx src/app/services/audioManager.test.mts",
     "test:cart": "tsx src/app/services/cartStorage.test.mts",
-    "test:voix": "tsx src/app/services/venteVocale.test.mts"
+    "test:voix": "tsx src/app/services/venteVocale.test.mts",
+    "test:comptes": "tsx src/app/services/comptesMemorises.test.mts"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",

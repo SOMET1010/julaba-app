@@ -21,6 +21,7 @@ import { VoiceLevelSelector } from './VoiceLevelSelector';
 import { TextSizeSlider } from './TextSizeSlider';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { registerWebAuthn, verifyWebAuthnForKeiwa } from '../../hooks/useWebAuthn';
+import { marquerBiometrie } from '../../services/comptesMemorises';
 import { API_URL } from '../../utils/api';
 import { toast } from 'sonner';
 
@@ -746,6 +747,12 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
     const result = await registerWebAuthn();
     if (result.success) {
       toast.success('FaceID / Empreinte activé');
+      // « Tata se souvient de moi » : la reconnaissance marche désormais ICI →
+      // l'accueil au retour proposera le grand bouton (visage/doigt) d'office.
+      try {
+        const tel = String((user as any)?.phone || '').replace(/^\+225/, '');
+        if (/^\d{10}$/.test(tel)) marquerBiometrie(window.localStorage, tel, true);
+      } catch { /* ignore */ }
     } else {
       toast.error(result.error || 'Échec activation biométrie');
     }
