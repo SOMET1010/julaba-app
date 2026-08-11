@@ -44,14 +44,14 @@ const TYPE_CONFIG: Record<UserFlagType, { label: string; color: string; bg: stri
   abus: { label: 'Contenu abusif', color: '#8B5CF6', bg: '#FAF5FF' },
   spam: { label: 'Spam', color: '#F59E0B', bg: '#FFFBEB' },
   usurpation: { label: 'Usurpation', color: '#DC2626', bg: '#FEF2F2' },
-  autre: { label: 'Autre', color: '#6B7280', bg: '#F9FAFB' },
+  autre: { label: 'Autre', color: 'var(--encre-3)', bg: '#F9FAFB' },
 };
 
 const STATUT_CONFIG: Record<SignalementStatut, { label: string; color: string; bg: string }> = {
   nouveau: { label: 'Nouveau', color: '#EF4444', bg: '#FEF2F2' },
   en_cours: { label: 'En cours', color: '#F59E0B', bg: '#FFFBEB' },
   traite: { label: 'Traité', color: '#10B981', bg: '#F0FDF4' },
-  rejete: { label: 'Rejeté', color: '#6B7280', bg: '#F9FAFB' },
+  rejete: { label: 'Rejeté', color: 'var(--encre-3)', bg: '#F9FAFB' },
 };
 
 const ACTION_LABELS: Record<FlagResolutionAction, string> = {
@@ -287,7 +287,7 @@ export function BOModeration() {
               padding: '10px 16px',
               fontSize: '13px',
               fontWeight: activeTab === 'signalements' ? 700 : 500,
-              color: activeTab === 'signalements' ? BO_PRIMARY : '#6B7280',
+              color: activeTab === 'signalements' ? BO_PRIMARY : 'var(--encre-3)',
               background: 'transparent',
               border: 'none',
               borderBottom: activeTab === 'signalements' ? `2px solid ${BO_PRIMARY}` : '2px solid transparent',
@@ -304,7 +304,7 @@ export function BOModeration() {
               padding: '10px 16px',
               fontSize: '13px',
               fontWeight: activeTab === 'marches' ? 700 : 500,
-              color: activeTab === 'marches' ? BO_PRIMARY : '#6B7280',
+              color: activeTab === 'marches' ? BO_PRIMARY : 'var(--encre-3)',
               background: 'transparent',
               border: 'none',
               borderBottom: activeTab === 'marches' ? `2px solid ${BO_PRIMARY}` : '2px solid transparent',

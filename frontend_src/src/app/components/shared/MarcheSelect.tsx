@@ -106,7 +106,7 @@ export function MarcheSelect({ commune, value, onChange, color, error }: MarcheS
           >
             <TablerIcon
               name="building-store"
-              style={{ color: selectedMarche ? color : '#9CA3AF', fontSize: '1.15rem', flexShrink: 0 }}
+              style={{ color: selectedMarche ? color : 'var(--encre-4)', fontSize: '1.15rem', flexShrink: 0 }}
             />
             <span className="flex-1 min-w-0">
               {selectedMarche ? (
@@ -130,7 +130,7 @@ export function MarcheSelect({ commune, value, onChange, color, error }: MarcheS
             <TablerIcon
               name="chevron-down"
               style={{
-                color: '#9CA3AF',
+                color: 'var(--encre-4)',
                 fontSize: '1.1rem',
                 flexShrink: 0,
                 transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -167,7 +167,7 @@ export function MarcheSelect({ commune, value, onChange, color, error }: MarcheS
                       >
                         <TablerIcon
                           name="building-store"
-                          style={{ color: active ? color : '#9CA3AF', fontSize: '1.15rem', flexShrink: 0 }}
+                          style={{ color: active ? color : 'var(--encre-4)', fontSize: '1.15rem', flexShrink: 0 }}
                         />
                         <motion.span className="flex-1 min-w-0">
                           <span

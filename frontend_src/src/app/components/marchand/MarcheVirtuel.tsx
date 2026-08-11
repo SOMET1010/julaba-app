@@ -1042,7 +1042,7 @@ export function MarcheVirtuel() {
                     <div key={method.id}>
                       <motion.button onClick={() => { setPaymentMethod(method.id); if (method.id === 'mobile_money') { setShowMobileOperators(true); } else { setShowMobileOperators(false); setSelectedOperator(null); } }} className={`w-full p-4 rounded-2xl border-2 transition-all ${isSelected ? `border-[${method.borderColor}]` : 'bg-white border-gray-200'}`} style={isSelected ? { backgroundColor: method.bgColor, borderColor: method.borderColor } : {}} whileTap={{ scale: 0.98 }}>
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: isSelected ? `${method.color}20` : '#F3F4F6' }}><IconComp className="w-6 h-6" style={{ color: isSelected ? method.color : '#6B7280' }} /></div>
+                          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: isSelected ? `${method.color}20` : '#F3F4F6' }}><IconComp className="w-6 h-6" style={{ color: isSelected ? method.color : 'var(--encre-3)' }} /></div>
                           <div className="flex-1 text-left"><h3 className="font-bold text-gray-900">{method.label}</h3><p className="text-xs text-gray-500 mt-0.5">{method.id === 'keiwa' ? `Solde: ${(keiwaBalance || 0).toLocaleString('fr-FR')} FCFA` : method.sublabel}</p></div>
                           {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500 }}><Check className="w-6 h-6" style={{ color: method.color }} /></motion.div>}
                         </div>

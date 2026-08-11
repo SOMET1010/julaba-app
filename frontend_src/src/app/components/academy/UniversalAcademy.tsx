@@ -674,7 +674,7 @@ export function UniversalAcademy() {
                   <div className="flex items-center gap-3 mb-2">
                     <motion.div
                       className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg border-2 border-white flex-shrink-0"
-                      style={{ backgroundColor: chapterUnlocked ? ch.color : '#9CA3AF' }}
+                      style={{ backgroundColor: chapterUnlocked ? ch.color : 'var(--encre-4)' }}
                       animate={chapterUnlocked ? { scale: [1, 1.05, 1] } : {}}
                       transition={{ duration: 2, repeat: Infinity }}
                     >

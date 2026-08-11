@@ -58,7 +58,7 @@ const STATUT_LABELS: Record<string, { label: string; color: string; bg: string }
   nouveau: { label: 'En attente', color: '#EF4444', bg: '#FEF2F2' },
   en_cours: { label: 'En traitement', color: '#F59E0B', bg: '#FFFBEB' },
   resolu: { label: 'Résolu', color: '#10B981', bg: '#F0FDF4' },
-  ferme: { label: 'Fermé', color: '#6B7280', bg: '#F9FAFB' },
+  ferme: { label: 'Fermé', color: 'var(--encre-3)', bg: '#F9FAFB' },
 };
 
 // ─── Vue Thread utilisateur (lecture seule) ───────────────────────────────────
@@ -661,7 +661,7 @@ export function SupportContact({ role, userName = 'Utilisateur', showBack = fals
                     key={tab}
                     onClick={() => { setActiveTab(tab); setSubmitted(false); setTicketNumber(null); setTrackedTicket(null); setTrackError(false); }}
                     className="flex-1 py-2 rounded-2xl text-sm font-bold transition-all"
-                    style={{ backgroundColor: activeTab === tab ? activeColor : '#F3F4F6', color: activeTab === tab ? 'white' : '#6B7280' }}
+                    style={{ backgroundColor: activeTab === tab ? activeColor : '#F3F4F6', color: activeTab === tab ? 'white' : 'var(--encre-3)' }}
                   >
                     {tab === 'nouveau' ? 'Nouveau ticket' : 'Suivre par numéro'}
                   </button>

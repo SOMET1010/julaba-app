@@ -140,7 +140,7 @@ export function BODashboard() {
       marchand: { label: 'Marchands', color: '#C66A2C' },
       producteur: { label: 'Producteurs', color: '#2E8B57' },
       cooperative: { label: 'Coopératives', color: '#1D4ED8' },
-      super_admin: { label: 'Super Admins', color: '#6B7280' },
+      super_admin: { label: 'Super Admins', color: 'var(--encre-3)' },
       cooperateur: { label: 'Coopérateurs', color: '#1D9E75' },
       identificateur: { label: 'Identificateurs', color: BO_PRIMARY },
       institution: { label: 'Institutions', color: '#8B5CF6' },
@@ -152,7 +152,7 @@ export function BODashboard() {
       .map(([type, value]) => ({
         name: TYPE_CONFIG[type]?.label || type,
         value,
-        color: TYPE_CONFIG[type]?.color || '#9CA3AF',
+        color: TYPE_CONFIG[type]?.color || 'var(--encre-4)',
       }))
       .sort((a, b) => b.value - a.value);
   }, [acteurs]);

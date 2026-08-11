@@ -137,7 +137,7 @@ function ModalAjoutTransaction({
                         className="py-3 rounded-2xl font-semibold border-2 flex items-center justify-center gap-2"
                         style={type === t
                           ? { backgroundColor: t === 'entree' ? '#16A34A' : '#DC2626', borderColor: 'transparent', color: 'white' }
-                          : { backgroundColor: 'white', borderColor: '#E5E7EB', color: '#6B7280' }
+                          : { backgroundColor: 'white', borderColor: '#E5E7EB', color: 'var(--encre-3)' }
                         }
                         whileTap={{ scale: 0.97 }}
                       >
@@ -158,7 +158,7 @@ function ModalAjoutTransaction({
                           className="px-3 py-1.5 rounded-xl border text-xs font-semibold"
                           style={categorie === key
                             ? { backgroundColor: COLOR, borderColor: COLOR, color: 'white' }
-                            : { backgroundColor: 'white', borderColor: '#E5E7EB', color: '#6B7280' }
+                            : { backgroundColor: 'white', borderColor: '#E5E7EB', color: 'var(--encre-3)' }
                           }
                           whileTap={{ scale: 0.95 }}
                         >
@@ -452,7 +452,7 @@ export function FinancesCooperative() {
               className="px-4 py-2 rounded-full border-2 text-sm font-semibold"
               style={filtreType === f.id
                 ? { backgroundColor: COLOR, borderColor: COLOR, color: 'white' }
-                : { backgroundColor: 'white', borderColor: '#E5E7EB', color: '#6B7280' }
+                : { backgroundColor: 'white', borderColor: '#E5E7EB', color: 'var(--encre-3)' }
               }
               whileTap={{ scale: 0.95 }}
             >
@@ -474,7 +474,7 @@ export function FinancesCooperative() {
               className="px-3 py-1.5 rounded-xl border text-xs font-semibold"
               style={filtrePeriode === p.id
                 ? { backgroundColor: `${COLOR}15`, borderColor: COLOR, color: COLOR }
-                : { backgroundColor: 'white', borderColor: '#E5E7EB', color: '#9CA3AF' }
+                : { backgroundColor: 'white', borderColor: '#E5E7EB', color: 'var(--encre-4)' }
               }
               whileTap={{ scale: 0.95 }}
             >

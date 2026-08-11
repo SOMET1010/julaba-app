@@ -117,7 +117,7 @@ export function BOCommunication() {
         {[{ key: 'campagnes', label: 'Campagnes' }, { key: 'templates', label: 'Templates' }].map(t => (
           <motion.button key={t.key} onClick={() => setTab(t.key as any)} whileTap={{ scale: 0.95 }}
             className="px-4 py-2.5 rounded-2xl border-2 text-sm font-bold"
-            style={tab === t.key ? { backgroundColor: BO_PRIMARY, color: '#fff', borderColor: BO_PRIMARY } : { borderColor: '#E5E7EB', color: '#6B7280' }}>
+            style={tab === t.key ? { backgroundColor: BO_PRIMARY, color: '#fff', borderColor: BO_PRIMARY } : { borderColor: '#E5E7EB', color: 'var(--encre-3)' }}>
             {t.label}
           </motion.button>
         ))}
@@ -198,7 +198,7 @@ export function BOCommunication() {
                   return (
                     <motion.button key={k} onClick={() => setNewCanal(k as Canal)} whileTap={{ scale: 0.95 }}
                       className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 text-sm font-bold"
-                      style={newCanal === k ? { backgroundColor: v.color, color: '#fff', borderColor: v.color } : { borderColor: '#E5E7EB', color: '#6B7280' }}>
+                      style={newCanal === k ? { backgroundColor: v.color, color: '#fff', borderColor: v.color } : { borderColor: '#E5E7EB', color: 'var(--encre-3)' }}>
                       <Icon className="w-4 h-4" /> {v.label}
                     </motion.button>
                   );

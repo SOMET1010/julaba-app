@@ -119,7 +119,7 @@ export function UniversalTabsBO({
             transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
             style={{ display: 'inline-flex' }}
           >
-            <Icon className="w-4 h-4" style={{ color: isActive ? '#FFFFFF' : '#9CA3AF' }} />
+            <Icon className="w-4 h-4" style={{ color: isActive ? '#FFFFFF' : 'var(--encre-4)' }} />
           </motion.span>
         )}
         <span>{tab.label}</span>

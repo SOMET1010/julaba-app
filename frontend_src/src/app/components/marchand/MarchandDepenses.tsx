@@ -350,7 +350,7 @@ export function MarchandDepenses() {
           />
           {PERIODS.map((p, i) => (
             <button key={p.id} onClick={() => setPeriod(p.id)}
-              style={{ flex:1, padding:'9px 4px', fontSize:12, fontWeight:700, color: period===p.id ? 'white' : '#aaa', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', transition:'color 0.2s' }}>
+              style={{ flex:1, padding:'9px 4px', fontSize:12, fontWeight:700, color: period===p.id ? 'white' : 'var(--encre-4)', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', transition:'color 0.2s' }}>
               {p.label}
             </button>
           ))}

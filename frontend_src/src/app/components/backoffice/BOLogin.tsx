@@ -482,7 +482,7 @@ export function BOLogin() {
                 <span
                   style={{
                     fontSize: 11,
-                    color: '#9CA3AF',
+                    color: 'var(--encre-4)',
                     fontWeight: 700,
                     letterSpacing: 1,
                   }}
@@ -542,7 +542,7 @@ export function BOLogin() {
             textAlign: 'center',
             fontSize: 11,
             fontWeight: 600,
-            color: '#9CA3AF',
+            color: 'var(--encre-4)',
             letterSpacing: '0.3px',
             whiteSpace: 'nowrap',
           }}

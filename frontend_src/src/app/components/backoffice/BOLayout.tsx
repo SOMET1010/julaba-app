@@ -51,7 +51,7 @@ const STATUT_CONFIG = {
   nouveau: { label: 'Nouveau', color: '#EF4444', bg: '#FEF2F2' },
   en_cours: { label: 'En cours', color: '#F59E0B', bg: '#FFFBEB' },
   resolu: { label: 'Résolu', color: '#10B981', bg: '#F0FDF4' },
-  ferme: { label: 'Fermé', color: '#6B7280', bg: '#F9FAFB' },
+  ferme: { label: 'Fermé', color: 'var(--encre-3)', bg: '#F9FAFB' },
 };
 
 // ── NOUVELLE STRUCTURE AVEC ACCORDÉONS ───────────────────────────────────────
@@ -172,7 +172,7 @@ const SIDEBAR_MENU: (MenuItem | MenuGroup)[] = [
     id: 'systeme',
     label: 'Système',
     icon: Zap,
-    color: '#6B7280',
+    color: 'var(--encre-3)',
     items: [
       { id: 'cron', label: 'Tâches planifiées', icon: Timer, path: '/backoffice/cron', permission: 'cron.read' },
       { id: 'notifications', label: 'Notifications', icon: Bell, path: '/backoffice/notifications', permission: null },
@@ -302,7 +302,7 @@ function NotifPanel({ open, onClose, tickets, nouveauxCount, onVoirTicket, onMar
                             borderColor: BO_PRIMARY,
                             boxShadow: `0 4px 10px ${BO_PRIMARY}40`,
                           }
-                        : { color: '#6B7280', borderColor: '#E5E7EB', backgroundColor: '#fff' }
+                        : { color: 'var(--encre-3)', borderColor: '#E5E7EB', backgroundColor: '#fff' }
                     }
                   >
                     {label}
@@ -1148,7 +1148,7 @@ export function BOLayout() {
                   transition={{ repeat: Infinity, duration: 2 }}
                 />
               )}
-              <Bell className="w-[18px] h-[18px]" style={{ color: nouveauxCount > 0 ? BO_PRIMARY : '#6B7280' }} />
+              <Bell className="w-[18px] h-[18px]" style={{ color: nouveauxCount > 0 ? BO_PRIMARY : 'var(--encre-3)' }} />
               <AnimatePresence>
                 {nouveauxCount > 0 && (
                   <motion.span

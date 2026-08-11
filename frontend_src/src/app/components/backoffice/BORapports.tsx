@@ -52,7 +52,7 @@ function deriveMonthlyData(analytics: any, acteurs: any[], transactions: any[]) 
 function deriveTypeData(analytics: any, acteurs: any[]) {
   if (analytics?.by_role?.length) {
     const colorMap: Record<string, string> = { marchand: '#C66A2C', producteur: '#2E8B57', cooperative: '#1D4ED8', identificateur: BO_PRIMARY };
-    return analytics.by_role.map((r: any) => ({ name: r.role || r.label, value: r.count || r.value || 0, color: colorMap[r.role] || '#9CA3AF' }));
+    return analytics.by_role.map((r: any) => ({ name: r.role || r.label, value: r.count || r.value || 0, color: colorMap[r.role] || 'var(--encre-4)' }));
   }
   const roleMap: Record<string, { name: string; color: string }> = {
     marchand: { name: 'Marchands', color: '#C66A2C' },
@@ -62,7 +62,7 @@ function deriveTypeData(analytics: any, acteurs: any[]) {
   };
   const counts: Record<string, number> = {};
   acteurs.forEach(a => { const r = a.type || a.role || ''; if (r) counts[r] = (counts[r] || 0) + 1; });
-  return Object.entries(counts).map(([role, value]) => ({ name: roleMap[role]?.name || role, value, color: roleMap[role]?.color || '#9CA3AF' }));
+  return Object.entries(counts).map(([role, value]) => ({ name: roleMap[role]?.name || role, value, color: roleMap[role]?.color || 'var(--encre-4)' }));
 }
 
 function deriveRegionPerf(acteurs: any[], transactions: any[]) {
@@ -87,7 +87,7 @@ function deriveRegionPerf(acteurs: any[], transactions: any[]) {
       volume: Math.round(d.volume / 1_000_000),
       commissions: Math.round(d.volume / 1_000_000 * 0.03 * 100) / 100,
       taux: Math.min(99, Math.round(60 + (d.acteurs / Math.max(...Object.values(map).map(x => x.acteurs))) * 39)),
-      color: REGION_COLORS[i] || '#9CA3AF',
+      color: REGION_COLORS[i] || 'var(--encre-4)',
     }));
 }
 

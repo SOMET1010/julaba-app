@@ -71,10 +71,10 @@ const TYPE_CONFIG: Record<TypeInstitution, { label: string; color: string; bg: s
   radio_rurale: { label: 'Radio Rurale', color: '#FBBF24', bg: 'bg-amber-50' },
   
   // Autres
-  partenaire_tech: { label: 'Partenaire Technologique', color: '#6B7280', bg: 'bg-gray-50' },
+  partenaire_tech: { label: 'Partenaire Technologique', color: 'var(--encre-3)', bg: 'bg-gray-50' },
   cooperative: { label: 'Coopérative', color: '#2072AF', bg: 'bg-blue-50' },
   gouvernement: { label: 'Gouvernement', color: '#B91C1C', bg: 'bg-red-50' },
-  autre: { label: 'Autre', color: '#9CA3AF', bg: 'bg-gray-50' },
+  autre: { label: 'Autre', color: 'var(--encre-4)', bg: 'bg-gray-50' },
 };
 
 const MODULES_CONFIG: Array<{ key: keyof ModuleAcces; label: string; desc: string; icon: any }> = [
@@ -115,7 +115,7 @@ const ACCES_DOCUMENTATION: Record<keyof ModuleAcces, { lecture: string; complet:
 };
 
 const NIVEAU_CONFIG: Record<NiveauAcces, { label: string; color: string; bg: string; border: string }> = {
-  aucun:    { label: 'Aucun accès',    color: '#6B7280', bg: 'bg-gray-100',  border: 'border-gray-200' },
+  aucun:    { label: 'Aucun accès',    color: 'var(--encre-3)', bg: 'bg-gray-100',  border: 'border-gray-200' },
   lecture:  { label: 'Lecture seule',  color: '#D97706', bg: 'bg-amber-50',  border: 'border-amber-200' },
   ecriture: { label: 'Lecture et écriture', color: '#2563EB', bg: 'bg-blue-50', border: 'border-blue-200' },
   complet:  { label: 'Accès complet',  color: '#059669', bg: 'bg-green-50',  border: 'border-green-200' },
@@ -219,7 +219,7 @@ function InstitutionCard({
               </span>
               <span className="flex items-center gap-1">
                 <Shield className="w-3 h-3" />
-                <span style={{ color: actifs > 0 ? '#059669' : '#6B7280' }}>
+                <span style={{ color: actifs > 0 ? '#059669' : 'var(--encre-3)' }}>
                   {actifs} module{actifs !== 1 ? 's' : ''} actif{actifs !== 1 ? 's' : ''}
                 </span>
               </span>
@@ -524,7 +524,7 @@ export function BOInstitutions() {
               key={s}
               onClick={() => setFilterStatut(s)}
               className="px-3 py-1.5 rounded-xl text-xs font-bold"
-              style={filterStatut === s ? { backgroundColor: INST_COLOR, color: '#fff' } : { color: '#6B7280' }}
+              style={filterStatut === s ? { backgroundColor: INST_COLOR, color: '#fff' } : { color: 'var(--encre-3)' }}
               whileTap={{ scale: 0.95 }}
             >
               {s === 'all' ? 'Toutes' : s === 'actif' ? 'Actives' : 'Suspendues'}
