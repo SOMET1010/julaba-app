@@ -25,6 +25,10 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.3 — 11/08/2026 : contraste v2 — couche de tokens CSS (`--encre*`,
+  `--trait`, styles/tokens.css) surchargée proprement par le mode soleil ;
+  4 écrans cœur marchande migrés (caisse, accueil, ventes, résumé),
+  cohérence gardée par `npm run test:tokens`.
 - v5.0.0.2 — 11/08/2026 : montants parlés généralisés — tout KPI (UniversalKPI,
   53 écrans) et toute vente de l'historique se disent d'un toucher.
 - v5.0.0.1 — 11/08/2026 : base de départ (session inclusion : sherpa unique,
