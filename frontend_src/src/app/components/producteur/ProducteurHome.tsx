@@ -18,6 +18,9 @@ export function ProducteurHome() {
   const navigate = useNavigate();
   const { user, speak, setIsModalOpen } = useApp();
   const { stats } = useProducteur();
+  // Prénom SANS « undefined » possible (bug vu en recette : user.prenoms
+  // absent chez certains comptes → « Bonjour undefined ! » affiché ET parlé).
+  const prenomAffiche = (user?.prenoms || user?.firstName || user?.prenom || '').toString().trim();
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isJourneeExpanded, setIsJourneeExpanded] = useState(false);
@@ -51,7 +54,7 @@ export function ProducteurHome() {
     } else if (production > 0 && revenus > 0) {
       message = `Bravo ! Tu as ${(production || 0).toLocaleString()} kilogrammes produits et ${(revenus || 0).toLocaleString()} francs CFA de revenus`;
     } else {
-      message = `Bonjour ${user?.prenoms} ! Crée ta première plantation agricole pour démarrer`;
+      message = `Bonjour${prenomAffiche ? ` ${prenomAffiche}` : ''} ! Crée ta première plantation agricole pour démarrer`;
     }
     speak(message);
   };
@@ -65,7 +68,7 @@ export function ProducteurHome() {
         `Bravo ! ${(stats?.recoltesTotales ?? 0).toLocaleString()} kg produits et ${(stats?.revenusTotal ?? 0).toLocaleString()} FCFA de revenus`
       )}
       {(stats?.recoltesTotales ?? 0) === 0 && (
-        `Bonjour ${user?.prenoms} ! ${roleConfig.greeting}`
+        `Bonjour${prenomAffiche ? ` ${prenomAffiche}` : ''} ! ${roleConfig.greeting}`
       )}
     </>
   );
