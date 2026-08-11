@@ -5,20 +5,23 @@ import {
   sherpaTtsInstalled,
   sherpaTtsReady,
   installSherpaTtsModel,
-  ensureSherpaTts,
 } from '../services/sherpaTts';
 import { speakBrowser } from '../services/elevenlabs';
+import { Banknote, Signal, Download } from 'lucide-react';
 
 // Bouton autonome « Installer le mode hors-ligne ».
-// Télécharge le modèle vocal UNE fois (en ligne), puis mis en cache par le
-// navigateur -> la voix marche ensuite sans réseau.
+// Télécharge le modèle vocal sherpa-onnx UNE fois (en ligne), puis mis en cache
+// par le navigateur / filesDir -> la voix marche ensuite sans réseau.
 //
-// Moteur : sherpa-onnx (WASM, modèle FR int8 ~128 Mo) quand le navigateur le
-// permet (origine cross-origin isolée), sinon Vosk (~40 Mo, repli historique).
+// Moteur : sherpa-onnx — plugin NATIF sur APK Android, WASM (modèle FR int8
+// ~128 Mo) sur web quand le navigateur le permet (origine cross-origin isolée,
+// headers COOP/COEP). Vosk a été définitivement retiré : si sherpa est
+// indisponible (navigateur non isolé), le mode hors-ligne ne peut pas
+// s'installer — message clair affiché.
 //
 // RÈGLE PRODUIT : on ne BLOQUE JAMAIS ce choix (« on ne sait jamais » : une
 // marchande peut vouloir installer même en données mobiles). Mais le modèle est
-// TRÈS CHER sur un forfait ivoirien → on prévient clairement, à voix haute, et on
+// TRÈS CHER sur un forfait ivoirien on prévient clairement, à voix haute, et on
 // demande DEUX validations avant de lancer. Le Wi-Fi (gratuit) est mis en avant.
 
 const MESSAGES = [
@@ -42,126 +45,38 @@ function dire(texte: string) {
 }
 
 // Vrai si la connexion actuelle est probablement FACTURÉE (données mobiles) ou
-// inconnue → on insiste alors sur le coût. En Wi-Fi avéré, l'avertissement est
+// inconnue on insiste alors sur le coût. En Wi-Fi avéré, l'avertissement est
 // plus léger. On ne se sert de ça QUE pour le ton, jamais pour bloquer.
 function connexionChere(): boolean {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const c = (navigator as any).connection;
-    if (!c) return true;                 // inconnu → on prévient fort (« on ne sait jamais »)
+    if (!c) return true;                 // inconnu on prévient fort (« on ne sait jamais »)
     if (c.saveData === true) return true; // économiseur de données activé
     if (c.type) return c.type !== 'wifi' && c.type !== 'ethernet';
     return true;
   } catch { return true; }
 }
 
-type EtatTts = 'absent' | 'avert' | 'chargement' | 'pret' | 'erreur';
-
-// ── Section « Voix neuronale » (TTS sherpa-onnx, hors-ligne) ───────────────
-// Séparée du modèle STT : on peut installer l'écoute sans la voix, et vice-versa.
-// La double validation protège le forfait de la marchande (cf. InstallerOffline).
-function InstallerVoixNeuronale() {
-  const [etat, setEtat] = useState<EtatTts>(() => (sherpaTtsReady() || sherpaTtsInstalled() ? 'pret' : 'absent'));
-  const [erreur, setErreur] = useState<string | null>(null);
-
-  const demarrer = () => {
-    setErreur(null);
-    setEtat('avert');
-    dire('La voix neuronale de Tata, pour qu elle te parle sans réseau. Environ quinze mégas. Tu veux continuer ?');
-  };
-
-  const installer = async () => {
-    setErreur(null);
-    setEtat('chargement');
-    dire("D'accord, on installe la voix. Ne ferme pas.");
-    try {
-      const ok = await installSherpaTtsModel();
-      if (ok && sherpaTtsReady()) {
-        setEtat('pret');
-        dire('C\'est bon. Tata te parle maintenant sans réseau.');
-      } else {
-        setEtat('erreur');
-        setErreur("Le moteur de la voix n'est pas encore prêt sur ce serveur. Réessaie plus tard.");
-      }
-    } catch (e) {
-      setEtat('erreur');
-      setErreur(e instanceof Error ? e.message : String(e));
-    }
-  };
-
-  const annuler = () => { setEtat('absent'); try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } };
-
-  if (etat === 'pret') {
-    return (
-      <div className="flex items-center justify-center gap-2 text-sm text-green-700 bg-green-50 rounded-xl py-2.5 px-4">
-        <span className="w-2 h-2 rounded-full bg-green-500" /> Voix neuronale prête — Tata parle sans réseau
-      </div>
-    );
-  }
-  if (etat === 'chargement') {
-    return (
-      <div className="flex flex-col items-center text-center gap-3 bg-gray-50 rounded-xl py-4 px-4">
-        <div className="flex gap-2" aria-hidden>
-          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '150ms' }} />
-          <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '300ms' }} />
-        </div>
-        <p className="text-sm font-semibold text-gray-800">On installe la voix neuronale…</p>
-      </div>
-    );
-  }
-  if (etat === 'avert') {
-    return (
-      <div className="flex flex-col items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl py-4 px-4 text-center">
-        <span className="text-3xl" aria-hidden>🗣️</span>
-        <p className="text-[15px] font-extrabold text-amber-900 leading-snug">Installer la voix neuronale ?</p>
-        <p className="text-[12.5px] text-amber-800 leading-snug max-w-xs">
-          Une seule fois, avec du réseau. Mieux en Wi-Fi. Ensuite Tata te parle sans connexion.
-        </p>
-        <div className="flex gap-2.5 w-full max-w-xs mt-1">
-          <button onClick={annuler}
-            className="flex-1 py-3 rounded-xl font-bold text-sm text-amber-900 bg-white border-2 border-amber-300">
-            Plus tard
-          </button>
-          <button onClick={installer}
-            className="flex-1 py-3 rounded-xl font-bold text-sm text-white bg-amber-600">
-            Installer
-          </button>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col items-center gap-1.5">
-      <button
-        onClick={demarrer}
-        className="flex items-center gap-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 px-4 py-2.5 rounded-xl transition"
-      >
-        🗣️ Installer la voix neuronale (TTS hors-ligne)
-      </button>
-      <p className="text-[11px] text-gray-400 text-center max-w-xs">
-        La voix de Tata qui parle sans réseau. Une seule fois, avec du réseau, mieux en Wi-Fi.
-      </p>
-      {etat === 'erreur' && erreur && (
-        <p className="text-[11px] text-red-500 text-center max-w-xs">Échec : {erreur}. Réessaie plus tard.</p>
-      )}
-    </div>
-  );
-}
-
 export function InstallerOffline({ onReady }: { onReady?: () => void } = {}) {
-  // « prêt » si le modèle est chargé en mémoire OU déjà installé sur l'appareil
-  // (il se ré-active tout seul en tâche de fond, inutile de re-télécharger).
-  const [etat, setEtat] = useState<Etat>(() => (offlineModelReady() || offlineModelInstalled() ? 'pret' : 'absent'));
+  // « prêt » si les DEUX briques sont installées : l'écoute hors-ligne (modèle
+  // STT chargé en mémoire ou déjà installé) ET la voix neuronale de Tata (TTS).
+  const [etat, setEtat] = useState<Etat>(() =>
+    (offlineModelReady() || offlineModelInstalled()) && (sherpaTtsReady() || sherpaTtsInstalled())
+      ? 'pret'
+      : 'absent'
+  );
   const [erreur, setErreur] = useState<string | null>(null);
   const [i, setI] = useState(0);
   const [sec, setSec] = useState(0);
   const [prog, setProg] = useState<number | null>(null); // 0..1 (sherpa : octets réels)
+  const [phase, setPhase] = useState<'stt' | 'tts'>('stt');
   const timers = useRef<Array<ReturnType<typeof setInterval>>>([]);
   const chere = connexionChere();
-  // Taille + libellé selon le moteur effectif (sherpa si possible, sinon Vosk).
+  // Moteur effectif (sherpa si possible — le seul moteur depuis le retrait de
+  // Vosk). Sert à forcer l'installation et au bouton « réessayer ».
   const moteur = sttEngine();
-  const MO = moteur === 'sherpa' ? SHERPA_TOTAL_MO : 40;
+  const MO = SHERPA_TOTAL_MO;
 
   useEffect(() => {
     if (etat !== 'chargement') return;
@@ -176,8 +91,8 @@ export function InstallerOffline({ onReady }: { onReady?: () => void } = {}) {
     setErreur(null);
     setEtat('avert1');
     dire(chere
-      ? 'Attention. Télécharger la voix coûte cher avec ton crédit internet. C\'est mieux avec le wifi. Tu veux continuer ?'
-      : `On va télécharger la voix, environ ${MO} mégas. Tu veux continuer ?`);
+      ? 'Attention. Télécharger la voix et l\'écoute coûte cher avec ton crédit internet. C\'est mieux avec le wifi. Tu veux continuer ?'
+      : `On va télécharger l'écoute et la voix de Tata, environ ${MO} mégas. Tu veux continuer ?`);
   };
 
   // 2e validation.
@@ -186,15 +101,39 @@ export function InstallerOffline({ onReady }: { onReady?: () => void } = {}) {
     dire('Tu es sûre ? Ça va utiliser ton internet maintenant.');
   };
 
-  // Lancement effectif après les DEUX validations.
+  // Lancement effectif après les DEUX validations. Une SEULE action télécharge
+  // les deux briques : l'écoute (modèle STT ~MO Mo) puis la voix de Tata (TTS,
+  // livrée avec l'appli — simple pré-chargement, pas de gros téléchargement).
   const installer = async () => {
     setErreur(null);
     setSec(0);
     setProg(null);
+    setPhase('stt');
     setEtat('chargement');
     dire('D\'accord, on télécharge. Ne ferme pas.');
     try {
+      // Garde connectivité (offline-first) : ne lance pas un téléchargement de
+      // ~128 Mo si Internet n'est pas VRAIMENT joignable (navigator.onLine ment
+      // sur les portails captifs / Wi-Fi sans Internet). Message clair à la
+      // marchande plutôt qu'un timeout muet de 30 s.
+      const { hasInternet } = await import('../utils/connectivity');
+      if (!(await hasInternet())) {
+        setEtat('erreur');
+        setErreur('Pas de connexion Internet. Branche du Wi-Fi (gratuit) et réessaie.');
+        dire('Pas de connexion Internet. Branche du Wi-Fi et réessaie.');
+        return;
+      }
       await ensureOfflineModel((done, total) => setProg(total > 0 ? done / total : 1), moteur === 'sherpa');
+
+      // Voix neuronale de Tata (TTS) — best effort : si elle échoue, l'écoute
+      // marche déjà et Tata parle quand même (repli voix navigateur). On ne
+      // bloque jamais la fin d'installation sur cette brique livrée avec l'appli.
+      if (!(sherpaTtsReady() || sherpaTtsInstalled())) {
+        setPhase('tts');
+        setProg(null);
+        try { await installSherpaTtsModel(); } catch { /* voix navigateur en repli */ }
+      }
+
       setEtat('pret');
       dire('C\'est bon. La voix marche maintenant sans réseau.');
       try { onReady?.(); } catch { /* ignore */ }
@@ -209,7 +148,7 @@ export function InstallerOffline({ onReady }: { onReady?: () => void } = {}) {
   if (etat === 'pret') {
     return (
       <div className="flex items-center justify-center gap-2 text-sm text-green-700 bg-green-50 rounded-xl py-2.5 px-4">
-        <span className="w-2 h-2 rounded-full bg-green-500" /> Mode hors-ligne prêt — tu peux vendre sans réseau
+        <span className="w-2 h-2 rounded-full bg-green-500" /> Mode hors-ligne prêt — tu peux vendre et parler sans réseau
       </div>
     );
   }
@@ -222,10 +161,17 @@ export function InstallerOffline({ onReady }: { onReady?: () => void } = {}) {
           <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '150ms' }} />
           <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '300ms' }} />
         </div>
-        <p className="text-sm font-semibold text-gray-800 min-h-[2.5rem] flex items-center px-2">{MESSAGES[i]}</p>
+        <p className="text-sm font-semibold text-gray-800 min-h-[2.5rem] flex items-center px-2">
+          {phase === 'tts' ? 'On prépare la voix de Tata…' : MESSAGES[i]}
+        </p>
         <p className="text-[11px] text-gray-400 font-mono">
-          {sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}min ${sec % 60}s`}
-          {prog !== null ? ` · ${Math.round(prog * 100)}% de ~${MO} Mo` : ` · téléchargement (~${MO} Mo), ne ferme pas`}
+          {phase === 'tts'
+            ? 'presque fini…'
+            : sec < 60
+              ? `${sec}s`
+              : `${Math.floor(sec / 60)}min ${sec % 60}s`}
+          {phase !== 'tts' && prog !== null && ` · ${Math.round(prog * 100)}% de ~${MO} Mo`}
+          {phase !== 'tts' && prog === null && ` · téléchargement (~${MO} Mo), ne ferme pas`}
         </p>
       </div>
     );
@@ -235,7 +181,7 @@ export function InstallerOffline({ onReady }: { onReady?: () => void } = {}) {
   if (etat === 'avert1') {
     return (
       <div className="flex flex-col items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl py-4 px-4 text-center">
-        <span className="text-3xl" aria-hidden>💸</span>
+        <Banknote className="w-9 h-9 text-amber-600" aria-hidden />
         <p className="text-[15px] font-extrabold text-amber-900 leading-snug">
           {chere ? `Attention : c\'est ~${MO} Mo, ça coûte CHER en internet mobile.` : `Ça télécharge ~${MO} Mo.`}
         </p>
@@ -262,7 +208,7 @@ export function InstallerOffline({ onReady }: { onReady?: () => void } = {}) {
   if (etat === 'avert2') {
     return (
       <div className="flex flex-col items-center gap-3 bg-orange-50 border-2 border-orange-300 rounded-2xl py-4 px-4 text-center">
-        <span className="text-3xl" aria-hidden>📶</span>
+        <Signal className="w-9 h-9 text-orange-600" aria-hidden />
         <p className="text-[15px] font-extrabold text-orange-900 leading-snug">
           Tu es sûre ? Ça utilise ton internet maintenant.
         </p>
@@ -287,27 +233,30 @@ export function InstallerOffline({ onReady }: { onReady?: () => void } = {}) {
         onClick={demander}
         className="flex items-center gap-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 px-4 py-2.5 rounded-xl transition"
       >
-        ⬇️ Installer le mode hors-ligne (~{MO} Mo) · {moteur === 'sherpa' ? 'sherpa' : 'Vosk'}
+        <Download className="w-4 h-4" /> Installer le mode hors-ligne (~{MO} Mo) · {moteur === 'sherpa' ? 'sherpa' : 'indisponible'}
       </button>
       <p className="text-[11px] text-gray-400 text-center max-w-xs">
-        Une seule fois, avec du réseau. Mieux en Wi-Fi (gratuit). Ensuite la voix marche sans connexion.
+        L'écoute et la voix de Tata, en une seule fois. Avec du réseau, mieux en Wi-Fi (gratuit). Ensuite tout marche sans connexion.
       </p>
       {etat === 'erreur' && erreur && (
         <p className="text-[11px] text-red-500 text-center max-w-xs">Échec : {erreur}. Réessaie avec du réseau.</p>
       )}
-      {/* Un échec sherpa précédent l'a désactivé → bouton pour le réessayer. */}
-      {moteur === 'vosk' && sherpaSupported() && (
+      {/* Un échec sherpa précédent l'a désactivé (contexte pourtant compatible)
+ bouton pour réinitialiser et réessayer. */}
+      {moteur === null && sherpaSupported() && (
         <button
           onClick={() => { clearSherpaUnavailable(); setEtat('absent'); }}
           className="text-[11px] text-orange-500 underline underline-offset-2 hover:text-orange-600 transition"
         >
-          Réessayer avec la voix sherpa
+          Réessayer la voix hors-ligne
         </button>
       )}
-      {/* Voix neuronale TTS (sherpa-onnx) — indépendante de l'écoute STT */}
-      <div className="w-full border-t border-dashed border-gray-200 pt-3 mt-2">
-        <InstallerVoixNeuronale />
-      </div>
+      {moteur === null && !sherpaSupported() && (
+        <p className="text-[11px] text-gray-400 text-center max-w-xs">
+          La voix hors-ligne n'est pas disponible sur ce navigateur (il lui faut
+          le mode hors-ligne sécurisé). Elle l'est sur l'appli Android.
+        </p>
+      )}
     </div>
   );
 }
