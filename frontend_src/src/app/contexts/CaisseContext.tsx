@@ -120,6 +120,8 @@ interface CaisseContextType {
   addToCart: (product: CaisseProduct, quantite?: number) => void;
   removeFromCart: (productId: string) => void;
   updateCartItemQuantity: (productId: string, quantite: number) => void;
+  /** Négoce (demi-grossiste/grossiste) : le prix unitaire se discute à la vente. */
+  updateCartItemPrice: (productId: string, prix: number) => void;
   clearCart: () => void;
   getTotalCart: () => number;
 
@@ -393,6 +395,16 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     persistCart(next);
   };
 
+  // Négoce (demi-grossiste/grossiste) : le prix se discute à chaque vente —
+  // la ligne du panier porte le prix CONVENU, persisté comme le reste.
+  const updateCartItemPrice = (productId: string, prix: number) => {
+    if (!prix || isNaN(prix) || prix <= 0) return;
+    const next = cart.map(item =>
+      item.productId === productId ? { ...item, prix } : item);
+    setCart(next);
+    persistCart(next);
+  };
+
   const clearCart = () => { setCart([]); persistCart([]); };
 
   const getTotalCart = () => cart.reduce((sum, item) => sum + item.prix * item.quantite, 0);
@@ -591,6 +603,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     addToCart,
     removeFromCart,
     updateCartItemQuantity,
+    updateCartItemPrice,
     clearCart,
     getTotalCart,
     venteEnCours,

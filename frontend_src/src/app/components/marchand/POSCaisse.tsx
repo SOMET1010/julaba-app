@@ -20,9 +20,14 @@ const BG = '#FFF2E9';
 
 export function POSCaisse() {
   const navigate = useNavigate();
-  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, clearCart, getTotalCart, enregistrerVente, updateProduct, transactions } = useCaisse();
+  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, updateProduct, transactions } = useCaisse();
   const { speak, reloadTransactions, user } = useApp();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Ma boutique';
+  // La caisse SUIT le sous-profil (docs/SOUS_PROFILS_MARCHAND.md) : en négoce
+  // (demi-grossiste, grossiste), le prix unitaire se discute à chaque vente et
+  // les quantités se tapent directement (on ne vend pas 40 cuvettes au +1/+1).
+  const sousProfil = user?.sousProfilMarchand ?? null;
+  const estNegoce = sousProfil === 'demi_grossiste' || sousProfil === 'grossiste';
   // Confirmations vocales AUTO selon le profil (le même que la connexion) :
   // silencieuses en mode 'lecture' (l'écran affiche déjà tout), parlées en voix/mixte.
   const dire = (t: string) => { if (guidageVocal()) speak(t); };
@@ -396,7 +401,35 @@ export function POSCaisse() {
                   <div key={item.productId} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 0', borderBottom:'1px solid #f5f0eb' }}>
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:15, fontWeight:700, color:'var(--encre)' }}>{item.nom}</div>
-                      <div style={{ fontSize:12, color:'var(--encre-4)', marginTop:2 }}>{item.prix.toLocaleString('fr-FR')} FCFA × {item.quantite}</div>
+                      <div style={{ fontSize:12, color:'var(--encre-4)', marginTop:4, display:'flex', alignItems:'center', gap:6 }}>
+                        {estNegoce ? (
+                          /* Prix CONVENU pour cette vente — modifiable (négoce). */
+                          <input key={`p-${item.productId}-${item.prix}`} defaultValue={item.prix}
+                            inputMode="numeric" aria-label={`Prix unitaire convenu pour ${item.nom}`}
+                            onBlur={e => {
+                              const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
+                              if (v > 0 && v !== item.prix) {
+                                updateCartItemPrice(item.productId, v);
+                                dire(`${item.nom} : ${v.toLocaleString('fr-FR')} francs l'unité`);
+                              } else { e.target.value = String(item.prix); }
+                            }}
+                            style={{ width:72, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'right', background:'#FFFDF9', fontVariantNumeric:'tabular-nums' }} />
+                        ) : (
+                          <span>{item.prix.toLocaleString('fr-FR')} FCFA</span>
+                        )}
+                        <span>{estNegoce ? 'F ×' : '×'}</span>
+                        {/* Quantité TAPÉE directement (indispensable en gros). */}
+                        <input key={`q-${item.productId}-${item.quantite}`} defaultValue={item.quantite}
+                          inputMode="numeric" aria-label={`Quantité de ${item.nom}`}
+                          onBlur={e => {
+                            const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
+                            if (v > 0 && v !== item.quantite) {
+                              updateCartItemQuantity(item.productId, v);
+                              dire(`${item.nom} : ${v}`);
+                            } else { e.target.value = String(item.quantite); }
+                          }}
+                          style={{ width:56, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'center', background:'#FFFDF9', fontVariantNumeric:'tabular-nums' }} />
+                      </div>
                     </div>
                     <div style={{ fontSize:15, fontWeight:800, color:P }}>{(item.prix * item.quantite).toLocaleString('fr-FR')} FCFA</div>
                     <motion.button whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={`Enlever ${item.nom}`}
