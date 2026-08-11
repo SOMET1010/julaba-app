@@ -6,6 +6,7 @@ import { useCaisse } from '../../contexts/CaisseContext';
 import { RACC_IMG as MOD_IMAGES } from '../../assets/cloudinary-images';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { VenteVocaleModal } from './VenteVocaleModal';
+import { PropositionReconnaissance } from '../auth/PropositionReconnaissance';
 import { ResumeModal, CloseDayModal, EditFondModal } from './MarchandModals';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
@@ -257,6 +258,10 @@ function MarchandAccueilVoiceInner() {
         onClose={() => setShowEditFond(false)}
         currentFond={currentSession?.fondInitial || 0}
       />
+
+      {/* « Tata propose de me reconnaître » (lot 2) : une seule fois, juste après
+          une entrée par code — Oui = le téléphone apprend à la reconnaître. */}
+      <PropositionReconnaissance />
     </div>
   );
 }
