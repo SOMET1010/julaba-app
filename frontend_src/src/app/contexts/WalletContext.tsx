@@ -90,7 +90,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         relatedEntityType: tx.related_entity_type,
         relatedEntityId: tx.related_entity_id,
         metadata: tx.metadata,
-      }));
+      } as unknown as KeiwaTransaction));
 
       setKeiwa(keiwaAccount);
       setTransactions(txList);

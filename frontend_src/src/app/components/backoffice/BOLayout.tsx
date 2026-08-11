@@ -725,6 +725,7 @@ export function BOLayout() {
     nom: user.lastName || '',
     firstName: user.firstName || '',
     lastName: user.lastName || '',
+    photo_url: (user as { photo_url?: string }).photo_url,
     role: user.role,
   } : null;
     const { isDark, toggleDark } = useTheme();
@@ -890,7 +891,7 @@ export function BOLayout() {
     'permission' in item
       ? (item.superOnly ? isSuperUser : true)
         && (!item.roles || isSuperUser || (item.roles as readonly string[]).includes(boUser?.role ?? ''))
-        && (item.permission === null || hasPermission(item.permission))
+        && (item.permission === null || hasPermission(item.permission ?? ''))
       : true
   );
 

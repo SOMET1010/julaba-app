@@ -4,7 +4,7 @@ import { Users, MapPin, Map, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useBackOffice } from "../../contexts/BackOfficeContext";
 import { BO_PRIMARY } from "./bo-theme";
-import L from "leaflet";
+import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 const COLORS: Record<string, string> = {

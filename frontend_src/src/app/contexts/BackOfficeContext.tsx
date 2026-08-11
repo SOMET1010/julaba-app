@@ -91,6 +91,7 @@ interface BackOfficeContextType {
   boUsers: BOUser[];
   institutions: BOInstitution[];
   boUser: any;
+  refreshAuditLogs: (force?: boolean) => Promise<void> | void;
   setBOUser: (u: any) => void;
   hasPermission: (permission: string) => boolean;
   updateActeurStatut: (id: string, s: string, raison?: string) => Promise<void>;
@@ -472,6 +473,7 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
   const value: BackOfficeContextType = useMemo(
     () => ({
     user, isAuthenticated: !!user, isAuthLoading, logout,
+    refreshAuditLogs,
     refreshUser: loadUser,
     stats, statsLoading, refreshStats,
     acteurs, acteursTotal, acteursLoading, acteursPage, acteursSearch, acteursRole, roleCounts,
@@ -590,6 +592,7 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
       nom: user.lastName || '',
       firstName: user.firstName || '',
       lastName: user.lastName || '',
+      photo_url: user.photo_url,
     } : null,
     setBOUser: setUser,
     hasPermission: (permission: string) => {
@@ -740,7 +743,7 @@ export interface InstitutionBO {
   modules?: ModuleAcces;
 }
 
-export const PERMISSIONS: Record<BORoleType, Array<keyof ModuleAcces>> = {
+export const PERMISSIONS: Partial<Record<BORoleType, Array<keyof ModuleAcces>>> = {
   admin_general: ['acteurs', 'transactions', 'cooperatives', 'rapports', 'parametres'],
   operateur_terrain: ['acteurs', 'transactions', 'cooperatives', 'rapports'],
   identificateur: ['acteurs'],

@@ -490,8 +490,8 @@ function ProfilIdentificateurExtras({ color, user }: { color: string; user: User
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <KPICard label="Identifications validées" value={stats.identificationsValidees} color={color} />
-        <KPICard label="Identifications en cours" value={stats.identificationsEnCours} color={color} />
+        <KPICard label="Identifications validées" value={stats.validees} color={color} />
+        <KPICard label="Identifications en cours" value={stats.enAttente} color={color} />
       </div>
     </>
   );

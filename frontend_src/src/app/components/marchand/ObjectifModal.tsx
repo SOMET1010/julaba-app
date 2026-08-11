@@ -22,12 +22,10 @@ export function ObjectifModal({ isOpen, onClose }: Props) {
     setInput(num > 0 ? num.toLocaleString('fr-FR') : '');
   };
 
-  const { startRecording, isListening: isListeningVoice } = useVoiceCore({
-    onResult: (text) => {
-      const num = parseInt(text.replace(/[^0-9]/g, ''));
-      if (!isNaN(num) && num > 0) handleInput(String(num));
-    },
-  });
+  // L'ancienne option `onResult` n'a jamais existé sur useVoiceCore : la
+  // saisie vocale de l'objectif était INOPÉRANTE (le rappel n'était jamais
+  // appelé). Câblage réel à construire — voir docs/RESIDUS.md.
+  const { startRecording, isListening: isListeningVoice } = useVoiceCore({});
   const handleVoiceObjectif = () => startRecording();
 
   const handleMic = () => {

@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, AlertCircle, Info, X, XCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle, Info, X, XCircle, Zap } from 'lucide-react';
 import { getRoleColor, UserRole, Z_INDEX } from '../../styles/design-tokens';
 import { cn } from '../ui/utils';
 

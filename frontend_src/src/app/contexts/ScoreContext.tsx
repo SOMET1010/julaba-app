@@ -42,7 +42,7 @@ export function ScoreProvider({ children }: { children: ReactNode }) {
     }
     try {
       const { score } = await scoresApi.fetchScore(userId);
-      const raw = score as Record<string, unknown>;
+      const raw = score as unknown as Record<string, unknown>;
       const scoreTotal = Number(raw?.score_total ?? raw?.scoreTotal ?? 0);
       const scoreFiabilite = Number(raw?.score_fiabilite ?? raw?.scoreFiabilite ?? 0);
       const scoreQualite = Number(raw?.score_qualite ?? raw?.scoreQualite ?? 0);

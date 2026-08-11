@@ -196,7 +196,7 @@ export const IMG_PRODUIT_MANGUE = PRODUCTS.mangue;
 export const IMG_PRODUIT_ANANAS = PRODUCTS.ananas;
 export const IMG_PRODUIT_ARACHIDE = PRODUCTS.arachide;
 export const IMG_PRODUIT_AUTRE = PRODUCTS.autre;
-export const IMG_PRODUIT_AUTRE = PRODUCTS.repas;
+export const IMG_PRODUIT_REPAS = PRODUCTS.repas;
 
 // Fonds d'écran
 export const IMG_BG_MARKET = BACKGROUNDS.onboarding.cnpsCmu;

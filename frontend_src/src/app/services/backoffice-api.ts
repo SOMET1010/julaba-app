@@ -171,6 +171,8 @@ export async function boWebAuthnAuthenticateVerify(
 export interface BOUser {
   id: string;
   phone: string;
+  /** Photo de profil (URL) — affichée dans la barre BO. */
+  photo_url?: string;
   full_name?: string;
   firstName?: string;
   lastName?: string;
@@ -193,9 +195,7 @@ export interface BOUser {
     typePrecise: string | null;
     referentNom: string;
     referentFonction: string;
-    /** Photo de profil (URL) — affichée dans la barre BO. */
-  photo_url?: string;
-} | null;
+  } | null;
   // Aligne sur BORoleType (BackOfficeContext) : pas de role fantome 'admin'.
   role:
     | 'admin_general'
@@ -480,7 +480,7 @@ async function fetchRoleCounts(signal?: AbortSignal): Promise<RoleCounts> {
 
 export async function boGetActeurCounts(signal?: AbortSignal, force = false): Promise<RoleCounts> {
   const isCacheFresh = roleCountsCache && Date.now() - roleCountsCacheAt < ROLE_COUNTS_CACHE_MS;
-  if (!force && isCacheFresh) return roleCountsCache;
+  if (!force && isCacheFresh && roleCountsCache) return roleCountsCache;
   if (!force && roleCountsRefreshPromise) return roleCountsRefreshPromise;
 
   try {
@@ -508,7 +508,8 @@ export async function boGetActeur(id: string): Promise<Acteur> {
     telephone: u.phone || u.telephone || '',
     type: u.role || u.type || '',
     statut: u.statut || u.status || 'actif',
-  };
+    // Le backend renvoie des variantes partielles selon les routes.
+  } as unknown as Acteur;
 }
 
 export async function boCreateActeur(data: Partial<Acteur> & { password: string }): Promise<Acteur> {
@@ -757,7 +758,7 @@ export async function boGetDashboard(): Promise<DashboardStats> {
     const coopIds = new Set(
       users
         .map((u: Record<string, unknown>) => u.cooperative_id ?? u.cooperativeId)
-        .filter((id): id is string => typeof id === 'string' && id.length > 0),
+        .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0),
     );
     return {
       total_acteurs: total,

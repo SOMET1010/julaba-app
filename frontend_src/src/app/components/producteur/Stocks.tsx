@@ -522,7 +522,7 @@ export function Stocks() {
             if (lowStocks.length === 0) {
               showToast('Aucune alerte stock', 'success');
             } else {
-              showToast(`${lowStocks.length} produit${lowStocks.length > 1 ? 's' : ''} en stock bas`, 'warning');
+              showToast(`${lowStocks.length} produit${lowStocks.length > 1 ? 's' : ''} en stock bas`, 'error');
             }
           }}
           delay={0.1}

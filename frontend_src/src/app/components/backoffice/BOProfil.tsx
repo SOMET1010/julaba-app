@@ -65,7 +65,7 @@ const parseUserAgent = (ua: string): string => {
 };
 
 // ── Rôles config ──────────────────────────────────────────────────────────────
-const ROLE_LABELS: Record<BORoleType, string> = {
+const ROLE_LABELS: Partial<Record<BORoleType | 'admin', string>> = {
   super_admin: 'Super Administrateur',
   admin_national: 'Admin National',
   gestionnaire_zone: 'Gestionnaire de Zone',
@@ -73,7 +73,7 @@ const ROLE_LABELS: Record<BORoleType, string> = {
   admin: 'Administrateur',
 };
 
-const ROLE_COLORS: Record<BORoleType, string> = {
+const ROLE_COLORS: Partial<Record<BORoleType | 'admin', string>> = {
   super_admin: BO_PRIMARY,
   admin_national: '#3B82F6',
   gestionnaire_zone: '#10B981',
@@ -81,7 +81,7 @@ const ROLE_COLORS: Record<BORoleType, string> = {
   admin: '#6366F1',
 };
 
-const ROLE_DESCRIPTIONS: Record<BORoleType, string> = {
+const ROLE_DESCRIPTIONS: Partial<Record<BORoleType | 'admin', string>> = {
   super_admin: 'Accès complet à tous les modules et paramètres',
   admin_national: 'Gestion opérationnelle nationale',
   gestionnaire_zone: 'Supervision de zone territoriale',

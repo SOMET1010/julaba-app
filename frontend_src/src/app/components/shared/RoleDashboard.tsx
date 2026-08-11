@@ -188,7 +188,7 @@ export function RoleDashboard({
 
       {/* Carte de profil compacte */}
       {showProfileCard && (
-        <CompactProfileCard role={roleConfig.role} showScore={true} />
+        <CompactProfileCard role={roleConfig.role ?? 'marchand'} showScore={true} />
       )}
 
       {/* Card Tata Nanti Lou */}
