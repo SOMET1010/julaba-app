@@ -547,7 +547,7 @@ export function BOLogin() {
             whiteSpace: 'nowrap',
           }}
         >
-          Julaba BackOffice v1.0 By ICONE SOLUTION
+          Jùlaba BackOffice · Projet DGE × ANSUT · édité par Icone Solution
         </div>
       </motion.div>
 

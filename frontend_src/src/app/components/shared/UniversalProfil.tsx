@@ -678,7 +678,7 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
 
           <PartenairesLogos />
 
-          <p className="text-center text-xs text-gray-500 py-4">{version} · By ICONE SOLUTION</p>
+          <p className="text-center text-xs text-gray-500 py-4">{version} · Projet DGE × ANSUT · édité par Icone Solution</p>
         </div>
       </SubPageLayout>
 

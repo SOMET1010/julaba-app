@@ -7,10 +7,11 @@
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Taille du texte (Paramètres) : ZOOM réel piloté par utils/tailleTexte —
-     tout grandit, cibles comprises. Se MULTIPLIE avec le zoom du mode soleil
-     (posé sur <html> par soleil.css). */
-  zoom: var(--zoom-texte, 1);
+  /* Taille du texte (Paramètres) × mode soleil : DEUX variables, UNE seule
+     règle zoom — elles se multiplient vraiment. (Recette du 11/08/2026 :
+     deux règles `zoom` sur body ne se multiplient pas, la plus spécifique
+     écrasait le curseur en mode soleil.) */
+  zoom: calc(var(--zoom-texte, 1) * var(--zoom-soleil, 1));
 }
 
 /* Safe area for mobile devices */

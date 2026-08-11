@@ -2,7 +2,7 @@
   "name": "julaba-frontend",
   "private": true,
   "version": "5.0.0",
-  "appVersion": "5.0.0.17",
+  "appVersion": "5.0.0.18",
   "type": "module",
   "scripts": {
     "dev": "vite",

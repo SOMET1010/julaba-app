@@ -25,6 +25,15 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.18 — 11/08/2026 : recette runtime au Chromium (atterrissage,
+  connexion, sombre, soleil, taille) + l'écran d'entrée porte le PROJET :
+  bandeau République CI / DGE / ANSUT / Icone, « Un projet de la Direction
+  Générale de l'Emploi et de l'ANSUT », Icone Solution crédité comme
+  ÉDITEUR (fini le « By ICONE SOLUTION » seul, corrigé aussi dans
+  Paramètres, Profil et BackOffice). Bug trouvé PAR la recette et corrigé :
+  en mode soleil, le curseur de taille était écrasé (deux règles zoom sur
+  body) — désormais une seule règle multiplie deux variables (1,1 × 1,3 =
+  1,43 vérifié au navigateur).
 - v5.0.0.17 — 11/08/2026 : la couche API rentre à la maison ET sous le
   typecheck — `imports/*-api.ts` relogés dans `app/services/api/` (17
   modules, 49 importeurs), l'exclusion `src/imports` du tsconfig est levée
