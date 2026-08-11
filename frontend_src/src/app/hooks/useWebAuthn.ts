@@ -61,7 +61,7 @@ export async function authenticateWebAuthn(phone: string): Promise<{ success: bo
     // On remonte AUSSI les jetons (mobile : cookies cross-domaine bloqués) pour
     // que handleBiometric les stocke -> les requêtes suivantes restent authentifiées.
     if (verData.verified) return { success: true, user: verData.user, accessToken: verData.accessToken, refreshToken: verData.refreshToken };
-    return { success: false, error: 'Authentification échouée' };
+    return { success: false, error: 'Ton téléphone ne t\'a pas reconnue.' };
   } catch (e: any) {
     return { success: false, error: e.message };
   }

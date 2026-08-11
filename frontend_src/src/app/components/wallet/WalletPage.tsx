@@ -434,10 +434,10 @@ export function WalletPage() {
       if (ok) {
         setPinLocked(false);
       } else {
-        setPinError('Authentification biométrique échouée');
+        setPinError('Ton téléphone ne t\'a pas reconnue. Réessaie ou utilise ton code.');
       }
     } catch {
-      setPinError('Biométrie non disponible');
+      setPinError('La reconnaissance ne marche pas ici. Utilise ton code.');
     }
   };
 

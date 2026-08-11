@@ -754,16 +754,16 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
         if (/^\d{10}$/.test(tel)) marquerBiometrie(window.localStorage, tel, true);
       } catch { /* ignore */ }
     } else {
-      toast.error(result.error || 'Échec activation biométrie');
+      toast.error(result.error || 'Ça n\'a pas marché ici. Réessaie.');
     }
   };
 
   const handleTestBiometric = async () => {
     const ok = await verifyWebAuthnForKeiwa();
     if (ok) {
-      toast.success('Biométrie validée');
+      toast.success('Ton téléphone t\'a reconnue');
     } else {
-      toast.error('Échec du test biométrique');
+      toast.error('Ton téléphone ne t\'a pas reconnue. Réessaie.');
     }
   };
 
@@ -890,8 +890,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                 />
               </div>
               <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
-              <RowAction label="Activer FaceID / Empreinte" sublabel="Enregistrer cet appareil pour la biométrie" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
-              <RowAction label="Tester biométrie" sublabel="Vérifier le déverrouillage biométrique" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
+              <RowAction label="Me faire reconnaître" sublabel="Ton téléphone te reconnaîtra (visage ou doigt)" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
+              <RowAction label="Tester la reconnaissance" sublabel="Vérifie que ton téléphone te reconnaît bien" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
               <RowAction label="Changer le code de connexion" sublabel="Modifier ton code à 4 chiffres" icon={Lock} onClick={() => setShowChangePwd(true)} />
             </Section>
           )}
@@ -919,8 +919,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                   onChange={v => { if (v) { setPinMode('create'); setShowPinModal(true); } else { setPinMode('disable'); setShowPinModal(true); } }} />
               </div>
               <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
-              <RowAction label="Activer FaceID / Empreinte" sublabel="Enregistrer cet appareil pour la biométrie" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
-              <RowAction label="Tester biométrie" sublabel="Vérifier le déverrouillage biométrique" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
+              <RowAction label="Me faire reconnaître" sublabel="Ton téléphone te reconnaîtra (visage ou doigt)" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
+              <RowAction label="Tester la reconnaissance" sublabel="Vérifie que ton téléphone te reconnaît bien" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
               <RowAction label="Changer le code de connexion" sublabel="Modifier ton code à 4 chiffres" icon={Lock} onClick={() => setShowChangePwd(true)} />
             </Section>
           </>)}
@@ -958,8 +958,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                   onChange={v => { if (v) { setPinMode('create'); setShowPinModal(true); } else { setPinMode('disable'); setShowPinModal(true); } }} />
               </div>
               <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
-              <RowAction label="Activer FaceID / Empreinte" sublabel="Enregistrer cet appareil pour la biométrie" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
-              <RowAction label="Tester biométrie" sublabel="Vérifier le déverrouillage biométrique" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
+              <RowAction label="Me faire reconnaître" sublabel="Ton téléphone te reconnaîtra (visage ou doigt)" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
+              <RowAction label="Tester la reconnaissance" sublabel="Vérifie que ton téléphone te reconnaît bien" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
               <RowAction label="Changer le code de connexion" sublabel="Modifier ton code à 4 chiffres" icon={Lock} onClick={() => setShowChangePwd(true)} />
             </Section>
           </>)}
@@ -997,8 +997,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                   onChange={v => { if (v) { setPinMode('create'); setShowPinModal(true); } else { setPinMode('disable'); setShowPinModal(true); } }} />
               </div>
               <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
-              <RowAction label="Activer FaceID / Empreinte" sublabel="Enregistrer cet appareil pour la biométrie" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
-              <RowAction label="Tester biométrie" sublabel="Vérifier le déverrouillage biométrique" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
+              <RowAction label="Me faire reconnaître" sublabel="Ton téléphone te reconnaîtra (visage ou doigt)" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
+              <RowAction label="Tester la reconnaissance" sublabel="Vérifie que ton téléphone te reconnaît bien" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
               <RowAction label="Changer le code de connexion" sublabel="Modifier ton code à 4 chiffres" icon={Lock} onClick={() => setShowChangePwd(true)} />
             </Section>
           </>)}
@@ -1019,8 +1019,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             </Section>
             <Section title="Sécurité" icon={Shield} color={color}>
               <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
-              <RowAction label="Activer FaceID / Empreinte" sublabel="Enregistrer cet appareil pour la biométrie" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
-              <RowAction label="Tester biométrie" sublabel="Vérifier le déverrouillage biométrique" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
+              <RowAction label="Me faire reconnaître" sublabel="Ton téléphone te reconnaîtra (visage ou doigt)" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
+              <RowAction label="Tester la reconnaissance" sublabel="Vérifie que ton téléphone te reconnaît bien" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
               <RowAction label="Changer le code de connexion" sublabel="Modifier ton code à 4 chiffres" icon={Lock} onClick={() => setShowChangePwd(true)} />
             </Section>
           </>)}

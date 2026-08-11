@@ -672,7 +672,7 @@ export function LoginPassword() {
       } catch (err) {
         console.warn('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
         vlog('LOGIN_JSON_FAIL', { msg: err instanceof Error ? err.message : String(err) });
-        setError('Erreur serveur : réponse inattendue');
+        setError('Réponse inattendue. Réessaie dans un instant.');
         setIsLoading(false);
         return;
       }
@@ -1406,7 +1406,7 @@ export function LoginPassword() {
                 <motion.button
                   type="button"
                   disabled={isLoading || phone.length === 0}
-                  aria-label="Connexion biométrique"
+                  aria-label="Ton téléphone te reconnaît — touche pour entrer"
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={handleBiometric}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.04)', border: '1px solid rgba(198,106,44,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: isLoading || phone.length === 0 ? 0.3 : 0.65 }}
