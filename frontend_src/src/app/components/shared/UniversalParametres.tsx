@@ -48,7 +48,7 @@ const ROLE_CONFIG: Record<ParametresRole, {
   marchand: {
     color: '#C66A2C',
     label: 'Marchand',
-    version: 'Jùlaba Marchand v1.0',
+    version: `Jùlaba Marchand v${__APP_VERSION__}`,
     profileIcon: Store,
     homeRoute: '/marchand',
     footerMsg: 'Tes données et ton keiwa sont protégés localement sur cet appareil.',
@@ -56,7 +56,7 @@ const ROLE_CONFIG: Record<ParametresRole, {
   producteur: {
     color: '#2E8B57',
     label: 'Producteur',
-    version: 'Jùlaba Producteur v1.0',
+    version: `Jùlaba Producteur v${__APP_VERSION__}`,
     profileIcon: Leaf,
     homeRoute: '/producteur',
     footerMsg: 'Tes données et ton keiwa sont protégés localement sur cet appareil.',
@@ -64,7 +64,7 @@ const ROLE_CONFIG: Record<ParametresRole, {
   cooperative: {
     color: '#2072AF',
     label: 'Coopérative',
-    version: 'Jùlaba Coopérative v1.0',
+    version: `Jùlaba Coopérative v${__APP_VERSION__}`,
     profileIcon: Users,
     homeRoute: '/cooperative',
     footerMsg: 'Tes données de vente et ton keiwa sont protégés localement sur cet appareil.',
@@ -72,7 +72,7 @@ const ROLE_CONFIG: Record<ParametresRole, {
   identificateur: {
     color: '#9F8170',
     label: 'Identificateur',
-    version: 'Jùlaba Identificateur v1.0',
+    version: `Jùlaba Identificateur v${__APP_VERSION__}`,
     profileIcon: UserCheck,
     homeRoute: '/identificateur',
     footerMsg: 'Les données des acteurs identifiés sont protégées et ne sont accessibles qu\'au Back Office Jùlaba.',
@@ -80,7 +80,7 @@ const ROLE_CONFIG: Record<ParametresRole, {
   institution: {
     color: '#712864',
     label: 'Institution',
-    version: 'Jùlaba Institution v1.0',
+    version: `Jùlaba Institution v${__APP_VERSION__}`,
     profileIcon: Building2,
     homeRoute: '/institution',
     footerMsg: 'Les données sont protégées localement sur cet appareil.',
