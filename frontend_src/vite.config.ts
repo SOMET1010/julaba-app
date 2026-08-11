@@ -8,8 +8,11 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8")) as { version?: string }
-const appVersion = pkg.version ?? "1.0.0"
+// Version APPLICATIVE à 4 chiffres (MAJEUR.MINEUR.CORRECTIF.LIVRAISON, voir
+// docs/VERSIONING.md) : portée par `appVersion` — le champ `version` npm reste
+// un semver valide à 3 chiffres (npm refuse 4 segments).
+const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8")) as { version?: string; appVersion?: string }
+const appVersion = pkg.appVersion ?? pkg.version ?? "1.0.0"
 
 let gitHash = "unknown"
 try {
