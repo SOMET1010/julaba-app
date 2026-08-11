@@ -9,7 +9,7 @@ import { API_URL } from '../../utils/api';
 
 // Données chargées depuis /api/v1/produits
 
-const ROLE_COLORS = {
+const ROLE_COLORS: Record<string, string> = {
   marchand: '#C46210',
   producteur: '#00563B',
   cooperative: '#2072AF',

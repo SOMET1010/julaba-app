@@ -83,11 +83,33 @@ export function CommandeProvider({ children }: { children: ReactNode }) {
     try {
       if (!commandes?.length) setLoading(true);
       const { commandes: data } = await commandesApi.fetchCommandes();
-      type ApiCommande = Record<string, unknown>;
-      const commandeList: Commande[] = data.map((c: ApiCommande) => {
-        const parsed = (c.modePaiement || c.mode_paiement) ? parsePaymentFromAPI(c.modePaiement || c.mode_paiement) : { method: undefined, operator: undefined };
+      // Forme réelle des lignes renvoyées par l'API (variantes snake_case).
+      interface ApiCommande {
+        id?: string;
+        acheteurId?: string; acheteur_id?: string; user_id?: string;
+        vendeurId?: string; vendeur_id?: string;
+        acheteurNom?: string; acheteur_nom?: string;
+        vendeurNom?: string; vendeur_nom?: string;
+        acheteurRole?: string; acheteur_role?: string;
+        vendeurRole?: string; vendeur_role?: string;
+        negociationId?: string; negociation_id?: string; negociation?: { id?: string };
+        publicationId?: string; publication_id?: string;
+        type?: string; produit?: string; quantite?: number | string;
+        prixUnitaire?: number; prix_unitaire?: number; prix?: number;
+        total?: number; statut?: string;
+        dateCommande?: string; date_commande?: string; created_at?: string;
+        dateLivraison?: string; date_livraison?: string;
+        statutPaiement?: string; statut_paiement?: string;
+        payeAt?: string; paye_at?: string; notes?: string;
+        modePaiement?: string; mode_paiement?: string;
+        imageUrl?: string; image_url?: string;
+        acheteurTelephone?: string; acheteur_telephone?: string;
+        localite?: string; categorie?: string; unite?: string;
+      }
+      const commandeList: Commande[] = (data as unknown as ApiCommande[]).map((c) => {
+        const parsed = (c.modePaiement || c.mode_paiement) ? parsePaymentFromAPI(c.modePaiement ?? c.mode_paiement ?? '') : { method: undefined, operator: undefined };
         return {
-          id: c.id,
+          id: c.id ?? '',
           acheteurId: c.acheteurId || c.acheteur_id || c.user_id || '',
           vendeurId: c.vendeurId || c.vendeur_id || '',
           acheteurNom: c.acheteurNom || c.acheteur_nom || '',
@@ -97,12 +119,12 @@ export function CommandeProvider({ children }: { children: ReactNode }) {
           negociationId: c.negociation_id ?? c.negociationId ?? c.negociation?.id,
           publicationId: c.publication_id || c.publicationId,
           type: c.type,
-          produit: c.produit,
-          quantite: typeof c.quantite === 'string' ? parseFloat(c.quantite) || 0 : c.quantite,
+          produit: c.produit ?? '',
+          quantite: typeof c.quantite === 'string' ? parseFloat(c.quantite) || 0 : c.quantite ?? 0,
           prixUnitaire: c.prixUnitaire || c.prix_unitaire || c.prix || 0,
-          total: c.total,
-          statut: c.statut === 'en_route' ? 'en_cours' : c.statut,
-          dateCommande: c.dateCommande || c.date_commande || c.created_at,
+          total: c.total ?? 0,
+          statut: (c.statut === 'en_route' ? 'en_cours' : c.statut) as Commande['statut'],
+          dateCommande: c.dateCommande || c.date_commande || c.created_at || '',
           dateLivraison: c.dateLivraison || c.date_livraison,
           statutPaiement: (c.statutPaiement || c.statut_paiement || 'non_paye') as 'non_paye' | 'paye',
           payeAt: (c.payeAt || c.paye_at) as string | undefined,
@@ -146,7 +168,8 @@ export function CommandeProvider({ children }: { children: ReactNode }) {
   const addCommande = async (data: Omit<Commande, 'id' | 'dateCommande'>) => {
     const src = data as any;
     await commandesApi.createCommande({
-      type: data.type,
+      // Commande.type est un texte large (héritage) ; l'API attend l'union stricte.
+      type: data.type as 'vente' | 'achat' | 'vente_directe',
       produit: data.produit,
       quantite: String(data.quantite),
       prix_unitaire: data.prixUnitaire,
