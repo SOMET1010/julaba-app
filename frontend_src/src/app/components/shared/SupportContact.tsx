@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { getRoleColor } from '../../config/roleConfig';
 import { useSupportConfig, ContactChannel } from '../../contexts/SupportConfigContext';
 import { useTickets, Ticket } from '../../contexts/TicketsContext';
+import { compterReponsesNonVues, marquerToutVu } from '../../services/supportLu';
 
 type RoleType = 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur' | 'administrateur';
 
@@ -211,10 +212,20 @@ export function SupportContact({ role, userName = 'Utilisateur', showBack = fals
   // Mes tickets récents (créés dans cette session via localStorage)
   const mesTickets = (tickets || []).slice(0, 3);
 
-  const reponsesNonLues = (tickets || []).reduce((acc, t) => {
-    const msgs = t.messages ?? [];
-    return acc + msgs.filter((m: any) => m.auteur !== 'user' && !m.lu).length;
-  }, 0);
+  // Compteur LOCAL (il n'existe aucun « lu » utilisateur côté serveur — voir
+  // services/supportLu.ts) : réponses postérieures au dernier passage ici.
+  const reponsesNonLues = compterReponsesNonVues(
+    typeof window !== 'undefined' ? window.localStorage : null,
+    tickets || [],
+  );
+
+  // Être ICI, c'est avoir vu : chaque chargement de tickets marque tout vu —
+  // le badge du profil (SupportCardProfil) se vide, et repartira à la
+  // prochaine réponse du support.
+  useEffect(() => {
+    if (!tickets?.length) return;
+    try { marquerToutVu(window.localStorage, tickets, new Date().toISOString()); } catch { /* ignore */ }
+  }, [tickets]);
 
   const handleSubmit = async () => {
     if (!formData.sujet || !formData.message) return;
