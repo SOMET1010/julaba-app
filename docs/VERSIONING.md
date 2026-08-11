@@ -25,6 +25,9 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.5 — 11/08/2026 : tokens de contraste étendus à tout le parcours
+  marchande — stock, dépenses, crédit, formulaire de dépense, Keiwa
+  (228 usages au total, garde-fou test:tokens).
 - v5.0.0.4 — 11/08/2026 : unification vocale lot 2 — après la vente d'un
   produit inconnu, Tata propose de l'ajouter à la boutique (prix dicté,
   refus mémorisé par produit) ; les ventes suivantes sont appariées.

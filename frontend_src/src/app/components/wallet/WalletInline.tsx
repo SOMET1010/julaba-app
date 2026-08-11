@@ -595,7 +595,7 @@ export function WalletInline({ roleColor }: WalletInlineProps) {
               className="px-4 py-2 rounded-full border-2 text-sm font-semibold whitespace-nowrap flex-shrink-0 transition-all"
               style={filtre === f.id
                 ? { backgroundColor: color, borderColor: color, color: 'white' }
-                : { backgroundColor: 'white', borderColor: '#E5E7EB', color: '#6B7280' }
+                : { backgroundColor: 'white', borderColor: '#E5E7EB', color: 'var(--encre-3)' }
               }
               whileTap={{ scale: 0.95 }}>
               {f.label}
@@ -613,7 +613,7 @@ export function WalletInline({ roleColor }: WalletInlineProps) {
               className="px-3 py-1.5 rounded-xl border text-xs font-semibold"
               style={filtrePeriode === p.id
                 ? { backgroundColor: `${color}15`, borderColor: color, color }
-                : { backgroundColor: 'white', borderColor: '#E5E7EB', color: '#9CA3AF' }
+                : { backgroundColor: 'white', borderColor: '#E5E7EB', color: 'var(--encre-4)' }
               }
               whileTap={{ scale: 0.95 }}>
               {p.label}
@@ -637,7 +637,7 @@ export function WalletInline({ roleColor }: WalletInlineProps) {
               </motion.div>
             ) : (
               txFiltrees.map((tx, i) => {
-                const cfg = TYPE_LABELS[tx.type] || { label: tx.type, color: '#6B7280', isCredit: false };
+                const cfg = TYPE_LABELS[tx.type] || { label: tx.type, color: 'var(--encre-3)', isCredit: false };
                 return (
                   <motion.div
                     key={tx.id}
