@@ -64,6 +64,9 @@ export interface UniversalKPIProps {
   explication?: string;
   formule?: string;
   details?: KPIDetail[];
+  // Props de compat (anciens appels BO/producteur) : acceptées, non rendues ici.
+  sub?: string;
+  trendUp?: boolean;
 }
 
 // ─── Animations icône ─────────────────────────────────────────────────────────

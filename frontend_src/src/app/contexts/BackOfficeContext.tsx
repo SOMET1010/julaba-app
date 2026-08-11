@@ -735,7 +735,9 @@ export interface InstitutionBO {
   creePar?: string;
   region?: string;
   statut?: string;
-  modules?: string[];
+  /** Accès par module (dictionnaire module → niveau) — l'ancien type string[]
+   *  contredisait l'usage réel de tous les écrans BO. */
+  modules?: ModuleAcces;
 }
 
 export const PERMISSIONS: Record<BORoleType, Array<keyof ModuleAcces>> = {
