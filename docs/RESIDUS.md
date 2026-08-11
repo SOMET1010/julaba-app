@@ -99,11 +99,17 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
   L'adaptateur sans filtre renvoie donc DÉJÀ uniquement les publications de
   l'utilisatrice. Ligne fermée.
 
-## Fonctions jamais câblées, restantes (à construire avec runtime)
+## Fonctions jamais câblées : section VIDÉE (v5.0.0.13, 11/08/2026)
 
-- Saisie vocale de l'objectif (ObjectifModal) : l'option `onResult` n'a
-  jamais existé sur useVoiceCore — le rappel n'était jamais appelé. À
-  rebrancher sur `startLiveDictation` (sherpa) lors d'une passe vocale.
+- ~~Saisie vocale de l'objectif (ObjectifModal)~~ : **CÂBLÉE.** L'option
+  `onResult` n'a jamais existé sur useVoiceCore — le rappel n'était jamais
+  appelé, le bouton « Dis ton objectif » n'écrivait rien. Rebranchée sur le
+  rouage de la connexion : `startLiveDictation` (sherpa hors-ligne) +
+  `extraireNombreBambara` (lit « 12 500 » ET « waa duuru »). Le montant se
+  remplit à l'écran au fil de la voix, ~2 s de silence rangent le micro,
+  filet dur 15 s, micro coupé à la fermeture du modal. Hors APK : message
+  honnête (« la voix marche dans l'application »), clavier en filet.
+  À vérifier au runtime sur l'APK à la prochaine recette.
 
 ## Résidus connus, assumés, à traiter
 
