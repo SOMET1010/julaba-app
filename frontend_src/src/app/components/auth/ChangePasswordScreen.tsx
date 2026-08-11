@@ -81,7 +81,7 @@ export function ChangePasswordScreen() {
         } else if (res.status === 429) {
           userMsg = 'Trop de tentatives. Réessaie dans quelques minutes.';
         } else if (res.status >= 500) {
-          userMsg = 'Erreur serveur. Réessaie dans un instant.';
+          userMsg = 'Ça n\'a pas marché. Réessaie dans un instant.';
         } else {
           userMsg = 'Erreur lors du changement de mot de passe';
         }

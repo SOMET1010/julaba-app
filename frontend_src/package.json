@@ -13,7 +13,8 @@
     "test:voix": "tsx src/app/services/venteVocale.test.mts",
     "test:comptes": "tsx src/app/services/comptesMemorises.test.mts",
     "test:bambara": "tsx src/app/voice-offline/nombresBambara.test.mts",
-    "test:fcfa": "tsx src/app/utils/fcfa.test.mts"
+    "test:fcfa": "tsx src/app/utils/fcfa.test.mts",
+    "test:jargon": "tsx src/app/services/antiJargon.test.mts"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
