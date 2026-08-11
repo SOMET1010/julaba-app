@@ -34,6 +34,17 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
   `Recolte` (recoltes-api), alias `Cycle as CycleAgricole`, types de
   publication depuis les alias locaux existants.
 
+## Nettoyé (passe 3 — v5.0.0.8, 11/08/2026)
+
+- Résorption types paquet 2 (45 erreurs, 190 → 145) : configs d'énums
+  complétées (TYPE_CONFIG, NIVEAU_CONFIG), gardes équivalentes au runtime
+  (dates/index optionnels), ProduitMarche aligné sur le flux /publications
+  réel, props de compat sub/trendUp déclarées sur UniversalKPI.
+- Mensonge de type corrigé : `InstitutionBO.modules` et
+  `BOInstitution.modules` déclaraient `string[]` alors que TOUS les écrans
+  BO le lisent en dictionnaire module → niveau. Types alignés sur la
+  réalité (`ModuleAcces`).
+
 ## Bug latent découvert par le typage (à corriger avec test runtime)
 
 - `publicationsApiAdapter.fetchPublications()` IGNORE ses filtres : le
