@@ -25,6 +25,11 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.14 — 11/08/2026 : confort visuel UNIFIÉ — normal / soleil / sombre
+  sous un seul arbitre (utils/confortVisuel) : plus jamais deux modes à la
+  fois, migration de l'ancien réglage sombre, et surcharge `html.dark` des
+  tokens `--encre*` (avant : encre noire sur fond sombre = texte invisible
+  sur les écrans migrés). Parité soleil/sombre gardée par test:tokens.
 - v5.0.0.13 — 11/08/2026 : la dernière « fonction jamais câblée » du
   registre tombe — le bouton « Dis ton objectif » (ObjectifModal) marche
   vraiment : dictée sherpa hors-ligne + nombres bambara, montant rempli en
