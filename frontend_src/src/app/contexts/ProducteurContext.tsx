@@ -64,6 +64,23 @@ export interface Recolte {
   stockDisponible: number;
   stockVendu: number;
   createdAt?: string;
+  // Variantes héritées de l'API (snake_case / anciens noms) encore lues par
+  // certains écrans — optionnelles, à résorber écran par écran.
+  status?: string;
+  quantiteReelle?: number;
+  publishedAt?: string;
+  publicationId?: string;
+  culture?: string;
+  prix_unitaire?: number;
+  quantiteDisponible?: number;
+  quantite_disponible?: number;
+  description?: string;
+  localisation?: string;
+  village?: string;
+  photo_url?: string;
+  photos?: string[];
+  stock_disponible?: number | string;
+  stock_vendu?: number | string;
 }
 
 export interface Publication {
@@ -100,6 +117,10 @@ export interface CommandeProducteur {
   dateCommande: string;
   recolteId?: string;
   recolte_id?: string;
+  // Variantes héritées de l'API encore lues par certains écrans.
+  status?: string;
+  acheteur?: { nom?: string };
+  montant?: number;
 }
 
 export interface AlerteProducteur {
@@ -420,7 +441,7 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const { publications: apiPublications } = await publicationsApi.fetchPublications(true, false);
+      const { publications: apiPublications } = await publicationsApi.fetchPublications();
       const mappedPublications: Publication[] = apiPublications.map(p => ({
         id: p.id,
         cycleId: p.cycle_id,
@@ -450,7 +471,7 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const createPublication = async (data: publicationsApi.CreatePublicationData) => {
+  const createPublication = async (data: CreatePublicationData) => {
     if (!data.produit?.trim()) throw new Error('Produit requis');
     if (!data.prix_unitaire || Number(data.prix_unitaire) <= 0) throw new Error('Prix unitaire invalide');
     try {
@@ -484,7 +505,7 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updatePublication = async (id: string, data: publicationsApi.UpdatePublicationData) => {
+  const updatePublication = async (id: string, data: UpdatePublicationData) => {
     try {
       const { publication } = await publicationsApi.updatePublication(id, data);
       setPublications(prev => prev.map(p => p.id === id ? {

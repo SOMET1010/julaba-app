@@ -7,7 +7,7 @@ import {
   Calendar, Star, ShoppingBag, CheckCircle, Clock, AlertTriangle,
   BarChart3, Banknote, Tag, Layers, Edit3
 } from 'lucide-react';
-import { useProducteur, type Recolte, type CycleAgricole } from '../../contexts/ProducteurContext';
+import { useProducteur, type Recolte, type Cycle as CycleAgricole } from '../../contexts/ProducteurContext';
 import { useApp } from '../../contexts/AppContext';
 import { Montant, MontantCard } from '../shared/Montant';
 
@@ -46,7 +46,7 @@ export function RecolteDetailModal({ recolte, cycle, onClose, onPublish }: Props
   const recolteStatus = recolte.statut ?? recolte.status ?? '';
 
   const commandesLiees = commandes.filter(c => c.recolteId === recolte.id);
-  const commandesEnCours = commandesLiees.filter(c => ['new', 'accepted', 'preparing'].includes(c.status));
+  const commandesEnCours = commandesLiees.filter(c => ['new', 'accepted', 'preparing'].includes(c.status ?? ''));
   const commandesLivrees = commandesLiees.filter(c => c.status === 'delivered');
 
   const quality  = QUALITY_LABELS[recolte.qualite] || QUALITY_LABELS.B;
@@ -287,7 +287,7 @@ export function RecolteDetailModal({ recolte, cycle, onClose, onPublish }: Props
                       animate={{ opacity: 1, x: 0 }}
                     >
                       <div>
-                        <p className="font-bold text-gray-900 text-sm">{cmd.acheteur.nom}</p>
+                        <p className="font-bold text-gray-900 text-sm">{cmd.acheteur?.nom}</p>
                         <p className="text-xs text-gray-500">{cmd.quantite} kg &bull; {(cmd.dateCommande ? new Date(cmd.dateCommande).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '') }</p>
                       </div>
                       <div className="text-right">
