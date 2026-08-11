@@ -97,3 +97,51 @@ export function construireLigneVocale(args: {
   }
   return ligne;
 }
+
+// ── « J'ajoute ce produit à ta boutique ? » (unification vocale, lot 2) ──────
+//
+// Après une vente vocale d'un produit INCONNU du catalogue, Tata propose de
+// l'ajouter à la boutique — ainsi les prochaines ventes du même produit seront
+// appariées (stock suivi, marge réelle). Le refus est mémorisé PAR PRODUIT :
+// on ne repose pas la même question à chaque vente d'attiéké.
+
+export interface KVStore {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+export const CLE_REFUS_PRODUITS = 'julaba_refus_produits_vocaux';
+const MAX_REFUS = 30;
+
+function lireRefus(store: KVStore | null): string[] {
+  try {
+    const brut = JSON.parse(store?.getItem(CLE_REFUS_PRODUITS) || '[]');
+    return Array.isArray(brut) ? brut.filter((x): x is string => typeof x === 'string') : [];
+  } catch { return []; }
+}
+
+/**
+ * Faut-il proposer d'ajouter ce produit dicté à la boutique ?
+ * OUI seulement si : nom exploitable (≥ 3 lettres, pas le nom générique),
+ * produit réellement inconnu du catalogue, et refus non mémorisé.
+ */
+export function doitProposerCreation(
+  store: KVStore | null,
+  nomParle: string | undefined,
+  produits: Array<{ nom: string }>,
+): boolean {
+  const nom = (nomParle || '').trim();
+  const norme = normaliserNom(nom);
+  if (norme.length < 3 || norme === 'produit vocal') return false;
+  if (apparierProduit(nom, produits) !== null) return false;
+  return !lireRefus(store).includes(norme);
+}
+
+/** Elle a dit « Non » pour CE produit : mémorisé (liste bornée, plus récent d'abord). */
+export function noterRefusCreation(store: KVStore | null, nomParle: string): boolean {
+  const norme = normaliserNom(nomParle || '');
+  if (!norme) return false;
+  const refus = [norme, ...lireRefus(store).filter(r => r !== norme)].slice(0, MAX_REFUS);
+  try { store?.setItem(CLE_REFUS_PRODUITS, JSON.stringify(refus)); return true; }
+  catch { return false; }
+}

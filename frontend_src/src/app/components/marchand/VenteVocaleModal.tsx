@@ -12,7 +12,9 @@ import { useCaisse } from "../../contexts/CaisseContext";
 import { useObjectif, ObjectifProvider } from "../../contexts/ObjectifContext";
 import { useStock, type StockItem } from "../../contexts/StockContext";
 import { InstallerOffline } from "../../voice-offline/InstallerOffline";
-import { apparierProduit, construireLigneVocale } from "../../services/venteVocale";
+import { apparierProduit, construireLigneVocale, doitProposerCreation, noterRefusCreation } from "../../services/venteVocale";
+import { guidageVocal } from "../../utils/accessMode";
+import { vibrerSucces } from "../../utils/haptique";
 import tantieImg from "../../../assets/images/tantie-vente-vocale.png";
 
 const P = "#C66A2C";
@@ -24,8 +26,8 @@ interface Props { isOpen: boolean; onClose: () => void; }
 export function VenteVocaleModal({ isOpen, onClose }: Props) {
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
-  const { user, currentSession, getTodayStats, setIsModalOpen } = useApp();
-  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats, products, updateProduct } = useCaisse();
+  const { user, currentSession, getTodayStats, setIsModalOpen, speak } = useApp();
+  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats, products, updateProduct, addProduct } = useCaisse();
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
   const progression = objectifCtx?.progression ?? 0;
@@ -36,6 +38,11 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   const matchRaccourci = raccourcisCtx?.matchRaccourci ?? null;
   const stats = getTodayStats();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  // « J'ajoute ce produit à ta boutique ? » (unification vocale, lot 2) : après
+  // une vente d'un produit inconnu, Tata propose de le créer — les prochaines
+  // ventes seront alors appariées (stock, marge). Refus mémorisé PAR produit.
+  const [propositionProduit, setPropositionProduit] = useState<{ nom: string; prix: number } | null>(null);
+  const [creationEnCours, setCreationEnCours] = useState(false);
   useEffect(() => {
     const on = () => setIsOnline(true); const off = () => setIsOnline(false);
     window.addEventListener("online", on); window.addEventListener("offline", off);
@@ -73,6 +80,19 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
           // vente reste enregistrée ; le stock se resynchronisera au rechargement.
           try { await updateProduct(produitCat.id, { stock: Math.max(0, (produitCat.stock || 0) - quantite) }); }
           catch (e: any) { console.warn("[VenteVocaleModal] décrément stock impossible:", e?.message); }
+        } else {
+          // Produit inconnu : proposer de l'ajouter à la boutique (en ligne
+          // seulement — la création parle au serveur). La question arrive APRÈS
+          // la confirmation parlée de la vente, pour ne pas parler par-dessus.
+          try {
+            if (navigator.onLine !== false && doitProposerCreation(window.localStorage, nomParle, products)) {
+              const nomPropre = (nomParle || '').trim();
+              setTimeout(() => {
+                setPropositionProduit({ nom: nomPropre, prix: ligne.prix });
+                if (guidageVocal()) speak(`Je ne connais pas ${nomPropre} dans ta boutique. Je l'ajoute ?`);
+              }, 2200);
+            }
+          } catch { /* jamais bloquant */ }
         }
       };
       const action = data.action;
@@ -126,6 +146,30 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   // #2 : pendingCount/isReplaying viennent de l'UNIQUE file de useVoiceCore
   // (plus de seconde instance qui rejouait la file en double à la reconnexion).
   useEffect(() => { if (!isOpen) resetHistory(); }, [isOpen, resetHistory]);
+  useEffect(() => { if (!isOpen) setPropositionProduit(null); }, [isOpen]);
+
+  // Oui → création avec le prix unitaire DICTÉ (elle le corrigera dans Mon stock
+  // si besoin) ; stock 0 (à compléter). Non → refus mémorisé pour CE produit.
+  const accepterCreation = async () => {
+    if (!propositionProduit || creationEnCours) return;
+    setCreationEnCours(true);
+    try {
+      await addProduct({ nom: propositionProduit.nom, prix: propositionProduit.prix, categorie: 'Autre', stock: 0, unite: 'unité' });
+      vibrerSucces();
+      if (guidageVocal()) speak(`C'est fait. ${propositionProduit.nom} est dans ta boutique.`);
+    } catch {
+      if (guidageVocal()) speak("Ça n'a pas marché. Tu pourras l'ajouter depuis Mon stock.");
+    } finally {
+      setCreationEnCours(false);
+      setPropositionProduit(null);
+    }
+  };
+  const refuserCreation = () => {
+    if (!propositionProduit) return;
+    try { noterRefusCreation(window.localStorage, propositionProduit.nom); } catch { /* ignore */ }
+    if (guidageVocal()) speak("D'accord, on ne change rien.");
+    setPropositionProduit(null);
+  };
   useEffect(() => { setIsModalOpen(isOpen); return () => setIsModalOpen(false); }, [isOpen, setIsModalOpen]);
 
   const isRecording = state === "listening";
@@ -304,6 +348,24 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
           <div className="px-5 py-5 flex flex-col gap-4">
             {transcript && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#F9FAFB", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "12px 14px" }}><p style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.1em", marginBottom: 4 }}>TU AS DIT</p><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>"{transcript}"</p></motion.div>)}
             {response && !isLoading && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: PL, border: `1.5px solid ${P}30`, borderRadius: 16, padding: "12px 14px" }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ fontSize: 18 }}>{intentEmoji[response.intent] || "💬"}</span><p style={{ fontSize: 10, fontWeight: 700, color: P, letterSpacing: "0.1em" }}>{response.intent.replace(/_/g, " ").toUpperCase()}</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>{response.response || response.reponse}</p>{response.action?.type === "vendre" && response.action.montant && (<div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${P}25` }}><p style={{ fontSize: 13, color: "#6B7280" }}>{response.action.quantite}× {response.action.produit} =&nbsp;<strong style={{ color: P }}>{response.action.montant?.toLocaleString("fr-FR")} FCFA</strong></p></div>)}</motion.div>)}
+            {propositionProduit && (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                style={{ background: "#FFF8F0", border: `2px solid ${P}`, borderRadius: 20, padding: 16 }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", marginBottom: 12 }}>
+                  J'ajoute « {propositionProduit.nom} » à ta boutique à {propositionProduit.prix.toLocaleString("fr-FR")} F ?
+                </p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={refuserCreation} disabled={creationEnCours}
+                    style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, border: `2px solid ${P}`, color: P, background: "white", cursor: "pointer" }}>
+                    Non
+                  </motion.button>
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={accepterCreation} disabled={creationEnCours}
+                    style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, color: "white", background: creationEnCours ? "#CBB9A8" : `linear-gradient(135deg,${P},${PD})`, cursor: creationEnCours ? "wait" : "pointer", border: "none" }}>
+                    {creationEnCours ? "Un instant…" : "Oui, ajoute"}
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
             {isError && error && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 16, padding: "12px 14px" }}><p style={{ fontSize: 13, fontWeight: 600, color: "#B91C1C" }}>{error}</p></motion.div>)}
             {isConfirming && pendingResponse && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#FFF8F0", border: `2px solid ${P}`, borderRadius: 20, padding: 16 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><ShieldCheck style={{ width: 18, height: 18, color: P }} /><p style={{ fontSize: 12, fontWeight: 700, color: P }}>Confirmer l'action</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937", marginBottom: 12 }}>{pendingResponse.response || pendingResponse.reponse}</p>{pendingResponse.resume_action && (<p style={{ fontSize: 11, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.1em", marginBottom: 12 }}>{pendingResponse.resume_action}</p>)}<div style={{ display: "flex", gap: 10 }}><motion.button whileTap={{ scale: 0.97 }} onClick={cancelAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, border: `2px solid ${P}`, color: P, background: "white", cursor: "pointer" }}>Non</motion.button><motion.button whileTap={{ scale: 0.97 }} onClick={confirmAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Oui, confirmer</motion.button></div></motion.div>)}
             {(isDone || isError) && (<motion.button whileTap={{ scale: 0.97 }} onClick={reset} style={{ width: "100%", padding: "14px 0", borderRadius: 16, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Reparler à Tata Nanti Lou</motion.button>)}
