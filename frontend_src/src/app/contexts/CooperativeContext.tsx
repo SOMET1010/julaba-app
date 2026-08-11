@@ -1,8 +1,8 @@
 import { useUser } from './UserContext';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { isCooperatif } from '../types/constants';
-import * as cooperativesApi from '../../imports/cooperatives-api';
-import { NOT_AUTHENTICATED, apiRequest } from '../../imports/api-client';
+import * as cooperativesApi from '../services/api/cooperatives-api';
+import { NOT_AUTHENTICATED, apiRequest } from '../services/api/api-client';
 import { API_URL } from '../utils/api';
 
 // ── Types CoopératifMembre — champs réellement utilisés ──────

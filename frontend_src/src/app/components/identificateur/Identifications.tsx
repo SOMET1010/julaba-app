@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 import { SearchBar } from '../shared/SearchBar';
 import { matchesSearch } from '../../utils/searchUtils';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { FicheActeurDetailModal } from '../shared/FicheActeurDetailModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';

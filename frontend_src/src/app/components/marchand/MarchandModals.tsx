@@ -903,7 +903,7 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
     let cancelled = false;
     void (async () => {
       try {
-        const { fetchScore } = await import('../../../imports/scores-api');
+        const { fetchScore } = await import('../../services/api/scores-api');
         const { score } = await fetchScore(user.id);
         if (!cancelled) setScore(score.score_total || 0);
       } catch (e: any) {

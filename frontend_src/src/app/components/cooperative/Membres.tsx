@@ -53,7 +53,7 @@ import { useModalRegister } from '../../contexts/ModalContext';
 import { NotificationButton } from '../marchand/NotificationButton';
 import { toast } from 'sonner';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 // ─── Couleurs coopérative ────────────────────────────────────────────────────
 const C = '#2072AF';
 const C_LIGHT = '#EBF4FB';

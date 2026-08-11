@@ -7,9 +7,9 @@ import {
   EscrowPayment 
 } from '../types/julaba.types';
 import { useUser } from './UserContext';
-import * as keiwasApi from '../../imports/wallets-api';
+import * as keiwasApi from '../services/api/wallets-api';
 import { DEV_MODE, devLog } from '../config/devMode';
-import { NOT_AUTHENTICATED } from '../../imports/api-client';
+import { NOT_AUTHENTICATED } from '../services/api/api-client';
 
 interface WalletContextType {
   keiwa: KeiwaAccount | null;

@@ -5,7 +5,7 @@ import { useUser } from '../../contexts/UserContext';
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ArrowLeft, Check } from 'lucide-react';
-import { rechargerViaBpay, verifierStatutBpay } from '../../../imports/wallets-api';
+import { rechargerViaBpay, verifierStatutBpay } from '../../services/api/wallets-api';
 
 // Import des logos Mobile Money depuis le registre central
 import { IMG_LOGO_ORANGE_MONEY, IMG_LOGO_MTN, IMG_LOGO_MOOV, IMG_LOGO_WAVE } from '../../assets/images';

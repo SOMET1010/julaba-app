@@ -1,10 +1,10 @@
 /**
- * Client API Missions - JÙLABA
+ * Client API Stocks - JÙLABA
  */
 
 import { apiRequest as _apiRequest } from './api-client';
 
-import { API_URL } from '../app/utils/api';
+import { API_URL } from '../../utils/api';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);
@@ -14,20 +14,28 @@ function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> 
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface Mission {
+export interface Stock {
   id: string;
-  identificateur_id: string;
-  titre: string;
-  description?: string;
-  zone_id?: string;
-  objectif?: number;
-  progres: number;
-  statut: 'en_cours' | 'terminee' | 'annulee';
-  date_debut?: string;
-  date_fin?: string;
-  recompense?: number;
+  user_id: string;
+  produit: string;
+  quantite: number;
+  unite: string;
+  prix_achat?: number;
+  derniere_modification: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface UpsertStockData {
+  produit: string;
+  quantite: number;
+  unite: string;
+  prix_achat?: number;
+}
+
+export interface UpdateStockData {
+  quantite?: number;
+  prix_achat?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,18 +43,37 @@ export interface Mission {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Récupérer toutes les missions de l'identificateur
+ * Récupérer tout le stock de l'utilisateur
  */
-export async function fetchMissions(): Promise<{ missions: Mission[] }> {
-  return apiRequest<{ missions: Mission[] }>('/missions');
+export async function fetchStocks(): Promise<{ stocks: Stock[] }> {
+  return apiRequest<{ stocks: Stock[] }>('/stocks');
 }
 
 /**
- * Mettre à jour le progrès d'une mission
+ * Ajouter ou mettre à jour un stock
  */
-export async function updateMissionProgres(id: string, progres: number): Promise<{ mission: Mission }> {
-  return apiRequest<{ mission: Mission }>(`/missions/${id}/progres`, {
+export async function upsertStock(data: UpsertStockData): Promise<{ stock: Stock }> {
+  return apiRequest<{ stock: Stock }>('/stocks', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Modifier un stock
+ */
+export async function updateStock(id: string, data: UpdateStockData): Promise<{ stock: Stock }> {
+  return apiRequest<{ stock: Stock }>(`/stocks/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ progres }),
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Supprimer un stock
+ */
+export async function deleteStock(id: string): Promise<{ success: boolean }> {
+  return apiRequest<{ success: boolean }>(`/stocks/${id}`, {
+    method: 'DELETE',
   });
 }

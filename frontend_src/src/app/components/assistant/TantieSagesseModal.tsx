@@ -14,7 +14,7 @@ import { useVoiceCore, type VoiceState as VoiceStep } from '../../hooks/useVoice
 import { useObjectif } from '../../contexts/ObjectifContext';
 import { stopAllAudio, stopChunkedSpeaking, preloadAudioContext } from '../../services/elevenlabs';
 import { unlockAudioContextIOS } from '../../services/earlyAudioCache';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { API_URL } from '../../utils/api';
 import tataLouImg from "../../../assets/images/tantie-portrait.png";
 import tantieVenteImg from "../../../assets/images/tantie-vente-vocale.png";

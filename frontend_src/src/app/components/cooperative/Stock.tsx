@@ -34,11 +34,11 @@ import { useToast } from '../../hooks/useToast';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { NotificationButton } from '../marchand/NotificationButton';
 import { Montant } from '../shared/Montant';
-import { fetchStocks, upsertStock, updateStock as apiUpdateStock, deleteStock as apiDeleteStock } from '../../../imports/stocks-api';
+import { fetchStocks, upsertStock, updateStock as apiUpdateStock, deleteStock as apiDeleteStock } from '../../services/api/stocks-api';
 import { useApp } from '../../contexts/AppContext';
 import { useModalRegister } from '../../contexts/ModalContext';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 
 import {
   IMG_PRODUIT_RIZ, IMG_PRODUIT_TOMATE, IMG_PRODUIT_OIGNON, IMG_PRODUIT_IGNAME,

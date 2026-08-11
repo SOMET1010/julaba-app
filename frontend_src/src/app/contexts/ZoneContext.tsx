@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import * as zonesApi from '../../imports/zones-api';
+import * as zonesApi from '../services/api/zones-api';
 import { DEV_MODE, devLog } from '../config/devMode';
-import { NOT_AUTHENTICATED } from '../../imports/api-client';
+import { NOT_AUTHENTICATED } from '../services/api/api-client';
 
 export type ZoneType = 'marche' | 'village' | 'region';
 

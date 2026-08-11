@@ -36,7 +36,7 @@ import { useUser } from '../../contexts/UserContext';
 import {
   fetchNegociations,
   repondreNegociation,
-} from '../../../imports/commandes-api';
+} from '../../services/api/commandes-api';
 import { useModalRegister } from '../../contexts/ModalContext';
 import { toast } from 'sonner';
 import { SearchBar } from '../shared/SearchBar';
@@ -44,8 +44,8 @@ import { matchesSearch } from '../../utils/searchUtils';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
-import * as commandesApi from '../../../imports/commandes-api';
+import { apiRequest } from '../../services/api/api-client';
+import * as commandesApi from '../../services/api/commandes-api';
 import { ReceptionPaiementModal } from '../shared/ReceptionPaiementModal';
 
 const C = '#2072AF';

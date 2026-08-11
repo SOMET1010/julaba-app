@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, ChevronRight, ArrowLeft } from 'lucide-react';
-import { verifierStatutBpayPublic } from '../../../imports/wallets-api';
+import { verifierStatutBpayPublic } from '../../services/api/wallets-api';
 import { IMG_LOGO_WAVE, IMG_LOGO_ORANGE_MONEY, IMG_LOGO_MTN, IMG_LOGO_MOOV } from '../../assets/images';
 import { API_URL } from '../../utils/api';
 
