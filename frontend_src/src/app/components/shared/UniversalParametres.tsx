@@ -22,6 +22,7 @@ import { TextSizeSlider } from './TextSizeSlider';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { registerWebAuthn, verifyWebAuthnForKeiwa } from '../../hooks/useWebAuthn';
 import { marquerBiometrie } from '../../services/comptesMemorises';
+import { getConfortVisuel, setConfortVisuel } from '../../utils/confortVisuel';
 import { API_URL } from '../../utils/api';
 import { toast } from 'sonner';
 
@@ -589,6 +590,10 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
 
   const prefs = (user as any)?.preferences || {};
 
+  // Mode SOLEIL (inclusion §2.4) — même réglage que le bouton ☀️ de l'accueil.
+  const [soleil, setSoleilState] = useState<boolean>(() => getConfortVisuel() === 'soleil');
+  const basculerSoleil = (v: boolean) => { setConfortVisuel(v ? 'soleil' : 'normal'); setSoleilState(v); };
+
   const [notifCommandes, setNotifCommandes] = useState<boolean>(prefs.notif_commandes ?? true);
   const [notifPaiements, setNotifPaiements] = useState<boolean>(prefs.notif_paiements ?? true);
   const [notifStockFaible, setNotifStockFaible] = useState<boolean>(prefs.notif_stock_faible ?? true);
@@ -812,6 +817,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
           {/* Mode d'accès : l'app s'adapte à la façon de travailler de chacune. */}
           <Section title="Ma façon d'utiliser Julaba" icon={Headphones} color={color}>
             <ModeAccesSwitcher />
+            <RowToggle label="Mode soleil" sublabel="Tout plus grand et plus lisible dehors"
+              value={soleil} onChange={basculerSoleil} color={color} />
           </Section>
 
           <Section title="Notifications" icon={Bell} color={color}>

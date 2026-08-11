@@ -8,6 +8,10 @@ import './styles/fonts.css';
 import './styles/theme.css';
 import './styles/tailwind.css';
 import './styles/index.css';
+import './styles/soleil.css';
+// Mode SOLEIL (confort visuel) : ré-applique le choix mémorisé dès le démarrage.
+import { appliquerConfortAuDemarrage } from './app/utils/confortVisuel';
+appliquerConfortAuDemarrage();
 
 // ── Auth mobile : jeton en en-tête Authorization ──────────────────────────────
 // Les cookies cross-domaine (julaba-web ↔ julaba-api) sont BLOQUÉS par les

@@ -14,7 +14,8 @@
     "test:comptes": "tsx src/app/services/comptesMemorises.test.mts",
     "test:bambara": "tsx src/app/voice-offline/nombresBambara.test.mts",
     "test:fcfa": "tsx src/app/utils/fcfa.test.mts",
-    "test:jargon": "tsx src/app/services/antiJargon.test.mts"
+    "test:jargon": "tsx src/app/services/antiJargon.test.mts",
+    "test:confort": "tsx src/app/utils/confortVisuel.test.mts"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
