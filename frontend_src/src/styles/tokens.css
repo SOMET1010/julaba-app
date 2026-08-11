@@ -32,3 +32,15 @@ html.soleil {
   --encre-4: #5C4432;
   --trait: #C9B49A;
 }
+
+/* MODE SOMBRE : encres inversées vers le clair (palette de styles/index.css).
+   Sans ce bloc, les écrans migrés aux tokens gardaient leur encre NOIRE sur
+   le fond sombre — texte invisible. Les classes soleil/dark sont exclusives
+   (arbitre unique : app/utils/confortVisuel). */
+html.dark {
+  --encre: #F5F0EB;
+  --encre-2: #D4C8BC;
+  --encre-3: #B8A898;
+  --encre-4: #9F8F7F;
+  --trait: #5B5248;
+}

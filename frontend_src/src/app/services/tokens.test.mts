@@ -6,8 +6,11 @@
  * 1. Tout token `--encre*` / `--trait*` référencé dans le code (var(--…))
  *    est bien DÉFINI dans styles/tokens.css (:root) — pas de token fantôme
  *    qui laisserait un texte sans couleur.
- * 2. Le bloc `html.soleil` ne surcharge QUE des tokens définis dans :root
- *    (pas de faute de frappe silencieuse).
+ * 2. Les blocs `html.soleil` ET `html.dark` ne surchargent QUE des tokens
+ *    définis dans :root (pas de faute de frappe silencieuse).
+ * 3. Tout token surchargé par le soleil l'est AUSSI par le sombre (et
+ *    inversement) : un mode qui oublierait un token laisserait une encre
+ *    noire sur fond sombre — invisible.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -43,6 +46,7 @@ function main() {
   const css = readFileSync(TOKENS_CSS, 'utf8');
   const racineTokens = nomsDefinis(extraireBloc(css, ':root'));
   const soleilTokens = nomsDefinis(extraireBloc(css, 'html.soleil'));
+  const sombreTokens = nomsDefinis(extraireBloc(css, 'html.dark'));
 
   let echecs = 0;
   const ok = (cond: boolean, label: string) => {
@@ -50,10 +54,20 @@ function main() {
     if (!cond) echecs++;
   };
 
-  console.log(`\n[1] tokens.css : ${racineTokens.size} tokens :root, ${soleilTokens.size} surcharges soleil`);
+  console.log(`\n[1] tokens.css : ${racineTokens.size} tokens :root, ${soleilTokens.size} surcharges soleil, ${sombreTokens.size} surcharges sombre`);
   ok(racineTokens.size > 0, ':root définit des tokens');
   for (const t of soleilTokens) {
     ok(racineTokens.has(t), `surcharge soleil « ${t} » existe dans :root`);
+  }
+  for (const t of sombreTokens) {
+    ok(racineTokens.has(t), `surcharge sombre « ${t} » existe dans :root`);
+  }
+  // Parité des modes : chaque token surchargé d'un côté doit l'être de l'autre.
+  for (const t of soleilTokens) {
+    ok(sombreTokens.has(t), `« ${t} » surchargé par le soleil l'est aussi par le sombre`);
+  }
+  for (const t of sombreTokens) {
+    ok(soleilTokens.has(t), `« ${t} » surchargé par le sombre l'est aussi par le soleil`);
   }
 
   console.log('\n[2] Tout var(--encre*/--trait*) du code est défini');
