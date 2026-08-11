@@ -45,6 +45,23 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
   BO le lisent en dictionnaire module → niveau. Types alignés sur la
   réalité (`ModuleAcces`).
 
+## Nettoyé (passe 4 — v5.0.0.9, 11/08/2026)
+
+- Résorption types paquet 3 (55 erreurs, 145 → 90) : UserData complété
+  (alias hérités firstName/lastName/activity/phone), BOAuditLog/BOUser/
+  InstitutionProfil/JulabaNotification complétés, forme réelle des
+  commandes API déclarée (CommandeContext), @types/leaflet installé.
+- Trois bugs réels corrigés (révélés par le typage) :
+  1. Notifications coopérative : le champ `titre` n'existait pas (le type
+     attend `title`) — le titre n'était JAMAIS transmis à l'API. Corrigé.
+  2. Tableau de bord identificateur : tuiles « Identifications » et
+     « À valider » affichaient du vide (champs inexistants sur le résumé) —
+     branchées sur les vrais champs (total, enAttente).
+  3. Modal « Utilisateurs » institution : la section stats lisait
+     `.marchands.total` directement sur une PROMESSE (plantage à
+     l'ouverture) — désormais attendue puis lue par rôle, 0 en repli.
+     À vérifier à l'écran (runtime) lors de la prochaine recette.
+
 ## Bug latent découvert par le typage (à corriger avec test runtime)
 
 - `publicationsApiAdapter.fetchPublications()` IGNORE ses filtres : le
