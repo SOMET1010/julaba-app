@@ -187,7 +187,7 @@ export function POSCaisse() {
   const Prix = ({ prix, unite }: { prix: number; unite: string }) => (
     <div style={{ margin:'3px 0' }}>
       <span style={{ fontSize:20, fontWeight:900, color:P }}>{prix.toLocaleString('fr-FR')} </span>
-      <span style={{ fontSize:11, fontWeight:700, color:'#aaa' }}>FCFA/{unite}</span>
+      <span style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)' }}>FCFA/{unite}</span>
     </div>
   );
 
@@ -230,7 +230,7 @@ export function POSCaisse() {
               style={{ flexShrink:0, padding:'10px 14px 24px', background:BG }}>
               <div style={{ background:'rgba(255,255,255,0.92)', backdropFilter:'blur(12px)', border:'1.5px solid rgba(175,91,35,0.2)', borderRadius:18, padding:'13px 16px', display:'flex', alignItems:'center', gap:10 }}>
                 <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:11, color:'#aaa', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                  <div style={{ fontSize:11, color:'var(--encre-4)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                     {cart.map(i => `${i.nom} ×${i.quantite}`).join(' · ')}
                   </div>
                   <div style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} <span style={{ fontSize:12, fontWeight:700 }}>FCFA</span></div>
@@ -248,10 +248,10 @@ export function POSCaisse() {
 
       {/* CONTENU */}
       <div style={{ flex:1, overflowY:'auto', padding:'14px 0 0' }}>
-        <div style={{ marginBottom:12, background:'white', border:'1.5px solid #EDE7DE', borderRadius:13, padding:'11px 14px', display:'flex', alignItems:'center', gap:9 }}>
+        <div style={{ marginBottom:12, background:'white', border:'1.5px solid var(--trait)', borderRadius:13, padding:'11px 14px', display:'flex', alignItems:'center', gap:9 }}>
           <Search size={14} color="#aaa" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un produit..."
-            style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:13, color:'#333', fontFamily:'inherit' }} />
+            style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:13, color:'var(--encre)', fontFamily:'inherit' }} />
           {search && <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}>
             <X size={14} color="#aaa" />
           </motion.button>}
@@ -269,7 +269,7 @@ export function POSCaisse() {
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
               <div style={{ width:3, height:14, background:P, borderRadius:2 }} />
               <span style={{ fontSize:11, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.1em' }}>Vente rapide</span>
-              <span style={{ fontSize:10, color:'#aaa' }}>· dynamique selon tes ventes</span>
+              <span style={{ fontSize:10, color:'var(--encre-4)' }}>· dynamique selon tes ventes</span>
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {topProducts.map((p, i) => (
@@ -302,10 +302,10 @@ export function POSCaisse() {
         <div style={{ marginBottom:14 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
             <div style={{ width:3, height:14, background:'#EDE7DE', borderRadius:2 }} />
-            <span style={{ fontSize:11, fontWeight:700, color:'#aaa', textTransform:'uppercase', letterSpacing:'0.1em' }}>Tous les produits</span>
+            <span style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Tous les produits</span>
           </div>
           {filtered.length === 0 ? (
-            <div style={{ textAlign:'center', padding:'40px 0', color:'#aaa' }}>
+            <div style={{ textAlign:'center', padding:'40px 0', color:'var(--encre-4)' }}>
               <Package size={48} style={{ margin:'0 auto 12px', opacity:0.3 }} />
               <p style={{ marginBottom:16 }}>Aucun produit</p>
               <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowLibre(true)}
@@ -338,12 +338,12 @@ export function POSCaisse() {
                       )}
                     </div>
                     <div style={{ padding:'11px 12px' }}>
-                      <div style={{ fontSize:16, fontWeight:800, color:'#1a1206' }}>{p.nom}</div>
+                      <div style={{ fontSize:16, fontWeight:800, color:'var(--encre)' }}>{p.nom}</div>
                       {enPromo ? (
                         <div style={{ margin:'3px 0', display:'flex', alignItems:'baseline', gap:6, flexWrap:'wrap' }}>
                           <span style={{ fontSize:20, fontWeight:900, color:'#C0392B' }}>{prixEffectif(p as any).toLocaleString('fr-FR')}</span>
                           <span style={{ fontSize:11, fontWeight:700, color:'#C0392B' }}>FCFA/{p.unite}</span>
-                          <span style={{ fontSize:12, fontWeight:700, color:'#aaa', textDecoration:'line-through' }}>{(p.prix||0).toLocaleString('fr-FR')}</span>
+                          <span style={{ fontSize:12, fontWeight:700, color:'var(--encre-4)', textDecoration:'line-through' }}>{(p.prix||0).toLocaleString('fr-FR')}</span>
                         </div>
                       ) : (
                         <Prix prix={p.prix||0} unite={p.unite} />
@@ -385,7 +385,7 @@ export function POSCaisse() {
               style={{ position:'fixed', bottom:0, left:0, right:0, background:'white', borderRadius:'24px 24px 0 0', zIndex:51, maxHeight:'75vh', display:'flex', flexDirection:'column' }}>
               <div style={{ width:40, height:4, borderRadius:2, background:'#EDE7DE', margin:'14px auto 0' }} />
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px 10px' }}>
-                <span style={{ fontSize:19, fontWeight:900, color:'#1a1206' }}>Panier <span style={{ fontSize:14, fontWeight:400, color:'#aaa' }}>({nbItems} article{nbItems>1?'s':''})</span></span>
+                <span style={{ fontSize:19, fontWeight:900, color:'var(--encre)' }}>Panier <span style={{ fontSize:14, fontWeight:400, color:'var(--encre-4)' }}>({nbItems} article{nbItems>1?'s':''})</span></span>
                 <motion.button whileTap={{ scale:0.9 }} onClick={() => setShowCart(false)} aria-label="Fermer le panier"
                   style={{ width:44, height:44, borderRadius:10, background:'#f0f0f0', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <X size={16} color="#888" />
@@ -395,8 +395,8 @@ export function POSCaisse() {
                 {cart.map(item => (
                   <div key={item.productId} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 0', borderBottom:'1px solid #f5f0eb' }}>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:15, fontWeight:700, color:'#1a1206' }}>{item.nom}</div>
-                      <div style={{ fontSize:12, color:'#aaa', marginTop:2 }}>{item.prix.toLocaleString('fr-FR')} FCFA × {item.quantite}</div>
+                      <div style={{ fontSize:15, fontWeight:700, color:'var(--encre)' }}>{item.nom}</div>
+                      <div style={{ fontSize:12, color:'var(--encre-4)', marginTop:2 }}>{item.prix.toLocaleString('fr-FR')} FCFA × {item.quantite}</div>
                     </div>
                     <div style={{ fontSize:15, fontWeight:800, color:P }}>{(item.prix * item.quantite).toLocaleString('fr-FR')} FCFA</div>
                     <motion.button whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={`Enlever ${item.nom}`}
@@ -412,7 +412,7 @@ export function POSCaisse() {
                 <button type="button" onClick={() => dire(`Total : ${total.toLocaleString('fr-FR')} francs`)}
                   aria-label={`Total ${total.toLocaleString('fr-FR')} francs — touche pour entendre`}
                   style={{ width:'100%', display:'flex', justifyContent:'space-between', marginBottom:12, background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit' }}>
-                  <span style={{ fontSize:16, fontWeight:700, color:'#1a1206' }}>Total</span>
+                  <span style={{ fontSize:16, fontWeight:700, color:'var(--encre)' }}>Total</span>
                   <span style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} FCFA</span>
                 </button>
 
@@ -420,19 +420,19 @@ export function POSCaisse() {
                 <div style={{ display:'flex', gap:8, marginBottom:12 }}>
                   <button type="button" onClick={() => setPaymentMethod('cash')}
                     style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
-                      border: paymentMethod==='cash' ? `2px solid ${P}` : '1.5px solid #EDE7DE',
+                      border: paymentMethod==='cash' ? `2px solid ${P}` : '1.5px solid var(--trait)',
                       background: paymentMethod==='cash' ? '#FFF3E9' : '#fff', color: paymentMethod==='cash' ? P : '#8A7A6A' }}>
                     Espèces
                   </button>
                   <button type="button" onClick={() => setPaymentMethod('mobile_money')}
                     style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer', lineHeight:1.15,
-                      border: paymentMethod==='mobile_money' ? `2px solid ${P}` : '1.5px solid #EDE7DE',
+                      border: paymentMethod==='mobile_money' ? `2px solid ${P}` : '1.5px solid var(--trait)',
                       background: paymentMethod==='mobile_money' ? '#FFF3E9' : '#fff', color: paymentMethod==='mobile_money' ? P : '#8A7A6A' }}>
                     Mobile money
                   </button>
                   <button type="button" onClick={() => { setShowCart(false); setPaymentMethod('credit'); setShowCredit(true); }}
                     style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
-                      border:'1.5px solid #EDE7DE', background:'#fff', color:'#8A7A6A' }}>
+                      border:'1.5px solid var(--trait)', background:'#fff', color:'var(--encre-3)' }}>
                     Crédit
                   </button>
                 </div>
@@ -443,7 +443,7 @@ export function POSCaisse() {
                     {MOBILE_OPERATORS.map(op => (
                       <button type="button" key={op.id} onClick={() => setMmOperator(op.id)}
                         style={{ flex:'1 0 30%', padding:'11px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
-                          border: mmOperator===op.id ? `2px solid ${op.color}` : '1.5px solid #EDE7DE',
+                          border: mmOperator===op.id ? `2px solid ${op.color}` : '1.5px solid var(--trait)',
                           background: mmOperator===op.id ? op.color : '#fff', color: mmOperator===op.id ? op.textColor : '#5a4a3a' }}>
                         {op.name}
                       </button>
@@ -456,11 +456,11 @@ export function POSCaisse() {
                     filet pour celle qui préfère taper. */}
                 {paymentMethod === 'cash' && (
                 <div style={{ marginBottom:12 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid #EDE7DE', borderRadius:12, padding:'10px 12px' }}>
-                    <span style={{ fontSize:12, fontWeight:700, color:'#8A7A6A', whiteSpace:'nowrap' }}>Montant reçu</span>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid var(--trait)', borderRadius:12, padding:'10px 12px' }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)', whiteSpace:'nowrap' }}>Montant reçu</span>
                     <input value={montantRecu} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—"
-                      style={{ flex:1, border:'none', outline:'none', textAlign:'right', fontSize:18, fontWeight:800, color:'#1a1206', background:'transparent', fontVariantNumeric:'tabular-nums' }} />
-                    <span style={{ fontSize:13, fontWeight:700, color:'#8A7A6A' }}>F</span>
+                      style={{ flex:1, border:'none', outline:'none', textAlign:'right', fontSize:18, fontWeight:800, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums' }} />
+                    <span style={{ fontSize:13, fontWeight:700, color:'var(--encre-3)' }}>F</span>
                     {recu > 0 && (
                       <button type="button" aria-label="Effacer le montant reçu" onClick={() => setMontantRecu('')}
                         style={{ width:30, height:30, borderRadius:9, border:'none', background:'#FEF2F2', color:'#c0392b', fontWeight:900, fontSize:14, cursor:'pointer' }}>
@@ -571,23 +571,23 @@ export function POSCaisse() {
               onClick={e => e.stopPropagation()}
               style={{ width:'100%', maxWidth:480, background:'#fff', borderTopLeftRadius:24, borderTopRightRadius:24, padding:'20px 18px calc(20px + env(safe-area-inset-bottom))' }}
             >
-              <div style={{ fontSize:18, fontWeight:800, color:'#2E1B10', marginBottom:14 }}>Autre article</div>
-              <label style={{ fontSize:12, fontWeight:700, color:'#8A7A6A' }}>Montant</label>
-              <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid #EDE7DE', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:14 }}>
+              <div style={{ fontSize:18, fontWeight:800, color:'var(--encre)', marginBottom:14 }}>Autre article</div>
+              <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Montant</label>
+              <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:14 }}>
                 <input
                   value={libreMontant}
                   onChange={e => setLibreMontant(e.target.value.replace(/[^\d]/g, ''))}
                   inputMode="numeric" autoFocus placeholder="0"
-                  style={{ flex:1, border:'none', outline:'none', fontSize:26, fontWeight:800, color:'#2E1B10', background:'transparent', fontVariantNumeric:'tabular-nums' }}
+                  style={{ flex:1, border:'none', outline:'none', fontSize:26, fontWeight:800, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums' }}
                 />
-                <span style={{ fontSize:16, fontWeight:700, color:'#8A7A6A' }}>F</span>
+                <span style={{ fontSize:16, fontWeight:700, color:'var(--encre-3)' }}>F</span>
               </div>
-              <label style={{ fontSize:12, fontWeight:700, color:'#8A7A6A' }}>Quoi ? (facultatif)</label>
+              <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Quoi ? (facultatif)</label>
               <input
                 value={libreDesc}
                 onChange={e => setLibreDesc(e.target.value)}
                 placeholder="ex. bananes"
-                style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid #EDE7DE', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:18, fontSize:15, color:'#2E1B10', outline:'none', fontFamily:'inherit' }}
+                style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:18, fontSize:15, color:'var(--encre)', outline:'none', fontFamily:'inherit' }}
               />
               <button
                 type="button"
@@ -611,8 +611,8 @@ export function POSCaisse() {
               <Check size={48} color="#0E7A47" />
             </div>
             <div style={{ fontSize:24, fontWeight:900, color:'#0E7A47', marginBottom:8 }}>Vente réussie</div>
-            <div style={{ fontSize:34, fontWeight:900, color:'#1a1206', fontVariantNumeric:'tabular-nums' }}>{lastSale.montant.toLocaleString('fr-FR')} F</div>
-            <div style={{ fontSize:14, color:'#8A7A6A', marginTop:6 }}>
+            <div style={{ fontSize:34, fontWeight:900, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{lastSale.montant.toLocaleString('fr-FR')} F</div>
+            <div style={{ fontSize:14, color:'var(--encre-3)', marginTop:6 }}>
               {lastSale.moyen}{lastSale.monnaie > 0 ? ` · rendu ${lastSale.monnaie.toLocaleString('fr-FR')} F` : ''}
             </div>
             <div style={{ width:'100%', maxWidth:360, marginTop:28, display:'flex', flexDirection:'column', gap:10 }}>

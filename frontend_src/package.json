@@ -2,7 +2,7 @@
   "name": "julaba-frontend",
   "private": true,
   "version": "5.0.0",
-  "appVersion": "5.0.0.2",
+  "appVersion": "5.0.0.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,7 +16,8 @@
     "test:bambara": "tsx src/app/voice-offline/nombresBambara.test.mts",
     "test:fcfa": "tsx src/app/utils/fcfa.test.mts",
     "test:jargon": "tsx src/app/services/antiJargon.test.mts",
-    "test:confort": "tsx src/app/utils/confortVisuel.test.mts"
+    "test:confort": "tsx src/app/utils/confortVisuel.test.mts",
+    "test:tokens": "tsx src/app/services/tokens.test.mts"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
