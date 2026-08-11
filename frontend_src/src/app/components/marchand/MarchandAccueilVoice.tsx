@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../contexts/AppContext';
@@ -7,7 +7,7 @@ import { RACC_IMG as MOD_IMAGES } from '../../assets/cloudinary-images';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { VenteVocaleModal } from './VenteVocaleModal';
 import { PropositionReconnaissance } from '../auth/PropositionReconnaissance';
-import { getConfortVisuel, setConfortVisuel } from '../../utils/confortVisuel';
+import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
 import { ResumeModal, CloseDayModal, EditFondModal } from './MarchandModals';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
@@ -34,10 +34,17 @@ function MarchandAccueilVoiceInner() {
   const [soleil, setSoleil] = useState(() => getConfortVisuel() === 'soleil');
   const basculerSoleil = () => {
     const prochain = soleil ? 'normal' : 'soleil';
-    setConfortVisuel(prochain);
+    setConfortVisuel(prochain); // exclusif : allumer le soleil éteint le sombre
     setSoleil(prochain === 'soleil');
     speak(prochain === 'soleil' ? 'Mode soleil : tout est plus grand.' : 'Mode normal.');
   };
+  // Le mode peut changer ailleurs (Paramètres, mode sombre auto 18h) : on se
+  // resynchronise sur l'événement de l'arbitre confortVisuel.
+  useEffect(() => {
+    const sync = () => setSoleil(getConfortVisuel() === 'soleil');
+    window.addEventListener(CONFORT_EVENT, sync);
+    return () => window.removeEventListener(CONFORT_EVENT, sync);
+  }, []);
   const [showVente, setShowVente] = useState(false);
   const [showResume, setShowResume] = useState(false);
   const [showClose, setShowClose] = useState(false);

@@ -131,6 +131,12 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
 - **Doublon d'accueil `greetTitle` (connexion)** : lit `julaba_auth_user`
   alors que `comptesMemorises` est la source de vérité depuis le lot 1 de la
   reconnaissance. Unifier à la prochaine passe connexion.
-- **`ThemeContext` (mode sombre 18h-6h)** : coexiste avec le mode soleil sans
-  se connaître. Unifier sous un seul « confort visuel » (normal / soleil /
-  sombre) à la prochaine passe d'inclusion.
+- ~~`ThemeContext` (mode sombre 18h-6h) coexistant avec le mode soleil~~ :
+  **UNIFIÉS le 11/08/2026 (v5.0.0.14).** `utils/confortVisuel` est l'arbitre
+  UNIQUE des trois modes (normal / soleil / sombre) : une seule classe sur
+  <html> à la fois (les classes `soleil` et `dark` ne peuvent plus se
+  cumuler), migration de l'ancienne clé `julaba_dark_mode`, ThemeContext
+  délègue (API conservée : isDark/toggleDark/auto 18h-6h). Les tokens
+  `--encre*`/`--trait` ont enfin leur surcharge `html.dark` — avant, les
+  écrans migrés aux tokens affichaient une encre NOIRE sur fond sombre.
+  Parité soleil/sombre verrouillée par `npm run test:tokens`.

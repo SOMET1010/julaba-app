@@ -22,7 +22,7 @@ import { TextSizeSlider } from './TextSizeSlider';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { registerWebAuthn, verifyWebAuthnForKeiwa } from '../../hooks/useWebAuthn';
 import { marquerBiometrie } from '../../services/comptesMemorises';
-import { getConfortVisuel, setConfortVisuel } from '../../utils/confortVisuel';
+import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
 import { API_URL } from '../../utils/api';
 import { toast } from 'sonner';
 
@@ -591,8 +591,15 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
   const prefs = (user as any)?.preferences || {};
 
   // Mode SOLEIL (inclusion §2.4) — même réglage que le bouton ☀️ de l'accueil.
+  // Soleil et sombre sont EXCLUSIFS (arbitre confortVisuel) : allumer l'un
+  // éteint l'autre — on se resynchronise sur l'événement de l'arbitre.
   const [soleil, setSoleilState] = useState<boolean>(() => getConfortVisuel() === 'soleil');
   const basculerSoleil = (v: boolean) => { setConfortVisuel(v ? 'soleil' : 'normal'); setSoleilState(v); };
+  useEffect(() => {
+    const sync = () => setSoleilState(getConfortVisuel() === 'soleil');
+    window.addEventListener(CONFORT_EVENT, sync);
+    return () => window.removeEventListener(CONFORT_EVENT, sync);
+  }, []);
 
   const [notifCommandes, setNotifCommandes] = useState<boolean>(prefs.notif_commandes ?? true);
   const [notifPaiements, setNotifPaiements] = useState<boolean>(prefs.notif_paiements ?? true);
