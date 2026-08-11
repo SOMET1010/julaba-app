@@ -18,6 +18,33 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
   depuis l'abandon du mot-réveil en ligne ; le bloc UI ne se rendait jamais.
   Un futur mot-réveil HORS-LIGNE (sherpa) repartira de zéro, proprement.
 
+## Nettoyé (passe 2 — v5.0.0.7, 11/08/2026)
+
+- Chaîne « academy » legacy supprimée (5 fichiers morts, prouvés sans
+  importeur atteignable) : `useAcademy.ts` (10 erreurs TS, imports de
+  fonctions inexistantes), `useAcademyTracking.ts`, `useAcademyModules.ts`,
+  `JulabaAcademy.tsx`, `MarchandAcademy.tsx`. La route réelle pointe vers
+  `UniversalAcademy`.
+- `StockContext` : l'enveloppe « compatibilité » contenait un bloc de
+  polling référençant des identifiants INEXISTANTS (`appUser`,
+  `refreshStocks`) — il aurait planté au premier rendu s'il avait été
+  exécuté. Retiré ; le vrai rafraîchissement vit dans `StockProviderInner`.
+- Types résorbés (49 erreurs TS, 239 → 190) : variantes d'API déclarées en
+  OPTIONNEL sur `Recolte`/`CommandeProducteur` (ProducteurContext) et
+  `Recolte` (recoltes-api), alias `Cycle as CycleAgricole`, types de
+  publication depuis les alias locaux existants.
+
+## Bug latent découvert par le typage (à corriger avec test runtime)
+
+- `publicationsApiAdapter.fetchPublications()` IGNORE ses filtres : le
+  contexte producteur appelait `fetchPublications(true, false)` (« mes
+  publications actives ») mais l'adaptateur n'accepte aucun argument et
+  appelle l'API sans filtre. Les arguments (morts) ont été retirés — le
+  COMPORTEMENT est inchangé, mais l'intention d'origine (filtrer sur ses
+  propres publications) reste non honorée. À corriger en passant les
+  filtres à travers l'adaptateur, AVEC vérification runtime de l'écran
+  Publications du producteur.
+
 ## Résidus connus, assumés, à traiter
 
 - **241 erreurs TypeScript baseline** : le plus gros résidu du legacy. Toutes
