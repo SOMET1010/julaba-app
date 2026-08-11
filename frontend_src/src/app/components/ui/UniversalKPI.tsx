@@ -7,6 +7,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Info, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
+import { guidageVocal } from '../../utils/accessMode';
 
 function formatKPI(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace('.0','') + 'M';
@@ -186,7 +188,23 @@ export function UniversalKPI({
   const bg     = bgColor     || `${color}12`;
   const border = borderColor || `${color}40`;
 
+  // Tout montant affiché doit pouvoir être ENTENDU d'un toucher (inclusion
+  // §2.2) : le KPI se dit à voix haute selon le profil d'accès. `useApp` est
+  // sans danger hors provider (speak = silence) ; l'écran écrit « 12K », la
+  // voix dit le nombre COMPLET (« douze mille cinq cents francs »).
+  const { speak } = useApp();
+  const direKPI = () => {
+    if (!guidageVocal()) return;
+    const v = animatedTarget !== undefined ? animatedTarget
+      : (typeof value === 'string' && value.trim() !== '' ? value : null);
+    if (v === null) return;
+    const suffixe = suffix === 'FCFA' || suffix === 'F' ? 'francs' : (suffix || '');
+    const lu = typeof v === 'number' ? v.toLocaleString('fr-FR') : v;
+    try { speak(`${label} : ${lu} ${suffixe}`.trim()); } catch { /* jamais bloquant */ }
+  };
+
   const handleClick = () => {
+    direKPI();
     if (hasModal) setModalOpen(true);
     onClick?.();
   };

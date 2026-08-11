@@ -25,6 +25,8 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.2 — 11/08/2026 : montants parlés généralisés — tout KPI (UniversalKPI,
+  53 écrans) et toute vente de l'historique se disent d'un toucher.
 - v5.0.0.1 — 11/08/2026 : base de départ (session inclusion : sherpa unique,
   « Tata me reconnaît », billets CFA, nombres bambara, anti-jargon,
   vibrations, mode soleil).
