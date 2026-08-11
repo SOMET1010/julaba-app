@@ -10,6 +10,7 @@ import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { partagerRecu } from '../../utils/recu.utils';
 import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
+import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/fcfa';
 import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 
@@ -72,17 +73,17 @@ export function POSCaisse() {
   const total = getTotalCart();
   const nbItems = cart.reduce((s, i) => s + i.quantite, 0);
 
-  // Espèces : monnaie à rendre + montants rapides (arrondis au-dessus du total).
+  // Espèces : montant reçu composé EN BILLETS (le geste réel du marché — elle
+  // touche les coupures reçues au lieu de déchiffrer « 12 500 », inclusion §2.2)
+  // + monnaie à rendre décomposée en coupures concrètes.
   const recu = Number(montantRecu) || 0;
   const monnaie = Math.max(0, recu - total);
   const insuffisant = recu > 0 && recu < total;
-  const montantsRapides = useMemo(() => {
-    const s = new Set<number>();
-    const ceil = (n: number) => Math.ceil(total / n) * n;
-    [500, 1000, 2000, 5000, 10000].forEach(n => { if (n > total) s.add(n); });
-    [1000, 5000, 10000].forEach(n => s.add(ceil(n)));
-    return [...s].filter(v => v > total).sort((a, b) => a - b).slice(0, 3);
-  }, [total]);
+  const ajouterCoupure = (valeur: number) => {
+    setMontantRecu(String(recu + valeur));
+    dire(direCoupure(valeur));
+  };
+  const monnaieDecomposee = useMemo(() => decomposerMonnaie(monnaie), [monnaie]);
 
 
   const topProducts = useMemo(() => {
@@ -441,7 +442,9 @@ export function POSCaisse() {
                   </div>
                 )}
 
-                {/* Espèces : montant reçu + rapides + monnaie à rendre */}
+                {/* Espèces : montant reçu EN BILLETS (geste du marché) + monnaie
+                    à rendre décomposée en coupures. Le champ chiffres reste le
+                    filet pour celle qui préfère taper. */}
                 {paymentMethod === 'cash' && (
                 <div style={{ marginBottom:12 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid #EDE7DE', borderRadius:12, padding:'10px 12px' }}>
@@ -449,23 +452,66 @@ export function POSCaisse() {
                     <input value={montantRecu} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—"
                       style={{ flex:1, border:'none', outline:'none', textAlign:'right', fontSize:18, fontWeight:800, color:'#1a1206', background:'transparent', fontVariantNumeric:'tabular-nums' }} />
                     <span style={{ fontSize:13, fontWeight:700, color:'#8A7A6A' }}>F</span>
-                  </div>
-                  <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
-                    <button type="button" onClick={() => setMontantRecu(String(total))}
-                      style={{ padding:'8px 12px', borderRadius:10, border:'1.5px solid #A8D8B9', background:'#EAF7EE', color:'#0E7A47', fontWeight:800, fontSize:13, cursor:'pointer' }}>
-                      Compte juste
-                    </button>
-                    {montantsRapides.map(v => (
-                      <button type="button" key={v} onClick={() => setMontantRecu(String(v))}
-                        style={{ padding:'8px 12px', borderRadius:10, border:'1.5px solid #EDE7DE', background:'#fff', color:'#5a4a3a', fontWeight:700, fontSize:13, cursor:'pointer' }}>
-                        {v.toLocaleString('fr-FR')}
+                    {recu > 0 && (
+                      <button type="button" aria-label="Effacer le montant reçu" onClick={() => setMontantRecu('')}
+                        style={{ width:30, height:30, borderRadius:9, border:'none', background:'#FEF2F2', color:'#c0392b', fontWeight:900, fontSize:14, cursor:'pointer' }}>
+                        ✕
                       </button>
+                    )}
+                  </div>
+                  {/* Les billets qu'elle vient de recevoir : un toucher = un billet
+                      ajouté (et dit à voix haute). Couleurs proches des vraies coupures. */}
+                  <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
+                    {COUPURES.filter(c => c.forme === 'billet').map(c => (
+                      <motion.button type="button" key={c.valeur} whileTap={{ scale:0.92 }} onClick={() => ajouterCoupure(c.valeur)}
+                        aria-label={`Ajouter un billet de ${formatF(c.valeur)} francs`}
+                        style={{ flex:'1 0 28%', minHeight:46, borderRadius:9, border:'none', cursor:'pointer',
+                          background:`linear-gradient(135deg, ${c.couleur}, ${c.couleur}DD)`, color:c.encre,
+                          fontWeight:900, fontSize:15, fontVariantNumeric:'tabular-nums',
+                          boxShadow:'0 2px 6px rgba(0,0,0,0.18), inset 0 0 0 2px rgba(255,255,255,0.35)' }}>
+                        {formatF(c.valeur)}
+                      </motion.button>
                     ))}
                   </div>
+                  <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap', alignItems:'center' }}>
+                    {COUPURES.filter(c => c.forme === 'piece').map(c => (
+                      <motion.button type="button" key={c.valeur} whileTap={{ scale:0.9 }} onClick={() => ajouterCoupure(c.valeur)}
+                        aria-label={`Ajouter une pièce de ${formatF(c.valeur)} francs`}
+                        style={{ width:52, height:52, borderRadius:'50%', border:'none', cursor:'pointer',
+                          background:`radial-gradient(120% 120% at 30% 25%, ${c.couleur}, ${c.couleur}CC)`, color:c.encre,
+                          fontWeight:900, fontSize:13, fontVariantNumeric:'tabular-nums',
+                          boxShadow:'0 2px 5px rgba(0,0,0,0.2), inset 0 0 0 2.5px rgba(255,255,255,0.5)' }}>
+                        {c.valeur}
+                      </motion.button>
+                    ))}
+                    <button type="button" onClick={() => { setMontantRecu(String(total)); dire('Compte juste'); }}
+                      style={{ flex:1, minWidth:104, padding:'13px 10px', borderRadius:12, border:'1.5px solid #A8D8B9', background:'#EAF7EE', color:'#0E7A47', fontWeight:800, fontSize:13, cursor:'pointer' }}>
+                      Compte juste
+                    </button>
+                  </div>
                   {recu > 0 && !insuffisant && (
-                    <div style={{ display:'flex', justifyContent:'space-between', marginTop:10, fontSize:15, fontWeight:800, color:'#0E7A47' }}>
-                      <span>Monnaie à rendre</span><span style={{ fontVariantNumeric:'tabular-nums' }}>{monnaie.toLocaleString('fr-FR')} F</span>
-                    </div>
+                    <button type="button" onClick={() => dire(`Monnaie à rendre : ${formatF(monnaie)} francs`)}
+                      aria-label={`Monnaie à rendre ${formatF(monnaie)} francs — touche pour entendre`}
+                      style={{ width:'100%', background:'none', border:'none', padding:0, marginTop:10, cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:15, fontWeight:800, color:'#0E7A47' }}>
+                        <span>Monnaie à rendre</span><span style={{ fontVariantNumeric:'tabular-nums' }}>{formatF(monnaie)} F</span>
+                      </div>
+                      {/* La monnaie EN COUPURES concrètes : « 2000 ×1 · 500 ×1 » */}
+                      {monnaie > 0 && monnaieDecomposee.lignes.length > 0 && (
+                        <div style={{ display:'flex', gap:5, marginTop:6, flexWrap:'wrap' }}>
+                          {monnaieDecomposee.lignes.map(l => (
+                            <span key={l.valeur} style={{ padding:'4px 9px', borderRadius:8, background:'#EAF7EE', border:'1px solid #A8D8B9', color:'#0E7A47', fontWeight:800, fontSize:12, fontVariantNumeric:'tabular-nums' }}>
+                              {formatF(l.valeur)} ×{l.nb}
+                            </span>
+                          ))}
+                          {monnaieDecomposee.reste > 0 && (
+                            <span style={{ padding:'4px 9px', borderRadius:8, background:'#FFF7E6', border:'1px solid #F0D9A8', color:'#8A6A1A', fontWeight:800, fontSize:12 }}>
+                              + {formatF(monnaieDecomposee.reste)} F
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </button>
                   )}
                   {insuffisant && (
                     <div style={{ marginTop:8, fontSize:13, fontWeight:700, color:'#c0392b' }}>Montant reçu insuffisant</div>
