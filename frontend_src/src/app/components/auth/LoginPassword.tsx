@@ -18,15 +18,8 @@ import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '..
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
-
-// Grammaire CHIFFRES pour Vosk : dictée d'un numéro de téléphone → on limite le
-// moteur aux mots-nombres (précision maximale, pas de confusion avec du vocabulaire).
-const DIGIT_GRAMMAR = [
-  'zéro', 'zero', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
-  'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf',
-  'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'quatre-vingt', 'quatre-vingts', 'quatre-vingt-dix',
-  'cent', 'et', '[unk]',
-];
+import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../services/comptesMemorises';
+import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
@@ -98,14 +91,21 @@ export function LoginPassword() {
   const backOfficeCtx = useBackOfficeOptional();
   const setBOUser = backOfficeCtx?.setBOUser ?? (() => {});
 
-  const [phone, setPhone] = useState('');
+  // « Tata se souvient de moi » (connexion inclusive, lot 1) : si une personne
+  // est déjà connue sur CE téléphone, Tata l'accueille par son prénom et ne lui
+  // redemande JAMAIS ses 10 chiffres — reconnaissance (visage/doigt) ou code.
+  // « Ce n'est pas moi » ramène au parcours classique (téléphone partagé).
+  const [compteConnu] = useState<CompteMemorise | null>(() => {
+    try { return dernierCompte(window.localStorage); } catch { return null; }
+  });
+  const [phone, setPhone] = useState(compteConnu?.phone ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [showDevButton, setShowDevButton] = useState(false);
   const [pinInput, setPinInput] = useState('');
-  const [step, setStep] = useState<'phone' | 'password'>('phone');
+  const [step, setStep] = useState<'reconnaissance' | 'phone' | 'password'>(compteConnu ? 'reconnaissance' : 'phone');
   const [isListening, setIsListening] = useState(false);
   // Mode d'accès EFFECTIF (résout 'auto' via l'usage observé) : l'écran S'ADAPTE
   // (lecture = clavier direct, mixte = les deux, voix = micro au centre).
@@ -160,9 +160,15 @@ export function LoginPassword() {
   // Quand un vrai enregistrement d'accueil sera fourni, on pourra le rebrancher.
   const ecouterTata = () => {
     setTataSpeaking(true);
+    // La consigne suit l'ÉTAPE : accueil reconnu (geste unique) ou numéro à dire.
+    const consigne = step === 'reconnaissance' && compteConnu
+      ? (compteConnu.biometrie
+        ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
+        : 'Touche le grand bouton et entre ton code.')
+      : 'Dis ton numéro, ou tape-le.';
     // UNE SEULE voix de secours dans toute l'appli (speakBrowser) : même voix FR,
     // même débit, même timbre partout → fini le « mélange de voix ».
-    try { speakBrowser(`${greetTitle}. ${greetSub}. Dis ton numéro, ou tape-le.`).finally(() => setTataSpeaking(false)); }
+    try { speakBrowser(`${greetTitle}. ${greetSub}. ${consigne}`).finally(() => setTataSpeaking(false)); }
     catch { setTataSpeaking(false); }
     setTimeout(() => setTataSpeaking(false), 8000); // filet
   };
@@ -217,8 +223,22 @@ export function LoginPassword() {
   // GUIDAGE VOCAL selon le mode : en mode « lecture » (elle lit vite), on ne parle
   // PAS automatiquement (le texte suffit). En mixte/voix, Tata annonce erreurs et
   // consignes. La lecture manuelle (toucher Tata, le cadenas…) reste toujours possible.
-  useEffect(() => { if (error && guidageVocal(accessMode)) parle(error); }, [error]);
+  // L'erreur se SENT (vibration longue) quel que soit le profil — et se dit
+  // en guidage vocal. Une sourde ou une marchande dans le bruit la perçoit.
+  useEffect(() => { if (error) { vibrerErreur(); if (guidageVocal(accessMode)) parle(error); } }, [error]);
   useEffect(() => { if (step === 'password' && guidageVocal(accessMode)) parle('Entre ton code secret à 4 chiffres'); }, [step]);
+  // « Tata se souvient de moi » : à l'arrivée, Tata SALUE par le prénom et dit le
+  // geste à faire — l'écran n'a rien à lire. (Une seule fois, au montage.)
+  useEffect(() => {
+    if (step === 'reconnaissance' && compteConnu && guidageVocal(accessMode)) {
+      const salut = compteConnu.prenom ? `Bonjour ${compteConnu.prenom} !` : 'Bonjour ma sœur !';
+      const geste = compteConnu.biometrie
+        ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
+        : 'Touche le grand bouton et entre ton code.';
+      try { parleRobot(`${salut} ${geste}`); } catch { /* ignore */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Tata propose l'adaptation (mode 'auto') : elle le DIT (une fois) — c'est une
   // question, pas un réglage à trouver. On l'énonce dès l'affichage.
   useEffect(() => {
@@ -339,7 +359,7 @@ export function LoginPassword() {
     }
   };
 
-  // Dictée vocale du numéro — 100 % HORS-LIGNE via Vosk, EN DIRECT. On transcrit
+  // Dictée vocale du numéro — 100 % HORS-LIGNE via sherpa-onnx (natif), EN DIRECT. On transcrit
   // pendant qu'elle parle : les chiffres se remplissent à l'écran et on s'ARRÊTE
   // DÈS QU'ON A UN NUMÉRO COMPLET ET VALIDE (10 chiffres, règle CI) — jamais sur un
   // minuteur. Clavier = filet. Aucune reconnaissance navigateur (Internet).
@@ -375,7 +395,7 @@ export function LoginPassword() {
     vlog('MODEL_READY', { ready: offlineModelReady(), installed: offlineModelInstalled() });
     vlog('TTS_VOICE', voixSecoursNom());
 
-    if (!offlineModelReady()) { vlog('VOSK_NOT_READY'); cfg.siPasPrete(); return; }
+    if (!offlineModelReady()) { vlog('STT_NOT_READY'); cfg.siPasPrete(); return; }
 
     vlog('MIC_ASK');
     let stream: MediaStream;
@@ -433,7 +453,7 @@ export function LoginPassword() {
         if (estFinal) {
           settleTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 1600);
         }
-      }, DIGIT_GRAMMAR, (tag, data) => vlog(tag, data));
+      }, undefined, (tag, data) => vlog(tag, data));
       vlog('LIVE_START');
     } catch (e) {
       vlog('LIVE_FAIL', String(e));
@@ -465,7 +485,7 @@ export function LoginPassword() {
       if (num.length > 0) { setPhone(num); setError(''); setShowKeypad(true); parle('Complète ton numéro sur le clavier.'); return; }
       setError("Je n'ai pas compris. Tape ton numéro juste ici 👇"); setShowKeypad(true); parle("Je n'ai pas compris. Tape ton numéro juste ici.");
     },
-    buildTag: 'vosk-login-live-v2',
+    buildTag: 'sherpa-login-live-v1',
     siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, il faut installer ma voix une fois. Touche le bouton, ou tape ton numéro."); },
     siMicRefuse: () => { setError('Autorise le micro, ou tape ton numéro 👇'); parle('Autorise le micro, ou tape ton numéro.'); setShowKeypad(true); },
     siEchec: () => { setShowKeypad(true); parle('Tape ton numéro juste ici.'); },
@@ -487,7 +507,7 @@ export function LoginPassword() {
       if (code.length > 0) { setPinInput(code); parle('Complète ton code sur le clavier.'); return; }
       parle("Je n'ai pas compris. Chuchote ton code, ou tape-le.");
     },
-    buildTag: 'vosk-code-live-v1',
+    buildTag: 'sherpa-code-live-v1',
     siPasPrete: () => { parle('Tape ton code juste ici.'); },
     siMicRefuse: () => { parle('Autorise le micro, ou tape ton code.'); },
     siEchec: () => { parle('Tape ton code juste ici.'); },
@@ -528,7 +548,7 @@ export function LoginPassword() {
       if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
       if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
-      // Coupe une dictée EN DIRECT en cours (moteur Vosk + micro) au démontage.
+      // Coupe une dictée EN DIRECT en cours (moteur + micro) au démontage.
       try { void liveStopRef.current?.(); } catch { /* ignore */ }
       try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
       if (phoneToPasswordTimeout.current) {
@@ -557,6 +577,17 @@ export function LoginPassword() {
 
   const resetAttempts = (phoneNum: string) => { delete loginAttempts[phoneNum]; };
 
+  // Mémorise la personne sur CE téléphone après une entrée réussie (lot 1) —
+  // jamais bloquant : si le stockage échoue, la connexion continue normalement.
+  const memoriserApresEntree = (u: Record<string, unknown> | undefined, biometrie: boolean) => {
+    try {
+      const prenom = String((u as any)?.firstName || (u as any)?.first_name || (u as any)?.prenoms || '').trim();
+      const photoBrute = (u as any)?.photo;
+      const photo = typeof photoBrute === 'string' && photoBrute ? photoBrute : undefined;
+      memoriserCompte(window.localStorage, { phone, prenom, photo, ...(biometrie ? { biometrie: true } : {}) }, new Date().toISOString());
+    } catch { /* ignore */ }
+  };
+
   const handleBiometric = async () => {
     setIsLoading(true);
     try {
@@ -564,6 +595,9 @@ export function LoginPassword() {
       if (result.success && result.user) {
         setAppUser(result.user);
         setUserProfile(result.user);
+        // La reconnaissance a marché ICI → au prochain retour, geste unique.
+        memoriserApresEntree(result.user as Record<string, unknown>, true);
+        vibrerSucces();
         // Persiste le jeton (auth mobile sans cookie cross-domaine), comme la connexion par code.
         try {
           if (result.accessToken) localStorage.setItem('julaba_access_token', result.accessToken);
@@ -578,11 +612,13 @@ export function LoginPassword() {
         };
         navigate(roleRoutes[normalizeRole(result.user.role)] || '/marchand');
       } else {
-        setError('Authentification biométrique échouée');
+        // Mots de la MARCHANDE (pas « biométrie ») : dire le problème et le geste
+        // de secours. L'effet vocal sur `error` l'énonce automatiquement.
+        setError('Ton téléphone ne t\'a pas reconnue. Utilise ton code.');
       }
     } catch (err) {
       console.warn('[LoginPassword] biometric failed:', err instanceof Error ? err.message : err);
-      setError('Biométrie non disponible');
+      setError('La reconnaissance n\'a pas marché ici. Utilise ton code.');
     } finally {
       setIsLoading(false);
     }
@@ -640,7 +676,7 @@ export function LoginPassword() {
       } catch (err) {
         console.warn('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
         vlog('LOGIN_JSON_FAIL', { msg: err instanceof Error ? err.message : String(err) });
-        setError('Erreur serveur : réponse inattendue');
+        setError('Réponse inattendue. Réessaie dans un instant.');
         setIsLoading(false);
         return;
       }
@@ -705,6 +741,10 @@ export function LoginPassword() {
 
       } else {
         setAppUser(user); setUserProfile(user);
+        // Entrée par code réussie → Tata se souvient d'elle sur ce téléphone
+        // (le drapeau « la reconnaissance marche ici » déjà acquis est conservé).
+        memoriserApresEntree(user as Record<string, unknown>, false);
+        vibrerSucces();
         // Auth mobile : on STOCKE le jeton (cookie cross-domaine bloqué sur mobile).
         // L'intercepteur fetch l'enverra en en-tête Authorization sur chaque appel.
         try {
@@ -789,13 +829,21 @@ export function LoginPassword() {
     }
   };
 
+  // Retour depuis l'écran du code : si Tata se souvient d'elle (et que le numéro
+  // n'a pas été changé), on revient à l'ACCUEIL par prénom — jamais aux 10 chiffres.
+  const retourDepuisCode = () => {
+    setPinInput('');
+    setError('');
+    setStep(compteConnu && phone === compteConnu.phone ? 'reconnaissance' : 'phone');
+  };
+
   const handleKeyDelete = () => {
     if (step === 'phone') {
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
       setPhone(p => p.slice(0, -1));
     } else {
       if (pinInput.length === 0) {
-        setStep('phone');
+        retourDepuisCode();
       } else {
         const next = pinInput.slice(0, -1);
         setPinInput(next);
@@ -925,7 +973,94 @@ export function LoginPassword() {
         }}
       >
         <AnimatePresence mode="wait">
-          {step === 'phone' ? (
+          {step === 'reconnaissance' && compteConnu ? (
+            <motion.div
+              key="reconnaissance"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+              style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}
+            >
+              {/* « Tata me reconnaît » (lot 1) : elle se VOIT (photo) et lit UN mot
+                  (son prénom) — confirmation immédiate que c'est bien son compte.
+                  Le geste est DIT par Tata ; l'écran ne l'écrit pas. */}
+              {compteConnu.photo && (
+                <img src={compteConnu.photo} alt="" aria-hidden
+                  style={{ width: 76, height: 76, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 4px #fff, 0 0 0 7px rgba(219,122,44,0.3)' }} />
+              )}
+              <p style={{ margin: 0, fontSize: 26, fontWeight: 900, color: '#3d1a08', textAlign: 'center' }}>
+                Bonjour {compteConnu.prenom || 'ma sœur'} !
+              </p>
+              <AnimatePresence>
+                {error && (
+                  <motion.div key="reco-error-banner"
+                    initial={{ opacity: 0, y: -8, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -8, height: 0 }}
+                    transition={{ duration: 0.2 }} style={{ overflow: 'hidden', width: '100%' }}>
+                    <div role="alert" aria-live="assertive" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <AlertCircle style={{ width: 16, height: 16, color: '#dc2626', flexShrink: 0 }} />
+                      <p style={{ fontSize: 13, color: '#dc2626', margin: 0, fontWeight: 500 }}>{error}</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {/* UN SEUL grand geste, comme le grand micro du parcours classique :
+                  reconnaissance (visage/doigt) si elle marche ici, sinon le code. */}
+              {compteConnu.biometrie ? (
+                <motion.button
+                  type="button"
+                  aria-label="Ton téléphone te reconnaît — touche pour entrer"
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={handleBiometric}
+                  disabled={isLoading}
+                  animate={{ scale: [1, 1.02, 1] }}
+                  transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{
+                    width: 'clamp(160px, 54vw, 196px)', height: 'clamp(160px, 54vw, 196px)',
+                    borderRadius: '50%', border: 'none', cursor: isLoading ? 'wait' : 'pointer', color: '#fff',
+                    background: 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
+                    boxShadow: '0 26px 46px -14px rgba(184,92,27,0.75), inset 0 4px 0 rgba(255,255,255,0.4)',
+                    display: 'grid', placeItems: 'center', marginTop: 4, opacity: isLoading ? 0.7 : 1,
+                  }}
+                  whileTap={{ scale: 0.96 }}
+                >
+                  <Fingerprint style={{ width: '44%', height: '44%' }} />
+                </motion.button>
+              ) : (
+                <motion.button
+                  type="button"
+                  aria-label="Entre ton code secret"
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={() => { setError(''); setStep('password'); }}
+                  animate={{ scale: [1, 1.02, 1] }}
+                  transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{
+                    width: 'clamp(160px, 54vw, 196px)', height: 'clamp(160px, 54vw, 196px)',
+                    borderRadius: '50%', border: 'none', cursor: 'pointer', color: '#fff',
+                    background: 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
+                    boxShadow: '0 26px 46px -14px rgba(184,92,27,0.75), inset 0 4px 0 rgba(255,255,255,0.4)',
+                    display: 'grid', placeItems: 'center', marginTop: 4,
+                  }}
+                  whileTap={{ scale: 0.96 }}
+                >
+                  <span style={{ fontSize: 'clamp(52px, 18vw, 66px)', lineHeight: 1 }} aria-hidden>🔒</span>
+                </motion.button>
+              )}
+              {/* Secours toujours visible : son code à 4 chiffres — sans redonner le numéro. */}
+              {compteConnu.biometrie && (
+                <button type="button" onClick={() => { setError(''); setStep('password'); }}
+                  style={{ marginTop: 4, padding: '13px 26px', borderRadius: 16, border: '2px solid rgba(198,106,44,0.35)', background: '#fff', color: '#8A5A34', fontWeight: 800, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Utiliser mon code
+                </button>
+              )}
+              {/* Téléphone partagé : quelqu'un d'autre peut entrer — sans rien effacer. */}
+              <button type="button"
+                onClick={() => { setStep('phone'); setPhone(''); setPinInput(''); setError(''); }}
+                style={{ marginTop: 2, background: 'none', border: 'none', color: 'rgba(124,98,80,0.75)', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '8px 12px' }}>
+                Ce n'est pas moi
+              </button>
+            </motion.div>
+          ) : step === 'phone' ? (
             <motion.div
               key="phone"
               initial={{ opacity: 0, y: 10 }}
@@ -1239,9 +1374,7 @@ export function LoginPassword() {
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Backspace' && pinInput.length === 0) {
-                      setStep('phone');
-                      setPinInput('');
-                      setError('');
+                      retourDepuisCode();
                     }
                   }}
                   style={{
@@ -1278,7 +1411,7 @@ export function LoginPassword() {
                 <motion.button
                   type="button"
                   disabled={isLoading || phone.length === 0}
-                  aria-label="Connexion biométrique"
+                  aria-label="Ton téléphone te reconnaît — touche pour entrer"
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={handleBiometric}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.04)', border: '1px solid rgba(198,106,44,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: isLoading || phone.length === 0 ? 0.3 : 0.65 }}

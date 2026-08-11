@@ -6,6 +6,8 @@ import { useCaisse } from '../../contexts/CaisseContext';
 import { RACC_IMG as MOD_IMAGES } from '../../assets/cloudinary-images';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { VenteVocaleModal } from './VenteVocaleModal';
+import { PropositionReconnaissance } from '../auth/PropositionReconnaissance';
+import { getConfortVisuel, setConfortVisuel } from '../../utils/confortVisuel';
 import { ResumeModal, CloseDayModal, EditFondModal } from './MarchandModals';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
@@ -27,6 +29,15 @@ function MarchandAccueilVoiceInner() {
   const prenom = user?.firstName || user?.prenoms || user?.prenom || user?.nom || '';
 
   const [soldeVisible, setSoldeVisible] = useState(true);
+  // Mode SOLEIL (inclusion §2.4) : un seul geste, visible sur l'accueil — pas
+  // caché dans les réglages. Tout devient plus grand et plus franc.
+  const [soleil, setSoleil] = useState(() => getConfortVisuel() === 'soleil');
+  const basculerSoleil = () => {
+    const prochain = soleil ? 'normal' : 'soleil';
+    setConfortVisuel(prochain);
+    setSoleil(prochain === 'soleil');
+    speak(prochain === 'soleil' ? 'Mode soleil : tout est plus grand.' : 'Mode normal.');
+  };
   const [showVente, setShowVente] = useState(false);
   const [showResume, setShowResume] = useState(false);
   const [showClose, setShowClose] = useState(false);
@@ -90,6 +101,11 @@ function MarchandAccueilVoiceInner() {
             <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(124,98,80,0.5)' }}>Tata Nanti Lou</div>
             <div style={{ fontSize: 17, fontWeight: 800, color: '#2E1B10', lineHeight: 1.1 }}>{prenom ? `Bonjour Maman ${prenom}` : 'Bonjour ma sœur'}</div>
           </div>
+          <motion.button whileTap={{ scale: 0.92 }} onClick={basculerSoleil}
+            aria-label={soleil ? 'Repasser en affichage normal' : 'Mode soleil — tout plus grand'}
+            style={{ width: 44, height: 44, borderRadius: 14, background: soleil ? '#F5A623' : '#F3E7D8', color: soleil ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          </motion.button>
           <motion.button whileTap={{ scale: 0.92 }} onClick={() => navigate('/marchand/profil')} aria-label="Mon profil"
             style={{ width: 44, height: 44, borderRadius: 14, background: '#F3E7D8', color: '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -257,6 +273,10 @@ function MarchandAccueilVoiceInner() {
         onClose={() => setShowEditFond(false)}
         currentFond={currentSession?.fondInitial || 0}
       />
+
+      {/* « Tata propose de me reconnaître » (lot 2) : une seule fois, juste après
+          une entrée par code — Oui = le téléphone apprend à la reconnaître. */}
+      <PropositionReconnaissance />
     </div>
   );
 }

@@ -21,6 +21,8 @@ import { VoiceLevelSelector } from './VoiceLevelSelector';
 import { TextSizeSlider } from './TextSizeSlider';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { registerWebAuthn, verifyWebAuthnForKeiwa } from '../../hooks/useWebAuthn';
+import { marquerBiometrie } from '../../services/comptesMemorises';
+import { getConfortVisuel, setConfortVisuel } from '../../utils/confortVisuel';
 import { API_URL } from '../../utils/api';
 import { toast } from 'sonner';
 
@@ -46,7 +48,7 @@ const ROLE_CONFIG: Record<ParametresRole, {
   marchand: {
     color: '#C66A2C',
     label: 'Marchand',
-    version: 'Jùlaba Marchand v1.0',
+    version: `Jùlaba Marchand v${__APP_VERSION__}`,
     profileIcon: Store,
     homeRoute: '/marchand',
     footerMsg: 'Tes données et ton keiwa sont protégés localement sur cet appareil.',
@@ -54,7 +56,7 @@ const ROLE_CONFIG: Record<ParametresRole, {
   producteur: {
     color: '#2E8B57',
     label: 'Producteur',
-    version: 'Jùlaba Producteur v1.0',
+    version: `Jùlaba Producteur v${__APP_VERSION__}`,
     profileIcon: Leaf,
     homeRoute: '/producteur',
     footerMsg: 'Tes données et ton keiwa sont protégés localement sur cet appareil.',
@@ -62,7 +64,7 @@ const ROLE_CONFIG: Record<ParametresRole, {
   cooperative: {
     color: '#2072AF',
     label: 'Coopérative',
-    version: 'Jùlaba Coopérative v1.0',
+    version: `Jùlaba Coopérative v${__APP_VERSION__}`,
     profileIcon: Users,
     homeRoute: '/cooperative',
     footerMsg: 'Tes données de vente et ton keiwa sont protégés localement sur cet appareil.',
@@ -70,7 +72,7 @@ const ROLE_CONFIG: Record<ParametresRole, {
   identificateur: {
     color: '#9F8170',
     label: 'Identificateur',
-    version: 'Jùlaba Identificateur v1.0',
+    version: `Jùlaba Identificateur v${__APP_VERSION__}`,
     profileIcon: UserCheck,
     homeRoute: '/identificateur',
     footerMsg: 'Les données des acteurs identifiés sont protégées et ne sont accessibles qu\'au Back Office Jùlaba.',
@@ -78,7 +80,7 @@ const ROLE_CONFIG: Record<ParametresRole, {
   institution: {
     color: '#712864',
     label: 'Institution',
-    version: 'Jùlaba Institution v1.0',
+    version: `Jùlaba Institution v${__APP_VERSION__}`,
     profileIcon: Building2,
     homeRoute: '/institution',
     footerMsg: 'Les données sont protégées localement sur cet appareil.',
@@ -588,6 +590,10 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
 
   const prefs = (user as any)?.preferences || {};
 
+  // Mode SOLEIL (inclusion §2.4) — même réglage que le bouton ☀️ de l'accueil.
+  const [soleil, setSoleilState] = useState<boolean>(() => getConfortVisuel() === 'soleil');
+  const basculerSoleil = (v: boolean) => { setConfortVisuel(v ? 'soleil' : 'normal'); setSoleilState(v); };
+
   const [notifCommandes, setNotifCommandes] = useState<boolean>(prefs.notif_commandes ?? true);
   const [notifPaiements, setNotifPaiements] = useState<boolean>(prefs.notif_paiements ?? true);
   const [notifStockFaible, setNotifStockFaible] = useState<boolean>(prefs.notif_stock_faible ?? true);
@@ -746,17 +752,23 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
     const result = await registerWebAuthn();
     if (result.success) {
       toast.success('FaceID / Empreinte activé');
+      // « Tata se souvient de moi » : la reconnaissance marche désormais ICI →
+      // l'accueil au retour proposera le grand bouton (visage/doigt) d'office.
+      try {
+        const tel = String((user as any)?.phone || '').replace(/^\+225/, '');
+        if (/^\d{10}$/.test(tel)) marquerBiometrie(window.localStorage, tel, true);
+      } catch { /* ignore */ }
     } else {
-      toast.error(result.error || 'Échec activation biométrie');
+      toast.error(result.error || 'Ça n\'a pas marché ici. Réessaie.');
     }
   };
 
   const handleTestBiometric = async () => {
     const ok = await verifyWebAuthnForKeiwa();
     if (ok) {
-      toast.success('Biométrie validée');
+      toast.success('Ton téléphone t\'a reconnue');
     } else {
-      toast.error('Échec du test biométrique');
+      toast.error('Ton téléphone ne t\'a pas reconnue. Réessaie.');
     }
   };
 
@@ -805,6 +817,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
           {/* Mode d'accès : l'app s'adapte à la façon de travailler de chacune. */}
           <Section title="Ma façon d'utiliser Julaba" icon={Headphones} color={color}>
             <ModeAccesSwitcher />
+            <RowToggle label="Mode soleil" sublabel="Tout plus grand et plus lisible dehors"
+              value={soleil} onChange={basculerSoleil} color={color} />
           </Section>
 
           <Section title="Notifications" icon={Bell} color={color}>
@@ -883,8 +897,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                 />
               </div>
               <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
-              <RowAction label="Activer FaceID / Empreinte" sublabel="Enregistrer cet appareil pour la biométrie" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
-              <RowAction label="Tester biométrie" sublabel="Vérifier le déverrouillage biométrique" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
+              <RowAction label="Me faire reconnaître" sublabel="Ton téléphone te reconnaîtra (visage ou doigt)" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
+              <RowAction label="Tester la reconnaissance" sublabel="Vérifie que ton téléphone te reconnaît bien" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
               <RowAction label="Changer le code de connexion" sublabel="Modifier ton code à 4 chiffres" icon={Lock} onClick={() => setShowChangePwd(true)} />
             </Section>
           )}
@@ -912,8 +926,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                   onChange={v => { if (v) { setPinMode('create'); setShowPinModal(true); } else { setPinMode('disable'); setShowPinModal(true); } }} />
               </div>
               <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
-              <RowAction label="Activer FaceID / Empreinte" sublabel="Enregistrer cet appareil pour la biométrie" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
-              <RowAction label="Tester biométrie" sublabel="Vérifier le déverrouillage biométrique" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
+              <RowAction label="Me faire reconnaître" sublabel="Ton téléphone te reconnaîtra (visage ou doigt)" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
+              <RowAction label="Tester la reconnaissance" sublabel="Vérifie que ton téléphone te reconnaît bien" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
               <RowAction label="Changer le code de connexion" sublabel="Modifier ton code à 4 chiffres" icon={Lock} onClick={() => setShowChangePwd(true)} />
             </Section>
           </>)}
@@ -951,8 +965,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                   onChange={v => { if (v) { setPinMode('create'); setShowPinModal(true); } else { setPinMode('disable'); setShowPinModal(true); } }} />
               </div>
               <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
-              <RowAction label="Activer FaceID / Empreinte" sublabel="Enregistrer cet appareil pour la biométrie" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
-              <RowAction label="Tester biométrie" sublabel="Vérifier le déverrouillage biométrique" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
+              <RowAction label="Me faire reconnaître" sublabel="Ton téléphone te reconnaîtra (visage ou doigt)" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
+              <RowAction label="Tester la reconnaissance" sublabel="Vérifie que ton téléphone te reconnaît bien" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
               <RowAction label="Changer le code de connexion" sublabel="Modifier ton code à 4 chiffres" icon={Lock} onClick={() => setShowChangePwd(true)} />
             </Section>
           </>)}
@@ -990,8 +1004,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                   onChange={v => { if (v) { setPinMode('create'); setShowPinModal(true); } else { setPinMode('disable'); setShowPinModal(true); } }} />
               </div>
               <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
-              <RowAction label="Activer FaceID / Empreinte" sublabel="Enregistrer cet appareil pour la biométrie" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
-              <RowAction label="Tester biométrie" sublabel="Vérifier le déverrouillage biométrique" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
+              <RowAction label="Me faire reconnaître" sublabel="Ton téléphone te reconnaîtra (visage ou doigt)" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
+              <RowAction label="Tester la reconnaissance" sublabel="Vérifie que ton téléphone te reconnaît bien" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
               <RowAction label="Changer le code de connexion" sublabel="Modifier ton code à 4 chiffres" icon={Lock} onClick={() => setShowChangePwd(true)} />
             </Section>
           </>)}
@@ -1012,8 +1026,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             </Section>
             <Section title="Sécurité" icon={Shield} color={color}>
               <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
-              <RowAction label="Activer FaceID / Empreinte" sublabel="Enregistrer cet appareil pour la biométrie" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
-              <RowAction label="Tester biométrie" sublabel="Vérifier le déverrouillage biométrique" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
+              <RowAction label="Me faire reconnaître" sublabel="Ton téléphone te reconnaîtra (visage ou doigt)" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
+              <RowAction label="Tester la reconnaissance" sublabel="Vérifie que ton téléphone te reconnaît bien" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
               <RowAction label="Changer le code de connexion" sublabel="Modifier ton code à 4 chiffres" icon={Lock} onClick={() => setShowChangePwd(true)} />
             </Section>
           </>)}
