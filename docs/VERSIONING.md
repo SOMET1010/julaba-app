@@ -25,6 +25,13 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Historique
 
+- v5.0.0.16 — 11/08/2026 : migration tokens ACHEVÉE pour les couleurs de
+  texte inline — ~180 gris pâles migrés vers var(--encre-3/4) sur toute
+  l'app (partagés, coopérative, institution, identificateur, back-office).
+  Les sélecteurs d'attribut de soleil.css v1 sont retirés, avec preuve au
+  Chromium qu'ils n'ont jamais matché (hex normalisés en rgb() par le
+  navigateur) : le soleil ET le sombre s'appliquent désormais via les
+  tokens, partout où le texte est en inline.
 - v5.0.0.15 — 11/08/2026 : deux mensonges d'interface réparés — le curseur
   « Taille du texte » agit VRAIMENT (zoom réel 85-130 % sur le corps, même
   mécanique que le mode soleil, garde-fou test:taille — avant il écrasait

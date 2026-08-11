@@ -260,7 +260,7 @@ function normalizeMarcheGps(raw: Record<string, unknown>): MarcheGpsRow {
 
 function marcheGpsStatutStyle(statut: string | null) {
   const key = (statut || '').toLowerCase().replace(/\s+/g, '_');
-  return MARCHE_GPS_STATUT[key] ?? { label: statut || '—', color: '#6B7280', bg: '#F3F4F6' };
+  return MARCHE_GPS_STATUT[key] ?? { label: statut || '—', color: 'var(--encre-3)', bg: '#F3F4F6' };
 }
 
 function formatCoord(n: number | null): string {
@@ -1365,7 +1365,7 @@ export function BOZones() {
                 {zs.length} commune{zs.length > 1 ? 's' : ''}
               </span>
             </div>
-            <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: 'var(--encre-3)', marginTop: 4 }}>
               {nbAct.toLocaleString('fr-FR')} acteurs · {nbId.toLocaleString('fr-FR')} identificateurs · {formatFCFA(vol)}
             </div>
           </div>
@@ -1879,7 +1879,7 @@ export function BOZones() {
                 borderRadius: 8,
                 border: 'none',
                 background: activeTab === 'zones' ? '#5B5248' : 'transparent',
-                color: activeTab === 'zones' ? '#FFFFFF' : '#6B7280',
+                color: activeTab === 'zones' ? '#FFFFFF' : 'var(--encre-3)',
                 fontSize: 13,
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -1912,7 +1912,7 @@ export function BOZones() {
                 borderRadius: 8,
                 border: 'none',
                 background: activeTab === 'marches' ? '#5B5248' : 'transparent',
-                color: activeTab === 'marches' ? '#FFFFFF' : '#6B7280',
+                color: activeTab === 'marches' ? '#FFFFFF' : 'var(--encre-3)',
                 fontSize: 13,
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -1945,7 +1945,7 @@ export function BOZones() {
                 borderRadius: 8,
                 border: 'none',
                 background: activeTab === 'marches_gps' ? '#5B5248' : 'transparent',
-                color: activeTab === 'marches_gps' ? '#FFFFFF' : '#6B7280',
+                color: activeTab === 'marches_gps' ? '#FFFFFF' : 'var(--encre-3)',
                 fontSize: 13,
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -2187,7 +2187,7 @@ export function BOZones() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 14, fontWeight: 500, color: '#1F1F1F' }}>{headerLabel}</span>
                           {grp.zoneRegion ? (
-                            <span style={{ fontSize: 12, color: '#6B7280' }}>{grp.zoneRegion}</span>
+                            <span style={{ fontSize: 12, color: 'var(--encre-3)' }}>{grp.zoneRegion}</span>
                           ) : null}
                           <span
                             style={{

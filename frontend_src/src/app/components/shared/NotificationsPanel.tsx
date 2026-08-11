@@ -129,7 +129,7 @@ function PanelDetailModal({ notif, accentColor, userRole, onClose }: DetailModal
         <p style={{ textAlign: 'center', fontSize: 14, color: '#555', marginBottom: 16, whiteSpace: 'pre-wrap' }}>
           {notif.message}
         </p>
-        <p style={{ textAlign: 'center', fontSize: 12, color: '#aaa', marginBottom: 24 }}>
+        <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--encre-4)', marginBottom: 24 }}>
           {formatFullTime(notif.createdAt)}
         </p>
         {route && (
@@ -238,7 +238,7 @@ function NotifCard({ notif, accentColor, userRole, onClose, onShowDetail, showRe
 
         {/* Texte */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: notif.isRead ? '#aaa' : accentColor, opacity: 0.8, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: notif.isRead ? 'var(--encre-4)' : accentColor, opacity: 0.8, marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.3 }}>
             {notif.type.replace(/_/g, ' ')}
           </p>
           <p style={{ fontSize: 14, fontWeight: notif.isRead ? 400 : 600, color: notif.isRead ? '#999' : '#111', marginBottom: 2 }} className="truncate">
@@ -251,7 +251,7 @@ function NotifCard({ notif, accentColor, userRole, onClose, onShowDetail, showRe
 
         {/* Méta */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-          <span style={{ fontSize: 11, color: '#aaa' }}>{formatRelative(notif.createdAt)}</span>
+          <span style={{ fontSize: 11, color: 'var(--encre-4)' }}>{formatRelative(notif.createdAt)}</span>
           {!notif.isRead && (
             <div style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: accentColor }} />
           )}
@@ -418,14 +418,14 @@ export function NotificationsPanel({ userId, isOpen, onClose, accentColor: accen
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       padding: '8px 0', borderRadius: 12, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer',
                       background: filtre === key ? accentColor : '#fff',
-                      color: filtre === key ? '#fff' : '#6B7280',
+                      color: filtre === key ? '#fff' : 'var(--encre-3)',
                       boxShadow: filtre === key ? 'none' : '0 0 0 0.5px rgba(0,0,0,0.08)',
                     }}>
                     {label}
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 6,
                       background: filtre === key ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.06)',
-                      color: filtre === key ? '#fff' : '#9CA3AF',
+                      color: filtre === key ? '#fff' : 'var(--encre-4)',
                     }}>
                       {chipCount(key)}
                     </span>

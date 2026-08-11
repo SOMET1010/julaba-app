@@ -187,7 +187,7 @@ function BottomNav({ navItems, institutionProfil }: { navItems: typeof ALL_NAV_I
                   <Icon 
                     className="w-6 h-6 relative z-10 transition-all" 
                     style={{ 
-                      color: isActive ? PRIMARY_COLOR : '#9CA3AF',
+                      color: isActive ? PRIMARY_COLOR : 'var(--encre-4)',
                       filter: isActive ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' : 'none',
                     }}
                     strokeWidth={isActive ? 2.5 : 2}
@@ -198,7 +198,7 @@ function BottomNav({ navItems, institutionProfil }: { navItems: typeof ALL_NAV_I
                 <motion.span
                   className="text-xs font-medium transition-all"
                   style={{ 
-                    color: isActive ? PRIMARY_COLOR : '#9CA3AF',
+                    color: isActive ? PRIMARY_COLOR : 'var(--encre-4)',
                   }}
                   animate={isActive ? {
                     scale: [1, 1.05, 1],
@@ -274,7 +274,7 @@ function DesktopSidebar({ navItems }: { navItems: typeof ALL_NAV_ITEMS }) {
               className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left font-bold text-sm"
               style={isActive
                 ? { backgroundColor: `${PRIMARY_COLOR}15`, color: PRIMARY_COLOR }
-                : { color: '#6B7280', backgroundColor: '#ffffff' }
+                : { color: 'var(--encre-3)', backgroundColor: '#ffffff' }
               }
               whileHover={isActive ? {} : { backgroundColor: '#F9FAFB' }}
               whileTap={{ scale: 0.97 }}

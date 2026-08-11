@@ -356,7 +356,7 @@ export function UniversalCardBO({
           ))}
         </div>
         {subtitleParts.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: '#6B7280', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--encre-3)', flexWrap: 'wrap' }}>
             {subtitleParts.map((part, i) => (
               <React.Fragment key={`${part.label}-${i}`}>
                 {i > 0 && <span aria-hidden="true" style={{ width: 3, height: 3, borderRadius: '50%', background: '#D1D5DB' }} />}

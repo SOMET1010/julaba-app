@@ -147,7 +147,7 @@ export function BOContenus() {
               className="px-3 py-2 rounded-2xl border-2 text-xs font-bold transition-all"
               style={filterType === f.key
                 ? { backgroundColor: BO_PRIMARY, color: '#fff', borderColor: BO_PRIMARY }
-                : { borderColor: '#E5E7EB', color: '#6B7280' }}>
+                : { borderColor: '#E5E7EB', color: 'var(--encre-3)' }}>
               {f.label}
             </motion.button>
           ))}

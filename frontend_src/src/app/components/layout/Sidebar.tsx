@@ -212,7 +212,7 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
                     <Icon 
                       className="w-7 h-7 relative z-10 transition-all" 
                       style={{ 
-                        color: active ? activeColor : '#9CA3AF',
+                        color: active ? activeColor : 'var(--encre-4)',
                         filter: active ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' : 'none',
                       }}
                       strokeWidth={active ? 2.5 : 2}
@@ -223,7 +223,7 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
                   <motion.span
                     className="text-base font-semibold transition-all"
                     style={{ 
-                      color: active ? activeColor : '#9CA3AF',
+                      color: active ? activeColor : 'var(--encre-4)',
                     }}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ 

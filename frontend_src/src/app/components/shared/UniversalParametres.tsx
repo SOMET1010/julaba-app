@@ -164,7 +164,7 @@ function RowAction({ label, sublabel, icon: Icon, danger, badge, onClick }: {
           </div>
         )}
         {Icon
-          ? <Icon className="w-5 h-5" style={{ color: danger ? '#DC2626' : '#9CA3AF' }} />
+          ? <Icon className="w-5 h-5" style={{ color: danger ? '#DC2626' : 'var(--encre-4)' }} />
           : <ChevronRight className="w-5 h-5 text-gray-400" />
         }
       </div>
@@ -383,7 +383,7 @@ function ModalSessions({ isOpen, onClose, color }: {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                       style={{ backgroundColor: s.isCurrent ? `${color}15` : '#F9FAFB' }}>
-                      <Smartphone className="w-5 h-5" style={{ color: s.isCurrent ? color : '#9CA3AF' }} />
+                      <Smartphone className="w-5 h-5" style={{ color: s.isCurrent ? color : 'var(--encre-4)' }} />
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900 text-sm">{s.deviceInfo}</p>
@@ -1053,7 +1053,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                     className="flex-1 py-2 rounded-xl border-2 text-xs font-bold"
                     style={mode === opt.key
                       ? { backgroundColor: color, color: '#fff', borderColor: color }
-                      : { borderColor: '#E5E7EB', color: '#6B7280' }}>
+                      : { borderColor: '#E5E7EB', color: 'var(--encre-3)' }}>
                     {opt.label}
                   </motion.button>
                 ))}

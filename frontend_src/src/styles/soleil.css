@@ -2,10 +2,14 @@
    MODE SOLEIL (inclusion — docs/INCLUSION.md §2.4) : lisible en plein marché.
 
    Le code écrit ses tailles en px inline → le levier global fiable est le
-   zoom (tout grandit, y compris les cibles tactiles), la graisse par défaut
-   et le relèvement des gris pâles de la palette CONNUE de l'app, posés en
-   style inline (sélecteurs d'attribut : les deux sérialisations, avec et
-   sans espace, sont couvertes).
+   zoom (tout grandit, y compris les cibles tactiles). Le relèvement des
+   gris de texte passe par les TOKENS (styles/tokens.css, surchargés par
+   html.soleil) : tous les gris pâles posés en `color:` inline ont été
+   migrés vers var(--encre-3)/var(--encre-4) en v5.0.0.16.
+
+   Les sélecteurs d'attribut « v1 » ([style*="color:#aaa"]…) sont RETIRÉS :
+   preuve au Chromium (11/08/2026) que le navigateur normalise les hex en
+   rgb() dans l'attribut style — ces sélecteurs hex n'ont JAMAIS matché.
 
    Activé par la classe `soleil` sur <html> (utils/confortVisuel.ts).
    ──────────────────────────────────────────────────────────────────────── */
@@ -17,23 +21,4 @@ html.soleil body {
 
 html.soleil {
   --font-size: 17px;                  /* base relevée pour les textes en rem */
-}
-
-/* Les gris de texte usuels de l'app passent sous 4.5:1 en plein soleil.
-   On les assombrit vers un brun lisible qui reste dans la palette Julaba.
-   (Un fond posé avec ces mêmes valeurs devient un peu plus soutenu : c'est
-   un gain de contraste aussi, pas une régression.) */
-html.soleil [style*="color:#aaa"],
-html.soleil [style*="color: #aaa"],
-html.soleil [style*="color:#9CA3AF"],
-html.soleil [style*="color: #9CA3AF"],
-html.soleil [style*="color:#6B7280"],
-html.soleil [style*="color: #6B7280"],
-html.soleil [style*="color:#8A7A6A"],
-html.soleil [style*="color: #8A7A6A"],
-html.soleil [style*="color:rgba(124,98,80"],
-html.soleil [style*="color: rgba(124,98,80"],
-html.soleil [style*="color:rgba(124, 98, 80"],
-html.soleil [style*="color: rgba(124, 98, 80"] {
-  color: #5C4432 !important;
 }

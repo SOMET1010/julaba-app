@@ -49,7 +49,7 @@ export const SCORE_LEVELS: ScoreLevel[] = [
     name: 'Débutant',
     minScore: 0,
     maxScore: 39,
-    color: '#9CA3AF',
+    color: 'var(--encre-4)',
     benefits: [
       'Accès à la plateforme JULABA',
       'Formations de base',

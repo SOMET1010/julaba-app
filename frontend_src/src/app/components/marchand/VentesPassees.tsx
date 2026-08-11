@@ -399,7 +399,7 @@ export function VentesPassees() {
           />
           {SOURCE_TABS.map(t => (
             <button key={t.id} onClick={() => setSourceFilter(t.id)}
-              style={{ flex:1, padding:'9px 4px', fontSize:11, fontWeight:700, color: sourceFilter===t.id ? 'white' : '#aaa', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', transition:'color 0.2s', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+              style={{ flex:1, padding:'9px 4px', fontSize:11, fontWeight:700, color: sourceFilter===t.id ? 'white' : 'var(--encre-4)', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', transition:'color 0.2s', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
               {t.label}
             </button>
           ))}

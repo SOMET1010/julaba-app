@@ -334,7 +334,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
 
                 <motion.button whileTap={{ scale:0.97 }}
                   onClick={() => { if (clientNom.trim()) setStep(2); else { toast.error('Dis-moi le nom du client'); dire('Dis-moi d\'abord le nom du client.'); } }}
-                  style={{ width:'100%', background: clientNom.trim() ? P : '#E0E0E0', color: clientNom.trim() ? 'white' : '#aaa', border:'none', borderRadius:16, padding:'18px 0', fontSize:18, fontWeight:800, cursor: clientNom.trim() ? 'pointer' : 'default', fontFamily:'inherit', transition:'all 0.2s' }}>
+                  style={{ width:'100%', background: clientNom.trim() ? P : '#E0E0E0', color: clientNom.trim() ? 'white' : 'var(--encre-4)', border:'none', borderRadius:16, padding:'18px 0', fontSize:18, fontWeight:800, cursor: clientNom.trim() ? 'pointer' : 'default', fontFamily:'inherit', transition:'all 0.2s' }}>
                   Suivant →
                 </motion.button>
               </div>
@@ -407,7 +407,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                   <div style={{ fontSize:17, fontWeight:800, color:'var(--encre)', marginBottom:12 }}>Elle t'a déjà donné quelque chose ?</div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                     <motion.button whileTap={{ scale:0.97 }} onClick={() => { setAADonne(false); setAcompte(''); }}
-                      style={{ borderRadius:12, padding:'14px', textAlign:'center', background: !aADonne ? '#E8E8E8' : 'white', border:`1.5px solid ${!aADonne ? '#999' : '#EDE7DE'}`, cursor:'pointer', fontFamily:'inherit', fontSize:17, fontWeight:800, color: !aADonne ? '#555' : '#aaa' }}>
+                      style={{ borderRadius:12, padding:'14px', textAlign:'center', background: !aADonne ? '#E8E8E8' : 'white', border:`1.5px solid ${!aADonne ? '#999' : '#EDE7DE'}`, cursor:'pointer', fontFamily:'inherit', fontSize:17, fontWeight:800, color: !aADonne ? '#555' : 'var(--encre-4)' }}>
                       Non
                     </motion.button>
                     <div onClick={() => setAADonne(true)}

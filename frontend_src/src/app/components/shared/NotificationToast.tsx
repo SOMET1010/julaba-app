@@ -342,7 +342,7 @@ function DetailModal({ notif, accentColor, userRole, onClose }: DetailModalProps
           <p style={{ textAlign: 'center', fontSize: 14, color: '#555', marginBottom: 16, whiteSpace: 'pre-wrap' }}>
             {notif.message}
           </p>
-          <p style={{ textAlign: 'center', fontSize: 12, color: '#aaa', marginBottom: 24 }}>
+          <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--encre-4)', marginBottom: 24 }}>
             {formatFullTime(notif.createdAt)}
           </p>
           {route && (
