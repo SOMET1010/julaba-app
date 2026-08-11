@@ -451,7 +451,7 @@ const todayISO = new Date().toISOString().split('T')[0];
 
 interface AdminDivisionRow { id: string; nom: string; code: string; }
 
-async function safeJson<T = unknown>(res: Response): Promise<T | null> {
+async function safeJson<T = Record<string, unknown>>(res: Response): Promise<T | null> {
   try {
     const text = await res.text();
     if (!text) return null;
@@ -1089,7 +1089,7 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
   const submittedNumeroRef = useRef<string>('');
   /** Mode BO : pas de vérification PIN identificateur (cf. phase 4A bis-1). */
   const skipPinCheck = true;
-  const VISIBLE_PROFILS = useMemo(() => {
+  const VISIBLE_PROFILS = useMemo((): Exclude<ProfilType, null>[] => {
     type ProfilCle = Exclude<ProfilType, null>;
     const ACTEURS_METIER: ProfilCle[] = ['marchand', 'producteur', 'cooperative', 'institution', 'identificateur'];
     const ADMINS_BO: ProfilCle[] = ['admin_general', 'admin_national', 'gestionnaire_zone', 'operateur_terrain'];
@@ -1311,7 +1311,7 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
   }, [profil]);
 
   // Ref exposée pour annulation manuelle du debounce avant cleanup post-submit
-  const draftSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftSaveTimeoutRef = useRef<number | null>(null); // window.setTimeout → number
 
   // Brouillon auto : sauvegarder à chaque changement (debouncé 500ms pour limiter I/O sessionStorage)
   useEffect(() => {

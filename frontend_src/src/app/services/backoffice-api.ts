@@ -193,7 +193,9 @@ export interface BOUser {
     typePrecise: string | null;
     referentNom: string;
     referentFonction: string;
-  } | null;
+    /** Photo de profil (URL) — affichée dans la barre BO. */
+  photo_url?: string;
+} | null;
   // Aligne sur BORoleType (BackOfficeContext) : pas de role fantome 'admin'.
   role:
     | 'admin_general'
@@ -313,6 +315,11 @@ export interface BOAuditLog {
   details?: Record<string, unknown>;
   ip?: string;
   created_at?: string;
+  // Variantes lues par BONotifications (optionnelles).
+  utilisateurBO?: string;
+  acteurImpacte?: string;
+  module?: string;
+  date?: string;
 }
 
 export interface BOMission {

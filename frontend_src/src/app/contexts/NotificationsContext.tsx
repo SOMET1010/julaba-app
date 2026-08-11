@@ -44,6 +44,9 @@ export interface JulabaNotification {
   createdAt: string;
   priority: NotifPriority;
   actionLink?: string;
+  /** Catégorie et icône libres transmises par certains écrans (métadonnées). */
+  category?: string;
+  icon?: string;
   metadata?: Record<string, unknown>;
 }
 

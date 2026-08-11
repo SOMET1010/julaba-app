@@ -250,7 +250,7 @@ export function IdentificateurDashboard() {
                 </motion.div>
                 <span className="text-xs text-gray-500 font-semibold">Total</span>
               </div>
-              <p className="text-3xl font-bold text-gray-900">{stats.totalIdentifications}</p>
+              <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
               <p className="text-xs text-gray-600 mt-1 font-semibold">Identifications</p>
             </motion.div>
 
@@ -306,7 +306,7 @@ export function IdentificateurDashboard() {
                 </motion.div>
                 <span className="text-xs text-gray-500 font-semibold">En cours</span>
               </div>
-              <p className="text-3xl font-bold text-gray-900">{stats.identificationsEnCours}</p>
+              <p className="text-3xl font-bold text-gray-900">{stats.enAttente}</p>
               <p className="text-xs text-gray-600 mt-1 font-semibold">À valider</p>
             </motion.div>
           </div>
