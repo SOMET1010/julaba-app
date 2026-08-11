@@ -96,7 +96,26 @@ function main() {
     eq(s.data[cm.CLE_COMPTES], undefined, "clé supprimée quand la liste est vide");
   }
 
-  console.log("\n[6] Données illisibles ou stockage en panne → jamais de casse");
+  console.log("\n[6] « Tata propose de me reconnaître » (lot 2)");
+  {
+    const s = makeStore();
+    ok(!cm.doitProposerReconnaissance(s, "0708123456"), "personne inconnue → pas de proposition");
+    cm.memoriserCompte(s, { phone: "0708123456", prenom: "Awa" }, T1);
+    ok(cm.doitProposerReconnaissance(s, "0708123456"), "connue, sans reconnaissance → on propose");
+    ok(cm.noterRefusProposition(s, "0708123456"), "elle dit « Non » → noté");
+    ok(!cm.doitProposerReconnaissance(s, "0708123456"), "refus respecté → on ne redemande pas");
+    cm.memoriserCompte(s, { phone: "0708123456", prenom: "Awa" }, T2);
+    ok(!cm.doitProposerReconnaissance(s, "0708123456"), "le refus survit aux reconnexions");
+    cm.marquerBiometrie(s, "0708123456", true);
+    ok(!cm.doitProposerReconnaissance(s, "0708123456"), "reconnaissance active → plus rien à proposer");
+    const s2 = makeStore();
+    cm.memoriserCompte(s2, { phone: "0700000009", prenom: "Fatou" }, T1);
+    cm.marquerBiometrie(s2, "0700000009", true);
+    ok(!cm.doitProposerReconnaissance(s2, "0700000009"), "déjà reconnue ici → pas de proposition");
+    ok(!cm.noterRefusProposition(s2, "0799999999"), "compte inconnu → false, rien d'écrit");
+  }
+
+  console.log("\n[7] Données illisibles ou stockage en panne → jamais de casse");
   {
     const s = makeStore({ [cm.CLE_COMPTES]: "{pas du json" });
     eq(cm.chargerComptes(s), [], "JSON invalide → liste vide (connexion classique)");

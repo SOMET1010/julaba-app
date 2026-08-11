@@ -27,6 +27,8 @@ export interface CompteMemorise {
   photo?: string;
   /** true = la reconnaissance (visage/doigt) a déjà fonctionné pour ce compte ici. */
   biometrie: boolean;
+  /** true = elle a dit « Non » à la proposition (lot 2) — on respecte, on ne redemande pas. */
+  propositionRefusee?: boolean;
   updatedAt: string;
 }
 
@@ -43,7 +45,8 @@ function estCompteValide(c: unknown): c is CompteMemorise {
     && typeof o.prenom === 'string'
     && typeof o.biometrie === 'boolean'
     && typeof o.updatedAt === 'string'
-    && (o.photo === undefined || typeof o.photo === 'string');
+    && (o.photo === undefined || typeof o.photo === 'string')
+    && (o.propositionRefusee === undefined || typeof o.propositionRefusee === 'boolean');
 }
 
 /** Liste des comptes mémorisés, plus récent d'abord. Donnée illisible → liste vide. */
@@ -87,6 +90,7 @@ export function memoriserCompte(
     prenom: (compte.prenom ?? ancien?.prenom ?? '').trim(),
     photo: compte.photo ?? ancien?.photo,
     biometrie: compte.biometrie === true || ancien?.biometrie === true,
+    ...(ancien?.propositionRefusee !== undefined ? { propositionRefusee: ancien.propositionRefusee } : {}),
     updatedAt: nowIso,
   };
   return ecrire(store, [maj, ...existants.filter(c => c.phone !== compte.phone)]);
@@ -98,6 +102,23 @@ export function marquerBiometrie(store: KVStore, phone: string, ok: boolean): bo
   const cible = comptes.find(c => c.phone === phone);
   if (!cible) return false;
   return ecrire(store, comptes.map(c => (c.phone === phone ? { ...c, biometrie: ok } : c)));
+}
+
+/**
+ * « Tata propose de me reconnaître » (lot 2) : faut-il proposer à cette personne,
+ * juste après son entrée par code ? OUI seulement si elle est connue ici, que la
+ * reconnaissance n'y marche pas encore, et qu'elle n'a pas déjà dit « Non ».
+ */
+export function doitProposerReconnaissance(store: KVStore, phone: string): boolean {
+  const compte = chargerComptes(store).find(c => c.phone === phone);
+  return !!compte && compte.biometrie !== true && compte.propositionRefusee !== true;
+}
+
+/** Elle a répondu « Non » (ou l'activation a échoué ici) : on ne redemandera pas. */
+export function noterRefusProposition(store: KVStore, phone: string): boolean {
+  const comptes = chargerComptes(store);
+  if (!comptes.some(c => c.phone === phone)) return false;
+  return ecrire(store, comptes.map(c => (c.phone === phone ? { ...c, propositionRefusee: true } : c)));
 }
 
 /** Oublie un compte sur ce téléphone (demande explicite, ex. depuis les réglages). */
