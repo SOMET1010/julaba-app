@@ -149,7 +149,11 @@ interdit apparaît.
   - Confirmations sensorielles : vibration succès/erreur/tic
     (`utils/haptique.ts`) sur la caisse, la connexion et la proposition de
     reconnaissance ; total du panier parlé au toucher.
-- À faire (ordre recommandé) : mode fort contraste/gros texte (proposé par
-  Tata) → clips bambara (studio, comédienne de Tata) → montants parlés
-  généralisés (reçu, historique) → modèle STT bambara dans l'APK (chantier
-  natif) → checklist §3.2 cochée par écran à chaque PR.
+  - Mode SOLEIL : zoom global 1.1 + gris pâles relevés (`confortVisuel.ts`,
+    `styles/soleil.css`, `npm run test:confort`) — bouton ☀️ sur l'accueil
+    marchande + interrupteur dans les Paramètres. À valider en plein soleil
+    sur WebView Android.
+- À faire (ordre recommandé) : clips bambara (studio, comédienne de Tata) →
+  montants parlés généralisés (reçu, historique) → modèle STT bambara dans
+  l'APK (chantier natif) → checklist §3.2 cochée par écran à chaque PR →
+  v2 du contraste (refonte en variables CSS pour dépasser le zoom).
