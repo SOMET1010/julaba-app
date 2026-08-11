@@ -78,7 +78,7 @@ export function UniversalMarche({ role }: UniversalMarcheProps) {
     },
   };
 
-  const config = pageConfig[role];
+  const config = pageConfig[role === 'cooperateur' ? 'cooperative' : role];
   const IconComponent = config.icon || Package;
 
   // Recherche vocale

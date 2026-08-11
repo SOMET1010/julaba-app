@@ -229,7 +229,7 @@ export function EventMonitor() {
                         transition={{ delay: Math.min(i * 0.02, 0.3) }}
                         className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                         <td className="py-3 px-4 font-mono text-xs text-gray-400 whitespace-nowrap">
-                          {new Date(log.timestamp).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit", fractionalSecondDigits: 3 as any })}
+                          {new Date(log.timestamp).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit", fractionalSecondDigits: 3 } as Intl.DateTimeFormatOptions)}
                         </td>
                         <td className="py-3 px-4">
                           <span className="font-bold text-gray-900 text-xs">{log.event}</span>

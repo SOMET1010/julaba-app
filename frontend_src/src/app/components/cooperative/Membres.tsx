@@ -103,6 +103,8 @@ type TabType = 'actifs' | 'en_attente';
 type DrawerTab = 'performances' | 'transactions' | 'infos';
 
 interface Membre {
+  /** Cotisation à jour (lu par l'écran, renseigné selon les données). */
+  cotisationPayee?: boolean;
   id: string;
   userId?: string;
   nom: string;

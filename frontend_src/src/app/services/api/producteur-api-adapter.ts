@@ -85,6 +85,9 @@ export const cyclesApiAdapter = {
 // ============================================================================
 
 export interface CreateRecolteData {
+  /** Localisation libre et photo (transmises au backend, colonnes réelles). */
+  localisation?: string;
+  photo_url?: string;
   cycle_id?: string;
   produit: string;
   quantite: number;

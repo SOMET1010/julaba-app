@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import L from 'leaflet';
+import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Home, MapPin, TrendingUp, Users } from 'lucide-react';
 import type { BOZone } from '../../contexts/BackOfficeContext';

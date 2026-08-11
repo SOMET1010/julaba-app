@@ -875,7 +875,7 @@ export function FicheIdentificationDynamique() {
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [signatureMode, setSignatureMode] = useState<'tactile' | 'clavier'>('tactile');
   const telAbortRef = React.useRef<AbortController | null>(null);
-  const submitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submitTimeoutRef = useRef<number | null>(null);
   // Garde unmount centralisée pour le composant principal
   // Utilisée par handleGPS, reverseGeocodeBackend, handleTelChange pour skip setState après démontage
   const isMountedRef = useRef(true);
@@ -996,7 +996,7 @@ export function FicheIdentificationDynamique() {
   }, [profil]);
 
   // Ref exposée pour annulation manuelle du debounce avant cleanup post-submit
-  const draftSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftSaveTimeoutRef = useRef<number | null>(null);
 
   // Brouillon auto : sauvegarder à chaque changement (debouncé 500ms pour limiter I/O sessionStorage)
   useEffect(() => {
@@ -1752,7 +1752,7 @@ export function FicheIdentificationDynamique() {
         await loadIdentifications();
         if (!isMountedRef.current) return;
         setSubmitted(true);
-        submitTimeoutRef.current = setTimeout(() => {
+        submitTimeoutRef.current = window.setTimeout(() => {
           if (isMountedRef.current) navigate('/identificateur');
         }, 3000);
         return;
@@ -1903,7 +1903,7 @@ export function FicheIdentificationDynamique() {
       await loadIdentifications();
       if (!isMountedRef.current) return;
       setSubmitted(true);
-      submitTimeoutRef.current = setTimeout(() => {
+      submitTimeoutRef.current = window.setTimeout(() => {
         if (isMountedRef.current) navigate('/identificateur');
       }, 3000);
     } catch (err) {
@@ -2752,7 +2752,7 @@ function DocumentsStep({ data, setField, errors, cfg }: {
   const color = cfg.color;
   const [nniStatus, setNniStatus] = React.useState<'idle'|'loading'|'found'|'notfound'>('idle');
   const [nniData, setNniData] = React.useState<any>(null);
-  const nniRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nniRef = React.useRef<number | null>(null);
   const nniAbortRef = React.useRef<AbortController | null>(null);
   const isMountedRef = React.useRef(true);
   const labelNniId = useId();
@@ -2813,7 +2813,7 @@ function DocumentsStep({ data, setField, errors, cfg }: {
   const handleNNI = (val: string) => {
     setField('nin', val);
     if (nniRef.current) clearTimeout(nniRef.current);
-    nniRef.current = setTimeout(() => lookupNNI(val), 800);
+    nniRef.current = window.setTimeout(() => lookupNNI(val), 800);
   };
 
   return (

@@ -37,6 +37,8 @@ export interface Recolte {
 }
 
 export interface CreateRecolteData {
+  /** Localisation libre (transmise et stockée par le backend). */
+  localisation?: string;
   cycle_id?: string;
   produit: string;
   quantite: number;

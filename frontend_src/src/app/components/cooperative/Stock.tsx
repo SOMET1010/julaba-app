@@ -268,7 +268,7 @@ export function Stock() {
               if (lowStocks.length === 0) {
                 showToast('✅ Aucune alerte stock', 'success');
               } else {
-                showToast(`⚠️ ${lowStocks.length} produit${lowStocks.length > 1 ? 's' : ''} en stock bas`, 'warning');
+                showToast(`⚠️ ${lowStocks.length} produit${lowStocks.length > 1 ? 's' : ''} en stock bas`, 'error');
               }
             }}
             className={`relative bg-gradient-to-br from-orange-50 via-white to-orange-50 rounded-3xl p-3 shadow-md overflow-hidden border-2 ${
@@ -860,17 +860,12 @@ export function Stock() {
                 </div>
 
                 <motion.button
-                  onClick={async () => {
-                    try {
-                      await apiRequest(API_URL, '/cooperatives/distribution', {
-                        method: 'POST',
-                        body: JSON.stringify({ stockId: selectedStock?.id, quantite: distributionQty }),
-                      });
-                      showToast('Distribution planifiée avec succès', 'success');
-                      setShowDistributionModal(false);
-                    } catch {
-                      showToast('Impossible de planifier la distribution. Réessaie.', 'error');
-                    }
+                  onClick={() => {
+                    // Fonction jamais câblée : l'ancien code référençait une
+                    // variable inexistante (distributionQty) et chaque clic
+                    // finissait dans le catch. Même issue, dite franchement.
+                    // Voir docs/RESIDUS.md (saisie de quantité à construire).
+                    showToast('Impossible de planifier la distribution. Réessaie.', 'error');
                   }}
                   className="w-full py-4 rounded-2xl bg-[#2072AF] text-white font-bold"
                   whileTap={{ scale: 0.95 }}

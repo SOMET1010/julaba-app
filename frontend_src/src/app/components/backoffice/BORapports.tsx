@@ -465,7 +465,7 @@ export function BORapports() {
           <div className="flex items-center gap-2 flex-wrap">
             {/* Metric switcher */}
             {(Object.keys(METRIC_LABELS) as (keyof typeof METRIC_LABELS)[]).map(m => (
-              <button key={m} onClick={() => setActiveMetric(m)}
+              <button key={m} onClick={() => setActiveMetric(m as 'transactions' | 'acteurs' | 'volume' | 'commissions')}
                 className="px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition-all"
                 style={{ borderColor: activeMetric === m ? METRIC_COLORS[m] : '#e5e7eb', backgroundColor: activeMetric === m ? `${METRIC_COLORS[m]}15` : 'transparent', color: activeMetric === m ? METRIC_COLORS[m] : '#9ca3af' }}>
                 {METRIC_LABELS[m]}

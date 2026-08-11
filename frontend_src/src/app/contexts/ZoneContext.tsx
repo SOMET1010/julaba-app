@@ -60,7 +60,7 @@ export function ZoneProvider({ children }: { children: ReactNode }) {
       if (!zones?.length) setLoading(true);
       setError(null);
       const { zones: data } = await zonesApi.fetchZones();
-      setZones(data);
+      setZones(data as unknown as Zone[]);
     } catch (err: any) {
       if (err?.message === NOT_AUTHENTICATED) { setLoading(false); return; }
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
