@@ -15,10 +15,13 @@
    ──────────────────────────────────────────────────────────────────────── */
 
 html.soleil body {
-  zoom: 1.1;                          /* tout + grand, cibles comprises */
   -webkit-font-smoothing: antialiased;
 }
 
 html.soleil {
+  /* Le zoom soleil passe par une VARIABLE, multipliée avec la taille du
+     texte dans l'unique règle `zoom` de body (styles/index.css) — deux
+     règles zoom concurrentes ne se multiplient pas, l'une écrase l'autre. */
+  --zoom-soleil: 1.1;                 /* tout + grand, cibles comprises */
   --font-size: 17px;                  /* base relevée pour les textes en rem */
 }
