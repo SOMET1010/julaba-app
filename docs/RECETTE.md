@@ -65,8 +65,28 @@ localhost`, `WEBAUTHN_ORIGIN=http://localhost:4180` côté backend).
   Producteurs avec le scénario démo (Bénito Bomisso, tomate 500 FCFA/kg,
   bouton Ajouter), zéro erreur JS.
 
+## Séance 3 — 11/08/2026 : TOUS les rôles entrent et s'affichent
+
+Balayage de connexion + accueil pour chaque rôle du seed, zéro erreur JS
+partout, données du scénario démo cohérentes à l'écran :
+
+- **Producteur** (Bénito, 09 60 60 60 60) : accueil « Enregistre tes
+  récoltes », Keiwa, Nouvelle plantation, Déclarer récolte.
+- **Coopérative** (COOP-CACAO Daloa, 09 70 70 70 70) : accueil membres et
+  stocks communs, Score Jùlaba.
+- **Identificateur** (Hervé, 07 10 10 10 10) : « ta zone a
+  4 identifications », avertissement écran sensible, Nouveau dossier.
+- **Institution** (Aïcha, 07 00 00 00 15 / 1234) : Vue Macro Nationale —
+  12 acteurs actifs / 13 inscrits.
+- **Back-office** (dge-test@julaba.ci / 123456, /backoffice/login) :
+  tableau de bord admin_general complet (Opérations terrain, Keiwa Wallet,
+  Zones, Modération…). Le pied « Projet DGE × ANSUT · édité par Icone
+  Solution » (v5.0.0.18) est en place sur l'écran de connexion BO.
+
 ### Restes à recetter (prochaines séances)
 - Parcours voix (sherpa) : APK uniquement — hors navigateur.
 - Support : compteur local « réponses non vues » avec un ticket réel.
-- Autres rôles : producteur, coopérative, identificateur, institution, BO.
 - Négociation d'achat grossiste → producteur (bout en bout marché virtuel).
+- Parcours MÉTIER profonds par rôle (déclarer une récolte, enrôler un
+  acteur, valider un dossier…) — les accueils sont verts, les gestes
+  restent à dérouler.
