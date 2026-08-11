@@ -62,6 +62,29 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
      l'ouverture) — désormais attendue puis lue par rôle, 0 en repli.
      À vérifier à l'écran (runtime) lors de la prochaine recette.
 
+## Nettoyé (passe 5 — v5.0.0.10, 11/08/2026)
+
+- ZÉRO erreur TypeScript (90 → 0). Résidus supprimés au passage :
+  `src/types/leaflet.d.ts` (shim `declare module 'leaflet'` qui écrasait
+  @types/leaflet et rendait toute la carte non typée), ui/carousel.tsx,
+  ui/drawer.tsx, ui/input-otp.tsx (composants shadcn jamais importés, aux
+  dépendances absentes), examples/document-examples.ts (orphelin).
+- Corrections réelles : icône de repli du Toast jamais importée (plantage
+  possible), doublon d'export IMG_PRODUIT_AUTRE (le 2e visait « repas »),
+  chemin du module responsive de la Sidebar, refreshAuditLogs présent au
+  runtime mais absent du type ET de la valeur publiée du contexte BO,
+  rôle « cooperateur » sans entrée sur les pages universelles Marché et
+  Produits (écran cassé pour ce rôle), garde-fous divers.
+
+## Fonctions jamais câblées, découvertes par le typage (à construire avec runtime)
+
+- Distribution de stock (coopérative) : référençait une variable
+  inexistante — chaque clic finissait en toast d'erreur. Même issue rendue
+  explicite ; la saisie de quantité reste à construire.
+- Saisie vocale de l'objectif (ObjectifModal) : l'option `onResult` n'a
+  jamais existé sur useVoiceCore — le rappel n'était jamais appelé.
+- Compteur « réponses du support non lues » (SupportCardProfil) : 0 en dur.
+
 ## Bug latent découvert par le typage (à corriger avec test runtime)
 
 - `publicationsApiAdapter.fetchPublications()` IGNORE ses filtres : le
@@ -75,10 +98,10 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
 
 ## Résidus connus, assumés, à traiter
 
-- **241 erreurs TypeScript baseline** : le plus gros résidu du legacy. Toutes
-  les livraisons de la session tiennent la ligne « 0 ajoutée » (diff du jeu
-  d'erreurs à chaque commit) ; les RÉSORBER est un chantier dédié, par
-  paquets, avec le même protocole de preuve.
+- ~~241 erreurs TypeScript baseline~~ : **ÉLIMINÉES le 11/08/2026**
+  (v5.0.0.7 → v5.0.0.10, cinq paquets, zéro erreur introduite). Nouvelle
+  règle : `npm run verify` (typecheck 0 + 8 suites) doit être vert avant
+  tout push — le zéro est un invariant, plus une baseline.
 - **`styles/soleil.css` v1 (sélecteurs d'attribut)** : encore NÉCESSAIRE pour
   les écrans non migrés vers les tokens (connexion, partagés, producteur,
   coopérative, institution). À retirer quand la migration tokens sera

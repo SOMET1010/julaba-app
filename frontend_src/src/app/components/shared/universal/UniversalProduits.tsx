@@ -97,7 +97,7 @@ export function UniversalProduits({ role }: UniversalProduitsProps) {
     },
   };
 
-  const config = pageConfig[role];
+  const config = pageConfig[role === 'cooperateur' ? 'cooperative' : role];
   const IconComponent = config.icon || Package;
 
   const handleCTA = () => {

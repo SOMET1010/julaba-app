@@ -38,7 +38,7 @@ export function AuditProvider({ children }: { children: ReactNode }) {
   // Charger les logs d'audit depuis Supabase
   const loadAuditLogs = async () => {
     try {
-      if (!audits?.length) setLoading(true);
+      if (!events?.length) setLoading(true);
       const { logs } = await auditApi.fetchAuditLogs(1, 50);
       
       const eventsList: AuditEvent[] = logs.map((log: any) => ({

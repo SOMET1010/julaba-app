@@ -719,7 +719,7 @@ export function LoginPassword() {
         return;
       }
       const boRoles = ['super_admin', 'admin'];
-      const isBackOffice = boRoles.includes(user.role);
+      const isBackOffice = boRoles.includes(user.role ?? '');
       if (result.user?.mustChangePassword) {
         setError('Mot de passe temporaire, redirection en cours...');
         if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
@@ -740,7 +740,9 @@ export function LoginPassword() {
         window.dispatchEvent(new CustomEvent('julaba:token-ready'));
 
       } else {
-        setAppUser(user); setUserProfile(user);
+        // La réponse de connexion est plus lâche que User (champs optionnels) ;
+        // le runtime a toujours fourni ces champs — conversion documentée.
+        setAppUser(user as unknown as import('../../contexts/AppContext').User); setUserProfile(user as unknown as import('../../contexts/AppContext').User);
         // Entrée par code réussie → Tata se souvient d'elle sur ce téléphone
         // (le drapeau « la reconnaissance marche ici » déjà acquis est conservé).
         memoriserApresEntree(user as Record<string, unknown>, false);

@@ -72,7 +72,7 @@ function ProgressBar({ value, total, color }: { value: number; total: number; co
 
 export function BOMissions() {
   const _boCtx = useBackOffice();
-  const missions: Mission[] = Array.isArray(_boCtx.missions) ? (_boCtx.missions as Mission[]) : [];
+  const missions: Mission[] = Array.isArray(_boCtx.missions) ? (_boCtx.missions as unknown as Mission[]) : [];
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   React.useEffect(() => { void _boCtx.refreshMissions?.(); }, []);

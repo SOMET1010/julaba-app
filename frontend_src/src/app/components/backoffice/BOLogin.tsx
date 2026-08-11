@@ -167,7 +167,7 @@ export function BOLogin() {
       };
       if (!userId) throw new Error('Session biométrique invalide');
       if (typeof oe === 'string') throw new Error(oe);
-      const assertion = await startAuthentication({ optionsJSON: optsJson });
+      const assertion = await startAuthentication({ optionsJSON: optsJson as unknown as Parameters<typeof startAuthentication>[0]['optionsJSON'] });
       const ver = await boWebAuthnAuthenticateVerify(
         userId,
         assertion as unknown as Record<string, unknown>,

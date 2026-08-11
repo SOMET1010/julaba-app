@@ -8,7 +8,7 @@ import { useCooperative } from '../../contexts/CooperativeContext';
 import { useVoluntaryLogout } from '../../hooks/useVoluntaryLogout';
 import { LogoutConfirmDialog } from '../shared/LogoutConfirmDialog';
 import { getRoleConfig, getRoleColor } from '../../config/roleConfig';
-import { SIDEBAR_WIDTH } from '../../config/responsive';
+import { SIDEBAR_WIDTH } from '../../../config/responsive';
 
 interface SidebarProps {
   role: 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur';
