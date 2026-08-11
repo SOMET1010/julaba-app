@@ -135,7 +135,21 @@ interdit apparaît.
   voix hors-ligne (sherpa natif), clips de la vraie Tata, offline-first caisse
   (file durable, idempotence), connexion « Tata me reconnaît » (lots 1-2),
   solde masquable, grandes cibles, humour local (messages d'attente).
-- En cours : retrait de Vosk (moteur unique sherpa).
-- À faire (ordre recommandé) : nombres bambara → billets CFA à l'encaissement →
-  mode fort contraste/gros texte → test anti-jargon → clips bambara →
-  vibrations de confirmation → montants parlés partout.
+- Fait le 11/08/2026 (même session) :
+  - Vosk retiré, sherpa-onnx moteur unique (dictée en direct refaite en
+    pseudo-live sur le natif ; ~46 Mo économisés pour la marchande).
+  - Nombres bambara → chiffres : module pur `nombresBambara.ts` (unités,
+    dizaines, kɛmɛ, ba/waa, dɔrɔmɛ = 5 F), `npm run test:bambara`. Prêt à
+    brancher sur la sortie sherpa quand le modèle bambara sera embarqué.
+  - Billets CFA à l'encaissement : montant reçu composé en coupures touchées
+    (dites à voix haute), monnaie à rendre décomposée en coupures
+    (`utils/fcfa.ts`, `npm run test:fcfa`).
+  - Test anti-jargon automatique : `npm run test:jargon` (chaînes UI de
+    src/app, hors back-office/dev/identificateur) — 0 violation.
+  - Confirmations sensorielles : vibration succès/erreur/tic
+    (`utils/haptique.ts`) sur la caisse, la connexion et la proposition de
+    reconnaissance ; total du panier parlé au toucher.
+- À faire (ordre recommandé) : mode fort contraste/gros texte (proposé par
+  Tata) → clips bambara (studio, comédienne de Tata) → montants parlés
+  généralisés (reçu, historique) → modèle STT bambara dans l'APK (chantier
+  natif) → checklist §3.2 cochée par écran à chaque PR.
