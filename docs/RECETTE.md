@@ -46,10 +46,27 @@ pas seulement testée en code.
   le curseur était écrasé en mode soleil → une seule règle
   `calc(var(--zoom-texte,1) * var(--zoom-soleil,1))` (v5.0.0.18).
 
+## Séance 2 — 11/08/2026 : « Tata me reconnaît » de bout en bout
+
+Authenticator VIRTUEL (CDP WebAuthn, empreinte simulée, `WEBAUTHN_RP_ID=
+localhost`, `WEBAUTHN_ORIGIN=http://localhost:4180` côté backend).
+
+### Vérifié VERT (vu à l'écran)
+- **Enrôlement (Lot 2)** : après connexion au code, « Adjoua, veux-tu que
+  Tata te reconnaisse la prochaine fois ? » → « Oui, je veux » →
+  enregistrement WebAuthn réussi (aucun jargon à l'écran).
+- **Déconnexion volontaire** : le compte mémorisé SURVIT (c'est le cœur de
+  « Tata se souvient de moi »).
+- **Reconnaissance (Lot 1)** : l'écran de retour est EXACTEMENT la spec —
+  « Bonjour Adjoua ! », GRAND bouton empreinte, « Utiliser mon code » en
+  filet, « Ce n'est pas moi » pour les téléphones partagés. Un toucher du
+  grand bouton → reconnue et CONNECTÉE (/marchand) sans rien taper.
+- **Marché virtuel grossiste** (Michelle, 07 26 26 26 26) : KPIs, onglet
+  Producteurs avec le scénario démo (Bénito Bomisso, tomate 500 FCFA/kg,
+  bouton Ajouter), zéro erreur JS.
+
 ### Restes à recetter (prochaines séances)
 - Parcours voix (sherpa) : APK uniquement — hors navigateur.
-- WebAuthn « Tata me reconnaît » Lot 1 : nécessite un authenticator
-  (virtuel CDP possible) — non déroulé.
-- Grossiste (Michelle) : marché virtuel et caisse négoce.
 - Support : compteur local « réponses non vues » avec un ticket réel.
 - Autres rôles : producteur, coopérative, identificateur, institution, BO.
+- Négociation d'achat grossiste → producteur (bout en bout marché virtuel).
