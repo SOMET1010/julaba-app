@@ -1,0 +1,66 @@
+name: Invariants financiers (intégration Postgres)
+
+# Tests d'INVARIANTS métier (vente, stock, crédit, idempotence) contre une base
+# Postgres JETABLE. Job séparé du filet CI rapide (plus lourd : boot Nest + DB).
+#
+# L1 : un seul invariant, I2 (idempotence de la vente), déjà 🟢 — il prouve que
+# le harnais démarre l'app, recrée une base vierge, appelle l'API et vérifie la
+# base. Les invariants ROUGES des blockers argent arriveront en L2 : ils seront
+# alors gérés en TABLEAU DE BORD non bloquant, promus bloquants un à un dès qu'un
+# correctif les rend verts. Aucun déploiement ici.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  invariants:
+    name: Invariants (Postgres jetable)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: julaba_user
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U julaba_user"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      # Base ISOLÉE de test (le nom contient « test » ; la garde refuse tout autre).
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_USERNAME: julaba_user
+      DB_PASSWORD: test
+      DB_NAME: julaba_test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js 22 (LTS)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install (workspaces, racine)
+        run: npm ci
+
+      - name: Tests d'invariants (intégration Postgres)
+        run: npm run test:invariants -w backend
