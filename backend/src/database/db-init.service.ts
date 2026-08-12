@@ -138,6 +138,40 @@ export class DbInitService {
       this.logger.warn('Erreur index idempotency_key: ' + message);
     }
 
+    // ── Ledger de stock (append-only) ────────────────────────────────────────
+    // Noyau minimal d'intégrité du stock : chaque effet d'inventaire d'une vente
+    // est journalisé dans la MÊME transaction que la vente (atomicité, I1/I3).
+    // Pour chaque mouvement on retrouve : la vente (transaction_id), le produit,
+    // le stock avant, la quantité demandée, la quantité effectivement retranchée
+    // du stock connu, le manquant éventuel et la date. Append-only : on n'y fait
+    // que des INSERT (aucune modification/destruction de mouvement).
+    try {
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS stock_mouvements (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          marchand_id text NOT NULL,
+          transaction_id uuid,
+          produit_id uuid,
+          produit_nom text,
+          stock_avant numeric NOT NULL,
+          quantite_demandee numeric NOT NULL,
+          quantite_retranchee numeric NOT NULL,
+          manquant numeric NOT NULL DEFAULT 0,
+          created_at timestamptz DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_stock_mouvements_tx ON stock_mouvements (transaction_id);`,
+      );
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_stock_mouvements_marchand ON stock_mouvements (marchand_id, created_at);`,
+      );
+      this.logger.log('Ledger stock_mouvements (append-only) vérifié');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur ledger stock_mouvements: ' + message);
+    }
+
     // ── Colonnes/tables secondaires manquantes sur base neuve ────────────────
     // Des tâches de fond (cron) attendent des colonnes/tables que `synchronize`
     // ne crée pas (entités incomplètes ou tables en SQL brut). Non bloquant, mais

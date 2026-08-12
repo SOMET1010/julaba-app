@@ -113,19 +113,6 @@ export class CaisseRestController {
     ).catch((e: any) => this.logger?.warn(`[CAISSE] ensureSession: ${e.message}`));
   }
 
-  // Décrémente le stock des produits vendus (match par nom, insensible à la
-  // casse). Sans effet si le nom ne correspond à aucun produit (vente libre/voix).
-  private async decrementerStock(marchandId: string, lignes: Array<{ nom: string; qte: number }>) {
-    for (const l of lignes) {
-      if (!l.nom || !(l.qte > 0)) continue;
-      await this.dataSource.query(
-        `UPDATE produits SET stock = GREATEST(0, COALESCE(stock,0) - $1), updated_at = NOW()
-         WHERE marchand_id = $2::text AND lower(nom) = lower($3) AND actif = true`,
-        [l.qte, marchandId, l.nom],
-      ).catch((e: any) => this.logger?.warn(`[CAISSE] decrementStock: ${e.message}`));
-    }
-  }
-
   @Post('vente')
   async enregistrerVente(@Body() body: any, @CurrentUser() user: User) {
     // Idempotence (rejeu offline) : ne jamais compter deux fois la même vente.
@@ -162,9 +149,25 @@ export class CaisseRestController {
     // Journée toujours ouverte (vente jamais bloquée, argent rattaché au jour).
     await this.ensureSessionOuverte(user.id);
 
-    let result;
+    // Lignes vendues (produits appariés). Vente libre/voix : aucune ligne stock.
+    const lignesVendues = lignes.length > 0
+      ? lignes.map((p: any) => ({ nom: p.nom || p.name || '', qte: Number(p.quantite) || 1 }))
+      : (nomProduit ? [{ nom: nomProduit, qte: Number(qteTotale) || 1 }] : []);
+
+    // TRANSACTION UNIQUE (I1) : la vente ET tous ses effets d'inventaire sont
+    // atomiques — tout-ou-rien. Toutes les lectures/écritures de l'invariant
+    // passent par le MANAGER transactionnel (aucun repository extérieur au
+    // milieu du flux). Verrou de ligne (FOR UPDATE) puis, pour chaque produit,
+    // trace d'un mouvement de stock (I3 : jamais de clamp silencieux — le
+    // manquant est explicitement journalisé dans le ledger, dans la MÊME
+    // transaction). Toute erreur d'inventaire annule la vente (rien n'est avalé).
+    const qr = this.dataSource.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
+    let result: CaisseTransaction;
     try {
-      result = await this.repo.save(this.repo.create({
+      const txRepo = qr.manager.getRepository(CaisseTransaction);
+      const created = txRepo.create({
         user_id: user.id, marchand_id: user.id,
         session_id: body.session_id || '', montant: body.montant,
         type: 'vente', produit: nomProduit, source: body.source || 'kassa', details: body.details || null,
@@ -172,21 +175,50 @@ export class CaisseRestController {
         description: nomProduit,
         prix_vente: prixVente, prix_achat: prixAchat, marge, benefice: marge,
         category: body.category || '', idempotency_key: idemKey,
-      } as any));
+      } as any) as unknown as CaisseTransaction;
+      result = await txRepo.save(created);
+
+      for (const l of lignesVendues) {
+        if (!l.nom || !(l.qte > 0)) continue;
+        const rows = await qr.manager.query(
+          `SELECT id, COALESCE(stock, 0) AS stock FROM produits
+           WHERE marchand_id = $1::text AND lower(nom) = lower($2) AND actif = true
+           LIMIT 1 FOR UPDATE`,
+          [user.id, l.nom],
+        );
+        if (!rows[0]) continue; // produit inconnu (vente libre/voix) : aucun effet stock
+        const stockAvant = Number(rows[0].stock) || 0;
+        const demandee = l.qte;
+        const retranchee = Math.min(demandee, Math.max(0, stockAvant));
+        const manquant = demandee - retranchee;
+        await qr.manager.query(
+          `UPDATE produits SET stock = $1, updated_at = NOW() WHERE id = $2`,
+          [stockAvant - retranchee, rows[0].id],
+        );
+        await qr.manager.query(
+          `INSERT INTO stock_mouvements
+             (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant)
+           VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8)`,
+          [user.id, result.id, rows[0].id, l.nom, stockAvant, demandee, retranchee, manquant],
+        );
+      }
+
+      await qr.commitTransaction();
     } catch (e: any) {
+      await qr.rollbackTransaction();
+      // Rejeu concurrent (même clé) : la 2e insertion viole l'unicité → renvoyer
+      // la vente déjà enregistrée au lieu de propager l'erreur (I2).
       if (this.estViolationUnicite(e)) {
         const existante = await this.transactionExistante(idemKey, user.id);
         if (existante) return { transaction: existante };
       }
       throw e;
+    } finally {
+      await qr.release();
     }
-    // Décrémenter le stock des produits vendus.
-    const lignesVendues = lignes.length > 0
-      ? lignes.map((p: any) => ({ nom: p.nom || p.name || '', qte: Number(p.quantite) || 1 }))
-      : (nomProduit ? [{ nom: nomProduit, qte: Number(qteTotale) || 1 }] : []);
-    await this.decrementerStock(user.id, lignesVendues);
+
+    // Effets de bord post-commit (hors transaction).
     this.eventsGateway?.emitTransactionCreated({ ...result, type: 'vente', userId: user.id });
-    // Vérifier stock après vente (event-driven)
     this.alertesService?.checkStockApreVente(user.id, nomProduit).catch((e: any) => this.logger?.warn(`[CAISSE] checkStock: ${e.message}`));
     return { transaction: result };
   }
