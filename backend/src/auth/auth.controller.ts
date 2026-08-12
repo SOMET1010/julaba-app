@@ -1,7 +1,7 @@
 import { Controller, Post, Get, Patch, Delete, Param, Body, HttpCode, HttpStatus, UseGuards, Request, Res, ForbiddenException } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
-import { AuthService, BO_ROLES, ACTEUR_ROLES, getDefaultPasswordForRole } from './auth.service';
+import { AuthService, BO_ROLES, ACTEUR_ROLES, PUBLIC_SIGNUP_ROLES, getDefaultPasswordForRole } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { CreateActeurDto } from './dto/create-acteur.dto';
 import { LoginDto } from './dto/login.dto';
@@ -47,10 +47,10 @@ export class AuthController {
   @Throttle({ auth: { limit: 3, ttl: 60000 } })
   @Post('signup')
   async signup(@Body() signupDto: SignupDto, @Request() req: any, @Res({ passthrough: true }) res: Response) {
-    // Securite: l'endpoint public d'auto-inscription est limite aux roles acteurs.
-    // Les roles a privileges (back-office, admin, super_admin) ne sont jamais creables
-    // sans authentification: ils passent par les endpoints administres (ex: POST /users/admin).
-    if (!ACTEUR_ROLES.includes(signupDto.role)) {
+    // Securite (C0.1 M6): l'auto-inscription publique est limitee aux roles
+    // acteurs NON privilegies. identificateur en est desormais EXCLU (il passe
+    // par un endpoint administre). Le service revalide la meme regle.
+    if (!PUBLIC_SIGNUP_ROLES.includes(signupDto.role)) {
       throw new ForbiddenException("Ce role ne peut pas etre cree via l'inscription publique");
     }
     // Politique mot de passe canonique JULABA: BO = 123456, acteur = 0000, mustChangePassword=true.
@@ -508,7 +508,12 @@ export class AuthController {
       }
 
       const canonicalPassword = getDefaultPasswordForRole((body as any).role);
-      const result = await this.authService.signup({ ...body, password: canonicalPassword, mustChangePassword: true } as any);
+      // C0.1 (M8) — transmet le rôle de l'APPELANT au service, qui applique la
+      // politique d'autorité sur le rôle créé (jamais dérivée du corps).
+      const result = await this.authService.signup(
+        { ...body, password: canonicalPassword, mustChangePassword: true } as any,
+        undefined, undefined, { callerRole: req.user?.role },
+      );
       if (result.user?.id) {
         await this.userRepo.update(result.user.id, { mustChangePassword: true } as any);
       }

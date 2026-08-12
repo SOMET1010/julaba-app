@@ -1,5 +1,5 @@
 import {
-  Injectable, ConflictException, UnauthorizedException, Logger, Optional,
+  Injectable, ConflictException, UnauthorizedException, ForbiddenException, Logger, Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
@@ -26,6 +26,42 @@ const BO_ROLES = ['super_admin', 'admin_general', 'admin_national', 'gestionnair
 const ACTEUR_ROLES = ['marchand', 'producteur', 'cooperateur', 'institution', 'identificateur'];
 const DEFAULT_PASSWORD_BO = '123456';
 const DEFAULT_PASSWORD_ACTEUR = '0000';
+
+// C0.1 (M6) : rôles autorisés à l'AUTO-INSCRIPTION PUBLIQUE. Volontairement plus
+// restreint qu'ACTEUR_ROLES : identificateur (rôle à privilèges) en est EXCLU.
+// ACTEUR_ROLES reste inchangé pour getDefaultPasswordForRole() et la création
+// administrée.
+const PUBLIC_SIGNUP_ROLES = ['marchand', 'producteur', 'cooperateur', 'institution'];
+// Rôles acteurs qu'un appelant faiblement privilégié (identificateur,
+// operateur_terrain) peut créer via un endpoint administré.
+const ACTOR_CREATABLE_ROLES = ['marchand', 'producteur', 'cooperateur'];
+
+// C0.1 (M6 + M8) — Politique d'autorité sur le rôle CRÉÉ. Appliquée côté service,
+// jamais dérivée du corps de requête. `callerRole` absent = voie publique.
+function assertRoleCreationAllowed(targetRole: string, callerRole?: string): void {
+  // Voie publique (auto-inscription) : uniquement des rôles acteurs non privilégiés.
+  if (!callerRole) {
+    if (!PUBLIC_SIGNUP_ROLES.includes(targetRole)) {
+      throw new ForbiddenException("Ce role ne peut pas etre cree via l'inscription publique");
+    }
+    return;
+  }
+  // Voie administrée : aucun endpoint générique ne crée super_admin.
+  if (targetRole === 'super_admin') {
+    throw new ForbiddenException('Creation de super_admin interdite via cet endpoint');
+  }
+  // identificateur / operateur_terrain : uniquement des acteurs non privilégiés.
+  if (callerRole === 'identificateur' || callerRole === 'operateur_terrain') {
+    if (!ACTOR_CREATABLE_ROLES.includes(targetRole)) {
+      throw new ForbiddenException('Autorisation insuffisante pour creer ce role');
+    }
+    return;
+  }
+  // Un rôle administratif (BO) n'est créable que par un super_admin.
+  if (BO_ROLES.includes(targetRole) && callerRole !== 'super_admin') {
+    throw new ForbiddenException('Autorisation insuffisante pour creer un role administratif');
+  }
+}
 
 function getDefaultPasswordForRole(role: string): string {
   if (BO_ROLES.includes(role)) return DEFAULT_PASSWORD_BO;
@@ -62,7 +98,9 @@ export class AuthService {
   ) {}
 
   // ── Inscription ───────────────────────────────────────────
-  async signup(signupDto: SignupDto, deviceInfo?: string, ipAddress?: string) {
+  async signup(signupDto: SignupDto, deviceInfo?: string, ipAddress?: string, opts?: { callerRole?: string }) {
+    // C0.1 (M6 + M8) — autorité sur le rôle créé, avant toute écriture.
+    assertRoleCreationAllowed(signupDto.role, opts?.callerRole);
     const existing = await this.userRepository.findOne({ where: { phone: signupDto.phone } });
     if (existing) throw new ConflictException('Ce numéro est déjà utilisé');
 
@@ -99,7 +137,11 @@ export class AuthService {
       objectifMensuel: signupDto.objectifMensuel ?? null,
       primeObjectif: signupDto.primeObjectif ?? null,
       mustChangePassword: true,
-      status: UserStatus.ACTIF, validated: false,
+      // C0.1 (M8) — un compte administratif (BO) créé naît INACTIF : activation
+      // requise par une autorité supérieure distincte. Aucune activation ni
+      // auto-validation n'est introduite par ce lot.
+      status: BO_ROLES.includes(signupDto.role) ? UserStatus.EN_ATTENTE_VALIDATION : UserStatus.ACTIF,
+      validated: false,
     });
     const saved = await this.userRepository.save(user);
     if (saved.role === 'cooperateur') {
@@ -421,4 +463,4 @@ export class AuthService {
   }
 }
 
-export { BO_ROLES, ACTEUR_ROLES, DEFAULT_PASSWORD_BO, DEFAULT_PASSWORD_ACTEUR, getDefaultPasswordForRole, generateInitialPassword };
+export { BO_ROLES, ACTEUR_ROLES, PUBLIC_SIGNUP_ROLES, DEFAULT_PASSWORD_BO, DEFAULT_PASSWORD_ACTEUR, getDefaultPasswordForRole, generateInitialPassword, assertRoleCreationAllowed };
