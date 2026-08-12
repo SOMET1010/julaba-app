@@ -42,20 +42,19 @@ const TERRAIN_CREATABLE_ROLES = ['marchand', 'producteur', 'cooperateur'];
 //   s'obtient que par l'endpoint dédié réservé aux super_admin existants.
 const ROLES_JAMAIS_GENERIQUES = ['super_admin'];
 
-// Ensemble des rôles qu'un créateur donné peut créer via signup().
-// createurRole nul/absent => auto-inscription publique.
+// ALLOW-LIST STRICTE (R1) — ensemble EXPLICITE des rôles qu'un créateur donné
+// peut créer via signup(). Seuls trois profils d'appelant sont mappés ; TOUT
+// autre appelant (admin_*, inconnu, non mappé, absent en voie administrée)
+// renvoie une liste vide ⇒ refus (fail-closed). Aucune voie générique ne crée
+// un rôle administratif dans ce lot ; institution en est exclue. La création
+// administrée de rôles supérieurs devra passer par un endpoint dédié explicite
+// (hors de ce lot), jamais par ce fall-through.
 function rolesCreablesPar(createurRole?: string | null): string[] {
-  if (!createurRole) return SELF_SIGNUP_ROLES;
+  if (!createurRole) return SELF_SIGNUP_ROLES;               // voie publique : acteurs non privilégiés
   if (createurRole === 'identificateur' || createurRole === 'operateur_terrain') {
-    return TERRAIN_CREATABLE_ROLES;
+    return TERRAIN_CREATABLE_ROLES;                          // terrain : mêmes acteurs
   }
-  // Rôles d'administration supérieurs : capacité existante préservée (acteurs +
-  // identificateur/institution). Ce lot ne construit pas une nouvelle gestion
-  // complète des habilitations ; super_admin reste bloqué (ci-dessous).
-  if (['super_admin', 'admin_general', 'admin_national', 'gestionnaire_zone'].includes(createurRole)) {
-    return ACTEUR_ROLES;
-  }
-  return []; // créateur non reconnu → aucune création
+  return []; // admin_*, rôle inconnu ou non mappé → aucune création (fail-closed)
 }
 
 function getDefaultPasswordForRole(role: string): string {

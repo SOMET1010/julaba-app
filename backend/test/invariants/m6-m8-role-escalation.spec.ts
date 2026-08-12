@@ -175,6 +175,72 @@ describe('Invariants M6+M8 — escalade de rôle interdite', () => {
     expect(r.body?.user?.role).toBe('marchand');
   });
 
+  // ── R1 (durcissement allow-list stricte) : admin_* / inconnu / non mappé → refus ──
+  it('appel direct : createur=admin_general → marchand → refus (admin_* non mappé)', async () => {
+    await expect(
+      authService.signup({ phone: '+2250700000861', firstName: 'X', lastName: 'Y', role: 'marchand', genre: 'homme' } as any, undefined, undefined, 'admin_general'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('appel direct : createur=admin_general → institution → refus', async () => {
+    await expect(
+      authService.signup({ phone: '+2250700000862', firstName: 'X', lastName: 'Y', role: 'institution', genre: 'homme' } as any, undefined, undefined, 'admin_general'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('appel direct : createur=admin_general → identificateur → refus', async () => {
+    await expect(
+      authService.signup({ phone: '+2250700000863', firstName: 'X', lastName: 'Y', role: 'identificateur', genre: 'homme' } as any, undefined, undefined, 'admin_general'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('appel direct : createur INCONNU (non mappé) → marchand → refus (fail-closed)', async () => {
+    await expect(
+      authService.signup({ phone: '+2250700000864', firstName: 'X', lastName: 'Y', role: 'marchand', genre: 'homme' } as any, undefined, undefined, 'role_inconnu'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('appel direct : rôle CIBLE inconnu (public) → refus', async () => {
+    await expect(
+      authService.signup({ phone: '+2250700000865', firstName: 'X', lastName: 'Y', role: 'role_bidon', genre: 'homme' } as any),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('appel direct : rôle CIBLE inconnu (createur=identificateur) → refus', async () => {
+    await expect(
+      authService.signup({ phone: '+2250700000866', firstName: 'X', lastName: 'Y', role: 'role_bidon', genre: 'homme' } as any, undefined, undefined, 'identificateur'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('appel direct : createur absent + cible administrative (admin_general) → refus', async () => {
+    await expect(
+      authService.signup({ phone: '+2250700000867', firstName: 'X', lastName: 'Y', role: 'admin_general', genre: 'homme' } as any),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  // ── operateur_terrain → institution (voie administrée) → refus, non créé ──
+  it('operateur_terrain → institution via create-acteur → refusé, non créé', async () => {
+    const token = await seedInterne(UserRole.OPERATEUR_TERRAIN, '+2250700000870');
+    const p = '+2250700000871';
+    await attendRefus(await api().post('/api/v1/auth/create-acteur').set('Authorization', `Bearer ${token}`).send(body('institution', p)), p);
+  });
+
+  // ── Créations légitimes : les trois rôles métier ──
+  it('inscription publique producteur / cooperateur → OK', async () => {
+    const rp = await api().post('/api/v1/auth/signup').send(body('producteur', '+2250700000880'));
+    expect([200, 201]).toContain(rp.status); expect(rp.body?.user?.role).toBe('producteur');
+    const rc = await api().post('/api/v1/auth/signup').send(body('cooperateur', '+2250700000881'));
+    expect([200, 201]).toContain(rc.status); expect(rc.body?.user?.role).toBe('cooperateur');
+  });
+
+  it('identificateur → producteur / cooperateur via create-acteur → OK', async () => {
+    const token = await seedInterne(UserRole.IDENTIFICATEUR, '+2250700000882');
+    const rp = await api().post('/api/v1/auth/create-acteur').set('Authorization', `Bearer ${token}`).send(body('producteur', '+2250700000883'));
+    expect([200, 201]).toContain(rp.status); expect(rp.body?.user?.role).toBe('producteur');
+    const rc = await api().post('/api/v1/auth/create-acteur').set('Authorization', `Bearer ${token}`).send(body('cooperateur', '+2250700000884'));
+    expect([200, 201]).toContain(rc.status); expect(rc.body?.user?.role).toBe('cooperateur');
+  });
+
   // ── Invariant décisif : AUCUN compte à rôle d'administration n'a été créé ──
   it('aucun compte à rôle administratif présent en base après la suite', async () => {
     const rows = await ds.query(
