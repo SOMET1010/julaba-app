@@ -1,5 +1,5 @@
 import {
-  Injectable, ConflictException, UnauthorizedException, Logger, Optional,
+  Injectable, ConflictException, UnauthorizedException, ForbiddenException, Logger, Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
@@ -26,6 +26,37 @@ const BO_ROLES = ['super_admin', 'admin_general', 'admin_national', 'gestionnair
 const ACTEUR_ROLES = ['marchand', 'producteur', 'cooperateur', 'institution', 'identificateur'];
 const DEFAULT_PASSWORD_BO = '123456';
 const DEFAULT_PASSWORD_ACTEUR = '0000';
+
+// ── Politique de création de rôle (M6 + M8) ────────────────────────────────
+// Ferme la chaîne « anonyme → identificateur → super_admin ». Appliquée ICI,
+// dans le service, pour qu'AUCUN contrôleur ne puisse la contourner : tout
+// chemin de création de compte passe par signup().
+//
+// • Auto-inscription publique (aucun créateur) : uniquement des acteurs non
+//   privilégiés (marchand/producteur/cooperateur). Ni identificateur, ni
+//   institution, ni rôle d'administration.
+const SELF_SIGNUP_ROLES = ['marchand', 'producteur', 'cooperateur'];
+// • Un identificateur / operateur_terrain n'enrôle QUE ces mêmes acteurs.
+const TERRAIN_CREATABLE_ROLES = ['marchand', 'producteur', 'cooperateur'];
+// • Rôle JAMAIS créable par la création générique de compte : super_admin ne
+//   s'obtient que par l'endpoint dédié réservé aux super_admin existants.
+const ROLES_JAMAIS_GENERIQUES = ['super_admin'];
+
+// Ensemble des rôles qu'un créateur donné peut créer via signup().
+// createurRole nul/absent => auto-inscription publique.
+function rolesCreablesPar(createurRole?: string | null): string[] {
+  if (!createurRole) return SELF_SIGNUP_ROLES;
+  if (createurRole === 'identificateur' || createurRole === 'operateur_terrain') {
+    return TERRAIN_CREATABLE_ROLES;
+  }
+  // Rôles d'administration supérieurs : capacité existante préservée (acteurs +
+  // identificateur/institution). Ce lot ne construit pas une nouvelle gestion
+  // complète des habilitations ; super_admin reste bloqué (ci-dessous).
+  if (['super_admin', 'admin_general', 'admin_national', 'gestionnaire_zone'].includes(createurRole)) {
+    return ACTEUR_ROLES;
+  }
+  return []; // créateur non reconnu → aucune création
+}
 
 function getDefaultPasswordForRole(role: string): string {
   if (BO_ROLES.includes(role)) return DEFAULT_PASSWORD_BO;
@@ -62,7 +93,18 @@ export class AuthService {
   ) {}
 
   // ── Inscription ───────────────────────────────────────────
-  async signup(signupDto: SignupDto, deviceInfo?: string, ipAddress?: string) {
+  async signup(signupDto: SignupDto, deviceInfo?: string, ipAddress?: string, createurRole?: string | null) {
+    // ── Autorisation de création de rôle (M6 + M8) ──
+    // Appliquée AVANT toute écriture, dans le service : aucun contrôleur ne peut
+    // la contourner. Ferme « anonyme → identificateur → super_admin ».
+    const roleCible = signupDto.role as string;
+    if (ROLES_JAMAIS_GENERIQUES.includes(roleCible)) {
+      throw new ForbiddenException("Le rôle super_admin ne peut pas être créé par l'inscription.");
+    }
+    if (!rolesCreablesPar(createurRole).includes(roleCible)) {
+      throw new ForbiddenException("Ce rôle ne peut pas être créé par ce compte.");
+    }
+
     const existing = await this.userRepository.findOne({ where: { phone: signupDto.phone } });
     if (existing) throw new ConflictException('Ce numéro est déjà utilisé');
 
