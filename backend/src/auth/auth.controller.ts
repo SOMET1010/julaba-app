@@ -467,6 +467,24 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin', 'admin_general')
   async getDecryptedPin(@Param('id') id: string, @Request() req: any) {
+    // Durcissement (Lot 0) : la lecture d'un PIN en clair est une fuite de secret
+    // par conception. Désactivée par défaut ; réactivable volontairement via
+    // ALLOW_PIN_DECRYPT=true. Toute tentative bloquée est auditée.
+    if (process.env.ALLOW_PIN_DECRYPT !== 'true') {
+      try {
+        await this.auditService.log({
+          userId: req.user?.id ?? null,
+          action: 'PIN_READ_BLOCKED',
+          entite: 'identificateur',
+          entiteId: id,
+          details: { reason: 'ALLOW_PIN_DECRYPT non activé' },
+          ip: req.ip ?? null,
+        });
+      } catch {
+        void 0;
+      }
+      return { success: false, message: 'Fonctionnalité désactivée' };
+    }
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user || (user as any).role !== 'identificateur') {
       return { success: false, message: 'Identificateur introuvable' };

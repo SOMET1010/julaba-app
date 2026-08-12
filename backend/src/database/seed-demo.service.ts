@@ -12,10 +12,14 @@ import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 // avec un mot de passe connu (à distribuer aux testeurs) + un jeu de données
 // d'exemple pour l'un d'eux, afin que l'appli s'affiche déjà « peuplée ».
 //
-// Sécurité : actif par DÉFAUT (serveur de démo/test). Pour un vrai serveur de
-// production, poser SEED_DEMO=false pour le désactiver complètement.
-// (Défaut « on » choisi pour rester turnkey : aucune variable à régler à la main
-//  sur l'hébergeur.)
+// Sécurité (durci — Lot 0) :
+//   • Dev / test (NODE_ENV ≠ production) : actif par DÉFAUT → les comptes de
+//     démo restent disponibles sans réglage (turnkey), comportement inchangé.
+//   • Production (NODE_ENV = production) : DÉSACTIVÉ par défaut. Ces comptes ont
+//     des mots de passe CONNUS (dont un ADMIN_GENERAL) : les créer en prod est
+//     une porte dérobée. Pour forcer volontairement en prod, poser
+//     SEED_DEMO_ALLOW_PROD=true.
+//   • SEED_DEMO=false désactive partout, comme avant.
 // Idempotent : ne recrée jamais un compte ou des données déjà présents.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -75,7 +79,22 @@ export class SeedDemoService {
   // Appelé APRÈS le bind du port (depuis main.ts), en arrière-plan. Le seed est
   // idempotent : s'il échoue, l'app reste debout et sert quand même.
   async runSeed(): Promise<void> {
-    if (process.env.SEED_DEMO === 'false') return; // désactivable en production
+    // Désactivation explicite partout.
+    if (process.env.SEED_DEMO === 'false') {
+      this.logger.log('SEED_DEMO=false — comptes de démonstration désactivés.');
+      return;
+    }
+    // En production, on NE crée PAS de comptes à mots de passe connus (porte
+    // dérobée) sauf override explicite et assumé.
+    const enProduction = process.env.NODE_ENV === 'production';
+    const forcerEnProd = process.env.SEED_DEMO_ALLOW_PROD === 'true';
+    if (enProduction && !forcerEnProd) {
+      this.logger.warn(
+        'SEED_DEMO ignoré en production : comptes de démonstration à mots de passe connus non créés. ' +
+          'Poser SEED_DEMO_ALLOW_PROD=true pour forcer volontairement.',
+      );
+      return;
+    }
 
     // Démarrage rapide : si le jeu de démo est DÉJÀ chargé (acteur en attente
     // « Awa Nénè », créé en fin de scénario), on ne rejoue RIEN. Rejouer le seed
