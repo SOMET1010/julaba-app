@@ -5,6 +5,20 @@
 
 export const NOT_AUTHENTICATED = 'NOT_AUTHENTICATED';
 
+// Erreur HTTP typée portant le STATUT NUMÉRIQUE (prérequis du lot file hors-ligne).
+// Permet de classer une erreur par son code (4xx permanent / 5xx transitoire) sans
+// analyser le texte du message. Additif : `message` inchangé, `.status` en plus.
+export class HttpError extends Error {
+  readonly status: number;
+  readonly body: unknown;
+  constructor(message: string, status: number, body?: unknown) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
 // Mutex pour éviter les refreshs simultanés
 let _refreshPromise: Promise<boolean> | null = null;
 let _sessionExpiredDispatched = false;
@@ -78,7 +92,7 @@ export async function apiRequest<T>(
       }
       if (!retry.ok) {
         const body = await retry.json().catch(() => ({}));
-        throw new Error(body.message || `Erreur HTTP ${retry.status}`);
+        throw new HttpError(body.message || `Erreur HTTP ${retry.status}`, retry.status, body);
       }
       return retry.json().catch(() => { throw new Error('Réponse serveur invalide (non-JSON)'); }) as Promise<T>;
     }
@@ -92,7 +106,7 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.message || `Erreur HTTP ${response.status}`);
+    throw new HttpError(body.message || `Erreur HTTP ${response.status}`, response.status, body);
   }
 
   return response.json().catch(() => { throw new Error('Réponse serveur invalide (non-JSON)'); }) as Promise<T>;
