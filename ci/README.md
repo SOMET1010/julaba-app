@@ -46,11 +46,14 @@ cible de prod reste **Non vérifiée** et **aucun auto-déploiement n'est branch
 | `= baseline` | OK |
 
 **La baseline n'est pas un niveau acceptable permanent.** Elle vaut aujourd'hui
-**10**, uniquement à cause de **types manquants** (`leaflet`, `qrcode` —
-`error TS7016`/`TS7006`). Dès que cette dette est corrigée (installer
-`@types/leaflet` et `@types/qrcode`, ou déclarer les modules), **il faut abaisser
-la baseline** ici, dans la même PR, **idéalement à `0`**. La correction des 10
-erreurs et le câblage des tests backend sont **hors du périmètre** de ce filet.
+**0** : sur une install **propre** (`npm ci` à la racine), TypeScript ne remonte
+**aucune** erreur — `@types/leaflet` et `@types/qrcode` sont des dépendances
+déclarées et se résolvent. Le « 10 » observé un temps venait d'un `node_modules`
+local **incomplet** (types non installés), pas d'une vraie dette : c'est
+précisément le run CI à froid qui a rétabli la vérité, et le cliquet qui a forcé
+l'abaissement à `0`. Toute erreur future doit donc être corrigée **avant** merge,
+et non « absorbée » par la baseline. Le câblage des tests backend reste **hors du
+périmètre** de ce filet.
 
 ## Node
 
