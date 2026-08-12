@@ -15,11 +15,10 @@
 // La politique est appliquée DANS LE SERVICE (authService.signup) afin qu'aucun
 // contrôleur ne puisse la contourner (test « appel direct du service »).
 //
-// PROPRIÉTÉ VÉRIFIÉE (indépendante de l'environnement) : un rôle interdit n'est
-// jamais CRÉÉ. On refuse (statut ≥ 400) et aucun compte n'est écrit en base.
-// La ForbiddenException porte le statut 403 (le mapping HTTP local peut donner
-// 500 à cause d'un dédoublement de @nestjs/common dans l'arbre de dépendances —
-// artefact d'environnement, hors périmètre M6+M8).
+// PROPRIÉTÉ VÉRIFIÉE : un rôle interdit n'est jamais CRÉÉ — on refuse et aucun
+// compte n'est écrit en base. Depuis l'alignement des versions @nestjs (lot
+// « contrat HTTP NestJS »), la ForbiddenException ressort au vrai statut HTTP
+// 403 : les assertions sont désormais promues à `toBe(403)` (plus de 500).
 
 import { INestApplication, ValidationPipe, ForbiddenException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -88,7 +87,7 @@ describe('Invariants M6+M8 — escalade de rôle interdite', () => {
 
   // Assertion centrale : la requête est REFUSÉE et AUCUN compte n'est créé.
   async function attendRefus(r: request.Response, phoneCible: string) {
-    expect(r.status).toBeGreaterThanOrEqual(400);          // refus (403 en env sain, 500 en env local dédoublé)
+    expect(r.status).toBe(403);                            // refus d'autorisation = 403 (contrat HTTP réel)
     expect(r.body?.user).toBeFalsy();                      // aucun compte renvoyé
     expect(r.body?.accessToken).toBeFalsy();               // aucune session ouverte
     expect(await compteExiste(phoneCible)).toBe(false);    // rien écrit en base
