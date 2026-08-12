@@ -20,7 +20,8 @@
     "test:confort": "tsx src/app/utils/confortVisuel.test.mts",
     "test:taille": "tsx src/app/utils/tailleTexte.test.mts",
     "test:tokens": "tsx src/app/services/tokens.test.mts",
-    "test:support": "tsx src/app/services/supportLu.test.mts"
+    "test:support": "tsx src/app/services/supportLu.test.mts",
+    "test:ci": "npm run test:audio && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",

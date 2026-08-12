@@ -1,11 +1,21 @@
 name: Deploy JULABA to Production
 
+# ⚠️ DÉPLOIEMENT (CD) — DÉCLENCHEMENT MANUEL UNIQUEMENT.
+#
+# Cible de production NON CONFIRMÉE : le dépôt contient deux chaînes
+# concurrentes (Render statique vs ce serveur SSH/Docker julaba.online) et rien
+# ne prouve réellement laquelle sert la prod. Tant que ce n'est pas tranché par
+# une preuve d'infrastructure/administration (pas par inférence depuis le
+# dépôt), ce workflow N'EST PAS branché sur `main` : il ne s'exécute QUE sur
+# demande explicite (« Run workflow »). Voir ci/README.md.
+#
+# L'ancien déclencheur `push: master` visait une branche INEXISTANTE (la
+# branche par défaut est `main`) : il ne se déclenchait jamais. Retiré pour
+# lever l'ambiguïté — et volontairement NON remplacé par `main`, afin de ne pas
+# activer un auto-déploiement vers une cible non confirmée. Étapes de
+# déploiement inchangées.
+
 on:
-  push:
-    branches:
-      - master
-  # Déclenchement MANUEL depuis l'onglet Actions (bouton « Run workflow »).
-  # Déploie la branche choisie (par défaut : la branche par défaut du dépôt).
   workflow_dispatch:
 
 jobs:
