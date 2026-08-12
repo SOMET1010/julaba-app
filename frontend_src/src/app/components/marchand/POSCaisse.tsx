@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Plus, Minus, Trash2, ShoppingCart, X, Check, ArrowLeft, Package, FileText } from 'lucide-react';
 import { useCaisse } from '../../contexts/CaisseContext';
+import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { useApp } from '../../contexts/AppContext';
 import { useNavigate } from 'react-router';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
@@ -253,6 +254,7 @@ export function POSCaisse() {
 
       {/* CONTENU */}
       <div style={{ flex:1, overflowY:'auto', padding:'14px 0 0' }}>
+        <SyncEchecsBanner />
         <div style={{ marginBottom:12, background:'white', border:'1.5px solid var(--trait)', borderRadius:13, padding:'11px 14px', display:'flex', alignItems:'center', gap:9 }}>
           <Search size={14} color="#aaa" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un produit..."

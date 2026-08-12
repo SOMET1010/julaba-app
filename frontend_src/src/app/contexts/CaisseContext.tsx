@@ -9,7 +9,11 @@ import { NOT_AUTHENTICATED } from '../services/api/api-client';
 import { API_URL } from '../utils/api';
 import { prixEffectif } from '../utils/promo.utils';
 // Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.
-import { enfilerOperation, synchroniser, type CaisseEndpoint } from '../voice-offline/offlineCaisse';
+import {
+  enfilerOperation, synchroniser,
+  nbEchecs as offlineNbEchecs, lettresMortes as offlineLettresMortes, purgerLettreMorte as offlinePurger,
+  type CaisseEndpoint, type LettreMorte,
+} from '../voice-offline/offlineCaisse';
 // Persistance locale du panier (Phase 1) : module pur, stockage injecté.
 import { loadCart, saveCart, clearStoredCart, type KVStore } from '../services/cartStorage';
 
@@ -32,17 +36,14 @@ function genererCle(): string {
 }
 
 // Faut-il mettre l'opération dans la file durable plutôt que de la perdre ?
-// OUI pour : hors-ligne, session expirée, panne réseau (fetch KO), passerelle ou
-// serveur temporairement KO (5xx). NON pour une vraie erreur métier 4xx (montant
-// refusé…) qu'il faut remonter à l'utilisateur (rejouer en boucle n'aiderait pas).
+// Classé par STATUT HTTP (pas d'analyse de texte) : 5xx = transitoire (enfiler),
+// 4xx = vraie erreur métier à remonter (rejouer en boucle n'aiderait pas). Sans
+// statut (hors-ligne, fetch KO, session, JSON invalide) = transitoire → enfiler.
 function doitEnfiler(error: unknown): boolean {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
-  if (error instanceof TypeError) return true; // « Failed to fetch » : réseau coupé
-  const msg = String((error as { message?: string })?.message ?? error ?? '');
-  if (msg === NOT_AUTHENTICATED) return true;
-  if (/failed to fetch|networkerror|load failed|réponse serveur invalide/i.test(msg)) return true;
-  if (/erreur http 5\d\d/i.test(msg)) return true; // 500/502/503/504
-  return false;
+  const status = (error as { status?: unknown } | null)?.status;
+  if (typeof status === 'number') return status >= 500; // 5xx enfiler ; 4xx surface
+  return true; // pas de statut HTTP → transitoire (réseau/technique/session)
 }
 
 export interface CaisseTransaction {
@@ -152,6 +153,14 @@ interface CaisseContextType {
   getCahierJour: () => CaisseTransaction[];
   
   refreshTransactions: () => Promise<void>;
+
+  // File hors-ligne — rejets définitifs (4xx) sortis de la file au rejeu.
+  /** Nombre d'opérations hors-ligne refusées définitivement, à revoir. */
+  syncEchecs: number;
+  /** Détail des opérations refusées (montant, date, motif backend). */
+  syncLettresMortes: LettreMorte[];
+  /** Retire une opération refusée du registre (après revue). */
+  purgerEchecSync: (id: string) => Promise<void>;
 }
 
 const CaisseContext = createContext<CaisseContextType | undefined>(undefined);
@@ -171,6 +180,16 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const saveWarnedRef = useRef(false);
   const [staleCart, setStaleCart] = useState<{ items: CartItem[]; updatedAt: string } | null>(null);
   const [cartUpdatedAt, setCartUpdatedAt] = useState<string | null>(null);
+  // Rejets définitifs (4xx) sortis de la file au rejeu : surfaçage obligatoire.
+  const [syncEchecs, setSyncEchecs] = useState(0);
+  const [syncLettresMortes, setSyncLettresMortes] = useState<LettreMorte[]>([]);
+  const rafraichirEchecs = useCallback(async () => {
+    try { setSyncEchecs(await offlineNbEchecs()); setSyncLettresMortes(await offlineLettresMortes()); }
+    catch { /* IndexedDB indisponible : on ignore */ }
+  }, []);
+  const purgerEchecSync = useCallback(async (id: string) => {
+    try { await offlinePurger(id); } finally { await rafraichirEchecs(); }
+  }, [rafraichirEchecs]);
 
   const loadTransactions = async () => {
     const cacheKey = `julaba_cache_tx_${appUser?.id || 'anon'}`;
@@ -215,8 +234,14 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const sync = async () => {
       try {
-        const { ok } = await synchroniser(posterOperation);
+        const avant = await offlineNbEchecs().catch(() => 0);
+        const { ok, echecs } = await synchroniser(posterOperation);
         if (ok > 0) await loadTransactions();
+        await rafraichirEchecs();
+        if (echecs > avant) {
+          const n = echecs - avant;
+          toast.error(`${n} opération${n > 1 ? 's' : ''} hors-ligne refusée${n > 1 ? 's' : ''} — à revoir`);
+        }
       } catch { /* on retentera au prochain 'online' */ }
     };
     sync(); // rattrape une file laissée par une session hors-ligne précédente
@@ -622,6 +647,9 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     getVentesJour,
     getCahierJour,
     refreshTransactions,
+    syncEchecs,
+    syncLettresMortes,
+    purgerEchecSync,
   };
 
 
