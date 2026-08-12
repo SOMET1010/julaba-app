@@ -160,8 +160,8 @@ function ModalLang({
             className="bg-white rounded-t-3xl w-full p-6 pb-10"
           >
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-5" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Langue de Tata Nanti Lou</h3>
-            <p className="text-sm text-gray-500 mb-6">Dans quelle langue tu veux me parler aujourd&apos;hui ?</p>
+            <h3 className="text-xl font-bold encre mb-2">Langue de Tata Nanti Lou</h3>
+            <p className="text-sm encre-3 mb-6">Dans quelle langue tu veux me parler aujourd&apos;hui ?</p>
             <div className="space-y-3">
               {LANGS.map((id) => {
                 const isActive = lang === id;
@@ -175,13 +175,13 @@ function ModalLang({
                     whileTap={{ scale: 0.98 }}
                     className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left"
                     style={{
-                      borderColor: isActive ? color : '#E5E7EB',
+                      borderColor: isActive ? color : 'var(--trait)',
                       backgroundColor: isActive ? `${color}08` : 'white',
                     }}
                   >
                     <span className="text-3xl">{LANG_FLAGS[id]}</span>
                     <div>
-                      <p className="font-bold text-gray-900">{LANG_LABELS[id]}</p>
+                      <p className="font-bold encre">{LANG_LABELS[id]}</p>
                       {isActive && (
                         <p className="text-xs mt-0.5" style={{ color }}>
                           Langue actuelle
@@ -214,7 +214,7 @@ function KPICard({
       className="p-3 rounded-3xl border-2 bg-gradient-to-br from-white via-white to-gray-50 shadow-md"
       style={{ borderColor: `${color}55` }}
     >
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
+      <p className="text-xs encre-3 mb-1">{label}</p>
       <p className="text-2xl font-black" style={{ color }}>
         {value}
       </p>
@@ -257,11 +257,11 @@ function AcademyKeiwaRow({
               <GraduationCap className="w-6 h-6" style={{ color }} />
             </div>
             <div className="text-left">
-              <h3 className="text-lg font-bold text-gray-900">JÙLABA Academy</h3>
-              <p className="text-xs text-gray-500">Formations et micro-apprentissages</p>
+              <h3 className="text-lg font-bold encre">JÙLABA Academy</h3>
+              <p className="text-xs encre-3">Formations et micro-apprentissages</p>
             </div>
           </div>
-          <ChevronRight className="w-6 h-6 text-gray-400" />
+          <ChevronRight className="w-6 h-6 encre-4" />
         </motion.button>
       </motion.div>
       <motion.div
@@ -283,11 +283,11 @@ function AcademyKeiwaRow({
               <Wallet className="w-6 h-6" style={{ color }} />
             </div>
             <div className="text-left">
-              <h3 className="text-lg font-bold text-gray-900">Keiwa</h3>
-              <p className="text-xs text-gray-500">Solde, recharge, historique</p>
+              <h3 className="text-lg font-bold encre">Keiwa</h3>
+              <p className="text-xs encre-3">Solde, recharge, historique</p>
             </div>
           </div>
-          <ChevronRight className="w-6 h-6 text-gray-400" />
+          <ChevronRight className="w-6 h-6 encre-4" />
         </motion.button>
       </motion.div>
     </>
@@ -327,10 +327,10 @@ function ProfilMarchandExtras({ color, navigate, sousProfil }: { color: string; 
               <Users className="w-6 h-6" style={{ color }} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900">Ma coopérative</h3>
-              <p className="text-xs text-gray-500">Rejoindre ou voir ma coop</p>
+              <h3 className="text-lg font-bold encre">Ma coopérative</h3>
+              <p className="text-xs encre-3">Rejoindre ou voir ma coop</p>
             </div>
-            <ChevronRight className="w-6 h-6 text-gray-400 ml-auto sm:ml-0" />
+            <ChevronRight className="w-6 h-6 encre-4 ml-auto sm:ml-0" />
           </motion.button>
           <motion.button
             type="button"
@@ -360,10 +360,10 @@ function ProfilMarchandExtras({ color, navigate, sousProfil }: { color: string; 
           <Shield className="w-6 h-6" style={{ color }} />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-gray-900">Ma protection sociale</h3>
-          <p className="text-xs text-gray-500">Cotisations CNPS (retraite) & CNAM (santé)</p>
+          <h3 className="text-lg font-bold encre">Ma protection sociale</h3>
+          <p className="text-xs encre-3">Cotisations CNPS (retraite) & CNAM (santé)</p>
         </div>
-        <ChevronRight className="w-6 h-6 text-gray-400 ml-auto" />
+        <ChevronRight className="w-6 h-6 encre-4 ml-auto" />
       </motion.button>
 
       {/* Programme de fidélité paramétrable (CDC 8.1.2) */}
@@ -381,15 +381,15 @@ function ProfilMarchandExtras({ color, navigate, sousProfil }: { color: string; 
           <Gift className="w-6 h-6" style={{ color }} />
         </div>
         <div>
-          <h3 className="text-lg font-bold text-gray-900">Fidélité clients</h3>
-          <p className="text-xs text-gray-500">Points & récompenses — barème réglable</p>
+          <h3 className="text-lg font-bold encre">Fidélité clients</h3>
+          <p className="text-xs encre-3">Points & récompenses — barème réglable</p>
         </div>
-        <ChevronRight className="w-6 h-6 text-gray-400 ml-auto" />
+        <ChevronRight className="w-6 h-6 encre-4 ml-auto" />
       </motion.button>
 
       {sousProfilLabel && (
         <div className="w-full p-4 rounded-2xl border-2 shadow-md mb-4" style={{ borderColor: `${color}55`, background: `linear-gradient(to bottom right, ${color}14, #ffffff)` }}>
-          <p className="text-xs text-gray-500 mb-1">Sous-profil marchand</p>
+          <p className="text-xs encre-3 mb-1">Sous-profil marchand</p>
           <p className="text-xl font-black" style={{ color }}>{sousProfilLabel}</p>
         </div>
       )}
@@ -440,8 +440,8 @@ function ProfilCooperativeExtras({
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Identité coopérative</p>
-            <h3 className="text-lg font-black text-gray-900">{cooperative?.nom || 'Coopérative'}</h3>
+            <p className="text-xs font-bold encre-3 uppercase tracking-wide mb-1">Identité coopérative</p>
+            <h3 className="text-lg font-black encre">{cooperative?.nom || 'Coopérative'}</h3>
             <p className="text-sm text-gray-600 mt-1">
               Statut juridique : <span className="font-semibold">{user?.statut?.trim() ? user.statut : 'Non renseigné'}</span>
             </p>
@@ -586,7 +586,7 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
                   <div className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg border-[3px] mx-auto mb-3" style={{ backgroundColor: `${color}18`, borderColor: color }}>
                     <CreditCard className="w-10 h-10" style={{ color }} />
                   </div>
-                  <p className="text-xl font-black text-gray-900 mb-2">Carte professionnelle Jùlaba</p>
+                  <p className="text-xl font-black encre mb-2">Carte professionnelle Jùlaba</p>
                   <p className="text-sm text-gray-600">Utilise « Afficher ma carte » pour ouvrir ta carte digitale.</p>
                 </div>
               </motion.div>
@@ -621,28 +621,28 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
                 <FileText className="w-5 h-5" style={{ color }} />
               </div>
               <div className="text-left">
-                <p className="font-bold text-gray-900">Documents et certifications</p>
-                <p className="text-xs text-gray-500">Pièces officielles et suivi</p>
+                <p className="font-bold encre">Documents et certifications</p>
+                <p className="text-xs encre-3">Pièces officielles et suivi</p>
               </div>
             </div>
-            <ChevronRight className="w-5 h-5 text-gray-400" />
+            <ChevronRight className="w-5 h-5 encre-4" />
           </motion.button>
 
           <SupportCardProfil role={role} />
 
           <div className="mt-4 mb-3 rounded-2xl border-2 border-gray-100 bg-white overflow-hidden">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide px-4 pt-3 pb-1">Actions rapides</p>
+            <p className="text-xs font-bold encre-3 uppercase tracking-wide px-4 pt-3 pb-1">Actions rapides</p>
             <motion.button
               type="button"
               onClick={() => setShowChangePwd(true)}
               className="w-full flex items-center justify-between px-4 py-3 border-t border-gray-100 text-left"
               whileTap={{ scale: 0.99 }}
             >
-              <span className="font-semibold text-gray-900 flex items-center gap-2">
-                <Lock className="w-4 h-4 text-gray-500" />
+              <span className="font-semibold encre flex items-center gap-2">
+                <Lock className="w-4 h-4 encre-3" />
                 Mot de passe
               </span>
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <ChevronRight className="w-4 h-4 encre-4" />
             </motion.button>
             <motion.button
               type="button"
@@ -650,11 +650,11 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
               className="w-full flex items-center justify-between px-4 py-3 border-t border-gray-100 text-left"
               whileTap={{ scale: 0.99 }}
             >
-              <span className="font-semibold text-gray-900 flex items-center gap-2">
-                <Globe className="w-4 h-4 text-gray-500" />
+              <span className="font-semibold encre flex items-center gap-2">
+                <Globe className="w-4 h-4 encre-3" />
                 Langue
               </span>
-              <span className="text-xs text-gray-500">{LANG_LABELS[lang]}</span>
+              <span className="text-xs encre-3">{LANG_LABELS[lang]}</span>
             </motion.button>
           </div>
 
@@ -678,7 +678,7 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
 
           <PartenairesLogos />
 
-          <p className="text-center text-xs text-gray-500 py-4">{version} · Projet DGE × ANSUT · édité par Icone Solution</p>
+          <p className="text-center text-xs encre-3 py-4">{version} · Projet DGE × ANSUT · édité par Icone Solution</p>
         </div>
       </SubPageLayout>
 
