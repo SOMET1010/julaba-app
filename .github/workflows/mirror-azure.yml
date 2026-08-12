@@ -1,9 +1,11 @@
 name: Miroir Azure DevOps
 
+# Miroir (legacy) vers Azure DevOps — DÉCLENCHEMENT MANUEL UNIQUEMENT.
+# L'ancien `push: master` visait une branche inexistante (jamais déclenché), et
+# ce job clone un AUTRE dépôt (Desiralex25/Julabaovh) puis pousse master/develop.
+# Neutralisé en manuel pour lever l'ambiguïté ; comportement interne inchangé.
+
 on:
-  push:
-    branches:
-      - master
   workflow_dispatch:
 
 permissions:

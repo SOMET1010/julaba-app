@@ -1,0 +1,71 @@
+name: CI — filet d'intégration
+
+# FILET D'INTÉGRATION (CI) — PAS de déploiement (CD).
+# Ce workflow VÉRIFIE l'intégration (install, build, tests, gate TS). Il ne
+# déploie rien et ne choisit aucune cible de production.
+#
+# Cible de production = NON VÉRIFIÉE : le dépôt contient deux chaînes
+# concurrentes (Render statique vs serveur SSH/Docker julaba.online) et rien
+# ne prouve laquelle sert la prod. Tant que ce n'est pas tranché par une preuve
+# d'infrastructure/administration, aucun auto-déploiement n'est branché ici.
+# Voir ci/README.md.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Install · build · tests · gate TS
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # Node 22 LTS : base de validation stable et durable (aucune dépendance
+      # du projet n'exige Node 24 ; aucun engines.node déclaré).
+      - name: Setup Node.js 22 (LTS)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      # Install reproductible à la RACINE (npm workspaces + lock racine).
+      # Les sous-dossiers n'ont pas de lock : on n'installe jamais par sous-dossier.
+      - name: Install (workspaces, racine)
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build -w frontend_src
+
+      - name: Build backend
+        run: npm run build -w backend
+
+      - name: Tests frontend (harnais tsx)
+        run: npm run test:ci -w frontend_src
+
+      # Déterminisme du manifeste voix (Studio Voix, Lot 1). Auto-activant :
+      # tourne dès que le script existe sur la branche (donc quand Studio Voix
+      # sera mergé), et s'ignore proprement sinon.
+      - name: Déterminisme manifeste voix (si présent)
+        run: |
+          if node -e "process.exit(require('./frontend_src/package.json').scripts['voix:manifest']?0:1)"; then
+            npm run voix:manifest -w frontend_src
+            git diff --exit-code -- docs/voix \
+              || { echo '✗ Le manifeste voix committé diffère de la régénération.'; exit 1; }
+            echo '✓ Manifeste voix déterministe.'
+          else
+            echo 'ℹ voix:manifest absent sur cette branche (Studio Voix non mergé) — étape ignorée.'
+          fi
+
+      # Gate TypeScript à baseline (cliquet). Baseline = plafond TEMPORAIRE.
+      - name: Gate TypeScript (baseline, cliquet)
+        run: node ci/check-tsc-baseline.mjs
