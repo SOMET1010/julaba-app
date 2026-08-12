@@ -508,7 +508,13 @@ export class AuthController {
       }
 
       const canonicalPassword = getDefaultPasswordForRole((body as any).role);
-      const result = await this.authService.signup({ ...body, password: canonicalPassword, mustChangePassword: true } as any);
+      // M8 : la politique de création de rôle est appliquée DANS le service en
+      // fonction du rôle du créateur (req.user.role). Un identificateur ou un
+      // operateur_terrain ne peut créer que des acteurs non privilégiés.
+      const result = await this.authService.signup(
+        { ...body, password: canonicalPassword, mustChangePassword: true } as any,
+        undefined, undefined, req.user?.role,
+      );
       if (result.user?.id) {
         await this.userRepo.update(result.user.id, { mustChangePassword: true } as any);
       }
