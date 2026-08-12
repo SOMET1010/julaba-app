@@ -48,12 +48,7 @@ describe('Invariants blockers argent (🔴 attendu — it.failing)', () => {
   });
 
   const auth = (r: request.Test) => r.set('Authorization', `Bearer ${token}`);
-  const createProduit = (nom: string, stock: number) =>
-    auth(request(app.getHttpServer()).post('/api/v1/caisse/produits')).send({ nom, stock, prix: 200 });
-  const vendre = (body: any) => auth(request(app.getHttpServer()).post('/api/v1/caisse/vente')).send(body);
   const creerCredit = (body: any) => auth(request(app.getHttpServer()).post('/api/v1/caisse/credits')).send(body);
-  const stockOf = async (nom: string) =>
-    Number((await ds.query('SELECT stock FROM produits WHERE marchand_id=$1::text AND lower(nom)=lower($2)', [marchandId, nom]))[0]?.stock);
   const nbCredits = async (client: string) =>
     (await ds.query('SELECT count(*)::int n FROM credits WHERE marchand_id=$1 AND client_nom=$2', [marchandId, client]))[0].n;
   const montantDu = async (client: string) =>
@@ -63,14 +58,7 @@ describe('Invariants blockers argent (🔴 attendu — it.failing)', () => {
   const nbTxType = async (type: string) =>
     (await ds.query('SELECT count(*)::int n FROM caisse_transactions WHERE user_id=$1 AND type=$2', [marchandId, type]))[0].n;
 
-  // I3 — Pas de survente silencieuse.
-  it.failing('I3 — vendre au-delà du stock doit être refusé (jamais clampé en silence)', async () => {
-    await createProduit('Sucre-I3', 3);
-    const r = await vendre({ montant: '2000', produits: [{ nom: 'Sucre-I3', quantite: 10 }], idempotency_key: 'I3-K' });
-    // Cible : refus explicite (une des deux formes « définies » ; l'autre = tracer un manquant).
-    expect(r.status).toBeGreaterThanOrEqual(400);
-    void stockOf;
-  }, 30000);
+  // I3 est désormais 🟢 et couvert par i1-i3-atomicite-stock.spec.ts.
 
   // I4 — Idempotence de la création de crédit.
   it.failing('I4 — même crédit rejoué ⇒ une seule dette (montant_du non doublé)', async () => {
