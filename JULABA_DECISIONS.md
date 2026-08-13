@@ -196,6 +196,8 @@ Detail complet : voir la note de session du 13/06/2026.
 - Choix actes : reserver a la creation ; bloquer si stock insuffisant (on ne reserve pas ce qui n'existe pas) ; convertir a la confirmation.
 - Aucun argent deplace : le paiement reste isole dans POST /commandes/:id/paiement, jamais touche par ce lot. No-Go Keiwa maintenu.
 - Tests : service valide par test unitaire local (9 cas, EntityManager mocke, verts). Test d'integration ajoute : backend/test/invariants/stock-reservation.spec.ts (reserve, blocage 409, liberation, conversion, idempotence). A executer en CI / local avec Postgres.
+- Lecture demi-grossiste confirmee en Option A (13/08/2026) : le demi-grossiste ne voit que les republications explicites des grossistes de sa cooperative active (aucune exposition automatique). Deja enforce cote serveur (getMarche, lot B1).
+- Regle argent gele actee pour ce lot et gravee en garde-fou executable : backend/test/invariants/argent-gele-b2.spec.ts verifie qu'un cycle complet (creation, reservation, confirmation, annulation) ne cree aucune ligne wallet_transactions et ne modifie aucun solde. L'argent ne bouge qu'a POST /commandes/:id/paiement, jamais exerce par ce lot.
 
 ---
 
