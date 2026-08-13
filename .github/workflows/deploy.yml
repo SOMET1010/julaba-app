@@ -17,6 +17,11 @@ name: Deploy JULABA to Production
 
 on:
   workflow_dispatch:
+    inputs:
+      run_migrations:
+        description: "Exécuter les migrations TypeORM en base de prod (backend d'abord, idempotent). Laisser décoché pour un déploiement de code seul."
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -87,6 +92,37 @@ jobs:
              cd /var/www/julaba && \
              sudo docker compose --env-file /var/www/julaba/backend/.env.production build --no-cache backend && \
              sudo docker compose --env-file /var/www/julaba/backend/.env.production up -d --force-recreate backend"
+
+      # ── Migrations TypeORM ────────────────────────────────────────────────
+      # Le conteneur runtime est buildé `npm ci --omit=dev` et npm/npx y sont
+      # retirés : ni ts-node ni le script npm ne sont disponibles. On invoque
+      # donc le CLI TypeORM compilé (typeorm est une dépendance runtime) contre
+      # la data-source et les migrations compilées dans dist/. `migration:run`
+      # est idempotent (seules les migrations non appliquées s'exécutent).
+      - name: Attendre que le conteneur backend réponde
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+                 ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+                 "sudo docker exec julaba_backend node -e 'process.exit(0)'"; then
+              echo "Conteneur backend prêt."; exit 0
+            fi
+            echo "Conteneur pas encore prêt (tentative $i)…"; sleep 5
+          done
+          echo "Le conteneur backend ne répond pas — migration impossible."; exit 1
+
+      - name: Migrations en attente (lecture seule)
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "sudo docker exec julaba_backend node ./node_modules/typeorm/cli.js migration:show -d dist/database/data-source.js"
+
+      - name: Exécuter les migrations TypeORM
+        if: ${{ inputs.run_migrations }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "sudo docker exec julaba_backend node ./node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js"
 
       - name: Health check
         run: |
