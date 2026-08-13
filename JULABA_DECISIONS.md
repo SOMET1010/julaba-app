@@ -205,6 +205,11 @@ Detail complet : voir la note de session du 13/06/2026.
 - Commande utilisee dans le conteneur julaba_backend : node ./node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js. Raison : le conteneur runtime est bati npm ci --omit=dev et npm/npx y sont retires (Dockerfile) ; ni ts-node ni le script npm ne sont disponibles. typeorm est une dependance runtime et nest build compile data-source.ts et les migrations en JS dans dist/, d'ou l'appel direct au CLI compile.
 - Ceci reste dans la regle section 5 (migrations manuelles en prod) : le declenchement est un acte humain delibere (Run workflow + case cochee), jamais automatique. Applique notamment la migration B2 1779200000000-AddStockReservations.
 
+13/08/2026, clarification chaine de prod : la production reelle est RENDER, pas le VPS OVH.
+- render.yaml (blueprint) monte julaba-db (Postgres manage), julaba-api (backend NestJS, autoDeploy: true) et julaba-web (front statique, autoDeploy: true). Un push sur main redeploie automatiquement. Le VPS OVH et .github/workflows/deploy.yml (SSH/Docker) sont une seconde chaine, non utilisee pour servir la prod Render.
+- Gestion du schema sur Render : prepareDatabase() dans main.ts active synchronize UNIQUEMENT si la base est vierge ; sur base peuplee, synchronize et migrationsRun sont OFF (DB_MIGRATIONS_RUN non defini, historique de migrations incomplet qui echouerait). Le schema reel est complete au boot par DbInitService.runInit() (CREATE TABLE IF NOT EXISTS idempotents), appele depuis main.ts a chaque demarrage.
+- Consequence B2 : la table stock_reservations n'etait creee ni par synchronize ni par migration sur la base peuplee. Ajoutee a DbInitService.runInit() (miroir de la migration 1779200000000). Au prochain autoDeploy Render (declenche par le merge), la table se cree automatiquement, sans acces DB ni SSH. La migration TypeORM et l'entite restent en place pour les autres environnements et les tests.
+
 ---
 
 ## 10. Points de vigilance et dette technique
