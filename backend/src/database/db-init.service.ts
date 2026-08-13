@@ -172,6 +172,35 @@ export class DbInitService {
       this.logger.warn('Erreur ledger stock_mouvements: ' + message);
     }
 
+    // ── B2 : réservation de stock sur commande (marché virtuel) ──────────────
+    // Créée ici (idempotent) parce que sur une base Render déjà peuplée,
+    // synchronize et migrationsRun sont OFF : ni les entités ni les migrations
+    // ne créent cette table au démarrage. Miroir de la migration
+    // 1779200000000-AddStockReservations.
+    try {
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS stock_reservations (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          commande_id uuid NOT NULL,
+          publication_id uuid NOT NULL,
+          quantite numeric(10,2) NOT NULL,
+          statut varchar(20) NOT NULL DEFAULT 'active',
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS ux_stock_reservations_commande ON stock_reservations (commande_id);`,
+      );
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_stock_reservations_publication ON stock_reservations (publication_id);`,
+      );
+      this.logger.log('Table stock_reservations (B2) vérifiée');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur table stock_reservations: ' + message);
+    }
+
     // ── Colonnes/tables secondaires manquantes sur base neuve ────────────────
     // Des tâches de fond (cron) attendent des colonnes/tables que `synchronize`
     // ne crée pas (entités incomplètes ou tables en SQL brut). Non bloquant, mais
