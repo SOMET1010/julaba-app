@@ -3,10 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { Publication } from '../producteur/publications/entities/publication.entity';
 import { RepublierPublicationDto } from './dto/republier-publication.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CooperativeResolverService } from '../cooperatives-rest/cooperative-resolver.service';
+
+/** Roles autorises a creer une offre sur le marche producteur (POST /publications). */
+const ROLES_PUBLICATION_MARCHE_PRODUCTEUR: readonly UserRole[] = [
+  UserRole.PRODUCTEUR,
+  UserRole.COOPERATEUR,
+];
 
 @Controller('publications')
 export class PublicationsRestController {
@@ -17,6 +24,7 @@ export class PublicationsRestController {
     private dataSource: DataSource,
     private notifService: NotificationsService,
     @InjectRepository(User) private userRepo: Repository<User>,
+    private readonly coopResolver: CooperativeResolverService,
   ) {}
 
   @UseGuards(JwtAuthGuard)
@@ -79,11 +87,7 @@ export class PublicationsRestController {
 
       // Demi-grossiste : marché coopératif scopé sur sa coopérative active
       if (sousProfil === 'demi_grossiste') {
-        const coop = await this.dataSource.query(
-          `SELECT cooperative_id FROM cooperative_membres WHERE membre_id = $1 AND actif = true LIMIT 1`,
-          [user.id],
-        );
-        const coopId = coop?.[0]?.cooperative_id || null;
+        const coopId = await this.coopResolver.getActiveCooperativeId(user.id);
         if (!coopId) return { publications: [] };
         const publications = await this.dataSource.query(
           `${baseSelect} AND p.type_marche = 'cooperative' AND p.cooperative_id = $1${orderBy}`,
@@ -103,6 +107,18 @@ export class PublicationsRestController {
   @UseGuards(JwtAuthGuard)
   @Post()
   async create(@Body() body: any, @CurrentUser() user: User) {
+    // Garde de role : le marche producteur (type_marche='producteur' par defaut)
+    // n'accepte que des offres d'auteurs producteur ou cooperateur. Un grossiste
+    // voit tout p.type_marche='producteur' sans filtre d'auteur (getMarche) ; sans
+    // cette garde, un detaillant, un demi-grossiste ou une institution qui poste
+    // apparaitrait dans le marche de tous les grossistes. Les grossistes publient
+    // par la voie dediee /publications/republier (marche cooperatif).
+    const role = String(user?.role || '').toLowerCase() as UserRole;
+    if (!ROLES_PUBLICATION_MARCHE_PRODUCTEUR.includes(role)) {
+      throw new ForbiddenException(
+        'Publication sur le marché producteur réservée aux producteurs et coopérateurs',
+      );
+    }
     const result = await this.dataSource.query(
       `INSERT INTO publications (user_id, produit, culture, quantite_disponible, quantite_initiale, unite, prix_unitaire, qualite, localisation, active, statut, date_recolte, description, photo_url, date_publication)
        VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,true,'disponible',$9,$10,$11,NOW())
@@ -156,11 +172,7 @@ export class PublicationsRestController {
     }
 
     // Coopérative active dérivée serveur (jamais fournie par le client)
-    const coop = await this.dataSource.query(
-      `SELECT cooperative_id FROM cooperative_membres WHERE membre_id = $1 AND actif = true LIMIT 1`,
-      [user.id],
-    );
-    const coopId = coop?.[0]?.cooperative_id || null;
+    const coopId = await this.coopResolver.getActiveCooperativeId(user.id);
     if (!coopId) {
       throw new ConflictException('Aucune coopérative active : republication impossible');
     }
