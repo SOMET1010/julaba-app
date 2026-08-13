@@ -199,6 +199,12 @@ Detail complet : voir la note de session du 13/06/2026.
 - Lecture demi-grossiste confirmee en Option A (13/08/2026) : le demi-grossiste ne voit que les republications explicites des grossistes de sa cooperative active (aucune exposition automatique). Deja enforce cote serveur (getMarche, lot B1).
 - Regle argent gele actee pour ce lot et gravee en garde-fou executable : backend/test/invariants/argent-gele-b2.spec.ts verifie qu'un cycle complet (creation, reservation, confirmation, annulation) ne cree aucune ligne wallet_transactions et ne modifie aucun solde. L'argent ne bouge qu'a POST /commandes/:id/paiement, jamais exerce par ce lot.
 
+13/08/2026, deploiement : etape migration controlee ajoutee a .github/workflows/deploy.yml :
+- deploy.yml reste en workflow_dispatch (declenchement manuel, un clic, jamais auto sur push). Nouvel input booleen run_migrations (decoche par defaut) : un deploiement de code seul ne touche pas la base ; cocher la case execute les migrations en attente.
+- Une etape 'Migrations en attente (lecture seule)' liste toujours l'etat (migration:show) ; l'etape 'Executer les migrations' (migration:run, idempotent) ne s'execute que si run_migrations est coche. Ordre : rebuild backend, attente conteneur, show, run conditionnel, health check. Backend d'abord, conforme section 5.
+- Commande utilisee dans le conteneur julaba_backend : node ./node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js. Raison : le conteneur runtime est bati npm ci --omit=dev et npm/npx y sont retires (Dockerfile) ; ni ts-node ni le script npm ne sont disponibles. typeorm est une dependance runtime et nest build compile data-source.ts et les migrations en JS dans dist/, d'ou l'appel direct au CLI compile.
+- Ceci reste dans la regle section 5 (migrations manuelles en prod) : le declenchement est un acte humain delibere (Run workflow + case cochee), jamais automatique. Applique notamment la migration B2 1779200000000-AddStockReservations.
+
 ---
 
 ## 10. Points de vigilance et dette technique
