@@ -181,6 +181,14 @@ Note ouverte : aucune prod ANSUT n'existe a ce jour. Seul julaba.online (OVH) to
 
 Detail complet : voir la note de session du 13/06/2026.
 
+13/08/2026, lot Marche B1, durcissement de la cascade de visibilite (Option A) :
+- Option A actee : le grossiste publie explicitement son offre vers sa cooperative via POST /publications/republier. Aucune exposition automatique du stock des grossistes. Le demi-grossiste ne voit que ces republications, scopees sur sa cooperative active.
+- Garde d'autorite de publication ajoutee sur POST /publications (backend/src/publications-rest/publications-rest.controller.ts, methode create). Creer une offre du marche producteur est desormais reserve aux roles producteur et cooperateur, via la constante ROLES_PUBLICATION_MARCHE_PRODUCTEUR. Avant ce correctif l'endpoint n'avait que JwtAuthGuard : tout compte authentifie, y compris detaillant, demi-grossiste ou institution, pouvait creer une offre visible par tous les grossistes, car le marche grossiste filtre p.type_marche='producteur' sans filtre d'auteur (getMarche).
+- Resolveur unique de cooperative active introduit : backend/src/cooperatives-rest/cooperative-resolver.service.ts (CooperativeResolverService.getActiveCooperativeId), expose par cooperative-resolver.module.ts. Les deux sites de visibilite de publications-rest (getMarche demi-grossiste et republier) passent desormais par ce resolveur au lieu de dupliquer la requete cooperative_membres ... actif=true.
+- Cascade de visibilite deja enforcee cote serveur avant ce lot (getMarche) : confirme par inspection. Aucune re-derivation cote client ; frontend_src/src/app/components/marchand/MarcheVirtuel.tsx ne fait que du comptage d'onglets sur l'ensemble deja filtre serveur.
+- Aucun argent deplace, No-Go Keiwa maintenu.
+- Tests : garde et cascade valides par test unitaire local (11 cas, DataSource mockee, verts). Test d'integration ajoute : backend/test/invariants/publication-authorship.spec.ts (harnais test:invariants, Postgres). A executer en CI ou en local avec base ; non execute en environnement de developpement sans Postgres.
+
 ---
 
 ## 10. Points de vigilance et dette technique
@@ -193,6 +201,8 @@ Detail complet : voir la note de session du 13/06/2026.
 - Branche ansut sur Azure sans equivalent GitHub : ecart assume a la regle miroir strict, justifie par le travail ANSUT.
 - Serveur : Swap usage observe a 99 pour cent le 13/06/2026. A surveiller.
 - Anciens secrets (par exemple Julaba2026) restent dans l'historique git de GitHub et du miroir Azure, mais sont inactifs. Les depots sont prives. A garder en tete si une reecriture d'historique est envisagee.
+- Resolution de cooperative encore dupliquee hors du chemin de visibilite (constate le 13/08/2026). producteurs-rest.controller.ts (recoltes-prevues) et scores.controller.ts gardent leur propre requete ; recoltes-prevues joint la commune et filtre bien actif=true. En revanche cooperatives-rest.controller.ts ma-cooperative lit la derniere adhesion par created_at SANS filtre actif=true : il peut afficher une cooperative inactive, divergent du resolveur canonique. C'est un endpoint d'affichage, sans impact sur la cascade de visibilite du marche. A reconcilier prudemment : une adhesion en attente ne doit pas disparaitre de l'ecran.
+- L'upsert de POST /publications utilise ON CONFLICT (user_id, LOWER(TRIM(produit))). Aucune migration TypeORM ne cree l'index d'expression unique correspondant ; il doit exister en prod par DDL manuelle. A verifier en base de prod et a inscrire dans une migration pour reproductibilite. Le test d'integration publication-authorship.spec.ts cree cet index dans son setup pour rester deterministe sous synchronize.
 
 ---
 
