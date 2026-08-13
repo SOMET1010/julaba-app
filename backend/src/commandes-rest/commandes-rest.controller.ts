@@ -6,6 +6,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { Commande, CommandeStatut } from '../commandes/entities/commande.entity';
 import { Negociation, NegociationStatut } from '../commandes/entities/negociation.entity';
+import { StockReservationService } from '../commandes/stock-reservation.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Wallet } from '../wallets/entities/wallet.entity';
 import { TransactionType, WalletTransaction } from '../wallets/entities/wallet-transaction.entity';
@@ -20,6 +21,7 @@ export class CommandesRestController {
     @InjectRepository(Negociation) private negRepo: Repository<Negociation>,
     @InjectDataSource() private dataSource: DataSource,
     private notifService: NotificationsService,
+    private reservation: StockReservationService,
   ) {}
 
   @Get()
@@ -108,27 +110,45 @@ export class CommandesRestController {
     if (isNaN(prixUnitaire) || prixUnitaire <= 0) throw new BadRequestException('prixUnitaire invalide');
     if (isNaN(total) || total <= 0) throw new BadRequestException('total invalide');
 
-    const saved = await this.repo.save(
-      this.repo.create({
-        acheteurId,
-        vendeurId,
-        publicationId: body.publication_id || body.publicationId || null,
-        type: body.type,
-        produit: body.produit,
-        quantite,
-        prixUnitaire,
-        total,
-        statut,
-        dateCommande: new Date(),
-        notes: body.notes || null,
-        modePaiement: body.mode_paiement || body.modePaiement || null,
-        acheteurNom: nomLibre,
-        imageUrl: body.image_url || null,
-        acheteurTelephone: body.acheteur_telephone || null,
-        localite: body.localite || null,
-        dateLivraison: body.date_livraison ? new Date(body.date_livraison) : null,
-      }),
-    );
+    // Insertion commande + reservation de stock dans UNE transaction (atomicite).
+    // en_attente -> reserve (bloque 409 si stock insuffisant, la commande n'est
+    // alors pas creee). confirmee -> convertit directement en vente ferme.
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const commande = await manager.save(
+        manager.create(Commande, {
+          acheteurId,
+          vendeurId,
+          publicationId: body.publication_id || body.publicationId || null,
+          type: body.type,
+          produit: body.produit,
+          quantite,
+          prixUnitaire,
+          total,
+          statut,
+          dateCommande: new Date(),
+          notes: body.notes || null,
+          modePaiement: body.mode_paiement || body.modePaiement || null,
+          acheteurNom: nomLibre,
+          imageUrl: body.image_url || null,
+          acheteurTelephone: body.acheteur_telephone || null,
+          localite: body.localite || null,
+          dateLivraison: body.date_livraison ? new Date(body.date_livraison) : null,
+        }),
+      );
+      if (commande.publicationId) {
+        const cible = {
+          commandeId: commande.id,
+          publicationId: commande.publicationId,
+          quantite: Number(commande.quantite),
+        };
+        if (commande.statut === CommandeStatut.EN_ATTENTE) {
+          await this.reservation.reserver(manager, cible);
+        } else if (commande.statut === CommandeStatut.CONFIRMEE) {
+          await this.reservation.convertir(manager, cible);
+        }
+      }
+      return commande;
+    });
     try {
       await this.notifService.notifyCommande(saved.vendeurId, saved.id, Number(saved.total || 0));
     } catch (error) {
@@ -243,7 +263,22 @@ export class CommandesRestController {
     const safeBody = Object.fromEntries(
       Object.entries(body).filter(([k]) => allowed.includes(k))
     );
-    await this.repo.update(id, safeBody);
+    // Mise a jour statut + effet stock dans UNE transaction (atomicite I1).
+    // confirmee : convertit la reservation en vente ferme (remplace l'ancien
+    // decrement SQL brut, sans transaction ni idempotence). annulee : libere la
+    // reservation active et restitue le disponible. Idempotent par commande_id.
+    await this.dataSource.transaction(async (manager) => {
+      await manager.update(Commande, id, safeBody);
+      if (nextStatut === CommandeStatut.CONFIRMEE && cmd.statut !== CommandeStatut.CONFIRMEE && cmd.publicationId) {
+        await this.reservation.convertir(manager, {
+          commandeId: id,
+          publicationId: cmd.publicationId,
+          quantite: Number(cmd.quantite),
+        });
+      } else if (nextStatut === CommandeStatut.ANNULEE && cmd.statut !== CommandeStatut.ANNULEE) {
+        await this.reservation.liberer(manager, id);
+      }
+    });
     if (nextStatut && nextStatut !== cmd.statut) {
       const map: Record<string, { titre: string; message: string }> = {
         confirmee: { titre: 'Commande confirmée', message: `La commande ${cmd.produit} a été confirmée.` },
@@ -280,29 +315,6 @@ export class CommandesRestController {
           this.logger.error('commande status notification failed', error instanceof Error ? error.stack : String(error));
         }
       }
-    }
-
-    // Décrémenter stock_disponible de la publication quand confirmée
-    if (body.statut === 'confirmee' && cmd.publicationId && cmd.statut !== 'confirmee') {
-      await this.repo.manager.query(
-        `UPDATE publications SET
-           quantite_disponible = GREATEST(0, quantite_disponible - $1),
-           statut = CASE WHEN GREATEST(0, quantite_disponible - $1) = 0 THEN 'epuise' ELSE statut END,
-           updated_at = NOW()
-         WHERE id = $2`,
-        [Number(cmd.quantite), cmd.publicationId]
-      );
-      // Mettre à jour stock_disponible de la récolte liée
-      await this.repo.manager.query(
-        `UPDATE recoltes r
-         SET stock_disponible = GREATEST(0, r.stock_disponible - $1),
-             stock_vendu = r.stock_vendu + $1,
-             statut = CASE WHEN GREATEST(0, r.stock_disponible - $1) = 0 THEN 'vendue' ELSE r.statut END,
-             updated_at = NOW()
-         FROM publications p
-         WHERE p.id = $2 AND p.recolte_id = r.id`,
-        [Number(cmd.quantite), cmd.publicationId]
-      );
     }
     return { success: true };
   }
