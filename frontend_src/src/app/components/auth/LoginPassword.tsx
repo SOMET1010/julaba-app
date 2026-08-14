@@ -111,6 +111,13 @@ export function LoginPassword() {
   // (lecture = clavier direct, mixte = les deux, voix = micro au centre).
   const accessMode: EffectiveMode = getEffectiveMode();
   const [showKeypad, setShowKeypad] = useState(clavierParDefaut(accessMode)); // ouvert d'office en mode lecture
+  // Voix (écoute) réellement disponible sur l'appareil (moteur natif prêt) :
+  // signal de certification MINIMAL (design v0.3). Fausse aujourd'hui sur le web
+  // et sur l'APK sans moteur → le NUMÉRO se saisit au PAVÉ, sans micro trompeur.
+  // (Lot 5 remplacera ce signal par une certification vocale complète.)
+  const voixEcouteDispo = (() => { try { return offlineModelReady(); } catch { return false; } })();
+  // Le pavé est la référence : toujours visible tant que la voix n'écoute pas.
+  const clavierVisible = showKeypad || !voixEcouteDispo;
   // Canal utilisé pour CETTE identification (clavier / voix) → apprentissage 'auto'.
   const dernierCanalRef = useRef<'clavier' | 'voix' | null>(null);
   // Proposition d'adaptation de Tata (mode 'auto' + préférence franche observée).
@@ -950,8 +957,8 @@ export function LoginPassword() {
           alignItems: 'center',
           // Centré quand il n'y a que le micro ; aligné en haut quand le clavier
           // est ouvert (sinon le haut sortait de l'écran, non atteignable).
-          justifyContent: showKeypad ? 'flex-start' : 'center',
-          paddingTop: showKeypad ? 12 : 0,
+          justifyContent: clavierVisible ? 'flex-start' : 'center',
+          paddingTop: clavierVisible ? 12 : 0,
         }}
       >
         <AnimatePresence mode="wait">
@@ -1104,7 +1111,9 @@ export function LoginPassword() {
                 />
               ))}
             </div>
-            {/* GRAND MICRO — l'action. On touche, Tata dit « dis ton numéro », le micro devient vert. */}
+            {/* GRAND MICRO — l'action, UNIQUEMENT si la voix écoute réellement.
+                Sinon (cas actuel) : aucun micro trompeur, le pavé est la référence. */}
+            {voixEcouteDispo && (
             <motion.button
               type="button"
               aria-label="Touchez et dites votre numéro"
@@ -1127,6 +1136,7 @@ export function LoginPassword() {
             >
               <Mic style={{ width: '42%', height: '42%' }} />
             </motion.button>
+            )}
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -1180,15 +1190,18 @@ export function LoginPassword() {
                 }} />
               </motion.div>
             )}
-            {/* Une seule action secondaire : le clavier (filet). Rien d'autre. */}
+            {/* Bascule clavier : uniquement en mode voix (sinon le pavé est déjà
+                la référence, toujours affiché). */}
+            {voixEcouteDispo && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 22 }}>
               <button type="button" aria-label="Taper mon numéro sur le clavier" onClick={() => setShowKeypad(v => !v)}
                 style={{ width: 58, height: 58, borderRadius: 18, background: showKeypad ? '#DB7A2C' : '#F3E7D8', color: showKeypad ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
                 <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 13h6"/></svg>
               </button>
             </div>
+            )}
 
-            {showKeypad && (
+            {clavierVisible && (
             <>
             <div style={{ textAlign: 'center', marginTop: 14, fontSize: 24, fontWeight: 700, letterSpacing: 3, color: '#3d1a08', minHeight: 30, fontVariantNumeric: 'tabular-nums' }}>{formatPhoneNumber(phone) || ' '}</div>
             <div style={{

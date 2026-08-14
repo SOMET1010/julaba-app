@@ -35,9 +35,10 @@ export function Welcome({ onComplete }: WelcomeProps) {
   // Toucher l'écran = commencer (Tata s'arrête, on entre).
   const commencer = () => { stopIntro(); onComplete?.(); };
 
-  // Maquette d'Alex (11/08/2026) : photo de marché plein écran sous un voile
-  // orange, logo Jùlaba (SVG propre, sans cartouche), carte DGE + ANSUT,
-  // Commencer, et « by icone » discret en bas à droite.
+  // Design v0.3 (validé 12/08/2026) : photo de marché plein écran sous un voile
+  // orange, logo Jùlaba seul (SANS slogan), carte DGE + ANSUT, grande action
+  // « Commencer » avec une flèche (compréhensible sans lire). Aucune mention
+  // Icone : le projet est porté par la DGE et l'ANSUT.
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-between p-8 cursor-pointer"
@@ -52,25 +53,22 @@ export function Welcome({ onComplete }: WelcomeProps) {
     >
       <div className="flex-1" />
 
-      {/* Logo (SVG rendu en blanc) + devise */}
+      {/* Logo (SVG rendu en blanc), SANS slogan */}
       <motion.div
         className="flex flex-col items-center text-center w-full max-w-sm px-4"
         initial={{ opacity: 0, scale: 0.85 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.7, ease: 'easeOut' }}
       >
-        {/* Le SVG complet contient la devise ET le cartouche « By icone » :
+        {/* Le SVG complet contient un slogan ET un cartouche éditeur :
             on ne montre que la MARQUE (bande haute du viewBox), le reste est
-            recadré. La devise est réécrite en HTML juste dessous. */}
+            recadré → seul « Jùlaba » est visible. */}
         <div style={{ width: '100%', maxWidth: 330, overflow: 'hidden', aspectRatio: '841.89 / 205' }} aria-label="Jùlaba" role="img">
           <img
             src={logoJulabaSvg} alt=""
             style={{ width: '100%', height: 'auto', display: 'block', filter: 'brightness(0) invert(1)' }}
           />
         </div>
-        <p style={{ color: '#fff', fontFamily: 'Georgia, serif', fontSize: 20, margin: '12px 0 0', textShadow: '0 1px 8px rgba(0,0,0,0.25)' }}>
-          Ton djè est bien géré
-        </p>
       </motion.div>
 
       <div className="flex-1" />
@@ -99,19 +97,18 @@ export function Welcome({ onComplete }: WelcomeProps) {
       >
         <motion.button
           onClick={(e) => { e.stopPropagation(); commencer(); }}
-          className="w-full h-14 bg-white rounded-full text-lg font-bold shadow-lg"
+          className="w-full h-14 bg-white rounded-full text-lg font-bold shadow-lg flex items-center justify-center gap-3"
           style={{ color: '#C46210' }}
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
         >
+          {/* Flèche = « toucher pour avancer », compréhensible sans lire (v0.3) */}
+          <span aria-hidden="true" style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, borderRadius: '50%', background: 'rgba(196,98,16,0.14)' }}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#C46210" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </span>
           Commencer
         </motion.button>
       </motion.div>
-
-      {/* Éditeur : discret, en bas à droite (demande d'Alex). */}
-      <p style={{ position: 'absolute', right: 14, bottom: 8, margin: 0, color: 'rgba(255,255,255,0.45)', fontSize: 9 }}>
-        by icone
-      </p>
     </div>
   );
 }
