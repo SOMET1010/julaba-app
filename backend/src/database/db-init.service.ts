@@ -355,5 +355,43 @@ export class DbInitService {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur tables credits/clients: ' + message);
     }
+    try {
+      // ── MARCHÉ PRODUCTEUR : schéma requis par POST /publications ──────────
+      // Cause racine du 500 systématique sur la publication d'offre en prod :
+      // le handler create() fait un `INSERT ... ON CONFLICT (user_id,
+      // LOWER(TRIM(produit)))`. Cette clause EXIGE un index unique d'expression
+      // identique. Or `ux_publications_user_produit` n'était posé NI par une
+      // migration (jamais exécutées en prod) NI ici — seul le test invariant le
+      // créait. Sans lui, Postgres répond « no unique or exclusion constraint
+      // matching the ON CONFLICT specification » → 500 à chaque publication.
+      // DbInit étant le mécanisme réel du schéma de prod, l'index se pose ICI.
+
+      // Colonne référencée par l'INSERT de création (défensif, no-op si présente).
+      await this.dataSource.query(
+        `ALTER TABLE publications ADD COLUMN IF NOT EXISTS quantite_initiale numeric(10,2);`,
+      );
+      // Dédoublonnage préalable : un CREATE UNIQUE INDEX échoue si la base
+      // contient déjà deux offres de même (user_id, produit normalisé). On garde
+      // une ligne par clé (sémantique de l'upsert : « même produit = même offre »).
+      await this.dataSource.query(`
+        DELETE FROM publications a
+        USING publications b
+        WHERE a.user_id = b.user_id
+          AND LOWER(TRIM(a.produit)) = LOWER(TRIM(b.produit))
+          AND a.ctid < b.ctid;
+      `);
+      // L'index unique d'expression, à l'identique du ON CONFLICT du controller
+      // et du spec invariant publication-authorship.
+      await this.dataSource.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_publications_user_produit
+          ON publications (user_id, LOWER(TRIM(produit)));
+      `);
+      this.logger.log(
+        'Publications : colonne quantite_initiale + index unique ux_publications_user_produit vérifiés',
+      );
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur convergence schéma publications: ' + message);
+    }
   }
 }
