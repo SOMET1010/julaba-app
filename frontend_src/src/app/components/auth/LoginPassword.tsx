@@ -490,7 +490,7 @@ export function LoginPassword() {
       setError("Je n'ai pas compris. Tape ton numéro juste ici 👇"); setShowKeypad(true); parle("Je n'ai pas compris. Tape ton numéro juste ici.");
     },
     buildTag: 'sherpa-login-live-v1',
-    siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, il faut installer ma voix une fois. Touche le bouton, ou tape ton numéro."); },
+    siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro."); },
     siMicRefuse: () => { setError('Autorise le micro, ou tape ton numéro 👇'); parle('Autorise le micro, ou tape ton numéro.'); setShowKeypad(true); },
     siEchec: () => { setShowKeypad(true); parle('Tape ton numéro juste ici.'); },
   });

@@ -60,9 +60,13 @@ export const INTRO_CLIPS: Record<string, IntroClip> = {
   },
   // Installation de la voix
   voixInstall: {
+    // NOTE : intro-voix.mp3 est un enregistrement qui dit encore l'ancien
+    // message trompeur (« gros fichier », « wifi »). A REENREGISTRER pour coller
+    // a ce texte. Le fallback texte ci-dessous, lui, est deja juste (sonde, pas
+    // de telechargement) — cf. audit REPONSE_SHERPA Q5.
     file: `${BASE}/intro-voix.mp3`,
-    texte: "Pour que je puisse t'écouter et te parler partout, même sans réseau, on installe ma voix une fois. " +
-      "C'est un gros fichier, alors fais-le tranquillement, quand tu as le wifi. Rien ne presse.",
+    texte: "Pour que je puisse t'écouter et te parler partout, même sans réseau : " +
+      "ta voix est déjà dans l'application, je la vérifie, c'est tout. Rien à télécharger.",
   },
   // Récompense finale
   bravo: {
