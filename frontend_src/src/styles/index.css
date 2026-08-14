@@ -234,3 +234,13 @@ body {
 .bo-login-icon-lock {
   animation: bo-login-float-icon 2s ease-in-out infinite;
 }
+
+/* Focus clavier visible (repeigne lot 1) : anneau brun sur :focus-visible
+   uniquement (jamais au toucher). Une navigation au clavier/switch reste
+   possible pour les utilisatrices équipées d'aides techniques. */
+button:focus-visible, a:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible, [role="button"]:focus-visible {
+  outline: 3px solid #C46210;
+  outline-offset: 2px;
+  border-radius: 6px;
+}

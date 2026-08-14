@@ -94,7 +94,7 @@ function Toggle({ value, onChange, color }: { value: boolean; onChange: (v: bool
     <motion.button
       onClick={() => onChange(!value)}
       className="relative w-12 h-6 rounded-full transition-colors flex-shrink-0"
-      style={{ backgroundColor: value ? color : '#E5E7EB' }}
+      style={{ backgroundColor: value ? color : 'var(--trait)' }}
       whileTap={{ scale: 0.95 }}
     >
       <motion.div
@@ -122,7 +122,7 @@ function Section({ title, icon: Icon, color, children }: {
         <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
           <Icon className="w-5 h-5" style={{ color }} />
         </div>
-        <h3 className="font-bold text-gray-900">{title}</h3>
+        <h3 className="font-bold encre">{title}</h3>
       </div>
       <div className="divide-y divide-gray-100">{children}</div>
     </motion.div>
@@ -135,8 +135,8 @@ function RowToggle({ label, sublabel, value, onChange, color }: {
   return (
     <div className="flex items-center justify-between px-5 py-4">
       <div className="flex-1 pr-4">
-        <p className="font-semibold text-gray-900">{label}</p>
-        {sublabel && <p className="text-xs text-gray-500 mt-0.5">{sublabel}</p>}
+        <p className="font-semibold encre">{label}</p>
+        {sublabel && <p className="text-xs encre-3 mt-0.5">{sublabel}</p>}
       </div>
       <Toggle value={value} onChange={onChange} color={color} />
     </div>
@@ -154,8 +154,8 @@ function RowAction({ label, sublabel, icon: Icon, danger, badge, onClick }: {
       whileTap={{ scale: 0.99 }}
     >
       <div className="flex-1">
-        <p className="font-semibold" style={{ color: danger ? '#DC2626' : '#111827' }}>{label}</p>
-        {sublabel && <p className="text-xs text-gray-500 mt-0.5">{sublabel}</p>}
+        <p className="font-semibold" style={{ color: danger ? '#DC2626' : 'var(--encre)' }}>{label}</p>
+        {sublabel && <p className="text-xs encre-3 mt-0.5">{sublabel}</p>}
       </div>
       <div className="flex items-center gap-2">
         {badge !== undefined && badge > 0 && (
@@ -165,7 +165,7 @@ function RowAction({ label, sublabel, icon: Icon, danger, badge, onClick }: {
         )}
         {Icon
           ? <Icon className="w-5 h-5" style={{ color: danger ? '#DC2626' : 'var(--encre-4)' }} />
-          : <ChevronRight className="w-5 h-5 text-gray-400" />
+          : <ChevronRight className="w-5 h-5 encre-4" />
         }
       </div>
     </motion.button>
@@ -195,8 +195,8 @@ function ModalDanger({ isOpen, title, message, confirmLabel, onConfirm, onClose 
             <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-8 h-8 text-red-500" />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 text-center mb-2">{title}</h3>
-            <p className="text-gray-500 text-center text-sm mb-6">{message}</p>
+            <h3 className="text-xl font-bold encre text-center mb-2">{title}</h3>
+            <p className="encre-3 text-center text-sm mb-6">{message}</p>
             <div className="flex gap-3">
               <motion.button
                 onClick={onClose} whileTap={{ scale: 0.97 }}
@@ -270,11 +270,11 @@ function ModalDeleteAccount({ isOpen, onClose }: {
                 <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
                   <Trash2 className="w-8 h-8 text-red-500" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 text-center mb-2">Supprimer mon compte</h3>
-                <p className="text-sm text-gray-500 text-center mb-2">
+                <h3 className="text-xl font-bold encre text-center mb-2">Supprimer mon compte</h3>
+                <p className="text-sm encre-3 text-center mb-2">
                   Cette action est <span className="font-bold text-red-600">définitive et irréversible</span>.
                 </p>
-                <p className="text-xs text-gray-400 text-center mb-6">
+                <p className="text-xs encre-4 text-center mb-6">
                   Toutes tes données, transactions et historiques seront perdus.
                 </p>
                 <div className="flex gap-3">
@@ -290,8 +290,8 @@ function ModalDeleteAccount({ isOpen, onClose }: {
               </>
             ) : (
               <>
-                <h3 className="text-xl font-bold text-gray-900 text-center mb-2">Confirme ton identité</h3>
-                <p className="text-sm text-gray-500 text-center mb-6">Entre ton code de connexion pour confirmer la suppression</p>
+                <h3 className="text-xl font-bold encre text-center mb-2">Confirme ton identité</h3>
+                <p className="text-sm encre-3 text-center mb-6">Entre ton code de connexion pour confirmer la suppression</p>
                 <input
                   type="password"
                   inputMode="numeric"
@@ -364,7 +364,7 @@ function ModalSessions({ isOpen, onClose, color }: {
           >
             <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-3xl">
               <div className="w-12 h-1.5 bg-gray-200 rounded-full absolute top-3 left-1/2 -translate-x-1/2" />
-              <h3 className="font-bold text-gray-900 text-lg mt-2">Historique des connexions</h3>
+              <h3 className="font-bold encre text-lg mt-2">Historique des connexions</h3>
               <motion.button onClick={onClose} whileTap={{ scale: 0.9 }}
                 className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center mt-2">
                 <X className="w-4 h-4 text-gray-600" />
@@ -372,9 +372,9 @@ function ModalSessions({ isOpen, onClose, color }: {
             </div>
             <div className="p-5 space-y-3">
               {loading ? (
-                <p className="text-center text-gray-400 py-8">Chargement...</p>
+                <p className="text-center encre-4 py-8">Chargement...</p>
               ) : sessions.length === 0 ? (
-                <p className="text-center text-gray-400 py-8">Aucune session active</p>
+                <p className="text-center encre-4 py-8">Aucune session active</p>
               ) : sessions.map(s => (
                 <div key={s.id}
                   className="flex items-center justify-between p-4 rounded-2xl border-2"
@@ -386,9 +386,9 @@ function ModalSessions({ isOpen, onClose, color }: {
                       <Smartphone className="w-5 h-5" style={{ color: s.isCurrent ? color : 'var(--encre-4)' }} />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900 text-sm">{s.deviceInfo}</p>
-                      <p className="text-xs text-gray-400">{s.ipAddress}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="font-semibold encre text-sm">{s.deviceInfo}</p>
+                      <p className="text-xs encre-4">{s.ipAddress}</p>
+                      <p className="text-xs encre-4">
                         {new Date(s.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
@@ -459,7 +459,7 @@ function ModalPIN({ isOpen, onClose, color, onSave, onDisable, mode }: {
             className="bg-white rounded-t-3xl w-full p-6 pb-10"
           >
             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-5" />
-            <h2 className="text-xl font-bold text-gray-900 mb-5">
+            <h2 className="text-xl font-bold encre mb-5">
               {mode === 'disable' ? 'Désactiver le PIN' : mode === 'modify' ? 'Modifier le PIN' : 'Créer un PIN'}
             </h2>
             {done ? (
@@ -467,7 +467,7 @@ function ModalPIN({ isOpen, onClose, color, onSave, onDisable, mode }: {
                 <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
                   <Check className="w-8 h-8 text-green-600" strokeWidth={3} />
                 </div>
-                <p className="font-bold text-gray-900">{mode === 'disable' ? 'PIN désactivé' : 'PIN enregistré'}</p>
+                <p className="font-bold encre">{mode === 'disable' ? 'PIN désactivé' : 'PIN enregistré'}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -542,8 +542,8 @@ function ModalLang({ isOpen, onClose, lang, setLang, color }: {
             className="bg-white rounded-t-3xl w-full p-6 pb-10"
           >
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-5" />
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Langue de Tata Nanti Lou</h3>
-            <p className="text-sm text-gray-500 mb-6">Dans quelle langue tu veux me parler aujourd&apos;hui ?</p>
+            <h3 className="text-xl font-bold encre mb-2">Langue de Tata Nanti Lou</h3>
+            <p className="text-sm encre-3 mb-6">Dans quelle langue tu veux me parler aujourd&apos;hui ?</p>
             <div className="space-y-3">
               {LANGS.map(id => {
                 const isActive = lang === id;
@@ -555,7 +555,7 @@ function ModalLang({ isOpen, onClose, lang, setLang, color }: {
                   >
                     <span className="text-3xl">{LANG_FLAGS[id]}</span>
                     <div>
-                      <p className="font-bold text-gray-900">{LANG_LABELS[id]}</p>
+                      <p className="font-bold encre">{LANG_LABELS[id]}</p>
                       {isActive && <p className="text-xs mt-0.5" style={{ color }}>Langue actuelle</p>}
                     </div>
                     {isActive && <Check className="w-5 h-5 ml-auto" style={{ color }} strokeWidth={3} />}
@@ -811,7 +811,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
               <ProfileIcon className="w-6 h-6" style={{ color }} />
             </div>
             <div>
-              <p className="font-bold text-gray-900">{profileName}</p>
+              <p className="font-bold encre">{profileName}</p>
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
                 <p className="text-gray-600 text-sm">{isOnline ? 'En ligne' : 'Hors ligne'}</p>
@@ -858,8 +858,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             </>}
             {role === 'institution' && <>
               <div className="px-5 py-4">
-                <p className="font-semibold text-gray-900 mb-1">Alertes par e-mail</p>
-                <p className="text-xs text-gray-500 mb-2">Rapports et alertes critiques</p>
+                <p className="font-semibold encre mb-1">Alertes par e-mail</p>
+                <p className="text-xs encre-3 mb-2">Rapports et alertes critiques</p>
                 <input
                   type="email"
                   value={emailInstitution}
@@ -870,7 +870,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                 />
                 <div className="flex items-center justify-between mt-3">
                   <div>
-                    <p className="font-semibold text-gray-900 text-sm">Activer les alertes e-mail</p>
+                    <p className="font-semibold encre text-sm">Activer les alertes e-mail</p>
                   </div>
                   <Toggle value={notifEmail} onChange={setNotifEmail} color={color} />
                 </div>
@@ -883,8 +883,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <Section title="Sécurité" icon={Fingerprint} color={color}>
               <div className="flex items-center justify-between px-5 py-4">
                 <div className="flex-1 pr-4">
-                  <p className="font-semibold text-gray-900">Code PIN Keiwa</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="font-semibold encre">Code PIN Keiwa</p>
+                  <p className="text-xs encre-3 mt-0.5">
                     {pinEnabled ? 'PIN activé — Keiwa sécurisé' : 'Active le PIN pour sécuriser ton Keiwa'}
                   </p>
                   {pinEnabled && (
@@ -918,8 +918,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <Section title="Sécurité" icon={Fingerprint} color={color}>
               <div className="flex items-center justify-between px-5 py-4">
                 <div className="flex-1 pr-4">
-                  <p className="font-semibold text-gray-900">Code PIN Keiwa</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="font-semibold encre">Code PIN Keiwa</p>
+                  <p className="text-xs encre-3 mt-0.5">
                     {pinEnabled ? 'PIN activé — Keiwa sécurisé' : 'Active le PIN pour sécuriser ton Keiwa'}
                   </p>
                   {pinEnabled && (
@@ -942,8 +942,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
           {role === 'cooperative' && (<>
             <Section title="Gestion" icon={Users} color={color}>
               <div className="px-5 py-4">
-                <p className="font-semibold text-gray-900 mb-1">Seuil de cotisation mensuelle</p>
-                <p className="text-xs text-gray-500 mb-2">Actuel : {seuilCotisation.toLocaleString('fr-FR')} FCFA</p>
+                <p className="font-semibold encre mb-1">Seuil de cotisation mensuelle</p>
+                <p className="text-xs encre-3 mb-2">Actuel : {seuilCotisation.toLocaleString('fr-FR')} FCFA</p>
                 <input
                   type="number" inputMode="numeric" value={seuilCotisation}
                   onChange={e => setSeuilCotisation(Number(e.target.value))}
@@ -957,8 +957,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <Section title="Sécurité" icon={Fingerprint} color={color}>
               <div className="flex items-center justify-between px-5 py-4">
                 <div className="flex-1 pr-4">
-                  <p className="font-semibold text-gray-900">Code PIN Keiwa</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="font-semibold encre">Code PIN Keiwa</p>
+                  <p className="text-xs encre-3 mt-0.5">
                     {pinEnabled ? 'PIN activé — Keiwa sécurisé' : 'Active le PIN pour sécuriser ton Keiwa'}
                   </p>
                   {pinEnabled && (
@@ -996,8 +996,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <Section title="Sécurité" icon={Fingerprint} color={color}>
               <div className="flex items-center justify-between px-5 py-4">
                 <div className="flex-1 pr-4">
-                  <p className="font-semibold text-gray-900">Code PIN Keiwa</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="font-semibold encre">Code PIN Keiwa</p>
+                  <p className="text-xs encre-3 mt-0.5">
                     {pinEnabled ? 'PIN activé — Keiwa sécurisé' : 'Active le PIN pour sécuriser ton Keiwa'}
                   </p>
                   {pinEnabled && (
@@ -1046,7 +1046,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <TextSizeSlider value={textSize} onChange={setTextSize} color={color} />
             <RowToggle color={color} label="Mode sombre" sublabel="Interface sombre" value={isDark} onChange={() => toggleDark()} />
             <div className="px-5 py-3">
-              <p className="text-xs font-bold text-gray-500 mb-2">Planification</p>
+              <p className="text-xs font-bold encre-3 mb-2">Planification</p>
               <div className="flex gap-2">
                 {([{ key: 'manuel' as const, label: 'Manuel' }, { key: 'auto' as const, label: 'Auto (18h-6h)' }] as const).map(opt => (
                   <motion.button key={opt.key} onClick={() => setMode(opt.key)} whileTap={{ scale: 0.95 }}
@@ -1089,8 +1089,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
           </div>
 
           <div className="flex items-center justify-center gap-2 py-2">
-            <Smartphone className="w-4 h-4 text-gray-400" />
-            <p className="text-xs text-gray-400">{cfg.version} · Projet DGE × ANSUT · édité par Icone Solution</p>
+            <Smartphone className="w-4 h-4 encre-4" />
+            <p className="text-xs encre-4">{cfg.version} · Projet DGE × ANSUT · édité par Icone Solution</p>
           </div>
 
         </div>
