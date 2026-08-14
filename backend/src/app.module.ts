@@ -12,6 +12,7 @@ import { BpayModule } from './bpay/bpay.module';
 import { ScheduleModule } from "@nestjs/schedule";
 import { EscrowModule } from './escrow/escrow.module';
 import { RecoltesRestModule } from './recoltes-rest/recoltes-rest.module';
+import { ProducteurRestModule } from './producteur-rest/producteur-rest.module';
 import { PublicationsModule } from './producteur/publications/publications.module';
 import { ActeursRestModule } from './acteurs-rest/acteurs-rest.module';
 import { DossiersRestModule } from './dossiers-rest/dossiers-rest.module';
@@ -98,6 +99,7 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
     EvaluationsRestModule,
     FideliteRestModule,
     RecoltesRestModule,
+    ProducteurRestModule,
     TicketsRestModule,
     PublicationsRestModule,
     ProducteursRestModule,
