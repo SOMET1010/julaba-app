@@ -150,9 +150,11 @@ export function RecoltesModal({ isOpen, onClose }: RecoltesModalProps) {
           <div className="bg-gradient-to-br from-green-50 to-white rounded-2xl p-6 border-2" style={{ borderColor: `${PRIMARY_COLOR}30` }}>
             <p className="text-sm font-semibold text-gray-600 mb-2">Total produit</p>
             <p className="text-4xl font-black mb-1" style={{ color: PRIMARY_COLOR }}>
-              {(stats?.recoltesTotales ?? 0).toLocaleString()}
+              {(stats?.recoltesKgTotal ?? 0).toLocaleString()}
             </p>
-            <p className="text-lg font-bold text-gray-600">récoltes</p>
+            <p className="text-lg font-bold text-gray-600">
+              kg — {(stats?.recoltesTotales ?? 0).toLocaleString()} récolte{(stats?.recoltesTotales ?? 0) > 1 ? 's' : ''}
+            </p>
           </div>
 
           {/* Stats détaillées */}
