@@ -6,10 +6,14 @@ export class CooperativeMembre {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'cooperative_id' })
+  // type: 'uuid' explicite. Sans lui, synchronize creait ces colonnes en varchar
+  // alors que cooperatives.id et users.id sont uuid -> la FK cooperative_id ne
+  // pouvait pas se creer (warning a chaque boot). Corrige les builds neufs/tests ;
+  // la base de prod deja peuplee restera en varchar jusqu'a la migration dediee.
+  @Column({ name: 'cooperative_id', type: 'uuid' })
   cooperative_id: string;
 
-  @Column({ name: 'membre_id' })
+  @Column({ name: 'membre_id', type: 'uuid' })
   membre_id: string;
 
   @Column({ nullable: true })

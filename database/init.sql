@@ -1,4 +1,17 @@
 -- ============================================================
+-- ⚠️  LEGACY — NE PAS UTILISER.  Bootstrap OVH obsolete et DIVERGENT.
+--
+-- Ce fichier n'est reference par AUCUN chemin de deploiement (la prod tourne
+-- sur Render ; le schema y est construit par les entites/synchronize puis
+-- entretenu par DbInitService). Il diverge fortement du schema reel :
+--   - cree "users_julaba" au lieu de "users" (prepareDatabase sonde "users") ;
+--   - commandes.statut CHECK utilise 'en_route' au lieu de 'en_livraison',
+--     et omet 'litige' ;
+--   - liste de roles differente (cooperative vs cooperateur, backoffice/…) ;
+--   - tables otp_codes/escrow_payments/scores absentes du modele reel.
+-- Conserve uniquement comme reference historique. A retirer une fois le socle
+-- de migrations reproductibles en place (voir plan de convergence du schema).
+-- ============================================================
 -- JULABA — Initialisation PostgreSQL (OVH VPS)
 -- Adapté depuis les migrations Supabase
 -- ============================================================

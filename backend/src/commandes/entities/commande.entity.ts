@@ -64,6 +64,9 @@ export class Commande {
   @Column({
     type: 'enum',
     enum: CommandeStatut,
+    // enumName aligne le nom du type PG sur la migration (commande_statut) :
+    // sans lui synchronize genere 'commandes_statut_enum' -> derive de schema.
+    enumName: 'commande_statut',
     default: CommandeStatut.EN_ATTENTE,
   })
   statut: CommandeStatut;

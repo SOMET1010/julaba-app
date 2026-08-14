@@ -8,8 +8,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * Colonnes uuid nues, sans FK (integrite geree par le service, transactionnel).
  * A executer manuellement en prod (regle JULABA_DECISIONS section 5).
  */
-export class AddStockReservations1779200000000 implements MigrationInterface {
-  name = 'AddStockReservations1779200000000';
+export class AddStockReservations1779250000000 implements MigrationInterface {
+  name = 'AddStockReservations1779250000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

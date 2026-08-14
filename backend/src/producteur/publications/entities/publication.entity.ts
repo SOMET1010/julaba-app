@@ -74,6 +74,9 @@ export class Publication {
   @Column({
     type: 'enum',
     enum: PublicationStatut,
+    // enumName aligne le nom du type PG sur les migrations (publication_statut) :
+    // sans lui, synchronize genere 'publications_statut_enum' -> derive de schema.
+    enumName: 'publication_statut',
     default: PublicationStatut.DISPONIBLE,
   })
   statut: PublicationStatut;
@@ -85,6 +88,10 @@ export class Publication {
     name: 'type_marche',
     type: 'enum',
     enum: MarcheVirtuelType,
+    // enumName = celui de la migration 1779100000000. Sans lui, synchronize cree
+    // 'publications_type_marche_enum' et le cast ::marche_virtuel_type_enum du
+    // controleur (republier) echoue sur une base construite par les entites.
+    enumName: 'marche_virtuel_type_enum',
     default: MarcheVirtuelType.PRODUCTEUR,
   })
   typeMarche: MarcheVirtuelType;
