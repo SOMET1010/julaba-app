@@ -150,4 +150,26 @@ describe('Invariant B2 — reservation de stock sur commande', () => {
     expect(await dispoDe(pub)).toBe(75);
     expect(await statutResa(cmdId)).toBe('convertie');
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Cadrage #12 — cf docs/adr/ADR-0001-decrement-stock-vente.md
+  // Scenarios DECIDES mais non encore implementes : encodes en it.todo pour
+  // rester visibles en CI sans la faire echouer. A promouvoir en vrais tests
+  // lors de la passe d'implementation dediee.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // D1 / I-B (recolte) : la confirmation decremente la RECOLTE liee, une seule fois.
+  it.todo('I-B(recolte): confirmer decremente recoltes.stock_disponible de q (stock_vendu += q, statut vendue si 0) — ADR-0001 D1');
+
+  // D1 / I-C : la livraison est purement logistique, sans effet stock.
+  it.todo('I-C: en_livraison/livree ne modifie ni quantite_disponible ni la recolte — ADR-0001 D1');
+
+  // D2 : la vente directe est une sortie reelle, rattachee a une recolte explicite.
+  it.todo('D2-a: vente_directe avec recolte_id decremente cette recolte a la confirmation — ADR-0001 D2');
+
+  // D2 : pas de deduction heuristique de la recolte.
+  it.todo('D2-b: vente_directe sans recolte_id est refusee (400), aucun stock touche — ADR-0001 D2');
+
+  // D3 : pas de TTL — une reservation en_attente reste active jusqu a confirmation/annulation.
+  it.todo('D3: une reservation en_attente reste active tant qu aucune confirmation/annulation n intervient (pas d expiration) — ADR-0001 D3');
 });
