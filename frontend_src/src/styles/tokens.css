@@ -44,3 +44,11 @@ html.dark {
   --encre-4: #9F8F7F;
   --trait: #5B5248;
 }
+
+/* Utilitaires d'ENCRE (repeigne visuel, lot 1) : mêmes tokens que les styles
+   inline, pour les endroits écrits en classes. Suivent soleil ET sombre —
+   contrairement aux text-gray-* de Tailwind que le mode soleil ne voit pas. */
+.encre   { color: var(--encre); }
+.encre-2 { color: var(--encre-2); }
+.encre-3 { color: var(--encre-3); }
+.encre-4 { color: var(--encre-4); }
