@@ -25,12 +25,19 @@ import { NOT_AUTHENTICATED, apiRequest } from '../services/api/api-client';
  */
 
 export interface ProducteurStats {
-  recoltesTotales: number;
+  recoltesTotales: number; // NOMBRE de récoltes (compte), pas des kg
   recoltesVendues: number;
   revenusTotal: number;
   commandesEnCours: number;
   cyclesActifs: number;
   publicationsActives: number;
+  // Production en KILOS (jamais un compte) — alimente « Récoltes du jour ».
+  recoltesKgTotal: number;
+  recoltesKgJour: number;
+  stockDisponibleKg: number;
+  stockVenduKg: number;
+  // Revenus (FCFA) — source de vérité : commandes du vendeur.
+  revenusJour: number;
 }
 
 export interface Cycle {
@@ -567,28 +574,65 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
   // ═══════════════════════════════════════════════════════════════════════════
 
   const getStats = async (): Promise<ProducteurStats> => {
+    const n = (v: unknown) => Number(v) || 0;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const dateOf = (v: unknown) => String(v ?? '').slice(0, 10);
     try {
       setLoading(true);
-      const cyclesActifs = cycles.filter(c => c.status === 'active').length;
-      const recoltesVendues = recoltes.filter(r => r.statut === 'vendue').length;
-      const revenusTotal = recoltes
-        .filter(r => r.statut === 'vendue')
-        .reduce((s, r) => s + (r.quantite || 0) * (r.prixUnitaire || 0), 0);
-      const publicationsActives = publications.filter(p => p.statut === 'disponible' && p.active === true).length;
-
-      const newStats: ProducteurStats = {
-        recoltesTotales: recoltes.length,
-        recoltesVendues,
-        revenusTotal,
-        commandesEnCours: 0,
-        cyclesActifs,
-        publicationsActives,
-      };
-
-      setStats(newStats);
-      return newStats;
+      // Source AUTORITATIVE : endpoint stats producteur (calcul en base). Évite
+      // le calcul client faux (kg = compte de récoltes ; revenus = récoltes
+      // 'vendue' jamais atteint).
+      const data = await apiRequest<any>(API_URL, '/producteur/stats', { method: 'GET' });
+      if (data) {
+        const newStats: ProducteurStats = {
+          recoltesTotales: n(data.recoltesCount),
+          recoltesVendues: recoltes.filter(r => r.statut === 'vendue').length,
+          revenusTotal: n(data.revenusTotal),
+          commandesEnCours: n(data.commandesEnCours),
+          cyclesActifs: cycles.filter(c => c.status === 'active').length,
+          publicationsActives: n(data.publicationsActives),
+          recoltesKgTotal: n(data.recoltesKgTotal),
+          recoltesKgJour: n(data.recoltesKgJour),
+          stockDisponibleKg: n(data.stockDisponibleKg),
+          stockVenduKg: n(data.stockVenduKg),
+          revenusJour: n(data.revenusJour),
+        };
+        setStats(newStats);
+        return newStats;
+      }
+      throw new Error('stats indisponibles');
     } catch {
-      return { recoltesTotales: 0, recoltesVendues: 0, revenusTotal: 0, commandesEnCours: 0, cyclesActifs: 0, publicationsActives: 0 };
+      // Repli hors-ligne : calcul client CORRIGÉ à partir des données chargées.
+      // kg = SOMME des quantités (jamais un compte) ; revenus = somme des
+      // commandes du vendeur (hors annulée/litige), source de vérité de l'app.
+      const nonAnnulee = (s: string) => s !== 'annulee' && s !== 'litige';
+      const revenusTotal = commandes
+        .filter(c => nonAnnulee(c.statut as string))
+        .reduce((s, c) => s + (Number(c.total) || 0), 0);
+      const revenusJour = commandes
+        .filter(c => nonAnnulee(c.statut as string) && dateOf(c.dateCommande) === todayStr)
+        .reduce((s, c) => s + (Number(c.total) || 0), 0);
+      const fallback: ProducteurStats = {
+        recoltesTotales: recoltes.length,
+        recoltesVendues: recoltes.filter(r => r.statut === 'vendue').length,
+        revenusTotal,
+        commandesEnCours: commandes.filter(c =>
+          ['en_attente', 'confirmee', 'en_livraison'].includes(c.statut as string),
+        ).length,
+        cyclesActifs: cycles.filter(c => c.status === 'active').length,
+        publicationsActives: publications.filter(p => p.statut === 'disponible' && p.active === true).length,
+        recoltesKgTotal: recoltes.reduce((s, r) => s + (Number(r.quantite) || 0), 0),
+        recoltesKgJour: recoltes.reduce(
+          (s, r) => (dateOf((r as any).dateRecolte ?? (r as any).date_recolte) === todayStr
+            ? s + (Number(r.quantite) || 0) : s),
+          0,
+        ),
+        stockDisponibleKg: recoltes.reduce((s, r) => s + (Number((r as any).stockDisponible) || 0), 0),
+        stockVenduKg: recoltes.reduce((s, r) => s + (Number((r as any).stockVendu) || 0), 0),
+        revenusJour,
+      };
+      setStats(fallback);
+      return fallback;
     } finally {
       setLoading(false);
     }
