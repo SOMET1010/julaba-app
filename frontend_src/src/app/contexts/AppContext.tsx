@@ -12,6 +12,7 @@
  */
 
 import { eventBus, EVENTS } from '../services/eventBus';
+import { topProduitsVentes } from '../services/statsVente';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { normalizeRole } from '../types/constants';
@@ -428,7 +429,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           userId: tx.marchand_id || tx.user_id,
           type: tx.type,
           productName: tx.description || tx.produit || 'Depense',
-          quantity: 1,
+          quantity: Number(tx.quantite) || 1,
           price: Number(tx.montant) || 0,
           montant: Number(tx.montant) || 0,
           source: tx.source || 'kassa',
@@ -974,7 +975,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           userId: tx.marchand_id || tx.user_id,
           type: tx.type,
           productName: tx.description || tx.produit || 'Depense',
-          quantity: 1,
+          quantity: Number(tx.quantite) || 1,
           price: Number(tx.montant) || 0,
           montant: Number(tx.montant) || 0,
           source: tx.source || 'kassa',
@@ -1065,20 +1066,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const moyenneVente = nombreVentes > 0 ? totalVentes / nombreVentes : 0;
 
-    const topProduits = filteredTransactions
-      .filter((t) => t.type === 'vente')
-      .reduce((acc, t) => {
-        const existingProduct = acc.find((p) => p.productName === t.productName);
-        if (existingProduct) {
-          existingProduct.quantity += t.quantity;
-          existingProduct.total += t.price * t.quantity;
-        } else {
-          acc.push({ productName: t.productName, quantity: t.quantity, total: t.price * t.quantity });
-        }
-        return acc;
-      }, [] as { productName: string; quantity: number; total: number }[])
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
+    // Top produits : total = somme des montants (jamais price * quantity, car
+    // price porte deja le total -> gonflerait le CA), quantite = vraie quantite.
+    // Calcul pur et teste : services/statsVente.ts (bugs #10/#11).
+    const topProduits = topProduitsVentes(filteredTransactions, 5);
 
     return {
       totalVentes,
