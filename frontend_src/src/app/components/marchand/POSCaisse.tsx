@@ -12,6 +12,7 @@ import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { partagerRecu } from '../../utils/recu.utils';
 import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
 import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/fcfa';
+import { avertissementRupture } from '../../services/ruptureStock';
 import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
 import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
@@ -138,6 +139,17 @@ export function POSCaisse() {
         prix_achat: (i as any).prixAchat ?? (i as any).prix_achat ?? 0,
       }));
       await enregistrerVente(total, details, moyen, undefined);
+      // Rupture éventuelle (décision n°6) : calculée AVANT le décrément optimiste.
+      // Le serveur borne déjà le stock à 0 et journalise le manquant (I3) ; ici on
+      // AVERTIT à la voix au lieu de plancher en silence. La vente passe toujours.
+      const avertRupture = avertissementRupture(
+        details
+          .map((i) => {
+            const p = products.find((pp) => pp.id === i.productId);
+            return p ? { nom: i.nom, quantite: i.quantite, stockAvant: p.stock || 0 } : null;
+          })
+          .filter((x): x is { nom: string; quantite: number; stockAvant: number } => x !== null),
+      );
       details.forEach((item) => {
         const prod = products.find((p) => p.id === item.productId);
         if (prod) updateProduct(prod.id, { stock: Math.max(0, (prod.stock || 0) - item.quantite) });
@@ -153,7 +165,7 @@ export function POSCaisse() {
       // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
       // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
       vibrerSucces();
-      dire(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs`);
+      dire(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs${avertRupture ? '. ' + avertRupture : ''}`);
     } catch (e) {
       console.error(e);
       vibrerErreur();
