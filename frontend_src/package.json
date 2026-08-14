@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc -b",
-    "verify": "npm run typecheck && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support",
+    "verify": "npm run typecheck && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:stats",
     "preview": "vite preview",
     "test:audio": "tsx src/app/services/audioManager.test.mts",
     "test:cart": "tsx src/app/services/cartStorage.test.mts",
@@ -22,7 +22,8 @@
     "test:tokens": "tsx src/app/services/tokens.test.mts",
     "test:support": "tsx src/app/services/supportLu.test.mts",
     "test:offline": "tsx src/app/voice-offline/offlineCaisse.test.mts",
-    "test:ci": "npm run test:audio && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:offline"
+    "test:stats": "tsx src/app/services/statsVente.test.mts",
+    "test:ci": "npm run test:audio && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:offline && npm run test:stats"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
