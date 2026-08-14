@@ -268,8 +268,8 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
             <div className="mx-auto h-1 w-12 rounded-full mb-3" style={{ backgroundColor: '#C46210' }} />
             <p className="text-center text-gray-600 px-1 leading-relaxed mb-3">
               Pour que je puisse <b>t'écouter</b> et <b>te parler</b> partout — même
-              sans réseau. Une seule fois. C'est un gros fichier&nbsp;: fais-le
-              tranquillement, quand tu as le <b>wifi</b>. Rien ne presse.
+              sans réseau. Ta voix est <b>déjà dans l'application</b>&nbsp;: je la
+              vérifie, c'est tout. Rien à télécharger.
             </p>
 
             <div className="flex justify-center mb-4">
