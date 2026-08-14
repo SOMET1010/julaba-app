@@ -12,6 +12,7 @@ import { useObjectif, ObjectifProvider } from "../../contexts/ObjectifContext";
 import { useStock, type StockItem } from "../../contexts/StockContext";
 import { InstallerOffline } from "../../voice-offline/InstallerOffline";
 import { apparierProduit, construireLigneVocale, doitProposerCreation, noterRefusCreation } from "../../services/venteVocale";
+import { avertissementRupture } from "../../services/ruptureStock";
 import { guidageVocal } from "../../utils/accessMode";
 import { vibrerSucces } from "../../utils/haptique";
 import tantieImg from "../../../assets/images/tantie-vente-vocale.png";
@@ -75,10 +76,17 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
         const ligne = construireLigneVocale({ nomParle, quantite, montant, produit: produitCat });
         await enregistrerVente(montant, [ligne], "cash", note);
         if (produitCat) {
+          // Rupture éventuelle (décision n°6) : calculée AVANT le décrément.
+          const avertRupture = avertissementRupture([
+            { nom: (produitCat as any).nom || (produitCat as any).name || nomParle || "ce produit", quantite, stockAvant: produitCat.stock || 0 },
+          ]);
           // Décrément optimiste, comme POSCaisse. S'il échoue (hors-ligne…), la
           // vente reste enregistrée ; le stock se resynchronisera au rechargement.
           try { await updateProduct(produitCat.id, { stock: Math.max(0, (produitCat.stock || 0) - quantite) }); }
           catch (e: any) { console.warn("[VenteVocaleModal] décrément stock impossible:", e?.message); }
+          // Avertir APRÈS la confirmation parlée de la vente, pour ne pas parler
+          // par-dessus (le serveur a déjà borné à 0 et journalisé le manquant, I3).
+          if (avertRupture && guidageVocal()) setTimeout(() => speak(avertRupture), 1400);
         } else {
           // Produit inconnu : proposer de l'ajouter à la boutique (en ligne
           // seulement — la création parle au serveur). La question arrive APRÈS
