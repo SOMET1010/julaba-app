@@ -28,6 +28,13 @@ const BG = '#FFF2E9';
 // ne pas figer les conditions en littéral. Voir docs / suivi pré-recette #16.
 const CAISSE_CREDIT_ACTIF: boolean = false;
 
+// Pilote ESPÈCES uniquement : le « mobile money » de caisse est DÉCLARATIF
+// (aucune intégration ni encaissement réel — on note juste l'opérateur). Le
+// laisser visible crée une promesse fonctionnelle contradictoire avec un pilote
+// espèces. On le masque tant qu'il n'est pas branché à un vrai encaissement.
+// Réactivation = chantier mobile money dédié. Typé `boolean` volontairement.
+const CAISSE_MOBILE_MONEY_ACTIF: boolean = false;
+
 export function POSCaisse() {
   const navigate = useNavigate();
   const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, refreshProducts, transactions } = useCaisse();
@@ -485,12 +492,14 @@ export function POSCaisse() {
                       background: paymentMethod==='cash' ? '#FFF3E9' : '#fff', color: paymentMethod==='cash' ? P : '#8A7A6A' }}>
                     Espèces
                   </button>
+                  {CAISSE_MOBILE_MONEY_ACTIF && (
                   <button type="button" onClick={() => setPaymentMethod('mobile_money')}
                     style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer', lineHeight:1.15,
                       border: paymentMethod==='mobile_money' ? `2px solid ${P}` : '1.5px solid var(--trait)',
                       background: paymentMethod==='mobile_money' ? '#FFF3E9' : '#fff', color: paymentMethod==='mobile_money' ? P : '#8A7A6A' }}>
                     Mobile money
                   </button>
+                  )}
                   {CAISSE_CREDIT_ACTIF && (
                   <button type="button" onClick={() => { setShowCart(false); setPaymentMethod('credit'); setShowCredit(true); }}
                     style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
@@ -500,15 +509,15 @@ export function POSCaisse() {
                   )}
                 </div>
 
-                {/* Pilote ESPÈCES : la vente à crédit est désactivée (voir #16). */}
-                {!CAISSE_CREDIT_ACTIF && (
+                {/* Pilote ESPÈCES : crédit et/ou mobile money désactivés (voir #16). */}
+                {(!CAISSE_CREDIT_ACTIF || !CAISSE_MOBILE_MONEY_ACTIF) && (
                   <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:-6, marginBottom:12, textAlign:'center' }}>
-                    Caisse pilote : espèces uniquement — vente à crédit désactivée.
+                    Caisse pilote : espèces uniquement.
                   </div>
                 )}
 
                 {/* Mobile money DÉCLARÉ : choix de l'opérateur (aucune intégration) */}
-                {paymentMethod === 'mobile_money' && (
+                {CAISSE_MOBILE_MONEY_ACTIF && paymentMethod === 'mobile_money' && (
                   <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
                     {MOBILE_OPERATORS.map(op => (
                       <button type="button" key={op.id} onClick={() => setMmOperator(op.id)}
