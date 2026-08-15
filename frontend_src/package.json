@@ -95,6 +95,7 @@
     "@types/react": "*",
     "@types/react-dom": "*",
     "@vitejs/plugin-react": "^4.7.0",
+    "playwright-core": "^1.62.1",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vite": "^6.3.5"
