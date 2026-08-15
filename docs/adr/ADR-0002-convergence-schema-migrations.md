@@ -118,11 +118,18 @@ On **ne big-bang pas**. Migration étagée, chaque étape non destructive et vé
   identiques** (FK incluse) ; suite d'invariants **45/45 verte** APRÈS retrait du
   nettoyage `afterAll` ajouté en #12 (dont ce drift était la cause).
 
-**Étape 4 — bascule.**
-- Prod : `migrationsRun = true`, `synchronize = false` par défaut, une fois la
-  baseline prouvée reproductible. `synchronize` ne reste qu'en secours explicite.
-- **Gate CI** : un job « schéma reproductible » construit une base neuve depuis
-  les migrations et échoue au moindre écart avec le schéma de référence.
+**Étape 4 — bascule. 🟡 PLAN PRÊT (2026-08-15) — exécution en attente d'audit + Go.**
+- Runbook détaillé : `docs/etape4/RUNBOOK-bascule-migrations.md` (audit prod
+  lecture seule → Go/No-Go → exécution ordonnée → rollback). **Aucune action prod
+  tant que l'audit n'a pas validé les critères Go.**
+- Nuance clé : la bascule n'est PAS un `--fake` global. Prod ≈ état **baseline** →
+  on `--fake` la baseline (schéma déjà présent) puis on **exécute réellement**
+  `FixSchemaDrifts` (uuid + FK + drop colonnes fantômes).
+- Références committées pour l'audit : `docs/etape4/schema-attendu-prod-actuelle.fp`
+  (état attendu avant) et `schema-attendu-apres-bascule.fp` (après).
+- Ensuite : `DB_MIGRATIONS_RUN=true`, `synchronize` off ; **gate CI** « schéma
+  reproductible » (branche `npm run verify:dbinit-subsumed` + un check baseline) ;
+  retrait de `DbInit` dans un lot ultérieur une fois la bascule confirmée saine.
 
 ## Conséquences
 
