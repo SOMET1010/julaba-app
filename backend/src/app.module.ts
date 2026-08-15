@@ -64,13 +64,26 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
       envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
     }),
 
-    // Rate limiting global
-    ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60000, limit: 1000 },
-      { name: 'auth', ttl: 60000, limit: 5 },
-      { name: 'voice', ttl: 60000, limit: 10 },
-      { name: 'recovery', ttl: 60000, limit: 5 },
-    ]),
+    // Rate limiting global. Les limites de prod sont inchangées ; THROTTLE_DISABLED
+    // (recette / e2e uniquement) les desserre pour que le harnais navigateur — qui
+    // enchaîne plusieurs requêtes depuis une seule IP — ne se fasse pas 429. C'est
+    // l'équivalent booté de la neutralisation du ThrottlerStorage côté jest. La prod
+    // ne définit jamais ce flag, donc son comportement est strictement identique.
+    ThrottlerModule.forRoot(
+      (process.env.THROTTLE_DISABLED === 'true'
+        ? [
+            { name: 'default', ttl: 60000, limit: 1_000_000 },
+            { name: 'auth', ttl: 60000, limit: 1_000_000 },
+            { name: 'voice', ttl: 60000, limit: 1_000_000 },
+            { name: 'recovery', ttl: 60000, limit: 1_000_000 },
+          ]
+        : [
+            { name: 'default', ttl: 60000, limit: 1000 },
+            { name: 'auth', ttl: 60000, limit: 5 },
+            { name: 'voice', ttl: 60000, limit: 10 },
+            { name: 'recovery', ttl: 60000, limit: 5 },
+          ]),
+    ),
 
     // Database
     DatabaseModule,
