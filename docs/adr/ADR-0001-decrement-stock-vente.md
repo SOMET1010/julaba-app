@@ -1,6 +1,6 @@
 # ADR-0001 — Décrément de stock à la vente (suivi pré-recette #12)
 
-- **Statut** : Accepté (cadrage fonctionnel) — implémentation reportée à une passe dédiée.
+- **Statut** : Accepté **et implémenté** (invariants CI verts). Cadrage 2026-08-14, implémentation 2026-08-15.
 - **Date** : 2026-08-14
 - **Décideur** : Alex (validé en session).
 - **Périmètre** : marché B2 (publications/commandes) + vente directe producteur. **Aucun mouvement financier** (règle « argent gelé »).
@@ -82,15 +82,26 @@ Déjà couverts par `backend/test/invariants/stock-reservation.spec.ts` :
 - **I-E** — demande > disponible ⇒ **409**, aucun effet.
 - **I-B (partiel)** — `confirmée` : conversion `active → convertie`, idempotente.
 
-À ajouter (encodés en `it.todo`, cf. spec) :
+Ajoutés et **verts** (`stock-reservation.spec.ts`, 9/9) :
 
 - **I-B (récolte)** — `confirmée` décrémente `recoltes.stock_disponible` de `q`
   exactement une fois ; `stock_vendu += q` ; `statut = 'vendue'` si 0.
 - **I-C** — `en_livraison` / `livrée` ne modifient **ni** disponible **ni**
   récolte (assertion de non-effet).
 - **D2-a** — vente directe avec `recolte_id` décrémente cette récolte à la
-  confirmation (même invariant que le marché).
-- **D2-b** — vente directe **sans** `recolte_id` est **refusée** (pas de
-  déduction heuristique).
+  confirmation et journalise le mouvement (`publication_id` NULL, `recolte_id`).
+- **D2-b** — vente directe **sans** `recolte_id` est **refusée (400)**, aucun
+  stock touché (pas de déduction heuristique).
 - **D3** — une réservation `en_attente` reste `active` tant qu'aucune
   confirmation/annulation n'intervient (pas de TTL).
+
+### Implémentation (2026-08-15)
+
+- Schéma : `commandes.recolte_id` ; `stock_reservations.publication_id` nullable
+  + `recolte_id` (migration `1779300000000` + `DbInit` idempotent).
+- `StockReservationService.convertirRecolteDirecte()` — décrément ferme, tracé,
+  idempotent par `commande_id`.
+- `commandes-rest` : `vente_directe` ⇒ `recolte_id` requis (400 sinon) ;
+  conversion directe branchée en création **et** en confirmation.
+- Frontend : la vente directe choisit une récolte en stock (rattachement
+  explicite, produit/unité/prix pré-remplis) ; plus de saisie libre déconnectée.
