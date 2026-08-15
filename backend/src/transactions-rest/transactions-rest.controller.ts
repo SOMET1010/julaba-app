@@ -171,8 +171,8 @@ export class TransactionsRestController {
       ]);
       await m.query(
         `INSERT INTO stock_mouvements
-           (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant)
-         VALUES ($1::text, $2, $3, $4, $5, $6, $7, 0)`,
+           (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant, type)
+         VALUES ($1::text, $2, $3, $4, $5, $6, $7, 0, 'annulation')`,
         [row.marchand_id, transactionId, row.produit_id, row.produit_nom, stockAvant, net, -net],
       );
       restitutions.push({ produit_id: row.produit_id, produit_nom: row.produit_nom, quantite: net });
