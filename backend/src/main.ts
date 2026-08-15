@@ -9,6 +9,7 @@ import { AppModule } from './app.module';
 import { DbInitService } from './database/db-init.service';
 import { SeedDemoService } from './database/seed-demo.service';
 import { AdminDivisionsSeedService } from './admin-divisions/seed/admin-divisions-seed.service';
+import { computeBootDbFlags } from './database/schema-flags';
 
 // Préparation automatique de la base — AUCUN réglage manuel requis.
 // Si la base est VIERGE (pas de table "users"), on construit le schéma depuis les
@@ -31,15 +32,17 @@ async function prepareDatabase(logger: Logger) {
     const res = await client.query("SELECT to_regclass('public.users') AS t");
     const vierge = !res.rows[0].t;
     if (vierge) await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-    // AUTORITAIRE : on impose l'état, en ignorant toute variable d'env résiduelle.
-    // Base vierge -> on construit le schéma ; base déjà remplie -> surtout PAS de
-    // reconstruction (sinon "relation ... already exists"). Migrations jamais
-    // auto (historique incomplet).
-    process.env.DB_SYNCHRONIZE = vierge ? 'true' : 'false';
-    process.env.DB_MIGRATIONS_RUN = 'false';
+    // Base vierge -> on construit le schéma (synchronize) ; base déjà remplie ->
+    // surtout PAS de reconstruction (sinon "relation ... already exists"). Depuis
+    // #10 la chaîne de migrations est AUTORITAIRE : sur base existante on RESPECTE
+    // `DB_MIGRATIONS_RUN` d'env (dashboard) au lieu de le forcer à 'false' — c'est
+    // ce forçage qui empêchait toute migration de s'appliquer en prod (bug #19).
+    const flags = computeBootDbFlags(vierge, process.env);
+    process.env.DB_SYNCHRONIZE = flags.synchronize;
+    process.env.DB_MIGRATIONS_RUN = flags.migrationsRun;
     logger.log(vierge
       ? '[DB] Base vierge -> construction automatique du schéma.'
-      : '[DB] Base existante -> schéma conservé (pas de reconstruction).');
+      : `[DB] Base existante -> schéma conservé ; migrationsRun=${flags.migrationsRun}.`);
   } catch (e: unknown) {
     // Non bloquant : si l'inspection échoue, on laisse TypeORM tenter sa connexion.
     logger.warn('[DB] Inspection base ignorée: ' + (e instanceof Error ? e.message : String(e)));
