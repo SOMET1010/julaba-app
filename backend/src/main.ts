@@ -10,6 +10,7 @@ import { DbInitService } from './database/db-init.service';
 import { SeedDemoService } from './database/seed-demo.service';
 import { AdminDivisionsSeedService } from './admin-divisions/seed/admin-divisions-seed.service';
 import { computeBootDbFlags } from './database/schema-flags';
+import { parseTrustProxy } from './config/trust-proxy.config';
 
 // Préparation automatique de la base — AUCUN réglage manuel requis.
 // Si la base est VIERGE (pas de table "users"), on construit le schéma depuis les
@@ -83,10 +84,17 @@ async function bootstrap() {
     bodyParser: false,  // Désactivé — on gère manuellement ci-dessous
   });
 
-  // (Note : « trust proxy » retiré volontairement — il n'est pas nécessaire pour
-  //  le health-check, désormais exempté du rate-limiter via @SkipThrottle. On le
-  //  réintroduira plus tard, prudemment, si le partage de quota entre utilisateurs
-  //  pose problème en charge réelle.)
+  // « trust proxy » — piloté par l'env, DÉSACTIVÉ par défaut (comportement inchangé).
+  // Sans lui, req.ip = routeur Render (partagé) → rate-limiter par IP partagé entre
+  // utilisateurs. On ne l'active (TRUST_PROXY=<n sauts>) qu'après avoir mesuré la
+  // chaîne réelle via GET /health/net en prod — un réglage trop permissif rendrait
+  // X-Forwarded-For usurpable. Effet de bord cookies : nul (secure dépend de NODE_ENV).
+  // Voir docs/AUDIT_THROTTLING.md § trust proxy.
+  const trustProxy = parseTrustProxy(process.env.TRUST_PROXY);
+  if (trustProxy !== undefined) {
+    app.getHttpAdapter().getInstance().set('trust proxy', trustProxy);
+    logger.log(`trust proxy activé : ${JSON.stringify(trustProxy)}`);
+  }
 
   // ── CORS infaillible (préflight garanti) ──────────────────────────────────
   // Symptôme observé : les GET passaient mais tout POST (login, check-phone)

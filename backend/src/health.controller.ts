@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Req } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 
 // (Test déploiement automatique — commentaire sans effet.)
@@ -25,6 +25,23 @@ export class HealthController {
       // production (Render injecte RENDER_GIT_COMMIT). Fini de deviner si le bon
       // code est déployé — il suffit d'ouvrir /api/v1/health.
       commit: (process.env.RENDER_GIT_COMMIT || 'dev').slice(0, 7),
+    };
+  }
+
+  // Diagnostic réseau pour CALIBRER `trust proxy` (cf. docs/AUDIT_THROTTLING.md).
+  // À frapper depuis un vrai appareil en prod : `ips` / `xForwardedFor` révèlent la
+  // chaîne réelle (donc le nombre de sauts Render), et `ip` montre ce que le
+  // rate-limiter utilise comme clé. Test anti-usurpation : rejouer avec un
+  // `X-Forwarded-For` forgé et vérifier que `ip` ne le reflète PAS une fois le bon
+  // nombre de sauts réglé. N'expose que la vue réseau de l'appelant (pas sensible).
+  @Get('net')
+  net(@Req() req: any) {
+    return {
+      ip: req.ip,
+      ips: req.ips,
+      xForwardedFor: req.headers?.['x-forwarded-for'] ?? null,
+      remoteAddress: req.socket?.remoteAddress ?? null,
+      trustProxy: req.app?.get?.('trust proxy') ?? false,
     };
   }
 }
