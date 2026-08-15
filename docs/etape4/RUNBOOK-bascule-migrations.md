@@ -1,6 +1,10 @@
 # Runbook — #10 Étape 4 : bascule prod vers `migrationsRun` (ADR-0002)
 
-**Statut : PLAN — non exécuté.** Aucune action prod avant audit + Go explicite.
+**Statut : EXÉCUTÉ le 2026-08-15.** Audit A1/A2/A3 tout vert, GO formel, bascule
+réalisée et vérifiée (empreinte prod = `schema-attendu-apres-bascule.fp`). Voir le
+procès-verbal détaillé : [`BASCULE-EXECUTEE-2026-08-15.md`](./BASCULE-EXECUTEE-2026-08-15.md).
+Seul reste le geste opérationnel `DB_MIGRATIONS_RUN=true` (dashboard Render).
+Ce runbook reste la référence de méthode (et de rollback).
 La base de prod est la source de vérité ; on ne la reconstruit jamais.
 
 Principe : la bascule n'est **pas** un `--fake` de tout. La prod est ≈ l'état
