@@ -43,6 +43,12 @@ jobs:
       - name: Install (workspaces, racine)
         run: npm ci
 
+      # Garde-fou anti-500 : refuse un node_modules où @nestjs/common (v10) diverge
+      # de @nestjs/core (v11) — sinon les HttpException tombent en 500. Voir
+      # docs/PIEGES_DEV.md. En CI (npm ci depuis le lockfile) doit toujours passer.
+      - name: Cohérence versions NestJS (anti-500 instanceof)
+        run: npm run check:nest-versions
+
       - name: Build frontend
         run: npm run build -w frontend_src
 
