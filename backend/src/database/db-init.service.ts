@@ -402,5 +402,40 @@ export class DbInitService {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur convergence schéma publications: ' + message);
     }
+
+    // ── Boutique vocale : journal append-only (offline-first) ────────────────
+    // INCIDENT prod : la table boutique_mouvements a une ENTITÉ + une migration
+    // (CreateBoutiqueMouvements), mais sur la base de prod déjà peuplée,
+    // `synchronize` et `migrationsRun` sont OFF → elle n'a jamais été créée.
+    // Résultat : POST /boutique/mouvements/sync et GET /boutique/etat plantent en
+    // 500 (relation « boutique_mouvements » does not exist). DbInit étant le
+    // mécanisme réel du schéma de prod, on la crée ici (idempotent). Miroir de la
+    // migration 1780000000000-CreateBoutiqueMouvements.
+    try {
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS boutique_mouvements (
+          id uuid PRIMARY KEY,
+          marchand_id uuid NOT NULL,
+          device varchar NOT NULL,
+          type varchar NOT NULL,
+          produit varchar,
+          quantite numeric,
+          montant numeric,
+          transcription text,
+          ts bigint NOT NULL,
+          created_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_boutique_mvt_marchand ON boutique_mouvements(marchand_id);`,
+      );
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_boutique_mvt_ts ON boutique_mouvements(ts);`,
+      );
+      this.logger.log('Table boutique_mouvements vérifiée');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur table boutique_mouvements: ' + message);
+    }
   }
 }
