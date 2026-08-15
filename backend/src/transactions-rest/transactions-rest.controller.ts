@@ -93,6 +93,17 @@ export class TransactionsRestController {
       tx.motif = dto.motif?.trim() || null;
       await transactionManager.save(tx);
 
+      // Remise en stock à l'annulation (R7). Si la vente passe à ANNULEE (et ne
+      // l'était pas déjà), on restitue au stock ce qui avait été RÉELLEMENT
+      // retranché (le manquant n'a jamais été retiré), et on trace un mouvement
+      // INVERSE dans le ledger append-only. Dans la MÊME transaction que le
+      // changement de statut : tout-ou-rien. L'argent n'est PAS touché (argent
+      // gelé) — uniquement stock + statut + ledger.
+      let restitutions: Array<{ produit_id: string; produit_nom: string; quantite: number }> = [];
+      if (dto.statut === TransactionStatus.ANNULEE && previousStatus !== TransactionStatus.ANNULEE) {
+        restitutions = await this.restituerStock(transactionManager, id);
+      }
+
       await this.insertAuditLog(transactionManager, {
         userId: user.id,
         action: `TRANSACTION_STATUT_${dto.statut.toUpperCase()}`,
@@ -103,12 +114,70 @@ export class TransactionsRestController {
           previousStatus,
           newStatus: dto.statut,
           motif: tx.motif,
+          ...(restitutions.length ? { restitutions } : {}),
         },
         ip,
       });
 
-      return { id, statut: dto.statut, motif: tx.motif };
+      return { id, statut: dto.statut, motif: tx.motif, restitutions };
     });
+  }
+
+  /**
+   * Restitue au stock ce qu'une vente avait retranché, à son annulation (R7).
+   *
+   * Idempotent PAR CONSTRUCTION : on travaille sur le NET du ledger (somme des
+   * `quantite_retranchee` pour la transaction, restitutions négatives comprises).
+   * Une 1ʳᵉ annulation ramène ce net à 0 (elle insère une ligne inverse). Toute
+   * annulation ultérieure trouve un net ≤ 0 et ne restitue plus rien — aucune
+   * double remise possible.
+   *
+   * Append-only : on n'édite jamais un mouvement existant, on INSÈRE une ligne de
+   * restitution (`quantite_retranchee` négative = stock rendu). Verrou de ligne
+   * (FOR UPDATE) sur le produit. Doit tourner DANS la transaction du changement
+   * de statut (passée en argument).
+   */
+  private async restituerStock(
+    m: EntityManager,
+    transactionId: string,
+  ): Promise<Array<{ produit_id: string; produit_nom: string; quantite: number }>> {
+    const nets: Array<{ produit_id: string; produit_nom: string; marchand_id: string; net: string }> =
+      await m.query(
+        `SELECT produit_id,
+                MAX(produit_nom)  AS produit_nom,
+                MAX(marchand_id)  AS marchand_id,
+                COALESCE(SUM(quantite_retranchee), 0) AS net
+           FROM stock_mouvements
+          WHERE transaction_id = $1 AND produit_id IS NOT NULL
+          GROUP BY produit_id`,
+        [transactionId],
+      );
+
+    const restitutions: Array<{ produit_id: string; produit_nom: string; quantite: number }> = [];
+    for (const row of nets) {
+      const net = Number(row.net) || 0;
+      if (net <= 0) continue; // déjà restitué, ou vente sans effet stock réel
+
+      const prod = await m.query(
+        `SELECT id, COALESCE(stock, 0) AS stock FROM produits WHERE id = $1 FOR UPDATE`,
+        [row.produit_id],
+      );
+      if (!prod[0]) continue; // produit supprimé entre-temps : rien à restituer
+      const stockAvant = Number(prod[0].stock) || 0;
+
+      await m.query(`UPDATE produits SET stock = $1, updated_at = NOW() WHERE id = $2`, [
+        stockAvant + net,
+        row.produit_id,
+      ]);
+      await m.query(
+        `INSERT INTO stock_mouvements
+           (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant)
+         VALUES ($1::text, $2, $3, $4, $5, $6, $7, 0)`,
+        [row.marchand_id, transactionId, row.produit_id, row.produit_nom, stockAvant, net, -net],
+      );
+      restitutions.push({ produit_id: row.produit_id, produit_nom: row.produit_nom, quantite: net });
+    }
+    return restitutions;
   }
 
   @Get('export')
