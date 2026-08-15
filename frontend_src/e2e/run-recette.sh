@@ -33,10 +33,22 @@ echo "== backend (synchronize + seed) =="
 ( cd "$ROOT/backend"
   DB_NAME="$DB_RECETTE" DB_SYNCHRONIZE=true DB_LOGGING=false NODE_ENV=development PORT=3000 \
   JWT_SECRET=recette_local JWT_EXPIRES_IN=1d PIN_ENCRYPTION_KEY=recette_pin_key_32_chars_padding_x \
-  REFRESH_TOKEN_SALT=recette_salt SEED_DEMO=true SEED_DEMO_PASSWORD=1234 \
+  REFRESH_TOKEN_SALT=recette_salt SEED_DEMO=true SEED_DEMO_PASSWORD=1234 THROTTLE_DISABLED=true \
   node dist/main.js > "$OUT/backend.log" 2>&1 & echo $! > "$OUT/backend.pid" )
 curl -sS --retry 60 --retry-all-errors --retry-delay 2 -m 180 http://localhost:3000/api/v1/health >/dev/null 2>&1 \
   && echo "backend up" || { echo "backend KO"; tail -20 "$OUT/backend.log"; }
+
+# La base recette est bootée VIERGE → synchronize + DbInit (pas de migrations, cf.
+# main.ts). Or DbInit crée `stock_mouvements` SANS la colonne `type`, ajoutée
+# APRÈS la bascule #10 par la seule migration autoritaire #19 (LedgerMouvementType).
+# On applique ici son DDL forward — source de vérité = le fichier de migration, PAS
+# DbInit — pour que la restitution d'annulation (INSERT ... type) fonctionne. Même
+# précédent que le test invariant jest (LedgerMouvementType.up() en beforeAll).
+PGPASSWORD="$DB_PASSWORD" psql "${PGA[@]}" -d "$DB_RECETTE" -v ON_ERROR_STOP=1 >/dev/null 2>&1 <<'SQL'
+ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS type varchar NOT NULL DEFAULT 'vente';
+UPDATE stock_mouvements SET type = 'annulation' WHERE quantite_retranchee < 0;
+SQL
+echo "migration #19 (type) appliquée à $DB_RECETTE"
 
 echo "== proxy :4180 =="
 ( node "$E2E/proxy.mjs" "$ROOT/frontend/dist" 4180 > "$OUT/proxy.log" 2>&1 & echo $! > "$OUT/proxy.pid" )
