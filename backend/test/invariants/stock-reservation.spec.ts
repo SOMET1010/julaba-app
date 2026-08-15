@@ -68,20 +68,6 @@ describe('Invariant B2 — reservation de stock sur commande', () => {
   }, 60000);
 
   afterAll(async () => {
-    // Nettoyage impératif : cette suite est la seule à insérer dans `recoltes`.
-    // Or TypeORM re-`ADD user_id NOT NULL` sur recoltes à chaque synchronize
-    // (drift de schéma pré-existant — dette #10) ; l'ADD échoue si la table
-    // contient des lignes. On vide donc ce qu'on a créé pour ne pas casser la
-    // synchronisation des suites suivantes (ordre enfant → parent, pas de FK
-    // garantie mais on respecte l'ordre par prudence).
-    try {
-      await ds?.query('DELETE FROM stock_reservations');
-      await ds?.query('DELETE FROM commandes');
-      await ds?.query('DELETE FROM publications');
-      await ds?.query('DELETE FROM recoltes');
-    } catch {
-      /* best-effort : le teardown ne doit pas masquer un échec de test */
-    }
     if (app) await app.close();
   });
 

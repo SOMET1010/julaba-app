@@ -86,9 +86,23 @@ On **ne big-bang pas**. Migration étagée, chaque étape non destructive et vé
 - Les objets hors dépôt (`credits`, `clients`, `produits`, vue) sont **sourcés**
   dans la baseline (leur schéma réel capturé par le dump).
 
-**Étape 3 — corriger les drifts de mapping.**
-- `recoltes.user_id` et autres divergences entité↔base qui font churner
-  `synchronize`, pour que baseline == entités (diff stable).
+**Étape 3 — corriger les drifts de mapping. ✅ RÉALISÉE (2026-08-15).**
+- **Drift 1 — entité `recoltes` dupliquée.** Root cause : une 2ᵉ entité morte
+  (`recoltes-rest/recolte.entity.ts`, importée nulle part) mappait aussi
+  `@Entity('recoltes')` avec des colonnes `producteur_id`/`zone_id`. `synchronize`
+  alternait entre les deux → DROP/ADD de toute la table à chaque passe (le
+  « churn `recoltes.user_id` » de l'incident CI #12). Fix : suppression du
+  doublon → **churn `synchronize` 48 → 0** ; la migration du lot retire les 2
+  colonnes fantômes que le doublon avait laissées dans la baseline.
+- **Drift 2 — FK `cooperative_membres`.** `cooperative_id`/`membre_id` inférés
+  `varchar` vs `cooperatives.id`/`users.id` en `uuid` → FK impossible. Entités
+  typées `uuid` + migration de conversion → **FK posée**.
+- **Migration du lot** `1780300000000-FixSchemaDrifts` : aligne le schéma baseline
+  sur les entités corrigées (reproductibilité préservée).
+- **Vérifié (base jetable)** : `synchronize` idempotent (0 churn) ; baseline + lot
+  == synchronize(entités corrigées) + DbInit → **559 colonnes + 70 contraintes
+  identiques** (FK incluse) ; suite d'invariants **45/45 verte** APRÈS retrait du
+  nettoyage `afterAll` ajouté en #12 (dont ce drift était la cause).
 
 **Étape 4 — bascule.**
 - Prod : `migrationsRun = true`, `synchronize = false` par défaut, une fois la
