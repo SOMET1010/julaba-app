@@ -49,5 +49,15 @@ ok(gates >= 3,
 ok(/espèces uniquement/i.test(src),
   "mention visible « espèces uniquement » affichée quand le crédit est off");
 
+console.log("\n[3] Mobile money (déclaratif) désactivé (pilote espèces)");
+ok(/const\s+CAISSE_MOBILE_MONEY_ACTIF\s*:\s*boolean\s*=\s*false\b/.test(code),
+  "flag CAISSE_MOBILE_MONEY_ACTIF = false présent");
+const mmGates = (code.match(/CAISSE_MOBILE_MONEY_ACTIF\s*&&/g) || []).length;
+ok(mmGates >= 2,
+  `bouton mobile money et sélecteur d’opérateur gatés par le flag (${mmGates} gardes ≥ 2)`);
+// Aucun setPaymentMethod('mobile_money') ne doit rester HORS d’un garde de flag.
+ok(!/(^|[^&]\s*)setPaymentMethod\(\s*['"]mobile_money['"]\s*\)/.test(code) || mmGates >= 2,
+  "le passage en mobile_money n’est atteignable que derrière le flag");
+
 console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
 if (failures > 0) process.exit(1);
