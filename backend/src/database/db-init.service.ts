@@ -197,7 +197,7 @@ export class DbInitService {
       );
       // #12 / ADR-0001 D2 : vente directe (sans publication) → décrément d'une
       // récolte tracé dans le ledger. Miroir de la migration
-      // 1779300000000-AddRecolteToStockAndCommande. Idempotent sur base existante.
+      // 1780100000000-AddRecolteToStockAndCommande. Idempotent sur base existante.
       await this.dataSource.query(`ALTER TABLE commandes ADD COLUMN IF NOT EXISTS recolte_id uuid;`);
       await this.dataSource.query(`ALTER TABLE stock_reservations ALTER COLUMN publication_id DROP NOT NULL;`);
       await this.dataSource.query(`ALTER TABLE stock_reservations ADD COLUMN IF NOT EXISTS recolte_id uuid;`);
