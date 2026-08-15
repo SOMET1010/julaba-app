@@ -12,7 +12,7 @@
  */
 
 import { eventBus, EVENTS } from '../services/eventBus';
-import { topProduitsVentes } from '../services/statsVente';
+import { topProduitsVentes, venteComptee } from '../services/statsVente';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { normalizeRole } from '../types/constants';
@@ -1054,8 +1054,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     filteredTransactions = filteredTransactions.filter((t) => new Date(t.date) >= startDate && new Date(t.date) <= endDate);
 
+    // Une vente ANNULÉE (#20) ne compte dans aucun agrégat : CA, volume, top
+    // produits (règle unique : services/statsVente.ts → venteComptee). Cohérent
+    // avec l'écran « Ventes passées ».
     const totalVentes = filteredTransactions
-      .filter((t) => t.type === 'vente')
+      .filter((t) => t.type === 'vente' && venteComptee(t))
       .reduce((acc, t) => acc + (t.montant || t.price || 0), 0);
 
     const totalCahier = filteredTransactions
@@ -1064,7 +1067,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const beneficeNet = totalVentes - totalCahier;
 
-    const nombreVentes = filteredTransactions.filter((t) => t.type === 'vente').length;
+    const nombreVentes = filteredTransactions.filter((t) => t.type === 'vente' && venteComptee(t)).length;
     const nombreCahier = filteredTransactions.filter((t) => t.type === 'depense').length;
 
     const moyenneVente = nombreVentes > 0 ? totalVentes / nombreVentes : 0;
