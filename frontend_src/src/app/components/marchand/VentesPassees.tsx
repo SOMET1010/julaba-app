@@ -12,6 +12,7 @@ import { fr } from 'date-fns/locale';
 import { exportSimplePDF, formatCurrency, formatDate } from '../../utils/export.utils';
 import { partagerRecu, telechargerRecuPDF } from '../../utils/recu.utils';
 import { guidageVocal } from '../../utils/accessMode';
+import { resumeVentes, venteComptee } from '../../services/statsVente';
 import { toast } from 'sonner';
 import { NotificationButton } from './NotificationButton';
 import { SubPageLayout } from '../layout/SubPageLayout';
@@ -261,6 +262,7 @@ export function VentesPassees() {
       montant: Number(c.montant_total) || 0,
       price: Number(c.montant_total) || 0,
       source: 'credit',
+      statut: 'validee',            // une vente à crédit est une vente active (comptée)
       date: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
       totalBenefice: 0,
       totalMargin: 0,
@@ -268,12 +270,12 @@ export function VentesPassees() {
     return [...cashSales, ...ventesCredit];
   }, [cashSales, credits]);
 
-  // KPIs
-  const totalVentes = useMemo(() => allSales.reduce((s, t) => s + (t.montant || t.price || 0), 0), [allSales]);
-  const totalMarges = useMemo(() => allSales.reduce((s, t) => s + (t.totalMargin || 0), 0), [allSales]);
-  const totalCount  = useMemo(() => allSales.length, [allSales]);
-  const totalBenefices = useMemo(() => allSales.reduce((s, t) => s + (t.totalBenefice || t.totalMargin || 0), 0), [allSales]);
-  const panierMoyen = totalCount > 0 ? Math.round(totalVentes / totalCount) : 0;
+  // KPIs — les ventes ANNULÉES (#20) ne comptent dans AUCUN chiffre financier :
+  // elles restent visibles dans la liste (carte badgée « Annulée ») mais sont
+  // exclues du CA, des bénéfices, du volume et du panier moyen. Règle et calcul
+  // purs/testés : services/statsVente.ts (resumeVentes / venteComptee).
+  const { totalVentes, totalCount, totalBenefices, panierMoyen } =
+    useMemo(() => resumeVentes(allSales), [allSales]);
   const animVentes    = useCountUp(totalVentes, 1000);
   const animBenefices = useCountUp(totalBenefices, 1000);
   const animCount     = useCountUp(totalCount, 800);
@@ -316,12 +318,18 @@ export function VentesPassees() {
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(t);
     });
-    return Array.from(map.entries()).map(([key, sales]) => ({
-      key,
-      label: dayLabel(new Date(key)),
-      sales,
-      total: sales.reduce((s, t) => s + (t.montant || t.price || 0), 0),
-    }));
+    return Array.from(map.entries()).map(([key, sales]) => {
+      // La liste garde TOUTES les ventes du jour (l'annulée reste affichée, badgée).
+      // Mais le compteur et le total du jour ne comptent que les ventes actives.
+      const actives = sales.filter(venteComptee);
+      return {
+        key,
+        label: dayLabel(new Date(key)),
+        sales,
+        count: actives.length,
+        total: actives.reduce((s, t) => s + (t.montant || t.price || 0), 0),
+      };
+    });
   }, [filtered]);
 
   const handleExport = () => {
@@ -344,7 +352,7 @@ export function VentesPassees() {
     { id:'credits', label:'Crédits' },
   ];
   const sliderIndex = SOURCE_TABS.findIndex(t => t.id === sourceFilter);
-  const ventesDuJour = allSales.filter(s => new Date(s.date).toDateString() === new Date().toDateString()).length;
+  const ventesDuJour = allSales.filter(s => venteComptee(s) && new Date(s.date).toDateString() === new Date().toDateString()).length;
 
   return (
     <SubPageLayout
@@ -385,7 +393,7 @@ export function VentesPassees() {
             explication="C'est le total de tout l'argent que tu as encaissé sur tes ventes pendant cette période."
             details={[
               { label: 'Nombre de ventes', value: totalCount },
-              { label: "Aujourd'hui", value: allSales.filter(s => new Date(s.date).toDateString() === new Date().toDateString()).reduce((a,b) => a+(b.montant||0), 0).toLocaleString('fr-FR') + ' FCFA' },
+              { label: "Aujourd'hui", value: allSales.filter(s => venteComptee(s) && new Date(s.date).toDateString() === new Date().toDateString()).reduce((a,b) => a+(b.montant||0), 0).toLocaleString('fr-FR') + ' FCFA' },
             ]}
           />
           <UniversalKPI
@@ -413,8 +421,8 @@ export function VentesPassees() {
             iconAnimation="spin"
             explication="C'est le nombre de fois que tu as vendu quelque chose. Chaque fois qu'une cliente paie, c'est une transaction."
             details={[
-              { label: "Aujourd'hui", value: allSales.filter(s => new Date(s.date).toDateString() === new Date().toDateString()).length },
-              { label: 'Cette semaine', value: allSales.filter(s => { const d = new Date(s.date); const now = new Date(); return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate()-7); }).length },
+              { label: "Aujourd'hui", value: allSales.filter(s => venteComptee(s) && new Date(s.date).toDateString() === new Date().toDateString()).length },
+              { label: 'Cette semaine', value: allSales.filter(s => { if (!venteComptee(s)) return false; const d = new Date(s.date); const now = new Date(); return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate()-7); }).length },
             ]}
           />
           <UniversalKPI
@@ -621,7 +629,7 @@ export function VentesPassees() {
               {/* Header jour */}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:11, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.1em', padding:'4px 0 8px', borderBottom:'1px solid var(--trait)', marginBottom:8 }}>
                 <span>{group.label}</span>
-                <span style={{ color:'var(--encre-4)', fontWeight:600 }}>{group.sales.length} vente{group.sales.length > 1 ? 's' : ''} · {group.total.toLocaleString('fr-FR')} F</span>
+                <span style={{ color:'var(--encre-4)', fontWeight:600 }}>{group.count} vente{group.count > 1 ? 's' : ''} · {group.total.toLocaleString('fr-FR')} F</span>
               </div>
               {group.sales.map((sale, i) => <VenteCard key={sale.id || i} sale={sale} index={i} query={search} />)}
             </div>

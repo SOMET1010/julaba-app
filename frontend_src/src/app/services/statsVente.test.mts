@@ -5,7 +5,7 @@
  * Garantit qu'on n'affiche JAMAIS un chiffre d'affaires gonflé : le total par
  * produit est la somme des montants, jamais price * quantity.
  */
-import { topProduitsVentes, montantLigne, type LigneVente } from "./statsVente.js";
+import { topProduitsVentes, montantLigne, resumeVentes, venteComptee, type LigneVente } from "./statsVente.js";
 
 let failures = 0;
 function ok(cond: boolean, label: string) {
@@ -63,6 +63,43 @@ function main() {
     const totalVentes = lignes.reduce((s, t) => s + montantLigne(t), 0);
     const sommeTop = topProduitsVentes(lignes).reduce((s, p) => s + p.total, 0);
     eq(sommeTop, totalVentes, `somme des tops (${sommeTop}) = total ventes (${totalVentes})`);
+  }
+
+  console.log("\n[7] #20 — une vente ANNULÉE ne compte dans AUCUN KPI (resumeVentes)");
+  {
+    const ventes = [
+      { montant: 6000, totalBenefice: 2000, statut: "annulee" }, // annulée → exclue partout
+      { montant: 500,  totalBenefice: 150,  statut: "validee" },
+      { montant: 2000, totalBenefice: 800 },                     // statut absent → comptée
+    ];
+    const r = resumeVentes(ventes);
+    eq(r.totalVentes, 2500, "CA exclut la vente annulée (500 + 2000, pas 8500)");
+    eq(r.totalCount, 2, "volume exclut la vente annulée (2, pas 3)");
+    eq(r.totalBenefices, 950, "bénéfices excluent la vente annulée (150 + 800)");
+    eq(r.panierMoyen, 1250, "panier moyen = 2500 / 2 (pas 8500 / 3)");
+  }
+
+  console.log("\n[8] #20 — resumeVentes : que des annulées → tout à zéro, pas de division par zéro");
+  {
+    const r = resumeVentes([{ montant: 6000, statut: "annulee" }]);
+    eq([r.totalVentes, r.totalCount, r.totalBenefices, r.panierMoyen], [0, 0, 0, 0], "aucune vente comptée → 0 partout");
+  }
+
+  console.log("\n[9] #20 — venteComptee : seul 'annulee' exclut ; validee / absent comptent");
+  {
+    ok(venteComptee({ statut: "validee" }) === true, "validee comptée");
+    ok(venteComptee({}) === true, "statut absent → comptée (ventes historiques / crédits)");
+    ok(venteComptee({ statut: "annulee" }) === false, "annulee exclue");
+  }
+
+  console.log("\n[10] #20 — topProduitsVentes exclut aussi les ventes annulées");
+  {
+    const lignes: LigneVente[] = [
+      { productName: "tomate", type: "vente", quantity: 30, montant: 6000, statut: "annulee" },
+      { productName: "tomate", type: "vente", quantity: 2,  montant: 400,  statut: "validee" },
+    ];
+    eq(topProduitsVentes(lignes), [{ productName: "tomate", quantity: 2, total: 400 }],
+      "l'annulée ne gonfle ni la quantité (2, pas 32) ni le CA (400, pas 6400)");
   }
 
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
