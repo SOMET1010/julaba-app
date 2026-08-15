@@ -17,7 +17,9 @@ import { SeedDemoService } from './seed-demo.service';
         password: config.get<string>('DB_PASSWORD', ''),
         database: config.get<string>('DB_NAME', 'julaba_db'),
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-        migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
+        // Non-récursif : `migrations/_archive/` (historique documentaire,
+        // ADR-0002) est volontairement HORS de la chaîne exécutable.
+        migrations: [__dirname + '/migrations/*{.ts,.js}'],
         // synchronize : construit le schéma depuis les entités (base VIERGE).
         // Activé AUTOMATIQUEMENT par prepareDatabase() dans main.ts quand la base
         // est vide — aucun réglage manuel requis. Jamais sur une base peuplée.

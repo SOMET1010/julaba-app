@@ -53,14 +53,32 @@ On **ne big-bang pas**. Migration étagée, chaque étape non destructive et vé
   `AddRecolteToStockAndCommande` renommée avec un timestamp unique).
 - Figer le plan (cet ADR).
 
-**Étape 1 — baseline reproductible.**
+**Étape 1 — baseline reproductible. ✅ RÉALISÉE (2026-08-15).**
 - Construire une base vierge, appliquer `synchronize` (entités) **+** `DbInit`
   (le schéma réel actuel), puis `pg_dump --schema-only` → SQL canonique.
-- En dériver une migration **`0-BaselineSchema`** (CREATE de tout le schéma).
+- En dériver une migration **`1780200000000-BaselineSchema`** (CREATE de tout le
+  schéma : 46 tables, 18 enums, 19 index, 1 vue, 2 extensions).
 - Archiver les 31 migrations pré-baseline hors du glob (`migrations/_archive/`) :
-  elles décrivent un historique incomplet et ne doivent plus s'exécuter.
-- **Vérifier** : base vierge #2 → `migration:run` (baseline seule) →
-  `pg_dump` → **diff nul** avec le schéma de référence.
+  elles décrivent un historique incomplet et ne doivent plus s'exécuter. Le glob
+  exécutable (`database.module` + `data-source.ts`) est rendu non-récursif.
+- **Vérifié** : base vierge → `ds.runMigrations()` (baseline seule) → `pg_dump`
+  → **diff structurel NUL** avec le schéma de référence (932 lignes normalisées
+  identiques). Seul écart : la table meta `migrations` créée par le runner
+  (attendu). La baseline est auto-suffisante (crée `pgcrypto`/`uuid-ossp`).
+
+  Méthode reproductible (base jetable) :
+  1. `synchronize`+`DbInit` sur base neuve → `pg_dump --schema-only --no-owner
+     --no-privileges --no-comments` = schéma de **référence** ;
+  2. baseline = ce dump nettoyé (retrait des méta psql `\…`, commentaires et
+     directives de session `SET`/`set_config search_path` — sinon le runner perd
+     sa table `migrations`) ;
+  3. `runMigrations()` sur une 2ᵉ base neuve → dump `-T public.migrations
+     -T public.migrations_id_seq` → `diff` = ∅.
+
+  **Écart justifié connu** : la FK `cooperative_membres_cooperative_id_fkey`
+  n'est pas créée (dette de typage varchar/uuid pré-existante ; `DbInit` échoue
+  déjà à la poser en prod). La baseline reflète donc fidèlement la prod. À
+  résorber en Étape 3.
 
 **Étape 2 — folder `DbInit` dans les migrations.**
 - Chaque patch idempotent de `DbInit` devient (ou est déjà couvert par) la
