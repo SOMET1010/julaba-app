@@ -46,6 +46,11 @@ export class Commande {
   @Column({ name: 'publication_id', type: 'uuid', nullable: true })
   publicationId: string;
 
+  // Récolte rattachée (vente directe notamment) : cible du décrément de stock
+  // quand il n'y a pas de publication. Cf. ADR-0001 D2 / #12.
+  @Column({ name: 'recolte_id', type: 'uuid', nullable: true })
+  recolteId: string | null;
+
   @Column({ length: 100 })
   type: string;
 

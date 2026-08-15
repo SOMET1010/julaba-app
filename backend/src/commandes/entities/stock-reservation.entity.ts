@@ -32,9 +32,15 @@ export class StockReservation {
   @Column({ name: 'commande_id', type: 'uuid' })
   commandeId: string;
 
+  // Nullable : une vente directe (sans publication) décrémente une récolte
+  // directement — le mouvement est tracé via recolteId. Cf. ADR-0001 D2 / #12.
   @Index('idx_stock_reservations_publication')
-  @Column({ name: 'publication_id', type: 'uuid' })
-  publicationId: string;
+  @Column({ name: 'publication_id', type: 'uuid', nullable: true })
+  publicationId: string | null;
+
+  @Index('idx_stock_reservations_recolte')
+  @Column({ name: 'recolte_id', type: 'uuid', nullable: true })
+  recolteId: string | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   quantite: number;

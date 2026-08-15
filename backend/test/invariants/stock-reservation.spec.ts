@@ -68,6 +68,20 @@ describe('Invariant B2 — reservation de stock sur commande', () => {
   }, 60000);
 
   afterAll(async () => {
+    // Nettoyage impératif : cette suite est la seule à insérer dans `recoltes`.
+    // Or TypeORM re-`ADD user_id NOT NULL` sur recoltes à chaque synchronize
+    // (drift de schéma pré-existant — dette #10) ; l'ADD échoue si la table
+    // contient des lignes. On vide donc ce qu'on a créé pour ne pas casser la
+    // synchronisation des suites suivantes (ordre enfant → parent, pas de FK
+    // garantie mais on respecte l'ordre par prudence).
+    try {
+      await ds?.query('DELETE FROM stock_reservations');
+      await ds?.query('DELETE FROM commandes');
+      await ds?.query('DELETE FROM publications');
+      await ds?.query('DELETE FROM recoltes');
+    } catch {
+      /* best-effort : le teardown ne doit pas masquer un échec de test */
+    }
     if (app) await app.close();
   });
 
@@ -152,24 +166,102 @@ describe('Invariant B2 — reservation de stock sur commande', () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Cadrage #12 — cf docs/adr/ADR-0001-decrement-stock-vente.md
-  // Scenarios DECIDES mais non encore implementes : encodes en it.todo pour
-  // rester visibles en CI sans la faire echouer. A promouvoir en vrais tests
-  // lors de la passe d'implementation dediee.
+  // #12 — décrément de stock à la vente (cf docs/adr/ADR-0001-decrement-stock-vente.md)
   // ─────────────────────────────────────────────────────────────────────────
 
-  // D1 / I-B (recolte) : la confirmation decremente la RECOLTE liee, une seule fois.
-  it.todo('I-B(recolte): confirmer decremente recoltes.stock_disponible de q (stock_vendu += q, statut vendue si 0) — ADR-0001 D1');
+  let recSeq = 0;
+  async function creerRecolte(quantite: number): Promise<string> {
+    recSeq += 1;
+    const rows = await ds.query(
+      `INSERT INTO recoltes
+         (user_id, produit, quantite, unite, qualite, date_recolte, statut, prix_unitaire, stock_disponible, stock_vendu)
+       VALUES ($1, $2, $3, 'kg', 'standard', CURRENT_DATE, 'declaree', 500, $3, 0)
+       RETURNING id`,
+      [vendeurId, `RecolteB2-${recSeq}`, quantite],
+    );
+    return rows[0].id;
+  }
+  async function creerPublicationRecolte(dispo: number, recolteId: string): Promise<string> {
+    pubSeq += 1;
+    const produit = `TomateB2R-${pubSeq}`;
+    const rows = await ds.query(
+      `INSERT INTO publications
+         (user_id, recolte_id, produit, culture, quantite_disponible, quantite_initiale, unite, prix_unitaire, qualite, localisation, active, statut, date_publication)
+       VALUES ($1,$2,$3,$3,$4,$4,'kg',500,'standard','Test',true,'disponible', NOW())
+       RETURNING id`,
+      [vendeurId, recolteId, produit, dispo],
+    );
+    return rows[0].id;
+  }
+  const recolteStock = async (id: string): Promise<{ dispo: number; vendu: number; statut: string }> => {
+    const r = (await ds.query('SELECT stock_disponible, stock_vendu, statut FROM recoltes WHERE id = $1', [id]))[0];
+    return { dispo: Number(r.stock_disponible), vendu: Number(r.stock_vendu), statut: r.statut };
+  };
+  const patchStatut = (cmdId: string, statut: string) =>
+    api().patch(`/api/v1/commandes/${cmdId}`).set('Authorization', `Bearer ${vendeurToken}`).send({ statut });
+  const venteDirecte = (recolteId: string | null, quantite: number) =>
+    api().post('/api/v1/commandes').set('Authorization', `Bearer ${vendeurToken}`).send({
+      vendeur_id: vendeurId, type: 'vente_directe', produit: 'Tomate',
+      ...(recolteId ? { recolte_id: recolteId } : {}),
+      quantite, prix_unitaire: 500, total: 500 * quantite, statut: 'confirmee',
+    });
 
-  // D1 / I-C : la livraison est purement logistique, sans effet stock.
-  it.todo('I-C: en_livraison/livree ne modifie ni quantite_disponible ni la recolte — ADR-0001 D1');
+  it('I-B(recolte): confirmer une vente marche decremente la recolte liee (une fois)', async () => {
+    const rec = await creerRecolte(30);
+    const pub = await creerPublicationRecolte(100, rec);
+    const cmdId = (await passerCommande(pub, 10)).body.commande.id;
+    // Reserve : le disponible de la publication baisse, la recolte reste intacte.
+    expect(await dispoDe(pub)).toBe(90);
+    expect((await recolteStock(rec)).dispo).toBe(30);
+    // Confirme : decrement ferme de la recolte.
+    await patchStatut(cmdId, 'confirmee');
+    const s = await recolteStock(rec);
+    expect(s.dispo).toBe(20);
+    expect(s.vendu).toBe(10);
+  });
 
-  // D2 : la vente directe est une sortie reelle, rattachee a une recolte explicite.
-  it.todo('D2-a: vente_directe avec recolte_id decremente cette recolte a la confirmation — ADR-0001 D2');
+  it('I-C: en_livraison puis livree ne modifie ni disponible ni recolte', async () => {
+    const rec = await creerRecolte(30);
+    const pub = await creerPublicationRecolte(100, rec);
+    const cmdId = (await passerCommande(pub, 10)).body.commande.id;
+    await patchStatut(cmdId, 'confirmee');
+    const dispoApres = await dispoDe(pub);
+    const recApres = (await recolteStock(rec)).dispo;
+    await patchStatut(cmdId, 'en_livraison');
+    await patchStatut(cmdId, 'livree');
+    expect(await dispoDe(pub)).toBe(dispoApres);      // inchange
+    expect((await recolteStock(rec)).dispo).toBe(recApres); // inchange
+  });
 
-  // D2 : pas de deduction heuristique de la recolte.
-  it.todo('D2-b: vente_directe sans recolte_id est refusee (400), aucun stock touche — ADR-0001 D2');
+  it('D2-a: vente directe (recolte_id, confirmee) decremente la recolte + trace le mouvement', async () => {
+    const rec = await creerRecolte(20);
+    const res = await venteDirecte(rec, 8);
+    expect([200, 201]).toContain(res.status);
+    const cmdId = res.body.commande.id;
+    const s = await recolteStock(rec);
+    expect(s.dispo).toBe(12);
+    expect(s.vendu).toBe(8);
+    expect(await statutResa(cmdId)).toBe('convertie');
+    const row = (await ds.query('SELECT publication_id, recolte_id FROM stock_reservations WHERE commande_id = $1', [cmdId]))[0];
+    expect(row.publication_id).toBeNull();
+    expect(row.recolte_id).toBe(rec);
+  });
 
-  // D3 : pas de TTL — une reservation en_attente reste active jusqu a confirmation/annulation.
-  it.todo('D3: une reservation en_attente reste active tant qu aucune confirmation/annulation n intervient (pas d expiration) — ADR-0001 D3');
+  it('D2-b: vente directe SANS recolte_id est refusee (400), aucun stock touche', async () => {
+    const rec = await creerRecolte(20);
+    const res = await venteDirecte(null, 8);
+    expect(res.status).toBe(400);
+    const s = await recolteStock(rec);
+    expect(s.dispo).toBe(20); // intacte
+    expect(s.vendu).toBe(0);
+  });
+
+  it('D3: une reservation en_attente reste active (pas de TTL / expiration)', async () => {
+    const pub = await creerPublication(50);
+    const cmdId = (await passerCommande(pub, 10)).body.commande.id;
+    expect(await statutResa(cmdId)).toBe('active');
+    // Aucune action : la reservation ne s'auto-libere pas.
+    expect(await statutResa(cmdId)).toBe('active');
+    expect(await dispoDe(pub)).toBe(40);
+  });
 });

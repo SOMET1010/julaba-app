@@ -148,6 +148,56 @@ export class StockReservationService {
   }
 
   /**
+   * Vente DIRECTE (hors marche/publication) : decrement FERME d'une recolte
+   * explicite (cf. ADR-0001 D2 / #12). Pas de deduction heuristique — la
+   * recolte cible est fournie par l'appelant. Meme esprit que la conversion
+   * marche : definitif, borne a 0, idempotent par commande_id, verrou recolte.
+   * Le mouvement est journalise dans stock_reservations (publication_id NULL,
+   * recolte_id renseigne, statut 'convertie'). Aucun argent implique.
+   */
+  async convertirRecolteDirecte(
+    manager: EntityManager,
+    cible: { commandeId: string; recolteId: string; quantite: number },
+  ): Promise<void> {
+    const { commandeId, recolteId, quantite } = cible;
+    if (!recolteId) return;
+    const q = Number(quantite);
+    if (!(q > 0)) return;
+
+    // Idempotence : un mouvement existe deja pour cette commande -> ne rien refaire.
+    const deja = await manager.query(
+      `SELECT id FROM stock_reservations WHERE commande_id = $1 FOR UPDATE`,
+      [commandeId],
+    );
+    if (deja.length > 0) return;
+
+    // Verrou recolte (serialise les concurrents sur la meme recolte).
+    const rec = await manager.query(
+      `SELECT id FROM recoltes WHERE id = $1 FOR UPDATE`,
+      [recolteId],
+    );
+    if (rec.length === 0) {
+      throw new NotFoundException('Recolte introuvable pour la vente directe');
+    }
+
+    // Decrement ferme (borne a 0) + passage a 'vendue' si epuisee.
+    await manager.query(
+      `UPDATE recoltes
+         SET stock_disponible = GREATEST(0, stock_disponible - $1),
+             stock_vendu = stock_vendu + $1,
+             statut = CASE WHEN GREATEST(0, stock_disponible - $1) = 0 THEN 'vendue' ELSE statut END,
+             updated_at = NOW()
+       WHERE id = $2`,
+      [q, recolteId],
+    );
+    await manager.query(
+      `INSERT INTO stock_reservations (commande_id, publication_id, recolte_id, quantite, statut)
+       VALUES ($1, NULL, $2, $3, 'convertie')`,
+      [commandeId, recolteId, q],
+    );
+  }
+
+  /**
    * Libere la reservation active d'une commande (annulation) : restitue le
    * disponible et marque la ligne 'liberee'. Idempotent : n'agit que sur une
    * reservation 'active' (ne restitue jamais une vente deja convertie).

@@ -91,6 +91,15 @@ export class CommandesRestController {
       throw new ForbiddenException('Vente directe : le vendeur doit être le compte connecté');
     }
 
+    // #12 / ADR-0001 D2 : une vente directe est une sortie réelle de marchandise
+    // → elle doit être rattachée à une récolte EXPLICITE (aucune déduction
+    // heuristique). Sans recolte_id, on refuse plutôt que de laisser le stock
+    // diverger silencieusement.
+    const recolteId = body.recolte_id || body.recolteId || null;
+    if (isVenteDirecte && !recolteId) {
+      throw new BadRequestException('Vente directe : recolte_id requis (rattacher la vente à une récolte)');
+    }
+
     const rawAcheteur = body.acheteur_id ?? body.acheteurId;
     const acheteurIdTrimmed =
       rawAcheteur != null && String(rawAcheteur).trim() !== '' ? String(rawAcheteur).trim() : null;
@@ -119,6 +128,7 @@ export class CommandesRestController {
           acheteurId,
           vendeurId,
           publicationId: body.publication_id || body.publicationId || null,
+          recolteId,
           type: body.type,
           produit: body.produit,
           quantite,
@@ -146,6 +156,14 @@ export class CommandesRestController {
         } else if (commande.statut === CommandeStatut.CONFIRMEE) {
           await this.reservation.convertir(manager, cible);
         }
+      } else if (commande.recolteId && commande.statut === CommandeStatut.CONFIRMEE) {
+        // Vente directe (sans publication) confirmée d'emblée → décrément ferme
+        // de la récolte rattachée. Cf. ADR-0001 D2 / #12.
+        await this.reservation.convertirRecolteDirecte(manager, {
+          commandeId: commande.id,
+          recolteId: commande.recolteId,
+          quantite: Number(commande.quantite),
+        });
       }
       return commande;
     });
@@ -273,6 +291,14 @@ export class CommandesRestController {
         await this.reservation.convertir(manager, {
           commandeId: id,
           publicationId: cmd.publicationId,
+          quantite: Number(cmd.quantite),
+        });
+      } else if (nextStatut === CommandeStatut.CONFIRMEE && cmd.statut !== CommandeStatut.CONFIRMEE && cmd.recolteId) {
+        // Vente directe confirmée via changement de statut → décrément ferme de
+        // la récolte rattachée. Cf. ADR-0001 D2 / #12.
+        await this.reservation.convertirRecolteDirecte(manager, {
+          commandeId: id,
+          recolteId: cmd.recolteId,
           quantite: Number(cmd.quantite),
         });
       } else if (nextStatut === CommandeStatut.ANNULEE && cmd.statut !== CommandeStatut.ANNULEE) {
