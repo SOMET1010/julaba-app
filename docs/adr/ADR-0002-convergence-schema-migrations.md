@@ -80,11 +80,25 @@ On **ne big-bang pas**. Migration étagée, chaque étape non destructive et vé
   déjà à la poser en prod). La baseline reflète donc fidèlement la prod. À
   résorber en Étape 3.
 
-**Étape 2 — folder `DbInit` dans les migrations.**
-- Chaque patch idempotent de `DbInit` devient (ou est déjà couvert par) la
-  baseline / une migration post-baseline. `DbInit` se réduit puis se retire.
-- Les objets hors dépôt (`credits`, `clients`, `produits`, vue) sont **sourcés**
-  dans la baseline (leur schéma réel capturé par le dump).
+**Étape 2 — folder `DbInit` dans les migrations. ✅ RÉALISÉE (2026-08-15).**
+- **Constat** : la baseline (Étape 1) a été dumpée depuis `synchronize` **+**
+  `DbInit`. Elle **contient donc déjà** tout le DDL idempotent de `DbInit` —
+  colonnes `users`/`identifications`/`stocks`/`produits`, tables sans entité
+  (`caisse_sessions`, `produits`, `stock_mouvements`, `bpay_transactions`,
+  `evaluations`, `fidelite_*`), objets hors dépôt (`credits`, `clients`, vue
+  `credits_avec_statut`), index d'idempotence, FK. **Créer des migrations
+  par-patch serait faux** : elles dupliqueraient la baseline (→ erreurs). Le
+  foldering est donc **déjà réalisé par la baseline**.
+- La seule opération **non-schéma** de `DbInit` est le `DELETE` de dédoublonnage
+  `publications` (one-time, no-op sur base neuve, déjà appliqué en prod via #102).
+- **Prouvé** (`npm run verify:dbinit-subsumed` — script committé) : base neuve
+  construite par les migrations → `DbInit.runInit()` par-dessus → **0 objet
+  ajouté / 0 retiré** (sur ~660 objets). `DbInit ⊆ migrations`.
+- **Règle actée** : toute future modification de schéma passe par une
+  **migration** (le contrôle échoue sinon). `DbInit` devient un **filet de
+  sécurité redondant** pour les bases neuves ; sa **réduction/retrait** est faite
+  à l'Étape 4 (car la prod existante en dépend encore tant que `migrationsRun`
+  est OFF). Non touché ici.
 
 **Étape 3 — corriger les drifts de mapping. ✅ RÉALISÉE (2026-08-15).**
 - **Drift 1 — entité `recoltes` dupliquée.** Root cause : une 2ᵉ entité morte
