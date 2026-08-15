@@ -22,7 +22,7 @@ const BG = '#FFF2E9';
 
 export function POSCaisse() {
   const navigate = useNavigate();
-  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, updateProduct, transactions } = useCaisse();
+  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, updateProduct, refreshProducts, transactions } = useCaisse();
   const { speak, reloadTransactions, user } = useApp();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Ma boutique';
   // La caisse SUIT le sous-profil (docs/SOUS_PROFILS_MARCHAND.md) : en négoce
@@ -150,10 +150,14 @@ export function POSCaisse() {
           })
           .filter((x): x is { nom: string; quantite: number; stockAvant: number } => x !== null),
       );
-      details.forEach((item) => {
-        const prod = products.find((p) => p.id === item.productId);
-        if (prod) updateProduct(prod.id, { stock: Math.max(0, (prod.stock || 0) - item.quantite) });
-      });
+      // Stock : le BACKEND est seul maître. `/caisse/vente` décrémente de façon
+      // atomique (SELECT … FOR UPDATE) et journalise le manquant (I3) dans la MÊME
+      // transaction. On ne réécrit plus un stock ABSOLU depuis le front : c'était
+      // la « double autorité » (R-A) — en concurrence ou au rejeu offline, ce PUT
+      // absolu, calculé sur un état local possiblement périmé, écrasait le
+      // décrément serveur (stock trop haut, divergence stock/ledger). On reflète
+      // désormais l'état autoritaire par un simple refetch.
+      void refreshProducts();
       // Écran « Vente réussie » (Phase 3, lot 4) — capturé AVANT de vider le panier.
       setLastSale({ montant: total, moyen, monnaie: estMM ? 0 : monnaie, produits: details });
       clearCart();
