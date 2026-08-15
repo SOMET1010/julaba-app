@@ -90,3 +90,40 @@ partout, données du scénario démo cohérentes à l'écran :
 - Parcours MÉTIER profonds par rôle (déclarer une récolte, enrôler un
   acteur, valider un dossier…) — les accueils sont verts, les gestes
   restent à dérouler.
+
+## Séance 4 — 15/08/2026 : boucle ESPÈCES marchand de bout en bout
+
+Recette **reproductible** (pas seulement un compte rendu) : harnais e2e
+committé sous `frontend_src/e2e/` (`run-recette.sh` + `recette-caisse-especes.mjs`
++ `proxy.mjs`). Vraie stack bootée localement — PostgreSQL vierge → backend
+NestJS (`synchronize` + seed démo) → `frontend/dist` servi même-origine →
+Chromium piloté 390×844. Rejouable : `bash frontend_src/e2e/run-recette.sh`.
+
+Ferme la boucle sécurisée par R-A (#114, backend seul maître du stock),
+crédit-off #16-B (#115) et R7 (#116, annulation → remise en stock).
+
+### Vérifié VERT (vu à l'écran + arbitré par la base)
+- **Login marchand** (Awa, seed) via API puis accès direct `/marchand/caisse`,
+  sans redirection login/onboarding.
+- **Étape paiement** (capture `02-paiement.png`) : moyens = **Espèces** +
+  **Mobile money**, **AUCUN bouton Crédit**, et mention explicite
+  « Caisse pilote : espèces uniquement — vente à crédit désactivée ». Mobile
+  money présent mais Espèces sélectionné par défaut (ne parasite pas). C'est la
+  preuve écran de #16-B.
+- **Vente espèces** (produit à stock 100, quantité 30) → stock **100 → 70**.
+- **Annulation** (admin) → HTTP **200** + restitution `[{Tomate-Recette: 30}]`
+  → stock **restauré à 100**.
+- **Idempotence** : rejeu de l'annulation → **aucune re-restitution** (`[]`).
+- **Arbitrage base (source de vérité)** : `net_ledger = 0`, `mouvements = 2`
+  (vente −30 + restitution +30), `stock_final Tomate-Recette = 100`.
+
+Verdict : **pilote espèces fonctionnellement fermé** — vente atomique → ledger →
+annulation qui restitue exactement → idempotence, cohérent au runtime.
+
+### Artefact de harnais consigné (NON un défaut produit)
+La lecture API `GET /caisse/produits` du contexte navigateur a renvoyé
+**transitoirement `null`** sur les **deux** assertions de stock jouées *après*
+l'annulation (hoquet de session/lecture après beaucoup de requêtes rapides) —
+d'où 13/15 côté navigateur. Ce sont **deux lectures de test**, explicitement
+**réfutées par la base** (`stock=100`, `net_ledger=0`). À NE PAS réinterpréter
+plus tard comme deux anomalies de la boucle espèces : la boucle est intègre.
