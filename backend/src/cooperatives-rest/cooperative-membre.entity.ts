@@ -6,10 +6,12 @@ export class CooperativeMembre {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'cooperative_id' })
+  // uuid explicite : sans type, TypeORM infère varchar → la FK vers
+  // cooperatives.id (uuid) « cannot be implemented ». Cf. ADR-0002 Étape 3 / #10.
+  @Column({ name: 'cooperative_id', type: 'uuid' })
   cooperative_id: string;
 
-  @Column({ name: 'membre_id' })
+  @Column({ name: 'membre_id', type: 'uuid' })
   membre_id: string;
 
   @Column({ nullable: true })
