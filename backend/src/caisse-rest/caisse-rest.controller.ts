@@ -1,11 +1,12 @@
-import { BadRequestException, Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Optional, Logger } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Put, Patch, Delete, Body, Param, ParseUUIDPipe, NotFoundException, UseGuards, Optional, Logger } from '@nestjs/common';
 import { EventsGateway } from '../events/events.gateway';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
-import { CaisseTransaction } from './caisse-transaction.entity';
+import { CaisseTransaction, TransactionStatus } from './caisse-transaction.entity';
+import { restituerStock } from './stock-restitution';
 import { AlertesService } from '../notifications/alertes.service';
 
 @UseGuards(JwtAuthGuard)
@@ -23,6 +24,42 @@ export class CaisseRestController {
   @Get('transactions')
   findAll(@CurrentUser() user: User) {
     return this.repo.find({ where: { user_id: user.id }, order: { created_at: 'DESC' } });
+  }
+
+  /**
+   * Annulation SELF-SERVICE d'une vente par le marchand (#20).
+   *
+   * Garde-fous : le marchand n'annule que SA PROPRE vente (`user_id`), de type
+   * `vente`, en état `validee` (pas déjà annulée / gelée / en litige par un admin),
+   * et UNIQUEMENT du JOUR courant — au-delà, seul un admin peut annuler
+   * (`PATCH /transactions/:id`). Réutilise la restitution partagée (stock rendu +
+   * mouvement inverse `type='annulation'`), atomique et idempotente. L'ARGENT
+   * n'est pas touché (argent gelé) : on marque `annulee` + restitue le stock ;
+   * le CA du jour exclut les ventes annulées (côté front).
+   */
+  @Patch('transactions/:id/annuler')
+  async annulerVente(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+    return this.dataSource.transaction(async (m) => {
+      const tx = await m.findOne(CaisseTransaction, { where: { id } });
+      // On ne divulgue pas l'existence d'une vente d'autrui : introuvable.
+      if (!tx || tx.user_id !== user.id) throw new NotFoundException('Vente introuvable');
+      if (tx.type !== 'vente') throw new BadRequestException('Seule une vente peut être annulée.');
+      if (tx.statut !== TransactionStatus.VALIDEE) {
+        throw new BadRequestException('Cette vente n’est pas annulable (déjà annulée ou en cours de traitement).');
+      }
+      // Fenêtre : vente du JOUR courant uniquement. Abidjan = UTC → dates alignées.
+      const jourVente = new Date(tx.created_at).toISOString().slice(0, 10);
+      const aujourdhui = new Date().toISOString().slice(0, 10);
+      if (jourVente !== aujourdhui) {
+        throw new BadRequestException('Seule une vente du jour peut être annulée. Pour une vente plus ancienne, contacte un responsable.');
+      }
+
+      tx.statut = TransactionStatus.ANNULEE;
+      tx.motif = 'Annulation par le marchand';
+      await m.save(tx);
+      const restitutions = await restituerStock(m, id);
+      return { id, statut: tx.statut, restitutions };
+    });
   }
 
   @Post('transactions')
