@@ -1,3 +1,4 @@
+SET
 col:academy_modules.created_at:timestamp without time zone:NO
 col:academy_modules.description:character varying:YES
 col:academy_modules.duree:integer:NO
@@ -40,7 +41,7 @@ col:audit_logs.entite_id:character varying:YES
 col:audit_logs.id:uuid:NO
 col:audit_logs.ip:character varying:YES
 col:audit_logs.user_id:character varying:YES
-col:boutique_mouvements.created_at:timestamp without time zone:NO
+col:boutique_mouvements.created_at:timestamp with time zone:NO
 col:boutique_mouvements.device:character varying:NO
 col:boutique_mouvements.id:uuid:NO
 col:boutique_mouvements.marchand_id:uuid:NO
@@ -129,6 +130,23 @@ col:communes.code:character varying:NO
 col:communes.departement_id:uuid:NO
 col:communes.id:uuid:NO
 col:communes.nom:character varying:NO
+col:cooperative_besoins.categorie:character varying:YES
+col:cooperative_besoins.cooperative_id:uuid:NO
+col:cooperative_besoins.created_at:timestamp with time zone:YES
+col:cooperative_besoins.date_besoin:timestamp with time zone:YES
+col:cooperative_besoins.id:uuid:NO
+col:cooperative_besoins.marchand_id:uuid:NO
+col:cooperative_besoins.notes:text:YES
+col:cooperative_besoins.priorite:character varying:YES
+col:cooperative_besoins.prix_achat:numeric:YES
+col:cooperative_besoins.prix_dispatch:numeric:YES
+col:cooperative_besoins.prix_max:numeric:YES
+col:cooperative_besoins.produit:character varying:YES
+col:cooperative_besoins.quantite:numeric:YES
+col:cooperative_besoins.quantite_attribuee:numeric:YES
+col:cooperative_besoins.statut:character varying:YES
+col:cooperative_besoins.unite:character varying:YES
+col:cooperative_besoins.updated_at:timestamp with time zone:YES
 col:cooperative_membres.actif:boolean:YES
 col:cooperative_membres.cooperative_id:character varying:NO
 col:cooperative_membres.cotisation_payee:boolean:YES
@@ -387,20 +405,20 @@ col:raccourcis_vocaux.updatedAt:timestamp without time zone:NO
 col:raccourcis_vocaux.userId:character varying:NO
 col:recoltes.created_at:timestamp without time zone:NO
 col:recoltes.cycle_id:uuid:YES
-col:recoltes.date_recolte:date:NO
+col:recoltes.date_recolte:character varying:YES
 col:recoltes.id:uuid:NO
 col:recoltes.notes:text:YES
 col:recoltes.parcelle:character varying:YES
 col:recoltes.photo_url:text:YES
-col:recoltes.prix_unitaire:numeric:NO
+col:recoltes.prix_unitaire:numeric:YES
 col:recoltes.producteur_id:character varying:YES
-col:recoltes.produit:character varying:NO
+col:recoltes.produit:character varying:YES
 col:recoltes.qualite:USER-DEFINED:NO
-col:recoltes.quantite:numeric:NO
-col:recoltes.statut:USER-DEFINED:NO
+col:recoltes.quantite:numeric:YES
+col:recoltes.statut:character varying:NO
 col:recoltes.stock_disponible:numeric:NO
 col:recoltes.stock_vendu:numeric:NO
-col:recoltes.unite:character varying:NO
+col:recoltes.unite:character varying:YES
 col:recoltes.updated_at:timestamp without time zone:NO
 col:recoltes.user_id:uuid:NO
 col:recoltes.zone_id:character varying:YES
@@ -428,13 +446,13 @@ col:stock_mouvements.quantite_retranchee:numeric:NO
 col:stock_mouvements.stock_avant:numeric:NO
 col:stock_mouvements.transaction_id:uuid:YES
 col:stock_reservations.commande_id:uuid:NO
-col:stock_reservations.created_at:timestamp without time zone:NO
+col:stock_reservations.created_at:timestamp with time zone:NO
 col:stock_reservations.id:uuid:NO
 col:stock_reservations.publication_id:uuid:YES
 col:stock_reservations.quantite:numeric:NO
 col:stock_reservations.recolte_id:uuid:YES
 col:stock_reservations.statut:character varying:NO
-col:stock_reservations.updated_at:timestamp without time zone:NO
+col:stock_reservations.updated_at:timestamp with time zone:NO
 col:stocks.categorie:text:YES
 col:stocks.created_at:timestamp without time zone:NO
 col:stocks.date_peremption:date:YES
@@ -451,6 +469,9 @@ col:stocks.seuil_alerte:numeric:YES
 col:stocks.unite:character varying:YES
 col:stocks.updated_at:timestamp without time zone:NO
 col:stocks.zone_id:character varying:YES
+col:support_config.config:jsonb:NO
+col:support_config.id:uuid:NO
+col:support_config.updated_at:timestamp with time zone:YES
 col:tickets.categorie:character varying:YES
 col:tickets.created_at:timestamp without time zone:NO
 col:tickets.description:character varying:YES
@@ -574,6 +595,41 @@ con:FK_dc2adca1292f393cb5f35dd87d9:f:communes
 con:FK_e3681a80d74f8e3fbd3f4c94ba8:f:publications
 con:FK_ec50069e0910bfc638ac8fc49ef:f:publications
 con:FK_f901ffbf66a4d0537ea235c0a97:f:recoltes
+con:PK_048c7aef9a99d4aed24c9054893:p:commandes
+con:PK_0be7539dcdba335470dc05e9690:p:institutions
+con:PK_0d27db950c50899676bce8e69dd:p:cooperative_membres
+con:PK_1bb179d048bbc581caa3b013439:p:audit_logs
+con:PK_2c4850823d8f6ec267b042368da:p:departements
+con:PK_2c4e732b044e09139d2f1065fae:p:publications
+con:PK_32734e87f299c29ca3878861f4f:p:push_tokens
+con:PK_343bc942ae261cf7a1377f48fd0:p:tickets
+con:PK_3a74f2e283338659fef10802360:p:raccourcis
+con:PK_432acea399a929f312e6613d973:p:academy_questions
+con:PK_4c4f716e96651b63e7369a42aeb:p:identifications
+con:PK_4fcd12ed6a046276e2deb08801c:p:regions
+con:PK_5120f131bde2cda940ec1a621db:p:wallet_transactions
+con:PK_529c862266138c6e9cf315b53c0:p:mutations
+con:PK_52e5eeb9c7c6e4ad1aed657967a:p:cycles
+con:PK_52fc93ab8869e3f71c46601fe9b:p:cooperatives
+con:PK_53a9285bb669dd2298c4de525bb:p:communes
+con:PK_6343e1b79d617a65d8496492743:p:recoltes
+con:PK_6a72c3c0f683f6462415e653c3a:p:notifications
+con:PK_6de618449277fb758cd2f13c1e3:p:user_flags
+con:PK_71d69ef1c2c7f6eceea500700f9:p:marchand_sous_profil_historique
+con:PK_787aebb1ac5923c9904043c6309:p:missions
+con:PK_7d8bee0204106019488c4c50ffa:p:refresh_tokens
+con:PK_8402e5df5a30a229380e83e4f7e:p:wallets
+con:PK_880484a43ca311707b05895bd4a:p:zones
+con:PK_8ec08f442448e2c7a1ea56bac73:p:academy_modules
+con:PK_972a72ff4e3bea5c7f43a2b98af:p:districts
+con:PK_9f7c5c349b66557717dd96b1d71:p:caisse_transactions
+con:PK_a3ffb1c0c8416b9fc6f907b7433:p:users
+con:PK_b5b1ee4ac914767229337974575:p:stocks
+con:PK_c82f0002854f4702a34d1feae08:p:objectifs_journaliers
+con:PK_d1ffb1f02f29e4f405d1d728243:p:marches
+con:PK_dd51990e9d8e65699a336104c6b:p:negociations
+con:PK_f8e7aa8dddec42142557cd01aa1:p:raccourcis_vocaux
+con:PK_fa54eb53cdaa4a07c2efac20d4e:p:academy_progress
 con:UQ_0d2cc92e9eea45587a60b18c3ff:u:cooperatives
 con:UQ_8e9d73424149b43b38244f75528:u:districts
 con:UQ_92558c08091598f7a4439586cda:u:wallets
@@ -581,9 +637,11 @@ con:UQ_97672ac88f789774dd47f7c8be3:u:users
 con:UQ_a000cca60bcf04454e727699490:u:users
 con:UQ_c177b96380c25d2a0364124c7a9:u:districts
 con:UQ_e55a5ee0373d2132b9315184d96:u:academy_progress
+con:boutique_mouvements_pkey:p:boutique_mouvements
 con:bpay_transactions_pkey:p:bpay_transactions
 con:caisse_sessions_pkey:p:caisse_sessions
 con:clients_pkey:p:clients
+con:cooperative_besoins_pkey:p:cooperative_besoins
 con:credits_pkey:p:credits
 con:evaluations_note_check:c:evaluations
 con:evaluations_pkey:p:evaluations
@@ -591,8 +649,9 @@ con:fidelite_clients_pkey:p:fidelite_clients
 con:fidelite_config_pkey:p:fidelite_config
 con:produits_pkey:p:produits
 con:stock_mouvements_pkey:p:stock_mouvements
+con:stock_reservations_pkey:p:stock_reservations
+con:support_config_pkey:p:support_config
 idx:IDX_3ddc983c5f7bcf132fd8732c3f:refresh_tokens
-idx:IDX_760ed385479f5bd683018f1379:boutique_mouvements
 idx:IDX_ad3e46cb78aedbf7882e547a53:cooperative_membres
 idx:PK_048c7aef9a99d4aed24c9054893:commandes
 idx:PK_0be7539dcdba335470dc05e9690:institutions
@@ -604,7 +663,6 @@ idx:PK_32734e87f299c29ca3878861f4f:push_tokens
 idx:PK_343bc942ae261cf7a1377f48fd0:tickets
 idx:PK_3a74f2e283338659fef10802360:raccourcis
 idx:PK_432acea399a929f312e6613d973:academy_questions
-idx:PK_46ec0f5605d70f64654ad4e7bd9:stock_reservations
 idx:PK_4c4f716e96651b63e7369a42aeb:identifications
 idx:PK_4fcd12ed6a046276e2deb08801c:regions
 idx:PK_5120f131bde2cda940ec1a621db:wallet_transactions
@@ -624,7 +682,6 @@ idx:PK_8ec08f442448e2c7a1ea56bac73:academy_modules
 idx:PK_972a72ff4e3bea5c7f43a2b98af:districts
 idx:PK_9f7c5c349b66557717dd96b1d71:caisse_transactions
 idx:PK_a3ffb1c0c8416b9fc6f907b7433:users
-idx:PK_a7a4ca36a3fea7db0066f750162:boutique_mouvements
 idx:PK_b5b1ee4ac914767229337974575:stocks
 idx:PK_c82f0002854f4702a34d1feae08:objectifs_journaliers
 idx:PK_d1ffb1f02f29e4f405d1d728243:marches
@@ -638,13 +695,17 @@ idx:UQ_97672ac88f789774dd47f7c8be3:users
 idx:UQ_a000cca60bcf04454e727699490:users
 idx:UQ_c177b96380c25d2a0364124c7a9:districts
 idx:UQ_e55a5ee0373d2132b9315184d96:academy_progress
+idx:boutique_mouvements_pkey:boutique_mouvements
 idx:bpay_transactions_pkey:bpay_transactions
 idx:caisse_sessions_pkey:caisse_sessions
 idx:clients_pkey:clients
+idx:cooperative_besoins_pkey:cooperative_besoins
 idx:credits_pkey:credits
 idx:evaluations_pkey:evaluations
 idx:fidelite_clients_pkey:fidelite_clients
 idx:fidelite_config_pkey:fidelite_config
+idx:idx_boutique_mvt_marchand:boutique_mouvements
+idx:idx_boutique_mvt_ts:boutique_mouvements
 idx:idx_credits_marchand:credits
 idx:idx_evaluations_cible:evaluations
 idx:idx_produits_marchand:produits
@@ -656,6 +717,8 @@ idx:idx_users_email_lower:users
 idx:idx_users_email_unique:users
 idx:produits_pkey:produits
 idx:stock_mouvements_pkey:stock_mouvements
+idx:stock_reservations_pkey:stock_reservations
+idx:support_config_pkey:support_config
 idx:ux_caisse_sessions_marchand_date:caisse_sessions
 idx:ux_caisse_tx_idempotency_key:caisse_transactions
 idx:ux_clients_marchand_nom:clients
