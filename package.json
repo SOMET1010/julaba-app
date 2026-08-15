@@ -10,6 +10,7 @@
     "dev": "concurrently -n frontend,backend -c cyan,green \"npm run dev --workspace frontend_src\" \"npm run start:dev --workspace backend\"",
     "build": "npm run build --workspace frontend_src && npm run build --workspace backend",
     "install:all": "npm install",
+    "check:nest-versions": "node scripts/check-nest-versions.mjs",
     "typecheck": "npm run typecheck --workspace frontend_src"
   },
   "devDependencies": {
