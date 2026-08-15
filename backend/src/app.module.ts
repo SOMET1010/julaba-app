@@ -4,6 +4,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { HealthController } from './health.controller';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { buildThrottlers } from './config/throttler.config';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -64,26 +65,12 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
       envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env',
     }),
 
-    // Rate limiting global. Les limites de prod sont inchangées ; THROTTLE_DISABLED
-    // (recette / e2e uniquement) les desserre pour que le harnais navigateur — qui
-    // enchaîne plusieurs requêtes depuis une seule IP — ne se fasse pas 429. C'est
-    // l'équivalent booté de la neutralisation du ThrottlerStorage côté jest. La prod
-    // ne définit jamais ce flag, donc son comportement est strictement identique.
-    ThrottlerModule.forRoot(
-      (process.env.THROTTLE_DISABLED === 'true'
-        ? [
-            { name: 'default', ttl: 60000, limit: 1_000_000 },
-            { name: 'auth', ttl: 60000, limit: 1_000_000 },
-            { name: 'voice', ttl: 60000, limit: 1_000_000 },
-            { name: 'recovery', ttl: 60000, limit: 1_000_000 },
-          ]
-        : [
-            { name: 'default', ttl: 60000, limit: 1000 },
-            { name: 'auth', ttl: 60000, limit: 5 },
-            { name: 'voice', ttl: 60000, limit: 10 },
-            { name: 'recovery', ttl: 60000, limit: 5 },
-          ]),
-    ),
+    // Rate limiting global — UN SEUL throttler `default` généreux (300/min/endpoint/IP),
+    // strict uniquement là où c'est un enjeu de sécurité via @Throttle (login, signup,
+    // recovery, voix). Voir docs/AUDIT_THROTTLING.md : les throttlers nommés
+    // s'appliquant TOUS à chaque route plafonnaient toute l'API à 5/min. THROTTLE_DISABLED
+    // (recette / e2e uniquement) rend la limite non contraignante ; prod jamais concernée.
+    ThrottlerModule.forRoot(buildThrottlers(process.env)),
 
     // Database
     DatabaseModule,
