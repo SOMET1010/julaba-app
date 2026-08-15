@@ -100,30 +100,40 @@ NestJS (`synchronize` + seed démo) → `frontend/dist` servi même-origine →
 Chromium piloté 390×844. Rejouable : `bash frontend_src/e2e/run-recette.sh`.
 
 Ferme la boucle sécurisée par R-A (#114, backend seul maître du stock),
-crédit-off #16-B (#115) et R7 (#116, annulation → remise en stock).
+crédit-off #16-B (#115), R7 (#116, remise en stock à l'annulation), mobile money
+masqué (#118), ledger typé (#119) et **annulation SELF-SERVICE marchand** (#20 /
+#121). L'annulation n'est plus déclenchée par l'admin : elle est jouée **à la
+main dans l'UI du marchand**, comme en vrai.
 
-### Vérifié VERT (vu à l'écran + arbitré par la base)
+### Vérifié VERT (vu à l'écran + arbitré par la base) — **14/14**
 - **Login marchand** (Awa, seed) via API puis accès direct `/marchand/caisse`,
   sans redirection login/onboarding.
-- **Étape paiement** (capture `02-paiement.png`) : moyens = **Espèces** +
-  **Mobile money**, **AUCUN bouton Crédit**, et mention explicite
-  « Caisse pilote : espèces uniquement — vente à crédit désactivée ». Mobile
-  money présent mais Espèces sélectionné par défaut (ne parasite pas). C'est la
-  preuve écran de #16-B.
+- **Étape paiement** (capture `02-paiement.png`) : **Espèces** proposé, mention
+  explicite « **espèces uniquement** » affichée, **AUCUN bouton Crédit**. Preuve
+  écran de #16-B.
 - **Vente espèces** (produit à stock 100, quantité 30) → stock **100 → 70**.
-- **Annulation** (admin) → HTTP **200** + restitution `[{Tomate-Recette: 30}]`
-  → stock **restauré à 100**.
-- **Idempotence** : rejeu de l'annulation → **aucune re-restitution** (`[]`).
+- **Annulation SELF-SERVICE via l'UI** (#20) : `Ventes passées` → la vente du
+  jour apparaît (`04-ventes-passees.png`) → déplier → **« Annuler cette vente »**
+  → **« Oui, annuler »**. Écran après (`05-apres-annulation-ui.png`) : badge
+  rouge **« Annulée »**, toast **« Vente annulée — stock rendu »**, et le bouton
+  d'annulation a **disparu** (idempotence écran).
+- **Stock restauré à 100** après l'annulation UI.
 - **Arbitrage base (source de vérité)** : `net_ledger = 0`, `mouvements = 2`
   (vente −30 + restitution +30), `stock_final Tomate-Recette = 100`.
 
-Verdict : **pilote espèces fonctionnellement fermé** — vente atomique → ledger →
-annulation qui restitue exactement → idempotence, cohérent au runtime.
+Verdict : **pilote espèces fonctionnellement fermé, annulation en autonomie
+marchand** — vente atomique → ledger typé → le marchand annule lui-même à
+l'écran → stock rendu exactement, cohérent au runtime.
 
-### Artefact de harnais consigné (NON un défaut produit)
-La lecture API `GET /caisse/produits` du contexte navigateur a renvoyé
-**transitoirement `null`** sur les **deux** assertions de stock jouées *après*
-l'annulation (hoquet de session/lecture après beaucoup de requêtes rapides) —
-d'où 13/15 côté navigateur. Ce sont **deux lectures de test**, explicitement
-**réfutées par la base** (`stock=100`, `net_ledger=0`). À NE PAS réinterpréter
-plus tard comme deux anomalies de la boucle espèces : la boucle est intègre.
+### Notes de harnais (infra de test, PAS des défauts produit)
+- **Rate-limiting** : le backend applique tous les throttlers nommés à chaque
+  route (auth/recovery = 5/min) ; le harnais, qui enchaîne plusieurs requêtes
+  depuis une seule IP, se faisait `429` sur `GET /caisse/transactions` (la vente
+  n'apparaissait pas dans `Ventes passées`). Desserré **uniquement en recette**
+  via `THROTTLE_DISABLED=true` (prod inchangée — mêmes limites par défaut).
+- **Colonne `type`** : la base recette est bootée vierge (synchronize + DbInit,
+  sans migrations) ; DbInit crée `stock_mouvements` **sans** `type`, ajoutée après
+  la bascule #10 par la seule migration autoritaire **#19**. `run-recette.sh`
+  applique donc le DDL forward de #19 (source = le fichier de migration, pas
+  DbInit), même précédent que le test invariant jest. Sans cela, la restitution
+  d'annulation échouait (`42703`, colonne absente).
