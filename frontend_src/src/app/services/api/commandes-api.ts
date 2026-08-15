@@ -52,6 +52,7 @@ export interface CreateCommandeData {
   acheteur_nom?: string;
   vendeur_id?: string;
   publication_id?: string;
+  recolte_id?: string;
   mode_paiement?: string;
   operateur_mobile?: string;
   adresse_livraison?: string;
