@@ -15,8 +15,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * Colonnes uuid nues, sans FK (intégrité gérée par StockReservationService,
  * transactionnel et idempotent). Idempotent : IF EXISTS / IF NOT EXISTS.
  */
-export class AddRecolteToStockAndCommande1779300000000 implements MigrationInterface {
-  name = 'AddRecolteToStockAndCommande1779300000000';
+export class AddRecolteToStockAndCommande1780100000000 implements MigrationInterface {
+  name = 'AddRecolteToStockAndCommande1780100000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`ALTER TABLE commandes ADD COLUMN IF NOT EXISTS recolte_id uuid`);
