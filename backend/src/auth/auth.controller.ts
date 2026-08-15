@@ -44,7 +44,7 @@ export class AuthController {
     private readonly pinCrypto: PinCryptoService,
   ) {}
 
-  @Throttle({ auth: { limit: 3, ttl: 60000 } })
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('signup')
   async signup(@Body() signupDto: SignupDto, @Request() req: any, @Res({ passthrough: true }) res: Response) {
     // Securite: l'endpoint public d'auto-inscription est limite aux roles acteurs.
@@ -65,7 +65,7 @@ export class AuthController {
     return { user: { ...result.user, mustChangePassword: result.user.mustChangePassword ?? false }, success: true, accessToken: result.accessToken, refreshToken: result.refreshToken };
   }
 
-  @Throttle({ auth: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('check-phone')
   @HttpCode(HttpStatus.OK)
   async checkPhone(@Body() body: { phone: string }): Promise<{ exists: boolean }> {
@@ -74,7 +74,7 @@ export class AuthController {
     return this.authService.checkPhone(phone);
   }
 
-  @Throttle({ recovery: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Get('contacts-recovery-bo')
   @HttpCode(HttpStatus.OK)
   async contactsRecoveryBo() {
@@ -90,7 +90,7 @@ export class AuthController {
     return { contacts: rows };
   }
 
-  @Throttle({ auth: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto, @Request() req: any, @Res({ passthrough: true }) res: Response) {
