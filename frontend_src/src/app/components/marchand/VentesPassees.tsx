@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ChevronDown, Search, Filter, FileDown, TrendingUp, Banknote, Package, ShoppingBag, Volume2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
+import { useCaisse } from '../../contexts/CaisseContext';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useCountUp } from '../../hooks/useCountUp';
 import { format, isToday, isYesterday } from 'date-fns';
-import { fetchCredits, marquerCreditPaye, type Credit } from '../../services/api/caisse-api';
+import { fetchCredits, marquerCreditPaye, annulerVenteMarchand, type Credit } from '../../services/api/caisse-api';
 import { fr } from 'date-fns/locale';
 import { exportSimplePDF, formatCurrency, formatDate } from '../../utils/export.utils';
 import { partagerRecu, telechargerRecuPDF } from '../../utils/recu.utils';
@@ -28,12 +29,38 @@ function dayLabel(date: Date): string {
 // ── Card vente dépliable ──────────────────────────────────────
 function VenteCard({ sale, index, query }: { sale: any; index: number; query: string }) {
   const [open, setOpen] = useState(false);
-  const { user, speak } = useApp();
+  const { user, speak, reloadTransactions } = useApp();
+  const { refreshProducts } = useCaisse();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Marchande';
   const montant = sale.montant || sale.price || 0;
   const marge = sale.totalMargin || 0;
   const source = sale.source || 'kassa';
   const dateObj = new Date(sale.date);
+
+  // Annulation self-service (#20) : une vente du JOUR, non déjà annulée. Au-delà
+  // du jour, c'est du ressort d'un responsable (admin).
+  const estAnnulee = sale.statut === 'annulee';
+  const estAnnulable = (sale.type === 'vente' || sale.type === undefined) && !estAnnulee && isToday(dateObj) && !!sale.id;
+  const [annulEtat, setAnnulEtat] = useState<'idle' | 'confirm' | 'loading'>('idle');
+  const demanderAnnulation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAnnulEtat('confirm');
+    if (guidageVocal()) { try { speak('Veux-tu vraiment annuler cette vente ? Le stock sera rendu.'); } catch { /* ignore */ } }
+  };
+  const confirmerAnnulation = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAnnulEtat('loading');
+    try {
+      await annulerVenteMarchand(sale.id);
+      await Promise.all([reloadTransactions(), refreshProducts()]);
+      toast.success('Vente annulée — stock rendu');
+      if (guidageVocal()) { try { speak('Vente annulée. Le stock a été rendu.'); } catch { /* ignore */ } }
+    } catch {
+      toast.error("Impossible d'annuler cette vente");
+      if (guidageVocal()) { try { speak("Je n'ai pas pu annuler cette vente."); } catch { /* ignore */ } }
+      setAnnulEtat('idle');
+    }
+  };
 
   // À l'OUVERTURE de la carte, la vente se DIT (inclusion §2.2 : tout montant
   // affiché doit pouvoir être entendu) — produit, montant, marge, moment.
@@ -87,6 +114,9 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
             }}>
               {source === 'vocal' ? 'vocal' : 'kassa'}
             </span>
+            {estAnnulee && (
+              <span style={{ marginLeft:4, background:'#FDECEA', color:'#c0392b', border:'1px solid #f3c2b8', borderRadius:6, padding:'2px 8px', fontSize:10, fontWeight:700 }}>Annulée</span>
+            )}
           </div>
         </div>
         {/* Montant + marge */}
@@ -142,6 +172,32 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 </button>
               </div>
+
+              {/* Annulation self-service (#20) — vente du jour uniquement ; au-delà = responsable. */}
+              {estAnnulable && annulEtat === 'idle' && (
+                <button type="button" onClick={demanderAnnulation}
+                  style={{ marginTop:2, padding:'11px 0', borderRadius:14, border:'1.5px solid #f3c2b8', background:'#fff', color:'#c0392b', fontWeight:800, fontSize:13, cursor:'pointer' }}>
+                  Annuler cette vente
+                </button>
+              )}
+              {estAnnulable && annulEtat === 'confirm' && (
+                <div style={{ marginTop:2, display:'flex', flexDirection:'column', gap:8 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:'#c0392b', textAlign:'center' }}>Annuler cette vente ? Le stock sera rendu.</div>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setAnnulEtat('idle'); }}
+                      style={{ flex:1, padding:'11px 0', borderRadius:14, border:'1.5px solid var(--trait)', background:'#fff', color:'var(--encre-3)', fontWeight:800, fontSize:13, cursor:'pointer' }}>
+                      Non, garder
+                    </button>
+                    <button type="button" onClick={confirmerAnnulation}
+                      style={{ flex:1, padding:'11px 0', borderRadius:14, border:'none', background:'#c0392b', color:'#fff', fontWeight:800, fontSize:13, cursor:'pointer' }}>
+                      Oui, annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+              {annulEtat === 'loading' && (
+                <div style={{ marginTop:2, fontSize:12, color:'var(--encre-4)', textAlign:'center' }}>Annulation en cours…</div>
+              )}
             </div>
           </motion.div>
         )}

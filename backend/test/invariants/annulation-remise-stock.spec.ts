@@ -10,6 +10,7 @@
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { ThrottlerStorage } from '@nestjs/throttler';
 import { DataSource } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as request from 'supertest';
@@ -28,7 +29,12 @@ describe('Invariant R7 — annulation vente → remise en stock (🟢)', () => {
   let marchandId: string;
 
   beforeAll(async () => {
-    const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    // Neutraliser le throttler : ce lot enchaîne beaucoup de requêtes (ventes +
+    // annulations) — sinon des 429 masqueraient la logique testée.
+    const mod = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(ThrottlerStorage)
+      .useValue({ increment: async () => ({ totalHits: 1, timeToExpire: 60000, isBlocked: false, timeToBlockExpire: 0 }) })
+      .compile();
     app = mod.createNestApplication();
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
@@ -98,6 +104,11 @@ describe('Invariant R7 — annulation vente → remise en stock (🟢)', () => {
       .patch(`/api/v1/transactions/${txId}`)
       .set('Authorization', `Bearer ${tok}`)
       .send({ statut: 'annulee', motif: 'test annulation R7' });
+  const annulerMarchand = (txId: string, tok = token) =>
+    request(app.getHttpServer())
+      .patch(`/api/v1/caisse/transactions/${txId}/annuler`)
+      .set('Authorization', `Bearer ${tok}`)
+      .send({});
 
   it('vente normale puis annulation : stock restitué + mouvement inverse (net 0)', async () => {
     await createProduit('Cafe-R7', 100);
@@ -158,5 +169,49 @@ describe('Invariant R7 — annulation vente → remise en stock (🟢)', () => {
     const refus = await annuler(txId, token);           // jeton marchand
     expect(refus.status).toBe(403);
     expect(await stockOf('Sel-R7')).toBe(7);            // stock intact (annulation refusée)
+  }, 30000);
+
+  // ── Self-service marchand (#20) ─────────────────────────────────────────
+  it('#20 — le marchand annule SA vente du jour : stock rendu + statut annulee + ledger typé', async () => {
+    await createProduit('Igname-20', 40);
+    const v = await vendre({ montant: '3000', produits: [{ nom: 'Igname-20', quantite: 15 }], idempotency_key: '20-1' });
+    const txId = v.body.transaction.id;
+    expect(await stockOf('Igname-20')).toBe(25);
+    const a = await annulerMarchand(txId);
+    expect(a.status).toBe(200);
+    expect(a.body.statut).toBe('annulee');
+    expect(a.body.restitutions).toEqual([expect.objectContaining({ produit_nom: 'Igname-20', quantite: 15 })]);
+    expect(await stockOf('Igname-20')).toBe(40);          // stock rendu
+    expect(await typesMouvements(txId)).toEqual(['vente', 'annulation']);
+  }, 30000);
+
+  it('#20 — un marchand ne peut PAS annuler la vente d’un autre (404)', async () => {
+    await createProduit('Banane-20', 10);
+    const v = await vendre({ montant: '400', produits: [{ nom: 'Banane-20', quantite: 4 }], idempotency_key: '20-2' });
+    const txId = v.body.transaction.id;
+    const refus = await annulerMarchand(txId, adminToken); // pas le propriétaire → introuvable
+    expect(refus.status).toBe(404);
+    expect(await stockOf('Banane-20')).toBe(6);            // intact
+  }, 30000);
+
+  it('#20 — vente d’un AUTRE JOUR : non annulable en self-service (400)', async () => {
+    await createProduit('Mil-20', 20);
+    const v = await vendre({ montant: '1000', produits: [{ nom: 'Mil-20', quantite: 5 }], idempotency_key: '20-3' });
+    const txId = v.body.transaction.id;
+    await ds.query(`UPDATE caisse_transactions SET created_at = NOW() - INTERVAL '1 day' WHERE id=$1`, [txId]);
+    const refus = await annulerMarchand(txId);
+    expect(refus.status).toBe(400);
+    expect(await stockOf('Mil-20')).toBe(15);              // intact (refusé) — reste du ressort admin
+  }, 30000);
+
+  it('#20 — re-annulation self-service rejetée (déjà annulée) : pas de double remise', async () => {
+    await createProduit('Sucre-20', 30);
+    const v = await vendre({ montant: '2000', produits: [{ nom: 'Sucre-20', quantite: 10 }], idempotency_key: '20-4' });
+    const txId = v.body.transaction.id;
+    expect((await annulerMarchand(txId)).status).toBe(200);
+    expect(await stockOf('Sucre-20')).toBe(30);
+    const rejeu = await annulerMarchand(txId);
+    expect(rejeu.status).toBe(400);                        // déjà annulée
+    expect(await stockOf('Sucre-20')).toBe(30);            // pas de double remise
   }, 30000);
 });

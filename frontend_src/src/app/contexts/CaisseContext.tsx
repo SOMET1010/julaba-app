@@ -58,6 +58,7 @@ export interface CaisseTransaction {
   source?: string;
   synced?: boolean;
   userId?: string;
+  statut?: string; // 'validee' | 'annulee' | 'gelee' | 'litige' — une vente annulée sort du CA.
 }
 
 export interface CaisseProduct {
@@ -206,6 +207,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         mode_paiement: tx.mode_paiement,
         notes: tx.notes,
         date: tx.created_at,
+        statut: tx.statut,
       }));
       setTransactions(txList);
       // Cache local : dernière version connue de l'historique (lecture hors-ligne).
@@ -295,15 +297,19 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // ── Stats calculees ────────────────────────────────────────
   const getToday = () => new Date().toISOString().split('T')[0];
 
+  // Une vente ANNULÉE sort du CA du jour (cohérence avec l'annulation self-service
+  // #20 : le montant reste tracé côté serveur, mais n'entre plus dans le chiffre).
+  const venteActive = (tx: CaisseTransaction) =>
+    tx.type === 'vente' && tx.statut !== 'annulee' && tx.date.startsWith(getToday());
   const stats: CaisseStats = {
     ventesJour: transactions
-      .filter(tx => tx.type === 'vente' && tx.date.startsWith(getToday()))
+      .filter(venteActive)
       .reduce((sum, tx) => sum + tx.montant, 0),
     cahierJour: transactions
       .filter(tx => tx.type === 'depense' && tx.date.startsWith(getToday()))
       .reduce((sum, tx) => sum + tx.montant, 0),
     soldeJour: 0,
-    nombreVentes: transactions.filter(tx => tx.type === 'vente' && tx.date.startsWith(getToday())).length,
+    nombreVentes: transactions.filter(venteActive).length,
     nombreCahier: transactions.filter(tx => tx.type === 'depense' && tx.date.startsWith(getToday())).length,
   };
   stats.soldeJour = stats.ventesJour - stats.cahierJour;

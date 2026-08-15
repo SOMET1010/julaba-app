@@ -57,6 +57,16 @@ export async function fetchCaisseTransactions(): Promise<{ transactions: CaisseT
 }
 
 /**
+ * Annulation self-service d'une vente du jour par le marchand (#20).
+ * Le backend restitue le stock et marque la vente « annulee ».
+ */
+export async function annulerVenteMarchand(
+  id: string,
+): Promise<{ id: string; statut: string; restitutions: Array<{ produit_nom: string; quantite: number }> }> {
+  return apiRequest(`/caisse/transactions/${id}/annuler`, { method: 'PATCH' });
+}
+
+/**
  * Enregistrer une vente
  */
 export async function enregistrerVente(data: EnregistrerVenteData): Promise<{ transaction: CaisseTransaction }> {

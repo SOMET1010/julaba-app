@@ -113,6 +113,7 @@ export interface Transaction {
   source?: string;
   synced?: boolean;
   montant?: number;
+  statut?: string; // 'validee' | 'annulee' | … — pour l'annulation self-service (#20)
 }
 
 // Bénéfice d'une vente = somme des (total article − prix_achat × quantité) sur
@@ -439,6 +440,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           totalMargin: Number(tx.marge) || beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
+          statut: tx.statut,
           synced: true,
         }));
 
@@ -984,6 +986,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           totalMargin: Number(tx.marge) || beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
+          statut: tx.statut,
           synced: true,
         }));
         setTransactions(mappedTx);
