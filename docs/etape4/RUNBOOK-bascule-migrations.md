@@ -26,33 +26,63 @@ jetable) :
 À exécuter sur la base de prod. Toutes ces requêtes sont en lecture seule.
 
 ### A1. Empreinte de schéma → comparer à la référence
-```sql
-SELECT 'col:'||table_name||'.'||column_name||':'||data_type||':'||is_nullable
-  FROM information_schema.columns WHERE table_schema='public' AND table_name<>'migrations'
-UNION ALL
-SELECT 'con:'||conname||':'||contype::text||':'||conrelid::regclass::text
-  FROM pg_constraint WHERE connamespace='public'::regnamespace
-    AND conname NOT LIKE 'PK_%' AND conrelid::regclass::text<>'migrations'
-UNION ALL
-SELECT 'idx:'||indexname||':'||tablename FROM pg_indexes
-  WHERE schemaname='public' AND tablename<>'migrations'
-UNION ALL
-SELECT 'view:'||table_name FROM information_schema.views WHERE table_schema='public'
-ORDER BY 1;
+
+Exécuter la **requête versionnée** `docs/etape4/schema-fingerprint.sql` (source de
+vérité unique de la méthode d'empreinte — utilisée aussi pour générer les
+références et prouver le diff nul de la baseline) :
+
+```sh
+psql "$PROD_URL" -tA -f docs/etape4/schema-fingerprint.sql | grep . | sort > prod.fp
+diff docs/etape4/schema-attendu-prod-actuelle.fp prod.fp
 ```
-Sauver la sortie (une ligne par objet) → `prod.fp`, puis :
-`diff docs/etape4/schema-attendu-prod-actuelle.fp prod.fp`.
+
+L'empreinte couvre colonnes (`col:`), contraintes **PK comprises** (`con:`),
+index (`idx:`) et vues (`view:`). Seule la table de métadonnées TypeORM
+`migrations` est exclue (colonnes, contrainte PK et index) — objet géré par
+TypeORM, hors DDL applicatif. Les contraintes PK sont **conservées** dans
+l'empreinte : une PK manquante ou en trop est ainsi détectée.
+
+Provenance des références (régénérables) :
+- `schema-attendu-prod-actuelle.fp` = `BaselineSchema` seule, appliquée par
+  `runMigrations()` sur une base jetable → **diff nul prouvé** contre un
+  `pg_dump` fidèle de la prod (hors table `migrations`).
+- `schema-attendu-apres-bascule.fp` = `BaselineSchema` + `FixSchemaDrifts` ; son
+  **delta** contre l'état prod-actuelle est **exactement** celui de
+  `FixSchemaDrifts` (7 lignes : drop `recoltes.producteur_id`/`zone_id`, retype
+  `cooperative_membres.cooperative_id`/`membre_id` varchar→uuid, ajout FK
+  `cooperative_membres_cooperative_id_fkey`) — rien d'autre.
+
+Lecture du diff prod ↔ référence :
 - Lignes **en trop en prod** (objets prod-spécifiques hors dépôt) : à documenter,
   généralement tolérables.
 - Lignes **manquantes en prod** (attendues mais absentes) : **CRITIQUE** — le
   `--fake` prétendrait qu'elles existent. À créer/réconcilier AVANT toute bascule.
 
-### A2. État de la table d'historique des migrations
+### A2. État de la table d'historique des migrations — **PRÉCONDITION BLOQUANTE**
+
+> **Constat d'audit (à jour) :** contrairement à l'hypothèse initiale, la table
+> `public.migrations` **existe en prod** (elle figure dans le `pg_dump` de
+> référence). Elle est **exclue** du DDL applicatif de la baseline (gérée par
+> TypeORM), mais son **contenu** conditionne la bascule : `migration:run --fake`
+> **insère** une ligne par migration marquée. Si des lignes préexistent, il faut
+> savoir lesquelles pour éviter doublons/incohérences d'horodatage.
+>
+> **Auditer son contenu est donc une condition préalable, non optionnelle, à
+> toute opération de `--fake`.** Le résultat ci-dessous doit être capturé et
+> analysé AVANT la Phase de bascule (pas dans la PR baseline).
+
 ```sql
-SELECT to_regclass('public.migrations') AS migrations_table;   -- attendu : NULL (migrationsRun a toujours été OFF)
--- si NON NULL :
+SELECT to_regclass('public.migrations') AS migrations_table;   -- constaté : NON NULL
+-- OBLIGATOIRE avant tout --fake : lister le contenu existant.
 SELECT * FROM migrations ORDER BY "timestamp";
 ```
+
+Décision selon la sortie :
+- **table vide** → `--fake` de `BaselineSchema` + `FixSchemaDrifts` insère
+  proprement les deux lignes ; rien à réconcilier.
+- **lignes préexistantes** (ex. reliquat d'anciens essais) → **CRITIQUE** :
+  décider table par table s'il faut purger, conserver ou ré-horodater AVANT de
+  faker, sous peine de collision de clé ou d'historique menteur.
 
 ### A3. PORTE-DONNÉES — `FixSchemaDrifts` réussira-t-elle sur les données réelles ?
 
