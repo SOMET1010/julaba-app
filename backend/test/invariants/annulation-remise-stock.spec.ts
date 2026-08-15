@@ -17,6 +17,7 @@ import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../../src/app.module';
 import { DbInitService } from '../../src/database/db-init.service';
 import { User, UserRole, UserStatus } from '../../src/users/entities/user.entity';
+import { LedgerMouvementType1780400000000 } from '../../src/database/migrations/1780400000000-LedgerMouvementType';
 
 describe('Invariant R7 — annulation vente → remise en stock (🟢)', () => {
   let app: INestApplication;
@@ -35,6 +36,16 @@ describe('Invariant R7 — annulation vente → remise en stock (🟢)', () => {
     ds = app.get(DataSource);
     jwt = app.get(JwtService);
     await app.get(DbInitService, { strict: false }).runInit();
+
+    // Le schéma de test est bâti par synchronize+DbInit (les invariants
+    // n'exécutent pas la chaîne de migrations). On applique la migration ADDITIVE
+    // du ledger typé pour disposer de la colonne `type` — source unique : la
+    // migration elle-même (pas de DDL dupliqué, pas de DDL via DbInit).
+    {
+      const qr = ds.createQueryRunner();
+      await new LedgerMouvementType1780400000000().up(qr);
+      await qr.release();
+    }
 
     const su = await request(app.getHttpServer())
       .post('/api/v1/auth/signup')
@@ -80,6 +91,8 @@ describe('Invariant R7 — annulation vente → remise en stock (🟢)', () => {
     Number((await ds.query('SELECT COALESCE(SUM(quantite_retranchee),0) AS net FROM stock_mouvements WHERE transaction_id=$1', [txId]))[0].net);
   const nbMouvements = async (txId: string) =>
     (await ds.query('SELECT count(*)::int n FROM stock_mouvements WHERE transaction_id=$1', [txId]))[0].n;
+  const typesMouvements = async (txId: string) =>
+    (await ds.query('SELECT type FROM stock_mouvements WHERE transaction_id=$1 ORDER BY created_at', [txId])).map((r: any) => r.type);
   const annuler = (txId: string, tok = adminToken) =>
     request(app.getHttpServer())
       .patch(`/api/v1/transactions/${txId}`)
@@ -103,6 +116,8 @@ describe('Invariant R7 — annulation vente → remise en stock (🟢)', () => {
     expect(await stockOf('Cafe-R7')).toBe(100);         // stock RENDU
     expect(await netLedger(txId)).toBe(0);              // net ledger revenu à 0
     expect(await nbMouvements(txId)).toBe(2);           // ligne inverse ajoutée (append-only)
+    // Ledger TYPÉ (#19) : la vente porte 'vente' (DEFAULT), la restitution 'annulation'.
+    expect(await typesMouvements(txId)).toEqual(['vente', 'annulation']);
   }, 30000);
 
   it('idempotence : une 2ᵉ annulation ne re-restitue pas', async () => {
