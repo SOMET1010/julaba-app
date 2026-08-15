@@ -1,30 +1,39 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * ADR-0002 Étape 1 — BASELINE reproductible du schéma (#10).
+ * ADR-0002 Étape 1 — BASELINE reproductible et FIDÈLE du schéma prod (#10).
  *
- * Capture le schéma RÉEL actuel (ce que `synchronize` + `DbInitService`
- * produisent sur une base vierge), dérivé d'un `pg_dump --schema-only`. Une base
+ * Capture l'état structurel RÉEL de la production au moment de l'audit, dérivé
+ * d'un `pg_dump --schema-only` de la base Supabase (public uniquement). Une base
  * NEUVE reconstruite depuis cette seule migration est structurellement IDENTIQUE
- * au schéma de référence (diff nul vérifié).
+ * à la prod : diff nul vérifié (empreinte fp), hors la seule table de métadonnées
+ * TypeORM `migrations` — gérée par TypeORM, exclue par intention du DDL applicatif.
  *
- * Rôle : PLANCHER de la chaîne exécutable. Les 31 migrations antérieures sont
+ * Fidélité assumée (AUCUN nettoyage sémantique) :
+ *   - les colonnes `recoltes` héritées (producteur_id/zone_id varchar, types stale
+ *     des colonnes partagées) restent telles qu'en prod — leur correction relève
+ *     de FixSchemaDrifts (Étape 3), pas de la baseline ;
+ *   - la dualité `extensions.uuid_generate_v4()` (tables historiques, uuid-ossp
+ *     dans le schéma `extensions` façon Supabase) vs `gen_random_uuid()` (tables
+ *     créées par DbInit) est reproduite fidèlement ;
+ *   - préfixe auto-suffisant (`CREATE SCHEMA extensions` + uuid-ossp) pour qu'une
+ *     base jetable vanilla reconstruise la baseline sans dépendance Supabase.
+ *
+ * Rôle : PLANCHER de la chaîne exécutable. Les migrations antérieures sont
  * conservées en `migrations/_archive/` (historique documentaire, hors glob).
  *
  * Étape 1 : NON activée en prod (`migrationsRun` reste OFF). Sera marquée « déjà
  * appliquée » (`migration:run --fake`) sur la base existante à la bascule
- * (Étape 4). Tout est qualifié `public.` ; aucune directive de session (search_path).
+ * (Étape 4), APRÈS audit du contenu de `public.migrations`. Tout est qualifié
+ * `public.` ; aucune directive de session (search_path).
  */
 export class BaselineSchema1780200000000 implements MigrationInterface {
   name = 'BaselineSchema1780200000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
-
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA extensions;
 CREATE TYPE public.caisse_transaction_status_enum AS ENUM (
     'validee',
     'en_cours',
@@ -113,12 +122,6 @@ CREATE TYPE public.recoltes_qualite_enum AS ENUM (
     'bio'
 );
 
-CREATE TYPE public.recoltes_statut_enum AS ENUM (
-    'declaree',
-    'validee',
-    'vendue'
-);
-
 CREATE TYPE public.users_role_enum AS ENUM (
     'producteur',
     'marchand',
@@ -156,7 +159,7 @@ CREATE TYPE public.wallet_transactions_type_enum AS ENUM (
 );
 
 CREATE TABLE public.academy_modules (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     titre character varying NOT NULL,
     description character varying,
     type character varying DEFAULT 'video'::character varying NOT NULL,
@@ -173,7 +176,7 @@ CREATE TABLE public.academy_modules (
 );
 
 CREATE TABLE public.academy_progress (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id character varying NOT NULL,
     module_id character varying NOT NULL,
     taux_completion integer DEFAULT 0 NOT NULL,
@@ -185,7 +188,7 @@ CREATE TABLE public.academy_progress (
 );
 
 CREATE TABLE public.academy_questions (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     role character varying NOT NULL,
     chapter integer NOT NULL,
     lesson integer DEFAULT 1 NOT NULL,
@@ -199,7 +202,7 @@ CREATE TABLE public.academy_questions (
 );
 
 CREATE TABLE public.audit_logs (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id character varying,
     action character varying,
     entite character varying,
@@ -219,7 +222,7 @@ CREATE TABLE public.boutique_mouvements (
     montant numeric,
     transcription text,
     ts bigint NOT NULL,
-    created_at timestamp without time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 CREATE TABLE public.bpay_transactions (
@@ -249,7 +252,7 @@ CREATE TABLE public.caisse_sessions (
 );
 
 CREATE TABLE public.caisse_transactions (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     type character varying,
     montant numeric,
     description character varying,
@@ -286,7 +289,7 @@ CREATE TABLE public.clients (
 );
 
 CREATE TABLE public.commandes (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     acheteur_id uuid,
     acheteur_nom character varying(255),
     image_url character varying(2048),
@@ -294,7 +297,6 @@ CREATE TABLE public.commandes (
     localite character varying(255),
     vendeur_id uuid NOT NULL,
     publication_id uuid,
-    recolte_id uuid,
     type character varying(100) NOT NULL,
     produit character varying(100) NOT NULL,
     quantite numeric(10,2) NOT NULL,
@@ -309,18 +311,39 @@ CREATE TABLE public.commandes (
     paye_at timestamp with time zone,
     livreur character varying,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    recolte_id uuid
 );
 
 CREATE TABLE public.communes (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     nom character varying(100) NOT NULL,
     code character varying(20) NOT NULL,
     departement_id uuid NOT NULL
 );
 
+CREATE TABLE public.cooperative_besoins (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    cooperative_id uuid NOT NULL,
+    marchand_id uuid NOT NULL,
+    produit character varying(255),
+    categorie character varying(120),
+    quantite numeric,
+    unite character varying(50),
+    prix_max numeric,
+    priorite character varying(30) DEFAULT 'normale'::character varying,
+    statut character varying(50) DEFAULT 'en_attente'::character varying,
+    notes text,
+    date_besoin timestamp with time zone,
+    prix_achat numeric,
+    prix_dispatch numeric,
+    quantite_attribuee numeric,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
 CREATE TABLE public.cooperative_membres (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     cooperative_id character varying NOT NULL,
     membre_id character varying NOT NULL,
     statut character varying,
@@ -331,7 +354,7 @@ CREATE TABLE public.cooperative_membres (
 );
 
 CREATE TABLE public.cooperatives (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     nom character varying NOT NULL,
     zone_id character varying,
     responsable_id character varying,
@@ -383,7 +406,7 @@ CREATE VIEW public.credits_avec_statut AS
    FROM public.credits c;
 
 CREATE TABLE public.cycles (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id uuid NOT NULL,
     culture character varying(100) NOT NULL,
     surface numeric(10,2) NOT NULL,
@@ -402,14 +425,14 @@ CREATE TABLE public.cycles (
 );
 
 CREATE TABLE public.departements (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     nom character varying(100) NOT NULL,
     code character varying(20) NOT NULL,
     region_id uuid NOT NULL
 );
 
 CREATE TABLE public.districts (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     nom character varying(100) NOT NULL,
     code character varying(20) NOT NULL
 );
@@ -445,7 +468,7 @@ CREATE TABLE public.fidelite_config (
 );
 
 CREATE TABLE public.identifications (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     identificateur_id character varying,
     acteur_id character varying,
     type_acteur character varying,
@@ -469,7 +492,7 @@ CREATE TABLE public.identifications (
 );
 
 CREATE TABLE public.institutions (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     nom character varying NOT NULL,
     type character varying,
     zone_id character varying,
@@ -481,7 +504,7 @@ CREATE TABLE public.institutions (
 );
 
 CREATE TABLE public.marchand_sous_profil_historique (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     marchand_id uuid NOT NULL,
     ancien_sous_profil public.marchand_sous_profil_historique_ancien_sous_profil_enum,
     nouveau_sous_profil public.marchand_sous_profil_historique_nouveau_sous_profil_enum,
@@ -491,7 +514,7 @@ CREATE TABLE public.marchand_sous_profil_historique (
 );
 
 CREATE TABLE public.marches (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     nom character varying(255) NOT NULL,
     adresse text,
     latitude numeric(10,7),
@@ -505,7 +528,7 @@ CREATE TABLE public.marches (
 );
 
 CREATE TABLE public.missions (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     titre character varying NOT NULL,
     description character varying,
     assignee_id character varying,
@@ -518,7 +541,7 @@ CREATE TABLE public.missions (
 );
 
 CREATE TABLE public.mutations (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     identificateur_id uuid NOT NULL,
     identificateur_nom character varying(255),
     zone_actuelle_id character varying(100),
@@ -535,7 +558,7 @@ CREATE TABLE public.mutations (
 );
 
 CREATE TABLE public.negociations (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     marchand_id character varying NOT NULL,
     vendeur_id character varying NOT NULL,
     produit character varying NOT NULL,
@@ -553,7 +576,7 @@ CREATE TABLE public.negociations (
 );
 
 CREATE TABLE public.notifications (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id character varying NOT NULL,
     role character varying,
     type character varying NOT NULL,
@@ -569,7 +592,7 @@ CREATE TABLE public.notifications (
 );
 
 CREATE TABLE public.objectifs_journaliers (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     "userId" character varying NOT NULL,
     objectif numeric(15,2) DEFAULT '0'::numeric NOT NULL,
     date date NOT NULL,
@@ -598,7 +621,7 @@ CREATE TABLE public.produits (
 );
 
 CREATE TABLE public.publications (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id uuid NOT NULL,
     cycle_id uuid,
     recolte_id uuid,
@@ -625,7 +648,7 @@ CREATE TABLE public.publications (
 );
 
 CREATE TABLE public.push_tokens (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id character varying NOT NULL,
     token text NOT NULL,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
@@ -633,7 +656,7 @@ CREATE TABLE public.push_tokens (
 );
 
 CREATE TABLE public.raccourcis (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id character varying NOT NULL,
     nom character varying NOT NULL,
     declencheur character varying NOT NULL,
@@ -644,7 +667,7 @@ CREATE TABLE public.raccourcis (
 );
 
 CREATE TABLE public.raccourcis_vocaux (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     "userId" character varying NOT NULL,
     nom character varying NOT NULL,
     declencheur character varying NOT NULL,
@@ -656,12 +679,10 @@ CREATE TABLE public.raccourcis_vocaux (
 );
 
 CREATE TABLE public.recoltes (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
-    quantite numeric(10,2) NOT NULL,
-    prix_unitaire numeric(10,2) NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    quantite numeric,
+    prix_unitaire numeric,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    producteur_id character varying,
-    zone_id character varying,
     user_id uuid NOT NULL,
     cycle_id uuid,
     qualite public.recoltes_qualite_enum NOT NULL,
@@ -671,14 +692,16 @@ CREATE TABLE public.recoltes (
     stock_disponible numeric(10,2) DEFAULT '0'::numeric NOT NULL,
     stock_vendu numeric(10,2) DEFAULT '0'::numeric NOT NULL,
     updated_at timestamp without time zone DEFAULT now() NOT NULL,
-    produit character varying(100) NOT NULL,
-    unite character varying(50) NOT NULL,
-    date_recolte date NOT NULL,
-    statut public.recoltes_statut_enum DEFAULT 'declaree'::public.recoltes_statut_enum NOT NULL
+    producteur_id character varying,
+    zone_id character varying,
+    produit character varying,
+    unite character varying,
+    date_recolte character varying,
+    statut character varying DEFAULT 'en_cours'::character varying NOT NULL
 );
 
 CREATE TABLE public.refresh_tokens (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id character varying NOT NULL,
     token_hash character varying(255) NOT NULL,
     expires_at timestamp without time zone NOT NULL,
@@ -690,7 +713,7 @@ CREATE TABLE public.refresh_tokens (
 );
 
 CREATE TABLE public.regions (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     nom character varying(100) NOT NULL,
     code character varying(20) NOT NULL,
     district_id uuid NOT NULL
@@ -710,18 +733,18 @@ CREATE TABLE public.stock_mouvements (
 );
 
 CREATE TABLE public.stock_reservations (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
     commande_id uuid NOT NULL,
     publication_id uuid,
-    recolte_id uuid,
     quantite numeric(10,2) NOT NULL,
     statut character varying(20) DEFAULT 'active'::character varying NOT NULL,
-    created_at timestamp without time zone DEFAULT now() NOT NULL,
-    updated_at timestamp without time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    recolte_id uuid
 );
 
 CREATE TABLE public.stocks (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     produit character varying NOT NULL,
     quantite numeric,
     unite character varying,
@@ -739,8 +762,14 @@ CREATE TABLE public.stocks (
     promo_fin date
 );
 
+CREATE TABLE public.support_config (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    updated_at timestamp with time zone DEFAULT now()
+);
+
 CREATE TABLE public.tickets (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id character varying,
     titre character varying,
     description character varying,
@@ -755,7 +784,7 @@ CREATE TABLE public.tickets (
 );
 
 CREATE TABLE public.user_flags (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id character varying NOT NULL,
     flag_type public.flag_type_enum NOT NULL,
     raison text NOT NULL,
@@ -768,7 +797,7 @@ CREATE TABLE public.user_flags (
 );
 
 CREATE TABLE public.users (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     phone character varying(20) NOT NULL,
     email character varying(255),
     genre character varying DEFAULT 'femme'::character varying,
@@ -831,7 +860,7 @@ CREATE TABLE public.users (
 );
 
 CREATE TABLE public.wallet_transactions (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id uuid NOT NULL,
     type public.wallet_transactions_type_enum NOT NULL,
     montant numeric(15,2) NOT NULL,
@@ -844,7 +873,7 @@ CREATE TABLE public.wallet_transactions (
 );
 
 CREATE TABLE public.wallets (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     user_id uuid NOT NULL,
     solde numeric(15,2) DEFAULT '0'::numeric NOT NULL,
     solde_bloque numeric(15,2) DEFAULT '0'::numeric NOT NULL,
@@ -854,7 +883,7 @@ CREATE TABLE public.wallets (
 );
 
 CREATE TABLE public.zones (
-    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
     nom character varying NOT NULL,
     ville character varying,
     region character varying,
@@ -894,9 +923,6 @@ ALTER TABLE ONLY public.raccourcis
 
 ALTER TABLE ONLY public.academy_questions
     ADD CONSTRAINT "PK_432acea399a929f312e6613d973" PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.stock_reservations
-    ADD CONSTRAINT "PK_46ec0f5605d70f64654ad4e7bd9" PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.identifications
     ADD CONSTRAINT "PK_4c4f716e96651b63e7369a42aeb" PRIMARY KEY (id);
@@ -955,9 +981,6 @@ ALTER TABLE ONLY public.caisse_transactions
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.boutique_mouvements
-    ADD CONSTRAINT "PK_a7a4ca36a3fea7db0066f750162" PRIMARY KEY (id);
-
 ALTER TABLE ONLY public.stocks
     ADD CONSTRAINT "PK_b5b1ee4ac914767229337974575" PRIMARY KEY (id);
 
@@ -997,6 +1020,9 @@ ALTER TABLE ONLY public.districts
 ALTER TABLE ONLY public.academy_progress
     ADD CONSTRAINT "UQ_e55a5ee0373d2132b9315184d96" UNIQUE (user_id, module_id);
 
+ALTER TABLE ONLY public.boutique_mouvements
+    ADD CONSTRAINT boutique_mouvements_pkey PRIMARY KEY (id);
+
 ALTER TABLE ONLY public.bpay_transactions
     ADD CONSTRAINT bpay_transactions_pkey PRIMARY KEY (id);
 
@@ -1005,6 +1031,9 @@ ALTER TABLE ONLY public.caisse_sessions
 
 ALTER TABLE ONLY public.clients
     ADD CONSTRAINT clients_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.cooperative_besoins
+    ADD CONSTRAINT cooperative_besoins_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY public.credits
     ADD CONSTRAINT credits_pkey PRIMARY KEY (id);
@@ -1024,11 +1053,19 @@ ALTER TABLE ONLY public.produits
 ALTER TABLE ONLY public.stock_mouvements
     ADD CONSTRAINT stock_mouvements_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY public.stock_reservations
+    ADD CONSTRAINT stock_reservations_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY public.support_config
+    ADD CONSTRAINT support_config_pkey PRIMARY KEY (id);
+
 CREATE INDEX "IDX_3ddc983c5f7bcf132fd8732c3f" ON public.refresh_tokens USING btree (user_id);
 
-CREATE INDEX "IDX_760ed385479f5bd683018f1379" ON public.boutique_mouvements USING btree (marchand_id);
-
 CREATE UNIQUE INDEX "IDX_ad3e46cb78aedbf7882e547a53" ON public.cooperative_membres USING btree (cooperative_id, membre_id);
+
+CREATE INDEX idx_boutique_mvt_marchand ON public.boutique_mouvements USING btree (marchand_id);
+
+CREATE INDEX idx_boutique_mvt_ts ON public.boutique_mouvements USING btree (ts);
 
 CREATE INDEX idx_credits_marchand ON public.credits USING btree (marchand_id);
 
@@ -1106,7 +1143,6 @@ ALTER TABLE ONLY public.publications
 
 ALTER TABLE ONLY public.recoltes
     ADD CONSTRAINT "FK_f901ffbf66a4d0537ea235c0a97" FOREIGN KEY (cycle_id) REFERENCES public.cycles(id);
-
 `);
   }
 
