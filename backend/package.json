@@ -9,6 +9,7 @@
     "migration:revert": "npm run typeorm -- -d src/database/data-source.ts migration:revert",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
+    "test:unit": "jest --config jest-unit.config.cjs",
     "test:invariants": "jest --config jest-invariants.config.cjs --runInBand --forceExit",
     "verify:dbinit-subsumed": "node scripts/verify-dbinit-subsumed.cjs"
   },
