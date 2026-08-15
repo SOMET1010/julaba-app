@@ -54,24 +54,65 @@ SELECT to_regclass('public.migrations') AS migrations_table;   -- attendu : NULL
 SELECT * FROM migrations ORDER BY "timestamp";
 ```
 
-### A3. Sûreté de `FixSchemaDrifts` (la migration réellement exécutée)
+### A3. PORTE-DONNÉES — `FixSchemaDrifts` réussira-t-elle sur les données réelles ?
+
+> Un schéma conforme (A1) **ne garantit pas** que la migration passe : une seule
+> valeur non castable ou orpheline la fait échouer. Cette porte est **bloquante**
+> et doit être **re-jouée juste avant** l'exécution (Phase 3 étape 3) — les
+> données peuvent changer entre l'audit et la bascule.
+
+Le motif uuid réutilisé ci-dessous :
+`'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'` (insensible à la
+casse). Il rejette aussi la **chaîne vide** `''` (varchar NOT NULL peut contenir
+`''`, or `''::uuid` échoue).
+
 ```sql
--- (a) orphelins : bloqueraient l'ajout de la FK
-SELECT count(*) AS orphelins FROM cooperative_membres m
+-- (a) valeurs non castables en uuid → bloqueraient `ALTER COLUMN ... TYPE uuid`
+--     (couvre NULL-safe : NULL::uuid est valide ; on ne compte que les non-NULL
+--      qui ne matchent pas, dont la chaîne vide).
+SELECT
+  count(*) FILTER (WHERE cooperative_id IS NOT NULL AND cooperative_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') AS coop_id_non_uuid,
+  count(*) FILTER (WHERE membre_id      IS NOT NULL AND membre_id      !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') AS membre_id_non_uuid
+  FROM cooperative_membres;
+
+-- (a') LISTER les lignes fautives (pour inspection/correction ciblée avant bascule)
+SELECT id, cooperative_id, membre_id FROM cooperative_membres
+ WHERE (cooperative_id IS NOT NULL AND cooperative_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+    OR (membre_id      IS NOT NULL AND membre_id      !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+ LIMIT 100;
+
+-- (b) orphelins vis-à-vis de la FK cible (cooperative_membres.cooperative_id →
+--     cooperatives.id) → bloqueraient l'ADD CONSTRAINT. On compare en ::text pour
+--     rester valide même tant que la colonne est varchar.
+SELECT count(*) AS coop_orphelins FROM cooperative_membres m
   LEFT JOIN cooperatives c ON c.id::text = m.cooperative_id::text
  WHERE m.cooperative_id IS NOT NULL AND c.id IS NULL;
 
--- (b) valeurs non castables en uuid : bloqueraient ALTER TYPE uuid
-SELECT
-  count(*) FILTER (WHERE cooperative_id IS NOT NULL AND cooperative_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') AS coop_id_non_uuid,
-  count(*) FILTER (WHERE membre_id IS NOT NULL AND membre_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') AS membre_id_non_uuid
-  FROM cooperative_membres;
+-- (b') LISTER les orphelins (cooperative_id sans cooperative correspondante)
+SELECT m.id, m.cooperative_id FROM cooperative_membres m
+  LEFT JOIN cooperatives c ON c.id::text = m.cooperative_id::text
+ WHERE m.cooperative_id IS NOT NULL AND c.id IS NULL
+ LIMIT 100;
 
--- (c) colonnes fantômes : doivent être VIDES (on les drop)
+-- (b'') sanité de données (pas de FK posée, mais informe) : membre_id sans user
+SELECT count(*) AS membre_sans_user FROM cooperative_membres m
+  LEFT JOIN users u ON u.id::text = m.membre_id::text
+ WHERE m.membre_id IS NOT NULL AND u.id IS NULL;
+
+-- (c) colonnes fantômes recoltes : doivent être VIDES (on les DROP → données perdues)
 SELECT count(*) FILTER (WHERE producteur_id IS NOT NULL) AS producteur_id_non_null,
        count(*) FILTER (WHERE zone_id IS NOT NULL)       AS zone_id_non_null
   FROM recoltes;
 ```
+
+**Interprétation / traitement si non conforme :**
+- `coop_id_non_uuid` ou `membre_id_non_uuid > 0` → corriger/normaliser les valeurs
+  fautives (liste a') **avant** la bascule ; sinon `ALTER TYPE uuid` échoue.
+- `coop_orphelins > 0` → les lignes (liste b') empêcheraient la FK. Décider :
+  nettoyer les orphelins, ou recréer la cooperative manquante. **Ne pas** poser la
+  FK tant qu'il en reste.
+- `producteur_id_non_null` / `zone_id_non_null > 0` → données inattendues dans des
+  colonnes réputées mortes : investiguer + sauvegarder avant de droper.
 
 ### A4. Extensions
 ```sql
@@ -92,10 +133,10 @@ SELECT relname, n_live_tup FROM pg_stat_user_tables
 - [ ] A1 : aucun objet **attendu manquant** en prod (les seuls écarts tolérés sont
       des objets prod-spécifiques en trop, documentés).
 - [ ] A2 : table `migrations` absente (ou contenu connu et compatible).
-- [ ] A3(a) : `orphelins = 0`.
-- [ ] A3(b) : `coop_id_non_uuid = 0` **et** `membre_id_non_uuid = 0`.
-- [ ] A3(c) : `producteur_id_non_null = 0` **et** `zone_id_non_null = 0`
-      (sinon : investiguer/sauvegarder ces données avant de droper).
+- [ ] A3 PORTE-DONNÉES (bloquante) : `coop_id_non_uuid = 0`, `membre_id_non_uuid = 0`,
+      `coop_orphelins = 0`, `producteur_id_non_null = 0`, `zone_id_non_null = 0`.
+      (`membre_sans_user` : informatif, pas bloquant — pas de FK posée dessus.)
+- [ ] A3 re-jouée **juste avant** l'exécution (Phase 3 étape 3), résultats inchangés.
 - [ ] Sauvegarde base + schéma effectuée (point de rollback).
 - [ ] Fenêtre de faible trafic (l'`ALTER TYPE` verrouille `cooperative_membres`).
 
@@ -117,8 +158,10 @@ Ordre STRICT. Chaque étape est vérifiée avant la suivante.
    INSERT INTO migrations ("timestamp", name)
    VALUES (1780200000000, 'BaselineSchema1780200000000');
    ```
-3. **Exécuter réellement `FixSchemaDrifts`** (run ponctuel de maintenance, app
-   encore en `migrationsRun` OFF) :
+3. **RE-JOUER la porte-données A3** (les données ont pu changer depuis l'audit) —
+   n'avancer que si tous les compteurs bloquants sont à 0. Puis **exécuter
+   réellement `FixSchemaDrifts`** (run ponctuel de maintenance, app encore en
+   `migrationsRun` OFF) :
    ```bash
    # depuis backend/, env prod en lecture/écriture, one-shot
    npm run migration:run     # data-source.ts : voit la baseline enregistrée,
