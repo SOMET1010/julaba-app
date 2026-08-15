@@ -8,12 +8,10 @@ import { SkipThrottle } from '@nestjs/throttler';
 // Render croit l'instance en panne, la redémarre -> fenêtre de 502 pour les
 // utilisateurs, en boucle.
 //
-// ATTENTION @nestjs/throttler v5 : avec PLUSIEURS limiteurs nommés (default,
-// auth, voice, recovery), ILS S'APPLIQUENT TOUS à chaque route. Or @SkipThrottle()
-// sans argument ne saute QUE « default » — les limiteurs auth/recovery (5/min)
-// continuaient de s'appliquer et renvoyaient 429 au health-check (frappé bien
-// plus de 5×/min par Render). On saute donc EXPLICITEMENT tous les limiteurs.
-@SkipThrottle({ default: true, auth: true, voice: true, recovery: true })
+// Depuis l'inversion du modèle (un unique throttler `default`, cf.
+// docs/AUDIT_THROTTLING.md), @SkipThrottle() sans argument suffit : il saute le
+// seul limiteur existant.
+@SkipThrottle()
 @Controller('health')
 export class HealthController {
   @Get()

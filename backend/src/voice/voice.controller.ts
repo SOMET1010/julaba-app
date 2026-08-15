@@ -38,7 +38,7 @@ export class VoiceController {
     private voiceService: VoiceService,
   ) {}
 
-  @Throttle({ voice: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @Post("process")
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor("audio", { limits: { fileSize: 10 * 1024 * 1024 } }))
@@ -69,7 +69,7 @@ export class VoiceController {
   }
 
   @Post("intent-fast")
-  @Throttle({ voice: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   async intentFast(@Body() body: any) {
     const t0 = Date.now();
@@ -93,7 +93,7 @@ export class VoiceController {
   }
 
   @Post("intent")
-  @Throttle({ voice: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   async processIntent(
     @Body("text") text: string,
@@ -157,7 +157,7 @@ export class TtsController {
     };
   }
 
-  @Throttle({ voice: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
   @Post("openai")
   @HttpCode(200)
   @UseGuards(JwtAuthGuard)
