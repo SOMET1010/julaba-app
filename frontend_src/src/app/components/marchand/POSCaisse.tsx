@@ -20,9 +20,17 @@ import { guidageVocal } from '../../utils/accessMode';
 const P = '#AF5B23';
 const BG = '#FFF2E9';
 
+// Pilote ESPÈCES uniquement : la vente à crédit est désactivée en caisse tant
+// que les blockers « argent gelé » (I4/I5/I6) ne sont pas traités — le backend
+// ne décrémente pas encore le stock pour le crédit et la chaîne crédit n'est pas
+// idempotente. Réactivation = chantier crédit dédié (décrément stock backend +
+// idempotence), pas un simple retour d'UI. Typé `boolean` volontairement pour
+// ne pas figer les conditions en littéral. Voir docs / suivi pré-recette #16.
+const CAISSE_CREDIT_ACTIF: boolean = false;
+
 export function POSCaisse() {
   const navigate = useNavigate();
-  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, updateProduct, refreshProducts, transactions } = useCaisse();
+  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, refreshProducts, transactions } = useCaisse();
   const { speak, reloadTransactions, user } = useApp();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Ma boutique';
   // La caisse SUIT le sous-profil (docs/SOUS_PROFILS_MARCHAND.md) : en négoce
@@ -178,9 +186,12 @@ export function POSCaisse() {
     finally { paiementEnCoursRef.current = false; setIsProcessing(false); }
   };
 
+  // Crédit désactivé en pilote espèces (CAISSE_CREDIT_ACTIF=false) : ce handler
+  // n'est plus atteignable (modal non monté). Conservé pour la réactivation
+  // future — mais SANS écriture stock front : le stock reste backend-autoritaire
+  // (leçon R-A). Au retour du crédit, le décrément passera par le backend puis un
+  // refreshProducts(), jamais par un PUT absolu depuis l'écran de caisse.
   const handleCreditSuccess = () => {
-    // Décrément optimiste — CreditModal a persisté la vente côté backend
-    console.warn('[POSCaisse] handleCreditSuccess: décrément stock optimiste');
     const details = cart.map(i => ({
       productId: i.productId,
       nom: i.nom,
@@ -189,10 +200,7 @@ export function POSCaisse() {
       total: i.prix * i.quantite,
       prix_achat: (i as any).prixAchat ?? (i as any).prix_achat ?? 0,
     }));
-    details.forEach((item) => {
-      const prod = products.find((p) => p.id === item.productId);
-      if (prod) updateProduct(prod.id, { stock: Math.max(0, (prod.stock || 0) - item.quantite) });
-    });
+    void refreshProducts();
     // Confirmation parlée ET sentie aussi pour la vente à crédit.
     vibrerSucces();
     dire(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
@@ -228,6 +236,7 @@ export function POSCaisse() {
       title="Caisse du jour"
       rightContent={
         <div style={{ display:'flex', gap:7 }}>
+          {CAISSE_CREDIT_ACTIF && (
           <motion.button whileTap={{ scale: nbItems > 0 ? 0.95 : 1 }}
             onClick={() => {
               // On n'ouvre le crédit QUE si le panier n'est pas vide (B4).
@@ -238,6 +247,7 @@ export function POSCaisse() {
             <FileText size={13} color="white" />
             <span style={{ fontSize:12, fontWeight:700, color:'white' }}>À crédit</span>
           </motion.button>
+          )}
           <motion.button whileTap={{ scale:0.9 }} onClick={() => setShowCart(true)}
             style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
             <ShoppingCart size={16} color="white" />
@@ -481,12 +491,21 @@ export function POSCaisse() {
                       background: paymentMethod==='mobile_money' ? '#FFF3E9' : '#fff', color: paymentMethod==='mobile_money' ? P : '#8A7A6A' }}>
                     Mobile money
                   </button>
+                  {CAISSE_CREDIT_ACTIF && (
                   <button type="button" onClick={() => { setShowCart(false); setPaymentMethod('credit'); setShowCredit(true); }}
                     style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
                       border:'1.5px solid var(--trait)', background:'#fff', color:'var(--encre-3)' }}>
                     Crédit
                   </button>
+                  )}
                 </div>
+
+                {/* Pilote ESPÈCES : la vente à crédit est désactivée (voir #16). */}
+                {!CAISSE_CREDIT_ACTIF && (
+                  <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:-6, marginBottom:12, textAlign:'center' }}>
+                    Caisse pilote : espèces uniquement — vente à crédit désactivée.
+                  </div>
+                )}
 
                 {/* Mobile money DÉCLARÉ : choix de l'opérateur (aucune intégration) */}
                 {paymentMethod === 'mobile_money' && (
@@ -600,6 +619,9 @@ export function POSCaisse() {
         )}
       </AnimatePresence>
 
+      {/* Crédit désactivé en pilote espèces : le modal n'est jamais monté (les
+          boutons déclencheurs sont masqués ; ce garde interdit tout accès résiduel). */}
+      {CAISSE_CREDIT_ACTIF && (
       <CreditModal
         isOpen={showCredit}
         onClose={() => { setShowCredit(false); setPaymentMethod('cash'); }}
@@ -607,6 +629,7 @@ export function POSCaisse() {
         total={total}
         onSuccess={handleCreditSuccess}
       />
+      )}
 
       {/* Feuille « Autre article » — montant libre (Phase 3, lot 1) */}
       <AnimatePresence>
