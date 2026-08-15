@@ -1,4 +1,3 @@
-SET
 col:academy_modules.created_at:timestamp without time zone:NO
 col:academy_modules.description:character varying:YES
 col:academy_modules.duree:integer:NO
