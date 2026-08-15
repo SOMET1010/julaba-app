@@ -77,9 +77,35 @@ surcharges strictes ciblées**.
 ### Décision laissée séparée : `trust proxy`
 
 Pour que la limite par-IP soit vraiment _par utilisateur_ en prod, il faut
-`app.set('trust proxy', <hop-count Render exact>) ` pour que `req.ip` = vrai
-client. À faire prudemment : un hop-count erroné permet de spoofer
-`X-Forwarded-For` et de contourner la limite. Non inclus dans le lot d'inversion —
-à trancher avec la topologie Render exacte. L'inversion seule fait déjà passer le
-partage éventuel de 5/min à 300/min par endpoint (marge ~25 utilisateurs
-concurrents en polling avant contention).
+`app.set('trust proxy', <n sauts Render>)` pour que `req.ip` = vrai client (lu
+dans `X-Forwarded-For`). Danger : un réglage trop permissif (`true`) laisse un
+client forger `X-Forwarded-For` et contourner la limite. L'inversion seule fait
+déjà passer le partage éventuel de 5 → 300/min/endpoint, donc ce n'est pas urgent.
+
+### Mécanisme livré (piloté par env, DÉSACTIVÉ par défaut)
+
+- `config/trust-proxy.config.ts` : `parseTrustProxy(TRUST_PROXY)` — env absent →
+  `undefined` → on n'appelle PAS `app.set` → **comportement inchangé**. `'1'`/`'2'`
+  → nombre de sauts ; `'true'`/`'false'` ; liste CSV d'IP/CIDR ; sinon chaîne
+  (`loopback`…). Testé (`test:unit`).
+- `main.ts` : applique le réglage sur l'instance Express seulement si l'env est
+  défini, et le loggue.
+- **Effet de bord cookies : NUL.** `secure` dépend de `NODE_ENV` (pas de
+  `req.secure`/`req.protocol`), et aucun code ne lit `req.protocol/secure/hostname`.
+  Le seul effet de `trust proxy` ici est sur `req.ip` (tracker throttler + log IP).
+- `GET /health/net` (skip-throttled) : renvoie `ip`, `ips`, `xForwardedFor`,
+  `remoteAddress`, `trustProxy` — pour **calibrer** en prod.
+
+### Procédure d'activation (à faire quand on décide de flipper)
+
+1. Déployer (TRUST_PROXY **non défini**) — rien ne change.
+2. Depuis un vrai appareil, frapper `GET /api/v1/health/net`. Lire `xForwardedFor`
+   et `remoteAddress` → en déduire le **nombre de sauts** Render (souvent 1).
+3. **Test anti-usurpation** : rejouer avec un en-tête forgé
+   `-H 'X-Forwarded-For: 9.9.9.9'`. Noter comment `ip`/`ips` réagissent.
+4. Poser `TRUST_PROXY=<n>` dans l'env Render, redéployer.
+5. Re-frapper `/health/net` : vérifier que `ip` = **vrai client** ET que la valeur
+   forgée du test 3 est **ignorée**. Si la valeur forgée passe → `n` trop grand,
+   réduire.
+6. Une fois `req.ip` fiable, la limite `300/min/endpoint` devient réellement
+   **par utilisateur**. (Optionnel : retirer `/health/net` ou le garder pour l'ops.)
