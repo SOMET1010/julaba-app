@@ -19,6 +19,8 @@ export interface LigneVente {
   /** Montant TOTAL de la transaction. `price` en est un alias historique. */
   montant?: number;
   price?: number;
+  /** 'validee' | 'annulee' | … — une vente annulee ne compte nulle part. */
+  statut?: string;
 }
 
 export interface TopProduit {
@@ -27,10 +29,57 @@ export interface TopProduit {
   total: number;
 }
 
+/**
+ * Une vente ANNULEE (statut 'annulee', annulation self-service #20 / R7) ne compte
+ * dans AUCUN agregat financier : ni CA, ni marge, ni volume, ni top produits. Elle
+ * reste visible dans l'historique (carte badgee « Annulee ») pour la tracabilite,
+ * mais la verite financiere l'exclut. Regle unique, appliquee cote historique
+ * (« Ventes passees ») comme cote resume d'accueil.
+ */
+export function venteComptee(t: { statut?: string }): boolean {
+  return t.statut !== 'annulee';
+}
+
 /** Montant total d'une ligne : `montant` s'il existe, sinon `price` (jamais * quantity). */
 export function montantLigne(t: LigneVente): number {
   const m = t.montant ?? t.price ?? 0;
   return Number(m) || 0;
+}
+
+export interface ResumeVentes {
+  /** CA : somme des montants des ventes NON annulees. */
+  totalVentes: number;
+  /** Somme des benefices (fallback marge) des ventes non annulees. */
+  totalBenefices: number;
+  /** Somme des marges des ventes non annulees. */
+  totalMarges: number;
+  /** Nombre de ventes NON annulees. */
+  totalCount: number;
+  /** Panier moyen = totalVentes / totalCount (arrondi), 0 si aucune vente. */
+  panierMoyen: number;
+}
+
+export interface VenteResumable {
+  montant?: number;
+  price?: number;
+  totalMargin?: number;
+  totalBenefice?: number;
+  statut?: string;
+}
+
+/**
+ * Agrege les KPIs d'un lot de ventes en EXCLUANT les ventes annulees (cf.
+ * `venteComptee`). Calcul pur et testable, source unique des chiffres affiches
+ * dans « Ventes passees » et du resume d'accueil.
+ */
+export function resumeVentes(sales: VenteResumable[]): ResumeVentes {
+  const actives = sales.filter(venteComptee);
+  const totalVentes = actives.reduce((s, t) => s + (Number(t.montant ?? t.price ?? 0) || 0), 0);
+  const totalMarges = actives.reduce((s, t) => s + (Number(t.totalMargin ?? 0) || 0), 0);
+  const totalBenefices = actives.reduce((s, t) => s + (Number(t.totalBenefice ?? t.totalMargin ?? 0) || 0), 0);
+  const totalCount = actives.length;
+  const panierMoyen = totalCount > 0 ? Math.round(totalVentes / totalCount) : 0;
+  return { totalVentes, totalBenefices, totalMarges, totalCount, panierMoyen };
 }
 
 /**
@@ -39,7 +88,7 @@ export function montantLigne(t: LigneVente): number {
  */
 export function topProduitsVentes(transactions: LigneVente[], limit = 5): TopProduit[] {
   return transactions
-    .filter((t) => t.type === 'vente')
+    .filter((t) => t.type === 'vente' && venteComptee(t))
     .reduce((acc, t) => {
       const total = montantLigne(t);
       const qte = Number(t.quantity) || 0;
