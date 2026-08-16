@@ -250,3 +250,49 @@ avant/après, et la liste exacte des fichiers modifiés.
 > Ces points ne se tranchent pas au code : ils se tranchent avec toi et sur le terrain.
 > C'est le préalable que tu réclamais (modèle de menace + validation utilisateur) avant
 > d'implémenter récupération et partage.
+>
+> **→ TRANCHÉ le 16/08/2026 (propriétaire produit). Voir §8.**
+
+---
+
+## 8. Décisions tranchées (16/08/2026)
+
+Les questions « À VALIDER » du §7 ont été arbitrées par le propriétaire produit :
+
+1. **Persistance de session (§2.3).** Session « de journée » **fluide** : la vente ne
+   redemande rien. **Ré-authentification biométrique** exigée sur **actions sensibles**
+   (clôture, dépense, crédit) **et après 30 min d'inactivité**. **Jamais** de jeton
+   durable exploitable en `localStorage`.
+2. **Téléphone partagé (§4.1).** Partage jugé **occasionnel** → **1 compte / téléphone
+   en P1**, multi-compte **reporté**. Pas de complexité prématurée.
+3. **Repli non-oral (§1.2).** **Mot de passe imagé** (retenu contre le « PIN par
+   position »). Statut = **filet**, pas chemin principal. Sans lecture, simple à
+   mémoriser, images du quotidien ivoirien.
+4. **Récupération (§3).** **Validée telle quelle** : code identificateur à **usage
+   unique** + **présence réelle de la marchande** + **voix guidée** + **journalisation /
+   révocation**. Le **code seul ne suffit JAMAIS** à ré-enrôler.
+5. **WebAuthn découvrable (§2.1).** **Cible P1.** Hypothèse terrain : **majorité**
+   équipée d'un verrou d'écran / biométrie — **à valider vite sur le terrain**. Si
+   l'hypothèse tombe, le **mot de passe imagé (déc. 3) passe de filet à parcours
+   principal** — bascule à prévoir dans la conception.
+
+### 8.1 Ordre de construction retenu
+1. **P0.0 — préalable sécurité (§0.4)** : neutraliser le trou « PIN `0000` + numéro
+   connu de l'identificateur » (il peut se connecter à sa place). **À confirmer sur le
+   `main` courant, puis corriger si encore ouvert.** Précède tout.
+2. **P0 — Persistance / session + garde actions sensibles** (déc. 1).
+3. **P0 — Repli imagé** (déc. 3).
+4. **P1 — WebAuthn découvrable** (déc. 5).
+5. **P1 — Récupération guidée** (déc. 4).
+6. **Plus tard — Multi-compte** (déc. 2).
+
+### 8.2 Réserves consignées (honnêteté)
+- **La spec classait la récupération en P0** (« le plus cassé aujourd'hui » :
+  réinstall / perte = accès perdu). En la plaçant en P1, on **accepte un intervalle**
+  où une marchande qui perd ou réinstalle son téléphone **reste bloquée**. Acceptable
+  si le pilote tourne sur des téléphones stables/connus ; **à rehausser dès que le parc
+  s'élargit**.
+- **Le P0.0 précède la déc. 1** : tant que le trou `0000` tient, la biométrie ajoutée
+  par-dessus ne protège pas d'un identificateur qui connaît déjà numéro + `0000`.
+- **La déc. 5 est conditionnelle au terrain (§0.3)** : mesurer la part de téléphones
+  avec verrou/biométrie est le **premier livrable de terrain**, pas une formalité.
