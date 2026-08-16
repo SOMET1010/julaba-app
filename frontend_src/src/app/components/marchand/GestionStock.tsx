@@ -492,23 +492,31 @@ export function GestionStock() {
       return;
     }
     const s = stocks.find(x => x.id === id);
-    speak(`${s?.name} supprimé`);
-    stockCtx.deleteStock(id);
     const p = products.find(x => x.id === id || x.nom === s?.name);
+    // On ATTEND la vraie réponse avant d'annoncer : la suppression touche
+    // /caisse/produits (Kassa) et/ou /stocks. On réussit si au moins l'une aboutit.
+    // Plus d'annonce « supprimé » avant confirmation (illusion de perte de donnée).
+    let supprime = false;
     if (p) {
-      try {
-        await deleteProduct(p.id);
-        toast.success('Produit supprimé');
-      } catch (e: any) {
-        console.warn('[GestionStock] deleteProduct failed:', e?.message);
-        toast.error('Opération impossible. Réessaie.');
-        speak("Ça n'a pas marché. Réessaie, s'il te plaît.");
-      }
+      try { await deleteProduct(p.id); supprime = true; }
+      catch (e: any) { console.warn('[GestionStock] deleteProduct failed:', e?.message); }
     }
-    showToast(`${s?.name} supprimé`, 'info');
-    setShowEdit(false);
-    setInlineEdit(false);
+    try { await stockCtx.deleteStock(id); supprime = true; }
+    catch (e: any) { console.warn('[GestionStock] deleteStock failed:', e?.message); }
+
     setConfirmDeleteId(null);
+    if (supprime) {
+      toast.success('Produit supprimé');
+      speak(`${s?.name} supprimé`);
+      showToast(`${s?.name} supprimé`, 'info');
+      setShowEdit(false);
+      setInlineEdit(false);
+    } else {
+      // Échec réel (ex. 401) : on le DIT et on garde la fiche ouverte, plutôt que
+      // de faire croire à une suppression qui n'a pas eu lieu.
+      toast.error('Suppression impossible. Réessaie.');
+      speak("Ça n'a pas marché. Le produit n'est pas supprimé.");
+    }
   };
 
   const saveInlineEdit = async () => {
