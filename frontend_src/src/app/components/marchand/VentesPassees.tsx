@@ -54,6 +54,11 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
     try {
       await annulerVenteMarchand(sale.id);
       await Promise.all([reloadTransactions(), refreshProducts()]);
+      // Succès : on SORT de l'état 'loading'. Sinon le libellé « Annulation en
+      // cours… » (rendu tant que annulEtat === 'loading') restait affiché jusqu'au
+      // rechargement — trompeur pour la marchande (écart relevé en recette). La carte
+      // rechargée est désormais estAnnulee → aucun bouton d'annulation réapparaît.
+      setAnnulEtat('idle');
       toast.success('Vente annulée — stock rendu');
       if (guidageVocal()) { try { speak('Vente annulée. Le stock a été rendu.'); } catch { /* ignore */ } }
     } catch {
