@@ -132,7 +132,7 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
         <div style={{ textAlign:'right', flexShrink:0 }}>
           <div style={{ fontSize:17, fontWeight:900, color: estAnnulee ? '#9ca3af' : '#1D9E75', textDecoration: estAnnulee ? 'line-through' : 'none' }}>+{montant.toLocaleString('fr-FR')} F</div>
           {marge > 0
-            ? <div style={{ fontSize:10, color:'#16a34a', marginTop:2, fontWeight:700 }}>+{marge.toLocaleString('fr-FR')} F marge</div>
+            ? <div style={{ fontSize:10, color: estAnnulee ? '#9ca3af' : '#16a34a', marginTop:2, fontWeight:700, textDecoration: estAnnulee ? 'line-through' : 'none' }}>+{marge.toLocaleString('fr-FR')} F marge</div>
             : <div style={{ fontSize:10, color:'#ccc', marginTop:2 }}>marge —</div>
           }
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration:0.25 }} style={{ display:'flex', justifyContent:'flex-end', marginTop:2 }}>
@@ -160,7 +160,7 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
               {marge > 0 && (
                 <div style={{ display:'flex', justifyContent:'space-between' }}>
                   <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Marge</span>
-                  <span style={{ fontSize:12, fontWeight:700, color:'#16a34a' }}>+{marge.toLocaleString('fr-FR')} FCFA</span>
+                  <span style={{ fontSize:12, fontWeight:700, color: estAnnulee ? '#9ca3af' : '#16a34a', textDecoration: estAnnulee ? 'line-through' : 'none' }}>+{marge.toLocaleString('fr-FR')} FCFA</span>
                 </div>
               )}
               {/* Reçu numérique : partager (WhatsApp) ou télécharger en PDF */}

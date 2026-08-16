@@ -86,6 +86,11 @@ export interface CartItem {
   nom: string;
   prix: number;
   quantite: number;
+  /** Prix d'achat UNITAIRE — nécessaire pour calculer la marge de la vente.
+   *  Sans lui, la ligne partait à prix_achat:0 → marge = prix de vente entier.
+   *  Optionnel : un panier restauré d'avant ce correctif ne le porte pas (le
+   *  downstream défaulte à 0 → « marge — » honnête via beneficeDepuisDetails). */
+  prix_achat?: number;
 }
 
 export interface StockMovement {
@@ -404,7 +409,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       ? cart.map(item =>
           item.productId === product.id ? { ...item, quantite: item.quantite + quantite } : item)
       // Prix effectif : applique automatiquement le prix promo s'il est actif.
-      : [...cart, { productId: product.id, nom: product.nom, prix: prixEffectif(product), quantite }];
+      : [...cart, { productId: product.id, nom: product.nom, prix: prixEffectif(product), quantite, prix_achat: Number(product.prix_achat) || 0 }];
     setCart(next);
     persistCart(next);
   };
