@@ -3,6 +3,7 @@ import { useLangPref } from '../../hooks/useLangPref';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { motion, AnimatePresence } from 'motion/react';
 import { ImagePickerField } from '../shared/ImagePickerField';
+import { UNITES_COURANTES } from '../../config/unites';
 import { SelectWithAutre } from '../shared/SelectWithAutre';
 import {
   Search,
@@ -575,7 +576,7 @@ export function Stock() {
                     label="Unité"
                     value={newStock.unit}
                     onChange={(v) => setNewStock({ ...newStock, unit: v })}
-                    options={['kg', 'L', 'tas', 'régimes', 'sac', 'tonne', 'carton']}
+                    options={UNITES_COURANTES}
                     primaryColor="#2072AF"
                     placeholder="Ex: caisse, panier..."
                   />

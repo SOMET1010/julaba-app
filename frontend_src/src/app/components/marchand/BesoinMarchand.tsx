@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Package, Check, RefreshCw } from 'lucide-react';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { SelectWithAutre } from '../shared/SelectWithAutre';
+import { UNITES_COURANTES } from '../../config/unites';
 import { useApp } from '../../contexts/AppContext';
 import { toast } from 'sonner';
 import { CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
@@ -138,7 +139,7 @@ export function BesoinMarchand() {
                   label="Unité"
                   value={unite}
                   onChange={setUnite}
-                  options={['kg', 'tonne', 'sac', 'régimes', 'litre', 'carton']}
+                  options={UNITES_COURANTES}
                   primaryColor={COLOR}
                   placeholder="Autre unité..."
                 />
