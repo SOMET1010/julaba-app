@@ -10,6 +10,9 @@ import { Identification } from './identification.entity';
 import { Repository } from 'typeorm';
 import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
 import { AuthService } from '../auth/auth.service';
+import { ActivationService } from '../auth/activation.service';
+import { User, UserStatus } from '../users/entities/user.entity';
+import * as crypto from 'crypto';
 import { CreateActeurDto } from '../auth/dto/create-acteur.dto';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -25,6 +28,7 @@ export class IdentificationsController {
     private readonly authService: AuthService,
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
+    private readonly activationService: ActivationService,
   ) {}
 
 
@@ -324,7 +328,11 @@ export class IdentificationsController {
       identificationData.zone_id = req.user.zoneId;
     }
 
-    acteurData.password = '0000';
+    // P0.0 (ADR-002) : PLUS de secret par défaut connu ('0000'). On sème un secret
+    // ALÉATOIRE inutilisable (personne ne le connaît) ; le compte sera rendu inerte
+    // (en_attente_activation) juste après, et la marchande posera SON secret via le
+    // code d'activation. Fin du takeover « quiconque a le numéro + 0000 ».
+    acteurData.password = crypto.randomBytes(24).toString('hex');
     delete acteurData.photoUrl;
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -339,6 +347,16 @@ export class IdentificationsController {
       if (!acteurId) {
         throw new BadRequestException('Creation acteur echouee: id manquant');
       }
+
+      // P0.0 : rendre le compte INERTE (non-loginable) et émettre le code d'activation
+      // à usage unique. Tant qu'il n'est pas activé par la marchande, aucun login —
+      // et le secret aléatoire semé plus haut n'est connu de personne.
+      await queryRunner.manager.update(User, acteurId, { status: UserStatus.EN_ATTENTE_ACTIVATION });
+      var activationCode = await this.activationService.issueForUser(
+        acteurId,
+        req.user?.id ?? null,
+        queryRunner.manager,
+      );
 
       const identificationPayload = {
         acteur_id: acteurId,
@@ -424,6 +442,9 @@ export class IdentificationsController {
         success: true,
         user: signupResult.user,
         identification,
+        // Code d'activation à remettre à la marchande pour qu'elle pose SON secret
+        // (usage unique, expire vite). Affiché une seule fois, jamais restocké en clair.
+        activationCode,
       };
     } catch (error: any) {
       await queryRunner.rollbackTransaction();
