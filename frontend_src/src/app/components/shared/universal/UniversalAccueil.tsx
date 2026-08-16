@@ -106,19 +106,14 @@ export function UniversalAccueil({ role }: UniversalAccueilProps) {
 
   const dashboardStats = getDashboardStats();
 
-  // Coach mark pour les profils avec gestion de journée (Marchand uniquement pour l'instant)
+  // Coach mark « Ouvre ta journée pour activer ta caisse » RETIRÉ (obsolète, Phase 2) :
+  // l'ouverture de journée est automatique (le back-end ouvre la session à la 1re
+  // vente) et vendre n'est jamais bloqué. Le nudge auto (+ voix) affirmait que la
+  // caisse était inactive — c'était trompeur (écart relevé en recette). showCoachMark
+  // reste donc à false ; le coach-mark du dashboard ne s'affiche plus.
   useEffect(() => {
-    if (role === 'marchand' && !currentSession?.opened) {
-      const timer = setTimeout(() => {
-        setShowCoachMark(true);
-        speak('Ouvre ta journée pour activer ta caisse');
-      }, 5000);
-      
-      return () => clearTimeout(timer);
-    } else {
-      setShowCoachMark(false);
-    }
-  }, [role, currentSession?.opened, speak]);
+    setShowCoachMark(false);
+  }, [role, currentSession?.opened]);
 
   const handleDismissCoachMark = () => {
     setShowCoachMark(false);
