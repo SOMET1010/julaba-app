@@ -4,6 +4,7 @@ import { Users, MapPin, Map, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useBackOffice } from "../../contexts/BackOfficeContext";
 import { BO_PRIMARY } from "./bo-theme";
+import { API_URL } from "../../utils/api";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -75,9 +76,9 @@ export function BOCarteActeurs() {
     setLoading(true);
     try {
       const [geoRes, allRes, zonesRes] = await Promise.all([
-        fetch("/api/v1/identifications/geo", { credentials: "include" }),
-        fetch("/api/v1/identifications?limit=100", { credentials: "include" }),
-        fetch("/api/v1/zones", { credentials: "include" }),
+        fetch(`${API_URL}/identifications/geo`, { credentials: "include" }),
+        fetch(`${API_URL}/identifications?limit=100`, { credentials: "include" }),
+        fetch(`${API_URL}/zones`, { credentials: "include" }),
       ]);
       if (!geoRes.ok) throw new Error(`Erreur HTTP ${geoRes.status}`);
       if (!allRes.ok) throw new Error(`Erreur HTTP ${allRes.status}`);
@@ -194,7 +195,7 @@ export function BOCarteActeurs() {
     if (!locForm?.lat || !locForm?.lng) return;
     setLocLoading(true);
     try {
-      const res = await fetch(`/api/v1/identifications/${locForm.id}`, {
+      const res = await fetch(`${API_URL}/identifications/${locForm.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
