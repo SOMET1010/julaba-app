@@ -416,6 +416,13 @@ export function GestionStock() {
     if (!newStock.name?.trim()) { toast.error('Nom du produit requis'); dire('Saisis le nom du produit'); return; }
     if (newStock.salePrice <= 0) { toast.error('Prix de vente invalide'); dire('Le prix de vente n\'est pas bon. Redis le prix.'); return; }
     if (newStock.quantity < 0) { toast.error('Quantité invalide'); speak('La quantité n\'est pas bonne.'); return; }
+    // B2 (recette « prix d'achat 0 ») : on N'EMPÊCHE PAS l'ajout sans prix d'achat
+    // (dons, auto-production, marchandise à crédit, coût réellement inconnu), mais on
+    // prévient honnêtement — sans coût, on ne peut pas calculer le bénéfice.
+    if (!(newStock.purchasePrice > 0)) {
+      toast.warning("Sans prix d'achat, on ne pourra pas calculer ton bénéfice.");
+      dire("Tu n'as pas mis le prix d'achat. On ne pourra pas calculer ton bénéfice.");
+    }
     const cat = rechercherProduitCatalogue(newStock.name);
     try {
       await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
@@ -881,7 +888,9 @@ export function GestionStock() {
                           FCFA / {selectedStock.unit}
                         </div>
                         <div style={{ fontSize: 11, fontWeight: 800, color: '#C2410C' }}>
-                          Marge : {(selectedStock.salePrice - selectedStock.purchasePrice).toLocaleString('fr-FR')} FCFA
+                          {selectedStock.purchasePrice > 0
+                            ? `Marge : ${(selectedStock.salePrice - selectedStock.purchasePrice).toLocaleString('fr-FR')} FCFA`
+                            : 'Bénéfice inconnu'}
                         </div>
                       </div>
                       <div style={{ background: '#F0FDF4', border: '1.5px solid #BBF7D0', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
@@ -1088,8 +1097,10 @@ export function GestionStock() {
                     <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--encre-4)', marginBottom: 2 }}>Nette</div>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: P }}>
-                          {(editForm.salePrice - editForm.purchasePrice).toLocaleString('fr-FR')}
+                        <div style={{ fontSize: 17, fontWeight: 900, color: editForm.purchasePrice > 0 ? P : 'var(--encre-4)' }}>
+                          {editForm.purchasePrice > 0
+                            ? (editForm.salePrice - editForm.purchasePrice).toLocaleString('fr-FR')
+                            : '—'}
                         </div>
                         <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--encre-4)' }}>FCFA/{editForm.unit}</div>
                       </div>
@@ -1228,6 +1239,11 @@ export function GestionStock() {
         {showValue && (() => {
           const totalBuy = stocks.reduce((s,p) => s+p.quantity*p.purchasePrice, 0);
           const totalSell = stocks.reduce((s,p) => s+p.quantity*p.salePrice, 0);
+          // Marge/ROI honnêtes : sans prix d'achat, le coût est INCONNU (pas nul).
+          // Compter tout le prix de vente comme marge surévaluerait le bénéfice.
+          // On n'affiche donc la marge globale que si TOUS les produits en stock ont un coût.
+          const sansCout = stocks.filter(p => p.quantity > 0 && !(p.purchasePrice > 0)).length;
+          const margeConnue = sansCout === 0;
           const marge = totalSell - totalBuy;
           const roi = totalBuy > 0 ? ((marge/totalBuy)*100).toFixed(1) : '0';
           return (
@@ -1252,18 +1268,28 @@ export function GestionStock() {
                     {[
                       { label:'Valeur achat', value:totalBuy, color:'#ef4444', bg:'#FEF2F2' },
                       { label:'Valeur vente', value:totalSell, color:'#1D9E75', bg:'#F0FAF5' },
-                      { label:'Marge totale', value:marge, color:P, bg:'#FFF3EA' },
                     ].map((k) => (
                       <div key={k.label} style={{ background:k.bg, borderRadius:14, padding:14, border:`1.5px solid ${k.color}33` }}>
                         <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>{k.label}</div>
                         <Montant value={k.value} size="md" color={k.color} />
                       </div>
                     ))}
+                    <div style={{ background:'#FFF3EA', borderRadius:14, padding:14, border:`1.5px solid ${P}33` }}>
+                      <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>Marge totale</div>
+                      {margeConnue
+                        ? <Montant value={marge} size="md" color={P} />
+                        : <div style={{ fontSize:22, fontWeight:900, color:'var(--encre-4)' }}>—</div>}
+                    </div>
                     <div style={{ background:'#F5F0FF', borderRadius:14, padding:14, border:'1.5px solid #a78bfa33' }}>
                       <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>ROI</div>
-                      <div style={{ fontSize:22, fontWeight:900, color:'#7c3aed' }}>+{roi}%</div>
+                      <div style={{ fontSize:22, fontWeight:900, color: margeConnue ? '#7c3aed' : 'var(--encre-4)' }}>{margeConnue ? `+${roi}%` : '—'}</div>
                     </div>
                   </div>
+                  {!margeConnue && (
+                    <div style={{ fontSize:11, fontWeight:700, color:'#C2410C', background:'#FFF7ED', border:'1.5px solid #FED7AA', borderRadius:12, padding:'10px 12px' }}>
+                      ⚠ {sansCout} produit{sansCout > 1 ? 's' : ''} sans prix d'achat — renseigne-le pour voir ta marge réelle.
+                    </div>
+                  )}
                   <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, overflow:'hidden' }}>
                     <div style={{ padding:'12px 14px', borderBottom:'1px solid #f5f0eb', fontSize:13, fontWeight:800, color:'var(--encre)' }}>Top 3 produits</div>
                     {stocks.map(s=>({...s,val:s.quantity*s.salePrice})).sort((a,b)=>b.val-a.val).slice(0,3).map((p,i) => (
