@@ -264,6 +264,15 @@ export function RecolteForm() {
       return;
     }
     setIsSubmitting(true);
+    // Bug argent (écart recette « unités ») : la quantité est normalisée en kg
+    // (quantiteEnKg = quantite × facteur), mais le prix est saisi PAR UNITÉ D'ORIGINE
+    // (« Prix par tonne/sac/tas… ») ; le stocker brut avec une quantité en kg gonflait
+    // « Valeur stock » / « Revenus » par le facteur (×1000 tonne, ×100 sac, ×50 tas…).
+    // On convertit donc le prix en PRIX PAR KG pour rester cohérent avec quantiteEnKg :
+    // quantiteEnKg × prixParKg = quantite × prixSaisi (la vraie valeur).
+    const prixParKg = prixUnitaire !== '' && uniteObj.facteur > 0
+      ? Math.round((Number(prixUnitaire) / uniteObj.facteur) * 100) / 100
+      : 0;
     try {
       await createRecolte({
         cycle_id: cycleIdFromUrl || undefined,
@@ -273,7 +282,7 @@ export function RecolteForm() {
         qualite: (qualite || 'standard') as 'standard' | 'premium' | 'bio',
         date_recolte: dateRecolte || new Date().toISOString().split('T')[0],
         localisation: localisation || '',
-        prix_unitaire: prixUnitaire !== '' ? Number(prixUnitaire) : 0,
+        prix_unitaire: prixParKg,
         parcelle: undefined,
         notes: undefined,
         photo_url: photoPreview || undefined,
@@ -735,6 +744,11 @@ export function RecolteForm() {
                       {prixUnitaire && (
                         <p className="text-sm font-bold mt-1" style={{ color: COLOR }}>
                           Prix : {Number(prixUnitaire).toLocaleString()} FCFA / {uniteObj.abbr}
+                        </p>
+                      )}
+                      {prixUnitaire && (
+                        <p className="text-base font-black mt-1" style={{ color: COLOR }}>
+                          Valeur : {(Number(prixUnitaire) * Number(quantite || 0)).toLocaleString()} FCFA
                         </p>
                       )}
                     </motion.div>
