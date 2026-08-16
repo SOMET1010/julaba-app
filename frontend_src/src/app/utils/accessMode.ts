@@ -112,4 +112,20 @@ export function marquerDemande(): void {
 // Helpers d'adaptation — prennent le mode EFFECTIF par défaut.
 export function voixDAbord(m: EffectiveMode = getEffectiveMode()): boolean { return m === 'voix'; }
 export function clavierParDefaut(m: EffectiveMode = getEffectiveMode()): boolean { return m === 'lecture'; }
-export function guidageVocal(m: EffectiveMode = getEffectiveMode()): boolean { return m !== 'lecture'; }
+/**
+ * Décision PURE du guidage vocal (testable sans localStorage).
+ * Le guidage n'est COUPÉ que si l'utilisatrice a EXPLICITEMENT choisi « lecture »
+ * (« Je lis et j'écris »). En 'auto', 'mixte' et 'voix' : on guide.
+ * → « Automatique » ne devient JAMAIS muet (même si l'usage penche clavier),
+ *   ce qui était le défaut relevé : auto se résolvait parfois en 'lecture'.
+ * Si un mode EFFECTIF est explicitement fourni (écran l'ayant déjà résolu, ex.
+ * l'auth), on le respecte tel quel — rétro-compatibilité.
+ */
+export function guidageActif(chosen: AccessMode, effectif?: EffectiveMode): boolean {
+  if (effectif !== undefined) return effectif !== 'lecture';
+  return chosen !== 'lecture';
+}
+
+export function guidageVocal(m?: EffectiveMode): boolean {
+  return guidageActif(getAccessMode(), m);
+}
