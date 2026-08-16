@@ -13,6 +13,7 @@
 
 import { eventBus, EVENTS } from '../services/eventBus';
 import { topProduitsVentes, venteComptee } from '../services/statsVente';
+import { beneficeDepuisDetails } from '../services/margeVente';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { normalizeRole } from '../types/constants';
@@ -119,15 +120,7 @@ export interface Transaction {
 // Bénéfice d'une vente = somme des (total article − prix_achat × quantité) sur
 // ses articles (details). Le niveau transaction stockait 0 → on recalcule ici
 // pour l'affichage marge/bénéfice, y compris sur les ventes existantes.
-function beneficeDepuisDetails(details: unknown): number {
-  if (!Array.isArray(details)) return 0;
-  return details.reduce((s: number, it: any) => {
-    const q = Number(it?.quantite) || 1;
-    const total = Number(it?.total) || (Number(it?.prix) || 0) * q;
-    const cout = (Number(it?.prix_achat ?? it?.prixAchat) || 0) * q;
-    return s + Math.max(0, total - cout);
-  }, 0);
-}
+// Logique extraite et testée dans services/margeVente.ts (règle « coût inconnu »).
 
 export interface DaySession {
   id: string;
@@ -917,7 +910,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       (t) => t.date.split('T')[0] === today
     );
 
-    const ventesTransactions = todayTransactions.filter((t) => t.type === 'vente');
+    // Une vente ANNULÉE garde type==='vente' (le back-end gèle l'argent, il pose
+    // seulement statut='annulee') → on doit l'exclure de la caisse du jour, sinon
+    // « Ma caisse aujourd'hui » sur-compte des ventes déjà annulées (écart recette).
+    // Même règle que statsVente.venteComptee / CaisseContext.venteActive.
+    const ventesTransactions = todayTransactions.filter((t) => t.type === 'vente' && t.statut !== 'annulee');
 
     // Ventes ESPÈCES (transactions) : entrent en caisse ET dans les ventes.
     const ventesEspeces = ventesTransactions.reduce((acc, t) => acc + (t.montant || t.price * t.quantity || 0), 0);
