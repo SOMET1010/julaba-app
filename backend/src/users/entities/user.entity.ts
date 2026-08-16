@@ -34,6 +34,7 @@ export enum UserStatus {
   SUSPENDU = 'suspendu',
   REJETE = 'rejete',
   EN_ATTENTE_VALIDATION = 'en_attente_validation', // Nouveau pour comptes admin Q34
+  EN_ATTENTE_ACTIVATION = 'en_attente_activation', // P0.0 : enrôlé, pas encore activé par la marchande (non-loginable)
   SUPPRIME = 'supprime',
 }
 

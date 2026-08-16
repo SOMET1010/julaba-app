@@ -2,6 +2,7 @@ import { Controller, Post, Get, Patch, Delete, Param, Body, HttpCode, HttpStatus
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { AuthService, BO_ROLES, ACTEUR_ROLES, getDefaultPasswordForRole } from './auth.service';
+import { ActivationService } from './activation.service';
 import { SignupDto } from './dto/signup.dto';
 import { CreateActeurDto } from './dto/create-acteur.dto';
 import { LoginDto } from './dto/login.dto';
@@ -42,7 +43,20 @@ export class AuthController {
     private readonly feedbakSmsService: FeedbakSmsService,
     private readonly auditService: AuditService,
     private readonly pinCrypto: PinCryptoService,
+    private readonly activationService: ActivationService,
   ) {}
+
+  // Activation P0.0 (ADR-002) : la marchande consomme le code d'activation reçu à
+  // l'enrôlement et POSE SON secret. Public (elle n'a pas encore de session) ; le code
+  // n'ouvre QUE cette route, jamais une session normale. Throttle serré en plus du
+  // caractère aléatoire du code (selector+verifier) et de son usage unique.
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Post('activer')
+  @HttpCode(HttpStatus.OK)
+  async activer(@Body() body: { code: string; nouveauSecret: string }) {
+    await this.activationService.activate(body?.code, body?.nouveauSecret);
+    return { success: true };
+  }
 
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('signup')

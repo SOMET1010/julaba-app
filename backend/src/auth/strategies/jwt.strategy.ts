@@ -33,6 +33,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = await this.userRepository.findOne({ where: { id: payload.sub } });
     if (!user) throw new UnauthorizedException("Utilisateur introuvable");
     if (user.status === UserStatus.SUSPENDU) throw new UnauthorizedException('Compte suspendu');
+    if (user.status === UserStatus.EN_ATTENTE_ACTIVATION) throw new UnauthorizedException('Compte pas encore activé');
     if ((user as any).mustChangePassword === true) {
       const path = (req?.url || "").split("?")[0];
       const allow = ["auth/change-password", "auth/logout", "auth/logout-all", "auth/me", "users/me"];

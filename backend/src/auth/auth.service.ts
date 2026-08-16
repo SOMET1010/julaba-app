@@ -241,6 +241,7 @@ export class AuthService {
     if (user.status === UserStatus.SUSPENDU) throw new UnauthorizedException('Compte suspendu');
     if (user.status === UserStatus.REJETE) throw new UnauthorizedException('Compte rejeté');
     if (user.status === UserStatus.EN_ATTENTE_VALIDATION) throw new UnauthorizedException('Compte en attente de validation par un super administrateur');
+    if (user.status === UserStatus.EN_ATTENTE_ACTIVATION) throw new UnauthorizedException("Compte pas encore activé : à activer sur le téléphone de la marchande.");
 
     user.lastLoginAt = new Date();
     user.lastLoginUserAgent = typeof deviceInfo === 'string' ? deviceInfo.slice(0, 500) : null;
@@ -301,6 +302,7 @@ export class AuthService {
     if (user.status === UserStatus.SUSPENDU) throw new UnauthorizedException('Compte suspendu');
     if (user.status === UserStatus.REJETE) throw new UnauthorizedException('Compte rejeté');
     if (user.status === UserStatus.EN_ATTENTE_VALIDATION) throw new UnauthorizedException('Compte en attente de validation par un super administrateur');
+    if (user.status === UserStatus.EN_ATTENTE_ACTIVATION) throw new UnauthorizedException("Compte pas encore activé : à activer sur le téléphone de la marchande.");
 
     user.lastLoginAt = new Date();
     user.lastLoginUserAgent = typeof deviceInfo === 'string' ? deviceInfo.slice(0, 500) : null;
