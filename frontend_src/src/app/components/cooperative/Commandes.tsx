@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { ImagePickerField } from '../shared/ImagePickerField';
 import { SelectWithAutre } from '../shared/SelectWithAutre';
+import { UNITES_COURANTES } from '../../config/unites';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Package,
@@ -1265,7 +1266,7 @@ export function Commandes() {
                         label="Unité"
                         value={newUnite}
                         onChange={setNewUnite}
-                        options={['kg', 'tonnes', 'régimes', 'sacs', 'caisses', 'litre']}
+                        options={UNITES_COURANTES}
                         primaryColor={C}
                         placeholder="Ex: barrique, carton..."
                       />

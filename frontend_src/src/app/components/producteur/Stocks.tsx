@@ -1,6 +1,7 @@
 import { useApp } from '../../contexts/AppContext';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { SubPageLayout } from '../layout/SubPageLayout';
+import { UNITES_COURANTES } from '../../config/unites';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { motion, AnimatePresence } from 'motion/react';
 import { Montant, MontantCard } from '../shared/Montant';
@@ -781,7 +782,7 @@ export function Stocks() {
                     label="Unité"
                     value={newStock.unit}
                     onChange={(v) => setNewStock({ ...newStock, unit: v })}
-                    options={['kg', 'L', 'tas', 'régimes', 'sac', 'tonne', 'carton']}
+                    options={UNITES_COURANTES}
                     primaryColor="#2E8B57"
                     placeholder="Ex: caisse, panier..."
                   />

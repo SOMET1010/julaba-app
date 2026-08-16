@@ -3,6 +3,7 @@ import { useLangPref } from '../../hooks/useLangPref';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { useLocation } from 'react-router';
 import { ImagePickerField } from '../shared/ImagePickerField';
+import { UNITES_COURANTES } from '../../config/unites';
 import { SelectWithAutre } from '../shared/SelectWithAutre';
 import { Montant, MontantCard } from '../shared/Montant';
 import { motion, AnimatePresence } from 'motion/react';
@@ -2181,7 +2182,7 @@ function ModalNouvelleAnnonce({ onClose, onPublier }: {
               label="Unité"
               value={unite}
               onChange={setUnite}
-              options={['kg', 'tonne', 'régimes', 'sac', 'litre', 'carton']}
+              options={UNITES_COURANTES}
               primaryColor={C_OP}
               placeholder="Ex: barrique, panier..."
             />

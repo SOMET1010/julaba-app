@@ -22,6 +22,7 @@ import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { eventBus, EVENTS } from '../../services/eventBus';
 import { guidageVocal } from '../../utils/accessMode';
 import { toast } from 'sonner';
+import { UNITES_COURANTES } from '../../config/unites';
 
 const P = '#AF5B23';
 
@@ -767,7 +768,7 @@ export function GestionStock() {
                         style={{ width:44, height:46, flexShrink:0, borderRadius:12, border:'none', background:P, color:'white', fontSize:24, fontWeight:900, cursor:'pointer' }}>+</motion.button>
                     </div>
                   </div>
-                  <SelectWithAutre label="Unité" value={newStock.unit} onChange={v => setNewStock({...newStock, unit:v})} options={['kg','L','tas','régimes','sac','tonne','carton']} primaryColor={P} placeholder="Ex: bouteille..." />
+                  <SelectWithAutre label="Unité" value={newStock.unit} onChange={v => setNewStock({...newStock, unit:v})} options={UNITES_COURANTES} primaryColor={P} placeholder="Ex: bouteille..." />
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                   <div>
@@ -1067,7 +1068,7 @@ export function GestionStock() {
                       label="Unite"
                       value={editForm.unit}
                       onChange={v => setEditForm({ ...editForm, unit: v })}
-                      options={['kg', 'L', 'tas', 'regimes', 'sac', 'tonne', 'carton']}
+                      options={UNITES_COURANTES}
                       primaryColor={P}
                       placeholder="Ex: bouteille..."
                     />

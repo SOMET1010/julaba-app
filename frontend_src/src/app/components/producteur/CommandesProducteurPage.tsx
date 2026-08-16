@@ -9,6 +9,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { matchesSearch } from '../../utils/searchUtils';
+import { UNITES_COURANTES } from '../../config/unites';
 import { SearchBar } from '../shared/SearchBar';
 import { ImagePickerField } from '../shared/ImagePickerField';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1304,11 +1305,11 @@ export function ProducteurCommandes() {
                       <div>
                         <label className="block text-sm font-black text-gray-800 mb-2">Unité</label>
                         <select
-                          value={['kg', 'tas', 'sac', 'L', 'régimes', 'unité'].includes(newForm.unite) ? newForm.unite : 'kg'}
+                          value={UNITES_COURANTES.includes(newForm.unite) ? newForm.unite : 'kg'}
                           onChange={(e) => setNewForm((prev) => ({ ...prev, unite: e.target.value }))}
                           className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 font-semibold text-gray-900 bg-white"
                         >
-                          {['kg', 'tas', 'sac', 'L', 'régimes', 'unité'].map((u) => (
+                          {UNITES_COURANTES.map((u) => (
                             <option key={u} value={u}>
                               {u}
                             </option>
