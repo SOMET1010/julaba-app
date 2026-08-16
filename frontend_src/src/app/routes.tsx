@@ -6,6 +6,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import { EntryGate } from './components/auth/EntryGate';
 import { LoginPassword } from './components/auth/LoginPassword';
 import { ChangePasswordScreen } from './components/auth/ChangePasswordScreen';
+import { ActivationScreen } from './components/auth/ActivationScreen';
 import { UnregisteredPhone } from './components/auth/UnregisteredPhone';
 import { Welcome } from './components/auth/Welcome';
 import { BORoot } from './components/backoffice/BORoot';
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: "/welcome", element: <Welcome /> },
       { path: "/login", element: <LoginPassword /> },
       { path: '/change-password', element: <ChangePasswordScreen /> },
+      { path: '/activation', element: <ActivationScreen /> },
       ...(isDev ? [{ path: "/dev-mode", element: L(() => import("./pages/DevModeHome").then(m => ({ default: m.DevModeHome }))), errorElement: <ErrorFallback /> }] : []),
       ...diagnosticRoutes,
 
