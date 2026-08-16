@@ -19,6 +19,9 @@ import { SubPageLayout } from '../layout/SubPageLayout';
 
 const P = '#AF5B23';
 const BG = '#FFF2E9';
+// Pilote ESPÈCES : crédit désactivé (cf. POSCaisse CAISSE_CREDIT_ACTIF=false, #16-B).
+// On masque aussi l'onglet « Crédits » ici pour rester cohérent avec la caisse.
+const CAISSE_CREDIT_ACTIF = false;
 
 // ── Label jour ────────────────────────────────────────────────
 function dayLabel(date: Date): string {
@@ -127,7 +130,7 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
         </div>
         {/* Montant + marge */}
         <div style={{ textAlign:'right', flexShrink:0 }}>
-          <div style={{ fontSize:17, fontWeight:900, color:'#1D9E75' }}>+{montant.toLocaleString('fr-FR')} F</div>
+          <div style={{ fontSize:17, fontWeight:900, color: estAnnulee ? '#9ca3af' : '#1D9E75', textDecoration: estAnnulee ? 'line-through' : 'none' }}>+{montant.toLocaleString('fr-FR')} F</div>
           {marge > 0
             ? <div style={{ fontSize:10, color:'#16a34a', marginTop:2, fontWeight:700 }}>+{marge.toLocaleString('fr-FR')} F marge</div>
             : <div style={{ fontSize:10, color:'#ccc', marginTop:2 }}>marge —</div>
@@ -152,7 +155,7 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Montant</span>
-                <span style={{ fontSize:14, fontWeight:900, color:'#1D9E75' }}>{montant.toLocaleString('fr-FR')} FCFA</span>
+                <span style={{ fontSize:14, fontWeight:900, color: estAnnulee ? '#9ca3af' : '#1D9E75', textDecoration: estAnnulee ? 'line-through' : 'none' }}>{montant.toLocaleString('fr-FR')} FCFA</span>
               </div>
               {marge > 0 && (
                 <div style={{ display:'flex', justifyContent:'space-between' }}>
@@ -354,9 +357,10 @@ export function VentesPassees() {
     { id:'tous',    label:'Toutes' },
     { id:'vocal',   label:'Par Tata Nanti Lou' },
     { id:'kassa',   label:'Par caisse' },
-    { id:'credits', label:'Crédits' },
+    ...(CAISSE_CREDIT_ACTIF ? [{ id:'credits' as const, label:'Crédits' }] : []),
   ];
   const sliderIndex = SOURCE_TABS.findIndex(t => t.id === sourceFilter);
+  const tabPct = 100 / SOURCE_TABS.length; // largeur d'un onglet (le nb d'onglets varie)
   const ventesDuJour = allSales.filter(s => venteComptee(s) && new Date(s.date).toDateString() === new Date().toDateString()).length;
 
   return (
@@ -463,7 +467,7 @@ export function VentesPassees() {
         <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:4, display:'flex', position:'relative' }}>
           <motion.div
             style={{ position:'absolute', top:4, height:'calc(100% - 8px)', background:P, borderRadius:12, boxShadow:`0 2px 8px ${P}40` }}
-            animate={{ left:`calc(${sliderIndex * 25}% + 4px)`, width:'calc(25% - 6px)' }}
+            animate={{ left:`calc(${sliderIndex * tabPct}% + 4px)`, width:`calc(${tabPct}% - 6px)` }}
             transition={{ type:'spring', stiffness:300, damping:30 }}
           />
           {SOURCE_TABS.map(t => (
