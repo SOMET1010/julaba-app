@@ -5,11 +5,53 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { Stock } from './stock.entity';
+import { mapLedgerRows } from './mouvement-mapper';
 
 @UseGuards(JwtAuthGuard)
 @Controller('stocks')
 export class StocksRestController {
   constructor(@InjectRepository(Stock) private repo: Repository<Stock>) {}
+
+  /**
+   * Lecture SEULE du ledger append-only `stock_mouvements` (écrit par la caisse :
+   * ventes et annulations). Bornée au marchand courant. Ne montre que les vraies
+   * variations de stock (`quantite_retranchee <> 0`), les plus récentes d'abord.
+   * NB produit : les réapprovisionnements manuels ne passent pas par ce ledger
+   * (mise à jour directe du stock) → ils n'apparaissent pas encore ici.
+   */
+  private async lireMouvements(marchandId: string, produitId: string | null, limit: number) {
+    const params: any[] = [marchandId];
+    let filtreProduit = '';
+    if (produitId) {
+      params.push(produitId);
+      filtreProduit = `AND sm.produit_id::text = $${params.length}`;
+    }
+    params.push(limit);
+    const rows = await this.repo.manager.query(
+      `SELECT sm.id, sm.produit_nom, sm.quantite_retranchee, sm.type, sm.created_at, p.unite
+         FROM stock_mouvements sm
+         LEFT JOIN produits p ON p.id = sm.produit_id
+        WHERE sm.marchand_id = $1
+          ${filtreProduit}
+          AND sm.quantite_retranchee <> 0
+        ORDER BY sm.created_at DESC
+        LIMIT $${params.length}`,
+      params,
+    );
+    return mapLedgerRows(rows);
+  }
+
+  /** Derniers mouvements du marchand, tous produits confondus (panneau accueil stock). */
+  @Get('mouvements')
+  async mouvementsRecents(@CurrentUser() user: User) {
+    return { mouvements: await this.lireMouvements(user.id, null, 10) };
+  }
+
+  /** Derniers mouvements d'UN produit (fiche produit). */
+  @Get(':id/mouvements')
+  async mouvementsProduit(@Param('id') id: string, @CurrentUser() user: User) {
+    return { mouvements: await this.lireMouvements(user.id, id, 20) };
+  }
 
   @Get()
   async findAll(@CurrentUser() user: User) {
