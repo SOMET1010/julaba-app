@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { suggererProduits, getImageByNom, rechercherProduitCatalogue, CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
@@ -24,6 +24,8 @@ import { eventBus, EVENTS } from '../../services/eventBus';
 import { guidageVocal } from '../../utils/accessMode';
 import { toast } from 'sonner';
 import { UNITES_COURANTES } from '../../config/unites';
+import { API_URL } from '../../utils/api';
+import { mapApiMouvements, type MouvementUI } from '../../services/mouvementsStock';
 
 const P = '#AF5B23';
 
@@ -428,9 +430,40 @@ export function GestionStock() {
   const lowStocks = useMemo(() => stocks.filter(s => s.quantity < s.threshold), [stocks]);
   const totalValue = useMemo(() => stocks.reduce((s, p) => s + p.quantity * p.salePrice, 0), [stocks]);
 
-  const mouvements = useMemo(() => stocks.slice(0,3).map((s,i) => ({
-    name: s.name, unit: s.unit, qty: i%2===0?20:-7, day:['hier','lundi','sam.'][i%3]
-  })), [stocks]);
+  // Mouvements RÉELS lus sur le ledger stock_mouvements (ventes + annulations),
+  // via l'API. Fini le mock (stocks.slice(0,3) + quantités inventées + jours codés
+  // en dur, non filtrés par produit). `mouvements` = panneau accueil (tous produits) ;
+  // `produitMouvements` = fiche du produit sélectionné (corrige « non filtrés »).
+  // NB : les réappros manuels ne passent pas par ce ledger → n'apparaissent pas.
+  const [mouvements, setMouvements] = useState<MouvementUI[]>([]);
+  const [produitMouvements, setProduitMouvements] = useState<MouvementUI[]>([]);
+
+  const chargerMouvements = useCallback(async (url: string): Promise<MouvementUI[]> => {
+    try {
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return mapApiMouvements(data?.mouvements);
+    } catch { return []; }
+  }, []);
+
+  useEffect(() => {
+    let vivant = true;
+    const rafraichir = () => {
+      void chargerMouvements(`${API_URL}/stocks/mouvements`).then(m => { if (vivant) setMouvements(m); });
+    };
+    rafraichir();
+    const u1 = eventBus.subscribe(EVENTS.TRANSACTION_CREATED, rafraichir);
+    const u2 = eventBus.subscribe(EVENTS.CAISSE_VENTE, rafraichir);
+    return () => { vivant = false; u1(); u2(); };
+  }, [chargerMouvements]);
+
+  useEffect(() => {
+    if (!selectedStock?.id) { setProduitMouvements([]); return; }
+    let vivant = true;
+    void chargerMouvements(`${API_URL}/stocks/${selectedStock.id}/mouvements`).then(m => { if (vivant) setProduitMouvements(m); });
+    return () => { vivant = false; };
+  }, [selectedStock?.id, chargerMouvements]);
 
   const addStockItem = async () => {
     if (!newStock.name?.trim()) { toast.error('Nom du produit requis'); dire('Saisis le nom du produit'); return; }
@@ -690,7 +723,7 @@ export function GestionStock() {
             <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:14, marginBottom:14 }}>
               <div style={{ fontSize:12, fontWeight:800, color:P, marginBottom:12 }}>Derniers mouvements</div>
               <div style={{ display:'flex', gap:8 }}>
-                {mouvements.map((m,i) => {
+                {mouvements.slice(0,3).map((m,i) => {
                   const isPlus = m.qty > 0;
                   return (
                     <motion.div key={i} initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.1 }}
@@ -1039,10 +1072,10 @@ export function GestionStock() {
                     <div style={{ background: '#F8F5F2', borderRadius: 12, padding: '10px 12px' }}>
                       <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Dernier mouvement</div>
                       <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--encre)' }}>
-                        {mouvements[0]?.day || '—'}
+                        {produitMouvements[0]?.day || '—'}
                       </div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: mouvements[0]?.qty > 0 ? '#16a34a' : '#ef4444', marginTop: 2 }}>
-                        {mouvements[0] ? `${mouvements[0].qty > 0 ? '+' : ''}${mouvements[0].qty} ${selectedStock.unit}` : '—'}
+                      <div style={{ fontSize: 9, fontWeight: 700, color: produitMouvements[0]?.qty > 0 ? '#16a34a' : '#ef4444', marginTop: 2 }}>
+                        {produitMouvements[0] ? `${produitMouvements[0].qty > 0 ? '+' : ''}${produitMouvements[0].qty} ${selectedStock.unit}` : '—'}
                       </div>
                     </div>
                   </div>
@@ -1081,8 +1114,12 @@ export function GestionStock() {
                     <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 10 }}>
                       Derniers mouvements
                     </div>
-                    {mouvements.map((m, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < mouvements.length - 1 ? '1px solid #f5f0ea' : 'none' }}>
+                    {produitMouvements.length === 0 ? (
+                      <div style={{ fontSize: 12, color: 'var(--encre-4)', fontWeight: 600, padding: '4px 0' }}>
+                        Aucune vente enregistrée pour ce produit.
+                      </div>
+                    ) : produitMouvements.map((m, i) => (
+                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < produitMouvements.length - 1 ? '1px solid #f5f0ea' : 'none' }}>
                         <div style={{ width: 30, height: 30, borderRadius: 10, background: m.qty > 0 ? '#DCFCE7' : '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {m.qty > 0
                             ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1090,7 +1127,7 @@ export function GestionStock() {
                           }
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre)' }}>{m.name}</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre)' }}>{m.type === 'annulation' ? 'Annulation' : 'Vente'}</div>
                           <div style={{ fontSize: 10, color: 'var(--encre-4)', fontWeight: 600, marginTop: 1 }}>{m.day}</div>
                         </div>
                         <span style={{ fontSize: 13, fontWeight: 900, color: m.qty > 0 ? '#16a34a' : '#ef4444' }}>
