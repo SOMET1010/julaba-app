@@ -8,6 +8,7 @@ import { getImageByNom } from '../data/catalogue-produits';
 import { NOT_AUTHENTICATED } from '../services/api/api-client';
 import { API_URL } from '../utils/api';
 import { prixEffectif } from '../utils/promo.utils';
+import { jourLocal } from '../utils/jourLocal';
 // Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.
 import {
   enfilerOperation, synchroniser,
@@ -300,22 +301,27 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   }, [appUser?.id]);
 
   // ── Stats calculees ────────────────────────────────────────
-  const getToday = () => new Date().toISOString().split('T')[0];
+  // Jour LOCAL (appareil) des deux côtés — cf. utils/jourLocal. À Abidjan (UTC+0)
+  // identique à l'ancien jour UTC ; correct ailleurs. On compare le jour local de
+  // la transaction au jour local courant (l'ancien `startsWith` sur l'ISO UTC ne
+  // marcherait pas avec une clé locale).
+  const getToday = () => jourLocal();
+  const estDuJour = (iso: string) => jourLocal(iso) === getToday();
 
   // Une vente ANNULÉE sort du CA du jour (cohérence avec l'annulation self-service
   // #20 : le montant reste tracé côté serveur, mais n'entre plus dans le chiffre).
   const venteActive = (tx: CaisseTransaction) =>
-    tx.type === 'vente' && tx.statut !== 'annulee' && tx.date.startsWith(getToday());
+    tx.type === 'vente' && tx.statut !== 'annulee' && estDuJour(tx.date);
   const stats: CaisseStats = {
     ventesJour: transactions
       .filter(venteActive)
       .reduce((sum, tx) => sum + tx.montant, 0),
     cahierJour: transactions
-      .filter(tx => tx.type === 'depense' && tx.date.startsWith(getToday()))
+      .filter(tx => tx.type === 'depense' && estDuJour(tx.date))
       .reduce((sum, tx) => sum + tx.montant, 0),
     soldeJour: 0,
     nombreVentes: transactions.filter(venteActive).length,
-    nombreCahier: transactions.filter(tx => tx.type === 'depense' && tx.date.startsWith(getToday())).length,
+    nombreCahier: transactions.filter(tx => tx.type === 'depense' && estDuJour(tx.date)).length,
   };
   stats.soldeJour = stats.ventesJour - stats.cahierJour;
 
@@ -614,11 +620,11 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const getSoldeJour = () => stats.soldeJour;
 
   const getVentesJour = () => {
-    return transactions.filter(tx => tx.type === 'vente' && tx.date.startsWith(getToday()));
+    return transactions.filter(tx => tx.type === 'vente' && estDuJour(tx.date));
   };
 
   const getCahierJour = () => {
-    return transactions.filter(tx => tx.type === 'depense' && tx.date.startsWith(getToday()));
+    return transactions.filter(tx => tx.type === 'depense' && estDuJour(tx.date));
   };
 
   const refreshTransactions = async () => {
