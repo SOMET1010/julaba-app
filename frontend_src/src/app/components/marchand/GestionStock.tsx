@@ -12,6 +12,7 @@ import { useApp } from '../../contexts/AppContext';
 import { useToast } from '../../hooks/useToast';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { ImagePickerField } from '../shared/ImagePickerField';
+import { ModalPortal } from '../shared/ModalPortal';
 import { SelectWithAutre } from '../shared/SelectWithAutre';
 import { NotificationButton } from './NotificationButton';
 import { VenteVocaleModal } from './VenteVocaleModal';
@@ -1372,17 +1373,21 @@ export function GestionStock() {
           <VenteVocaleModal isOpen={showVente} onClose={() => setShowVente(false)} />
         </ObjectifProvider>
       </RaccourcisProvider>
-      {confirmDeleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl p-6 flex flex-col gap-4 max-w-sm w-full mx-4">
+      {/* Confirmation de suppression : rendue via ModalPortal (document.body) pour
+          échapper au stacking context de la fiche produit (zIndex:200) qui la
+          masquait auparavant (elle était en z-50, peinte SOUS la fiche → invisible
+          et non cliquable). z-[210] = sur-couche au-dessus des modals (z-[200]). */}
+      <ModalPortal isOpen={confirmDeleteId != null}>
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl p-6 flex flex-col gap-4 max-w-sm w-full">
             <p className="text-lg font-semibold">Supprimer ce produit ?</p>
             <div className="flex gap-3">
-              <button onClick={() => { void deleteItem(confirmDeleteId, true); }} className="flex-1 bg-red-500 text-white py-2 rounded-xl">Supprimer</button>
+              <button onClick={() => { if (confirmDeleteId) void deleteItem(confirmDeleteId, true); }} className="flex-1 bg-red-500 text-white py-2 rounded-xl">Supprimer</button>
               <button onClick={() => setConfirmDeleteId(null)} className="flex-1 bg-gray-100 py-2 rounded-xl">Annuler</button>
             </div>
           </div>
         </div>
-      )}
+      </ModalPortal>
     </>
   );
 }
