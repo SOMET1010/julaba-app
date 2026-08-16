@@ -297,9 +297,11 @@ export function GestionStock() {
   const [showVente, setShowVente] = useState(false);
   const [reappQty, setReappQty] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const [newStock, setNewStock] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
+  const [showAdvanced, setShowAdvanced] = useState(false); // repli des champs optionnels de l'ajout produit
+  const dicteeNomRef = useRef(false); // true = la prochaine reconnaissance vocale remplit le NOM du produit (pas une commande)
+  const [newStock, setNewStock] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'autre', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
   const [inlineEdit, setInlineEdit] = useState(false);
-  const [editForm, setEditForm] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
+  const [editForm, setEditForm] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'autre', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -333,11 +335,27 @@ export function GestionStock() {
   }, [stocks.length]);
 
   useEffect(() => { setIsModalOpen(showAdd || showEdit || showVente); }, [showAdd, showEdit, showVente, setIsModalOpen]);
+  useEffect(() => { if (!showAdd) setShowAdvanced(false); }, [showAdd]); // l'ajout rouvre toujours replié
 
   const { startRecording, stopRecording } = useVoiceCore({
     context: { module: 'stock', prenom: user?.firstName || user?.prenoms || 'ma chere', genre: (user as any)?.genre || 'femme', userId: user?.id },
     onAction: async (data) => {
       setIsListening(false);
+      // Dictée du NOM du produit (micro du champ Nom) : on capte le texte brut dicté
+      // et on le pose dans le formulaire, SANS le traiter comme une commande. Permet
+      // à une non-lectrice d'ajouter un produit hors catalogue sans taper son nom.
+      if (dicteeNomRef.current) {
+        dicteeNomRef.current = false;
+        const brut = (data.transcript || '').trim();
+        if (brut) {
+          const nomPropre = brut.charAt(0).toUpperCase() + brut.slice(1);
+          setNewStock(prev => ({ ...prev, name: nomPropre }));
+          speak(nomPropre);
+        } else {
+          speak("Je n'ai pas entendu le nom. Réessaie, s'il te plaît.");
+        }
+        return;
+      }
       const a: any = data.action || {};
       const text = (data.transcript || '').toLowerCase();
 
@@ -426,7 +444,7 @@ export function GestionStock() {
     }
     const cat = rechercherProduitCatalogue(newStock.name);
     try {
-      await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
+      await addProduct({ nom:newStock.name, categorie: cat?.categorie || newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
       toast.success('Produit ajouté');
       speak(`${newStock.quantity || 0} ${newStock.unit} de ${newStock.name} ajouté au stock`);
       showToast(`${newStock.name} ajouté au stock`, 'success');
@@ -638,9 +656,17 @@ export function GestionStock() {
               <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px 0' }}>
                 <Package size={48} color="#EDE7DE" style={{ margin: '0 auto 12px' }} />
                 <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--encre)', marginBottom: 6 }}>Aucun produit</div>
-                <div style={{ fontSize: 13, color: 'var(--encre-4)' }}>
-                  {search ? `Aucun résultat pour "${search}"` : 'Ajoute ton premier produit'}
-                </div>
+                {search ? (
+                  <div style={{ fontSize: 13, color: 'var(--encre-4)' }}>Aucun résultat pour "{search}"</div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 13, color: 'var(--encre-4)', marginBottom: 14 }}>Ajoute ton premier produit</div>
+                    <motion.button whileTap={{ scale:0.96 }} onClick={() => setShowAdd(true)}
+                      style={{ display:'inline-flex', alignItems:'center', gap:8, background:P, border:'none', borderRadius:14, padding:'12px 20px', fontSize:14, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit' }}>
+                      <Plus size={16} /> Ajouter un produit
+                    </motion.button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -735,8 +761,17 @@ export function GestionStock() {
                   );
                 })()}
                 <div style={{ position:'relative' }}>
-                  <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Nom du produit</label>
-                  <input value={newStock.name} onChange={e => setNewStock({...newStock, name:e.target.value})} placeholder="Ex: Tomate, Riz, Gombo..."
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)' }}>Nom du produit</label>
+                    {/* Dicter le nom : capte la parole et remplit le champ (cf. dicteeNomRef).
+                        Pour une vendeuse qui ne lit/écrit pas et dont le produit n'est pas au catalogue. */}
+                    <motion.button type="button" whileTap={{ scale:0.92 }} aria-label="Dire le nom du produit"
+                      onClick={() => { dicteeNomRef.current = true; setIsListening(true); startRecording(); }}
+                      style={{ display:'flex', alignItems:'center', gap:6, background: isListening ? P : '#F0E7DE', color: isListening ? 'white' : P, border:'none', borderRadius:10, padding:'6px 12px', fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
+                      {isListening ? <MicOff size={14} /> : <Mic size={14} />} Dis le nom
+                    </motion.button>
+                  </div>
+                  <input value={newStock.name} onFocus={() => dire('Nom du produit')} onChange={e => setNewStock({...newStock, name:e.target.value})} placeholder="Ex: Tomate, Riz, Gombo..."
                     style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
                   {newStock.name.length >= 2 && suggererProduits(newStock.name).length > 0 && !suggererProduits(newStock.name).some(p => p.nom === newStock.name) && (
                     <div style={{ position:'absolute', zIndex:50, width:'100%', marginTop:4, background:'white', borderRadius:14, border:'2px solid #FFF3EA', boxShadow:'0 8px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
@@ -770,40 +805,50 @@ export function GestionStock() {
                   </div>
                   <SelectWithAutre label="Unité" value={newStock.unit} onChange={v => setNewStock({...newStock, unit:v})} options={UNITES_COURANTES} primaryColor={P} placeholder="Ex: bouteille..." />
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix achat (FCFA)</label>
-                    <input type="number" value={newStock.purchasePrice} onChange={e => setNewStock({...newStock, purchasePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix vente (FCFA)</label>
-                    <input type="number" value={newStock.salePrice} onChange={e => setNewStock({...newStock, salePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  </div>
-                </div>
+                {/* Prix de vente : champ ESSENTIEL, toujours visible (seul obligatoire avec le nom). */}
                 <div>
-                  <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Seuil d'alerte</label>
-                  <input type="number" value={newStock.threshold} onChange={e => setNewStock({...newStock, threshold:e.target.value === '' ? '' as any : Number(e.target.value)})}
+                  <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix vente (FCFA)</label>
+                  <input type="number" value={newStock.salePrice} onFocus={() => dire('Prix de vente')} onChange={e => setNewStock({...newStock, salePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
                     style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
                 </div>
-                <div>
-                  <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Date de péremption <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
-                  <input type="date" value={newStock.datePeremption} onChange={e => setNewStock({...newStock, datePeremption:e.target.value})}
-                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+
+                {/* Repli : les champs optionnels (prix d'achat, seuil, péremption, promo)
+                    sont masqués par défaut pour ne pas noyer une vendeuse qui ne lit pas.
+                    Seuls Nom + Prix de vente sont nécessaires ; le reste s'ouvre à la demande. */}
+                <button type="button" onClick={() => { const v = !showAdvanced; setShowAdvanced(v); dire(v ? 'Plus de détails' : 'Moins de détails'); }}
+                  style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, background:'none', border:'none', color:P, fontSize:13, fontWeight:800, cursor:'pointer', fontFamily:'inherit', padding:'4px 0' }}>
+                  {showAdvanced ? 'Moins de détails ▾' : 'Plus de détails ▸'}
+                </button>
+
+                {showAdvanced && (<>
                   <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'#C0392B', display:'block', marginBottom:6 }}>🏷️ Prix promo <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
-                    <input type="number" value={newStock.promoPrice} placeholder="ex : 400" onChange={e => setNewStock({...newStock, promoPrice:e.target.value === '' ? '' : Number(e.target.value)})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #F1D3CE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Fin promo</label>
-                    <input type="date" value={newStock.promoFin} onChange={e => setNewStock({...newStock, promoFin:e.target.value})}
+                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix achat (FCFA) <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
+                    <input type="number" value={newStock.purchasePrice} onFocus={() => dire("Prix d'achat, facultatif")} onChange={e => setNewStock({...newStock, purchasePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
                       style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
                   </div>
-                </div>
+                  <div>
+                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Seuil d'alerte</label>
+                    <input type="number" value={newStock.threshold} onChange={e => setNewStock({...newStock, threshold:e.target.value === '' ? '' as any : Number(e.target.value)})}
+                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Date de péremption <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
+                    <input type="date" value={newStock.datePeremption} onChange={e => setNewStock({...newStock, datePeremption:e.target.value})}
+                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                    <div>
+                      <label style={{ fontSize:13, fontWeight:700, color:'#C0392B', display:'block', marginBottom:6 }}>🏷️ Prix promo <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
+                      <input type="number" value={newStock.promoPrice} placeholder="ex : 400" onChange={e => setNewStock({...newStock, promoPrice:e.target.value === '' ? '' : Number(e.target.value)})}
+                        style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #F1D3CE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Fin promo</label>
+                      <input type="date" value={newStock.promoFin} onChange={e => setNewStock({...newStock, promoFin:e.target.value})}
+                        style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                    </div>
+                  </div>
+                </>)}
                 <motion.button whileTap={{ scale:0.97 }} onClick={addStockItem}
                   style={{ width:'100%', background:P, border:'none', borderRadius:16, padding:'17px 0', fontSize:17, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit' }}>
                   Ajouter au stock
