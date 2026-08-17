@@ -1055,7 +1055,7 @@ export function GestionStock() {
                     </div>
                     {selectedStock.quantity < selectedStock.threshold && (
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', marginTop: 4 }}>
-                        Stock bas — reapprovisionner
+                        Stock bas — réapprovisionner
                       </div>
                     )}
                   </div>
