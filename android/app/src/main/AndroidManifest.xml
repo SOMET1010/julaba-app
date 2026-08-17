@@ -38,4 +38,10 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Micro : capture vocale (vente à la voix, dictée) dans la WebView.
+         Sans cette permission, getUserMedia échoue sur l'APK même avec le
+         moteur SherpaStt présent. La demande runtime est gérée par le pont
+         Capacitor (BridgeWebChromeClient.onPermissionRequest). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 </manifest>
