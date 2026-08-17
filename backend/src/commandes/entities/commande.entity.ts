@@ -51,6 +51,12 @@ export class Commande {
   @Column({ name: 'recolte_id', type: 'uuid', nullable: true })
   recolteId: string | null;
 
+  // Négociation d'origine (commande née d'une négociation acceptée). Lien
+  // informatif sans FK, même pattern que recolte_id : la traçabilité ne doit
+  // pas rendre la commande dépendante de la vie de la négociation.
+  @Column({ name: 'negociation_id', type: 'uuid', nullable: true })
+  negociationId: string | null;
+
   @Column({ length: 100 })
   type: string;
 
