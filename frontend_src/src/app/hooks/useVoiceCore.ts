@@ -817,6 +817,12 @@ try {
     audioCtxRef.current.resume().catch(() => {});
   }
 } catch (e) { console.warn('[voice]', e); }
+    // Verrou parole/écoute (audit voix C1) : couper TOUTE voix en cours, pas
+    // seulement celle de ce hook — une annonce d'AppContext.speak ou
+    // d'ObjectifContext.speakAuto n'est pas vue par `isSpeaking`. Sans cette
+    // coupe inconditionnelle, le micro s'ouvre pendant que Tata parle et la
+    // reconnaissance peut transcrire Tata elle-même (fausse commande, faux « oui »).
+    audioManager.stopAllVoice();
     if (isSpeaking) { ttsStop(); setIsSpeaking(false); }
     interruptRef.current = false;
     setError(""); setTranscript(""); setLiveTranscript("");
