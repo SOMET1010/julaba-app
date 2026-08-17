@@ -1,72 +1,92 @@
-# BACKLOG JÙLABA — items ouverts
+# BACKLOG JÙLABA
 
 > Source de vérité partagée entre agents. Mise à jour au fil des lots.
-> Format : `[priorité] type — intitulé (côté utilisatrice) · contexte/écran · qui l'a remonté`
->
-> État de référence : post-#139. Recette caisse espèces + vérité argent + création
-> produit lot 1 = **FAITES et validées en réel** (#131 → #139), à ne pas re-traiter.
-
-## Axes de développement
-
-| Axe | Items | Ordre |
-|---|---|---|
-| **A — Suppression réellement utilisable** | P0 modale invisible · #9 desktop | 1er |
-| **B — Vérité fiche produit** | #3 mouvements non filtrés · #4 dates UTC · endpoints relatifs | 2e |
-| **C — Accessibilité / voix** | #2 « Complet » force le guidage · #5 dictée à valider | 3e (arbitrage requis) |
-| **D — Dette d'intégration (autre agent)** | #6 UX entrée + PR #85 · #7 sécurité PR #86 · #12 vente guidée | décision utilisateur |
-| **E — Finitions** | #8 accents UI | plus tard |
-| **F — Recette métier profonde** | #10 (conditionnel) · #11 grossiste/identificateur | plus tard |
+> Dernière mise à jour : **2026-08-17** (après la nuit des 8 lots, tous mergés + recettés).
+> Contraintes permanentes : **argent gelé** (aucun déplacement d'argent/wallet ; corrections
+> d'affichage OK) · **gouvernance schéma** (toute évolution de schéma passe par la chaîne de
+> migrations, plus de DDL via DbInit) · **ne jamais clobber** les branches de l'autre agent.
 
 ---
 
-## P0 — opérationnel, en vol
+## ✅ Fait & recetté en prod (nuit du 2026-08-17)
 
-- **[P0] bug — Modale de confirmation de suppression invisible.** La modale
-  « Supprimer ce produit ? » était en `z-50`, peinte SOUS la fiche produit
-  (`zIndex:200`) → invisible et non cliquable : la suppression était inutilisable
-  depuis l'UI, malgré l'API réparée en #139. Écran : `GestionStock` fiche produit.
-  Remonté : recette #139. **→ En cours (Axe A, ce lot).**
+Recette réelle sur compte Adjoua Kouamé (marchand demi-grossiste) : **6/6 PASS**.
 
-- **[P0] bug — « Supprimer un produit le supprime vraiment ».** `DELETE /stocks`
-  renvoyait **401** et l'UI annonçait « supprimé » à tort. **Corrigé #139**,
-  **API revalidée en prod** (DELETE 200, purge des 3 produits test faite,
-  contre-épreuve 500 honnête). Reste la boucle UI ci-dessus.
-  Écran : `GestionStock` fiche produit.
+| PR | Lot | Statut |
+|---|---|---|
+| #140 | **Modale de suppression visible** (P0) : `ModalPortal` + `z-[210]` — la modale était sous la fiche (`z-50` vs `z-200`) | ✅ mergé + recetté |
+| #141 | **Endpoints marchand → `API_URL`** : objectifs/today, raccourcis, rapport-hebdo (fini le 200+HTML) + `credentials` sur 2 POST | ✅ mergé + recetté |
+| #143 | **Endpoints backoffice → `API_URL`** : auth/me, partner/api-keys, identifications/geo·zones | ✅ mergé (recette BO en attente, cf. ci-dessous) |
+| #142 | **Accent « bénéfice »** dans la fiche produit | ✅ mergé + recetté |
+| #144 | **Vrais « Derniers mouvements » par produit** : lecture du ledger `stock_mouvements` (ventes+annulations), endpoints `GET /stocks/mouvements` et `/stocks/:id/mouvements`, wiring `GestionStock`, tests (backend `mouvement-mapper` + front `mouvementsStock`) | ✅ mergé + recetté |
+| #145 | **Dates « aujourd'hui » en jour LOCAL** (caisse) : helper `jourLocal` testé, des deux côtés de la comparaison (no-op à Abidjan UTC+0) | ✅ mergé + recetté |
+| #146 | **Cibler le produit par ID exact** (supprime/édite le bon, fini l'homonyme) | ✅ mergé + recetté |
+| #147 | **Guidage vocal en « Automatique »** : le guidage n'est coupé que si « Je lis et j'écris » est choisi explicitement | ✅ mergé (⚠️ **proposition** — à re-cadrer, cf. « Résidus ») |
 
-## P1 — prioritaire
+---
 
-- **[P1] arbitrage/évolution — Guidage vocal « Complet » doit forcer le guidage**
-  quel que soit le profil de lecture (« Automatique » → `lecture` → tout est muet).
-  Cœur de cible non-lectrices. Écran : Paramètres accessibilité. Recette #138 (test 4).
-- **[P1] bug — Fiche produit « Derniers mouvements » non filtrés par produit**
-  (affiche ceux d'autres produits). Écran : `GestionStock` fiche. Recette #138.
-- **[P1] bug — Dates de mouvement fausses** (« hier » pour aujourd'hui). Racine =
-  jour calculé en **UTC** (`toISOString().split('T')[0]`) dans `getTodayStats` et
-  les mouvements. Sans effet à Abidjan (UTC+0) mais faux + fragile. Recette #138.
-- **[P1] dette d'intégration — endpoints relatifs.** `GET /objectifs/today` et
-  `GET /raccourcis` partent en relatif vers `julaba-web` au lieu de `julaba-api`
-  → renvoient le `index.html` du SPA au lieu du JSON. Silencieux aujourd'hui,
-  inopérants tant que non corrigé. Remonté : recette #139.
-- **[P1] évolution (livrée, à valider appareil) — Dictée « Dis le nom » du produit.**
-  Non exerçable sans micro, à valider sur téléphone réel. Modale d'ajout `GestionStock` (#138).
-- **[P1] dette d'intégration (track autre agent) — UX d'ENTRÉE.** Branches périmées
-  vs `main` : Lot 1 entrée (`claude/julaba-conversation-6zfdaz`, sans PR) + **PR #85**
-  repeigne. Rebase sur `main` + revue. **Décision utilisateur.**
-- **[P1] bug sécurité (track autre agent) — M6+M8 (escalade de rôle).** **PR #86**,
-  testé rouge→vert, ouverte non fusionnée, périmée. À rebaser/évaluer. **Décision utilisateur.**
+## 🔴 Ouvert — priorité (décision / action requise)
 
-## P2 — plus tard
+- **[P1] recette — Backoffice non recetté.** Les endpoints BO (#143 : auth/me, clés API, carte
+  acteurs) sont en prod mais **jamais recettés faute de compte BO admin**. → Fournir un compte
+  Super Admin / admin_national pour jouer la recette (session BO tient, page Clés API charge,
+  carte des acteurs charge, appels en JSON vers julaba-api).
 
-- **[P2] bug cosmétique — Balayage accents** (« benefice »→bénéfice, « Quantite »,
-  « Unite », « Parametres avances », « Total recolte », « Publiees »,
-  « Recoltes proches »). Réf : `docs/AUDIT_ACCENTS_UI.md`.
-- **[P2] bug — Confirmation de suppression hors écran en desktop** (viewport large).
-  Cible = mobile. Recette #139. *(Traité incidemment par le portail de l'Axe A — à
-  reconfirmer en largeur desktop.)*
-- **[P2] évolution (conditionnelle) — Lot 2 création produit** (wizard / écran express) :
-  **seulement si** le formulaire simplifié #138 se révèle insuffisant en recette terrain.
-- **[P2] évolution/recette — Parcours métier profonds non recettés** : négociation
-  d'achat grossiste→producteur bout en bout ; validation dossier identificateur.
-  Réf : `docs/RECETTE.md` séance 3.
-- **[P2] évolution (track autre agent) — « Vente guidée » v0.3**
-  (produit→quantité→panier→encaisser→confirmation) : design validé, zéro code.
+- **[P1] dette d'intégration — UX d'ENTRÉE / auth (branches autre agent).** À trancher +
+  séquencer par l'utilisateur (NE PAS clobber). Deux générations sur le remote :
+  - **Récente / cohérente** (base ~#127-#129) : `claude/p0-activation` & `claude/ecran-activation`
+    (**P0.0 : enrôlement inerte + activation marchande**, ADR-002) ; `claude/decisions-entree`
+    (docs §8 décisions d'entrée). ← point de départ recommandé pour l'intégration.
+  - **Ancienne / très périmée** : `claude/julaba-conversation-6zfdaz` (parcours d'entrée v0.3,
+    base ~#84) ; `claude/session-ticgbm` (spéc auth + APK/Sherpa). Rebase lourd.
+  - **À rattacher ici** : le guidage vocal #147 (même surface accessibilité).
+
+- **[P2] finition backend — `POST /raccourcis` renvoie 500 au lieu de 400** sur body invalide
+  (pas de validation → la base tranche sur NOT NULL). Ajouter un DTO + `ValidationPipe` → 400 propre.
+  Pré-existant, non bloquant. **Payload nominal** (pour référence / recette) :
+  `{ "nom", "declencheur", "type", "action": { "type": "vendre"|"depense"|"stock"|"autre", "produit"?, "montant"?, "quantite"?, "description"? } }`.
+
+---
+
+## 🟠 Résidus / finitions (faible risque)
+
+- **« Derniers mouvements » — réappros absents.** Le ledger `stock_mouvements` n'enregistre que
+  les ventes/annulations (écrites par la caisse) ; les réapprovisionnements manuels (PATCH stock)
+  n'y passent pas → ils n'apparaissent pas dans le panneau. Ajout = évolution backend (écrire au
+  ledger au réappro, ou 2e source) — touche le ledger testé par les invariants.
+- **Clé de date de SESSION en UTC.** `AppContext` openDay / `GET /caisse/session/:date` utilisent
+  encore le jour UTC (paire client↔serveur cohérente). No-op à Abidjan ; à passer en local **avec
+  supervision** (cross-tier), séparément de #145.
+- **Guidage « Complet » — proposition livrée (#147) à re-cadrer.** Il n'existe pas d'option
+  « Complet » dans le modèle des 4 modes (Auto / Je lis / Je lis un peu / Je préfère parler). #147
+  a corrigé le vrai défaut (« Automatique » ne devient plus muet). Si un vrai niveau « Complet »
+  distinct est voulu, c'est une décision produit du chantier accessibilité.
+- **Dictée « Dis le nom » du produit** (création simplifiée #138) : à valider sur téléphone réel (micro).
+- **Confirmation de suppression hors écran en desktop** : normalement réglé incidemment par le
+  portail (#140) ; à reconfirmer en largeur desktop.
+- **Balayage accents résiduel** : surtout backoffice (faible valeur mission) + cas identifiants à
+  ne pas toucher. Réf : `docs/AUDIT_ACCENTS_UI.md`.
+
+## 🟡 Plus tard / conditionnel
+
+- **Lot 2 création produit (wizard / écran express)** : seulement **si** le formulaire simplifié
+  #138 se révèle insuffisant en recette terrain.
+- **Parcours métier profonds non recettés** : négociation d'achat grossiste→producteur bout en
+  bout ; validation dossier identificateur. Réf : `docs/RECETTE.md`.
+- **« Vente guidée » v0.3** (produit→quantité→panier→encaisser→confirmation) : design validé,
+  zéro code (track autre agent).
+
+---
+
+## Comptes seed (recette)
+
+- Marchand : **Adjoua Kouamé — `07 25 25 25 25` / code `0000`** (demi-grossiste, a des données).
+- Producteur : **Bénito — `09 60 60 60 60` / `0000`**.
+- Backoffice admin : **à fournir** (bloque la recette BO).
+
+## Prod & recette
+
+- Front **https://julaba-web.onrender.com** · API **https://julaba-api.onrender.com** (`/health`).
+- Render redéploie à chaque merge sur `main`. Le front est une **PWA** : pour voir un nouveau
+  déploiement → désenregistrer le service worker + vider les caches + hard reload.
+- La recette réelle est jouée par un **agent « Claude dans Chrome »** (l'utilisateur est le pont).
