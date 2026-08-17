@@ -958,8 +958,8 @@ export function GestionStock() {
                         </div>
                         <div style={{ fontSize: 11, fontWeight: 800, color: '#15803D' }}>
                           {selectedStock.purchasePrice > 0
-                            ? `+${Math.round(((selectedStock.salePrice - selectedStock.purchasePrice) / selectedStock.purchasePrice) * 100)}% benefice`
-                            : '— benefice'
+                            ? `+${Math.round(((selectedStock.salePrice - selectedStock.purchasePrice) / selectedStock.purchasePrice) * 100)}% bénéfice`
+                            : '— bénéfice'
                           }
                         </div>
                       </div>
@@ -1167,7 +1167,7 @@ export function GestionStock() {
                             : '—'
                           }
                         </div>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--encre-4)' }}>benefice</div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--encre-4)' }}>bénéfice</div>
                       </div>
                     </div>
                   </div>
