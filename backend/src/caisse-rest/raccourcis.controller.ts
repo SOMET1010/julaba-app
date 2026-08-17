@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RaccourciVocal } from './raccourci-vocal.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CreerRaccourciDto, UpdateRaccourciDto } from './dto/raccourci.dto';
 
 const MAX_RACCOURCIS = 5;
 
@@ -21,7 +22,7 @@ export class RaccourcisController {
   }
 
   @Post()
-  async create(@Req() req: any, @Body() body: any) {
+  async create(@Req() req: any, @Body() body: CreerRaccourciDto) {
     const userId = req.user?.sub || req.user?.id;
     const count = await this.repo.count({ where: { userId, actif: true } });
     if (count >= MAX_RACCOURCIS) {
@@ -39,7 +40,7 @@ export class RaccourcisController {
   }
 
   @Patch(':id')
-  async update(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+  async update(@Req() req: any, @Param('id') id: string, @Body() body: UpdateRaccourciDto) {
     const userId = req.user?.sub || req.user?.id;
     const raccourci = await this.repo.findOne({ where: { id, userId } });
     if (!raccourci) throw new NotFoundException('Raccourci introuvable');
