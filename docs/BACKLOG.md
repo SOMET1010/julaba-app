@@ -1,72 +1,87 @@
 # BACKLOG JÙLABA — items ouverts
 
 > Source de vérité partagée entre agents. Mise à jour au fil des lots.
-> Format : `[priorité] type — intitulé (côté utilisatrice) · contexte/écran · qui l'a remonté`
+> Format : `[priorité] type — intitulé (côté utilisatrice) · contexte/écran`
 >
-> État de référence : post-#139. Recette caisse espèces + vérité argent + création
-> produit lot 1 = **FAITES et validées en réel** (#131 → #139), à ne pas re-traiter.
-
-## Axes de développement
-
-| Axe | Items | Ordre |
-|---|---|---|
-| **A — Suppression réellement utilisable** | P0 modale invisible · #9 desktop | 1er |
-| **B — Vérité fiche produit** | #3 mouvements non filtrés · #4 dates UTC · endpoints relatifs | 2e |
-| **C — Accessibilité / voix** | #2 « Complet » force le guidage · #5 dictée à valider | 3e (arbitrage requis) |
-| **D — Dette d'intégration (autre agent)** | #6 UX entrée + PR #85 · #7 sécurité PR #86 · #12 vente guidée | décision utilisateur |
-| **E — Finitions** | #8 accents UI | plus tard |
-| **F — Recette métier profonde** | #10 (conditionnel) · #11 grossiste/identificateur | plus tard |
+> État de référence : **post-recette UX marchande (août 2026)**. Le cœur du
+> parcours marchande (caisse espèces, vérité argent, stock CRUD, suppression,
+> guidage vocal) + une passe UX complète = **FAITS et recettés à l'écran**.
+> Ne pas re-traiter les items de la section « Livré ».
 
 ---
 
-## P0 — opérationnel, en vol
+## 🟢 Livré & recetté (ne pas re-traiter)
 
-- **[P0] bug — Modale de confirmation de suppression invisible.** La modale
-  « Supprimer ce produit ? » était en `z-50`, peinte SOUS la fiche produit
-  (`zIndex:200`) → invisible et non cliquable : la suppression était inutilisable
-  depuis l'UI, malgré l'API réparée en #139. Écran : `GestionStock` fiche produit.
-  Remonté : recette #139. **→ En cours (Axe A, ce lot).**
+Parcours marchande — socle (#131 → #148) :
+- Caisse espèces + vérité argent + création produit lot 1 (recette réelle 6/6).
+- Suppression produit : API (#139) **et** modale UI (portail z-index) réparées.
+- Fiche produit : « Derniers mouvements » filtrés par produit ; dates en jour
+  **local** (plus d'UTC) ; endpoints `objectifs/today` + `raccourcis` en absolu.
+- Guidage vocal : « Complet » force le guidage quel que soit le profil de lecture.
+- Sécurité : escalade de rôle anonyme → super_admin **fermée** (PR #86, mergée).
+- Validation body raccourcis → 400 propre (#148).
 
-- **[P0] bug — « Supprimer un produit le supprime vraiment ».** `DELETE /stocks`
-  renvoyait **401** et l'UI annonçait « supprimé » à tort. **Corrigé #139**,
-  **API revalidée en prod** (DELETE 200, purge des 3 produits test faite,
-  contre-épreuve 500 honnête). Reste la boucle UI ci-dessus.
-  Écran : `GestionStock` fiche produit.
+Passe UX marchande (août 2026, recette visuelle mesurée 390×844, 0 régression) :
+- Cibles tactiles ≥44px : croix X + steppers fiche produit (#152), bouton retour
+  de l'en-tête partagé sur 13 écrans (#154).
+- Fiche produit : bouton « + Ajouter » du réappro non tronqué (#151).
+- Caisse : « + » vente rapide lisible (blanc opaque, icône marque) puis cercle
+  parfait (#153, #158).
+- Accueil : « Bonjour Maman … » sur une ligne (#156) ; 4 tuiles refaites en
+  **icônes vectorielles locales** — plus de double libellé, marche hors-ligne (#157).
+- Ventes : filtre « Par la voix » (au lieu du jargon de marque) (#155) ; reçu par
+  partage WhatsApp/SMS, retrait du PDF « à lire » pour non-lectrices (#149).
+- Accents UI corrigés (« Réapprovisionner », aide « Stock bas », etc.).
 
-## P1 — prioritaire
+---
 
-- **[P1] arbitrage/évolution — Guidage vocal « Complet » doit forcer le guidage**
-  quel que soit le profil de lecture (« Automatique » → `lecture` → tout est muet).
-  Cœur de cible non-lectrices. Écran : Paramètres accessibilité. Recette #138 (test 4).
-- **[P1] bug — Fiche produit « Derniers mouvements » non filtrés par produit**
-  (affiche ceux d'autres produits). Écran : `GestionStock` fiche. Recette #138.
-- **[P1] bug — Dates de mouvement fausses** (« hier » pour aujourd'hui). Racine =
-  jour calculé en **UTC** (`toISOString().split('T')[0]`) dans `getTodayStats` et
-  les mouvements. Sans effet à Abidjan (UTC+0) mais faux + fragile. Recette #138.
-- **[P1] dette d'intégration — endpoints relatifs.** `GET /objectifs/today` et
-  `GET /raccourcis` partent en relatif vers `julaba-web` au lieu de `julaba-api`
-  → renvoient le `index.html` du SPA au lieu du JSON. Silencieux aujourd'hui,
-  inopérants tant que non corrigé. Remonté : recette #139.
-- **[P1] évolution (livrée, à valider appareil) — Dictée « Dis le nom » du produit.**
-  Non exerçable sans micro, à valider sur téléphone réel. Modale d'ajout `GestionStock` (#138).
-- **[P1] dette d'intégration (track autre agent) — UX d'ENTRÉE.** Branches périmées
-  vs `main` : Lot 1 entrée (`claude/julaba-conversation-6zfdaz`, sans PR) + **PR #85**
-  repeigne. Rebase sur `main` + revue. **Décision utilisateur.**
-- **[P1] bug sécurité (track autre agent) — M6+M8 (escalade de rôle).** **PR #86**,
-  testé rouge→vert, ouverte non fusionnée, périmée. À rebaser/évaluer. **Décision utilisateur.**
+## 🔴 À MERGER (prêt, CI verte, action utilisateur)
 
-## P2 — plus tard
+Batch UX ouvert, toutes `clean` + validées ensemble en recette finale :
+- **#149** reçu par partage (sans PDF) · **#150** doc audit UI · **#151** « + Ajouter »
+  non tronqué · **#152** cibles ≥44px fiche · **#154** retour ≥44px · **#155** « Par la voix ».
 
-- **[P2] bug cosmétique — Balayage accents** (« benefice »→bénéfice, « Quantite »,
-  « Unite », « Parametres avances », « Total recolte », « Publiees »,
-  « Recoltes proches »). Réf : `docs/AUDIT_ACCENTS_UI.md`.
-- **[P2] bug — Confirmation de suppression hors écran en desktop** (viewport large).
-  Cible = mobile. Recette #139. *(Traité incidemment par le portail de l'Axe A — à
-  reconfirmer en largeur desktop.)*
-- **[P2] évolution (conditionnelle) — Lot 2 création produit** (wizard / écran express) :
-  **seulement si** le formulaire simplifié #138 se révèle insuffisant en recette terrain.
-- **[P2] évolution/recette — Parcours métier profonds non recettés** : négociation
-  d'achat grossiste→producteur bout en bout ; validation dossier identificateur.
-  Réf : `docs/RECETTE.md` séance 3.
-- **[P2] évolution (track autre agent) — « Vente guidée » v0.3**
-  (produit→quantité→panier→encaisser→confirmation) : design validé, zéro code.
+> Rien d'autre ne dépend de ces merges côté code ; ils peuvent partir en une fois.
+
+---
+
+## 🟠 À FINIR — cadrable sans décision (petits lots)
+
+- **[P2] cible tactile — Cloche notifications 40→44px.** Composant partagé
+  `NotifBellButton` (tous rôles). Dernier maillon du thème « cibles ≥44px ».
+  **→ en cours.**
+- **[P2] recette — Suppression produit hors écran en desktop.** Cible = mobile ;
+  le portail de l'Axe A doit l'avoir réglé. À **reconfirmer en largeur desktop**
+  (recette visuelle ≥1024px). Écran : `GestionStock` fiche.
+- **[P2] finitions — Balayage accents résiduel.** Vérifier les écrans des **autres
+  rôles** (producteur, coopérative, institution) — la passe a couvert marchande.
+  Réf : `docs/AUDIT_ACCENTS_UI.md`.
+
+## 🔵 À FINIR — validation terrain / appareil (hors sandbox)
+
+- **[P1] dictée « Dis le nom » du produit — livrée, à valider sur téléphone réel.**
+  Non exerçable sans micro en sandbox. Modale d'ajout `GestionStock`.
+  **→ recette utilisatrice sur appareil.**
+- **[P1] recette réelle — parcours marchande de bout en bout sur téléphone**
+  (réseau faible + hors-ligne) : confirmer que les tuiles/offline tiennent en vrai.
+
+## 🟣 À CADRER — décision / périmètre requis
+
+- **[décision] PR #85 (repeigne Profil & Paramètres aux tokens) — fermée sans merge.**
+  Abandonner définitivement, ou refaire proprement en petit lot ? Écran : Profil /
+  Paramètres marchande.
+- **[P2] Lot 2 création produit (wizard / écran express).** **Conditionnel** : seulement
+  si le formulaire simplifié se révèle insuffisant en recette terrain.
+- **[P2] Vente guidée v0.3** (produit→quantité→panier→encaisser→confirmation) :
+  design validé, **zéro code**. Décider si on la construit maintenant.
+- **[P2] parcours métier profonds non recettés** : négociation d'achat
+  grossiste→producteur bout en bout ; validation dossier identificateur.
+  Nécessite données/flux réels. Réf : `docs/RECETTE.md` séance 3.
+
+---
+
+## Méthode (ce qui marche — à garder)
+
+Petit lot → un défaut, un PR, une CI · yeux sur l'écran (agent visuel qui **mesure**)
+· zéro risque argent/schéma · recette avant de déclarer « fait ». Reproductible
+écran par écran, rôle par rôle.
