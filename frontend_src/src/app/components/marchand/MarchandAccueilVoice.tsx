@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
-import { RACC_IMG as MOD_IMAGES } from '../../assets/cloudinary-images';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { VenteVocaleModal } from './VenteVocaleModal';
 import { PropositionReconnaissance } from '../auth/PropositionReconnaissance';
@@ -73,12 +72,17 @@ function MarchandAccueilVoiceInner() {
   };
   const bonjour = () => speak(prenom ? `Bonjour Maman ${prenom}` : 'Bonjour ma sœur');
 
-  // Grosses tuiles : on réutilise les belles icônes déjà présentes dans l'app.
-  const tuiles: Array<{ img: string; label: string; parle: string; go: () => void; teinte: string }> = [
-    { img: MOD_IMAGES.marchandise, label: 'Mon stock',    parle: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: '#0E7A47' },
-    { img: MOD_IMAGES.cahier,      label: 'Mes dépenses', parle: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: '#B85C1B' },
-    { img: MOD_IMAGES.bilan,       label: 'Mes ventes',   parle: 'Mes ventes',   go: () => navigate('/marchand/ventes-passees'), teinte: '#2C6E9E' },
-    { img: MOD_IMAGES.keiwa,       label: 'Mon argent',   parle: 'Mon argent Keiwa', go: () => navigate('/marchand/keiwa'),      teinte: '#7A3B12' },
+  // Grosses tuiles : icônes vectorielles LOCALES (marchent hors-ligne, aucune
+  // dépendance réseau) + un seul libellé clair. Avant : illustrations distantes
+  // (Cloudinary) avec un mot incrusté → doublon de texte ET écran vide sans réseau.
+  const svg = (d: ReactNode) => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
+  );
+  const tuiles: Array<{ icon: ReactNode; label: string; parle: string; go: () => void; teinte: string }> = [
+    { icon: svg(<><path d="M21 8V16a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8z"/><path d="M3.27 6.96 12 12l8.73-5.04"/><path d="M12 22V12"/></>), label: 'Mon stock',    parle: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: '#0E7A47' },
+    { icon: svg(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>), label: 'Mes dépenses', parle: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: '#B85C1B' },
+    { icon: svg(<><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="9"/><line x1="18" y1="20" x2="18" y2="4"/></>), label: 'Mes ventes',   parle: 'Mes ventes',   go: () => navigate('/marchand/ventes-passees'), teinte: '#2C6E9E' },
+    { icon: svg(<><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></>), label: 'Mon argent',   parle: 'Mon argent Keiwa', go: () => navigate('/marchand/keiwa'),      teinte: '#7A3B12' },
   ];
 
   return (
@@ -198,16 +202,16 @@ function MarchandAccueilVoiceInner() {
           Vendre à la voix
         </motion.button>
 
-        {/* Tuiles — belles icônes de l'app */}
+        {/* Tuiles — icônes vectorielles locales + un seul libellé (hors-ligne) */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
           {tuiles.map((t) => (
             <motion.button key={t.label} whileTap={{ scale: 0.94 }} onClick={() => { speak(t.parle); t.go(); }}
-              style={{ borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(198,100,44,0.2)', cursor: 'pointer', padding: 0, fontFamily: 'inherit', position: 'relative', height: 132, background: '#fff' }}>
-              <img src={t.img} alt={t.label} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.02) 30%, rgba(0,0,0,0.55) 100%)' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '9px 8px', textAlign: 'center' }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>{t.label}</span>
-              </div>
+              style={{ borderRadius: 20, border: '1px solid rgba(198,100,44,0.15)', cursor: 'pointer', padding: '18px 12px', fontFamily: 'inherit', height: 120, background: '#fff',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+              <span style={{ width: 56, height: 56, borderRadius: 18, background: `${t.teinte}14`, color: t.teinte, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                {t.icon}
+              </span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--encre)' }}>{t.label}</span>
             </motion.button>
           ))}
         </div>
