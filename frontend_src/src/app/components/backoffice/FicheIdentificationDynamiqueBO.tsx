@@ -263,7 +263,7 @@ const PROFILES: Record<string, ProfileConfig> = {
     gradientFrom: 'from-violet-50',
     gradientBg: 'linear-gradient(135deg, #F5F3FF 0%, #FAF9FF 100%)',
     icon: Shield,
-    desc: 'Direction generale, agence ou organisme (compte entite)',
+    desc: 'Direction générale, agence ou organisme (compte entité)',
     stepsCount: '5 étapes',
     steps: [
       { id: 'entite', label: 'Entité', icon: Building2, tip: 'Raison sociale, sigle, type' },
@@ -1021,7 +1021,7 @@ function TagSelector({ options, values, onChange, color }: {
     else onChange([...values, opt]);
   };
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Selection multiple">
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Sélection multiple">
       {options.map((opt) => {
         const sel = values.includes(opt);
         return (
@@ -2319,19 +2319,19 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
 
     const getBannerText = (hovered: ProfilType | null, creator: string | undefined): string => {
       if (!hovered) {
-        return 'Chaque dossier soumis sera verifie avant creation du compte.';
+        return 'Chaque dossier soumis sera vérifié avant création du compte.';
       }
       const isAdmin = (ADMINISTRATEURS as (ProfilType | null)[]).includes(hovered);
       if (!isAdmin) {
-        return 'Le compte sera cree et active immediatement apres validation du dossier.';
+        return 'Le compte sera créé et activé immédiatement après validation du dossier.';
       }
       if (creator === 'super_admin') {
-        return 'Le compte sera cree et active immediatement.';
+        return 'Le compte sera créé et activé immédiatement.';
       }
       if (creator === 'admin_general') {
         return 'Le compte sera mis en attente de validation par un super-administrateur.';
       }
-      return 'Chaque dossier soumis sera verifie avant creation du compte.';
+      return 'Chaque dossier soumis sera vérifié avant création du compte.';
     };
 
     const renderCard = (profilKey: ProfilType) => {

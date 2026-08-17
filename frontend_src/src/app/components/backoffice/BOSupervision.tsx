@@ -699,7 +699,7 @@ export function BOSupervision() {
                   <thead style={{ background: '#F5F3EF', borderBottom: '1.5px solid #D7CFC0' }}>
                     <tr>
                       <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Acteur</th>
-                      <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>TYPE OPERATION</th>
+                      <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>TYPE OPÉRATION</th>
                       <th className="text-right p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Montant</th>
                       <th className="text-right p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Commission</th>
                       <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Statut</th>

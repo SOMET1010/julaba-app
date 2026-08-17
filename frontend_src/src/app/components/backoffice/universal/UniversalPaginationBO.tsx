@@ -158,10 +158,10 @@ export function UniversalPaginationBO({
       {showCounter && (
         <div style={{ fontSize: 12, color: BO_MEDIUM }}>
           {totalItems === 0 ? (
-            '0 element'
+            '0 élément'
           ) : (
             <>
-              Affichage de <strong style={{ color: BO_PRIMARY }}>{startItem}</strong> a <strong style={{ color: BO_PRIMARY }}>{endItem}</strong> sur <strong style={{ color: BO_PRIMARY }}>{totalItems}</strong> elements
+              Affichage de <strong style={{ color: BO_PRIMARY }}>{startItem}</strong> à <strong style={{ color: BO_PRIMARY }}>{endItem}</strong> sur <strong style={{ color: BO_PRIMARY }}>{totalItems}</strong> éléments
             </>
           )}
         </div>
@@ -199,7 +199,7 @@ export function UniversalPaginationBO({
               disabled={safePage === 1}
               whileHover={safePage === 1 ? { scale: 1 } : { scale: 1.05, backgroundColor: BO_TINT }}
               whileTap={safePage === 1 ? { scale: 1 } : { scale: 0.92 }}
-              aria-label="Premiere page"
+              aria-label="Première page"
               style={buttonStyle(false, safePage === 1)}
             >
               <AnimatedPaginationIcon icon={ChevronsLeft} size={14} color={safePage === 1 ? DISABLED_TEXT : BO_PRIMARY} direction="left" />
@@ -255,7 +255,7 @@ export function UniversalPaginationBO({
               disabled={safePage === totalPages}
               whileHover={safePage === totalPages ? { scale: 1 } : { scale: 1.05, backgroundColor: BO_TINT }}
               whileTap={safePage === totalPages ? { scale: 1 } : { scale: 0.92 }}
-              aria-label="Derniere page"
+              aria-label="Dernière page"
               style={buttonStyle(false, safePage === totalPages)}
             >
               <AnimatedPaginationIcon icon={ChevronsRight} size={14} color={safePage === totalPages ? DISABLED_TEXT : BO_PRIMARY} direction="right" />

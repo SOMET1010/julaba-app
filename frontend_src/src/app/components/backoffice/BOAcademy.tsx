@@ -104,10 +104,10 @@ const ROLE_ICONS: Record<UserRole, React.ElementType> = {
 
 const CHAPTER_THEMES: Record<string, {ch1:string;ch2:string;ch3:string;icons:[string,string,string]}> = {
   marchand:       {ch1:'Mes Ventes',    ch2:'Marchandise',     ch3:'Keiwa',         icons:['ShoppingBag','Package','Wallet']},
-  producteur:     {ch1:'Ma Culture',    ch2:'Ma Recolte',      ch3:'Mon Marché',     icons:['Leaf','Sprout','Store']},
+  producteur:     {ch1:'Ma Culture',    ch2:'Ma Récolte',      ch3:'Mon Marché',     icons:['Leaf','Sprout','Store']},
   cooperative:    {ch1:'Mes Membres',   ch2:'Mes Commandes',   ch3:'Ma Gestion',     icons:['Users','Layers','BarChart2']},
   identificateur: {ch1:'Mon Terrain',   ch2:'Mes Dossiers',    ch3:'Ma Validation',  icons:['MapPin','FileText','CheckCircle']},
-  institution:    {ch1:'Mes Donnees',   ch2:'Mes Rapports',    ch3:'Ma Strategie',   icons:['Database','BarChart2','Target']},
+  institution:    {ch1:'Mes Données',   ch2:'Mes Rapports',    ch3:'Ma Strategie',   icons:['Database','BarChart2','Target']},
 };
 
 
@@ -925,7 +925,7 @@ export function BOAcademy() {
                           📚 {availableModules.find(m => m.id === (q.moduleId || q.module_id))?.titre?.slice(0, 20) || 'Module'}
                         </span>
                       )}
-                      {!q.active && <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold bg-red-50 text-red-500">Desactivee</span>}
+                      {!q.active && <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold bg-red-50 text-red-500">Désactivée</span>}
                     </div>
                     <p className="font-bold text-gray-900 mb-2">{q.question}</p>
                     <div className="grid grid-cols-2 gap-1.5 mb-2">
@@ -1171,7 +1171,7 @@ export function BOAcademy() {
 
                 {/* Explication */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Explication (montree apres reponse)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Explication (montrée après réponse)</label>
                   <textarea value={qForm.explanation || ''} onChange={e => setQForm(p => ({ ...p, explanation: e.target.value }))} rows={2}
                     className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:outline-none text-sm resize-none"
                     placeholder="Explication courte et simple..." />
