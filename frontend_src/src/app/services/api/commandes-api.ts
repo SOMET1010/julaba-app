@@ -4,6 +4,7 @@
 
 import { apiRequest as _apiRequest } from './api-client';
 import { API_URL } from '../../utils/api';
+import { normaliserStatutNegociation } from '../negociation';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);
@@ -183,10 +184,15 @@ export async function marchandRepondreNegociation(id: string, data: { statut: 'a
 
 export async function repondreNegociation(
   id: string,
-  data: { statut: 'accepte' | 'refuse' | 'contre_propose'; prixContreOffre?: number; messageReponse?: string }
+  data: { statut: 'accepte' | 'refuse' | 'contre_propose' | 'contre_offre'; prixContreOffre?: number; messageReponse?: string }
 ): Promise<{ success: boolean }> {
+  // Normalisation : l'alias front historique `contre_propose` n'existe pas dans
+  // l'enum backend NegociationStatut → le PATCH partait en 400 « statut
+  // négociation invalide » et TOUTE contre-offre (coop et producteur) échouait.
+  // On normalise ici, au seul point de sortie, pour corriger tous les appelants.
+  const statut = normaliserStatutNegociation(data.statut);
   return apiRequest<{ success: boolean }>(`/commandes/negociation/${id}/repondre`, {
     method: 'PATCH',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, statut }),
   });
 }
