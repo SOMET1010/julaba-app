@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
+import { API_URL } from '../../utils/api';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   AlertCircle,
@@ -109,7 +110,7 @@ export function BOApiKeys() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/partner/api-keys', {
+      const res = await fetch(`${API_URL}/partner/api-keys`, {
         credentials: 'include',
         headers: { Accept: 'application/json' },
         signal: abortRef.current.signal,
@@ -161,7 +162,7 @@ export function BOApiKeys() {
     setSaving(true);
     const controller = new AbortController();
     try {
-      const res = await fetch('/api/v1/partner/api-keys', {
+      const res = await fetch(`${API_URL}/partner/api-keys`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -209,7 +210,7 @@ export function BOApiKeys() {
     setPatchingId(id);
     const controller = new AbortController();
     try {
-      const res = await fetch(`/api/v1/partner/api-keys/${encodeURIComponent(id)}`, {
+      const res = await fetch(`${API_URL}/partner/api-keys/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         credentials: 'include',
         headers: {

@@ -1,5 +1,6 @@
 // BackOfficeContext.tsx — migré Supabase → NestJS
 import { eventBus, EVENTS } from '../services/eventBus';
+import { API_URL } from '../utils/api';
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import {
@@ -202,7 +203,7 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
 
   const loadUser = useCallback(async (): Promise<boolean> => {
     try {
-      let res = await fetch('/api/v1/auth/me', {
+      let res = await fetch(`${API_URL}/auth/me`, {
         credentials: 'include',
       });
       if (!res.ok) {
