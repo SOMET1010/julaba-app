@@ -21,6 +21,7 @@ import { Bell, MessageSquare, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
+import { useModalRegister } from '../../contexts/ModalContext';
 import { fetchNegociations, repondreNegociation } from '../../services/api/commandes-api';
 import { estNegociationActive, peutContreOffrir, MAX_CONTRE_OFFRES } from '../../services/negociation';
 
@@ -76,6 +77,10 @@ export function InboxNegociations({ accent = '#f97316', onAccepted }: Props) {
   const [nouveauPrix, setNouveauPrix] = useState(0);
   const [messageContre, setMessageContre] = useState('');
   const [raisonRefus, setRaisonRefus] = useState('');
+
+  // Synchronise la BottomBar de la page hôte quand une des modales est ouverte
+  // (parité avec l'ancienne implémentation coop, bénéfice pour tous les hôtes).
+  useModalRegister(showContre || showRefus);
 
   const recharger = useCallback(async () => {
     try {
