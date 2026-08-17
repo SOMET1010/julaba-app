@@ -1424,8 +1424,8 @@ export function GestionStock() {
           <div className="bg-white rounded-2xl p-6 flex flex-col gap-4 max-w-sm w-full">
             <p className="text-lg font-semibold">Supprimer ce produit ?</p>
             <div className="flex gap-3">
-              <button onClick={() => { if (confirmDeleteId) void deleteItem(confirmDeleteId, true); }} className="flex-1 bg-red-500 text-white py-2 rounded-xl">Supprimer</button>
-              <button onClick={() => setConfirmDeleteId(null)} className="flex-1 bg-gray-100 py-2 rounded-xl">Annuler</button>
+              <button onClick={() => { if (confirmDeleteId) void deleteItem(confirmDeleteId, true); }} className="flex-1 min-h-[44px] bg-red-500 text-white py-3 rounded-xl font-semibold">Supprimer</button>
+              <button onClick={() => setConfirmDeleteId(null)} className="flex-1 min-h-[44px] bg-gray-100 py-3 rounded-xl font-semibold">Annuler</button>
             </div>
           </div>
         </div>
