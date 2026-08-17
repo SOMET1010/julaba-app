@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { stopAllVoice } from '../../services/audioManager';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { X, Target, Mic, MicOff } from 'lucide-react';
@@ -71,7 +72,10 @@ export function ObjectifModal({ isOpen, onClose }: Props) {
     streamRef.current = stream;
     doneRef.current = false;
     bestRef.current = 0;
-    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } // que le micro n'entende pas Tata
+    // Verrou parole/écoute (audit voix C1) : couper TOUTES les voix (clips
+    // compris), pas seulement la synthèse — sinon un clip joue dans le micro.
+    try { stopAllVoice(); } catch { /* ignore */ }
+    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
     try {
       const handle = await startLiveDictation(stream, (texte, estFinal) => {
         // La passe FINALE (tout le tampon) fait autorité, même après l'arrêt.
