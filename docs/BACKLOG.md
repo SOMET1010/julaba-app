@@ -47,12 +47,11 @@ Batch UX ouvert, toutes `clean` + validées ensemble en recette finale :
 
 ## 🟠 À FINIR — cadrable sans décision (petits lots)
 
-- **[P2] cible tactile — Cloche notifications 40→44px.** Composant partagé
-  `NotifBellButton` (tous rôles). Dernier maillon du thème « cibles ≥44px ».
-  **→ en cours.**
-- **[P2] recette — Suppression produit hors écran en desktop.** Cible = mobile ;
-  le portail de l'Axe A doit l'avoir réglé. À **reconfirmer en largeur desktop**
-  (recette visuelle ≥1024px). Écran : `GestionStock` fiche.
+- **[P2] cible tactile — Cloche notifications 40→44px.** ✅ **FAIT** (#159, mergé).
+- **[P2] recette — Suppression produit hors écran en desktop.** ✅ **VÉRIFIÉ CLOS** :
+  recette visuelle 1280×800 ET 1920×1080 → confirmation parfaitement centrée,
+  entièrement visible, boutons cliquables (overlay z-210 via ModalPortal). Le défaut
+  n'est plus reproductible. Boutons de la confirmation passés à ≥44px au passage.
 - **[P2] finitions — Balayage accents résiduel.** Vérifier les écrans des **autres
   rôles** (producteur, coopérative, institution) — la passe a couvert marchande.
   Réf : `docs/AUDIT_ACCENTS_UI.md`.
