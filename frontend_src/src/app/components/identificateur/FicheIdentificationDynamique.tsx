@@ -763,7 +763,7 @@ function TagSelector({ options, values, onChange, color }: {
     else onChange([...values, opt]);
   };
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Selection multiple">
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Sélection multiple">
       {options.map((opt) => {
         const sel = values.includes(opt);
         return (
