@@ -43,6 +43,7 @@ import {
   Check,
 } from 'lucide-react';
 import { Montant } from '../shared/Montant';
+import { InboxNegociations } from '../shared/InboxNegociations';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { useUser } from '../../contexts/UserContext';
 import { useApp } from '../../contexts/AppContext';
@@ -677,6 +678,10 @@ export function ProducteurCommandes() {
             />
           </KPIGrid>
         </div>
+
+        {/* ── Demandes de négociation des marchands (trou comblé : le producteur
+            recevait la notification mais n'avait aucun écran pour répondre) ── */}
+        <InboxNegociations accent="#2E8B57" onAccepted={() => void refreshCommandes()} />
 
         {/* ── Barre de recherche + filtres avancés ── */}
         <motion.div
