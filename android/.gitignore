@@ -99,3 +99,7 @@ app/src/main/assets/public
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
+
+# Voix hors-ligne (sherpa-onnx) : le modèle FR (~71 Mo) n'est jamais commité —
+# posé par scripts/installer-voix.sh dans les assets avant le build.
+app/src/main/assets/sherpa-kroko-fr/
