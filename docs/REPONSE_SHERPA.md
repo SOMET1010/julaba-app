@@ -1,5 +1,12 @@
 # Point bloquant « Installation de Sherpa » — réponse factuelle
 
+> **MISE À JOUR 18/08/2026** : le chantier recommandé ci-dessous (option 1) est
+> **ENGAGÉ** — plugin natif `SherpaSttPlugin.kt` écrit (API vérifiée contre
+> l'AAR 1.13.5), modèle FR Kroko choisi (~71 Mo, tailles réelles), script
+> d'embarquement, permission micro ajoutée au manifest (elle manquait).
+> Voir `docs/SHERPA_ONNX_APK.md`. Restent côté machine dev : compilation APK,
+> mesures réelles, recette appareils.
+
 11/08/2026. Réponses aux 8 questions d'Alex, établies en inspectant le
 projet Android du dépôt (`android/`), le pont JS (`voice-offline/`) et le
 composant « Installer ma voix » (`InstallerOffline.tsx`).

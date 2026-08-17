@@ -1,4 +1,6 @@
 apply plugin: 'com.android.application'
+// Kotlin : le plugin natif SherpaStt (reconnaissance vocale hors-ligne) est en Kotlin.
+apply plugin: 'org.jetbrains.kotlin.android'
 
 android {
     namespace = "com.julaba.app"
@@ -32,6 +34,13 @@ repositories {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+    // sherpa-onnx : moteur de reconnaissance vocale hors-ligne (plugin SherpaStt).
+    // L'AAR (API Kotlin + libs natives arm64/armv7/x86_64) N'EST PAS commité
+    // (.gitignore *.aar) : le poser via  android/scripts/installer-voix.sh
+    // AVANT tout assembleDebug/Release — il télécharge aussi le modèle FR (~71 Mo)
+    // dans src/main/assets/sherpa-kroko-fr/. Sans ces fichiers, le build échoue
+    // ici (unresolved com.k2fsa.sherpa.onnx) — c'est voulu, pas silencieux.
+    implementation files('libs/sherpa-onnx-1.13.5.aar')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
