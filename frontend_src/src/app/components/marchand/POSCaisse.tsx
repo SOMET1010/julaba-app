@@ -328,7 +328,7 @@ export function POSCaisse() {
                     <motion.div
                       animate={{ scale:[1,1.12,1], boxShadow:['0 2px 8px 0 rgba(0,0,0,0.25)','0 0 0 6px rgba(255,255,255,0)','0 2px 8px 0 rgba(0,0,0,0.25)'] }}
                       transition={{ duration:2, repeat:Infinity, delay: i * 0.8 }}
-                      style={{ width:44, height:44, borderRadius:14, background:'white', border:'none', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      style={{ width:44, height:44, borderRadius:'50%', background:'white', border:'none', display:'flex', alignItems:'center', justifyContent:'center' }}>
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </motion.div>
                   </div>
