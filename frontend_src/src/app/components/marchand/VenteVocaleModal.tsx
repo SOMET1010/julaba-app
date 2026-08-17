@@ -15,6 +15,10 @@ import { apparierProduit, construireLigneVocale, doitProposerCreation, noterRefu
 import { avertissementRupture } from "../../services/ruptureStock";
 import { guidageVocal } from "../../utils/accessMode";
 import { vibrerSucces } from "../../utils/haptique";
+import { SaisieGuidee } from "./SaisieGuidee";
+import { AJOUT_PANIER } from "../../services/dialoguesTata";
+import type { LigneProvisoire } from "../../services/ligneProvisoire";
+import { toast } from "sonner";
 import tantieImg from "../../../assets/images/tantie-vente-vocale.png";
 
 const P = "#C66A2C";
@@ -27,7 +31,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, setIsModalOpen, speak } = useApp();
-  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats, products, updateProduct, addProduct } = useCaisse();
+  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats, products, updateProduct, addProduct, addToCart, updateCartItemPrice } = useCaisse();
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
   const progression = objectifCtx?.progression ?? 0;
@@ -43,6 +47,19 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   // ventes seront alors appariées (stock, marge). Refus mémorisé PAR produit.
   const [propositionProduit, setPropositionProduit] = useState<{ nom: string; prix: number } | null>(null);
   const [creationEnCours, setCreationEnCours] = useState(false);
+  // Repli tactile (SPEC §8) : « saisir sans parler » — même parcours guidé au doigt.
+  const [saisieOuverte, setSaisieOuverte] = useState(false);
+  // La ligne confirmée va au PANIER (jamais enregistrée ici) — l'encaissement reste
+  // le chemin tactile existant. Prix négocié respecté via updateCartItemPrice.
+  const ajouterLigneAuPanier = (l: LigneProvisoire) => {
+    const id = 'libre-' + l.id;
+    const prixU = l.prixUnitaire ?? 0;
+    addToCart({ id, nom: l.nomAffiche, prix: prixU, categorie: 'Autre', stock: 0, unite: l.unite }, l.quantite);
+    if (prixU > 0) updateCartItemPrice(id, prixU);
+    vibrerSucces();
+    toast.success(`C'est dans le panier : ${l.quantite} × ${l.nomAffiche}`);
+    if (guidageVocal()) speak(AJOUT_PANIER);
+  };
   useEffect(() => {
     const on = () => setIsOnline(true); const off = () => setIsOnline(false);
     window.addEventListener("online", on); window.addEventListener("offline", off);
@@ -153,7 +170,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   // #2 : pendingCount/isReplaying viennent de l'UNIQUE file de useVoiceCore
   // (plus de seconde instance qui rejouait la file en double à la reconnexion).
   useEffect(() => { if (!isOpen) resetHistory(); }, [isOpen, resetHistory]);
-  useEffect(() => { if (!isOpen) setPropositionProduit(null); }, [isOpen]);
+  useEffect(() => { if (!isOpen) { setPropositionProduit(null); setSaisieOuverte(false); } }, [isOpen]);
 
   // Oui → création avec le prix unitaire DICTÉ (elle le corrigera dans Mon stock
   // si besoin) ; stock 0 (à compléter). Non → refus mémorisé pour CE produit.
@@ -331,6 +348,19 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
             {isConfirming && pendingResponse && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#FFF8F0", border: `2px solid ${P}`, borderRadius: 20, padding: 16 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><ShieldCheck style={{ width: 18, height: 18, color: P }} /><p style={{ fontSize: 12, fontWeight: 700, color: P }}>Confirmer l'action</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937", marginBottom: 12 }}>{pendingResponse.response || pendingResponse.reponse}</p>{pendingResponse.resume_action && (<p style={{ fontSize: 11, fontWeight: 700, color: "var(--encre-4)", letterSpacing: "0.1em", marginBottom: 12 }}>{pendingResponse.resume_action}</p>)}<div style={{ display: "flex", gap: 10 }}><motion.button whileTap={{ scale: 0.97 }} onClick={cancelAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, border: `2px solid ${P}`, color: P, background: "white", cursor: "pointer" }}>Non</motion.button><motion.button whileTap={{ scale: 0.97 }} onClick={confirmAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Oui, confirmer</motion.button></div></motion.div>)}
             {(isDone || isError) && (<motion.button whileTap={{ scale: 0.97 }} onClick={reset} style={{ width: "100%", padding: "14px 0", borderRadius: 16, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Reparler à Tata Nanti Lou</motion.button>)}
             {isIdle && (<div><p style={{ fontSize: 10, fontWeight: 700, color: "#C5C5C5", letterSpacing: "0.1em", marginBottom: 10 }}>CE QUE TU PEUX DIRE</p><div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{examples.map((ex, i) => (<motion.button key={i} whileTap={{ scale: 0.97 }} onClick={() => sendText(ex.text)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderRadius: 14, cursor: "pointer", background: ex.highlight ? "#FFF3EB" : "#F8F8F8", border: ex.highlight ? "1px solid #FDDEC4" : "1px solid #F0F0F0", textAlign: "left", width: "100%" }}><div style={{ flex: 1 }}><p style={{ fontSize: 15, fontWeight: 700, color: ex.highlight ? "#6B2400" : "#111", margin: 0 }}>{ex.text}</p><p style={{ fontSize: 12, color: ex.highlight ? "#C4703A" : "#999", margin: "3px 0 0" }}>{ex.desc}</p></div><ChevronRight style={{ color: ex.highlight ? "#C4703A" : "#D0D0D0", width: 16, height: 16, flexShrink: 0 }} /></motion.button>))}</div></div>)}
+            {isIdle && (
+              <div style={{ marginTop: 2 }}>
+                {saisieOuverte ? (
+                  <SaisieGuidee onValider={ajouterLigneAuPanier} />
+                ) : (
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={() => setSaisieOuverte(true)}
+                    style={{ width: "100%", padding: "13px 0", borderRadius: 14, fontWeight: 800, fontSize: 14, cursor: "pointer",
+                      background: "white", border: `1.5px solid ${P}55`, color: P, fontFamily: "inherit" }}>
+                    ✍️ Saisir sans parler
+                  </motion.button>
+                )}
+              </div>
+            )}
             {isIdle && (<div style={{ marginTop: 4 }}><InstallerOffline /></div>)}
           </div>
         </motion.div>
