@@ -20,6 +20,7 @@ import { normalizeRole } from '../types/constants';
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import * as audioManager from '../services/audioManager';
 import { API_URL } from '../utils/api';
+import { jourLocal } from '../utils/jourLocal';
 import { enfilerOperation } from '../voice-offline/offlineCaisse';
 import { clearAuthClientState } from '../utils/clearAuthClientState';
 import { toProperCase } from '../utils/stringUtils';
@@ -905,9 +906,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ═══════════════════════════════════════════════════════════════════
 
   const getTodayStats = () => {
-    const today = new Date().toISOString().split('T')[0];
+    // Jour LOCAL (appareil) des deux côtés de la comparaison — cf. utils/jourLocal.
+    // À Abidjan (UTC+0) identique à l'ancien jour UTC ; correct ailleurs.
+    const today = jourLocal();
     const todayTransactions = transactions.filter(
-      (t) => t.date.split('T')[0] === today
+      (t) => jourLocal(t.date) === today
     );
 
     // Une vente ANNULÉE garde type==='vente' (le back-end gèle l'argent, il pose
@@ -922,7 +925,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Ventes À CRÉDIT du jour (table à part). Convention A :
     //  • le TOTAL s'ajoute aux « ventes du jour » (elle a bien vendu) ;
     //  • seul l'ACOMPTE reçu entre dans la caisse (le reste = créance au carnet).
-    const creditsAujourdhui = (creditsJour || []).filter((c) => (c.created_at || '').split('T')[0] === today);
+    const creditsAujourdhui = (creditsJour || []).filter((c) => jourLocal(c.created_at || '') === today);
     const ventesCredit = creditsAujourdhui.reduce((acc, c) => acc + (c.montant_total || 0), 0);
     const acomptesCredit = creditsAujourdhui.reduce((acc, c) => acc + (c.acompte || 0), 0);
 
