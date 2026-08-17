@@ -15,6 +15,11 @@ function fr(n: number): string {
 function pluriel(mot: string): string {
   return /[sxz]$/i.test(mot) ? mot : `${mot}s`;
 }
+/** Abréviations d'unité invariables (« 2 kg », pas « 2 kgs »). */
+const UNITES_INVARIABLES = new Set(['kg', 'g', 'mg', 'l', 'cl', 'ml', 'dl', 'm', 'cm', 'mm', 'km']);
+function plurielUnite(u: string): string {
+  return UNITES_INVARIABLES.has(u.toLowerCase()) ? u : pluriel(u);
+}
 /** Pluralise le DERNIER mot d'un libellé (« banane plantain » → « banane plantains »). */
 function plurielNom(nom: string): string {
   const mots = nom.trim().split(' ');
@@ -32,7 +37,7 @@ export function resumeQuantite(ligne: LigneProvisoire): string {
   const multiple = ligne.quantite > 1;
   const uniteVisible = ligne.unite && ligne.unite !== 'unité' && ligne.unite !== 'unite';
   if (uniteVisible) {
-    const u = multiple ? pluriel(ligne.unite) : ligne.unite;
+    const u = multiple ? plurielUnite(ligne.unite) : ligne.unite;
     return `${ligne.quantite} ${u} de ${ligne.nomAffiche}`.replace(/\s+/g, ' ').trim();
   }
   const nom = multiple ? plurielNom(ligne.nomAffiche) : ligne.nomAffiche;
