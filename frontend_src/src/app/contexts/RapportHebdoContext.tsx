@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import * as audioManager from '../services/audioManager';
+import { API_URL } from '../utils/api';
 
 export interface RapportHebdo {
   semaine: { debut: string; fin: string };
@@ -33,7 +34,7 @@ export function RapportHebdoProvider({ children }: { children: React.ReactNode }
   const fetchRapport = useCallback(async () => {
     if (!rapport) setLoading(true);
     try {
-      const res = await fetch('/api/v1/rapport/hebdo', {
+      const res = await fetch(`${API_URL}/rapport/hebdo`, {
         credentials: 'include'
       });
       if (res.ok) {
