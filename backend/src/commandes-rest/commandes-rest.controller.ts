@@ -426,6 +426,7 @@ export class CommandesRestController {
           total: prixFinal * qte,
           statut: CommandeStatut.CONFIRMEE,
           dateCommande: new Date(),
+          negociationId: id,
           notes: 'Issu de negociation ' + id,
         }),
       );
@@ -478,6 +479,7 @@ export class CommandesRestController {
           total: prixFinal * qte,
           statut: CommandeStatut.CONFIRMEE,
           dateCommande: new Date(),
+          negociationId: id,
           notes: 'Contre-offre acceptee par marchand ' + id,
         }),
       );
