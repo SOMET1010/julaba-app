@@ -46,6 +46,8 @@ eq(resumeQuantite(unSeul), "1 attiéké", "quantité 1 → singulier « 1 attié
 const sacs = creerLigneProvisoire({ nomParle: 'riz', quantite: 3, montant: 500, prixExplicite: 'unitaire', unite: 'sac' }, { produitId: null }, O);
 eq(resumeQuantite(sacs), "3 sacs de riz", "avec unité + pluriel → unité au pluriel, produit singulier");
 eq(resumeQuantite(uni), "3 tas de tomate", "« tas » invariable (finit par s) → « 3 tas de tomate »");
+const kg = creerLigneProvisoire({ nomParle: 'riz', quantite: 2, montant: 500, prixExplicite: 'unitaire', unite: 'kg' }, { produitId: 'p', nomCatalogue: 'Riz local' }, O);
+eq(resumeQuantite(kg), "2 kg de Riz local", "abréviation « kg » invariable → « 2 kg », pas « kgs »");
 
 if (failures > 0) { console.log(`\n${failures} test(s) en échec.`); process.exit(1); }
 console.log("\nTous les tests dialoguesTata sont verts ✅");
