@@ -931,9 +931,9 @@ export function GestionStock() {
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => { setShowEdit(false); setInlineEdit(false); }}
-                  style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(0,0,0,0.35)', border: 'none', borderRadius: 10, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(0,0,0,0.35)', border: 'none', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                 >
-                  <X size={15} color="white" />
+                  <X size={18} color="white" />
                 </motion.button>
                 <div style={{ position: 'absolute', bottom: 14, left: 16, right: 16 }}>
                   <div style={{ fontSize: 22, fontWeight: 900, color: 'white', marginBottom: 7 }}>
@@ -1018,7 +1018,7 @@ export function GestionStock() {
                       <motion.button
                         whileTap={{ scale: 0.88 }}
                         onClick={() => updateQty(selectedStock.id, Math.max(0, selectedStock.quantity - 1))}
-                        style={{ width: 40, height: 40, borderRadius: 12, background: 'white', border: '1.5px solid #e5e0d8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                        style={{ width: 44, height: 44, borderRadius: 12, background: 'white', border: '1.5px solid #e5e0d8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </motion.button>
@@ -1033,7 +1033,7 @@ export function GestionStock() {
                       <motion.button
                         whileTap={{ scale: 0.88 }}
                         onClick={() => updateQty(selectedStock.id, selectedStock.quantity + 1)}
-                        style={{ width: 40, height: 40, borderRadius: 12, background: P, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                        style={{ width: 44, height: 44, borderRadius: 12, background: P, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </motion.button>
@@ -1055,7 +1055,7 @@ export function GestionStock() {
                     </div>
                     {selectedStock.quantity < selectedStock.threshold && (
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', marginTop: 4 }}>
-                        Stock bas — reapprovisionner
+                        Stock bas — réapprovisionner
                       </div>
                     )}
                   </div>
@@ -1084,7 +1084,7 @@ export function GestionStock() {
 
                   {/* 4. REAPPROVISIONNER */}
                   <div style={{ border: '1.5px solid var(--trait)', borderRadius: 16, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--encre)', marginBottom: 2 }}>Reapprovisionner</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--encre)', marginBottom: 2 }}>Réapprovisionner</div>
                     <div style={{ fontSize: 10, color: 'var(--encre-4)', fontWeight: 600, marginBottom: 10 }}>
                       Combien de {selectedStock.unit} tu veux ajouter ?
                     </div>
