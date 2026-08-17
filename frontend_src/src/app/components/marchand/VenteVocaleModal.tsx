@@ -31,7 +31,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, setIsModalOpen, speak } = useApp();
-  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats, products, updateProduct, addProduct, addToCart, updateCartItemPrice } = useCaisse();
+  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats, products, updateProduct, addProduct, addToCart } = useCaisse();
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
   const progression = objectifCtx?.progression ?? 0;
@@ -50,12 +50,24 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   // Repli tactile (SPEC §8) : « saisir sans parler » — même parcours guidé au doigt.
   const [saisieOuverte, setSaisieOuverte] = useState(false);
   // La ligne confirmée va au PANIER (jamais enregistrée ici) — l'encaissement reste
-  // le chemin tactile existant. Prix négocié respecté via updateCartItemPrice.
+  // le chemin tactile existant.
+  //
+  // IMPORTANT — un SEUL appel mutateur de panier par ajout. addToCart et
+  // updateCartItemPrice recalculent tous deux depuis le `cart` figé de la closure du
+  // render : les enchaîner dans le même handler fait écraser l'ajout par le second
+  // (panier vidé). On fixe donc le prix DICTÉ directement dans le produit passé à
+  // addToCart (le négoce prime → on neutralise la promo catalogue), sans second appel.
   const ajouterLigneAuPanier = (l: LigneProvisoire) => {
-    const id = 'libre-' + l.id;
     const prixU = l.prixUnitaire ?? 0;
-    addToCart({ id, nom: l.nomAffiche, prix: prixU, categorie: 'Autre', stock: 0, unite: l.unite }, l.quantite);
-    if (prixU > 0) updateCartItemPrice(id, prixU);
+    const prod = l.produitId ? products.find(p => p.id === l.produitId) : null;
+    if (prod) {
+      // Produit APPARIÉ : vrai produit (prix d'achat → marge réelle, stock décrémenté
+      // à l'encaissement), au prix dicté.
+      addToCart({ ...prod, prix: prixU > 0 ? prixU : prod.prix, prix_promo: null, promo_fin: null }, l.quantite);
+    } else {
+      // Produit inconnu → ligne libre (comme « Autre article »).
+      addToCart({ id: 'libre-' + l.id, nom: l.nomAffiche, prix: prixU, categorie: 'Autre', stock: 0, unite: l.unite }, l.quantite);
+    }
     vibrerSucces();
     toast.success(`C'est dans le panier : ${l.quantite} × ${l.nomAffiche}`);
     if (guidageVocal()) speak(AJOUT_PANIER);
@@ -351,7 +363,13 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
             {isIdle && (
               <div style={{ marginTop: 2 }}>
                 {saisieOuverte ? (
-                  <SaisieGuidee onValider={ajouterLigneAuPanier} />
+                  <SaisieGuidee
+                    onValider={ajouterLigneAuPanier}
+                    apparier={(nom) => {
+                      const p = apparierProduit(nom, products);
+                      return p ? { produitId: p.id, nomCatalogue: p.nom, prixCatalogue: p.prix ?? null, unite: p.unite || 'unité' } : null;
+                    }}
+                  />
                 ) : (
                   <motion.button whileTap={{ scale: 0.97 }} onClick={() => setSaisieOuverte(true)}
                     style={{ width: "100%", padding: "13px 0", borderRadius: 14, fontWeight: 800, fontSize: 14, cursor: "pointer",

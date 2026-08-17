@@ -14,9 +14,19 @@ import { ConfirmationLigne } from './ConfirmationLigne';
 
 const ORANGE = '#C66A2C';
 
+/** Résultat d'appariement au catalogue (fourni par le parent, qui connaît les produits). */
+export interface AppariementCatalogue {
+  produitId: string;
+  nomCatalogue: string;
+  prixCatalogue: number | null;
+  unite: string;
+}
+
 interface Props {
   /** Reçoit la ligne CONFIRMÉE (statut 'confirmee'). Le parent l'ajoute au panier. */
   onValider: (l: LigneProvisoire) => void;
+  /** Apparie le nom tapé à un produit du catalogue (null si inconnu → ligne libre). */
+  apparier?: (nom: string) => AppariementCatalogue | null;
 }
 
 const champStyle: React.CSSProperties = {
@@ -25,7 +35,7 @@ const champStyle: React.CSSProperties = {
   fontFamily: 'inherit', background: 'white',
 };
 
-export function SaisieGuidee({ onValider }: Props) {
+export function SaisieGuidee({ onValider, apparier }: Props) {
   const [etape, setEtape] = useState<'saisie' | 'confirmation'>('saisie');
   const [produit, setProduit] = useState('');
   const [quantite, setQuantite] = useState('1');
@@ -36,9 +46,14 @@ export function SaisieGuidee({ onValider }: Props) {
   const verifier = () => {
     const q = Math.max(1, parseInt(quantite || '1', 10) || 1);
     const p = parseInt(prix || '0', 10) || 0;
+    // Appariement catalogue : si le produit tapé est connu, la ligne porte son
+    // productId (→ stock décrémenté et marge réelle à l'ajout au panier) et son unité.
+    const match = apparier ? apparier(produit) : null;
     const l = creerLigneProvisoire(
       { nomParle: produit, quantite: q, montant: p > 0 ? p : null, prixExplicite: mode },
-      { produitId: null },
+      match
+        ? { produitId: match.produitId, nomCatalogue: match.nomCatalogue, prixCatalogue: match.prixCatalogue, unite: match.unite }
+        : { produitId: null },
     );
     setLigne(l);
     setEtape('confirmation');
