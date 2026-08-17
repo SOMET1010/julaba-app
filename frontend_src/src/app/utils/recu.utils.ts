@@ -65,32 +65,6 @@ export async function partagerRecu(tx: RecuTx, marchand: string): Promise<'parta
   } catch { return 'echec'; }
 }
 
-/** Génère et télécharge le reçu en PDF (jsPDF, chargé à la demande). */
-export async function telechargerRecuPDF(tx: RecuTx, marchand: string): Promise<void> {
-  const { default: jsPDF } = await import('jspdf');
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 120] }); // format ticket
-  const d = tx.date ? new Date(tx.date) : new Date();
-  let y = 12;
-  const line = (txt: string, size = 9, bold = false, color = '#222') => {
-    doc.setFontSize(size); doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setTextColor(color);
-    doc.text(txt, 40, y, { align: 'center' }); y += size * 0.5 + 2.5;
-  };
-  line('Jùlaba', 16, true, '#C66A2C');
-  line('REÇU', 10, true);
-  y += 1; doc.setDrawColor(200); doc.line(8, y, 72, y); y += 5;
-  doc.setFont('helvetica', 'normal');
-  const left = (label: string, val: string, bold = false) => {
-    doc.setFontSize(8); doc.setTextColor('#666'); doc.text(label, 8, y);
-    doc.setTextColor('#111'); doc.setFont('helvetica', bold ? 'bold' : 'normal');
-    doc.text(val, 72, y, { align: 'right' }); doc.setFont('helvetica', 'normal'); y += 5;
-  };
-  left('Vendeuse', (marchand || 'Marchande').slice(0, 22));
-  left('Date', d.toLocaleDateString('fr-FR'));
-  left('Heure', d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
-  for (const l of lignesProduits(tx)) { doc.setFontSize(8); doc.setTextColor('#333'); doc.text(l.slice(0, 34), 8, y); y += 4.5; }
-  y += 1; doc.line(8, y, 72, y); y += 6;
-  left('TOTAL', `${Number(tx.montant || 0).toLocaleString('fr-FR')} FCFA`, true);
-  left('Reçu n°', numeroRecu(tx));
-  y += 3; line('Merci et à bientôt !', 8, false, '#C66A2C');
-  doc.save(`recu-julaba-${numeroRecu(tx)}.pdf`);
-}
+// Le reçu PDF « à lire » a été retiré : inadapté à des utilisatrices non-lectrices
+// (et sa génération figeait l'écran). Le reçu se partage désormais en texte
+// (WhatsApp / SMS), lisible/écoutable par le client. Cf. partagerRecu / texteRecu.
