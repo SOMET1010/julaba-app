@@ -1,4 +1,6 @@
 import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
+import { stopAllVoice } from '../../services/audioManager';
+import { stopIntro } from '../../services/onboardingVoix';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
@@ -429,7 +431,12 @@ export function LoginPassword() {
     if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
     if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
     setError('');
-    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } // que le micro n'entende pas Tata
+    // Verrou parole/écoute (audit voix C1) : couper TOUTES les voix (clips du
+    // manager, clip local de parle(), intro d'onboarding, synthèse) — le seul
+    // speechSynthesis.cancel() laissait les clips HTMLAudio jouer dans le micro.
+    try { stopAllVoice(); } catch { /* ignore */ }
+    try { stopIntro(); } catch { /* ignore */ }
+    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
 
     let handle: { stop: () => Promise<void> };
     try {
