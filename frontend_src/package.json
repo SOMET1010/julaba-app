@@ -25,10 +25,11 @@
     "test:stats": "tsx src/app/services/statsVente.test.mts",
     "test:rupture": "tsx src/app/services/ruptureStock.test.mts",
     "test:caisse-pilote": "tsx src/app/components/marchand/caissePiloteEspeces.test.mts",
-    "test:ci": "npm run test:audio && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:offline && npm run test:marge && npm run test:stats && npm run test:rupture && npm run test:caisse-pilote && npm run test:jour && npm run test:mouvements",
+    "test:ci": "npm run test:audio && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:offline && npm run test:marge && npm run test:stats && npm run test:rupture && npm run test:caisse-pilote && npm run test:jour && npm run test:mouvements && npm run test:guidage",
     "test:marge": "tsx src/app/services/margeVente.test.mts",
     "test:jour": "tsx src/app/utils/jourLocal.test.mts",
-    "test:mouvements": "tsx src/app/services/mouvementsStock.test.mts"
+    "test:mouvements": "tsx src/app/services/mouvementsStock.test.mts",
+    "test:guidage": "tsx src/app/utils/guidageVocal.test.mts"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
