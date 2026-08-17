@@ -546,12 +546,12 @@ export function NotifBellButton({ userId, accentColor = '#C46210', onOpen, varia
   return (
     <motion.button onClick={onOpen} whileTap={{ scale: 0.9 }}
       style={{
-        width: 40, height: 40, borderRadius: 13, cursor: 'pointer', position: 'relative', flexShrink: 0,
+        width: 44, height: 44, borderRadius: 14, cursor: 'pointer', position: 'relative', flexShrink: 0,
         background: variant === 'solid' ? accentColor : 'rgba(255,255,255,0.15)',
         border: variant === 'solid' ? `1px solid #a05510` : '1px solid rgba(255,255,255,0.28)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="2" strokeLinecap="round">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="2" strokeLinecap="round">
         <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
         <path d="M13.73 21a2 2 0 0 1-3.46 0" />
       </svg>
