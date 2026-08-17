@@ -121,7 +121,7 @@ function FilterableSelect({
 
             <div className="overflow-y-auto" style={{ maxHeight: options.length > 5 ? 220 : 280 }}>
               {filtered.length === 0 ? (
-                <p className="px-4 py-3 text-sm text-gray-400 text-center">Aucun resultat</p>
+                <p className="px-4 py-3 text-sm text-gray-400 text-center">Aucun résultat</p>
               ) : (
                 filtered.map(opt => (
                   <button
@@ -222,32 +222,32 @@ export function CIVLocationPicker({
       )}
 
       <FilterableSelect
-        label="Region"
+        label="Région"
         value={region}
         options={regionOptions}
         onChange={handleRegionChange}
-        placeholder={includeNational ? 'Nationale (toutes)' : 'Choisir une region...'}
+        placeholder={includeNational ? 'Nationale (toutes)' : 'Choisir une région...'}
         required={regionRequired}
       />
 
       {onDepartementChange && (
         <FilterableSelect
-          label="Departement"
+          label="Département"
           value={departement || ''}
           options={departementOptions}
           onChange={handleDepartementChange}
-          placeholder="Choisir un departement..."
+          placeholder="Choisir un département..."
           disabled={!region || region === 'National' || departementOptions.length === 0}
         />
       )}
 
       {onSousPrefectureChange && (
         <FilterableSelect
-          label="Sous-prefecture"
+          label="Sous-préfecture"
           value={sousPrefecture || ''}
           options={spOptions}
           onChange={v => onSousPrefectureChange?.(v)}
-          placeholder="Choisir une sous-prefecture..."
+          placeholder="Choisir une sous-préfecture..."
           disabled={!departement || spOptions.length === 0}
         />
       )}

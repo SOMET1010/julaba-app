@@ -88,7 +88,7 @@ export function BOAudit() {
         { value: 'admin_national', label: 'Admin National' },
         { value: 'gestionnaire_zone', label: 'Gestionnaire Zone' },
         { value: 'operateur_terrain', label: 'Analyste' },
-        { value: 'admin_general', label: 'Admin General' },
+        { value: 'admin_general', label: 'Admin Général' },
         { value: 'identificateur', label: 'Identificateur' },
         { value: 'admin', label: 'Administrateur' },
       ],
@@ -110,7 +110,7 @@ export function BOAudit() {
 
   const handleExport = (fmt: 'CSV' | 'PDF') => {
     if (filtered.length === 0) {
-      toast.info('Aucune entree a exporter');
+      toast.info('Aucune entrée à exporter');
       return;
     }
     const rows = filtered.map(l => {
@@ -131,18 +131,18 @@ export function BOAudit() {
     try {
       if (fmt === 'CSV') {
         exportToCSV(rows, filename);
-        toast.success(`${rows.length} entree(s) exportee(s) en CSV`);
+        toast.success(`${rows.length} entrée(s) exportée(s) en CSV`);
       } else if (fmt === 'PDF') {
         exportSimplePDF(
           'Audit & Logs JULABA',
           [
-            { label: 'Nombre d entrees', value: rows.length },
-            { label: 'Periode export', value: new Date().toLocaleString('fr-FR') },
+            { label: 'Nombre d\'entrées', value: rows.length },
+            { label: 'Période export', value: new Date().toLocaleString('fr-FR') },
             { label: 'Modules couverts', value: [...new Set(rows.map(r => r.Module))].length },
           ],
           filename,
         );
-        toast.success(`${rows.length} entree(s) exportee(s) en PDF`);
+        toast.success(`${rows.length} entrée(s) exportée(s) en PDF`);
       }
     } catch (err) {
       console.warn('[BOAudit] handleExport failed:', err instanceof Error ? err.message : err);
