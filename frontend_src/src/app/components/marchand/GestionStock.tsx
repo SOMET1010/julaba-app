@@ -1094,13 +1094,13 @@ export function GestionStock() {
                         onChange={e => setReappQty(e.target.value)}
                         type="number"
                         placeholder="0"
-                        style={{ flex: 1, border: '1.5px solid var(--trait)', borderRadius: 12, padding: '10px 14px', fontSize: 16, fontWeight: 700, color: 'var(--encre)', textAlign: 'center', outline: 'none', fontFamily: 'inherit', background: 'white' }}
+                        style={{ flex: 1, minWidth: 0, border: '1.5px solid var(--trait)', borderRadius: 12, padding: '10px 14px', fontSize: 16, fontWeight: 700, color: 'var(--encre)', textAlign: 'center', outline: 'none', fontFamily: 'inherit', background: 'white', boxSizing: 'border-box' }}
                       />
                       <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--encre-4)', padding: '0 4px' }}>{selectedStock.unit}</span>
                       <motion.button
                         whileTap={{ scale: 0.97 }}
                         onClick={handleReapp}
-                        style={{ background: P, color: 'white', border: 'none', borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                        style={{ flexShrink: 0, background: P, color: 'white', border: 'none', borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                       >
                         + Ajouter
                       </motion.button>
