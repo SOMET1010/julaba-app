@@ -350,7 +350,7 @@ export function VentesPassees() {
 
   const SOURCE_TABS: { id:'tous'|'vocal'|'kassa'|'credits'; label:string }[] = [
     { id:'tous',    label:'Toutes' },
-    { id:'vocal',   label:'Par Tata Nanti Lou' },
+    { id:'vocal',   label:'Par la voix' },
     { id:'kassa',   label:'Par caisse' },
     ...(CAISSE_CREDIT_ACTIF ? [{ id:'credits' as const, label:'Crédits' }] : []),
   ];
