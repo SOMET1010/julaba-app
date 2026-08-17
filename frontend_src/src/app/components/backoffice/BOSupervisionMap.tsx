@@ -37,12 +37,12 @@ const ROLE_COLORS: Record<string, string> = {
 const ROLE_LABELS: Record<string, string> = {
   marchand: 'Marchand',
   producteur: 'Producteur',
-  cooperative: 'Cooperative',
+  cooperative: 'Coopérative',
   identificateur: 'Identificateur',
 };
 
 const getIntensityColor = (volume: number): { fill: string; stroke: string; label: string } => {
-  if (volume >= 100000) return { fill: '#A32D2D', stroke: '#7F1D1D', label: 'Eleve' };
+  if (volume >= 100000) return { fill: '#A32D2D', stroke: '#7F1D1D', label: 'Élevé' };
   if (volume >= 30000) return { fill: '#D97706', stroke: '#92400E', label: 'Moyen' };
   return { fill: '#16A34A', stroke: '#15803D', label: 'Faible' };
 };
@@ -256,7 +256,7 @@ export const BOSupervisionMap: React.FC<BOSupervisionMapProps> = ({ dateFrom, da
             <div style="font-size:12px;color:#4B5563;margin-bottom:2px;"><strong>${acteur.count}</strong> transaction(s)</div>
             <div style="font-size:12px;color:#4B5563;margin-bottom:8px;">Volume : <strong>${acteur.volume.toLocaleString('fr-FR')} FCFA</strong></div>
             ${acteur.litiges > 0 ? `<div style="font-size:11px;color:#A32D2D;margin-bottom:4px;">${acteur.litiges} litige(s)</div>` : ''}
-            ${acteur.gelees > 0 ? `<div style="font-size:11px;color:#2563EB;margin-bottom:4px;">${acteur.gelees} gelee(s)</div>` : ''}
+            ${acteur.gelees > 0 ? `<div style="font-size:11px;color:#2563EB;margin-bottom:4px;">${acteur.gelees} gelée(s)</div>` : ''}
             <button id="${buttonId}" style="margin-top:6px;padding:6px 12px;background:#5B5248;color:white;border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;width:100%;">
               Voir plus
             </button>
@@ -325,7 +325,7 @@ export const BOSupervisionMap: React.FC<BOSupervisionMapProps> = ({ dateFrom, da
           <div className="font-semibold text-gray-900 mb-2">Volume par zone</div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-4 h-4 rounded-full bg-[#A32D2D]" />
-            <span className="text-gray-600">Eleve</span>
+            <span className="text-gray-600">Élevé</span>
           </div>
           <div className="flex items-center gap-2 mb-1">
             <span className="w-3 h-3 rounded-full bg-[#D97706]" />
@@ -364,7 +364,7 @@ export const BOSupervisionMap: React.FC<BOSupervisionMapProps> = ({ dateFrom, da
       <div className="w-full lg:w-72 flex flex-col gap-3">
         <UniversalSectionCardBO title="Top regions" icon={MapPin} variant="default">
           {topRegions.length === 0 ? (
-            <div className="text-xs text-gray-500 py-3 text-center">Aucune donnee</div>
+            <div className="text-xs text-gray-500 py-3 text-center">Aucune donnée</div>
           ) : (
             <ul className="space-y-2">
               {topRegions.map((region, index) => (
@@ -391,7 +391,7 @@ export const BOSupervisionMap: React.FC<BOSupervisionMapProps> = ({ dateFrom, da
                     <div className="font-medium text-gray-900 truncate">{acteur.fullName}</div>
                     <div className="text-gray-500 mt-0.5 flex gap-2">
                       {acteur.litiges > 0 && <span className="text-[#A32D2D]">{acteur.litiges} litige(s)</span>}
-                      {acteur.gelees > 0 && <span className="text-[#2563EB]">{acteur.gelees} gelee(s)</span>}
+                      {acteur.gelees > 0 && <span className="text-[#2563EB]">{acteur.gelees} gelée(s)</span>}
                     </div>
                   </button>
                 </li>
@@ -402,7 +402,7 @@ export const BOSupervisionMap: React.FC<BOSupervisionMapProps> = ({ dateFrom, da
 
         <UniversalSectionCardBO title="Acteurs actifs" icon={Users} variant="default">
           {acteursActifs.length === 0 ? (
-            <div className="text-xs text-gray-500 py-3 text-center">Aucune activite</div>
+            <div className="text-xs text-gray-500 py-3 text-center">Aucune activité</div>
           ) : (
             <ul className="space-y-2">
               {acteursActifs.map((acteur) => (
@@ -463,7 +463,7 @@ export const BOSupervisionMap: React.FC<BOSupervisionMapProps> = ({ dateFrom, da
                 )}
                 {selectedActeur.gelees > 0 && (
                   <div className="text-xs text-[#2563EB] flex items-center gap-2 mt-1">
-                    <Snowflake className="w-3 h-3" /> {selectedActeur.gelees} transaction(s) gelee(s)
+                    <Snowflake className="w-3 h-3" /> {selectedActeur.gelees} transaction(s) gelée(s)
                   </div>
                 )}
               </div>

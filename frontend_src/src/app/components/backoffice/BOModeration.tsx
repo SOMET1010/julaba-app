@@ -84,8 +84,8 @@ const FILTER_GROUPS: FilterGroup[] = [
       { value: 'all', label: 'Tous statuts' },
       { value: 'nouveau', label: 'Nouveau' },
       { value: 'en_cours', label: 'En cours' },
-      { value: 'traite', label: 'Traite' },
-      { value: 'rejete', label: 'Rejete' },
+      { value: 'traite', label: 'Traité' },
+      { value: 'rejete', label: 'Rejeté' },
     ],
   },
 ];

@@ -384,10 +384,10 @@ export function BOCarteActeurs() {
             <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 0 }}>
               {[
                 { label: "Statut", value: selectedActeur.statut || "en_attente" },
-                { label: "Region", value: selectedActeur.region || "Non renseigne" },
-                { label: "Commune", value: selectedActeur.commune || "Non renseignee" },
-                { label: "Identificateur", value: selectedActeur.identificateur_nom || "Non assigne" },
-                { label: "Date identification", value: selectedActeur.created_at ? new Date(selectedActeur.created_at).toLocaleDateString("fr-FR") : "Non renseigne" },
+                { label: "Région", value: selectedActeur.region || "Non renseigné" },
+                { label: "Commune", value: selectedActeur.commune || "Non renseignée" },
+                { label: "Identificateur", value: selectedActeur.identificateur_nom || "Non assigné" },
+                { label: "Date identification", value: selectedActeur.created_at ? new Date(selectedActeur.created_at).toLocaleDateString("fr-FR") : "Non renseigné" },
                 { label: "Géolocalisé", value: selectedActeur.latitude ? "Oui" : "Non" },
               ].map((row, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #f5f0ea" }}>
