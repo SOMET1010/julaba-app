@@ -493,7 +493,10 @@ export function GestionStock() {
       return;
     }
     const s = stocks.find(x => x.id === id);
-    const p = products.find(x => x.id === id || x.nom === s?.name);
+    // Cible le produit par ID EXACT d'abord, repli par nom seulement s'il n'y a pas
+    // de correspondance d'id : sinon, avec deux produits de même nom, Array.find
+    // renverrait le premier homonyme et on supprimerait le MAUVAIS produit.
+    const p = products.find(x => x.id === id) || (s?.name ? products.find(x => x.nom === s.name) : undefined);
     // On ATTEND la vraie réponse avant d'annoncer : la suppression touche
     // /caisse/produits (Kassa) et/ou /stocks. On réussit si au moins l'une aboutit.
     // Plus d'annonce « supprimé » avant confirmation (illusion de perte de donnée).
@@ -528,7 +531,9 @@ export function GestionStock() {
     // /caisse/produits/:id ne trouve rien et la modif est perdue au rechargement.
     // On résout le vrai produit Kassa (par id OU par nom) ; s'il n'existe pas
     // encore côté Kassa, on le crée pour que la modification soit bien persistée.
-    const kassa = products.find((x: any) => x.id === id || x.nom === selectedStock.name);
+    // ID exact d'abord, repli par nom ensuite : évite d'éditer un homonyme
+    // (deux produits de même nom → Array.find renverrait le premier).
+    const kassa = products.find((x: any) => x.id === id) || products.find((x: any) => x.nom === selectedStock.name);
     const champs = {
       nom: editForm.name,
       prix: editForm.salePrice,
