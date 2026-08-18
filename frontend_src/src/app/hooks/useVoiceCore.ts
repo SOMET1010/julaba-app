@@ -10,6 +10,8 @@ import { API_URL } from "../utils/api";
 // Offline-first : STT sur l'appareil + compréhension locale (sans réseau ni LLM).
 import { transcribeWav, offlineModelReady, ensureOfflineModel } from "../voice-offline/offlineStt";
 import { intentLocal } from "../voice-offline/localIntent";
+// V4 : questions « chiffres du jour » (lecture seule), consultées APRÈS intentLocal.
+import { detecterQuestion, phraseReponse, type ChiffresJour } from "../services/intentionsCaisse";
 import { preloadEarlyAudios } from "../services/earlyAudioCache";
 import {
   preloadAudioContext,
@@ -68,6 +70,8 @@ export interface VoiceCoreContext {
   userId?: string;
   nombreVentes?: number;
   topStocks?: string;
+  /** Meilleure vente du jour (facultatif) — nourrit la question « meilleure vente ». */
+  topProduit?: { nom: string; quantite?: number } | null;
   [key: string]: unknown;
 }
 
@@ -683,6 +687,27 @@ export function useVoiceCore({
     module: context.module || "general",
   }), [context]);
 
+  // ── Questions « chiffres du jour » (V4) ──────────────────────
+  // Consulté APRÈS intentLocal : lecture seule, aucune écriture possible ici.
+  // Les chiffres viennent du contexte fourni par l'écran (état local/API).
+  const answerQuestion = useCallback(async (texte: string): Promise<boolean> => {
+    const question = detecterQuestion(texte);
+    if (!question) return false;
+    const chiffres: ChiffresJour = {
+      ventes: Number(context.ventes) || 0,
+      depenses: Number(context.depenses) || 0,
+      caisse: context.caisse != null ? Number(context.caisse) : undefined,
+      nombreVentes: context.nombreVentes != null ? Number(context.nombreVentes) : undefined,
+      topProduit: context.topProduit ?? null,
+    };
+    const phrase = phraseReponse(question, chiffres);
+    clearThinkingTimer();
+    addToHistory(texte, phrase);
+    setState("idle"); setLiveTranscript("");
+    await ttsSpeak(phrase);
+    return true;
+  }, [context, addToHistory, clearThinkingTimer]);
+
   // ── Process audio ────────────────────────────────────────────
   const processAudio = useCallback(async (mimeType: string) => {
     setState("processing");
@@ -761,6 +786,8 @@ export function useVoiceCore({
         await handleResponse(local as Partial<VoiceProcessResponse>, texte);
         return;
       }
+      // V4 : pas une vente/dépense — peut-être une question sur les chiffres du jour.
+      if (texte && (await answerQuestion(texte))) return;
       // Entendu mais pas compris (ou rien entendu) : voix réelle de Tata Nanti Lou.
       clearThinkingTimer(); setState("idle"); setLiveTranscript("");
       if (texte) await ttsSpeak("Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît.", "french", "pas_compris");
@@ -773,7 +800,7 @@ export function useVoiceCore({
         : "Je n'ai pas réussi à t'écouter, réessaie.");
       return;
     }
-  }, [handleResponse, stopSilenceDetection, startThinkingPhrases, clearThinkingTimer]);
+  }, [handleResponse, stopSilenceDetection, startThinkingPhrases, clearThinkingTimer, answerQuestion]);
 
   // ── sendText ─────────────────────────────────────────────────
   const sendText = useCallback(async (text: string): Promise<boolean> => {
@@ -794,6 +821,9 @@ export function useVoiceCore({
         // jette jamais une commande qui n'a pas été traitée.
         return await handleResponse(local as Partial<VoiceProcessResponse>, text);
       }
+      // V4 : pas une vente/dépense — peut-être une question sur les chiffres du
+      // jour. `true` = traitée (une question rejouée hors-ligne n'a pas de sens).
+      if (await answerQuestion(text)) return true;
       // Pas une opération financière reconnue : voix réelle de Tata Nanti Lou.
       // Retour false : un rejeu dont le texte n'est plus reconnu doit rester en
       // file (visible « en attente »), pas disparaître comme un faux succès.
@@ -805,7 +835,7 @@ export function useVoiceCore({
       await ttsSpeak("Je n'ai pas réussi, réessaie.");
       return false;
     }
-  }, [handleResponse, startThinkingPhrases, clearThinkingTimer]);
+  }, [handleResponse, startThinkingPhrases, clearThinkingTimer, answerQuestion]);
 
   // ── startRecording ───────────────────────────────────────────
   const startRecording = useCallback(async () => {
