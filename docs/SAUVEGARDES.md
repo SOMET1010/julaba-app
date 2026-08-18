@@ -34,9 +34,16 @@ pg_dump "$EXTERNAL_DATABASE_URL" -Fc --no-owner -f "julaba-$(date +%F).dump"
 - Rétention : garder 7 dumps quotidiens + 4 hebdomadaires.
 - Stockage : PAS sur Render, PAS dans le dépôt git (données personnelles +
   argent). Un dossier chiffré Drive/objet S3 privé suffit.
-- Automatisation possible : GitHub Actions `schedule` (cron quotidien) avec
-  l'URL en secret `DATABASE_URL` et upload du dump en artefact privé — ou un
-  simple cron sur un poste de l'équipe.
+- **Automatisation en place** : le workflow `.github/workflows/sauvegarde-db.yml`
+  fait ce dump chaque nuit à 01:30 (Abidjan), chiffré en AES-256, conservé en
+  artefact privé du dépôt (7 jours en semaine, 35 jours le dimanche). Pour
+  l'activer, poser deux secrets GitHub (Settings → Secrets → Actions) :
+  `BACKUP_DATABASE_URL` (External Database URL de julaba-db) et
+  `BACKUP_PASSPHRASE` (phrase de chiffrement, à garder au coffre — sans elle,
+  restauration impossible). Tant que l'URL n'est pas posée, le job s'exécute en
+  « succès avec avertissement » sans rien sauvegarder.
+- Déchiffrer un dump téléchargé depuis les artefacts :
+  `openssl enc -d -aes-256-cbc -pbkdf2 -in julaba-JJ.dump.enc -out julaba-JJ.dump -pass pass:LA_PASSPHRASE`
 
 ## 3. Restauration
 
