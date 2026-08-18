@@ -39,16 +39,48 @@ Moteur : **AAR officiel `sherpa-onnx-1.13.5.aar`** (release GitHub v1.13.5,
 
 ## Construire l'APK avec la voix
 
+**Prérequis machine dev** : **JDK 21** (Temurin recommandé). Gradle 8.14
+(utilisé par ce projet) est **incompatible avec JDK 25** — vérifié au premier
+build réel (voir § Premier build réel). `java -version` doit afficher `21.x`
+avant de lancer Gradle.
+
 ```bash
+# depuis la racine du dépôt : construire le web AVANT le sync Android —
+# webDir pointe vers frontend/dist, jamais peuplé sans ce build.
+npm run build --workspace frontend_src
+npx cap sync android   # copie frontend/dist dans android/app/src/main/assets/public
+
 cd android
 ./scripts/installer-voix.sh   # pose l'AAR dans app/libs/ + le modèle dans assets/
 ./gradlew assembleDebug
 ```
 
+⚠️ **`capacitor.config.ts` (racine)** : `webDir` doit valoir `'frontend/dist'`
+(le dossier de sortie réel de Vite — `frontend_src/vite.config.ts` →
+`build.outDir: "../frontend/dist"`). Une valeur malformée ou pointant vers
+`frontend_src/dist` (jamais peuplé) fait échouer ou vider silencieusement
+`npx cap sync` — c'est le blocage levé au premier build réel (ci-dessous).
+
 Sans le script : le build **échoue explicitement** (unresolved `com.k2fsa.sherpa.onnx`)
 — voulu, jamais un APK muet silencieux. Sans le modèle dans les assets :
 l'APK se construit, `isAvailable()` répond `false`, le frontend garde son filet
 clavier (comportement honnête existant).
+
+## Premier build réel (18/08/2026, Aboa Akoun Bernard)
+
+Premier `assembleDebug` hors sandbox — **BUILD SUCCESSFUL**.
+
+| Constat | Détail |
+|---|---|
+| Blocage levé | `webDir` mal configuré à la racine empêchait `npx cap sync` de trouver le web build → corrigé sur `main` (voir avertissement ci-dessus) |
+| JDK | **21 requis** (Temurin) — JDK 25 incompatible avec Gradle 8.14, build en échec |
+| APK généré | `android/app/build/outputs/apk/debug/app-debug.apk` |
+| Taille | **190 Mo** (debug, ABI non filtrées — cohérent avec ~49 Mo AAR + 71 Mo modèle + web + debug symbols ; alléger via `splits.abi`/AAB reste à décider, cf. § Points d'attention) |
+| Modèle | Les 4 fichiers (encoder/decoder/joiner/tokens) bien intégrés dans l'APK |
+
+Reste à faire (livrables 3 et 4 plus haut) : mesures RAM/latence sur appareil,
+puis recette des 14 scénarios de la vente vocale + les cas limites (micro,
+oreillette, hors-ligne, batterie faible…).
 
 ## Ce que ce lot NE fait PAS (limites sandbox — à faire sur machine dev)
 
