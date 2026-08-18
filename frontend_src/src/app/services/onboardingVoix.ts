@@ -14,6 +14,7 @@
 
 import { stopAllAudio } from './elevenlabs';
 import { speakClipOrText, stopAllVoice } from './audioManager';
+import { packClipUrl } from './voicePacksRuntime';
 
 const BASE = '/voix/tata';
 
@@ -87,7 +88,10 @@ export async function direIntro(key: keyof typeof INTRO_CLIPS): Promise<void> {
   // Via l'audioManager (hygiène post-audit C2) : clip de la vraie Tata, repli
   // voix de secours DANS le même créneau exclusif — l'onboarding ne peut plus
   // se superposer à une autre voix, et stopAllVoice() le coupe comme le reste.
-  try { await speakClipOrText({ clipUrl: clip.file, text: clip.texte }); }
+  // V1 (packs) : un clip d'intro PUBLIÉ par manifeste (clé « intro_<clé> »)
+  // prime sur le fichier embarqué — les 9 intros arriveront sans rebuild.
+  const clipUrl = packClipUrl(`intro_${String(key)}`) ?? clip.file;
+  try { await speakClipOrText({ clipUrl, text: clip.texte }); }
   catch { /* muet plutôt que planter */ }
 }
 
