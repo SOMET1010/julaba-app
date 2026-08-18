@@ -25,7 +25,7 @@
     "test:stats": "tsx src/app/services/statsVente.test.mts",
     "test:rupture": "tsx src/app/services/ruptureStock.test.mts",
     "test:caisse-pilote": "tsx src/app/components/marchand/caissePiloteEspeces.test.mts",
-    "test:ci": "npm run test:audio && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:offline && npm run test:marge && npm run test:stats && npm run test:rupture && npm run test:caisse-pilote && npm run test:jour && npm run test:mouvements && npm run test:guidage && npm run test:provisoire && npm run test:correction && npm run test:dialogues && npm run test:negociation && npm run test:intentions && npm run test:packs && npm run test:intentlocal",
+    "test:ci": "npm run test:audio && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:offline && npm run test:marge && npm run test:stats && npm run test:rupture && npm run test:caisse-pilote && npm run test:jour && npm run test:mouvements && npm run test:guidage && npm run test:provisoire && npm run test:correction && npm run test:dialogues && npm run test:negociation && npm run test:intentions && npm run test:packs && npm run test:intentlocal && npm run test:studio",
     "test:marge": "tsx src/app/services/margeVente.test.mts",
     "test:provisoire": "tsx src/app/services/ligneProvisoire.test.mts",
     "test:correction": "tsx src/app/services/grammaireCorrection.test.mts",
@@ -34,6 +34,7 @@
     "test:intentions": "tsx src/app/services/intentionsCaisse.test.mts",
     "test:packs": "tsx src/app/services/voicePacks.test.mts",
     "test:intentlocal": "tsx src/app/voice-offline/localIntent.test.mts",
+    "test:studio": "tsx src/app/services/studioWav.test.mts",
     "test:jour": "tsx src/app/utils/jourLocal.test.mts",
     "test:mouvements": "tsx src/app/services/mouvementsStock.test.mts",
     "test:guidage": "tsx src/app/utils/guidageVocal.test.mts"
