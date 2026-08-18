@@ -20,8 +20,9 @@ const UNITES_INVARIABLES = new Set(['kg', 'g', 'mg', 'l', 'cl', 'ml', 'dl', 'm',
 function plurielUnite(u: string): string {
   return UNITES_INVARIABLES.has(u.toLowerCase()) ? u : pluriel(u);
 }
-/** Pluralise le DERNIER mot d'un libellé (« banane plantain » → « banane plantains »). */
-function plurielNom(nom: string): string {
+/** Pluralise le DERNIER mot d'un libellé (« banane plantain » → « banane plantains »).
+ *  Exporté : la confirmation de vente d'intentLocal (« Vente de 2 tomates ») l'utilise aussi. */
+export function plurielNom(nom: string): string {
   const mots = nom.trim().split(' ');
   if (mots.length === 0) return nom;
   mots[mots.length - 1] = pluriel(mots[mots.length - 1]);
