@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as audioManager from '../../services/audioManager';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Mail, Bell, Globe, Save, ChevronRight, LogOut, X, Lock, Moon, Sun, Check, Smartphone, Monitor, Trash2, LogIn, Wifi,
@@ -270,16 +271,12 @@ export function BOProfil() {
   if (!boUser) return null;
 
   // ── Synthèse vocale ──
+  // Via l'audioManager (hygiène post-audit C4) : voix FR stable, créneau
+  // exclusif — un clip en cours est coupé au lieu de jouer sous l'utterance.
   const speak = (text: string) => {
     if (voiceMuted) return;
     stopChunkedSpeaking();
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'fr-FR';
-      utterance.rate = 0.95;
-      window.speechSynthesis.speak(utterance);
-    }
+    try { void audioManager.speak(text); } catch { /* ignore */ }
   };
 
   // ── Gestionnaires ──
