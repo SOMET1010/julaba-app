@@ -1,0 +1,24 @@
+{
+  "manifest_version": 1,
+  "packs": [
+    {
+      "lang": "fr",
+      "voice": "tata_v2",
+      "pack_version": 1,
+      "base_url": "https://julaba-web.onrender.com/voix/packs/fr/tata_v2/1",
+      "clips": [
+        {
+          "key": "intro_bienvenue",
+          "file": "intro_bienvenue.mp3",
+          "texte": "Bonjour, je suis Tata. On va compter ensemble.",
+          "duration_ms": 2400
+        },
+        {
+          "key": "vente_enregistree",
+          "file": "vente_enregistree.mp3",
+          "texte": "Vente confirmée"
+        }
+      ]
+    }
+  ]
+}
