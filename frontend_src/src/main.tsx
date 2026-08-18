@@ -67,6 +67,13 @@ import('./app/services/tataVoice')
   })
   .catch(() => { /* ignore */ });
 
+// Packs de voix (V1) : recharge le dernier manifeste validé puis tente un
+// rafraîchissement réseau. Jamais bloquant — sans manifeste, l'appli garde
+// exactement sa voix embarquée.
+import('./app/services/voicePacksRuntime')
+  .then(({ initVoicePacks }) => { void initVoicePacks(); })
+  .catch(() => { /* ignore */ });
+
 const root = document.getElementById('root');
 
 if (!root) {

@@ -18,6 +18,8 @@
 // par la voix de secours FR (jamais « Manuela »).
 // ──────────────────────────────────────────────────────────────────────────
 
+import { packClipUrl, packClipTexte } from './voicePacksRuntime';
+
 const BASE = '/voix/tata';
 
 export interface TataClip {
@@ -41,14 +43,19 @@ export const TATA_CLIPS: Record<string, TataClip> = {
   ouvre_journee:      { file: `${BASE}/ui-091.mp3`, texte: "Ouvre ta journée pour activer ta caisse" },
 };
 
-/** URL du clip pour une clé donnée, ou null si inconnue. */
+/**
+ * URL du clip pour une clé donnée, ou null si inconnue.
+ * Hiérarchie (V1, packs de voix) : clip PUBLIÉ par manifeste (mise à jour sans
+ * rebuild d'APK — nouvelles intros, corrections) → clip EMBARQUÉ → null
+ * (l'audioManager retombe alors sur la synthèse, même créneau exclusif).
+ */
 export function tataClipUrl(key: string): string | null {
-  return TATA_CLIPS[key]?.file ?? null;
+  return packClipUrl(key) ?? TATA_CLIPS[key]?.file ?? null;
 }
 
 /** Texte prononcé par le clip (pour l'afficher à l'écran), ou null. */
 export function tataClipTexte(key: string): string | null {
-  return TATA_CLIPS[key]?.texte ?? null;
+  return packClipTexte(key) ?? TATA_CLIPS[key]?.texte ?? null;
 }
 
 let _preloaded = false;
