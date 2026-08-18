@@ -12,10 +12,10 @@ import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 // avec un mot de passe connu (à distribuer aux testeurs) + un jeu de données
 // d'exemple pour l'un d'eux, afin que l'appli s'affiche déjà « peuplée ».
 //
-// Sécurité : actif par DÉFAUT (serveur de démo/test). Pour un vrai serveur de
-// production, poser SEED_DEMO=false pour le désactiver complètement.
-// (Défaut « on » choisi pour rester turnkey : aucune variable à régler à la main
-//  sur l'hébergeur.)
+// Sécurité : actif par défaut en dev/test (turnkey), mais DÉSACTIVÉ D'OFFICE en
+// production (NODE_ENV=production) sauf opt-in explicite SEED_DEMO="true" — un
+// serveur de démo assume ce choix dans sa config, un serveur réel ne peut pas
+// hériter des comptes de démo par oubli. SEED_DEMO=false le coupe partout.
 // Idempotent : ne recrée jamais un compte ou des données déjà présents.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -75,7 +75,11 @@ export class SeedDemoService {
   // Appelé APRÈS le bind du port (depuis main.ts), en arrière-plan. Le seed est
   // idempotent : s'il échoue, l'app reste debout et sert quand même.
   async runSeed(): Promise<void> {
-    if (process.env.SEED_DEMO === 'false') return; // désactivable en production
+    // Production : HARD-OFF sauf opt-in explicite SEED_DEMO="true". Les comptes
+    // de démo (mots de passe publiés dans ce fichier) ne doivent jamais exister
+    // sur un vrai serveur par simple oubli d'une variable d'environnement.
+    if (process.env.NODE_ENV === 'production' && process.env.SEED_DEMO !== 'true') return;
+    if (process.env.SEED_DEMO === 'false') return; // désactivable partout ailleurs
 
     // Démarrage rapide : si le jeu de démo est DÉJÀ chargé (acteur en attente
     // « Awa Nénè », créé en fin de scénario), on ne rejoue RIEN. Rejouer le seed
