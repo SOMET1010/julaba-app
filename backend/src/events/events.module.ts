@@ -9,9 +9,16 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get("JWT_SECRET") || "julaba-secret",
-      }),
+      useFactory: (config: ConfigService) => {
+        const secret = config.get<string>("JWT_SECRET");
+        // Jamais de secret de repli en dur : un fallback publié dans le code
+        // rendrait les jetons WebSocket falsifiables. Même exigence que
+        // l'AuthModule (même secret, même provenance).
+        if (!secret) {
+          throw new Error("JWT_SECRET manquant — requis pour signer/vérifier les jetons (aucun repli).");
+        }
+        return { secret };
+      },
     }),
   ],
   providers: [EventsGateway],

@@ -62,12 +62,14 @@ async function prepareDatabase(logger: Logger) {
 // suivante ; il n'y a aucune raison d'abattre tout le serveur.
 function installProcessGuards(logger: Logger) {
   process.on('unhandledRejection', (reason) => {
+    Sentry.captureException(reason);
     logger.error(
       '[GUARD] Promesse rejetée non gérée (serveur maintenu en vie): ' +
         (reason instanceof Error ? reason.stack || reason.message : String(reason)),
     );
   });
   process.on('uncaughtException', (err) => {
+    Sentry.captureException(err);
     logger.error(
       '[GUARD] Exception non gérée (serveur maintenu en vie): ' +
         (err instanceof Error ? err.stack || err.message : String(err)),
@@ -75,9 +77,23 @@ function installProcessGuards(logger: Logger) {
   });
 }
 
+// Fail-fast production : un secret manquant ne doit JAMAIS laisser démarrer un
+// serveur qui signerait des jetons sans clé ou chiffrerait les PIN avec une clé
+// vide. En dev/test on ne bloque rien (harnais et .env locaux s'en chargent).
+function verifierSecretsProduction(logger: Logger) {
+  if (process.env.NODE_ENV !== 'production') return;
+  const requis = ['JWT_SECRET', 'REFRESH_TOKEN_SALT', 'PIN_ENCRYPTION_KEY'];
+  const manquants = requis.filter((k) => !process.env[k]);
+  if (manquants.length > 0) {
+    logger.error(`[BOOT] Secrets manquants en production : ${manquants.join(', ')} — arrêt immédiat.`);
+    process.exit(1);
+  }
+}
+
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   installProcessGuards(logger);
+  verifierSecretsProduction(logger);
   await prepareDatabase(logger);
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log', 'debug'],

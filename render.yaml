@@ -77,15 +77,33 @@ services:
       # URL du frontend autorisée (CORS + cookies cross-domaine)
       - key: CORS_ORIGIN
         value: https://julaba-web.onrender.com
-      # Comptes de démo (serveur de TEST) : crée au démarrage 3 comptes marchands
-      # prêts à l'emploi + un jeu de données d'exemple. Mettre à "false" (ou
-      # supprimer) sur un vrai serveur de production.
+      # Comptes de démo : DÉSACTIVÉS par défaut (le backend les refuse d'office
+      # en production sauf opt-in explicite). Sur un serveur de DÉMO assumé,
+      # passer à "true" au dashboard — jamais sur un serveur réel : les mots de
+      # passe de ces comptes sont publiés dans le dépôt.
       - key: SEED_DEMO
-        value: "true"
+        value: "false"
       # Code marchand = pavé à 4 chiffres -> le mot de passe de démo DOIT être
-      # un code numérique à 4 chiffres.
+      # un code numérique à 4 chiffres (utilisé seulement si SEED_DEMO="true").
       - key: SEED_DEMO_PASSWORD
         value: "1234"
+      # Migrations TypeORM appliquées automatiquement au démarrage (base déjà
+      # peuplée). Sans ce réglage, toute évolution de schéma reste lettre morte
+      # en prod et le front casse sur les colonnes manquantes.
+      - key: DB_MIGRATIONS_RUN
+        value: "true"
+      # Quotas par IP corrects derrière le routeur Render : sans trust proxy,
+      # req.ip = IP du routeur PARTAGÉE par tout le monde (le login à 5/min
+      # devient un verrou collectif un matin de marché). À CALIBRER au dashboard
+      # après mesure de la chaîne réelle via GET /api/v1/health/net depuis un
+      # téléphone (valeur = nombre de sauts, typiquement "1" sur Render).
+      # Voir docs/AUDIT_THROTTLING.md § trust proxy.
+      - key: TRUST_PROXY
+        sync: false
+      # Télémétrie d'erreurs (optionnelle) : poser le DSN au dashboard pour
+      # activer Sentry ; sans DSN le backend reste 100 % silencieux (no-op).
+      - key: SENTRY_DSN
+        sync: false
       # Optionnel (voix cloud) — le cœur marche sans
       - key: OPENAI_API_KEY
         sync: false
