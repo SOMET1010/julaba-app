@@ -48,6 +48,10 @@ export const router = createBrowserRouter([
       // Console interne du Studio Voice (enregistrement des clips de Tata) —
       // outil d'équipe local au navigateur, aucune donnée ni écriture serveur.
       { path: "/studio-voix", element: L(() => import("./pages/StudioVoix")), errorElement: <ErrorFallback /> },
+      // Studio v1 : collecte terrain par élicitation + validation par paires.
+      // Squelette (backlog V5) — file locale, pas de synchro serveur.
+      { path: "/collecte-voix", element: L(() => import("./pages/CollecteVoix")), errorElement: <ErrorFallback /> },
+      { path: "/collecte-voix/validation", element: L(() => import("./pages/ValidationCollecte")), errorElement: <ErrorFallback /> },
       ...(isDev ? [{ path: "/dev-mode", element: L(() => import("./pages/DevModeHome").then(m => ({ default: m.DevModeHome }))), errorElement: <ErrorFallback /> }] : []),
       ...diagnosticRoutes,
 
