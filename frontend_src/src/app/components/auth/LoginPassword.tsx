@@ -505,20 +505,29 @@ export function LoginPassword() {
   // pavé (ou par la reconnaissance « Tata me reconnaît »). La dictée
   // vocale reste réservée au NUMÉRO de téléphone.
 
-  // Tata parle AU PREMIER CONTACT (les navigateurs bloquent le son avant tout
-  // geste). On accueille dès que la marchande touche l'écran — sauf si elle
-  // touche directement Tata ou un bouton (ceux-là gèrent déjà leur propre voix),
-  // pour ne pas se chevaucher. Une seule fois.
+  // Tata parle DÈS L'ENTRÉE dans l'écran numéro — même mécanisme que les écrans
+  // 'password'/'reconnaissance' juste au-dessus (useEffect sur [step]), qui
+  // fonctionnent déjà sans geste préalable : à ce stade du parcours (après
+  // Welcome + Onboarding, dans la même session SPA), le premier geste utilisateur
+  // a déjà eu lieu, donc rien ne bloque la voix.
+  //
+  // AVANT : on attendait le premier "pointerdown" hors bouton/image pour parler
+  // (contournement d'un blocage navigateur avant tout geste). Mais si CE premier
+  // geste tombait sur le gros micro — l'action la plus visible de l'écran — le
+  // filtre `closest('button, img')` annulait la parole, et comme l'écouteur est
+  // `{ once: true }`, il se consommait quand même : plus AUCUNE voix pour le
+  // reste de la session. C'est le silence total observé en recette terrain.
+  //
+  // On explique aussi le GESTE, pas seulement le champ ("tape un chiffre à la
+  // fois, les ronds se remplissent") — lire seulement "entre ton numéro" ne
+  // suffit pas à quelqu'un qui ne lit pas et n'a jamais vu cet écran.
   useEffect(() => {
     if (step !== 'phone') return;
     if (!guidageVocal(accessMode)) return; // mode lecture : pas d'accueil vocal auto
-    const greet = (e: PointerEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && t.closest && t.closest('button, img')) return;
-      ecouterTata();
-    };
-    window.addEventListener('pointerdown', greet, { once: true });
-    return () => window.removeEventListener('pointerdown', greet);
+    const consigne = voixEcouteDispo
+      ? 'Pour entrer, dis ton numéro à voix haute, ou tape les chiffres un par un. Les ronds en haut se rempliront.'
+      : 'Tape les chiffres de ton numéro, un par un. Les ronds en haut se rempliront.';
+    parle(consigne);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
@@ -795,6 +804,9 @@ export function LoginPassword() {
         const next = phone + digit;
         setPhone(next);
         setError('');
+        // Retour tactile à CHAQUE chiffre tapé — perceptible sans lire ni entendre,
+        // et sans jamais révéler le chiffre à voix haute (confidentialité du numéro).
+        try { navigator.vibrate?.(12); } catch { /* ignore */ }
         if (import.meta.env.DEV && next === '0501604040') setShowDevButton(true);
         if (next.length === 10) {
           if (!numeroCIComplet(next, TEST_PHONES)) {
@@ -827,6 +839,11 @@ export function LoginPassword() {
     if (step === 'phone') {
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
       setPhone(p => p.slice(0, -1));
+      // Effacer est ANNONCÉ — geste distinct du simple ajout d'un chiffre (motif
+      // de vibration différent) + un mot dit à voix haute. « Effacé » ne révèle
+      // aucun chiffre : rien à cacher, contrairement au numéro lui-même.
+      try { navigator.vibrate?.([10, 30, 10]); } catch { /* ignore */ }
+      if (guidageVocal(accessMode)) parle('Effacé.');
     } else {
       if (pinInput.length === 0) {
         retourDepuisCode();
