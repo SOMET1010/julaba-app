@@ -6,7 +6,6 @@ import { Card } from '../ui/card';
 import { useApp } from '../../contexts/AppContext';
 import { useModalRegister } from '../../contexts/ModalContext';
 import { useCooperative } from '../../contexts/CooperativeContext';
-import { usePredictiveTTS } from '../../services/predictiveTTS';
 import { Navigation } from '../layout/Navigation';
 import { RoleDashboard } from '../shared/RoleDashboard';
 import { getRoleConfig, ROLE_COLORS } from '../../config/roleConfig';
@@ -25,13 +24,6 @@ export function CooperativeHome() {
   const navigate = useNavigate();
   const { user, speak } = useApp();
   const { stats, getMembresActifs, cooperative, membres } = useCooperative();
-
-  usePredictiveTTS({
-    module: 'dashboard',
-    prenom: user?.prenoms || user?.prenoms || 'ma chère',
-    hasVentes: (getMembresActifs?.().length || 0) > 0,
-    recentIntents: [],
-  });
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isJourneeExpanded, setIsJourneeExpanded] = useState(false);
