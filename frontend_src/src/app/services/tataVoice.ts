@@ -32,8 +32,6 @@ export interface TataClip {
 // sa vraie voix. Les clés absentes retombent sur la voix de secours FR.
 export const TATA_CLIPS: Record<string, TataClip> = {
   vente_enregistree:  { file: `${BASE}/ui-128.mp3`, texte: "Vente confirmée" },
-  cest_fait:          { file: `${BASE}/ui-128.mp3`, texte: "Vente confirmée" },
-  je_note:            { file: `${BASE}/ui-128.mp3`, texte: "Vente confirmée" },
   vente_refusee:      { file: `${BASE}/ui-129.mp3`, texte: "Vente refusée" },
   depense_enregistree:{ file: `${BASE}/ui-034.mp3`, texte: "Dépense enregistrée" },
   bien_recu:          { file: `${BASE}/ui-057.mp3`, texte: "J'ai compris" },
