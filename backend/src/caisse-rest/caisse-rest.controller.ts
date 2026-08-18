@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Post, Put, Patch, Delete, Body, Param, ParseUUIDPipe, NotFoundException, UseGuards, Optional, Logger } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Put, Patch, Delete, Body, Param, ParseUUIDPipe, NotFoundException, UseGuards, Optional, Logger, Query } from '@nestjs/common';
 import { EventsGateway } from '../events/events.gateway';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -21,9 +21,25 @@ export class CaisseRestController {
     @Optional() private eventsGateway?: EventsGateway,
   ) {}
 
+  // Liste PLAFONNÉE : sans borne, un historique de plusieurs années revenait en
+  // entier à chaque ouverture de la caisse (réponse de plusieurs Mo sur un
+  // téléphone 3G). Défaut 500 lignes (≈ plusieurs semaines de ventes), maximum
+  // 1000 ; ?page=2 pour remonter plus loin. Les consommateurs front acceptent
+  // déjà un tableau simple — le contrat de réponse ne change pas.
   @Get('transactions')
-  findAll(@CurrentUser() user: User) {
-    return this.repo.find({ where: { user_id: user.id }, order: { created_at: 'DESC' } });
+  findAll(
+    @CurrentUser() user: User,
+    @Query('limit') limit?: string,
+    @Query('page') page?: string,
+  ) {
+    const take = Math.min(Math.max(parseInt(limit ?? '', 10) || 500, 1), 1000);
+    const pageNum = Math.max(parseInt(page ?? '', 10) || 1, 1);
+    return this.repo.find({
+      where: { user_id: user.id },
+      order: { created_at: 'DESC' },
+      take,
+      skip: (pageNum - 1) * take,
+    });
   }
 
   /**
@@ -365,8 +381,6 @@ const CATALOGUE = [
   { nom: 'Attiéké',       categorie: 'transformation', unite: 'kg',  prixAchat: 400,  prixVente: 500,  mots_cles: ['attieke', 'attiéké'] },
   { nom: 'Gari',          categorie: 'transformation', unite: 'kg',  prixAchat: 350,  prixVente: 450,  mots_cles: ['gari'] },
 ];
-
-import { Query } from '@nestjs/common';
 
 @UseGuards(JwtAuthGuard)
 @Controller('catalogue')
