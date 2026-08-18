@@ -3,6 +3,19 @@ import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { KeyRound, CheckCircle } from 'lucide-react';
 import { activerCompte } from '../../services/authService';
+import { speakClipOrText } from '../../services/audioManager';
+import { tataUiClipForText } from '../../services/tataUiClips';
+import { guidageVocal } from '../../utils/accessMode';
+import { vibrerErreur, vibrerSucces } from '../../utils/haptique';
+
+// Voix de cet écran : clip de la vraie Tata si la phrase correspond, sinon voix
+// de secours FR — même mécanisme que le reste de l'auth (LoginPassword.tsx).
+function parle(texte: string): void {
+  if (!texte) return;
+  let clip: string | null = null;
+  try { clip = tataUiClipForText(texte); } catch { /* ignore */ }
+  try { void speakClipOrText({ clipUrl: clip ?? undefined, text: texte }); } catch { /* ignore */ }
+}
 
 // Écran d'ACTIVATION (P0.0, ADR-002). Une marchande fraîchement enrôlée n'a AUCUN
 // secret utilisable : elle saisit le code d'activation reçu (lu par l'identificateur)
@@ -24,6 +37,28 @@ export function ActivationScreen() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); }, []);
+
+  // Voix-first (même correctif que l'écran numéro, périmètre identique : on
+  // explique le GESTE, on ne change ni le modèle ni le flux). Cet écran est
+  // utilisé une seule fois, juste après l'enrôlement par l'identificateur —
+  // qui est physiquement présent pour aider à lire le code reçu si besoin.
+  useEffect(() => {
+    if (!guidageVocal()) return;
+    parle("Tape le code que tu as reçu, puis choisis ton code secret à quatre chiffres. Personne d'autre ne doit le connaître.");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!error) return;
+    vibrerErreur();
+    if (guidageVocal()) parle(error);
+  }, [error]);
+
+  useEffect(() => {
+    if (!success) return;
+    vibrerSucces();
+    if (guidageVocal()) parle('Compte activé ! Tu peux maintenant te connecter avec ton code.');
+  }, [success]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
