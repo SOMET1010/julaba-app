@@ -15,7 +15,8 @@ import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits } from '../../utils/frenchDigits';
 import { tataUiClipForText } from '../../services/tataUiClips';
-import { speakBrowser, voixSecoursNom } from '../../services/elevenlabs';
+import { voixSecoursNom } from '../../services/elevenlabs';
+import { speak as managerSpeak, speakClipOrText } from '../../services/audioManager';
 import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
@@ -181,7 +182,7 @@ export function LoginPassword() {
       : 'Dis ton numéro, ou tape-le.';
     // UNE SEULE voix de secours dans toute l'appli (speakBrowser) : même voix FR,
     // même débit, même timbre partout → fini le « mélange de voix ».
-    try { speakBrowser(`${greetTitle}. ${greetSub}. ${consigne}`).finally(() => setTataSpeaking(false)); }
+    try { managerSpeak(`${greetTitle}. ${greetSub}. ${consigne}`).finally(() => setTataSpeaking(false)); }
     catch { setTataSpeaking(false); }
     setTimeout(() => setTataSpeaking(false), 8000); // filet
   };
@@ -212,26 +213,15 @@ export function LoginPassword() {
   // du navigateur). Une vendeuse qui ne lit pas peut ainsi entendre les consignes
   // et les erreurs au lieu de devoir lire un petit texte.
   // Voix intégrée du téléphone (hors-ligne, PAS Internet) — dernier recours. On
-  // passe par LE point unique speakBrowser (voix FR stable, jamais « Manuela »).
-  const parleRobot = (texte: string) => {
-    if (!texte) return;
-    try { void speakBrowser(texte); } catch { /* ignore */ }
-  };
-  // On PARLE d'abord avec la VRAIE voix de Tata (clip embarqué) quand la phrase
-  // correspond exactement à un clip enregistré (« Entre ton code secret… »,
-  // « Connexion refusée… », etc.). Sinon, voix du téléphone. Jamais Internet.
+  // Toute la voix de cet écran passe par l'audioManager (créneau exclusif,
+  // hygiène post-audit C3) : clip de la VRAIE Tata quand la phrase correspond à
+  // un clip enregistré, sinon voix de secours FR — le repli est géré DANS le
+  // même créneau, donc jamais deux voix superposées, et stopAllVoice() coupe tout.
   const parle = (texte: string) => {
     if (!texte) return;
-    try {
-      const clip = tataUiClipForText(texte);
-      if (clip) {
-        try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
-        const a = new Audio(clip);
-        a.play().catch(() => parleRobot(texte));
-        return;
-      }
-    } catch { /* ignore */ }
-    parleRobot(texte);
+    let clip: string | null = null;
+    try { clip = tataUiClipForText(texte); } catch { /* ignore */ }
+    try { void speakClipOrText({ clipUrl: clip ?? undefined, text: texte }); } catch { /* ignore */ }
   };
   // GUIDAGE VOCAL selon le mode : en mode « lecture » (elle lit vite), on ne parle
   // PAS automatiquement (le texte suffit). En mixte/voix, Tata annonce erreurs et
@@ -248,14 +238,14 @@ export function LoginPassword() {
       const geste = compteConnu.biometrie
         ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
         : 'Touche le grand bouton et entre ton code.';
-      try { parleRobot(`${salut} ${geste}`); } catch { /* ignore */ }
+      try { void managerSpeak(`${salut} ${geste}`); } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Tata propose l'adaptation (mode 'auto') : elle le DIT (une fois) — c'est une
   // question, pas un réglage à trouver. On l'énonce dès l'affichage.
   useEffect(() => {
-    if (suggestion && !suggReponse) { try { parleRobot(suggestion.texte); } catch { /* ignore */ } }
+    if (suggestion && !suggReponse) { try { void managerSpeak(suggestion.texte); } catch { /* ignore */ } }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Réponse à la proposition de Tata : oui → on adopte le mode ; non → on met en pause.

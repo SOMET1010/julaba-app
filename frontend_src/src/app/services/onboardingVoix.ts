@@ -12,7 +12,8 @@
 // worker pré-cache automatiquement tout `public/voix/tata/*.mp3`.
 // ──────────────────────────────────────────────────────────────────────────
 
-import { playAudioUrl, speakBrowser, stopAllAudio } from './elevenlabs';
+import { stopAllAudio } from './elevenlabs';
+import { speakClipOrText, stopAllVoice } from './audioManager';
 
 const BASE = '/voix/tata';
 
@@ -83,17 +84,17 @@ export const INTRO_CLIPS: Record<string, IntroClip> = {
 export async function direIntro(key: keyof typeof INTRO_CLIPS): Promise<void> {
   const clip = INTRO_CLIPS[key];
   if (!clip) return;
-  try {
-    await playAudioUrl(clip.file);           // vraie Tata
-  } catch {
-    try { await speakBrowser(clip.texte); }  // filet : robot, seulement si le .mp3 manque
-    catch { /* muet plutôt que planter */ }
-  }
+  // Via l'audioManager (hygiène post-audit C2) : clip de la vraie Tata, repli
+  // voix de secours DANS le même créneau exclusif — l'onboarding ne peut plus
+  // se superposer à une autre voix, et stopAllVoice() le coupe comme le reste.
+  try { await speakClipOrText({ clipUrl: clip.file, text: clip.texte }); }
+  catch { /* muet plutôt que planter */ }
 }
 
 /** Coupe immédiatement la voix de l'onboarding (barge-in / changement d'écran). */
 export function stopIntro(): void {
-  stopAllAudio();
+  stopAllVoice();
+  stopAllAudio(); // filet : coupe aussi l'ancien lecteur privé d'elevenlabs
 }
 
 let _preloaded = false;
