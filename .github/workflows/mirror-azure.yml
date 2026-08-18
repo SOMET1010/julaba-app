@@ -1,31 +1,60 @@
 name: Miroir Azure DevOps
 
-# Miroir (legacy) vers Azure DevOps — DÉCLENCHEMENT MANUEL UNIQUEMENT.
-# L'ancien `push: master` visait une branche inexistante (jamais déclenché), et
-# ce job clone un AUTRE dépôt (Desiralex25/Julabaovh) puis pousse master/develop.
-# Neutralisé en manuel pour lever l'ambiguïté ; comportement interne inchangé.
+# Miroir de CE dépôt vers Azure DevOps (DevOps-ANSUT/Julaba) — le lab GitHub est
+# l'environnement de développement, la plateforme cible de l'équipe est Azure.
+# À chaque push sur main (et à la demande), `main` et les tags sont poussés vers
+# le dépôt Azure, pour que l'équipe retrouve toujours l'état courant chez elle.
+#
+# (Historique : l'ancien job clonait un AUTRE dépôt — Desiralex25/Julabaovh — et
+# poussait master/develop ; il ne se déclenchait jamais. Remplacé.)
+#
+# Secret à poser : AZURE_DEVOPS_PAT (PAT Azure DevOps, droit « Code: Read & Write »
+# sur le projet Julaba). Sans lui, le job sort en « succès avec avertissement » —
+# pas de croix rouge, mais l'oubli reste visible dans chaque run.
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
 
+concurrency:
+  group: mirror-azure
+  cancel-in-progress: true
+
 jobs:
   miroir:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AZURE_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
     steps:
-      - name: Clone miroir depuis GitHub
-        run: git clone --mirror "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Desiralex25/Julabaovh.git" repo.git
+      - name: Vérifier la configuration
+        id: cfg
+        run: |
+          if [ -z "$AZURE_PAT" ]; then
+            echo "::warning::AZURE_DEVOPS_PAT absent — miroir Azure NON effectué. Poser le secret (PAT Code Read & Write, voir docs/AZURE.md)."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Push master, develop et tags vers Azure
-        working-directory: repo.git
-        env:
-          AZURE_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+      - name: Cloner ce dépôt (historique complet)
+        if: steps.cfg.outputs.configured == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pousser main et les tags vers Azure DevOps
+        if: steps.cfg.outputs.configured == 'true'
         run: |
           AUTH=$(printf ":%s" "$AZURE_PAT" | base64 -w0)
           git -c http.extraheader="Authorization: Basic ${AUTH}" \
             push "https://dev.azure.com/DevOps-ANSUT/Julaba/_git/Julaba" \
-            "refs/heads/master:refs/heads/master" \
-            "refs/heads/develop:refs/heads/develop" \
+            "refs/heads/main:refs/heads/main" \
             "refs/tags/*:refs/tags/*"
+          # Pas de force : Azure ne reçoit main QUE de ce miroir, le push est
+          # toujours fast-forward. S'il échoue, quelqu'un a poussé directement
+          # côté Azure — à réconcilier à la main, pas à écraser en silence.
