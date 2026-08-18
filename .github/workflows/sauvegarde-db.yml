@@ -1,0 +1,107 @@
+# ──────────────────────────────────────────────────────────────────────────
+# Sauvegarde QUOTIDIENNE de la base de production (runbook docs/SAUVEGARDES.md).
+#
+# La base porte l'argent des marchandes : un dump par jour, conservé hors de
+# Render, chiffré. Rétention : 7 jours en semaine, 35 jours pour le dump du
+# dimanche (≈ 4 hebdomadaires), via les artefacts privés du dépôt.
+#
+# Secrets à poser (Settings → Secrets and variables → Actions) :
+#   - BACKUP_DATABASE_URL  : l'« External Database URL » de julaba-db
+#                            (dashboard Render → julaba-db → Connect).
+#   - BACKUP_PASSPHRASE    : phrase de chiffrement des dumps (à garder dans le
+#                            coffre de l'équipe — SANS elle, restauration
+#                            impossible). Facultative mais fortement conseillée.
+#
+# Tant que BACKUP_DATABASE_URL n'est pas posé, le job sort en « succès sans
+# rien faire » avec un avertissement : pas de bruit rouge, mais pas d'oubli
+# silencieux non plus (l'avertissement s'affiche dans le résumé du run).
+# ──────────────────────────────────────────────────────────────────────────
+name: Sauvegarde quotidienne DB
+
+on:
+  schedule:
+    # 01:30 UTC = 01:30 à Abidjan (UTC+0) — après la journée de marché.
+    - cron: '30 1 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Vérifier la configuration
+        id: cfg
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::warning::BACKUP_DATABASE_URL absent — AUCUNE sauvegarde effectuée. Poser le secret (voir docs/SAUVEGARDES.md)."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -z "$PASSPHRASE" ]; then
+            echo "::warning::BACKUP_PASSPHRASE absent — le dump sera stocké NON chiffré (artefact privé du dépôt). Conseillé : poser une passphrase."
+          fi
+
+      # Client Postgres récent (pgdg) : pg_dump doit être >= à la version du
+      # serveur, sinon il refuse de tourner.
+      - name: Installer le client PostgreSQL (pgdg)
+        if: steps.cfg.outputs.configured == 'true'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump (format custom, restaurable sélectivement)
+        if: steps.cfg.outputs.configured == 'true'
+        run: |
+          JOUR="$(date -u +%F)"
+          echo "JOUR=$JOUR" >> "$GITHUB_ENV"
+          pg_dump "$DB_URL" -Fc --no-owner -f "julaba-$JOUR.dump"
+          ls -lh "julaba-$JOUR.dump"
+
+      - name: Chiffrer (AES-256, si passphrase posée)
+        if: steps.cfg.outputs.configured == 'true'
+        run: |
+          if [ -n "$PASSPHRASE" ]; then
+            openssl enc -aes-256-cbc -pbkdf2 -salt \
+              -in  "julaba-$JOUR.dump" \
+              -out "julaba-$JOUR.dump.enc" \
+              -pass env:PASSPHRASE
+            rm "julaba-$JOUR.dump"
+            echo "FICHIER=julaba-$JOUR.dump.enc" >> "$GITHUB_ENV"
+          else
+            echo "FICHIER=julaba-$JOUR.dump" >> "$GITHUB_ENV"
+          fi
+
+      - name: Marquer le dimanche (rétention longue)
+        if: steps.cfg.outputs.configured == 'true'
+        id: dow
+        run: echo "dimanche=$([ "$(date -u +%u)" = "7" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Conserver (quotidien — 7 jours)
+        if: steps.cfg.outputs.configured == 'true' && steps.dow.outputs.dimanche == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: julaba-dump-${{ env.JOUR }}
+          path: ${{ env.FICHIER }}
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Conserver (hebdomadaire — 35 jours)
+        if: steps.cfg.outputs.configured == 'true' && steps.dow.outputs.dimanche == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: julaba-dump-hebdo-${{ env.JOUR }}
+          path: ${{ env.FICHIER }}
+          retention-days: 35
+          if-no-files-found: error
