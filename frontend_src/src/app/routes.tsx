@@ -45,6 +45,9 @@ export const router = createBrowserRouter([
       { path: "/login", element: <LoginPassword /> },
       { path: '/change-password', element: <ChangePasswordScreen /> },
       { path: '/activation', element: <ActivationScreen /> },
+      // Console interne du Studio Voice (enregistrement des clips de Tata) —
+      // outil d'équipe local au navigateur, aucune donnée ni écriture serveur.
+      { path: "/studio-voix", element: L(() => import("./pages/StudioVoix")), errorElement: <ErrorFallback /> },
       ...(isDev ? [{ path: "/dev-mode", element: L(() => import("./pages/DevModeHome").then(m => ({ default: m.DevModeHome }))), errorElement: <ErrorFallback /> }] : []),
       ...diagnosticRoutes,
 
