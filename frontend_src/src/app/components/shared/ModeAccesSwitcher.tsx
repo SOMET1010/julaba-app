@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import * as audioManager from '../../services/audioManager';
 import { getAccessMode, setAccessMode, type AccessMode } from '../../utils/accessMode';
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -15,15 +16,10 @@ const OPTIONS: { m: AccessMode; emoji: string; couleur: string; titre: string; s
   { m: 'voix',    emoji: '🟠', couleur: '#DB7A2C', titre: 'Je préfère parler',  sous: 'Tata guide, le micro au centre',           dire: 'Je préfère parler. Tata t\'accompagne.' },
 ];
 
+// Via l'audioManager (hygiène post-audit C4) : même voix FR stable que le reste
+// de l'appli, créneau exclusif — plus de speechSynthesis brut qui joue sous un clip.
 function dire(texte: string) {
-  try {
-    const s = window.speechSynthesis;
-    if (!s) return;
-    s.cancel();
-    const u = new SpeechSynthesisUtterance(texte);
-    u.lang = 'fr-FR'; u.rate = 0.95;
-    s.speak(u);
-  } catch { /* ignore */ }
+  try { void audioManager.speak(texte); } catch { /* ignore */ }
 }
 
 export function ModeAccesSwitcher() {
