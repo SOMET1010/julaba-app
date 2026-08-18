@@ -23,6 +23,7 @@ import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestio
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
 import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../services/comptesMemorises';
 import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
+import { glyphePourChiffre } from '../../services/clavierImage';
 
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
@@ -121,6 +122,25 @@ export function LoginPassword() {
   const voixEcouteDispo = (() => { try { return offlineModelReady(); } catch { return false; } })();
   // Le pavé est la référence : toujours visible tant que la voix n'écoute pas.
   const clavierVisible = showKeypad || !voixEcouteDispo;
+  // Clavier imagé (variante A, doc « mot de passe imagé ») : correspondance
+  // FIXE et publique chiffre→image sur le pavé PIN, en OPTION — jamais le mode
+  // par défaut (personne n'est surprise par un pavé déjà connu). Le PIN envoyé
+  // reste les mêmes chiffres ; seul le glyphe affiché change.
+  const [pinEnImages, setPinEnImages] = useState<boolean>(() => {
+    try { return localStorage.getItem('julaba_pin_images') === '1'; } catch { return false; }
+  });
+  const basculerPinEnImages = () => {
+    setPinEnImages((v) => {
+      const next = !v;
+      try { localStorage.setItem('julaba_pin_images', next ? '1' : '0'); } catch { /* ignore */ }
+      // Annonce le CHANGEMENT DE MODE, jamais le PIN — la correspondance est
+      // publique (variante A), donc rien de secret n'est dit ici.
+      if (guidageVocal(accessMode)) {
+        parle(next ? 'Maintenant, des images à la place des chiffres.' : 'Retour aux chiffres.');
+      }
+      return next;
+    });
+  };
   // Canal utilisé pour CETTE identification (clavier / voix) → apprentissage 'auto'.
   const dernierCanalRef = useRef<'clavier' | 'voix' | null>(null);
   // Proposition d'adaptation de Tata (mode 'auto' + préférence franche observée).
@@ -1392,10 +1412,10 @@ export function LoginPassword() {
                 zIndex: 1,
               }}>
                 {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
-                  <motion.button type="button" key={d} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress(d)}
-                    style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.08)', border: '1px solid rgba(198,106,44,0.15)', borderTop: '1px solid rgba(255,255,255,0.9)', fontSize: 22, fontWeight: 500, color: '#5a2e0a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(198,106,44,0.06)' }}
+                  <motion.button type="button" key={d} aria-label={pinEnImages ? undefined : `Chiffre ${d}`} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress(d)}
+                    style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.08)', border: '1px solid rgba(198,106,44,0.15)', borderTop: '1px solid rgba(255,255,255,0.9)', fontSize: pinEnImages ? 30 : 22, fontWeight: 500, color: '#5a2e0a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(198,106,44,0.06)' }}
                     whileTap={{ scale: 0.9 }}
-                  >{d}</motion.button>
+                  >{glyphePourChiffre(d, pinEnImages)}</motion.button>
                 ))}
                 <motion.button
                   type="button"
@@ -1408,16 +1428,26 @@ export function LoginPassword() {
                 >
                   <Fingerprint style={{ width: 22, height: 22, color: '#C66A2C' }} />
                 </motion.button>
-                <motion.button type="button" onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
-                  style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.08)', border: '1px solid rgba(198,106,44,0.15)', borderTop: '1px solid rgba(255,255,255,0.9)', fontSize: 22, fontWeight: 500, color: '#5a2e0a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(198,106,44,0.06)' }}
+                <motion.button type="button" aria-label={pinEnImages ? undefined : 'Chiffre 0'} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
+                  style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.08)', border: '1px solid rgba(198,106,44,0.15)', borderTop: '1px solid rgba(255,255,255,0.9)', fontSize: pinEnImages ? 30 : 22, fontWeight: 500, color: '#5a2e0a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(198,106,44,0.06)' }}
                   whileTap={{ scale: 0.9 }}
-                >0</motion.button>
+                >{glyphePourChiffre('0', pinEnImages)}</motion.button>
                 <motion.button type="button" aria-label="Effacer le dernier chiffre" onPointerDown={(e) => e.preventDefault()} onClick={handleKeyDelete}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.04)', border: '1px solid rgba(198,106,44,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0.65 }}
                   whileTap={{ scale: 0.9, opacity: 1 }}
                 >
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
                 </motion.button>
+              </div>
+              {/* Bascule OPT-IN, jamais le mode par défaut (doc « mot de passe imagé »,
+                  variante A) : la correspondance chiffre↔image est fixe et publique —
+                  seul le glyphe affiché change, le PIN envoyé reste les mêmes chiffres. */}
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '2px 0 12px' }}>
+                <button type="button" onClick={basculerPinEnImages}
+                  aria-label={pinEnImages ? 'Revenir aux chiffres' : 'Afficher des images à la place des chiffres'}
+                  style={{ background: 'none', border: 'none', color: '#8A5A34', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '6px 10px' }}>
+                  {pinEnImages ? '🔢 Revenir aux chiffres' : '🍅 Utiliser des images'}
+                </button>
               </div>
             </div>
             </motion.div>
