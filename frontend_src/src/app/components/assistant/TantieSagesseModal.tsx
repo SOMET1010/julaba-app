@@ -264,24 +264,27 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
                 </div>
               )}
 
-              <AnimatePresence mode="wait">
-                {step !== 'idle' ? (
-                  <motion.div key={step} className="mt-3 mb-2 px-5 py-2.5 rounded-full backdrop-blur-sm flex items-center gap-2.5"
-                    style={{ backgroundColor: `${STEP_CONFIG[step].color}30`, border: `1.5px solid ${STEP_CONFIG[step].color}60` }}
-                    initial={{ opacity: 0, y: 8, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.9 }}>
-                    <span style={{ color: STEP_CONFIG[step].color }}>{STEP_CONFIG[step].icon}</span>
-                    <span className="text-white font-semibold text-sm">{STEP_CONFIG[step].label}</span>
-                  </motion.div>
-                ) : (
-                  <motion.div key="idle" className="mt-3 mb-2 px-5 py-2 rounded-full bg-white/20 backdrop-blur-sm"
-                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                    <div className="flex items-center gap-2">
-                      <MessageCircle className="w-4 h-4 text-white" />
-                      <span className="text-white font-medium text-sm">Tu peux dire:</span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {/* Pastille d'état SANS AnimatePresence mode="wait" : sur des bascules
+                  d'état très rapides (thinking→idle instantané), l'attente de
+                  l'animation de sortie pouvait figer la pastille sur « réfléchit… »
+                  alors que l'assistant était revenu au repos. Le remontage par clé
+                  garde l'apparition animée, sans jamais dépendre d'une sortie. */}
+              {step !== 'idle' ? (
+                <motion.div key={step} className="mt-3 mb-2 px-5 py-2.5 rounded-full backdrop-blur-sm flex items-center gap-2.5"
+                  style={{ backgroundColor: `${STEP_CONFIG[step].color}30`, border: `1.5px solid ${STEP_CONFIG[step].color}60` }}
+                  initial={{ opacity: 0, y: 8, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }}>
+                  <span style={{ color: STEP_CONFIG[step].color }}>{STEP_CONFIG[step].icon}</span>
+                  <span className="text-white font-semibold text-sm">{STEP_CONFIG[step].label}</span>
+                </motion.div>
+              ) : (
+                <motion.div key="idle" className="mt-3 mb-2 px-5 py-2 rounded-full bg-white/20 backdrop-blur-sm"
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-white" />
+                    <span className="text-white font-medium text-sm">Tu peux dire:</span>
+                  </div>
+                </motion.div>
+              )}
 
               <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
                 whileTap={{ scale: 0.96 }}
