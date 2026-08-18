@@ -52,7 +52,7 @@ const STEP_CONFIG: Record<VoiceStep, { label: string; icon: React.ReactNode; col
 };
 
 function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'onClose' | 'role'>) {
-  const { user, currentSession, getTodayStats, openDay, closeDay } = useApp();
+  const { user, currentSession, getTodayStats, getFinancialSummary, openDay, closeDay } = useApp();
   const { lang: selectedLang } = useLangPref();
   const { enregistrerVente, refreshTransactions } = useCaisse();
   const stockCtx = useStock();
@@ -61,6 +61,11 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
   const progression = objectifCtx?.progression ?? 0;
   const topStocks = (stockCtx.stocks || []).slice(0,3).map((s:any) => `${s.name}:${s.quantity}${s.unit}`).join(', ');
   const stats = getTodayStats ? getTodayStats() : { caisse: 0, ventes: 0, depenses: 0 };
+  // V4 : meilleure vente du jour, pour répondre à « quelle est ma meilleure vente ? ».
+  const meilleureVente = (() => {
+    const tops = getFinancialSummary ? getFinancialSummary('today').topProduits : [];
+    return tops && tops[0] ? { nom: tops[0].productName, quantite: tops[0].quantity } : null;
+  })();
   const navigate = useNavigate();
   const [mode, setMode] = useState<'ecrire' | 'parler'>('parler');
   const [inputValue, setInputValue] = useState('');
@@ -86,6 +91,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
       sessionOpen: !!(currentSession?.opened),
       nombreVentes: (stats as any).nombreVentes || 0,
       topStocks: topStocks || '',
+      topProduit: meilleureVente,
     } as any,
     onAction: async (data) => {
       const action = data.action;
