@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useLangPref } from "../../hooks/useLangPref";
 import { useVoiceCore } from "../../hooks/useVoiceCore";
-import { usePredictiveTTS } from "../../services/predictiveTTS";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Loader, CheckCircle, AlertCircle, ShieldCheck, WifiOff, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -178,7 +177,6 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
     onNavigate: (path) => { navigate(path); onClose(); },
   });
 
-  usePredictiveTTS({ module: "caisse", sessionOpen: !!(currentSession?.opened), hasVentes: (stats.ventes || 0) > 0, prenom: user?.prenoms || "ma chere", recentIntents: response ? [response.intent] : [] });
   // #2 : pendingCount/isReplaying viennent de l'UNIQUE file de useVoiceCore
   // (plus de seconde instance qui rejouait la file en double à la reconnexion).
   useEffect(() => { if (!isOpen) resetHistory(); }, [isOpen, resetHistory]);

@@ -38,6 +38,7 @@ function cacheSet(key: string, base64: string): void {
   _cache.set(key, { base64, ts: Date.now() });
 }
 
+
 // ─────────────────────────────────────────────────────────────────
 // AUDIO
 // ─────────────────────────────────────────────────────────────────
@@ -224,55 +225,10 @@ export async function fetchTTS(text: string, signal?: AbortSignal, timeoutMs = 8
   // clip de Tata embarqué → voix intégrée du téléphone (hors-ligne). En renvoyant
   // null tout de suite, tous les appels (speak/speakChunked/…) basculent
   // immédiatement sur la voix locale, sans jamais toucher Internet ni attendre.
+  // Le corps cloud (fetch /tts/openai, cache, inflight) a été SUPPRIMÉ (hygiène
+  // post-audit C5) : il était inatteignable derrière ce return, mais réactivable
+  // en une ligne — la voix Internet ne doit pas pouvoir revenir par accident.
   return null;
-  // eslint-disable-next-line no-unreachable
-  if (!text?.trim()) return null;
-  const key = normalizeKey(text);
-
-  const cached = cacheGet(key);
-  if (cached) return cached;
-
-  if (!signal) {
-    const existing = _inflight.get(key);
-    if (existing) return existing ?? null;
-  }
-
-  const promise = (async (): Promise<string | null> => {
-    let externalAbortHandler: (() => void) | null = null;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    try {
-      const controller = new AbortController();
-      if (signal) {
-        if (signal.aborted) controller.abort();
-        externalAbortHandler = () => controller.abort();
-        signal.addEventListener("abort", externalAbortHandler);
-      }
-      timer = setTimeout(() => controller.abort(), timeoutMs);
-      const res = await fetch(`${API_URL}/tts/openai`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-        signal: controller.signal,
-      });
-      if (!res.ok) return null;
-      const json = await res.json();
-      const base64 = (json.success && json.audio) ? json.audio : null;
-      if (base64) cacheSet(key, base64);
-      return base64;
-    } catch {
-      return null;
-    } finally {
-      if (timer) clearTimeout(timer);
-      if (signal && externalAbortHandler) {
-        signal.removeEventListener("abort", externalAbortHandler);
-      }
-      if (!signal) _inflight.delete(key);
-    }
-  })();
-
-  if (!signal) _inflight.set(key, promise);
-  return promise;
 }
 
 // ─────────────────────────────────────────────────────────────────
