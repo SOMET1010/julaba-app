@@ -11,9 +11,10 @@ import { WhisperService } from "./whisper.service";
 import { PiperService } from "./piper.service";
 import { AnsutModule } from "../ansut/ansut.module";
 import { ConfigModule } from "@nestjs/config";
+import { VoiceConfigModule } from "./voice-config.module";
 
 @Module({
-  imports: [AnsutModule, ConfigModule, TypeOrmModule.forFeature([])],
+  imports: [AnsutModule, ConfigModule, TypeOrmModule.forFeature([]), VoiceConfigModule],
   controllers: [VoiceController, TtsController],
   providers: [VoiceService, UserMemoryService, ConversationStateService, OpenAIService, LocalIntentService, VoskService, WhisperService, PiperService],
   exports: [OpenAIService],

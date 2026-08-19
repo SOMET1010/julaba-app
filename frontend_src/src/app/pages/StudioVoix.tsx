@@ -1,20 +1,33 @@
 /**
- * Studio Voice v0 — console interne d'enregistrement des clips de Tata.
+ * Studio Voix — les DEUX étapes du pipeline voix, sur la même route
+ * /studio-voix, en deux onglets :
  *
- * Pour la session studio avec la comédienne : la liste des clips à enregistrer
- * (les 9 intros manquantes + les clips d'interface), le texte EXACT à dire,
- * un bouton enregistrer/réécouter par clip, l'export du master WAV 48 kHz mono
- * (format d'archive, docs/PACKS_VOIX.md) et le manifeste prêt à téléverser.
+ *   1. « Enregistrement » (ci-dessous, v0 historique) : console interne pour
+ *      capter la voix de la comédienne — la liste des clips à enregistrer
+ *      (les 9 intros manquantes + les clips d'interface), le texte EXACT à
+ *      dire, un bouton enregistrer/réécouter par clip, l'export du master
+ *      WAV 48 kHz mono (format d'archive, docs/PACKS_VOIX.md) et le
+ *      manifeste prêt à téléverser. 100% LOCAL au navigateur : rien n'est
+ *      envoyé nulle part — les fichiers sont téléchargés sur le poste, la
+ *      publication (transcodage MP3 + téléversement + manifeste) suit la
+ *      checklist de docs/PACKS_VOIX.md. Aucun chemin d'argent, aucune
+ *      écriture serveur. Onglet ouvert à toute l'équipe.
  *
- * Outil INTERNE, local au navigateur : rien n'est envoyé nulle part — les
- * fichiers sont téléchargés sur le poste, la publication (transcodage MP3 +
- * téléversement + manifeste) suit la checklist de docs/PACKS_VOIX.md.
- * Aucun chemin d'argent, aucune écriture serveur.
+ *   2. « Clonage » (StudioVoixClonage.tsx) : utilise les enregistrements
+ *      captés à l'étape 1 pour entraîner/servir une voix clonée via un
+ *      fournisseur TTS cloud (ElevenLabs ou Azure AI Speech / Speech
+ *      Studio) — configuration de la clé API (chiffrée en base côté
+ *      serveur), test avant activation, bascule du fournisseur actif.
+ *      Onglet ADMIN-ONLY (contrôle d'accès À L'INTÉRIEUR du composant,
+ *      voir StudioVoixClonage.tsx — pas de route back-office séparée : la
+ *      config du clonage reste rattachée au même écran Studio que la prise
+ *      de son qu'elle exploite).
  */
 import { useEffect, useRef, useState } from 'react';
 import { INTRO_CLIPS } from '../services/onboardingVoix';
 import { TATA_CLIPS } from '../services/tataVoice';
 import { encoderWav, genererManifesteStudio, type ClipStudio } from '../services/studioWav';
+import StudioVoixClonage from './StudioVoixClonage';
 
 interface LigneStudio extends ClipStudio {
   groupe: 'Intros (à enregistrer — clips manquants)' | 'Interface (ré-enregistrable)';
@@ -67,7 +80,10 @@ function telecharger(nom: string, contenu: BlobPart, type: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
+type OngletStudio = 'enregistrement' | 'clonage';
+
 export default function StudioVoix() {
+  const [onglet, setOnglet] = useState<OngletStudio>('enregistrement');
   const [prises, setPrises] = useState<Record<string, Prise>>({});
   const [enCours, setEnCours] = useState<string | null>(null);
   const [erreur, setErreur] = useState<string>('');
@@ -137,71 +153,93 @@ export default function StudioVoix() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 16px 96px', fontFamily: 'inherit' }}>
-      <h1 style={{ fontSize: 24, marginBottom: 4 }}>Studio Voice — clips de Tata</h1>
-      <p style={{ color: '#555', fontSize: 14, marginTop: 0 }}>
-        Outil interne. Enregistre chaque phrase EXACTEMENT comme écrite, réécoute, puis exporte
-        le WAV (master) et le manifeste. Publication : voir docs/PACKS_VOIX.md
-        (transcodage MP3 + téléversement + base_url à remplacer dans le manifeste).
-      </p>
-      {erreur && (
-        <p role="alert" style={{ background: '#fdecea', color: '#a52f22', padding: '10px 14px', borderRadius: 8 }}>{erreur}</p>
-      )}
+      <h1 style={{ fontSize: 24, marginBottom: 4 }}>Studio Voix</h1>
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '12px 0 20px' }}>
-        <button
-          onClick={exporterManifeste}
-          disabled={clesEnregistrees.length === 0}
-          style={{ padding: '12px 18px', borderRadius: 10, border: 'none', fontWeight: 700,
-            background: clesEnregistrees.length ? '#1e6b40' : '#ccc', color: '#fff', minHeight: 44 }}>
-          Télécharger le manifeste ({clesEnregistrees.length} clip{clesEnregistrees.length > 1 ? 's' : ''})
+      <div style={{ display: 'flex', gap: 8, margin: '12px 0 16px', borderBottom: '2px solid #eee' }}>
+        <button onClick={() => setOnglet('enregistrement')}
+          style={{ padding: '10px 16px', minHeight: 44, fontWeight: 700, border: 'none', background: 'transparent', cursor: 'pointer',
+            color: onglet === 'enregistrement' ? '#1e6b40' : '#777',
+            borderBottom: onglet === 'enregistrement' ? '3px solid #1e6b40' : '3px solid transparent', marginBottom: -2 }}>
+          Enregistrement
+        </button>
+        <button onClick={() => setOnglet('clonage')}
+          style={{ padding: '10px 16px', minHeight: 44, fontWeight: 700, border: 'none', background: 'transparent', cursor: 'pointer',
+            color: onglet === 'clonage' ? '#1e6b40' : '#777',
+            borderBottom: onglet === 'clonage' ? '3px solid #1e6b40' : '3px solid transparent', marginBottom: -2 }}>
+          Clonage
         </button>
       </div>
 
-      {groupes.map((groupe) => (
-        <section key={groupe} style={{ marginBottom: 28 }}>
-          <h2 style={{ fontSize: 17, borderBottom: '2px solid #1e6b40', paddingBottom: 6 }}>{groupe}</h2>
-          {LIGNES.filter((l) => l.groupe === groupe).map((l) => {
-            const prise = prises[l.key];
-            const actif = enCours === l.key;
-            return (
-              <article key={l.key} data-cle={l.key}
-                style={{ border: '1px solid #ddd', borderRadius: 10, padding: '12px 14px', marginTop: 12, background: '#fff' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                  <code style={{ fontSize: 13, fontWeight: 700 }}>{l.key}</code>
-                  <span style={{ fontSize: 12, fontWeight: 600,
-                    color: prise ? '#1e6b40' : l.dejaEmbarque ? '#8a6d1f' : '#a52f22' }}>
-                    {prise ? '● enregistré (cette session)' : l.dejaEmbarque ? '○ clip embarqué existant' : '● manquant'}
-                  </span>
-                </div>
-                <p style={{ fontSize: 15, margin: '8px 0' }}>{l.texte}</p>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {actif ? (
-                    <button onClick={arreter}
-                      style={{ minHeight: 44, padding: '10px 16px', borderRadius: 10, border: 'none', background: '#a52f22', color: '#fff', fontWeight: 700 }}>
-                      ■ Arrêter
-                    </button>
-                  ) : (
-                    <button onClick={() => void demarrer(l.key)} disabled={enCours !== null}
-                      style={{ minHeight: 44, padding: '10px 16px', borderRadius: 10, border: 'none',
-                        background: enCours ? '#ccc' : '#c65a11', color: '#fff', fontWeight: 700 }}>
-                      ● {prise ? 'Réenregistrer' : 'Enregistrer'}
-                    </button>
-                  )}
-                  {prise && (
-                    <>
-                      <audio controls src={prise.url} style={{ height: 44 }} />
-                      <button onClick={() => void exporterWav(l.key)}
-                        style={{ minHeight: 44, padding: '10px 16px', borderRadius: 10, border: '1px solid #1e6b40', background: '#fff', color: '#1e6b40', fontWeight: 700 }}>
-                        ⬇ WAV
-                      </button>
-                    </>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </section>
-      ))}
+      {onglet === 'clonage' ? (
+        <StudioVoixClonage />
+      ) : (
+        <>
+          <p style={{ color: '#555', fontSize: 14, marginTop: 0 }}>
+            Outil interne. Enregistre chaque phrase EXACTEMENT comme écrite, réécoute, puis exporte
+            le WAV (master) et le manifeste. Publication : voir docs/PACKS_VOIX.md
+            (transcodage MP3 + téléversement + base_url à remplacer dans le manifeste).
+          </p>
+          {erreur && (
+            <p role="alert" style={{ background: '#fdecea', color: '#a52f22', padding: '10px 14px', borderRadius: 8 }}>{erreur}</p>
+          )}
+
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', margin: '12px 0 20px' }}>
+            <button
+              onClick={exporterManifeste}
+              disabled={clesEnregistrees.length === 0}
+              style={{ padding: '12px 18px', borderRadius: 10, border: 'none', fontWeight: 700,
+                background: clesEnregistrees.length ? '#1e6b40' : '#ccc', color: '#fff', minHeight: 44 }}>
+              Télécharger le manifeste ({clesEnregistrees.length} clip{clesEnregistrees.length > 1 ? 's' : ''})
+            </button>
+          </div>
+
+          {groupes.map((groupe) => (
+            <section key={groupe} style={{ marginBottom: 28 }}>
+              <h2 style={{ fontSize: 17, borderBottom: '2px solid #1e6b40', paddingBottom: 6 }}>{groupe}</h2>
+              {LIGNES.filter((l) => l.groupe === groupe).map((l) => {
+                const prise = prises[l.key];
+                const actif = enCours === l.key;
+                return (
+                  <article key={l.key} data-cle={l.key}
+                    style={{ border: '1px solid #ddd', borderRadius: 10, padding: '12px 14px', marginTop: 12, background: '#fff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                      <code style={{ fontSize: 13, fontWeight: 700 }}>{l.key}</code>
+                      <span style={{ fontSize: 12, fontWeight: 600,
+                        color: prise ? '#1e6b40' : l.dejaEmbarque ? '#8a6d1f' : '#a52f22' }}>
+                        {prise ? '● enregistré (cette session)' : l.dejaEmbarque ? '○ clip embarqué existant' : '● manquant'}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: 15, margin: '8px 0' }}>{l.texte}</p>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                      {actif ? (
+                        <button onClick={arreter}
+                          style={{ minHeight: 44, padding: '10px 16px', borderRadius: 10, border: 'none', background: '#a52f22', color: '#fff', fontWeight: 700 }}>
+                          ■ Arrêter
+                        </button>
+                      ) : (
+                        <button onClick={() => void demarrer(l.key)} disabled={enCours !== null}
+                          style={{ minHeight: 44, padding: '10px 16px', borderRadius: 10, border: 'none',
+                            background: enCours ? '#ccc' : '#c65a11', color: '#fff', fontWeight: 700 }}>
+                          ● {prise ? 'Réenregistrer' : 'Enregistrer'}
+                        </button>
+                      )}
+                      {prise && (
+                        <>
+                          <audio controls src={prise.url} style={{ height: 44 }} />
+                          <button onClick={() => void exporterWav(l.key)}
+                            style={{ minHeight: 44, padding: '10px 16px', borderRadius: 10, border: '1px solid #1e6b40', background: '#fff', color: '#1e6b40', fontWeight: 700 }}>
+                            ⬇ WAV
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+          ))}
+        </>
+      )}
     </div>
   );
 }

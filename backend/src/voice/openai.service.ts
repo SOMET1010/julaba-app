@@ -1,15 +1,31 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PiperService } from './piper.service';
+import { VoiceConfigService } from './voice-config.service';
+import { synthesizeAzureSpeech, synthesizeElevenLabs } from './tts-providers';
 
 // Service voix : regroupe OpenAI (STT Whisper, LLM GPT-4o) et ElevenLabs (TTS).
 // Le nom OpenAIService est conserve par historique ; le TTS passe par ElevenLabs,
 // avec un chemin Piper local (offline-first) prioritaire si active.
+//
+// Depuis Studio Voix > Clonage (back-office), la config TTS peut aussi venir
+// de la base (voice_provider_config, VoiceConfigService) : ElevenLabs OU Azure
+// AI Speech, clé chiffrée AES-256-GCM. PRIORITÉ : base de données si une
+// config y est active, SINON repli sur les variables d'environnement comme
+// avant (ELEVENLABS_API_KEY/ELEVENLABS_VOICE_ID) — ce repli ne casse jamais
+// ce qui marche déjà en prod tant qu'aucune config n'a été saisie en base.
+// `voiceConfig` est optionnel (@Optional) pour rester instanciable tel quel
+// dans les tests unitaires existants qui construisent OpenAIService à la main
+// (cf. test/unit/tts-fallback-sans-cle.spec.ts) sans conteneur Nest.
 @Injectable()
 export class OpenAIService {
   private readonly logger = new Logger(OpenAIService.name);
 
-  constructor(private config: ConfigService, private piper: PiperService) {}
+  constructor(
+    private config: ConfigService,
+    private piper: PiperService,
+    @Optional() private voiceConfig?: VoiceConfigService,
+  ) {}
 
   private getKey(): string {
     const key = this.config.get<string>('OPENAI_API_KEY') || '';
@@ -97,17 +113,55 @@ export class OpenAIService {
     }
   }
 
-  // TTS — Piper local (offline-first) puis repli ElevenLabs
+  // TTS — Piper local (offline-first) puis config DB active (ElevenLabs OU
+  // Azure Speech) puis repli variables d'environnement (ElevenLabs, historique).
   async synthesize(text: string): Promise<Buffer | null> {
-    // Piper local, si actif. Renvoie du WAV ; repli ElevenLabs si null.
+    // Piper local, si actif. Renvoie du WAV ; repli cloud si null.
     if (this.config.get<string>('VOICE_LOCAL_TTS') === '1') {
       try {
         const wav = await this.piper.synthesize(text);
         if (wav && wav.length > 44) return wav;
       } catch (e: any) {
-        this.logger.warn(`[TTS:PIPER] repli ElevenLabs (${e.message})`);
+        this.logger.warn(`[TTS:PIPER] repli cloud (${e.message})`);
       }
     }
+
+    // Config active en base (Studio Voix > Clonage) : priorité sur les
+    // variables d'environnement si elle existe. Résolution best-effort — une
+    // config illisible ou absente renvoie null ici (jamais d'exception), et
+    // on retombe silencieusement sur le chemin ElevenLabs par env var.
+    const dbConfig = await this.voiceConfig
+      ?.getActiveProviderConfig()
+      .catch((e: any) => {
+        this.logger.error(`[TTS] lecture config DB échouée: ${e?.message}`);
+        return null;
+      });
+    if (dbConfig) {
+      try {
+        if (dbConfig.provider === 'azure_speech') {
+          if (!dbConfig.azureRegion || !dbConfig.voiceName) {
+            throw new Error('config Azure Speech incomplète (région/voix manquante)');
+          }
+          const buf = await synthesizeAzureSpeech(text, dbConfig.apiKey, dbConfig.azureRegion, dbConfig.voiceName);
+          this.logger.log(`[TTS:AZURE] OK - ${buf.length} bytes`);
+          return buf;
+        }
+        if (!dbConfig.voiceName) throw new Error('config ElevenLabs incomplète (voice_id manquant)');
+        const buf = await synthesizeElevenLabs(text, dbConfig.apiKey, dbConfig.voiceName);
+        this.logger.log(`[TTS:ELEVENLABS:DB] OK - ${buf.length} bytes`);
+        return buf;
+      } catch (e: any) {
+        // Échec du fournisseur choisi en base : PAS de repli automatique vers
+        // l'autre fournisseur cloud (surprise de facturation/latence), mais
+        // pas de crash non plus — le contrôleur retombe sur la voix
+        // navigateur (voir TtsController.openaiTTS / RapportHebdoController).
+        this.logger.error(`[TTS:${dbConfig.provider.toUpperCase()}] FAIL: ${e.message}`);
+        return null;
+      }
+    }
+
+    // Repli historique : variables d'environnement (comportement inchangé
+    // tant qu'aucune configuration n'a été saisie en base).
     const apiKey = this.getElevenLabsApiKey();
     const voiceId = this.getElevenLabsVoiceId();
     // Court-circuit : pas d'appel distant avec une cle/voiceId vide. L'appelant gere null.
@@ -116,26 +170,7 @@ export class OpenAIService {
       return null;
     }
     try {
-      const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-        method: 'POST',
-        signal: AbortSignal.timeout(20000),
-        headers: {
-          'xi-api-key': apiKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text,
-          model_id: 'eleven_turbo_v2_5',
-          voice_settings: {
-            stability: 0.65,
-            similarity_boost: 0.80,
-            style: 0.25,
-            use_speaker_boost: true,
-          },
-        }),
-      });
-      if (!res.ok) throw new Error(`ElevenLabs TTS HTTP ${res.status}`);
-      const buf = Buffer.from(await res.arrayBuffer());
+      const buf = await synthesizeElevenLabs(text, apiKey, voiceId);
       this.logger.log(`[TTS:ELEVENLABS] OK - ${buf.length} bytes`);
       return buf;
     } catch (e: any) {
