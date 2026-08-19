@@ -1,5 +1,5 @@
 import { paginate } from '../common/paginate';
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query, Request, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query, Request, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -15,14 +15,38 @@ export class InstitutionsController {
     @InjectRepository(Institution) private repo: Repository<Institution>,
     private readonly auditService: AuditService,
   ) {}
+
+  // Isolement inter-institutions (correctif audit securite/vie privee) : un
+  // compte institution ne doit voir QUE sa propre fiche institution (celle
+  // dont il est `responsable_id`), jamais la liste complete. Avant ce
+  // correctif, `@Roles('institution')` laissait passer un GET non filtre sur
+  // TOUTES les institutions. super_admin/admin_general gardent la vue
+  // complete inchangee.
   @Get()
   @Roles('super_admin', 'admin_general', 'institution')
-  async findAll(@Query() query: any) {
+  async findAll(@Query() query: any, @Request() req: any) {
+    if (req?.user?.role === 'institution') {
+      return paginate(this.repo, query, {
+        where: { responsable_id: req.user.id } as any,
+        order: { created_at: 'DESC' } as any,
+      });
+    }
     return paginate(this.repo, query, { order: { created_at: 'DESC' } as any });
   }
+
   @Get(':id')
   @Roles('super_admin', 'admin_general', 'institution')
-  findOne(@Param('id') id: string) { return this.repo.findOne({ where: { id } }); }
+  async findOne(@Param('id') id: string, @Request() req: any) {
+    const institution = await this.repo.findOne({ where: { id } });
+    if (req?.user?.role === 'institution') {
+      if (!institution || institution.responsable_id !== req.user.id) {
+        // 404 plutot que 403 : ne pas confirmer l'existence d'une institution
+        // tierce a un compte qui n'en a pas la responsabilite.
+        throw new NotFoundException('Institution introuvable');
+      }
+    }
+    return institution;
+  }
   @Post()
   @Roles('super_admin', 'admin_general')
   async create(@Body() body: any, @Request() req: any) {
