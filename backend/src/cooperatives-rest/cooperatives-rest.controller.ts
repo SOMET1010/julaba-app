@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ConflictException, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { Cooperative } from './cooperative.entity';
@@ -813,8 +813,26 @@ export class CooperativesRestController {
 
   @Post()
   @Roles('super_admin', 'admin_general', 'cooperateur')
-  create(@Body() body: CreateCooperativeDto, @CurrentUser() currentUser: User) {
-    return this.repo.save(this.repo.create({ ...body, responsable_id: currentUser.id }));
+  async create(@Body() body: CreateCooperativeDto, @CurrentUser() currentUser: User) {
+    // Contrainte unique `responsable_id` (une coopérative par responsable) —
+    // vérifiée AVANT l'insert pour renvoyer un refus propre (409) au lieu de
+    // laisser fuiter l'exception SQL brute (23505) en 500. Un compte peut
+    // arriver ici avec une coopérative déjà auto-provisionnée à l'inscription.
+    const existante = await this.repo.findOne({ where: { responsable_id: currentUser.id } });
+    if (existante) {
+      throw new ConflictException('Vous avez déjà une coopérative');
+    }
+    try {
+      return await this.repo.save(this.repo.create({ ...body, responsable_id: currentUser.id }));
+    } catch (e: any) {
+      // Filet de sécurité contre une course concurrente (deux requêtes
+      // simultanées passant toutes deux le check ci-dessus) : l'index unique
+      // tranche côté base, on convertit son erreur en refus propre.
+      if (e?.code === '23505' || /duplicate key|unique constraint/i.test(e?.message || '')) {
+        throw new ConflictException('Vous avez déjà une coopérative');
+      }
+      throw e;
+    }
   }
 
   @Patch(':id')

@@ -245,6 +245,7 @@ export class User {
   lastLoginUserAgent: string | null;
 
   @Column({ name: 'webauthn_credentials', type: 'jsonb', nullable: true, default: '[]' })
+  @Exclude()
   webauthnCredentials: Array<{
     credentialID: string;
     credentialPublicKey: string;
@@ -255,6 +256,7 @@ export class User {
   }> | null;
 
   @Column({ name: 'webauthn_challenge', nullable: true })
+  @Exclude()
   webauthnChallenge: string | null;
 
   // Relations

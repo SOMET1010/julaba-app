@@ -89,9 +89,20 @@ export class UsersService {
     `;
     const usersRaw = await this.dataSource.query(dataQuery, [...whereParams, limit, skip]);
 
-    // Mapping snake_case -> camelCase + retrait champs sensibles
+    // Mapping snake_case -> camelCase + retrait champs sensibles. SELECT u.*
+    // ci-dessus renvoie TOUTES les colonnes en snake_case (dont les 5 champs
+    // sensibles listés dans SENSITIVE_USER_AUTH_FIELDS) — stripSensitiveUserFields
+    // ne suffit pas seule ici car elle attend des clés camelCase ; on retire
+    // donc explicitement les 5 équivalents snake_case avant reconstruction.
     const safeUsers = usersRaw.map((u: any) => {
-      const { password_hash, pin_code_hash, ...rest } = u;
+      const {
+        password_hash,
+        pin_code_hash,
+        pin_code_encrypted_identificateur,
+        webauthn_credentials,
+        webauthn_challenge,
+        ...rest
+      } = u;
       // Conversion snake_case to camelCase pour les champs principaux
       return {
         ...rest,
