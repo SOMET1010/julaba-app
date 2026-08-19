@@ -196,7 +196,7 @@ describe('Invariant — isolement inter-institutions (/institution/...)', () => 
     // Compte role=institution seede directement, SANS ligne `institutions`
     // correspondante -- reproduit le cas d'un compte cree hors du flux de
     // signup public (ex. creation back-office) sans configuration ulterieure.
-    const orphan = await seedUser({ role: UserRole.INSTITUTION, phone: '+2250700099001' });
+    const orphan = await seedUser({ role: UserRole.INSTITUTION, phone: '+2250700099101' });
     const token = await tokenFor(orphan);
 
     const res = await api().get('/api/v1/institution/dashboard').set('Authorization', `Bearer ${token}`);
