@@ -94,19 +94,30 @@ export class WalletsService {
 
   /**
    * Créditer un wallet (recharge)
+   *
+   * `manager` (optionnel) : quand un appelant a déjà ouvert sa propre
+   * transaction SQL (ex. TontinesService.cotiser, qui doit débiter le
+   * cotisant PUIS créditer le bénéficiaire dans la MÊME transaction que
+   * l'écriture des mouvements de tontine — cf. CONSTITUTION.md §7), on lui
+   * permet de passer son `EntityManager` pour que ce crédit y participe au
+   * lieu d'ouvrir une transaction concurrente. Sans `manager`, le
+   * comportement est strictement identique à avant (transaction dédiée) —
+   * extension rétrocompatible, tous les appelants existants continuent de
+   * fonctionner sans changement.
    */
   async creditWallet(
     userId: string,
     montant: number,
     description: string,
     metadata?: any,
+    manager?: EntityManager,
   ): Promise<{ wallet: Wallet; transaction: WalletTransaction }> {
     if (montant <= 0) {
       throw new BadRequestException('Le montant doit être supérieur à 0');
     }
     if (montant > 10_000_000) throw new BadRequestException('Montant dépasse le plafond autorisé (10 000 000 XOF)');
 
-    return await this.dataSource.transaction(async (entityManager) => {
+    const executer = async (entityManager: EntityManager) => {
       // Récupérer le wallet avec un verrou
       const wallet = await entityManager.findOne(Wallet, {
         where: { userId },
@@ -138,24 +149,30 @@ export class WalletsService {
       this.logger.log(`Wallet ${userId} crédité de ${montant} XOF`);
 
       return { wallet, transaction };
-    });
+    };
+
+    return manager ? executer(manager) : this.dataSource.transaction(executer);
   }
 
   /**
    * Débiter un wallet (retrait)
+   *
+   * `manager` (optionnel) : voir la docstring de `creditWallet` — même
+   * mécanisme, pour participer à une transaction déjà ouverte par l'appelant.
    */
   async debitWallet(
     userId: string,
     montant: number,
     description: string,
     metadata?: any,
+    manager?: EntityManager,
   ): Promise<{ wallet: Wallet; transaction: WalletTransaction }> {
     if (montant <= 0) {
       throw new BadRequestException('Le montant doit être supérieur à 0');
     }
     if (montant > 10_000_000) throw new BadRequestException('Montant dépasse le plafond autorisé (10 000 000 XOF)');
 
-    return await this.dataSource.transaction(async (entityManager) => {
+    const executer = async (entityManager: EntityManager) => {
       const wallet = await entityManager.findOne(Wallet, {
         where: { userId },
         lock: { mode: 'pessimistic_write' },
@@ -190,7 +207,9 @@ export class WalletsService {
       this.logger.log(`Wallet ${userId} débité de ${montant} XOF`);
 
       return { wallet, transaction };
-    });
+    };
+
+    return manager ? executer(manager) : this.dataSource.transaction(executer);
   }
 
   /**

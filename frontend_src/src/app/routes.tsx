@@ -71,6 +71,8 @@ export const router = createBrowserRouter([
         { path: "parametres", element: L(() => import("./components/marchand/Parametres").then(m => ({ default: m.Parametres }))), errorElement: <ErrorFallback /> },
         { path: "cooperative", element: L(() => import("./components/marchand/MaCooperative").then(m => ({ default: m.MaCooperative }))), errorElement: <ErrorFallback /> },
         { path: "cooperative/besoin", element: L(() => import("./components/marchand/BesoinMarchand").then(m => ({ default: m.BesoinMarchand }))), errorElement: <ErrorFallback /> },
+        { path: "tontines", element: L(() => import("./components/marchand/Tontines").then(m => ({ default: m.Tontines }))), errorElement: <ErrorFallback /> },
+        { path: "tontines/:id", element: L(() => import("./components/marchand/TontineDetail").then(m => ({ default: m.TontineDetail }))), errorElement: <ErrorFallback /> },
         { path: "protection-sociale", element: L(() => import("./components/marchand/ProtectionSociale").then(m => ({ default: m.ProtectionSociale }))), errorElement: <ErrorFallback /> },
         { path: "fidelite", element: L(() => import("./components/marchand/Fidelite").then(m => ({ default: m.Fidelite }))), errorElement: <ErrorFallback /> },
         { path: "academy", element: L(() => import("./components/academy/UniversalAcademy").then(m => ({ default: m.UniversalAcademy }))), errorElement: <ErrorFallback /> },
