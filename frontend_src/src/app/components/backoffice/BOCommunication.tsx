@@ -11,6 +11,10 @@ import { useBackOffice } from '../../contexts/BackOfficeContext';
 import { toast } from 'sonner';
 import { API_URL } from '../../utils/api';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
+import { boGetActeurs } from '../../services/backoffice-api';
+import { sendBulkNotifications } from '../../services/api/notifications-api';
+import { HttpError } from '../../services/api/api-client';
+import { CIV_REGIONS_FILTER } from '../../data/civ-geography';
 
 type Canal = 'sms' | 'push' | 'email';
 type CampagneStatut = 'envoyee' | 'programmee' | 'brouillon';
@@ -42,6 +46,32 @@ const CANAL_CONFIG: Record<Canal, { label: string; icon: any; color: string }> =
   email: { label: 'Email', icon: Mail, color: '#8B5CF6' },
 };
 
+// Icône stockée sur chaque notification créée (metadata.icon), par canal choisi.
+const CANAL_ICON: Record<Canal, string> = { sms: '📱', push: '🔔', email: '✉️' };
+
+// Rôles acteurs terrain ciblables par une campagne (rôles BO/admin exclus :
+// une campagne s'adresse aux acteurs, pas à l'équipe back-office elle-même).
+const ROLE_CIBLE_OPTIONS: { value: string; label: string }[] = [
+  { value: 'producteur', label: 'Producteurs' },
+  { value: 'marchand', label: 'Marchandes' },
+  { value: 'cooperateur', label: 'Coopérateurs' },
+  { value: 'institution', label: 'Institutions' },
+  { value: 'identificateur', label: 'Identificateurs' },
+];
+
+// POST /notifications/send-bulk refuse au-delà de 500 destinataires par envoi
+// (notifications.controller.ts). On résout la cible par pages de 100 (limite
+// GET /users) jusqu'à ce plafond.
+const MAX_BULK_RECIPIENTS = 500;
+const RESOLVE_PAGE_SIZE = 100;
+
+// Identifiant de regroupement de la campagne (metadata.campaignId), généré côté
+// appelant — voir GET /communication qui le lit pour reconstituer l'historique.
+function nouveauCampagneId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return 'camp-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+}
+
 
 
 export function BOCommunication() {
@@ -51,7 +81,7 @@ export function BOCommunication() {
   const [campagnes, setCampagnes] = useState<Campagne[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
 
-  React.useEffect(() => {
+  const fetchCommunication = React.useCallback(() => {
     fetch(`${API_URL}/communication`, {
       credentials: 'include',
     })
@@ -60,25 +90,97 @@ export function BOCommunication() {
         return r.json();
       })
       .then(d => {
-        if (d?.campagnes?.length) setCampagnes(d.campagnes);
+        setCampagnes(Array.isArray(d?.campagnes) ? d.campagnes : []);
         if (d?.templates?.length) setTemplates(d.templates);
       })
       .catch(() => { toast.error('Impossible de charger les campagnes'); });
   }, []);
 
+  React.useEffect(() => { fetchCommunication(); }, [fetchCommunication]);
+
   // Nouvelle campagne
   const [newCanal, setNewCanal] = useState<Canal>('sms');
   const [newTitre, setNewTitre] = useState('');
   const [newMessage, setNewMessage] = useState('');
-  const [newCible, setNewCible] = useState('');
+  const [newRole, setNewRole] = useState('');
+  const [newRegion, setNewRegion] = useState('all');
+  const [sending, setSending] = useState(false);
 
-  const handleEnvoyer = () => {
+  // Résout la cible (rôle + région optionnelle) en liste réelle de userId, via
+  // l'annuaire acteurs (GET /users, déjà utilisé partout ailleurs en BO) filtré
+  // sur les comptes actifs. Ne fabrique jamais de destinataire : une cible sans
+  // acteur retourne une liste vide.
+  const resolveDestinataires = async (role: string, region: string): Promise<{ ids: string[]; total: number }> => {
+    const ids: string[] = [];
+    let total = 0;
+    for (let page = 1; ids.length < MAX_BULK_RECIPIENTS; page++) {
+      const res = await boGetActeurs({
+        page,
+        limit: RESOLVE_PAGE_SIZE,
+        role,
+        region: region === 'all' ? undefined : region,
+        statut: 'actif',
+      });
+      total = res.total;
+      for (const acteur of res.data) {
+        if (acteur?.id) ids.push(String(acteur.id));
+      }
+      if (res.data.length < RESOLVE_PAGE_SIZE || ids.length >= res.total) break;
+    }
+    return { ids: ids.slice(0, MAX_BULK_RECIPIENTS), total };
+  };
+
+  const handleEnvoyer = async () => {
     if (!newTitre.trim() || !newMessage.trim()) { toast.error('Titre et message requis'); return; }
-    toast.info('Envoi non disponible — endpoint backend manquant');
-    setTab('campagnes');
-    setNewTitre('');
-    setNewMessage('');
-    setNewCible('');
+    if (!newRole) { toast.error('Choisissez un rôle à cibler'); return; }
+    setSending(true);
+    try {
+      const { ids, total } = await resolveDestinataires(newRole, newRegion);
+      if (ids.length === 0) {
+        toast.error('Aucun destinataire actif pour ce ciblage — rien n\'a été envoyé');
+        return;
+      }
+      const roleLabel = ROLE_CIBLE_OPTIONS.find(r => r.value === newRole)?.label || newRole;
+      const regionLabel = newRegion === 'all' ? '' : ` — ${newRegion}`;
+      const result = await sendBulkNotifications({
+        userIds: ids,
+        type: 'communication',
+        titre: newTitre.trim(),
+        message: newMessage.trim(),
+        category: 'communication',
+        icon: CANAL_ICON[newCanal],
+        metadata: {
+          canal: newCanal,
+          cible: `${roleLabel}${regionLabel}`,
+          campaignId: nouveauCampagneId(),
+        },
+      });
+      if (result.sent === 0) {
+        toast.error('Échec de l\'envoi : aucune notification créée');
+        return;
+      }
+      if (result.failed > 0) {
+        toast.warning(`Campagne envoyée à ${result.sent}/${result.total} destinataires (${result.failed} échec(s))`);
+      } else {
+        toast.success(`Campagne envoyée à ${result.sent} destinataire(s)`);
+      }
+      if (ids.length < total) {
+        toast.info(`Ciblage plafonné à ${MAX_BULK_RECIPIENTS} destinataires sur ${total} correspondant au filtre`);
+      }
+      setTab('campagnes');
+      setNewTitre('');
+      setNewMessage('');
+      setNewRole('');
+      setNewRegion('all');
+      fetchCommunication();
+    } catch (e) {
+      const message = e instanceof HttpError && e.status === 403
+        ? 'Votre rôle ne permet pas d\'envoyer de campagnes groupées'
+        : e instanceof Error ? e.message : 'Échec de l\'envoi de la campagne';
+      toast.error(message);
+    } finally {
+      setSending(false);
+    }
   };
 
   const counts = {
@@ -210,22 +312,40 @@ export function BOCommunication() {
               <input value={newTitre} onChange={e => setNewTitre(e.target.value)} placeholder="Titre de la campagne"
                 className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-[#9F8170] focus:outline-none text-sm" />
             </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Cible</label>
-              <input value={newCible} onChange={e => setNewCible(e.target.value)} placeholder="Ex. : marchands, région Abidjan"
-                className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-[#9F8170] focus:outline-none text-sm" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Rôle ciblé</label>
+                <select value={newRole} onChange={e => setNewRole(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-[#9F8170] focus:outline-none text-sm bg-white">
+                  <option value="">Sélectionner un rôle…</option>
+                  {ROLE_CIBLE_OPTIONS.map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Région (optionnel)</label>
+                <select value={newRegion} onChange={e => setNewRegion(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-[#9F8170] focus:outline-none text-sm bg-white">
+                  <option value="all">Toutes les régions</option>
+                  {CIV_REGIONS_FILTER.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Message</label>
               <textarea value={newMessage} onChange={e => setNewMessage(e.target.value)} rows={4} placeholder="Corps du message..."
                 className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-[#9F8170] focus:outline-none text-sm resize-none" />
+              <p className="text-[11px] text-gray-400 mt-1">Envoyé comme notification in-app (+ push si l'appareil du destinataire est enregistré). Le canal choisi ci-dessus sert à catégoriser la campagne.</p>
             </div>
             <div className="flex gap-3">
-              <motion.button onClick={() => setTab('campagnes')} whileTap={{ scale: 0.97 }}
-                className="px-6 py-3 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600">Annuler</motion.button>
-              <motion.button onClick={handleEnvoyer} whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm text-white" style={{ backgroundColor: BO_PRIMARY }}>
-                <Send className="w-4 h-4" /> Envoyer
+              <motion.button onClick={() => setTab('campagnes')} whileTap={{ scale: 0.97 }} disabled={sending}
+                className="px-6 py-3 rounded-2xl border-2 border-gray-200 font-bold text-sm text-gray-600 disabled:opacity-50">Annuler</motion.button>
+              <motion.button onClick={handleEnvoyer} whileTap={{ scale: 0.97 }} disabled={sending}
+                className="flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm text-white disabled:opacity-60" style={{ backgroundColor: BO_PRIMARY }}>
+                <Send className="w-4 h-4" /> {sending ? 'Envoi…' : 'Envoyer'}
               </motion.button>
             </div>
           </div>

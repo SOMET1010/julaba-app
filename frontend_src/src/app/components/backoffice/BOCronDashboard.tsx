@@ -57,7 +57,7 @@ export function BOCronDashboard() {
         const jobs = Array.isArray(d?.jobs) ? d.jobs : Array.isArray(d) ? d : [];
         if (jobs.length === 0) toast.info('Aucune tâche cron disponible');
         const mapped: CronTask[] = jobs.map((j: any) => ({
-          id: j.nom,
+          id: j.id || j.nom,
           nom: j.nom,
           description: j.description || '',
           cron: j.cron || '* * * * *',
