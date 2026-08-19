@@ -61,14 +61,14 @@ describe('Invariant PS1 — cotisations sociales CNPS/CNAM (persistance réelle,
 
     const repo = ds.getRepository(User);
     const userA: any = await repo.save(repo.create({
-      phone: '+2250700080001', firstName: 'Aya', lastName: 'Cotisante', genre: 'femme',
+      phone: '+2250700090001', firstName: 'Aya', lastName: 'Cotisante', genre: 'femme',
       role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     userAId = userA.id;
     userAToken = await jwt.signAsync({ sub: userA.id, phone: userA.phone, role: userA.role }, { secret: process.env.JWT_SECRET });
 
     const userB: any = await repo.save(repo.create({
-      phone: '+2250700080002', firstName: 'Blessing', lastName: 'Voisine', genre: 'femme',
+      phone: '+2250700090002', firstName: 'Blessing', lastName: 'Voisine', genre: 'femme',
       role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     userBId = userB.id;
