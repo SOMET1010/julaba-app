@@ -98,6 +98,11 @@ describe('Invariant T1 — transfert compte-à-compte (atomique, idempotent, tra
   }, 60000);
 
   afterAll(async () => {
+    // Retire le compte admin_general seedé pour ce fichier (blocage/déblocage
+    // de wallet) : l'invariant M6+M8 (aucun compte administratif hors
+    // operateur_terrain en base) tourne dans la même suite Postgres jetable et
+    // ne doit jamais voir de résidu laissé par un autre fichier de test.
+    if (ds) await ds.query(`DELETE FROM users WHERE phone = $1`, ['+2250700060000']);
     if (app) await app.close();
   });
 
