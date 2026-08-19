@@ -56,6 +56,7 @@ import { PartnerModule } from './partner/partner.module';
 import { AdminDivisionsModule } from './admin-divisions/admin-divisions.module';
 import { UserFlagsModule } from './user-flags/user-flags.module';
 import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.module';
+import { ProtectionSocialeModule } from './protection-sociale/protection-sociale.module';
 
 @Module({
   imports: [
@@ -104,6 +105,7 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
     PublicationsRestModule,
     ProducteursRestModule,
     CommandesRestModule,
+    ProtectionSocialeModule,
     ActeursRestModule,
     DossiersRestModule,
     TransactionsRestModule,
