@@ -187,33 +187,53 @@ export class CommandesRestController {
 
   @Post(':id/paiement')
   async recupererPaiement(@Param('id') id: string, @CurrentUser() user: User) {
-    const cmd = await this.repo.findOne({ where: { id } });
-    if (!cmd) throw new NotFoundException('Commande introuvable');
-    if (cmd.statutPaiement === 'paye') {
-      return { success: true, message: 'Commande déjà payée' };
-    }
-    if (cmd.vendeurId !== user.id) throw new ForbiddenException('Accès refusé');
+    // Vérif d'accès légère hors transaction (404/403 rapides sur un id
+    // inconnu ou étranger). L'état réellement décisif (statut_paiement) est
+    // relu SOUS VERROU plus bas : cette première lecture ne sert qu'à
+    // qualifier l'erreur, jamais à décider si un mouvement d'argent a lieu.
+    const cmdPreCheck = await this.repo.findOne({ where: { id } });
+    if (!cmdPreCheck) throw new NotFoundException('Commande introuvable');
+    if (cmdPreCheck.vendeurId !== user.id) throw new ForbiddenException('Accès refusé');
 
-    const modePaiementRaw = String(cmd.modePaiement || '').toLowerCase();
-    const montant = Number(cmd.total || 0);
+    // Tout le flux (relecture verrouillée + mouvements wallet + marquage payé)
+    // dans UNE seule transaction SQL. Le verrou pessimiste sur la commande
+    // sérialise les appels concurrents pour le même id (double-clic, retry
+    // réseau, deux onglets) : le second appel attend le premier, puis relit
+    // statut_paiement déjà 'paye' et ne rejoue aucun mouvement. C'est ce qui
+    // rend l'opération à la fois ATOMIQUE (tout ou rien) et IDEMPOTENTE
+    // (rejouer ne double jamais le mouvement) — cf. CONSTITUTION.md §7.
+    const result = await this.dataSource.transaction(async (entityManager) => {
+      const cmd = await entityManager.findOne(Commande, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!cmd) throw new NotFoundException('Commande introuvable');
+      if (cmd.vendeurId !== user.id) throw new ForbiddenException('Accès refusé');
 
-    // Paiement espèces : aucun mouvement keiwa, simple attestation du vendeur
-    if (modePaiementRaw !== 'keiwa') {
-      cmd.statutPaiement = 'paye';
-      cmd.payeAt = new Date();
-      await this.repo.save(cmd);
-      return { success: true };
-    }
+      if (cmd.statutPaiement === 'paye') {
+        return { dejaPaye: true };
+      }
 
-    if (!cmd.acheteurId) {
-      throw new BadRequestException('Acheteur introuvable pour paiement keiwa');
-    }
-    if (montant <= 0) {
-      throw new BadRequestException('Montant de commande invalide');
-    }
-    await this.dataSource.transaction(async (entityManager) => {
+      const modePaiementRaw = String(cmd.modePaiement || '').toLowerCase();
+      const montant = Number(cmd.total || 0);
+
+      // Paiement espèces : aucun mouvement keiwa, simple attestation du vendeur.
+      if (modePaiementRaw !== 'keiwa') {
+        cmd.statutPaiement = 'paye';
+        cmd.payeAt = new Date();
+        await entityManager.save(Commande, cmd);
+        return { dejaPaye: false };
+      }
+
+      if (!cmd.acheteurId) {
+        throw new BadRequestException('Acheteur introuvable pour paiement keiwa');
+      }
+      if (montant <= 0) {
+        throw new BadRequestException('Montant de commande invalide');
+      }
+
       const walletAcheteur = await entityManager.findOne(Wallet, {
-        where: { userId: cmd.acheteurId! },
+        where: { userId: cmd.acheteurId },
         lock: { mode: 'pessimistic_write' },
       });
       if (!walletAcheteur) throw new NotFoundException('Wallet acheteur introuvable');
@@ -235,6 +255,8 @@ export class CommandesRestController {
         montant,
         description: `Paiement commande ${cmd.id}`,
         statut: 'completed',
+        relatedEntityType: 'commande',
+        relatedEntityId: cmd.id,
         metadata: { commandeId: cmd.id, modePaiement: 'keiwa', sens: 'debit_acheteur' },
       });
       const creditTx = entityManager.create(WalletTransaction, {
@@ -243,16 +265,23 @@ export class CommandesRestController {
         montant,
         description: `Encaissement commande ${cmd.id}`,
         statut: 'completed',
+        relatedEntityType: 'commande',
+        relatedEntityId: cmd.id,
         metadata: { commandeId: cmd.id, modePaiement: 'keiwa', sens: 'credit_vendeur' },
       });
+      // related_entity_id + type protégés par un index unique partiel
+      // (ux_wallet_tx_commande_idempotence) : une double écriture pour la même
+      // commande échouerait ici même si le verrou ci-dessus était contourné.
       await entityManager.save(WalletTransaction, debitTx);
       await entityManager.save(WalletTransaction, creditTx);
-    });
-    cmd.statutPaiement = 'paye';
-    cmd.payeAt = new Date();
-    await this.repo.save(cmd);
 
-    return { success: true };
+      cmd.statutPaiement = 'paye';
+      cmd.payeAt = new Date();
+      await entityManager.save(Commande, cmd);
+      return { dejaPaye: false };
+    });
+
+    return { success: true, ...(result.dejaPaye ? { message: 'Commande déjà payée' } : {}) };
   }
 
   @Patch(':id')

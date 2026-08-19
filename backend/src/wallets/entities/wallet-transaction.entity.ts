@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Wallet } from './wallet.entity';
 
@@ -16,7 +17,15 @@ export enum TransactionType {
   ESCROW_REFUND = 'escrow_refund',
 }
 
+// Idempotence du paiement Keiwa d'une commande (défense en profondeur, en plus
+// du verrou applicatif sur la commande) : la base refuse un second débit ou un
+// second crédit pour la MÊME commande. Cf. migration
+// 1780700000000-WalletTransactionCommandeIdempotence.
 @Entity('wallet_transactions')
+@Index('ux_wallet_tx_commande_idempotence', ['relatedEntityId', 'userId', 'type'], {
+  unique: true,
+  where: `related_entity_type = 'commande' AND type IN ('debit', 'credit')`,
+})
 export class WalletTransaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
