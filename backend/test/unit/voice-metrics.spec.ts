@@ -106,7 +106,7 @@ describe('OpenAIService.transcribe (STT cloud OpenAI) — instrumentation au poi
     const metrics = new VoiceMetricsService(repo);
     const config = fakeConfig({});
     const piper = new PiperService(config);
-    const service = new OpenAIService(config, piper, metrics);
+    const service = new OpenAIService(config, piper, undefined, metrics);
 
     await expect(service.transcribe(Buffer.alloc(100))).rejects.toThrow();
     expect(repo.rows).toHaveLength(0);
@@ -117,7 +117,7 @@ describe('OpenAIService.transcribe (STT cloud OpenAI) — instrumentation au poi
     const metrics = new VoiceMetricsService(repo);
     const config = fakeConfig({ OPENAI_API_KEY: 'test-key' });
     const piper = new PiperService(config);
-    const service = new OpenAIService(config, piper, metrics);
+    const service = new OpenAIService(config, piper, undefined, metrics);
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -136,7 +136,7 @@ describe('OpenAIService.transcribe (STT cloud OpenAI) — instrumentation au poi
     const metrics = new VoiceMetricsService(repo);
     const config = fakeConfig({ OPENAI_API_KEY: 'test-key' });
     const piper = new PiperService(config);
-    const service = new OpenAIService(config, piper, metrics);
+    const service = new OpenAIService(config, piper, undefined, metrics);
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
@@ -163,7 +163,7 @@ describe('OpenAIService.synthesize (TTS ElevenLabs) — instrumentation au point
     const metrics = new VoiceMetricsService(repo);
     const config = fakeConfig({});
     const piper = new PiperService(config);
-    const service = new OpenAIService(config, piper, metrics);
+    const service = new OpenAIService(config, piper, undefined, metrics);
 
     const result = await service.synthesize('Bonjour ma chère.');
 
@@ -176,7 +176,7 @@ describe('OpenAIService.synthesize (TTS ElevenLabs) — instrumentation au point
     const metrics = new VoiceMetricsService(repo);
     const config = fakeConfig({ ELEVENLABS_API_KEY: 'key', ELEVENLABS_VOICE_ID: 'voice-1' });
     const piper = new PiperService(config);
-    const service = new OpenAIService(config, piper, metrics);
+    const service = new OpenAIService(config, piper, undefined, metrics);
 
     const fakeAudio = new Uint8Array([1, 2, 3, 4]).buffer;
     global.fetch = jest.fn().mockResolvedValue({
@@ -196,7 +196,7 @@ describe('OpenAIService.synthesize (TTS ElevenLabs) — instrumentation au point
     const metrics = new VoiceMetricsService(repo);
     const config = fakeConfig({ ELEVENLABS_API_KEY: 'key', ELEVENLABS_VOICE_ID: 'voice-1' });
     const piper = new PiperService(config);
-    const service = new OpenAIService(config, piper, metrics);
+    const service = new OpenAIService(config, piper, undefined, metrics);
 
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 }) as any;
 
