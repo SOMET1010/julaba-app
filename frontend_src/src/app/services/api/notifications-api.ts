@@ -107,6 +107,25 @@ export async function sendNotificationToUser(data: {
   });
 }
 
+// Envoi groupé depuis le BackOffice vers une liste de userId (max 500 côté
+// serveur, voir notifications.controller.ts @Post('send-bulk'))
+export async function sendBulkNotifications(data: {
+  userIds: string[];
+  type: string;
+  titre: string;
+  message: string;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  category?: string;
+  icon?: string;
+  metadata?: any;
+}): Promise<{ success: boolean; total: number; sent: number; failed: number }> {
+  return apiRequest<{ success: boolean; total: number; sent: number; failed: number }>('/notifications/send-bulk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}
+
 // Notifier validation dossier
 export async function notifyDossierValide(data: {
   identificateurId: string; acteurNom: string; dossierRef: string;

@@ -19,6 +19,7 @@ import { CIV_REGIONS_LIST } from '../../data/civ-geography';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { UniversalSectionCardBO } from './universal/UniversalSectionCardBO';
 import type { Acteur } from '../../services/backoffice-api';
+import { buildReportPdf, hexToRgb } from '../../utils/pdfReport';
 
 const PERIODES = ['7 derniers jours', '30 derniers jours', '3 derniers mois', '6 derniers mois', 'Cette année', 'Personnalisé'];
 const REGIONS_LIST = ['Toutes les régions', ...CIV_REGIONS_LIST.filter(r => r !== 'National')];
@@ -252,9 +253,62 @@ export function BORapports() {
 
   const handleGenerate = async (reportId: string, label: string) => {
     setGenerating(reportId);
-    await new Promise(r => setTimeout(r, 800));
-    setGenerating(null);
-    toast.info(`${label}`, { description: 'Export PDF disponible prochainement.' });
+    try {
+      const report = REPORTS_TYPES.find(r => r.id === reportId);
+      const brandColor = hexToRgb(report?.color || BO_PRIMARY);
+      const now = new Date();
+      const dateLabel = now.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+      const totalActeursRegion = REGION_PERF.reduce((s, r) => s + (r.acteurs || 0), 0);
+      const totalVolume = REGION_PERF.reduce((s, r) => s + (r.volume || 0), 0);
+      const totalCommissions = Math.round(REGION_PERF.reduce((s, r) => s + (r.commissions || 0), 0) * 100) / 100;
+      const totalTypeData = TYPE_DATA.reduce((s: number, t: typeof TYPE_DATA[number]) => s + (t.value || 0), 0);
+
+      const doc = buildReportPdf({
+        title: label,
+        subtitle: 'JULABA — Back-office · Rapport officiel',
+        brandColor,
+        meta: `Période : ${periode}  ·  Région : ${region}  ·  Généré le ${dateLabel}`,
+        kpis: [
+          { label: 'Total acteurs', value: (stats?.total_acteurs ?? totalActeurs).toLocaleString('fr-FR') },
+          { label: 'Transactions', value: (stats?.total_transactions ?? transactions.length).toLocaleString('fr-FR') },
+          { label: 'Volume (M FCFA)', value: totalVolume.toLocaleString('fr-FR') },
+          { label: 'Commissions (M FCFA)', value: totalCommissions.toLocaleString('fr-FR') },
+        ],
+        tables: [
+          {
+            title: 'Performance par région',
+            columns: [
+              { header: 'Région', width: 45 },
+              { header: 'Acteurs', width: 25, align: 'right' },
+              { header: 'Volume (M)', width: 30, align: 'right' },
+              { header: 'Commissions (M)', width: 35, align: 'right' },
+              { header: 'Taux', width: 20, align: 'right' },
+            ],
+            rows: REGION_PERF.map(r => [r.region, r.acteurs.toLocaleString('fr-FR'), r.volume, r.commissions, `${r.taux}%`]),
+            totalRow: ['TOTAL', totalActeursRegion.toLocaleString('fr-FR'), totalVolume, totalCommissions, ''],
+          },
+          {
+            title: "Répartition par type d'acteur",
+            columns: [
+              { header: 'Type', width: 90 },
+              { header: 'Nombre', width: 40, align: 'right' },
+            ],
+            rows: TYPE_DATA.map((t: typeof TYPE_DATA[number]) => [t.name, t.value.toLocaleString('fr-FR')]),
+            totalRow: ['TOTAL', totalTypeData.toLocaleString('fr-FR')],
+          },
+        ],
+        footerNote: `JULABA © ${now.getFullYear()} — Généré le ${dateLabel}`,
+      });
+
+      doc.save(`julaba_${reportId}_${now.toISOString().split('T')[0]}.pdf`);
+      toast.success(label, { description: 'Rapport PDF téléchargé avec succès.' });
+    } catch (err) {
+      console.warn('[BORapports] handleGenerate failed:', err instanceof Error ? err.message : err);
+      toast.error('Erreur lors de la génération du PDF. Réessaie.');
+    } finally {
+      setGenerating(null);
+    }
   };
 
   const handleExportCSV = () => setShowExportModal(true);

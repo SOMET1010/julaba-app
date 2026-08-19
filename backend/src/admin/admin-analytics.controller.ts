@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { User } from '../users/entities/user.entity';
+import { VoiceMetricsService } from '../voice/voice-metrics.service';
 
 @Roles('ADMIN')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -17,6 +18,7 @@ export class AdminAnalyticsController {
     private usersRepo: Repository<User>,
     @InjectDataSource()
     private dataSource: DataSource,
+    private voiceMetrics: VoiceMetricsService,
   ) {}
 
   @Get('analytics')
@@ -33,14 +35,81 @@ export class AdminAnalyticsController {
     }
   }
 
+  // Monitoring IA — donnees reelles, pas de valeurs codees en dur.
+  //
+  // Avant ce correctif, cet endpoint renvoyait 4 services fixes avec des
+  // latences/uptime inventes ("45ms", "99.9%"...), y compris un "Groq
+  // Whisper" qui n'existe nulle part dans le code (le STT reel passe par
+  // whisper.cpp local ou l'API cloud OpenAI Whisper).
+  //
+  // Desormais :
+  // - PostgreSQL : latence mesuree en direct (SELECT 1), pas estimee.
+  // - Whisper.cpp local / OpenAI Whisper cloud / Piper local / ElevenLabs
+  //   cloud : agreges depuis `voice_service_metrics`, alimentee aux points
+  //   d'appel reels (voir whisper.service.ts, openai.service.ts). Un service
+  //   sans appel recent renvoie hasData=false -> statut "aucune_donnee",
+  //   jamais une fausse latence/uptime.
+  // - Cout (FCFA) : AUCUN suivi de cout par requete n'existe dans le code
+  //   actuel (pas de modele de prix OpenAI/ElevenLabs cable) — cout30j et
+  //   cout_cumule restent volontairement a 0 plutot que d'etre inventes.
+  //   C'est un vrai chantier a part (instrumentation de prix par appel).
   @Get('monitoring')
   async getMonitoring() {
-    return { services: [
-      { name: 'NestJS API', status: 'operationnel', latence: '45ms', uptime: '99.9%' },
-      { name: 'PostgreSQL', status: 'operationnel', latence: '12ms', uptime: '99.99%' },
-      { name: 'ElevenLabs', status: 'operationnel', latence: '480ms', uptime: '99.5%' },
-      { name: 'Groq Whisper', status: 'operationnel', latence: '320ms', uptime: '99.8%' },
-    ], daily_requests: [], error_data: [], cout_cumule: 0, taux_erreur: 0 };
+    try {
+      const dbStartedAt = Date.now();
+      let dbLatencyMs: number | null = null;
+      let dbUp = true;
+      try {
+        await this.dataSource.query('SELECT 1');
+        dbLatencyMs = Date.now() - dbStartedAt;
+      } catch (e) {
+        dbUp = false;
+        this.logger.error(`ping PostgreSQL a echoue: ${(e as Error)?.message}`);
+      }
+
+      const [voiceSummary, dailySeries, globalStats] = await Promise.all([
+        this.voiceMetrics.getServiceSummary(),
+        this.voiceMetrics.getDailySeries(),
+        this.voiceMetrics.getGlobalStats(),
+      ]);
+
+      const services = [
+        // NestJS API : si ce handler repond, le process est bien "up" — mais
+        // aucune latence/uptime historique n'est mesuree ailleurs dans le
+        // code, donc ces deux champs restent `null` (affiches "--" au
+        // back-office) plutot qu'une valeur inventee.
+        { name: 'NestJS API', status: 'operationnel', latence: null, uptime: null, requetes30j: 0, cout30j: 0 },
+        {
+          name: 'PostgreSQL',
+          status: dbUp ? 'operationnel' : 'erreur',
+          latence: dbLatencyMs,
+          uptime: null,
+          requetes30j: 0,
+          cout30j: 0,
+        },
+        ...voiceSummary.map((s) => ({
+          name: s.label,
+          status: !s.hasData ? 'aucune_donnee' : (s.errorRatePct ?? 0) > 20 ? 'degrade' : 'operationnel',
+          latence: s.avgLatencyMs,
+          uptime: s.hasData ? Math.round((s.successCount / s.total) * 1000) / 10 : null,
+          requetes30j: s.total,
+          cout30j: 0,
+        })),
+      ];
+
+      return {
+        services,
+        daily_requests: dailySeries.dailyRequests,
+        error_data: dailySeries.errorData,
+        cout_cumule: 0,
+        taux_erreur: globalStats.errorRatePct,
+        requetes_jour: globalStats.requestsToday,
+        temps_reponse: globalStats.avgLatencyMs != null ? `${globalStats.avgLatencyMs}ms` : '--',
+      };
+    } catch (e) {
+      this.logger.error(`getMonitoring a echoue: ${(e as Error)?.message}`, (e as Error)?.stack);
+      return { services: [], daily_requests: [], error_data: [], cout_cumule: 0, taux_erreur: 0 };
+    }
   }
 
   @Get('dashboard')

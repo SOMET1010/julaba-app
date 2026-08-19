@@ -11,12 +11,14 @@ import { WalletTransaction } from '../wallets/entities/wallet-transaction.entity
 import { AuditLog } from '../audit-rest/audit-log.entity';
 import { WalletsModule } from '../wallets/wallets.module';
 import { FeedbakSmsModule } from '../feedbak-sms/feedbak-sms.module';
+import { VoiceModule } from '../voice/voice.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Cooperative, WalletTransaction, AuditLog]),
     WalletsModule,
     FeedbakSmsModule,
+    VoiceModule,
   ],
   controllers: [AdminController, AdminAnalyticsController, AdminWalletsController],
   providers: [AdminService, AdminWalletsService],
