@@ -119,6 +119,9 @@ interface ScoreResumeCardProps {
   historique7jours?: number[]; // Données pour le graphique
   speak?: (text: string) => void;
   onNavigateToAcademy?: () => void;
+  /** Id de l'utilisateur courant — transmis à l'onboarding Score pour
+   * charger son VRAI score financier (GET /financial-score/:userId). */
+  userId?: string;
 }
 
 // Données de démonstration pour l'historique 7 jours
@@ -137,6 +140,7 @@ export function ScoreResumeCard({
   historique7jours,
   speak,
   onNavigateToAcademy,
+  userId,
 }: ScoreResumeCardProps) {
   const navigate = useNavigate();
   const scoreData = useScoreJULABA(score, role);
@@ -530,6 +534,8 @@ export function ScoreResumeCard({
         role={role}
         primaryColor={primaryColor}
         onStartActions={handleShowActions}
+        userId={userId}
+        speak={speak}
       />
     </>
   );

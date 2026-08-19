@@ -695,6 +695,7 @@ export function RoleDashboard({
         }}
         speak={speak}
         onNavigateToAcademy={onAcademyClick}
+        userId={user?.id}
       />
 
       {/* Coach Mark - Premier lancement (uniquement Marchand) */}
