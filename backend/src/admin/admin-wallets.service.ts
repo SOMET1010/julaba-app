@@ -1,5 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { User, UserStatus } from '../users/entities/user.entity';
+import { WalletsService } from '../wallets/wallets.service';
+import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
 
 export interface BOWalletRow {
   id: string;
@@ -42,7 +45,11 @@ export interface BOWalletStatsRow {
 
 @Injectable()
 export class AdminWalletsService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly walletsService: WalletsService,
+    private readonly feedbakSmsService: FeedbakSmsService,
+  ) {}
 
   async getStats(): Promise<BOWalletStatsRow> {
     const [stats] = await this.dataSource.query(`
@@ -144,7 +151,7 @@ export class AdminWalletsService {
          u.phone      AS telephone,
          u.role,
          w.solde, w.solde_bloque,
-         'actif'      AS status,
+         u.status,
          w.created_at
        FROM wallets w
        JOIN users u ON u.id = w.user_id
@@ -239,6 +246,10 @@ export class AdminWalletsService {
         [userId],
       );
       if (!wallet) throw new NotFoundException('Wallet introuvable');
+      // Un compte bloqué ne doit plus pouvoir recevoir d'argent, y compris
+      // via une action admin — cf. WalletsService.assertCompteActif (source
+      // unique de vérité pour le blocage, CONSTITUTION.md §2/§7).
+      await this.walletsService.assertCompteActif(userId, em);
       await em.query(
         `UPDATE wallets SET solde = solde + $1, updated_at = NOW() WHERE user_id = $2`,
         [montant, userId],
@@ -259,6 +270,7 @@ export class AdminWalletsService {
         [userId],
       );
       if (!wallet) throw new NotFoundException('Wallet introuvable');
+      await this.walletsService.assertCompteActif(userId, em);
       const disponible = Number(wallet.solde) - Number(wallet.solde_bloque);
       if (disponible < montant) throw new BadRequestException(`Solde insuffisant: ${disponible} FCFA disponible`);
       await em.query(
@@ -273,17 +285,59 @@ export class AdminWalletsService {
     });
   }
 
-  async bloquerWallet(userId: string, raison: string): Promise<void> {
-    const [wallet] = await this.dataSource.query(
-      `SELECT id FROM wallets WHERE user_id = $1`,
-      [userId],
-    );
-    if (!wallet) throw new NotFoundException('Wallet introuvable');
-    await this.dataSource.query(
-      `INSERT INTO wallet_transactions (user_id, type, montant, description, statut)
-       VALUES ($1, 'debit', 0, $2, 'completed')`,
-      [userId, `BLOCAGE ADMIN: ${raison}`],
-    );
+  // Blocage RÉEL d'un compte : bascule users.status sur 'suspendu'. C'est la
+  // SEULE source de vérité pour le blocage (cf. WalletsService.assertCompteActif,
+  // appelé par tous les points d'écriture wallet — crédit/débit admin, retrait
+  // mobile, webhook bpay, paiement Keiwa d'une commande). Ne PAS réintroduire
+  // un champ de blocage séparé sur `wallets` : ce serait un second calcul du
+  // même concept, interdit par CONSTITUTION.md §2. `users.status = 'suspendu'`
+  // bloque aussi la connexion elle-même (voir JwtStrategy.validate).
+  async bloquerWallet(userId: string, raison: string, adminId?: string): Promise<{ success: true }> {
+    return this.dataSource.transaction(async (em) => {
+      const [wallet] = await em.query(`SELECT id FROM wallets WHERE user_id = $1`, [userId]);
+      if (!wallet) throw new NotFoundException('Wallet introuvable');
+      const user = await em.findOne(User, { where: { id: userId } });
+      if (!user) throw new NotFoundException('Utilisateur introuvable');
+
+      user.status = UserStatus.SUSPENDU;
+      await em.save(User, user);
+
+      await em.query(
+        `INSERT INTO audit_logs (user_id, action, entite, entite_id, details) VALUES ($1,$2,$3,$4,$5)`,
+        [adminId ?? userId, 'BLOQUER_WALLET', 'wallet', userId, JSON.stringify({ raison })],
+      );
+
+      if (user.phone) {
+        // Notification SMS non bloquante : ne doit jamais faire échouer le
+        // blocage lui-même (déjà géré par le try/catch interne du service).
+        this.feedbakSmsService.notifyCompteSuspendu(user.phone, user.firstName).catch(() => {});
+      }
+
+      return { success: true };
+    });
+  }
+
+  async debloquerWallet(userId: string, adminId?: string): Promise<{ success: true }> {
+    return this.dataSource.transaction(async (em) => {
+      const [wallet] = await em.query(`SELECT id FROM wallets WHERE user_id = $1`, [userId]);
+      if (!wallet) throw new NotFoundException('Wallet introuvable');
+      const user = await em.findOne(User, { where: { id: userId } });
+      if (!user) throw new NotFoundException('Utilisateur introuvable');
+
+      user.status = UserStatus.ACTIF;
+      await em.save(User, user);
+
+      await em.query(
+        `INSERT INTO audit_logs (user_id, action, entite, entite_id, details) VALUES ($1,$2,$3,$4,$5)`,
+        [adminId ?? userId, 'DEBLOQUER_WALLET', 'wallet', userId, JSON.stringify({})],
+      );
+
+      if (user.phone) {
+        this.feedbakSmsService.notifyCompteReactive(user.phone, user.firstName).catch(() => {});
+      }
+
+      return { success: true };
+    });
   }
 
   async reinitialiserWallet(userId: string, confirmation: string): Promise<void> {
