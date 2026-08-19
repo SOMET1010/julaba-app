@@ -2,12 +2,14 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager } from 'typeorm';
 import { Wallet } from './entities/wallet.entity';
 import { WalletTransaction, TransactionType } from './entities/wallet-transaction.entity';
+import { User, UserStatus } from '../users/entities/user.entity';
 
 @Injectable()
 export class WalletsService {
@@ -54,6 +56,35 @@ export class WalletsService {
   }
 
   /**
+   * Vérifie qu'un compte n'est pas bloqué (users.status = 'suspendu') avant
+   * tout mouvement de fonds touchant son wallet. C'est la SEULE source de
+   * vérité pour le blocage — cf. CONSTITUTION.md §7 (l'argent est sacré) et
+   * §2 (un concept = une seule source de vérité) : pas de champ de blocage
+   * dupliqué sur `wallets`, on réutilise `users.status` qui bloque déjà la
+   * connexion (voir JwtStrategy). Un compte bloqué ne doit plus pouvoir ni
+   * recevoir ni envoyer d'argent, y compris quand le mouvement est déclenché
+   * par un tiers (paiement Keiwa payé par le vendeur, webhook bpay, action
+   * admin) — d'où l'appel explicite ici plutôt que de compter uniquement sur
+   * le blocage de connexion, qui ne protège que les mouvements que LE
+   * TITULAIRE déclenche lui-même.
+   *
+   * IMPORTANT : toujours appeler avec l'`EntityManager` de la transaction SQL
+   * qui effectue l'écriture qui suit, pour que la vérification et l'écriture
+   * soient atomiques (un blocage concurrent ne peut pas se glisser entre les
+   * deux).
+   */
+  async assertCompteActif(userId: string, manager?: EntityManager): Promise<void> {
+    const runner = manager ?? this.dataSource.manager;
+    const user = await runner.findOne(User, { where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+    if (user.status === UserStatus.SUSPENDU) {
+      throw new ForbiddenException('Compte bloqué : mouvement de fonds refusé');
+    }
+  }
+
+  /**
    * Créditer un wallet (recharge)
    */
   async creditWallet(
@@ -77,6 +108,8 @@ export class WalletsService {
       if (!wallet) {
         throw new NotFoundException('Wallet introuvable');
       }
+
+      await this.assertCompteActif(userId, entityManager);
 
       // Mettre à jour le solde
       wallet.solde = Number(wallet.solde) + Number(montant);
@@ -123,6 +156,8 @@ export class WalletsService {
       if (!wallet) {
         throw new NotFoundException('Wallet introuvable');
       }
+
+      await this.assertCompteActif(userId, entityManager);
 
       const soldeDisponible = Number(wallet.solde) - Number(wallet.soldeBloque);
 
@@ -177,6 +212,8 @@ export class WalletsService {
         throw new NotFoundException('Wallet introuvable');
       }
 
+      await this.assertCompteActif(userId, entityManager);
+
       const soldeDisponible = Number(wallet.solde) - Number(wallet.soldeBloque);
 
       if (soldeDisponible < montant) {
@@ -216,6 +253,8 @@ export class WalletsService {
         throw new NotFoundException('Wallet introuvable');
       }
 
+      await this.assertCompteActif(userId, entityManager);
+
       if (Number(wallet.soldeBloque) < montant) {
         throw new BadRequestException('Montant bloqué insuffisant');
       }
@@ -253,6 +292,8 @@ export class WalletsService {
       if (!wallet) {
         throw new NotFoundException('Wallet introuvable');
       }
+
+      await this.assertCompteActif(userId, entityManager);
 
       if (Number(wallet.soldeBloque) < montant) {
         throw new BadRequestException('Montant bloqué insuffisant');
