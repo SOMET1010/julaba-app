@@ -379,6 +379,9 @@ export function MarcheVirtuel() {
         prixOriginal: productToNegotiate.price,
         prixPropose: negotiationPrice,
         unite: productToNegotiate.unit || 'kg',
+        // Publication d'origine : permet au backend de réserver le stock si le
+        // vendeur accepte (cf. commandes-api.ts, ProposerNegociationData).
+        publicationId: productToNegotiate.id,
       message: negotiationMessage.trim(),
       });
       setShowNegotiationModal(false); setProductToNegotiate(null); setShowNegotiationSuccess(true);

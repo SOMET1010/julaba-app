@@ -210,6 +210,24 @@ export class DbInitService {
       this.logger.warn('Erreur table stock_reservations: ' + message);
     }
 
+    // ── B2 : lien negociation -> publication (voie negociation couverte) ─────
+    // Meme raison que le bloc stock_reservations ci-dessus : sur la base Render
+    // deja peuplee, synchronize et migrationsRun sont OFF, donc ni l'entite ni
+    // la migration ne posent cette colonne au demarrage. Sans elle, une commande
+    // nee d'une negociation acceptee n'a jamais de publicationId et ne reserve
+    // ni ne decremente aucun stock (JULABA_DECISIONS.md, "B2, voie negociation
+    // non couverte par la reservation"). Miroir de la migration
+    // 1780900000000-NegociationPublicationLink.
+    try {
+      await this.dataSource.query(
+        `ALTER TABLE negociations ADD COLUMN IF NOT EXISTS publication_id uuid;`,
+      );
+      this.logger.log('Colonne negociations.publication_id vérifiée (B2)');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur colonne negociations.publication_id: ' + message);
+    }
+
     // ── Colonnes/tables secondaires manquantes sur base neuve ────────────────
     // Des tâches de fond (cron) attendent des colonnes/tables que `synchronize`
     // ne crée pas (entités incomplètes ou tables en SQL brut). Non bloquant, mais
