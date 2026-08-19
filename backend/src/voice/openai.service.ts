@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PiperService } from './piper.service';
 import { VoiceConfigService } from './voice-config.service';
 import { synthesizeAzureSpeech, synthesizeElevenLabs } from './tts-providers';
+import { VoiceMetricsService, VoiceMetricServiceKey } from './voice-metrics.service';
 
 // Service voix : regroupe OpenAI (STT Whisper, LLM GPT-4o) et ElevenLabs (TTS).
 // Le nom OpenAIService est conserve par historique ; le TTS passe par ElevenLabs,
@@ -25,7 +26,15 @@ export class OpenAIService {
     private config: ConfigService,
     private piper: PiperService,
     @Optional() private voiceConfig?: VoiceConfigService,
+    @Optional() private metrics?: VoiceMetricsService,
   ) {}
+
+  // Mesure d'un appel REELLEMENT tente (cle/config presentes, requete
+  // envoyee) — jamais appele pour un court-circuit "non configure", pour ne
+  // pas gonfler artificiellement les compteurs avec des non-evenements.
+  private recordMetric(service: VoiceMetricServiceKey, success: boolean, startedAt: number, errorMessage?: string): Promise<void> {
+    return this.metrics?.record(service, success, Date.now() - startedAt, errorMessage) ?? Promise.resolve();
+  }
 
   private getKey(): string {
     const key = this.config.get<string>('OPENAI_API_KEY') || '';
@@ -58,17 +67,24 @@ export class OpenAIService {
     fd.append('response_format', 'json');
     fd.append('prompt', 'Bonjour, je vends des légumes au marché. FCFA, Francs, vendu, dépensé, tomate, oignon, attieke.');
 
-    const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      signal: AbortSignal.timeout(30000),
-      headers: { 'Authorization': `Bearer ${key}` },
-      body: fd,
-    });
-    if (!res.ok) throw new Error(`OpenAI STT HTTP ${res.status}: ${await res.text()}`);
-    const data = await res.json() as any;
-    if (!data.text?.trim()) throw new Error('OpenAI STT: réponse vide');
-    this.logger.log(`[STT:OPENAI] OK — "${data.text.slice(0, 60)}"`);
-    return data.text;
+    const startedAt = Date.now();
+    try {
+      const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        signal: AbortSignal.timeout(30000),
+        headers: { 'Authorization': `Bearer ${key}` },
+        body: fd,
+      });
+      if (!res.ok) throw new Error(`OpenAI STT HTTP ${res.status}: ${await res.text()}`);
+      const data = await res.json() as any;
+      if (!data.text?.trim()) throw new Error('OpenAI STT: réponse vide');
+      this.logger.log(`[STT:OPENAI] OK — "${data.text.slice(0, 60)}"`);
+      await this.recordMetric('stt_openai_cloud', true, startedAt);
+      return data.text;
+    } catch (e: any) {
+      await this.recordMetric('stt_openai_cloud', false, startedAt, e?.message);
+      throw e;
+    }
   }
 
   // LLM — endpoint compatible OpenAI, configurable.
@@ -116,13 +132,21 @@ export class OpenAIService {
   // TTS — Piper local (offline-first) puis config DB active (ElevenLabs OU
   // Azure Speech) puis repli variables d'environnement (ElevenLabs, historique).
   async synthesize(text: string): Promise<Buffer | null> {
-    // Piper local, si actif. Renvoie du WAV ; repli cloud si null.
-    if (this.config.get<string>('VOICE_LOCAL_TTS') === '1') {
+    // Piper local, si actif ET configure (bin+voix presents — sinon ce n'est
+    // pas un appel reel, juste un chemin desactive : pas de metrique). Renvoie
+    // du WAV ; repli config DB / cloud si null.
+    if (this.config.get<string>('VOICE_LOCAL_TTS') === '1' && this.piper.available()) {
+      const startedAt = Date.now();
       try {
         const wav = await this.piper.synthesize(text);
-        if (wav && wav.length > 44) return wav;
+        if (wav && wav.length > 44) {
+          await this.recordMetric('tts_piper_local', true, startedAt);
+          return wav;
+        }
+        await this.recordMetric('tts_piper_local', false, startedAt, 'wav vide ou indisponible');
       } catch (e: any) {
-        this.logger.warn(`[TTS:PIPER] repli cloud (${e.message})`);
+        await this.recordMetric('tts_piper_local', false, startedAt, e?.message);
+        this.logger.warn(`[TTS:PIPER] repli config DB / ElevenLabs (${e.message})`);
       }
     }
 
@@ -169,12 +193,15 @@ export class OpenAIService {
       this.logger.error('[TTS:ELEVENLABS] ELEVENLABS_API_KEY ou ELEVENLABS_VOICE_ID absente, TTS indisponible');
       return null;
     }
+    const startedAt = Date.now();
     try {
       const buf = await synthesizeElevenLabs(text, apiKey, voiceId);
       this.logger.log(`[TTS:ELEVENLABS] OK - ${buf.length} bytes`);
+      await this.recordMetric('tts_elevenlabs', true, startedAt);
       return buf;
     } catch (e: any) {
       this.logger.error(`[TTS:ELEVENLABS] FAIL: ${e.message}`);
+      await this.recordMetric('tts_elevenlabs', false, startedAt, e?.message);
       return null;
     }
   }

@@ -21,8 +21,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * base et pas seulement par la logique applicative — même style que
  * `ux_fidelite_evenements_idem` (FideliteEvenements).
  */
-export class VoiceProviderConfig1781000000000 implements MigrationInterface {
-  name = 'VoiceProviderConfig1781000000000';
+export class VoiceProviderConfig1781000000002 implements MigrationInterface {
+  name = 'VoiceProviderConfig1781000000002';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
