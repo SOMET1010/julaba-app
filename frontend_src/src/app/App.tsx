@@ -18,7 +18,6 @@ import { UserProvider, useUser } from './contexts/UserContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import { AuditProvider } from './contexts/AuditContext';
 import { WalletProvider } from './contexts/WalletContext';
-import { ScoreProvider } from './contexts/ScoreContext';
 import { CommandeProvider } from './contexts/CommandeContext';
 import { StockProviderInner } from './contexts/StockContext';
 import { CaisseProvider } from './contexts/CaisseContext';
@@ -72,32 +71,30 @@ export default function App() {
             <NotificationsProvider>
                 <AuditProvider>
                   <WalletProvider>
-                    <ScoreProvider>
-                      <CommandeProvider>
-                        <CaisseProvider>
-                          <StockProviderInner>
-                            <CooperativeProvider>
-                              <InstitutionProvider>
-                                <BackOfficeProvider>
-                                  <SupportConfigProvider>
-                                    <TicketsProvider>
-                                      <InstitutionAccessProvider>
-                                          <ProducteurProvider>
-                                            <AnimationWrapper>
-                                              <ErrorBoundary><RouterProvider router={router} /></ErrorBoundary>
-                                              <Toaster />
-                                            </AnimationWrapper>
-                                          </ProducteurProvider>
-                                      </InstitutionAccessProvider>
-                                    </TicketsProvider>
-                                  </SupportConfigProvider>
-                                </BackOfficeProvider>
-                              </InstitutionProvider>
-                            </CooperativeProvider>
-                          </StockProviderInner>
-                        </CaisseProvider>
-                      </CommandeProvider>
-                    </ScoreProvider>
+                    <CommandeProvider>
+                      <CaisseProvider>
+                        <StockProviderInner>
+                          <CooperativeProvider>
+                            <InstitutionProvider>
+                              <BackOfficeProvider>
+                                <SupportConfigProvider>
+                                  <TicketsProvider>
+                                    <InstitutionAccessProvider>
+                                        <ProducteurProvider>
+                                          <AnimationWrapper>
+                                            <ErrorBoundary><RouterProvider router={router} /></ErrorBoundary>
+                                            <Toaster />
+                                          </AnimationWrapper>
+                                        </ProducteurProvider>
+                                    </InstitutionAccessProvider>
+                                  </TicketsProvider>
+                                </SupportConfigProvider>
+                              </BackOfficeProvider>
+                            </InstitutionProvider>
+                          </CooperativeProvider>
+                        </StockProviderInner>
+                      </CaisseProvider>
+                    </CommandeProvider>
                   </WalletProvider>
                 </AuditProvider>
             </NotificationsProvider>

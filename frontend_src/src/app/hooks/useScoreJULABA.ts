@@ -62,7 +62,7 @@ export const SCORE_LEVELS: ScoreLevel[] = [
     maxScore: 69,
     color: '#F59E0B',
     benefits: [
-      'Microcrédits jusqu\'à 100 000 FCFA',
+      'Microcrédits — vois ton palier réel',
       'Formations avancées',
       'Tarifs préférentiels marchés',
     ],
@@ -73,7 +73,7 @@ export const SCORE_LEVELS: ScoreLevel[] = [
     maxScore: 89,
     color: '#2E8B57',
     benefits: [
-      'Microcrédits jusqu\'à 250 000 FCFA',
+      'Microcrédits — vois ton palier réel',
       'Formations Expert débloquées',
       'Accès prioritaire nouveaux marchés',
       'Badge Expert visible',
@@ -85,7 +85,7 @@ export const SCORE_LEVELS: ScoreLevel[] = [
     maxScore: 100,
     color: '#7C3AED',
     benefits: [
-      'Microcrédits jusqu\'à 500 000 FCFA',
+      'Microcrédits — vois ton palier réel',
       'Formations Leadership',
       'Mentor certifié JULABA',
       'Participation aux décisions plateforme',
@@ -715,12 +715,14 @@ export function useScoreJULABA(
   const benefits: ScoreBenefit[] = [
     {
       icon: 'Keiwa',
-      // En dessous de 40, le microcrédit n'est pas encore débloqué : on évite le
-      // « jusqu'à 0 FCFA » qui sonne mal → message d'encouragement (B16).
-      label: score >= 40
-        ? `Microcrédits jusqu'à ${score >= 90 ? '500 000' : score >= 70 ? '250 000' : '100 000'} FCFA`
-        : 'Microcrédits — continue pour débloquer',
-      unlocked: score >= 40,
+      // Le montant de microcrédit NE SE DÉDUIT PAS de ce score de gamification
+      // (0-100) : c'est le VRAI score financier (FinancialScoreService, 0-1000,
+      // GET /financial-score/:userId) qui détermine le palier réel. On ne
+      // reconvertit donc plus d'estimation ici — l'item reste toujours
+      // consultable et renvoie vers l'écran de détail du score financier réel
+      // (cf. ScoreOnboardingModal / FinancialScoreDetailModal).
+      label: 'Microcrédits — vois ton palier réel',
+      unlocked: true,
     },
     {
       icon: 'GraduationCap',
