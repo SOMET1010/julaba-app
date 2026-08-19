@@ -1,22 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, Check } from 'lucide-react';
-import { useUser } from '../../contexts/UserContext';
+import { ChevronRight, Check, Loader2 } from 'lucide-react';
+import { useWallet } from '../../contexts/WalletContext';
 import { IMG_LOGO_WAVE, IMG_LOGO_ORANGE_MONEY, IMG_LOGO_MTN, IMG_LOGO_MOOV } from '../../assets/images';
 import { toast } from 'sonner';
+import {
+  rechercherDestinataire,
+  transfererVersCompte,
+  type DestinataireTransfert,
+} from '../../services/api/wallets-api';
+import { HttpError } from '../../services/api/api-client';
 
 const C = '#C66A2C';
 const BG = '#FFF2E9';
-
-interface Contact {
-  name: string;
-  initials: string;
-  color: string;
-  phone: string;
-  online: boolean;
-  last: string;
-}
 
 interface Method {
   id: string;
@@ -28,35 +25,47 @@ interface Method {
   sub: string;
   featured: boolean;
   badge: string;
+  disponible: boolean;
 }
 
-const CONTACTS: Contact[] = [
-  { name: 'Awa Koné',      initials: 'AK', color: C,         phone: '07 01 02 03 04', online: true,  last: '5 000'  },
-  { name: 'Mariam D.',     initials: 'MD', color: '#3b82f6', phone: '05 06 07 08 09', online: false, last: '2 500'  },
-  { name: 'Fatoumata T.',  initials: 'FT', color: '#8b5cf6', phone: '07 23 45 67 89', online: true,  last: '10 000' },
-  { name: 'Kadidia S.',    initials: 'KS', color: '#10b981', phone: '05 11 22 33 44', online: false, last: '1 000'  },
-  { name: 'Binta C.',      initials: 'BC', color: '#f59e0b', phone: '07 55 66 77 88', online: true,  last: '7 500'  },
-];
-
 const METHODS: Method[] = [
-  { id: 'julaba', logo: 'JL',  color: C,         name: 'Compte Julaba',    sub: 'Instantané · Sans frais', featured: true,  badge: 'Recommandé' },
-  { id: 'wave',   logo: 'WV',  imgLogo: IMG_LOGO_WAVE,          color: '#00b9f5', name: 'Wave',             sub: 'Rapide · Sans frais',     featured: false, badge: '' },
-  { id: 'orange', logo: 'OM',  imgLogo: IMG_LOGO_ORANGE_MONEY,  color: '#FF6600', name: 'Orange Money',     sub: 'Disponible partout',      featured: false, badge: '' },
-  { id: 'mtn',    logo: 'MTN', imgLogo: IMG_LOGO_MTN,           color: '#FFCC00', textColor: '#333', name: 'MTN MoMo', sub: 'Réseau étendu', featured: false, badge: '' },
-  { id: 'moov',   logo: 'MV',  imgLogo: IMG_LOGO_MOOV,          color: '#0057A8', name: 'Moov Money',       sub: 'Faibles commissions',     featured: false, badge: '' },
-  { id: 'banque', logo: 'BQ',  color: '#2d7a4f', name: 'Virement bancaire', sub: 'Sous 24h ouvrées',       featured: false, badge: '' },
+  { id: 'julaba', logo: 'JL',  color: C,         name: 'Compte Julaba',    sub: 'Instantané · Sans frais', featured: true,  badge: '', disponible: true },
+  { id: 'wave',   logo: 'WV',  imgLogo: IMG_LOGO_WAVE,          color: '#00b9f5', name: 'Wave',             sub: 'Rapide · Sans frais',     featured: false, badge: 'Bientôt', disponible: false },
+  { id: 'orange', logo: 'OM',  imgLogo: IMG_LOGO_ORANGE_MONEY,  color: '#FF6600', name: 'Orange Money',     sub: 'Disponible partout',      featured: false, badge: 'Bientôt', disponible: false },
+  { id: 'mtn',    logo: 'MTN', imgLogo: IMG_LOGO_MTN,           color: '#FFCC00', textColor: '#333', name: 'MTN MoMo', sub: 'Réseau étendu', featured: false, badge: 'Bientôt', disponible: false },
+  { id: 'moov',   logo: 'MV',  imgLogo: IMG_LOGO_MOOV,          color: '#0057A8', name: 'Moov Money',       sub: 'Faibles commissions',     featured: false, badge: 'Bientôt', disponible: false },
+  { id: 'banque', logo: 'BQ',  color: '#2d7a4f', name: 'Virement bancaire', sub: 'Sous 24h ouvrées',       featured: false, badge: 'Bientôt', disponible: false },
 ];
 
 type Step = 1 | 2 | 3;
 
+function genererCleIdempotence(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `xfer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function TransfertPage() {
   const navigate = useNavigate();
+  const { getAvailableBalance, refreshKeiwa } = useWallet();
   const [step, setStep] = useState<Step>(1);
   const [phone, setPhone] = useState('');
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [destinataire, setDestinataire] = useState<DestinataireTransfert | null>(null);
+  const [recherche, setRecherche] = useState<'idle' | 'loading' | 'error'>('idle');
   const [selectedMethod, setSelectedMethod] = useState<Method | null>(null);
   const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const [done, setDone] = useState(false);
+  const [soldeApres, setSoldeApres] = useState<number | null>(null);
+
+  // Clé d'idempotence : une par tentative d'envoi. Rejouer le MÊME appel
+  // (retry réseau, double-clic sur "Envoyer maintenant") réutilise cette même
+  // clé, ce qui empêche le backend de créer un second mouvement — cf.
+  // WalletsService.transfererVersUtilisateur. Régénérée uniquement quand on
+  // recommence un nouveau transfert.
+  const idempotencyKeyRef = useRef<string>(genererCleIdempotence());
 
   const stepLabels: Record<Step, string> = {
     1: 'À qui envoyer ?',
@@ -64,19 +73,39 @@ export function TransfertPage() {
     3: 'Combien envoyer ?',
   };
 
-  const handleSelectContact = (c: Contact) => {
-    setSelectedContact(c);
-    setPhone(c.phone);
-  };
-
   const handlePhoneChange = (val: string) => {
     setPhone(val);
-    if (val.length >= 8) {
-      setSelectedContact({ name: val, initials: val.slice(0, 2).toUpperCase(), color: C, phone: val, online: false, last: '' });
-    } else {
-      setSelectedContact(null);
-    }
+    setDestinataire(null);
+    setRecherche('idle');
   };
+
+  // Recherche du destinataire par téléphone, débouncée : dès que le numéro
+  // ressemble à un numéro complet, on interroge le vrai backend
+  // (POST /wallets/me/rechercher-destinataire) — plus de contacts fictifs.
+  useEffect(() => {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 8) {
+      setRecherche('idle');
+      return;
+    }
+    let annule = false;
+    setRecherche('loading');
+    const timer = setTimeout(async () => {
+      try {
+        const trouve = await rechercherDestinataire(phone);
+        if (!annule) {
+          setDestinataire(trouve);
+          setRecherche('idle');
+        }
+      } catch (e: any) {
+        if (!annule) {
+          setDestinataire(null);
+          setRecherche('error');
+        }
+      }
+    }, 450);
+    return () => { annule = true; clearTimeout(timer); };
+  }, [phone]);
 
   const handleNumpad = (key: string) => {
     if (key === '⌫') {
@@ -89,11 +118,56 @@ export function TransfertPage() {
   };
 
   const amountNum = parseInt(amount || '0', 10);
+  const soldeDisponible = getAvailableBalance();
 
   const goBack = () => {
     if (step === 2) setStep(1);
     else if (step === 3) setStep(2);
     else navigate(-1);
+  };
+
+  const initialesDe = (d: DestinataireTransfert) =>
+    `${d.prenom?.[0] || ''}${d.nom?.[0] || ''}`.toUpperCase() || '??';
+  const nomCompletDe = (d: DestinataireTransfert) => `${d.prenom} ${d.nom}`.trim();
+
+  const handleEnvoyer = async () => {
+    if (!destinataire || envoiEnCours) return;
+    if (amountNum < 100) return;
+    if (amountNum > soldeDisponible) {
+      toast.error('Solde insuffisant pour ce transfert');
+      return;
+    }
+    setEnvoiEnCours(true);
+    try {
+      const resultat = await transfererVersCompte({
+        destinataireUserId: destinataire.id,
+        montant: amountNum,
+        note: note || undefined,
+        idempotencyKey: idempotencyKeyRef.current,
+      });
+      setSoldeApres(resultat.solde);
+      setDone(true);
+      // Rafraîchit le solde affiché ailleurs dans l'app (accueil, etc.).
+      refreshKeiwa().catch(() => {});
+    } catch (e: any) {
+      const message = e instanceof HttpError ? e.message : (e?.message || 'Transfert échoué');
+      toast.error(message);
+    } finally {
+      setEnvoiEnCours(false);
+    }
+  };
+
+  const resetTout = () => {
+    idempotencyKeyRef.current = genererCleIdempotence();
+    setStep(1);
+    setPhone('');
+    setDestinataire(null);
+    setRecherche('idle');
+    setSelectedMethod(null);
+    setAmount('');
+    setNote('');
+    setSoldeApres(null);
+    setDone(false);
   };
 
   if (done) {
@@ -109,10 +183,15 @@ export function TransfertPage() {
         <div style={{ textAlign: 'center' }}>
           <p style={{ fontSize: 22, fontWeight: 800, color: '#2a1a0a' }}>Envoi réussi !</p>
           <p style={{ fontSize: 15, color: '#b8956a', marginTop: 6 }}>{amountNum.toLocaleString('fr-FR')} FCFA envoyés</p>
-          <p style={{ fontSize: 13, color: '#b8956a', marginTop: 4 }}>à {selectedContact?.name}</p>
+          <p style={{ fontSize: 13, color: '#b8956a', marginTop: 4 }}>à {destinataire ? nomCompletDe(destinataire) : ''}</p>
+          {soldeApres !== null && (
+            <p style={{ fontSize: 13, color: '#2a1a0a', fontWeight: 700, marginTop: 12, background: 'white', borderRadius: 12, padding: '8px 16px', display: 'inline-block' }}>
+              Nouveau solde : {soldeApres.toLocaleString('fr-FR')} FCFA
+            </p>
+          )}
         </div>
         <motion.button
-          onClick={() => { setStep(1); setPhone(''); setSelectedContact(null); setSelectedMethod(null); setAmount(''); setDone(false); }}
+          onClick={resetTout}
           style={{ padding: '14px 32px', borderRadius: 18, background: `linear-gradient(135deg, ${C}, #D4824A)`, color: 'white', fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(198,106,44,0.3)' }}
           whileTap={{ scale: 0.97 }}
         >
@@ -167,7 +246,7 @@ export function TransfertPage() {
             <p style={{ fontSize: 13, fontWeight: 700, color: C, marginBottom: 12 }}>Destinataire</p>
 
             {/* Champ saisie */}
-            <div style={{ position: 'relative', marginBottom: 20 }}>
+            <div style={{ position: 'relative', marginBottom: 12 }}>
               <div style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)' }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C} strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               </div>
@@ -175,12 +254,12 @@ export function TransfertPage() {
                 type="tel"
                 value={phone}
                 onChange={e => handlePhoneChange(e.target.value)}
-                placeholder="Numéro ou code Julaba"
-                style={{ width: '100%', padding: '16px 20px 16px 50px', borderRadius: 18, border: `2px solid ${phone.length >= 8 ? C : 'rgba(198,106,44,0.2)'}`, background: 'white', fontSize: 15, color: '#2a1a0a', outline: 'none', fontFamily: 'system-ui, sans-serif', transition: 'border-color 0.2s' }}
+                placeholder="Numéro de téléphone Julaba"
+                style={{ width: '100%', padding: '16px 20px 16px 50px', borderRadius: 18, border: `2px solid ${destinataire ? '#10b981' : recherche === 'error' ? '#ef4444' : phone.length >= 8 ? C : 'rgba(198,106,44,0.2)'}`, background: 'white', fontSize: 15, color: '#2a1a0a', outline: 'none', fontFamily: 'system-ui, sans-serif', transition: 'border-color 0.2s' }}
               />
               {phone.length > 0 && (
                 <motion.button
-                  onClick={() => { setPhone(''); setSelectedContact(null); }}
+                  onClick={() => handlePhoneChange('')}
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', width: 26, height: 26, borderRadius: '50%', background: 'rgba(198,106,44,0.1)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                   whileTap={{ scale: 0.9 }}
@@ -190,56 +269,62 @@ export function TransfertPage() {
               )}
             </div>
 
-            {/* Contacts récents */}
-            <p style={{ fontSize: 13, fontWeight: 700, color: C, marginBottom: 10 }}>Envois récents</p>
-            <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
-              {CONTACTS.map(c => (
-                <motion.div
-                  key={c.name}
-                  onClick={() => handleSelectContact(c)}
-                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, cursor: 'pointer', flexShrink: 0, width: 60 }}
-                  whileTap={{ scale: 0.92 }}
-                >
-                  <div style={{ width: 52, height: 52, borderRadius: '50%', background: c.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'white', position: 'relative', border: selectedContact?.phone === c.phone ? `3px solid ${C}` : '2.5px solid white', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-                    {c.initials}
-                    {c.online && <div style={{ position: 'absolute', bottom: 1, right: 1, width: 12, height: 12, borderRadius: '50%', background: '#4ade80', border: '2px solid white' }} />}
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#2a1a0a', textAlign: 'center', lineHeight: 1.3 }}>{c.name.split(' ')[0]}</span>
-                  <span style={{ fontSize: 9, color: '#b8956a' }}>{c.last} F</span>
-                </motion.div>
-              ))}
-            </div>
+            {/* État de la recherche */}
+            {recherche === 'loading' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, color: '#b8956a', fontSize: 13 }}>
+                <Loader2 size={16} className="animate-spin" />
+                Recherche du compte Julaba…
+              </div>
+            )}
+            {recherche === 'error' && (
+              <p style={{ marginBottom: 16, color: '#ef4444', fontSize: 13, fontWeight: 600 }}>
+                Aucun compte Julaba trouvé pour ce numéro.
+              </p>
+            )}
+            {destinataire && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                style={{ background: 'white', borderRadius: 16, padding: '14px 16px', border: `1.5px solid #10b981`, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}
+              >
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: C, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                  {initialesDe(destinataire)}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#2a1a0a' }}>{nomCompletDe(destinataire)}</p>
+                  <p style={{ fontSize: 12, color: '#b8956a', marginTop: 1 }}>{destinataire.telephone}</p>
+                </div>
+                <Check size={20} color="#10b981" />
+              </motion.div>
+            )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0' }}>
-              <div style={{ flex: 1, height: 1, background: 'rgba(198,106,44,0.15)' }} />
-              <span style={{ fontSize: 12, color: '#b8956a', fontWeight: 500 }}>ou saisissez un numéro</span>
-              <div style={{ flex: 1, height: 1, background: 'rgba(198,106,44,0.15)' }} />
-            </div>
+            <p style={{ fontSize: 12, color: '#b8956a', marginBottom: 20 }}>
+              Entrez le numéro de téléphone du destinataire — son compte Julaba est vérifié automatiquement.
+            </p>
 
             <motion.button
-              onClick={() => selectedContact && setStep(2)}
-              disabled={!selectedContact}
-              style={{ width: '100%', padding: 16, border: 'none', borderRadius: 18, background: selectedContact ? `linear-gradient(135deg, ${C}, #D4824A)` : 'rgba(198,106,44,0.2)', color: 'white', fontSize: 16, fontWeight: 700, cursor: selectedContact ? 'pointer' : 'not-allowed', position: 'relative', overflow: 'hidden', boxShadow: selectedContact ? '0 4px 16px rgba(198,106,44,0.35)' : 'none' }}
-              whileTap={selectedContact ? { scale: 0.98 } : {}}
+              onClick={() => destinataire && setStep(2)}
+              disabled={!destinataire}
+              style={{ width: '100%', padding: 16, border: 'none', borderRadius: 18, background: destinataire ? `linear-gradient(135deg, ${C}, #D4824A)` : 'rgba(198,106,44,0.2)', color: 'white', fontSize: 16, fontWeight: 700, cursor: destinataire ? 'pointer' : 'not-allowed', position: 'relative', overflow: 'hidden', boxShadow: destinataire ? '0 4px 16px rgba(198,106,44,0.35)' : 'none' }}
+              whileTap={destinataire ? { scale: 0.98 } : {}}
             >
-              {selectedContact && <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%)' }} animate={{ x: ['-100%', '200%'] }} transition={{ duration: 2.5, repeat: Infinity }} />}
+              {destinataire && <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%)' }} animate={{ x: ['-100%', '200%'] }} transition={{ duration: 2.5, repeat: Infinity }} />}
               Continuer
             </motion.button>
           </motion.div>
         )}
 
         {/* ── ÉTAPE 2 ── */}
-        {step === 2 && selectedContact && (
+        {step === 2 && destinataire && (
           <motion.div key="step2" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} style={{ padding: '20px 16px' }}>
 
             {/* Récap destinataire */}
             <div style={{ background: 'white', borderRadius: 16, padding: '14px 16px', border: '1px solid rgba(198,106,44,0.12)', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 42, height: 42, borderRadius: '50%', background: selectedContact.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0 }}>
-                {selectedContact.initials}
+              <div style={{ width: 42, height: 42, borderRadius: '50%', background: C, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'white', flexShrink: 0 }}>
+                {initialesDe(destinataire)}
               </div>
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: '#2a1a0a' }}>{selectedContact.name}</p>
-                <p style={{ fontSize: 12, color: '#b8956a', marginTop: 1 }}>{selectedContact.phone}</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#2a1a0a' }}>{nomCompletDe(destinataire)}</p>
+                <p style={{ fontSize: 12, color: '#b8956a', marginTop: 1 }}>{destinataire.telephone}</p>
               </div>
               <motion.button onClick={() => setStep(1)} style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(198,106,44,0.1)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} whileTap={{ scale: 0.9 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C} strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -251,28 +336,26 @@ export function TransfertPage() {
             {METHODS.filter(m => m.featured).map(m => (
               <motion.div key={m.id} onClick={() => { setSelectedMethod(m); setStep(3); }} style={{ background: 'rgba(198,106,44,0.04)', borderRadius: 16, padding: '14px 16px', border: `1.5px solid ${C}`, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', marginBottom: 8, position: 'relative', overflow: 'hidden' }} whileTap={{ scale: 0.98 }}>
                 <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.4) 50%, transparent 65%)' }} animate={{ x: ['-100%', '200%'] }} transition={{ duration: 3, repeat: Infinity }} />
-                <div style={{ width: 42, height: 42, borderRadius: 13, background: m.imgLogo ? 'white' : m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: m.textColor || 'white', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.15)', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-                  {m.imgLogo
-                    ? <img src={m.imgLogo} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }}/>
-                    : m.logo}
+                <div style={{ width: 42, height: 42, borderRadius: 13, background: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: m.textColor || 'white', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.15)', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
+                  {m.logo}
                 </div>
                 <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: '#2a1a0a' }}>{m.name}</p>
                   <p style={{ fontSize: 11, color: '#b8956a', marginTop: 1 }}>{m.sub}</p>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, color: C, background: 'rgba(198,106,44,0.1)', padding: '3px 8px', borderRadius: 10, position: 'relative', zIndex: 1 }}>{m.badge}</span>
+                <ChevronRight size={16} color={C} style={{ position: 'relative', zIndex: 1 }} />
               </motion.div>
             ))}
-            <div style={{ marginTop: -2, marginBottom: 12 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 999, padding: '4px 10px' }}>
-                Bientôt
-              </span>
-            </div>
 
-            {/* Via Mobile Money */}
+            {/* Via Mobile Money (hors périmètre — pas de partenaire externe branché) */}
             <p style={{ fontSize: 11, fontWeight: 700, color: '#b8956a', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, marginTop: 16 }}>Via Mobile Money</p>
             {METHODS.filter(m => ['wave', 'orange', 'mtn', 'moov'].includes(m.id)).map(m => (
-              <motion.div key={m.id} onClick={() => { setSelectedMethod(m); setStep(3); }} style={{ background: 'white', borderRadius: 16, padding: '13px 16px', border: '1px solid rgba(198,106,44,0.1)', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', marginBottom: 8 }} whileTap={{ scale: 0.98 }}>
+              <motion.div
+                key={m.id}
+                onClick={() => toast.error(`${m.name} : bientôt disponible`)}
+                style={{ background: 'white', borderRadius: 16, padding: '13px 16px', border: '1px solid rgba(198,106,44,0.1)', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', marginBottom: 8, opacity: 0.55 }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <div style={{ width: 42, height: 42, borderRadius: 13, background: m.imgLogo ? 'white' : m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: m.textColor || 'white', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
                   {m.imgLogo
                     ? <img src={m.imgLogo} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }}/>
@@ -282,46 +365,55 @@ export function TransfertPage() {
                   <p style={{ fontSize: 14, fontWeight: 600, color: '#2a1a0a' }}>{m.name}</p>
                   <p style={{ fontSize: 11, color: '#b8956a', marginTop: 1 }}>{m.sub}</p>
                 </div>
-                <ChevronRight size={16} color="#c8a882" />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#92400e', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 999, padding: '3px 8px' }}>
+                  {m.badge}
+                </span>
               </motion.div>
             ))}
 
-            {/* Via Banque */}
+            {/* Via Banque (hors périmètre) */}
             <p style={{ fontSize: 11, fontWeight: 700, color: '#b8956a', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, marginTop: 16 }}>Via Banque</p>
             {METHODS.filter(m => m.id === 'banque').map(m => (
-              <motion.div key={m.id} onClick={() => { setSelectedMethod(m); setStep(3); }} style={{ background: 'white', borderRadius: 16, padding: '13px 16px', border: '1px solid rgba(198,106,44,0.1)', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} whileTap={{ scale: 0.98 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 13, background: m.imgLogo ? 'white' : m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: 'white', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
-                  {m.imgLogo
-                    ? <img src={m.imgLogo} alt={m.name} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }}/>
-                    : m.logo}
+              <motion.div
+                key={m.id}
+                onClick={() => toast.error(`${m.name} : bientôt disponible`)}
+                style={{ background: 'white', borderRadius: 16, padding: '13px 16px', border: '1px solid rgba(198,106,44,0.1)', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', opacity: 0.55 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div style={{ width: 42, height: 42, borderRadius: 13, background: m.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: 'white', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+                  {m.logo}
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: '#2a1a0a' }}>{m.name}</p>
                   <p style={{ fontSize: 11, color: '#b8956a', marginTop: 1 }}>{m.sub}</p>
                 </div>
-                <ChevronRight size={16} color="#c8a882" />
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#92400e', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 999, padding: '3px 8px' }}>
+                  {m.badge}
+                </span>
               </motion.div>
             ))}
           </motion.div>
         )}
 
         {/* ── ÉTAPE 3 ── */}
-        {step === 3 && selectedContact && selectedMethod && (
+        {step === 3 && destinataire && selectedMethod && (
           <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} style={{ padding: '20px 16px' }}>
 
             {/* Récap mini */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, padding: '12px 14px', background: 'white', borderRadius: 14, border: '1px solid rgba(198,106,44,0.1)' }}>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: selectedContact.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'white', flexShrink: 0 }}>{selectedContact.initials}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '12px 14px', background: 'white', borderRadius: 14, border: '1px solid rgba(198,106,44,0.1)' }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: C, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'white', flexShrink: 0 }}>{initialesDe(destinataire)}</div>
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#2a1a0a' }}>{selectedContact.name}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#2a1a0a' }}>{nomCompletDe(destinataire)}</p>
                 <p style={{ fontSize: 11, color: '#b8956a', marginTop: 1 }}>via {selectedMethod.name}</p>
               </div>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: selectedMethod.imgLogo ? 'white' : selectedMethod.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: selectedMethod.textColor || 'white', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}>
-                {selectedMethod.imgLogo
-                  ? <img src={selectedMethod.imgLogo} alt={selectedMethod.name} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 2 }}/>
-                  : selectedMethod.logo}
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: selectedMethod.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: selectedMethod.textColor || 'white', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.12)' }}>
+                {selectedMethod.logo}
               </div>
             </div>
+
+            <p style={{ fontSize: 11, color: '#b8956a', textAlign: 'center', marginBottom: 10 }}>
+              Solde disponible : {soldeDisponible.toLocaleString('fr-FR')} FCFA
+            </p>
 
             {/* Montant */}
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -333,7 +425,7 @@ export function TransfertPage() {
             </div>
 
             {/* Clavier numérique */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
               {['1','2','3','4','5','6','7','8','9','000','0','⌫'].map(k => (
                 <motion.button
                   key={k}
@@ -346,13 +438,22 @@ export function TransfertPage() {
               ))}
             </div>
 
+            {/* Note optionnelle */}
+            <input
+              type="text"
+              value={note}
+              onChange={e => setNote(e.target.value.slice(0, 200))}
+              placeholder="Ajouter une note (facultatif)"
+              style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1px solid rgba(198,106,44,0.15)', background: 'white', fontSize: 13, color: '#2a1a0a', outline: 'none', marginBottom: 16, fontFamily: 'system-ui, sans-serif' }}
+            />
+
             {/* Récap final */}
             {amountNum >= 100 && (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ background: 'white', borderRadius: 16, padding: 16, border: '1px solid rgba(198,106,44,0.1)', marginBottom: 16 }}>
                 {[
-                  { label: 'Destinataire', value: selectedContact.name },
+                  { label: 'Destinataire', value: nomCompletDe(destinataire) },
                   { label: 'Via', value: selectedMethod.name },
-                  { label: 'Frais', value: selectedMethod.id === 'julaba' ? 'Gratuit' : 'Inclus' },
+                  { label: 'Frais', value: 'Gratuit' },
                   { label: 'Total', value: `${amountNum.toLocaleString('fr-FR')} FCFA` },
                 ].map(({ label, value }, i, arr) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < arr.length - 1 ? '0.5px solid rgba(198,106,44,0.1)' : 'none' }}>
@@ -364,13 +465,21 @@ export function TransfertPage() {
             )}
 
             <motion.button
-              onClick={() => {
-                toast.error('Transfert entre comptes Julaba bientôt disponible');
+              onClick={handleEnvoyer}
+              disabled={amountNum < 100 || amountNum > soldeDisponible || envoiEnCours}
+              style={{
+                width: '100%', padding: 16, border: 'none', borderRadius: 18,
+                background: (amountNum >= 100 && amountNum <= soldeDisponible && !envoiEnCours) ? `linear-gradient(135deg, ${C}, #D4824A)` : 'rgba(198,106,44,0.2)',
+                color: 'white', fontSize: 16, fontWeight: 700,
+                cursor: (amountNum >= 100 && amountNum <= soldeDisponible && !envoiEnCours) ? 'pointer' : 'not-allowed',
+                position: 'relative', overflow: 'hidden',
+                boxShadow: (amountNum >= 100 && amountNum <= soldeDisponible) ? '0 4px 16px rgba(198,106,44,0.35)' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               }}
-              disabled
-              style={{ width: '100%', padding: 16, border: 'none', borderRadius: 18, background: 'rgba(198,106,44,0.2)', color: 'white', fontSize: 16, fontWeight: 700, cursor: 'not-allowed', position: 'relative', overflow: 'hidden', boxShadow: 'none', opacity: 0.5 }}
+              whileTap={!envoiEnCours ? { scale: 0.98 } : {}}
             >
-              Envoyer maintenant
+              {envoiEnCours && <Loader2 size={18} className="animate-spin" />}
+              {amountNum > soldeDisponible && amountNum >= 100 ? 'Solde insuffisant' : envoiEnCours ? 'Envoi en cours…' : 'Envoyer maintenant'}
             </motion.button>
           </motion.div>
         )}

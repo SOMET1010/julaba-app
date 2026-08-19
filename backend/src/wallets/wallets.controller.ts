@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -7,6 +7,7 @@ import { BpayService } from '../bpay/bpay.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
+import { UsersService } from '../users/users.service';
 
 @ApiTags('Wallets')
 @ApiBearerAuth()
@@ -16,6 +17,7 @@ export class WalletsController {
   constructor(
     private readonly walletsService: WalletsService,
     private readonly bpayService: BpayService,
+    private readonly usersService: UsersService,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
@@ -115,6 +117,79 @@ export class WalletsController {
       );
       throw new BadRequestException(`Retrait échoué: ${e.message}`);
     }
+  }
+
+  @Post('me/rechercher-destinataire')
+  @ApiOperation({ summary: "Rechercher un destinataire Jùlaba par téléphone (avant transfert)" })
+  async rechercherDestinataire(@CurrentUser() user: User, @Body() body: { telephone: string }) {
+    if (!body?.telephone) throw new BadRequestException('Téléphone requis');
+    const { variants } = UsersService.normalizePhone(body.telephone);
+    if (variants.length === 0) throw new BadRequestException('Numéro de téléphone invalide');
+    const rows = await this.dataSource.query(
+      `SELECT id, first_name, last_name, phone FROM users WHERE phone = ANY($1) LIMIT 1`,
+      [variants],
+    );
+    if (!rows.length) throw new NotFoundException('Aucun compte Jùlaba trouvé pour ce numéro');
+    const destinataire = rows[0];
+    if (destinataire.id === user.id) {
+      throw new BadRequestException('Vous ne pouvez pas vous transférer de l’argent à vous-même');
+    }
+    return {
+      id: destinataire.id,
+      prenom: destinataire.first_name,
+      nom: destinataire.last_name,
+      telephone: destinataire.phone,
+    };
+  }
+
+  @Post('me/transfert')
+  @ApiOperation({ summary: 'Transfert compte-à-compte interne (Jùlaba vers Jùlaba)' })
+  async transfert(
+    @CurrentUser() user: User,
+    @Body()
+    body: {
+      destinataireTelephone?: string;
+      destinataireUserId?: string;
+      montant: number;
+      note?: string;
+      idempotencyKey?: string;
+    },
+  ) {
+    const montantInt = Math.round(Number(body.montant));
+    if (!montantInt || montantInt <= 0) throw new BadRequestException('Montant invalide');
+
+    let destinataireId = body.destinataireUserId?.trim();
+    if (!destinataireId) {
+      if (!body.destinataireTelephone) {
+        throw new BadRequestException('Destinataire requis (téléphone ou identifiant)');
+      }
+      const { variants } = UsersService.normalizePhone(body.destinataireTelephone);
+      if (variants.length === 0) throw new BadRequestException('Numéro de téléphone invalide');
+      const rows = await this.dataSource.query(
+        `SELECT id FROM users WHERE phone = ANY($1) LIMIT 1`,
+        [variants],
+      );
+      if (!rows.length) throw new NotFoundException('Aucun compte Jùlaba trouvé pour ce numéro');
+      destinataireId = rows[0].id;
+    }
+
+    const note = body.note ? String(body.note).slice(0, 200) : undefined;
+    const idempotencyKey = body.idempotencyKey ? String(body.idempotencyKey).slice(0, 120) : null;
+
+    const resultat = await this.walletsService.transfererVersUtilisateur(
+      user.id,
+      destinataireId as string,
+      montantInt,
+      note,
+      idempotencyKey,
+    );
+
+    return {
+      success: true,
+      dejaTraite: resultat.dejaTraite,
+      reference: resultat.reference,
+      solde: resultat.soldeExpediteur,
+    };
   }
 
   @Get('me/pending')
