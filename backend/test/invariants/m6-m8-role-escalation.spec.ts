@@ -19,6 +19,18 @@
 // compte n'est écrit en base. Depuis l'alignement des versions @nestjs (lot
 // « contrat HTTP NestJS »), la ForbiddenException ressort au vrai statut HTTP
 // 403 : les assertions sont désormais promues à `toBe(403)` (plus de 500).
+//
+// NOTE SUR L'INVARIANT FINAL (robustesse à l'ordre d'exécution) :
+// `jest --runInBand` n'exécute pas les fichiers de *.spec.ts dans un ordre
+// garanti. Plusieurs AUTRES fichiers de test du dossier `invariants/` seedent
+// légitimement des comptes admin (super_admin/admin_general/…) pour tester
+// des endpoints back-office, et ne les nettoient pas toujours en `afterAll`.
+// Si l'un de ces fichiers s'exécute AVANT celui-ci, un test qui vérifierait
+// « zéro compte admin dans TOUTE la base » échouerait à tort (faux négatif),
+// alors qu'aucune escalade n'a eu lieu ICI. L'invariant final compare donc un
+// DELTA (comptes admin présents avant vs après CETTE suite), pas un total
+// absolu : c'est la même garantie de sécurité, mais indépendante du bruit
+// laissé par d'autres fichiers et de l'ordre dans lequel Jest les choisit.
 
 import { INestApplication, ValidationPipe, ForbiddenException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -32,13 +44,24 @@ import { DbInitService } from '../../src/database/db-init.service';
 import { AuthService } from '../../src/auth/auth.service';
 import { User, UserRole, UserStatus } from '../../src/users/entities/user.entity';
 
-const ADMIN_ROLES = ['super_admin', 'admin_general', 'admin_national', 'gestionnaire_zone', 'operateur_terrain'];
+// Rôles réellement « administratifs » au sens de M6+M8 : ceux que ce lot
+// interdit de créer via /auth/signup et /auth/create-acteur. `operateur_terrain`
+// n'y figure PAS : ce fichier seed lui-même des comptes `operateur_terrain`
+// (rôle interne légitime, cf. `seedInterne` ci-dessous) pour jouer le rôle de
+// « créateur » dans les scénarios d'escalade — ce n'est pas ce que l'invariant
+// final surveille.
+const ROLES_ADMINISTRATIFS_INTERDITS = ['super_admin', 'admin_general', 'admin_national', 'gestionnaire_zone'];
 
 describe('Invariants M6+M8 — escalade de rôle interdite', () => {
   let app: INestApplication;
   let ds: DataSource;
   let jwt: JwtService;
   let authService: AuthService;
+  // Snapshot des comptes admin déjà présents en base AVANT que cette suite ne
+  // joue le moindre scénario (seedés par DbInitService.runInit() et/ou laissés
+  // par d'autres fichiers *.spec.ts exécutés plus tôt par Jest). C'est le
+  // « bruit » de référence contre lequel on mesure un delta, pas un absolu.
+  let idsAdminAvant: Set<string>;
   const api = () => request(app.getHttpServer());
 
   beforeAll(async () => {
@@ -58,6 +81,13 @@ describe('Invariants M6+M8 — escalade de rôle interdite', () => {
     jwt = app.get(JwtService);
     authService = app.get(AuthService);
     await app.get(DbInitService, { strict: false }).runInit();
+
+    // Snapshot AVANT tout test de cette suite : quels comptes admin existent
+    // déjà (seed d'init applicatif, résidus d'autres fichiers de test…).
+    const rowsAvant = await ds.query(
+      `SELECT id FROM users WHERE role = ANY($1)`, [ROLES_ADMINISTRATIFS_INTERDITS],
+    );
+    idsAdminAvant = new Set(rowsAvant.map((r: any) => r.id));
   }, 60000);
 
   afterAll(async () => {
@@ -240,27 +270,23 @@ describe('Invariants M6+M8 — escalade de rôle interdite', () => {
     expect([200, 201]).toContain(rc.status); expect(rc.body?.user?.role).toBe('cooperateur');
   });
 
-  // ── Invariant décisif : AUCUN compte à rôle d'administration n'a été créé ──
-  it('aucun compte à rôle administratif présent en base après la suite', async () => {
-    const rows = await ds.query(
-      `SELECT count(*)::int AS n FROM users WHERE role = ANY($1)`, [ADMIN_ROLES],
+  // ── Invariant décisif : AUCUN NOUVEAU compte à rôle administratif n'est
+  //    apparu pendant cette suite (delta, pas un total absolu — cf. la note
+  //    en tête de fichier sur la robustesse à l'ordre d'exécution de Jest).
+  it('aucun NOUVEAU compte à rôle administratif créé pendant la suite', async () => {
+    const rowsApres = await ds.query(
+      `SELECT id FROM users WHERE role = ANY($1)`, [ROLES_ADMINISTRATIFS_INTERDITS],
     );
-    // Les operateur_terrain « créateurs » sont seedés directement (hors signup) ;
-    // on vérifie qu'aucun compte ADMIN (super_admin/admin_general/…) n'a été créé
-    // par les endpoints. Les seuls comptes à rôle admin autorisés ici = les 2
-    // operateur_terrain seedés pour les tests.
-    const seededOperateurs = await ds.query(
-      `SELECT count(*)::int AS n FROM users WHERE role = 'operateur_terrain'`,
-    );
-    const totalAdmin = rows[0].n as number;
-    const operateurs = seededOperateurs[0].n as number;
-    // Aucun super_admin / admin_general / admin_national / gestionnaire_zone créé.
-    const rowsHorsOperateur = await ds.query(
-      `SELECT count(*)::int AS n FROM users WHERE role = ANY($1) AND role <> 'operateur_terrain'`,
-      [ADMIN_ROLES],
-    );
-    expect(rowsHorsOperateur[0].n).toBe(0);
-    // (cohérence : total admin = uniquement les operateur_terrain seedés)
-    expect(totalAdmin).toBe(operateurs);
+    const idsNouveaux = rowsApres
+      .map((r: any) => r.id as string)
+      .filter((id: string) => !idsAdminAvant.has(id));
+    // Propriété testée : les endpoints /auth/signup et /auth/create-acteur
+    // n'ont créé AUCUN compte super_admin/admin_general/admin_national/
+    // gestionnaire_zone pendant l'exécution de cette suite — quel que soit le
+    // nombre de comptes admin déjà présents en base avant qu'elle ne démarre
+    // (bruit laissé par d'autres fichiers de test, dans un ordre que Jest ne
+    // garantit pas). Comparer un delta plutôt qu'un total absolu rend cet
+    // invariant indépendant de cet ordre, sans affaiblir la garantie.
+    expect(idsNouveaux).toEqual([]);
   });
 });
