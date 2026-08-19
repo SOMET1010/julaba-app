@@ -270,21 +270,28 @@ export function Commandes() {
         toast.error(e?.message || 'Mise à jour refusée');
         return;
       }
-      const distributionRes = await apiRequest<unknown>(API_URL, '/cooperatives/distribution', {
-        method: 'POST',
-        body: JSON.stringify({
-          commande_id: (besoinDispatchTarget as CooperativeBesoin & { commande_id?: string }).commande_id ?? besoinDispatchTarget.id,
-          distributions: [
-            {
-              membre_id: besoinDispatchTarget.membre_id,
-              quantite: qa,
-            },
-          ],
-        }),
-      }).catch(() => null);
-      if (!distributionRes) {
-        // La distribution n'a PAS été enregistrée : ne pas annoncer un succès
-        // mensonger (le manager croirait la marchandise répartie alors que non).
+      const distributionRes = await apiRequest<{ success?: boolean; persisted?: boolean } | null>(
+        API_URL,
+        '/cooperatives/distribution',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            produit: besoinDispatchTarget.produit,
+            besoinId: besoinDispatchTarget.id,
+            distributions: [
+              {
+                membreId: besoinDispatchTarget.membre_id,
+                quantite: qa,
+              },
+            ],
+          }),
+        },
+      ).catch(() => null);
+      // La distribution n'est réputée enregistrée que si le serveur confirme
+      // persisted === true — un 200 avec persisted absent/false (ou un échec
+      // réseau) NE DOIT JAMAIS annoncer un succès mensonger (le manager
+      // croirait la marchandise répartie alors que non).
+      if (distributionRes?.persisted !== true) {
         toast.error('La distribution n\'a pas pu être enregistrée. Réessaie.');
         speak("La distribution n'a pas marché. Réessaie, s'il te plaît.");
         return;
