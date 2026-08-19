@@ -6,6 +6,7 @@ import { User, UserRole, UserStatus } from './entities/user.entity';
 import { UsersBoListQueryDto } from './dto/users-bo-list-query.dto';
 import { AuditService } from '../audit/audit.service';
 import { generateInitialPassword, BO_ROLES } from '../auth/auth.service';
+import { stripSensitiveUserFields } from './sanitize-user.util';
 
 @Injectable()
 export class UsersService {
@@ -59,8 +60,7 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException('Utilisateur introuvable');
     }
-    const { passwordHash, pinCodeHash, ...safe } = user as any;
-    return safe;
+    return stripSensitiveUserFields(user as any);
   }
 
   async findAll(query: UsersBoListQueryDto, requesterRole?: string): Promise<{ users: any[]; total: number; page: number; pages: number }> {
@@ -260,8 +260,7 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException('Utilisateur introuvable');
     }
-    const { passwordHash, pinCodeHash, ...safe } = user as any;
-    return safe;
+    return stripSensitiveUserFields(user as any);
   }
 
   async searchActorsForIdentificateur(query: string, limit: number = 10): Promise<any[]> {

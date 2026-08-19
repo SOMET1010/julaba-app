@@ -9,6 +9,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { randomBytes } from 'crypto';
 import { User, UserStatus, UserRole } from '../users/entities/user.entity';
+import { stripSensitiveUserFields } from '../users/sanitize-user.util';
 import { Cooperative } from '../cooperatives-rest/cooperative.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { SignupDto } from './dto/signup.dto';
@@ -452,8 +453,7 @@ export class AuthService {
 
   // ── Sanitize user ─────────────────────────────────────────
   sanitizeUser(user: User) {
-    const { passwordHash, pinCodeHash, pinCodeEncryptedIdentificateur, ...sanitized } = user as any;
-    return sanitized;
+    return stripSensitiveUserFields(user as any);
   }
 
   // ── refreshTokens (compatibilité) ────────────────────────
