@@ -5,6 +5,8 @@ import { DataSource } from 'typeorm';
 import { BpayService } from './bpay.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { CronJobsConfigService } from '../cron-jobs/cron-jobs-config.service';
+import { CRON_JOB_BPAY_RECONCILIATION } from '../cron-jobs/cron-jobs.registry';
 
 @Injectable()
 export class BpayCronService {
@@ -15,10 +17,33 @@ export class BpayCronService {
     private readonly bpayService: BpayService,
     private readonly walletsService: WalletsService,
     private readonly notificationsService: NotificationsService,
+    private readonly cronJobsConfig: CronJobsConfigService,
   ) {}
 
   @Cron('*/5 * * * *')
   async reconcilierTransactionsPending() {
+    if (!(await this.cronJobsConfig.isEnabled(CRON_JOB_BPAY_RECONCILIATION))) {
+      this.logger.debug('[BPAY CRON] désactivé depuis le back-office — exécution ignorée');
+      return;
+    }
+    const startedAt = Date.now();
+    try {
+      await this.executerReconciliation();
+      await this.cronJobsConfig.recordExecution(CRON_JOB_BPAY_RECONCILIATION, {
+        status: 'success',
+        durationMs: Date.now() - startedAt,
+      });
+    } catch (e: any) {
+      await this.cronJobsConfig.recordExecution(CRON_JOB_BPAY_RECONCILIATION, {
+        status: 'error',
+        durationMs: Date.now() - startedAt,
+        error: e?.message ?? String(e),
+      });
+      throw e;
+    }
+  }
+
+  private async executerReconciliation() {
     this.logger.log('[BPAY CRON] Début réconciliation');
     const pending = await this.dataSource.query(`
       SELECT * FROM bpay_transactions
