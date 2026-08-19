@@ -8,6 +8,8 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { User } from '../users/entities/user.entity';
 import { AdminWalletsService } from './admin-wallets.service';
 
 @ApiTags('Admin Wallets')
@@ -60,8 +62,17 @@ export class AdminWalletsController {
   bloquerWallet(
     @Param('userId') userId: string,
     @Body('raison', new DefaultValuePipe('Blocage administratif')) raison: string,
+    @CurrentUser() admin: User,
   ) {
-    return this.adminWalletsService.bloquerWallet(userId, raison);
+    return this.adminWalletsService.bloquerWallet(userId, raison, admin.id);
+  }
+
+  @Post(':userId/debloquer')
+  debloquerWallet(
+    @Param('userId') userId: string,
+    @CurrentUser() admin: User,
+  ) {
+    return this.adminWalletsService.debloquerWallet(userId, admin.id);
   }
 
   @Post(':userId/reinitialiser')

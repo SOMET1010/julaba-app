@@ -9,9 +9,15 @@ import { User } from '../users/entities/user.entity';
 import { Cooperative } from '../cooperatives-rest/cooperative.entity';
 import { WalletTransaction } from '../wallets/entities/wallet-transaction.entity';
 import { AuditLog } from '../audit-rest/audit-log.entity';
+import { WalletsModule } from '../wallets/wallets.module';
+import { FeedbakSmsModule } from '../feedbak-sms/feedbak-sms.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Cooperative, WalletTransaction, AuditLog])],
+  imports: [
+    TypeOrmModule.forFeature([User, Cooperative, WalletTransaction, AuditLog]),
+    WalletsModule,
+    FeedbakSmsModule,
+  ],
   controllers: [AdminController, AdminAnalyticsController, AdminWalletsController],
   providers: [AdminService, AdminWalletsService],
 })

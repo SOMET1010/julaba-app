@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Wallet } from '../wallets/entities/wallet.entity';
 import { WalletTransaction, TransactionType } from '../wallets/entities/wallet-transaction.entity';
+import { WalletsService } from '../wallets/wallets.service';
 
 @Controller('bpay')
 export class BpayController {
@@ -16,6 +17,7 @@ export class BpayController {
     private readonly bpayService: BpayService,
     private readonly configService: ConfigService,
     @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly walletsService: WalletsService,
   ) {}
 
   @Post('callback')
@@ -92,6 +94,11 @@ export class BpayController {
         if (!wallet) {
           throw new NotFoundException('Wallet introuvable');
         }
+        // Compte bloqué : on ne crédite pas. Le rollback remet
+        // bpay_transactions à 'PENDING', donc le cron de réconciliation
+        // reprendra le crédit dès que le compte sera débloqué — l'argent
+        // n'est jamais perdu.
+        await this.walletsService.assertCompteActif(transaction.user_id, em);
         wallet.solde = Number(wallet.solde) + montant;
         await em.save(Wallet, wallet);
         const wtx = em.create(WalletTransaction, {

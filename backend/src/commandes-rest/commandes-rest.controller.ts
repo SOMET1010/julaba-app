@@ -10,6 +10,7 @@ import { StockReservationService } from '../commandes/stock-reservation.service'
 import { NotificationsService } from '../notifications/notifications.service';
 import { Wallet } from '../wallets/entities/wallet.entity';
 import { TransactionType, WalletTransaction } from '../wallets/entities/wallet-transaction.entity';
+import { WalletsService } from '../wallets/wallets.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('commandes')
@@ -22,6 +23,7 @@ export class CommandesRestController {
     @InjectDataSource() private dataSource: DataSource,
     private notifService: NotificationsService,
     private reservation: StockReservationService,
+    private walletsService: WalletsService,
   ) {}
 
   @Get()
@@ -242,6 +244,15 @@ export class CommandesRestController {
         lock: { mode: 'pessimistic_write' },
       });
       if (!walletVendeur) throw new NotFoundException('Wallet vendeur introuvable');
+
+      // Un compte bloqué (admin/wallets/:userId/bloquer) ne doit plus pouvoir
+      // ni envoyer ni recevoir d'argent, même quand le mouvement est
+      // déclenché par l'AUTRE partie (ici le vendeur, via ce endpoint) —
+      // cf. WalletsService.assertCompteActif. Vérifié dans la même
+      // transaction que l'écriture pour rester atomique.
+      await this.walletsService.assertCompteActif(cmd.acheteurId, entityManager);
+      await this.walletsService.assertCompteActif(cmd.vendeurId, entityManager);
+
       if (Number(walletAcheteur.solde) < montant) {
         throw new BadRequestException('Solde insuffisant');
       }
