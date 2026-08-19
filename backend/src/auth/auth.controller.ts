@@ -12,6 +12,7 @@ import { Roles } from './decorators/roles.decorator';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserStatus } from '../users/entities/user.entity';
+import { Identification } from '../identifications/identification.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { timingSafeEqual } from 'crypto';
 import {
@@ -313,6 +314,35 @@ export class AuthController {
     return { success: true };
   }
 
+  // Suppression de compte avec anonymisation (loi ivoirienne n°2013-450 sur la
+  // protection des données à caractère personnel). Le principe : SEULE
+  // l'identité de la personne est purgée. L'ID technique et le journal
+  // d'argent (wallets / wallet_transactions) ne sont JAMAIS touchés — l'argent
+  // est sacré (CONSTITUTION §7) et l'intégrité référentielle de l'historique
+  // financier ne doit jamais être cassée par une suppression de compte : le
+  // solde et les transactions restent rattachés au même user_id, seule
+  // l'identité qui y est attachée disparaît.
+  //
+  // Liste des champs personnels identifiants purgés sur `users` (au-delà de
+  // phone/passwordHash/firstName/lastName déjà couverts) :
+  //  - Contact direct       : email
+  //  - Image                : photoUrl
+  //  - Documents officiels   : nin (numéro d'identification nationale),
+  //                            numCNPS, numCMU, recepisse
+  //  - État civil             : dateNaissance, lieuNaissance,
+  //                            situationMatrimoniale
+  //  - Adresse / localisation : region, commune, quartierVillage,
+  //                            regionAutre, communeAutre, districtAutre,
+  //                            departementAutre, boitePostale, regionId,
+  //                            communeId, districtId, departementId, zoneId
+  //  - Métadonnées d'identité : entiteMetadata (contient un référent NOMMÉ
+  //                            pour les comptes entité/admin)
+  // Champs délibérément CONSERVÉS car non identifiants une fois ce qui
+  // précède purgé : id, role, sousProfilMarchand, genre, nationalite (données
+  // démographiques agrégées, non identifiantes), activity/market/
+  // cooperativeName/institutionName (profil commercial, pas identité de la
+  // personne), createdAt, préférences fonctionnelles, wallet et historique de
+  // transactions (argent gelé — jamais modifié ici).
   @Delete('account')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
@@ -324,13 +354,66 @@ export class AuthController {
     const valid = await bcrypt.compare(body.password, user.passwordHash);
     if (!valid) return { success: false, message: 'Mot de passe incorrect' };
     await this.authService.logoutAll(req.user.id);
-    await this.userRepo.update(req.user.id, {
-      phone: `deleted_${req.user.id}`,
-      passwordHash: '',
-      firstName: 'Compte',
-      lastName: 'Supprimé',
-      status: UserStatus.REJETE,
-    } as any);
+
+    await this.userRepo.manager.transaction(async (manager) => {
+      await manager.update(User, req.user.id, {
+        phone: `deleted_${req.user.id}`,
+        passwordHash: '',
+        firstName: 'Compte',
+        lastName: 'Supprimé',
+        // Statut dédié « supprimé » (distinct de REJETE, qui signifie un
+        // dossier d'identification refusé — un compte auto-supprimé n'est
+        // pas un dossier rejeté, cela fausserait les statistiques admin).
+        status: UserStatus.SUPPRIME,
+        email: null,
+        photoUrl: null,
+        nin: null,
+        numCNPS: null,
+        numCMU: null,
+        recepisse: null,
+        dateNaissance: null,
+        lieuNaissance: null,
+        situationMatrimoniale: null,
+        region: null,
+        commune: null,
+        quartierVillage: null,
+        regionAutre: null,
+        communeAutre: null,
+        districtAutre: null,
+        departementAutre: null,
+        boitePostale: null,
+        regionId: null,
+        communeId: null,
+        districtId: null,
+        departementId: null,
+        zoneId: null,
+        entiteMetadata: null,
+      } as any);
+
+      // Table liée `identifications` : l'enrôlement de CET utilisateur en
+      // tant qu'acteur identifié conserve une photo/des documents (base64)
+      // et des coordonnées GPS personnelles (latitude/longitude) dans
+      // `documents` / `form_data` / `latitude` / `longitude`. On les purge.
+      // On CONSERVE le workflow non-identifiant (statut, zone, commission de
+      // l'identificateur, dates) : ce n'est pas une donnée personnelle de cet
+      // utilisateur mais l'historique d'activité — potentiellement rémunérée
+      // — de l'identificateur qui a réalisé l'enrôlement.
+      await manager
+        .createQueryBuilder()
+        .update(Identification)
+        .set({
+          documents: null,
+          form_data: null,
+          acteur_nom: 'Compte Supprimé',
+          region: null,
+          commune: null,
+          latitude: null,
+          longitude: null,
+        } as any)
+        .where('acteur_id = :id', { id: req.user.id })
+        .execute();
+    });
+
     return { success: true };
   }
 

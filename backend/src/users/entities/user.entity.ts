@@ -54,7 +54,10 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true, length: 20 })
+  // length 50 (et non 20) : le placeholder d'anonymisation de suppression de
+  // compte (`deleted_` + UUID id, 44 caractères) doit tenir dans la colonne —
+  // cf. migration 1780900000000-WidenUserPhoneForAnonymisation.
+  @Column({ unique: true, length: 50 })
   phone: string;
 
   @Column({ name: 'email', nullable: true, type: 'varchar', length: 255, unique: true })
