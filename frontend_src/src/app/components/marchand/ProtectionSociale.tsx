@@ -8,10 +8,11 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, HeartPulse, Plus, Volume2, Check, Trash2, Clock, X, Info } from 'lucide-react';
+import { Shield, HeartPulse, Plus, Volume2, Check, Clock, X, Info } from 'lucide-react';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { useApp } from '../../contexts/AppContext';
 import { toast } from 'sonner';
+import { HttpError } from '../../services/api/api-client';
 import {
   sourceProtectionSociale as source,
   totalCotise,
@@ -81,14 +82,16 @@ export function ProtectionSociale() {
       setShowForm(false);
       setMontant('');
       toast.success(`Cotisation ${formOrg} enregistrée`);
+    } catch (err) {
+      // Cas attendu le plus fréquent : mode keiwa + solde insuffisant (le
+      // backend refuse alors la cotisation entière, rien n'est enregistré).
+      // Message clair à l'utilisatrice plutôt qu'un crash silencieux.
+      const message =
+        err instanceof HttpError ? err.message : "Impossible d'enregistrer ce versement pour le moment.";
+      toast.error(message);
     } finally {
       setSaving(false);
     }
-  };
-
-  const supprimer = async (id: string) => {
-    await source.supprimerCotisation(userId, id);
-    setEtat(await source.charger(userId));
   };
 
   const ecouter = () => {
@@ -125,6 +128,18 @@ export function ProtectionSociale() {
       }
     >
       <div className="pb-32 space-y-4">
+        {/* Bandeau : historique indisponible (réseau/backend) — l'écran reste
+            utilisable (formulaire d'ajout, cartes CNPS/CNAM), mais on prévient
+            plutôt que de laisser croire que l'historique est vide. */}
+        {etat?.cotisationsIndisponibles && (
+          <div className="flex items-start gap-2 rounded-2xl bg-red-50 border-2 border-red-100 p-3">
+            <Info className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-red-700">
+              Impossible de charger votre historique de cotisations pour le moment. Réessayez plus tard.
+            </p>
+          </div>
+        )}
+
         {/* Bandeau : socle en attente des API officielles */}
         {!source.enLigne && (
           <div className="flex items-start gap-2 rounded-2xl bg-blue-50 border-2 border-blue-100 p-3">
@@ -232,9 +247,6 @@ export function ProtectionSociale() {
                       </p>
                     </div>
                     <p className="font-bold text-gray-800 flex-shrink-0">{c.montant.toLocaleString('fr-FR')} F</p>
-                    <button onClick={() => supprimer(c.id)} className="w-7 h-7 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0" aria-label="Supprimer">
-                      <Trash2 className="w-3.5 h-3.5 text-gray-400" />
-                    </button>
                   </div>
                 );
               })}
