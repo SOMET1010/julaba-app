@@ -10,6 +10,7 @@ import { StockReservationService } from '../commandes/stock-reservation.service'
 import { NotificationsService } from '../notifications/notifications.service';
 import { Wallet } from '../wallets/entities/wallet.entity';
 import { TransactionType, WalletTransaction } from '../wallets/entities/wallet-transaction.entity';
+import { WalletsService } from '../wallets/wallets.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('commandes')
@@ -22,6 +23,7 @@ export class CommandesRestController {
     @InjectDataSource() private dataSource: DataSource,
     private notifService: NotificationsService,
     private reservation: StockReservationService,
+    private walletsService: WalletsService,
   ) {}
 
   @Get()
@@ -242,6 +244,15 @@ export class CommandesRestController {
         lock: { mode: 'pessimistic_write' },
       });
       if (!walletVendeur) throw new NotFoundException('Wallet vendeur introuvable');
+
+      // Un compte bloqué (admin/wallets/:userId/bloquer) ne doit plus pouvoir
+      // ni envoyer ni recevoir d'argent, même quand le mouvement est
+      // déclenché par l'AUTRE partie (ici le vendeur, via ce endpoint) —
+      // cf. WalletsService.assertCompteActif. Vérifié dans la même
+      // transaction que l'écriture pour rester atomique.
+      await this.walletsService.assertCompteActif(cmd.acheteurId, entityManager);
+      await this.walletsService.assertCompteActif(cmd.vendeurId, entityManager);
+
       if (Number(walletAcheteur.solde) < montant) {
         throw new BadRequestException('Solde insuffisant');
       }
@@ -379,8 +390,14 @@ export class CommandesRestController {
   async proposerNegociation(@Body() body: any, @CurrentUser() user: User) {
     const { vendeurId, produit, quantite, prixOriginal, prixPropose, unite, message } = body;
     if (!vendeurId || !produit || !quantite || !prixPropose) throw new BadRequestException('Champs manquants');
+    // Lien publication d'origine (optionnel, retro-compat) : quand le front
+    // negocie depuis une offre du marche, il transmet l'id de cette publication.
+    // Sans lui la negociation fonctionne comme avant (aucune reservation de
+    // stock a l'acceptation) — cf. JULABA_DECISIONS.md "B2, voie negociation
+    // non couverte par la reservation".
+    const publicationId = String(body.publicationId || body.publication_id || '').trim() || null;
     const neg = this.negRepo.create({
-      marchandId: user.id, vendeurId, produit,
+      marchandId: user.id, vendeurId, produit, publicationId,
       quantite: Number(quantite), prixOriginal: Number(prixOriginal),
       prixPropose: Number(prixPropose), unite: unite || 'kg',
       message: message || '',
@@ -429,37 +446,60 @@ export class CommandesRestController {
       if (!prixContreOffre || isNaN(Number(prixContreOffre)) || Number(prixContreOffre) <= 0) {
         throw new BadRequestException('prixContreOffre requis et doit être positif');
       }
-      await this.negRepo.update(id, {
-        statut,
-        prixContreOffre,
-        messageReponse,
-        nbContreOffres: neg.nbContreOffres + 1,
-      });
-    } else {
-      await this.negRepo.update(id, { statut, prixContreOffre, messageReponse });
     }
 
-    // Si accepte -> creer une Commande confirmee
+    // Mise a jour de la negociation + creation de la commande (si acceptee) +
+    // reservation de stock, dans UNE transaction (atomicite). Une negociation
+    // acceptee cree une commande CONFIRMEE d'emblee : quand elle porte un
+    // publicationId (offre du marche negociee), on RESERVE puis CONVERTIT dans
+    // la foulee, pour beneficier du blocage 409 si le disponible est
+    // insuffisant (StockReservationService.reserver) — sans ce blocage, une
+    // marchande pourrait accepter plusieurs negociations sur le meme stock sans
+    // jamais etre arretee. Cf. JULABA_DECISIONS.md "B2, voie negociation non
+    // couverte par la reservation". Si le stock est insuffisant, tout est
+    // annule : la negociation garde son statut precedent, aucune commande n'est
+    // creee (rollback), l'appelant recoit un 409.
     let commande: Commande | null = null;
-    if (statut === NegociationStatut.ACCEPTE) {
-      const prixFinal = Number(prixContreOffre ?? neg.prixPropose);
-      const qte = Number(neg.quantite);
-      commande = await this.repo.save(
-        this.repo.create({
-          acheteurId: neg.marchandId,
-          vendeurId: neg.vendeurId,
-          type: 'achat',
-          produit: neg.produit,
-          quantite: qte,
-          prixUnitaire: prixFinal,
-          total: prixFinal * qte,
-          statut: CommandeStatut.CONFIRMEE,
-          dateCommande: new Date(),
-          negociationId: id,
-          notes: 'Issu de negociation ' + id,
-        }),
-      );
-    }
+    await this.dataSource.transaction(async (manager) => {
+      if (statut === NegociationStatut.CONTRE_OFFRE) {
+        await manager.update(Negociation, id, {
+          statut,
+          prixContreOffre,
+          messageReponse,
+          nbContreOffres: neg.nbContreOffres + 1,
+        });
+      } else {
+        await manager.update(Negociation, id, { statut, prixContreOffre, messageReponse });
+      }
+
+      // Si accepte -> creer une Commande confirmee, liee a la publication
+      // d'origine de la negociation quand elle existe.
+      if (statut === NegociationStatut.ACCEPTE) {
+        const prixFinal = Number(prixContreOffre ?? neg.prixPropose);
+        const qte = Number(neg.quantite);
+        commande = await manager.save(
+          manager.create(Commande, {
+            acheteurId: neg.marchandId,
+            vendeurId: neg.vendeurId,
+            publicationId: neg.publicationId || null,
+            type: 'achat',
+            produit: neg.produit,
+            quantite: qte,
+            prixUnitaire: prixFinal,
+            total: prixFinal * qte,
+            statut: CommandeStatut.CONFIRMEE,
+            dateCommande: new Date(),
+            negociationId: id,
+            notes: 'Issu de negociation ' + id,
+          }),
+        );
+        if (commande.publicationId) {
+          const cible = { commandeId: commande.id, publicationId: commande.publicationId, quantite: qte };
+          await this.reservation.reserver(manager, cible);
+          await this.reservation.convertir(manager, cible);
+        }
+      }
+    });
 
     // Notifier le marchand
     try {
@@ -481,50 +521,97 @@ export class CommandesRestController {
     return { message: 'Reponse enregistree', commande: commande ?? undefined };
   }
 
-  // Marchand accepte ou refuse une contre-offre du producteur
+  // Marchand accepte, refuse, ou re-contre-offre une contre-offre du producteur.
+  // Re-contre-offrir (statut 'contre_offre') renvoie la balle au vendeur avec un
+  // nouveau prix propose par le marchand : ca consomme un cran de nbContreOffres
+  // (plafond partage, 3 au total sur la negociation) et remet la negociation en
+  // 'en_attente' — le meme statut qui, cote vendeur (InboxNegociations), signale
+  // "action de ta part attendue". Avant ce lot, le marchand ne pouvait
+  // qu'accepter/refuser : le plafond de 3 contre-offres du schema n'etait jamais
+  // atteignable en pratique (cf. JULABA_DECISIONS.md, point de vigilance B2).
   @Patch('negociation/:id/marchand-repondre')
   async marchandRepondreContreOffre(@Param('id') id: string, @Body() body: any, @CurrentUser() user: User) {
     const neg = await this.negRepo.findOne({ where: { id } });
     if (!neg) throw new ForbiddenException('Negociation introuvable');
     if (neg.marchandId !== user.id) throw new ForbiddenException('Acces refuse');
     if (neg.statut !== NegociationStatut.CONTRE_OFFRE) throw new ForbiddenException('Aucune contre-offre en attente');
-    if (!['accepte', 'refuse'].includes(body.statut)) {
-      throw new BadRequestException('statut invalide - valeurs acceptées : accepte, refuse');
+    if (!['accepte', 'refuse', 'contre_offre'].includes(body.statut)) {
+      throw new BadRequestException('statut invalide - valeurs acceptées : accepte, refuse, contre_offre');
     }
-    const { statut }: { statut: 'accepte' | 'refuse' } = body;
+    const { statut }: { statut: 'accepte' | 'refuse' | 'contre_offre' } = body;
+    const prixContreOffre: number | undefined = body.prixContreOffre;
+    const messageReponse: string | undefined = body.messageReponse;
 
-    let commande: Commande | null = null;
-    if (statut === 'accepte') {
-      const prixFinal = Number(neg.prixContreOffre ?? neg.prixPropose);
-      const qte = Number(neg.quantite);
-      commande = await this.repo.save(
-        this.repo.create({
-          acheteurId: neg.marchandId,
-          vendeurId: neg.vendeurId,
-          type: 'achat',
-          produit: neg.produit,
-          quantite: qte,
-          prixUnitaire: prixFinal,
-          total: prixFinal * qte,
-          statut: CommandeStatut.CONFIRMEE,
-          dateCommande: new Date(),
-          negociationId: id,
-          notes: 'Contre-offre acceptee par marchand ' + id,
-        }),
-      );
-      await this.negRepo.update(id, { statut: NegociationStatut.ACCEPTE });
-    } else {
-      await this.negRepo.update(id, { statut: NegociationStatut.REFUSE });
+    if (statut === 'contre_offre') {
+      if (neg.nbContreOffres >= 3) {
+        throw new ForbiddenException('Limite de 3 contre-offres atteinte');
+      }
+      if (!prixContreOffre || isNaN(Number(prixContreOffre)) || Number(prixContreOffre) <= 0) {
+        throw new BadRequestException('prixContreOffre requis et doit être positif');
+      }
     }
+
+    // Meme raisonnement transactionnel + reservation que repondreNegociation :
+    // acceptation => commande CONFIRMEE liee a la publication d'origine
+    // (si connue), reservee puis convertie dans la meme transaction (bloque
+    // 409 si le disponible est insuffisant). Si le stock manque, tout est
+    // annule : la negociation garde son statut precedent (rollback).
+    let commande: Commande | null = null;
+    await this.dataSource.transaction(async (manager) => {
+      if (statut === 'accepte') {
+        const prixFinal = Number(neg.prixContreOffre ?? neg.prixPropose);
+        const qte = Number(neg.quantite);
+        commande = await manager.save(
+          manager.create(Commande, {
+            acheteurId: neg.marchandId,
+            vendeurId: neg.vendeurId,
+            publicationId: neg.publicationId || null,
+            type: 'achat',
+            produit: neg.produit,
+            quantite: qte,
+            prixUnitaire: prixFinal,
+            total: prixFinal * qte,
+            statut: CommandeStatut.CONFIRMEE,
+            dateCommande: new Date(),
+            negociationId: id,
+            notes: 'Contre-offre acceptee par marchand ' + id,
+          }),
+        );
+        await manager.update(Negociation, id, { statut: NegociationStatut.ACCEPTE });
+        if (commande.publicationId) {
+          const cible = { commandeId: commande.id, publicationId: commande.publicationId, quantite: qte };
+          await this.reservation.reserver(manager, cible);
+          await this.reservation.convertir(manager, cible);
+        }
+      } else if (statut === 'contre_offre') {
+        // Le marchand propose un nouveau prix : il remplace prixPropose (le
+        // "prix courant demande par le marchand"), efface l'ancienne
+        // prixContreOffre du vendeur (desormais caduque) et renvoie la balle au
+        // vendeur (statut en_attente, meme semantique que la proposition
+        // initiale). nbContreOffres continue de compter (plafond partage).
+        await manager.update(Negociation, id, {
+          statut: NegociationStatut.EN_ATTENTE,
+          prixPropose: Number(prixContreOffre),
+          prixContreOffre: null,
+          messageReponse: messageReponse ?? null,
+          nbContreOffres: neg.nbContreOffres + 1,
+        });
+      } else {
+        await manager.update(Negociation, id, { statut: NegociationStatut.REFUSE });
+      }
+    });
 
     // Notifier le producteur
     try {
-      const label = statut === 'accepte' ? 'acceptee' : 'refusee';
+      const label = statut === 'accepte' ? 'acceptee' : statut === 'contre_offre' ? 're-contre-proposee' : 'refusee';
       await this.notifService.create({
         userId: neg.vendeurId,
         type: 'negociation_reponse',
         titre: 'Contre-offre ' + label + ' - ' + neg.produit,
-        message: 'Le marchand a ' + label + ' votre contre-offre pour ' + neg.produit,
+        message: statut === 'contre_offre'
+          ? 'Le marchand propose un nouveau prix pour ' + neg.produit + ' : ' +
+            Number(prixContreOffre).toLocaleString('fr-FR') + ' FCFA'
+          : 'Le marchand a ' + label + ' votre contre-offre pour ' + neg.produit,
       });
     } catch (error) {
       this.logger.error('notify producteur negociation response failed', error instanceof Error ? error.stack : String(error));

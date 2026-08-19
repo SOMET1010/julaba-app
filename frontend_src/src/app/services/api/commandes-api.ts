@@ -78,6 +78,8 @@ export interface NegociationApi {
   marchand_id?: string;
   vendeurId?: string;
   vendeur_id?: string;
+  publicationId?: string | null;
+  publication_id?: string | null;
   produit: string;
   quantite: number;
   prixOriginal?: number;
@@ -102,6 +104,15 @@ export interface ProposerNegociationData {
   prixPropose: number;
   unite: string;
   message?: string;
+  /**
+   * Id de la publication (offre du marché) sur laquelle porte la négociation.
+   * Optionnel (rétro-compat), mais quand elle est connue elle DOIT être
+   * transmise : c'est ce qui permet au backend de réserver le stock si la
+   * négociation aboutit (sinon une commande née d'une négociation acceptée ne
+   * bloque jamais l'indisponibilité — cf. JULABA_DECISIONS.md "B2, voie
+   * négociation non couverte par la réservation").
+   */
+  publicationId?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -175,7 +186,10 @@ export async function proposerNegociation(data: ProposerNegociationData): Promis
 }
 
 
-export async function marchandRepondreNegociation(id: string, data: { statut: 'accepte' | 'refuse' }): Promise<{ success: boolean }> {
+export async function marchandRepondreNegociation(
+  id: string,
+  data: { statut: 'accepte' | 'refuse' | 'contre_offre'; prixContreOffre?: number; messageReponse?: string }
+): Promise<{ success: boolean }> {
   return apiRequest<{ success: boolean }>(`/commandes/negociation/${id}/marchand-repondre`, {
     method: 'PATCH',
     body: JSON.stringify(data),
