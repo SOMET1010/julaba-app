@@ -20,6 +20,7 @@ import { DossiersRestModule } from './dossiers-rest/dossiers-rest.module';
 import { TransactionsRestModule } from './transactions-rest/transactions-rest.module';
 import { AcademyModule } from './academy/academy.module';
 import { CooperativesRestModule } from './cooperatives-rest/cooperatives-rest.module';
+import { TontinesModule } from './tontines/tontines.module';
 import { StocksRestModule } from './stocks-rest/stocks-rest.module';
 import { CaisseRestModule } from './caisse-rest/caisse-rest.module';
 import { InstitutionsModule } from './institutions/institutions.module';
@@ -111,6 +112,7 @@ import { ProtectionSocialeModule } from './protection-sociale/protection-sociale
     TransactionsRestModule,
     AcademyModule,
     CooperativesRestModule,
+    TontinesModule,
     StocksRestModule,
     CaisseRestModule,
     InstitutionsModule,
