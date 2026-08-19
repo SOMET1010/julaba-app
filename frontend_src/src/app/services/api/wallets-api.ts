@@ -95,3 +95,51 @@ export async function verifierStatutBpayPublic(payToken: string): Promise<{ stat
     body: JSON.stringify({ payToken }),
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TRANSFERT COMPTE-À-COMPTE (Jùlaba vers Jùlaba)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DestinataireTransfert {
+  id: string;
+  prenom: string;
+  nom: string;
+  telephone: string;
+}
+
+export interface ResultatTransfert {
+  success: boolean;
+  dejaTraite: boolean;
+  reference: string;
+  solde: number;
+}
+
+/**
+ * Recherche un destinataire Jùlaba par numéro de téléphone, avant de lancer
+ * un transfert. Lève une erreur (404) si aucun compte ne correspond.
+ */
+export async function rechercherDestinataire(telephone: string): Promise<DestinataireTransfert> {
+  return apiRequest('/wallets/me/rechercher-destinataire', {
+    method: 'POST',
+    body: JSON.stringify({ telephone }),
+  });
+}
+
+/**
+ * Transfert compte-à-compte réel. `idempotencyKey` doit être stable pour une
+ * même tentative d'envoi (retry réseau, double-clic) afin d'éviter tout
+ * double mouvement — cf. WalletsService.transfererVersUtilisateur.
+ */
+export async function transfererVersCompte(data: {
+  destinataireUserId: string;
+  montant: number;
+  note?: string;
+  idempotencyKey: string;
+}): Promise<ResultatTransfert> {
+  if (!data.montant || data.montant <= 0) throw new Error('Montant invalide');
+  if (!data.destinataireUserId) throw new Error('Destinataire requis');
+  return apiRequest('/wallets/me/transfert', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

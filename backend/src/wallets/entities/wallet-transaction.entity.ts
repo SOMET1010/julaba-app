@@ -21,10 +21,20 @@ export enum TransactionType {
 // du verrou applicatif sur la commande) : la base refuse un second débit ou un
 // second crédit pour la MÊME commande. Cf. migration
 // 1780700000000-WalletTransactionCommandeIdempotence.
+//
+// Idempotence du transfert compte-à-compte (POST /wallets/me/transfert) : pas
+// de commande à qui rattacher la clé ici, donc le CLIENT fournit une clé
+// d'idempotence par tentative d'envoi (même mécanisme que
+// caisse_transactions.idempotency_key). Cf. migration
+// 1781000000001-WalletTransactionTransfertIdempotence.
 @Entity('wallet_transactions')
 @Index('ux_wallet_tx_commande_idempotence', ['relatedEntityId', 'userId', 'type'], {
   unique: true,
   where: `related_entity_type = 'commande' AND type IN ('debit', 'credit')`,
+})
+@Index('ux_wallet_tx_idempotency_key', ['idempotencyKey', 'userId', 'type'], {
+  unique: true,
+  where: `idempotency_key IS NOT NULL`,
 })
 export class WalletTransaction {
   @PrimaryGeneratedColumn('uuid')
@@ -53,6 +63,13 @@ export class WalletTransaction {
 
   @Column({ type: 'jsonb', nullable: true })
   metadata: any;
+
+  // Clé d'idempotence fournie par le client pour une action initiée par
+  // l'utilisateur sans identifiant naturel (transfert compte-à-compte) —
+  // nullable : les mouvements existants (crédit/débit admin, paiement
+  // commande, escrow) n'en fournissent pas. Cf. index ux_wallet_tx_idempotency_key.
+  @Column({ name: 'idempotency_key', type: 'varchar', length: 120, nullable: true })
+  idempotencyKey: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
