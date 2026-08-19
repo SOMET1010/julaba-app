@@ -5,6 +5,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { User } from '../users/entities/user.entity';
+import { CronJobsConfigService } from '../cron-jobs/cron-jobs-config.service';
+import { CRON_JOBS_REGISTRY } from '../cron-jobs/cron-jobs.registry';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
@@ -12,6 +14,7 @@ export class MiscRestController {
   constructor(
     @InjectRepository(User) private usersRepo: Repository<User>,
     @InjectDataSource() private dataSource: DataSource,
+    private readonly cronJobsConfig: CronJobsConfigService,
   ) {}
 
   @Get('supervision')
@@ -39,46 +42,42 @@ export class MiscRestController {
     return { livraisons: [], total: 0, en_cours: 0, livrees: 0 };
   }
 
+  // Reflète les VRAIS jobs `@Cron()` du backend (voir cron-jobs.registry.ts),
+  // avec leur statut réel (actif/pause) et leur dernière exécution réelle —
+  // avant, cet endpoint renvoyait 3 jobs entièrement inventés qui n'avaient
+  // aucun rapport avec le code (sync_acteurs, rapport_hebdo, nettoyage_sessions).
   @Get('cron')
-  cron() {
-    return { jobs: [
-      { nom: 'sync_acteurs', derniere_exec: null, statut: 'idle' },
-      { nom: 'rapport_hebdo', derniere_exec: null, statut: 'idle' },
-      { nom: 'nettoyage_sessions', derniere_exec: null, statut: 'idle' },
-    ]};
-  }
-
-  private async ensureCronJobsConfigTable(): Promise<void> {
-    await this.dataSource.query(`
-      CREATE TABLE IF NOT EXISTS cron_jobs_config (
-        id VARCHAR(255) PRIMARY KEY,
-        actif BOOLEAN NOT NULL DEFAULT true,
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
+  async cron() {
+    const statuses = await this.cronJobsConfig.getAllStatuses();
+    const jobs = CRON_JOBS_REGISTRY.map((def) => {
+      const s = statuses[def.id];
+      const actif = s ? s.actif : true; // pas de ligne = jamais togglé = actif (défaut historique)
+      let statut: 'idle' | 'paused' | 'failed';
+      if (!actif) statut = 'paused';
+      else if (s?.lastStatus === 'error') statut = 'failed';
+      else statut = 'idle';
+      return {
+        id: def.id,
+        nom: def.nom,
+        description: def.description,
+        cron: def.cron,
+        cronHumain: def.cronHumain,
+        statut,
+        derniere_exec: s?.lastRunAt ?? null,
+        duree_ms: s?.lastDurationMs ?? 0,
+        nb_executions: s?.runCount ?? 0,
+        derniere_erreur: s?.lastStatus === 'error' ? s.lastError : null,
+      };
+    });
+    return { jobs };
   }
 
   @Patch('cron/:id/toggle')
   @Roles('super_admin', 'admin_general')
   async toggleCronJob(@Param('id') id: string) {
     const key = String(id || '').trim();
-    await this.ensureCronJobsConfigTable();
-    let rows = await this.dataSource.query(
-      `UPDATE cron_jobs_config SET actif = NOT COALESCE(actif, true), updated_at = NOW() WHERE id = $1 RETURNING id, actif`,
-      [key],
-    );
-    if (!rows?.length) {
-      await this.dataSource.query(
-        `INSERT INTO cron_jobs_config (id, actif) VALUES ($1, false)`,
-        [key],
-      );
-      rows = await this.dataSource.query(
-        `SELECT id, actif FROM cron_jobs_config WHERE id = $1`,
-        [key],
-      );
-    }
-    const row = rows[0];
-    return { success: true, id: String(row.id), actif: Boolean(row.actif) };
+    const result = await this.cronJobsConfig.toggle(key);
+    return { success: true, id: result.id, actif: result.actif };
   }
 
   @Post('cron/:id/retry')
