@@ -1,45 +1,31 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLangPref } from '../../hooks/useLangPref';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { motion, AnimatePresence } from 'motion/react';
-import { ImagePickerField } from '../shared/ImagePickerField';
 import { UNITES_COURANTES } from '../../config/unites';
 import { SelectWithAutre } from '../shared/SelectWithAutre';
 import {
   Search,
   Package,
-  TrendingUp,
-  AlertTriangle,
   Plus,
-  Edit3,
-  Trash2,
-  Download,
-  Upload,
-  Filter,
   X,
-  DollarSign,
-  ChevronRight,
   Mic,
   MicOff,
-  Calendar,
-  User as UserIcon,
-  Truck,
   Send,
-  History,
   Minus,
 } from 'lucide-react';
-import { useNavigate } from 'react-router';
 import { SubPageLayout } from '../layout/SubPageLayout';
-import { useUser } from '../../contexts/UserContext';
 import { useToast } from '../../hooks/useToast';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { NotificationButton } from '../marchand/NotificationButton';
-import { Montant } from '../shared/Montant';
-import { fetchStocks, upsertStock, updateStock as apiUpdateStock, deleteStock as apiDeleteStock } from '../../services/api/stocks-api';
+import {
+  fetchStockCommun,
+  apporterStockCommun,
+  distribuerStockCommun,
+  fetchCooperativeMembres,
+  type CooperativeStockItem,
+} from '../../services/api/cooperatives-api';
 import { useApp } from '../../contexts/AppContext';
 import { useModalRegister } from '../../contexts/ModalContext';
-import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../services/api/api-client';
 
 import {
   IMG_PRODUIT_RIZ, IMG_PRODUIT_TOMATE, IMG_PRODUIT_OIGNON, IMG_PRODUIT_IGNAME,
@@ -47,18 +33,21 @@ import {
   IMG_PRODUIT_AUBERGINE, IMG_PRODUIT_MANIOC
 } from '../../assets/images';
 
-interface Stock {
+// Stock COMMUN de la coopérative (GET /cooperatives/stock) — pas le stock
+// personnel de l'utilisateur (/stocks). Une ligne = le total courant réel
+// d'un produit pour la coopérative, alimenté par les apports des membres et
+// décrémenté par les distributions (jamais édité directement).
+interface StockLigne {
   id: string;
-  name: string;
-  image: string;
-  quantity: number;
-  unit: string;
-  purchasePrice: number;
-  salePrice: number;
-  threshold: number;
-  category: string;
-  collectedFrom?: string;
-  lastCollection?: string;
+  produit: string;
+  categorie: string;
+  quantite: number;
+  unite: string;
+}
+
+interface MembreOption {
+  id: string;
+  nom: string;
 }
 
 const categories = [
@@ -70,58 +59,90 @@ const categories = [
   { id: 'epices', label: 'Épices' },
 ];
 
+const PRODUIT_IMAGES: Record<string, string> = {
+  riz: IMG_PRODUIT_RIZ,
+  tomate: IMG_PRODUIT_TOMATE,
+  oignon: IMG_PRODUIT_OIGNON,
+  igname: IMG_PRODUIT_IGNAME,
+  plantain: IMG_PRODUIT_PLANTAIN,
+  piment: IMG_PRODUIT_PIMENT,
+  gombo: IMG_PRODUIT_GOMBO,
+  mais: IMG_PRODUIT_MAIS,
+  aubergine: IMG_PRODUIT_AUBERGINE,
+  manioc: IMG_PRODUIT_MANIOC,
+};
+
+function imageForProduit(nom: string): string {
+  const key = nom.trim().toLowerCase();
+  return PRODUIT_IMAGES[key] || IMG_PRODUIT_RIZ;
+}
+
+function mapStockRow(s: CooperativeStockItem): StockLigne {
+  return {
+    id: s.id,
+    produit: s.produit,
+    categorie: s.categorie || 'autre',
+    quantite: Number(s.quantite) || 0,
+    unite: s.unite || 'kg',
+  };
+}
+
 export function Stock() {
-  const navigate = useNavigate();
-  const { user } = useUser();
   const { showToast, ToastContainer } = useToast();
   const { speak } = useApp();
 
-  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [stocks, setStocks] = useState<StockLigne[]>([]);
+  const [membres, setMembres] = useState<MembreOption[]>([]);
   const [loading, setLoading] = useState(true);
-  React.useEffect(() => {
-    fetchStocks()
-      .then(d => setStocks((d.stocks || []).map((s: any) => ({
-        id: s.id,
-        name: s.produit || s.nom || '',
-        image: s.image || '',
-        quantity: Number(s.quantite) || Number(s.stock) || 0,
-        unit: s.unite || 'kg',
-        purchasePrice: Number(s.prix_achat) || 0,
-        salePrice: Number(s.prix_vente) || Number(s.prix) || 0,
-        threshold: Number(s.seuil_alerte) || 10,
-        category: s.categorie || 'cereales',
-        collectedFrom: '',
-        lastCollection: s.created_at ? new Date(s.created_at).toLocaleDateString('fr-FR') : '',
-      }))))
-      .catch(() => setStocks([]))
-      .finally(() => setLoading(false));
+
+  const reloadStocks = () =>
+    fetchStockCommun()
+      .then((d) => setStocks((d.stocks || []).map(mapStockRow)))
+      .catch(() => setStocks([]));
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      reloadStocks(),
+      fetchCooperativeMembres()
+        .then((d) =>
+          setMembres(
+            (d.membres || []).map((m: any) => ({
+              id: String(m.id || ''),
+              nom: `${m.firstName || m.first_name || ''} ${m.lastName || m.last_name || ''}`.trim() || m.phone || 'Membre',
+            })).filter((m: MembreOption) => m.id),
+          ),
+        )
+        .catch(() => setMembres([])),
+    ]).finally(() => setLoading(false));
   }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('tous');
-  const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [selectedStock, setSelectedStock] = useState<StockLigne | null>(null);
+  const [showApportModal, setShowApportModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDistributionModal, setShowDistributionModal] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'alerts' | 'value'>('all');
   const [isListening, setIsListening] = useState(false);
+  const [submittingApport, setSubmittingApport] = useState(false);
+  const [submittingDistribution, setSubmittingDistribution] = useState(false);
 
-  // Sync ModalContext
-  useModalRegister(showAddModal || showEditModal || showCollectionModal || showDistributionModal);
+  useModalRegister(showApportModal || showDetailModal || showDistributionModal);
 
-  const [newStock, setNewStock] = useState({
-    name: '',
-    quantity: 0,
-    unit: 'kg',
-    purchasePrice: 0,
-    salePrice: 0,
-    threshold: 10,
-    category: 'cereales',
-    collectedFrom: '',
+  // ── Apport de stock (formulaire produit / quantité / unité) ──
+  const [apportForm, setApportForm] = useState({
+    produit: '',
+    quantite: 0,
+    unite: 'kg',
+    categorie: 'cereales',
   });
 
-  // Reconnaissance vocale
-  // STT via Groq Whisper
+  // ── Distribution : produit + lignes {membre, quantité} ───────
+  const [distProduit, setDistProduit] = useState('');
+  const [distLignes, setDistLignes] = useState<{ membreId: string; quantite: number }[]>([
+    { membreId: '', quantite: 0 },
+  ]);
+
   const { lang: voiceLang } = useLangPref();
   const { startRecording: _groqStart_startVoiceCommand, stopRecording: _groqStop_startVoiceCommand } = useVoiceCore({
     onTranscript: (text) => { setSearchQuery(text); setIsListening(false); },
@@ -134,73 +155,88 @@ export function Stock() {
     else { setIsListening(true); _groqStart_startVoiceCommand(); }
   };
 
-  // Filtrage et tri
-  const filteredStocks = stocks
-    .filter(stock => {
-      const matchesCategory = selectedCategory === 'tous' || stock.category === selectedCategory;
-      const matchesSearch = stock.name.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      let matchesActiveFilter = true;
-      if (activeFilter === 'alerts') {
-        matchesActiveFilter = stock.quantity < stock.threshold;
+  const filteredStocks = stocks.filter((stock) => {
+    const matchesCategory = selectedCategory === 'tous' || stock.categorie === selectedCategory;
+    const matchesSearchTerm = stock.produit.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearchTerm;
+  });
+
+  const openApportModal = () => {
+    setApportForm({ produit: '', quantite: 0, unite: 'kg', categorie: 'cereales' });
+    setShowApportModal(true);
+  };
+
+  const submitApport = async () => {
+    const produit = apportForm.produit.trim();
+    if (!produit) {
+      showToast('Indique le produit apporté', 'error');
+      return;
+    }
+    if (!(apportForm.quantite > 0)) {
+      showToast('Indique une quantité valide', 'error');
+      return;
+    }
+    setSubmittingApport(true);
+    try {
+      await apporterStockCommun({
+        produit,
+        quantite: apportForm.quantite,
+        unite: apportForm.unite,
+        categorie: apportForm.categorie,
+      });
+      showToast(`${produit} ajouté au stock commun`, 'success');
+      speak(`${produit} ajouté au stock commun.`);
+      setShowApportModal(false);
+      await reloadStocks();
+    } catch (e: any) {
+      showToast(e?.message || "L'apport n'a pas pu être enregistré. Réessaie.", 'error');
+    } finally {
+      setSubmittingApport(false);
+    }
+  };
+
+  const openDistributionModal = (produit?: string) => {
+    setDistProduit(produit || stocks[0]?.produit || '');
+    setDistLignes([{ membreId: '', quantite: 0 }]);
+    setShowDistributionModal(true);
+  };
+
+  const stockDisponible = stocks.find((s) => s.produit === distProduit)?.quantite ?? 0;
+  const totalDemande = distLignes.reduce((sum, l) => sum + (Number(l.quantite) || 0), 0);
+
+  const submitDistribution = async () => {
+    if (!distProduit) {
+      showToast('Choisis un produit à distribuer', 'error');
+      return;
+    }
+    const lignesValides = distLignes.filter((l) => l.membreId && Number(l.quantite) > 0);
+    if (!lignesValides.length) {
+      showToast('Ajoute au moins un membre destinataire avec une quantité', 'error');
+      return;
+    }
+    if (totalDemande > stockDisponible) {
+      showToast(`Stock disponible insuffisant (${stockDisponible} restant)`, 'error');
+      return;
+    }
+    setSubmittingDistribution(true);
+    try {
+      const res = await distribuerStockCommun({
+        produit: distProduit,
+        distributions: lignesValides.map((l) => ({ membreId: l.membreId, quantite: Number(l.quantite) })),
+      });
+      if (!res?.persisted) {
+        showToast("La distribution n'a pas pu être enregistrée. Réessaie.", 'error');
+        speak("La distribution n'a pas marché. Réessaie, s'il te plaît.");
+        return;
       }
-      
-      return matchesCategory && matchesSearch && matchesActiveFilter;
-    });
-
-  const lowStocks = stocks.filter(s => s.quantity < s.threshold);
-  const totalValue = stocks.reduce((sum, s) => sum + (s.quantity * s.purchasePrice), 0);
-
-  const addStock = async () => {
-    try {
-      await upsertStock({
-        produit: newStock.name,
-        quantite: newStock.quantity,
-        unite: newStock.unit,
-        prix_achat: newStock.purchasePrice,
-        prix: newStock.salePrice,
-        seuil_alerte: newStock.threshold,
-        categorie: newStock.category,
-        image: (newStock as any).image || null,
-      } as any);
-      showToast(`${newStock.name} ajouté au stock`, 'success');
-      speak(`${newStock.name} collecté avec succès`);
-      setShowAddModal(false);
-      setNewStock({ name: '', quantity: 0, unit: 'kg', purchasePrice: 0, salePrice: 0, threshold: 10, category: 'cereales', collectedFrom: '' });
-      const d = await fetchStocks();
-      setStocks((d.stocks || []).map((s: any) => ({
-        id: s.id, name: s.produit || s.nom || '', image: s.image || '',
-        quantity: Number(s.quantite) || Number(s.stock) || 0, unit: s.unite || 'kg',
-        purchasePrice: Number(s.prix_achat) || 0, salePrice: Number(s.prix_vente) || Number(s.prix) || 0,
-        threshold: Number(s.seuil_alerte) || 10, category: s.categorie || 'cereales',
-        collectedFrom: '', lastCollection: s.created_at ? new Date(s.created_at).toLocaleDateString('fr-FR') : '',
-      })));
-    } catch {
-      showToast('Erreur lors de l\'ajout', 'error');
-    }
-  };
-
-  const handleUpdateStock = async (id: string, quantity: number) => {
-    try {
-      await apiUpdateStock(id, { quantite: quantity } as any);
-      setStocks(stocks.map(s => s.id === id ? { ...s, quantity } : s));
-      setSelectedStock((prev) => (prev && prev.id === id ? { ...prev, quantity } : prev));
-      showToast('Stock mis à jour', 'success');
-    } catch {
-      showToast('Erreur mise à jour', 'error');
-    }
-  };
-
-  const handleDeleteStock = async (id: string) => {
-    try {
-      const stock = stocks.find(s => s.id === id);
-      await apiDeleteStock(id);
-      setStocks(stocks.filter(s => s.id !== id));
-      showToast(`${stock?.name} supprimé du stock`, 'info');
-      speak(`${stock?.name} supprimé du stock`);
-      setShowEditModal(false);
-    } catch {
-      showToast('Erreur suppression', 'error');
+      showToast('Distribution enregistrée', 'success');
+      speak('Distribution enregistrée avec succès.');
+      setShowDistributionModal(false);
+      await reloadStocks();
+    } catch (e: any) {
+      showToast(e?.message || "Impossible de planifier la distribution. Réessaie.", 'error');
+    } finally {
+      setSubmittingDistribution(false);
     }
   };
 
@@ -212,154 +248,50 @@ export function Stock() {
       rightContent={
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <NotificationButton />
-          <motion.button
-            onClick={() => setShowCollectionModal(true)}
-            className="w-11 h-11 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <Filter className="w-5 h-5 text-gray-700" />
-          </motion.button>
         </div>
       }
     >
       <div className="pb-32 lg:pb-8 max-w-2xl lg:max-w-7xl mx-auto min-h-screen bg-gradient-to-b from-blue-50 to-white">
-        
-        {/* Stats Cards */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          <motion.button
-            onClick={() => {
-              setActiveFilter('all');
-              showToast('📦 Affichage de tous les produits', 'info');
-            }}
-            className={`relative bg-gradient-to-br from-blue-50 via-white to-blue-50 rounded-3xl p-3 shadow-md overflow-hidden border-2 ${
-              activeFilter === 'all' ? 'border-blue-500 ring-2 ring-blue-300' : 'border-blue-200'
-            } text-left cursor-pointer`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-            whileHover={{ scale: 1.05, y: -4, boxShadow: '0 10px 30px rgba(59, 130, 246, 0.15)' }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-gray-600 font-semibold">Produits</p>
-              <motion.div
-                className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"
-                animate={{ rotate: [0, 5, -5, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <Package className="w-5 h-5 text-blue-600" strokeWidth={2.5} />
-              </motion.div>
-            </div>
-            <motion.p
-              className="text-3xl font-bold text-blue-600"
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              {stocks.length}
-            </motion.p>
-            {activeFilter === 'all' && (
-              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-blue-500 rounded-full" />
-            )}
-          </motion.button>
 
-          <motion.button
-            onClick={() => {
-              setActiveFilter('alerts');
-              if (lowStocks.length === 0) {
-                showToast('✅ Aucune alerte stock', 'success');
-              } else {
-                showToast(`⚠️ ${lowStocks.length} produit${lowStocks.length > 1 ? 's' : ''} en stock bas`, 'error');
-              }
-            }}
-            className={`relative bg-gradient-to-br from-orange-50 via-white to-orange-50 rounded-3xl p-3 shadow-md overflow-hidden border-2 ${
-              activeFilter === 'alerts' ? 'border-orange-500 ring-2 ring-orange-300' : 'border-orange-300'
-            } text-left cursor-pointer`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            whileHover={{ scale: 1.05, y: -4, boxShadow: '0 10px 30px rgba(249, 115, 22, 0.15)' }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-gray-600 font-semibold">Alertes</p>
-              <motion.div
-                className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center"
-                animate={lowStocks.length > 0 ? { scale: [1, 1.1, 1] } : {}}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                <AlertTriangle className="w-5 h-5 text-orange-600" strokeWidth={2.5} />
-              </motion.div>
-            </div>
-            <motion.p
-              className="text-3xl font-bold text-orange-600"
-              animate={lowStocks.length > 0 ? { scale: [1, 1.1, 1] } : {}}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            >
-              {lowStocks.length}
-            </motion.p>
-            {activeFilter === 'alerts' && (
-              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-orange-500 rounded-full" />
-            )}
-          </motion.button>
-
-          <motion.button
-            onClick={() => {
-              showToast(`💰 Valeur: ${(totalValue || 0).toLocaleString()} FCFA`, 'info');
-            }}
-            className={`relative bg-gradient-to-br from-green-50 via-white to-green-50 rounded-3xl p-3 shadow-md overflow-hidden border-2 border-green-200 text-left cursor-pointer`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-            whileHover={{ scale: 1.05, y: -4, boxShadow: '0 10px 30px rgba(34, 197, 94, 0.15)' }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-gray-600 font-semibold">Valeur</p>
-              <motion.div
-                className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center"
-                animate={{ y: [0, -2, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <TrendingUp className="w-5 h-5 text-green-600" strokeWidth={2.5} />
-              </motion.div>
-            </div>
-            <motion.p
-              className="text-base font-bold text-green-600 leading-tight"
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              {(totalValue || 0).toLocaleString('fr-FR')} FCFA
-            </motion.p>
-          </motion.button>
-        </div>
-
-        {/* Boutons d'actions stratégiques */}
+        {/* Stat produits */}
         <motion.div
-          className="grid grid-cols-2 gap-3 mb-4"
+          className="bg-gradient-to-br from-blue-50 via-white to-blue-50 rounded-3xl p-4 shadow-md border-2 border-blue-200 mb-4 flex items-center justify-between"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
         >
+          <div>
+            <p className="text-xs text-gray-600 font-semibold mb-1">Produits dans le stock commun</p>
+            <p className="text-3xl font-bold text-blue-600">{stocks.length}</p>
+          </div>
+          <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center">
+            <Package className="w-7 h-7 text-blue-600" strokeWidth={2.5} />
+          </div>
+        </motion.div>
+
+        {/* Boutons d'action */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <motion.button
-            onClick={() => setShowCollectionModal(true)}
-            className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-white border-2 border-gray-200 hover:border-[#2072AF] transition-colors whitespace-nowrap"
-            whileHover={{ scale: 1.02, y: -2 }}
+            onClick={openApportModal}
+            className="py-4 px-3 rounded-2xl bg-white border-2 border-[#2072AF] text-[#2072AF] font-bold flex items-center justify-center gap-2 whitespace-nowrap"
             whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.02 }}
           >
-            <Truck className="w-5 h-5 text-[#2072AF] flex-shrink-0" />
-            <span className="font-semibold text-gray-700">Collectes</span>
+            <Plus className="w-5 h-5 flex-shrink-0" strokeWidth={3} />
+            Apporter du stock
           </motion.button>
 
           <motion.button
-            onClick={() => setShowDistributionModal(true)}
-            className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-white border-2 border-gray-200 hover:border-[#2072AF] transition-colors whitespace-nowrap"
-            whileHover={{ scale: 1.02, y: -2 }}
+            onClick={() => openDistributionModal()}
+            disabled={!stocks.length}
+            className="py-4 rounded-2xl bg-[#2072AF] text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50"
             whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.02 }}
           >
-            <Send className="w-5 h-5 text-[#2072AF] flex-shrink-0" />
-            <span className="font-semibold text-gray-700">Distribution</span>
+            <Send className="w-5 h-5" strokeWidth={3} />
+            Distribuer
           </motion.button>
-        </motion.div>
+        </div>
 
         {/* Barre de recherche */}
         <motion.div
@@ -382,132 +314,82 @@ export function Stock() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
-              {isListening ? <MicOff className="w-5 h-5 text-[#2072AF]" /> : null}
+              {isListening ? <MicOff className="w-5 h-5 text-[#2072AF]" /> : <Mic className="w-5 h-5 text-gray-400" />}
             </motion.button>
           </div>
         </motion.div>
 
-        {/* Boutons d'action */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <motion.button
-            onClick={() => setShowAddModal(true)}
-            className="py-4 px-3 rounded-2xl bg-white border-2 border-[#2072AF] text-[#2072AF] font-bold flex items-center justify-center gap-2 whitespace-nowrap"
-            whileTap={{ scale: 0.98 }}
-            whileHover={{ scale: 1.02 }}
-          >
-            <Plus className="w-5 h-5 flex-shrink-0" strokeWidth={3} />
-            Ajouter
-          </motion.button>
-
-          <motion.button
-            onClick={() => setShowDistributionModal(true)}
-            className="py-4 rounded-2xl bg-[#2072AF] text-white font-bold flex items-center justify-center gap-2"
-            whileTap={{ scale: 0.98 }}
-            whileHover={{ scale: 1.02 }}
-          >
-            <Send className="w-5 h-5" strokeWidth={3} />
-            Distribuer
-          </motion.button>
+        {/* Catégories */}
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap border-2 transition-colors ${
+                selectedCategory === cat.id
+                  ? 'bg-[#2072AF] border-[#2072AF] text-white'
+                  : 'bg-white border-gray-200 text-gray-600'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
         </div>
 
-        {/* Liste des stocks */}
+        {/* Liste du stock commun */}
+        {!loading && filteredStocks.length === 0 && (
+          <div className="text-center py-12 text-gray-500">
+            <Package className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <p className="font-semibold">Le stock commun est vide pour l'instant</p>
+            <p className="text-sm">Apporte le premier produit pour démarrer le pot commun.</p>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3">
-          {filteredStocks.map((stock, index) => {
-            const isLow = stock.quantity < stock.threshold;
-            const margin = stock.salePrice - stock.purchasePrice;
-            const marginPercent = (stock.purchasePrice > 0 ? ((margin / stock.purchasePrice) * 100) : 0).toFixed(0);
-
-            return (
-              <motion.div
-                key={stock.id}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => {
-                  setSelectedStock(stock);
-                  setShowEditModal(true);
-                }}
-                className={`bg-gradient-to-br ${
-                  isLow ? 'from-red-50 via-white to-red-50 border-red-300' : 'from-blue-50 via-white to-blue-50 border-gray-200'
-                } rounded-3xl overflow-hidden shadow-md border-2 cursor-pointer`}
-                whileHover={{ scale: 1.02, y: -4, boxShadow: '0 10px 30px rgba(32, 114, 175, 0.15)' }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <div className="relative w-full h-36 overflow-hidden">
-                  <ImageWithFallback 
-                    src={stock.image} 
-                    alt={stock.name}
-                    className="w-full h-full object-cover"
-                  />
-                  {isLow && (
-                    <div className="absolute top-2 right-2">
-                      <motion.span 
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="inline-flex items-center gap-1 bg-red-500 text-white px-2 py-1 rounded-lg text-xs font-bold shadow-lg"
-                      >
-                        <AlertTriangle className="w-3 h-3" />
-                        Bas
-                      </motion.span>
-                    </div>
-                  )}
-                  <div className="absolute top-2 left-2">
-                    <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-lg font-bold shadow-lg">
-                      +{marginPercent}%
-                    </span>
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
-                  <div className="absolute bottom-2 left-2 right-2">
-                    <h3 className="font-bold text-white text-sm drop-shadow-lg">{stock.name}</h3>
-                  </div>
+          {filteredStocks.map((stock, index) => (
+            <motion.div
+              key={stock.id}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.05 }}
+              onClick={() => {
+                setSelectedStock(stock);
+                setShowDetailModal(true);
+              }}
+              className="bg-gradient-to-br from-blue-50 via-white to-blue-50 rounded-3xl overflow-hidden shadow-md border-2 border-gray-200 cursor-pointer"
+              whileHover={{ scale: 1.02, y: -4, boxShadow: '0 10px 30px rgba(32, 114, 175, 0.15)' }}
+              whileTap={{ scale: 0.97 }}
+            >
+              <div className="relative w-full h-32 overflow-hidden">
+                <img src={imageForProduit(stock.produit)} alt={stock.produit} className="w-full h-full object-cover" />
+                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-2 left-2 right-2">
+                  <h3 className="font-bold text-white text-sm drop-shadow-lg">{stock.produit}</h3>
                 </div>
+              </div>
 
-                <div className="p-3 space-y-2">
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className={`text-3xl font-bold ${isLow ? 'text-red-600' : 'text-[#2072AF]'}`}>
-                      {stock.quantity}
-                    </span>
-                    <span className="text-sm text-gray-500 font-semibold">{stock.unit}</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-1.5 text-xs">
-                    <div className="bg-red-50 rounded-lg p-1.5 text-center">
-                      <p className="text-red-600 font-semibold mb-0.5">Achat</p>
-                      <p className="font-bold text-gray-900 text-[10px] leading-tight">{(stock.purchasePrice || 0).toLocaleString('fr-FR')} <span className="text-[9px] opacity-60">FCFA</span></p>
-                    </div>
-                    <div className="bg-green-50 rounded-lg p-1.5 text-center">
-                      <p className="text-green-600 font-semibold mb-0.5">Vente</p>
-                      <p className="font-bold text-gray-900 text-[10px] leading-tight">{(stock.salePrice || 0).toLocaleString('fr-FR')} <span className="text-[9px] opacity-60">FCFA</span></p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                      <motion.div
-                        className={`h-full ${isLow ? 'bg-red-500' : 'bg-blue-500'}`}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min((stock.quantity / (stock.threshold * 2)) * 100, 100)}%` }}
-                        transition={{ duration: 1, delay: index * 0.05 }}
-                      />
-                    </div>
-                  </div>
+              <div className="p-3 space-y-1">
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="text-3xl font-bold text-[#2072AF]">{stock.quantite}</span>
+                  <span className="text-sm text-gray-500 font-semibold">{stock.unite}</span>
                 </div>
-              </motion.div>
-            );
-          })}
+                <p className="text-center text-xs text-gray-500 capitalize">{stock.categorie}</p>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </SubPageLayout>
 
-      {/* Modal Ajout Collecte */}
+      {/* Modal Apporter du stock */}
       <AnimatePresence>
-        {showAddModal && (
+        {showApportModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-end px-4 pb-4"
-            onClick={() => setShowAddModal(false)}
+            onClick={() => setShowApportModal(false)}
           >
             <motion.div
               initial={{ y: '100%' }}
@@ -518,9 +400,9 @@ export function Stock() {
               className="bg-white rounded-3xl w-full max-h-[85vh] overflow-y-auto"
             >
               <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
-                <h2 className="text-xl font-bold">Nouvelle collecte</h2>
+                <h2 className="text-xl font-bold">Apporter du stock</h2>
                 <motion.button
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => setShowApportModal(false)}
                   className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
                   whileHover={{ rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
@@ -530,35 +412,18 @@ export function Stock() {
               </div>
 
               <div className="p-6 space-y-4">
-                {/* Photo du produit collecté */}
-                <ImagePickerField
-                  label="Photo du produit"
-                  value={(newStock as any).image?.startsWith('data:') || (newStock as any).image?.startsWith('http') ? (newStock as any).image : ''}
-                  onChange={(url) => setNewStock({ ...newStock, image: url } as any)}
-                  primaryColor="#2072AF"
-                  shape="rect"
-                  size={96}
-                />
+                <p className="text-sm text-gray-600">
+                  Ce produit rejoint le pot commun de la coopérative — visible et distribuable par tous les membres.
+                </p>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Produit collecté</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Produit</label>
                   <input
                     type="text"
-                    value={newStock.name}
-                    onChange={(e) => setNewStock({ ...newStock, name: e.target.value })}
+                    value={apportForm.produit}
+                    onChange={(e) => setApportForm({ ...apportForm, produit: e.target.value })}
                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#2072AF] focus:outline-none"
                     placeholder="Ex: Riz local"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Collecté auprès de</label>
-                  <input
-                    type="text"
-                    value={newStock.collectedFrom}
-                    onChange={(e) => setNewStock({ ...newStock, collectedFrom: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#2072AF] focus:outline-none"
-                    placeholder="Ex: Kouassi Jean"
                   />
                 </div>
 
@@ -567,58 +432,39 @@ export function Stock() {
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Quantité</label>
                     <input
                       type="number"
-                      value={newStock.quantity}
-                      onChange={(e) => setNewStock({ ...newStock, quantity: parseInt(e.target.value) || 0 })}
+                      min={0}
+                      value={apportForm.quantite}
+                      onChange={(e) => setApportForm({ ...apportForm, quantite: parseFloat(e.target.value) || 0 })}
                       className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#2072AF] focus:outline-none"
                     />
                   </div>
                   <SelectWithAutre
                     label="Unité"
-                    value={newStock.unit}
-                    onChange={(v) => setNewStock({ ...newStock, unit: v })}
+                    value={apportForm.unite}
+                    onChange={(v) => setApportForm({ ...apportForm, unite: v })}
                     options={UNITES_COURANTES}
                     primaryColor="#2072AF"
                     placeholder="Ex: caisse, panier..."
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Prix achat membre (FCFA)</label>
-                    <input
-                      type="number"
-                      value={newStock.purchasePrice}
-                      onChange={(e) => setNewStock({ ...newStock, purchasePrice: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#2072AF] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Prix revente (FCFA)</label>
-                    <input
-                      type="number"
-                      value={newStock.salePrice}
-                      onChange={(e) => setNewStock({ ...newStock, salePrice: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#2072AF] focus:outline-none"
-                    />
-                  </div>
-                </div>
-
                 <SelectWithAutre
                   label="Catégorie"
-                  value={newStock.category}
-                  onChange={(v) => setNewStock({ ...newStock, category: v })}
+                  value={apportForm.categorie}
+                  onChange={(v) => setApportForm({ ...apportForm, categorie: v })}
                   options={categories.filter((c) => c.id !== 'tous').map((cat) => cat.id)}
                   primaryColor="#2072AF"
                   placeholder="Ex: épices, fleurs..."
                 />
 
                 <motion.button
-                  onClick={addStock}
-                  className="w-full py-4 rounded-2xl bg-[#2072AF] text-white font-bold"
+                  onClick={submitApport}
+                  disabled={submittingApport}
+                  className="w-full py-4 rounded-2xl bg-[#2072AF] text-white font-bold disabled:opacity-60"
                   whileTap={{ scale: 0.95 }}
                   whileHover={{ scale: 1.02 }}
                 >
-                  Enregistrer la collecte
+                  {submittingApport ? 'Enregistrement...' : 'Ajouter au stock commun'}
                 </motion.button>
               </div>
             </motion.div>
@@ -626,15 +472,15 @@ export function Stock() {
         )}
       </AnimatePresence>
 
-      {/* Modal Edition */}
+      {/* Modal Détail (lecture seule — le stock commun ne se modifie que via apport/distribution) */}
       <AnimatePresence>
-        {showEditModal && selectedStock && (
+        {showDetailModal && selectedStock && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-end px-4 pb-4"
-            onClick={() => setShowEditModal(false)}
+            onClick={() => setShowDetailModal(false)}
           >
             <motion.div
               initial={{ y: '100%' }}
@@ -645,9 +491,9 @@ export function Stock() {
               className="bg-white rounded-3xl w-full max-h-[85vh] overflow-y-auto"
             >
               <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
-                <h2 className="text-xl font-bold">{selectedStock.name}</h2>
+                <h2 className="text-xl font-bold">{selectedStock.produit}</h2>
                 <motion.button
-                  onClick={() => setShowEditModal(false)}
+                  onClick={() => setShowDetailModal(false)}
                   className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
                   whileHover={{ rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
@@ -657,163 +503,35 @@ export function Stock() {
               </div>
 
               <div className="p-6 space-y-4">
-                <div className="relative w-full h-64 bg-gray-100 rounded-2xl overflow-hidden">
-                  <ImageWithFallback
-                    src={selectedStock.image}
-                    alt={selectedStock.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Quantité actuelle</label>
-                  <div className="flex items-center gap-3">
-                    <motion.button
-                      onClick={() => handleUpdateStock(selectedStock.id, Math.max(0, selectedStock.quantity - 10))}
-                      className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border-2 border-red-200"
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Minus className="w-5 h-5" />
-                    </motion.button>
-                    <input
-                      type="number"
-                      value={selectedStock.quantity}
-                      onChange={(e) => setSelectedStock({ ...selectedStock, quantity: parseInt(e.target.value, 10) || 0 })}
-                      onBlur={() => handleUpdateStock(selectedStock.id, selectedStock.quantity)}
-                      className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#2072AF] focus:outline-none text-center text-2xl font-bold"
-                    />
-                    <span className="text-gray-500 font-semibold">{selectedStock.unit}</span>
-                    <motion.button
-                      onClick={() => handleUpdateStock(selectedStock.id, selectedStock.quantity + 10)}
-                      className="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center border-2 border-green-200"
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <Plus className="w-5 h-5" />
-                    </motion.button>
-                  </div>
+                <div className="relative w-full h-56 bg-gray-100 rounded-2xl overflow-hidden">
+                  <img src={imageForProduit(selectedStock.produit)} alt={selectedStock.produit} className="w-full h-full object-cover" />
                 </div>
 
                 <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-                  {selectedStock.collectedFrom && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Collecté auprès de</span>
-                      <span className="font-bold text-gray-900">{selectedStock.collectedFrom}</span>
-                    </div>
-                  )}
-                  {selectedStock.lastCollection && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Dernière collecte</span>
-                      <span className="font-bold text-gray-900">{selectedStock.lastCollection}</span>
-                    </div>
-                  )}
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Prix achat membre</span>
-                    <span className="font-bold text-gray-900">
-                      <Montant value={selectedStock.purchasePrice} unit={selectedStock.unit} size="sm" color="#1f2937" />
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Prix de revente</span>
-                    <span className="font-bold text-green-600">
-                      <Montant value={selectedStock.salePrice} unit={selectedStock.unit} size="sm" color="#16a34a" />
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Marge unitaire</span>
-                    <span className="font-bold text-[#2072AF]">
-                      {(selectedStock.salePrice - selectedStock.purchasePrice).toLocaleString()}{' '}
-                      <span className="text-[10px] opacity-60">FCFA</span>
-                      <span className="text-xs ml-1">
-                        (+
-                        {(
-                          selectedStock.purchasePrice > 0
-                            ? ((selectedStock.salePrice - selectedStock.purchasePrice) / selectedStock.purchasePrice * 100)
-                            : 0
-                        ).toFixed(0)}
-                        %)
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Valeur totale</span>
+                    <span className="text-sm text-gray-600">Quantité disponible (stock commun)</span>
                     <span className="font-bold text-lg text-[#2072AF]">
-                      {(selectedStock.quantity * selectedStock.salePrice).toLocaleString()}{' '}
-                      <span className="text-xs opacity-60">FCFA</span>
+                      {selectedStock.quantite} {selectedStock.unite}
                     </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Catégorie</span>
+                    <span className="font-bold text-gray-900 capitalize">{selectedStock.categorie}</span>
                   </div>
                 </div>
 
                 <motion.button
-                  onClick={() => handleDeleteStock(selectedStock.id)}
-                  className="w-full py-4 rounded-2xl bg-red-50 text-red-600 font-bold flex items-center justify-center gap-2 border-2 border-red-200"
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    openDistributionModal(selectedStock.produit);
+                  }}
+                  className="w-full py-4 rounded-2xl bg-[#2072AF] text-white font-bold flex items-center justify-center gap-2"
                   whileTap={{ scale: 0.95 }}
                   whileHover={{ scale: 1.02 }}
                 >
-                  <Trash2 className="w-5 h-5" />
-                  Supprimer du stock
+                  <Send className="w-5 h-5" />
+                  Distribuer ce produit
                 </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Modal Historique Collectes */}
-      <AnimatePresence>
-        {showCollectionModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-end px-4 pb-4"
-            onClick={() => setShowCollectionModal(false)}
-          >
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl w-full max-h-[85vh] overflow-y-auto"
-            >
-              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
-                <h2 className="text-xl font-bold flex items-center gap-2">
-                  <History className="w-6 h-6 text-[#2072AF]" />
-                  Historique des collectes
-                </h2>
-                <motion.button
-                  onClick={() => setShowCollectionModal(false)}
-                  className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
-                  whileHover={{ rotate: 90 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <X className="w-5 h-5" />
-                </motion.button>
-              </div>
-
-              <div className="p-6 space-y-3">
-                {stocks
-                  .filter((s) => s.collectedFrom)
-                  .map((stock, index) => (
-                    <motion.div
-                      key={stock.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="bg-blue-50 rounded-2xl p-4"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-bold text-gray-900">{stock.name}</h3>
-                        <span className="text-sm text-gray-600">{stock.lastCollection}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">👨🏾‍🌾 {stock.collectedFrom}</span>
-                        <span className="font-bold text-[#2072AF]">
-                          {stock.quantity} {stock.unit}
-                        </span>
-                      </div>
-                    </motion.div>
-                  ))}
               </div>
             </motion.div>
           </motion.div>
@@ -841,7 +559,7 @@ export function Stock() {
               <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
                 <h2 className="text-xl font-bold flex items-center gap-2">
                   <Send className="w-6 h-6 text-[#2072AF]" />
-                  Redistribution aux membres
+                  Distribution aux membres
                 </h2>
                 <motion.button
                   onClick={() => setShowDistributionModal(false)}
@@ -854,25 +572,89 @@ export function Stock() {
               </div>
 
               <div className="p-6 space-y-4">
-                <div className="bg-blue-50 rounded-2xl p-4">
-                  <p className="text-sm text-gray-700">
-                    Sélectionnez les produits et les membres pour organiser une distribution.
-                  </p>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Produit à distribuer</label>
+                  <select
+                    value={distProduit}
+                    onChange={(e) => setDistProduit(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#2072AF] focus:outline-none"
+                  >
+                    <option value="" disabled>Choisir un produit</option>
+                    {stocks.map((s) => (
+                      <option key={s.id} value={s.produit}>
+                        {s.produit} ({s.quantite} {s.unite} disponible)
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
+                <div className="bg-blue-50 rounded-2xl p-3 flex items-center justify-between text-sm">
+                  <span className="text-gray-700">Disponible</span>
+                  <span className="font-bold text-[#2072AF]">{stockDisponible}</span>
+                </div>
+
+                <div className="space-y-3">
+                  {distLignes.map((ligne, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <select
+                        value={ligne.membreId}
+                        onChange={(e) => {
+                          const next = [...distLignes];
+                          next[idx] = { ...next[idx], membreId: e.target.value };
+                          setDistLignes(next);
+                        }}
+                        className="flex-1 px-3 py-3 rounded-xl border-2 border-gray-200 focus:border-[#2072AF] focus:outline-none"
+                      >
+                        <option value="" disabled>Membre</option>
+                        {membres.map((m) => (
+                          <option key={m.id} value={m.id}>{m.nom}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        min={0}
+                        value={ligne.quantite}
+                        onChange={(e) => {
+                          const next = [...distLignes];
+                          next[idx] = { ...next[idx], quantite: parseFloat(e.target.value) || 0 };
+                          setDistLignes(next);
+                        }}
+                        className="w-24 px-3 py-3 rounded-xl border-2 border-gray-200 focus:border-[#2072AF] focus:outline-none text-center"
+                      />
+                      <motion.button
+                        onClick={() => setDistLignes(distLignes.filter((_, i) => i !== idx))}
+                        className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border-2 border-red-200 flex-shrink-0"
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <Minus className="w-4 h-4" />
+                      </motion.button>
+                    </div>
+                  ))}
+
+                  <motion.button
+                    onClick={() => setDistLignes([...distLignes, { membreId: '', quantite: 0 }])}
+                    className="w-full py-3 rounded-xl border-2 border-dashed border-gray-300 text-gray-600 font-semibold flex items-center justify-center gap-2"
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Ajouter un membre
+                  </motion.button>
+                </div>
+
+                {totalDemande > stockDisponible && (
+                  <p className="text-sm text-red-600 font-semibold text-center">
+                    Total demandé ({totalDemande}) supérieur au stock disponible ({stockDisponible})
+                  </p>
+                )}
+
                 <motion.button
-                  onClick={() => {
-                    // Fonction jamais câblée : l'ancien code référençait une
-                    // variable inexistante (distributionQty) et chaque clic
-                    // finissait dans le catch. Même issue, dite franchement.
-                    // Voir docs/RESIDUS.md (saisie de quantité à construire).
-                    showToast('Impossible de planifier la distribution. Réessaie.', 'error');
-                  }}
-                  className="w-full py-4 rounded-2xl bg-[#2072AF] text-white font-bold"
+                  onClick={submitDistribution}
+                  disabled={submittingDistribution}
+                  className="w-full py-4 rounded-2xl bg-[#2072AF] text-white font-bold disabled:opacity-60"
                   whileTap={{ scale: 0.95 }}
                   whileHover={{ scale: 1.02 }}
                 >
-                  Planifier la distribution
+                  {submittingDistribution ? 'Enregistrement...' : 'Planifier la distribution'}
                 </motion.button>
               </div>
             </motion.div>
