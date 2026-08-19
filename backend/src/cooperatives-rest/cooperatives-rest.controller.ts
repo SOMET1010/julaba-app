@@ -10,6 +10,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
+import { ScoresService } from '../scores/scores.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('cooperatives')
@@ -18,6 +19,7 @@ export class CooperativesRestController {
     @InjectRepository(Cooperative) private readonly repo: Repository<Cooperative>,
     @InjectRepository(CooperativeMembre) private readonly membreRepo: Repository<CooperativeMembre>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    private readonly scoresService: ScoresService,
   ) {}
 
   private async ensureCooperativeBesoinsTable(): Promise<void> {
@@ -98,9 +100,17 @@ export class CooperativesRestController {
     const ids = adhesions.map((a: any) => a.membre_id);
     if (!ids.length) return { membres: [], total: 0 };
     const membres = await this.userRepo.find({ where: { id: In(ids) } });
+
+    // Score Jùlaba réel par membre — calculé en un lot (pas de N+1 requêtes) via
+    // ScoresService, la même source de vérité que GET /scores/me (Constitution §2).
+    const scores = await this.scoresService.getScoresForUsers(
+      membres.map((m: any) => ({ id: m.id, role: m.role, objectifMensuel: m.objectifMensuel })),
+    );
+
     const enriched = membres.map((m: any) => {
       const adhesion = adhesions.find((a: any) => a.membre_id === m.id);
-      return { ...m, statut_membre: adhesion?.statut, role_membre: adhesion?.role };
+      const scoreJulaba = scores.get(m.id)?.score_total ?? 0;
+      return { ...m, statut_membre: adhesion?.statut, role_membre: adhesion?.role, scoreJulaba };
     });
     return { membres: enriched, total: enriched.length };
   }
