@@ -7,8 +7,18 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { WalletTransaction } from '../wallets/entities/wallet-transaction.entity';
+import { InstitutionScopeGuard, InstitutionScope } from './guards/institution-scope.guard';
+import { RequireInstitutionModule } from './decorators/institution-required-module.decorator';
+import { CurrentInstitutionScope } from './decorators/institution-scope.decorator';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+// Isolement inter-institutions (correctif audit securite/vie privee) :
+// InstitutionScopeGuard resout, pour le role `institution` uniquement, le
+// perimetre reel du compte (zone) et le pose sur la requete en
+// `institutionScope`. Chaque endpoint filtre EXPLICITEMENT ses requetes SQL
+// par cette zone -- jamais de fallback silencieux sur les donnees globales.
+// super_admin / admin_general restent non scopes (vue plateforme complete,
+// comportement inchange).
+@UseGuards(JwtAuthGuard, RolesGuard, InstitutionScopeGuard)
 @Roles('institution', 'super_admin', 'admin_general')
 @Controller('institution')
 export class InstitutionDashboardController {
@@ -22,20 +32,18 @@ export class InstitutionDashboardController {
   ) {}
 
   @Get('dashboard')
-  async getDashboard(@CurrentUser() user: User) {
+  @RequireInstitutionModule('dashboard')
+  async getDashboard(@CurrentUser() user: User, @CurrentInstitutionScope() scope?: InstitutionScope) {
     try {
       const acteurRoles = ['marchand', 'producteur', 'cooperateur', 'identificateur'];
       const isInstitution = user.role === 'institution';
       const users = await this.usersRepo.find({
         where: isInstitution
-          ? ({ role: In(acteurRoles) } as any)
+          ? ({ role: In(acteurRoles), zoneId: scope!.zoneId } as any)
           : undefined,
         take: 5000,
         order: { createdAt: 'DESC' } as any,
       });
-      if (isInstitution) {
-        this.logger.warn('[DASHBOARD] Filtrage par institution_id indisponible (colonne absente/non mappée), fallback sur acteurs globaux');
-      }
       const acteurIds = users.map((u) => u.id);
       const transactions = await this.txRepo.find({
         where: isInstitution
@@ -145,13 +153,14 @@ export class InstitutionDashboardController {
   }
 
   @Get('acteurs')
-  async getActeurs(@CurrentUser() user: User) {
+  @RequireInstitutionModule('acteurs')
+  async getActeurs(@CurrentUser() user: User, @CurrentInstitutionScope() scope?: InstitutionScope) {
     try {
       const acteurRoles = ['marchand', 'producteur', 'cooperateur', 'identificateur'];
       const isInstitution = user.role === 'institution';
       const users = await this.usersRepo.find({
         where: isInstitution
-          ? ({ role: In(acteurRoles) } as any)
+          ? ({ role: In(acteurRoles), zoneId: scope!.zoneId } as any)
           : undefined,
         take: 5000,
         order: { createdAt: 'DESC' } as any,
@@ -177,13 +186,14 @@ export class InstitutionDashboardController {
   }
 
   @Get('transactions')
-  async getTransactions(@CurrentUser() user: User) {
+  @RequireInstitutionModule('transactions')
+  async getTransactions(@CurrentUser() user: User, @CurrentInstitutionScope() scope?: InstitutionScope) {
     try {
       const acteurRoles = ['marchand', 'producteur', 'cooperateur', 'identificateur'];
       const isInstitution = user.role === 'institution';
       const users = await this.usersRepo.find({
         where: isInstitution
-          ? ({ role: In(acteurRoles) } as any)
+          ? ({ role: In(acteurRoles), zoneId: scope!.zoneId } as any)
           : undefined,
         take: 5000,
       });
