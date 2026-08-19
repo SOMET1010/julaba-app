@@ -1,8 +1,10 @@
-import { Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Cooperative } from './cooperative.entity';
 import { CooperativeMembre } from './cooperative-membre.entity';
+import { CooperativeStock } from './cooperative-stock.entity';
+import { CooperativeStockMouvement } from './cooperative-stock-mouvement.entity';
 import { CreateCooperativeDto } from './dto/create-cooperative.dto';
 import { UpdateCooperativeDto } from './dto/update-cooperative.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -19,8 +21,10 @@ export class CooperativesRestController {
   constructor(
     @InjectRepository(Cooperative) private readonly repo: Repository<Cooperative>,
     @InjectRepository(CooperativeMembre) private readonly membreRepo: Repository<CooperativeMembre>,
+    @InjectRepository(CooperativeStock) private readonly stockRepo: Repository<CooperativeStock>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     private readonly scoresService: ScoresService,
+    private readonly dataSource: DataSource,
   ) {}
 
   private async ensureCooperativeBesoinsTable(): Promise<void> {
@@ -543,24 +547,176 @@ export class CooperativesRestController {
     return { success: true, persisted: false, message: 'Commandes groupées : feature non disponible' };
   }
 
-  @Post('distribution')
-  async distribution(@Body() body: any, @CurrentUser() currentUser: User) {
+  // ── Stock commun ────────────────────────────────────────────────────────
+  // Le pot partagé d'une coopérative : alimenté par les apports des membres
+  // (POST .../stock/apport), consulté par tous (GET .../stock), décrémenté
+  // par les distributions (POST .../distribution). Chaque mouvement est tracé
+  // dans cooperative_stock_mouvements (append-only, jamais modifié).
+
+  @Get('stock')
+  async getStockCommun(@CurrentUser() currentUser: User) {
     const userId = currentUser?.id;
-    if (!userId) return { success: false };
-    try {
-      const { coop } = await this.resolveUserCooperative(userId);
-      if (!coop) return { success: false, message: 'Coopérative introuvable' };
-      // Distribution : feature stock non finalisée (modèle de persistance à concevoir).
-      // Neutralisé v2.9.x : aucune écriture (les anciennes ciblaient cooperative_tresorerie /
-      // cooperatives.solde_tresorerie, 2 objets inexistants → throw silencieux). Retour honnête.
-      return {
-        success: true,
-        persisted: false,
-        message: 'Distribution enregistrée (hors persistance — feature stock à venir)',
-      };
-    } catch (e: any) {
-      return { success: false, message: e.message };
+    if (!userId) return { stocks: [] };
+    const { coop } = await this.resolveUserCooperative(userId);
+    if (!coop) return { stocks: [] };
+    const rows = await this.stockRepo.find({
+      where: { cooperativeId: coop.id },
+      order: { produit: 'ASC' },
+    });
+    return {
+      stocks: rows.map((r) => ({
+        id: r.id,
+        produit: r.produit,
+        categorie: r.categorie,
+        quantite: Number(r.quantite),
+        unite: r.unite,
+        created_at: r.createdAt,
+        updated_at: r.updatedAt,
+      })),
+    };
+  }
+
+  @Post('stock/apport')
+  async apporterStock(
+    @Body() body: { produit?: string; quantite?: number; unite?: string; categorie?: string },
+    @CurrentUser() currentUser: User,
+  ) {
+    const userId = currentUser?.id;
+    if (!userId) throw new ForbiddenException('Non authentifié');
+
+    const produit = String(body?.produit || '').trim();
+    const unite = String(body?.unite || '').trim();
+    const quantite = Number(body?.quantite);
+    if (!produit) throw new BadRequestException('Produit requis');
+    if (!unite) throw new BadRequestException('Unité requise');
+    if (!Number.isFinite(quantite) || quantite <= 0) {
+      throw new BadRequestException('Quantité invalide (doit être supérieure à 0)');
     }
+
+    // Aucun fallback silencieux : un utilisateur hors coopérative ne peut pas
+    // apporter de stock à un pot commun qui n'existe pas pour lui.
+    const { coop } = await this.resolveUserCooperative(userId);
+    if (!coop) throw new ForbiddenException("Vous n'appartenez à aucune coopérative");
+
+    const categorie = body?.categorie ? String(body.categorie).trim() || null : null;
+
+    const stock = await this.dataSource.transaction(async (entityManager) => {
+      let stockRow = await entityManager.findOne(CooperativeStock, {
+        where: { cooperativeId: coop.id, produit },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (stockRow) {
+        stockRow.quantite = Number(stockRow.quantite) + quantite;
+        // L'unité et la catégorie d'origine sont conservées (une ligne de
+        // stock courant = un produit, pas un produit-par-unité) ; seule la
+        // quantité bouge sur un apport d'un produit déjà présent.
+        await entityManager.save(CooperativeStock, stockRow);
+      } else {
+        stockRow = entityManager.create(CooperativeStock, {
+          cooperativeId: coop.id,
+          produit,
+          categorie,
+          quantite,
+          unite,
+        });
+        await entityManager.save(CooperativeStock, stockRow);
+      }
+
+      const mouvement = entityManager.create(CooperativeStockMouvement, {
+        cooperativeId: coop.id,
+        produit,
+        type: 'apport',
+        quantite,
+        membreId: userId,
+        besoinId: null,
+        note: null,
+      });
+      await entityManager.save(CooperativeStockMouvement, mouvement);
+
+      return stockRow;
+    });
+
+    return {
+      success: true,
+      stock: {
+        id: stock.id,
+        produit: stock.produit,
+        categorie: stock.categorie,
+        quantite: Number(stock.quantite),
+        unite: stock.unite,
+      },
+    };
+  }
+
+  @Post('distribution')
+  async distribution(
+    @Body() body: { produit?: string; distributions?: { membreId?: string; quantite?: number }[]; besoinId?: string },
+    @CurrentUser() currentUser: User,
+  ) {
+    const userId = currentUser?.id;
+    if (!userId) throw new ForbiddenException('Non authentifié');
+
+    const produit = String(body?.produit || '').trim();
+    if (!produit) throw new BadRequestException('Produit requis');
+
+    const distributions = Array.isArray(body?.distributions) ? body.distributions : [];
+    if (!distributions.length) throw new BadRequestException('Aucune distribution fournie');
+
+    const normalized: { membreId: string; quantite: number }[] = [];
+    for (const d of distributions) {
+      const membreId = String(d?.membreId || '').trim();
+      const quantite = Number(d?.quantite);
+      if (!membreId) throw new BadRequestException('membreId requis pour chaque distribution');
+      if (!Number.isFinite(quantite) || quantite <= 0) {
+        throw new BadRequestException('Quantité invalide pour une distribution (doit être supérieure à 0)');
+      }
+      normalized.push({ membreId, quantite });
+    }
+
+    const besoinId = body?.besoinId ? String(body.besoinId).trim() || null : null;
+
+    const { coop } = await this.resolveUserCooperative(userId);
+    if (!coop) throw new ForbiddenException("Vous n'appartenez à aucune coopérative");
+
+    const totalDemande = normalized.reduce((sum, d) => sum + d.quantite, 0);
+
+    const stockRestant = await this.dataSource.transaction(async (entityManager) => {
+      const stockRow = await entityManager.findOne(CooperativeStock, {
+        where: { cooperativeId: coop.id, produit },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      const disponible = stockRow ? Number(stockRow.quantite) : 0;
+      // Refus intégral si la demande dépasse le disponible : rien ne bouge,
+      // jamais de stock négatif (même logique que le blocage wallet — cf.
+      // Constitution §7, l'argent ET le stock partagé sont sacrés ici).
+      if (!stockRow || totalDemande > disponible) {
+        throw new BadRequestException(
+          `Stock commun insuffisant pour "${produit}" : disponible ${disponible}, demandé ${totalDemande}`,
+        );
+      }
+
+      stockRow.quantite = disponible - totalDemande;
+      await entityManager.save(CooperativeStock, stockRow);
+
+      for (const d of normalized) {
+        const mouvement = entityManager.create(CooperativeStockMouvement, {
+          cooperativeId: coop.id,
+          produit,
+          type: 'distribution',
+          quantite: d.quantite,
+          membreId: d.membreId,
+          besoinId,
+          note: null,
+        });
+        await entityManager.save(CooperativeStockMouvement, mouvement);
+      }
+
+      return Number(stockRow.quantite);
+    });
+
+    return { success: true, persisted: true, stockRestant };
   }
 
   @Post('commandes/:id/cloture')

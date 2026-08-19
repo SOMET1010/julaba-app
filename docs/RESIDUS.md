@@ -88,11 +88,22 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
 - **Marché virtuel sans sous-profil : EXPLIQUÉ.** Un marchand sans
   `sous_profil_marchand` voyait des onglets vides sans comprendre pourquoi.
   Bandeau clair ajouté (MarcheVirtuel) : « vois ton identificateur… ».
-- **Distribution de stock (coopérative) : NON câblée, décision motivée.**
-  Le backend NEUTRALISE volontairement `POST cooperatives/distribution`
-  (« feature stock non finalisée… aucune écriture », cooperatives-rest.
-  controller.ts) : câbler la saisie de quantité côté frontend simulerait un
-  succès mensonger. À construire backend d'abord, frontend ensuite.
+- **Stock commun de coopérative : CÂBLÉ (résolu).** Le stub était double : (1)
+  `POST cooperatives/distribution` résolvait la coopérative de l'appelant
+  mais n'écrivait rien (`persisted: false`) ; (2) l'écran "Stock commun"
+  (`Stock.tsx`) affichait en réalité le stock PERSONNEL de l'utilisateur
+  (`GET /stocks`, scopé `proprietaire_id`) présenté comme un pot commun ; (3)
+  `Commandes.tsx` (`submitBesoinDispatch`) ne vérifiait que l'échec réseau de
+  cet appel, jamais le champ `persisted` — un toast « Besoin mis à jour »
+  s'affichait même quand rien n'avait été distribué. Résolu par deux
+  nouvelles tables réelles (`cooperative_stock` = total courant par produit,
+  `cooperative_stock_mouvements` = journal append-only apport/distribution),
+  `POST /cooperatives/stock/apport`, `GET /cooperatives/stock`, et une
+  réécriture persistante de `POST /cooperatives/distribution` (refuse tout
+  si la demande dépasse le disponible — jamais de stock négatif). Le
+  frontend consulte désormais le vrai stock commun et vérifie
+  `persisted === true` avant d'annoncer un succès. Invariants :
+  `backend/test/invariants/stock-commun-cooperative.spec.ts`.
 - **« Bug latent » publications : CLASSÉ NON-BUG, preuve backend.**
   L'intention « mes publications actives » est déjà honorée côté serveur :
   `GET /publications` force `WHERE p.user_id = $1` (publications-rest).

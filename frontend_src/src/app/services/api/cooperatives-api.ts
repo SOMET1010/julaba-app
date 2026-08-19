@@ -119,4 +119,58 @@ export async function createBesoin(data: Omit<Besoin, 'id' | 'statut' | 'created
   });
 }
 
+// ── Stock commun ─────────────────────────────────────────────
+// Le pot partagé de la coopérative — PAS le stock personnel (`/stocks`,
+// scopé par utilisateur). Alimenté par les apports des membres, décrémenté
+// par les distributions, chaque mouvement tracé côté serveur.
+
+export interface CooperativeStockItem {
+  id: string;
+  produit: string;
+  categorie?: string | null;
+  quantite: number;
+  unite: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ApportStockData {
+  produit: string;
+  quantite: number;
+  unite: string;
+  categorie?: string;
+}
+
+export interface DistributionItem {
+  membreId: string;
+  quantite: number;
+}
+
+export interface DistributionData {
+  produit: string;
+  distributions: DistributionItem[];
+  besoinId?: string;
+}
+
+export async function fetchStockCommun(): Promise<{ stocks: CooperativeStockItem[] }> {
+  const data = await apiRequest<any>('/cooperatives/stock');
+  return { stocks: data?.stocks || [] };
+}
+
+export async function apporterStockCommun(data: ApportStockData): Promise<{ success: boolean; stock: CooperativeStockItem }> {
+  return apiRequest<{ success: boolean; stock: CooperativeStockItem }>('/cooperatives/stock/apport', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function distribuerStockCommun(
+  data: DistributionData,
+): Promise<{ success: boolean; persisted: boolean; stockRestant: number }> {
+  return apiRequest<{ success: boolean; persisted: boolean; stockRestant: number }>('/cooperatives/distribution', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 
