@@ -137,37 +137,68 @@ export class MutationsController {
       throw new BadRequestException('Cette demande a déjà été traitée');
     }
 
-    await this.dataSource.query(
-      `UPDATE mutations SET
-        statut = $1,
-        decideur_id = $2,
-        motif_decision = $3,
-        date_decision = NOW(),
-        updated_at = NOW()
-       WHERE id = $4`,
-      [body.decision, userId, body.motif?.trim() || null, id],
-    );
+    // Le changement de statut de la mutation ET (si approuvée) la
+    // réaffectation réelle de la zone de l'identificateur se font dans UNE
+    // SEULE transaction. Avant ce correctif, l'approbation ne faisait
+    // qu'une insertion "best effort" dans `missions` (try/catch qui avalait
+    // l'erreur) sans jamais toucher `users.zone_id` : un identificateur
+    // "muté" restait donc affecté à son ancienne zone. Ici, soit tout
+    // réussit (statut + zone + mission), soit rien n'est écrit.
+    await this.dataSource.transaction(async (manager) => {
+      const updateResult = await manager.query(
+        `UPDATE mutations SET
+          statut = $1,
+          decideur_id = $2,
+          motif_decision = $3,
+          date_decision = NOW(),
+          updated_at = NOW()
+         WHERE id = $4 AND statut = 'en_attente'
+         RETURNING id`,
+        [body.decision, userId, body.motif?.trim() || null, id],
+      );
 
-    if (body.decision === 'approuvee' && userRole === 'super_admin') {
-      try {
-        await this.dataSource.query(
-          `INSERT INTO missions (
-            id, titre, description, assignee_id, zone_id, statut, created_at, updated_at
-          ) VALUES (
-            gen_random_uuid(),
-            $1, $2, $3, $4, 'active', NOW(), NOW()
-          )`,
-          [
-            `Mutation approuvée — ${mutation.identificateurNom || 'Identificateur'}`,
-            `Transfert de ${mutation.zoneActuelleNom || 'zone actuelle'} vers ${mutation.zoneDemandeeNom}. Motif\u00a0: ${mutation.raison}`,
-            mutation.identificateurId,
-            mutation.zoneDemandeeId,
-          ],
-        );
-      } catch (e: any) {
-        console.warn('[MutationsController] mission creation failed:', e?.message);
+      if (!updateResult?.length) {
+        // Traitée entre-temps par une autre requête concurrente.
+        throw new BadRequestException('Cette demande a déjà été traitée');
       }
-    }
+
+      if (body.decision === 'approuvee') {
+        // Effet PRINCIPAL de l'approbation : l'identificateur est
+        // réellement réaffecté à la zone demandée.
+        const zoneUpdate = await manager.query(
+          // `users` n'a pas de colonne updated_at (seulement created_at) —
+          // ne pas en écrire une, sinon erreur Postgres 42703.
+          `UPDATE users SET zone_id = $1 WHERE id = $2 RETURNING id`,
+          [mutation.zoneDemandeeId, mutation.identificateurId],
+        );
+        if (!zoneUpdate?.length) {
+          throw new Error(
+            `Réaffectation de zone impossible : identificateur ${mutation.identificateurId} introuvable`,
+          );
+        }
+
+        if (userRole === 'super_admin') {
+          // Mission de traçabilité (suivi terrain) : rôle secondaire, gardé
+          // dans la même transaction — plus de try/catch qui avale une
+          // erreur en silence. Un échec ici annule toute la décision au
+          // lieu de laisser un état à moitié appliqué.
+          await manager.query(
+            `INSERT INTO missions (
+              id, titre, description, assignee_id, zone_id, statut, created_at, updated_at
+            ) VALUES (
+              gen_random_uuid(),
+              $1, $2, $3, $4, 'active', NOW(), NOW()
+            )`,
+            [
+              `Mutation approuvée — ${mutation.identificateurNom || 'Identificateur'}`,
+              `Transfert de ${mutation.zoneActuelleNom || 'zone actuelle'} vers ${mutation.zoneDemandeeNom}. Motif\u00a0: ${mutation.raison}`,
+              mutation.identificateurId,
+              mutation.zoneDemandeeId,
+            ],
+          );
+        }
+      }
+    });
 
     try {
       const titre =

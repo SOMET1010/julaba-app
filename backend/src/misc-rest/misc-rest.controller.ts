@@ -5,6 +5,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { User } from '../users/entities/user.entity';
+import { CronJobsConfigService } from '../cron-jobs/cron-jobs-config.service';
+import { CRON_JOBS_REGISTRY } from '../cron-jobs/cron-jobs.registry';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
@@ -12,6 +14,7 @@ export class MiscRestController {
   constructor(
     @InjectRepository(User) private usersRepo: Repository<User>,
     @InjectDataSource() private dataSource: DataSource,
+    private readonly cronJobsConfig: CronJobsConfigService,
   ) {}
 
   @Get('supervision')
@@ -39,46 +42,42 @@ export class MiscRestController {
     return { livraisons: [], total: 0, en_cours: 0, livrees: 0 };
   }
 
+  // Reflète les VRAIS jobs `@Cron()` du backend (voir cron-jobs.registry.ts),
+  // avec leur statut réel (actif/pause) et leur dernière exécution réelle —
+  // avant, cet endpoint renvoyait 3 jobs entièrement inventés qui n'avaient
+  // aucun rapport avec le code (sync_acteurs, rapport_hebdo, nettoyage_sessions).
   @Get('cron')
-  cron() {
-    return { jobs: [
-      { nom: 'sync_acteurs', derniere_exec: null, statut: 'idle' },
-      { nom: 'rapport_hebdo', derniere_exec: null, statut: 'idle' },
-      { nom: 'nettoyage_sessions', derniere_exec: null, statut: 'idle' },
-    ]};
-  }
-
-  private async ensureCronJobsConfigTable(): Promise<void> {
-    await this.dataSource.query(`
-      CREATE TABLE IF NOT EXISTS cron_jobs_config (
-        id VARCHAR(255) PRIMARY KEY,
-        actif BOOLEAN NOT NULL DEFAULT true,
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
+  async cron() {
+    const statuses = await this.cronJobsConfig.getAllStatuses();
+    const jobs = CRON_JOBS_REGISTRY.map((def) => {
+      const s = statuses[def.id];
+      const actif = s ? s.actif : true; // pas de ligne = jamais togglé = actif (défaut historique)
+      let statut: 'idle' | 'paused' | 'failed';
+      if (!actif) statut = 'paused';
+      else if (s?.lastStatus === 'error') statut = 'failed';
+      else statut = 'idle';
+      return {
+        id: def.id,
+        nom: def.nom,
+        description: def.description,
+        cron: def.cron,
+        cronHumain: def.cronHumain,
+        statut,
+        derniere_exec: s?.lastRunAt ?? null,
+        duree_ms: s?.lastDurationMs ?? 0,
+        nb_executions: s?.runCount ?? 0,
+        derniere_erreur: s?.lastStatus === 'error' ? s.lastError : null,
+      };
+    });
+    return { jobs };
   }
 
   @Patch('cron/:id/toggle')
   @Roles('super_admin', 'admin_general')
   async toggleCronJob(@Param('id') id: string) {
     const key = String(id || '').trim();
-    await this.ensureCronJobsConfigTable();
-    let rows = await this.dataSource.query(
-      `UPDATE cron_jobs_config SET actif = NOT COALESCE(actif, true), updated_at = NOW() WHERE id = $1 RETURNING id, actif`,
-      [key],
-    );
-    if (!rows?.length) {
-      await this.dataSource.query(
-        `INSERT INTO cron_jobs_config (id, actif) VALUES ($1, false)`,
-        [key],
-      );
-      rows = await this.dataSource.query(
-        `SELECT id, actif FROM cron_jobs_config WHERE id = $1`,
-        [key],
-      );
-    }
-    const row = rows[0];
-    return { success: true, id: String(row.id), actif: Boolean(row.actif) };
+    const result = await this.cronJobsConfig.toggle(key);
+    return { success: true, id: result.id, actif: result.actif };
   }
 
   @Post('cron/:id/retry')
@@ -88,9 +87,60 @@ export class MiscRestController {
     return { success: true, id: key, relancedAt: new Date() };
   }
 
+  // GET /communication — historique réel des campagnes envoyées.
+  //
+  // Il n'existe pas de table "campagnes" dédiée : l'envoi groupé réel est
+  // POST /notifications/send-bulk (notifications.controller.ts), qui crée une
+  // ligne `notifications` par destinataire avec metadata.bulk=true et
+  // metadata.campaignId (identifiant généré côté appelant pour regrouper les
+  // destinataires d'un même envoi). Cet endpoint DÉRIVE donc l'historique des
+  // campagnes de ce même journal — une seule source de vérité, pas de second
+  // mécanisme de stockage qui pourrait diverger.
+  //
+  // Repli COALESCE sur l'id de la notification : une ligne bulk plus ancienne
+  // (avant l'ajout de campaignId) ou orpheline s'affiche quand même, comme sa
+  // propre "campagne" à 1 destinataire, plutôt que d'être silencieusement
+  // exclue de l'historique.
   @Get('communication')
-  communication() {
-    return { messages: [], campagnes: [], total: 0 };
+  async communication() {
+    try {
+      const rows = await this.dataSource.query(`
+        SELECT
+          COALESCE(n.metadata->>'campaignId', n.id::text) AS id,
+          MAX(n.titre) AS titre,
+          MAX(n.message) AS message,
+          COALESCE(MAX(n.metadata->>'canal'), 'push') AS canal,
+          COALESCE(NULLIF(MAX(n.metadata->>'cible'), ''), 'Ciblage direct') AS cible,
+          COUNT(*)::int AS nb_destinataires,
+          MIN(n.created_at) AS date_envoi,
+          NULLIF(TRIM(CONCAT(COALESCE(MAX(u.first_name), ''), ' ', COALESCE(MAX(u.last_name), ''))), '') AS cree_par
+        FROM notifications n
+        LEFT JOIN users u ON u.id::text = n.metadata->>'sentBy'
+        WHERE n.metadata->>'bulk' = 'true'
+          AND n.deleted_at IS NULL
+        GROUP BY COALESCE(n.metadata->>'campaignId', n.id::text)
+        ORDER BY MIN(n.created_at) DESC
+        LIMIT 50
+      `);
+      const campagnes = rows.map((r: any) => ({
+        id: r.id,
+        titre: r.titre,
+        message: r.message,
+        canal: r.canal,
+        cible: r.cible,
+        nbDestinataires: Number(r.nb_destinataires) || 0,
+        // Une notification n'est comptée que si elle a été effectivement créée
+        // en base (les échecs de send-bulk ne produisent aucune ligne) : le
+        // taux de délivrabilité des lignes présentes est donc de 100%.
+        tauxDelivrabilite: 100,
+        statut: 'envoyee' as const,
+        dateEnvoi: r.date_envoi,
+        creePar: r.cree_par || 'Back-office',
+      }));
+      return { messages: [], campagnes, total: campagnes.length };
+    } catch {
+      return { messages: [], campagnes: [], total: 0 };
+    }
   }
 
   @Get('system/settings')
