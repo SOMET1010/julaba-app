@@ -76,21 +76,21 @@ describe('Invariant B2 — négociation couverte par la réservation de stock', 
       jwt.signAsync({ sub: u.id, phone: u.phone, role: u.role }, { secret: process.env.JWT_SECRET });
 
     const vendeur: any = await repo.save(repo.create({
-      phone: '+2250700050001', firstName: 'Vendeur', lastName: 'Neg', genre: 'homme',
+      phone: '+2250700059001', firstName: 'Vendeur', lastName: 'Neg', genre: 'homme',
       role: UserRole.PRODUCTEUR, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     vendeurId = vendeur.id;
     vendeurToken = await signFor(vendeur);
 
     const marchand: any = await repo.save(repo.create({
-      phone: '+2250700050002', firstName: 'Marchand', lastName: 'Neg', genre: 'femme',
+      phone: '+2250700059002', firstName: 'Marchand', lastName: 'Neg', genre: 'femme',
       role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     marchandId = marchand.id;
     marchandToken = await signFor(marchand);
 
     const marchand2: any = await repo.save(repo.create({
-      phone: '+2250700050003', firstName: 'Marchand2', lastName: 'Neg', genre: 'femme',
+      phone: '+2250700059003', firstName: 'Marchand2', lastName: 'Neg', genre: 'femme',
       role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     marchand2Id = marchand2.id;

@@ -66,20 +66,20 @@ describe("Invariant B3 — blocage réel d'un wallet (bloquer/débloquer)", () =
     const repo = ds.getRepository(User);
 
     const admin: any = await repo.save(repo.create({
-      phone: '+2250700050000', firstName: 'Admin', lastName: 'Blocage', genre: 'femme',
+      phone: '+2250700058000', firstName: 'Admin', lastName: 'Blocage', genre: 'femme',
       role: UserRole.ADMIN_GENERAL, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     adminToken = await jwt.signAsync({ sub: admin.id, phone: admin.phone, role: admin.role }, { secret: process.env.JWT_SECRET });
 
     const vendeur: any = await repo.save(repo.create({
-      phone: '+2250700050001', firstName: 'Vendeur', lastName: 'Blocage', genre: 'homme',
+      phone: '+2250700058001', firstName: 'Vendeur', lastName: 'Blocage', genre: 'homme',
       role: UserRole.PRODUCTEUR, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     vendeurId = vendeur.id;
     vendeurToken = await jwt.signAsync({ sub: vendeur.id, phone: vendeur.phone, role: vendeur.role }, { secret: process.env.JWT_SECRET });
 
     const acheteur: any = await repo.save(repo.create({
-      phone: '+2250700050002', firstName: 'Acheteur', lastName: 'Blocage', genre: 'femme',
+      phone: '+2250700058002', firstName: 'Acheteur', lastName: 'Blocage', genre: 'femme',
       role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     acheteurId = acheteur.id;
