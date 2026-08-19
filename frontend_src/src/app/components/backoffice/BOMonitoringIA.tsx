@@ -59,11 +59,12 @@ export function BOMonitoringIA() {
   const servicesNormalized = useMemo(() => {
     const raw = Array.isArray(monitoringData?.services) ? monitoringData.services : [];
     return raw.map((s: any, idx: number) => {
-      const statutOk =
-        s.statut === 'operationnel'
-        || s.status === 'operationnel'
-        || s.status === 'ok'
-        || s.status === 'up';
+      const rawStatus = s.statut ?? s.status;
+      const statutOk = rawStatus === 'operationnel' || rawStatus === 'ok' || rawStatus === 'up';
+      // 'aucune_donnee' : le service existe mais n'a encore aucun appel
+      // mesure (pas de fausse latence/uptime affichee) — distinct d'une
+      // vraie panne, pour ne pas alarmer sur un simple manque de trafic.
+      const noData = rawStatus === 'aucune_donnee';
       const rawLat = s.latence ?? s.latency ?? s.latence_ms;
       let latence: string;
       if (rawLat == null || rawLat === '') latence = '--';
@@ -84,7 +85,7 @@ export function BOMonitoringIA() {
       return {
         id: String(s.id ?? s.name ?? s.nom ?? idx),
         nom: String(s.nom ?? s.name ?? s.nom_service ?? `Service ${idx + 1}`),
-        statut: statutOk ? 'operationnel' as const : 'erreur' as const,
+        statut: statutOk ? 'operationnel' as const : noData ? 'aucune_donnee' as const : 'erreur' as const,
         latence,
         uptime: uptimeStr,
         requetes30j: Number(s.requetes30j ?? s.requests30j ?? s.requetes_30j ?? 0),
@@ -154,17 +155,22 @@ export function BOMonitoringIA() {
         <div className="space-y-3">
           {servicesNormalized.map((service: typeof servicesNormalized[number]) => {
             const isOk = service.statut === 'operationnel';
+            const noData = service.statut === 'aucune_donnee';
+            const badgeClass = isOk ? 'bg-green-100 text-green-700' : noData ? 'bg-gray-200 text-gray-600' : 'bg-red-100 text-red-700';
+            const badgeLabel = isOk ? 'Opérationnel' : noData ? 'Pas encore de données' : 'Erreur';
+            const iconBg = isOk ? '#F0FDF4' : noData ? '#F3F4F6' : '#FEF2F2';
+            const iconColor = isOk ? '#10B981' : noData ? '#9CA3AF' : '#EF4444';
             return (
               <motion.div key={service.id} className="flex items-center gap-4 p-3 rounded-2xl bg-gray-50 border-2 border-gray-100"
                 {...hoverGlow(BO_PRIMARY)}>
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: isOk ? '#F0FDF4' : '#FEF2F2' }}>
-                  <Zap className="w-5 h-5" style={{ color: isOk ? '#10B981' : '#EF4444' }} />
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: iconBg }}>
+                  <Zap className="w-5 h-5" style={{ color: iconColor }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm text-gray-900">{service.nom}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isOk ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {isOk ? 'Opérationnel' : 'Erreur'}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeClass}`}>
+                      {badgeLabel}
                     </span>
                   </div>
                   <div className="flex items-center gap-4 mt-0.5 text-xs text-gray-500">

@@ -11,11 +11,13 @@ import { WhisperService } from "./whisper.service";
 import { PiperService } from "./piper.service";
 import { AnsutModule } from "../ansut/ansut.module";
 import { ConfigModule } from "@nestjs/config";
+import { VoiceServiceMetric } from "./entities/voice-service-metric.entity";
+import { VoiceMetricsService } from "./voice-metrics.service";
 
 @Module({
-  imports: [AnsutModule, ConfigModule, TypeOrmModule.forFeature([])],
+  imports: [AnsutModule, ConfigModule, TypeOrmModule.forFeature([VoiceServiceMetric])],
   controllers: [VoiceController, TtsController],
-  providers: [VoiceService, UserMemoryService, ConversationStateService, OpenAIService, LocalIntentService, VoskService, WhisperService, PiperService],
-  exports: [OpenAIService],
+  providers: [VoiceService, UserMemoryService, ConversationStateService, OpenAIService, LocalIntentService, VoskService, WhisperService, PiperService, VoiceMetricsService],
+  exports: [OpenAIService, VoiceMetricsService],
 })
 export class VoiceModule {}
