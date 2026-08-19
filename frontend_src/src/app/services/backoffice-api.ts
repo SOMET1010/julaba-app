@@ -389,12 +389,16 @@ export async function boGetActeurs(params?: {
   limit?: number;
   search?: string;
   role?: string;
+  region?: string;
+  statut?: string;
 }): Promise<{ data: Acteur[]; total: number; page: number; limit: number }> {
   const q = new URLSearchParams();
   if (params?.page) q.set('page', String(params.page));
   if (params?.limit) q.set('limit', String(params.limit));
   if (params?.search) q.set('search', params.search);
   if (params?.role && params.role !== 'all') q.set('role', params.role);
+  if (params?.region && params.region !== 'all') q.set('region', params.region);
+  if (params?.statut && params.statut !== 'all') q.set('statut', params.statut);
 
   const res = await fetch(`${API_URL}/users?${q}`, { headers: authHeaders(), credentials: 'include' });
 
