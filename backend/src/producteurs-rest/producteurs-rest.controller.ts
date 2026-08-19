@@ -67,6 +67,13 @@ export class ProducteursRestController {
     }
     const coop = coopRows[0];
 
+    // cm.id::text : users.commune_id est typé varchar (drift entite/base
+    // pré-existant, cf. district_id/region_id/departement_id, meme colonne
+    // "libre" cote User) alors que communes.id est uuid. Sans cast, Postgres
+    // refuse l'operateur "uuid = character varying" (erreur au parsing, donc
+    // 500 systematique sur CET endpoint, meme quand aucun producteur n'a de
+    // commune renseignee). Cast cote uuid->text : LEFT JOIN reste sur, aucune
+    // exception meme si commune_id contient une valeur non-uuid.
     const rows: RecolteRow[] = await this.dataSource.query(
       `SELECT DISTINCT ON (c.user_id)
               c.user_id AS producteur_id,
@@ -79,7 +86,7 @@ export class ProducteursRestController {
               cm.latitude AS prod_lat, cm.longitude AS prod_lng
        FROM cycles c
        JOIN users u ON u.id = c.user_id
-       LEFT JOIN communes cm ON cm.id = u.commune_id
+       LEFT JOIN communes cm ON cm.id::text = u.commune_id
        WHERE c.status = 'active' AND c.date_recolte_estimee >= CURRENT_DATE
        ORDER BY c.user_id, c.date_recolte_estimee ASC`,
     );
