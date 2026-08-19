@@ -11,6 +11,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
 import { ScoresService } from '../scores/scores.service';
+import { stripSensitiveUserFields } from '../users/sanitize-user.util';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('cooperatives')
@@ -110,7 +111,10 @@ export class CooperativesRestController {
     const enriched = membres.map((m: any) => {
       const adhesion = adhesions.find((a: any) => a.membre_id === m.id);
       const scoreJulaba = scores.get(m.id)?.score_total ?? 0;
-      return { ...m, statut_membre: adhesion?.statut, role_membre: adhesion?.role, scoreJulaba };
+      // Sécurité : jamais étaler l'entité User brute dans une réponse API —
+      // passwordHash / pinCodeHash / credentials WebAuthn sont attaquables
+      // hors ligne s'ils fuitent côté client. Cf. sanitize-user.util.ts.
+      return { ...stripSensitiveUserFields(m), statut_membre: adhesion?.statut, role_membre: adhesion?.role, scoreJulaba };
     });
     return { membres: enriched, total: enriched.length };
   }

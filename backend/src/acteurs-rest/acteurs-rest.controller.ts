@@ -7,6 +7,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
+import { stripSensitiveUserFields } from '../users/sanitize-user.util';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('super_admin', 'admin_general')
@@ -24,13 +25,16 @@ export class ActeursRestController {
     }
     qb.orderBy('a.createdAt', order).skip(skip).take(limit);
     const [data, total] = await qb.getManyAndCount();
-    return { data, meta: buildMeta(page, limit, total) };
+    // Sécurité : ne jamais sérialiser l'entité User brute (passwordHash,
+    // pinCodeHash, credentials WebAuthn...) — cf. sanitize-user.util.ts.
+    return { data: data.map((u) => stripSensitiveUserFields(u as any)), meta: buildMeta(page, limit, total) };
   }
 
   @Get(':id')
   @Roles('super_admin', 'admin_general', 'identificateur')
-  findOne(@Param('id') id: string) {
-    return this.repo.findOne({ where: { id } });
+  async findOne(@Param('id') id: string) {
+    const user = await this.repo.findOne({ where: { id } });
+    return user ? stripSensitiveUserFields(user as any) : null;
   }
 
   @Patch(':id')
