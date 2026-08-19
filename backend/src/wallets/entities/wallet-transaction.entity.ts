@@ -26,7 +26,7 @@ export enum TransactionType {
 // de commande à qui rattacher la clé ici, donc le CLIENT fournit une clé
 // d'idempotence par tentative d'envoi (même mécanisme que
 // caisse_transactions.idempotency_key). Cf. migration
-// 1781000000000-WalletTransactionTransfertIdempotence.
+// 1781000000001-WalletTransactionTransfertIdempotence.
 @Entity('wallet_transactions')
 @Index('ux_wallet_tx_commande_idempotence', ['relatedEntityId', 'userId', 'type'], {
   unique: true,

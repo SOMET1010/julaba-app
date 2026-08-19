@@ -20,8 +20,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * transaction) rend déjà l'opération idempotente ; cet index est la SECONDE
  * ligne de défense, indépendante du code applicatif, au niveau base.
  */
-export class WalletTransactionTransfertIdempotence1781000000000 implements MigrationInterface {
-  name = 'WalletTransactionTransfertIdempotence1781000000000';
+export class WalletTransactionTransfertIdempotence1781000000001 implements MigrationInterface {
+  name = 'WalletTransactionTransfertIdempotence1781000000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
