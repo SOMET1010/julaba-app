@@ -3,6 +3,8 @@ import { Cron } from '@nestjs/schedule';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { NotificationsService } from './notifications.service';
+import { CronJobsConfigService } from '../cron-jobs/cron-jobs-config.service';
+import { CRON_JOB_ALERTES_VERIFICATION } from '../cron-jobs/cron-jobs.registry';
 
 @Injectable()
 export class AlertesService {
@@ -11,6 +13,7 @@ export class AlertesService {
   constructor(
     @InjectDataSource() private dataSource: DataSource,
     private notificationsService: NotificationsService,
+    private readonly cronJobsConfig: CronJobsConfigService,
   ) {}
 
   // Vérifier si une notif du même type existe déjà aujourd'hui pour cet user
@@ -217,6 +220,28 @@ export class AlertesService {
   // ── CRON — Vérification globale tous les users actifs ──────
   @Cron('0 * * * *')
   async runCronAlertes(): Promise<void> {
+    if (!(await this.cronJobsConfig.isEnabled(CRON_JOB_ALERTES_VERIFICATION))) {
+      this.logger.debug('[CRON] désactivé depuis le back-office — exécution ignorée');
+      return;
+    }
+    const startedAt = Date.now();
+    try {
+      await this.executerVerificationAlertes();
+      await this.cronJobsConfig.recordExecution(CRON_JOB_ALERTES_VERIFICATION, {
+        status: 'success',
+        durationMs: Date.now() - startedAt,
+      });
+    } catch (e: any) {
+      await this.cronJobsConfig.recordExecution(CRON_JOB_ALERTES_VERIFICATION, {
+        status: 'error',
+        durationMs: Date.now() - startedAt,
+        error: e?.message ?? String(e),
+      });
+      throw e;
+    }
+  }
+
+  private async executerVerificationAlertes(): Promise<void> {
     this.logger.log('[CRON] Lancement vérification alertes...');
     const marchands = await this.dataSource.query(`
       SELECT id FROM users WHERE role = 'marchand' AND status = 'actif'
