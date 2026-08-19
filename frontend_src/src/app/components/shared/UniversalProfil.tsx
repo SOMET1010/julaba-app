@@ -20,6 +20,7 @@ import {
   ArrowRightLeft,
   Shield,
   Gift,
+  Coins,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
@@ -64,6 +65,7 @@ export const ROLE_CONFIG: Record<
       keiwa: string;
       cooperative?: string;
       besoin?: string;
+      tontines?: string;
     };
   }
 > = {
@@ -78,6 +80,7 @@ export const ROLE_CONFIG: Record<
       keiwa: '/marchand/keiwa',
       cooperative: '/marchand/cooperative',
       besoin: '/marchand/cooperative/besoin',
+      tontines: '/marchand/tontines',
     },
   },
   producteur: {
@@ -345,6 +348,26 @@ function ProfilMarchandExtras({ color, navigate, sousProfil }: { color: string; 
           </motion.button>
         </div>
       </motion.div>
+      {/* Tontine — épargne tournante réelle entre commerçantes (argent réel, module sacré) */}
+      <motion.button
+        type="button"
+        onClick={() => navigate(cfg.tontines || '/marchand/tontines')}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05, type: 'spring', stiffness: 200 }}
+        whileTap={{ scale: 0.98 }}
+        className="w-full mb-4 p-4 rounded-2xl border-2 shadow-md flex items-center gap-3 text-left"
+        style={{ borderColor: `${color}40`, background: `linear-gradient(to bottom right, ${color}14, #ffffff, ${color}14)` }}
+      >
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}25` }}>
+          <Coins className="w-6 h-6" style={{ color }} />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-bold encre">Mes tontines</h3>
+          <p className="text-xs encre-3">Épargne tournante entre commerçantes</p>
+        </div>
+        <ChevronRight className="w-6 h-6 encre-4" />
+      </motion.button>
       {/* Protection sociale — socle CNPS/CNAM (CDC 8.1.2) */}
       <motion.button
         type="button"
