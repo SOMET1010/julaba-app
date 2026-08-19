@@ -27,10 +27,21 @@ export enum TransactionType {
 // d'idempotence par tentative d'envoi (même mécanisme que
 // caisse_transactions.idempotency_key). Cf. migration
 // 1781000000001-WalletTransactionTransfertIdempotence.
+//
+// Idempotence du débit Keiwa d'une cotisation sociale (POST
+// /protection-sociale/cotisations, mode='keiwa') : même patron que
+// ux_wallet_tx_commande_idempotence, mais l'id rattaché est celui de la
+// cotisation (générée AVANT l'écriture, dans la même transaction — cf.
+// ProtectionSocialeController) plutôt qu'une commande préexistante. Un seul
+// débit possible par cotisation. Cf. migration 1781100000000-CotisationsSociales.
 @Entity('wallet_transactions')
 @Index('ux_wallet_tx_commande_idempotence', ['relatedEntityId', 'userId', 'type'], {
   unique: true,
   where: `related_entity_type = 'commande' AND type IN ('debit', 'credit')`,
+})
+@Index('ux_wallet_tx_cotisation_idempotence', ['relatedEntityId', 'userId', 'type'], {
+  unique: true,
+  where: `related_entity_type = 'cotisation_sociale' AND type = 'debit'`,
 })
 @Index('ux_wallet_tx_idempotency_key', ['idempotencyKey', 'userId', 'type'], {
   unique: true,
