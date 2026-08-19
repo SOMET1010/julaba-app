@@ -7,9 +7,15 @@ import { Wallet } from './entities/wallet.entity';
 import { WalletTransaction } from './entities/wallet-transaction.entity';
 import { BpayModule } from '../bpay/bpay.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Wallet, WalletTransaction]), forwardRef(() => BpayModule), NotificationsModule],
+  imports: [
+    TypeOrmModule.forFeature([Wallet, WalletTransaction]),
+    forwardRef(() => BpayModule),
+    NotificationsModule,
+    UsersModule,
+  ],
   controllers: [WalletsController, WalletsPublicController],
   providers: [WalletsService],
   exports: [WalletsService],
