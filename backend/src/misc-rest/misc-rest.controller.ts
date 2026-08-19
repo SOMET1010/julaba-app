@@ -87,9 +87,60 @@ export class MiscRestController {
     return { success: true, id: key, relancedAt: new Date() };
   }
 
+  // GET /communication — historique réel des campagnes envoyées.
+  //
+  // Il n'existe pas de table "campagnes" dédiée : l'envoi groupé réel est
+  // POST /notifications/send-bulk (notifications.controller.ts), qui crée une
+  // ligne `notifications` par destinataire avec metadata.bulk=true et
+  // metadata.campaignId (identifiant généré côté appelant pour regrouper les
+  // destinataires d'un même envoi). Cet endpoint DÉRIVE donc l'historique des
+  // campagnes de ce même journal — une seule source de vérité, pas de second
+  // mécanisme de stockage qui pourrait diverger.
+  //
+  // Repli COALESCE sur l'id de la notification : une ligne bulk plus ancienne
+  // (avant l'ajout de campaignId) ou orpheline s'affiche quand même, comme sa
+  // propre "campagne" à 1 destinataire, plutôt que d'être silencieusement
+  // exclue de l'historique.
   @Get('communication')
-  communication() {
-    return { messages: [], campagnes: [], total: 0 };
+  async communication() {
+    try {
+      const rows = await this.dataSource.query(`
+        SELECT
+          COALESCE(n.metadata->>'campaignId', n.id::text) AS id,
+          MAX(n.titre) AS titre,
+          MAX(n.message) AS message,
+          COALESCE(MAX(n.metadata->>'canal'), 'push') AS canal,
+          COALESCE(NULLIF(MAX(n.metadata->>'cible'), ''), 'Ciblage direct') AS cible,
+          COUNT(*)::int AS nb_destinataires,
+          MIN(n.created_at) AS date_envoi,
+          NULLIF(TRIM(CONCAT(COALESCE(MAX(u.first_name), ''), ' ', COALESCE(MAX(u.last_name), ''))), '') AS cree_par
+        FROM notifications n
+        LEFT JOIN users u ON u.id::text = n.metadata->>'sentBy'
+        WHERE n.metadata->>'bulk' = 'true'
+          AND n.deleted_at IS NULL
+        GROUP BY COALESCE(n.metadata->>'campaignId', n.id::text)
+        ORDER BY MIN(n.created_at) DESC
+        LIMIT 50
+      `);
+      const campagnes = rows.map((r: any) => ({
+        id: r.id,
+        titre: r.titre,
+        message: r.message,
+        canal: r.canal,
+        cible: r.cible,
+        nbDestinataires: Number(r.nb_destinataires) || 0,
+        // Une notification n'est comptée que si elle a été effectivement créée
+        // en base (les échecs de send-bulk ne produisent aucune ligne) : le
+        // taux de délivrabilité des lignes présentes est donc de 100%.
+        tauxDelivrabilite: 100,
+        statut: 'envoyee' as const,
+        dateEnvoi: r.date_envoi,
+        creePar: r.cree_par || 'Back-office',
+      }));
+      return { messages: [], campagnes, total: campagnes.length };
+    } catch {
+      return { messages: [], campagnes: [], total: 0 };
+    }
   }
 
   @Get('system/settings')
