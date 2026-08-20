@@ -90,3 +90,26 @@ export function extractPhoneDigits(transcript: string): string {
   const best = parMots.length >= bruts.length ? parMots : bruts;
   return best.slice(0, 10);
 }
+
+/**
+ * Fusionne une NOUVELLE passe STT (partielle ou finale) dans le meilleur
+ * résultat connu jusqu'ici, pendant une dictée « en direct » qui re-transcrit
+ * tout le tampon audio à intervalles courts (~0,9 s).
+ *
+ * Règle : une passe FINALE (repasse complète de l'audio capté, faite à
+ * l'arrêt de la dictée) fait TOUJOURS autorité — même si elle est plus courte
+ * qu'un partiel précédent. Un partiel n'allonge le résultat que s'il apporte
+ * AUTANT ou PLUS de chiffres (les passes intermédiaires ne font que grandir ;
+ * seule la repasse finale peut CORRIGER, jamais un partiel).
+ *
+ * CORRECTIF (numéro erroné affiché en recette, ex. « 70 00 00 00 00 ») :
+ * avant ce correctif, l'appelant jetait le résultat de la repasse finale dès
+ * qu'une finalisation avait déjà commencé, et décidait donc sur un simple
+ * instantané intermédiaire au lieu du résultat définitif du STT. Voir
+ * LoginPassword.tsx (fonction finaliserDictee), qui attend maintenant cette
+ * repasse finale avant de conclure, en utilisant cette fonction pour la fusion.
+ */
+export function fusionnerChiffresDictes(estFinal: boolean, nouveaux: string, actuel: string): string {
+  if (estFinal) return nouveaux;
+  return nouveaux.length >= actuel.length ? nouveaux : actuel;
+}
