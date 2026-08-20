@@ -42,7 +42,7 @@ export function PropositionReconnaissance() {
     const t = setTimeout(() => {
       setVisible(true);
       if (guidageVocal()) {
-        speak(`${prenom || 'Ma sœur'}, veux-tu que Tata te reconnaisse la prochaine fois ? Ce sera plus rapide.`);
+        speak(`${prenom || 'Ma sœur'}, veux-tu que Tata Nanti Lou te reconnaisse la prochaine fois ? Ce sera plus rapide.`);
       }
     }, 1500);
     return () => clearTimeout(t);
@@ -85,7 +85,7 @@ export function PropositionReconnaissance() {
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-          role="dialog" aria-modal="true" aria-label="Tata propose de te reconnaître"
+          role="dialog" aria-modal="true" aria-label="Tata Nanti Lou propose de te reconnaître"
         >
           <motion.div
             initial={{ y: 60 }} animate={{ y: 0 }} exit={{ y: 60 }} transition={{ type: 'spring', damping: 28 }}
@@ -95,7 +95,7 @@ export function PropositionReconnaissance() {
               <Fingerprint style={{ width: 32, height: 32, color: '#C66A2C' }} />
             </div>
             <p style={{ margin: '0 0 18px', fontSize: 17, fontWeight: 800, color: '#3d1a08', lineHeight: 1.35 }}>
-              {prenom ? `${prenom}, veux-tu` : 'Veux-tu'} que Tata te reconnaisse la prochaine fois ?
+              {prenom ? `${prenom}, veux-tu` : 'Veux-tu'} que Tata Nanti Lou te reconnaisse la prochaine fois ?
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="button" onClick={repondreNon} disabled={enCours}
