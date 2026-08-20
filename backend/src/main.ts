@@ -3,7 +3,8 @@ import { NestFactory } from '@nestjs/core';
 import { Sentry } from "./instrument";
 import * as cookieParser from 'cookie-parser';
 import helmet from 'helmet';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, ClassSerializerInterceptor } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { DbInitService } from './database/db-init.service';
@@ -178,6 +179,18 @@ async function bootstrap() {
   // Préfixe global
   const prefix = process.env.API_PREFIX || 'api/v1';
   app.setGlobalPrefix(prefix);
+
+  // Filet de sécurité en profondeur (défense en profondeur, PAS un remplacement
+  // de la sanitisation manuelle via stripSensitiveUserFields — cf. sanitize-user.util.ts) :
+  // active les décorateurs @Exclude() déjà posés sur User (passwordHash,
+  // pinCodeHash, pinCodeEncryptedIdentificateur, webauthnCredentials,
+  // webauthnChallenge). Sans cet interceptor, ces décorateurs sont totalement
+  // inertes (cause racine de la fuite passwordHash sur /auth/me et
+  // /wallets/me). N'agit QUE sur les valeurs qui sont de véritables instances
+  // de classe (entités TypeORM) — les objets JSON bruts construits à la main
+  // (SELECT ... AS, réponses `{ success: true }`, etc.) traversent
+  // l'interceptor inchangés.
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
 
   // Validation globale des DTOs
   app.useGlobalPipes(
