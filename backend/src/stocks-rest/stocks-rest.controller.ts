@@ -81,8 +81,13 @@ export class StocksRestController {
         })),
       };
     }
+    // proprietaire_id est `character varying` en base (pas uuid, cf. baseline
+    // schema) : un cast `::uuid` ici fait échouer Postgres avec "operator does
+    // not exist: character varying = uuid" (42883) -> 500 dès qu'un utilisateur
+    // sans ligne dans `produits` (marchand tout juste inscrit, cooperateur,
+    // producteur) tombe sur ce fallback. Comparaison texte, sans cast.
     const rows = await this.repo.query(
-      `SELECT * FROM stocks WHERE proprietaire_id = $1::uuid ORDER BY created_at DESC`,
+      `SELECT * FROM stocks WHERE proprietaire_id = $1 ORDER BY created_at DESC`,
       [user.id],
     );
     return {
