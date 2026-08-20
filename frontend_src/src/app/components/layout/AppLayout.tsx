@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
+import { toast } from 'sonner';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { Wifi, WifiOff, Loader2 } from 'lucide-react';
@@ -9,7 +10,7 @@ import { BottomBar } from './BottomBar';
 import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import { ScrollToTop } from './ScrollToTop';
 import { getRoleConfig } from '../../config/roleConfig';
-import { ROLE_ROUTES, normalizeRole } from '../../types/constants';
+import { checkRouteAccess } from '../../types/constants';
 import { NotificationToastContainer } from '../shared/NotificationToast';
 import * as audioManager from '../../services/audioManager';
 
@@ -25,14 +26,21 @@ export function AppLayout() {
       return;
     }
     if (!loading && user) {
-      const normalizedRole = normalizeRole(user.role);
-      const allowedPrefix = ROLE_ROUTES[normalizedRole] || '/';
-      const currentPath = location.pathname;
-      const isBackoffice = currentPath.startsWith('/backoffice') || currentPath.startsWith('/admin');
-      const isAllowed =
-        currentPath.startsWith(allowedPrefix) ||
-        (isBackoffice && ['super_admin', 'admin', 'admin_national'].includes(user.role));
-      if (!isAllowed) {
+      // Le rôle primaire ne suffit pas : un utilisateur peut cumuler un rôle
+      // (ex: marchand) et une adhésion à une coopérative — checkRouteAccess
+      // couvre ce cumul pour les quelques routes où le backend l'autorise
+      // (ex: Stock commun /cooperative/stock, ouvert à tout membre).
+      const { allowed, allowedPrefix, deniedForMissingCooperative } = checkRouteAccess(
+        user.role,
+        location.pathname,
+        user.estMembreCooperative,
+      );
+      if (!allowed) {
+        // Refus légitime (pas de lien coopérative) : on l'explique au lieu
+        // de rediriger en silence — l'utilisateur croyait sinon à un bug.
+        if (deniedForMissingCooperative) {
+          toast.error("Le stock commun est réservé aux membres d'une coopérative. Rejoins une coopérative pour y accéder.");
+        }
         navigate(allowedPrefix);
       }
     }
