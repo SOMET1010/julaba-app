@@ -1166,6 +1166,12 @@ export interface CreateBackofficeUserResult {
   status: string;
   message: string;
   defaultPassword?: string;
+  // P0.0 (ADR-002) : présent pour tout acteur non-admin (marchand, producteur,
+  // cooperateur, institution, identificateur) — le compte naît en_attente_activation
+  // et ce code, à usage unique et expirant (30 min), est LA seule façon de
+  // l'activer. Résiduel accepté par l'ADR : l'admin BO le voit à l'écran pour le
+  // transmettre à l'acteur, comme l'identificateur sur le chemin create-with-acteur.
+  activationCode?: string;
 }
 
 export async function boCreateBackofficeUser(
