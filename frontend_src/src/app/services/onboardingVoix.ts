@@ -28,7 +28,7 @@ export const INTRO_CLIPS: Record<string, IntroClip> = {
   // Écran d'accueil (logo)
   accueil: {
     file: `${BASE}/intro-accueil.mp3`,
-    texte: "Bonjour ! Moi, c'est Tata. Je serai avec toi pour vendre, compter ton argent " +
+    texte: "Bonjour ! Moi, c'est Tata Nanti Lou. Je serai avec toi pour vendre, compter ton argent " +
       'et faire grandir ton commerce. Beaucoup de commerçantes travaillent déjà avec moi. ' +
       "Maintenant, c'est ton tour. On commence ?",
   },
