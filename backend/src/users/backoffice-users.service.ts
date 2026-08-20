@@ -9,6 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { User, UserRole, UserStatus } from './entities/user.entity';
 import { Identification } from '../identifications/identification.entity';
 import { AuditService } from '../audit/audit.service';
@@ -17,7 +18,8 @@ import { CreateBackofficeUserDto } from './dto/create-backoffice-user.dto';
 import { UpdateSousProfilMarchandDto } from './dto/update-sous-profil-marchand.dto';
 import { SousProfilMarchand } from './entities/sous-profil-marchand.enum';
 import { UsersService } from './users.service';
-import { getDefaultPasswordForRole, generateInitialPassword } from '../auth/auth.service';
+import { generateInitialPassword } from '../auth/auth.service';
+import { ActivationService } from '../auth/activation.service';
 
 const ADMIN_ROLES: UserRole[] = [
   UserRole.ADMIN_GENERAL,
@@ -44,6 +46,7 @@ export class BackofficeUsersService {
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
+    private readonly activationService: ActivationService,
   ) {}
 
   /**
@@ -60,6 +63,7 @@ export class BackofficeUsersService {
     message: string;
     defaultPassword?: string;
     motDePasseInitial?: string;
+    activationCode?: string;
   }> {
     const targetIsAdmin = ADMIN_ROLES.includes(dto.role);
     const isActeurMetier = ACTEUR_METIER_ROLES.includes(dto.role);
@@ -172,6 +176,18 @@ export class BackofficeUsersService {
     let isPendingValidation = false;
 
     if (targetIsAdmin) {
+      // Cas ADMIN créé par un SUPER_ADMIN : ACTIF immédiat + mot de passe connu
+      // reste acceptable ICI, et seulement ici — c'est le cas d'exemption documenté
+      // par l'ADR-002 (« vérifie s'il existe un rôle légitime… »). Pourquoi c'est
+      // différent du trou fermé par P0.0 : (1) le mot de passe n'est PAS une
+      // constante publique comme '0000' — il est généré aléatoirement à CHAQUE
+      // création (generateInitialPassword(), 12 caractères) et n'est affiché
+      // qu'une seule fois, à l'admin créateur ; (2) « quiconque connaît le numéro »
+      // ne peut donc rien tenter : il lui faudrait aussi ce secret aléatoire
+      // jamais réutilisé ailleurs ; (3) le créateur est un super_admin, déjà
+      // authentifié comme administrateur de confiance — ce n'est pas l'exploit de
+      // masse « n'importe quel identificateur terrain peut faire login à la place
+      // de la marchande ». Ce n'est donc pas le takeover documenté par l'ADR.
       if (creator.role === UserRole.SUPER_ADMIN) {
         userStatus = UserStatus.ACTIF;
       } else {
@@ -179,12 +195,24 @@ export class BackofficeUsersService {
         isPendingValidation = true;
       }
     } else {
-      userStatus = UserStatus.ACTIF;
+      // P0.0 (ADR-002) — RÉGRESSION FERMÉE ICI : ce chemin posait auparavant
+      // userStatus = ACTIF + mot de passe CONSTANT '0000' pour tout rôle non-admin
+      // (marchand/producteur/cooperateur/institution/identificateur), soit
+      // EXACTEMENT l'exploit de masse que l'ADR ferme sur `create-with-acteur`.
+      // On applique donc ici le MÊME modèle : le compte naît inerte, non-loginable,
+      // et devient utilisable uniquement via le code d'activation à usage unique
+      // (POST /auth/activer), où l'acteur pose SON secret.
+      userStatus = UserStatus.EN_ATTENTE_ACTIVATION;
     }
 
+    // Le "mot de passe" posé ici pour un acteur métier n'est JAMAIS montré ni
+    // utilisable : c'est un secret aléatoire jeté (même motif que
+    // `identifications.controller.ts` create-with-acteur), semé uniquement parce
+    // que la colonne password_hash ne peut pas rester vide. Le login réel se fera
+    // après activation, avec le secret choisi par l'acteur lui-même.
     const defaultPassword = targetIsAdmin
       ? generateInitialPassword()
-      : getDefaultPasswordForRole(dto.role);
+      : crypto.randomBytes(24).toString('hex');
     const passwordHash = isPendingValidation
       ? null
       : await bcrypt.hash(defaultPassword, 10);
@@ -228,6 +256,16 @@ export class BackofficeUsersService {
     });
 
     const saved = await this.usersRepo.save(user);
+
+    // P0.0 (ADR-002) : le compte non-admin naît en_attente_activation (voir plus
+    // haut) — on émet ici son code d'activation à usage unique (30 min), via le
+    // MÊME service que `create-with-acteur` (Constitution §1 : une seule
+    // implémentation). `createdBy` = l'admin BO créateur, pour la journalisation
+    // exigée par l'ADR (qui a initié l'enrôlement).
+    let activationCode: string | undefined;
+    if (!targetIsAdmin) {
+      activationCode = await this.activationService.issueForUser(saved.id, creator.id);
+    }
 
     if (!targetIsAdmin) {
       try {
@@ -317,12 +355,29 @@ export class BackofficeUsersService {
       };
     }
 
+    if (targetIsAdmin) {
+      // Cas ADMIN créé par un super_admin (voir commentaire plus haut) : mot de
+      // passe aléatoire réel, affiché une seule fois — comportement inchangé.
+      return {
+        id: saved.id,
+        status: saved.status,
+        message: `Compte créé avec succès. Mot de passe initial : ${defaultPassword}. L'utilisateur devra le changer au premier login.`,
+        defaultPassword,
+        motDePasseInitial: defaultPassword,
+      };
+    }
+
+    // Acteur métier / institution / identificateur (P0.0) : PAS de mot de passe
+    // à transmettre — le compte est inerte tant que le code d'activation n'a pas
+    // été utilisé sur le téléphone de l'acteur via POST /auth/activer.
     return {
       id: saved.id,
       status: saved.status,
-      message: `Compte créé avec succès. Mot de passe initial : ${defaultPassword}. L'utilisateur devra le changer au premier login.`,
-      defaultPassword,
-      motDePasseInitial: defaultPassword,
+      message:
+        "Compte créé, en attente d'activation. Transmettez le code d'activation à l'acteur : " +
+        'il doit l\'utiliser sur son téléphone (POST /auth/activer) pour choisir SON secret. ' +
+        'Le code est à usage unique et expire dans 30 minutes.',
+      activationCode,
     };
   }
 

@@ -9,6 +9,7 @@ import {
   UserCircle, Sun, Glasses,
   ShoppingCart, LayoutGrid, Box,
   Shield, Flag, BarChart3,
+  KeyRound, Copy, Check,
 } from 'lucide-react';
 import { useLocation } from 'react-router';
 import {
@@ -1154,6 +1155,11 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
   const [gpsCapturing, setGpsCapturing] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [createdPassword, setCreatedPassword] = useState<string | null>(null);
+  // P0.0 (ADR-002) : code d'activation à usage unique pour un acteur non-admin
+  // créé via le back-office — le compte naît en_attente_activation, ce code est
+  // la seule façon de l'activer. Résiduel accepté : l'admin BO le voit à l'écran.
+  const [createdActivationCode, setCreatedActivationCode] = useState<string | null>(null);
+  const [activationCodeCopied, setActivationCodeCopied] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
@@ -2155,9 +2161,15 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
         clearDraftAndCancelDebounce();
         if (result.defaultPassword) {
           setCreatedPassword(result.defaultPassword);
+          setCreatedActivationCode(null);
           toast.success('Compte créé avec succès.');
+        } else if (result.activationCode) {
+          setCreatedPassword(null);
+          setCreatedActivationCode(result.activationCode);
+          toast.success("Compte créé, en attente d'activation. Transmets le code affiché à l'acteur.");
         } else {
           setCreatedPassword(null);
+          setCreatedActivationCode(null);
           toast.success('Compte créé en attente de validation par un super_admin.');
         }
         try {
@@ -2167,7 +2179,10 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
         }
         if (!isMountedRef.current) return;
         setSubmitted(true);
-        if (!result.defaultPassword) {
+        // Pas de retour auto quand un mot de passe OU un code d'activation à
+        // usage unique doit être lu/transmis — seulement quand ni l'un ni
+        // l'autre n'est présent (cas "en attente de validation super_admin").
+        if (!result.defaultPassword && !result.activationCode) {
           submitTimeoutRef.current = setTimeout(() => {
             if (isMountedRef.current) onSuccess();
           }, 3000);
@@ -2275,9 +2290,15 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
 
       if (result.defaultPassword) {
         setCreatedPassword(result.defaultPassword);
+        setCreatedActivationCode(null);
         toast.success('Compte créé avec succès.');
+      } else if (result.activationCode) {
+        setCreatedPassword(null);
+        setCreatedActivationCode(result.activationCode);
+        toast.success("Compte créé, en attente d'activation. Transmets le code affiché à l'acteur.");
       } else {
         setCreatedPassword(null);
+        setCreatedActivationCode(null);
         toast.success('Compte créé en attente de validation par un super_admin.');
       }
       try {
@@ -2287,7 +2308,7 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
       }
       if (!isMountedRef.current) return;
       setSubmitted(true);
-      if (!result.defaultPassword) {
+      if (!result.defaultPassword && !result.activationCode) {
         submitTimeoutRef.current = setTimeout(() => {
           if (isMountedRef.current) onSuccess();
         }, 3000);
@@ -2518,16 +2539,79 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
             className="text-center text-gray-900 mb-1"
             style={{ fontSize: '1.7rem', fontWeight: 900 }}
           >
-            {createdPassword ? 'Compte créé !' : 'Dossier envoyé !'}
+            {createdPassword || createdActivationCode ? 'Compte créé !' : 'Dossier envoyé !'}
           </h2>
           <p className="text-center text-gray-500 mb-2" style={{ fontSize: '1rem' }}>
             {data.prenoms} {data.nom}
           </p>
           <p className="text-center mb-6" style={{ color: cfg!.color, fontSize: '0.92rem', fontWeight: 700 }}>
-            {createdPassword ? `Compte ${cfg!.label} actif` : `Dossier ${cfg!.label} transmis avec succès`}
+            {createdPassword
+              ? `Compte ${cfg!.label} actif`
+              : createdActivationCode
+                ? `Compte ${cfg!.label} en attente d'activation`
+                : `Dossier ${cfg!.label} transmis avec succès`}
           </p>
 
-          {/* Workflow */}
+          {/* Code d'activation — P0.0 (ADR-002). Résiduel accepté : l'admin BO le
+              voit à l'écran pour le transmettre à l'acteur, qui l'utilise sur SON
+              téléphone (POST /auth/activer) pour poser son propre secret. Ce
+              chemin applique EXACTEMENT le même modèle que create-with-acteur. */}
+          {createdActivationCode && (
+            <div className="rounded-3xl border-2 p-5 mb-4 shadow-sm" style={{ borderColor: '#F59E0B', background: 'linear-gradient(180deg, #FFFBEB 0%, #FFF7E8 100%)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <KeyRound className="w-5 h-5 text-amber-600" aria-hidden="true" />
+                </div>
+                <p className="font-black text-gray-900" style={{ fontSize: '0.95rem' }}>
+                  Code d'activation à transmettre maintenant
+                </p>
+              </div>
+
+              <div
+                role="status"
+                aria-live="polite"
+                className="bg-white rounded-2xl border-2 border-amber-200 py-4 px-3 text-center mb-3 select-all"
+                style={{ fontFamily: 'monospace', fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.06em', color: '#92400E', wordBreak: 'break-all' }}
+              >
+                {createdActivationCode}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(createdActivationCode).then(
+                    () => {
+                      setActivationCodeCopied(true);
+                      toast.success('Code copié');
+                      setTimeout(() => { if (isMountedRef.current) setActivationCodeCopied(false); }, 2000);
+                    },
+                    () => toast.error('Copie impossible'),
+                  );
+                }}
+                className="w-full rounded-xl py-2.5 mb-3 flex items-center justify-center gap-2"
+                style={{ background: '#FEF3C7', border: '1.5px solid #F59E0B', color: '#92400E', fontWeight: 700, fontSize: '0.85rem' }}
+              >
+                {activationCodeCopied ? <Check className="w-4 h-4" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
+                {activationCodeCopied ? 'Code copié' : 'Copier le code'}
+              </button>
+
+              <ul className="space-y-1.5" style={{ fontSize: '0.8rem', color: '#78350F' }}>
+                <li>• <strong>Transmets-le à {data.prenoms || "l'acteur"} maintenant</strong> (voix, message, etc.).</li>
+                <li>• Il/elle l'utilise sur SON téléphone pour choisir son propre code secret.</li>
+                <li>• Valable <strong>30 minutes</strong>, à <strong>usage unique</strong>.</li>
+                <li>• Sans cette étape, le compte reste bloqué et il/elle ne pourra pas se connecter.</li>
+              </ul>
+            </div>
+          )}
+
+          {/* Workflow — cette carte décrit le circuit de VALIDATION d'un dossier
+              (24-48h). Elle n'a rien à voir avec l'activation du compte, qui
+              est instantanée via le code ci-dessus. Un compte créé via le
+              back-office (createdPassword / createdActivationCode) existe déjà
+              et n'attend AUCUNE approbation superviseur pour exister : on
+              n'affiche donc cette carte que pour le cas réellement en attente
+              (dossier complémentaire soumis pour ré-examen). */}
+          {!createdPassword && !createdActivationCode && (
           <div className="bg-white rounded-3xl border-2 border-amber-200 p-5 mb-4 shadow-sm">
             <div className="flex items-center gap-3 mb-4 pb-4 border-b-2 border-gray-100">
               <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center">
@@ -2581,8 +2665,9 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
               })}
             </div>
           </div>
+          )}
 
-          {!createdPassword && (
+          {!createdPassword && !createdActivationCode && (
             <div className="bg-blue-50 rounded-2xl border-2 border-blue-100 p-4 mb-4 flex gap-3">
               <Info className="w-6 h-6 text-blue-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div>
@@ -2635,14 +2720,14 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
             <p style={{ fontSize: '0.75rem', color: 'var(--encre-4)', marginTop: 4 }}>Conserve ce numéro pour le suivi</p>
           </div>
 
-          {createdPassword ? (
+          {(createdPassword || createdActivationCode) ? (
             <button
               type="button"
               onClick={() => onSuccess()}
               className="w-full mt-5 py-3 rounded-2xl font-bold text-white"
               style={{ background: cfg!.color }}
             >
-              Terminer
+              {createdActivationCode ? "J'ai transmis le code — Terminer" : 'Terminer'}
             </button>
           ) : (
             <p className="text-center mt-5" style={{ fontSize: '0.82rem', color: 'var(--encre-4)' }}>

@@ -18,6 +18,18 @@ export class FeedbakSmsService {
     await this.send(phone, message, 'DOSSIER_VALIDE');
   }
 
+  // P0.0 (ADR-002) : dossier validé, compte encore en_attente_activation.
+  async notifyDossierValideActivationRequise(phone: string, prenom: string): Promise<void> {
+    const message = FEEDBAK_SMS_TEMPLATES.DOSSIER_VALIDE_ACTIVATION_REQUISE(prenom);
+    await this.send(phone, message, 'DOSSIER_VALIDE_ACTIVATION_REQUISE');
+  }
+
+  // P0.0 (ADR-002) : dossier validé, compte déjà activé par l'acteur lui-même.
+  async notifyDossierValideCompteDejaActif(phone: string, prenom: string): Promise<void> {
+    const message = FEEDBAK_SMS_TEMPLATES.DOSSIER_VALIDE_COMPTE_DEJA_ACTIF(prenom);
+    await this.send(phone, message, 'DOSSIER_VALIDE_COMPTE_DEJA_ACTIF');
+  }
+
   async notifyDossierRejete(phone: string, prenom: string, motif: string): Promise<void> {
     const message = FEEDBAK_SMS_TEMPLATES.DOSSIER_REJETE(prenom, motif, FEEDBAK_SMS_SUPPORT_NUMBER);
     await this.send(phone, message, 'DOSSIER_REJETE');

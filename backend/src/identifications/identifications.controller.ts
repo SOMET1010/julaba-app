@@ -512,7 +512,7 @@ export class IdentificationsController {
 
     const acteurContact = existing?.acteur_id
       ? await this.dataSource.query(
-          'SELECT phone, first_name, last_name FROM users WHERE id::text = $1 LIMIT 1',
+          'SELECT phone, first_name, last_name, status FROM users WHERE id::text = $1 LIMIT 1',
           [String(existing.acteur_id)],
         )
       : [];
@@ -534,7 +534,31 @@ export class IdentificationsController {
     if (safeBody.statut === 'approuve' || safeBody.statut === 'valide') {
       if (phone) {
         try {
-          await this.feedbakSmsService.notifyDossierValide(String(phone), String(prenom), String(telephone));
+          // P0.0 (ADR-002) : le template DOSSIER_VALIDE ("connectez-vous avec 0000")
+          // n'est vrai QUE pour un compte dont le mot de passe est réellement la
+          // constante '0000' (auto-inscription publique, jamais passée par
+          // l'activation). Pour tout compte enrôlé via create-with-acteur ou le
+          // back-office, ce mot de passe n'existe pas — on le détecte de façon
+          // fiable en cherchant une trace d'émission de code d'activation pour ce
+          // compte (activation_codes), plutôt qu'en devinant depuis le chemin
+          // d'origine du dossier.
+          const activationTrace = existing?.acteur_id
+            ? await this.dataSource.query(
+                'SELECT 1 FROM activation_codes WHERE user_id::text = $1 LIMIT 1',
+                [String(existing.acteur_id)],
+              )
+            : [];
+          const isViaActivationP0 = activationTrace.length > 0;
+
+          if (isViaActivationP0) {
+            if (actor?.status === 'en_attente_activation') {
+              await this.feedbakSmsService.notifyDossierValideActivationRequise(String(phone), String(prenom));
+            } else {
+              await this.feedbakSmsService.notifyDossierValideCompteDejaActif(String(phone), String(prenom));
+            }
+          } else {
+            await this.feedbakSmsService.notifyDossierValide(String(phone), String(prenom), String(telephone));
+          }
         } catch {
           // Le flux principal ne doit jamais échouer sur un problème SMS.
         }
