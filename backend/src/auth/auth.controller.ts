@@ -28,6 +28,7 @@ import type {
 import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
 import { AuditService } from '../audit/audit.service';
 import { PinCryptoService } from './pin-crypto.service';
+import { stripSensitiveUserFields } from '../users/sanitize-user.util';
 
 // Verrouillage PIN acteur : 9 échecs cumulés -> blocage SANS expiration temporelle.
 // Le blocage est matérialisé par une date très lointaine (~100 ans) ; seul
@@ -146,7 +147,7 @@ export class AuthController {
   async me(@Request() req: any, @Res({ passthrough: true }) res: Response) {
     res.setHeader('Cache-Control', 'no-store');
     const user = await this.userRepo.findOne({ where: { id: req.user.id } });
-    return { user };
+    return { user: user ? stripSensitiveUserFields(user as any) : null };
   }
 
 

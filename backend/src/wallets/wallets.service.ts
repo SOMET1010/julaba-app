@@ -11,6 +11,7 @@ import { randomUUID } from 'crypto';
 import { Wallet } from './entities/wallet.entity';
 import { WalletTransaction, TransactionType } from './entities/wallet-transaction.entity';
 import { User, UserStatus } from '../users/entities/user.entity';
+import { stripSensitiveUserFields } from '../users/sanitize-user.util';
 
 export interface ResultatTransfert {
   dejaTraite: boolean;
@@ -58,6 +59,15 @@ export class WalletsService {
 
     if (!wallet) {
       throw new NotFoundException('Wallet introuvable');
+    }
+
+    // Sécurité : la relation `user` chargée ci-dessus embarque l'entité User
+    // complète (passwordHash, pinCodeHash, webauthnCredentials...). Même
+    // mécanisme que users.service.ts/auth.service.ts (cf. sanitize-user.util.ts)
+    // — sinon GET /wallets/me expose le hash bcrypt du mot de passe dans le
+    // JSON renvoyé au client.
+    if ((wallet as any).user) {
+      (wallet as any).user = stripSensitiveUserFields((wallet as any).user);
     }
 
     return wallet;
