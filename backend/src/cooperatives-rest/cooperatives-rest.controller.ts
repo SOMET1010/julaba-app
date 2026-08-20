@@ -154,6 +154,12 @@ export class CooperativesRestController {
         date_adhesion: (body?.date_adhesion || new Date().toISOString()).slice(0, 10),
       }),
     );
+    // Même alignement que rejoindre() ci-dessous : le président peut ajouter
+    // un membre directement (sans passer par la demande self-service), le
+    // flag déclaratif doit suivre cette adhésion réelle aussi.
+    if (!marchand.estMembreCooperative) {
+      await this.userRepo.update(marchandId, { estMembreCooperative: true });
+    }
     return { success: true, membre };
   }
 
@@ -790,6 +796,19 @@ export class CooperativesRestController {
           date_adhesion: new Date().toISOString().slice(0, 10),
         }),
       );
+    }
+
+    // Aligne le flag déclaratif `estMembreCooperative` (celui que la garde de
+    // route frontend lit, cf. checkRouteAccess/constants.ts) sur l'adhésion
+    // RÉELLE qu'on vient d'écrire dans cooperative_membres. Sans cette ligne,
+    // le flag — posé uniquement à l'inscription ou en modification de profil
+    // (auth.service.ts / users.controller.ts) — restait `false` pour tout
+    // marchand ayant rejoint une coopérative depuis l'écran « Ma coopérative »
+    // : le backend l'autorise déjà pleinement (resolveUserCooperative ne
+    // filtre pas par statut, cf. GET /cooperatives/stock), mais la garde de
+    // route le renvoyait quand même hors de /cooperative/stock.
+    if (!currentUser?.estMembreCooperative) {
+      await this.userRepo.update(userId, { estMembreCooperative: true });
     }
 
     return { success: true };
