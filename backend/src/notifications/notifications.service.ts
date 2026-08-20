@@ -254,6 +254,29 @@ export class NotificationsService {
 
   // ─── FIN ENVOI UNIVERSEL ──────────────────────────────────────
 
+  // Notification distribution de stock commun (coopérative → membre destinataire).
+  // cf. POST /cooperatives/distribution : sans ceci, le membre qui reçoit une
+  // part du pot commun n'en voit jamais la trace côté client.
+  async notifyDistributionStockCommun(
+    userId: string,
+    produit: string,
+    quantite: number,
+    unite?: string | null,
+    cooperativeNom?: string | null,
+  ): Promise<void> {
+    const qte = unite ? `${quantite} ${unite}` : `${quantite}`;
+    await this.create({
+      userId,
+      type: 'stock_commun_recu',
+      titre: 'Distribution reçue',
+      message: `Tu as reçu ${qte} de ${produit} du stock commun${cooperativeNom ? ' de ' + cooperativeNom : ''}.`,
+      priority: 'high',
+      category: 'stock',
+      icon: '📦',
+      metadata: { produit, quantite, unite: unite || null },
+    });
+  }
+
   // Notification nouvelle commande
   async notifyCommande(userId: string, commandeId: string, montant: number): Promise<void> {
     if (!await this.isNotifAllowed(userId, 'notif_commandes')) return;

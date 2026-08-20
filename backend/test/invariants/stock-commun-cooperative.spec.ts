@@ -17,7 +17,11 @@
 //  4) isolation stricte entre deux coopératives : le stock et les mouvements
 //     de la coopérative A ne sont jamais visibles ni modifiables par un appel
 //     authentifié comme membre de la coopérative B ;
-//  5) un membre qui n'appartient à aucune coopérative se voit refuser
+//  5) une distribution notifie chaque destinataire (table `notifications`,
+//     même mécanisme que notifyCommande) ET apparaît dans son historique
+//     personnel (GET /cooperatives/mes-distributions) — recette du défaut
+//     "distribution reçue invisible côté membre" (ni notif, ni historique) ;
+//  6) un membre qui n'appartient à aucune coopérative se voit refuser
 //     l'apport (403), jamais de fallback silencieux.
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
@@ -296,7 +300,75 @@ describe('Invariant — Stock commun coopérative (apport / distribution / isola
     expect(mouvementsB).toBe(0);
   });
 
-  it("5) un membre sans aucune coopérative se voit refuser l'apport (403), jamais de fallback silencieux", async () => {
+  it('5) une distribution notifie chaque destinataire ET apparaît dans son historique personnel (GET /cooperatives/mes-distributions)', async () => {
+    const produit = 'Riz-Test-Notif';
+
+    const apport = await api()
+      .post('/api/v1/cooperatives/stock/apport')
+      .set('Authorization', `Bearer ${presidentAToken}`)
+      .send({ produit, quantite: 60, unite: 'kg', categorie: 'cereales' });
+    expect(apport.status).toBe(201);
+
+    // Avant la distribution : ni notification, ni entrée d'historique côté membre.
+    const notifsAvant = await api().get('/api/v1/notifications').set('Authorization', `Bearer ${membreA1Token}`);
+    expect(notifsAvant.status).toBe(200);
+    expect(
+      (notifsAvant.body.notifications || []).some((n: any) => n.type === 'stock_commun_recu' && n.message?.includes(produit)),
+    ).toBe(false);
+
+    const histAvant = await api().get('/api/v1/cooperatives/mes-distributions').set('Authorization', `Bearer ${membreA1Token}`);
+    expect(histAvant.status).toBe(200);
+    expect((histAvant.body.distributions || []).some((d: any) => d.produit === produit)).toBe(false);
+
+    const dist = await api()
+      .post('/api/v1/cooperatives/distribution')
+      .set('Authorization', `Bearer ${presidentAToken}`)
+      .send({
+        produit,
+        distributions: [
+          { membreId: membreA1Id, quantite: 12 },
+          { membreId: membreA2Id, quantite: 8 },
+        ],
+      });
+    expect(dist.status).toBe(201);
+    expect(dist.body.persisted).toBe(true);
+
+    // Après la distribution : le membre destinataire a UNE notification
+    // temps réel (même mécanisme que notifyCommande — table `notifications`)…
+    const notifsApres = await api().get('/api/v1/notifications').set('Authorization', `Bearer ${membreA1Token}`);
+    expect(notifsApres.status).toBe(200);
+    const notifDistribution = (notifsApres.body.notifications || []).find(
+      (n: any) => n.type === 'stock_commun_recu' && n.message?.includes(produit),
+    );
+    expect(notifDistribution).toBeTruthy();
+    expect(notifDistribution.message).toContain('12');
+    expect(notifDistribution.message).toContain('kg');
+    expect(notifDistribution.category).toBe('stock');
+
+    // …ET une entrée dans son historique personnel, avec la bonne quantité —
+    // consultable indépendamment de la notification (jamais supprimée/lue).
+    const histApres = await api().get('/api/v1/cooperatives/mes-distributions').set('Authorization', `Bearer ${membreA1Token}`);
+    expect(histApres.status).toBe(200);
+    const entreeA1 = (histApres.body.distributions || []).find((d: any) => d.produit === produit);
+    expect(entreeA1).toBeTruthy();
+    expect(Number(entreeA1.quantite)).toBe(12);
+    expect(entreeA1.unite).toBe('kg');
+
+    // Le second destinataire a SA PROPRE notification et SA PROPRE entrée
+    // d'historique, avec SA quantité — pas celle du premier membre.
+    const histA2 = await api().get('/api/v1/cooperatives/mes-distributions').set('Authorization', `Bearer ${membreA2Token}`);
+    const entreeA2 = (histA2.body.distributions || []).find((d: any) => d.produit === produit);
+    expect(entreeA2).toBeTruthy();
+    expect(Number(entreeA2.quantite)).toBe(8);
+
+    // Un membre tiers (hors coopérative, jamais destinataire) ne voit rien
+    // apparaître dans son propre historique — jamais de fuite entre membres.
+    const histTiers = await api().get('/api/v1/cooperatives/mes-distributions').set('Authorization', `Bearer ${horsCoopToken}`);
+    expect(histTiers.status).toBe(200);
+    expect((histTiers.body.distributions || []).some((d: any) => d.produit === produit)).toBe(false);
+  });
+
+  it("6) un membre sans aucune coopérative se voit refuser l'apport (403), jamais de fallback silencieux", async () => {
     const produit = 'Riz-Hors-Coop';
 
     const res = await api()

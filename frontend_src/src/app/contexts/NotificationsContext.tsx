@@ -23,6 +23,7 @@ export type NotifType =
   | 'nouvelle_commande' | 'paiement_recu' | 'offre_expiree' | 'recolte_proche'
   | 'evaluation_recue' | 'membre_ajoute' | 'contribution_recue'
   | 'paiement_collectif' | 'commande_groupee_validee' | 'distribution_prete'
+  | 'stock_commun_recu'
   | 'dossier_valide' | 'dossier_rejete' | 'objectif_atteint' | 'dossier_assigne'
   | 'pic_transaction' | 'baisse_activite' | 'nouveau_identificateur'
   | 'dossier_en_attente' | 'alerte_fraude' | 'creation_acteur'
