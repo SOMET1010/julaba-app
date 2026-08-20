@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { KeyRound, CheckCircle } from 'lucide-react';
@@ -7,6 +7,7 @@ import { speakClipOrText } from '../../services/audioManager';
 import { tataUiClipForText } from '../../services/tataUiClips';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerErreur, vibrerSucces } from '../../utils/haptique';
+import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
 
 // Voix de cet écran : clip de la vraie Tata si la phrase correspond, sinon voix
 // de secours FR — même mécanisme que le reste de l'auth (LoginPassword.tsx).
@@ -42,11 +43,21 @@ export function ActivationScreen() {
   // explique le GESTE, on ne change ni le modèle ni le flux). Cet écran est
   // utilisé une seule fois, juste après l'enrôlement par l'identificateur —
   // qui est physiquement présent pour aider à lire le code reçu si besoin.
+  // FILET DE RATTRAPAGE : /activation est une route de premier niveau (lien
+  // direct reçu par SMS) — elle peut être le TOUT PREMIER écran d'une page
+  // fraîchement chargée, sans aucun geste préalable dans cette session, donc
+  // sans audio débloqué. Même filet que Welcome.tsx/OnboardingSlides.tsx.
+  const direConsigne = useCallback(() => {
+    parle("Tape le code que tu as reçu, puis choisis ton code secret à quatre chiffres. Personne d'autre ne doit le connaître.");
+  }, []);
+
   useEffect(() => {
     if (!guidageVocal()) return;
-    parle("Tape le code que tu as reçu, puis choisis ton code secret à quatre chiffres. Personne d'autre ne doit le connaître.");
+    direConsigne();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useAudioUnlockFallback(direConsigne, guidageVocal());
 
   useEffect(() => {
     if (!error) return;

@@ -1,7 +1,7 @@
 import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
 import { stopAllVoice } from '../../services/audioManager';
 import { stopIntro } from '../../services/onboardingVoix';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle, AlertCircle, Fingerprint, Mic } from 'lucide-react';
@@ -13,7 +13,7 @@ import logoJulaba from '../../../assets/images/logo-julaba.png';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
-import { extractPhoneDigits } from '../../utils/frenchDigits';
+import { extractPhoneDigits, fusionnerChiffresDictes } from '../../utils/frenchDigits';
 import { tataUiClipForText } from '../../services/tataUiClips';
 import { voixSecoursNom } from '../../services/elevenlabs';
 import { speak as managerSpeak, speakClipOrText } from '../../services/audioManager';
@@ -24,6 +24,7 @@ import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../
 import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../services/comptesMemorises';
 import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 import { glyphePourChiffre } from '../../services/clavierImage';
+import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
 
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
@@ -252,16 +253,27 @@ export function LoginPassword() {
   useEffect(() => { if (step === 'password' && guidageVocal(accessMode)) parle('Entre ton code secret à 4 chiffres'); }, [step]);
   // « Tata se souvient de moi » : à l'arrivée, Tata SALUE par le prénom et dit le
   // geste à faire — l'écran n'a rien à lire. (Une seule fois, au montage.)
+  // FILET DE RATTRAPAGE : cet écran ('reconnaissance') peut être le TOUT
+  // PREMIER de la page à un retour d'app (EntryGate saute Welcome/Onboarding
+  // via ses drapeaux persistés dès que compteConnu existe) — sans geste
+  // préalable dans CETTE session, l'audio reste bloqué par le navigateur.
+  // Même filet que Welcome.tsx/OnboardingSlides.tsx.
+  const direAccueilReconnaissance = useCallback(() => {
+    if (!(step === 'reconnaissance' && compteConnu && guidageVocal(accessMode))) return;
+    const salut = compteConnu.prenom ? `Bonjour ${compteConnu.prenom} !` : 'Bonjour ma sœur !';
+    const geste = compteConnu.biometrie
+      ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
+      : 'Touche le grand bouton et entre ton code.';
+    try { void managerSpeak(`${salut} ${geste}`); } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, compteConnu, accessMode]);
+
   useEffect(() => {
-    if (step === 'reconnaissance' && compteConnu && guidageVocal(accessMode)) {
-      const salut = compteConnu.prenom ? `Bonjour ${compteConnu.prenom} !` : 'Bonjour ma sœur !';
-      const geste = compteConnu.biometrie
-        ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
-        : 'Touche le grand bouton et entre ton code.';
-      try { void managerSpeak(`${salut} ${geste}`); } catch { /* ignore */ }
-    }
+    direAccueilReconnaissance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useAudioUnlockFallback(direAccueilReconnaissance, step === 'reconnaissance' && !!compteConnu && guidageVocal(accessMode));
   // Tata propose l'adaptation (mode 'auto') : elle le DIT (une fois) — c'est une
   // question, pas un réglage à trouver. On l'énonce dès l'affichage.
   useEffect(() => {
@@ -389,20 +401,38 @@ export function LoginPassword() {
 
   // Termine la dictée avec les chiffres retenus : range le micro, coupe le moteur,
   // puis AIGUILLE selon la config en cours (numéro ou code).
+  //
+  // CORRECTIF (numéro erroné affiché en recette, ex. « 70 00 00 00 00 ») :
+  // digitsBruts n'est qu'un INSTANTANÉ — la dernière passe intermédiaire à
+  // 900 ms, sur un tampon audio qui pouvait encore être incomplet. Le moteur
+  // fait ENSUITE, dans stop(), une VRAIE repasse finale (re-transcription de
+  // TOUT l'audio capté depuis le début, la plus fiable) — mais l'ancien code
+  // AIGUILLAIT déjà cfg.onFinal(...) avec l'instantané, PUIS jetait le
+  // résultat de cette repasse finale (le handler onText l'ignorait car
+  // dictDoneRef.current était déjà vrai). On décidait donc sur un texte
+  // partiellement traité au lieu du résultat définitif du STT. On attend
+  // maintenant la fin de stop() (qui met à jour bestDigitsRef via la
+  // repasse finale, cf. le handler onText plus bas) avant de conclure.
   const finaliserDictee = (digitsBruts: string) => {
     if (dictDoneRef.current) return;
     dictDoneRef.current = true;
     const cfg = dictCfgRef.current;
-    const digits = digitsBruts.slice(0, cfg?.max ?? 10);
-    vlog('FINALISE', { digits, n: digits.length, ok: cfg ? cfg.estComplet(digits) : false });
     if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
     if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
     if (micStartTimeoutRef.current) { clearTimeout(micStartTimeoutRef.current); micStartTimeoutRef.current = null; }
-    void liveStopRef.current?.(); liveStopRef.current = null;
-    try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
-    mediaStreamRef.current = null;
-    setIsListening(false);
-    cfg?.onFinal(digits);
+    const stopFn = liveStopRef.current;
+    liveStopRef.current = null;
+    setIsListening(false); // retour visuel immédiat (micro éteint), avant même la repasse finale
+    const conclure = () => {
+      try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+      mediaStreamRef.current = null;
+      // bestDigitsRef a pu être mis à jour par la repasse finale pendant l'attente
+      // de stopFn() (cf. onText) ; sinon on retombe sur l'instantané reçu.
+      const digits = (bestDigitsRef.current || digitsBruts).slice(0, cfg?.max ?? 10);
+      vlog('FINALISE', { digits, n: digits.length, ok: cfg ? cfg.estComplet(digits) : false });
+      cfg?.onFinal(digits);
+    };
+    if (stopFn) { void stopFn().then(conclure, conclure); } else { conclure(); }
   };
 
   // Re-tap micro / filet → on termine avec ce qui a été compris jusqu'ici.
@@ -451,14 +481,20 @@ export function LoginPassword() {
     let handle: { stop: () => Promise<void> };
     try {
       handle = await startLiveDictation(stream, (texte, estFinal) => {
-        if (dictDoneRef.current) return;
+        // Une repasse FINALE (estFinal) fait TOUJOURS autorité sur bestDigitsRef,
+        // même après le début de la finalisation (dictDoneRef déjà vrai) : c'est
+        // elle que finaliserDictee() attend pour conclure sur le résultat
+        // définitif du STT plutôt que sur un instantané intermédiaire (cf. le
+        // commentaire de finaliserDictee). Seule la suite du handler (remplissage
+        // écran, auto-arrêt) ne doit plus s'exécuter une fois la dictée finalisée.
+        if (dictDoneRef.current && !estFinal) return;
         const digits = extractPhoneDigits(texte || '').slice(0, cfg.max);
         if (estFinal || digits.length > bestDigitsRef.current.length) {
           vlog('TXT', { fin: estFinal, brut: (texte || '').slice(0, 40), digits });
         }
         // Le résultat FINAL fait autorité (corrige) ; un partiel ne fait que grandir.
-        if (estFinal) bestDigitsRef.current = digits;
-        else if (digits.length >= bestDigitsRef.current.length) bestDigitsRef.current = digits;
+        bestDigitsRef.current = fusionnerChiffresDictes(estFinal, digits, bestDigitsRef.current);
+        if (dictDoneRef.current) return; // déjà en cours de finalisation : bestDigitsRef mis à jour, rien d'autre à faire
         const best = bestDigitsRef.current;
         cfg.onLive(best); // remplissage EN DIRECT (contrôle à l'œil)
         // Valeur complète + valide → on s'arrête. Nombre composé (« vingt-six »)
@@ -525,23 +561,31 @@ export function LoginPassword() {
   // pavé (ou par la reconnaissance « Tata me reconnaît »). La dictée
   // vocale reste réservée au NUMÉRO de téléphone.
 
-  // Tata parle DÈS L'ENTRÉE dans l'écran numéro — même mécanisme que les écrans
-  // 'password'/'reconnaissance' juste au-dessus (useEffect sur [step]), qui
-  // fonctionnent déjà sans geste préalable : à ce stade du parcours (après
-  // Welcome + Onboarding, dans la même session SPA), le premier geste utilisateur
-  // a déjà eu lieu, donc rien ne bloque la voix.
+  // Tata parle DÈS L'ENTRÉE dans l'écran numéro.
   //
-  // AVANT : on attendait le premier "pointerdown" hors bouton/image pour parler
-  // (contournement d'un blocage navigateur avant tout geste). Mais si CE premier
-  // geste tombait sur le gros micro — l'action la plus visible de l'écran — le
-  // filtre `closest('button, img')` annulait la parole, et comme l'écouteur est
-  // `{ once: true }`, il se consommait quand même : plus AUCUNE voix pour le
-  // reste de la session. C'est le silence total observé en recette terrain.
+  // AVANT : on supposait qu'à ce stade du parcours (après Welcome +
+  // Onboarding, dans la même session SPA) un geste utilisateur avait déjà eu
+  // lieu, donc rien ne bloquait la voix — un filet de rattrapage avait même
+  // été essayé puis RETIRÉ pour cette raison. CORRECTIF (silence encore
+  // constaté en recette terrain sur CET écran précisément) : cette hypothèse
+  // est FAUSSE dès qu'on revient dans l'app après l'avoir quittée — EntryGate
+  // saute directement à cet écran (drapeaux julaba_seen_splash et
+  // julaba_completed_onboarding persistés en localStorage), sans passer par
+  // Welcome/Onboarding dans CETTE page fraîchement chargée, donc sans aucun
+  // geste préalable pour débloquer l'audio.
+  //
+  // Le filet est donc RÉINTRODUIT, mais SANS le piège de la version d'avant :
+  // l'ancien filet filtrait la cible du geste (closest sur button/img) et,
+  // comme l'écouteur était en mode « une seule fois », un premier tap sur le
+  // gros micro consommait l'écouteur SANS jamais jouer le son — silence pour
+  // le reste de la session. Le nouveau filet (useAudioUnlockFallback) ne
+  // filtre RIEN : le tout premier toucher, où qu'il tombe, rejoue la même
+  // consigne — comme sur Welcome.tsx et OnboardingSlides.tsx.
   //
   // On explique aussi le GESTE, pas seulement le champ ("tape un chiffre à la
   // fois, les ronds se remplissent") — lire seulement "entre ton numéro" ne
   // suffit pas à quelqu'un qui ne lit pas et n'a jamais vu cet écran.
-  useEffect(() => {
+  const direConsigneNumero = useCallback(() => {
     if (step !== 'phone') return;
     if (!guidageVocal(accessMode)) return; // mode lecture : pas d'accueil vocal auto
     const consigne = voixEcouteDispo
@@ -549,7 +593,14 @@ export function LoginPassword() {
       : 'Tape les chiffres de ton numéro, un par un. Les ronds en haut se rempliront.';
     parle(consigne);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, accessMode, voixEcouteDispo]);
+
+  useEffect(() => {
+    direConsigneNumero();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
+
+  useAudioUnlockFallback(direConsigneNumero, step === 'phone' && guidageVocal(accessMode));
 
   useEffect(() => {
     const tel = document.querySelector('input[autocomplete="tel"]') as HTMLInputElement | null;

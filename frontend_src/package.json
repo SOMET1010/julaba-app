@@ -26,7 +26,7 @@
     "test:rupture": "tsx src/app/services/ruptureStock.test.mts",
     "test:caisse-pilote": "tsx src/app/components/marchand/caissePiloteEspeces.test.mts",
     "test:pdfreport": "tsx src/app/utils/pdfReport.test.mts",
-    "test:ci": "npm run test:audio && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:offline && npm run test:marge && npm run test:stats && npm run test:rupture && npm run test:caisse-pilote && npm run test:pdfreport && npm run test:jour && npm run test:mouvements && npm run test:guidage && npm run test:provisoire && npm run test:correction && npm run test:dialogues && npm run test:negociation && npm run test:intentions && npm run test:packs && npm run test:intentlocal && npm run test:studio && npm run test:clavierimg && npm run test:collecte-qualite && npm run test:collecte-prompts && npm run test:collecte-db",
+    "test:ci": "npm run test:audio && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:offline && npm run test:marge && npm run test:stats && npm run test:rupture && npm run test:caisse-pilote && npm run test:pdfreport && npm run test:jour && npm run test:mouvements && npm run test:guidage && npm run test:provisoire && npm run test:correction && npm run test:dialogues && npm run test:negociation && npm run test:intentions && npm run test:packs && npm run test:intentlocal && npm run test:studio && npm run test:clavierimg && npm run test:collecte-qualite && npm run test:collecte-prompts && npm run test:collecte-db && npm run test:frenchdigits",
     "test:marge": "tsx src/app/services/margeVente.test.mts",
     "test:provisoire": "tsx src/app/services/ligneProvisoire.test.mts",
     "test:correction": "tsx src/app/services/grammaireCorrection.test.mts",
@@ -42,7 +42,8 @@
     "test:collecte-db": "tsx src/app/services/collecteVoixDB.test.mts",
     "test:jour": "tsx src/app/utils/jourLocal.test.mts",
     "test:mouvements": "tsx src/app/services/mouvementsStock.test.mts",
-    "test:guidage": "tsx src/app/utils/guidageVocal.test.mts"
+    "test:guidage": "tsx src/app/utils/guidageVocal.test.mts",
+    "test:frenchdigits": "tsx src/app/utils/frenchDigits.test.mts"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",

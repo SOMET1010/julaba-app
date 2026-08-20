@@ -28,6 +28,7 @@ import { accessModeChoisi, getEffectiveMode, type EffectiveMode } from '../../ut
 import bgTataLou from "../../../assets/images/bg-tantie.png";
 import { stopSpeaking } from '../../services/elevenlabs';
 import { direIntro, stopIntro } from '../../services/onboardingVoix';
+import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
 
 interface OnboardingSlidesProps {
   onComplete?: () => void;
@@ -51,15 +52,25 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   }, []);
 
   // Auto-narration : Tata se présente toute seule (« Moi, c'est Tata. Je vais
-  // t'aider. »). L'audio est déjà débloqué par le geste sur l'écran d'accueil.
-  useEffect(() => {
+  // t'aider. »). CORRECTIF (silence constaté en recette terrain) : on ne peut
+  // PAS supposer que l'audio est déjà débloqué par le geste sur l'écran
+  // d'accueil — cet écran-ci est atteint dans la MÊME navigation SPA que
+  // Welcome, donc le geste précédent (tap « Commencer ») aurait dû suffire en
+  // théorie, mais le silence total observé montre que ce n'est pas fiable sur
+  // l'appareil testé. Même filet de rattrapage que Welcome.tsx : on tente à
+  // l'ouverture ET on rejoue au 1er contact si rien n'a encore joué.
+  const direTata = useCallback(() => {
     if (niveauVoix() === 'lecture') return; // lectrice : silence
-    const t = setTimeout(() => {
-      setIsSpeaking(true);
-      direIntro('histoire1').finally(() => setIsSpeaking(false));
-    }, 450);
-    return () => clearTimeout(t);
+    setIsSpeaking(true);
+    direIntro('histoire1').finally(() => setIsSpeaking(false));
   }, [niveauVoix]);
+
+  useEffect(() => {
+    const t = setTimeout(direTata, 450);
+    return () => clearTimeout(t);
+  }, [direTata]);
+
+  useAudioUnlockFallback(direTata, niveauVoix() !== 'lecture');
 
   useEffect(() => {
     const img = new Image(); img.src = bgTataLou; // précharge le fond
