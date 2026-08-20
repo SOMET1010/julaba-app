@@ -11,6 +11,10 @@ import { Identification } from '../identifications/identification.entity';
 import { FeedbakSmsModule } from '../feedbak-sms/feedbak-sms.module';
 import { AuditModule } from '../audit/audit.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+// ActivationModule (et non AuthModule) : AuthModule dépend de WalletsModule qui
+// dépend lui-même de UsersModule → importer AuthModule ici créerait un cycle.
+// ActivationModule est autonome (P0.0, cf. activation.module.ts).
+import { ActivationModule } from '../auth/activation.module';
 
 @Module({
   imports: [
@@ -18,6 +22,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     FeedbakSmsModule,
     AuditModule,
     NotificationsModule,
+    ActivationModule,
   ],
   controllers: [UsersController],
   providers: [
