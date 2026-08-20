@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Users, CheckCircle, RefreshCw, Package } from 'lucide-react';
+import { Users, CheckCircle, RefreshCw, Package, Gift } from 'lucide-react';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { useApp } from '../../contexts/AppContext';
 import { useNavigate } from 'react-router';
@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { API_URL } from '../../utils/api';
 import { apiRequest } from '../../services/api/api-client';
 import { useCooperativesListe } from '../../hooks/useCooperativesListe';
+import { fetchMesDistributions, type DistributionRecue } from '../../services/api/cooperatives-api';
 
 const COLOR = '#C46210';
 
@@ -34,11 +35,23 @@ export function MaCooperative() {
   const [maCoopInfo, setMaCoopInfo] = useState<MaCooperativeInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [distributions, setDistributions] = useState<DistributionRecue[]>([]);
   useEffect(() => {
     apiRequest<MaCooperativeInfo | null>(API_URL, '/cooperatives/ma-cooperative', { method: 'GET' })
       .then(d => { setMaCoopInfo(d); setLoading(false); })
       .catch(() => setLoading(false));
+    // Historique des distributions reçues du stock commun — indépendant du
+    // statut d'adhésion courant (une distribution passée reste consultable).
+    fetchMesDistributions()
+      .then(d => setDistributions(d.distributions))
+      .catch(() => setDistributions([]));
   }, []);
+
+  function formatDateDistribution(iso: string): string {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }); }
+    catch { return iso; }
+  }
 
   const handleRejoindreListe = async () => {
     if (!selectedCoopId) return;
@@ -204,6 +217,31 @@ export function MaCooperative() {
                 </motion.div>
                 <span className="text-gray-400">›</span>
               </motion.button>
+            )}
+
+            {/* Historique des distributions reçues du stock commun */}
+            {distributions.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-3xl border-2 p-5 shadow-sm"
+                style={{ borderColor: `${COLOR}40` }}>
+                <p className="font-bold text-gray-900 mb-3">Distributions reçues</p>
+                <div className="space-y-2">
+                  {distributions.map((d) => (
+                    <div key={d.id} className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-0">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: `${COLOR}15` }}>
+                        <Gift className="w-5 h-5" style={{ color: COLOR }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm truncate">
+                          {d.quantite}{d.unite ? ` ${d.unite}` : ''} de {d.produit}
+                        </p>
+                        <p className="text-xs text-gray-400">{formatDateDistribution(d.createdAt)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
             )}
           </>
         ) : (
