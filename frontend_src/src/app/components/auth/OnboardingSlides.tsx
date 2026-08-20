@@ -129,7 +129,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
           className="w-full max-w-md flex flex-col items-center"
         >
           <p className="text-white font-extrabold" style={{ fontSize: 26, textShadow: '0 1px 10px rgba(0,0,0,0.35)' }}>
-            Moi, c'est Tata
+            Moi, c'est Tata Nanti Lou
           </p>
           <p className="text-white/90 mb-6" style={{ fontSize: 16, textShadow: '0 1px 8px rgba(0,0,0,0.3)' }}>
             Je vais t'aider.
@@ -140,7 +140,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
             <motion.button
               onClick={(e) => { e.stopPropagation(); handleListen(); }}
               whileTap={{ scale: 0.9 }}
-              aria-label={isSpeaking ? 'Arrêter Tata' : 'Réécouter Tata'}
+              aria-label={isSpeaking ? 'Arrêter Tata Nanti Lou' : 'Réécouter Tata Nanti Lou'}
               className="grid place-items-center rounded-full bg-white shadow-lg"
               style={{ width: 52, height: 52, color: isSpeaking ? '#ef4444' : '#C46210' }}
             >
