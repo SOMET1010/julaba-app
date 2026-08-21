@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
+import { getBoAccessToken } from '../../services/backoffice-api';
 import { API_URL } from '../../utils/api';
 import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
 
@@ -63,10 +64,20 @@ export function ChangePasswordScreen() {
     try {
       abortRef.current?.abort();
       abortRef.current = new AbortController();
+      // En-tête Authorization en secours du cookie de session : sur julaba-web/
+      // julaba-api (domaines différents), le cookie cross-domaine est bloqué
+      // par défaut par plusieurs navigateurs même correctement configuré côté
+      // serveur — un login BO qui « réussissait » (écran suivant affiché) était
+      // ensuite rejeté en 401 sur ce premier appel authentifié, affiché à tort
+      // comme « mot de passe actuel incorrect ».
+      const boToken = getBoAccessToken();
       const res = await fetch(`${API_URL}/auth/change-password`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(boToken ? { Authorization: `Bearer ${boToken}` } : {}),
+        },
         body: JSON.stringify({ oldPassword, newPassword }),
         signal: abortRef.current.signal,
       });

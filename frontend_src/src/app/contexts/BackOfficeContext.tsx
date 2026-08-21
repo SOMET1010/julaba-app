@@ -30,6 +30,7 @@ import {
   boGetSignalements,
   boGetNotifications,
   boSoftDeleteActeur,
+  setBoAccessToken,
   type BOUser,
   type Acteur,
   type RoleCounts,
@@ -255,6 +256,7 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
   }, [loadUser]);
 
   const logout = useCallback(() => {
+    setBoAccessToken(null);
     setUser(null);
     setStats(null);
     setActeurs([]);
