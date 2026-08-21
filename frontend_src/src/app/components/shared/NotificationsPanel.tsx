@@ -67,6 +67,7 @@ function getIconConfig(type: NotifType, accent: string): { icon: React.ReactNode
     case 'stock_rupture': return { icon: <Package className={sz} />, bg: '#ef4444' };
     case 'recolte_proche': case 'distribution_prete':
       return { icon: <Leaf className={sz} />, bg: '#34c759' };
+    case 'stock_commun_recu': return { icon: <Package className={sz} />, bg: '#2072AF' };
     case 'dossier_valide': case 'document_valide': case 'objectif_atteint': case 'reactivation':
       return { icon: <CheckCircle className={sz} />, bg: '#34c759' };
     case 'dossier_rejete': case 'suspension':

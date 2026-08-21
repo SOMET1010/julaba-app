@@ -16,6 +16,7 @@ export type CooperativeStockMouvementType = 'apport' | 'distribution';
  */
 @Entity('cooperative_stock_mouvements')
 @Index('ix_cooperative_stock_mouvements_coop_produit', ['cooperativeId', 'produit'])
+@Index('ix_cooperative_stock_mouvements_membre', ['membreId', 'type', 'createdAt'])
 export class CooperativeStockMouvement {
   @PrimaryGeneratedColumn('uuid')
   id: string;
