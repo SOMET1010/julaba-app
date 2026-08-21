@@ -31,8 +31,9 @@ julaba_db_*.sql
 *_dump.sql
 erreur.txt
 
-# Outils locaux
-.claude/
+# Outils locaux (config/état de session, pas les skills partagées de l'équipe)
+.claude/*
+!.claude/skills/
 .idea/
 
 # Build frontend versionne par erreur (la source est dans frontend_src/, build via frontend_src/Dockerfile)
