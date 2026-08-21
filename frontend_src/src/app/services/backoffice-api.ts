@@ -2,8 +2,40 @@
 import { API_URL } from '../utils/api';
 import type { SousProfilMarchand } from '../types/sousProfilMarchand';
 
+// julaba-web et julaba-api sont sur des DOMAINES différents (Render V2) : le
+// cookie de session cross-domaine (SameSite=None) est bloqué par défaut par
+// plusieurs navigateurs (Safari ITP, Chrome/Firefox en mode protection stricte),
+// même correctement configuré côté serveur. Le backend renvoie donc AUSSI le
+// jeton dans le corps de la réponse de login précisément pour ce cas — mais
+// rien côté frontend ne le stockait ni ne l'envoyait en en-tête Authorization
+// (authHeaders() ne renvoyait jamais que Content-Type). Résultat concret :
+// un login réussi (le corps de la réponse suffit à afficher l'écran suivant)
+// pouvait être suivi d'un 401 générique sur le premier appel authentifié
+// (ex. /auth/change-password), à tort affiché comme "mot de passe incorrect".
+const BO_TOKEN_KEY = 'julaba:bo:access-token';
+
+export function setBoAccessToken(token: string | null): void {
+  try {
+    if (token) sessionStorage.setItem(BO_TOKEN_KEY, token);
+    else sessionStorage.removeItem(BO_TOKEN_KEY);
+  } catch {
+    /* stockage indisponible */
+  }
+}
+
+export function getBoAccessToken(): string | null {
+  try {
+    return sessionStorage.getItem(BO_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 function authHeaders(): HeadersInit {
-  return { 'Content-Type': 'application/json' };
+  const token = getBoAccessToken();
+  return token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' };
 }
 
 
@@ -122,6 +154,7 @@ export async function boLogin(
   }
 
   const data = await res.json();
+  setBoAccessToken(data.accessToken ?? null);
   return { accessToken: data.accessToken, user: data.user };
 }
 
