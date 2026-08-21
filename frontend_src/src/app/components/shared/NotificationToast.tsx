@@ -48,6 +48,8 @@ export function getRouteForNotifType(type: NotifType, role: string, metadata?: R
       return role === 'producteur' ? `${base}/stocks` : `${base}/stock`;
     case 'recolte_proche': case 'distribution_prete':
       return `${base}/recoltes`;
+    case 'stock_commun_recu':
+      return role === 'marchand' ? `${base}/cooperative` : `${base}/stock`;
     case 'dossier_valide': case 'document_valide': case 'objectif_atteint':
     case 'reactivation': case 'dossier_rejete': case 'suspension':
     case 'evaluation_recue': case 'alerte_fraude': case 'tentative_acces':
@@ -87,6 +89,7 @@ function resolveIcon(type: NotifType, metadata?: Record<string, unknown>): { bg:
     commande_groupee_validee: '#007aff', commande_statut: '#007aff', negociation: '#007aff',
     stock_faible: '#f59e0b', offre_expiree: '#f59e0b', stock_rupture: '#ef4444',
     recolte_proche: '#34c759', distribution_prete: '#34c759',
+    stock_commun_recu: '#2072AF',
     dossier_valide: '#34c759', document_valide: '#34c759',
     objectif_atteint: '#34c759', reactivation: '#34c759',
     dossier_rejete: '#ef4444', suspension: '#ef4444',
@@ -108,6 +111,7 @@ function resolveIcon(type: NotifType, metadata?: Record<string, unknown>): { bg:
     stock_faible: <Package className={sz} />, offre_expiree: <Package className={sz} />,
     stock_rupture: <Package className={sz} />,
     recolte_proche: <Leaf className={sz} />, distribution_prete: <Leaf className={sz} />,
+    stock_commun_recu: <Package className={sz} />,
     dossier_valide: <CheckCircle className={sz} />, document_valide: <CheckCircle className={sz} />,
     objectif_atteint: <CheckCircle className={sz} />, reactivation: <CheckCircle className={sz} />,
     dossier_rejete: <AlertTriangle className={sz} />, suspension: <AlertTriangle className={sz} />,

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ConflictException, Delete, ForbiddenException, Get, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ConflictException, Delete, ForbiddenException, Get, Logger, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { Cooperative } from './cooperative.entity';
@@ -14,10 +14,13 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User, UserRole } from '../users/entities/user.entity';
 import { ScoresService } from '../scores/scores.service';
 import { stripSensitiveUserFields } from '../users/sanitize-user.util';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('cooperatives')
 export class CooperativesRestController {
+  private readonly logger = new Logger(CooperativesRestController.name);
+
   constructor(
     @InjectRepository(Cooperative) private readonly repo: Repository<Cooperative>,
     @InjectRepository(CooperativeMembre) private readonly membreRepo: Repository<CooperativeMembre>,
@@ -25,6 +28,7 @@ export class CooperativesRestController {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     private readonly scoresService: ScoresService,
     private readonly dataSource: DataSource,
+    private readonly notifService: NotificationsService,
   ) {}
 
   private async ensureCooperativeBesoinsTable(): Promise<void> {
@@ -681,7 +685,7 @@ export class CooperativesRestController {
 
     const totalDemande = normalized.reduce((sum, d) => sum + d.quantite, 0);
 
-    const stockRestant = await this.dataSource.transaction(async (entityManager) => {
+    const { stockRestant, unite } = await this.dataSource.transaction(async (entityManager) => {
       const stockRow = await entityManager.findOne(CooperativeStock, {
         where: { cooperativeId: coop.id, produit },
         lock: { mode: 'pessimistic_write' },
@@ -713,10 +717,61 @@ export class CooperativesRestController {
         await entityManager.save(CooperativeStockMouvement, mouvement);
       }
 
-      return Number(stockRow.quantite);
+      return { stockRestant: Number(stockRow.quantite), unite: stockRow.unite };
     });
 
+    // Notifie chaque destinataire APRÈS le commit (best-effort, jamais bloquant
+    // pour la distribution elle-même — même pattern que notifyCommande dans
+    // CommandesRestController). Sans ceci, le membre qui reçoit une part du
+    // pot commun n'en voit jamais la trace côté client (ni notif, ni historique).
+    await Promise.allSettled(
+      normalized.map((d) =>
+        this.notifService
+          .notifyDistributionStockCommun(d.membreId, produit, d.quantite, unite, coop.nom)
+          .catch((error) => {
+            this.logger.error(
+              `notifyDistributionStockCommun failed (membreId=${d.membreId})`,
+              error instanceof Error ? error.stack : String(error),
+            );
+          }),
+      ),
+    );
+
     return { success: true, persisted: true, stockRestant };
+  }
+
+  /**
+   * Historique des distributions REÇUES par le membre courant, tous produits
+   * et toutes coopératives confondus — lecture seule sur le même journal
+   * append-only que `distribution()` écrit (`cooperative_stock_mouvements`).
+   * C'est la vue "membre" du journal qui n'avait jusqu'ici de vue que côté
+   * coopérative (GET /cooperatives/stock, agrégé, pas nominatif).
+   */
+  @Get('mes-distributions')
+  async mesDistributions(@CurrentUser() currentUser: User) {
+    const userId = currentUser?.id;
+    if (!userId) return { distributions: [] };
+
+    const rows = await this.repo.query(
+      `SELECT m.id, m.produit, m.quantite, m.created_at, cs.unite
+         FROM cooperative_stock_mouvements m
+         LEFT JOIN cooperative_stock cs
+           ON cs.cooperative_id = m.cooperative_id AND cs.produit = m.produit
+        WHERE m.type = 'distribution' AND m.membre_id = $1
+        ORDER BY m.created_at DESC
+        LIMIT 30`,
+      [userId],
+    );
+
+    return {
+      distributions: rows.map((r: any) => ({
+        id: r.id,
+        produit: r.produit,
+        quantite: Number(r.quantite),
+        unite: r.unite || null,
+        createdAt: r.created_at,
+      })),
+    };
   }
 
   @Post('commandes/:id/cloture')

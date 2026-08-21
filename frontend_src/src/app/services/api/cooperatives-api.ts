@@ -173,4 +173,20 @@ export async function distribuerStockCommun(
   });
 }
 
+// Historique — lecture seule — des distributions REÇUES par l'utilisateur
+// courant en tant que membre (toutes coopératives confondues). Vue nominative
+// sur le même journal append-only que `distribuerStockCommun` écrit.
+export interface DistributionRecue {
+  id: string;
+  produit: string;
+  quantite: number;
+  unite: string | null;
+  createdAt: string;
+}
+
+export async function fetchMesDistributions(): Promise<{ distributions: DistributionRecue[] }> {
+  const data = await apiRequest<any>('/cooperatives/mes-distributions');
+  return { distributions: data?.distributions || [] };
+}
+
 
