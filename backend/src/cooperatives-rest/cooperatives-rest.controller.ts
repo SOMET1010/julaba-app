@@ -413,11 +413,19 @@ export class CooperativesRestController {
     const userId = currentUser?.id;
     if (!userId) return null;
 
+    // `cooperative_membres` n'a pas de colonne `created_at` (cf. entity
+    // CooperativeMembre / baseline schema : id, cooperative_id, membre_id,
+    // statut, role, date_adhesion, cotisation_payee, actif) -- ce ORDER BY
+    // faisait planter CETTE route en 500 dès qu'un utilisateur avait une
+    // adhésion, donc juste APRÈS un `POST /cooperatives/rejoindre/:id` réussi
+    // (le parcours d'adhésion complet ne pouvait jamais afficher « Ma
+    // coopérative » ensuite). `date_adhesion` (YYYY-MM-DD, posée par
+    // rejoindre()/addMembre()) est la seule colonne réellement chronologique.
     const adhesions = await this.membreRepo.query(
       `SELECT id, cooperative_id, membre_id, statut, role, date_adhesion
        FROM cooperative_membres
        WHERE membre_id = $1
-       ORDER BY created_at DESC NULLS LAST
+       ORDER BY date_adhesion DESC NULLS LAST
        LIMIT 1`,
       [userId],
     );
@@ -435,22 +443,33 @@ export class CooperativesRestController {
       }
     }
 
+    // La table `cooperatives` ne porte réellement que id/nom/zone_id/
+    // responsable_id/actif/created_at/updated_at/commune_id (cf. Cooperative
+    // entity + migration 1780900000000-AddCoordsToCommunesAndCommuneIdToCooperatives) :
+    // il n'y a jamais eu de colonnes marche/commune/responsable_nom/fonction/
+    // contact sur cette table -- ce SELECT plantait systématiquement en 500
+    // ("column does not exist"). `commune_id` n'est pas déclaré sur l'entité
+    // TypeORM (choix volontaire, cf. commentaire de la migration ci-dessus),
+    // donc on le lit en SQL brut, avec la jointure vers `communes` qui porte
+    // le seul nom lisible réellement disponible pour cette info.
     const row = await this.repo.query(
-      `SELECT nom, marche, commune, responsable_nom, fonction, contact
-       FROM cooperatives WHERE id = $1 LIMIT 1`,
+      `SELECT com.nom AS commune_nom
+       FROM cooperatives c
+       LEFT JOIN communes com ON com.id = c.commune_id
+       WHERE c.id = $1 LIMIT 1`,
       [coop.id],
     );
-    const meta = row[0] || {};
+    const commune = row[0]?.commune_nom || null;
     return {
       id: coop.id,
-      nom: meta.nom || coop.nom,
-      marche: meta.marche || null,
-      commune: meta.commune || null,
-      fonction: meta.fonction || null,
-      contact: meta.contact || null,
+      nom: coop.nom,
+      marche: null,
+      commune,
+      fonction: null,
+      contact: null,
       statut_membre: adhesion.statut || null,
       role_membre: adhesion.role || null,
-      responsable_nom: meta.responsable_nom || responsable_nom || null,
+      responsable_nom: responsable_nom || null,
       date_adhesion: adhesion.date_adhesion || null,
     };
   }
@@ -871,11 +890,20 @@ export class CooperativesRestController {
 
   @Get('liste')
   async liste() {
+    // Cf. la note détaillée dans maCooperative() ci-dessus : `cooperatives`
+    // n'a jamais eu de colonnes marche/commune/responsable_nom/fonction/
+    // contact -- ce SELECT plantait la route en 500 sur toute base migrée
+    // (BLOQUANT : c'est cet endpoint qui alimente le menu déroulant "Rejoindre
+    // une coopérative" côté marchand). Seule `commune` a une vraie source de
+    // donnée (jointure vers `communes` via commune_id) ; les autres champs
+    // sont volontairement absents de la réponse -- le frontend les traite déjà
+    // comme optionnels (cf. useCooperativesListe.ts / FicheIdentificationDynamique.tsx).
     const rows = await this.repo.query(
-      `SELECT id, nom, marche, commune, responsable_nom, fonction, contact
-       FROM cooperatives
-       WHERE actif = true
-       ORDER BY nom ASC`,
+      `SELECT c.id, c.nom, com.nom AS commune
+       FROM cooperatives c
+       LEFT JOIN communes com ON com.id = c.commune_id
+       WHERE c.actif = true
+       ORDER BY c.nom ASC`,
     );
     return rows;
   }
