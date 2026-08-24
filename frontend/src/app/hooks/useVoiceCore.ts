@@ -168,6 +168,17 @@ const ACK_PHRASES_ENCOURAGEMENT = [
   "C'est du bon travail !",
 ];
 
+// Accusé de réception par intent — un « c'est noté, ta VENTE... » universel
+// induisait en erreur pour les autres écritures confirmées (réappro, ouverture/
+// fermeture de journée) : on annonce ce qui vient vraiment d'être fait.
+const ACK_CONFIRMATION: Record<string, { text: string; clip?: string }> = {
+  vendre: { text: "C'est noté, ta vente est bien enregistrée.", clip: "vente_enregistree" },
+  depense: { text: "C'est noté, ta dépense est enregistrée." },
+  reappro: { text: "C'est noté, ton stock est mis à jour." },
+  ouvrir_journee: { text: "C'est noté." },
+  fermer_journee: { text: "C'est noté." },
+};
+
 function randomPick(arr: string[]): string {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -660,7 +671,8 @@ export function useVoiceCore({
     try {
       const data = pendingResponse; setPendingResponse(null);
       // Voix réelle de Tata Nanti Lou pour l'accusé de réception (phrase fixe).
-      await ttsSpeak("C'est noté, ta vente est bien enregistrée.", "french", "vente_enregistree");
+      const ack = ACK_CONFIRMATION[data.intent] || { text: "C'est noté." };
+      await ttsSpeak(ack.text, "french", ack.clip);
       await executeAction(data, data.transcript || "", true); // déjà confirmé -> enregistrer
     } finally {
       confirmingRef.current = false;

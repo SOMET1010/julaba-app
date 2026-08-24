@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, Minus, Trash2, ShoppingCart, X, Check, ArrowLeft, Package, FileText } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, ShoppingCart, X, Check, ArrowLeft, Package, FileText, Mic } from 'lucide-react';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { useApp } from '../../contexts/AppContext';
 import { useNavigate } from 'react-router';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { CreditModal } from './CreditModal';
+import { VenteVocaleModal } from './VenteVocaleModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { partagerRecu } from '../../utils/recu.utils';
@@ -52,6 +53,10 @@ export function POSCaisse() {
   const [search, setSearch] = useState('');
   const [showCart, setShowCart] = useState(false);
   const [showCredit, setShowCredit] = useState(false);
+  // Vendre à la voix DEPUIS la caisse (audit vocal, P3) : avant, il fallait
+  // revenir à l'accueil pour parler à Tata Nanti Lou — la voix et la caisse
+  // étaient déconnectées. Le panier reste le même (CaisseContext partagé).
+  const [showVente, setShowVente] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
 
   // Montant libre « Autre article » (Phase 3, lot 1) : vendre sans produit listé.
@@ -255,6 +260,11 @@ export function POSCaisse() {
             <span style={{ fontSize:12, fontWeight:700, color:'white' }}>À crédit</span>
           </motion.button>
           )}
+          <motion.button whileTap={{ scale:0.9 }} onClick={() => setShowVente(true)}
+            aria-label="Vendre à la voix"
+            style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+            <Mic size={16} color="white" />
+          </motion.button>
           <motion.button whileTap={{ scale:0.9 }} onClick={() => setShowCart(true)}
             style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
             <ShoppingCart size={16} color="white" />
@@ -627,6 +637,11 @@ export function POSCaisse() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Vendre à la voix DEPUIS la caisse (P3) — même modal que l'accueil, le
+          panier (CaisseContext) est partagé : les lignes dictées apparaissent
+          directement dans le panier en cours d'encaissement. */}
+      <VenteVocaleModal isOpen={showVente} onClose={() => setShowVente(false)} />
 
       {/* Crédit désactivé en pilote espèces : le modal n'est jamais monté (les
           boutons déclencheurs sont masqués ; ce garde interdit tout accès résiduel). */}

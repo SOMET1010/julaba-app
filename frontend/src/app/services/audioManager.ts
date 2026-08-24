@@ -28,6 +28,8 @@
  * Node sans DOM ni speechSynthesis.
  */
 
+import { tataUiClipForText } from "./tataUiClips";
+
 export type VoicePriority = "user" | "auto";
 export type PlayResult = "ended" | "failed" | "cancelled";
 
@@ -251,9 +253,25 @@ function runExclusive(job: (myGen: number) => Promise<void>, opts?: VoiceOptions
 
 // ── API publique ──────────────────────────────────────────────────────────────
 
-/** Fait parler (voix navigateur). Priorité 'user' par défaut (interrompt). */
+/**
+ * Fait parler l'appli. Uniformisation voix (audit vocal, P7) : si le texte
+ * correspond exactement à l'un des 137 clips « Tata Nanti Lou », on joue la
+ * VRAIE voix ivoirienne au lieu de la voix de synthèse du navigateur — sans
+ * changer un seul appelant (AppContext.speak, dire()/POSCaisse, tuiles
+ * d'accueil…). Correspondance exacte normalisée uniquement : si le texte ne
+ * matche aucun clip, on retombe sur la voix de secours habituelle.
+ */
 export function speak(text: string, opts?: VoiceOptions): Promise<void> {
   if (!text?.trim()) return Promise.resolve();
+  const clipUrl = tataUiClipForText(text);
+  if (clipUrl) {
+    return runExclusive(async (g) => {
+      const res = await playHandle(_clipPlayer({ url: clipUrl }), g);
+      if (res === "failed" && _generation === g && !_muted) {
+        await playHandle(_ttsPlayer(text), g);
+      }
+    }, { priority: "user", ...opts });
+  }
   return runExclusive((g) => playHandle(_ttsPlayer(text), g).then(() => {}), {
     priority: "user",
     ...opts,
@@ -263,6 +281,15 @@ export function speak(text: string, opts?: VoiceOptions): Promise<void> {
 /** Annonce automatique (n'interrompt jamais, ne s'empile pas ; dédup conseillée). */
 export function speakAuto(text: string, opts?: Omit<VoiceOptions, "priority">): Promise<void> {
   if (!text?.trim()) return Promise.resolve();
+  const clipUrl = tataUiClipForText(text);
+  if (clipUrl) {
+    return runExclusive(async (g) => {
+      const res = await playHandle(_clipPlayer({ url: clipUrl }), g);
+      if (res === "failed" && _generation === g && !_muted) {
+        await playHandle(_ttsPlayer(text), g);
+      }
+    }, { ...opts, priority: "auto" });
+  }
   return runExclusive((g) => playHandle(_ttsPlayer(text), g).then(() => {}), {
     ...opts,
     priority: "auto",
