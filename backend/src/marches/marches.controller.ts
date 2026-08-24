@@ -38,17 +38,35 @@ export class MarchesController {
     @Query('actif') actif?: string,
     @Query('exclude_statut') excludeStatut?: string,
   ) {
+    // `commune` n'est pas toujours une colonne litterale : pour un marche cree
+    // via le chemin officiel (BackOffice > Zones, `zoneId` obligatoire), elle
+    // est derivee du nom de la zone (COALESCE(m.commune, z.nom)) plutot que
+    // dupliquee. Seul un marche "suggere librement" par un identificateur
+    // (POST /marches/suggestion, sans zone) porte une valeur litterale.
+    // `responsable_nom`/`responsable_contact` ne sont alimentes par AUCUN
+    // chemin de creation existant : ils ne sont donc plus selectionnes (le
+    // frontend les traite deja comme optionnels, cf. `marche.responsable_nom &&`
+    // dans BOModeration.tsx).
+    const baseSelect = `
+      SELECT m.id, m.nom, m.zone_id, m.adresse, m.latitude, m.longitude,
+             m.type, m.actif, m.description, m.created_at, m.updated_at,
+             COALESCE(m.commune, z.nom) AS commune, m.statut,
+             CASE WHEN z.id IS NULL THEN NULL ELSE json_build_object(
+               'id', z.id, 'nom', z.nom, 'ville', z.ville, 'region', z.region
+             ) END AS zone
+      FROM marches m
+      LEFT JOIN zones z ON z.id = m.zone_id`;
+
     const excludeEnAttente = excludeStatut === 'en_attente';
     const excludeSql = excludeEnAttente
-      ? ` AND COALESCE(statut, '') <> 'en_attente'`
+      ? ` AND COALESCE(m.statut, '') <> 'en_attente'`
       : '';
 
     if (statut) {
       return this.repo.query(
-        `SELECT id, nom, commune, statut, latitude, longitude, responsable_nom, responsable_contact, actif
-         FROM marches
-         WHERE statut = $1${excludeSql}
-         ORDER BY nom ASC`,
+        `${baseSelect}
+         WHERE m.statut = $1${excludeSql}
+         ORDER BY m.nom ASC`,
         [statut],
       );
     }
@@ -63,32 +81,33 @@ export class MarchesController {
     }
     if (commune) {
       return this.repo.query(
-        `SELECT id, nom, commune, statut, latitude, longitude, responsable_nom, responsable_contact, actif
-         FROM marches
-         WHERE commune = $1 AND actif = true${excludeSql}
-         ORDER BY nom ASC`,
+        `${baseSelect}
+         WHERE COALESCE(m.commune, z.nom) = $1 AND m.actif = true${excludeSql}
+         ORDER BY m.nom ASC`,
         [commune],
       );
     }
     const whereClause = excludeEnAttente
-      ? ` WHERE COALESCE(statut, '') <> 'en_attente'`
+      ? ` WHERE COALESCE(m.statut, '') <> 'en_attente'`
       : '';
     return this.repo.query(
-      `SELECT id, nom, commune, statut, latitude, longitude, responsable_nom, responsable_contact, actif
-       FROM marches${whereClause}
-       ORDER BY commune ASC, nom ASC`,
+      `${baseSelect}${whereClause}
+       ORDER BY COALESCE(m.commune, z.nom) ASC, m.nom ASC`,
     );
   }
 
   @Post('suggestion')
   @UseGuards(JwtAuthGuard)
-  async suggest(@Body() body: any, @Req() req: any) {
-    const userId = req.user?.id;
+  async suggest(@Body() body: any, @Req() _req: any) {
+    // Suggestion "libre" : pas de zone associee (l'identificateur ne connait
+    // que le nom de sa commune). `soumis_par` (auteur) n'existe pas en base et
+    // n'est lu nulle part cote frontend : non persiste (evite une colonne
+    // fantome de plus plutot que d'ajouter une colonne jamais affichee).
     const [inserted] = await this.repo.query(
-      `INSERT INTO marches (nom, commune, statut, soumis_par, actif)
-       VALUES ($1, $2, 'en_attente', $3, true)
+      `INSERT INTO marches (nom, commune, statut, actif)
+       VALUES ($1, $2, 'en_attente', true)
        RETURNING id, nom, commune, statut`,
-      [body.nom, body.commune, userId ?? null],
+      [body.nom, body.commune],
     );
 
     await this.notificationsService.sendToAdmins({
@@ -129,8 +148,10 @@ export class MarchesController {
         [body.statut, actif, id],
       );
       const [row] = await this.repo.query(
-        `SELECT id, nom, commune, statut, responsable_nom, responsable_contact, actif
-         FROM marches WHERE id = $1`,
+        `SELECT m.id, m.nom, COALESCE(m.commune, z.nom) AS commune, m.statut, m.actif
+         FROM marches m
+         LEFT JOIN zones z ON z.id = m.zone_id
+         WHERE m.id = $1`,
         [id],
       );
       return row ?? { success: true };

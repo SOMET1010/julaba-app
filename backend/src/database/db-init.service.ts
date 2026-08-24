@@ -400,6 +400,30 @@ export class DbInitService {
       this.logger.warn('Erreur colonnes GPS communes/cooperatives: ' + message);
     }
 
+    // ── marches.commune / marches.statut (selecteur "Marche" identificateur) ─
+    // Miroir de la migration 1781400000000-MarchesCommuneStatut : sur une base
+    // VIERGE, `synchronize` construit `marches` depuis l'entite `Marche`, qui
+    // NE declare PAS ces deux colonnes (design volontaire, meme raisonnement
+    // que GPS communes/cooperatives ci-dessus) — la migration seule ne suffit
+    // donc pas. `marches.controller.ts` (`GET /marches`, `POST
+    // /marches/suggestion`, `PATCH /marches/:id`) les lit/ecrit en SQL brut ;
+    // sans elles l'endpoint plantait en 500 des la premiere requete, y compris
+    // pour un marche cree via le chemin TypeORM propre (zoneId), ce qui
+    // bloquait totalement le selecteur "Marche" de la fiche d'identification
+    // marchand.
+    try {
+      await this.dataSource.query(
+        `ALTER TABLE marches ADD COLUMN IF NOT EXISTS commune VARCHAR(255);`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE marches ADD COLUMN IF NOT EXISTS statut VARCHAR(50);`,
+      );
+      this.logger.log('Colonnes marches.commune/statut vérifiées');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur colonnes marches.commune/statut: ' + message);
+    }
+
     // bpay_transactions : table en SQL brut (paiement B-Pay), sans entité.
     try {
       await this.dataSource.query(`
