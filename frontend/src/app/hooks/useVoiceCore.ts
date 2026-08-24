@@ -66,6 +66,12 @@ export interface VoiceCoreContext {
   prenom?: string;
   lang?: VoiceLang;
   module?: string;
+  /** Rôle de l'utilisateur ('marchand' par défaut côté intentLocal) — distinct de
+   *  `module`, qui n'est pas toujours un rôle (ex. VenteVocaleModal passe "caisse").
+   *  Sert à ne reconnaître localement les intents marchand (réappro, navigation
+   *  /marchand/*, crédit) que dans un contexte marchand (TantieSagesseModal est
+   *  partagé par tous les rôles via BottomBar). */
+  role?: string;
   genre?: string;
   userId?: string;
   nombreVentes?: number;
@@ -792,7 +798,7 @@ export function useVoiceCore({
         return;
       }
 
-      const local = texte ? intentLocal(texte) : null;
+      const local = texte ? intentLocal(texte, context.role) : null;
       if (local) {
         clearThinkingTimer();
         await handleResponse(local as Partial<VoiceProcessResponse>, texte);
@@ -825,7 +831,7 @@ export function useVoiceCore({
       // C'est ce chemin qu'empruntent les exemples « ce que tu peux dire » et le
       // mot-réveil : avant, il passait par le serveur (mort) et donnait « souci
       // technique » au tout début. Désormais, tout est compris localement.
-      const local = intentLocal(text);
+      const local = intentLocal(text, context.role);
       if (local) {
         clearThinkingTimer();
         // #8 : on remonte le vrai succès de l'enregistrement (true seulement si

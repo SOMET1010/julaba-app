@@ -49,9 +49,11 @@ function resultat(
 
 /**
  * @param texte transcription brute (STT on-device)
+ * @param role rôle de l'utilisateur (défaut 'marchand', pour compat des appelants
+ *   historiques qui ne le précisent pas — tous des surfaces marchand-only).
  * @returns la réponse locale, ou null si non reconnu avec assez de confiance.
  */
-export function intentLocal(texte: string): LocalVoiceResult | null {
+export function intentLocal(texte: string, role: string = 'marchand'): LocalVoiceResult | null {
   if (!texte || !texte.trim()) return null;
   const p = extraire(texte);
 
@@ -74,6 +76,15 @@ export function intentLocal(texte: string): LocalVoiceResult | null {
         : `Dépense de ${fmt(p.montant!)} francs${p.produit ? ` pour ${p.produit}` : ''}, c'est bien ça ?`;
     return resultat(texte, intent, action, response, { needsConfirmation: true });
   }
+
+  // ── Réappro, crédit et navigation : concepts propres à la caisse marchand
+  // (StockContext/CaisseContext, routes /marchand/*). TantieSagesseModal est
+  // partagé par TOUS les rôles (BottomBar) — sans ce garde, un producteur ou
+  // une coopérative disant « va au stock » serait envoyé vers une route
+  // marchand qui n'existe pas pour son rôle. Hors marchand, on ne reconnaît
+  // simplement pas ces phrases (comportement inchangé, pas de mauvaise
+  // redirection) en attendant une carte de routes dédiée par rôle.
+  if (role !== 'marchand') return null;
 
   // ── Réappro : stock reçu (« j'ai reçu 20 tomates ») — écriture non
   // financière, toujours confirmée avant application (comme vente/dépense).

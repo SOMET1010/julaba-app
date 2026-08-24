@@ -668,7 +668,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const speak = async (text: string) => {
     if (!text?.trim()) return;
-    if (user?.role !== 'marchand') return;
+    // Avant : bloqué pour tout rôle != marchand — les boutons « écouter » et
+    // speak() de 20+ composants producteur/coopérative (déjà écrits, jamais
+    // fonctionnels) ne faisaient rien silencieusement (audit vocal §6).
     if (voiceMuted) return;
     // Plus de garde « if (isSpeaking) return » : une action utilisateur DOIT
     // pouvoir interrompre l'annonce en cours. Le chef d'orchestre (audioManager)
