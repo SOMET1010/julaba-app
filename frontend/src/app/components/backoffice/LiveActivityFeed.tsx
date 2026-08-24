@@ -177,7 +177,7 @@ function getLineOneDetail(event: ActivityEventWithDevice, type: LiveActivityType
     && typeof event.montant === 'number'
     && Number.isFinite(event.montant);
   const amount = showMontant
-    ? ` - ${formatMontantFCFA(event.montant)}`
+    ? ` - ${formatMontantFCFA(event.montant ?? 0)}`
     : '';
   return `${actor}${amount}`;
 }

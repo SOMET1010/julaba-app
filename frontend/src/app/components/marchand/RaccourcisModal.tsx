@@ -188,7 +188,7 @@ export function RaccourcisModal({ isOpen, onClose }: Props) {
                       <motion.button key={t.id} whileTap={{ scale: 0.97 }}
                         onClick={() => setType(t.id)}
                         className="p-3 rounded-2xl flex items-center gap-2 font-bold text-sm border-2 transition-all"
-                        style={{ background: type === t.id ? `${t.color}15` : 'white', borderColor: type === t.id ? t.color : '#E5E7EB', color: type === t.id ? t.color : '#6B7280' }}>
+                        style={{ background: type === t.id ? `${t.color}15` : 'white', borderColor: type === t.id ? t.color : '#E5E7EB', color: type === t.id ? t.color : 'var(--encre-3)' }}>
                         <t.Icon className="w-4 h-4" />
                         {t.label}
                       </motion.button>
@@ -242,7 +242,7 @@ export function RaccourcisModal({ isOpen, onClose }: Props) {
                       <motion.button key={n.path} whileTap={{ scale: 0.97 }}
                         onClick={() => setNavPath(n.path)}
                         className="p-3 rounded-2xl font-bold text-sm border-2 transition-all"
-                        style={{ background: navPath === n.path ? `${P}15` : 'white', borderColor: navPath === n.path ? P : '#E5E7EB', color: navPath === n.path ? P : '#6B7280' }}>
+                        style={{ background: navPath === n.path ? `${P}15` : 'white', borderColor: navPath === n.path ? P : '#E5E7EB', color: navPath === n.path ? P : 'var(--encre-3)' }}>
                         {n.label}
                       </motion.button>
                     ))}

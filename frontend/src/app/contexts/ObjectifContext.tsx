@@ -2,6 +2,7 @@ import { useApp } from './AppContext';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import * as audioManager from '../services/audioManager';
 import { nextObjectifAlert } from './objectifAlerts';
+import { API_URL } from '../utils/api';
 
 interface ObjectifState {
   objectif: number;
@@ -34,7 +35,7 @@ export function ObjectifProvider({ children, ventes }: { children: React.ReactNo
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/objectifs/today', { credentials: 'include', headers: headers() });
+      const res = await fetch(`${API_URL}/objectifs/today`, { credentials: 'include', headers: headers() });
       if (res.ok) {
         const data = await res.json();
         setState(data);
@@ -71,11 +72,11 @@ export function ObjectifProvider({ children, ventes }: { children: React.ReactNo
     if (alert === 'p50') {
       audioManager.speakAuto(`Félicitations ! Tu as atteint 50% de ton objectif. Continue ma chère, tu es sur la bonne voie !`, { dedupeKey: 'objectif-50', minRepeatMs: 5 * 60 * 1000 });
       setState(s => ({ ...s, alerte50: true }));
-      fetch('/api/v1/objectifs/alerte', { method: 'PATCH', credentials: 'include', headers: headers(), body: JSON.stringify({ alerte50: true }) });
+      fetch(`${API_URL}/objectifs/alerte`, { method: 'PATCH', credentials: 'include', headers: headers(), body: JSON.stringify({ alerte50: true }) });
     } else if (alert === 'p80') {
       audioManager.speakAuto(`Bravo ! Tu es à 80% de ton objectif. Plus que ${Math.round(state.objectif - ventes).toLocaleString('fr-FR')} FCFA, allez courage !`, { dedupeKey: 'objectif-80', minRepeatMs: 5 * 60 * 1000 });
       setState(s => ({ ...s, alerte80: true }));
-      fetch('/api/v1/objectifs/alerte', { method: 'PATCH', credentials: 'include', headers: headers(), body: JSON.stringify({ alerte80: true }) });
+      fetch(`${API_URL}/objectifs/alerte`, { method: 'PATCH', credentials: 'include', headers: headers(), body: JSON.stringify({ alerte80: true }) });
     } else if (alert === 'p100') {
       audioManager.speakAuto(`Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère !`, { dedupeKey: 'objectif-100', minRepeatMs: 10 * 60 * 1000 });
     }
@@ -84,8 +85,9 @@ export function ObjectifProvider({ children, ventes }: { children: React.ReactNo
   const setObjectif = useCallback(async (montant: number) => {
     if (!state.objectif) setLoading(true);
     try {
-      const res = await fetch('/api/v1/objectifs/today', {
+      const res = await fetch(`${API_URL}/objectifs/today`, {
         method: 'POST',
+        credentials: 'include',
         headers: headers(),
         body: JSON.stringify({ objectif: montant }),
       });

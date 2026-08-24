@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as audioManager from '../../services/audioManager';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Mail, Bell, Globe, Save, ChevronRight, LogOut, X, Lock, Moon, Sun, Check, Smartphone, Monitor, Trash2, LogIn, Wifi,
@@ -65,7 +66,7 @@ const parseUserAgent = (ua: string): string => {
 };
 
 // ── Rôles config ──────────────────────────────────────────────────────────────
-const ROLE_LABELS: Record<BORoleType, string> = {
+const ROLE_LABELS: Partial<Record<BORoleType | 'admin', string>> = {
   super_admin: 'Super Administrateur',
   admin_national: 'Admin National',
   gestionnaire_zone: 'Gestionnaire de Zone',
@@ -73,7 +74,7 @@ const ROLE_LABELS: Record<BORoleType, string> = {
   admin: 'Administrateur',
 };
 
-const ROLE_COLORS: Record<BORoleType, string> = {
+const ROLE_COLORS: Partial<Record<BORoleType | 'admin', string>> = {
   super_admin: BO_PRIMARY,
   admin_national: '#3B82F6',
   gestionnaire_zone: '#10B981',
@@ -81,7 +82,7 @@ const ROLE_COLORS: Record<BORoleType, string> = {
   admin: '#6366F1',
 };
 
-const ROLE_DESCRIPTIONS: Record<BORoleType, string> = {
+const ROLE_DESCRIPTIONS: Partial<Record<BORoleType | 'admin', string>> = {
   super_admin: 'Accès complet à tous les modules et paramètres',
   admin_national: 'Gestion opérationnelle nationale',
   gestionnaire_zone: 'Supervision de zone territoriale',
@@ -270,16 +271,12 @@ export function BOProfil() {
   if (!boUser) return null;
 
   // ── Synthèse vocale ──
+  // Via l'audioManager (hygiène post-audit C4) : voix FR stable, créneau
+  // exclusif — un clip en cours est coupé au lieu de jouer sous l'utterance.
   const speak = (text: string) => {
     if (voiceMuted) return;
     stopChunkedSpeaking();
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'fr-FR';
-      utterance.rate = 0.95;
-      window.speechSynthesis.speak(utterance);
-    }
+    try { void audioManager.speak(text); } catch { /* ignore */ }
   };
 
   // ── Gestionnaires ──

@@ -8,13 +8,18 @@ import './styles/fonts.css';
 import './styles/theme.css';
 import './styles/tailwind.css';
 import './styles/index.css';
+import './styles/tokens.css';
+import './styles/soleil.css';
+// Mode SOLEIL (confort visuel) : ré-applique le choix mémorisé dès le démarrage.
+import { appliquerConfortAuDemarrage } from './app/utils/confortVisuel';
+appliquerConfortAuDemarrage();
 
 // ── Auth mobile : jeton en en-tête Authorization ──────────────────────────────
-// Les cookies cross-domaine (julaba-web julaba-api) sont BLOQUÉS par les
-// navigateurs mobiles (surtout en navigation privée) la connexion « réussissait »
+// Les cookies cross-domaine (julaba-web ↔ julaba-api) sont BLOQUÉS par les
+// navigateurs mobiles (surtout en navigation privée) → la connexion « réussissait »
 // puis l'appli te croyait déconnectée (« retour au début »). On envoie donc le
 // jeton stocké (localStorage) en en-tête sur chaque appel à NOTRE API. Le backend
-// accepte déjà « Authorization: Bearer … » en plus du cookie connexion fiable
+// accepte déjà « Authorization: Bearer … » en plus du cookie → connexion fiable
 // partout, sans dépendre du cookie.
 (() => {
   const origFetch = window.fetch.bind(window);
@@ -46,23 +51,11 @@ import('./app/voice-offline/offlineStt')
   })
   .catch(() => { /* ignore */ });
 
-// Ré-échauffe aussi la VOIX NEURONALE (TTS sherpa-onnx) si installée : le worker
-// WASM se charge en tâche de fond pour que la première phrase parte sans latence.
-import('./app/services/sherpaTts')
-  .then(({ warmSherpaTtsIfInstalled }) => {
-    const warm = () => warmSherpaTtsIfInstalled();
-    if ('requestIdleCallback' in window) (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(warm);
-    else setTimeout(warm, 3000);
-  })
-  .catch(() => { /* ignore */ });
-
-// NB : le MOTEUR VOCAL HORS-LIGNE (sherpa-onnx ~128 Mo, ou Vosk ~40 Mo en repli)
-// n'est JAMAIS téléchargé tout seul — même en Wi-Fi. C'est un choix qui appartient
-// à la marchande : elle l'installe via le bouton « Installer le mode hors-ligne »
-// (double validation + avertissement clair). On ne décide jamais à sa place, on ne
-// bloque jamais. Le ré-échauffement au boot est SANS RÉSEAU (cache uniquement).
-// Les CLIPS de la voix (~7 Mo, même origine) restent, eux, embarqués d'office
-// (ci-dessous) : c'est la voix propre de l'appli, pas de coût de données à surprise.
+// NB : le moteur vocal (sherpa-onnx) est EMBARQUÉ dans l'application Android —
+// plus aucun téléchargement de modèle (l'ancien moteur Vosk et ses ~40 Mo sont
+// retirés, voir docs/INCLUSION.md). Les CLIPS de la voix (~7 Mo) restent, eux,
+// embarqués d'office (ci-dessous) : c'est la voix propre de l'appli, pas de coût
+// de données à surprise.
 
 // Précharge les clips de la voix « Tata Nanti Lou » (lecture instantanée + cache
 // hors-ligne). Différé pour ne pas ralentir le premier affichage.
@@ -72,6 +65,13 @@ import('./app/services/tataVoice')
     if ('requestIdleCallback' in window) (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(go);
     else setTimeout(go, 2500);
   })
+  .catch(() => { /* ignore */ });
+
+// Packs de voix (V1) : recharge le dernier manifeste validé puis tente un
+// rafraîchissement réseau. Jamais bloquant — sans manifeste, l'appli garde
+// exactement sa voix embarquée.
+import('./app/services/voicePacksRuntime')
+  .then(({ initVoicePacks }) => { void initVoicePacks(); })
   .catch(() => { /* ignore */ });
 
 const root = document.getElementById('root');
@@ -105,15 +105,6 @@ if ('serviceWorker' in navigator) {
     if (reloading || !hadController) return;
     reloading = true;
     window.location.reload();
-  });
-
-  window.addEventListener('pagehide', () => {
-    // Fermeture / navigation de l'onglet : libère les moteurs vocaux hors-ligne
-    // (recognizer STT + worker TTS) pour ne pas laisser le WASM et l'AudioContext
-    // vivre au-delà de la page. Sans effet visible — juste du nettoyage.
-    import('./app/voice-offline/disposeVoice')
-      .then((m) => m.disposeVoiceEngines())
-      .catch(() => { /* silencieux */ });
   });
 
   window.addEventListener('load', () => {

@@ -209,7 +209,7 @@ export default function SignalementModal({ acteur, onClose, onSuccess }: Props) 
                     border: selected ? `2px solid ${BO_PRIMARY}` : '0.5px solid #E5E7EB',
                     background: selected ? BO_PRIMARY_BG : '#FFFFFF',
                     borderRadius: 12,
-                    color: selected ? BO_DARK : '#6B7280',
+                    color: selected ? BO_DARK : 'var(--encre-3)',
                     fontWeight: selected ? 500 : 400,
                   }}
                 >

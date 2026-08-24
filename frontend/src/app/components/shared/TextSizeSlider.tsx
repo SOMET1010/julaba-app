@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { motion } from 'motion/react';
+import { appliquerTailleTexteAuDocument, zoomPourTaille } from '../../utils/tailleTexte';
 
 interface TextSizeSliderProps {
   value: number;
@@ -7,23 +8,28 @@ interface TextSizeSliderProps {
   color: string;
 }
 
-const FONT_SIZES = [11, 12, 13, 15, 17, 19, 22];
 const LABELS = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'MAX'];
 
+// Curseur de taille du texte — branché sur un ZOOM réel (utils/tailleTexte) :
+// tout grandit, cibles tactiles comprises, comme le mode soleil (les deux se
+// multiplient). Avant v5.0.0.15 il n'écrivait qu'une variable quasi sans
+// consommateur : il était cosmétique.
 export function TextSizeSlider({ value, onChange, color }: TextSizeSliderProps) {
   useEffect(() => {
-    document.documentElement.style.setProperty('--font-size', FONT_SIZES[value] + 'px');
+    appliquerTailleTexteAuDocument(value);
   }, [value]);
+
+  const zoom = zoomPourTaille(value);
 
   return (
     <div style={{ padding: '16px 20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <p style={{ fontWeight: 700, color: '#111827' }}>Taille du texte</p>
+        <p style={{ fontWeight: 700, color: 'var(--encre)' }}>Taille du texte</p>
         <span style={{
           fontSize: 11, fontWeight: 700, color: color,
           backgroundColor: `${color}15`, padding: '3px 10px', borderRadius: 20,
         }}>
-          {LABELS[value]} — {FONT_SIZES[value]}px
+          {LABELS[value]} — {Math.round(zoom * 100)} %
         </span>
       </div>
 
@@ -52,7 +58,7 @@ export function TextSizeSlider({ value, onChange, color }: TextSizeSliderProps) 
               style={{
                 fontSize: 10,
                 fontWeight: i === value ? 700 : 400,
-                color: i === value ? color : '#d1d5db',
+                color: i === value ? color : 'var(--encre-4)',
               }}
             >
               {l}
@@ -72,7 +78,7 @@ export function TextSizeSlider({ value, onChange, color }: TextSizeSliderProps) 
           border: `1.5px solid ${color}20`,
         }}
       >
-        <p style={{ fontSize: FONT_SIZES[value], color: '#374151', lineHeight: 1.5 }}>
+        <p style={{ fontSize: Math.round(15 * zoom), color: 'var(--encre-2)', lineHeight: 1.5 }}>
           Vente de manioc — 500 FCFA
         </p>
       </motion.div>

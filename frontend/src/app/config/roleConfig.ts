@@ -18,6 +18,8 @@ export const ROLE_COLORS = {
 export type RoleType = keyof typeof ROLE_COLORS;
 
 export interface RoleConfig {
+  /** Rôle porté par certaines configs (lu par RoleDashboard). */
+  role?: 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur';
   name: string;
   primaryColor: string;
   gradientFrom: string;

@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { SharedModal } from './Modal';
 import { RoleType } from '../../config/roleConfig';
 import { useScoreJULABA, SCORE_LEVELS } from '../../hooks/useScoreJULABA';
+import { FinancialScoreDetailModal } from './FinancialScoreDetailModal';
 
 // ─── TEXTES PAR RÔLE ──────────────────────────────────────────────────────────
 type RoleOnboardingTexts = {
@@ -112,6 +113,11 @@ interface ScoreOnboardingModalProps {
   role: RoleType;
   primaryColor: string;
   onStartActions?: () => void;
+  /** Id de l'utilisateur courant — nécessaire pour charger son VRAI score
+   * financier (GET /financial-score/:userId) depuis l'étape Bénéfices. */
+  userId?: string;
+  /** Synthèse vocale optionnelle, cohérente avec le reste du parcours Score. */
+  speak?: (text: string) => void;
 }
 
 export function ScoreOnboardingModal({
@@ -121,6 +127,8 @@ export function ScoreOnboardingModal({
   role,
   primaryColor,
   onStartActions,
+  userId,
+  speak,
 }: ScoreOnboardingModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(1); // 1 = next, -1 = prev
@@ -264,10 +272,12 @@ export function ScoreOnboardingModal({
 
                   {/* Étape 3 : Bénéfices */}
                   {currentStep === 3 && (
-                    <Step3 
-                      scoreData={scoreData} 
+                    <Step3
+                      scoreData={scoreData}
                       primaryColor={primaryColor}
                       role={role}
+                      userId={userId}
+                      speak={speak}
                     />
                   )}
 
@@ -525,16 +535,22 @@ function Step2({
 /* ========================================
    ÉTAPE 3 : BÉNÉFICES
 ======================================== */
-function Step3({ 
-  scoreData, 
+function Step3({
+  scoreData,
   primaryColor,
   role,
-}: { 
-  scoreData: any; 
+  userId,
+  speak,
+}: {
+  scoreData: any;
   primaryColor: string;
   role: RoleType;
+  userId?: string;
+  speak?: (text: string) => void;
 }) {
   const texts = getRoleTexts(role);
+  const [showFinancialDetail, setShowFinancialDetail] = useState(false);
+
   return (
     <div className="space-y-6 w-full">
       {/* Icône */}
@@ -560,41 +576,79 @@ function Step3({
 
       {/* Liste des bénéfices */}
       <div className="space-y-3">
-        {scoreData.benefits.map((benefit: any, index: number) => (
-          <motion.div
-            key={index}
-            className={`flex items-start gap-3 p-3 rounded-2xl ${
-              benefit.unlocked ? 'bg-green-50' : 'bg-gray-50'
-            }`}
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.1 }}
-            whileHover={benefit.unlocked ? { scale: 1.02, x: 5 } : {}}
-          >
-            {benefit.unlocked ? (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{
-                  type: 'spring',
-                  stiffness: 500,
-                  delay: index * 0.1 + 0.2,
-                }}
+        {scoreData.benefits.map((benefit: any, index: number) => {
+          // Le microcrédit (icon 'Keiwa') n'est PAS un palier calculé depuis ce
+          // score de gamification : on ouvre l'écran du VRAI score financier
+          // (GET /financial-score/:userId) au lieu d'afficher un montant estimé.
+          const isMicrocredit = benefit.icon === 'Keiwa';
+          const content = (
+            <>
+              {benefit.unlocked ? (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 500,
+                    delay: index * 0.1 + 0.2,
+                  }}
+                >
+                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                </motion.div>
+              ) : (
+                <Lock className="w-5 h-5 text-gray-400 flex-shrink-0" />
+              )}
+              <div className="flex-1 text-left">
+                <p className={`text-sm font-bold ${
+                  benefit.unlocked ? 'text-gray-900' : 'text-gray-500'
+                }`}>
+                  {benefit.label}
+                </p>
+                {isMicrocredit && (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Voir ton score financier réel et le montant auquel tu es éligible
+                  </p>
+                )}
+              </div>
+              {isMicrocredit && (
+                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 self-center" />
+              )}
+            </>
+          );
+
+          if (isMicrocredit) {
+            return (
+              <motion.button
+                key={index}
+                type="button"
+                onClick={() => setShowFinancialDetail(true)}
+                className="w-full flex items-start gap-3 p-3 rounded-2xl bg-green-50 text-left"
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ scale: 1.02, x: 5 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-              </motion.div>
-            ) : (
-              <Lock className="w-5 h-5 text-gray-400 flex-shrink-0" />
-            )}
-            <div className="flex-1 text-left">
-              <p className={`text-sm font-bold ${
-                benefit.unlocked ? 'text-gray-900' : 'text-gray-500'
-              }`}>
-                {benefit.label}
-              </p>
-            </div>
-          </motion.div>
-        ))}
+                {content}
+              </motion.button>
+            );
+          }
+
+          return (
+            <motion.div
+              key={index}
+              className={`flex items-start gap-3 p-3 rounded-2xl ${
+                benefit.unlocked ? 'bg-green-50' : 'bg-gray-50'
+              }`}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={benefit.unlocked ? { scale: 1.02, x: 5 } : {}}
+            >
+              {content}
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Message d'encouragement */}
@@ -606,6 +660,14 @@ function Step3({
       >
         {texts.step3Encouragement}
       </motion.p>
+
+      <FinancialScoreDetailModal
+        isOpen={showFinancialDetail}
+        onClose={() => setShowFinancialDetail(false)}
+        userId={userId}
+        primaryColor={primaryColor}
+        speak={speak}
+      />
     </div>
   );
 }

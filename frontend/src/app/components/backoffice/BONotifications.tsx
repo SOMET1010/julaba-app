@@ -143,10 +143,10 @@ export function BONotifications() {
         category: 'systeme',
         lu: true,
         icon: Activity,
-        titre: log.action,
+        titre: log.action ?? '',
         desc: `${log.utilisateurBO} - ${log.acteurImpacte || log.module}`,
         region: 'National',
-        temps: new Date(log.date).toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }),
+        temps: new Date(log.date ?? '').toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }),
         action: '/backoffice/audit',
         actionLabel: 'Voir logs',
       });

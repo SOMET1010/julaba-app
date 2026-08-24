@@ -9,6 +9,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 
 import { extraire } from './extraction';
+import { plurielNom } from '../services/dialoguesTata';
 
 const fmt = (n: number) => n.toLocaleString('fr-FR');
 
@@ -48,9 +49,14 @@ export function intentLocal(texte: string): LocalVoiceResult | null {
   if (p.montant != null) action.montant = p.montant;
   if (intent === 'depense' && p.produit) action.description = p.produit;
 
+  // Accord du pluriel (« Vente de 2 tomates », pas « 2 tomate ») — même règle
+  // que les dialogues de la vente guidée.
+  const nomProduit = p.produit
+    ? (p.quantite && p.quantite > 1 ? plurielNom(p.produit) : p.produit)
+    : 'produit';
   const response =
     intent === 'vendre'
-      ? `Vente de ${p.quantite ? `${p.quantite} ` : ''}${p.produit ?? 'produit'} pour ${fmt(p.montant!)} francs, c'est bien ça ?`
+      ? `Vente de ${p.quantite ? `${p.quantite} ` : ''}${nomProduit} pour ${fmt(p.montant!)} francs, c'est bien ça ?`
       : `Dépense de ${fmt(p.montant!)} francs${p.produit ? ` pour ${p.produit}` : ''}, c'est bien ça ?`;
 
   return {

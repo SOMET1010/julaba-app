@@ -112,3 +112,61 @@ export function isKnownRole(role: string | undefined | null): boolean {
   const normalized = normalizeRole(role);
   return Object.values(UserRoleUI).includes(normalized) || BO_ROLES.includes(role);
 }
+
+// ── Garde de route (AppLayout) : rôle primaire + cumul coopérative ──
+// ROLE_ROUTES ne connaît qu'UN préfixe par rôle primaire. Or un utilisateur
+// peut CUMULER un rôle primaire (ex: marchand) et une adhésion à une
+// coopérative (User.estMembreCooperative) — cf. backend
+// resolveUserCooperative() dans cooperatives-rest.controller.ts, qui
+// autorise déjà TOUT membre (pas seulement le président/rôle "cooperative")
+// à consulter et alimenter le Stock commun (GET/POST /cooperatives/stock*).
+// Sans cette liste, un marchand-membre légitime tapant /cooperative/stock
+// se faisait renvoyer silencieusement vers /marchand par la garde
+// mono-rôle — le défaut corrigé ici.
+// N'ajouter une route ici que si le backend l'autorise réellement à un
+// simple membre (pas au seul responsable) : ne pas ouvrir tout /cooperative.
+const CROSS_ROLE_ROUTES: ReadonlyArray<{ role: UserRoleUI; prefix: string }> = [
+  { role: UserRoleUI.MARCHAND, prefix: '/cooperative/stock' },
+];
+
+export interface RouteAccessResult {
+  allowed: boolean;
+  /** Préfixe "maison" du rôle primaire — cible de redirection si refusé. */
+  allowedPrefix: string;
+  /**
+   * true quand le refus est dû à une absence de lien coopérative sur une
+   * route en cumul de rôle : refus légitime (pas un bug), à signaler
+   * clairement à l'utilisateur plutôt que de rediriger en silence.
+   */
+  deniedForMissingCooperative: boolean;
+}
+
+export function checkRouteAccess(
+  role: string | undefined | null,
+  pathname: string,
+  estMembreCooperative?: boolean,
+): RouteAccessResult {
+  const normalizedRole = normalizeRole(role);
+  const allowedPrefix = ROLE_ROUTES[normalizedRole] || '/';
+
+  if (pathname.startsWith(allowedPrefix)) {
+    return { allowed: true, allowedPrefix, deniedForMissingCooperative: false };
+  }
+
+  const isBackoffice = pathname.startsWith('/backoffice') || pathname.startsWith('/admin');
+  if (isBackoffice && !!role && ['super_admin', 'admin', 'admin_national'].includes(role)) {
+    return { allowed: true, allowedPrefix, deniedForMissingCooperative: false };
+  }
+
+  const crossRoleMatch = CROSS_ROLE_ROUTES.find(
+    (r) => r.role === normalizedRole && pathname.startsWith(r.prefix),
+  );
+  if (crossRoleMatch) {
+    if (estMembreCooperative) {
+      return { allowed: true, allowedPrefix, deniedForMissingCooperative: false };
+    }
+    return { allowed: false, allowedPrefix, deniedForMissingCooperative: true };
+  }
+
+  return { allowed: false, allowedPrefix, deniedForMissingCooperative: false };
+}

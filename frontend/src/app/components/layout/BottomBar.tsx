@@ -291,7 +291,7 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
                             <Icon 
                               className="w-6 h-6 relative z-10 transition-all" 
                               style={{ 
-                                color: active ? activeColor : '#9CA3AF',
+                                color: active ? activeColor : 'var(--encre-4)',
                                 filter: active ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' : 'none',
                               }}
                               strokeWidth={active ? 2.5 : 2}
@@ -302,7 +302,7 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
                           <motion.span
                             className="text-xs font-medium transition-all"
                             style={{ 
-                              color: active ? activeColor : '#9CA3AF',
+                              color: active ? activeColor : 'var(--encre-4)',
                             }}
                             animate={active ? {
                               scale: [1, 1.05, 1],

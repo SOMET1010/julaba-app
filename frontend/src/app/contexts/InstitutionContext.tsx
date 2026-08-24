@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { InstitutionPermissions } from './BackOfficeContext';
 import { API_URL } from '../utils/api';
-import { apiRequest } from '../../imports/api-client';
+import { apiRequest } from '../services/api/api-client';
 
 export interface Institution {
   id: string;

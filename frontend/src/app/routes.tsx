@@ -6,6 +6,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import { EntryGate } from './components/auth/EntryGate';
 import { LoginPassword } from './components/auth/LoginPassword';
 import { ChangePasswordScreen } from './components/auth/ChangePasswordScreen';
+import { ActivationScreen } from './components/auth/ActivationScreen';
 import { UnregisteredPhone } from './components/auth/UnregisteredPhone';
 import { Welcome } from './components/auth/Welcome';
 import { BORoot } from './components/backoffice/BORoot';
@@ -43,6 +44,14 @@ export const router = createBrowserRouter([
       { path: "/welcome", element: <Welcome /> },
       { path: "/login", element: <LoginPassword /> },
       { path: '/change-password', element: <ChangePasswordScreen /> },
+      { path: '/activation', element: <ActivationScreen /> },
+      // Console interne du Studio Voice (enregistrement des clips de Tata) —
+      // outil d'équipe local au navigateur, aucune donnée ni écriture serveur.
+      { path: "/studio-voix", element: L(() => import("./pages/StudioVoix")), errorElement: <ErrorFallback /> },
+      // Studio v1 : collecte terrain par élicitation + validation par paires.
+      // Squelette (backlog V5) — file locale, pas de synchro serveur.
+      { path: "/collecte-voix", element: L(() => import("./pages/CollecteVoix")), errorElement: <ErrorFallback /> },
+      { path: "/collecte-voix/validation", element: L(() => import("./pages/ValidationCollecte")), errorElement: <ErrorFallback /> },
       ...(isDev ? [{ path: "/dev-mode", element: L(() => import("./pages/DevModeHome").then(m => ({ default: m.DevModeHome }))), errorElement: <ErrorFallback /> }] : []),
       ...diagnosticRoutes,
 
@@ -62,6 +71,8 @@ export const router = createBrowserRouter([
         { path: "parametres", element: L(() => import("./components/marchand/Parametres").then(m => ({ default: m.Parametres }))), errorElement: <ErrorFallback /> },
         { path: "cooperative", element: L(() => import("./components/marchand/MaCooperative").then(m => ({ default: m.MaCooperative }))), errorElement: <ErrorFallback /> },
         { path: "cooperative/besoin", element: L(() => import("./components/marchand/BesoinMarchand").then(m => ({ default: m.BesoinMarchand }))), errorElement: <ErrorFallback /> },
+        { path: "tontines", element: L(() => import("./components/marchand/Tontines").then(m => ({ default: m.Tontines }))), errorElement: <ErrorFallback /> },
+        { path: "tontines/:id", element: L(() => import("./components/marchand/TontineDetail").then(m => ({ default: m.TontineDetail }))), errorElement: <ErrorFallback /> },
         { path: "protection-sociale", element: L(() => import("./components/marchand/ProtectionSociale").then(m => ({ default: m.ProtectionSociale }))), errorElement: <ErrorFallback /> },
         { path: "fidelite", element: L(() => import("./components/marchand/Fidelite").then(m => ({ default: m.Fidelite }))), errorElement: <ErrorFallback /> },
         { path: "academy", element: L(() => import("./components/academy/UniversalAcademy").then(m => ({ default: m.UniversalAcademy }))), errorElement: <ErrorFallback /> },

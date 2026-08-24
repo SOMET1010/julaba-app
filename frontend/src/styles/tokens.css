@@ -1,0 +1,54 @@
+/* ────────────────────────────────────────────────────────────────────────
+   TOKENS DE COULEUR Julaba (contraste v2 — docs/INCLUSION.md §2.4).
+
+   Les styles inline consomment ces variables (`color:'var(--encre-3)'`) :
+   le mode SOLEIL les surcharge PROPREMENT, sans sélecteurs d'attribut ni
+   !important. En mode normal, les valeurs sont IDENTIQUES à la palette
+   historique → zéro changement visuel.
+
+   Migration PROGRESSIVE : écrans migrés à ce jour — POSCaisse,
+   MarchandAccueilVoice, VentesPassees, ResumeCaisse (v5.0.0.3), puis
+   GestionStock, MarchandDepenses, CreditModal, DepenseForm, WalletPage,
+   WalletInline (v5.0.0.5). Les écrans non migrés restent couverts par les
+   sélecteurs d'attribut de soleil.css.
+   Cohérence vérifiée par `npm run test:tokens`.
+   ──────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Texte, du plus fort au plus discret */
+  --encre: #1a1206;      /* titres, montants, texte principal */
+  --encre-2: #5a4a3a;    /* texte secondaire */
+  --encre-3: #8A7A6A;    /* sous-libellés */
+  --encre-4: #aaaaaa;    /* indications discrètes */
+  /* Traits et séparations */
+  --trait: #EDE7DE;
+}
+
+/* MODE SOLEIL : encres poussées vers le noir/brun, traits affirmés. */
+html.soleil {
+  --encre: #000000;
+  --encre-2: #3D2B1E;
+  --encre-3: #5C4432;
+  --encre-4: #5C4432;
+  --trait: #C9B49A;
+}
+
+/* MODE SOMBRE : encres inversées vers le clair (palette de styles/index.css).
+   Sans ce bloc, les écrans migrés aux tokens gardaient leur encre NOIRE sur
+   le fond sombre — texte invisible. Les classes soleil/dark sont exclusives
+   (arbitre unique : app/utils/confortVisuel). */
+html.dark {
+  --encre: #F5F0EB;
+  --encre-2: #D4C8BC;
+  --encre-3: #B8A898;
+  --encre-4: #9F8F7F;
+  --trait: #5B5248;
+}
+
+/* Utilitaires d'ENCRE (repeigne visuel, lot 1) : mêmes tokens que les styles
+   inline, pour les endroits écrits en classes. Suivent soleil ET sombre —
+   contrairement aux text-gray-* de Tailwind que le mode soleil ne voit pas. */
+.encre   { color: var(--encre); }
+.encre-2 { color: var(--encre-2); }
+.encre-3 { color: var(--encre-3); }
+.encre-4 { color: var(--encre-4); }

@@ -8,6 +8,7 @@ import {
   Clock, Send, ShieldCheck, Info, Zap, Trophy, Save,
   UserCircle, Sun, Glasses,
   ShoppingCart, LayoutGrid, Box,
+  KeyRound, Copy, Check,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import {
@@ -23,7 +24,7 @@ import { useZones, type Zone } from '../../contexts/ZoneContext';
 import { useCooperativesListe } from '../../hooks/useCooperativesListe';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { toast } from 'sonner';
 import { SOUS_PROFILS_MARCHAND, type SousProfilMarchand } from '../../types/sousProfilMarchand';
 /* ═══════════════════════════════════════════════════
@@ -654,7 +655,7 @@ function BigSelect({ value, onChange, options, placeholder, color, disabled, id,
         disabled={disabled}
         value={value} onChange={(e) => onChange(e.target.value)}
         className={`w-full px-5 h-16 rounded-3xl border-2 border-gray-200 bg-white focus:outline-none appearance-none transition-all ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-        style={{ fontSize: '1.05rem', fontWeight: 500, color: value ? '#111827' : '#9CA3AF' }}
+        style={{ fontSize: '1.05rem', fontWeight: 500, color: value ? '#111827' : 'var(--encre-4)' }}
         aria-invalid={ariaProps['aria-invalid']}
         aria-describedby={ariaProps['aria-describedby']}
         aria-required={ariaProps['aria-required']}
@@ -763,7 +764,7 @@ function TagSelector({ options, values, onChange, color }: {
     else onChange([...values, opt]);
   };
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Selection multiple">
+    <div className="flex flex-wrap gap-2" role="group" aria-label="Sélection multiple">
       {options.map((opt) => {
         const sel = values.includes(opt);
         return (
@@ -869,13 +870,19 @@ export function FicheIdentificationDynamique() {
   const [verificationTel, setVerificationTel] = useState<'idle' | 'checking' | 'exists' | 'available'>('idle');
   const [gpsCapturing, setGpsCapturing] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // P0.0 (ADR-002) : le code d'activation à usage unique renvoyé par
+  // create-with-acteur — c'est le RÉSIDUEL ACCEPTÉ par l'ADR (l'identificateur le
+  // voit, à l'écran, pour le transmettre à la marchande sur-le-champ). Doit être
+  // affiché clairement ; ne jamais navigate() tant qu'il n'a pas été acquitté.
+  const [activationCode, setActivationCode] = useState<string | null>(null);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [signatureMode, setSignatureMode] = useState<'tactile' | 'clavier'>('tactile');
   const telAbortRef = React.useRef<AbortController | null>(null);
-  const submitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submitTimeoutRef = useRef<number | null>(null);
   // Garde unmount centralisée pour le composant principal
   // Utilisée par handleGPS, reverseGeocodeBackend, handleTelChange pour skip setState après démontage
   const isMountedRef = useRef(true);
@@ -996,7 +1003,7 @@ export function FicheIdentificationDynamique() {
   }, [profil]);
 
   // Ref exposée pour annulation manuelle du debounce avant cleanup post-submit
-  const draftSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftSaveTimeoutRef = useRef<number | null>(null);
 
   // Brouillon auto : sauvegarder à chaque changement (debouncé 500ms pour limiter I/O sessionStorage)
   useEffect(() => {
@@ -1752,7 +1759,7 @@ export function FicheIdentificationDynamique() {
         await loadIdentifications();
         if (!isMountedRef.current) return;
         setSubmitted(true);
-        submitTimeoutRef.current = setTimeout(() => {
+        submitTimeoutRef.current = window.setTimeout(() => {
           if (isMountedRef.current) navigate('/identificateur');
         }, 3000);
         return;
@@ -1818,6 +1825,11 @@ export function FicheIdentificationDynamique() {
       };
 
       let acteurId = '';
+      // Copie locale (synchrone) du code d'activation : `setActivationCode`
+      // est async/batché, donc le state React `activationCode` reste encore
+      // `null` plus bas dans CETTE MÊME exécution de handleSubmit — on ne peut
+      // pas s'y fier pour décider du toast / de l'auto-navigate ci-dessous.
+      let receivedActivationCode: string | null = null;
 
       try {
         let createData: any = null;
@@ -1843,6 +1855,15 @@ export function FicheIdentificationDynamique() {
         if (!isMountedRef.current) return;
 
         acteurId = (createData?.user?.id && typeof createData.user.id === 'string') ? createData.user.id : '';
+        // P0.0 (ADR-002) : le compte naît en_attente_activation, non-loginable.
+        // Le code renvoyé ici est LA seule façon de l'activer — s'il est perdu
+        // (jamais lu, jamais affiché), la marchande reste bloquée dehors tant
+        // qu'un identificateur ne réémet pas un code. On le capture donc
+        // systématiquement pour l'afficher sur l'écran de succès.
+        if (createData?.activationCode && typeof createData.activationCode === 'string') {
+          receivedActivationCode = createData.activationCode;
+          setActivationCode(createData.activationCode);
+        }
       } catch (e: any) {
         if (e instanceof DOMException && e.name === 'AbortError') return;
         console.warn('[handleSubmit] Exception create-with-acteur:', e?.message);
@@ -1899,13 +1920,30 @@ export function FicheIdentificationDynamique() {
       // Succès total - cleanup atomique brouillon AVANT toast.success (évite race debounce)
       clearDraftAndCancelDebounce();
 
-      toast.success('Dossier créé avec succès. Le compte sera validé sous 24-48h.');
+      // Le compte est créé MAINTENANT (en_attente_activation) — ce n'est pas la
+      // validation administrative du dossier (24-48h, distincte) qui le rend
+      // utilisable : c'est le code d'activation, à utiliser tout de suite sur le
+      // téléphone de la marchande. Message corrigé pour refléter l'articulation
+      // réelle activation ≠ validation admin (cf. auth.service login()).
+      toast.success(
+        receivedActivationCode
+          ? "Dossier créé. Compte en attente d'activation : transmets le code affiché à l'acteur maintenant."
+          : 'Dossier créé avec succès. Le dossier sera examiné par un administrateur sous 24-48h.'
+      );
       await loadIdentifications();
       if (!isMountedRef.current) return;
       setSubmitted(true);
-      submitTimeoutRef.current = setTimeout(() => {
-        if (isMountedRef.current) navigate('/identificateur');
-      }, 3000);
+      // Pas de retour automatique quand un code d'activation à usage unique et
+      // expirant (30 min) est affiché : l'identificateur doit avoir le temps de
+      // le lire/transmettre. Le retour se fait alors via un clic explicite
+      // (bouton "Continuer" de l'écran de succès). Fallback : si, pour une
+      // raison quelconque, aucun code n'a été reçu, on garde l'ancien
+      // comportement (retour auto) pour ne pas bloquer l'identificateur.
+      if (!receivedActivationCode) {
+        submitTimeoutRef.current = window.setTimeout(() => {
+          if (isMountedRef.current) navigate('/identificateur');
+        }, 3000);
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       console.warn('[FicheIdentificationDynamique] handleSubmit failed:', err instanceof Error ? err.message : err);
@@ -2071,6 +2109,58 @@ export function FicheIdentificationDynamique() {
             Dossier {cfg!.label} transmis avec succès
           </p>
 
+          {/* Code d'activation — P0.0 (ADR-002). Résiduel accepté : l'identificateur
+              le voit à l'écran pour le transmettre à la marchande sur-le-champ, sur
+              SON téléphone, où elle pose son propre secret. */}
+          {activationCode && (
+            <div className="rounded-3xl border-2 p-5 mb-4 shadow-sm" style={{ borderColor: '#F59E0B', background: 'linear-gradient(180deg, #FFFBEB 0%, #FFF7E8 100%)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                  <KeyRound className="w-5 h-5 text-amber-600" aria-hidden="true" />
+                </div>
+                <p className="font-black text-gray-900" style={{ fontSize: '0.95rem' }}>
+                  Code d'activation à transmettre maintenant
+                </p>
+              </div>
+
+              <div
+                role="status"
+                aria-live="polite"
+                className="bg-white rounded-2xl border-2 border-amber-200 py-4 px-3 text-center mb-3 select-all"
+                style={{ fontFamily: 'monospace', fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.06em', color: '#92400E', wordBreak: 'break-all' }}
+              >
+                {activationCode}
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(activationCode);
+                    setCodeCopied(true);
+                    window.setTimeout(() => { if (isMountedRef.current) setCodeCopied(false); }, 2000);
+                  } catch {
+                    // Copie indisponible (contexte non sécurisé, permission…) : le
+                    // code reste lisible et sélectionnable à l'écran, ce n'est pas
+                    // bloquant.
+                  }
+                }}
+                className="w-full rounded-xl py-2.5 mb-3 flex items-center justify-center gap-2"
+                style={{ background: '#FEF3C7', border: '1.5px solid #F59E0B', color: '#92400E', fontWeight: 700, fontSize: '0.85rem' }}
+              >
+                {codeCopied ? <Check className="w-4 h-4" aria-hidden="true" /> : <Copy className="w-4 h-4" aria-hidden="true" />}
+                {codeCopied ? 'Code copié' : 'Copier le code'}
+              </button>
+
+              <ul className="space-y-1.5" style={{ fontSize: '0.8rem', color: '#78350F' }}>
+                <li>• <strong>Lis-le à voix haute (ou montre l'écran) à {data.prenoms || 'l\'acteur'} maintenant.</strong></li>
+                <li>• Elle l'utilise sur SON téléphone pour choisir son propre code secret.</li>
+                <li>• Valable <strong>30 minutes</strong>, à <strong>usage unique</strong> — passé ce délai, il faudra en régénérer un.</li>
+                <li>• Sans cette étape, le compte reste bloqué et elle ne pourra pas se connecter.</li>
+              </ul>
+            </div>
+          )}
+
           {/* Workflow */}
           <div className="bg-white rounded-3xl border-2 border-amber-200 p-5 mb-4 shadow-sm">
             <div className="flex items-center gap-3 mb-4 pb-4 border-b-2 border-gray-100">
@@ -2088,7 +2178,7 @@ export function FicheIdentificationDynamique() {
                 { icon: FileText,   label: 'Vérification des docs',   desc: 'Photo, signature, GPS, données',        done: false, active: true  },
                 { icon: ShieldCheck,label: 'Contrôle de doublons',    desc: 'NIN, téléphone, biométrie',             done: false, active: false },
                 { icon: CheckCircle,label: 'Approbation superviseur', desc: 'Validation finale par le responsable',  done: false, active: false },
-                { icon: Users,      label: 'Création du compte',      desc: `Activation du compte ${cfg!.label}`,   done: false, active: false },
+                { icon: Users,      label: 'Clôture du dossier',      desc: activationCode ? 'Le compte existe déjà — archivage après contrôle' : `Activation du compte ${cfg!.label}`, done: false, active: false },
               ].map((item, i, arr) => {
                 const Icon = item.icon || Zap;
                 return (
@@ -2115,10 +2205,10 @@ export function FicheIdentificationDynamique() {
                       )}
                     </div>
                     <div className="flex-1 pb-4 pt-1">
-                      <p style={{ fontWeight: 700, fontSize: '0.92rem', color: item.done ? '#16A34A' : item.active ? '#D97706' : '#9CA3AF' }}>
+                      <p style={{ fontWeight: 700, fontSize: '0.92rem', color: item.done ? '#16A34A' : item.active ? '#D97706' : 'var(--encre-4)' }}>
                         {item.label}
                       </p>
-                      <p style={{ fontSize: '0.78rem', color: '#9CA3AF' }}>{item.desc}</p>
+                      <p style={{ fontSize: '0.78rem', color: 'var(--encre-4)' }}>{item.desc}</p>
                     </div>
                   </div>
                 );
@@ -2129,26 +2219,41 @@ export function FicheIdentificationDynamique() {
           <div className="bg-blue-50 rounded-2xl border-2 border-blue-100 p-4 mb-4 flex gap-3">
             <Info className="w-6 h-6 text-blue-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
-              <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1E40AF' }}>Aucun compte créé pour l’instant</p>
+              <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1E40AF' }}>
+                {activationCode ? 'Deux étapes distinctes' : 'Aucun compte créé pour l’instant'}
+              </p>
               <p style={{ fontSize: '0.82rem', color: '#3B82F6', lineHeight: '1.5', marginTop: 4 }}>
-                Le compte sera activé uniquement après approbation complète.
+                {activationCode
+                  ? "Le compte existe déjà (en attente d'activation) — active-le maintenant avec le code ci-dessus. La vérification du dossier ci-dessous, elle, est administrative et prend 24 à 48h : elle n'empêche pas l'activation."
+                  : 'Le compte sera activé uniquement après approbation complète.'}
               </p>
             </div>
           </div>
 
           <div className="bg-gray-50 rounded-2xl border-2 border-gray-200 p-4 text-center">
-            <p style={{ fontSize: '0.75rem', color: '#9CA3AF', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--encre-4)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
               Numéro de référence
             </p>
             <p className="font-black text-gray-900 mt-1" style={{ fontSize: '1.3rem', letterSpacing: '0.08em' }}>
               {data.numeroId || submittedNumeroRef.current}
             </p>
-            <p style={{ fontSize: '0.75rem', color: '#9CA3AF', marginTop: 4 }}>Conserve ce numéro pour le suivi</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--encre-4)', marginTop: 4 }}>Conserve ce numéro pour le suivi</p>
           </div>
 
-          <p className="text-center mt-5" style={{ fontSize: '0.82rem', color: '#9CA3AF' }}>
-            Retour automatique dans quelques secondes...
-          </p>
+          {activationCode ? (
+            <button
+              type="button"
+              onClick={() => { if (isMountedRef.current) navigate('/identificateur'); }}
+              className="w-full rounded-2xl py-3.5 mt-5"
+              style={{ background: cfg!.color, color: '#fff', fontWeight: 800, fontSize: '0.95rem' }}
+            >
+              J'ai transmis le code — Continuer
+            </button>
+          ) : (
+            <p className="text-center mt-5" style={{ fontSize: '0.82rem', color: 'var(--encre-4)' }}>
+              Retour automatique dans quelques secondes...
+            </p>
+          )}
         </motion.div>
       </div>
     );
@@ -2229,7 +2334,7 @@ export function FicheIdentificationDynamique() {
               <span style={{ fontSize: '0.72rem', color: cfg!.color, fontWeight: 700 }}>
                 {Math.round(progressPct)}% accompli
               </span>
-              <span style={{ fontSize: '0.72rem', color: '#9CA3AF' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--encre-4)' }}>
                 {totalSteps - step - 1} étape{totalSteps - step - 1 !== 1 ? 's' : ''} restante{totalSteps - step - 1 !== 1 ? 's' : ''}
               </span>
             </div>
@@ -2292,13 +2397,13 @@ export function FicheIdentificationDynamique() {
                   >
                     {done
                       ? <CheckCircle className="w-5 h-5 text-white" aria-hidden="true" />
-                      : <Icon className="w-5 h-5" style={{ color: active ? cfg!.color : '#9CA3AF' }} aria-hidden="true" />
+                      : <Icon className="w-5 h-5" style={{ color: active ? cfg!.color : 'var(--encre-4)' }} aria-hidden="true" />
                     }
                   </motion.div>
                   <span style={{
                     fontSize: cfg!.steps.length > 7 ? '0.55rem' : '0.6rem',
                     fontWeight: active || done ? 800 : 500,
-                    color: active ? cfg!.color : done ? cfg!.color : '#9CA3AF',
+                    color: active ? cfg!.color : done ? cfg!.color : 'var(--encre-4)',
                     textAlign: 'center',
                     lineHeight: '1.2',
                     whiteSpace: 'nowrap',
@@ -2752,7 +2857,7 @@ function DocumentsStep({ data, setField, errors, cfg }: {
   const color = cfg.color;
   const [nniStatus, setNniStatus] = React.useState<'idle'|'loading'|'found'|'notfound'>('idle');
   const [nniData, setNniData] = React.useState<any>(null);
-  const nniRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nniRef = React.useRef<number | null>(null);
   const nniAbortRef = React.useRef<AbortController | null>(null);
   const isMountedRef = React.useRef(true);
   const labelNniId = useId();
@@ -2813,7 +2918,7 @@ function DocumentsStep({ data, setField, errors, cfg }: {
   const handleNNI = (val: string) => {
     setField('nin', val);
     if (nniRef.current) clearTimeout(nniRef.current);
-    nniRef.current = setTimeout(() => lookupNNI(val), 800);
+    nniRef.current = window.setTimeout(() => lookupNNI(val), 800);
   };
 
   return (
@@ -4835,31 +4940,31 @@ function StepContent({
                         <motion.div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                           {data.cooperativeMarche && (
                             <motion.div>
-                              <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Marché</p>
+                              <p style={{ fontSize: '10px', color: 'var(--encre-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Marché</p>
                               <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, color: '#111827' }}>{data.cooperativeMarche}</p>
                             </motion.div>
                           )}
                           {data.cooperativeCommune && (
                             <motion.div>
-                              <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Commune</p>
+                              <p style={{ fontSize: '10px', color: 'var(--encre-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Commune</p>
                               <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, color: '#111827' }}>{data.cooperativeCommune}</p>
                             </motion.div>
                           )}
                           {data.cooperativeResponsable && (
                             <motion.div>
-                              <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Responsable</p>
+                              <p style={{ fontSize: '10px', color: 'var(--encre-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Responsable</p>
                               <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, color: '#111827' }}>{data.cooperativeResponsable}</p>
                             </motion.div>
                           )}
                           {data.cooperativeFonction && (
                             <motion.div>
-                              <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fonction</p>
+                              <p style={{ fontSize: '10px', color: 'var(--encre-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Fonction</p>
                               <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, color: '#111827' }}>{data.cooperativeFonction}</p>
                             </motion.div>
                           )}
                           {data.cooperativeContact && (
                             <motion.div style={{ gridColumn: '1 / -1' }}>
-                              <p style={{ fontSize: '10px', color: '#9CA3AF', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Contact</p>
+                              <p style={{ fontSize: '10px', color: 'var(--encre-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Contact</p>
                               <motion.div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <i className="ti ti-phone" style={{ fontSize: '13px', color: '#2072AF' }} aria-hidden="true" />
                                 <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, color: '#2072AF' }}>{data.cooperativeContact}</p>

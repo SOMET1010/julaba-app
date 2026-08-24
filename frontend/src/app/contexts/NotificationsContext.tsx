@@ -5,8 +5,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useApp } from './AppContext';
-import * as notificationsApi from '../../imports/notifications-api';
-import { NOT_AUTHENTICATED } from '../../imports/api-client';
+import * as notificationsApi from '../services/api/notifications-api';
+import { NOT_AUTHENTICATED } from '../services/api/api-client';
 import { WebSocketTransport } from '../services/WebSocketTransport';
 import { eventBus, EVENTS } from '../services/eventBus';
 import { API_URL } from '../utils/api';
@@ -23,6 +23,7 @@ export type NotifType =
   | 'nouvelle_commande' | 'paiement_recu' | 'offre_expiree' | 'recolte_proche'
   | 'evaluation_recue' | 'membre_ajoute' | 'contribution_recue'
   | 'paiement_collectif' | 'commande_groupee_validee' | 'distribution_prete'
+  | 'stock_commun_recu'
   | 'dossier_valide' | 'dossier_rejete' | 'objectif_atteint' | 'dossier_assigne'
   | 'pic_transaction' | 'baisse_activite' | 'nouveau_identificateur'
   | 'dossier_en_attente' | 'alerte_fraude' | 'creation_acteur'
@@ -44,6 +45,9 @@ export interface JulabaNotification {
   createdAt: string;
   priority: NotifPriority;
   actionLink?: string;
+  /** Catégorie et icône libres transmises par certains écrans (métadonnées). */
+  category?: string;
+  icon?: string;
   metadata?: Record<string, unknown>;
 }
 

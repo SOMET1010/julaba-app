@@ -8,8 +8,11 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8")) as { version?: string }
-const appVersion = pkg.version ?? "1.0.0"
+// Version APPLICATIVE à 4 chiffres (MAJEUR.MINEUR.CORRECTIF.LIVRAISON, voir
+// docs/VERSIONING.md) : portée par `appVersion` — le champ `version` npm reste
+// un semver valide à 3 chiffres (npm refuse 4 segments).
+const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8")) as { version?: string; appVersion?: string }
+const appVersion = pkg.appVersion ?? pkg.version ?? "1.0.0"
 
 let gitHash = "unknown"
 try {
@@ -22,33 +25,6 @@ try {
 const buildDate = new Date().toISOString().slice(0, 16).replace("T", " ")
 // Identifiant de version compact injecté partout : « <hash> · <date> ».
 const buildId = `${gitHash} · ${buildDate}`
-
-// ── COOP/COEP (cross-origin isolation) ──────────────────────────────────────
-// Requis par le runtime WASM sherpa-onnx (STT/TTS hors-ligne) : il est compilé
-// avec pthreads → SharedArrayBuffer → l'origine doit être « cross-origin
-// isolated ». Sans ces headers, offlineStt.ts bascule sur Vosk (repli) : aucun
-// impact sur le reste de l'appli. En production, les mêmes headers sont posés
-// par nginx (nginx/*.conf) et Render (render.yaml).
-function coopCoepHeaders(): Plugin {
-  return {
-    name: "julaba-coop-coep",
-    apply: "serve",
-    configureServer(server) {
-      server.middlewares.use((_req, res, next) => {
-        res.setHeader("Cross-Origin-Opener-Policy", "same-origin")
-        res.setHeader("Cross-Origin-Embedder-Policy", "credentialless")
-        next()
-      })
-    },
-    configurePreviewServer(server) {
-      server.middlewares.use((_req, res, next) => {
-        res.setHeader("Cross-Origin-Opener-Policy", "same-origin")
-        res.setHeader("Cross-Origin-Embedder-Policy", "credentialless")
-        next()
-      })
-    },
-  }
-}
 
 // Tamponne l'identifiant de build dans le service worker COPIÉ dans dist, ET y
 // injecte la liste des chunks de route à PRÉ-CHARGER pour le HORS-LIGNE.
@@ -109,7 +85,7 @@ function stampServiceWorker(outDir: string): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), coopCoepHeaders(), stampServiceWorker(path.resolve(__dirname, "../frontend/dist"))],
+  plugins: [react(), tailwindcss(), stampServiceWorker(path.resolve(__dirname, "../frontend/dist"))],
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
     __BUILD_HASH__: JSON.stringify(gitHash),

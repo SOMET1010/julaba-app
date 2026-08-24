@@ -61,17 +61,8 @@ const defaultTtsSplit = async (text: string): Promise<string[]> => {
   return splitIntoChunks(text);
 };
 const defaultTtsSpeakChunk = async (chunk: string): Promise<void> => {
-  // TTS neuronal OFFLINE (sherpa-onnx) AVANT la voix navigateur : si le moteur
-  // est installé, on dit la phrase avec la voix de Tata Nanti Lou ; sinon repli
-  // speakBrowser (jamais muet). Résout sur end/error ; stop() coupe les deux.
-  // Même si l'import dynamique du module échoue, on retombe sur la voix navigateur.
-  try {
-    const { speakChunkSherpaOrBrowser } = await import("./sherpaTts");
-    await speakChunkSherpaOrBrowser(chunk);
-  } catch {
-    const { speakBrowser } = await import("./elevenlabs");
-    await speakBrowser(chunk);
-  }
+  const { speakBrowser } = await import("./elevenlabs");
+  await speakBrowser(chunk); // résout sur end/error ; stop() coupe le synthé
 };
 let _ttsSplit = defaultTtsSplit;
 let _ttsSpeakChunk = defaultTtsSpeakChunk;
@@ -112,12 +103,6 @@ function realStartTts(text: string): Playback {
     } catch {
       /* ignore */
     }
-    // Coupe aussi la lecture sherpa-onnx (TTS neuronal) si elle est en cours.
-    import("./sherpaTts")
-      .then((m) => m.stopSherpaTts())
-      .catch(() => {
-        /* ignore */
-      });
     done("cancelled");
   };
   return { promise, stop };

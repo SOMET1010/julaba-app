@@ -3,26 +3,29 @@
  * JÙLABA — AppContext v3.0 (100% PostgreSQL via NestJS)
  * ═══════════════════════════════════════════════════════════════════
  * 
- * Auth JWT custom via NestJS
- * Authentification JWT
- * Chargement automatique données utilisateur
- * Synchronisation temps réel
- * Support offline/online
- * Tata Nanti Lou (ElevenLabs TTS)
+ * ✅ Auth JWT custom via NestJS
+ * ✅ Authentification JWT
+ * ✅ Chargement automatique données utilisateur
+ * ✅ Synchronisation temps réel
+ * ✅ Support offline/online
+ * ✅ Tata Nanti Lou (ElevenLabs TTS)
  */
 
 import { eventBus, EVENTS } from '../services/eventBus';
+import { topProduitsVentes, venteComptee } from '../services/statsVente';
+import { beneficeDepuisDetails } from '../services/margeVente';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { normalizeRole } from '../types/constants';
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import * as audioManager from '../services/audioManager';
 import { API_URL } from '../utils/api';
+import { jourLocal } from '../utils/jourLocal';
 import { enfilerOperation } from '../voice-offline/offlineCaisse';
 import { clearAuthClientState } from '../utils/clearAuthClientState';
 import { toProperCase } from '../utils/stringUtils';
 import { useUser } from './UserContext';
-import { setSuspendRefresh } from '../../imports/api-client';
+import { setSuspendRefresh } from '../services/api/api-client';
 import type { SousProfilMarchand } from '../types/sousProfilMarchand';
 
 export type UserRole = 'marchand' | 'producteur' | 'cooperative' | 'cooperateur' | 'institution' | 'identificateur' | 'administrateur';
@@ -112,20 +115,13 @@ export interface Transaction {
   source?: string;
   synced?: boolean;
   montant?: number;
+  statut?: string; // 'validee' | 'annulee' | … — pour l'annulation self-service (#20)
 }
 
 // Bénéfice d'une vente = somme des (total article − prix_achat × quantité) sur
-// ses articles (details). Le niveau transaction stockait 0 on recalcule ici
+// ses articles (details). Le niveau transaction stockait 0 → on recalcule ici
 // pour l'affichage marge/bénéfice, y compris sur les ventes existantes.
-function beneficeDepuisDetails(details: unknown): number {
-  if (!Array.isArray(details)) return 0;
-  return details.reduce((s: number, it: any) => {
-    const q = Number(it?.quantite) || 1;
-    const total = Number(it?.total) || (Number(it?.prix) || 0) * q;
-    const cout = (Number(it?.prix_achat ?? it?.prixAchat) || 0) * q;
-    return s + Math.max(0, total - cout);
-  }, 0);
-}
+// Logique extraite et testée dans services/margeVente.ts (règle « coût inconnu »).
 
 export interface DaySession {
   id: string;
@@ -160,7 +156,7 @@ export interface MarketplaceItem {
 interface AppContextType {
   // User & Auth
   user: User | null;
-  setUser: (user: User | null) => void;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
   isAuthenticated: boolean;
   accessToken: string | null;
   setAccessToken: (token: string | null) => void;
@@ -306,7 +302,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let finalUserResponse = userResponse;
 
       if (userResponse.status === 401) {
-        // Token expiré tenter refresh silencieux
+        // Token expiré → tenter refresh silencieux
         const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
@@ -428,7 +424,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           userId: tx.marchand_id || tx.user_id,
           type: tx.type,
           productName: tx.description || tx.produit || 'Depense',
-          quantity: 1,
+          quantity: Number(tx.quantite) || 1,
           price: Number(tx.montant) || 0,
           montant: Number(tx.montant) || 0,
           source: tx.source || 'kassa',
@@ -438,6 +434,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           totalMargin: Number(tx.marge) || beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
+          statut: tx.statut,
           synced: true,
         }));
 
@@ -480,13 +477,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Vérifier session au démarrage via cookie httpOnly /auth/me
+  // Vérifier session au démarrage via cookie httpOnly → /auth/me
   useEffect(() => {
     const checkSession = async () => {
       try {
         let res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
 
-        // Token expiré tenter refresh silencieux. On envoie le refresh token
+        // Token expiré → tenter refresh silencieux. On envoie le refresh token
         // stocké dans le corps (le cookie refresh est bloqué cross-domaine mobile).
         if (res.status === 401) {
           let storedRefresh: string | null = null;
@@ -621,12 +618,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Déconnexion
   const logout = async () => {
-    // Libère les moteurs vocaux hors-ligne (recognizer STT + worker TTS) :
-    // sans ça, un AudioContext ouvert consomme un slot Chrome et le WASM reste
-    // en mémoire après chaque déconnexion. Volontaire OU forcé (julaba:force-logout).
-    import('../voice-offline/disposeVoice')
-      .then((m) => m.disposeVoiceEngines())
-      .catch(() => { /* silencieux */ });
     try {
       await fetch(`${API_URL}/auth/logout`, {
         method: 'POST',
@@ -915,12 +906,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ═══════════════════════════════════════════════════════════════════
 
   const getTodayStats = () => {
-    const today = new Date().toISOString().split('T')[0];
+    // Jour LOCAL (appareil) des deux côtés de la comparaison — cf. utils/jourLocal.
+    // À Abidjan (UTC+0) identique à l'ancien jour UTC ; correct ailleurs.
+    const today = jourLocal();
     const todayTransactions = transactions.filter(
-      (t) => t.date.split('T')[0] === today
+      (t) => jourLocal(t.date) === today
     );
 
-    const ventesTransactions = todayTransactions.filter((t) => t.type === 'vente');
+    // Une vente ANNULÉE garde type==='vente' (le back-end gèle l'argent, il pose
+    // seulement statut='annulee') → on doit l'exclure de la caisse du jour, sinon
+    // « Ma caisse aujourd'hui » sur-compte des ventes déjà annulées (écart recette).
+    // Même règle que statsVente.venteComptee / CaisseContext.venteActive.
+    const ventesTransactions = todayTransactions.filter((t) => t.type === 'vente' && t.statut !== 'annulee');
 
     // Ventes ESPÈCES (transactions) : entrent en caisse ET dans les ventes.
     const ventesEspeces = ventesTransactions.reduce((acc, t) => acc + (t.montant || t.price * t.quantity || 0), 0);
@@ -928,7 +925,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Ventes À CRÉDIT du jour (table à part). Convention A :
     //  • le TOTAL s'ajoute aux « ventes du jour » (elle a bien vendu) ;
     //  • seul l'ACOMPTE reçu entre dans la caisse (le reste = créance au carnet).
-    const creditsAujourdhui = (creditsJour || []).filter((c) => (c.created_at || '').split('T')[0] === today);
+    const creditsAujourdhui = (creditsJour || []).filter((c) => jourLocal(c.created_at || '') === today);
     const ventesCredit = creditsAujourdhui.reduce((acc, c) => acc + (c.montant_total || 0), 0);
     const acomptesCredit = creditsAujourdhui.reduce((acc, c) => acc + (c.acompte || 0), 0);
 
@@ -980,7 +977,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           userId: tx.marchand_id || tx.user_id,
           type: tx.type,
           productName: tx.description || tx.produit || 'Depense',
-          quantity: 1,
+          quantity: Number(tx.quantite) || 1,
           price: Number(tx.montant) || 0,
           montant: Number(tx.montant) || 0,
           source: tx.source || 'kassa',
@@ -989,6 +986,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           totalMargin: Number(tx.marge) || beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
+          statut: tx.statut,
           synced: true,
         }));
         setTransactions(mappedTx);
@@ -1006,11 +1004,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getSalesHistory = (filters?: { startDate?: string; endDate?: string; productName?: string; paymentMethod?: string }) => {
     let filteredTransactions = transactions.filter((t) => t.type === 'vente');
 
-    if (filters?.startDate) {
-      filteredTransactions = filteredTransactions.filter((t) => new Date(t.date) >= new Date(filters.startDate));
+    const dateDebut = filters?.startDate;
+    if (dateDebut) {
+      filteredTransactions = filteredTransactions.filter((t) => new Date(t.date) >= new Date(dateDebut));
     }
-    if (filters?.endDate) {
-      filteredTransactions = filteredTransactions.filter((t) => new Date(t.date) <= new Date(filters.endDate));
+    const dateFin = filters?.endDate;
+    if (dateFin) {
+      filteredTransactions = filteredTransactions.filter((t) => new Date(t.date) <= new Date(dateFin));
     }
     if (filters?.productName) {
       filteredTransactions = filteredTransactions.filter((t) => t.productName.toLowerCase().includes((filters.productName ?? '').toLowerCase()));
@@ -1054,8 +1054,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     filteredTransactions = filteredTransactions.filter((t) => new Date(t.date) >= startDate && new Date(t.date) <= endDate);
 
+    // Une vente ANNULÉE (#20) ne compte dans aucun agrégat : CA, volume, top
+    // produits (règle unique : services/statsVente.ts → venteComptee). Cohérent
+    // avec l'écran « Ventes passées ».
     const totalVentes = filteredTransactions
-      .filter((t) => t.type === 'vente')
+      .filter((t) => t.type === 'vente' && venteComptee(t))
       .reduce((acc, t) => acc + (t.montant || t.price || 0), 0);
 
     const totalCahier = filteredTransactions
@@ -1064,25 +1067,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const beneficeNet = totalVentes - totalCahier;
 
-    const nombreVentes = filteredTransactions.filter((t) => t.type === 'vente').length;
+    const nombreVentes = filteredTransactions.filter((t) => t.type === 'vente' && venteComptee(t)).length;
     const nombreCahier = filteredTransactions.filter((t) => t.type === 'depense').length;
 
     const moyenneVente = nombreVentes > 0 ? totalVentes / nombreVentes : 0;
 
-    const topProduits = filteredTransactions
-      .filter((t) => t.type === 'vente')
-      .reduce((acc, t) => {
-        const existingProduct = acc.find((p) => p.productName === t.productName);
-        if (existingProduct) {
-          existingProduct.quantity += t.quantity;
-          existingProduct.total += t.price * t.quantity;
-        } else {
-          acc.push({ productName: t.productName, quantity: t.quantity, total: t.price * t.quantity });
-        }
-        return acc;
-      }, [] as { productName: string; quantity: number; total: number }[])
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
+    // Top produits : total = somme des montants (jamais price * quantity, car
+    // price porte deja le total -> gonflerait le CA), quantite = vraie quantite.
+    // Calcul pur et teste : services/statsVente.ts (bugs #10/#11).
+    const topProduits = topProduitsVentes(filteredTransactions, 5);
 
     return {
       totalVentes,

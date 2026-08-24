@@ -100,7 +100,7 @@ export function ProducteurProduction() {
       unite: 'kg',
       prixUnitaire: c.prixUnitaire,
       montantTotal: Number(c.total) || 0,
-      statut: c.statut === 'confirmee' ? 'acceptee' as const : c.statut as typeof c.statut,
+      statut: (c.statut === 'confirmee' ? 'acceptee' : c.statut) as CommandeMarche['statut'],
       dateCreation: c.dateCommande,
       dateLivraison: c.dateLivraison || '',
       modePaiement: c.modePaiement,

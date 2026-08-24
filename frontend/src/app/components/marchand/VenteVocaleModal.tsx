@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useLangPref } from "../../hooks/useLangPref";
 import { useVoiceCore } from "../../hooks/useVoiceCore";
-import { useWakeWord } from "../../hooks/useWakeWord";
-import { usePredictiveTTS } from "../../services/predictiveTTS";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Loader, CheckCircle, AlertCircle, ShieldCheck, WifiOff, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -12,7 +10,14 @@ import { useCaisse } from "../../contexts/CaisseContext";
 import { useObjectif, ObjectifProvider } from "../../contexts/ObjectifContext";
 import { useStock, type StockItem } from "../../contexts/StockContext";
 import { InstallerOffline } from "../../voice-offline/InstallerOffline";
-import { EngineBadge } from "../../voice-offline/EngineBadge";
+import { apparierProduit, construireLigneVocale, doitProposerCreation, noterRefusCreation } from "../../services/venteVocale";
+import { avertissementRupture } from "../../services/ruptureStock";
+import { guidageVocal } from "../../utils/accessMode";
+import { vibrerSucces } from "../../utils/haptique";
+import { SaisieGuidee } from "./SaisieGuidee";
+import { AJOUT_PANIER } from "../../services/dialoguesTata";
+import type { LigneProvisoire } from "../../services/ligneProvisoire";
+import { toast } from "sonner";
 import tantieImg from "../../../assets/images/tantie-vente-vocale.png";
 
 const P = "#C66A2C";
@@ -24,8 +29,8 @@ interface Props { isOpen: boolean; onClose: () => void; }
 export function VenteVocaleModal({ isOpen, onClose }: Props) {
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
-  const { user, currentSession, getTodayStats, setIsModalOpen } = useApp();
-  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats } = useCaisse();
+  const { user, currentSession, getTodayStats, setIsModalOpen, speak } = useApp();
+  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats, products, updateProduct, addProduct, addToCart } = useCaisse();
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
   const progression = objectifCtx?.progression ?? 0;
@@ -36,6 +41,36 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   const matchRaccourci = raccourcisCtx?.matchRaccourci ?? null;
   const stats = getTodayStats();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  // « J'ajoute ce produit à ta boutique ? » (unification vocale, lot 2) : après
+  // une vente d'un produit inconnu, Tata propose de le créer — les prochaines
+  // ventes seront alors appariées (stock, marge). Refus mémorisé PAR produit.
+  const [propositionProduit, setPropositionProduit] = useState<{ nom: string; prix: number } | null>(null);
+  const [creationEnCours, setCreationEnCours] = useState(false);
+  // Repli tactile (SPEC §8) : « saisir sans parler » — même parcours guidé au doigt.
+  const [saisieOuverte, setSaisieOuverte] = useState(false);
+  // La ligne confirmée va au PANIER (jamais enregistrée ici) — l'encaissement reste
+  // le chemin tactile existant.
+  //
+  // IMPORTANT — un SEUL appel mutateur de panier par ajout. addToCart et
+  // updateCartItemPrice recalculent tous deux depuis le `cart` figé de la closure du
+  // render : les enchaîner dans le même handler fait écraser l'ajout par le second
+  // (panier vidé). On fixe donc le prix DICTÉ directement dans le produit passé à
+  // addToCart (le négoce prime → on neutralise la promo catalogue), sans second appel.
+  const ajouterLigneAuPanier = (l: LigneProvisoire) => {
+    const prixU = l.prixUnitaire ?? 0;
+    const prod = l.produitId ? products.find(p => p.id === l.produitId) : null;
+    if (prod) {
+      // Produit APPARIÉ : vrai produit (prix d'achat → marge réelle, stock décrémenté
+      // à l'encaissement), au prix dicté.
+      addToCart({ ...prod, prix: prixU > 0 ? prixU : prod.prix, prix_promo: null, promo_fin: null }, l.quantite);
+    } else {
+      // Produit inconnu → ligne libre (comme « Autre article »).
+      addToCart({ id: 'libre-' + l.id, nom: l.nomAffiche, prix: prixU, categorie: 'Autre', stock: 0, unite: l.unite }, l.quantite);
+    }
+    vibrerSucces();
+    toast.success(`C'est dans le panier : ${l.quantite} × ${l.nomAffiche}`);
+    if (guidageVocal()) speak(AJOUT_PANIER);
+  };
   useEffect(() => {
     const on = () => setIsOnline(true); const off = () => setIsOnline(false);
     window.addEventListener("online", on); window.addEventListener("offline", off);
@@ -59,7 +94,42 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
       topStocks: topStocks || '',
       dernierProduit: dernierProduit || '',
     },
+    // Vente vocale UNIFIÉE avec le panier (Phase 5, lot 1) : le produit dicté est
+    // apparié au catalogue → la ligne porte productId, total (source de vérité)
+    // et prix d'achat unitaire (marge réelle), et le stock est décrémenté comme
+    // à la caisse. Sans appariement, la vente passe quand même (ligne libre).
     onAction: async (data) => {
+      const vendreUnifie = async (nomParle: string | undefined, quantite: number, montant: number, note: string) => {
+        const produitCat = apparierProduit(nomParle || "", products);
+        const ligne = construireLigneVocale({ nomParle, quantite, montant, produit: produitCat });
+        await enregistrerVente(montant, [ligne], "cash", note);
+        if (produitCat) {
+          // Rupture éventuelle (décision n°6) : calculée AVANT le décrément.
+          const avertRupture = avertissementRupture([
+            { nom: (produitCat as any).nom || (produitCat as any).name || nomParle || "ce produit", quantite, stockAvant: produitCat.stock || 0 },
+          ]);
+          // Décrément optimiste, comme POSCaisse. S'il échoue (hors-ligne…), la
+          // vente reste enregistrée ; le stock se resynchronisera au rechargement.
+          try { await updateProduct(produitCat.id, { stock: Math.max(0, (produitCat.stock || 0) - quantite) }); }
+          catch (e: any) { console.warn("[VenteVocaleModal] décrément stock impossible:", e?.message); }
+          // Avertir APRÈS la confirmation parlée de la vente, pour ne pas parler
+          // par-dessus (le serveur a déjà borné à 0 et journalisé le manquant, I3).
+          if (avertRupture && guidageVocal()) setTimeout(() => speak(avertRupture), 1400);
+        } else {
+          // Produit inconnu : proposer de l'ajouter à la boutique (en ligne
+          // seulement — la création parle au serveur). La question arrive APRÈS
+          // la confirmation parlée de la vente, pour ne pas parler par-dessus.
+          try {
+            if (navigator.onLine !== false && doitProposerCreation(window.localStorage, nomParle, products)) {
+              const nomPropre = (nomParle || '').trim();
+              setTimeout(() => {
+                setPropositionProduit({ nom: nomPropre, prix: ligne.prix });
+                if (guidageVocal()) speak(`Je ne connais pas ${nomPropre} dans ta boutique. Je l'ajoute ?`);
+              }, 2200);
+            }
+          } catch { /* jamais bloquant */ }
+        }
+      };
       const action = data.action;
       if (action?.type === "vendre") {
         // #4 : ne plus abandonner en silence (Tata Nanti Lou disait « c'est enregistré »
@@ -68,12 +138,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
         const montant = action.montant || 0;
         const quantite = action.quantite || 1;
         if (!montant || montant <= 0 || isNaN(montant)) return;
-        await enregistrerVente(
-          montant,
-          [{ nom: action.produit || "Produit vocal", quantite, prix_unitaire: Math.round(montant / quantite) }],
-          "cash",
-          "Vente " + (action.produit || "vocale")
-        );
+        await vendreUnifie(action.produit, quantite, montant, "Vente " + (action.produit || "vocale"));
       } else if (action?.type === "utiliser_raccourci") {
         const r = matchRaccourci ? matchRaccourci(action.declencheur || data.transcript || "") : null;
         if (r?.action?.type === "vendre") {
@@ -81,7 +146,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
           const montant = r.action.montant || 0;
           const quantite = r.action.quantite || 1;
           if (!montant || montant <= 0 || isNaN(montant)) return;
-          await enregistrerVente(montant, [{ nom: r.action.produit || "Produit", quantite, prix_unitaire: Math.round(montant / quantite) }], "cash", r.nom);
+          await vendreUnifie(r.action.produit, quantite, montant, r.nom);
         } else if (r?.action?.type === "depense") {
           const montant = r.action.montant || 0;
           if (!montant || montant <= 0 || isNaN(montant)) return;
@@ -112,10 +177,33 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
     onNavigate: (path) => { navigate(path); onClose(); },
   });
 
-  usePredictiveTTS({ module: "caisse", sessionOpen: !!(currentSession?.opened), hasVentes: (stats.ventes || 0) > 0, prenom: user?.prenoms || "ma chere", recentIntents: response ? [response.intent] : [] });
   // #2 : pendingCount/isReplaying viennent de l'UNIQUE file de useVoiceCore
   // (plus de seconde instance qui rejouait la file en double à la reconnexion).
   useEffect(() => { if (!isOpen) resetHistory(); }, [isOpen, resetHistory]);
+  useEffect(() => { if (!isOpen) { setPropositionProduit(null); setSaisieOuverte(false); } }, [isOpen]);
+
+  // Oui → création avec le prix unitaire DICTÉ (elle le corrigera dans Mon stock
+  // si besoin) ; stock 0 (à compléter). Non → refus mémorisé pour CE produit.
+  const accepterCreation = async () => {
+    if (!propositionProduit || creationEnCours) return;
+    setCreationEnCours(true);
+    try {
+      await addProduct({ nom: propositionProduit.nom, prix: propositionProduit.prix, categorie: 'Autre', stock: 0, unite: 'unité' });
+      vibrerSucces();
+      if (guidageVocal()) speak(`C'est fait. ${propositionProduit.nom} est dans ta boutique.`);
+    } catch {
+      if (guidageVocal()) speak("Ça n'a pas marché. Tu pourras l'ajouter depuis Mon stock.");
+    } finally {
+      setCreationEnCours(false);
+      setPropositionProduit(null);
+    }
+  };
+  const refuserCreation = () => {
+    if (!propositionProduit) return;
+    try { noterRefusCreation(window.localStorage, propositionProduit.nom); } catch { /* ignore */ }
+    if (guidageVocal()) speak("D'accord, on ne change rien.");
+    setPropositionProduit(null);
+  };
   useEffect(() => { setIsModalOpen(isOpen); return () => setIsModalOpen(false); }, [isOpen, setIsModalOpen]);
 
   const isRecording = state === "listening";
@@ -138,41 +226,11 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
     return { delay: i * 0.07, height: baseH, active };
   });
 
-  // ── MAINS LIBRES : mot-réveil « Julaba » ──────────────────────────────────
-  // Pour vendre sans toucher l'écran (deux mains prises). Écoute en continu et
-  // se déclenche sur « Julaba … ». Se met en pause pendant que l'assistante
-  // réfléchit/parle (pas de conflit micro, pas de boucle sur sa propre voix).
-  const [mainsLibres, setMainsLibres] = useState(() => {
-    try { return localStorage.getItem("julaba_mains_libres") === "1"; } catch { return false; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem("julaba_mains_libres", mainsLibres ? "1" : "0"); } catch { /* ignore */ }
-  }, [mainsLibres]);
-  const bipReveil = useCallback(() => {
-    try {
-      const AC = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AC();
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
-      g.gain.setValueAtTime(0.15, ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
-      o.start(); o.stop(ctx.currentTime + 0.18);
-    } catch { /* ignore */ }
-  }, []);
-  const { supported: wakeSupported } = useWakeWord({
-    enabled: mainsLibres && isOpen,
-    active: mainsLibres && isOpen && state === "idle" && !isSpeaking,
-    onWake: () => { bipReveil(); },
-    onCommand: (texte) => { bipReveil(); void sendText(texte); },
-    lang: "fr-FR",
-  });
-
   const statusLabel = isRecording ? "Appuie pour terminer"
     : isSpeaking ? "Tata Nanti Lou répond..."
     : isLoading ? liveTranscript || "Analyse en cours..."
     : isDone ? "Message enregistré !"
     : isError ? "Erreur — réessaie"
-    : mainsLibres && wakeSupported ? "Dis « Julaba » pour vendre"
     : "Appuie sur Tata Nanti Lou pour parler";
 
   if (!isOpen) return null;
@@ -272,35 +330,53 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
               </motion.p>
             </AnimatePresence>
 
-            {/* Mains libres (mot-réveil « Julaba ») : actif dès que le modèle
-                hors-ligne est installé (écoute continue 100 % sur l'appareil via
-                le moteur sherpa/Vosk). Tant que ce n'est pas le cas, l'appui-pour-
-                parler (écoute sur l'appareil) reste le mode de vente vocale. */}
-            {wakeSupported && (
-              <div style={{ marginTop: 12 }}>
-                <motion.button whileTap={{ scale: 0.96 }} onClick={() => setMainsLibres(v => !v)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, border: "none", cursor: "pointer",
-                    background: mainsLibres ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.16)",
-                    color: mainsLibres ? P : "white", fontWeight: 800, fontSize: 13, fontFamily: "inherit" }}>
-                  <motion.span style={{ width: 10, height: 10, borderRadius: "50%", background: mainsLibres ? "#16a34a" : "rgba(255,255,255,0.5)" }}
-                    animate={mainsLibres ? { opacity: [1, 0.3, 1] } : { opacity: 1 }} transition={{ duration: 1.4, repeat: Infinity }} />
-                  {mainsLibres ? "Mains libres activé — dis « Julaba »" : "Activer les mains libres"}
-                </motion.button>
-              </div>
-            )}
           </div>
 
           {/* CORPS BLANC */}
           <div className="px-5 py-5 flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-2">
-              <EngineBadge />
-            </div>
-            {transcript && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#F9FAFB", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "12px 14px" }}><p style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.1em", marginBottom: 4 }}>TU AS DIT</p><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>"{transcript}"</p></motion.div>)}
-            {response && !isLoading && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: PL, border: `1.5px solid ${P}30`, borderRadius: 16, padding: "12px 14px" }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ fontSize: 18 }}>{intentEmoji[response.intent] || "💬"}</span><p style={{ fontSize: 10, fontWeight: 700, color: P, letterSpacing: "0.1em" }}>{response.intent.replace(/_/g, " ").toUpperCase()}</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>{response.response || response.reponse}</p>{response.action?.type === "vendre" && response.action.montant && (<div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${P}25` }}><p style={{ fontSize: 13, color: "#6B7280" }}>{response.action.quantite}× {response.action.produit} =&nbsp;<strong style={{ color: P }}>{response.action.montant?.toLocaleString("fr-FR")} FCFA</strong></p></div>)}</motion.div>)}
+            {transcript && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#F9FAFB", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "12px 14px" }}><p style={{ fontSize: 10, fontWeight: 700, color: "var(--encre-4)", letterSpacing: "0.1em", marginBottom: 4 }}>TU AS DIT</p><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>"{transcript}"</p></motion.div>)}
+            {response && !isLoading && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: PL, border: `1.5px solid ${P}30`, borderRadius: 16, padding: "12px 14px" }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ fontSize: 18 }}>{intentEmoji[response.intent] || "💬"}</span><p style={{ fontSize: 10, fontWeight: 700, color: P, letterSpacing: "0.1em" }}>{response.intent.replace(/_/g, " ").toUpperCase()}</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>{response.response || response.reponse}</p>{response.action?.type === "vendre" && response.action.montant && (<div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${P}25` }}><p style={{ fontSize: 13, color: "var(--encre-3)" }}>{response.action.quantite}× {response.action.produit} =&nbsp;<strong style={{ color: P }}>{response.action.montant?.toLocaleString("fr-FR")} FCFA</strong></p></div>)}</motion.div>)}
+            {propositionProduit && (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                style={{ background: "#FFF8F0", border: `2px solid ${P}`, borderRadius: 20, padding: 16 }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", marginBottom: 12 }}>
+                  J'ajoute « {propositionProduit.nom} » à ta boutique à {propositionProduit.prix.toLocaleString("fr-FR")} F ?
+                </p>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={refuserCreation} disabled={creationEnCours}
+                    style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, border: `2px solid ${P}`, color: P, background: "white", cursor: "pointer" }}>
+                    Non
+                  </motion.button>
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={accepterCreation} disabled={creationEnCours}
+                    style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, color: "white", background: creationEnCours ? "#CBB9A8" : `linear-gradient(135deg,${P},${PD})`, cursor: creationEnCours ? "wait" : "pointer", border: "none" }}>
+                    {creationEnCours ? "Un instant…" : "Oui, ajoute"}
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
             {isError && error && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 16, padding: "12px 14px" }}><p style={{ fontSize: 13, fontWeight: 600, color: "#B91C1C" }}>{error}</p></motion.div>)}
-            {isConfirming && pendingResponse && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#FFF8F0", border: `2px solid ${P}`, borderRadius: 20, padding: 16 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><ShieldCheck style={{ width: 18, height: 18, color: P }} /><p style={{ fontSize: 12, fontWeight: 700, color: P }}>Confirmer l'action</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937", marginBottom: 12 }}>{pendingResponse.response || pendingResponse.reponse}</p>{pendingResponse.resume_action && (<p style={{ fontSize: 11, fontWeight: 700, color: "#9CA3AF", letterSpacing: "0.1em", marginBottom: 12 }}>{pendingResponse.resume_action}</p>)}<div style={{ display: "flex", gap: 10 }}><motion.button whileTap={{ scale: 0.97 }} onClick={cancelAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, border: `2px solid ${P}`, color: P, background: "white", cursor: "pointer" }}>Non</motion.button><motion.button whileTap={{ scale: 0.97 }} onClick={confirmAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Oui, confirmer</motion.button></div></motion.div>)}
+            {isConfirming && pendingResponse && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#FFF8F0", border: `2px solid ${P}`, borderRadius: 20, padding: 16 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><ShieldCheck style={{ width: 18, height: 18, color: P }} /><p style={{ fontSize: 12, fontWeight: 700, color: P }}>Confirmer l'action</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937", marginBottom: 12 }}>{pendingResponse.response || pendingResponse.reponse}</p>{pendingResponse.resume_action && (<p style={{ fontSize: 11, fontWeight: 700, color: "var(--encre-4)", letterSpacing: "0.1em", marginBottom: 12 }}>{pendingResponse.resume_action}</p>)}<div style={{ display: "flex", gap: 10 }}><motion.button whileTap={{ scale: 0.97 }} onClick={cancelAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, border: `2px solid ${P}`, color: P, background: "white", cursor: "pointer" }}>Non</motion.button><motion.button whileTap={{ scale: 0.97 }} onClick={confirmAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Oui, confirmer</motion.button></div></motion.div>)}
             {(isDone || isError) && (<motion.button whileTap={{ scale: 0.97 }} onClick={reset} style={{ width: "100%", padding: "14px 0", borderRadius: 16, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Reparler à Tata Nanti Lou</motion.button>)}
             {isIdle && (<div><p style={{ fontSize: 10, fontWeight: 700, color: "#C5C5C5", letterSpacing: "0.1em", marginBottom: 10 }}>CE QUE TU PEUX DIRE</p><div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{examples.map((ex, i) => (<motion.button key={i} whileTap={{ scale: 0.97 }} onClick={() => sendText(ex.text)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderRadius: 14, cursor: "pointer", background: ex.highlight ? "#FFF3EB" : "#F8F8F8", border: ex.highlight ? "1px solid #FDDEC4" : "1px solid #F0F0F0", textAlign: "left", width: "100%" }}><div style={{ flex: 1 }}><p style={{ fontSize: 15, fontWeight: 700, color: ex.highlight ? "#6B2400" : "#111", margin: 0 }}>{ex.text}</p><p style={{ fontSize: 12, color: ex.highlight ? "#C4703A" : "#999", margin: "3px 0 0" }}>{ex.desc}</p></div><ChevronRight style={{ color: ex.highlight ? "#C4703A" : "#D0D0D0", width: 16, height: 16, flexShrink: 0 }} /></motion.button>))}</div></div>)}
+            {isIdle && (
+              <div style={{ marginTop: 2 }}>
+                {saisieOuverte ? (
+                  <SaisieGuidee
+                    onValider={ajouterLigneAuPanier}
+                    apparier={(nom) => {
+                      const p = apparierProduit(nom, products);
+                      return p ? { produitId: p.id, nomCatalogue: p.nom, prixCatalogue: p.prix ?? null, unite: p.unite || 'unité' } : null;
+                    }}
+                  />
+                ) : (
+                  <motion.button whileTap={{ scale: 0.97 }} onClick={() => setSaisieOuverte(true)}
+                    style={{ width: "100%", padding: "13px 0", borderRadius: 14, fontWeight: 800, fontSize: 14, cursor: "pointer",
+                      background: "white", border: `1.5px solid ${P}55`, color: P, fontFamily: "inherit" }}>
+                    ✍️ Saisir sans parler
+                  </motion.button>
+                )}
+              </div>
+            )}
             {isIdle && (<div style={{ marginTop: 4 }}><InstallerOffline /></div>)}
           </div>
         </motion.div>

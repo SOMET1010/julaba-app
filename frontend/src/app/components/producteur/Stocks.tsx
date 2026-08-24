@@ -1,6 +1,7 @@
 import { useApp } from '../../contexts/AppContext';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { SubPageLayout } from '../layout/SubPageLayout';
+import { UNITES_COURANTES } from '../../config/unites';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { motion, AnimatePresence } from 'motion/react';
 import { Montant, MontantCard } from '../shared/Montant';
@@ -36,7 +37,7 @@ import { NotificationButton } from '../marchand/NotificationButton';
 import { SearchBar } from '../shared/SearchBar';
 import { matchesSearch } from '../../utils/searchUtils';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { toast } from 'sonner';
 import {
   IMG_PRODUIT_TOMATE, IMG_PRODUIT_AUBERGINE, IMG_PRODUIT_OIGNON,
@@ -522,7 +523,7 @@ export function Stocks() {
             if (lowStocks.length === 0) {
               showToast('Aucune alerte stock', 'success');
             } else {
-              showToast(`${lowStocks.length} produit${lowStocks.length > 1 ? 's' : ''} en stock bas`, 'warning');
+              showToast(`${lowStocks.length} produit${lowStocks.length > 1 ? 's' : ''} en stock bas`, 'error');
             }
           }}
           delay={0.1}
@@ -781,7 +782,7 @@ export function Stocks() {
                     label="Unité"
                     value={newStock.unit}
                     onChange={(v) => setNewStock({ ...newStock, unit: v })}
-                    options={['kg', 'L', 'tas', 'régimes', 'sac', 'tonne', 'carton']}
+                    options={UNITES_COURANTES}
                     primaryColor="#2E8B57"
                     placeholder="Ex: caisse, panier..."
                   />

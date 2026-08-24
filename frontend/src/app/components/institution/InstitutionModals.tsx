@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Users, TrendingUp, Award, FileText, BarChart3, DollarSign, X } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useNavigate } from 'react-router';
-import { useInstitution } from '../../contexts/InstitutionContext';
+import { useInstitution, type StatRole } from '../../contexts/InstitutionContext';
 
 const INSTITUTION_COLOR = '#712864';
 
@@ -97,7 +97,16 @@ interface UtilisateursModalProps {
 export function UtilisateursModal({ isOpen, onClose, count }: UtilisateursModalProps) {
   const navigate = useNavigate();
   const { getStatistiquesParRole } = useInstitution();
-  const statsRoles = getStatistiquesParRole();
+  // L'ancien code lisait `.marchands.total` directement sur la PROMESSE : la
+  // section plantait à l'ouverture. On attend la réponse et on lit par rôle.
+  const [statsRoles, setStatsRoles] = useState<StatRole[] | null>(null);
+  useEffect(() => {
+    let actif = true;
+    getStatistiquesParRole().then(r => { if (actif) setStatsRoles(r); }).catch(() => { if (actif) setStatsRoles([]); });
+    return () => { actif = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const statRole = (role: string) => statsRoles?.find(s => s.role === role)?.total ?? 0;
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
@@ -162,19 +171,19 @@ export function UtilisateursModal({ isOpen, onClose, count }: UtilisateursModalP
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-xl bg-orange-50 border-2 border-orange-200">
                 <p className="text-sm font-medium text-gray-700 mb-1">Marchands</p>
-                <p className="text-2xl font-black text-orange-600">{statsRoles.marchands.total}</p>
+                <p className="text-2xl font-black text-orange-600">{statRole('marchand')}</p>
               </div>
               <div className="p-3 rounded-xl bg-green-50 border-2 border-green-200">
                 <p className="text-sm font-medium text-gray-700 mb-1">Producteurs</p>
-                <p className="text-2xl font-black text-green-600">{statsRoles.producteurs.total}</p>
+                <p className="text-2xl font-black text-green-600">{statRole('producteur')}</p>
               </div>
               <div className="p-3 rounded-xl bg-blue-50 border-2 border-blue-200">
                 <p className="text-sm font-medium text-gray-700 mb-1">Coopératives</p>
-                <p className="text-2xl font-black text-blue-600">{statsRoles.cooperatives.total}</p>
+                <p className="text-2xl font-black text-blue-600">{statRole('cooperative')}</p>
               </div>
               <div className="p-3 rounded-xl bg-gray-50 border-2 border-gray-200">
                 <p className="text-sm font-medium text-gray-700 mb-1">Identificateurs</p>
-                <p className="text-2xl font-black text-gray-600">{statsRoles.identificateurs.total}</p>
+                <p className="text-2xl font-black text-gray-600">{statRole('identificateur')}</p>
               </div>
             </div>
           </div>

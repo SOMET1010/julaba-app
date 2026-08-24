@@ -18,7 +18,6 @@ import { UserProvider, useUser } from './contexts/UserContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import { AuditProvider } from './contexts/AuditContext';
 import { WalletProvider } from './contexts/WalletContext';
-import { ScoreProvider } from './contexts/ScoreContext';
 import { CommandeProvider } from './contexts/CommandeContext';
 import { StockProviderInner } from './contexts/StockContext';
 import { CaisseProvider } from './contexts/CaisseContext';
@@ -31,8 +30,7 @@ import { InstitutionAccessProvider } from './contexts/InstitutionAccessContext';
 import { ProducteurProvider } from './contexts/ProducteurContext';
 import { ShortcutsProvider } from './contexts/ShortcutsContext';
 import { MotionConfig } from 'motion/react';
-
-const TEXT_FONT_SIZES = [11, 12, 13, 15, 17, 19, 22];
+import { appliquerTailleTexteAuDocument } from './utils/tailleTexte';
 
 function AnimationWrapper({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
@@ -42,8 +40,10 @@ function AnimationWrapper({ children }: { children: React.ReactNode }) {
     ? (user.preferences.text_size as number)
     : 3;
 
+  // Taille du texte = ZOOM réel (utils/tailleTexte). On n'écrit plus
+  // --font-size inline : la valeur écrasait la base relevée du mode soleil.
   React.useEffect(() => {
-    document.documentElement.style.setProperty('--font-size', TEXT_FONT_SIZES[textSize] + 'px');
+    appliquerTailleTexteAuDocument(textSize);
   }, [textSize]);
 
   React.useEffect(() => {
@@ -71,32 +71,30 @@ export default function App() {
             <NotificationsProvider>
                 <AuditProvider>
                   <WalletProvider>
-                    <ScoreProvider>
-                      <CommandeProvider>
-                        <CaisseProvider>
-                          <StockProviderInner>
-                            <CooperativeProvider>
-                              <InstitutionProvider>
-                                <BackOfficeProvider>
-                                  <SupportConfigProvider>
-                                    <TicketsProvider>
-                                      <InstitutionAccessProvider>
-                                          <ProducteurProvider>
-                                            <AnimationWrapper>
-                                              <ErrorBoundary><RouterProvider router={router} /></ErrorBoundary>
-                                              <Toaster />
-                                            </AnimationWrapper>
-                                          </ProducteurProvider>
-                                      </InstitutionAccessProvider>
-                                    </TicketsProvider>
-                                  </SupportConfigProvider>
-                                </BackOfficeProvider>
-                              </InstitutionProvider>
-                            </CooperativeProvider>
-                          </StockProviderInner>
-                        </CaisseProvider>
-                      </CommandeProvider>
-                    </ScoreProvider>
+                    <CommandeProvider>
+                      <CaisseProvider>
+                        <StockProviderInner>
+                          <CooperativeProvider>
+                            <InstitutionProvider>
+                              <BackOfficeProvider>
+                                <SupportConfigProvider>
+                                  <TicketsProvider>
+                                    <InstitutionAccessProvider>
+                                        <ProducteurProvider>
+                                          <AnimationWrapper>
+                                            <ErrorBoundary><RouterProvider router={router} /></ErrorBoundary>
+                                            <Toaster />
+                                          </AnimationWrapper>
+                                        </ProducteurProvider>
+                                    </InstitutionAccessProvider>
+                                  </TicketsProvider>
+                                </SupportConfigProvider>
+                              </BackOfficeProvider>
+                            </InstitutionProvider>
+                          </CooperativeProvider>
+                        </StockProviderInner>
+                      </CaisseProvider>
+                    </CommandeProvider>
                   </WalletProvider>
                 </AuditProvider>
             </NotificationsProvider>

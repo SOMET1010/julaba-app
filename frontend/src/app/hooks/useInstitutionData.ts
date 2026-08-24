@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'react';
 import { API_URL } from '../utils/api';
-import { apiRequest } from '../../imports/api-client';
+import { apiRequest } from '../services/api/api-client';
 
 export const DEFAULT_MACRO_KPIs = {
   acteursActifs: 0, totalActeurs: 0, acteursSuspendus: 0,

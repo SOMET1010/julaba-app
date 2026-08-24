@@ -156,7 +156,7 @@ export function BOAnalyticsProduit() {
         ].map(t => (
           <motion.button key={t.key} onClick={() => setTab(t.key as any)} whileTap={{ scale: 0.95 }}
             className="px-4 py-2.5 rounded-2xl border-2 text-xs font-bold"
-            style={tab === t.key ? { backgroundColor: BO_PRIMARY, color: '#fff', borderColor: BO_PRIMARY } : { borderColor: '#E5E7EB', color: '#6B7280' }}>
+            style={tab === t.key ? { backgroundColor: BO_PRIMARY, color: '#fff', borderColor: BO_PRIMARY } : { borderColor: '#E5E7EB', color: 'var(--encre-3)' }}>
             {t.label}
           </motion.button>
         ))}

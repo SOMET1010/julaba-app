@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
-import { RACC_IMG as MOD_IMAGES } from '../../assets/cloudinary-images';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { VenteVocaleModal } from './VenteVocaleModal';
+import { PropositionReconnaissance } from '../auth/PropositionReconnaissance';
+import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
+import { ResumeModal, CloseDayModal, EditFondModal } from './MarchandModals';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
@@ -18,15 +20,34 @@ import { ObjectifProvider } from '../../contexts/ObjectifContext';
  * belles icônes existantes de l'app pour le reste. La vue riche complète reste
  * accessible via « Vue avancée ».
  */
-function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced: () => void }) {
+function MarchandAccueilVoiceInner() {
   const navigate = useNavigate();
-  const { user, speak, getTodayStats } = useApp();
+  const { user, speak, getTodayStats, currentSession } = useApp();
   const stats = getTodayStats();
   const caisse = stats?.caisse || 0;
   const prenom = user?.firstName || user?.prenoms || user?.prenom || user?.nom || '';
 
   const [soldeVisible, setSoldeVisible] = useState(true);
+  // Mode SOLEIL (inclusion §2.4) : un seul geste, visible sur l'accueil — pas
+  // caché dans les réglages. Tout devient plus grand et plus franc.
+  const [soleil, setSoleil] = useState(() => getConfortVisuel() === 'soleil');
+  const basculerSoleil = () => {
+    const prochain = soleil ? 'normal' : 'soleil';
+    setConfortVisuel(prochain); // exclusif : allumer le soleil éteint le sombre
+    setSoleil(prochain === 'soleil');
+    speak(prochain === 'soleil' ? 'Mode soleil : tout est plus grand.' : 'Mode normal.');
+  };
+  // Le mode peut changer ailleurs (Paramètres, mode sombre auto 18h) : on se
+  // resynchronise sur l'événement de l'arbitre confortVisuel.
+  useEffect(() => {
+    const sync = () => setSoleil(getConfortVisuel() === 'soleil');
+    window.addEventListener(CONFORT_EVENT, sync);
+    return () => window.removeEventListener(CONFORT_EVENT, sync);
+  }, []);
   const [showVente, setShowVente] = useState(false);
+  const [showResume, setShowResume] = useState(false);
+  const [showClose, setShowClose] = useState(false);
+  const [showEditFond, setShowEditFond] = useState(false);
 
   // Panier en cours (Lot 3) : accès « Nouvelle vente » + bannière de reprise.
   const { venteEnCours, cart, getTotalCart, staleCart, resumeStaleCart, discardStaleCart, clearCart } = useCaisse();
@@ -51,12 +72,17 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
   };
   const bonjour = () => speak(prenom ? `Bonjour Maman ${prenom}` : 'Bonjour ma sœur');
 
-  // Grosses tuiles : on réutilise les belles icônes déjà présentes dans l'app.
-  const tuiles: Array<{ img: string; label: string; parle: string; go: () => void; teinte: string }> = [
-    { img: MOD_IMAGES.marchandise, label: 'Mon stock',    parle: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: '#0E7A47' },
-    { img: MOD_IMAGES.cahier,      label: 'Mes dépenses', parle: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: '#B85C1B' },
-    { img: MOD_IMAGES.bilan,       label: 'Mes ventes',   parle: 'Mes ventes',   go: () => navigate('/marchand/ventes-passees'), teinte: '#2C6E9E' },
-    { img: MOD_IMAGES.keiwa,       label: 'Keiwa',        parle: 'Mon argent Keiwa', go: () => navigate('/marchand/keiwa'),      teinte: '#7A3B12' },
+  // Grosses tuiles : icônes vectorielles LOCALES (marchent hors-ligne, aucune
+  // dépendance réseau) + un seul libellé clair. Avant : illustrations distantes
+  // (Cloudinary) avec un mot incrusté → doublon de texte ET écran vide sans réseau.
+  const svg = (d: ReactNode) => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
+  );
+  const tuiles: Array<{ icon: ReactNode; label: string; parle: string; go: () => void; teinte: string }> = [
+    { icon: svg(<><path d="M21 8V16a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8z"/><path d="M3.27 6.96 12 12l8.73-5.04"/><path d="M12 22V12"/></>), label: 'Mon stock',    parle: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: '#0E7A47' },
+    { icon: svg(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>), label: 'Mes dépenses', parle: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: '#B85C1B' },
+    { icon: svg(<><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="9"/><line x1="18" y1="20" x2="18" y2="4"/></>), label: 'Mes ventes',   parle: 'Mes ventes',   go: () => navigate('/marchand/ventes-passees'), teinte: '#2C6E9E' },
+    { icon: svg(<><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></>), label: 'Mon argent',   parle: 'Mon argent Keiwa', go: () => navigate('/marchand/keiwa'),      teinte: '#7A3B12' },
   ];
 
   return (
@@ -83,9 +109,14 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
             style={{ width: 54, height: 54, borderRadius: '50%', objectFit: 'cover', cursor: 'pointer', boxShadow: '0 6px 14px -6px rgba(184,92,27,0.5), 0 0 0 3px #fff, 0 0 0 4px rgba(219,122,44,0.25)' }}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(124,98,80,0.5)' }}>Tata Nanti Lou</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#2E1B10', lineHeight: 1.1 }}>{prenom ? `Bonjour Maman ${prenom}` : 'Bonjour ma sœur'}</div>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tata Nanti Lou</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--encre)', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{prenom ? `Bonjour Maman ${prenom}` : 'Bonjour ma sœur'}</div>
           </div>
+          <motion.button whileTap={{ scale: 0.92 }} onClick={basculerSoleil}
+            aria-label={soleil ? 'Repasser en affichage normal' : 'Mode soleil — tout plus grand'}
+            style={{ width: 44, height: 44, borderRadius: 14, background: soleil ? '#F5A623' : '#F3E7D8', color: soleil ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          </motion.button>
           <motion.button whileTap={{ scale: 0.92 }} onClick={() => navigate('/marchand/profil')} aria-label="Mon profil"
             style={{ width: 44, height: 44, borderRadius: 14, background: '#F3E7D8', color: '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -94,7 +125,7 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
 
         {/* Caisse — verte, se dit à voix haute */}
         <div style={{ borderRadius: 22, padding: '16px 18px', background: 'linear-gradient(150deg,#1FA463,#0E7A47)', color: '#fff', boxShadow: '0 16px 30px -16px rgba(14,122,71,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-          <div style={{ minWidth: 0 }} onClick={direCaisse}>
+          <div style={{ minWidth: 0, cursor: 'pointer' }} onClick={() => setShowResume(true)} role="button" aria-label="Voir le résumé du jour">
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.85 }}>Ma caisse aujourd'hui</div>
             <div style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, marginTop: 4, fontVariantNumeric: 'tabular-nums', cursor: 'pointer' }}>
               {soldeVisible ? Math.round(caisse).toLocaleString('fr-FR') : '●●●●●'}<small style={{ fontSize: 16, fontWeight: 700, opacity: 0.85 }}> F</small>
@@ -171,25 +202,20 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
           Vendre à la voix
         </motion.button>
 
-        {/* Tuiles — belles icônes de l'app */}
+        {/* Tuiles — icônes vectorielles locales + un seul libellé (hors-ligne) */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
           {tuiles.map((t) => (
             <motion.button key={t.label} whileTap={{ scale: 0.94 }} onClick={() => { speak(t.parle); t.go(); }}
-              style={{ borderRadius: 20, overflow: 'hidden', border: '1px solid rgba(198,100,44,0.2)', cursor: 'pointer', padding: 0, fontFamily: 'inherit', position: 'relative', height: 132, background: '#fff' }}>
-              <img src={t.img} alt={t.label} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.02) 30%, rgba(0,0,0,0.55) 100%)' }} />
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '9px 8px', textAlign: 'center' }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}>{t.label}</span>
-              </div>
+              style={{ borderRadius: 20, border: '1px solid rgba(198,100,44,0.15)', cursor: 'pointer', padding: '18px 12px', fontFamily: 'inherit', height: 120, background: '#fff',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+              <span style={{ width: 56, height: 56, borderRadius: 18, background: `${t.teinte}14`, color: t.teinte, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                {t.icon}
+              </span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--encre)' }}>{t.label}</span>
             </motion.button>
           ))}
         </div>
 
-        {/* Accès à la vue riche complète */}
-        <button type="button" onClick={onSwitchToAdvanced}
-          style={{ display: 'block', margin: '20px auto 0', background: 'none', border: 'none', fontSize: 13, fontWeight: 700, color: 'rgba(124,98,80,0.7)', borderBottom: '2px dotted rgba(124,98,80,0.4)', padding: '2px 0', cursor: 'pointer' }}>
-          Vue avancée
-        </button>
       </div>
 
       {/* Garde : « Nouvelle vente » alors qu'un panier récent existe (Lot 3) */}
@@ -238,20 +264,44 @@ function MarchandAccueilVoiceInner({ onSwitchToAdvanced }: { onSwitchToAdvanced:
       </AnimatePresence>
 
       <VenteVocaleModal isOpen={showVente} onClose={() => setShowVente(false)} />
+
+      {/* Résumé du jour — ouvert en touchant la carte caisse (Phase 2).
+          La clôture de journée + le fond y sont relogés (Q-C). */}
+      <ResumeModal
+        isOpen={showResume}
+        onClose={() => setShowResume(false)}
+        stats={{ ventes: stats?.ventes || 0, cahier: stats?.cahier || 0, caisse: stats?.caisse || 0, nombreVentes: stats?.nombreVentes || 0 }}
+        onFermerJournee={() => { setShowResume(false); setShowClose(true); }}
+        onModifierFond={() => { setShowResume(false); setShowEditFond(true); }}
+      />
+      <CloseDayModal
+        isOpen={showClose}
+        onClose={() => setShowClose(false)}
+        stats={{ ventes: stats?.ventes || 0, cahier: stats?.cahier || 0, caisse: stats?.caisse || 0, nombreVentes: stats?.nombreVentes || 0 }}
+      />
+      <EditFondModal
+        isOpen={showEditFond}
+        onClose={() => setShowEditFond(false)}
+        currentFond={currentSession?.fondInitial || 0}
+      />
+
+      {/* « Tata propose de me reconnaître » (lot 2) : une seule fois, juste après
+          une entrée par code — Oui = le téléphone apprend à la reconnaître. */}
+      <PropositionReconnaissance />
     </div>
   );
 }
 
 // La vente vocale a besoin des contextes Raccourcis / Rapport / Objectif
 // (mêmes providers que l'ancien accueil).
-export function MarchandAccueilVoice({ onSwitchToAdvanced }: { onSwitchToAdvanced: () => void }) {
+export function MarchandAccueilVoice() {
   const { getTodayStats } = useApp();
   const stats = getTodayStats();
   return (
     <RaccourcisProvider>
       <RapportHebdoProvider>
         <ObjectifProvider ventes={stats?.ventes || 0}>
-          <MarchandAccueilVoiceInner onSwitchToAdvanced={onSwitchToAdvanced} />
+          <MarchandAccueilVoiceInner />
         </ObjectifProvider>
       </RapportHebdoProvider>
     </RaccourcisProvider>

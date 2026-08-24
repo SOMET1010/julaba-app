@@ -53,7 +53,7 @@ import { useModalRegister } from '../../contexts/ModalContext';
 import { NotificationButton } from '../marchand/NotificationButton';
 import { toast } from 'sonner';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 // ─── Couleurs coopérative ────────────────────────────────────────────────────
 const C = '#2072AF';
 const C_LIGHT = '#EBF4FB';
@@ -103,6 +103,8 @@ type TabType = 'actifs' | 'en_attente';
 type DrawerTab = 'performances' | 'transactions' | 'infos';
 
 interface Membre {
+  /** Cotisation à jour (lu par l'écran, renseigné selon les données). */
+  cotisationPayee?: boolean;
   id: string;
   userId?: string;
   nom: string;
@@ -417,7 +419,8 @@ export function Membres() {
     if (selectedMembre?.userId || selectedMembre?.id) {
       addNotification({
         type: 'statut_change',
-        titre: 'Accès suspendu',
+        role: 'cooperative',
+        title: 'Accès suspendu',
         message: `Votre accès à la coopérative a été suspendu. ${motifSuspension ? 'Motif : ' + motifSuspension : ''}`,
         priority: 'high',
         category: 'compte',
@@ -447,7 +450,8 @@ export function Membres() {
     if (m?.userId || m?.id) {
       addNotification({
         type: 'statut_change',
-        titre: 'Accès réactivé',
+        role: 'cooperative',
+        title: 'Accès réactivé',
         message: `Votre accès à la coopérative a été réactivé. Bienvenue !`,
         priority: 'medium',
         category: 'compte',
@@ -1513,7 +1517,7 @@ export function Membres() {
                 className={`w-9 h-9 rounded-full flex items-center justify-center border-2 ${showFilters ? '' : 'border-gray-200 bg-white'}`}
                 style={showFilters ? { backgroundColor: C_LIGHT, borderColor: C } : {}} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
               >
-                <Filter className="w-4 h-4" style={showFilters ? { color: C } : { color: '#9CA3AF' }} />
+                <Filter className="w-4 h-4" style={showFilters ? { color: C } : { color: 'var(--encre-4)' }} />
               </motion.button>
             </div>
           </div>
@@ -1542,7 +1546,7 @@ export function Membres() {
                   <div>
                     <label className="text-xs font-bold text-gray-600 block mb-1.5">Performance (Mes Points Jùlaba)</label>
                     <div className="grid grid-cols-4 gap-1.5">
-                      {([{ id: 'all', label: 'Tous' }, { id: 'haut', label: '71-100', color: 'text-green-700 bg-green-50 border-green-200' }, { id: 'moyen', label: '41-70', color: 'text-orange-700 bg-orange-50 border-orange-200' }, { id: 'bas', label: '0-40', color: 'text-red-700 bg-red-50 border-red-200' }] as const).map(({ id, label, color }) => (
+                      {([{ id: 'all', label: 'Tous', color: '' }, { id: 'haut', label: '71-100', color: 'text-green-700 bg-green-50 border-green-200' }, { id: 'moyen', label: '41-70', color: 'text-orange-700 bg-orange-50 border-orange-200' }, { id: 'bas', label: '0-40', color: 'text-red-700 bg-red-50 border-red-200' }] as const).map(({ id, label, color }) => (
                         <motion.button key={id} onClick={() => { setFilterPerf(id); setPage(1); }}
                           className={`py-2 rounded-xl border-2 text-xs font-bold text-center ${filterPerf === id ? (id === 'all' ? 'text-white border-transparent' : (color || '')) : 'border-gray-200 text-gray-500'}`}
                           style={filterPerf === id && id === 'all' ? { background: `linear-gradient(135deg, ${C}, ${C_DARK})` } : {}} whileTap={{ scale: 0.95 }}

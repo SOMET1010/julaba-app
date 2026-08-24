@@ -119,7 +119,7 @@ export function UniversalCardBOZoneRow({
               alignItems: 'center',
               gap: 6,
               fontSize: 12,
-              color: '#6B7280',
+              color: 'var(--encre-3)',
             }}
           >
             <span style={{ color: '#5B5248', fontWeight: 500 }}>{regionLabel}</span>
@@ -143,7 +143,7 @@ export function UniversalCardBOZoneRow({
               ·
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontWeight: 500, color: '#9CA3AF', fontSize: 11 }}>Ident.</span>
+              <span style={{ fontWeight: 500, color: 'var(--encre-4)', fontSize: 11 }}>Ident.</span>
               <span style={{ color: '#185FA5', fontWeight: 500 }}>{nbIdentificateurs}</span>
             </span>
             <span aria-hidden style={{ color: '#D1D5DB' }}>
@@ -271,8 +271,8 @@ export function UniversalCardBOMarcheRow({
   const dotCol = active ? '#3B6D11' : '#9CA3AF';
   const addr = (adresse || '').trim();
   const addrStyle: React.CSSProperties = addr
-    ? { fontStyle: 'normal', color: '#6B7280' }
-    : { fontStyle: 'italic', color: '#9CA3AF' };
+    ? { fontStyle: 'normal', color: 'var(--encre-3)' }
+    : { fontStyle: 'italic', color: 'var(--encre-4)' };
 
   return (
     <motion.div

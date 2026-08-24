@@ -15,7 +15,7 @@ type CreatePublicationData = cyclesApiAdapterMod.CreatePublicationData;
 type UpdatePublicationData = cyclesApiAdapterMod.UpdatePublicationData;
 import { DEV_MODE, devLog } from '../config/devMode';
 import { useApp } from './AppContext';
-import { NOT_AUTHENTICATED, apiRequest } from '../../imports/api-client';
+import { NOT_AUTHENTICATED, apiRequest } from '../services/api/api-client';
 
 /**
  * ═══════════════════════════════════════════════════════════════════
@@ -25,12 +25,19 @@ import { NOT_AUTHENTICATED, apiRequest } from '../../imports/api-client';
  */
 
 export interface ProducteurStats {
-  recoltesTotales: number;
+  recoltesTotales: number; // NOMBRE de récoltes (compte), pas des kg
   recoltesVendues: number;
   revenusTotal: number;
   commandesEnCours: number;
   cyclesActifs: number;
   publicationsActives: number;
+  // Production en KILOS (jamais un compte) — alimente « Récoltes du jour ».
+  recoltesKgTotal: number;
+  recoltesKgJour: number;
+  stockDisponibleKg: number;
+  stockVenduKg: number;
+  // Revenus (FCFA) — source de vérité : commandes du vendeur.
+  revenusJour: number;
 }
 
 export interface Cycle {
@@ -64,6 +71,23 @@ export interface Recolte {
   stockDisponible: number;
   stockVendu: number;
   createdAt?: string;
+  // Variantes héritées de l'API (snake_case / anciens noms) encore lues par
+  // certains écrans — optionnelles, à résorber écran par écran.
+  status?: string;
+  quantiteReelle?: number;
+  publishedAt?: string;
+  publicationId?: string;
+  culture?: string;
+  prix_unitaire?: number;
+  quantiteDisponible?: number;
+  quantite_disponible?: number;
+  description?: string;
+  localisation?: string;
+  village?: string;
+  photo_url?: string;
+  photos?: string[];
+  stock_disponible?: number | string;
+  stock_vendu?: number | string;
 }
 
 export interface Publication {
@@ -100,6 +124,10 @@ export interface CommandeProducteur {
   dateCommande: string;
   recolteId?: string;
   recolte_id?: string;
+  // Variantes héritées de l'API encore lues par certains écrans.
+  status?: string;
+  acheteur?: { nom?: string };
+  montant?: number;
 }
 
 export interface AlerteProducteur {
@@ -420,7 +448,7 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const { publications: apiPublications } = await publicationsApi.fetchPublications(true, false);
+      const { publications: apiPublications } = await publicationsApi.fetchPublications();
       const mappedPublications: Publication[] = apiPublications.map(p => ({
         id: p.id,
         cycleId: p.cycle_id,
@@ -450,7 +478,7 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const createPublication = async (data: publicationsApi.CreatePublicationData) => {
+  const createPublication = async (data: CreatePublicationData) => {
     if (!data.produit?.trim()) throw new Error('Produit requis');
     if (!data.prix_unitaire || Number(data.prix_unitaire) <= 0) throw new Error('Prix unitaire invalide');
     try {
@@ -484,7 +512,7 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updatePublication = async (id: string, data: publicationsApi.UpdatePublicationData) => {
+  const updatePublication = async (id: string, data: UpdatePublicationData) => {
     try {
       const { publication } = await publicationsApi.updatePublication(id, data);
       setPublications(prev => prev.map(p => p.id === id ? {
@@ -546,28 +574,65 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
   // ═══════════════════════════════════════════════════════════════════════════
 
   const getStats = async (): Promise<ProducteurStats> => {
+    const n = (v: unknown) => Number(v) || 0;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const dateOf = (v: unknown) => String(v ?? '').slice(0, 10);
     try {
       setLoading(true);
-      const cyclesActifs = cycles.filter(c => c.status === 'active').length;
-      const recoltesVendues = recoltes.filter(r => r.statut === 'vendue').length;
-      const revenusTotal = recoltes
-        .filter(r => r.statut === 'vendue')
-        .reduce((s, r) => s + (r.quantite || 0) * (r.prixUnitaire || 0), 0);
-      const publicationsActives = publications.filter(p => p.statut === 'disponible' && p.active === true).length;
-
-      const newStats: ProducteurStats = {
-        recoltesTotales: recoltes.length,
-        recoltesVendues,
-        revenusTotal,
-        commandesEnCours: 0,
-        cyclesActifs,
-        publicationsActives,
-      };
-
-      setStats(newStats);
-      return newStats;
+      // Source AUTORITATIVE : endpoint stats producteur (calcul en base). Évite
+      // le calcul client faux (kg = compte de récoltes ; revenus = récoltes
+      // 'vendue' jamais atteint).
+      const data = await apiRequest<any>(API_URL, '/producteur/stats', { method: 'GET' });
+      if (data) {
+        const newStats: ProducteurStats = {
+          recoltesTotales: n(data.recoltesCount),
+          recoltesVendues: recoltes.filter(r => r.statut === 'vendue').length,
+          revenusTotal: n(data.revenusTotal),
+          commandesEnCours: n(data.commandesEnCours),
+          cyclesActifs: cycles.filter(c => c.status === 'active').length,
+          publicationsActives: n(data.publicationsActives),
+          recoltesKgTotal: n(data.recoltesKgTotal),
+          recoltesKgJour: n(data.recoltesKgJour),
+          stockDisponibleKg: n(data.stockDisponibleKg),
+          stockVenduKg: n(data.stockVenduKg),
+          revenusJour: n(data.revenusJour),
+        };
+        setStats(newStats);
+        return newStats;
+      }
+      throw new Error('stats indisponibles');
     } catch {
-      return { recoltesTotales: 0, recoltesVendues: 0, revenusTotal: 0, commandesEnCours: 0, cyclesActifs: 0, publicationsActives: 0 };
+      // Repli hors-ligne : calcul client CORRIGÉ à partir des données chargées.
+      // kg = SOMME des quantités (jamais un compte) ; revenus = somme des
+      // commandes du vendeur (hors annulée/litige), source de vérité de l'app.
+      const nonAnnulee = (s: string) => s !== 'annulee' && s !== 'litige';
+      const revenusTotal = commandes
+        .filter(c => nonAnnulee(c.statut as string))
+        .reduce((s, c) => s + (Number(c.total) || 0), 0);
+      const revenusJour = commandes
+        .filter(c => nonAnnulee(c.statut as string) && dateOf(c.dateCommande) === todayStr)
+        .reduce((s, c) => s + (Number(c.total) || 0), 0);
+      const fallback: ProducteurStats = {
+        recoltesTotales: recoltes.length,
+        recoltesVendues: recoltes.filter(r => r.statut === 'vendue').length,
+        revenusTotal,
+        commandesEnCours: commandes.filter(c =>
+          ['en_attente', 'confirmee', 'en_livraison'].includes(c.statut as string),
+        ).length,
+        cyclesActifs: cycles.filter(c => c.status === 'active').length,
+        publicationsActives: publications.filter(p => p.statut === 'disponible' && p.active === true).length,
+        recoltesKgTotal: recoltes.reduce((s, r) => s + (Number(r.quantite) || 0), 0),
+        recoltesKgJour: recoltes.reduce(
+          (s, r) => (dateOf((r as any).dateRecolte ?? (r as any).date_recolte) === todayStr
+            ? s + (Number(r.quantite) || 0) : s),
+          0,
+        ),
+        stockDisponibleKg: recoltes.reduce((s, r) => s + (Number((r as any).stockDisponible) || 0), 0),
+        stockVenduKg: recoltes.reduce((s, r) => s + (Number((r as any).stockVendu) || 0), 0),
+        revenusJour,
+      };
+      setStats(fallback);
+      return fallback;
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { suggererProduits, getImageByNom, rechercherProduitCatalogue, CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
@@ -12,6 +12,7 @@ import { useApp } from '../../contexts/AppContext';
 import { useToast } from '../../hooks/useToast';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { ImagePickerField } from '../shared/ImagePickerField';
+import { ModalPortal } from '../shared/ModalPortal';
 import { SelectWithAutre } from '../shared/SelectWithAutre';
 import { NotificationButton } from './NotificationButton';
 import { VenteVocaleModal } from './VenteVocaleModal';
@@ -22,6 +23,9 @@ import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { eventBus, EVENTS } from '../../services/eventBus';
 import { guidageVocal } from '../../utils/accessMode';
 import { toast } from 'sonner';
+import { UNITES_COURANTES } from '../../config/unites';
+import { API_URL } from '../../utils/api';
+import { mapApiMouvements, type MouvementUI } from '../../services/mouvementsStock';
 
 const P = '#AF5B23';
 
@@ -165,7 +169,7 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
               />
               <span style={{
                 fontSize: 13, fontWeight: 700,
-                color: isEmpty ? '#dc2626' : isLow ? '#ef4444' : '#aaa',
+                color: isEmpty ? '#dc2626' : isLow ? '#ef4444' : 'var(--encre-4)',
               }}>
                 {stock.unit}
               </span>
@@ -296,9 +300,11 @@ export function GestionStock() {
   const [showVente, setShowVente] = useState(false);
   const [reappQty, setReappQty] = useState('');
   const [isListening, setIsListening] = useState(false);
-  const [newStock, setNewStock] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
+  const [showAdvanced, setShowAdvanced] = useState(false); // repli des champs optionnels de l'ajout produit
+  const dicteeNomRef = useRef(false); // true = la prochaine reconnaissance vocale remplit le NOM du produit (pas une commande)
+  const [newStock, setNewStock] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'autre', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
   const [inlineEdit, setInlineEdit] = useState(false);
-  const [editForm, setEditForm] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
+  const [editForm, setEditForm] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'autre', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -332,11 +338,27 @@ export function GestionStock() {
   }, [stocks.length]);
 
   useEffect(() => { setIsModalOpen(showAdd || showEdit || showVente); }, [showAdd, showEdit, showVente, setIsModalOpen]);
+  useEffect(() => { if (!showAdd) setShowAdvanced(false); }, [showAdd]); // l'ajout rouvre toujours replié
 
   const { startRecording, stopRecording } = useVoiceCore({
     context: { module: 'stock', prenom: user?.firstName || user?.prenoms || 'ma chere', genre: (user as any)?.genre || 'femme', userId: user?.id },
     onAction: async (data) => {
       setIsListening(false);
+      // Dictée du NOM du produit (micro du champ Nom) : on capte le texte brut dicté
+      // et on le pose dans le formulaire, SANS le traiter comme une commande. Permet
+      // à une non-lectrice d'ajouter un produit hors catalogue sans taper son nom.
+      if (dicteeNomRef.current) {
+        dicteeNomRef.current = false;
+        const brut = (data.transcript || '').trim();
+        if (brut) {
+          const nomPropre = brut.charAt(0).toUpperCase() + brut.slice(1);
+          setNewStock(prev => ({ ...prev, name: nomPropre }));
+          speak(nomPropre);
+        } else {
+          speak("Je n'ai pas entendu le nom. Réessaie, s'il te plaît.");
+        }
+        return;
+      }
       const a: any = data.action || {};
       const text = (data.transcript || '').toLowerCase();
 
@@ -408,17 +430,55 @@ export function GestionStock() {
   const lowStocks = useMemo(() => stocks.filter(s => s.quantity < s.threshold), [stocks]);
   const totalValue = useMemo(() => stocks.reduce((s, p) => s + p.quantity * p.salePrice, 0), [stocks]);
 
-  const mouvements = useMemo(() => stocks.slice(0,3).map((s,i) => ({
-    name: s.name, unit: s.unit, qty: i%2===0?20:-7, day:['hier','lundi','sam.'][i%3]
-  })), [stocks]);
+  // Mouvements RÉELS lus sur le ledger stock_mouvements (ventes + annulations),
+  // via l'API. Fini le mock (stocks.slice(0,3) + quantités inventées + jours codés
+  // en dur, non filtrés par produit). `mouvements` = panneau accueil (tous produits) ;
+  // `produitMouvements` = fiche du produit sélectionné (corrige « non filtrés »).
+  // NB : les réappros manuels ne passent pas par ce ledger → n'apparaissent pas.
+  const [mouvements, setMouvements] = useState<MouvementUI[]>([]);
+  const [produitMouvements, setProduitMouvements] = useState<MouvementUI[]>([]);
+
+  const chargerMouvements = useCallback(async (url: string): Promise<MouvementUI[]> => {
+    try {
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return mapApiMouvements(data?.mouvements);
+    } catch { return []; }
+  }, []);
+
+  useEffect(() => {
+    let vivant = true;
+    const rafraichir = () => {
+      void chargerMouvements(`${API_URL}/stocks/mouvements`).then(m => { if (vivant) setMouvements(m); });
+    };
+    rafraichir();
+    const u1 = eventBus.subscribe(EVENTS.TRANSACTION_CREATED, rafraichir);
+    const u2 = eventBus.subscribe(EVENTS.CAISSE_VENTE, rafraichir);
+    return () => { vivant = false; u1(); u2(); };
+  }, [chargerMouvements]);
+
+  useEffect(() => {
+    if (!selectedStock?.id) { setProduitMouvements([]); return; }
+    let vivant = true;
+    void chargerMouvements(`${API_URL}/stocks/${selectedStock.id}/mouvements`).then(m => { if (vivant) setProduitMouvements(m); });
+    return () => { vivant = false; };
+  }, [selectedStock?.id, chargerMouvements]);
 
   const addStockItem = async () => {
     if (!newStock.name?.trim()) { toast.error('Nom du produit requis'); dire('Saisis le nom du produit'); return; }
     if (newStock.salePrice <= 0) { toast.error('Prix de vente invalide'); dire('Le prix de vente n\'est pas bon. Redis le prix.'); return; }
     if (newStock.quantity < 0) { toast.error('Quantité invalide'); speak('La quantité n\'est pas bonne.'); return; }
+    // B2 (recette « prix d'achat 0 ») : on N'EMPÊCHE PAS l'ajout sans prix d'achat
+    // (dons, auto-production, marchandise à crédit, coût réellement inconnu), mais on
+    // prévient honnêtement — sans coût, on ne peut pas calculer le bénéfice.
+    if (!(newStock.purchasePrice > 0)) {
+      toast.warning("Sans prix d'achat, on ne pourra pas calculer ton bénéfice.");
+      dire("Tu n'as pas mis le prix d'achat. On ne pourra pas calculer ton bénéfice.");
+    }
     const cat = rechercherProduitCatalogue(newStock.name);
     try {
-      await addProduct({ nom:newStock.name, categorie:newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
+      await addProduct({ nom:newStock.name, categorie: cat?.categorie || newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
       toast.success('Produit ajouté');
       speak(`${newStock.quantity || 0} ${newStock.unit} de ${newStock.name} ajouté au stock`);
       showToast(`${newStock.name} ajouté au stock`, 'success');
@@ -466,23 +526,34 @@ export function GestionStock() {
       return;
     }
     const s = stocks.find(x => x.id === id);
-    speak(`${s?.name} supprimé`);
-    stockCtx.deleteStock(id);
-    const p = products.find(x => x.id === id || x.nom === s?.name);
+    // Cible le produit par ID EXACT d'abord, repli par nom seulement s'il n'y a pas
+    // de correspondance d'id : sinon, avec deux produits de même nom, Array.find
+    // renverrait le premier homonyme et on supprimerait le MAUVAIS produit.
+    const p = products.find(x => x.id === id) || (s?.name ? products.find(x => x.nom === s.name) : undefined);
+    // On ATTEND la vraie réponse avant d'annoncer : la suppression touche
+    // /caisse/produits (Kassa) et/ou /stocks. On réussit si au moins l'une aboutit.
+    // Plus d'annonce « supprimé » avant confirmation (illusion de perte de donnée).
+    let supprime = false;
     if (p) {
-      try {
-        await deleteProduct(p.id);
-        toast.success('Produit supprimé');
-      } catch (e: any) {
-        console.warn('[GestionStock] deleteProduct failed:', e?.message);
-        toast.error('Opération impossible. Réessaie.');
-        speak("Ça n'a pas marché. Réessaie, s'il te plaît.");
-      }
+      try { await deleteProduct(p.id); supprime = true; }
+      catch (e: any) { console.warn('[GestionStock] deleteProduct failed:', e?.message); }
     }
-    showToast(`${s?.name} supprimé`, 'info');
-    setShowEdit(false);
-    setInlineEdit(false);
+    try { await stockCtx.deleteStock(id); supprime = true; }
+    catch (e: any) { console.warn('[GestionStock] deleteStock failed:', e?.message); }
+
     setConfirmDeleteId(null);
+    if (supprime) {
+      toast.success('Produit supprimé');
+      speak(`${s?.name} supprimé`);
+      showToast(`${s?.name} supprimé`, 'info');
+      setShowEdit(false);
+      setInlineEdit(false);
+    } else {
+      // Échec réel (ex. 401) : on le DIT et on garde la fiche ouverte, plutôt que
+      // de faire croire à une suppression qui n'a pas eu lieu.
+      toast.error('Suppression impossible. Réessaie.');
+      speak("Ça n'a pas marché. Le produit n'est pas supprimé.");
+    }
   };
 
   const saveInlineEdit = async () => {
@@ -493,7 +564,9 @@ export function GestionStock() {
     // /caisse/produits/:id ne trouve rien et la modif est perdue au rechargement.
     // On résout le vrai produit Kassa (par id OU par nom) ; s'il n'existe pas
     // encore côté Kassa, on le crée pour que la modification soit bien persistée.
-    const kassa = products.find((x: any) => x.id === id || x.nom === selectedStock.name);
+    // ID exact d'abord, repli par nom ensuite : évite d'éditer un homonyme
+    // (deux produits de même nom → Array.find renverrait le premier).
+    const kassa = products.find((x: any) => x.id === id) || products.find((x: any) => x.nom === selectedStock.name);
     const champs = {
       nom: editForm.name,
       prix: editForm.salePrice,
@@ -554,12 +627,12 @@ export function GestionStock() {
           {/* Raccourcis */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
             <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/ventes-passees')}
-              style={{ background:'white', border:'2px solid #EDE7DE', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
+              style={{ background:'white', border:'2px solid var(--trait)', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
               <div style={{ width:30, height:30, borderRadius:9, background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Receipt size={14} color={P} /></div>
               <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Ventes passées</span>
             </motion.button>
             <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/resume-caisse')}
-              style={{ background:'white', border:'2px solid #EDE7DE', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
+              style={{ background:'white', border:'2px solid var(--trait)', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
               <div style={{ width:30, height:30, borderRadius:9, background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Wallet size={14} color={P} /></div>
               <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Résumé caisse</span>
             </motion.button>
@@ -567,10 +640,10 @@ export function GestionStock() {
 
           {/* Recherche + Top marge */}
           <div style={{ display:'flex', gap:8, marginBottom:12, minWidth:0 }}>
-            <div style={{ flex:1, minWidth:0, background:'white', border:'1.5px solid #EDE7DE', borderRadius:12, padding:'0 12px', display:'flex', alignItems:'center', gap:8, height:46 }}>
+            <div style={{ flex:1, minWidth:0, background:'white', border:'1.5px solid var(--trait)', borderRadius:12, padding:'0 12px', display:'flex', alignItems:'center', gap:8, height:46 }}>
               <Search size={15} color="#aaa" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un produit..."
-                style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:14, color:'#333', fontFamily:'inherit' }} />
+                style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:14, color:'var(--encre)', fontFamily:'inherit' }} />
               {search && <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:2 }}>
                 <X size={14} color="#aaa" />
               </motion.button>}
@@ -629,20 +702,28 @@ export function GestionStock() {
             {filtered.length === 0 && (
               <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px 0' }}>
                 <Package size={48} color="#EDE7DE" style={{ margin: '0 auto 12px' }} />
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#333', marginBottom: 6 }}>Aucun produit</div>
-                <div style={{ fontSize: 13, color: '#aaa' }}>
-                  {search ? `Aucun résultat pour "${search}"` : 'Ajoute ton premier produit'}
-                </div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--encre)', marginBottom: 6 }}>Aucun produit</div>
+                {search ? (
+                  <div style={{ fontSize: 13, color: 'var(--encre-4)' }}>Aucun résultat pour "{search}"</div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 13, color: 'var(--encre-4)', marginBottom: 14 }}>Ajoute ton premier produit</div>
+                    <motion.button whileTap={{ scale:0.96 }} onClick={() => setShowAdd(true)}
+                      style={{ display:'inline-flex', alignItems:'center', gap:8, background:P, border:'none', borderRadius:14, padding:'12px 20px', fontSize:14, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit' }}>
+                      <Plus size={16} /> Ajouter un produit
+                    </motion.button>
+                  </>
+                )}
               </div>
             )}
           </div>
 
           {/* Mouvements */}
           {mouvements.length > 0 && (
-            <div style={{ background:'white', border:'1.5px solid #EDE7DE', borderRadius:16, padding:14, marginBottom:14 }}>
+            <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:14, marginBottom:14 }}>
               <div style={{ fontSize:12, fontWeight:800, color:P, marginBottom:12 }}>Derniers mouvements</div>
               <div style={{ display:'flex', gap:8 }}>
-                {mouvements.map((m,i) => {
+                {mouvements.slice(0,3).map((m,i) => {
                   const isPlus = m.qty > 0;
                   return (
                     <motion.div key={i} initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.1 }}
@@ -654,7 +735,7 @@ export function GestionStock() {
                       </div>
                       <div style={{ fontSize:17, fontWeight:900, color:isPlus?'#16a34a':'#ef4444' }}>{isPlus?'+':''}{m.qty}</div>
                       <div style={{ fontSize:9, fontWeight:700, color:isPlus?'#16a34a':'#ef4444' }}>{m.unit} {m.name}</div>
-                      <div style={{ fontSize:9, color:'#aaa', marginTop:2 }}>{m.day}</div>
+                      <div style={{ fontSize:9, color:'var(--encre-4)', marginTop:2 }}>{m.day}</div>
                     </motion.div>
                   );
                 })}
@@ -688,7 +769,7 @@ export function GestionStock() {
                     prix, catégorie) et dit le nom à voix haute — aucun texte à taper.
                     Conçu pour une vendeuse qui ne lit pas. */}
                 <div>
-                  <div style={{ fontSize:14, fontWeight:800, color:'#5a4030', marginBottom:8 }}>👇 Touche ton produit</div>
+                  <div style={{ fontSize:14, fontWeight:800, color:'var(--encre-2)', marginBottom:8 }}>👇 Touche ton produit</div>
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8 }}>
                     {CATALOGUE_PRODUITS.filter(p => p.nom !== 'Autre').map(p => {
                       const actif = newStock.name === p.nom;
@@ -698,9 +779,9 @@ export function GestionStock() {
                             setNewStock({ ...newStock, name:p.nom, image:p.image, unit:p.unite, purchasePrice:p.prixAchat, salePrice:p.prixVente, category:p.categorie });
                             speak(p.nom);
                           }}
-                          style={{ border: actif ? `3px solid ${P}` : '2px solid #EDE7DE', borderRadius:14, padding:6, background: actif ? '#FFF3EA' : 'white', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, fontFamily:'inherit' }}>
+                          style={{ border: actif ? `3px solid ${P}` : '2px solid var(--trait)', borderRadius:14, padding:6, background: actif ? '#FFF3EA' : 'white', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, fontFamily:'inherit' }}>
                           <img src={p.image} alt={p.nom} style={{ width:'100%', aspectRatio:'1', borderRadius:10, objectFit:'cover' }} />
-                          <div style={{ fontSize:12, fontWeight:700, color:'#1a1206' }}>{p.nom}</div>
+                          <div style={{ fontSize:12, fontWeight:700, color:'var(--encre)' }}>{p.nom}</div>
                         </motion.button>
                       );
                     })}
@@ -710,7 +791,7 @@ export function GestionStock() {
                       ✓ {newStock.name} — indique la quantité puis « Ajouter »
                     </div>
                   )}
-                  <div style={{ fontSize:12, color:'#aaa', textAlign:'center', marginTop:10 }}>Pas dans la liste ? Écris son nom ci-dessous.</div>
+                  <div style={{ fontSize:12, color:'var(--encre-4)', textAlign:'center', marginTop:10 }}>Pas dans la liste ? Écris son nom ci-dessous.</div>
                 </div>
                 {(() => {
                   const cat = rechercherProduitCatalogue(newStock.name);
@@ -719,7 +800,7 @@ export function GestionStock() {
                       <img src={cat.image} alt={newStock.name} style={{ width:56, height:56, borderRadius:10, objectFit:'cover' }} />
                       <div>
                         <div style={{ fontSize:10, fontWeight:800, color:P, textTransform:'uppercase', letterSpacing:'0.1em' }}>Image officielle Julaba</div>
-                        <div style={{ fontSize:14, fontWeight:700, color:'#1a1206' }}>{newStock.name}</div>
+                        <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{newStock.name}</div>
                       </div>
                     </div>
                   ) : (
@@ -727,9 +808,18 @@ export function GestionStock() {
                   );
                 })()}
                 <div style={{ position:'relative' }}>
-                  <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Nom du produit</label>
-                  <input value={newStock.name} onChange={e => setNewStock({...newStock, name:e.target.value})} placeholder="Ex: Tomate, Riz, Gombo..."
-                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)' }}>Nom du produit</label>
+                    {/* Dicter le nom : capte la parole et remplit le champ (cf. dicteeNomRef).
+                        Pour une vendeuse qui ne lit/écrit pas et dont le produit n'est pas au catalogue. */}
+                    <motion.button type="button" whileTap={{ scale:0.92 }} aria-label="Dire le nom du produit"
+                      onClick={() => { dicteeNomRef.current = true; setIsListening(true); startRecording(); }}
+                      style={{ display:'flex', alignItems:'center', gap:6, background: isListening ? P : '#F0E7DE', color: isListening ? 'white' : P, border:'none', borderRadius:10, padding:'6px 12px', fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
+                      {isListening ? <MicOff size={14} /> : <Mic size={14} />} Dis le nom
+                    </motion.button>
+                  </div>
+                  <input value={newStock.name} onFocus={() => dire('Nom du produit')} onChange={e => setNewStock({...newStock, name:e.target.value})} placeholder="Ex: Tomate, Riz, Gombo..."
+                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
                   {newStock.name.length >= 2 && suggererProduits(newStock.name).length > 0 && !suggererProduits(newStock.name).some(p => p.nom === newStock.name) && (
                     <div style={{ position:'absolute', zIndex:50, width:'100%', marginTop:4, background:'white', borderRadius:14, border:'2px solid #FFF3EA', boxShadow:'0 8px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
                       {suggererProduits(newStock.name).map(p => (
@@ -737,8 +827,8 @@ export function GestionStock() {
                           style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', borderBottom:'1px solid #f5f0eb' }}>
                           <img src={p.image} alt={p.nom} style={{ width:40, height:40, borderRadius:8, objectFit:'cover' }} />
                           <div style={{ textAlign:'left' }}>
-                            <div style={{ fontSize:14, fontWeight:700, color:'#1a1206' }}>{p.nom}</div>
-                            <div style={{ fontSize:11, color:'#aaa' }}>{p.categorie} · {p.unite} · {p.prixVente} FCFA</div>
+                            <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{p.nom}</div>
+                            <div style={{ fontSize:11, color:'var(--encre-4)' }}>{p.categorie} · {p.unite} · {p.prixVente} FCFA</div>
                           </div>
                         </button>
                       ))}
@@ -747,55 +837,65 @@ export function GestionStock() {
                 </div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                   <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Quantité</label>
+                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Quantité</label>
                     {/* Réglage au doigt (− / +) pour éviter de taper un nombre. */}
                     <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                       <motion.button type="button" whileTap={{ scale:0.9 }} aria-label="Moins"
                         onClick={() => setNewStock({...newStock, quantity: Math.max(0, (Number(newStock.quantity)||0) - 1)})}
                         style={{ width:44, height:46, flexShrink:0, borderRadius:12, border:'none', background:'#F0E7DE', color:P, fontSize:24, fontWeight:900, cursor:'pointer' }}>−</motion.button>
                       <input type="number" value={newStock.quantity} onChange={e => setNewStock({...newStock, quantity:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                        style={{ width:'100%', minWidth:0, padding:'12px 6px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:18, fontWeight:800, textAlign:'center', fontFamily:'inherit', boxSizing:'border-box' }} />
+                        style={{ width:'100%', minWidth:0, padding:'12px 6px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:18, fontWeight:800, textAlign:'center', fontFamily:'inherit', boxSizing:'border-box' }} />
                       <motion.button type="button" whileTap={{ scale:0.9 }} aria-label="Plus"
                         onClick={() => setNewStock({...newStock, quantity: (Number(newStock.quantity)||0) + 1})}
                         style={{ width:44, height:46, flexShrink:0, borderRadius:12, border:'none', background:P, color:'white', fontSize:24, fontWeight:900, cursor:'pointer' }}>+</motion.button>
                     </div>
                   </div>
-                  <SelectWithAutre label="Unité" value={newStock.unit} onChange={v => setNewStock({...newStock, unit:v})} options={['kg','L','tas','régimes','sac','tonne','carton']} primaryColor={P} placeholder="Ex: bouteille..." />
+                  <SelectWithAutre label="Unité" value={newStock.unit} onChange={v => setNewStock({...newStock, unit:v})} options={UNITES_COURANTES} primaryColor={P} placeholder="Ex: bouteille..." />
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Prix achat (FCFA)</label>
-                    <input type="number" value={newStock.purchasePrice} onChange={e => setNewStock({...newStock, purchasePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Prix vente (FCFA)</label>
-                    <input type="number" value={newStock.salePrice} onChange={e => setNewStock({...newStock, salePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  </div>
-                </div>
+                {/* Prix de vente : champ ESSENTIEL, toujours visible (seul obligatoire avec le nom). */}
                 <div>
-                  <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Seuil d'alerte</label>
-                  <input type="number" value={newStock.threshold} onChange={e => setNewStock({...newStock, threshold:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                  <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix vente (FCFA)</label>
+                  <input type="number" value={newStock.salePrice} onFocus={() => dire('Prix de vente')} onChange={e => setNewStock({...newStock, salePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
+                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
                 </div>
-                <div>
-                  <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Date de péremption <span style={{ color:'#aaa', fontWeight:500 }}>(facultatif)</span></label>
-                  <input type="date" value={newStock.datePeremption} onChange={e => setNewStock({...newStock, datePeremption:e.target.value})}
-                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+
+                {/* Repli : les champs optionnels (prix d'achat, seuil, péremption, promo)
+                    sont masqués par défaut pour ne pas noyer une vendeuse qui ne lit pas.
+                    Seuls Nom + Prix de vente sont nécessaires ; le reste s'ouvre à la demande. */}
+                <button type="button" onClick={() => { const v = !showAdvanced; setShowAdvanced(v); dire(v ? 'Plus de détails' : 'Moins de détails'); }}
+                  style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, background:'none', border:'none', color:P, fontSize:13, fontWeight:800, cursor:'pointer', fontFamily:'inherit', padding:'4px 0' }}>
+                  {showAdvanced ? 'Moins de détails ▾' : 'Plus de détails ▸'}
+                </button>
+
+                {showAdvanced && (<>
                   <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'#C0392B', display:'block', marginBottom:6 }}>🏷️ Prix promo <span style={{ color:'#aaa', fontWeight:500 }}>(facultatif)</span></label>
-                    <input type="number" value={newStock.promoPrice} placeholder="ex : 400" onChange={e => setNewStock({...newStock, promoPrice:e.target.value === '' ? '' : Number(e.target.value)})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #F1D3CE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix achat (FCFA) <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
+                    <input type="number" value={newStock.purchasePrice} onFocus={() => dire("Prix d'achat, facultatif")} onChange={e => setNewStock({...newStock, purchasePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
+                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
                   </div>
                   <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'#5a4030', display:'block', marginBottom:6 }}>Fin promo</label>
-                    <input type="date" value={newStock.promoFin} onChange={e => setNewStock({...newStock, promoFin:e.target.value})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Seuil d'alerte</label>
+                    <input type="number" value={newStock.threshold} onChange={e => setNewStock({...newStock, threshold:e.target.value === '' ? '' as any : Number(e.target.value)})}
+                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
                   </div>
-                </div>
+                  <div>
+                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Date de péremption <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
+                    <input type="date" value={newStock.datePeremption} onChange={e => setNewStock({...newStock, datePeremption:e.target.value})}
+                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                    <div>
+                      <label style={{ fontSize:13, fontWeight:700, color:'#C0392B', display:'block', marginBottom:6 }}>🏷️ Prix promo <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
+                      <input type="number" value={newStock.promoPrice} placeholder="ex : 400" onChange={e => setNewStock({...newStock, promoPrice:e.target.value === '' ? '' : Number(e.target.value)})}
+                        style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #F1D3CE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Fin promo</label>
+                      <input type="date" value={newStock.promoFin} onChange={e => setNewStock({...newStock, promoFin:e.target.value})}
+                        style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
+                    </div>
+                  </div>
+                </>)}
                 <motion.button whileTap={{ scale:0.97 }} onClick={addStockItem}
                   style={{ width:'100%', background:P, border:'none', borderRadius:16, padding:'17px 0', fontSize:17, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit' }}>
                   Ajouter au stock
@@ -831,9 +931,9 @@ export function GestionStock() {
                 <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={() => { setShowEdit(false); setInlineEdit(false); }}
-                  style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(0,0,0,0.35)', border: 'none', borderRadius: 10, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                  style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(0,0,0,0.35)', border: 'none', borderRadius: 12, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                 >
-                  <X size={15} color="white" />
+                  <X size={18} color="white" />
                 </motion.button>
                 <div style={{ position: 'absolute', bottom: 14, left: 16, right: 16 }}>
                   <div style={{ fontSize: 22, fontWeight: 900, color: 'white', marginBottom: 7 }}>
@@ -868,7 +968,7 @@ export function GestionStock() {
                 <>
                   {/* 1. PRIX & MARGE */}
                   <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
                       Prix & Marge
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -881,7 +981,9 @@ export function GestionStock() {
                           FCFA / {selectedStock.unit}
                         </div>
                         <div style={{ fontSize: 11, fontWeight: 800, color: '#C2410C' }}>
-                          Marge : {(selectedStock.salePrice - selectedStock.purchasePrice).toLocaleString('fr-FR')} FCFA
+                          {selectedStock.purchasePrice > 0
+                            ? `Marge : ${(selectedStock.salePrice - selectedStock.purchasePrice).toLocaleString('fr-FR')} FCFA`
+                            : 'Bénéfice inconnu'}
                         </div>
                       </div>
                       <div style={{ background: '#F0FDF4', border: '1.5px solid #BBF7D0', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
@@ -894,8 +996,8 @@ export function GestionStock() {
                         </div>
                         <div style={{ fontSize: 11, fontWeight: 800, color: '#15803D' }}>
                           {selectedStock.purchasePrice > 0
-                            ? `+${Math.round(((selectedStock.salePrice - selectedStock.purchasePrice) / selectedStock.purchasePrice) * 100)}% benefice`
-                            : '— benefice'
+                            ? `+${Math.round(((selectedStock.salePrice - selectedStock.purchasePrice) / selectedStock.purchasePrice) * 100)}% bénéfice`
+                            : '— bénéfice'
                           }
                         </div>
                       </div>
@@ -907,7 +1009,7 @@ export function GestionStock() {
                   {/* 2. STOCK ACTUEL */}
                   <div style={{ background: '#FFF8F3', border: '1.5px solid #FDDFC4', borderRadius: 16, padding: '12px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Stock actuel</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Stock actuel</span>
                       <span style={{ fontSize: 11, fontWeight: 800, color: '#EA580C' }}>
                         {Math.min(100, Math.round((selectedStock.quantity / Math.max(selectedStock.threshold * 2, 1)) * 100))}%
                       </span>
@@ -916,7 +1018,7 @@ export function GestionStock() {
                       <motion.button
                         whileTap={{ scale: 0.88 }}
                         onClick={() => updateQty(selectedStock.id, Math.max(0, selectedStock.quantity - 1))}
-                        style={{ width: 40, height: 40, borderRadius: 12, background: 'white', border: '1.5px solid #e5e0d8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                        style={{ width: 44, height: 44, borderRadius: 12, background: 'white', border: '1.5px solid #e5e0d8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </motion.button>
@@ -926,12 +1028,12 @@ export function GestionStock() {
                           color={selectedStock.quantity <= 0 ? '#dc2626' : selectedStock.quantity < selectedStock.threshold ? '#ef4444' : '#16a34a'}
                           size={44}
                         />
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#aaa', marginTop: 2 }}>{selectedStock.unit}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre-4)', marginTop: 2 }}>{selectedStock.unit}</div>
                       </div>
                       <motion.button
                         whileTap={{ scale: 0.88 }}
                         onClick={() => updateQty(selectedStock.id, selectedStock.quantity + 1)}
-                        style={{ width: 40, height: 40, borderRadius: 12, background: P, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                        style={{ width: 44, height: 44, borderRadius: 12, background: P, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </motion.button>
@@ -953,7 +1055,7 @@ export function GestionStock() {
                     </div>
                     {selectedStock.quantity < selectedStock.threshold && (
                       <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', marginTop: 4 }}>
-                        Stock bas — reapprovisionner
+                        Stock bas — réapprovisionner
                       </div>
                     )}
                   </div>
@@ -961,19 +1063,19 @@ export function GestionStock() {
                   {/* 3. VALEUR + DERNIER MOUVEMENT */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     <div style={{ background: '#F8F5F2', borderRadius: 12, padding: '10px 12px' }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Valeur stock</div>
-                      <div style={{ fontSize: 16, fontWeight: 900, color: '#1a1a1a' }}>
+                      <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Valeur stock</div>
+                      <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--encre)' }}>
                         {(selectedStock.quantity * selectedStock.salePrice || 0).toLocaleString('fr-FR')}
                       </div>
-                      <div style={{ fontSize: 9, color: '#bbb', fontWeight: 600, marginTop: 2 }}>FCFA total</div>
+                      <div style={{ fontSize: 9, color: 'var(--encre-4)', fontWeight: 600, marginTop: 2 }}>FCFA total</div>
                     </div>
                     <div style={{ background: '#F8F5F2', borderRadius: 12, padding: '10px 12px' }}>
-                      <div style={{ fontSize: 8, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Dernier mouvement</div>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: '#1a1a1a' }}>
-                        {mouvements[0]?.day || '—'}
+                      <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Dernier mouvement</div>
+                      <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--encre)' }}>
+                        {produitMouvements[0]?.day || '—'}
                       </div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: mouvements[0]?.qty > 0 ? '#16a34a' : '#ef4444', marginTop: 2 }}>
-                        {mouvements[0] ? `${mouvements[0].qty > 0 ? '+' : ''}${mouvements[0].qty} ${selectedStock.unit}` : '—'}
+                      <div style={{ fontSize: 9, fontWeight: 700, color: produitMouvements[0]?.qty > 0 ? '#16a34a' : '#ef4444', marginTop: 2 }}>
+                        {produitMouvements[0] ? `${produitMouvements[0].qty > 0 ? '+' : ''}${produitMouvements[0].qty} ${selectedStock.unit}` : '—'}
                       </div>
                     </div>
                   </div>
@@ -981,9 +1083,9 @@ export function GestionStock() {
                   <div style={{ height: 1, background: '#f5f0ea' }} />
 
                   {/* 4. REAPPROVISIONNER */}
-                  <div style={{ border: '1.5px solid #EDE7DE', borderRadius: 16, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#1a1a1a', marginBottom: 2 }}>Reapprovisionner</div>
-                    <div style={{ fontSize: 10, color: '#bbb', fontWeight: 600, marginBottom: 10 }}>
+                  <div style={{ border: '1.5px solid var(--trait)', borderRadius: 16, padding: '12px 14px' }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--encre)', marginBottom: 2 }}>Réapprovisionner</div>
+                    <div style={{ fontSize: 10, color: 'var(--encre-4)', fontWeight: 600, marginBottom: 10 }}>
                       Combien de {selectedStock.unit} tu veux ajouter ?
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -992,13 +1094,13 @@ export function GestionStock() {
                         onChange={e => setReappQty(e.target.value)}
                         type="number"
                         placeholder="0"
-                        style={{ flex: 1, border: '1.5px solid #EDE7DE', borderRadius: 12, padding: '10px 14px', fontSize: 16, fontWeight: 700, color: '#1a1a1a', textAlign: 'center', outline: 'none', fontFamily: 'inherit', background: 'white' }}
+                        style={{ flex: 1, minWidth: 0, border: '1.5px solid var(--trait)', borderRadius: 12, padding: '10px 14px', fontSize: 16, fontWeight: 700, color: 'var(--encre)', textAlign: 'center', outline: 'none', fontFamily: 'inherit', background: 'white', boxSizing: 'border-box' }}
                       />
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#aaa', padding: '0 4px' }}>{selectedStock.unit}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--encre-4)', padding: '0 4px' }}>{selectedStock.unit}</span>
                       <motion.button
                         whileTap={{ scale: 0.97 }}
                         onClick={handleReapp}
-                        style={{ background: P, color: 'white', border: 'none', borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                        style={{ flexShrink: 0, background: P, color: 'white', border: 'none', borderRadius: 12, padding: '10px 16px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
                       >
                         + Ajouter
                       </motion.button>
@@ -1009,11 +1111,15 @@ export function GestionStock() {
 
                   {/* 5. DERNIERS MOUVEMENTS */}
                   <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 10 }}>
                       Derniers mouvements
                     </div>
-                    {mouvements.map((m, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < mouvements.length - 1 ? '1px solid #f5f0ea' : 'none' }}>
+                    {produitMouvements.length === 0 ? (
+                      <div style={{ fontSize: 12, color: 'var(--encre-4)', fontWeight: 600, padding: '4px 0' }}>
+                        Aucune vente enregistrée pour ce produit.
+                      </div>
+                    ) : produitMouvements.map((m, i) => (
+                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < produitMouvements.length - 1 ? '1px solid #f5f0ea' : 'none' }}>
                         <div style={{ width: 30, height: 30, borderRadius: 10, background: m.qty > 0 ? '#DCFCE7' : '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {m.qty > 0
                             ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1021,8 +1127,8 @@ export function GestionStock() {
                           }
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a1a' }}>{m.name}</div>
-                          <div style={{ fontSize: 10, color: '#bbb', fontWeight: 600, marginTop: 1 }}>{m.day}</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre)' }}>{m.type === 'annulation' ? 'Annulation' : 'Vente'}</div>
+                          <div style={{ fontSize: 10, color: 'var(--encre-4)', fontWeight: 600, marginTop: 1 }}>{m.day}</div>
                         </div>
                         <span style={{ fontSize: 13, fontWeight: 900, color: m.qty > 0 ? '#16a34a' : '#ef4444' }}>
                           {m.qty > 0 ? '+' : ''}{m.qty} {selectedStock.unit}
@@ -1041,7 +1147,7 @@ export function GestionStock() {
                     <input
                       value={editForm.name}
                       onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                      style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid #EDE7DE', outline: 'none', fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box', color: '#1a1a1a' }}
+                      style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid var(--trait)', outline: 'none', fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box', color: 'var(--encre)' }}
                     />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -1051,14 +1157,14 @@ export function GestionStock() {
                         type="number"
                         value={editForm.quantity}
                         onChange={e => setEditForm({ ...editForm, quantity: e.target.value === '' ? '' as any : Number(e.target.value) })}
-                        style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid #EDE7DE', outline: 'none', fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box', color: '#1a1a1a' }}
+                        style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid var(--trait)', outline: 'none', fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box', color: 'var(--encre)' }}
                       />
                     </div>
                     <SelectWithAutre
                       label="Unite"
                       value={editForm.unit}
                       onChange={v => setEditForm({ ...editForm, unit: v })}
-                      options={['kg', 'L', 'tas', 'regimes', 'sac', 'tonne', 'carton']}
+                      options={UNITES_COURANTES}
                       primaryColor={P}
                       placeholder="Ex: bouteille..."
                     />
@@ -1070,7 +1176,7 @@ export function GestionStock() {
                         type="number"
                         value={editForm.purchasePrice}
                         onChange={e => setEditForm({ ...editForm, purchasePrice: e.target.value === '' ? '' as any : Number(e.target.value) })}
-                        style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid #EDE7DE', outline: 'none', fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box', color: '#1a1a1a' }}
+                        style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid var(--trait)', outline: 'none', fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box', color: 'var(--encre)' }}
                       />
                     </div>
                     <div>
@@ -1079,42 +1185,44 @@ export function GestionStock() {
                         type="number"
                         value={editForm.salePrice}
                         onChange={e => setEditForm({ ...editForm, salePrice: e.target.value === '' ? '' as any : Number(e.target.value) })}
-                        style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid #EDE7DE', outline: 'none', fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box', color: '#1a1a1a' }}
+                        style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid var(--trait)', outline: 'none', fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box', color: 'var(--encre)' }}
                       />
                     </div>
                   </div>
                   <div style={{ background: '#FFF8F3', border: '1.5px solid #FDDFC4', borderRadius: 14, padding: '11px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Marge</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Marge</span>
                     <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: '#bbb', marginBottom: 2 }}>Nette</div>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: P }}>
-                          {(editForm.salePrice - editForm.purchasePrice).toLocaleString('fr-FR')}
+                        <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--encre-4)', marginBottom: 2 }}>Nette</div>
+                        <div style={{ fontSize: 17, fontWeight: 900, color: editForm.purchasePrice > 0 ? P : 'var(--encre-4)' }}>
+                          {editForm.purchasePrice > 0
+                            ? (editForm.salePrice - editForm.purchasePrice).toLocaleString('fr-FR')
+                            : '—'}
                         </div>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: '#aaa' }}>FCFA/{editForm.unit}</div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--encre-4)' }}>FCFA/{editForm.unit}</div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: '#bbb', marginBottom: 2 }}>%</div>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: editForm.purchasePrice > 0 ? '#16a34a' : '#aaa' }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--encre-4)', marginBottom: 2 }}>%</div>
+                        <div style={{ fontSize: 17, fontWeight: 900, color: editForm.purchasePrice > 0 ? '#16a34a' : 'var(--encre-4)' }}>
                           {editForm.purchasePrice > 0
                             ? `+${Math.round(((editForm.salePrice - editForm.purchasePrice) / editForm.purchasePrice) * 100)}%`
                             : '—'
                           }
                         </div>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: '#aaa' }}>benefice</div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--encre-4)' }}>bénéfice</div>
                       </div>
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>Photo</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>Photo</div>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                       {editForm.image && (
-                        <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', flexShrink: 0, border: '1.5px solid #EDE7DE' }}>
+                        <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', flexShrink: 0, border: '1.5px solid var(--trait)' }}>
                           <img src={editForm.image} alt="photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid #EDE7DE', borderRadius: 12, padding: '9px 14px', cursor: 'pointer', background: 'white' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1.5px solid var(--trait)', borderRadius: 12, padding: '9px 14px', cursor: 'pointer', background: 'white' }}>
                           <input type="file" accept="image/*" style={{ display: 'none' }}
                             onChange={async e => {
                               const file = e.target.files?.[0];
@@ -1148,22 +1256,22 @@ export function GestionStock() {
                       type="number"
                       value={editForm.threshold}
                       onChange={e => setEditForm({ ...editForm, threshold: e.target.value === '' ? '' as any : Number(e.target.value) })}
-                      style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid #EDE7DE', outline: 'none', fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box', color: '#1a1a1a' }}
+                      style={{ width: '100%', padding: '11px 14px', borderRadius: 12, border: '1.5px solid var(--trait)', outline: 'none', fontSize: 15, fontFamily: 'inherit', boxSizing: 'border-box', color: 'var(--encre)' }}
                     />
                   </div>
                   <div style={{ gridColumn:'1 / -1', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                     <div>
-                      <label style={{ fontSize:12, fontWeight:700, color:'#C0392B', display:'block', marginBottom:6 }}>🏷️ Prix promo <span style={{ color:'#aaa', fontWeight:500 }}>(vide = aucune)</span></label>
+                      <label style={{ fontSize:12, fontWeight:700, color:'#C0392B', display:'block', marginBottom:6 }}>🏷️ Prix promo <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(vide = aucune)</span></label>
                       <input type="number" value={editForm.promoPrice} placeholder="ex : 400"
                         onChange={e => setEditForm({ ...editForm, promoPrice: e.target.value === '' ? '' : Number(e.target.value) })}
-                        style={{ width:'100%', padding:'11px 14px', borderRadius:12, border:'1.5px solid #F1D3CE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box', color:'#1a1a1a' }}
+                        style={{ width:'100%', padding:'11px 14px', borderRadius:12, border:'1.5px solid #F1D3CE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box', color:'var(--encre)' }}
                       />
                     </div>
                     <div>
                       <label style={{ fontSize:12, fontWeight:700, color:'#555', display:'block', marginBottom:6 }}>Fin promo</label>
                       <input type="date" value={editForm.promoFin}
                         onChange={e => setEditForm({ ...editForm, promoFin: e.target.value })}
-                        style={{ width:'100%', padding:'11px 14px', borderRadius:12, border:'1.5px solid #EDE7DE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box', color:'#1a1a1a' }}
+                        style={{ width:'100%', padding:'11px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box', color:'var(--encre)' }}
                       />
                     </div>
                   </div>
@@ -1206,7 +1314,7 @@ export function GestionStock() {
                       type="button"
                       whileTap={{ scale: 0.97 }}
                       onClick={() => setInlineEdit(false)}
-                      style={{ padding: '13px 0', borderRadius: 14, background: 'white', border: '1.5px solid #EDE7DE', fontSize: 14, fontWeight: 700, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}
+                      style={{ padding: '13px 0', borderRadius: 14, background: 'white', border: '1.5px solid var(--trait)', fontSize: 14, fontWeight: 700, color: 'var(--encre-3)', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Annuler
                     </motion.button>
@@ -1228,6 +1336,11 @@ export function GestionStock() {
         {showValue && (() => {
           const totalBuy = stocks.reduce((s,p) => s+p.quantity*p.purchasePrice, 0);
           const totalSell = stocks.reduce((s,p) => s+p.quantity*p.salePrice, 0);
+          // Marge/ROI honnêtes : sans prix d'achat, le coût est INCONNU (pas nul).
+          // Compter tout le prix de vente comme marge surévaluerait le bénéfice.
+          // On n'affiche donc la marge globale que si TOUS les produits en stock ont un coût.
+          const sansCout = stocks.filter(p => p.quantity > 0 && !(p.purchasePrice > 0)).length;
+          const margeConnue = sansCout === 0;
           const marge = totalSell - totalBuy;
           const roi = totalBuy > 0 ? ((marge/totalBuy)*100).toFixed(1) : '0';
           return (
@@ -1252,27 +1365,37 @@ export function GestionStock() {
                     {[
                       { label:'Valeur achat', value:totalBuy, color:'#ef4444', bg:'#FEF2F2' },
                       { label:'Valeur vente', value:totalSell, color:'#1D9E75', bg:'#F0FAF5' },
-                      { label:'Marge totale', value:marge, color:P, bg:'#FFF3EA' },
                     ].map((k) => (
                       <div key={k.label} style={{ background:k.bg, borderRadius:14, padding:14, border:`1.5px solid ${k.color}33` }}>
-                        <div style={{ fontSize:11, color:'#aaa', fontWeight:700, marginBottom:6 }}>{k.label}</div>
+                        <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>{k.label}</div>
                         <Montant value={k.value} size="md" color={k.color} />
                       </div>
                     ))}
+                    <div style={{ background:'#FFF3EA', borderRadius:14, padding:14, border:`1.5px solid ${P}33` }}>
+                      <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>Marge totale</div>
+                      {margeConnue
+                        ? <Montant value={marge} size="md" color={P} />
+                        : <div style={{ fontSize:22, fontWeight:900, color:'var(--encre-4)' }}>—</div>}
+                    </div>
                     <div style={{ background:'#F5F0FF', borderRadius:14, padding:14, border:'1.5px solid #a78bfa33' }}>
-                      <div style={{ fontSize:11, color:'#aaa', fontWeight:700, marginBottom:6 }}>ROI</div>
-                      <div style={{ fontSize:22, fontWeight:900, color:'#7c3aed' }}>+{roi}%</div>
+                      <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>ROI</div>
+                      <div style={{ fontSize:22, fontWeight:900, color: margeConnue ? '#7c3aed' : 'var(--encre-4)' }}>{margeConnue ? `+${roi}%` : '—'}</div>
                     </div>
                   </div>
-                  <div style={{ background:'white', border:'1.5px solid #EDE7DE', borderRadius:14, overflow:'hidden' }}>
-                    <div style={{ padding:'12px 14px', borderBottom:'1px solid #f5f0eb', fontSize:13, fontWeight:800, color:'#1a1206' }}>Top 3 produits</div>
+                  {!margeConnue && (
+                    <div style={{ fontSize:11, fontWeight:700, color:'#C2410C', background:'#FFF7ED', border:'1.5px solid #FED7AA', borderRadius:12, padding:'10px 12px' }}>
+                      ⚠ {sansCout} produit{sansCout > 1 ? 's' : ''} sans prix d'achat — renseigne-le pour voir ta marge réelle.
+                    </div>
+                  )}
+                  <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, overflow:'hidden' }}>
+                    <div style={{ padding:'12px 14px', borderBottom:'1px solid #f5f0eb', fontSize:13, fontWeight:800, color:'var(--encre)' }}>Top 3 produits</div>
                     {stocks.map(s=>({...s,val:s.quantity*s.salePrice})).sort((a,b)=>b.val-a.val).slice(0,3).map((p,i) => (
                       <div key={p.id} style={{ padding:'12px 14px', borderBottom:i<2?'1px solid #f5f0eb':'none', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                           <div style={{ width:28, height:28, borderRadius:8, background:i===0?'#f59e0b':i===1?'#9ca3af':'#c97316', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:'white' }}>{i+1}</div>
                           <div>
-                            <div style={{ fontSize:14, fontWeight:700, color:'#1a1206' }}>{p.name}</div>
-                            <div style={{ fontSize:11, color:'#aaa' }}>{p.quantity} {p.unit}</div>
+                            <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{p.name}</div>
+                            <div style={{ fontSize:11, color:'var(--encre-4)' }}>{p.quantity} {p.unit}</div>
                           </div>
                         </div>
                         <Montant value={p.val} size="sm" color="#1D9E75" />
@@ -1292,17 +1415,21 @@ export function GestionStock() {
           <VenteVocaleModal isOpen={showVente} onClose={() => setShowVente(false)} />
         </ObjectifProvider>
       </RaccourcisProvider>
-      {confirmDeleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-2xl p-6 flex flex-col gap-4 max-w-sm w-full mx-4">
+      {/* Confirmation de suppression : rendue via ModalPortal (document.body) pour
+          échapper au stacking context de la fiche produit (zIndex:200) qui la
+          masquait auparavant (elle était en z-50, peinte SOUS la fiche → invisible
+          et non cliquable). z-[210] = sur-couche au-dessus des modals (z-[200]). */}
+      <ModalPortal isOpen={confirmDeleteId != null}>
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl p-6 flex flex-col gap-4 max-w-sm w-full">
             <p className="text-lg font-semibold">Supprimer ce produit ?</p>
             <div className="flex gap-3">
-              <button onClick={() => { void deleteItem(confirmDeleteId, true); }} className="flex-1 bg-red-500 text-white py-2 rounded-xl">Supprimer</button>
-              <button onClick={() => setConfirmDeleteId(null)} className="flex-1 bg-gray-100 py-2 rounded-xl">Annuler</button>
+              <button onClick={() => { if (confirmDeleteId) void deleteItem(confirmDeleteId, true); }} className="flex-1 min-h-[44px] bg-red-500 text-white py-3 rounded-xl font-semibold">Supprimer</button>
+              <button onClick={() => setConfirmDeleteId(null)} className="flex-1 min-h-[44px] bg-gray-100 py-3 rounded-xl font-semibold">Annuler</button>
             </div>
           </div>
         </div>
-      )}
+      </ModalPortal>
     </>
   );
 }

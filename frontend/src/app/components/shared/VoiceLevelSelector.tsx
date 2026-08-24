@@ -90,7 +90,7 @@ export function VoiceLevelSelector({ value, onChange, color }: VoiceLevelSelecto
               }}
             >
               <Icon
-                style={{ width: 28, height: 28, color: isActive ? color : '#9CA3AF' }}
+                style={{ width: 28, height: 28, color: isActive ? color : 'var(--encre-4)' }}
               />
               <span style={{ fontSize: 11, fontWeight: 700, color: isActive ? color : '#6b7280' }}>
                 {level.label}

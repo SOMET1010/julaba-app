@@ -1,5 +1,7 @@
 import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
-import { useState, useRef, useEffect } from 'react';
+import { stopAllVoice } from '../../services/audioManager';
+import { stopIntro } from '../../services/onboardingVoix';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle, AlertCircle, Fingerprint, Mic } from 'lucide-react';
@@ -11,22 +13,18 @@ import logoJulaba from '../../../assets/images/logo-julaba.png';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
-import { extractPhoneDigits } from '../../utils/frenchDigits';
+import { extractPhoneDigits, fusionnerChiffresDictes } from '../../utils/frenchDigits';
 import { tataUiClipForText } from '../../services/tataUiClips';
-import { speakBrowser, voixSecoursNom } from '../../services/elevenlabs';
+import { voixSecoursNom } from '../../services/elevenlabs';
+import { speak as managerSpeak, speakClipOrText } from '../../services/audioManager';
 import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
-
-// Grammaire CHIFFRES pour Vosk : dictée d'un numéro de téléphone → on limite le
-// moteur aux mots-nombres (précision maximale, pas de confusion avec du vocabulaire).
-const DIGIT_GRAMMAR = [
-  'zéro', 'zero', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
-  'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf',
-  'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'quatre-vingt', 'quatre-vingts', 'quatre-vingt-dix',
-  'cent', 'et', '[unk]',
-];
+import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../services/comptesMemorises';
+import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
+import { glyphePourChiffre } from '../../services/clavierImage';
+import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
 
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
@@ -98,19 +96,52 @@ export function LoginPassword() {
   const backOfficeCtx = useBackOfficeOptional();
   const setBOUser = backOfficeCtx?.setBOUser ?? (() => {});
 
-  const [phone, setPhone] = useState('');
+  // « Tata se souvient de moi » (connexion inclusive, lot 1) : si une personne
+  // est déjà connue sur CE téléphone, Tata l'accueille par son prénom et ne lui
+  // redemande JAMAIS ses 10 chiffres — reconnaissance (visage/doigt) ou code.
+  // « Ce n'est pas moi » ramène au parcours classique (téléphone partagé).
+  const [compteConnu] = useState<CompteMemorise | null>(() => {
+    try { return dernierCompte(window.localStorage); } catch { return null; }
+  });
+  const [phone, setPhone] = useState(compteConnu?.phone ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [showDevButton, setShowDevButton] = useState(false);
   const [pinInput, setPinInput] = useState('');
-  const [step, setStep] = useState<'phone' | 'password'>('phone');
+  const [step, setStep] = useState<'reconnaissance' | 'phone' | 'password'>(compteConnu ? 'reconnaissance' : 'phone');
   const [isListening, setIsListening] = useState(false);
   // Mode d'accès EFFECTIF (résout 'auto' via l'usage observé) : l'écran S'ADAPTE
   // (lecture = clavier direct, mixte = les deux, voix = micro au centre).
   const accessMode: EffectiveMode = getEffectiveMode();
   const [showKeypad, setShowKeypad] = useState(clavierParDefaut(accessMode)); // ouvert d'office en mode lecture
+  // Voix (écoute) réellement disponible sur l'appareil (moteur natif prêt) :
+  // signal de certification MINIMAL (design v0.3). Fausse aujourd'hui sur le web
+  // et sur l'APK sans moteur → le NUMÉRO se saisit au PAVÉ, sans micro trompeur.
+  // (Lot 5 remplacera ce signal par une certification vocale complète.)
+  const voixEcouteDispo = (() => { try { return offlineModelReady(); } catch { return false; } })();
+  // Le pavé est la référence : toujours visible tant que la voix n'écoute pas.
+  const clavierVisible = showKeypad || !voixEcouteDispo;
+  // Clavier imagé (variante A, doc « mot de passe imagé ») : correspondance
+  // FIXE et publique chiffre→image sur le pavé PIN, en OPTION — jamais le mode
+  // par défaut (personne n'est surprise par un pavé déjà connu). Le PIN envoyé
+  // reste les mêmes chiffres ; seul le glyphe affiché change.
+  const [pinEnImages, setPinEnImages] = useState<boolean>(() => {
+    try { return localStorage.getItem('julaba_pin_images') === '1'; } catch { return false; }
+  });
+  const basculerPinEnImages = () => {
+    setPinEnImages((v) => {
+      const next = !v;
+      try { localStorage.setItem('julaba_pin_images', next ? '1' : '0'); } catch { /* ignore */ }
+      // Annonce le CHANGEMENT DE MODE, jamais le PIN — la correspondance est
+      // publique (variante A), donc rien de secret n'est dit ici.
+      if (guidageVocal(accessMode)) {
+        parle(next ? 'Maintenant, des images à la place des chiffres.' : 'Retour aux chiffres.');
+      }
+      return next;
+    });
+  };
   // Canal utilisé pour CETTE identification (clavier / voix) → apprentissage 'auto'.
   const dernierCanalRef = useRef<'clavier' | 'voix' | null>(null);
   // Proposition d'adaptation de Tata (mode 'auto' + préférence franche observée).
@@ -143,7 +174,11 @@ export function LoginPassword() {
 
   // Accueil personnalisé : si une marchande est déjà connue sur ce téléphone, on
   // la salue par son prénom (ton « vous », chaleureux et respectueux).
+  // Source de vérité : le COMPTE MÉMORISÉ (comptesMemorises, survit à la
+  // déconnexion) ; julaba_auth_user en simple repli (effacé au logout).
   const cachedPrenom = (() => {
+    const memorise = (compteConnu?.prenom || '').trim();
+    if (memorise) return memorise;
     try {
       const u = JSON.parse(localStorage.getItem('julaba_auth_user') || 'null');
       return (u?.firstName || u?.first_name || u?.prenom || '').toString().trim();
@@ -160,9 +195,15 @@ export function LoginPassword() {
   // Quand un vrai enregistrement d'accueil sera fourni, on pourra le rebrancher.
   const ecouterTata = () => {
     setTataSpeaking(true);
+    // La consigne suit l'ÉTAPE : accueil reconnu (geste unique) ou numéro à dire.
+    const consigne = step === 'reconnaissance' && compteConnu
+      ? (compteConnu.biometrie
+        ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
+        : 'Touche le grand bouton et entre ton code.')
+      : 'Dis ton numéro, ou tape-le.';
     // UNE SEULE voix de secours dans toute l'appli (speakBrowser) : même voix FR,
     // même débit, même timbre partout → fini le « mélange de voix ».
-    try { speakBrowser(`${greetTitle}. ${greetSub}. Dis ton numéro, ou tape-le.`).finally(() => setTataSpeaking(false)); }
+    try { managerSpeak(`${greetTitle}. ${greetSub}. ${consigne}`).finally(() => setTataSpeaking(false)); }
     catch { setTataSpeaking(false); }
     setTimeout(() => setTataSpeaking(false), 8000); // filet
   };
@@ -193,36 +234,50 @@ export function LoginPassword() {
   // du navigateur). Une vendeuse qui ne lit pas peut ainsi entendre les consignes
   // et les erreurs au lieu de devoir lire un petit texte.
   // Voix intégrée du téléphone (hors-ligne, PAS Internet) — dernier recours. On
-  // passe par LE point unique speakBrowser (voix FR stable, jamais « Manuela »).
-  const parleRobot = (texte: string) => {
-    if (!texte) return;
-    try { void speakBrowser(texte); } catch { /* ignore */ }
-  };
-  // On PARLE d'abord avec la VRAIE voix de Tata (clip embarqué) quand la phrase
-  // correspond exactement à un clip enregistré (« Entre ton code secret… »,
-  // « Connexion refusée… », etc.). Sinon, voix du téléphone. Jamais Internet.
+  // Toute la voix de cet écran passe par l'audioManager (créneau exclusif,
+  // hygiène post-audit C3) : clip de la VRAIE Tata quand la phrase correspond à
+  // un clip enregistré, sinon voix de secours FR — le repli est géré DANS le
+  // même créneau, donc jamais deux voix superposées, et stopAllVoice() coupe tout.
   const parle = (texte: string) => {
     if (!texte) return;
-    try {
-      const clip = tataUiClipForText(texte);
-      if (clip) {
-        try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
-        const a = new Audio(clip);
-        a.play().catch(() => parleRobot(texte));
-        return;
-      }
-    } catch { /* ignore */ }
-    parleRobot(texte);
+    let clip: string | null = null;
+    try { clip = tataUiClipForText(texte); } catch { /* ignore */ }
+    try { void speakClipOrText({ clipUrl: clip ?? undefined, text: texte }); } catch { /* ignore */ }
   };
   // GUIDAGE VOCAL selon le mode : en mode « lecture » (elle lit vite), on ne parle
   // PAS automatiquement (le texte suffit). En mixte/voix, Tata annonce erreurs et
   // consignes. La lecture manuelle (toucher Tata, le cadenas…) reste toujours possible.
-  useEffect(() => { if (error && guidageVocal(accessMode)) parle(error); }, [error]);
+  // L'erreur se SENT (vibration longue) quel que soit le profil — et se dit
+  // en guidage vocal. Une sourde ou une marchande dans le bruit la perçoit.
+  useEffect(() => { if (error) { vibrerErreur(); if (guidageVocal(accessMode)) parle(error); } }, [error]);
   useEffect(() => { if (step === 'password' && guidageVocal(accessMode)) parle('Entre ton code secret à 4 chiffres'); }, [step]);
+  // « Tata se souvient de moi » : à l'arrivée, Tata SALUE par le prénom et dit le
+  // geste à faire — l'écran n'a rien à lire. (Une seule fois, au montage.)
+  // FILET DE RATTRAPAGE : cet écran ('reconnaissance') peut être le TOUT
+  // PREMIER de la page à un retour d'app (EntryGate saute Welcome/Onboarding
+  // via ses drapeaux persistés dès que compteConnu existe) — sans geste
+  // préalable dans CETTE session, l'audio reste bloqué par le navigateur.
+  // Même filet que Welcome.tsx/OnboardingSlides.tsx.
+  const direAccueilReconnaissance = useCallback(() => {
+    if (!(step === 'reconnaissance' && compteConnu && guidageVocal(accessMode))) return;
+    const salut = compteConnu.prenom ? `Bonjour ${compteConnu.prenom} !` : 'Bonjour ma sœur !';
+    const geste = compteConnu.biometrie
+      ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
+      : 'Touche le grand bouton et entre ton code.';
+    try { void managerSpeak(`${salut} ${geste}`); } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, compteConnu, accessMode]);
+
+  useEffect(() => {
+    direAccueilReconnaissance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useAudioUnlockFallback(direAccueilReconnaissance, step === 'reconnaissance' && !!compteConnu && guidageVocal(accessMode));
   // Tata propose l'adaptation (mode 'auto') : elle le DIT (une fois) — c'est une
   // question, pas un réglage à trouver. On l'énonce dès l'affichage.
   useEffect(() => {
-    if (suggestion && !suggReponse) { try { parleRobot(suggestion.texte); } catch { /* ignore */ } }
+    if (suggestion && !suggReponse) { try { void managerSpeak(suggestion.texte); } catch { /* ignore */ } }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Réponse à la proposition de Tata : oui → on adopte le mode ; non → on met en pause.
@@ -339,27 +394,45 @@ export function LoginPassword() {
     }
   };
 
-  // Dictée vocale du numéro — 100 % HORS-LIGNE via Vosk, EN DIRECT. On transcrit
+  // Dictée vocale du numéro — 100 % HORS-LIGNE via sherpa-onnx (natif), EN DIRECT. On transcrit
   // pendant qu'elle parle : les chiffres se remplissent à l'écran et on s'ARRÊTE
   // DÈS QU'ON A UN NUMÉRO COMPLET ET VALIDE (10 chiffres, règle CI) — jamais sur un
   // minuteur. Clavier = filet. Aucune reconnaissance navigateur (Internet).
 
   // Termine la dictée avec les chiffres retenus : range le micro, coupe le moteur,
   // puis AIGUILLE selon la config en cours (numéro ou code).
+  //
+  // CORRECTIF (numéro erroné affiché en recette, ex. « 70 00 00 00 00 ») :
+  // digitsBruts n'est qu'un INSTANTANÉ — la dernière passe intermédiaire à
+  // 900 ms, sur un tampon audio qui pouvait encore être incomplet. Le moteur
+  // fait ENSUITE, dans stop(), une VRAIE repasse finale (re-transcription de
+  // TOUT l'audio capté depuis le début, la plus fiable) — mais l'ancien code
+  // AIGUILLAIT déjà cfg.onFinal(...) avec l'instantané, PUIS jetait le
+  // résultat de cette repasse finale (le handler onText l'ignorait car
+  // dictDoneRef.current était déjà vrai). On décidait donc sur un texte
+  // partiellement traité au lieu du résultat définitif du STT. On attend
+  // maintenant la fin de stop() (qui met à jour bestDigitsRef via la
+  // repasse finale, cf. le handler onText plus bas) avant de conclure.
   const finaliserDictee = (digitsBruts: string) => {
     if (dictDoneRef.current) return;
     dictDoneRef.current = true;
     const cfg = dictCfgRef.current;
-    const digits = digitsBruts.slice(0, cfg?.max ?? 10);
-    vlog('FINALISE', { digits, n: digits.length, ok: cfg ? cfg.estComplet(digits) : false });
     if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
     if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
     if (micStartTimeoutRef.current) { clearTimeout(micStartTimeoutRef.current); micStartTimeoutRef.current = null; }
-    void liveStopRef.current?.(); liveStopRef.current = null;
-    try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
-    mediaStreamRef.current = null;
-    setIsListening(false);
-    cfg?.onFinal(digits);
+    const stopFn = liveStopRef.current;
+    liveStopRef.current = null;
+    setIsListening(false); // retour visuel immédiat (micro éteint), avant même la repasse finale
+    const conclure = () => {
+      try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+      mediaStreamRef.current = null;
+      // bestDigitsRef a pu être mis à jour par la repasse finale pendant l'attente
+      // de stopFn() (cf. onText) ; sinon on retombe sur l'instantané reçu.
+      const digits = (bestDigitsRef.current || digitsBruts).slice(0, cfg?.max ?? 10);
+      vlog('FINALISE', { digits, n: digits.length, ok: cfg ? cfg.estComplet(digits) : false });
+      cfg?.onFinal(digits);
+    };
+    if (stopFn) { void stopFn().then(conclure, conclure); } else { conclure(); }
   };
 
   // Re-tap micro / filet → on termine avec ce qui a été compris jusqu'ici.
@@ -375,7 +448,7 @@ export function LoginPassword() {
     vlog('MODEL_READY', { ready: offlineModelReady(), installed: offlineModelInstalled() });
     vlog('TTS_VOICE', voixSecoursNom());
 
-    if (!offlineModelReady()) { vlog('VOSK_NOT_READY'); cfg.siPasPrete(); return; }
+    if (!offlineModelReady()) { vlog('STT_NOT_READY'); cfg.siPasPrete(); return; }
 
     vlog('MIC_ASK');
     let stream: MediaStream;
@@ -398,19 +471,30 @@ export function LoginPassword() {
     if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
     if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
     setError('');
-    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ } // que le micro n'entende pas Tata
+    // Verrou parole/écoute (audit voix C1) : couper TOUTES les voix (clips du
+    // manager, clip local de parle(), intro d'onboarding, synthèse) — le seul
+    // speechSynthesis.cancel() laissait les clips HTMLAudio jouer dans le micro.
+    try { stopAllVoice(); } catch { /* ignore */ }
+    try { stopIntro(); } catch { /* ignore */ }
+    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
 
     let handle: { stop: () => Promise<void> };
     try {
       handle = await startLiveDictation(stream, (texte, estFinal) => {
-        if (dictDoneRef.current) return;
+        // Une repasse FINALE (estFinal) fait TOUJOURS autorité sur bestDigitsRef,
+        // même après le début de la finalisation (dictDoneRef déjà vrai) : c'est
+        // elle que finaliserDictee() attend pour conclure sur le résultat
+        // définitif du STT plutôt que sur un instantané intermédiaire (cf. le
+        // commentaire de finaliserDictee). Seule la suite du handler (remplissage
+        // écran, auto-arrêt) ne doit plus s'exécuter une fois la dictée finalisée.
+        if (dictDoneRef.current && !estFinal) return;
         const digits = extractPhoneDigits(texte || '').slice(0, cfg.max);
         if (estFinal || digits.length > bestDigitsRef.current.length) {
           vlog('TXT', { fin: estFinal, brut: (texte || '').slice(0, 40), digits });
         }
         // Le résultat FINAL fait autorité (corrige) ; un partiel ne fait que grandir.
-        if (estFinal) bestDigitsRef.current = digits;
-        else if (digits.length >= bestDigitsRef.current.length) bestDigitsRef.current = digits;
+        bestDigitsRef.current = fusionnerChiffresDictes(estFinal, digits, bestDigitsRef.current);
+        if (dictDoneRef.current) return; // déjà en cours de finalisation : bestDigitsRef mis à jour, rien d'autre à faire
         const best = bestDigitsRef.current;
         cfg.onLive(best); // remplissage EN DIRECT (contrôle à l'œil)
         // Valeur complète + valide → on s'arrête. Nombre composé (« vingt-six »)
@@ -433,7 +517,7 @@ export function LoginPassword() {
         if (estFinal) {
           settleTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 1600);
         }
-      }, DIGIT_GRAMMAR, (tag, data) => vlog(tag, data));
+      }, undefined, (tag, data) => vlog(tag, data));
       vlog('LIVE_START');
     } catch (e) {
       vlog('LIVE_FAIL', String(e));
@@ -465,58 +549,58 @@ export function LoginPassword() {
       if (num.length > 0) { setPhone(num); setError(''); setShowKeypad(true); parle('Complète ton numéro sur le clavier.'); return; }
       setError("Je n'ai pas compris. Tape ton numéro juste ici 👇"); setShowKeypad(true); parle("Je n'ai pas compris. Tape ton numéro juste ici.");
     },
-    buildTag: 'vosk-login-live-v2',
-    siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, il faut installer ma voix une fois. Touche le bouton, ou tape ton numéro."); },
+    buildTag: 'sherpa-login-live-v1',
+    siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro."); },
     siMicRefuse: () => { setError('Autorise le micro, ou tape ton numéro 👇'); parle('Autorise le micro, ou tape ton numéro.'); setShowKeypad(true); },
     siEchec: () => { setShowKeypad(true); parle('Tape ton numéro juste ici.'); },
   });
 
-  // Dictée du CODE secret (4 chiffres). Le code est SECRET → Tata PRÉVIENT à voix
-  // haute de rester discrète AVANT d'ouvrir le micro, puis écoute. Clavier = filet.
-  const codeCfg: DicteeCfg = {
-    max: 4,
-    estComplet: (d) => d.length === 4,
-    onLive: (d) => setPinInput(d),
-    onFinal: (code) => {
-      if (code.length === 4) {
-        try { navigator.vibrate?.(30); } catch { /* ignore */ }
-        setPinInput(code);
-        setTimeout(() => { void handleLogin(code); }, 250);
-        return;
-      }
-      if (code.length > 0) { setPinInput(code); parle('Complète ton code sur le clavier.'); return; }
-      parle("Je n'ai pas compris. Chuchote ton code, ou tape-le.");
-    },
-    buildTag: 'vosk-code-live-v1',
-    siPasPrete: () => { parle('Tape ton code juste ici.'); },
-    siMicRefuse: () => { parle('Autorise le micro, ou tape ton code.'); },
-    siEchec: () => { parle('Tape ton code juste ici.'); },
-  };
-  const dicterCode = () => {
-    // Re-tap pendant l'écoute → on termine avec ce qu'on a.
-    if (isListening) { arreterEcoute(); return; }
-    // ⚠️ Le code est secret : Tata rappelle la discrétion, PUIS on ouvre le micro
-    // (après la phrase, pour ne pas s'entendre soi-même).
-    parle('Chuchote ton code tout bas, ou tape-le.');
-    setTimeout(() => { void demarrerDictee(codeCfg); }, 1500);
-  };
+  // AUDIT UX B5 (11/08/2026) : le CODE SECRET ne se dicte JAMAIS à voix
+  // haute — un marché est un lieu public, même chuchoté c'est un secret
+  // divulgué. L'ancienne dictée du code est SUPPRIMÉE : le code s'entre au
+  // pavé (ou par la reconnaissance « Tata me reconnaît »). La dictée
+  // vocale reste réservée au NUMÉRO de téléphone.
 
-  // Tata parle AU PREMIER CONTACT (les navigateurs bloquent le son avant tout
-  // geste). On accueille dès que la marchande touche l'écran — sauf si elle
-  // touche directement Tata ou un bouton (ceux-là gèrent déjà leur propre voix),
-  // pour ne pas se chevaucher. Une seule fois.
-  useEffect(() => {
+  // Tata parle DÈS L'ENTRÉE dans l'écran numéro.
+  //
+  // AVANT : on supposait qu'à ce stade du parcours (après Welcome +
+  // Onboarding, dans la même session SPA) un geste utilisateur avait déjà eu
+  // lieu, donc rien ne bloquait la voix — un filet de rattrapage avait même
+  // été essayé puis RETIRÉ pour cette raison. CORRECTIF (silence encore
+  // constaté en recette terrain sur CET écran précisément) : cette hypothèse
+  // est FAUSSE dès qu'on revient dans l'app après l'avoir quittée — EntryGate
+  // saute directement à cet écran (drapeaux julaba_seen_splash et
+  // julaba_completed_onboarding persistés en localStorage), sans passer par
+  // Welcome/Onboarding dans CETTE page fraîchement chargée, donc sans aucun
+  // geste préalable pour débloquer l'audio.
+  //
+  // Le filet est donc RÉINTRODUIT, mais SANS le piège de la version d'avant :
+  // l'ancien filet filtrait la cible du geste (closest sur button/img) et,
+  // comme l'écouteur était en mode « une seule fois », un premier tap sur le
+  // gros micro consommait l'écouteur SANS jamais jouer le son — silence pour
+  // le reste de la session. Le nouveau filet (useAudioUnlockFallback) ne
+  // filtre RIEN : le tout premier toucher, où qu'il tombe, rejoue la même
+  // consigne — comme sur Welcome.tsx et OnboardingSlides.tsx.
+  //
+  // On explique aussi le GESTE, pas seulement le champ ("tape un chiffre à la
+  // fois, les ronds se remplissent") — lire seulement "entre ton numéro" ne
+  // suffit pas à quelqu'un qui ne lit pas et n'a jamais vu cet écran.
+  const direConsigneNumero = useCallback(() => {
     if (step !== 'phone') return;
     if (!guidageVocal(accessMode)) return; // mode lecture : pas d'accueil vocal auto
-    const greet = (e: PointerEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && t.closest && t.closest('button, img')) return;
-      ecouterTata();
-    };
-    window.addEventListener('pointerdown', greet, { once: true });
-    return () => window.removeEventListener('pointerdown', greet);
+    const consigne = voixEcouteDispo
+      ? 'Pour entrer, dis ton numéro à voix haute, ou tape les chiffres un par un. Les ronds en haut se rempliront.'
+      : 'Tape les chiffres de ton numéro, un par un. Les ronds en haut se rempliront.';
+    parle(consigne);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, accessMode, voixEcouteDispo]);
+
+  useEffect(() => {
+    direConsigneNumero();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
+
+  useAudioUnlockFallback(direConsigneNumero, step === 'phone' && guidageVocal(accessMode));
 
   useEffect(() => {
     const tel = document.querySelector('input[autocomplete="tel"]') as HTMLInputElement | null;
@@ -528,7 +612,7 @@ export function LoginPassword() {
       if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
       if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
-      // Coupe une dictée EN DIRECT en cours (moteur Vosk + micro) au démontage.
+      // Coupe une dictée EN DIRECT en cours (moteur + micro) au démontage.
       try { void liveStopRef.current?.(); } catch { /* ignore */ }
       try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
       if (phoneToPasswordTimeout.current) {
@@ -557,6 +641,17 @@ export function LoginPassword() {
 
   const resetAttempts = (phoneNum: string) => { delete loginAttempts[phoneNum]; };
 
+  // Mémorise la personne sur CE téléphone après une entrée réussie (lot 1) —
+  // jamais bloquant : si le stockage échoue, la connexion continue normalement.
+  const memoriserApresEntree = (u: Record<string, unknown> | undefined, biometrie: boolean) => {
+    try {
+      const prenom = String((u as any)?.firstName || (u as any)?.first_name || (u as any)?.prenoms || '').trim();
+      const photoBrute = (u as any)?.photo;
+      const photo = typeof photoBrute === 'string' && photoBrute ? photoBrute : undefined;
+      memoriserCompte(window.localStorage, { phone, prenom, photo, ...(biometrie ? { biometrie: true } : {}) }, new Date().toISOString());
+    } catch { /* ignore */ }
+  };
+
   const handleBiometric = async () => {
     setIsLoading(true);
     try {
@@ -564,6 +659,9 @@ export function LoginPassword() {
       if (result.success && result.user) {
         setAppUser(result.user);
         setUserProfile(result.user);
+        // La reconnaissance a marché ICI → au prochain retour, geste unique.
+        memoriserApresEntree(result.user as Record<string, unknown>, true);
+        vibrerSucces();
         // Persiste le jeton (auth mobile sans cookie cross-domaine), comme la connexion par code.
         try {
           if (result.accessToken) localStorage.setItem('julaba_access_token', result.accessToken);
@@ -578,11 +676,13 @@ export function LoginPassword() {
         };
         navigate(roleRoutes[normalizeRole(result.user.role)] || '/marchand');
       } else {
-        setError('Authentification biométrique échouée');
+        // Mots de la MARCHANDE (pas « biométrie ») : dire le problème et le geste
+        // de secours. L'effet vocal sur `error` l'énonce automatiquement.
+        setError('Ton téléphone ne t\'a pas reconnue. Utilise ton code.');
       }
     } catch (err) {
       console.warn('[LoginPassword] biometric failed:', err instanceof Error ? err.message : err);
-      setError('Biométrie non disponible');
+      setError('La reconnaissance n\'a pas marché ici. Utilise ton code.');
     } finally {
       setIsLoading(false);
     }
@@ -640,7 +740,7 @@ export function LoginPassword() {
       } catch (err) {
         console.warn('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
         vlog('LOGIN_JSON_FAIL', { msg: err instanceof Error ? err.message : String(err) });
-        setError('Erreur serveur : réponse inattendue');
+        setError('Réponse inattendue. Réessaie dans un instant.');
         setIsLoading(false);
         return;
       }
@@ -683,7 +783,7 @@ export function LoginPassword() {
         return;
       }
       const boRoles = ['super_admin', 'admin'];
-      const isBackOffice = boRoles.includes(user.role);
+      const isBackOffice = boRoles.includes(user.role ?? '');
       if (result.user?.mustChangePassword) {
         setError('Mot de passe temporaire, redirection en cours...');
         if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
@@ -704,7 +804,13 @@ export function LoginPassword() {
         window.dispatchEvent(new CustomEvent('julaba:token-ready'));
 
       } else {
-        setAppUser(user); setUserProfile(user);
+        // La réponse de connexion est plus lâche que User (champs optionnels) ;
+        // le runtime a toujours fourni ces champs — conversion documentée.
+        setAppUser(user as unknown as import('../../contexts/AppContext').User); setUserProfile(user as unknown as import('../../contexts/AppContext').User);
+        // Entrée par code réussie → Tata se souvient d'elle sur ce téléphone
+        // (le drapeau « la reconnaissance marche ici » déjà acquis est conservé).
+        memoriserApresEntree(user as Record<string, unknown>, false);
+        vibrerSucces();
         // Auth mobile : on STOCKE le jeton (cookie cross-domaine bloqué sur mobile).
         // L'intercepteur fetch l'enverra en en-tête Authorization sur chaque appel.
         try {
@@ -769,6 +875,9 @@ export function LoginPassword() {
         const next = phone + digit;
         setPhone(next);
         setError('');
+        // Retour tactile à CHAQUE chiffre tapé — perceptible sans lire ni entendre,
+        // et sans jamais révéler le chiffre à voix haute (confidentialité du numéro).
+        try { navigator.vibrate?.(12); } catch { /* ignore */ }
         if (import.meta.env.DEV && next === '0501604040') setShowDevButton(true);
         if (next.length === 10) {
           if (!numeroCIComplet(next, TEST_PHONES)) {
@@ -789,13 +898,26 @@ export function LoginPassword() {
     }
   };
 
+  // Retour depuis l'écran du code : si Tata se souvient d'elle (et que le numéro
+  // n'a pas été changé), on revient à l'ACCUEIL par prénom — jamais aux 10 chiffres.
+  const retourDepuisCode = () => {
+    setPinInput('');
+    setError('');
+    setStep(compteConnu && phone === compteConnu.phone ? 'reconnaissance' : 'phone');
+  };
+
   const handleKeyDelete = () => {
     if (step === 'phone') {
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
       setPhone(p => p.slice(0, -1));
+      // Effacer est ANNONCÉ — geste distinct du simple ajout d'un chiffre (motif
+      // de vibration différent) + un mot dit à voix haute. « Effacé » ne révèle
+      // aucun chiffre : rien à cacher, contrairement au numéro lui-même.
+      try { navigator.vibrate?.([10, 30, 10]); } catch { /* ignore */ }
+      if (guidageVocal(accessMode)) parle('Effacé.');
     } else {
       if (pinInput.length === 0) {
-        setStep('phone');
+        retourDepuisCode();
       } else {
         const next = pinInput.slice(0, -1);
         setPinInput(next);
@@ -887,7 +1009,7 @@ export function LoginPassword() {
             Le nom et l'accueil sont DITS par Tata (on touche son visage) — pas écrits.
             En mode dev seulement, on garde un mini-repère. */}
         {devMode && (
-          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(124,98,80,0.5)' }}>Tata Nanti Lou · dev</span>
+          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tata Nanti Lou · dev</span>
         )}
       </motion.div>
 
@@ -920,12 +1042,99 @@ export function LoginPassword() {
           alignItems: 'center',
           // Centré quand il n'y a que le micro ; aligné en haut quand le clavier
           // est ouvert (sinon le haut sortait de l'écran, non atteignable).
-          justifyContent: showKeypad ? 'flex-start' : 'center',
-          paddingTop: showKeypad ? 12 : 0,
+          justifyContent: clavierVisible ? 'flex-start' : 'center',
+          paddingTop: clavierVisible ? 12 : 0,
         }}
       >
         <AnimatePresence mode="wait">
-          {step === 'phone' ? (
+          {step === 'reconnaissance' && compteConnu ? (
+            <motion.div
+              key="reconnaissance"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+              style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}
+            >
+              {/* « Tata me reconnaît » (lot 1) : elle se VOIT (photo) et lit UN mot
+                  (son prénom) — confirmation immédiate que c'est bien son compte.
+                  Le geste est DIT par Tata ; l'écran ne l'écrit pas. */}
+              {compteConnu.photo && (
+                <img src={compteConnu.photo} alt="" aria-hidden
+                  style={{ width: 76, height: 76, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 0 0 4px #fff, 0 0 0 7px rgba(219,122,44,0.3)' }} />
+              )}
+              <p style={{ margin: 0, fontSize: 26, fontWeight: 900, color: '#3d1a08', textAlign: 'center' }}>
+                Bonjour {compteConnu.prenom || 'ma sœur'} !
+              </p>
+              <AnimatePresence>
+                {error && (
+                  <motion.div key="reco-error-banner"
+                    initial={{ opacity: 0, y: -8, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -8, height: 0 }}
+                    transition={{ duration: 0.2 }} style={{ overflow: 'hidden', width: '100%' }}>
+                    <div role="alert" aria-live="assertive" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <AlertCircle style={{ width: 16, height: 16, color: '#dc2626', flexShrink: 0 }} />
+                      <p style={{ fontSize: 13, color: '#dc2626', margin: 0, fontWeight: 500 }}>{error}</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {/* UN SEUL grand geste, comme le grand micro du parcours classique :
+                  reconnaissance (visage/doigt) si elle marche ici, sinon le code. */}
+              {compteConnu.biometrie ? (
+                <motion.button
+                  type="button"
+                  aria-label="Ton téléphone te reconnaît — touche pour entrer"
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={handleBiometric}
+                  disabled={isLoading}
+                  animate={{ scale: [1, 1.02, 1] }}
+                  transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{
+                    width: 'clamp(160px, 54vw, 196px)', height: 'clamp(160px, 54vw, 196px)',
+                    borderRadius: '50%', border: 'none', cursor: isLoading ? 'wait' : 'pointer', color: '#fff',
+                    background: 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
+                    boxShadow: '0 26px 46px -14px rgba(184,92,27,0.75), inset 0 4px 0 rgba(255,255,255,0.4)',
+                    display: 'grid', placeItems: 'center', marginTop: 4, opacity: isLoading ? 0.7 : 1,
+                  }}
+                  whileTap={{ scale: 0.96 }}
+                >
+                  <Fingerprint style={{ width: '44%', height: '44%' }} />
+                </motion.button>
+              ) : (
+                <motion.button
+                  type="button"
+                  aria-label="Entre ton code secret"
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={() => { setError(''); setStep('password'); }}
+                  animate={{ scale: [1, 1.02, 1] }}
+                  transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{
+                    width: 'clamp(160px, 54vw, 196px)', height: 'clamp(160px, 54vw, 196px)',
+                    borderRadius: '50%', border: 'none', cursor: 'pointer', color: '#fff',
+                    background: 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
+                    boxShadow: '0 26px 46px -14px rgba(184,92,27,0.75), inset 0 4px 0 rgba(255,255,255,0.4)',
+                    display: 'grid', placeItems: 'center', marginTop: 4,
+                  }}
+                  whileTap={{ scale: 0.96 }}
+                >
+                  <span style={{ fontSize: 'clamp(52px, 18vw, 66px)', lineHeight: 1 }} aria-hidden>🔒</span>
+                </motion.button>
+              )}
+              {/* Secours toujours visible : son code à 4 chiffres — sans redonner le numéro. */}
+              {compteConnu.biometrie && (
+                <button type="button" onClick={() => { setError(''); setStep('password'); }}
+                  style={{ marginTop: 4, padding: '13px 26px', borderRadius: 16, border: '2px solid rgba(198,106,44,0.35)', background: '#fff', color: '#8A5A34', fontWeight: 800, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  Utiliser mon code
+                </button>
+              )}
+              {/* Téléphone partagé : quelqu'un d'autre peut entrer — sans rien effacer. */}
+              <button type="button"
+                onClick={() => { setStep('phone'); setPhone(''); setPinInput(''); setError(''); }}
+                style={{ marginTop: 2, background: 'none', border: 'none', color: 'var(--encre-3)', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '8px 12px' }}>
+                Ce n'est pas moi
+              </button>
+            </motion.div>
+          ) : step === 'phone' ? (
             <motion.div
               key="phone"
               initial={{ opacity: 0, y: 10 }}
@@ -987,7 +1196,9 @@ export function LoginPassword() {
                 />
               ))}
             </div>
-            {/* GRAND MICRO — l'action. On touche, Tata dit « dis ton numéro », le micro devient vert. */}
+            {/* GRAND MICRO — l'action, UNIQUEMENT si la voix écoute réellement.
+                Sinon (cas actuel) : aucun micro trompeur, le pavé est la référence. */}
+            {voixEcouteDispo && (
             <motion.button
               type="button"
               aria-label="Touchez et dites votre numéro"
@@ -1010,6 +1221,7 @@ export function LoginPassword() {
             >
               <Mic style={{ width: '42%', height: '42%' }} />
             </motion.button>
+            )}
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -1063,15 +1275,18 @@ export function LoginPassword() {
                 }} />
               </motion.div>
             )}
-            {/* Une seule action secondaire : le clavier (filet). Rien d'autre. */}
+            {/* Bascule clavier : uniquement en mode voix (sinon le pavé est déjà
+                la référence, toujours affiché). */}
+            {voixEcouteDispo && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 22 }}>
               <button type="button" aria-label="Taper mon numéro sur le clavier" onClick={() => setShowKeypad(v => !v)}
                 style={{ width: 58, height: 58, borderRadius: 18, background: showKeypad ? '#DB7A2C' : '#F3E7D8', color: showKeypad ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
                 <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 13h6"/></svg>
               </button>
             </div>
+            )}
 
-            {showKeypad && (
+            {clavierVisible && (
             <>
             <div style={{ textAlign: 'center', marginTop: 14, fontSize: 24, fontWeight: 700, letterSpacing: 3, color: '#3d1a08', minHeight: 30, fontVariantNumeric: 'tabular-nums' }}>{formatPhoneNumber(phone) || ' '}</div>
             <div style={{
@@ -1179,28 +1394,8 @@ export function LoginPassword() {
             >
               <span style={{ fontSize: 30, lineHeight: 1 }}>🔒</span>
             </button>
-            {/* Micro pour DIRE son code (Tata rappelle de chuchoter). Le clavier reste
-                dessous comme filet. Devient vert pendant l'écoute. */}
-            <motion.button
-              type="button"
-              aria-label="Chuchote ton code, ou tape-le"
-              onPointerDown={(e) => e.preventDefault()}
-              onClick={dicterCode}
-              animate={{ scale: isListening ? [1, 1.05, 1] : 1 }}
-              transition={{ duration: 1, repeat: isListening ? Infinity : 0, ease: 'easeInOut' }}
-              style={{
-                alignSelf: 'center',
-                width: accessMode === 'lecture' ? 58 : 'clamp(80px, 24vw, 100px)',
-                height: accessMode === 'lecture' ? 58 : 'clamp(80px, 24vw, 100px)',
-                borderRadius: accessMode === 'lecture' ? 16 : '50%', border: 'none', cursor: 'pointer', color: '#fff', margin: '4px 0 2px',
-                background: isListening ? 'radial-gradient(125% 125% at 30% 20%, #38A870, #1C7A4B)' : 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
-                boxShadow: isListening ? '0 16px 30px -12px rgba(28,122,75,0.7)' : '0 16px 30px -12px rgba(184,92,27,0.65)',
-                display: 'grid', placeItems: 'center',
-              }}
-              whileTap={{ scale: 0.96 }}
-            >
-              <Mic style={{ width: '40%', height: '40%' }} />
-            </motion.button>
+            {/* AUDIT B5 : plus de micro sur le code — un secret ne se dit pas.
+                Le pavé reste le chemin ; la reconnaissance évite même le code. */}
             <div style={{
               width: '100%', background: '#fff', borderRadius: 22,
               overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
@@ -1239,9 +1434,7 @@ export function LoginPassword() {
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Backspace' && pinInput.length === 0) {
-                      setStep('phone');
-                      setPinInput('');
-                      setError('');
+                      retourDepuisCode();
                     }
                   }}
                   style={{
@@ -1270,15 +1463,15 @@ export function LoginPassword() {
                 zIndex: 1,
               }}>
                 {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
-                  <motion.button type="button" key={d} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress(d)}
-                    style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.08)', border: '1px solid rgba(198,106,44,0.15)', borderTop: '1px solid rgba(255,255,255,0.9)', fontSize: 22, fontWeight: 500, color: '#5a2e0a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(198,106,44,0.06)' }}
+                  <motion.button type="button" key={d} aria-label={pinEnImages ? undefined : `Chiffre ${d}`} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress(d)}
+                    style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.08)', border: '1px solid rgba(198,106,44,0.15)', borderTop: '1px solid rgba(255,255,255,0.9)', fontSize: pinEnImages ? 30 : 22, fontWeight: 500, color: '#5a2e0a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(198,106,44,0.06)' }}
                     whileTap={{ scale: 0.9 }}
-                  >{d}</motion.button>
+                  >{glyphePourChiffre(d, pinEnImages)}</motion.button>
                 ))}
                 <motion.button
                   type="button"
                   disabled={isLoading || phone.length === 0}
-                  aria-label="Connexion biométrique"
+                  aria-label="Ton téléphone te reconnaît — touche pour entrer"
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={handleBiometric}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.04)', border: '1px solid rgba(198,106,44,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: isLoading || phone.length === 0 ? 0.3 : 0.65 }}
@@ -1286,16 +1479,26 @@ export function LoginPassword() {
                 >
                   <Fingerprint style={{ width: 22, height: 22, color: '#C66A2C' }} />
                 </motion.button>
-                <motion.button type="button" onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
-                  style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.08)', border: '1px solid rgba(198,106,44,0.15)', borderTop: '1px solid rgba(255,255,255,0.9)', fontSize: 22, fontWeight: 500, color: '#5a2e0a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(198,106,44,0.06)' }}
+                <motion.button type="button" aria-label={pinEnImages ? undefined : 'Chiffre 0'} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
+                  style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.08)', border: '1px solid rgba(198,106,44,0.15)', borderTop: '1px solid rgba(255,255,255,0.9)', fontSize: pinEnImages ? 30 : 22, fontWeight: 500, color: '#5a2e0a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(198,106,44,0.06)' }}
                   whileTap={{ scale: 0.9 }}
-                >0</motion.button>
+                >{glyphePourChiffre('0', pinEnImages)}</motion.button>
                 <motion.button type="button" aria-label="Effacer le dernier chiffre" onPointerDown={(e) => e.preventDefault()} onClick={handleKeyDelete}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.04)', border: '1px solid rgba(198,106,44,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0.65 }}
                   whileTap={{ scale: 0.9, opacity: 1 }}
                 >
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
                 </motion.button>
+              </div>
+              {/* Bascule OPT-IN, jamais le mode par défaut (doc « mot de passe imagé »,
+                  variante A) : la correspondance chiffre↔image est fixe et publique —
+                  seul le glyphe affiché change, le PIN envoyé reste les mêmes chiffres. */}
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '2px 0 12px' }}>
+                <button type="button" onClick={basculerPinEnImages}
+                  aria-label={pinEnImages ? 'Revenir aux chiffres' : 'Afficher des images à la place des chiffres'}
+                  style={{ background: 'none', border: 'none', color: '#8A5A34', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '6px 10px' }}>
+                  {pinEnImages ? '🔢 Revenir aux chiffres' : '🍅 Utiliser des images'}
+                </button>
               </div>
             </div>
             </motion.div>
@@ -1305,7 +1508,7 @@ export function LoginPassword() {
 
       {/* Lien secours admin — uniquement sur le portail backoffice (jamais marchande). */}
       {window.location.pathname.includes('backoffice') && (
-        <a href="/admin-recovery" style={{ margin: '12px 0', color: 'rgba(124,98,80,0.6)', fontSize: 11, textDecoration: 'none' }}>
+        <a href="/admin-recovery" style={{ margin: '12px 0', color: 'var(--encre-4)', fontSize: 11, textDecoration: 'none' }}>
           Problème de connexion admin ?
         </a>
       )}
@@ -1326,11 +1529,11 @@ export function LoginPassword() {
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#7C6250" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
           Revoir le tutoriel
         </button>
-        <p style={{ fontSize: 10, color: 'rgba(124,98,80,0.5)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>By Icône Solution</p>
+        <p style={{ fontSize: 10, color: 'var(--encre-4)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>By Icône Solution</p>
         <p
           onClick={() => parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)}
           title="Version de l'application"
-          style={{ fontSize: 9, color: 'rgba(124,98,80,0.45)', letterSpacing: '0.05em', margin: 0, cursor: 'pointer' }}
+          style={{ fontSize: 9, color: 'var(--encre-4)', letterSpacing: '0.05em', margin: 0, cursor: 'pointer' }}
         >
           v{__APP_VERSION__} · {__BUILD_ID__}
         </p>

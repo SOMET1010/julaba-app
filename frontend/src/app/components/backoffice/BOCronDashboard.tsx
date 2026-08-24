@@ -40,7 +40,7 @@ const STATUT_CONFIG: Record<TaskStatut, { label: string; color: string; bg: stri
   actif: { label: 'Actif', color: '#10B981', bg: '#F0FDF4', icon: CheckCircle2 },
   pause: { label: 'Pause', color: '#F59E0B', bg: '#FFFBEB', icon: Pause },
   erreur: { label: 'Erreur', color: '#EF4444', bg: '#FEF2F2', icon: XCircle },
-  termine: { label: 'Terminé', color: '#6B7280', bg: '#F9FAFB', icon: CheckCircle2 },
+  termine: { label: 'Terminé', color: 'var(--encre-3)', bg: '#F9FAFB', icon: CheckCircle2 },
 };
 
 export function BOCronDashboard() {
@@ -57,7 +57,7 @@ export function BOCronDashboard() {
         const jobs = Array.isArray(d?.jobs) ? d.jobs : Array.isArray(d) ? d : [];
         if (jobs.length === 0) toast.info('Aucune tâche cron disponible');
         const mapped: CronTask[] = jobs.map((j: any) => ({
-          id: j.nom,
+          id: j.id || j.nom,
           nom: j.nom,
           description: j.description || '',
           cron: j.cron || '* * * * *',

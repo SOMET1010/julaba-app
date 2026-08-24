@@ -4,7 +4,8 @@ import { Users, MapPin, Map, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useBackOffice } from "../../contexts/BackOfficeContext";
 import { BO_PRIMARY } from "./bo-theme";
-import L from "leaflet";
+import { API_URL } from "../../utils/api";
+import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 const COLORS: Record<string, string> = {
@@ -75,9 +76,9 @@ export function BOCarteActeurs() {
     setLoading(true);
     try {
       const [geoRes, allRes, zonesRes] = await Promise.all([
-        fetch("/api/v1/identifications/geo", { credentials: "include" }),
-        fetch("/api/v1/identifications?limit=100", { credentials: "include" }),
-        fetch("/api/v1/zones", { credentials: "include" }),
+        fetch(`${API_URL}/identifications/geo`, { credentials: "include" }),
+        fetch(`${API_URL}/identifications?limit=100`, { credentials: "include" }),
+        fetch(`${API_URL}/zones`, { credentials: "include" }),
       ]);
       if (!geoRes.ok) throw new Error(`Erreur HTTP ${geoRes.status}`);
       if (!allRes.ok) throw new Error(`Erreur HTTP ${allRes.status}`);
@@ -194,7 +195,7 @@ export function BOCarteActeurs() {
     if (!locForm?.lat || !locForm?.lng) return;
     setLocLoading(true);
     try {
-      const res = await fetch(`/api/v1/identifications/${locForm.id}`, {
+      const res = await fetch(`${API_URL}/identifications/${locForm.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -360,9 +361,9 @@ export function BOCarteActeurs() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.acteur_nom || "Acteur"}</div>
-                  <div style={{ fontSize: 10, color: "#aaa" }}>{a.type_acteur} — {a.commune || a.region || ""}</div>
+                  <div style={{ fontSize: 10, color: "var(--encre-4)" }}>{a.type_acteur} — {a.commune || a.region || ""}</div>
                 </div>
-                <div style={{ fontSize: 10, color: "#aaa", whiteSpace: "nowrap" }}>{formatDate(a.created_at)}</div>
+                <div style={{ fontSize: 10, color: "var(--encre-4)", whiteSpace: "nowrap" }}>{formatDate(a.created_at)}</div>
               </div>
             ))}
           </div>
@@ -383,14 +384,14 @@ export function BOCarteActeurs() {
             <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 0 }}>
               {[
                 { label: "Statut", value: selectedActeur.statut || "en_attente" },
-                { label: "Region", value: selectedActeur.region || "Non renseigne" },
-                { label: "Commune", value: selectedActeur.commune || "Non renseignee" },
-                { label: "Identificateur", value: selectedActeur.identificateur_nom || "Non assigne" },
-                { label: "Date identification", value: selectedActeur.created_at ? new Date(selectedActeur.created_at).toLocaleDateString("fr-FR") : "Non renseigne" },
+                { label: "Région", value: selectedActeur.region || "Non renseigné" },
+                { label: "Commune", value: selectedActeur.commune || "Non renseignée" },
+                { label: "Identificateur", value: selectedActeur.identificateur_nom || "Non assigné" },
+                { label: "Date identification", value: selectedActeur.created_at ? new Date(selectedActeur.created_at).toLocaleDateString("fr-FR") : "Non renseigné" },
                 { label: "Géolocalisé", value: selectedActeur.latitude ? "Oui" : "Non" },
               ].map((row, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #f5f0ea" }}>
-                  <span style={{ fontSize: 12, color: "#aaa", fontWeight: 600 }}>{row.label}</span>
+                  <span style={{ fontSize: 12, color: "var(--encre-4)", fontWeight: 600 }}>{row.label}</span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>{row.value}</span>
                 </div>
               ))}
@@ -405,7 +406,7 @@ export function BOCarteActeurs() {
             <div style={{ padding: "20px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1a1a" }}>Acteurs sans GPS</div>
-                <div style={{ fontSize: 12, color: "#aaa" }}>{drawerActeurs.length} acteur{drawerActeurs.length > 1 ? "s" : ""} a géolocaliser</div>
+                <div style={{ fontSize: 12, color: "var(--encre-4)" }}>{drawerActeurs.length} acteur{drawerActeurs.length > 1 ? "s" : ""} a géolocaliser</div>
               </div>
               <button onClick={() => { setShowDrawer(false); setLocForm(null); }} style={{ background: "none", border: "1px solid #e0d8d0", borderRadius: 8, width: 30, height: 30, cursor: "pointer", fontSize: 14, fontWeight: 700, color: "#555", fontFamily: "inherit" }}>X</button>
             </div>
@@ -429,11 +430,11 @@ export function BOCarteActeurs() {
                   <div style={{ marginBottom: 8 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
                       <div style={{ background: "white", borderRadius: 8, border: "1px solid #EDE7DE", padding: "6px 10px" }}>
-                        <div style={{ fontSize: 9, color: "#aaa", fontWeight: 700, marginBottom: 2 }}>Latitude</div>
+                        <div style={{ fontSize: 9, color: "var(--encre-4)", fontWeight: 700, marginBottom: 2 }}>Latitude</div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>{locForm.lat.toFixed(5)}</div>
                       </div>
                       <div style={{ background: "white", borderRadius: 8, border: "1px solid #EDE7DE", padding: "6px 10px" }}>
-                        <div style={{ fontSize: 9, color: "#aaa", fontWeight: 700, marginBottom: 2 }}>Longitude</div>
+                        <div style={{ fontSize: 9, color: "var(--encre-4)", fontWeight: 700, marginBottom: 2 }}>Longitude</div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: "#1a1a1a" }}>{locForm.lng!.toFixed(5)}</div>
                       </div>
                     </div>
@@ -456,7 +457,7 @@ export function BOCarteActeurs() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.acteur_nom || "Acteur"}</div>
-                    <div style={{ fontSize: 10, color: "#aaa" }}>{a.type_acteur} — {a.commune || a.region || "Zone inconnue"}</div>
+                    <div style={{ fontSize: 10, color: "var(--encre-4)" }}>{a.type_acteur} — {a.commune || a.region || "Zone inconnue"}</div>
                   </div>
                   <button onClick={() => setLocForm({ id: a.id, adresse: `${a.commune || ""} ${a.region || ""}`.trim(), lat: null, lng: null })}
                     style={{ background: "white", border: `1.5px solid ${BO_PRIMARY}`, borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, color: BO_PRIMARY, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>

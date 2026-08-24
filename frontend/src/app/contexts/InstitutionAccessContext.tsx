@@ -2,11 +2,13 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useUser } from './UserContext';
 
 export interface InstitutionProfil {
-  id: string;
+  id?: string;
   nom: string;
   region: string;
   type: string;
   modules: string[];
+  /** Lu par InstitutionLayout (compte suspendu). */
+  statut?: string;
 }
 
 interface InstitutionAccessContextType {

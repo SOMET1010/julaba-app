@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
+import { getBoAccessToken } from '../../services/backoffice-api';
 import { API_URL } from '../../utils/api';
 import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
 
@@ -19,6 +21,7 @@ const ROLE_COLORS: Record<string, { primary: string; bg: string; border: string 
 export function ChangePasswordScreen() {
   const navigate = useNavigate();
   const { user, setUser } = useApp();
+  const bo = useBackOfficeOptional();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -28,7 +31,13 @@ export function ChangePasswordScreen() {
   const [success, setSuccess] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const role = user?.role || 'marchand';
+  // BackOfficeContext ne peuple son user que pour les rôles BO (après
+  // l'évènement julaba:bo-login) ; AppContext porte le rôle acteur. Un login
+  // BOLogin ne peuple jamais AppContext, donc se fier uniquement à `user` ici
+  // faisait retomber tout compte BO sur le rôle par défaut 'marchand' et
+  // renvoyait la redirection post-changement vers /marchand au lieu de
+  // /backoffice/dashboard (écran qui semblait « rester bloqué »).
+  const role = bo?.user?.role || user?.role || 'marchand';
   const boRoles = ['super_admin', 'admin'];
   const palette = ROLE_COLORS[role] || ROLE_COLORS.marchand;
 
@@ -55,10 +64,20 @@ export function ChangePasswordScreen() {
     try {
       abortRef.current?.abort();
       abortRef.current = new AbortController();
+      // En-tête Authorization en secours du cookie de session : sur julaba-web/
+      // julaba-api (domaines différents), le cookie cross-domaine est bloqué
+      // par défaut par plusieurs navigateurs même correctement configuré côté
+      // serveur — un login BO qui « réussissait » (écran suivant affiché) était
+      // ensuite rejeté en 401 sur ce premier appel authentifié, affiché à tort
+      // comme « mot de passe actuel incorrect ».
+      const boToken = getBoAccessToken();
       const res = await fetch(`${API_URL}/auth/change-password`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(boToken ? { Authorization: `Bearer ${boToken}` } : {}),
+        },
         body: JSON.stringify({ oldPassword, newPassword }),
         signal: abortRef.current.signal,
       });
@@ -81,7 +100,7 @@ export function ChangePasswordScreen() {
         } else if (res.status === 429) {
           userMsg = 'Trop de tentatives. Réessaie dans quelques minutes.';
         } else if (res.status >= 500) {
-          userMsg = 'Erreur serveur. Réessaie dans un instant.';
+          userMsg = 'Ça n\'a pas marché. Réessaie dans un instant.';
         } else {
           userMsg = 'Erreur lors du changement de mot de passe';
         }

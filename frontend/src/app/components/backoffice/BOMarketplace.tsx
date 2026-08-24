@@ -48,8 +48,8 @@ const STATUT_PRODUIT: Record<ProduitStatut, { label: string; color: string; bg: 
   publie: { label: 'Publié', color: '#10B981', bg: '#F0FDF4' },
   en_attente: { label: 'En attente', color: '#F59E0B', bg: '#FFFBEB' },
   rejete: { label: 'Rejeté', color: '#EF4444', bg: '#FEF2F2' },
-  suspendu: { label: 'Suspendu', color: '#6B7280', bg: '#F9FAFB' },
-  inactif: { label: 'Inactif', color: '#9CA3AF', bg: '#F3F4F6' },
+  suspendu: { label: 'Suspendu', color: 'var(--encre-3)', bg: '#F9FAFB' },
+  inactif: { label: 'Inactif', color: 'var(--encre-4)', bg: '#F3F4F6' },
 };
 
 const TAB_CONFIG: TabItem[] = [

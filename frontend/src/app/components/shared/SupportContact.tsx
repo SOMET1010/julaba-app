@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { getRoleColor } from '../../config/roleConfig';
 import { useSupportConfig, ContactChannel } from '../../contexts/SupportConfigContext';
 import { useTickets, Ticket } from '../../contexts/TicketsContext';
+import { compterReponsesNonVues, marquerToutVu } from '../../services/supportLu';
 
 type RoleType = 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur' | 'administrateur';
 
@@ -57,7 +58,7 @@ const STATUT_LABELS: Record<string, { label: string; color: string; bg: string }
   nouveau: { label: 'En attente', color: '#EF4444', bg: '#FEF2F2' },
   en_cours: { label: 'En traitement', color: '#F59E0B', bg: '#FFFBEB' },
   resolu: { label: 'Résolu', color: '#10B981', bg: '#F0FDF4' },
-  ferme: { label: 'Fermé', color: '#6B7280', bg: '#F9FAFB' },
+  ferme: { label: 'Fermé', color: 'var(--encre-3)', bg: '#F9FAFB' },
 };
 
 // ─── Vue Thread utilisateur (lecture seule) ───────────────────────────────────
@@ -211,10 +212,20 @@ export function SupportContact({ role, userName = 'Utilisateur', showBack = fals
   // Mes tickets récents (créés dans cette session via localStorage)
   const mesTickets = (tickets || []).slice(0, 3);
 
-  const reponsesNonLues = (tickets || []).reduce((acc, t) => {
-    const msgs = t.messages ?? [];
-    return acc + msgs.filter((m: any) => m.auteur !== 'user' && !m.lu).length;
-  }, 0);
+  // Compteur LOCAL (il n'existe aucun « lu » utilisateur côté serveur — voir
+  // services/supportLu.ts) : réponses postérieures au dernier passage ici.
+  const reponsesNonLues = compterReponsesNonVues(
+    typeof window !== 'undefined' ? window.localStorage : null,
+    tickets || [],
+  );
+
+  // Être ICI, c'est avoir vu : chaque chargement de tickets marque tout vu —
+  // le badge du profil (SupportCardProfil) se vide, et repartira à la
+  // prochaine réponse du support.
+  useEffect(() => {
+    if (!tickets?.length) return;
+    try { marquerToutVu(window.localStorage, tickets, new Date().toISOString()); } catch { /* ignore */ }
+  }, [tickets]);
 
   const handleSubmit = async () => {
     if (!formData.sujet || !formData.message) return;
@@ -650,7 +661,7 @@ export function SupportContact({ role, userName = 'Utilisateur', showBack = fals
                     key={tab}
                     onClick={() => { setActiveTab(tab); setSubmitted(false); setTicketNumber(null); setTrackedTicket(null); setTrackError(false); }}
                     className="flex-1 py-2 rounded-2xl text-sm font-bold transition-all"
-                    style={{ backgroundColor: activeTab === tab ? activeColor : '#F3F4F6', color: activeTab === tab ? 'white' : '#6B7280' }}
+                    style={{ backgroundColor: activeTab === tab ? activeColor : '#F3F4F6', color: activeTab === tab ? 'white' : 'var(--encre-3)' }}
                   >
                     {tab === 'nouveau' ? 'Nouveau ticket' : 'Suivre par numéro'}
                   </button>

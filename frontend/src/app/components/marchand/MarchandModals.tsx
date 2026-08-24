@@ -903,7 +903,7 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
     let cancelled = false;
     void (async () => {
       try {
-        const { fetchScore } = await import('../../../imports/scores-api');
+        const { fetchScore } = await import('../../services/api/scores-api');
         const { score } = await fetchScore(user.id);
         if (!cancelled) setScore(score.score_total || 0);
       } catch (e: any) {
@@ -994,9 +994,13 @@ interface ResumeModalProps {
     caisse: number;
     nombreVentes: number;
   };
+  /** Ouvre la clôture de journée (relogée dans le Résumé — Phase 2, Q-C). */
+  onFermerJournee?: () => void;
+  /** Ouvre l'ajustement du fond de caisse. */
+  onModifierFond?: () => void;
 }
 
-export function ResumeModal({ isOpen, onClose, stats }: ResumeModalProps) {
+export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifierFond }: ResumeModalProps) {
   const marge = stats.ventes - stats.cahier;
 
   return (
@@ -1056,7 +1060,25 @@ export function ResumeModal({ isOpen, onClose, stats }: ResumeModalProps) {
           </div>
         </div>
 
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 space-y-2">
+          {onFermerJournee && (
+            <button
+              type="button"
+              onClick={onFermerJournee}
+              className="w-full py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold"
+            >
+              Fermer ma journée
+            </button>
+          )}
+          {onModifierFond && (
+            <button
+              type="button"
+              onClick={onModifierFond}
+              className="w-full py-2 text-sm font-semibold text-gray-500"
+            >
+              Modifier le fond de caisse
+            </button>
+          )}
           <StyledButton onClick={onClose} fullWidth>
             OK
           </StyledButton>

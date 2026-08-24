@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Package, Check, RefreshCw } from 'lucide-react';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { SelectWithAutre } from '../shared/SelectWithAutre';
+import { UNITES_COURANTES } from '../../config/unites';
 import { useApp } from '../../contexts/AppContext';
 import { toast } from 'sonner';
 import { CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 
 const COLOR = '#C46210';
 
@@ -138,7 +139,7 @@ export function BesoinMarchand() {
                   label="Unité"
                   value={unite}
                   onChange={setUnite}
-                  options={['kg', 'tonne', 'sac', 'régimes', 'litre', 'carton']}
+                  options={UNITES_COURANTES}
                   primaryColor={COLOR}
                   placeholder="Autre unité..."
                 />
@@ -161,7 +162,7 @@ export function BesoinMarchand() {
                       className="flex-1 py-2.5 rounded-xl border-2 text-sm font-bold"
                       style={priorite === p
                         ? { backgroundColor: p === 'urgente' ? '#DC2626' : COLOR, borderColor: 'transparent', color: 'white' }
-                        : { backgroundColor: 'white', borderColor: '#E5E7EB', color: '#6B7280' }
+                        : { backgroundColor: 'white', borderColor: '#E5E7EB', color: 'var(--encre-3)' }
                       }>
                       {p === 'urgente' ? 'Urgente' : 'Normale'}
                     </motion.button>

@@ -139,7 +139,7 @@ export function parsePaymentFromAPI(raw: string): { method: PaymentMethodId; ope
     const parts = raw.split(':');
     return { method: 'mobile_money', operator: parts[1] as MobileOperatorId };
   }
-  // Ancien format : valeur brute sans préfixe (opérateur seul).
+  // Handle legacy operator-only values
   const legacyOp = MOBILE_OPERATORS.find(o => o.id === raw);
   if (legacyOp) {
     return { method: 'mobile_money', operator: legacyOp.id };

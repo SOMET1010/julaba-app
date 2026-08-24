@@ -14,7 +14,7 @@ import { useToast } from '../../hooks/useToast';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { NotificationButton } from './NotificationButton';
 import { useCommande, type Commande as CommandeContextShape } from '../../contexts/CommandeContext';
-import { proposerNegociation } from '../../../imports/commandes-api';
+import { proposerNegociation } from '../../services/api/commandes-api';
 import { HistoriqueList } from '../marche/HistoriqueList';
 import { CommandeMarche } from '../marche/marketplace-data';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
@@ -31,7 +31,7 @@ import { EtoilesMoyenne } from '../shared/Etoiles';
 import { getNoteUtilisateur } from '../../services/evaluations.service';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 
 interface Product {
   id: string; name: string; emoji: string; image: string;
@@ -79,6 +79,10 @@ export function MarcheVirtuel() {
   const sousProfil = appUser?.sousProfilMarchand ?? null;
   const isDemiGrossiste = sousProfil === 'demi_grossiste';
   const isMarchand = appUser?.role === 'marchand';
+  // Marchand SANS sous-profil (compte d'avant la migration) : il ne voit aucun
+  // marché — on le lui DIT au lieu de le laisser dans le silence
+  // (docs/SOUS_PROFILS_MARCHAND.md, point 4).
+  const profilIncomplet = isMarchand && !sousProfil;
   const visibleTabs = React.useMemo<Array<'cooperatives' | 'producteurs' | 'historique'>>(() => {
     if (isMarchand && isGrossiste) return ['producteurs', 'historique'];
     if (isMarchand && isDemiGrossiste) return ['cooperatives', 'historique'];
@@ -375,6 +379,9 @@ export function MarcheVirtuel() {
         prixOriginal: productToNegotiate.price,
         prixPropose: negotiationPrice,
         unite: productToNegotiate.unit || 'kg',
+        // Publication d'origine : permet au backend de réserver le stock si le
+        // vendeur accepte (cf. commandes-api.ts, ProposerNegociationData).
+        publicationId: productToNegotiate.id,
       message: negotiationMessage.trim(),
       });
       setShowNegotiationModal(false); setProductToNegotiate(null); setShowNegotiationSuccess(true);
@@ -604,6 +611,14 @@ export function MarcheVirtuel() {
     >
       <div className="pt-2 pb-32 lg:pb-8 lg:pl-[320px] max-w-2xl lg:max-w-7xl mx-auto min-h-screen"
         style={{ backgroundColor: '#FFF2E9' }}>
+        {profilIncomplet && (
+          <div role="alert" style={{ margin:'0 0 12px', background:'#FFF4E5', border:'1.5px solid #F0C48A', borderRadius:16, padding:'12px 16px' }}>
+            <p style={{ margin:0, fontSize:14, fontWeight:800, color:'#8A4B12' }}>Ton profil marchand n'est pas complet</p>
+            <p style={{ margin:'4px 0 0', fontSize:13, color:'#8A5A34' }}>
+              Pour accéder au marché, vois ton identificateur : il précisera si tu es détaillante, demi-grossiste ou grossiste.
+            </p>
+          </div>
+        )}
         <KPIGrid cols={2}>
           <UniversalKPI
             label={activeTab === 'cooperatives' ? 'Coopératives' : activeTab === 'producteurs' ? 'Producteurs' : 'Commandes'}
@@ -1030,7 +1045,7 @@ export function MarcheVirtuel() {
                     <div key={method.id}>
                       <motion.button onClick={() => { setPaymentMethod(method.id); if (method.id === 'mobile_money') { setShowMobileOperators(true); } else { setShowMobileOperators(false); setSelectedOperator(null); } }} className={`w-full p-4 rounded-2xl border-2 transition-all ${isSelected ? `border-[${method.borderColor}]` : 'bg-white border-gray-200'}`} style={isSelected ? { backgroundColor: method.bgColor, borderColor: method.borderColor } : {}} whileTap={{ scale: 0.98 }}>
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: isSelected ? `${method.color}20` : '#F3F4F6' }}><IconComp className="w-6 h-6" style={{ color: isSelected ? method.color : '#6B7280' }} /></div>
+                          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: isSelected ? `${method.color}20` : '#F3F4F6' }}><IconComp className="w-6 h-6" style={{ color: isSelected ? method.color : 'var(--encre-3)' }} /></div>
                           <div className="flex-1 text-left"><h3 className="font-bold text-gray-900">{method.label}</h3><p className="text-xs text-gray-500 mt-0.5">{method.id === 'keiwa' ? `Solde: ${(keiwaBalance || 0).toLocaleString('fr-FR')} FCFA` : method.sublabel}</p></div>
                           {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500 }}><Check className="w-6 h-6" style={{ color: method.color }} /></motion.div>}
                         </div>

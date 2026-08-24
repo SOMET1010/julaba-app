@@ -529,7 +529,7 @@ export function BOSupervision() {
                 borderRadius: 8,
                 border: 'none',
                 background: viewMode === 'liste' ? '#5B5248' : 'transparent',
-                color: viewMode === 'liste' ? '#FFFFFF' : '#6B7280',
+                color: viewMode === 'liste' ? '#FFFFFF' : 'var(--encre-3)',
                 fontSize: 13,
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -548,7 +548,7 @@ export function BOSupervision() {
                 borderRadius: 8,
                 border: 'none',
                 background: viewMode === 'carte' ? '#5B5248' : 'transparent',
-                color: viewMode === 'carte' ? '#FFFFFF' : '#6B7280',
+                color: viewMode === 'carte' ? '#FFFFFF' : 'var(--encre-3)',
                 fontSize: 13,
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -699,7 +699,7 @@ export function BOSupervision() {
                   <thead style={{ background: '#F5F3EF', borderBottom: '1.5px solid #D7CFC0' }}>
                     <tr>
                       <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Acteur</th>
-                      <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>TYPE OPERATION</th>
+                      <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>TYPE OPÉRATION</th>
                       <th className="text-right p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Montant</th>
                       <th className="text-right p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Commission</th>
                       <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Statut</th>

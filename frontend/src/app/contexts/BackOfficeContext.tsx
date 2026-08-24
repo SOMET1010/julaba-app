@@ -1,5 +1,6 @@
 // BackOfficeContext.tsx — migré Supabase → NestJS
 import { eventBus, EVENTS } from '../services/eventBus';
+import { API_URL } from '../utils/api';
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import {
@@ -29,6 +30,7 @@ import {
   boGetSignalements,
   boGetNotifications,
   boSoftDeleteActeur,
+  setBoAccessToken,
   type BOUser,
   type Acteur,
   type RoleCounts,
@@ -91,6 +93,7 @@ interface BackOfficeContextType {
   boUsers: BOUser[];
   institutions: BOInstitution[];
   boUser: any;
+  refreshAuditLogs: (force?: boolean) => Promise<void> | void;
   setBOUser: (u: any) => void;
   hasPermission: (permission: string) => boolean;
   updateActeurStatut: (id: string, s: string, raison?: string) => Promise<void>;
@@ -201,7 +204,7 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
 
   const loadUser = useCallback(async (): Promise<boolean> => {
     try {
-      let res = await fetch('/api/v1/auth/me', {
+      let res = await fetch(`${API_URL}/auth/me`, {
         credentials: 'include',
       });
       if (!res.ok) {
@@ -253,6 +256,7 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
   }, [loadUser]);
 
   const logout = useCallback(() => {
+    setBoAccessToken(null);
     setUser(null);
     setStats(null);
     setActeurs([]);
@@ -472,6 +476,7 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
   const value: BackOfficeContextType = useMemo(
     () => ({
     user, isAuthenticated: !!user, isAuthLoading, logout,
+    refreshAuditLogs,
     refreshUser: loadUser,
     stats, statsLoading, refreshStats,
     acteurs, acteursTotal, acteursLoading, acteursPage, acteursSearch, acteursRole, roleCounts,
@@ -590,6 +595,7 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
       nom: user.lastName || '',
       firstName: user.firstName || '',
       lastName: user.lastName || '',
+      photo_url: user.photo_url,
     } : null,
     setBOUser: setUser,
     hasPermission: (permission: string) => {
@@ -735,10 +741,12 @@ export interface InstitutionBO {
   creePar?: string;
   region?: string;
   statut?: string;
-  modules?: string[];
+  /** Accès par module (dictionnaire module → niveau) — l'ancien type string[]
+   *  contredisait l'usage réel de tous les écrans BO. */
+  modules?: ModuleAcces;
 }
 
-export const PERMISSIONS: Record<BORoleType, Array<keyof ModuleAcces>> = {
+export const PERMISSIONS: Partial<Record<BORoleType, Array<keyof ModuleAcces>>> = {
   admin_general: ['acteurs', 'transactions', 'cooperatives', 'rapports', 'parametres'],
   operateur_terrain: ['acteurs', 'transactions', 'cooperatives', 'rapports'],
   identificateur: ['acteurs'],

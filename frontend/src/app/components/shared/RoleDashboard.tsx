@@ -33,7 +33,7 @@ import { ScoreResumeCard } from './ScoreResumeCard';
 import { RoleType } from '../../config/roleConfig';
 import type { User, DaySession } from '../../contexts/AppContext';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 // NotificationToastContainer retiré — monté dans AppLayout
 
 // Map des icônes disponibles
@@ -188,7 +188,7 @@ export function RoleDashboard({
 
       {/* Carte de profil compacte */}
       {showProfileCard && (
-        <CompactProfileCard role={roleConfig.role} showScore={true} />
+        <CompactProfileCard role={roleConfig.role ?? 'marchand'} showScore={true} />
       )}
 
       {/* Card Tata Nanti Lou */}
@@ -695,6 +695,7 @@ export function RoleDashboard({
         }}
         speak={speak}
         onNavigateToAcademy={onAcademyClick}
+        userId={user?.id}
       />
 
       {/* Coach Mark - Premier lancement (uniquement Marchand) */}

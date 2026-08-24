@@ -7,13 +7,13 @@
  */
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Gift, Settings, Search, Plus, Check, Star, Phone, X } from 'lucide-react';
+import { Gift, Settings, Search, Plus, Check, Star, Phone, X, History } from 'lucide-react';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { useApp } from '../../contexts/AppContext';
 import { toast } from 'sonner';
 import {
-  getConfig, setConfig, getClient, gagnerPoints, utiliserRecompense,
-  type FideliteConfig, type FideliteClient,
+  getConfig, setConfig, getClient, gagnerPoints, utiliserRecompense, getEvenements,
+  type FideliteConfig, type FideliteClient, type FideliteEvenement,
 } from '../../services/fidelite.service';
 
 const COLOR = '#E67E22';
@@ -30,6 +30,8 @@ export function Fidelite() {
   const [recherche, setRecherche] = useState(false);
   const [montant, setMontant] = useState('');
   const [nom, setNom] = useState('');
+  const [historique, setHistorique] = useState<FideliteEvenement[] | null>(null);
+  const [chargeHistorique, setChargeHistorique] = useState(false);
 
   useEffect(() => { getConfig().then(setConfigState); }, []);
 
@@ -41,6 +43,7 @@ export function Fidelite() {
       const r = await getClient(t);
       setConfigState(r.config);
       setClient(r.client);
+      setHistorique(null);
       if (!r.client) { setNom(''); toast('Nouveau client — enregistre un achat pour démarrer'); }
     } finally { setRecherche(false); }
   };
@@ -54,6 +57,7 @@ export function Fidelite() {
       setClient(r.client);
       setConfigState(r.config);
       setMontant('');
+      setHistorique(null);
       toast.success(`+${r.pointsGagnes} point${r.pointsGagnes > 1 ? 's' : ''}`);
       speak(`${r.pointsGagnes} points ajoutés. Total ${Math.round(Number(r.client.points))} points.`);
       if (r.recompenseDisponible) speak('Ce client a droit à sa récompense !');
@@ -65,9 +69,17 @@ export function Fidelite() {
     try {
       const r = await utiliserRecompense(client.telephone);
       setClient(r.client);
+      setHistorique(null);
       toast.success(`Récompense : ${r.remise.toLocaleString('fr-FR')} FCFA de remise`);
       speak(`Récompense appliquée : ${r.remise} francs de remise.`);
     } catch (e: any) { toast.error(e?.message || 'Points insuffisants'); }
+  };
+
+  const voirHistorique = async () => {
+    if (!client) return;
+    setChargeHistorique(true);
+    try { setHistorique(await getEvenements(client.telephone)); }
+    finally { setChargeHistorique(false); }
   };
 
   const sauverConfig = async () => {
@@ -171,6 +183,31 @@ export function Fidelite() {
                 <Gift className="w-5 h-5" /> Utiliser la récompense ({Number(config?.recompense_fcfa).toLocaleString('fr-FR')} FCFA)
               </motion.button>
             )}
+
+            {/* Historique — preuve consultable du journal (chaque gain/récompense tracé) */}
+            {historique === null ? (
+              <button onClick={voirHistorique} disabled={chargeHistorique}
+                className="mt-3 w-full text-sm font-semibold flex items-center justify-center gap-1.5 py-2 text-gray-500">
+                <History className="w-4 h-4" /> {chargeHistorique ? 'Chargement…' : 'Voir l’historique'}
+              </button>
+            ) : (
+              <div className="mt-3 border-t border-gray-100 pt-3 space-y-2">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Historique</p>
+                {historique.length === 0 && <p className="text-xs text-gray-400">Aucun événement pour l’instant.</p>}
+                {historique.map((ev) => (
+                  <div key={ev.id} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-700">
+                      {ev.type === 'gain'
+                        ? `Achat ${Number(ev.montant_achat).toLocaleString('fr-FR')} FCFA`
+                        : `Récompense ${Number(ev.remise_fcfa).toLocaleString('fr-FR')} FCFA`}
+                    </span>
+                    <span className="font-semibold" style={{ color: ev.type === 'gain' ? '#16A34A' : COLOR }}>
+                      {ev.points_delta > 0 ? '+' : ''}{Math.round(Number(ev.points_delta))} pts
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -203,9 +240,16 @@ export function Fidelite() {
       {/* Réglages du barème */}
       <AnimatePresence>
         {showReglages && config && (
-          <motion.div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+          /* z-[200] (comme ObjectifModal/RaccourcisModal/RapportHebdoModal) : la barre
+             de navigation basse est en z-50 — à z-50 la feuille se retrouvait SOUS
+             elle, avec « Enregistrer le barème » inatteignable au clic sur petit écran. */
+          <motion.div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/40"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowReglages(false)}>
-            <motion.div className="w-full max-w-md bg-white rounded-t-3xl p-5 pb-8"
+            {/* max-h + overflow-y-auto : sur un petit écran (ou clavier ouvert sur un
+                champ numérique), le bouton « Enregistrer » doit rester ATTEIGNABLE en
+                faisant défiler la feuille elle-même — la modale est en position fixe,
+                un défilement de la PAGE ne l'aurait jamais amené à l'écran. */}
+            <motion.div className="w-full max-w-md bg-white rounded-t-3xl p-5 pb-8 max-h-[85vh] overflow-y-auto"
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }} onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">

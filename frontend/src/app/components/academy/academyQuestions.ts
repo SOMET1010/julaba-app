@@ -574,7 +574,7 @@ export function getQuestionsForChapter(role: UserRole, chapter: number): Academy
   );
 }
 
-// Alias pour rétro-compatibilité avec les imports BOAcademy
+// Alias for backwards-compat with BOAcademy imports
 export const ACADEMY_QUESTIONS = ALL_ACADEMY_QUESTIONS;
 
 // Récupérer toutes les questions d'un rôle (tous chapitres)

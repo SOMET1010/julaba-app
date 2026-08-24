@@ -110,7 +110,7 @@ export function UniversalSearchBarBO({
   onSubmit,
   onChange,
   placeholder = 'Rechercher...',
-  emptyMessage = 'Aucun resultat',
+  emptyMessage = 'Aucun résultat',
   variant = 'rounded',
   fullWidth = true,
   autoFocus = false,

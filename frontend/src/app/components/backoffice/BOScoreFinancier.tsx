@@ -82,7 +82,7 @@ function hexToRgb(hex: string): [number, number, number] {
 async function generateScoreFinancierPdf(
   result: FinancialScorePayload,
 ): Promise<void> {
-  let jsPDF: import('jspdf').jsPDF['constructor'] | undefined;
+  let jsPDF: typeof import('jspdf').jsPDF | undefined;
   try {
     ({ jsPDF } = await import('jspdf'));
   } catch {

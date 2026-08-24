@@ -158,7 +158,7 @@ export function VoiceButton({ onVoiceCommand }: VoiceButtonProps) {
             key="idle"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            style={{ fontSize: 11, color: '#aaa', textAlign: 'center' }}
+            style={{ fontSize: 11, color: 'var(--encre-4)', textAlign: 'center' }}
           >
             {isListening ? 'Appuie pour arrêter' : 'Parler à Tata Nanti Lou'}
           </motion.div>

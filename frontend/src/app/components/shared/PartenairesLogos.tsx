@@ -14,7 +14,7 @@ export function PartenairesLogos() {
       transition={{ delay: 0.3, duration: 0.5 }}
       className="mx-4 mt-6 mb-2"
     >
-      <p className="text-center text-xs text-gray-400 mb-3 tracking-wide uppercase">
+      <p className="text-center text-xs encre-4 mb-3 tracking-wide uppercase">
         Partenaires institutionnels
       </p>
       <div className="bg-white rounded-3xl border-2 border-gray-100 px-4 py-3 shadow-sm">

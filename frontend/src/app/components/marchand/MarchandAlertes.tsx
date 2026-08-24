@@ -158,7 +158,7 @@ function EcranVide() {
 
 export function MarchandAlertes() {
   const navigate = useNavigate();
-  const { speak, currentSession, user } = useApp();
+  const { speak, user } = useApp();
   const { stock, getStockFaible, getValeurTotaleStock } = useStock();
 
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Marchande';
@@ -267,19 +267,9 @@ export function MarchandAlertes() {
     });
   });
 
-  // Journée non ouverte
-  if (!currentSession?.opened) {
-    items.push({
-      id: 'journee-fermee',
-      urgence: 'haute',
-      icon: Clock,
-      title: 'Journée non ouverte',
-      subtitle: 'Votre caisse n\'est pas encore activée',
-      detail: 'Ouvrez votre journée pour commencer à enregistrer des ventes',
-      actionLabel: 'Ouvrir la journée',
-      onAction: () => navigate('/marchand'),
-    });
-  }
+  // (Phase 2) Plus d'alerte « Journée non ouverte » : l'ouverture de journée est
+  // désormais automatique (le back-end ouvre la session à la 1re vente) et vendre
+  // n'est jamais bloqué. Prévenir « ouvre ta journée » était obsolète et trompeur.
 
   // Valeur stock élevée (> 500 000 FCFA) — info de gestion
   const valeurStock = getValeurTotaleStock();

@@ -12,7 +12,9 @@
 // worker pré-cache automatiquement tout `public/voix/tata/*.mp3`.
 // ──────────────────────────────────────────────────────────────────────────
 
-import { playAudioUrl, speakBrowser, stopAllAudio } from './elevenlabs';
+import { stopAllAudio } from './elevenlabs';
+import { speakClipOrText, stopAllVoice } from './audioManager';
+import { packClipUrl } from './voicePacksRuntime';
 
 const BASE = '/voix/tata';
 
@@ -26,7 +28,7 @@ export const INTRO_CLIPS: Record<string, IntroClip> = {
   // Écran d'accueil (logo)
   accueil: {
     file: `${BASE}/intro-accueil.mp3`,
-    texte: "Bonjour ! Moi, c'est Tata. Je serai avec toi pour vendre, compter ton argent " +
+    texte: "Bonjour ! Moi, c'est Tata Nanti Lou. Je serai avec toi pour vendre, compter ton argent " +
       'et faire grandir ton commerce. Beaucoup de commerçantes travaillent déjà avec moi. ' +
       "Maintenant, c'est ton tour. On commence ?",
   },
@@ -60,9 +62,13 @@ export const INTRO_CLIPS: Record<string, IntroClip> = {
   },
   // Installation de la voix
   voixInstall: {
+    // NOTE : intro-voix.mp3 est un enregistrement qui dit encore l'ancien
+    // message trompeur (« gros fichier », « wifi »). A REENREGISTRER pour coller
+    // a ce texte. Le fallback texte ci-dessous, lui, est deja juste (sonde, pas
+    // de telechargement) — cf. audit REPONSE_SHERPA Q5.
     file: `${BASE}/intro-voix.mp3`,
-    texte: "Pour que je puisse t'écouter et te parler partout, même sans réseau, on installe ma voix une fois. " +
-      "C'est un gros fichier, alors fais-le tranquillement, quand tu as le wifi. Rien ne presse.",
+    texte: "Pour que je puisse t'écouter et te parler partout, même sans réseau : " +
+      "ta voix est déjà dans l'application, je la vérifie, c'est tout. Rien à télécharger.",
   },
   // Récompense finale
   bravo: {
@@ -79,17 +85,20 @@ export const INTRO_CLIPS: Record<string, IntroClip> = {
 export async function direIntro(key: keyof typeof INTRO_CLIPS): Promise<void> {
   const clip = INTRO_CLIPS[key];
   if (!clip) return;
-  try {
-    await playAudioUrl(clip.file);           // vraie Tata
-  } catch {
-    try { await speakBrowser(clip.texte); }  // filet : robot, seulement si le .mp3 manque
-    catch { /* muet plutôt que planter */ }
-  }
+  // Via l'audioManager (hygiène post-audit C2) : clip de la vraie Tata, repli
+  // voix de secours DANS le même créneau exclusif — l'onboarding ne peut plus
+  // se superposer à une autre voix, et stopAllVoice() le coupe comme le reste.
+  // V1 (packs) : un clip d'intro PUBLIÉ par manifeste (clé « intro_<clé> »)
+  // prime sur le fichier embarqué — les 9 intros arriveront sans rebuild.
+  const clipUrl = packClipUrl(`intro_${String(key)}`) ?? clip.file;
+  try { await speakClipOrText({ clipUrl, text: clip.texte }); }
+  catch { /* muet plutôt que planter */ }
 }
 
 /** Coupe immédiatement la voix de l'onboarding (barge-in / changement d'écran). */
 export function stopIntro(): void {
-  stopAllAudio();
+  stopAllVoice();
+  stopAllAudio(); // filet : coupe aussi l'ancien lecteur privé d'elevenlabs
 }
 
 let _preloaded = false;

@@ -450,7 +450,7 @@ export function ProfilUnifieModal({
               padding: '10px 14px', border: '1px solid rgba(196,98,16,0.08)',
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
-                <span style={{ fontSize: 12, color: '#aaa' }}>Complète ton profil</span>
+                <span style={{ fontSize: 12, color: 'var(--encre-4)' }}>Complète ton profil</span>
                 <strong style={{ fontSize: 12, color: cfg.color }}>{completionPct}%</strong>
               </div>
               <div style={{ height: 6, background: '#F0EDE8', borderRadius: 3, overflow: 'hidden' }}>
@@ -946,7 +946,7 @@ function SectionCard({ title, score, warn, color, children }: {
         <p style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{title}</p>
         <span style={{
           fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
-          color: warn ? '#F59E0B' : '#aaa',
+          color: warn ? '#F59E0B' : 'var(--encre-4)',
           background: warn ? 'rgba(245,158,11,0.1)' : '#F5F0E8',
         }}>{score}</span>
       </div>

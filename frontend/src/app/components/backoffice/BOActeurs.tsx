@@ -791,7 +791,7 @@ export function BOActeurs() {
       >
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 500, margin: 0, color: '#111827' }}>Acteurs</h1>
-          <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0' }}>
+          <p style={{ fontSize: 13, color: 'var(--encre-3)', margin: '4px 0 0' }}>
             {filtered.length} acteur{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''} sur {acteurs.length}
           </p>
         </div>
@@ -838,7 +838,7 @@ export function BOActeurs() {
                 padding: '0 16px',
                 borderRadius: 16,
                 background: isActive ? tab.color : '#fff',
-                color: isActive ? '#fff' : '#6B7280',
+                color: isActive ? '#fff' : 'var(--encre-3)',
                 border: isActive ? `2px solid ${tab.color}` : '1px solid #DBD2C5',
                 fontSize: 13,
                 fontWeight: 500,
@@ -889,7 +889,7 @@ export function BOActeurs() {
             </motion.div>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 500, color: '#111827', margin: 0 }}>Vue d'ensemble</h2>
-              <p style={{ fontSize: 11, color: '#6B7280', margin: '2px 0 0' }}>Statuts et alertes en temps réel</p>
+              <p style={{ fontSize: 11, color: 'var(--encre-3)', margin: '2px 0 0' }}>Statuts et alertes en temps réel</p>
             </div>
           </div>
         </div>
@@ -993,7 +993,7 @@ export function BOActeurs() {
             </motion.div>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 500, color: '#111827', margin: 0 }}>Liste des acteurs</h2>
-              <p style={{ fontSize: 11, color: '#6B7280', margin: '2px 0 0' }}>{filtered.length} résultat{filtered.length > 1 ? 's' : ''} sur {acteurs.length}</p>
+              <p style={{ fontSize: 11, color: 'var(--encre-3)', margin: '2px 0 0' }}>{filtered.length} résultat{filtered.length > 1 ? 's' : ''} sur {acteurs.length}</p>
             </div>
           </div>
         </div>

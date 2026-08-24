@@ -59,17 +59,11 @@ function normalize(s: any): StockItem {
   };
 }
 
-// StockProvider vide pour compatibilité
+// StockProvider : simple enveloppe de compatibilité. L'ancien bloc de polling
+// référençait des identifiants INEXISTANTS (appUser, refreshStocks) — il aurait
+// planté au premier rendu s'il avait été exécuté ; le vrai rafraîchissement vit
+// dans StockProviderInner.
 export function StockProvider({ children }: { children: ReactNode }) {
-
-  // Auto-refresh polling
-  useAutoRefresh({
-    intervalMs: 30000,
-    enabled: !!appUser?.id,
-    debugLabel: "StockContext",
-    onRefresh: async () => { if (appUser?.id) await refreshStocks(); },
-  });
-
   return <StockProviderInner>{children}</StockProviderInner>;
 }
 
@@ -104,9 +98,9 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
   const { user: appUser } = useApp();
   useEffect(() => { if (appUser?.id) refreshStocks(); }, [appUser?.id]);
 
-  const addStock = async (data: Omit<StockItem, 'id' | 'derniereModification'>) => {
+  const addStock = async (data: Omit<StockItem, 'id' | 'derniereModification'> & { nom?: string }) => {
     await fetch(`${API_URL}/stocks`, {
-      method: 'POST', headers: headers(),
+      method: 'POST', credentials: 'include', headers: headers(),
       body: JSON.stringify({ nom: data.nom || data.produit, produit: data.nom || data.produit, quantite: data.quantite, unite: data.unite, prix: (data as any).prixVente || data.prixUnitaire || 0, prix_achat: (data as any).prix_achat || (data as any).prixAchat || (data as any).purchasePrice || 0, categorie: (data as any).categorie || 'General', image: (data as any).image || null, seuil_alerte: (data as any).seuilAlerte ?? (data as any).seuil_alerte ?? null, date_peremption: (data as any).datePeremption ?? (data as any).date_peremption ?? null }),
     });
     eventBus.emit(EVENTS.STOCK_CREATED, data, { priority: 'medium' });
@@ -115,7 +109,7 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
 
   const updateStock = async (id: string, data: Partial<StockItem>) => {
     await fetch(`${API_URL}/stocks/${id}`, {
-      method: 'PATCH', headers: headers(),
+      method: 'PATCH', credentials: 'include', headers: headers(),
       body: JSON.stringify({
         quantite: data.quantite, prix_unitaire: data.prixUnitaire,
         ...(data.seuilAlerte !== undefined ? { seuil_alerte: data.seuilAlerte } : {}),
@@ -128,7 +122,10 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
   };
 
   const deleteStock = async (id: string) => {
-    await fetch(`${API_URL}/stocks/${id}`, { method: 'DELETE', headers: headers() });
+    const res = await fetch(`${API_URL}/stocks/${id}`, { method: 'DELETE', credentials: 'include', headers: headers() });
+    // On REMONTE l'échec (401, etc.) : sans ça, l'appelant annonçait « supprimé »
+    // alors que rien n'était supprimé (illusion de perte de donnée relevée en recette).
+    if (!res.ok) throw new Error(`Suppression stock refusée (${res.status})`);
     eventBus.emit(EVENTS.STOCK_DELETED, { id }, { priority: 'medium' });
     await refreshStocks();
   };

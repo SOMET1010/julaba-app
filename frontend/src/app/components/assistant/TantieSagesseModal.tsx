@@ -14,11 +14,10 @@ import { useVoiceCore, type VoiceState as VoiceStep } from '../../hooks/useVoice
 import { useObjectif } from '../../contexts/ObjectifContext';
 import { stopAllAudio, stopChunkedSpeaking, preloadAudioContext } from '../../services/elevenlabs';
 import { unlockAudioContextIOS } from '../../services/earlyAudioCache';
-import { apiRequest } from '../../../imports/api-client';
+import { apiRequest } from '../../services/api/api-client';
 import { API_URL } from '../../utils/api';
 import tataLouImg from "../../../assets/images/tantie-portrait.png";
 import tantieVenteImg from "../../../assets/images/tantie-vente-vocale.png";
-import { EngineBadge } from "../../voice-offline/EngineBadge";
 
 interface TantieSagesseModalProps {
   isOpen: boolean;
@@ -53,7 +52,7 @@ const STEP_CONFIG: Record<VoiceStep, { label: string; icon: React.ReactNode; col
 };
 
 function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'onClose' | 'role'>) {
-  const { user, currentSession, getTodayStats, openDay, closeDay } = useApp();
+  const { user, currentSession, getTodayStats, getFinancialSummary, openDay, closeDay } = useApp();
   const { lang: selectedLang } = useLangPref();
   const { enregistrerVente, refreshTransactions } = useCaisse();
   const stockCtx = useStock();
@@ -62,6 +61,11 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
   const progression = objectifCtx?.progression ?? 0;
   const topStocks = (stockCtx.stocks || []).slice(0,3).map((s:any) => `${s.name}:${s.quantity}${s.unit}`).join(', ');
   const stats = getTodayStats ? getTodayStats() : { caisse: 0, ventes: 0, depenses: 0 };
+  // V4 : meilleure vente du jour, pour répondre à « quelle est ma meilleure vente ? ».
+  const meilleureVente = (() => {
+    const tops = getFinancialSummary ? getFinancialSummary('today').topProduits : [];
+    return tops && tops[0] ? { nom: tops[0].productName, quantite: tops[0].quantity } : null;
+  })();
   const navigate = useNavigate();
   const [mode, setMode] = useState<'ecrire' | 'parler'>('parler');
   const [inputValue, setInputValue] = useState('');
@@ -71,7 +75,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
   const suggestions = ROLE_SUGGESTIONS[role] || ROLE_SUGGESTIONS.marchand;
 
   const {
-    state: step, response: result, transcript, liveTranscript, error, recordingTime, history,
+    state: step, response: result, transcript, error, recordingTime, history,
     startRecording, stopRecording, reset, resetHistory, handleMicClick, sendText,
     confirmAction, cancelAction, pendingResponse, isSpeaking,
   } = useVoiceCore({
@@ -87,6 +91,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
       sessionOpen: !!(currentSession?.opened),
       nombreVentes: (stats as any).nombreVentes || 0,
       topStocks: topStocks || '',
+      topProduit: meilleureVente,
     } as any,
     onAction: async (data) => {
       const action = data.action;
@@ -259,26 +264,27 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
                 </div>
               )}
 
-              <AnimatePresence mode="wait">
-                {step !== 'idle' ? (
-                  <motion.div key={step} className="mt-3 mb-2 px-5 py-2.5 rounded-full backdrop-blur-sm flex items-center gap-2.5"
-                    style={{ backgroundColor: `${STEP_CONFIG[step].color}30`, border: `1.5px solid ${STEP_CONFIG[step].color}60` }}
-                    initial={{ opacity: 0, y: 8, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.9 }}>
-                    <span style={{ color: STEP_CONFIG[step].color }}>{STEP_CONFIG[step].icon}</span>
-                    <span className="text-white font-semibold text-sm">
-                      {step === 'listening' && liveTranscript ? `"${liveTranscript}"` : STEP_CONFIG[step].label}
-                    </span>
-                  </motion.div>
-                ) : (
-                  <motion.div key="idle" className="mt-3 mb-2 px-5 py-2 rounded-full bg-white/20 backdrop-blur-sm"
-                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                    <div className="flex items-center gap-2">
-                      <MessageCircle className="w-4 h-4 text-white" />
-                      <span className="text-white font-medium text-sm">Tu peux dire:</span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {/* Pastille d'état SANS AnimatePresence mode="wait" : sur des bascules
+                  d'état très rapides (thinking→idle instantané), l'attente de
+                  l'animation de sortie pouvait figer la pastille sur « réfléchit… »
+                  alors que l'assistant était revenu au repos. Le remontage par clé
+                  garde l'apparition animée, sans jamais dépendre d'une sortie. */}
+              {step !== 'idle' ? (
+                <motion.div key={step} className="mt-3 mb-2 px-5 py-2.5 rounded-full backdrop-blur-sm flex items-center gap-2.5"
+                  style={{ backgroundColor: `${STEP_CONFIG[step].color}30`, border: `1.5px solid ${STEP_CONFIG[step].color}60` }}
+                  initial={{ opacity: 0, y: 8, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }}>
+                  <span style={{ color: STEP_CONFIG[step].color }}>{STEP_CONFIG[step].icon}</span>
+                  <span className="text-white font-semibold text-sm">{STEP_CONFIG[step].label}</span>
+                </motion.div>
+              ) : (
+                <motion.div key="idle" className="mt-3 mb-2 px-5 py-2 rounded-full bg-white/20 backdrop-blur-sm"
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4 text-white" />
+                    <span className="text-white font-medium text-sm">Tu peux dire:</span>
+                  </div>
+                </motion.div>
+              )}
 
               <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
                 whileTap={{ scale: 0.96 }}
@@ -288,11 +294,6 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
                 <Headphones className="w-4 h-4" />
                 <span className="text-sm font-bold" style={{ fontFamily: 'Calisga, serif' }}>Support & Aide Jùlaba</span>
               </motion.button>
-
-              {/* Badge moteur vocal (sherpa / Vosk / natif Android) */}
-              <div className="mb-3">
-                <EngineBadge />
-              </div>
             </div>
 
             {/* Section milieu — Résultats / Suggestions */}

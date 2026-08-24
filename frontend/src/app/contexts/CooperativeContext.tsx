@@ -1,8 +1,8 @@
 import { useUser } from './UserContext';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { isCooperatif } from '../types/constants';
-import * as cooperativesApi from '../../imports/cooperatives-api';
-import { NOT_AUTHENTICATED, apiRequest } from '../../imports/api-client';
+import * as cooperativesApi from '../services/api/cooperatives-api';
+import { NOT_AUTHENTICATED, apiRequest } from '../services/api/api-client';
 import { API_URL } from '../utils/api';
 
 // ── Types CoopératifMembre — champs réellement utilisés ──────
@@ -144,8 +144,8 @@ export function CooperativeProvider({ children }: { children: ReactNode }) {
         presidentId: data.president_id,
         treorierId: data.tresorier_id,
         secretaireId: data.secretaire_id,
-        soldeTresorerie: data.solde_tresorerie,
-        dateCreation: data.created_at || null,
+        soldeTresorerie: data.solde_tresorerie ?? 0,
+        dateCreation: data.created_at || undefined,
       });
     } catch (error: unknown) {
       if ((error as Error)?.message === NOT_AUTHENTICATED) return;

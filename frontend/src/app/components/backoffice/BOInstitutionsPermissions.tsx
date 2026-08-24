@@ -149,7 +149,9 @@ export function PermissionsEditor({ permissions, onChange }: PermissionsEditorPr
 
     const newPerms = { ...permissions };
     section.permissions.forEach(perm => {
-      newPerms[perm.key as keyof InstitutionPermissions] = value;
+      // Écriture en masse identique au runtime : certaines clés du type
+      // portent des listes, d'où l'assertion locale (pas de any).
+      (newPerms as Record<string, unknown>)[perm.key] = value;
     });
     onChange(newPerms);
   };

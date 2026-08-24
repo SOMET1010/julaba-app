@@ -19,6 +19,7 @@ import { CIV_REGIONS_LIST } from '../../data/civ-geography';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { UniversalSectionCardBO } from './universal/UniversalSectionCardBO';
 import type { Acteur } from '../../services/backoffice-api';
+import { buildReportPdf, hexToRgb } from '../../utils/pdfReport';
 
 const PERIODES = ['7 derniers jours', '30 derniers jours', '3 derniers mois', '6 derniers mois', 'Cette année', 'Personnalisé'];
 const REGIONS_LIST = ['Toutes les régions', ...CIV_REGIONS_LIST.filter(r => r !== 'National')];
@@ -52,7 +53,7 @@ function deriveMonthlyData(analytics: any, acteurs: any[], transactions: any[]) 
 function deriveTypeData(analytics: any, acteurs: any[]) {
   if (analytics?.by_role?.length) {
     const colorMap: Record<string, string> = { marchand: '#C66A2C', producteur: '#2E8B57', cooperative: '#1D4ED8', identificateur: BO_PRIMARY };
-    return analytics.by_role.map((r: any) => ({ name: r.role || r.label, value: r.count || r.value || 0, color: colorMap[r.role] || '#9CA3AF' }));
+    return analytics.by_role.map((r: any) => ({ name: r.role || r.label, value: r.count || r.value || 0, color: colorMap[r.role] || 'var(--encre-4)' }));
   }
   const roleMap: Record<string, { name: string; color: string }> = {
     marchand: { name: 'Marchands', color: '#C66A2C' },
@@ -62,7 +63,7 @@ function deriveTypeData(analytics: any, acteurs: any[]) {
   };
   const counts: Record<string, number> = {};
   acteurs.forEach(a => { const r = a.type || a.role || ''; if (r) counts[r] = (counts[r] || 0) + 1; });
-  return Object.entries(counts).map(([role, value]) => ({ name: roleMap[role]?.name || role, value, color: roleMap[role]?.color || '#9CA3AF' }));
+  return Object.entries(counts).map(([role, value]) => ({ name: roleMap[role]?.name || role, value, color: roleMap[role]?.color || 'var(--encre-4)' }));
 }
 
 function deriveRegionPerf(acteurs: any[], transactions: any[]) {
@@ -87,7 +88,7 @@ function deriveRegionPerf(acteurs: any[], transactions: any[]) {
       volume: Math.round(d.volume / 1_000_000),
       commissions: Math.round(d.volume / 1_000_000 * 0.03 * 100) / 100,
       taux: Math.min(99, Math.round(60 + (d.acteurs / Math.max(...Object.values(map).map(x => x.acteurs))) * 39)),
-      color: REGION_COLORS[i] || '#9CA3AF',
+      color: REGION_COLORS[i] || 'var(--encre-4)',
     }));
 }
 
@@ -252,9 +253,62 @@ export function BORapports() {
 
   const handleGenerate = async (reportId: string, label: string) => {
     setGenerating(reportId);
-    await new Promise(r => setTimeout(r, 800));
-    setGenerating(null);
-    toast.info(`${label}`, { description: 'Export PDF disponible prochainement.' });
+    try {
+      const report = REPORTS_TYPES.find(r => r.id === reportId);
+      const brandColor = hexToRgb(report?.color || BO_PRIMARY);
+      const now = new Date();
+      const dateLabel = now.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+      const totalActeursRegion = REGION_PERF.reduce((s, r) => s + (r.acteurs || 0), 0);
+      const totalVolume = REGION_PERF.reduce((s, r) => s + (r.volume || 0), 0);
+      const totalCommissions = Math.round(REGION_PERF.reduce((s, r) => s + (r.commissions || 0), 0) * 100) / 100;
+      const totalTypeData = TYPE_DATA.reduce((s: number, t: typeof TYPE_DATA[number]) => s + (t.value || 0), 0);
+
+      const doc = buildReportPdf({
+        title: label,
+        subtitle: 'JULABA — Back-office · Rapport officiel',
+        brandColor,
+        meta: `Période : ${periode}  ·  Région : ${region}  ·  Généré le ${dateLabel}`,
+        kpis: [
+          { label: 'Total acteurs', value: (stats?.total_acteurs ?? totalActeurs).toLocaleString('fr-FR') },
+          { label: 'Transactions', value: (stats?.total_transactions ?? transactions.length).toLocaleString('fr-FR') },
+          { label: 'Volume (M FCFA)', value: totalVolume.toLocaleString('fr-FR') },
+          { label: 'Commissions (M FCFA)', value: totalCommissions.toLocaleString('fr-FR') },
+        ],
+        tables: [
+          {
+            title: 'Performance par région',
+            columns: [
+              { header: 'Région', width: 45 },
+              { header: 'Acteurs', width: 25, align: 'right' },
+              { header: 'Volume (M)', width: 30, align: 'right' },
+              { header: 'Commissions (M)', width: 35, align: 'right' },
+              { header: 'Taux', width: 20, align: 'right' },
+            ],
+            rows: REGION_PERF.map(r => [r.region, r.acteurs.toLocaleString('fr-FR'), r.volume, r.commissions, `${r.taux}%`]),
+            totalRow: ['TOTAL', totalActeursRegion.toLocaleString('fr-FR'), totalVolume, totalCommissions, ''],
+          },
+          {
+            title: "Répartition par type d'acteur",
+            columns: [
+              { header: 'Type', width: 90 },
+              { header: 'Nombre', width: 40, align: 'right' },
+            ],
+            rows: TYPE_DATA.map((t: typeof TYPE_DATA[number]) => [t.name, t.value.toLocaleString('fr-FR')]),
+            totalRow: ['TOTAL', totalTypeData.toLocaleString('fr-FR')],
+          },
+        ],
+        footerNote: `JULABA © ${now.getFullYear()} — Généré le ${dateLabel}`,
+      });
+
+      doc.save(`julaba_${reportId}_${now.toISOString().split('T')[0]}.pdf`);
+      toast.success(label, { description: 'Rapport PDF téléchargé avec succès.' });
+    } catch (err) {
+      console.warn('[BORapports] handleGenerate failed:', err instanceof Error ? err.message : err);
+      toast.error('Erreur lors de la génération du PDF. Réessaie.');
+    } finally {
+      setGenerating(null);
+    }
   };
 
   const handleExportCSV = () => setShowExportModal(true);
@@ -465,7 +519,7 @@ export function BORapports() {
           <div className="flex items-center gap-2 flex-wrap">
             {/* Metric switcher */}
             {(Object.keys(METRIC_LABELS) as (keyof typeof METRIC_LABELS)[]).map(m => (
-              <button key={m} onClick={() => setActiveMetric(m)}
+              <button key={m} onClick={() => setActiveMetric(m as 'transactions' | 'acteurs' | 'volume' | 'commissions')}
                 className="px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition-all"
                 style={{ borderColor: activeMetric === m ? METRIC_COLORS[m] : '#e5e7eb', backgroundColor: activeMetric === m ? `${METRIC_COLORS[m]}15` : 'transparent', color: activeMetric === m ? METRIC_COLORS[m] : '#9ca3af' }}>
                 {METRIC_LABELS[m]}

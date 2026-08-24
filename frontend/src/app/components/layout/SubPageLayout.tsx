@@ -48,13 +48,13 @@ export function SubPageLayout({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
               onClick={onBackOverride ? onBackOverride : () => navigate(-1)}
-              style={{ width: 38, height: 38, borderRadius: 13,
+              style={{ width: 44, height: 44, borderRadius: 14,
                 background: 'rgba(255,255,255,0.18)',
                 border: '1px solid rgba(255,255,255,0.28)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', flexShrink: 0 }}
             >
-              <ChevronLeft size={16} color="white" strokeWidth={2.5} />
+              <ChevronLeft size={20} color="white" strokeWidth={2.5} />
             </button>
             <div>
               <div style={{ fontSize: 19, fontWeight: 900, color: 'white',
@@ -77,7 +77,7 @@ export function SubPageLayout({
       <div
         style={{
           flex: 1,
-          paddingTop: headerChildren ? 110 : 80,
+          paddingTop: headerChildren ? 116 : 86,
           paddingBottom: pbContent,
           paddingLeft: noPadding ? 0 : 16,
           paddingRight: noPadding ? 0 : 16,

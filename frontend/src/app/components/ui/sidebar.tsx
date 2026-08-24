@@ -69,8 +69,8 @@ function SidebarProvider({
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
 
-  // C'est l'état interne de la barre latérale.
-  // On utilise openProp / setOpenProp pour un contrôle depuis l'extérieur.
+  // This is the internal state of the sidebar.
+  // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen);
   const open = openProp ?? _open;
   const setOpen = React.useCallback(
@@ -82,7 +82,7 @@ function SidebarProvider({
         _setOpen(openState);
       }
 
-      // Ce cookie conserve l'état ouvert/fermé de la barre latérale.
+      // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
     },
     [setOpenProp, open],
@@ -109,8 +109,8 @@ function SidebarProvider({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggleSidebar]);
 
-  // Un état dédié permet de poser data-state="expanded" ou "collapsed",
-  // ce qui facilite le style de la barre latérale avec Tailwind.
+  // We add a state so that we can do data-state="expanded" or "collapsed".
+  // This makes it easier to style the sidebar with Tailwind classes.
   const state = open ? "expanded" : "collapsed";
 
   const contextValue = React.useMemo<SidebarContextProps>(

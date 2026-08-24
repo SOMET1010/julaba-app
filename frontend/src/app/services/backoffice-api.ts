@@ -2,8 +2,40 @@
 import { API_URL } from '../utils/api';
 import type { SousProfilMarchand } from '../types/sousProfilMarchand';
 
+// julaba-web et julaba-api sont sur des DOMAINES différents (Render V2) : le
+// cookie de session cross-domaine (SameSite=None) est bloqué par défaut par
+// plusieurs navigateurs (Safari ITP, Chrome/Firefox en mode protection stricte),
+// même correctement configuré côté serveur. Le backend renvoie donc AUSSI le
+// jeton dans le corps de la réponse de login précisément pour ce cas — mais
+// rien côté frontend ne le stockait ni ne l'envoyait en en-tête Authorization
+// (authHeaders() ne renvoyait jamais que Content-Type). Résultat concret :
+// un login réussi (le corps de la réponse suffit à afficher l'écran suivant)
+// pouvait être suivi d'un 401 générique sur le premier appel authentifié
+// (ex. /auth/change-password), à tort affiché comme "mot de passe incorrect".
+const BO_TOKEN_KEY = 'julaba:bo:access-token';
+
+export function setBoAccessToken(token: string | null): void {
+  try {
+    if (token) sessionStorage.setItem(BO_TOKEN_KEY, token);
+    else sessionStorage.removeItem(BO_TOKEN_KEY);
+  } catch {
+    /* stockage indisponible */
+  }
+}
+
+export function getBoAccessToken(): string | null {
+  try {
+    return sessionStorage.getItem(BO_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 function authHeaders(): HeadersInit {
-  return { 'Content-Type': 'application/json' };
+  const token = getBoAccessToken();
+  return token
+    ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+    : { 'Content-Type': 'application/json' };
 }
 
 
@@ -122,6 +154,7 @@ export async function boLogin(
   }
 
   const data = await res.json();
+  setBoAccessToken(data.accessToken ?? null);
   return { accessToken: data.accessToken, user: data.user };
 }
 
@@ -171,6 +204,8 @@ export async function boWebAuthnAuthenticateVerify(
 export interface BOUser {
   id: string;
   phone: string;
+  /** Photo de profil (URL) — affichée dans la barre BO. */
+  photo_url?: string;
   full_name?: string;
   firstName?: string;
   lastName?: string;
@@ -313,6 +348,11 @@ export interface BOAuditLog {
   details?: Record<string, unknown>;
   ip?: string;
   created_at?: string;
+  // Variantes lues par BONotifications (optionnelles).
+  utilisateurBO?: string;
+  acteurImpacte?: string;
+  module?: string;
+  date?: string;
 }
 
 export interface BOMission {
@@ -346,7 +386,7 @@ export interface BOInstitution {
   name?: string;
   region?: string;
   statut?: string;
-  modules?: string[];
+  modules?: Record<string, 'lecture' | 'ecriture' | 'complet' | 'admin_general' | 'aucun'>;
   created_at?: string;
   email?: string;
   referentNom?: string;
@@ -382,12 +422,16 @@ export async function boGetActeurs(params?: {
   limit?: number;
   search?: string;
   role?: string;
+  region?: string;
+  statut?: string;
 }): Promise<{ data: Acteur[]; total: number; page: number; limit: number }> {
   const q = new URLSearchParams();
   if (params?.page) q.set('page', String(params.page));
   if (params?.limit) q.set('limit', String(params.limit));
   if (params?.search) q.set('search', params.search);
   if (params?.role && params.role !== 'all') q.set('role', params.role);
+  if (params?.region && params.region !== 'all') q.set('region', params.region);
+  if (params?.statut && params.statut !== 'all') q.set('statut', params.statut);
 
   const res = await fetch(`${API_URL}/users?${q}`, { headers: authHeaders(), credentials: 'include' });
 
@@ -473,7 +517,7 @@ async function fetchRoleCounts(signal?: AbortSignal): Promise<RoleCounts> {
 
 export async function boGetActeurCounts(signal?: AbortSignal, force = false): Promise<RoleCounts> {
   const isCacheFresh = roleCountsCache && Date.now() - roleCountsCacheAt < ROLE_COUNTS_CACHE_MS;
-  if (!force && isCacheFresh) return roleCountsCache;
+  if (!force && isCacheFresh && roleCountsCache) return roleCountsCache;
   if (!force && roleCountsRefreshPromise) return roleCountsRefreshPromise;
 
   try {
@@ -501,7 +545,8 @@ export async function boGetActeur(id: string): Promise<Acteur> {
     telephone: u.phone || u.telephone || '',
     type: u.role || u.type || '',
     statut: u.statut || u.status || 'actif',
-  };
+    // Le backend renvoie des variantes partielles selon les routes.
+  } as unknown as Acteur;
 }
 
 export async function boCreateActeur(data: Partial<Acteur> & { password: string }): Promise<Acteur> {
@@ -750,7 +795,7 @@ export async function boGetDashboard(): Promise<DashboardStats> {
     const coopIds = new Set(
       users
         .map((u: Record<string, unknown>) => u.cooperative_id ?? u.cooperativeId)
-        .filter((id): id is string => typeof id === 'string' && id.length > 0),
+        .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0),
     );
     return {
       total_acteurs: total,
@@ -1154,6 +1199,12 @@ export interface CreateBackofficeUserResult {
   status: string;
   message: string;
   defaultPassword?: string;
+  // P0.0 (ADR-002) : présent pour tout acteur non-admin (marchand, producteur,
+  // cooperateur, institution, identificateur) — le compte naît en_attente_activation
+  // et ce code, à usage unique et expirant (30 min), est LA seule façon de
+  // l'activer. Résiduel accepté par l'ADR : l'admin BO le voit à l'écran pour le
+  // transmettre à l'acteur, comme l'identificateur sur le chemin create-with-acteur.
+  activationCode?: string;
 }
 
 export async function boCreateBackofficeUser(

@@ -1,0 +1,27 @@
+/* ────────────────────────────────────────────────────────────────────────
+   MODE SOLEIL (inclusion — docs/INCLUSION.md §2.4) : lisible en plein marché.
+
+   Le code écrit ses tailles en px inline → le levier global fiable est le
+   zoom (tout grandit, y compris les cibles tactiles). Le relèvement des
+   gris de texte passe par les TOKENS (styles/tokens.css, surchargés par
+   html.soleil) : tous les gris pâles posés en `color:` inline ont été
+   migrés vers var(--encre-3)/var(--encre-4) en v5.0.0.16.
+
+   Les sélecteurs d'attribut « v1 » ([style*="color:#aaa"]…) sont RETIRÉS :
+   preuve au Chromium (11/08/2026) que le navigateur normalise les hex en
+   rgb() dans l'attribut style — ces sélecteurs hex n'ont JAMAIS matché.
+
+   Activé par la classe `soleil` sur <html> (utils/confortVisuel.ts).
+   ──────────────────────────────────────────────────────────────────────── */
+
+html.soleil body {
+  -webkit-font-smoothing: antialiased;
+}
+
+html.soleil {
+  /* Le zoom soleil passe par une VARIABLE, multipliée avec la taille du
+     texte dans l'unique règle `zoom` de body (styles/index.css) — deux
+     règles zoom concurrentes ne se multiplient pas, l'une écrase l'autre. */
+  --zoom-soleil: 1.1;                 /* tout + grand, cibles comprises */
+  --font-size: 17px;                  /* base relevée pour les textes en rem */
+}

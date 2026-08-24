@@ -9,6 +9,7 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { matchesSearch } from '../../utils/searchUtils';
+import { UNITES_COURANTES } from '../../config/unites';
 import { SearchBar } from '../shared/SearchBar';
 import { ImagePickerField } from '../shared/ImagePickerField';
 import { motion, AnimatePresence } from 'motion/react';
@@ -42,11 +43,13 @@ import {
   Check,
 } from 'lucide-react';
 import { Montant } from '../shared/Montant';
+import { InboxNegociations } from '../shared/InboxNegociations';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { useUser } from '../../contexts/UserContext';
 import { useApp } from '../../contexts/AppContext';
 import { useCommande, type Commande as ApiCommande } from '../../contexts/CommandeContext';
-import { createCommande, cancelCommande } from '../../../imports/commandes-api';
+import { createCommande, cancelCommande } from '../../services/api/commandes-api';
+import { useProducteur } from '../../contexts/ProducteurContext';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { NotificationButton } from '../marchand/NotificationButton';
 import { ReceptionPaiementModal } from '../shared/ReceptionPaiementModal';
@@ -86,17 +89,6 @@ const PRODUITS_ICONS: { id: string; img: string }[] = [
   { id: 'Autre',           img: IMG_PRODUIT_AUTRE     },
 ];
 
-/** Suggestions + saisie libre (datalist) — modal nouvelle vente */
-const DATALIST_ADD_PRODUIT_VALUES: string[] = [
-  'Tomate', 'Aubergine', 'Piment', 'Gombo', 'Manioc', 'Igname', 'Maïs', 'Riz',
-  'Banane plantain', 'Oignon', 'Avocat', 'Arachide', 'Haricot', 'Soja', 'Mil',
-  'Sorgho', 'Café', 'Cacao', 'Coton', 'Anacarde', 'Ananas', 'Mangue', 'Papaye',
-  'Citron', 'Orange', 'Gingembre', 'Piment doux', 'Concombre', 'Courgette',
-  'Poivron', 'Laitue', 'Chou', 'Carotte', 'Patate douce', 'Taro', 'Macabo',
-  'Bissap', 'Kenaf', 'Palmier à huile', 'Cocotier', 'Plantain',
-];
-
-const ADD_PRODUIT_DATALIST_ID = 'add-vente-produit-datalist';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -175,6 +167,7 @@ const sortOptions = [
 // ── Formulaire nouvelle commande ──────────────────────────────────────────────
 
 const emptyForm = {
+  recolteId: '',
   produit: '',
   acheteur: '',
   telephone: '',
@@ -202,6 +195,14 @@ export function ProducteurCommandes() {
     refreshCommandes,
     updateCommande,
   } = useCommande();
+  // Récoltes du producteur : une vente directe DOIT être rattachée à l'une
+  // d'elles (ADR-0001 D2 / #12) — pas de saisie libre déconnectée du stock.
+  const { recoltes, fetchRecoltes } = useProducteur();
+  useEffect(() => { fetchRecoltes(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const recoltesDispo = useMemo(
+    () => (recoltes || []).filter((r) => Number(r.stockDisponible ?? r.quantite ?? 0) > 0),
+    [recoltes],
+  );
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategorie, setSelectedCategorie] = useState('tous');
@@ -225,14 +226,14 @@ export function ProducteurCommandes() {
   const canNavigateToAddStep = useCallback(
     (target: number) => {
       if (target <= addStep) return true;
-      const prodOk = newForm.produit.trim() !== '';
+      const prodOk = newForm.recolteId !== '' && newForm.produit.trim() !== '';
       const telOk = newForm.telephone.replace(/\s/g, '').length === 10;
       const acheteurOk = newForm.acheteur.trim() !== '';
       if (target === 1) return prodOk;
       if (target === 2) return prodOk && acheteurOk && telOk;
       return false;
     },
-    [addStep, newForm.produit, newForm.acheteur, newForm.telephone],
+    [addStep, newForm.recolteId, newForm.produit, newForm.acheteur, newForm.telephone],
   );
 
   const goToAddStep = useCallback(
@@ -494,8 +495,7 @@ export function ProducteurCommandes() {
       case 'livraison': return 'en_livraison';
       case 'livree': return 'livree';
       case 'cloturee': return 'annulee';
-      // 'refusee' pas encore dans StatutType ; le repli API reste 'annulee'
-      // quand la commande est clôturée.
+      // 'refusee' not in StatutType yet; API fallback remains annulee when cloturee is used.
       case 'nouvelle': return 'en_attente';
       case 'litige':
       default: return 'en_cours';
@@ -568,6 +568,7 @@ export function ProducteurCommandes() {
 
   const ajouterCommande = async () => {
     if (
+      !newForm.recolteId ||
       !newForm.produit ||
       !newForm.acheteur ||
       newForm.quantite === 0 ||
@@ -583,6 +584,7 @@ export function ProducteurCommandes() {
       await createCommande({
         type: 'vente_directe',
         produit: newForm.produit,
+        recolte_id: newForm.recolteId,
         quantite: String(newForm.quantite),
         prix_unitaire: newForm.prixUnitaire,
         total: newForm.quantite * newForm.prixUnitaire,
@@ -676,6 +678,10 @@ export function ProducteurCommandes() {
             />
           </KPIGrid>
         </div>
+
+        {/* ── Demandes de négociation des marchands (trou comblé : le producteur
+            recevait la notification mais n'avait aucun écran pour répondre) ── */}
+        <InboxNegociations accent="#2E8B57" onAccepted={() => void refreshCommandes()} />
 
         {/* ── Barre de recherche + filtres avancés ── */}
         <motion.div
@@ -1119,23 +1125,37 @@ export function ProducteurCommandes() {
                   {addStep === 0 && (
                     <>
                       <div>
-                        <label className="block text-sm font-black text-gray-800 mb-2">Produit</label>
-                        <input
-                          type="text"
-                          list={ADD_PRODUIT_DATALIST_ID}
-                          value={newForm.produit}
-                          onChange={(e) =>
-                            setNewForm((prev) => ({ ...prev, produit: e.target.value }))
-                          }
-                          className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 focus:outline-none focus:border-[#2E8B57] font-semibold text-gray-900"
-                          placeholder="Rechercher ou saisir un produit..."
-                          autoComplete="off"
-                        />
-                        <datalist id={ADD_PRODUIT_DATALIST_ID}>
-                          {DATALIST_ADD_PRODUIT_VALUES.map((v) => (
-                            <option key={v} value={v} />
-                          ))}
-                        </datalist>
+                        <label className="block text-sm font-black text-gray-800 mb-2">Récolte vendue</label>
+                        {recoltesDispo.length === 0 ? (
+                          <p className="text-sm text-gray-500 bg-gray-50 rounded-2xl px-4 py-3.5">
+                            Aucune récolte en stock. Déclare d'abord une récolte pour enregistrer une vente.
+                          </p>
+                        ) : (
+                          <select
+                            value={newForm.recolteId}
+                            onChange={(e) => {
+                              const r = recoltesDispo.find((x) => x.id === e.target.value);
+                              setNewForm((prev) => ({
+                                ...prev,
+                                recolteId: e.target.value,
+                                produit: r ? r.produit : '',
+                                unite: r?.unite || prev.unite,
+                                prixUnitaire: r && Number(r.prixUnitaire) > 0 ? Number(r.prixUnitaire) : prev.prixUnitaire,
+                              }));
+                            }}
+                            className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 focus:outline-none focus:border-[#2E8B57] font-semibold text-gray-900 bg-white"
+                          >
+                            <option value="">Choisir une récolte…</option>
+                            {recoltesDispo.map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.produit} — {Number(r.stockDisponible ?? r.quantite ?? 0).toLocaleString()} {r.unite || 'kg'} en stock
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <p className="mt-2 text-xs text-gray-500">
+                          La vente sera déduite du stock de cette récolte.
+                        </p>
                       </div>
 
                       <ImagePickerField
@@ -1151,7 +1171,7 @@ export function ProducteurCommandes() {
                       <motion.button
                         type="button"
                         onClick={() => goToAddStep(1)}
-                        disabled={!newForm.produit.trim()}
+                        disabled={!newForm.recolteId}
                         className="w-full py-4 rounded-2xl font-bold text-white shadow-lg disabled:opacity-45 text-base"
                         style={{ backgroundColor: COLOR }}
                         whileTap={{ scale: 0.97 }}
@@ -1290,11 +1310,11 @@ export function ProducteurCommandes() {
                       <div>
                         <label className="block text-sm font-black text-gray-800 mb-2">Unité</label>
                         <select
-                          value={['kg', 'tas', 'sac', 'L', 'régimes', 'unité'].includes(newForm.unite) ? newForm.unite : 'kg'}
+                          value={UNITES_COURANTES.includes(newForm.unite) ? newForm.unite : 'kg'}
                           onChange={(e) => setNewForm((prev) => ({ ...prev, unite: e.target.value }))}
                           className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 font-semibold text-gray-900 bg-white"
                         >
-                          {['kg', 'tas', 'sac', 'L', 'régimes', 'unité'].map((u) => (
+                          {UNITES_COURANTES.map((u) => (
                             <option key={u} value={u}>
                               {u}
                             </option>
@@ -1309,7 +1329,8 @@ export function ProducteurCommandes() {
                           onChange={(e) =>
                             setNewForm((prev) => ({
                               ...prev,
-                              prixUnitaire: e.target.value === '' ? '' : parseInt(e.target.value),
+                              // Champ vidé = '' à l'écran (état hérité plus large que le type déclaré).
+                              prixUnitaire: (e.target.value === '' ? '' : parseInt(e.target.value)) as unknown as number,
                             }))
                           }
                           className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 font-black text-2xl text-gray-900"
@@ -2216,7 +2237,7 @@ export function ProducteurCommandes() {
                     <input
                       type="number"
                       value={nouveauPrix || ''}
-                      onChange={e => setNouveauPrix(e.target.value === '' ? '' : parseInt(e.target.value))}
+                      onChange={e => setNouveauPrix((e.target.value === '' ? '' : parseInt(e.target.value)) as unknown as number)}
                       className="flex-1 px-4 py-4 rounded-2xl border-2 focus:outline-none font-black text-3xl text-gray-900 text-center bg-white"
                       style={{ borderColor: '#8b5cf6' }}
                     />

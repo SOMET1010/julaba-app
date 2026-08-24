@@ -10,6 +10,8 @@ import { API_URL } from "../utils/api";
 // Offline-first : STT sur l'appareil + compréhension locale (sans réseau ni LLM).
 import { transcribeWav, offlineModelReady, ensureOfflineModel } from "../voice-offline/offlineStt";
 import { intentLocal } from "../voice-offline/localIntent";
+// V4 : questions « chiffres du jour » (lecture seule), consultées APRÈS intentLocal.
+import { detecterQuestion, phraseReponse, type ChiffresJour } from "../services/intentionsCaisse";
 import { preloadEarlyAudios } from "../services/earlyAudioCache";
 import {
   preloadAudioContext,
@@ -68,6 +70,8 @@ export interface VoiceCoreContext {
   userId?: string;
   nombreVentes?: number;
   topStocks?: string;
+  /** Meilleure vente du jour (facultatif) — nourrit la question « meilleure vente ». */
+  topProduit?: { nom: string; quantite?: number } | null;
   [key: string]: unknown;
 }
 
@@ -94,7 +98,7 @@ export interface VoiceCoreResult {
   startRecording: () => Promise<void>;
   stopRecording: () => void;
   handleMicClick: () => void;
-  sendText: (text: string) => Promise<void>;
+  sendText: (text: string) => Promise<boolean>;
   speak: (text: string) => Promise<void>;
   stopSpeaking: () => void;
   isSpeaking: boolean;
@@ -363,7 +367,7 @@ export function useVoiceCore({
   const typewriterRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const sendTextRef = useRef<((text: string) => Promise<void>) | null>(null);
+  const sendTextRef = useRef<((text: string) => Promise<boolean>) | null>(null);
   // Confirmation vocale (« c'est bien ça ? » → oui/non). Refs pour appeler ces
   // fonctions depuis processAudio sans dépendances circulaires.
   const pendingResponseRef = useRef<VoiceProcessResponse | null>(null);
@@ -387,8 +391,10 @@ export function useVoiceCore({
   const { enqueue, pendingCount: offlinePending, isReplaying: offlineReplaying } = useOfflineVoiceQueue(async (cmd) => {
     try {
       if (!sendTextRef.current) return false;
-      await sendTextRef.current(cmd.text);
-      return true;
+      // #8 : renvoyer le VRAI succès de l'enregistrement. Si la commande n'a pas
+      // été enregistrée (non reconnue, erreur, en attente de confirmation), la
+      // file la garde (retries++) au lieu de la jeter en croyant à un succès.
+      return await sendTextRef.current(cmd.text);
     } catch {
       return false;
     }
@@ -525,9 +531,9 @@ export function useVoiceCore({
   }, [reset]);
 
   // ── Execute action ───────────────────────────────────────────
-  const executeAction = useCallback(async (data: VoiceProcessResponse, userText: string, confirmed = false) => {
+  const executeAction = useCallback(async (data: VoiceProcessResponse, userText: string, confirmed = false): Promise<boolean> => {
     if (interruptRef.current) {
-      return;
+      return false;
     }
     clearThinkingTimer();
 
@@ -535,10 +541,10 @@ export function useVoiceCore({
     if (data.intent === "silence") {
       setState("idle");
       setLiveTranscript("");
-      return;
+      return false;
     }
 
-    // Mémoriser l'intention
+    // Memoriser l intent
     addIntent(data.intent);
 
     setResponse(data); setTranscript(data.transcript || userText);
@@ -559,10 +565,10 @@ export function useVoiceCore({
         // Utiliser audioBase64 du backend si disponible
         if (data.audioBase64) {
           await ttsPlayBase64(data.audioBase64, data.response || ack);
-          if (interruptRef.current) return;
+          if (interruptRef.current) return false;
         } else {
           await ttsSpeak(data.response || ack, buildContext().lang as TTSLang);
-          if (interruptRef.current) return;
+          if (interruptRef.current) return false;
         }
       }
     } finally { clearTypewriter(); setIsSpeaking(false); }
@@ -575,13 +581,17 @@ export function useVoiceCore({
     if (requiresLocalConfirm) {
       setPendingResponse(data);
       setState("confirming");
-      return;
+      return false; // en attente de confirmation : rien n'est encore enregistré
     }
+    // #8 : succès RÉEL de l'enregistrement, remonté jusqu'au rejeu hors-ligne
+    // pour qu'une commande non enregistrée ne soit jamais comptée « réussie ».
+    let enregistre = false;
     if (!interruptRef.current && onAction && data.action?.type !== "none") {
       // #4 : ne plus avaler une erreur d'enregistrement en silence -> la montrer
       // et la dire (ex. « ouvre ta journée d'abord »), au lieu d'un faux succès.
       try {
         await onAction(data);
+        enregistre = true;
       } catch (e) {
         const m = e instanceof Error ? e.message : "Enregistrement impossible.";
         console.warn('[voice]', e);
@@ -589,8 +599,6 @@ export function useVoiceCore({
         await ttsSpeak(m);
         if (onError) onError(m);
       }
-    } else {
-      // Aucun gestionnaire d'action branché — rien à exécuter ici.
     }
     if (!interruptRef.current && data.navigate && onNavigate) {
       trackTimeout(() => onNavigate(data.navigate!), 800);
@@ -598,12 +606,13 @@ export function useVoiceCore({
     if (!interruptRef.current) {
       trackTimeout(() => { setState("idle"); setLiveTranscript(""); }, 1000);
     }
+    return enregistre;
   }, [addToHistory, addIntent, onAction, onNavigate, clearTypewriter, clearThinkingTimer, trackTimeout]);
 
-  // ── Traitement de la réponse ─────────────────────────────────
-  const handleResponse = useCallback(async (raw: Partial<VoiceProcessResponse>, userText: string) => {
+  // ── Handle response ──────────────────────────────────────────
+  const handleResponse = useCallback(async (raw: Partial<VoiceProcessResponse>, userText: string): Promise<boolean> => {
     if (interruptRef.current) {
-      return;
+      return false;
     }
     clearThinkingTimer();
     const data = normalizeResponse(raw);
@@ -624,20 +633,20 @@ export function useVoiceCore({
         // Utiliser audioBase64 du backend si disponible
         if (!wasInterrupted && data.audioBase64) {
           await ttsPlayBase64(data.audioBase64, data.response);
-          if (interruptRef.current) return;
+          if (interruptRef.current) return false;
         } else {
           if (!wasInterrupted) {
             await ttsSpeak(data.response, buildContext().lang as TTSLang);
-            if (interruptRef.current) return;
+            if (interruptRef.current) return false;
           }
         }
       } finally { clearTypewriter(); setIsSpeaking(false); }
       // AUTO-ÉCOUTE : juste après la question, on écoute la réponse (oui/non) pour
       // que la vendeuse n'ait rien à toucher. Les boutons Oui/Non restent dispo.
       if (!interruptRef.current) { setState("confirming"); void startRecordingRef.current?.(); }
-      return;
+      return false; // en attente de la confirmation orale : pas encore enregistré
     }
-    await executeAction(data, userText);
+    return await executeAction(data, userText);
   }, [executeAction, clearTypewriter, clearThinkingTimer, trackTimeout]);
 
   // ── Confirmation ─────────────────────────────────────────────
@@ -678,6 +687,27 @@ export function useVoiceCore({
     module: context.module || "general",
   }), [context]);
 
+  // ── Questions « chiffres du jour » (V4) ──────────────────────
+  // Consulté APRÈS intentLocal : lecture seule, aucune écriture possible ici.
+  // Les chiffres viennent du contexte fourni par l'écran (état local/API).
+  const answerQuestion = useCallback(async (texte: string): Promise<boolean> => {
+    const question = detecterQuestion(texte);
+    if (!question) return false;
+    const chiffres: ChiffresJour = {
+      ventes: Number(context.ventes) || 0,
+      depenses: Number(context.depenses) || 0,
+      caisse: context.caisse != null ? Number(context.caisse) : undefined,
+      nombreVentes: context.nombreVentes != null ? Number(context.nombreVentes) : undefined,
+      topProduit: context.topProduit ?? null,
+    };
+    const phrase = phraseReponse(question, chiffres);
+    clearThinkingTimer();
+    addToHistory(texte, phrase);
+    setState("idle"); setLiveTranscript("");
+    await ttsSpeak(phrase);
+    return true;
+  }, [context, addToHistory, clearThinkingTimer]);
+
   // ── Process audio ────────────────────────────────────────────
   const processAudio = useCallback(async (mimeType: string) => {
     setState("processing");
@@ -715,8 +745,8 @@ export function useVoiceCore({
     // — zéro coût, zéro dépendance cloud), donc il ne faisait que produire des
     // « souci technique ». Désormais : soit on comprend, soit on guide gentiment,
     // jamais d'erreur réseau.
-    // À la toute première utilisation (ou après vidage du cache), le modèle
-    // (~40 Mo) se télécharge tout seul une fois, puis reste en cache.
+    // Le moteur (sherpa-onnx) est EMBARQUÉ dans l'application : rien à
+    // télécharger, on vérifie juste qu'il répond avant de transcrire.
     setState("thinking");
     startThinkingPhrases();
     try {
@@ -756,6 +786,8 @@ export function useVoiceCore({
         await handleResponse(local as Partial<VoiceProcessResponse>, texte);
         return;
       }
+      // V4 : pas une vente/dépense — peut-être une question sur les chiffres du jour.
+      if (texte && (await answerQuestion(texte))) return;
       // Entendu mais pas compris (ou rien entendu) : voix réelle de Tata Nanti Lou.
       clearThinkingTimer(); setState("idle"); setLiveTranscript("");
       if (texte) await ttsSpeak("Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît.", "french", "pas_compris");
@@ -768,11 +800,11 @@ export function useVoiceCore({
         : "Je n'ai pas réussi à t'écouter, réessaie.");
       return;
     }
-  }, [handleResponse, stopSilenceDetection, startThinkingPhrases, clearThinkingTimer]);
+  }, [handleResponse, stopSilenceDetection, startThinkingPhrases, clearThinkingTimer, answerQuestion]);
 
   // ── sendText ─────────────────────────────────────────────────
-  const sendText = useCallback(async (text: string) => {
-    if (!text.trim()) return;
+  const sendText = useCallback(async (text: string): Promise<boolean> => {
+    if (!text.trim()) return false;
     interruptRef.current = false;
     setState("thinking"); setTranscript(text);
     startThinkingPhrases();
@@ -784,17 +816,26 @@ export function useVoiceCore({
       const local = intentLocal(text);
       if (local) {
         clearThinkingTimer();
-        await handleResponse(local as Partial<VoiceProcessResponse>, text);
-        return;
+        // #8 : on remonte le vrai succès de l'enregistrement (true seulement si
+        // l'opération a bien été enregistrée), pour que le rejeu hors-ligne ne
+        // jette jamais une commande qui n'a pas été traitée.
+        return await handleResponse(local as Partial<VoiceProcessResponse>, text);
       }
+      // V4 : pas une vente/dépense — peut-être une question sur les chiffres du
+      // jour. `true` = traitée (une question rejouée hors-ligne n'a pas de sens).
+      if (await answerQuestion(text)) return true;
       // Pas une opération financière reconnue : voix réelle de Tata Nanti Lou.
+      // Retour false : un rejeu dont le texte n'est plus reconnu doit rester en
+      // file (visible « en attente »), pas disparaître comme un faux succès.
       clearThinkingTimer(); setState("idle"); setLiveTranscript("");
       await ttsSpeak("Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît.", "french", "pas_compris");
+      return false;
     } catch {
       clearThinkingTimer(); setState("idle"); setLiveTranscript("");
       await ttsSpeak("Je n'ai pas réussi, réessaie.");
+      return false;
     }
-  }, [handleResponse, startThinkingPhrases, clearThinkingTimer]);
+  }, [handleResponse, startThinkingPhrases, clearThinkingTimer, answerQuestion]);
 
   // ── startRecording ───────────────────────────────────────────
   const startRecording = useCallback(async () => {
@@ -806,6 +847,12 @@ try {
     audioCtxRef.current.resume().catch(() => {});
   }
 } catch (e) { console.warn('[voice]', e); }
+    // Verrou parole/écoute (audit voix C1) : couper TOUTE voix en cours, pas
+    // seulement celle de ce hook — une annonce d'AppContext.speak ou
+    // d'ObjectifContext.speakAuto n'est pas vue par `isSpeaking`. Sans cette
+    // coupe inconditionnelle, le micro s'ouvre pendant que Tata parle et la
+    // reconnaissance peut transcrire Tata elle-même (fausse commande, faux « oui »).
+    audioManager.stopAllVoice();
     if (isSpeaking) { ttsStop(); setIsSpeaking(false); }
     interruptRef.current = false;
     setError(""); setTranscript(""); setLiveTranscript("");

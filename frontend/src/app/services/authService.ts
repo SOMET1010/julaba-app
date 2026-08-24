@@ -89,6 +89,25 @@ export async function login(data: LoginData): Promise<AuthResponse> {
   }
 }
 
+/**
+ * Activation P0.0 (ADR-002) : la marchande consomme le code d'activation reçu à
+ * l'enrôlement et POSE SON secret. Après succès, elle peut se connecter avec ce PIN.
+ */
+export async function activerCompte(code: string, nouveauSecret: string): Promise<AuthResponse> {
+  try {
+    const response = await fetch(`${API_URL}/auth/activer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, nouveauSecret }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) return { success: false, error: result.message || result.error || "Code d'activation invalide ou expiré" };
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Erreur de connexion au serveur' };
+  }
+}
+
 export async function logout(): Promise<AuthResponse> {
   try {
     await fetch(`${API_URL}/auth/logout`, {

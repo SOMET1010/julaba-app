@@ -91,7 +91,7 @@ export function getMockUserByPhone(phone: string): User | null {
 }
 
 /**
- * ⚠️ FONCTION DEV UNIQUEMENT — Obtenir tous les utilisateurs mock
+ * ⚠️ FONCTION DEV ONLY - Obtenir tous les utilisateurs mock
  */
 export function getAllMockUsers(): User[] {
   return DEV_MOCK_USERS;

@@ -161,7 +161,7 @@ export function BOMutations() {
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold whitespace-nowrap transition-all"
               style={activeTab === tab.id
                 ? { background: BO_PRIMARY, color: '#fff' }
-                : { background: '#F3F4F6', color: '#6B7280' }
+                : { background: '#F3F4F6', color: 'var(--encre-3)' }
               }
             >
               {tab.label}
@@ -169,7 +169,7 @@ export function BOMutations() {
                 className="text-xs px-1.5 py-0.5 rounded-full"
                 style={activeTab === tab.id
                   ? { background: 'rgba(255,255,255,0.25)', color: '#fff' }
-                  : { background: '#E5E7EB', color: '#6B7280' }
+                  : { background: '#E5E7EB', color: 'var(--encre-3)' }
                 }
               >
                 {tab.count}
@@ -436,7 +436,7 @@ function DecisionModal({ mutation, boUserRole, onClose, onSuccess }: DecisionMod
               className="py-3 rounded-2xl text-sm font-bold border-2 transition-all"
               style={decision === 'approuvee'
                 ? { background: '#DCFCE7', borderColor: '#16A34A', color: '#16A34A' }
-                : { background: '#fff', borderColor: '#E5E7EB', color: '#6B7280' }
+                : { background: '#fff', borderColor: '#E5E7EB', color: 'var(--encre-3)' }
               }
             >
               Approuver
@@ -447,7 +447,7 @@ function DecisionModal({ mutation, boUserRole, onClose, onSuccess }: DecisionMod
               className="py-3 rounded-2xl text-sm font-bold border-2 transition-all"
               style={decision === 'rejetee'
                 ? { background: '#FEE2E2', borderColor: '#DC2626', color: '#DC2626' }
-                : { background: '#fff', borderColor: '#E5E7EB', color: '#6B7280' }
+                : { background: '#fff', borderColor: '#E5E7EB', color: 'var(--encre-3)' }
               }
             >
               Rejeter

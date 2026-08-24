@@ -8,7 +8,6 @@ backend/.env.*
 .env
 .env.production
 piper-voices/
-frontend/dist/
 frontend/assets/
 *.bak
 backup_pre_fix_*.sql
@@ -36,9 +35,7 @@ erreur.txt
 .idea/
 
 # AAR sherpa-onnx natif (48 Mo) — re-téléchargé par scripts/fetch-sherpa-aar.sh
-# avant le build Android. À committer explicitement si vous préférez le versionner.
 android/app/libs/*.aar
-
 
 # Artefact de build TypeScript
 *.tsbuildinfo

@@ -3,21 +3,17 @@
 // hors-ligne sur l'APK Android.
 //
 // Sur le web (navigateur), ce module est une NON-opération : il n'y a pas de
-// plugin natif, le repli reste Vosk WASM (voir offlineStt.ts). Sur l'APK
-// Capacitor, on appelle le plugin natif enregistré dans MainActivity.java
-// (SherpaSttPlugin.java) via le mécanisme officiel `registerPlugin`.
+// plugin natif, donc pas de STT hors-ligne (moteur unique, voir offlineStt.ts
+// et docs/INCLUSION.md). Sur l'APK
+// Capacitor, on appelle le plugin natif enregistré dans SherpaSttPlugin.kt
+// via le mécanisme officiel `Capacitor.getPlatform() === 'android'` +
+// `registerPlugin`.
 //
-// Contrat canonique (implémenté par SherpaSttPlugin.java) :
+// Contrat canonique (à respecter par SherpaSttPlugin.kt) :
 //   - isAvailable(): { available: boolean }
-//   - prepare({ dir, files }): { available: boolean }
-//       files : [{ name, url, size }] — téléchargés dans filesDir/<dir> puis
-//               utilisés pour construire l'OnlineRecognizer natif. Événement
-//               « modelProgress » ({ name, doneBytes, totalBytes }) pendant
-//               le téléchargement.
 //   - transcribe({ pcm, sampleRate }): { text: string }
 //       pcm : base64 d'un Float32Array little-endian (échantillons bruts)
 //       sampleRate : fréquence d'origine, le natif rééchantillonne à 16 kHz.
-//   - release(): libère le recognizer.
 // ──────────────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,11 +37,6 @@ function getPlugin(): Any | null {
     plugin = null;
   }
   return plugin;
-}
-
-/** Vrai si le plugin natif est présent (sans vérifier s'il est déjà prêt). */
-export function nativePresent(): boolean {
-  return getPlugin() != null;
 }
 
 /** Vrai si le plugin natif Sherpa est présent ET disponible (moteur chargé). */
@@ -105,60 +96,8 @@ function normalize(text: string): string {
     .replace(/[.,;:!?]+$/g, '');
 }
 
-/** Fichier modèle attendu par le plugin natif (nom court dans filesDir). */
-export interface NativeModelFile {
-  name: string;
-  url: string;
-  size: number;
-}
-
-/**
- * Télécharge (si absent) les fichiers du modèle puis initialise le recognizer
- * natif. Idempotent : si les modèles sont déjà dans filesDir, pas de réseau.
- * @param modelFiles fichiers du modèle FR (noms courts : encoder.onnx, …)
- * @param onProgress progression par fichier : (name, doneBytes, totalBytes)
- * @returns vrai si le recognizer natif est prêt
- */
-export async function prepareNative(
-  modelFiles: NativeModelFile[],
-  onProgress?: (name: string, doneBytes: number, totalBytes: number) => void,
-): Promise<boolean> {
-  const p = getPlugin();
-  if (!p || typeof p.prepare !== 'function') return false;
-  let handle: Any = null;
-  if (onProgress && typeof p.addListener === 'function') {
-    try {
-      handle = await p.addListener('modelProgress', (d: Any) => {
-        onProgress(d?.name ?? '', d?.doneBytes ?? 0, d?.totalBytes ?? 0);
-      });
-    } catch {
-      handle = null; // progression optionnelle
-    }
-  }
-  try {
-    const res = await p.prepare({ dir: 'sherpa-stt', files: modelFiles });
-    return Boolean(res?.available);
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('[nativeStt] prepare échoué', e);
-    return false;
-  } finally {
-    try { if (handle && typeof handle.remove === 'function') handle.remove(); } catch { /* */ }
-  }
-}
-
-/** Libère le recognizer natif (mémoire). */
-export async function releaseNative(): Promise<void> {
-  const p = getPlugin();
-  if (!p || typeof p.release !== 'function') return;
-  try { await p.release(); } catch { /* */ }
-}
-
 /** API d'installation/capacités — appelé en garde par la couche vocale. */
 export const nativeStt = {
   isAvailable: sherpaNativeAvailable,
-  present: nativePresent,
-  prepare: prepareNative,
   transcribe: transcribeNative,
-  release: releaseNative,
 };

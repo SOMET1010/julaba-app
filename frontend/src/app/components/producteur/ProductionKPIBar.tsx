@@ -57,14 +57,14 @@ export function ProductionKPIBar({ activeTab, historiqueTab = 'ventes', onKPICli
     cycles: [
       { label: 'Plantations actives', animatedTarget: cyclesActifs, icon: Sprout, color: '#2E8B57', iconAnimation: 'float' as const },
       { label: 'Superficie', value: `${superficieTotale.toFixed(1)}`, suffix: 'ha', icon: Map, color: '#3b82f6', iconAnimation: 'bounce' as const },
-      { label: 'Recoltes proches', animatedTarget: recoltesProches, icon: Clock, color: '#f97316', iconAnimation: recoltesProches > 0 ? 'pulse' as const : 'none' as const },
+      { label: 'Récoltes proches', animatedTarget: recoltesProches, icon: Clock, color: '#f97316', iconAnimation: recoltesProches > 0 ? 'pulse' as const : 'none' as const },
       { label: 'Plantations terminées', animatedTarget: cyclesTermines, icon: CheckCircle, color: '#10b981', iconAnimation: 'float' as const },
     ],
     recoltes: [
-      { label: 'Total recolte', value: fmt(totalRecolte), suffix: 'kg', icon: Layers, color: '#2E8B57', iconAnimation: 'float' as const },
+      { label: 'Total récolte', value: fmt(totalRecolte), suffix: 'kg', icon: Layers, color: '#2E8B57', iconAnimation: 'float' as const },
       { label: 'En stock', value: fmt(totalDispo), suffix: 'kg', icon: Package, color: '#3b82f6', iconAnimation: 'bounce' as const },
       { label: 'Valeur stock', value: fmt(valeurStock), suffix: 'FCFA', icon: Banknote, color: '#8b5cf6', iconAnimation: 'float' as const },
-      { label: 'Publiees', animatedTarget: nbPubliees, icon: TrendingUp, color: '#f59e0b', iconAnimation: 'spin' as const },
+      { label: 'Publiées', animatedTarget: nbPubliees, icon: TrendingUp, color: '#f59e0b', iconAnimation: 'spin' as const },
     ],
     publications: [
       { label: 'Commandes', animatedTarget: cmdActives, icon: ShoppingBag, color: '#3b82f6', iconAnimation: 'bounce' as const },
