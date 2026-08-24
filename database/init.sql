@@ -6,6 +6,7 @@
 -- Extension UUID
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "btree_gist";
 
 -- ── TABLE PRINCIPALE : UTILISATEURS ──────────────────────────
 CREATE TABLE IF NOT EXISTS users_julaba (
@@ -29,9 +30,9 @@ CREATE TABLE IF NOT EXISTS users_julaba (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_users_phone ON users_julaba(phone);
-CREATE INDEX idx_users_role ON users_julaba(role);
-CREATE INDEX idx_users_status ON users_julaba(status);
+CREATE INDEX IF NOT EXISTS idx_users_phone ON users_julaba(phone);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users_julaba(role);
+CREATE INDEX IF NOT EXISTS idx_users_status ON users_julaba(status);
 
 -- ── TABLE OTP ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS otp_codes (
@@ -43,8 +44,8 @@ CREATE TABLE IF NOT EXISTS otp_codes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_otp_phone ON otp_codes(phone);
-CREATE INDEX idx_otp_expires ON otp_codes(expires_at);
+CREATE INDEX IF NOT EXISTS idx_otp_phone ON otp_codes(phone);
+CREATE INDEX IF NOT EXISTS idx_otp_expires ON otp_codes(expires_at);
 
 -- ── TABLE REFRESH TOKENS ─────────────────────────────────────
 CREATE TABLE IF NOT EXISTS refresh_tokens (
@@ -56,8 +57,8 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
-CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
 
 -- ── COMMANDES ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS commandes (
@@ -80,10 +81,10 @@ CREATE TABLE IF NOT EXISTS commandes (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_commandes_user ON commandes(user_id);
-CREATE INDEX idx_commandes_acheteur ON commandes(acheteur_id);
-CREATE INDEX idx_commandes_vendeur ON commandes(vendeur_id);
-CREATE INDEX idx_commandes_statut ON commandes(statut);
+CREATE INDEX IF NOT EXISTS idx_commandes_user ON commandes(user_id);
+CREATE INDEX IF NOT EXISTS idx_commandes_acheteur ON commandes(acheteur_id);
+CREATE INDEX IF NOT EXISTS idx_commandes_vendeur ON commandes(vendeur_id);
+CREATE INDEX IF NOT EXISTS idx_commandes_statut ON commandes(statut);
 
 -- ── RÉCOLTES ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS recoltes (
@@ -103,8 +104,8 @@ CREATE TABLE IF NOT EXISTS recoltes (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_recoltes_producteur ON recoltes(producteur_id);
-CREATE INDEX idx_recoltes_statut ON recoltes(statut);
+CREATE INDEX IF NOT EXISTS idx_recoltes_producteur ON recoltes(producteur_id);
+CREATE INDEX IF NOT EXISTS idx_recoltes_statut ON recoltes(statut);
 
 -- ── STOCKS ───────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS stocks (
@@ -121,7 +122,7 @@ CREATE TABLE IF NOT EXISTS stocks (
   UNIQUE(user_id, produit)
 );
 
-CREATE INDEX idx_stocks_user ON stocks(user_id);
+CREATE INDEX IF NOT EXISTS idx_stocks_user ON stocks(user_id);
 
 -- ── WALLETS ──────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS wallets (
@@ -134,7 +135,7 @@ CREATE TABLE IF NOT EXISTS wallets (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_wallets_user ON wallets(user_id);
+CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets(user_id);
 
 -- ── WALLET TRANSACTIONS ──────────────────────────────────────
 CREATE TABLE IF NOT EXISTS wallet_transactions (
@@ -150,8 +151,8 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_wallet_tx_wallet ON wallet_transactions(wallet_id);
-CREATE INDEX idx_wallet_tx_user ON wallet_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_wallet ON wallet_transactions(wallet_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_user ON wallet_transactions(user_id);
 
 -- ── ESCROW ───────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS escrow_payments (
@@ -239,8 +240,8 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_notifications_user ON notifications(user_id);
-CREATE INDEX idx_notifications_read ON notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
 
 -- ── AUDIT LOGS ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS audit_logs (
@@ -256,8 +257,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_audit_user ON audit_logs(user_id);
-CREATE INDEX idx_audit_date ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_logs(created_at);
 
 -- ── SCORES ───────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS scores (
@@ -355,10 +356,11 @@ BEGIN
   ]
   LOOP
     EXECUTE format('
+      DROP TRIGGER IF EXISTS update_%s_updated_at ON %s;
       CREATE TRIGGER update_%s_updated_at
       BEFORE UPDATE ON %s
       FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-    ', t, t);
+    ', t, t, t, t);
   END LOOP;
 END;
 $$;
