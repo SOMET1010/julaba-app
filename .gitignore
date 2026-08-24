@@ -4,9 +4,12 @@ backend/node_modules/
 backend/dist/
 backend/.env
 backend/.env.*
+!backend/.env.example
 *.log
 .env
 .env.production
+!.env.example
+!frontend/.env.example
 piper-voices/
 frontend/assets/
 *.bak
