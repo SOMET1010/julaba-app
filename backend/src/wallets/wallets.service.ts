@@ -47,7 +47,8 @@ export class WalletsService {
     });
 
     if (!wallet) {
-      throw new NotFoundException('Wallet introuvable');
+      this.logger.warn(`Wallet manquant pour ${userId}, création automatique`);
+      return this.createForUser(userId);
     }
 
     return wallet;

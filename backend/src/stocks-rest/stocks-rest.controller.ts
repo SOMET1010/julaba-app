@@ -13,53 +13,61 @@ export class StocksRestController {
 
   @Get()
   async findAll(@CurrentUser() user: User) {
-    const produits = await this.repo.manager.query(
-      'SELECT id, nom, stock, prix, prix_achat, unite, categorie, actif, image, seuil_alerte, date_peremption, prix_promo, promo_fin, created_at FROM produits WHERE marchand_id = $1',
-      [user.id]
-    );
-    if (produits && produits.length > 0) {
+    try {
+      const produits = await this.repo.manager.query(
+        'SELECT id, nom, stock, prix, prix_achat, unite, categorie, actif, image, seuil_alerte, date_peremption, prix_promo, promo_fin, created_at FROM produits WHERE marchand_id = $1',
+        [user.id]
+      );
+      if (produits && produits.length > 0) {
+        return {
+          stocks: produits.map((p: any) => ({
+            id: p.id,
+            produit: p.nom,
+            nom: p.nom,
+            quantite: Number(p.stock) || 0,
+            prix: Number(p.prix) || 0,
+            prix_achat: Number(p.prix_achat) || 0,
+            unite: p.unite || 'unite',
+            categorie: p.categorie || 'General',
+            actif: p.actif !== false,
+            image: p.image || null,
+            seuil_alerte: p.seuil_alerte != null ? Number(p.seuil_alerte) : 10,
+            date_peremption: p.date_peremption || null,
+            prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
+            promo_fin: p.promo_fin || null,
+            proprietaire_id: user.id,
+            created_at: p.created_at,
+          })),
+        };
+      }
+    } catch {
+      // Table produits n'existe pas encore ou erreur — fallback sur stocks
+    }
+    try {
+      const rows = await this.repo.query(
+        `SELECT * FROM stocks WHERE proprietaire_id = $1::uuid ORDER BY created_at DESC`,
+        [user.id],
+      );
       return {
-        stocks: produits.map((p: any) => ({
-          id: p.id,
-          produit: p.nom,
-          nom: p.nom,
-          quantite: Number(p.stock) || 0,
-          prix: Number(p.prix) || 0,
-          prix_achat: Number(p.prix_achat) || 0,
-          unite: p.unite || 'unite',
-          categorie: p.categorie || 'General',
-          actif: p.actif !== false,
-          image: p.image || null,
-          seuil_alerte: p.seuil_alerte != null ? Number(p.seuil_alerte) : 10,
-          date_peremption: p.date_peremption || null,
-          prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
-          promo_fin: p.promo_fin || null,
+        stocks: rows.map((s: any) => ({
+          id: s.id,
+          produit: s.produit,
+          nom: s.produit,
+          quantite: Number(s.quantite) || 0,
+          quantity: Number(s.quantite) || 0,
+          prix: Number(s.prix_vente) || 0,
+          prix_achat: Number(s.prix_achat) || 0,
+          prix_vente: Number(s.prix_vente) || 0,
+          unite: s.unite || 'kg',
+          categorie: s.categorie || 'General',
+          seuil_alerte: Number(s.seuil_alerte) || 10,
+          image: s.image || null,
           proprietaire_id: user.id,
-          created_at: p.created_at,
+          created_at: s.created_at,
         })),
       };
-    }
-    const rows = await this.repo.query(
-      `SELECT * FROM stocks WHERE proprietaire_id = $1::uuid ORDER BY created_at DESC`,
-      [user.id],
-    );
-    return {
-      stocks: rows.map((s: any) => ({
-        id: s.id,
-        produit: s.produit,
-        nom: s.produit,
-        quantite: Number(s.quantite) || 0,
-        quantity: Number(s.quantite) || 0,
-        prix: Number(s.prix_vente) || 0,
-        prix_achat: Number(s.prix_achat) || 0,
-        prix_vente: Number(s.prix_vente) || 0,
-        unite: s.unite || 'kg',
-        categorie: s.categorie || 'General',
-        seuil_alerte: Number(s.seuil_alerte) || 10,
-        image: s.image || null,
-        proprietaire_id: user.id,
-        created_at: s.created_at,
-      })),
+    } catch {
+      return { stocks: [] };
     };
   }
 

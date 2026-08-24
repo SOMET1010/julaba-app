@@ -122,8 +122,9 @@ async function bootstrap() {
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   app.use(cookieParser());
+  const isDev = process.env.NODE_ENV !== 'production';
   app.use(helmet({
-    contentSecurityPolicy: {
+    contentSecurityPolicy: isDev ? false : {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],

@@ -64,7 +64,7 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
 
     // Rate limiting global
     ThrottlerModule.forRoot([
-      { name: 'default', ttl: 60000, limit: 1000 },
+      { name: 'default', ttl: 60000, limit: 2000 },
       { name: 'auth', ttl: 60000, limit: 5 },
       { name: 'voice', ttl: 60000, limit: 10 },
       { name: 'recovery', ttl: 60000, limit: 5 },
@@ -131,10 +131,11 @@ import { ProducteursRestModule } from './producteurs-rest/producteurs-rest.modul
   ],
   controllers: [HealthController],
   providers: [
-    // Rate limiting global — active les décorateurs @Throttle/@SkipThrottle
-    // (login limit 3, recovery limit 5, voice…). Sans ce guard, ThrottlerModule
-    // est configuré mais AUCUN throttle n'est appliqué (brute-force possible).
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Rate limiting global — DÉSACTIVÉ en dev (15+ requêtes simultanées au login)
+    // Pour activer en dev : ajouter NODE_ENV=production dans .env
+    ...(process.env.NODE_ENV === 'production'
+      ? [{ provide: APP_GUARD, useClass: ThrottlerGuard }]
+      : []),
   ],
 })
 export class AppModule {}

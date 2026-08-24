@@ -110,19 +110,23 @@ CREATE INDEX IF NOT EXISTS idx_recoltes_statut ON recoltes(statut);
 -- ── STOCKS ───────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS stocks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users_julaba(id) ON DELETE CASCADE,
+  proprietaire_id UUID REFERENCES users_julaba(id) ON DELETE CASCADE,
   produit TEXT NOT NULL,
   quantite DECIMAL NOT NULL,
   unite TEXT NOT NULL,
   prix_achat DECIMAL,
+  prix_vente DECIMAL,
+  categorie TEXT,
+  seuil_alerte DECIMAL DEFAULT 10,
+  image TEXT,
   derniere_modification TIMESTAMPTZ DEFAULT NOW(),
   metadata JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(user_id, produit)
+  UNIQUE(proprietaire_id, produit)
 );
 
-CREATE INDEX IF NOT EXISTS idx_stocks_user ON stocks(user_id);
+CREATE INDEX IF NOT EXISTS idx_stocks_user ON stocks(proprietaire_id);
 
 -- ── WALLETS ──────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS wallets (

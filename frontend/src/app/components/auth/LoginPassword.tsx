@@ -988,7 +988,7 @@ export function LoginPassword() {
           <motion.img
             src={tataNantiLou}
             alt="Tata Nanti Lou"
-            fetchPriority="high"
+            fetchpriority="high"
             onClick={import.meta.env.DEV ? handleLogoClick : ecouterTata}
             aria-label="Tata Nanti Lou — touchez pour l'entendre"
             animate={{ scale: tataSpeaking ? [1, 1.05, 1] : [1, 1.03, 1] }}
