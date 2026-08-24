@@ -9,6 +9,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 
 import { extraire } from './extraction';
+import { detecterNavigation } from './navigationIntent';
 import { plurielNom } from '../services/dialoguesTata';
 
 const fmt = (n: number) => n.toLocaleString('fr-FR');
@@ -22,8 +23,28 @@ export interface LocalVoiceResult {
   response: string;
   needsConfirmation: boolean;
   audioBase64: null;
-  navigate: null;
+  navigate: string | null;
   offline: true;
+}
+
+function resultat(
+  texte: string,
+  intent: string,
+  action: LocalVoiceResult['action'],
+  response: string,
+  opts: { needsConfirmation?: boolean; navigate?: string | null } = {},
+): LocalVoiceResult {
+  return {
+    transcript: texte,
+    normalizedText: texte,
+    intent,
+    action,
+    response,
+    needsConfirmation: opts.needsConfirmation ?? false,
+    audioBase64: null,
+    navigate: opts.navigate ?? null,
+    offline: true,
+  };
 }
 
 /**
@@ -33,41 +54,62 @@ export interface LocalVoiceResult {
 export function intentLocal(texte: string): LocalVoiceResult | null {
   if (!texte || !texte.trim()) return null;
   const p = extraire(texte);
-  if (!p.intention) return null;
 
-  // On ne traite localement que le transactionnel financier sûr (vente/dépense).
-  // Le reste (soldes, questions ouvertes) reste au serveur quand on est en ligne.
-  let type: string | null = null;
-  let intent: string | null = null;
-  if (p.intention === 'vente' && p.montant != null) { type = 'vendre'; intent = 'vendre'; }
-  else if (p.intention === 'depense' && p.montant != null) { type = 'depense'; intent = 'depense'; }
-  if (!type || !intent) return null;
+  // ── Transactionnel financier sûr (vente/dépense) — priorité absolue ──────
+  if ((p.intention === 'vente' || p.intention === 'depense') && p.montant != null) {
+    const intent = p.intention === 'vente' ? 'vendre' : 'depense';
+    const action: LocalVoiceResult['action'] = { type: intent, montant: p.montant };
+    if (p.produit) action.produit = p.produit;
+    if (p.quantite != null) action.quantite = p.quantite;
+    if (intent === 'depense' && p.produit) action.description = p.produit;
 
-  const action: LocalVoiceResult['action'] = { type };
-  if (p.produit) action.produit = p.produit;
-  if (p.quantite != null) action.quantite = p.quantite;
-  if (p.montant != null) action.montant = p.montant;
-  if (intent === 'depense' && p.produit) action.description = p.produit;
+    // Accord du pluriel (« Vente de 2 tomates », pas « 2 tomate ») — même règle
+    // que les dialogues de la vente guidée.
+    const nomProduit = p.produit
+      ? (p.quantite && p.quantite > 1 ? plurielNom(p.produit) : p.produit)
+      : 'produit';
+    const response =
+      intent === 'vendre'
+        ? `Vente de ${p.quantite ? `${p.quantite} ` : ''}${nomProduit} pour ${fmt(p.montant!)} francs, c'est bien ça ?`
+        : `Dépense de ${fmt(p.montant!)} francs${p.produit ? ` pour ${p.produit}` : ''}, c'est bien ça ?`;
+    return resultat(texte, intent, action, response, { needsConfirmation: true });
+  }
 
-  // Accord du pluriel (« Vente de 2 tomates », pas « 2 tomate ») — même règle
-  // que les dialogues de la vente guidée.
-  const nomProduit = p.produit
-    ? (p.quantite && p.quantite > 1 ? plurielNom(p.produit) : p.produit)
-    : 'produit';
-  const response =
-    intent === 'vendre'
-      ? `Vente de ${p.quantite ? `${p.quantite} ` : ''}${nomProduit} pour ${fmt(p.montant!)} francs, c'est bien ça ?`
-      : `Dépense de ${fmt(p.montant!)} francs${p.produit ? ` pour ${p.produit}` : ''}, c'est bien ça ?`;
+  // ── Réappro : stock reçu (« j'ai reçu 20 tomates ») — écriture non
+  // financière, toujours confirmée avant application (comme vente/dépense).
+  // Exige un produit ET une quantité : sans quantité, mieux vaut ne rien
+  // faire que deviner de combien augmenter le stock.
+  if (p.intention === 'reappro' && p.produit && p.quantite != null) {
+    const nomProduit = p.quantite > 1 ? plurielNom(p.produit) : p.produit;
+    return resultat(
+      texte,
+      'reappro',
+      { type: 'reappro', produit: p.produit, quantite: p.quantite },
+      `Stock reçu : ${p.quantite} ${nomProduit}, c'est bien ça ?`,
+      { needsConfirmation: true },
+    );
+  }
 
-  return {
-    transcript: texte,
-    normalizedText: texte,
-    intent,
-    action,
-    response,
-    needsConfirmation: true, // toujours confirmer une opération financière
-    audioBase64: null,
-    navigate: null,
-    offline: true,
-  };
+  // ── Crédit / remboursement : pas encore activés sur la caisse (pilote
+  // espèces, voir POSCaisse.CAISSE_CREDIT_ACTIF) — on le dit clairement au
+  // lieu de laisser la marchande croire qu'il faut juste reformuler.
+  if (p.intention === 'credit' || p.intention === 'remboursement') {
+    return resultat(
+      texte,
+      p.intention,
+      { type: 'none' },
+      "Le crédit n'est pas encore activé sur ta caisse. Cette fonction arrive bientôt.",
+    );
+  }
+
+  // ── Navigation explicite (« va au stock », « ferme ma journée »…) ───────
+  // Note : les QUESTIONS de lecture (« combien j'ai vendu ? ») ne passent
+  // jamais par ici — detecterNavigation exige un verbe d'action explicite,
+  // et sont traitées séparément par intentionsCaisse.ts (answerQuestion).
+  const nav = detecterNavigation(texte);
+  if (nav) {
+    return resultat(texte, nav.type, { type: nav.type }, nav.response, { navigate: nav.path });
+  }
+
+  return null;
 }

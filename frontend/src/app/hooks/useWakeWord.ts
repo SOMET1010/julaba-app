@@ -5,7 +5,6 @@ import {
   offlineModelInstalled,
   subscribeModelReady,
 } from '../voice-offline/offlineStt';
-import { GRAMMAR_WORDS } from '../voice-offline/vocabulaire';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mot-réveil « Julaba » — vente MAINS LIBRES.
@@ -32,9 +31,10 @@ import { GRAMMAR_WORDS } from '../voice-offline/vocabulaire';
 // Variantes fréquentes de « Julaba » telles que transcrites par la reco vocale FR.
 const WAKE_RE = /\b(j[ou]{1,2}la\s?ba|djoula\s?ba|joula\s?ba|jula\s?bas?)\b/i;
 
-// Le repli Vosk a un vocabulaire FERMÉ : on ajoute les variantes du mot-réveil à
-// la grammaire du marché, sinon il ne les reconnaîtrait jamais. (sherpa, lui, est
-// à vocabulaire ouvert → ce paramètre est ignoré sur le moteur principal.)
+// sherpa-onnx (moteur unique depuis le retrait de Vosk, docs/INCLUSION.md) est à
+// vocabulaire OUVERT : ce paramètre de grammaire n'est plus consulté par le moteur
+// (voir startLiveDictation, `grammaireIgnoree`). Gardé pour documenter les variantes
+// attendues du mot-réveil et pour un éventuel repli à vocabulaire fermé futur.
 const WAKE_WORDS = ['julaba', 'joulaba', 'djoulaba', 'joula', 'djoula', 'jula', 'djoulabas'];
 
 interface Options {
@@ -118,8 +118,9 @@ export function useWakeWord({ enabled, active, onWake, onCommand }: Options) {
           },
         });
         if (disposed || !enabledRef.current || !activeRef.current) { void stopSession(); return; }
-        // Vocabulaire fermé Vosk + variantes du mot-réveil (sherpa les ignore).
-        session = await startLiveDictation(mic, onText, [...GRAMMAR_WORDS, ...WAKE_WORDS]);
+        // Grammaire ignorée par sherpa (vocabulaire ouvert) — on la passe quand
+        // même par cohérence avec la signature de startLiveDictation.
+        session = await startLiveDictation(mic, onText, WAKE_WORDS);
       } catch {
         // Micro refusé ou moteur indisponible → on s'arrête proprement (l'appui-pour-
         // parler reste le mode de vente). Pas de boucle de re-tentatives infinies.

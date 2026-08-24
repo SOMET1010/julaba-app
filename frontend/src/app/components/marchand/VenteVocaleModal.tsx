@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useLangPref } from "../../hooks/useLangPref";
 import { useVoiceCore } from "../../hooks/useVoiceCore";
+import { useWakeWord } from "../../hooks/useWakeWord";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Loader, CheckCircle, AlertCircle, ShieldCheck, WifiOff, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router";
@@ -156,22 +157,22 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
         const montant = action.montant || 0;
         if (!montant || montant <= 0 || isNaN(montant)) return;
         await enregistrerDepense(montant, action.description || "Dépense vocale");
-      } else if (action?.type === "consulter_solde" || data.intent === "consulter_solde") {
-        navigate('/marchand/caisse');
-        onClose();
-      } else if (action?.type === "consulter_ventes" || data.intent === "consulter_ventes") {
-        navigate('/marchand/ventes');
-        onClose();
-      } else if (action?.type === "ajouter_stock" || data.intent === "ajouter_stock") {
-        navigate('/marchand/stock');
-        onClose();
-      } else if (action?.type === "ouvrir_journee" || data.intent === "ouvrir_journee") {
-        navigate('/marchand/caisse');
-        onClose();
-      } else if (action?.type === "fermer_journee" || data.intent === "fermer_journee") {
-        navigate('/marchand/caisse');
-        onClose();
+      } else if (action?.type === "reappro") {
+        // Stock reçu (« j'ai reçu 20 tomates ») — augmente le stock du produit
+        // apparié. Produit inconnu : on ne devine pas, on invite à l'ajouter
+        // depuis Mon stock (comme la vente d'un produit hors catalogue).
+        const produitCat = apparierProduit(action.produit || "", products);
+        const qte = action.quantite || 0;
+        if (produitCat && qte > 0) {
+          await updateProduct(produitCat.id, { stock: (produitCat.stock || 0) + qte });
+          vibrerSucces();
+        } else if (!produitCat && guidageVocal()) {
+          setTimeout(() => speak(`Je ne connais pas ${action.produit || "ce produit"} dans ton stock. Ajoute-le d'abord depuis Mon stock.`), 1000);
+        }
       }
+      // Navigation (« va au stock », « ferme ma journée »…) : un seul mécanisme
+      // générique pour tous les intents, local ou serveur — `data.navigate` est
+      // consommé par useVoiceCore juste après onAction (onNavigate ci-dessous).
       try { await refreshTransactions(); } catch (e: any) { console.warn('[VenteVocaleModal] refreshTransactions failed:', e?.message); }
     },
     onNavigate: (path) => { navigate(path); onClose(); },
@@ -181,6 +182,29 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   // (plus de seconde instance qui rejouait la file en double à la reconnexion).
   useEffect(() => { if (!isOpen) resetHistory(); }, [isOpen, resetHistory]);
   useEffect(() => { if (!isOpen) { setPropositionProduit(null); setSaisieOuverte(false); } }, [isOpen]);
+
+  // Mains libres (audit vocal, P5) : la vendeuse a souvent les deux mains prises
+  // (marchandise, monnaie) — dire « Julaba, … » évite de devoir toucher l'écran.
+  // Opt-in et persisté : off par défaut (écoute continue = batterie + micro).
+  const [mainsLibres, setMainsLibres] = useState(() => {
+    try { return window.localStorage.getItem('julaba_mains_libres') === '1'; } catch { return false; }
+  });
+  const basculerMainsLibres = () => {
+    setMainsLibres((actuel) => {
+      const suivant = !actuel;
+      try { window.localStorage.setItem('julaba_mains_libres', suivant ? '1' : '0'); } catch { /* ignore */ }
+      if (suivant && guidageVocal()) speak("Mode mains libres activé. Dis Julaba pour me parler.");
+      return suivant;
+    });
+  };
+  const { supported: mainsLibresSupportees } = useWakeWord({
+    enabled: isOpen && mainsLibres,
+    // N'écoute que quand Tata est réellement disponible (idle) : jamais pendant
+    // qu'elle parle/écoute déjà, pour ne pas s'entendre elle-même en boucle.
+    active: isOpen && mainsLibres && state === "idle",
+    onWake: () => { if (guidageVocal()) speak("Oui ?"); },
+    onCommand: (texte) => { void sendText(texte); },
+  });
 
   // Oui → création avec le prix unitaire DICTÉ (elle le corrigera dans Mon stock
   // si besoin) ; stock 0 (à compléter). Non → refus mémorisé pour CE produit.
@@ -376,6 +400,15 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
                   </motion.button>
                 )}
               </div>
+            )}
+            {isIdle && mainsLibresSupportees && (
+              <motion.button whileTap={{ scale: 0.97 }} onClick={basculerMainsLibres}
+                style={{ width: "100%", padding: "13px 0", borderRadius: 14, fontWeight: 800, fontSize: 14, cursor: "pointer",
+                  background: mainsLibres ? PL : "white", border: `1.5px solid ${P}55`, color: P, fontFamily: "inherit",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: mainsLibres ? "#16A34A" : "#D0D0D0", display: "inline-block" }} />
+                {mainsLibres ? "Mains libres activé — dis « Julaba »" : "Activer les mains libres"}
+              </motion.button>
             )}
             {isIdle && (<div style={{ marginTop: 4 }}><InstallerOffline /></div>)}
           </div>
