@@ -25,8 +25,8 @@ interface CompteDemo {
   lastName: string;
   genre: 'femme' | 'homme';
   role: UserRole;
-  // Code de connexion. Rôles « acteur » = pavé à 4 chiffres -> 4 chiffres.
-  // Rôles back-office = écran /backoffice/login (champ texte) -> 6 chiffres.
+  // Code de connexion. Rôles « acteur » = pavé à 4 chiffres -> ACTEUR_PASSWORD.
+  // Rôles back-office = écran /backoffice/login (champ texte) -> BO_PASSWORD.
   password: string;
   avecDonnees?: boolean; // jeu de données caisse (marchand uniquement)
   email?: string;        // back-office : connexion par email
@@ -34,36 +34,48 @@ interface CompteDemo {
   cooperativeName?: string;
 }
 
+// Mot de passe unique pour TOUS les comptes acteurs de démo (connexion /login,
+// pavé à 4 chiffres) : piloté par SEED_DEMO_PASSWORD, "1234" par défaut si la
+// variable n'est pas fournie (même défaut que render.yaml). Un seul mot de
+// passe pour tous les comptes acteurs évite qu'un testeur voie « Identifiants
+// incorrects » sur un compte de démo parce qu'un autre groupe utilisait un
+// code différent codé en dur.
+const ACTEUR_PASSWORD = process.env.SEED_DEMO_PASSWORD || '1234';
+// Back-office (écran /backoffice/login, champ texte) : politique séparée,
+// toujours 6 chiffres — non pilotée par SEED_DEMO_PASSWORD.
+const BO_PASSWORD = '123456';
+
 // Un compte de démo par univers, pour que les équipes testent CHAQUE rôle.
-// Acteurs (connexion sur /login, code à 4 chiffres = 1234) :
+// Acteurs (connexion sur /login, code à 4 chiffres = ACTEUR_PASSWORD) :
 const COMPTES: CompteDemo[] = [
   // ── Marchand (caisse) ──
-  { phone: '+2250700000009', firstName: 'Awa', lastName: 'Koné', genre: 'femme', role: UserRole.MARCHAND, password: '1234', avecDonnees: true },
-  { phone: '+2250700000010', firstName: 'Kouassi', lastName: 'Yao', genre: 'homme', role: UserRole.MARCHAND, password: '1234' },
-  { phone: '+2250700000011', firstName: 'Fatou', lastName: 'Traoré', genre: 'femme', role: UserRole.MARCHAND, password: '1234' },
+  { phone: '+2250700000009', firstName: 'Awa', lastName: 'Koné', genre: 'femme', role: UserRole.MARCHAND, password: ACTEUR_PASSWORD, avecDonnees: true },
+  { phone: '+2250700000010', firstName: 'Kouassi', lastName: 'Yao', genre: 'homme', role: UserRole.MARCHAND, password: ACTEUR_PASSWORD },
+  { phone: '+2250700000011', firstName: 'Fatou', lastName: 'Traoré', genre: 'femme', role: UserRole.MARCHAND, password: ACTEUR_PASSWORD },
   // ── Producteur (récoltes / marché) ──
-  { phone: '+2250700000012', firstName: 'Yao', lastName: 'Kouadio', genre: 'homme', role: UserRole.PRODUCTEUR, password: '1234' },
+  { phone: '+2250700000012', firstName: 'Yao', lastName: 'Kouadio', genre: 'homme', role: UserRole.PRODUCTEUR, password: ACTEUR_PASSWORD },
   // ── Coopérateur (coopérative) ──
-  { phone: '+2250700000013', firstName: 'Mariam', lastName: 'Diallo', genre: 'femme', role: UserRole.COOPERATEUR, password: '1234' },
+  { phone: '+2250700000013', firstName: 'Mariam', lastName: 'Diallo', genre: 'femme', role: UserRole.COOPERATEUR, password: ACTEUR_PASSWORD },
   // ── Identificateur (enrôlement) ──
-  { phone: '+2250700000014', firstName: 'Ibrahim', lastName: 'Touré', genre: 'homme', role: UserRole.IDENTIFICATEUR, password: '1234' },
+  { phone: '+2250700000014', firstName: 'Ibrahim', lastName: 'Touré', genre: 'homme', role: UserRole.IDENTIFICATEUR, password: ACTEUR_PASSWORD },
   // ── Institution (supervision / analytics) ──
-  { phone: '+2250700000015', firstName: 'Aïcha', lastName: 'Bamba', genre: 'femme', role: UserRole.INSTITUTION, password: '1234' },
-  // ── Back-office admin (connexion sur /backoffice/login, code à 6 chiffres = 123456) ──
-  { phone: '+2250700000016', firstName: 'Admin', lastName: 'Julaba', genre: 'homme', role: UserRole.ADMIN_GENERAL, password: '123456' },
+  { phone: '+2250700000015', firstName: 'Aïcha', lastName: 'Bamba', genre: 'femme', role: UserRole.INSTITUTION, password: ACTEUR_PASSWORD },
+  // ── Back-office admin (connexion sur /backoffice/login, code à 6 chiffres = BO_PASSWORD) ──
+  { phone: '+2250700000016', firstName: 'Admin', lastName: 'Julaba', genre: 'homme', role: UserRole.ADMIN_GENERAL, password: BO_PASSWORD },
 
   // ─────────────────────────────────────────────────────────────────────────
   // Comptes de démonstration OFFICIELS (numéros distribués pour la présentation).
-  // Mots de passe : acteurs = 0000 · administration = 123456.
+  // Mots de passe : acteurs = ACTEUR_PASSWORD (même code que les autres comptes
+  // acteurs ci-dessus) · administration = BO_PASSWORD.
   // ─────────────────────────────────────────────────────────────────────────
-  { phone: '+2250726262626', firstName: 'Michelle', lastName: 'Walebo', genre: 'femme', role: UserRole.MARCHAND, password: '0000', sousProfilMarchand: 'grossiste', avecDonnees: true },
-  { phone: '+2250725252525', firstName: 'Adjoua', lastName: 'Kouamé', genre: 'femme', role: UserRole.MARCHAND, password: '0000', sousProfilMarchand: 'demi_grossiste', avecDonnees: true },
-  { phone: '+2250790909090', firstName: 'Aya', lastName: 'Koffi', genre: 'femme', role: UserRole.MARCHAND, password: '0000', sousProfilMarchand: 'detaillant', avecDonnees: true },
-  { phone: '+2250960606060', firstName: 'Bénito', lastName: 'Bomisso', genre: 'homme', role: UserRole.PRODUCTEUR, password: '0000' },
-  { phone: '+2250970707070', firstName: 'Coopérative', lastName: 'Daloa', genre: 'femme', role: UserRole.COOPERATEUR, password: '0000', cooperativeName: 'COOP-CACAO Daloa' },
-  { phone: '+2250710101010', firstName: 'Hervé', lastName: 'Koffi', genre: 'homme', role: UserRole.IDENTIFICATEUR, password: '0000' },
+  { phone: '+2250726262626', firstName: 'Michelle', lastName: 'Walebo', genre: 'femme', role: UserRole.MARCHAND, password: ACTEUR_PASSWORD, sousProfilMarchand: 'grossiste', avecDonnees: true },
+  { phone: '+2250725252525', firstName: 'Adjoua', lastName: 'Kouamé', genre: 'femme', role: UserRole.MARCHAND, password: ACTEUR_PASSWORD, sousProfilMarchand: 'demi_grossiste', avecDonnees: true },
+  { phone: '+2250790909090', firstName: 'Aya', lastName: 'Koffi', genre: 'femme', role: UserRole.MARCHAND, password: ACTEUR_PASSWORD, sousProfilMarchand: 'detaillant', avecDonnees: true },
+  { phone: '+2250960606060', firstName: 'Bénito', lastName: 'Bomisso', genre: 'homme', role: UserRole.PRODUCTEUR, password: ACTEUR_PASSWORD },
+  { phone: '+2250970707070', firstName: 'Coopérative', lastName: 'Daloa', genre: 'femme', role: UserRole.COOPERATEUR, password: ACTEUR_PASSWORD, cooperativeName: 'COOP-CACAO Daloa' },
+  { phone: '+2250710101010', firstName: 'Hervé', lastName: 'Koffi', genre: 'homme', role: UserRole.IDENTIFICATEUR, password: ACTEUR_PASSWORD },
   // Administration (connexion back-office par EMAIL) :
-  { phone: '+2250700000017', email: 'dge-test@julaba.ci', firstName: 'Direction', lastName: 'Générale', genre: 'homme', role: UserRole.ADMIN_GENERAL, password: '123456' },
+  { phone: '+2250700000017', email: 'dge-test@julaba.ci', firstName: 'Direction', lastName: 'Générale', genre: 'homme', role: UserRole.ADMIN_GENERAL, password: BO_PASSWORD },
 ];
 
 @Injectable()
@@ -190,7 +202,7 @@ export class SeedDemoService {
       const phone = '+2250799999999';
       let u = await users.findOne({ where: { phone } });
       if (!u) {
-        const passwordHash = await bcrypt.hash('0000', 10);
+        const passwordHash = await bcrypt.hash(ACTEUR_PASSWORD, 10);
         u = await users.save(
           users.create({
             phone,
