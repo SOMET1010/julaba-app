@@ -85,6 +85,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
       userId: user?.id || '',
       lang: selectedLang,
       module: role,
+      role,
       caisse: (stats as any).caisse || 0,
       ventes: (stats as any).ventes || 0,
       depenses: (stats as any).depenses || 0,

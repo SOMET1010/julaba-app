@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { Eye, EyeOff, Menu, ArrowLeft, ChevronRight, Shield, MessageCircle, MapPin, Lock, Monitor, CreditCard, Check, Fingerprint } from 'lucide-react';
+import { Eye, EyeOff, Menu, ArrowLeft, ChevronRight, Shield, MessageCircle, MapPin, Lock, Monitor, CreditCard, Check, Fingerprint, Volume2 } from 'lucide-react';
 import { QRCodeSVG as QRCode } from 'qrcode.react';
 import { useUser } from '../../contexts/UserContext';
 import { useApp } from '../../contexts/AppContext';
@@ -403,7 +403,7 @@ function ModalQR({ isOpen, onClose, userId, userName }: {
 export function WalletPage() {
   const navigate = useNavigate();
   const { user } = useUser();
-  const { user: appUser, setUser: setAppUser } = useApp();
+  const { user: appUser, setUser: setAppUser, speak } = useApp();
   const { getAvailableBalance, transactions, getTransactionHistory, refreshKeiwa } = useWallet();
 
   const [showBalance, setShowBalance] = useState(false);
@@ -738,19 +738,32 @@ export function WalletPage() {
           >
             <ArrowLeft className="w-4 h-4 text-white" />
           </motion.button>
-          <motion.button
-            onClick={() => setShowBalance(v => !v)}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer' }}
-            whileTap={{ scale: 0.97 }}
-          >
-            <span style={{ fontSize: 28, fontWeight: 700, color: 'white', letterSpacing: '-1px' }}>
-              {showBalance ? available.toLocaleString('fr-FR') : '•••••'}
-            </span>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>FCFA</span>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {showBalance ? <Eye className="w-3.5 h-3.5 text-white" /> : <EyeOff className="w-3.5 h-3.5 text-white" />}
-            </div>
-          </motion.button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <motion.button
+              onClick={() => setShowBalance(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer' }}
+              whileTap={{ scale: 0.97 }}
+            >
+              <span style={{ fontSize: 28, fontWeight: 700, color: 'white', letterSpacing: '-1px' }}>
+                {showBalance ? available.toLocaleString('fr-FR') : '•••••'}
+              </span>
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>FCFA</span>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {showBalance ? <Eye className="w-3.5 h-3.5 text-white" /> : <EyeOff className="w-3.5 h-3.5 text-white" />}
+              </div>
+            </motion.button>
+            {/* Solde à la voix (audit vocal, Keiwa CRITIQUE) : action séparée du
+                toggle d'affichage — écouter le solde ne force pas son affichage
+                visuel (la marchande peut vérifier sans exposer l'écran). */}
+            <motion.button
+              onClick={() => speak(`Ton solde Keiwa est de ${Math.round(available).toLocaleString('fr-FR')} francs.`)}
+              aria-label="Écouter mon solde"
+              style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <Volume2 className="w-3.5 h-3.5 text-white" />
+            </motion.button>
+          </div>
           <motion.button
             onClick={() => setShowDrawer(true)}
             style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
