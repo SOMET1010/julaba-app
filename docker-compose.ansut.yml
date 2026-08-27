@@ -1,0 +1,44 @@
+# ============================================================
+# JULABA — Compose autonome pour le déploiement ANSUT
+# (ANSUT-WAZUH-DEV-WEB-1 — julaba-dev.ansut.ci)
+# Usage : docker compose -f docker-compose.ansut.yml up -d --build
+#
+# Différences avec docker-compose.yml (OVH) :
+#   - Backend exposé sur le port 3004 (3000 et 3003 sont déjà utilisés sur le serveur).
+#   - Montages piper (/usr/local/bin/piper-tts, /var/www/julaba/piper-voices)
+#     retirés : TTS cloud (ElevenLabs) activé — évite des répertoires parasites.
+#   - Volumes uploads + piper-cache conservés.
+# ============================================================
+services:
+  backend:
+    build: ./backend
+    container_name: julaba_backend
+    restart: always
+    ports:
+      - "3004:3000"
+    env_file:
+      - ./backend/.env.production
+    volumes:
+      - /var/www/julaba/uploads:/var/www/julaba/uploads
+      - /tmp/piper-cache:/tmp/piper-cache
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v1/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: nginx:alpine
+    container_name: julaba_frontend
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html
+      - ./nginx/frontend.conf:/etc/nginx/conf.d/default.conf
+
+networks:
+  default:
+    name: julaba_network

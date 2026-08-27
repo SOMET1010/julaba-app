@@ -27,6 +27,29 @@ const INSTALL_KEY = 'julaba_offline_installed';
 
 let engineReady = false;          // sherpa natif confirmé DISPONIBLE (sonde ok)
 let probePromise: Promise<boolean> | null = null;
+const modelReadyListeners = new Set<() => void>();
+
+/**
+ * Abonne les composants aux changements d'état du moteur.
+ * L'appel immédiat évite une course entre le montage du composant et la sonde
+ * lancée au démarrage de l'application.
+ */
+export function subscribeModelReady(listener: () => void): () => void {
+  modelReadyListeners.add(listener);
+  try { listener(); } catch { /* les abonnés ne doivent pas bloquer la sonde */ }
+  return () => modelReadyListeners.delete(listener);
+}
+
+/** Moteur actif exposé pour l'indicateur vocal. */
+export function sttEngine(): 'sherpa' | 'none' {
+  return engineReady ? 'sherpa' : 'none';
+}
+
+function notifyModelReady(): void {
+  for (const listener of modelReadyListeners) {
+    try { listener(); } catch { /* ignore listener errors */ }
+  }
+}
 
 /** Vrai si le moteur natif est confirmé disponible, prêt à transcrire. */
 export function offlineModelReady(): boolean {
@@ -34,6 +57,12 @@ export function offlineModelReady(): boolean {
 }
 
 /** Vrai si le moteur a déjà été vu disponible sur cet appareil (persistant). */
+export function disposeOfflineStt(): void {
+  engineReady = false;
+  probePromise = null;
+  notifyModelReady();
+}
+
 export function offlineModelInstalled(): boolean {
   if (engineReady) return true;
   try { return localStorage.getItem(INSTALL_KEY) === '1'; } catch { return false; }
@@ -46,8 +75,9 @@ function probeEngine(): Promise<boolean> {
       const ok = await nativeStt.isAvailable();
       engineReady = ok;
       if (ok) { try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ } }
+      notifyModelReady();
       return ok;
-    })().catch(() => { probePromise = null; return false; });
+    })().catch(() => { probePromise = null; engineReady = false; notifyModelReady(); return false; });
   }
   return probePromise;
 }

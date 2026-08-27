@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useBackOffice } from "../../contexts/BackOfficeContext";
 import { BO_PRIMARY } from "./bo-theme";
 import { API_URL } from "../../utils/api";
-import * as L from "leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 const COLORS: Record<string, string> = {
@@ -54,8 +54,8 @@ function makeIcon(color: string, letter: string) {
 
 export function BOCarteActeurs() {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const layersRef = useRef<Record<string, L.LayerGroup>>({});
+  const mapInstanceRef = useRef<ReturnType<typeof L.map> | null>(null);
+  const layersRef = useRef<Record<string, ReturnType<typeof L.layerGroup>>>({});
 
   const [geoPoints, setGeoPoints] = useState<any[]>([]);
   const [allActeurs, setAllActeurs] = useState<any[]>([]);

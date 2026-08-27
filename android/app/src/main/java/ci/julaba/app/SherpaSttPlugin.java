@@ -40,7 +40,7 @@ import java.util.concurrent.Executors;
  * WASM (scripts/install-sherpa-stt.sh). Noms de fichiers dans filesDir/<dir> :
  * encoder.onnx, decoder.onnx, joiner.onnx, tokens.txt.
  *
- * L'AAR est déclaré dans android/app/build.gradle (libs/sherpa-onnx-1.13.4.aar,
+ * L'AAR est déclaré dans android/app/build.gradle (libs/sherpa-onnx-1.13.5.aar,
  * récupéré par scripts/fetch-sherpa-aar.sh).
  */
 @CapacitorPlugin(name = "SherpaStt")
@@ -86,7 +86,7 @@ public class SherpaSttPlugin extends Plugin {
                 for (int i = 0; i < files.length(); i++) {
                     JSObject f;
                     try {
-                        f = files.getJSObject(i);
+                        f = new JSObject(files.getJSONObject(i).toString());
                     } catch (Exception e) {
                         continue; // entrée malformée → on passe
                     }

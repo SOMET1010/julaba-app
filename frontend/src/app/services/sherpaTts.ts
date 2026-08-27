@@ -152,6 +152,17 @@ function playSamples(samples: Float32Array, sampleRate: number): Promise<void> {
   });
 }
 
+/** Libère le worker et coupe la lecture sherpa en cours. */
+export function disposeSherpaTts(): void {
+  stopSherpaTts();
+  if (worker) {
+    try { worker.terminate(); } catch { /* ignore */ }
+  }
+  worker = null;
+  workerPromise = null;
+  ready = false;
+}
+
 /** Coupe la lecture sherpa en cours (appelé par le chef d'orchestre au stop). */
 export function stopSherpaTts(): void {
   if (activeSource) {

@@ -120,7 +120,7 @@ services:
     # Déploiement AUTOMATIQUE à chaque push sur la branche suivie (plus besoin de
     # cliquer « Manual Deploy » après chaque correction).
     autoDeploy: true
-    buildCommand: cd frontend_src && npm ci --include=dev && npm run build
+    buildCommand: cd frontend && npm ci --include=dev && npm run build
     staticPublishPath: frontend/dist
     envVars:
       # URL du backend (utilisée au BUILD du frontend)

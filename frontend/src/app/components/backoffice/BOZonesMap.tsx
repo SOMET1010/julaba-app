@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import * as L from 'leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Home, MapPin, TrendingUp, Users } from 'lucide-react';
 import type { BOZone } from '../../contexts/BackOfficeContext';
@@ -74,8 +74,8 @@ export default function BOZonesMap({
   onMapRegionFilterChange,
 }: BOZonesMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
-  const geoJsonRef = useRef<L.GeoJSON | null>(null);
+  const mapInstanceRef = useRef<ReturnType<typeof L.map> | null>(null);
+  const geoJsonRef = useRef<ReturnType<typeof L.geoJSON> | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(mapRegionFilter);
 
   useEffect(() => {
@@ -181,18 +181,18 @@ export default function BOZonesMap({
         lyr.bindTooltip(tip, { sticky: true, className: 'bo-zones-map-geo-tt' });
         lyr.on({
           mouseover: (e) => {
-            const t = e.target as L.Path;
+            const t = e.target as ReturnType<typeof L.geoJSON> extends infer _T ? never : never;
             t.setStyle({ weight: 2.5, fillOpacity: 0.5 });
             t.bringToFront();
           },
           mouseout: (e) => {
-            const t = e.target as L.Path;
+            const t = e.target as ReturnType<typeof L.geoJSON> extends infer _T ? never : never;
             t.setStyle(makePathStyle(feature as GeoJSON.Feature, selectedRegion));
           },
           click: () => {
             setSelectedRegion(regionName);
             onMapRegionFilterChange(regionName);
-            const b = (lyr as L.Polygon).getBounds?.();
+            const b = (lyr as ReturnType<typeof L.polygon>).getBounds?.();
             if (b && b.isValid()) map.fitBounds(b, { padding: [40, 40], maxZoom: 9 });
           },
         });

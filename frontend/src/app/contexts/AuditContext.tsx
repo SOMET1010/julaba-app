@@ -39,7 +39,9 @@ export function AuditProvider({ children }: { children: ReactNode }) {
   const loadAuditLogs = async () => {
     try {
       if (!events?.length) setLoading(true);
-      const { logs } = await auditApi.fetchAuditLogs(1, 50);
+      // /audit est réservé aux administrateurs ; le contexte est global à tous
+      // les profils et doit donc utiliser la vue personnelle.
+      const { logs } = await auditApi.fetchMyAuditLogs(50);
       
       const eventsList: AuditEvent[] = logs.map((log: any) => ({
         id: log.id,

@@ -47,6 +47,11 @@ export async function fetchAuditLogs(page = 1, limit = 50): Promise<{ logs: Audi
   return apiRequest<{ logs: AuditLog[]; total?: number }>(`/audit?page=${page}&limit=${limit}`);
 }
 
+/** Récupérer les événements de l'utilisateur connecté (tous rôles). */
+export async function fetchMyAuditLogs(limit = 50): Promise<{ logs: AuditLog[]; total?: number }> {
+  return apiRequest<{ logs: AuditLog[]; total?: number }>(`/audit/me?limit=${limit}`);
+}
+
 /**
  * Créer un log d'audit
  */

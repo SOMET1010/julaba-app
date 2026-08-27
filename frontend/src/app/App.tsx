@@ -29,6 +29,7 @@ import { TicketsProvider } from './contexts/TicketsContext';
 import { InstitutionAccessProvider } from './contexts/InstitutionAccessContext';
 import { ProducteurProvider } from './contexts/ProducteurContext';
 import { ShortcutsProvider } from './contexts/ShortcutsContext';
+import { RaccourcisProvider } from './contexts/RaccourcisContext';
 import { MotionConfig } from 'motion/react';
 import { appliquerTailleTexteAuDocument } from './utils/tailleTexte';
 
@@ -67,6 +68,7 @@ export default function App() {
       <ShortcutsProvider>
         <ModalProvider>
           <AppProvider>
+          <RaccourcisProvider>
           <UserProvider>
             <NotificationsProvider>
                 <AuditProvider>
@@ -99,6 +101,7 @@ export default function App() {
                 </AuditProvider>
             </NotificationsProvider>
           </UserProvider>
+          </RaccourcisProvider>
         </AppProvider>
         </ModalProvider>
       </ShortcutsProvider>

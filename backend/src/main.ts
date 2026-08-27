@@ -94,8 +94,17 @@ async function bootstrap() {
   // fois : on répond NOUS-MÊMES, en TOUT PREMIER, avant helmet et le reste.
   const allowedOrigins = [
     process.env.CORS_ORIGIN,
+    // Imperva termine parfois HTTPS et relaie l'origine HTTP du navigateur.
+    'http://julaba-dev.ansut.ci',
     'https://julaba-web.onrender.com',
     'https://julaba.online',
+    // ANSUT : prod + dev. Le dev est servi en http tant que certbot n'a pas
+    // ajouté le SSL sur julaba-dev.ansut.ci — sans la variante http, le
+    // navigateur (origine http://julaba-dev.ansut.ci) voit un préflight sans
+    // « Access-Control-Allow-Origin » et bloque TOUT l'appel cross-origin.
+    'https://julaba.ansut.ci',
+    'https://julaba-dev.ansut.ci',
+    'http://julaba-dev.ansut.ci',
   ].filter((o): o is string => Boolean(o));
   app.use((req: any, res: any, next: any) => {
     const origin = req.headers.origin;

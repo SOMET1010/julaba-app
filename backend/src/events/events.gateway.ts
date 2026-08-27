@@ -18,7 +18,15 @@ import { JwtService } from "@nestjs/jwt";
   pingInterval: 25000,
   pingTimeout: 10000,
   cors: {
-    origin: ["https://julaba.online", "http://localhost:5173", "http://localhost:3000"],
+    origin: [
+      "https://julaba.online",
+      "https://julaba.ansut.ci",
+      "https://julaba-dev.ansut.ci",
+      "http://julaba-dev.ansut.ci",
+      "http://julaba-dev.ansut.ci",
+      "http://localhost:5173",
+      "http://localhost:3000",
+    ],
     credentials: true,
   },
   namespace: "/ws",

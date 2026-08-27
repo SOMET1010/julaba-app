@@ -582,7 +582,7 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
       // Source AUTORITATIVE : endpoint stats producteur (calcul en base). Évite
       // le calcul client faux (kg = compte de récoltes ; revenus = récoltes
       // 'vendue' jamais atteint).
-      const data = await apiRequest<any>(API_URL, '/producteur/stats', { method: 'GET' });
+      const data = await apiRequest<any>(API_URL, '/producteurs/stats', { method: 'GET' });
       if (data) {
         const newStats: ProducteurStats = {
           recoltesTotales: n(data.recoltesCount),

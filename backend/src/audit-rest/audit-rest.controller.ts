@@ -28,5 +28,10 @@ export class AuditRestController {
   }
 
   @Get() async findAll(@Query('page') page = 1, @Query('limit') limit = 50) { const take = Math.min(Number(limit) || 50, 200); const skip = (Number(page) - 1) * take; const [logs, total] = await this.repo.findAndCount({ order: { created_at: 'DESC' }, take, skip }); return { logs, meta: { total, page: Number(page), limit: take, pages: Math.ceil(total / take) } }; }
-  @Post() create(@Body() body: CreateAuditLogDto, @CurrentUser() user: User) { return this.repo.save(this.repo.create({ ...body, user_id: user.id })); }
+  @Post()
+  @Roles()
+  @UseGuards(JwtAuthGuard)
+  create(@Body() body: CreateAuditLogDto, @CurrentUser() user: User) {
+    return this.repo.save(this.repo.create({ ...body, user_id: user.id }));
+  }
 }

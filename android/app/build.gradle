@@ -33,7 +33,7 @@ repositories {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     // sherpa-onnx natif (STT + TTS hors-ligne) — AAR pré-construit, voir scripts/fetch-sherpa-aar.sh
-    implementation files('libs/sherpa-onnx-1.13.4.aar')
+    implementation files('libs/sherpa-onnx-1.13.5.aar')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"

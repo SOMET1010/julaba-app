@@ -35,6 +35,38 @@ type RecolteRow = {
 export class ProducteursRestController {
   constructor(private dataSource: DataSource) {}
 
+  /** Statistiques du tableau de bord du producteur connecté. */
+  @UseGuards(JwtAuthGuard)
+  @Get('stats')
+  async stats(@CurrentUser() user: User) {
+    if (String(user?.role || '').toLowerCase() !== 'producteur') {
+      throw new ForbiddenException('Statistiques réservées aux producteurs');
+    }
+
+    const [row] = await this.dataSource.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM recoltes WHERE user_id = $1) AS "recoltesCount",
+         (SELECT COALESCE(SUM(total), 0)::numeric FROM commandes
+            WHERE vendeur_id = $1 AND statut NOT IN ('annulee', 'litige')) AS "revenusTotal",
+         (SELECT COUNT(*)::int FROM commandes
+            WHERE vendeur_id = $1 AND statut IN ('en_attente', 'confirmee', 'en_livraison')) AS "commandesEnCours",
+         (SELECT COUNT(*)::int FROM publications
+            WHERE user_id = $1 AND active = true AND statut = 'disponible') AS "publicationsActives",
+         (SELECT COALESCE(SUM(quantite), 0)::numeric FROM recoltes WHERE user_id = $1) AS "recoltesKgTotal",
+         (SELECT COALESCE(SUM(quantite), 0)::numeric FROM recoltes
+            WHERE user_id = $1 AND date_recolte = CURRENT_DATE) AS "recoltesKgJour",
+         (SELECT COALESCE(SUM(p.quantite_disponible), 0)::numeric FROM publications p
+            WHERE p.user_id = $1 AND p.active = true AND p.statut = 'disponible') AS "stockDisponibleKg",
+         (SELECT COALESCE(SUM(GREATEST(0, p.quantite_initiale - p.quantite_disponible)), 0)::numeric
+            FROM publications p WHERE p.user_id = $1) AS "stockVenduKg",
+         (SELECT COALESCE(SUM(total), 0)::numeric FROM commandes
+            WHERE vendeur_id = $1 AND statut NOT IN ('annulee', 'litige')
+              AND date_commande::date = CURRENT_DATE) AS "revenusJour"`,
+      [user.id],
+    );
+    return row || {};
+  }
+
   /**
    * Recoltes prevues a proximite, pour un marchand grossiste.
    * Une ligne par producteur = sa recolte la plus proche (cycle actif, date estimee future).

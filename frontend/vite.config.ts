@@ -97,6 +97,18 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  server: {
+    // Accès via les domaines ANSUT (nginx reverse-proxy → 127.0.0.1:8080).
+    // Sans ça, Vite bloque le Host header (« Blocked request. This host ... is
+    // not allowed ») : protection anti-DNS-rebinding qui liste localhost par
+    // défaut, mais pas julaba[-dev].ansut.ci.
+    host: true,
+    allowedHosts: ["julaba-dev.ansut.ci", "julaba.ansut.ci", ".ansut.ci"],
+  },
+  preview: {
+    // Même protection pour `vite preview` (même message d'erreur sinon).
+    allowedHosts: ["julaba-dev.ansut.ci", "julaba.ansut.ci", ".ansut.ci"],
+  },
   build: {
     outDir: "../frontend/dist",
     emptyOutDir: true,
