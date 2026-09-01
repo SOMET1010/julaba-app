@@ -293,17 +293,14 @@ export function LoginPassword() {
     setSuggReponse(true);
   };
 
-  // Pré-réveil du backend. Sur Render gratuit, le serveur se met EN VEILLE après
-  // inactivité et met ~50 s à redémarrer ; la 1re requête de login tombait alors
-  // dans le vide → « Erreur de connexion ». On envoie un ping /health dès que
-  // l'écran s'affiche (pendant que l'utilisatrice tape son numéro/code), pour que
-  // le serveur soit déjà réveillé au moment du « Se connecter ». Silencieux.
+  // Pré-réveil du backend. Si le serveur est en train de démarrer (docker
+  // restart, maintenance…), on envoie un /health dès que l'écran s'affiche
+  // pour détecter le réveil le plus tôt possible. Silencieux.
   useEffect(() => {
     let annule = false;
-    const reveiller = () => { try { fetch(`${API_URL}/health`, { method: 'GET', cache: 'no-store' }).catch(() => {}); } catch { /* ignore */ } };
-    reveiller();
-    // Un 2e ping ~8 s après, au cas où le 1er a lancé le démarrage sans le finir.
-    const t = setTimeout(() => { if (!annule) reveiller(); }, 8000);
+    const ping = () => { try { fetch(`${API_URL}/health`, { method: 'GET', cache: 'no-store' }).catch(() => {}); } catch { /* ignore */ } };
+    ping();
+    const t = setTimeout(() => { if (!annule) ping(); }, 5000);
     return () => { annule = true; clearTimeout(t); };
   }, []);
 
@@ -840,16 +837,16 @@ export function LoginPassword() {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       console.warn('[LoginPassword] login failed:', err instanceof Error ? err.message : err);
       vlog('LOGIN_FAIL', { name: err instanceof Error ? err.name : '', msg: err instanceof Error ? err.message : String(err), retry });
-      // « Failed to fetch » = souvent le backend gratuit encore en train de se
-      // réveiller. On RETENTE automatiquement (jusqu'à 2 fois) en laissant le
-      // temps au serveur de démarrer, plutôt que d'échouer sèchement.
+      // « Failed to fetch » = erreur réseau (serveur down, DNS, timeout…).
+      // On RETENTE automatiquement (jusqu'à 2 fois) en laissant le temps
+      // au serveur de se rétablir, plutôt que d'échouer sèchement.
       const estReseau = err instanceof TypeError;
       if (estReseau && retry < 2) {
-        setError('Réveil du serveur… reconnexion automatique, patiente 🔄');
-        setTimeout(() => { handleLogin(pwd, retry + 1); }, 7000);
+        setError('Réseau indisponible… nouvelle tentative 🔄');
+        setTimeout(() => { handleLogin(pwd, retry + 1); }, 5000);
         return;
       }
-      setError('Connexion impossible. Le serveur se réveille (~1 min) — réessaie dans un instant.');
+      setError('Connexion impossible. Vérifie ta connexion internet et réessaie.');
       setIsLoading(false);
     } finally {
       setIsLoading(false);

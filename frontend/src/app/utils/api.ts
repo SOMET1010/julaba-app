@@ -3,36 +3,33 @@
  * Toutes les URLs doivent utiliser cette constante
  */
 function resolveApiUrl(): string {
-  // 1) Valeur injectée au build (idéal) — ex. Render VITE_API_URL.
   const fromEnv = import.meta.env.VITE_API_URL;
-  // ANSUT sert le frontend et l'API derrière le même vhost HTTP/HTTPS.
-  // Ne jamais laisser une ancienne URL HTTPS injectée au build provoquer un
-  // appel cross-origin depuis la version HTTP du site.
-  if (typeof window !== 'undefined' && window.location.hostname.endsWith('.ansut.ci')) {
-    return '/api/v1';
-  }
-  if (fromEnv) return fromEnv;
-  // 2) Filet de sécurité PRODUCTION. Sur la V1, frontend et backend partageaient
-  //    le même domaine, donc le chemin relatif "/api/v1" suffisait. Sur la V2, ils
-  //    sont sur DEUX domaines : si VITE_API_URL n'a pas été injectée au build, un
-  //    "/api/v1" relatif tape sur le site statique (→ HTML au lieu du backend).
-  //    On cible donc le backend V2 connu dès qu'on est servi depuis le domaine V2.
+
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
-    if (host === 'julaba-web.onrender.com') {
-      return 'https://julaba-api.onrender.com/api/v1';
+
+    // Capacitor (APK) : window.location.hostname = localhost / 127.0.0.1 / etc.
+    // Le build Vite injecte une URL HTTPS (VITE_API_URL), mais julaba-dev.ansut.ci
+    // n'a de SSL que derrière Imperva WAF qui bloque l'API.  On force HTTP pour
+    // que l'APK parle directement au nginx (port 80) sans passer par Imperva.
+    const isCapacitor = host === 'localhost' || host === '127.0.0.1' ||
+      (typeof (window as any).Capacitor !== 'undefined');
+    if (isCapacitor && fromEnv && fromEnv.includes('julaba-dev.ansut.ci')) {
+      return fromEnv.replace('https://', 'http://');
     }
-    if (host === 'julaba.ansut.ci' || host === 'julaba-dev.ansut.ci') {
-      return '/api/v1';
-    }
-    // Le build ANSUT doit rester en same-origin : le domaine est actuellement HTTP.
-    // Cette règle protège aussi contre une ancienne VITE_API_URL HTTPS injectée au build.
+
+    // ANSUT sert le frontend et l'API derrière le même vhost HTTP/HTTPS.
     if (host.endsWith('.ansut.ci')) {
       return '/api/v1';
     }
+
+    if (host === 'julaba-web.onrender.com') {
+      return 'https://julaba-api.onrender.com/api/v1';
+    }
   }
-  // 3) Défaut historique (même domaine / dev avec proxy Vite).
-  return '/api/v1';
+
+  // Fallback : valeur injectée au build, ou chemin relatif.
+  return fromEnv || '/api/v1';
 }
 
 export const API_URL = resolveApiUrl();

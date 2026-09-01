@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Autoriser le cleartext HTTP vers le serveur ANSUT dev
+         (pas de SSL côté nginx, Imperva WAF bloque l'API en HTTPS). -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">julaba-dev.ansut.ci</domain>
+    </domain-config>
+
+    <!-- Production : HTTPS forcé par défaut (Android 9+). -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

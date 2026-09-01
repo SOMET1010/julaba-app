@@ -105,6 +105,12 @@ async function bootstrap() {
     'https://julaba.ansut.ci',
     'https://julaba-dev.ansut.ci',
     'http://julaba-dev.ansut.ci',
+    // Capacitor Android : le WebView charge depuis capacitor://localhost ou
+    // http(s)://localhost — sans ces entrées, CORS bloque silencieusement
+    // tous les POST (login, OTP…) depuis l'APK.
+    'http://localhost',
+    'https://localhost',
+    'capacitor://localhost',
   ].filter((o): o is string => Boolean(o));
   app.use((req: any, res: any, next: any) => {
     const origin = req.headers.origin;
