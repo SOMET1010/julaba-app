@@ -152,22 +152,27 @@ ce point.
 architecture VITS) — hébergement trivial, aucun GPU dédié nécessaire
 (sans commune mesure avec Omnilingual ASR ci-dessus).
 
-**⚠️ Le vrai verrou, pas mentionné dans l'info reçue** : licence
-`cc-by-nc-4.0` — **usage non-commercial uniquement**. Contrairement à
+**Licence `cc-by-nc-4.0` (usage non-commercial uniquement)** — contrairement à
 Omnilingual ASR (Apache 2.0, y compris commercial), ce modèle TTS interdit
-explicitement l'usage commercial. C'est une question juridique à trancher
-avec l'équipe/porteurs du projet (le montage DTDI/ANSUT rentre-t-il dans ce
-cadre ou pas ?) — **avant** tout investissement technique, pas après.
+l'usage commercial. **Statut : levé** — confirmé par le porteur du projet
+(DTDI/ANSUT, 10/09/2026) que le montage du projet Jùlaba rentre dans un usage
+non-commercial. Point à revalider si le montage du projet change (passage à
+une exploitation commerciale, partenariat privé, etc.) — la confirmation
+porte sur la situation actuelle, pas une garantie permanente.
 
-Si la licence est levée (accord, modèle alternatif, ou confirmation que
-l'usage du projet est bien non-commercial), ça complète directement le plan
-déjà écrit dans `docs/PACKS_VOIX.md` (« v1 : seule la langue `fr` est
-consommée ; `dyu`/`bci` suivront ») : `dyu` par synthèse MMS (qualité à
-faire juger par des locuteurs natifs — dix phrases générées, dix oreilles
-dioulaphones, verdict avant tout déploiement) ; `bci` (baoulé, pas de modèle
-MMS) par la voie déjà outillée ici — clips enregistrés une fois par une
-vraie locutrice, publiés comme pack (`manifeste.exemple.json`). Même
-mécanisme que les clips « Tata » actuels, pas un nouveau chantier.
+Verrou juridique levé, ça complète directement le plan déjà écrit dans
+`docs/PACKS_VOIX.md` (« v1 : seule la langue `fr` est consommée ; `dyu`/`bci`
+suivront ») : `dyu` par synthèse MMS (qualité à faire juger par des locuteurs
+natifs — dix phrases générées, dix oreilles dioulaphones, verdict avant tout
+déploiement) ; `bci` (baoulé, pas de modèle MMS) par la voie déjà outillée
+ici — clips enregistrés une fois par une vraie locutrice, publiés comme pack
+(`manifeste.exemple.json`). Même mécanisme que les clips « Tata » actuels,
+pas un nouveau chantier.
+
+**Prochaine étape concrète** : petit spike technique — générer une dizaine de
+phrases avec `mms-tts-dyu` (le modèle tourne en local via `transformers`,
+aucune infra à monter), les faire écouter à des locuteurs dioulaphones
+réels, verdict avant toute décision d'intégration dans le pipeline TTS.
 
 ---
 
