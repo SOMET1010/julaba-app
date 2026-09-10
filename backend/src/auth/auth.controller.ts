@@ -445,7 +445,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin', 'admin')
   @HttpCode(HttpStatus.OK)
-  async resetUserPassword(@Body() body: { userId: string; newPassword: string }) {
+  async resetUserPassword(@Body() body: { userId: string; newPassword: string }, @Request() req: any) {
     if (!body.userId) return { success: false, message: 'userId requis' };
     if (!body.newPassword || body.newPassword.length < 4) return { success: false, message: 'Mot de passe trop court (4 caractères minimum)' };
     const user = await this.userRepo.findOne({ where: { id: body.userId } });
@@ -455,6 +455,18 @@ export class AuthController {
       passwordHash: await bcrypt.hash(body.newPassword, 10),
       mustChangePassword: true,
     } as any);
+    // Audit de cette action sensible (jamais le mot de passe en clair, ni son hash).
+    await this.auditService.log({
+      userId: req.user?.id ?? null,
+      action: 'PASSWORD_RESET',
+      entite: 'user',
+      entiteId: user.id,
+      details: {
+        changedBy: req.user?.id ?? null,
+        targetRole: (user as any).role ?? null,
+      },
+      ip: req.ip ?? null,
+    });
     return { success: true, message: 'Mot de passe réinitialisé' };
   }
 
