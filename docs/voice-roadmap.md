@@ -136,29 +136,38 @@ ci-dessous) avant toute décision de bascule — aucune langue locale n'est
 utilisable en STT aujourd'hui, donc n'importe quelle avancée ici est un pur
 ajout, pas un remplacement risqué du français qui marche déjà.
 
-### Le pendant TTS — Meta MMS (piste à VÉRIFIER, pas encore mesurée par nous)
+### Le pendant TTS — Meta MMS (VÉRIFIÉ sur le Hub Hugging Face, 10/09/2026)
 
-Info reçue d'un projet voisin (SUTA, même famille DTDI/ANSUT), **pas encore
-vérifiée de première main sur ce dépôt** — à traiter comme piste, pas comme
-fait acquis, avant d'y investir du temps : Meta a un second modèle, **MMS**
-(synthèse vocale, sens inverse d'Omnilingual ASR), annoncé sur ~1 100 langues.
-Un modèle `mms-tts-dyu` (dioula) serait publié, avec bambara/agni/mooré.
-Baoulé et dan manqueraient.
+Info reçue d'un projet voisin (SUTA, même famille DTDI/ANSUT), **vérifiée de
+première main** ensuite (recherche directe sur le Hub, pas une reprise de
+l'annonce). MMS est le pendant TTS d'Omnilingual ASR (synthèse, pas
+reconnaissance).
 
-Si confirmé, ça complète directement le plan déjà écrit dans
-`docs/PACKS_VOIX.md` (« v1 : seule la langue `fr` est consommée ; `dyu`/`bci`
-suivront ») : `dyu` par synthèse MMS (qualité à faire juger par des locuteurs
-natifs — « on ne croit que ce qu'on mesure », dix phrases générées, dix
-oreilles dioulaphones, verdict avant tout déploiement) ; `bci` (baoulé) par
-la voie déjà outillée ici — clips enregistrés une fois par une vraie
-locutrice, publiés comme pack (`manifeste.exemple.json`), zéro dépendance à
-un modèle de synthèse. C'est littéralement le même mécanisme que les clips
-« Tata » actuels, pas un nouveau chantier.
+**Confirmé disponible** : `facebook/mms-tts-dyu` (dioula), `mms-tts-bam`
+(bambara), `mms-tts-any` (agni), `mms-tts-mos` (mooré). **Confirmé absent** :
+`mms-tts-bci` (baoulé), `mms-tts-dnj` (dan) — l'info reçue était exacte sur
+ce point.
 
-**Avant d'y toucher** : confirmer nous-mêmes que `mms-tts-dyu` existe
-réellement et tourne (le reste de cette page ne rapporte que des trouvailles
-vérifiées sur ce projet — celle-ci ne l'est pas encore), puis mesurer la
-latence et la qualité perçue avant toute décision.
+**Technique, très favorable** : modèle minuscule (36M paramètres,
+architecture VITS) — hébergement trivial, aucun GPU dédié nécessaire
+(sans commune mesure avec Omnilingual ASR ci-dessus).
+
+**⚠️ Le vrai verrou, pas mentionné dans l'info reçue** : licence
+`cc-by-nc-4.0` — **usage non-commercial uniquement**. Contrairement à
+Omnilingual ASR (Apache 2.0, y compris commercial), ce modèle TTS interdit
+explicitement l'usage commercial. C'est une question juridique à trancher
+avec l'équipe/porteurs du projet (le montage DTDI/ANSUT rentre-t-il dans ce
+cadre ou pas ?) — **avant** tout investissement technique, pas après.
+
+Si la licence est levée (accord, modèle alternatif, ou confirmation que
+l'usage du projet est bien non-commercial), ça complète directement le plan
+déjà écrit dans `docs/PACKS_VOIX.md` (« v1 : seule la langue `fr` est
+consommée ; `dyu`/`bci` suivront ») : `dyu` par synthèse MMS (qualité à
+faire juger par des locuteurs natifs — dix phrases générées, dix oreilles
+dioulaphones, verdict avant tout déploiement) ; `bci` (baoulé, pas de modèle
+MMS) par la voie déjà outillée ici — clips enregistrés une fois par une
+vraie locutrice, publiés comme pack (`manifeste.exemple.json`). Même
+mécanisme que les clips « Tata » actuels, pas un nouveau chantier.
 
 ---
 
