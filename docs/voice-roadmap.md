@@ -136,6 +136,30 @@ ci-dessous) avant toute décision de bascule — aucune langue locale n'est
 utilisable en STT aujourd'hui, donc n'importe quelle avancée ici est un pur
 ajout, pas un remplacement risqué du français qui marche déjà.
 
+### Le pendant TTS — Meta MMS (piste à VÉRIFIER, pas encore mesurée par nous)
+
+Info reçue d'un projet voisin (SUTA, même famille DTDI/ANSUT), **pas encore
+vérifiée de première main sur ce dépôt** — à traiter comme piste, pas comme
+fait acquis, avant d'y investir du temps : Meta a un second modèle, **MMS**
+(synthèse vocale, sens inverse d'Omnilingual ASR), annoncé sur ~1 100 langues.
+Un modèle `mms-tts-dyu` (dioula) serait publié, avec bambara/agni/mooré.
+Baoulé et dan manqueraient.
+
+Si confirmé, ça complète directement le plan déjà écrit dans
+`docs/PACKS_VOIX.md` (« v1 : seule la langue `fr` est consommée ; `dyu`/`bci`
+suivront ») : `dyu` par synthèse MMS (qualité à faire juger par des locuteurs
+natifs — « on ne croit que ce qu'on mesure », dix phrases générées, dix
+oreilles dioulaphones, verdict avant tout déploiement) ; `bci` (baoulé) par
+la voie déjà outillée ici — clips enregistrés une fois par une vraie
+locutrice, publiés comme pack (`manifeste.exemple.json`), zéro dépendance à
+un modèle de synthèse. C'est littéralement le même mécanisme que les clips
+« Tata » actuels, pas un nouveau chantier.
+
+**Avant d'y toucher** : confirmer nous-mêmes que `mms-tts-dyu` existe
+réellement et tourne (le reste de cette page ne rapporte que des trouvailles
+vérifiées sur ce projet — celle-ci ne l'est pas encore), puis mesurer la
+latence et la qualité perçue avant toute décision.
+
 ---
 
 ## CONTRAINTES PERMANENTES
