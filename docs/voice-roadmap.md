@@ -98,7 +98,43 @@
 
 ### 3. STT interchangeable
 - Interface unique : `ISTTProvider.transcribe(audio): string`
-- Implémentations : `WhisperProvider`, `GroqWhisperProvider`
+- Implémentations : `WhisperProvider`, `GroqWhisperProvider`, candidat `OmnilingualASRProvider` (voir langues ivoiriennes ci-dessous)
+
+---
+
+## LANGUES IVOIRIENNES — Meta Omnilingual ASR (piste STT, 10/09/2026)
+
+Whisper (STT actuel) ne couvre pas les langues locales de Côte d'Ivoire au-delà
+du français. Recherche menée sur le paquet officiel Meta `omnilingual-asr`
+(1 668 langues, licence **Apache 2.0**, usage public compris) : liste des
+langues du modèle confrontée aux langues parlées en Côte d'Ivoire.
+
+**22 langues ivoiriennes couvertes**, dont la plus critique :
+- **Dioula (`dyu`) en propre** — pas seulement via le bambara (couvert aussi)
+- Groupe kwa (sud/centre) : Baoulé (`bci`), Agni (`any`), Attié (`ati`), Abidji
+  (`abi`), Adioukrou (`adj`)
+- Ouest/sud-ouest : Dan/Yacouba (`dnj`), Toura, Mano, Wobé, Nyabwa, Krumen
+  (plapo et tépo), Dida
+- Nord : Sénoufo en 3 variantes (djimini, supyiré, mamara), Lobi
+- Véhiculaires régionales : mooré, peul, haoussa
+
+**Absentes** : bété (Daloa/Gagnoa), guéré/wè, sénoufo cebaara (Korhogo), abé,
+kulango. Le modèle est **zéro-shot** : une langue absente s'apprend avec
+quelques exemples enregistrés, sans réentraînement — compatible avec le
+protocole de casting de voix déjà écrit pour Tata (mêmes marchandes, même
+séance d'enregistrement pourrait aussi fournir ces exemples).
+
+**Dimensionnement (fiche officielle du modèle, à injecter dans le chiffrage
+Azure, voir `docs/AZURE.md`)** :
+- Modèle rapide : ~2 Go VRAM, ~96× temps réel
+- Modèle qualité : ~17 Go VRAM (carte A100)
+
+Prochaine étape si on poursuit cette piste : vérifier la latence réelle sur un
+échantillon de dictées marchande (pas seulement la fiche du modèle), et
+comparer le coût d'hébergement face à Groq Whisper (`ÉTAT ACTUEL DU SYSTÈME`
+ci-dessous) avant toute décision de bascule — aucune langue locale n'est
+utilisable en STT aujourd'hui, donc n'importe quelle avancée ici est un pur
+ajout, pas un remplacement risqué du français qui marche déjà.
 
 ---
 
