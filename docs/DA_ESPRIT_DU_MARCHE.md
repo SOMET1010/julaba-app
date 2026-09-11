@@ -1,6 +1,6 @@
 # JULABA — L’esprit du marché
 
-Cette refonte applique une identité commune au front office et au back office du dépôt. Elle modifie la présentation des composants existants. Elle ne constitue pas une recette visuelle de chaque écran ni une validation d’un APK.
+Cette refonte applique une identité commune au front office et au back office du dépôt. Elle modifie la présentation des composants existants. Le complément « Entrer en confiance » ajoute une confirmation explicite du numéro avant la vérification existante. Elle ne constitue pas une recette visuelle de chaque écran ni une validation d’un APK.
 
 ## Direction artistique
 
@@ -56,3 +56,18 @@ La couverture par le thème partagé ne signifie pas que chaque mise en page a �
 | Android/hors-ligne | Barres système, clavier natif, voix et reprise après perte de connexion sur appareil |
 
 Ces vérifications nécessitent des comptes de recette et un environnement visuel exécutable. La réussite d’une compilation ne les remplace pas.
+
+## Complément validé : Entrer en confiance
+
+- `Welcome` remet Tata au centre, avec réécoute séparée et un véritable bouton Commencer. Toucher une zone vide n’avance plus par accident. Les logos institutionnels et le parcours de tutoriel existant sont conservés.
+- `LoginPassword` montre le titre de l’étape, le visage de Tata et la réécoute. Le numéro est regroupé par paires et peut être relu à la demande. Le bouton « C’est mon numéro » remplace l’avancement automatique au dixième chiffre.
+- La confirmation est désactivée tant que le numéro est invalide, pendant l’écoute, la finalisation de la transcription et la vérification serveur. Le contrôle serveur porte sur le numéro explicitement confirmé. Une correction requiert une nouvelle confirmation.
+- Les quatre positions du code restent masquées. Les touches sont agrandies et rectangulaires ; la correspondance chiffre/image existante et la préférence enregistrée sont conservées. Aucun microphone de dictée du code n’est ajouté.
+- Un compte mémorisé sans biométrie ouvre directement le code. Avec biométrie activée, l’accueil personnel propose Entrer, le code en secours et le changement de compte. Aucune photo fictive n’est utilisée : une silhouette remplace une photo absente.
+- La lecture vocale utilise les mécanismes locaux existants. La disponibilité de clips pour les nombres et les nouvelles consignes doit être vérifiée sur appareil ; l’interface ne garantit pas à elle seule la couverture audio hors ligne.
+
+Recette spécifique obligatoire avant fusion : vérifier qu’aucun appel `auth/check-phone` ne part à la simple saisie de dix chiffres ; confirmer un numéro valide et constater la transition ; corriger puis confirmer ; attendre la transcription finale avant confirmation ; vérifier un numéro inconnu, une erreur réseau, le retour, un compte partagé et le code erroné. Contrôler aussi la conservation de la correspondance des dix images et l’absence de lecture du code.
+
+Contrôles du complément : les commandes `test:comptes`, `test:clavierimg` et `test:frenchdigits` ont été tentées via le lanceur normal et échouent avant les assertions sur `listen EPERM`. Aucun autre lanceur n’a été utilisé. La recette interactive du nouveau bouton de confirmation reste non exécutée localement.
+
+Sur ce complément, `npm run typecheck`, `npm run build` et `git diff --check` réussissent (codes de sortie 0). Le blocage de dépendances TypeScript décrit dans l’historique ci-dessus n’est plus présent ; le blocage IPC des tests demeure.

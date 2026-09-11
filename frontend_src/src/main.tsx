@@ -11,6 +11,7 @@ import './styles/index.css';
 import './styles/tokens.css';
 import './styles/soleil.css';
 import './styles/commerce.css';
+import './styles/login.css';
 // Mode SOLEIL (confort visuel) : ré-applique le choix mémorisé dès le démarrage.
 import { appliquerConfortAuDemarrage } from './app/utils/confortVisuel';
 appliquerConfortAuDemarrage();
