@@ -28,10 +28,14 @@ const DB_VERSION = 2; // v1→v2 : ajout additif du store des lettres mortes.
 export const REPLAY_CAP = 5;
 
 export type CaisseEndpoint = '/caisse/vente' | '/caisse/depense';
+export type StockEndpoint = `/stocks/${string}`;
+export type OfflineEndpoint = CaisseEndpoint | StockEndpoint;
+export type OfflineMethod = 'POST' | 'PATCH';
 
 export interface OperationCaisse {
   id: string;                 // clé d'idempotence (uuid)
-  endpoint: CaisseEndpoint;
+  endpoint: OfflineEndpoint;
+  method?: OfflineMethod;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: any;
   ts: number;
@@ -200,12 +204,13 @@ function defaultStore(): OutboxStore {
 /** Ajoute une opération à la file durable. Réutilise `idempotency_key` comme id
  *  si présente (envoi en ligne échoué), pour que le rejeu envoie la MÊME clé. */
 export async function enfilerOperation(
-  endpoint: CaisseEndpoint,
+  endpoint: OfflineEndpoint,
   payload: unknown,
   store: OutboxStore = defaultStore(),
+  method: OfflineMethod = 'POST',
 ): Promise<string> {
   const cle = (payload as { idempotency_key?: string } | null)?.idempotency_key;
-  const op: OperationCaisse = { id: cle || uuid(), endpoint, payload, ts: Date.now() };
+  const op: OperationCaisse = { id: cle || uuid(), endpoint, method, payload, ts: Date.now() };
   await store.enqueue(op);
   return op.id;
 }
@@ -230,8 +235,8 @@ export async function purgerLettreMorte(id: string, store: OutboxStore = default
  * Rejoue les opérations en attente selon la politique 4xx/5xx.
  * @returns { ok, reste (actives), echecs (lettres mortes) }
  */
-export async function synchroniser(
-  poster: (endpoint: CaisseEndpoint, payload: unknown) => Promise<void>,
+export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
+  poster: (endpoint: E, payload: unknown, method: OfflineMethod) => Promise<void>,
   store: OutboxStore = defaultStore(),
 ): Promise<{ ok: number; reste: number; echecs: number }> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -241,7 +246,7 @@ export async function synchroniser(
   let ok = 0;
   for (const op of ops) {
     try {
-      await poster(op.endpoint, { ...op.payload, idempotency_key: op.id });
+      await poster(op.endpoint as E, { ...op.payload, idempotency_key: op.id }, op.method || 'POST');
       await store.remove(op.id);
       ok++;
     } catch (e) {

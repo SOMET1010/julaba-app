@@ -134,6 +134,59 @@ export class StocksRestController {
 
   @Patch(':id')
   async update(@Param('id') id: string, @Body() body: any, @CurrentUser() user: User) {
+    const key = typeof body.idempotency_key === 'string' ? body.idempotency_key.trim() : '';
+    const execute = async (manager: typeof this.repo.manager) => {
+      if (user.role === 'cooperateur' || user.role === 'producteur') {
+        await manager.query(
+          `UPDATE stocks SET produit=COALESCE($1,produit), quantite=COALESCE($2,quantite),
+           prix_achat=COALESCE($3,prix_achat), prix_vente=COALESCE($4,prix_vente),
+           unite=COALESCE($5,unite), categorie=COALESCE($6,categorie), seuil_alerte=COALESCE($7,seuil_alerte),
+           image=COALESCE($8,image), updated_at=now()
+           WHERE id=$9 AND proprietaire_id=$10`,
+          [body.nom||body.produit||null, body.quantite!=null?Number(body.quantite):null,
+           body.prix_achat!=null?Number(body.prix_achat):null,
+           body.prix_vente!=null?Number(body.prix_vente):body.prix!=null?Number(body.prix):null,
+           body.unite||null, body.categorie||null,
+           body.seuil_alerte!=null?Number(body.seuil_alerte):null,
+           body.image||null, id, user.id]
+        );
+      } else {
+        await manager.query(
+          `UPDATE produits SET nom=COALESCE($1,nom), stock=COALESCE($2,stock), prix=COALESCE($3,prix),
+           prix_achat=COALESCE($4,prix_achat), unite=COALESCE($5,unite), categorie=COALESCE($6,categorie),
+           seuil_alerte=COALESCE($7,seuil_alerte), date_peremption=COALESCE($8,date_peremption),
+           prix_promo=CASE WHEN $11::boolean THEN $9 ELSE prix_promo END,
+           promo_fin=CASE WHEN $11::boolean THEN $10 ELSE promo_fin END, updated_at=now()
+           WHERE id=$12 AND marchand_id=$13`,
+          [body.nom||body.produit||null, body.quantite!=null?Number(body.quantite):null,
+           body.prix!=null?Number(body.prix):null,
+           body.prix_achat!=null?Number(body.prix_achat):null,
+           body.unite||null, body.categorie||null,
+           body.seuil_alerte!=null?Number(body.seuil_alerte):null,
+           body.date_peremption||null,
+           body.prix_promo != null && body.prix_promo !== '' ? Number(body.prix_promo) : null,
+           body.promo_fin || null,
+           Object.prototype.hasOwnProperty.call(body, 'prix_promo'), id, user.id]
+        );
+      }
+    };
+    if (key) {
+      const applied = await this.repo.manager.transaction(async (manager) => {
+        const inserted = await manager.query(
+          `INSERT INTO stock_operation_idempotency (idempotency_key, stock_id, marchand_id)
+           VALUES ($1, $2, $3) ON CONFLICT (idempotency_key) DO NOTHING
+           RETURNING idempotency_key`,
+          [key, id, user.id],
+        );
+        if (inserted.length === 0) return false;
+        await execute(manager);
+        return true;
+      });
+      return { success: true, replayed: !applied };
+    }
+    await execute(this.repo.manager);
+    return { success: true };
+    /*
     if (user.role === 'cooperateur' || user.role === 'producteur') {
       await this.repo.manager.query(
         `UPDATE stocks SET produit=COALESCE($1,produit), quantite=COALESCE($2,quantite),
@@ -169,6 +222,7 @@ export class StocksRestController {
        id, user.id]
     );
     return { success: true };
+    */
   }
 
   @Delete(':id')

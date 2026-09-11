@@ -1,5 +1,10 @@
-import { initSentry } from "./sentry";
-initSentry();
+// Sentry (+ intégrations tracing/replay) pèse ~350 Ko à lui seul dans le
+// bundle initial une fois importé statiquement — hors budget (chunkSizeWarning
+// à 600 Ko, budget de bundle initial à 800 Ko). Import dynamique : Vite le met
+// dans son propre chunk, chargé en parallèle sans bloquer/alourdir l'entrée.
+// Démarré tout de suite (pas différé comme les blocs plus bas) pour garder la
+// capture d'erreurs quasi aussi précoce qu'avant.
+import('./sentry').then(({ initSentry }) => initSentry()).catch(() => { /* ignore */ });
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './app/App';

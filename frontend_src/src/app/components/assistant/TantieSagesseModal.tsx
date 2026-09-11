@@ -14,8 +14,8 @@ import { useVoiceCore, type VoiceState as VoiceStep } from '../../hooks/useVoice
 import { useObjectif } from '../../contexts/ObjectifContext';
 import { stopAllAudio, stopChunkedSpeaking, preloadAudioContext } from '../../services/elevenlabs';
 import { unlockAudioContextIOS } from '../../services/earlyAudioCache';
-import { apiRequest } from '../../services/api/api-client';
-import { API_URL } from '../../utils/api';
+import { executerActionTataMarchand } from '../../services/tataMarchandActions';
+import { toast } from 'sonner';
 import tataLouImg from "../../../assets/images/tantie-portrait.png";
 import tantieVenteImg from "../../../assets/images/tantie-vente-vocale.png";
 
@@ -54,12 +54,12 @@ const STEP_CONFIG: Record<VoiceStep, { label: string; icon: React.ReactNode; col
 function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'onClose' | 'role'>) {
   const { user, currentSession, getTodayStats, getFinancialSummary, openDay, closeDay } = useApp();
   const { lang: selectedLang } = useLangPref();
-  const { enregistrerVente, refreshTransactions } = useCaisse();
+  const { enregistrerVente, enregistrerDepense } = useCaisse();
   const stockCtx = useStock();
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
   const progression = objectifCtx?.progression ?? 0;
-  const topStocks = (stockCtx.stocks || []).slice(0,3).map((s:any) => `${s.name}:${s.quantity}${s.unit}`).join(', ');
+  const topStocks = (stockCtx.stocks || []).slice(0,3).map((s) => `${s.produit}:${s.quantite}${s.unite}`).join(', ');
   const stats = getTodayStats ? getTodayStats() : { caisse: 0, ventes: 0, depenses: 0 };
   // V4 : meilleure vente du jour, pour répondre à « quelle est ma meilleure vente ? ».
   const meilleureVente = (() => {
@@ -99,44 +99,31 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
         return;
       }
       try {
-        if (action.type === 'vendre' && action.montant) {
-          await enregistrerVente(
-            action.montant,
-            [{ nom: action.produit || 'Produit', quantite: action.quantite || 1, prix_unitaire: Math.round(action.montant / (action.quantite || 1)) }],
-            'cash', 'Vente ' + (action.produit || 'vocale')
-          );
-          try { await refreshTransactions(); } catch (e) { void e; }
-        } else if ((action.type === 'depense' || (action.montant && !action.type)) && action.montant) {
-          await apiRequest(API_URL, '/caisse/depense', {
-            method: 'POST',
-            body: JSON.stringify({
-              montant: action.montant,
-              description: action.description || 'Dépense vocale',
-            }),
-          });
-          try { await refreshTransactions(); } catch (e) { void e; }
-        } else if (action.type === 'ajouter_stock' && action.produit && action.quantite) {
-          const stocks = stockCtx.stocks || [];
-          const found = stocks.find((s: any) =>
-            s.name?.toLowerCase().includes((action.produit ?? '').toLowerCase()) ||
-            s.nom?.toLowerCase().includes((action.produit ?? '').toLowerCase())
-          );
-          if (found) {
-            const newQty = (found.quantite || 0) + Number(action.quantite);
-            stockCtx.updateStock(found.id, { quantite: newQty });
-          }
-        } else if (action.type === 'ouvrir_journee') {
+        const outcome = await executerActionTataMarchand(action, {
+          produits: (stockCtx.stocks || []).map((stock) => ({
+            id: stock.id,
+            nom: stock.produit,
+            prix_achat: stock.prixAchat ?? stock.prixUnitaire,
+            quantite: stock.quantite,
+          })),
+          enregistrerVente,
+          enregistrerDepense,
+          mettreAJourStock: stockCtx.updateStock,
+        });
+        if (outcome.kind === 'stock_unknown') {
+          toast.info('Produit non trouvé : choisissez-le depuis la fiche stock avant de confirmer.');
+        } else if (outcome.kind === 'not_handled' && action.type === 'ouvrir_journee') {
           const montant = action.montant || 0;
           await openDay(montant);
-        } else if (action.type === 'fermer_journee') {
+        } else if (outcome.kind === 'not_handled' && action.type === 'fermer_journee') {
           await closeDay(action.montant || 0);
-        } else if (action.type === 'marche' || action.type === 'voir_marche') {
+        } else if (outcome.kind === 'not_handled' && (action.type === 'marche' || action.type === 'voir_marche')) {
           onClose();
           navigate('/' + role + '/marche');
-        } else if (action.type === 'commandes') {
+        } else if (outcome.kind === 'not_handled' && action.type === 'commandes') {
           onClose();
           navigate('/' + role + '/commandes');
-        } else if (action.type === 'navigate' && action.path) {
+        } else if (outcome.kind === 'not_handled' && action.type === 'navigate' && action.path) {
           onClose();
           navigate(action.path);
         }
