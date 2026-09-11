@@ -10,7 +10,9 @@
 - [x] Étendre la file durable au rejeu typé des mises à jour de stock existant, avec méthode HTTP et clé d’idempotence conservées.
 - [x] Faire exécuter l’action Tata `ajouter_stock` uniquement sur un produit existant et mettre l’ajustement dans cette file hors ligne.
 - [ ] Exécuter la migration `StockOperationIdempotence` dans l’environnement cible avec `DB_MIGRATIONS_RUN=true` avant publication.
-- [ ] Créer une branche dédiée à la mise à niveau des dépendances vulnérables puis valider les régressions.
+- [x] Créer une branche dédiée à la mise à niveau des dépendances vulnérables puis valider les régressions.
+- [x] Mettre à niveau React Router vers la version corrective 7.18.3 et valider le routage Julaba.
+- [x] Documenter les alertes NestJS et ExcelJS qui ne peuvent pas être corrigées sans mise à niveau majeure ou validation métier dédiée.
 
 ## P1 — Inclusion et autonomie
 
