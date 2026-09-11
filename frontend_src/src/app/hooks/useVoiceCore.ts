@@ -10,6 +10,7 @@ import { API_URL } from "../utils/api";
 // Offline-first : STT sur l'appareil + compréhension locale (sans réseau ni LLM).
 import { transcribeWav, offlineModelReady, ensureOfflineModel } from "../voice-offline/offlineStt";
 import { intentLocal } from "../voice-offline/localIntent";
+import { shouldQueueVoiceAction } from "../voice-offline/offlineVoicePolicy";
 // V4 : questions « chiffres du jour » (lecture seule), consultées APRÈS intentLocal.
 import { detecterQuestion, phraseReponse, type ChiffresJour } from "../services/intentionsCaisse";
 import { preloadEarlyAudios } from "../services/earlyAudioCache";
@@ -21,7 +22,9 @@ import {
 import * as audioManager from "../services/audioManager";
 import { tataClipUrl } from "../services/tataVoice";
 import { tataUiClipForText } from "../services/tataUiClips";
+import { playTataChoice, resolveLocalVoiceChoice } from "../services/localVoiceChoice";
 import { useOfflineVoiceQueue } from "./useOfflineVoiceQueue";
+import { dispatchVoiceAction } from "../voice-offline/offlineVoiceDispatch";
 
 // ─── TYPES ───────────────────────────────────────────────────────
 
@@ -248,22 +251,23 @@ function startTypewriter(
 async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): Promise<void> {
   if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') return;
   if (lang === "french") {
-    // Clip enregistré prioritaire : clé explicite, sinon correspondance auto du texte.
-    // Le chef d'orchestre joue le clip et, s'il est INDISPONIBLE, bascule sur la voix
-    // de secours DANS LE MÊME créneau exclusif (pas de chevauchement ; l'annulation
-    // — micro tapé, navigation… — est gérée par le manager, plus d'« époque » ad hoc).
+    // Choix B : clip Tata enregistré ou texte seul. Jamais de voix navigateur.
     const clipUrl = (clip ? tataClipUrl(clip) : null) || tataUiClipForText(text) || undefined;
-    await audioManager.speakClipOrText({ clipUrl, text }, { priority: "user" });
+    const choice = resolveLocalVoiceChoice(clipUrl);
+    if (choice.mode === "clip") {
+      await playTataChoice(choice, (url) => audioManager.playClip({ url }, { priority: "user" }));
+    } else if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('julaba:voice-pack-missing', { detail: { lang, kind: 'clip' } }));
+    }
     return;
   }
-  // Dioula/Bambara : la requête réseau (fetchTTSLocal/ANSUT) ET la lecture sont dans
-  // UN SEUL job annulable. Si l'utilisatrice coupe la voix (micro, navigation) PENDANT
-  // la requête, la génération capturée est périmée → rien ne repart après le Stop.
-  await audioManager.speakDynamic(async () => {
-    const { fetchTTSLocal } = await import("../services/elevenlabs");
-    const base64 = await fetchTTSLocal(text, lang);
-    return base64 ? { base64 } : { text };
-  }, { priority: "user" });
+  // Dioula/Bambara : aucun appel réseau n’est autorisé dans le runtime marchand.
+  // Une voix locale ne sera jouée que lorsqu’un pack Tata embarqué aura été fourni.
+  // En attendant, le texte reste visible et l’application ne feint pas de traduire.
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('julaba:voice-pack-missing', { detail: { lang } }));
+  }
+  console.info(`[voice] Pack vocal local ${lang} absent : lecture ignorée sans appel réseau`);
 }
 
 async function ttsPlayBase64(base64: string, fallback: string): Promise<void> {
@@ -346,6 +350,21 @@ export function useVoiceCore({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [volume, setVolume] = useState(0);
   const [recentIntents, setRecentIntents] = useState<string[]>([]);
+
+  useEffect(() => {
+    const onVoicePackMissing = (event: Event) => {
+      const detail = event as CustomEvent<{ lang?: string; kind?: string }>;
+      const isFrenchClip = detail.detail?.lang === 'french' && detail.detail?.kind === 'clip';
+      const lang = detail.detail?.lang === 'bambara' ? 'Bambara' : 'Dioula';
+      const message = isFrenchClip
+        ? "Cette réponse est affichée. Son clip Tata Nanti Lou n’est pas encore enregistré."
+        : `Le pack vocal ${lang} n’est pas encore installé. Le texte reste disponible, sans utiliser Internet.`;
+      setError(message);
+      setLiveTranscript(message);
+    };
+    window.addEventListener('julaba:voice-pack-missing', onVoicePackMissing);
+    return () => window.removeEventListener('julaba:voice-pack-missing', onVoicePackMissing);
+  }, []);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -587,11 +606,24 @@ export function useVoiceCore({
     // pour qu'une commande non enregistrée ne soit jamais comptée « réussie ».
     let enregistre = false;
     if (!interruptRef.current && onAction && data.action?.type !== "none") {
+      const isOnline = typeof navigator === "undefined" || navigator.onLine !== false;
+      const dispatch = await dispatchVoiceAction({
+        isOnline,
+        hasAction: true,
+        text: userText || data.normalizedText || data.transcript,
+        context,
+        enqueue,
+        execute: async () => { await onAction(data); },
+      });
+      if (dispatch.status === "queued") {
+        setLiveTranscript(dispatch.message);
+        setState("idle");
+        return true;
+      }
       // #4 : ne plus avaler une erreur d'enregistrement en silence -> la montrer
       // et la dire (ex. « ouvre ta journée d'abord »), au lieu d'un faux succès.
       try {
-        await onAction(data);
-        enregistre = true;
+        if (dispatch.status === "executed") enregistre = true;
       } catch (e) {
         const m = e instanceof Error ? e.message : "Enregistrement impossible.";
         console.warn('[voice]', e);
@@ -607,7 +639,7 @@ export function useVoiceCore({
       trackTimeout(() => { setState("idle"); setLiveTranscript(""); }, 1000);
     }
     return enregistre;
-  }, [addToHistory, addIntent, onAction, onNavigate, clearTypewriter, clearThinkingTimer, trackTimeout]);
+  }, [addToHistory, addIntent, onAction, onNavigate, clearTypewriter, clearThinkingTimer, trackTimeout, enqueue, context]);
 
   // ── Handle response ──────────────────────────────────────────
   const handleResponse = useCallback(async (raw: Partial<VoiceProcessResponse>, userText: string): Promise<boolean> => {

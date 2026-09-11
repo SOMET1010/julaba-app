@@ -4,8 +4,6 @@
  * Tous les appels TTS passent par ElevenLabs via l'endpoint /tts/openai (nom historique)
  */
 
-import { API_URL } from "../utils/api";
-
 // ─────────────────────────────────────────────────────────────────
 // CACHE TTS
 // ─────────────────────────────────────────────────────────────────
@@ -338,41 +336,12 @@ export async function speakChunked(
 // ─────────────────────────────────────────────────────────────────
 
 export async function fetchTTSLocal(text: string, lang: TTSLang = "french", timeoutMs = 10000): Promise<string | null> {
-  if (!text?.trim()) return null;
-  if (lang === "french") {
-    stopAllAudio();
-    return fetchTTS(text, undefined, timeoutMs);
-  }
-  const key = `${lang}:${normalizeKey(text)}`;
-  const cached = cacheGet(key);
-  if (cached) return cached;
-  const existing = _inflight.get(key);
-  if (existing) return existing;
-  const promise = (async (): Promise<string | null> => {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      const res = await fetch(`${API_URL}/tts/speak-local`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, lang }),
-        signal: controller.signal,
-      });
-      clearTimeout(timer);
-      if (!res.ok) return fetchTTS(text);
-      const json = await res.json();
-      const base64 = (json.success && json.audio) ? json.audio : null;
-      if (base64) cacheSet(key, base64);
-      return base64 ?? fetchTTS(text);
-    } catch {
-      return fetchTTS(text);
-    } finally {
-      _inflight.delete(key);
-    }
-  })();
-  _inflight.set(key, promise);
-  return promise;
+  // La synthèse distante est interdite pendant les parcours marchands.
+  // Les futurs packs Dioula/Bambara devront fournir des clips Tata embarqués.
+  void text;
+  void lang;
+  void timeoutMs;
+  return null;
 }
 
 async function speakWithLang(text: string, lang: TTSLang = "french"): Promise<void> {
