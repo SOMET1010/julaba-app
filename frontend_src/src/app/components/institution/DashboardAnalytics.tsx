@@ -39,7 +39,7 @@ import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
 
 const INSTITUTION_COLOR = '#712864';
-const COLORS = ['#712864', '#2072AF', '#2E8B57', '#C66A2C', '#9F8170'];
+const COLORS = ['#712864', '#2072AF', '#2E8B57', '#B74725', '#9F8170'];
 
 type PeriodeGraphique = '7jours' | '30jours' | '90jours' | '1an';
 
@@ -90,7 +90,7 @@ export function DashboardAnalytics() {
   };
   // Données pour graphique par rôle (répartition acteurs)
   const donneesRepartitionActeurs = [
-    { name: 'Marchands', value: statsRoles.marchands.total, color: '#C66A2C' },
+    { name: 'Marchands', value: statsRoles.marchands.total, color: '#B74725' },
     { name: 'Producteurs', value: statsRoles.producteurs.total, color: '#2E8B57' },
     { name: 'Coopératives', value: statsRoles.cooperatives.total, color: '#2072AF' },
     { name: 'Identificateurs', value: statsRoles.identificateurs.total, color: '#9F8170' },
@@ -347,7 +347,7 @@ export function DashboardAnalytics() {
       {/* Stats par Rôle */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Marchands */}
-        <Card className="p-6 border-l-4" style={{ borderLeftColor: '#C66A2C' }}>
+        <Card className="p-6 border-l-4" style={{ borderLeftColor: '#B74725' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-900">Marchands</h3>
             <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">

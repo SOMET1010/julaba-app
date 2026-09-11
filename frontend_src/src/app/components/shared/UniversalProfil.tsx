@@ -70,7 +70,7 @@ export const ROLE_CONFIG: Record<
   }
 > = {
   marchand: {
-    color: '#C66A2C',
+    color: '#B74725',
     label: 'Marchand',
     version: 'Jùlaba Marchand v1.0',
     profileIcon: Store,

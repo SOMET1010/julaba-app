@@ -861,7 +861,7 @@ export function BOActeurs() {
                   height: 22,
                   padding: '0 7px',
                   borderRadius: 999,
-                  background: isActive ? 'rgba(255,255,255,0.22)' : '#F5F2ED',
+                  background: isActive ? 'rgba(255,255,255,0.22)' : '#F6F0E4',
                   color: isActive ? '#fff' : '#5B5248',
                   fontSize: 11,
                   fontWeight: 500,
@@ -875,8 +875,8 @@ export function BOActeurs() {
         })}
       </div>
 
-      {/* Section Vue d'ensemble — Charter v1.0 fond pastel #F5F2ED */}
-      <div style={{ background: '#F5F2ED', borderRadius: 20, padding: 20, marginBottom: 20 }}>
+      {/* Section Vue d'ensemble — Charter v1.0 fond pastel #F6F0E4 */}
+      <div style={{ background: '#F6F0E4', borderRadius: 20, padding: 20, marginBottom: 20 }}>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -909,7 +909,7 @@ export function BOActeurs() {
           label="En attente"
           animatedTarget={kpiCounts.enAttente}
           icon={Clock}
-          color="#C46210"
+          color="#B74725"
           iconAnimation="float"
           active={filterStatut === 'en_attente'}
           onClick={() => setFilterStatut(filterStatut === 'en_attente' ? 'all' : 'en_attente')}
@@ -941,7 +941,7 @@ export function BOActeurs() {
             label="Sans RSTI"
             animatedTarget={alertesCounts.sansRsti}
             icon={CameraOff}
-            color="#C46210"
+            color="#B74725"
             iconAnimation="float"
             active={filterAlerte === 'sans_photo'}
             onClick={() => setFilterAlerte(filterAlerte === 'sans_photo' ? 'all' : 'sans_photo')}
@@ -979,8 +979,8 @@ export function BOActeurs() {
       </div>
       {/* Fin section Vue d'ensemble */}
 
-      {/* Section Liste — Charter v1.0 fond pastel #F5F2ED */}
-      <div style={{ background: '#F5F2ED', borderRadius: 20, padding: 20 }}>
+      {/* Section Liste — Charter v1.0 fond pastel #F6F0E4 */}
+      <div style={{ background: '#F6F0E4', borderRadius: 20, padding: 20 }}>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

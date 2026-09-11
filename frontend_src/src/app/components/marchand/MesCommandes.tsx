@@ -341,15 +341,15 @@ export function MesCommandes() {
                 </div>
               </div>
               <div className="border-t mt-4 pt-4 flex items-center justify-between">
-                <span className="font-black text-lg" style={{ color: '#C66A2C' }}>Total général</span>
-                <span className="font-black text-xl" style={{ color: '#C66A2C' }}>
+                <span className="font-black text-lg" style={{ color: '#B74725' }}>Total général</span>
+                <span className="font-black text-xl" style={{ color: '#B74725' }}>
                   {montantsParStatut.total.toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMontantModal(false)}
-                className="w-full rounded-2xl bg-[#C66A2C] text-white mt-4 py-3 font-semibold"
+                className="w-full rounded-2xl bg-[#B74725] text-white mt-4 py-3 font-semibold"
               >
                 Fermer
               </button>
@@ -481,7 +481,7 @@ export function MesCommandes() {
                 onClick={() => setFiltreType(f.key)}
                 className={`px-4 py-2 rounded-full text-sm font-medium flex-1 min-w-[calc(33%-8px)] transition-colors ${
                   filtreType === f.key
-                    ? 'bg-[#C66A2C] text-white'
+                    ? 'bg-[#B74725] text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -506,7 +506,7 @@ export function MesCommandes() {
                 onClick={() => setFiltreStatut(f.key)}
                 className={`px-4 py-2 rounded-full text-sm font-medium flex-1 min-w-[calc(33%-8px)] transition-colors ${
                   filtreStatut === f.key
-                    ? 'bg-[#C66A2C] text-white'
+                    ? 'bg-[#B74725] text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >

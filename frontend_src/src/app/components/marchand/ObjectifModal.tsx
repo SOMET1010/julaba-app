@@ -8,7 +8,7 @@ import { startLiveDictation, offlineModelReady } from '../../voice-offline/offli
 import { extraireNombreBambara } from '../../voice-offline/nombresBambara';
 import { vibrerSucces, vibrerTic } from '../../utils/haptique';
 
-const P = '#C46210';
+const P = '#B74725';
 const SUGGESTIONS = [10000, 25000, 50000, 100000, 200000];
 
 interface Props { isOpen: boolean; onClose: () => void; }

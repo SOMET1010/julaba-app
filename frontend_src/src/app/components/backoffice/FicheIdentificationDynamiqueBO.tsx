@@ -155,10 +155,10 @@ interface StepConfig {
 const PROFILES: Record<string, ProfileConfig> = {
   marchand: {
     label: 'Marchand',
-    color: '#C66A2C',
+    color: '#B74725',
     colorDark: '#A3551F',
     lightColor: 'rgba(198,106,44,0.12)',
-    borderColor: '#C66A2C',
+    borderColor: '#B74725',
     gradientFrom: 'from-orange-50',
     gradientBg: 'linear-gradient(135deg, #FFF7ED 0%, #FFFBF5 100%)',
     icon: Store,

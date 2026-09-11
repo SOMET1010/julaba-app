@@ -18,7 +18,7 @@ import { NotificationButton } from './NotificationButton';
 import { SubPageLayout } from '../layout/SubPageLayout';
 
 const P = '#AF5B23';
-const BG = '#FFF2E9';
+const BG = '#F6F0E4';
 // Pilote ESPÈCES : crédit désactivé (cf. POSCaisse CAISSE_CREDIT_ACTIF=false, #16-B).
 // On masque aussi l'onglet « Crédits » ici pour rester cohérent avec la caisse.
 const CAISSE_CREDIT_ACTIF = false;

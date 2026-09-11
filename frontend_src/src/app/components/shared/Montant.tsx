@@ -150,7 +150,7 @@ interface MontantCardProps {
 
 export function MontantCard({
   children,
-  accentColor = '#C46210',
+  accentColor = '#B74725',
   className = '',
   noShimmer = false,
 }: MontantCardProps) {

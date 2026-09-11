@@ -330,7 +330,7 @@ export function RecolteForm() {
             {/* ── Header vert ── */}
             <div
               className="px-6 py-5 flex items-start justify-between flex-shrink-0"
-              style={{ background: `linear-gradient(135deg, ${COLOR}, #3BA869)` }}
+              style={{ background: COLOR }}
             >
               <div>
                 <h2 className="text-2xl font-black text-white flex items-center gap-2">

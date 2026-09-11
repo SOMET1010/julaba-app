@@ -786,7 +786,7 @@ export function Membres() {
               <div className="relative">
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl text-white border-2"
-                  style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})`, borderColor: C }}
+                  style={{ background: C, borderColor: C }}
                 >
                   {initiales}
                 </div>
@@ -1117,7 +1117,7 @@ export function Membres() {
                     onClick={() => void handleRechercherMarchand()}
                     disabled={addSearchLoading || addTelRecherche.replace(/\D/g, '').length !== 10}
                     className="shrink-0 rounded-2xl px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
-                    style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})` }}
+                    style={{ background: C }}
                     whileTap={{ scale: 0.97 }}
                   >
                     {addSearchLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Chercher'}
@@ -1157,7 +1157,7 @@ export function Membres() {
                       }`}
                       style={
                         addRoleMembre === value
-                          ? { borderColor: C, background: `linear-gradient(135deg, ${C}, ${C_DARK})` }
+                          ? { borderColor: C, background: C }
                           : {}
                       }
                       whileTap={{ scale: 0.98 }}
@@ -1174,7 +1174,7 @@ export function Membres() {
                 type="button"
                 onClick={() => void handleAjouterMarchand()}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white"
-                style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})` }}
+                style={{ background: C }}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.97 }}
               >
@@ -1549,7 +1549,7 @@ export function Membres() {
                       {([{ id: 'all', label: 'Tous', color: '' }, { id: 'haut', label: '71-100', color: 'text-green-700 bg-green-50 border-green-200' }, { id: 'moyen', label: '41-70', color: 'text-orange-700 bg-orange-50 border-orange-200' }, { id: 'bas', label: '0-40', color: 'text-red-700 bg-red-50 border-red-200' }] as const).map(({ id, label, color }) => (
                         <motion.button key={id} onClick={() => { setFilterPerf(id); setPage(1); }}
                           className={`py-2 rounded-xl border-2 text-xs font-bold text-center ${filterPerf === id ? (id === 'all' ? 'text-white border-transparent' : (color || '')) : 'border-gray-200 text-gray-500'}`}
-                          style={filterPerf === id && id === 'all' ? { background: `linear-gradient(135deg, ${C}, ${C_DARK})` } : {}} whileTap={{ scale: 0.95 }}
+                          style={filterPerf === id && id === 'all' ? { background: C } : {}} whileTap={{ scale: 0.95 }}
                         >{label}</motion.button>
                       ))}
                     </div>
@@ -1561,7 +1561,7 @@ export function Membres() {
                         {([{ id: 'all', label: 'Tous' }, { id: 'actif', label: 'Actifs' }, { id: 'suspendu', label: 'Suspendus' }] as const).map(({ id, label }) => (
                           <motion.button key={id} onClick={() => { setFilterStatut(id); setPage(1); }}
                             className={`py-2 rounded-xl border-2 text-xs font-bold ${filterStatut === id ? 'text-white border-transparent' : 'border-gray-200 text-gray-500'}`}
-                            style={filterStatut === id ? { background: `linear-gradient(135deg, ${C}, ${C_DARK})` } : {}} whileTap={{ scale: 0.95 }}
+                            style={filterStatut === id ? { background: C } : {}} whileTap={{ scale: 0.95 }}
                           >{label}</motion.button>
                         ))}
                       </div>
@@ -1639,7 +1639,7 @@ export function Membres() {
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
                     page === p ? 'text-white border-transparent' : 'bg-white border-gray-200 text-gray-600'
                   }`}
-                  style={page === p ? { background: `linear-gradient(135deg, ${C}, ${C_DARK})` } : {}}
+                  style={page === p ? { background: C } : {}}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
@@ -1714,7 +1714,7 @@ export function Membres() {
         aria-label="Ajouter un membre"
         onClick={() => setShowAddModal(true)}
         className="fixed bottom-24 right-4 z-[120] flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg lg:bottom-8"
-        style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})` }}
+        style={{ background: C }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >

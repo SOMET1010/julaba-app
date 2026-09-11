@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Zap, Plus, Trash2, Mic, ShoppingCart, BookOpen, Target, Navigation } from 'lucide-react';
 import { useRaccourcis } from '../../contexts/RaccourcisContext';
 
-const P = '#C46210';
+const P = '#B74725';
 
 const TYPES = [
   { id: 'vente',     label: 'Vente rapide',      Icon: ShoppingCart, color: '#16A34A' },

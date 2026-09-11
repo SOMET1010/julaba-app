@@ -221,7 +221,7 @@ export function BOMarketplace() {
           animatedTarget={counts.ca_total}
           suffix="FCFA"
           icon={TrendingUp}
-          color="#C66A2C"
+          color="#B74725"
         />
       </KPIGrid>
 

@@ -9,7 +9,7 @@ import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 const COLORS: Record<string, string> = {
-  marchand: "#C66A2C",
+  marchand: "#B74725",
   producteur: "#2E8B57",
   cooperative: "#1D4ED8",
   identificateur: "#7C3AED",

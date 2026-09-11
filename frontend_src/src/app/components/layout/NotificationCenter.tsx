@@ -19,7 +19,7 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
   const { user: contextUser } = useUser();
   const activeUser = contextUser || appUser;
   const userId = activeUser?.id || '';
-  const accentColor = getRoleColor(activeUser?.role as any) || '#C46210';
+  const accentColor = getRoleColor(activeUser?.role as any) || '#B74725';
 
   return (
     <NotificationsPanel

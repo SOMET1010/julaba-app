@@ -10,7 +10,7 @@ import { fr } from 'date-fns/locale';
 import { TATA_LOU_BLEU as TATA_BLEU } from '../../assets/cloudinary-images';
 
 const P = '#AF5B23';
-const BG = '#FFF2E9';
+const BG = '#F6F0E4';
 
 type Period = 'today' | 'month' | 'all';
 
@@ -42,9 +42,9 @@ const CAT_RULES: { id: string; label: string; keywords: string[]; color: string;
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
   },
   {
-    id: 'telephone', label: 'Téléphone', color: '#C46210', bg: '#FFF8F0', border: '#f5d5a8',
+    id: 'telephone', label: 'Téléphone', color: '#B74725', bg: '#F6F0E4', border: '#f5d5a8',
     keywords: ['telephone','téléphone','credit','crédit','forfait','airtime','mtn','orange','moov','wave','recharge'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C46210" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B74725" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
   },
   {
     id: 'famille', label: 'Famille', color: '#E24B4A', bg: '#FFF0F0', border: '#fca5a5',

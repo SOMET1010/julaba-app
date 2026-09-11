@@ -1,0 +1,40 @@
+/* Entrer en confiance — presentation shared by Welcome and LoginPassword. */
+.login-welcome,.login-page{color:var(--encre);background:var(--commerce-paper);min-height:100dvh}
+.login-welcome{display:flex;flex-direction:column;align-items:center;padding:max(24px,env(safe-area-inset-top)) 24px max(20px,env(safe-area-inset-bottom))}
+.login-brand{display:flex;align-items:center;justify-content:center;gap:10px}
+.login-logo{display:block;width:130px;aspect-ratio:841.89 / 205;overflow:hidden}
+.login-logo img{display:block;width:100%;max-width:none;height:auto;filter:brightness(0)}
+html.dark .login-logo img{filter:brightness(0) invert(1)}
+.login-welcome-body{width:100%;max-width:380px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 0;text-align:center}
+.login-tata-welcome{position:relative;border:0;background:transparent;padding:0;cursor:pointer}
+.login-tata-welcome>img{width:clamp(150px,47vw,220px);aspect-ratio:1;object-fit:cover;border-radius:50%}
+.login-replay{display:grid;place-items:center;width:54px;height:54px;border-radius:50%;background:var(--commerce-surface);border:2px solid var(--commerce-green);color:var(--commerce-green)}
+.login-tata-welcome .login-replay{position:absolute;right:-8px;bottom:10px}
+.login-welcome h1{font-size:36px;font-weight:800;margin:24px 0 8px;line-height:1.15}
+.login-welcome p{font-size:18px}
+.login-welcome-actions{width:100%;max-width:380px}
+.login-primary{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;min-height:64px;padding:14px;border:0;border-radius:14px;background:var(--commerce-action);color:white;font-size:20px;font-weight:750;cursor:pointer}
+.login-primary:disabled{opacity:.5;cursor:not-allowed}
+.login-help{display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:10px;margin:8px auto;color:var(--encre-2);cursor:pointer}
+.login-partners{display:flex;justify-content:center;align-items:center;gap:24px;padding-top:12px}
+.login-partners img{height:32px;width:auto;object-fit:contain}
+.login-page h1{color:var(--encre);font-size:28px;font-weight:800;line-height:1.2;text-align:center;margin:20px 0 12px}
+.login-guide{display:flex;align-items:center;justify-content:center;gap:14px;margin:6px 0 14px}
+.login-guide>img{width:72px;height:72px;border-radius:50%;object-fit:cover}
+.login-guide button{cursor:pointer}
+.login-number{display:flex;align-items:center;justify-content:center;gap:10px;min-height:76px;padding:12px 8px;background:var(--commerce-surface);border:1px solid var(--commerce-line);border-radius:14px}
+.login-number-value{font-size:clamp(21px,6vw,28px);font-weight:750;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--encre)}
+.login-dictate{display:flex;align-items:center;justify-content:center;gap:14px;min-height:76px;width:100%;padding:12px;border-radius:14px;border:2px solid var(--commerce-green);color:var(--commerce-green);background:var(--commerce-surface);font-weight:750;font-size:17px;cursor:pointer;margin:10px 0}
+.login-dictate[aria-pressed="true"]{background:#00563B;color:#fff}
+.login-keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:12px;position:relative}
+.login-key{width:100%;min-height:64px;border:1px solid var(--commerce-line);border-radius:12px;background:var(--commerce-surface);color:var(--encre);display:grid;place-items:center;font-size:26px;font-weight:650;cursor:pointer}
+.login-key:disabled{opacity:.45;cursor:not-allowed}
+.login-key-image{font-size:36px}
+.login-pin-slots{display:flex;justify-content:center;gap:12px;padding:14px 0}
+.login-pin-slot{width:44px;height:48px;border-radius:10px;border:1px solid var(--commerce-line);display:grid;place-items:center;background:var(--commerce-surface)}
+.login-pin-slot::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--commerce-line)}
+.login-pin-slot[data-filled="true"]::after{background:var(--commerce-action)}
+.login-account{display:flex;flex-direction:column;align-items:center;gap:8px}
+.login-account img{width:96px;height:96px;border-radius:50%;object-fit:cover}
+.login-account-placeholder{width:96px;height:96px;display:grid;place-items:center;border-radius:50%;background:var(--commerce-apricot);color:var(--encre)}
+@media(max-height:700px){.login-welcome-body{padding:20px 0}.login-tata-welcome>img{width:150px}.login-page h1{margin:12px 0 8px;font-size:25px}.login-guide>img{width:56px;height:56px}}

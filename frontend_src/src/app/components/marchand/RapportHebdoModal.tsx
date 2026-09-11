@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, TrendingUp, TrendingDown, Calendar, Volume2, Loader, Star, BarChart3, BookOpen } from 'lucide-react';
 import { useRapportHebdo } from '../../contexts/RapportHebdoContext';
 
-const P = '#C46210';
+const P = '#B74725';
 
 interface Props { isOpen: boolean; onClose: () => void; }
 

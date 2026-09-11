@@ -28,7 +28,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
         <div style={{
           minHeight: '100vh', display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
-          padding: '2rem', backgroundColor: '#FFF2E9', textAlign: 'center'
+          padding: '2rem', backgroundColor: '#F6F0E4', textAlign: 'center'
         }}>
           <img
             src={tataLouImg}
@@ -49,7 +49,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
             style={{
               display: 'flex', alignItems: 'center', gap: '0.5rem',
               padding: '0.75rem 1.5rem', borderRadius: '1rem',
-              backgroundColor: '#C66A2C', color: 'white',
+              backgroundColor: '#B74725', color: 'white',
               fontWeight: 700, fontSize: '1rem', border: 'none', cursor: 'pointer'
             }}
           >

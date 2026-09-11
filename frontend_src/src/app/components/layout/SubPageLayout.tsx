@@ -17,14 +17,6 @@ interface SubPageLayoutProps {
   onBackOverride?: () => void;
 }
 
-function darken(hex: string, amount: number): string {
-  const num = parseInt(hex.replace('#', ''), 16);
-  const r = Math.max(0, (num >> 16) - amount);
-  const g = Math.max(0, ((num >> 8) & 0xff) - amount);
-  const b = Math.max(0, (num & 0xff) - amount);
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
-}
-
 export function SubPageLayout({
   role, title, subtitle, rightContent, headerChildren,
   bottomAction, noPadding = false, children, onBackOverride
@@ -32,7 +24,7 @@ export function SubPageLayout({
   const navigate = useNavigate();
   const config = getRoleConfig(role);
   const primaryColor = config.primaryColor;
-  const bgWarm = ('bgWarm' in config ? (config as { bgWarm?: string }).bgWarm : undefined) || '#FAFAFA';
+  const bgWarm = 'var(--commerce-paper)';
   const pbContent = bottomAction ? 180 : 100;
 
   return (
@@ -40,13 +32,14 @@ export function SubPageLayout({
       {/* ZONE 1 : HEADER FIXE */}
       <div
         style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
-          background: `linear-gradient(160deg,${primaryColor},${darken(primaryColor, 30)})` }}
+          background: 'var(--commerce-sidebar)' }}
         className="lg:pl-[280px]"
       >
         <div style={{ height: 16 }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
+              aria-label="Retour"
               onClick={onBackOverride ? onBackOverride : () => navigate(-1)}
               style={{ width: 44, height: 44, borderRadius: 14,
                 background: 'rgba(255,255,255,0.18)',
@@ -60,7 +53,7 @@ export function SubPageLayout({
               <div style={{ fontSize: 19, fontWeight: 900, color: 'white',
                 letterSpacing: '-0.3px', lineHeight: 1.2 }}>{title}</div>
               {subtitle && (
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>{subtitle}</div>
+                <div style={{ fontSize: 13, color: '#D3C6D4', marginTop: 2 }}>{subtitle}</div>
               )}
             </div>
           </div>

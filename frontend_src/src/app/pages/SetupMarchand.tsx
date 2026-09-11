@@ -537,7 +537,7 @@ export default function SetupMarchand() {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="w-full h-14 rounded-2xl font-bold text-white flex items-center justify-center gap-2 mt-4 disabled:opacity-60"
-            style={{ background: 'linear-gradient(135deg, #F97316, #C46210)' }}
+            style={{ background: 'linear-gradient(135deg, #F97316, #B74725)' }}
           >
             {createStatus === 'loading'
               ? <><Loader2 className="w-5 h-5 animate-spin" /> Création en cours...</>
@@ -578,7 +578,7 @@ export default function SetupMarchand() {
             <a
               href="/login"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-white text-sm"
-              style={{ backgroundColor: '#C46210' }}
+              style={{ backgroundColor: '#B74725' }}
             >
               <ArrowRight className="w-4 h-4" />
               Aller à la page de connexion

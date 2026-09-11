@@ -83,7 +83,7 @@ function resolveIcon(type: NotifType, metadata?: Record<string, unknown>): { bg:
   }
 
   const colors: Partial<Record<NotifType, string>> = {
-    paiement_valide: '#C46210', paiement_recu: '#C46210', paiement_collectif: '#C46210',
+    paiement_valide: '#B74725', paiement_recu: '#B74725', paiement_collectif: '#B74725',
     paiement_echoue: '#ef4444', vente: '#34c759',
     commande: '#007aff', commande_recue: '#007aff', nouvelle_commande: '#007aff',
     commande_groupee_validee: '#007aff', commande_statut: '#007aff', negociation: '#007aff',
@@ -377,7 +377,7 @@ interface NotificationToastContainerProps {
   userRole?: string;
 }
 
-export function NotificationToastContainer({ accentColor = '#C46210', userRole = 'marchand' }: NotificationToastContainerProps) {
+export function NotificationToastContainer({ accentColor = '#B74725', userRole = 'marchand' }: NotificationToastContainerProps) {
   const { notifications } = useNotifications();
   const { user } = useApp();
   const [visible, setVisible] = useState<JulabaNotification[]>([]);

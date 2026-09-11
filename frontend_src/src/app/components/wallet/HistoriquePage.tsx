@@ -19,7 +19,7 @@ import { useWallet } from '../../contexts/WalletContext';
 import type { KeiwaTransaction, KeiwaTransactionType } from '../../types/julaba.types';
 
 const PAGE_BG = '#FFF8F3';
-const HEADER_COLOR = '#C46210';
+const HEADER_COLOR = '#B74725';
 const CREDIT_COLOR = '#1a8c5a';
 const DEBIT_COLOR = '#e53e3e';
 

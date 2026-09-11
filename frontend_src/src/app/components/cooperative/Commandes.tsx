@@ -550,7 +550,7 @@ export function Commandes() {
           <motion.button
             onClick={() => { setShowNewModal(true); setNewStep(1); }}
             className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl text-white border-2 whitespace-nowrap"
-            style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})`, borderColor: C }}
+            style={{ background: C, borderColor: C }}
             whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}
           >
             <Plus className="w-5 h-5 flex-shrink-0" />
@@ -888,7 +888,7 @@ export function Commandes() {
                       setShowReceptionModal(true);
                     }}
                     className="w-full py-2.5 rounded-xl text-xs font-bold text-white"
-                    style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})` }}
+                    style={{ background: C }}
                     whileTap={{ scale: 0.97 }}
                   >
                     Payer maintenant
@@ -904,7 +904,7 @@ export function Commandes() {
                     <motion.button
                       onClick={() => void doProgressStatut(selectedCommande)}
                       className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-white font-bold"
-                      style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})` }}
+                      style={{ background: C }}
                       whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                     >
                       <ArrowRight className="w-5 h-5" />
@@ -1210,7 +1210,7 @@ export function Commandes() {
                     }
                   }}
                   className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl text-white font-bold text-sm"
-                  style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})` }}
+                  style={{ background: C }}
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                 >
                   {newStep === 3 ? (<><ShoppingBag className="w-4 h-4" /> Créer la commande</>) : (<>Suivant <ChevronRight className="w-4 h-4" /></>)}

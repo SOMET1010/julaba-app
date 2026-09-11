@@ -52,11 +52,11 @@ function deriveMonthlyData(analytics: any, acteurs: any[], transactions: any[]) 
 
 function deriveTypeData(analytics: any, acteurs: any[]) {
   if (analytics?.by_role?.length) {
-    const colorMap: Record<string, string> = { marchand: '#C66A2C', producteur: '#2E8B57', cooperative: '#1D4ED8', identificateur: BO_PRIMARY };
+    const colorMap: Record<string, string> = { marchand: '#B74725', producteur: '#2E8B57', cooperative: '#1D4ED8', identificateur: BO_PRIMARY };
     return analytics.by_role.map((r: any) => ({ name: r.role || r.label, value: r.count || r.value || 0, color: colorMap[r.role] || 'var(--encre-4)' }));
   }
   const roleMap: Record<string, { name: string; color: string }> = {
-    marchand: { name: 'Marchands', color: '#C66A2C' },
+    marchand: { name: 'Marchands', color: '#B74725' },
     producteur: { name: 'Producteurs', color: '#2E8B57' },
     cooperative: { name: 'Coopératives', color: '#1D4ED8' },
     identificateur: { name: 'Identificateurs', color: BO_PRIMARY },
@@ -109,7 +109,7 @@ function deriveRadarData(acteurs: any[], transactions: any[]) {
 // Types d'acteur traces dans la courbe par profil (couleurs alignees sur la
 // repartition par type pour coherence visuelle).
 const PROFIL_TYPES = [
-  { key: 'marchand', label: 'Marchands', color: '#C66A2C' },
+  { key: 'marchand', label: 'Marchands', color: '#B74725' },
   { key: 'producteur', label: 'Producteurs', color: '#2E8B57' },
   { key: 'cooperative', label: 'Coopératives', color: '#1D4ED8' },
   { key: 'cooperateur', label: 'Coopérateurs', color: '#1D9E75' },
@@ -165,7 +165,7 @@ function countRenseigne(acteurs: ReadonlyArray<Acteur>, read: (a: Acteur) => str
 }
 
 const REPORTS_TYPES = [
-  { id: 'acteurs', label: 'Rapport Acteurs', desc: 'Liste complète avec statuts et KPIs', icon: Users, color: '#C66A2C', pages: 12 },
+  { id: 'acteurs', label: 'Rapport Acteurs', desc: 'Liste complète avec statuts et KPIs', icon: Users, color: '#B74725', pages: 12 },
   { id: 'financier', label: 'Rapport Financier', desc: 'Volumes, commissions, flux de trésorerie', icon: Wallet, color: '#10B981', pages: 8 },
   { id: 'enrolement', label: 'Rapport Enrôlement', desc: 'Dossiers soumis, approuvés, rejetés', icon: FileText, color: '#3B82F6', pages: 6 },
   { id: 'performance', label: 'Performance Régionale', desc: 'KPIs par zone, comparaison régions', icon: Globe, color: '#8B5CF6', pages: 10 },
@@ -801,7 +801,7 @@ export function BORapports() {
             </div>
             <div style={{ padding: '12px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {([
-                { key: 'acteurs', label: 'Acteurs', desc: 'Liste complète avec statuts et régions', color: '#C66A2C' },
+                { key: 'acteurs', label: 'Acteurs', desc: 'Liste complète avec statuts et régions', color: '#B74725' },
                 { key: 'transactions', label: 'Transactions', desc: 'Historique des flux financiers', color: '#10B981' },
                 { key: 'kpis', label: 'KPIs globaux', desc: 'Indicateurs clés de performance', color: '#3B82F6' },
                 { key: 'evolution', label: 'Évolution mensuelle', desc: 'Données mois par mois', color: '#8B5CF6' },

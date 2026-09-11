@@ -33,7 +33,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const MODULE_COLORS: Record<string, string> = {
-  Acteurs: '#C66A2C',
+  Acteurs: '#B74725',
   Enrôlement: '#2E8B57',
   Supervision: '#3B82F6',
   Commissions: BO_PRIMARY,

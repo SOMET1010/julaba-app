@@ -610,7 +610,7 @@ export function MarcheVirtuel() {
       )}
     >
       <div className="pt-2 pb-32 lg:pb-8 lg:pl-[320px] max-w-2xl lg:max-w-7xl mx-auto min-h-screen"
-        style={{ backgroundColor: '#FFF2E9' }}>
+        style={{ backgroundColor: '#F6F0E4' }}>
         {profilIncomplet && (
           <div role="alert" style={{ margin:'0 0 12px', background:'#FFF4E5', border:'1.5px solid #F0C48A', borderRadius:16, padding:'12px 16px' }}>
             <p style={{ margin:0, fontSize:14, fontWeight:800, color:'#8A4B12' }}>Ton profil marchand n'est pas complet</p>
@@ -658,17 +658,17 @@ export function MarcheVirtuel() {
 
         <motion.div className={`grid ${visibleTabs.length === 1 ? 'grid-cols-1' : visibleTabs.length === 2 ? 'grid-cols-2' : 'grid-cols-3'} gap-3 mb-4`} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           {visibleTabs.includes('cooperatives') && (
-          <motion.button onClick={() => { setActiveTab('cooperatives'); }} className={`flex items-center justify-center px-4 py-3.5 rounded-2xl border-2 transition-colors ${activeTab === 'cooperatives' ? 'bg-[#C46210] border-[#C46210] text-white' : 'bg-white border-gray-200 hover:border-[#C46210] text-gray-700'}`} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
+          <motion.button onClick={() => { setActiveTab('cooperatives'); }} className={`flex items-center justify-center px-4 py-3.5 rounded-2xl border-2 transition-colors ${activeTab === 'cooperatives' ? 'bg-[#B74725] border-[#B74725] text-white' : 'bg-white border-gray-200 hover:border-[#B74725] text-gray-700'}`} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
             <span className="font-semibold text-xs">Coopératives</span>
           </motion.button>
           )}
           {visibleTabs.includes('producteurs') && (
-          <motion.button onClick={() => { setActiveTab('producteurs'); }} className={`flex items-center justify-center px-4 py-3.5 rounded-2xl border-2 transition-colors ${activeTab === 'producteurs' ? 'bg-[#C46210] border-[#C46210] text-white' : 'bg-white border-gray-200 hover:border-[#C46210] text-gray-700'}`} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
+          <motion.button onClick={() => { setActiveTab('producteurs'); }} className={`flex items-center justify-center px-4 py-3.5 rounded-2xl border-2 transition-colors ${activeTab === 'producteurs' ? 'bg-[#B74725] border-[#B74725] text-white' : 'bg-white border-gray-200 hover:border-[#B74725] text-gray-700'}`} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
             <span className="font-semibold text-xs">Producteurs</span>
           </motion.button>
           )}
           {visibleTabs.includes('historique') && (
-          <motion.button onClick={() => { setActiveTab('historique'); }} className={`flex items-center justify-center px-4 py-3.5 rounded-2xl border-2 transition-colors ${activeTab === 'historique' ? 'bg-[#C46210] border-[#C46210] text-white' : 'bg-white border-gray-200 hover:border-[#C46210] text-gray-700'}`} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
+          <motion.button onClick={() => { setActiveTab('historique'); }} className={`flex items-center justify-center px-4 py-3.5 rounded-2xl border-2 transition-colors ${activeTab === 'historique' ? 'bg-[#B74725] border-[#B74725] text-white' : 'bg-white border-gray-200 hover:border-[#B74725] text-gray-700'}`} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
             <span className="font-semibold text-xs">Historique</span>
           </motion.button>
           )}
@@ -685,7 +685,7 @@ export function MarcheVirtuel() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             whileTap={{ scale: 0.98 }}
-            className="w-full mb-4 flex items-center gap-3 p-4 rounded-3xl border-2 border-[#C46210] bg-gradient-to-br from-orange-50 via-white to-orange-50 text-left shadow-sm"
+            className="w-full mb-4 flex items-center gap-3 p-4 rounded-3xl border-2 border-[#B74725] bg-gradient-to-br from-orange-50 via-white to-orange-50 text-left shadow-sm"
           >
             <span className="w-11 h-11 rounded-2xl bg-green-100 flex items-center justify-center flex-shrink-0">
               <Sprout className="w-5 h-5 text-green-700" />
@@ -694,15 +694,15 @@ export function MarcheVirtuel() {
               <span className="block font-bold text-gray-900 text-sm">Voir les récoltes prévues</span>
               <span className="block text-xs text-gray-600">Producteurs avec récolte à venir, triés par distance</span>
             </span>
-            <ChevronRight className="w-5 h-5 text-[#C46210] flex-shrink-0" />
+            <ChevronRight className="w-5 h-5 text-[#B74725] flex-shrink-0" />
           </motion.button>
         )}
 
         <motion.div className="mb-4 relative" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input type="text" placeholder="Rechercher un produit..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-12 py-3.5 rounded-2xl bg-white border-2 border-gray-200 focus:border-[#C46210] focus:outline-none text-base placeholder:text-gray-400 shadow-sm" />
-            <motion.button onClick={() => setShowCategoryFilter(!showCategoryFilter)} className={`absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${selectedCategory !== 'tous' ? 'bg-[#C46210] text-white' : 'hover:bg-orange-100 text-gray-400'}`} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+            <input type="text" placeholder="Rechercher un produit..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-12 py-3.5 rounded-2xl bg-white border-2 border-gray-200 focus:border-[#B74725] focus:outline-none text-base placeholder:text-gray-400 shadow-sm" />
+            <motion.button onClick={() => setShowCategoryFilter(!showCategoryFilter)} className={`absolute right-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${selectedCategory !== 'tous' ? 'bg-[#B74725] text-white' : 'hover:bg-orange-100 text-gray-400'}`} whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
               <Filter className="w-5 h-5" />
             </motion.button>
           </div>
@@ -710,13 +710,13 @@ export function MarcheVirtuel() {
             {showCategoryFilter && (
               <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden z-50">
                 <div className="p-2">
-                  <motion.button onClick={() => { setSelectedCategory('tous'); setShowCategoryFilter(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${selectedCategory === 'tous' ? 'bg-[#C46210] text-white' : 'hover:bg-orange-50 text-gray-700'}`} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <motion.button onClick={() => { setSelectedCategory('tous'); setShowCategoryFilter(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${selectedCategory === 'tous' ? 'bg-[#B74725] text-white' : 'hover:bg-orange-50 text-gray-700'}`} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                     <Package className="w-5 h-5" /><span className="font-semibold">Tous les produits</span>
                   </motion.button>
                   {categories.filter(c => c.id !== 'tous').map((category) => {
                     const Icon = category.icon || Zap;
                     return (
-                      <motion.button key={category.id} onClick={() => { setSelectedCategory(category.id); setShowCategoryFilter(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${selectedCategory === category.id ? 'bg-[#C46210] text-white' : 'hover:bg-orange-50 text-gray-700'}`} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                      <motion.button key={category.id} onClick={() => { setSelectedCategory(category.id); setShowCategoryFilter(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${selectedCategory === category.id ? 'bg-[#B74725] text-white' : 'hover:bg-orange-50 text-gray-700'}`} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                         <Icon className="w-5 h-5" /><span className="font-semibold">{category.label}</span>
                       </motion.button>
                     );
@@ -731,7 +731,7 @@ export function MarcheVirtuel() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {commandesLoading ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-10 h-10 border-4 border-[#C46210] border-t-transparent rounded-full animate-spin mb-4" />
+                <div className="w-10 h-10 border-4 border-[#B74725] border-t-transparent rounded-full animate-spin mb-4" />
                 <p className="text-gray-500">Chargement de l'historique...</p>
               </div>
             ) : (
@@ -767,8 +767,8 @@ export function MarcheVirtuel() {
                   {sellerNotes[product.sellerId]?.total > 0 && (
                     <div className="mb-1.5"><EtoilesMoyenne note={sellerNotes[product.sellerId].moyenne} total={sellerNotes[product.sellerId].total} size={12} /></div>
                   )}
-                  <p className="text-2xl font-bold text-[#C46210] mb-3"><Montant value={product.price} unit={product.unit} size="xl" color="#C46210" /></p>
-                  <motion.button onClick={(e) => { e.stopPropagation(); addToCart(product.id); showToast(`${product.name} ajouté au panier`, 'success'); speakSilent(`${product.name} ajouté au panier`); }} className="w-full py-2.5 rounded-xl bg-[#C46210] text-white font-bold text-sm flex items-center justify-center gap-1.5 shadow-md" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02, boxShadow: '0 8px 20px rgba(196, 98, 16, 0.3)' }}>
+                  <p className="text-2xl font-bold text-[#B74725] mb-3"><Montant value={product.price} unit={product.unit} size="xl" color="#B74725" /></p>
+                  <motion.button onClick={(e) => { e.stopPropagation(); addToCart(product.id); showToast(`${product.name} ajouté au panier`, 'success'); speakSilent(`${product.name} ajouté au panier`); }} className="w-full py-2.5 rounded-xl bg-[#B74725] text-white font-bold text-sm flex items-center justify-center gap-1.5 shadow-md" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02, boxShadow: '0 8px 20px rgba(196, 98, 16, 0.3)' }}>
                     <Plus className="w-4 h-4" strokeWidth={3} />Ajouter
                   </motion.button>
                 </div>
@@ -791,7 +791,7 @@ export function MarcheVirtuel() {
                 <div className="relative w-full h-48 bg-gray-100 rounded-2xl overflow-hidden"><ImageWithFallback src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" /></div>
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-gray-900 mb-1">{selectedProduct.name}</h3>
-                  <p className="text-3xl font-bold text-[#C46210]"><Montant value={selectedProduct.price} unit={selectedProduct.unit} size="2xl" color="#C46210" /></p>
+                  <p className="text-3xl font-bold text-[#B74725]"><Montant value={selectedProduct.price} unit={selectedProduct.unit} size="2xl" color="#B74725" /></p>
                 </div>
                 <div className={`rounded-2xl p-3 space-y-2.5 ${selectedProduct.sellerType === 'producteur' ? 'bg-green-50' : 'bg-blue-50'}`}>
                   <div className="flex items-center gap-3">
@@ -802,16 +802,16 @@ export function MarcheVirtuel() {
                       {selectedProduct.cooperativeInfo && <p className="text-xs text-gray-600 mt-0.5">{selectedProduct.cooperativeInfo.nombreMembres} membres{selectedProduct.cooperativeInfo.certification ? ` • ${selectedProduct.cooperativeInfo.certification}` : ''}</p>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3"><MapPin className="w-5 h-5 text-[#C46210]" /><div><p className="text-xs text-gray-500">Localisation</p><p className="font-bold text-gray-900 text-sm">{selectedProduct.location}</p></div></div>
+                  <div className="flex items-center gap-3"><MapPin className="w-5 h-5 text-[#B74725]" /><div><p className="text-xs text-gray-500">Localisation</p><p className="font-bold text-gray-900 text-sm">{selectedProduct.location}</p></div></div>
                   <div className="flex items-center gap-3"><Package className="w-5 h-5 text-gray-600" /><div><p className="text-xs text-gray-500">Stock disponible</p><p className="font-bold text-gray-900 text-sm">{selectedProduct.stock} {selectedProduct.unit}</p></div></div>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3"><p className="text-sm text-gray-600 leading-relaxed">{selectedProduct.description}</p></div>
               </div>
               <div className="flex-shrink-0 bg-white border-t border-gray-100 px-6 py-4 space-y-3 rounded-b-3xl">
-                <motion.button onClick={() => { addToCart(selectedProduct.id); showToast(`${selectedProduct.name} ajouté au panier`, 'success'); speakSilent(`${selectedProduct.name} ajouté au panier`); setSelectedProduct(null); }} className="w-full py-3.5 rounded-2xl bg-[#C46210] text-white font-bold text-base shadow-lg flex items-center justify-center gap-2" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
+                <motion.button onClick={() => { addToCart(selectedProduct.id); showToast(`${selectedProduct.name} ajouté au panier`, 'success'); speakSilent(`${selectedProduct.name} ajouté au panier`); setSelectedProduct(null); }} className="w-full py-3.5 rounded-2xl bg-[#B74725] text-white font-bold text-base shadow-lg flex items-center justify-center gap-2" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
                   <Plus className="w-5 h-5" strokeWidth={3} />Ajouter au panier
                 </motion.button>
-                <motion.button onClick={() => { setProductToNegotiate(selectedProduct); setNegotiationPrice(selectedProduct.price); setNegotiationQuantity(1); setNegotiationMessage(''); setSelectedProduct(null); setShowNegotiationModal(true); speakSilent('Propose ton prix et ta quantité'); }} className="w-full py-3.5 rounded-2xl bg-white border-2 border-[#C46210] text-[#C46210] font-bold text-base shadow-sm flex items-center justify-center gap-2" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
+                <motion.button onClick={() => { setProductToNegotiate(selectedProduct); setNegotiationPrice(selectedProduct.price); setNegotiationQuantity(1); setNegotiationMessage(''); setSelectedProduct(null); setShowNegotiationModal(true); speakSilent('Propose ton prix et ta quantité'); }} className="w-full py-3.5 rounded-2xl bg-white border-2 border-[#B74725] text-[#B74725] font-bold text-base shadow-sm flex items-center justify-center gap-2" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
                   <MessageSquare className="w-5 h-5" />Négocier le prix
                 </motion.button>
                 {isGrossiste && selectedProduct.sellerType === 'producteur' && (
@@ -831,7 +831,7 @@ export function MarcheVirtuel() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-end px-4 pb-4" onClick={() => setShowCart(false)}>
             <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25 }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-3xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
               <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><ShoppingCart className="w-6 h-6 text-[#C46210]" />Panier ({cartCount})</h2>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><ShoppingCart className="w-6 h-6 text-[#B74725]" />Panier ({cartCount})</h2>
                 <motion.button onClick={() => setShowCart(false)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-4 pb-8">
@@ -846,14 +846,14 @@ export function MarcheVirtuel() {
                           <div className="flex-1">
                             <h3 className="font-bold text-gray-900">{item.product.name}</h3>
                             <p className="text-sm text-gray-500">{item.product.sellerName}</p>
-                            <p className="text-lg font-bold text-[#C46210] mt-1"><Montant value={item.product.price} unit={item.product.unit} size="md" color="#C46210" /></p>
+                            <p className="text-lg font-bold text-[#B74725] mt-1"><Montant value={item.product.price} unit={item.product.unit} size="md" color="#B74725" /></p>
                           </div>
                         </div>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <motion.button onClick={() => updateCartQuantity(item.product.id, item.quantity - 1)} className="w-8 h-8 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center" whileTap={{ scale: 0.9 }}><Minus className="w-4 h-4" /></motion.button>
                             <span className="w-12 text-center font-bold">{item.quantity}</span>
-                            <motion.button onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)} className="w-8 h-8 rounded-full bg-[#C46210] text-white flex items-center justify-center" whileTap={{ scale: 0.9 }}><Plus className="w-4 h-4" /></motion.button>
+                            <motion.button onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)} className="w-8 h-8 rounded-full bg-[#B74725] text-white flex items-center justify-center" whileTap={{ scale: 0.9 }}><Plus className="w-4 h-4" /></motion.button>
                           </div>
                           <p className="text-xl font-bold text-gray-900">{(item.product.price * item.quantity).toLocaleString()} F</p>
                         </div>
@@ -862,9 +862,9 @@ export function MarcheVirtuel() {
                     <div className="border-t-2 border-gray-200 pt-4">
                       <div className="flex items-center justify-between mb-4">
                         <span className="text-lg font-bold text-gray-900">Total</span>
-                        <span className="text-3xl font-bold text-[#C46210]"><Montant value={cartTotal} size="2xl" color="#C46210" /></span>
+                        <span className="text-3xl font-bold text-[#B74725]"><Montant value={cartTotal} size="2xl" color="#B74725" /></span>
                       </div>
-                      <motion.button onClick={() => { speakSilent('Choisis ton mode de paiement'); setShowPaymentModal(true); }} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#C46210] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
+                      <motion.button onClick={() => { speakSilent('Choisis ton mode de paiement'); setShowPaymentModal(true); }} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#B74725] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
                         <span className="flex items-center justify-center gap-2"><Zap className="w-5 h-5" />Commander maintenant</span>
                       </motion.button>
                     </div>
@@ -882,7 +882,7 @@ export function MarcheVirtuel() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-end px-4 pb-4" onClick={() => setShowFavorites(false)}>
             <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25 }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-3xl w-full max-h-[85vh] overflow-y-auto shadow-2xl">
               <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Heart className="w-6 h-6 text-[#C46210]" />Favoris ({favoritesCount})</h2>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Heart className="w-6 h-6 text-[#B74725]" />Favoris ({favoritesCount})</h2>
                 <motion.button onClick={() => setShowFavorites(false)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-4 pb-8">
@@ -899,11 +899,11 @@ export function MarcheVirtuel() {
                             <motion.button onClick={() => { toggleFavorite(product.id); showToast(`${product.name} retiré des favoris`, 'info'); }} className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center" whileTap={{ scale: 0.9 }}><Heart className="w-4 h-4 text-red-500 fill-red-500" /></motion.button>
                           </div>
                           <p className="text-sm text-gray-500 mb-2 flex items-center gap-1"><MapPin className="w-3 h-3" /> {product.location}</p>
-                          <p className="text-2xl font-bold text-[#C46210]">{product.price} F<span className="text-sm text-gray-500 ml-1">/{product.unit}</span></p>
+                          <p className="text-2xl font-bold text-[#B74725]">{product.price} F<span className="text-sm text-gray-500 ml-1">/{product.unit}</span></p>
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <motion.button onClick={() => { addToCart(product.id); showToast(`${product.name} ajouté au panier`, 'success'); }} className="flex-1 py-3 rounded-xl bg-[#C46210] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}><ShoppingCart className="w-4 h-4" />Ajouter au panier</motion.button>
+                        <motion.button onClick={() => { addToCart(product.id); showToast(`${product.name} ajouté au panier`, 'success'); }} className="flex-1 py-3 rounded-xl bg-[#B74725] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}><ShoppingCart className="w-4 h-4" />Ajouter au panier</motion.button>
                         <motion.button onClick={() => setSelectedProduct(product)} className="px-4 py-3 rounded-xl bg-gray-100 text-gray-700 font-bold text-sm" whileTap={{ scale: 0.95 }}>Détails</motion.button>
                       </div>
                     </motion.div>
@@ -925,7 +925,7 @@ export function MarcheVirtuel() {
                 <motion.button onClick={() => { setShowPaymentModal(false); setPaymentMethod(null); setSelectedOperator(null); setPhoneNumber(''); setCardNumber(''); setShowMobileOperators(false); }} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
-                <div className="bg-orange-50 rounded-2xl p-4 mb-4"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#C46210]"><Montant value={cartTotal} size="2xl" color="#C46210" /></p></div>
+                <div className="bg-orange-50 rounded-2xl p-4 mb-4"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#B74725]"><Montant value={cartTotal} size="2xl" color="#B74725" /></p></div>
                 <div className="rounded-2xl bg-gray-50 p-4 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-gray-700">Informations de livraison</p>
@@ -944,7 +944,7 @@ export function MarcheVirtuel() {
                             setLivraisonTelephone(user?.telephone || '');
                           }
                         }}
-                        className="accent-[#C46210]"
+                        className="accent-[#B74725]"
                       />
                       Livrer à une autre personne
                     </label>
@@ -955,7 +955,7 @@ export function MarcheVirtuel() {
                       onClick={() => setModeReception('livraison')}
                       className={`py-2.5 rounded-2xl text-sm font-semibold transition-colors ${
                         modeReception === 'livraison'
-                          ? 'bg-[#C66A2C] text-white'
+                          ? 'bg-[#B74725] text-white'
                           : 'bg-white border-2 border-gray-200 text-gray-700'
                       }`}
                     >
@@ -966,7 +966,7 @@ export function MarcheVirtuel() {
                       onClick={() => setModeReception('enlevement')}
                       className={`py-2.5 rounded-2xl text-sm font-semibold transition-colors ${
                         modeReception === 'enlevement'
-                          ? 'bg-[#C66A2C] text-white'
+                          ? 'bg-[#B74725] text-white'
                           : 'bg-white border-2 border-gray-200 text-gray-700'
                       }`}
                     >
@@ -982,7 +982,7 @@ export function MarcheVirtuel() {
                       value={livraisonNom}
                       onChange={(e) => setLivraisonNom(e.target.value)}
                       disabled={!livraisonTierce}
-                      className={`w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ${livraisonTierce ? 'bg-white border-gray-200 focus:border-[#C46210]' : 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed'}`}
+                      className={`w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ${livraisonTierce ? 'bg-white border-gray-200 focus:border-[#B74725]' : 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed'}`}
                     />
                   </div>
                   <div>
@@ -1000,7 +1000,7 @@ export function MarcheVirtuel() {
                       disabled={!livraisonTierce}
                       className={`w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ${
                         livraisonTierce
-                          ? `${livraisonTelephoneTouched && !isValidPhoneCI(livraisonTelephone) ? 'border-red-400' : 'border-gray-200'} focus:border-[#C46210] bg-white`
+                          ? `${livraisonTelephoneTouched && !isValidPhoneCI(livraisonTelephone) ? 'border-red-400' : 'border-gray-200'} focus:border-[#B74725] bg-white`
                           : 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed'
                       }`}
                     />
@@ -1015,7 +1015,7 @@ export function MarcheVirtuel() {
                         type="text"
                         value={livraisonLocalite}
                         onChange={(e) => setLivraisonLocalite(e.target.value)}
-                        className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-[#C46210] focus:outline-none text-sm bg-white"
+                        className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-[#B74725] focus:outline-none text-sm bg-white"
                       />
                     </div>
                   )}
@@ -1025,7 +1025,7 @@ export function MarcheVirtuel() {
                       type="date"
                       value={livraisonDate}
                       onChange={(e) => setLivraisonDate(e.target.value)}
-                      className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-[#C46210] focus:outline-none text-sm bg-white"
+                      className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-[#B74725] focus:outline-none text-sm bg-white"
                     />
                   </div>
                   <div>
@@ -1034,7 +1034,7 @@ export function MarcheVirtuel() {
                       value={livraisonNotes}
                       onChange={(e) => setLivraisonNotes(e.target.value)}
                       rows={2}
-                      className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-[#C46210] focus:outline-none text-sm bg-white resize-none"
+                      className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 focus:border-[#B74725] focus:outline-none text-sm bg-white resize-none"
                     />
                   </div>
                 </div>
@@ -1074,7 +1074,7 @@ export function MarcheVirtuel() {
                     </div>
                   );
                 })}
-                <motion.button onClick={handlePayment} disabled={!paymentMethod} className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg mt-4 ${paymentMethod ? 'bg-gradient-to-r from-[#C46210] to-[#D97706] text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`} whileTap={paymentMethod ? { scale: 0.95 } : {}} whileHover={paymentMethod ? { scale: 1.02 } : {}}>
+                <motion.button onClick={handlePayment} disabled={!paymentMethod} className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg mt-4 ${paymentMethod ? 'bg-gradient-to-r from-[#B74725] to-[#D97706] text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`} whileTap={paymentMethod ? { scale: 0.95 } : {}} whileHover={paymentMethod ? { scale: 1.02 } : {}}>
                   {paymentMethod ? 'Valider la commande' : 'Choisir un mode de paiement'}
                 </motion.button>
               </div>
@@ -1093,9 +1093,9 @@ export function MarcheVirtuel() {
                 <motion.button onClick={() => { setShowPinModal(false); setPinCode(''); }} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-4">
-                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#C46210]">{(cartTotal || 0).toLocaleString('fr-FR')} FCFA</p></div>
-                <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Entrez votre code PIN à 4 chiffres</p><input type="password" value={pinCode} onChange={(e) => setPinCode(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#C46210] focus:outline-none text-base placeholder:text-gray-400 shadow-sm" maxLength={4} /></div>
-                <motion.button onClick={handlePinValidation} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#C46210] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Valider</motion.button>
+                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#B74725]">{(cartTotal || 0).toLocaleString('fr-FR')} FCFA</p></div>
+                <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Entrez votre code PIN à 4 chiffres</p><input type="password" value={pinCode} onChange={(e) => setPinCode(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#B74725] focus:outline-none text-base placeholder:text-gray-400 shadow-sm" maxLength={4} /></div>
+                <motion.button onClick={handlePinValidation} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#B74725] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Valider</motion.button>
               </div>
             </motion.div>
           </motion.div>
@@ -1112,9 +1112,9 @@ export function MarcheVirtuel() {
                 <motion.button onClick={() => setShowSuccessModal(false)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-4">
-                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant payé</p><p className="text-3xl font-bold text-[#C46210]">{(paidTotal || 0).toLocaleString('fr-FR')} FCFA</p></div>
+                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant payé</p><p className="text-3xl font-bold text-[#B74725]">{(paidTotal || 0).toLocaleString('fr-FR')} FCFA</p></div>
                 <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Votre commande a été validée avec succès</p><p className="text-lg font-bold text-gray-900">Merci pour votre achat !</p></div>
-                <motion.button onClick={() => setShowSuccessModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#C46210] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
+                <motion.button onClick={() => setShowSuccessModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#B74725] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
               </div>
             </motion.div>
           </motion.div>
@@ -1131,9 +1131,9 @@ export function MarcheVirtuel() {
                 <motion.button onClick={() => setShowErrorModal(false)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-4">
-                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#C46210]">{(cartTotal || 0).toLocaleString('fr-FR')} FCFA</p></div>
+                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#B74725]">{(cartTotal || 0).toLocaleString('fr-FR')} FCFA</p></div>
                 <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Une erreur s'est produite</p><p className="text-lg font-bold text-red-500">{errorMessage}</p></div>
-                <motion.button onClick={() => setShowErrorModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#C46210] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
+                <motion.button onClick={() => setShowErrorModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#B74725] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
               </div>
             </motion.div>
           </motion.div>
@@ -1153,14 +1153,14 @@ export function MarcheVirtuel() {
                 <div className={`rounded-2xl p-4 ${productToNegotiate.sellerType === 'producteur' ? 'bg-green-50' : 'bg-blue-50'}`}>
                   <div className="flex items-center gap-4">
                     <div className="w-20 h-20 bg-white rounded-2xl overflow-hidden shadow-sm"><ImageWithFallback src={productToNegotiate.image} alt={productToNegotiate.name} className="w-full h-full object-cover" /></div>
-                    <div className="flex-1"><h3 className="text-lg font-bold text-gray-900">{productToNegotiate.name}</h3><p className="text-sm text-gray-600">{productToNegotiate.sellerName}</p><p className="text-xl font-bold text-[#C46210] mt-1">{productToNegotiate.price} FCFA<span className="text-sm text-gray-500">/{productToNegotiate.unit}</span></p></div>
+                    <div className="flex-1"><h3 className="text-lg font-bold text-gray-900">{productToNegotiate.name}</h3><p className="text-sm text-gray-600">{productToNegotiate.sellerName}</p><p className="text-xl font-bold text-[#B74725] mt-1">{productToNegotiate.price} FCFA<span className="text-sm text-gray-500">/{productToNegotiate.unit}</span></p></div>
                   </div>
                 </div>
                 <div className="bg-gray-50 rounded-2xl p-4">
                   <label className="text-sm font-semibold text-gray-700 mb-3 block">Quantité ({productToNegotiate.unit})</label>
                   <div className="flex items-center gap-3">
                     <motion.button onClick={() => setNegotiationQuantity(Math.max(1, negotiationQuantity - 1))} className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center" whileTap={{ scale: 0.9 }}><Minus className="w-5 h-5 text-gray-600" /></motion.button>
-                    <input type="number" value={negotiationQuantity} onChange={(e) => setNegotiationQuantity(Math.max(1, parseInt(e.target.value) || 1))} className="flex-1 px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#C46210] focus:outline-none text-center font-bold text-xl" />
+                    <input type="number" value={negotiationQuantity} onChange={(e) => setNegotiationQuantity(Math.max(1, parseInt(e.target.value) || 1))} className="flex-1 px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#B74725] focus:outline-none text-center font-bold text-xl" />
                     <motion.button onClick={() => setNegotiationQuantity(negotiationQuantity + 1)} className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center" whileTap={{ scale: 0.9 }}><Plus className="w-5 h-5 text-gray-600" /></motion.button>
                   </div>
                 </div>
@@ -1168,20 +1168,20 @@ export function MarcheVirtuel() {
                   <label className="text-sm font-semibold text-gray-700 mb-3 block">Ton prix proposé (FCFA/{productToNegotiate.unit})</label>
                   <div className="flex items-center gap-3">
                     <motion.button onClick={() => setNegotiationPrice(Math.max(50, negotiationPrice - 50))} className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center" whileTap={{ scale: 0.9 }}><Minus className="w-5 h-5 text-gray-600" /></motion.button>
-                    <input type="number" value={negotiationPrice} onChange={(e) => setNegotiationPrice(Math.max(0, parseInt(e.target.value) || 0))} className="flex-1 px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#C46210] focus:outline-none text-center font-bold text-xl" />
+                    <input type="number" value={negotiationPrice} onChange={(e) => setNegotiationPrice(Math.max(0, parseInt(e.target.value) || 0))} className="flex-1 px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#B74725] focus:outline-none text-center font-bold text-xl" />
                     <motion.button onClick={() => setNegotiationPrice(negotiationPrice + 50)} className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center" whileTap={{ scale: 0.9 }}><Plus className="w-5 h-5 text-gray-600" /></motion.button>
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
                     <div><p className="text-sm text-gray-600">Prix catalogue</p><p className="text-lg font-bold text-gray-400 line-through">{(productToNegotiate.price * negotiationQuantity).toLocaleString()} <span className="text-[11px] opacity-60">FCFA</span></p></div>
-                    <div className="text-right"><p className="text-sm text-gray-600">Ton total</p><p className="text-2xl font-bold text-[#C46210]"><Montant value={negotiationPrice * negotiationQuantity} size="xl" color="#C46210" /></p></div>
+                    <div className="text-right"><p className="text-sm text-gray-600">Ton total</p><p className="text-2xl font-bold text-[#B74725]"><Montant value={negotiationPrice * negotiationQuantity} size="xl" color="#B74725" /></p></div>
                   </div>
                   {negotiationPrice < productToNegotiate.price && <div className="mt-3 bg-green-100 rounded-lg p-3 text-center"><p className="text-sm font-bold text-green-700">Économie: {(((productToNegotiate.price - negotiationPrice) / productToNegotiate.price) * 100).toFixed(0)}%</p></div>}
                 </div>
                 <div className="bg-gray-50 rounded-2xl p-4">
                   <label className="text-sm font-semibold text-gray-700 mb-3 block">Message (optionnel)</label>
-                  <textarea value={negotiationMessage} onChange={(e) => setNegotiationMessage(e.target.value)} placeholder="Ajoute un message pour justifier ton prix..." className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#C46210] focus:outline-none text-sm resize-none" rows={3} />
+                  <textarea value={negotiationMessage} onChange={(e) => setNegotiationMessage(e.target.value)} placeholder="Ajoute un message pour justifier ton prix..." className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#B74725] focus:outline-none text-sm resize-none" rows={3} />
                 </div>
-                <motion.button onClick={handleNegotiationSubmit} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#C46210] to-[#D97706] text-white font-bold text-lg shadow-lg flex items-center justify-center gap-2" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
+                <motion.button onClick={handleNegotiationSubmit} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#B74725] to-[#D97706] text-white font-bold text-lg shadow-lg flex items-center justify-center gap-2" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
                   <MessageSquare className="w-5 h-5" />Envoyer la proposition
                 </motion.button>
               </div>
@@ -1204,7 +1204,7 @@ export function MarcheVirtuel() {
                 <div className="bg-gray-50 rounded-2xl p-4 text-center"><p className="text-lg font-bold text-gray-900 mb-2">Ta proposition a été envoyée</p><p className="text-sm text-gray-600">Le vendeur va étudier ton prix et te répondra bientôt. Tu recevras une notification dès qu'il aura fait une contre-proposition.</p></div>
                 <div className="bg-orange-50 rounded-2xl p-4"><p className="text-sm text-gray-700"><strong>Astuce:</strong> Va dans <strong>Mes Commandes</strong> pour suivre l'état de tes négociations</p></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <motion.button onClick={() => { setShowNegotiationSuccess(false); setShowCart(false); navigate('/marchand/commandes'); }} className="py-3 rounded-xl bg-[#C46210] text-white font-bold" whileTap={{ scale: 0.95 }}>Mes Commandes</motion.button>
+                  <motion.button onClick={() => { setShowNegotiationSuccess(false); setShowCart(false); navigate('/marchand/commandes'); }} className="py-3 rounded-xl bg-[#B74725] text-white font-bold" whileTap={{ scale: 0.95 }}>Mes Commandes</motion.button>
                   <motion.button onClick={() => { setShowNegotiationSuccess(false); setShowCart(false); }} className="py-3 rounded-xl bg-white border-2 border-gray-200 text-gray-700 font-bold" whileTap={{ scale: 0.95 }}>Continuer</motion.button>
                 </div>
               </div>
@@ -1278,7 +1278,7 @@ export function MarcheVirtuel() {
             <p className="text-sm font-bold text-gray-800 mb-0.5">{signalementCommande.produit}</p>
             <p className="text-sm text-gray-600 mb-4">
               Montant :{' '}
-              <span className="font-black text-[#C46210]">
+              <span className="font-black text-[#B74725]">
                 {((signalementCommande as { total?: number }).total ?? signalementCommande.montantTotal ?? 0).toLocaleString('fr-FR')} FCFA
               </span>
             </p>
@@ -1299,8 +1299,8 @@ export function MarcheVirtuel() {
                   onClick={() => setSignalementType(opt.id)}
                   className={`px-3 py-2 rounded-full text-xs font-bold border-2 transition-colors ${
                     signalementType === opt.id
-                      ? 'bg-[#C46210] border-[#C46210] text-white'
-                      : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-[#C46210]'
+                      ? 'bg-[#B74725] border-[#B74725] text-white'
+                      : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-[#B74725]'
                   }`}
                 >
                   {opt.label}
@@ -1313,7 +1313,7 @@ export function MarcheVirtuel() {
               onChange={(e) => setSignalementDescription(e.target.value)}
               placeholder="Décris le problème rencontré…"
               rows={4}
-              className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 text-sm focus:border-[#C46210] focus:outline-none resize-none mb-4"
+              className="w-full px-3 py-2 rounded-xl border-2 border-gray-200 text-sm focus:border-[#B74725] focus:outline-none resize-none mb-4"
             />
             <div className="flex gap-3">
               <button

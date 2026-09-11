@@ -6,7 +6,7 @@
  */
 
 export const ROLE_COLORS = {
-  marchand: '#C66A2C',
+  marchand: '#B74725',
   producteur: '#2E8B57',
   cooperative: '#2072AF',
   cooperateur: '#2072AF',
@@ -92,7 +92,7 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
     primaryColor: ROLE_COLORS.marchand,
     gradientFrom: 'from-orange-50',
     gradientTo: 'to-white',
-    bgWarm: '#FFF2E9',
+    bgWarm: '#F6F0E4',
     greeting: 'Ouvre ta journée pour commencer',
     bottomBar: {
       items: [
@@ -159,7 +159,7 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
     primaryColor: ROLE_COLORS.producteur,
     gradientFrom: 'from-green-50',
     gradientTo: 'to-white',
-    bgWarm: '#F0FAF4',
+    bgWarm: '#F6F0E4',
     greeting: 'Enregistre tes récoltes et ventes aujourd\'hui',
     bottomBar: {
       items: [
@@ -225,7 +225,7 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
     primaryColor: ROLE_COLORS.cooperative,
     gradientFrom: 'from-blue-50',
     gradientTo: 'to-white',
-    bgWarm: '#EFF6FF',
+    bgWarm: '#F6F0E4',
     greeting: 'Gère tes membres et stocks communs',
     bottomBar: {
       items: [
@@ -291,7 +291,7 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
     primaryColor: ROLE_COLORS.cooperative,
     gradientFrom: 'from-blue-50',
     gradientTo: 'to-white',
-    bgWarm: '#EFF6FF',
+    bgWarm: '#F6F0E4',
     greeting: 'Gère tes membres et stocks communs',
     bottomBar: {
       items: [
@@ -357,7 +357,7 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
     primaryColor: ROLE_COLORS.identificateur,
     gradientFrom: 'from-stone-50',
     gradientTo: 'to-white',
-    bgWarm: '#F9F4F0',
+    bgWarm: '#F6F0E4',
     greeting: 'Identifie les nouveaux acteurs Jùlaba',
     bottomBar: {
       items: [
@@ -424,7 +424,7 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
     primaryColor: ROLE_COLORS.institution,
     gradientFrom: 'from-purple-50',
     gradientTo: 'to-white',
-    bgWarm: '#F9F0FF',
+    bgWarm: '#F6F0E4',
     greeting: 'Supervise l\'ensemble de la plateforme Jùlaba',
     bottomBar: {
       items: [
@@ -490,7 +490,7 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
     primaryColor: ROLE_COLORS.administrateur,
     gradientFrom: 'from-purple-50',
     gradientTo: 'to-white',
-    bgWarm: '#F9F0FF',
+    bgWarm: '#F6F0E4',
     greeting: 'Supervise l\'ensemble de la plateforme Jùlaba',
     bottomBar: {
       items: [

@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, Star } from 'lucide-react';
 
-const C = '#C66A2C';
-const BG = '#FFF2E9';
+const C = '#B74725';
+const BG = '#F6F0E4';
 
 type CatId = 'tout' | 'factures' | 'sante' | 'education';
 

@@ -863,7 +863,7 @@ export function BOActeurDetail() {
                     onClick={handleSaveObjectif}
                     disabled={savingObjectif}
                     className="mt-4 px-5 py-2.5 rounded-xl font-bold text-white text-sm shadow-md disabled:opacity-50"
-                    style={{ background: 'linear-gradient(135deg, #C66A2C, #9F8170)' }}
+                    style={{ background: 'linear-gradient(135deg, #B74725, #9F8170)' }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >

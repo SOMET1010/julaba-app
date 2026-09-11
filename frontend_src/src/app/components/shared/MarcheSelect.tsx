@@ -223,8 +223,8 @@ export function MarcheSelect({ commune, value, onChange, color, error }: MarcheS
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold border-0"
                 style={{
                   background: '#FFF7ED',
-                  borderTop: '1.5px solid #C66A2C',
-                  color: '#C66A2C',
+                  borderTop: '1.5px solid #B74725',
+                  color: '#B74725',
                   fontFamily: 'inherit',
                   cursor: 'pointer',
                 }}

@@ -193,7 +193,7 @@ export function ResumeCaisse() {
 
   const soldeActuel = (currentSession?.fondInitial || 0) + financialData.totalVentes - financialData.totalCahier;
 
-  const COLORS = ['#C46210', '#00563B', '#2072AF', '#702963', '#F59E0B', '#EF4444'];
+  const COLORS = ['#B74725', '#00563B', '#2072AF', '#702963', '#F59E0B', '#EF4444'];
 
   const periodLabels: Record<Period, string> = {
     today: "Aujourd'hui",

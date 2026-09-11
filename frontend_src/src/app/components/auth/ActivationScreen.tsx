@@ -22,7 +22,7 @@ function parle(texte: string): void {
 // secret utilisable : elle saisit le code d'activation reçu (lu par l'identificateur)
 // et POSE SON propre code. Après succès, elle se connecte avec ce code.
 // UX minimale (fonctionnelle) ; le mot de passe imagé (déc.3) la remplacera.
-const P = '#C66A2C';
+const P = '#B74725';
 const BG = 'rgba(255,247,237,0.9)';
 const BORDER = 'rgba(198,106,44,0.3)';
 const PINS_INTERDITS = new Set(['0000', '1234']);
