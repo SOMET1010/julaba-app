@@ -3,8 +3,20 @@ import { useApp } from './AppContext';
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { API_URL } from '../utils/api';
+import { enfilerOperation } from '../voice-offline/offlineCaisse';
 
 const headers = () => ({ 'Content-Type': 'application/json' });
+
+function genererCleStock(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `stock-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function doitEnfilerStock(error: unknown): boolean {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  const status = (error as { status?: unknown } | null)?.status;
+  return typeof status !== 'number' || status >= 500;
+}
 
 export interface StockItem {
   id: string;
@@ -108,17 +120,34 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
   };
 
   const updateStock = async (id: string, data: Partial<StockItem>) => {
-    await fetch(`${API_URL}/stocks/${id}`, {
-      method: 'PATCH', credentials: 'include', headers: headers(),
-      body: JSON.stringify({
-        quantite: data.quantite, prix_unitaire: data.prixUnitaire,
-        ...(data.seuilAlerte !== undefined ? { seuil_alerte: data.seuilAlerte } : {}),
-        ...(data.categorie !== undefined ? { categorie: data.categorie } : {}),
-        ...(data.datePeremption !== undefined ? { date_peremption: data.datePeremption } : {}),
-      }),
-    });
+    const payload = {
+      quantite: data.quantite, prix_unitaire: data.prixUnitaire,
+      ...(data.seuilAlerte !== undefined ? { seuil_alerte: data.seuilAlerte } : {}),
+      ...(data.categorie !== undefined ? { categorie: data.categorie } : {}),
+      ...(data.datePeremption !== undefined ? { date_peremption: data.datePeremption } : {}),
+      idempotency_key: genererCleStock(),
+    };
+    const applyLocal = () => setStocks((current) => current.map((stock) => stock.id === id ? { ...stock, ...data, derniereModification: new Date().toISOString() } : stock));
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      applyLocal();
+      await enfilerOperation(`/stocks/${id}`, payload, undefined, 'PATCH');
+      eventBus.emit(EVENTS.STOCK_UPDATED, { id, ...data, offline: true }, { idempotencyKey: payload.idempotency_key, priority: 'medium' });
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/stocks/${id}`, {
+        method: 'PATCH', credentials: 'include', headers: headers(), body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw Object.assign(new Error(`Mise à jour stock refusée (${response.status})`), { status: response.status });
+      applyLocal();
+    } catch (error) {
+      if (!doitEnfilerStock(error)) throw error;
+      applyLocal();
+      await enfilerOperation(`/stocks/${id}`, payload, undefined, 'PATCH');
+      eventBus.emit(EVENTS.STOCK_UPDATED, { id, ...data, offline: true }, { idempotencyKey: payload.idempotency_key, priority: 'medium' });
+      return;
+    }
     eventBus.emit(EVENTS.STOCK_UPDATED, { id, ...data }, { idempotencyKey: 'stock-' + id, priority: 'medium' });
-    await refreshStocks();
   };
 
   const deleteStock = async (id: string) => {
