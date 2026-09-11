@@ -16,12 +16,17 @@
 
 ## P1 — Inclusion et autonomie
 
-- [ ] Ajouter un guidage contextuel simple et accessible sur le parcours marchand.
-- [ ] Définir le plan de couverture des clips Tata pour montants, quantités, unités et produits sans générer de fausse voix.
-- [ ] Préparer les futurs packs Dioula/Bambara comme ressources installables hors ligne.
+- [x] Ajouter un guidage contextuel simple et accessible sur le parcours marchand.
+- [x] Créer une carte « Prochaine étape » avec pictogramme, une seule action et libellé adapté aux états de vente.
+- [x] Tester le guidage pour les états : démarrer, confirmer une vente, attendre la synchronisation et erreur hors ligne.
+- [x] Définir le plan de couverture des clips Tata pour montants, quantités, unités et produits sans générer de fausse voix.
+- [x] Définir l’architecture des futurs packs Dioula/Bambara comme ressources installables hors ligne.
+- [ ] Collecter avec consentement les clips Tata et les corpus humains nécessaires avant d’intégrer les packs locaux.
 
 ## P2 — Maintenabilité et performance
 
-- [ ] Définir un budget de bundle et une stratégie de chargement différé des modules non marchands.
+- [x] Valider que le budget de bundle mesure le véritable chunk initial marchand, puis fixer son seuil à 800 Ko non compressés.
+- [x] Ajouter un contrôle CI qui échoue si le véritable bundle initial marchand dépasse 800 Ko non compressés.
 - [ ] Réduire progressivement les types `any` sur les parcours critiques.
-- [ ] Ajouter un écran de gestion des opérations hors ligne rejetées.
+- [x] Ajouter un écran de gestion des opérations hors ligne rejetées.
+- [x] Afficher les lettres mortes dans le modal de vente Tata avec le motif et une action locale de retrait après revue.
