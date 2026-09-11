@@ -84,6 +84,18 @@ Les tailles d’effort sont des ordres de grandeur pour un développeur connaiss
 | P2 | Rendre les lettres mortes visibles | Moyen | M | Améliore le support et le suivi des opérations rejetées. |
 | P2 | Installer un budget de performance CI | Faible à moyen | S | Empêche les régressions futures, après la mesure de référence du bundle. |
 
+## 5.1. Mise à niveau de sécurité appliquée
+
+La campagne de sécurité est isolée dans la branche `audit/security-dependencies`. Les correctifs non disruptifs ont abaissé l’audit npm de **22 alertes (14 élevées)** à **10 alertes (6 élevées)**. React Router est passé de `7.13.0` à `7.18.3` après contrôle TypeScript, test d’accès aux routes et build de production.
+
+| Élément | Décision | État |
+|---|---|---|
+| `@xmldom/xmldom`, `qs`, `picomatch` et dépendances transitoires corrigibles | Mise à jour de lockfile non disruptive | Appliqué |
+| React Router | Mise à jour corrective `7.13.0` → `7.18.3` | Appliqué et validé |
+| NestJS, Express/Multer et ExcelJS | Les options automatiques proposées impliquent une rétrogradation majeure ou une montée de version métier risquée | À traiter dans une campagne dédiée avec recette complète |
+
+> Une correction de dépendance qui casse la caisse, l’authentification ou l’usage hors ligne serait une régression plus grave qu’une alerte non immédiatement exploitable. Les six alertes élevées restantes sont donc isolées et ne sont pas corrigées par une commande `--force` aveugle.
+
 ## 6. Ce qui ne doit pas être fait maintenant
 
 Le projet ne doit pas intégrer un TTS cloud dans la vente vocale, ni remplacer le français Sherpa-ONNX par un modèle générique plus lourd sans test terrain. Omnilingual ASR reste une piste pour les packs Dioula/Bambara, mais il ne doit pas devenir un prérequis du parcours marchand français.
