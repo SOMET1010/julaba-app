@@ -13,7 +13,7 @@ import { jourLocal } from '../utils/jourLocal';
 import {
   enfilerOperation, synchroniser,
   nbEchecs as offlineNbEchecs, lettresMortes as offlineLettresMortes, purgerLettreMorte as offlinePurger,
-  type CaisseEndpoint, type LettreMorte,
+  type OfflineEndpoint, type OfflineMethod, type LettreMorte,
 } from '../voice-offline/offlineCaisse';
 // Persistance locale du panier (Phase 1) : module pur, stockage injecté.
 import { loadCart, saveCart, clearStoredCart, type KVStore } from '../services/cartStorage';
@@ -22,9 +22,21 @@ import { loadCart, saveCart, clearStoredCart, type KVStore } from '../services/c
 const cartStore: KVStore | null = typeof window !== 'undefined' ? window.localStorage : null;
 
 // Rejoue une opération en attente vers la bonne route caisse (avec idempotency_key).
-async function posterOperation(endpoint: CaisseEndpoint, payload: unknown): Promise<void> {
+async function posterOperation(endpoint: OfflineEndpoint, payload: unknown, method: OfflineMethod): Promise<void> {
   if (endpoint === '/caisse/vente') await caisseApi.enregistrerVente(payload as caisseApi.EnregistrerVenteData);
-  else await caisseApi.enregistrerDepense(payload as caisseApi.EnregistrerDepenseData);
+  else if (endpoint === '/caisse/depense') await caisseApi.enregistrerDepense(payload as caisseApi.EnregistrerDepenseData);
+  else {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const error = Object.assign(new Error(`Synchronisation stock refusée (${response.status})`), { status: response.status });
+      throw error;
+    }
+  }
 }
 
 // Clé d'idempotence : une par vente/dépense. Envoyée EN LIGNE (le backend
