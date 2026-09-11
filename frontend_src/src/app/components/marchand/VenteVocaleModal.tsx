@@ -10,9 +10,11 @@ import { useCaisse } from "../../contexts/CaisseContext";
 import { useObjectif, ObjectifProvider } from "../../contexts/ObjectifContext";
 import { useStock, type StockItem } from "../../contexts/StockContext";
 import { InstallerOffline } from "../../voice-offline/InstallerOffline";
+import { resumeIncidentHorsLigne } from "../../voice-offline/incidentsHorsLigne";
 import { apparierProduit, construireLigneVocale, doitProposerCreation, noterRefusCreation } from "../../services/venteVocale";
 import { avertissementRupture } from "../../services/ruptureStock";
 import { guidageVocal } from "../../utils/accessMode";
+import { prochaineEtapeMarchand } from "../../utils/guidageMarchand";
 import { vibrerSucces } from "../../utils/haptique";
 import { SaisieGuidee } from "./SaisieGuidee";
 import { AJOUT_PANIER } from "../../services/dialoguesTata";
@@ -30,7 +32,7 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, setIsModalOpen, speak } = useApp();
-  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats, products, updateProduct, addProduct, addToCart } = useCaisse();
+  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats, products, updateProduct, addProduct, addToCart, syncEchecs, syncLettresMortes, purgerEchecSync } = useCaisse();
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
   const progression = objectifCtx?.progression ?? 0;
@@ -212,6 +214,12 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   const isError = state === "error";
   const isDone = state === "idle" && !!response;
   const isIdle = state === "idle" && !response;
+  const prochaineEtape = prochaineEtapeMarchand({
+    etat: state,
+    estEnLigne: isOnline,
+    journeeOuverte: !!currentSession?.opened,
+    enAttente: pendingCount,
+  });
 
   const intentEmoji: Record<string, string> = { vendre: "🛒", consulter_solde: "💰", consulter_ventes: "📊", ajouter_stock: "📦", ouvrir_journee: "☀️", fermer_journee: "🌙", depense: "📒", commandes: "📋", marche: "🏪", keiwa: "💳", inconnu: "🤔" };
   const examples = [
@@ -248,6 +256,27 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
 
           {isReplaying && (<motion.div initial={{ height: 0 }} animate={{ height: "auto" }} className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-500"><motion.div className="w-2 h-2 rounded-full bg-white" animate={{ scale: [1, 1.4, 1] }} transition={{ repeat: Infinity, duration: 0.7 }} /><p className="text-white text-xs font-bold">{pendingCount} message(s) en attente...</p></motion.div>)}
           {!isOnline && (<motion.div initial={{ height: 0 }} animate={{ height: "auto" }} className="flex items-center justify-center gap-2 px-4 py-2 bg-red-500"><WifiOff className="w-3 h-3 text-white" /><p className="text-white text-xs font-bold">Hors-ligne — messages sauvegardés</p></motion.div>)}
+          {syncEchecs > 0 && (
+            <div aria-live="polite" className="px-4 py-3" style={{ background: "#FFF7ED", borderBottom: "1px solid #FED7AA" }}>
+              <p style={{ fontSize: 13, fontWeight: 800, color: "#9A3412", margin: 0 }}>
+                {syncEchecs} opération{syncEchecs > 1 ? "s" : ""} à vérifier
+              </p>
+              {syncLettresMortes.slice(0, 2).map((incident) => (
+                <div key={incident.id} style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+                  <AlertCircle aria-hidden="true" style={{ width: 16, height: 16, color: "#C2410C", flexShrink: 0 }} />
+                  <p style={{ flex: 1, fontSize: 12, lineHeight: 1.35, color: "#7C2D12", margin: 0 }}>
+                    {resumeIncidentHorsLigne(incident)}
+                  </p>
+                  <button
+                    onClick={async () => { await purgerEchecSync(incident.id); toast.success("Opération retirée après vérification."); }}
+                    style={{ border: "1px solid #FDBA74", borderRadius: 10, background: "white", color: "#9A3412", fontSize: 12, fontWeight: 800, padding: "7px 9px", cursor: "pointer", flexShrink: 0 }}
+                  >
+                    Retirer
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* HERO */}
           <div className="relative flex flex-col items-center px-6 pt-4 pb-6"
@@ -334,6 +363,17 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
 
           {/* CORPS BLANC */}
           <div className="px-5 py-5 flex flex-col gap-4">
+            <div
+              aria-live="polite"
+              style={{ display: "flex", gap: 12, alignItems: "flex-start", background: "#FFF8F0", border: `1.5px solid ${P}30`, borderRadius: 16, padding: "12px 14px" }}
+            >
+              <span aria-hidden="true" style={{ fontSize: 24, lineHeight: 1 }}>{prochaineEtape.pictogramme}</span>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 800, color: P, letterSpacing: "0.08em", margin: 0 }}>PROCHAINE ÉTAPE</p>
+                <p style={{ fontSize: 14, fontWeight: 800, color: "#1F2937", margin: "3px 0" }}>{prochaineEtape.titre}</p>
+                <p style={{ fontSize: 12, lineHeight: 1.4, color: "#5D4A3B", margin: 0 }}>{prochaineEtape.detail}</p>
+              </div>
+            </div>
             {transcript && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#F9FAFB", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "12px 14px" }}><p style={{ fontSize: 10, fontWeight: 700, color: "var(--encre-4)", letterSpacing: "0.1em", marginBottom: 4 }}>TU AS DIT</p><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>"{transcript}"</p></motion.div>)}
             {response && !isLoading && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: PL, border: `1.5px solid ${P}30`, borderRadius: 16, padding: "12px 14px" }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ fontSize: 18 }}>{intentEmoji[response.intent] || "💬"}</span><p style={{ fontSize: 10, fontWeight: 700, color: P, letterSpacing: "0.1em" }}>{response.intent.replace(/_/g, " ").toUpperCase()}</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>{response.response || response.reponse}</p>{response.action?.type === "vendre" && response.action.montant && (<div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${P}25` }}><p style={{ fontSize: 13, color: "var(--encre-3)" }}>{response.action.quantite}× {response.action.produit} =&nbsp;<strong style={{ color: P }}>{response.action.montant?.toLocaleString("fr-FR")} FCFA</strong></p></div>)}</motion.div>)}
             {propositionProduit && (

@@ -110,3 +110,19 @@ Le prochain sprint doit se limiter à deux livrables :
 2. **Plan de mise à niveau des dépendances** : branche dédiée, mises à niveau minimales, validation backend/mobile et rapport des alertes restantes.
 
 Ce choix consolide le produit déjà utile plutôt que de disperser l’effort sur de nouveaux modules.
+
+## 8. Mise en œuvre réalisée
+
+Les recommandations immédiatement applicables ont été mises en œuvre sans changer le principe central de Julaba : une vente doit rester possible, compréhensible et traçable sans réseau.
+
+| Chantier | Réalisation | Validation |
+|---|---|---|
+| Tata, caisse et dépenses | Les actions Tata utilisent le pipeline de caisse standard plutôt que des écritures divergentes | Tests de non-régression vente et dépense |
+| Stock hors ligne | Les ajustements sur produit existant sont placés dans la file durable, rejoués avec la méthode HTTP et une clé d’idempotence | Test frontend de rejeu + test backend de déduplication PATCH |
+| Idempotence serveur | Migration `StockOperationIdempotence` et contrôleur protégé contre le double PATCH | Test unitaire backend vert |
+| Sécurité compatible | React Router mis à jour en `7.18.3`; alertes restantes documentées, sans mise à niveau forcée risquée | TypeScript, routes et build verts |
+| Inclusion | Carte locale « Prochaine étape » dans la vente vocale, avec une consigne unique par état | Test des états et build vert |
+| Incidents de synchronisation | Une lettre morte est visible dans le parcours Tata, avec son motif et une action de retrait après revue | Test du résumé d’incident et build vert |
+| Performance | Budget automatisé du vrai chunk initial : 800 Ko non compressés; mesure actuelle : 752 Ko | Contrôle de budget vert |
+
+Les éléments qui restent dépendants d’une décision ou d’une intervention humaine ne sont pas présentés comme livrés : exécution de la migration dans l’environnement cible, enregistrement consenti de nouveaux clips Tata, collecte de corpus Dioula/Bambara, et campagne de mise à niveau majeure pour les dépendances restantes.
