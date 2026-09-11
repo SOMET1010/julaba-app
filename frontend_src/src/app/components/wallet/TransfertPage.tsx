@@ -12,8 +12,8 @@ import {
 } from '../../services/api/wallets-api';
 import { HttpError } from '../../services/api/api-client';
 
-const C = '#C66A2C';
-const BG = '#FFF2E9';
+const C = '#B74725';
+const BG = '#F6F0E4';
 
 interface Method {
   id: string;

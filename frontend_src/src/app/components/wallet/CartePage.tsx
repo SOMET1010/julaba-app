@@ -7,8 +7,8 @@ import { useWallet } from '../../contexts/WalletContext';
 import { RechargeWalletModal } from './RechargeWalletModal';
 import { IMG_LOGO_WAVE, IMG_LOGO_ORANGE_MONEY, IMG_LOGO_MTN, IMG_LOGO_MOOV } from '../../assets/images';
 
-const C = '#C66A2C';
-const BG = '#FFF2E9';
+const C = '#B74725';
+const BG = '#F6F0E4';
 
 export function CartePage() {
   const navigate = useNavigate();
@@ -120,7 +120,7 @@ export function CartePage() {
             transition={{ duration: 0.15 }}
           >
             {/* Fond métal */}
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #8B4513 0%, #C66A2C 18%, #D4824A 30%, #9F5522 48%, #C66A2C 62%, #B8601E 76%, #D4924A 88%, #8B4513 100%)' }} />
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #8B4513 0%, #B74725 18%, #D4824A 30%, #9F5522 48%, #B74725 62%, #B8601E 76%, #D4924A 88%, #8B4513 100%)' }} />
             {/* Lignes métalliques */}
             <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(98deg, transparent 0px, rgba(255,255,255,0.03) 1px, transparent 2px, transparent 5px)' }} />
             {/* Reflet */}

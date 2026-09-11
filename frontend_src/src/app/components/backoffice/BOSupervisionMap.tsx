@@ -28,7 +28,7 @@ import { UniversalSectionCardBO } from './universal/UniversalSectionCardBO';
 import { CIV_NATIONAL_CENTER, getRegionCenter } from './utils/civ-regions-centers';
 
 const ROLE_COLORS: Record<string, string> = {
-  marchand: '#C46210',
+  marchand: '#B74725',
   producteur: '#2E8B57',
   cooperative: '#2072AF',
   identificateur: '#7C3AED',

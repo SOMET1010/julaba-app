@@ -26,7 +26,7 @@ interface TantieSagesseModalProps {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  marchand: '#C46210', producteur: '#00563B', cooperative: '#2072AF',
+  marchand: '#B74725', producteur: '#00563B', cooperative: '#2072AF',
   institution: '#702963', identificateur: '#9F8170',
 };
 

@@ -12,7 +12,7 @@ import { motion } from 'motion/react';
 import { creerLigneProvisoire, type LigneProvisoire } from '../../services/ligneProvisoire';
 import { ConfirmationLigne } from './ConfirmationLigne';
 
-const ORANGE = '#C66A2C';
+const ORANGE = '#B74725';
 
 /** Résultat d'appariement au catalogue (fourni par le parent, qui connaît les produits). */
 export interface AppariementCatalogue {
@@ -75,7 +75,7 @@ export function SaisieGuidee({ onValider, apparier }: Props) {
   const pret = produit.trim().length >= 2 && parseInt(prix || '0', 10) > 0;
 
   return (
-    <div style={{ background: '#FFFDF9', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ background: '#FFFCF7', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <p style={{ fontSize: 13, fontWeight: 800, color: ORANGE, letterSpacing: '0.05em', margin: 0 }}>SAISIR SANS PARLER</p>
 
       <div>

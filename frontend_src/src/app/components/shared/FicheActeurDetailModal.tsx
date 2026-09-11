@@ -20,8 +20,8 @@ const ROLE_CONFIG: Record<string, {
   borderLight: string; gradient: string; icon: React.FC<any>;
 }> = {
   marchand: {
-    label: 'Marchand', color: '#C66A2C', bgLight: '#FFF7ED',
-    borderLight: '#FED7AA', gradient: 'linear-gradient(135deg,#C66A2C,#D97706)',
+    label: 'Marchand', color: '#B74725', bgLight: '#FFF7ED',
+    borderLight: '#FED7AA', gradient: 'linear-gradient(135deg,#B74725,#D97706)',
     icon: Store,
   },
   producteur: {

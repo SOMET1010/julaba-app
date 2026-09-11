@@ -10,7 +10,7 @@ import { API_URL } from '../../utils/api';
 // Données chargées depuis /api/v1/produits
 
 const ROLE_COLORS: Record<string, string> = {
-  marchand: '#C46210',
+  marchand: '#B74725',
   producteur: '#00563B',
   cooperative: '#2072AF',
   institution: '#702963',
@@ -103,7 +103,7 @@ export function Marketplace() {
                 ? 'text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
-            style={!selectedRegion ? { backgroundColor: user ? ROLE_COLORS[user.role] : '#C46210' } : {}}
+            style={!selectedRegion ? { backgroundColor: user ? ROLE_COLORS[user.role] : '#B74725' } : {}}
           >
             Toutes les régions
           </button>
@@ -116,7 +116,7 @@ export function Marketplace() {
                   ? 'text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
-              style={selectedRegion === region ? { backgroundColor: user ? ROLE_COLORS[user.role] : '#C46210' } : {}}
+              style={selectedRegion === region ? { backgroundColor: user ? ROLE_COLORS[user.role] : '#B74725' } : {}}
             >
               {region}
             </button>

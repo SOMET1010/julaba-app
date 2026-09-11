@@ -93,7 +93,7 @@ export function AuditTrail() {
 
   const getCouleurRole = (role: string) => {
     const rolesColors: Record<string, string> = {
-      marchand: '#C66A2C',
+      marchand: '#B74725',
       producteur: '#2E8B57',
       cooperative: '#2072AF',
       identificateur: '#9F8170',

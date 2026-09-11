@@ -241,7 +241,7 @@ export function DocumentModal({
                 >
                   <Icon 
                     className="w-6 h-6" 
-                    style={{ color: localDocument.status === 'verified' ? '#059669' : '#C46210' }} 
+                    style={{ color: localDocument.status === 'verified' ? '#059669' : '#B74725' }}
                   />
                 </div>
                 <div>
@@ -362,8 +362,8 @@ export function DocumentModal({
                     }}
                     transition={{ duration: 2, repeat: Infinity }}
                   >
-                    <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: '#C4621020' }}>
-                      <Camera className="w-7 h-7" style={{ color: '#C46210' }} />
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: '#B7472520' }}>
+                      <Camera className="w-7 h-7" style={{ color: '#B74725' }} />
                     </div>
                     <div className="text-center">
                       <p className="font-bold text-gray-900 text-sm">Prendre une photo</p>
@@ -474,7 +474,7 @@ export function DocumentModal({
                 <motion.button
                   onClick={handleReupload}
                   className="w-full py-4 rounded-2xl font-bold text-white shadow-lg flex items-center justify-center gap-2"
-                  style={{ backgroundColor: '#C46210' }}
+                  style={{ backgroundColor: '#B74725' }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >

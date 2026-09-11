@@ -204,7 +204,7 @@ export function PublierRecolteModal({ recolte, cycle, isOpen, onClose }: Publier
                   onClick={handlePublier}
                   disabled={isSubmitting || quantite <= 0 || prixUnitaire <= 0}
                   className="flex-1 py-4 rounded-2xl font-bold text-white shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
-                  style={{ backgroundColor: '#C66A2C' }}
+                  style={{ backgroundColor: '#B74725' }}
                 >
                   {isSubmitting ? 'Publication...' : 'Publier'}
                 </button>

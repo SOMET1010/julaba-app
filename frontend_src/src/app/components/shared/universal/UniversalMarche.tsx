@@ -101,7 +101,7 @@ export function UniversalMarche({ role }: UniversalMarcheProps) {
       <motion.div
         className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b"
         style={{
-          background: `linear-gradient(to bottom, ${roleConfig.primaryColor}10, ${roleConfig.primaryColor}05)`,
+          background: 'var(--commerce-paper)',
         }}
         initial={{ y: -100 }}
         animate={{ y: 0 }}

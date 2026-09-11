@@ -303,7 +303,7 @@ export function KpiMoisModal({
           <p className="text-sm leading-relaxed text-gray-700">
             Ce chiffre repr\u00e9sente le <span className="font-bold">nombre total d\u2019acteurs identifi\u00e9s</span>{' '}
             durant le mois en cours ({monthLabel}). Il inclut \u00e0 la fois les{' '}
-            <span className="font-bold text-[#C66A2C]">marchands</span> et les{' '}
+            <span className="font-bold text-[#B74725]">marchands</span> et les{' '}
             <span className="font-bold text-[#16A34A]">producteurs</span> que tu as enregistr\u00e9s dans le syst\u00e8me
             Julaba. Chaque identification valid\u00e9e contribue \u00e0 ton score Julaba.
           </p>
@@ -316,12 +316,12 @@ export function KpiMoisModal({
             whileHover={cardHover}
           >
             <div className="mb-2 flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#C66A2C]/20">
-                <Users className="h-5 w-5 text-[#C66A2C]" aria-hidden="true" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#B74725]/20">
+                <Users className="h-5 w-5 text-[#B74725]" aria-hidden="true" />
               </div>
               <p className="text-xs font-semibold text-gray-600">Marchands</p>
             </div>
-            <p className="text-3xl font-bold text-[#C66A2C]">{nbMarchands || 0}</p>
+            <p className="text-3xl font-bold text-[#B74725]">{nbMarchands || 0}</p>
             <p className="mt-1 text-xs text-gray-500">Ce mois</p>
           </motion.div>
 

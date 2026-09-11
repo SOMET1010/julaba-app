@@ -8,7 +8,7 @@ export function LogoutConfirmDialog({
   open,
   onConfirm,
   onCancel,
-  color = '#C66A2C',
+  color = '#B74725',
 }: {
   open: boolean;
   onConfirm: () => void;

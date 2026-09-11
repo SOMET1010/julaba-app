@@ -10,7 +10,7 @@ import { useUser } from '../../contexts/UserContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
 import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import logoJulaba from '../../../assets/images/logo-julaba.png';
-import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
+import { BrandSignature } from '../shared/BrandSignature';
 import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits, fusionnerChiffresDictes } from '../../utils/frenchDigits';
@@ -151,7 +151,7 @@ export function LoginPassword() {
   const [operateur, setOperateur] = useState<Operateur | null>(null); // opérateur déduit du numéro
   const [showVoiceInstall, setShowVoiceInstall] = useState(false);    // proposer d'installer la voix (consenti)
   // MODE DÉVELOPPEUR (caché) : outils de test (rapport, version, tutoriel…). Masqué
-  // pour la marchande (expérience simple). On l'active en tapant 5× le bandeau ivoirien.
+  // pour la marchande (expérience simple). On l'active en tapant 5× le coin haut-gauche.
   const [devMode, setDevMode] = useState<boolean>(() => {
     try { return import.meta.env.DEV || localStorage.getItem('julaba_dev_mode') === '1'; } catch { return false; }
   });
@@ -929,7 +929,7 @@ export function LoginPassword() {
   return (
     <div style={{
       minHeight: '100dvh',
-      background: 'radial-gradient(120% 60% at 50% -8%, rgba(219,122,44,0.14), transparent 55%), #FFFDF9',
+      background: 'var(--commerce-paper)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -942,12 +942,6 @@ export function LoginPassword() {
       paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
       position: 'relative',
     }}>
-      {/* Bandeau ivoirien orange-blanc-vert */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 6, display: 'flex', zIndex: 50 }}>
-        <div style={{ flex: 1, background: '#F77F00' }} />
-        <div style={{ flex: 1, background: '#FFFFFF' }} />
-        <div style={{ flex: 1, background: '#009E60' }} />
-      </div>
       {/* Zone invisible (coin haut-gauche) : 5 tapes = mode développeur (caché à la marchande) */}
       <div onClick={toggleDevMode} aria-hidden style={{ position: 'absolute', top: 0, left: 0, width: 54, height: 54, zIndex: 60 }} />
       {import.meta.env.DEV && showDevButton && (
@@ -975,56 +969,21 @@ export function LoginPassword() {
           padding: '22px 24px 4px',
         }}
       >
-        {/* TATA NANTI LOU — présence vivante ; elle parle d'elle-même, on touche son visage pour réécouter */}
-        <div style={{ position: 'relative', display: 'grid', placeItems: 'center' }}>
-          {tataSpeaking && (
-            <motion.span
-              aria-hidden
-              style={{ position: 'absolute', width: 'clamp(140px, 40vw, 178px)', height: 'clamp(140px, 40vw, 178px)', borderRadius: '50%', border: '3px solid rgba(31,164,99,0.5)' }}
-              animate={{ scale: [0.85, 1.18], opacity: [0.7, 0] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeOut' }}
-            />
-          )}
-          <motion.img
-            src={tataNantiLou}
-            alt="Tata Nanti Lou"
-            fetchPriority="high"
-            onClick={import.meta.env.DEV ? handleLogoClick : ecouterTata}
-            aria-label="Tata Nanti Lou — touchez pour l'entendre"
-            animate={{ scale: tataSpeaking ? [1, 1.05, 1] : [1, 1.03, 1] }}
-            transition={{ duration: tataSpeaking ? 1 : 3.4, repeat: Infinity, ease: 'easeInOut' }}
-            style={{
-              width: 'clamp(124px, 36vw, 164px)',
-              height: 'clamp(124px, 36vw, 164px)',
-              borderRadius: '50%',
-              objectFit: 'cover',
-              cursor: 'pointer',
-              position: 'relative',
-              zIndex: 2,
-              boxShadow: '0 16px 34px -14px rgba(184,92,27,0.5), 0 0 0 6px #fff, 0 0 0 9px rgba(219,122,44,0.24)',
-            }}
-          />
+        <div className="commerce-brand" style={{ marginBottom: 16 }}>
+          <img src={logoJulaba} alt="JULABA" /><BrandSignature />
         </div>
-        {/* RÈGLE JULABA : « si Tata peut le dire, l'écran n'a pas besoin de l'écrire. »
-            Le nom et l'accueil sont DITS par Tata (on touche son visage) — pas écrits.
-            En mode dev seulement, on garde un mini-repère. */}
+        <button type="button" onClick={import.meta.env.DEV ? handleLogoClick : ecouterTata}
+          className="commerce-voice" style={{ maxWidth: 372 }}
+          aria-label="Tata Nanti Lou — touchez pour l'entendre">
+          <Mic aria-hidden="true" size={22} />
+          <span>{tataSpeaking ? 'Tata parle…' : 'Écouter Tata Nanti Lou'}</span>
+        </button>
         {devMode && (
           <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tata Nanti Lou · dev</span>
         )}
       </motion.div>
 
-      <motion.div style={{ display: 'none' }}>
-        <img
-          src={logoJulaba}
-          alt="Jùlaba"
-          onClick={import.meta.env.DEV ? handleLogoClick : undefined}
-          style={{
-            width: 'clamp(140px, 45vw, 200px)',
-            objectFit: 'contain',
-            cursor: import.meta.env.DEV ? 'pointer' : 'default',
-          }}
-        />
-      </motion.div>
+
 
       <motion.div
         initial={{ opacity: 0, y: 40 }}
@@ -1090,10 +1049,10 @@ export function LoginPassword() {
                   animate={{ scale: [1, 1.02, 1] }}
                   transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
                   style={{
-                    width: 'clamp(160px, 54vw, 196px)', height: 'clamp(160px, 54vw, 196px)',
-                    borderRadius: '50%', border: 'none', cursor: isLoading ? 'wait' : 'pointer', color: '#fff',
-                    background: 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
-                    boxShadow: '0 26px 46px -14px rgba(184,92,27,0.75), inset 0 4px 0 rgba(255,255,255,0.4)',
+                    width: '100%', height: 96,
+                    borderRadius: 14, border: 'none', cursor: isLoading ? 'wait' : 'pointer', color: '#fff',
+                    background: 'var(--commerce-action)',
+                    boxShadow: '0 2px 8px #3325330C',
                     display: 'grid', placeItems: 'center', marginTop: 4, opacity: isLoading ? 0.7 : 1,
                   }}
                   whileTap={{ scale: 0.96 }}
@@ -1109,10 +1068,10 @@ export function LoginPassword() {
                   animate={{ scale: [1, 1.02, 1] }}
                   transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
                   style={{
-                    width: 'clamp(160px, 54vw, 196px)', height: 'clamp(160px, 54vw, 196px)',
-                    borderRadius: '50%', border: 'none', cursor: 'pointer', color: '#fff',
-                    background: 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
-                    boxShadow: '0 26px 46px -14px rgba(184,92,27,0.75), inset 0 4px 0 rgba(255,255,255,0.4)',
+                    width: '100%', height: 96,
+                    borderRadius: 14, border: 'none', cursor: 'pointer', color: '#fff',
+                    background: 'var(--commerce-action)',
+                    boxShadow: '0 2px 8px #3325330C',
                     display: 'grid', placeItems: 'center', marginTop: 4,
                   }}
                   whileTap={{ scale: 0.96 }}
@@ -1213,7 +1172,7 @@ export function LoginPassword() {
                 width: accessMode === 'lecture' ? 64 : (showKeypad ? 'clamp(96px, 30vw, 120px)' : 'clamp(184px, 62vw, 214px)'),
                 height: accessMode === 'lecture' ? 64 : (showKeypad ? 'clamp(96px, 30vw, 120px)' : 'clamp(184px, 62vw, 214px)'),
                 alignSelf: 'center', borderRadius: accessMode === 'lecture' ? 18 : '50%', border: 'none', cursor: 'pointer', color: '#fff',
-                background: isListening ? 'radial-gradient(125% 125% at 30% 20%, #38A870, #1C7A4B)' : 'radial-gradient(125% 125% at 30% 20%, #EE8E3C, #C55C18)',
+                background: isListening ? '#00563B' : 'var(--commerce-action)',
                 boxShadow: isListening ? '0 26px 46px -14px rgba(28,122,75,0.7), inset 0 4px 0 rgba(255,255,255,0.35)' : '0 26px 46px -14px rgba(184,92,27,0.75), inset 0 4px 0 rgba(255,255,255,0.4)',
                 display: 'grid', placeItems: 'center', marginTop: 6,
               }}
@@ -1280,7 +1239,7 @@ export function LoginPassword() {
             {voixEcouteDispo && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 22 }}>
               <button type="button" aria-label="Taper mon numéro sur le clavier" onClick={() => setShowKeypad(v => !v)}
-                style={{ width: 58, height: 58, borderRadius: 18, background: showKeypad ? '#DB7A2C' : '#F3E7D8', color: showKeypad ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+                style={{ width: 58, height: 58, borderRadius: 18, background: showKeypad ? '#DB7A2C' : '#F5D6BD', color: showKeypad ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
                 <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 13h6"/></svg>
               </button>
             </div>
@@ -1307,7 +1266,7 @@ export function LoginPassword() {
                 <motion.button type="button" disabled={isLoading || phone.length === 0} aria-label="Connexion par empreinte" onPointerDown={(e) => e.preventDefault()} onClick={handleBiometric}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.04)', border: '1px solid rgba(198,106,44,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: isLoading || phone.length === 0 ? 0.3 : 0.65 }}
                   whileTap={{ scale: 0.9, opacity: 1 }}>
-                  <Fingerprint style={{ width: 22, height: 22, color: '#C66A2C' }} />
+                  <Fingerprint style={{ width: 22, height: 22, color: '#B74725' }} />
                 </motion.button>
                 <motion.button type="button" onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.08)', border: '1px solid rgba(198,106,44,0.15)', borderTop: '1px solid rgba(255,255,255,0.9)', fontSize: 22, fontWeight: 500, color: '#5a2e0a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(198,106,44,0.06)' }}
@@ -1315,7 +1274,7 @@ export function LoginPassword() {
                 <motion.button type="button" aria-label="Effacer le dernier chiffre" onPointerDown={(e) => e.preventDefault()} onClick={handleKeyDelete}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.04)', border: '1px solid rgba(198,106,44,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0.65 }}
                   whileTap={{ scale: 0.9, opacity: 1 }}>
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B74725" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
                 </motion.button>
               </div>
             </div>
@@ -1411,7 +1370,7 @@ export function LoginPassword() {
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center', position: 'relative', zIndex: 1, pointerEvents: 'none' }}>
                   {[0, 1, 2, 3].map(i => (
                     <motion.div key={i}
-                      style={{ width: 13, height: 13, borderRadius: '50%', background: i < pinInput.length ? '#C66A2C' : 'transparent', border: `1.5px solid ${i < pinInput.length ? '#C66A2C' : 'rgba(198,106,44,0.25)'}` }}
+                      style={{ width: 13, height: 13, borderRadius: '50%', background: i < pinInput.length ? '#B74725' : 'transparent', border: `1.5px solid ${i < pinInput.length ? '#B74725' : 'rgba(198,106,44,0.25)'}` }}
                       animate={i < pinInput.length ? { scale: [1, 1.2, 1] } : {}}
                       transition={{ duration: 0.15 }}
                     />
@@ -1477,7 +1436,7 @@ export function LoginPassword() {
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.04)', border: '1px solid rgba(198,106,44,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: isLoading || phone.length === 0 ? 0.3 : 0.65 }}
                   whileTap={{ scale: 0.9, opacity: 1 }}
                 >
-                  <Fingerprint style={{ width: 22, height: 22, color: '#C66A2C' }} />
+                  <Fingerprint style={{ width: 22, height: 22, color: '#B74725' }} />
                 </motion.button>
                 <motion.button type="button" aria-label={pinEnImages ? undefined : 'Chiffre 0'} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.08)', border: '1px solid rgba(198,106,44,0.15)', borderTop: '1px solid rgba(255,255,255,0.9)', fontSize: pinEnImages ? 30 : 22, fontWeight: 500, color: '#5a2e0a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(198,106,44,0.06)' }}
@@ -1487,7 +1446,7 @@ export function LoginPassword() {
                   style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(198,106,44,0.04)', border: '1px solid rgba(198,106,44,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: 0.65 }}
                   whileTap={{ scale: 0.9, opacity: 1 }}
                 >
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#C66A2C" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B74725" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
                 </motion.button>
               </div>
               {/* Bascule OPT-IN, jamais le mode par défaut (doc « mot de passe imagé »,
@@ -1546,7 +1505,7 @@ export function LoginPassword() {
             if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
             else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
           }}
-          style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: '#8A5A34', background: '#F3E7D8', border: 'none', borderRadius: 10, padding: '7px 14px', cursor: 'pointer' }}
+          style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: '#8A5A34', background: '#F5D6BD', border: 'none', borderRadius: 10, padding: '7px 14px', cursor: 'pointer' }}
         >
           🐞 Rapport de test
         </button>

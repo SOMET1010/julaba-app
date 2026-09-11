@@ -137,7 +137,7 @@ export function BODashboard() {
   // ─── Répartition par type d'acteur ───────────────────────────────────────
   const typeData = useMemo(() => {
     const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
-      marchand: { label: 'Marchands', color: '#C66A2C' },
+      marchand: { label: 'Marchands', color: '#B74725' },
       producteur: { label: 'Producteurs', color: '#2E8B57' },
       cooperative: { label: 'Coopératives', color: '#1D4ED8' },
       super_admin: { label: 'Super Admins', color: 'var(--encre-3)' },
@@ -443,7 +443,7 @@ export function BODashboard() {
           animatedTarget={zones.filter(z => z.actif === true).length}
           sub={`sur ${zones.length} zones`}
           icon={MapPin}
-          color="#C66A2C"
+          color="#B74725"
           onClick={() => navigate('/backoffice/zones')}
           delay={0.28}
         />
@@ -940,7 +940,7 @@ export function BODashboard() {
           <div className="space-y-3">
             {topIdentificateurs.map((ident, i) => {
               const maxDossiers = topIdentificateurs[0]?.dossiers || 1;
-              const medalColor = i === 0 ? '#F59E0B' : i === 1 ? '#9CA3AF' : i === 2 ? '#C66A2C' : BO_DARK;
+              const medalColor = i === 0 ? '#F59E0B' : i === 1 ? '#9CA3AF' : i === 2 ? '#B74725' : BO_DARK;
               return (
                 <motion.div
                   key={ident.nom}

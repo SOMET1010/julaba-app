@@ -26,7 +26,7 @@ const VARIANT_CONFIG: Record<ButtonVariant, { bg: string; bgHover: string; text:
 };
 
 const SIZE_CONFIG: Record<ButtonSize, { padding: string; fontSize: number; iconSize: number; borderRadius: number; gap: number }> = {
-  sm: { padding: '6px 12px', fontSize: 12, iconSize: 14, borderRadius: 8, gap: 6 },
+  sm: { padding: '8px 12px', fontSize: 14, iconSize: 16, borderRadius: 8, gap: 6 },
   md: { padding: '10px 20px', fontSize: 14, iconSize: 16, borderRadius: 12, gap: 8 },
   lg: { padding: '14px 24px', fontSize: 15, iconSize: 18, borderRadius: 16, gap: 10 },
 };
@@ -75,7 +75,7 @@ export function UniversalActionButtonBO({
   label,
   icon: Icon,
   iconPosition = 'left',
-  iconAnimated = true,
+  iconAnimated = false,
   variant = 'primary',
   size = 'md',
   fullWidth = false,
@@ -107,7 +107,7 @@ export function UniversalActionButtonBO({
         type={type}
         onClick={isInteractive ? onClick : undefined}
         disabled={!isInteractive}
-        whileHover={isInteractive ? { scale: 1.02, y: -1, backgroundColor: variantConfig.bgHover } : { scale: 1 }}
+        whileHover={isInteractive ? { backgroundColor: variantConfig.bgHover } : {}}
         whileTap={isInteractive ? { scale: 0.97 } : { scale: 1 }}
         transition={{ duration: 0.15 }}
         aria-label={ariaLabel || label}
@@ -116,7 +116,7 @@ export function UniversalActionButtonBO({
         style={{
           background: isInteractive ? variantConfig.bg : BO_TINT,
           color: isInteractive ? variantConfig.text : BO_MEDIUM,
-          border: `2px solid ${isInteractive ? variantConfig.border : BO_LIGHT}`,
+          border: `1px solid ${isInteractive ? variantConfig.border : BO_LIGHT}`,
           padding: sizeConfig.padding,
           fontSize: sizeConfig.fontSize,
           fontWeight: 700,

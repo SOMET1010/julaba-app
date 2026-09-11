@@ -348,10 +348,10 @@ export function Analytics() {
                 label="Marchands"
                 animatedTarget={dataRepartition[0]?.value || 0}
                 icon={Building2}
-                color="#C66A2C"
+                color="#B74725"
                 delay={90}
                 details={[
-                  { label: 'Part du total', value: '46.9%', color: '#C66A2C' },
+                  { label: 'Part du total', value: '46.9%', color: '#B74725' },
                   { label: 'Actifs', value: '8,234', color: '#10B981' },
                 ]}
               />
@@ -474,7 +474,7 @@ export function Analytics() {
                     contentStyle={{ borderRadius: '16px', border: '2px solid #71286440' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '11px' }} />
-                  <Line type="monotone" dataKey="marchands" stroke="#C66A2C" strokeWidth={2} name="Marchands" />
+                  <Line type="monotone" dataKey="marchands" stroke="#B74725" strokeWidth={2} name="Marchands" />
                   <Line type="monotone" dataKey="producteurs" stroke="#2E8B57" strokeWidth={2} name="Producteurs" />
                   <Line type="monotone" dataKey="cooperatives" stroke="#2072AF" strokeWidth={2} name="Coopératives" />
                   <Line type="monotone" dataKey="identificateurs" stroke="#9F8170" strokeWidth={2} name="Identificateurs" />

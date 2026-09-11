@@ -99,7 +99,7 @@ function StyledButton({ onClick, variant = 'primary', disabled, children, classN
     success: 'text-white shadow-lg hover:shadow-xl',
   };
 
-  let bgColor = '#C46210';
+  let bgColor = '#B74725';
   if (variant === 'danger') bgColor = '#DC2626';
   if (variant === 'success') bgColor = '#16A34A';
 
@@ -385,7 +385,7 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#C46210' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
         {/* Header */}
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
@@ -393,10 +393,10 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <Calendar className="w-7 h-7" style={{ color: '#C46210' }} />
+              <Calendar className="w-7 h-7" style={{ color: '#B74725' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#C46210' }}>
+              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
                 Ouvre ta journée
               </h2>
             </div>
@@ -489,17 +489,17 @@ export function EditFondModal({ isOpen, onClose, currentFond }: EditFondModalPro
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#C46210' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <DollarSign className="w-7 h-7" style={{ color: '#C46210' }} />
+              <DollarSign className="w-7 h-7" style={{ color: '#B74725' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#C46210' }}>
+              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
                 Modifier le fond
               </h2>
             </div>
@@ -661,8 +661,8 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
 
           <div className="p-4 rounded-2xl border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Caisse théorique</p>
-            <MontantCard accentColor="#C46210" className="rounded-xl">
-              <Montant value={stats.caisse} size="xl" color="#C46210" />
+            <MontantCard accentColor="#B74725" className="rounded-xl">
+              <Montant value={stats.caisse} size="xl" color="#B74725" />
             </MontantCard>
           </div>
 
@@ -693,7 +693,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
                 className="w-full flex items-center justify-between text-left"
               >
                 <div className="flex items-center gap-2">
-                  <Package className="w-4 h-4" style={{ color: '#C46210' }} />
+                  <Package className="w-4 h-4" style={{ color: '#B74725' }} />
                   <p className="text-xs font-bold text-gray-700">Analyse détaillée</p>
                 </div>
                 <motion.div
@@ -719,7 +719,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
                         <div className="flex items-center gap-2">
                           <div
                             className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                            style={{ backgroundColor: '#C46210' }}
+                            style={{ backgroundColor: '#B74725' }}
                           >
                             {index + 1}
                           </div>
@@ -728,7 +728,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
                             <p className="text-xs text-gray-500">{product.quantity} unité{product.quantity > 1 ? 's' : ''}</p>
                           </div>
                         </div>
-                        <p className="text-xs font-bold" style={{ color: '#C46210' }}>
+                        <p className="text-xs font-bold" style={{ color: '#B74725' }}>
                           {formatMontantFR(product.total || 0)} FCFA
                         </p>
                       </div>
@@ -743,23 +743,23 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
           <div className="grid grid-cols-2 gap-2 pt-2">
             <motion.button
               onClick={handleNavigateToSales}
-              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[#C46210] transition-colors whitespace-nowrap"
+              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[#B74725] transition-colors whitespace-nowrap"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               disabled={isClosing}
             >
-              <Receipt className="w-4 h-4 flex-shrink-0" style={{ color: '#C46210' }} />
+              <Receipt className="w-4 h-4 flex-shrink-0" style={{ color: '#B74725' }} />
               <span className="text-xs font-semibold text-gray-700">Ventes</span>
             </motion.button>
 
             <motion.button
               onClick={handleNavigateToCaisse}
-              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[#C46210] transition-colors whitespace-nowrap"
+              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[#B74725] transition-colors whitespace-nowrap"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               disabled={isClosing}
             >
-              <Wallet className="w-4 h-4 flex-shrink-0" style={{ color: '#C46210' }} />
+              <Wallet className="w-4 h-4 flex-shrink-0" style={{ color: '#B74725' }} />
               <span className="text-xs font-semibold text-gray-700">Résumé caisse</span>
             </motion.button>
           </div>
@@ -916,17 +916,17 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#C46210' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <Award className="w-7 h-7" style={{ color: '#C46210' }} />
+              <Award className="w-7 h-7" style={{ color: '#B74725' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#C46210' }}>
+              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
                 Mes Points JULABA
               </h2>
             </div>
@@ -940,7 +940,7 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
           <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 border mb-6" style={{ borderColor: '#FED7AA' }}>
             <motion.p
               className="text-6xl font-bold"
-              style={{ color: '#C46210' }}
+              style={{ color: '#B74725' }}
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 200 }}
@@ -966,7 +966,7 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
           </div>
 
           <div className="p-4 rounded-2xl border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }}>
-            <p className="text-sm font-bold mb-2" style={{ color: '#C46210' }}>
+            <p className="text-sm font-bold mb-2" style={{ color: '#B74725' }}>
               C'est déjà !
             </p>
             <p className="text-sm text-gray-600 leading-relaxed">
@@ -1005,17 +1005,17 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#C46210' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <FileText className="w-7 h-7" style={{ color: '#C46210' }} />
+              <FileText className="w-7 h-7" style={{ color: '#B74725' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#C46210' }}>
+              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
                 Résumé du jour
               </h2>
             </div>
@@ -1050,8 +1050,8 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
 
           <div className="p-4 rounded-2xl border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Caisse théorique</p>
-            <MontantCard accentColor="#C46210" className="rounded-xl">
-              <Montant value={stats.caisse} size="xl" color="#C46210" />
+            <MontantCard accentColor="#B74725" className="rounded-xl">
+              <Montant value={stats.caisse} size="xl" color="#B74725" />
             </MontantCard>
           </div>
 

@@ -68,7 +68,7 @@ export function AppLayout() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 animate-spin text-[#C46210]" />
+          <Loader2 className="w-10 h-10 animate-spin text-[#B74725]" />
           <p className="text-gray-500 text-sm font-medium">Chargement...</p>
         </div>
       </div>
@@ -82,10 +82,10 @@ export function AppLayout() {
   const hideBottomBar = hiddenPaths.some(p => location.pathname.startsWith(p));
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="commerce-front min-h-screen bg-gray-50">
       <ScrollToTop />
       <NotificationToastContainer
-        accentColor={getRoleConfig(user.role)?.primaryColor || '#C46210'}
+        accentColor={getRoleConfig(user.role)?.primaryColor || '#B74725'}
         userRole={user.role}
       />
       {/* Sidebar Desktop Unifié */}

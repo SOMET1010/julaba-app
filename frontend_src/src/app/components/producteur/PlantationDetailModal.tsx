@@ -90,7 +90,7 @@ export function PlantationDetailModal({ cycle, onClose, onCloture }: Props) {
             <div className="flex items-center gap-3">
               <div
                 className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-md"
-                style={{ background: `linear-gradient(135deg, ${COLOR}, #3BA869)` }}
+                style={{ background: COLOR }}
               >
                 <Sprout className="w-6 h-6 text-white" strokeWidth={2.5} />
               </div>
@@ -138,7 +138,7 @@ export function PlantationDetailModal({ cycle, onClose, onCloture }: Props) {
                     animate={{ width: `${progressPercent}%` }}
                     transition={{ duration: 1.2, ease: 'easeOut' }}
                     className="h-full rounded-full"
-                    style={{ background: `linear-gradient(90deg, ${COLOR}, #3BA869)` }}
+                    style={{ background: COLOR }}
                   />
                 </div>
                 <div className="flex justify-between mt-2">
@@ -274,7 +274,7 @@ export function PlantationDetailModal({ cycle, onClose, onCloture }: Props) {
                     navigate(`/producteur/declarer-recolte?cycleId=${cycle.id}`);
                   }}
                   className="w-full py-4 rounded-2xl font-bold text-white text-base shadow-lg"
-                  style={{ background: isOverdue ? 'linear-gradient(135deg, #dc2626, #ef4444)' : isUrgent ? 'linear-gradient(135deg, #ea580c, #f97316)' : `linear-gradient(135deg, ${COLOR}, #3BA869)` }}
+                  style={{ background: isOverdue ? 'linear-gradient(135deg, #dc2626, #ef4444)' : isUrgent ? 'linear-gradient(135deg, #ea580c, #f97316)' : COLOR }}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.97 }}
                 >

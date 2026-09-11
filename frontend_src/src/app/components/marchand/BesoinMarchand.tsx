@@ -10,7 +10,7 @@ import { CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { API_URL } from '../../utils/api';
 import { apiRequest } from '../../services/api/api-client';
 
-const COLOR = '#C46210';
+const COLOR = '#B74725';
 
 export function BesoinMarchand() {
   const { speak } = useApp();

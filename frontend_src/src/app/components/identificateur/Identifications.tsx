@@ -55,7 +55,7 @@ interface RawIdentification {
 
 // Couleur par rôle
 function getRoleColor(role: string) {
-  if (role === 'marchand') return '#C66A2C';
+  if (role === 'marchand') return '#B74725';
   if (role === 'producteur') return '#2E8B57';
   if (role === 'cooperative' || role === 'cooperateur') return '#2072AF'; // ok param
   return '#9F8170';
@@ -440,7 +440,7 @@ export function Identifications() {
                 aria-pressed={selectedRole === 'marchand'}
                 className={`relative flex items-center justify-center px-2 py-3.5 rounded-xl font-bold text-xs sm:text-sm transition-all ${
                   selectedRole === 'marchand'
-                    ? 'bg-gradient-to-r from-[#C66A2C] to-[#D87E47] text-white shadow-md'
+                    ? 'bg-gradient-to-r from-[#B74725] to-[#D87E47] text-white shadow-md'
                     : 'bg-transparent text-gray-600 hover:bg-gray-50'
                 }`}
                 whileTap={{ scale: 0.98 }}

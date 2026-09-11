@@ -184,7 +184,7 @@ export function InboxNegociations({ accent = '#f97316', onAccepted }: Props) {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.07 }}
                     className="rounded-3xl border-2 overflow-hidden shadow-md"
-                    style={{ borderColor: '#f97316', background: 'linear-gradient(135deg, #fff7ed, white)' }}
+                    style={{ borderColor: '#f97316', background: 'var(--commerce-surface)' }}
                   >
                     <div className="px-4 pt-3 pb-2 flex items-start justify-between">
                       <div className="flex-1 min-w-0">

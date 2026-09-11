@@ -227,9 +227,9 @@ export function UniversalAccueil({ role }: UniversalAccueilProps) {
         Pour l'instant, les modals sont vides.
         À créer : UniversalModals.tsx qui affiche les bons modals selon le rôle
       */}
-      <NotificationsPanel userId={user?.id || ''} isOpen={showNotifications} onClose={() => setShowNotifications(false)} accentColor="#C46210" userRole={role} />
+      <NotificationsPanel userId={user?.id || ''} isOpen={showNotifications} onClose={() => setShowNotifications(false)} accentColor="#B74725" userRole={role} />
       <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 999 }}>
-        <NotifBellButton userId={user?.id || ''} accentColor="#C46210" onOpen={() => setShowNotifications(true)} />
+        <NotifBellButton userId={user?.id || ''} accentColor="#B74725" onOpen={() => setShowNotifications(true)} />
       </div>
     </>
   );

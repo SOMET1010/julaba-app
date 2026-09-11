@@ -216,7 +216,7 @@ export function BOMissions() {
                   <motion.div key={p.id ?? `acteur-rank-${i}`} className="flex items-center gap-4 px-6 py-3 border-b border-gray-50 last:border-0"
                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm flex-shrink-0 ${((p.rang ?? 0) <= 3 && (p.rang ?? 0) > 0) ? 'text-white' : 'bg-gray-100 text-gray-600'}`}
-                      style={((p.rang ?? 0) <= 3 && (p.rang ?? 0) > 0) ? { backgroundColor: p.rang === 1 ? '#F59E0B' : p.rang === 2 ? '#9CA3AF' : '#C66A2C' } : {}}>
+                      style={((p.rang ?? 0) <= 3 && (p.rang ?? 0) > 0) ? { backgroundColor: p.rang === 1 ? '#F59E0B' : p.rang === 2 ? '#9CA3AF' : '#B74725' } : {}}>
                       {p.rang ?? '-'}
                     </div>
                     <div className="flex-1 min-w-0">

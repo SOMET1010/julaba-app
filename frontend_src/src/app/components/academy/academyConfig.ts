@@ -45,7 +45,7 @@ export const LEVEL_CONFIG: LevelConfig[] = [
 
 // Couleurs des profils (cohérent avec roleConfig.ts)
 export const ROLE_COLORS: Record<UserRole, string> = {
-  marchand: '#C66A2C',
+  marchand: '#B74725',
   producteur: '#2E8B57',
   cooperative: '#2072AF',
   institution: '#712864',

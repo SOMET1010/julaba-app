@@ -43,8 +43,8 @@ export function Welcome({ onComplete }: WelcomeProps) {
     <div
       className="min-h-screen flex flex-col items-center justify-between p-8 cursor-pointer"
       style={{
-        backgroundColor: '#C46210',
-        backgroundImage: `linear-gradient(180deg, rgba(196,98,16,0.30) 0%, rgba(196,98,16,0.42) 52%, rgba(196,97,15,0.92) 88%, #C4610F 100%), url(${bgMarche})`,
+        backgroundColor: '#B74725',
+        backgroundImage: `linear-gradient(180deg, rgba(196,98,16,0.30) 0%, rgba(196,98,16,0.42) 52%, rgba(196,97,15,0.92) 88%, #B74725 100%), url(${bgMarche})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center top',
         position: 'relative',
@@ -98,13 +98,13 @@ export function Welcome({ onComplete }: WelcomeProps) {
         <motion.button
           onClick={(e) => { e.stopPropagation(); commencer(); }}
           className="w-full h-14 bg-white rounded-full text-lg font-bold shadow-lg flex items-center justify-center gap-3"
-          style={{ color: '#C46210' }}
+          style={{ color: '#B74725' }}
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
         >
           {/* Flèche = « toucher pour avancer », compréhensible sans lire (v0.3) */}
           <span aria-hidden="true" style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, borderRadius: '50%', background: 'rgba(196,98,16,0.14)' }}>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#C46210" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#B74725" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </span>
           Commencer
         </motion.button>

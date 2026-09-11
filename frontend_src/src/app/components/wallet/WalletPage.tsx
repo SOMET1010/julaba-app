@@ -12,8 +12,8 @@ import { WithdrawWalletModal } from './WithdrawWalletModal';
 import { API_URL } from '../../utils/api';
 import { verifyWebAuthnForKeiwa } from '../../hooks/useWebAuthn';
 
-const C = '#C66A2C';
-const BG = '#FFF2E9';
+const C = '#B74725';
+const BG = '#F6F0E4';
 const KEIWA_SVG = (
   <svg viewBox="0 0 396.969 212.97" style={{ width: 120, height: 65 }}>
     <g>

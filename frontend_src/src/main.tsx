@@ -10,6 +10,7 @@ import './styles/tailwind.css';
 import './styles/index.css';
 import './styles/tokens.css';
 import './styles/soleil.css';
+import './styles/commerce.css';
 // Mode SOLEIL (confort visuel) : ré-applique le choix mémorisé dès le démarrage.
 import { appliquerConfortAuDemarrage } from './app/utils/confortVisuel';
 appliquerConfortAuDemarrage();

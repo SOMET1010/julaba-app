@@ -46,10 +46,10 @@ type RoleBadgeConfig = {
 const ROLE_CONFIG: Record<string, RoleBadgeConfig> = {
   marchand: {
     label: 'Marchand',
-    bg: '#FFF2E9',
-    color: '#C66A2C',
-    avatarBg: '#FFF2E9',
-    avatarColor: '#C66A2C',
+    bg: '#F6F0E4',
+    color: '#B74725',
+    avatarBg: '#F6F0E4',
+    avatarColor: '#B74725',
   },
   producteur: {
     label: 'Producteur',
@@ -189,7 +189,7 @@ function surligner(texte: string, query: string, color: string): React.ReactNode
 }
 
 export function BarreRechercheDynamique({
-  primaryColor = '#C66A2C',
+  primaryColor = '#B74725',
   placeholder = 'Nom, téléphone ou rôle...',
   onSearch,
   onSelect,

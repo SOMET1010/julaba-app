@@ -22,7 +22,7 @@ export function UniversalDemo() {
   const roles: UserRole[] = ['marchand', 'producteur', 'cooperative', 'institution', 'identificateur'];
   
   const roleColors = {
-    marchand: '#C66A2C',
+    marchand: '#B74725',
     producteur: '#2E8B57',
     cooperative: '#2072AF',
     institution: '#712864',

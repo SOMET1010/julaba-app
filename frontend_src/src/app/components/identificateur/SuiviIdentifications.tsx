@@ -64,7 +64,7 @@ function normalizeAccess(raw: boolean): { autorise: boolean; raison: string } {
 }
 
 function getActorTypeColor(type: string): string {
-  if (type === 'marchand') return '#C66A2C';
+  if (type === 'marchand') return '#B74725';
   if (type === 'producteur') return '#2E8B57';
   return '#9F8170';
 }
@@ -678,7 +678,7 @@ export function SuiviIdentifications() {
                     className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1 ${
                       selectedRole === 'marchand' ? 'text-white' : 'bg-orange-50 text-orange-700'
                     }`}
-                    style={{ backgroundColor: selectedRole === 'marchand' ? '#C66A2C' : undefined }}
+                    style={{ backgroundColor: selectedRole === 'marchand' ? '#B74725' : undefined }}
                   >
                     <Store className="w-4 h-4" aria-hidden="true" />
                     Marchands

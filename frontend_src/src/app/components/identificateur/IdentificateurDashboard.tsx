@@ -47,7 +47,7 @@ function formatDateSafe(iso: string | undefined | null): string {
 function getActorTypeColor(type: string): string {
   switch (type) {
     case 'marchand':
-      return '#C66A2C';
+      return '#B74725';
     case 'producteur':
       return '#2E8B57';
     case 'cooperative':
