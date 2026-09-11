@@ -723,7 +723,7 @@ export function BOSupervision() {
                         >
                           <td className="p-3">
                             <div className="flex items-center gap-2 min-w-[180px]">
-                              <div className="w-7 h-7 rounded-full text-white flex items-center justify-center text-xs font-semibold" style={{ background: '#C66A2C' }}>
+                              <div className="w-7 h-7 rounded-full text-white flex items-center justify-center text-xs font-semibold" style={{ background: '#B74725' }}>
                                 {getInitials(actorName)}
                               </div>
                               <div className="min-w-0">

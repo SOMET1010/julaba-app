@@ -33,13 +33,13 @@ interface ReceptionPaiementModalProps {
 // ── Couleurs rôle ──────────────────────────────────────────────────────────────
 
 const ROLE_COLORS: Record<string, string> = {
-  marchand:    '#C66A2C',
+  marchand:    '#B74725',
   producteur:  '#2E8B57',
   cooperative: '#2072AF',
 };
 
 const ROLE_BG: Record<string, string> = {
-  marchand:    '#FFF2E9',
+  marchand:    '#F6F0E4',
   producteur:  '#F0FAF4',
   cooperative: '#EFF6FF',
 };

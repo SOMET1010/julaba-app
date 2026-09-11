@@ -23,6 +23,7 @@ import { BOShortcutsModal } from './BOShortcutsModal';
 import { ScrollToTop } from '../layout/ScrollToTop';
 import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import { IMG_LOGO_JULABA } from '../../assets/images';
+import { BrandSignature } from '../shared/BrandSignature';
 import imgLogoOrange from "@/assets/images/logo-orange-bo.png";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -119,7 +120,7 @@ const SIDEBAR_MENU: (MenuItem | MenuGroup)[] = [
     id: 'keiwa',
     label: 'Keiwa Wallet',
     icon: Wallet,
-    color: '#C66A2C',
+    color: '#B74725',
     items: [
       { id: 'keiwa', label: 'Tableau de bord', icon: Wallet, path: '/backoffice/keiwa', permission: null },
     ],
@@ -581,11 +582,11 @@ const SidebarNavItem = React.memo(function SidebarNavItem({
         navigate(item.path);
         onClick?.();
       }}
-      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-colors"
+      className="w-full flex items-center gap-2 px-2.5 py-2 min-h-10 rounded-lg text-left transition-colors"
       style={{
-        background: active ? 'rgba(255, 255, 255, 0.14)' : 'transparent',
+        background: active ? BO_PRIMARY : 'transparent',
       }}
-      whileHover={{ background: 'rgba(255, 255, 255, 0.08)' }}
+      whileHover={{ background: active ? BO_PRIMARY : 'rgba(255, 255, 255, 0.08)' }}
       whileTap={{ scale: 0.97 }}
     >
       <motion.div
@@ -599,19 +600,11 @@ const SidebarNavItem = React.memo(function SidebarNavItem({
           border: '1px solid rgba(255, 255, 255, 0.12)',
           borderRadius: 7,
         }}
-        animate={{
-          opacity: [0.92, 1, 0.92],
-        }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
       >
         <Icon className="w-3 h-3" style={{ color: '#fff' }} strokeWidth={2.2} />
       </motion.div>
       <span
-        className="flex-1 text-[12px] font-medium"
+        className="flex-1 text-sm font-medium"
         style={{ color: '#fff' }}
       >
         {item.label}
@@ -907,7 +900,7 @@ export function BOLayout() {
 
   return (
     <ZoneProvider>
-    <div className={`min-h-screen bg-gray-50 flex overflow-x-hidden ${mustChangePwd ? 'pt-12' : ''}`}>
+    <div className={`commerce-back min-h-screen bg-gray-50 flex overflow-x-hidden ${mustChangePwd ? 'pt-12' : ''}`}>
       <ScrollToTop />
 
       {mustChangePwd && (
@@ -985,7 +978,7 @@ export function BOLayout() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <img src={IMG_LOGO_JULABA} alt="Julaba" className="w-full max-h-14 object-contain object-left" />
+            <span className="commerce-brand commerce-brand-inverse"><img src={IMG_LOGO_JULABA} alt="Julaba" className="w-full max-h-14 object-contain object-left" /><BrandSignature /></span>
             
           </motion.div>
         </motion.button>
@@ -1272,7 +1265,7 @@ export function BOLayout() {
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b-2 border-gray-100 shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
           <button onClick={() => navigate('/backoffice')} className="flex items-center gap-2">
-            <img src={imgLogoOrange} alt="Julaba" className="h-7 object-contain" />
+            <span className="commerce-brand"><img src={imgLogoOrange} alt="Julaba" className="h-7 object-contain" /><BrandSignature /></span>
           </button>
           <div className="flex items-center gap-2">
             <motion.button
@@ -1334,7 +1327,7 @@ export function BOLayout() {
             >
               <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <img src={IMG_LOGO_JULABA} alt="Julaba" className="h-6 object-contain" />
+                  <span className="commerce-brand commerce-brand-inverse"><img src={IMG_LOGO_JULABA} alt="Julaba" className="h-6 object-contain" /><BrandSignature /></span>
                 </div>
                 <button onClick={() => setMobileMenuOpen(false)}><X className="w-5 h-5 text-white/80" /></button>
               </div>

@@ -46,7 +46,7 @@ const PERMISSIONS_CONFIG = {
   acteurs: {
     title: 'Acteurs',
     icon: UsersIcon,
-    color: '#C66A2C',
+    color: '#B74725',
     permissions: [
       { key: 'acteurs_voir_liste', label: 'Voir Liste', desc: 'Afficher la liste complète des acteurs' },
       { key: 'acteurs_recherche_texte', label: 'Recherche Texte', desc: 'Afficher la barre de recherche textuelle' },

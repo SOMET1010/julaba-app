@@ -10,7 +10,7 @@ import { apiRequest } from '../../services/api/api-client';
 import { useCooperativesListe } from '../../hooks/useCooperativesListe';
 import { fetchMesDistributions, type DistributionRecue } from '../../services/api/cooperatives-api';
 
-const COLOR = '#C46210';
+const COLOR = '#B74725';
 
 /** Réponse `GET /api/v1/cooperatives/ma-cooperative` (objet plat) */
 interface MaCooperativeInfo {

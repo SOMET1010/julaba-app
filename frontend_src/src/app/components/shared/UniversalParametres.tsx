@@ -46,7 +46,7 @@ const ROLE_CONFIG: Record<ParametresRole, {
   footerMsg: string;
 }> = {
   marchand: {
-    color: '#C66A2C',
+    color: '#B74725',
     label: 'Marchand',
     version: `Jùlaba Marchand v${__APP_VERSION__}`,
     profileIcon: Store,

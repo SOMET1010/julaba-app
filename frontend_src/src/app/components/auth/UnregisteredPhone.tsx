@@ -66,7 +66,7 @@ export function UnregisteredPhone() {
   if (!phone) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#C46210] to-[#A85108] flex flex-col items-center justify-center p-4" style={{ minHeight: '100dvh' }}>
+    <div className="min-h-screen bg-gradient-to-b from-[#B74725] to-[#A85108] flex flex-col items-center justify-center p-4" style={{ minHeight: '100dvh' }}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -87,7 +87,7 @@ export function UnregisteredPhone() {
         </h1>
         
         <p role="alert" aria-live="polite" className="text-gray-600 mb-6">
-          Le numéro <span className="font-bold text-[#C46210]">{maskPhone(phone)}</span> n’est pas encore enregistré sur Jùlaba.
+          Le numéro <span className="font-bold text-[#B74725]">{maskPhone(phone)}</span> n’est pas encore enregistré sur Jùlaba.
         </p>
 
         <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 mb-6">
@@ -102,7 +102,7 @@ export function UnregisteredPhone() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="inline-flex items-center gap-2 text-[#C46210]/70 text-sm px-4 py-2 rounded-lg hover:text-[#C46210] hover:bg-[#C46210]/10 transition-all"
+              className="inline-flex items-center gap-2 text-[#B74725]/70 text-sm px-4 py-2 rounded-lg hover:text-[#B74725] hover:bg-[#B74725]/10 transition-all"
             >
               <Phone className="w-3.5 h-3.5" aria-hidden="true" />
               <span>{supportPhone}</span>
@@ -113,7 +113,7 @@ export function UnregisteredPhone() {
         <Button
           onClick={() => navigate('/')}
           className="w-full h-14 rounded-2xl text-lg font-semibold"
-          style={{ backgroundColor: '#C46210' }}
+          style={{ backgroundColor: '#B74725' }}
         >
           Retour à la connexion
           <ArrowRight className="w-5 h-5 ml-2" aria-hidden="true" />

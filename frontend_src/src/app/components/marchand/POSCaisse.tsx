@@ -18,7 +18,7 @@ import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 
 const P = '#AF5B23';
-const BG = '#FFF2E9';
+const BG = '#F6F0E4';
 
 // Pilote ESPÈCES uniquement : la vente à crédit est désactivée en caisse tant
 // que les blockers « argent gelé » (I4/I5/I6) ne sont pas traités — le backend
@@ -448,7 +448,7 @@ export function POSCaisse() {
                                 dire(`${item.nom} : ${v.toLocaleString('fr-FR')} francs l'unité`);
                               } else { e.target.value = String(item.prix); }
                             }}
-                            style={{ width:72, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'right', background:'#FFFDF9', fontVariantNumeric:'tabular-nums' }} />
+                            style={{ width:72, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'right', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
                         ) : (
                           <span>{item.prix.toLocaleString('fr-FR')} FCFA</span>
                         )}
@@ -463,7 +463,7 @@ export function POSCaisse() {
                               dire(`${item.nom} : ${v}`);
                             } else { e.target.value = String(item.quantite); }
                           }}
-                          style={{ width:56, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'center', background:'#FFFDF9', fontVariantNumeric:'tabular-nums' }} />
+                          style={{ width:56, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'center', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
                       </div>
                     </div>
                     <div style={{ fontSize:15, fontWeight:800, color:P }}>{(item.prix * item.quantite).toLocaleString('fr-FR')} FCFA</div>
@@ -689,7 +689,7 @@ export function POSCaisse() {
       <AnimatePresence>
         {showSuccess && lastSale && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-            style={{ position:'fixed', inset:0, zIndex:120, background:'#FFFDF9', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px', textAlign:'center' }}>
+            style={{ position:'fixed', inset:0, zIndex:120, background:'#FFFCF7', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px', textAlign:'center' }}>
             <div style={{ width:88, height:88, borderRadius:'50%', background:'#EAF7EE', display:'grid', placeItems:'center', marginBottom:16 }}>
               <Check size={48} color="#0E7A47" />
             </div>

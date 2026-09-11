@@ -11,7 +11,7 @@ interface VoiceButtonProps {
 export function VoiceButton({ onVoiceCommand }: VoiceButtonProps) {
   const { user, roleColor, speak } = useApp();
   const role = (user as any)?.role || 'general';
-  const color = roleColor || '#C66A2C';
+  const color = roleColor || '#B74725';
 
   const { state, handleMicClick, isListening, isProcessing, liveTranscript } = useVoiceCore({
     context: {

@@ -12,7 +12,7 @@ import { getAccessMode, setAccessMode, type AccessMode } from '../../utils/acces
 const OPTIONS: { m: AccessMode; emoji: string; couleur: string; titre: string; sous: string; dire: string }[] = [
   { m: 'auto',    emoji: '🔵', couleur: '#2563eb', titre: 'Automatique',        sous: 'Julaba s\'adapte à ta façon de faire',     dire: 'Automatique. Julaba s\'adapte à ta façon de faire.' },
   { m: 'lecture', emoji: '🟢', couleur: '#16a34a', titre: 'Je lis et j\'écris', sous: 'Clavier direct, peu de voix',               dire: 'Je sais lire et écrire. Clavier direct.' },
-  { m: 'mixte',   emoji: '🟡', couleur: '#C46210', titre: 'Je lis un peu',      sous: 'Texte et voix, clavier ou micro',          dire: 'Je lis un peu. Texte et voix.' },
+  { m: 'mixte',   emoji: '🟡', couleur: '#B74725', titre: 'Je lis un peu',      sous: 'Texte et voix, clavier ou micro',          dire: 'Je lis un peu. Texte et voix.' },
   { m: 'voix',    emoji: '🟠', couleur: '#DB7A2C', titre: 'Je préfère parler',  sous: 'Tata Nanti Lou guide, le micro au centre', dire: 'Je préfère parler. Tata Nanti Lou t\'accompagne.' },
 ];
 

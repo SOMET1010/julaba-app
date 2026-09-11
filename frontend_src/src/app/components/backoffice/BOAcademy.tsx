@@ -86,7 +86,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   identificateur: 'Identificateur', institution: 'Institution',
 };
 const ROLE_COLORS: Record<UserRole, string> = {
-  marchand: '#C66A2C', producteur: '#2E8B57', cooperative: '#2072AF',
+  marchand: '#B74725', producteur: '#2E8B57', cooperative: '#2072AF',
   identificateur: '#9F8170', institution: '#712864',
 };
 const ROLE_ICONS: Record<UserRole, React.ElementType> = {

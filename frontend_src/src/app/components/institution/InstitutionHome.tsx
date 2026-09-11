@@ -238,7 +238,7 @@ export function InstitutionHome() {
               delay={0}
               explication={`${12.3}% vs mois dernier`}
               details={[
-                { label: 'Marchands actifs', value: '8,234', color: '#C66A2C' },
+                { label: 'Marchands actifs', value: '8,234', color: '#B74725' },
                 { label: 'Producteurs actifs', value: '3,891', color: '#2E8B57' },
                 { label: 'Coopératives actives', value: '1,542', color: '#2072AF' },
                 { label: 'Identificateurs actifs', value: '1,156', color: '#9F8170' },
@@ -254,7 +254,7 @@ export function InstitutionHome() {
               delay={30}
               explication={`${8.7}% croissance mensuelle`}
               details={[
-                { label: 'Marchands', value: '8,640', color: '#C66A2C' },
+                { label: 'Marchands', value: '8,640', color: '#B74725' },
                 { label: 'Producteurs', value: '4,920', color: '#2E8B57' },
                 { label: 'Coopératives', value: '2,180', color: '#2072AF' },
                 { label: 'Identificateurs', value: '2,700', color: '#9F8170' },

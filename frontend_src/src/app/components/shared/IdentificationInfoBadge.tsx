@@ -9,7 +9,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { FileText, ChevronRight } from 'lucide-react';
 
-const PRIMARY = '#C46210';
+const PRIMARY = '#B74725';
 
 interface IdentificationInfoBadgeProps {
   numeroFiche: string;

@@ -100,11 +100,11 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     <div
       className="fixed inset-0 overflow-hidden cursor-pointer"
       onClick={terminer}
-      style={{ background: '#C46210' }}
+      style={{ background: '#B74725' }}
     >
       {/* Fond : le visage de Tata, voile chaud (jamais couvert par un contrôle) */}
       <img src={bgTataLou} alt="" className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(196,98,16,0.14) 0%, rgba(196,98,16,0.30) 50%, rgba(196,97,15,0.86) 82%, #C4610F 100%)' }} />
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(196,98,16,0.14) 0%, rgba(196,98,16,0.30) 50%, rgba(196,97,15,0.86) 82%, #B74725 100%)' }} />
 
       {/* Ondes discrètes autour de Tata (elle parle) — derrière, jamais sur les
           contrôles ; pointer-events none pour ne pas gêner le tap. */}
@@ -142,7 +142,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
               whileTap={{ scale: 0.9 }}
               aria-label={isSpeaking ? 'Arrêter Tata Nanti Lou' : 'Réécouter Tata Nanti Lou'}
               className="grid place-items-center rounded-full bg-white shadow-lg"
-              style={{ width: 52, height: 52, color: isSpeaking ? '#ef4444' : '#C46210' }}
+              style={{ width: 52, height: 52, color: isSpeaking ? '#ef4444' : '#B74725' }}
             >
               {isSpeaking ? <VolumeX style={{ width: 26, height: 26 }} /> : <Volume2 style={{ width: 26, height: 26 }} />}
             </motion.button>
@@ -153,7 +153,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
               whileTap={{ scale: 0.92 }}
               aria-label="Continuer"
               className="grid place-items-center rounded-full shadow-2xl"
-              style={{ width: 60, height: 60, background: 'linear-gradient(135deg, #F08A24, #C46210)' }}
+              style={{ width: 60, height: 60, background: 'linear-gradient(135deg, #F08A24, #B74725)' }}
             >
               <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             </motion.button>

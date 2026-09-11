@@ -308,7 +308,7 @@ export function NotificationsPanel({ userId, isOpen, onClose, accentColor: accen
   const [filtre, setFiltre] = useState<Filtre>('toutes');
   const [selectedNotif, setSelectedNotif] = useState<JulabaNotification | null>(null);
 
-  const accentColor = accentProp || ROLE_COLORS[user?.role as keyof typeof ROLE_COLORS] || '#C46210';
+  const accentColor = accentProp || ROLE_COLORS[user?.role as keyof typeof ROLE_COLORS] || '#B74725';
   const rawRole = (userRole && userRole !== 'marchand')
     ? userRole
     : (user?.role || userRole || 'marchand');
@@ -536,7 +536,7 @@ interface NotifBellButtonProps {
   variant?: 'solid' | 'ghost';
 }
 
-export function NotifBellButton({ userId, accentColor = '#C46210', onOpen, variant = 'ghost' }: NotifBellButtonProps) {
+export function NotifBellButton({ userId, accentColor = '#B74725', onOpen, variant = 'ghost' }: NotifBellButtonProps) {
   const { notifications } = useNotifications();
   const { user } = useApp();
   const effectiveId = user?.id || userId;

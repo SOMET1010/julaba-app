@@ -92,7 +92,7 @@ export function PropositionReconnaissance() {
             style={{ width: '100%', maxWidth: 480, background: '#fff', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: '22px 20px calc(24px + env(safe-area-inset-bottom))', textAlign: 'center' }}
           >
             <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(198,106,44,0.1)', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
-              <Fingerprint style={{ width: 32, height: 32, color: '#C66A2C' }} />
+              <Fingerprint style={{ width: 32, height: 32, color: '#B74725' }} />
             </div>
             <p style={{ margin: '0 0 18px', fontSize: 17, fontWeight: 800, color: '#3d1a08', lineHeight: 1.35 }}>
               {prenom ? `${prenom}, veux-tu` : 'Veux-tu'} que Tata Nanti Lou te reconnaisse la prochaine fois ?
@@ -103,7 +103,7 @@ export function PropositionReconnaissance() {
                 Non
               </button>
               <button type="button" onClick={repondreOui} disabled={enCours}
-                style={{ flex: 1.4, padding: '15px 0', borderRadius: 16, fontWeight: 800, fontSize: 15, color: '#fff', background: enCours ? '#CBB9A8' : 'linear-gradient(135deg, #EE8E3C, #C55C18)', border: 'none', cursor: enCours ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
+                style={{ flex: 1.4, padding: '15px 0', borderRadius: 16, fontWeight: 800, fontSize: 15, color: '#fff', background: enCours ? '#CBB9A8' : 'linear-gradient(135deg, #EE8E3C, #B74725)', border: 'none', cursor: enCours ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
                 {enCours ? 'Un instant…' : 'Oui, je veux'}
               </button>
             </div>

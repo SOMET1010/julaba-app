@@ -12,7 +12,7 @@
 // ============================================
 
 export const ROLE_COLORS = {
-  marchand: '#C46210',
+  marchand: '#B74725',
   producteur: '#00563B',
   cooperative: '#2072AF',
   institution: '#702963',
@@ -28,16 +28,16 @@ export type UserRole = keyof typeof ROLE_COLORS;
 export const COLORS = {
   // Gris neutres
   gray: {
-    50: '#F9FAFB',
-    100: '#F3F4F6',
-    200: '#E5E7EB',
-    300: '#D1D5DB',
-    400: '#9CA3AF',
-    500: '#6B7280',
-    600: '#4B5563',
-    700: '#374151',
-    800: '#1F2937',
-    900: '#111827',
+    50: '#F6F0E4',
+    100: '#EEE7DD',
+    200: '#D8CDC5',
+    300: '#BCAEAF',
+    400: '#706171',
+    500: '#655866',
+    600: '#514352',
+    700: '#514352',
+    800: '#403141',
+    900: '#332533',
   },
   
   // États
@@ -49,15 +49,15 @@ export const COLORS = {
   // Fond
   background: {
     primary: '#FFFFFF',
-    secondary: '#F9FAFB',
-    tertiary: '#F3F4F6',
+    secondary: '#F6F0E4',
+    tertiary: '#EEE7DD',
   },
   
   // Texte
   text: {
-    primary: '#111827',
-    secondary: '#6B7280',
-    tertiary: '#9CA3AF',
+    primary: '#332533',
+    secondary: '#655866',
+    tertiary: '#706171',
     inverse: '#FFFFFF',
   },
 } as const;
@@ -93,8 +93,8 @@ export const RADIUS = {
   md: '0.5rem',     // 8px
   lg: '0.75rem',    // 12px
   xl: '1rem',       // 16px
-  '2xl': '1.5rem',  // 24px
-  '3xl': '2rem',    // 32px
+  '2xl': '0.875rem', // 14px
+  '3xl': '1rem',     // 16px
   full: '9999px',
 } as const;
 
@@ -103,18 +103,16 @@ export const RADIUS = {
 // ============================================
 
 export const SHADOWS = {
-  sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-  md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-  lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-  xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-  '2xl': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-  inner: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+  sm: '0 1px 3px #3325330A',
+  md: '0 2px 8px #3325330C',
+  lg: '0 4px 16px #33253312',
+  xl: '0 12px 32px #3325331F',
+  '2xl': '0 16px 40px #33253326',
+  inner: 'inset 0 1px 3px #3325330C',
   none: 'none',
-  
-  // Shadows spéciales
-  bottomBar: '0 -4px 40px rgba(0, 0, 0, 0.1), 0 8px 32px rgba(0, 0, 0, 0.08)',
-  card: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-  cardHover: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+  bottomBar: '0 -1px 0 #D8CDC5',
+  card: '0 2px 8px #3325330C',
+  cardHover: '0 4px 16px #33253312',
 } as const;
 
 // ============================================

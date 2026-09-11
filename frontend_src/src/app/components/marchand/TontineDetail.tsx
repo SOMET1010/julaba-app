@@ -8,7 +8,7 @@ import { useApp } from '../../contexts/AppContext';
 import { API_URL } from '../../utils/api';
 import { apiRequest, HttpError } from '../../services/api/api-client';
 
-const COLOR = '#C46210';
+const COLOR = '#B74725';
 
 interface MembreDetail {
   userId: string;
