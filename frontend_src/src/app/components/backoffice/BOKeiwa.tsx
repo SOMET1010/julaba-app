@@ -22,7 +22,7 @@ import {
 } from 'recharts';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 
-const C = '#C66A2C';
+const C = '#B74725';
 
 // ── TYPES ─────────────────────────────────────────────────────────────────────
 interface ConfigItem {
@@ -67,7 +67,7 @@ type Tab = 'dashboard' | 'wallets' | 'transactions' | 'services' | 'banques' | '
 const DEFAULT_SERVICES: ConfigItem[] = [
   { type: 'service', item_id: 'cnps',     name: 'RSTI',        logo_text: 'RSTI', color: '#004a99', actif: true,  est_favori: true,  ordre: 0, categorie: 'factures'  },
   { type: 'service', item_id: 'cmu',      name: 'CMU',         logo_text: 'CMU',  color: '#00874a', actif: true,  est_favori: true,  ordre: 1, categorie: 'factures'  },
-  { type: 'service', item_id: 'mairie',   name: 'Mairie',      logo_text: 'MR',   color: '#C66A2C', actif: true,  est_favori: true,  ordre: 2, categorie: 'factures'  },
+  { type: 'service', item_id: 'mairie',   name: 'Mairie',      logo_text: 'MR',   color: '#B74725', actif: true,  est_favori: true,  ordre: 2, categorie: 'factures'  },
   { type: 'service', item_id: 'cie',      name: 'CIE',         logo_text: 'CIE',  color: '#1a7abf', actif: true,  est_favori: false, ordre: 3, categorie: 'factures'  },
   { type: 'service', item_id: 'sodeci',   name: 'SODECI',      logo_text: 'SDC',  color: '#1a8c5a', actif: true,  est_favori: false, ordre: 4, categorie: 'factures'  },
   { type: 'service', item_id: 'lonase',   name: 'LONASE',      logo_text: 'LNS',  color: '#7c3aed', actif: true,  est_favori: false, ordre: 5, categorie: 'factures'  },
@@ -313,7 +313,7 @@ export function BOKeiwa() {
       name: addItem.name,
       logo_text: addItem.logo_text || addItem.name.slice(0, 4).toUpperCase(),
       logo_url: addItem.logo_url,
-      color: addItem.color || '#C66A2C',
+      color: addItem.color || '#B74725',
       description: addItem.description,
       categorie: addItem.categorie,
       actif: true,
@@ -642,7 +642,7 @@ export function BOKeiwa() {
                 <p style={{ fontSize: 15, fontWeight: 700, color: BO_DARK }}>{title}</p>
                 <p style={{ fontSize: 12, color: '#b8956a', marginTop: 2 }}>Configurez noms, logos et couleurs affichés dans Keiwa</p>
               </div>
-              <motion.button onClick={() => setAddItem({ type, actif: true, est_favori: false, ordre: list.length, color: '#C66A2C', frais_transaction: 0 })}
+              <motion.button onClick={() => setAddItem({ type, actif: true, est_favori: false, ordre: list.length, color: '#B74725', frais_transaction: 0 })}
                 style={{ padding: '8px 16px', borderRadius: 12, border: 'none', background: C, color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                 whileTap={{ scale: 0.97 }}
               ><Plus size={14}/>Ajouter</motion.button>

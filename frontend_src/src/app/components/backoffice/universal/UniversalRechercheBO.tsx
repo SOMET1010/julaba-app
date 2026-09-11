@@ -226,7 +226,7 @@ export function UniversalRechercheBO({
                   transition: 'background 0.1s ease',
                 }}
                 onMouseEnter={(event) => {
-                  event.currentTarget.style.background = '#F5F2ED';
+                  event.currentTarget.style.background = '#F6F0E4';
                 }}
                 onMouseLeave={(event) => {
                   event.currentTarget.style.background = 'transparent';

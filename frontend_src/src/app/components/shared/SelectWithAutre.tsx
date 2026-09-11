@@ -10,7 +10,7 @@
  *     value={newStock.unit}
  *     onChange={(v) => setNewStock({ ...newStock, unit: v })}
  *     options={['kg', 'L', 'tas', 'régimes', 'sac']}
- *     primaryColor="#C46210"
+ *     primaryColor="#B74725"
  *   />
  */
 

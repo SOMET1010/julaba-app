@@ -184,5 +184,5 @@ export const STATUT_CMD_LABELS: Record<StatutCommande, { label: string; color: s
 export const THEME_PROFIL = {
   producteur:  { primary: '#2E8B57', light: '#F0FDF4', dark: '#1F6B3F' },
   cooperative: { primary: '#2072AF', light: '#EBF4FB', dark: '#1E5A8E' },
-  marchand:    { primary: '#C66A2C', light: '#FFF7ED', dark: '#A0541E' },
+  marchand:    { primary: '#B74725', light: '#FFF7ED', dark: '#A0541E' },
 };

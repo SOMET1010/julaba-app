@@ -3,8 +3,7 @@
 
    Les styles inline consomment ces variables (`color:'var(--encre-3)'`) :
    le mode SOLEIL les surcharge PROPREMENT, sans sélecteurs d'attribut ni
-   !important. En mode normal, les valeurs sont IDENTIQUES à la palette
-   historique → zéro changement visuel.
+   !important. En mode normal, elles suivent la direction « L'esprit du marché ».
 
    Migration PROGRESSIVE : écrans migrés à ce jour — POSCaisse,
    MarchandAccueilVoice, VentesPassees, ResumeCaisse (v5.0.0.3), puis
@@ -16,12 +15,12 @@
 
 :root {
   /* Texte, du plus fort au plus discret */
-  --encre: #1a1206;      /* titres, montants, texte principal */
-  --encre-2: #5a4a3a;    /* texte secondaire */
-  --encre-3: #8A7A6A;    /* sous-libellés */
-  --encre-4: #aaaaaa;    /* indications discrètes */
+  --encre: #332533;      /* titres, montants, texte principal */
+  --encre-2: #514352;    /* texte secondaire */
+  --encre-3: #655866;    /* sous-libellés */
+  --encre-4: #706171;    /* indications discrètes */
   /* Traits et séparations */
-  --trait: #EDE7DE;
+  --trait: #D8CDC5;
 }
 
 /* MODE SOLEIL : encres poussées vers le noir/brun, traits affirmés. */
@@ -38,11 +37,11 @@ html.soleil {
    le fond sombre — texte invisible. Les classes soleil/dark sont exclusives
    (arbitre unique : app/utils/confortVisuel). */
 html.dark {
-  --encre: #F5F0EB;
-  --encre-2: #D4C8BC;
-  --encre-3: #B8A898;
-  --encre-4: #9F8F7F;
-  --trait: #5B5248;
+  --encre: #FFFCF7;
+  --encre-2: #E1D5E1;
+  --encre-3: #D3C6D4;
+  --encre-4: #C2B2C4;
+  --trait: #655367;
 }
 
 /* Utilitaires d'ENCRE (repeigne visuel, lot 1) : mêmes tokens que les styles

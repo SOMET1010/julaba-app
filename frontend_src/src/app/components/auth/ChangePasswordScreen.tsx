@@ -9,7 +9,7 @@ import { API_URL } from '../../utils/api';
 import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
 
 const ROLE_COLORS: Record<string, { primary: string; bg: string; border: string }> = {
-  marchand: { primary: '#C66A2C', bg: 'rgba(255,247,237,0.9)', border: 'rgba(198,106,44,0.3)' },
+  marchand: { primary: '#B74725', bg: 'rgba(255,247,237,0.9)', border: 'rgba(198,106,44,0.3)' },
   producteur: { primary: '#4CAF50', bg: 'rgba(240,253,244,0.9)', border: 'rgba(76,175,80,0.3)' },
   cooperateur: { primary: '#2E7D32', bg: 'rgba(232,245,233,0.9)', border: 'rgba(46,125,50,0.3)' },
   identificateur: { primary: '#8B5CF6', bg: 'rgba(245,243,255,0.9)', border: 'rgba(139,92,246,0.3)' },

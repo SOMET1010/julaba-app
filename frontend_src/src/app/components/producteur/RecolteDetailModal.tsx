@@ -321,7 +321,7 @@ export function RecolteDetailModal({ recolte, cycle, onClose, onPublish }: Props
               <motion.button
                 onClick={() => { setShowEditModal(true); void speak('Modifier la récolte'); }}
                 className="flex-1 py-4 rounded-2xl font-bold text-white shadow-lg text-base flex items-center justify-center gap-2"
-                style={{ background: 'linear-gradient(135deg, #C46210, #D97706)' }}
+                style={{ background: 'var(--commerce-action)' }}
                 whileTap={{ scale: 0.97 }}
                 whileHover={{ scale: 1.02 }}
               >
@@ -341,7 +341,7 @@ export function RecolteDetailModal({ recolte, cycle, onClose, onPublish }: Props
                     }
                   }}
                   className="flex-1 py-4 rounded-2xl font-bold text-white shadow-lg text-base flex items-center justify-center gap-2"
-                  style={{ background: `linear-gradient(135deg, ${COLOR}, #3BA869)` }}
+                  style={{ background: COLOR }}
                   whileTap={{ scale: 0.97 }}
                   whileHover={{ scale: 1.02 }}
                 >

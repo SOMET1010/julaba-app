@@ -789,7 +789,7 @@ function RecoltesView({ recoltes, favorites, toggleFavorite }: RecoltesViewProps
 
                     {/* Prix - STYLE IDENTIQUE */}
                     <div className="flex items-baseline gap-1 mb-3">
-                      <span className="text-2xl font-black text-[#C46210]">
+                      <span className="text-2xl font-black text-[#B74725]">
                         {recolte.prixUnitaire || 0}
                       </span>
                       <span className="text-xs text-gray-600 font-semibold">FCFA/kg</span>
@@ -807,7 +807,7 @@ function RecoltesView({ recoltes, favorites, toggleFavorite }: RecoltesViewProps
                           e.stopPropagation();
                           handlePublish(recolte, cycle);
                         }}
-                        className="w-full bg-gradient-to-r from-[#C46210] to-[#D97706] text-white py-2.5 px-4 rounded-xl font-bold text-sm shadow-md flex items-center justify-center gap-2"
+                        className="w-full bg-gradient-to-r from-[#B74725] to-[#D97706] text-white py-2.5 px-4 rounded-xl font-bold text-sm shadow-md flex items-center justify-center gap-2"
                         whileTap={{ scale: 0.95 }}
                       >
                         <TrendingUp className="w-4 h-4" />
@@ -939,7 +939,7 @@ function PublicationsView({ publications }: PublicationsViewProps) {
 
                     {/* Prix - STYLE IDENTIQUE */}
                     <div className="flex items-baseline gap-1 mb-3">
-                      <span className="text-2xl font-black text-[#C46210]">
+                      <span className="text-2xl font-black text-[#B74725]">
                         {Math.round(Number(publication.prixUnitaire || publication.prix_unitaire || 0)).toLocaleString('fr-FR')}
                       </span>
                       <span className="text-xs text-gray-600 font-semibold">FCFA/kg</span>
@@ -951,7 +951,7 @@ function PublicationsView({ publications }: PublicationsViewProps) {
                         e.stopPropagation();
                         handleEdit(publication, cycle);
                       }}
-                      className="w-full bg-gradient-to-r from-[#C66A2C] to-[#D97706] text-white py-2.5 px-4 rounded-xl font-bold text-sm shadow-md flex items-center justify-center gap-2"
+                      className="w-full bg-gradient-to-r from-[#B74725] to-[#D97706] text-white py-2.5 px-4 rounded-xl font-bold text-sm shadow-md flex items-center justify-center gap-2"
                       whileTap={{ scale: 0.95 }}
                     >
                       <Edit3 className="w-4 h-4" />

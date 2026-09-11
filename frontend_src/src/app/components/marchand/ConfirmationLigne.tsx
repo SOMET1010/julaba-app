@@ -18,7 +18,7 @@ import {
 import { phraseConfirmation, phraseAmbiguite, resumeLigne } from '../../services/dialoguesTata';
 
 const VERT = '#0E7A47';
-const ORANGE = '#C66A2C';
+const ORANGE = '#B74725';
 
 interface Props {
   ligne: LigneProvisoire;
@@ -46,7 +46,7 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
   // Cas AMBIGU avec un montant connu → question « d'un seul / de tous les N » (§5).
   if (ambigu && montantAmbigu && montantAmbigu > 0) {
     return (
-      <div style={{ background: '#FFF8F0', border: `2px solid ${ORANGE}`, borderRadius: 20, padding: 16 }}>
+      <div style={{ background: '#F6F0E4', border: `2px solid ${ORANGE}`, borderRadius: 20, padding: 16 }}>
         <p style={{ fontSize: 16, fontWeight: 700, color: '#1F2937', marginBottom: 14, lineHeight: 1.35 }}>
           {phraseAmbiguite(ligne.quantite, montantAmbigu)}
         </p>
@@ -65,7 +65,7 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
   }
 
   return (
-    <div style={{ background: '#FFF8F0', border: `2px solid ${ORANGE}`, borderRadius: 20, padding: 16 }}>
+    <div style={{ background: '#F6F0E4', border: `2px solid ${ORANGE}`, borderRadius: 20, padding: 16 }}>
       {/* Répétition de Tata */}
       <p style={{ fontSize: 16, fontWeight: 700, color: '#1F2937', marginBottom: 14, lineHeight: 1.35 }}>
         {phraseConfirmation(ligne)}

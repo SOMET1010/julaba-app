@@ -39,7 +39,7 @@ type ProfileEntry = {
 };
 
 const PROFILES_CONFIG: Record<'marchand' | 'producteur' | 'cooperative', ProfileEntry> = {
-  marchand: { label: 'Marchand', icon: ShoppingBag, color: '#C66A2C', lightColor: '#FFEEDD', totalSteps: 7 },
+  marchand: { label: 'Marchand', icon: ShoppingBag, color: '#B74725', lightColor: '#FFEEDD', totalSteps: 7 },
   producteur: { label: 'Producteur', icon: Sprout, color: '#16A34A', lightColor: '#E8F5E9', totalSteps: 7 },
   cooperative: { label: 'Coopérative', icon: Layers, color: '#7C3AED', lightColor: '#EDE9FE', totalSteps: 8 },
 };
@@ -333,7 +333,7 @@ export function MesBrouillons() {
             label="En cours"
             animatedTarget={brouillons.length}
             icon={FileText}
-            color="#C66A2C"
+            color="#B74725"
             bgColor="rgba(255,238,221,0.85)"
             borderColor="rgba(198,106,44,0.4)"
             iconAnimation="bounce"

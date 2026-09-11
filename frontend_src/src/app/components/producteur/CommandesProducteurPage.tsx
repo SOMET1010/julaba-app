@@ -633,7 +633,7 @@ export function ProducteurCommandes() {
       {/* ── CONTENU ─────────────────���─────────────────────────────────────── */}
       <div
         className="pb-32 lg:pb-8 max-w-2xl lg:max-w-7xl mx-auto min-h-screen"
-        style={{ background: 'linear-gradient(to bottom, #f0fdf4, white)' }}
+        style={{ background: 'var(--commerce-paper)' }}
       >
         <style>{shimmerStyle}</style>
 
@@ -776,7 +776,7 @@ export function ProducteurCommandes() {
                         className="rounded-3xl border-2 overflow-hidden cursor-pointer shadow-md"
                         style={{
                           borderColor: '#f97316',
-                          background: 'linear-gradient(135deg, #fff7ed, white)',
+                          background: 'var(--commerce-surface)',
                         }}
                         whileHover={{ scale: 1.02, y: -3 }}
                         whileTap={{ scale: 0.98 }}
@@ -1837,7 +1837,7 @@ export function ProducteurCommandes() {
                 {/* Header */}
                 <div
                   className="sticky top-0 px-6 py-5 flex items-center justify-between rounded-t-3xl z-10"
-                  style={{ background: `linear-gradient(135deg, ${COLOR}, #1a5c38)` }}
+                  style={{ background: COLOR }}
                 >
                   <div>
                     <h2 className="text-xl font-bold text-white">Revenus Commandes</h2>
@@ -1942,7 +1942,7 @@ export function ProducteurCommandes() {
                           <div className="h-2.5 bg-white rounded-full overflow-hidden">
                             <motion.div
                               className="h-full rounded-full"
-                              style={{ background: `linear-gradient(90deg, ${COLOR}, #1a5c38)` }}
+                              style={{ background: COLOR }}
                               initial={{ width: 0 }}
                               animate={{ width: `${(cat.val / maxCat) * 100}%` }}
                               transition={{ duration: 1, delay: 0.6 + i * 0.1 }}
@@ -2030,7 +2030,7 @@ export function ProducteurCommandes() {
                 {/* Header */}
                 <div
                   className="px-6 py-5 flex items-start justify-between"
-                  style={{ background: `linear-gradient(135deg, ${COLOR}, #1a5c38)` }}
+                  style={{ background: COLOR }}
                 >
                   <div>
                     <h2 className="text-xl font-black text-white flex items-center gap-2">

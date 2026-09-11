@@ -121,7 +121,7 @@ export function ModifierPublicationModal({ publication, cycle, isOpen, onClose, 
             style={{ maxHeight: '90vh' }}
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-[#C66A2C] to-[#D97706] px-6 py-5 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-[#B74725] to-[#D97706] px-6 py-5 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-black text-white flex items-center gap-2">
                   <Edit3 className="w-5 h-5" />
@@ -270,7 +270,7 @@ export function ModifierPublicationModal({ publication, cycle, isOpen, onClose, 
                 </button>
                 <motion.button onClick={handleModifier} disabled={isSubmitting || prixUnitaire <= 0 || quantite <= 0}
                   className="flex-1 py-4 rounded-2xl font-bold text-white shadow-lg disabled:opacity-50 transition-all"
-                  style={{ backgroundColor: '#C66A2C' }}
+                  style={{ backgroundColor: '#B74725' }}
                   whileTap={{ scale: 0.97 }}>
                   {isSubmitting ? 'Modification...' : 'Sauvegarder'}
                 </motion.button>

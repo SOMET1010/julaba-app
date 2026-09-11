@@ -198,7 +198,7 @@ function OngletBtn({ label, Icon, active, onClick }: {
   return (
     <motion.button onClick={onClick}
       className="relative flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl transition-all"
-      style={active ? { background: `linear-gradient(135deg, ${C}, ${C_DARK})` } : { backgroundColor: 'white' }}
+      style={active ? { background: C } : { backgroundColor: 'white' }}
       whileTap={{ scale: 0.97 }}>
       <Icon className="w-5 h-5" style={{ color: active ? 'white' : 'var(--encre-4)' }} />
       <span className="text-[11px] font-bold" style={{ color: active ? 'white' : 'var(--encre-3)' }}>{label}</span>
@@ -211,7 +211,7 @@ function SousOnglet({ label, active, onClick }: { label: string; active: boolean
   return (
     <motion.button onClick={onClick} whileTap={{ scale: 0.97 }}
       className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all text-center"
-      style={active ? { background: `linear-gradient(135deg, ${C}, ${C_DARK})`, color: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' } : { color: 'var(--encre-3)', background: 'transparent' }}>
+      style={active ? { background: C, color: 'white', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' } : { color: 'var(--encre-3)', background: 'transparent' }}>
       {label}
     </motion.button>
   );
@@ -390,7 +390,7 @@ function ProduitCardGrid({ produit, index, onAction, actionLabel, onSecondary, s
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})` }}>
+            style={{ background: C }}>
             <span className="text-4xl font-black text-white/40">
               {produit.produit.slice(0, 2).toUpperCase()}
             </span>
@@ -428,7 +428,7 @@ function ProduitCardGrid({ produit, index, onAction, actionLabel, onSecondary, s
         <motion.button
           onClick={(e) => { e.stopPropagation(); onAction(produit); }}
           className="w-full py-2.5 rounded-xl text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm"
-          style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})` }}
+          style={{ background: C }}
           whileTap={{ scale: 0.95 }}>
           <Plus className="w-3.5 h-3.5" strokeWidth={3} />
           {actionLabel}
@@ -473,7 +473,7 @@ function ProduitCoopCardGrid({ produit, index, onRetirer }: {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})` }}>
+            style={{ background: C }}>
             <span className="text-4xl font-black text-white/40">
               {produit.produit.slice(0, 2).toUpperCase()}
             </span>
@@ -1444,7 +1444,7 @@ export function MarcheHub() {
                       <motion.button
                         onClick={() => setShowNouvelleAnnonce(true)}
                         className="w-10 h-10 rounded-full text-white flex items-center justify-center shadow-md flex-shrink-0"
-                        style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})` }}
+                        style={{ background: C }}
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}>
                         <Plus className="w-5 h-5" />
@@ -1882,7 +1882,7 @@ export function MarcheHub() {
             <motion.button whileTap={{ scale: 0.97 }}
               onClick={handleConfirmerCommande}
               className="w-full py-3.5 rounded-2xl text-white font-bold text-sm"
-              style={{ background: `linear-gradient(135deg, ${C}, ${C_DARK})` }}>
+              style={{ background: C }}>
               Confirmer la commande
             </motion.button>
             <button onClick={() => setModalCommande(null)}
@@ -2078,7 +2078,7 @@ function ModalPublierSurCoop({ produit, onClose, onPublier }: {
               }}
               whileTap={{ scale: 0.97 }}
               className="py-3.5 rounded-2xl text-white text-sm font-bold flex items-center justify-center gap-2"
-              style={{ background: `linear-gradient(135deg, ${C_OP}, ${C_DARK})`, gridColumn: step > 1 ? undefined : '1 / -1' }}>
+              style={{ background: C_OP, gridColumn: step > 1 ? undefined : '1 / -1' }}>
               Suivant <ChevronRight className="w-4 h-4" />
             </motion.button>
           ) : (
@@ -2216,7 +2216,7 @@ function ModalNouvelleAnnonce({ onClose, onPublier }: {
         <div className="px-5 py-4 border-t border-gray-100 bg-white">
           <motion.button onClick={doPublier} whileTap={{ scale: 0.97 }}
             className="w-full py-3.5 rounded-2xl text-white text-sm font-bold flex items-center justify-center gap-2"
-            style={{ background: `linear-gradient(135deg, ${C_OP}, ${C_DARK})` }}>
+            style={{ background: C_OP }}>
             <Store className="w-4 h-4" /> Publier sur ma marketplace
           </motion.button>
         </div>

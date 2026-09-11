@@ -125,7 +125,7 @@ export function RapportsIdentificateur() {
   const dynamicRepartitionData = useMemo(
     () =>
       [
-        { name: 'Marchands', value: identifications.filter((i: RawIdentification) => i.typeActeur === 'marchand').length, color: '#C66A2C' },
+        { name: 'Marchands', value: identifications.filter((i: RawIdentification) => i.typeActeur === 'marchand').length, color: '#B74725' },
         { name: 'Producteurs', value: identifications.filter((i: RawIdentification) => i.typeActeur === 'producteur').length, color: '#16A34A' },
         {
           name: 'Coopératives',
@@ -942,7 +942,7 @@ export function RapportsIdentificateur() {
                       }} 
                     />
                     <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                    <Bar dataKey="marchands" fill="#C66A2C" radius={[8, 8, 0, 0]} name="Marchands" />
+                    <Bar dataKey="marchands" fill="#B74725" radius={[8, 8, 0, 0]} name="Marchands" />
                     <Bar dataKey="producteurs" fill="#16A34A" radius={[8, 8, 0, 0]} name="Producteurs" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -1192,7 +1192,7 @@ export function RapportsIdentificateur() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white rounded-xl p-3 border border-gray-200">
                       <p className="text-xs text-gray-500 mb-1">Marchands identifiés</p>
-                      <p className="text-lg font-bold text-[#C66A2C]">
+                      <p className="text-lg font-bold text-[#B74725]">
                         {(selectedRapport.dossiers || []).filter((i: RawIdentification) => i.typeActeur === 'marchand').length}
                       </p>
                     </div>
@@ -1425,7 +1425,7 @@ export function RapportsIdentificateur() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white rounded-xl p-3 border border-gray-200">
                       <p className="text-xs text-gray-500 mb-1">Marchands identifiés</p>
-                      <p className="text-lg font-bold text-[#C66A2C]">
+                      <p className="text-lg font-bold text-[#B74725]">
                         {identifications.filter((i: RawIdentification) => i.typeActeur === 'marchand').length}
                       </p>
                     </div>
@@ -1659,7 +1659,7 @@ export function RapportsIdentificateur() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white rounded-xl p-3 border border-gray-200">
                       <p className="text-xs text-gray-500 mb-1">Marchands identifiés</p>
-                      <p className="text-lg font-bold text-[#C66A2C]">
+                      <p className="text-lg font-bold text-[#B74725]">
                         {identifications.filter((i: RawIdentification) => i.typeActeur === 'marchand').length}
                       </p>
                     </div>

@@ -38,7 +38,7 @@ export function SharedCard({
 }: SharedCardProps) {
   // Classes de base
   const baseClasses = cn(
-    'bg-white rounded-2xl',
+    'bg-[var(--commerce-surface)] rounded-xl',
     'transition-all duration-200',
     clickable && 'cursor-pointer',
   );
@@ -47,7 +47,7 @@ export function SharedCard({
   const variantClasses = {
     default: 'shadow-md',
     elevated: 'shadow-lg',
-    flat: 'border-2 border-gray-200',
+    flat: 'border border-gray-200',
   }[variant];
   
   // Classes de padding
@@ -61,7 +61,7 @@ export function SharedCard({
   return (
     <motion.div
       className={cn(baseClasses, variantClasses, paddingClasses, className)}
-      whileHover={hoverable ? { y: -4, boxShadow: SHADOWS.cardHover } : undefined}
+      whileHover={hoverable ? { boxShadow: SHADOWS.cardHover } : undefined}
       whileTap={clickable ? MOTION.tap : undefined}
       {...props}
     >

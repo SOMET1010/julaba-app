@@ -6,8 +6,8 @@ import { verifierStatutBpayPublic } from '../../services/api/wallets-api';
 import { IMG_LOGO_WAVE, IMG_LOGO_ORANGE_MONEY, IMG_LOGO_MTN, IMG_LOGO_MOOV } from '../../assets/images';
 import { API_URL } from '../../utils/api';
 
-const C = '#C66A2C';
-const BG = '#FFF2E9';
+const C = '#B74725';
+const BG = '#F6F0E4';
 
 function formatPhone(v: string): string {
   return v.replace(/(\d{2})(?=\d)/g, '$1 ').trim();

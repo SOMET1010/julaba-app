@@ -9,7 +9,7 @@ import { SubPageLayout } from '../layout/SubPageLayout';
 import { TATA_LOU_BLEU as TATA_BLEU, DEPENSE_IMG } from '../../assets/cloudinary-images';
 
 const P = '#AF5B23';
-const BG = '#FFF2E9';
+const BG = '#F6F0E4';
 
 const QUICK_ACTIONS = [
   { id:'transport',   label:'Transports',  img: DEPENSE_IMG.transport },
@@ -128,7 +128,7 @@ export function DepenseForm() {
   // ══════════════════════════════════════════════════════════
   // STEP 1
   // ══════════════════════════════════════════════════════════
-  const PC = '#C46210';
+  const PC = '#B74725';
   if (isConfirming && pendingResponse) return (
     <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
       <div style={{background:'white',borderRadius:'24px 24px 0 0',padding:24,width:'100%',maxWidth:420}}>

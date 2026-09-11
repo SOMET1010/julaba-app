@@ -1,0 +1,173 @@
+/* JULABA — L'esprit du marché. Shared by every route and portal.
+ * Functional colours, hidden states, navigation and transactions stay intact.
+ * No attribute selectors against serialized inline styles.
+ */
+:root {
+  --commerce-ink: #332533;
+  --commerce-paper: #F6F0E4;
+  --commerce-surface: #FFFCF7;
+  --commerce-apricot: #F5D6BD;
+  --commerce-action: #B74725;
+  --commerce-green: #00563B;
+  --commerce-line: #D8CDC5;
+  --commerce-secondary: #655866;
+  --commerce-sidebar: #332533;
+  --commerce-inverse: #FFFCF7;
+  --background: var(--commerce-paper);
+  --foreground: var(--encre);
+  --card: var(--commerce-surface);
+  --card-foreground: var(--encre);
+  --popover: var(--commerce-surface);
+  --popover-foreground: var(--encre);
+  --primary: var(--commerce-action);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--commerce-apricot);
+  --secondary-foreground: var(--commerce-ink);
+  --muted: var(--commerce-paper);
+  --muted-foreground: var(--encre-3);
+  --accent: var(--commerce-apricot);
+  --accent-foreground: var(--commerce-ink);
+  --border: var(--commerce-line);
+  --input-background: var(--commerce-surface);
+  --ring: var(--commerce-action);
+  --radius: 0.875rem;
+  --sidebar: var(--commerce-sidebar);
+  --sidebar-foreground: var(--commerce-inverse);
+  --sidebar-primary: var(--commerce-action);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #4A384A;
+  --sidebar-accent-foreground: #FFFCF7;
+  --sidebar-border: #665267;
+  --sidebar-ring: #F5D6BD;
+  --commerce-gray-50: #F6F0E4;
+  --color-gray-50: var(--commerce-gray-50);
+  --commerce-gray-100: #EEE7DD;
+  --color-gray-100: var(--commerce-gray-100);
+  --commerce-gray-200: #D8CDC5;
+  --color-gray-200: var(--commerce-gray-200);
+  --commerce-gray-300: #BCAEAF;
+  --color-gray-300: var(--commerce-gray-300);
+  --commerce-gray-400: #847584;
+  --color-gray-400: var(--commerce-gray-400);
+  --commerce-gray-500: #706171;
+  --color-gray-500: var(--commerce-gray-500);
+  --commerce-gray-600: #655866;
+  --color-gray-600: var(--commerce-gray-600);
+  --commerce-gray-700: #514352;
+  --color-gray-700: var(--commerce-gray-700);
+  --commerce-gray-800: #403141;
+  --color-gray-800: var(--commerce-gray-800);
+  --commerce-gray-900: #332533;
+  --color-gray-900: var(--commerce-gray-900);
+  --commerce-gray-950: #231924;
+  --color-gray-950: var(--commerce-gray-950);
+  --commerce-orange-50: #FFF4EC;
+  --color-orange-50: var(--commerce-orange-50);
+  --commerce-orange-100: #F5D6BD;
+  --color-orange-100: var(--commerce-orange-100);
+  --commerce-orange-200: #EBBC9E;
+  --color-orange-200: var(--commerce-orange-200);
+  --commerce-orange-300: #DF9D76;
+  --color-orange-300: var(--commerce-orange-300);
+  --commerce-orange-400: #CB7046;
+  --color-orange-400: var(--commerce-orange-400);
+  --commerce-orange-500: #B74725;
+  --color-orange-500: var(--commerce-orange-500);
+  --commerce-orange-600: #A53E20;
+  --color-orange-600: var(--commerce-orange-600);
+  --commerce-orange-700: #89361F;
+  --color-orange-700: var(--commerce-orange-700);
+  --commerce-orange-800: #702E1E;
+  --color-orange-800: var(--commerce-orange-800);
+  --commerce-orange-900: #59261C;
+  --color-orange-900: var(--commerce-orange-900);
+  --commerce-orange-950: #35170F;
+  --color-orange-950: var(--commerce-orange-950);
+}
+
+html.dark {
+  --commerce-paper: #201A22;
+  --commerce-surface: #2D2530;
+  --commerce-apricot: #493344;
+  --commerce-action: #B74725;
+  --commerce-green: #86C9AC;
+  --commerce-line: #655367;
+  --commerce-secondary: #D3C6D4;
+  --secondary-foreground: #FFFCF7;
+  --accent-foreground: #FFFCF7;
+  --commerce-gray-50: #201A22;
+  --color-gray-50: var(--commerce-gray-50);
+  --commerce-gray-100: #2D2530;
+  --color-gray-100: var(--commerce-gray-100);
+  --commerce-gray-200: #655367;
+  --color-gray-200: var(--commerce-gray-200);
+  --commerce-gray-300: #8A778B;
+  --color-gray-300: var(--commerce-gray-300);
+  --commerce-gray-400: #B3A1B5;
+  --color-gray-400: var(--commerce-gray-400);
+  --commerce-gray-500: #C2B2C4;
+  --color-gray-500: var(--commerce-gray-500);
+  --commerce-gray-600: #D3C6D4;
+  --color-gray-600: var(--commerce-gray-600);
+  --commerce-gray-700: #E1D5E1;
+  --color-gray-700: var(--commerce-gray-700);
+  --commerce-gray-800: #F0E5EF;
+  --color-gray-800: var(--commerce-gray-800);
+  --commerce-gray-900: #FFFCF7;
+  --color-gray-900: var(--commerce-gray-900);
+  --commerce-gray-950: #FFFFFF;
+  --color-gray-950: var(--commerce-gray-950);
+}
+
+html.soleil {
+  --commerce-paper: #FFFFFF;
+  --commerce-surface: #FFFFFF;
+  --commerce-line: #776778;
+  --commerce-secondary: #332533;
+}
+
+body { background: var(--commerce-paper); color: var(--encre); }
+button, input, select, textarea { font-family: inherit; }
+h1, h2, h3 { letter-spacing: -0.025em; }
+input, td, th, .commerce-amount { font-variant-numeric: tabular-nums; }
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+  outline: 3px solid var(--commerce-action);
+  outline-offset: 3px;
+}
+
+/* Common utility surfaces include modal portals outside the route layout. */
+.bg-white { background-color: var(--commerce-surface); }
+.shadow-md { box-shadow: 0 2px 8px #3325330C; }
+.shadow-lg { box-shadow: 0 4px 16px #33253312; }
+.shadow-xl, .shadow-2xl { box-shadow: 0 12px 32px #3325331F; }
+.rounded-3xl { border-radius: 1rem; }
+.commerce-front, .commerce-back { background: var(--commerce-paper); }
+.commerce-back table { border-collapse: separate; border-spacing: 0; }
+.commerce-back th { font-weight: 650; text-align: start; }
+.commerce-back :is(th, td) { border-color: var(--commerce-line); }
+.commerce-back thead { background: var(--commerce-paper); }
+.commerce-back main { background: var(--commerce-paper); }
+.commerce-back h1 { font-weight: 750; }
+
+/* Small abstract Ivorian colour accent, decorative and never a status. */
+.commerce-brand { display: inline-flex; align-items: center; gap: 0.625rem; }
+.commerce-brand img { max-width: 9rem; max-height: 2.5rem; object-fit: contain; }
+.commerce-signature { display: inline-flex; gap: 0.25rem; align-items: center; flex-shrink: 0; }
+.commerce-signature::before { content: ''; width: 0.75rem; height: 0.25rem; background: #C0522E; border-radius: 1px; }
+.commerce-signature::after { content: ''; width: 0.5rem; height: 0.75rem; background: #00563B; border-radius: 1px; }
+.commerce-brand-inverse .commerce-signature::after { background: #87C3A6; }
+.commerce-brand-inverse img { background: #FFFCF7; padding: 0.25rem 0.5rem; border-radius: 0.5rem; }
+
+.commerce-home { max-width: 60rem; margin-inline: auto; padding: 1.25rem 1rem 2rem; }
+.commerce-home-header { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-bottom: 1.5rem; }
+.commerce-home-heading { flex: 1; min-width: 10rem; }
+.commerce-home-heading h1 { font-size: 1.5rem; line-height: 1.3; font-weight: 800; margin-top: 0.75rem; }
+.commerce-balance { border-radius: 1rem; padding: 1.25rem; background: #332533; color: #FFFCF7; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.commerce-sell { width: 100%; margin-top: 1rem; border-radius: 0.875rem; padding: 1.125rem; border: 0; background: var(--commerce-action); color: white; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; font-weight: 800; font-size: 1.25rem; }
+.commerce-voice { width: 100%; margin-top: 0.75rem; min-height: 3.5rem; padding: 0.875rem; border: 1.5px solid var(--commerce-green); border-radius: 0.875rem; background: var(--commerce-surface); color: var(--commerce-green); display: flex; align-items: center; justify-content: center; gap: 0.625rem; font-size: 1rem; font-weight: 700; cursor: pointer; }
+.commerce-home-tile { border: 1px solid var(--commerce-line); border-radius: 0.875rem; padding: 1rem; min-height: 6rem; background: var(--commerce-surface); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0.75rem; cursor: pointer; color: var(--encre); }
+.commerce-bottom { background: var(--commerce-surface); border-top: 1px solid var(--commerce-line); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

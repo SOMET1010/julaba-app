@@ -303,7 +303,7 @@ export function FinancesCooperative() {
       {/* ── HEADER ── */}
       <div
         className="relative pb-20 pt-safe"
-        style={{ background: `linear-gradient(145deg, ${COLOR} 0%, ${COLOR}CC 100%)` }}
+        style={{ background: 'var(--commerce-sidebar)' }}
       >
         <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/10 -translate-y-8 translate-x-8" />
         <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-white/10 translate-y-4 -translate-x-4" />
