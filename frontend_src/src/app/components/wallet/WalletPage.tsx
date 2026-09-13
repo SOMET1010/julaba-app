@@ -59,11 +59,11 @@ function DrawerMenu({ isOpen, onClose, solde, showSolde, onToggleSolde, onOpenRe
   const { user } = useUser();
 
   const items: { icon: React.ReactNode; label: string; sub: string; action: () => void; disabled?: boolean }[] = [
-    {
-      icon: <motion.svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C} strokeWidth="2" animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 3, repeat: Infinity, delay: 0 }}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></motion.svg>,
-      label: 'Mon profil', sub: 'Informations personnelles',
-      action: () => { onClose(); navigate('../profil'); },
-    },
+    // « Mon profil » retiré : pur doublon avec l'onglet « Moi » de la barre du
+    // bas, sans plus-value dans le contexte du portefeuille (audit accueil/
+    // tuiles). « Sécurité » corrigé : le PIN Keiwa et la reconnaissance
+    // biométrique vivent maintenant sur le profil (« Mon compte »), plus dans
+    // Réglages — ce lien pointait vers un écran qui ne les a plus.
     {
       icon: <motion.svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C} strokeWidth="2" animate={{ rotate: [0, 360] }} transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></motion.svg>,
       label: 'Historique complet', sub: 'Toutes vos transactions',
@@ -72,7 +72,7 @@ function DrawerMenu({ isOpen, onClose, solde, showSolde, onToggleSolde, onOpenRe
     {
       icon: <motion.svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C} strokeWidth="2" animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></motion.svg>,
       label: 'Sécurité', sub: 'FaceID · Empreinte · PIN',
-      action: () => { onClose(); navigate('../parametres'); },
+      action: () => { onClose(); navigate('../profil'); },
     },
     {
       icon: <motion.svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C} strokeWidth="2" animate={{ x: [0, 2, -2, 0] }} transition={{ duration: 1.5, repeat: Infinity, delay: 1 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></motion.svg>,

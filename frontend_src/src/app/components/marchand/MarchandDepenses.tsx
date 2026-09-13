@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { eventBus, EVENTS } from '../../services/eventBus';
 import { fr } from 'date-fns/locale';
 import { TATA_LOU_BLEU as TATA_BLEU } from '../../assets/cloudinary-images';
+import { NotificationButton } from './NotificationButton';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -257,11 +258,10 @@ export function MarchandDepenses() {
               style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
             </motion.button>
-            <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')} aria-label="Voir les alertes"
-              style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid #8f4418' }} />
-            </motion.button>
+            {/* Cloche « Notifications » standard — l'« Alertes » stock (même
+                icône avant) est spécifique à Mon stock, pas pertinente ici
+                (audit accueil/tuiles). */}
+            <NotificationButton />
           </div>
         </div>
       </div>
