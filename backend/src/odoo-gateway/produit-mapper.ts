@@ -22,6 +22,10 @@ export interface OdooProductRecord {
   /** OBLIGATOIRE à l'usage : sans ce champ, `list_price` est un nombre sans
    *  unité et `versJulaba` refuse de le mapper. Voir `assurerDeviseJulaba`. */
   currency_id?: OdooMany2One;
+  /** Champ Odoo natif « Peut être vendu ». Absent/`undefined` = traité comme
+   *  vendable (voir `estVendable`) — seuls les produits EXPLICITEMENT à
+   *  `false` sont écartés du catalogue JULABA. */
+  sale_ok?: boolean;
 }
 
 export interface JulabaProduitOdoo {
@@ -91,6 +95,35 @@ export function assurerDeviseJulaba(p: OdooProductRecord): void {
   if (devise !== DEVISE_JULABA) {
     throw new DeviseOdooInattendueError(devise, p.id);
   }
+}
+
+/**
+ * Filtre catalogue — écarte les produits TECHNIQUES qu'un module Odoo crée
+ * pour son propre usage interne (ex. `Tips`, injecté par `point_of_sale`,
+ * jamais un article qu'une marchande vend), avant tout mapping vers JULABA.
+ *
+ * Critère retenu : `sale_ok` (champ Odoo natif « Peut être vendu »), et lui
+ * seul — voir infra/odoo-poc/README.md, §« Les modules installés peuplent le
+ * catalogue » pour le contexte (Tips atteignait le catalogue JULABA à 1 FCFA,
+ * faute de filtre). Deux autres critères avaient été envisagés et écartés :
+ * une catégorie Odoo (dépend de la configuration de l'instance, jamais
+ * garantie) et une convention de référence `JULABA-*` (ne vaut que pour un
+ * catalogue provisionné PAR JULABA — un vrai catalogue Odoo d'un
+ * fournisseur/négoce existant n'a aucune raison de la connaître). `sale_ok`
+ * est un champ standard dont c'est exactement la sémantique, indépendant de
+ * qui a créé le produit.
+ *
+ * `undefined` (champ non demandé, ou absent d'un enregistrement) est traité
+ * comme vendable : ce n'est PAS une allowlist — seuls les produits
+ * EXPLICITEMENT marqués `sale_ok: false` sont écartés.
+ *
+ * Non vérifié empiriquement contre une vraie instance Odoo 19 au moment de ce
+ * correctif (README : seuls `default_code`/`list_price`/`qty_available` de
+ * `Tips` ont été relevés, pas `sale_ok`) — à confirmer par le jalon
+ * d'intégration backend réelle (docs/ODOO-SMOKE-TEST-READONLY.md).
+ */
+export function estVendable(p: OdooProductRecord): boolean {
+  return p.sale_ok !== false;
 }
 
 export function versJulaba(p: OdooProductRecord): JulabaProduitOdoo {

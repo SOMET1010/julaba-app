@@ -21,6 +21,10 @@ interface FakeOdooProduct {
   /** Forme many2one d'Odoo : `[id, code ISO]`. Le mock simule une instance
    *  configurée en XOF, seule devise que le mapper JULABA accepte. */
   currency_id: [number, string];
+  /** Absent = vendable (comportement réel par défaut d'Odoo) — seul `Tips`
+   *  ci-dessous le porte explicitement à `false`, pour prouver que le Gateway
+   *  l'écarte (voir OdooGatewayService.listerCatalogue). */
+  sale_ok?: boolean;
 }
 
 /** Devise du catalogue simulé. Les prix ci-dessous sont des prix de marché
@@ -38,6 +42,10 @@ const CATALOGUE_INITIAL: FakeOdooProduct[] = [
   { id: 106, name: 'Poivron', list_price: 500, qty_available: 18, default_code: 'POI-001', currency_id: DEVISE_MOCK },
   { id: 107, name: 'Pomme de terre', list_price: 500, qty_available: 50, default_code: 'PDT-001', currency_id: DEVISE_MOCK },
   { id: 108, name: 'Huile', list_price: 1500, qty_available: 15, default_code: 'HUI-001', currency_id: DEVISE_MOCK },
+  // Produit technique simulé — reproduit ce que `point_of_sale` crée sur une
+  // vraie instance Odoo (voir infra/odoo-poc/README.md) : jamais une marchande
+  // ne doit le voir dans son catalogue. Preuve que le Gateway l'écarte.
+  { id: 999, name: 'Tips', list_price: 1, qty_available: 0, default_code: 'TIPS', currency_id: DEVISE_MOCK, sale_ok: false },
 ];
 
 /**
