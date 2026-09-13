@@ -103,6 +103,33 @@ dans le menu : le module `sale` seul fournit le modele, pas l'interface.
 `ODOO_WITH_DEMO=true` charge le catalogue de demonstration Odoo, ce qui donne au
 smoke test des produits sur lesquels travailler.
 
+> **Ces produits ne representent en RIEN le metier JULABA, et leur devise est un
+> piege.** Le catalogue de demo d'Odoo 19 est generique et occidental
+> (« Restaurant Expenses », « Hotel Accommodation », « Office Chair »), a des
+> annees-lumiere d'un commerce vivrier ivoirien. Surtout : les societes de demo
+> sont en **USD**, verifie en base sur une instance reelle
+> (`SELECT c.name FROM res_company co JOIN res_currency c ON c.id = co.currency_id`
+> renvoie `USD` pour les trois societes de demo).
+>
+> Or `produit-mapper.ts` fait `prix: p.list_price` **sans aucune notion de
+> devise** : ni champ `currency_id` demande, ni conversion, ni controle. Un
+> produit a `400.00` chez Odoo arriverait donc dans le catalogue JULABA comme
+> **400 FCFA**, alors qu'il vaut 400 USD, soit environ 260 000 FCFA. Facteur
+> ~650, en silence.
+>
+> Ce que le smoke test valide reste vrai — il verifie des types et la coherence
+> entre `search_read` et `read`, jamais le sens des valeurs. Mais **ne tire
+> aucune conclusion metier des prix affiches** par `scripts/smoke-test.sh` tant
+> que deux chantiers ne sont pas faits :
+>
+> 1. un garde-fou de devise dans le Gateway (demander `currency_id`, refuser
+>    tout ce qui n'est pas XOF plutot que de convertir en silence) ;
+> 2. un catalogue de test en contexte vivrier et en FCFA, a la place des donnees
+>    de demo — JULABA en possede deja un
+>    (`backend/src/database/seed-demo.service.ts` et
+>    `frontend_src/src/app/data/catalogue-produits.ts`), mais rien de tout cela
+>    n'est encore dans Odoo.
+
 > Changement Odoo 19 : les donnees de demonstration ne sont **plus** chargees par
 > defaut a la creation d'une base. `scripts/init.sh` passe `--with-demo`
 > explicitement (`odoo/tools/config.py`, option `--with-demo`, `my_default=False`).
@@ -332,7 +359,7 @@ aucune modification**. `smoke-test.sh` sort en code 0.
 | `product.product/search_read` reel | 200, 5 produits retournes |
 | `product.product/read` reel, via `ids` | 200, 1 enregistrement pour 1 id demande |
 | Forme de la reponse JSON-2 | liste JSON **nue**, sans enveloppe `{jsonrpc, result, id}` |
-| Mapping `OdooProductRecord` | 5/5 produits conformes, projection `versJulaba()` correcte |
+| Mapping `OdooProductRecord` | 5/5 produits conformes en **structure** ; les prix affichés sont en USD et n'ont aucun sens metier, voir "Donnees de demonstration" |
 | Coherence `qty_available` | verifiee aussi hors valeur nulle : produit `id=20`, **`500.0` par `search_read` et par `read`** |
 
 Ce passage reel a fait tomber deux defauts qu'aucune relecture statique n'avait

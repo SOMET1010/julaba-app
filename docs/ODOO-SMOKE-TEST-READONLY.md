@@ -41,7 +41,9 @@ Toutes ces variables sont **backend uniquement** — jamais exposées au fronten
 
 ## 3. Préparer les données de test dans Odoo
 
-Créer **2 ou 3 produits de test clairement identifiables** dans Odoo (nom explicite du type `JULABA-TEST-1`, référence dédiée) — jamais des produits réels déjà utilisés par un autre usage de l'instance. Noter, pour chacun, tel qu'affiché **directement dans Odoo** :
+> **Vérifier d'abord la devise de la société Odoo.** Elle doit être **XOF**. Les bases de démonstration d'Odoo 19 sont en **USD** (constaté en base : les trois sociétés de démo sont en USD), et `produit-mapper.ts` fait `prix: p.list_price` **sans aucune notion de devise** — ni `currency_id` demandé, ni conversion, ni contrôle. Un produit à `400.00` dans une instance en USD arriverait donc dans le catalogue JULABA comme **400 FCFA** au lieu d'environ 260 000. Tant que le garde-fou de devise n'existe pas dans le Gateway, une instance de test dans une autre devise que XOF produit des chiffres faux sans rien signaler.
+
+Créer **2 ou 3 produits de test clairement identifiables** dans Odoo (nom explicite du type `JULABA-TEST-1`, référence dédiée), **en contexte vivrier et à des prix FCFA réalistes** — par exemple ceux que JULABA utilise déjà dans `backend/src/database/seed-demo.service.ts` : Tomate 200, Banane 100, Riz (sac) 15000. Jamais des produits réels déjà utilisés par un autre usage de l'instance, et jamais le catalogue de démonstration d'Odoo, qui est générique, occidental et libellé en USD. Noter, pour chacun, tel qu'affiché **directement dans Odoo** :
 - nom (`name`)
 - prix (`list_price`)
 - référence (`default_code`)
@@ -76,6 +78,7 @@ Ces valeurs relevées à la source serviront de référence de comparaison aux �
 - Échec d'authentification ou de sélection de base (`X-Odoo-Database`).
 - Divergence de champs Odoo par rapport à ceux attendus par `produit-mapper.ts` (`id`, `name`, `list_price`, `qty_available`, `default_code`).
 - Stock incohérent entre ce que JULABA affiche et ce qu'Odoo affiche réellement.
+- **Prix incohérent, ou devise de l'instance différente de XOF.** `produit-mapper.ts` recopie `list_price` tel quel : si la société Odoo n'est pas en XOF, le catalogue JULABA affiche un montant faux sans aucun signal. Un prix affiché par JULABA qui ne correspond pas, au franc près, à celui relevé dans Odoo est un NO-GO — c'est de l'argent de commerçante, et la CONSTITUTION (principe 8) traite un chiffre faux comme un incident, pas comme un détail.
 - Un appel hors allowlist (`create`, `write`, `unlink`, une méthode métier type `action_*`, ou toute combinaison `model/method` non listée) parvient malgré tout jusqu'au réseau.
 
 ## 7. Après le test
