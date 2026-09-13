@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { IMG_LOGO_JULABA } from '../../assets/images';
@@ -50,21 +50,12 @@ function MarchandAccueilVoiceInner() {
   const [showClose, setShowClose] = useState(false);
   const [showEditFond, setShowEditFond] = useState(false);
 
-  // Panier en cours (Lot 3) : accès « Nouvelle vente » + bannière de reprise.
-  const { venteEnCours, cart, getTotalCart, staleCart, resumeStaleCart, discardStaleCart, clearCart } = useCaisse();
+  // Panier en cours : bannière de reprise (la caisse complète se rejoint depuis
+  // l'écran vocal — cf. VenteVocaleModal — plus depuis un second bouton ici).
+  const { venteEnCours, cart, getTotalCart, staleCart, resumeStaleCart, discardStaleCart } = useCaisse();
   const nbItems = cart.reduce((s, i) => s + i.quantite, 0);
   const totalPanier = getTotalCart();
-  const [showNewConfirm, setShowNewConfirm] = useState(false);
   const allerCaisse = () => navigate('/marchand/caisse');
-
-  // « Nouvelle vente » : ne JAMAIS démarrer par-dessus un panier existant sans
-  // demander. Panier récent → on propose reprendre/nouvelle. Panier ancien mis de
-  // côté → « Nouvelle vente » choisit implicitement de ne pas le reprendre.
-  const handleNouvelleVente = () => {
-    if (venteEnCours) { setShowNewConfirm(true); return; }
-    if (staleCart) discardStaleCart();
-    allerCaisse();
-  };
   const reprendreStale = () => { resumeStaleCart(); allerCaisse(); };
 
   const direCaisse = () => {
@@ -160,20 +151,17 @@ function MarchandAccueilVoiceInner() {
           </motion.button>
         ) : null}
 
-        {/* ACTION PRINCIPALE — Nouvelle vente (→ caisse à panier) */}
+        {/* UN SEUL geste évident pour vendre (loi Julaba, cf. doc du composant) : deux
+            boutons côte à côte (« Nouvelle vente » → caisse tactile, « Vendre à la voix »
+            → Tata Nanti Lou) faisaient deux écrans concurrents pour la même intention —
+            source de confusion réelle en test terrain. La voix est désormais LE chemin
+            par défaut ; la caisse complète (plusieurs articles, crédit, mobile money) se
+            rejoint DEPUIS cet écran vocal, pas en façade de l'accueil. */}
         <motion.button
-          whileTap={{ scale: 0.97 }} onClick={handleNouvelleVente} aria-label="Nouvelle vente"
+          whileTap={{ scale: 0.97 }} onClick={() => setShowVente(true)} aria-label="Vendre"
           className="commerce-sell">
-          <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-          <span>Nouvelle vente</span>
-        </motion.button>
-
-        {/* Secondaire — vente à la voix (comportement inchangé) */}
-        <motion.button
-          whileTap={{ scale: 0.97 }} onClick={() => setShowVente(true)} aria-label="Vendre à la voix"
-          className="commerce-voice">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg>
-          Vendre à la voix
+          <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg>
+          <span>Vendre</span>
         </motion.button>
 
         {/* Tuiles — icônes vectorielles locales + un seul libellé (hors-ligne) */}
@@ -190,51 +178,6 @@ function MarchandAccueilVoiceInner() {
         </div>
 
       </div>
-
-      {/* Garde : « Nouvelle vente » alors qu'un panier récent existe (Lot 3) */}
-      <AnimatePresence>
-        {showNewConfirm && (
-          <motion.div
-            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 p-4"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setShowNewConfirm(false)}
-            role="dialog" aria-modal="true" aria-label="Une vente est déjà en cours"
-          >
-            <motion.div
-              className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl"
-              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <p className="text-lg font-bold text-gray-900 mb-1">Une vente est déjà en cours.</p>
-              <p className="text-gray-600 mb-5">
-                {nbItems} article{nbItems > 1 ? 's' : ''} · {Math.round(totalPanier).toLocaleString('fr-FR')} F.
-              </p>
-              <button
-                type="button"
-                onClick={() => { setShowNewConfirm(false); allerCaisse(); }}
-                className="w-full mb-2 py-4 rounded-2xl font-bold text-white"
-                style={{ background: '#0E7A47' }}
-              >
-                Reprendre la vente
-              </button>
-              <button
-                type="button"
-                onClick={() => { clearCart(); setShowNewConfirm(false); allerCaisse(); }}
-                className="w-full mb-2 py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold"
-              >
-                Effacer et recommencer
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowNewConfirm(false)}
-                className="w-full py-3 rounded-2xl text-gray-500 font-semibold"
-              >
-                Annuler
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       <VenteVocaleModal isOpen={showVente} onClose={() => setShowVente(false)} />
 

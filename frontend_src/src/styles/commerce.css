@@ -164,7 +164,6 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 .commerce-home-heading h1 { font-size: 1.5rem; line-height: 1.3; font-weight: 800; margin-top: 0.75rem; }
 .commerce-balance { border-radius: 1rem; padding: 1.25rem; background: #332533; color: #FFFCF7; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 .commerce-sell { width: 100%; margin-top: 1rem; border-radius: 0.875rem; padding: 1.125rem; border: 0; background: var(--commerce-action); color: white; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; font-weight: 800; font-size: 1.25rem; }
-.commerce-voice { width: 100%; margin-top: 0.75rem; min-height: 3.5rem; padding: 0.875rem; border: 1.5px solid var(--commerce-green); border-radius: 0.875rem; background: var(--commerce-surface); color: var(--commerce-green); display: flex; align-items: center; justify-content: center; gap: 0.625rem; font-size: 1rem; font-weight: 700; cursor: pointer; }
 .commerce-home-tile { border: 1px solid var(--commerce-line); border-radius: 0.875rem; padding: 1rem; min-height: 6rem; background: var(--commerce-surface); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0.75rem; cursor: pointer; color: var(--encre); }
 .commerce-bottom { background: var(--commerce-surface); border-top: 1px solid var(--commerce-line); }
 
