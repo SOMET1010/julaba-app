@@ -100,13 +100,30 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
                 </button>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input inputMode="numeric" value={prixSaisi} onChange={e => setPrixSaisi(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="0" style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', border: '1.5px solid #e5e0d8', borderRadius: 12, padding: '12px 14px', fontSize: 17, fontWeight: 800, color: 'var(--encre)', textAlign: 'center', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
-              <motion.button whileTap={{ scale: 0.96 }} disabled={!prixSaisi}
-                onClick={() => { const v = parseInt(prixSaisi, 10); if (v > 0) { onLigneChange(corrigerPrix(ligne, v, modePrix)); setCorrige(false); setPrixSaisi(''); } }}
-                style={{ flexShrink: 0, background: prixSaisi ? ORANGE : '#d9cfc3', color: 'white', border: 'none', borderRadius: 12, padding: '0 18px', fontSize: 14, fontWeight: 800, cursor: prixSaisi ? 'pointer' : 'default', fontFamily: 'inherit' }}>OK</motion.button>
+            {/* Gros chiffre + clavier numérique, jamais une case de texte nue à
+                remplir (même principe que le code à la connexion). */}
+            <div style={{ textAlign: 'center', fontSize: 32, fontWeight: 900, color: prixSaisi ? 'var(--encre)' : '#c7bfb2', fontVariantNumeric: 'tabular-nums', marginBottom: 10 }}>
+              {prixSaisi || '—'}{prixSaisi ? ' F' : ''}
             </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
+                <button key={d} type="button" onClick={() => setPrixSaisi(prev => (prev === '0' ? d : prev + d).slice(0, 6))}
+                  style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 18, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {d}
+                </button>
+              ))}
+              <button type="button" onClick={() => setPrixSaisi('')}
+                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 13, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>C</button>
+              <button type="button" onClick={() => setPrixSaisi(prev => (prev === '0' ? '0' : prev + '0').slice(0, 6))}
+                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 18, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>0</button>
+              <button type="button" onClick={() => setPrixSaisi(prev => prev.slice(0, -1))} aria-label="Effacer un chiffre"
+                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 15, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>⌫</button>
+            </div>
+            <motion.button whileTap={{ scale: 0.97 }} disabled={!prixSaisi}
+              onClick={() => { const v = parseInt(prixSaisi, 10); if (v > 0) { onLigneChange(corrigerPrix(ligne, v, modePrix)); setCorrige(false); setPrixSaisi(''); } }}
+              style={{ width: '100%', minHeight: 48, background: prixSaisi ? ORANGE : '#d9cfc3', color: 'white', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: prixSaisi ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+              Valider le prix
+            </motion.button>
           </div>
           <button onClick={() => setCorrige(false)}
             style={{ background: 'none', border: 'none', color: 'var(--encre-4)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline', alignSelf: 'center' }}>
