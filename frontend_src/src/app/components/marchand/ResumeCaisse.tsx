@@ -236,7 +236,7 @@ export function ResumeCaisse() {
   }, [stocks]);
 
   return (
-    <SubPageLayout role="marchand" title="Résumé caisse">
+    <SubPageLayout role="marchand" title="Résumé détaillé">
         <div style={{ padding:'14px 0 0', display:'flex', flexDirection:'column', gap:12 }}>
 
           {/* ── KPIs 2x2 JUSTE SOUS LE HEADER ── */}

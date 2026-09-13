@@ -373,11 +373,10 @@ export function VentesPassees() {
             style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
             <FileDown size={16} color="white" />
           </motion.button>
-          <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')} aria-label="Voir les alertes"
-            style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid #8f4418' }} />
-          </motion.button>
+          {/* Cloche « Notifications » standard, plus l'« Alertes » (stock)
+              spécifique à Mon stock — même icône générique cloche que
+              là-bas prêtait à confusion (audit accueil/tuiles). */}
+          <NotificationButton />
         </div>
       }
     >
