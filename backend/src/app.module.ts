@@ -119,6 +119,8 @@ import { ProtectionSocialeModule } from './protection-sociale/protection-sociale
     // POC structurel Gateway Odoo — catalogue + stock consolidé uniquement,
     // aucun branchement frontend, aucune écriture réelle (voir docs/
     // ETUDE_ARCHITECTURE_JULABA_ODOO.md et backend/src/odoo-gateway/).
+    // Routes /odoo-poc/* désactivées par défaut : ODOO_POC_ENABLED=true requis
+    // (voir OdooPocEnabledGuard) — l'import du module seul ne les active pas.
     OdooGatewayModule,
     InstitutionsModule,
     IdentificationsModule,

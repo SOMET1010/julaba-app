@@ -1,5 +1,6 @@
 import { OdooGatewayService } from '../../src/odoo-gateway/odoo-gateway.service';
 import { OdooMockClient } from '../../src/odoo-gateway/odoo-mock.client';
+import { SyncJournal, SyncJournalEntry } from '../../src/odoo-gateway/sync-journal';
 
 /**
  * POC structurel Gateway Odoo — catalogue + stock consolidé uniquement.
@@ -96,5 +97,95 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
     expect(entry).toBeDefined();
     expect(entry?.etat).toBe('confirmed');
     expect(service.listJournal().some((e) => e.operationId === 'op-journal')).toBe(true);
+  });
+
+  it('écrit réellement pending → syncing → confirmed (pas un état mort)', async () => {
+    const original = SyncJournal.prototype.upsert;
+    const etats: string[] = [];
+    const spy = jest
+      .spyOn(SyncJournal.prototype, 'upsert')
+      .mockImplementation(function (this: SyncJournal, entry: SyncJournalEntry) {
+        etats.push(entry.etat);
+        return original.call(this, entry);
+      });
+
+    await service.simulerMouvementStock({
+      operationId: 'op-pending-reel',
+      odooProductId: 107,
+      quantite: 1,
+      type: 'in',
+    });
+
+    spy.mockRestore();
+    expect(etats).toEqual(['pending', 'syncing', 'confirmed']);
+  });
+
+  describe('idempotence face à des appels CONCURRENTS (même operationId)', () => {
+    it('deux appels simultanés → un seul appel Odoo, un seul mouvement, un seul odooRecordId', async () => {
+      const executeSpy = jest.spyOn(OdooMockClient.prototype, 'execute');
+      const cmd = { operationId: 'op-concurrent', odooProductId: 104, quantite: 2, type: 'in' as const };
+      const stockAvant = await service.lireStock(104);
+
+      const [r1, r2] = await Promise.all([
+        service.simulerMouvementStock(cmd),
+        service.simulerMouvementStock(cmd),
+      ]);
+
+      const appelsCreation = executeSpy.mock.calls.filter(([model, method]) => model === 'stock.move' && method === 'create');
+      expect(appelsCreation).toHaveLength(1); // un seul appel effectif Odoo
+
+      expect(r1.etat).toBe('confirmed');
+      expect(r2.etat).toBe('confirmed');
+      expect(r1.odooRecordId).toBeDefined();
+      expect(r2.odooRecordId).toBe(r1.odooRecordId); // un seul mouvement, même id
+
+      const stockApres = await service.lireStock(104);
+      expect(stockApres).toBe(stockAvant! + 2); // pas +4 : un seul mouvement a réellement muté le stock
+
+      executeSpy.mockRestore();
+    });
+  });
+
+  describe('validation stricte de la commande — fail closed', () => {
+    it('rejette un operationId vide, sans écrire au journal ni appeler Odoo', async () => {
+      const executeSpy = jest.spyOn(OdooMockClient.prototype, 'execute');
+      await expect(
+        service.simulerMouvementStock({ operationId: '', odooProductId: 101, quantite: 1, type: 'in' }),
+      ).rejects.toThrow();
+      expect(service.getJournal('')).toBeUndefined();
+      expect(executeSpy).not.toHaveBeenCalled();
+      executeSpy.mockRestore();
+    });
+
+    it('rejette un odooProductId négatif', async () => {
+      await expect(
+        service.simulerMouvementStock({ operationId: 'op-neg-id', odooProductId: -10, quantite: 1, type: 'in' }),
+      ).rejects.toThrow();
+      expect(service.getJournal('op-neg-id')).toBeUndefined();
+    });
+
+    it('rejette une quantite négative ou nulle', async () => {
+      await expect(
+        service.simulerMouvementStock({ operationId: 'op-neg-qte', odooProductId: 101, quantite: -500, type: 'in' }),
+      ).rejects.toThrow();
+      await expect(
+        service.simulerMouvementStock({ operationId: 'op-zero-qte', odooProductId: 101, quantite: 0, type: 'in' }),
+      ).rejects.toThrow();
+    });
+
+    it("rejette un type inconnu au lieu de le convertir silencieusement en 'in'", async () => {
+      const stockAvant = await service.lireStock(101);
+      await expect(
+        service.simulerMouvementStock({
+          operationId: 'op-type-invalide',
+          odooProductId: 101,
+          quantite: 1,
+          // @ts-expect-error valeur volontairement invalide pour le test
+          type: 'toto',
+        }),
+      ).rejects.toThrow();
+      expect(service.getJournal('op-type-invalide')).toBeUndefined();
+      expect(await service.lireStock(101)).toBe(stockAvant); // aucune mutation silencieuse
+    });
   });
 });
