@@ -27,6 +27,56 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
     });
   });
 
+  it('exige currency_id dans le search_read du catalogue', async () => {
+    const champsDemandes: string[] = [];
+    const espion: OdooClient = {
+      async execute(model, method, params) {
+        if (model === 'product.product' && method === 'search_read') {
+          champsDemandes.push(...((params.fields as string[]) ?? []));
+        }
+        return [] as unknown as never;
+      },
+    };
+    await new OdooGatewayService(espion).listerCatalogue();
+    expect(champsDemandes).toContain('currency_id');
+    expect(champsDemandes).toContain('list_price');
+  });
+
+  it('refuse le catalogue entier en 502 si Odoo répond dans une autre devise', async () => {
+    // Scénario réel : une instance Odoo de démonstration est configurée en USD.
+    // Sans garde-fou, « 400.00 » deviendrait « 400 FCFA » dans le catalogue
+    // JULABA, pour un produit valant environ 260 000 FCFA.
+    const odooEnUsd: OdooClient = {
+      async execute(model, method) {
+        if (model === 'product.product' && method === 'search_read') {
+          return [
+            { id: 1, name: 'Hotel Accommodation', list_price: 400, qty_available: 0, currency_id: [2, 'USD'] },
+          ] as unknown as never;
+        }
+        return [] as unknown as never;
+      },
+    };
+    const serviceUsd = new OdooGatewayService(odooEnUsd);
+    await expect(serviceUsd.listerCatalogue()).rejects.toMatchObject({
+      status: 502,
+    });
+  });
+
+  it('ne livre aucun produit partiel quand une seule ligne est dans la mauvaise devise', async () => {
+    const odooMixte: OdooClient = {
+      async execute(model, method) {
+        if (model === 'product.product' && method === 'search_read') {
+          return [
+            { id: 1, name: 'Tomate', list_price: 500, qty_available: 10, currency_id: [1, 'XOF'] },
+            { id: 2, name: 'Office Chair', list_price: 70, qty_available: 3, currency_id: [2, 'USD'] },
+          ] as unknown as never;
+        }
+        return [] as unknown as never;
+      },
+    };
+    await expect(new OdooGatewayService(odooMixte).listerCatalogue()).rejects.toThrow();
+  });
+
   it("lit le stock d'un produit connu", async () => {
     expect(await service.lireStock(101)).toBe(42);
   });
