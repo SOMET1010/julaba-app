@@ -11,15 +11,19 @@ import { OdooClient } from '../../src/odoo-gateway/odoo-client.interface';
  * c'est tout le sens du contrat OdooClient.execute() (voir
  * odoo-client.interface.ts).
  *
- * Ne remplace PAS une validation contre une vraie instance Odoo : les
- * fixtures ci-dessous reflètent l'hypothèse documentée dans
- * odoo-real.client.ts sur la forme de la réponse JSON-2 (le corps de la
- * réponse EST le résultat, sans enveloppe façon ancien JSON-RPC) — à
- * confirmer dès qu'une instance de test réelle sera disponible.
+ * Ne remplace PAS une validation contre une vraie instance Odoo, mais les
+ * fixtures ci-dessous ne sont plus une hypothèse : la forme de la réponse
+ * JSON-2 (le corps de la réponse EST le résultat, sans enveloppe façon ancien
+ * JSON-RPC) a été confirmée sur Odoo Server 19.0 — voir
+ * infra/odoo-poc/README.md, section « État de validation ».
  */
+/** `currency_id` est présent sous la forme many2one d'Odoo, `[id, code ISO]` :
+ *  le Gateway le demande et le mapper refuse tout ce qui n'est pas du XOF
+ *  (voir produit-mapper.ts). Une fixture sans ce champ ferait légitimement
+ *  échouer ces tests — c'est le garde-fou qui parle, pas un test cassé. */
 const CATALOGUE_FIXTURE = [
-  { id: 101, name: 'Tomate', list_price: 500, qty_available: 42, default_code: 'TOM-001' },
-  { id: 102, name: 'Oignon', list_price: 500, qty_available: 8, default_code: 'OIG-001' },
+  { id: 101, name: 'Tomate', list_price: 500, qty_available: 42, default_code: 'TOM-001', currency_id: [1, 'XOF'] },
+  { id: 102, name: 'Oignon', list_price: 500, qty_available: 8, default_code: 'OIG-001', currency_id: [1, 'XOF'] },
 ];
 
 function creerOdooRealClientSimule(): OdooClient {

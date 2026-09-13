@@ -18,17 +18,26 @@ interface FakeOdooProduct {
   list_price: number;
   qty_available: number;
   default_code: string;
+  /** Forme many2one d'Odoo : `[id, code ISO]`. Le mock simule une instance
+   *  configurée en XOF, seule devise que le mapper JULABA accepte. */
+  currency_id: [number, string];
 }
 
+/** Devise du catalogue simulé. Les prix ci-dessous sont des prix de marché
+ *  ivoiriens en francs CFA — le mock a toujours été dans le bon contexte, ce
+ *  qui a longtemps masqué l'absence de garde-fou : une vraie instance Odoo de
+ *  démonstration, elle, est en USD. */
+const DEVISE_MOCK: [number, string] = [1, 'XOF'];
+
 const CATALOGUE_INITIAL: FakeOdooProduct[] = [
-  { id: 101, name: 'Tomate', list_price: 500, qty_available: 42, default_code: 'TOM-001' },
-  { id: 102, name: 'Oignon', list_price: 500, qty_available: 8, default_code: 'OIG-001' },
-  { id: 103, name: 'Aubergine', list_price: 500, qty_available: 30, default_code: 'AUB-001' },
-  { id: 104, name: 'Banane', list_price: 300, qty_available: 60, default_code: 'BAN-001' },
-  { id: 105, name: 'Carotte', list_price: 500, qty_available: 25, default_code: 'CAR-001' },
-  { id: 106, name: 'Poivron', list_price: 500, qty_available: 18, default_code: 'POI-001' },
-  { id: 107, name: 'Pomme de terre', list_price: 500, qty_available: 50, default_code: 'PDT-001' },
-  { id: 108, name: 'Huile', list_price: 1500, qty_available: 15, default_code: 'HUI-001' },
+  { id: 101, name: 'Tomate', list_price: 500, qty_available: 42, default_code: 'TOM-001', currency_id: DEVISE_MOCK },
+  { id: 102, name: 'Oignon', list_price: 500, qty_available: 8, default_code: 'OIG-001', currency_id: DEVISE_MOCK },
+  { id: 103, name: 'Aubergine', list_price: 500, qty_available: 30, default_code: 'AUB-001', currency_id: DEVISE_MOCK },
+  { id: 104, name: 'Banane', list_price: 300, qty_available: 60, default_code: 'BAN-001', currency_id: DEVISE_MOCK },
+  { id: 105, name: 'Carotte', list_price: 500, qty_available: 25, default_code: 'CAR-001', currency_id: DEVISE_MOCK },
+  { id: 106, name: 'Poivron', list_price: 500, qty_available: 18, default_code: 'POI-001', currency_id: DEVISE_MOCK },
+  { id: 107, name: 'Pomme de terre', list_price: 500, qty_available: 50, default_code: 'PDT-001', currency_id: DEVISE_MOCK },
+  { id: 108, name: 'Huile', list_price: 1500, qty_available: 15, default_code: 'HUI-001', currency_id: DEVISE_MOCK },
 ];
 
 /**
