@@ -139,10 +139,18 @@ verifie **au franc pres** : un prix qui derive fait echouer le test.
 
 Elles sont generiques et occidentales (« Restaurant Expenses », « Hotel
 Accommodation », « Office Chair »), a des annees-lumiere d'un commerce vivrier.
-Surtout, **elles sont libellees en USD** : verifie en base sur une instance
-reelle, les trois societes de demo d'Odoo 19 utilisent USD.
+Et elles sont libellees en **USD** : verifie en base sur une instance reelle, les
+trois societes de demo d'Odoo 19 utilisent USD.
 
-C'est precisement ce piege qui a revele l'absence de garde-fou : `list_price`
+> Nuance apprise depuis, et qui elargit le probleme : **une base Odoo neuve est
+> en USD meme sans donnees de demonstration.** Le seed l'a journalise sur une
+> base creee avec `ODOO_WITH_DEMO=false` — `societe 'My Company' : devise
+> USD -> XOF`. La devise n'est donc pas un travers des donnees de demo, c'est le
+> defaut d'Odoo. Desactiver la demo ne suffit pas : il faut poser XOF
+> explicitement, ce que fait `scripts/seed_vivrier.py`.
+
+C'est le catalogue de demo qui a rendu ce piege visible, et revele l'absence de
+garde-fou : `list_price`
 est un nombre sans unite, et un produit a `400.00` serait devenu « 400 FCFA »
 pour une valeur reelle d'environ 260 000. Le Gateway refuse desormais un
 catalogue dont la devise n'est pas XOF, ou dont la devise est inconnue
@@ -383,9 +391,9 @@ docker compose down -v             # arret ET destruction des donnees
 
 ## Etat de validation
 
-Trois niveaux, a ne pas confondre : le **contrat Odoo 19** et le **packaging
-Docker** ont ete exerces contre une instance reelle ; le **catalogue vivrier en
-FCFA** ne l'a pas encore ete.
+Trois niveaux, tous exerces contre une instance Odoo reelle : le **contrat
+Odoo 19**, le **packaging Docker**, et le **catalogue vivrier en FCFA** avec son
+test negatif.
 
 ### Valide sur Odoo Server 19.0
 
@@ -443,28 +451,50 @@ conteneur puisqu'un bind mount ne traduit pas les uid. L'entrypoint plantait sur
 `NoSectionError: No section: 'options'`. Corrige en `0644` — voir le compromis
 assume dans "Limitation de securite".
 
-### Non encore valide : le catalogue vivrier et le test negatif
+### Valide : le catalogue vivrier et le garde-fou de devise
 
-`scripts/seed_vivrier.py`, `scripts/devise-refusee-test.sh` et les nouvelles
-assertions de devise et de prix de `scripts/smoke-test.sh` **n'ont pas encore
-tourne contre une instance Odoo reelle**. Ce qui a ete fait :
+Execute sur le meme VPS Ubuntu 22.04, base recreee a neuf
+(`docker compose down -v`) avec `ODOO_WITH_DEMO=false`.
 
-- `scripts/test_seed_vivrier.py` execute le seed contre un `env` factice et
-  verifie l'idempotence (second passage : zero creation, stock inchange), la
-  recherche par `default_code`, les trois prix imposes, le `commit`, et la
-  bascule de devise. Quatre mutations du seed — stock pose en delta, reference
-  de recherche cassee, prix impose modifie, `commit` retire — font chacune
-  echouer ce controle : il n'est pas complaisant.
-- La logique de validation du smoke test a ete exercee hors ligne sur des
-  reponses simulees : catalogue XOF conforme, catalogue en USD, `currency_id`
-  absent, prix devie. Les trois derniers echouent avec un message distinct.
-- Syntaxe shell et Python verifiee sur tous les scripts.
+`scripts/init.sh` seede les sept references, puis `scripts/smoke-test.sh` et
+`scripts/devise-refusee-test.sh` passent tous les deux.
 
-Ce qui reste a faire, et que rien ne remplace : relancer `./scripts/init.sh`
-depuis une base neuve (`docker compose down -v` d'abord), puis
-`./scripts/smoke-test.sh` et `./scripts/devise-refusee-test.sh` sur une machine
-disposant de Docker. Le catalogue affiche doit alors etre vivrier, en FCFA, et
-le test negatif doit casser puis se retablir.
+| Point | Resultat observe |
+|---|---|
+| Seed du catalogue | 7 produits crees, stock pose, `SEED_DEVISE_APPLIQUEE=XOF` |
+| Devise de la societe | basculee de USD vers XOF par le seed |
+| Prix et stocks | les 7 references exactes, verifiees au franc pres |
+| Devise du catalogue | 8 produits lus, **tous en XOF** |
+| Coherence `read` / `search_read` | produit `id=2` (Tomate), `qty_available = 50.0` des deux cotes |
+| Test negatif | rouge en USD en nommant la devise, vert apres retour en XOF |
+
+#### Ce que ce passage a appris
+
+**Une base Odoo neuve est en USD, meme sans donnees de demonstration.** Le seed
+a journalise `societe 'My Company' : devise USD -> XOF` sur une base creee avec
+`ODOO_WITH_DEMO=false`. Le piege de devise n'etait donc pas un effet des donnees
+de demo, comme on l'avait d'abord ecrit : c'est le defaut d'Odoo. Le garde-fou du
+Gateway est encore plus necessaire que ne le laissait penser le premier constat.
+
+**Les modules installes peuplent le catalogue.** `point_of_sale` cree un produit
+technique `Tips` (reference `TIPS`, 1 unite monetaire, stock nul), present sans
+aucune donnee de demonstration. Deux consequences :
+
+- c'est ce qui justifie l'absence de `limit` dans le `search_read` du smoke
+  test : avec un plafond et un tri par identifiant, les produits seedes — crees
+  en dernier, donc identifiants les plus hauts — pourraient sortir de la
+  fenetre, et le controle des prix se sauterait lui-meme en silence ;
+- c'est aussi ce qui rend le test de coherence significatif seulement sur un
+  produit a stock non nul : `Tips` arrive en tete et aurait fait comparer 0 a 0.
+
+**Question ouverte, hors perimetre de ce POC.** `listerCatalogue()` lit
+`product.product` sans filtre : `Tips` atteindrait donc le catalogue d'une
+marchande, a 1 FCFA. Definir la politique de selection du catalogue Odoo —
+`sale_ok`, une categorie, les references `JULABA-*` ? — est une decision de
+conception du Gateway. Elle appartient au jalon d'integration backend decrit
+dans `docs/ODOO-SMOKE-TEST-READONLY.md`, pas a cette stack. Le smoke test doit
+continuer a lire tout ce que le Gateway lirait : c'est precisement ainsi que
+`Tips` est apparu.
 
 ### Jalon suivant
 
@@ -480,6 +510,6 @@ niveau, ce document couvre l'integration backend.
 regle : il ecrit en tant qu'administrateur de l'instance de test, pas en tant que
 client JULABA — voir « Frontiere » plus haut.
 
-Le contrat et le packaging sont prouves. Restent, dans cet ordre : le passage
-reel du catalogue vivrier et du test negatif, puis l'integration backend via
-`/odoo-poc/*`. Instance reelle d'abord, code ensuite.
+Le contrat, le packaging et le catalogue vivrier sont prouves sur instance
+reelle. Reste l'integration backend via `/odoo-poc/*`, et avec elle la politique
+de selection du catalogue. Instance reelle d'abord, code ensuite.
