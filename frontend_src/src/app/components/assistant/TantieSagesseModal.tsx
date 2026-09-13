@@ -15,6 +15,9 @@ import { useObjectif } from '../../contexts/ObjectifContext';
 import { stopAllAudio, stopChunkedSpeaking, preloadAudioContext } from '../../services/elevenlabs';
 import { unlockAudioContextIOS } from '../../services/earlyAudioCache';
 import { executerActionTataMarchand } from '../../services/tataMarchandActions';
+import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
+import { guidageVocal } from '../../utils/accessMode';
+import { vibrerSucces } from '../../utils/haptique';
 import { toast } from 'sonner';
 import tataLouImg from "../../../assets/images/tantie-portrait.png";
 import tantieVenteImg from "../../../assets/images/tantie-vente-vocale.png";
@@ -52,9 +55,9 @@ const STEP_CONFIG: Record<VoiceStep, { label: string; icon: React.ReactNode; col
 };
 
 function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'onClose' | 'role'>) {
-  const { user, currentSession, getTodayStats, getFinancialSummary, openDay, closeDay } = useApp();
+  const { user, currentSession, getTodayStats, getFinancialSummary, openDay, closeDay, speak } = useApp();
   const { lang: selectedLang } = useLangPref();
-  const { enregistrerVente, enregistrerDepense } = useCaisse();
+  const { products, addToCart, enregistrerDepense } = useCaisse();
   const stockCtx = useStock();
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
@@ -74,11 +77,35 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
   const activeColor = ROLE_COLORS[role] || ROLE_COLORS.marchand;
   const suggestions = ROLE_SUGGESTIONS[role] || ROLE_SUGGESTIONS.marchand;
 
+  // « vendre » = ajout au panier partagé, jamais un encaissement direct (voir
+  // vendreVocalUnifie.ts — même fonction que VenteVocaleModal, seul chemin
+  // vocal restant qui écrivait encore directement enregistrerVente). Aucune
+  // confirmation vocale bloquante pour un simple ajout panier, ni de mise en
+  // attente hors-ligne : le panier peut être manipulé immédiatement.
+  const vendreUnifie = (nomParle?: string, quantite?: number, montant?: number) =>
+    vendreVocalUnifie(nomParle, quantite || 1, montant || 0, {
+      products,
+      addToCart,
+      speak,
+      vibrerSucces,
+      notifierAjoutPanier: (message) => toast.success(message),
+      // Pas de carte "j'ajoute ce produit à ta boutique ?" dans cet assistant
+      // générique (contrairement à VenteVocaleModal) — voir tataMarchandActions.ts.
+      proposerCreationProduit: () => {},
+      stockage: typeof window !== 'undefined' ? window.localStorage : null,
+      estEnLigne: () => typeof navigator !== 'undefined' ? navigator.onLine !== false : true,
+      planifier: (effet, delaiMs) => setTimeout(effet, delaiMs),
+      guidageVocalActif: () => guidageVocal(),
+      creerIdLigne: () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`),
+    });
+
   const {
     state: step, response: result, transcript, error, recordingTime, history,
     startRecording, stopRecording, reset, resetHistory, handleMicClick, sendText,
     confirmAction, cancelAction, pendingResponse, isSpeaking,
   } = useVoiceCore({
+    confirmationBypassIntents: ['vendre'],
+    offlineLocalIntents: ['vendre'],
     context: {
       prenom: user?.firstName || user?.prenoms || 'ma chère',
       genre: user?.genre || (user as any)?.sex || 'femme',
@@ -98,6 +125,12 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
       if (!action) {
         return;
       }
+      if (action.type === 'vendre') {
+        const montant = action.montant || 0;
+        if (!montant || montant <= 0 || isNaN(montant)) return;
+        vendreUnifie(action.produit, action.quantite || 1, montant);
+        return;
+      }
       try {
         const outcome = await executerActionTataMarchand(action, {
           produits: (stockCtx.stocks || []).map((stock) => ({
@@ -106,7 +139,6 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
             prix_achat: stock.prixAchat ?? stock.prixUnitaire,
             quantite: stock.quantite,
           })),
-          enregistrerVente,
           enregistrerDepense,
           mettreAJourStock: stockCtx.updateStock,
         });
