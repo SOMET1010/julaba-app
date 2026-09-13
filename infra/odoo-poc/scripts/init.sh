@@ -183,7 +183,7 @@ Instance Odoo 19 + POS prete.
   Modules      : ${ODOO_INSTALL_MODULES}
   Donnees demo : ${ODOO_WITH_DEMO}
   Catalogue    : vivrier JULABA, devise ${SEED_DEVISE}
-  Admin        : login 'admin' / mot de passe 'admin' (donnees de demo)
+  Admin        : login 'admin' / mot de passe 'admin'
   Compte API   : ${ODOO_API_USER_LOGIN}
   Cle API      : ecrite dans .env (ODOO_API_KEY), non reaffichee ici.
 

@@ -195,19 +195,37 @@ for rec in data:
 PY
 
 # --- Test 4 : product.product/read, seconde methode de l'allowlist ---------
-log "Test 4 — read authentifie sur un produit issu du search_read"
+log "Test 4 — read authentifie sur un produit a stock non nul"
 
 # On repart d'un produit reellement retourne par le search_read : l'identifiant
 # n'est jamais code en dur, et la valeur lue sert de reference de coherence.
-REFERENCE="$(python3 - "$RESPONSE_FILE" <<'PY'
+#
+# Le produit est choisi parmi ceux a stock NON NUL. Prendre simplement le
+# premier de la liste reviendrait souvent a comparer 0 a 0 — les modules Odoo
+# creent des produits techniques a stock zero (« Tips », pour point_of_sale) et
+# ils arrivent en tete par identifiant. Un test qui ne peut pas echouer ne
+# prouve rien.
+if ! REFERENCE="$(python3 - "$RESPONSE_FILE" <<'PY'
 import json, sys
+
 with open(sys.argv[1], encoding="utf-8") as f:
     produits = json.load(f)
-p = produits[0]
+
+candidats = [p for p in produits if float(p.get("qty_available") or 0) > 0]
+if not candidats:
+    # Le seed pose des stocks positifs sur les sept references vivrieres :
+    # n'en trouver aucun est une anomalie en soi, pas un cas a contourner.
+    sys.exit("aucun produit a stock non nul dans le catalogue. La coherence "
+             "search_read/read ne peut pas etre prouvee sur des zeros. "
+             "Verifier que ./scripts/init.sh est alle au bout, seed compris.")
+
+p = candidats[0]
 # Format brut "id<TAB>qty_available" : simple a relire cote shell.
 print(f"{p['id']}\t{p['qty_available']!r}")
 PY
-)"
+)"; then
+  die "test 4 : impossible de choisir un produit de reference (voir le message ci-dessus)."
+fi
 PRODUCT_ID="${REFERENCE%%$'\t'*}"
 QTY_REFERENCE="${REFERENCE##*$'\t'}"
 
