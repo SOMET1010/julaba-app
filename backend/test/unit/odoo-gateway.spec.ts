@@ -1,6 +1,7 @@
 import { OdooGatewayService } from '../../src/odoo-gateway/odoo-gateway.service';
-import { OdooMockClient } from '../../src/odoo-gateway/odoo-mock.client';
+import { OdooMockClient, OdooSimulatedError } from '../../src/odoo-gateway/odoo-mock.client';
 import { SyncJournal, SyncJournalEntry } from '../../src/odoo-gateway/sync-journal';
+import { OdooClient } from '../../src/odoo-gateway/odoo-client.interface';
 
 /**
  * POC structurel Gateway Odoo — catalogue + stock consolidé uniquement.
@@ -61,9 +62,30 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
     expect(res.derniereErreur).toMatch(/introuvable/i);
   });
 
-  it('erreur Odoo simulée : rejetée avec le message technique', async () => {
-    const res = await service.simulerMouvementStock({
-      operationId: 'op-erreur-simulee', odooProductId: 103, quantite: 1, type: 'in', simulerErreur: true,
+  it("erreur Odoo simulée sur le mock : levée en OdooSimulatedError('SIMULATED_ERROR')", async () => {
+    // Le knob `_simulerErreur` n'existe QUE côté OdooMockClient (test-only) —
+    // volontairement inatteignable depuis le DTO HTTP public (MouvementStockDto)
+    // ni depuis OdooGatewayService, voir dto/mouvement-stock.dto.ts. On l'exerce
+    // donc directement sur le mock, pas via le service.
+    const mock = new OdooMockClient();
+    await expect(
+      mock.execute('stock.move', 'create', { product_id: 103, product_qty: 1, type: 'in', _simulerErreur: true }),
+    ).rejects.toMatchObject({ code: 'SIMULATED_ERROR' });
+    await expect(
+      mock.execute('stock.move', 'create', { product_id: 103, product_qty: 1, type: 'in', _simulerErreur: true }),
+    ).rejects.toBeInstanceOf(OdooSimulatedError);
+  });
+
+  it('toute erreur du client Odoo (quel qu\'il soit) devient un journal rejected', async () => {
+    // Preuve découplée du mock : n'importe quelle implémentation OdooClient
+    // qui échoue (mock, réel, ou un double de test) doit aboutir au même
+    // comportement du service — c'est le point du contrat OdooClient.execute().
+    const clientDefaillant: OdooClient = {
+      execute: jest.fn().mockRejectedValue(new Error('Erreur technique Odoo simulée (ex. timeout, 500).')),
+    };
+    const serviceAvecClientDefaillant = new OdooGatewayService(clientDefaillant);
+    const res = await serviceAvecClientDefaillant.simulerMouvementStock({
+      operationId: 'op-erreur-simulee', odooProductId: 103, quantite: 1, type: 'in',
     });
     expect(res.etat).toBe('rejected');
     expect(res.derniereErreur).toMatch(/simulée/i);
@@ -118,6 +140,30 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
 
     spy.mockRestore();
     expect(etats).toEqual(['pending', 'syncing', 'confirmed']);
+  });
+
+  it('écrit réellement pending → syncing → rejected quand Odoo échoue (symétrique du cas confirmed)', async () => {
+    const clientDefaillant: OdooClient = { execute: jest.fn().mockRejectedValue(new Error('panne réseau')) };
+    const serviceAvecClientDefaillant = new OdooGatewayService(clientDefaillant);
+
+    const original = SyncJournal.prototype.upsert;
+    const etats: string[] = [];
+    const spy = jest
+      .spyOn(SyncJournal.prototype, 'upsert')
+      .mockImplementation(function (this: SyncJournal, entry: SyncJournalEntry) {
+        etats.push(entry.etat);
+        return original.call(this, entry);
+      });
+
+    await serviceAvecClientDefaillant.simulerMouvementStock({
+      operationId: 'op-pending-rejete',
+      odooProductId: 107,
+      quantite: 1,
+      type: 'in',
+    });
+
+    spy.mockRestore();
+    expect(etats).toEqual(['pending', 'syncing', 'rejected']);
   });
 
   describe('idempotence face à des appels CONCURRENTS (même operationId)', () => {

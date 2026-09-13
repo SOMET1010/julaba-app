@@ -2,18 +2,29 @@ import { Module } from '@nestjs/common';
 import { OdooGatewayController } from './odoo-gateway.controller';
 import { OdooGatewayService } from './odoo-gateway.service';
 import { OdooPocEnabledGuard } from './odoo-poc-enabled.guard';
-import { ODOO_CLIENT } from './odoo-client.interface';
+import { ODOO_CLIENT, OdooClient } from './odoo-client.interface';
 import { OdooMockClient } from './odoo-mock.client';
+import { OdooRealClient } from './odoo-real.client';
+import { lireConfigOdooReel, lireModeClientOdoo } from './odoo-client.config';
+
+function creerOdooClient(): OdooClient {
+  if (lireModeClientOdoo() === 'real') {
+    // Lève une erreur explicite (arrêt du boot) si les secrets manquent —
+    // voir odoo-client.config.ts : jamais de repli silencieux vers le mock.
+    return new OdooRealClient(lireConfigOdooReel());
+  }
+  return new OdooMockClient();
+}
 
 /**
- * POC structurel — catalogue + stock consolidé uniquement (voir docs/
+ * Gateway JULABA → Odoo — catalogue + stock consolidé uniquement (voir docs/
  * ETUDE_ARCHITECTURE_JULABA_ODOO.md). Aucun branchement au frontend JULABA,
- * aucune migration DB, aucun appel externe réel dans ce lot.
+ * aucune migration DB dans ce lot.
  *
- * BASCULE FUTURE vers une vraie instance Odoo : remplacer UNIQUEMENT
- * `useClass: OdooMockClient` ci-dessous par `useClass: OdooRealClient`
- * (à créer, hors périmètre de ce lot) — ni le service ni le contrôleur
- * n'ont besoin de changer.
+ * BASCULE mock/réel : `ODOO_CLIENT_MODE=real` (+ `ODOO_BASE_URL`/
+ * `ODOO_API_KEY`) fait passer `ODOO_CLIENT` sur `OdooRealClient` — ni le
+ * service ni le contrôleur n'ont besoin de changer, c'est tout le sens du
+ * contrat `OdooClient.execute()`.
  *
  * DÉSACTIVÉ PAR DÉFAUT : voir OdooPocEnabledGuard — importer ce module dans
  * AppModule ne rend PAS `/odoo-poc/*` utilisable ; il faut en plus
@@ -24,7 +35,7 @@ import { OdooMockClient } from './odoo-mock.client';
   providers: [
     OdooGatewayService,
     OdooPocEnabledGuard,
-    { provide: ODOO_CLIENT, useClass: OdooMockClient },
+    { provide: ODOO_CLIENT, useFactory: creerOdooClient },
   ],
 })
 export class OdooGatewayModule {}
