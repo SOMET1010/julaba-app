@@ -84,6 +84,22 @@ export interface VoiceCoreOptions {
   onNavigate?: (path: string) => void;
   onError?: (message: string) => void;
   onTranscript?: (text: string) => void;
+  /** Intentions pour lesquelles CETTE instance de useVoiceCore n'exige jamais
+   * de confirmation orale « oui/non », même si la source (ex. intentLocal)
+   * la demande (`needsConfirmation: true`). Absent par défaut : comportement
+   * inchangé partout. Portée strictement par instance — ne modifie PAS
+   * `intentLocal` ni le comportement d'un autre `useVoiceCore` (ex. Tata
+   * générique) qui ne passe pas cette option. Voir Lot 2, convergence
+   * voix/tactile POS : « vendre » devient un ajout au panier, qui n'a plus
+   * besoin d'une confirmation financière. */
+  confirmationBypassIntents?: string[];
+  /** Intentions qui n'effectuent AUCUNE écriture serveur (ex. « vendre »
+   * devenu un ajout au panier local) — elles s'exécutent immédiatement même
+   * hors ligne, au lieu d'attendre une reconnexion inutile pour elles.
+   * N'affecte JAMAIS l'état réseau réel (`isOnline` reste honnête, ex. la
+   * bannière « Hors-ligne ») — seule la décision de mise en file change,
+   * voir offlineVoicePolicy.ts. Absent par défaut : comportement inchangé. */
+  offlineLocalIntents?: string[];
 }
 
 export interface VoiceCoreResult {
@@ -297,6 +313,8 @@ export function useVoiceCore({
   onAction,
   onNavigate,
   onError,
+  confirmationBypassIntents,
+  offlineLocalIntents,
 }: VoiceCoreOptions = {}): VoiceCoreResult {
 
   const [state, setState] = useState<VoiceState>("idle");
@@ -542,37 +560,57 @@ export function useVoiceCore({
     // Memoriser l intent
     addIntent(data.intent);
 
-    setResponse(data); setTranscript(data.transcript || userText);
-    clearTypewriter();
-    typewriterRef.current = startTypewriter(data.response || "", setLiveTranscript, 25);
-    setState("speaking"); addToHistory(userText, data.response); setIsSpeaking(true);
+    // Intention bypassée (Lot 2, convergence voix/tactile POS — ex. « vendre »
+    // dans VenteVocaleModal) : `data.response` porte une phrase de
+    // confirmation (« ...c'est bien ça ? ») qui n'a plus de sens ici — ni
+    // affichée, ni tapée en typewriter, ni parlée (TTS/ACK), ni journalisée
+    // comme réponse de l'assistant. Le vrai feedback (« C'est dans ton
+    // panier. ») est produit par l'effet métier lui-même (onAction), pas ici.
+    const bypassed = (confirmationBypassIntents ?? []).includes(data.intent);
 
-    // Délai minimal réduit à 80ms pour TTS plus réactif
-    ttsStop();
-    await new Promise((r) => {
-      trackTimeout(() => r(undefined), 80);
-    });
+    if (!bypassed) {
+      setResponse(data); setTranscript(data.transcript || userText);
+      clearTypewriter();
+      typewriterRef.current = startTypewriter(data.response || "", setLiveTranscript, 25);
+      setState("speaking"); addToHistory(userText, data.response); setIsSpeaking(true);
 
-    try {
-      const wasInterrupted = interruptRef.current;
-      if (!wasInterrupted) {
-        const ack = getAckPhrase(recentIntentsRef.current);
-        // Utiliser audioBase64 du backend si disponible
-        if (data.audioBase64) {
-          await ttsPlayBase64(data.audioBase64, data.response || ack);
-          if (interruptRef.current) return false;
-        } else {
-          await ttsSpeak(data.response || ack, buildContext().lang as TTSLang);
-          if (interruptRef.current) return false;
+      // Délai minimal réduit à 80ms pour TTS plus réactif
+      ttsStop();
+      await new Promise((r) => {
+        trackTimeout(() => r(undefined), 80);
+      });
+
+      try {
+        const wasInterrupted = interruptRef.current;
+        if (!wasInterrupted) {
+          const ack = getAckPhrase(recentIntentsRef.current);
+          // Utiliser audioBase64 du backend si disponible
+          if (data.audioBase64) {
+            await ttsPlayBase64(data.audioBase64, data.response || ack);
+            if (interruptRef.current) return false;
+          } else {
+            await ttsSpeak(data.response || ack, buildContext().lang as TTSLang);
+            if (interruptRef.current) return false;
+          }
         }
-      }
-    } finally { clearTypewriter(); setIsSpeaking(false); }
+      } finally { clearTypewriter(); setIsSpeaking(false); }
+    } else {
+      // `setResponse(null)`, pas seulement « ne pas y placer la nouvelle
+      // question » : une ancienne réponse d'une interaction précédente
+      // resterait sinon affichée dans la carte de réponse (ex. VenteVocaleModal).
+      setResponse(null);
+      setTranscript(data.transcript || userText);
+      setLiveTranscript("");
+    }
 
     const FINANCIAL_INTENTS = ['vendre', 'depense', 'ouvrir_journee', 'fermer_journee', 'utiliser_raccourci'];
     // `confirmed` = appel venant de confirmAction (l'utilisateur a déjà dit Oui) :
     // sans ce court-circuit, on re-demandait confirmation à l'infini et la vente
     // n'était jamais enregistrée quand le backend renvoyait needsConfirmation=false.
-    const requiresLocalConfirm = !confirmed && FINANCIAL_INTENTS.includes(data.intent) && !data.needsConfirmation;
+    // `!bypassed` : une source future renvoyant `vendre` + `needsConfirmation:false`
+    // ne doit pas réintroduire mystérieusement une confirmation pour une
+    // intention explicitement dispensée par CETTE instance.
+    const requiresLocalConfirm = !bypassed && !confirmed && FINANCIAL_INTENTS.includes(data.intent) && !data.needsConfirmation;
     if (requiresLocalConfirm) {
       setPendingResponse(data);
       setState("confirming");
@@ -586,6 +624,8 @@ export function useVoiceCore({
       const dispatch = await dispatchVoiceAction({
         isOnline,
         hasAction: true,
+        intent: data.intent,
+        offlineLocalIntents,
         text: userText || data.normalizedText || data.transcript,
         context,
         enqueue,
@@ -615,7 +655,7 @@ export function useVoiceCore({
       trackTimeout(() => { setState("idle"); setLiveTranscript(""); }, 1000);
     }
     return enregistre;
-  }, [addToHistory, addIntent, onAction, onNavigate, clearTypewriter, clearThinkingTimer, trackTimeout, enqueue, context]);
+  }, [addToHistory, addIntent, onAction, onNavigate, clearTypewriter, clearThinkingTimer, trackTimeout, enqueue, context, confirmationBypassIntents, offlineLocalIntents]);
 
   // ── Handle response ──────────────────────────────────────────
   const handleResponse = useCallback(async (raw: Partial<VoiceProcessResponse>, userText: string): Promise<boolean> => {
@@ -626,7 +666,8 @@ export function useVoiceCore({
     const data = normalizeResponse(raw);
     setTranscript(data.transcript || userText);
 
-    if (data.needsConfirmation && data.action?.type !== "none") {
+    const bypassed = (confirmationBypassIntents ?? []).includes(data.intent);
+    if (data.needsConfirmation && data.action?.type !== "none" && !bypassed) {
       clearTypewriter();
       typewriterRef.current = startTypewriter(data.response || "", setLiveTranscript, 25);
       setPendingResponse(data); setResponse(data); setState("confirming"); setIsSpeaking(true);
@@ -655,7 +696,7 @@ export function useVoiceCore({
       return false; // en attente de la confirmation orale : pas encore enregistré
     }
     return await executeAction(data, userText);
-  }, [executeAction, clearTypewriter, clearThinkingTimer, trackTimeout]);
+  }, [executeAction, clearTypewriter, clearThinkingTimer, trackTimeout, confirmationBypassIntents]);
 
   // ── Confirmation ─────────────────────────────────────────────
   // Garde synchrone anti double-clic : sans elle, deux appuis rapides sur "Oui"
@@ -667,8 +708,17 @@ export function useVoiceCore({
     confirmingRef.current = true;
     try {
       const data = pendingResponse; setPendingResponse(null);
-      // Voix réelle de Tata Nanti Lou pour l'accusé de réception (phrase fixe).
-      await ttsSpeak("C'est noté, ta vente est bien enregistrée.", "french", "vente_enregistree");
+      // Accusé de réception GÉNÉRIQUE — cette confirmation est partagée par
+      // plusieurs intentions dont l'effet réel diffère (dépense, ouverture/
+      // fermeture de journée, « utiliser_raccourci » résolu en vente qui,
+      // depuis le Lot 2, n'ajoute qu'une ligne au panier sans encaisser).
+      // Une phrase fixe affirmant « ta vente est bien enregistrée » serait
+      // FAUSSE pour ces cas — on ne peut pas l'accorder ici à l'intention
+      // réelle sans plomberie supplémentaire, donc on reste volontairement
+      // neutre. Clip « bien_recu » (voix RÉELLE de Tata Nanti Lou, pas un
+      // texte de secours) — déjà utilisé ailleurs, dit littéralement
+      // « J'ai compris » : honnête pour toutes les intentions confirmées ici.
+      await ttsSpeak("J'ai compris", "french", "bien_recu");
       await executeAction(data, data.transcript || "", true); // déjà confirmé -> enregistrer
     } finally {
       confirmingRef.current = false;

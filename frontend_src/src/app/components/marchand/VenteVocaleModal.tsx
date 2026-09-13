@@ -37,7 +37,7 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, setIsModalOpen, speak } = useApp();
-  const { enregistrerVente, enregistrerDepense, refreshTransactions, refreshProducts, stats: caisseStats, products, addProduct, addToCart, syncEchecs, syncLettresMortes, purgerEchecSync, cart, getTotalCart } = useCaisse();
+  const { enregistrerDepense, refreshTransactions, stats: caisseStats, products, addProduct, addToCart, syncEchecs, syncLettresMortes, purgerEchecSync, cart, getTotalCart } = useCaisse();
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
   const progression = objectifCtx?.progression ?? 0;
@@ -101,45 +101,63 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
       topStocks: topStocks || '',
       dernierProduit: dernierProduit || '',
     },
-    // Vente vocale UNIFIÉE avec le panier (Phase 5, lot 1) : le produit dicté est
-    // apparié au catalogue → la ligne porte productId, total (source de vérité)
-    // et prix d'achat unitaire (marge réelle), et le stock est décrémenté comme
-    // à la caisse. Sans appariement, la vente passe quand même (ligne libre).
+    // Vente vocale = AJOUT AU PANIER (Convergence voix/tactile POS, Lot 2) :
+    // « vendre » n'encaisse plus rien directement — le produit dicté est
+    // apparié au catalogue → addToCart au prix dicté, prix d'achat conservé
+    // (marge réelle à l'encaissement futur). Sans appariement, ligne libre.
+    // L'encaissement reste exclusivement le bouton tactile « Payer en
+    // espèces » (POSCaisse.handlePay). Voir confirmationBypassIntents/
+    // offlineLocalIntents ci-dessous : « vendre » n'attend plus de
+    // confirmation orale et agit immédiatement même hors ligne (panier
+    // local, aucune écriture serveur).
+    confirmationBypassIntents: ['vendre'],
+    offlineLocalIntents: ['vendre'],
     onAction: async (data) => {
-      // Extraction mécanique (Convergence voix/tactile POS, Lot 1) : la logique
-      // vit maintenant dans services/vendreVocalUnifie.ts, testée en isolation.
+      // Extraction mécanique (Lot 1) puis changement de sémantique (Lot 2) :
+      // la logique vit dans services/vendreVocalUnifie.ts, testée en isolation.
       // Cet adaptateur ne fait que reboucler les dépendances déjà disponibles
-      // dans cette closure sur l'interface injectée du module — comportement
-      // strictement inchangé (mêmes délais, même ordre d'effets).
-      const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number, note: string) =>
-        vendreVocalUnifie(nomParle, quantite, montant, note, {
+      // dans cette closure sur l'interface injectée du module.
+      const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number) =>
+        vendreVocalUnifie(nomParle, quantite, montant, {
           products,
-          enregistrerVente,
-          refreshProducts,
+          addToCart,
           speak,
+          vibrerSucces,
+          notifierAjoutPanier: (message) => toast.success(message),
           proposerCreationProduit: (p) => setPropositionProduit(p),
           stockage: window.localStorage,
           estEnLigne: () => navigator.onLine !== false,
           planifier: (effet, delaiMs) => setTimeout(effet, delaiMs),
           guidageVocalActif: () => guidageVocal(),
+          creerIdLigne: () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`),
         });
       const action = data.action;
       if (action?.type === "vendre") {
-        // #4 : ne plus abandonner en silence (Tata Nanti Lou disait « c'est enregistré »
-        // alors que rien n'était sauvé). On remonte une erreur explicite.
-        if (!currentSession?.opened) throw new Error("Ouvre ta journée d'abord pour enregistrer une vente.");
         const montant = action.montant || 0;
         const quantite = action.quantite || 1;
         if (!montant || montant <= 0 || isNaN(montant)) return;
-        await vendreUnifie(action.produit, quantite, montant, "Vente " + (action.produit || "vocale"));
+        // Simple ajout au panier (Lot 2) : le contrôle « journée ouverte »
+        // n'a plus sa place ici — il ne protège qu'un encaissement réel, qui
+        // n'a pas lieu à cet endroit (voir POSCaisse.handlePay). Le chemin
+        // guidé (ajouterLigneAuPanier) n'a jamais eu ce contrôle non plus.
+        vendreUnifie(action.produit, quantite, montant);
       } else if (action?.type === "utiliser_raccourci") {
         const r = matchRaccourci ? matchRaccourci(action.declencheur || data.transcript || "") : null;
         if (r?.action?.type === "vendre") {
-          if (!currentSession?.opened) throw new Error("Ouvre ta journée d'abord pour enregistrer une vente.");
+          // Même sémantique panier que le « vendre » direct ci-dessus — un
+          // raccourci résolu en vente ne fait qu'ajouter une ligne, jamais
+          // d'encaissement (même remarque : pas de contrôle journée ouverte
+          // ici). `confirmationBypassIntents` ne couvre pas l'intention
+          // « utiliser_raccourci » elle-même (un raccourci peut aussi
+          // résoudre en dépense, qui doit rester confirmée) — la confirmation
+          // orale reste donc demandée pour ce chemin, mais son texte fixe
+          // (confirmAction(), useVoiceCore.ts) a été rendu générique pour ne
+          // plus jamais affirmer « vente enregistrée » quand ce n'est qu'un
+          // ajout au panier.
           const montant = r.action.montant || 0;
           const quantite = r.action.quantite || 1;
           if (!montant || montant <= 0 || isNaN(montant)) return;
-          await vendreUnifie(r.action.produit, quantite, montant, r.nom);
+          vendreUnifie(r.action.produit, quantite, montant);
         } else if (r?.action?.type === "depense") {
           const montant = r.action.montant || 0;
           if (!montant || montant <= 0 || isNaN(montant)) return;

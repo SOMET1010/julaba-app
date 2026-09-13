@@ -1,17 +1,10 @@
 /**
- * Tests de caractérisation + unitaires de `vendreVocalUnifie` (Convergence
- * voix/tactile POS, Lot 1 — extraction mécanique).
- *
- * Ces assertions caractérisent le comportement du closure `vendreUnifie` tel
- * qu'il vivait dans `VenteVocaleModal.tsx` AVANT extraction (ordre des
- * effets, délais 1400ms/2200ms, permissivité du try/catch) : elles doivent
- * rester IDENTIQUES, au caractère près, une fois `VenteVocaleModal.tsx`
- * branché sur ce module — c'est la preuve que l'extraction est mécanique et
- * ne change aucun comportement.
+ * Tests de `vendreVocalUnifie` — Convergence voix/tactile POS, Lot 2 :
+ * « vendre » devient un ajout au panier, jamais un encaissement direct.
  *
  * Lancer : npm run test:vendre-unifie   (tsx, sans DOM ni navigateur)
  */
-import { vendreVocalUnifie, type DependancesVendreVocalUnifie } from "./vendreVocalUnifie.js";
+import { vendreVocalUnifie, type DependancesVendreVocalUnifie, type ProduitPourPanier } from "./vendreVocalUnifie.js";
 import type { ProduitAppariable } from "./venteVocale.js";
 import { CLE_REFUS_PRODUITS, noterRefusCreation } from "./venteVocale.js";
 
@@ -35,112 +28,151 @@ function creerStockage(seed: Record<string, string> = {}): StockageMemoire {
 interface Enregistrement { effet: () => void; delaiMs: number; }
 
 function creerDeps(overrides: Partial<DependancesVendreVocalUnifie> = {}) {
-  const appelsEnregistrerVente: unknown[][] = [];
-  const appelsRefreshProducts: number[] = [];
+  const appelsAddToCart: [ProduitPourPanier, number][] = [];
   const appelsSpeak: string[] = [];
+  const appelsVibrer: number[] = [];
+  const appelsNotifier: string[] = [];
   const appelsProposer: { nom: string; prix: number }[] = [];
   const planifications: Enregistrement[] = [];
+  let compteurId = 0;
 
   const deps: DependancesVendreVocalUnifie = {
     products: [TOMATE],
-    enregistrerVente: async (montant, lignes, moyen, note) => { appelsEnregistrerVente.push([montant, lignes, moyen, note]); return { ok: true }; },
-    refreshProducts: () => { appelsRefreshProducts.push(1); },
+    addToCart: (produit, quantite) => { appelsAddToCart.push([produit, quantite]); },
     speak: (texte) => { appelsSpeak.push(texte); },
+    vibrerSucces: () => { appelsVibrer.push(1); },
+    notifierAjoutPanier: (message) => { appelsNotifier.push(message); },
     proposerCreationProduit: (p) => { appelsProposer.push(p); },
     stockage: creerStockage(),
     estEnLigne: () => true,
     planifier: (effet, delaiMs) => { planifications.push({ effet, delaiMs }); },
     guidageVocalActif: () => true,
+    // Un id UNIQUE par appel — jamais dérivé du nom (voir P0, contre-revue) :
+    // deux ajouts du même produit inconnu à des prix différents ne doivent
+    // jamais fusionner en une seule ligne (addToCart n'augmente QUE la
+    // quantité au second appel, il ne reprend jamais le nouveau prix).
+    creerIdLigne: () => `test-${++compteurId}`,
     ...overrides,
   };
 
-  return { deps, appelsEnregistrerVente, appelsRefreshProducts, appelsSpeak, appelsProposer, planifications };
+  return { deps, appelsAddToCart, appelsSpeak, appelsVibrer, appelsNotifier, appelsProposer, planifications };
 }
 
-async function main() {
-  console.log("\n[1] Produit apparié, stock suffisant");
+function main() {
+  console.log("\n[1] Produit apparié : addToCart appelé, JAMAIS d'écriture financière");
   {
     const h = creerDeps();
-    await vendreVocalUnifie("tomates", 2, 1000, "Vente tomates", h.deps);
-    eq(h.appelsEnregistrerVente.length, 1, "enregistrerVente appelé une seule fois");
-    const [montant, lignes, moyen, note] = h.appelsEnregistrerVente[0] as [number, any[], string, string];
-    eq(montant, 1000, "montant transmis tel quel (le dicté prime)");
-    eq(lignes.length, 1, "une seule ligne");
-    eq(lignes[0].productId, "p1", "ligne appariée au catalogue");
-    eq(moyen, "cash", "moyen de paiement toujours cash pour ce chemin");
-    eq(note, "Vente tomates", "note transmise telle quelle");
-    eq(h.appelsRefreshProducts.length, 1, "refreshProducts appelé après la vente");
-    eq(h.planifications.length, 0, "aucune planification : pas de rupture, rien à proposer");
+    vendreVocalUnifie("tomates", 2, 1000, h.deps);
+    eq(h.appelsAddToCart.length, 1, "addToCart appelé une seule fois");
+    const [produit, quantite] = h.appelsAddToCart[0];
+    eq(produit.id, "p1", "produit apparié au catalogue (même id)");
+    eq(produit.prix, 500, "prix dicté (1000/2) — le négoce prime sur le catalogue");
+    eq(produit.prix_promo, null, "promo catalogue neutralisée (prix dicté prioritaire)");
+    eq(quantite, 2, "quantité dictée transmise telle quelle");
+    eq(h.appelsVibrer.length, 1, "retour haptique de succès");
+    eq(h.appelsNotifier.length, 1, "notification visuelle de l'ajout");
+    ok(h.appelsNotifier[0].includes("panier"), "le message mentionne le panier, jamais une vente");
+    eq(h.appelsSpeak.length, 1, "confirmation parlée (guidage actif)");
+    ok(h.appelsSpeak[0].toLowerCase().includes("panier"), "« C'est dans le panier », jamais « vente enregistrée »");
   }
 
-  console.log("\n[2] Produit apparié, stock insuffisant, guidage actif → avertissement différé de 1400ms");
-  {
-    const h = creerDeps();
-    await vendreVocalUnifie("tomates", 50, 1000, "Vente tomates", h.deps); // 50 > stock (20)
-    eq(h.planifications.length, 1, "une planification (l'avertissement de rupture)");
-    eq(h.planifications[0].delaiMs, 1400, "délai de 1400ms préservé");
-    eq(h.appelsSpeak.length, 0, "speak PAS encore appelé avant exécution de l'effet planifié");
-    h.planifications[0].effet();
-    eq(h.appelsSpeak.length, 1, "speak appelé une fois l'effet planifié exécuté");
-    ok(h.appelsSpeak[0].includes("manquait"), "message de rupture parlé");
-  }
-
-  console.log("\n[3] Produit apparié, stock insuffisant, guidage INACTIF → aucune planification");
+  console.log("\n[2] Produit apparié, guidage INACTIF → pas de parole, mais ajout et notification visuelle inchangés");
   {
     const h = creerDeps({ guidageVocalActif: () => false });
-    await vendreVocalUnifie("tomates", 50, 1000, "Vente tomates", h.deps);
-    eq(h.planifications.length, 0, "guidage inactif → jamais de planification, même en rupture");
+    vendreVocalUnifie("tomates", 1, 500, h.deps);
+    eq(h.appelsAddToCart.length, 1, "addToCart toujours appelé");
+    eq(h.appelsSpeak.length, 0, "guidage inactif → rien de parlé");
+    eq(h.appelsNotifier.length, 1, "la notification visuelle reste, elle ne dépend pas du guidage vocal");
   }
 
-  console.log("\n[4] Produit non apparié, en ligne, produit inconnu → proposition différée de 2200ms");
+  console.log("\n[3] Produit non apparié → ligne libre ajoutée au panier");
   {
     const h = creerDeps();
-    await vendreVocalUnifie("attiéké", 2, 1000, "Vente vocale", h.deps);
-    eq(h.appelsRefreshProducts.length, 0, "refreshProducts PAS appelé côté branche non-appariée");
+    vendreVocalUnifie("attiéké", 2, 1000, h.deps);
+    eq(h.appelsAddToCart.length, 1, "addToCart appelé pour la ligne libre aussi");
+    const [produit, quantite] = h.appelsAddToCart[0];
+    eq(produit.nom, "attiéké", "nom dicté conservé pour une ligne libre");
+    eq(produit.categorie, "Autre", "catégorie « Autre » pour une ligne libre");
+    eq(produit.stock, 0, "stock 0 pour une ligne libre (pas de suivi catalogue)");
+    eq(quantite, 2, "quantité dictée transmise");
+  }
+
+  console.log("\n[4] P0 — même produit inconnu, DEUX PRIX différents → deux lignes DISTINCTES, total cumulé exact");
+  {
+    // Piège identifié en contre-revue : addToCart() fusionne sur `product.id`
+    // en augmentant SEULEMENT la quantité — il ne reprend jamais le nouveau
+    // prix passé au second appel. Un id stable dérivé du nom ferait donc
+    // silencieusement écraser 2×500 + 1×700 (= 1700F) par 3×500 (= 1500F).
+    const h = creerDeps();
+    vendreVocalUnifie("piment", 2, 1000, h.deps); // 2 piments pour 1000F → 500F/unité
+    vendreVocalUnifie("piment", 1, 700, h.deps); // 1 piment pour 700F → 700F/unité
+    eq(h.appelsAddToCart.length, 2, "deux appels à addToCart, un par énoncé");
+    const [ligne1, qte1] = h.appelsAddToCart[0];
+    const [ligne2, qte2] = h.appelsAddToCart[1];
+    ok(ligne1.id !== ligne2.id, "id DIFFÉRENT malgré le même nom dicté → jamais de fusion sur addToCart");
+    eq(qte1, 2, "quantité de la première ligne");
+    eq(qte2, 1, "quantité de la seconde ligne");
+    eq(ligne1.prix, 500, "prix unitaire de la première ligne (1000/2)");
+    eq(ligne2.prix, 700, "prix unitaire de la seconde ligne (700/1)");
+    const totalCumule = ligne1.prix * qte1 + ligne2.prix * qte2;
+    eq(totalCumule, 1700, "total cumulé EXACT (1000 + 700), jamais 1500 (3 × 500)");
+  }
+
+  console.log("\n[5] Panier existant : ce module ne touche jamais aux lignes déjà présentes");
+  {
+    // addToCart est une fonction opaque ici — vendreVocalUnifie ne lit ni ne
+    // vide jamais un panier existant, il ne fait qu'appeler addToCart une
+    // fois par vente vocale reconnue. On le prouve en s'assurant qu'aucune
+    // autre méthode de mutation (clearCart, removeFromCart, etc.) n'existe
+    // dans les dépendances déclarées.
+    const h = creerDeps();
+    vendreVocalUnifie("tomates", 1, 500, h.deps);
+    eq(Object.keys(h.deps).includes("clearCart"), false, "aucune dépendance de vidage/suppression de panier n'existe dans ce module");
+    eq(h.appelsAddToCart.length, 1, "un seul appel additif, jamais de remplacement du panier");
+  }
+
+  console.log("\n[6] Produit non apparié, en ligne, produit inconnu → proposition différée de 2200ms, APRÈS l'ajout");
+  {
+    const h = creerDeps();
+    vendreVocalUnifie("attiéké", 2, 1000, h.deps);
+    eq(h.appelsAddToCart.length, 1, "l'ajout au panier a bien eu lieu");
     eq(h.planifications.length, 1, "une planification (la proposition de création)");
     eq(h.planifications[0].delaiMs, 2200, "délai de 2200ms préservé");
-    eq(h.appelsProposer.length, 0, "proposerCreationProduit PAS encore appelé avant exécution de l'effet planifié");
+    eq(h.appelsProposer.length, 0, "proposerCreationProduit pas encore appelé avant exécution de l'effet planifié");
     h.planifications[0].effet();
     eq(h.appelsProposer.length, 1, "proposerCreationProduit appelé une fois l'effet exécuté");
-    eq(h.appelsProposer[0], { nom: "attiéké", prix: 500 }, "nom et prix (montant/quantite) transmis à la proposition");
-    eq(h.appelsSpeak.length, 1, "guidage actif → la question est aussi parlée");
+    eq(h.appelsProposer[0], { nom: "attiéké", prix: 500 }, "nom et prix transmis à la proposition");
   }
 
-  console.log("\n[5] Produit non apparié, guidage INACTIF → proposition visuelle sans parole");
+  console.log("\n[7] La proposition de création n'est JAMAIS bloquante sur l'ajout au panier");
   {
-    const h = creerDeps({ guidageVocalActif: () => false });
-    await vendreVocalUnifie("attiéké", 2, 1000, "Vente vocale", h.deps);
-    h.planifications[0].effet();
-    eq(h.appelsProposer.length, 1, "la proposition reste affichée même sans guidage vocal");
-    eq(h.appelsSpeak.length, 0, "mais rien n'est parlé");
+    // `estEnLigne()` qui explose (dépendance fournie par l'appelant, donc pas
+    // sous le contrôle de ce module) : la proposition doit échouer en
+    // silence (try/catch), sans jamais empêcher ni annuler l'ajout au
+    // panier qui a déjà eu lieu juste avant dans la même fonction.
+    const h = creerDeps({ estEnLigne: () => { throw new Error("détection réseau indisponible"); } });
+    vendreVocalUnifie("attiéké", 1, 500, h.deps);
+    eq(h.appelsAddToCart.length, 1, "l'ajout au panier réussit malgré l'échec de la vérification réseau");
+    eq(h.planifications.length, 0, "aucune planification si la vérification échoue (jamais bloquant)");
   }
 
-  console.log("\n[6] Produit non apparié, HORS-LIGNE → jamais de proposition");
+  console.log("\n[8] Produit non apparié, HORS-LIGNE → pas de proposition, mais l'ajout au panier reste immédiat");
   {
     const h = creerDeps({ estEnLigne: () => false });
-    await vendreVocalUnifie("attiéké", 2, 1000, "Vente vocale", h.deps);
-    eq(h.planifications.length, 0, "hors-ligne → aucune planification, quel que soit doitProposerCreation");
+    vendreVocalUnifie("attiéké", 2, 1000, h.deps);
+    eq(h.appelsAddToCart.length, 1, "hors-ligne : l'ajout au panier a quand même lieu (c'est tout le sens du Lot 2)");
+    eq(h.planifications.length, 0, "hors-ligne → aucune proposition de création (elle parle au serveur)");
   }
 
-  console.log("\n[7] Produit non apparié, refus déjà mémorisé pour CE produit → jamais de proposition");
+  console.log("\n[9] Produit non apparié, refus déjà mémorisé pour CE produit → jamais de proposition, ajout inchangé");
   {
     const stockage = creerStockage();
     noterRefusCreation(stockage, "Attiéké");
     ok(stockage.data[CLE_REFUS_PRODUITS] !== undefined, "refus bien écrit en mémoire (sanity check)");
     const h = creerDeps({ stockage });
-    await vendreVocalUnifie("attieke", 2, 1000, "Vente vocale", h.deps); // accents/casse différents, refus normalisé
+    vendreVocalUnifie("attieke", 2, 1000, h.deps); // accents/casse différents, refus normalisé
+    eq(h.appelsAddToCart.length, 1, "l'ajout au panier a toujours lieu");
     eq(h.planifications.length, 0, "refus mémorisé → aucune planification");
-  }
-
-  console.log("\n[8] enregistrerVente échoue → l'erreur remonte, aucun effet secondaire ne s'exécute");
-  {
-    const h = creerDeps({ enregistrerVente: async () => { throw new Error("panne réseau"); } });
-    let erreurRecue: unknown = null;
-    try { await vendreVocalUnifie("tomates", 2, 1000, "Vente tomates", h.deps); }
-    catch (e) { erreurRecue = e; }
-    ok(erreurRecue instanceof Error && erreurRecue.message === "panne réseau", "l'erreur d'enregistrerVente remonte telle quelle");
-    eq(h.appelsRefreshProducts.length, 0, "refreshProducts jamais appelé après un échec");
-    eq(h.planifications.length, 0, "aucune planification après un échec");
   }
 
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);

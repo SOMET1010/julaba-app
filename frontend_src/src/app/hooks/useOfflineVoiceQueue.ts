@@ -18,7 +18,22 @@ export interface OfflineCommand {
    * financière sous un compte qui ne l'a pas prononcée). Elle reste dans la
    * file, intacte, jamais rejouée automatiquement. */
   userId?: string;
+  /** Version de la SÉMANTIQUE métier au moment de la mise en file (Lot 2,
+   * convergence voix/tactile POS) — PAS une version de format de données.
+   * « vendre » a changé de sens (vente encaissée directement → ajout au
+   * panier) ; rejouer une commande texte, c'est la faire réinterpréter par
+   * le code ACTUELLEMENT déployé, qui ne connaît que la sémantique courante.
+   * Absent sur les commandes mises en file avant ce champ : même doctrine
+   * que `userId` manquant — on ne devine jamais quelle sémantique visait
+   * l'entrée, elle reste en quarantaine (ni rejouée, ni supprimée, ni
+   * réinterprétée après coup) jusqu'à une décision explicite. */
+  semanticsVersion?: number;
 }
+
+/** Sémantique courante des intentions vocales rejouables. Incrémenter
+ * uniquement quand une intention change de MOYEN D'EFFET (ex. vente directe
+ * → ajout panier) — jamais pour un simple ajout de vocabulaire. */
+export const CURRENT_SEMANTICS_VERSION = 2;
 
 const STORAGE_KEY = "julaba_offline_voice_queue";
 const MAX_QUEUE = 20;
@@ -85,6 +100,16 @@ export function useOfflineVoiceQueue(
             remaining.push(cmd);
             continue;
           }
+          // Quarantaine sémantique (Lot 2) : une commande mise en file sous
+          // une sémantique différente (ou avant l'existence de ce champ) ne
+          // doit JAMAIS être réinterprétée par le code courant — même
+          // doctrine que `userId` manquant. Ni rejouée, ni supprimée, ni
+          // comptée en échec : elle reste intacte pour une décision
+          // explicite ultérieure.
+          if (cmd.semanticsVersion !== CURRENT_SEMANTICS_VERSION) {
+            remaining.push(cmd);
+            continue;
+          }
           // #9 : après 3 échecs, on ne RETENTE plus, mais on ne JETTE plus en
           // silence : la commande reste dans la file (visible en "en attente")
           // au lieu de disparaître sans que la vendeuse le sache.
@@ -117,6 +142,7 @@ export function useOfflineVoiceQueue(
       context,
       retries: 0,
       userId: currentUserId,
+      semanticsVersion: CURRENT_SEMANTICS_VERSION,
     };
     setQueue(prev => {
       const next = [cmd, ...prev].slice(0, MAX_QUEUE);
