@@ -26,9 +26,16 @@ const P = "#B74725";
 const PD = "#A0541F";
 const PL = "#F5E6D8";
 
-interface Props { isOpen: boolean; onClose: () => void; }
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  /** Produit déjà sélectionné par la marchande (ex. depuis sa fiche) : évite de lui
+   * faire redire un nom qu'elle vient de toucher — on ouvre direct la saisie guidée
+   * avec le nom et le prix déjà remplis, il ne reste que la quantité à confirmer. */
+  initialProduct?: { nom: string; prix: number; unite?: string } | null;
+}
 
-export function VenteVocaleModal({ isOpen, onClose }: Props) {
+export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Props) {
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, setIsModalOpen, speak } = useApp();
@@ -182,7 +189,12 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
   // #2 : pendingCount/isReplaying viennent de l'UNIQUE file de useVoiceCore
   // (plus de seconde instance qui rejouait la file en double à la reconnexion).
   useEffect(() => { if (!isOpen) resetHistory(); }, [isOpen, resetHistory]);
-  useEffect(() => { if (!isOpen) { setPropositionProduit(null); setSaisieOuverte(false); } }, [isOpen]);
+  useEffect(() => {
+    if (!isOpen) { setPropositionProduit(null); setSaisieOuverte(false); }
+    // Produit déjà choisi (fiche produit) : on saute direct à la saisie guidée,
+    // pré-remplie, plutôt que de la faire redire un nom qu'elle vient de toucher.
+    else if (initialProduct) setSaisieOuverte(true);
+  }, [isOpen, initialProduct]);
 
   // Oui → création avec le prix unitaire DICTÉ (elle le corrigera dans Mon stock
   // si besoin) ; stock 0 (à compléter). Non → refus mémorisé pour CE produit.
@@ -374,6 +386,18 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
                 <p style={{ fontSize: 12, lineHeight: 1.4, color: "#5D4A3B", margin: 0 }}>{prochaineEtape.detail}</p>
               </div>
             </div>
+            {initialProduct && (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                style={{ display: "flex", alignItems: "center", gap: 10, background: PL, border: `1.5px solid ${P}40`, borderRadius: 16, padding: "10px 14px" }}>
+                <span aria-hidden="true" style={{ fontSize: 20 }}>🛒</span>
+                <div>
+                  <p style={{ fontSize: 10, fontWeight: 800, color: P, letterSpacing: "0.08em", margin: 0 }}>PRODUIT SÉLECTIONNÉ</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", margin: "2px 0 0" }}>
+                    {initialProduct.nom} — {initialProduct.prix.toLocaleString("fr-FR")} FCFA{initialProduct.unite ? ` / ${initialProduct.unite}` : ""}
+                  </p>
+                </div>
+              </motion.div>
+            )}
             {transcript && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#F9FAFB", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "12px 14px" }}><p style={{ fontSize: 10, fontWeight: 700, color: "var(--encre-4)", letterSpacing: "0.1em", marginBottom: 4 }}>TU AS DIT</p><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>"{transcript}"</p></motion.div>)}
             {response && !isLoading && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: PL, border: `1.5px solid ${P}30`, borderRadius: 16, padding: "12px 14px" }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ fontSize: 18 }}>{intentEmoji[response.intent] || "💬"}</span><p style={{ fontSize: 10, fontWeight: 700, color: P, letterSpacing: "0.1em" }}>{response.intent.replace(/_/g, " ").toUpperCase()}</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>{response.response || response.reponse}</p>{response.action?.type === "vendre" && response.action.montant && (<div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${P}25` }}><p style={{ fontSize: 13, color: "var(--encre-3)" }}>{response.action.quantite}× {response.action.produit} =&nbsp;<strong style={{ color: P }}>{response.action.montant?.toLocaleString("fr-FR")} FCFA</strong></p></div>)}</motion.div>)}
             {propositionProduit && (
@@ -407,6 +431,8 @@ export function VenteVocaleModal({ isOpen, onClose }: Props) {
                       const p = apparierProduit(nom, products);
                       return p ? { produitId: p.id, nomCatalogue: p.nom, prixCatalogue: p.prix ?? null, unite: p.unite || 'unité' } : null;
                     }}
+                    initialProduit={initialProduct?.nom}
+                    initialPrix={initialProduct?.prix}
                   />
                 ) : (
                   <motion.button whileTap={{ scale: 0.97 }} onClick={() => setSaisieOuverte(true)}
