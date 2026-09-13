@@ -55,7 +55,24 @@ fi
 # nombre sans unite, et le Gateway JULABA refuse de le mapper tant que la devise
 # n'est pas prouvee etre du XOF (backend/src/odoo-gateway/produit-mapper.ts).
 # Ce script demande donc exactement les memes champs que `listerCatalogue()`.
-BODY='{"domain": [], "fields": ["id", "name", "list_price", "qty_available", "default_code", "currency_id"], "limit": 20, "order": "id asc"}'
+#
+# AUCUNE `limit`, volontairement, et pour deux raisons.
+#
+# 1. Fidelite : `listerCatalogue()` n'en impose pas. Un plafond ici testerait
+#    autre chose que ce que le Gateway fait reellement.
+# 2. Justesse : les modules installes creent leurs propres produits, meme sans
+#    donnees de demonstration. Les produits seedes etant crees en dernier, ils
+#    portent les identifiants les plus hauts ; avec `order: "id asc"` et un
+#    plafond, ils sortiraient de la fenetre. Le controle des prix ne verrait
+#    alors aucune reference JULABA et se sauterait lui-meme — un smoke test
+#    vert sur un seed qui n'a jamais tourne. Une fenetre partielle produirait
+#    l'echec inverse, tout aussi faux : « reference absente » alors que le seed
+#    est correct.
+#
+# Sans plafond, « absent » veut vraiment dire absent, et « present » veut dire
+# que les sept references ont ete vues. L'instance est un POC : lire tout le
+# catalogue ne coute rien.
+BODY='{"domain": [], "fields": ["id", "name", "list_price", "qty_available", "default_code", "currency_id"], "order": "id asc"}'
 
 # --- Test 1 : l'authentification est bien exigee ---------------------------
 log "Test 1 — appel sans cle API (401 attendu)"
@@ -149,7 +166,12 @@ print(f"  OK {len(data)} produit(s) conformes a OdooProductRecord, tous en {DEVI
 # autrement, sans se transformer en faux echec.
 trouves = {r.get("default_code"): r for r in data if r.get("default_code") in ATTENDU}
 if not trouves:
-    print("  -- catalogue vivrier JULABA absent : verification des prix sautee.")
+    # Le search_read n'est pas plafonne : si aucune reference n'apparait ici,
+    # elles ne sont reellement pas dans l'instance — ce n'est pas un effet de
+    # fenetre. Le script reste utilisable sur une instance seedee autrement,
+    # d'ou un saut plutot qu'un echec, mais le message doit le dire clairement.
+    print("  -- aucune reference JULABA-* dans le catalogue complet : verification des prix sautee.")
+    print("     Si ./scripts/init.sh vient de tourner, c'est anormal : le seed n'a pas pris.")
 else:
     for reference, (prix, stock) in sorted(ATTENDU.items()):
         rec = trouves.get(reference)
