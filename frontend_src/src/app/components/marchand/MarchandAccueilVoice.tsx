@@ -102,10 +102,8 @@ function MarchandAccueilVoiceInner() {
             style={{ width: 44, height: 44, borderRadius: 14, background: soleil ? '#F5A623' : '#F5D6BD', color: soleil ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
           </motion.button>
-          <motion.button whileTap={{ scale: 0.92 }} onClick={() => navigate('/marchand/profil')} aria-label="Mon profil"
-            style={{ width: 44, height: 44, borderRadius: 14, background: '#F5D6BD', color: '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-          </motion.button>
+          {/* Icône profil retirée : doublon exact de l'onglet « Moi » de la
+              barre du bas — un seul chemin vers le profil (audit accueil/profil). */}
         </div>
 
         {/* Caisse — montant réel, résumé et lecture vocale */}

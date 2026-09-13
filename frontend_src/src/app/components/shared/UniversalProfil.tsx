@@ -21,14 +21,15 @@ import {
   Shield,
   Gift,
   Coins,
+  Fingerprint,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useVoluntaryLogout } from '../../hooks/useVoluntaryLogout';
 import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 import { SOUS_PROFILS_MARCHAND } from '../../types/sousProfilMarchand';
-import { useLangPref, LANG_FLAGS, LANG_LABELS, type AppLang } from '../../hooks/useLangPref';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { NotificationButton } from '../marchand/NotificationButton';
 import { ProfilUnifieModal } from './ProfilUnifieModal';
@@ -36,11 +37,15 @@ import { DocumentsCertificationsModalUniversal } from './DocumentsCertifications
 import { SupportCardProfil } from './SupportCardProfil';
 import { PartenairesLogos } from './PartenairesLogos';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { ModalPIN } from './PinKeiwaModal';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { useProducteur } from '../../contexts/ProducteurContext';
 import { useCooperative } from '../../contexts/CooperativeContext';
 import { useIdentificateur } from '../../contexts/IdentificateurContext';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
+import { registerWebAuthn, verifyWebAuthnForKeiwa } from '../../hooks/useWebAuthn';
+import { marquerBiometrie } from '../../services/comptesMemorises';
+import { API_URL } from '../../utils/api';
 import type { UserData } from '../../contexts/UserContext';
 
 // ─── Types & config ───────────────────────────────────────────
@@ -129,79 +134,10 @@ export const ROLE_CONFIG: Record<
   },
 };
 
-const LANGS: AppLang[] = ['french', 'dioula', 'bambara'];
-
-function ModalLang({
-  isOpen,
-  onClose,
-  lang,
-  setLang,
-  color,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  lang: AppLang;
-  setLang: (l: AppLang) => void;
-  color: string;
-}) {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-end"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 26 }}
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-t-3xl w-full p-6 pb-10"
-          >
-            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-5" />
-            <h3 className="text-xl font-bold encre mb-2">Langue de Tata Nanti Lou</h3>
-            <p className="text-sm encre-3 mb-6">Dans quelle langue tu veux me parler aujourd&apos;hui ?</p>
-            <div className="space-y-3">
-              {LANGS.map((id) => {
-                const isActive = lang === id;
-                return (
-                  <motion.button
-                    key={id}
-                    onClick={() => {
-                      setLang(id);
-                      onClose();
-                    }}
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left"
-                    style={{
-                      borderColor: isActive ? color : 'var(--trait)',
-                      backgroundColor: isActive ? `${color}08` : 'white',
-                    }}
-                  >
-                    <span className="text-3xl">{LANG_FLAGS[id]}</span>
-                    <div>
-                      <p className="font-bold encre">{LANG_LABELS[id]}</p>
-                      {isActive && (
-                        <p className="text-xs mt-0.5" style={{ color }}>
-                          Langue actuelle
-                        </p>
-                      )}
-                    </div>
-                    {isActive && <Check className="w-5 h-5 ml-auto" style={{ color }} strokeWidth={3} />}
-                  </motion.button>
-                );
-              })}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
+// « Langue de Tata Nanti Lou » vit désormais UNIQUEMENT dans Réglages (elle y
+// était déjà, correctement nommée) : ce doublon exact — même réglage
+// (useLangPref), même modale, juste étiqueté « Langue » ici — est supprimé
+// plutôt que renommé (audit accueil/profil).
 
 function KPICard({
   label,
@@ -225,6 +161,23 @@ function KPICard({
   );
 }
 
+function Toggle({ value, onChange, color }: { value: boolean; onChange: (v: boolean) => void; color: string }) {
+  return (
+    <motion.button
+      onClick={() => onChange(!value)}
+      className="relative w-12 h-6 rounded-full transition-colors flex-shrink-0"
+      style={{ backgroundColor: value ? color : 'var(--trait)' }}
+      whileTap={{ scale: 0.95 }}
+    >
+      <motion.div
+        className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm"
+        animate={{ x: value ? 24 : 4 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+      />
+    </motion.button>
+  );
+}
+
 function AcademyKeiwaRow({
   color,
   onAcademy,
@@ -232,7 +185,9 @@ function AcademyKeiwaRow({
 }: {
   color: string;
   onAcademy: () => void;
-  onKeiwa: () => void;
+  /** Omis pour un rôle dont Keiwa a déjà une porte d'entrée ailleurs (ex.
+      la tuile « Mon argent » de l'accueil marchand) — une seule suffit. */
+  onKeiwa?: () => void;
 }) {
   const cardStyle: React.CSSProperties = {
     borderColor: `${color}40`,
@@ -267,51 +222,63 @@ function AcademyKeiwaRow({
           <ChevronRight className="w-6 h-6 encre-4" />
         </motion.button>
       </motion.div>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.04, type: 'spring', stiffness: 200 }}
-        className="mb-4"
-      >
-        <motion.button
-          type="button"
-          onClick={onKeiwa}
-          className="w-full p-4 rounded-2xl border-2 shadow-md flex items-center justify-between"
-          style={cardStyle}
-          whileHover={{ scale: 1.02, borderColor: color }}
-          whileTap={{ scale: 0.98 }}
+      {onKeiwa && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.04, type: 'spring', stiffness: 200 }}
+          className="mb-4"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={iconBg}>
-              <Wallet className="w-6 h-6" style={{ color }} />
+          <motion.button
+            type="button"
+            onClick={onKeiwa}
+            className="w-full p-4 rounded-2xl border-2 shadow-md flex items-center justify-between"
+            style={cardStyle}
+            whileHover={{ scale: 1.02, borderColor: color }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={iconBg}>
+                <Wallet className="w-6 h-6" style={{ color }} />
+              </div>
+              <div className="text-left">
+                <h3 className="text-lg font-bold encre">Keiwa</h3>
+                <p className="text-xs encre-3">Solde, recharge, historique</p>
+              </div>
             </div>
-            <div className="text-left">
-              <h3 className="text-lg font-bold encre">Keiwa</h3>
-              <p className="text-xs encre-3">Solde, recharge, historique</p>
-            </div>
-          </div>
-          <ChevronRight className="w-6 h-6 encre-4" />
-        </motion.button>
-      </motion.div>
+            <ChevronRight className="w-6 h-6 encre-4" />
+          </motion.button>
+        </motion.div>
+      )}
     </>
   );
 }
 
 function ProfilMarchandExtras({ color, navigate, sousProfil }: { color: string; navigate: (path: string) => void; sousProfil: string | null }) {
   const sousProfilLabel = SOUS_PROFILS_MARCHAND.find((s) => s.value === sousProfil)?.label || null;
-  const { transactions: rawTransactions } = useCaisse();
-  const transactions = Array.isArray(rawTransactions) ? rawTransactions : [];
-  const ventes = transactions.filter((t) => t.type === 'vente').length;
-  const cahier = transactions.filter((t) => t.type === 'depense').length;
   const cfg = ROLE_CONFIG.marchand.routes;
 
   return (
     <>
+      {sousProfilLabel && (
+        <div className="w-full p-4 rounded-2xl border-2 shadow-md mb-4" style={{ borderColor: `${color}55`, background: `linear-gradient(to bottom right, ${color}14, #ffffff)` }}>
+          <p className="text-xs encre-3 mb-1">Sous-profil marchand</p>
+          <p className="text-xl font-black" style={{ color }}>{sousProfilLabel}</p>
+        </div>
+      )}
+
+      {/* Mes services — nettement séparé de « Mon compte » : ce sont des
+          produits financiers/sociaux, pas des réglages d'identité (audit
+          accueil/profil). Keiwa n'y est PAS repris : il vit uniquement sur
+          la tuile « Mon argent » de l'accueil, une seule porte suffit. */}
+      <div className="w-full p-3 rounded-3xl mb-4" style={{ backgroundColor: 'var(--commerce-apricot, #F5D6BD)' }}>
+        <p className="text-xs font-bold uppercase tracking-wide px-2 pt-1 pb-2" style={{ color }}>Mes services</p>
+        <div className="space-y-3">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.045, type: 'spring', stiffness: 200 }}
-        className="mb-4"
+        className=""
       >
         <div
           className="w-full p-4 rounded-2xl border-2 shadow-md flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
@@ -356,7 +323,7 @@ function ProfilMarchandExtras({ color, navigate, sousProfil }: { color: string; 
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05, type: 'spring', stiffness: 200 }}
         whileTap={{ scale: 0.98 }}
-        className="w-full mb-4 p-4 rounded-2xl border-2 shadow-md flex items-center gap-3 text-left"
+        className="w-full p-4 rounded-2xl border-2 shadow-md flex items-center gap-3 text-left"
         style={{ borderColor: `${color}40`, background: `linear-gradient(to bottom right, ${color}14, #ffffff, ${color}14)` }}
       >
         <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}25` }}>
@@ -376,7 +343,7 @@ function ProfilMarchandExtras({ color, navigate, sousProfil }: { color: string; 
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.06, type: 'spring', stiffness: 200 }}
         whileTap={{ scale: 0.98 }}
-        className="w-full mb-4 p-4 rounded-2xl border-2 shadow-md flex items-center gap-3 text-left"
+        className="w-full p-4 rounded-2xl border-2 shadow-md flex items-center gap-3 text-left"
         style={{ borderColor: `${color}40`, background: `linear-gradient(to bottom right, ${color}14, #ffffff, ${color}14)` }}
       >
         <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}25` }}>
@@ -397,7 +364,7 @@ function ProfilMarchandExtras({ color, navigate, sousProfil }: { color: string; 
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.07, type: 'spring', stiffness: 200 }}
         whileTap={{ scale: 0.98 }}
-        className="w-full mb-4 p-4 rounded-2xl border-2 shadow-md flex items-center gap-3 text-left"
+        className="w-full p-4 rounded-2xl border-2 shadow-md flex items-center gap-3 text-left"
         style={{ borderColor: `${color}40`, background: `linear-gradient(to bottom right, ${color}14, #ffffff, ${color}14)` }}
       >
         <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}25` }}>
@@ -409,16 +376,7 @@ function ProfilMarchandExtras({ color, navigate, sousProfil }: { color: string; 
         </div>
         <ChevronRight className="w-6 h-6 encre-4 ml-auto" />
       </motion.button>
-
-      {sousProfilLabel && (
-        <div className="w-full p-4 rounded-2xl border-2 shadow-md mb-4" style={{ borderColor: `${color}55`, background: `linear-gradient(to bottom right, ${color}14, #ffffff)` }}>
-          <p className="text-xs encre-3 mb-1">Sous-profil marchand</p>
-          <p className="text-xl font-black" style={{ color }}>{sousProfilLabel}</p>
         </div>
-      )}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <KPICard label="Ventes (transactions)" value={ventes} color={color} />
-        <KPICard label="Cahier (dépenses)" value={cahier} color={color} />
       </div>
     </>
   );
@@ -542,22 +500,74 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
   const navigate = useNavigate();
   const cfg = ROLE_CONFIG[role];
   const { color, routes, version } = cfg;
-  const { speak, setIsModalOpen, user: appUser } = useApp();
+  const { speak, setIsModalOpen, user: appUser, setUser } = useApp();
   const { user, updateUser } = useUser();
-  const { lang, setLang } = useLangPref();
 
   // Déconnexion volontaire (R3) — orchestration centralisée (hook réutilisable).
   const logout = useVoluntaryLogout();
 
   const [showProfilUnifie, setShowProfilUnifie] = useState(false);
   const [showChangePwd, setShowChangePwd] = useState(false);
-  const [showLang, setShowLang] = useState(false);
   const [showDocumentsCertifications, setShowDocumentsCertifications] = useState(false);
 
+  // Sécurité (déménagée de Réglages : mot de passe + PIN Keiwa + reconnaissance
+  // vivent maintenant au même endroit — « Mon compte » — plutôt que coupés
+  // entre deux écrans sans raison visible, audit accueil/profil).
+  const pinEnabled = !!appUser?.pinSecurityEnabled;
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinMode, setPinMode] = useState<'create' | 'modify' | 'disable'>('create');
+
   useEffect(() => {
-    const anyOpen = showProfilUnifie || showChangePwd || showLang || showDocumentsCertifications;
+    const anyOpen = showProfilUnifie || showChangePwd || showPinModal || showDocumentsCertifications;
     setIsModalOpen(anyOpen);
-  }, [showProfilUnifie, showChangePwd, showLang, showDocumentsCertifications, setIsModalOpen]);
+  }, [showProfilUnifie, showChangePwd, showPinModal, showDocumentsCertifications, setIsModalOpen]);
+
+  const handleSavePin = async (newPin: string, currentPin?: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/pin/set`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: newPin, currentPin }),
+      });
+      const data = await res.json() as { success?: boolean; message?: string };
+      if (!res.ok || !data.success) { toast.error(data.message || 'Erreur PIN'); return; }
+      if (appUser) setUser({ ...appUser, pinSecurityEnabled: true });
+      toast.success('Code PIN activé');
+    } catch { toast.error('Erreur réseau'); }
+  };
+
+  const handleDisablePin = async (currentPin: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/pin/disable`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPin }),
+      });
+      const data = await res.json() as { success?: boolean; message?: string };
+      if (!res.ok || !data.success) { toast.error(data.message || 'PIN incorrect'); return; }
+      if (appUser) setUser({ ...appUser, pinSecurityEnabled: false });
+      toast.success('Code PIN désactivé');
+    } catch { toast.error('Erreur réseau'); }
+  };
+
+  const handleRegisterBiometric = async () => {
+    const result = await registerWebAuthn();
+    if (result.success) {
+      toast.success('FaceID / Empreinte activé');
+      try {
+        const tel = String((appUser as any)?.phone || '').replace(/^\+225/, '');
+        if (/^\d{10}$/.test(tel)) marquerBiometrie(window.localStorage, tel, true);
+      } catch { /* ignore */ }
+    } else {
+      toast.error(result.error || 'Ça n\'a pas marché ici. Réessaie.');
+    }
+  };
+
+  const handleTestBiometric = async () => {
+    const ok = await verifyWebAuthnForKeiwa();
+    if (ok) toast.success('Ton téléphone t\'a reconnue');
+    else toast.error('Ton téléphone ne t\'a pas reconnue. Réessaie.');
+  };
 
   if (!user) return null;
 
@@ -619,7 +629,7 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
           <AcademyKeiwaRow
             color={color}
             onAcademy={() => navigate(routes.academy)}
-            onKeiwa={() => navigate(routes.keiwa)}
+            onKeiwa={role === 'marchand' ? undefined : () => navigate(routes.keiwa)}
           />
 
           {role === 'marchand' && <ProfilMarchandExtras color={color} navigate={navigate} sousProfil={appUser?.sousProfilMarchand ?? null} />}
@@ -654,7 +664,7 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
           <SupportCardProfil role={role} />
 
           <div className="mt-4 mb-3 rounded-2xl border-2 border-gray-100 bg-white overflow-hidden">
-            <p className="text-xs font-bold encre-3 uppercase tracking-wide px-4 pt-3 pb-1">Actions rapides</p>
+            <p className="text-xs font-bold encre-3 uppercase tracking-wide px-4 pt-3 pb-1">Mon compte</p>
             <motion.button
               type="button"
               onClick={() => setShowChangePwd(true)}
@@ -667,18 +677,59 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
               </span>
               <ChevronRight className="w-4 h-4 encre-4" />
             </motion.button>
-            <motion.button
-              type="button"
-              onClick={() => setShowLang(true)}
-              className="w-full flex items-center justify-between px-4 py-3 border-t border-gray-100 text-left"
-              whileTap={{ scale: 0.99 }}
-            >
-              <span className="font-semibold encre flex items-center gap-2">
-                <Globe className="w-4 h-4 encre-3" />
-                Langue
-              </span>
-              <span className="text-xs encre-3">{LANG_LABELS[lang]}</span>
-            </motion.button>
+            {role === 'marchand' && (
+              <>
+                <div className="w-full flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                  <div>
+                    <span className="font-semibold encre flex items-center gap-2">
+                      <Fingerprint className="w-4 h-4 encre-3" />
+                      Code PIN Keiwa
+                    </span>
+                    <p className="text-xs encre-3 mt-0.5 ml-6">
+                      {pinEnabled ? 'PIN activé — Keiwa sécurisé' : 'Active le PIN pour sécuriser ton Keiwa'}
+                    </p>
+                    {pinEnabled && (
+                      <motion.button
+                        onClick={() => { setPinMode('modify'); setShowPinModal(true); }}
+                        className="mt-1 ml-6 text-sm font-bold" style={{ color }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        Mode de déverrouillage
+                      </motion.button>
+                    )}
+                  </div>
+                  <Toggle
+                    value={pinEnabled}
+                    color={color}
+                    onChange={(v) => { if (v) { setPinMode('create'); setShowPinModal(true); } else { setPinMode('disable'); setShowPinModal(true); } }}
+                  />
+                </div>
+                <motion.button
+                  type="button"
+                  onClick={() => { void handleRegisterBiometric(); }}
+                  className="w-full flex items-center justify-between px-4 py-3 border-t border-gray-100 text-left"
+                  whileTap={{ scale: 0.99 }}
+                >
+                  <span className="font-semibold encre flex items-center gap-2">
+                    <Fingerprint className="w-4 h-4 encre-3" />
+                    Me faire reconnaître
+                  </span>
+                  <ChevronRight className="w-4 h-4 encre-4" />
+                </motion.button>
+                <motion.button
+                  type="button"
+                  onClick={() => { void handleTestBiometric(); }}
+                  className="w-full flex items-center justify-between px-4 py-3 border-t border-gray-100 text-left"
+                  whileTap={{ scale: 0.99 }}
+                >
+                  <span className="font-semibold encre flex items-center gap-2">
+                    <Shield className="w-4 h-4 encre-3" />
+                    Tester la reconnaissance
+                  </span>
+                  <ChevronRight className="w-4 h-4 encre-4" />
+                </motion.button>
+              </>
+            )}
           </div>
 
           <motion.button
@@ -735,7 +786,16 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
       </AnimatePresence>
 
       {showChangePwd && <ChangePasswordModal onClose={() => setShowChangePwd(false)} speak={speak} />}
-      <ModalLang isOpen={showLang} onClose={() => setShowLang(false)} lang={lang} setLang={setLang} color={color} />
+      {role === 'marchand' && (
+        <ModalPIN
+          isOpen={showPinModal}
+          onClose={() => setShowPinModal(false)}
+          color={color}
+          mode={pinMode}
+          onSave={handleSavePin}
+          onDisable={handleDisablePin}
+        />
+      )}
     </>
   );
 }

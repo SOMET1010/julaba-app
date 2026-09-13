@@ -45,51 +45,26 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
   const roleConfig = getRoleConfig(role);
   const activeColor = getRoleColor(role);
 
-  // Construire les tabs depuis roleConfig.bottomBar.items + Mic au milieu
-  const configItems = roleConfig.bottomBar.items;
-  const tabs = [
-    // Premier et deuxième items
-    ...configItems.slice(0, 2).map(item => ({
-      id: item.path.split('/').pop() || 'home',
-      label: item.label,
-      icon: ICON_MAP[item.icon] || Home,
-      path: item.path,
-      isMic: false,
-    })),
-    // Mic au milieu
-    {
-      id: 'mic',
-      label: 'Micro',
-      icon: Mic,
-      path: null,
-      isMic: true,
-    },
-    // Troisième et quatrième items
-    ...configItems.slice(2, 4).map(item => ({
-      id: item.path.split('/').pop() || 'item',
-      label: item.label,
-      icon: ICON_MAP[item.icon] || Package,
-      path: item.path,
-      isMic: false,
-    })),
-  ];
+  // Tabs = TOUS les items de roleConfig.bottomBar.items, à plat (3, 4, peu
+  // importe le nombre). Le micro « Tata » n'est PLUS un item égal aux autres :
+  // avant, il s'intercalait entre les 2 premiers et les 2 derniers items,
+  // avec le même style plat — ça le faisait ressembler à une destination du
+  // quotidien au même titre qu'Accueil, alors que c'est un bouton d'aide.
+  // Il devient un bouton rond flottant au-dessus de la barre (audit
+  // accueil/profil), visuellement distinct de la navigation.
+  const tabs = roleConfig.bottomBar.items.map(item => ({
+    id: item.path.split('/').pop() || 'home',
+    label: item.label,
+    icon: ICON_MAP[item.icon] || Home,
+    path: item.path,
+  }));
 
-  const handleTabClick = (tab: typeof tabs[0]) => {
-    if (tab.isMic) {
-      // Ouvrir le modal Tata Nanti Lou
-      setIsTantieOpen(true);
-      if (onMicClick) {
-        onMicClick();
-      }
-    } else if (tab.path) {
-      navigate(tab.path);
-    }
+  const handleMicClick = () => {
+    setIsTantieOpen(true);
+    if (onMicClick) onMicClick();
   };
 
-  const isActive = (tab: typeof tabs[0]) => {
-    if (tab.isMic) return false;
-    return location.pathname === tab.path;
-  };
+  const isActive = (tab: typeof tabs[0]) => location.pathname === tab.path;
 
   // Masquer la bottom bar sur la page Wallet
   if (location.pathname.endsWith('/keiwa')) return null;
@@ -98,6 +73,22 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bottom-bar-container commerce-bottom"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <motion.button
+        type="button"
+        onClick={handleMicClick}
+        aria-label="Ouvrir Tata Nanti Lou"
+        className="absolute flex flex-col items-center justify-center"
+        style={{
+          right: 18, top: -26, width: 52, height: 52, borderRadius: '50%',
+          background: 'var(--commerce-green)', color: '#fff', border: '3px solid var(--commerce-paper, #fff)',
+          boxShadow: '0 8px 18px -6px rgba(0,86,59,0.55)',
+        }}
+        whileTap={{ scale: 0.94 }}
+      >
+        <Mic aria-hidden="true" size={20} strokeWidth={2} />
+      </motion.button>
+      <span aria-hidden="true" className="absolute text-[10px] font-extrabold" style={{ right: 24, top: -34, color: 'var(--commerce-green)' }}>Tata</span>
+
       <nav aria-label="Navigation principale" className="flex items-stretch px-2" style={{ minHeight: 72 }}>
         {tabs.map((tab) => {
           const Icon = tab.icon || Home;
@@ -106,16 +97,16 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
             <motion.button
               type="button"
               key={tab.id}
-              onClick={() => handleTabClick(tab)}
+              onClick={() => navigate(tab.path)}
               aria-current={active ? 'page' : undefined}
-              aria-label={tab.isMic ? 'Ouvrir Tata Nanti Lou' : tab.label}
+              aria-label={tab.label}
               className="relative flex flex-1 min-w-0 flex-col items-center justify-center gap-1 px-1 py-3"
-              style={{ color: tab.isMic ? 'var(--commerce-green)' : active ? activeColor : 'var(--encre-3)',
+              style={{ color: active ? activeColor : 'var(--encre-3)',
                 borderTop: active ? `3px solid ${activeColor}` : '3px solid transparent' }}
               whileTap={{ scale: 0.98 }}
             >
               <Icon aria-hidden="true" size={24} strokeWidth={active ? 2.5 : 2} />
-              <span className="text-xs font-semibold">{tab.isMic ? 'Tata' : tab.label}</span>
+              <span className="text-xs font-semibold">{tab.label}</span>
             </motion.button>
           );
         })}
