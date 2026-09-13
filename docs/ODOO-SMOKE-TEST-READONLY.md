@@ -1,6 +1,19 @@
 # Smoke test Odoo réel — lecture seule
 
-**Statut : protocole à exécuter, pas encore lancé.** Aucune instance Odoo réelle n'est branchée à ce jour ; ce document ne modifie aucun code, aucune configuration, aucune infrastructure. Il décrit le test à dérouler **le jour où une instance Odoo 19 de test sera disponible**, pour passer d'un « client Odoo validé par contrat » (mock + fixtures, voir `backend/src/odoo-gateway/`) à un véritable **POC Odoo connecté**.
+**Le contrat JSON-2 a été validé sur une instance Odoo 19 réelle. Ce document décrit le test d'intégration restant à exécuter via le backend JULABA et la stack Docker officielle.** Il ne modifie aucun code, aucune configuration, aucune infrastructure.
+
+**Déjà acquis, à ne pas redémontrer ici.** L'authentification par clé API, `product.product/search_read`, `product.product/read` via la clé nommée `ids`, la forme de la réponse JSON-2 (liste JSON nue, sans enveloppe `{jsonrpc, result, id}`) et la compatibilité avec `produit-mapper.ts`. Validé contre Odoo Server 19.0 installé depuis les sources, avec les scripts de `infra/odoo-poc/` exécutés sans modification. Détail des résultats : `infra/odoo-poc/README.md`, section « État de validation ».
+
+**Ce qui reste à exécuter, et fait l'objet de ce document.**
+1. L'intégration **backend JULABA → Odoo réel**, via les routes `/odoo-poc/*` : `OdooRealClient` réellement branché dans NestJS, et non plus le protocole JSON-2 seul. C'est le passage d'un « client validé par contrat » (mock + fixtures, voir `backend/src/odoo-gateway/`) à un véritable **POC Odoo connecté**.
+2. Le **packaging Docker** de la stack de test (`infra/odoo-poc/`), jamais exercé à ce jour : `docker pull` et démarrage de `odoo:19`, healthchecks, comportement de l'entrypoint officiel, parsing des paramètres `db_*`, exécution intégrale de `scripts/init.sh`.
+
+**Deux documents, deux rôles — à ne pas confondre.**
+
+| Document | Rôle |
+|---|---|
+| `infra/odoo-poc/README.md` | État réel de validation et mode opératoire de la stack POC (Docker, création de la base, clé API, smoke test bas niveau). |
+| `docs/ODOO-SMOKE-TEST-READONLY.md` (ce document) | Protocole du backend JULABA connecté à une instance réelle, via les routes `/odoo-poc/*`. |
 
 Portée : **lecture seule uniquement** — catalogue et stock. Aucune écriture réelle n'est exécutée ni autorisée pendant ce test (voir section Prérequis).
 
@@ -10,7 +23,7 @@ Portée : **lecture seule uniquement** — catalogue et stock. Aucune écriture 
 
 - Une instance Odoo 19 accessible en HTTPS depuis ce backend (test/démo — jamais une instance de production).
 - Le nom de la base Odoo, si l'instance en héberge plusieurs sur le même domaine.
-- Une **clé API dédiée**, créée spécifiquement pour ce test, avec le **minimum de droits nécessaire à de la lecture** sur `product.product`. Ne jamais réutiliser une clé API personnelle ou une clé déjà utilisée ailleurs.
+- Une **clé API dédiée au POC**, créée spécifiquement pour ce test, et **traitée comme un secret d'écriture**. La restriction lecture seule est imposée par `OdooRealClient` (allowlist `product.product/search_read` et `product.product/read`) et par `ODOO_REAL_WRITE_ENABLED=false` — **pas par les droits Odoo de la clé elle-même**. Le groupe standard `stock.group_stock_user`, nécessaire pour que `qty_available` soit seulement lisible, confère par ailleurs des permissions d'écriture Odoo sur `stock.move`, `stock.picking`, `stock.quant` et d'autres objets stock : constaté sur Odoo 19 réel, voir `infra/odoo-poc/README.md`, section « Limitation de sécurité ». Ne jamais réutiliser une clé API personnelle ou une clé déjà utilisée ailleurs.
 - Confirmation que l'environnement d'exécution du backend peut effectivement atteindre cette URL en sortant (réseau sortant autorisé vers l'hôte Odoo).
 
 ## 2. Variables backend nécessaires
@@ -21,7 +34,7 @@ Toutes ces variables sont **backend uniquement** — jamais exposées au fronten
 |---|---|---|
 | `ODOO_CLIENT_MODE` | `real` | Bascule le Gateway sur `OdooRealClient` au lieu du mock (voir `odoo-gateway.module.ts`). |
 | `ODOO_BASE_URL` | URL de l'instance de test | Cible des appels `POST /json/2/<model>/<method>`. |
-| `ODOO_API_KEY` | Clé API dédiée lecture seule | Jamais loggée, jamais retournée dans une réponse d'erreur (déjà testé unitairement, voir `odoo-real.client.spec.ts`). |
+| `ODOO_API_KEY` | Clé API dédiée au POC — pas intrinsèquement read-only, voir §1 | Jamais loggée, jamais retournée dans une réponse d'erreur (déjà testé unitairement, voir `odoo-real.client.spec.ts`). |
 | `ODOO_DB` | Nom de la base, si nécessaire | Envoyée en en-tête `X-Odoo-Database` uniquement si définie. |
 | `ODOO_REAL_WRITE_ENABLED` | `false` | **Doit rester `false` pendant tout ce test.** Sans ça, seules `product.product/search_read` et `product.product/read` sont exécutables — voir l'allowlist dans `odoo-real.client.ts`. |
 | `ODOO_POC_ENABLED` | `true` **uniquement pendant le test contrôlé** | Sans elle, `/odoo-poc/*` répond 404 (`OdooPocEnabledGuard`). À repasser à `false`/absente dès le test terminé. |
@@ -55,10 +68,11 @@ Ces valeurs relevées à la source serviront de référence de comparaison aux �
 - Aucune écriture n'a eu lieu sur l'instance Odoo à aucun moment du test.
 - Aucune fuite de secret dans les logs.
 - Aucun comportement différent de ce que les tests par contrat (`odoo-gateway.contract.spec.ts`, `odoo-real.client.spec.ts`) avaient anticipé.
+- Si l'instance de test est hébergée par la stack `infra/odoo-poc/` : `./scripts/init.sh` puis `./scripts/smoke-test.sh` passent de bout en bout dans cette stack Docker, qui n'a encore jamais été exercée.
 
 ## 6. Critères NO-GO
 
-- La forme réelle de la réponse JSON-2 diffère de l'hypothèse actuelle (le client suppose que le corps de la réponse **est** directement le résultat de la méthode, sans enveloppe façon ancien JSON-RPC `{jsonrpc, result, id}` — voir le commentaire de tête de `odoo-real.client.ts`).
+- La forme réelle de la réponse JSON-2 diffère de ce qui a été **observé sur Odoo 19** : le corps de la réponse **est** directement le résultat de la méthode, sans enveloppe façon ancien JSON-RPC `{jsonrpc, result, id}`. Ce n'est plus une hypothèse, mais le critère reste listé comme **non-régression** : l'instance cible peut différer (version, proxy intercalé, passerelle qui ré-enveloppe).
 - Échec d'authentification ou de sélection de base (`X-Odoo-Database`).
 - Divergence de champs Odoo par rapport à ceux attendus par `produit-mapper.ts` (`id`, `name`, `list_price`, `qty_available`, `default_code`).
 - Stock incohérent entre ce que JULABA affiche et ce qu'Odoo affiche réellement.
