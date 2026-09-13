@@ -1,9 +1,14 @@
-import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { ODOO_CLIENT, OdooClient } from './odoo-client.interface';
 import { SyncJournal, SyncJournalEntry } from './sync-journal';
-import { versJulaba, JulabaProduitOdoo, OdooProductRecord } from './produit-mapper';
+import {
+  versJulaba,
+  DeviseOdooInattendueError,
+  JulabaProduitOdoo,
+  OdooProductRecord,
+} from './produit-mapper';
 import { MouvementStockDto } from './dto/mouvement-stock.dto';
 
 export type MouvementStockCommand = MouvementStockDto;
@@ -40,11 +45,29 @@ export class OdooGatewayService {
 
   constructor(@Inject(ODOO_CLIENT) private readonly odooClient: OdooClient) {}
 
+  /**
+   * `currency_id` est demandé au même titre que le prix, et non par curiosité :
+   * `list_price` est un nombre sans unité, et `versJulaba` refuse de le mapper
+   * tant que la devise n'est pas prouvée être du XOF (voir produit-mapper.ts).
+   *
+   * Un catalogue dans une autre devise est une erreur de configuration de
+   * l'instance Odoo, pas une erreur de l'appelant JULABA : d'où un 502 et non
+   * un 400. Le Gateway a reçu une réponse qu'il ne peut pas exploiter en amont.
+   * On échoue sur le catalogue entier plutôt que d'en livrer une partie — une
+   * liste amputée sans explication serait pire qu'une erreur franche.
+   */
   async listerCatalogue(): Promise<JulabaProduitOdoo[]> {
     const produits = await this.odooClient.execute<OdooProductRecord[]>('product.product', 'search_read', {
-      fields: ['id', 'name', 'list_price', 'qty_available', 'default_code'],
+      fields: ['id', 'name', 'list_price', 'qty_available', 'default_code', 'currency_id'],
     });
-    return produits.map(versJulaba);
+    try {
+      return produits.map(versJulaba);
+    } catch (e) {
+      if (e instanceof DeviseOdooInattendueError) {
+        throw new BadGatewayException(e.message);
+      }
+      throw e;
+    }
   }
 
   async lireStock(odooProductId: number): Promise<number | null> {
