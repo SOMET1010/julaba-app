@@ -46,6 +46,7 @@ const React = await import("react");
 const { act, render } = await import("@testing-library/react");
 const audioManager = await import("../services/audioManager.js");
 const { useVoiceCore } = await import("./useVoiceCore.js");
+const { CURRENT_SEMANTICS_VERSION } = await import("./useOfflineVoiceQueue.js");
 
 const STORAGE_KEY = "julaba_offline_voice_queue";
 
@@ -78,8 +79,12 @@ async function run() {
   // être exécutée quand c'est B qui utilise useVoiceCore ensuite (même
   // appareil, logout/login, sans jamais rebrancher context.userId sur A).
   localStorage.clear();
+  // semanticsVersion (Lot 2, convergence voix/tactile POS) : sans lui, la
+  // commande serait mise en quarantaine par la doctrine « sémantique non
+  // prouvée » (voir useOfflineVoiceQueue.ts) — hors sujet ici, ce test porte
+  // sur le câblage userId, pas sur le versionnage sémantique.
   localStorage.setItem(STORAGE_KEY, JSON.stringify([
-    { id: "shared-1", text: "j'ai vendu 3 tomates à 500 francs", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A" },
+    { id: "shared-1", text: "j'ai vendu 3 tomates à 500 francs", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A", semanticsVersion: CURRENT_SEMANTICS_VERSION },
   ]));
 
   let onActionCallsB = 0;

@@ -31,7 +31,7 @@ Object.defineProperty(dom.window.navigator, "onLine", { configurable: true, valu
 
 const React = await import("react");
 const { act, renderHook } = await import("@testing-library/react");
-const { useOfflineVoiceQueue } = await import("./useOfflineVoiceQueue.js");
+const { useOfflineVoiceQueue, CURRENT_SEMANTICS_VERSION } = await import("./useOfflineVoiceQueue.js");
 
 const STORAGE_KEY = "julaba_offline_voice_queue";
 
@@ -67,7 +67,7 @@ async function run() {
   // SA commande se rejoue normalement, sans perte.
   {
     localStorage.clear();
-    seedQueue([{ id: "c2", text: "vends 1 oignon", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A" }]);
+    seedQueue([{ id: "c2", text: "vends 1 oignon", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A", semanticsVersion: CURRENT_SEMANTICS_VERSION }]);
     let replayCallsB = 0;
     const hookB = renderHook(() => useOfflineVoiceQueue(async () => { replayCallsB++; return true; }, "user-B"));
     await act(async () => { await wait(100); });
@@ -87,7 +87,7 @@ async function run() {
   // rejoue normalement quand A revient.
   {
     localStorage.clear();
-    seedQueue([{ id: "c3", text: "vends 3 bananes", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A" }]);
+    seedQueue([{ id: "c3", text: "vends 3 bananes", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A", semanticsVersion: CURRENT_SEMANTICS_VERSION }]);
     let replayCalls = 0;
     const hookA = renderHook(() => useOfflineVoiceQueue(async () => { replayCalls++; return true; }, "user-A"));
     await act(async () => { await wait(1000); });
@@ -157,6 +157,62 @@ async function run() {
     const { result, unmount } = renderHook(() => useOfflineVoiceQueue(async () => false, "user-A"));
     await act(async () => { await wait(1000); });
     ok(result.current.pendingCount === 1, "T6 pendingCount ne compte que la file de l'utilisateur courant");
+    unmount();
+  }
+
+  // T7 — Lot 2 (convergence voix/tactile POS) : une nouvelle commande mise en
+  // file reçoit bien CURRENT_SEMANTICS_VERSION — jamais silencieusement absente.
+  {
+    localStorage.clear();
+    const { result, unmount } = renderHook(() => useOfflineVoiceQueue(async () => true, "user-A"));
+    act(() => { result.current.enqueue("vends 2 tomates", { module: "caisse" }); });
+    const q = readQueue() as Array<{ semanticsVersion?: number }>;
+    ok(q.length === 1 && q[0].semanticsVersion === CURRENT_SEMANTICS_VERSION, "T7 enqueue() horodate la commande avec la sémantique courante");
+    unmount();
+  }
+
+  // T8 — entrée v2 (sémantique courante) + bon utilisateur → rejeu normal.
+  {
+    localStorage.clear();
+    seedQueue([{ id: "v2-1", text: "vends 1 poivron", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A", semanticsVersion: CURRENT_SEMANTICS_VERSION }]);
+    let replayCalls = 0;
+    const hookA = renderHook(() => useOfflineVoiceQueue(async () => { replayCalls++; return true; }, "user-A"));
+    await act(async () => { await wait(1000); });
+    ok(replayCalls === 1, "T8 une commande à la sémantique courante et au bon propriétaire est rejouée normalement");
+    ok(readQueue().length === 0, "T8 file vidée après son rejeu");
+    hookA.unmount();
+  }
+
+  // T9 — QUARANTAINE SÉMANTIQUE (Lot 2) : une commande SANS version (mise en
+  // file avant ce champ, sous l'ancienne sémantique « vendre » = encaissement
+  // direct) n'est JAMAIS rejouée automatiquement par le code courant, même
+  // avec le bon propriétaire connecté — même doctrine que userId manquant.
+  // Ni supprimée, ni réinterprétée, ni comptée en échec (retries inchangé).
+  {
+    localStorage.clear();
+    seedQueue([{ id: "pre-lot2", text: "vends 5 mangues à 2500 francs", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A" }]);
+    let replayCalls = 0;
+    const { result, unmount } = renderHook(() => useOfflineVoiceQueue(async () => { replayCalls++; return true; }, "user-A"));
+    await act(async () => { await wait(1000); });
+    ok(replayCalls === 0, "T9 commande antérieure au Lot 2 (sans semanticsVersion) jamais rejouée automatiquement");
+    const q = readQueue() as Array<{ id: string; retries: number; semanticsVersion?: number }>;
+    ok(q.length === 1 && q[0].id === "pre-lot2", "T9 reste intacte en file, pas supprimée");
+    ok(q[0].retries === 0, "T9 aucun incrément de retries pour une entrée en quarantaine (ce n'est pas un échec de rejeu)");
+    ok(q[0].semanticsVersion === undefined, "T9 le champ n'est jamais ajouté après coup — pas de réinterprétation implicite");
+    unmount();
+  }
+
+  // T9b — une entrée à une version FUTURE/différente (ex. 1, ou 3 lors d'une
+  // prochaine bascule) est mise en quarantaine exactement comme une entrée
+  // sans version — le test ne suppose jamais « ancien = absent ».
+  {
+    localStorage.clear();
+    seedQueue([{ id: "v1-ancien", text: "vends 1 igname", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A", semanticsVersion: 1 }]);
+    let replayCalls = 0;
+    const { unmount } = renderHook(() => useOfflineVoiceQueue(async () => { replayCalls++; return true; }, "user-A"));
+    await act(async () => { await wait(1000); });
+    ok(replayCalls === 0, "T9b une version explicitement différente de la version courante est aussi mise en quarantaine");
+    ok(readQueue().length === 1, "T9b reste intacte en file");
     unmount();
   }
 
