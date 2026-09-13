@@ -104,6 +104,14 @@ export interface CartItem {
    *  Optionnel : un panier restauré d'avant ce correctif ne le porte pas (le
    *  downstream défaulte à 0 → « marge — » honnête via beneficeDepuisDetails). */
   prix_achat?: number;
+  /** Montant TOTAL exact convenu/dicté pour cette ligne (même quantité) —
+   *  prioritaire sur `prix * quantite`. En FCFA, un montant comme 500/3 ne
+   *  retombe pas juste : `prix` reste l'unitaire ARRONDI (affichage/édition),
+   *  mais c'est ce total qui fait foi (même principe que
+   *  `LigneVenteVocale.total` dans venteVocale.ts, bug #11 de l'audit).
+   *  Invalidé (undefined) dès que la ligne est modifiée manuellement
+   *  (quantité, prix, fusion) : il ne vaut que pour la ligne telle que créée. */
+  totalExact?: number;
 }
 
 export interface CaisseStats {
@@ -127,7 +135,7 @@ interface CaisseContextType {
   enregistrerDepense: (montant: number, notes?: string) => Promise<void>;
   
   // POS Cart
-  addToCart: (product: CaisseProduct, quantite?: number) => void;
+  addToCart: (product: CaisseProduct, quantite?: number, totalExact?: number) => void;
   removeFromCart: (productId: string) => void;
   updateCartItemQuantity: (productId: string, quantite: number) => void;
   /** Négoce (demi-grossiste/grossiste) : le prix unitaire se discute à la vente. */
@@ -427,13 +435,26 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   };
 
   // ── POS Cart ───────────────────────────────────────────────
-  const addToCart = (product: CaisseProduct, quantite: number = 1) => {
+  // `totalExact` (optionnel) : montant TOTAL exact pour CETTE quantité,
+  // fourni par un appelant qui connaît déjà le total dicté/résolu (voix,
+  // vente guidée) — voir CartItem.totalExact. Ignoré en fusion : une ligne
+  // existante grossit en quantité, or un total figé ne « scale » pas ;
+  // mieux vaut retomber sur prix*quantite (comportement déjà existant avant
+  // ce correctif) que de garder un total exact devenu faux pour la nouvelle
+  // quantité.
+  const addToCart = (product: CaisseProduct, quantite: number = 1, totalExact?: number) => {
     const existing = cart.find(item => item.productId === product.id);
     const next = existing
       ? cart.map(item =>
-          item.productId === product.id ? { ...item, quantite: item.quantite + quantite } : item)
+          item.productId === product.id
+            ? { ...item, quantite: item.quantite + quantite, totalExact: undefined }
+            : item)
       // Prix effectif : applique automatiquement le prix promo s'il est actif.
-      : [...cart, { productId: product.id, nom: product.nom, prix: prixEffectif(product), quantite, prix_achat: Number(product.prix_achat) || 0 }];
+      : [...cart, {
+          productId: product.id, nom: product.nom, prix: prixEffectif(product), quantite,
+          prix_achat: Number(product.prix_achat) || 0,
+          ...(totalExact != null && totalExact > 0 ? { totalExact } : {}),
+        }];
     setCart(next);
     persistCart(next);
   };
@@ -449,8 +470,9 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       removeFromCart(productId);
       return;
     }
+    // Le total exact éventuel ne valait que pour l'ancienne quantité.
     const next = cart.map(item =>
-      item.productId === productId ? { ...item, quantite } : item);
+      item.productId === productId ? { ...item, quantite, totalExact: undefined } : item);
     setCart(next);
     persistCart(next);
   };
@@ -459,15 +481,16 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // la ligne du panier porte le prix CONVENU, persisté comme le reste.
   const updateCartItemPrice = (productId: string, prix: number) => {
     if (!prix || isNaN(prix) || prix <= 0) return;
+    // Le total exact éventuel ne valait que pour l'ancien prix.
     const next = cart.map(item =>
-      item.productId === productId ? { ...item, prix } : item);
+      item.productId === productId ? { ...item, prix, totalExact: undefined } : item);
     setCart(next);
     persistCart(next);
   };
 
   const clearCart = () => { setCart([]); persistCart([]); };
 
-  const getTotalCart = () => cart.reduce((sum, item) => sum + item.prix * item.quantite, 0);
+  const getTotalCart = () => cart.reduce((sum, item) => sum + (item.totalExact ?? item.prix * item.quantite), 0);
 
   // ── Persistance / reprise du panier (Phase 1) ──────────────
   const venteEnCours = cart.length > 0;

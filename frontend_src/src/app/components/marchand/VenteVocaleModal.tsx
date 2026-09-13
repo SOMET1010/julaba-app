@@ -65,14 +65,18 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
   // addToCart (le négoce prime → on neutralise la promo catalogue), sans second appel.
   const ajouterLigneAuPanier = (l: LigneProvisoire) => {
     const prixU = l.prixUnitaire ?? 0;
+    // Total EXACT résolu par la ligne provisoire (voir ligneProvisoire.ts) — en
+    // FCFA, 500/3 ne retombe pas juste : `prixU` n'est qu'un unitaire arrondi,
+    // c'est `l.total` qui doit faire foi pour le panier (CartItem.totalExact).
+    const totalExact = l.total ?? undefined;
     const prod = l.produitId ? products.find(p => p.id === l.produitId) : null;
     if (prod) {
       // Produit APPARIÉ : vrai produit (prix d'achat → marge réelle, stock décrémenté
       // à l'encaissement), au prix dicté.
-      addToCart({ ...prod, prix: prixU > 0 ? prixU : prod.prix, prix_promo: null, promo_fin: null }, l.quantite);
+      addToCart({ ...prod, prix: prixU > 0 ? prixU : prod.prix, prix_promo: null, promo_fin: null }, l.quantite, totalExact);
     } else {
       // Produit inconnu → ligne libre (comme « Autre article »).
-      addToCart({ id: 'libre-' + l.id, nom: l.nomAffiche, prix: prixU, categorie: 'Autre', stock: 0, unite: l.unite }, l.quantite);
+      addToCart({ id: 'libre-' + l.id, nom: l.nomAffiche, prix: prixU, categorie: 'Autre', stock: 0, unite: l.unite }, l.quantite, totalExact);
     }
     vibrerSucces();
     toast.success(`C'est dans le panier : ${l.quantite} × ${l.nomAffiche}`);

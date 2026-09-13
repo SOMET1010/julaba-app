@@ -28,7 +28,7 @@ function creerStockage(seed: Record<string, string> = {}): StockageMemoire {
 interface Enregistrement { effet: () => void; delaiMs: number; }
 
 function creerDeps(overrides: Partial<DependancesVendreVocalUnifie> = {}) {
-  const appelsAddToCart: [ProduitPourPanier, number][] = [];
+  const appelsAddToCart: [ProduitPourPanier, number, number | undefined][] = [];
   const appelsSpeak: string[] = [];
   const appelsVibrer: number[] = [];
   const appelsNotifier: string[] = [];
@@ -38,7 +38,7 @@ function creerDeps(overrides: Partial<DependancesVendreVocalUnifie> = {}) {
 
   const deps: DependancesVendreVocalUnifie = {
     products: [TOMATE],
-    addToCart: (produit, quantite) => { appelsAddToCart.push([produit, quantite]); },
+    addToCart: (produit, quantite, totalExact) => { appelsAddToCart.push([produit, quantite, totalExact]); },
     speak: (texte) => { appelsSpeak.push(texte); },
     vibrerSucces: () => { appelsVibrer.push(1); },
     notifierAjoutPanier: (message) => { appelsNotifier.push(message); },
@@ -64,11 +64,12 @@ function main() {
     const h = creerDeps();
     vendreVocalUnifie("tomates", 2, 1000, h.deps);
     eq(h.appelsAddToCart.length, 1, "addToCart appelé une seule fois");
-    const [produit, quantite] = h.appelsAddToCart[0];
+    const [produit, quantite, totalExact] = h.appelsAddToCart[0];
     eq(produit.id, "p1", "produit apparié au catalogue (même id)");
     eq(produit.prix, 500, "prix dicté (1000/2) — le négoce prime sur le catalogue");
     eq(produit.prix_promo, null, "promo catalogue neutralisée (prix dicté prioritaire)");
     eq(quantite, 2, "quantité dictée transmise telle quelle");
+    eq(totalExact, 1000, "total EXACT dicté transmis à addToCart (source de vérité du panier)");
     eq(h.appelsVibrer.length, 1, "retour haptique de succès");
     eq(h.appelsNotifier.length, 1, "notification visuelle de l'ajout");
     ok(h.appelsNotifier[0].includes("panier"), "le message mentionne le panier, jamais une vente");
@@ -173,6 +174,32 @@ function main() {
     vendreVocalUnifie("attieke", 2, 1000, h.deps); // accents/casse différents, refus normalisé
     eq(h.appelsAddToCart.length, 1, "l'ajout au panier a toujours lieu");
     eq(h.planifications.length, 0, "refus mémorisé → aucune planification");
+  }
+
+  console.log("\n[10] Invariant financier — montant NON DIVISIBLE (3 pour 500F) : le panier garde le total EXACT, jamais un arrondi");
+  {
+    // 500 / 3 = 166,67 : `construireLigneVocale` arrondit l'unitaire à 167 pour
+    // l'affichage/reçu (prix_unitaire), mais 167 × 3 = 501 ≠ 500. Le panier ne
+    // doit JAMAIS recalculer depuis cet unitaire arrondi — addToCart doit
+    // recevoir le montant dicté EXACT (500) comme 3e argument, quel que soit
+    // le produit (apparié ou libre).
+    const h = creerDeps();
+    vendreVocalUnifie("tomates", 3, 500, h.deps);
+    eq(h.appelsAddToCart.length, 1, "addToCart appelé une fois");
+    const [produit, quantite, totalExact] = h.appelsAddToCart[0];
+    eq(produit.prix, 167, "prix unitaire ARRONDI pour l'affichage (500/3 → 167)");
+    eq(quantite, 3, "quantité dictée transmise");
+    eq(totalExact, 500, "total EXACT transmis (500), JAMAIS 501 (167 × 3, arrondi)");
+    ok(produit.prix * quantite !== totalExact, "sanity check : l'arrondi unitaire × quantité NE RETOMBE PAS sur le total exact — c'est justement pourquoi totalExact existe");
+
+    // Même invariant pour une ligne LIBRE (produit non apparié) : « 3 piments
+    // pour 500 » ne doit pas non plus dériver vers 501F au panier.
+    const h2 = creerDeps();
+    vendreVocalUnifie("piment inconnu", 3, 500, h2.deps);
+    const [ligneLibre, qteLibre, totalLibre] = h2.appelsAddToCart[0];
+    eq(ligneLibre.prix, 167, "ligne libre : même arrondi unitaire pour l'affichage");
+    eq(qteLibre, 3, "ligne libre : quantité dictée");
+    eq(totalLibre, 500, "ligne libre : total EXACT transmis (500), jamais 501");
   }
 
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
