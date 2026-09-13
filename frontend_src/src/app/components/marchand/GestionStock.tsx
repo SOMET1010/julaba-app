@@ -1171,7 +1171,7 @@ export function GestionStock() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
-                      <label style={{ fontSize: 12, fontWeight: 700, color: '#555', display: 'block', marginBottom: 6 }}>Quantite</label>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: '#555', display: 'block', marginBottom: 6 }}>Quantité</label>
                       <input
                         type="number"
                         value={editForm.quantity}
@@ -1180,7 +1180,7 @@ export function GestionStock() {
                       />
                     </div>
                     <SelectWithAutre
-                      label="Unite"
+                      label="Unité"
                       value={editForm.unit}
                       onChange={v => setEditForm({ ...editForm, unit: v })}
                       options={UNITES_COURANTES}
@@ -1266,7 +1266,7 @@ export function GestionStock() {
                   <div style={{ height: 1, background: '#f5f0ea' }} />
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: P, marginBottom: 8, cursor: 'pointer' }}>
-                      Parametres avances
+                      Paramètres avancés
                     </div>
                     <label style={{ fontSize: 12, fontWeight: 700, color: '#555', display: 'block', marginBottom: 6 }}>
                       Seuil alerte stock
@@ -1431,7 +1431,11 @@ export function GestionStock() {
       <ToastContainer />
       <RaccourcisProvider>
         <ObjectifProvider ventes={caisseStats?.ventesJour || 0}>
-          <VenteVocaleModal isOpen={showVente} onClose={() => setShowVente(false)} />
+          <VenteVocaleModal
+            isOpen={showVente}
+            onClose={() => setShowVente(false)}
+            initialProduct={selectedStock ? { nom: selectedStock.name, prix: selectedStock.salePrice, unite: selectedStock.unit } : null}
+          />
         </ObjectifProvider>
       </RaccourcisProvider>
       {/* Confirmation de suppression : rendue via ModalPortal (document.body) pour

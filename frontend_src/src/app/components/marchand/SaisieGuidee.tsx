@@ -27,6 +27,10 @@ interface Props {
   onValider: (l: LigneProvisoire) => void;
   /** Apparie le nom tapé à un produit du catalogue (null si inconnu → ligne libre). */
   apparier?: (nom: string) => AppariementCatalogue | null;
+  /** Produit déjà connu par le parent (ex. fiche produit ouverte) : pré-rempli pour
+   * qu'il ne reste plus qu'à confirmer la quantité, plutôt que retaper le nom et le prix. */
+  initialProduit?: string;
+  initialPrix?: number;
 }
 
 const champStyle: React.CSSProperties = {
@@ -35,11 +39,11 @@ const champStyle: React.CSSProperties = {
   fontFamily: 'inherit', background: 'white',
 };
 
-export function SaisieGuidee({ onValider, apparier }: Props) {
+export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix }: Props) {
   const [etape, setEtape] = useState<'saisie' | 'confirmation'>('saisie');
-  const [produit, setProduit] = useState('');
+  const [produit, setProduit] = useState(initialProduit || '');
   const [quantite, setQuantite] = useState('1');
-  const [prix, setPrix] = useState('');
+  const [prix, setPrix] = useState(initialPrix ? String(initialPrix) : '');
   const [mode, setMode] = useState<'unitaire' | 'total'>('unitaire');
   const [ligne, setLigne] = useState<LigneProvisoire | null>(null);
 
@@ -67,7 +71,7 @@ export function SaisieGuidee({ onValider, apparier }: Props) {
         ligne={ligne}
         onLigneChange={setLigne}
         onAnnuler={recommencer}
-        onConfirmer={(l) => { onValider(l); setProduit(''); setQuantite('1'); setPrix(''); recommencer(); }}
+        onConfirmer={(l) => { onValider(l); setProduit(initialProduit || ''); setQuantite('1'); setPrix(initialPrix ? String(initialPrix) : ''); recommencer(); }}
       />
     );
   }
