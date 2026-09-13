@@ -217,6 +217,9 @@ n'est au programme tant que le smoke test reel n'est pas vert (voir plus bas).
 Les lectures beneficient d'un retry borne (2 tentatives) sur erreur transitoire
 uniquement ; une mutation, elle, ne serait jamais rejouee automatiquement.
 
+Ce verrou est **cote client JULABA**. Il ne dit rien des droits que la cle Odoo
+possede en propre — voir "Limitation de securite" ci-dessous.
+
 ### Hypothese restant a confirmer
 
 `OdooRealClient` suppose que le corps de la reponse JSON-2 **est** directement le
@@ -225,6 +228,52 @@ resultat de la methode, sans enveloppe facon ancien JSON-RPC
 (`backend/test/unit/odoo-gateway.contract.spec.ts`) figent cette hypothese, mais
 seule une instance reelle peut la valider. C'est l'un des objets du smoke test
 reel.
+
+## Limitation de securite — avant production
+
+**La cle API produite par ce POC n'est pas une cle Odoo read-only.**
+
+Pour ce POC, la lecture seule est imposee par l'allowlist de `OdooRealClient` et
+par `ODOO_REAL_WRITE_ENABLED=false`. Le groupe standard
+`stock.group_stock_user`, necessaire a `qty_available`, confere par ailleurs des
+permissions d'ecriture Odoo. Cette cle ne doit donc pas etre consideree comme
+une cle Odoo intrinsequement read-only.
+
+`qty_available` n'est pas un champ stocke : il est calcule par
+`_compute_quantities_dict` (`addons/stock/models/product.py`), qui agrege
+`stock.move`. Sans droit de lecture sur `stock.move`, le premier `search_read`
+echoue en 403. Le groupe standard qui ouvre cette lecture ouvre aussi des
+ecritures.
+
+Droits effectifs de la cle, constates sur une instance Odoo 19 reelle via
+`check_access`, et conformes a `addons/stock/security/ir.model.access.csv` :
+
+| Modele | read | write | create | unlink |
+|---|---|---|---|---|
+| `stock.move` | oui | **oui** | **oui** | non |
+| `stock.picking` | oui | **oui** | **oui** | **oui** |
+| `stock.quant` | oui | **oui** | **oui** | non |
+| `stock.move.line` | oui | **oui** | **oui** | **oui** |
+| `stock.lot` | oui | **oui** | **oui** | **oui** |
+| `product.product` | oui | non | non | non |
+
+Consequence a nommer sans detour : **la frontiere de securite effective est
+cote JULABA, pas cote Odoo.** Quiconque detient cette cle et tape directement
+l'API JSON-2, sans passer par `OdooRealClient`, peut ecrire dans ces objets
+stock. Les deux protections reelles du POC — allowlist stricte
+`search_read`/`read`, et `ODOO_REAL_WRITE_ENABLED=false` — sont solides mais
+vivent dans le client JULABA.
+
+Ce que cela implique concretement :
+
+- Traiter `ODOO_API_KEY` comme un secret d'ecriture, pas de lecture.
+- Ne pas reutiliser cette cle hors de l'instance de POC.
+- Garder l'instance liee a la loopback (`ODOO_BIND_ADDR=127.0.0.1`).
+
+**Exigence avant toute mise en production :** un utilisateur Odoo reellement
+read-only, via un groupe ou des ACL dediees, teste sur Odoo 19. Ce chantier est
+hors du perimetre de ce POC et n'est volontairement pas entame ici : le besoin
+est nomme, pas bricole.
 
 ## Secrets
 
