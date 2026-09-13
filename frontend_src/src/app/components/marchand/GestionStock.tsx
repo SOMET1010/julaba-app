@@ -613,7 +613,24 @@ export function GestionStock() {
       role="marchand"
       title="Mes produits"
       subtitle={`${stocks.length} produit${stocks.length > 1 ? 's' : ''} · ${lowStocks.length} alerte${lowStocks.length > 1 ? 's' : ''}`}
-      rightContent={<NotificationButton />}
+      rightContent={
+        <div style={{ display: 'flex', gap: 7 }}>
+          {/* Alertes de stock : icône DÉLIBÉRÉMENT différente de la cloche
+              Notifications (même icône que celle-ci ailleurs prêtait à
+              confusion — audit accueil/tuiles). Alertes de rupture, distinct
+              de la boîte de réception générale. */}
+          <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate('/marchand/alertes')} aria-label="Voir les alertes de stock"
+            style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
+            <AlertCircle size={19} color="rgba(255,255,255,0.9)" strokeWidth={2} />
+            {lowStocks.length > 0 && (
+              <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, padding: '0 3px', background: '#ef4444', borderRadius: 9, fontSize: 9, fontWeight: 900, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid rgba(143,68,24,0.9)' }}>
+                {lowStocks.length > 9 ? '9+' : lowStocks.length}
+              </span>
+            )}
+          </motion.button>
+          <NotificationButton />
+        </div>
+      }
     >
         <div style={{ padding:'14px 0 0' }}>
 
@@ -634,7 +651,12 @@ export function GestionStock() {
             <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/resume-caisse')}
               style={{ background:'white', border:'2px solid var(--trait)', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
               <div style={{ width:30, height:30, borderRadius:9, background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Wallet size={14} color={P} /></div>
-              <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Résumé caisse</span>
+              {/* Renommé « Résumé détaillé » : distinct du « Résumé du jour »
+                  (fenêtre rapide de l'accueil, avec fermer-journée/fond) —
+                  même nom que deux endroits différents prêtait à confusion
+                  (audit accueil/tuiles). Celui-ci va plus loin (heure de
+                  pointe, etc.), mais c'est un complément, pas le même écran. */}
+              <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Résumé détaillé</span>
             </motion.button>
           </div>
 
@@ -672,17 +694,14 @@ export function GestionStock() {
             </div>
           </motion.button>
 
-          {/* Boutons action */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
-            <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowAdd(true)}
-              style={{ background:'white', border:`2px solid ${P}`, borderRadius:14, padding:'12px 0', fontSize:14, fontWeight:800, color:P, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-              <Package size={16} /> Écrire
-            </motion.button>
-            <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowVente(true)}
-              style={{ background:P, border:'none', borderRadius:14, padding:'12px 0', fontSize:14, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-              <Mic size={16} /> Vendre
-            </motion.button>
-          </div>
+          {/* Ajouter un produit à l'écrit : l'AUTRE façon de faire le même
+              geste que le gros bouton vocal au-dessus — pas « Vendre », qui
+              n'a rien à voir avec la gestion du stock et est déjà accessible
+              en un geste depuis l'accueil (audit accueil/tuiles). */}
+          <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowAdd(true)}
+            style={{ width:'100%', background:'white', border:`2px solid ${P}`, borderRadius:14, padding:'12px 0', fontSize:14, fontWeight:800, color:P, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginBottom:14 }}>
+            <Package size={16} /> Écrire
+          </motion.button>
 
           {/* Grille swipeable */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10, marginBottom:14 }}>
