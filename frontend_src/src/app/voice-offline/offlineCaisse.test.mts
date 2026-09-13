@@ -180,6 +180,53 @@ async function run() {
     ok((await store.deadCount()) === 0, "T11 propriétaire peut purger sa propre lettre morte");
   }
 
+  // T12 — CORRECTIF POST-REVUE (2e passe) : enfilerOperation refuse toute
+  // opération sans utilisateur authentifié RÉEL — jamais de propriétaire de
+  // secours ('anon', chaîne vide, absent). Aucune entrée ne doit être créée.
+  {
+    const store = oc.memoryOutboxStore();
+
+    let threwUndefined = false;
+    try {
+      await oc.enfilerOperation("/caisse/vente", { idempotency_key: "no-user-1", montant: 100 }, undefined as unknown as string, store);
+    } catch { threwUndefined = true; }
+    ok(threwUndefined, "T12 enfilerOperation refuse un userId absent (undefined)");
+
+    let threwAnon = false;
+    try {
+      await oc.enfilerOperation("/caisse/vente", { idempotency_key: "no-user-2", montant: 100 }, "anon", store);
+    } catch { threwAnon = true; }
+    ok(threwAnon, "T12 enfilerOperation refuse explicitement le propriétaire de secours 'anon'");
+
+    let threwEmpty = false;
+    try {
+      await oc.enfilerOperation("/caisse/vente", { idempotency_key: "no-user-3", montant: 100 }, "", store);
+    } catch { threwEmpty = true; }
+    ok(threwEmpty, "T12 enfilerOperation refuse une chaîne vide");
+
+    ok((await store.list()).length === 0, "T12 aucune entrée créée dans l'outbox — ni sous anon, ni sous vide, ni sous undefined");
+  }
+
+  // T13 — CORRECTIF POST-REVUE (2e passe) : les compteurs retournés par
+  // synchroniser() sont cloisonnés par utilisateur — les lettres mortes/actives
+  // d'un AUTRE compte sur le même terminal n'apparaissent jamais dans le
+  // résultat d'une session, pour éviter qu'un « avant/après » côté appelant
+  // (ex. CaisseContext) ne compare le compte de A à un total incluant B.
+  {
+    const store = oc.memoryOutboxStore();
+    // B accumule 2 lettres mortes (rejets définitifs).
+    await seed(store, ["db1", "db2"], "user-B");
+    await oc.synchroniser(posterQui({ db1: 409, db2: 409 }), "user-B", store);
+    ok((await oc.nbEchecs("user-B", store)) === 2, "T13 (pré-requis) B a bien 2 lettres mortes");
+    ok((await oc.nbEchecs("user-A", store)) === 0, "T13 (pré-requis) A n'a aucune lettre morte");
+
+    // A synchronise sa propre file (vide) : le résultat ne doit refléter QUE A,
+    // jamais les 2 lettres mortes de B présentes dans le même store.
+    const r = await oc.synchroniser(posterQui({}), "user-A", store);
+    ok(r.echecs === 0, "T13 synchroniser() sous A ne retourne PAS les lettres mortes de B (plus de deadCount() global)");
+    ok(r.reste === 0, "T13 synchroniser() sous A ne retourne PAS les opérations actives de B (plus d'activeCount() global)");
+  }
+
   console.log(failures === 0 ? "\nTous les tests file hors-ligne sont verts ✅" : `\n${failures} test(s) en échec ❌`);
   process.exit(failures ? 1 : 0);
 }

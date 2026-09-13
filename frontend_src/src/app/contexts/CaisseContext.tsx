@@ -366,8 +366,11 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       idempotency_key: genererCle(),
     };
     // Hors-ligne : on met la vente dans la file durable (rejeu à la reconnexion).
+    // FAIL CLOSED : si appUser?.id est absent (session perdue), enfilerOperation
+    // refuse — jamais de vente mise en file sous un propriétaire de secours
+    // ('anon'). L'erreur remonte à l'appelant (déjà géré par l'UI existante).
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      await enfilerOperation('/caisse/vente', payload, appUser?.id || 'anon');
+      await enfilerOperation('/caisse/vente', payload, appUser?.id);
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
       return;
     }
@@ -382,7 +385,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       // pas de double-comptage même si la vente était déjà passée). Une vraie
       // erreur métier 4xx est remontée à l'utilisateur.
       if (doitEnfiler(error)) {
-        await enfilerOperation('/caisse/vente', payload, appUser?.id || 'anon');
+        await enfilerOperation('/caisse/vente', payload, appUser?.id);
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
         return;
       }
@@ -394,7 +397,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de dépense invalide');
     const payload: caisseApi.EnregistrerDepenseData = { montant, notes, idempotency_key: genererCle() };
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      await enfilerOperation('/caisse/depense', payload, appUser?.id || 'anon');
+      await enfilerOperation('/caisse/depense', payload, appUser?.id);
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
       return;
     }
@@ -407,7 +410,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       // Ne JAMAIS perdre une dépense : hors-ligne, token expiré, panne réseau ou
       // serveur temporairement KO -> on l'enfile (rejeu avec la MÊME clé).
       if (doitEnfiler(error)) {
-        await enfilerOperation('/caisse/depense', payload, appUser?.id || 'anon');
+        await enfilerOperation('/caisse/depense', payload, appUser?.id);
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
         return;
       }

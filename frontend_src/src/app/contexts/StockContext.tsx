@@ -128,9 +128,14 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
       idempotency_key: genererCleStock(),
     };
     const applyLocal = () => setStocks((current) => current.map((stock) => stock.id === id ? { ...stock, ...data, derniereModification: new Date().toISOString() } : stock));
+    // FAIL CLOSED : sans utilisateur authentifié réel, on ne met JAMAIS la
+    // mise à jour en file (jamais sous 'anon') — et on n'applique pas non
+    // plus la mise à jour optimiste locale, qui mentirait sur un succès
+    // impossible à persister durablement. L'action échoue visiblement au
+    // lieu de créer une opération sans propriétaire fiable.
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      await enfilerOperation(`/stocks/${id}`, payload, appUser?.id, undefined, 'PATCH');
       applyLocal();
-      await enfilerOperation(`/stocks/${id}`, payload, appUser?.id || 'anon', undefined, 'PATCH');
       eventBus.emit(EVENTS.STOCK_UPDATED, { id, ...data, offline: true }, { idempotencyKey: payload.idempotency_key, priority: 'medium' });
       return;
     }
@@ -142,8 +147,8 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
       applyLocal();
     } catch (error) {
       if (!doitEnfilerStock(error)) throw error;
+      await enfilerOperation(`/stocks/${id}`, payload, appUser?.id, undefined, 'PATCH');
       applyLocal();
-      await enfilerOperation(`/stocks/${id}`, payload, appUser?.id || 'anon', undefined, 'PATCH');
       eventBus.emit(EVENTS.STOCK_UPDATED, { id, ...data, offline: true }, { idempotencyKey: payload.idempotency_key, priority: 'medium' });
       return;
     }
