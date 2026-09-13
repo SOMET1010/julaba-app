@@ -1,0 +1,3 @@
+# Secrets et fichiers generes par scripts/init.sh
+.env
+config/odoo.conf
