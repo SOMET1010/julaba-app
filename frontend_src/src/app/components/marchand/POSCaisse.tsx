@@ -38,7 +38,7 @@ const CAISSE_MOBILE_MONEY_ACTIF: boolean = false;
 export function POSCaisse() {
   const navigate = useNavigate();
   const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, refreshProducts, transactions } = useCaisse();
-  const { speak, reloadTransactions, user } = useApp();
+  const { speak, reloadTransactions, user, isOnline } = useApp();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Ma boutique';
   // La caisse SUIT le sous-profil (docs/SOUS_PROFILS_MARCHAND.md) : en négoce
   // (demi-grossiste, grossiste), le prix unitaire se discute à chaque vente et
@@ -237,12 +237,230 @@ export function POSCaisse() {
     );
   };
 
+  // Lignes du panier — factorisées pour être identiques dans le panneau
+  // permanent (grand écran) et le panneau coulissant (mobile) : même logique
+  // de négoce/prix/quantité, un seul endroit à faire évoluer.
+  const renderCartLines = () => (
+    <>
+      {cart.map(item => (
+        <div key={item.productId} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 0', borderBottom:'1px solid #f5f0eb' }}>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:15, fontWeight:700, color:'var(--encre)' }}>{item.nom}</div>
+            <div style={{ fontSize:12, color:'var(--encre-4)', marginTop:4, display:'flex', alignItems:'center', gap:6 }}>
+              {estNegoce ? (
+                /* Prix CONVENU pour cette vente — modifiable (négoce). */
+                <input key={`p-${item.productId}-${item.prix}`} defaultValue={item.prix}
+                  inputMode="numeric" aria-label={`Prix unitaire convenu pour ${item.nom}`}
+                  onBlur={e => {
+                    const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
+                    if (v > 0 && v !== item.prix) {
+                      updateCartItemPrice(item.productId, v);
+                      dire(`${item.nom} : ${v.toLocaleString('fr-FR')} francs l'unité`);
+                    } else { e.target.value = String(item.prix); }
+                  }}
+                  style={{ width:72, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'right', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
+              ) : (
+                <span>{item.prix.toLocaleString('fr-FR')} FCFA</span>
+              )}
+              <span>{estNegoce ? 'F ×' : '×'}</span>
+              {/* Quantité TAPÉE directement (indispensable en gros). */}
+              <input key={`q-${item.productId}-${item.quantite}`} defaultValue={item.quantite}
+                inputMode="numeric" aria-label={`Quantité de ${item.nom}`}
+                onBlur={e => {
+                  const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
+                  if (v > 0 && v !== item.quantite) {
+                    updateCartItemQuantity(item.productId, v);
+                    dire(`${item.nom} : ${v}`);
+                  } else { e.target.value = String(item.quantite); }
+                }}
+                style={{ width:56, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'center', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
+            </div>
+          </div>
+          <div style={{ fontSize:15, fontWeight:800, color:P }}>{(item.prix * item.quantite).toLocaleString('fr-FR')} FCFA</div>
+          <motion.button whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={`Enlever ${item.nom}`}
+            style={{ width:44, height:44, background:'#FEF2F2', border:'none', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+            <Trash2 size={16} color="#ef4444" />
+          </motion.button>
+        </div>
+      ))}
+    </>
+  );
+
+  // Total + moyen de paiement + encaissement — même remarque : une seule
+  // version de cette logique, affichée soit dans le sheet mobile, soit dans
+  // le panneau permanent grand écran (mockup validé : « Payer en espèces »
+  // comme CTA principal unique).
+  const renderCartFooter = () => (
+    <>
+      {/* Le total s'ENTEND d'un toucher (tout montant affiché doit
+          pouvoir être entendu — docs/INCLUSION.md §2.2). */}
+      <button type="button" onClick={() => dire(`Total : ${total.toLocaleString('fr-FR')} francs`)}
+        aria-label={`Total ${total.toLocaleString('fr-FR')} francs — touche pour entendre`}
+        style={{ width:'100%', display:'flex', justifyContent:'space-between', marginBottom:12, background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit' }}>
+        <span style={{ fontSize:16, fontWeight:700, color:'var(--encre)' }}>Total</span>
+        <span style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} FCFA</span>
+      </button>
+
+      {/* Moyen de paiement — espèces / mobile money (déclaré) / crédit */}
+      <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+        <button type="button" onClick={() => setPaymentMethod('cash')}
+          style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
+            border: paymentMethod==='cash' ? `2px solid ${P}` : '1.5px solid var(--trait)',
+            background: paymentMethod==='cash' ? '#FFF3E9' : '#fff', color: paymentMethod==='cash' ? P : '#8A7A6A' }}>
+          Espèces
+        </button>
+        {CAISSE_MOBILE_MONEY_ACTIF && (
+        <button type="button" onClick={() => setPaymentMethod('mobile_money')}
+          style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer', lineHeight:1.15,
+            border: paymentMethod==='mobile_money' ? `2px solid ${P}` : '1.5px solid var(--trait)',
+            background: paymentMethod==='mobile_money' ? '#FFF3E9' : '#fff', color: paymentMethod==='mobile_money' ? P : '#8A7A6A' }}>
+          Mobile money
+        </button>
+        )}
+        {CAISSE_CREDIT_ACTIF && (
+        <button type="button" onClick={() => { setShowCart(false); setPaymentMethod('credit'); setShowCredit(true); }}
+          style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
+            border:'1.5px solid var(--trait)', background:'#fff', color:'var(--encre-3)' }}>
+          Crédit
+        </button>
+        )}
+      </div>
+
+      {/* Pilote ESPÈCES : crédit et/ou mobile money désactivés (voir #16). */}
+      {(!CAISSE_CREDIT_ACTIF || !CAISSE_MOBILE_MONEY_ACTIF) && (
+        <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:-6, marginBottom:12, textAlign:'center' }}>
+          Caisse pilote : espèces uniquement.
+        </div>
+      )}
+
+      {/* Mobile money DÉCLARÉ : choix de l'opérateur (aucune intégration) */}
+      {CAISSE_MOBILE_MONEY_ACTIF && paymentMethod === 'mobile_money' && (
+        <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
+          {MOBILE_OPERATORS.map(op => (
+            <button type="button" key={op.id} onClick={() => setMmOperator(op.id)}
+              style={{ flex:'1 0 30%', padding:'11px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
+                border: mmOperator===op.id ? `2px solid ${op.color}` : '1.5px solid var(--trait)',
+                background: mmOperator===op.id ? op.color : '#fff', color: mmOperator===op.id ? op.textColor : '#5a4a3a' }}>
+              {op.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Espèces : montant reçu EN BILLETS (geste du marché) + monnaie
+          à rendre décomposée en coupures. Le champ chiffres reste le
+          filet pour celle qui préfère taper. */}
+      {paymentMethod === 'cash' && (
+      <div style={{ marginBottom:12 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid var(--trait)', borderRadius:12, padding:'10px 12px', minWidth:0 }}>
+          <span style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)', whiteSpace:'nowrap' }}>Montant reçu</span>
+          {/* minWidth:0 — sans lui, un input vide garde un min-content flexbox
+              qui peut dépasser un conteneur étroit (panneau permanent 400px,
+              repéré en recette visuelle) au lieu de rétrécir avec flex:1. */}
+          <input value={montantRecu} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—"
+            style={{ flex:1, minWidth:0, border:'none', outline:'none', textAlign:'right', fontSize:18, fontWeight:800, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums' }} />
+          <span style={{ fontSize:13, fontWeight:700, color:'var(--encre-3)' }}>F</span>
+          {recu > 0 && (
+            <button type="button" aria-label="Effacer le montant reçu" onClick={() => setMontantRecu('')}
+              style={{ width:30, height:30, borderRadius:9, border:'none', background:'#FEF2F2', color:'#c0392b', fontWeight:900, fontSize:14, cursor:'pointer' }}>
+              ✕
+            </button>
+          )}
+        </div>
+        {/* Les billets qu'elle vient de recevoir : un toucher = un billet
+            ajouté (et dit à voix haute). Couleurs proches des vraies coupures. */}
+        <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
+          {COUPURES.filter(c => c.forme === 'billet').map(c => (
+            <motion.button type="button" key={c.valeur} whileTap={{ scale:0.92 }} onClick={() => ajouterCoupure(c.valeur)}
+              aria-label={`Ajouter un billet de ${formatF(c.valeur)} francs`}
+              style={{ flex:'1 0 28%', minHeight:46, borderRadius:9, border:'none', cursor:'pointer',
+                background:`linear-gradient(135deg, ${c.couleur}, ${c.couleur}DD)`, color:c.encre,
+                fontWeight:900, fontSize:15, fontVariantNumeric:'tabular-nums',
+                boxShadow:'0 2px 6px rgba(0,0,0,0.18), inset 0 0 0 2px rgba(255,255,255,0.35)' }}>
+              {formatF(c.valeur)}
+            </motion.button>
+          ))}
+        </div>
+        <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap', alignItems:'center' }}>
+          {COUPURES.filter(c => c.forme === 'piece').map(c => (
+            <motion.button type="button" key={c.valeur} whileTap={{ scale:0.9 }} onClick={() => ajouterCoupure(c.valeur)}
+              aria-label={`Ajouter une pièce de ${formatF(c.valeur)} francs`}
+              style={{ width:52, height:52, borderRadius:'50%', border:'none', cursor:'pointer',
+                background:`radial-gradient(120% 120% at 30% 25%, ${c.couleur}, ${c.couleur}CC)`, color:c.encre,
+                fontWeight:900, fontSize:13, fontVariantNumeric:'tabular-nums',
+                boxShadow:'0 2px 5px rgba(0,0,0,0.2), inset 0 0 0 2.5px rgba(255,255,255,0.5)' }}>
+              {c.valeur}
+            </motion.button>
+          ))}
+          <button type="button" onClick={() => { setMontantRecu(String(total)); dire('Compte juste'); }}
+            style={{ flex:1, minWidth:104, padding:'13px 10px', borderRadius:12, border:'1.5px solid #A8D8B9', background:'#EAF7EE', color:'#0E7A47', fontWeight:800, fontSize:13, cursor:'pointer' }}>
+            Compte juste
+          </button>
+        </div>
+        {recu > 0 && !insuffisant && (
+          <button type="button" onClick={() => dire(`Monnaie à rendre : ${formatF(monnaie)} francs`)}
+            aria-label={`Monnaie à rendre ${formatF(monnaie)} francs — touche pour entendre`}
+            style={{ width:'100%', background:'none', border:'none', padding:0, marginTop:10, cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', fontSize:15, fontWeight:800, color:'#0E7A47' }}>
+              <span>Monnaie à rendre</span><span style={{ fontVariantNumeric:'tabular-nums' }}>{formatF(monnaie)} F</span>
+            </div>
+            {/* La monnaie EN COUPURES concrètes : « 2000 ×1 · 500 ×1 » */}
+            {monnaie > 0 && monnaieDecomposee.lignes.length > 0 && (
+              <div style={{ display:'flex', gap:5, marginTop:6, flexWrap:'wrap' }}>
+                {monnaieDecomposee.lignes.map(l => (
+                  <span key={l.valeur} style={{ padding:'4px 9px', borderRadius:8, background:'#EAF7EE', border:'1px solid #A8D8B9', color:'#0E7A47', fontWeight:800, fontSize:12, fontVariantNumeric:'tabular-nums' }}>
+                    {formatF(l.valeur)} ×{l.nb}
+                  </span>
+                ))}
+                {monnaieDecomposee.reste > 0 && (
+                  <span style={{ padding:'4px 9px', borderRadius:8, background:'#FFF7E6', border:'1px solid #F0D9A8', color:'#8A6A1A', fontWeight:800, fontSize:12 }}>
+                    + {formatF(monnaieDecomposee.reste)} F
+                  </span>
+                )}
+              </div>
+            )}
+          </button>
+        )}
+        {insuffisant && (
+          <div style={{ marginTop:8, fontSize:13, fontWeight:700, color:'#c0392b' }}>Montant reçu insuffisant</div>
+        )}
+      </div>
+      )}
+
+      {(() => {
+        const bloque = isProcessing
+          || (paymentMethod === 'cash' && insuffisant)
+          || (paymentMethod === 'mobile_money' && !mmOperator);
+        // CTA unique et fort (mockup validé) : « Payer en espèces » plutôt
+        // qu'un « Valider » générique — le moyen de paiement pilote est déjà
+        // les espèces par défaut, ce texte le dit directement.
+        const label = isProcessing ? 'Traitement...'
+          : paymentMethod === 'mobile_money'
+            ? (mmOperator ? `Valider — payé par ${getMobileOperator(mmOperator).name}` : 'Choisis l\'opérateur')
+            : (monnaie > 0 ? `Payer en espèces · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Payer en espèces');
+        return (
+          <motion.button whileTap={{ scale: bloque ? 1 : 0.97 }} onClick={handlePay} disabled={bloque}
+            style={{ width:'100%', border:'none', borderRadius:18, padding:'17px 0', fontSize:16, fontWeight:800, color:'white', cursor: bloque ? 'not-allowed':'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, background: bloque ? '#CBB9A8' : P }}>
+            {label}
+          </motion.button>
+        );
+      })()}
+    </>
+  );
+
   return (
     <SubPageLayout
       role="marchand"
       title="Caisse du jour"
       rightContent={
-        <div style={{ display:'flex', gap:7 }}>
+        <div style={{ display:'flex', gap:7, alignItems:'center' }}>
+          {/* Statut réseau — simple et permanent (mockup validé) : la donnée
+              existe déjà globalement (useApp().isOnline), on ne fait que
+              l'afficher ici au lieu de seulement lors d'une coupure. */}
+          <div style={{ height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', gap:6, padding:'0 11px' }}>
+            <span style={{ width:8, height:8, borderRadius:'50%', background: isOnline ? '#4ADE80' : '#F87171', flexShrink:0 }} />
+            <span style={{ fontSize:12, fontWeight:700, color:'white', whiteSpace:'nowrap' }}>{isOnline ? 'En ligne' : 'Hors-ligne'}</span>
+          </div>
           {CAISSE_CREDIT_ACTIF && (
           <motion.button whileTap={{ scale: nbItems > 0 ? 0.95 : 1 }}
             onClick={() => {
@@ -255,14 +473,25 @@ export function POSCaisse() {
             <span style={{ fontSize:12, fontWeight:700, color:'white' }}>À crédit</span>
           </motion.button>
           )}
+          {/* Panier permanent sur grand écran (panneau à droite, voir plus
+              bas) : ce bouton devient redondant en lg — gardé uniquement en
+              mobile, où le panier reste un panneau coulissant sur demande.
+              La classe lg:hidden est posée sur un wrapper SANS style inline
+              conflictuel : un display inline sur le bouton lui-même aurait
+              gagné sur la règle Tailwind (spécificité du style attribute). */}
+          <div className="lg:hidden">
           <motion.button whileTap={{ scale:0.9 }} onClick={() => setShowCart(true)}
             style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
             <ShoppingCart size={16} color="white" />
             {nbItems > 0 && <span style={{ position:'absolute', top:-4, right:-4, minWidth:17, height:17, background:'#ef4444', borderRadius:'50%', fontSize:9, fontWeight:800, color:'white', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #8f4418' }}>{nbItems}</span>}
           </motion.button>
+          </div>
         </div>
       }
       bottomAction={
+        // Barre flottante « Encaisser » — mobile uniquement : sur grand écran
+        // le panier permanent affiche déjà le total et le CTA en continu.
+        <div className="lg:hidden">
         <AnimatePresence>
           {nbItems > 0 && (
             <motion.div initial={{ y:80 }} animate={{ y:0 }} exit={{ y:80 }}
@@ -282,11 +511,15 @@ export function POSCaisse() {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       }
     >
 
-      {/* CONTENU */}
-      <div style={{ flex:1, overflowY:'auto', padding:'14px 0 0' }}>
+      {/* CONTENU — sur grand écran : grille produits + panier permanent à
+          droite (mockup validé, option 1 « delta minimal »). Sur mobile :
+          inchangé, le panier reste un panneau coulissant sur demande. */}
+      <div className="lg:flex lg:items-start lg:gap-4">
+      <div className="lg:flex-1 lg:min-w-0" style={{ flex:1, overflowY:'auto', padding:'14px 0 0' }}>
         <SyncEchecsBanner />
         <div style={{ marginBottom:12, background:'white', border:'1.5px solid var(--trait)', borderRadius:13, padding:'11px 14px', display:'flex', alignItems:'center', gap:9 }}>
           <Search size={14} color="#aaa" />
@@ -415,6 +648,37 @@ export function POSCaisse() {
         </div>
       </div>
 
+      {/* Panier permanent — grand écran uniquement (mockup validé). Même
+          logique/JSX que le panneau coulissant mobile, via renderCartLines()/
+          renderCartFooter() : rien de dupliqué, juste affiché autrement. */}
+      <aside className="hidden lg:flex lg:flex-col" style={{ width:400, flexShrink:0, position:'sticky', top:100, maxHeight:'calc(100vh - 120px)', background:'white', border:'1.5px solid var(--trait)', borderRadius:20, marginTop:14, overflow:'hidden' }}>
+        <div style={{ padding:'16px 18px 6px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+          <span style={{ fontSize:17, fontWeight:900, color:'var(--encre)' }}>
+            Mon panier {nbItems > 0 && <span style={{ fontWeight:400, fontSize:13, color:'var(--encre-4)' }}>({nbItems})</span>}
+          </span>
+          {nbItems > 0 && (
+            <button type="button" onClick={clearCart} style={{ background:'none', border:'none', color:'#AE3A38', fontWeight:700, fontSize:12, cursor:'pointer' }}>
+              Vider
+            </button>
+          )}
+        </div>
+        {nbItems === 0 ? (
+          <div style={{ textAlign:'center', padding:'40px 18px', color:'var(--encre-4)', fontSize:13 }}>
+            Touche un produit pour l'ajouter au panier.
+          </div>
+        ) : (
+          <>
+            <div style={{ flex:1, overflowY:'auto', padding:'0 18px', minHeight:0 }}>
+              {renderCartLines()}
+            </div>
+            <div style={{ padding:'14px 18px 18px', flexShrink:0 }}>
+              {renderCartFooter()}
+            </div>
+          </>
+        )}
+      </aside>
+      </div>
+
       {/* PANIER MODAL */}
       <AnimatePresence>
         {showCart && (
@@ -432,196 +696,10 @@ export function POSCaisse() {
                 </motion.button>
               </div>
               <div style={{ flex:1, overflowY:'auto', padding:'0 16px' }}>
-                {cart.map(item => (
-                  <div key={item.productId} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 0', borderBottom:'1px solid #f5f0eb' }}>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontSize:15, fontWeight:700, color:'var(--encre)' }}>{item.nom}</div>
-                      <div style={{ fontSize:12, color:'var(--encre-4)', marginTop:4, display:'flex', alignItems:'center', gap:6 }}>
-                        {estNegoce ? (
-                          /* Prix CONVENU pour cette vente — modifiable (négoce). */
-                          <input key={`p-${item.productId}-${item.prix}`} defaultValue={item.prix}
-                            inputMode="numeric" aria-label={`Prix unitaire convenu pour ${item.nom}`}
-                            onBlur={e => {
-                              const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
-                              if (v > 0 && v !== item.prix) {
-                                updateCartItemPrice(item.productId, v);
-                                dire(`${item.nom} : ${v.toLocaleString('fr-FR')} francs l'unité`);
-                              } else { e.target.value = String(item.prix); }
-                            }}
-                            style={{ width:72, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'right', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
-                        ) : (
-                          <span>{item.prix.toLocaleString('fr-FR')} FCFA</span>
-                        )}
-                        <span>{estNegoce ? 'F ×' : '×'}</span>
-                        {/* Quantité TAPÉE directement (indispensable en gros). */}
-                        <input key={`q-${item.productId}-${item.quantite}`} defaultValue={item.quantite}
-                          inputMode="numeric" aria-label={`Quantité de ${item.nom}`}
-                          onBlur={e => {
-                            const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
-                            if (v > 0 && v !== item.quantite) {
-                              updateCartItemQuantity(item.productId, v);
-                              dire(`${item.nom} : ${v}`);
-                            } else { e.target.value = String(item.quantite); }
-                          }}
-                          style={{ width:56, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'center', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
-                      </div>
-                    </div>
-                    <div style={{ fontSize:15, fontWeight:800, color:P }}>{(item.prix * item.quantite).toLocaleString('fr-FR')} FCFA</div>
-                    <motion.button whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={`Enlever ${item.nom}`}
-                      style={{ width:44, height:44, background:'#FEF2F2', border:'none', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-                      <Trash2 size={16} color="#ef4444" />
-                    </motion.button>
-                  </div>
-                ))}
+                {renderCartLines()}
               </div>
               <div style={{ padding:'14px 16px 32px' }}>
-                {/* Le total s'ENTEND d'un toucher (tout montant affiché doit
-                    pouvoir être entendu — docs/INCLUSION.md §2.2). */}
-                <button type="button" onClick={() => dire(`Total : ${total.toLocaleString('fr-FR')} francs`)}
-                  aria-label={`Total ${total.toLocaleString('fr-FR')} francs — touche pour entendre`}
-                  style={{ width:'100%', display:'flex', justifyContent:'space-between', marginBottom:12, background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit' }}>
-                  <span style={{ fontSize:16, fontWeight:700, color:'var(--encre)' }}>Total</span>
-                  <span style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} FCFA</span>
-                </button>
-
-                {/* Moyen de paiement — espèces / mobile money (déclaré) / crédit */}
-                <div style={{ display:'flex', gap:8, marginBottom:12 }}>
-                  <button type="button" onClick={() => setPaymentMethod('cash')}
-                    style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
-                      border: paymentMethod==='cash' ? `2px solid ${P}` : '1.5px solid var(--trait)',
-                      background: paymentMethod==='cash' ? '#FFF3E9' : '#fff', color: paymentMethod==='cash' ? P : '#8A7A6A' }}>
-                    Espèces
-                  </button>
-                  {CAISSE_MOBILE_MONEY_ACTIF && (
-                  <button type="button" onClick={() => setPaymentMethod('mobile_money')}
-                    style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer', lineHeight:1.15,
-                      border: paymentMethod==='mobile_money' ? `2px solid ${P}` : '1.5px solid var(--trait)',
-                      background: paymentMethod==='mobile_money' ? '#FFF3E9' : '#fff', color: paymentMethod==='mobile_money' ? P : '#8A7A6A' }}>
-                    Mobile money
-                  </button>
-                  )}
-                  {CAISSE_CREDIT_ACTIF && (
-                  <button type="button" onClick={() => { setShowCart(false); setPaymentMethod('credit'); setShowCredit(true); }}
-                    style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
-                      border:'1.5px solid var(--trait)', background:'#fff', color:'var(--encre-3)' }}>
-                    Crédit
-                  </button>
-                  )}
-                </div>
-
-                {/* Pilote ESPÈCES : crédit et/ou mobile money désactivés (voir #16). */}
-                {(!CAISSE_CREDIT_ACTIF || !CAISSE_MOBILE_MONEY_ACTIF) && (
-                  <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:-6, marginBottom:12, textAlign:'center' }}>
-                    Caisse pilote : espèces uniquement.
-                  </div>
-                )}
-
-                {/* Mobile money DÉCLARÉ : choix de l'opérateur (aucune intégration) */}
-                {CAISSE_MOBILE_MONEY_ACTIF && paymentMethod === 'mobile_money' && (
-                  <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
-                    {MOBILE_OPERATORS.map(op => (
-                      <button type="button" key={op.id} onClick={() => setMmOperator(op.id)}
-                        style={{ flex:'1 0 30%', padding:'11px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
-                          border: mmOperator===op.id ? `2px solid ${op.color}` : '1.5px solid var(--trait)',
-                          background: mmOperator===op.id ? op.color : '#fff', color: mmOperator===op.id ? op.textColor : '#5a4a3a' }}>
-                        {op.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Espèces : montant reçu EN BILLETS (geste du marché) + monnaie
-                    à rendre décomposée en coupures. Le champ chiffres reste le
-                    filet pour celle qui préfère taper. */}
-                {paymentMethod === 'cash' && (
-                <div style={{ marginBottom:12 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid var(--trait)', borderRadius:12, padding:'10px 12px' }}>
-                    <span style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)', whiteSpace:'nowrap' }}>Montant reçu</span>
-                    <input value={montantRecu} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—"
-                      style={{ flex:1, border:'none', outline:'none', textAlign:'right', fontSize:18, fontWeight:800, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums' }} />
-                    <span style={{ fontSize:13, fontWeight:700, color:'var(--encre-3)' }}>F</span>
-                    {recu > 0 && (
-                      <button type="button" aria-label="Effacer le montant reçu" onClick={() => setMontantRecu('')}
-                        style={{ width:30, height:30, borderRadius:9, border:'none', background:'#FEF2F2', color:'#c0392b', fontWeight:900, fontSize:14, cursor:'pointer' }}>
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                  {/* Les billets qu'elle vient de recevoir : un toucher = un billet
-                      ajouté (et dit à voix haute). Couleurs proches des vraies coupures. */}
-                  <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
-                    {COUPURES.filter(c => c.forme === 'billet').map(c => (
-                      <motion.button type="button" key={c.valeur} whileTap={{ scale:0.92 }} onClick={() => ajouterCoupure(c.valeur)}
-                        aria-label={`Ajouter un billet de ${formatF(c.valeur)} francs`}
-                        style={{ flex:'1 0 28%', minHeight:46, borderRadius:9, border:'none', cursor:'pointer',
-                          background:`linear-gradient(135deg, ${c.couleur}, ${c.couleur}DD)`, color:c.encre,
-                          fontWeight:900, fontSize:15, fontVariantNumeric:'tabular-nums',
-                          boxShadow:'0 2px 6px rgba(0,0,0,0.18), inset 0 0 0 2px rgba(255,255,255,0.35)' }}>
-                        {formatF(c.valeur)}
-                      </motion.button>
-                    ))}
-                  </div>
-                  <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap', alignItems:'center' }}>
-                    {COUPURES.filter(c => c.forme === 'piece').map(c => (
-                      <motion.button type="button" key={c.valeur} whileTap={{ scale:0.9 }} onClick={() => ajouterCoupure(c.valeur)}
-                        aria-label={`Ajouter une pièce de ${formatF(c.valeur)} francs`}
-                        style={{ width:52, height:52, borderRadius:'50%', border:'none', cursor:'pointer',
-                          background:`radial-gradient(120% 120% at 30% 25%, ${c.couleur}, ${c.couleur}CC)`, color:c.encre,
-                          fontWeight:900, fontSize:13, fontVariantNumeric:'tabular-nums',
-                          boxShadow:'0 2px 5px rgba(0,0,0,0.2), inset 0 0 0 2.5px rgba(255,255,255,0.5)' }}>
-                        {c.valeur}
-                      </motion.button>
-                    ))}
-                    <button type="button" onClick={() => { setMontantRecu(String(total)); dire('Compte juste'); }}
-                      style={{ flex:1, minWidth:104, padding:'13px 10px', borderRadius:12, border:'1.5px solid #A8D8B9', background:'#EAF7EE', color:'#0E7A47', fontWeight:800, fontSize:13, cursor:'pointer' }}>
-                      Compte juste
-                    </button>
-                  </div>
-                  {recu > 0 && !insuffisant && (
-                    <button type="button" onClick={() => dire(`Monnaie à rendre : ${formatF(monnaie)} francs`)}
-                      aria-label={`Monnaie à rendre ${formatF(monnaie)} francs — touche pour entendre`}
-                      style={{ width:'100%', background:'none', border:'none', padding:0, marginTop:10, cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
-                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:15, fontWeight:800, color:'#0E7A47' }}>
-                        <span>Monnaie à rendre</span><span style={{ fontVariantNumeric:'tabular-nums' }}>{formatF(monnaie)} F</span>
-                      </div>
-                      {/* La monnaie EN COUPURES concrètes : « 2000 ×1 · 500 ×1 » */}
-                      {monnaie > 0 && monnaieDecomposee.lignes.length > 0 && (
-                        <div style={{ display:'flex', gap:5, marginTop:6, flexWrap:'wrap' }}>
-                          {monnaieDecomposee.lignes.map(l => (
-                            <span key={l.valeur} style={{ padding:'4px 9px', borderRadius:8, background:'#EAF7EE', border:'1px solid #A8D8B9', color:'#0E7A47', fontWeight:800, fontSize:12, fontVariantNumeric:'tabular-nums' }}>
-                              {formatF(l.valeur)} ×{l.nb}
-                            </span>
-                          ))}
-                          {monnaieDecomposee.reste > 0 && (
-                            <span style={{ padding:'4px 9px', borderRadius:8, background:'#FFF7E6', border:'1px solid #F0D9A8', color:'#8A6A1A', fontWeight:800, fontSize:12 }}>
-                              + {formatF(monnaieDecomposee.reste)} F
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </button>
-                  )}
-                  {insuffisant && (
-                    <div style={{ marginTop:8, fontSize:13, fontWeight:700, color:'#c0392b' }}>Montant reçu insuffisant</div>
-                  )}
-                </div>
-                )}
-
-                {(() => {
-                  const bloque = isProcessing
-                    || (paymentMethod === 'cash' && insuffisant)
-                    || (paymentMethod === 'mobile_money' && !mmOperator);
-                  const label = isProcessing ? 'Traitement...'
-                    : paymentMethod === 'mobile_money'
-                      ? (mmOperator ? `Valider — payé par ${getMobileOperator(mmOperator).name}` : 'Choisis l\'opérateur')
-                      : (monnaie > 0 ? `Valider · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Valider la vente');
-                  return (
-                    <motion.button whileTap={{ scale: bloque ? 1 : 0.97 }} onClick={handlePay} disabled={bloque}
-                      style={{ width:'100%', border:'none', borderRadius:18, padding:'17px 0', fontSize:16, fontWeight:800, color:'white', cursor: bloque ? 'not-allowed':'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, background: bloque ? '#CBB9A8' : P }}>
-                      {label}
-                    </motion.button>
-                  );
-                })()}
+                {renderCartFooter()}
               </div>
             </motion.div>
           </>
