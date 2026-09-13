@@ -44,8 +44,28 @@ users = env["res.users"].sudo()
 #   lecture de product.product est autorisee. Constate sur une instance Odoo 19
 #   reelle : c'est le premier appel du smoke test qui tombait.
 #
-# Aucun droit d'ecriture n'est accorde : le POC est en lecture seule et
-# ODOO_REAL_WRITE_ENABLED doit rester false cote backend JULABA.
+# LIMITATION DE SECURITE, a lire avant d'utiliser cette cle ailleurs que dans
+# le POC. Pour ce POC, la lecture seule est imposee par l'allowlist de
+# `OdooRealClient` et par `ODOO_REAL_WRITE_ENABLED=false`. Le groupe standard
+# `stock.group_stock_user`, necessaire a `qty_available`, confere par ailleurs
+# des permissions d'ecriture Odoo. Cette cle ne doit donc pas etre consideree
+# comme une cle Odoo intrinsequement read-only.
+#
+# Constate sur une instance Odoo 19 reelle, et conforme a
+# addons/stock/security/ir.model.access.csv :
+#
+#   modele             read  write  create  unlink
+#   stock.move          oui   oui    oui     non     (access_stock_move_user 1,1,1,0)
+#   stock.picking       oui   oui    oui     oui     (access_stock_picking_user 1,1,1,1)
+#   stock.quant         oui   oui    oui     non
+#   stock.move.line     oui   oui    oui     oui
+#   stock.lot           oui   oui    oui     oui
+#   product.product     oui   non    non     non
+#
+# La frontiere de securite effective est donc cote JULABA (allowlist client),
+# pas cote Odoo. Un utilisateur Odoo reellement read-only, via un groupe ou des
+# ACL dediees testes sur Odoo 19, reste une exigence AVANT toute mise en
+# production. Voir README.md, section "Limitation de securite".
 GROUPES_REQUIS = ["base.group_user", "stock.group_stock_user"]
 
 user = users.search([("login", "=", login)], limit=1)
