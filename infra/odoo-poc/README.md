@@ -7,8 +7,13 @@ et forme de reponse consommable par le mapper JULABA.
 Perimetre volontairement minimal. Ce que cette stack prouve :
 
 ```
-JULABA -> POST /json/2/product.product/search_read -> Odoo 19 -> versJulaba() -> catalogue JULABA
+JULABA -> OdooRealClient.execute() -> POST /json/2/product.product/search_read
+       -> Odoo 19 -> versJulaba() -> catalogue JULABA
 ```
+
+Le code de cette chaine existe deja cote backend (`OdooRealClient` est sur
+`main`). Ce qui manque, et que cette stack fournit, c'est l'instance reelle en
+face — voir "Lien avec le backend JULABA" et "Etat de validation".
 
 Ce qu'elle ne fait **pas**, et ne doit pas faire a ce stade : aucune ecriture
 vers Odoo (ni `create`, ni `stock.move`), aucune caisse JULABA, aucun credit,
@@ -135,19 +140,75 @@ curl -X POST "http://127.0.0.1:8069/json/2/product.product/search_read" \
 
 ## Lien avec le backend JULABA
 
-Le module `backend/src/odoo-gateway/` n'a aujourd'hui qu'un `OdooMockClient`
-(`odoo-mock.client.ts`), derriere le garde `ODOO_POC_ENABLED`. Le
-`OdooRealClient` qui consommerait cette instance **n'existe pas encore** : c'est
-un lot suivant, explicitement hors du perimetre de cette stack.
+`OdooRealClient` **existe deja** sur `main`
+(`backend/src/odoo-gateway/odoo-real.client.ts`). Cette stack est donc son
+interlocuteur : c'est l'instance contre laquelle il doit etre confronte pour la
+premiere fois.
 
-Quand il sera ecrit, les variables a fournir au backend, **cote serveur
-uniquement et jamais exposees au frontend**, seront celles que produit ce POC :
+### Bascule mock / reel
+
+La selection du client se fait par `ODOO_CLIENT_MODE`
+(`backend/src/odoo-gateway/odoo-client.config.ts`) :
+
+| Valeur | Effet |
+|---|---|
+| absente ou toute autre valeur | `OdooMockClient` — comportement par defaut |
+| `real` | `OdooRealClient`, qui appelle vraiment l'instance Odoo |
+
+En mode `real`, `ODOO_BASE_URL` et `ODOO_API_KEY` sont obligatoires : leur
+absence fait **echouer le demarrage**, volontairement, plutot que de retomber
+silencieusement sur le mock.
+
+### Variables backend
+
+Toutes **cote serveur uniquement**, jamais exposees au frontend JULABA :
 
 ```
+ODOO_CLIENT_MODE=real
 ODOO_BASE_URL=http://127.0.0.1:8069
 ODOO_API_KEY=<valeur ecrite dans infra/odoo-poc/.env par init.sh>
-ODOO_DB=julaba_poc
+ODOO_DB=julaba_poc            # optionnel ; declenche l'en-tete X-Odoo-Database
+ODOO_REAL_WRITE_ENABLED=false # doit rester false
+ODOO_REAL_TIMEOUT_MS=8000     # optionnel, defaut 8000
+ODOO_POC_ENABLED=true         # expose /odoo-poc/* ; garde distinct du mode client
 ```
+
+`ODOO_CLIENT_MODE` et `ODOO_POC_ENABLED` sont deux verrous independants :
+le premier choisit quel client est injecte, le second autorise les routes
+`/odoo-poc/*` (`OdooPocEnabledGuard`). Importer le module ne suffit pas.
+
+Note sur `ODOO_DB` : `OdooRealClient` envoie l'en-tete `X-Odoo-Database` des que
+la variable est renseignee, alors que `scripts/smoke-test.sh` ne l'envoie pas par
+defaut (`ODOO_SEND_DB_HEADER=false`). Les deux comportements fonctionnent contre
+cette stack : le `dbfilter = ^<base>$` de `config/odoo.conf.template` accepte
+l'en-tete, et `list_db = False` n'empeche pas la resolution mono-base
+(`db_list(force=True)` contourne ce controle, `odoo/service/db.py`). Pour
+reproduire exactement le chemin du client reel, mettre `ODOO_SEND_DB_HEADER=true`
+dans `.env`.
+
+### Lecture seule verrouillee cote client
+
+`OdooRealClient` applique une **allowlist**, pas une blacklist de methodes
+mutantes. Tant que `ODOO_REAL_WRITE_ENABLED` n'est pas a `true`, seules ces deux
+combinaisons passent, et tout le reste est refuse **avant tout appel reseau**,
+methode inconnue comprise :
+
+- `product.product/search_read`
+- `product.product/read`
+
+**`ODOO_REAL_WRITE_ENABLED` doit rester `false`.** Aucune ecriture vers Odoo
+n'est au programme tant que le smoke test reel n'est pas vert (voir plus bas).
+Les lectures beneficient d'un retry borne (2 tentatives) sur erreur transitoire
+uniquement ; une mutation, elle, ne serait jamais rejouee automatiquement.
+
+### Hypothese restant a confirmer
+
+`OdooRealClient` suppose que le corps de la reponse JSON-2 **est** directement le
+resultat de la methode, sans enveloppe facon ancien JSON-RPC
+(`{jsonrpc, result, id}`). Les tests contractuels
+(`backend/test/unit/odoo-gateway.contract.spec.ts`) figent cette hypothese, mais
+seule une instance reelle peut la valider. C'est l'un des objets du smoke test
+reel.
 
 ## Secrets
 
@@ -169,9 +230,45 @@ docker compose down -v             # arret ET destruction des donnees
 
 ## Etat de validation
 
-La stack a ete ecrite et verifiee statiquement (syntaxe shell, YAML, rendu de
-configuration, logique de validation du smoke test testee sur des donnees
-simulees). Elle **n'a pas pu etre executee de bout en bout** dans
-l'environnement ou elle a ete redigee : le telechargement de l'image `odoo:19`
-y est bloque par la politique de sortie reseau. Le premier `./scripts/init.sh`
-reel est donc a faire sur ton poste ou le VPS.
+La stack a ete ecrite et verifiee statiquement : syntaxe shell et YAML, rendu de
+la configuration, et logique de validation du smoke test testee sur des donnees
+simulees (cas conforme et cas en echec). Les comportements d'Odoo 19 documentes
+dans ce fichier ont ete lus dans le source de la branche `19.0`, pas supposes.
+
+Elle **n'a pas pu etre executee de bout en bout** dans l'environnement ou elle a
+ete redigee : le telechargement de l'image `odoo:19` y est bloque par la
+politique de sortie reseau.
+
+### Prochain jalon : le smoke test reel
+
+Executer, sur un poste ou un VPS ou Docker Hub est accessible :
+
+```bash
+cd infra/odoo-poc
+cp .env.example .env && $EDITOR .env
+./scripts/init.sh
+./scripts/smoke-test.sh
+```
+
+Ce test reel est ce qui doit confirmer, et rien d'autre ne peut le remplacer :
+
+| # | A confirmer | Couvert par |
+|---|---|---|
+| 1 | Demarrage d'Odoo 19 | `init.sh` etape 4 |
+| 2 | Creation de la cle API | `init.sh` etape 5 |
+| 3 | Authentification Bearer | `smoke-test.sh` tests 1 et 2 |
+| 4 | `product.product/search_read` reel | `smoke-test.sh` test 2 |
+| 5 | `product.product/read` reel | **pas encore couvert** — voir ci-dessous |
+| 6 | Forme reelle de la reponse JSON-2 | `smoke-test.sh` test 3 |
+| 7 | Compatibilite avec le mapping JULABA | `smoke-test.sh` test 3 |
+
+**Ecart connu, point 5.** `scripts/smoke-test.sh` exerce `search_read` mais pas
+`product.product/read`, alors que cette methode fait partie de l'allowlist de
+lecture d'`OdooRealClient`. En l'etat, le script ne peut donc pas confirmer le
+point 5. A ajouter avant de considerer le jalon comme entierement couvert.
+
+### Regle de sequencement
+
+Tant que ce smoke test reel n'est pas vert, **aucune ecriture Odoo
+supplementaire n'est developpee** et `ODOO_REAL_WRITE_ENABLED` reste `false`.
+Instance reelle d'abord, code ensuite.
