@@ -220,14 +220,16 @@ uniquement ; une mutation, elle, ne serait jamais rejouee automatiquement.
 Ce verrou est **cote client JULABA**. Il ne dit rien des droits que la cle Odoo
 possede en propre — voir "Limitation de securite" ci-dessous.
 
-### Hypothese restant a confirmer
+### Forme de la reponse JSON-2 — confirmee
 
 `OdooRealClient` suppose que le corps de la reponse JSON-2 **est** directement le
 resultat de la methode, sans enveloppe facon ancien JSON-RPC
 (`{jsonrpc, result, id}`). Les tests contractuels
-(`backend/test/unit/odoo-gateway.contract.spec.ts`) figent cette hypothese, mais
-seule une instance reelle peut la valider. C'est l'un des objets du smoke test
-reel.
+(`backend/test/unit/odoo-gateway.contract.spec.ts`) figent cette hypothese.
+
+**Elle a ete validee sur une instance Odoo 19 reelle.** La racine de la reponse
+est une liste JSON nue ; aucune cle `jsonrpc` ni `result` n'est presente. Voir
+"Etat de validation" ci-dessous.
 
 ## Limitation de securite — avant production
 
@@ -295,18 +297,54 @@ docker compose down -v             # arret ET destruction des donnees
 
 ## Etat de validation
 
-La stack a ete ecrite et verifiee statiquement : syntaxe shell et YAML, rendu de
-la configuration, et logique de validation du smoke test testee sur des donnees
-simulees (cas conforme et cas en echec). Les comportements d'Odoo 19 documentes
-dans ce fichier ont ete lus dans le source de la branche `19.0`, pas supposes.
+Deux niveaux distincts, a ne pas confondre : le **contrat Odoo 19** est valide,
+le **packaging Docker** ne l'est pas encore.
 
-Elle **n'a pas pu etre executee de bout en bout** dans l'environnement ou elle a
-ete redigee : le telechargement de l'image `odoo:19` y est bloque par la
-politique de sortie reseau.
+### Valide sur Odoo Server 19.0
 
-### Prochain jalon : le smoke test reel
+Execute contre une instance Odoo 19 reelle, installee **depuis les sources**
+(branche `19.0`) avec PostgreSQL 16.13 — et non depuis l'image `odoo:19`, dont
+le telechargement etait bloque par la politique de sortie reseau de
+l'environnement de redaction. Base `julaba_poc`, modules
+`point_of_sale,stock,sale,account`, donnees de demonstration : **67 modules
+charges, aucune erreur**.
 
-Executer, sur un poste ou un VPS ou Docker Hub est accessible :
+`scripts/create_api_key.py` et `scripts/smoke-test.sh` ont ete executes **sans
+aucune modification**. `smoke-test.sh` sort en code 0.
+
+| Point | Resultat observe |
+|---|---|
+| Creation de la cle API | utilisateur `julaba_api` cree, cle de scope `rpc` generee |
+| Authentification Bearer | **401** sans cle, **200** avec cle |
+| `product.product/search_read` reel | 200, 5 produits retournes |
+| `product.product/read` reel, via `ids` | 200, 1 enregistrement pour 1 id demande |
+| Forme de la reponse JSON-2 | liste JSON **nue**, sans enveloppe `{jsonrpc, result, id}` |
+| Mapping `OdooProductRecord` | 5/5 produits conformes, projection `versJulaba()` correcte |
+| Coherence `qty_available` | verifiee aussi hors valeur nulle : produit `id=20`, **`500.0` par `search_read` et par `read`** |
+
+Ce passage reel a fait tomber deux defauts qu'aucune relecture statique n'avait
+vus : le parsing de `.env.example` et l'acces en lecture au stock (voir
+"Limitation de securite" plus haut). Les deux sont corriges, et le smoke test
+est repasse vert apres correction.
+
+### Non encore valide : le packaging Docker, uniquement
+
+Rien de ce qui suit n'a ete exerce. L'installation depuis les sources ne dit
+**rien** de ces points :
+
+- le `docker pull` et le demarrage de l'image `odoo:19` ;
+- les healthchecks des deux services ;
+- le comportement de l'entrypoint officiel de l'image ;
+- le parsing des parametres `db_*` de `odoo.conf` par cet entrypoint ;
+- l'execution integrale de `scripts/init.sh` dans cette stack Docker.
+
+**La stack Docker n'est donc pas validee.** Le contrat JSON-2 qu'elle doit
+reproduire, lui, l'est. La seule question ouverte est de savoir si le packaging
+reproduit fidelement ce contrat.
+
+### Jalon restant
+
+Sur un poste ou un VPS ou Docker Hub est accessible :
 
 ```bash
 cd infra/odoo-poc
@@ -315,26 +353,13 @@ cp .env.example .env && $EDITOR .env
 ./scripts/smoke-test.sh
 ```
 
-Ce test reel est ce qui doit confirmer, et rien d'autre ne peut le remplacer :
-
-| # | A confirmer | Couvert par |
-|---|---|---|
-| 1 | Demarrage d'Odoo 19 | `init.sh` etape 4 |
-| 2 | Creation de la cle API | `init.sh` etape 5 |
-| 3 | Authentification Bearer | `smoke-test.sh` tests 1 et 2 |
-| 4 | `product.product/search_read` reel | `smoke-test.sh` test 2 |
-| 5 | `product.product/read` reel | `smoke-test.sh` test 4 |
-| 6 | Forme reelle de la reponse JSON-2 | `smoke-test.sh` test 3 |
-| 7 | Compatibilite avec le mapping JULABA | `smoke-test.sh` test 3 |
-
-Les quatre tests de `smoke-test.sh` couvrent les deux methodes de l'allowlist de
-lecture d'`OdooRealClient` : refus anonyme (401), `search_read` authentifie,
-conformite de la reponse au mapper, puis `read` sur un produit issu du
-`search_read` avec controle de coherence du `qty_available` entre les deux
-appels. Aucun point du tableau n'est laisse de cote.
+Un echec a ce stade sera a chercher du cote image ou entrypoint, pas du cote
+JSON-2.
 
 ### Regle de sequencement
 
-Tant que ce smoke test reel n'est pas vert, **aucune ecriture Odoo
-supplementaire n'est developpee** et `ODOO_REAL_WRITE_ENABLED` reste `false`.
-Instance reelle d'abord, code ensuite.
+**Aucune ecriture Odoo supplementaire n'est developpee** et
+`ODOO_REAL_WRITE_ENABLED` reste `false` tant que le passage Docker reel ci-dessus
+n'a pas eu lieu. Le contrat JSON-2 etant desormais prouve, le verrou restant
+porte sur le packaging, plus sur le protocole. Instance reelle d'abord, code
+ensuite.
