@@ -12,6 +12,9 @@ Deux points verifies directement dans le source d'Odoo 19, et non supposes :
 2. Sur `res.users`, le champ des groupes s'appelle `group_ids` en Odoo 19
    (`odoo/addons/base/models/res_users.py`, ligne 257), et non plus `groups_id`
    comme dans les versions precedentes.
+3. `base.group_user` seul ne suffit PAS a lire le catalogue tel que JULABA le
+   consomme : voir le commentaire sur les groupes ci-dessous. Constate sur une
+   vraie instance Odoo 19, pas deduit.
 
 La cle est affichee UNE SEULE FOIS, prefixee par `JULABA_ODOO_API_KEY=` :
 Odoo n'en stocke qu'un hash, elle n'est jamais relisible ensuite.
@@ -29,21 +32,41 @@ key_days = int(os.environ.get("ODOO_API_KEY_DAYS") or 90)
 # `env` est fourni par odoo shell, en SUPERUSER_ID.
 users = env["res.users"].sudo()
 
+# Droits strictement necessaires a la LECTURE du catalogue tel que JULABA le
+# consomme, et rien de plus :
+#
+# - `base.group_user` : utilisateur interne, lecture de product.product.
+# - `stock.group_stock_user` : indispensable des que `qty_available` est
+#   demande. Ce champ n'est pas stocke : il est calcule par
+#   `_compute_quantities_dict` (addons/stock/models/product.py), qui agrege
+#   `stock.move`. Sans droit de lecture sur stock.move, un search_read
+#   incluant `qty_available` echoue en 403 AccessError, alors meme que la
+#   lecture de product.product est autorisee. Constate sur une instance Odoo 19
+#   reelle : c'est le premier appel du smoke test qui tombait.
+#
+# Aucun droit d'ecriture n'est accorde : le POC est en lecture seule et
+# ODOO_REAL_WRITE_ENABLED doit rester false cote backend JULABA.
+GROUPES_REQUIS = ["base.group_user", "stock.group_stock_user"]
+
 user = users.search([("login", "=", login)], limit=1)
+ids_groupes = [env.ref(xmlid).id for xmlid in GROUPES_REQUIS]
+
 if user:
     print(f"[info] utilisateur '{login}' deja present (id={user.id})")
-    user.write({"password": password})
+    # Les groupes sont reappliques, pas seulement poses a la creation : un
+    # utilisateur issu d'une execution anterieure sans stock.group_stock_user
+    # doit etre repare par un simple rejeu du script.
+    user.write({"password": password, "group_ids": [(6, 0, ids_groupes)]})
 else:
-    # Utilisateur interne simple. Le POC est en LECTURE SEULE sur Odoo :
-    # `base.group_user` suffit pour lire product.product, et rien de plus
-    # n'est accorde tant qu'aucune ecriture n'est au programme.
     user = users.create({
         "name": name,
         "login": login,
         "password": password,
-        "group_ids": [(6, 0, [env.ref("base.group_user").id])],
+        "group_ids": [(6, 0, ids_groupes)],
     })
     print(f"[info] utilisateur '{login}' cree (id={user.id})")
+
+print(f"[info] groupes appliques : {', '.join(GROUPES_REQUIS)}")
 
 # Une cle Odoo n'est lisible qu'a la generation. Rejouer le script doit donc
 # produire une cle utilisable : on revoque l'homonyme devenue illisible.
