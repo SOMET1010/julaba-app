@@ -146,7 +146,6 @@ export class OdooGatewayService {
           product_id: cmd.odooProductId,
           product_qty: cmd.quantite,
           type: cmd.type,
-          ...(cmd.simulerErreur ? { _simulerErreur: true } : {}),
         });
         return this.journal.upsert({
           operationId: cmd.operationId,
