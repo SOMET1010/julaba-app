@@ -356,6 +356,11 @@ cp .env.example .env && $EDITOR .env
 Un echec a ce stade sera a chercher du cote image ou entrypoint, pas du cote
 JSON-2.
 
+Une fois ce passage fait, le test suivant est d'un autre ordre : brancher le
+backend JULABA lui-meme sur cette instance, via les routes `/odoo-poc/*`. Ce
+protocole-la vit dans `docs/ODOO-SMOKE-TEST-READONLY.md` — ce README couvre la
+stack et le contrat bas niveau, ce document couvre l'integration backend.
+
 ### Regle de sequencement
 
 **Aucune ecriture Odoo supplementaire n'est developpee** et
