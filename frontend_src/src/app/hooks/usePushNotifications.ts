@@ -14,8 +14,15 @@ export function usePushNotifications(userId: string | null) {
   useEffect(() => {
     if (!userId) return;
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    // Ne pas réclamer la permission native (fenêtre système, hors de notre
+    // contrôle) dans le même instant que la connexion — elle s'empilait avec
+    // la proposition de reconnaissance et donnait l'impression de plusieurs
+    // popups inutiles au lancement (retour terrain). Un court délai suffit à
+    // les dérouler l'une après l'autre plutôt que toutes en même temps.
+    const delai = setTimeout(() => { void registerPush(); }, 6000);
+    return () => clearTimeout(delai);
 
-    const registerPush = async () => {
+    async function registerPush() {
       try {
         // 1. Enregistrer le Service Worker
         const registration = await navigator.serviceWorker.register('/sw.js');
@@ -44,8 +51,6 @@ export function usePushNotifications(userId: string | null) {
       } catch (err) {
         void err;
       }
-    };
-
-    registerPush();
+    }
   }, [userId]);
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Fingerprint } from 'lucide-react';
+import { Fingerprint, X } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { registerWebAuthn } from '../../hooks/useWebAuthn';
 import { doitProposerReconnaissance, marquerBiometrie, noterRefusProposition } from '../../services/comptesMemorises';
@@ -73,6 +73,10 @@ export function PropositionReconnaissance() {
     }
   };
 
+  // Toute façon de quitter la proposition vaut refus mémorisé : sans ça, une
+  // marchande qui l'ignore (change d'écran, ferme l'appli) se la voit reposer
+  // À CHAQUE lancement — contraire à « une seule proposition » déjà documenté
+  // ci-dessus, et vécu comme un popup qui « apparaît et disparaît » pour rien.
   const repondreNon = () => {
     try { noterRefusProposition(window.localStorage, phoneRef.current); } catch { /* ignore */ }
     if (guidageVocal()) speak('D\'accord, on ne change rien.');
@@ -86,11 +90,16 @@ export function PropositionReconnaissance() {
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
           role="dialog" aria-modal="true" aria-label="Tata Nanti Lou propose de te reconnaître"
+          onClick={(e) => { if (e.target === e.currentTarget) repondreNon(); }}
         >
           <motion.div
             initial={{ y: 60 }} animate={{ y: 0 }} exit={{ y: 60 }} transition={{ type: 'spring', damping: 28 }}
-            style={{ width: '100%', maxWidth: 480, background: '#fff', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: '22px 20px calc(24px + env(safe-area-inset-bottom))', textAlign: 'center' }}
+            style={{ width: '100%', maxWidth: 480, background: '#fff', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: '22px 20px calc(24px + env(safe-area-inset-bottom))', textAlign: 'center', position: 'relative' }}
           >
+            <button type="button" onClick={repondreNon} aria-label="Fermer"
+              style={{ position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,0,0,0.06)', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+              <X size={16} color="#8A5A34" />
+            </button>
             <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(198,106,44,0.1)', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
               <Fingerprint style={{ width: 32, height: 32, color: '#B74725' }} />
             </div>

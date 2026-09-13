@@ -215,7 +215,6 @@ export class NotificationsController {
     const role = req.user.role;
     if (role === 'marchand') {
       await this.alertesSvc.checkStocksFaibles(userId);
-      await this.alertesSvc.checkJourneeNonOuverte(userId);
     } else if (role === 'producteur') {
       await this.alertesSvc.checkRecoltesProches(userId);
     }

@@ -93,32 +93,6 @@ export class AlertesService {
     }
   }
 
-  // ── Vérifier journée non ouverte ───────────────────────────
-  async checkJourneeNonOuverte(userId: string): Promise<void> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const sessions = await this.dataSource.query(`
-      SELECT COUNT(*) FROM caisse_sessions
-      WHERE marchand_id = $1 AND date >= $2::date
-    `, [userId, today.toISOString()]);
-
-    if (parseInt(sessions[0].count) === 0) {
-      const deja = await this.dejaNotifieAujourdhui(userId, 'journee_non_ouverte');
-      if (!deja) {
-        await this.creerNotif({
-          userId,
-          type: 'journee_non_ouverte',
-          titre: 'Ouvre ta journée',
-          message: 'Ta caisse n\'est pas encore activée. Ouvre ta journée pour commencer à vendre !',
-          priority: 'high',
-          category: 'caisse',
-          icon: '🔓',
-        });
-      }
-    }
-  }
-
   // ── Vérifier récoltes proches (producteur) ─────────────────
   async checkRecoltesProches(userId: string): Promise<void> {
     const dans7jours = new Date();
@@ -255,11 +229,6 @@ export class AlertesService {
         await this.checkStocksFaibles(u.id);
       } catch (e: any) {
         this.logger.error(`[CRON] checkStocksFaibles ${u.id}: ${e.message}`);
-      }
-      try {
-        await this.checkJourneeNonOuverte(u.id);
-      } catch (e: any) {
-        this.logger.error(`[CRON] checkJourneeNonOuverte ${u.id}: ${e.message}`);
       }
     }
     for (const u of producteurs) {

@@ -826,10 +826,18 @@ export function useVoiceCore({
       else await ttsSpeak("Je n'ai rien entendu. Réessaie, parle un peu plus fort.", "french", "rien_entendu");
       return;
     } catch {
-      clearThinkingTimer(); setState("idle"); setLiveTranscript("");
-      await ttsSpeak(navigator.onLine
+      // #148 : cette erreur (moteur voix indisponible, ex. navigateur web sans
+      // sherpa-onnx natif) partait auparavant sur setState("idle") — l'écran
+      // redevenait silencieusement l'écran de repos, SANS le message d'erreur
+      // pourtant déjà écrit ci-dessous (VenteVocaleModal.tsx n'affiche la carte
+      // d'erreur que si state === "error"). Résultat vécu : « on dirait que rien
+      // n'enregistre », alors que Tata avait bien une explication à donner.
+      clearThinkingTimer();
+      const msg = navigator.onLine
         ? "Je n'ai pas réussi à préparer ta voix. Vérifie le réseau et réessaie."
-        : "Je n'ai pas réussi à t'écouter, réessaie.");
+        : "Je n'ai pas réussi à t'écouter, réessaie.";
+      setError(msg); setState("error"); setLiveTranscript("");
+      await ttsSpeak(msg);
       return;
     }
   }, [handleResponse, stopSilenceDetection, startThinkingPhrases, clearThinkingTimer, answerQuestion]);
