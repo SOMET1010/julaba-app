@@ -8,6 +8,7 @@ Perimetre volontairement minimal. Ce que cette stack prouve :
 
 ```
 JULABA -> OdooRealClient.execute() -> POST /json/2/product.product/search_read
+                                   -> POST /json/2/product.product/read
        -> Odoo 19 -> versJulaba() -> catalogue JULABA
 ```
 
@@ -138,6 +139,21 @@ curl -X POST "http://127.0.0.1:8069/json/2/product.product/search_read" \
   -d '{"domain": [], "fields": ["id","name","list_price","qty_available","default_code"], "limit": 5}'
 ```
 
+Sur une methode de recordset comme `read`, ce sont les enregistrements vises qui
+se passent par la cle nommee `ids` :
+
+```bash
+curl -X POST "http://127.0.0.1:8069/json/2/product.product/read" \
+  -H "Authorization: Bearer $ODOO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"ids": [1], "fields": ["id","name","qty_available"]}'
+```
+
+Convention verifiee dans les tests officiels d'Odoo 19
+(`odoo/addons/test_http/tests/test_webjson2.py`) : un `read` sans `ids` renvoie
+`[]`, et un `create` accompagne d'`ids` est refuse
+(`cannot call ... with ids`).
+
 ## Lien avec le backend JULABA
 
 `OdooRealClient` **existe deja** sur `main`
@@ -258,14 +274,15 @@ Ce test reel est ce qui doit confirmer, et rien d'autre ne peut le remplacer :
 | 2 | Creation de la cle API | `init.sh` etape 5 |
 | 3 | Authentification Bearer | `smoke-test.sh` tests 1 et 2 |
 | 4 | `product.product/search_read` reel | `smoke-test.sh` test 2 |
-| 5 | `product.product/read` reel | **pas encore couvert** — voir ci-dessous |
+| 5 | `product.product/read` reel | `smoke-test.sh` test 4 |
 | 6 | Forme reelle de la reponse JSON-2 | `smoke-test.sh` test 3 |
 | 7 | Compatibilite avec le mapping JULABA | `smoke-test.sh` test 3 |
 
-**Ecart connu, point 5.** `scripts/smoke-test.sh` exerce `search_read` mais pas
-`product.product/read`, alors que cette methode fait partie de l'allowlist de
-lecture d'`OdooRealClient`. En l'etat, le script ne peut donc pas confirmer le
-point 5. A ajouter avant de considerer le jalon comme entierement couvert.
+Les quatre tests de `smoke-test.sh` couvrent les deux methodes de l'allowlist de
+lecture d'`OdooRealClient` : refus anonyme (401), `search_read` authentifie,
+conformite de la reponse au mapper, puis `read` sur un produit issu du
+`search_read` avec controle de coherence du `qty_available` entre les deux
+appels. Aucun point du tableau n'est laisse de cote.
 
 ### Regle de sequencement
 
