@@ -1434,7 +1434,7 @@ export function GestionStock() {
           <VenteVocaleModal
             isOpen={showVente}
             onClose={() => setShowVente(false)}
-            initialProduct={selectedStock ? { nom: selectedStock.name, prix: selectedStock.salePrice, unite: selectedStock.unit } : null}
+            initialProduct={selectedStock ? { nom: selectedStock.name, prix: selectedStock.salePrice, unite: selectedStock.unit, image: selectedStock.image || getImageByNom(selectedStock.name) } : null}
           />
         </ObjectifProvider>
       </RaccourcisProvider>
