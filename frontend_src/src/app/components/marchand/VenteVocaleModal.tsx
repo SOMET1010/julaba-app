@@ -2,14 +2,13 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useLangPref } from "../../hooks/useLangPref";
 import { useVoiceCore } from "../../hooks/useVoiceCore";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Loader, CheckCircle, AlertCircle, ShieldCheck, WifiOff, ChevronRight, Mic, Volume2 } from "lucide-react";
+import { X, Loader, CheckCircle, AlertCircle, ShieldCheck, WifiOff, Mic, Volume2, Keyboard, ShoppingBasket } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useApp } from "../../contexts/AppContext";
 import { useRaccourcis } from "../../contexts/RaccourcisContext";
 import { useCaisse } from "../../contexts/CaisseContext";
 import { useObjectif, ObjectifProvider } from "../../contexts/ObjectifContext";
 import { useStock, type StockItem } from "../../contexts/StockContext";
-import { InstallerOffline } from "../../voice-offline/InstallerOffline";
 import { resumeIncidentHorsLigne } from "../../voice-offline/incidentsHorsLigne";
 import { apparierProduit, construireLigneVocale, doitProposerCreation, noterRefusCreation } from "../../services/venteVocale";
 import { avertissementRupture } from "../../services/ruptureStock";
@@ -31,7 +30,7 @@ interface Props {
   /** Produit déjà sélectionné par la marchande (ex. depuis sa fiche) : évite de lui
    * faire redire un nom qu'elle vient de toucher — on ouvre direct la saisie guidée
    * avec le nom et le prix déjà remplis, il ne reste que la quantité à confirmer. */
-  initialProduct?: { nom: string; prix: number; unite?: string } | null;
+  initialProduct?: { nom: string; prix: number; unite?: string; image?: string } | null;
 }
 
 export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Props) {
@@ -56,11 +55,6 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
   const [creationEnCours, setCreationEnCours] = useState(false);
   // Repli tactile (SPEC §8) : « saisir sans parler » — même parcours guidé au doigt.
   const [saisieOuverte, setSaisieOuverte] = useState(false);
-  // Exemples écrits (SPEC : retour terrain « 3/4 de la page en écrit, j'ai
-  // décroché ») : repliés par défaut pour TOUT LE MONDE — l'écran s'ouvre sur la
-  // photo + la voix, pas sur trois pavés de texte. Toujours disponibles en un tap
-  // pour qui veut vérifier une formulation.
-  const [showExamples, setShowExamples] = useState(false);
   // La ligne confirmée va au PANIER (jamais enregistrée ici) — l'encaissement reste
   // le chemin tactile existant.
   //
@@ -91,7 +85,7 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
   }, []);
 
   const { state, response, pendingResponse, transcript, liveTranscript, error, volume,
-    handleMicClick, reset, resetHistory, confirmAction, cancelAction, isSpeaking, sendText,
+    handleMicClick, reset, resetHistory, confirmAction, cancelAction, isSpeaking,
     pendingCount, isReplaying,
   } = useVoiceCore({
     maxRecordingSeconds: 60,
@@ -193,7 +187,7 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
   // #2 : pendingCount/isReplaying viennent de l'UNIQUE file de useVoiceCore
   // (plus de seconde instance qui rejouait la file en double à la reconnexion).
   useEffect(() => { if (!isOpen) resetHistory(); }, [isOpen, resetHistory]);
-  useEffect(() => { if (!isOpen) { setPropositionProduit(null); setSaisieOuverte(false); setShowExamples(false); } }, [isOpen]);
+  useEffect(() => { if (!isOpen) { setPropositionProduit(null); setSaisieOuverte(false); } }, [isOpen]);
   // Retour terrain : la marchande ne comprenait ni qu'il fallait appuyer sur la
   // photo, ni pourquoi parler à « Tata Nanti Lou ». Un mot dit à voix haute à
   // l'ouverture vaut mieux que les mêmes explications écrites en haut de l'écran.
@@ -240,19 +234,6 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
   const isIdle = state === "idle" && !response;
 
   const intentEmoji: Record<string, string> = { vendre: "🛒", consulter_solde: "💰", consulter_ventes: "📊", ajouter_stock: "📦", ouvrir_journee: "☀️", fermer_journee: "🌙", depense: "📒", commandes: "📋", marche: "🏪", keiwa: "💳", inconnu: "🤔" };
-  // Produit déjà choisi (fiche produit) : l'exemple mis en avant reprend SON nom
-  // et SON prix — elle sait exactement quoi dire pour que la vente soit bien
-  // rattachée à ce produit (stock décrémenté, marge réelle), sans avoir à deviner.
-  const examples = initialProduct ? [
-    { text: `J'ai vendu 1 ${initialProduct.nom} à ${initialProduct.prix.toLocaleString('fr-FR')} F`, desc: "Enregistrer la vente", highlight: true },
-    { text: "Combien j'ai fait ?", desc: "Consulter le solde", highlight: false },
-    { text: "Ouvre ma journée", desc: "Démarrer la caisse", highlight: false },
-  ] : [
-    { text: "J'ai vendu 3 tomates à 500 F", desc: "Enregistrer une vente", highlight: true },
-    { text: "Combien j'ai fait ?", desc: "Consulter le solde", highlight: false },
-    { text: "Ajoute 10 piments au stock", desc: "Mettre à jour l'inventaire", highlight: false },
-    { text: "Ouvre ma journée", desc: "Démarrer la caisse", highlight: false },
-  ];
   const bars = Array.from({ length: 11 }, (_, i) => {
     const active = isRecording || isSpeaking;
     const baseH = isRecording ? Math.max(6, (volume / 100) * 40 + Math.sin(i * 0.8) * 10) : isSpeaking ? Math.max(5, 20 + Math.sin(i * 1.4) * 12) : 3;
@@ -390,41 +371,40 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
               ))}
             </div>
 
-            <AnimatePresence mode="wait">
-              <motion.p key={isRecording && liveTranscript ? liveTranscript : state}
-                initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                style={{ color: "rgba(255,255,255,0.92)", fontSize: 15, fontWeight: 700, textAlign: "center", margin: 0 }}>
-                {isRecording && liveTranscript ? `"${liveTranscript}"` : statusLabel}
-              </motion.p>
-            </AnimatePresence>
+            {/* Retour terrain sans appel : « l'écran n'est pas pour quelqu'un qui sait
+                lire ». Ce texte de statut redisait par écrit ce que le message vocal
+                d'ouverture + le badge micro montrent déjà — masqué à l'accueil ; gardé
+                pour les autres états où il y a une vraie info neuve (ex. transcription
+                en direct pendant qu'elle parle, utile à qui peut la relire). */}
+            {!isIdle && (
+              <AnimatePresence mode="wait">
+                <motion.p key={isRecording && liveTranscript ? liveTranscript : state}
+                  initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                  style={{ color: "rgba(255,255,255,0.92)", fontSize: 15, fontWeight: 700, textAlign: "center", margin: 0 }}>
+                  {isRecording && liveTranscript ? `"${liveTranscript}"` : statusLabel}
+                </motion.p>
+              </AnimatePresence>
+            )}
 
           </div>
 
           {/* CORPS BLANC */}
           <div className="px-5 py-5 flex flex-col gap-4">
-            {/* Retour terrain direct : « 3/4 de la page en écrit, j'ai décroché ». Cet
-                écran EST le chemin voix — le pavé « PROCHAINE ÉTAPE » redisait en texte
-                ce que la photo + le message vocal d'ouverture disent déjà. Remplacé par
-                un seul bouton, gros, icône + un mot : réentendre plutôt que relire.
-                (Le mode texte complet reste : « Caisse complète » plus bas.) */}
-            {isIdle && (
-              <motion.button whileTap={{ scale: 0.96 }} onClick={() => speak(introLigne())} aria-label="Réécouter l'explication"
-                style={{ width: "100%", padding: "16px 0", borderRadius: 16, border: `1.5px solid ${P}40`, background: "#FFF8F0",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", fontFamily: "inherit" }}>
-                <Volume2 size={20} color={P} />
-                <span style={{ fontSize: 15, fontWeight: 800, color: P }}>Réécouter</span>
-              </motion.button>
-            )}
-            {initialProduct && (
+            {/* Retour terrain sans appel : « l'écran n'est pas pour quelqu'un qui sait
+                lire » — aucune phrase visible n'est admise ici. Le produit déjà choisi
+                (fiche produit) se montre en PHOTO + un gros chiffre (le prix), jamais en
+                étiquette à lire. Le nom reste en attribut d'accessibilité (aria-label),
+                pas à l'écran. */}
+            {isIdle && initialProduct && (
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                style={{ display: "flex", alignItems: "center", gap: 10, background: PL, border: `1.5px solid ${P}40`, borderRadius: 16, padding: "10px 14px" }}>
-                <span aria-hidden="true" style={{ fontSize: 20 }}>🛒</span>
-                <div>
-                  <p style={{ fontSize: 10, fontWeight: 800, color: P, letterSpacing: "0.08em", margin: 0 }}>PRODUIT SÉLECTIONNÉ</p>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", margin: "2px 0 0" }}>
-                    {initialProduct.nom} — {initialProduct.prix.toLocaleString("fr-FR")} FCFA{initialProduct.unite ? ` / ${initialProduct.unite}` : ""}
-                  </p>
-                </div>
+                aria-label={`Produit sélectionné : ${initialProduct.nom}`}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, background: PL, border: `1.5px solid ${P}40`, borderRadius: 16, padding: "10px 14px" }}>
+                {initialProduct.image && (
+                  <img src={initialProduct.image} alt={initialProduct.nom} style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
+                )}
+                <span style={{ fontSize: 26, fontWeight: 900, color: P, fontVariantNumeric: "tabular-nums" }}>
+                  {initialProduct.prix.toLocaleString("fr-FR")} F
+                </span>
               </motion.div>
             )}
             {transcript && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#F9FAFB", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "12px 14px" }}><p style={{ fontSize: 10, fontWeight: 700, color: "var(--encre-4)", letterSpacing: "0.1em", marginBottom: 4 }}>TU AS DIT</p><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937" }}>"{transcript}"</p></motion.div>)}
@@ -450,64 +430,45 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
             {isError && error && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 16, padding: "12px 14px" }}><p style={{ fontSize: 13, fontWeight: 600, color: "#B91C1C" }}>{error}</p></motion.div>)}
             {isConfirming && pendingResponse && (<motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ background: "#F6F0E4", border: `2px solid ${P}`, borderRadius: 20, padding: 16 }}><div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}><ShieldCheck style={{ width: 18, height: 18, color: P }} /><p style={{ fontSize: 12, fontWeight: 700, color: P }}>Confirmer l'action</p></div><p style={{ fontSize: 14, fontWeight: 600, color: "#1F2937", marginBottom: 12 }}>{pendingResponse.response || pendingResponse.reponse}</p>{pendingResponse.resume_action && (<p style={{ fontSize: 11, fontWeight: 700, color: "var(--encre-4)", letterSpacing: "0.1em", marginBottom: 12 }}>{pendingResponse.resume_action}</p>)}<div style={{ display: "flex", gap: 10 }}><motion.button whileTap={{ scale: 0.97 }} onClick={cancelAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, border: `2px solid ${P}`, color: P, background: "white", cursor: "pointer" }}>Non</motion.button><motion.button whileTap={{ scale: 0.97 }} onClick={confirmAction} style={{ flex: 1, padding: "12px 0", borderRadius: 14, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Oui, confirmer</motion.button></div></motion.div>)}
             {(isDone || isError) && (<motion.button whileTap={{ scale: 0.97 }} onClick={reset} style={{ width: "100%", padding: "14px 0", borderRadius: 16, fontWeight: 700, fontSize: 14, color: "white", background: `linear-gradient(135deg,${P},${PD})`, cursor: "pointer", border: "none" }}>Reparler à Tata Nanti Lou</motion.button>)}
-            {/* Exemples écrits : repliés par défaut (cf. état showExamples ci-dessus).
-                Lien discret pour les déplier — jamais imposés à l'ouverture. */}
-            {isIdle && !showExamples && (
-              <button type="button" onClick={() => setShowExamples(true)}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: "none", border: "none", color: "#B0B0B0", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", padding: "2px 0" }}>
-                Voir des exemples écrits <ChevronRight size={13} />
-              </button>
-            )}
-            {isIdle && showExamples && (<div><p style={{ fontSize: 10, fontWeight: 700, color: "#C5C5C5", letterSpacing: "0.1em", marginBottom: 10 }}>CE QUE TU PEUX DIRE — appuie sur 🔊 pour écouter</p><div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{examples.map((ex, i) => (<motion.div key={i} whileTap={{ scale: 0.97 }} onClick={() => sendText(ex.text)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sendText(ex.text); } }} role="button" tabIndex={0} style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 14px", borderRadius: 14, cursor: "pointer", background: ex.highlight ? "#FFF3EB" : "#F8F8F8", border: ex.highlight ? "1px solid #FDDEC4" : "1px solid #F0F0F0", textAlign: "left", width: "100%" }}>
-              {/* Écouter SANS envoyer la commande : elle entend la phrase avant de décider de la dire ou de la taper. */}
-              <motion.button whileTap={{ scale: 0.9 }} onClick={(e) => { e.stopPropagation(); speak(ex.text); }} aria-label={`Écouter : ${ex.text}`}
-                style={{ width: 34, height: 34, flexShrink: 0, borderRadius: "50%", border: "none", background: ex.highlight ? "#FDDEC4" : "#EDEDED", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                <Volume2 size={15} color={ex.highlight ? "#C4703A" : "#888"} />
-              </motion.button>
-              <div style={{ flex: 1 }}><p style={{ fontSize: 15, fontWeight: 700, color: ex.highlight ? "#6B2400" : "#111", margin: 0 }}>{ex.text}</p><p style={{ fontSize: 12, color: ex.highlight ? "#C4703A" : "#999", margin: "3px 0 0" }}>{ex.desc}</p></div><ChevronRight style={{ color: ex.highlight ? "#C4703A" : "#D0D0D0", width: 16, height: 16, flexShrink: 0 }} /></motion.div>))}</div></div>)}
-            {isIdle && (
-              <div style={{ marginTop: 2 }}>
-                {saisieOuverte ? (
-                  <SaisieGuidee
-                    onValider={ajouterLigneAuPanier}
-                    apparier={(nom) => {
-                      const p = apparierProduit(nom, products);
-                      return p ? { produitId: p.id, nomCatalogue: p.nom, prixCatalogue: p.prix ?? null, unite: p.unite || 'unité' } : null;
-                    }}
-                    initialProduit={initialProduct?.nom}
-                    initialPrix={initialProduct?.prix}
-                  />
-                ) : (
-                  <motion.button whileTap={{ scale: 0.97 }} onClick={() => setSaisieOuverte(true)}
-                    style={{ width: "100%", padding: "13px 0", borderRadius: 14, fontWeight: 800, fontSize: 14, cursor: "pointer",
-                      background: "white", border: `1.5px solid ${P}55`, color: P, fontFamily: "inherit" }}>
-                    ✍️ Saisir sans parler
-                  </motion.button>
-                )}
-              </div>
-            )}
-            {/* Caisse complète (panier riche, crédit, mobile money) : un SEUL geste pour
-                vendre depuis l'accueil (Tata Nanti Lou), la caisse à plusieurs articles
-                se rejoint DEPUIS ici, plutôt qu'un second bouton concurrent sur l'accueil
-                qui faisait deux écrans différents pour « vendre » (retour terrain). */}
-            {isIdle && (
-              <motion.button whileTap={{ scale: 0.97 }} onClick={() => { navigate('/marchand/caisse'); onClose(); }}
-                style={{ width: "100%", padding: "13px 14px", borderRadius: 14, display: "flex", alignItems: "center", gap: 10,
-                  background: cart.length > 0 ? "#EAF7EE" : "#F8F8F8", border: cart.length > 0 ? "1.5px solid #A8D8B9" : "1px solid #F0F0F0",
-                  cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
-                <span style={{ fontSize: 18 }} aria-hidden="true">🧺</span>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 13, fontWeight: 800, color: cart.length > 0 ? "#0E7A47" : "#555", margin: 0 }}>
-                    {cart.length > 0
-                      ? `Panier en cours : ${cart.reduce((s, i) => s + i.quantite, 0)} article${cart.reduce((s, i) => s + i.quantite, 0) > 1 ? "s" : ""} · ${Math.round(getTotalCart()).toLocaleString("fr-FR")} F`
-                      : "Plusieurs articles, crédit ou mobile money ?"}
-                  </p>
-                  <p style={{ fontSize: 11, color: cart.length > 0 ? "#2E6B4A" : "#999", margin: "2px 0 0" }}>Ouvrir la caisse complète</p>
+            {/* Rangée d'icônes SEULES — aucun mot imprimé. Nom de l'action en aria-label
+                pour l'accessibilité, jamais affiché. Les exemples écrits et le bandeau
+                « la voix marche dans l'appli installée » ont été retirés : ce sont des
+                PHRASES à lire, incompatibles avec cet écran (retour terrain direct). */}
+            {isIdle && (() => {
+              const nbItemsPanier = cart.reduce((s, i) => s + i.quantite, 0);
+              const iconBtn = (key: string, label: string, icon: React.ReactNode, onClick: () => void, active = false, badge?: number) => (
+                <motion.button key={key} whileTap={{ scale: 0.92 }} onClick={onClick} aria-label={label} title={label}
+                  style={{ position: "relative", width: 56, height: 56, borderRadius: "50%", flexShrink: 0,
+                    border: `1.5px solid ${active ? P : "#EDE7DE"}`, background: active ? P : "white",
+                    display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  {icon}
+                  {badge != null && badge > 0 && (
+                    <span aria-hidden="true" style={{ position: "absolute", top: -4, right: -4, minWidth: 20, height: 20, padding: "0 4px", borderRadius: 10,
+                      background: "#0E7A47", color: "white", fontSize: 11, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid white" }}>
+                      {badge}
+                    </span>
+                  )}
+                </motion.button>
+              );
+              return (
+                <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
+                  {iconBtn("reecouter", "Réécouter l'explication", <Volume2 size={22} color={P} />, () => speak(introLigne()))}
+                  {iconBtn("saisir", "Saisir sans parler", <Keyboard size={22} color={saisieOuverte ? "white" : P} />, () => setSaisieOuverte(v => !v), saisieOuverte)}
+                  {iconBtn("caisse", "Caisse complète", <ShoppingBasket size={22} color={nbItemsPanier > 0 ? "#0E7A47" : P} />, () => { navigate('/marchand/caisse'); onClose(); }, false, nbItemsPanier)}
                 </div>
-                <ChevronRight style={{ color: cart.length > 0 ? "#0E7A47" : "#D0D0D0", width: 16, height: 16, flexShrink: 0 }} />
-              </motion.button>
+              );
+            })()}
+            {isIdle && saisieOuverte && (
+              <SaisieGuidee
+                onValider={ajouterLigneAuPanier}
+                apparier={(nom) => {
+                  const p = apparierProduit(nom, products);
+                  return p ? { produitId: p.id, nomCatalogue: p.nom, prixCatalogue: p.prix ?? null, unite: p.unite || 'unité' } : null;
+                }}
+                initialProduit={initialProduct?.nom}
+                initialPrix={initialProduct?.prix}
+              />
             )}
-            {isIdle && (<div style={{ marginTop: 4 }}><InstallerOffline /></div>)}
           </div>
         </motion.div>
       </motion.div>
