@@ -23,6 +23,7 @@ import { CooperativesRestModule } from './cooperatives-rest/cooperatives-rest.mo
 import { TontinesModule } from './tontines/tontines.module';
 import { StocksRestModule } from './stocks-rest/stocks-rest.module';
 import { CaisseRestModule } from './caisse-rest/caisse-rest.module';
+import { OdooGatewayModule } from './odoo-gateway/odoo-gateway.module';
 import { InstitutionsModule } from './institutions/institutions.module';
 import { IdentificationsModule } from './identifications/identifications.module';
 import { MissionsModule } from './missions/missions.module';
@@ -115,6 +116,10 @@ import { ProtectionSocialeModule } from './protection-sociale/protection-sociale
     TontinesModule,
     StocksRestModule,
     CaisseRestModule,
+    // POC structurel Gateway Odoo — catalogue + stock consolidé uniquement,
+    // aucun branchement frontend, aucune écriture réelle (voir docs/
+    // ETUDE_ARCHITECTURE_JULABA_ODOO.md et backend/src/odoo-gateway/).
+    OdooGatewayModule,
     InstitutionsModule,
     IdentificationsModule,
     MissionsModule,
