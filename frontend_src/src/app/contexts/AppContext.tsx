@@ -797,7 +797,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } catch (error: any) {
         // #6 : ne plus perdre la transaction -> file durable, rejeu à la reconnexion.
         console.warn('[AppContext] addTransaction sync failed, mise en file:', error?.message);
-        try { await enfilerOperation(endpoint, payload); } catch (e) { void e; }
+        try { await enfilerOperation(endpoint, payload, user?.id || 'anon'); } catch (e) { void e; }
       }
     }
   };

@@ -6,10 +6,12 @@ import {
   synchroniser,
 } from './offlineCaisse';
 
+const UID = 'user-A';
 const store = memoryOutboxStore();
 await enfilerOperation(
   '/stocks/tomates-1',
   { quantite: 17, idempotency_key: 'stock-op-1' },
+  UID,
   store,
   'PATCH',
 );
@@ -17,7 +19,7 @@ await enfilerOperation(
 let received: unknown = null;
 const result = await synchroniser(async (endpoint, payload, method) => {
   received = { endpoint, payload, method };
-}, store);
+}, UID, store);
 
 assert.equal(result.ok, 1);
 assert.deepEqual(received, {
@@ -25,6 +27,6 @@ assert.deepEqual(received, {
   payload: { quantite: 17, idempotency_key: 'stock-op-1' },
   method: 'PATCH',
 });
-assert.equal((await operationsEnAttente(store)).length, 0);
+assert.equal((await operationsEnAttente(UID, store)).length, 0);
 
 console.log('offlineStock: OK');

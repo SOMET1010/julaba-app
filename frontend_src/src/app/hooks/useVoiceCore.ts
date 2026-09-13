@@ -378,6 +378,11 @@ export function useVoiceCore({
   // #2 : UNE seule instance de la file hors-ligne (ici). Avant, le modal en
   // créait une seconde -> les deux rejouaient la même file à la reconnexion ->
   // ventes offline dupliquées. On expose pendingCount/isReplaying à la place.
+  //
+  // currentUserId = context.userId (déjà fourni par chaque appelant, ex.
+  // VenteVocaleModal passe `userId: user?.id || ""`) : SANS lui, l'effet de
+  // rejeu du hook ne s'exécute jamais (garde volontaire, cf. useOfflineVoiceQueue),
+  // et un terminal partagé pourrait rejouer la file d'une autre marchande.
   const { enqueue, pendingCount: offlinePending, isReplaying: offlineReplaying } = useOfflineVoiceQueue(async (cmd) => {
     try {
       if (!sendTextRef.current) return false;
@@ -388,7 +393,7 @@ export function useVoiceCore({
     } catch {
       return false;
     }
-  });
+  }, context.userId || undefined);
 
   // ── Memoire adaptative intents ───────────────────────────────
   const addIntent = useCallback((intent: string) => {
@@ -948,9 +953,15 @@ try {
     }
   }, [state, isSpeaking, startRecording, stopRecording, clearThinkingTimer, trackTimeout]);
 
-  useEffect(() => {
-    sendTextRef.current = sendText;
-  }, [sendText]);
+  // Affectation SYNCHRONE (pas un useEffect) : la file hors-ligne
+  // (useOfflineVoiceQueue, appelée plus haut dans ce hook) peut tenter un
+  // rejeu dès son propre effet de montage, avant que les useEffect déclarés
+  // plus bas ici n'aient eu la chance de s'exécuter — un useEffect ici
+  // laissait sendTextRef.current à null pile au moment du tout premier rejeu
+  // après un démarrage à froid (queue déjà pleine + déjà en ligne), qui
+  // échouait alors silencieusement une fois pour rien. L'affectation directe
+  // pendant le rendu garantit que la ref est à jour avant TOUT effet.
+  sendTextRef.current = sendText;
 
   // Garde les refs de confirmation vocale à jour (appelées depuis processAudio).
   useEffect(() => { pendingResponseRef.current = pendingResponse; }, [pendingResponse]);
