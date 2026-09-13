@@ -797,7 +797,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } catch (error: any) {
         // #6 : ne plus perdre la transaction -> file durable, rejeu à la reconnexion.
         console.warn('[AppContext] addTransaction sync failed, mise en file:', error?.message);
-        try { await enfilerOperation(endpoint, payload, user?.id || 'anon'); } catch (e) { void e; }
+        // FAIL CLOSED : ce bloc ne s'exécute que si `user` est déjà vérifié
+        // truthy (garde plus haut) — `user.id` est donc un identifiant réel ici,
+        // jamais un secours 'anon'. Si enfilerOperation refuse malgré tout
+        // (garde défensive côté fonction), l'échec reste local à cette
+        // synchronisation best-effort — déjà journalisé plus haut.
+        try { await enfilerOperation(endpoint, payload, user?.id); } catch (e) { console.warn('[AppContext] mise en file refusée:', (e as Error)?.message); }
       }
     }
   };

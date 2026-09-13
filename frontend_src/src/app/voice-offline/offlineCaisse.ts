@@ -213,17 +213,40 @@ function defaultStore(): OutboxStore {
   return _defaultStore;
 }
 
+/** Un `userId` de secours (fallback 'anon', chaîne vide, etc.) n'est PAS une
+ *  preuve d'identité — accepter une telle valeur reviendrait à créer, dès la
+ *  mise en file, exactement l'opération « sans propriétaire fiable » que ce
+ *  cloisonnement doit empêcher. Correction post-revue (2e passe) :
+ *  `enfilerOperation` refuse maintenant explicitement toute valeur qui n'est
+ *  pas un identifiant réel. */
+function estUnUtilisateurReel(userId: unknown): userId is string {
+  return typeof userId === 'string' && userId.trim().length > 0 && userId !== 'anon';
+}
+
 /** Ajoute une opération à la file durable. Réutilise `idempotency_key` comme id
  *  si présente (envoi en ligne échoué), pour que le rejeu envoie la MÊME clé.
- *  `userId` (P0-1) : propriétaire de l'opération, OBLIGATOIRE — c'est lui qui
- *  protège contre le rejeu sous une autre session (terminal partagé). */
+ *
+ *  `userId` (P0-1) : propriétaire de l'opération, OBLIGATOIRE et RÉEL — c'est
+ *  lui qui protège contre le rejeu sous une autre session (terminal partagé).
+ *  FAIL CLOSED : `undefined`/`null`/`''`/`'anon'` sont refusés avec une erreur
+ *  explicite plutôt que silencieusement remplacés — une opération financière
+ *  ou de stock ne doit JAMAIS être créée sans propriétaire authentifié réel.
+ *  L'appelant doit empêcher l'action (ou la faire échouer visiblement) tant
+ *  que l'identité n'est pas disponible, pas la mettre en file sous un nom
+ *  générique. */
 export async function enfilerOperation(
   endpoint: OfflineEndpoint,
   payload: unknown,
-  userId: string,
+  userId: string | undefined | null,
   store: OutboxStore = defaultStore(),
   method: OfflineMethod = 'POST',
 ): Promise<string> {
+  if (!estUnUtilisateurReel(userId)) {
+    throw new Error(
+      `Opération hors-ligne refusée (${endpoint}) : aucun utilisateur authentifié réel. ` +
+      `Une opération financière ou de stock ne peut jamais être mise en file sous un propriétaire de secours ('anon' ou vide).`,
+    );
+  }
   const cle = (payload as { idempotency_key?: string } | null)?.idempotency_key;
   const op: OperationCaisse = { id: cle || uuid(), endpoint, method, payload, ts: Date.now(), userId };
   await store.enqueue(op);
@@ -299,10 +322,19 @@ export async function nbSansProprietaire(store: OutboxStore = defaultStore()): P
  * Elle est comptée à part (`sansProprietaire`) et reste consultable via
  * `operationsSansProprietaire`, pour un traitement/alerte manuel.
  *
- * @returns { ok, reste (actives, tous propriétaires confondus), echecs
- *   (lettres mortes, tous propriétaires confondus), ignorees (d'un AUTRE
+ * CLOISONNEMENT DES COMPTEURS (correction post-revue, 2e passe) : `reste` et
+ * `echecs` sont scopés à `currentUserId`, JAMAIS des comptes globaux tous
+ * comptes confondus — sinon une session pourrait comparer un « avant »
+ * mesuré pour elle-même à un « après » qui inclut les lettres mortes d'un
+ * AUTRE compte sur le même terminal (ex: A à 0 échec, B à 2 → une alerte
+ * fausse se déclencherait chez A). Toute métrique globale éventuelle doit
+ * porter un nom explicite séparé (voir `sansProprietaire`, déjà distinct) et
+ * ne jamais être présentée dans l'UX d'une session utilisateur.
+ *
+ * @returns { ok, reste (actives DE currentUserId uniquement), echecs
+ *   (lettres mortes DE currentUserId uniquement), ignorees (d'un AUTRE
  *   compte, non touchées), sansProprietaire (propriétaire inconnu, ni
- *   rejouée ni attribuée) }
+ *   rejouée ni attribuée — global par nature, nom explicite) }
  */
 export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
   poster: (endpoint: E, payload: unknown, method: OfflineMethod) => Promise<void>,
@@ -311,7 +343,7 @@ export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
 ): Promise<{ ok: number; reste: number; echecs: number; ignorees: number; sansProprietaire: number }> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return {
-      ok: 0, reste: await store.activeCount(), echecs: await store.deadCount(),
+      ok: 0, reste: await nbEnAttente(currentUserId, store), echecs: await nbEchecs(currentUserId, store),
       ignorees: 0, sansProprietaire: await nbSansProprietaire(store),
     };
   }
@@ -346,5 +378,8 @@ export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
       break; // réseau/serveur instable : on préserve l'ordre et on retentera
     }
   }
-  return { ok, reste: await store.activeCount(), echecs: await store.deadCount(), ignorees, sansProprietaire };
+  return {
+    ok, reste: await nbEnAttente(currentUserId, store), echecs: await nbEchecs(currentUserId, store),
+    ignorees, sansProprietaire,
+  };
 }
