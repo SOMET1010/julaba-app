@@ -156,7 +156,13 @@ export function MarcheVirtuel() {
   const [signalementLoading, setSignalementLoading] = useState(false);
 
   // ── Hook vocal unifié (STT OpenAI + TTS ElevenLabs) ────────────────────────
+  // userId (LOT 1 / P1-1) : seul call-site useVoiceCore de ce mini-audit avec
+  // un vrai onAction — sans lui, une commande vocale mise en file hors-ligne
+  // ici ne serait plus jamais rejouée automatiquement (garde de sécurité du
+  // hook partagé). L'effet touché reste local (panier en mémoire), pas une
+  // écriture serveur, mais autant fermer le cas plutôt que le laisser en trou.
   const { speak: voiceSpeak } = useVoiceCore({
+    context: { userId: appUser?.id },
     onAction: async (response) => {
       if (response.transcript) processVoiceCommand(response.transcript);
     },
