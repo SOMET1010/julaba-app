@@ -94,11 +94,15 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
     gradientTo: 'to-white',
     bgWarm: '#F6F0E4',
     greeting: 'Ouvre ta journée pour commencer',
+    // 3 destinations quotidiennes (au lieu de 4) : Marché et Commandes sont la
+    // même finalité (réapprovisionnement), fusionnées en « Acheter » — l'onglet
+    // « Historique » déjà présent dans MarcheVirtuel.tsx couvre le suivi des
+    // commandes passées. Le micro « Tata » n'est plus un item ici : il devient
+    // un bouton flottant distinct dans BottomBar.tsx (audit accueil/profil).
     bottomBar: {
       items: [
         { label: 'Accueil', path: '/marchand', icon: 'Home' },
-        { label: 'Marché', path: '/marchand/marche', icon: 'Store' },
-        { label: 'Commandes', path: '/marchand/commandes', icon: 'ShoppingCart' },
+        { label: 'Acheter', path: '/marchand/marche', icon: 'Store' },
         { label: 'Moi', path: '/marchand/profil', icon: 'User' },
       ],
     },
