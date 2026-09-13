@@ -50,8 +50,11 @@ export interface DependancesVendreVocalUnifie {
   /** Catalogue courant, pour l'appariement du nom dicté. */
   products: ProduitAppariable[];
   /** Effet métier ACTUEL (Lot 2) : ajoute une ligne au panier PARTAGÉ — même
-   * fonction que POSCaisse/ajouterLigneAuPanier, jamais une écriture séparée. */
-  addToCart: (produit: ProduitPourPanier, quantite: number) => void;
+   * fonction que POSCaisse/ajouterLigneAuPanier, jamais une écriture séparée.
+   * 3e argument : total EXACT dicté pour cette ligne (voir CartItem.totalExact
+   * dans CaisseContext.tsx) — en FCFA, 500/3 ne retombe pas juste ; `prix` n'est
+   * qu'un unitaire arrondi, c'est ce total qui doit faire foi pour le panier. */
+  addToCart: (produit: ProduitPourPanier, quantite: number, totalExact?: number) => void;
   /** Synthèse vocale — jamais appelée sans être gardée par `guidageVocalActif()`. */
   speak: (texte: string) => void;
   /** Retour haptique de succès (même geste que le chemin guidé). */
@@ -97,7 +100,9 @@ export function vendreVocalUnifie(
     // nom/prix/stock uniquement) mais le VRAI produit du catalogue l'a
     // toujours — repli sur 'Autre' uniquement si absent en pratique.
     const categorie = (produitCat as unknown as { categorie?: string }).categorie ?? 'Autre';
-    deps.addToCart({ ...produitCat, categorie, prix: ligne.prix, prix_promo: null, promo_fin: null }, quantite);
+    // `ligne.total` = montant dicté exact (voir construireLigneVocale) — jamais
+    // `ligne.prix * quantite`, qui rearrondirait un montant non divisible.
+    deps.addToCart({ ...produitCat, categorie, prix: ligne.prix, prix_promo: null, promo_fin: null }, quantite, ligne.total);
   } else {
     // Produit inconnu → ligne libre (comme « Autre article »), id TOUJOURS
     // unique (voir DependancesVendreVocalUnifie.creerIdLigne) : deux énoncés
@@ -106,6 +111,7 @@ export function vendreVocalUnifie(
     deps.addToCart(
       { id: 'libre-' + deps.creerIdLigne(), nom: ligne.nom, prix: ligne.prix, categorie: 'Autre', stock: 0, unite: 'unité' },
       quantite,
+      ligne.total,
     );
   }
 

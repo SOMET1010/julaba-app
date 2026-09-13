@@ -150,7 +150,9 @@ export function POSCaisse() {
         nom: i.nom,
         quantite: i.quantite,
         prix: i.prix,
-        total: i.prix * i.quantite,
+        // Total exact (voix/guidé) prioritaire : 500F/3 ne retombe pas juste
+        // en FCFA, `prix` n'est qu'un unitaire arrondi (voir CartItem.totalExact).
+        total: i.totalExact ?? i.prix * i.quantite,
         prix_achat: (i as any).prixAchat ?? (i as any).prix_achat ?? 0,
       }));
       await enregistrerVente(total, details, moyen, undefined);
@@ -204,7 +206,7 @@ export function POSCaisse() {
       nom: i.nom,
       quantite: i.quantite,
       prix: i.prix,
-      total: i.prix * i.quantite,
+      total: i.totalExact ?? i.prix * i.quantite,
       prix_achat: (i as any).prixAchat ?? (i as any).prix_achat ?? 0,
     }));
     void refreshProducts();
@@ -276,7 +278,7 @@ export function POSCaisse() {
                 style={{ width:56, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'center', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
             </div>
           </div>
-          <div style={{ fontSize:15, fontWeight:800, color:P }}>{(item.prix * item.quantite).toLocaleString('fr-FR')} FCFA</div>
+          <div style={{ fontSize:15, fontWeight:800, color:P }}>{(item.totalExact ?? item.prix * item.quantite).toLocaleString('fr-FR')} FCFA</div>
           <motion.button whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={`Enlever ${item.nom}`}
             style={{ width:44, height:44, background:'#FEF2F2', border:'none', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
             <Trash2 size={16} color="#ef4444" />
