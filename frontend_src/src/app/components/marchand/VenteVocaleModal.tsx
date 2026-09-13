@@ -10,8 +10,8 @@ import { useCaisse } from "../../contexts/CaisseContext";
 import { useObjectif, ObjectifProvider } from "../../contexts/ObjectifContext";
 import { useStock, type StockItem } from "../../contexts/StockContext";
 import { resumeIncidentHorsLigne } from "../../voice-offline/incidentsHorsLigne";
-import { apparierProduit, construireLigneVocale, doitProposerCreation, noterRefusCreation } from "../../services/venteVocale";
-import { avertissementRupture } from "../../services/ruptureStock";
+import { apparierProduit, noterRefusCreation } from "../../services/venteVocale";
+import { vendreVocalUnifie } from "../../services/vendreVocalUnifie";
 import { guidageVocal } from "../../utils/accessMode";
 import { vibrerSucces } from "../../utils/haptique";
 import { SaisieGuidee } from "./SaisieGuidee";
@@ -106,40 +106,23 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
     // et prix d'achat unitaire (marge réelle), et le stock est décrémenté comme
     // à la caisse. Sans appariement, la vente passe quand même (ligne libre).
     onAction: async (data) => {
-      const vendreUnifie = async (nomParle: string | undefined, quantite: number, montant: number, note: string) => {
-        const produitCat = apparierProduit(nomParle || "", products);
-        const ligne = construireLigneVocale({ nomParle, quantite, montant, produit: produitCat });
-        await enregistrerVente(montant, [ligne], "cash", note);
-        if (produitCat) {
-          // Rupture éventuelle (décision n°6) : calculée AVANT le décrément.
-          const avertRupture = avertissementRupture([
-            { nom: (produitCat as any).nom || (produitCat as any).name || nomParle || "ce produit", quantite, stockAvant: produitCat.stock || 0 },
-          ]);
-          // Stock : le BACKEND est seul maître (même correctif que POSCaisse, cf.
-          // son commentaire "double autorité" R-A). Ce PUT absolu réécrivait un
-          // stock recalculé côté client PAR-DESSUS le décrément atomique déjà fait
-          // par le serveur dans /caisse/vente — en concurrence ou au rejeu
-          // offline, ça pouvait remonter le stock trop haut. On reflète
-          // maintenant l'état autoritaire par un simple refetch.
-          void refreshProducts();
-          // Avertir APRÈS la confirmation parlée de la vente, pour ne pas parler
-          // par-dessus (le serveur a déjà borné à 0 et journalisé le manquant, I3).
-          if (avertRupture && guidageVocal()) setTimeout(() => speak(avertRupture), 1400);
-        } else {
-          // Produit inconnu : proposer de l'ajouter à la boutique (en ligne
-          // seulement — la création parle au serveur). La question arrive APRÈS
-          // la confirmation parlée de la vente, pour ne pas parler par-dessus.
-          try {
-            if (navigator.onLine !== false && doitProposerCreation(window.localStorage, nomParle, products)) {
-              const nomPropre = (nomParle || '').trim();
-              setTimeout(() => {
-                setPropositionProduit({ nom: nomPropre, prix: ligne.prix });
-                if (guidageVocal()) speak(`Je ne connais pas ${nomPropre} dans ta boutique. Je l'ajoute ?`);
-              }, 2200);
-            }
-          } catch { /* jamais bloquant */ }
-        }
-      };
+      // Extraction mécanique (Convergence voix/tactile POS, Lot 1) : la logique
+      // vit maintenant dans services/vendreVocalUnifie.ts, testée en isolation.
+      // Cet adaptateur ne fait que reboucler les dépendances déjà disponibles
+      // dans cette closure sur l'interface injectée du module — comportement
+      // strictement inchangé (mêmes délais, même ordre d'effets).
+      const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number, note: string) =>
+        vendreVocalUnifie(nomParle, quantite, montant, note, {
+          products,
+          enregistrerVente,
+          refreshProducts,
+          speak,
+          proposerCreationProduit: (p) => setPropositionProduit(p),
+          stockage: window.localStorage,
+          estEnLigne: () => navigator.onLine !== false,
+          planifier: (effet, delaiMs) => setTimeout(effet, delaiMs),
+          guidageVocalActif: () => guidageVocal(),
+        });
       const action = data.action;
       if (action?.type === "vendre") {
         // #4 : ne plus abandonner en silence (Tata Nanti Lou disait « c'est enregistré »
