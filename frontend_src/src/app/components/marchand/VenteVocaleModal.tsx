@@ -37,7 +37,7 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, setIsModalOpen, speak } = useApp();
-  const { enregistrerVente, enregistrerDepense, refreshTransactions, stats: caisseStats, products, updateProduct, addProduct, addToCart, syncEchecs, syncLettresMortes, purgerEchecSync, cart, getTotalCart } = useCaisse();
+  const { enregistrerVente, enregistrerDepense, refreshTransactions, refreshProducts, stats: caisseStats, products, addProduct, addToCart, syncEchecs, syncLettresMortes, purgerEchecSync, cart, getTotalCart } = useCaisse();
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
   const progression = objectifCtx?.progression ?? 0;
@@ -115,10 +115,13 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
           const avertRupture = avertissementRupture([
             { nom: (produitCat as any).nom || (produitCat as any).name || nomParle || "ce produit", quantite, stockAvant: produitCat.stock || 0 },
           ]);
-          // Décrément optimiste, comme POSCaisse. S'il échoue (hors-ligne…), la
-          // vente reste enregistrée ; le stock se resynchronisera au rechargement.
-          try { await updateProduct(produitCat.id, { stock: Math.max(0, (produitCat.stock || 0) - quantite) }); }
-          catch (e: any) { console.warn("[VenteVocaleModal] décrément stock impossible:", e?.message); }
+          // Stock : le BACKEND est seul maître (même correctif que POSCaisse, cf.
+          // son commentaire "double autorité" R-A). Ce PUT absolu réécrivait un
+          // stock recalculé côté client PAR-DESSUS le décrément atomique déjà fait
+          // par le serveur dans /caisse/vente — en concurrence ou au rejeu
+          // offline, ça pouvait remonter le stock trop haut. On reflète
+          // maintenant l'état autoritaire par un simple refetch.
+          void refreshProducts();
           // Avertir APRÈS la confirmation parlée de la vente, pour ne pas parler
           // par-dessus (le serveur a déjà borné à 0 et journalisé le manquant, I3).
           if (avertRupture && guidageVocal()) setTimeout(() => speak(avertRupture), 1400);

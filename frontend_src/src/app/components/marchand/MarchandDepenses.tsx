@@ -233,12 +233,6 @@ export function MarchandDepenses() {
     });
   }, [byPeriod, search, startDate, endDate]);
 
-  const KPI_CONFIG = [
-    { id:'today' as Period, label:"Aujourd'hui", value: kpiToday, color:P, border:'#f5d5b0', trend:'+12%', up:true },
-    { id:'month' as Period, label:'Par Mois',    value: kpiMonth, color:'#378ADD', border:'#b5d4f4', trend:'-5%', up:false },
-    { id:'all'   as Period, label:'Total',       value: kpiTotal, color:'#1D9E75', border:'#9fe1cb', trend:'+8%', up:true },
-  ];
-
   return (
     <div style={{ minHeight:'100vh', background:BG, fontFamily:'Plus Jakarta Sans, system-ui, sans-serif', display:'flex', flexDirection:'column' }}>
 

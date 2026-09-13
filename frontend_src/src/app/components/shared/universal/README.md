@@ -1,5 +1,14 @@
 # 🌐 Composants Universels JULABA
 
+> ⚠️ **Marchand : retour en arrière, doc non mise à jour.** Le rôle marchand
+> n'utilise PLUS `UniversalAccueil` — il a son propre écran dédié
+> (`marchand/MarchandHome.tsx` → `MarchandAccueilVoice.tsx`, « voix & icônes
+> d'abord »). `<UniversalAccueil role="marchand" />` n'apparaît dans aucun
+> fichier `.tsx` réel du dépôt (vérifié), seulement dans cette documentation.
+> Le reste de ce fichier décrit l'intention d'origine, pas l'état actuel côté
+> marchand — les autres rôles (producteur, coopérative, institution) restent
+> à vérifier au cas par cas avant de s'y fier.
+
 ## 📋 Vue d'ensemble
 
 Ce dossier contient les **4 composants universels** qui remplacent tous les composants spécifiques par profil pour atteindre une **harmonisation UI à 100%**.

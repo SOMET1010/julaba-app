@@ -39,7 +39,7 @@ export const CRON_JOBS_REGISTRY: CronJobDefinition[] = [
     id: CRON_JOB_ALERTES_VERIFICATION,
     nom: 'Vérification des alertes',
     description:
-      "Vérifie stocks faibles, journées non ouvertes, récoltes proches et publications expirées pour tous les acteurs actifs.",
+      "Vérifie stocks faibles, récoltes proches et publications expirées pour tous les acteurs actifs.",
     cron: '0 * * * *',
     cronHumain: 'Toutes les heures',
   },
