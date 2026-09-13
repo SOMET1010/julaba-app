@@ -40,6 +40,18 @@ export interface OperationCaisse {
   payload: any;
   ts: number;
   attempts?: number;          // essais TRANSITOIRES uniquement
+  // P0-1 : propriétaire de l'opération (l'utilisateur connecté au moment de la
+  // mise en file). Optionnel UNIQUEMENT pour lire des opérations posées avant ce
+  // correctif (terminal déjà en usage, file existante à ne pas perdre).
+  //
+  // IMPORTANT — une opération SANS userId (héritée) n'appartient à PERSONNE.
+  // Elle n'est JAMAIS adoptée par l'utilisateur courant : ce serait recréer
+  // exactement le risque de rejeu sous le mauvais compte que ce cloisonnement
+  // doit empêcher (terminal partagé : A quitte sans réseau, mise à jour, B se
+  // connecte — B n'a produit AUCUNE preuve d'être le propriétaire de l'op de
+  // A). Ces opérations sont mises à part (`operationsSansProprietaire`),
+  // jamais rejouées ni supprimées automatiquement — voir `synchroniser`.
+  userId?: string;
 }
 
 export interface LettreMorte extends OperationCaisse {
@@ -202,49 +214,119 @@ function defaultStore(): OutboxStore {
 }
 
 /** Ajoute une opération à la file durable. Réutilise `idempotency_key` comme id
- *  si présente (envoi en ligne échoué), pour que le rejeu envoie la MÊME clé. */
+ *  si présente (envoi en ligne échoué), pour que le rejeu envoie la MÊME clé.
+ *  `userId` (P0-1) : propriétaire de l'opération, OBLIGATOIRE — c'est lui qui
+ *  protège contre le rejeu sous une autre session (terminal partagé). */
 export async function enfilerOperation(
   endpoint: OfflineEndpoint,
   payload: unknown,
+  userId: string,
   store: OutboxStore = defaultStore(),
   method: OfflineMethod = 'POST',
 ): Promise<string> {
   const cle = (payload as { idempotency_key?: string } | null)?.idempotency_key;
-  const op: OperationCaisse = { id: cle || uuid(), endpoint, method, payload, ts: Date.now() };
+  const op: OperationCaisse = { id: cle || uuid(), endpoint, method, payload, ts: Date.now(), userId };
   await store.enqueue(op);
   return op.id;
 }
 
-export async function operationsEnAttente(store: OutboxStore = defaultStore()): Promise<OperationCaisse[]> {
-  return store.list();
+/** Vue filtrée par propriétaire (P0-1) : n'expose QUE les opérations dont le
+ *  propriétaire est CONNU et correspond exactement — stricte, sans exception.
+ *  Une opération sans `userId` (héritée) n'appartient à personne : elle ne
+ *  passe ce filtre pour AUCUN utilisateur, voir `operationsSansProprietaire`. */
+function estAUtilisateur(op: OperationCaisse, userId: string): boolean {
+  return op.userId === userId;
 }
-export async function nbEnAttente(store: OutboxStore = defaultStore()): Promise<number> {
-  return store.activeCount();
+
+/** Une opération sans propriétaire connu (héritée d'avant P0-1, ou toute
+ *  incohérence future) n'est jamais silencieusement perdue : elle reste
+ *  visible ici, mise à part, en attente d'un traitement/alerte manuel — mais
+ *  jamais attribuée ni rejouée automatiquement (voir `synchroniser`). */
+function estOrpheline(op: OperationCaisse): boolean {
+  return !op.userId;
 }
-export async function nbEchecs(store: OutboxStore = defaultStore()): Promise<number> {
-  return store.deadCount();
+
+export async function operationsEnAttente(userId: string, store: OutboxStore = defaultStore()): Promise<OperationCaisse[]> {
+  return (await store.list()).filter((op) => estAUtilisateur(op, userId));
 }
-export async function lettresMortes(store: OutboxStore = defaultStore()): Promise<LettreMorte[]> {
-  return store.deadList();
+export async function nbEnAttente(userId: string, store: OutboxStore = defaultStore()): Promise<number> {
+  return (await operationsEnAttente(userId, store)).length;
 }
-export async function purgerLettreMorte(id: string, store: OutboxStore = defaultStore()): Promise<void> {
+export async function nbEchecs(userId: string, store: OutboxStore = defaultStore()): Promise<number> {
+  return (await lettresMortes(userId, store)).length;
+}
+export async function lettresMortes(userId: string, store: OutboxStore = defaultStore()): Promise<LettreMorte[]> {
+  return (await store.deadList()).filter((op) => estAUtilisateur(op, userId));
+}
+/** Retire une lettre morte — vérifie la propriété d'abord (P0-1) : on ne
+ *  supprime jamais silencieusement l'opération d'un AUTRE compte, ni d'une
+ *  opération orpheline (propriétaire inconnu — la stricte égalité l'exclut
+ *  déjà, aucun utilisateur ne peut la purger via ce chemin). */
+export async function purgerLettreMorte(id: string, userId: string, store: OutboxStore = defaultStore()): Promise<void> {
+  const dead = await store.deadList();
+  const cible = dead.find((op) => op.id === id);
+  if (!cible || !estAUtilisateur(cible, userId)) return;
   return store.deadRemove(id);
+}
+
+/** Opérations ACTIVES sans propriétaire connu, tous comptes confondus — jamais
+ *  rejouées ni attribuées automatiquement (voir `synchroniser`). Exposé pour
+ *  qu'un traitement/alerte manuel puisse les repérer plutôt que les laisser
+ *  invisibles indéfiniment. */
+export async function operationsSansProprietaire(store: OutboxStore = defaultStore()): Promise<OperationCaisse[]> {
+  return (await store.list()).filter(estOrpheline);
+}
+export async function nbSansProprietaire(store: OutboxStore = defaultStore()): Promise<number> {
+  return (await operationsSansProprietaire(store)).length;
 }
 
 /**
  * Rejoue les opérations en attente selon la politique 4xx/5xx.
- * @returns { ok, reste (actives), echecs (lettres mortes) }
+ *
+ * P0-1 — cloisonnement par utilisateur, STRICT : `currentUserId` est
+ * l'identité de la session ACTIVE au moment du rejeu (pas une valeur
+ * mémorisée à la création de l'effet React qui appelle cette fonction — elle
+ * doit être relue à chaque appel). Seule une opération dont
+ * `op.userId === currentUserId` est rejouée.
+ *
+ * Une opération dont le propriétaire diffère n'est NI rejouée NI purgée :
+ * elle reste intacte dans la file, prête pour le retour de son propriétaire
+ * (terminal partagé, logout/login, fermeture/redémarrage de l'appli).
+ *
+ * Une opération héritée SANS propriétaire connu (posée avant P0-1) n'est PAS
+ * rejouée et n'est JAMAIS attribuée à l'utilisateur courant — l'identité
+ * actuellement connectée n'est pas une preuve de qui a créé cette opération.
+ * Elle est comptée à part (`sansProprietaire`) et reste consultable via
+ * `operationsSansProprietaire`, pour un traitement/alerte manuel.
+ *
+ * @returns { ok, reste (actives, tous propriétaires confondus), echecs
+ *   (lettres mortes, tous propriétaires confondus), ignorees (d'un AUTRE
+ *   compte, non touchées), sansProprietaire (propriétaire inconnu, ni
+ *   rejouée ni attribuée) }
  */
 export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
   poster: (endpoint: E, payload: unknown, method: OfflineMethod) => Promise<void>,
+  currentUserId: string,
   store: OutboxStore = defaultStore(),
-): Promise<{ ok: number; reste: number; echecs: number }> {
+): Promise<{ ok: number; reste: number; echecs: number; ignorees: number; sansProprietaire: number }> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-    return { ok: 0, reste: await store.activeCount(), echecs: await store.deadCount() };
+    return {
+      ok: 0, reste: await store.activeCount(), echecs: await store.deadCount(),
+      ignorees: 0, sansProprietaire: await nbSansProprietaire(store),
+    };
   }
   const ops = await store.list();
   let ok = 0;
+  let ignorees = 0;
+  let sansProprietaire = 0;
   for (const op of ops) {
+    // Propriétaire inconnu : jamais rejouée, jamais attribuée à personne.
+    // Mise à part, intacte, en attente d'un traitement/alerte manuel.
+    if (estOrpheline(op)) { sansProprietaire++; continue; }
+    // Cloisonnement : jamais rejouer l'opération d'un AUTRE compte sous la
+    // session courante. On ne la touche pas — ni tentative, ni lettre morte,
+    // ni incrément d'essais — elle reste active pour son propriétaire.
+    if (op.userId !== currentUserId) { ignorees++; continue; }
     try {
       await poster(op.endpoint as E, { ...op.payload, idempotency_key: op.id }, op.method || 'POST');
       await store.remove(op.id);
@@ -264,5 +346,5 @@ export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
       break; // réseau/serveur instable : on préserve l'ordre et on retentera
     }
   }
-  return { ok, reste: await store.activeCount(), echecs: await store.deadCount() };
+  return { ok, reste: await store.activeCount(), echecs: await store.deadCount(), ignorees, sansProprietaire };
 }

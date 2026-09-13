@@ -130,7 +130,7 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
     const applyLocal = () => setStocks((current) => current.map((stock) => stock.id === id ? { ...stock, ...data, derniereModification: new Date().toISOString() } : stock));
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       applyLocal();
-      await enfilerOperation(`/stocks/${id}`, payload, undefined, 'PATCH');
+      await enfilerOperation(`/stocks/${id}`, payload, appUser?.id || 'anon', undefined, 'PATCH');
       eventBus.emit(EVENTS.STOCK_UPDATED, { id, ...data, offline: true }, { idempotencyKey: payload.idempotency_key, priority: 'medium' });
       return;
     }
@@ -143,7 +143,7 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
     } catch (error) {
       if (!doitEnfilerStock(error)) throw error;
       applyLocal();
-      await enfilerOperation(`/stocks/${id}`, payload, undefined, 'PATCH');
+      await enfilerOperation(`/stocks/${id}`, payload, appUser?.id || 'anon', undefined, 'PATCH');
       eventBus.emit(EVENTS.STOCK_UPDATED, { id, ...data, offline: true }, { idempotencyKey: payload.idempotency_key, priority: 'medium' });
       return;
     }

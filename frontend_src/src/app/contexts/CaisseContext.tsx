@@ -172,6 +172,11 @@ interface CaisseContextType {
 const CaisseContext = createContext<CaisseContextType | undefined>(undefined);
 
 export function CaisseProvider({ children }: { children: ReactNode }) {
+  // P0-1 : lu ici, en tête, pour que tout ce qui touche la file hors-ligne
+  // (rafraîchissement, purge, rejeu) connaisse l'utilisateur ACTUELLEMENT
+  // connecté — jamais une valeur figée dans une fermeture créée avant un
+  // logout/login (terminal partagé).
+  const { user: appUser } = useApp();
   const [transactions, setTransactions] = useState<CaisseTransaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<CaisseProduct[]>([]);
@@ -189,12 +194,16 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const [syncEchecs, setSyncEchecs] = useState(0);
   const [syncLettresMortes, setSyncLettresMortes] = useState<LettreMorte[]>([]);
   const rafraichirEchecs = useCallback(async () => {
-    try { setSyncEchecs(await offlineNbEchecs()); setSyncLettresMortes(await offlineLettresMortes()); }
+    const uid = appUser?.id;
+    if (!uid) { setSyncEchecs(0); setSyncLettresMortes([]); return; }
+    try { setSyncEchecs(await offlineNbEchecs(uid)); setSyncLettresMortes(await offlineLettresMortes(uid)); }
     catch { /* IndexedDB indisponible : on ignore */ }
-  }, []);
+  }, [appUser?.id]);
   const purgerEchecSync = useCallback(async (id: string) => {
-    try { await offlinePurger(id); } finally { await rafraichirEchecs(); }
-  }, [rafraichirEchecs]);
+    const uid = appUser?.id;
+    if (!uid) return;
+    try { await offlinePurger(id, uid); } finally { await rafraichirEchecs(); }
+  }, [appUser?.id, rafraichirEchecs]);
 
   const loadTransactions = async () => {
     const cacheKey = `julaba_cache_tx_${appUser?.id || 'anon'}`;
@@ -229,7 +238,6 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   };
 
   // Chargement initial + re-fetch quand user change
-  const { user: appUser } = useApp();
   useEffect(() => {
     if (appUser?.id) {
       loadTransactions();
@@ -237,11 +245,20 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   }, [appUser?.id]);
 
   // Synchro des ventes/dépenses faites hors-ligne : au retour du réseau + au montage.
+  // P0-1 : dépend de `appUser?.id` — sans ça, cet effet ne se relançait JAMAIS
+  // au changement d'utilisateur (tableau de dépendances vide), et son closure
+  // gardait la première session vue. Sur un terminal partagé (A se déconnecte,
+  // B se connecte, le réseau revient), la file de A aurait pu être rejouée avec
+  // les identifiants encore valides de B. On relit l'identité à CHAQUE montage
+  // de l'effet (donc à chaque changement d'utilisateur) et on ne synchronise
+  // JAMAIS sans utilisateur connu.
   useEffect(() => {
+    const uid = appUser?.id;
+    if (!uid) return;
     const sync = async () => {
       try {
-        const avant = await offlineNbEchecs().catch(() => 0);
-        const { ok, echecs } = await synchroniser(posterOperation);
+        const avant = await offlineNbEchecs(uid).catch(() => 0);
+        const { ok, echecs } = await synchroniser(posterOperation, uid);
         if (ok > 0) await loadTransactions();
         await rafraichirEchecs();
         if (echecs > avant) {
@@ -250,10 +267,10 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         }
       } catch { /* on retentera au prochain 'online' */ }
     };
-    sync(); // rattrape une file laissée par une session hors-ligne précédente
+    sync(); // rattrape une file laissée par une session hors-ligne précédente — la SIENNE uniquement
     window.addEventListener('online', sync);
     return () => window.removeEventListener('online', sync);
-  }, []);
+  }, [appUser?.id, rafraichirEchecs]);
 
   // ── Persistance du panier ──────────────────────────────────
   // HYDRATATION : au montage et à CHAQUE changement d'utilisateur. LECTURE SEULE
@@ -350,7 +367,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     };
     // Hors-ligne : on met la vente dans la file durable (rejeu à la reconnexion).
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      await enfilerOperation('/caisse/vente', payload);
+      await enfilerOperation('/caisse/vente', payload, appUser?.id || 'anon');
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
       return;
     }
@@ -365,7 +382,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       // pas de double-comptage même si la vente était déjà passée). Une vraie
       // erreur métier 4xx est remontée à l'utilisateur.
       if (doitEnfiler(error)) {
-        await enfilerOperation('/caisse/vente', payload);
+        await enfilerOperation('/caisse/vente', payload, appUser?.id || 'anon');
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
         return;
       }
@@ -377,7 +394,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de dépense invalide');
     const payload: caisseApi.EnregistrerDepenseData = { montant, notes, idempotency_key: genererCle() };
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      await enfilerOperation('/caisse/depense', payload);
+      await enfilerOperation('/caisse/depense', payload, appUser?.id || 'anon');
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
       return;
     }
@@ -390,7 +407,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       // Ne JAMAIS perdre une dépense : hors-ligne, token expiré, panne réseau ou
       // serveur temporairement KO -> on l'enfile (rejeu avec la MÊME clé).
       if (doitEnfiler(error)) {
-        await enfilerOperation('/caisse/depense', payload);
+        await enfilerOperation('/caisse/depense', payload, appUser?.id || 'anon');
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
         return;
       }
