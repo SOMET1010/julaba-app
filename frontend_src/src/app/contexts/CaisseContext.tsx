@@ -106,15 +106,6 @@ export interface CartItem {
   prix_achat?: number;
 }
 
-export interface StockMovement {
-  id: string;
-  productId: string;
-  type: 'entree' | 'sortie';
-  quantite: number;
-  date: string;
-  raison?: string;
-}
-
 export interface CaisseStats {
   ventesJour: number;
   cahierJour: number;
@@ -128,7 +119,6 @@ interface CaisseContextType {
   loading: boolean;
   products: CaisseProduct[];
   cart: CartItem[];
-  mouvements: StockMovement[];
   stats: CaisseStats;
   selectedProduct: CaisseProduct | null;
   setSelectedProduct: (p: CaisseProduct | null) => void;
@@ -163,10 +153,7 @@ interface CaisseContextType {
   
   // Transactions (alias)
   addTransaction: (tx: Omit<CaisseTransaction, 'id' | 'date'>) => Promise<void>;
-  
-  // Stock movements
-  addStockMovement: (movement: Omit<StockMovement, 'id' | 'date'>) => void;
-  
+
   getSoldeJour: () => number;
   getVentesJour: () => CaisseTransaction[];
   getCahierJour: () => CaisseTransaction[];
@@ -189,7 +176,6 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<CaisseProduct[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [mouvements, setMouvements] = useState<StockMovement[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<CaisseProduct | null>(null);
 
   // Persistance du panier (Phase 1) : alerte d'échec unique (R4), panier « ancien »
@@ -613,22 +599,6 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ── Stock Movements ────────────────────────────────────────
-  const addStockMovement = (movement: Omit<StockMovement, 'id' | 'date'>) => {
-    const newMovement: StockMovement = {
-      ...movement,
-      id: `mov-${Date.now()}`,
-      date: new Date().toISOString(),
-    };
-    setMouvements(prev => [newMovement, ...prev]);
-
-    // Mettre a jour le stock du produit
-    const delta = movement.type === 'entree' ? movement.quantite : -movement.quantite;
-    setProducts(prev => prev.map(p =>
-      p.id === movement.productId ? { ...p, stock: Math.max(0, p.stock + delta) } : p
-    ));
-  };
-
   const getSoldeJour = () => stats.soldeJour;
 
   const getVentesJour = () => {
@@ -648,7 +618,6 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     loading,
     products,
     cart,
-    mouvements,
     stats,
     selectedProduct,
     setSelectedProduct,
@@ -671,7 +640,6 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     deleteProduct,
     refreshProducts: loadProducts,
     addTransaction,
-    addStockMovement,
     getSoldeJour,
     getVentesJour,
     getCahierJour,

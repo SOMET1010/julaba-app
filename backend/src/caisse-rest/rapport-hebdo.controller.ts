@@ -121,7 +121,10 @@ Le rapport doit faire 4-6 phrases max, être encourageant, mentionner les chiffr
       this.logger.error(`[RAPPORT] GPT-4o échoué: ${e.message}`);
       rapportVocal = ventesCurrent > 0
         ? `Cette semaine tu as fait ${ventesCurrent.toLocaleString('fr-FR')} FCFA de ventes. Continue comme ça !`
-        : `Pas encore de ventes cette semaine. Ouvre ta journée et commence à vendre !`;
+        // "Ouvre ta journée..." sous-entendait que la caisse était bloquée sans ça —
+        // trompeur : vendre n'a jamais été bloqué, l'ouverture est automatique
+        // (cf. UniversalAccueil.tsx, MarchandAlertes.tsx).
+        : `Pas encore de ventes cette semaine. Commence à vendre dès que tu veux !`;
     }
 
     // TTS via ElevenLabs
