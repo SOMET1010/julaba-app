@@ -272,6 +272,19 @@ Ce que cela implique concretement :
 - Ne pas reutiliser cette cle hors de l'instance de POC.
 - Garder l'instance liee a la loopback (`ODOO_BIND_ADDR=127.0.0.1`).
 
+### Permissions de `config/odoo.conf`
+
+`scripts/init.sh` ecrit ce fichier en **`0644`**, donc lisible par tout
+utilisateur de la machine hote — alors qu'il contient `admin_passwd` et
+`db_password`. Ce n'est pas un oubli : le fichier est monte dans le conteneur
+odoo, dont le processus tourne sous l'uid 101, et un bind mount ne traduit pas
+les uid. En `0600`, le conteneur ne peut pas lire sa propre configuration.
+
+Acceptable pour une instance de POC jetable sur une machine a administrateur
+unique. **A durcir avant tout usage durable** : faire appartenir le fichier a
+l'uid du conteneur, ou sortir les secrets du fichier pour les passer par
+l'environnement.
+
 **Exigence avant toute mise en production :** un utilisateur Odoo reellement
 read-only, via un groupe ou des ACL dediees, teste sur Odoo 19. Ce chantier est
 hors du perimetre de ce POC et n'est volontairement pas entame ici : le besoin
@@ -297,8 +310,8 @@ docker compose down -v             # arret ET destruction des donnees
 
 ## Etat de validation
 
-Deux niveaux distincts, a ne pas confondre : le **contrat Odoo 19** est valide,
-le **packaging Docker** ne l'est pas encore.
+Les deux niveaux sont valides : le **contrat Odoo 19** et le **packaging
+Docker**, chacun exerce contre une instance reelle.
 
 ### Valide sur Odoo Server 19.0
 
@@ -327,44 +340,44 @@ vus : le parsing de `.env.example` et l'acces en lecture au stock (voir
 "Limitation de securite" plus haut). Les deux sont corriges, et le smoke test
 est repasse vert apres correction.
 
-### Non encore valide : le packaging Docker, uniquement
+### Valide sur la stack Docker
 
-Rien de ce qui suit n'a ete exerce. L'installation depuis les sources ne dit
-**rien** de ces points :
+Execute sur un VPS Ubuntu 22.04 disposant de Docker 29.7.2, avec l'image
+officielle `odoo:19`. La machine hebergeait deja un autre Odoo publie sur 8069 :
+la stack a tourne sur `ODOO_PORT=8070` sans interferer avec lui, chaque projet
+Compose gardant ses propres volumes et son propre reseau.
 
-- le `docker pull` et le demarrage de l'image `odoo:19` ;
-- les healthchecks des deux services ;
-- le comportement de l'entrypoint officiel de l'image ;
-- le parsing des parametres `db_*` de `odoo.conf` par cet entrypoint ;
-- l'execution integrale de `scripts/init.sh` dans cette stack Docker.
+`scripts/init.sh` puis `scripts/smoke-test.sh` sont alles au bout. Les quatre
+tests passent, avec **la meme sortie que sur l'installation depuis les
+sources** : 401 sans cle, 200 avec cle, 5/5 produits conformes a
+`OdooProductRecord`, et `read` coherent avec `search_read`.
 
-**La stack Docker n'est donc pas validee.** Le contrat JSON-2 qu'elle doit
-reproduire, lui, l'est. La seule question ouverte est de savoir si le packaging
-reproduit fidelement ce contrat.
+| Point | Resultat observe |
+|---|---|
+| `docker pull odoo:19` | image tiree sans erreur |
+| Healthcheck PostgreSQL | `julaba-odoo-poc-db-1 Healthy` |
+| Entrypoint officiel | reprend bien les parametres `db_*` de `odoo.conf` |
+| Creation de base et modules | `julaba_poc` creee, 67 modules, donnees de demo |
+| Isolation | aucun contact avec le projet Compose voisin |
+| `scripts/smoke-test.sh` | code 0, quatre tests verts |
 
-### Jalon restant
+Ce passage a fait tomber **un defaut propre au chemin Docker**, que
+l'installation depuis les sources ne pouvait pas reveler : `init.sh` ecrivait
+`config/odoo.conf` en `0600`, illisible par l'utilisateur `odoo` (uid 101) du
+conteneur puisqu'un bind mount ne traduit pas les uid. L'entrypoint plantait sur
+`NoSectionError: No section: 'options'`. Corrige en `0644` — voir le compromis
+assume dans "Limitation de securite".
 
-Sur un poste ou un VPS ou Docker Hub est accessible :
+### Jalon suivant
 
-```bash
-cd infra/odoo-poc
-cp .env.example .env && $EDITOR .env
-./scripts/init.sh
-./scripts/smoke-test.sh
-```
-
-Un echec a ce stade sera a chercher du cote image ou entrypoint, pas du cote
-JSON-2.
-
-Une fois ce passage fait, le test suivant est d'un autre ordre : brancher le
-backend JULABA lui-meme sur cette instance, via les routes `/odoo-poc/*`. Ce
-protocole-la vit dans `docs/ODOO-SMOKE-TEST-READONLY.md` — ce README couvre la
-stack et le contrat bas niveau, ce document couvre l'integration backend.
+Le test restant est d'un autre ordre : brancher le backend JULABA lui-meme sur
+une instance reelle, via les routes `/odoo-poc/*`. Ce protocole vit dans
+`docs/ODOO-SMOKE-TEST-READONLY.md` — ce README couvre la stack et le contrat bas
+niveau, ce document couvre l'integration backend.
 
 ### Regle de sequencement
 
 **Aucune ecriture Odoo supplementaire n'est developpee** et
-`ODOO_REAL_WRITE_ENABLED` reste `false` tant que le passage Docker reel ci-dessus
-n'a pas eu lieu. Le contrat JSON-2 etant desormais prouve, le verrou restant
-porte sur le packaging, plus sur le protocole. Instance reelle d'abord, code
-ensuite.
+`ODOO_REAL_WRITE_ENABLED` reste `false`. Le contrat et le packaging sont
+desormais prouves ; le prochain jalon est l'integration backend, pas un lot
+d'ecriture. Instance reelle d'abord, code ensuite.

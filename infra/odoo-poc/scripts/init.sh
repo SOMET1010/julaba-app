@@ -63,7 +63,20 @@ for token, value in subs.items():
     tpl = tpl.replace(token, value)
 out = root / "config" / "odoo.conf"
 out.write_text(tpl, encoding="utf-8")
-out.chmod(0o600)
+# 0644 et non 0600 : ce fichier est monte dans le conteneur odoo, dont le
+# processus tourne sous l'utilisateur `odoo` (uid 101), alors que le fichier
+# appartient a celui qui lance le script (uid 1000 en general). Un bind mount
+# ne traduit pas les uid : en 0600, le conteneur ne peut pas lire sa propre
+# configuration et l'entrypoint plante sur
+# `configparser.NoSectionError: No section: 'options'`, apres un
+# `grep: /etc/odoo/odoo.conf: Permission denied` peu bavard.
+# Constate sur un vrai passage Docker ; invisible en installation depuis les
+# sources, ou le fichier est lu par l'utilisateur qui l'a ecrit.
+# COMPROMIS ASSUME : le fichier contient `admin_passwd` et `db_password`, et
+# devient lisible par tout utilisateur de la machine hote. Acceptable pour une
+# instance de POC jetable sur une machine a administrateur unique ; a durcir
+# avant tout usage durable (voir README.md, "Limitation de securite").
+out.chmod(0o644)
 PY
 
 # --- 3. Base de donnees ----------------------------------------------------
