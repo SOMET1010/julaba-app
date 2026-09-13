@@ -5,6 +5,7 @@ import { ODOO_CLIENT, OdooClient } from './odoo-client.interface';
 import { SyncJournal, SyncJournalEntry } from './sync-journal';
 import {
   versJulaba,
+  estVendable,
   DeviseOdooInattendueError,
   JulabaProduitOdoo,
   OdooProductRecord,
@@ -50,6 +51,12 @@ export class OdooGatewayService {
    * `list_price` est un nombre sans unité, et `versJulaba` refuse de le mapper
    * tant que la devise n'est pas prouvée être du XOF (voir produit-mapper.ts).
    *
+   * `sale_ok` est demandé pour la même raison que `currency_id` — un filtre,
+   * pas un champ d'affichage : `estVendable` écarte AVANT mapping les produits
+   * techniques qu'un module Odoo crée pour son propre usage interne (ex.
+   * `Tips`, injecté par `point_of_sale`) — voir produit-mapper.ts pour le
+   * critère retenu et pourquoi.
+   *
    * Un catalogue dans une autre devise est une erreur de configuration de
    * l'instance Odoo, pas une erreur de l'appelant JULABA : d'où un 502 et non
    * un 400. Le Gateway a reçu une réponse qu'il ne peut pas exploiter en amont.
@@ -58,10 +65,10 @@ export class OdooGatewayService {
    */
   async listerCatalogue(): Promise<JulabaProduitOdoo[]> {
     const produits = await this.odooClient.execute<OdooProductRecord[]>('product.product', 'search_read', {
-      fields: ['id', 'name', 'list_price', 'qty_available', 'default_code', 'currency_id'],
+      fields: ['id', 'name', 'list_price', 'qty_available', 'default_code', 'currency_id', 'sale_ok'],
     });
     try {
-      return produits.map(versJulaba);
+      return produits.filter(estVendable).map(versJulaba);
     } catch (e) {
       if (e instanceof DeviseOdooInattendueError) {
         throw new BadGatewayException(e.message);

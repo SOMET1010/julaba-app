@@ -487,14 +487,23 @@ aucune donnee de demonstration. Deux consequences :
 - c'est aussi ce qui rend le test de coherence significatif seulement sur un
   produit a stock non nul : `Tips` arrive en tete et aurait fait comparer 0 a 0.
 
-**Question ouverte, hors perimetre de ce POC.** `listerCatalogue()` lit
-`product.product` sans filtre : `Tips` atteindrait donc le catalogue d'une
-marchande, a 1 FCFA. Definir la politique de selection du catalogue Odoo —
-`sale_ok`, une categorie, les references `JULABA-*` ? — est une decision de
-conception du Gateway. Elle appartient au jalon d'integration backend decrit
-dans `docs/ODOO-SMOKE-TEST-READONLY.md`, pas a cette stack. Le smoke test doit
-continuer a lire tout ce que le Gateway lirait : c'est precisement ainsi que
-`Tips` est apparu.
+**Question tranchee.** `listerCatalogue()` filtre desormais sur `sale_ok`
+(champ Odoo natif "Peut etre vendu") : un produit a `sale_ok: false` est ecarte
+avant tout mapping, `Tips` inclus. Les deux autres pistes envisagees ont ete
+ecartees explicitement — une categorie depend de la configuration de
+l'instance (jamais garantie), une convention de reference `JULABA-*` ne vaut
+que pour un catalogue provisionne PAR JULABA et exclurait a tort un vrai
+catalogue Odoo existant d'un fournisseur. Voir
+`backend/src/odoo-gateway/produit-mapper.ts` (`estVendable`) pour le detail et
+le raisonnement complet.
+
+**Non verifie empiriquement contre une vraie instance.** Le releve reel de
+`Tips` consigne ici ne portait que `default_code`/`list_price`/`qty_available`
+— pas `sale_ok`. Le jalon d'integration backend decrit dans
+`docs/ODOO-SMOKE-TEST-READONLY.md` doit confirmer que `sale_ok` vaut bien
+`false` sur `Tips` en pratique ; si ce n'etait pas le cas, un second critere
+serait a ajouter a `estVendable`. Le smoke test doit continuer a lire tout ce
+que le Gateway lirait : c'est precisement ainsi que `Tips` est apparu.
 
 ### Jalon suivant
 

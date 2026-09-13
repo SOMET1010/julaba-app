@@ -16,7 +16,9 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
     service = new OdooGatewayService(new OdooMockClient());
   });
 
-  it('liste le catalogue simulé (8 produits) mappé vers le format JULABA', async () => {
+  it('liste le catalogue simulé (8 produits vendables) mappé vers le format JULABA — Tips (technique) exclu', async () => {
+    // Le mock contient 9 enregistrements bruts (8 vendables + Tips, sale_ok:false) :
+    // ce test prouve que le catalogue livré à JULABA en compte 8, pas 9.
     const catalogue = await service.listerCatalogue();
     expect(catalogue).toHaveLength(8);
     expect(catalogue[0]).toMatchObject({
@@ -27,7 +29,13 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
     });
   });
 
-  it('exige currency_id dans le search_read du catalogue', async () => {
+  it("exclut un produit technique (sale_ok=false) — Tips n'atteint jamais le catalogue JULABA", async () => {
+    const catalogue = await service.listerCatalogue();
+    expect(catalogue.find((p) => p.nom === 'Tips')).toBeUndefined();
+    expect(catalogue.find((p) => p.codeOdoo === 'TIPS')).toBeUndefined();
+  });
+
+  it('exige currency_id ET sale_ok dans le search_read du catalogue', async () => {
     const champsDemandes: string[] = [];
     const espion: OdooClient = {
       async execute(model, method, params) {
@@ -40,6 +48,28 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
     await new OdooGatewayService(espion).listerCatalogue();
     expect(champsDemandes).toContain('currency_id');
     expect(champsDemandes).toContain('list_price');
+    expect(champsDemandes).toContain('sale_ok');
+  });
+
+  it('un produit non vendable (sale_ok=false) est écarté AVANT le garde-fou de devise — jamais un faux 502 sur Tips', async () => {
+    // Tips n'a souvent ni prix ni devise fiables (produit purement technique) :
+    // le filtre sale_ok doit passer AVANT assurerDeviseJulaba, pour ne jamais
+    // faire échouer le catalogue entier à cause d'un produit qu'on écarte de
+    // toute façon.
+    const odooAvecTipsSansDevise: OdooClient = {
+      async execute(model, method) {
+        if (model === 'product.product' && method === 'search_read') {
+          return [
+            { id: 1, name: 'Tomate', list_price: 500, qty_available: 10, currency_id: [1, 'XOF'] },
+            { id: 999, name: 'Tips', list_price: 1, qty_available: 0, currency_id: undefined, sale_ok: false },
+          ] as unknown as never;
+        }
+        return [] as unknown as never;
+      },
+    };
+    const catalogue = await new OdooGatewayService(odooAvecTipsSansDevise).listerCatalogue();
+    expect(catalogue).toHaveLength(1);
+    expect(catalogue[0].nom).toBe('Tomate');
   });
 
   it('refuse le catalogue entier en 502 si Odoo répond dans une autre devise', async () => {

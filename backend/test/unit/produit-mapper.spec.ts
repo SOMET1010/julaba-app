@@ -2,6 +2,7 @@ import {
   versJulaba,
   assurerDeviseJulaba,
   deviseDe,
+  estVendable,
   DeviseOdooInattendueError,
   DEVISE_JULABA,
   OdooProductRecord,
@@ -113,5 +114,24 @@ describe('produit-mapper — garde-fou de devise', () => {
     expect(deviseDe(produit({ currency_id: [2, 'USD'] }))).toBe('USD');
     expect(deviseDe(produit({ currency_id: false }))).toBeNull();
     expect(deviseDe(produit({ currency_id: undefined }))).toBeNull();
+  });
+});
+
+describe('produit-mapper — estVendable (exclusion des produits techniques)', () => {
+  it('un produit normal (sale_ok non demandé) est vendable par défaut', () => {
+    expect(estVendable(produit())).toBe(true);
+  });
+
+  it('sale_ok explicitement true reste vendable', () => {
+    expect(estVendable(produit({ sale_ok: true }))).toBe(true);
+  });
+
+  it("sale_ok=false écarte le produit — cas de Tips (créé par point_of_sale)", () => {
+    const tips = produit({ id: 999, name: 'Tips', default_code: 'TIPS', list_price: 1, qty_available: 0, sale_ok: false });
+    expect(estVendable(tips)).toBe(false);
+  });
+
+  it("n'est pas une allowlist : sale_ok absent ne bloque jamais un produit", () => {
+    expect(estVendable(produit({ sale_ok: undefined }))).toBe(true);
   });
 });
