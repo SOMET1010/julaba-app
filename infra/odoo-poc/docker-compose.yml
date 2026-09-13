@@ -1,0 +1,65 @@
+# Stack de test isolee Odoo 19 + POS pour le POC d'integration JULABA.
+#
+# Rien ici n'est un composant de production JULABA : cette stack tourne sur une
+# machine de test (poste dev ou VPS), jamais dans le backend JULABA, jamais sur
+# la base Postgres de JULABA.
+#
+# Lancement : ./scripts/init.sh (voir README.md)
+
+name: julaba-odoo-poc
+
+# Pas de `container_name` fixe : il empecherait `docker compose run --rm odoo`
+# (creation de la base) de demarrer un conteneur jetable en parallele.
+# Les conteneurs s'appellent donc julaba-odoo-poc-db-1 et julaba-odoo-poc-odoo-1,
+# et s'adressent via `docker compose exec <service>`.
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      # Odoo cree lui-meme sa base : l'utilisateur doit avoir le droit CREATEDB.
+      # POSTGRES_USER de l'image officielle est superuser, ce qui suffit.
+      POSTGRES_DB: postgres
+      POSTGRES_USER: ${ODOO_DB_USER:-odoo}
+      POSTGRES_PASSWORD: ${ODOO_DB_PASSWORD:?ODOO_DB_PASSWORD absent du .env}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - odoo-db:/var/lib/postgresql/data
+    # Volontairement NON publie sur l'hote : seul le conteneur odoo y accede.
+    # Pour inspecter la base depuis l'hote : docker compose exec db psql -U odoo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ODOO_DB_USER:-odoo} -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  odoo:
+    image: odoo:19
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Par defaut lie a la loopback : instance de test avec donnees de demo,
+      # elle ne doit pas se retrouver exposee sur l'internet public.
+      # Acces distant = tunnel SSH (voir README.md, section "Acces distant").
+      - "${ODOO_BIND_ADDR:-127.0.0.1}:${ODOO_PORT:-8069}:8069"
+    volumes:
+      - odoo-data:/var/lib/odoo
+      # Rendu par scripts/init.sh depuis config/odoo.conf.template (contient des secrets).
+      - ./config/odoo.conf:/etc/odoo/odoo.conf:ro
+      # Vide et en lecture seule. NE PAS y deposer les modules ifn_odoo_modules :
+      # ils sont en version 17, non valides sur Odoo 19 (voir README.md).
+      - ./addons:/mnt/extra-addons:ro
+    healthcheck:
+      # python3 plutot que curl : l'image odoo embarque forcement l'un, pas l'autre.
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8069/web/login', timeout=5).status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+volumes:
+  odoo-db:
+  odoo-data:
