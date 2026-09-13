@@ -42,7 +42,8 @@ case "$ODOO_DB" in
 esac
 
 : "${ODOO_INSTALL_MODULES:=point_of_sale,stock,sale,account}"
-: "${ODOO_WITH_DEMO:=true}"
+: "${ODOO_WITH_DEMO:=false}"
+: "${SEED_DEVISE:=XOF}"
 : "${ODOO_API_KEY_NAME:=julaba-poc}"
 : "${ODOO_API_KEY_DAYS:=90}"
 : "${ODOO_BASE_URL:=http://127.0.0.1:${ODOO_PORT:-8069}}"
@@ -129,7 +130,19 @@ for i in $(seq 1 90); do
   sleep 2
 done
 
-# --- 5. Utilisateur et cle API ---------------------------------------------
+# --- 5. Catalogue vivrier en FCFA ------------------------------------------
+# ADMINISTRATION de l'instance de test, pas un appel du Gateway : execute sous
+# `odoo shell` avec les droits d'admin Odoo, sans passer par OdooRealClient et
+# sans toucher a ODOO_REAL_WRITE_ENABLED, qui reste false. Voir l'en-tete de
+# scripts/seed_vivrier.py.
+log "Seed du catalogue vivrier en $SEED_DEVISE"
+docker compose exec -T \
+  -e SEED_DEVISE="$SEED_DEVISE" \
+  odoo odoo shell -c /etc/odoo/odoo.conf -d "$ODOO_DB" \
+       --no-http --log-level=warn \
+  < "$ROOT/scripts/seed_vivrier.py"
+
+# --- 6. Utilisateur et cle API ---------------------------------------------
 log "Creation de l'utilisateur API '$ODOO_API_USER_LOGIN' et generation de la cle"
 KEY_OUTPUT="$(docker compose exec -T \
   -e ODOO_API_USER_LOGIN="$ODOO_API_USER_LOGIN" \
@@ -159,7 +172,7 @@ path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 PY
 chmod 600 "$ROOT/.env"
 
-# --- 6. Resume -------------------------------------------------------------
+# --- 7. Resume -------------------------------------------------------------
 cat <<EOF
 
 --------------------------------------------------------------------
@@ -169,7 +182,8 @@ Instance Odoo 19 + POS prete.
   Base         : ${ODOO_DB}
   Modules      : ${ODOO_INSTALL_MODULES}
   Donnees demo : ${ODOO_WITH_DEMO}
-  Admin        : login 'admin' / mot de passe 'admin' (donnees de demo)
+  Catalogue    : vivrier JULABA, devise ${SEED_DEVISE}
+  Admin        : login 'admin' / mot de passe 'admin'
   Compte API   : ${ODOO_API_USER_LOGIN}
   Cle API      : ecrite dans .env (ODOO_API_KEY), non reaffichee ici.
 

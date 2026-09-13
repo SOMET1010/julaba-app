@@ -51,7 +51,28 @@ fi
 # Champs demandes = exactement ceux que consomme OdooProductRecord dans
 # backend/src/odoo-gateway/produit-mapper.ts. Si l'un disparait, le mapper
 # casse : c'est precisement ce que ce test doit detecter.
-BODY='{"domain": [], "fields": ["id", "name", "list_price", "qty_available", "default_code"], "limit": 5, "order": "id asc"}'
+# `currency_id` est demande au meme titre que le prix : `list_price` est un
+# nombre sans unite, et le Gateway JULABA refuse de le mapper tant que la devise
+# n'est pas prouvee etre du XOF (backend/src/odoo-gateway/produit-mapper.ts).
+# Ce script demande donc exactement les memes champs que `listerCatalogue()`.
+#
+# AUCUNE `limit`, volontairement, et pour deux raisons.
+#
+# 1. Fidelite : `listerCatalogue()` n'en impose pas. Un plafond ici testerait
+#    autre chose que ce que le Gateway fait reellement.
+# 2. Justesse : les modules installes creent leurs propres produits, meme sans
+#    donnees de demonstration. Les produits seedes etant crees en dernier, ils
+#    portent les identifiants les plus hauts ; avec `order: "id asc"` et un
+#    plafond, ils sortiraient de la fenetre. Le controle des prix ne verrait
+#    alors aucune reference JULABA et se sauterait lui-meme — un smoke test
+#    vert sur un seed qui n'a jamais tourne. Une fenetre partielle produirait
+#    l'echec inverse, tout aussi faux : « reference absente » alors que le seed
+#    est correct.
+#
+# Sans plafond, « absent » veut vraiment dire absent, et « present » veut dire
+# que les sept references ont ete vues. L'instance est un POC : lire tout le
+# catalogue ne coute rien.
+BODY='{"domain": [], "fields": ["id", "name", "list_price", "qty_available", "default_code", "currency_id"], "order": "id asc"}'
 
 # --- Test 1 : l'authentification est bien exigee ---------------------------
 log "Test 1 — appel sans cle API (401 attendu)"
@@ -80,13 +101,26 @@ fi
 pass "200 — reponse JSON recue."
 
 # --- Test 3 : la reponse alimente reellement le mapper JULABA --------------
-log "Test 3 — conformite de la reponse au contrat OdooProductRecord"
+log "Test 3 — conformite OdooProductRecord et devise XOF"
 python3 - "$RESPONSE_FILE" <<'PY'
 import json, sys
 
 # Miroir de OdooProductRecord (backend/src/odoo-gateway/produit-mapper.ts).
 REQUIS = {"id": int, "name": str, "list_price": (int, float), "qty_available": (int, float)}
 OPTIONNEL = {"default_code": (str, bool, type(None))}  # Odoo renvoie False quand vide
+DEVISE_JULABA = "XOF"
+
+# Catalogue vivrier pose par scripts/seed_vivrier.py : reference -> (prix, stock).
+# Les trois premieres valeurs sont celles que JULABA seede deja cote backend.
+ATTENDU = {
+    "JULABA-TOMATE": (200.0, 50.0),
+    "JULABA-BANANE": (100.0, 40.0),
+    "JULABA-RIZ-SAC": (15000.0, 10.0),
+    "JULABA-MANIOC": (200.0, 60.0),
+    "JULABA-IGNAME": (400.0, 35.0),
+    "JULABA-PLANTAIN": (800.0, 25.0),
+    "JULABA-HUILE-PALME": (1500.0, 20.0),
+}
 
 with open(sys.argv[1], encoding="utf-8") as f:
     data = json.load(f)
@@ -94,8 +128,13 @@ with open(sys.argv[1], encoding="utf-8") as f:
 if not isinstance(data, list):
     sys.exit(f"ECHEC la reponse n'est pas une liste JSON mais {type(data).__name__} : {data!r}")
 if not data:
-    sys.exit("ECHEC aucun produit retourne. Base sans catalogue : relancer init.sh avec ODOO_WITH_DEMO=true, "
-             "ou creer au moins un produit dans Odoo.")
+    sys.exit("ECHEC aucun produit retourne. Relancer ./scripts/init.sh, qui seede le catalogue vivrier.")
+
+def devise_de(rec):
+    """Un many2one Odoo se lit [id, display_name] ; pour res.currency le nom EST
+    le code ISO. Meme extraction que deviseDe() cote Gateway."""
+    v = rec.get("currency_id")
+    return v[1] if isinstance(v, list) and len(v) == 2 else None
 
 for rec in data:
     for champ, attendu in REQUIS.items():
@@ -108,32 +147,85 @@ for rec in data:
         if champ in rec and not isinstance(rec[champ], attendu):
             sys.exit(f"ECHEC champ '{champ}' de type inattendu {type(rec[champ]).__name__}")
 
-print(f"  OK {len(data)} produit(s), tous conformes a OdooProductRecord.")
+    # Le controle qui compte : un prix sans devise prouvee est un chiffre sans
+    # signification. Le Gateway refuserait ce catalogue entier (502).
+    devise = devise_de(rec)
+    if devise is None:
+        sys.exit(f"ECHEC produit id={rec.get('id')} : 'currency_id' absent ou vide. "
+                 f"Le Gateway JULABA refuse un prix dont la devise est inconnue.")
+    if devise != DEVISE_JULABA:
+        sys.exit(f"ECHEC produit id={rec.get('id')} : prix libelle en {devise}, "
+                 f"or JULABA n'affiche que des montants en {DEVISE_JULABA}. "
+                 f"Le Gateway refuserait ce catalogue (502). "
+                 f"Verifier la devise de la societe Odoo (SEED_DEVISE).")
+
+print(f"  OK {len(data)} produit(s) conformes a OdooProductRecord, tous en {DEVISE_JULABA}.")
+
+# Prix et stocks du catalogue vivrier, au franc pres. Verifies seulement si le
+# seed est present : le script reste utilisable sur une instance seedee
+# autrement, sans se transformer en faux echec.
+trouves = {r.get("default_code"): r for r in data if r.get("default_code") in ATTENDU}
+if not trouves:
+    # Le search_read n'est pas plafonne : si aucune reference n'apparait ici,
+    # elles ne sont reellement pas dans l'instance — ce n'est pas un effet de
+    # fenetre. Le script reste utilisable sur une instance seedee autrement,
+    # d'ou un saut plutot qu'un echec, mais le message doit le dire clairement.
+    print("  -- aucune reference JULABA-* dans le catalogue complet : verification des prix sautee.")
+    print("     Si ./scripts/init.sh vient de tourner, c'est anormal : le seed n'a pas pris.")
+else:
+    for reference, (prix, stock) in sorted(ATTENDU.items()):
+        rec = trouves.get(reference)
+        if rec is None:
+            sys.exit(f"ECHEC reference '{reference}' attendue mais absente du catalogue.")
+        if abs(float(rec["list_price"]) - prix) > 1e-9:
+            sys.exit(f"ECHEC '{reference}' : prix {rec['list_price']!r} au lieu de {prix!r} FCFA.")
+        if abs(float(rec["qty_available"]) - stock) > 1e-9:
+            sys.exit(f"ECHEC '{reference}' : stock {rec['qty_available']!r} au lieu de {stock!r}.")
+    print(f"  OK {len(ATTENDU)} references vivrieres au prix et au stock attendus.")
+
 print()
 print("  Projection par versJulaba() — ce que verrait le catalogue JULABA :")
-print(f"  {'id JULABA':<14}{'nom':<34}{'prix':>10}{'stock':>9}  code")
+print(f"  {'id JULABA':<14}{'nom':<24}{'prix FCFA':>12}{'stock':>9}  reference")
 for rec in data:
     code = rec.get("default_code")
     code = "" if code in (False, None) else code
     nom = rec["name"]
-    nom = nom if len(nom) <= 32 else nom[:31] + "…"
-    print(f"  {'odoo-' + str(rec['id']):<14}{nom:<34}{rec['list_price']:>10.2f}{rec['qty_available']:>9.2f}  {code}")
+    nom = nom if len(nom) <= 22 else nom[:21] + "…"
+    print(f"  {'odoo-' + str(rec['id']):<14}{nom:<24}{rec['list_price']:>12.0f}{rec['qty_available']:>9.0f}  {code}")
 PY
 
 # --- Test 4 : product.product/read, seconde methode de l'allowlist ---------
-log "Test 4 — read authentifie sur un produit issu du search_read"
+log "Test 4 — read authentifie sur un produit a stock non nul"
 
 # On repart d'un produit reellement retourne par le search_read : l'identifiant
 # n'est jamais code en dur, et la valeur lue sert de reference de coherence.
-REFERENCE="$(python3 - "$RESPONSE_FILE" <<'PY'
+#
+# Le produit est choisi parmi ceux a stock NON NUL. Prendre simplement le
+# premier de la liste reviendrait souvent a comparer 0 a 0 — les modules Odoo
+# creent des produits techniques a stock zero (« Tips », pour point_of_sale) et
+# ils arrivent en tete par identifiant. Un test qui ne peut pas echouer ne
+# prouve rien.
+if ! REFERENCE="$(python3 - "$RESPONSE_FILE" <<'PY'
 import json, sys
+
 with open(sys.argv[1], encoding="utf-8") as f:
     produits = json.load(f)
-p = produits[0]
+
+candidats = [p for p in produits if float(p.get("qty_available") or 0) > 0]
+if not candidats:
+    # Le seed pose des stocks positifs sur les sept references vivrieres :
+    # n'en trouver aucun est une anomalie en soi, pas un cas a contourner.
+    sys.exit("aucun produit a stock non nul dans le catalogue. La coherence "
+             "search_read/read ne peut pas etre prouvee sur des zeros. "
+             "Verifier que ./scripts/init.sh est alle au bout, seed compris.")
+
+p = candidats[0]
 # Format brut "id<TAB>qty_available" : simple a relire cote shell.
 print(f"{p['id']}\t{p['qty_available']!r}")
 PY
-)"
+)"; then
+  die "test 4 : impossible de choisir un produit de reference (voir le message ci-dessus)."
+fi
 PRODUCT_ID="${REFERENCE%%$'\t'*}"
 QTY_REFERENCE="${REFERENCE##*$'\t'}"
 
