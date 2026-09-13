@@ -15,24 +15,11 @@ export type ProduitCaisseTata = {
 
 export type TataMarchandDependencies = {
   produits: ProduitCaisseTata[];
-  enregistrerVente: (
-    montant: number,
-    produits: Array<{
-      productId?: string;
-      nom: string;
-      quantite: number;
-      prix_unitaire: number;
-      prix_achat: number;
-    }>,
-    modePaiement: string,
-    notes: string,
-  ) => Promise<void>;
   enregistrerDepense: (montant: number, notes: string) => Promise<void>;
   mettreAJourStock: (id: string, data: { quantite: number }) => Promise<void>;
 };
 
 export type TataMarchandOutcome =
-  | { kind: 'vente' }
   | { kind: 'depense' }
   | { kind: 'stock' }
   | { kind: 'stock_unknown' }
@@ -59,30 +46,18 @@ export function trouverProduitTata(produit: string | undefined, produits: Produi
  * Exécute uniquement les actions dont le chemin caisse est idempotent et
  * durable hors ligne. Le stock reste volontairement hors de ce helper tant
  * que son endpoint ne porte pas de clé d'idempotence serveur.
+ *
+ * « vendre » n'est PAS géré ici : ce n'est plus une écriture backend (voir
+ * convergence voix/tactile POS, Lot 2) mais un ajout au panier partagé —
+ * `TantieSagesseModal.tsx` le route directement vers `vendreVocalUnifie`
+ * (même fonction que `VenteVocaleModal`), avant même d'appeler ce helper.
+ * Aucun chemin vocal ne doit plus appeler `enregistrerVente` en dehors du
+ * bouton tactile « Payer en espèces » de `POSCaisse`.
  */
 export async function executerActionTataMarchand(
   action: TataMarchandAction,
   deps: TataMarchandDependencies,
 ): Promise<TataMarchandOutcome> {
-  if (action.type === 'vendre' && action.montant && action.montant > 0) {
-    const quantite = Math.max(1, Number(action.quantite) || 1);
-    const produit = trouverProduitTata(action.produit, deps.produits);
-    const nom = produit?.nom || action.produit || 'Produit vocal';
-    await deps.enregistrerVente(
-      action.montant,
-      [{
-        productId: produit?.id,
-        nom,
-        quantite,
-        prix_unitaire: Math.round(action.montant / quantite),
-        prix_achat: Number(produit?.prix_achat) || 0,
-      }],
-      'cash',
-      `Vente vocale Tata : ${nom}`,
-    );
-    return { kind: 'vente' };
-  }
-
   if ((action.type === 'depense' || (action.montant && !action.type)) && action.montant && action.montant > 0) {
     await deps.enregistrerDepense(action.montant, action.description || 'Dépense vocale Tata');
     return { kind: 'depense' };
