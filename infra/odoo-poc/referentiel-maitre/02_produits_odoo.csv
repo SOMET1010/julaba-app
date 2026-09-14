@@ -1,0 +1,199 @@
+﻿id,default_code,name,categ_id/id,type,is_storable,sale_ok,purchase_ok,active,list_price,standard_price
+julaba.prod_viv_tub_001,VIV-TUB-001,Igname Kponan,julaba.cat_sub_tubercules_et_racines_ignames,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_002,VIV-TUB-002,Igname Bêtê-Bêtê,julaba.cat_sub_tubercules_et_racines_ignames,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_003,VIV-TUB-003,Igname Florido,julaba.cat_sub_tubercules_et_racines_ignames,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_004,VIV-TUB-004,Igname Krenglè,julaba.cat_sub_tubercules_et_racines_ignames,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_005,VIV-TUB-005,Igname Lokpa,julaba.cat_sub_tubercules_et_racines_ignames,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_006,VIV-TUB-006,Igname Assawa,julaba.cat_sub_tubercules_et_racines_ignames,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_007,VIV-TUB-007,Igname C18,julaba.cat_sub_tubercules_et_racines_ignames,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_008,VIV-TUB-008,Igname Cameroun,julaba.cat_sub_tubercules_et_racines_ignames,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_009,VIV-TUB-009,Manioc frais doux,julaba.cat_sub_tubercules_et_racines_manioc_et_autres_racines,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_010,VIV-TUB-010,Manioc frais amer,julaba.cat_sub_tubercules_et_racines_manioc_et_autres_racines,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_011,VIV-TUB-011,Patate douce blanche,julaba.cat_sub_tubercules_et_racines_manioc_et_autres_racines,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_012,VIV-TUB-012,Patate douce orange,julaba.cat_sub_tubercules_et_racines_manioc_et_autres_racines,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_013,VIV-TUB-013,Taro,julaba.cat_sub_tubercules_et_racines_manioc_et_autres_racines,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_014,VIV-TUB-014,Macabo,julaba.cat_sub_tubercules_et_racines_manioc_et_autres_racines,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_015,VIV-TUB-015,Pomme de terre blanche,julaba.cat_sub_tubercules_et_racines_manioc_et_autres_racines,consu,1,1,1,1,0,0
+julaba.prod_viv_tub_016,VIV-TUB-016,Pomme de terre rouge,julaba.cat_sub_tubercules_et_racines_manioc_et_autres_racines,consu,1,1,1,1,0,0
+julaba.prod_viv_ban_001,VIV-BAN-001,Banane plantain verte,julaba.cat_sub_bananes_plantain,consu,1,1,1,1,0,0
+julaba.prod_viv_ban_002,VIV-BAN-002,Banane plantain mûre,julaba.cat_sub_bananes_plantain,consu,1,1,1,1,0,0
+julaba.prod_viv_ban_003,VIV-BAN-003,Plantain Corne 1,julaba.cat_sub_bananes_plantain,consu,1,1,1,1,0,0
+julaba.prod_viv_ban_004,VIV-BAN-004,Plantain Corne 2,julaba.cat_sub_bananes_plantain,consu,1,1,1,1,0,0
+julaba.prod_viv_ban_005,VIV-BAN-005,Plantain Agnrin,julaba.cat_sub_bananes_plantain,consu,1,1,1,1,0,0
+julaba.prod_viv_ban_006,VIV-BAN-006,Banane douce locale,julaba.cat_sub_bananes_banane_dessert,consu,1,1,1,1,0,0
+julaba.prod_viv_ban_007,VIV-BAN-007,Banane dessert Cavendish,julaba.cat_sub_bananes_banane_dessert,consu,1,1,1,1,0,0
+julaba.prod_viv_ban_008,VIV-BAN-008,Banane petite douce,julaba.cat_sub_bananes_banane_dessert,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_001,VIV-CER-001,Riz local blanc,julaba.cat_sub_cereales_riz,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_002,VIV-CER-002,Riz local étuvé,julaba.cat_sub_cereales_riz,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_003,VIV-CER-003,Riz importé long grain,julaba.cat_sub_cereales_riz,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_004,VIV-CER-004,Riz importé brisé,julaba.cat_sub_cereales_riz,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_005,VIV-CER-005,Riz parfumé,julaba.cat_sub_cereales_riz,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_006,VIV-CER-006,Riz paddy,julaba.cat_sub_cereales_riz,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_007,VIV-CER-007,Maïs blanc sec,julaba.cat_sub_cereales_mais_et_cereales_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_008,VIV-CER-008,Maïs jaune sec,julaba.cat_sub_cereales_mais_et_cereales_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_009,VIV-CER-009,Maïs frais en épi,julaba.cat_sub_cereales_mais_et_cereales_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_010,VIV-CER-010,Mil,julaba.cat_sub_cereales_mais_et_cereales_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_011,VIV-CER-011,Sorgho,julaba.cat_sub_cereales_mais_et_cereales_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_cer_012,VIV-CER-012,Fonio,julaba.cat_sub_cereales_mais_et_cereales_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_001,VIV-LEG-001,Niébé blanc,julaba.cat_sub_legumineuses_haricots_et_pois,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_002,VIV-LEG-002,Niébé rouge,julaba.cat_sub_legumineuses_haricots_et_pois,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_003,VIV-LEG-003,Haricot blanc,julaba.cat_sub_legumineuses_haricots_et_pois,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_004,VIV-LEG-004,Haricot rouge,julaba.cat_sub_legumineuses_haricots_et_pois,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_005,VIV-LEG-005,Haricot noir,julaba.cat_sub_legumineuses_haricots_et_pois,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_006,VIV-LEG-006,Haricot moucheté,julaba.cat_sub_legumineuses_haricots_et_pois,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_007,VIV-LEG-007,Pois de terre,julaba.cat_sub_legumineuses_haricots_et_pois,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_008,VIV-LEG-008,Soja,julaba.cat_sub_legumineuses_haricots_et_pois,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_009,VIV-LEG-009,Arachide en coque,julaba.cat_sub_legumineuses_arachides_et_graines,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_010,VIV-LEG-010,Arachide décortiquée,julaba.cat_sub_legumineuses_arachides_et_graines,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_011,VIV-LEG-011,Arachide grillée,julaba.cat_sub_legumineuses_arachides_et_graines,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_012,VIV-LEG-012,Sésame blanc,julaba.cat_sub_legumineuses_arachides_et_graines,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_013,VIV-LEG-013,Sésame noir,julaba.cat_sub_legumineuses_arachides_et_graines,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_014,VIV-LEG-014,Graines de courge,julaba.cat_sub_legumineuses_arachides_et_graines,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_015,VIV-LEG-015,Graines de melon,julaba.cat_sub_legumineuses_arachides_et_graines,consu,1,1,1,1,0,0
+julaba.prod_viv_tom_001,VIV-TOM-001,Tomate locale ronde,julaba.cat_sub_legumes_fruits_tomates,consu,1,1,1,1,0,0
+julaba.prod_viv_tom_002,VIV-TOM-002,Tomate allongée,julaba.cat_sub_legumes_fruits_tomates,consu,1,1,1,1,0,0
+julaba.prod_viv_tom_003,VIV-TOM-003,Tomate salade,julaba.cat_sub_legumes_fruits_tomates,consu,1,1,1,1,0,0
+julaba.prod_viv_tom_004,VIV-TOM-004,Tomate cerise,julaba.cat_sub_legumes_fruits_tomates,consu,1,1,1,1,0,0
+julaba.prod_viv_tom_005,VIV-TOM-005,Tomate mûre transformation,julaba.cat_sub_legumes_fruits_tomates,consu,1,1,1,1,0,0
+julaba.prod_viv_oig_001,VIV-OIG-001,Oignon violet,julaba.cat_sub_condiments_frais_oignons_et_alliacees,consu,1,1,1,1,0,0
+julaba.prod_viv_oig_002,VIV-OIG-002,Oignon blanc,julaba.cat_sub_condiments_frais_oignons_et_alliacees,consu,1,1,1,1,0,0
+julaba.prod_viv_oig_003,VIV-OIG-003,Oignon jaune,julaba.cat_sub_condiments_frais_oignons_et_alliacees,consu,1,1,1,1,0,0
+julaba.prod_viv_oig_004,VIV-OIG-004,Échalote,julaba.cat_sub_condiments_frais_oignons_et_alliacees,consu,1,1,1,1,0,0
+julaba.prod_viv_oig_005,VIV-OIG-005,Ail local,julaba.cat_sub_condiments_frais_oignons_et_alliacees,consu,1,1,1,1,0,0
+julaba.prod_viv_oig_006,VIV-OIG-006,Ail importé,julaba.cat_sub_condiments_frais_oignons_et_alliacees,consu,1,1,1,1,0,0
+julaba.prod_viv_oig_007,VIV-OIG-007,Poireau,julaba.cat_sub_condiments_frais_oignons_et_alliacees,consu,1,1,1,1,0,0
+julaba.prod_viv_oig_008,VIV-OIG-008,Ciboulette,julaba.cat_sub_condiments_frais_oignons_et_alliacees,consu,1,1,1,1,0,0
+julaba.prod_viv_aub_001,VIV-AUB-001,Aubergine N'Drowa,julaba.cat_sub_legumes_fruits_aubergines,consu,1,1,1,1,0,0
+julaba.prod_viv_aub_002,VIV-AUB-002,Aubergine africaine blanche,julaba.cat_sub_legumes_fruits_aubergines,consu,1,1,1,1,0,0
+julaba.prod_viv_aub_003,VIV-AUB-003,Aubergine africaine verte,julaba.cat_sub_legumes_fruits_aubergines,consu,1,1,1,1,0,0
+julaba.prod_viv_aub_004,VIV-AUB-004,Aubergine violette,julaba.cat_sub_legumes_fruits_aubergines,consu,1,1,1,1,0,0
+julaba.prod_viv_aub_005,VIV-AUB-005,Aubergine longue,julaba.cat_sub_legumes_fruits_aubergines,consu,1,1,1,1,0,0
+julaba.prod_viv_pim_001,VIV-PIM-001,Piment frais rouge,julaba.cat_sub_condiments_frais_piments,consu,1,1,1,1,0,0
+julaba.prod_viv_pim_002,VIV-PIM-002,Piment frais vert,julaba.cat_sub_condiments_frais_piments,consu,1,1,1,1,0,0
+julaba.prod_viv_pim_003,VIV-PIM-003,Piment antillais,julaba.cat_sub_condiments_frais_piments,consu,1,1,1,1,0,0
+julaba.prod_viv_pim_004,VIV-PIM-004,Piment bec d'oiseau,julaba.cat_sub_condiments_frais_piments,consu,1,1,1,1,0,0
+julaba.prod_viv_pim_005,VIV-PIM-005,Piment sec,julaba.cat_sub_condiments_frais_piments,consu,1,1,1,1,0,0
+julaba.prod_viv_gom_001,VIV-GOM-001,Gombo frais petit,julaba.cat_sub_legumes_fruits_gombo,consu,1,1,1,1,0,0
+julaba.prod_viv_gom_002,VIV-GOM-002,Gombo frais gros,julaba.cat_sub_legumes_fruits_gombo,consu,1,1,1,1,0,0
+julaba.prod_viv_gom_003,VIV-GOM-003,Gombo sec,julaba.cat_sub_legumes_fruits_gombo,consu,1,1,1,1,0,0
+julaba.prod_viv_gom_004,VIV-GOM-004,Poudre de gombo,julaba.cat_sub_legumes_fruits_gombo,consu,1,1,1,1,0,0
+julaba.prod_viv_feu_001,VIV-FEU-001,Épinard local,julaba.cat_sub_legumes_feuilles_feuilles_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_feu_002,VIV-FEU-002,Amarante,julaba.cat_sub_legumes_feuilles_feuilles_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_feu_003,VIV-FEU-003,Kplala / corète potagère,julaba.cat_sub_legumes_feuilles_feuilles_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_feu_004,VIV-FEU-004,Feuille de manioc,julaba.cat_sub_legumes_feuilles_feuilles_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_feu_005,VIV-FEU-005,Feuille de patate douce,julaba.cat_sub_legumes_feuilles_feuilles_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_feu_006,VIV-FEU-006,Feuille de taro,julaba.cat_sub_legumes_feuilles_feuilles_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_feu_007,VIV-FEU-007,Feuille d'aubergine,julaba.cat_sub_legumes_feuilles_feuilles_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_feu_008,VIV-FEU-008,Feuille de baobab,julaba.cat_sub_legumes_feuilles_feuilles_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_feu_009,VIV-FEU-009,Dah,julaba.cat_sub_legumes_feuilles_feuilles_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_feu_010,VIV-FEU-010,Oseille,julaba.cat_sub_legumes_feuilles_feuilles_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_feu_011,VIV-FEU-011,Feuille de bissap,julaba.cat_sub_legumes_feuilles_feuilles_locales,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_016,VIV-LEG-016,Chou vert,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_017,VIV-LEG-017,Chou rouge,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_018,VIV-LEG-018,Laitue,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_019,VIV-LEG-019,Concombre,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_020,VIV-LEG-020,Courgette,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_021,VIV-LEG-021,Haricot vert,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_022,VIV-LEG-022,Poivron vert,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_023,VIV-LEG-023,Poivron rouge,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_024,VIV-LEG-024,Poivron jaune,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_025,VIV-LEG-025,Céleri,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_026,VIV-LEG-026,Persil,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_027,VIV-LEG-027,Carotte,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_028,VIV-LEG-028,Betterave,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_029,VIV-LEG-029,Navet,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_leg_030,VIV-LEG-030,Radis,julaba.cat_sub_legumes_legumes_verts_et_divers,consu,1,1,1,1,0,0
+julaba.prod_viv_cou_001,VIV-COU-001,Courge locale,julaba.cat_sub_legumes_courges,consu,1,1,1,1,0,0
+julaba.prod_viv_cou_002,VIV-COU-002,Potiron,julaba.cat_sub_legumes_courges,consu,1,1,1,1,0,0
+julaba.prod_viv_cou_003,VIV-COU-003,Citrouille,julaba.cat_sub_legumes_courges,consu,1,1,1,1,0,0
+julaba.prod_viv_cou_004,VIV-COU-004,Melon local,julaba.cat_sub_legumes_courges,consu,1,1,1,1,0,0
+julaba.prod_viv_agr_001,VIV-AGR-001,Orange locale,julaba.cat_sub_fruits_agrumes,consu,1,1,1,1,0,0
+julaba.prod_viv_agr_002,VIV-AGR-002,Orange importée,julaba.cat_sub_fruits_agrumes,consu,1,1,1,1,0,0
+julaba.prod_viv_agr_003,VIV-AGR-003,Mandarine,julaba.cat_sub_fruits_agrumes,consu,1,1,1,1,0,0
+julaba.prod_viv_agr_004,VIV-AGR-004,Clémentine,julaba.cat_sub_fruits_agrumes,consu,1,1,1,1,0,0
+julaba.prod_viv_agr_005,VIV-AGR-005,Citron vert,julaba.cat_sub_fruits_agrumes,consu,1,1,1,1,0,0
+julaba.prod_viv_agr_006,VIV-AGR-006,Citron jaune,julaba.cat_sub_fruits_agrumes,consu,1,1,1,1,0,0
+julaba.prod_viv_agr_007,VIV-AGR-007,Pamplemousse,julaba.cat_sub_fruits_agrumes,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_001,VIV-FRT-001,Mangue Kent,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_002,VIV-FRT-002,Mangue Amélie,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_003,VIV-FRT-003,Mangue Brooks,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_004,VIV-FRT-004,Papaye,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_005,VIV-FRT-005,Ananas,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_006,VIV-FRT-006,Pastèque,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_007,VIV-FRT-007,Melon,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_008,VIV-FRT-008,Avocat,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_009,VIV-FRT-009,Goyave,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_010,VIV-FRT-010,Corossol,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_011,VIV-FRT-011,Pomme cannelle,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_012,VIV-FRT-012,Fruit de la passion,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_frt_013,VIV-FRT-013,Carambole,julaba.cat_sub_fruits_fruits_tropicaux,consu,1,1,1,1,0,0
+julaba.prod_viv_fri_001,VIV-FRI-001,Pomme rouge,julaba.cat_sub_fruits_fruits_importes_complementaires,consu,1,1,1,1,0,0
+julaba.prod_viv_fri_002,VIV-FRI-002,Pomme verte,julaba.cat_sub_fruits_fruits_importes_complementaires,consu,1,1,1,1,0,0
+julaba.prod_viv_fri_003,VIV-FRI-003,Poire,julaba.cat_sub_fruits_fruits_importes_complementaires,consu,1,1,1,1,0,0
+julaba.prod_viv_fri_004,VIV-FRI-004,Raisin rouge,julaba.cat_sub_fruits_fruits_importes_complementaires,consu,1,1,1,1,0,0
+julaba.prod_viv_fri_005,VIV-FRI-005,Raisin blanc,julaba.cat_sub_fruits_fruits_importes_complementaires,consu,1,1,1,1,0,0
+julaba.prod_viv_fri_006,VIV-FRI-006,Kiwi,julaba.cat_sub_fruits_fruits_importes_complementaires,consu,1,1,1,1,0,0
+julaba.prod_viv_fri_007,VIV-FRI-007,Pêche,julaba.cat_sub_fruits_fruits_importes_complementaires,consu,1,1,1,1,0,0
+julaba.prod_viv_fri_008,VIV-FRI-008,Prune,julaba.cat_sub_fruits_fruits_importes_complementaires,consu,1,1,1,1,0,0
+julaba.prod_viv_pal_001,VIV-PAL-001,Noix de coco fraîche,julaba.cat_sub_palmier_et_coco_palmier_coco,consu,1,1,1,1,0,0
+julaba.prod_viv_pal_002,VIV-PAL-002,Noix de coco sèche,julaba.cat_sub_palmier_et_coco_palmier_coco,consu,1,1,1,1,0,0
+julaba.prod_viv_pal_003,VIV-PAL-003,Chair de coco,julaba.cat_sub_palmier_et_coco_palmier_coco,consu,1,1,1,1,0,0
+julaba.prod_viv_pal_004,VIV-PAL-004,Graine de palme,julaba.cat_sub_palmier_et_coco_palmier_coco,consu,1,1,1,1,0,0
+julaba.prod_viv_pal_005,VIV-PAL-005,Noix de palme,julaba.cat_sub_palmier_et_coco_palmier_coco,consu,1,1,1,1,0,0
+julaba.prod_viv_con_001,VIV-CON-001,Gingembre frais,julaba.cat_sub_condiments_frais_aromates,consu,1,1,1,1,0,0
+julaba.prod_viv_con_002,VIV-CON-002,Curcuma frais,julaba.cat_sub_condiments_frais_aromates,consu,1,1,1,1,0,0
+julaba.prod_viv_con_003,VIV-CON-003,Basilic local,julaba.cat_sub_condiments_frais_aromates,consu,1,1,1,1,0,0
+julaba.prod_viv_con_004,VIV-CON-004,Menthe,julaba.cat_sub_condiments_frais_aromates,consu,1,1,1,1,0,0
+julaba.prod_viv_con_005,VIV-CON-005,Persil africain,julaba.cat_sub_condiments_frais_aromates,consu,1,1,1,1,0,0
+julaba.prod_viv_con_006,VIV-CON-006,Céleri feuille,julaba.cat_sub_condiments_frais_aromates,consu,1,1,1,1,0,0
+julaba.prod_viv_epi_001,VIV-EPI-001,Poivre noir,julaba.cat_sub_epices_et_condiments_secs_epices,consu,1,1,1,1,0,0
+julaba.prod_viv_epi_002,VIV-EPI-002,Poivre blanc,julaba.cat_sub_epices_et_condiments_secs_epices,consu,1,1,1,1,0,0
+julaba.prod_viv_epi_003,VIV-EPI-003,Clou de girofle,julaba.cat_sub_epices_et_condiments_secs_epices,consu,1,1,1,1,0,0
+julaba.prod_viv_epi_004,VIV-EPI-004,Cannelle,julaba.cat_sub_epices_et_condiments_secs_epices,consu,1,1,1,1,0,0
+julaba.prod_viv_epi_005,VIV-EPI-005,Muscade,julaba.cat_sub_epices_et_condiments_secs_epices,consu,1,1,1,1,0,0
+julaba.prod_viv_epi_006,VIV-EPI-006,Anis,julaba.cat_sub_epices_et_condiments_secs_epices,consu,1,1,1,1,0,0
+julaba.prod_viv_epi_007,VIV-EPI-007,Laurier,julaba.cat_sub_epices_et_condiments_secs_epices,consu,1,1,1,1,0,0
+julaba.prod_viv_epi_008,VIV-EPI-008,Akpi / djansang,julaba.cat_sub_epices_et_condiments_secs_epices,consu,1,1,1,1,0,0
+julaba.prod_viv_epi_009,VIV-EPI-009,Soumbara,julaba.cat_sub_epices_et_condiments_secs_epices,consu,1,1,1,1,0,0
+julaba.prod_viv_epi_010,VIV-EPI-010,Graines de selim / kili,julaba.cat_sub_epices_et_condiments_secs_epices,consu,1,1,1,1,0,0
+julaba.prod_viv_hui_001,VIV-HUI-001,Huile de palme rouge,julaba.cat_sub_huiles_alimentaires_huiles,consu,1,1,1,1,0,0
+julaba.prod_viv_hui_002,VIV-HUI-002,Huile de palme raffinée,julaba.cat_sub_huiles_alimentaires_huiles,consu,1,1,1,1,0,0
+julaba.prod_viv_hui_003,VIV-HUI-003,Huile d'arachide,julaba.cat_sub_huiles_alimentaires_huiles,consu,1,1,1,1,0,0
+julaba.prod_viv_hui_004,VIV-HUI-004,Huile de soja,julaba.cat_sub_huiles_alimentaires_huiles,consu,1,1,1,1,0,0
+julaba.prod_viv_hui_005,VIV-HUI-005,Huile végétale,julaba.cat_sub_huiles_alimentaires_huiles,consu,1,1,1,1,0,0
+julaba.prod_viv_man_001,VIV-MAN-001,Attiéké frais,julaba.cat_sub_produits_transformes_du_manioc_attieke_et_derives,consu,1,1,1,1,0,0
+julaba.prod_viv_man_002,VIV-MAN-002,Attiéké déshydraté,julaba.cat_sub_produits_transformes_du_manioc_attieke_et_derives,consu,1,1,1,1,0,0
+julaba.prod_viv_man_003,VIV-MAN-003,Attiéké type garba,julaba.cat_sub_produits_transformes_du_manioc_attieke_et_derives,consu,1,1,1,1,0,0
+julaba.prod_viv_man_004,VIV-MAN-004,Gari blanc,julaba.cat_sub_produits_transformes_du_manioc_attieke_et_derives,consu,1,1,1,1,0,0
+julaba.prod_viv_man_005,VIV-MAN-005,Gari jaune,julaba.cat_sub_produits_transformes_du_manioc_attieke_et_derives,consu,1,1,1,1,0,0
+julaba.prod_viv_man_006,VIV-MAN-006,Placali frais,julaba.cat_sub_produits_transformes_du_manioc_attieke_et_derives,consu,1,1,1,1,0,0
+julaba.prod_viv_man_007,VIV-MAN-007,Pâte de manioc,julaba.cat_sub_produits_transformes_du_manioc_attieke_et_derives,consu,1,1,1,1,0,0
+julaba.prod_viv_man_008,VIV-MAN-008,Amidon de manioc,julaba.cat_sub_produits_transformes_du_manioc_attieke_et_derives,consu,1,1,1,1,0,0
+julaba.prod_viv_man_009,VIV-MAN-009,Semoule de manioc,julaba.cat_sub_produits_transformes_du_manioc_attieke_et_derives,consu,1,1,1,1,0,0
+julaba.prod_viv_trf_001,VIV-TRF-001,Farine de maïs blanche,julaba.cat_sub_produits_transformes_farines_et_semoules,consu,1,1,1,1,0,0
+julaba.prod_viv_trf_002,VIV-TRF-002,Farine de maïs jaune,julaba.cat_sub_produits_transformes_farines_et_semoules,consu,1,1,1,1,0,0
+julaba.prod_viv_trf_003,VIV-TRF-003,Semoule de maïs,julaba.cat_sub_produits_transformes_farines_et_semoules,consu,1,1,1,1,0,0
+julaba.prod_viv_trf_004,VIV-TRF-004,Farine de mil,julaba.cat_sub_produits_transformes_farines_et_semoules,consu,1,1,1,1,0,0
+julaba.prod_viv_trf_005,VIV-TRF-005,Farine de sorgho,julaba.cat_sub_produits_transformes_farines_et_semoules,consu,1,1,1,1,0,0
+julaba.prod_viv_trf_006,VIV-TRF-006,Farine de fonio,julaba.cat_sub_produits_transformes_farines_et_semoules,consu,1,1,1,1,0,0
+julaba.prod_viv_trf_007,VIV-TRF-007,Farine de manioc,julaba.cat_sub_produits_transformes_farines_et_semoules,consu,1,1,1,1,0,0
+julaba.prod_viv_trf_008,VIV-TRF-008,Farine d'igname,julaba.cat_sub_produits_transformes_farines_et_semoules,consu,1,1,1,1,0,0
+julaba.prod_viv_ara_001,VIV-ARA-001,Pâte d'arachide,julaba.cat_sub_produits_transformes_arachide_transformee,consu,1,1,1,1,0,0
+julaba.prod_viv_ara_002,VIV-ARA-002,Poudre d'arachide,julaba.cat_sub_produits_transformes_arachide_transformee,consu,1,1,1,1,0,0
+julaba.prod_viv_ara_003,VIV-ARA-003,Arachide grillée salée,julaba.cat_sub_produits_transformes_arachide_transformee,consu,1,1,1,1,0,0
+julaba.prod_viv_ara_004,VIV-ARA-004,Huile artisanale d'arachide,julaba.cat_sub_produits_transformes_arachide_transformee,consu,1,1,1,1,0,0
+julaba.prod_viv_sec_001,VIV-SEC-001,Tomate séchée,julaba.cat_sub_produits_seches_produits_vivriers_seches,consu,1,1,1,1,0,0
+julaba.prod_viv_sec_002,VIV-SEC-002,Champignon séché,julaba.cat_sub_produits_seches_produits_vivriers_seches,consu,1,1,1,1,0,0
+julaba.prod_viv_sec_003,VIV-SEC-003,Feuilles séchées,julaba.cat_sub_produits_seches_produits_vivriers_seches,consu,1,1,1,1,0,0
+julaba.prod_viv_sec_004,VIV-SEC-004,Manioc séché,julaba.cat_sub_produits_seches_produits_vivriers_seches,consu,1,1,1,1,0,0
+julaba.prod_viv_sec_005,VIV-SEC-005,Cossettes de manioc,julaba.cat_sub_produits_seches_produits_vivriers_seches,consu,1,1,1,1,0,0
+julaba.prod_viv_sec_006,VIV-SEC-006,Piment séché moulu,julaba.cat_sub_produits_seches_produits_vivriers_seches,consu,1,1,1,1,0,0
+julaba.prod_viv_sec_007,VIV-SEC-007,Gombo séché moulu,julaba.cat_sub_produits_seches_produits_vivriers_seches,consu,1,1,1,1,0,0
+julaba.prod_viv_cha_001,VIV-CHA-001,Champignon local frais,julaba.cat_sub_champignons_champignons,consu,1,1,1,1,0,0
+julaba.prod_viv_cha_002,VIV-CHA-002,Pleurote frais,julaba.cat_sub_champignons_champignons,consu,1,1,1,1,0,0
+julaba.prod_viv_cha_003,VIV-CHA-003,Champignon séché,julaba.cat_sub_champignons_champignons,consu,1,1,1,1,0,0
+julaba.prod_viv_noi_001,VIV-NOI-001,Noix de cajou brute,julaba.cat_sub_noix_et_graines_noix,consu,1,1,1,1,0,0
+julaba.prod_viv_noi_002,VIV-NOI-002,Noix de cajou décortiquée,julaba.cat_sub_noix_et_graines_noix,consu,1,1,1,1,0,0
+julaba.prod_viv_noi_003,VIV-NOI-003,Noix de cajou grillée,julaba.cat_sub_noix_et_graines_noix,consu,1,1,1,1,0,0
+julaba.prod_viv_can_001,VIV-CAN-001,Canne à sucre,julaba.cat_sub_produits_complementaires_canne_et_miel,consu,1,1,1,1,0,0
+julaba.prod_viv_can_002,VIV-CAN-002,Miel local,julaba.cat_sub_produits_complementaires_canne_et_miel,consu,1,1,1,1,0,0

@@ -1,0 +1,199 @@
+﻿code_produit,nom_canonique,famille,sous_famille,unites_locales_autorisees,gros,demi_gros,detail,source_de_verite,usage_local
+VIV-TUB-001,Igname Kponan,Tubercules et racines,Ignames,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-002,Igname Bêtê-Bêtê,Tubercules et racines,Ignames,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-003,Igname Florido,Tubercules et racines,Ignames,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-004,Igname Krenglè,Tubercules et racines,Ignames,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-005,Igname Lokpa,Tubercules et racines,Ignames,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-006,Igname Assawa,Tubercules et racines,Ignames,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-007,Igname C18,Tubercules et racines,Ignames,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-008,Igname Cameroun,Tubercules et racines,Ignames,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-009,Manioc frais doux,Tubercules et racines,Manioc et autres racines,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-010,Manioc frais amer,Tubercules et racines,Manioc et autres racines,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-011,Patate douce blanche,Tubercules et racines,Manioc et autres racines,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-012,Patate douce orange,Tubercules et racines,Manioc et autres racines,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-013,Taro,Tubercules et racines,Manioc et autres racines,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-014,Macabo,Tubercules et racines,Manioc et autres racines,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-015,Pomme de terre blanche,Tubercules et racines,Manioc et autres racines,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TUB-016,Pomme de terre rouge,Tubercules et racines,Manioc et autres racines,"kg, sac, tas, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-BAN-001,Banane plantain verte,Bananes,Plantain,"kg, régime, main, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-BAN-002,Banane plantain mûre,Bananes,Plantain,"kg, régime, main, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-BAN-003,Plantain Corne 1,Bananes,Plantain,"kg, régime, main, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-BAN-004,Plantain Corne 2,Bananes,Plantain,"kg, régime, main, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-BAN-005,Plantain Agnrin,Bananes,Plantain,"kg, régime, main, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-BAN-006,Banane douce locale,Bananes,Banane dessert,"kg, régime, main, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-BAN-007,Banane dessert Cavendish,Bananes,Banane dessert,"kg, régime, main, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-BAN-008,Banane petite douce,Bananes,Banane dessert,"kg, régime, main, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-001,Riz local blanc,Céréales,Riz,"kg, sac, demi-sac, quart-sac",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-002,Riz local étuvé,Céréales,Riz,"kg, sac, demi-sac, quart-sac",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-003,Riz importé long grain,Céréales,Riz,"kg, sac, demi-sac, quart-sac",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-004,Riz importé brisé,Céréales,Riz,"kg, sac, demi-sac, quart-sac",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-005,Riz parfumé,Céréales,Riz,"kg, sac, demi-sac, quart-sac",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-006,Riz paddy,Céréales,Riz,"kg, sac, demi-sac, quart-sac",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-007,Maïs blanc sec,Céréales,Maïs et céréales locales,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-008,Maïs jaune sec,Céréales,Maïs et céréales locales,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-009,Maïs frais en épi,Céréales,Maïs et céréales locales,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-010,Mil,Céréales,Maïs et céréales locales,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-011,Sorgho,Céréales,Maïs et céréales locales,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CER-012,Fonio,Céréales,Maïs et céréales locales,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-001,Niébé blanc,Légumineuses,Haricots et pois,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-002,Niébé rouge,Légumineuses,Haricots et pois,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-003,Haricot blanc,Légumineuses,Haricots et pois,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-004,Haricot rouge,Légumineuses,Haricots et pois,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-005,Haricot noir,Légumineuses,Haricots et pois,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-006,Haricot moucheté,Légumineuses,Haricots et pois,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-007,Pois de terre,Légumineuses,Haricots et pois,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-008,Soja,Légumineuses,Haricots et pois,"kg, sac, demi-sac, quart-sac, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-009,Arachide en coque,Légumineuses,Arachides et graines,"kg, sac, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-010,Arachide décortiquée,Légumineuses,Arachides et graines,"kg, sac, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-011,Arachide grillée,Légumineuses,Arachides et graines,"kg, sac, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-012,Sésame blanc,Légumineuses,Arachides et graines,"kg, sac, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-013,Sésame noir,Légumineuses,Arachides et graines,"kg, sac, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-014,Graines de courge,Légumineuses,Arachides et graines,"kg, sac, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-015,Graines de melon,Légumineuses,Arachides et graines,"kg, sac, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TOM-001,Tomate locale ronde,Légumes fruits,Tomates,"kg, caisse, panier, demi-panier, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TOM-002,Tomate allongée,Légumes fruits,Tomates,"kg, caisse, panier, demi-panier, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TOM-003,Tomate salade,Légumes fruits,Tomates,"kg, caisse, panier, demi-panier, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TOM-004,Tomate cerise,Légumes fruits,Tomates,"kg, caisse, panier, demi-panier, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TOM-005,Tomate mûre transformation,Légumes fruits,Tomates,"kg, caisse, panier, demi-panier, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-OIG-001,Oignon violet,Condiments frais,Oignons et alliacées,"kg, sac, filet, botte, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-OIG-002,Oignon blanc,Condiments frais,Oignons et alliacées,"kg, sac, filet, botte, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-OIG-003,Oignon jaune,Condiments frais,Oignons et alliacées,"kg, sac, filet, botte, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-OIG-004,Échalote,Condiments frais,Oignons et alliacées,"kg, sac, filet, botte, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-OIG-005,Ail local,Condiments frais,Oignons et alliacées,"kg, sac, filet, botte, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-OIG-006,Ail importé,Condiments frais,Oignons et alliacées,"kg, sac, filet, botte, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-OIG-007,Poireau,Condiments frais,Oignons et alliacées,"kg, sac, filet, botte, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-OIG-008,Ciboulette,Condiments frais,Oignons et alliacées,"kg, sac, filet, botte, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AUB-001,Aubergine N'Drowa,Légumes fruits,Aubergines,"kg, panier, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AUB-002,Aubergine africaine blanche,Légumes fruits,Aubergines,"kg, panier, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AUB-003,Aubergine africaine verte,Légumes fruits,Aubergines,"kg, panier, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AUB-004,Aubergine violette,Légumes fruits,Aubergines,"kg, panier, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AUB-005,Aubergine longue,Légumes fruits,Aubergines,"kg, panier, bassine, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-PIM-001,Piment frais rouge,Condiments frais,Piments,"kg, panier, bassine, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-PIM-002,Piment frais vert,Condiments frais,Piments,"kg, panier, bassine, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-PIM-003,Piment antillais,Condiments frais,Piments,"kg, panier, bassine, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-PIM-004,Piment bec d'oiseau,Condiments frais,Piments,"kg, panier, bassine, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-PIM-005,Piment sec,Condiments frais,Piments,"kg, panier, bassine, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-GOM-001,Gombo frais petit,Légumes fruits,Gombo,"kg, panier, bassine, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-GOM-002,Gombo frais gros,Légumes fruits,Gombo,"kg, panier, bassine, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-GOM-003,Gombo sec,Légumes fruits,Gombo,"kg, panier, bassine, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-GOM-004,Poudre de gombo,Légumes fruits,Gombo,"kg, panier, bassine, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FEU-001,Épinard local,Légumes feuilles,Feuilles locales,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FEU-002,Amarante,Légumes feuilles,Feuilles locales,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FEU-003,Kplala / corète potagère,Légumes feuilles,Feuilles locales,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FEU-004,Feuille de manioc,Légumes feuilles,Feuilles locales,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FEU-005,Feuille de patate douce,Légumes feuilles,Feuilles locales,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FEU-006,Feuille de taro,Légumes feuilles,Feuilles locales,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FEU-007,Feuille d'aubergine,Légumes feuilles,Feuilles locales,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FEU-008,Feuille de baobab,Légumes feuilles,Feuilles locales,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FEU-009,Dah,Légumes feuilles,Feuilles locales,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FEU-010,Oseille,Légumes feuilles,Feuilles locales,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FEU-011,Feuille de bissap,Légumes feuilles,Feuilles locales,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-016,Chou vert,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-017,Chou rouge,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-018,Laitue,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-019,Concombre,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-020,Courgette,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-021,Haricot vert,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-022,Poivron vert,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-023,Poivron rouge,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-024,Poivron jaune,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-025,Céleri,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-026,Persil,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-027,Carotte,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-028,Betterave,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-029,Navet,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-LEG-030,Radis,Légumes,Légumes verts et divers,"kg, caisse, panier, botte, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-COU-001,Courge locale,Légumes,Courges,"kg, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-COU-002,Potiron,Légumes,Courges,"kg, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-COU-003,Citrouille,Légumes,Courges,"kg, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-COU-004,Melon local,Légumes,Courges,"kg, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AGR-001,Orange locale,Fruits,Agrumes,"kg, caisse, sac, filet, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AGR-002,Orange importée,Fruits,Agrumes,"kg, caisse, sac, filet, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AGR-003,Mandarine,Fruits,Agrumes,"kg, caisse, sac, filet, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AGR-004,Clémentine,Fruits,Agrumes,"kg, caisse, sac, filet, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AGR-005,Citron vert,Fruits,Agrumes,"kg, caisse, sac, filet, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AGR-006,Citron jaune,Fruits,Agrumes,"kg, caisse, sac, filet, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-AGR-007,Pamplemousse,Fruits,Agrumes,"kg, caisse, sac, filet, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-001,Mangue Kent,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-002,Mangue Amélie,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-003,Mangue Brooks,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-004,Papaye,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-005,Ananas,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-006,Pastèque,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-007,Melon,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-008,Avocat,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-009,Goyave,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-010,Corossol,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-011,Pomme cannelle,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-012,Fruit de la passion,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRT-013,Carambole,Fruits,Fruits tropicaux,"kg, caisse, panier, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRI-001,Pomme rouge,Fruits,Fruits importés / complémentaires,"kg, caisse, carton, barquette, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRI-002,Pomme verte,Fruits,Fruits importés / complémentaires,"kg, caisse, carton, barquette, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRI-003,Poire,Fruits,Fruits importés / complémentaires,"kg, caisse, carton, barquette, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRI-004,Raisin rouge,Fruits,Fruits importés / complémentaires,"kg, caisse, carton, barquette, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRI-005,Raisin blanc,Fruits,Fruits importés / complémentaires,"kg, caisse, carton, barquette, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRI-006,Kiwi,Fruits,Fruits importés / complémentaires,"kg, caisse, carton, barquette, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRI-007,Pêche,Fruits,Fruits importés / complémentaires,"kg, caisse, carton, barquette, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-FRI-008,Prune,Fruits,Fruits importés / complémentaires,"kg, caisse, carton, barquette, unité",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-PAL-001,Noix de coco fraîche,Palmier et coco,Palmier / coco,"kg, sac, régime, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-PAL-002,Noix de coco sèche,Palmier et coco,Palmier / coco,"kg, sac, régime, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-PAL-003,Chair de coco,Palmier et coco,Palmier / coco,"kg, sac, régime, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-PAL-004,Graine de palme,Palmier et coco,Palmier / coco,"kg, sac, régime, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-PAL-005,Noix de palme,Palmier et coco,Palmier / coco,"kg, sac, régime, unité, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CON-001,Gingembre frais,Condiments frais,Aromates,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CON-002,Curcuma frais,Condiments frais,Aromates,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CON-003,Basilic local,Condiments frais,Aromates,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CON-004,Menthe,Condiments frais,Aromates,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CON-005,Persil africain,Condiments frais,Aromates,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CON-006,Céleri feuille,Condiments frais,Aromates,"kg, botte, tas, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-EPI-001,Poivre noir,Épices et condiments secs,Épices,"kg, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-EPI-002,Poivre blanc,Épices et condiments secs,Épices,"kg, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-EPI-003,Clou de girofle,Épices et condiments secs,Épices,"kg, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-EPI-004,Cannelle,Épices et condiments secs,Épices,"kg, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-EPI-005,Muscade,Épices et condiments secs,Épices,"kg, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-EPI-006,Anis,Épices et condiments secs,Épices,"kg, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-EPI-007,Laurier,Épices et condiments secs,Épices,"kg, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-EPI-008,Akpi / djansang,Épices et condiments secs,Épices,"kg, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-EPI-009,Soumbara,Épices et condiments secs,Épices,"kg, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-EPI-010,Graines de selim / kili,Épices et condiments secs,Épices,"kg, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-HUI-001,Huile de palme rouge,Huiles alimentaires,Huiles,"litre, bidon, bouteille",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-HUI-002,Huile de palme raffinée,Huiles alimentaires,Huiles,"litre, bidon, bouteille",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-HUI-003,Huile d'arachide,Huiles alimentaires,Huiles,"litre, bidon, bouteille",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-HUI-004,Huile de soja,Huiles alimentaires,Huiles,"litre, bidon, bouteille",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-HUI-005,Huile végétale,Huiles alimentaires,Huiles,"litre, bidon, bouteille",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-MAN-001,Attiéké frais,Produits transformés du manioc,Attiéké et dérivés,"kg, sac, bassine, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-MAN-002,Attiéké déshydraté,Produits transformés du manioc,Attiéké et dérivés,"kg, sac, bassine, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-MAN-003,Attiéké type garba,Produits transformés du manioc,Attiéké et dérivés,"kg, sac, bassine, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-MAN-004,Gari blanc,Produits transformés du manioc,Attiéké et dérivés,"kg, sac, bassine, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-MAN-005,Gari jaune,Produits transformés du manioc,Attiéké et dérivés,"kg, sac, bassine, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-MAN-006,Placali frais,Produits transformés du manioc,Attiéké et dérivés,"kg, sac, bassine, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-MAN-007,Pâte de manioc,Produits transformés du manioc,Attiéké et dérivés,"kg, sac, bassine, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-MAN-008,Amidon de manioc,Produits transformés du manioc,Attiéké et dérivés,"kg, sac, bassine, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-MAN-009,Semoule de manioc,Produits transformés du manioc,Attiéké et dérivés,"kg, sac, bassine, sachet, tas",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TRF-001,Farine de maïs blanche,Produits transformés,Farines et semoules,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TRF-002,Farine de maïs jaune,Produits transformés,Farines et semoules,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TRF-003,Semoule de maïs,Produits transformés,Farines et semoules,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TRF-004,Farine de mil,Produits transformés,Farines et semoules,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TRF-005,Farine de sorgho,Produits transformés,Farines et semoules,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TRF-006,Farine de fonio,Produits transformés,Farines et semoules,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TRF-007,Farine de manioc,Produits transformés,Farines et semoules,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-TRF-008,Farine d'igname,Produits transformés,Farines et semoules,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-ARA-001,Pâte d'arachide,Produits transformés,Arachide transformée,"kg, pot, sachet, litre, bouteille",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-ARA-002,Poudre d'arachide,Produits transformés,Arachide transformée,"kg, pot, sachet, litre, bouteille",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-ARA-003,Arachide grillée salée,Produits transformés,Arachide transformée,"kg, pot, sachet, litre, bouteille",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-ARA-004,Huile artisanale d'arachide,Produits transformés,Arachide transformée,"kg, pot, sachet, litre, bouteille",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-SEC-001,Tomate séchée,Produits séchés,Produits vivriers séchés,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-SEC-002,Champignon séché,Produits séchés,Produits vivriers séchés,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-SEC-003,Feuilles séchées,Produits séchés,Produits vivriers séchés,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-SEC-004,Manioc séché,Produits séchés,Produits vivriers séchés,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-SEC-005,Cossettes de manioc,Produits séchés,Produits vivriers séchés,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-SEC-006,Piment séché moulu,Produits séchés,Produits vivriers séchés,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-SEC-007,Gombo séché moulu,Produits séchés,Produits vivriers séchés,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CHA-001,Champignon local frais,Champignons,Champignons,"kg, barquette, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CHA-002,Pleurote frais,Champignons,Champignons,"kg, barquette, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CHA-003,Champignon séché,Champignons,Champignons,"kg, barquette, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-NOI-001,Noix de cajou brute,Noix et graines,Noix,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-NOI-002,Noix de cajou décortiquée,Noix et graines,Noix,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-NOI-003,Noix de cajou grillée,Noix et graines,Noix,"kg, sac, sachet",Oui,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CAN-001,Canne à sucre,Produits complémentaires,Canne et miel,"unité, botte, litre, pot",Non,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales
+VIV-CAN-002,Miel local,Produits complémentaires,Canne et miel,"unité, botte, litre, pot",Non,Oui,Oui,Odoo,cache offline JULABA + aliases voix + unites locales

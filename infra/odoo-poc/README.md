@@ -524,6 +524,37 @@ vide se voit tout de suite, un produit technique presente comme un article a
 vendre ne se voit pas. Le smoke test doit continuer a lire tout ce que le
 Gateway lirait : c'est precisement ainsi que `Tips` est apparu.
 
+### Referentiel maitre vivrier (198 references)
+
+`referentiel-maitre/` porte le kit d'injection v1 (CSV, mapping terrain,
+manifeste sha256) et `scripts/seed_catalogue_maitre.py` l'injecte :
+
+    docker compose cp scripts/seed_catalogue_maitre.py odoo:/tmp/seed.py
+    docker compose exec -T odoo sh -lc 'odoo shell -c /etc/odoo/odoo.conf -d julaba_poc --no-http < /tmp/seed.py'
+    docker compose cp scripts/verifier_catalogue_maitre.py odoo:/tmp/verif.py
+    docker compose exec -T odoo sh -lc 'odoo shell -c /etc/odoo/odoo.conf -d julaba_poc --no-http < /tmp/verif.py'
+
+**Doctrine.** Odoo est la source de verite du REFERENTIEL (reference, nom,
+categorie, etat actif) ; JULABA en garde un cache local et vend sans reseau.
+Le referentiel ne porte **ni stock ni prix** : `list_price` et
+`standard_price` valent 0, aucune quantite n'est ecrite. Un stock ou un prix
+invente serait un chiffre faux presente a une marchande.
+
+**Le seed ne se confond pas avec le Gateway** : administration Odoo via
+`odoo shell`, exactement comme `seed_vivrier.py`. Il ne passe pas par
+`OdooRealClient`, n'elargit aucune allowlist, et `ODOO_REAL_WRITE_ENABLED`
+reste `false`.
+
+**Un defaut corrige par rapport au kit d'origine.** `search` d'Odoo exclut les
+enregistrements archives : un produit JULABA archive — geste d'administration
+banal — n'etait pas retrouve, et le script en creait un SECOND avec le meme
+`default_code`. L'idempotence tombait precisement dans le cas ou elle compte.
+Les recherches passent desormais par `active_test=False`, cote seed comme cote
+controle, et un produit archive retrouve est reactive.
+`scripts/test_seed_catalogue_maitre.py` le prouve sans serveur Odoo : rejoue
+contre le script d'origine, il tombe sur `DOUBLON : 'VIV-TUB-001' cree deux
+fois`.
+
 ### Jalon suivant : le backend JULABA lui-meme
 
 Le test restant est d'un autre ordre : brancher le backend JULABA sur cette
