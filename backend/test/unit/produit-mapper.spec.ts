@@ -2,7 +2,7 @@ import {
   versJulaba,
   assurerDeviseJulaba,
   deviseDe,
-  estVendable,
+  estArticleCatalogue,
   DeviseOdooInattendueError,
   DEVISE_JULABA,
   OdooProductRecord,
@@ -25,6 +25,7 @@ function produit(surcharge: Partial<OdooProductRecord> = {}): OdooProductRecord 
     qty_available: 42,
     default_code: 'TOM-001',
     currency_id: [1, 'XOF'],
+    is_storable: true,
     ...surcharge,
   };
 }
@@ -117,21 +118,34 @@ describe('produit-mapper — garde-fou de devise', () => {
   });
 });
 
-describe('produit-mapper — estVendable (exclusion des produits techniques)', () => {
-  it('un produit normal (sale_ok non demandé) est vendable par défaut', () => {
-    expect(estVendable(produit())).toBe(true);
+describe('produit-mapper — estArticleCatalogue (exclusion des produits techniques)', () => {
+  it('un article suivi en stock entre au catalogue', () => {
+    expect(estArticleCatalogue(produit({ is_storable: true }))).toBe(true);
   });
 
-  it('sale_ok explicitement true reste vendable', () => {
-    expect(estVendable(produit({ sale_ok: true }))).toBe(true);
+  it("is_storable=false écarte le produit — cas réel de Tips (créé par point_of_sale)", () => {
+    // Valeurs MESUREES sur l'instance Odoo 19 du POC : le vrai Tips porte
+    // sale_ok=true. Un filtre fondé sur sale_ok ne l'aurait pas écarté.
+    const tips = produit({
+      id: 999, name: 'Tips', default_code: 'TIPS', list_price: 1,
+      qty_available: 0, is_storable: false,
+    });
+    expect(estArticleCatalogue(tips)).toBe(false);
   });
 
-  it("sale_ok=false écarte le produit — cas de Tips (créé par point_of_sale)", () => {
-    const tips = produit({ id: 999, name: 'Tips', default_code: 'TIPS', list_price: 1, qty_available: 0, sale_ok: false });
-    expect(estVendable(tips)).toBe(false);
+  it("écarte quand is_storable n'a pas été demandé — le silence n'autorise rien", () => {
+    // Choix symétrique du garde-fou de devise, et pour la même raison : le
+    // coût des deux erreurs n'est pas le même. Un catalogue vide se voit tout
+    // de suite ; un produit technique présenté comme un article à vendre ne se
+    // voit pas. C'est une allowlist, assumée comme telle.
+    expect(estArticleCatalogue(produit({ is_storable: undefined }))).toBe(false);
   });
 
-  it("n'est pas une allowlist : sale_ok absent ne bloque jamais un produit", () => {
-    expect(estVendable(produit({ sale_ok: undefined }))).toBe(true);
+  it("n'accepte que le booléen true — aucune valeur approchante ne passe", () => {
+    // Odoo renvoie de vrais booléens ; ce test verrouille l'absence de
+    // coercition si un jour la réponse transite par un JSON moins strict.
+    for (const valeur of [1, 'true', 'oui', {}] as unknown[]) {
+      expect(estArticleCatalogue(produit({ is_storable: valeur as boolean }))).toBe(false);
+    }
   });
 });

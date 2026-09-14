@@ -21,9 +21,15 @@ interface FakeOdooProduct {
   /** Forme many2one d'Odoo : `[id, code ISO]`. Le mock simule une instance
    *  configurée en XOF, seule devise que le mapper JULABA accepte. */
   currency_id: [number, string];
-  /** Absent = vendable (comportement réel par défaut d'Odoo) — seul `Tips`
-   *  ci-dessous le porte explicitement à `false`, pour prouver que le Gateway
-   *  l'écarte (voir OdooGatewayService.listerCatalogue). */
+  /** Champ Odoo 19 « Suivi en stock ». C'est le critère de catalogue du
+   *  Gateway (voir produit-mapper.ts) : `false` sur `Tips` ci-dessous, `true`
+   *  sur tous les articles réels. */
+  is_storable: boolean;
+  /** « Peut être vendu ». Présent ici pour une seule raison : il vaut `true`
+   *  sur le VRAI `Tips` d'Odoo 19 (mesuré sur l'instance du POC). Le mock doit
+   *  refléter ce piège, sinon un filtre fondé sur `sale_ok` passerait les tests
+   *  unitaires tout en laissant `Tips` atteindre le catalogue en production —
+   *  c'est exactement ce qui s'est produit. */
   sale_ok?: boolean;
 }
 
@@ -34,18 +40,21 @@ interface FakeOdooProduct {
 const DEVISE_MOCK: [number, string] = [1, 'XOF'];
 
 const CATALOGUE_INITIAL: FakeOdooProduct[] = [
-  { id: 101, name: 'Tomate', list_price: 500, qty_available: 42, default_code: 'TOM-001', currency_id: DEVISE_MOCK },
-  { id: 102, name: 'Oignon', list_price: 500, qty_available: 8, default_code: 'OIG-001', currency_id: DEVISE_MOCK },
-  { id: 103, name: 'Aubergine', list_price: 500, qty_available: 30, default_code: 'AUB-001', currency_id: DEVISE_MOCK },
-  { id: 104, name: 'Banane', list_price: 300, qty_available: 60, default_code: 'BAN-001', currency_id: DEVISE_MOCK },
-  { id: 105, name: 'Carotte', list_price: 500, qty_available: 25, default_code: 'CAR-001', currency_id: DEVISE_MOCK },
-  { id: 106, name: 'Poivron', list_price: 500, qty_available: 18, default_code: 'POI-001', currency_id: DEVISE_MOCK },
-  { id: 107, name: 'Pomme de terre', list_price: 500, qty_available: 50, default_code: 'PDT-001', currency_id: DEVISE_MOCK },
-  { id: 108, name: 'Huile', list_price: 1500, qty_available: 15, default_code: 'HUI-001', currency_id: DEVISE_MOCK },
-  // Produit technique simulé — reproduit ce que `point_of_sale` crée sur une
-  // vraie instance Odoo (voir infra/odoo-poc/README.md) : jamais une marchande
-  // ne doit le voir dans son catalogue. Preuve que le Gateway l'écarte.
-  { id: 999, name: 'Tips', list_price: 1, qty_available: 0, default_code: 'TIPS', currency_id: DEVISE_MOCK, sale_ok: false },
+  { id: 101, name: 'Tomate', list_price: 500, qty_available: 42, default_code: 'TOM-001', currency_id: DEVISE_MOCK, is_storable: true },
+  { id: 102, name: 'Oignon', list_price: 500, qty_available: 8, default_code: 'OIG-001', currency_id: DEVISE_MOCK, is_storable: true },
+  { id: 103, name: 'Aubergine', list_price: 500, qty_available: 30, default_code: 'AUB-001', currency_id: DEVISE_MOCK, is_storable: true },
+  { id: 104, name: 'Banane', list_price: 300, qty_available: 60, default_code: 'BAN-001', currency_id: DEVISE_MOCK, is_storable: true },
+  { id: 105, name: 'Carotte', list_price: 500, qty_available: 25, default_code: 'CAR-001', currency_id: DEVISE_MOCK, is_storable: true },
+  { id: 106, name: 'Poivron', list_price: 500, qty_available: 18, default_code: 'POI-001', currency_id: DEVISE_MOCK, is_storable: true },
+  { id: 107, name: 'Pomme de terre', list_price: 500, qty_available: 50, default_code: 'PDT-001', currency_id: DEVISE_MOCK, is_storable: true },
+  { id: 108, name: 'Huile', list_price: 1500, qty_available: 15, default_code: 'HUI-001', currency_id: DEVISE_MOCK, is_storable: true },
+  // Produit technique simulé — reproduit FIDELEMENT ce que `point_of_sale`
+  // crée sur une vraie instance Odoo 19 (mesuré sur l'instance du POC) :
+  // `sale_ok: true` et `is_storable: false`. Jamais une marchande ne doit le
+  // voir dans son catalogue. Ne pas « simplifier » ce fixture en `sale_ok:
+  // false` : ce serait une fiction commode, et c'est elle qui a laissé passer
+  // un filtre inopérant (voir infra/odoo-poc/README.md).
+  { id: 999, name: 'Tips', list_price: 1, qty_available: 0, default_code: 'TIPS', currency_id: DEVISE_MOCK, is_storable: false, sale_ok: true },
 ];
 
 /**

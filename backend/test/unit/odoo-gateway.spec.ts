@@ -16,9 +16,10 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
     service = new OdooGatewayService(new OdooMockClient());
   });
 
-  it('liste le catalogue simulé (8 produits vendables) mappé vers le format JULABA — Tips (technique) exclu', async () => {
-    // Le mock contient 9 enregistrements bruts (8 vendables + Tips, sale_ok:false) :
-    // ce test prouve que le catalogue livré à JULABA en compte 8, pas 9.
+  it('liste le catalogue simulé (8 articles) mappé vers le format JULABA — Tips (technique) exclu', async () => {
+    // Le mock contient 9 enregistrements bruts (8 articles suivis en stock +
+    // Tips, is_storable:false) : ce test prouve que le catalogue livré à
+    // JULABA en compte 8, pas 9.
     const catalogue = await service.listerCatalogue();
     expect(catalogue).toHaveLength(8);
     expect(catalogue[0]).toMatchObject({
@@ -29,13 +30,13 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
     });
   });
 
-  it("exclut un produit technique (sale_ok=false) — Tips n'atteint jamais le catalogue JULABA", async () => {
+  it("exclut un produit technique (is_storable=false) — Tips n'atteint jamais le catalogue JULABA", async () => {
     const catalogue = await service.listerCatalogue();
     expect(catalogue.find((p) => p.nom === 'Tips')).toBeUndefined();
     expect(catalogue.find((p) => p.codeOdoo === 'TIPS')).toBeUndefined();
   });
 
-  it('exige currency_id ET sale_ok dans le search_read du catalogue', async () => {
+  it('exige currency_id ET is_storable dans le search_read du catalogue', async () => {
     const champsDemandes: string[] = [];
     const espion: OdooClient = {
       async execute(model, method, params) {
@@ -48,20 +49,21 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
     await new OdooGatewayService(espion).listerCatalogue();
     expect(champsDemandes).toContain('currency_id');
     expect(champsDemandes).toContain('list_price');
-    expect(champsDemandes).toContain('sale_ok');
+    expect(champsDemandes).toContain('is_storable');
   });
 
-  it('un produit non vendable (sale_ok=false) est écarté AVANT le garde-fou de devise — jamais un faux 502 sur Tips', async () => {
+  it('un produit hors catalogue (is_storable=false) est écarté AVANT le garde-fou de devise — jamais un faux 502 sur Tips', async () => {
     // Tips n'a souvent ni prix ni devise fiables (produit purement technique) :
-    // le filtre sale_ok doit passer AVANT assurerDeviseJulaba, pour ne jamais
-    // faire échouer le catalogue entier à cause d'un produit qu'on écarte de
-    // toute façon.
+    // le filtre is_storable doit passer AVANT assurerDeviseJulaba, pour ne
+    // jamais faire échouer le catalogue entier à cause d'un produit qu'on
+    // écarte de toute façon.
     const odooAvecTipsSansDevise: OdooClient = {
       async execute(model, method) {
         if (model === 'product.product' && method === 'search_read') {
           return [
-            { id: 1, name: 'Tomate', list_price: 500, qty_available: 10, currency_id: [1, 'XOF'] },
-            { id: 999, name: 'Tips', list_price: 1, qty_available: 0, currency_id: undefined, sale_ok: false },
+            { id: 1, name: 'Tomate', list_price: 500, qty_available: 10, currency_id: [1, 'XOF'], is_storable: true },
+            // Le vrai Tips d'Odoo 19 : sale_ok VAUT true. C'est is_storable qui l'écarte.
+            { id: 999, name: 'Tips', list_price: 1, qty_available: 0, currency_id: undefined, is_storable: false, sale_ok: true },
           ] as unknown as never;
         }
         return [] as unknown as never;
@@ -72,6 +74,24 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
     expect(catalogue[0].nom).toBe('Tomate');
   });
 
+  it("écarte un enregistrement sans is_storable — le silence n'autorise rien", async () => {
+    // Même discipline que le garde-fou de devise. Un champ absent ne prouve
+    // pas que le produit est un article : il prouve qu'on n'a pas regardé.
+    // Un catalogue vide est bruyant et se voit ; un produit technique livré à
+    // une marchande est silencieux et faux.
+    const odooSansChamp: OdooClient = {
+      async execute(model, method) {
+        if (model === 'product.product' && method === 'search_read') {
+          return [
+            { id: 1, name: 'Tomate', list_price: 500, qty_available: 10, currency_id: [1, 'XOF'] },
+          ] as unknown as never;
+        }
+        return [] as unknown as never;
+      },
+    };
+    expect(await new OdooGatewayService(odooSansChamp).listerCatalogue()).toEqual([]);
+  });
+
   it('refuse le catalogue entier en 502 si Odoo répond dans une autre devise', async () => {
     // Scénario réel : une instance Odoo de démonstration est configurée en USD.
     // Sans garde-fou, « 400.00 » deviendrait « 400 FCFA » dans le catalogue
@@ -80,7 +100,7 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
       async execute(model, method) {
         if (model === 'product.product' && method === 'search_read') {
           return [
-            { id: 1, name: 'Hotel Accommodation', list_price: 400, qty_available: 0, currency_id: [2, 'USD'] },
+            { id: 1, name: 'Hotel Accommodation', list_price: 400, qty_available: 0, currency_id: [2, 'USD'], is_storable: true },
           ] as unknown as never;
         }
         return [] as unknown as never;
@@ -97,8 +117,8 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
       async execute(model, method) {
         if (model === 'product.product' && method === 'search_read') {
           return [
-            { id: 1, name: 'Tomate', list_price: 500, qty_available: 10, currency_id: [1, 'XOF'] },
-            { id: 2, name: 'Office Chair', list_price: 70, qty_available: 3, currency_id: [2, 'USD'] },
+            { id: 1, name: 'Tomate', list_price: 500, qty_available: 10, currency_id: [1, 'XOF'], is_storable: true },
+            { id: 2, name: 'Office Chair', list_price: 70, qty_available: 3, currency_id: [2, 'USD'], is_storable: true },
           ] as unknown as never;
         }
         return [] as unknown as never;

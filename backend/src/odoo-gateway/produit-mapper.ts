@@ -22,10 +22,11 @@ export interface OdooProductRecord {
   /** OBLIGATOIRE à l'usage : sans ce champ, `list_price` est un nombre sans
    *  unité et `versJulaba` refuse de le mapper. Voir `assurerDeviseJulaba`. */
   currency_id?: OdooMany2One;
-  /** Champ Odoo natif « Peut être vendu ». Absent/`undefined` = traité comme
-   *  vendable (voir `estVendable`) — seuls les produits EXPLICITEMENT à
-   *  `false` sont écartés du catalogue JULABA. */
-  sale_ok?: boolean;
+  /** Champ Odoo 19 « Suivi en stock ». OBLIGATOIRE à l'usage : c'est lui qui
+   *  distingue un article réel d'un produit technique de module, et c'est lui
+   *  qui rend `qty_available` signifiant. Absent/`undefined` = produit écarté
+   *  (voir `estArticleCatalogue`). */
+  is_storable?: boolean;
 }
 
 export interface JulabaProduitOdoo {
@@ -102,28 +103,35 @@ export function assurerDeviseJulaba(p: OdooProductRecord): void {
  * pour son propre usage interne (ex. `Tips`, injecté par `point_of_sale`,
  * jamais un article qu'une marchande vend), avant tout mapping vers JULABA.
  *
- * Critère retenu : `sale_ok` (champ Odoo natif « Peut être vendu »), et lui
- * seul — voir infra/odoo-poc/README.md, §« Les modules installés peuplent le
- * catalogue » pour le contexte (Tips atteignait le catalogue JULABA à 1 FCFA,
- * faute de filtre). Deux autres critères avaient été envisagés et écartés :
- * une catégorie Odoo (dépend de la configuration de l'instance, jamais
- * garantie) et une convention de référence `JULABA-*` (ne vaut que pour un
- * catalogue provisionné PAR JULABA — un vrai catalogue Odoo d'un
- * fournisseur/négoce existant n'a aucune raison de la connaître). `sale_ok`
- * est un champ standard dont c'est exactement la sémantique, indépendant de
- * qui a créé le produit.
+ * Critère retenu : `is_storable`, et lui seul. Il a été MESURÉ sur l'instance
+ * Odoo 19 du POC (`product.product/search_read` en lecture seule, juillet
+ * 2025), et c'est le seul champ qui sépare réellement les deux populations :
  *
- * `undefined` (champ non demandé, ou absent d'un enregistrement) est traité
- * comme vendable : ce n'est PAS une allowlist — seuls les produits
- * EXPLICITEMENT marqués `sale_ok: false` sont écartés.
+ *     champ         Tips        les 7 vivriers seedés
+ *     sale_ok       true        true        → ne discrimine PAS
+ *     type          'consu'     'consu'     → ne discrimine PAS
+ *     is_storable   false       true        → discrimine
  *
- * Non vérifié empiriquement contre une vraie instance Odoo 19 au moment de ce
- * correctif (README : seuls `default_code`/`list_price`/`qty_available` de
- * `Tips` ont été relevés, pas `sale_ok`) — à confirmer par le jalon
- * d'intégration backend réelle (docs/ODOO-SMOKE-TEST-READONLY.md).
+ * Le critère précédent — `sale_ok !== false` — était une hypothèse jamais
+ * vérifiée, et la mesure l'a réfutée : le vrai `Tips` porte `sale_ok: true`.
+ * Le filtre laissait donc passer exactement le produit qu'il prétendait
+ * écarter. Deux autres critères avaient été envisagés et écartés : une
+ * catégorie Odoo (dépend de la configuration de l'instance, jamais garantie)
+ * et une convention de référence `JULABA-*` (ne vaut que pour un catalogue
+ * provisionné PAR JULABA — un vrai catalogue Odoo d'un fournisseur existant
+ * n'a aucune raison de la connaître).
+ *
+ * `undefined` (champ non demandé, ou absent d'un enregistrement) écarte le
+ * produit — même discipline que le garde-fou de devise : le silence n'est pas
+ * une autorisation. Le coût des deux erreurs n'est pas symétrique. Un
+ * catalogue vide est bruyant et inoffensif : on le voit tout de suite. Un
+ * produit technique laissé passer est silencieux et faux : il s'affiche à une
+ * marchande comme un article à vendre. Et `JulabaProduitOdoo` porte un champ
+ * `stock` : un produit non suivi en stock n'a pas de `qty_available` qui
+ * veuille dire quelque chose — il n'a rien à faire dans ce format.
  */
-export function estVendable(p: OdooProductRecord): boolean {
-  return p.sale_ok !== false;
+export function estArticleCatalogue(p: OdooProductRecord): boolean {
+  return p.is_storable === true;
 }
 
 export function versJulaba(p: OdooProductRecord): JulabaProduitOdoo {

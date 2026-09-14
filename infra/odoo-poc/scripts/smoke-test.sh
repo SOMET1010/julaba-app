@@ -54,10 +54,13 @@ fi
 # `currency_id` est demande au meme titre que le prix : `list_price` est un
 # nombre sans unite, et le Gateway JULABA refuse de le mapper tant que la devise
 # n'est pas prouvee etre du XOF (backend/src/odoo-gateway/produit-mapper.ts).
-# `sale_ok` est demande pour la meme raison : `estVendable()` (produit-mapper.ts)
-# ecarte tout produit a sale_ok=false AVANT le mapping (ex. « Tips », cree par
-# point_of_sale) — voir infra/odoo-poc/README.md. Ce script demande donc
-# exactement les memes champs que `listerCatalogue()`.
+# `is_storable` est demande pour la meme raison : `estArticleCatalogue()`
+# (produit-mapper.ts) n'admet au catalogue JULABA que les produits suivis en
+# stock, ce qui ecarte AVANT mapping les produits techniques de module (ex.
+# « Tips », cree par point_of_sale). `sale_ok` n'est PAS demande : mesure sur
+# cette instance, il vaut true sur Tips comme sur les vivriers, il ne
+# discrimine rien. Ce script demande donc exactement les memes champs que
+# `listerCatalogue()`.
 #
 # AUCUNE `limit`, volontairement, et pour deux raisons.
 #
@@ -75,7 +78,7 @@ fi
 # Sans plafond, « absent » veut vraiment dire absent, et « present » veut dire
 # que les sept references ont ete vues. L'instance est un POC : lire tout le
 # catalogue ne coute rien.
-BODY='{"domain": [], "fields": ["id", "name", "list_price", "qty_available", "default_code", "currency_id", "sale_ok"], "order": "id asc"}'
+BODY='{"domain": [], "fields": ["id", "name", "list_price", "qty_available", "default_code", "currency_id", "is_storable"], "order": "id asc"}'
 
 # --- Test 1 : l'authentification est bien exigee ---------------------------
 log "Test 1 — appel sans cle API (401 attendu)"
@@ -112,7 +115,7 @@ import json, sys
 REQUIS = {"id": int, "name": str, "list_price": (int, float), "qty_available": (int, float)}
 OPTIONNEL = {
     "default_code": (str, bool, type(None)),  # Odoo renvoie False quand vide
-    "sale_ok": (bool,),  # champ standard Odoo, ne devrait jamais etre absent
+    "is_storable": (bool,),  # critere de catalogue du Gateway — absent = produit ecarte
 }
 DEVISE_JULABA = "XOF"
 
@@ -167,23 +170,23 @@ for rec in data:
 
 print(f"  OK {len(data)} produit(s) conformes a OdooProductRecord, tous en {DEVISE_JULABA}.")
 
-# Reserve laissee ouverte par le filtre estVendable() (backend/src/odoo-gateway/
-# produit-mapper.ts, voir infra/odoo-poc/README.md) : jamais verifie contre une
-# vraie instance que le produit technique "Tips" (cree par point_of_sale) porte
-# reellement sale_ok=false. INFORMATIF seulement — ce n'est pas un ECHEC du
-# smoke test si l'hypothese s'avere fausse, c'est justement la question a
-# trancher ici : le Gateway devrait alors ajouter un second critere.
+# Le critere de catalogue du Gateway, verifie sur l'instance reelle. Il a
+# d'abord ete `sale_ok`, sur une hypothese jamais mesuree ; la mesure l'a
+# refutee (le vrai Tips porte sale_ok=true) et le filtre laissait donc passer
+# exactement le produit qu'il pretendait ecarter. Le critere est desormais
+# `is_storable`, et ce bloc est un ECHEC et non une remarque : si Tips revenait
+# suivi en stock, `estArticleCatalogue()` le livrerait au catalogue JULABA.
 tips = next((r for r in data if r.get("default_code") == "TIPS" or r.get("name") == "Tips"), None)
 if tips is None:
-    print("  -- aucun produit 'Tips' (default_code=TIPS) dans le catalogue : "
-          "reserve sale_ok non tranchee par ce run (point_of_sale absent ou non installe ?).")
-elif tips.get("sale_ok") is False:
-    print(f"  OK reserve tranchee : Tips (id={tips['id']}) a bien sale_ok=false — "
-          f"estVendable() l'exclurait correctement du catalogue JULABA.")
+    print("  -- aucun produit 'Tips' (default_code=TIPS) dans ce catalogue : "
+          "critere non exerce par ce run (point_of_sale absent ou non installe ?).")
+elif tips.get("is_storable") is False:
+    print(f"  OK produit technique ecarte : Tips (id={tips['id']}) a is_storable=false — "
+          f"estArticleCatalogue() l'exclut du catalogue JULABA.")
 else:
-    print(f"  ATTENTION reserve NON confirmee : Tips (id={tips['id']}) a sale_ok={tips.get('sale_ok')!r}, "
-          f"pas False. estVendable() (produit-mapper.ts) ne l'exclurait PAS du catalogue JULABA — "
-          f"un second critere de filtrage est necessaire.")
+    sys.exit(f"ECHEC Tips (id={tips['id']}) a is_storable={tips.get('is_storable')!r}, pas False. "
+             f"estArticleCatalogue() (produit-mapper.ts) ne l'ecarterait PAS : un produit technique "
+             f"a 1 FCFA atteindrait le catalogue d'une marchande.")
 
 # Prix et stocks du catalogue vivrier, au franc pres. Verifies seulement si le
 # seed est present : le script reste utilisable sur une instance seedee
@@ -208,16 +211,17 @@ else:
     print(f"  OK {len(ATTENDU)} references vivrieres au prix et au stock attendus.")
 
 print()
-print("  Projection par versJulaba() apres estVendable() — ce que verrait le catalogue JULABA :")
-print(f"  {'id JULABA':<14}{'nom':<24}{'prix FCFA':>12}{'stock':>9}  {'vendable':<9}reference")
-for rec in sorted(data, key=lambda r: r.get("sale_ok") is False):
+print("  Projection par versJulaba() apres estArticleCatalogue() — ce que verrait le catalogue JULABA :")
+print(f"  {'id JULABA':<14}{'nom':<24}{'prix FCFA':>12}{'stock':>9}  {'catalogue':<11}reference")
+for rec in sorted(data, key=lambda r: r.get("is_storable") is not True):
     code = rec.get("default_code")
     code = "" if code in (False, None) else code
     nom = rec["name"]
     nom = nom if len(nom) <= 22 else nom[:21] + "…"
-    vendable = "non" if rec.get("sale_ok") is False else "oui"
-    marque = "  odoo-" if vendable == "oui" else "X odoo-"  # X = ecarte par estVendable()
-    print(f"  {marque + str(rec['id']):<14}{nom:<24}{rec['list_price']:>12.0f}{rec['qty_available']:>9.0f}  {vendable:<9}{code}")
+    retenu = rec.get("is_storable") is True
+    marque = "  odoo-" if retenu else "X odoo-"  # X = ecarte par estArticleCatalogue()
+    print(f"  {marque + str(rec['id']):<14}{nom:<24}{rec['list_price']:>12.0f}{rec['qty_available']:>9.0f}  "
+          f"{('oui' if retenu else 'non'):<11}{code}")
 PY
 
 # --- Test 4 : product.product/read, seconde methode de l'allowlist ---------
