@@ -154,10 +154,21 @@ export function useOfflineVoiceQueue(
 
   // Vider la file. #7 : cible réellement le support persisté (localStorage) —
   // avant ce correctif, seul sessionStorage était vidé, jamais la vraie file.
+  // P1-1 : cloisonnée par utilisateur, comme le reste de ce hook — un terminal
+  // partagé ne doit jamais permettre à la marchande connectée de vider la file
+  // d'une autre. `next` conserve les commandes des AUTRES utilisateurs (dont
+  // les commandes héritées sans userId, qui ne sont jamais celles de qui que
+  // ce soit). Sans utilisateur connu, on ne supprime rien — même doctrine
+  // fail-closed que le reste du fichier.
   const clearQueue = useCallback(() => {
-    setQueue([]);
-    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
-  }, []);
+    setQueue(prev => {
+      const next = currentUserId
+        ? prev.filter(c => c.userId !== currentUserId)
+        : prev;
+      saveQueue(next);
+      return next;
+    });
+  }, [currentUserId]);
 
   // Compte visible par la marchande courante uniquement — jamais la file
   // d'une autre marchande, et jamais une commande orpheline (propriétaire

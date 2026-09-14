@@ -131,8 +131,8 @@ async function run() {
   }
 
   // T5 — sans utilisateur connu, aucun rejeu automatique (garde de sécurité) ;
-  // clearQueue() vide réellement localStorage (#7 — avant, seul sessionStorage
-  // était vidé, jamais la vraie file).
+  // clearQueue() ne supprime RIEN sans utilisateur connu (P1-1, fail-closed —
+  // avant ce correctif, elle vidait toute la file du terminal sans distinction).
   {
     localStorage.clear();
     sessionStorage.setItem(STORAGE_KEY, "leurre"); // ne doit jamais être ce qu'on vérifie
@@ -141,8 +141,44 @@ async function run() {
     await act(async () => { await wait(100); });
     ok(readQueue().length === 1, "T5 (pré-requis) sans utilisateur connu, rien n'est rejoué automatiquement");
     act(() => { result.current.clearQueue(); });
-    ok(localStorage.getItem(STORAGE_KEY) === null, "T5 clearQueue() vide réellement le support persisté (localStorage)");
-    ok(result.current.queue.length === 0, "T5 clearQueue() vide aussi l'état React exposé au composant");
+    ok(readQueue().length === 1, "T5 clearQueue() sans utilisateur connu ne supprime rien (fail-closed)");
+    ok(result.current.queue.length === 1, "T5 l'état React exposé reste intact lui aussi");
+    unmount();
+  }
+
+  // T5b — P1-1 : terminal partagé, A ET B ont des commandes en file. A vide sa
+  // file (clearQueue) : SEULES les commandes de A disparaissent, celles de B
+  // restent intactes, jamais touchées par le geste de A.
+  {
+    localStorage.clear();
+    seedQueue([
+      { id: "c5b-a1", text: "vends 1 tomate", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A" },
+      { id: "c5b-a2", text: "vends 2 bananes", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A" },
+      { id: "c5b-b1", text: "vends 1 igname", timestamp: Date.now(), context: {}, retries: 0, userId: "user-B" },
+    ]);
+    const { result, unmount } = renderHook(() => useOfflineVoiceQueue(async () => false, "user-A"));
+    await act(async () => { await wait(100); });
+    act(() => { result.current.clearQueue(); });
+    const q = readQueue() as Array<{ id: string; userId?: string }>;
+    ok(q.length === 1 && q[0].userId === "user-B", "T5b clearQueue() par A ne supprime que les commandes de A, celles de B restent");
+    ok(result.current.queue.every(c => c.userId !== "user-A"), "T5b l'état React exposé ne contient plus aucune commande de A");
+    unmount();
+  }
+
+  // T5c — une commande héritée (sans userId) n'est JAMAIS supprimée par
+  // clearQueue(), quel que soit l'utilisateur réel qui vide sa propre file —
+  // même doctrine que le rejeu : un propriétaire inconnu n'est jamais touché.
+  {
+    localStorage.clear();
+    seedQueue([
+      { id: "c5c-legacy", text: "vends 1 mangue", timestamp: Date.now(), context: {}, retries: 0 },
+      { id: "c5c-a", text: "vends 1 poivron", timestamp: Date.now(), context: {}, retries: 0, userId: "user-A" },
+    ]);
+    const { result, unmount } = renderHook(() => useOfflineVoiceQueue(async () => false, "user-A"));
+    await act(async () => { await wait(100); });
+    act(() => { result.current.clearQueue(); });
+    const q = readQueue() as Array<{ id: string; userId?: string }>;
+    ok(q.length === 1 && q[0].id === "c5c-legacy" && !q[0].userId, "T5c la commande héritée sans userId reste intacte après clearQueue()");
     unmount();
   }
 
