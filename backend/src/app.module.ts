@@ -24,6 +24,7 @@ import { TontinesModule } from './tontines/tontines.module';
 import { StocksRestModule } from './stocks-rest/stocks-rest.module';
 import { CaisseRestModule } from './caisse-rest/caisse-rest.module';
 import { OdooGatewayModule } from './odoo-gateway/odoo-gateway.module';
+import { CatalogueMaitreModule } from './catalogue-maitre/catalogue-maitre.module';
 import { InstitutionsModule } from './institutions/institutions.module';
 import { IdentificationsModule } from './identifications/identifications.module';
 import { MissionsModule } from './missions/missions.module';
@@ -122,6 +123,7 @@ import { ProtectionSocialeModule } from './protection-sociale/protection-sociale
     // Routes /odoo-poc/* désactivées par défaut : ODOO_POC_ENABLED=true requis
     // (voir OdooPocEnabledGuard) — l'import du module seul ne les active pas.
     OdooGatewayModule,
+    CatalogueMaitreModule,
     InstitutionsModule,
     IdentificationsModule,
     MissionsModule,

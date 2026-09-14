@@ -113,7 +113,34 @@ export class DbInitService {
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS idx_produits_marchand ON produits (marchand_id);`,
       );
-      this.logger.log('Tables caisse_sessions et produits vérifiées');
+
+      // Miroir local du référentiel maître Odoo (PILOTE-3).
+      //
+      // NI PRIX NI STOCK, volontairement : une ligne de cette table n'est
+      // donc jamais vendable. Seule une ligne ADOPTÉE dans `produits` l'est,
+      // avec le prix de la marchande. C'est ce qui rend impossible, par
+      // construction et non par vigilance, qu'un produit maître à 0 devienne
+      // un article à 0 F en caisse.
+      //
+      // `default_code` en clé primaire : c'est la référence stable (VIV-TUB-001),
+      // celle qui relie une référence maître au produit d'une marchande. Pas
+      // l'identifiant technique Odoo, qui changerait si la base Odoo était
+      // reconstruite.
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS catalogue_maitre (
+          default_code text PRIMARY KEY,
+          nom text NOT NULL,
+          categorie text,
+          odoo_product_id integer,
+          actif boolean NOT NULL DEFAULT true,
+          synced_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_catalogue_maitre_nom ON catalogue_maitre (lower(nom));`,
+      );
+
+      this.logger.log('Tables caisse_sessions, produits et catalogue_maitre vérifiées');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur création tables caisse_sessions/produits: ' + message);
