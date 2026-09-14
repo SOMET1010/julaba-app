@@ -16,6 +16,7 @@ import { avertissementRupture } from '../../services/ruptureStock';
 import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
 import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
+import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMaitre';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -58,6 +59,16 @@ export function POSCaisse() {
   const [showLibre, setShowLibre] = useState(false);
   const [libreMontant, setLibreMontant] = useState('');
   const [libreDesc, setLibreDesc] = useState('');
+  // « Autre article » sert maintenant DEUX gestes : chercher dans le
+  // référentiel maître (Odoo) pour ajouter un vrai article à son catalogue,
+  // ou vendre un montant libre quand rien ne correspond. Le second reste
+  // disponible tel quel — on n'enlève rien à la marchande.
+  const catalogueMaitre = useCatalogueMaitre((user as any)?.id);
+  const [refRecherche, setRefRecherche] = useState('');
+  const [refChoisie, setRefChoisie] = useState<ReferenceMaitre | null>(null);
+  const [refUnite, setRefUnite] = useState('unité');
+  const [adoptionEnCours, setAdoptionEnCours] = useState(false);
+  const [adoptionMessage, setAdoptionMessage] = useState<string | null>(null);
 
   // Encaissement (Phase 3, lots 2-4) : montant reçu (espèces) + écran « Vente réussie ».
   const [montantRecu, setMontantRecu] = useState('');
@@ -76,6 +87,65 @@ export function POSCaisse() {
   const ajouterAuPanier = (p: any) => {
     addToCart(p, 1);
     dire(`${p?.nom || p?.name || 'Produit'} ajouté`);
+  };
+
+  const fermerAutreArticle = () => {
+    setShowLibre(false);
+    setLibreMontant(''); setLibreDesc('');
+    setRefRecherche(''); setRefChoisie(null); setRefUnite('unité'); setAdoptionMessage(null);
+  };
+
+  const choisirReference = (r: ReferenceMaitre) => {
+    setRefChoisie(r);
+    setAdoptionMessage(null);
+    setLibreDesc(r.nom);
+    dire(`${r.nom}. Quel est ton prix ?`);
+  };
+
+  /**
+   * ADOPTION : la référence devient un article de CETTE marchande, au prix
+   * qu'elle vient de poser. Odoo a dit ce qu'est le produit, elle dit combien
+   * elle le vend — tant que cette seconde phrase n'est pas dite, il n'y a pas
+   * d'article, et donc jamais de vente à 0 F.
+   *
+   * Elle était en train d'encaisser : une fois l'article créé, on le met
+   * DIRECTEMENT au panier. Lui faire rechercher son propre produit juste
+   * après l'avoir ajouté serait un pas de plus pour rien, devant une cliente
+   * qui attend.
+   */
+  const adopterReference = async () => {
+    if (!refChoisie || adoptionEnCours) return;
+    const prix = Number(libreMontant);
+    if (!prix || prix <= 0) {
+      setAdoptionMessage('Il faut indiquer ton prix de vente.');
+      dire('Il faut indiquer ton prix');
+      vibrerErreur();
+      return;
+    }
+    setAdoptionEnCours(true);
+    setAdoptionMessage(null);
+    try {
+      const res = await catalogueMaitre.adopter({
+        default_code: refChoisie.default_code, prix, unite: refUnite, stock: 0,
+      });
+      if (!res.ok || !res.produit) {
+        setAdoptionMessage(res.message || "Impossible d'ajouter cet article.");
+        dire(res.message || "Impossible d'ajouter cet article");
+        vibrerErreur();
+        return;
+      }
+      await refreshProducts();
+      addToCart({
+        id: res.produit.id, nom: res.produit.nom, prix: Number(res.produit.prix),
+        categorie: res.produit.categorie, stock: Number(res.produit.stock),
+        unite: res.produit.unite,
+      } as any, 1);
+      vibrerSucces();
+      dire(`${res.produit.nom} ajouté à ton catalogue et au panier`);
+      fermerAutreArticle();
+    } finally {
+      setAdoptionEnCours(false);
+    }
   };
 
   // Ajoute une ligne « montant libre » : produit synthétique (id unique) au prix
@@ -732,7 +802,7 @@ export function POSCaisse() {
         {showLibre && (
           <motion.div
             initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-            onClick={() => setShowLibre(false)}
+            onClick={fermerAutreArticle}
             style={{ position:'fixed', inset:0, zIndex:110, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}
             role="dialog" aria-modal="true" aria-label="Autre article"
           >
@@ -742,7 +812,84 @@ export function POSCaisse() {
               style={{ width:'100%', maxWidth:480, background:'#fff', borderTopLeftRadius:24, borderTopRightRadius:24, padding:'20px 18px calc(20px + env(safe-area-inset-bottom))' }}
             >
               <div style={{ fontSize:18, fontWeight:800, color:'var(--encre)', marginBottom:14 }}>Autre article</div>
-              <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Montant</label>
+
+              {/* ── 1. Chercher dans le catalogue maître (Odoo) ────────────
+                  La recherche est LOCALE (voir useCatalogueMaitre) : elle
+                  fonctionne hors ligne et ne déclenche pas un appel réseau à
+                  chaque lettre tapée. */}
+              {!refChoisie && (
+                <>
+                  <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Chercher un produit</label>
+                  <input
+                    value={refRecherche}
+                    onChange={e => setRefRecherche(e.target.value)}
+                    placeholder="ex. tomate, igname…"
+                    style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:8, fontSize:15, color:'var(--encre)', outline:'none', fontFamily:'inherit' }}
+                  />
+                  {refRecherche.trim().length > 0 && (() => {
+                    const trouves = catalogueMaitre.rechercher(refRecherche);
+                    if (trouves.length === 0) {
+                      return (
+                        <div style={{ fontSize:13, color:'var(--encre-3)', marginBottom:12, lineHeight:1.5 }}>
+                          Rien trouvé sous ce nom. Tu peux quand même vendre un montant libre ci-dessous.
+                        </div>
+                      );
+                    }
+                    return (
+                      <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:12, maxHeight:210, overflowY:'auto' }}>
+                        {trouves.map(r => {
+                          const deja = catalogueMaitre.estAdoptee(r.default_code);
+                          return (
+                            <button
+                              type="button" key={r.default_code}
+                              onClick={() => { if (!deja) choisirReference(r); }}
+                              disabled={deja}
+                              style={{ textAlign:'left', border:'1.5px solid var(--trait)', borderRadius:13, padding:'11px 13px', background: deja ? '#F6F2EC' : '#fff', cursor: deja ? 'default' : 'pointer', fontFamily:'inherit', opacity: deja ? 0.7 : 1 }}
+                            >
+                              <div style={{ fontSize:15, fontWeight:700, color:'var(--encre)' }}>{r.nom}</div>
+                              <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:2 }}>
+                                {deja ? 'Déjà dans ta caisse' : (r.categorie || 'Catalogue JULABA')}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                  {catalogueMaitre.source === 'cache' && (
+                    // On le DIT plutôt que de laisser croire que la liste est
+                    // à jour : elle est utilisable, simplement pas fraîche.
+                    <div style={{ fontSize:11, color:'var(--encre-3)', marginBottom:10 }}>
+                      Liste enregistrée sur ce téléphone (pas de réseau).
+                    </div>
+                  )}
+                  <div style={{ display:'flex', alignItems:'center', gap:10, margin:'4px 0 14px' }}>
+                    <div style={{ flex:1, height:1, background:'var(--trait)' }} />
+                    <span style={{ fontSize:11, fontWeight:700, color:'var(--encre-3)' }}>OU MONTANT LIBRE</span>
+                    <div style={{ flex:1, height:1, background:'var(--trait)' }} />
+                  </div>
+                </>
+              )}
+
+              {/* ── 2. Référence choisie : elle pose SON prix ─────────────── */}
+              {refChoisie && (
+                <div style={{ border:`1.5px solid ${P}`, borderRadius:14, padding:'11px 13px', marginBottom:14, background:'#FFF8F3' }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+                    <div>
+                      <div style={{ fontSize:15, fontWeight:800, color:'var(--encre)' }}>{refChoisie.nom}</div>
+                      <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:2 }}>{refChoisie.categorie || 'Catalogue JULABA'}</div>
+                    </div>
+                    <button type="button" onClick={() => { setRefChoisie(null); setLibreDesc(''); setAdoptionMessage(null); }}
+                      style={{ background:'none', border:'none', color:P, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit', padding:6 }}>
+                      Changer
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>
+                {refChoisie ? 'Ton prix de vente' : 'Montant'}
+              </label>
               <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:14 }}>
                 <input
                   value={libreMontant}
@@ -752,20 +899,47 @@ export function POSCaisse() {
                 />
                 <span style={{ fontSize:16, fontWeight:700, color:'var(--encre-3)' }}>F</span>
               </div>
-              <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Quoi ? (facultatif)</label>
-              <input
-                value={libreDesc}
-                onChange={e => setLibreDesc(e.target.value)}
-                placeholder="ex. bananes"
-                style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:18, fontSize:15, color:'var(--encre)', outline:'none', fontFamily:'inherit' }}
-              />
+
+              {/* Unité LOCALE : c'est elle qui sait si elle vend au tas ou au kilo. */}
+              {refChoisie && (
+                <>
+                  <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Tu vends par…</label>
+                  <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6, marginBottom:14 }}>
+                    {['unité', 'tas', 'kg', 'sac', 'bassine', 'régime'].map(u => (
+                      <button type="button" key={u} onClick={() => setRefUnite(u)}
+                        style={{ border:`1.5px solid ${refUnite === u ? P : 'var(--trait)'}`, background: refUnite === u ? `${P}12` : '#fff', color: refUnite === u ? P : 'var(--encre-3)', borderRadius:11, padding:'8px 13px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                        {u}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {!refChoisie && (
+                <>
+                  <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Quoi ? (facultatif)</label>
+                  <input
+                    value={libreDesc}
+                    onChange={e => setLibreDesc(e.target.value)}
+                    placeholder="ex. bananes"
+                    style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:18, fontSize:15, color:'var(--encre)', outline:'none', fontFamily:'inherit' }}
+                  />
+                </>
+              )}
+
+              {adoptionMessage && (
+                <div role="alert" style={{ background:'#FDECEA', border:'1.5px solid #E4B4AE', borderRadius:12, padding:'10px 12px', marginBottom:12, fontSize:13, color:'#8C2F23', lineHeight:1.45 }}>
+                  {adoptionMessage}
+                </div>
+              )}
+
               <button
                 type="button"
-                onClick={ajouterMontantLibre}
-                disabled={!libreMontant || Number(libreMontant) <= 0}
-                style={{ width:'100%', padding:'16px', borderRadius:16, border:'none', color:'#fff', fontWeight:800, fontSize:16, cursor:'pointer', background: (!libreMontant || Number(libreMontant) <= 0) ? '#CBB9A8' : P }}
+                onClick={refChoisie ? adopterReference : ajouterMontantLibre}
+                disabled={!libreMontant || Number(libreMontant) <= 0 || adoptionEnCours}
+                style={{ width:'100%', padding:'16px', borderRadius:16, border:'none', color:'#fff', fontWeight:800, fontSize:16, cursor:'pointer', background: (!libreMontant || Number(libreMontant) <= 0 || adoptionEnCours) ? '#CBB9A8' : P }}
               >
-                Ajouter
+                {adoptionEnCours ? 'Ajout…' : refChoisie ? 'Ajouter à mon catalogue' : 'Ajouter'}
               </button>
             </motion.div>
           </motion.div>
