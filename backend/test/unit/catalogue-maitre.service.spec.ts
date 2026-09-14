@@ -164,3 +164,68 @@ describe('CatalogueMaitreService — recherche', () => {
     expect(odooAppele).toBe(false);
   });
 });
+
+describe('CatalogueMaitreService — adoption', () => {
+  function envAdoption(options: { reference?: Record<string, unknown> | null; existant?: Record<string, unknown> | null } = {}) {
+    const requetes: Requete[] = [];
+    const query = async (sql: string, params: unknown[] = []) => {
+      requetes.push({ sql, params });
+      if (/FROM catalogue_maitre WHERE default_code/i.test(sql)) {
+        return options.reference === null ? [] : [options.reference ?? { default_code: 'VIV-1', nom: 'Igname Kponan', categorie: 'JULABA / Tubercules' }];
+      }
+      if (/FROM produits\s+WHERE marchand_id/i.test(sql)) {
+        return options.existant ? [options.existant] : [];
+      }
+      if (/INSERT INTO produits/i.test(sql)) {
+        return [{ id: 'p1', nom: 'Igname Kponan', prix: params[2], stock: params[5], unite: params[6], categorie: params[4], default_code: params[7] }];
+      }
+      return [];
+    };
+    const service = new CatalogueMaitreService({ query } as never, {} as never);
+    return { service, requetes };
+  }
+
+  it('crée un produit marchand portant le lien vers la référence Odoo', async () => {
+    const { service } = envAdoption();
+    const { produit } = await service.adopter('marchande-1', { default_code: 'VIV-1', prix: 500, unite: 'tas', stock: 12 });
+    expect(produit).toMatchObject({ nom: 'Igname Kponan', prix: 500, unite: 'tas', stock: 12, default_code: 'VIV-1' });
+  });
+
+  it('reprend le NOM et la CATÉGORIE d\'Odoo, jamais son prix', async () => {
+    // Odoo dit ce qu'EST le produit ; la marchande dit à combien elle le vend.
+    const { service, requetes } = envAdoption();
+    await service.adopter('marchande-1', { default_code: 'VIV-1', prix: 500 });
+    const insert = requetes.find((r) => /INSERT INTO produits/i.test(r.sql));
+    expect(insert?.params).toContain('Igname Kponan');
+    expect(insert?.params).toContain('JULABA / Tubercules');
+    expect(insert?.params).toContain(500);
+  });
+
+  it('refuse une référence inconnue ou retirée du référentiel', async () => {
+    const { service } = envAdoption({ reference: null });
+    await expect(service.adopter('marchande-1', { default_code: 'VIV-INCONNUE', prix: 500 }))
+      .rejects.toThrow(/inconnue ou retirée/);
+  });
+
+  it('refuse une seconde adoption et RENVOIE le produit déjà présent', async () => {
+    // Créer silencieusement un doublon donnerait deux articles identiques en
+    // caisse, à deux prix possiblement différents : la marchande ne saurait
+    // plus lequel est le bon.
+    const { service } = envAdoption({ existant: { id: 'deja', nom: 'Igname Kponan', prix: '500' } });
+    await expect(service.adopter('marchande-1', { default_code: 'VIV-1', prix: 900 }))
+      .rejects.toMatchObject({ response: { produit: { id: 'deja' } } });
+  });
+
+  it('n\'insère aucun produit quand l\'adoption est refusée', async () => {
+    const { service, requetes } = envAdoption({ existant: { id: 'deja' } });
+    await service.adopter('marchande-1', { default_code: 'VIV-1', prix: 900 }).catch(() => undefined);
+    expect(requetes.some((r) => /INSERT INTO produits/i.test(r.sql))).toBe(false);
+  });
+
+  it('accepte un stock nul — on adopte souvent avant de recevoir la marchandise', async () => {
+    const { service } = envAdoption();
+    const { produit } = await service.adopter('marchande-1', { default_code: 'VIV-1', prix: 500 });
+    expect(produit.stock).toBe(0);
+    expect(Number(produit.prix)).toBeGreaterThan(0);
+  });
+});
