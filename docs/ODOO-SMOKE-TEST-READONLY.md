@@ -83,6 +83,14 @@ Ces valeurs relevées à la source serviront de référence de comparaison aux �
 - **Prix incohérent au franc près entre JULABA et Odoo.** Une devise non-XOF doit désormais produire un 502 franc, pas un montant faux : si un prix erroné parvient malgré tout à s'afficher, le garde-fou est contourné quelque part et c'est un NO-GO immédiat. Un prix affiché par JULABA qui ne correspond pas, au franc près, à celui relevé dans Odoo est un NO-GO — c'est de l'argent de commerçante, et la CONSTITUTION (principe 8) traite un chiffre faux comme un incident, pas comme un détail.
 - Un appel hors allowlist (`create`, `write`, `unlink`, une méthode métier type `action_*`, ou toute combinaison `model/method` non listée) parvient malgré tout jusqu'au réseau.
 
+## 6 bis. Résultat de l'exécution réelle — 14 septembre 2026 : **GO**
+
+Exécuté sur l'instance Odoo 19 de `infra/odoo-poc/` (VPS), par `infra/odoo-poc/scripts/backend-poc-test.sh`, contre le backend JULABA réel (`OdooRealClient` sous `ODOO_CLIENT`, `JwtAuthGuard` actif, base Postgres jetable). Les sept assertions passent :
+
+1. les 7 références vivrières arrivent par `GET /odoo-poc/catalogue` ; 2. `Tips` n'y arrive pas alors qu'il existe côté Odoo ; 3. prix au franc près et stocks à l'unité près ; 4. `GET /odoo-poc/stock/:id` cohérent avec le catalogue ; 5. `POST /odoo-poc/mouvement-stock` refusé par l'allowlist ; 6. `qty_available` **inchangé** côté Odoo après cette tentative ; 7. aucune trace de `ODOO_API_KEY` dans les logs du backend.
+
+Deux points appris pendant ce jalon, qui valent au-delà de lui. **Le refus d'écriture ne se lit pas dans le code HTTP** : `simulerMouvementStock` journalise un état `rejected` et le contrôleur répond `201`. Vérifier le seul code HTTP aurait conclu l'inverse de la vérité — d'où la double preuve, corps de la réponse *et* stock Odoo relu avant/après. Et **le filtre catalogue ne repose plus sur `sale_ok`** : mesuré sur cette instance, `Tips` porte `sale_ok: true` comme les vivriers ; seul `is_storable` discrimine (voir `infra/odoo-poc/README.md`).
+
 ## 7. Après le test
 
 Quel que soit le résultat :
