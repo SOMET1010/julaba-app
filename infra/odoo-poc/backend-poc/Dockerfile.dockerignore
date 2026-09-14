@@ -1,0 +1,11 @@
+# Remplace le .dockerignore de la racine pour CE Dockerfile uniquement
+# (mecanisme BuildKit : <dockerfile>.dockerignore a la priorite). Celui de la
+# racine exclut `backend/`, ce qui rendrait ce build impossible.
+.git
+.github
+**/node_modules
+frontend_src/dist
+frontend_src/tsconfig.tsbuildinfo
+backend/dist
+docs
+*.zip

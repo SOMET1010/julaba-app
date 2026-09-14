@@ -1,0 +1,89 @@
+# Backend JULABA branche sur l'Odoo 19 du POC — stack de TEST, jetable.
+#
+# FRONTIERE. Rien ici n'est un composant de production JULABA. La base
+# Postgres ci-dessous est creee pour ce test et detruite avec lui
+# (`docker compose down -v`) : la base JULABA reelle n'est jamais touchee.
+# C'est important, car le backend execute au demarrage DbInitService et le
+# seed de demonstration — des ecritures, legitimes sur une base jetable,
+# jamais acceptables sur des donnees reelles.
+#
+# Lecture seule cote Odoo : ODOO_REAL_WRITE_ENABLED reste false, et l'allowlist
+# d'OdooRealClient (product.product/search_read et /read) refuse tout le reste
+# AVANT le moindre appel reseau.
+#
+# Lancement : ../scripts/backend-poc-test.sh (ne pas lancer a la main : le
+# script genere les secrets, attend les demarrages et execute les assertions).
+
+name: julaba-backend-poc
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: julaba_db
+      POSTGRES_USER: julaba_user
+      POSTGRES_PASSWORD: ${JULABA_DB_PASSWORD:?JULABA_DB_PASSWORD absent — lancer ../scripts/backend-poc-test.sh}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    # Volontairement NON publie sur l'hote : seul le conteneur api y accede.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U julaba_user -d julaba_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  api:
+    build:
+      # Contexte = racine du depot : le package-lock.json des workspaces y vit.
+      context: ../../..
+      dockerfile: infra/odoo-poc/backend-poc/Dockerfile
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # --- Backend JULABA ---------------------------------------------------
+      NODE_ENV: production
+      PORT: 3000
+      API_PREFIX: api/v1
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: julaba_user
+      DB_PASSWORD: ${JULABA_DB_PASSWORD:?}
+      DB_NAME: julaba_db
+      # Secrets jetables, generes par le script. NODE_ENV=production impose
+      # leur presence (verifierSecretsProduction dans main.ts) : c'est voulu,
+      # on teste le backend dans le mode ou il tourne reellement.
+      JWT_SECRET: ${JULABA_JWT_SECRET:?}
+      REFRESH_TOKEN_SALT: ${JULABA_REFRESH_SALT:?}
+      PIN_ENCRYPTION_KEY: ${JULABA_PIN_KEY:?}
+      # Comptes de demonstration : indispensables, les routes /odoo-poc/* sont
+      # derriere JwtAuthGuard et il faut donc pouvoir se connecter.
+      SEED_DEMO: "true"
+      SEED_DEMO_PASSWORD: "1234"
+      TTS_DISABLE_CLOUD: "true"
+      # --- Gateway Odoo -----------------------------------------------------
+      ODOO_CLIENT_MODE: real
+      # Nom de service Docker et PORT INTERNE : depuis un conteneur,
+      # 127.0.0.1:8070 designerait le conteneur lui-meme, pas l'hote.
+      ODOO_BASE_URL: http://odoo:8069
+      ODOO_API_KEY: ${ODOO_API_KEY:?ODOO_API_KEY absent — lancer d'abord ../scripts/init.sh}
+      # Verrou d'ecriture : ne JAMAIS passer a true dans ce lot.
+      ODOO_REAL_WRITE_ENABLED: "false"
+      # Sans elle, /odoo-poc/* repond 404 (OdooPocEnabledGuard).
+      ODOO_POC_ENABLED: "true"
+      # ODOO_DB volontairement ABSENT : mono-base, donc pas d'en-tete
+      # X-Odoo-Database — exactement ce que fait le smoke test bas niveau.
+    ports:
+      # Loopback uniquement : cette API de test n'a rien a faire sur l'internet.
+      - "127.0.0.1:3001:3000"
+    networks:
+      - default
+      - odoo
+
+networks:
+  # Reseau de la stack Odoo 19 du POC (docker-compose.yml de infra/odoo-poc,
+  # projet `julaba-odoo-poc`). C'est lui qui rend `http://odoo:8069` resolvable.
+  odoo:
+    external: true
+    name: julaba-odoo-poc_default
