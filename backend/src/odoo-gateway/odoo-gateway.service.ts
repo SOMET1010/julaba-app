@@ -10,6 +10,13 @@ import {
   JulabaProduitOdoo,
   OdooProductRecord,
 } from './produit-mapper';
+import {
+  CHAMPS_REFERENTIEL,
+  OdooReferentielRecord,
+  ReferenceMaitre,
+  estReferenceMaitre,
+  versReferenceMaitre,
+} from './referentiel-mapper';
 import { MouvementStockDto } from './dto/mouvement-stock.dto';
 
 export type MouvementStockCommand = MouvementStockDto;
@@ -77,6 +84,30 @@ export class OdooGatewayService {
       }
       throw e;
     }
+  }
+
+  /**
+   * Référentiel MAÎTRE : l'identité des produits, sans prix ni stock.
+   *
+   * Même lecture `product.product/search_read` que `listerCatalogue`, donc
+   * même allowlist — rien n'est élargi ici. Mais les champs demandés et la
+   * projection diffèrent : `listerCatalogue` répond « que puis-je vendre, et
+   * à quel prix ? », celle-ci répond « qu'est-ce que ce produit ? ».
+   *
+   * Aucun garde-fou de devise, et ce n'est pas un oubli : aucun montant ne
+   * traverse cette frontière (voir referentiel-mapper.ts). Une référence
+   * maître n'est pas vendable — elle le devient seulement quand une marchande
+   * l'ADOPTE en y posant SON prix.
+   *
+   * Les enregistrements hors référentiel (sans `default_code`, ou non suivis
+   * en stock comme `Tips`) sont écartés silencieusement : ce sont des
+   * produits Odoo légitimes, simplement pas des articles de marché.
+   */
+  async listerReferentielMaitre(): Promise<ReferenceMaitre[]> {
+    const bruts = await this.odooClient.execute<OdooReferentielRecord[]>('product.product', 'search_read', {
+      fields: CHAMPS_REFERENTIEL,
+    });
+    return bruts.filter(estReferenceMaitre).map(versReferenceMaitre);
   }
 
   async lireStock(odooProductId: number): Promise<number | null> {

@@ -37,5 +37,9 @@ function creerOdooClient(): OdooClient {
     OdooPocEnabledGuard,
     { provide: ODOO_CLIENT, useFactory: creerOdooClient },
   ],
+  // Exporte pour le referentiel maitre (CatalogueMaitreModule) : celui-ci
+  // reutilise CE service, donc le meme client, la meme allowlist et le meme
+  // verrou d'ecriture. Aucun second acces a Odoo n'est ouvert.
+  exports: [OdooGatewayService],
 })
 export class OdooGatewayModule {}
