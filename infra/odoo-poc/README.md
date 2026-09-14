@@ -524,12 +524,39 @@ vide se voit tout de suite, un produit technique presente comme un article a
 vendre ne se voit pas. Le smoke test doit continuer a lire tout ce que le
 Gateway lirait : c'est precisement ainsi que `Tips` est apparu.
 
-### Jalon suivant
+### Jalon suivant : le backend JULABA lui-meme
 
-Le test restant est d'un autre ordre : brancher le backend JULABA lui-meme sur
-une instance reelle, via les routes `/odoo-poc/*`. Ce protocole vit dans
+Le test restant est d'un autre ordre : brancher le backend JULABA sur cette
+instance, via les routes `/odoo-poc/*`. Le protocole vit dans
 `docs/ODOO-SMOKE-TEST-READONLY.md` — ce README couvre la stack et le contrat bas
-niveau, ce document couvre l'integration backend.
+niveau, ce document couvre l'integration backend. Il est execute par :
+
+    ./scripts/backend-poc-test.sh            # monte la stack de test et verifie
+    ./scripts/backend-poc-test.sh --arreter  # detruit tout
+
+`smoke-test.sh` parle a Odoo avec `curl` : il prouve le CONTRAT. Ce script-ci
+fait tourner le vrai NestJS, avec `OdooRealClient` injecte sous `ODOO_CLIENT`,
+`JwtAuthGuard` actif et le mapping reel : il prouve l'INTEGRATION. Sept
+assertions, toutes bloquantes — les 7 vivriers livres, `Tips` absent, prix au
+franc pres, `/stock/:id` coherent, ecriture refusee, stock Odoo inchange apres
+la tentative, aucune trace de la cle API dans les logs.
+
+Trois points de mise en oeuvre qui ne vont pas de soi :
+
+- **Une base Postgres JETABLE.** Les routes sont derriere `JwtAuthGuard` : il
+  faut un utilisateur, donc une base. Le backend ecrit au demarrage
+  (`DbInitService`, seed de demonstration) — legitime sur une base creee pour
+  l'occasion, jamais sur des donnees reelles. `down -v` efface tout.
+- **`ODOO_BASE_URL=http://odoo:8069`**, pas `127.0.0.1:8070`. Depuis un
+  conteneur, `127.0.0.1` designe le conteneur lui-meme ; on passe donc par le
+  reseau Docker de la stack POC et par le port INTERNE d'Odoo.
+- **Une image de test distincte** (`backend-poc/Dockerfile`), et non celle de
+  production. Celle de prod copie `backend/package-lock.json`, absent du depot
+  (npm workspaces : le lock est a la racine), et part d'Alpine (musl), ou le
+  binaire natif de `@sentry/node-cpu-profiler` n'existe pas en pre-compile.
+  Le Dockerfile de production n'est pas modifie.
+
+### Regle de sequencement
 
 ### Regle de sequencement
 
