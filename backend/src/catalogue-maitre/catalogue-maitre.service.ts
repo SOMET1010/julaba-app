@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { OdooGatewayService } from '../odoo-gateway/odoo-gateway.service';
@@ -10,6 +10,16 @@ export interface ReferenceMaitreLigne {
   odoo_product_id: number | null;
   actif: boolean;
   synced_at: string;
+}
+
+export interface ProduitAdopte {
+  id: string;
+  nom: string;
+  prix: string | number;
+  stock: string | number;
+  unite: string | null;
+  categorie: string | null;
+  default_code: string;
 }
 
 export interface ResultatSynchronisation {
@@ -175,6 +185,85 @@ export class CatalogueMaitreService {
         ORDER BY nom ASC LIMIT $2`,
       [`%${terme}%`, plafond],
     );
+  }
+
+  /**
+   * ADOPTION : une référence maître devient un article de CETTE marchande.
+   *
+   * C'est le seul pont entre les deux mondes, et il ne se franchit que dans
+   * ce sens. Odoo dit « ceci est de l'igname Kponan » ; la marchande dit
+   * « je la vends 500 F le tas ». Tant que personne n'a dit la seconde
+   * phrase, il n'y a pas d'article, donc rien à vendre — et c'est pour cela
+   * qu'un référentiel à prix nul ne peut pas produire une vente à 0 F.
+   *
+   * Trois refus, tous délibérés :
+   *
+   * - PRIX ABSENT OU NUL → refus (porté par le DTO, `@IsPositive`). Adopter
+   *   sans prix reviendrait à créer l'article à 0 F qu'on veut empêcher ;
+   * - RÉFÉRENCE INCONNUE OU DÉSACTIVÉE → refus. On n'adopte pas un produit
+   *   qu'Odoo ne reconnaît pas (ou plus) : le lien serait mort-né ;
+   * - DÉJÀ ADOPTÉE → refus explicite, en RENVOYANT le produit existant.
+   *   Silencieusement en créer un second donnerait deux articles identiques
+   *   dans la caisse, avec deux prix possiblement différents — une marchande
+   *   ne saurait plus lequel est le bon.
+   *
+   * Le stock initial, lui, peut valoir zéro : on adopte souvent avant d'avoir
+   * reçu la marchandise. C'est le prix qui ne peut pas être nul, pas le stock.
+   */
+  async adopter(
+    marchandId: string,
+    demande: { default_code: string; prix: number; unite?: string; stock?: number; prix_achat?: number },
+  ): Promise<{ produit: ProduitAdopte; deja: boolean }> {
+    const code = demande.default_code.trim();
+
+    const [reference] = await this.dataSource.query(
+      `SELECT default_code, nom, categorie FROM catalogue_maitre WHERE default_code = $1 AND actif = true`,
+      [code],
+    );
+    if (!reference) {
+      throw new NotFoundException(
+        `Référence "${code}" inconnue ou retirée du référentiel maître : impossible de l'adopter.`,
+      );
+    }
+
+    const [existant] = await this.dataSource.query(
+      `SELECT id, nom, prix, stock, unite, categorie, default_code FROM produits
+        WHERE marchand_id = $1::text AND default_code = $2`,
+      [marchandId, code],
+    );
+    if (existant) {
+      throw new ConflictException({
+        message: `"${reference.nom}" est déjà dans ton catalogue.`,
+        produit: existant,
+      });
+    }
+
+    const [produit] = await this.dataSource.query(
+      `INSERT INTO produits (marchand_id, nom, prix, prix_achat, categorie, stock, unite, default_code)
+       VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, nom, prix, stock, unite, categorie, default_code`,
+      [
+        marchandId,
+        reference.nom,
+        demande.prix,
+        demande.prix_achat ?? 0,
+        reference.categorie ?? 'Général',
+        demande.stock ?? 0,
+        demande.unite ?? 'unité',
+        code,
+      ],
+    );
+    this.logger.log(`[CATALOGUE-MAITRE] adoption ${code} par ${marchandId} à ${demande.prix} F`);
+    return { produit, deja: false };
+  }
+
+  /** Références déjà adoptées par cette marchande — pour ne pas les reproposer. */
+  async codesAdoptes(marchandId: string): Promise<string[]> {
+    const lignes = await this.dataSource.query(
+      `SELECT default_code FROM produits WHERE marchand_id = $1::text AND default_code IS NOT NULL`,
+      [marchandId],
+    );
+    return lignes.map((l: { default_code: string }) => l.default_code);
   }
 
   /** État du miroir : combien de références, et de quand datent-elles. Sert

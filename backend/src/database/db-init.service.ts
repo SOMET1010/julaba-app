@@ -140,6 +140,24 @@ export class DbInitService {
         `CREATE INDEX IF NOT EXISTS idx_catalogue_maitre_nom ON catalogue_maitre (lower(nom));`,
       );
 
+      // ADOPTION (PILOTE-3) : trace du lien entre le produit d'UNE marchande et
+      // la référence maître dont il provient. Nullable, car un produit peut
+      // parfaitement naître hors référentiel (vente libre, article local que
+      // personne n'a encore catalogué) — l'adoption est une facilité, pas un
+      // passage obligé.
+      await this.dataSource.query(
+        `ALTER TABLE produits ADD COLUMN IF NOT EXISTS default_code text;`,
+      );
+      // Une même marchande n'adopte pas deux fois la même référence. L'index
+      // est PARTIEL (`WHERE default_code IS NOT NULL`) : sans cela, deux
+      // produits libres — qui ont tous les deux `NULL` — entreraient en
+      // conflit. En SQL, NULL n'est jamais égal à NULL, mais la clause rend
+      // l'intention lisible plutôt que de dépendre de cette subtilité.
+      await this.dataSource.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS ux_produits_marchand_default_code
+           ON produits (marchand_id, default_code) WHERE default_code IS NOT NULL;`,
+      );
+
       this.logger.log('Tables caisse_sessions, produits et catalogue_maitre vérifiées');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);

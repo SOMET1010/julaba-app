@@ -1,8 +1,11 @@
-import { Controller, Get, HttpCode, HttpStatus, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CatalogueMaitreService } from './catalogue-maitre.service';
+import { AdopterReferenceDto } from './dto/adopter-reference.dto';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { User } from '../users/entities/user.entity';
 
 /**
  * Référentiel maître, côté JULABA.
@@ -38,6 +41,26 @@ export class CatalogueMaitreController {
   @Get('etat')
   async etat() {
     return this.service.etat();
+  }
+
+  /**
+   * Adopte une référence : la marchande en fait SON article, avec SON prix.
+   *
+   * 201 : une ressource naît réellement — un produit dans son catalogue. Le
+   * prix strictement positif est imposé par le DTO ; le ValidationPipe global
+   * (voir main.ts) refuse la requête avant d'arriver ici.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('adopter')
+  async adopter(@Body() dto: AdopterReferenceDto, @CurrentUser() user: User) {
+    return this.service.adopter(user.id, dto);
+  }
+
+  /** Références que cette marchande a déjà adoptées. */
+  @UseGuards(JwtAuthGuard)
+  @Get('adoptees')
+  async adoptees(@CurrentUser() user: User) {
+    return { codes: await this.service.codesAdoptes(user.id) };
   }
 
   /**
