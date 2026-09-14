@@ -1,0 +1,12 @@
+{
+  "product_count": 198,
+  "files": {
+    "01_categories_odoo.csv": "947930dd2b251500aa756e617256bb9c2d4e1ca713df3dc49300efc8355489b4",
+    "02_produits_odoo.csv": "43162629be0dce6e079384e6f6772971e27f321c6377ce2fd8e5e47931241c9b",
+    "03_mapping_julaba_local.csv": "df91c983c112ab064d892158f971ee67a3e97faefc78f2b6907c68cf698d07fe",
+    "seed_catalogue_maitre.py": "d962ddfd97e8d169d118c1e33372b7c621023e1482a1ff99e20e1fae7512c820",
+    "verifier_catalogue_maitre.py": "bdd19d284363fd40c00bc2d32c1232c6db99d4844d564f7161a5a310960e3761",
+    "README_IMPORT_ODOO.md": "55f58268eb610ef2aebaf025d263dd8068f51a6ae275573d1d5e6557b31f2c98",
+    "Referentiel_maitre_vivrier_Odoo_v1.xlsx": "2653be3cfc43503535135a31337c5f6fb25500300b19bf99579d723533b1bdbd"
+  }
+}
