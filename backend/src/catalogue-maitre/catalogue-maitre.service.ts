@@ -238,23 +238,45 @@ export class CatalogueMaitreService {
       });
     }
 
-    const [produit] = await this.dataSource.query(
-      `INSERT INTO produits (marchand_id, nom, prix, prix_achat, categorie, stock, unite, default_code)
-       VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, nom, prix, stock, unite, categorie, default_code`,
-      [
-        marchandId,
-        reference.nom,
-        demande.prix,
-        demande.prix_achat ?? 0,
-        reference.categorie ?? 'Général',
-        demande.stock ?? 0,
-        demande.unite ?? 'unité',
-        code,
-      ],
-    );
-    this.logger.log(`[CATALOGUE-MAITRE] adoption ${code} par ${marchandId} à ${demande.prix} F`);
-    return { produit, deja: false };
+    // Course : deux adoptions concurrentes de la MÊME référence par la MÊME
+    // marchande (double-tap, ou retry client après un réseau lent — le
+    // terrain que cette appli cible) passent toutes les deux le SELECT
+    // ci-dessus avant qu'aucune n'ait écrit. La 2e INSERT viole alors
+    // `ux_produits_marchand_default_code` : sans ce filet, l'appelante aurait
+    // reçu un 500 brut au lieu du même 409 + produit existant que le chemin
+    // normal. Même idiome que caisse-rest.controller.ts / wallets.service.ts.
+    try {
+      const [produit] = await this.dataSource.query(
+        `INSERT INTO produits (marchand_id, nom, prix, prix_achat, categorie, stock, unite, default_code)
+         VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id, nom, prix, stock, unite, categorie, default_code`,
+        [
+          marchandId,
+          reference.nom,
+          demande.prix,
+          demande.prix_achat ?? 0,
+          reference.categorie ?? 'Général',
+          demande.stock ?? 0,
+          demande.unite ?? 'unité',
+          code,
+        ],
+      );
+      this.logger.log(`[CATALOGUE-MAITRE] adoption ${code} par ${marchandId} à ${demande.prix} F`);
+      return { produit, deja: false };
+    } catch (e: any) {
+      if (e?.code === '23505' || /duplicate key|unique constraint/i.test(e?.message || '')) {
+        const [concurrent] = await this.dataSource.query(
+          `SELECT id, nom, prix, stock, unite, categorie, default_code FROM produits
+            WHERE marchand_id = $1::text AND default_code = $2`,
+          [marchandId, code],
+        );
+        throw new ConflictException({
+          message: `"${reference.nom}" est déjà dans ton catalogue.`,
+          produit: concurrent,
+        });
+      }
+      throw e;
+    }
   }
 
   /** Références déjà adoptées par cette marchande — pour ne pas les reproposer. */

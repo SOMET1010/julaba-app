@@ -166,17 +166,38 @@ describe('CatalogueMaitreService — recherche', () => {
 });
 
 describe('CatalogueMaitreService — adoption', () => {
-  function envAdoption(options: { reference?: Record<string, unknown> | null; existant?: Record<string, unknown> | null } = {}) {
+  function envAdoption(options: {
+    reference?: Record<string, unknown> | null;
+    existant?: Record<string, unknown> | null;
+    /** Simule la course : l'INSERT échoue avec une violation d'unicité
+     *  Postgres (23505), comme si une adoption concurrente venait d'écrire
+     *  la même (marchand_id, default_code) entre le SELECT et l'INSERT. */
+    courseConcurrente?: Record<string, unknown>;
+  } = {}) {
     const requetes: Requete[] = [];
+    let selectProduitsAppels = 0;
     const query = async (sql: string, params: unknown[] = []) => {
       requetes.push({ sql, params });
       if (/FROM catalogue_maitre WHERE default_code/i.test(sql)) {
         return options.reference === null ? [] : [options.reference ?? { default_code: 'VIV-1', nom: 'Igname Kponan', categorie: 'JULABA / Tubercules' }];
       }
       if (/FROM produits\s+WHERE marchand_id/i.test(sql)) {
+        selectProduitsAppels++;
+        // 1er appel (avant l'INSERT) : rien encore, c'est la course qu'on simule.
+        // 2e appel (après l'échec de l'INSERT) : la ligne que le concurrent a écrite.
+        if (selectProduitsAppels >= 2 && options.courseConcurrente) {
+          return [options.courseConcurrente];
+        }
         return options.existant ? [options.existant] : [];
       }
       if (/INSERT INTO produits/i.test(sql)) {
+        if (options.courseConcurrente) {
+          const err: any = new Error(
+            'duplicate key value violates unique constraint "ux_produits_marchand_default_code"',
+          );
+          err.code = '23505';
+          throw err;
+        }
         return [{ id: 'p1', nom: 'Igname Kponan', prix: params[2], stock: params[5], unite: params[6], categorie: params[4], default_code: params[7] }];
       }
       return [];
@@ -227,5 +248,35 @@ describe('CatalogueMaitreService — adoption', () => {
     const { produit } = await service.adopter('marchande-1', { default_code: 'VIV-1', prix: 500 });
     expect(produit.stock).toBe(0);
     expect(Number(produit.prix)).toBeGreaterThan(0);
+  });
+
+  it('course concurrente : deux adoptions simultanées de la même référence → 409 + produit existant, jamais un 500 brut', async () => {
+    // Les deux requêtes passent le SELECT « pas encore adoptée » avant que
+    // l'une des deux n'écrive. La 2e INSERT viole donc
+    // ux_produits_marchand_default_code — sans le filet, cette erreur SQL
+    // brute remonterait telle quelle jusqu'à l'appelante.
+    const { service } = envAdoption({
+      courseConcurrente: { id: 'gagnant-de-la-course', nom: 'Igname Kponan', prix: '500', default_code: 'VIV-1' },
+    });
+    await expect(service.adopter('marchande-1', { default_code: 'VIV-1', prix: 500 }))
+      .rejects.toMatchObject({ response: { produit: { id: 'gagnant-de-la-course' } } });
+  });
+
+  it('propage toute autre erreur SQL de l\'INSERT sans la confondre avec une adoption déjà faite', async () => {
+    const service = new CatalogueMaitreService(
+      {
+        query: async (sql: string) => {
+          if (/FROM catalogue_maitre WHERE default_code/i.test(sql)) {
+            return [{ default_code: 'VIV-1', nom: 'Igname Kponan', categorie: 'JULABA / Tubercules' }];
+          }
+          if (/FROM produits\s+WHERE marchand_id/i.test(sql)) return [];
+          if (/INSERT INTO produits/i.test(sql)) throw new Error('connexion perdue');
+          return [];
+        },
+      } as never,
+      {} as never,
+    );
+    await expect(service.adopter('marchande-1', { default_code: 'VIV-1', prix: 500 }))
+      .rejects.toThrow('connexion perdue');
   });
 });
