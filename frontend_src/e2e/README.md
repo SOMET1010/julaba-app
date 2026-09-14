@@ -4,6 +4,28 @@ Preuve **reproductible** que la boucle espèces sécurisée par R-A (#114),
 crédit-off #16-B (#115) et R7 annulation (#116) est cohérente **au runtime**,
 dans un vrai navigateur contre la vraie stack — pas seulement en intégration.
 
+## PILOTE-2 — vente espèces, coupure réseau, reprise
+
+```sh
+bash frontend_src/e2e/run-recette-pilote2.sh      # GO PILOTE-2, ou NO-GO + le premier invariant cassé
+```
+
+Sept invariants, tous bloquants, arrêt au premier cassé : vente en ligne ;
+coupure au moment de payer (mise en file durable, rien en base) ; retour du
+réseau (rejeu, **une seule** vente) ; double rejeu de la même clé ; **le
+serveur encaisse mais la réponse se perd**, puis redémarrage ; terminal
+partagé (l'opération d'une marchande n'est jamais rejouée sous une autre
+session) ; cohérence finale caisse / ledger / stock.
+
+Le cinquième est la raison d'être de ce script. Les tests existants prouvent
+les deux moitiés séparément — `offlineCaisse.test.mts` la file contre un
+`poster` factice, `i2-idempotence-vente.spec.ts` la déduplication contre des
+appels directs — mais jamais la jonction, et jamais le cas où **la vente est
+déjà en base pendant que la marchande voit une erreur**. C'est là que naissent
+les doublons en argent réel.
+
+L'arbitre est PostgreSQL, jamais l'écran ni une lecture d'API.
+
 ## Lancer
 
 ```sh
