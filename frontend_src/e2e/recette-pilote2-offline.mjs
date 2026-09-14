@@ -197,15 +197,102 @@ async function connecter(ctx, page, qui) {
   const r = await ctx.request.post(`${BASE}/api/v1/auth/login`, { data: { phone: qui.phone, password: qui.password } });
   if (!r.ok()) throw new Error(`login ${qui.phone} -> ${r.status()} ${await r.text()}`);
   const data = await r.json();
-  await ctx.addInitScript((u) => {
-    try {
-      localStorage.setItem('julaba_auth_user', JSON.stringify(u));
-      localStorage.setItem('julaba_completed_onboarding', 'true');
-    } catch { /* stockage indisponible */ }
+  // On passe par un FICHIER STATIQUE de la meme origine, jamais par une page
+  // de l'application : le stockage local y est accessible, mais rien ne
+  // demarre. Sans cette precaution, la page se chargerait avec l'ANCIENNE
+  // identite en cache et les NOUVEAUX cookies, et la synchronisation partirait
+  // dans cette fenetre-la — c'est exactement ce qui a fausse un passage.
+  await page.goto(`${BASE}/favicon.png`, { waitUntil: 'domcontentloaded' }).catch(() => {});
+  await page.evaluate((u) => {
+    try { localStorage.setItem('julaba_test_user', JSON.stringify(u)); } catch { /* ignore */ }
   }, data.user);
   await page.goto(`${BASE}/marchand/caisse`, { waitUntil: 'domcontentloaded' }).catch(() => {});
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(2200);
   return data;
+}
+
+
+// Plusieurs elements peuvent porter le meme libelle (ici « Se deconnecter » :
+// la barre laterale du grand ecran ET la ligne de l'ecran Parametres). En 390
+// px la premiere est masquee : `.first()` tomberait dessus et attendrait pour
+// rien. On clique donc le premier element REELLEMENT visible.
+// `dernier` sert aux boites de dialogue : la boite est rendue APRES la ligne
+// qui l'ouvre et porte souvent le meme libelle. Viser le premier element
+// cliquerait la ligne du dessous, que l'overlay intercepte.
+async function cliquerVisible(locator, quoi, { dernier = false } = {}) {
+  for (let essai = 0; essai < 20; essai++) {
+    const tous = await locator.all();
+    const visibles = [];
+    for (const el of tous) {
+      if (await el.isVisible().catch(() => false)) visibles.push(el);
+    }
+    const cible = dernier ? visibles[visibles.length - 1] : visibles[0];
+    if (cible) {
+      try {
+        await cible.click({ timeout: 5000 });
+        return true;
+      } catch { /* overlay en cours d'animation : on retente */ }
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`aucun element cliquable pour : ${quoi}`);
+}
+
+// ── Connexion par le VRAI ecran (clavier, code a 4 chiffres) ─────────────
+// Utilisee par l'invariant 8 uniquement. Les autres etapes passent par le
+// raccourci `connecter` : ce qu'elles testent n'est pas l'ecran de connexion.
+async function connexionParEcran(page, telLocal, pin, etiquette) {
+  await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2000);
+
+  // Ecran « on te reconnait » : le telephone partage a son propre chemin.
+  const changer = page.getByRole('button', { name: /Changer de compte/i });
+  if (await changer.first().isVisible().catch(() => false)) {
+    await cliquerVisible(changer, 'bouton « Changer de compte »');
+    await page.waitForTimeout(900);
+  }
+
+  // Le clavier numerique n'est pas toujours deplie (saisie vocale par defaut).
+  const touche1 = page.getByRole('button', { name: '1', exact: true });
+  if (!(await touche1.first().isVisible().catch(() => false))) {
+    await cliquerVisible(page.getByRole('button', { name: /Taper mon num/i }), 'clavier numerique');
+    await page.waitForTimeout(800);
+  }
+  for (const d of telLocal.split('')) {
+    await cliquerVisible(page.getByRole('button', { name: d, exact: true }), `chiffre ${d} du numero`);
+    await page.waitForTimeout(140);
+  }
+  await page.screenshot({ path: `${OUT}/${etiquette}-a-numero.png`, fullPage: true }).catch(() => {});
+  await cliquerVisible(page.getByRole('button', { name: /C.?est mon num/i }), 'bouton « C est mon numero »');
+  await page.waitForTimeout(2000);
+
+  // Code secret : la connexion part toute seule au 4e chiffre.
+  for (const d of pin.split('')) {
+    await cliquerVisible(page.getByRole('button', { name: `Chiffre ${d}`, exact: true }), `chiffre ${d} du code`);
+    await page.waitForTimeout(220);
+  }
+  await page.waitForTimeout(4000);
+  await page.screenshot({ path: `${OUT}/${etiquette}-b-connectee.png`, fullPage: true }).catch(() => {});
+  return page.url();
+}
+
+// ── Deconnexion par le VRAI ecran (Parametres > Se deconnecter) ──────────
+async function deconnexionParEcran(page, etiquette) {
+  // ORDRE IMPORTANT : on ouvre d'abord l'ecran des parametres, SESSION ENCORE
+  // ACTIVE, puis seulement on desarme la bequille du harnais. L'inverse
+  // afficherait l'ecran de connexion au lieu des parametres — le script
+  // d'initialisation ayant efface la session avant que la page ne demarre.
+  await page.goto(`${BASE}/marchand/parametres`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2500);
+  await page.evaluate(() => {
+    try { localStorage.removeItem('julaba_test_user'); } catch { /* ignore */ }
+  });
+  await cliquerVisible(page.getByText('Se déconnecter', { exact: false }), 'ligne « Se deconnecter »');
+  await page.waitForTimeout(1200);
+  await cliquerVisible(page.getByRole('button', { name: /Se déconnecter/i }),
+    'confirmation « Se deconnecter »', { dernier: true });
+  await page.waitForTimeout(4500);
+  await page.screenshot({ path: `${OUT}/${etiquette}.png`, fullPage: true }).catch(() => {});
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -214,10 +301,19 @@ const browser = await chromium.launch({ executablePath: EXEC, headless: true, ar
 let rupture = null;
 try {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+  // Un SEUL script d'initialisation, et il est pilotable : il recopie
+  // `julaba_test_user` vers le cache de session de l'application, avant que
+  // celle-ci demarre. Poser le cache apres chargement ouvrirait une fenetre ou
+  // l'application tourne avec l'ancienne identite et les nouveaux cookies
+  // (voir `connecter`). Et l'effacement de `julaba_test_user` DESARME la
+  // bequille : c'est ce qui rend un VRAI logout possible a l'invariant 8.
   await ctx.addInitScript(() => {
     try {
       localStorage.setItem('julaba_completed_onboarding', 'true');
       localStorage.setItem('julaba_onboarding_done', 'true');
+      const u = localStorage.getItem('julaba_test_user');
+      if (u) localStorage.setItem('julaba_auth_user', u);
+      else localStorage.removeItem('julaba_auth_user');
     } catch { /* stockage indisponible */ }
   });
   const page = await ctx.newPage();
@@ -395,6 +491,75 @@ try {
   await exige(file7.actives.length === 0 && file7.mortes.length === 0,
     'file hors-ligne vide, aucune lettre morte', JSON.stringify(file7));
   verts.push('7. coherence finale');
+
+  // ── 8 ─────────────────────────────────────────────────────────────────
+  etape(8, 'bascule de compte par le VRAI ecran : logout A, login B, synchro');
+  // L'invariant 6 prouve le cloisonnement avec une bascule de session
+  // SIMULEE par le harnais. Celui-ci le prouve avec le vrai chemin : ecran
+  // Parametres > Se deconnecter, puis ecran de connexion, clavier, code a
+  // quatre chiffres. C'est la difference entre « le filtre fonctionne » et
+  // « le filtre fonctionne dans le geste reel d'un telephone partage ».
+  // L'endpoint de vente reste BLOQUE pendant toute la phase A. Sans cela, la
+  // simple navigation vers l'ecran des parametres remonte CaisseContext sous
+  // l'identite de A, qui rejoue son operation — legitimement, mais il ne
+  // resterait alors plus rien a proteger quand B prend le telephone. Le
+  // blocage est leve des que la session de A est fermee : B travaille donc
+  // avec un reseau parfaitement ouvert, et une fuite se verrait comme une
+  // vraie vente en base.
+  await page.route('**/api/v1/caisse/vente', (route) => route.abort('failed'));
+  await venteParEcran(page, '08-echec-A');
+  file = await outbox(page);
+  await exige(file.actives.length === 1 && file.actives[0].userId === UID_A,
+    'A laisse une operation en file avant de rendre le telephone', JSON.stringify(file.actives));
+  const cleDeA8 = file.actives[0].id;
+  const ventesAvant8 = (await ventes(UID_A)).length;
+
+  await deconnexionParEcran(page, '08-apres-logout');
+  const sessionEffacee = await page.evaluate(() => {
+    try { return localStorage.getItem('julaba_auth_user') === null; } catch { return false; }
+  });
+  await exige(sessionEffacee, 'la session de A est reellement effacee par le logout');
+  file = await outbox(page);
+  await exige(file.actives.length === 1 && file.actives[0].id === cleDeA8,
+    "le logout n'emporte pas l'operation en attente", JSON.stringify(file.actives));
+  await exige(file.mortes.length === 0, "l'operation n'a pas ete parquee en lettre morte", JSON.stringify(file.mortes));
+  const essaisApresLogout = file.actives[0].attempts;
+
+  // Reseau rouvert : plus aucune session active, donc aucune synchronisation
+  // ne peut partir entre ici et la connexion de B.
+  await page.unroute('**/api/v1/caisse/vente');
+
+  const urlApresLogin = await connexionParEcran(page, '0700000010', '1234', '08-login-B');
+  const sessionB = await page.evaluate(() => {
+    try { return JSON.parse(localStorage.getItem('julaba_auth_user') || 'null'); } catch { return null; }
+  });
+  await exige(!!sessionB && sessionB.id === UID_B,
+    'B est bien connectee par le vrai ecran', `${sessionB?.firstName ?? '?'} — ${urlApresLogin}`);
+
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await page.waitForTimeout(8000);
+  file = await outbox(page);
+  await exige((await ventes(UID_A)).length === ventesAvant8,
+    'aucune vente de A creee apres la bascule reelle', `${(await ventes(UID_A)).length} vs ${ventesAvant8}`);
+  await exige(UID_B ? (await ventes(UID_B)).length === 0 : true,
+    'aucune vente creee sous le compte de B');
+  await exige(file.actives.length === 1 && file.actives[0].id === cleDeA8 && file.actives[0].userId === UID_A,
+    "l'operation de A est intacte, proprietaire inchange", JSON.stringify(file.actives));
+  await exige(file.actives[0].attempts === essaisApresLogout,
+    'aucune tentative SUPPLEMENTAIRE comptee sous B — la session de B ne la touche pas',
+    `attempts=${file.actives[0].attempts}, inchange depuis le logout`);
+
+  // Retour de A : on reutilise le raccourci du harnais, le vrai ecran ayant
+  // deja fait sa preuve ci-dessus. Ce qui compte ici est que l'operation
+  // n'ait pas ete perdue en route.
+  await connecter(ctx, page, A);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await attendre(async () => (await outbox(page)).actives.length === 0);
+  v = await ventes(UID_A);
+  await exige(v.length === ventesAvant8 + 1, 'la vente de A est rejouee a son retour', `${v.length} ventes`);
+  await exige(v.some((x) => x.idempotency_key === cleDeA8), "avec sa cle d'origine", cleDeA8);
+  await exige((await clesEnDouble(UID_A)).length === 0, "aucune cle d'idempotence en double au final");
+  verts.push('8. bascule de compte reelle : aucune fuite entre sessions');
 } catch (e) {
   rupture = e;
   if (!(e instanceof RuptureInvariant)) {
@@ -408,7 +573,7 @@ try {
 
 console.log('\n' + '-'.repeat(70));
 if (!rupture) {
-  console.log('GO PILOTE-2 — les sept invariants tiennent.\n');
+  console.log('GO PILOTE-2 — les huit invariants tiennent.\n');
   verts.forEach((x) => console.log('  ' + x));
   console.log(`
 Une marchande peut vendre en especes de bout en bout sans doublon, y compris

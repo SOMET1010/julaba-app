@@ -24,6 +24,17 @@ appels directs — mais jamais la jonction, et jamais le cas où **la vente est
 déjà en base pendant que la marchande voit une erreur**. C'est là que naissent
 les doublons en argent réel.
 
+Un huitième invariant referme la réserve laissée par le sixième. Le six
+prouve le cloisonnement avec une bascule de session **simulée** par le
+harnais ; le huit le prouve par le **vrai chemin** : écran Paramètres → « Se
+déconnecter », puis écran de connexion, clavier, code à quatre chiffres. Le
+détail qui compte : l'endpoint de vente reste bloqué pendant toute la phase de
+la première marchande — sans quoi la simple navigation vers les paramètres
+rejouerait son opération, légitimement, et il ne resterait plus rien à
+protéger quand la seconde prend le téléphone. Le blocage est levé dès la
+session fermée, donc la seconde travaille avec un réseau ouvert : une fuite se
+verrait comme une vraie vente en base.
+
 L'arbitre est PostgreSQL, jamais l'écran ni une lecture d'API.
 
 ## Lancer
