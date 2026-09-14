@@ -5,7 +5,7 @@ import { ODOO_CLIENT, OdooClient } from './odoo-client.interface';
 import { SyncJournal, SyncJournalEntry } from './sync-journal';
 import {
   versJulaba,
-  estVendable,
+  estArticleCatalogue,
   DeviseOdooInattendueError,
   JulabaProduitOdoo,
   OdooProductRecord,
@@ -51,11 +51,13 @@ export class OdooGatewayService {
    * `list_price` est un nombre sans unité, et `versJulaba` refuse de le mapper
    * tant que la devise n'est pas prouvée être du XOF (voir produit-mapper.ts).
    *
-   * `sale_ok` est demandé pour la même raison que `currency_id` — un filtre,
-   * pas un champ d'affichage : `estVendable` écarte AVANT mapping les produits
-   * techniques qu'un module Odoo crée pour son propre usage interne (ex.
-   * `Tips`, injecté par `point_of_sale`) — voir produit-mapper.ts pour le
-   * critère retenu et pourquoi.
+   * `is_storable` est demandé pour la même raison que `currency_id` — un
+   * filtre, pas un champ d'affichage : `estArticleCatalogue` écarte AVANT
+   * mapping les produits techniques qu'un module Odoo crée pour son propre
+   * usage interne (ex. `Tips`, injecté par `point_of_sale`) — voir
+   * produit-mapper.ts pour le critère, et la mesure qui l'a établi. Ne pas
+   * demander le champ n'ouvre rien : un enregistrement sans `is_storable` est
+   * écarté, pas laissé passer.
    *
    * Un catalogue dans une autre devise est une erreur de configuration de
    * l'instance Odoo, pas une erreur de l'appelant JULABA : d'où un 502 et non
@@ -65,10 +67,10 @@ export class OdooGatewayService {
    */
   async listerCatalogue(): Promise<JulabaProduitOdoo[]> {
     const produits = await this.odooClient.execute<OdooProductRecord[]>('product.product', 'search_read', {
-      fields: ['id', 'name', 'list_price', 'qty_available', 'default_code', 'currency_id', 'sale_ok'],
+      fields: ['id', 'name', 'list_price', 'qty_available', 'default_code', 'currency_id', 'is_storable'],
     });
     try {
-      return produits.filter(estVendable).map(versJulaba);
+      return produits.filter(estArticleCatalogue).map(versJulaba);
     } catch (e) {
       if (e instanceof DeviseOdooInattendueError) {
         throw new BadGatewayException(e.message);
