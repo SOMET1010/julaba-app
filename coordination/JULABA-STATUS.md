@@ -7,17 +7,24 @@
 
 ```
 STATUT: EN_COURS
-TACHE: VOIX-V5
+TACHE: LOT A — défauts corrigeables sans téléphone
 BESOIN_PATRICK: NON
 TYPE_BESOIN: —
-ACTION_PATRICK: —
-DERNIER_SHA_MAIN: f4ebf1e
-PROCHAINE_ACTION: reprendre le diagnostic VOIX-V5 — instrumenter la piste
-  useAudioUnlockFallback absent de l'étape 'password' (LoginPassword.tsx),
-  puis construire le rapport de diagnostic intégré qui permettra à Patrick
-  de trancher en une seule session terrain.
-DERNIER_RESULTAT: bus de coordination créé et mergé sur main. Aucun code
-  applicatif touché.
+ACTION_PATRICK: — (la recette terrain est GROUPÉE : une seule session, quand
+  le lot A sera clos — voir docs/RECETTE-TERRAIN-GROUPEE.md)
+DERNIER_SHA_MAIN: 1b7c795
+BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (cee1daa) — trois correctifs
+  NON mergés : authentification et caisse sont des modules sacrés, la
+  Constitution exige une preuve réelle avant merge (principe 3).
+PROCHAINE_ACTION: poursuivre le lot A — file d'attente de Patrick, points 4
+  à 6 (retours arrière / chevauchement menu / responsive, genre
+  « Maman »/« Papa », libellés + message de bienvenue), puis PR #225
+  (GET /cooperatives/liste en 500) et le balayage des accents sur les
+  rôles non marchands. Enrichir la recette groupée à chaque correctif.
+DERNIER_RESULTAT: défaut ARGENT trouvé et corrigé — le fond de caisse déclaré
+  n'atteignait jamais la base (chaîne de 5 défauts, module sacré).
+  169 tests backend verts (161 avant), frontend verify/test:ci/build verts,
+  cliquet TS à 0.
 ```
 
 `STATUT` ∈ `EN_ATTENTE` · `EN_COURS` · `BLOQUE` · `TERMINE`
@@ -31,6 +38,18 @@ mais il doit dire quel geste unique Patrick doit poser)
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
 
+- **15/09/2026** — Lot A ouvert. Fond de caisse : cinq défauts enchaînés
+  faisaient qu'un fond déclaré après une première vente n'était jamais
+  enregistré (écran 5 000, base 0), que « Modifier le fond » ne persistait
+  rien, et qu'une journée fermée s'affichait « ouverte » sans possibilité de
+  réouverture. Règle de Patrick appliquée (fond non déclaré / déclaration /
+  correction journalisée). Recette terrain groupée ouverte.
+
+- **15/09/2026** — VOIX-V5 : diagnostic confirmé (LoginPassword.tsx:114
+  + :255 — 'password' était la seule des trois étapes sans filet de
+  rattrapage audio). Correctif, six tests sur useAudioUnlockFallback,
+  journal de diagnostic ouvert dès l'arrivée sur l'écran, relèvement des
+  voix tardives, recette terrain écrite. Arrêt sur test physique.
 - **15/09/2026** — Bus de coordination `coordination/` créé (gouvernance
   uniquement, zéro duplication de PASSATION / décisions / ADR), un seul
   écrivain par fichier. Mergé directement sur `main` sur décision de
@@ -38,15 +57,12 @@ Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
 
 ---
 
-## Limite connue sur le chantier actif
+## Pourquoi rien n'est mergé sur `main`
 
-`AUTONOMIE: OUI` ne lève pas le blocage physique de VOIX-V5 : la
-confirmation de la piste exige un **appareil Android réel** entre les
-mains de Patrick (reconnexion sur appareil connu sans biométrie). Aucune
-instance n'a d'appareil.
+Authentification et caisse sont des **modules sacrés**. La Constitution
+(principe 3) exige une preuve sur données réelles avant de les merger —
+pas une suite de tests verte. Les correctifs s'accumulent donc sur la
+branche et partiront ensemble après la recette terrain groupée.
 
-Ce blocage n'arrête pas le chantier : diagnostic logiciel, correctif
-candidat, outil de rapport intégré et procédure de test exacte se font
-sans Patrick. L'arrêt viendra **une seule fois**, à la fin de tout le
-préparatoire, sous la forme `TYPE_BESOIN: TEST_PHYSIQUE_ANDROID` avec une
-action terrain unique et précise.
+Aucune instance n'a de téléphone : ce blocage ne disparaîtra pas. Il est
+**groupé en une seule session** plutôt que subi à chaque correctif.
