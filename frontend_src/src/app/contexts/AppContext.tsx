@@ -925,9 +925,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // serveur journalise désormais chaque correction (ancien, nouveau, heure,
   // autrice) — l'argent d'une marchande ne change pas sans laisser de trace.
   const updateFondInitial = async (newFond: number) => {
-    if (!currentSession) return;
-
-    setCurrentSession({ ...currentSession, fondInitial: newFond });
+    // PAS de garde `if (!currentSession) return` : c'était elle qui perdait
+    // silencieusement l'argent. L'accueil d'une marchande n'expose aucun bouton
+    // « Ouvrir ma journée » — son seul chemin est « Modifier le fond ». Avant
+    // sa première vente, aucune journée n'existe : on renvoyait donc sans rien
+    // faire, et le montant qu'elle venait de composer en billets disparaissait.
+    // Le serveur crée désormais la journée à cette occasion (PATCH session/fond).
+    setCurrentSession((prev) =>
+      prev
+        ? { ...prev, fondInitial: newFond }
+        : {
+            id: `local-${Date.now()}`,
+            userId: user?.id || '',
+            date: new Date().toISOString().split('T')[0],
+            fondInitial: newFond,
+            opened: true,
+            openedAt: new Date().toISOString(),
+          },
+    );
 
     if (accessToken) {
       try {
@@ -943,9 +958,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (reponse.ok) {
           const { session } = await reponse.json();
           if (session) {
-            setCurrentSession((prev) =>
-              prev ? { ...prev, fondInitial: Number(session.fond_initial) || 0 } : prev,
-            );
+            setCurrentSession((prev) => ({
+              id: session.id || prev?.id || `local-${Date.now()}`,
+              userId: prev?.userId || user?.id || '',
+              date: session.date || prev?.date || new Date().toISOString().split('T')[0],
+              fondInitial: Number(session.fond_initial) || 0,
+              opened: session.ouvert !== false,
+              openedAt: session.heure_ouverture || prev?.openedAt,
+            }));
           }
         } else {
           console.warn('[AppContext] updateFondInitial refusé :', reponse.status);

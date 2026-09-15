@@ -193,21 +193,20 @@ interface BilletsSelecteurProps {
 }
 
 function BilletsSelecteur({ onBilletClick }: BilletsSelecteurProps) {
-  // Le défilement automatique n'est qu'un indice : la rangée est DÉJÀ
-  // défilable à la main (overflow-x-auto). Il se fige dès qu'une marchande
-  // s'en approche, et ne repart plus.
+  // AUCUN défilement automatique : décision Patrick du 15/09/2026.
   //
-  // Avant, la pause était branchée sur onMouseEnter — un événement de SOURIS,
-  // qui n'existe pas sur un téléphone. Les billets ne s'arrêtaient donc
-  // jamais, et il fallait toucher une cible en mouvement POUR SAISIR DE
-  // L'ARGENT : un billet passe sous le doigt en une seconde environ, on se
-  // trompe de coupure.
-  const [fige, setFige] = useState<boolean>(() => {
-    // Mouvement réduit demandé par le système : rien ne bouge, jamais.
-    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
-  });
-  const figerDefilement = () => setFige(true);
-  
+  // Ces rangées défilaient en boucle infinie, et leur pause était branchée sur
+  // onMouseEnter — un événement de SOURIS, qui n'existe pas sur un téléphone.
+  // Sur l'appareil d'une marchande, elles ne s'arrêtaient donc jamais : il
+  // fallait toucher une cible en mouvement POUR SAISIR DE L'ARGENT. Mesuré :
+  // 59 px par seconde, un billet en fait 85 — une coupure passe sous le doigt
+  // en une seconde et demie, on se trompe de billet et le fond de caisse est
+  // faux.
+  //
+  // Sur une saisie d'argent, une cible qui bouge n'apporte aucun bénéfice et
+  // ajoute un risque réel. La rangée reste immobile et se fait glisser à la
+  // main (overflow-x-auto, déjà en place). Aucun timer, aucune reprise.
+
   const billets = [
     { valeur: 500, image: billet500 },
     { valeur: 1000, image: billet1000 },
@@ -216,9 +215,6 @@ function BilletsSelecteur({ onBilletClick }: BilletsSelecteurProps) {
     { valeur: 10000, image: billet10000 },
   ];
 
-  // Dupliquer les billets pour créer l'effet de boucle infinie
-  const billetsDupliques = [...billets, ...billets, ...billets];
-
   return (
     <div className="mb-6">
       <p className="text-sm font-semibold mb-3 text-gray-700">
@@ -226,27 +222,10 @@ function BilletsSelecteur({ onBilletClick }: BilletsSelecteurProps) {
       </p>
       <div 
         className="relative overflow-x-auto overflow-y-hidden -mx-1 px-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
-        onMouseEnter={figerDefilement}
-        onPointerDown={figerDefilement}
-        onTouchStart={figerDefilement}
-        onFocusCapture={figerDefilement}
         style={{ scrollbarWidth: 'thin' }}
       >
-        <motion.div
-          className="flex gap-2 pb-2"
-          animate={{
-            x: fige ? undefined : [0, -((billets.length * 85) + (billets.length * 8))],
-          }}
-          transition={{
-            x: {
-              repeat: Infinity,
-              repeatType: "loop",
-              duration: 8,
-              ease: "linear",
-            },
-          }}
-        >
-          {billetsDupliques.map((billet, index) => (
+        <div className="flex gap-2 pb-2">
+          {billets.map((billet, index) => (
             <motion.button
               key={`${billet.valeur}-${index}`}
               onClick={() => onBilletClick(billet.valeur)}
@@ -264,7 +243,7 @@ function BilletsSelecteur({ onBilletClick }: BilletsSelecteurProps) {
               </div>
             </motion.button>
           ))}
-        </motion.div>
+        </div>
       </div>
     </div>
   );
@@ -276,30 +255,26 @@ interface PiecesSelecteurProps {
 }
 
 function PiecesSelecteur({ onPieceClick }: PiecesSelecteurProps) {
-    // Le défilement automatique n'est qu'un indice : la rangée est DÉJÀ
-  // défilable à la main (overflow-x-auto). Il se fige dès qu'une marchande
-  // s'en approche, et ne repart plus.
+  // AUCUN défilement automatique : décision Patrick du 15/09/2026.
   //
-  // Avant, la pause était branchée sur onMouseEnter — un événement de SOURIS,
-  // qui n'existe pas sur un téléphone. Les billets ne s'arrêtaient donc
-  // jamais, et il fallait toucher une cible en mouvement POUR SAISIR DE
-  // L'ARGENT : un billet passe sous le doigt en une seconde environ, on se
-  // trompe de coupure.
-  const [fige, setFige] = useState<boolean>(() => {
-    // Mouvement réduit demandé par le système : rien ne bouge, jamais.
-    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
-  });
-  const figerDefilement = () => setFige(true);
-  
+  // Ces rangées défilaient en boucle infinie, et leur pause était branchée sur
+  // onMouseEnter — un événement de SOURIS, qui n'existe pas sur un téléphone.
+  // Sur l'appareil d'une marchande, elles ne s'arrêtaient donc jamais : il
+  // fallait toucher une cible en mouvement POUR SAISIR DE L'ARGENT. Mesuré :
+  // 59 px par seconde, un billet en fait 85 — une coupure passe sous le doigt
+  // en une seconde et demie, on se trompe de billet et le fond de caisse est
+  // faux.
+  //
+  // Sur une saisie d'argent, une cible qui bouge n'apporte aucun bénéfice et
+  // ajoute un risque réel. La rangée reste immobile et se fait glisser à la
+  // main (overflow-x-auto, déjà en place). Aucun timer, aucune reprise.
+
   const pieces = [
     { valeur: 25, image: piece25 },
     { valeur: 50, image: piece50 },
     { valeur: 100, image: piece100 },
     { valeur: 200, image: piece200 },
   ];
-
-  // Dupliquer les pièces pour créer l'effet de boucle infinie
-  const piecesDupliques = [...pieces, ...pieces, ...pieces, ...pieces];
 
   return (
     <div className="mb-6">
@@ -308,27 +283,10 @@ function PiecesSelecteur({ onPieceClick }: PiecesSelecteurProps) {
       </p>
       <div 
         className="relative overflow-x-auto overflow-y-hidden -mx-1 px-1 h-20 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
-        onMouseEnter={figerDefilement}
-        onPointerDown={figerDefilement}
-        onTouchStart={figerDefilement}
-        onFocusCapture={figerDefilement}
         style={{ scrollbarWidth: 'thin' }}
       >
-        <motion.div
-          className="flex gap-2 pb-2"
-          animate={{
-            x: fige ? undefined : [0, -((pieces.length * 70) + (pieces.length * 8))],
-          }}
-          transition={{
-            x: {
-              repeat: Infinity,
-              repeatType: "loop",
-              duration: 8,
-              ease: "linear",
-            },
-          }}
-        >
-          {piecesDupliques.map((piece, index) => (
+        <div className="flex gap-2 pb-2">
+          {pieces.map((piece, index) => (
             <motion.button
               key={`${piece.valeur}-${index}`}
               onClick={() => onPieceClick(piece.valeur)}
@@ -346,7 +304,7 @@ function PiecesSelecteur({ onPieceClick }: PiecesSelecteurProps) {
               </div>
             </motion.button>
           ))}
-        </motion.div>
+        </div>
       </div>
     </div>
   );
