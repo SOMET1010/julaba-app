@@ -1,3 +1,4 @@
+import { emojiTile } from '../utils/emojiTile';
 import {
   IMG_PRODUIT_RIZ, IMG_PRODUIT_TOMATE, IMG_PRODUIT_AUBERGINE,
   IMG_PRODUIT_PIMENT, IMG_PRODUIT_GOMBO, IMG_PRODUIT_MANIOC,
@@ -19,15 +20,9 @@ export interface ProduitCatalogue {
 
 // Vignette LOCALE à partir d'un emoji (pictogramme reconnaissable, marche
 // HORS-LIGNE, aucune image distante). Pour les produits vivriers sans vraie photo
-// dans le catalogue : bien mieux qu'un panier générique pour une non-lectrice —
-// une carotte 🥕, un citron 🍋 se reconnaissent d'un coup d'œil.
-function emojiTile(emoji: string): string {
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'>" +
-    "<rect width='96' height='96' fill='#FBEEE1'/>" +
-    "<text x='48' y='52' font-size='54' text-anchor='middle' dominant-baseline='central'>" + emoji + "</text></svg>"
-  );
-}
+// dans le catalogue : bien mieux qu'un panier générique pour une non-lectrice.
+// La fabrique de vignettes vit désormais dans utils/emojiTile (les dépenses
+// s'en servent aussi).
 
 export const CATALOGUE_PRODUITS: ProduitCatalogue[] = [
   { nom: 'Riz', categorie: 'cereales', unite: 'kg', prixAchat: 400, prixVente: 500, image: IMG_PRODUIT_RIZ, mots_cles: ['riz', 'rice'] },

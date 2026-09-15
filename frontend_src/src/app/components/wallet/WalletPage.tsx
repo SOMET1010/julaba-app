@@ -666,7 +666,7 @@ export function WalletPage() {
                     {createPinError || (createStep === 1 ? 'Nouveau PIN' : 'Confirmer le PIN')}
                   </p>
                   <PinNumpad onPress={handleCreatePinPress} onDelete={handleCreatePinDelete} />
-                  <motion.button onClick={() => void handleBiometricKeiwa()} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 0', background: 'none', border: 'none', cursor: 'pointer' }} whileTap={{ scale: 0.97 }}>
+                  <motion.button onClick={() => void handleBiometricKeiwa()} style={{ width: '100%', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer' }} whileTap={{ scale: 0.97 }}>
                     <Fingerprint style={{ width: 14, height: 14, color: C }} />
                     <span style={{ fontSize: 12, fontWeight: 600, color: C }}>FaceID / Empreinte</span>
                   </motion.button>
@@ -712,7 +712,7 @@ export function WalletPage() {
               {pinError || 'Code PIN'}
             </p>
             <PinNumpad onPress={handleLockPinPress} onDelete={handleLockPinDelete} />
-            <motion.button onClick={() => void handleBiometricKeiwa()} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 0', background: 'none', border: 'none', cursor: 'pointer' }} whileTap={{ scale: 0.97 }}>
+            <motion.button onClick={() => void handleBiometricKeiwa()} style={{ width: '100%', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer' }} whileTap={{ scale: 0.97 }}>
               <Fingerprint style={{ width: 14, height: 14, color: C }} />
               <span style={{ fontSize: 12, fontWeight: 600, color: C }}>FaceID / Empreinte</span>
             </motion.button>
