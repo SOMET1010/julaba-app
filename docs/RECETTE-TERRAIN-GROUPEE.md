@@ -148,6 +148,12 @@ cette feuille :
   (500 sur des colonnes inexistantes). Corrigé et **déjà sur `main`** :
   cinq invariants vérifient les endpoints en base réelle. Rien à faire.
 - **Le trajet du fond de caisse côté serveur** — voir scénario 2.
+- **Le responsive et le chevauchement du menu** — mesurés sur le bundle de
+  production à 390×844, sur les six écrans du parcours marchande
+  (`./scripts/mesure-ecrans.cjs`) : aucun débordement horizontal, et aucun
+  élément ne reste derrière la barre du menu une fois la page défilée.
+  Trois cibles tactiles trop petites ont été corrigées et revérifiées.
+  Rien à faire au téléphone sur ce point.
 
 ## Scénarios à venir
 
