@@ -101,6 +101,29 @@ déjà ouverte, fermer la caisse d'abord).
 
 ---
 
+## Scénario 4 — Tata t'appelle correctement
+
+*Corrigé dans `f53aba4`. Durée : 1 min. À faire avec **un compte d'homme**
+si tu en as un sous la main — c'est le cas qui était faux.*
+
+1. Ouvrir l'app avec un compte dont le genre est **homme**.
+   → L'écran de connexion dit-il « Bonjour Papa … » ?  **OUI / NON**
+   (avant le correctif : « Bonjour Maman … »)
+2. Se connecter, arriver sur l'accueil.
+   → Même question sur l'écran d'accueil.  **OUI / NON**
+3. Toucher le bouton qui fait parler Tata.
+   → Dit-elle la même chose que ce qui est écrit ?  **OUI / NON**
+
+> **Première connexion après mise à jour :** l'écran de connexion peut
+> n'afficher que le prénom, sans titre. C'est **normal et voulu** : le genre
+> n'est appris qu'à l'entrée suivante. Ferme l'app, rouvre-la, le titre doit
+> alors être correct. Un titre **faux** serait un défaut ; un titre **absent**
+> ne l'est pas.
+
+> Avec un compte de femme, rien ne doit changer : « Bonjour Maman … ».
+
+---
+
 ## Ce qui n'est plus à tester au téléphone
 
 Au fil du lot A, une partie des vérifications initialement prévues ici est
