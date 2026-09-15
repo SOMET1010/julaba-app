@@ -264,7 +264,13 @@ export class CatalogueMaitreService {
       this.logger.log(`[CATALOGUE-MAITRE] adoption ${code} par ${marchandId} à ${demande.prix} F`);
       return { produit, deja: false };
     } catch (e: any) {
-      if (e?.code === '23505' || /duplicate key|unique constraint/i.test(e?.message || '')) {
+      // Nommée explicitement, pas juste « un 23505 quelconque » : `produits`
+      // ne porte qu'UN SEUL index unique aujourd'hui, donc les deux se
+      // confondaient sans risque réel — mais un futur second index unique sur
+      // `produits` (ex. un numéro de série) aurait fait traiter n'importe
+      // quelle violation comme « déjà adoptée », y compris pour une colonne
+      // sans rapport avec l'adoption.
+      if (e?.constraint === 'ux_produits_marchand_default_code') {
         const [concurrent] = await this.dataSource.query(
           `SELECT id, nom, prix, stock, unite, categorie, default_code FROM produits
             WHERE marchand_id = $1::text AND default_code = $2`,
