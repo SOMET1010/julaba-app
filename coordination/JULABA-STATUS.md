@@ -12,16 +12,19 @@ BESOIN_PATRICK: NON
 TYPE_BESOIN: —
 ACTION_PATRICK: — (la recette terrain est GROUPÉE : une seule session, quand
   le lot A sera clos — voir docs/RECETTE-TERRAIN-GROUPEE.md)
-DERNIER_SHA_MAIN: 1b7c795
-BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (cee1daa) — trois correctifs
+DERNIER_SHA_MAIN: 2c77b25
+BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (32583c2) — trois correctifs
   NON mergés : authentification et caisse sont des modules sacrés, la
   Constitution exige une preuve réelle avant merge (principe 3).
 PROCHAINE_ACTION: poursuivre le lot A — file d'attente de Patrick, points 4
   à 6 (retours arrière / chevauchement menu / responsive, genre
-  « Maman »/« Papa », libellés + message de bienvenue), puis PR #225
-  (GET /cooperatives/liste en 500) et le balayage des accents sur les
-  rôles non marchands. Enrichir la recette groupée à chaque correctif.
-DERNIER_RESULTAT: défaut ARGENT trouvé et corrigé — le fond de caisse déclaré
+  « Maman »/« Papa », libellés + message de bienvenue), puis les deux PR
+  restantes (#223, #230) et le balayage des accents sur les rôles non
+  marchands. Enrichir la recette groupée à chaque correctif.
+DERNIER_RESULTAT: coopératives — 500 systématique corrigé et MERGÉ sur main
+  (preuve en base réelle : 157 invariants verts sur 32 suites, 152 avant).
+  Avant cela : identité Android unifiée (pilote = APK posé à la main,
+  décision Patrick) ; avant cela, défaut ARGENT trouvé et corrigé — le fond de caisse déclaré
   n'atteignait jamais la base (chaîne de 5 défauts, module sacré).
   169 tests backend verts (161 avant), frontend verify/test:ci/build verts,
   cliquet TS à 0.
@@ -38,6 +41,16 @@ mais il doit dire quel geste unique Patrick doit poser)
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
 
+- **15/09/2026** — Coopératives : « Rejoindre une coopérative » était mort
+  depuis le 23 août (500 sur des colonnes inexistantes, menu vide, bouton
+  inerte). Corrigé et mergé sur main — module non sacré et preuve obtenue
+  contre un vrai Postgres, donc pas d'attente de recette terrain. Un
+  Postgres jetable est désormais montable dans l'environnement : les
+  invariants tournent pour de vrai.
+- **15/09/2026** — appId Android : la ligne orpheline de capacitor.config.ts
+  est alignée sur `com.julaba.app` (sept autres emplacements le portaient
+  déjà). Une regénération du projet Android aurait installé une seconde
+  app sur le téléphone d'une marchande. Arbitrage clos, sorti de PASSATION.
 - **15/09/2026** — Lot A ouvert. Fond de caisse : cinq défauts enchaînés
   faisaient qu'un fond déclaré après une première vente n'était jamais
   enregistré (écran 5 000, base 0), que « Modifier le fond » ne persistait

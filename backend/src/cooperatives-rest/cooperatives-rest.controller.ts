@@ -417,7 +417,7 @@ export class CooperativesRestController {
       `SELECT id, cooperative_id, membre_id, statut, role, date_adhesion
        FROM cooperative_membres
        WHERE membre_id = $1
-       ORDER BY created_at DESC NULLS LAST
+       ORDER BY date_adhesion DESC NULLS LAST
        LIMIT 1`,
       [userId],
     );
@@ -435,22 +435,29 @@ export class CooperativesRestController {
       }
     }
 
-    const row = await this.repo.query(
-      `SELECT nom, marche, commune, responsable_nom, fonction, contact
-       FROM cooperatives WHERE id = $1 LIMIT 1`,
+    // Mêmes colonnes fantômes qu'en liste() : la requête méta plantait cet
+    // écran en 500. `coop` est déjà chargée par findOne et `responsable_nom`
+    // déjà résolu ci-dessus ; seule la commune reste à lire.
+    // `commune_id` existe en base (migration AddCoordsToCommunes...) mais n'est
+    // PAS déclarée dans l'entité Cooperative : `coop.commune_id` serait
+    // undefined. On passe donc par le SQL, sans toucher à l'entité.
+    const communes = await this.repo.query(
+      `SELECT co.nom
+         FROM cooperatives c
+         LEFT JOIN communes co ON co.id = c.commune_id
+        WHERE c.id = $1 LIMIT 1`,
       [coop.id],
     );
-    const meta = row[0] || {};
     return {
       id: coop.id,
-      nom: meta.nom || coop.nom,
-      marche: meta.marche || null,
-      commune: meta.commune || null,
-      fonction: meta.fonction || null,
-      contact: meta.contact || null,
+      nom: coop.nom,
+      marche: null,
+      commune: communes[0]?.nom || null,
+      fonction: null,
+      contact: null,
       statut_membre: adhesion.statut || null,
       role_membre: adhesion.role || null,
-      responsable_nom: meta.responsable_nom || responsable_nom || null,
+      responsable_nom: responsable_nom || null,
       date_adhesion: adhesion.date_adhesion || null,
     };
   }
@@ -869,13 +876,37 @@ export class CooperativesRestController {
     return { success: true };
   }
 
+  // Cette liste alimente le menu « Rejoindre une coopérative ». Elle lisait
+  // marche/commune/responsable_nom/fonction/contact sur `cooperatives` — cinq
+  // colonnes qui n'ont JAMAIS existé sur la table (id, nom, zone_id,
+  // responsable_id, actif, created_at, updated_at, + commune_id ajoutée
+  // ensuite). Résultat : « column does not exist », donc 500 systématique sur
+  // toute base migrée, menu vide et bouton « Rejoindre » inerte — aucune
+  // adhésion possible.
+  //
+  // On ne lit plus que ce qui existe. `commune` vient de la table `communes`
+  // via commune_id, `responsable_nom` de `users` via responsable_id. Les trois
+  // champs sans aucune source dans le schéma restent à null : le contrat de
+  // réponse attendu par le front (CooperativeListeItem) est préservé, sans
+  // inventer de donnée.
+  //
+  // `responsable_id` est un varchar et `users.id` un uuid : la jointure exige
+  // un cast explicite, sinon Postgres refuse la comparaison.
   @Get('liste')
   async liste() {
     const rows = await this.repo.query(
-      `SELECT id, nom, marche, commune, responsable_nom, fonction, contact
-       FROM cooperatives
-       WHERE actif = true
-       ORDER BY nom ASC`,
+      `SELECT c.id,
+              c.nom,
+              NULL::text AS marche,
+              co.nom AS commune,
+              NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), '') AS responsable_nom,
+              NULL::text AS fonction,
+              NULL::text AS contact
+         FROM cooperatives c
+         LEFT JOIN communes co ON co.id = c.commune_id
+         LEFT JOIN users u ON u.id::text = c.responsable_id
+        WHERE c.actif = true
+        ORDER BY c.nom ASC`,
     );
     return rows;
   }
