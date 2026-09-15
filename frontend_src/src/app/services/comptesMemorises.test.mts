@@ -126,6 +126,35 @@ function main() {
     ok(!cm.memoriserCompte(makeThrowingStore(), { phone: "0708123456", prenom: "Awa" }, T1), "quota plein → false, pas d'exception");
   }
 
+  // ---- Genre mémorisé (titre d'adresse avant authentification) --------------
+  {
+    console.log("\nGenre mémorisé");
+
+    // RÉGRESSION : les comptes déjà sur les téléphones ne portent PAS de genre.
+    // Si le validateur l'exigeait, une marchande perdrait son compte reconnu
+    // pour un simple titre d'adresse. C'est le risque du changement.
+    const ancien = makeStore({ [cm.CLE_COMPTES]: JSON.stringify({ v: 1, comptes: [
+      { phone: "0708123456", prenom: "Awa", biometrie: true, updatedAt: T1 },
+    ] }) });
+    eq(cm.chargerComptes(ancien).map(c => c.prenom), ["Awa"],
+       "un compte mémorisé SANS genre reste valide");
+    ok(cm.dernierCompte(ancien)?.genre === undefined, "son genre est simplement inconnu");
+
+    const s = makeStore();
+    cm.memoriserCompte(s, { phone: "0708123456", prenom: "Kouassi", genre: "homme" }, T1);
+    ok(cm.dernierCompte(s)?.genre === "homme", "le genre est mémorisé avec le prénom");
+
+    // Même règle que `biometrie` : un appel qui ne le fournit pas ne fait pas
+    // oublier ce qu'on savait déjà (une entrée par code, par exemple).
+    cm.memoriserCompte(s, { phone: "0708123456", prenom: "Kouassi" }, T2);
+    ok(cm.dernierCompte(s)?.genre === "homme", "un appel sans genre ne l'efface pas");
+
+    const abime = makeStore({ [cm.CLE_COMPTES]: JSON.stringify({ v: 1, comptes: [
+      { phone: "0708123456", prenom: "Awa", biometrie: false, updatedAt: T1, genre: 42 },
+    ] }) });
+    eq(cm.chargerComptes(abime), [], "un genre du mauvais type écarte le compte");
+  }
+
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
   if (failures > 0) process.exit(1);
 }
