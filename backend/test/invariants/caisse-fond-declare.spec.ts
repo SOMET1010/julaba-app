@@ -104,6 +104,31 @@ describe('Invariant ARGENT — fond de caisse declare', () => {
     expect(table).toHaveLength(1);
   });
 
+  it('declarer son fond AVANT toute vente cree la journee (le seul chemin reel)', async () => {
+    // L'accueil d'une marchande (MarchandAccueilVoice) n'a pas de bouton
+    // « Ouvrir ma journee » : elle passe par le resume du jour puis
+    // « Modifier le fond ». Sans journee, ce chemin repondait 404 et son
+    // montant etait perdu au rechargement.
+    const r = await api()
+      .patch('/api/v1/caisse/session/fond')
+      .set('Authorization', `Bearer ${jeton}`)
+      .send({ fond_initial: 7500 });
+    expect(r.status).toBeLessThan(400);
+
+    const s = await session();
+    expect(Number(s.fond_initial)).toBe(7500);
+    expect(s.ouvert).toBe(true);
+    expect(s.fond_declare_at).not.toBeNull();
+    expect((await journal())[0]).toEqual(
+      expect.objectContaining({ ancien_fond: null, nouveau_fond: '7500', origine: 'declaration' }),
+    );
+
+    // On remet a zero pour les scenarios suivants, qui partent d'une marchande
+    // sans journee du tout.
+    await ds.query(`DELETE FROM caisse_fond_journal WHERE marchand_id = $1`, [marchandId]);
+    await ds.query(`DELETE FROM caisse_sessions WHERE marchand_id::text = $1`, [marchandId]);
+  });
+
   it('vendre avant d’ouvrir cree la journee a 0, fond NON declare', async () => {
     const vente = await api()
       .post('/api/v1/caisse/vente')

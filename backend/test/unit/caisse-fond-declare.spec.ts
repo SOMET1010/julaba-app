@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { CaisseRestController } from '../../src/caisse-rest/caisse-rest.controller';
 
 /**
@@ -105,9 +105,19 @@ describe('CaisseRestController — fond de caisse déclaré', () => {
     expect(journal(requetes)[0].params).toEqual(['session-1', 'marchande-1', 2000, 3500, 'correction']);
   });
 
-  it('refuse de corriger une journée qui n’existe pas', async () => {
-    const { controller } = environnement(null);
-    await expect(controller.corrigerFond({ fond_initial: 3500 }, user)).rejects.toBeInstanceOf(NotFoundException);
+  it('déclarer son fond AVANT toute vente crée la journée, au lieu de refuser', async () => {
+    // C'est le seul chemin qu'une marchande a vraiment : son accueil n'expose
+    // pas de bouton « Ouvrir ma journée ». Avant, elle recevait un 404 — son
+    // écran affichait le montant, la base ne gardait rien.
+    const { controller, requetes } = environnement(null);
+    const { session } = await controller.corrigerFond({ fond_initial: 5000 }, user);
+
+    expect(session.fond_initial).toBe(5000);
+    const insert = requetes.find((q) => /INSERT INTO caisse_sessions/i.test(q.sql))!;
+    expect(insert.sql).toMatch(/fond_declare_at/);
+    expect(insert.sql).toMatch(/ouvert/);
+    // Journalisée comme une DÉCLARATION (aucun montant précédent), pas une correction.
+    expect(journal(requetes)[0].params).toEqual(['session-neuve', 'marchande-1', null, 5000, 'declaration']);
   });
 
   it('refuse un montant négatif ou illisible', async () => {

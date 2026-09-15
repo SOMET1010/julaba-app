@@ -193,7 +193,20 @@ interface BilletsSelecteurProps {
 }
 
 function BilletsSelecteur({ onBilletClick }: BilletsSelecteurProps) {
-  const [isPaused, setIsPaused] = useState(false);
+  // Le défilement automatique n'est qu'un indice : la rangée est DÉJÀ
+  // défilable à la main (overflow-x-auto). Il se fige dès qu'une marchande
+  // s'en approche, et ne repart plus.
+  //
+  // Avant, la pause était branchée sur onMouseEnter — un événement de SOURIS,
+  // qui n'existe pas sur un téléphone. Les billets ne s'arrêtaient donc
+  // jamais, et il fallait toucher une cible en mouvement POUR SAISIR DE
+  // L'ARGENT : un billet passe sous le doigt en une seconde environ, on se
+  // trompe de coupure.
+  const [fige, setFige] = useState<boolean>(() => {
+    // Mouvement réduit demandé par le système : rien ne bouge, jamais.
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+  });
+  const figerDefilement = () => setFige(true);
   
   const billets = [
     { valeur: 500, image: billet500 },
@@ -213,14 +226,16 @@ function BilletsSelecteur({ onBilletClick }: BilletsSelecteurProps) {
       </p>
       <div 
         className="relative overflow-x-auto overflow-y-hidden -mx-1 px-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
+        onMouseEnter={figerDefilement}
+        onPointerDown={figerDefilement}
+        onTouchStart={figerDefilement}
+        onFocusCapture={figerDefilement}
         style={{ scrollbarWidth: 'thin' }}
       >
         <motion.div
           className="flex gap-2 pb-2"
           animate={{
-            x: isPaused ? undefined : [0, -((billets.length * 85) + (billets.length * 8))],
+            x: fige ? undefined : [0, -((billets.length * 85) + (billets.length * 8))],
           }}
           transition={{
             x: {
@@ -261,7 +276,20 @@ interface PiecesSelecteurProps {
 }
 
 function PiecesSelecteur({ onPieceClick }: PiecesSelecteurProps) {
-  const [isPaused, setIsPaused] = useState(false);
+    // Le défilement automatique n'est qu'un indice : la rangée est DÉJÀ
+  // défilable à la main (overflow-x-auto). Il se fige dès qu'une marchande
+  // s'en approche, et ne repart plus.
+  //
+  // Avant, la pause était branchée sur onMouseEnter — un événement de SOURIS,
+  // qui n'existe pas sur un téléphone. Les billets ne s'arrêtaient donc
+  // jamais, et il fallait toucher une cible en mouvement POUR SAISIR DE
+  // L'ARGENT : un billet passe sous le doigt en une seconde environ, on se
+  // trompe de coupure.
+  const [fige, setFige] = useState<boolean>(() => {
+    // Mouvement réduit demandé par le système : rien ne bouge, jamais.
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+  });
+  const figerDefilement = () => setFige(true);
   
   const pieces = [
     { valeur: 25, image: piece25 },
@@ -280,14 +308,16 @@ function PiecesSelecteur({ onPieceClick }: PiecesSelecteurProps) {
       </p>
       <div 
         className="relative overflow-x-auto overflow-y-hidden -mx-1 px-1 h-20 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
+        onMouseEnter={figerDefilement}
+        onPointerDown={figerDefilement}
+        onTouchStart={figerDefilement}
+        onFocusCapture={figerDefilement}
         style={{ scrollbarWidth: 'thin' }}
       >
         <motion.div
           className="flex gap-2 pb-2"
           animate={{
-            x: isPaused ? undefined : [0, -((pieces.length * 70) + (pieces.length * 8))],
+            x: fige ? undefined : [0, -((pieces.length * 70) + (pieces.length * 8))],
           }}
           transition={{
             x: {

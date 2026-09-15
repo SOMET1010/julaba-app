@@ -230,7 +230,22 @@ export class CaisseRestController {
       'SELECT * FROM caisse_sessions WHERE marchand_id = $1 AND date = $2 LIMIT 1',
       [user.id, today]
     );
-    if (!existing[0]) throw new NotFoundException('Aucune journée ouverte à corriger');
+    // Aucune journée aujourd'hui : cette saisie EST sa déclaration du matin, on
+    // crée la journée avec. C'est le seul chemin qu'une marchande a vraiment :
+    // son accueil (MarchandAccueilVoice) n'expose PAS de bouton « Ouvrir ma
+    // journée » — elle passe par le résumé du jour puis « Modifier le fond ».
+    // Avant, elle recevait un 404 : son écran affichait le montant, la base ne
+    // gardait rien, et tout était perdu au rechargement. Même défaut que celui
+    // réparé sur session/ouvrir, sur la seule voie réellement empruntée.
+    if (!existing[0]) {
+      const creee = this.premiereLigne(await this.dataSource.query(
+        `INSERT INTO caisse_sessions (marchand_id, date, fond_initial, ouvert, heure_ouverture, fond_declare_at)
+         VALUES ($1, $2, $3, true, NOW(), NOW()) RETURNING *`,
+        [user.id, today, fond],
+      ));
+      if (creee) await this.journaliserFond(creee.id, user.id, null, fond, 'declaration');
+      return { session: creee };
+    }
 
     const session = existing[0];
     const maj = await this.dataSource.query(
