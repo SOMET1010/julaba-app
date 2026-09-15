@@ -173,6 +173,13 @@ Note ouverte : aucune prod ANSUT n'existe a ce jour. Seul julaba.online (OVH) to
 
 ## 9. Historique des decisions
 
+15/09/2026, identite Android du pilote (decision Patrick) :
+- Version pilote actee : APK installe a la main sur les telephones de test. Pas de publication Play Store pendant le pilote. La publication devient une phase ulterieure, apres validation terrain.
+- Consequence directe : le nom technique Android reste provisoire pendant le pilote, a la seule condition d'etre stable sur les appareils de test. Le nom definitif se tranchera au moment de la publication, qui est le seul moment ou il devient irreversible.
+- Contradiction levee. capacitor.config.ts portait appId 'ci.julaba.app' tandis que sept autres emplacements portent 'com.julaba.app' : applicationId et namespace dans android/app/build.gradle, le paquet Kotlin et Java (MainActivity.java, SherpaSttPlugin.kt), package_name et custom_url_scheme dans android/app/src/main/res/values/strings.xml. capacitor.config.ts est aligne sur 'com.julaba.app', valeur reellement installee.
+- Risque evite, verifie par inspection : tant que le dossier android/ existe, c'est build.gradle qui determine le paquet installe, donc la divergence restait invisible. Une regeneration du projet Android aurait installe une seconde application sur le telephone d'une marchande, avec ses propres donnees et sa propre caisse, et casse les liens profonds (custom_url_scheme). Inacceptable pendant un pilote de deux semaines avec de l'argent reel.
+- Tracabilite des builds : deja assuree sans toucher versionCode. vite.config.ts injecte __APP_VERSION__, __BUILD_HASH__, __BUILD_DATE__ et __BUILD_ID__, et l'ecran de connexion les affiche. versionCode 1 et versionName 1.0 restent inchanges, sans effet tant qu'aucune publication n'a lieu.
+
 13/06/2026, session securite et miroir (operateur Alex) :
 - Miroir GitHub vers Azure DevOps mis en place via .github/workflows/mirror-azure.yml, puis corrige en deux iterations. Version finale : push explicite de master, develop et tags, sans --mirror ni --prune. Regle actee en section 5.
 - Rotation du mot de passe PostgreSQL de julaba_user. L'ancien Julaba2026 etait expose en clair dans l'historique git. Nouveau mot de passe genere par openssl rand -hex 24, applique en base, aligne dans .env.production, conteneur backend recree, production verifiee (health 200, DB connectee). Ancien mot de passe inactif donc inexploitable.
