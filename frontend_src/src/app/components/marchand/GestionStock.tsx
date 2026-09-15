@@ -664,13 +664,20 @@ export function GestionStock() {
           <div style={{ display:'flex', gap:8, marginBottom:12, minWidth:0 }}>
             <div style={{ flex:1, minWidth:0, background:'white', border:'1.5px solid var(--trait)', borderRadius:12, padding:'0 12px', display:'flex', alignItems:'center', gap:8, height:46 }}>
               <Search size={15} color="#aaa" />
+              {/* alignSelf stretch : le champ occupe toute la HAUTEUR de la barre
+                  (46px). Sans cela sa zone tapable ne faisait que 21px — la
+                  hauteur du texte — dans une barre deux fois plus haute. */}
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un produit..."
-                style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:14, color:'var(--encre)', fontFamily:'inherit' }} />
-              {search && <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:2 }}>
-                <X size={14} color="#aaa" />
+                style={{ flex:1, alignSelf:'stretch', minWidth:0, border:'none', outline:'none', background:'transparent', fontSize:14, color:'var(--encre)', fontFamily:'inherit' }} />
+              {/* 44x44 : ces deux boutons mesuraient 14 et 15px de cote. Un doigt
+                  ne les atteint pas. Ils tiennent dans la barre de 46px. */}
+              {search && <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} aria-label="Effacer la recherche"
+                style={{ flexShrink:0, width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', background:'none', border:'none', cursor:'pointer', padding:0 }}>
+                <X size={16} color="#aaa" />
               </motion.button>}
-              <motion.button whileTap={{ scale:0.9 }} onClick={toggleMic} style={{ background:'none', border:'none', cursor:'pointer' }}>
-                {isListening ? <MicOff size={15} color={P} /> : <Mic size={15} color="#aaa" />}
+              <motion.button whileTap={{ scale:0.9 }} onClick={toggleMic} aria-label={isListening ? 'Arrêter la recherche vocale' : 'Chercher en parlant'}
+                style={{ flexShrink:0, width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', background:'none', border:'none', cursor:'pointer', padding:0 }}>
+                {isListening ? <MicOff size={18} color={P} /> : <Mic size={18} color="#aaa" />}
               </motion.button>
             </div>
             <motion.button whileTap={{ scale:0.95 }} onClick={() => setSortByMargin(!sortByMargin)}

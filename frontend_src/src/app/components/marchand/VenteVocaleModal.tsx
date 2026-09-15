@@ -297,7 +297,9 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
             style={{ background: `linear-gradient(160deg,${P} 0%,${PD} 100%)` }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.35)", marginBottom: 12 }} />
             <motion.button whileTap={{ scale: 0.9 }} onClick={onClose}
-              className="absolute top-3 right-4 w-8 h-8 rounded-full flex items-center justify-center"
+              // w-11 (44px) : c'est le bouton qui FERME la vente vocale. Mesure a
+              // 390x844 : 32x32, sous la regle des 44px.
+              className="absolute top-3 right-4 w-11 h-11 rounded-full flex items-center justify-center"
               style={{ background: "rgba(255,255,255,0.2)" }}>
               <X className="w-4 h-4 text-white" />
             </motion.button>

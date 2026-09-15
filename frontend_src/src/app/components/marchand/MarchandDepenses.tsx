@@ -7,7 +7,7 @@ import { useApp } from '../../contexts/AppContext';
 import { format } from 'date-fns';
 import { eventBus, EVENTS } from '../../services/eventBus';
 import { fr } from 'date-fns/locale';
-import { TATA_LOU_BLEU as TATA_BLEU } from '../../assets/cloudinary-images';
+import TATA_BLEU from '../../../assets/images/tata-nanti-lou.png';
 import { NotificationButton } from './NotificationButton';
 
 const P = '#AF5B23';
@@ -320,16 +320,20 @@ export function MarchandDepenses() {
         </KPIGrid>
 
         {/* Barre recherche */}
-        <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'11px 14px', display:'flex', alignItems:'center', gap:8 }}>
+        {/* height 46 + padding horizontal seul : la zone tapable du champ suit
+            alors la hauteur de la barre (alignSelf stretch). Avec un padding
+            VERTICAL, la boite de contenu restait celle du texte — 20px — et
+            l'etirement ne donnait rien. Meme forme que la recherche du stock. */}
+        <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'0 14px', height:46, display:'flex', alignItems:'center', gap:8 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher une dépense..."
-            style={{ flex:1, border:'none', outline:'none', fontSize:13, color:'var(--encre)', background:'transparent', fontFamily:'inherit' }}
+            style={{ flex:1, alignSelf:'stretch', minWidth:0, border:'none', outline:'none', fontSize:13, color:'var(--encre)', background:'transparent', fontFamily:'inherit' }}
           />
           {search && (
-            <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')}
-              style={{ background:'none', border:'none', cursor:'pointer', padding:0, color:'var(--encre-4)' }}>
+            <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} aria-label="Effacer la recherche"
+              style={{ flexShrink:0, width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', background:'none', border:'none', cursor:'pointer', padding:0, color:'var(--encre-4)' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </motion.button>
           )}
