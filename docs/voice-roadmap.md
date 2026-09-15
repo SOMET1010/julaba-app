@@ -98,7 +98,81 @@
 
 ### 3. STT interchangeable
 - Interface unique : `ISTTProvider.transcribe(audio): string`
-- Implémentations : `WhisperProvider`, `GroqWhisperProvider`
+- Implémentations : `WhisperProvider`, `GroqWhisperProvider`, candidat `OmnilingualASRProvider` (voir langues ivoiriennes ci-dessous)
+
+---
+
+## LANGUES IVOIRIENNES — Meta Omnilingual ASR (piste STT, 10/09/2026)
+
+Whisper (STT actuel) ne couvre pas les langues locales de Côte d'Ivoire au-delà
+du français. Recherche menée sur le paquet officiel Meta `omnilingual-asr`
+(1 668 langues, licence **Apache 2.0**, usage public compris) : liste des
+langues du modèle confrontée aux langues parlées en Côte d'Ivoire.
+
+**22 langues ivoiriennes couvertes**, dont la plus critique :
+- **Dioula (`dyu`) en propre** — pas seulement via le bambara (couvert aussi)
+- Groupe kwa (sud/centre) : Baoulé (`bci`), Agni (`any`), Attié (`ati`), Abidji
+  (`abi`), Adioukrou (`adj`)
+- Ouest/sud-ouest : Dan/Yacouba (`dnj`), Toura, Mano, Wobé, Nyabwa, Krumen
+  (plapo et tépo), Dida
+- Nord : Sénoufo en 3 variantes (djimini, supyiré, mamara), Lobi
+- Véhiculaires régionales : mooré, peul, haoussa
+
+**Absentes** : bété (Daloa/Gagnoa), guéré/wè, sénoufo cebaara (Korhogo), abé,
+kulango. Le modèle est **zéro-shot** : une langue absente s'apprend avec
+quelques exemples enregistrés, sans réentraînement — compatible avec le
+protocole de casting de voix déjà écrit pour Tata (mêmes marchandes, même
+séance d'enregistrement pourrait aussi fournir ces exemples).
+
+**Dimensionnement (fiche officielle du modèle, à injecter dans le chiffrage
+Azure, voir `docs/AZURE.md`)** :
+- Modèle rapide : ~2 Go VRAM, ~96× temps réel
+- Modèle qualité : ~17 Go VRAM (carte A100)
+
+Prochaine étape si on poursuit cette piste : vérifier la latence réelle sur un
+échantillon de dictées marchande (pas seulement la fiche du modèle), et
+comparer le coût d'hébergement face à Groq Whisper (`ÉTAT ACTUEL DU SYSTÈME`
+ci-dessous) avant toute décision de bascule — aucune langue locale n'est
+utilisable en STT aujourd'hui, donc n'importe quelle avancée ici est un pur
+ajout, pas un remplacement risqué du français qui marche déjà.
+
+### Le pendant TTS — Meta MMS (VÉRIFIÉ sur le Hub Hugging Face, 10/09/2026)
+
+Info reçue d'un projet voisin (SUTA, même famille DTDI/ANSUT), **vérifiée de
+première main** ensuite (recherche directe sur le Hub, pas une reprise de
+l'annonce). MMS est le pendant TTS d'Omnilingual ASR (synthèse, pas
+reconnaissance).
+
+**Confirmé disponible** : `facebook/mms-tts-dyu` (dioula), `mms-tts-bam`
+(bambara), `mms-tts-any` (agni), `mms-tts-mos` (mooré). **Confirmé absent** :
+`mms-tts-bci` (baoulé), `mms-tts-dnj` (dan) — l'info reçue était exacte sur
+ce point.
+
+**Technique, très favorable** : modèle minuscule (36M paramètres,
+architecture VITS) — hébergement trivial, aucun GPU dédié nécessaire
+(sans commune mesure avec Omnilingual ASR ci-dessus).
+
+**Licence `cc-by-nc-4.0` (usage non-commercial uniquement)** — contrairement à
+Omnilingual ASR (Apache 2.0, y compris commercial), ce modèle TTS interdit
+l'usage commercial. **Statut : levé** — confirmé par le porteur du projet
+(DTDI/ANSUT, 10/09/2026) que le montage du projet Jùlaba rentre dans un usage
+non-commercial. Point à revalider si le montage du projet change (passage à
+une exploitation commerciale, partenariat privé, etc.) — la confirmation
+porte sur la situation actuelle, pas une garantie permanente.
+
+Verrou juridique levé, ça complète directement le plan déjà écrit dans
+`docs/PACKS_VOIX.md` (« v1 : seule la langue `fr` est consommée ; `dyu`/`bci`
+suivront ») : `dyu` par synthèse MMS (qualité à faire juger par des locuteurs
+natifs — dix phrases générées, dix oreilles dioulaphones, verdict avant tout
+déploiement) ; `bci` (baoulé, pas de modèle MMS) par la voie déjà outillée
+ici — clips enregistrés une fois par une vraie locutrice, publiés comme pack
+(`manifeste.exemple.json`). Même mécanisme que les clips « Tata » actuels,
+pas un nouveau chantier.
+
+**Prochaine étape concrète** : petit spike technique — générer une dizaine de
+phrases avec `mms-tts-dyu` (le modèle tourne en local via `transformers`,
+aucune infra à monter), les faire écouter à des locuteurs dioulaphones
+réels, verdict avant toute décision d'intégration dans le pipeline TTS.
 
 ---
 
