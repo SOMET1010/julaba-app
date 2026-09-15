@@ -9,7 +9,7 @@
     "build": "vite build",
     "check:bundle-budget": "node scripts/check-bundle-budget.mjs",
     "typecheck": "tsc -b",
-    "verify": "npm run typecheck && npm run test:api-url && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:stats && npm run test:rupture && npm run test:route-access",
+    "verify": "npm run typecheck && npm run test:api-url && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:stats && npm run test:rupture && npm run test:route-access && npm run test:audio-unlock",
     "preview": "vite preview",
     "test:audio": "tsx src/app/services/audioManager.test.mts",
     "test:cart": "tsx src/app/services/cartStorage.test.mts",
@@ -57,7 +57,8 @@
     "test:jour": "tsx src/app/utils/jourLocal.test.mts",
     "test:mouvements": "tsx src/app/services/mouvementsStock.test.mts",
     "test:guidage": "tsx src/app/utils/guidageVocal.test.mts",
-    "test:frenchdigits": "tsx src/app/utils/frenchDigits.test.mts"
+    "test:frenchdigits": "tsx src/app/utils/frenchDigits.test.mts",
+    "test:audio-unlock": "tsx src/app/hooks/useAudioUnlockFallback.test.tsx"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

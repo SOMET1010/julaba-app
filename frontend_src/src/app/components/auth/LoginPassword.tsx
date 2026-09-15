@@ -251,8 +251,55 @@ export function LoginPassword() {
   // consignes. La lecture manuelle (toucher Tata, le cadenas…) reste toujours possible.
   // L'erreur se SENT (vibration longue) quel que soit le profil — et se dit
   // en guidage vocal. Une sourde ou une marchande dans le bruit la perçoit.
+  // Journal de diagnostic ouvert dès l'ARRIVÉE sur l'écran, et non plus
+  // seulement au démarrage d'une dictée (voir vlogStart('dictée') plus bas) :
+  // sans cela, « 🐞 Rapport de test » ne contenait rien pour une marchande qui
+  // ne dicte pas — or c'est précisément le cas où la voix manque. vlogStart
+  // enregistre déjà la présence de speechSynthesis et les voix FR du téléphone.
+  // Doit rester le PREMIER effet du composant : les suivants y écrivent.
+  useEffect(() => {
+    vlogStart('login');
+    vlog('LOGIN_ETAPE_INITIALE', {
+      step,
+      compteConnu: !!compteConnu,
+      biometrie: compteConnu?.biometrie ?? null,
+      guidage: guidageVocal(accessMode),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { if (error) { vibrerErreur(); if (guidageVocal(accessMode)) parle(error); } }, [error]);
-  useEffect(() => { if (step === 'password' && guidageVocal(accessMode)) parle('Entre ton code secret à 4 chiffres'); }, [step]);
+  // VOIX-V5 — la consigne du code était la SEULE des trois étapes sans filet
+  // de rattrapage audio (les deux autres l'ont : voir direAccueilReconnaissance
+  // et direConsigneNumero). Une marchande connue de l'appareil mais SANS
+  // biométrie atterrit directement ici — step vaut 'password' dès le premier
+  // rendu (état initial plus haut). La consigne partait donc avant tout geste
+  // dans la page et la politique autoplay la coupait EN SILENCE, définitivement
+  // pour la session : l'écran PIN restait muet.
+  //
+  // Le filet n'est armé QUE si 'password' est l'étape de MONTAGE — le seul cas
+  // où l'audio est encore verrouillé. Arrivée depuis 'reconnaissance' ou
+  // 'phone', le geste de navigation a déjà débloqué l'audio et la consigne est
+  // passée : réarmer la rejouerait par-dessus la frappe du code.
+  const arriveeDirecteSurCode = useRef(step === 'password').current;
+  const direConsigneCode = useCallback(() => {
+    if (step !== 'password') return;
+    if (!guidageVocal(accessMode)) return; // mode lecture : pas de consigne auto
+    parle('Entre ton code secret à 4 chiffres');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, accessMode]);
+
+  useEffect(() => {
+    if (step === 'password') {
+      vlog('VOIX_CODE_TENTEE', { arriveeDirecte: arriveeDirecteSurCode, guidage: guidageVocal(accessMode) });
+    }
+    direConsigneCode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  useAudioUnlockFallback(
+    () => { vlog('VOIX_CODE_REJOUEE_APRES_GESTE'); direConsigneCode(); },
+    arriveeDirecteSurCode && step === 'password' && guidageVocal(accessMode),
+  );
   // « Tata se souvient de moi » : à l'arrivée, Tata SALUE par le prénom et dit le
   // geste à faire — l'écran n'a rien à lire. (Une seule fois, au montage.)
   // FILET DE RATTRAPAGE : cet écran ('reconnaissance') peut être le TOUT
