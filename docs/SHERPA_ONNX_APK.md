@@ -61,6 +61,16 @@ cd android
 `frontend_src/dist` (jamais peuplé) fait échouer ou vider silencieusement
 `npx cap sync` — c'est le blocage levé au premier build réel (ci-dessous).
 
+**`VITE_API_URL` n'a PAS besoin d'être exportée avant `npm run build` ci-dessus**
+pour joindre le backend de production : `resolveApiUrlPure()`
+(`frontend_src/src/app/utils/api.ts`) détecte l'exécution dans l'APK via
+`Capacitor.getPlatform()` et retombe sur le backend V2 connu si la variable
+est absente. Avant ce filet, un build APK sans cette variable produisait une
+appli qui s'installait normalement mais ne parvenait à joindre AUCUN
+endpoint (URL relative résolue contre l'origine interne du WebView). Pour
+pointer l'APK vers un AUTRE backend (staging, VPS), exporter `VITE_API_URL`
+avant `npm run build` reste possible et reste prioritaire.
+
 Sans le script : le build **échoue explicitement** (unresolved `com.k2fsa.sherpa.onnx`)
 — voulu, jamais un APK muet silencieux. Sans le modèle dans les assets :
 l'APK se construit, `isAvailable()` répond `false`, le frontend garde son filet
