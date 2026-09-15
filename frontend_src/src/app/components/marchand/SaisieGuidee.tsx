@@ -17,6 +17,8 @@ import { motion } from 'motion/react';
 import { creerLigneProvisoire, type LigneProvisoire } from '../../services/ligneProvisoire';
 import { ConfirmationLigne } from './ConfirmationLigne';
 import { CATALOGUE_PRODUITS, getImageByNom, rechercherProduitCatalogue } from '../../data/catalogue-produits';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { vignetteProduit } from '../../utils/emojiTile';
 
 const ORANGE = '#B74725';
 
@@ -125,7 +127,7 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
             {CATALOGUE_PRODUITS.filter(p => p.nom !== 'Autre').map(p => (
               <motion.button key={p.nom} whileTap={{ scale: 0.94 }} onClick={() => choisirProduit(p.nom, p.prixVente)}
                 style={{ border: '2px solid var(--trait)', borderRadius: 14, padding: 6, background: 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
-                <img src={p.image} alt={p.nom} style={{ width: '100%', aspectRatio: '1', borderRadius: 10, objectFit: 'cover' }} />
+                <ImageWithFallback src={p.image} alt={p.nom} fallbackSrc={vignetteProduit(p.nom)} style={{ width: '100%', aspectRatio: '1', borderRadius: 10, objectFit: 'cover' }} />
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--encre)' }}>{p.nom}</span>
               </motion.button>
             ))}

@@ -19,6 +19,8 @@ import { AJOUT_PANIER } from "../../services/dialoguesTata";
 import type { LigneProvisoire } from "../../services/ligneProvisoire";
 import { toast } from "sonner";
 import tantieImg from "../../../assets/images/tantie-vente-vocale.png";
+import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { vignetteProduit } from '../../utils/emojiTile';
 
 const P = "#B74725";
 const PD = "#A0541F";
@@ -410,7 +412,7 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
                 aria-label={`Produit sélectionné : ${initialProduct.nom}`}
                 style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, background: PL, border: `1.5px solid ${P}40`, borderRadius: 16, padding: "10px 14px" }}>
                 {initialProduct.image && (
-                  <img src={initialProduct.image} alt={initialProduct.nom} style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
+                  <ImageWithFallback src={initialProduct.image} alt={initialProduct.nom} fallbackSrc={vignetteProduit(initialProduct.nom)} style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
                 )}
                 <span style={{ fontSize: 26, fontWeight: 900, color: P, fontVariantNumeric: "tabular-nums" }}>
                   {initialProduct.prix.toLocaleString("fr-FR")} F
