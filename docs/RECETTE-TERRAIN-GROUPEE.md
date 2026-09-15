@@ -101,26 +101,39 @@ déjà ouverte, fermer la caisse d'abord).
 
 ---
 
-## Scénario 4 — Tata t'appelle correctement
+## Scénario 4 — Tata t'appelle comme tu l'as demandé
 
-*Corrigé dans `f53aba4`. Durée : 1 min. À faire avec **un compte d'homme**
-si tu en as un sous la main — c'est le cas qui était faux.*
+*Corrigé dans `d8483db`. Durée : 3 min.*
 
-1. Ouvrir l'app avec un compte dont le genre est **homme**.
-   → L'écran de connexion dit-il « Bonjour Papa … » ?  **OUI / NON**
-   (avant le correctif : « Bonjour Maman … »)
-2. Se connecter, arriver sur l'accueil.
-   → Même question sur l'écran d'accueil.  **OUI / NON**
+**Règle :** on emploie le **prénom seul**, sauf si la personne a rempli
+« Comment veux-tu qu'on t'appelle ? » dans sa fiche d'identification —
+c'est alors ce nom-là, tel quel.
+
+1. Dans le back-office, ouvrir la fiche d'un acteur et remplir le champ
+   **« Comment veux-tu qu'on t'appelle ? »** avec par exemple
+   « Tantie Awa ». Enregistrer.
+2. Sur le téléphone, se connecter avec ce compte, arriver sur l'accueil.
+   → L'écran dit-il « Bonjour Tantie Awa » ?  **OUI / NON**
 3. Toucher le bouton qui fait parler Tata.
    → Dit-elle la même chose que ce qui est écrit ?  **OUI / NON**
+4. **Fermer complètement l'app et la rouvrir.**
+   → L'écran de connexion dit-il aussi « Bonjour Tantie Awa » ?
+   **OUI / NON**
 
+> **L'étape 4 est celle qui compte** : sur l'écran de connexion la personne
+> n'est pas encore authentifiée, son choix doit donc avoir été retenu sur
+> l'appareil à l'entrée précédente.
+>
 > **Première connexion après mise à jour :** l'écran de connexion peut
-> n'afficher que le prénom, sans titre. C'est **normal et voulu** : le genre
-> n'est appris qu'à l'entrée suivante. Ferme l'app, rouvre-la, le titre doit
-> alors être correct. Un titre **faux** serait un défaut ; un titre **absent**
-> ne l'est pas.
+> n'afficher que le prénom. C'est **normal et voulu** — le choix n'est appris
+> qu'à l'entrée suivante. Un nom **absent** n'est pas un défaut ; un nom
+> **faux** en serait un.
 
-> Avec un compte de femme, rien ne doit changer : « Bonjour Maman … ».
+5. Avec un compte dont le champ est **vide** : l'écran doit dire
+   « Bonjour » + **le prénom seul**, sans aucun titre ajouté.
+   → **OUI / NON**
+
+> C'est le défaut réparé : un marchand était accueilli par « Bonjour Maman ».
 
 ---
 
