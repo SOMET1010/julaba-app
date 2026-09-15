@@ -7,38 +7,23 @@
 
 ```
 STATUT: EN_COURS
-TACHE: LOT A — défauts corrigeables sans téléphone
+TACHE: LOT A — fin du lot, préparation de la recette groupée
 BESOIN_PATRICK: NON
 TYPE_BESOIN: —
-ACTION_PATRICK: — (la recette terrain est GROUPÉE : une seule session, quand
-  le lot A sera clos — voir docs/RECETTE-TERRAIN-GROUPEE.md)
-DERNIER_SHA_MAIN: (voir git log origin/main)
-BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (32583c2) — trois correctifs
-  NON mergés : authentification et caisse sont des modules sacrés, la
+ACTION_PATRICK: — (une seule session terrain quand le lot A sera clos,
+  voir docs/RECETTE-TERRAIN-GROUPEE.md)
+DERNIER_SHA_MAIN: d87066d
+BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (295b31d) — correctifs NON
+  mergés : authentification et caisse sont des modules sacrés, la
   Constitution exige une preuve réelle avant merge (principe 3).
-PROCHAINE_ACTION: poursuivre le lot A — les deux PR restantes (#223 skill
-  /identifier, #230 note de recherche voix), puis relire le parcours des
-  autres rôles (producteur, coopérative) avec le même outil de mesure.
-  Point 4 de la file de Patrick : clos. (retours arrière / chevauchement
-  menu / responsive, le moins cadrable sans appareil), les deux PR
-  restantes (#223, #230) et le balayage des accents sur les rôles non
-  marchands. Enrichir la recette groupée à chaque correctif.
-DERNIER_RESULTAT: point 4 CLOS. Zéro cible sous 44px sur les six écrans, et
-  les photos de produits ne laissent plus de case vide sans réseau (repli
-  sur une vignette dessinée, prouvé hébergeur bloqué). Avant :
-  aucun débordement horizontal, aucun chevauchement du menu (le
-  « chevauchement » trouvé d'abord était une erreur de méthode — mesure
-  sans défiler). Trois cibles tactiles sous 44px corrigées et revérifiées.
-  Avant : appellation — c'est la personne qui dit comment on
-  l'appelle (champ dans la fiche d'identification) ; par défaut prénom seul,
-  jamais un titre déduit du genre. Cinq copies réduites à une. Avant : fond de caisse prouvé en
-  base réelle (7 invariants) ; coopératives — 500 systématique corrigé et MERGÉ sur main
-  (preuve en base réelle : 157 invariants verts sur 32 suites, 152 avant).
-  Avant cela : identité Android unifiée (pilote = APK posé à la main,
-  décision Patrick) ; avant cela, défaut ARGENT trouvé et corrigé — le fond de caisse déclaré
-  n'atteignait jamais la base (chaîne de 5 défauts, module sacré).
-  169 tests backend verts (161 avant), frontend verify/test:ci/build verts,
-  cliquet TS à 0.
+PROCHAINE_ACTION: plus aucune PR ouverte, file de Patrick épuisée. Reste à
+  relire le parcours complet d'une marchande dans le navigateur (vendre →
+  encaisser → fermer la caisse) pour chercher des défauts de comportement,
+  et non plus de mise en page — puis finaliser la recette groupée.
+DERNIER_RESULTAT: les trois rôles mesurés (six écrans marchande, tableaux de
+  bord producteur et coopérative) : 0 débordement, 0 élément inatteignable,
+  0 cible sous 44px. Les deux dernières PR ouvertes reprises sur main et
+  fermées.
 ```
 
 `STATUT` ∈ `EN_ATTENTE` · `EN_COURS` · `BLOQUE` · `TERMINE`
@@ -51,6 +36,14 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **15/09/2026** — PR #223 (skill /identifier) et #230 (langues ivoiriennes +
+  statut licence MMS) reprises sur `main` et fermées — plus aucune PR
+  ouverte. Cibles tactiles corrigées aussi sur producteur et coopérative
+  (points de pagination à 8px, pastille d'aide à 16px) : on agrandit la
+  zone tapable, pas le dessin. À signaler à Patrick : la note voix affirme
+  la licence MMS levée en lui attribuant la confirmation — à corriger si
+  l'attribution est inexacte.
 
 - **15/09/2026** — Point 4 clos. Toutes les cibles tactiles à 44px (vérifié
   par mesure). Découvert en faisant tourner l'app : les photos de produits
