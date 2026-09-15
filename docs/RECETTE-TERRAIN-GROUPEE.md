@@ -50,8 +50,14 @@ cd android && ./gradlew assembleDebug
 
 ## Scénario 2 — Le fond de caisse déclaré après une vente
 
-*Corrigé dans `cee1daa`. Durée : 5 min. **C'est un scénario argent** :
-noter les montants exacts, pas « ça a marché ».*
+*Corrigé dans `cee1daa`. Durée : **2 min** (réduite). **C'est un scénario
+argent** : noter les montants exacts, pas « ça a marché ».*
+
+> **La moitié serveur est déjà prouvée** (`88ed52d`) : sept invariants
+> tournent contre un vrai Postgres et vérifient que le montant saisi
+> remplace bien le 0, survit à une relecture, se journalise à la correction,
+> et qu'une réouverture n'y touche pas. **Ne reste à vérifier au téléphone
+> que ce qu'une base ne peut pas dire : ce que la marchande VOIT.**
 
 Se connecter avec une journée **non encore ouverte** (si une journée est
 déjà ouverte, fermer la caisse d'abord).
@@ -63,9 +69,10 @@ déjà ouverte, fermer la caisse d'abord).
 3. **Fermer complètement l'app et la rouvrir.**
    → Quel montant la carte affiche-t-elle maintenant ?  **__________ F**
 
-> **C'est l'étape 3 qui compte.** Avant le correctif, elle affichait **0 F** :
-> le montant saisi n'avait jamais atteint la base. Les deux montants des
-> étapes 2 et 3 doivent être **identiques et égaux à 5 000**.
+> **C'est l'étape 3 qui compte**, et c'est le seul point que la base ne
+> pouvait pas prouver : que l'écran affiche bien ce que le serveur a retenu.
+> Les montants des étapes 2 et 3 doivent être **identiques et égaux à
+> 5 000**. Avant le correctif, l'étape 3 affichait **0 F**.
 
 4. Toucher **« Modifier le fond »**, saisir **3 500 F**. Fermer et rouvrir l'app.
    → Montant affiché : **__________ F**  (attendu : 3 500)
@@ -93,6 +100,18 @@ déjà ouverte, fermer la caisse d'abord).
    Tata doit dire de passer par « Modifier le fond »)
 
 ---
+
+## Ce qui n'est plus à tester au téléphone
+
+Au fil du lot A, une partie des vérifications initialement prévues ici est
+prouvée automatiquement contre un vrai Postgres (`./scripts/pg-test-local.sh
+start` puis `npm run test:invariants -w backend`). Elles sortent donc de
+cette feuille :
+
+- **« Rejoindre une coopérative »** — l'écran était mort depuis le 23 août
+  (500 sur des colonnes inexistantes). Corrigé et **déjà sur `main`** :
+  cinq invariants vérifient les endpoints en base réelle. Rien à faire.
+- **Le trajet du fond de caisse côté serveur** — voir scénario 2.
 
 ## Scénarios à venir
 
