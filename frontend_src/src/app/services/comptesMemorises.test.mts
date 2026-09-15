@@ -128,31 +128,31 @@ function main() {
 
   // ---- Genre mémorisé (titre d'adresse avant authentification) --------------
   {
-    console.log("\nGenre mémorisé");
+    console.log("\nNom d’adresse mémorisé");
 
-    // RÉGRESSION : les comptes déjà sur les téléphones ne portent PAS de genre.
+    // RÉGRESSION : les comptes déjà sur les téléphones ne portent PAS ce champ.
     // Si le validateur l'exigeait, une marchande perdrait son compte reconnu
-    // pour un simple titre d'adresse. C'est le risque du changement.
+    // pour un simple nom d'adresse. C'est le risque du changement.
     const ancien = makeStore({ [cm.CLE_COMPTES]: JSON.stringify({ v: 1, comptes: [
       { phone: "0708123456", prenom: "Awa", biometrie: true, updatedAt: T1 },
     ] }) });
     eq(cm.chargerComptes(ancien).map(c => c.prenom), ["Awa"],
-       "un compte mémorisé SANS genre reste valide");
-    ok(cm.dernierCompte(ancien)?.genre === undefined, "son genre est simplement inconnu");
+       "un compte mémorisé SANS ce champ reste valide");
+    ok(cm.dernierCompte(ancien)?.appellation === undefined, "son nom d’adresse est simplement inconnu");
 
     const s = makeStore();
-    cm.memoriserCompte(s, { phone: "0708123456", prenom: "Kouassi", genre: "homme" }, T1);
-    ok(cm.dernierCompte(s)?.genre === "homme", "le genre est mémorisé avec le prénom");
+    cm.memoriserCompte(s, { phone: "0708123456", prenom: "Kouassi", appellation: "Papa Kouassi" }, T1);
+    ok(cm.dernierCompte(s)?.appellation === "Papa Kouassi", "son choix est mémorisé avec le prénom");
 
     // Même règle que `biometrie` : un appel qui ne le fournit pas ne fait pas
     // oublier ce qu'on savait déjà (une entrée par code, par exemple).
     cm.memoriserCompte(s, { phone: "0708123456", prenom: "Kouassi" }, T2);
-    ok(cm.dernierCompte(s)?.genre === "homme", "un appel sans genre ne l'efface pas");
+    ok(cm.dernierCompte(s)?.appellation === "Papa Kouassi", "un appel sans ce champ ne l'efface pas");
 
     const abime = makeStore({ [cm.CLE_COMPTES]: JSON.stringify({ v: 1, comptes: [
-      { phone: "0708123456", prenom: "Awa", biometrie: false, updatedAt: T1, genre: 42 },
+      { phone: "0708123456", prenom: "Awa", biometrie: false, updatedAt: T1, appellation: 42 },
     ] }) });
-    eq(cm.chargerComptes(abime), [], "un genre du mauvais type écarte le compte");
+    eq(cm.chargerComptes(abime), [], "un nom d’adresse du mauvais type écarte le compte");
   }
 
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
