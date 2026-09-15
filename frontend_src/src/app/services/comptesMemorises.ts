@@ -26,13 +26,13 @@ export interface CompteMemorise {
   prenom: string;
   photo?: string;
   /**
-   * Genre de la personne, pour que l'écran de connexion l'appelle
-   * correctement AVANT toute authentification. Volontairement OPTIONNEL :
-   * les comptes déjà mémorisés sur les téléphones ne le portent pas, et
-   * le validateur ci-dessous les rejetterait — une marchande perdrait son
-   * compte reconnu pour un simple titre d'adresse.
+   * Le nom par lequel la personne veut qu'on l'appelle (users.appellation),
+   * pour que l'écran de connexion l'emploie AVANT toute authentification.
+   * Volontairement OPTIONNEL : les comptes déjà mémorisés sur les
+   * téléphones ne le portent pas, et un validateur strict les rejetterait
+   * — une marchande perdrait son compte reconnu pour un nom d'adresse.
    */
-  genre?: string;
+  appellation?: string;
   /** true = la reconnaissance (visage/doigt) a déjà fonctionné pour ce compte ici. */
   biometrie: boolean;
   /** true = elle a dit « Non » à la proposition (lot 2) — on respecte, on ne redemande pas. */
@@ -55,7 +55,7 @@ function estCompteValide(c: unknown): c is CompteMemorise {
     && typeof o.updatedAt === 'string'
     && (o.photo === undefined || typeof o.photo === 'string')
     && (o.propositionRefusee === undefined || typeof o.propositionRefusee === 'boolean')
-    && (o.genre === undefined || typeof o.genre === 'string');
+    && (o.appellation === undefined || typeof o.appellation === 'string');
 }
 
 /** Liste des comptes mémorisés, plus récent d'abord. Donnée illisible → liste vide. */
@@ -88,7 +88,7 @@ function ecrire(store: KVStore, comptes: CompteMemorise[]): boolean {
  */
 export function memoriserCompte(
   store: KVStore,
-  compte: { phone: string; prenom?: string; photo?: string; biometrie?: boolean; genre?: string },
+  compte: { phone: string; prenom?: string; photo?: string; biometrie?: boolean; appellation?: string },
   nowIso: string,
 ): boolean {
   if (!/^\d{10}$/.test(compte.phone)) return false;
@@ -100,7 +100,8 @@ export function memoriserCompte(
     photo: compte.photo ?? ancien?.photo,
     // Comme `biometrie` : un appel qui ne le fournit pas ne fait pas oublier
     // ce qu'on savait déjà de la personne.
-    ...((compte.genre ?? ancien?.genre) ? { genre: compte.genre ?? ancien?.genre } : {}),
+    ...((compte.appellation ?? ancien?.appellation)
+      ? { appellation: compte.appellation ?? ancien?.appellation } : {}),
     biometrie: compte.biometrie === true || ancien?.biometrie === true,
     ...(ancien?.propositionRefusee !== undefined ? { propositionRefusee: ancien.propositionRefusee } : {}),
     updatedAt: nowIso,

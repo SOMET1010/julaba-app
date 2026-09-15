@@ -187,12 +187,12 @@ export function LoginPassword() {
       return (u?.firstName || u?.first_name || u?.prenom || '').toString().trim();
     } catch { return ''; }
   })();
-  // Titre d'adresse selon le genre MÉMORISÉ (voir utils/appellation). Sur cet
-  // écran la personne n'est pas encore authentifiée : le genre vient du compte
-  // reconnu sur l'appareil. Un compte mémorisé AVANT ce correctif ne le porte
-  // pas — on emploie alors son prénom seul, jamais un titre deviné, et il sera
-  // appris à sa prochaine entrée.
-  const greetTitle = `${salutation(compteConnu?.genre, cachedPrenom)} !`;
+  // Le nom qu'elle a choisi dans sa fiche (voir utils/appellation). Sur cet
+  // écran elle n'est pas encore authentifiée : il vient du compte reconnu sur
+  // l'appareil. Un compte mémorisé avant ce correctif ne le porte pas — on
+  // emploie alors son prénom seul, et son choix sera appris à l'entrée
+  // suivante.
+  const greetTitle = `${salutation(compteConnu?.appellation, cachedPrenom)} !`;
   const greetSub = cachedPrenom
     ? 'Je suis heureuse de vous revoir aujourd’hui.'
     : 'Je suis Tata Nanti Lou. Je serai à vos côtés pour vous aider.';
@@ -315,7 +315,7 @@ export function LoginPassword() {
   // Même filet que Welcome.tsx/OnboardingSlides.tsx.
   const direAccueilReconnaissance = useCallback(() => {
     if (!(step === 'reconnaissance' && compteConnu && guidageVocal(accessMode))) return;
-    const salut = `${salutation(compteConnu.genre, compteConnu.prenom)} !`;
+    const salut = `${salutation(compteConnu.appellation, compteConnu.prenom)} !`;
     const geste = compteConnu.biometrie
       ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
       : 'Touche le grand bouton et entre ton code.';
@@ -707,10 +707,10 @@ export function LoginPassword() {
       const prenom = String((u as any)?.firstName || (u as any)?.first_name || (u as any)?.prenoms || '').trim();
       const photoBrute = (u as any)?.photo;
       const photo = typeof photoBrute === 'string' && photoBrute ? photoBrute : undefined;
-      // Le genre est mémorisé avec le prénom : sans lui, l'écran de connexion
-      // ne peut pas s'adresser correctement à la personne au retour suivant.
-      const genre = String((u as any)?.genre || '').trim() || undefined;
-      memoriserCompte(window.localStorage, { phone, prenom, photo, ...(genre ? { genre } : {}), ...(biometrie ? { biometrie: true } : {}) }, new Date().toISOString());
+      // Son choix est mémorisé avec le prénom : sans lui, l'écran de connexion
+      // ne peut pas l'appeler comme elle l'a demandé au retour suivant.
+      const appellationChoisie = String((u as any)?.appellation || '').trim() || undefined;
+      memoriserCompte(window.localStorage, { phone, prenom, photo, ...(appellationChoisie ? { appellation: appellationChoisie } : {}), ...(biometrie ? { biometrie: true } : {}) }, new Date().toISOString());
     } catch { /* ignore */ }
   };
 
@@ -1036,7 +1036,7 @@ export function LoginPassword() {
         <div className="login-brand">
           <span className="login-logo"><img src={logoJulaba} alt="JULABA" /></span><BrandSignature />
         </div>
-        <h1>{step === 'phone' ? 'Ton numéro' : step === 'password' ? 'Ton code secret' : salutation(compteConnu?.genre, compteConnu?.prenom)}</h1>
+        <h1>{step === 'phone' ? 'Ton numéro' : step === 'password' ? 'Ton code secret' : salutation(compteConnu?.appellation, compteConnu?.prenom)}</h1>
         <div className="login-guide">
           <img src={tataNantiLou} alt="Tata Nanti Lou" />
           <button type="button" onClick={ecouterTata} className="login-replay"

@@ -1046,7 +1046,7 @@ export function UniversalAcademy() {
                   animate={{ x: ['-100%', '200%'] }} transition={{ duration: 1.5, repeat: Infinity }}
                 />
                 <span className="relative z-10">
-                  {game.questionIndex + 1 >= game.questions.length ? 'Voir mes resultats !' : 'Question suivante'}
+                  {game.questionIndex + 1 >= game.questions.length ? 'Voir mes résultats !' : 'Question suivante'}
                 </span>
               </motion.button>
             </motion.div>

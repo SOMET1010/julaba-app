@@ -28,9 +28,9 @@ function MarchandAccueilVoiceInner() {
   const stats = getTodayStats();
   const caisse = stats?.caisse || 0;
   const prenom = user?.firstName || user?.prenoms || user?.prenom || user?.nom || '';
-  // Le titre suit le genre réel (voir utils/appellation) : un marchand était
-  // accueilli par « Bonjour Maman », ici comme à l'écran de connexion.
-  const accueil = salutation((user as { genre?: string } | undefined)?.genre, prenom);
+  // Le nom qu'elle a choisi dans sa fiche, sinon son prénom seul (voir
+  // utils/appellation) : un marchand était accueilli par « Bonjour Maman ».
+  const accueil = salutation((user as { appellation?: string } | undefined)?.appellation, prenom);
 
   const [soldeVisible, setSoldeVisible] = useState(true);
   // Mode SOLEIL (inclusion §2.4) : un seul geste, visible sur l'accueil — pas
