@@ -47,6 +47,8 @@ avant de lancer Gradle.
 ```bash
 # depuis la racine du dépôt : construire le web AVANT le sync Android —
 # webDir pointe vers frontend/dist, jamais peuplé sans ce build.
+# VITE_API_URL est OBLIGATOIRE ici — voir l'avertissement ci-dessous.
+export VITE_API_URL=https://julaba-api.onrender.com/api/v1
 npm run build --workspace frontend_src
 npx cap sync android   # copie frontend/dist dans android/app/src/main/assets/public
 
@@ -60,6 +62,20 @@ cd android
 `build.outDir: "../frontend/dist"`). Une valeur malformée ou pointant vers
 `frontend_src/dist` (jamais peuplé) fait échouer ou vider silencieusement
 `npx cap sync` — c'est le blocage levé au premier build réel (ci-dessous).
+
+⚠️ **`VITE_API_URL` DOIT être exportée avant `npm run build` ci-dessus** —
+```bash
+export VITE_API_URL=https://julaba-api.onrender.com/api/v1   # ou un autre backend (staging, VPS)
+```
+Sans elle, l'APK compile sans erreur mais ne peut joindre **aucun** backend :
+`resoudreUrlApi()` (`frontend_src/src/app/utils/api.ts`) détecte l'exécution
+native via `Capacitor.getPlatform()` et refuse volontairement tout repli sur
+un chemin relatif (qui, dans le WebView, désignerait les fichiers embarqués
+dans le téléphone, pas un serveur). Elle renvoie une URL délibérément
+impossible (domaine `.invalid`, RFC 2606) et journalise l'erreur une fois —
+panne bruyante et nommée, plutôt qu'une appli qui s'installe et fait
+semblant de fonctionner sur un terminal qu'on ne peut pas déboguer à
+distance.
 
 Sans le script : le build **échoue explicitement** (unresolved `com.k2fsa.sherpa.onnx`)
 — voulu, jamais un APK muet silencieux. Sans le modèle dans les assets :
