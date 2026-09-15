@@ -173,6 +173,8 @@ describe('CatalogueMaitreService — adoption', () => {
      *  Postgres (23505), comme si une adoption concurrente venait d'écrire
      *  la même (marchand_id, default_code) entre le SELECT et l'INSERT. */
     courseConcurrente?: Record<string, unknown>;
+    /** Simule un 23505 sur une contrainte SANS RAPPORT avec l'adoption. */
+    autreViolationUnicite?: boolean;
   } = {}) {
     const requetes: Requete[] = [];
     let selectProduitsAppels = 0;
@@ -196,6 +198,15 @@ describe('CatalogueMaitreService — adoption', () => {
             'duplicate key value violates unique constraint "ux_produits_marchand_default_code"',
           );
           err.code = '23505';
+          err.constraint = 'ux_produits_marchand_default_code';
+          throw err;
+        }
+        if (options.autreViolationUnicite) {
+          // Un 23505 bien réel, mais sur une contrainte SANS RAPPORT avec
+          // l'adoption (ex. un futur numéro de série unique sur `produits`).
+          const err: any = new Error('duplicate key value violates unique constraint "ux_produits_autre_chose"');
+          err.code = '23505';
+          err.constraint = 'ux_produits_autre_chose';
           throw err;
         }
         return [{ id: 'p1', nom: 'Igname Kponan', prix: params[2], stock: params[5], unite: params[6], categorie: params[4], default_code: params[7] }];
@@ -260,6 +271,16 @@ describe('CatalogueMaitreService — adoption', () => {
     });
     await expect(service.adopter('marchande-1', { default_code: 'VIV-1', prix: 500 }))
       .rejects.toMatchObject({ response: { produit: { id: 'gagnant-de-la-course' } } });
+  });
+
+  it('un 23505 sur une AUTRE contrainte n\'est jamais confondu avec « déjà adoptée »', async () => {
+    // Réserve du relecteur, prise au sérieux : coder `e?.code === '23505'`
+    // sans regarder LAQUELLE traiterait n'importe quelle future contrainte
+    // unique de `produits` comme une adoption en double. Le nom exact de la
+    // contrainte est ce qui protège contre ça.
+    const { service } = envAdoption({ autreViolationUnicite: true });
+    await expect(service.adopter('marchande-1', { default_code: 'VIV-1', prix: 500 }))
+      .rejects.toMatchObject({ code: '23505', constraint: 'ux_produits_autre_chose' });
   });
 
   it('propage toute autre erreur SQL de l\'INSERT sans la confondre avec une adoption déjà faite', async () => {
