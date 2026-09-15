@@ -16,13 +16,13 @@ DERNIER_SHA_MAIN: (voir git log origin/main)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (32583c2) — trois correctifs
   NON mergés : authentification et caisse sont des modules sacrés, la
   Constitution exige une preuve réelle avant merge (principe 3).
-PROCHAINE_ACTION: poursuivre le lot A — point 6 de la file (libellés +
-  message de bienvenue), puis le point 4 (retours arrière / chevauchement
+PROCHAINE_ACTION: poursuivre le lot A — point 4 de la file (retours arrière / chevauchement
   menu / responsive, le moins cadrable sans appareil), les deux PR
   restantes (#223, #230) et le balayage des accents sur les rôles non
   marchands. Enrichir la recette groupée à chaque correctif.
-DERNIER_RESULTAT: appellation — un marchand n'est plus appelé « Maman »
-  (cinq copies du titre réduites à une). Avant : fond de caisse prouvé en
+DERNIER_RESULTAT: appellation — c'est la personne qui dit comment on
+  l'appelle (champ dans la fiche d'identification) ; par défaut prénom seul,
+  jamais un titre déduit du genre. Cinq copies réduites à une. Avant : fond de caisse prouvé en
   base réelle (7 invariants) ; coopératives — 500 systématique corrigé et MERGÉ sur main
   (preuve en base réelle : 157 invariants verts sur 32 suites, 152 avant).
   Avant cela : identité Android unifiée (pilote = APK posé à la main,
@@ -43,10 +43,13 @@ mais il doit dire quel geste unique Patrick doit poser)
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
 
-- **15/09/2026** — Point 5 de la file clos : le titre d'adresse suit le genre
-  réel, une seule fonction au lieu de cinq copies. Genre inconnu → prénom
-  seul, jamais deviné. Risque testé : les comptes déjà mémorisés ne sont
-  pas invalidés.
+- **15/09/2026** — Points 5 et 6 de la file clos. Le nom d'adresse vient
+  désormais de la personne elle-même (nouveau champ dans la fiche
+  d'identification) ; par défaut son prénom seul, jamais un titre déduit de
+  `users.genre`. Cinq copies réduites à une. Risque testé : les comptes
+  déjà mémorisés ne sont pas invalidés. Cinq fautes d'accent corrigées —
+  et l'audit .audit_ui_SAFE_CORRECTIONS.md est périmé et dangereux à
+  appliquer tel quel (4 de ses 5 entrées restantes casseraient le code).
 - **15/09/2026** — Fond de caisse : moitié serveur prouvée contre un vrai
   Postgres (7 invariants). La recette terrain passe de 5 à 2 minutes sur ce
   point. scripts/pg-test-local.sh rend les invariants exécutables.
