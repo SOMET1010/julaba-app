@@ -10,7 +10,6 @@ import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useUser } from '../../contexts/UserContext';
 import { useApp } from '../../contexts/AppContext';
 import { useToast } from '../../hooks/useToast';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { ImagePickerField } from '../shared/ImagePickerField';
 import { ModalPortal } from '../shared/ModalPortal';
 import { SelectWithAutre } from '../shared/SelectWithAutre';
@@ -26,6 +25,8 @@ import { toast } from 'sonner';
 import { UNITES_COURANTES } from '../../config/unites';
 import { API_URL } from '../../utils/api';
 import { mapApiMouvements, type MouvementUI } from '../../services/mouvementsStock';
+import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { vignetteProduit } from '../../utils/emojiTile';
 
 const P = '#AF5B23';
 
@@ -806,7 +807,7 @@ export function GestionStock() {
                             speak(p.nom);
                           }}
                           style={{ border: actif ? `3px solid ${P}` : '2px solid var(--trait)', borderRadius:14, padding:6, background: actif ? '#FFF3EA' : 'white', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, fontFamily:'inherit' }}>
-                          <img src={p.image} alt={p.nom} style={{ width:'100%', aspectRatio:'1', borderRadius:10, objectFit:'cover' }} />
+                          <ImageWithFallback src={p.image} alt={p.nom} fallbackSrc={vignetteProduit(p.nom)} style={{ width:'100%', aspectRatio:'1', borderRadius:10, objectFit:'cover' }} />
                           <div style={{ fontSize:12, fontWeight:700, color:'var(--encre)' }}>{p.nom}</div>
                         </motion.button>
                       );
@@ -823,7 +824,7 @@ export function GestionStock() {
                   const cat = rechercherProduitCatalogue(newStock.name);
                   return cat ? (
                     <div style={{ display:'flex', alignItems:'center', gap:12, padding:12, background:'#FFF3EA', border:`2px solid ${P}`, borderRadius:14 }}>
-                      <img src={cat.image} alt={newStock.name} style={{ width:56, height:56, borderRadius:10, objectFit:'cover' }} />
+                      <ImageWithFallback src={cat.image} alt={newStock.name} fallbackSrc={vignetteProduit(newStock.name)} style={{ width:56, height:56, borderRadius:10, objectFit:'cover' }} />
                       <div>
                         <div style={{ fontSize:10, fontWeight:800, color:P, textTransform:'uppercase', letterSpacing:'0.1em' }}>Image officielle Julaba</div>
                         <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{newStock.name}</div>
@@ -851,7 +852,7 @@ export function GestionStock() {
                       {suggererProduits(newStock.name).map(p => (
                         <button key={p.nom} onClick={() => setNewStock({...newStock, name:p.nom, image:p.image, unit:p.unite, purchasePrice:p.prixAchat, salePrice:p.prixVente, category:p.categorie})}
                           style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', borderBottom:'1px solid #f5f0eb' }}>
-                          <img src={p.image} alt={p.nom} style={{ width:40, height:40, borderRadius:8, objectFit:'cover' }} />
+                          <ImageWithFallback src={p.image} alt={p.nom} fallbackSrc={vignetteProduit(p.nom)} style={{ width:40, height:40, borderRadius:8, objectFit:'cover' }} />
                           <div style={{ textAlign:'left' }}>
                             <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{p.nom}</div>
                             <div style={{ fontSize:11, color:'var(--encre-4)' }}>{p.categorie} · {p.unite} · {p.prixVente} FCFA</div>
@@ -1244,7 +1245,7 @@ export function GestionStock() {
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                       {editForm.image && (
                         <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', flexShrink: 0, border: '1.5px solid var(--trait)' }}>
-                          <img src={editForm.image} alt="photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <ImageWithFallback src={editForm.image} alt={editForm.name} fallbackSrc={vignetteProduit(editForm.name)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                       )}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
