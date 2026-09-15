@@ -13,14 +13,17 @@ TYPE_BESOIN: —
 ACTION_PATRICK: — (une seule session terrain quand le lot A sera clos,
   voir docs/RECETTE-TERRAIN-GROUPEE.md)
 DERNIER_SHA_MAIN: d87066d
-BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (295b31d) — correctifs NON
+BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (8ccf9a2) — correctifs NON
   mergés : authentification et caisse sont des modules sacrés, la
   Constitution exige une preuve réelle avant merge (principe 3).
-PROCHAINE_ACTION: plus aucune PR ouverte, file de Patrick épuisée. Reste à
-  relire le parcours complet d'une marchande dans le navigateur (vendre →
-  encaisser → fermer la caisse) pour chercher des défauts de comportement,
-  et non plus de mise en page — puis finaliser la recette groupée.
-DERNIER_RESULTAT: les trois rôles mesurés (six écrans marchande, tableaux de
+PROCHAINE_ACTION: poursuivre le parcours argent dans le navigateur — il
+  reste vendre, encaisser et fermer la caisse (seule la déclaration du fond
+  est faite). Puis finaliser la recette groupée.
+DERNIER_RESULTAT: deux défauts ARGENT trouvés en déroulant le parcours dans
+  un vrai navigateur — déclarer son fond avant la première vente était perdu
+  (404 sur le seul chemin qu'une marchande a), et les billets défilaient sous
+  le doigt (pause branchée sur un événement de souris). Avant : les trois
+  rôles mesurés (six écrans marchande, tableaux de
   bord producteur et coopérative) : 0 débordement, 0 élément inatteignable,
   0 cible sous 44px. Les deux dernières PR ouvertes reprises sur main et
   fermées.
@@ -36,6 +39,15 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **15/09/2026** — Parcours argent déroulé au navigateur. Deux défauts que la
+  lecture de code n'aurait pas donnés : l'accueil d'une marchande n'a pas de
+  bouton « Ouvrir ma journée » (il vit dans un composant que seuls les autres
+  rôles affichent), donc déclarer son fond passait par « Modifier le fond »
+  — qui répondait 404 sans journée, et perdait le montant. Et les billets
+  défilaient en boucle sans jamais s'arrêter sur téléphone (59 px/s, un
+  billet en fait 85). Un arbitrage reste à trancher : faut-il un défilement
+  automatique du tout sur une saisie d'argent ?
 
 - **15/09/2026** — PR #223 (skill /identifier) et #230 (langues ivoiriennes +
   statut licence MMS) reprises sur `main` et fermées — plus aucune PR
