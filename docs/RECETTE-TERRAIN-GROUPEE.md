@@ -152,8 +152,13 @@ cette feuille :
   production à 390×844, sur les six écrans du parcours marchande
   (`./scripts/mesure-ecrans.cjs`) : aucun débordement horizontal, et aucun
   élément ne reste derrière la barre du menu une fois la page défilée.
-  Trois cibles tactiles trop petites ont été corrigées et revérifiées.
+  Toutes les cibles tactiles sont à 44px, revérifiées par mesure.
   Rien à faire au téléphone sur ce point.
+- **Les images sans réseau** — vérifié hébergeur d'images entièrement bloqué :
+  chaque produit reste reconnaissable (vignette dessinée dans la page).
+  À regarder quand même d'un œil au terrain : **manioc** et **gombo**
+  n'ont pas d'emoji dédié (pomme de terre et haricots en tiennent lieu).
+  Si une marchande hésite sur ces deux-là, dis-le-moi.
 
 ## Scénarios à venir
 
