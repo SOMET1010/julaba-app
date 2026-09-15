@@ -16,14 +16,16 @@ DERNIER_SHA_MAIN: (voir git log origin/main)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (32583c2) — trois correctifs
   NON mergés : authentification et caisse sont des modules sacrés, la
   Constitution exige une preuve réelle avant merge (principe 3).
-PROCHAINE_ACTION: poursuivre le lot A — finir les cibles tactiles non
-  encore identifiées (bouton 32×32 sur Vendre, 15×15 sur Stock,
-  « FaceID / Empreinte » 350×34, champs de recherche), puis les deux PR
-  restantes (#223, #230). Reste aussi de la file de Patrick : le point 4 (retours arrière / chevauchement
+PROCHAINE_ACTION: poursuivre le lot A — les deux PR restantes (#223 skill
+  /identifier, #230 note de recherche voix), puis relire le parcours des
+  autres rôles (producteur, coopérative) avec le même outil de mesure.
+  Point 4 de la file de Patrick : clos. (retours arrière / chevauchement
   menu / responsive, le moins cadrable sans appareil), les deux PR
   restantes (#223, #230) et le balayage des accents sur les rôles non
   marchands. Enrichir la recette groupée à chaque correctif.
-DERNIER_RESULTAT: point 4 mesuré sur le bundle de production à 390×844 :
+DERNIER_RESULTAT: point 4 CLOS. Zéro cible sous 44px sur les six écrans, et
+  les photos de produits ne laissent plus de case vide sans réseau (repli
+  sur une vignette dessinée, prouvé hébergeur bloqué). Avant :
   aucun débordement horizontal, aucun chevauchement du menu (le
   « chevauchement » trouvé d'abord était une erreur de méthode — mesure
   sans défiler). Trois cibles tactiles sous 44px corrigées et revérifiées.
@@ -50,6 +52,12 @@ mais il doit dire quel geste unique Patrick doit poser)
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
 
+- **15/09/2026** — Point 4 clos. Toutes les cibles tactiles à 44px (vérifié
+  par mesure). Découvert en faisant tourner l'app : les photos de produits
+  étaient distantes — sans réseau, une marchande qui ne lit pas voyait des
+  cases vides là où elle reconnaît ses produits. Règle de Patrick : photo
+  si elle arrive, vignette dessinée sinon. Prouvé hébergeur bloqué.
+  Un composant de repli existait déjà : enrichi, pas doublé.
 - **15/09/2026** — Point 4 attaqué avec un vrai navigateur : Chromium est
   disponible ici, l'application tourne en local (Postgres jetable + backend
   + bundle de production) et s'observe à 390×844. Ce qui semblait
