@@ -115,19 +115,132 @@ export class CaisseRestController {
     return { session: session[0] || null };
   }
 
+  // `UPDATE ... RETURNING` renvoie `[lignes, nombreAffecté]` sous TypeORM, là
+  // où `INSERT ... RETURNING` renvoie les lignes directement. Piège déjà payé
+  // une fois (catalogue maître : un compteur qui mentait). On normalise.
+  private premiereLigne(resultat: any): any {
+    if (!Array.isArray(resultat)) return null;
+    const lignes = Array.isArray(resultat[0]) ? resultat[0] : resultat;
+    return lignes[0] ?? null;
+  }
+
+  // L'argent d'une marchande ne change jamais sans laisser de trace : ancien
+  // montant, nouveau, heure, autrice. L'échec du journal ne fait PAS perdre sa
+  // déclaration (la session est déjà écrite) mais il est bruyant — un trou
+  // dans la piste d'audit doit se voir.
+  private async journaliserFond(
+    sessionId: string,
+    marchandId: string,
+    ancien: number | null,
+    nouveau: number,
+    origine: 'declaration' | 'correction',
+  ): Promise<void> {
+    try {
+      await this.dataSource.query(
+        `INSERT INTO caisse_fond_journal (session_id, marchand_id, ancien_fond, nouveau_fond, origine)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [sessionId, marchandId, ancien, nouveau, origine],
+      );
+    } catch (e: any) {
+      this.logger.error(
+        `[CAISSE] journal du fond NON écrit (session ${sessionId}, ${ancien} → ${nouveau}) : ${e?.message}`,
+      );
+    }
+  }
+
+  private montantValide(valeur: any): number {
+    const montant = Number(valeur);
+    if (!Number.isFinite(montant) || montant < 0) {
+      throw new BadRequestException('Montant du fond de caisse invalide');
+    }
+    return montant;
+  }
+
+  // Ouvrir la journée = DÉCLARER son fond de caisse (« Combien tu as en caisse
+  // ce matin ? »). Trois situations, une seule règle :
+  //
+  //  1. Aucune journée aujourd'hui → on la crée avec son fond.
+  //  2. Journée déjà créée mais fond JAMAIS déclaré — c'est le cas d'une
+  //     journée ouverte automatiquement à 0 par une première vente : cette
+  //     saisie EST la déclaration, elle remplace le 0. C'est le défaut
+  //     réparé : avant, le montant saisi était silencieusement perdu.
+  //  3. Fond déjà déclaré → il ne change PAS ici. Toute correction passe par
+  //     « Modifier le fond » (PATCH session/fond), qui la journalise. La
+  //     réponse le dit explicitement (`fond_conserve`) pour que l'écran cesse
+  //     d'afficher un montant que le serveur n'a pas retenu.
+  //
+  // Rouvrir une journée fermée reste permis dans tous les cas : doctrine déjà
+  // en place (voir ensureSessionOuverte) — on ne bloque jamais la vendeuse.
   @Post('session/ouvrir')
   async ouvrirSession(@Body() body: any, @CurrentUser() user: User) {
     const today = new Date().toISOString().split('T')[0];
+    const fond = this.montantValide(body.fond_initial ?? 0);
     const existing = await this.dataSource.query(
       'SELECT * FROM caisse_sessions WHERE marchand_id = $1 AND date = $2 LIMIT 1',
       [user.id, today]
     );
-    if (existing[0]) return { session: existing[0] };
-    const result = await this.dataSource.query(
-      'INSERT INTO caisse_sessions (marchand_id, date, fond_initial, ouvert, heure_ouverture, notes) VALUES ($1, $2, $3, true, NOW(), $4) RETURNING *',
-      [user.id, today, body.fond_initial || 0, body.notes || '']
+
+    if (!existing[0]) {
+      const result = await this.dataSource.query(
+        `INSERT INTO caisse_sessions (marchand_id, date, fond_initial, ouvert, heure_ouverture, notes, fond_declare_at)
+         VALUES ($1, $2, $3, true, NOW(), $4, NOW()) RETURNING *`,
+        [user.id, today, fond, body.notes || '']
+      );
+      const creee = this.premiereLigne(result);
+      if (creee) await this.journaliserFond(creee.id, user.id, null, fond, 'declaration');
+      return { session: creee };
+    }
+
+    const session = existing[0];
+
+    if (!session.fond_declare_at) {
+      const maj = await this.dataSource.query(
+        `UPDATE caisse_sessions
+            SET fond_initial = $1, fond_declare_at = NOW(), ouvert = true,
+                heure_ouverture = COALESCE(heure_ouverture, NOW()),
+                heure_fermeture = NULL, updated_at = NOW()
+          WHERE id = $2 RETURNING *`,
+        [fond, session.id]
+      );
+      await this.journaliserFond(session.id, user.id, Number(session.fond_initial ?? 0), fond, 'declaration');
+      return { session: this.premiereLigne(maj) ?? { ...session, fond_initial: fond, ouvert: true } };
+    }
+
+    if (!session.ouvert) {
+      const reouverte = await this.dataSource.query(
+        `UPDATE caisse_sessions
+            SET ouvert = true, heure_fermeture = NULL, updated_at = NOW()
+          WHERE id = $1 RETURNING *`,
+        [session.id]
+      );
+      return { session: this.premiereLigne(reouverte) ?? { ...session, ouvert: true }, fond_conserve: true };
+    }
+
+    return { session, fond_conserve: true };
+  }
+
+  // « Modifier le fond » : le seul chemin pour changer un fond déjà déclaré.
+  // Journalisé systématiquement. Avant, cet écran ne persistait RIEN — il
+  // changeait l'affichage et le montant revenait au rechargement.
+  @Patch('session/fond')
+  async corrigerFond(@Body() body: any, @CurrentUser() user: User) {
+    const today = new Date().toISOString().split('T')[0];
+    const fond = this.montantValide(body.fond_initial);
+    const existing = await this.dataSource.query(
+      'SELECT * FROM caisse_sessions WHERE marchand_id = $1 AND date = $2 LIMIT 1',
+      [user.id, today]
     );
-    return { session: result[0] };
+    if (!existing[0]) throw new NotFoundException('Aucune journée ouverte à corriger');
+
+    const session = existing[0];
+    const maj = await this.dataSource.query(
+      `UPDATE caisse_sessions
+          SET fond_initial = $1, fond_declare_at = COALESCE(fond_declare_at, NOW()), updated_at = NOW()
+        WHERE id = $2 RETURNING *`,
+      [fond, session.id]
+    );
+    await this.journaliserFond(session.id, user.id, Number(session.fond_initial ?? 0), fond, 'correction');
+    return { session: this.premiereLigne(maj) ?? { ...session, fond_initial: fond } };
   }
 
   @Post('session/fermer')

@@ -834,10 +834,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     setCurrentSession(newSession);
 
-    // Sync avec API
+    // Sync avec API. La réponse du serveur FAIT FOI : elle était ignorée, si
+    // bien que l'écran affichait un fond que la base n'avait pas retenu (elle
+    // voyait 5 000, la base gardait 0 — caisse théorique fausse d'autant).
+    // Hors ligne ou en cas d'échec réseau, l'état local optimiste est conservé :
+    // on ne bloque jamais la vendeuse.
     if (accessToken) {
       try {
-        await fetch(
+        const reponse = await fetch(
           `${API_URL}/caisse/session/ouvrir`,
           {
             method: 'POST',
@@ -849,6 +853,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }),
           }
         );
+        if (reponse.ok) {
+          const { session, fond_conserve } = await reponse.json();
+          if (session) {
+            const fondRetenu = Number(session.fond_initial) || 0;
+            setCurrentSession({
+              ...newSession,
+              id: session.id || newSession.id,
+              fondInitial: fondRetenu,
+              opened: session.ouvert !== false,
+              openedAt: session.heure_ouverture || newSession.openedAt,
+            });
+            // Son fond du jour était déjà déclaré : le serveur ne l'a pas
+            // remplacé. On le DIT — une marchande qui ne lit pas ne doit pas
+            // deviner pourquoi le montant affiché n'est pas celui qu'elle a tapé.
+            if (fond_conserve && fondRetenu !== fondInitial) {
+              void speak(
+                `Ta journée est déjà ouverte avec ${fondRetenu} francs. Pour changer ce montant, touche Modifier le fond.`,
+              );
+            }
+          }
+        }
       } catch (error: any) {
         console.warn('[AppContext] openDay sync failed:', error?.message);
       }
@@ -894,16 +919,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCurrentSession(null);
   };
 
+  // « Modifier le fond » — seul chemin pour changer un fond déjà déclaré.
+  // Cet écran était purement décoratif : il changeait l'affichage et le
+  // montant revenait au rechargement (`// FUTURE: sync`, jamais fait). Le
+  // serveur journalise désormais chaque correction (ancien, nouveau, heure,
+  // autrice) — l'argent d'une marchande ne change pas sans laisser de trace.
   const updateFondInitial = async (newFond: number) => {
     if (!currentSession) return;
 
-    const updatedSession: DaySession = {
-      ...currentSession,
-      fondInitial: newFond,
-    };
-    
-    setCurrentSession(updatedSession);
-    // FUTURE: sync /api/v1/users/profile
+    setCurrentSession({ ...currentSession, fondInitial: newFond });
+
+    if (accessToken) {
+      try {
+        const reponse = await fetch(
+          `${API_URL}/caisse/session/fond`,
+          {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: caisseAuthHeaders(accessToken),
+            body: JSON.stringify({ fond_initial: newFond }),
+          }
+        );
+        if (reponse.ok) {
+          const { session } = await reponse.json();
+          if (session) {
+            setCurrentSession((prev) =>
+              prev ? { ...prev, fondInitial: Number(session.fond_initial) || 0 } : prev,
+            );
+          }
+        } else {
+          console.warn('[AppContext] updateFondInitial refusé :', reponse.status);
+        }
+      } catch (error: any) {
+        console.warn('[AppContext] updateFondInitial sync failed:', error?.message);
+      }
+    }
   };
 
   // ═══════════════════════════════════════════════════════════════════
