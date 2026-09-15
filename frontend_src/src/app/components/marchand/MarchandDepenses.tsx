@@ -344,7 +344,9 @@ export function MarchandDepenses() {
           />
           {PERIODS.map((p, i) => (
             <button key={p.id} onClick={() => setPeriod(p.id)}
-              style={{ flex:1, padding:'9px 4px', fontSize:12, fontWeight:700, color: period===p.id ? 'white' : 'var(--encre-4)', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', transition:'color 0.2s' }}>
+              // minHeight 44 : cible tactile mesurée à 36px (390×844). Le
+              // surépais glissant suit (height: calc(100% - 8px)).
+              style={{ flex:1, minHeight:44, padding:'9px 4px', fontSize:12, fontWeight:700, color: period===p.id ? 'white' : 'var(--encre-4)', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', transition:'color 0.2s' }}>
               {p.label}
             </button>
           ))}

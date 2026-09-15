@@ -150,7 +150,9 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 .commerce-back h1 { font-weight: 750; }
 
 /* Small abstract Ivorian colour accent, decorative and never a status. */
-.commerce-brand { display: inline-flex; align-items: center; gap: 0.625rem; }
+/* min-height 44px : ce logo est un BOUTON (il fait parler Tata). Mesure a
+   390x844 : 142x40, sous la regle des 44px deja appliquee au reste. */
+.commerce-brand { display: inline-flex; align-items: center; gap: 0.625rem; min-height: 2.75rem; }
 .commerce-brand img { max-width: 9rem; max-height: 2.5rem; object-fit: contain; }
 .commerce-signature { display: inline-flex; gap: 0.25rem; align-items: center; flex-shrink: 0; }
 .commerce-signature::before { content: ''; width: 0.75rem; height: 0.25rem; background: #C0522E; border-radius: 1px; }
