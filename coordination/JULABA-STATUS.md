@@ -12,16 +12,18 @@ BESOIN_PATRICK: NON
 TYPE_BESOIN: —
 ACTION_PATRICK: — (la recette terrain est GROUPÉE : une seule session, quand
   le lot A sera clos — voir docs/RECETTE-TERRAIN-GROUPEE.md)
-DERNIER_SHA_MAIN: 2c77b25
+DERNIER_SHA_MAIN: (voir git log origin/main)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (32583c2) — trois correctifs
   NON mergés : authentification et caisse sont des modules sacrés, la
   Constitution exige une preuve réelle avant merge (principe 3).
-PROCHAINE_ACTION: poursuivre le lot A — file d'attente de Patrick, points 4
-  à 6 (retours arrière / chevauchement menu / responsive, genre
-  « Maman »/« Papa », libellés + message de bienvenue), puis les deux PR
+PROCHAINE_ACTION: poursuivre le lot A — point 6 de la file (libellés +
+  message de bienvenue), puis le point 4 (retours arrière / chevauchement
+  menu / responsive, le moins cadrable sans appareil), les deux PR
   restantes (#223, #230) et le balayage des accents sur les rôles non
   marchands. Enrichir la recette groupée à chaque correctif.
-DERNIER_RESULTAT: coopératives — 500 systématique corrigé et MERGÉ sur main
+DERNIER_RESULTAT: appellation — un marchand n'est plus appelé « Maman »
+  (cinq copies du titre réduites à une). Avant : fond de caisse prouvé en
+  base réelle (7 invariants) ; coopératives — 500 systématique corrigé et MERGÉ sur main
   (preuve en base réelle : 157 invariants verts sur 32 suites, 152 avant).
   Avant cela : identité Android unifiée (pilote = APK posé à la main,
   décision Patrick) ; avant cela, défaut ARGENT trouvé et corrigé — le fond de caisse déclaré
@@ -41,6 +43,13 @@ mais il doit dire quel geste unique Patrick doit poser)
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
 
+- **15/09/2026** — Point 5 de la file clos : le titre d'adresse suit le genre
+  réel, une seule fonction au lieu de cinq copies. Genre inconnu → prénom
+  seul, jamais deviné. Risque testé : les comptes déjà mémorisés ne sont
+  pas invalidés.
+- **15/09/2026** — Fond de caisse : moitié serveur prouvée contre un vrai
+  Postgres (7 invariants). La recette terrain passe de 5 à 2 minutes sur ce
+  point. scripts/pg-test-local.sh rend les invariants exécutables.
 - **15/09/2026** — Coopératives : « Rejoindre une coopérative » était mort
   depuis le 23 août (500 sur des colonnes inexistantes, menu vide, bouton
   inerte). Corrigé et mergé sur main — module non sacré et preuve obtenue
