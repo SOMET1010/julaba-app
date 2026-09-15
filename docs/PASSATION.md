@@ -8,11 +8,16 @@ dépôt (décision Patrick, 15/09/2026).
 
 - **JULABA historique** (cette instance) : conçoit, code, teste, commit,
   merge. Seule source de vérité pour l'état de `main`.
-- **Odoo 19 / VPS** : instance d'exécution terrain uniquement. Ne modifie
-  plus Git de sa propre initiative. Reçoit des commandes précises de JULABA
-  historique, les exécute sur le VPS/Odoo réel, retourne la sortie brute
-  complète. Une anomalie découverte est **signalée**, jamais corrigée dans
-  le dépôt de sa propre initiative.
+- **Instance de preuve locale** : environnement sandbox (Postgres 16, Node,
+  Chromium) — exécute builds, tests E2E et recettes (PILOTE-2, PILOTE-3)
+  contre des services locaux/jetables. N'a **aucun accès réseau au VPS ni à
+  Odoo réel**. N'écrit plus dans Git de sa propre initiative : reçoit des
+  commandes précises de JULABA historique, exécute, retourne la sortie
+  brute complète. Une anomalie découverte est **signalée**, jamais corrigée
+  dans le dépôt de sa propre initiative.
+- **VPS / Odoo réel** : environnement externe, manipulé **par Patrick
+  lui-même**, à partir de commandes exactes préparées par JULABA historique
+  (aucune instance IA n'y a d'accès direct).
 - **`main` est la seule source de vérité.** Toute nouvelle tâche commence
   par un `git fetch origin main` + resynchronisation.
 - Décisions irréversibles (appId Android, changements de doctrine produit)
@@ -37,7 +42,7 @@ double correctif, plus de réconciliation manuelle entre instances.
 | #75 / #76 | Recette espèces bout-en-bout + checklist GO pilote (déclaré GO) | PR #75, #76 |
 | P0-1 / P1-1 | Cloisonnement par utilisateur : `offlineCaisse` (déjà correct) et `useOfflineVoiceQueue.clearQueue()` (bug réel, corrigé) | `85b7b4b` |
 | PILOTE-2 | Caisse espèces/offline, 8 invariants (dont « le serveur encaisse mais la réponse se perd ») | `a355d1d` |
-| Référentiel maître | 198 produits vivriers injectés et vérifiés sur le vrai Odoo (198/198, idempotent, prix nuls par construction) | `b2c8035` (kit), import réel exécuté par l'instance VPS |
+| Référentiel maître | 198 produits vivriers injectés et vérifiés sur le vrai Odoo (198/198, idempotent, prix nuls par construction) | `b2c8035` (kit), import réel exécuté sur le VPS/Odoo réel |
 | PILOTE-3 lots 1-2 | Miroir Postgres `catalogue_maitre` + synchro idempotente + `GET /catalogue-maitre` | `0c5e4c0` |
 | PILOTE-3 lot 3 | Adoption backend (`produits.default_code`, prix > 0 obligatoire côté marchande, unicité par marchande) + écran d'adoption depuis « Autre article » | `183ed90`, `39b6a0b` |
 | PILOTE-3 lot 4 | Recette e2e, 7 invariants, Odoo injoignable | `008b4c2` |
