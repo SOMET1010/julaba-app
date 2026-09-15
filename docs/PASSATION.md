@@ -106,9 +106,14 @@ alternative).
 
 ## Arbitrages ouverts (décision Patrick requise)
 
-- **appId Android** : `capacitor.config.ts` dit `ci.julaba.app`,
-  `android/app/build.gradle` dit `com.julaba.app`. Irréversible après
-  publication Play Store. **En attente.**
+- ~~**appId Android**~~ — **tranché le 15/09/2026**. Pilote = APK posé à la
+  main, publication Play Store reportée après validation terrain. Le nom
+  reste donc provisoire, à condition d'être stable sur les appareils : la
+  ligne orpheline `ci.julaba.app` de `capacitor.config.ts` est alignée sur
+  `com.julaba.app`, que portent déjà sept autres emplacements (dont le
+  schéma d'URL des liens profonds). Le nom définitif se tranchera à la
+  publication, seul moment où il devient irréversible. Voir
+  `JULABA_DECISIONS.md` § 9.
 - **Homonymie catalogue** : une marchande peut se retrouver avec deux
   produits au même nom (un « libre », un adopté via une référence Odoo) —
   ex. « Tomate | 200 F/kg | (libre) » et « Tomate | 500 F/tas | TOM-001 ».
