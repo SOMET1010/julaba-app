@@ -2,23 +2,97 @@
  * JULABA — Configuration API centralisée
  * Toutes les URLs doivent utiliser cette constante
  */
-function resolveApiUrl(): string {
-  // 1) Valeur injectée au build (idéal) — ex. Render VITE_API_URL.
-  const fromEnv = import.meta.env.VITE_API_URL;
-  if (fromEnv) return fromEnv;
-  // 2) Filet de sécurité PRODUCTION. Sur la V1, frontend et backend partageaient
-  //    le même domaine, donc le chemin relatif "/api/v1" suffisait. Sur la V2, ils
-  //    sont sur DEUX domaines : si VITE_API_URL n'a pas été injectée au build, un
-  //    "/api/v1" relatif tape sur le site statique (→ HTML au lieu du backend).
-  //    On cible donc le backend V2 connu dès qu'on est servi depuis le domaine V2.
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    if (host === 'julaba-web.onrender.com') {
-      return 'https://julaba-api.onrender.com/api/v1';
-    }
+
+export type PlateformeJulaba = 'web' | 'android' | 'ios';
+
+export interface ContexteApi {
+  /** `VITE_API_URL`, injectée au build. */
+  viteApiUrl?: string;
+  /** Web, ou application native empaquetée (Capacitor). */
+  plateforme: PlateformeJulaba;
+  /** `window.location.hostname`. */
+  hostname: string;
+}
+
+/**
+ * Valeur rendue quand l'APK a été construit SANS `VITE_API_URL`.
+ *
+ * Volontairement inutilisable et reconnaissable : le domaine `.invalid` est
+ * reserve par la RFC 2606 et ne resoudra jamais. Chaque appel echouera donc
+ * en NOMMANT le probleme, au lieu de reussir en silence sur les fichiers
+ * embarques dans le telephone.
+ */
+export const URL_API_NON_CONFIGUREE = 'http://api-non-configuree.julaba.invalid/api/v1';
+
+/**
+ * Où l'application doit-elle parler ?
+ *
+ * LE CAS QUI MOTIVE CETTE FONCTION : dans un APK, la page est servie par
+ * Capacitor depuis `localhost`. Un chemin RELATIF comme `/api/v1` y designe
+ * donc les fichiers embarques dans le telephone — pas un backend. Sans
+ * `VITE_API_URL` injectee au build, l'ancienne version retombait sur ce
+ * chemin relatif et l'APK etait une coquille : aucune requete n'atteignait
+ * jamais un serveur, sans le moindre message.
+ *
+ * On refuse desormais ce silence. En natif sans configuration, on renvoie une
+ * URL impossible et on le signale : une panne bruyante vaut mieux qu'une
+ * application qui fait semblant de fonctionner.
+ *
+ * Fonction PURE (aucune lecture de `window` ni de `import.meta`) pour etre
+ * testable — voir api.test.mts.
+ */
+export function resoudreUrlApi(ctx: ContexteApi): { url: string; natifSansConfiguration: boolean } {
+  // 1) Valeur injectee au build (ideal) — ex. Render VITE_API_URL.
+  const injectee = (ctx.viteApiUrl ?? '').trim();
+  if (injectee) return { url: injectee, natifSansConfiguration: false };
+
+  // 2) Application NATIVE sans configuration : aucun repli relatif possible.
+  if (ctx.plateforme !== 'web') {
+    return { url: URL_API_NON_CONFIGUREE, natifSansConfiguration: true };
   }
-  // 3) Défaut historique (même domaine / dev avec proxy Vite).
-  return '/api/v1';
+
+  // 3) Filet de securite PRODUCTION WEB. Sur la V1, frontend et backend
+  //    partageaient le meme domaine, donc "/api/v1" suffisait. Sur la V2 ils
+  //    sont sur DEUX domaines : un "/api/v1" relatif taperait sur le site
+  //    statique (→ HTML au lieu du backend).
+  if (ctx.hostname === 'julaba-web.onrender.com') {
+    return { url: 'https://julaba-api.onrender.com/api/v1', natifSansConfiguration: false };
+  }
+
+  // 4) Defaut historique (meme domaine / dev avec proxy Vite).
+  return { url: '/api/v1', natifSansConfiguration: false };
+}
+
+/** Plateforme reelle, via le pont global de Capacitor (meme mecanisme que
+ *  voice-offline/nativeStt.ts). `web` des que le pont est absent. */
+function plateformeCourante(): PlateformeJulaba {
+  try {
+    const pont = (globalThis as unknown as { Capacitor?: { getPlatform?: () => string } }).Capacitor;
+    const p = pont?.getPlatform?.();
+    return p === 'android' || p === 'ios' ? p : 'web';
+  } catch {
+    return 'web';
+  }
+}
+
+function resolveApiUrl(): string {
+  const { url, natifSansConfiguration } = resoudreUrlApi({
+    // `?.` volontaire : hors Vite (tsx, test unitaire) `import.meta.env`
+    // n'existe pas, et ce module ne doit pas exploser a l'import.
+    viteApiUrl: import.meta.env?.VITE_API_URL,
+    plateforme: plateformeCourante(),
+    hostname: typeof window !== 'undefined' ? window.location.hostname : '',
+  });
+  if (natifSansConfiguration) {
+    // Un seul message, mais qui dit quoi faire — c'est une erreur de BUILD,
+    // pas une panne reseau, et personne ne la devinera au telephone.
+    // eslint-disable-next-line no-console
+    console.error(
+      "[JULABA] Application native construite sans VITE_API_URL : aucune requete n'atteindra " +
+        'de backend. Reconstruire avec VITE_API_URL=https://<backend>/api/v1 avant `npx cap sync`.',
+    );
+  }
+  return url;
 }
 
 export const API_URL = resolveApiUrl();
