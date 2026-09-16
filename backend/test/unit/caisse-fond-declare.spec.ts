@@ -120,6 +120,17 @@ describe('CaisseRestController — fond de caisse déclaré', () => {
     expect(journal(requetes)[0].params).toEqual(['session-neuve', 'marchande-1', null, 5000, 'declaration']);
   });
 
+  it('la première saisie sur une journée née d’une vente est une DÉCLARATION', async () => {
+    // « Modifier le fond » est le seul chemin d'une marchande : c'est donc ce
+    // libellé qui apparaît en pratique. Un journal qui appelle « correction »
+    // ce qui était la première déclaration ne dit pas ce qui s'est passé.
+    const { controller, requetes } = environnement({
+      id: 'session-auto', fond_initial: '0', ouvert: true, fond_declare_at: null,
+    });
+    await controller.corrigerFond({ fond_initial: 5000 }, user);
+    expect(journal(requetes)[0].params).toEqual(['session-auto', 'marchande-1', 0, 5000, 'declaration']);
+  });
+
   it('refuse un montant négatif ou illisible', async () => {
     const { controller, requetes } = environnement(null);
     await expect(controller.ouvrirSession({ fond_initial: -1 }, user)).rejects.toBeInstanceOf(BadRequestException);

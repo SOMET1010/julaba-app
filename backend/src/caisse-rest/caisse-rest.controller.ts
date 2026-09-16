@@ -254,7 +254,14 @@ export class CaisseRestController {
         WHERE id = $2 RETURNING *`,
       [fond, session.id]
     );
-    await this.journaliserFond(session.id, user.id, Number(session.fond_initial ?? 0), fond, 'correction');
+    // Une journée ouverte automatiquement par une première vente porte un fond
+    // à 0 JAMAIS déclaré : la saisie qui arrive est donc sa DÉCLARATION, pas une
+    // correction. Le distinguer n'est pas cosmétique — « Modifier le fond » est
+    // le seul chemin qu'une marchande a, donc c'est ce libellé qui apparaîtra
+    // en pratique dans la piste d'audit. Un journal qui se trompe sur ce qui
+    // s'est passé ne vaut pas mieux que pas de journal.
+    const origine = session.fond_declare_at ? 'correction' : 'declaration';
+    await this.journaliserFond(session.id, user.id, Number(session.fond_initial ?? 0), fond, origine);
     return { session: this.premiereLigne(maj) ?? { ...session, fond_initial: fond } };
   }
 
