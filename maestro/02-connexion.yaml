@@ -1,0 +1,18 @@
+# SENTINELLE 2 — l'écran de connexion est bien celui qu'on croit.
+appId: com.julaba.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Bienvenue"
+    timeout: 90000
+- tapOn: "Commencer"
+- extendedWaitUntil:
+    visible: "Ton numéro"
+    timeout: 20000
+# Le pavé doit être là : une marchande qui ne lit pas tape des chiffres, elle
+# ne remplit pas un formulaire.
+- assertVisible: "1"
+- assertVisible: "0"
+- assertVisible: "C’est mon numéro"
+- takeScreenshot: 02-ecran-numero

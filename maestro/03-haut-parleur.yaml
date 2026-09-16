@@ -1,0 +1,24 @@
+# SENTINELLE 3 — LE DISCRIMINANT DE VERSION. La plus importante des cinq.
+#
+# Avant les correctifs du 16/09/2026, le bouton de relecture n'apparaissait
+# qu'à DIX chiffres — donc jamais dans le cas qui en a le plus besoin, celui
+# où la dictée a avalé un chiffre. Il apparaît désormais dès le premier.
+#
+# Si ce flux échoue, l'appareil porte une version PÉRIMÉE : tout ce qu'on
+# observera ensuite décrira un produit qui n'existe plus. C'est exactement
+# l'erreur commise trois fois le 16/09. Arrêter la séance et réinstaller.
+appId: com.julaba.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Bienvenue"
+    timeout: 90000
+- tapOn: "Commencer"
+- extendedWaitUntil:
+    visible: "Ton numéro"
+    timeout: 20000
+- tapOn: "0"                  # UN SEUL chiffre, c'est tout l'objet du test
+- assertVisible:
+    id: ".*Réécouter mon numéro.*"
+- takeScreenshot: 03-haut-parleur-des-le-premier-chiffre
