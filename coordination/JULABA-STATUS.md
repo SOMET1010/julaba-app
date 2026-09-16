@@ -10,13 +10,14 @@ STATUT: EN_COURS
 TACHE: correctifs remontés par la recette en cours, sur appareil réel
 BESOIN_PATRICK: OUI
 TYPE_BESOIN: TEST_PHYSIQUE_ANDROID
-ACTION_PATRICK: 1) se connecter à l'APK avec le compte de test créé ce jour
-  (0505584444 / 0000) — c'est la première fois que l'APK peut réellement
-  joindre le backend. 2) dicter trois fois le même numéro puis envoyer le
-  « 🐞 Rapport de test » : la qualité d'écoute est jugée dégradée, il faut
-  des faits (FINALISE) et non une impression. 3) trancher le GO sur le
-  correctif d'écran de démarrage Android 12+.
-DERNIER_SHA_MAIN: 5869e97 (état de main AVANT ce commit de statut —
+ACTION_PATRICK: 1) ENVOYER LE « 🐞 Rapport de test », ligne VOICES. C'est la
+  vérification la plus importante : elle décide si la voix de synthèse est
+  récupérable sur Android ou si chaque phrase parlée devient un livrable
+  studio. Décision d'architecture, pas réglage d'écran. 2) enregistrer les
+  clips manquants (docs/CLIPS-VOIX-A-ENREGISTRER.md, 21 fichiers).
+  3) trancher le GO sur l'écran de démarrage Android 12+ (écran noir mesuré
+  à ~1 minute au premier lancement). 4) trancher la clé de signature.
+DERNIER_SHA_MAIN: 069c81e (état de main AVANT ce commit de statut —
   ce champ ne peut pas désigner son propre commit)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2b43d05) — 28 commits
   d'avance, 16 de retard sur main 5869e97 (le retard n'est que de la doc et
@@ -33,7 +34,13 @@ ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK (chaque runner signe
 PROCHAINE_ACTION: attendre le résultat de connexion et le rapport de dictée.
   Ensuite : reconstruire l'APK depuis la branche pour éprouver les correctifs
   du jour, qui ne sont PAS dans l'APK installé.
-DERNIER_RESULTAT: défaut le plus grave de la journée trouvé et corrigé —
+DERNIER_RESULTAT: DANS L'APK, LA VOIX DE SYNTHÈSE NE PRODUIT AUCUN SON —
+  seuls les clips enregistrés s'entendent. Établi par trois recoupements sur
+  appareil réel : accueil muet (clip absent), onboarding muet (clip absent),
+  écran du numéro muet (phrase sans clip), écran du code qui PARLE (ui-035
+  existe). Or tout le code suppose l'inverse et compte sur un repli vers la
+  synthèse — ce filet n'existe pas. Les 8 clips d'introduction n'ont jamais
+  été enregistrés. Avant : défaut CORS trouvé et corrigé —
   l'APK ne pouvait poster AUCUNE requête au backend. Les origines de la
   WebView Capacitor (https://localhost, capacitor://localhost) n'étaient pas
   autorisées côté CORS : connexion, vente, fermeture de caisse, tout était
@@ -52,6 +59,19 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — Découverte qui dépasse l'écran : **la voix de synthèse est
+  muette dans l'APK**. Tata ne s'entend que là où un clip a été enregistré.
+  Les deux premiers écrans qu'une marchande voit — accueil et onboarding —
+  sont silencieux parce que leurs huit clips n'ont jamais été produits, alors
+  que le code les nomme et les attend. Le repli vers la synthèse, sur lequel
+  tout le code s'appuie, n'existe pas sur Android. Feuille d'enregistrement
+  écrite (docs/CLIPS-VOIX-A-ENREGISTRER.md) : 21 fichiers, textes exacts
+  extraits du code. Reste à trancher POURQUOI la synthèse est muette — voix
+  française absente de l'appareil (réparable) ou WebView sans synthèse
+  utilisable (alors chaque phrase devient un livrable studio). Confirmé par
+  ailleurs : le code secret ne se dicte pas, c'est une décision d'audit UX
+  du 11/08 — un marché est un lieu public.
 
 - **16/09/2026** — Journée de recette sur appareil réel. Le défaut majeur :
   **l'APK n'avait jamais pu parler au backend**. Origines Capacitor absentes de
