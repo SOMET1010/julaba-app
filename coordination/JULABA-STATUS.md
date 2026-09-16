@@ -44,6 +44,18 @@ LIGNE_D_ARRIVEE (décision Patrick, 16/09/2026) : on arrête toute
   Tout le reste — emojis, raffinements de voix, illustrations, écrans
   secondaires, optimisations, confort — va au backlog post-pilote.
 BACKLOG_POST_PILOTE (à ne PAS mélanger avec la sortie pilote) :
+  - EN TÊTE, À RÉSOUDRE AVANT TOUTE SYNCHRONISATION DU BLUEPRINT : le fichier
+    render.yaml déclare `plan: free` pour julaba-api, alors que le service en
+    ligne tourne en **Starter (7 $/mois, 0,5 CPU / 512 Mo)** — constaté sur le
+    tableau de bord le 16/09/2026. Le plan a été changé hors Blueprint. Un
+    `sync` voudrait donc potentiellement ramener le backend de PRODUCTION en
+    `free`. Ce risque existe indépendamment de tout autre changement ; il est
+    dans le fichier depuis ce changement d'interface.
+  - previews de PR ciblées sur le seul site statique (backend explicitement
+    exclu : une preview du backend payant serait une dépense réelle). Reporté
+    ici parce que c'est le même fichier et le même risque que le nettoyage
+    ci-dessous — et parce que la syntaxe exacte n'a pas pu être vérifiée :
+    render.com est bloqué depuis la session des instances.
   - nettoyer render.yaml : le montage Piper y subsiste alors que la doctrine
     est sherpa-onnx (setup-piper.sh n'existe même pas, PIPER_BIN/PIPER_VOICE
     ne peuvent pas être satisfaites).
