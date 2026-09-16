@@ -6,30 +6,29 @@
 > c'est `docs/PASSATION.md` qui gagne.
 
 ```
-STATUT: EN_COURS
-TACHE: LOT A — fin du lot, préparation de la recette groupée
-BESOIN_PATRICK: NON
-TYPE_BESOIN: —
-ACTION_PATRICK: — (une seule session terrain quand le lot A sera clos,
-  voir docs/RECETTE-TERRAIN-GROUPEE.md)
-DERNIER_SHA_MAIN: d87066d
-BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (e10db78) — correctifs NON
+STATUT: EN_ATTENTE
+TACHE: LOT A CLOS — attente de la session terrain unique (lot C)
+BESOIN_PATRICK: OUI
+TYPE_BESOIN: TEST_PHYSIQUE_ANDROID
+ACTION_PATRICK: dérouler docs/RECETTE-TERRAIN-GROUPEE.md sur un téléphone
+  Android réel (6 scénarios, ~40 min, dans l'ordre écrit — la voix se teste
+  avant tout geste, sinon le scénario 1 est faussé). Noter les montants
+  exacts et le résultat de chaque scénario ; en cas d'échec, capture + heure.
+DERNIER_SHA_MAIN: 44397c2
+BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (fd6133b) — 25 commits NON
   mergés : authentification et caisse sont des modules sacrés, la
   Constitution exige une preuve réelle avant merge (principe 3).
-PROCHAINE_ACTION: le parcours argent est déroulé en entier. Finaliser la
-  recette terrain groupée : y inscrire les scénarios argent désormais
-  prouvés ici, ne laisser au téléphone que ce qu'une base ne peut pas dire.
-DERNIER_RESULTAT: parcours argent complet déroulé (vendre → encaisser →
-  fermer). La fermeture de caisse n'enregistrait NI le montant compté (zéro
-  écrit à chaque fois, noms de champs décalés) NI l'écart (aucune colonne) —
-  or c'est la mesure même du pilote. Corrigé, écart calculé côté serveur.
-  Avant : deux défauts ARGENT trouvés dans le navigateur — déclarer son fond avant la première vente était perdu
-  (404 sur le seul chemin qu'une marchande a), et les billets défilaient sous
-  le doigt (pause branchée sur un événement de souris). Avant : les trois
-  rôles mesurés (six écrans marchande, tableaux de
-  bord producteur et coopérative) : 0 débordement, 0 élément inatteignable,
-  0 cible sous 44px. Les deux dernières PR ouvertes reprises sur main et
-  fermées.
+PROCHAINE_ACTION: rien à coder côté JULABA historique tant que la session
+  terrain n'a pas eu lieu. Au retour de Patrick : corriger ce que la recette
+  révèle, puis merger la branche sur main en une fois.
+DERNIER_RESULTAT: recette terrain groupée finalisée. Elle ne contient plus
+  que ce qu'une base de données et un navigateur ne peuvent pas prouver :
+  la voix sur l'écran du code avant tout geste, les voix françaises
+  réellement installées sur l'appareil, le nom d'adresse de bout en bout,
+  l'argent avec de vrais doigts, la dictée avec un vrai micro, et le réseau
+  faible puis coupé — dont la vérification la plus importante : une vente
+  hors ligne est-elle comptée exactement une fois. Tout le reste est listé
+  en fin de feuille comme déjà prouvé, avec son moyen de preuve.
 ```
 
 `STATUT` ∈ `EN_ATTENTE` · `EN_COURS` · `BLOQUE` · `TERMINE`
@@ -42,6 +41,14 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — Lot A clos. La recette terrain groupée est finalisée :
+  six scénarios ordonnés, minutés, réduits à ce qu'aucune machine ne peut
+  dire à notre place. Les scénarios argent désormais prouvés au navigateur
+  et contre un vrai Postgres sont sortis de la feuille et listés à part avec
+  leur moyen de preuve. Plus rien à coder ici tant que Patrick n'a pas
+  déroulé la session sur un téléphone : c'est le seul obstacle entre la
+  branche (25 commits) et `main`.
 
 - **16/09/2026** — Parcours argent complet au navigateur : vente libre →
   encaissement espèces → fermeture. Le défaut le plus grave de la session :
