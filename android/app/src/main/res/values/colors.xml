@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Le papier de Jùlaba : --commerce-paper dans frontend_src/src/styles/
-         commerce.css. Repris ICI à l'identique pour qu'il n'y ait aucun
-         changement de teinte entre l'écran de démarrage Android et la première
-         image de l'application. Une couleur qui saute est un défaut visible. -->
+    <!-- Le papier de Jùlaba : la variable commerce-paper de
+         frontend_src/src/styles/commerce.css. Reprise ICI à l'identique pour
+         qu'il n'y ait aucun changement de teinte entre l'écran de démarrage
+         Android et la première image de l'application. Une couleur qui saute
+         est un défaut visible. -->
     <color name="julaba_papier">#F6F0E4</color>
 </resources>
