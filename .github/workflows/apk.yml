@@ -114,10 +114,18 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
+      # github.sha est celui de main (le workflow est dispatche depuis main),
+      # PAS celui du code construit. Nommer l'APK avec lui ferait croire qu'on
+      # teste main. Sur un pilote, savoir quel code tourne sur le telephone
+      # n'est pas un detail : on prend le SHA reellement construit.
+      - name: Relever le SHA reellement construit
+        id: source
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Publier l APK
         uses: actions/upload-artifact@v4
         with:
-          name: julaba-apk-${{ github.sha }}
+          name: julaba-apk-${{ steps.source.outputs.sha }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
