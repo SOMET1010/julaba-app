@@ -1,38 +1,53 @@
-# Recette terrain groupée — une seule session, un seul téléphone
+# Recette terrain groupée — une seule séance
 
-**C'est la seule mobilisation physique de Patrick avant le GO.**
-Tous les scénarios sont ici, dans l'ordre. Ne pas les faire dans le
-désordre : plusieurs dépendent de l'état laissé par le précédent.
+**C'est la seule mobilisation physique de Patrick avant le GO pilote.**
+Compter **40 minutes**, un téléphone Android, un endroit où le réseau est
+mauvais (ou le mode avion).
 
-> Document vivant : il s'enrichit à chaque défaut corrigé pendant le lot A.
-> Tant que le lot A n'est pas clos, **ne pas exécuter** — attendre que le
-> statut dans `coordination/JULABA-STATUS.md` passe à
-> `TYPE_BESOIN: TEST_PHYSIQUE_ANDROID`.
+Les scénarios sont dans un ordre qui compte : plusieurs dépendent de l'état
+laissé par le précédent, et le premier ne vaut que s'il est fait **avant**
+tout autre geste.
 
-## Préalable (une fois)
+> **Ce document ne contient plus que ce qu'une base de données et un
+> navigateur ne peuvent pas prouver.** Tout le reste a été vérifié
+> automatiquement — voir « Ce qui est déjà prouvé » à la fin. Si un scénario
+> te paraît manquer, il est probablement là.
 
-- Un téléphone Android, un compte Jùlaba mémorisé, **biométrie désactivée**.
-- APK construit depuis la branche `claude/clever-allen-dnr8by` :
+---
+
+## Étape 0 — Construire et installer l'APK
 
 ```bash
 git fetch origin claude/clever-allen-dnr8by
 git checkout claude/clever-allen-dnr8by
 npm ci
+
 export VITE_API_URL=https://julaba-api.onrender.com/api/v1   # OBLIGATOIRE
 npm run build -w frontend_src
 npx cap sync android
 cd android && ./gradlew assembleDebug
 ```
 
-- Mode développeur armé **avant** de commencer : 5 tapes rapides sur le coin
-  haut-gauche de l'écran de connexion, puis **fermer complètement l'app**.
-  Ces tapes sont des gestes : elles fausseraient le scénario 1.
+`VITE_API_URL` doit être exportée **avant** le build. Sans elle, l'app
+n'atteint aucun backend — c'est un défaut déjà payé une fois (`1958d6a`), et
+il se voit immédiatement : « Réponse inattendue » à la connexion.
+
+**Préalable :** un compte marchande **mémorisé sur l'appareil** et dont la
+**biométrie est désactivée**. C'est le seul cas qui reproduit le scénario 1.
+
+**Armer le mode développeur maintenant, puis fermer l'app :** 5 tapes
+rapides sur le coin haut-gauche de l'écran de connexion. Le bouton
+« 🐞 Rapport de test » apparaît en bas. Fermer ensuite **complètement**
+l'app (la retirer des applications récentes).
+
+> Ces 5 tapes sont des gestes : elles débloqueraient l'audio et fausseraient
+> le scénario 1. Le réglage est mémorisé et survit à la fermeture.
 
 ---
 
 ## Scénario 1 — La voix sur l'écran du code secret
 
-*Corrigé dans `e54ef6c`. Durée : 2 min.*
+*2 min. **À faire en tout premier**, sans avoir touché l'écran avant.*
 
 1. Ouvrir l'app. Elle doit arriver **directement** sur « Ton code secret ».
 2. **Ne toucher à rien pendant 5 secondes.** Écouter.
@@ -40,131 +55,109 @@ cd android && ./gradlew assembleDebug
 3. Toucher l'écran **une fois**, n'importe où.
    → La consigne se fait-elle entendre maintenant ?  **OUI / NON**
 
-| Étape 2 | Étape 3 | Conclusion |
+| Étape 2 | Étape 3 | Ce que ça prouve |
 |---|---|---|
-| NON | **OUI** | **Attendu.** Le silence venait de l'autoplay, le filet le rattrape. |
-| **OUI** | — | L'audio n'était pas verrouillé : le diagnostic est à reprendre. |
-| NON | NON | Autre cause. Le rapport tranche (voir « Ce qu'il faut capturer »). |
+| NON | **OUI** | **Attendu.** Le silence venait du navigateur, le filet le rattrape. |
+| **OUI** | — | L'audio n'était pas bloqué sur cet appareil : le diagnostic est à reprendre. |
+| NON | NON | Autre cause — le rapport de test tranche (voir plus bas). |
 
 ---
 
-## Scénario 2 — Le fond de caisse déclaré après une vente
+## Scénario 2 — Tata parle-t-elle vraiment sur CET appareil ?
 
-*Corrigé dans `cee1daa`. Durée : **2 min** (réduite). **C'est un scénario
-argent** : noter les montants exacts, pas « ça a marché ».*
+*3 min. Aucune base ne peut répondre à ça.*
 
-> **La moitié serveur est déjà prouvée** (`88ed52d`) : sept invariants
-> tournent contre un vrai Postgres et vérifient que le montant saisi
-> remplace bien le 0, survit à une relecture, se journalise à la correction,
-> et qu'une réouverture n'y touche pas. **Ne reste à vérifier au téléphone
-> que ce qu'une base ne peut pas dire : ce que la marchande VOIT.**
+1. Se connecter. Sur l'accueil, toucher le bouton qui fait parler Tata.
+   → Entends-tu sa voix ?  **OUI / NON**
+2. Toucher le montant de la caisse (« MA CAISSE AUJOURD'HUI »).
+   → Annonce-t-elle le montant à voix haute ?  **OUI / NON**
+3. Descendre en bas, toucher **« 🐞 Rapport de test »**, partager le texte.
 
-Se connecter avec une journée **non encore ouverte** (si une journée est
-déjà ouverte, fermer la caisse d'abord).
+> Le rapport contient la liste des **voix françaises installées** sur le
+> téléphone. Si elle est vide, Tata ne peut pas parler — c'est une panne du
+> téléphone, pas de l'app, et ça change tout le reste.
 
-1. **Vendre AVANT d'ouvrir la journée.** Faire une vente de 1 000 F.
-   → L'app laisse-t-elle vendre sans bloquer ?  **OUI / NON**
-2. Revenir à l'accueil, toucher **« Ouvrir ma journée »**, saisir **5 000 F**.
-   → Quel montant la carte affiche-t-elle ?  **__________ F**
+---
+
+## Scénario 3 — Elle est appelée comme elle l'a demandé
+
+*4 min. Traverse deux systèmes : le back-office et le téléphone.*
+
+1. Back-office, fiche de cette marchande : remplir **« Comment veux-tu
+   qu'on t'appelle ? »** avec par exemple « Tantie Awa ». Enregistrer.
+2. Sur le téléphone, se déconnecter puis se reconnecter.
+   → L'accueil dit-il « Bonjour Tantie Awa » ?  **OUI / NON**
 3. **Fermer complètement l'app et la rouvrir.**
-   → Quel montant la carte affiche-t-elle maintenant ?  **__________ F**
+   → L'écran de **connexion** le dit-il aussi ?  **OUI / NON**
 
-> **C'est l'étape 3 qui compte**, et c'est le seul point que la base ne
-> pouvait pas prouver : que l'écran affiche bien ce que le serveur a retenu.
-> Les montants des étapes 2 et 3 doivent être **identiques et égaux à
-> 5 000**. Avant le correctif, l'étape 3 affichait **0 F**.
-
-4. Toucher **« Modifier le fond »**, saisir **3 500 F**. Fermer et rouvrir l'app.
-   → Montant affiché : **__________ F**  (attendu : 3 500)
-
-> Avant le correctif, « Modifier le fond » ne persistait rien : le montant
-> revenait à sa valeur précédente au rechargement.
+> L'étape 3 est celle qui compte : là, elle n'est pas encore authentifiée.
+> **Première fois après mise à jour :** seul le prénom peut s'afficher.
+> C'est normal — le choix est appris à l'entrée suivante. Un nom **absent**
+> n'est pas un défaut ; un nom **faux** en serait un.
 
 ---
 
-## Scénario 3 — Rouvrir une journée fermée
+## Scénario 4 — L'argent, avec de vrais doigts
 
-*Corrigé dans `cee1daa`. Durée : 2 min.*
+*8 min. La logique est prouvée ailleurs ; ici on vérifie que **le doigt
+attrape ce qu'il vise**. Noter les montants exacts, pas « ça a marché ».*
 
-1. Fermer la caisse normalement (comptage réel au choix).
-2. Regarder la carte du haut de l'accueil.
-   → Que dit-elle ?  **« Journée ouverte » / « Ouvre ta journée »**
+Partir d'une journée non ouverte (fermer la caisse d'abord si besoin).
 
-> **Attendu : « Ouvre ta journée ».** Avant le correctif elle annonçait
-> « Journée ouverte » avec un fond à l'appui, et le bouton d'ouverture
-> disparaissait — la marchande ne pouvait plus rouvrir sa journée.
+1. **Vendre avant d'ouvrir la journée** : « Vendre » → « Caisse complète »
+   → « + Autre article » → montant **1 500**, libellé « Tomates » →
+   « Ajouter » → « Encaisser » → « Compte juste » → « Payer en espèces ».
+   → La vente aboutit-elle ?  **OUI / NON**
+2. Accueil → toucher le montant de la caisse → **« Modifier le fond »**.
+   Composer **5 000 F** en touchant les billets.
+   → As-tu attrapé le billet visé du premier coup ?  **OUI / NON**
+   → Le total affiché est-il **5 000** ?  **__________**
+3. Toucher « Modifier ». Puis **fermer complètement l'app et la rouvrir**.
+   → La caisse affiche-t-elle **6 500 F** ?  **__________**
+4. Toucher le montant → **« Fermer la caisse »**. Saisir **6 000**.
+   → Écart annoncé : **__________**  (attendu : **− 500**)
+5. Confirmer la fermeture.
+   → La caisse affiche-t-elle toujours **6 500 F** ?  **__________**
 
-3. Toucher « Ouvrir ma journée », saisir un montant **différent** du fond du
-   matin.
-   → Le fond du jour a-t-il changé ?  **OUI / NON** (attendu : **NON**, et
-   Tata doit dire de passer par « Modifier le fond »)
-
----
-
-## Scénario 4 — Tata t'appelle comme tu l'as demandé
-
-*Corrigé dans `d8483db`. Durée : 3 min.*
-
-**Règle :** on emploie le **prénom seul**, sauf si la personne a rempli
-« Comment veux-tu qu'on t'appelle ? » dans sa fiche d'identification —
-c'est alors ce nom-là, tel quel.
-
-1. Dans le back-office, ouvrir la fiche d'un acteur et remplir le champ
-   **« Comment veux-tu qu'on t'appelle ? »** avec par exemple
-   « Tantie Awa ». Enregistrer.
-2. Sur le téléphone, se connecter avec ce compte, arriver sur l'accueil.
-   → L'écran dit-il « Bonjour Tantie Awa » ?  **OUI / NON**
-3. Toucher le bouton qui fait parler Tata.
-   → Dit-elle la même chose que ce qui est écrit ?  **OUI / NON**
-4. **Fermer complètement l'app et la rouvrir.**
-   → L'écran de connexion dit-il aussi « Bonjour Tantie Awa » ?
-   **OUI / NON**
-
-> **L'étape 4 est celle qui compte** : sur l'écran de connexion la personne
-> n'est pas encore authentifiée, son choix doit donc avoir été retenu sur
-> l'appareil à l'entrée précédente.
->
-> **Première connexion après mise à jour :** l'écran de connexion peut
-> n'afficher que le prénom. C'est **normal et voulu** — le choix n'est appris
-> qu'à l'entrée suivante. Un nom **absent** n'est pas un défaut ; un nom
-> **faux** en serait un.
-
-5. Avec un compte dont le champ est **vide** : l'écran doit dire
-   « Bonjour » + **le prénom seul**, sans aucun titre ajouté.
-   → **OUI / NON**
-
-> C'est le défaut réparé : un marchand était accueilli par « Bonjour Maman ».
+> L'étape 2 est la seule qui ne peut pas être testée sans doigt : les
+> rangées de billets ne défilent plus (`f5754ad`), mais c'est un vrai
+> pouce qui le confirme.
+> Les étapes 3, 4 et 5 sont des **montants** : s'ils diffèrent de ceux
+> attendus, c'est un incident — note-les tels quels.
 
 ---
 
-## Ce qui n'est plus à tester au téléphone
+## Scénario 5 — La dictée avec un vrai micro
 
-Au fil du lot A, une partie des vérifications initialement prévues ici est
-prouvée automatiquement contre un vrai Postgres (`./scripts/pg-test-local.sh
-start` puis `npm run test:invariants -w backend`). Elles sortent donc de
-cette feuille :
+*5 min. Impossible à simuler : aucune instance n'a de microphone.*
 
-- **« Rejoindre une coopérative »** — l'écran était mort depuis le 23 août
-  (500 sur des colonnes inexistantes). Corrigé et **déjà sur `main`** :
-  cinq invariants vérifient les endpoints en base réelle. Rien à faire.
-- **Le trajet du fond de caisse côté serveur** — voir scénario 2.
-- **Le responsive et le chevauchement du menu** — mesurés sur le bundle de
-  production à 390×844, sur les six écrans du parcours marchande
-  (`./scripts/mesure-ecrans.cjs`) : aucun débordement horizontal, et aucun
-  élément ne reste derrière la barre du menu une fois la page défilée.
-  Toutes les cibles tactiles sont à 44px, revérifiées par mesure.
-  Rien à faire au téléphone sur ce point.
-- **Les images sans réseau** — vérifié hébergeur d'images entièrement bloqué :
-  chaque produit reste reconnaissable (vignette dessinée dans la page).
-  À regarder quand même d'un œil au terrain : **manioc** et **gombo**
-  n'ont pas d'emoji dédié (pomme de terre et haricots en tiennent lieu).
-  Si une marchande hésite sur ces deux-là, dis-le-moi.
+1. « Mon stock » → ajouter un produit → toucher le **micro** et dire un
+   nom de produit (« tomate »).
+   → Le nom est-il repris correctement ?  **OUI / NON**
+2. Recommencer **dans le bruit** si possible (marché, radio).
+   → Toujours correct ?  **OUI / NON**
+3. Partager le **rapport de test** après coup : il contient ce que la
+   reconnaissance a réellement entendu.
 
-## Scénarios à venir
+---
 
-Ajoutés au fil du lot A. À ce jour : dictée « Dis le nom » du produit
-(livrée, jamais validée sur micro réel) ; parcours marchande complet en
-réseau faible et hors ligne.
+## Scénario 6 — Réseau faible, puis coupé
+
+*8 min. Le cœur de Jùlaba : au marché, le réseau va et vient.*
+
+1. **Mode avion activé.** Faire une vente complète (comme au scénario 4).
+   → L'app laisse-t-elle vendre ?  **OUI / NON**
+   → Que dit-elle sur l'état de la connexion ?  **__________**
+2. Toujours hors ligne : « Mon stock ».
+   → Les **images des produits** sont-elles visibles (tomate, igname…) ou
+     des cases vides ?  **VISIBLES / VIDES**
+3. **Désactiver le mode avion.** Attendre une minute.
+   → La vente faite hors ligne est-elle remontée dans « Mes ventes » ?
+     **OUI / NON**
+   → Le montant est-il **compté une seule fois** ?  **OUI / NON**
+
+> L'étape 3 est la plus importante de toute la séance. Une vente comptée
+> deux fois, ou perdue, est le défaut le plus grave possible.
 
 ---
 
@@ -172,11 +165,35 @@ réseau faible et hors ligne.
 
 Pour **chaque** scénario qui ne donne pas le résultat attendu :
 
-1. **Le rapport de diagnostic** : descendre en bas de l'écran de connexion,
-   toucher **« 🐞 Rapport de test »**, partager le texte.
+1. **Le rapport de diagnostic** — « 🐞 Rapport de test », partagé tel quel.
 2. **Les montants exacts** relevés, pas un résumé.
-3. **Une photo de l'écran** si ce qui cloche est visible.
+3. **Une photo de l'écran** si ce qui cloche se voit.
 4. **Ce que tu as fait juste avant** — l'ordre des gestes change tout dans
-   les scénarios 2 et 3.
+   les scénarios 1, 4 et 6.
 
 Coller le tout dans la conversation. Rien d'autre n'est attendu de Patrick.
+
+---
+
+## Ce qui est déjà prouvé — et n'est donc PAS dans cette feuille
+
+Vérifié automatiquement, contre un vrai Postgres et un vrai navigateur
+(`./scripts/pg-test-local.sh start`, `npm run test:invariants -w backend`,
+`scripts/mesure-ecrans.cjs`). Rien à refaire au téléphone :
+
+| Sujet | Comment c'est prouvé |
+|---|---|
+| Le fond déclaré arrive en base et survit au rechargement | invariants + navigateur, montants relevés |
+| La fermeture enregistre le comptage, la théorique et l'écart | invariants + navigateur (écart −500 vérifié) |
+| Le journal distingue déclaration et correction | tests unitaires + invariants |
+| Rouvrir une journée fermée ne touche pas au fond | invariant |
+| Une vente aboutit et la caisse suit | navigateur, du doigt jusqu'à la base |
+| « Rejoindre une coopérative » (500 depuis le 23 août) | 5 invariants en base réelle |
+| Aucune cible tactile sous 44 px, 3 rôles, 8 écrans | mesure sur le bundle de production |
+| Aucun débordement horizontal, aucun élément sous le menu | même mesure |
+| Les images de produits restent visibles sans réseau | vérifié hébergeur d'images bloqué |
+| Le nom d'adresse ne devine jamais un titre | 13 cas de test |
+
+Si un de ces points échoue quand même sur le terrain, c'est que la preuve
+automatique ne couvrait pas le vrai cas : dis-le, la preuve sera corrigée
+avant le code.
