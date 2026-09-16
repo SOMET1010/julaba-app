@@ -135,7 +135,7 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Signature"
-          "$outils/apksigner" verify --verbose "$apk"
+          "$outils/apksigner" verify --verbose --print-certs "$apk"
           echo "::endgroup::"
 
           echo "::group::Identite et niveaux d API"
