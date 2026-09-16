@@ -120,10 +120,30 @@ async function bootstrap() {
   // l'ordre interne des middlewares (helmet, body-parser…), le paquet `cors`
   // pouvait ne pas répondre correctement au préflight. On règle ça une bonne
   // fois : on répond NOUS-MÊMES, en TOUT PREMIER, avant helmet et le reste.
+  //
+  // L'APK EST UN CLIENT À PART ENTIÈRE, et son origine n'est pas une URL web.
+  // Dans une application Capacitor, la page n'est pas servie depuis un domaine
+  // mais par la WebView elle-même : l'origine vaut 'https://localhost' sur
+  // Android (androidScheme par défaut) et 'capacitor://localhost' sur iOS.
+  // Absentes de cette liste, la requête préparatoire (OPTIONS) revenait sans
+  // 'Access-Control-Allow-Origin' et le navigateur bloquait TOUT POST parti de
+  // l'APK — connexion, vérification de numéro, vente, fermeture de caisse.
+  // Rien ne fonctionnait, et le symptôme était trompeur : `fetch` lève une
+  // TypeError que l'écran de connexion affichait en « Réveil du serveur… ».
+  //
+  // PROUVÉ le 16/09/2026 sur le serveur de production, avant correction :
+  //   OPTIONS /api/v1/auth/check-phone, Origin: https://localhost
+  //   → 204, AUCUN en-tête Access-Control-Allow-Origin.
+  //
+  // Ces deux origines ne désignent pas « n'importe quel localhost du web » :
+  // elles ne peuvent être émises que par la WebView de l'application installée
+  // sur l'appareil. Une page web ordinaire ne peut pas les usurper.
+  const ORIGINES_APPLI_MOBILE = ['https://localhost', 'capacitor://localhost'];
   const allowedOrigins = [
     process.env.CORS_ORIGIN,
     'https://julaba-web.onrender.com',
     'https://julaba.online',
+    ...ORIGINES_APPLI_MOBILE,
   ].filter((o): o is string => Boolean(o));
   app.use((req: any, res: any, next: any) => {
     const origin = req.headers.origin;
