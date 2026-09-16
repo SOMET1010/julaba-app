@@ -102,8 +102,26 @@ l'octet. Compter le temps de téléchargement la première fois.
 build le détecte et continue (seules les notifications push sont inactives).
 Ce n'est pas une erreur à corriger avant la séance.
 
-**Préalable :** un compte marchande **mémorisé sur l'appareil** et dont la
-**biométrie est désactivée**. C'est le seul cas qui reproduit le scénario 1.
+**Premier lancement : chronométrer.** Sur une installation neuve, le premier
+démarrage peut afficher un **écran noir** le temps qu'Android déploie un APK
+de 190 Mo (dont un fichier de 70 Mo) et que le service worker mette en cache
+182 morceaux de code et 137 clips vocaux. Observé le 16/09/2026, cause non
+établie. Noter **combien de secondes** l'écran reste noir au premier
+lancement, puis **relancer l'app** et noter le délai la deuxième fois.
+Si le noir revient au deuxième lancement, ce n'est pas un déploiement lent :
+c'est un défaut, et il est bloquant — une marchande qui ne lit pas conclut
+que l'application est cassée.
+
+**Préalable, à faire AVANT le scénario 1 :** un compte marchande **mémorisé
+sur l'appareil** et dont la **biométrie est désactivée**. C'est le seul cas
+qui reproduit le scénario 1.
+
+> Une installation neuve part **sans** compte mémorisé : l'app ouvre
+> « Bienvenue — Je suis Tata Nanti Lou », pas l'écran du code. Il faut donc
+> **se connecter une fois**, laisser l'app mémoriser le compte, puis fermer
+> complètement l'app. Sans ça le scénario 1 est ininterprétable. Attention :
+> cette connexion est un geste — elle débloque l'audio, d'où la fermeture
+> complète de l'app juste après.
 
 **Armer le mode développeur maintenant, puis fermer l'app :** 5 tapes
 rapides sur le coin haut-gauche de l'écran de connexion. Le bouton
