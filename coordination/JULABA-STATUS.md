@@ -17,7 +17,7 @@ ACTION_PATRICK: 1) ENVOYER LE « 🐞 Rapport de test », ligne VOICES. C'est la
   clips manquants (docs/CLIPS-VOIX-A-ENREGISTRER.md, 21 fichiers).
   3) trancher le GO sur l'écran de démarrage Android 12+ (écran noir mesuré
   à ~1 minute au premier lancement). 4) trancher la clé de signature.
-DERNIER_SHA_MAIN: 493dfe2 (état de main AVANT ce commit de statut —
+DERNIER_SHA_MAIN: 6b5c71b (état de main AVANT ce commit de statut —
   ce champ ne peut pas désigner son propre commit)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2b43d05) — 28 commits
   d'avance, 16 de retard sur main 5869e97 (le retard n'est que de la doc et
@@ -30,13 +30,28 @@ LIGNE_D_ARRIVEE (décision Patrick, 16/09/2026) : on arrête toute
   coupure. Vocabulaire imposé : on ne parle plus de « ce qu'il reste à
   améliorer » mais de « ce qui bloque encore le pilote ».
   1) corriger les 3 défauts graves identifiés — FAIT (branche 5e1f17c)
-  2) recette complète SUR LA BRANCHE, pas sur main
+  2) recette complète SUR LA BRANCHE — FAITE au navigateur par JULABA
+     historique (fond de caisse prouvé serveur + base + après reconnexion,
+     comptage vide, sortie « Mon argent », appellation). La recette par un
+     agent web est ABANDONNÉE : elle exigeait une preview Render, donc de
+     toucher au Blueprint, donc un chantier infra que Patrick refuse à ce
+     stade (16/09). Draft PR #240 laissée ouverte comme support, NE PAS
+     MERGER.
   3) session Android réelle
   4) corriger uniquement ce que cette session révèle comme BLOQUANT
   5) merge final
   6) pilote
   Tout le reste — emojis, raffinements de voix, illustrations, écrans
   secondaires, optimisations, confort — va au backlog post-pilote.
+BACKLOG_POST_PILOTE (à ne PAS mélanger avec la sortie pilote) :
+  - nettoyer render.yaml : le montage Piper y subsiste alors que la doctrine
+    est sherpa-onnx (setup-piper.sh n'existe même pas, PIPER_BIN/PIPER_VOICE
+    ne peuvent pas être satisfaites).
+  - clé de signature stable pour l'APK : chaque construction signe
+    différemment, donc toute mise à jour exige une désinstallation et efface
+    les données de la marchande. BLOQUANT avant distribution, pas avant test.
+  - la base Render est en `plan: free` : elle expire vers 90 jours. À trancher
+    avant que des données de marchandes y vivent pour de bon.
 VERDICT_PATRICK: LOT A techniquement clos · GO TEST TERRAIN · PAS de GO
   MERGE global. Branche gelée sur 5d48614 au 16/09 ; seuls des correctifs
   remontés par la recette s'y ajoutent depuis.
@@ -72,6 +87,16 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — Patrick refuse de toucher au Blueprint Render pour obtenir
+  une preview de la branche : ce serait rouvrir un chantier infra alors que la
+  règle du jour est de n'en ouvrir aucun. La recette agent sur la branche est
+  donc abandonnée, et on passe à la session Android — seule capable de
+  trancher la vente vocale et la fermeture, que le navigateur laisse NON
+  TESTÉES (non testé n'est pas échoué). Correction au passage : j'avais dit le
+  backend sur un plan payant pour justifier un risque de coût ; il est en
+  `plan: free`. L'argument ne tenait pas, la décision reste juste pour la
+  raison qu'il donne.
 
 - **16/09/2026** — Parcours argent éprouvé AU NAVIGATEUR SUR LA BRANCHE, avec
   la base sous les yeux. Le fond déclaré à 5 000 F part bien au serveur
