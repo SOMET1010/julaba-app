@@ -1,0 +1,120 @@
+name: APK pilote — construction à la demande
+
+# CONSTRUCTION D'APK, À LA DEMANDE UNIQUEMENT.
+#
+# Existe pour une raison précise : la recette terrain doit se dérouler sur un
+# APK issu de la BRANCHE en attente (docs/RECETTE-TERRAIN-GROUPEE.md), et
+# personne ne devrait avoir à installer le SDK Android pour l'obtenir.
+#
+# Ce workflow ne touche PAS au filet d'intégration (ci.yml) : il ne se
+# déclenche sur aucun push ni aucune PR, seulement à la main. Il ne déploie
+# rien, ne publie rien, n'écrit pas dans le dépôt.
+#
+# L'APK produit est un APK de DEBUG, signé avec la clé de debug : installable
+# à la main sur un téléphone (« sources inconnues »), pas publiable sur un
+# store. C'est exactement le périmètre du pilote (décision Patrick, 15/09/2026).
+
+on:
+  workflow_dispatch:
+    inputs:
+      branche:
+        description: 'Branche à construire'
+        required: true
+        default: 'claude/clever-allen-dnr8by'
+      api_url:
+        description: 'VITE_API_URL — sans elle, l app n atteint aucun backend'
+        required: true
+        default: 'https://julaba-api.onrender.com/api/v1'
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: Construire l APK de debug
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout de la branche demandée
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.branche }}
+
+      - name: Setup Node.js 22 (LTS)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      # Le plugin Android Gradle 8.13 exige un JDK 17 ou plus.
+      - name: Setup JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      # compileSdk/targetSdk = 36 (android/variables.gradle). On installe la
+      # plateforme explicitement plutôt que de parier sur l'image du runner.
+      - name: Installer la plateforme Android 36
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Install (workspaces, racine)
+        run: npm ci
+
+      # VITE_API_URL est lue AU BUILD, pas à l'exécution. Omise, le bundle
+      # appelle sa propre origine, le serveur renvoie l'index.html en repli et
+      # la connexion échoue sur « Réponse inattendue » — défaut déjà payé une
+      # fois (1958d6a). D'où la vérification explicite plus bas.
+      - name: Construire le front
+        env:
+          VITE_API_URL: ${{ inputs.api_url }}
+        run: npm run build -w frontend_src
+
+      - name: Copier le front dans le projet Android
+        run: npx cap sync android
+
+      - name: Vérifier que l URL de l API est bien dans le bundle copié
+        env:
+          API_URL: ${{ inputs.api_url }}
+        run: |
+          cible="android/app/src/main/assets/public/assets"
+          if ! grep -rqF "$API_URL" "$cible"; then
+            echo "::error::L URL de l API est absente du bundle copié dans le projet Android."
+            echo "L APK ne joindrait aucun backend. Construction interrompue."
+            exit 1
+          fi
+          echo "✓ URL de l API présente dans le bundle copié."
+
+      # L'AAR sherpa-onnx et le modèle vocal FR (~71 Mo) sont hors dépôt : le
+      # script est leur source unique. Le cache évite de les retélécharger à
+      # chaque construction ; il est invalidé si le script change (versions,
+      # URLs et tailles attendues y sont écrites).
+      - name: Cache de la voix hors-ligne (AAR + modèle FR)
+        uses: actions/cache@v4
+        with:
+          path: |
+            android/app/libs
+            android/app/src/main/assets/sherpa-kroko-fr
+          key: voix-hors-ligne-${{ hashFiles('android/scripts/installer-voix.sh') }}
+
+      - name: Poser la voix hors-ligne
+        working-directory: android
+        run: ./scripts/installer-voix.sh
+
+      - name: Construire l APK de debug
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Publier l APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: julaba-apk-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
