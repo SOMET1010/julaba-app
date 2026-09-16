@@ -17,13 +17,26 @@ ACTION_PATRICK: 1) ENVOYER LE « 🐞 Rapport de test », ligne VOICES. C'est la
   clips manquants (docs/CLIPS-VOIX-A-ENREGISTRER.md, 21 fichiers).
   3) trancher le GO sur l'écran de démarrage Android 12+ (écran noir mesuré
   à ~1 minute au premier lancement). 4) trancher la clé de signature.
-DERNIER_SHA_MAIN: 069c81e (état de main AVANT ce commit de statut —
+DERNIER_SHA_MAIN: 38fba3e (état de main AVANT ce commit de statut —
   ce champ ne peut pas désigner son propre commit)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2b43d05) — 28 commits
   d'avance, 16 de retard sur main 5869e97 (le retard n'est que de la doc et
   de l'outillage ; `git rev-list --left-right --count
   origin/main...origin/<branche>` fait foi). NON mergés : authentification et
   caisse sont des modules sacrés, preuve réelle exigée (principe 3).
+LIGNE_D_ARRIVEE (décision Patrick, 16/09/2026) : on arrête toute
+  amélioration qui n'est pas nécessaire au pilote. On ne traite QUE ce qui
+  empêche une marchande de vendre, compter, comprendre, ou récupérer après une
+  coupure. Vocabulaire imposé : on ne parle plus de « ce qu'il reste à
+  améliorer » mais de « ce qui bloque encore le pilote ».
+  1) corriger les 3 défauts graves identifiés — FAIT (branche 5e1f17c)
+  2) recette complète SUR LA BRANCHE, pas sur main
+  3) session Android réelle
+  4) corriger uniquement ce que cette session révèle comme BLOQUANT
+  5) merge final
+  6) pilote
+  Tout le reste — emojis, raffinements de voix, illustrations, écrans
+  secondaires, optimisations, confort — va au backlog post-pilote.
 VERDICT_PATRICK: LOT A techniquement clos · GO TEST TERRAIN · PAS de GO
   MERGE global. Branche gelée sur 5d48614 au 16/09 ; seuls des correctifs
   remontés par la recette s'y ajoutent depuis.
@@ -59,6 +72,18 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — Recette navigateur par un agent, sur `main` (confirmé par un
+  test discriminant : le haut-parleur du numéro n'apparaît qu'au 10e chiffre,
+  et « Bonjour Maman Patrick » y subsiste). Son rapport décrit donc
+  l'application d'AVANT les 30 commits : six de ses « défauts graves » sont
+  déjà corrigés sur la branche. Mais il en a trouvé trois que personne n'avait
+  vus, corrigés dans la foulée et vérifiés au navigateur — le comptage de
+  fermeture pré-rempli avec la caisse théorique (un faux zéro d'écart, la
+  fermeture ne pouvait plus rien révéler), le bouton d'encaissement passé sous
+  le bord de l'écran (la vente ne pouvait pas se conclure), et « Mon argent »
+  sans aucune sortie. Verdict TTS : vits-mms-fra jugé acceptable à l'écoute.
+  Ligne d'arrivée fixée par Patrick : plus rien qui ne bloque le pilote.
 
 - **16/09/2026** — Découverte qui dépasse l'écran : **la voix de synthèse est
   muette dans l'APK**. Tata ne s'entend que là où un clip a été enregistré.
