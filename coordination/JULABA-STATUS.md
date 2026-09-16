@@ -17,7 +17,8 @@ ACTION_PATRICK: l'APK n'est plus un obstacle — onglet Actions du dépôt,
   Android réel (6 scénarios, ~40 min, dans l'ordre écrit — la voix se teste
   avant tout geste, sinon le scénario 1 est faussé). Noter les montants
   exacts et le résultat de chaque scénario ; en cas d'échec, capture + heure.
-DERNIER_SHA_MAIN: 7fcc09f
+DERNIER_SHA_MAIN: fc4261b (état de main AVANT ce commit de statut —
+  ce champ ne peut pas désigner son propre commit)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (5d48614) — 26 commits
   d'avance et 0 de retard sur main 6d24259 (compte donné avec son SHA de
   référence : il change dès qu'un commit tombe d'un côté ou de l'autre,
