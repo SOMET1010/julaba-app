@@ -25,7 +25,10 @@ npm ci
 export VITE_API_URL=https://julaba-api.onrender.com/api/v1   # OBLIGATOIRE
 npm run build -w frontend_src
 npx cap sync android
-cd android && ./gradlew assembleDebug
+
+cd android
+./scripts/installer-voix.sh      # OBLIGATOIRE, sinon le build echoue
+./gradlew assembleDebug
 ```
 
 `VITE_API_URL` doit être exportée **avant** le build. Sans elle, l'app
@@ -49,8 +52,16 @@ Ce que ta machine doit donc avoir pour la dernière commande :
 | `ANDROID_HOME` ou `android/local.properties` | doit pointer sur le SDK, sinon Gradle s'arrête aussitôt |
 | Réseau | le premier `assembleDebug` télécharge Gradle 8.14.3 et ses plugins |
 
-`google-services.json` est absent du dépôt **volontairement** : le build le
-détecte et continue sans lui (seules les notifications push sont inactives).
+`./scripts/installer-voix.sh` n'est **pas** optionnel. L'AAR sherpa-onnx et
+le modèle vocal français (~71 Mo) sont volontairement hors du dépôt ; ce
+script est leur source unique. Sans lui, `assembleDebug` s'arrête sur
+`unresolved com.k2fsa.sherpa.onnx` — c'est voulu et documenté dans
+`android/app/build.gradle`, mais ça ne se devine pas à froid. Le script est
+idempotent (il ne retélécharge que ce qui manque) et vérifie les tailles à
+l'octet. Compter le temps de téléchargement la première fois.
+
+`google-services.json`, lui, est absent du dépôt **sans conséquence** : le
+build le détecte et continue (seules les notifications push sont inactives).
 Ce n'est pas une erreur à corriger avant la séance.
 
 **Préalable :** un compte marchande **mémorisé sur l'appareil** et dont la
