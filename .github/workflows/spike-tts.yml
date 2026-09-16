@@ -1,0 +1,159 @@
+name: Spike TTS — vits-mms-fra via sherpa-onnx
+
+# SPIKE. Ce workflow NE DÉCIDE RIEN et ne change RIEN au produit.
+#
+# Question à laquelle il répond, et une seule : la synthèse française
+# vits-mms-fra, jouée par sherpa-onnx — le moteur DÉJÀ embarqué dans l'APK pour
+# l'écoute — est-elle acceptable pour dire de l'argent à une marchande ?
+#
+# Contexte : la chaîne de synthèse du produit est hors service sur l'appareil
+# (voir docs/REGLE-VOICE-FIRST.md). Les 137 clips enregistrés couvrent les
+# phrases FIXES ; ils ne peuvent pas couvrir un MONTANT, qui est variable.
+# C'est ce verrou-là qu'on instruit ici.
+#
+# Ce workflow : ne commite aucun modèle, ne touche pas au projet Android, ne
+# modifie aucun écran. Il télécharge, synthétise, mesure, publie. Le verdict
+# d'écoute appartient à Patrick ; la décision de déploiement aussi.
+
+on:
+  workflow_dispatch:
+    inputs:
+      modele:
+        description: 'Modèle TTS sherpa-onnx à éprouver'
+        required: true
+        default: 'vits-mms-fra'
+
+permissions:
+  contents: read
+
+jobs:
+  spike:
+    name: Synthétiser, mesurer, publier
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installer sherpa-onnx (Python)
+        run: |
+          python -m pip install --upgrade pip
+          pip install sherpa-onnx
+          python -c "import sherpa_onnx; print('sherpa-onnx', sherpa_onnx.__version__ if hasattr(sherpa_onnx,'__version__') else '(version non exposée)')"
+
+      # Les modèles TTS sont publiés sous le tag `tts-models` du dépôt k2-fsa.
+      # Même hébergeur que l'AAR déjà utilisé par android/scripts/installer-voix.sh,
+      # donc un chemin réseau déjà éprouvé depuis un runner.
+      - name: Télécharger le modèle
+        env:
+          MODELE: ${{ inputs.modele }}
+        run: |
+          set -euo pipefail
+          url="https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/${MODELE}.tar.bz2"
+          echo "Téléchargement : $url"
+          curl -fL --retry 3 -o modele.tar.bz2 "$url"
+          tar xjf modele.tar.bz2
+          echo "--- contenu ---"
+          ls -lR "${MODELE}" | head -30
+
+      - name: Synthétiser les phrases qui nous bloquent, et mesurer
+        env:
+          MODELE: ${{ inputs.modele }}
+        run: |
+          mkdir -p sortie
+          python - <<'PY'
+          import os, time, wave, json, pathlib
+          import sherpa_onnx
+
+          modele = os.environ['MODELE']
+          racine = pathlib.Path(modele)
+          onnx = racine / 'model.onnx'
+          tokens = racine / 'tokens.txt'
+          taille_octets = onnx.stat().st_size
+          poids_total = sum(f.stat().st_size for f in racine.rglob('*') if f.is_file())
+
+          config = sherpa_onnx.OfflineTtsConfig(
+              model=sherpa_onnx.OfflineTtsModelConfig(
+                  vits=sherpa_onnx.OfflineTtsVitsModelConfig(
+                      model=str(onnx),
+                      tokens=str(tokens),
+                  ),
+                  num_threads=2,
+                  provider='cpu',
+              ),
+              max_num_sentences=1,
+          )
+          tts = sherpa_onnx.OfflineTts(config)
+
+          # Exactement les phrases qu'aucun clip ne peut couvrir : elles
+          # contiennent un montant, donc une valeur variable.
+          phrases = [
+              ("01-vente",   "Aujourd'hui tu as vendu pour mille cinq cents francs."),
+              ("02-caisse",  "Ta caisse devrait avoir six mille cinq cents francs."),
+              ("03-ecart",   "Il te manque cinq cents francs."),
+              ("04-numero",  "Zéro sept zéro neuf sept cinq trois deux trois deux."),
+              # Témoin : cette phrase-là EXISTE en clip enregistré (ui-035), elle
+              # permet de comparer la synthèse à la vraie voix de Tata.
+              ("05-temoin",  "Entre ton code secret à quatre chiffres."),
+          ]
+
+          lignes = []
+          for nom, texte in phrases:
+              t0 = time.perf_counter()
+              audio = tts.generate(texte, sid=0, speed=1.0)
+              duree_generation = time.perf_counter() - t0
+              chemin = f"sortie/{nom}.wav"
+              sherpa_onnx.write_wave(chemin, audio.samples, audio.sample_rate)
+              with wave.open(chemin) as w:
+                  duree_audio = w.getnframes() / w.getframerate()
+              lignes.append({
+                  'fichier': f"{nom}.wav",
+                  'texte': texte,
+                  'generation_s': round(duree_generation, 3),
+                  'audio_s': round(duree_audio, 2),
+                  'facteur_temps_reel': round(duree_generation / duree_audio, 2) if duree_audio else None,
+              })
+              print(f"{nom}: généré en {duree_generation:.3f}s pour {duree_audio:.2f}s d'audio")
+
+          mesures = {
+              'modele': modele,
+              'model_onnx_octets': taille_octets,
+              'model_onnx_Mo': round(taille_octets / 1024 / 1024, 1),
+              'dossier_complet_Mo': round(poids_total / 1024 / 1024, 1),
+              'phrases': lignes,
+          }
+          pathlib.Path('sortie/mesures.json').write_text(json.dumps(mesures, ensure_ascii=False, indent=2), encoding='utf-8')
+
+          # Tableau lisible, publié dans le résumé du run ET dans l'artefact.
+          t = []
+          t.append(f"## Spike TTS — `{modele}` via sherpa-onnx\n")
+          t.append(f"**Poids du modèle** : `model.onnx` {mesures['model_onnx_Mo']} Mo · dossier complet {mesures['dossier_complet_Mo']} Mo\n")
+          t.append("| Fichier | Phrase | Génération | Audio | Facteur temps réel |")
+          t.append("|---|---|---|---|---|")
+          for l in lignes:
+              t.append(f"| `{l['fichier']}` | {l['texte']} | {l['generation_s']} s | {l['audio_s']} s | ×{l['facteur_temps_reel']} |")
+          t.append("\n> Facteur temps réel < 1 = la synthèse est plus rapide que la lecture.")
+          t.append("> Mesuré sur un runner GitHub, PAS sur un téléphone : un appareil d'entrée")
+          t.append("> de gamme sera sensiblement plus lent. Ce chiffre donne un ordre de")
+          t.append("> grandeur, pas une promesse.")
+          t.append("\n> `05-temoin` existe aussi en clip enregistré (`ui-035.mp3`) : à écouter")
+          t.append("> l'un après l'autre pour juger l'écart entre la vraie Tata et la synthèse.")
+          texte_tableau = "\n".join(t)
+          pathlib.Path('sortie/MESURES.md').write_text(texte_tableau, encoding='utf-8')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as f:
+              f.write(texte_tableau + "\n")
+          PY
+
+      - name: Publier les fichiers à écouter
+        uses: actions/upload-artifact@v4
+        with:
+          name: spike-tts-${{ inputs.modele }}
+          path: sortie/
+          if-no-files-found: error
+          retention-days: 14
