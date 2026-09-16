@@ -17,7 +17,7 @@ ACTION_PATRICK: l'APK n'est plus un obstacle — onglet Actions du dépôt,
   Android réel (6 scénarios, ~40 min, dans l'ordre écrit — la voix se teste
   avant tout geste, sinon le scénario 1 est faussé). Noter les montants
   exacts et le résultat de chaque scénario ; en cas d'échec, capture + heure.
-DERNIER_SHA_MAIN: fc4261b (état de main AVANT ce commit de statut —
+DERNIER_SHA_MAIN: f6a6f4f (état de main AVANT ce commit de statut —
   ce champ ne peut pas désigner son propre commit)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (5d48614) — 26 commits
   d'avance et 0 de retard sur main 6d24259 (compte donné avec son SHA de
@@ -27,7 +27,15 @@ BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (5d48614) — 26 commits
   la Constitution exige une preuve réelle avant merge (principe 3).
 VERDICT_PATRICK: LOT A techniquement clos · GO TEST TERRAIN · PAS de GO
   MERGE global. Après la session : corriger uniquement les écarts
-  réellement observés, revue finale, puis merge unique.
+  réellement observés, revue finale, puis merge unique. Branche gelée sur
+  5d48614 : pas de report de main avant le merge final (décision Patrick,
+  16/09/2026), pour ne pas fabriquer de commits de synchronisation.
+ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK. Chaque runner
+  GitHub signe avec une clé de debug différente, donc deux APK successifs ne
+  peuvent pas se remplacer sans désinstallation — donc sans effacer les
+  données de la marchande. Deux options soumises : clé de debug fixe
+  versionnée, ou clé de release en secret GitHub. Non bloquant tant qu'un
+  seul téléphone de test est en jeu ; bloquant avant toute distribution.
 PROCHAINE_ACTION: rien à coder côté JULABA historique tant que la session
   terrain n'a pas eu lieu. Point bloquant principal de la recette : vente
   hors ligne puis reconnexion = une seule vente comptée. Au retour de
@@ -52,6 +60,15 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — Défaut trouvé avant qu'il ne coûte cher : l'APK refusait de
+  s'installer, message Samsung sans information. L'APK n'était pas en cause
+  (taille à l'octet, archive intègre, `apksigner` : Verifies). La cause est
+  qu'une JULABA signée d'une autre clé était déjà installée. En creusant :
+  **chaque runner GitHub génère sa propre clé de debug** — deux runs du même
+  code, deux certificats (`77d8a3a8…` puis `a36159b1…`). Donc chaque mise à
+  jour d'APK exigerait une désinstallation, et effacerait les ventes hors
+  ligne d'une marchande. Arbitrage soumis à Patrick, non tranché.
 
 - **16/09/2026** — L'APK ne dépend plus du poste de Patrick : workflow
   `apk.yml` (déclenchement manuel seul, le filet d'intégration n'est pas
