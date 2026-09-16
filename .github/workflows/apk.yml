@@ -114,6 +114,34 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
+      # Un APK qui se construit n'est pas un APK qui s'installe. Le telephone
+      # ne dit que « probleme avec le fichier de l'application » : cette etape
+      # produit ici les elements qui distinguent un APK mal forme d'un
+      # telechargement abime chez celui qui l'installe.
+      - name: Verifier l APK produit (signature, integrite, empreinte)
+        working-directory: android
+        run: |
+          apk=app/build/outputs/apk/debug/app-debug.apk
+          outils=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+
+          echo "::group::Taille et empreinte (a comparer avec le fichier telecharge)"
+          ls -l "$apk"
+          echo "octets : $(stat -c%s "$apk")"
+          sha256sum "$apk"
+          echo "::endgroup::"
+
+          echo "::group::Archive lisible de bout en bout"
+          unzip -t "$apk" > /dev/null && echo "✓ archive integre"
+          echo "::endgroup::"
+
+          echo "::group::Signature"
+          "$outils/apksigner" verify --verbose "$apk"
+          echo "::endgroup::"
+
+          echo "::group::Identite et niveaux d API"
+          "$outils/aapt2" dump badging "$apk" | grep -E "^package|sdkVersion|targetSdkVersion|native-code"
+          echo "::endgroup::"
+
       # github.sha est celui de main (le workflow est dispatche depuis main),
       # PAS celui du code construit. Nommer l'APK avec lui ferait croire qu'on
       # teste main. Sur un pilote, savoir quel code tourne sur le telephone
