@@ -17,7 +17,7 @@ ACTION_PATRICK: 1) ENVOYER LE « 🐞 Rapport de test », ligne VOICES. C'est la
   clips manquants (docs/CLIPS-VOIX-A-ENREGISTRER.md, 21 fichiers).
   3) trancher le GO sur l'écran de démarrage Android 12+ (écran noir mesuré
   à ~1 minute au premier lancement). 4) trancher la clé de signature.
-DERNIER_SHA_MAIN: 38fba3e (état de main AVANT ce commit de statut —
+DERNIER_SHA_MAIN: 493dfe2 (état de main AVANT ce commit de statut —
   ce champ ne peut pas désigner son propre commit)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2b43d05) — 28 commits
   d'avance, 16 de retard sur main 5869e97 (le retard n'est que de la doc et
@@ -72,6 +72,21 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — Parcours argent éprouvé AU NAVIGATEUR SUR LA BRANCHE, avec
+  la base sous les yeux. Le fond déclaré à 5 000 F part bien au serveur
+  (`200 PATCH /caisse/session/fond`), se retrouve en base
+  (`fond_initial=5000`, `fond_declare_at` posé), est journalisé comme
+  « declaration » — règle de Patrick respectée — et **survit à un rechargement
+  complet avec reconnexion**. C'est le défaut que l'agent classait le plus
+  grave sur `main` : prouvé corrigé ici. Vérifiés aussi à l'écran : le champ de
+  comptage part vide sans écart affiché, la sortie de « Mon argent » mesure
+  44×44, et l'accueil dit « Bonjour Recette » — prénom seul.
+  NON vérifié : la vente et l'écart de fermeture — « Vendre » ouvre le panneau
+  vocal, impossible à piloter sans voix depuis un navigateur.
+  Piège rencontré, à retenir : un `backend/dist` périmé renvoyait 404 sur la
+  route du fond et imitait EXACTEMENT le défaut corrigé. Toujours reconstruire
+  le backend avant de conclure quoi que ce soit en local.
 
 - **16/09/2026** — Recette navigateur par un agent, sur `main` (confirmé par un
   test discriminant : le haut-parleur du numéro n'apparaît qu'au 10e chiffre,
