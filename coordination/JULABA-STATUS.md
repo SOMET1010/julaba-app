@@ -10,14 +10,18 @@ STATUT: EN_COURS
 TACHE: correctifs remontés par la recette en cours, sur appareil réel
 BESOIN_PATRICK: OUI
 TYPE_BESOIN: TEST_PHYSIQUE_ANDROID
-ACTION_PATRICK: 1) ENVOYER LE « 🐞 Rapport de test », ligne VOICES. C'est la
-  vérification la plus importante : elle décide si la voix de synthèse est
-  récupérable sur Android ou si chaque phrase parlée devient un livrable
-  studio. Décision d'architecture, pas réglage d'écran. 2) enregistrer les
-  clips manquants (docs/CLIPS-VOIX-A-ENREGISTRER.md, 21 fichiers).
-  3) trancher le GO sur l'écran de démarrage Android 12+ (écran noir mesuré
-  à ~1 minute au premier lancement). 4) trancher la clé de signature.
-DERNIER_SHA_MAIN: e6e2dd4 (état de main AVANT ce commit de statut —
+ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. Séance du 16/09
+  au soir : julaba-apk-7e5779c « ne parle pas ». Une question reste sans
+  réponse et elle départage tout : sur l'écran « Ton code secret », Tata
+  dit-elle sa phrase ? C'est la SEULE du parcours qui ait un clip enregistré
+  (ui-035). Si oui → rien n'a régressé, le silence ailleurs est celui qu'on a
+  diagnostiqué (pas de clip + synthèse muette dans la WebView). Si non → c'est
+  une régression, à traiter avant tout le reste.
+  Ensuite, arbitrage : (a) embarquer OfflineTts de sherpa-onnx avec
+  vits-mms-fra — jugé acceptable à l'écoute le 16/09, +103 Mo dans l'APK, seule
+  voie qui permette de DIRE UN MONTANT ; ou (b) s'en tenir aux clips
+  enregistrés, auquel cas Tata ne dira jamais un chiffre.
+DERNIER_SHA_MAIN: 3127f67 (état de main AVANT ce commit de statut —
   ce champ ne peut pas désigner son propre commit)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2b43d05) — 28 commits
   d'avance, 16 de retard sur main 5869e97 (le retard n'est que de la doc et
@@ -103,6 +107,20 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026, soir** — Correctif de l'écran noir livré : deux causes, pas
+  une. La fenêtre elle-même n'avait aucun fond déclaré sous un parent DayNight
+  — Android la peignait donc en NOIR pendant tout le chargement de la WebView,
+  et c'était la cause principale, ratée le matin. L'écran de démarrage Android
+  12+ n'était pas configuré non plus. Les deux réparés, couleur reprise à
+  l'identique du papier de l'app. Une construction a échoué au passage sur un
+  commentaire XML de ma main contenant deux tirets — corrigé.
+  Cinq sentinelles Maestro écrites (jamais exécutées, c'est écrit dans leur
+  README) : elles ne cherchent pas des défauts, elles répondent à « est-ce
+  bien la bonne version ? », question qui a coûté trois erreurs dans la
+  journée. Vérifié ce soir et écarté : les 137 clips sont bien embarqués dans
+  l'APK (137 dans le build, 137 dans les assets Android). Le silence ne vient
+  donc pas de l'emballage.
 
 - **16/09/2026** — Patrick refuse de toucher au Blueprint Render pour obtenir
   une preview de la branche : ce serait rouvrir un chantier infra alors que la
