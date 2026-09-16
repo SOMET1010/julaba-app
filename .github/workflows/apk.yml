@@ -48,12 +48,15 @@ jobs:
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      # Le plugin Android Gradle 8.13 exige un JDK 17 ou plus.
-      - name: Setup JDK 17 (Temurin)
+      # JDK 21 : ce n'est pas le plugin Android Gradle qui l'impose (8.13 se
+      # contente de 17) mais la bibliotheque capacitor-android 8, compilee en
+      # source release 21. Avec un JDK 17, la construction s'arrete sur
+      # « invalid source release: 21 » (prouve, run 35082675776).
+      - name: Setup JDK 21 (Temurin)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
           cache: 'gradle'
 
       # compileSdk/targetSdk = 36 (android/variables.gradle). On installe la
