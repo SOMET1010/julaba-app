@@ -1,0 +1,26 @@
+# SENTINELLE 4 — une vente simple va jusqu'au bout.
+#
+# Le défaut qu'elle attrape : au 16/09/2026, dès qu'un montant reçu était
+# saisi, le bouton « Payer en espèces » passait SOUS le bord de l'écran, sur
+# une feuille qui ne défilait pas. Mesuré 718→776 px dans une fenêtre de 745.
+# La vente ne pouvait littéralement pas se conclure.
+#
+# PRÉALABLE : un compte déjà connecté sur l'appareil. Ce flux ne rejoue pas la
+# connexion — il commence là où la marchande passe sa journée.
+appId: com.julaba.app
+---
+- launchApp                    # sans clearState : on garde la session ouverte
+- extendedWaitUntil:
+    visible: "Ma caisse aujourd’hui"
+    timeout: 60000
+- tapOn: "Vendre"
+- extendedWaitUntil:
+    visible: "Panier"
+    timeout: 20000
+    optional: true
+- takeScreenshot: 04-ecran-vente
+# Le geste qui TERMINE la vente doit être visible ET atteignable. `assertVisible`
+# de Maestro ne valide pas un élément hors de l'écran : c'est précisément ce
+# qu'on veut vérifier ici.
+- assertVisible: "Payer en espèces"
+- takeScreenshot: 04-bouton-encaissement-atteignable

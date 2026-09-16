@@ -1,0 +1,43 @@
+# SENTINELLE 5 — une vente hors ligne n'est JAMAIS comptée deux fois.
+#
+# La vérification la plus importante du pilote. Une marchande d'un marché
+# d'Abidjan perd le réseau plusieurs fois par jour ; si une vente est comptée
+# deux fois à la reconnexion, sa caisse ment sur de l'argent réel — et elle
+# n'a aucun moyen de le voir.
+#
+# PRÉALABLE : compte connecté, caisse ouverte, et NOTER le montant affiché
+# avant de lancer. Le contrôle final se fait sur ce montant.
+#
+# RÉSERVE HONNÊTE : le basculement du mode avion dépend de la version de
+# Maestro et des permissions de l'appareil. Si la commande ci-dessous n'est pas
+# reconnue, couper le réseau à la main entre les deux étapes — le reste du
+# flux ne change pas.
+appId: com.julaba.app
+---
+- launchApp
+- extendedWaitUntil:
+    visible: "Ma caisse aujourd’hui"
+    timeout: 60000
+- takeScreenshot: 05-avant-vente-hors-ligne
+
+- setAirplaneMode: enabled
+- tapOn: "Vendre"
+- extendedWaitUntil:
+    visible: "Panier"
+    timeout: 20000
+    optional: true
+- takeScreenshot: 05-vente-hors-ligne
+
+- setAirplaneMode: disabled
+# Laisser la file de synchronisation partir et revenir.
+- extendedWaitUntil:
+    notVisible: "Mode hors ligne"
+    timeout: 120000
+    optional: true
+- takeScreenshot: 05-apres-reconnexion
+
+# CE QUE L'AUTOMATE NE PEUT PAS TRANCHER SEUL : il photographie, il ne compte
+# pas. Comparer 05-avant / 05-apres à l'œil, et vérifier dans « Mes ventes »
+# qu'il y a UNE ligne et non deux. Tant que l'app n'expose pas un compteur
+# stable à asserter, ce dernier pas reste humain — et il vaut mieux le dire
+# que de faire croire à une vérification qui n'a pas lieu.

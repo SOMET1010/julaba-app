@@ -17,7 +17,7 @@ ACTION_PATRICK: 1) ENVOYER LE « 🐞 Rapport de test », ligne VOICES. C'est la
   clips manquants (docs/CLIPS-VOIX-A-ENREGISTRER.md, 21 fichiers).
   3) trancher le GO sur l'écran de démarrage Android 12+ (écran noir mesuré
   à ~1 minute au premier lancement). 4) trancher la clé de signature.
-DERNIER_SHA_MAIN: 6b5c71b (état de main AVANT ce commit de statut —
+DERNIER_SHA_MAIN: e6e2dd4 (état de main AVANT ce commit de statut —
   ce champ ne peut pas désigner son propre commit)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2b43d05) — 28 commits
   d'avance, 16 de retard sur main 5869e97 (le retard n'est que de la doc et
@@ -51,6 +51,10 @@ BACKLOG_POST_PILOTE (à ne PAS mélanger avec la sortie pilote) :
     `sync` voudrait donc potentiellement ramener le backend de PRODUCTION en
     `free`. Ce risque existe indépendamment de tout autre changement ; il est
     dans le fichier depuis ce changement d'interface.
+  - BrowserStack, ponctuellement AVANT une diffusion : passer le même APK sur
+    trois ou quatre Android réels représentatifs, sans acheter les appareils.
+    Arbitrage de Patrick (16/09) ; j'avais écarté cet outil trop vite, et sans
+    l'avoir vérifié — son site est bloqué depuis la session des instances.
   - previews de PR ciblées sur le seul site statique (backend explicitement
     exclu : une preview du backend payant serait une dépense réelle). Reporté
     ici parce que c'est le même fichier et le même risque que le nettoyage

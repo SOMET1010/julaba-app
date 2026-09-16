@@ -1,0 +1,18 @@
+# SENTINELLE 1 — l'APK s'installe, se lance, et montre quelque chose.
+#
+# Le défaut qu'elle attrape : au 16/09/2026, le premier lancement affichait
+# une minute d'écran NOIR, parce que la fenêtre n'avait aucun fond déclaré et
+# que l'écran de démarrage Android 12+ n'était pas configuré. Une marchande
+# qui ne lit pas en concluait que l'application était cassée.
+appId: com.julaba.app
+---
+- launchApp:
+    clearState: true          # premier lancement d'une marchande, pas un retour
+- takeScreenshot: 01-premier-lancement
+# Marge volontairement large : le déploiement d'un APK de 190 Mo, dont 70 Mo
+# d'un seul fichier, prend du temps sur un appareil d'entrée de gamme.
+- extendedWaitUntil:
+    visible: "Bienvenue"
+    timeout: 90000
+- assertVisible: "Commencer"
+- takeScreenshot: 01-accueil
