@@ -17,7 +17,7 @@ ACTION_PATRICK: l'APK n'est plus un obstacle — onglet Actions du dépôt,
   Android réel (6 scénarios, ~40 min, dans l'ordre écrit — la voix se teste
   avant tout geste, sinon le scénario 1 est faussé). Noter les montants
   exacts et le résultat de chaque scénario ; en cas d'échec, capture + heure.
-DERNIER_SHA_MAIN: f6a6f4f (état de main AVANT ce commit de statut —
+DERNIER_SHA_MAIN: fefcd01 (état de main AVANT ce commit de statut —
   ce champ ne peut pas désigner son propre commit)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (5d48614) — 26 commits
   d'avance et 0 de retard sur main 6d24259 (compte donné avec son SHA de
@@ -60,6 +60,15 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — APK installé et lancé sur l'appareil réel de Patrick : il
+  fonctionne. Un écran noir au tout premier démarrage, non reproduit ensuite
+  (déploiement de l'APK + mise en cache). J'avais avancé une explication par
+  le thème de démarrage : **écartée**, l'observation sur l'appareil la
+  contredit. Écrit dans la recette comme information à donner à la marchande,
+  pas comme défaut. Conséquence de la désinstallation à ne pas oublier : plus
+  aucun compte mémorisé, donc une connexion préalable est requise avant le
+  scénario 1, sinon il est ininterprétable.
 
 - **16/09/2026** — Défaut trouvé avant qu'il ne coûte cher : l'APK refusait de
   s'installer, message Samsung sans information. L'APK n'était pas en cause

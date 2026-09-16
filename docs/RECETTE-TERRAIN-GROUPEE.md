@@ -102,15 +102,15 @@ l'octet. Compter le temps de téléchargement la première fois.
 build le détecte et continue (seules les notifications push sont inactives).
 Ce n'est pas une erreur à corriger avant la séance.
 
-**Premier lancement : chronométrer.** Sur une installation neuve, le premier
-démarrage peut afficher un **écran noir** le temps qu'Android déploie un APK
-de 190 Mo (dont un fichier de 70 Mo) et que le service worker mette en cache
-182 morceaux de code et 137 clips vocaux. Observé le 16/09/2026, cause non
-établie. Noter **combien de secondes** l'écran reste noir au premier
-lancement, puis **relancer l'app** et noter le délai la deuxième fois.
-Si le noir revient au deuxième lancement, ce n'est pas un déploiement lent :
-c'est un défaut, et il est bloquant — une marchande qui ne lit pas conclut
-que l'application est cassée.
+**Premier lancement : prévenir.** Sur une installation neuve, le tout premier
+démarrage affiche un **écran noir** quelques instants, le temps qu'Android
+déploie un APK de 190 Mo (dont un fichier de 70 Mo) et que le service worker
+mette en cache 182 morceaux de code et 137 clips vocaux. Constaté le
+16/09/2026 sur appareil réel, et **non reproduit aux lancements suivants** :
+l'écran de démarrage s'affiche ensuite normalement. Ce n'est donc pas un
+défaut de l'application, mais c'est ce que verra **chaque marchande la
+première fois** — à dire à celle qui reçoit le téléphone, sans quoi elle
+conclura que l'application est cassée.
 
 **Préalable, à faire AVANT le scénario 1 :** un compte marchande **mémorisé
 sur l'appareil** et dont la **biométrie est désactivée**. C'est le seul cas
