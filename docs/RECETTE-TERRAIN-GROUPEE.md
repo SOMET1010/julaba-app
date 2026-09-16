@@ -48,7 +48,7 @@ Ce que ta machine doit donc avoir pour la dernière commande :
 | Prérequis | Valeur attendue |
 |---|---|
 | SDK Android | plateforme **36** installée (`compileSdk`/`targetSdk` = 36) |
-| JDK | **17 ou plus** (imposé par le plugin Android Gradle 8.13) |
+| JDK | **21** — imposé par `capacitor-android` 8, compilé en source release 21. Avec un JDK 17 le build s'arrête sur `invalid source release: 21`. |
 | `ANDROID_HOME` ou `android/local.properties` | doit pointer sur le SDK, sinon Gradle s'arrête aussitôt |
 | Réseau | le premier `assembleDebug` télécharge Gradle 8.14.3 et ses plugins |
 
