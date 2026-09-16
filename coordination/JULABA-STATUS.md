@@ -14,13 +14,20 @@ ACTION_PATRICK: dérouler docs/RECETTE-TERRAIN-GROUPEE.md sur un téléphone
   Android réel (6 scénarios, ~40 min, dans l'ordre écrit — la voix se teste
   avant tout geste, sinon le scénario 1 est faussé). Noter les montants
   exacts et le résultat de chaque scénario ; en cas d'échec, capture + heure.
-DERNIER_SHA_MAIN: 44397c2
-BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (fd6133b) — 25 commits NON
-  mergés : authentification et caisse sont des modules sacrés, la
-  Constitution exige une preuve réelle avant merge (principe 3).
+DERNIER_SHA_MAIN: 6d24259
+BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (5d48614) — 26 commits
+  d'avance et 0 de retard sur main 6d24259 (compte donné avec son SHA de
+  référence : il change dès qu'un commit tombe d'un côté ou de l'autre,
+  `git rev-list --left-right --count origin/main...origin/<branche>` fait
+  foi). NON mergés : authentification et caisse sont des modules sacrés,
+  la Constitution exige une preuve réelle avant merge (principe 3).
+VERDICT_PATRICK: LOT A techniquement clos · GO TEST TERRAIN · PAS de GO
+  MERGE global. Après la session : corriger uniquement les écarts
+  réellement observés, revue finale, puis merge unique.
 PROCHAINE_ACTION: rien à coder côté JULABA historique tant que la session
-  terrain n'a pas eu lieu. Au retour de Patrick : corriger ce que la recette
-  révèle, puis merger la branche sur main en une fois.
+  terrain n'a pas eu lieu. Point bloquant principal de la recette : vente
+  hors ligne puis reconnexion = une seule vente comptée. Au retour de
+  Patrick : corriger les seuls écarts observés, revue finale, merge unique.
 DERNIER_RESULTAT: recette terrain groupée finalisée. Elle ne contient plus
   que ce qu'une base de données et un navigateur ne peuvent pas prouver :
   la voix sur l'écran du code avant tout geste, les voix françaises
@@ -41,6 +48,13 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — Correction factuelle du bus : la branche est à **26**
+  commits d'avance sur `main`, pas 25. Le chiffre écrit la veille valait pour
+  `fd6133b` ; le report de `main` dans la branche a ajouté le commit de merge.
+  Le compte est désormais donné avec son SHA de référence, sinon il repérime
+  à chaque commit. Verdict enregistré : lot A techniquement clos, GO test
+  terrain, **pas** de GO merge global.
 
 - **16/09/2026** — Lot A clos. La recette terrain groupée est finalisée :
   six scénarios ordonnés, minutés, réduits à ce qu'aucune machine ne peut
