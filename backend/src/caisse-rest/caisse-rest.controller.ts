@@ -265,14 +265,67 @@ export class CaisseRestController {
     return { session: this.premiereLigne(maj) ?? { ...session, fond_initial: fond } };
   }
 
+  // Ce que la caisse DEVRAIT contenir, calculé par le serveur à partir de ses
+  // propres écritures : fond déclaré + ventes encaissées − dépenses. Les ventes
+  // ANNULÉES sont exclues (le back-office ne supprime pas une vente, il pose
+  // statut='annulee' — les compter surestimerait la recette).
+  //
+  // Volontairement calculé ici et non repris du téléphone : un écart n'a de
+  // valeur que s'il est établi par celui qui n'a pas intérêt à le lisser, et un
+  // appareil hors ligne depuis des heures n'a pas le compte juste.
+  private async caisseTheorique(marchandId: string, fondInitial: number, date: string): Promise<number> {
+    const [somme] = await this.dataSource.query(
+      `SELECT
+         COALESCE(SUM(CASE WHEN type = 'vente'   THEN montant ELSE 0 END), 0) AS ventes,
+         COALESCE(SUM(CASE WHEN type = 'depense' THEN montant ELSE 0 END), 0) AS depenses
+       FROM caisse_transactions
+      WHERE marchand_id = $1 AND statut <> 'annulee' AND created_at::date = $2::date`,
+      [marchandId, date],
+    );
+    return fondInitial + Number(somme?.ventes ?? 0) - Number(somme?.depenses ?? 0);
+  }
+
+  // Fermer la journée = déclarer ce qu'on a RÉELLEMENT en main, et confronter.
+  //
+  // Défaut réparé : l'application envoie `comptage_reel`, cette méthode lisait
+  // `body.fond_final`. Les noms ne correspondaient pas, donc `|| 0` écrivait
+  // ZÉRO à chaque fermeture, quel que soit le montant compté — et les notes de
+  // clôture étaient perdues de même. L'écart, lui, n'était stocké nulle part.
+  // C'est pourtant la mesure même du pilote : un incident qu'on ne conserve pas
+  // ne se détecte jamais.
   @Post('session/fermer')
   async fermerSession(@Body() body: any, @CurrentUser() user: User) {
     const today = new Date().toISOString().split('T')[0];
-    const result = await this.dataSource.query(
-      'UPDATE caisse_sessions SET ouvert = false, heure_fermeture = NOW(), fond_final = $1, updated_at = NOW() WHERE marchand_id = $2 AND date = $3 RETURNING *',
-      [body.fond_final || 0, user.id, today]
+    // `fond_final` reste accepté : ancien nom du même montant, des clients
+    // hors ligne peuvent encore le rejouer.
+    const comptage = this.montantValide(body.comptage_reel ?? body.fond_final ?? 0);
+
+    const [existante] = await this.dataSource.query(
+      'SELECT * FROM caisse_sessions WHERE marchand_id = $1 AND date = $2 LIMIT 1',
+      [user.id, today],
     );
-    return { session: result[0] };
+    if (!existante) throw new NotFoundException('Aucune journée à fermer');
+
+    const theorique = await this.caisseTheorique(user.id, Number(existante.fond_initial ?? 0), today);
+    const ecart = comptage - theorique;
+
+    const maj = await this.dataSource.query(
+      `UPDATE caisse_sessions
+          SET ouvert = false, heure_fermeture = NOW(),
+              fond_final = $1, caisse_theorique = $2, ecart = $3,
+              notes = COALESCE($4, notes), updated_at = NOW()
+        WHERE id = $5 RETURNING *`,
+      [comptage, theorique, ecart, body.notes ?? null, existante.id],
+    );
+    if (ecart !== 0) {
+      // Un écart de caisse est un INCIDENT (Constitution, § confiance mesurable) :
+      // il doit se voir dans les journaux, pas seulement dormir en base.
+      this.logger.warn(
+        `[CAISSE] écart de fermeture ${ecart > 0 ? '+' : ''}${ecart} F ` +
+        `(compté ${comptage}, théorique ${theorique}) — marchande ${user.id}, ${today}`,
+      );
+    }
+    return { session: this.premiereLigne(maj) ?? existante, caisse_theorique: theorique, ecart };
   }
 
   // Idempotence : si la clé a déjà été traitée (rejeu offline), renvoyer la

@@ -101,6 +101,15 @@ export class DbInitService {
       await this.dataSource.query(
         `ALTER TABLE caisse_sessions ADD COLUMN IF NOT EXISTS fond_declare_at timestamptz;`,
       );
+      // Fermeture : ce qu'elle a compté (fond_final), ce que l'application
+      // attendait, et l'écart. Miroir de la migration FermetureCaisseEcart
+      // (ADR-0002 : DbInit ⊆ migrations).
+      await this.dataSource.query(
+        `ALTER TABLE caisse_sessions ADD COLUMN IF NOT EXISTS caisse_theorique numeric;`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE caisse_sessions ADD COLUMN IF NOT EXISTS ecart numeric;`,
+      );
       // L'argent d'une marchande ne change jamais sans laisser de trace.
       await this.dataSource.query(`
         CREATE TABLE IF NOT EXISTS caisse_fond_journal (
