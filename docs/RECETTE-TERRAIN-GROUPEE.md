@@ -33,6 +33,24 @@ tout autre geste.
 APK de **debug**, signé avec la clé de debug : installable à la main, pas
 publiable sur un store — c'est le périmètre du pilote.
 
+> **Un APK par run, et ils ne se remplacent pas entre eux.** Chaque runner
+> GitHub génère sa propre clé de debug : deux constructions du même code sont
+> signées différemment (prouvé le 16/09/2026 — run 5 `77d8a3a8…29fc5a`,
+> run 6 `a36159b1…171767`). Android refuse de remplacer une application par
+> une autre signée d'une autre clé, et le téléphone ne dit rien de plus que
+> « Un problème est survenu avec le fichier de l'application ».
+>
+> Conséquence pratique pour la séance : **installer l'APK d'un seul run**, et
+> si une installation échoue avec ce message alors que le fichier fait la
+> bonne taille, c'est qu'une JULABA signée autrement est encore installée —
+> il faut la désinstaller, ce qui efface ses données locales.
+>
+> Ce n'est pas tenable au-delà du test : une clé de signature stable est
+> requise avant de distribuer quoi que ce soit à une marchande, sinon chaque
+> mise à jour effacerait ses ventes hors ligne non synchronisées.
+> **Arbitrage en attente de Patrick** (clé de debug fixe versionnée, ou clé
+> de release en secret GitHub).
+
 Éprouvé le 16/09/2026 : run `35083654069`, artefact `julaba-apk-5d48614`.
 
 ### Option B — le construire soi-même
