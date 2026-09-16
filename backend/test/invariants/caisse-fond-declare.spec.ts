@@ -46,7 +46,8 @@ describe('Invariant ARGENT — fond de caisse declare', () => {
 
   const session = async () =>
     (await ds.query(
-      `SELECT fond_initial, fond_declare_at, ouvert FROM caisse_sessions
+      `SELECT fond_initial, fond_declare_at, ouvert, fond_final, caisse_theorique, ecart, notes
+         FROM caisse_sessions
         WHERE marchand_id = $1 AND date = $2 LIMIT 1`,
       [marchandId, aujourdhui()],
     ))[0];
@@ -197,6 +198,45 @@ describe('Invariant ARGENT — fond de caisse declare', () => {
 
     expect(Number((await session()).fond_initial)).toBe(3500);
     expect(await journal()).toHaveLength(avant.length);
+  });
+
+  it('ARGENT — la fermeture garde ce qu’elle a compte, et l’ecart', async () => {
+    // Defaut repare : l'application envoie `comptage_reel`, le serveur lisait
+    // `body.fond_final`. Les noms ne correspondaient pas : ZERO etait ecrit a
+    // chaque fermeture, quel que soit le montant compte. Et l'ecart n'etait
+    // stocke nulle part - or c'est la mesure meme du pilote.
+    //
+    // Etat a ce point de la suite : fond declare a 3500 (scenario precedent),
+    // aucune vente sauf celle de 1000 du premier scenario.
+    const avant = await session();
+    const fond = Number(avant.fond_initial);
+
+    const r = await api()
+      .post('/api/v1/caisse/session/fermer')
+      .set('Authorization', `Bearer ${jeton}`)
+      .send({ comptage_reel: 4000, notes: 'comptage du soir' });
+    expect(r.status).toBeLessThan(400);
+
+    // Le serveur calcule la theorique a partir de SES ecritures, pas d'un
+    // chiffre envoye par le telephone.
+    const [somme] = await ds.query(
+      `SELECT COALESCE(SUM(CASE WHEN type = 'vente' THEN montant ELSE 0 END), 0) AS ventes,
+              COALESCE(SUM(CASE WHEN type = 'depense' THEN montant ELSE 0 END), 0) AS depenses
+         FROM caisse_transactions
+        WHERE marchand_id = $1 AND statut <> 'annulee' AND created_at::date = CURRENT_DATE`,
+      [marchandId],
+    );
+    const theoriqueAttendue = fond + Number(somme.ventes) - Number(somme.depenses);
+
+    expect(Number(r.body.caisse_theorique)).toBe(theoriqueAttendue);
+    expect(Number(r.body.ecart)).toBe(4000 - theoriqueAttendue);
+
+    const apres = await session();
+    expect(Number(apres.fond_final)).toBe(4000);             // ce qu'elle a compte
+    expect(Number(apres.caisse_theorique)).toBe(theoriqueAttendue);
+    expect(Number(apres.ecart)).toBe(4000 - theoriqueAttendue);
+    expect(apres.notes).toBe('comptage du soir');            // ses notes aussi
+    expect(apres.ouvert).toBe(false);
   });
 
   it('fermer puis rouvrir la journee laisse le fond du jour intact', async () => {

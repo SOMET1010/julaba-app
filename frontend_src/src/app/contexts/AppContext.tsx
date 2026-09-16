@@ -915,8 +915,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.warn('[AppContext] closeDay sync failed:', error?.message);
       }
     }
-    
-    setCurrentSession(null);
+
+    // La journée FERMÉE reste en mémoire, on ne l'efface pas.
+    //
+    // `setCurrentSession(null)` faisait retomber le fond à 0 dans le calcul de
+    // la caisse : l'accueil passait de 6 500 F à 1 500 F juste après la
+    // fermeture, sans qu'un franc ait bougé. Un chiffre qui se contredit tout
+    // seul est un incident au sens du principe 8 — et c'est exactement le
+    // moment où une marchande vérifie qu'elle peut nous faire confiance.
+    //
+    // `opened: false` suffit à dire que la journée est close : tout le reste du
+    // code teste `currentSession?.opened`, pas l'existence de l'objet.
+    setCurrentSession(updatedSession);
   };
 
   // « Modifier le fond » — seul chemin pour changer un fond déjà déclaré.
