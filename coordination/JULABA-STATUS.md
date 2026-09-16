@@ -6,48 +6,40 @@
 > c'est `docs/PASSATION.md` qui gagne.
 
 ```
-STATUT: EN_ATTENTE
-TACHE: LOT A CLOS — attente de la session terrain unique (lot C)
+STATUT: EN_COURS
+TACHE: correctifs remontés par la recette en cours, sur appareil réel
 BESOIN_PATRICK: OUI
 TYPE_BESOIN: TEST_PHYSIQUE_ANDROID
-ACTION_PATRICK: l'APK n'est plus un obstacle — onglet Actions du dépôt,
-  workflow « APK pilote », Run workflow, artefact julaba-apk-<sha> (~3 min,
-  rien à installer). Puis dérouler docs/RECETTE-TERRAIN-GROUPEE.md sur un
-  téléphone
-  Android réel (6 scénarios, ~40 min, dans l'ordre écrit — la voix se teste
-  avant tout geste, sinon le scénario 1 est faussé). Noter les montants
-  exacts et le résultat de chaque scénario ; en cas d'échec, capture + heure.
-DERNIER_SHA_MAIN: fefcd01 (état de main AVANT ce commit de statut —
+ACTION_PATRICK: 1) se connecter à l'APK avec le compte de test créé ce jour
+  (0505584444 / 0000) — c'est la première fois que l'APK peut réellement
+  joindre le backend. 2) dicter trois fois le même numéro puis envoyer le
+  « 🐞 Rapport de test » : la qualité d'écoute est jugée dégradée, il faut
+  des faits (FINALISE) et non une impression. 3) trancher le GO sur le
+  correctif d'écran de démarrage Android 12+.
+DERNIER_SHA_MAIN: 5869e97 (état de main AVANT ce commit de statut —
   ce champ ne peut pas désigner son propre commit)
-BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (5d48614) — 26 commits
-  d'avance et 0 de retard sur main 6d24259 (compte donné avec son SHA de
-  référence : il change dès qu'un commit tombe d'un côté ou de l'autre,
-  `git rev-list --left-right --count origin/main...origin/<branche>` fait
-  foi). NON mergés : authentification et caisse sont des modules sacrés,
-  la Constitution exige une preuve réelle avant merge (principe 3).
+BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2b43d05) — 28 commits
+  d'avance, 16 de retard sur main 5869e97 (le retard n'est que de la doc et
+  de l'outillage ; `git rev-list --left-right --count
+  origin/main...origin/<branche>` fait foi). NON mergés : authentification et
+  caisse sont des modules sacrés, preuve réelle exigée (principe 3).
 VERDICT_PATRICK: LOT A techniquement clos · GO TEST TERRAIN · PAS de GO
-  MERGE global. Après la session : corriger uniquement les écarts
-  réellement observés, revue finale, puis merge unique. Branche gelée sur
-  5d48614 : pas de report de main avant le merge final (décision Patrick,
-  16/09/2026), pour ne pas fabriquer de commits de synchronisation.
-ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK. Chaque runner
-  GitHub signe avec une clé de debug différente, donc deux APK successifs ne
-  peuvent pas se remplacer sans désinstallation — donc sans effacer les
-  données de la marchande. Deux options soumises : clé de debug fixe
-  versionnée, ou clé de release en secret GitHub. Non bloquant tant qu'un
-  seul téléphone de test est en jeu ; bloquant avant toute distribution.
-PROCHAINE_ACTION: rien à coder côté JULABA historique tant que la session
-  terrain n'a pas eu lieu. Point bloquant principal de la recette : vente
-  hors ligne puis reconnexion = une seule vente comptée. Au retour de
-  Patrick : corriger les seuls écarts observés, revue finale, merge unique.
-DERNIER_RESULTAT: recette terrain groupée finalisée. Elle ne contient plus
-  que ce qu'une base de données et un navigateur ne peuvent pas prouver :
-  la voix sur l'écran du code avant tout geste, les voix françaises
-  réellement installées sur l'appareil, le nom d'adresse de bout en bout,
-  l'argent avec de vrais doigts, la dictée avec un vrai micro, et le réseau
-  faible puis coupé — dont la vérification la plus importante : une vente
-  hors ligne est-elle comptée exactement une fois. Tout le reste est listé
-  en fin de feuille comme déjà prouvé, avec son moyen de preuve.
+  MERGE global. Branche gelée sur 5d48614 au 16/09 ; seuls des correctifs
+  remontés par la recette s'y ajoutent depuis.
+ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK (chaque runner signe
+  différemment → toute mise à jour exige une désinstallation, donc efface les
+  données de la marchande). Non bloquant sur un seul téléphone de test ;
+  bloquant avant toute distribution.
+PROCHAINE_ACTION: attendre le résultat de connexion et le rapport de dictée.
+  Ensuite : reconstruire l'APK depuis la branche pour éprouver les correctifs
+  du jour, qui ne sont PAS dans l'APK installé.
+DERNIER_RESULTAT: défaut le plus grave de la journée trouvé et corrigé —
+  l'APK ne pouvait poster AUCUNE requête au backend. Les origines de la
+  WebView Capacitor (https://localhost, capacitor://localhost) n'étaient pas
+  autorisées côté CORS : connexion, vente, fermeture de caisse, tout était
+  bloqué. Le symptôme mentait — l'écran affichait « Réveil du serveur » pour
+  n'importe quelle TypeError. Prouvé avant/après par requête OPTIONS, déployé
+  sur main (seul ce commit), vérifié en production.
 ```
 
 `STATUT` ∈ `EN_ATTENTE` · `EN_COURS` · `BLOQUE` · `TERMINE`
@@ -60,6 +52,23 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — Journée de recette sur appareil réel. Le défaut majeur :
+  **l'APK n'avait jamais pu parler au backend**. Origines Capacitor absentes de
+  la liste CORS → tout POST bloqué. Personne ne l'avait vu parce que l'écran
+  de connexion affiche « Réveil du serveur » pour *n'importe quelle* erreur
+  réseau : une panne de configuration se déguisait en hébergement lent.
+  Prouvé par requête OPTIONS avant/après, corrigé, déployé, vérifié.
+  Quatre autres défauts remontés par l'usage, sur le seul écran de connexion :
+  dictée sans relecture (aucun moyen pour qui ne lit pas de constater une
+  erreur) ; toutes les issues d'erreur renvoyant au clavier ; phrases sans
+  clip donc muettes dans l'APK ; et l'apprentissage du mode d'accès qui
+  comptait « clavier » un repli imposé, faisant taire Tata pour celle qui ne
+  sait pas lire. Corrigés sur la branche, NON prouvés sur appareil.
+  Restent ouverts, non traités : aucune récupération de code oublié (9 échecs
+  = blocage définitif, déblocage non implémenté) ; écran de démarrage non
+  adapté à Android 12+ ; qualité d'écoute jugée dégradée, à mesurer par le
+  rapport de diagnostic plutôt qu'à l'impression.
 
 - **16/09/2026** — APK installé et lancé sur l'appareil réel de Patrick : il
   fonctionne. Un écran noir au tout premier démarrage, non reproduit ensuite
