@@ -13,14 +13,17 @@ TYPE_BESOIN: —
 ACTION_PATRICK: — (une seule session terrain quand le lot A sera clos,
   voir docs/RECETTE-TERRAIN-GROUPEE.md)
 DERNIER_SHA_MAIN: d87066d
-BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (8ccf9a2) — correctifs NON
+BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (e10db78) — correctifs NON
   mergés : authentification et caisse sont des modules sacrés, la
   Constitution exige une preuve réelle avant merge (principe 3).
-PROCHAINE_ACTION: poursuivre le parcours argent dans le navigateur — il
-  reste vendre, encaisser et fermer la caisse (seule la déclaration du fond
-  est faite). Puis finaliser la recette groupée.
-DERNIER_RESULTAT: deux défauts ARGENT trouvés en déroulant le parcours dans
-  un vrai navigateur — déclarer son fond avant la première vente était perdu
+PROCHAINE_ACTION: le parcours argent est déroulé en entier. Finaliser la
+  recette terrain groupée : y inscrire les scénarios argent désormais
+  prouvés ici, ne laisser au téléphone que ce qu'une base ne peut pas dire.
+DERNIER_RESULTAT: parcours argent complet déroulé (vendre → encaisser →
+  fermer). La fermeture de caisse n'enregistrait NI le montant compté (zéro
+  écrit à chaque fois, noms de champs décalés) NI l'écart (aucune colonne) —
+  or c'est la mesure même du pilote. Corrigé, écart calculé côté serveur.
+  Avant : deux défauts ARGENT trouvés dans le navigateur — déclarer son fond avant la première vente était perdu
   (404 sur le seul chemin qu'une marchande a), et les billets défilaient sous
   le doigt (pause branchée sur un événement de souris). Avant : les trois
   rôles mesurés (six écrans marchande, tableaux de
@@ -39,6 +42,13 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — Parcours argent complet au navigateur : vente libre →
+  encaissement espèces → fermeture. Le défaut le plus grave de la session :
+  la fermeture écrivait **zéro** comme montant compté (l'app envoie
+  `comptage_reel`, le serveur lisait `fond_final`) et l'écart n'était stocké
+  nulle part. La caisse théorique est désormais calculée par le serveur, pas
+  reprise du téléphone. Trois fausses pistes écartées par la mesure.
 
 - **15/09/2026** — Parcours argent déroulé au navigateur. Deux défauts que la
   lecture de code n'aurait pas donnés : l'accueil d'une marchande n'a pas de
