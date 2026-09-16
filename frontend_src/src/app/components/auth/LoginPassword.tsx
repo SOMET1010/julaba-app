@@ -126,6 +126,9 @@ export function LoginPassword() {
   const voixEcouteDispo = (() => { try { return offlineModelReady(); } catch { return false; } })();
   // Le pavé est la référence : toujours visible tant que la voix n'écoute pas.
   const clavierVisible = showKeypad || !voixEcouteDispo;
+  // Un numéro est déjà là (dicté ou tapé) : l'écran n'a plus à le DEMANDER,
+  // seulement à proposer de le refaire. Sert à départager les deux boutons.
+  const numeroSaisi = phone.length > 0;
   // Clavier imagé (variante A, doc « mot de passe imagé ») : correspondance
   // FIXE et publique chiffre→image sur le pavé PIN, en OPTION — jamais le mode
   // par défaut (personne n'est surprise par un pavé déjà connu). Le PIN envoyé
@@ -1273,19 +1276,34 @@ export function LoginPassword() {
               ))}
             </div>
             {/* GRAND MICRO — l'action, UNIQUEMENT si la voix écoute réellement.
-                Sinon (cas actuel) : aucun micro trompeur, le pavé est la référence. */}
+                Sinon (cas actuel) : aucun micro trompeur, le pavé est la référence.
+
+                CORRECTIF UX (remonté en recette le 16/09/2026 : « j'ai déjà dit
+                mon numéro, il me le redemande pendant qu'il le lit »). Une fois
+                le numéro complet, deux appels à l'action se disputaient l'écran
+                — « Dire mon numéro » et « C'est mon numéro » — dont l'un
+                ignorait ce qui venait d'être fait. Le micro ne DEMANDE plus, il
+                PROPOSE de recommencer : il s'efface visuellement et change de
+                mot dès que le numéro est là. La confirmation reste seule en
+                action principale. */}
             {voixEcouteDispo && (
             <motion.button
               type="button"
-              aria-label="Touchez et dites votre numéro"
+              aria-label={numeroSaisi ? 'Recommencer et redire votre numéro' : 'Touchez et dites votre numéro'}
               onPointerDown={(e) => e.preventDefault()}
               onClick={dicterNumero}
               className="login-dictate"
               aria-pressed={isListening}
               disabled={isLoading || isFinalizingDictation}
               whileTap={{ scale: 0.96 }}
+              style={numeroSaisi && !isListening
+                ? { opacity: 0.75, transform: 'scale(0.94)' }
+                : undefined}
             >
-              <Mic aria-hidden="true" size={36} /><span>{isListening ? 'Écoute en cours…' : 'Dire mon numéro'}</span>
+              <Mic aria-hidden="true" size={numeroSaisi && !isListening ? 26 : 36} />
+              <span>{isListening
+                ? 'Écoute en cours…'
+                : numeroSaisi ? 'Redire mon numéro' : 'Dire mon numéro'}</span>
             </motion.button>
             )}
             <AnimatePresence>
