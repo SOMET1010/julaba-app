@@ -13,10 +13,30 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- LA LIGNE QUI TUE L'ÉCRAN NOIR.
+             Le parent est DayNight et aucun fond de fenêtre n'était déclaré :
+             sur un téléphone en thème sombre, Android peignait donc la fenêtre
+             en NOIR, et elle le restait tant que la WebView n'avait pas affiché
+             sa première image — mesuré ~1 minute au premier lancement, sur un
+             APK de 190 Mo. Une marchande qui ne lit pas en conclut que
+             l'application est cassée, et rappelle. -->
+        <item name="android:windowBackground">@color/julaba_papier</item>
     </style>
 
 
+    <!-- ÉCRAN DE DÉMARRAGE — refait pour l'API Android 12+.
+         Le parent Theme.SplashScreen EST cette API, obligatoire dès lors que
+         targetSdk vaut 36. Or elle ne lit PAS `android:background` : elle
+         attend windowSplashScreenBackground (une couleur) et
+         windowSplashScreenAnimatedIcon (l'icône). Le thème ne déclarait ni
+         l'un ni l'autre, ni postSplashScreenTheme — donc les onze images de
+         splash présentes dans l'APK n'étaient jamais montrées, et le système
+         retombait sur son fond par défaut.
+         Ça n'accélère pas le démarrage : ça remplace « c'est cassé » par
+         « ça charge ». -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/julaba_papier</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>
