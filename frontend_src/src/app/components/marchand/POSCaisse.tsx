@@ -765,7 +765,25 @@ export function POSCaisse() {
             <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
               style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:50 }} onClick={() => setShowCart(false)} />
             <motion.div initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }} transition={{ type:'spring', damping:28 }}
-              style={{ position:'fixed', bottom:0, left:0, right:0, background:'white', borderRadius:'24px 24px 0 0', zIndex:51, maxHeight:'75vh', display:'flex', flexDirection:'column' }}>
+              // LE BOUTON QUI ENCAISSE PASSAIT SOUS LE BORD DE L'ÉCRAN.
+              // Remonté en recette (16/09/2026) : dès qu'un montant reçu est
+              // saisi, le pied s'allonge (billets, pièces, monnaie à rendre) et
+              // « Payer en espèces » sortait de la feuille — mesuré 718→776 px
+              // dans une fenêtre de 745. La feuille est en position fixe collée
+              // en bas : ce qui déborde n'est pas atteignable, et rien ne
+              // défile. Le geste qui TERMINE LA VENTE devenait invisible, avec
+              // la cliente qui attend.
+              //
+              // Trois manques, tous absents ici alors que le panneau grand
+              // écran (voir plus haut, :750 et :753) les a :
+              //   - la zone défilante n'avait pas minHeight:0, donc elle refuse
+              //     de rétrécir (un enfant flex ne passe pas sous sa taille de
+              //     contenu sans ça) ;
+              //   - le pied n'avait pas flexShrink:0, donc c'est LUI qu'on
+              //     écrasait, et son contenu débordait ;
+              //   - 75vh ne suffit pas quand le pied contient le pavé des
+              //     coupures.
+              style={{ position:'fixed', bottom:0, left:0, right:0, background:'white', borderRadius:'24px 24px 0 0', zIndex:51, maxHeight:'92vh', display:'flex', flexDirection:'column' }}>
               <div style={{ width:40, height:4, borderRadius:2, background:'#EDE7DE', margin:'14px auto 0' }} />
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px 10px' }}>
                 <span style={{ fontSize:19, fontWeight:900, color:'var(--encre)' }}>Panier <span style={{ fontSize:14, fontWeight:400, color:'var(--encre-4)' }}>({nbItems} article{nbItems>1?'s':''})</span></span>
@@ -774,10 +792,14 @@ export function POSCaisse() {
                   <X size={16} color="#888" />
                 </motion.button>
               </div>
-              <div style={{ flex:1, overflowY:'auto', padding:'0 16px' }}>
+              <div style={{ flex:1, overflowY:'auto', minHeight:0, padding:'0 16px' }}>
                 {renderCartLines()}
               </div>
-              <div style={{ padding:'14px 16px 32px' }}>
+              {/* flexShrink:0 — le pied porte le bouton d'encaissement : il ne
+                  doit JAMAIS être celui qu'on rogne. overflowY:auto en dernier
+                  recours, pour que même sur un très petit écran le bouton reste
+                  atteignable en faisant défiler. */}
+              <div style={{ padding:'14px 16px 32px', flexShrink:0, overflowY:'auto' }}>
                 {renderCartFooter()}
               </div>
             </motion.div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { Eye, EyeOff, Menu, ArrowLeft, ChevronRight, Shield, MessageCircle, MapPin, Lock, Monitor, CreditCard, Check, Fingerprint } from 'lucide-react';
+import { Eye, EyeOff, Menu, ArrowLeft, ChevronRight, Shield, MessageCircle, MapPin, Lock, Monitor, CreditCard, Check, Fingerprint, X } from 'lucide-react';
 import { QRCodeSVG as QRCode } from 'qrcode.react';
 import { useUser } from '../../contexts/UserContext';
 import { useApp } from '../../contexts/AppContext';
@@ -627,16 +627,39 @@ export function WalletPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           style={{ minHeight: '100vh', backgroundColor: BG, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
-          onClick={() => {}}
+          // Toucher à côté de la feuille ferme, comme partout ailleurs dans
+          // l'application. Le gestionnaire était volontairement VIDE ici.
+          onClick={() => navigate('..')}
         >
           <motion.div
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            style={{ background: '#fff', borderRadius: '28px 28px 0 0', padding: '0 20px 32px' }}
+            style={{ background: '#fff', borderRadius: '28px 28px 0 0', padding: '0 20px 32px', position: 'relative' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#e5e7eb', margin: '12px auto 14px' }} />
+            {/* SORTIE. Cet écran était un piège : remonté en recette le
+                16/09/2026, « Mon argent » — une des quatre grandes cartes de
+                l'accueil — ouvrait cette création de code sans aucune issue.
+                Pas de croix, pas de flèche ; la poignée grise au-dessus est
+                DÉCORATIVE ; le fond portait un gestionnaire vide ; le contenu
+                arrête la propagation. Douze boutons à l'écran, tous des
+                chiffres. Une marchande qui ne connaît pas le bouton retour
+                d'Android n'avait plus qu'à éteindre son téléphone — et si elle
+                tapait un code au hasard pour s'en sortir, elle s'en créait un
+                second, introuvable le lendemain.
+                La croix est à 44 px comme toutes les cibles de l'application. */}
+            <button
+              type="button"
+              onClick={() => navigate('..')}
+              aria-label="Fermer et revenir en arrière"
+              style={{ position: 'absolute', top: 10, right: 12, width: 44, height: 44, borderRadius: 12,
+                background: '#f3f4f6', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={18} color="#6b7280" aria-hidden="true" />
+            </button>
             <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginBottom: 10 }}>
               <div style={{ height: 3, width: 28, borderRadius: 2, background: C }} />
               <div style={{ height: 3, width: 28, borderRadius: 2, background: createStep === 2 ? C : '#e5e7eb', transition: 'background 0.3s' }} />

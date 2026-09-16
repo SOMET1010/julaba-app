@@ -544,11 +544,29 @@ interface CloseDayModalProps {
 export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
   const { closeDay, speak, getSalesHistory, getFinancialSummary } = useApp();
   const navigate = useNavigate();
-  const [comptageReel, setComptageReel] = useState(stats.caisse.toString());
+  // LE CHAMP DE COMPTAGE PART VIDE, ET C'EST ESSENTIEL.
+  //
+  // Il était pré-rempli avec `stats.caisse` — la caisse THÉORIQUE, c'est-à-dire
+  // très exactement la valeur que le comptage est censé vérifier. Remonté en
+  // recette le 16/09/2026. Conséquence : l'écart affiché valait zéro avant même
+  // qu'elle ait ouvert sa boîte, et valider sans rien changer confirmait un faux
+  // zéro. Une caisse qui propose d'avance la réponse attendue ne peut plus
+  // révéler le moindre écart — or détecter l'écart est la raison d'être de la
+  // fermeture. Le pré-remplissage ne faisait pas gagner du temps : il rendait la
+  // mesure inutile.
+  const [comptageReel, setComptageReel] = useState('');
   const [isClosing, setIsClosing] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
   const handleClose = async () => {
+    // Champ vide = elle n'a pas compté. On ne ferme pas une caisse sur une
+    // absence de mesure : sans ce garde-fou, le champ vide partirait comme un
+    // zéro et écrirait « caisse vide » dans le journal du jour.
+    if (!comptageReel.trim()) {
+      toast.error('Compte ton argent et entre le montant trouvé.');
+      speak("Compte l'argent de ta boîte, puis entre le montant que tu as trouvé.");
+      return;
+    }
     const montant = Number(comptageReel);
     if (Number.isNaN(montant) || montant < 0) {
       toast.error('Montant invalide. Vérifie la saisie.');
@@ -578,7 +596,10 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
   };
 
   const marge = stats.ventes - stats.cahier;
-  const ecart = parseFloat(comptageReel || '0') - stats.caisse;
+  // `null` tant qu'elle n'a rien compté : pas d'écart AVANT la mesure. Avec le
+  // repli `|| '0'` d'avant, un champ vide affichait un écart égal à moins la
+  // caisse entière — un chiffre alarmant et faux, montré avant tout comptage.
+  const ecart = comptageReel.trim() === '' ? null : parseFloat(comptageReel) - stats.caisse;
 
   const day = new Date().toISOString().split('T')[0];
 
@@ -663,7 +684,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
               autoFocus
               disabled={isClosing}
             />
-            {ecart !== 0 && comptageReel && (
+            {ecart !== null && ecart !== 0 && (
               <p className={`text-xs font-medium mt-2 ${ecart > 0 ? 'text-green-600' : 'text-red-600'}`}>
                 Écart: <Montant value={ecart} size="sm" color={ecart > 0 ? '#16a34a' : '#dc2626'} showPlus />
               </p>
