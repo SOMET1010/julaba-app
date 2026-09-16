@@ -916,7 +916,11 @@ export function LoginPassword() {
         if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
         navigateTimeoutRef.current = setTimeout(() => {
           setIsLoading(false);
-          navigate('/change-password');
+          // On PASSE le code qui vient d'ouvrir la session : l'écran suivant
+          // n'a plus à le redemander. Le lui redemander cinq secondes après
+          // l'avoir tapé n'ajoute aucune sécurité — la session est déjà
+          // ouverte — et bloque net quelqu'un qui ne lit pas.
+          navigate('/change-password', { state: { codeActuel: pwd } });
         }, 1500);
         return;
       }
