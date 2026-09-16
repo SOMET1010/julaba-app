@@ -14,7 +14,7 @@ ACTION_PATRICK: dérouler docs/RECETTE-TERRAIN-GROUPEE.md sur un téléphone
   Android réel (6 scénarios, ~40 min, dans l'ordre écrit — la voix se teste
   avant tout geste, sinon le scénario 1 est faussé). Noter les montants
   exacts et le résultat de chaque scénario ; en cas d'échec, capture + heure.
-DERNIER_SHA_MAIN: 6d24259
+DERNIER_SHA_MAIN: 4dc5389
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (5d48614) — 26 commits
   d'avance et 0 de retard sur main 6d24259 (compte donné avec son SHA de
   référence : il change dès qu'un commit tombe d'un côté ou de l'autre,
@@ -48,6 +48,15 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — Chaîne de build APK éprouvée jusqu'où c'est possible sans
+  SDK Android : `npm run build` puis `npx cap sync android` joués sur la
+  branche, le bundle copié dans le projet Android est **exactement** celui du
+  build (même empreinte), l'URL de l'API y est incluse, le paquet est
+  `com.julaba.app`. Seul `assembleDebug` reste à la charge de Patrick : ses
+  prérequis exacts (SDK 36, JDK 17+, ANDROID_HOME) sont désormais écrits dans
+  l'étape 0, pour qu'ils ne soient pas découverts pendant la séance. Confirmé
+  au passage : `google-services.json` absent ne casse rien.
 
 - **16/09/2026** — Correction factuelle du bus : la branche est à **26**
   commits d'avance sur `main`, pas 25. Le chiffre écrit la veille valait pour

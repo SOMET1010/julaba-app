@@ -32,6 +32,27 @@ cd android && ./gradlew assembleDebug
 n'atteint aucun backend — c'est un défaut déjà payé une fois (`1958d6a`), et
 il se voit immédiatement : « Réponse inattendue » à la connexion.
 
+**Ce qui est vérifié ici, et ce qui ne peut pas l'être.** Les trois premières
+commandes ont été exécutées sur `claude/clever-allen-dnr8by` (16/09/2026) :
+le build sort dans `frontend/dist` (le `webDir` de `capacitor.config.ts`),
+`npx cap sync android` copie **exactement** ce build (même empreinte de
+bundle `index-*.js`), l'URL de l'API y est bien incluse et le paquet posé est
+`com.julaba.app`. Seul `./gradlew assembleDebug` n'a pas pu être joué : il
+demande le SDK Android, absent de l'environnement des instances.
+
+Ce que ta machine doit donc avoir pour la dernière commande :
+
+| Prérequis | Valeur attendue |
+|---|---|
+| SDK Android | plateforme **36** installée (`compileSdk`/`targetSdk` = 36) |
+| JDK | **17 ou plus** (imposé par le plugin Android Gradle 8.13) |
+| `ANDROID_HOME` ou `android/local.properties` | doit pointer sur le SDK, sinon Gradle s'arrête aussitôt |
+| Réseau | le premier `assembleDebug` télécharge Gradle 8.14.3 et ses plugins |
+
+`google-services.json` est absent du dépôt **volontairement** : le build le
+détecte et continue sans lui (seules les notifications push sont inactives).
+Ce n'est pas une erreur à corriger avant la séance.
+
 **Préalable :** un compte marchande **mémorisé sur l'appareil** et dont la
 **biométrie est désactivée**. C'est le seul cas qui reproduit le scénario 1.
 
