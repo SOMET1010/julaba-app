@@ -96,6 +96,10 @@ capacitor-cordova-android-plugins
 app/src/main/assets/public
 
 # Generated Config files
+# Regeneres a chaque `npx cap sync android` a partir des plugins installes :
+# les suivre ferait dependre le depot de l'etat local d'un node_modules.
+capacitor.settings.gradle
+app/capacitor.build.gradle
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
