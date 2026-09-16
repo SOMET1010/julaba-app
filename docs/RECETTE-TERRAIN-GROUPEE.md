@@ -15,7 +15,27 @@ tout autre geste.
 
 ---
 
-## Étape 0 — Construire et installer l'APK
+## Étape 0 — Obtenir et installer l'APK
+
+### Option A — le laisser construire par GitHub (recommandé, rien à installer)
+
+1. Aller dans l'onglet **Actions** du dépôt → workflow
+   **« APK pilote — construction à la demande »** → bouton **Run workflow**.
+2. Laisser les deux valeurs par défaut (branche `claude/clever-allen-dnr8by`,
+   URL de l'API) et lancer. Compter **~3 minutes**.
+3. En bas du run terminé, télécharger l'artefact **`julaba-apk-<sha>`**. Le
+   `<sha>` est celui du code réellement construit : il doit correspondre à la
+   tête de la branche. C'est un `.zip` contenant `app-debug.apk` (~123 Mo,
+   dont les 71 Mo de modèle vocal).
+4. Transférer l'APK sur le téléphone et l'installer (« sources inconnues » à
+   autoriser une fois).
+
+APK de **debug**, signé avec la clé de debug : installable à la main, pas
+publiable sur un store — c'est le périmètre du pilote.
+
+Éprouvé le 16/09/2026 : run `35083654069`, artefact `julaba-apk-5d48614`.
+
+### Option B — le construire soi-même
 
 ```bash
 git fetch origin claude/clever-allen-dnr8by

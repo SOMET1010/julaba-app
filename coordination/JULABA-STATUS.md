@@ -10,11 +10,14 @@ STATUT: EN_ATTENTE
 TACHE: LOT A CLOS — attente de la session terrain unique (lot C)
 BESOIN_PATRICK: OUI
 TYPE_BESOIN: TEST_PHYSIQUE_ANDROID
-ACTION_PATRICK: dérouler docs/RECETTE-TERRAIN-GROUPEE.md sur un téléphone
+ACTION_PATRICK: l'APK n'est plus un obstacle — onglet Actions du dépôt,
+  workflow « APK pilote », Run workflow, artefact julaba-apk-<sha> (~3 min,
+  rien à installer). Puis dérouler docs/RECETTE-TERRAIN-GROUPEE.md sur un
+  téléphone
   Android réel (6 scénarios, ~40 min, dans l'ordre écrit — la voix se teste
   avant tout geste, sinon le scénario 1 est faussé). Noter les montants
   exacts et le résultat de chaque scénario ; en cas d'échec, capture + heure.
-DERNIER_SHA_MAIN: 4dc5389
+DERNIER_SHA_MAIN: 7fcc09f
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (5d48614) — 26 commits
   d'avance et 0 de retard sur main 6d24259 (compte donné avec son SHA de
   référence : il change dès qu'un commit tombe d'un côté ou de l'autre,
@@ -48,6 +51,17 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **16/09/2026** — L'APK ne dépend plus du poste de Patrick : workflow
+  `apk.yml` (déclenchement manuel seul, le filet d'intégration n'est pas
+  touché) qui construit depuis la branche et publie l'APK en artefact.
+  Éprouvé, pas asserté : trois runs, deux défauts trouvés et corrigés — le
+  prérequis JDK était faux (capacitor-android 8 exige **21**, pas 17, run
+  35082675776), et l'artefact portait le SHA de `main` alors qu'il contient
+  le code de la branche. Résultat : `julaba-apk-5d48614`, 123 Mo, 3 minutes.
+  Garde-fou intégré : la construction s'arrête si l'URL de l'API manque du
+  bundle. Trouvé au passage : l'étape 0 oubliait `installer-voix.sh`, sans
+  quoi le build s'arrête — ça aurait bloqué la séance à froid.
 
 - **16/09/2026** — Chaîne de build APK éprouvée jusqu'où c'est possible sans
   SDK Android : `npm run build` puis `npx cap sync android` joués sur la
