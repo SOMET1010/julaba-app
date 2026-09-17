@@ -19,6 +19,8 @@ import { AJOUT_PANIER } from "../../services/dialoguesTata";
 import type { LigneProvisoire } from "../../services/ligneProvisoire";
 import { toast } from "sonner";
 import tantieImg from "../../../assets/images/tantie-vente-vocale.png";
+import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { vignetteProduit } from '../../utils/emojiTile';
 
 const P = "#B74725";
 const PD = "#A0541F";
@@ -297,7 +299,9 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
             style={{ background: `linear-gradient(160deg,${P} 0%,${PD} 100%)` }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: "rgba(255,255,255,0.35)", marginBottom: 12 }} />
             <motion.button whileTap={{ scale: 0.9 }} onClick={onClose}
-              className="absolute top-3 right-4 w-8 h-8 rounded-full flex items-center justify-center"
+              // w-11 (44px) : c'est le bouton qui FERME la vente vocale. Mesure a
+              // 390x844 : 32x32, sous la regle des 44px.
+              className="absolute top-3 right-4 w-11 h-11 rounded-full flex items-center justify-center"
               style={{ background: "rgba(255,255,255,0.2)" }}>
               <X className="w-4 h-4 text-white" />
             </motion.button>
@@ -408,7 +412,7 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
                 aria-label={`Produit sélectionné : ${initialProduct.nom}`}
                 style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, background: PL, border: `1.5px solid ${P}40`, borderRadius: 16, padding: "10px 14px" }}>
                 {initialProduct.image && (
-                  <img src={initialProduct.image} alt={initialProduct.nom} style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
+                  <ImageWithFallback src={initialProduct.image} alt={initialProduct.nom} fallbackSrc={vignetteProduit(initialProduct.nom)} style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
                 )}
                 <span style={{ fontSize: 26, fontWeight: 900, color: P, fontVariantNumeric: "tabular-nums" }}>
                   {initialProduct.prix.toLocaleString("fr-FR")} F

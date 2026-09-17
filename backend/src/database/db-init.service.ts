@@ -94,6 +94,38 @@ export class DbInitService {
         `CREATE UNIQUE INDEX IF NOT EXISTS ux_caisse_sessions_marchand_date
          ON caisse_sessions (marchand_id, date);`,
       );
+      // Fond de caisse : NULL = « pas encore déclaré ». Distingue une journée
+      // ouverte automatiquement à 0 par une première vente d'un fond que la
+      // marchande a réellement déclaré nul. Miroir exact de la migration
+      // FondDeclareEtJournal (ADR-0002 : DbInit ⊆ migrations).
+      await this.dataSource.query(
+        `ALTER TABLE caisse_sessions ADD COLUMN IF NOT EXISTS fond_declare_at timestamptz;`,
+      );
+      // Fermeture : ce qu'elle a compté (fond_final), ce que l'application
+      // attendait, et l'écart. Miroir de la migration FermetureCaisseEcart
+      // (ADR-0002 : DbInit ⊆ migrations).
+      await this.dataSource.query(
+        `ALTER TABLE caisse_sessions ADD COLUMN IF NOT EXISTS caisse_theorique numeric;`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE caisse_sessions ADD COLUMN IF NOT EXISTS ecart numeric;`,
+      );
+      // L'argent d'une marchande ne change jamais sans laisser de trace.
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS caisse_fond_journal (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          session_id uuid NOT NULL,
+          marchand_id text NOT NULL,
+          ancien_fond numeric,
+          nouveau_fond numeric NOT NULL,
+          origine text NOT NULL,
+          created_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_caisse_fond_journal_session
+         ON caisse_fond_journal (session_id, created_at);`,
+      );
       await this.dataSource.query(`
         CREATE TABLE IF NOT EXISTS produits (
           id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

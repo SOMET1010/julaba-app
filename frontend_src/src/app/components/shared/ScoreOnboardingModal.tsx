@@ -214,7 +214,11 @@ export function ScoreOnboardingModal({
                 <motion.button
                   key={stepNumber}
                   onClick={() => handleDotClick(stepNumber)}
-                  className="relative"
+                  // Le point reste petit (c'est un repère visuel), mais la zone
+                  // TAPABLE fait 44px : mesuré à 8x8, intouchable au doigt.
+                  className="relative flex items-center justify-center"
+                  style={{ width: 44, height: 44 }}
+                  aria-label={`Aller à l'étape ${stepNumber}`}
                   whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.9 }}
                 >

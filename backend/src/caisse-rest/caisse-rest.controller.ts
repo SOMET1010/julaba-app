@@ -115,29 +115,217 @@ export class CaisseRestController {
     return { session: session[0] || null };
   }
 
+  // `UPDATE ... RETURNING` renvoie `[lignes, nombreAffecté]` sous TypeORM, là
+  // où `INSERT ... RETURNING` renvoie les lignes directement. Piège déjà payé
+  // une fois (catalogue maître : un compteur qui mentait). On normalise.
+  private premiereLigne(resultat: any): any {
+    if (!Array.isArray(resultat)) return null;
+    const lignes = Array.isArray(resultat[0]) ? resultat[0] : resultat;
+    return lignes[0] ?? null;
+  }
+
+  // L'argent d'une marchande ne change jamais sans laisser de trace : ancien
+  // montant, nouveau, heure, autrice. L'échec du journal ne fait PAS perdre sa
+  // déclaration (la session est déjà écrite) mais il est bruyant — un trou
+  // dans la piste d'audit doit se voir.
+  private async journaliserFond(
+    sessionId: string,
+    marchandId: string,
+    ancien: number | null,
+    nouveau: number,
+    origine: 'declaration' | 'correction',
+  ): Promise<void> {
+    try {
+      await this.dataSource.query(
+        `INSERT INTO caisse_fond_journal (session_id, marchand_id, ancien_fond, nouveau_fond, origine)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [sessionId, marchandId, ancien, nouveau, origine],
+      );
+    } catch (e: any) {
+      this.logger.error(
+        `[CAISSE] journal du fond NON écrit (session ${sessionId}, ${ancien} → ${nouveau}) : ${e?.message}`,
+      );
+    }
+  }
+
+  private montantValide(valeur: any): number {
+    const montant = Number(valeur);
+    if (!Number.isFinite(montant) || montant < 0) {
+      throw new BadRequestException('Montant du fond de caisse invalide');
+    }
+    return montant;
+  }
+
+  // Ouvrir la journée = DÉCLARER son fond de caisse (« Combien tu as en caisse
+  // ce matin ? »). Trois situations, une seule règle :
+  //
+  //  1. Aucune journée aujourd'hui → on la crée avec son fond.
+  //  2. Journée déjà créée mais fond JAMAIS déclaré — c'est le cas d'une
+  //     journée ouverte automatiquement à 0 par une première vente : cette
+  //     saisie EST la déclaration, elle remplace le 0. C'est le défaut
+  //     réparé : avant, le montant saisi était silencieusement perdu.
+  //  3. Fond déjà déclaré → il ne change PAS ici. Toute correction passe par
+  //     « Modifier le fond » (PATCH session/fond), qui la journalise. La
+  //     réponse le dit explicitement (`fond_conserve`) pour que l'écran cesse
+  //     d'afficher un montant que le serveur n'a pas retenu.
+  //
+  // Rouvrir une journée fermée reste permis dans tous les cas : doctrine déjà
+  // en place (voir ensureSessionOuverte) — on ne bloque jamais la vendeuse.
   @Post('session/ouvrir')
   async ouvrirSession(@Body() body: any, @CurrentUser() user: User) {
     const today = new Date().toISOString().split('T')[0];
+    const fond = this.montantValide(body.fond_initial ?? 0);
     const existing = await this.dataSource.query(
       'SELECT * FROM caisse_sessions WHERE marchand_id = $1 AND date = $2 LIMIT 1',
       [user.id, today]
     );
-    if (existing[0]) return { session: existing[0] };
-    const result = await this.dataSource.query(
-      'INSERT INTO caisse_sessions (marchand_id, date, fond_initial, ouvert, heure_ouverture, notes) VALUES ($1, $2, $3, true, NOW(), $4) RETURNING *',
-      [user.id, today, body.fond_initial || 0, body.notes || '']
-    );
-    return { session: result[0] };
+
+    if (!existing[0]) {
+      const result = await this.dataSource.query(
+        `INSERT INTO caisse_sessions (marchand_id, date, fond_initial, ouvert, heure_ouverture, notes, fond_declare_at)
+         VALUES ($1, $2, $3, true, NOW(), $4, NOW()) RETURNING *`,
+        [user.id, today, fond, body.notes || '']
+      );
+      const creee = this.premiereLigne(result);
+      if (creee) await this.journaliserFond(creee.id, user.id, null, fond, 'declaration');
+      return { session: creee };
+    }
+
+    const session = existing[0];
+
+    if (!session.fond_declare_at) {
+      const maj = await this.dataSource.query(
+        `UPDATE caisse_sessions
+            SET fond_initial = $1, fond_declare_at = NOW(), ouvert = true,
+                heure_ouverture = COALESCE(heure_ouverture, NOW()),
+                heure_fermeture = NULL, updated_at = NOW()
+          WHERE id = $2 RETURNING *`,
+        [fond, session.id]
+      );
+      await this.journaliserFond(session.id, user.id, Number(session.fond_initial ?? 0), fond, 'declaration');
+      return { session: this.premiereLigne(maj) ?? { ...session, fond_initial: fond, ouvert: true } };
+    }
+
+    if (!session.ouvert) {
+      const reouverte = await this.dataSource.query(
+        `UPDATE caisse_sessions
+            SET ouvert = true, heure_fermeture = NULL, updated_at = NOW()
+          WHERE id = $1 RETURNING *`,
+        [session.id]
+      );
+      return { session: this.premiereLigne(reouverte) ?? { ...session, ouvert: true }, fond_conserve: true };
+    }
+
+    return { session, fond_conserve: true };
   }
 
+  // « Modifier le fond » : le seul chemin pour changer un fond déjà déclaré.
+  // Journalisé systématiquement. Avant, cet écran ne persistait RIEN — il
+  // changeait l'affichage et le montant revenait au rechargement.
+  @Patch('session/fond')
+  async corrigerFond(@Body() body: any, @CurrentUser() user: User) {
+    const today = new Date().toISOString().split('T')[0];
+    const fond = this.montantValide(body.fond_initial);
+    const existing = await this.dataSource.query(
+      'SELECT * FROM caisse_sessions WHERE marchand_id = $1 AND date = $2 LIMIT 1',
+      [user.id, today]
+    );
+    // Aucune journée aujourd'hui : cette saisie EST sa déclaration du matin, on
+    // crée la journée avec. C'est le seul chemin qu'une marchande a vraiment :
+    // son accueil (MarchandAccueilVoice) n'expose PAS de bouton « Ouvrir ma
+    // journée » — elle passe par le résumé du jour puis « Modifier le fond ».
+    // Avant, elle recevait un 404 : son écran affichait le montant, la base ne
+    // gardait rien, et tout était perdu au rechargement. Même défaut que celui
+    // réparé sur session/ouvrir, sur la seule voie réellement empruntée.
+    if (!existing[0]) {
+      const creee = this.premiereLigne(await this.dataSource.query(
+        `INSERT INTO caisse_sessions (marchand_id, date, fond_initial, ouvert, heure_ouverture, fond_declare_at)
+         VALUES ($1, $2, $3, true, NOW(), NOW()) RETURNING *`,
+        [user.id, today, fond],
+      ));
+      if (creee) await this.journaliserFond(creee.id, user.id, null, fond, 'declaration');
+      return { session: creee };
+    }
+
+    const session = existing[0];
+    const maj = await this.dataSource.query(
+      `UPDATE caisse_sessions
+          SET fond_initial = $1, fond_declare_at = COALESCE(fond_declare_at, NOW()), updated_at = NOW()
+        WHERE id = $2 RETURNING *`,
+      [fond, session.id]
+    );
+    // Une journée ouverte automatiquement par une première vente porte un fond
+    // à 0 JAMAIS déclaré : la saisie qui arrive est donc sa DÉCLARATION, pas une
+    // correction. Le distinguer n'est pas cosmétique — « Modifier le fond » est
+    // le seul chemin qu'une marchande a, donc c'est ce libellé qui apparaîtra
+    // en pratique dans la piste d'audit. Un journal qui se trompe sur ce qui
+    // s'est passé ne vaut pas mieux que pas de journal.
+    const origine = session.fond_declare_at ? 'correction' : 'declaration';
+    await this.journaliserFond(session.id, user.id, Number(session.fond_initial ?? 0), fond, origine);
+    return { session: this.premiereLigne(maj) ?? { ...session, fond_initial: fond } };
+  }
+
+  // Ce que la caisse DEVRAIT contenir, calculé par le serveur à partir de ses
+  // propres écritures : fond déclaré + ventes encaissées − dépenses. Les ventes
+  // ANNULÉES sont exclues (le back-office ne supprime pas une vente, il pose
+  // statut='annulee' — les compter surestimerait la recette).
+  //
+  // Volontairement calculé ici et non repris du téléphone : un écart n'a de
+  // valeur que s'il est établi par celui qui n'a pas intérêt à le lisser, et un
+  // appareil hors ligne depuis des heures n'a pas le compte juste.
+  private async caisseTheorique(marchandId: string, fondInitial: number, date: string): Promise<number> {
+    const [somme] = await this.dataSource.query(
+      `SELECT
+         COALESCE(SUM(CASE WHEN type = 'vente'   THEN montant ELSE 0 END), 0) AS ventes,
+         COALESCE(SUM(CASE WHEN type = 'depense' THEN montant ELSE 0 END), 0) AS depenses
+       FROM caisse_transactions
+      WHERE marchand_id = $1 AND statut <> 'annulee' AND created_at::date = $2::date`,
+      [marchandId, date],
+    );
+    return fondInitial + Number(somme?.ventes ?? 0) - Number(somme?.depenses ?? 0);
+  }
+
+  // Fermer la journée = déclarer ce qu'on a RÉELLEMENT en main, et confronter.
+  //
+  // Défaut réparé : l'application envoie `comptage_reel`, cette méthode lisait
+  // `body.fond_final`. Les noms ne correspondaient pas, donc `|| 0` écrivait
+  // ZÉRO à chaque fermeture, quel que soit le montant compté — et les notes de
+  // clôture étaient perdues de même. L'écart, lui, n'était stocké nulle part.
+  // C'est pourtant la mesure même du pilote : un incident qu'on ne conserve pas
+  // ne se détecte jamais.
   @Post('session/fermer')
   async fermerSession(@Body() body: any, @CurrentUser() user: User) {
     const today = new Date().toISOString().split('T')[0];
-    const result = await this.dataSource.query(
-      'UPDATE caisse_sessions SET ouvert = false, heure_fermeture = NOW(), fond_final = $1, updated_at = NOW() WHERE marchand_id = $2 AND date = $3 RETURNING *',
-      [body.fond_final || 0, user.id, today]
+    // `fond_final` reste accepté : ancien nom du même montant, des clients
+    // hors ligne peuvent encore le rejouer.
+    const comptage = this.montantValide(body.comptage_reel ?? body.fond_final ?? 0);
+
+    const [existante] = await this.dataSource.query(
+      'SELECT * FROM caisse_sessions WHERE marchand_id = $1 AND date = $2 LIMIT 1',
+      [user.id, today],
     );
-    return { session: result[0] };
+    if (!existante) throw new NotFoundException('Aucune journée à fermer');
+
+    const theorique = await this.caisseTheorique(user.id, Number(existante.fond_initial ?? 0), today);
+    const ecart = comptage - theorique;
+
+    const maj = await this.dataSource.query(
+      `UPDATE caisse_sessions
+          SET ouvert = false, heure_fermeture = NOW(),
+              fond_final = $1, caisse_theorique = $2, ecart = $3,
+              notes = COALESCE($4, notes), updated_at = NOW()
+        WHERE id = $5 RETURNING *`,
+      [comptage, theorique, ecart, body.notes ?? null, existante.id],
+    );
+    if (ecart !== 0) {
+      // Un écart de caisse est un INCIDENT (Constitution, § confiance mesurable) :
+      // il doit se voir dans les journaux, pas seulement dormir en base.
+      this.logger.warn(
+        `[CAISSE] écart de fermeture ${ecart > 0 ? '+' : ''}${ecart} F ` +
+        `(compté ${comptage}, théorique ${theorique}) — marchande ${user.id}, ${today}`,
+      );
+    }
+    return { session: this.premiereLigne(maj) ?? existante, caisse_theorique: theorique, ecart };
   }
 
   // Idempotence : si la clé a déjà été traitée (rejeu offline), renvoyer la

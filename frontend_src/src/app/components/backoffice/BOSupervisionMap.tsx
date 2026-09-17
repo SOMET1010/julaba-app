@@ -425,7 +425,7 @@ export const BOSupervisionMap: React.FC<BOSupervisionMapProps> = ({ dateFrom, da
         open={selectedActeur !== null}
         onClose={() => setSelectedActeur(null)}
         width={480}
-        ariaLabel="Detail acteur"
+        ariaLabel="Détail acteur"
         title={
           selectedActeur ? (
             <div>
@@ -435,7 +435,7 @@ export const BOSupervisionMap: React.FC<BOSupervisionMapProps> = ({ dateFrom, da
               </div>
             </div>
           ) : (
-            'Detail acteur'
+            'Détail acteur'
           )
         }
       >

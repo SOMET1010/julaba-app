@@ -23,6 +23,7 @@ import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
 import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../services/comptesMemorises';
+import { salutation } from '../../utils/appellation';
 import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 import { glyphePourChiffre } from '../../services/clavierImage';
 import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
@@ -125,6 +126,9 @@ export function LoginPassword() {
   const voixEcouteDispo = (() => { try { return offlineModelReady(); } catch { return false; } })();
   // Le pavé est la référence : toujours visible tant que la voix n'écoute pas.
   const clavierVisible = showKeypad || !voixEcouteDispo;
+  // Un numéro est déjà là (dicté ou tapé) : l'écran n'a plus à le DEMANDER,
+  // seulement à proposer de le refaire. Sert à départager les deux boutons.
+  const numeroSaisi = phone.length > 0;
   // Clavier imagé (variante A, doc « mot de passe imagé ») : correspondance
   // FIXE et publique chiffre→image sur le pavé PIN, en OPTION — jamais le mode
   // par défaut (personne n'est surprise par un pavé déjà connu). Le PIN envoyé
@@ -146,6 +150,9 @@ export function LoginPassword() {
   };
   // Canal utilisé pour CETTE identification (clavier / voix) → apprentissage 'auto'.
   const dernierCanalRef = useRef<'clavier' | 'voix' | null>(null);
+  // Une dictée a-t-elle été TENTÉE pendant cette connexion ? Sert à ne pas
+  // compter comme « préférence clavier » un repli que l'app a imposé.
+  const aTenteVoixRef = useRef(false);
   // Proposition d'adaptation de Tata (mode 'auto' + préférence franche observée).
   const [suggestion] = useState(() => suggestionAuto());
   const [suggReponse, setSuggReponse] = useState(false); // déjà répondu → on masque
@@ -186,7 +193,12 @@ export function LoginPassword() {
       return (u?.firstName || u?.first_name || u?.prenom || '').toString().trim();
     } catch { return ''; }
   })();
-  const greetTitle = cachedPrenom ? `Bonjour Maman ${cachedPrenom}` : 'Bonjour ma sœur !';
+  // Le nom qu'elle a choisi dans sa fiche (voir utils/appellation). Sur cet
+  // écran elle n'est pas encore authentifiée : il vient du compte reconnu sur
+  // l'appareil. Un compte mémorisé avant ce correctif ne le porte pas — on
+  // emploie alors son prénom seul, et son choix sera appris à l'entrée
+  // suivante.
+  const greetTitle = `${salutation(compteConnu?.appellation, cachedPrenom)} !`;
   const greetSub = cachedPrenom
     ? 'Je suis heureuse de vous revoir aujourd’hui.'
     : 'Je suis Tata Nanti Lou. Je serai à vos côtés pour vous aider.';
@@ -246,13 +258,74 @@ export function LoginPassword() {
     try { clip = tataUiClipForText(texte); } catch { /* ignore */ }
     try { void speakClipOrText({ clipUrl: clip ?? undefined, text: texte }); } catch { /* ignore */ }
   };
+  // Enchaîne PLUSIEURS prises de parole sans qu'elles se coupent. audioManager
+  // ne sert qu'un créneau exclusif à la fois et toute nouvelle demande annule
+  // la précédente (generation) : deux `parle()` de suite ne laissent entendre
+  // que le second. On attend donc la fin de chacune avant la suivante.
+  const parleSuite = async (...textes: (string | null | undefined)[]) => {
+    for (const texte of textes) {
+      if (!texte) continue;
+      let clip: string | null = null;
+      try { clip = tataUiClipForText(texte); } catch { /* ignore */ }
+      try { await speakClipOrText({ clipUrl: clip ?? undefined, text: texte }); } catch { /* ignore */ }
+    }
+  };
+  // Chiffres détachés pour la relecture : « 0 7 0 9 … » et non « sept cent... ».
+  const chiffresEpeles = (d: string) => d.split('').join(' ');
   // GUIDAGE VOCAL selon le mode : en mode « lecture » (elle lit vite), on ne parle
   // PAS automatiquement (le texte suffit). En mixte/voix, Tata annonce erreurs et
   // consignes. La lecture manuelle (toucher Tata, le cadenas…) reste toujours possible.
   // L'erreur se SENT (vibration longue) quel que soit le profil — et se dit
   // en guidage vocal. Une sourde ou une marchande dans le bruit la perçoit.
+  // Journal de diagnostic ouvert dès l'ARRIVÉE sur l'écran, et non plus
+  // seulement au démarrage d'une dictée (voir vlogStart('dictée') plus bas) :
+  // sans cela, « 🐞 Rapport de test » ne contenait rien pour une marchande qui
+  // ne dicte pas — or c'est précisément le cas où la voix manque. vlogStart
+  // enregistre déjà la présence de speechSynthesis et les voix FR du téléphone.
+  // Doit rester le PREMIER effet du composant : les suivants y écrivent.
+  useEffect(() => {
+    vlogStart('login');
+    vlog('LOGIN_ETAPE_INITIALE', {
+      step,
+      compteConnu: !!compteConnu,
+      biometrie: compteConnu?.biometrie ?? null,
+      guidage: guidageVocal(accessMode),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => { if (error) { vibrerErreur(); if (guidageVocal(accessMode)) parle(error); } }, [error]);
-  useEffect(() => { if (step === 'password' && guidageVocal(accessMode)) parle('Entre ton code secret à 4 chiffres'); }, [step]);
+  // VOIX-V5 — la consigne du code était la SEULE des trois étapes sans filet
+  // de rattrapage audio (les deux autres l'ont : voir direAccueilReconnaissance
+  // et direConsigneNumero). Une marchande connue de l'appareil mais SANS
+  // biométrie atterrit directement ici — step vaut 'password' dès le premier
+  // rendu (état initial plus haut). La consigne partait donc avant tout geste
+  // dans la page et la politique autoplay la coupait EN SILENCE, définitivement
+  // pour la session : l'écran PIN restait muet.
+  //
+  // Le filet n'est armé QUE si 'password' est l'étape de MONTAGE — le seul cas
+  // où l'audio est encore verrouillé. Arrivée depuis 'reconnaissance' ou
+  // 'phone', le geste de navigation a déjà débloqué l'audio et la consigne est
+  // passée : réarmer la rejouerait par-dessus la frappe du code.
+  const arriveeDirecteSurCode = useRef(step === 'password').current;
+  const direConsigneCode = useCallback(() => {
+    if (step !== 'password') return;
+    if (!guidageVocal(accessMode)) return; // mode lecture : pas de consigne auto
+    parle('Entre ton code secret à 4 chiffres');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, accessMode]);
+
+  useEffect(() => {
+    if (step === 'password') {
+      vlog('VOIX_CODE_TENTEE', { arriveeDirecte: arriveeDirecteSurCode, guidage: guidageVocal(accessMode) });
+    }
+    direConsigneCode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  useAudioUnlockFallback(
+    () => { vlog('VOIX_CODE_REJOUEE_APRES_GESTE'); direConsigneCode(); },
+    arriveeDirecteSurCode && step === 'password' && guidageVocal(accessMode),
+  );
   // « Tata se souvient de moi » : à l'arrivée, Tata SALUE par le prénom et dit le
   // geste à faire — l'écran n'a rien à lire. (Une seule fois, au montage.)
   // FILET DE RATTRAPAGE : cet écran ('reconnaissance') peut être le TOUT
@@ -262,7 +335,7 @@ export function LoginPassword() {
   // Même filet que Welcome.tsx/OnboardingSlides.tsx.
   const direAccueilReconnaissance = useCallback(() => {
     if (!(step === 'reconnaissance' && compteConnu && guidageVocal(accessMode))) return;
-    const salut = compteConnu.prenom ? `Bonjour ${compteConnu.prenom} !` : 'Bonjour ma sœur !';
+    const salut = `${salutation(compteConnu.appellation, compteConnu.prenom)} !`;
     const geste = compteConnu.biometrie
       ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
       : 'Touche le grand bouton et entre ton code.';
@@ -469,6 +542,7 @@ export function LoginPassword() {
     mediaStreamRef.current = stream;
     dictCfgRef.current = cfg;
     dernierCanalRef.current = 'voix'; // elle a choisi de PARLER (apprentissage 'auto')
+    aTenteVoixRef.current = true;      // trace conservée même si la dictée échoue
 
     // Réinitialise l'état de dictée pour cette session d'écoute.
     dictDoneRef.current = false;
@@ -546,19 +620,55 @@ export function LoginPassword() {
     max: 10,
     estComplet: (d) => numeroCIComplet(d, TEST_PHONES),
     onLive: (d) => { setPhone(d); setOperateur(operateurDe(d)); },
+    // FIN DE DICTÉE — REFAIT (défaut remonté en recette le 16/09/2026 : « quand
+    // je me trompe en dictant, il continue et ne me donne aucune option vocale
+    // de le modifier »). Trois défauts tenaient ensemble :
+    //
+    //  1. AUCUNE RELECTURE. Tata ne redisait jamais ce qu'elle avait compris.
+    //     Une marchande qui ne lit pas n'avait donc AUCUN moyen de constater
+    //     l'erreur — et si les chiffres avalés formaient quand même un numéro
+    //     valide, la connexion partait sur un autre compte SANS aucun signal.
+    //  2. TOUTES LES SORTIES RENVOYAIENT AU CLAVIER, c'est-à-dire précisément
+    //     à ce qu'elle ne peut pas faire. Aucune issue à la voix.
+    //  3. CES PHRASES N'ONT PAS DE CLIP. `parle()` joue un enregistrement quand
+    //     la phrase en a un, sinon il retombe sur la synthèse — muette dans
+    //     l'APK. Les variantes écrites à la main ci-dessus étaient donc
+    //     SILENCIEUSES sur le téléphone, alors que ui-058 (« Je n'ai pas
+    //     compris. Tape ton numéro, ou réessaie. ») et ui-100 existent et
+    //     disent la bonne chose — « ou réessaie » comprise.
+    //
+    // On relit donc TOUJOURS ce qui a été compris, puis on dit une phrase
+    // RÉELLEMENT ENREGISTRÉE. Le clavier reste le filet, il n'est plus la
+    // seule porte : le micro demeure atteignable et la phrase le nomme.
     onFinal: (num) => {
+      const relecture = num ? `J'ai compris. ${chiffresEpeles(num)}` : '';
       if (num.length >= 10 && numeroCIComplet(num, TEST_PHONES)) {
         try { navigator.vibrate?.(30); } catch { /* ignore */ }
-        remplirNumero(num); return;
+        remplirNumero(num);
+        void parleSuite(relecture);
+        return;
       }
-      if (num.length >= 10) { setPhone(num); setError('Vérifie ton numéro et corrige 👇'); setShowKeypad(true); parle('Vérifie ton numéro, corrige sur le clavier.'); return; }
-      if (num.length > 0) { setPhone(num); setError(''); setShowKeypad(true); parle('Complète ton numéro sur le clavier.'); return; }
-      setError("Je n'ai pas compris. Tape ton numéro juste ici 👇"); setShowKeypad(true); parle("Je n'ai pas compris. Tape ton numéro juste ici.");
+      try { vibrerErreur(); } catch { /* ignore */ }
+      setShowKeypad(true);
+      if (num.length > 0) {
+        setPhone(num);
+        setError(num.length >= 10
+          ? 'Vérifie ton numéro : touche le micro pour redire, ou corrige 👇'
+          : 'Il manque des chiffres : touche le micro pour redire, ou complète 👇');
+        void parleSuite(relecture, "Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+        return;
+      }
+      setError("Je n'ai pas compris. Touche le micro pour redire, ou tape 👇");
+      void parleSuite("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
     },
-    buildTag: 'sherpa-login-live-v1',
+    buildTag: 'sherpa-login-live-v2-relecture',
     siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro."); },
-    siMicRefuse: () => { setError('Autorise le micro, ou tape ton numéro 👇'); parle('Autorise le micro, ou tape ton numéro.'); setShowKeypad(true); },
-    siEchec: () => { setShowKeypad(true); parle('Tape ton numéro juste ici.'); },
+    // Micro refusé / moteur en échec : on dit les clips existants (ui-100,
+    // ui-058) plutôt qu'une phrase sur mesure qui serait muette. Aucun clip ne
+    // dit « autorise le micro » — le texte écrit le précise, la voix dit au
+    // moins qu'il y a un problème et qu'on peut réessayer.
+    siMicRefuse: () => { setError('Autorise le micro, ou tape ton numéro 👇'); void parleSuite('Problème avec le micro — réessaie'); setShowKeypad(true); },
+    siEchec: () => { setShowKeypad(true); void parleSuite("Je n'ai pas compris. Tape ton numéro, ou réessaie."); },
   });
 
   // AUDIT UX B5 (11/08/2026) : le CODE SECRET ne se dicte JAMAIS à voix
@@ -654,7 +764,10 @@ export function LoginPassword() {
       const prenom = String((u as any)?.firstName || (u as any)?.first_name || (u as any)?.prenoms || '').trim();
       const photoBrute = (u as any)?.photo;
       const photo = typeof photoBrute === 'string' && photoBrute ? photoBrute : undefined;
-      memoriserCompte(window.localStorage, { phone, prenom, photo, ...(biometrie ? { biometrie: true } : {}) }, new Date().toISOString());
+      // Son choix est mémorisé avec le prénom : sans lui, l'écran de connexion
+      // ne peut pas l'appeler comme elle l'a demandé au retour suivant.
+      const appellationChoisie = String((u as any)?.appellation || '').trim() || undefined;
+      memoriserCompte(window.localStorage, { phone, prenom, photo, ...(appellationChoisie ? { appellation: appellationChoisie } : {}), ...(biometrie ? { biometrie: true } : {}) }, new Date().toISOString());
     } catch { /* ignore */ }
   };
 
@@ -781,7 +894,18 @@ export function LoginPassword() {
       }
       resetAttempts(phone);
       // Apprentissage 'auto' : on note comment elle s'est identifiée (clavier/voix).
-      try { if (dernierCanalRef.current) noterCanal(dernierCanalRef.current); } catch { /* ignore */ }
+      // APPRENTISSAGE 'auto' — CORRECTIF. On notait le DERNIER canal utilisé.
+      // Or tous les messages d'échec de la dictée renvoyaient au clavier : une
+      // marchande qui CHOISIT de parler, que la dictée lâche, et qui finit au
+      // pavé était enregistrée « clavier ». Au bout de 3 connexions à 70 % de
+      // clavier, getEffectiveMode() bascule en 'lecture' et Tata SE TAIT —
+      // exactement pour celle qui ne sait pas lire, et à cause d'un échec dont
+      // elle n'est pas responsable. Si la voix a été TENTÉE, c'est la voix qui
+      // compte : l'intention de la personne, pas la défaillance de l'app.
+      try {
+        const canal = aTenteVoixRef.current ? 'voix' : dernierCanalRef.current;
+        if (canal) noterCanal(canal);
+      } catch { /* ignore */ }
       const user = result.user;
       if (!user) {
         setError('Réponse serveur invalide');
@@ -795,7 +919,11 @@ export function LoginPassword() {
         if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
         navigateTimeoutRef.current = setTimeout(() => {
           setIsLoading(false);
-          navigate('/change-password');
+          // On PASSE le code qui vient d'ouvrir la session : l'écran suivant
+          // n'a plus à le redemander. Le lui redemander cinq secondes après
+          // l'avoir tapé n'ajoute aucune sécurité — la session est déjà
+          // ouverte — et bloque net quelqu'un qui ne lit pas.
+          navigate('/change-password', { state: { codeActuel: pwd } });
         }, 1500);
         return;
       }
@@ -980,7 +1108,7 @@ export function LoginPassword() {
         <div className="login-brand">
           <span className="login-logo"><img src={logoJulaba} alt="JULABA" /></span><BrandSignature />
         </div>
-        <h1>{step === 'phone' ? 'Ton numéro' : step === 'password' ? 'Ton code secret' : `Bonjour ${compteConnu?.prenom || 'ma sœur'}`}</h1>
+        <h1>{step === 'phone' ? 'Ton numéro' : step === 'password' ? 'Ton code secret' : salutation(compteConnu?.appellation, compteConnu?.prenom)}</h1>
         <div className="login-guide">
           <img src={tataNantiLou} alt="Tata Nanti Lou" />
           <button type="button" onClick={ecouterTata} className="login-replay"
@@ -1128,8 +1256,12 @@ export function LoginPassword() {
               <span className="login-number-value" aria-label={phone.length ? 'Numéro saisi' : 'Numéro à saisir'}>
                 {(phone.match(/.{1,2}/g) || []).join(' ') || '— — — — —'}
               </span>
-              {phone.length === 10 && <button type="button" className="login-replay" style={{ width: 44, height: 44, flexShrink: 0 }}
-                disabled={isListening || isLoading} onClick={() => parle(phone.split('').join(' '))} aria-label="Réécouter mon numéro">
+              {/* CORRECTIF : ce bouton n'apparaissait qu'à 10 chiffres pile —
+                  donc jamais dans le cas qui en a le plus besoin, celui où la
+                  dictée a avalé un chiffre. Il est désormais là dès le premier
+                  chiffre saisi, dicté ou tapé. */}
+              {phone.length > 0 && <button type="button" className="login-replay" style={{ width: 44, height: 44, flexShrink: 0 }}
+                disabled={isListening || isLoading} onClick={() => parle(chiffresEpeles(phone))} aria-label="Réécouter mon numéro">
                 <Volume2 aria-hidden="true" size={20} />
               </button>}
             </div>
@@ -1144,19 +1276,34 @@ export function LoginPassword() {
               ))}
             </div>
             {/* GRAND MICRO — l'action, UNIQUEMENT si la voix écoute réellement.
-                Sinon (cas actuel) : aucun micro trompeur, le pavé est la référence. */}
+                Sinon (cas actuel) : aucun micro trompeur, le pavé est la référence.
+
+                CORRECTIF UX (remonté en recette le 16/09/2026 : « j'ai déjà dit
+                mon numéro, il me le redemande pendant qu'il le lit »). Une fois
+                le numéro complet, deux appels à l'action se disputaient l'écran
+                — « Dire mon numéro » et « C'est mon numéro » — dont l'un
+                ignorait ce qui venait d'être fait. Le micro ne DEMANDE plus, il
+                PROPOSE de recommencer : il s'efface visuellement et change de
+                mot dès que le numéro est là. La confirmation reste seule en
+                action principale. */}
             {voixEcouteDispo && (
             <motion.button
               type="button"
-              aria-label="Touchez et dites votre numéro"
+              aria-label={numeroSaisi ? 'Recommencer et redire votre numéro' : 'Touchez et dites votre numéro'}
               onPointerDown={(e) => e.preventDefault()}
               onClick={dicterNumero}
               className="login-dictate"
               aria-pressed={isListening}
               disabled={isLoading || isFinalizingDictation}
               whileTap={{ scale: 0.96 }}
+              style={numeroSaisi && !isListening
+                ? { opacity: 0.75, transform: 'scale(0.94)' }
+                : undefined}
             >
-              <Mic aria-hidden="true" size={36} /><span>{isListening ? 'Écoute en cours…' : 'Dire mon numéro'}</span>
+              <Mic aria-hidden="true" size={numeroSaisi && !isListening ? 26 : 36} />
+              <span>{isListening
+                ? 'Écoute en cours…'
+                : numeroSaisi ? 'Redire mon numéro' : 'Dire mon numéro'}</span>
             </motion.button>
             )}
             <AnimatePresence>

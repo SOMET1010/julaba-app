@@ -291,7 +291,14 @@ export function RoleDashboard({
           transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
         >
           <Card className={`mb-4 rounded-3xl shadow-md bg-gradient-to-br from-white ${gradientFrom} overflow-hidden`}>
-            {currentSession ? (
+            {/* La journée est-elle OUVERTE — pas « une session existe-t-elle ».
+                Une journée fermée reste en mémoire avec `opened: false` (closeDay,
+                et le backend la renvoie ainsi au rechargement) : cette carte
+                annonçait donc « Journée ouverte » après une fermeture de caisse,
+                avec un fond à l'appui, et le bouton d'ouverture disparaissait.
+                Le reste de ce fichier teste déjà `currentSession?.opened` (voir
+                plus bas) — c'est cette carte qui divergeait. */}
+            {currentSession?.opened ? (
               <>
                 {/* Version compacte cliquable */}
                 <motion.button

@@ -834,10 +834,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     setCurrentSession(newSession);
 
-    // Sync avec API
+    // Sync avec API. La réponse du serveur FAIT FOI : elle était ignorée, si
+    // bien que l'écran affichait un fond que la base n'avait pas retenu (elle
+    // voyait 5 000, la base gardait 0 — caisse théorique fausse d'autant).
+    // Hors ligne ou en cas d'échec réseau, l'état local optimiste est conservé :
+    // on ne bloque jamais la vendeuse.
     if (accessToken) {
       try {
-        await fetch(
+        const reponse = await fetch(
           `${API_URL}/caisse/session/ouvrir`,
           {
             method: 'POST',
@@ -849,6 +853,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }),
           }
         );
+        if (reponse.ok) {
+          const { session, fond_conserve } = await reponse.json();
+          if (session) {
+            const fondRetenu = Number(session.fond_initial) || 0;
+            setCurrentSession({
+              ...newSession,
+              id: session.id || newSession.id,
+              fondInitial: fondRetenu,
+              opened: session.ouvert !== false,
+              openedAt: session.heure_ouverture || newSession.openedAt,
+            });
+            // Son fond du jour était déjà déclaré : le serveur ne l'a pas
+            // remplacé. On le DIT — une marchande qui ne lit pas ne doit pas
+            // deviner pourquoi le montant affiché n'est pas celui qu'elle a tapé.
+            if (fond_conserve && fondRetenu !== fondInitial) {
+              void speak(
+                `Ta journée est déjà ouverte avec ${fondRetenu} francs. Pour changer ce montant, touche Modifier le fond.`,
+              );
+            }
+          }
+        }
       } catch (error: any) {
         console.warn('[AppContext] openDay sync failed:', error?.message);
       }
@@ -890,20 +915,75 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.warn('[AppContext] closeDay sync failed:', error?.message);
       }
     }
-    
-    setCurrentSession(null);
+
+    // La journée FERMÉE reste en mémoire, on ne l'efface pas.
+    //
+    // `setCurrentSession(null)` faisait retomber le fond à 0 dans le calcul de
+    // la caisse : l'accueil passait de 6 500 F à 1 500 F juste après la
+    // fermeture, sans qu'un franc ait bougé. Un chiffre qui se contredit tout
+    // seul est un incident au sens du principe 8 — et c'est exactement le
+    // moment où une marchande vérifie qu'elle peut nous faire confiance.
+    //
+    // `opened: false` suffit à dire que la journée est close : tout le reste du
+    // code teste `currentSession?.opened`, pas l'existence de l'objet.
+    setCurrentSession(updatedSession);
   };
 
+  // « Modifier le fond » — seul chemin pour changer un fond déjà déclaré.
+  // Cet écran était purement décoratif : il changeait l'affichage et le
+  // montant revenait au rechargement (`// FUTURE: sync`, jamais fait). Le
+  // serveur journalise désormais chaque correction (ancien, nouveau, heure,
+  // autrice) — l'argent d'une marchande ne change pas sans laisser de trace.
   const updateFondInitial = async (newFond: number) => {
-    if (!currentSession) return;
+    // PAS de garde `if (!currentSession) return` : c'était elle qui perdait
+    // silencieusement l'argent. L'accueil d'une marchande n'expose aucun bouton
+    // « Ouvrir ma journée » — son seul chemin est « Modifier le fond ». Avant
+    // sa première vente, aucune journée n'existe : on renvoyait donc sans rien
+    // faire, et le montant qu'elle venait de composer en billets disparaissait.
+    // Le serveur crée désormais la journée à cette occasion (PATCH session/fond).
+    setCurrentSession((prev) =>
+      prev
+        ? { ...prev, fondInitial: newFond }
+        : {
+            id: `local-${Date.now()}`,
+            userId: user?.id || '',
+            date: new Date().toISOString().split('T')[0],
+            fondInitial: newFond,
+            opened: true,
+            openedAt: new Date().toISOString(),
+          },
+    );
 
-    const updatedSession: DaySession = {
-      ...currentSession,
-      fondInitial: newFond,
-    };
-    
-    setCurrentSession(updatedSession);
-    // FUTURE: sync /api/v1/users/profile
+    if (accessToken) {
+      try {
+        const reponse = await fetch(
+          `${API_URL}/caisse/session/fond`,
+          {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: caisseAuthHeaders(accessToken),
+            body: JSON.stringify({ fond_initial: newFond }),
+          }
+        );
+        if (reponse.ok) {
+          const { session } = await reponse.json();
+          if (session) {
+            setCurrentSession((prev) => ({
+              id: session.id || prev?.id || `local-${Date.now()}`,
+              userId: prev?.userId || user?.id || '',
+              date: session.date || prev?.date || new Date().toISOString().split('T')[0],
+              fondInitial: Number(session.fond_initial) || 0,
+              opened: session.ouvert !== false,
+              openedAt: session.heure_ouverture || prev?.openedAt,
+            }));
+          }
+        } else {
+          console.warn('[AppContext] updateFondInitial refusé :', reponse.status);
+        }
+      } catch (error: any) {
+        console.warn('[AppContext] updateFondInitial sync failed:', error?.message);
+      }
+    }
   };
 
   // ═══════════════════════════════════════════════════════════════════

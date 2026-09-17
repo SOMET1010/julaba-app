@@ -35,11 +35,11 @@ const ROLE_COLORS: Record<string, string> = {
 
 const ROLE_SUGGESTIONS: Record<string, string[]> = {
   marchand: ["Aujourd'hui j'ai fait combien ?", "Je veux mettre un peu de cote", "Quelle est ma meilleure vente ?", "Voir mon stock"],
-  producteur: ["Ma recolte vaut combien ?", "Declarer ma recolte de cacao", "Quel est mon meilleur produit ?", "Créer une plantation agricole"],
+  producteur: ["Ma récolte vaut combien ?", "Déclarer ma récolte de cacao", "Quel est mon meilleur produit ?", "Créer une plantation agricole"],
   cooperative: ["Combien de membres actifs ?", "Notre tresorerie est a combien ?", "Faire un achat groupe", "Qui n'a pas paye sa cotisation ?"],
   cooperateur: ["Combien de membres actifs ?", "Notre tresorerie est a combien ?", "Faire un achat groupe", "Qui n'a pas paye sa cotisation ?"],
   institution: ["Combien d'utilisateurs actifs ?", "Volume total des transactions ?", "Valider un compte", "Générer un rapport"],
-  administrateur: ["Combien d'utilisateurs actifs ?", "Volume total des transactions ?", "Valider un compte", "Generer un rapport"],
+  administrateur: ["Combien d'utilisateurs actifs ?", "Volume total des transactions ?", "Valider un compte", "Générer un rapport"],
   identificateur: ["Identifier un acteur", "Combien d'identifications ce mois ?", "Valider un dossier", "Rechercher un producteur"],
 };
 

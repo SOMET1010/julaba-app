@@ -66,6 +66,16 @@ export class User {
   @Column({ nullable: true, default: 'femme' })
   genre: string;
 
+  /**
+   * Le nom par lequel la personne veut qu'on l'appelle, tel qu'elle l'a dit
+   * dans sa fiche d'identification (« Maman Awa », « Tantie Awa », « Awa »...).
+   * Vide = on emploie son prenom seul. On ne DEDUIT jamais un titre de son
+   * genre : la valeur par defaut de cette colonne-la est 'femme', ce qui en
+   * inventerait un pour tout le monde.
+   */
+  @Column({ nullable: true, length: 60 })
+  appellation?: string;
+
   @Column({ name: 'password_hash', nullable: true })
   @Exclude()
   passwordHash: string;
