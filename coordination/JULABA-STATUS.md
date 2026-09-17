@@ -13,7 +13,9 @@ TACHE: LOT PILOTE MERGÉ SUR MAIN (e796547, 17/09). La recette terrain
   faire sur l'app déployée. Scénario 1 déjà VERT (l'écran du code parle).
   Le sujet TTS/Sherpa reste hors lot, à arbitrer.
 BESOIN_PATRICK: OUI
-TYPE_BESOIN: TEST_PHYSIQUE_ANDROID
+TYPE_BESOIN: ARBITRAGE
+  (le test physique Android n'est plus un verrou de fusion depuis e796547 ;
+  le verrou actuel est une DÉCISION MÉTIER sur la licence du modèle de voix)
 ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
   départageait tout est TRANCHÉE : le 17/09, sur julaba-apk-a4222c3, Patrick
   a testé — « la voix du code passe ». Le clip ui-035 se joue depuis l'APK,
