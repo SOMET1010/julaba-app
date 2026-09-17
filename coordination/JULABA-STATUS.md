@@ -10,13 +10,12 @@ STATUT: EN_COURS
 TACHE: correctifs remontés par la recette en cours, sur appareil réel
 BESOIN_PATRICK: OUI
 TYPE_BESOIN: TEST_PHYSIQUE_ANDROID
-ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. Séance du 16/09
-  au soir : julaba-apk-7e5779c « ne parle pas ». Une question reste sans
-  réponse et elle départage tout : sur l'écran « Ton code secret », Tata
-  dit-elle sa phrase ? C'est la SEULE du parcours qui ait un clip enregistré
-  (ui-035). Si oui → rien n'a régressé, le silence ailleurs est celui qu'on a
-  diagnostiqué (pas de clip + synthèse muette dans la WebView). Si non → c'est
-  une régression, à traiter avant tout le reste.
+ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
+  départageait tout est TRANCHÉE : le 17/09, sur julaba-apk-a4222c3, Patrick
+  a testé — « la voix du code passe ». Le clip ui-035 se joue depuis l'APK,
+  donc AUCUNE RÉGRESSION. Le silence sur les autres écrans est bien celui
+  qu'on avait diagnostiqué : pas de clip enregistré + synthèse muette dans la
+  WebView. Rien à corriger en urgence de ce côté.
   Ensuite, arbitrage : (a) embarquer OfflineTts de sherpa-onnx avec
   vits-mms-fra — jugé acceptable à l'écoute le 16/09, +103 Mo dans l'APK, seule
   voie qui permette de DIRE UN MONTANT ; ou (b) s'en tenir aux clips
