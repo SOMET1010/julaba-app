@@ -84,6 +84,22 @@ BRANCHE_EN_ATTENTE: AUCUNE. claude/clever-allen-dnr8by est entièrement
   contenue dans main depuis e796547. Plus aucune PR ouverte.
   NON mergés : authentification et caisse sont des modules sacrés, preuve
   réelle exigée (principe 3).
+ODOO — DÉCISION PATRICK DU 17/09/2026 : **EN LECTURE SEULE POUR LE PILOTE.**
+  Odoo sert de référentiel produits, JULABA en lit le catalogue, et RIEN ne
+  remonte. Les deux verrous restent fermés : ODOO_POC_ENABLED (routes
+  /odoo-poc/* en 404 sans lui) et ODOO_REAL_WRITE_ENABLED=false.
+  À savoir, pour ne pas reposer la question : le POC Odoo EST complet et
+  prouvé (client réel, allowlist, garde-fou XOF, journal de synchronisation).
+  Mais la CAISSE n'a jamais écrit vers Odoo — vérifié le 17/09, zéro
+  occurrence d'Odoo dans backend/src/caisse-rest/. Prouver que le tuyau tient
+  n'est pas faire couler l'eau.
+  Brancher l'écriture n'est PAS un interrupteur : il faut décider quel objet
+  Odoo reçoit une vente, dans quel journal, avec quelle pièce comptable, quoi
+  faire d'une vente hors-ligne rejouée, et comment garantir qu'elle n'est pas
+  comptée deux fois chez nous ET chez eux. Décision métier irréversible :
+  arrêt obligatoire. On la rouvre quand une vraie marchande aura vendu une
+  vraie journée sans perdre un franc.
+
 LIGNE_D_ARRIVEE (décision Patrick, 16/09/2026) : on arrête toute
   amélioration qui n'est pas nécessaire au pilote. On ne traite QUE ce qui
   empêche une marchande de vendre, compter, comprendre, ou récupérer après une
