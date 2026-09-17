@@ -23,10 +23,13 @@ BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (0a08825) — 34 commits NON
 PROCHAINE_ACTION: rien à coder côté JULABA historique tant que la session
   terrain n'a pas eu lieu. Au retour de Patrick : corriger ce que la recette
   révèle, puis merger la branche sur main en une fois.
-DERNIER_RESULTAT: Inter auto-hébergée (0a08825) — la police appliquée à
-  toute l'application ne vient plus de Google, cinq graisses latines
-  embarquées (~120 Ko). Calisga appelle encore Google : arbitrage en
-  attente. Avant cela : recette terrain groupée finalisée. Elle ne contient plus
+DERNIER_RESULTAT: polices entièrement hors-ligne. Inter auto-hébergée
+  (cinq graisses latines, 120 Ko embarqués), import Google de Calisga
+  retiré sur décision de Patrick, preconnect Google retirés d'index.html,
+  et julaba-full.css supprimé (214 Ko de CSS minifié que personne
+  n'importait). Mesuré sur le bundle reconstruit : ZÉRO occurrence de
+  fonts.googleapis.com / fonts.gstatic.com dans frontend/dist.
+  Avant cela : recette terrain groupée finalisée. Elle ne contient plus
   que ce qu'une base de données et un navigateur ne peuvent pas prouver :
   la voix sur l'écran du code avant tout geste, les voix françaises
   réellement installées sur l'appareil, le nom d'adresse de bout en bout,
