@@ -11,6 +11,7 @@ import com.k2fsa.sherpa.onnx.OfflineTtsConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsModelConfig
 import com.k2fsa.sherpa.onnx.OfflineTtsVitsModelConfig
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.Executors
@@ -57,8 +58,23 @@ class SherpaTtsPlugin : Plugin() {
     private const val MODELE = "$ASSET_DIR/model.onnx"
     private const val TOKENS = "$ASSET_DIR/tokens.txt"
 
-    /** Données de phonétisation espeak-ng. Sans elles, un modèle Piper est muet. */
-    private const val DATA_DIR = "$ASSET_DIR/espeak-ng-data"
+    /**
+     * Données de phonétisation espeak-ng. Sans elles, un modèle Piper est muet.
+     *
+     * ATTENTION, PIÈGE COÛTEUX — relevé sur appareil réel le 17/09/2026 :
+     * ce chemin NE PEUT PAS rester dans les assets. Le modèle et les tokens,
+     * eux, se lisent très bien par l'AssetManager (le natif de sherpa sait le
+     * faire). Mais espeak-ng ouvre ses fichiers avec les appels système
+     * ordinaires : les assets d'un APK ne sont pas de vrais fichiers sur le
+     * disque, il ne voit RIEN. Le moteur échoue alors au chargement,
+     * isAvailable() répond false, et l'application retombe en silence — sans
+     * la moindre erreur visible.
+     *
+     * On recopie donc ce dossier une fois dans le stockage interne de l'app,
+     * et on passe le chemin RÉEL à sherpa.
+     */
+    private const val NOM_DONNEES = "espeak-ng-data"
+    private const val ASSET_DONNEES = "$ASSET_DIR/$NOM_DONNEES"
 
     /** Bornes de vitesse : en dessous c'est traînant, au-dessus c'est inintelligible. */
     private const val VITESSE_MIN = 0.5f
@@ -85,12 +101,18 @@ class SherpaTtsPlugin : Plugin() {
         loadFailed = true
         return null
       }
+      val cheminDonnees = preparerDonneesPhonetisation()
+      if (cheminDonnees == null) {
+        android.util.Log.w("SherpaTts", "phonétisation indisponible — synthèse désactivée")
+        loadFailed = true
+        return null
+      }
       val config = OfflineTtsConfig(
         model = OfflineTtsModelConfig(
           vits = OfflineTtsVitsModelConfig(
             model = MODELE,
             tokens = TOKENS,
-            dataDir = DATA_DIR,
+            dataDir = cheminDonnees,
           ),
           numThreads = 2,
           debug = false,
@@ -107,6 +129,49 @@ class SherpaTtsPlugin : Plugin() {
       android.util.Log.e("SherpaTts", "chargement du moteur de synthèse échoué", t)
       loadFailed = true
       null
+    }
+  }
+
+  /**
+   * Recopie les données de phonétisation des assets vers le stockage interne,
+   * une seule fois, et rend le chemin RÉEL — ou null si la copie a échoué.
+   *
+   * Idempotent : au deuxième lancement, le dossier est déjà là et on ne recopie
+   * rien. Le témoin de fin de copie est écrit EN DERNIER : une copie
+   * interrompue (batterie, arrêt forcé) ne sera donc jamais prise pour une
+   * copie complète — elle sera refaite.
+   */
+  private fun preparerDonneesPhonetisation(): String? {
+    return try {
+      val destination = File(context.filesDir, NOM_DONNEES)
+      val temoin = File(context.filesDir, "$NOM_DONNEES.complet")
+      if (temoin.exists() && destination.isDirectory) return destination.absolutePath
+
+      destination.deleteRecursively()
+      copierDossierAsset(ASSET_DONNEES, destination)
+      temoin.writeText("ok")
+      android.util.Log.i("SherpaTts", "phonétisation posée dans ${destination.absolutePath}")
+      destination.absolutePath
+    } catch (t: Throwable) {
+      android.util.Log.e("SherpaTts", "recopie de la phonétisation échouée", t)
+      null
+    }
+  }
+
+  /** Copie récursive d'un dossier d'assets vers un dossier réel. */
+  private fun copierDossierAsset(chemin: String, destination: File) {
+    val entrees = context.assets.list(chemin) ?: emptyArray()
+    if (entrees.isEmpty()) {
+      // Pas d'entrées = c'est un FICHIER, pas un dossier.
+      destination.parentFile?.mkdirs()
+      context.assets.open(chemin).use { entree ->
+        destination.outputStream().use { sortie -> entree.copyTo(sortie) }
+      }
+      return
+    }
+    destination.mkdirs()
+    for (nom in entrees) {
+      copierDossierAsset("$chemin/$nom", File(destination, nom))
     }
   }
 
