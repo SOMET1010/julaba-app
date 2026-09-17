@@ -159,11 +159,23 @@ ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK (chaque runner signe
   différemment → toute mise à jour exige une désinstallation, donc efface les
   données de la marchande). Non bloquant sur un seul téléphone de test ;
   bloquant avant toute distribution.
-PROCHAINE_ACTION: vérifier que le déploiement automatique de main est passé
+PROCHAINE_ACTION: ENTENDRE TATA DIRE UN MONTANT. La synthèse vocale
+  hors-ligne est écrite, testée et EMBARQUÉE : artefact `julaba-apk-df128fa`
+  (run #13, 17/09), 255,4 Mo contre 190,3 Mo sans elle.
+  Geste attendu : désinstaller l'ancien JULABA, installer celui-ci, faire une
+  vente, et écouter. Tata annonce-t-elle le montant ? C'est la seule chose
+  qu'aucune machine ne peut dire à notre place.
+  SHA-256 de l'APK :
+  e879bb891c84f2bd4f110285c058cba127e1389299bbd3660d33f85eb9ae17b0
+  Si elle reste muette, le repli est en place (voix du navigateur, puis
+  silence) : l'application ne casse pas, mais le chantier n'est pas fini.
+  DETTE OUVERTE, à solder avant toute distribution : la licence CC-BY 4.0 du
+  jeu de données SIWIS EXIGE une attribution. Elle n'est écrite nulle part
+  dans l'application. Emplacement = arbitrage Patrick.
+  Aussi : vérifier que le déploiement automatique de main est passé
   (julaba-web et julaba-api), les trois migrations étant additives et
-  idempotentes. Puis l'arbitrage VOIX, qui est désormais le seul vrai
-  chantier pilote restant. L'APK de recette reste valable pour les constats
-  d'usage — artefact `julaba-apk-a4222c3`, run #12
+  idempotentes. L'APK précédent, SANS synthèse, reste `julaba-apk-a4222c3`,
+  run #12
   vert le 17/09 (https://github.com/SOMET1010/julaba-app/actions/runs/35223777812).
   APK de debug, 190 Mo, com.julaba.app, targetSdk 36, archive vérifiée
   intègre, signature v2 valide.
