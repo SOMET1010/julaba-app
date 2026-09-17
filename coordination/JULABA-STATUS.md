@@ -135,7 +135,14 @@ LIGNE_D_ARRIVEE (décision Patrick, 16/09/2026) : on arrête toute
   Tout le reste — emojis, raffinements de voix, illustrations, écrans
   secondaires, optimisations, confort — va au backlog post-pilote.
 BACKLOG_POST_PILOTE (à ne PAS mélanger avec la sortie pilote) :
-  - EN TÊTE, À RÉSOUDRE AVANT TOUTE SYNCHRONISATION DU BLUEPRINT : le fichier
+  - [RÉGLÉ le 17/09] DÉRIVE DE BLUEPRINT — les plans de render.yaml sont
+    désormais ALIGNÉS sur la réalité (julaba-db: basic_256mb, julaba-api:
+    starter), sur identifiants confirmés par Patrick au tableau de bord. Une
+    synchronisation ne peut donc plus ramener la production en `free`. C'était
+    le risque le plus grave du backlog : un service se redéploie, une base
+    perd des données. L'entrée d'origine est conservée ci-dessous pour la
+    mémoire du raisonnement.
+  - [HISTORIQUE, RÉGLÉ] À RÉSOUDRE AVANT TOUTE SYNCHRONISATION DU BLUEPRINT : le fichier
     render.yaml déclare `plan: free` pour julaba-api, alors que le service en
     ligne tourne en **Starter (7 $/mois, 0,5 CPU / 512 Mo)** — constaté sur le
     tableau de bord le 16/09/2026. Le plan a été changé hors Blueprint. Un
