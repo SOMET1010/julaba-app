@@ -38,10 +38,19 @@ ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
   vits-mms-fra — jugé acceptable à l'écoute le 16/09, +103 Mo dans l'APK, seule
   voie qui permette de DIRE UN MONTANT ; ou (b) s'en tenir aux clips
   enregistrés, auquel cas Tata ne dira jamais un chiffre.
+  CE QUE PÈSE L'OPTION (b), vérifié sur disque le 17/09 : 137 clips ui-*.mp3
+  sont bien présents, mais les 8 clips d'introduction (intro-accueil,
+  intro-1..4, intro-mode, intro-retour, intro-bravo) sont TOUS ABSENTS, et
+  les dix chiffres (chiffre-0.mp3 … chiffre-9.mp3) AUSSI. Choisir (b) ne
+  veut donc pas dire « ne rien faire » : cela veut dire enregistrer au moins
+  ces 18 fichiers, sinon les deux premiers écrans restent muets et aucun
+  montant ne peut être épelé. La liste exacte et les textes à dire sont dans
+  docs/CLIPS-VOIX-A-ENREGISTRER.md.
 DERNIER_SHA_MAIN: c816836
-BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by — 39 commits d'avance, 0 de
-  retard : `main` vient d'être rapatrié dans la branche (17/09). Compte à
-  vérifier par `git rev-list --left-right --count origin/main...origin/<branche>`.
+BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2ab7da2) — 43 commits
+  d'avance, 0 de retard sur main c816836 : `main` a été rapatrié dans la
+  branche le 17/09. Compte à vérifier par
+  `git rev-list --left-right --count origin/main...origin/<branche>`.
   NON mergés : authentification et caisse sont des modules sacrés, preuve
   réelle exigée (principe 3).
 LIGNE_D_ARRIVEE (décision Patrick, 16/09/2026) : on arrête toute
