@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, Plus, Minus, Trash2, ShoppingCart, X, Check, ArrowLeft, Package, FileText } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, ShoppingCart, X, Check, ArrowLeft, Package, FileText } from 'lucide-react';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { useApp } from '../../contexts/AppContext';
@@ -584,15 +584,20 @@ export function POSCaisse() {
       <div className="lg:flex-1 lg:min-w-0" style={{ flex:1, overflowY:'auto', padding:'14px 0 0' }}>
         <SyncEchecsBanner />
         <div style={{ marginBottom:12, background:'white', border:'1.5px solid var(--trait)', borderRadius:13, padding:'11px 14px', display:'flex', alignItems:'center', gap:9 }}>
-          {/* Icône PUREMENT visuelle — barre de commande à l'apparence
-              compatible voix, sans branchement à useVoiceCore/VenteVocaleModal
-              dans ce lot. Volontairement pas un <button> : pas de curseur
-              pointer, pas d'animation au tap, pas de onClick — aucune fausse
-              affordance cliquable pour une utilisatrice non-lectrice. */}
+          {/* PAS DE MICROPHONE ICI, ET C'EST VOLONTAIRE.
+              Il y en avait un, purement décoratif, à côté du mot « Dites ».
+              L'intention était d'éviter un bouton d'apparence cliquable ; le
+              résultat était pire. Pour une marchande qui ne lit pas, un micro
+              EST une invitation à parler : elle parlait, et rien n'arrivait.
+              Deux microphones cohabitaient sur cet écran — celui-ci, inerte,
+              et le vrai, le bouton vert de Tata. Rien ne les distinguait pour
+              qui ne lit pas.
+              Ce champ est un FILTRE qu'on tape. Il le dit maintenant. Le seul
+              microphone de l'écran est celui qui marche. */}
           <span aria-hidden="true" style={{ display:'flex', alignItems:'center', flexShrink:0 }}>
-            <Mic size={14} color={P} />
+            <Search size={14} color="var(--encre-4)" />
           </span>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Dites ou tapez un produit…"
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Chercher un produit…"
             style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:13, color:'var(--encre)', fontFamily:'inherit' }} />
           {search && <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}>
             <X size={14} color="#aaa" />
