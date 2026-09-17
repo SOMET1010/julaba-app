@@ -61,6 +61,37 @@ export const INVITE = 'Touche-moi et dis ce que tu as vendu.';
 export const RIEN_COMPRIS = "Je n'ai pas bien entendu. Rapproche le téléphone et redis lentement.";
 export const AJOUT_PANIER = "C'est dans le panier. Tu ajoutes autre chose, ou tu encaisses ?";
 export const ANNULATION_ETAPE = "D'accord, on oublie ça. Le panier n'a pas bougé.";
+
+/**
+ * Relecture de ce qui a été COMPRIS, dite AVANT de confirmer.
+ *
+ * Pourquoi cette phrase existe : l'écran affichait « TU AS DIT … » en toutes
+ * lettres. Pour une marchande qui ne lit pas, c'est du vide — et c'est
+ * précisément l'étape où elle doit pouvoir corriger. Elle entendait seulement
+ * « c'est dans le panier » : la confirmation qu'il s'est passé QUELQUE CHOSE,
+ * jamais QUOI. Rien ne lui permettait d'entendre l'écart entre « cinq
+ * tomates » et « quinze tomates » — sur un chemin d'argent, une vente fausse
+ * qu'on ne peut pas rattraper.
+ *
+ * La quantité et le montant sont variables : aucun clip enregistré ne peut les
+ * couvrir. Cette phrase n'est donc prononçable que depuis l'arrivée de la
+ * synthèse hors-ligne.
+ *
+ * POURQUOI PAS `resumeLigne` TELLE QUELLE : elle est écrite pour l'ÉCRAN et
+ * finit par « … pour 1 500 F ». Prononcé par la synthèse, ce « F » se dit
+ * comme une lettre. Une phrase entendue n'est pas une phrase lue : on écrit
+ * « francs » en toutes lettres. Le pluriel et le formatage des nombres, eux,
+ * sont bien repris de l'existant (`plurielNom`, `fr`) — on ne réécrit que ce
+ * qui doit différer.
+ */
+export function phraseCompris(args: {
+  nom: string;
+  quantite: number;
+  total: number;
+}): string {
+  const nom = args.quantite > 1 ? plurielNom(args.nom) : args.nom;
+  return `J'ai compris : ${args.quantite} ${nom} pour ${fr(args.total)} francs. ${AJOUT_PANIER}`;
+}
 export const ERREUR_MOTEUR = "Ma voix ne marche pas ici. Tape ta vente, je t'accompagne.";
 
 /** Question quand le prix manque (§6). */

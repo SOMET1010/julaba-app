@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useLangPref } from "../../hooks/useLangPref";
 import { useVoiceCore } from "../../hooks/useVoiceCore";
 import { motion, AnimatePresence } from "motion/react";
@@ -39,6 +39,18 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, setIsModalOpen, speak } = useApp();
+
+  // Dernière phrase prononcée par Tata. Sert au bouton « réécouter » : si la
+  // marchande n'a pas saisi ce qui a été compris, elle doit pouvoir le
+  // réentendre — sinon son seul recours est de refaire la vente.
+  const dernierePhraseRef = useRef<string>("");
+  const direEtRetenir = useCallback(
+    (texte: string) => {
+      dernierePhraseRef.current = texte;
+      speak(texte);
+    },
+    [speak],
+  );
   const { enregistrerDepense, refreshTransactions, stats: caisseStats, products, addProduct, addToCart, syncEchecs, syncLettresMortes, purgerEchecSync, cart, getTotalCart } = useCaisse();
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
@@ -127,7 +139,7 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
         vendreVocalUnifie(nomParle, quantite, montant, {
           products,
           addToCart,
-          speak,
+          speak: direEtRetenir,
           vibrerSucces,
           notifierAjoutPanier: (message) => toast.success(message),
           proposerCreationProduit: (p) => setPropositionProduit(p),
@@ -464,7 +476,12 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
               );
               return (
                 <div style={{ display: "flex", justifyContent: "center", gap: 16 }}>
-                  {iconBtn("reecouter", "Réécouter l'explication", <Volume2 size={22} color={P} />, () => speak(introLigne()))}
+                  {iconBtn(
+                    "reecouter",
+                    dernierePhraseRef.current ? "Réécouter ce que j'ai compris" : "Réécouter l'explication",
+                    <Volume2 size={22} color={P} />,
+                    () => speak(dernierePhraseRef.current || introLigne()),
+                  )}
                   {iconBtn("saisir", "Saisir sans parler", <Keyboard size={22} color={saisieOuverte ? "white" : P} />, () => setSaisieOuverte(v => !v), saisieOuverte)}
                   {iconBtn("caisse", "Caisse complète", <ShoppingBasket size={22} color={nbItemsPanier > 0 ? "#0E7A47" : P} />, () => { navigate('/marchand/caisse'); onClose(); }, false, nbItemsPanier)}
                 </div>
