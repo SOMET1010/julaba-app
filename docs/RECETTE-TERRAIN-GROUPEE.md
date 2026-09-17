@@ -15,7 +15,45 @@ tout autre geste.
 
 ---
 
-## Étape 0 — Construire et installer l'APK
+## Étape 0 — Obtenir et installer l'APK
+
+### Option A — le laisser construire par GitHub (recommandé, rien à installer)
+
+1. Aller dans l'onglet **Actions** du dépôt → workflow
+   **« APK pilote — construction à la demande »** → bouton **Run workflow**.
+2. Laisser les deux valeurs par défaut (branche `claude/clever-allen-dnr8by`,
+   URL de l'API) et lancer. Compter **~3 minutes**.
+3. En bas du run terminé, télécharger l'artefact **`julaba-apk-<sha>`**. Le
+   `<sha>` est celui du code réellement construit : il doit correspondre à la
+   tête de la branche. C'est un `.zip` contenant `app-debug.apk` (~123 Mo,
+   dont les 71 Mo de modèle vocal).
+4. Transférer l'APK sur le téléphone et l'installer (« sources inconnues » à
+   autoriser une fois).
+
+APK de **debug**, signé avec la clé de debug : installable à la main, pas
+publiable sur un store — c'est le périmètre du pilote.
+
+> **Un APK par run, et ils ne se remplacent pas entre eux.** Chaque runner
+> GitHub génère sa propre clé de debug : deux constructions du même code sont
+> signées différemment (prouvé le 16/09/2026 — run 5 `77d8a3a8…29fc5a`,
+> run 6 `a36159b1…171767`). Android refuse de remplacer une application par
+> une autre signée d'une autre clé, et le téléphone ne dit rien de plus que
+> « Un problème est survenu avec le fichier de l'application ».
+>
+> Conséquence pratique pour la séance : **installer l'APK d'un seul run**, et
+> si une installation échoue avec ce message alors que le fichier fait la
+> bonne taille, c'est qu'une JULABA signée autrement est encore installée —
+> il faut la désinstaller, ce qui efface ses données locales.
+>
+> Ce n'est pas tenable au-delà du test : une clé de signature stable est
+> requise avant de distribuer quoi que ce soit à une marchande, sinon chaque
+> mise à jour effacerait ses ventes hors ligne non synchronisées.
+> **Arbitrage en attente de Patrick** (clé de debug fixe versionnée, ou clé
+> de release en secret GitHub).
+
+Éprouvé le 16/09/2026 : run `35083654069`, artefact `julaba-apk-5d48614`.
+
+### Option B — le construire soi-même
 
 ```bash
 git fetch origin claude/clever-allen-dnr8by
@@ -25,15 +63,65 @@ npm ci
 export VITE_API_URL=https://julaba-api.onrender.com/api/v1   # OBLIGATOIRE
 npm run build -w frontend_src
 npx cap sync android
-cd android && ./gradlew assembleDebug
+
+cd android
+./scripts/installer-voix.sh      # OBLIGATOIRE, sinon le build echoue
+./gradlew assembleDebug
 ```
 
 `VITE_API_URL` doit être exportée **avant** le build. Sans elle, l'app
 n'atteint aucun backend — c'est un défaut déjà payé une fois (`1958d6a`), et
 il se voit immédiatement : « Réponse inattendue » à la connexion.
 
-**Préalable :** un compte marchande **mémorisé sur l'appareil** et dont la
-**biométrie est désactivée**. C'est le seul cas qui reproduit le scénario 1.
+**Ce qui est vérifié ici, et ce qui ne peut pas l'être.** Les trois premières
+commandes ont été exécutées sur `claude/clever-allen-dnr8by` (16/09/2026) :
+le build sort dans `frontend/dist` (le `webDir` de `capacitor.config.ts`),
+`npx cap sync android` copie **exactement** ce build (même empreinte de
+bundle `index-*.js`), l'URL de l'API y est bien incluse et le paquet posé est
+`com.julaba.app`. Seul `./gradlew assembleDebug` n'a pas pu être joué : il
+demande le SDK Android, absent de l'environnement des instances.
+
+Ce que ta machine doit donc avoir pour la dernière commande :
+
+| Prérequis | Valeur attendue |
+|---|---|
+| SDK Android | plateforme **36** installée (`compileSdk`/`targetSdk` = 36) |
+| JDK | **21** — imposé par `capacitor-android` 8, compilé en source release 21. Avec un JDK 17 le build s'arrête sur `invalid source release: 21`. |
+| `ANDROID_HOME` ou `android/local.properties` | doit pointer sur le SDK, sinon Gradle s'arrête aussitôt |
+| Réseau | le premier `assembleDebug` télécharge Gradle 8.14.3 et ses plugins |
+
+`./scripts/installer-voix.sh` n'est **pas** optionnel. L'AAR sherpa-onnx et
+le modèle vocal français (~71 Mo) sont volontairement hors du dépôt ; ce
+script est leur source unique. Sans lui, `assembleDebug` s'arrête sur
+`unresolved com.k2fsa.sherpa.onnx` — c'est voulu et documenté dans
+`android/app/build.gradle`, mais ça ne se devine pas à froid. Le script est
+idempotent (il ne retélécharge que ce qui manque) et vérifie les tailles à
+l'octet. Compter le temps de téléchargement la première fois.
+
+`google-services.json`, lui, est absent du dépôt **sans conséquence** : le
+build le détecte et continue (seules les notifications push sont inactives).
+Ce n'est pas une erreur à corriger avant la séance.
+
+**Premier lancement : prévenir.** Sur une installation neuve, le tout premier
+démarrage affiche un **écran noir** quelques instants, le temps qu'Android
+déploie un APK de 190 Mo (dont un fichier de 70 Mo) et que le service worker
+mette en cache 182 morceaux de code et 137 clips vocaux. Constaté le
+16/09/2026 sur appareil réel, et **non reproduit aux lancements suivants** :
+l'écran de démarrage s'affiche ensuite normalement. Ce n'est donc pas un
+défaut de l'application, mais c'est ce que verra **chaque marchande la
+première fois** — à dire à celle qui reçoit le téléphone, sans quoi elle
+conclura que l'application est cassée.
+
+**Préalable, à faire AVANT le scénario 1 :** un compte marchande **mémorisé
+sur l'appareil** et dont la **biométrie est désactivée**. C'est le seul cas
+qui reproduit le scénario 1.
+
+> Une installation neuve part **sans** compte mémorisé : l'app ouvre
+> « Bienvenue — Je suis Tata Nanti Lou », pas l'écran du code. Il faut donc
+> **se connecter une fois**, laisser l'app mémoriser le compte, puis fermer
+> complètement l'app. Sans ça le scénario 1 est ininterprétable. Attention :
+> cette connexion est un geste — elle débloque l'audio, d'où la fermeture
+> complète de l'app juste après.
 
 **Armer le mode développeur maintenant, puis fermer l'app :** 5 tapes
 rapides sur le coin haut-gauche de l'écran de connexion. Le bouton
