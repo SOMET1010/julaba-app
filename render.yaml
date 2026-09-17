@@ -17,36 +17,30 @@
 # ──────────────────────────────────────────────────────────────────────────
 
 # ╔══════════════════════════════════════════════════════════════════════════╗
-# ║  ⚠ NE PAS SYNCHRONISER CE BLUEPRINT EN L'ÉTAT — 17/09/2026               ║
+# ║  PLANS ALIGNÉS SUR LA RÉALITÉ — 17/09/2026. NE PAS LES REMETTRE EN free. ║
 # ║                                                                          ║
-# ║  Les plans déclarés ici NE CORRESPONDENT PLUS à la réalité. Ils ont été   ║
-# ║  changés au tableau de bord Render, hors Blueprint :                     ║
+# ║  Ces deux plans ont longtemps été déclarés `free` ici alors que les      ║
+# ║  services tournaient en payant : ils avaient été changés au tableau de   ║
+# ║  bord, hors Blueprint. Une synchronisation aurait donc cherché à les     ║
+# ║  RAMENER en `free` — un redéploiement pour le service, mais des DONNÉES  ║
+# ║  pour la base. Le fichier dit lui-même pourquoi on est sorti du gratuit  ║
+# ║  côté base : elle expire ~90 jours.                                      ║
 # ║                                                                          ║
-# ║     service      | déclaré ici | RÉELLEMENT en ligne                     ║
-# ║     julaba-db    | free        | Basic-256mb   (constaté le 17/09)       ║
-# ║     julaba-api   | free        | Starter 7 $/mois (constaté le 16/09)    ║
+# ║  Identifiants confirmés par Patrick au tableau de bord le 17/09 :        ║
+# ║     julaba-db  -> basic_256mb                                            ║
+# ║     julaba-api -> starter                                                ║
 # ║                                                                          ║
-# ║  Une synchronisation chercherait donc à les RAMENER en `free`. Pour le   ║
-# ║  service c'est un redéploiement ; POUR LA BASE, ce sont des DONNÉES.     ║
-# ║  Et le commentaire ci-dessous dit pourquoi on en est sorti : la base     ║
-# ║  gratuite Render expire ~90 jours.                                       ║
-# ║                                                                          ║
-# ║  Modifier une VARIABLE au tableau de bord reste sans risque. C'est la    ║
-# ║  synchronisation du Blueprint qui est interdite tant que ce fichier      ║
-# ║  n'est pas aligné.                                                       ║
-# ║                                                                          ║
-# ║  POUR L'ALIGNER il faut les identifiants EXACTS attendus par Render      ║
-# ║  (`basic_256mb` ? `basic-256mb` ?) : ils n'ont pas pu être vérifiés —    ║
-# ║  render.com est injoignable depuis les sessions des instances. Les       ║
-# ║  deviner serait pire que la dérive. À relever au tableau de bord.       ║
+# ║  Le fichier correspondant désormais à l'existant, une synchronisation    ║
+# ║  ne change plus rien sur ces lignes. C'est le but : la dérive est levée. ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
 databases:
   - name: julaba-db
-    # RÉEL EN LIGNE : Basic-256mb. Voir l'avertissement ci-dessus.
     databaseName: julaba
     user: julaba
-    plan: free   # test/MVP (la base gratuite Render expire ~90 j ; passer en payant pour durer)
+    # Payant DÉLIBÉRÉMENT : la base gratuite Render expire ~90 jours, et une
+    # base qui expire emporte les données d'une marchande avec elle.
+    plan: basic_256mb
 
 services:
   # ── Backend NestJS ──────────────────────────────────────────────────────
@@ -54,9 +48,9 @@ services:
     runtime: node
     name: julaba-api
     rootDir: backend
-    # RÉEL EN LIGNE : Starter (7 $/mois). Voir l'avertissement en tête de
-    # fichier — ne pas synchroniser ce Blueprint tant qu'il n'est pas aligné.
-    plan: free
+    # Starter (7 $/mois) : le plan gratuit s'endort et réveille le serveur à
+    # la première requête — une marchande n'attend pas devant sa caisse.
+    plan: starter
     # Redéploiement AUTOMATIQUE à chaque push sur la branche suivie : indispensable
     # pour que le seed (comptes + scénario de démo) se rejoue au démarrage.
     autoDeploy: true
