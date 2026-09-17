@@ -99,13 +99,17 @@ ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK (chaque runner signe
   différemment → toute mise à jour exige une désinstallation, donc efface les
   données de la marchande). Non bloquant sur un seul téléphone de test ;
   bloquant avant toute distribution.
-PROCHAINE_ACTION: la construction d'un APK depuis la branche est LANCÉE
-  (run #12, 17/09). L'artefact julaba-apk-7e5779c ne contenait NI les polices
-  et icônes embarquées, NI le correctif d'écran noir : il ne fallait pas
-  dérouler la recette avec. Quand le run est vert, Patrick télécharge
-  l'artefact `julaba-apk-<sha>` depuis l'onglet Actions, DÉSINSTALLE l'ancien
-  APK, installe celui-ci, et déroule docs/RECETTE-TERRAIN-GROUPEE.md dans
-  l'ordre écrit (étape 0 → 6 ; la voix se teste avant tout geste).
+PROCHAINE_ACTION: L'APK EST PRÊT — artefact `julaba-apk-a4222c3`, run #12
+  vert le 17/09 (https://github.com/SOMET1010/julaba-app/actions/runs/35223777812).
+  APK de debug, 190 Mo, com.julaba.app, targetSdk 36, archive vérifiée
+  intègre, signature v2 valide.
+  SHA-256 de l'APK : 3874aa5fa2ea5f7b95af2b0273b314d058294b80cb8afdc1f627a2428287e71b
+  Empreinte du certificat : 12350f0cc1d840fabb831a8006c3318b08819eafe811b7b88a5e44d40ef9f097
+  Geste de Patrick : télécharger l'artefact (onglet Actions), DÉSINSTALLER
+  l'ancien JULABA — la clé de debug diffère à chaque construction, donc une
+  mise à jour par-dessus est refusée — puis installer et dérouler
+  docs/RECETTE-TERRAIN-GROUPEE.md dans l'ordre écrit (étape 0 → 6 ; la voix
+  se teste AVANT tout geste, sinon le scénario 1 est faussé).
   Rien d'autre à coder ici tant que la session n'a pas eu lieu.
 DERNIER_RESULTAT: l'application ne sort PLUS du téléphone pour son
   habillage. Inter auto-hébergée (5 graisses latines, 120 Ko), import Google
