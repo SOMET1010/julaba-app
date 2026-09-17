@@ -87,6 +87,21 @@ services:
       # un code numérique à 4 chiffres (utilisé seulement si SEED_DEMO="true").
       - key: SEED_DEMO_PASSWORD
         value: "1234"
+      # MOT DE PASSE DES COMPTES D'ADMINISTRATION DE DÉMO — DÉLIBÉRÉMENT SANS
+      # VALEUR ICI, ET CE N'EST PAS UN OUBLI.
+      #
+      # Le seed crée des comptes ADMIN_GENERAL. Leur mot de passe valait
+      # "123456" écrit en dur dans un dépôt PUBLIC : activer SEED_DEMO sur ce
+      # serveur y ouvrait un accès d'administration connu de tous. Et remettre
+      # SEED_DEMO à "false" n'efface RIEN — le drapeau arrête de créer, pas de
+      # supprimer : les comptes seraient restés indéfiniment.
+      #
+      # Sans cette variable, les comptes back-office ne sont PAS créés (les
+      # comptes acteurs le sont normalement). Pour en avoir besoin un jour :
+      # la renseigner au tableau de bord Render, JAMAIS ici — un `value:` dans
+      # ce fichier est publié avec le dépôt.
+      - key: SEED_DEMO_BO_PASSWORD
+        sync: false
       # Migrations TypeORM appliquées automatiquement au démarrage (base déjà
       # peuplée). Sans ce réglage, toute évolution de schéma reste lettre morte
       # en prod et le front casse sur les colonnes manquantes.

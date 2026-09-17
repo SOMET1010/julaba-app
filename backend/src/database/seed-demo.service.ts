@@ -41,9 +41,46 @@ interface CompteDemo {
 // incorrects » sur un compte de démo parce qu'un autre groupe utilisait un
 // code différent codé en dur.
 const ACTEUR_PASSWORD = process.env.SEED_DEMO_PASSWORD || '1234';
-// Back-office (écran /backoffice/login, champ texte) : politique séparée,
-// toujours 6 chiffres — non pilotée par SEED_DEMO_PASSWORD.
-const BO_PASSWORD = '123456';
+/**
+ * Mot de passe des comptes BACK-OFFICE de démo — désormais OBLIGATOIREMENT
+ * fourni par l'environnement, et sans valeur par défaut.
+ *
+ * POURQUOI CE CHANGEMENT (17/09/2026). Il valait `'123456'`, écrit en dur, et
+ * n'était piloté par AUCUNE variable : impossible à changer sans modifier le
+ * code. Or ce dépôt est PUBLIC, et le seed crée des comptes ADMIN_GENERAL —
+ * des administrateurs du back-office. Activer SEED_DEMO sur le serveur réel
+ * revenait donc à y ouvrir un accès d'administration dont le mot de passe est
+ * publié sur GitHub.
+ *
+ * Et le drapeau ne rattrape rien : le remettre à "false" ARRÊTE de créer, il
+ * n'EFFACE pas. Les comptes seraient restés, avec ce mot de passe connu,
+ * indéfiniment.
+ *
+ * Règle désormais : pas de variable → pas de compte back-office. Les comptes
+ * acteurs (marchande, producteur…) sont seedés normalement ; seule
+ * l'administration est refusée. Mieux vaut un jeu de démo incomplet qu'une
+ * porte d'entrée publiée.
+ */
+export function motDePasseBackOffice(env: NodeJS.ProcessEnv = process.env): string | null {
+  const valeur = (env.SEED_DEMO_BO_PASSWORD ?? '').trim();
+  if (valeur.length === 0) return null;
+  // Refus explicite de l'ancienne valeur publiée : si elle traîne encore dans
+  // une configuration, elle ne doit pas revenir par la petite porte.
+  if (valeur === '123456') return null;
+  return valeur;
+}
+
+/** Rôles qui se connectent par /backoffice/login (liste alignée sur auth.service). */
+const ROLES_BACK_OFFICE = new Set<string>([
+  'super_admin', 'admin_general', 'admin_national', 'gestionnaire_zone', 'operateur_terrain',
+]);
+
+/** Vrai si ce compte de démo est un compte d'administration. */
+export function estCompteBackOffice(role: string): boolean {
+  return ROLES_BACK_OFFICE.has(role);
+}
+
+const BO_PASSWORD = motDePasseBackOffice() ?? '';
 
 // Un compte de démo par univers, pour que les équipes testent CHAQUE rôle.
 // Acteurs (connexion sur /login, code à 4 chiffres = ACTEUR_PASSWORD) :
@@ -113,7 +150,25 @@ export class SeedDemoService {
 
     const users = this.dataSource.getRepository(User);
 
-    for (const c of COMPTES) {
+    // Sans SEED_DEMO_BO_PASSWORD, les comptes d'ADMINISTRATION ne sont pas
+    // créés du tout (voir motDePasseBackOffice). Les comptes acteurs, eux,
+    // sont seedés normalement : on dégrade le jeu de démo, on n'ouvre pas une
+    // porte.
+    const motDePasseBO = motDePasseBackOffice();
+    const comptesAcreer = COMPTES.filter((c) => {
+      if (!estCompteBackOffice(String(c.role))) return true;
+      if (motDePasseBO) return true;
+      return false;
+    });
+    const refuses = COMPTES.length - comptesAcreer.length;
+    if (refuses > 0) {
+      this.logger.warn(
+        `${refuses} compte(s) back-office NON créé(s) : SEED_DEMO_BO_PASSWORD absente ou égale à l'ancienne valeur publiée. ` +
+        `C'est volontaire — un accès d'administration ne doit jamais exister avec un mot de passe connu de tous.`,
+      );
+    }
+
+    for (const c of comptesAcreer) {
       try {
         let user = await users.findOne({ where: { phone: c.phone } });
         const passwordHash = await bcrypt.hash(c.password, 10);
