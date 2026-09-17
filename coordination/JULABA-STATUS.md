@@ -37,6 +37,18 @@ ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
   d'une session précédente peut subsister, à fermer d'abord.
   RÈGLE : au premier écart réel, la recette s'arrête. On documente l'état
   exact qui l'a produit, on ne contourne pas.
+  SÉCURITÉ RÉGLÉE LE 17/09 — le mot de passe des comptes d'ADMINISTRATION de
+  démo était écrit EN DUR ('123456') et piloté par aucune variable, dans un
+  dépôt PUBLIC. Activer SEED_DEMO sur le serveur réel y ouvrait donc un accès
+  d'administration publié sur GitHub — et remettre le drapeau à "false"
+  n'efface RIEN (vérifié : aucune suppression nulle part), les comptes
+  seraient restés indéfiniment. Règle posée : pas de SEED_DEMO_BO_PASSWORD →
+  pas de compte back-office ; les comptes acteurs, eux, sont seedés
+  normalement. L'ancienne valeur est refusée même fournie explicitement.
+  Deux garde-fous textuels, dont un mis en défaut exprès pour vérifier qu'il
+  passe au rouge. SEED_DEMO redevient donc activable — mais APRÈS déploiement
+  de ce correctif, pas avant.
+
   ⚠️ BLOCAGE DE LICENCE TROUVÉ LE 17/09, APRÈS le GO de Patrick pour (a).
   Vérifié à la source sur Hugging Face : vits-mms-fra est une conversion
   directe de facebook/mms-tts (français), dont la licence est
@@ -130,6 +142,17 @@ BACKLOG_POST_PILOTE (à ne PAS mélanger avec la sortie pilote) :
     `sync` voudrait donc potentiellement ramener le backend de PRODUCTION en
     `free`. Ce risque existe indépendamment de tout autre changement ; il est
     dans le fichier depuis ce changement d'interface.
+    AGGRAVÉ LE 17/09 : la dérive touche AUSSI LA BASE. render.yaml déclare
+    `plan: free` pour julaba-db, alors que le tableau de bord montre
+    **Basic-256mb** (capture Patrick, 17/09 20h49). Un service se redéploie ;
+    une base, non — des DONNÉES peuvent se perdre. Et le commentaire du
+    fichier dit lui-même pourquoi on en est sorti : « la base gratuite Render
+    expire ~90 j ». Le fichier ne sait pas qu'on a corrigé cela.
+    À FAIRE, quand Patrick le décidera : aligner render.yaml sur l'existant
+    (deux lignes). Il faut pour cela le nom EXACT du plan de julaba-api tel
+    que le tableau de bord l'affiche. En attendant : modifier une variable au
+    tableau de bord est sans risque, mais NE JAMAIS lancer de resynchronisation
+    du Blueprint.
   - BrowserStack, ponctuellement AVANT une diffusion : passer le même APK sur
     trois ou quatre Android réels représentatifs, sans acheter les appareils.
     Arbitrage de Patrick (16/09) ; j'avais écarté cet outil trop vite, et sans
