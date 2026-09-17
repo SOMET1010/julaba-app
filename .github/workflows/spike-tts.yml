@@ -65,8 +65,14 @@ jobs:
           echo "Téléchargement : $url"
           curl -fL --retry 3 -o modele.tar.bz2 "$url"
           tar xjf modele.tar.bz2
-          echo "--- contenu ---"
-          ls -lR "${MODELE}" | head -30
+          # PAS de `ls -lR | head` ici : un modèle Piper embarque des centaines
+          # de fichiers de phonétisation, head ferme le tuyau, ls reçoit un
+          # SIGPIPE et pipefail fait échouer l'étape. On écrit dans un fichier,
+          # puis on en lit le début — aucun tuyau à casser.
+          find "${MODELE}" -type f -printf '%10s  %p\n' | sort -rn > /tmp/contenu.txt
+          echo "--- les 12 plus gros fichiers ---"
+          head -12 /tmp/contenu.txt
+          echo "--- total : $(wc -l < /tmp/contenu.txt) fichiers, $(du -sh "${MODELE}" | cut -f1) ---"
 
       - name: Synthétiser les phrases qui nous bloquent, et mesurer
         env:
