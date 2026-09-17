@@ -2,7 +2,7 @@
  * Tests des billets/pièces FCFA (inclusion §2.2).
  * Lancer : npm run test:fcfa   (tsx, sans DOM ni navigateur)
  */
-import { COUPURES, decomposerMonnaie, direCoupure } from "./fcfa.js";
+import { COUPURES, decomposerMonnaie, direCoupure, hauteurBillet } from "./fcfa.js";
 
 let failures = 0;
 function ok(cond: boolean, label: string) {
@@ -37,6 +37,33 @@ function main() {
     eq(direCoupure(10000), "dix mille francs", "10 000 se dit");
     eq(direCoupure(500), "cinq cents francs", "500 se dit");
     eq(direCoupure(25), "vingt-cinq francs", "25 se dit");
+  }
+
+  console.log("\n[4] Billets dessinés — échelle réelle et cible tactile");
+  {
+    // Les vraies coupures XOF grandissent avec la valeur : une marchande qui
+    // ne lit pas s'appuie sur ce repère autant que sur la couleur. On
+    // reproduit l'ÉCHELLE, jamais le dessin (la BCEAO encadre la reproduction
+    // des billets). Et aucune taille ne doit passer sous la cible tactile de
+    // 44 px : un billet qu'on rate au doigt annule le bénéfice de l'avoir
+    // dessiné.
+    const billets = COUPURES.filter((c) => c.forme === "billet").map((c) => c.valeur);
+    const hauteurs = billets.map(hauteurBillet);
+
+    ok(hauteurs.length === 5, "cinq billets proposés à l'encaissement");
+    ok(hauteurs.every((h) => h >= 44), "aucun billet sous la cible tactile de 44 px");
+
+    // COUPURES est trié décroissant (10 000 → 500) : les hauteurs aussi.
+    let croissanteAvecLaValeur = true;
+    for (let i = 1; i < hauteurs.length; i++) {
+      if (hauteurs[i] >= hauteurs[i - 1]) croissanteAvecLaValeur = false;
+    }
+    ok(croissanteAvecLaValeur, "le billet grandit avec la valeur, comme les vraies coupures");
+    ok(
+      hauteurBillet(10000) - hauteurBillet(500) >= 12,
+      "l'écart entre le plus gros et le plus petit se voit à l'œil nu",
+    );
+    ok(hauteurBillet(123456) >= 44, "valeur inattendue → taille plancher, jamais 0");
   }
 
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);

@@ -31,6 +31,27 @@ export const COUPURES: Coupure[] = [
   { valeur: 25,    forme: 'piece',  couleur: '#C9B037', encre: '#4A3A10' },
 ];
 
+/**
+ * Hauteur du billet dessiné, en pixels.
+ *
+ * Les vraies coupures XOF ne font pas toutes la même taille : plus la valeur
+ * est forte, plus le billet est grand. Une marchande qui ne lit pas s'appuie
+ * sur ce repère tous les jours, en même temps que la couleur. Un rectangle de
+ * taille unique avec un nombre écrit dessus lui demande, elle, de LIRE.
+ *
+ * On reproduit donc l'échelle, pas le dessin. Plancher à 46 px : jamais en
+ * dessous de la cible tactile de 44 px (règle du dépôt).
+ */
+export function hauteurBillet(valeur: number): number {
+  switch (valeur) {
+    case 10000: return 62;
+    case 5000: return 58;
+    case 2000: return 54;
+    case 1000: return 50;
+    default: return 46;
+  }
+}
+
 /** Valeurs utilisées pour DÉCOMPOSER la monnaie à rendre (système canonique : le
  *  glouton est correct ; le 250, non canonique avec 200+50, en est exclu). */
 const VALEURS_MONNAIE = [10000, 5000, 2000, 1000, 500, 200, 100, 50, 25, 10, 5];

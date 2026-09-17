@@ -12,6 +12,7 @@ import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { partagerRecu } from '../../utils/recu.utils';
 import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
 import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/fcfa';
+import { BilletDessine, PieceDessinee } from './CoupureDessinee';
 import { avertissementRupture } from '../../services/ruptureStock';
 import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
 import { getImageByNom } from '../../data/catalogue-produits';
@@ -441,28 +442,17 @@ export function POSCaisse() {
         </div>
         {/* Les billets qu'elle vient de recevoir : un toucher = un billet
             ajouté (et dit à voix haute). Couleurs proches des vraies coupures. */}
-        <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
+        {/* alignItems:'flex-end' : les billets n'ont plus tous la même hauteur
+            (les vraies coupures non plus). Alignés par le bas, ils se lisent
+            comme une liasse posée sur la table, pas comme une grille bancale. */}
+        <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap', alignItems:'flex-end' }}>
           {COUPURES.filter(c => c.forme === 'billet').map(c => (
-            <motion.button type="button" key={c.valeur} whileTap={{ scale:0.92 }} onClick={() => ajouterCoupure(c.valeur)}
-              aria-label={`Ajouter un billet de ${formatF(c.valeur)} francs`}
-              style={{ flex:'1 0 28%', minHeight:46, borderRadius:9, border:'none', cursor:'pointer',
-                background:`linear-gradient(135deg, ${c.couleur}, ${c.couleur}DD)`, color:c.encre,
-                fontWeight:900, fontSize:15, fontVariantNumeric:'tabular-nums',
-                boxShadow:'0 2px 6px rgba(0,0,0,0.18), inset 0 0 0 2px rgba(255,255,255,0.35)' }}>
-              {formatF(c.valeur)}
-            </motion.button>
+            <BilletDessine key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
           ))}
         </div>
         <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap', alignItems:'center' }}>
           {COUPURES.filter(c => c.forme === 'piece').map(c => (
-            <motion.button type="button" key={c.valeur} whileTap={{ scale:0.9 }} onClick={() => ajouterCoupure(c.valeur)}
-              aria-label={`Ajouter une pièce de ${formatF(c.valeur)} francs`}
-              style={{ width:52, height:52, borderRadius:'50%', border:'none', cursor:'pointer',
-                background:`radial-gradient(120% 120% at 30% 25%, ${c.couleur}, ${c.couleur}CC)`, color:c.encre,
-                fontWeight:900, fontSize:13, fontVariantNumeric:'tabular-nums',
-                boxShadow:'0 2px 5px rgba(0,0,0,0.2), inset 0 0 0 2.5px rgba(255,255,255,0.5)' }}>
-              {c.valeur}
-            </motion.button>
+            <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
           ))}
           <button type="button" onClick={() => { setMontantRecu(String(total)); dire('Compte juste'); }}
             style={{ flex:1, minWidth:104, padding:'13px 10px', borderRadius:12, border:'1.5px solid #A8D8B9', background:'#EAF7EE', color:'#0E7A47', fontWeight:800, fontSize:13, cursor:'pointer' }}>
