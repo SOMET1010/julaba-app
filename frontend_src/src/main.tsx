@@ -10,6 +10,7 @@ import ReactDOM from 'react-dom/client';
 import App from './app/App';
 import 'leaflet/dist/leaflet.css';
 import './styles/fonts.css';
+import './styles/icons-tabler.css';
 import './styles/theme.css';
 import './styles/tailwind.css';
 import './styles/index.css';
