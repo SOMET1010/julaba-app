@@ -175,7 +175,25 @@ ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK (chaque runner signe
   différemment → toute mise à jour exige une désinstallation, donc efface les
   données de la marchande). Non bloquant sur un seul téléphone de test ;
   bloquant avant toute distribution.
-PROCHAINE_ACTION: LA VOIX PASSE — confirmé par Patrick sur appareil réel le
+PROCHAINE_ACTION: APK COMPLET À ÉPROUVER — `julaba-apk-1f30905` (run #16,
+  17/09 au soir) : https://github.com/SOMET1010/julaba-app/actions/runs/35270192772
+  Il contient TOUT : voix qui parle, relecture de ce qui a été compris,
+  billets dessinés, attribution CC BY, vocal serveur nettoyé.
+  TROIS RELEVÉS ATTENDUS, et seul un téléphone peut les donner :
+   (1) durée du TOUT PREMIER montant (19 Mo de phonétisation se recopient une
+       fois ; au-delà de 5 s, l'élagage au français seul la ramène à 708 Ko) ;
+   (2) après une vente vocale : ce que Tata DIT **et** ce qui est ÉCRIT dans
+       « TU AS DIT ». Les deux ensemble tranchent le défaut ouvert ci-dessous ;
+   (3) les billets ressemblent-ils à de l'argent.
+  DÉFAUT OUVERT — « l'oignon » : « trois tomates » a produit `1 × oignon — 2 F`.
+  Écartés avec preuve : Whisper (retiré du schéma), l'appariement produit
+  (strict, « tomate » ne peut pas devenir « oignon »), un mot en dur dans le
+  parcours vocal. Il manque la transcription brute pour trancher entre un
+  défaut d'OREILLE (modèle) et un défaut de COMPRÉHENSION (extraction).
+  À SAVOIR pour le prochain essai : le catalogue de test ne contient qu'un
+  oignon à 0 restants — tout écart se rabat dessus, ce qui masque la cause.
+
+  (précédent, atteint) LA VOIX PASSE — confirmé par Patrick sur appareil réel le
   17/09 au soir, sur julaba-apk-fb6a842. La synthèse hors-ligne sort
   vraiment du haut-parleur : Tata peut DIRE UN MONTANT. C'était le dernier
   verrou du pilote.
