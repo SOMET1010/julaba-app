@@ -64,8 +64,11 @@ LIGNE_D_ARRIVEE (décision Patrick, 16/09/2026) : on arrête toute
      comptage vide, sortie « Mon argent », appellation). La recette par un
      agent web est ABANDONNÉE : elle exigeait une preview Render, donc de
      toucher au Blueprint, donc un chantier infra que Patrick refuse à ce
-     stade (16/09). Draft PR #240 laissée ouverte comme support, NE PAS
-     MERGER.
+     stade (16/09). La draft PR #240, ouverte comme simple support de
+     recette, a été FERMÉE sur demande de Patrick le 17/09 — plus aucune PR
+     ouverte sur le dépôt. Fermer une PR ne touche ni la branche ni les
+     commits : `claude/clever-allen-dnr8by` reste intacte, et une PR de
+     fusion se rouvre quand la recette aura validé.
   3) session Android réelle
   4) corriger uniquement ce que cette session révèle comme BLOQUANT
   5) merge final
