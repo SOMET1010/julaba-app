@@ -1,10 +1,16 @@
-name: Spike TTS — vits-mms-fra via sherpa-onnx
+name: Spike TTS — écouter un modèle sherpa-onnx avant de l'embarquer
 
 # SPIKE. Ce workflow NE DÉCIDE RIEN et ne change RIEN au produit.
 #
-# Question à laquelle il répond, et une seule : la synthèse française
-# vits-mms-fra, jouée par sherpa-onnx — le moteur DÉJÀ embarqué dans l'APK pour
-# l'écoute — est-elle acceptable pour dire de l'argent à une marchande ?
+# Question à laquelle il répond, et une seule : la synthèse française du
+# modèle demandé, jouée par sherpa-onnx — le moteur DÉJÀ embarqué dans l'APK
+# pour l'écoute — est-elle acceptable pour dire de l'argent à une marchande ?
+#
+# ATTENTION LICENCE (relevé le 17/09/2026) : `vits-mms-fra` est une conversion
+# de facebook/mms-tts, sous cc-by-nc-4.0 — NON COMMERCIALE. L'écouter ici ne
+# coûte rien, mais l'EMBARQUER dans l'APK distribué serait une violation.
+# Les modèles `vits-piper-fr_FR-siwis-*` sont en CC-BY 4.0 (commercial permis,
+# attribution requise) : ce sont eux qu'on peut réellement déployer.
 #
 # Contexte : la chaîne de synthèse du produit est hors service sur l'appareil
 # (voir docs/REGLE-VOICE-FIRST.md). Les 137 clips enregistrés couvrent les
@@ -19,9 +25,9 @@ on:
   workflow_dispatch:
     inputs:
       modele:
-        description: 'Modèle TTS sherpa-onnx à éprouver'
+        description: 'Modèle TTS sherpa-onnx à éprouver (ex. vits-piper-fr_FR-siwis-medium)'
         required: true
-        default: 'vits-mms-fra'
+        default: 'vits-piper-fr_FR-siwis-medium'
 
 permissions:
   contents: read
@@ -73,8 +79,19 @@ jobs:
 
           modele = os.environ['MODELE']
           racine = pathlib.Path(modele)
-          onnx = racine / 'model.onnx'
+          # Le fichier de poids ne s'appelle PAS pareil selon la famille :
+          # `model.onnx` chez MMS, `fr_FR-siwis-medium.onnx` chez Piper. On le
+          # cherche au lieu de le supposer.
+          candidats = sorted(racine.glob('*.onnx'))
+          if not candidats:
+              raise SystemExit(f"Aucun .onnx dans {racine} — modèle inattendu.")
+          onnx = candidats[0]
           tokens = racine / 'tokens.txt'
+          # Les modèles Piper phonétisent avec espeak-ng : sans ce dossier, la
+          # synthèse sort muette ou illisible. MMS n'en a pas besoin.
+          dossier_donnees = racine / 'espeak-ng-data'
+          data_dir = str(dossier_donnees) if dossier_donnees.is_dir() else ''
+          print(f"poids : {onnx.name} · phonétisation : {data_dir or '(aucune, modèle MMS)'}")
           taille_octets = onnx.stat().st_size
           poids_total = sum(f.stat().st_size for f in racine.rglob('*') if f.is_file())
 
@@ -83,6 +100,7 @@ jobs:
                   vits=sherpa_onnx.OfflineTtsVitsModelConfig(
                       model=str(onnx),
                       tokens=str(tokens),
+                      data_dir=data_dir,
                   ),
                   num_threads=2,
                   provider='cpu',
@@ -123,6 +141,8 @@ jobs:
 
           mesures = {
               'modele': modele,
+              'fichier_poids': onnx.name,
+              'phonetisation_embarquee': bool(data_dir),
               'model_onnx_octets': taille_octets,
               'model_onnx_Mo': round(taille_octets / 1024 / 1024, 1),
               'dossier_complet_Mo': round(poids_total / 1024 / 1024, 1),
@@ -133,7 +153,8 @@ jobs:
           # Tableau lisible, publié dans le résumé du run ET dans l'artefact.
           t = []
           t.append(f"## Spike TTS — `{modele}` via sherpa-onnx\n")
-          t.append(f"**Poids du modèle** : `model.onnx` {mesures['model_onnx_Mo']} Mo · dossier complet {mesures['dossier_complet_Mo']} Mo\n")
+          t.append(f"**Poids du modèle** : `{onnx.name}` {mesures['model_onnx_Mo']} Mo · dossier complet {mesures['dossier_complet_Mo']} Mo")
+          t.append(f"**C'est le dossier complet qui partirait dans l'APK**, pas le seul .onnx.\n")
           t.append("| Fichier | Phrase | Génération | Audio | Facteur temps réel |")
           t.append("|---|---|---|---|---|")
           for l in lignes:
