@@ -202,6 +202,38 @@ function main() {
     eq(totalLibre, 500, "ligne libre : total EXACT transmis (500), jamais 501");
   }
 
+  {
+    // CE QUE TATA DIT APRÈS UNE VENTE — pour une marchande qui ne LIT PAS.
+    //
+    // L'écran affichait « TU AS DIT … » en toutes lettres, et Tata ne disait
+    // que « c'est dans le panier » : la confirmation qu'il s'est passé
+    // QUELQUE CHOSE, jamais QUOI. Rien ne permettait d'entendre l'écart entre
+    // « cinq tomates » et « quinze tomates ». Sur un chemin d'argent, c'est
+    // une vente fausse qu'on ne peut pas rattraper.
+    console.log("\nTata dit ce qu'elle a COMPRIS, pas seulement qu'elle a agi");
+    const h = creerDeps();
+    vendreVocalUnifie("tomates", 5, 1500, h.deps);
+    const dit = h.appelsSpeak.join(" ");
+    ok(dit.length > 0, "Tata parle après la vente");
+    ok(/5/.test(dit), "la QUANTITÉ est prononcée (5)");
+    ok(/1\s*500/.test(dit), "le MONTANT est prononcé (1 500)");
+    ok(/tomate/i.test(dit), "le PRODUIT est prononcé");
+    ok(
+      /compris/i.test(dit),
+      "la phrase s'annonce comme une relecture (« J'ai compris »), pas comme un simple accusé",
+    );
+    ok(
+      /panier/i.test(dit),
+      "la confirmation d'ajout au panier est conservée — on ajoute, on ne remplace pas",
+    );
+
+    // Le guidage coupé, on ne parle pas : le mode lecture reste respecté.
+    const muet = creerDeps();
+    muet.deps.guidageVocalActif = () => false;
+    vendreVocalUnifie("tomates", 5, 1500, muet.deps);
+    eq(muet.appelsSpeak.length, 0, "guidage désactivé → Tata se tait");
+  }
+
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
   if (failures > 0) process.exit(1);
 }

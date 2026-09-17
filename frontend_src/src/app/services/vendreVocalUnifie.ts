@@ -26,7 +26,7 @@ import {
   doitProposerCreation,
   type ProduitAppariable,
 } from './venteVocale';
-import { AJOUT_PANIER } from './dialoguesTata';
+import { phraseCompris } from './dialoguesTata';
 
 /**
  * Forme minimale attendue par `CaisseContext.addToCart` — reprise ici plutôt
@@ -117,7 +117,12 @@ export function vendreVocalUnifie(
 
   deps.vibrerSucces();
   deps.notifierAjoutPanier(`C'est dans le panier : ${quantite} × ${ligne.nom}`);
-  if (deps.guidageVocalActif()) deps.speak(AJOUT_PANIER);
+  // Tata dit CE QU'ELLE A COMPRIS, pas seulement qu'elle a fait quelque chose :
+  // c'est le seul moment où une marchande qui ne lit pas peut détecter un
+  // malentendu sur la quantité ou le montant. Voir phraseCompris().
+  if (deps.guidageVocalActif()) {
+    deps.speak(phraseCompris({ nom: ligne.nom, quantite, total: ligne.total }));
+  }
 
   if (!produitCat) {
     // Proposer l'ajout au catalogue (en ligne seulement — la création parle
