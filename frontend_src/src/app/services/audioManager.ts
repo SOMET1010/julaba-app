@@ -64,13 +64,35 @@ const defaultTtsSpeakChunk = async (chunk: string): Promise<void> => {
   const { speakBrowser } = await import("./elevenlabs");
   await speakBrowser(chunk); // résout sur end/error ; stop() coupe le synthé
 };
+/**
+ * Synthèse NATIVE hors-ligne (APK Android). Rend un WAV en base64, ou `null`
+ * quand elle n'est pas disponible — c'est le cas sur le web, où la voix du
+ * navigateur fonctionne déjà.
+ *
+ * POURQUOI ELLE EXISTE : dans la WebView Android, `window.speechSynthesis` ne
+ * produit AUCUN son. Seuls les clips enregistrés s'entendent, et un clip ne peut
+ * pas dire un MONTANT, qui change à chaque vente. Sans cette couche, une
+ * marchande qui ne lit pas n'entend jamais ce qu'elle a gagné.
+ */
+const defaultTtsSynthetiser = async (chunk: string): Promise<string | null> => {
+  const { ttsNatifDisponible, synthetiserEnWav } = await import(
+    "../voice-offline/nativeTts"
+  );
+  if (!(await ttsNatifDisponible())) return null;
+  return synthetiserEnWav(chunk);
+};
 let _ttsSplit = defaultTtsSplit;
 let _ttsSpeakChunk = defaultTtsSpeakChunk;
+let _ttsSynthetiser = defaultTtsSynthetiser;
 
 /** Voix navigateur, en chunks, avec état d'annulation PROPRE (pas de drapeau partagé). */
 function realStartTts(text: string): Playback {
   let settled = false;
   let cancelled = false;
+  // Lecture du WAV natif en cours, s'il y en a une. stop() DOIT pouvoir la
+  // couper : sans cette référence, la voix continuerait après un Stop — c'est
+  // précisément le défaut qu'on avait corrigé pour les clips.
+  let lectureNative: Playback | null = null;
   let settle!: (r: PlayResult) => void;
   const promise = new Promise<PlayResult>((res) => (settle = res));
   // done() est IDEMPOTENT : la promesse résout TOUJOURS, une seule fois.
@@ -85,6 +107,26 @@ function realStartTts(text: string): Playback {
       if (cancelled) return;
       for (const chunk of chunks) {
         if (cancelled) return;
+
+        // 1. Synthèse native (APK) : rend un WAV. `null` sur le web.
+        const wav = await _ttsSynthetiser(chunk);
+        if (cancelled) return;
+
+        if (wav) {
+          // On joue par le LECTEUR DE CLIPS, pas par une seconde chaîne audio :
+          // il sait déjà s'arrêter et s'annuler proprement (principe 1).
+          lectureNative = _clipPlayer({ base64: wav });
+          const res = await lectureNative.promise;
+          lectureNative = null;
+          if (cancelled || res === "cancelled") return;
+          // Si la lecture échoue (WAV illisible), on ne reste pas muet : on
+          // retombe sur la voix du navigateur pour ce morceau.
+          if (res !== "failed") continue;
+          if (cancelled) return;
+        }
+
+        // 2. Repli : voix du navigateur. Seul chemin sur le web, et filet sur
+        //    l'APK si la synthèse native manque ou échoue.
         await _ttsSpeakChunk(chunk);
         if (cancelled) return;
       }
@@ -103,6 +145,12 @@ function realStartTts(text: string): Playback {
     } catch {
       /* ignore */
     }
+    try {
+      lectureNative?.stop();
+    } catch {
+      /* déjà terminée */
+    }
+    lectureNative = null;
     done("cancelled");
   };
   return { promise, stop };
@@ -337,25 +385,47 @@ export function __setPlayers(
   _clipPlayer = clip;
 }
 
+/**
+ * Remplace le SEUL lecteur de clips, en gardant le vrai lecteur TTS.
+ *
+ * Nécessaire pour éprouver le chemin de la synthèse native : celle-ci rend un
+ * WAV que realStartTts confie au lecteur de clips. Pour vérifier qu'un Stop
+ * coupe bien ce WAV, il faut donc le VRAI realStartTts et un faux lecteur de
+ * clips — ce que __setPlayers, qui remplace les deux, ne permet pas.
+ */
+export function __setClipPlayer(
+  clip: (source: { base64?: string; url?: string }) => Playback
+): void {
+  _clipPlayer = clip;
+}
+
 /** Restaure les lecteurs réels. */
 export function __resetPlayers(): void {
   _ttsPlayer = realStartTts;
   _clipPlayer = realStartClip;
 }
 
-/** Injecte le bas-niveau TTS (découpe + diction d'un chunk) pour tester realStartTts. */
+/**
+ * Injecte le bas-niveau TTS (découpe + diction d'un chunk) pour tester
+ * realStartTts. `synthetiser` est facultatif : omis, la synthèse native est
+ * réputée indisponible — c'est l'état du web et celui des tests existants, qui
+ * continuent donc de passer sans être touchés.
+ */
 export function __setLowLevel(
   split: (text: string) => Promise<string[]>,
-  speakChunk: (chunk: string) => Promise<void>
+  speakChunk: (chunk: string) => Promise<void>,
+  synthetiser?: (chunk: string) => Promise<string | null>
 ): void {
   _ttsSplit = split;
   _ttsSpeakChunk = speakChunk;
+  _ttsSynthetiser = synthetiser ?? (async () => null);
 }
 
 /** Restaure le bas-niveau TTS réel. */
 export function __resetLowLevel(): void {
   _ttsSplit = defaultTtsSplit;
   _ttsSpeakChunk = defaultTtsSpeakChunk;
+  _ttsSynthetiser = defaultTtsSynthetiser;
 }
 
 /** Réinitialise l'état global (tests). */
