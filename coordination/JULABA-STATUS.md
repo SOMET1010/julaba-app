@@ -7,10 +7,11 @@
 
 ```
 STATUT: EN_COURS
-TACHE: RECETTE TERRAIN EN COURS sur julaba-apk-a4222c3. GEL confirmé par
-  Patrick le 17/09 : aucun chantier nouveau, aucun contournement, aucun
-  second front. Le sujet TTS/Sherpa est volontairement HORS de ce lot ; il
-  sera décidé APRÈS la recette. Scénario 1 déjà VERT.
+TACHE: LOT PILOTE MERGÉ SUR MAIN (e796547, 17/09). La recette terrain
+  n'est plus un verrou de fusion : Patrick l'a jugée trop lente pour rester
+  le seul obstacle. Elle garde toute sa valeur comme CONSTAT D'USAGE, à
+  faire sur l'app déployée. Scénario 1 déjà VERT (l'écran du code parle).
+  Le sujet TTS/Sherpa reste hors lot, à arbitrer.
 BESOIN_PATRICK: OUI
 TYPE_BESOIN: TEST_PHYSIQUE_ANDROID
 ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
@@ -46,11 +47,19 @@ ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
   ces 18 fichiers, sinon les deux premiers écrans restent muets et aucun
   montant ne peut être épelé. La liste exacte et les textes à dire sont dans
   docs/CLIPS-VOIX-A-ENREGISTRER.md.
-DERNIER_SHA_MAIN: c816836
-BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2ab7da2) — 43 commits
-  d'avance, 0 de retard sur main c816836 : `main` a été rapatrié dans la
-  branche le 17/09. Compte à vérifier par
-  `git rev-list --left-right --count origin/main...origin/<branche>`.
+DERNIER_SHA_MAIN: e796547 — LE LOT PILOTE EST MERGÉ SUR MAIN (17/09).
+  PR #240 fusionnée sur demande de Patrick : la session terrain complète
+  prenait trop de temps pour rester le seul verrou. La Constitution
+  (principe 3) demandait une preuve réelle avant de merger les modules
+  sacrés ; la preuve obtenue est celle qu'on pouvait obtenir sans doigt :
+  166 invariants sur 33 suites contre un vrai Postgres (dont
+  caisse-fond-declare et argent-gele-b2), 176 tests unitaires backend,
+  verify, test:ci, cliquet à 0, parcours argent au navigateur vérifié en
+  base, et sur appareil réel l'écran du code qui parle.
+  ASSUMÉ, NON PROUVÉ : le parcours argent avec de vrais doigts et le temps
+  de démarrage. Ce sont des constats d'usage, à faire sur l'app déployée.
+BRANCHE_EN_ATTENTE: AUCUNE. claude/clever-allen-dnr8by est entièrement
+  contenue dans main depuis e796547. Plus aucune PR ouverte.
   NON mergés : authentification et caisse sont des modules sacrés, preuve
   réelle exigée (principe 3).
 LIGNE_D_ARRIVEE (décision Patrick, 16/09/2026) : on arrête toute
@@ -128,7 +137,11 @@ ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK (chaque runner signe
   différemment → toute mise à jour exige une désinstallation, donc efface les
   données de la marchande). Non bloquant sur un seul téléphone de test ;
   bloquant avant toute distribution.
-PROCHAINE_ACTION: L'APK EST PRÊT — artefact `julaba-apk-a4222c3`, run #12
+PROCHAINE_ACTION: vérifier que le déploiement automatique de main est passé
+  (julaba-web et julaba-api), les trois migrations étant additives et
+  idempotentes. Puis l'arbitrage VOIX, qui est désormais le seul vrai
+  chantier pilote restant. L'APK de recette reste valable pour les constats
+  d'usage — artefact `julaba-apk-a4222c3`, run #12
   vert le 17/09 (https://github.com/SOMET1010/julaba-app/actions/runs/35223777812).
   APK de debug, 190 Mo, com.julaba.app, targetSdk 36, archive vérifiée
   intègre, signature v2 valide.
@@ -179,6 +192,18 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **17/09/2026, soir** — LOT PILOTE MERGÉ SUR MAIN (e796547, PR #240).
+  Décision de Patrick : la session terrain complète prenait trop de temps
+  pour rester le seul verrou. Avant de poser la fusion, j'ai mesuré au lieu
+  d'argumenter — le chemin argent hors-ligne n'est PAS touché par le lot
+  (donc aucun risque argent ajouté), les trois migrations sont purement
+  additives et idempotentes, et `main` avait déjà reçu 27 commits dans la
+  journée sans que julaba-api quitte le plan Starter (la dérive de Blueprint
+  ne mord pas sur un déploiement ordinaire). Puis 166 invariants sur 33
+  suites contre un vrai Postgres, tous verts. Restent assumés et non
+  prouvés : le parcours argent avec de vrais doigts, le temps de démarrage,
+  et une voix qui ne dit aucun montant.
 
 - **17/09/2026** — L'application ne sort plus du téléphone pour son
   habillage : Inter et les icônes Tabler sont embarquées, l'appel Google de
