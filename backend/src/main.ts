@@ -135,9 +135,13 @@ async function bootstrap() {
   //   OPTIONS /api/v1/auth/check-phone, Origin: https://localhost
   //   → 204, AUCUN en-tête Access-Control-Allow-Origin.
   //
-  // Ces deux origines ne désignent pas « n'importe quel localhost du web » :
-  // elles ne peuvent être émises que par la WebView de l'application installée
-  // sur l'appareil. Une page web ordinaire ne peut pas les usurper.
+  // À NE PAS PRENDRE POUR UNE BARRIÈRE DE SÉCURITÉ. CORS est une règle
+  // appliquée par le NAVIGATEUR : il empêche une page web tierce d'appeler
+  // cette API avec les identifiants de la personne. N'importe quel client HTTP
+  // qui n'est pas un navigateur (curl, script, application) fabrique l'en-tête
+  // Origin qu'il veut — ajouter ces deux valeurs n'ouvre donc aucune porte qui
+  // ne l'était déjà. La vraie barrière reste l'authentification de l'API
+  // (jeton JWT, rôles, verrous de tentatives).
   const ORIGINES_APPLI_MOBILE = ['https://localhost', 'capacitor://localhost'];
   const allowedOrigins = [
     process.env.CORS_ORIGIN,
