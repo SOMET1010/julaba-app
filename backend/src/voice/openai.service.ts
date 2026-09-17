@@ -54,38 +54,21 @@ export class OpenAIService {
     return voiceId;
   }
 
-  // STT — Whisper via OpenAI
-  async transcribe(audioBuffer: Buffer, lang = 'fr'): Promise<string> {
-    const key = this.getKey();
-    // Court-circuit : pas d'appel distant avec une cle vide (gere en amont par voice.service).
-    if (!key) throw new Error('OPENAI_API_KEY absente, STT/LLM indisponible');
-    const fd = new FormData();
-    const blob = new Blob([audioBuffer as unknown as BlobPart], { type: 'audio/wav' });
-    fd.append('file', blob, 'audio.wav');
-    fd.append('model', 'whisper-1');
-    fd.append('language', lang);
-    fd.append('response_format', 'json');
-    fd.append('prompt', 'Bonjour, je vends des légumes au marché. FCFA, Francs, vendu, dépensé, tomate, oignon, attieke.');
-
-    const startedAt = Date.now();
-    try {
-      const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        signal: AbortSignal.timeout(30000),
-        headers: { 'Authorization': `Bearer ${key}` },
-        body: fd,
-      });
-      if (!res.ok) throw new Error(`OpenAI STT HTTP ${res.status}: ${await res.text()}`);
-      const data = await res.json() as any;
-      if (!data.text?.trim()) throw new Error('OpenAI STT: réponse vide');
-      this.logger.log(`[STT:OPENAI] OK — "${data.text.slice(0, 60)}"`);
-      await this.recordMetric('stt_openai_cloud', true, startedAt);
-      return data.text;
-    } catch (e: any) {
-      await this.recordMetric('stt_openai_cloud', false, startedAt, e?.message);
-      throw e;
-    }
-  }
+  // LA TRANSCRIPTION WHISPER A ÉTÉ RETIRÉE LE 17/09/2026, ET IL FAUT SAVOIR
+  // POURQUOI AVANT DE VOULOIR LA REMETTRE.
+  //
+  // 1. Elle n'était plus appelée : l'application transcrit désormais 100 % sur
+  //    le téléphone (sherpa-onnx embarqué). Zéro cloud, zéro coût, zéro
+  //    dépendance réseau sur le parcours d'une marchande.
+  // 2. Elle portait une amorce en dur — « …FCFA, Francs, vendu, dépensé,
+  //    tomate, oignon, attieke » — censée aider Whisper sur notre vocabulaire.
+  //    Whisper traite une amorce comme un DÉBUT DE PHRASE À CONTINUER : sur un
+  //    énoncé court ou bruité, il recrache les mots de l'amorce au lieu de ce
+  //    qui a été dit. Une amorce qui contient des noms de produits peut donc
+  //    faire enregistrer une vente d'oignons à qui a parlé de tomates.
+  //
+  // Si un jour un repli cloud redevient nécessaire : pas de noms de produits
+  // dans l'amorce, et refuser toute transcription qui ressemble à l'amorce.
 
   // LLM — endpoint compatible OpenAI, configurable.
   // Par defaut : OpenAI GPT-4o. Pour un LLM souverain (Mistral auto-heberge via
