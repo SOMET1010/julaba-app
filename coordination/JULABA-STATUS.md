@@ -21,7 +21,7 @@ ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. Séance du 16/09
   vits-mms-fra — jugé acceptable à l'écoute le 16/09, +103 Mo dans l'APK, seule
   voie qui permette de DIRE UN MONTANT ; ou (b) s'en tenir aux clips
   enregistrés, auquel cas Tata ne dira jamais un chiffre.
-DERNIER_SHA_MAIN: 3127f67 (état de main AVANT ce commit de statut —
+DERNIER_SHA_MAIN: c54dbaf (état de main AVANT ce commit de statut —
   ce champ ne peut pas désigner son propre commit)
 BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2b43d05) — 28 commits
   d'avance, 16 de retard sur main 5869e97 (le retard n'est que de la doc et
@@ -75,6 +75,27 @@ BACKLOG_POST_PILOTE (à ne PAS mélanger avec la sortie pilote) :
 VERDICT_PATRICK: LOT A techniquement clos · GO TEST TERRAIN · PAS de GO
   MERGE global. Branche gelée sur 5d48614 au 16/09 ; seuls des correctifs
   remontés par la recette s'y ajoutent depuis.
+ARBITRAGE_EN_ATTENTE (2) — POLICES ET ICÔNES DISTANTES, contraire à
+  l'offline-first. Relevé par Patrick le 17/09, vérifié dans le code :
+  - `Inter`, appliquée à `*` donc à TOUTE l'application, vient d'un
+    `@import` Google dans styles/fonts.css → hors ligne, repli sur la police
+    système : lisible, mais autre rendu et autres métriques.
+  - `Calisga`, utilisée à 4 endroits, vient du même `@import`. Elle n'est
+    vraisemblablement PAS au catalogue Google — auquel cas elle ne s'affiche
+    déjà pas aujourd'hui, même en ligne. Non vérifiable depuis la session
+    (Google Fonts bloqué).
+  - Icônes **Tabler** : 11 occurrences dans 3 fichiers (MarcheSelect et les
+    deux fiches d'identification), chargées depuis un CDN jsDelivr en
+    `@latest` — version NON figée, qui peut changer sans qu'on touche au code.
+    Le paquet n'est pas installé : le CDN est la seule source.
+  Impact réel, mesuré : le parcours quotidien d'une marchande (vendre,
+  encaisser, fermer) utilise lucide-react, COMPILÉ dans le bundle — aucune
+  requête. Ce sont les écrans d'identification et de back-office qui perdent
+  leurs icônes hors ligne.
+  Proposé : auto-héberger Inter (~100 Ko), remplacer les 11 icônes Tabler par
+  leurs équivalents lucide-react (0 Ko, une dépendance distante en moins), et
+  trancher Calisga (fichier + droit d'embarquer, ou on retire la référence).
+  EN ATTENTE DE PATRICK : maintenant, ou backlog post-pilote ?
 ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK (chaque runner signe
   différemment → toute mise à jour exige une désinstallation, donc efface les
   données de la marchande). Non bloquant sur un seul téléphone de test ;
