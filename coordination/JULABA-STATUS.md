@@ -99,11 +99,14 @@ ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK (chaque runner signe
   différemment → toute mise à jour exige une désinstallation, donc efface les
   données de la marchande). Non bloquant sur un seul téléphone de test ;
   bloquant avant toute distribution.
-PROCHAINE_ACTION: reconstruire un APK DEPUIS LA BRANCHE avant la session
-  Android. L'artefact julaba-apk-7e5779c ne contient NI les polices et icônes
-  embarquées, NI le correctif d'écran noir : les éprouver exige une
-  construction neuve. Rien d'autre à coder ici tant que la session n'a pas eu
-  lieu.
+PROCHAINE_ACTION: la construction d'un APK depuis la branche est LANCÉE
+  (run #12, 17/09). L'artefact julaba-apk-7e5779c ne contenait NI les polices
+  et icônes embarquées, NI le correctif d'écran noir : il ne fallait pas
+  dérouler la recette avec. Quand le run est vert, Patrick télécharge
+  l'artefact `julaba-apk-<sha>` depuis l'onglet Actions, DÉSINSTALLE l'ancien
+  APK, installe celui-ci, et déroule docs/RECETTE-TERRAIN-GROUPEE.md dans
+  l'ordre écrit (étape 0 → 6 ; la voix se teste avant tout geste).
+  Rien d'autre à coder ici tant que la session n'a pas eu lieu.
 DERNIER_RESULTAT: l'application ne sort PLUS du téléphone pour son
   habillage. Inter auto-hébergée (5 graisses latines, 120 Ko), import Google
   de Calisga retiré sur décision de Patrick, preconnect Google retirés,
@@ -143,6 +146,17 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **17/09/2026** — L'application ne sort plus du téléphone pour son
+  habillage : Inter et les icônes Tabler sont embarquées, l'appel Google de
+  Calisga et le CDN jsdelivr sont retirés, `index.html` n'a plus aucune
+  ressource distante. Les 19 icônes sont prouvées rendues au navigateur
+  réseau coupé, et un garde-fou dans `verify` échoue si une icône manque ou
+  si un appel distant revient. Découvert en route : la feuille de recette
+  SUR LA BRANCHE était périmée (ni JDK 21, ni artefact CI, ni
+  installer-voix.sh) — `main` a donc été rapatrié dans la branche, qui n'a
+  plus aucun retard. Un APK neuf est en construction : celui que Patrick
+  avait n'éprouvait aucun des correctifs du jour.
 
 - **16/09/2026, soir** — Correctif de l'écran noir livré : deux causes, pas
   une. La fenêtre elle-même n'avait aucun fond déclaré sous un parent DayNight
