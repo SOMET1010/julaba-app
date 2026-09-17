@@ -159,7 +159,19 @@ ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK (chaque runner signe
   différemment → toute mise à jour exige une désinstallation, donc efface les
   données de la marchande). Non bloquant sur un seul téléphone de test ;
   bloquant avant toute distribution.
-PROCHAINE_ACTION: ENTENDRE TATA DIRE UN MONTANT. La synthèse vocale
+PROCHAINE_ACTION: LA VOIX PASSE — confirmé par Patrick sur appareil réel le
+  17/09 au soir, sur julaba-apk-fb6a842. La synthèse hors-ligne sort
+  vraiment du haut-parleur : Tata peut DIRE UN MONTANT. C'était le dernier
+  verrou du pilote.
+  Ce qui l'a débloqué : `dataDir` pointait vers les assets de l'APK, où
+  espeak-ng ne peut pas lire (ce ne sont pas de vrais fichiers). Le moteur
+  échouait en silence. Les données sont désormais recopiées une fois dans le
+  stockage interne.
+  RESTE À CONSTATER, sur ce même APK : (1) le temps du TOUT PREMIER montant
+  (19 Mo de phonétisation se recopient une fois — si l'attente dépasse 5 s,
+  l'élagage au français seul la ramène à 708 Ko) ; (2) la relecture après une
+  vente vocale — « J'ai compris : 5 tomates pour 1 500 francs ».
+  (ancienne consigne, atteinte) ENTENDRE TATA DIRE UN MONTANT. La synthèse vocale
   hors-ligne est écrite, testée et EMBARQUÉE : artefact `julaba-apk-df128fa`
   (run #13, 17/09), 255,4 Mo contre 190,3 Mo sans elle.
   Geste attendu : désinstaller l'ancien JULABA, installer celui-ci, faire une
