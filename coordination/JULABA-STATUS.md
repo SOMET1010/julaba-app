@@ -14,14 +14,19 @@ ACTION_PATRICK: dérouler docs/RECETTE-TERRAIN-GROUPEE.md sur un téléphone
   Android réel (6 scénarios, ~40 min, dans l'ordre écrit — la voix se teste
   avant tout geste, sinon le scénario 1 est faussé). Noter les montants
   exacts et le résultat de chaque scénario ; en cas d'échec, capture + heure.
-DERNIER_SHA_MAIN: 44397c2
-BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (fd6133b) — 25 commits NON
-  mergés : authentification et caisse sont des modules sacrés, la
-  Constitution exige une preuve réelle avant merge (principe 3).
+DERNIER_SHA_MAIN: c816836
+BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (0a08825) — 34 commits NON
+  mergés, et 27 commits de `main` pas encore repris sur la branche
+  (mesuré par `git rev-list --left-right --count origin/main...HEAD`).
+  Authentification et caisse sont des modules sacrés : la Constitution
+  exige une preuve réelle avant merge (principe 3).
 PROCHAINE_ACTION: rien à coder côté JULABA historique tant que la session
   terrain n'a pas eu lieu. Au retour de Patrick : corriger ce que la recette
   révèle, puis merger la branche sur main en une fois.
-DERNIER_RESULTAT: recette terrain groupée finalisée. Elle ne contient plus
+DERNIER_RESULTAT: Inter auto-hébergée (0a08825) — la police appliquée à
+  toute l'application ne vient plus de Google, cinq graisses latines
+  embarquées (~120 Ko). Calisga appelle encore Google : arbitrage en
+  attente. Avant cela : recette terrain groupée finalisée. Elle ne contient plus
   que ce qu'une base de données et un navigateur ne peuvent pas prouver :
   la voix sur l'écran du code avant tout geste, les voix françaises
   réellement installées sur l'appareil, le nom d'adresse de bout en bout,
