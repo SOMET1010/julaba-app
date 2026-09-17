@@ -67,6 +67,7 @@
     "@capacitor/android": "^8.1.0",
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
+    "@fontsource/inter": "^5.3.0",
     "@nestjs/core": "11.1.28",
     "@radix-ui/react-accordion": "*",
     "@radix-ui/react-alert-dialog": "*",
