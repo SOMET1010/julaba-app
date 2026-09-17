@@ -7,7 +7,10 @@
 
 ```
 STATUT: EN_COURS
-TACHE: correctifs remontés par la recette en cours, sur appareil réel
+TACHE: RECETTE TERRAIN EN COURS sur julaba-apk-a4222c3. GEL confirmé par
+  Patrick le 17/09 : aucun chantier nouveau, aucun contournement, aucun
+  second front. Le sujet TTS/Sherpa est volontairement HORS de ce lot ; il
+  sera décidé APRÈS la recette. Scénario 1 déjà VERT.
 BESOIN_PATRICK: OUI
 TYPE_BESOIN: TEST_PHYSIQUE_ANDROID
 ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
@@ -16,6 +19,21 @@ ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
   donc AUCUNE RÉGRESSION. Le silence sur les autres écrans est bien celui
   qu'on avait diagnostiqué : pas de clip enregistré + synthèse muette dans la
   WebView. Rien à corriger en urgence de ce côté.
+  DEUX SÉRIES DE FAITS ATTENDUES, relevées sans interprétation pendant le
+  test (consigne Patrick du 17/09) :
+  (1) DÉMARRAGE — chronométrer du lancement jusqu'au premier écran
+      exploitable, et noter la couleur pendant l'attente. Attendu : IVOIRE
+      (#F6F0E4, le fond posé par le correctif). Du NOIR, même bref, veut
+      dire que le correctif n'a pas pris : arrêt, heure + capture.
+  (2) SCÉNARIO 4 ARGENT — au doigt, relever ce que l'écran affiche :
+      vente 1 500 → fond 5 000 → caisse 6 500 → comptage 6 000 → écart −500
+      → après fermeture, caisse toujours 6 500. Vérifié : la feuille de
+      recette sur la branche porte exactement cette séquence.
+  Rappel de mise en place : le scénario 4 part d'une journée NON ouverte. La
+  désinstallation a effacé le téléphone, PAS le serveur — une journée ouverte
+  d'une session précédente peut subsister, à fermer d'abord.
+  RÈGLE : au premier écart réel, la recette s'arrête. On documente l'état
+  exact qui l'a produit, on ne contourne pas.
   Ensuite, arbitrage : (a) embarquer OfflineTts de sherpa-onnx avec
   vits-mms-fra — jugé acceptable à l'écoute le 16/09, +103 Mo dans l'APK, seule
   voie qui permette de DIRE UN MONTANT ; ou (b) s'en tenir aux clips
