@@ -1195,7 +1195,7 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
   const [data, setData] = useState({
     numeroId: '',
     photo: null as string | null,
-    nom: locationState2?.nom || '', prenoms: locationState2?.prenoms || '', genre: '',
+    nom: locationState2?.nom || '', prenoms: locationState2?.prenoms || '', genre: '', appellation: '',
     lieuNaissance: '', dateNaissance: '', nin: '',
     telephone: locationState2?.phone || locationState2?.telephone || '',
     email: '', signature: null as string | null,
@@ -2193,6 +2193,9 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
       payload = {
         firstName: (data.prenoms || '').trim(),
         lastName: (data.nom || '').trim() || undefined,
+        // Vide = non transmis : le backend garde NULL et l'app emploiera son
+        // prénom seul, plutôt qu'un nom d'adresse vide qui effacerait un choix.
+        ...((data.appellation || '').trim() ? { appellation: (data.appellation || '').trim() } : {}),
         phone: formatPhoneForBo(data.telephone || ''),
         role: roleBo,
         genre: data.genre || undefined,
@@ -4631,6 +4634,18 @@ function StepContent({
           <GenreSelector value={data.genre} onChange={(v) => setField('genre', v)} color={color} />
         </Field>
 
+        {/* C'est à la personne de dire comment on l'appelle, pas à nous de le
+            déduire de son genre : l'application lui parle à voix haute, et un
+            titre faux s'entend. Vide = on emploie son prénom seul. */}
+        <Field label="Comment veux-tu qu'on t'appelle ?" optional>
+          <BigInput
+            value={data.appellation}
+            onChange={(v) => setField('appellation', v)}
+            placeholder={data.prenoms ? `${data.prenoms} (par défaut)` : 'Maman Aminata, Tantie Awa…'}
+            color={color}
+          />
+        </Field>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Date de naissance" required error={errors.dateNaissance}>
             <BigInput type="date" value={data.dateNaissance} onChange={(v) => setField('dateNaissance', v)} max={todayISO} color={color} />
@@ -4744,6 +4759,18 @@ function StepContent({
         </Field>
         <Field label="Genre" error={errors.genre}>
           <GenreSelector value={data.genre} onChange={(v) => setField('genre', v)} color={color} />
+        </Field>
+
+        {/* C'est à la personne de dire comment on l'appelle, pas à nous de le
+            déduire de son genre : l'application lui parle à voix haute, et un
+            titre faux s'entend. Vide = on emploie son prénom seul. */}
+        <Field label="Comment veux-tu qu'on t'appelle ?" optional>
+          <BigInput
+            value={data.appellation}
+            onChange={(v) => setField('appellation', v)}
+            placeholder={data.prenoms ? `${data.prenoms} (par défaut)` : 'Maman Aminata, Tantie Awa…'}
+            color={color}
+          />
         </Field>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Date de naissance" error={errors.dateNaissance}>

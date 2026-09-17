@@ -6,15 +6,20 @@ import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { SubPageLayout } from '../layout/SubPageLayout';
-import { TATA_LOU_BLEU as TATA_BLEU, DEPENSE_IMG } from '../../assets/cloudinary-images';
+import TATA_BLEU from '../../../assets/images/tata-nanti-lou.png';
+import { emojiTile } from '../../utils/emojiTile';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
 
 const QUICK_ACTIONS = [
-  { id:'transport',   label:'Transports',  img: DEPENSE_IMG.transport },
-  { id:'repas',       label:'Nourritures', img: DEPENSE_IMG.nourriture },
-  { id:'taxe_mairie', label:'Taxe mairie', img: DEPENSE_IMG.taxe_mairie },
+  // Vignettes LOCALES : ces trois images étaient servies par un hébergeur
+  // distant. Sans réseau — le cas courant au marché — une marchande qui ne
+  // lit pas voyait trois cases vides et ne pouvait plus choisir sa catégorie.
+  // Même correction que les tuiles de l'accueil (#157).
+  { id:'transport',   label:'Transports',  img: emojiTile('🚌') },
+  { id:'repas',       label:'Nourritures', img: emojiTile('🍚') },
+  { id:'taxe_mairie', label:'Taxe mairie', img: emojiTile('🏛️') },
 ];
 
 const OTHER_CATS = [

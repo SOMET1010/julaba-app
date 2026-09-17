@@ -32,6 +32,7 @@ import { getNoteUtilisateur } from '../../services/evaluations.service';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { API_URL } from '../../utils/api';
 import { apiRequest } from '../../services/api/api-client';
+import { vignetteProduit } from '../../utils/emojiTile';
 
 interface Product {
   id: string; name: string; emoji: string; image: string;
@@ -761,7 +762,7 @@ export function MarcheVirtuel() {
                   <Heart className={`w-4 h-4 ${favorites.has(product.id) ? 'text-red-500 fill-red-500' : 'text-gray-600'}`} />
                 </motion.button>
                 <div className="relative w-full h-40 bg-gray-100">
-                  <ImageWithFallback src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                  <ImageWithFallback src={product.image} alt={product.name} fallbackSrc={vignetteProduit(product.name)} className="w-full h-full object-cover" />
                 </div>
                 <div className="p-3">
                   <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold mb-2 ${product.sellerType === 'producteur' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -794,7 +795,7 @@ export function MarcheVirtuel() {
                 <motion.button onClick={() => setSelectedProduct(null)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-                <div className="relative w-full h-48 bg-gray-100 rounded-2xl overflow-hidden"><ImageWithFallback src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" /></div>
+                <div className="relative w-full h-48 bg-gray-100 rounded-2xl overflow-hidden"><ImageWithFallback src={selectedProduct.image} alt={selectedProduct.name} fallbackSrc={vignetteProduit(selectedProduct.name)} className="w-full h-full object-cover" /></div>
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-gray-900 mb-1">{selectedProduct.name}</h3>
                   <p className="text-3xl font-bold text-[#B74725]"><Montant value={selectedProduct.price} unit={selectedProduct.unit} size="2xl" color="#B74725" /></p>
@@ -848,7 +849,7 @@ export function MarcheVirtuel() {
                     {cartItems.map((item, index) => (
                       <motion.div key={item.product.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="bg-gray-50 rounded-2xl p-4">
                         <div className="flex items-start gap-3 mb-3">
-                          <div className="w-16 h-16 bg-gray-200 rounded-xl overflow-hidden flex-shrink-0"><ImageWithFallback src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" /></div>
+                          <div className="w-16 h-16 bg-gray-200 rounded-xl overflow-hidden flex-shrink-0"><ImageWithFallback src={item.product.image} alt={item.product.name} fallbackSrc={vignetteProduit(item.product.name)} className="w-full h-full object-cover" /></div>
                           <div className="flex-1">
                             <h3 className="font-bold text-gray-900">{item.product.name}</h3>
                             <p className="text-sm text-gray-500">{item.product.sellerName}</p>
@@ -898,7 +899,7 @@ export function MarcheVirtuel() {
                   allProducts.filter(p => favorites.has(p.id)).map((product, index) => (
                     <motion.div key={product.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }} className="bg-gradient-to-br from-orange-50 via-white to-orange-50 rounded-2xl p-4 border-2 border-gray-200">
                       <div className="flex items-start gap-3 mb-3">
-                        <div className="w-20 h-20 bg-gray-200 rounded-xl overflow-hidden flex-shrink-0"><ImageWithFallback src={product.image} alt={product.name} className="w-full h-full object-cover" /></div>
+                        <div className="w-20 h-20 bg-gray-200 rounded-xl overflow-hidden flex-shrink-0"><ImageWithFallback src={product.image} alt={product.name} fallbackSrc={vignetteProduit(product.name)} className="w-full h-full object-cover" /></div>
                         <div className="flex-1">
                           <div className="flex items-start justify-between mb-1">
                             <h3 className="font-bold text-gray-900 text-lg">{product.name}</h3>
@@ -1158,7 +1159,7 @@ export function MarcheVirtuel() {
               <div className="p-6 space-y-5 overflow-y-auto">
                 <div className={`rounded-2xl p-4 ${productToNegotiate.sellerType === 'producteur' ? 'bg-green-50' : 'bg-blue-50'}`}>
                   <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 bg-white rounded-2xl overflow-hidden shadow-sm"><ImageWithFallback src={productToNegotiate.image} alt={productToNegotiate.name} className="w-full h-full object-cover" /></div>
+                    <div className="w-20 h-20 bg-white rounded-2xl overflow-hidden shadow-sm"><ImageWithFallback src={productToNegotiate.image} alt={productToNegotiate.name} fallbackSrc={vignetteProduit(productToNegotiate.name)} className="w-full h-full object-cover" /></div>
                     <div className="flex-1"><h3 className="text-lg font-bold text-gray-900">{productToNegotiate.name}</h3><p className="text-sm text-gray-600">{productToNegotiate.sellerName}</p><p className="text-xl font-bold text-[#B74725] mt-1">{productToNegotiate.price} FCFA<span className="text-sm text-gray-500">/{productToNegotiate.unit}</span></p></div>
                   </div>
                 </div>
@@ -1231,7 +1232,7 @@ export function MarcheVirtuel() {
               <div className="p-6 space-y-5 overflow-y-auto">
                 <div className="bg-blue-50 rounded-2xl p-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-20 h-20 bg-white rounded-2xl overflow-hidden shadow-sm"><ImageWithFallback src={produitARepublier.image} alt={produitARepublier.name} className="w-full h-full object-cover" /></div>
+                    <div className="w-20 h-20 bg-white rounded-2xl overflow-hidden shadow-sm"><ImageWithFallback src={produitARepublier.image} alt={produitARepublier.name} fallbackSrc={vignetteProduit(produitARepublier.name)} className="w-full h-full object-cover" /></div>
                     <div className="flex-1"><h3 className="text-lg font-bold text-gray-900">{produitARepublier.name}</h3><p className="text-sm text-gray-600">Prix producteur : {produitARepublier.price} <span className="text-xs">FCFA</span>/{produitARepublier.unit}</p></div>
                   </div>
                 </div>

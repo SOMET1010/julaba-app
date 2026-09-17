@@ -448,11 +448,16 @@ export function VentesPassees() {
 
 
         {/* Recherche */}
-        <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'11px 14px', display:'flex', alignItems:'center', gap:8 }}>
+        {/* height 46 + padding horizontal seul : la zone tapable du champ suit
+            alors la hauteur de la barre (alignSelf stretch). Avec un padding
+            VERTICAL, la boite de contenu restait celle du texte — 20px — et
+            l'etirement ne donnait rien. Meme forme que la recherche du stock. */}
+        <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'0 14px', height:46, display:'flex', alignItems:'center', gap:8 }}>
           <Search size={14} color="#aaa" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une vente..."
-            style={{ flex:1, border:'none', outline:'none', fontSize:13, color:'var(--encre)', background:'transparent', fontFamily:'inherit' }} />
-          {search && <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}>
+            style={{ flex:1, alignSelf:'stretch', minWidth:0, border:'none', outline:'none', fontSize:13, color:'var(--encre)', background:'transparent', fontFamily:'inherit' }} />
+          {search && <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} aria-label="Effacer la recherche"
+            style={{ flexShrink:0, width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', background:'none', border:'none', cursor:'pointer', padding:0 }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </motion.button>}
         </div>
@@ -466,7 +471,8 @@ export function VentesPassees() {
           />
           {SOURCE_TABS.map(t => (
             <button key={t.id} onClick={() => setSourceFilter(t.id)}
-              style={{ flex:1, padding:'9px 4px', fontSize:11, fontWeight:700, color: sourceFilter===t.id ? 'white' : 'var(--encre-4)', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', transition:'color 0.2s', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+              // minHeight 44 : cible tactile mesurée à 35px (390×844).
+              style={{ flex:1, minHeight:44, padding:'9px 4px', fontSize:11, fontWeight:700, color: sourceFilter===t.id ? 'white' : 'var(--encre-4)', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', transition:'color 0.2s', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
               {t.label}
             </button>
           ))}

@@ -458,7 +458,13 @@ export function ScoreResumeCard({
                               speak?.(l.tooltip!);
                             }}
                             onKeyDown={(e) => e.key === 'Enter' && speak?.(l.tooltip!)}
+                            aria-label="Écouter l'explication"
                             className="w-4 h-4 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors cursor-pointer"
+                            // La pastille garde ses 16px (elle ne doit pas manger
+                            // la ligne) ; seule la zone TAPABLE est étendue à
+                            // 44px autour d'elle. C'est le bouton qui FAIT PARLER
+                            // l'explication : le seul chemin pour qui ne lit pas.
+                            style={{ boxSizing: 'content-box', padding: 14, margin: -14 }}
                           >
                             <Info className="w-2.5 h-2.5 text-gray-600" />
                           </span>
@@ -493,7 +499,8 @@ export function ScoreResumeCard({
                   `/${role}/resume-caisse`,
                 );
               }}
-              className="mt-3 w-full py-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer"
+              // min-h-11 (44px) : mesuré à 32px de haut.
+              className="mt-3 w-full min-h-11 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 text-xs font-semibold text-gray-700 cursor-pointer"
             >
               <BarChart3 className="w-4 h-4" />
               {resumeCfg.historique}

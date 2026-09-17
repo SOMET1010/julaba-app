@@ -193,8 +193,20 @@ interface BilletsSelecteurProps {
 }
 
 function BilletsSelecteur({ onBilletClick }: BilletsSelecteurProps) {
-  const [isPaused, setIsPaused] = useState(false);
-  
+  // AUCUN défilement automatique : décision Patrick du 15/09/2026.
+  //
+  // Ces rangées défilaient en boucle infinie, et leur pause était branchée sur
+  // onMouseEnter — un événement de SOURIS, qui n'existe pas sur un téléphone.
+  // Sur l'appareil d'une marchande, elles ne s'arrêtaient donc jamais : il
+  // fallait toucher une cible en mouvement POUR SAISIR DE L'ARGENT. Mesuré :
+  // 59 px par seconde, un billet en fait 85 — une coupure passe sous le doigt
+  // en une seconde et demie, on se trompe de billet et le fond de caisse est
+  // faux.
+  //
+  // Sur une saisie d'argent, une cible qui bouge n'apporte aucun bénéfice et
+  // ajoute un risque réel. La rangée reste immobile et se fait glisser à la
+  // main (overflow-x-auto, déjà en place). Aucun timer, aucune reprise.
+
   const billets = [
     { valeur: 500, image: billet500 },
     { valeur: 1000, image: billet1000 },
@@ -203,9 +215,6 @@ function BilletsSelecteur({ onBilletClick }: BilletsSelecteurProps) {
     { valeur: 10000, image: billet10000 },
   ];
 
-  // Dupliquer les billets pour créer l'effet de boucle infinie
-  const billetsDupliques = [...billets, ...billets, ...billets];
-
   return (
     <div className="mb-6">
       <p className="text-sm font-semibold mb-3 text-gray-700">
@@ -213,25 +222,10 @@ function BilletsSelecteur({ onBilletClick }: BilletsSelecteurProps) {
       </p>
       <div 
         className="relative overflow-x-auto overflow-y-hidden -mx-1 px-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
         style={{ scrollbarWidth: 'thin' }}
       >
-        <motion.div
-          className="flex gap-2 pb-2"
-          animate={{
-            x: isPaused ? undefined : [0, -((billets.length * 85) + (billets.length * 8))],
-          }}
-          transition={{
-            x: {
-              repeat: Infinity,
-              repeatType: "loop",
-              duration: 8,
-              ease: "linear",
-            },
-          }}
-        >
-          {billetsDupliques.map((billet, index) => (
+        <div className="flex gap-2 pb-2">
+          {billets.map((billet, index) => (
             <motion.button
               key={`${billet.valeur}-${index}`}
               onClick={() => onBilletClick(billet.valeur)}
@@ -249,7 +243,7 @@ function BilletsSelecteur({ onBilletClick }: BilletsSelecteurProps) {
               </div>
             </motion.button>
           ))}
-        </motion.div>
+        </div>
       </div>
     </div>
   );
@@ -261,17 +255,26 @@ interface PiecesSelecteurProps {
 }
 
 function PiecesSelecteur({ onPieceClick }: PiecesSelecteurProps) {
-  const [isPaused, setIsPaused] = useState(false);
-  
+  // AUCUN défilement automatique : décision Patrick du 15/09/2026.
+  //
+  // Ces rangées défilaient en boucle infinie, et leur pause était branchée sur
+  // onMouseEnter — un événement de SOURIS, qui n'existe pas sur un téléphone.
+  // Sur l'appareil d'une marchande, elles ne s'arrêtaient donc jamais : il
+  // fallait toucher une cible en mouvement POUR SAISIR DE L'ARGENT. Mesuré :
+  // 59 px par seconde, un billet en fait 85 — une coupure passe sous le doigt
+  // en une seconde et demie, on se trompe de billet et le fond de caisse est
+  // faux.
+  //
+  // Sur une saisie d'argent, une cible qui bouge n'apporte aucun bénéfice et
+  // ajoute un risque réel. La rangée reste immobile et se fait glisser à la
+  // main (overflow-x-auto, déjà en place). Aucun timer, aucune reprise.
+
   const pieces = [
     { valeur: 25, image: piece25 },
     { valeur: 50, image: piece50 },
     { valeur: 100, image: piece100 },
     { valeur: 200, image: piece200 },
   ];
-
-  // Dupliquer les pièces pour créer l'effet de boucle infinie
-  const piecesDupliques = [...pieces, ...pieces, ...pieces, ...pieces];
 
   return (
     <div className="mb-6">
@@ -280,25 +283,10 @@ function PiecesSelecteur({ onPieceClick }: PiecesSelecteurProps) {
       </p>
       <div 
         className="relative overflow-x-auto overflow-y-hidden -mx-1 px-1 h-20 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent hover:scrollbar-thumb-gray-400"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
         style={{ scrollbarWidth: 'thin' }}
       >
-        <motion.div
-          className="flex gap-2 pb-2"
-          animate={{
-            x: isPaused ? undefined : [0, -((pieces.length * 70) + (pieces.length * 8))],
-          }}
-          transition={{
-            x: {
-              repeat: Infinity,
-              repeatType: "loop",
-              duration: 8,
-              ease: "linear",
-            },
-          }}
-        >
-          {piecesDupliques.map((piece, index) => (
+        <div className="flex gap-2 pb-2">
+          {pieces.map((piece, index) => (
             <motion.button
               key={`${piece.valeur}-${index}`}
               onClick={() => onPieceClick(piece.valeur)}
@@ -316,7 +304,7 @@ function PiecesSelecteur({ onPieceClick }: PiecesSelecteurProps) {
               </div>
             </motion.button>
           ))}
-        </motion.div>
+        </div>
       </div>
     </div>
   );
@@ -556,11 +544,29 @@ interface CloseDayModalProps {
 export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
   const { closeDay, speak, getSalesHistory, getFinancialSummary } = useApp();
   const navigate = useNavigate();
-  const [comptageReel, setComptageReel] = useState(stats.caisse.toString());
+  // LE CHAMP DE COMPTAGE PART VIDE, ET C'EST ESSENTIEL.
+  //
+  // Il était pré-rempli avec `stats.caisse` — la caisse THÉORIQUE, c'est-à-dire
+  // très exactement la valeur que le comptage est censé vérifier. Remonté en
+  // recette le 16/09/2026. Conséquence : l'écart affiché valait zéro avant même
+  // qu'elle ait ouvert sa boîte, et valider sans rien changer confirmait un faux
+  // zéro. Une caisse qui propose d'avance la réponse attendue ne peut plus
+  // révéler le moindre écart — or détecter l'écart est la raison d'être de la
+  // fermeture. Le pré-remplissage ne faisait pas gagner du temps : il rendait la
+  // mesure inutile.
+  const [comptageReel, setComptageReel] = useState('');
   const [isClosing, setIsClosing] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
   const handleClose = async () => {
+    // Champ vide = elle n'a pas compté. On ne ferme pas une caisse sur une
+    // absence de mesure : sans ce garde-fou, le champ vide partirait comme un
+    // zéro et écrirait « caisse vide » dans le journal du jour.
+    if (!comptageReel.trim()) {
+      toast.error('Compte ton argent et entre le montant trouvé.');
+      speak("Compte l'argent de ta boîte, puis entre le montant que tu as trouvé.");
+      return;
+    }
     const montant = Number(comptageReel);
     if (Number.isNaN(montant) || montant < 0) {
       toast.error('Montant invalide. Vérifie la saisie.');
@@ -590,7 +596,10 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
   };
 
   const marge = stats.ventes - stats.cahier;
-  const ecart = parseFloat(comptageReel || '0') - stats.caisse;
+  // `null` tant qu'elle n'a rien compté : pas d'écart AVANT la mesure. Avec le
+  // repli `|| '0'` d'avant, un champ vide affichait un écart égal à moins la
+  // caisse entière — un chiffre alarmant et faux, montré avant tout comptage.
+  const ecart = comptageReel.trim() === '' ? null : parseFloat(comptageReel) - stats.caisse;
 
   const day = new Date().toISOString().split('T')[0];
 
@@ -675,7 +684,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
               autoFocus
               disabled={isClosing}
             />
-            {ecart !== 0 && comptageReel && (
+            {ecart !== null && ecart !== 0 && (
               <p className={`text-xs font-medium mt-2 ${ecart > 0 ? 'text-green-600' : 'text-red-600'}`}>
                 Écart: <Montant value={ecart} size="sm" color={ecart > 0 ? '#16a34a' : '#dc2626'} showPlus />
               </p>

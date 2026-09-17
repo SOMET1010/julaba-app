@@ -7,27 +7,52 @@
 
 ```
 STATUT: EN_COURS
-TACHE: correctifs remontés par la recette en cours, sur appareil réel
+TACHE: RECETTE TERRAIN EN COURS sur julaba-apk-a4222c3. GEL confirmé par
+  Patrick le 17/09 : aucun chantier nouveau, aucun contournement, aucun
+  second front. Le sujet TTS/Sherpa est volontairement HORS de ce lot ; il
+  sera décidé APRÈS la recette. Scénario 1 déjà VERT.
 BESOIN_PATRICK: OUI
 TYPE_BESOIN: TEST_PHYSIQUE_ANDROID
-ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. Séance du 16/09
-  au soir : julaba-apk-7e5779c « ne parle pas ». Une question reste sans
-  réponse et elle départage tout : sur l'écran « Ton code secret », Tata
-  dit-elle sa phrase ? C'est la SEULE du parcours qui ait un clip enregistré
-  (ui-035). Si oui → rien n'a régressé, le silence ailleurs est celui qu'on a
-  diagnostiqué (pas de clip + synthèse muette dans la WebView). Si non → c'est
-  une régression, à traiter avant tout le reste.
+ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
+  départageait tout est TRANCHÉE : le 17/09, sur julaba-apk-a4222c3, Patrick
+  a testé — « la voix du code passe ». Le clip ui-035 se joue depuis l'APK,
+  donc AUCUNE RÉGRESSION. Le silence sur les autres écrans est bien celui
+  qu'on avait diagnostiqué : pas de clip enregistré + synthèse muette dans la
+  WebView. Rien à corriger en urgence de ce côté.
+  DEUX SÉRIES DE FAITS ATTENDUES, relevées sans interprétation pendant le
+  test (consigne Patrick du 17/09) :
+  (1) DÉMARRAGE — chronométrer du lancement jusqu'au premier écran
+      exploitable, et noter la couleur pendant l'attente. Attendu : IVOIRE
+      (#F6F0E4, le fond posé par le correctif). Du NOIR, même bref, veut
+      dire que le correctif n'a pas pris : arrêt, heure + capture.
+  (2) SCÉNARIO 4 ARGENT — au doigt, relever ce que l'écran affiche :
+      vente 1 500 → fond 5 000 → caisse 6 500 → comptage 6 000 → écart −500
+      → après fermeture, caisse toujours 6 500. Vérifié : la feuille de
+      recette sur la branche porte exactement cette séquence.
+  Rappel de mise en place : le scénario 4 part d'une journée NON ouverte. La
+  désinstallation a effacé le téléphone, PAS le serveur — une journée ouverte
+  d'une session précédente peut subsister, à fermer d'abord.
+  RÈGLE : au premier écart réel, la recette s'arrête. On documente l'état
+  exact qui l'a produit, on ne contourne pas.
   Ensuite, arbitrage : (a) embarquer OfflineTts de sherpa-onnx avec
   vits-mms-fra — jugé acceptable à l'écoute le 16/09, +103 Mo dans l'APK, seule
   voie qui permette de DIRE UN MONTANT ; ou (b) s'en tenir aux clips
   enregistrés, auquel cas Tata ne dira jamais un chiffre.
-DERNIER_SHA_MAIN: c54dbaf (état de main AVANT ce commit de statut —
-  ce champ ne peut pas désigner son propre commit)
-BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2b43d05) — 28 commits
-  d'avance, 16 de retard sur main 5869e97 (le retard n'est que de la doc et
-  de l'outillage ; `git rev-list --left-right --count
-  origin/main...origin/<branche>` fait foi). NON mergés : authentification et
-  caisse sont des modules sacrés, preuve réelle exigée (principe 3).
+  CE QUE PÈSE L'OPTION (b), vérifié sur disque le 17/09 : 137 clips ui-*.mp3
+  sont bien présents, mais les 8 clips d'introduction (intro-accueil,
+  intro-1..4, intro-mode, intro-retour, intro-bravo) sont TOUS ABSENTS, et
+  les dix chiffres (chiffre-0.mp3 … chiffre-9.mp3) AUSSI. Choisir (b) ne
+  veut donc pas dire « ne rien faire » : cela veut dire enregistrer au moins
+  ces 18 fichiers, sinon les deux premiers écrans restent muets et aucun
+  montant ne peut être épelé. La liste exacte et les textes à dire sont dans
+  docs/CLIPS-VOIX-A-ENREGISTRER.md.
+DERNIER_SHA_MAIN: c816836
+BRANCHE_EN_ATTENTE: claude/clever-allen-dnr8by (2ab7da2) — 43 commits
+  d'avance, 0 de retard sur main c816836 : `main` a été rapatrié dans la
+  branche le 17/09. Compte à vérifier par
+  `git rev-list --left-right --count origin/main...origin/<branche>`.
+  NON mergés : authentification et caisse sont des modules sacrés, preuve
+  réelle exigée (principe 3).
 LIGNE_D_ARRIVEE (décision Patrick, 16/09/2026) : on arrête toute
   amélioration qui n'est pas nécessaire au pilote. On ne traite QUE ce qui
   empêche une marchande de vendre, compter, comprendre, ou récupérer après une
@@ -39,8 +64,11 @@ LIGNE_D_ARRIVEE (décision Patrick, 16/09/2026) : on arrête toute
      comptage vide, sortie « Mon argent », appellation). La recette par un
      agent web est ABANDONNÉE : elle exigeait une preview Render, donc de
      toucher au Blueprint, donc un chantier infra que Patrick refuse à ce
-     stade (16/09). Draft PR #240 laissée ouverte comme support, NE PAS
-     MERGER.
+     stade (16/09). La draft PR #240, ouverte comme simple support de
+     recette, a été FERMÉE sur demande de Patrick le 17/09 — plus aucune PR
+     ouverte sur le dépôt. Fermer une PR ne touche ni la branche ni les
+     commits : `claude/clever-allen-dnr8by` reste intacte, et une PR de
+     fusion se rouvre quand la recette aura validé.
   3) session Android réelle
   4) corriger uniquement ce que cette session révèle comme BLOQUANT
   5) merge final
@@ -100,10 +128,33 @@ ARBITRAGE_EN_ATTENTE: clé de signature stable pour l'APK (chaque runner signe
   différemment → toute mise à jour exige une désinstallation, donc efface les
   données de la marchande). Non bloquant sur un seul téléphone de test ;
   bloquant avant toute distribution.
-PROCHAINE_ACTION: attendre le résultat de connexion et le rapport de dictée.
-  Ensuite : reconstruire l'APK depuis la branche pour éprouver les correctifs
-  du jour, qui ne sont PAS dans l'APK installé.
-DERNIER_RESULTAT: DANS L'APK, LA VOIX DE SYNTHÈSE NE PRODUIT AUCUN SON —
+PROCHAINE_ACTION: L'APK EST PRÊT — artefact `julaba-apk-a4222c3`, run #12
+  vert le 17/09 (https://github.com/SOMET1010/julaba-app/actions/runs/35223777812).
+  APK de debug, 190 Mo, com.julaba.app, targetSdk 36, archive vérifiée
+  intègre, signature v2 valide.
+  SHA-256 de l'APK : 3874aa5fa2ea5f7b95af2b0273b314d058294b80cb8afdc1f627a2428287e71b
+  Empreinte du certificat : 12350f0cc1d840fabb831a8006c3318b08819eafe811b7b88a5e44d40ef9f097
+  Geste de Patrick : télécharger l'artefact (onglet Actions), DÉSINSTALLER
+  l'ancien JULABA — la clé de debug diffère à chaque construction, donc une
+  mise à jour par-dessus est refusée — puis installer et dérouler
+  docs/RECETTE-TERRAIN-GROUPEE.md dans l'ordre écrit (étape 0 → 6 ; la voix
+  se teste AVANT tout geste, sinon le scénario 1 est faussé).
+  Rien d'autre à coder ici tant que la session n'a pas eu lieu.
+DERNIER_RESULTAT: l'application ne sort PLUS du téléphone pour son
+  habillage. Inter auto-hébergée (5 graisses latines, 120 Ko), import Google
+  de Calisga retiré sur décision de Patrick, preconnect Google retirés,
+  julaba-full.css supprimé (214 Ko de CSS mort), et icônes Tabler
+  auto-hébergées : le CDN jsdelivr en @latest est remplacé par un
+  sous-ensemble des 19 icônes utilisées (3,7 Ko intégrés en base64 dans le
+  CSS, contre 462 Ko de police + 211 Ko de CSS tirés du réseau). Mesuré sur
+  le bundle reconstruit : index.html n'appelle PLUS AUCUNE ressource
+  distante, et les 19 icônes sont rendues au navigateur HTTP coupé, aucune
+  case vide. Un garde-fou dans `npm run verify` échoue si une icône est
+  utilisée sans être embarquée, ou si un appel distant revient dans
+  index.html ; il a été mis en défaut exprès avant d'être retenu.
+  package-lock.json est resté strictement intact (l'outil de génération
+  traîne 125 paquets, il n'est donc PAS déclaré).
+  Avant cela : DANS L'APK, LA VOIX DE SYNTHÈSE NE PRODUIT AUCUN SON —
   seuls les clips enregistrés s'entendent. Établi par trois recoupements sur
   appareil réel : accueil muet (clip absent), onboarding muet (clip absent),
   écran du numéro muet (phrase sans clip), écran du code qui PARLE (ui-035
@@ -128,6 +179,17 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **17/09/2026** — L'application ne sort plus du téléphone pour son
+  habillage : Inter et les icônes Tabler sont embarquées, l'appel Google de
+  Calisga et le CDN jsdelivr sont retirés, `index.html` n'a plus aucune
+  ressource distante. Les 19 icônes sont prouvées rendues au navigateur
+  réseau coupé, et un garde-fou dans `verify` échoue si une icône manque ou
+  si un appel distant revient. Découvert en route : la feuille de recette
+  SUR LA BRANCHE était périmée (ni JDK 21, ni artefact CI, ni
+  installer-voix.sh) — `main` a donc été rapatrié dans la branche, qui n'a
+  plus aucun retard. Un APK neuf est en construction : celui que Patrick
+  avait n'éprouvait aucun des correctifs du jour.
 
 - **16/09/2026, soir** — Correctif de l'écran noir livré : deux causes, pas
   une. La fenêtre elle-même n'avait aucun fond déclaré sous un parent DayNight

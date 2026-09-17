@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { useApp } from '../../contexts/AppContext';
+import { salutation } from '../../utils/appellation';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { IMG_LOGO_JULABA } from '../../assets/images';
 import { BrandSignature } from '../shared/BrandSignature';
@@ -27,6 +28,9 @@ function MarchandAccueilVoiceInner() {
   const stats = getTodayStats();
   const caisse = stats?.caisse || 0;
   const prenom = user?.firstName || user?.prenoms || user?.prenom || user?.nom || '';
+  // Le nom qu'elle a choisi dans sa fiche, sinon son prénom seul (voir
+  // utils/appellation) : un marchand était accueilli par « Bonjour Maman ».
+  const accueil = salutation((user as { appellation?: string } | undefined)?.appellation, prenom);
 
   const [soldeVisible, setSoldeVisible] = useState(true);
   // Mode SOLEIL (inclusion §2.4) : un seul geste, visible sur l'accueil — pas
@@ -62,7 +66,7 @@ function MarchandAccueilVoiceInner() {
     if (!soldeVisible) return;
     speak(`Ta caisse : ${Math.round(caisse).toLocaleString('fr-FR')} francs`);
   };
-  const bonjour = () => speak(prenom ? `Bonjour Maman ${prenom}` : 'Bonjour ma sœur');
+  const bonjour = () => speak(accueil);
 
   // Grosses tuiles : icônes vectorielles LOCALES (marchent hors-ligne, aucune
   // dépendance réseau) + un seul libellé clair. Avant : illustrations distantes
@@ -86,7 +90,7 @@ function MarchandAccueilVoiceInner() {
               <img src={IMG_LOGO_JULABA} alt="JULABA" />
               <BrandSignature />
             </button>
-            <h1>{prenom ? `Bonjour Maman ${prenom}` : 'Bonjour ma sœur'}</h1>
+            <h1>{accueil}</h1>
           </div>
           <motion.button whileTap={{ scale: 0.92 }} onClick={basculerSoleil}
             aria-label={soleil ? 'Repasser en affichage normal' : 'Mode soleil — tout plus grand'}

@@ -1,5 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Calisga:wght@400;700&display=swap');
+/* INTER EST AUTO-HÉBERGÉE. Elle est appliquée à `*`, donc à TOUTE
+   l'application : la faire venir de Google cassait l'offline-first au premier
+   lancement, exactement là où une marchande découvre l'outil. Les fichiers
+   sont désormais embarqués dans le bundle via @fontsource.
+   Sous-ensemble LATIN uniquement, cinq graisses : environ 120 Ko au total,
+   contre un aller-retour réseau qui ne revient jamais sans réseau. */
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-500.css';
+@import '@fontsource/inter/latin-600.css';
+@import '@fontsource/inter/latin-700.css';
+@import '@fontsource/inter/latin-800.css';
+
+/* PLUS AUCUN APPEL RÉSEAU POUR LES POLICES — décision de Patrick.
+   L'import Google de « Calisga » a été retiré : il coûtait un aller-retour
+   réseau au premier lancement, alors qu'il ne rendait vraisemblablement rien
+   (« Calisga » n'est pas au catalogue Google Fonts, donc l'import échouait
+   déjà, même en ligne).
+   Le nom de marque s'affiche donc dans le repli déclaré à côté de Calisga
+   dans chaque `font-family` — comme il le faisait déjà en pratique.
+   Si le fichier Calisga est un jour fourni avec le droit de l'embarquer, il
+   s'auto-héberge ici, comme Inter, et surtout PAS par un appel distant. */
 
 .field-input {
   width: 100%;
