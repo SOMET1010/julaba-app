@@ -81,7 +81,26 @@ ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
   ces 18 fichiers, sinon les deux premiers écrans restent muets et aucun
   montant ne peut être épelé. La liste exacte et les textes à dire sont dans
   docs/CLIPS-VOIX-A-ENREGISTRER.md.
-DERNIER_SHA_MAIN: e796547 — LE LOT PILOTE EST MERGÉ SUR MAIN (17/09).
+DERNIER_SHA_MAIN: f28174a — PR #241 fusionnée : récupération de la note de
+  licence MMS restée orpheline hors de main (75 lignes de doc, aucun code).
+  MÉNAGE DES BRANCHES, 17/09 au soir. Patrick avait l'impression que le
+  travail des autres n'était pas repris. Mesuré plutôt que débattu : sur les
+  107 branches du dépôt, le CONTENU de 105 était DÉJÀ dans main — elles
+  paraissaient vivantes parce que leurs PR ont été fusionnées par écrasement.
+  Rien n'avait été écrasé. MAIS une chose s'était bien perdue : la note de
+  licence MMS, jamais fusionnée, dont le même terrain a été réinstruit de zéro
+  le 17/09. Le bruit des 104 fantômes masquait la seule branche qui comptait.
+  docs/BRANCHES-SUPPRIMEES-2026-09-17.md archive les 104 avec leur SHA et la
+  commande de restauration — écrit AVANT toute suppression.
+  SUPPRESSION IMPOSSIBLE DEPUIS LES SESSIONS DES INSTANCES : la passerelle git
+  accepte les push qui AJOUTENT mais refuse ceux qui suppriment une référence
+  (HTTP 403, vérifié — aucune branche supprimée, aucune à moitié). C'est à
+  Patrick de lancer `git push origin --delete` (commande dans le fichier
+  d'archive), ou de le faire depuis l'onglet Branches de GitHub.
+  `dev` est délibérément épargnée : contenu identique à main, mais nom
+  conventionnel — sa suppression relève du flux de travail, pas du ménage.
+
+  (précédent) LE LOT PILOTE EST MERGÉ SUR MAIN (17/09).
   PR #240 fusionnée sur demande de Patrick : la session terrain complète
   prenait trop de temps pour rester le seul verrou. La Constitution
   (principe 3) demandait une preuve réelle avant de merger les modules
