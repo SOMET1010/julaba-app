@@ -967,6 +967,19 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <p className="text-xs encre-4">{cfg.version} · Projet DGE × ANSUT · édité par Icone Solution</p>
           </div>
 
+          {/* ATTRIBUTION OBLIGATOIRE — ce n'est pas une politesse.
+              La voix de synthèse embarquée dérive du jeu de données SIWIS,
+              publié sous CC BY 4.0 : cette licence autorise l'usage commercial
+              À CONDITION de créditer la source. Sans cette mention, nous
+              distribuons l'application en violation de sa licence.
+              (C'est aussi pourquoi ce n'est pas vits-mms-fra, dont l'amont est
+              en CC BY-NC — non commercial, donc inutilisable ici.) */}
+          <p className="text-[10px] encre-4 text-center leading-relaxed pb-2">
+            Voix de synthèse hors-ligne : <span className="font-semibold">SIWIS French
+            Speech Synthesis Database</span> (datashare.is.ed.ac.uk/handle/10283/2353),
+            licence CC&nbsp;BY&nbsp;4.0 — modèle Piper exécuté par sherpa-onnx.
+          </p>
+
         </div>
       </SubPageLayout>
 
