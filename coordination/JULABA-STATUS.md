@@ -35,8 +35,28 @@ ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
   d'une session précédente peut subsister, à fermer d'abord.
   RÈGLE : au premier écart réel, la recette s'arrête. On documente l'état
   exact qui l'a produit, on ne contourne pas.
-  Ensuite, arbitrage : (a) embarquer OfflineTts de sherpa-onnx avec
-  vits-mms-fra — jugé acceptable à l'écoute le 16/09, +103 Mo dans l'APK, seule
+  ⚠️ BLOCAGE DE LICENCE TROUVÉ LE 17/09, APRÈS le GO de Patrick pour (a).
+  Vérifié à la source sur Hugging Face : vits-mms-fra est une conversion
+  directe de facebook/mms-tts (français), dont la licence est
+  **cc-by-nc-4.0 — NON COMMERCIALE**. Le dépôt de conversion
+  (csukuangfj/vits-mms-fra) ne déclare aucune licence propre et renvoie à
+  celui de Facebook. JULABA étant un produit commercial, l'embarquer dans
+  l'APK distribué serait une violation. À NE PAS FAIRE sans avis juridique.
+  La note de docs/voice-roadmap.md qui parlait d'une licence Apache 2.0
+  concernait `omnilingual-asr` (de la RECONNAISSANCE vocale), pas MMS TTS —
+  la confusion était dans nos propres documents.
+  ALTERNATIVES VÉRIFIÉES (licence lue dans le MODEL_CARD de chaque dépôt) :
+    fr_FR-siwis-medium  CC-BY 4.0      63,2 Mo   1 locutrice   ← recommandé
+    fr_FR-siwis-low     CC-BY 4.0      28,1 Mo   1 locutrice
+    fr_FR-mls-medium    CC-BY 4.0      —         125 locuteurs mélangés
+    fr_FR-upmc-medium   CC-BY-SA 4.0   —         clause virale
+    fr_FR-tom-medium    AGPLv3         —         très contraignant
+  siwis-medium bat vits-mms-fra sur trois axes : licence commerciale propre,
+  45 Mo de moins, et une seule locutrice (cohérent avec Tata). SEUL POINT
+  FAIBLE : Patrick a écouté MMS, pas siwis — une écoute est nécessaire avant
+  de s'engager (le workflow spike-tts.yml existe déjà pour ça).
+  Arbitrage initial, pour mémoire : (a) embarquer OfflineTts de sherpa-onnx
+  avec vits-mms-fra — jugé acceptable à l'écoute le 16/09, +103 Mo dans l'APK, seule
   voie qui permette de DIRE UN MONTANT ; ou (b) s'en tenir aux clips
   enregistrés, auquel cas Tata ne dira jamais un chiffre.
   CE QUE PÈSE L'OPTION (b), vérifié sur disque le 17/09 : 137 clips ui-*.mp3
