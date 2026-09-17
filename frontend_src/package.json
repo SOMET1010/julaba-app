@@ -9,7 +9,7 @@
     "build": "vite build",
     "check:bundle-budget": "node scripts/check-bundle-budget.mjs",
     "typecheck": "tsc -b",
-    "verify": "npm run typecheck && npm run test:api-url && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:stats && npm run test:rupture && npm run test:route-access && npm run test:audio-unlock && npm run test:appellation && npm run test:vignette",
+    "verify": "npm run typecheck && npm run test:api-url && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:stats && npm run test:rupture && npm run test:route-access && npm run test:audio-unlock && npm run test:appellation && npm run test:vignette && npm run test:icones",
     "preview": "vite preview",
     "test:audio": "tsx src/app/services/audioManager.test.mts",
     "test:cart": "tsx src/app/services/cartStorage.test.mts",
@@ -60,7 +60,9 @@
     "test:frenchdigits": "tsx src/app/utils/frenchDigits.test.mts",
     "test:audio-unlock": "tsx src/app/hooks/useAudioUnlockFallback.test.tsx",
     "test:appellation": "tsx src/app/utils/appellation.test.mts",
-    "test:vignette": "tsx src/app/utils/emojiTile.test.mts"
+    "test:vignette": "tsx src/app/utils/emojiTile.test.mts",
+    "test:icones": "node scripts/test-icones.mjs",
+    "icones:generer": "node scripts/generer-icones.mjs"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

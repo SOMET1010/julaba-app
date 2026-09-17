@@ -1,0 +1,48 @@
+/* FICHIER GÉNÉRÉ — ne pas modifier à la main.
+   Produit par scripts/generer-icones.mjs à partir de @tabler/icons-webfont.
+   Contient EXACTEMENT les 19 icônes que l'application utilise, et rien
+   d'autre : la police complète pèse 462 Ko pour 5 193 icônes dont on n'en
+   affiche que 19. Plus aucun appel réseau : la police est embarquée.
+   Pour ajouter une icône : l'utiliser dans le code, puis relancer le script.
+   Si on oublie, npm run verify échoue (scripts/test-icones.mjs). */
+
+@font-face {
+  font-family: "tabler-icons";
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url("../assets/fonts/tabler-subset.woff2") format("woff2");
+}
+
+.ti {
+  font-family: "tabler-icons" !important;
+  font-style: normal;
+  font-weight: 400 !important;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  speak: never;
+  display: inline-block;
+}
+
+.ti-apple:before { content: "\ef21"; }
+.ti-building-community:before { content: "\ebf6"; }
+.ti-building-store:before { content: "\ea4e"; }
+.ti-check:before { content: "\ea5e"; }
+.ti-chevron-down:before { content: "\ea5f"; }
+.ti-dots-circle-horizontal:before { content: "\ea91"; }
+.ti-fish:before { content: "\ef2b"; }
+.ti-grain:before { content: "\ee92"; }
+.ti-info-circle:before { content: "\eac5"; }
+.ti-leaf:before { content: "\ed4f"; }
+.ti-map-pin:before { content: "\eae8"; }
+.ti-phone:before { content: "\eb09"; }
+.ti-plant:before { content: "\ed50"; }
+.ti-plus:before { content: "\eb0b"; }
+.ti-seeding:before { content: "\ed51"; }
+.ti-send:before { content: "\eb1e"; }
+.ti-tools-kitchen-2:before { content: "\eeff"; }
+.ti-truck:before { content: "\ebc4"; }
+.ti-x:before { content: "\eb55"; }

@@ -29,6 +29,13 @@ DERNIER_RESULTAT: polices entièrement hors-ligne. Inter auto-hébergée
   et julaba-full.css supprimé (214 Ko de CSS minifié que personne
   n'importait). Mesuré sur le bundle reconstruit : ZÉRO occurrence de
   fonts.googleapis.com / fonts.gstatic.com dans frontend/dist.
+  Icônes Tabler auto-hébergées aussi : le CDN jsdelivr en @latest est
+  retiré, remplacé par un sous-ensemble des 19 icônes réellement utilisées
+  (3,7 Ko intégrés en base64 dans le CSS, contre 462 Ko de police + 211 Ko
+  de CSS tirés du réseau). Les 19 sont rendues au navigateur HTTP coupé,
+  aucune case vide. Un garde-fou (npm run verify) échoue si une icône est
+  utilisée sans être embarquée, ou si index.html rappelle une ressource
+  distante. index.html n'a PLUS aucun appel réseau.
   Avant cela : recette terrain groupée finalisée. Elle ne contient plus
   que ce qu'une base de données et un navigateur ne peuvent pas prouver :
   la voix sur l'écran du code avant tout geste, les voix françaises

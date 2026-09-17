@@ -10,7 +10,11 @@
          Ces deux lignes ouvraient une connexion DNS + TLS vers Google à
          CHAQUE lancement ; sans reseau, c'est une attente pour rien. -->
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+    <!-- Les icones Tabler sont EMBARQUEES, plus chargees d'un CDN.
+         L'ancienne ligne tirait 462 Ko de police + 211 Ko de CSS depuis
+         jsdelivr en @latest : sans reseau aucune icone, et la version
+         pouvait changer d'un lancement a l'autre. Le sous-ensemble des 19
+         icones reellement utilisees vit dans src/styles/icons-tabler.css. -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
