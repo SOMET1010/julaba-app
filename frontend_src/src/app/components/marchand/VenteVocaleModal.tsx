@@ -191,12 +191,30 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
           vendreUnifie(r.action.produit, quantite, montant);
         } else if (r?.action?.type === "depense") {
           const montant = r.action.montant || 0;
-          if (!montant || montant <= 0 || isNaN(montant)) return;
+          if (!montant || montant <= 0 || isNaN(montant)) {
+            // Même règle que la dépense directe : un raccourci sans montant
+            // ne doit pas disparaître en silence.
+            direEtRetenir("Je n'ai pas compris combien tu as dépensé. Redis-moi le montant.");
+            return;
+          }
           await enregistrerDepense(montant, r.action.description || r.nom);
         }
       } else if (action?.type === "depense") {
         const montant = action.montant || 0;
-        if (!montant || montant <= 0 || isNaN(montant)) return;
+        if (!montant || montant <= 0 || isNaN(montant)) {
+          // LE SILENCE N'EST PAS UNE RÉPONSE. Ce `return` muet est le même
+          // défaut que celui corrigé ce matin pour « vendre » — il n'avait
+          // simplement pas été étendu ici. Une marchande dit « j'ai dépensé
+          // pour le transport » sans chiffre, ou le bruit du marché couvre le
+          // montant : rien ne s'affiche, rien ne se dit, rien ne vibre. Elle
+          // croit sa dépense notée ; son cahier sera faux sans qu'elle sache
+          // pourquoi.
+          //
+          // Contrairement à une vente, aucun catalogue ne peut fournir le
+          // prix d'une dépense : on ne peut que le redemander.
+          direEtRetenir("Je n'ai pas compris combien tu as dépensé. Redis-moi le montant.");
+          return;
+        }
         await enregistrerDepense(montant, action.description || "Dépense vocale");
       } else if (action?.type === "consulter_solde" || data.intent === "consulter_solde") {
         navigate('/marchand/caisse');

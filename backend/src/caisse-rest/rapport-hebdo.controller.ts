@@ -42,14 +42,27 @@ export class RapportHebdoController {
     const txCurrent = await this.dataSource.query(`
       SELECT type, montant, created_at, DATE(created_at) as jour
       FROM caisse_transactions
+      -- UNE VENTE ANNULÉE NE COMPTE DANS AUCUN AGRÉGAT FINANCIER. Cette règle
+      -- est tenue partout ailleurs (statsVente.venteComptee, VentesPassees,
+      -- AppContext.getFinancialSummary) ; ce rapport était le SEUL à l'ignorer.
+      -- Relevé le 18/09 : une vente de 15 000 F annulée le lundi restait dans
+      -- le chiffre d'affaires ANNONCÉ À LA VOIX, et pouvait faire élire un
+      -- « meilleur jour » qui n'a pas eu lieu. L'écran, lui, disait juste : la
+      -- marchande entendait donc un chiffre que rien ne venait contredire.
+      -- L'exclusion est faite EN SQL et non en JS : elle vaut ainsi pour TOUS
+      -- les calculs de ce fichier, y compris ceux qu'on ajoutera demain.
       WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+        AND COALESCE(statut::text, 'validee') <> 'annulee'
       ORDER BY created_at DESC
     `, [userId, monday.toISOString(), sunday.toISOString()]);
 
     // Transactions semaine précédente
     const txPrev = await this.dataSource.query(`
       SELECT type, montant FROM caisse_transactions
+      -- Même exclusion que la semaine courante : sans elle, la COMPARAISON
+      -- entre les deux semaines serait faussée dans un sens ou dans l'autre.
       WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+        AND COALESCE(statut::text, 'validee') <> 'annulee'
     `, [userId, prevMonday.toISOString(), prevSunday.toISOString()]);
 
     // Objectifs semaine courante
