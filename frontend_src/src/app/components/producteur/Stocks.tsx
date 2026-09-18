@@ -31,7 +31,7 @@ import {
 import { useNavigate } from 'react-router';
 import { useUser } from '../../contexts/UserContext';
 import { useToast } from '../../hooks/useToast';
-import { stopChunkedSpeaking } from '../../services/elevenlabs';
+import { stopAllAudio } from '../../services/elevenlabs';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { NotificationButton } from '../marchand/NotificationButton';
 import { SearchBar } from '../shared/SearchBar';
@@ -149,7 +149,7 @@ export function Stocks() {
   // Fonction pour arrêter le TTS
   const stopSpeaking = () => {
     window.speechSynthesis?.cancel?.();
-    stopChunkedSpeaking();
+    stopAllAudio();
     setTantieSpeaking(false);
     setIsListening(false);
   };

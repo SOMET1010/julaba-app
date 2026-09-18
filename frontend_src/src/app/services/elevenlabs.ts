@@ -1,48 +1,38 @@
 /**
- * elevenlabs.ts - TTS via ElevenLabs
- * Interface publique conservée pour compatibilité avec les imports existants
- * Tous les appels TTS passent par ElevenLabs via l'endpoint /tts/openai (nom historique)
+ * elevenlabs.ts — LE NOM MENT, ET C'EST ASSUMÉ : plus une seule ligne d'ici ne
+ * parle à ElevenLabs, ni à OpenAI, ni à quoi que ce soit sur Internet.
+ *
+ * CE QUI RESTE, ET POURQUOI. Ce fichier ne fait plus que trois choses, toutes
+ * hors-ligne et toutes utilisées :
+ *   1. la lecture audio partagée (`_currentAudio`, `stopAllAudio`) — un seul son
+ *      à la fois dans l'application, donc un seul endroit pour le couper ;
+ *   2. la voix intégrée du navigateur (`speakBrowser`), filet de dernier recours
+ *      quand ni un clip de Tata ni la synthèse native ne peuvent répondre ;
+ *   3. le découpage en phrases (`splitIntoChunks`), dont se sert l'audioManager.
+ *
+ * CE QUI A ÉTÉ RETIRÉ le 18/09/2026, et pourquoi c'était dangereux de le
+ * garder : 192 lignes INATTEIGNABLES. `fetchTTS` renvoyait `null` sans
+ * condition depuis la coupure de la voix Internet ; tout ce qui vivait derrière
+ * — le cache et ses deux Map, `playBase64Audio`, `speak`, `speakWithFallback`,
+ * `speakChunked`, le préchauffage — ne pouvait plus s'exécuter. Du code mort
+ * qui a l'air vivant se relit comme une architecture : on croit qu'une voix
+ * cloud existe, on raisonne dessus, on la débogue. C'est exactement ce qui nous
+ * est arrivé avec Whisper.
+ *
+ * `stopChunkedSpeaking` est parti avec : il levait un drapeau que plus personne
+ * ne lisait. Les trois écrans qui l'appelaient appellent `stopAllAudio`, qui
+ * fait le travail réel. `stopSpeaking` reste : c'est un alias honnête, il ne
+ * promet rien qu'il ne tienne.
+ *
+ * Le nom du fichier n'est pas corrigé ici : le renommer toucherait dix imports
+ * pour zéro effet sur une marchande. Ce commentaire fait le travail.
  */
-
-// ─────────────────────────────────────────────────────────────────
-// CACHE TTS
-// ─────────────────────────────────────────────────────────────────
-
-const CACHE_MAX = 60;
-const CACHE_TTL_MS = 30 * 60 * 1000;
-
-interface CacheEntry { base64: string; ts: number; }
-const _cache = new Map<string, CacheEntry>();
-const _inflight = new Map<string, Promise<string | null>>();
-
-function normalizeKey(text: string): string {
-  return text.toLowerCase().trim().replace(/[!?.,;:]+/g, "").replace(/\s+/g, " ").slice(0, 200);
-}
-
-function cacheGet(key: string): string | null {
-  const entry = _cache.get(key);
-  if (!entry) return null;
-  if (Date.now() - entry.ts > CACHE_TTL_MS) { _cache.delete(key); return null; }
-  _cache.delete(key);
-  _cache.set(key, entry);
-  return entry.base64;
-}
-
-function cacheSet(key: string, base64: string): void {
-  if (_cache.size >= CACHE_MAX) {
-    const oldest = _cache.keys().next().value;
-    if (oldest !== undefined) _cache.delete(oldest);
-  }
-  _cache.set(key, { base64, ts: Date.now() });
-}
-
 
 // ─────────────────────────────────────────────────────────────────
 // AUDIO
 // ─────────────────────────────────────────────────────────────────
 
 let _currentAudio: HTMLAudioElement | null = null;
-let _chunkAborted = false;
 let _sharedAudioContext: AudioContext | null = null;
 
 export type TTSLang = "french" | "dioula" | "bambara";
@@ -68,7 +58,6 @@ export function base64ToBlob(base64: string, mime?: string): Blob {
 }
 
 export function stopAllAudio(): void {
-  _chunkAborted = true;
   if (_currentAudio) {
     _currentAudio.pause();
     try { _currentAudio.src = ""; } catch (e) { console.warn('[voice]', e); }
@@ -152,106 +141,11 @@ export function stopSpeaking(): void {
   stopAllAudio();
 }
 
-export function stopChunkedSpeaking(): void {
-  _chunkAborted = true;
-  stopAllAudio();
-}
-
 export function preloadAudioContext(): void {
   try {
     const ctx = getSharedAudioContext();
     if (ctx.state === "suspended") ctx.resume().catch(() => {});
   } catch (e) { console.warn('[voice]', e); }
-}
-
-// Joue un fichier audio par URL (clips pré-enregistrés « Tata Nanti Lou »).
-// Passe par le MÊME `_currentAudio` que le reste → stopAllAudio() l'interrompt
-// proprement (barge-in, changement d'écran, nouvelle question…).
-export async function playAudioUrl(url: string, onDone?: () => void): Promise<void> {
-  stopAllAudio();
-  _chunkAborted = false;
-  return new Promise((resolve, reject) => {
-    const audio = new Audio(url);
-    _currentAudio = audio;
-    let played = false;
-    const done = () => {
-      if (_currentAudio === audio) _currentAudio = null;
-      onDone?.();
-      resolve();
-    };
-    // Échec de CHARGEMENT/lecture (clip absent, décodage) → on REJETTE pour que
-    // l'appelant bascule sur la voix de secours (au lieu de rester muet).
-    const fail = () => {
-      if (_currentAudio === audio) _currentAudio = null;
-      if (played) { done(); return; } // erreur après lecture → considérer fini
-      reject(new Error("clip audio indisponible"));
-    };
-    audio.onended = done;
-    audio.onerror = fail;
-    audio.onplaying = () => { played = true; };
-    audio.play().catch(fail);
-  });
-}
-
-export async function playBase64Audio(base64: string, onDone?: () => void): Promise<void> {
-  stopAllAudio();
-  _chunkAborted = false;
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(base64ToBlob(base64));
-    const audio = new Audio(url);
-    _currentAudio = audio;
-    const finish = () => {
-      URL.revokeObjectURL(url);
-      _currentAudio = null;
-      onDone?.();
-      resolve();
-    };
-    audio.onended = finish;
-    audio.onerror = finish;
-    audio.play().catch(finish);
-  });
-}
-
-// ─────────────────────────────────────────────────────────────────
-// FETCH TTS - ElevenLabs via /tts/openai
-// ─────────────────────────────────────────────────────────────────
-
-export async function fetchTTS(text: string, signal?: AbortSignal, timeoutMs = 8000): Promise<string | null> {
-  // ── VOIX INTERNET DÉSACTIVÉE (décision produit) ────────────────────────────
-  // Plus AUCUNE voix par le cloud (OpenAI/Internet) : source de désordre (attente
-  // de 8 s, réseau qui passe avant le téléphone). La hiérarchie est désormais :
-  // clip de Tata embarqué → voix intégrée du téléphone (hors-ligne). En renvoyant
-  // null tout de suite, tous les appels (speak/speakChunked/…) basculent
-  // immédiatement sur la voix locale, sans jamais toucher Internet ni attendre.
-  // Le corps cloud (fetch /tts/openai, cache, inflight) a été SUPPRIMÉ (hygiène
-  // post-audit C5) : il était inatteignable derrière ce return, mais réactivable
-  // en une ligne — la voix Internet ne doit pas pouvoir revenir par accident.
-  return null;
-}
-
-// ─────────────────────────────────────────────────────────────────
-// SPEAK — point d'entrée principal
-// ─────────────────────────────────────────────────────────────────
-
-export async function speak(text: string): Promise<void> {
-  const base64 = await fetchTTS(text);
-  if (base64) await playBase64Audio(base64);
-  else await speakBrowser(text); // repli gratuit : jamais muet
-}
-
-export async function speakWithFallback(text: string, _isOnline?: boolean, onDone?: () => void): Promise<void> {
-  const base64 = await fetchTTS(text);
-  if (base64) await playBase64Audio(base64, onDone);
-  else { await speakBrowser(text); onDone?.(); }
-}
-
-// Alias conservés pour compatibilité imports existants (migré vers OpenAI)
-async function speakPiper(text: string): Promise<void> {
-  return speak(text);
-}
-
-async function speakStreaming(text: string): Promise<void> {
-  return speak(text);
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -260,7 +154,6 @@ async function speakStreaming(text: string): Promise<void> {
 
 const CHUNK_MAX_CHARS = 110;
 const CHUNK_MIN_CHARS = 20;
-const CHUNK_PREFETCH = 2;
 
 export function splitIntoChunks(text: string): string[] {
   if (!text?.trim()) return [];
@@ -300,37 +193,6 @@ export function splitIntoChunks(text: string): string[] {
   return merged;
 }
 
-export async function speakChunked(
-  text: string,
-  onChunkStart?: (chunk: string, index: number, total: number) => void,
-  onDone?: () => void
-): Promise<void> {
-  _chunkAborted = false;
-  const chunks = splitIntoChunks(text);
-  if (chunks.length === 0) { onDone?.(); return; }
-
-  if (chunks.length === 1) {
-    const b64 = await fetchTTS(chunks[0]);
-    if (!_chunkAborted) {
-      if (b64) await playBase64Audio(b64);
-      else await speakBrowser(chunks[0]); // repli gratuit
-    }
-    onDone?.();
-    return;
-  }
-
-  for (let i = 0; i < chunks.length; i++) {
-    if (_chunkAborted) break;
-    onChunkStart?.(chunks[i], i, chunks.length);
-    const base64 = await fetchTTS(chunks[i]);
-    if (_chunkAborted) break;
-    if (base64) await playBase64Audio(base64);
-    else await speakBrowser(chunks[i]); // repli gratuit : jamais muet
-  }
-
-  if (!_chunkAborted) onDone?.();
-}
-
 // ─────────────────────────────────────────────────────────────────
 // MULTILINGUE — Dioula/Bambara via ANSUT
 // ─────────────────────────────────────────────────────────────────
@@ -342,35 +204,4 @@ export async function fetchTTSLocal(text: string, lang: TTSLang = "french", time
   void lang;
   void timeoutMs;
   return null;
-}
-
-async function speakWithLang(text: string, lang: TTSLang = "french"): Promise<void> {
-  const base64 = await fetchTTSLocal(text, lang);
-  if (base64) await playBase64Audio(base64);
-}
-
-// ─────────────────────────────────────────────────────────────────
-// WARMUP — précharge phrases fréquentes
-// ─────────────────────────────────────────────────────────────────
-
-const WARMUP_PHRASES = [
-  "Je t ecoute...", "Un instant...", "Je reflechis...",
-  "C'est fait ma chère !", "D accord !", "Bien recu !",
-  "Je note ca !", "OK, j enregistre !", "D accord, j annule !",
-];
-
-let _warmupDone = false;
-
-export async function warmupTTSCache(): Promise<void> {
-  if (_warmupDone) return;
-  _warmupDone = true;
-  await Promise.allSettled(WARMUP_PHRASES.map((p) => fetchTTS(p)));
-}
-
-// ─────────────────────────────────────────────────────────────────
-// STATS DEBUG
-// ─────────────────────────────────────────────────────────────────
-
-function getCacheStats(): { size: number; inflight: number; keys: string[] } {
-  return { size: _cache.size, inflight: _inflight.size, keys: Array.from(_cache.keys()) };
 }
