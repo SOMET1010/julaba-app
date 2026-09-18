@@ -30,24 +30,29 @@ au lieu de 171) :
 |---|---|---|
 | ancêtres directs de `main` | **68** | `git merge-base --is-ancestor` |
 | fusionnées par écrasement | **35** | contenu retrouvé fichier par fichier dans `main` |
-| **portent encore quelque chose** | **1** | voir ci-dessous |
+| portait encore quelque chose | **1** | voir ci-dessous — abandonnée sur arbitrage |
 
 Les 35 « écrasées » ont été vérifiées une par une, pas déduites : `CONSTITUTION.md`,
 `docs/adr/ADR-001`, `ADR-002`, `backend/src/fidelite-rest/`, la migration GPS des
 communes, `backend/test/invariants/keiwa-paiement-commande.spec.ts`,
 `frontend_src/src/app/services/ligneProvisoire.ts` — tous présents dans `main`.
 
-### La branche qu'on garde : `claude/julaba-voice-audit-fixes-hi3jlq`
+### `claude/julaba-voice-audit-fixes-hi3jlq` — tranchée le 18/09
 
 Elle porte 17 commits dont le contenu n'est **pas** dans `main` : le moteur
 sherpa-onnx compilé en **WASM pour le navigateur** (`frontend/public/voix/sherpa/`
 — reconnaissance ET synthèse côté web). `main` n'a que la voix **native** de
 l'APK.
 
-Ce n'est pas un oubli à rattraper en silence, et pas non plus une perte
-évidente : l'APK est le produit, et la voix native y fonctionne. Garder ou
-abandonner le chemin web est un **arbitrage d'architecture**. Il revient à
-Patrick. La branche reste en place tant qu'il n'a pas tranché.
+**Arbitrage de Patrick : on abandonne le chemin web.** Le produit du pilote est
+l'APK, et sa voix native fonctionne — il l'a entendue sur son téléphone. Porter
+cette branche dans `main` supposerait de la replacer intégralement (elle date
+d'avant l'unification `frontend/` → `frontend_src/`), pour une capacité dont
+aucune marchande du pilote n'a besoin.
+
+Elle est donc supprimée avec les autres. Son SHA est dans le tableau ci-dessous
+comme tous les autres : si le besoin d'une voix web revient, une ligne la
+ramène.
 
 ## Ce qui n'est pas concerné, et pourquoi
 
@@ -61,8 +66,7 @@ Patrick. La branche reste en place tant qu'il n'a pas tranché.
 
 ## Les 104 branches archivées, et leur dernier commit
 
-Les 103 supprimables et, en dernière ligne de ce tableau comme ailleurs,
-`claude/julaba-voice-audit-fixes-hi3jlq` qui est épargnée.
+Les 104 sont supprimables depuis l'arbitrage du 18/09.
 
 | branche | SHA |
 |---|---|

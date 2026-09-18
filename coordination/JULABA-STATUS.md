@@ -16,20 +16,26 @@ BESOIN_PATRICK: OUI
 TYPE_BESOIN: ARBITRAGE
   (le test physique Android n'est plus un verrou de fusion depuis e796547 ;
   le verrou actuel est une DÉCISION MÉTIER sur la licence du modèle de voix)
-ACTION_PATRICK: DEUX CHOSES T'ATTENDENT, DANS CET ORDRE.
+ACTION_PATRICK: DEUX GESTES, ET LE CHANTIER EST CLOS.
   (A) LE RELEVÉ QUI DÉBLOQUE TOUT — bouton VERT de Tata, dire « j'ai vendu
       trois tomates à cinq cents francs », puis relever MOT POUR MOT ce qui
       est écrit dans « TU AS DIT ». « trois tomates » écrit + « oignon » dit
       = défaut de NLU/catalogue ; « oignon » écrit = défaut d'écoute (STT).
       Sans ce mot, toute correction du code qui décide de ce qu'une marchande
-      a vendu se ferait à l'aveugle. Préalable utile :
+      a vendu se ferait à l'aveugle. Préalable :
       `./scripts/seed-catalogue-test.sh <numéro> <code>` (un catalogue à un
       seul produit donne toujours la même réponse, il ne prouve rien).
-  (B) ARBITRAGE ARCHITECTURE — garde-t-on le chemin voix WEB (sherpa-onnx
-      WASM, branche `claude/julaba-voice-audit-fixes-hi3jlq`) ou l'abandonne-
-      t-on au profit de la seule voix native de l'APK ? Tant que ce n'est pas
-      tranché, la branche reste et les 103 autres attendent
-      `./scripts/supprimer-branches-fusionnees.sh --appliquer`.
+      NOTE DU 18/09 : la barre de recherche ne répondait que sur son centre
+      exact — corrigée. Son échec à taper « banane » venait probablement de là,
+      pas du filtre.
+  (B) UNE LIGNE — `./scripts/supprimer-branches-fusionnees.sh --appliquer`.
+      Aucune instance ne peut la lancer : la passerelle git refuse toute
+      suppression de référence (403, reconfirmé le 18/09), et l'API GitHub
+      exposée ici n'a pas d'outil de suppression de branche.
+  ARBITRAGE RENDU LE 18/09 : le chemin voix WEB (sherpa-onnx WASM) est
+  ABANDONNÉ. Le produit du pilote est l'APK et sa voix native fonctionne. La
+  branche `claude/julaba-voice-audit-fixes-hi3jlq` part donc avec les autres —
+  son SHA reste archivé, une ligne la ramène si le besoin revient.
 
   (contexte voix, inchangé) LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
   départageait tout est TRANCHÉE : le 17/09, sur julaba-apk-a4222c3, Patrick
@@ -356,6 +362,19 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **18/09/2026, après-midi** — Trois lots, à la demande de Patrick qui voulait
+  clore le chantier dans l'après-midi. (1) LA BARRE DE RECHERCHE DE LA CAISSE
+  ne répondait que sur le rectangle exact de l'input : la loupe et les marges
+  ne donnaient pas le focus. Une marchande qui vise la loupe ne trouvait aucun
+  produit, donc ne pouvait rien vendre. Devenue une <label>, hauteur portée à
+  44 px, garde-fou `test:cible-tactile` dans verify (mis en défaut exprès sur
+  les deux régressions). (2) ELEVENLABS.TS : 192 lignes inatteignables
+  retirées — tout ce qui vivait derrière le `return null` de `fetchTTS`.
+  `stopChunkedSpeaking` part avec (drapeau que personne ne lisait), les trois
+  écrans concernés appellent `stopAllAudio`. (3) ARBITRAGE VOIX WEB rendu :
+  abandonnée, les 104 branches sont toutes supprimables. verify, test:ci,
+  cliquet à 0 : tout vert.
 
 - **18/09/2026** — MA MESURE DES BRANCHES DU 17/09 ÉTAIT FAUSSE, refaite.
   Elle avait été faite sur un dépôt cloné en surface, où git ne peut pas
