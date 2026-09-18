@@ -20,6 +20,41 @@ import { beneficeDepuisDetails } from '../services/margeVente';
  * correctif du 18/09 : distinguer « la marge vaut zéro » de « je ne sais pas ».
  * Rendre `null` uniquement quand la valeur est absente ou illisible.
  */
+/**
+ * Toutes les transactions, VRAIMENT toutes — correctif du 18/09/2026.
+ *
+ * Ces deux appels ne demandaient ni page ni limite : le serveur renvoyait ses
+ * 500 dernières et personne ne réclamait la suite. À 501 ventes de 1 000 F, le
+ * tableau de bord — et la voix de Tata — annonçaient 500 000 F au lieu de
+ * 501 000 F. Une caisse qui se trompe d'autant plus qu'on l'utilise n'est pas
+ * une caisse.
+ *
+ * Le plafond de pages n'est pas un confort : c'est un garde-fou contre une
+ * boucle sans fin si le serveur cessait de décroître.
+ */
+const TX_PAR_PAGE = 1000;
+const TX_PAGES_MAX = 50;
+
+async function chargerToutesLesTransactions(
+  apiUrl: string,
+  entetes: HeadersInit,
+): Promise<any[]> {
+  const toutes: any[] = [];
+  for (let page = 1; page <= TX_PAGES_MAX; page++) {
+    const res = await fetch(
+      `${apiUrl}/caisse/transactions?limit=${TX_PAR_PAGE}&page=${page}`,
+      { credentials: 'include', headers: entetes },
+    );
+    if (!res.ok) break;
+    const json = await res.json();
+    const lot = Array.isArray(json) ? json : (json.transactions || []);
+    toutes.push(...lot);
+    // Page incomplète = dernière page, quel que soit le format de réponse.
+    if (lot.length < TX_PAR_PAGE) break;
+  }
+  return toutes;
+}
+
 function nombreOuNull(v: unknown): number | null {
   if (v === null || v === undefined || v === '') return null;
   const n = Number(v);
@@ -418,17 +453,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       // Charger transactions
-      const txResponse = await fetch(
-        `${API_URL}/caisse/transactions`,
-        {
-          credentials: 'include',
-          headers: caisseAuthHeaders(token),
-        },
-      );
+      const txData = await chargerToutesLesTransactions(API_URL, caisseAuthHeaders(token));
 
-      if (txResponse.ok) {
-        const txJson = await txResponse.json();
-        const txData = Array.isArray(txJson) ? txJson : (txJson.transactions || []);
+      {
         
         const mappedTx: Transaction[] = txData.map((tx: any) => ({
           id: tx.id,
@@ -1069,13 +1096,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const reloadTransactions = async () => {
     void reloadCreditsJour(); // en parallèle : crédits du jour pour la compta
     try {
-      const txResponse = await fetch(
-        `${API_URL}/caisse/transactions`,
-        { credentials: 'include', headers: caisseAuthHeaders(accessToken) }
-      );
-      if (txResponse.ok) {
-        const txJson = await txResponse.json();
-        const txData = Array.isArray(txJson) ? txJson : (txJson.transactions || []);
+      // Même pagination que le chargement initial : un rechargement qui
+      // s'arrête à 500 rendrait le correctif inutile dès la première mise à jour.
+      const txData = await chargerToutesLesTransactions(API_URL, caisseAuthHeaders(accessToken));
+      {
         const mappedTx: Transaction[] = txData.map((tx: any) => ({
           id: tx.id,
           userId: tx.marchand_id || tx.user_id,

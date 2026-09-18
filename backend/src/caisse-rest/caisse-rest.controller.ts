@@ -5,6 +5,7 @@ import { Repository, DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
+import { dateOperationValide } from './date-operation';
 import { CaisseTransaction, TransactionStatus } from './caisse-transaction.entity';
 import { restituerStock } from './stock-restitution';
 import { AlertesService } from '../notifications/alertes.service';
@@ -82,7 +83,23 @@ export class CaisseRestController {
   create(@Body() body: any, @CurrentUser() user: User) {
     const montant = parseFloat(body.montant) || 0;
     if (montant <= 0) throw new BadRequestException('montant invalide');
-    const TYPES_AUTORISES = ['vente', 'depense', 'remboursement', 'ajustement'];
+    // 'vente' EST EXCLU D'ICI, ET C'EST LE CORRECTIF — audit du 18/09/2026.
+    //
+    // Cette route faisait un `repo.save()` NU : ni clé d'idempotence, ni
+    // décrément de stock, ni journal de mouvements — rien de ce que garantit
+    // POST /caisse/vente. Un simple rejeu réseau d'une vente de 1 500 F la
+    // comptait deux fois (3 000 F au chiffre d'affaires) en laissant le stock
+    // intact. Aucun écran de JULABA n'appelait cette route en écriture (elle
+    // n'est lue qu'en GET), mais elle restait ouverte à tout client authentifié.
+    //
+    // Une vente n'a qu'UNE porte d'entrée : /caisse/vente, qui tient
+    // l'invariant d'argent et d'inventaire dans une seule transaction.
+    const TYPES_AUTORISES = ['depense', 'remboursement', 'ajustement'];
+    if (body.type === 'vente') {
+      throw new BadRequestException(
+        "Une vente s'enregistre par POST /caisse/vente — seule route qui garantit l'idempotence et le mouvement de stock.",
+      );
+    }
     if (!body.type || !TYPES_AUTORISES.includes(body.type)) {
       throw new BadRequestException(`type invalide - valeurs acceptées : ${TYPES_AUTORISES.join(', ')}`);
     }
@@ -391,9 +408,18 @@ export class CaisseRestController {
     await this.ensureSessionOuverte(user.id);
 
     // Lignes vendues (produits appariés). Vente libre/voix : aucune ligne stock.
+    // L'IDENTIFIANT DU PRODUIT EST RETENU — correctif du 18/09/2026. Le panier
+    // l'envoyait déjà (POSCaisse construit `productId` pour chaque ligne) et il
+    // était jeté ici : le stock se décrémentait ensuite par NOM. Deux articles
+    // nommés « Tomate » — l'un au kilo, l'autre au tas, cas documenté du
+    // catalogue adopté — et c'est l'inventaire du MAUVAIS article qui bougeait.
     const lignesVendues = lignes.length > 0
-      ? lignes.map((p: any) => ({ nom: p.nom || p.name || '', qte: Number(p.quantite) || 1 }))
-      : (nomProduit ? [{ nom: nomProduit, qte: Number(qteTotale) || 1 }] : []);
+      ? lignes.map((p: any) => ({
+          nom: p.nom || p.name || '',
+          qte: Number(p.quantite) || 1,
+          id: p.productId || p.produit_id || p.id || null,
+        }))
+      : (nomProduit ? [{ nom: nomProduit, qte: Number(qteTotale) || 1, id: null }] : []);
 
     // TRANSACTION UNIQUE (I1) : la vente ET tous ses effets d'inventaire sont
     // atomiques — tout-ou-rien. Toutes les lectures/écritures de l'invariant
@@ -416,17 +442,36 @@ export class CaisseRestController {
         description: nomProduit,
         prix_vente: prixVente, prix_achat: prixAchat, marge, benefice: marge,
         category: body.category || '', idempotency_key: idemKey,
+        // Vente rejouée depuis la file hors-ligne : elle appartient au jour où
+        // elle a EU LIEU, pas au jour où le réseau est revenu. Bornée côté
+        // serveur (voir date-operation.ts) — on ne laisse pas un client
+        // réécrire le passé. Absente ou hors bornes : `created_at` par défaut.
+        ...(dateOperationValide(body.date_operation)
+          ? { created_at: dateOperationValide(body.date_operation) as Date }
+          : {}),
       } as any) as unknown as CaisseTransaction;
       result = await txRepo.save(created);
 
       for (const l of lignesVendues) {
         if (!l.nom || !(l.qte > 0)) continue;
-        const rows = await qr.manager.query(
-          `SELECT id, COALESCE(stock, 0) AS stock FROM produits
-           WHERE marchand_id = $1::text AND lower(nom) = lower($2) AND actif = true
-           LIMIT 1 FOR UPDATE`,
-          [user.id, l.nom],
-        );
+        // On vise l'identifiant QUAND ON L'A : c'est la seule désignation qui
+        // ne confond pas deux produits homonymes. Le nom reste le repli, pour
+        // les ventes vocales/libres qui n'ont jamais d'identifiant.
+        // `marchand_id` est conservé dans les deux cas : on ne touche jamais au
+        // stock d'une autre marchande, même avec un identifiant fourni.
+        const rows = l.id
+          ? await qr.manager.query(
+              `SELECT id, COALESCE(stock, 0) AS stock FROM produits
+               WHERE marchand_id = $1::text AND id = $2 AND actif = true
+               LIMIT 1 FOR UPDATE`,
+              [user.id, l.id],
+            )
+          : await qr.manager.query(
+              `SELECT id, COALESCE(stock, 0) AS stock FROM produits
+               WHERE marchand_id = $1::text AND lower(nom) = lower($2) AND actif = true
+               LIMIT 1 FOR UPDATE`,
+              [user.id, l.nom],
+            );
         if (!rows[0]) continue; // produit inconnu (vente libre/voix) : aucun effet stock
         const stockAvant = Number(rows[0].stock) || 0;
         const demandee = l.qte;

@@ -336,6 +336,14 @@ export async function nbSansProprietaire(store: OutboxStore = defaultStore()): P
  *   compte, non touchées), sansProprietaire (propriétaire inconnu, ni
  *   rejouée ni attribuée — global par nature, nom explicite) }
  */
+/**
+ * Opérations dont la DATE compte : celles qui appartiennent à une journée de
+ * caisse. Une vente faite à 23h55 sans réseau et remontée à 00h05 doit rester
+ * au jour où elle a eu lieu — sinon la marchande compte faux le soir, des deux
+ * côtés de minuit.
+ */
+const ENDPOINTS_DATES = ['/caisse/vente'];
+
 export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
   poster: (endpoint: E, payload: unknown, method: OfflineMethod) => Promise<void>,
   currentUserId: string,
@@ -360,7 +368,27 @@ export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
     // ni incrément d'essais — elle reste active pour son propriétaire.
     if (op.userId !== currentUserId) { ignorees++; continue; }
     try {
-      await poster(op.endpoint as E, { ...op.payload, idempotency_key: op.id }, op.method || 'POST');
+      // LA DATE DE L'OPÉRATION PART AVEC ELLE — correctif du 18/09/2026.
+      // Sans elle, le serveur horodatait au moment du REJEU : une vente de
+      // 2 000 F faite à 23h55 sans réseau, remontée à 00h05, basculait sur le
+      // jour suivant. Le total global restait juste, mais la journée de la
+      // marchande — celle qu'elle compte le soir en fermant sa caisse — était
+      // fausse des deux côtés. `ts` était déjà mémorisé dans la file ; il n'en
+      // sortait simplement jamais.
+      // SEULES LES OPÉRATIONS D'ARGENT PORTENT LEUR DATE. Un ajustement de
+      // stock n'a pas de journée comptable : lui coller une date n'apporte
+      // rien et change le contrat d'une route qui ne l'attend pas (défaut
+      // attrapé par test:offline-stock avant qu'il ne sorte).
+      const portefaireDate = ENDPOINTS_DATES.some((e) => op.endpoint.startsWith(e));
+      await poster(
+        op.endpoint as E,
+        {
+          ...op.payload,
+          idempotency_key: op.id,
+          ...(portefaireDate ? { date_operation: new Date(op.ts).toISOString() } : {}),
+        },
+        op.method || 'POST',
+      );
       await store.remove(op.id);
       ok++;
     } catch (e) {

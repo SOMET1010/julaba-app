@@ -58,10 +58,33 @@ export interface EnregistrerDepenseData {
 /**
  * Récupérer l'historique des transactions caisse
  */
+/** Plafond serveur par page (voir caisse-rest.controller : max 1000). */
+const PAR_PAGE = 1000;
+/** Garde-fou : au-delà, on arrête et on le dit plutôt que de boucler sans fin. */
+const PAGES_MAX = 50;
+
 export async function fetchCaisseTransactions(): Promise<{ transactions: CaisseTransaction[] }> {
-  const data = await apiRequest<any>('/caisse/transactions');
-  const txArray = Array.isArray(data) ? data : (data.transactions || []);
-  return { transactions: txArray };
+  // « TU AS VENDU … EN TOUT » DOIT VRAIMENT DIRE TOUT — correctif du 18/09/2026.
+  //
+  // Cet appel ne demandait ni page ni limite : le serveur renvoyait ses 500
+  // dernières transactions par défaut, et personne ne réclamait la suite. À
+  // 501 ventes de 1 000 F, Tata annonçait 500 000 F au lieu de 501 000 F — et
+  // l'écart grandit avec le succès de la marchande. Une caisse qui se trompe
+  // d'autant plus qu'on l'utilise n'est pas une caisse.
+  //
+  // On pagine donc jusqu'au bout. Le plafond de 50 pages n'est pas une limite
+  // de confort : c'est un garde-fou contre une boucle infinie si le serveur
+  // cessait de décroître. Il couvre 50 000 transactions.
+  const toutes: CaisseTransaction[] = [];
+  for (let page = 1; page <= PAGES_MAX; page++) {
+    const data = await apiRequest<any>(`/caisse/transactions?limit=${PAR_PAGE}&page=${page}`);
+    const lot: CaisseTransaction[] = Array.isArray(data) ? data : (data.transactions || []);
+    toutes.push(...lot);
+    // Page incomplète = dernière page. C'est le seul signal fiable quel que
+    // soit le format de réponse (tableau nu ou objet paginé).
+    if (lot.length < PAR_PAGE) break;
+  }
+  return { transactions: toutes };
 }
 
 /**
