@@ -226,7 +226,14 @@ export function POSCaisse() {
         total: i.totalExact ?? i.prix * i.quantite,
         prix_achat: (i as any).prixAchat ?? (i as any).prix_achat ?? 0,
       }));
-      await enregistrerVente(total, details, moyen, undefined);
+      // D'OÙ VIENT CETTE VENTE. La voix ne fait que remplir le panier : c'est
+      // toujours ce bouton qui enregistre. La seule chose qui sache si la
+      // marchande a parlé, c'est donc la LIGNE. Une vente compte comme dictée
+      // dès qu'au moins une de ses lignes l'est — un panier commencé à la voix
+      // puis complété au doigt reste un panier où la voix a servi, et c'est ce
+      // qu'elle cherchera dans « Par la voix ».
+      const source = cart.some((i) => i.origine === 'vocal') ? 'vocal' : 'kassa';
+      await enregistrerVente(total, details, moyen, undefined, source);
       // Rupture éventuelle (décision n°6) : calculée AVANT le décrément optimiste.
       // Le serveur borne déjà le stock à 0 et journalise le manquant (I3) ; ici on
       // AVERTIT à la voix au lieu de plancher en silence. La vente passe toujours.

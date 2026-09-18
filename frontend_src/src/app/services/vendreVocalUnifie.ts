@@ -53,8 +53,12 @@ export interface DependancesVendreVocalUnifie {
    * fonction que POSCaisse/ajouterLigneAuPanier, jamais une écriture séparée.
    * 3e argument : total EXACT dicté pour cette ligne (voir CartItem.totalExact
    * dans CaisseContext.tsx) — en FCFA, 500/3 ne retombe pas juste ; `prix` n'est
-   * qu'un unitaire arrondi, c'est ce total qui doit faire foi pour le panier. */
-  addToCart: (produit: ProduitPourPanier, quantite: number, totalExact?: number) => void;
+   * qu'un unitaire arrondi, c'est ce total qui doit faire foi pour le panier.
+   * 4e argument : l'ORIGINE de la ligne. Ce module appelle toujours avec
+   * 'vocal' — c'est ce qui permet à la vente d'être retrouvée dans l'onglet
+   * « Par la voix ». Sans lui, une vente dictée est indiscernable d'une vente
+   * tapée au doigt. */
+  addToCart: (produit: ProduitPourPanier, quantite: number, totalExact?: number, origine?: 'vocal') => void;
   /** Synthèse vocale — jamais appelée sans être gardée par `guidageVocalActif()`. */
   speak: (texte: string) => void;
   /** Retour haptique de succès (même geste que le chemin guidé). */
