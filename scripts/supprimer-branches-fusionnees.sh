@@ -21,12 +21,13 @@
 #   •  35 ont été fusionnées par ÉCRASEMENT (squash) : git ne reconnaît plus
 #         le lien, mais leur contenu a été retrouvé fichier par fichier dans main
 #         (Constitution, ADR-001/002, fidélité, GPS communes, Keiwa, etc.).
-#   •   1 porte ENCORE quelque chose qui n'est pas dans main, et elle est
-#         VOLONTAIREMENT ÉPARGNÉE : `claude/julaba-voice-audit-fixes-hi3jlq`.
-#         Elle contient le moteur sherpa-onnx en WASM pour le NAVIGATEUR
-#         (frontend/public/voix/sherpa/ : ASR + TTS). Main n'a que la voix
-#         NATIVE de l'APK. Garder ou jeter ce chemin web est un arbitrage
-#         d'architecture : il appartient à Patrick, pas à un script de ménage.
+#   •   1 portait ENCORE quelque chose qui n'est pas dans main :
+#         `claude/julaba-voice-audit-fixes-hi3jlq`, le moteur sherpa-onnx en
+#         WASM pour le NAVIGATEUR (frontend/public/voix/sherpa/ : ASR + TTS).
+#         ARBITRAGE DE PATRICK, 18/09 : on l'ABANDONNE. Le produit du pilote est
+#         l'APK, dont la voix native fonctionne et a été entendue sur son
+#         téléphone. Elle est donc supprimée comme les autres — et, comme les
+#         autres, restaurable en une ligne depuis son SHA archivé.
 #
 # RIEN N'EST IRRÉCUPÉRABLE : chaque SHA est archivé dans
 # docs/BRANCHES-SUPPRIMEES-2026-09-17.md. Restaurer une branche :
@@ -119,6 +120,7 @@ ANCETRES=(
 # vérifié à la main. Le script re-vérifie ce qu'il peut : qu'aucun commit de la
 # branche n'introduit un patch absent de main.
 ECRASEES=(
+  "claude/julaba-voice-audit-fixes-hi3jlq 1d7f01b9fe430286d3633ce4ee2602309515b0d0"
   "claude/anonymisation-complete 97f3099e2e0a0cae98f0f586a80091c09c75b5c4"
   "claude/backlog-a-jour 39bc64c416c134d6bd4c363476d9ee86e5d02cb7"
   "claude/blocage-wallet-reel 16902189a5a4486cbbcfa9f70958f735387ddd2a"
@@ -197,7 +199,6 @@ echo "── Mesure ──"
 echo "  ${#sures[@]} branches supprimables"
 echo "  ${#douteuses[@]} branches douteuses → CONSERVÉES"
 echo "  ${#disparues[@]} déjà absentes du distant"
-echo "  1 conservée exprès : claude/julaba-voice-audit-fixes-hi3jlq (voix WASM web)"
 echo ""
 
 if [[ ${#douteuses[@]} -gt 0 ]]; then
