@@ -174,3 +174,43 @@ Les 104 sont supprimables depuis l'arbitrage du 18/09.
 | `claude/voix-code-mort` | `c01c5da` |
 | `claude/voix-first-activation` | `f955644` |
 | `claude/voix-first-numero` | `6dc84f4` |
+
+
+## Deuxième passage — 18/09 au soir
+
+Les 104 ci-dessus **ont été supprimées** par Patrick (104/104, il restait 28
+branches). Mais 25 branches n'étaient pas dans la mesure du 17/09 : des
+`review/*`, `audit/*`, `design/*` et quelques `claude/*`. Mesurées à leur tour,
+**toutes les 25 sont des ancêtres directs de `main`** — `git merge-base
+--is-ancestor` le prouve mécaniquement, il n'y a aucune interprétation.
+
+Aucun travail n'est perdu. Restaurer l'une d'elles :
+`git push origin <sha>:refs/heads/<nom>`
+
+| branche | SHA |
+|---|---|
+| `audit/security-dependencies` | `bc0d334` |
+| `claude/consolidation-tuiles-marchand` | `2a45c2a` |
+| `claude/doc-voice-omnilingual-asr` | `c095f9b` |
+| `claude/odoo-19-pos-setup-dy3zam` | `7c5fd12` |
+| `claude/odoo-gateway-devise-xof` | `9a938f6` |
+| `claude/reorg-accueil-profil-marchand` | `30f172e` |
+| `claude/studio-voix-script-connexion` | `3e40ed0` |
+| `design/esprit-du-marche` | `ea88071` |
+| `review/lot-a-offline-integrity` | `6fe50c4` |
+| `review/odoo-filtre-catalogue-sale-ok` | `9d51e9a` |
+| `review/odoo-gateway-filtre-is-storable` | `865afde` |
+| `review/odoo-gateway-poc` | `53499d7` |
+| `review/odoo-poc-backend-reel` | `aad2c17` |
+| `review/odoo-poc-xof-vivrier-seed` | `7d06e36` |
+| `review/odoo-real-client-read-only` | `d2c6621` |
+| `review/odoo-smoke-test-sale-ok-check` | `c4cd72a` |
+| `review/offline-voice-queue-clearqueue-fix` | `85b7b4b` |
+| `review/pilote2-bascule-compte-reelle` | `1100a52` |
+| `review/pilote3-miroir-catalogue` | `008b4c2` |
+| `review/porte-android-url-api` | `3a0b90a` |
+| `review/pos-voice-close-tata-parallel-path` | `2036bcc` |
+| `review/pos-voice-lot1-extract` | `6b24af1` |
+| `review/pos-voice-lot2-cart-only` | `59b5652` |
+| `review/recette-pilote2-offline` | `a355d1d` |
+| `review/referentiel-maitre-198` | `b2c8035` |
