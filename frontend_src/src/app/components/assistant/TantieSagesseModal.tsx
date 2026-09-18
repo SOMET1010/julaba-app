@@ -12,7 +12,7 @@ import { useStock } from '../../contexts/StockContext';
 import { useNavigate } from 'react-router';
 import { useVoiceCore, type VoiceState as VoiceStep } from '../../hooks/useVoiceCore';
 import { useObjectif } from '../../contexts/ObjectifContext';
-import { stopAllAudio, stopChunkedSpeaking, preloadAudioContext } from '../../services/elevenlabs';
+import { stopAllAudio, preloadAudioContext } from '../../services/elevenlabs';
 import { unlockAudioContextIOS } from '../../services/earlyAudioCache';
 import { executerActionTataMarchand } from '../../services/tataMarchandActions';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
@@ -172,7 +172,6 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
   useEffect(() => {
     return () => {
       stopAllAudio();
-      stopChunkedSpeaking();
     };
   }, []);
 
@@ -485,7 +484,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
                         animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} />
                     )}
                     <motion.button
-                      onClick={() => { stopAllAudio(); stopChunkedSpeaking(); handleMicClick(); }}
+                      onClick={() => { stopAllAudio(); handleMicClick(); }}
                       onTouchStart={() => { try { unlockAudioContextIOS(); preloadAudioContext(); } catch(e) {} }}
                       className="relative w-20 h-20 rounded-full shadow-2xl overflow-hidden"
                       style={{ border: `3px solid ${step === 'listening' ? '#EF4444' : isSpeaking ? activeColor : 'rgba(255,255,255,0.6)'}`, padding: 0 }}

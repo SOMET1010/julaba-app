@@ -10,7 +10,7 @@ import { fadeInUp, springSnappy } from './bo-animations';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
-import { stopChunkedSpeaking } from '../../services/elevenlabs';
+import { stopAllAudio } from '../../services/elevenlabs';
 import { PartenairesLogos } from '../shared/PartenairesLogos';
 import { API_URL } from '../../utils/api';
 import {
@@ -275,7 +275,7 @@ export function BOProfil() {
   // exclusif — un clip en cours est coupé au lieu de jouer sous l'utterance.
   const speak = (text: string) => {
     if (voiceMuted) return;
-    stopChunkedSpeaking();
+    stopAllAudio();
     try { void audioManager.speak(text); } catch { /* ignore */ }
   };
 
