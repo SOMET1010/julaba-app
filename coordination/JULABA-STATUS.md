@@ -16,7 +16,22 @@ BESOIN_PATRICK: OUI
 TYPE_BESOIN: ARBITRAGE
   (le test physique Android n'est plus un verrou de fusion depuis e796547 ;
   le verrou actuel est une DÉCISION MÉTIER sur la licence du modèle de voix)
-ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
+ACTION_PATRICK: DEUX CHOSES T'ATTENDENT, DANS CET ORDRE.
+  (A) LE RELEVÉ QUI DÉBLOQUE TOUT — bouton VERT de Tata, dire « j'ai vendu
+      trois tomates à cinq cents francs », puis relever MOT POUR MOT ce qui
+      est écrit dans « TU AS DIT ». « trois tomates » écrit + « oignon » dit
+      = défaut de NLU/catalogue ; « oignon » écrit = défaut d'écoute (STT).
+      Sans ce mot, toute correction du code qui décide de ce qu'une marchande
+      a vendu se ferait à l'aveugle. Préalable utile :
+      `./scripts/seed-catalogue-test.sh <numéro> <code>` (un catalogue à un
+      seul produit donne toujours la même réponse, il ne prouve rien).
+  (B) ARBITRAGE ARCHITECTURE — garde-t-on le chemin voix WEB (sherpa-onnx
+      WASM, branche `claude/julaba-voice-audit-fixes-hi3jlq`) ou l'abandonne-
+      t-on au profit de la seule voix native de l'APK ? Tant que ce n'est pas
+      tranché, la branche reste et les 103 autres attendent
+      `./scripts/supprimer-branches-fusionnees.sh --appliquer`.
+
+  (contexte voix, inchangé) LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
   départageait tout est TRANCHÉE : le 17/09, sur julaba-apk-a4222c3, Patrick
   a testé — « la voix du code passe ». Le clip ui-035 se joue depuis l'APK,
   donc AUCUNE RÉGRESSION. Le silence sur les autres écrans est bien celui
@@ -83,20 +98,40 @@ ACTION_PATRICK: LE DERNIER BLOQUEUR DU PILOTE EST LA VOIX. La question qui
   docs/CLIPS-VOIX-A-ENREGISTRER.md.
 DERNIER_SHA_MAIN: f28174a — PR #241 fusionnée : récupération de la note de
   licence MMS restée orpheline hors de main (75 lignes de doc, aucun code).
-  MÉNAGE DES BRANCHES, 17/09 au soir. Patrick avait l'impression que le
-  travail des autres n'était pas repris. Mesuré plutôt que débattu : sur les
-  107 branches du dépôt, le CONTENU de 105 était DÉJÀ dans main — elles
-  paraissaient vivantes parce que leurs PR ont été fusionnées par écrasement.
-  Rien n'avait été écrasé. MAIS une chose s'était bien perdue : la note de
-  licence MMS, jamais fusionnée, dont le même terrain a été réinstruit de zéro
-  le 17/09. Le bruit des 104 fantômes masquait la seule branche qui comptait.
+  MÉNAGE DES BRANCHES — MESURE REFAITE LE 18/09, LA PREMIÈRE ÉTAIT FAUSSE.
+  Le 17/09 j'ai conclu que le contenu de 105 branches sur 107 était déjà dans
+  main. Cette mesure a été faite dans un dépôt CLONÉ EN SURFACE (shallow) :
+  git n'y voit qu'une tranche d'histoire (171 commits au lieu de 645) et
+  répond « aucune base commune » à toute question d'ascendance. Elle ne
+  mesurait rien. Patrick avait raison d'insister, et plus que je ne l'avais
+  admis.
+  REFAITE sur l'histoire complète (`git fetch --unshallow`), sur les 104
+  branches archivées :
+    68 sont des ANCÊTRES DIRECTS de main (preuve mécanique) ;
+    35 ont été fusionnées par ÉCRASEMENT, contenu retrouvé fichier par
+       fichier dans main (CONSTITUTION.md, ADR-001, ADR-002,
+       backend/src/fidelite-rest/, migration GPS des communes, tests Keiwa,
+       ligneProvisoire.ts) ;
+     1 PORTE ENCORE QUELQUE CHOSE QUI N'EST PAS DANS MAIN.
+  Cette dernière est `claude/julaba-voice-audit-fixes-hi3jlq` : 17 commits
+  dont le moteur sherpa-onnx compilé en WASM pour le NAVIGATEUR
+  (frontend/public/voix/sherpa/ — reconnaissance ET synthèse côté web). Main
+  n'a que la voix NATIVE de l'APK. Ce n'est pas forcément une perte : l'APK
+  est le produit et sa voix fonctionne. Mais garder ou abandonner le chemin
+  web est un ARBITRAGE D'ARCHITECTURE — il appartient à Patrick, pas à un
+  script de ménage. La branche est épargnée tant qu'il n'a pas tranché.
+  (La note de licence MMS, elle, était bien perdue : jamais fusionnée, même
+  terrain réinstruit de zéro le 17/09, récupérée par la PR #241.)
   docs/BRANCHES-SUPPRIMEES-2026-09-17.md archive les 104 avec leur SHA et la
-  commande de restauration — écrit AVANT toute suppression.
+  commande de restauration — écrit AVANT toute suppression, corrigé le 18/09.
   SUPPRESSION IMPOSSIBLE DEPUIS LES SESSIONS DES INSTANCES : la passerelle git
   accepte les push qui AJOUTENT mais refuse ceux qui suppriment une référence
-  (HTTP 403, vérifié — aucune branche supprimée, aucune à moitié). C'est à
-  Patrick de lancer `git push origin --delete` (commande dans le fichier
-  d'archive), ou de le faire depuis l'onglet Branches de GitHub.
+  (HTTP 403, vérifié — aucune branche supprimée, aucune à moitié). Réessayé le
+  18/09 sur trois branches : même 403, rien supprimé. La commande est donc
+  LIVRÉE plutôt que devinée — `scripts/supprimer-branches-fusionnees.sh`,
+  éprouvé à blanc (103 supprimables, 0 douteuse, 1 épargnée exprès). Il
+  re-mesure avant d'agir et n'a aucun effet sans `--appliquer`. À lancer par
+  Patrick, ou depuis l'onglet Branches de GitHub.
   `dev` est délibérément épargnée : contenu identique à main, mais nom
   conventionnel — sa suppression relève du flux de travail, pas du ménage.
 
@@ -321,6 +356,16 @@ mais il doit dire quel geste unique Patrick doit poser)
 ## Journal court
 
 Une ligne par reprise. Les rapports détaillés vont dans `docs/`, pas ici.
+
+- **18/09/2026** — MA MESURE DES BRANCHES DU 17/09 ÉTAIT FAUSSE, refaite.
+  Elle avait été faite sur un dépôt cloné en surface, où git ne peut pas
+  répondre aux questions d'ascendance. Sur l'histoire complète : 68 branches
+  ancêtres de main, 35 fusionnées par écrasement (contenu vérifié fichier par
+  fichier), et **1 qui porte encore quelque chose** —
+  `claude/julaba-voice-audit-fixes-hi3jlq`, le moteur sherpa-onnx en WASM pour
+  le navigateur. Épargnée : c'est un arbitrage d'architecture, pas du ménage.
+  `scripts/supprimer-branches-fusionnees.sh` livré (la passerelle git refuse
+  toujours les suppressions, 403 reconfirmé). Aucun code produit touché.
 
 - **17/09/2026, soir** — LOT PILOTE MERGÉ SUR MAIN (e796547, PR #240).
   Décision de Patrick : la session terrain complète prenait trop de temps
