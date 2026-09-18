@@ -583,7 +583,22 @@ export function POSCaisse() {
       <div className="lg:flex lg:items-start lg:gap-4">
       <div className="lg:flex-1 lg:min-w-0" style={{ flex:1, overflowY:'auto', padding:'14px 0 0' }}>
         <SyncEchecsBanner />
-        <div style={{ marginBottom:12, background:'white', border:'1.5px solid var(--trait)', borderRadius:13, padding:'11px 14px', display:'flex', alignItems:'center', gap:9 }}>
+        {/* UNE ÉTIQUETTE, PAS UNE BOÎTE — le défaut relevé par Patrick le 18/09.
+            Il a tapé « banane » et rien n'est arrivé dans le champ : l'écran a
+            continué d'afficher l'oignon. La cause n'était pas le filtre, elle
+            était ici. Le champ était une <div> : seul le rectangle EXACT de
+            l'<input> prenait le focus. La loupe, les 14 px de marge, la bordure
+            — tout cela avait l'air d'une barre de recherche et ne répondait
+            pas. Une marchande qui vise la loupe tape dans le vide, et ne trouve
+            donc AUCUN produit : elle ne peut pas vendre ce qu'elle ne trouve
+            pas.
+            Une <label> qui ENTOURE l'input donne le focus depuis n'importe
+            lequel de ses points. C'est du HTML d'origine, pas un gestionnaire
+            de clic à maintenir.
+            La hauteur passe à 44 px (13 px de marge haute et basse) : c'est la
+            même règle de cible tactile que pour les billets — un doigt, pas un
+            curseur. */}
+        <label style={{ marginBottom:12, background:'white', border:'1.5px solid var(--trait)', borderRadius:13, padding:'13px 14px', display:'flex', alignItems:'center', gap:9, cursor:'text' }}>
           {/* PAS DE MICROPHONE ICI, ET C'EST VOLONTAIRE.
               Il y en avait un, purement décoratif, à côté du mot « Dites ».
               L'intention était d'éviter un bouton d'apparence cliquable ; le
@@ -598,11 +613,11 @@ export function POSCaisse() {
             <Search size={14} color="var(--encre-4)" />
           </span>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Chercher un produit…"
-            style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:13, color:'var(--encre)', fontFamily:'inherit' }} />
-          {search && <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}>
-            <X size={14} color="#aaa" />
+            style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:15, color:'var(--encre)', fontFamily:'inherit', minWidth:0 }} />
+          {search && <motion.button type="button" aria-label="Effacer la recherche" whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, flexShrink:0 }}>
+            <X size={16} color="#aaa" />
           </motion.button>}
-        </div>
+        </label>
 
         {/* AUTRE ARTICLE — vendre un montant libre, sans produit listé (Phase 3) */}
         <motion.button whileTap={{ scale:0.98 }} onClick={() => setShowLibre(true)}
