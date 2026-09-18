@@ -87,10 +87,10 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
     if (prod) {
       // Produit APPARIÉ : vrai produit (prix d'achat → marge réelle, stock décrémenté
       // à l'encaissement), au prix dicté.
-      addToCart({ ...prod, prix: prixU > 0 ? prixU : prod.prix, prix_promo: null, promo_fin: null }, l.quantite, totalExact);
+      addToCart({ ...prod, prix: prixU > 0 ? prixU : prod.prix, prix_promo: null, promo_fin: null }, l.quantite, totalExact, 'vocal');
     } else {
       // Produit inconnu → ligne libre (comme « Autre article »).
-      addToCart({ id: 'libre-' + l.id, nom: l.nomAffiche, prix: prixU, categorie: 'Autre', stock: 0, unite: l.unite }, l.quantite, totalExact);
+      addToCart({ id: 'libre-' + l.id, nom: l.nomAffiche, prix: prixU, categorie: 'Autre', stock: 0, unite: l.unite }, l.quantite, totalExact, 'vocal');
     }
     vibrerSucces();
     toast.success(`C'est dans le panier : ${l.quantite} × ${l.nomAffiche}`);

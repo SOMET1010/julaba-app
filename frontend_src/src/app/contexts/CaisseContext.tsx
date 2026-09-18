@@ -112,6 +112,22 @@ export interface CartItem {
    *  Invalidé (undefined) dès que la ligne est modifiée manuellement
    *  (quantité, prix, fusion) : il ne vaut que pour la ligne telle que créée. */
   totalExact?: number;
+  /** D'où vient CETTE ligne. Posé à 'vocal' quand c'est la voix qui l'a créée.
+   *
+   *  POURQUOI CE CHAMP EXISTE, relevé par Patrick le 18/09 sur ses ventes
+   *  réelles : l'écran « Ventes passées » badgeait TOUT en « kassa », y compris
+   *  ce qu'il avait dicté, et l'onglet « Par la voix » restait vide quoi qu'il
+   *  fasse. La cause n'était pas l'affichage : une vente vocale et une vente à
+   *  la caisse empruntent le MÊME chemin — la voix ne fait que remplir le
+   *  panier, c'est toujours « Encaisser » qui enregistre. Rien, nulle part, ne
+   *  disait donc d'où venait la vente.
+   *
+   *  C'est la LIGNE qui sait, pas la vente : seule elle a été créée par la
+   *  voix ou par le doigt. La vente en hérite (voir sourceDuPanier).
+   *
+   *  Conservé en fusion, contrairement à totalExact : qu'on ajoute un article à
+   *  la main sur une ligne dictée ne change pas le fait que la voix a servi. */
+  origine?: 'vocal';
 }
 
 export interface CaisseStats {
@@ -131,11 +147,11 @@ interface CaisseContextType {
   selectedProduct: CaisseProduct | null;
   setSelectedProduct: (p: CaisseProduct | null) => void;
   
-  enregistrerVente: (montant: number, produits?: any, modePaiement?: string, notes?: string) => Promise<void>;
+  enregistrerVente: (montant: number, produits?: any, modePaiement?: string, notes?: string, source?: 'vocal' | 'kassa') => Promise<void>;
   enregistrerDepense: (montant: number, notes?: string) => Promise<void>;
   
   // POS Cart
-  addToCart: (product: CaisseProduct, quantite?: number, totalExact?: number) => void;
+  addToCart: (product: CaisseProduct, quantite?: number, totalExact?: number, origine?: 'vocal') => void;
   removeFromCart: (productId: string) => void;
   updateCartItemQuantity: (productId: string, quantite: number) => void;
   /** Négoce (demi-grossiste/grossiste) : le prix unitaire se discute à la vente. */
@@ -353,7 +369,11 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     montant: number,
     produits?: any,
     modePaiement?: string,
-    notes?: string
+    notes?: string,
+    /** D'où vient la vente. Le backend l'accepte déjà (`source: body.source ||
+     *  'kassa'`) ; c'est le front qui ne l'envoyait jamais, d'où un écran où
+     *  tout paraissait venir de la caisse. */
+    source?: 'vocal' | 'kassa',
   ) => {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de vente invalide');
     // Calculer prix_achat depuis les produits du panier
@@ -371,6 +391,9 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       notes,
       prix_achat: prixAchatTotal > 0 ? prixAchatTotal : undefined,
       prix_vente: montant,
+      // Part aussi dans la file hors-ligne : une vente dictée rejouée après une
+      // coupure reste une vente dictée.
+      ...(source ? { source } : {}),
       idempotency_key: genererCle(),
     };
     // Hors-ligne : on met la vente dans la file durable (rejeu à la reconnexion).
@@ -442,18 +465,24 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // mieux vaut retomber sur prix*quantite (comportement déjà existant avant
   // ce correctif) que de garder un total exact devenu faux pour la nouvelle
   // quantité.
-  const addToCart = (product: CaisseProduct, quantite: number = 1, totalExact?: number) => {
+  const addToCart = (product: CaisseProduct, quantite: number = 1, totalExact?: number, origine?: 'vocal') => {
     const existing = cart.find(item => item.productId === product.id);
     const next = existing
       ? cart.map(item =>
           item.productId === product.id
-            ? { ...item, quantite: item.quantite + quantite, totalExact: undefined }
+            // `origine` se CUMULE en fusion (une ligne dictée puis complétée au
+            // doigt reste une ligne où la voix a servi), là où `totalExact` est
+            // invalidé — le total dicté, lui, ne vaut plus pour la nouvelle
+            // quantité.
+            ? { ...item, quantite: item.quantite + quantite, totalExact: undefined,
+                ...(origine ? { origine } : {}) }
             : item)
       // Prix effectif : applique automatiquement le prix promo s'il est actif.
       : [...cart, {
           productId: product.id, nom: product.nom, prix: prixEffectif(product), quantite,
           prix_achat: Number(product.prix_achat) || 0,
           ...(totalExact != null && totalExact > 0 ? { totalExact } : {}),
+          ...(origine ? { origine } : {}),
         }];
     setCart(next);
     persistCart(next);

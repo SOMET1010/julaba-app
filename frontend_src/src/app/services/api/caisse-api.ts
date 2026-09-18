@@ -32,6 +32,14 @@ export interface EnregistrerVenteData {
   notes?: string;
   prix_achat?: number;
   prix_vente?: number;
+  /** D'OÙ VIENT LA VENTE — 'vocal' si la marchande l'a dictée, 'kassa' sinon.
+   *
+   *  Ce champ manquait, et c'est tout le défaut : le backend le lisait déjà
+   *  (`source: body.source || 'kassa'`), mais aucun appelant ne l'envoyait. La
+   *  colonne prenait donc sa valeur par défaut pour TOUTES les ventes, et
+   *  l'onglet « Par la voix » de l'écran Ventes passées ne pouvait rien
+   *  afficher — jamais. */
+  source?: 'vocal' | 'kassa';
   /** Clé d'idempotence : le backend ne compte pas deux fois la même vente. */
   idempotency_key?: string;
 }
