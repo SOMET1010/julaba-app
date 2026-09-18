@@ -74,14 +74,23 @@ jobs:
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
             | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client-17
+          # LA VERSION COMPTE, ET ELLE NOUS A DÉJÀ COÛTÉ UN RUN (18/09/2026) :
+          # pg_dump REFUSE de tourner contre un serveur plus récent que lui
+          # (« aborting because of server version mismatch »). julaba-db est en
+          # PostgreSQL 18.
+          sudo apt-get install -y -qq postgresql-client-18
+          # Et on appelle le binaire par son CHEMIN COMPLET : /usr/bin/pg_dump
+          # est un aiguillage de postgresql-common qui, sur le runner GitHub,
+          # choisissait le client 16 préinstallé malgré l'installation du nôtre.
+          echo "PGBIN=/usr/lib/postgresql/18/bin" >> "$GITHUB_ENV"
+          /usr/lib/postgresql/18/bin/pg_dump --version
 
       # PAS DE DUMP = PAS D'EFFACEMENT. C'est la seule règle qui compte ici.
       - name: Sauvegarder AVANT tout (obligatoire)
         run: |
           HORODATAGE="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
           echo "HORODATAGE=$HORODATAGE" >> "$GITHUB_ENV"
-          pg_dump "$DB_URL" -Fc --no-owner -f "avant-reinitialisation-$HORODATAGE.dump"
+          "$PGBIN/pg_dump" "$DB_URL" -Fc --no-owner -f "avant-reinitialisation-$HORODATAGE.dump"
           TAILLE=$(stat -c%s "avant-reinitialisation-$HORODATAGE.dump")
           echo "Dump : $TAILLE octets"
           # Un fichier minuscule = un dump vide : on refuse d'effacer sur cette base.
@@ -118,7 +127,7 @@ jobs:
       # (main.ts, branche « base vierge »).
       - name: Effacer le schéma
         run: |
-          psql "$DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          "$PGBIN/psql" "$DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
           DROP SCHEMA IF EXISTS public CASCADE;
           CREATE SCHEMA public;
           GRANT ALL ON SCHEMA public TO CURRENT_USER;
@@ -128,7 +137,7 @@ jobs:
 
       - name: Vérifier que la base est bien vierge
         run: |
-          RESTE=$(psql "$DB_URL" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
+          RESTE=$("$PGBIN/psql" "$DB_URL" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
           echo "Tables restantes dans public : $RESTE"
           if [ "$RESTE" != "0" ]; then
             echo "::error::Le schéma n'est pas vide — ne pas redéployer avant d'avoir compris."

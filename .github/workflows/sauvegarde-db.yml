@@ -59,14 +59,23 @@ jobs:
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
             | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update -qq
-          sudo apt-get install -y -qq postgresql-client-17
+          # LA VERSION COMPTE, ET ELLE NOUS A DÉJÀ COÛTÉ UN RUN (18/09/2026) :
+          # pg_dump REFUSE de tourner contre un serveur plus récent que lui
+          # (« aborting because of server version mismatch »). julaba-db est en
+          # PostgreSQL 18.
+          sudo apt-get install -y -qq postgresql-client-18
+          # Et on appelle le binaire par son CHEMIN COMPLET : /usr/bin/pg_dump
+          # est un aiguillage de postgresql-common qui, sur le runner GitHub,
+          # choisissait le client 16 préinstallé malgré l'installation du nôtre.
+          echo "PGBIN=/usr/lib/postgresql/18/bin" >> "$GITHUB_ENV"
+          /usr/lib/postgresql/18/bin/pg_dump --version
 
       - name: Dump (format custom, restaurable sélectivement)
         if: steps.cfg.outputs.configured == 'true'
         run: |
           JOUR="$(date -u +%F)"
           echo "JOUR=$JOUR" >> "$GITHUB_ENV"
-          pg_dump "$DB_URL" -Fc --no-owner -f "julaba-$JOUR.dump"
+          "$PGBIN/pg_dump" "$DB_URL" -Fc --no-owner -f "julaba-$JOUR.dump"
           ls -lh "julaba-$JOUR.dump"
 
       - name: Chiffrer (AES-256, si passphrase posée)
