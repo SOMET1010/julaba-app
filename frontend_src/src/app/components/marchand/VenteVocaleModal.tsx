@@ -11,6 +11,7 @@ import { useObjectif, ObjectifProvider } from "../../contexts/ObjectifContext";
 import { useStock, type StockItem } from "../../contexts/StockContext";
 import { resumeIncidentHorsLigne } from "../../voice-offline/incidentsHorsLigne";
 import { apparierProduit, noterRefusCreation } from "../../services/venteVocale";
+import { extraire } from '../../voice-offline/extraction';
 import { vendreVocalUnifie } from "../../services/vendreVocalUnifie";
 import { guidageVocal } from "../../utils/accessMode";
 import { vibrerSucces } from "../../utils/haptique";
@@ -135,7 +136,10 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
       // la logique vit dans services/vendreVocalUnifie.ts, testée en isolation.
       // Cet adaptateur ne fait que reboucler les dépendances déjà disponibles
       // dans cette closure sur l'interface injectée du module.
-      const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number) =>
+      // `uniteParlee` : l'unité RÉELLEMENT prononcée (« un TAS de piment »).
+      // Sans elle, reprendre le prix du catalogue peut être faux — un tas n'est
+      // pas un kilo, et l'écart se paie sur l'argent de la marchande.
+      const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number, uniteParlee?: string | null) =>
         vendreVocalUnifie(nomParle, quantite, montant, {
           products,
           addToCart,
@@ -148,17 +152,24 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
           planifier: (effet, delaiMs) => setTimeout(effet, delaiMs),
           guidageVocalActif: () => guidageVocal(),
           creerIdLigne: () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`),
-        });
+        }, uniteParlee);
       const action = data.action;
       if (action?.type === "vendre") {
-        const montant = action.montant || 0;
+        // MONTANT FACULTATIF — correctif du 18/09/2026. Ce `return` renvoyait
+        // dans le vide toute vente sans prix dicté : « j'ai vendu un tas de
+        // piment » ne pouvait JAMAIS atteindre le panier, alors même que le
+        // produit était parfaitement reconnu et son prix connu du catalogue.
+        // Le prix est désormais résolu en aval, par vendreVocalUnifie, qui est
+        // le seul endroit à disposer du catalogue. `0` y signifie « rien n'a
+        // été dicté » ; un montant réellement prononcé reste prioritaire.
+        const brut = Number(action.montant);
+        const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
         const quantite = action.quantite || 1;
-        if (!montant || montant <= 0 || isNaN(montant)) return;
         // Simple ajout au panier (Lot 2) : le contrôle « journée ouverte »
         // n'a plus sa place ici — il ne protège qu'un encaissement réel, qui
         // n'a pas lieu à cet endroit (voir POSCaisse.handlePay). Le chemin
         // guidé (ajouterLigneAuPanier) n'a jamais eu ce contrôle non plus.
-        vendreUnifie(action.produit, quantite, montant);
+        vendreUnifie(action.produit, quantite, montant, extraire(data.transcript || '').uniteParlee);
       } else if (action?.type === "utiliser_raccourci") {
         const r = matchRaccourci ? matchRaccourci(action.declencheur || data.transcript || "") : null;
         if (r?.action?.type === "vendre") {
@@ -172,9 +183,11 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
           // (confirmAction(), useVoiceCore.ts) a été rendu générique pour ne
           // plus jamais affirmer « vente enregistrée » quand ce n'est qu'un
           // ajout au panier.
-          const montant = r.action.montant || 0;
+          // Même règle que la vente directe : un raccourci qui ne porte pas
+          // de prix laisse le catalogue le fournir, au lieu d'être ignoré.
+          const brutR = Number(r.action.montant);
+          const montant = Number.isFinite(brutR) && brutR > 0 ? brutR : 0;
           const quantite = r.action.quantite || 1;
-          if (!montant || montant <= 0 || isNaN(montant)) return;
           vendreUnifie(r.action.produit, quantite, montant);
         } else if (r?.action?.type === "depense") {
           const montant = r.action.montant || 0;
