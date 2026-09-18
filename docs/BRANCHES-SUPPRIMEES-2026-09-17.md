@@ -1,21 +1,55 @@
-# Branches supprimées le 17/09/2026 — leur contenu était déjà dans `main`
+# Branches à supprimer — leur travail est déjà dans `main`
+
+> ⚠ Elles ne sont PAS encore supprimées : la passerelle git de la session a
+> refusé l'opération (HTTP 403). La commande vérifiée est dans
+> [`scripts/supprimer-branches-fusionnees.sh`](../scripts/supprimer-branches-fusionnees.sh).
 
 > Écrit AVANT la suppression, pour qu'aucune ne soit irrécupérable.
 > Restaurer l'une d'elles : `git push origin <sha>:refs/heads/<nom>`
 
 ## Pourquoi
 
-Le dépôt portait 107 branches réputées « non fusionnées ». Mesure faite le
-17/09 en comparant le CONTENU de chacune à celui de `main` :
-**105 n'avaient aucune différence**. Elles paraissaient vivantes parce que
-leurs PR ont été fusionnées par écrasement (squash) : git ne reconnaît plus
-le lien, mais le travail avait bien atterri.
+Le dépôt portait 107 branches réputées « non fusionnées ». Elles paraissaient
+vivantes parce que leurs PR ont été fusionnées par écrasement (squash) : git ne
+reconnaît plus le lien, mais le travail avait bien atterri.
 
 Ce bruit avait un coût réel : il donnait l'impression que du travail validé
-n'était pas pris en compte, et il masquait la SEULE branche qui portait
-vraiment quelque chose (`doc-voice-omnilingual-asr`, fusionnée par la PR #241).
+n'était pas pris en compte.
 
-## Ce qui N'A PAS été supprimé, et pourquoi
+## La première mesure était fausse — 18/09
+
+La mesure du 17/09 concluait que **105 branches n'avaient aucune différence
+avec `main`**. Elle a été faite sur un dépôt **cloné en surface** (*shallow*).
+Dans ce mode, git ne voit qu'une tranche d'histoire et répond « aucune base
+commune » à toute question d'ascendance : la conclusion ne mesurait rien.
+
+Refaite le 18/09 sur l'histoire complète (`git fetch --unshallow`, 645 commits
+au lieu de 171) :
+
+| | branches | preuve |
+|---|---|---|
+| ancêtres directs de `main` | **68** | `git merge-base --is-ancestor` |
+| fusionnées par écrasement | **35** | contenu retrouvé fichier par fichier dans `main` |
+| **portent encore quelque chose** | **1** | voir ci-dessous |
+
+Les 35 « écrasées » ont été vérifiées une par une, pas déduites : `CONSTITUTION.md`,
+`docs/adr/ADR-001`, `ADR-002`, `backend/src/fidelite-rest/`, la migration GPS des
+communes, `backend/test/invariants/keiwa-paiement-commande.spec.ts`,
+`frontend_src/src/app/services/ligneProvisoire.ts` — tous présents dans `main`.
+
+### La branche qu'on garde : `claude/julaba-voice-audit-fixes-hi3jlq`
+
+Elle porte 17 commits dont le contenu n'est **pas** dans `main` : le moteur
+sherpa-onnx compilé en **WASM pour le navigateur** (`frontend/public/voix/sherpa/`
+— reconnaissance ET synthèse côté web). `main` n'a que la voix **native** de
+l'APK.
+
+Ce n'est pas un oubli à rattraper en silence, et pas non plus une perte
+évidente : l'APK est le produit, et la voix native y fonctionne. Garder ou
+abandonner le chemin web est un **arbitrage d'architecture**. Il revient à
+Patrick. La branche reste en place tant qu'il n'a pas tranché.
+
+## Ce qui n'est pas concerné, et pourquoi
 
 - **`main`** — la ligne principale.
 - **`claude/clever-allen-dnr8by`** — la branche de travail en cours au moment
@@ -25,7 +59,10 @@ vraiment quelque chose (`doc-voice-omnilingual-asr`, fusionnée par la PR #241).
   relève d'une décision de flux de travail, pas d'un nettoyage. Laissée en
   place, à trancher séparément.
 
-## Les branches supprimées, et leur dernier commit
+## Les 104 branches archivées, et leur dernier commit
+
+Les 103 supprimables et, en dernière ligne de ce tableau comme ailleurs,
+`claude/julaba-voice-audit-fixes-hi3jlq` qui est épargnée.
 
 | branche | SHA |
 |---|---|
