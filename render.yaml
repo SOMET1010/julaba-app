@@ -124,11 +124,34 @@ services:
       # ce fichier est publié avec le dépôt.
       - key: SEED_DEMO_BO_PASSWORD
         sync: false
-      # Migrations TypeORM appliquées automatiquement au démarrage (base déjà
-      # peuplée). Sans ce réglage, toute évolution de schéma reste lettre morte
-      # en prod et le front casse sur les colonnes manquantes.
+      # ╔════════════════════════════════════════════════════════════════════╗
+      # ║  "false", ET C'EST DÉLIBÉRÉ. NE PAS REMETTRE À "true" SANS LIRE.  ║
+      # ╚════════════════════════════════════════════════════════════════════╝
+      #
+      # L'INCIDENT DU 18/09/2026. À "true", l'API ne redémarre plus du tout :
+      # elle meurt au boot sur `type "caisse_transaction_status_enum" already
+      # exists`, dix tentatives, puis extinction.
+      #
+      # POURQUOI. schema-flags.ts construit une base VIERGE depuis les entités
+      # (`synchronize`) et n'enregistre AUCUNE migration : la table `migrations`
+      # reste vide. Au démarrage suivant la base n'est plus vierge, TypeORM
+      # croit donc la baseline « en attente » et rejoue
+      # 1780200000000-BaselineSchema — dont les 17 `CREATE TYPE` n'ont aucune
+      # protection contre l'existant. Le schéma est là, son enregistrement ne
+      # l'est pas : la chaîne de migrations ne peut pas ADOPTER cette base.
+      #
+      # CE QUI FAIT VRAIMENT LE SCHÉMA EN PROD, et db-init.service.ts le dit
+      # déjà à deux endroits : DbInit. Il est « le SEUL mécanisme garanti de
+      # s'exécuter inconditionnellement au boot, base neuve ET existante », et
+      # il recrée chaque objet de façon idempotente. Ce fichier contredisait
+      # simplement ce que le code fait depuis toujours.
+      #
+      # CE QUE ÇA COÛTE, assumé : une nouvelle migration ne s'appliquera pas
+      # toute seule en prod. Elle doit être reflétée dans DbInit, comme l'ont
+      # été les communes GPS et boutique_mouvements. Rendre la chaîne
+      # adoptable est un chantier à part, qui demande un accès à la base.
       - key: DB_MIGRATIONS_RUN
-        value: "true"
+        value: "false"
       # Quotas par IP corrects derrière le routeur Render : sans trust proxy,
       # req.ip = IP du routeur PARTAGÉE par tout le monde (le login à 5/min
       # devient un verrou collectif un matin de marché). À CALIBRER au dashboard
