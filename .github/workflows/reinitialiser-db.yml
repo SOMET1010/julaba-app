@@ -1,0 +1,141 @@
+# ──────────────────────────────────────────────────────────────────────────
+# EFFACER ET RECONSTRUIRE LA BASE — à la demande, jamais automatiquement.
+#
+# DÉCISION DE PATRICK, 18/09/2026, réaffirmée deux fois : repartir d'une base
+# propre plutôt que de perdre du temps à récupérer un compte de test.
+#
+# CE WORKFLOW EXISTE PARCE QUE RENDER N'A PAS D'ÉDITEUR SQL et que la machine
+# de Patrick est sous Windows, sans client Postgres. Il fait donc, depuis
+# GitHub, exactement ce qu'un `psql` ferait — mais en SAUVEGARDANT D'ABORD.
+#
+# LA SAUVEGARDE N'EST PAS UNE PRÉCAUTION DÉCORATIVE. Vérifié le 18/09 : la
+# sauvegarde quotidienne affichait 31 succès verts et n'avait produit AUCUN
+# fichier — le secret BACKUP_DATABASE_URL n'avait jamais été posé, et le job
+# sortait « en succès sans rien faire ». Une base effacée sans dump aurait été
+# perdue définitivement, avec un tableau de bord tout vert.
+# Ici, PAS DE DUMP = PAS D'EFFACEMENT. Le job s'arrête.
+#
+# CE QUI SE PASSE APRÈS. Au redémarrage, l'API voit une base vierge
+# (`to_regclass('public.users')` vide), crée l'extension uuid-ossp, reconstruit
+# le schéma depuis les entités (synchronize) et FORCE les migrations à OFF
+# (computeBootDbFlags). Aucun réglage manuel. Puis DbInit complète ce que les
+# entités ne déclarent pas.
+#
+# CE QU'IL RESTE À FAIRE, ET QUE CE WORKFLOW NE FAIT PAS : recréer un compte.
+# L'inscription publique de l'application suffit — et le code sera `0000`,
+# quoi qu'on tape (voir getDefaultPasswordForRole dans auth.service.ts).
+#
+# SECRET REQUIS : BACKUP_DATABASE_URL — l'« External Database URL » de
+# julaba-db (dashboard Render → julaba-db → Connect). Le même que celui de la
+# sauvegarde quotidienne : le poser répare les deux d'un coup.
+# ──────────────────────────────────────────────────────────────────────────
+name: Réinitialiser la base (destructif)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Taper exactement : EFFACER LA BASE'
+        required: true
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  reinitialiser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+
+    steps:
+      # Un clic de trop sur « Run workflow » ne doit pas coûter une base.
+      - name: Exiger la phrase de confirmation
+        run: |
+          if [ "${{ inputs.confirmation }}" != "EFFACER LA BASE" ]; then
+            echo "::error::Confirmation absente ou incorrecte. Rien n'a été touché."
+            exit 1
+          fi
+
+      - name: Exiger le secret de connexion
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::error::BACKUP_DATABASE_URL absent. Poser le secret (Settings → Secrets and variables → Actions) : c'est l'External Database URL de julaba-db."
+            exit 1
+          fi
+
+      - name: Installer le client PostgreSQL (pgdg)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      # PAS DE DUMP = PAS D'EFFACEMENT. C'est la seule règle qui compte ici.
+      - name: Sauvegarder AVANT tout (obligatoire)
+        run: |
+          HORODATAGE="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          echo "HORODATAGE=$HORODATAGE" >> "$GITHUB_ENV"
+          pg_dump "$DB_URL" -Fc --no-owner -f "avant-reinitialisation-$HORODATAGE.dump"
+          TAILLE=$(stat -c%s "avant-reinitialisation-$HORODATAGE.dump")
+          echo "Dump : $TAILLE octets"
+          # Un fichier minuscule = un dump vide : on refuse d'effacer sur cette base.
+          if [ "$TAILLE" -lt 10000 ]; then
+            echo "::error::Dump suspect ($TAILLE octets) — trop petit pour être une vraie base. ARRÊT, rien n'est effacé."
+            exit 1
+          fi
+
+      - name: Chiffrer le dump si une passphrase est posée
+        run: |
+          if [ -n "$PASSPHRASE" ]; then
+            gpg --batch --yes --symmetric --cipher-algo AES256 \
+              --passphrase "$PASSPHRASE" \
+              -o "avant-reinitialisation-$HORODATAGE.dump.gpg" \
+              "avant-reinitialisation-$HORODATAGE.dump"
+            rm -f "avant-reinitialisation-$HORODATAGE.dump"
+          else
+            echo "::warning::Pas de BACKUP_PASSPHRASE — le dump est conservé NON chiffré dans les artefacts privés du dépôt."
+          fi
+
+      # Conservé 90 jours : bien plus que la sauvegarde quotidienne. C'est le
+      # seul exemplaire de l'état d'AVANT, et on ne le refera pas.
+      - name: Conserver la sauvegarde (90 jours)
+        uses: actions/upload-artifact@v4
+        with:
+          name: avant-reinitialisation-${{ env.HORODATAGE }}
+          path: avant-reinitialisation-*
+          retention-days: 90
+          if-no-files-found: error
+
+      # L'effacement lui-même. `DROP SCHEMA public CASCADE` emporte tables,
+      # types énumérés, index, contraintes — tout ce que la baseline crée.
+      # L'extension uuid-ossp part avec : l'API la recrée au démarrage
+      # (main.ts, branche « base vierge »).
+      - name: Effacer le schéma
+        run: |
+          psql "$DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DROP SCHEMA IF EXISTS public CASCADE;
+          CREATE SCHEMA public;
+          GRANT ALL ON SCHEMA public TO CURRENT_USER;
+          GRANT ALL ON SCHEMA public TO public;
+          SQL
+          echo "Schéma public recréé, vide."
+
+      - name: Vérifier que la base est bien vierge
+        run: |
+          RESTE=$(psql "$DB_URL" -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
+          echo "Tables restantes dans public : $RESTE"
+          if [ "$RESTE" != "0" ]; then
+            echo "::error::Le schéma n'est pas vide — ne pas redéployer avant d'avoir compris."
+            exit 1
+          fi
+          echo "### Base réinitialisée" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Sauvegarde conservée 90 jours dans les artefacts de ce run." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Suite :** redéployer julaba-api (Manual Deploy), puis créer un compte depuis l'inscription de l'application. Le code sera \`0000\`." >> "$GITHUB_STEP_SUMMARY"
