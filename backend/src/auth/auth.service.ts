@@ -6,6 +6,7 @@ import { Repository, LessThan } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
+import { attenteApresEchecs, essaisAvantAttente, attenteEnClair, estVerrouHeriteSansFin } from './verrou-pin';
 import * as crypto from 'crypto';
 import { randomBytes } from 'crypto';
 import { User, UserStatus, UserRole } from '../users/entities/user.entity';
@@ -21,8 +22,9 @@ import { NotificationsService } from '../notifications/notifications.service';
 const MAX_SESSIONS_PER_USER = 5;
 // Verrouillage PIN/connexion acteur : 9 échecs cumulés -> blocage SANS expiration.
 // Matérialisé par une date très lointaine ; seul un identificateur le lève.
-const PIN_MAX_FAILED_ATTEMPTS = 9;
-const PIN_LOCK_FAR_FUTURE_MS = 100 * 365 * 24 * 60 * 60 * 1000;
+// L'ancienne politique (9 échecs -> verrou de 100 ans) a été remplacée par une
+// ÉCHELLE D'ATTENTE : voir verrou-pin.ts, qui explique pourquoi un blocage
+// définitif coûtait sa caisse à une marchande qui hésite sur son code.
 const BO_ROLES = ['super_admin', 'admin_general', 'admin_national', 'gestionnaire_zone', 'operateur_terrain'];
 const ACTEUR_ROLES = ['marchand', 'producteur', 'cooperateur', 'institution', 'identificateur'];
 const DEFAULT_PASSWORD_BO = '123456';
@@ -213,12 +215,24 @@ export class AuthService {
       throw new UnauthorizedException('Identifiants incorrects');
     }
 
-    // Verrouillage actif (sans expiration) : levé uniquement par un identificateur.
+    // Verrou HÉRITÉ de l'ancienne politique (100 ans) : il n'expire jamais. La
+    // règle qui l'a posé n'existe plus, donc on le lève au lieu de le subir —
+    // sinon les comptes bloqués avant ce correctif le resteraient à jamais.
+    if (estVerrouHeriteSansFin(user.lockedUntil)) {
+      await this.userRepository.update(user.id, { failedPinAttempts: 0, lockedUntil: null });
+      user.lockedUntil = null;
+      user.failedPinAttempts = 0;
+    }
+
+    // Attente en cours : on ne vérifie même pas le code, et on DIT combien de
+    // temps il reste. Un « reviens plus tard » sans durée n'aide personne.
     if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+      const resteMs = user.lockedUntil.getTime() - Date.now();
       throw new UnauthorizedException({
-        message: 'Compte bloqué. Contacte ton identificateur pour le débloquer.',
+        message: `Trop d'essais. Attends ${attenteEnClair(resteMs)}, puis réessaie.`,
         error: 'Unauthorized',
         locked: true,
+        attenteMs: resteMs,
       });
     }
 
@@ -226,18 +240,28 @@ export class AuthService {
     if (!valid) {
       this.logger.warn(`Echec login: ${loginDto.email || loginDto.phone} depuis ${ipAddress}`);
       const attempts = (user.failedPinAttempts ?? 0) + 1;
-      if (attempts >= PIN_MAX_FAILED_ATTEMPTS) {
-        const farFuture = new Date(Date.now() + PIN_LOCK_FAR_FUTURE_MS);
-        await this.userRepository.update(user.id, { failedPinAttempts: attempts, lockedUntil: farFuture });
-        await this.notifyIdentificateursVerrouillage(user);
+      const attente = attenteApresEchecs(attempts);
+      if (attente > 0) {
+        const jusqua = new Date(Date.now() + attente);
+        await this.userRepository.update(user.id, { failedPinAttempts: attempts, lockedUntil: jusqua });
+        // Les identificateurs restent prévenus à partir du palier d'une heure :
+        // c'est le moment où quelqu'un a peut-être vraiment besoin d'aide.
+        if (attente >= 60 * 60 * 1000) await this.notifyIdentificateursVerrouillage(user);
         throw new UnauthorizedException({
-          message: 'Compte bloqué. Contacte ton identificateur pour le débloquer.',
+          message: `Trop d'essais. Attends ${attenteEnClair(attente)}, puis réessaie.`,
           error: 'Unauthorized',
           locked: true,
+          attenteMs: attente,
         });
       }
       await this.userRepository.update(user.id, { failedPinAttempts: attempts });
-      throw new UnauthorizedException('Identifiants incorrects');
+      // On PRÉVIENT avant le palier : rien ne l'annonçait, on y tombait sans le
+      // voir venir. L'écran et la voix s'appuient sur `essaisRestants`.
+      throw new UnauthorizedException({
+        message: 'Identifiants incorrects',
+        error: 'Unauthorized',
+        essaisRestants: essaisAvantAttente(attempts),
+      });
     }
     if (user.status === UserStatus.SUSPENDU) throw new UnauthorizedException('Compte suspendu');
     if (user.status === UserStatus.REJETE) throw new UnauthorizedException('Compte rejeté');

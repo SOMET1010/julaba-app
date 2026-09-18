@@ -26,6 +26,7 @@ import type {
   AuthenticationResponseJSON,
 } from '@simplewebauthn/types';
 import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
+import { attenteApresEchecs, essaisAvantAttente, estVerrouHeriteSansFin } from './verrou-pin';
 import { AuditService } from '../audit/audit.service';
 import { PinCryptoService } from './pin-crypto.service';
 import { stripSensitiveUserFields } from '../users/sanitize-user.util';
@@ -33,8 +34,7 @@ import { stripSensitiveUserFields } from '../users/sanitize-user.util';
 // Verrouillage PIN acteur : 9 échecs cumulés -> blocage SANS expiration temporelle.
 // Le blocage est matérialisé par une date très lointaine (~100 ans) ; seul
 // l'endpoint de déblocage identificateur le lève (remise à zéro).
-const PIN_MAX_FAILED_ATTEMPTS = 9;
-const PIN_LOCK_FAR_FUTURE_MS = 100 * 365 * 24 * 60 * 60 * 1000;
+// Politique déplacée dans verrou-pin.ts : une échelle d'attente, pas un mur.
 
 @Controller('auth')
 export class AuthController {
@@ -241,9 +241,17 @@ export class AuthController {
     const user = await this.userRepo.findOne({ where: { id: req.user.id } });
     if (!user || !user.pinCodeHash) return { valid: false };
 
-    // Blocage actif (sans expiration) : on ne vérifie même pas le PIN.
+    // Verrou hérité de l'ancienne politique (100 ans) : la règle qui l'a posé
+    // n'existe plus, on le lève au lieu de le subir.
+    if (estVerrouHeriteSansFin(user.lockedUntil)) {
+      await this.userRepo.update(user.id, { failedPinAttempts: 0, lockedUntil: null });
+      user.lockedUntil = null;
+      user.failedPinAttempts = 0;
+    }
+
+    // Attente en cours : on ne vérifie même pas le PIN, et on dit combien il reste.
     if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
-      return { valid: false, locked: true };
+      return { valid: false, locked: true, attenteMs: user.lockedUntil.getTime() - Date.now() };
     }
 
     const valid = await bcrypt.compare(body.pin, user.pinCodeHash);
@@ -253,14 +261,16 @@ export class AuthController {
     }
 
     const attempts = (user.failedPinAttempts ?? 0) + 1;
-    if (attempts >= PIN_MAX_FAILED_ATTEMPTS) {
-      // Date très lointaine = blocage sans expiration (déblocage identificateur uniquement).
-      const farFuture = new Date(Date.now() + PIN_LOCK_FAR_FUTURE_MS);
-      await this.userRepo.update(user.id, { failedPinAttempts: attempts, lockedUntil: farFuture });
-      return { valid: false, locked: true };
+    const attente = attenteApresEchecs(attempts);
+    if (attente > 0) {
+      await this.userRepo.update(user.id, {
+        failedPinAttempts: attempts,
+        lockedUntil: new Date(Date.now() + attente),
+      });
+      return { valid: false, locked: true, attenteMs: attente };
     }
     await this.userRepo.update(user.id, { failedPinAttempts: attempts });
-    return { valid: false, locked: false };
+    return { valid: false, locked: false, essaisRestants: essaisAvantAttente(attempts) };
   }
 
   @Post('acteur/:id/debloquer-pin')

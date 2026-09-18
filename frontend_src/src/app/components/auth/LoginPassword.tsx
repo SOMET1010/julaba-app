@@ -45,33 +45,28 @@ import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
  * BACKLOG ESCALATION P0 BACKEND (à traiter côté serveur, hors périmètre frontend) :
  * 1. /auth/check-phone : timing attack possible (énumération comptes existants)
  *    -> backend doit retourner réponse uniforme + délai constant
- * 2. /auth/login : rate limit côté serveur OBLIGATOIRE
- *    -> loginAttempts clientside (RAM) est cosmétique, contournable par refresh
+ * 2. /auth/login : rate limit côté serveur — FAIT le 18/09/2026. L'échelle
+ *    d'attente vit dans backend/src/auth/verrou-pin.ts, le compteur RAM de cet
+ *    écran (cosmétique, contournable par un rechargement) a été supprimé.
  * 3. TEST_PHONES bypass régex actif en PRODUCTION (décision métier ANSUT)
  *    -> backend doit logger ces accès + valider liste autorisée
  * Ne PAS retirer ces protections frontend tant que le backend ne les implémente pas.
  */
-const loginAttempts: Record<string, { count: number; lastAttempt: number }> = {};
-// Blocage progressif des tentatives PIN : paliers de 3 échecs consécutifs.
-const PALIER_STEP = 3;
-const PALIER_1 = 3;   // 3 échecs  -> blocage temporaire court
-const PALIER_2 = 6;   // 6 échecs  -> blocage temporaire moyen
-const PALIER_3 = 9;   // 9 échecs  -> blocage total (déblocage identificateur, cosmétique pour l'instant)
-const DUREE_1 = 5 * 60 * 1000;   // 5 minutes
-const DUREE_2 = 15 * 60 * 1000;  // 15 minutes
-/**
- * Durée de blocage (ms) déclenchée par `count` échecs consécutifs.
- * - null      : aucun palier atteint, pas de blocage.
- * - Infinity  : palier 3 atteint, blocage total (déblocage identificateur).
- * - autre     : durée du blocage temporaire (paliers 1 et 2).
- */
-function dureeBlocagePalier(count: number): number | null {
-  if (count >= PALIER_3) return Infinity;
-  if (count % PALIER_STEP !== 0) return null;
-  if (count >= PALIER_2) return DUREE_2;
-  if (count >= PALIER_1) return DUREE_1;
-  return null;
-}
+// PLUS DE COMPTEUR ICI, ET C'EST LE CORRECTIF DU 18/09/2026.
+//
+// Cet écran tenait sa propre échelle de paliers (3 → 5 min, 6 → 15 min, 9 →
+// blocage total), en mémoire JavaScript. Son propre commentaire l'avouait :
+// « cosmétique pour l'instant ». Elle disparaissait au moindre rechargement ou
+// à la réinstallation de l'APK — donc elle ne protégeait rien.
+//
+// Pendant ce temps le SERVEUR, lui, n'avait aucun palier : il comptait jusqu'à
+// 9 puis posait un verrou de 100 ans. L'intention douce était décorative, la
+// règle brutale était réelle.
+//
+// L'échelle vit désormais côté serveur (backend/src/auth/verrou-pin.ts), où
+// elle compte vraiment, et elle n'est JAMAIS définitive. Cet écran ne fait plus
+// que DIRE ce que le serveur répond : combien d'essais restent, ou combien de
+// temps attendre.
 /**
  * Numéros de test attribués au client institutionnel ANSUT pour la recette.
  * Ces numéros bypassent la regex de préfixe opérateur (01/05/07/09/21/25/27)
@@ -738,24 +733,13 @@ export function LoginPassword() {
     };
   }, []);
 
-  const isPhoneLocked = (phoneNum: string): boolean => {
-    const entry = loginAttempts[phoneNum];
-    if (!entry) return false;
-    const duree = dureeBlocagePalier(entry.count);
-    if (duree === null) return false;              // aucun palier de blocage atteint
-    if (duree === Infinity) return true;           // palier 3 : blocage total
-    // Paliers 1/2 : verrou actif tant que la durée n'est pas écoulée.
-    // Le compteur n'est jamais supprimé ici : il continue de monter vers le palier suivant.
-    return Date.now() - entry.lastAttempt < duree;
+  /** Une attente, dite comme on la dirait à quelqu'un qui n'a pas de montre. */
+  const attenteEnClair = (ms: number): string => {
+    const minutes = Math.max(1, Math.round(ms / 60000));
+    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    const heures = Math.round(minutes / 60);
+    return `${heures} heure${heures > 1 ? 's' : ''}`;
   };
-
-  const recordFailedAttempt = (phoneNum: string) => {
-    if (!loginAttempts[phoneNum]) loginAttempts[phoneNum] = { count: 0, lastAttempt: Date.now() };
-    loginAttempts[phoneNum].count++;
-    loginAttempts[phoneNum].lastAttempt = Date.now();
-  };
-
-  const resetAttempts = (phoneNum: string) => { delete loginAttempts[phoneNum]; };
 
   // Mémorise la personne sur CE téléphone après une entrée réussie (lot 1) —
   // jamais bloquant : si le stockage échoue, la connexion continue normalement.
@@ -812,16 +796,6 @@ export function LoginPassword() {
     if (phone.length !== 10) { setError('Le numéro doit contenir 10 chiffres'); return; }
     if (import.meta.env.DEV && phone === '0501604040') { setShowDevButton(true); setError(''); return; }
     if (!pwd || pwd.length === 0) { setError('Entre ton mot de passe'); return; }
-    if (isPhoneLocked(phone)) {
-      const duree = dureeBlocagePalier(loginAttempts[phone].count);
-      if (duree === Infinity) {
-        setError('Compte bloqué. Contacte ton identificateur pour le débloquer.');
-      } else if (duree !== null) {
-        const remainingTime = Math.max(1, Math.ceil((duree - (Date.now() - loginAttempts[phone].lastAttempt)) / 60000));
-        setError(`Compte bloqué. Réessaie dans ${remainingTime} minutes.`);
-      }
-      return;
-    }
     setIsLoading(true); setError('');
     // Espion de connexion : trace l'URL réellement appelée + le résultat, visible
     // dans « 🐞 Rapport de test ». Permet de diagnostiquer « Erreur de connexion »
@@ -872,27 +846,29 @@ export function LoginPassword() {
         }
         // Source de vérité backend : verrouillage total après 9 échecs cumulés.
         // Prioritaire sur le compteur RAM (qui ne sert qu'à l'affichage progressif 5/15 min).
+        // ATTENTE EN COURS. Le serveur donne la durée : on la dit, et surtout on
+        // la FAIT ENTENDRE. « Compte bloqué » sans durée ni voix, pour quelqu'un
+        // qui ne lit pas, c'est une caisse qui disparaît sans explication.
         if (result.locked === true) {
-          resetAttempts(phone);
-          setError('Compte bloqué. Contacte ton identificateur pour le débloquer.');
+          const attente = typeof result.attenteMs === 'number' ? result.attenteMs : 0;
+          const message = attente > 0
+            ? `Trop d'essais. Attends ${attenteEnClair(attente)}, puis réessaie.`
+            : "Trop d'essais. Attends un moment, puis réessaie.";
+          setError(message);
+          try { parle(message); } catch { /* la voix n'est jamais bloquante */ }
           setPinInput(""); setIsLoading(false); return;
         }
-        recordFailedAttempt(phone);
-        const count = loginAttempts[phone].count;
-        const duree = dureeBlocagePalier(count);
-        if (duree === Infinity) {
-          setError('Compte bloqué. Contacte ton identificateur pour le débloquer.');
-        } else if (duree !== null) {
-          const minutes = Math.round(duree / 60000);
-          setError(`Compte bloqué. Réessaie dans ${minutes} minutes.`);
-        } else {
-          const prochainPalier = count < PALIER_1 ? PALIER_1 : count < PALIER_2 ? PALIER_2 : PALIER_3;
-          const attemptsLeft = prochainPalier - count;
-          setError(`Identifiants incorrects. ${attemptsLeft} tentative${attemptsLeft > 1 ? 's' : ''} restante${attemptsLeft > 1 ? 's' : ''} avant blocage.`);
-        }
+        // AVERTISSEMENT AVANT LE PALIER. Rien ne prévenait : on tombait dans
+        // l'attente sans la voir venir. Le compte des essais vient du SERVEUR —
+        // le compteur local d'avant mentait dès le premier rechargement.
+        const restants = typeof result.essaisRestants === 'number' ? result.essaisRestants : null;
+        const message = restants !== null && restants <= 2
+          ? `Ce n'est pas le bon code. Attention : encore ${restants} essai${restants > 1 ? 's' : ''}, après il faudra attendre.`
+          : "Ce n'est pas le bon code. Réessaie.";
+        setError(message);
+        try { parle(message); } catch { /* la voix n'est jamais bloquante */ }
         setPinInput(""); setIsLoading(false); return;
       }
-      resetAttempts(phone);
       // Apprentissage 'auto' : on note comment elle s'est identifiée (clavier/voix).
       // APPRENTISSAGE 'auto' — CORRECTIF. On notait le DERNIER canal utilisé.
       // Or tous les messages d'échec de la dictée renvoyaient au clavier : une
