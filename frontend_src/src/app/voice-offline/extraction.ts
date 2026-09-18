@@ -5,6 +5,17 @@ export interface ExtractionResult {
   produit: string | null;
   quantite: number | null;
   montant: number | null;
+  /** L'UNITÉ RÉELLEMENT PRONONCÉE — « tas », « sac », « kilo »…, ou null.
+   *
+   *  Relevé par Patrick le 18/09 : le parseur SAVAIT traverser ces mots (ils
+   *  sont dans MOTS_UNITE, pour rattacher le nombre au produit) mais les
+   *  jetait ensuite. Or l'unité décide du prix : si elle dit « un tas de
+   *  piment » et que son catalogue dit « Piment, 500 F le KILO », reprendre
+   *  500 F serait faux — et faux sur son argent.
+   *
+   *  Ce champ n'est pas utilisé pour apparier : il sert à savoir si l'on PEUT
+   *  reprendre le prix du catalogue sans rien inventer. */
+  uniteParlee: string | null;
 }
 
 // ──────────────────────────────────────────────
@@ -183,9 +194,11 @@ export function extraire(transcription: string): ExtractionResult {
     }
   }
 
+  let uniteParlee: string | null = null;
+
   // 3. Tokens numériques
   const numTokens = extractNumberTokens(mots);
-  if (numTokens.length === 0) return { intention, produit, quantite: null, montant: null };
+  if (numTokens.length === 0) return { intention, produit, quantite: null, montant: null, uniteParlee };
 
   // ────────────────────────────────────────────────────────────────────
   // RÈGLES DE PRÉCÉDENCE — immuable, chaque règle s'applique ou non,
@@ -223,6 +236,11 @@ export function extraire(transcription: string): ExtractionResult {
       }
       if (tousValides) {
         marqueQuantite.add(idx);
+        // On retient au passage le mot d'unité prononcé (« un TAS de piment »).
+        // « de » n'en est pas un : c'est une liaison, elle ne dit rien du prix.
+        for (let k = tok.end + 1; k < produitStart; k++) {
+          if (mots[k] !== 'de') { uniteParlee = mots[k]; break; }
+        }
         break; // un seul candidat quantité par adjacence
       }
     }
@@ -265,7 +283,7 @@ export function extraire(transcription: string): ExtractionResult {
     quantite = null;
   }
 
-  return { intention, produit, quantite, montant };
+  return { intention, produit, quantite, montant, uniteParlee };
 }
 
 // ──────────────────────────────────────────────
