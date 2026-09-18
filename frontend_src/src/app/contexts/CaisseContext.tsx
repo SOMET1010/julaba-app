@@ -279,21 +279,66 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const uid = appUser?.id;
     if (!uid) return;
+
+    // UNE VENTE QUI RESTE EN FILE DOIT ÊTRE RETENTÉE — correctif du 18/09/2026.
+    //
+    // `synchroniser` rend `reste`, et personne ne le lisait. Sur une erreur
+    // PASSAGÈRE (un 503 de deux secondes au retour du réseau), la boucle
+    // s'arrête et les opérations restent en file. Le prochain essai n'arrivait
+    // qu'au prochain montage ou au prochain événement « online » — qui ne
+    // vient jamais si le téléphone reste connecté. Une vente de 1 500 F
+    // pouvait ainsi dormir indéfiniment : pas en lettre morte, donc AUCUNE
+    // alerte, et absente du chiffre d'affaires.
+    //
+    // On relance donc nous-mêmes, en espaçant : 5 s, 15 s, 1 min, puis toutes
+    // les 5 minutes. L'espacement protège un réseau de marché déjà fragile ;
+    // l'absence de limite protège l'argent, qui ne doit jamais être abandonné.
+    const DELAIS_MS = [5000, 15000, 60000];
+    const DELAI_MAX_MS = 5 * 60 * 1000;
+    let minuterie: ReturnType<typeof setTimeout> | null = null;
+    let essai = 0;
+    let arrete = false;
+
+    const programmerRelance = () => {
+      if (arrete) return;
+      const delai = DELAIS_MS[essai] ?? DELAI_MAX_MS;
+      essai++;
+      minuterie = setTimeout(() => { void sync(); }, delai);
+    };
+
     const sync = async () => {
+      if (arrete) return;
+      if (minuterie) { clearTimeout(minuterie); minuterie = null; }
       try {
         const avant = await offlineNbEchecs(uid).catch(() => 0);
-        const { ok, echecs } = await synchroniser(posterOperation, uid);
+        const { ok, echecs, reste } = await synchroniser(posterOperation, uid);
         if (ok > 0) await loadTransactions();
         await rafraichirEchecs();
         if (echecs > avant) {
           const n = echecs - avant;
           toast.error(`${n} opération${n > 1 ? 's' : ''} hors-ligne refusée${n > 1 ? 's' : ''} — à revoir`);
         }
-      } catch { /* on retentera au prochain 'online' */ }
+        // Il reste de l'argent en attente : on retentera, sans rien demander
+        // à la marchande. Un compteur qui ne descend pas est un compteur qui
+        // ment ; celui-ci finit toujours par descendre ou par basculer en
+        // lettre morte, qui elle est signalée.
+        if (reste > 0) programmerRelance();
+        else essai = 0;
+      } catch {
+        // Même un échec complet de la synchronisation doit être réessayé :
+        // ne rien faire ici, c'était abandonner la file jusqu'au prochain
+        // redémarrage de l'application.
+        programmerRelance();
+      }
     };
-    sync(); // rattrape une file laissée par une session hors-ligne précédente — la SIENNE uniquement
+
+    void sync(); // rattrape une file laissée par une session hors-ligne précédente — la SIENNE uniquement
     window.addEventListener('online', sync);
-    return () => window.removeEventListener('online', sync);
+    return () => {
+      arrete = true;
+      if (minuterie) clearTimeout(minuterie);
+      window.removeEventListener('online', sync);
+    };
   }, [appUser?.id, rafraichirEchecs]);
 
   // ── Persistance du panier ──────────────────────────────────

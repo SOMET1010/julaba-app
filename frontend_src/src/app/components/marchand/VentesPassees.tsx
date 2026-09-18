@@ -229,17 +229,30 @@ export function VentesPassees() {
 
   useEffect(() => { reloadTransactions(); }, []);
 
+  // LES CRÉDITS SONT CHARGÉS AU MONTAGE, PAS SEULEMENT SUR LEUR ONGLET —
+  // correctif du 18/09/2026.
+  //
+  // `fetchCredits` n'était appelé que si l'onglet « Crédits » était choisi. Or
+  // le pilote est en espèces (CAISSE_CREDIT_ACTIF = false) et cet onglet
+  // n'existe pas : les crédits n'étaient donc JAMAIS chargés, pendant que
+  // « Toutes » promettait de les inclure (voir la convention A ci-dessous) et
+  // que tout le mécanisme pour le faire était déjà écrit juste en dessous.
+  // Une marchande avec 10 000 F d'espèces et 5 000 F de crédits historiques
+  // voyait 10 000 F en « Toutes ».
+  //
+  // On ne réactive RIEN : aucun crédit ne peut être créé pendant le pilote.
+  // On se contente d'honorer ce que l'écran affirme déjà pour ceux qui
+  // existent. L'échec reste silencieux — sans crédit, l'historique espèces
+  // doit rester juste et lisible.
   useEffect(() => {
-    if (sourceFilter === 'credits') {
-      setCreditsLoading(true);
-      fetchCredits()
-        .then(r => { setCredits(r.credits || []); setTotalDu(r.total_du || 0); })
-        .catch((err: unknown) => {
-          console.error('[VentesPassees] erreur chargement crédits', err);
-        })
-        .finally(() => setCreditsLoading(false));
-    }
-  }, [sourceFilter]);
+    setCreditsLoading(true);
+    fetchCredits()
+      .then(r => { setCredits(r.credits || []); setTotalDu(r.total_du || 0); })
+      .catch((err: unknown) => {
+        console.error('[VentesPassees] erreur chargement crédits', err);
+      })
+      .finally(() => setCreditsLoading(false));
+  }, []);
 
   const handleMarquerPaye = async (id: string) => {
     try {
