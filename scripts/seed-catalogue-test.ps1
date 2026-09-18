@@ -89,8 +89,10 @@ foreach ($p in $produits) {
 Write-Host ""
 Write-Host ("{0} / {1} produits ajoutes." -f $ajoutes, $produits.Count)
 Write-Host ""
-Write-Host "Rouvre " Caisse du jour " : chaque produit doit avoir sa propre image."
+Write-Host 'Rouvre la Caisse du jour : chaque produit doit avoir sa propre image.'
 Write-Host ""
 Write-Host "Le test qui compte, maintenant :" -ForegroundColor Cyan
-Write-Host "  bouton VERT de Tata -> " j'ai vendu trois tomates a cinq cents francs ""
-Write-Host "  puis releve ce qui est ecrit dans " TU AS DIT ", mot pour mot."
+Write-Host '  bouton VERT de Tata, puis dire :'
+Write-Host '    j''ai vendu trois tomates a cinq cents francs'
+Write-Host '  puis relever ce qui est ecrit dans TU AS DIT, mot pour mot.'
+
