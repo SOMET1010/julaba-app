@@ -474,8 +474,25 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
             // doigt reste une ligne où la voix a servi), là où `totalExact` est
             // invalidé — le total dicté, lui, ne vaut plus pour la nouvelle
             // quantité.
-            ? { ...item, quantite: item.quantite + quantite, totalExact: undefined,
-                ...(origine ? { origine } : {}) }
+            // LA FUSION NE DOIT PAS PERDRE D'ARGENT — corrigé le 18/09/2026.
+            // Avant : la quantité s'additionnait, mais le PRIX de la première
+            // ligne était conservé et `totalExact` jeté. « 1 tomate à 500 »
+            // puis « 1 tomate à 700 » donnait 2 × 500 = 1 000 F au lieu de
+            // 1 200 F. Elle perdait 200 F, sur son propre panier, sans rien
+            // voir.
+            // Désormais on ADDITIONNE les deux totaux réels. Le total de
+            // chaque côté est son `totalExact` s'il en a un (montant négocié
+            // ou dicté), sinon prix × quantité. La règle vaut aussi pour le
+            // tactile, où elle ne change rien : prix × q1 + prix × q2 est
+            // exactement prix × (q1+q2).
+            ? {
+                ...item,
+                quantite: item.quantite + quantite,
+                totalExact:
+                  (item.totalExact ?? item.prix * item.quantite) +
+                  (totalExact ?? prixEffectif(product) * quantite),
+                ...(origine ? { origine } : {}),
+              }
             : item)
       // Prix effectif : applique automatiquement le prix promo s'il est actif.
       : [...cart, {
@@ -551,6 +568,16 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   }, [appUser?.id]);
 
   // ── Products ───────────────────────────────────────────────
+  /** Repli sur le catalogue mémorisé du téléphone. Partagé par les DEUX
+   *  chemins d'échec (réponse en erreur, et coupure réseau) : c'est leur
+   *  divergence qui laissait un écran vide sur un simple 503. */
+  const restaurerDepuisCache = (cacheKey: string) => {
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (raw) setProducts(JSON.parse(raw));
+    } catch { /* un cache illisible ne doit jamais casser l'écran */ }
+  };
+
   const loadProducts = useCallback(async () => {
     const cacheKey = (() => {
       try { const r = localStorage.getItem('julaba_auth_user'); const id = r ? (JSON.parse(r).id || 'anon') : 'anon'; return `julaba_cache_produits_${id}`; }
@@ -558,7 +585,17 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     })();
     try {
       const res = await fetch(`${API_URL}/caisse/produits`, { credentials: 'include' });
-      if (!res.ok) return;
+      if (!res.ok) {
+        // UN SERVEUR QUI RÉPOND MAL EST PIRE QU'UN SERVEUR ABSENT — corrigé le
+        // 18/09/2026. Ce `return` laissait le catalogue VIDE sur un 500/503,
+        // alors que le cache local contenait ses produits et leurs prix : une
+        // coupure franche (traitée dans le `catch` plus bas) était donc mieux
+        // servie qu'un réseau dégradé. Sur un marché, le réseau dégradé est le
+        // cas NORMAL — et un catalogue vide, c'est une marchande qui ne peut
+        // plus rien vendre ni faire dire un prix à Tata.
+        restaurerDepuisCache(cacheKey);
+        return;
+      }
       const data = await res.json();
       const produits = data.produits || [];
       const mapped = produits.map((p: any) => ({
@@ -577,7 +614,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     } catch (err: unknown) {
       console.warn('[CaisseContext] loadProducts failed:', err instanceof Error ? err.message : err);
       // Hors-ligne : servir les derniers produits connus.
-      try { const raw = localStorage.getItem(cacheKey); if (raw) setProducts(JSON.parse(raw)); } catch { /* ignore */ }
+      restaurerDepuisCache(cacheKey);
     }
   }, []);
 

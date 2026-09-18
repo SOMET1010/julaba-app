@@ -14,6 +14,17 @@
 import { eventBus, EVENTS } from '../services/eventBus';
 import { topProduitsVentes, venteComptee } from '../services/statsVente';
 import { beneficeDepuisDetails } from '../services/margeVente';
+
+/**
+ * Le serveur a-t-il répondu ? `0` EST une réponse — c'est tout l'objet du
+ * correctif du 18/09 : distinguer « la marge vaut zéro » de « je ne sais pas ».
+ * Rendre `null` uniquement quand la valeur est absente ou illisible.
+ */
+function nombreOuNull(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { normalizeRole } from '../types/constants';
@@ -430,8 +441,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
           source: tx.source || 'kassa',
           category: tx.description ? tx.description.toLowerCase() : (tx.produit || '').toLowerCase(),
           details: tx.details || null,
-          totalBenefice: Number(tx.benefice) || beneficeDepuisDetails(tx.details),
-          totalMargin: Number(tx.marge) || beneficeDepuisDetails(tx.details),
+          // `??` ET NON `||` — corrigé le 18/09/2026. En JavaScript `0 || x`
+          // vaut `x` : un bénéfice serveur valant EXACTEMENT ZÉRO déclenchait
+          // donc le recalcul client, qui n'applique pas la même règle. Le
+          // serveur plafonne la marge sur le TOTAL de la vente ; le client la
+          // plafonne LIGNE PAR LIGNE. Sur une vente à deux lignes dont l'une
+          // part à perte, le serveur dit 0 (juste) et le client dit 300 (faux)
+          // — et c'est le faux qui s'affichait. Zéro est une réponse, pas une
+          // absence de réponse.
+          totalBenefice: nombreOuNull(tx.benefice) ?? beneficeDepuisDetails(tx.details),
+          totalMargin: nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
           statut: tx.statut,
@@ -1067,8 +1086,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
           montant: Number(tx.montant) || 0,
           source: tx.source || 'kassa',
           details: tx.details || null,
-          totalBenefice: Number(tx.benefice) || beneficeDepuisDetails(tx.details),
-          totalMargin: Number(tx.marge) || beneficeDepuisDetails(tx.details),
+          // `??` ET NON `||` — corrigé le 18/09/2026. En JavaScript `0 || x`
+          // vaut `x` : un bénéfice serveur valant EXACTEMENT ZÉRO déclenchait
+          // donc le recalcul client, qui n'applique pas la même règle. Le
+          // serveur plafonne la marge sur le TOTAL de la vente ; le client la
+          // plafonne LIGNE PAR LIGNE. Sur une vente à deux lignes dont l'une
+          // part à perte, le serveur dit 0 (juste) et le client dit 300 (faux)
+          // — et c'est le faux qui s'affichait. Zéro est une réponse, pas une
+          // absence de réponse.
+          totalBenefice: nombreOuNull(tx.benefice) ?? beneficeDepuisDetails(tx.details),
+          totalMargin: nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
           statut: tx.statut,
