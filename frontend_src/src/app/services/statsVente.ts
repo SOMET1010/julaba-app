@@ -21,6 +21,54 @@ export interface LigneVente {
   price?: number;
   /** 'validee' | 'annulee' | … — une vente annulee ne compte nulle part. */
   statut?: string;
+  /** Lignes réelles de la vente, telles que le panier les a envoyées.
+   *  C'est la SEULE source qui sache ce qui a vraiment été vendu quand une
+   *  transaction porte plusieurs produits. */
+  details?: unknown;
+}
+
+/** Une ligne du panier, telle que POSCaisse la construit. */
+interface LigneDetail {
+  nom?: string;
+  quantite?: number;
+  prix?: number;
+  total?: number;
+}
+
+/**
+ * Éclate une vente en ses vrais produits — correctif du 18/09/2026.
+ *
+ * LE DÉFAUT : le backend construit `produit` en JOIGNANT les noms
+ * (« Tomate, Banane »), et le top produits agrégeait tout le montant sous
+ * cette chaîne comme s'il s'agissait d'un article. Une vente de 2 tomates à
+ * 500 F et 1 banane à 300 F faisait apparaître un produit « Tomate, Banane »
+ * à 800 F — un article qui n'existe pas, et ni la tomate ni la banane
+ * n'apparaissaient à leur vraie valeur.
+ *
+ * Pour une marchande, « qu'est-ce qui se vend le mieux » est une décision
+ * d'achat : un faux produit en tête de liste l'oriente vers un stock qu'elle
+ * ne vendra jamais.
+ *
+ * Rendre `null` quand les détails sont inexploitables : l'appelant retombe
+ * alors sur l'ancien comportement plutôt que de perdre la vente.
+ */
+function eclaterEnProduits(t: LigneVente): { nom: string; qte: number; total: number }[] | null {
+  if (!Array.isArray(t.details) || t.details.length === 0) return null;
+  const lignes = (t.details as LigneDetail[])
+    .map((d) => {
+      const nom = typeof d?.nom === 'string' ? d.nom.trim() : '';
+      const qte = Number(d?.quantite) || 0;
+      // `total` est le montant exact de la ligne (il porte le prix négocié) ;
+      // prix × quantité n'est qu'un repli.
+      const total = Number(d?.total) || (Number(d?.prix) || 0) * (qte || 1);
+      return { nom, qte, total };
+    })
+    .filter((l) => l.nom !== '');
+  if (lignes.length === 0) return null;
+  // Si les lignes ne totalisent rien, elles n'apprennent rien : on préfère
+  // l'ancien comportement à une statistique à zéro.
+  if (lignes.reduce((s, l) => s + l.total, 0) <= 0) return null;
+  return lignes;
 }
 
 export interface TopProduit {
@@ -90,14 +138,19 @@ export function topProduitsVentes(transactions: LigneVente[], limit = 5): TopPro
   return transactions
     .filter((t) => t.type === 'vente' && venteComptee(t))
     .reduce((acc, t) => {
-      const total = montantLigne(t);
-      const qte = Number(t.quantity) || 0;
-      const found = acc.find((p) => p.productName === t.productName);
-      if (found) {
-        found.quantity += qte;
-        found.total += total;
-      } else {
-        acc.push({ productName: t.productName, quantity: qte, total });
+      // Une vente à plusieurs produits est éclatée en ses vraies lignes ;
+      // sinon on garde la transaction entière, comme avant.
+      const parts = eclaterEnProduits(t) ?? [
+        { nom: t.productName, qte: Number(t.quantity) || 0, total: montantLigne(t) },
+      ];
+      for (const part of parts) {
+        const found = acc.find((p) => p.productName === part.nom);
+        if (found) {
+          found.quantity += part.qte;
+          found.total += part.total;
+        } else {
+          acc.push({ productName: part.nom, quantity: part.qte, total: part.total });
+        }
       }
       return acc;
     }, [] as TopProduit[])
