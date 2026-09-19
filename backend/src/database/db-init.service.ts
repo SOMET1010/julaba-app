@@ -237,6 +237,35 @@ export class DbInitService {
           created_at timestamptz DEFAULT now()
         );
       `);
+      // LA COLONNE `type` MANQUAIT ICI, ET C'ÉTAIT BLOQUANT — 19/09/2026.
+      //
+      // Le code l'ÉCRIT (`stock-restitution.ts` insère type='annulation') et la
+      // LIT (`stocks-rest.controller.ts` la sélectionne). Mais elle n'était
+      // créée que par la migration `1780400000000-LedgerMouvementType`, et sur
+      // une base vierge les migrations NE TOURNENT PAS : `computeBootDbFlags`
+      // renvoie synchronize:true, migrationsRun:false. `synchronize` ne la crée
+      // pas non plus — `stock_mouvements` n'a aucune entité TypeORM. DbInit
+      // était donc le seul mécanisme possible, et il ne le faisait pas.
+      //
+      // Conséquence sur tout déploiement neuf : annuler une vente échouait sur
+      // « column "type" does not exist », l'exception remontait hors de la
+      // transaction, et le ROLLBACK rendait la vente à nouveau valide —
+      // l'argent restait compté, le stock restait retranché, et la marchande
+      // entendait « Je n'ai pas pu annuler cette vente » sans recours. En
+      // parallèle, `GET /stocks/mouvements` répondait 500 en permanence.
+      //
+      // Ce que le défaut a coûté en plus : `annulation-remise-stock.spec.ts`
+      // appliquait cette migration LUI-MÊME dans son beforeAll. Le test qui
+      // aurait dû attraper le défaut réparait le schéma pour se rendre vert.
+      // Cette rustine est retirée dans le même commit.
+      //
+      // DDL identique à la migration (même type, même défaut) : c'est la règle
+      // « DbInit ⊆ migrations » de l'ADR-0002, que ce fichier revendique déjà
+      // pour `caisse_sessions`. Additif et idempotent — juste que la colonne
+      // existe déjà ou non.
+      await this.dataSource.query(
+        `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS type varchar NOT NULL DEFAULT 'vente';`,
+      );
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS idx_stock_mouvements_tx ON stock_mouvements (transaction_id);`,
       );

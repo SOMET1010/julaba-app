@@ -35,8 +35,8 @@ elle refera ce qui est déjà fait.
 | | |
 |---|---|
 | Branche de travail | **`claude/clever-allen-dnr8by`** |
-| Tête de branche | **`08abbde`** (local = distant, arbre propre) |
-| `main` | **`59b9142`** — 12 commits en retard |
+| Tête de branche | **`40dde11`** |
+| `main` | **`59b9142`** — 14 commits en retard |
 | Fusion vers `main` | **PAS faite. Aucune PR ouverte** (aucune n'a été demandée) |
 
 ### Portes, mesurées sur `08abbde`
@@ -52,7 +52,7 @@ npm run build -w backend                → vert
 # Invariants (PostgreSQL réel — à démarrer d'abord) :
 ./scripts/pg-test-local.sh start
 npx jest --config backend/jest-invariants.config.cjs --runInBand --forceExit
-                                        → 38 suites / 184 tests verts
+                                        → 39 suites / 188 tests verts
 ```
 
 ### Les 12 commits du 19/09, dans l'ordre
@@ -71,41 +71,42 @@ npx jest --config backend/jest-invariants.config.cjs --runInBand --forceExit
 | `01fd765` | ARGENT-2 | Les 2 défauts hors caisse reproduits **en ROUGE** |
 | `974de94` | ARGENT-2 | « revenus » = recette (67 000 → 40 000) + les alertes de rupture partent enfin |
 | `08abbde` | Dette | A3/B2/B3 vérifiés sans correction — **et B1 confirmé** |
+| `5777475` | Passation | État du 19/09, décision ouverte, pièges |
+| `40dde11` | **B1** | La colonne du ledger posée par DbInit + le garde-fou qui l'exige |
 
-## 🔴 LA SEULE DÉCISION OUVERTE — B1
+## ✅ B1 — CORRIGÉ le 19/09/2026
 
-`stock_mouvements.type` **n'existe pas sur une base neuve**. Elle n'est créée
-ni par le `CREATE TABLE` de `db-init.service.ts`, ni par `synchronize` (la
-table n'a aucune entité), ni par les migrations (base vierge →
-`migrationsRun: false`). Son seul créateur est la migration
-`1780400000000-LedgerMouvementType`.
+`stock_mouvements.type` n'était créée que par la migration
+`1780400000000-LedgerMouvementType`, qui ne tourne jamais sur une base vierge
+(`migrationsRun: false`). La table n'a aucune entité, donc `synchronize` ne la
+crée pas non plus. **DbInit était le seul mécanisme possible, et il ne le
+faisait pas.**
 
-**Pourquoi personne ne l'avait vu** : `annulation-remise-stock.spec.ts`
-applique cette migration **lui-même** dans son `beforeAll`. Le test qui aurait
-attrapé le défaut répare le schéma pour se rendre vert.
+Conséquence, avant correction, sur tout déploiement neuf : annuler une vente
+échouait sur `column "type" does not exist`, l'exception remontait hors de la
+transaction, et le rollback rendait la vente à nouveau valide — l'argent
+restait compté, le stock restait retranché, la marchande entendait « Je n'ai
+pas pu annuler cette vente » sans recours. `GET /stocks/mouvements` répondait
+500 en permanence.
 
-**Conséquence sur un déploiement neuf** : annuler une vente insère dans
-`stock_mouvements(type)` → échec Postgres → **rollback complet** → la vente
-redevient valide, l'argent reste compté, le stock reste retranché. Et
-`GET /stocks/mouvements` répond 500 en permanence.
+**Correctif** : la colonne est posée par DbInit, DDL identique à la migration
+(règle « DbInit ⊆ migrations », ADR-0002). Additif et idempotent — donc juste
+que la production porte déjà la colonne ou non. C'est ce qui a permis de
+trancher sans attendre : les deux options (a)/(b) menaient au même code.
 
-**Deux options, décision de Patrick, non tranchée :**
-- **(a)** corriger avant l'APK — une colonne ajoutée dans DbInit à côté des
-  `ADD COLUMN IF NOT EXISTS` déjà présents, plus un test qui ne rafistole pas
-  le schéma. Ce n'est pas un lot.
-- **(b)** APK tel quel, B1 en dette assumée — défendable **si** la base Render
-  existante porte déjà la colonne.
+**Ce qui l'avait masqué est retiré** : `annulation-remise-stock.spec.ts`
+appliquait la migration lui-même dans son `beforeAll`. Le test qui aurait
+attrapé le défaut réparait le schéma pour se rendre vert. Il CONSTATE
+désormais.
 
-**La requête qui tranche :**
-```sql
-SELECT column_name FROM information_schema.columns
- WHERE table_name = 'stock_mouvements' AND column_name = 'type';
-```
-Une ligne → (b) sans risque immédiat. Vide → l'annulation de vente est déjà
-cassée en production aujourd'hui.
+**Garde-fou** : `backend/test/invariants/schema-ledger-sans-migration.spec.ts`
+boote l'application comme la production le fait — DbInit seul, aucune
+migration — et vérifie les colonnes du ledger, la requête réelle du panneau
+« Derniers mouvements » et l'INSERT réel de la restitution. Il échouera le jour
+où du DDL sera ajouté à une migration sans être porté dans DbInit.
 
-**Après cette décision : APK terrain.** Patrick a explicitement exclu tout lot
-supplémentaire entre les deux.
+**Prochaine étape : APK terrain.** Patrick a explicitement exclu tout lot
+supplémentaire avant.
 
 ## Règles posées par Patrick le 19/09 — elles survivent à ce lot
 
@@ -157,7 +158,7 @@ supplémentaire entre les deux.
 
 | Constat | Où | Gravité |
 |---|---|---|
-| **B1** — `stock_mouvements.type` absent sur base neuve | `docs/dette/AUDIT-BASE-constats-verifies.md` | **Bloquant** — décision ouverte ci-dessus |
+| ~~**B1**~~ — `stock_mouvements.type` absent sur base neuve | `docs/dette/AUDIT-BASE-constats-verifies.md` | ✅ **corrigé**, avec garde-fou |
 | **B2** — l'unité d'un mouvement passé est relue du catalogue actuel (5 tas deviennent 5 kg) | idem | Dégrade l'information |
 | **B3** — `manquant` écrit, jamais lu ; la vente hors stock est exclue de l'affichage | idem | Dégrade l'information |
 | **A3** — un acompte de crédit n'écrit aucune transaction de caisse → écart de clôture fantôme | idem | **Latent** (`CAISSE_CREDIT_ACTIF = false`) |

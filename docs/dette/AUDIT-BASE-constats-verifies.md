@@ -19,8 +19,23 @@ rouge-là voudra dire « le défaut est réparé, mets ce fichier à jour », pa
 
 ## B1 — `stock_mouvements.type` n'existe pas sur une base neuve
 
-**Statut : CONFIRMÉ. La source a été identifiée, le constat sort de
-« écart d'environnement à expliquer ».**
+**Statut : ✅ CORRIGÉ le 19/09/2026.** La colonne est désormais posée par
+DbInit (`ALTER TABLE … ADD COLUMN IF NOT EXISTS type varchar NOT NULL DEFAULT
+'vente'`), DDL identique à la migration — règle « DbInit ⊆ migrations »
+(ADR-0002). Additif et idempotent : juste que la colonne existe déjà en
+production ou non.
+
+La rustine qui masquait le défaut a été retirée de
+`annulation-remise-stock.spec.ts` : ce test CONSTATE désormais le schéma au
+lieu de le fabriquer. Et un invariant dédié,
+`backend/test/invariants/schema-ledger-sans-migration.spec.ts`, boote
+l'application comme la production le fait (DbInit seul, aucune migration) et
+vérifie les colonnes, la requête réelle du panneau « Derniers mouvements » et
+l'INSERT réel de la restitution. Non-vacuité prouvée : en retirant la ligne de
+DbInit, ses trois assertions tombent avec les erreurs exactes de production.
+
+**Le diagnostic ci-dessous est conservé** — c'est lui qui explique pourquoi le
+défaut avait survécu.
 
 ### Ce qui est prouvé
 
@@ -167,6 +182,16 @@ réactivation du crédit.**
 Aucune correction. Aucune migration. Aucun changement visible par la marchande.
 Le lot de vérification s'arrête ici, conformément à l'arbitrage.
 
-Un seul de ces quatre constats est, à mon sens, bloquant avant un APK terrain :
-**B1**, parce qu'il casse l'annulation d'une vente sur tout déploiement neuf —
-et qu'annuler une vente, c'est de l'argent réel.
+**B1 a été corrigé** (voir son statut ci-dessus) : le correctif est additif et
+idempotent, donc juste que la production porte déjà la colonne ou non. Les
+trois autres restent en dette assumée — B2 et B3 dégradent l'information sans
+perdre d'argent, A3 dort derrière `CAISSE_CREDIT_ACTIF = false`.
+
+**Reste utile à savoir, pas à décider** : si la base Render ne portait PAS la
+colonne, l'annulation de vente y était déjà cassée avant ce correctif. La
+requête le dit, et elle ne change rien au code à livrer :
+
+```sql
+SELECT column_name FROM information_schema.columns
+ WHERE table_name = 'stock_mouvements' AND column_name = 'type';
+```
