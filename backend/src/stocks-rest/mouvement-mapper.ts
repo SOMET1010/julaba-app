@@ -34,7 +34,18 @@ export interface MouvementStock {
   /** Vrai quand le stock ne couvrait pas la sortie. L'écran doit le DIRE. */
   hors_stock: boolean;
   produit_nom: string | null;
-  /** Unité FIGÉE au mouvement ; repli sur le catalogue pour les lignes anciennes. */
+  /**
+   * Unité FIGÉE au mouvement, ou `null`.
+   *
+   * ARG-02 — `null` n'est PAS un défaut d'affichage à combler : c'est une
+   * information. Il dit « cette sortie a été enregistrée avant qu'on fige
+   * l'unité, et personne ne sait dans quelle unité elle a été faite ». Aller
+   * la chercher dans le catalogue d'aujourd'hui donnerait une unité qui a l'air
+   * juste et qui peut être fausse — le catalogue a pu changer entre-temps,
+   * c'est précisément le problème.
+   *
+   * L'écran doit donc DIRE qu'il ne sait pas, jamais remplir le blanc.
+   */
   unite: string | null;
   date: string;
 }

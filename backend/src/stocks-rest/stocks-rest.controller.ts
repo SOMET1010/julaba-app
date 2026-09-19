@@ -14,10 +14,16 @@ export class StocksRestController {
 
   /**
    * Lecture SEULE du ledger append-only `stock_mouvements` (écrit par la caisse :
-   * ventes et annulations). Bornée au marchand courant. Ne montre que les vraies
-   * variations de stock (`quantite_retranchee <> 0`), les plus récentes d'abord.
+   * ventes et annulations). Bornée au marchand courant, les plus récentes d'abord.
+   *
+   * DOC-03 — cette description mentait. Elle annonçait encore un filtre
+   * `quantite_retranchee <> 0` supprimé par B3 le 19/09/2026 : elle décrivait
+   * le comportement que le correctif venait précisément d'enlever. Un
+   * commentaire qui décrit l'inverse du code est pire qu'un commentaire absent.
+   * Toutes les variations remontent désormais, y compris les ventes hors stock.
+   *
    * NB produit : les réapprovisionnements manuels ne passent pas par ce ledger
-   * (mise à jour directe du stock) → ils n'apparaissent pas encore ici.
+   * (mise à jour directe du stock) → ils n'apparaissent pas encore ici (STK-04).
    */
   private async lireMouvements(marchandId: string, produitId: string | null, limit: number) {
     const params: any[] = [marchandId];
@@ -28,12 +34,27 @@ export class StocksRestController {
     }
     params.push(limit);
     const rows = await this.repo.manager.query(
-      // DEUX CORRECTIFS, 19/09/2026.
+      // TROIS CORRECTIFS, 19/09/2026.
       //
-      // B2 — `COALESCE(sm.unite, p.unite)` : l'unité FIGÉE au mouvement gagne
-      // toujours. La jointure ne sert plus que de repli pour les mouvements
-      // écrits avant ce jour, qui n'ont pas d'unité figée — au mieux, faute de
-      // pouvoir l'inventer rétroactivement.
+      // B2 — l'unité est FIGÉE au mouvement (`sm.unite`).
+      //
+      // ARG-02 — ET ON NE RETOMBE PLUS SUR LE CATALOGUE. La première version
+      // écrivait `COALESCE(sm.unite, p.unite)` : pour les mouvements écrits
+      // avant B2, qui n'ont pas d'unité figée, elle allait la chercher dans le
+      // catalogue D'AUJOURD'HUI. C'était garder exactement le défaut qu'on
+      // prétendait corriger — une marchande qui repasse son piment du tas au
+      // kilo voyait ses anciennes sorties « −5 tas » devenir « −5 kg ». Aucune
+      // vente n'avait bougé : c'est le sens de son historique qui changeait
+      // sous elle.
+      //
+      // « Au mieux, faute de pouvoir l'inventer rétroactivement » était un
+      // mauvais raisonnement : une unité fausse n'est pas mieux qu'une unité
+      // absente, elle est pire — parce qu'elle a l'air juste. On renvoie donc
+      // `null`, l'écran le DIT, et personne ne lit un chiffre dans une unité
+      // qui n'est pas la sienne.
+      //
+      // La jointure sur `produits` disparaît avec le repli : plus rien ne la
+      // justifiait, et la laisser aurait invité à s'en resservir.
       //
       // B3 — le filtre `AND sm.quantite_retranchee <> 0` a disparu. Il excluait
       // de l'affichage toute vente faite hors stock (retranchée = 0), c'est-à-
@@ -42,10 +63,8 @@ export class StocksRestController {
       // disait ce qu'elle avait écoulé. `quantite_demandee` et `manquant`
       // remontent désormais pour que l'écran puisse le dire.
       `SELECT sm.id, sm.produit_nom, sm.quantite_demandee, sm.quantite_retranchee,
-              sm.manquant, sm.type, sm.created_at,
-              COALESCE(sm.unite, p.unite) AS unite
+              sm.manquant, sm.type, sm.created_at, sm.unite
          FROM stock_mouvements sm
-         LEFT JOIN produits p ON p.id = sm.produit_id
         WHERE sm.marchand_id = $1
           ${filtreProduit}
         ORDER BY sm.created_at DESC
