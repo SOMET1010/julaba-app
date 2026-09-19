@@ -5,6 +5,24 @@
  * ne décrivent pas une architecture : chacun reproduit une situation vécue par
  * une marchande.
  *
+ * ────────────────────────────────────────────────────────────────────────────
+ * RÈGLE PERMANENTE, posée par Patrick le 19/09/2026, après le cas de la place
+ * de marché :
+ *
+ *     UNIFIER UN APPEL NE SUFFIT PAS. Il faut vérifier que les deux appels
+ *     portent réellement LE MÊME SENS MÉTIER.
+ *
+ * La place de marché et la caisse appelaient toutes deux `/caisse/produits`.
+ * Techniquement, le même appel. Métier, deux choses opposées : d'un côté « mon
+ * catalogue », de l'autre « l'offre des autres vendeurs ». Les converger
+ * rendait FIABLE un contrat FAUX — un écran vide devenait un écran qui propose
+ * à la marchande d'acheter ses propres tomates.
+ *
+ * Avant toute convergence future : écrire la phrase « ces deux appels demandent
+ * la même chose au serveur, au sens métier ». Si elle ne s'écrit pas, on ne
+ * converge pas.
+ * ────────────────────────────────────────────────────────────────────────────
+ *
  * Lancer : npm run test:convergence-api
  */
 import { rafraichirSession } from './api-client.js';
