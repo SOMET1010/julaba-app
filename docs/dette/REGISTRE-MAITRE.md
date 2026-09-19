@@ -1,6 +1,11 @@
 # Registre maître de dette technique — JULABA
 
-**Photo fidèle de la branche `claude/clever-allen-dnr8by` à `5e55d57`**
+**Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
+**Révision 2 — après le contre-audit de Patrick du 19/09/2026 (`921301e`).**
+Deux fermetures rouvertes, une métrique corrigée, cinq dettes ajoutées, un P0
+requalifié. Le détail de chaque correction est dans la colonne « preuve ».
+
+État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
 
 Établi par Patrick, puis **vérifié ligne à ligne dans le code de la branche** —
@@ -36,8 +41,9 @@ reste multiple.
 | ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
 |---|---|---|---|---|---|
 | **ARG-01** / B3 | P1 terrain | **FERMÉ** | `stocks-rest.controller.ts` : le `WHERE` ne porte plus aucun filtre sur `quantite_retranchee` (les 2 occurrences restantes sont des commentaires). `mouvement-mapper.ts` expose `quantite_affichee`, `manquant`, `hors_stock` | `853dff7` — invariant `argent-3` + `test:mouvements-hors-stock` | — |
-| **ARG-02** / B2 | P1 terrain | **FERMÉ** | `db-init.service.ts` : `ADD COLUMN IF NOT EXISTS unite` (1). `stocks-rest.controller.ts:46` : `COALESCE(sm.unite, p.unite)` dans le SQL. Les 2 INSERT (vente, restitution) portent l'unité | `853dff7` + migration `1780500000000` | Les mouvements antérieurs n'ont pas d'unité figée et retombent sur le catalogue — irrécupérable par construction |
-| **ARG-03** / A3 | P1 dormant | **FERMÉ** | `credits.controller.ts` : écriture `acompte_credit` (2 occurrences). `caisse-rest.controller.ts` : `caisseTheorique` l'additionne (1) | `853dff7` — clôture sans écart fantôme, vérifiée en base | — |
+| **ARG-02** / B2 | P1 terrain | **OUVERT** | Fermé **pour les nouveaux mouvements** : `db-init.service.ts` pose `unite`, les 2 INSERT la portent. **Mais `stocks-rest.controller.ts:46` fait `COALESCE(sm.unite, p.unite)`** : une ligne ancienne (`sm.unite IS NULL`) relit encore l'unité ACTUELLE du catalogue. Un vieux « 5 tas » peut toujours devenir « 5 kg » | `853dff7` + migration `1780500000000` — **rouvert au contre-audit** : sous le contrat « FERMÉ = le défaut n'existe plus dans le code actuel », le repli sur `p.unite` est le défaut lui-même | Supprimer le repli : une ligne sans unité historisée doit renvoyer `null`, pas l'unité d'aujourd'hui. Afficher une unité actuelle comme si elle était historique est un mensonge de plus, pas un moindre mal |
+| **ARG-03** / A3 | P1 dormant | **OUVERT** | Fermé **pour un seul des trois chemins**. Vérifié : `POST /caisse/credits` insère `acompte` directement dans `credits` — **0 occurrence de `acompte_credit`** dans ce chemin. Un crédit créé AVEC acompte initial reste donc invisible à `caisseTheorique`. Et dans `PATCH :id/acompte`, l'écriture de caisse est dans un `try/catch` qui **avale l'erreur** : `success: true` est possible sans trace de caisse | `853dff7` couvre `PATCH :id/acompte` — **rouvert au contre-audit**, qui a trouvé le second chemin que mon test ne couvrait pas | Acompte initial à la création + atomicité de l'encaissement |
+| **ARG-10** | P1 dormant | **OUVERT** | *Ligne ajoutée au contre-audit.* `PATCH /caisse/credits/:id/payer` marque le crédit payé et réduit `clients.montant_du`, **sans aucune écriture de caisse**. Route atteinte : `VentesPassees.tsx:325` appelle `marquerCreditPaye(id)` | — | Le règlement du reste dû est de l'argent reçu qui n'entre jamais dans la caisse théorique. **Même fermeture que ARG-03/04/05 : création avec acompte, acompte ultérieur et solde final doivent passer par UN seul mécanisme transactionnel d'encaissement** |
 | **ARG-04** | P1 dormant | **OUVERT** | `POST /caisse/credits` sans `idempotency_key` — vérifié : la seule clé du fichier est celle de l'acompte | — | Idempotence de création. **Avant réactivation du crédit** |
 | **ARG-05** | P1 dormant | **OUVERT** | Crédit, stock et caisse ne forment pas une transaction unique | — | Atomicité. Invariants I4/I5/I6 rouges |
 | **ARG-06** | P2 modèle | **OUVERT** | `caisse-transaction.entity.ts` porte toujours **2 colonnes** `marge` et `benefice`, alimentées par la même valeur | Côté écran, un seul champ depuis `ed9321b` | La fusion des colonnes demande une migration. Le serveur écrit encore deux fois le même chiffre |
@@ -49,7 +55,7 @@ reste multiple.
 
 | ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
 |---|---|---|---|---|---|
-| **STK-01** | **P0 publication** | **OUVERT** | Migration `1781500000000-StockOperationIdempotence` présente dans la chaîne. **Seul P0 non coché de `todo.md`** | — | **Fait d'environnement.** Non vérifiable depuis le dépôt : exige la base cible |
+| **STK-01** | **P0 publication** | **OUVERT** | **REQUALIFIÉ : ce n'est pas un inconnu d'environnement, c'est B1 une seconde fois, et c'est prouvé d'ici.** Vérifié : `db-init.service.ts` ne crée **0** fois `stock_operation_idempotency` ; sur une base bâtie par DbInit seul (aucune table `migrations`), la table **n'existe pas**. Or `stocks-rest.controller.ts:190` y fait un `INSERT` dès qu'une clé d'idempotence est fournie — et `StockContext.updateStock` en envoie une à **chaque** mise à jour | — | **Sur toute base neuve, toute modification de stock échoue.** Même famille que B1 : une table créée par une seule migration, sur un système où les migrations ne tournent pas sur base vierge |
 | **STK-02** | P2 modèle | **OUVERT** | `stock = 0` confond « épuisé » et « non suivi » | ADR-0003 #6, différé par arbitrage | Séparer quantité de `suivi_stock` |
 | **STK-03** | P2 architecture | **OUVERT** | Deux modèles coexistent : `produits` (marchand) et `stocks` (producteur/coopérateur) | `974de94` rend la dualité **explicite** (les alertes interrogent les deux) au lieu de la subir | Les deux tables demeurent |
 | **STK-04** | P2 | **OUVERT** | Les réapprovisionnements manuels ne passent pas par le ledger | — | Décider si tout mouvement doit être historisé |
@@ -66,7 +72,7 @@ reste multiple.
 
 | ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
 |---|---|---|---|---|---|
-| **API-01** | P1 hygiène | **OUVERT** | Mesuré : **196 `fetch()` / 60 fichiers** hors `services/api/` | `9d74fec` — 222/68 → 196/60, et **0 sur auth/caisse/vente/stock**, tenu par `test:convergence-api` | 196 appels hors des parcours d'argent |
+| **API-01** | P1 hygiène | **OUVERT** | Mesuré : **196 `fetch()` / 60 fichiers** hors `services/api/`. **CORRECTION du contre-audit :** le garde-fou `convergenceApi.test.mts:141` teste `/(caisse\|stocks?\|catalogue-maitre)/` — **`auth` n'y est PAS**. Mon affirmation « 0 sur auth/caisse/vente/stock » était **fausse**, et le commentaire du garde-fou le prétendait aussi : exactement l'écart commentaire/garde-fou que ce registre doit débusquer | `9d74fec` — 222/68 → 196/60, et **0 sur caisse / vente / stock / catalogue-maître dans le périmètre contrôlé** | 196 appels, dont les voies `auth` non couvertes par le garde-fou |
 | **API-02** | P1 | **FERMÉ** | `StockContext.tsx` : **0** `fetch(` | `9d74fec` — `stocks-api.ts` | — |
 | **API-03** | P1 | **OUVERT** | `authService` (4), `useWebAuthn` (7), `api-client` (3) : trois voies subsistent | `9d74fec` — rafraîchissement de session **4 → 1**. Les cérémonies d'auth restent directes **délibérément** : un 401 y signifie « mauvais code », pas « session expirée » | Une autorité de transport unique reste à poser |
 | **API-04** | P1 architecture | **OUVERT** | `main.tsx` monkey-patche `window.fetch` pour le bearer | — | Comportement d'auth hors de la couche API |
@@ -109,6 +115,9 @@ reste multiple.
 | **SEC-01** | **P0** | **FERMÉ** | `feedbak-sms.service.ts` : **0** appel `console.*`, **11** appels `await this.send(...)` | `5e55d57` — test comportemental espionnant `console` ET `Logger`, sur succès **et** échec d'envoi | — |
 | **SEC-02** | **P0** | **FERMÉ** | Le chemin d'appel depuis `auth.controller.ts` existe toujours ; c'est le contenu du journal qui a changé | `5e55d57` | — |
 | **SEC-03** | P1 | **FERMÉ** | Les deux notifications PIN passent par `send()` → vrai `SmsService` | `5e55d57` — **le SMS n'était jamais envoyé non plus**, ni à la création ni au changement | — |
+| **SEC-05** | **P0 conception** | **OUVERT** | *Ligne ajoutée au contre-audit.* `GET /auth/identificateur/:id/pin-decrypted` (`auth.controller.ts:597`) **déchiffre et renvoie le PIN en clair**, pour `super_admin` et `admin_general`. Route atteinte : `BOActeurs.tsx:462` l'appelle | — | **Le secret est révélable à volonté depuis le back-office.** L'audit `PIN_READ` trace la lecture, il ne l'empêche pas. La cible saine est un **reset**, jamais une récupération — ce qui permettrait ensuite de passer d'un chiffrement réversible à une empreinte de vérification. **C'est plus grave que SEC-01 : on a sécurisé la journalisation d'un PIN que l'application donne toujours en clair par conception** |
+| **SEC-06** | P1 | **OUVERT** | *Ligne ajoutée au contre-audit.* `auth.controller.ts:670` : `return { user, success: true, pinGenere }` — le PIN repart **en clair dans la réponse HTTP** de `create-acteur` | — | Le SMS fonctionne désormais (`5e55d57`) : la surface d'exposition est doublée sans nécessité |
+| **SEC-07** | P1 | **OUVERT** | *Ligne ajoutée au contre-audit.* `auth.controller.ts:655` : PIN généré par `Math.random()` sur 8 chiffres × 4 positions = **4 096 combinaisons**, générateur non cryptographique | Le verrouillage des essais (`verrou-pin.ts`) limite la force brute **à distance** | `Math.random()` n'est pas adapté à la génération d'un identifiant |
 | **SEC-04** | P3 | **OUVERT** | `users.service.ts:334` journalise le terme de recherche saisi | Relevé en balayant SEC-01. **Donnée personnelle, pas un secret** | Journalisation de donnée personnelle |
 
 # SMS ET INTÉGRATIONS
@@ -189,7 +198,7 @@ La sévérité doit jouer dans les deux sens. Ne sont pas des anomalies :
 
 | ID | Ce qu'il faut |
 |---|---|
-| **STK-01 / SCHEMA-04** | Exécuter `StockOperationIdempotence` sur la base cible, ou prouver qu'elle y est. Non vérifiable depuis le dépôt |
+| **STK-01 / SCHEMA-04** | **Poser `stock_operation_idempotency` dans DbInit**, comme pour `stock_mouvements.type` (B1). Prouvé d'ici : sans elle, toute modification de stock échoue sur base neuve. La vérification sur la base cible reste utile pour savoir si la production est **déjà** cassée |
 
 **P1 atteignables en pilote**
 
@@ -210,6 +219,25 @@ Condition de réouverture écrite : **avant toute réactivation du crédit.**
 | **ARG-05** | Atomicité crédit / stock / caisse |
 | **TYPE-02** | DTO et contrats du contrôleur crédit |
 | **CLIENT-02** | Homonymes partageant une dette |
+
+## Ce que le contre-audit a corrigé
+
+| ID | Décision | Ce que j'avais eu tort d'affirmer |
+|---|---|---|
+| **ARG-02** | **Rouvert** | « Fermé » alors que le repli `p.unite` fait toujours dépendre l'historique du catalogue |
+| **ARG-03** | **Rouvert** | « Fermé » sur un seul des trois chemins d'encaissement ; mon test ne couvrait pas l'acompte initial |
+| **ARG-10** | **Ajouté** | Le règlement total échappe aussi à la caisse — je ne l'avais pas cherché |
+| **API-01** | **Preuve corrigée** | « 0 sur auth/caisse/vente/stock » était **faux** : le garde-fou ne teste pas `auth`, et son propre commentaire le prétendait |
+| **SEC-05** | **Ajouté** | Le PIN est récupérable en clair par conception. J'avais sécurisé sa journalisation sans voir qu'on le donne toujours |
+| **SEC-06** | **Ajouté** | Le PIN repart aussi dans la réponse HTTP |
+| **SEC-07** | **Ajouté** | Le PIN est généré avec `Math.random()`, 4 096 combinaisons |
+| **STK-01** | **Requalifié** | Classé « fait d'environnement non vérifiable ». C'était vérifiable, et c'est B1 une seconde fois |
+
+Confirmés sur leur périmètre par le contre-audit : ARG-01, API-02, API-06,
+SEC-01, SEC-02, SEC-03, SMS-01, TEST-03, TEST-04, DEAD-01, et les cinq
+HORS PÉRIMÈTRE — avec une nuance écrite sur MOCK-01 : accepté **seulement**
+parce qu'Odoo n'est pas une dépendance obligatoire du pilote. Le jour où il le
+devient, « variable absente ⇒ mock » doit être réexaminé.
 
 ## Observation non résolue
 
