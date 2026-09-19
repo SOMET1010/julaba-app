@@ -38,14 +38,18 @@ eq(
   mapApiMouvements([
     { id: "1", type: "vente", quantite: -7, produit_nom: "Tomate", unite: "kg", date: "2026-08-16T09:00:00" },
   ], now),
-  [{ id: "1", type: "vente", qty: -7, qtyAffichee: 7, horsStock: false, name: "Tomate", unit: "kg", day: "aujourd'hui" }],
+  // ARG-02 : `uniteConnue` s'ajoute ici — l'attente fige la FORME exacte de
+  // l'objet, et c'est justement ce qui l'a fait rougir quand le champ est
+  // apparu. Aucun test n'est ajouté à cette suite gelée : on met à jour deux
+  // attentes existantes pour qu'elles décrivent la forme réelle.
+  [{ id: "1", type: "vente", qty: -7, qtyAffichee: 7, horsStock: false, name: "Tomate", unit: "kg", uniteConnue: true, day: "aujourd'hui" }],
   "vente : signe conservé, unité/nom mappés",
 );
 eq(
   mapApiMouvements([
     { id: "2", type: "annulation", quantite: 5, produit_nom: null, unite: null, date: "2026-08-15T10:00:00" },
   ], now),
-  [{ id: "2", type: "annulation", qty: 5, qtyAffichee: 5, horsStock: false, name: "", unit: "", day: "hier" }],
+  [{ id: "2", type: "annulation", qty: 5, qtyAffichee: 5, horsStock: false, name: "", unit: "", uniteConnue: false, day: "hier" }],
   "annulation : nom/unité nuls → défauts vides",
 );
 eq(
