@@ -122,12 +122,21 @@ describe('SEC-2 — le PIN identificateur ne sort plus, et il est verrouillé', 
     return m![1];
   }
 
-  async function poserPinConnu(pin: string) {
-    const r = await admin(api().post(`/api/v1/auth/identificateur/${identId}/pin`)).send({ pin });
-    expect(r.body.success).toBe(true);
+  /**
+   * SEC-08 — il n'existe plus de route pour POSER un PIN choisi. Le test fait
+   * donc ce que fera l'administrateur : il réinitialise, et lit le code là où
+   * il part réellement — dans le SMS. C'est volontairement plus contraignant
+   * qu'avant : si un jour un chemin permettait de choisir un PIN, ce helper
+   * n'aurait plus lieu d'être.
+   */
+  async function reinitialiserEtLireLePin(): Promise<string> {
+    const r = await admin(api().post(`/api/v1/auth/identificateur/${identId}/reinitialiser-pin`));
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ success: true });
     await ds.query(
       `UPDATE users SET failed_identificateur_pin_attempts = 0,
                         identificateur_pin_locked_until = NULL WHERE id = $1`, [identId]);
+    return pinDuDernierSms();
   }
 
   // ── 1. AUCUN SECRET NE SORT ──────────────────────────────────────────────
@@ -172,8 +181,7 @@ describe('SEC-2 — le PIN identificateur ne sort plus, et il est verrouillé', 
   // ── 2. LA RÉINITIALISATION INVALIDE VRAIMENT ─────────────────────────────
 
   it('après reset : ancien code refusé, ancienne session morte, nouveau code accepté, PIN_RESET écrit', async () => {
-    const ancienPin = '2468';
-    await poserPinConnu(ancienPin);
+    const ancienPin = await reinitialiserEtLireLePin();
 
     // Une session bien vivante, et un code qui marche.
     const session = await ouvrirSession(TEL_IDENT);
@@ -216,7 +224,7 @@ describe('SEC-2 — le PIN identificateur ne sort plus, et il est verrouillé', 
   }, 60000);
 
   it('SMS non délivré : on le dit, on ne montre jamais le code — et le reset tient quand même', async () => {
-    await poserPinConnu('3579');
+    const avantEchec = await reinitialiserEtLireLePin();
     smsEchoue = true;
     let r: request.Response;
     try {
@@ -235,26 +243,25 @@ describe('SEC-2 — le PIN identificateur ne sort plus, et il est verrouillé', 
     // invalidation de secret parce que l'opérateur téléphonique a toussé.
     expect(r!.body.pinChange).toBe(true);
     const neuve = await ouvrirSession(TEL_IDENT);
-    expect((await verifierPin(neuve.access, '3579')).body.valid).toBe(false);
+    expect((await verifierPin(neuve.access, avantEchec)).body.valid).toBe(false);
   }, 60000);
 
   // ── 3. LE VERROU, ET L'IMPOSSIBILITÉ DE LE CONTOURNER ────────────────────
 
   it(`le palier tombe à ${PALIER} essais ratés, et le verrou est réel`, async () => {
-    const bon = '4826';
-    await poserPinConnu(bon);
+    const bon = await reinitialiserEtLireLePin();
     const s = await ouvrirSession(TEL_IDENT);
 
     // Les deux premiers échecs préviennent sans bloquer : le droit à l'hésitation.
     for (let i = 1; i < PALIER; i += 1) {
-      const r = await verifierPin(s.access, '9999');
+      const r = await verifierPin(s.access, '0000');
       expect(r.body.valid).toBe(false);
       expect(r.body.locked).toBe(false);
       expect(r.body.essaisRestants).toBe(PALIER - i);
     }
 
     // Le troisième pose l'attente.
-    const palier = await verifierPin(s.access, '9999');
+    const palier = await verifierPin(s.access, '0000');
     expect(palier.body.locked).toBe(true);
     expect(palier.body.attenteMs).toBeGreaterThan(0);
 
@@ -266,10 +273,9 @@ describe('SEC-2 — le PIN identificateur ne sort plus, et il est verrouillé', 
   }, 60000);
 
   it('changer de session ne lève pas le verrou — le compteur vit sur le compte', async () => {
-    const bon = '5837';
-    await poserPinConnu(bon);
+    const bon = await reinitialiserEtLireLePin();
     const s1 = await ouvrirSession(TEL_IDENT);
-    for (let i = 0; i < PALIER; i += 1) await verifierPin(s1.access, '9999');
+    for (let i = 0; i < PALIER; i += 1) await verifierPin(s1.access, '0000');
     expect((await verifierPin(s1.access, bon)).body.locked).toBe(true);
 
     // Nouvelle connexion complète : nouveau jeton d'accès, nouvelle session.
@@ -299,12 +305,11 @@ describe('SEC-2 — le PIN identificateur ne sort plus, et il est verrouillé', 
   }, 60000);
 
   it('change-pin ne contourne pas le verrou : c’est l’autre porte, elle est fermée aussi', async () => {
-    const bon = '6394';
-    await poserPinConnu(bon);
+    const bon = await reinitialiserEtLireLePin();
     const s = await ouvrirSession(TEL_IDENT);
     for (let i = 0; i < PALIER; i += 1) {
       await api().post('/api/v1/auth/identificateur/me/change-pin')
-        .set('Authorization', `Bearer ${s.access}`).send({ oldPin: '9999', newPin: '8765' });
+        .set('Authorization', `Bearer ${s.access}`).send({ oldPin: '0000', newPin: '8765' });
     }
     const r = await api().post('/api/v1/auth/identificateur/me/change-pin')
       .set('Authorization', `Bearer ${s.access}`).send({ oldPin: bon, newPin: '8765' });
@@ -316,14 +321,153 @@ describe('SEC-2 — le PIN identificateur ne sort plus, et il est verrouillé', 
   }, 60000);
 
   it('la réinitialisation lève le verrou — sinon on enverrait un code inutilisable', async () => {
-    await poserPinConnu('7261');
+    const bon = await reinitialiserEtLireLePin();
     const s = await ouvrirSession(TEL_IDENT);
-    for (let i = 0; i < PALIER; i += 1) await verifierPin(s.access, '9999');
-    expect((await verifierPin(s.access, '7261')).body.locked).toBe(true);
+    for (let i = 0; i < PALIER; i += 1) await verifierPin(s.access, '0000');
+    expect((await verifierPin(s.access, bon)).body.locked).toBe(true);
 
     await admin(api().post(`/api/v1/auth/identificateur/${identId}/reinitialiser-pin`));
     const nouveau = pinDuDernierSms();
     const neuve = await ouvrirSession(TEL_IDENT);
     expect((await verifierPin(neuve.access, nouveau)).body.valid).toBe(true);
+  }, 60000);
+});
+
+// ── SEC-08 : L'ATTRIBUTION DU PIN N'EST PLUS UN GESTE HUMAIN ───────────────
+//
+// SEC-2 avait fermé la LECTURE du PIN et cru le sujet clos. Mais l'attribution
+// restait manuelle : `POST /auth/identificateur/:id/pin` laissait un
+// administrateur TAPER le code, et c'était le seul moyen d'en attribuer un —
+// la vraie voie de création (`POST /users/backoffice/create`) n'en posait
+// aucun. Le secret était donc, dans tous les cas réels, connu d'un humain
+// interne. Fermer la lecture en laissant l'attribution ne changeait rien.
+//
+// Propriété vérifiée ici : il n'existe plus AUCUN chemin métier normal où un
+// humain interne choisit, lit ou dicte le PIN d'un autre.
+
+import { INestApplication as INestApplication8, ValidationPipe as ValidationPipe8 } from '@nestjs/common';
+import { Test as Test8 } from '@nestjs/testing';
+import { ThrottlerStorage as ThrottlerStorage8 } from '@nestjs/throttler';
+import { DataSource as DataSource8 } from 'typeorm';
+import { JwtService as JwtService8 } from '@nestjs/jwt';
+import * as request8 from 'supertest';
+import * as bcrypt8 from 'bcryptjs';
+import { AppModule as AppModule8 } from '../../src/app.module';
+import { DbInitService as DbInitService8 } from '../../src/database/db-init.service';
+import { SmsService as SmsService8 } from '../../src/sms/sms.service';
+import { User as User8, UserRole as UserRole8, UserStatus as UserStatus8 } from '../../src/users/entities/user.entity';
+
+const TEL_ADMIN8 = '+2250799000111';
+const TEL_NOUVEL_IDENT = '+2250799000112';
+
+describe('SEC-08 — plus personne ne choisit le PIN d’un autre', () => {
+  let app: INestApplication8;
+  let ds: DataSource8;
+  let jwt: JwtService8;
+  let jetonAdmin: string;
+  let zoneTest: string;
+  const sms: { phone: string; message: string }[] = [];
+  const api = () => request8(app.getHttpServer());
+
+  beforeAll(async () => {
+    const mod = await Test8.createTestingModule({ imports: [AppModule8] })
+      .overrideProvider(ThrottlerStorage8)
+      .useValue({ increment: async () => ({ totalHits: 1, timeToExpire: 60000, isBlocked: false, timeToBlockExpire: 0 }) })
+      .overrideProvider(SmsService8)
+      .useValue({
+        sendSms: async (phone: string, message: string) => {
+          sms.push({ phone, message });
+          return { success: true };
+        },
+      })
+      .compile();
+    app = mod.createNestApplication();
+    app.setGlobalPrefix('api/v1');
+    app.useGlobalPipes(new ValidationPipe8({ whitelist: true, transform: true }));
+    await app.init();
+    ds = app.get(DataSource8);
+    jwt = app.get(JwtService8);
+    await app.get(DbInitService8, { strict: false }).runInit();
+
+    const repo = ds.getRepository(User8);
+    const u: any = await repo.save(repo.create({
+      phone: TEL_ADMIN8, firstName: 'Sec8', lastName: 'Admin', genre: 'homme',
+      role: 'super_admin' as UserRole8, status: UserStatus8.ACTIF,
+      passwordHash: await bcrypt8.hash('Julaba2026!', 10),
+    } as any) as any);
+    jetonAdmin = await jwt.signAsync(
+      { sub: u.id, phone: TEL_ADMIN8, role: 'super_admin' }, { secret: process.env.JWT_SECRET });
+
+    // Le DTO exige un zoneId au format UUID pour un identificateur.
+    const [z] = await ds.query(
+      `INSERT INTO zones (nom, ville, actif) VALUES ($1, $2, true) RETURNING id`,
+      ['Zone SEC08', 'Abidjan']);
+    zoneTest = z.id;
+  }, 90000);
+
+  afterAll(async () => { if (app) await app.close(); });
+
+  const admin = (r: request8.Test) => r.set('Authorization', `Bearer ${jetonAdmin}`);
+
+  it('la route à PIN choisi n’existe plus', async () => {
+    const [u] = await ds.query(`SELECT id FROM users WHERE phone = $1`, [TEL_ADMIN8]);
+    const r = await admin(api().post(`/api/v1/auth/identificateur/${u.id}/pin`)).send({ pin: '2468' });
+    expect(r.status).toBe(404);
+  });
+
+  it('la création back-office pose le PIN, l’envoie par SMS, et ne le rend pas', async () => {
+    const avant = sms.length;
+    const r = await admin(api().post('/api/v1/users/backoffice/create')).send({
+      firstName: 'Fatou', lastName: 'Ident', phone: TEL_NOUVEL_IDENT,
+      role: 'identificateur', genre: 'femme', zoneId: zoneTest,
+      email: 'fatou.sec08@julaba.test',
+    });
+    expect([200, 201]).toContain(r.status);
+
+    // (a) le PIN existe, chiffré, dès la création — plus besoin d'un humain
+    const [u] = await ds.query(
+      `SELECT id, pin_code_encrypted_identificateur AS pin FROM users WHERE phone = $1`, [TEL_NOUVEL_IDENT]);
+    expect(u).toBeDefined();
+    expect(u.pin).toBeTruthy();
+
+    // (b) il est parti par SMS, tiré dans l'alphabet 2–9
+    const nouveaux = sms.slice(avant).filter((m) => m.phone === TEL_NOUVEL_IDENT);
+    expect(nouveaux.length).toBeGreaterThan(0);
+    const code = nouveaux[nouveaux.length - 1].message.match(/(?<!\d)(\d{4})(?!\d)/);
+    expect(code).not.toBeNull();
+    expect(code![1]).toMatch(/^[2-9]{4}$/);
+
+    // (c) il n'est NULLE PART dans la réponse HTTP
+    expect(r.body).not.toHaveProperty('pin');
+    expect(r.body).not.toHaveProperty('pinGenere');
+    expect(JSON.stringify(r.body)).not.toContain(code![1]);
+    expect(r.body.smsCodeEnvoye).toBe(true);
+
+    // (d) l'audit trace la création sans porter un fragment du code
+    const [{ n }] = await ds.query(
+      `SELECT count(*)::int n FROM audit_logs WHERE action='PIN_IDENTIFICATEUR_CREE' AND entite_id=$1`, [u.id]);
+    expect(Number(n)).toBe(1);
+    const [trace] = await ds.query(
+      `SELECT details::text AS d FROM audit_logs WHERE action='PIN_IDENTIFICATEUR_CREE' AND entite_id=$1`, [u.id]);
+    expect(trace.d).not.toContain(code![1]);
+    expect(trace.d).not.toContain(code![1].slice(0, 2));
+    expect(trace.d).not.toContain(code![1].slice(-2));
+  }, 60000);
+
+  it('le code envoyé à la création est bien celui qui ouvre le compte', async () => {
+    // La preuve traverse : SMS → base chiffrée → vérification serveur.
+    const envoye = sms.filter((m) => m.phone === TEL_NOUVEL_IDENT);
+    const code = envoye[envoye.length - 1].message.match(/(?<!\d)(\d{4})(?!\d)/)![1];
+    // Le compte naît en_attente_activation : on l'active côté base pour
+    // pouvoir ouvrir une session, ce que fera le code d'activation en vrai.
+    await ds.query(
+      `UPDATE users SET status='actif', password_hash=$2, must_change_password=false WHERE phone=$1`,
+      [TEL_NOUVEL_IDENT, await bcrypt8.hash('Julaba2026!', 10)]);
+    const login = await api().post('/api/v1/auth/login')
+      .send({ phone: TEL_NOUVEL_IDENT, password: 'Julaba2026!' });
+    expect(login.status).toBe(200);
+    const v = await api().post('/api/v1/auth/identificateur/me/verify-pin')
+      .set('Authorization', `Bearer ${login.body.accessToken}`).send({ pin: code });
+    expect({ statut: v.status, corps: v.body }).toEqual({ statut: 200, corps: { valid: true } });
   }, 60000);
 });

@@ -20,6 +20,9 @@ import { SousProfilMarchand } from './entities/sous-profil-marchand.enum';
 import { UsersService } from './users.service';
 import { generateInitialPassword } from '../auth/auth.service';
 import { ActivationService } from '../auth/activation.service';
+import { PinCryptoService } from '../auth/pin-crypto.service';
+import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
+import { genererPinIdentificateurAcceptable } from '../auth/pin-identificateur';
 
 const ADMIN_ROLES: UserRole[] = [
   UserRole.ADMIN_GENERAL,
@@ -47,6 +50,8 @@ export class BackofficeUsersService {
     private readonly notificationsService: NotificationsService,
     private readonly dataSource: DataSource,
     private readonly activationService: ActivationService,
+    private readonly pinCrypto: PinCryptoService,
+    private readonly feedbakSms: FeedbakSmsService,
   ) {}
 
   /**
@@ -267,6 +272,51 @@ export class BackofficeUsersService {
       activationCode = await this.activationService.issueForUser(saved.id, creator.id);
     }
 
+    // ── SEC-08 : LE PIN DE L'IDENTIFICATEUR NAÎT ICI, ET PERSONNE NE LE VOIT ──
+    //
+    // CE QUI MANQUAIT. Cette route est la VRAIE voie de création d'un
+    // identificateur — `create-acteur` ne peut pas le faire (allow-list M6/M8
+    // fail-closed, cf. SEC-06). Or elle ne posait aucun PIN. Le seul moyen d'en
+    // attribuer un était donc `POST /auth/identificateur/:id/pin`, où un
+    // administrateur TAPAIT le code : il le connaissait, pouvait le dicter, le
+    // noter, le réutiliser. SEC-2 avait fermé la LECTURE du PIN ; l'ATTRIBUTION
+    // restait humaine, ce qui revenait au même.
+    //
+    // CE QU'ON FAIT. Le serveur tire le code (`crypto.randomInt`), l'écrit
+    // chiffré, l'envoie par SMS, et ne le rend à personne — ni dans la réponse,
+    // ni dans l'audit, ni dans un journal. Le geste devient : création → SMS →
+    // première authentification. Il n'existe plus aucun chemin métier normal où
+    // un humain interne choisit, lit ou dicte un PIN.
+    //
+    // `smsCodeEnvoye` dit si le message est parti. C'est un état
+    // d'acheminement, pas un lot de consolation : en cas d'échec, l'écran
+    // propose de réinitialiser (donc de renvoyer un NOUVEAU code), jamais
+    // d'afficher celui-ci.
+    let smsCodeEnvoye: boolean | undefined;
+    if (isIdentificateur) {
+      const pin = genererPinIdentificateurAcceptable();
+      await this.usersRepo.update(saved.id, {
+        pinCodeEncryptedIdentificateur: this.pinCrypto.encrypt(pin),
+        failedIdentificateurPinAttempts: 0,
+        identificateurPinLockedUntil: null,
+      } as any);
+      smsCodeEnvoye = await this.feedbakSms.notifyPinIdentificateurCreated(
+        phoneCanonical,
+        dto.firstName.trim() || 'Utilisateur',
+        pin,
+      );
+      await this.auditService.log({
+        userId: creator.id,
+        action: 'PIN_IDENTIFICATEUR_CREE',
+        entite: 'identificateur',
+        entiteId: saved.id,
+        // Aucun fragment du code : sur 4 chiffres, en divulguer deux divise
+        // l'espace de recherche par 64.
+        details: { createurRole: creator.role, canal: 'sms', smsDelivre: smsCodeEnvoye },
+        ip: ip ?? null,
+      });
+    }
+
     if (!targetIsAdmin) {
       try {
         const identification = this.identificationsRepo.create({
@@ -378,6 +428,8 @@ export class BackofficeUsersService {
         'il doit l\'utiliser sur son téléphone (POST /auth/activer) pour choisir SON secret. ' +
         'Le code est à usage unique et expire dans 30 minutes.',
       activationCode,
+      // SEC-08 : présent uniquement pour un identificateur. Jamais le code.
+      ...(isIdentificateur ? { smsCodeEnvoye } : {}),
     };
   }
 

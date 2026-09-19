@@ -492,32 +492,27 @@ export class AuthController {
     return { success: true, message: 'Mot de passe réinitialisé' };
   }
 
-  @Post('identificateur/:id/pin')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('super_admin', 'admin_general')
-  @HttpCode(HttpStatus.OK)
-  async setIdentificateurPin(@Param('id') id: string, @Body() body: { pin: string }, @Request() req: any) {
-    if (!body.pin || !/^\d{4}$/.test(body.pin)) return { success: false, message: 'Le PIN doit contenir exactement 4 chiffres' };
-    if (body.pin === '0000' || body.pin === '1234') return { success: false, message: 'Ce PIN est trop simple' };
-    const user = await this.userRepo.findOne({ where: { id } });
-    if (!user) return { success: false, message: 'Identificateur introuvable' };
-    if ((user as any).role !== 'identificateur') return { success: false, message: 'Cet acteur n\'est pas un identificateur' };
-    const stored = this.pinCrypto.encrypt(body.pin);
-    await this.userRepo.update(id, { pinCodeEncryptedIdentificateur: stored } as any);
-    const newPin = body.pin;
-    await this.auditService.log({
-      userId: req.user?.id ?? null,
-      action: 'PIN_UPDATE',
-      entite: 'identificateur',
-      entiteId: id,
-      details: {
-        changedBy: req.user?.id ?? null,
-        lastTwoDigits: typeof newPin === 'string' ? newPin.slice(-2) : null,
-      },
-      ip: req.ip ?? null,
-    });
-    return { success: true, message: 'PIN défini avec succès' };
-  }
+  // ── SEC-08 : PLUS PERSONNE NE CHOISIT LE PIN D'UN AUTRE ──────────────────
+  //
+  // CE QU'IL Y AVAIT ICI. `POST identificateur/:id/pin` : un super_admin ou un
+  // admin_general TAPAIT le code d'un identificateur. Il le connaissait donc,
+  // pouvait le dicter, le noter, le réutiliser d'un compte à l'autre. L'audit
+  // `PIN_UPDATE` allait jusqu'à conserver les deux derniers chiffres — sur un
+  // code à 4 chiffres, c'est diviser l'espace de recherche par cent.
+  //
+  // POURQUOI C'ÉTAIT SEC-05 SOUS UN AUTRE NOM. SEC-2 avait fermé la LECTURE du
+  // PIN et cru le sujet clos. Mais c'était ici, et non dans `create-acteur`,
+  // que les PIN étaient réellement attribués : la seule voie de création d'un
+  // identificateur (`POST /users/backoffice/create`) n'en posait aucun. Le
+  // secret était donc, dans TOUS les cas réels, connu d'un humain interne.
+  // Fermer la lecture en laissant l'attribution manuelle ne changeait rien.
+  //
+  // CE QUI LE REMPLACE. Deux chemins, et seulement deux, où le serveur tire le
+  // code et l'envoie par SMS sans jamais le rendre :
+  //   • à la création — `backoffice-users.service.ts` ;
+  //   • ensuite — `POST identificateur/:id/reinitialiser-pin`.
+  // Et un troisième que l'identificateur seul emprunte : `me/change-pin`, où
+  // il choisit le sien, ce qui est le seul cas légitime.
 
   @Post('identificateur/me/verify-pin')
   @UseGuards(JwtAuthGuard, RolesGuard)
