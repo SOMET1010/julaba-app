@@ -3,6 +3,7 @@ import { useApp } from './AppContext';
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import * as stocksApi from '../services/api/stocks-api';
+import { HttpError } from '../services/api/api-client';
 import type { StockServeur, AliasSaisieProduit } from '../types/vente';
 import { enfilerOperation } from '../voice-offline/offlineCaisse';
 
@@ -90,21 +91,19 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
     })();
     if (!stocks?.length) setLoading(true);
     try {
-      // UN SERVEUR QUI RÉPOND MAL EST PIRE QU'UN SERVEUR ABSENT. L'ancien code
-      // faisait `if (!res.ok) return;` : sur un 500 ou un 503, la marchande se
-      // retrouvait avec un stock VIDE alors que son téléphone en gardait la
-      // copie. Le catalogue de la caisse avait déjà été corrigé ainsi le
-      // 18/09/2026 ; le stock, lui, était resté en arrière. Désormais les DEUX
-      // échecs — réponse en erreur et coupure réseau — tombent dans le `catch`
-      // et servent le dernier stock connu.
       const list = await stocksApi.fetchStocks();
       const normalized = list.map(normalize);
       setStocks(normalized);
       // Cache local : dernier stock connu (consultation hors-ligne).
       try { localStorage.setItem(cacheKey, JSON.stringify(normalized)); } catch { /* ignore */ }
     } catch (e) {
-      void e;
-      // Hors-ligne : on sert le dernier stock connu.
+      // HORS PÉRIMÈTRE DE HYGIÈNE-1 (arbitrage du 19/09). Servir le cache quand
+      // le SERVEUR a répondu en erreur change ce que la marchande voit à
+      // l'écran. Le comportement d'origine est restauré : une réponse en erreur
+      // (HttpError) laisse la liste telle quelle — c'est le défaut, corrigé au
+      // commit suivant avec son test de parcours. Seule la coupure réseau,
+      // comme avant, sert le dernier stock connu.
+      if (e instanceof HttpError) return;
       try { const raw = localStorage.getItem(cacheKey); if (raw) setStocks(JSON.parse(raw)); } catch { /* ignore */ }
     }
     finally { setLoading(false); }
@@ -114,12 +113,11 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
   useEffect(() => { if (appUser?.id) refreshStocks(); }, [appUser?.id]);
 
   const addStock = async (data: Omit<StockItem, 'id' | 'derniereModification'> & AliasSaisieProduit) => {
-    // L'ÉCHEC DE CRÉATION ÉTAIT MUET. Cet appel ne regardait pas la réponse :
-    // un refus du serveur repartait comme un succès, et les trois appelants —
-    // qui entourent tous `addProduct` d'un try/catch avec un message parlé —
-    // annonçaient « C'est fait ! … ajoutés au stock » pour un produit qui
-    // n'existait pas. À une marchande qui ne lit pas, c'est la voix elle-même
-    // qui mentait. `apiRequest` lève ; les appelants font déjà le reste.
+    // HORS PÉRIMÈTRE DE HYGIÈNE-1 (arbitrage du 19/09) : remonter cet échec
+    // change ce que Tata DIT à la marchande. Le comportement d'origine — muet —
+    // est donc restauré ici, et le correctif arrive au commit suivant, avec son
+    // test de parcours. Le lot d'hygiène ne doit modifier AUCUN écran ni
+    // aucune phrase.
     await stocksApi.creerStock({ nom: data.nom || data.produit, produit: data.nom || data.produit, quantite: data.quantite, unite: data.unite, prix: data.prixVente || data.prixUnitaire || 0, prix_achat: data.prix_achat || data.prixAchat || data.purchasePrice || 0, categorie: data.categorie || 'General', image: data.image || null, seuil_alerte: data.seuilAlerte ?? data.seuil_alerte ?? null, date_peremption: data.datePeremption ?? data.date_peremption ?? null });
     eventBus.emit(EVENTS.STOCK_CREATED, data, { priority: 'medium' });
     await refreshStocks();
