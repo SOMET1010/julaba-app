@@ -1,7 +1,7 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 9 — après ARGENT-4b et la passe de requalification des P1.**
+**Révision 10 — après SCHEMA-PILOTE.**
 Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
 une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
 Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
@@ -10,6 +10,12 @@ passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
 Révision 4 : **SEC-05, SEC-06 et SEC-07 fermés** ; **SEC-08** ouverte (le PIN
 n'est plus lisible, mais il est encore *choisi* par un administrateur) ;
 **SEED-01** ouverte — c'est le diagnostic des 3 échecs jusqu'ici non expliqués.
+Révision 10 : **SCHEMA-PILOTE** — un chemin de déploiement unique, prouvé et
+figé (60 tables, 684 colonnes). Il **ne ferme pas** SCHEMA-01/02/03 : il rend le
+risque non atteignable pour cette sortie. Son garde-fou au niveau **colonne** a
+trouvé une **troisième** instance du mécanisme, **SCHEMA-07** — `bpay_transactions`
+n'a jamais eu les colonnes que le code écrit, sur aucun chemin. Trouvée avant le
+terrain, cette fois.
 Révision 9 : **cinq P1 reclassés en P2 sur MESURE**, aucun fermé. API-03,
 API-04 et TYPE-01 : architecture imparfaite, aucun comportement faux de la
 marchande démontré. SCHEMA-05 et SCHEMA-06 : défauts réels, mais aucune voie du
@@ -37,7 +43,7 @@ n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte l
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 25 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT.**
+**Compte courant : 26 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT.**
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -185,12 +191,13 @@ reste multiple.
 
 | ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
 |---|---|---|---|---|---|
-| **SCHEMA-01** | P1 | **OUVERT** | Trois mécanismes coexistent : migrations TypeORM, `DbInitService`, `synchronize` | — | **La doctrine de schéma reste structurellement multiple** |
-| **SCHEMA-02** | P1 | **OUVERT** | `schema-flags.ts` : base vierge → `synchronize`, base existante → migrations si `DB_MIGRATIONS_RUN` | Décision volontaire aujourd'hui | Multiplie les chemins de construction du schéma |
-| **SCHEMA-03** | P1 | **OUVERT** | Des évolutions doivent être recopiées à la main dans DbInit | `73343a4` ferme **une instance** (B1 : `stock_mouvements.type` absent → annulation de vente cassée sur base neuve) et pose le garde-fou `schema-ledger-sans-migration`. `6ef6560` ferme **une seconde instance** (STK-01) et élargit le garde-fou : il énumère désormais **toutes** les tables écrites en SQL brut par le code et exige qu'elles existent après DbInit seul — c'est lui qui a révélé SCHEMA-05 et SCHEMA-06 | **Le mécanisme qui produit ce défaut demeure.** Le garde-fou détecte, il ne converge pas |
+| **SCHEMA-01** | **P1** | **OUVERT** | Trois mécanismes coexistent : migrations TypeORM, `DbInitService`, `synchronize` | `591524c` — **SCHEMA-PILOTE ne ferme pas cette ligne et ne prétend pas le faire.** Il prouve qu'**un seul** de ces chemins construit la base du pilote, et il le fige | **La doctrine reste structurellement multiple.** Le risque est rendu non atteignable pour CETTE sortie, pas supprimé |
+| **SCHEMA-02** | **P1** | **OUVERT** | `schema-flags.ts` : base vierge → `synchronize`, base existante → migrations si `DB_MIGRATIONS_RUN` | `591524c` — le gate vérifie que la branche « vierge » est bien celle du pilote et qu'aucune table `migrations` n'apparaît | Multiplie les chemins de construction du schéma |
+| **SCHEMA-03** | **P1** | **OUVERT** | Des évolutions doivent être recopiées à la main dans DbInit | `73343a4` (B1), `6ef6560` (STK-01), `591524c` (**SCHEMA-PILOTE** : garde-fou étendu aux **COLONNES** — 41 tables, 344 colonnes — + empreinte figée de 60 tables / 684 colonnes) | **Le mécanisme qui produit ce défaut demeure — et il a produit une TROISIÈME instance, SCHEMA-07, que le garde-fou au niveau table ne pouvait pas voir.** Le garde-fou détecte, il ne converge toujours pas |
 | **SCHEMA-04** | P1 | **FERMÉ** | = STK-01, fermé par `6ef6560`. Ce n'était pas un fait d'environnement : le dépôt suffisait à le prouver | `6ef6560` | — |
 | **SCHEMA-05** | **P2 — non bloquant pilote** | **OUVERT** | `api_keys` est lue et écrite par du code vivant (`partner/partner.controller.ts`, `partner-api-keys.service.ts`) et créée seulement par une migration **archivée** : elle n'existe pas sur base neuve. **Le défaut est réel** | Reclassé P1→P2 par Patrick (19/09/2026), sources vérifiées : aucune étape partenaire dans `docs/RECETTE-TERRAIN-GROUPEE.md` ni au périmètre du pilote espèces (`docs/INVENTAIRE_RECETTES_V1.md`) | **Aucune voie du pilote terrain n'atteint cette fonction. À fermer avant activation de l'API partenaires** |
 | **SCHEMA-06** | **P2 — non bloquant pilote** | **OUVERT** | `keiwa_config_items` est lue, insérée, modifiée et supprimée par `admin-wallets.service.ts`, et créée **nulle part**. **Le défaut est réel** | Reclassé P1→P2 par Patrick (19/09/2026) : Keiwa/paiements sont des services **conditionnels**, No-Go maintenu, terrain décrit comme « pilote espèces fonctionnellement fermé » (`docs/AUDIT_UX.md`, `JULABA_DECISIONS.md`, `docs/RECETTE.md`) | **Aucune voie du pilote terrain n'atteint cette fonction. À fermer avant activation Keiwa** |
+| **SCHEMA-07** | **P1** | **FERMÉ** | **Troisième instance du mécanisme SCHEMA-03, trouvée par le garde-fou COLONNE de SCHEMA-PILOTE — avant le terrain, pas à l'usage.** `bpay_transactions` était créée avec `montant` alors que le code insère `amount`, `merchant_tx_id`, `provider`, `type` et met à jour `error_message` : cinq colonnes qui n'existaient **ni dans DbInit, ni dans la baseline**. Ce n'était donc pas une divergence DbInit/migrations comme B1 et STK-01, mais une table qui n'a **jamais** correspondu au code | `591524c` — corrigé dans DbInit **et** par migration ; `montant` conservée (on ne supprime pas une colonne qui peut porter des données) | — *(tout paiement B-Pay et toute recharge échouaient, sur base neuve **comme** sur base migrée — hors parcours pilote, Keiwa étant No-Go)* |
 | **SEED-01** | **P1** | **FERMÉ** | Chaque niveau du seed compare les codes du jeu à ceux en base et n'insère que ce qui manque ; aucun niveau ne décide pour un autre. Les cartes parent sont relues en base après chaque insertion | `8b66407` — reproduction déterministe avant correctif (le test pose lui-même le district parasite) : 3 rouges. Après : 4 verts, et **la batterie complète est redevenue déterministe** — cinq exécutions d'affilée, 205/205 | — |
 
 # ARCHITECTURE
@@ -254,7 +261,7 @@ données de production.
 
 | ID | Ce qui reste |
 |---|---|
-| **SCHEMA-01 / 02 / 03** | La doctrine de schéma reste multiple. **Maintenus P1 sans mesure, et délibérément** : ce mécanisme a cassé deux fonctions réellement terrain le même jour — B1 (`stock_mouvements.type`) puis STK-01 (`stock_operation_idempotency`). L'absence d'un défaut *actuellement* visible ne suffit pas à les déclasser |
+| **SCHEMA-01 / 02 / 03** | La doctrine de schéma reste multiple. **Maintenus P1**, et le gate `SCHEMA-PILOTE` (`scripts/schema-pilote.mjs`) ne les ferme pas : il rend le risque **non atteignable pour cette sortie** par un chemin unique, prouvé et figé. Il a d'ailleurs trouvé une **troisième** instance (SCHEMA-07) que le garde-fou précédent ne pouvait pas voir. **Condition de sortie APK : ce gate vert, et rejoué à chaque évolution de DbInit ou des migrations** |
 
 *Reclassés en P2 sur mesure, pas sur impression (révision 9) : **API-03**,
 **API-04**, **TYPE-01** — architecture imparfaite, aucun comportement faux de
