@@ -31,6 +31,8 @@ import { DbInitService } from '../../src/database/db-init.service';
 import { AdminDivisionsSeedService } from '../../src/admin-divisions/seed/admin-divisions-seed.service';
 import {
   DISTRICTS_SEED,
+  REGIONS_SEED,
+  DEPARTEMENTS_SEED,
   COMMUNES_ABIDJAN_SEED,
 } from '../../src/admin-divisions/seed/admin-divisions.seed';
 
@@ -106,7 +108,58 @@ describe('SEED-01 — le seed du découpage administratif est idempotent niveau 
     expect(Number(n)).toBe(COMMUNES_ABIDJAN_SEED.length);
   }, 60000);
 
-  it('les districts du seed sont tous présents, parasite ou non', async () => {
+it('la présence d’une commune étrangère ne bloque aucun autre niveau', async () => {
+    // L'INDÉPENDANCE DOIT JOUER DANS LES DEUX SENS. Le défaut d'origine était
+    // « un district présent bloque les communes » ; la garde symétrique doit
+    // tenir aussi : une commune déjà là ne doit empêcher ni les districts, ni
+    // les régions, ni les départements du jeu de seed.
+    //
+    // C'est exactement la situation que crée `cooperatives-liste-colonnes` :
+    // une chaîne complète district → région → département → commune, étrangère
+    // au seed. On la reproduit, puis on VIDE tout ce qui appartient au seed.
+    const etranger: any = (await ds.query(
+      `INSERT INTO districts (nom, code) VALUES ($1, $2)
+       ON CONFLICT (code) DO UPDATE SET nom = EXCLUDED.nom RETURNING id`,
+      [`District étranger ${MARQUEUR}`, `DE-${MARQUEUR}`],
+    ))[0];
+    const regionE: any = (await ds.query(
+      `INSERT INTO regions (nom, code, district_id) VALUES ($1, $2, $3) RETURNING id`,
+      [`Région étrangère ${MARQUEUR}`, `RE-${MARQUEUR}`, etranger.id],
+    ))[0];
+    const deptE: any = (await ds.query(
+      `INSERT INTO departements (nom, code, region_id) VALUES ($1, $2, $3) RETURNING id`,
+      [`Département étranger ${MARQUEUR}`, `PE-${MARQUEUR}`, regionE.id],
+    ))[0];
+    await ds.query(
+      `INSERT INTO communes (nom, code, departement_id) VALUES ($1, $2, $3)`,
+      [`Commune étrangère ${MARQUEUR}`, `CE-${MARQUEUR}`, deptE.id],
+    );
+
+    // On ne supprime QUE ce qui appartient au jeu de seed : la chaîne étrangère
+    // — et celles des autres suites — doit survivre intacte.
+    await ds.query(`DELETE FROM districts WHERE code = ANY($1)`,
+      [DISTRICTS_SEED.map((d) => d.code)]); // cascade sur régions/dépts/communes du seed
+
+    const compter = async (table: string, codes: string[]) =>
+      Number((await ds.query(
+        `SELECT count(*)::int n FROM ${table} WHERE code = ANY($1)`, [codes]))[0].n);
+
+    expect(await compter('communes', COMMUNES_ABIDJAN_SEED.map((c) => c.code))).toBe(0);
+    // La commune étrangère, elle, est toujours là : c'est elle qui, avec une
+    // garde globale d'un autre genre, aurait pu tout bloquer.
+    expect(await compter('communes', [`CE-${MARQUEUR}`])).toBe(1);
+
+    await seed.runSeed();
+
+    expect(await compter('districts', DISTRICTS_SEED.map((d) => d.code))).toBe(DISTRICTS_SEED.length);
+    expect(await compter('regions', REGIONS_SEED.map((r) => r.code))).toBe(REGIONS_SEED.length);
+    expect(await compter('departements', DEPARTEMENTS_SEED.map((d) => d.code))).toBe(DEPARTEMENTS_SEED.length);
+    expect(await compter('communes', COMMUNES_ABIDJAN_SEED.map((c) => c.code))).toBe(COMMUNES_ABIDJAN_SEED.length);
+    // Et rien n'a été écrasé au passage.
+    expect(await compter('communes', [`CE-${MARQUEUR}`])).toBe(1);
+  }, 60000);
+
+    it('les districts du seed sont tous présents, parasite ou non', async () => {
     const [{ n }] = await ds.query(
       'SELECT count(*)::int n FROM districts WHERE code = ANY($1)',
       [DISTRICTS_SEED.map((d) => d.code)],
