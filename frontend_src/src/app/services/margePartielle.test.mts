@@ -14,6 +14,14 @@
  */
 import { readFileSync } from 'node:fs';
 import { etatMarge, libelleMarge, phraseMarge } from './margeVente.js';
+import { montantAffiche } from '../config/devise.js';
+
+// LES MONTANTS SE COMPARENT AU FORMATEUR CANONIQUE, jamais à une recopie.
+// `montantAffiche` place une espace INSÉCABLE entre le nombre et le « F »
+// (U+00A0, voir config/devise.ts) : un « 1 500 » séparé de son « F » en fin de
+// ligne se lirait comme deux nombres. Une chaîne tapée à la main dans un test
+// ne porte pas ce caractère — et c'est le TEST qui a tort, pas le code. Cette
+// erreur a déjà été commise deux fois sur ce dépôt ; on la rend impossible.
 
 const FIXTURE = JSON.parse(
   readFileSync(new URL('../../../../tests/fixtures/argent-panier-mixte.json', import.meta.url), 'utf8'),
@@ -30,7 +38,12 @@ console.log('\nLe panier mixte du fichier de données — le MÊME que côté se
 const mixte = etatMarge(FIXTURE.vente.details);
 eq(mixte.type, FIXTURE.attendu.etat, 'l’état est « partielle » : on sait une partie, pas tout');
 eq((mixte as { montant: number }).montant, FIXTURE.attendu.marge_persistee, 'le montant est celui des seules lignes coûtées (100)');
-eq(libelleMarge(mixte), FIXTURE.attendu.libelle_ecran, 'l’écran dit « Marge connue », pas « marge »');
+eq(libelleMarge(mixte), `Marge connue : ${montantAffiche(100)}`, 'l’écran dit « Marge connue », pas « marge »');
+eq(
+  libelleMarge(mixte).replace(/\u00a0/g, ' '),
+  FIXTURE.attendu.libelle_ecran,
+  '…et c’est bien le libellé écrit dans le fichier de données',
+);
 eq(phraseMarge(mixte), FIXTURE.attendu.phrase_tata, 'Tata dit le chiffre ET sa limite');
 
 console.log('\nLes trois autres états ne changent pas');
@@ -38,13 +51,13 @@ console.log('\nLes trois autres états ne changent pas');
 const toutConnu = etatMarge([{ nom: 'Riz', quantite: 1, total: 500, prix_achat: 400 }]);
 eq(toutConnu.type, 'connue', 'toutes les lignes coûtées → « connue »');
 eq((toutConnu as { montant: number }).montant, 100, '…et la marge vaut 100');
-eq(libelleMarge(toutConnu), '+100 F marge', 'l’écran garde sa formulation actuelle');
+eq(libelleMarge(toutConnu), `+${montantAffiche(100)} marge`, 'l’écran garde sa formulation actuelle');
 eq(phraseMarge(toutConnu), 'marge 100 francs', 'la voix garde sa formulation actuelle');
 
 const perte = etatMarge([{ nom: 'Riz', quantite: 1, total: 800, prix_achat: 1000 }]);
 eq(perte.type, 'connue', 'une perte reste un état CONNU');
 eq((perte as { montant: number }).montant, -200, 'une perte est une perte : −200');
-eq(libelleMarge(perte), 'Perte : 200 F', 'l’écran nomme la perte');
+eq(libelleMarge(perte), `Perte : ${montantAffiche(200)}`, 'l’écran nomme la perte');
 eq(phraseMarge(perte), 'mais tu as perdu 200 francs dessus', 'la voix nomme la perte');
 
 const inconnue = etatMarge([{ nom: 'Piment', quantite: 1, total: 300 }]);
@@ -60,7 +73,7 @@ const mixtePerte = etatMarge([
 ]);
 eq(mixtePerte.type, 'partielle', 'partielle, même quand la partie connue est une perte');
 eq((mixtePerte as { montant: number }).montant, -200, 'la perte connue n’est pas masquée par la ligne inconnue');
-eq(libelleMarge(mixtePerte), 'Perte connue : 200 F', 'l’écran dit la perte ET sa limite');
+eq(libelleMarge(mixtePerte), `Perte connue : ${montantAffiche(200)}`, 'l’écran dit la perte ET sa limite');
 eq(phraseMarge(mixtePerte), 'Sur les articles dont tu connais le prix d’achat, tu as perdu 200 francs.', 'Tata dit la perte ET sa limite');
 
 console.log('\nLe cas qui a tout déclenché : ne jamais rendre le chiffre partiel indiscernable d’un chiffre complet');

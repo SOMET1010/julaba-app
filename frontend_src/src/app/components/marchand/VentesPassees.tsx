@@ -1,3 +1,4 @@
+import { etatMarge, libelleMarge, phraseMarge } from '../../services/margeVente';
 import type { LigneDeVente } from '../../types/vente';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -59,7 +60,12 @@ function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number;
   const { refreshProducts } = useCaisse();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.nom || 'Marchande';
   const montant = sale.montant || sale.price || 0;
-  const marge = sale.benefice || 0;
+  // L'ÉTAT, pas seulement le chiffre — ARGENT-1. Une marge de 100 F sur un
+  // panier dont une ligne n'a pas de prix d'achat n'est PAS la même chose
+  // qu'une marge de 100 F sur un panier entièrement coûté. L'écran et la voix
+  // doivent pouvoir les distinguer, sinon le chiffre juste ment quand même.
+  const etat = etatMarge(sale.details, sale.benefice);
+  const marge = etat.type === 'inconnue' ? 0 : etat.montant;
   const source = sale.source || 'kassa';
   const dateObj = new Date(sale.date);
 
@@ -107,10 +113,11 @@ function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number;
       // aucune information importante ne doit exister uniquement sous forme de
       // texte. Une marchande qui ne lit pas n'apprendrait jamais, autrement,
       // qu'elle a vendu en dessous de son prix d'achat.
-      const texteMarge =
-        marge > 0 ? `, marge ${marge.toLocaleString('fr-FR')} francs`
-        : marge < 0 ? `, mais tu as perdu ${Math.abs(marge).toLocaleString('fr-FR')} francs dessus`
-        : '';
+      // La phrase vient du MÊME endroit que le calcul (services/margeVente).
+      // Elle était construite ici, à côté d'un chiffre venu d'ailleurs : c'est
+      // ainsi qu'un écran finit par dire autre chose que la donnée.
+      const fragment = phraseMarge(etat);
+      const texteMarge = fragment ? (etat.type === 'partielle' ? ` ${fragment}` : `, ${fragment}`) : '';
       try { speak(`${sale.productName || 'Vente'} : ${montant.toLocaleString('fr-FR')} francs${texteMarge}, le ${quand}.`); } catch { /* ignore */ }
     }
   };
@@ -171,15 +178,20 @@ function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number;
               Le ROUGE et le mot « Perte » sont volontaires : pour qui ne lit
               pas, la couleur porte le sens avant le mot, et un signe « − » seul
               se confond trop facilement avec un tiret. */}
-          {marge > 0 && (
-            <div style={{ fontSize:10, color: estAnnulee ? '#9ca3af' : '#16a34a', marginTop:2, fontWeight:700, textDecoration: estAnnulee ? 'line-through' : 'none' }}>+{marge.toLocaleString('fr-FR')} F marge</div>
-          )}
-          {marge < 0 && (
-            <div style={{ fontSize:10, color: estAnnulee ? '#9ca3af' : '#c0392b', marginTop:2, fontWeight:800, textDecoration: estAnnulee ? 'line-through' : 'none' }}>Perte : {Math.abs(marge).toLocaleString('fr-FR')} F</div>
-          )}
-          {marge === 0 && (
-            <div style={{ fontSize:10, color:'#ccc', marginTop:2 }}>marge —</div>
-          )}
+          {/* Le libellé vient de `libelleMarge` : « Marge connue : … » quand une
+              ligne du panier n'a pas de prix d'achat. Le VERT reste réservé à
+              une marge complète ; une marge partielle est ambrée, parce qu'elle
+              dit « je sais une partie ». */}
+          <div style={{
+            fontSize:10, marginTop:2,
+            fontWeight: etat.type === 'inconnue' ? 400 : (marge < 0 ? 800 : 700),
+            textDecoration: estAnnulee ? 'line-through' : 'none',
+            color: estAnnulee ? '#9ca3af'
+              : etat.type === 'inconnue' ? '#ccc'
+              : marge < 0 ? '#c0392b'
+              : etat.type === 'partielle' ? '#b45309'
+              : '#16a34a',
+          }}>{libelleMarge(etat)}</div>
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration:0.25 }} style={{ display:'flex', justifyContent:'flex-end', marginTop:2 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
           </motion.div>
@@ -202,10 +214,19 @@ function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number;
                 <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Montant</span>
                 <span style={{ fontSize:14, fontWeight:900, color: estAnnulee ? '#9ca3af' : '#1D9E75', textDecoration: estAnnulee ? 'line-through' : 'none' }}>{montant.toLocaleString('fr-FR')} FCFA</span>
               </div>
-              {marge > 0 && (
+              {etat.type !== 'inconnue' && (
                 <div style={{ display:'flex', justifyContent:'space-between' }}>
-                  <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Marge</span>
-                  <span style={{ fontSize:12, fontWeight:700, color: estAnnulee ? '#9ca3af' : '#16a34a', textDecoration: estAnnulee ? 'line-through' : 'none' }}>+{marge.toLocaleString('fr-FR')} FCFA</span>
+                  {/* Le détail déplié disait « Marge » même quand le chiffre
+                      ne couvrait qu'une partie du panier. Il dit maintenant la
+                      même chose que la carte et que la voix — un seul libellé,
+                      une seule source. */}
+                  <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>
+                    {etat.type === 'partielle' ? (marge < 0 ? 'Perte connue' : 'Marge connue') : (marge < 0 ? 'Perte' : 'Marge')}
+                  </span>
+                  <span style={{ fontSize:12, fontWeight:700, textDecoration: estAnnulee ? 'line-through' : 'none',
+                    color: estAnnulee ? '#9ca3af' : marge < 0 ? '#c0392b' : etat.type === 'partielle' ? '#b45309' : '#16a34a' }}>
+                    {marge < 0 ? '−' : '+'}{Math.abs(marge).toLocaleString('fr-FR')} FCFA
+                  </span>
                 </div>
               )}
               {/* Reçu numérique : partage (WhatsApp / SMS) — pas de PDF « à lire »,
