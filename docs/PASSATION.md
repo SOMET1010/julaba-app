@@ -26,9 +26,154 @@ dépôt (décision Patrick, 15/09/2026).
 Objectif explicite : plus de branche concurrente sur le même sujet, plus de
 double correctif, plus de réconciliation manuelle entre instances.
 
-## État courant
+## ⚠️ ÉTAT AU 19/09/2026 — À LIRE EN PREMIER
 
-- `main` à **`1958d6a`** (15/09/2026).
+**Le travail du 19/09 n'est PAS sur `main`.** Il vit sur une branche, non
+fusionnée. Toute autre session qui reprend ce dépôt doit partir de LÀ, sinon
+elle refera ce qui est déjà fait.
+
+| | |
+|---|---|
+| Branche de travail | **`claude/clever-allen-dnr8by`** |
+| Tête de branche | **`08abbde`** (local = distant, arbre propre) |
+| `main` | **`59b9142`** — 12 commits en retard |
+| Fusion vers `main` | **PAS faite. Aucune PR ouverte** (aucune n'a été demandée) |
+
+### Portes, mesurées sur `08abbde`
+
+```
+node ci/check-tsc-baseline.mjs          → 0 erreur (cliquet)
+npm run verify -w frontend_src          → vert (56 scripts)
+npm run test:ci -w frontend_src         → vert, GELÉ et NON MODIFIÉ
+npm run test:unit -w backend            → 196 tests verts
+npm run build -w frontend_src           → vert
+npm run build -w backend                → vert
+
+# Invariants (PostgreSQL réel — à démarrer d'abord) :
+./scripts/pg-test-local.sh start
+npx jest --config backend/jest-invariants.config.cjs --runInBand --forceExit
+                                        → 38 suites / 184 tests verts
+```
+
+### Les 12 commits du 19/09, dans l'ordre
+
+| SHA | Lot | Ce qu'il fait |
+|---|---|---|
+| `ee30077` | HYGIÈNE-1 axe 1 | 99 fichiers / 17 899 lignes de code mort supprimés, prouvés inatteignables. 1 conservé, zéro inexpliqué |
+| `9d74fec` | HYGIÈNE-1 axe 2 | Convergence API auth/caisse/vente/stock. **4 rafraîchissements de session → 1** (trois ne pouvaient pas marcher dans l'APK, trois ignoraient le verrou → risque de révocation de TOUTES les sessions) |
+| `ed9321b` | HYGIÈNE-1 axe 3 | 3 champs pour « le bénéfice » → 1. `config/devise.ts` enfin câblé |
+| `56b4168` | HYGIÈNE-1 axe 4 | 48 `any` de donnée → 0 aux frontières argent/stock/session/hors-ligne. `types/vente.ts` créé |
+| `53695a4` | HYGIÈNE-1 | **Retrait** de 3 correctifs visibles par la marchande, hors mandat d'hygiène |
+| `5de6893` | Règle | La fausse convergence écrite en tête du garde-fou |
+| `fa104ce` | ARGENT-1 | Les 2 défauts d'argent reproduits **en ROUGE**, avant toute correction |
+| `1d1f38a` | ARGENT-1 | Marge du panier mixte (400 → 100) + la dépense porte son jour comptable |
+| `ca946da` | ADR-0003 | Correction d'une affirmation fausse sur la devise |
+| `01fd765` | ARGENT-2 | Les 2 défauts hors caisse reproduits **en ROUGE** |
+| `974de94` | ARGENT-2 | « revenus » = recette (67 000 → 40 000) + les alertes de rupture partent enfin |
+| `08abbde` | Dette | A3/B2/B3 vérifiés sans correction — **et B1 confirmé** |
+
+## 🔴 LA SEULE DÉCISION OUVERTE — B1
+
+`stock_mouvements.type` **n'existe pas sur une base neuve**. Elle n'est créée
+ni par le `CREATE TABLE` de `db-init.service.ts`, ni par `synchronize` (la
+table n'a aucune entité), ni par les migrations (base vierge →
+`migrationsRun: false`). Son seul créateur est la migration
+`1780400000000-LedgerMouvementType`.
+
+**Pourquoi personne ne l'avait vu** : `annulation-remise-stock.spec.ts`
+applique cette migration **lui-même** dans son `beforeAll`. Le test qui aurait
+attrapé le défaut répare le schéma pour se rendre vert.
+
+**Conséquence sur un déploiement neuf** : annuler une vente insère dans
+`stock_mouvements(type)` → échec Postgres → **rollback complet** → la vente
+redevient valide, l'argent reste compté, le stock reste retranché. Et
+`GET /stocks/mouvements` répond 500 en permanence.
+
+**Deux options, décision de Patrick, non tranchée :**
+- **(a)** corriger avant l'APK — une colonne ajoutée dans DbInit à côté des
+  `ADD COLUMN IF NOT EXISTS` déjà présents, plus un test qui ne rafistole pas
+  le schéma. Ce n'est pas un lot.
+- **(b)** APK tel quel, B1 en dette assumée — défendable **si** la base Render
+  existante porte déjà la colonne.
+
+**La requête qui tranche :**
+```sql
+SELECT column_name FROM information_schema.columns
+ WHERE table_name = 'stock_mouvements' AND column_name = 'type';
+```
+Une ligne → (b) sans risque immédiat. Vide → l'annulation de vente est déjà
+cassée en production aujourd'hui.
+
+**Après cette décision : APK terrain.** Patrick a explicitement exclu tout lot
+supplémentaire entre les deux.
+
+## Règles posées par Patrick le 19/09 — elles survivent à ce lot
+
+1. **Sur l'argent, la preuve doit TRAVERSER** : entrée métier → contrôleur →
+   donnée persistée → lecture/affichage ou voix. *Un test de fonction ne prouve
+   plus qu'un parcours est correct.* (Le dépôt avait 195 tests backend et zéro
+   sur la marge ; le seul test de marge vérifiait une fonction qui ne
+   s'exécute presque jamais.)
+2. **Un lot d'hygiène ne change RIEN d'observable par la marchande.** Dès
+   qu'un correctif touche un écran, un calcul métier, une phrase de Tata, une
+   règle de stock ou une donnée persistée, il sort du lot et devient un
+   chantier fonctionnel séparé.
+3. **Unifier un appel ne suffit pas** : il faut vérifier que les deux appels
+   portent le même **sens métier**. Critère opérationnel : écrire la phrase
+   « ces deux appels demandent la même chose au serveur, au sens métier ». Si
+   elle ne s'écrit pas, on ne converge pas.
+4. **Pas de correction parce que « ça semble faux »** : reproduction d'abord,
+   résultat faux observé, sinon dette documentée et on avance.
+5. **ARGENT-1 et ARGENT-2 sont FERMÉS.** On ne les rouvre pas pour « nettoyer
+   encore ». Seul un bug reproductible peut les rouvrir.
+6. **Les 4 arbitrages différés d'ADR-0003** (unité de la vente côté modèle,
+   facteurs de conversion, vocabulaires d'unités, stockabilité) restent
+   différés et assumés.
+
+## Pièges découverts le 19/09 — à ne pas repayer
+
+- **Le faux vert de schéma** (B1 ci-dessus) : un test qui répare le schéma
+  pour se rendre vert prouve le contraire de ce qu'on croit.
+- **Espace insécable** : `montantAffiche()` (`config/devise.ts`) place un
+  U+00A0 entre le montant et le « F » — voulu. **Les montants se comparent au
+  formateur canonique, jamais à une chaîne recopiée.** L'erreur a été commise
+  trois fois.
+- **Base d'invariants PARTAGÉE** entre toutes les suites (`globalSetup` la
+  recrée une fois par exécution, pas une par fichier). Conséquences :
+  mesurer en **delta** sur tout agrégat global, et ne jamais réutiliser un
+  numéro de téléphone (signup → 409, la suite passe seule et échoue en
+  groupe). Garde-fou : `backend/test/unit/telephones-tests-uniques.spec.ts`.
+  Plage réservée aux suites ARGENT : `+22507888800xx`.
+- **Route masquée** : `misc-rest.controller.ts` `@Get('transactions')` n'est
+  jamais atteint — `TransactionsRestController` gagne la route. Documenté,
+  **non traité** (ce n'est pas un défaut utilisateur tant qu'il n'est pas
+  atteint).
+- **La place de marché lit `/caisse/produits`**, qui ne renvoie que le
+  catalogue de la marchande elle-même. L'authentifier lui présenterait son
+  propre stock comme l'offre d'autres vendeurs. Exception **nommée** dans le
+  garde-fou `test:convergence-api` — ne pas « corriger » par réflexe.
+
+## Dette vérifiée et documentée (aucune correction faite)
+
+| Constat | Où | Gravité |
+|---|---|---|
+| **B1** — `stock_mouvements.type` absent sur base neuve | `docs/dette/AUDIT-BASE-constats-verifies.md` | **Bloquant** — décision ouverte ci-dessus |
+| **B2** — l'unité d'un mouvement passé est relue du catalogue actuel (5 tas deviennent 5 kg) | idem | Dégrade l'information |
+| **B3** — `manquant` écrit, jamais lu ; la vente hors stock est exclue de l'affichage | idem | Dégrade l'information |
+| **A3** — un acompte de crédit n'écrit aucune transaction de caisse → écart de clôture fantôme | idem | **Latent** (`CAISSE_CREDIT_ACTIF = false`) |
+
+Les reproductions sont exécutables :
+`backend/test/invariants/dette-audit-a3-b2-b3.spec.ts`. Ce test **décrit** les
+défauts sans les approuver — il affirme le comportement actuel pour rester
+vert. **Le jour où quelqu'un corrige, il échouera**, et ce rouge voudra dire
+« c'est réparé, mets le registre à jour », pas « régression ».
+
+Registres des lots : `docs/hygiene/HYGIENE-1-axe{1,2,3,4}-*.md`.
+
+## État courant (antérieur, 15/09/2026)
+
+- `main` à **`1958d6a`** (15/09/2026) — **périmé, voir l'état du 19/09
+  ci-dessus**.
 - Backend : 161/161 tests unitaires verts, `tsc --noEmit` propre.
 - Frontend : `npm run verify` et `npm run test:ci` verts, `npm run build`
   réel réussi.
