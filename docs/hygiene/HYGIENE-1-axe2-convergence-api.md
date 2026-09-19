@@ -144,6 +144,35 @@ tient toujours, mieux qu'avant. L'assertion porte maintenant sur la garantie.
 C'est signalé ici parce qu'un test réécrit par celui qui modifie le code doit
 toujours être signalé.
 
+## Trois correctifs ont été RETIRÉS de ce lot (arbitrage du 19/09)
+
+La règle posée par Patrick — *aucun changement observable par la marchande dans
+HYGIÈNE-1* — est arrivée après ce commit. Trois des corrections ci-dessus la
+violaient. Elles ont été **annulées** ici et reclassées :
+
+| Correctif | Pourquoi il sortait | Où il va |
+|---|---|---|
+| L'échec de création de stock remonte | Change une **phrase de Tata** | ARGENT-1, avec test de parcours |
+| Le stock sert le cache sur un 5xx | Change un **écran** | ARGENT-1, avec test de parcours |
+| La place de marché s'authentifie | Change un **écran**, et **en mal** | **Abandonné** — voir ci-dessous |
+
+**Le troisième n'est pas revenu, et c'est le plus instructif.**
+`GET /caisse/produits` filtre `marchand_id = $1` : il ne renvoie que le
+catalogue **de la marchande elle-même**. L'authentifier faisait donc apparaître
+son propre stock dans la place de marché, étiqueté « Vendeur », comme l'offre
+de quelqu'un d'autre. Une marchande pouvait se voir proposer d'acheter ses
+propres tomates. Un écran vide vaut mieux.
+
+Cet écran n'a pas de source de données correcte — il lit la mauvaise ressource.
+C'est un **manque fonctionnel**, pas de la dette technique, et il est nommé
+comme exception dans le garde-fou `test:convergence-api` pour que personne ne
+le « corrige » par réflexe.
+
+**La rotation du jeton RESTE dans ce lot**, sur décision de Patrick : sans elle,
+la convergence des quatre rafraîchissements est incohérente — le chemin unifié
+rejouerait un jeton déjà consommé, ce que le serveur traite comme une
+compromission.
+
 ## Question ouverte
 
 Le contrat de `POST /auth/refresh` change : il renvoie désormais `refreshToken`

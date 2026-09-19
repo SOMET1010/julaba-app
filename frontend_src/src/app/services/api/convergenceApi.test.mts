@@ -124,6 +124,12 @@ const CHEMINS_ARGENT = /\/(caisse|stocks?|catalogue-maitre)\b/;
 const fautifs: string[] = [];
 for (const f of fichiers(RACINE_APP)) {
   if (f.includes('/services/api/') || f.includes('/backoffice/') || f.endsWith('backoffice-api.ts')) continue;
+  // EXCEPTION NOMMÉE : la place de marché lit `/caisse/produits`, qui ne
+  // renvoie que le catalogue de la marchande elle-même. L'authentifier lui
+  // présenterait son propre stock comme l'offre d'autres vendeurs. Tant que
+  // cet écran n'a pas de source correcte, il reste NON converti — et c'est
+  // écrit ici pour que personne ne « corrige » ça par réflexe.
+  if (f.endsWith('/marketplace/Marketplace.tsx')) continue;
   const code = readFileSync(f, 'utf8');
   for (const ligne of code.split('\n')) {
     const m = /fetch\(\s*`\$\{API_URL\}([^`]*)`/.exec(ligne);

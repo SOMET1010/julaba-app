@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import * as caisseApi from '../../services/api/caisse-api';
 import { motion } from 'motion/react';
 import { Search, Filter, MapPin, Star } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -23,13 +22,25 @@ export function Marketplace() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    // CET APPEL N'ENVOYAIT PAS LA SESSION — `headers: {}`, pas de
-    // `credentials`. Troisième lecteur du catalogue de la caisse, et le seul à
-    // ne pas s'authentifier : il ne pouvait ramener que du vide ou un refus.
-    // Il passe par la même porte que les deux autres.
-    caisseApi.fetchProduitsCaisse()
+    // EXCEPTION JUSTIFIÉE, ET ELLE N'EST PAS TECHNIQUE — 19/09/2026.
+    //
+    // Cet appel n'envoie pas la session (`headers: {}`, pas de `credentials`) :
+    // il ne ramène donc rien, et la place de marché reste vide. Je l'avais
+    // « converti » sur le client commun pendant HYGIÈNE-1 — c'était une faute.
+    //
+    // `GET /caisse/produits` filtre `marchand_id = $1` : il renvoie le
+    // catalogue DE LA MARCHANDE ELLE-MÊME. L'authentifier ferait donc
+    // apparaître son propre stock dans la place de marché, étiqueté
+    // « Vendeur », comme l'offre de quelqu'un d'autre. Un écran vide est
+    // préférable à un écran qui lui propose d'acheter ses propres tomates.
+    //
+    // Cet écran n'a PAS de source de données correcte : il lit la mauvaise
+    // ressource. Il ne sera pas convergé tant que la vraie n'existe pas — c'est
+    // un manque fonctionnel, pas de la dette technique.
+    fetch(`${API_URL}/caisse/produits`, { headers: { } })
+      .then(r => r.json())
       .then(d => {
-        const list = d.produits;
+        const list = d.produits || d.data || (Array.isArray(d) ? d : []);
         setItems(list.map((p: any) => ({
           id: p.id,
           sellerId: p.marchand_id || '',
