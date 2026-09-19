@@ -590,6 +590,37 @@ export class DbInitService {
           updated_at timestamptz DEFAULT now()
         );
       `);
+      // SCHEMA-07 — TROISIÈME INSTANCE DE LA MÊME FAUTE, trouvée par le
+      // garde-fou au niveau COLONNE de SCHEMA-PILOTE (19/09/2026).
+      //
+      // La table était créée avec `montant`, mais `wallets.controller.ts` et
+      // `wallets-public.controller.ts` insèrent `amount`, `merchant_tx_id`,
+      // `provider`, `type`, et mettent à jour `error_message`. Ces cinq
+      // colonnes n'existaient NULLE PART — ni ici, ni dans la baseline
+      // (`1780200000000`). Ce n'est donc pas une divergence DbInit/migrations
+      // comme B1 et STK-01 : c'est une définition de table qui n'a JAMAIS
+      // correspondu au code. Tout paiement B-Pay et toute recharge de
+      // portefeuille échouaient, sur base neuve comme sur base migrée.
+      //
+      // Le garde-fou posé après B1 ne vérifiait que les TABLES : il ne pouvait
+      // pas voir ça. C'est exactement l'argument de Patrick pour bloquer l'APK
+      // sur SCHEMA-01/02/03 — « il détecte des divergences connues, il ne
+      // garantit pas que le troisième oubli n'existe pas sous une forme qu'il
+      // ne teste pas encore ». Le troisième existait.
+      //
+      // `montant` est conservée : on ne supprime pas une colonne qui peut
+      // porter des données en production.
+      for (const [col, type] of [
+        ['amount', 'numeric'],
+        ['merchant_tx_id', 'text'],
+        ['provider', 'text'],
+        ['type', 'text'],
+        ['error_message', 'text'],
+      ]) {
+        await this.dataSource.query(
+          `ALTER TABLE bpay_transactions ADD COLUMN IF NOT EXISTS ${col} ${type};`,
+        );
+      }
       this.logger.log('Table bpay_transactions vérifiée');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
