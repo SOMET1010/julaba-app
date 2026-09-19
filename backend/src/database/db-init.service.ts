@@ -282,6 +282,32 @@ export class DbInitService {
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS idx_stock_mouvements_marchand ON stock_mouvements (marchand_id, created_at);`,
       );
+      // STK-01 — LA MÊME FAUTE QUE B1, UNE SECONDE FOIS. 19/09/2026.
+      //
+      // `stock_operation_idempotency` n'était créée que par la migration
+      // 1781500000000. Sur une base vierge les migrations ne tournent pas, et
+      // la table n'a pas d'entité : `synchronize` ne la crée pas non plus.
+      // Or `stocks-rest.controller.ts` y insère dès qu'une clé d'idempotence
+      // est fournie — et `StockContext.updateStock` en envoie une à CHAQUE
+      // mise à jour, en ligne comme au rejeu hors-ligne.
+      //
+      // Conséquence sur tout déploiement neuf : TOUTE modification de stock
+      // échouait. Pas « une migration à appliquer un jour » : la caisse d'une
+      // marchande ne pouvait pas corriger une quantité.
+      //
+      // DDL identique à la migration. Règle « DbInit ⊆ migrations » (ADR-0002).
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS stock_operation_idempotency (
+          idempotency_key varchar(128) PRIMARY KEY,
+          stock_id varchar(128) NOT NULL,
+          marchand_id varchar(128) NOT NULL,
+          created_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS ix_stock_operation_idempotency_marchand
+         ON stock_operation_idempotency (marchand_id, created_at DESC);`,
+      );
       this.logger.log('Ledger stock_mouvements (append-only) vérifié');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);

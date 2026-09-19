@@ -81,6 +81,103 @@ describe('Schéma — ce que DbInit pose suffit, sans aucune migration', () => {
     ).resolves.toEqual([]);
   });
 
+  // ── STK-01 : la MÊME faute, une seconde fois ────────────────────────────
+  //
+  // `stock_operation_idempotency` n'est créée QUE par la migration
+  // 1781500000000. DbInit ne la pose pas. Or `stocks-rest.controller.ts:190` y
+  // insère dès qu'une clé d'idempotence est fournie — et `StockContext` en
+  // envoie une à CHAQUE mise à jour de stock, en ligne comme hors ligne.
+  //
+  // Conséquence sur toute base neuve : TOUTE modification de stock échoue.
+  // Ce n'est pas « une migration à appliquer en production » : c'est B1 à
+  // nouveau, et le dépôt suffit à le démontrer.
+  it('la table d’idempotence des opérations de stock existe', async () => {
+    const [r] = await ds.query(
+      `SELECT count(*)::int AS n FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'stock_operation_idempotency'`,
+    );
+    expect(r.n).toBe(1);
+  });
+
+  it('l’INSERT réel d’une clé d’idempotence de stock s’exécute', async () => {
+    // C'est CET INSERT que fait le contrôleur dès qu'une clé est fournie.
+    await expect(
+      ds.query(
+        `INSERT INTO stock_operation_idempotency (idempotency_key, stock_id, marchand_id)
+         VALUES ($1, $2, $3) ON CONFLICT (idempotency_key) DO NOTHING
+         RETURNING idempotency_key`,
+        ['schema-test-key', 'stock-1', 'schema-test'],
+      ),
+    ).resolves.toHaveLength(1);
+    await ds.query(`DELETE FROM stock_operation_idempotency WHERE marchand_id = 'schema-test'`);
+  });
+
+  // ── LE GARDE-FOU SYSTÉMATIQUE ───────────────────────────────────────────
+  //
+  // Deux fois en un jour, une table ou une colonne créée par une SEULE
+  // migration a manqué à DbInit, et le défaut n'est apparu qu'à l'exécution :
+  // B1 (`stock_mouvements.type`) puis STK-01 (`stock_operation_idempotency`).
+  // Vérifier les tables une par une à chaque incident ne tient pas.
+  //
+  // On énumère donc les tables que le code ÉCRIT RÉELLEMENT en SQL brut — ce
+  // sont celles que `synchronize` ne crée pas, faute d'entité — et on exige
+  // qu'elles existent après DbInit seul.
+  it('toutes les tables écrites en SQL brut par le code existent après DbInit seul', async () => {
+    const { readdirSync, readFileSync, statSync } = require('node:fs') as typeof import('node:fs');
+    const { join } = require('node:path') as typeof import('node:path');
+
+    const fichiers = (dir: string, acc: string[] = []): string[] => {
+      for (const e of readdirSync(dir)) {
+        const p = join(dir, e);
+        if (statSync(p).isDirectory()) { if (e !== 'migrations') fichiers(p, acc); }
+        else if (p.endsWith('.ts') && !p.endsWith('.spec.ts')) acc.push(p);
+      }
+      return acc;
+    };
+
+    const tables = new Set<string>();
+    const creeesAuVol = new Set<string>();
+    for (const f of fichiers(join(__dirname, '..', '..', 'src'))) {
+      const code = readFileSync(f, 'utf8');
+      for (const m of code.matchAll(/INSERT\s+INTO\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi)) {
+        tables.add(m[1].toLowerCase());
+      }
+      // Certains services posent leur propre table au premier usage
+      // (`CREATE TABLE IF NOT EXISTS` dans le service). Ce n'est pas un défaut
+      // d'exécution — c'est une troisième façon de construire le schéma, et
+      // elle est comptée comme telle dans SCHEMA-01, pas ici.
+      for (const m of code.matchAll(/CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi)) {
+        creeesAuVol.add(m[1].toLowerCase());
+      }
+    }
+    expect(tables.size).toBeGreaterThan(3); // le balayage a bien trouvé quelque chose
+
+    // DETTE CONNUE, INSCRITE AU REGISTRE. Ces tables sont écrites par du code
+    // vivant et créées par AUCUN chemin qui s'exécute sur une base neuve. Elles
+    // sont tolérées ici UNIQUEMENT parce qu'elles portent un identifiant de
+    // dette : le jour où on les corrige, on retire la ligne. Toute table qui
+    // apparaîtrait hors de cette liste fait échouer ce test immédiatement.
+    const DETTE_CONNUE: Record<string, string> = {
+      // Back-office partenaires — créée seulement par une migration ARCHIVÉE,
+      // volontairement hors de la chaîne exécutable (ADR-0002).
+      api_keys: 'SCHEMA-05',
+      // Configuration Keiwa — lue, insérée, modifiée, supprimée par
+      // admin-wallets.service.ts, et créée NULLE PART.
+      keiwa_config_items: 'SCHEMA-06',
+    };
+
+    const existantes: string[] = (await ds.query(
+      `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`,
+    )).map((r: { table_name: string }) => r.table_name);
+
+    const manquantes = [...tables]
+      .filter((t) => !existantes.includes(t))
+      .filter((t) => !creeesAuVol.has(t))
+      .filter((t) => !(t in DETTE_CONNUE))
+      .sort();
+    expect(manquantes).toEqual([]);
+  });
+
   it('l’insertion réelle de la restitution s’exécute', async () => {
     // C'est CET INSERT qui échouait et faisait échouer l'annulation entière.
     await expect(
