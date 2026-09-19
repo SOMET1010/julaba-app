@@ -1,162 +1,164 @@
 # Registre maître de dette technique — JULABA
 
-**Source unique de vérité pour la dette connue.** Établi par Patrick le
-19/09/2026, puis **vérifié ligne à ligne contre le code de la branche**
-`claude/clever-allen-dnr8by` (`5e55d57`), et non contre `main` (`59b9142`),
-qui a dix-sept commits de retard.
+**Photo fidèle de la branche `claude/clever-allen-dnr8by` à `5e55d57`**
+(19 commits devant `main`, qui est à `59b9142`).
 
-Ce document remplace les registres partiels précédents. Les documents d'audit
-antérieurs décrivent un état dépassé sur plusieurs points : **ne pas les
-utiliser comme vérité courante** (cf. DOC-01).
+Établi par Patrick, puis **vérifié ligne à ligne dans le code de la branche** —
+pas dans les messages de commit, pas contre `main`. Aucune correction n'a été
+faite pendant cette passe : c'est une photo, pas un chantier.
 
-## Comment une ligne se ferme
+Ce document remplace les registres partiels antérieurs. Les anciens documents
+d'audit décrivent un état dépassé sur plusieurs points : **ne pas les utiliser
+comme vérité courante** (cf. DOC-01).
 
-Une ligne ne se ferme pas parce qu'un correctif a été écrit. Elle se ferme
-quand :
+## Règles du registre
 
-1. une **preuve reproductible** existe — entrée métier → persistance réelle →
-   lecture/affichage ou voix ;
-2. cette preuve **échouait avant** le correctif (non-vacuité) ;
-3. les portes passent.
+**Trois statuts, pas un de plus :**
 
-Et une dette n'est **acceptable avant terrain** que si elle est réellement hors
-parcours, volontairement désactivée, sans impact monétaire ni historique, et
-avec une raison explicite écrite. *« Le terrain ne doit pas servir à
-redécouvrir des défauts déjà compris. »* — Patrick, 19/09/2026.
+| Statut | Ce qu'il veut dire |
+|---|---|
+| **FERMÉ** | Le défaut décrit n'existe plus **dans le code actuel**, vérifié, avec un test qui échouait avant |
+| **OUVERT** | Le défaut existe encore, en tout ou en partie. **Un progrès partiel ne ferme pas une ligne** |
+| **HORS PÉRIMÈTRE JUSTIFIÉ** | Ce n'est pas une anomalie, et la raison est écrite |
 
-## Les cinq mesures
+Pas de « à voir », « probablement », « assumé » sans justification, ni
+« documenté » — **documenter une dette ne la ferme pas.** Une route concurrente
+inutile reste une dette même si un garde-fou empêche son usage accidentel.
 
-| Mesure | Départ (19/09 matin) | Maintenant (`5e55d57`) |
-|---|---|---|
-| Fichiers analysés (`frontend_src/src/app`) | 519 | **423** |
-| Fichiers hors parcours d'atteignabilité | 182 « jamais importés » → 100 réellement hors parcours | **0** |
-| Fichiers > 400 lignes | 124 | **116** |
-| `fetch()` hors `services/api/` | 222 / 68 fichiers | **196 / 60** — dont **0** sur auth, caisse, vente, stock |
-| `any` sur les parcours d'argent | 440 (mesure corrigée ; 415 annoncé au départ venait d'un motif plus étroit) | **390** — dont **0** sur une donnée métier aux frontières |
+**Un défaut opérationnel fermé ne ferme pas la dette architecturale qui l'a
+produit.** SCHEMA-03 en est l'exemple : B1 est corrigé, la doctrine de schéma
+reste multiple.
 
 ---
 
 # ARGENT
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **ARG-01** / B3 | P1 terrain | Vente hors stock journalisée mais invisible à l'écran | ✅ **FERMÉ** | `853dff7` — filtre retiré, l'écran montre « 4 » + « ⚠ hors stock » |
-| **ARG-02** / B2 | P1 terrain | Unité d'un mouvement de stock relue du catalogue actuel | ✅ **FERMÉ** | `853dff7` — colonne `unite` figée au ledger (DbInit + migration) |
-| **ARG-03** / A3 | P1 dormant | Acompte crédit invisible à la caisse théorique | ✅ **FERMÉ** | `853dff7` — écriture `acompte_credit`, clôture sans écart fantôme |
-| **ARG-04** | P1 dormant | `POST /caisse/credits` sans idempotence | 🔴 **OUVERT** | Vérifié : une seule clé dans le fichier, celle de l'acompte |
-| **ARG-05** | P1 dormant | Crédit, stock et caisse ne forment pas une transaction unique | 🔴 **OUVERT** | `credits.controller.ts` — invariants I4/I5/I6 rouges |
-| **ARG-06** | P2 modèle | `marge` et `benefice` : deux colonnes, une valeur | 🟡 **PARTIEL** | `ed9321b` — côté écran, **un** champ. Les deux colonnes subsistent (fusion = migration) |
-| **ARG-07** | P2 | « Bénéfice » ambigu entre marge commerciale et résultat ventes−dépenses | 🔴 **OUVERT** | Deux concepts à nommer distinctement |
-| **ARG-08** | P2 modèle | La vente ne persiste pas sa devise | 🔴 **OUVERT** | Vérifié : **0** colonne `devise` sur `caisse_transactions` |
-| **ARG-09** | P3 affichage | « FCFA » codé en dur | 🔴 **OUVERT** | Mesuré : **480 occurrences / 107 fichiers**. *(Correction : j'avais annoncé « 142 » — c'était faux, deux mesures différentes confondues.)* |
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **ARG-01** / B3 | P1 terrain | **FERMÉ** | `stocks-rest.controller.ts` : le `WHERE` ne porte plus aucun filtre sur `quantite_retranchee` (les 2 occurrences restantes sont des commentaires). `mouvement-mapper.ts` expose `quantite_affichee`, `manquant`, `hors_stock` | `853dff7` — invariant `argent-3` + `test:mouvements-hors-stock` | — |
+| **ARG-02** / B2 | P1 terrain | **FERMÉ** | `db-init.service.ts` : `ADD COLUMN IF NOT EXISTS unite` (1). `stocks-rest.controller.ts:46` : `COALESCE(sm.unite, p.unite)` dans le SQL. Les 2 INSERT (vente, restitution) portent l'unité | `853dff7` + migration `1780500000000` | Les mouvements antérieurs n'ont pas d'unité figée et retombent sur le catalogue — irrécupérable par construction |
+| **ARG-03** / A3 | P1 dormant | **FERMÉ** | `credits.controller.ts` : écriture `acompte_credit` (2 occurrences). `caisse-rest.controller.ts` : `caisseTheorique` l'additionne (1) | `853dff7` — clôture sans écart fantôme, vérifiée en base | — |
+| **ARG-04** | P1 dormant | **OUVERT** | `POST /caisse/credits` sans `idempotency_key` — vérifié : la seule clé du fichier est celle de l'acompte | — | Idempotence de création. **Avant réactivation du crédit** |
+| **ARG-05** | P1 dormant | **OUVERT** | Crédit, stock et caisse ne forment pas une transaction unique | — | Atomicité. Invariants I4/I5/I6 rouges |
+| **ARG-06** | P2 modèle | **OUVERT** | `caisse-transaction.entity.ts` porte toujours **2 colonnes** `marge` et `benefice`, alimentées par la même valeur | Côté écran, un seul champ depuis `ed9321b` | La fusion des colonnes demande une migration. Le serveur écrit encore deux fois le même chiffre |
+| **ARG-07** | P2 | **OUVERT** | « Bénéfice » ambigu entre marge commerciale et résultat ventes−dépenses | — | Deux concepts à nommer distinctement |
+| **ARG-08** | P2 modèle | **OUVERT** | Vérifié : **0** colonne `devise` sur `caisse_transactions` | ADR-0003 #5, explicitement partiel | Le XOF reste une convention, pas une donnée |
+| **ARG-09** | P3 affichage | **OUVERT** | Mesuré : **480 occurrences / 107 fichiers**. *(Correction : « 142 » annoncé plus tôt était faux — deux mesures confondues.)* | `config/devise.ts` câblé (`ed9321b`) mais non adopté par les écrans | 480 occurrences |
 
 # STOCK
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **STK-01** | **P0 publication** | Migration `StockOperationIdempotence` à exécuter dans l'environnement cible | 🔴 **OUVERT — fait d'environnement** | La migration existe (`1781500000000`). **Seul P0 non coché de `todo.md`.** Je ne peux pas le vérifier depuis ici : il faut la base réelle |
-| **STK-02** | P2 modèle | `stock = 0` confond « épuisé » et « non suivi en stock » | 🔴 **OUVERT** | ADR-0003 #6, différé par arbitrage |
-| **STK-03** | P2 architecture | Deux modèles coexistent : `produits` (marchand) et `stocks` (producteur/coopérateur) | 🟡 **NOMMÉ, non résolu** | `974de94` — les alertes interrogent désormais **les deux**, ce qui rend la dualité explicite au lieu de la subir |
-| **STK-04** | P2 | Les réapprovisionnements manuels ne passent pas par le ledger | 🔴 **OUVERT** | Commentaire de `stocks-rest.controller.ts` |
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **STK-01** | **P0 publication** | **OUVERT** | Migration `1781500000000-StockOperationIdempotence` présente dans la chaîne. **Seul P0 non coché de `todo.md`** | — | **Fait d'environnement.** Non vérifiable depuis le dépôt : exige la base cible |
+| **STK-02** | P2 modèle | **OUVERT** | `stock = 0` confond « épuisé » et « non suivi » | ADR-0003 #6, différé par arbitrage | Séparer quantité de `suivi_stock` |
+| **STK-03** | P2 architecture | **OUVERT** | Deux modèles coexistent : `produits` (marchand) et `stocks` (producteur/coopérateur) | `974de94` rend la dualité **explicite** (les alertes interrogent les deux) au lieu de la subir | Les deux tables demeurent |
+| **STK-04** | P2 | **OUVERT** | Les réapprovisionnements manuels ne passent pas par le ledger | — | Décider si tout mouvement doit être historisé |
 
 # UNITÉS
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **UNI-01** | P2 modèle | Plusieurs vocabulaires d'unités | 🔴 **OUVERT** | Vérifié : `config/unites.ts` **plus** des listes propres dans ≥ 6 écrans (`GestionStock`, `RecolteForm`, `Commandes`, `Stock`, `MarcheHub`, `BesoinMarchand`) |
-| **UNI-02** | P2 modèle | Facteurs de conversion globaux alors qu'un « sac » dépend du produit | 🔴 **OUVERT** | ADR-0003 #4, différé par arbitrage |
-| **UNI-03** | P2 historique | Pas de représentation historique stable de l'unité | ✅ **FERMÉ pour la vente et le stock** | `a430b78` (vente) + `853dff7` (mouvement de stock). **Reste ouvert** pour récolte et commande |
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **UNI-01** | P2 modèle | **OUVERT** | `config/unites.ts` **plus** des listes propres dans ≥ 6 écrans (`GestionStock`, `RecolteForm`, `Commandes`, `Stock`, `MarcheHub`, `BesoinMarchand`) | — | Vocabulaire canonique + alias d'entrée |
+| **UNI-02** | P2 modèle | **OUVERT** | Facteurs de conversion globaux alors qu'un « sac » dépend du produit | ADR-0003 #4, différé par arbitrage | Facteurs produit × conditionnement |
+| **UNI-03** | P2 historique | **OUVERT** | Vente : unité figée dans `details` (`a430b78`). Mouvement de stock : figée au ledger (`853dff7`). **Récolte et commande : non** | Les deux parcours d'argent sont couverts | Récolte et commande relisent encore l'unité courante |
 
 # COUCHE RÉSEAU
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **API-01** | P1 hygiène | `fetch()` directs malgré `api-client.ts` | 🟡 **PARTIEL** | `9d74fec` — 222/68 → **196/60**, et **0 sur auth/caisse/vente/stock**. Garde-fou `test:convergence-api` |
-| **API-02** | P1 | `StockContext` fait ses propres `fetch()` | ✅ **FERMÉ** | `9d74fec` — `stocks-api.ts` |
-| **API-03** | P1 | Plusieurs voies réseau pour l'auth | 🟡 **PARTIEL** | `9d74fec` — rafraîchissement de session **4 → 1**. `authService` (4) et `useWebAuthn` (7) restent **délibérément** : un 401 y signifie « mauvais code », pas « session expirée » |
-| **API-04** | P1 architecture | `main.tsx` monkey-patche `window.fetch` pour le bearer | 🔴 **OUVERT** | Comportement d'auth hors de la couche API. À absorber lors de l'unification |
-| **API-05** | P2 | `authService.getCurrentUser()` retourne toujours `null` | 🔴 **OUVERT** | Vérifié présent |
-| **API-06** | P2 | `academyService` a son propre `apiFetch` | ✅ **FERMÉ** | `ee30077` — c'était du **code mort**, supprimé (listé « non fait » dans `IMPLEMENTATION_STATUS.md`) |
-| **API-07** | P2 | `useRealtime.ts` a son propre `apiFetch` | 🔴 **OUVERT** | Vérifié : 7 appels |
-| **API-08** | P2 | `utils/api.ts` appelle directement | 🔴 **OUVERT** | Vérifié : 1 appel |
-| **API-09** | P2 | `backoffice-api.ts` ≈ 50 appels directs | 🔴 **OUVERT** | Vérifié : **50**. Hors périmètre auth/caisse/vente/stock |
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **API-01** | P1 hygiène | **OUVERT** | Mesuré : **196 `fetch()` / 60 fichiers** hors `services/api/` | `9d74fec` — 222/68 → 196/60, et **0 sur auth/caisse/vente/stock**, tenu par `test:convergence-api` | 196 appels hors des parcours d'argent |
+| **API-02** | P1 | **FERMÉ** | `StockContext.tsx` : **0** `fetch(` | `9d74fec` — `stocks-api.ts` | — |
+| **API-03** | P1 | **OUVERT** | `authService` (4), `useWebAuthn` (7), `api-client` (3) : trois voies subsistent | `9d74fec` — rafraîchissement de session **4 → 1**. Les cérémonies d'auth restent directes **délibérément** : un 401 y signifie « mauvais code », pas « session expirée » | Une autorité de transport unique reste à poser |
+| **API-04** | P1 architecture | **OUVERT** | `main.tsx` monkey-patche `window.fetch` pour le bearer | — | Comportement d'auth hors de la couche API |
+| **API-05** | P2 | **OUVERT** | `authService.getCurrentUser()` présent, retourne toujours `null` | — | Supprimer après preuve d'absence de consommateur |
+| **API-06** | P2 | **FERMÉ** | `services/academyService.ts` : **absent du dépôt** | `ee30077` — code mort prouvé inatteignable, registre `docs/hygiene/HYGIENE-1-axe1-code-mort.md` § « Contenu d'académie non branché » | — |
+| **API-07** | P2 | **OUVERT** | `useRealtime.ts` : 7 appels propres | — | Fragmentation |
+| **API-08** | P2 | **OUVERT** | `utils/api.ts` : 1 appel direct | — | Fragmentation |
+| **API-09** | P2 | **OUVERT** | `backoffice-api.ts` : **50** appels, vérifié | Hors périmètre auth/caisse/vente/stock du mandat HYGIÈNE-1 | 50 appels |
 
 # ROUTES ET MARKETPLACE
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **ROUTE-01** | P2 | `/transactions` dans `misc-rest` coexiste avec `/caisse/transactions` | 🟡 **DOCUMENTÉ, décision à prendre** | Vérifié : la route est **MASQUÉE** — `TransactionsRestController` gagne. Un test le constate. Son SQL a été aligné par prudence. **Corriger ce code ne change rien pour personne** : la question est si la route doit exister |
-| **ROUTE-02** | P2 fonctionnel | La marketplace lit `/caisse/produits`, le catalogue propre du marchand | 🟡 **DOCUMENTÉ, exception nommée** | `53695a4` — j'avais « corrigé » en l'authentifiant : **c'était nuisible**, ça lui présentait son propre stock comme l'offre d'autrui. Retiré. Exception écrite dans le garde-fou pour que personne ne recommence |
-| **MKT-01** | P2 fonctionnel | `marketplace-data.ts` se dit « source unique de vérité (mock) » | 🔴 **OUVERT** | Fichier présent |
-| **MKT-02** | P2 | Notifications marketplace statiques `nm1…nm4` | 🔴 **OUVERT** | Même fichier. Du faux métier dans une appli pilote |
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **ROUTE-01** | P2 | **OUVERT** | La route concurrente `@Get('transactions')` de `misc-rest` **existe toujours**. Elle est MASQUÉE (`TransactionsRestController` gagne), et un test le constate — **mais documenter ne ferme pas** | Son SQL a été aligné par prudence | Une route morte que personne n'appelle. Décider : supprimer ou assumer |
+| **ROUTE-02** | P2 fonctionnel | **OUVERT** | `Marketplace.tsx` lit toujours `/caisse/produits`, le catalogue propre du marchand | `53695a4` — l'authentifier était **nuisible** (son propre stock présenté comme l'offre d'autrui) ; retiré, exception nommée dans le garde-fou | L'écran n'a pas de source de données correcte |
+| **MKT-01** | P2 fonctionnel | **OUVERT** | `marketplace-data.ts` présent, se dit « source unique de vérité (mock) » | — | Données mock vivantes dans une appli pilote |
+| **MKT-02** | P2 | **OUVERT** | Notifications statiques `nm1…nm4` dans le même fichier | — | Faux métier |
 
 # CODE MORT
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **DEAD-01** | P1 hygiène | 182/519 fichiers jamais importés | ✅ **FERMÉ** | `ee30077` — mesure refaite par **atteignabilité réelle** (100 hors parcours, pas 182). **99 supprimés / 17 899 lignes**, 1 conservé, **zéro inexpliqué**. Registre : `docs/hygiene/HYGIENE-1-axe1-code-mort.md` |
-| **DEAD-02** | P2 | `mockUsers.ts` contient des utilisateurs de développement | 🟡 **ACCEPTÉ** | Vérifié présent, consommé par `ProfileSwitcher`, lui-même sous `import.meta.env.DEV` |
-| **DEAD-03** | Faible | `ProfileSwitcher` monté dans plusieurs layouts | 🟢 **HORS PÉRIMÈTRE** | Protégé par `import.meta.env.DEV`. Pas un bug de production |
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **DEAD-01** | P1 hygiène | **FERMÉ** | `scripts/hygiene/atteignabilite.mjs` : **423 fichiers analysés, 423 atteints, 0 hors parcours** | `ee30077` — 99 supprimés / 17 899 lignes, 1 conservé. **Registre d'atteignabilité : `docs/hygiene/HYGIENE-1-axe1-code-mort.md`**, chaque fichier SUPPRIMÉ ou CONSERVÉ avec preuve | — |
+| **DEAD-02** | P2 | **HORS PÉRIMÈTRE JUSTIFIÉ** | `mockUsers.ts` présent, consommé par `ProfileSwitcher` | `ProfileSwitcher` est monté sous `import.meta.env.DEV` — vérifié dans `AppLayout` | — |
+| **DEAD-03** | Faible | **HORS PÉRIMÈTRE JUSTIFIÉ** | `ProfileSwitcher` importé dans plusieurs layouts | Toutes les utilisations vérifiées sont sous `import.meta.env.DEV` | — |
 
 # TYPAGE
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **TYPE-01** | P1/P2 | 415 `any` sur les parcours d'argent | 🟡 **PARTIEL** | `56b4168` — **48 `any` de donnée → 0** aux frontières argent/identité/produit/quantité/stock/session/hors-ligne. `types/vente.ts` créé. 390 restants, dont les `catch (e: any)` qui ne décrivent aucune donnée |
-| **TYPE-02** | P1 | `credits.controller.ts` : `body: any`, résultats SQL `any` | 🔴 **OUVERT** | Vérifié : 4 occurrences. **DTO avant réactivation du crédit** |
-| **TYPE-03** | P2 | Le monkey-patch de `main.tsx` prend `input: any, init: any` | 🔴 **OUVERT** | Disparaît avec API-04 |
-| **TYPE-04** | Faible | `type Any = any` aux frontières STT/TTS natives | 🟢 **ASSUMÉ** | Frontière plugin. **Ne pas « nettoyer » pour le score** |
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **TYPE-01** | P1/P2 | **OUVERT** | Mesuré : **390** `any` sur les parcours d'argent | `56b4168` — **48 `any` de DONNÉE → 0** aux frontières argent/identité/produit/quantité/stock/session/hors-ligne ; `types/vente.ts` créé | 390, dont les `catch (e: any)` qui ne décrivent aucune donnée |
+| **TYPE-02** | P1 | **OUVERT** | `credits.controller.ts` : 4 `: any` | — | DTO/contrats. **Avant réactivation du crédit** |
+| **TYPE-03** | P2 | **OUVERT** | Le monkey-patch de `main.tsx` prend `input: any, init: any` | — | Disparaît avec API-04 |
+| **TYPE-04** | Faible | **HORS PÉRIMÈTRE JUSTIFIÉ** | `type Any = any` dans `nativeStt.ts` / `nativeTts.ts` | Frontière plugin Capacitor, où le type n'est pas connaissable. **Ne pas « nettoyer » pour le score** | — |
 
 # SÉCURITÉ
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **SEC-01** | **P0** | PIN identificateur écrit **en clair** dans les journaux, avec le téléphone | ✅ **FERMÉ** | `5e55d57` — test comportemental qui espionne `console` **et** `Logger`, y compris sur échec d'envoi |
-| **SEC-02** | **P0** | Ce n'était pas du code mort : `auth.controller.ts` appelle bien la fonction | ✅ **CONFIRMÉ puis FERMÉ** | `5e55d57` |
-| **SEC-03** | P1 | Notifications de changement de PIN en `console` au lieu du SMS réel | ✅ **FERMÉ** | `5e55d57` — **le SMS n'était jamais envoyé non plus**, ni à la création ni au changement |
-| **SEC-04** | P3 | `users.service.ts:334` journalise le terme de recherche saisi | 🔴 **OUVERT** | Donnée personnelle, **pas un secret**. Relevé en balayant SEC-01 |
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **SEC-01** | **P0** | **FERMÉ** | `feedbak-sms.service.ts` : **0** appel `console.*`, **11** appels `await this.send(...)` | `5e55d57` — test comportemental espionnant `console` ET `Logger`, sur succès **et** échec d'envoi | — |
+| **SEC-02** | **P0** | **FERMÉ** | Le chemin d'appel depuis `auth.controller.ts` existe toujours ; c'est le contenu du journal qui a changé | `5e55d57` | — |
+| **SEC-03** | P1 | **FERMÉ** | Les deux notifications PIN passent par `send()` → vrai `SmsService` | `5e55d57` — **le SMS n'était jamais envoyé non plus**, ni à la création ni au changement | — |
+| **SEC-04** | P3 | **OUVERT** | `users.service.ts:334` journalise le terme de recherche saisi | Relevé en balayant SEC-01. **Donnée personnelle, pas un secret** | Journalisation de donnée personnelle |
 
 # SMS ET INTÉGRATIONS
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **SMS-01** | P2 | Deux stratégies d'envoi dans `feedbak-sms` | ✅ **FERMÉ** | `5e55d57` — les onze notifications passent par `send()` |
-| **MOCK-01** | P2 exploitation | Odoo bascule en mock si `ODOO_CLIENT_MODE !== 'real'` | 🟢 **PAR CONCEPTION** | Vérifié. Le mode **réel**, lui, refuse de démarrer sans ses secrets — pas de repli silencieux |
-| **EXT-01** | P3 | Méthodes ANSUT traduction/TTS encore des ébauches | 🔴 **OUVERT** | Ne pas les présenter comme capacités disponibles |
-| **BO-01/02/03** | P3 | Feature flags, `isBackendReady=false`, routes admin en ébauche | 🔴 **OUVERT** | Dette fonctionnelle back-office |
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **SMS-01** | P2 | **FERMÉ** | Les 11 notifications de `feedbak-sms` passent par `send()`. Une seule stratégie | `5e55d57` | — |
+| **MOCK-01** | P2 exploitation | **HORS PÉRIMÈTRE JUSTIFIÉ** | `odoo-client.config.ts:23` : défaut `mock` si `ODOO_CLIENT_MODE !== 'real'` | Le mode **réel** refuse de démarrer sans ses secrets — pas de repli silencieux vers le mock | — |
+| **EXT-01** | P3 | **OUVERT** | Méthodes ANSUT traduction/TTS encore des ébauches | — | Ne pas les présenter comme capacités disponibles |
+| **BO-01** | P3 | **OUVERT** | `BOParametres` : TODO feature flags / A/B sans endpoints | — | Fonction incomplète |
+| **BO-02** | P3 | **OUVERT** | `BOConfigInstitution` : `isBackendReady = false` | — | Endpoint admin absent |
+| **BO-03** | P3 | **OUVERT** | Routes admin modération/livraison décrites comme ébauches | — | À vérifier avant de les compter comme disponibles |
 
 # SCHÉMA ET EXPLOITATION
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **SCHEMA-01** | P1 | Gestion mixte : migrations + DbInit + `synchronize` | 🔴 **OUVERT** | Convergence à poursuivre |
-| **SCHEMA-02** | P1 | Base vierge → `synchronize`; base existante → migrations si demandé | 🟢 **VOLONTAIRE** | Multiplie les chemins, mais c'est une décision assumée |
-| **SCHEMA-03** | P1 | Des évolutions ont dû être recopiées à la main dans DbInit | 🟡 **PARTIEL** | `73343a4` — **B1 en était l'exemple vivant** : `stock_mouvements.type` manquait à DbInit, l'annulation d'une vente échouait sur toute base neuve. Corrigé + garde-fou `schema-ledger-sans-migration` |
-| **SCHEMA-04** | P1 | `StockOperationIdempotence` : l'environnement cible peut différer du code | 🔴 **OUVERT** | = STK-01. **Fait d'environnement, à fermer avec preuve** |
+> **Réserve de Patrick, reprise ici :** ces quatre lignes **ne se ferment pas en
+> bloc** parce que B1 est corrigé. Un défaut opérationnel fermé n'efface pas la
+> dette architecturale qui l'a produit.
+
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **SCHEMA-01** | P1 | **OUVERT** | Trois mécanismes coexistent : migrations TypeORM, `DbInitService`, `synchronize` | — | **La doctrine de schéma reste structurellement multiple** |
+| **SCHEMA-02** | P1 | **OUVERT** | `schema-flags.ts` : base vierge → `synchronize`, base existante → migrations si `DB_MIGRATIONS_RUN` | Décision volontaire aujourd'hui | Multiplie les chemins de construction du schéma |
+| **SCHEMA-03** | P1 | **OUVERT** | Des évolutions doivent être recopiées à la main dans DbInit | `73343a4` ferme **une instance** (B1 : `stock_mouvements.type` absent → annulation de vente cassée sur base neuve) et pose le garde-fou `schema-ledger-sans-migration` | **Le mécanisme qui produit ce défaut demeure.** Le garde-fou détecte, il ne converge pas |
+| **SCHEMA-04** | P1 | **OUVERT** | = STK-01 | — | Fait d'environnement, à fermer avec preuve sur la base cible |
 
 # ARCHITECTURE
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **ARCH-01** | P2 | 124 fichiers > 400 lignes, max 6 649 | 🟢 **MESURE, pas dette** | 124 → **116**. *La taille seule n'autorise aucun refactoring* (arbitrage Patrick). Ne s'ouvre que sur un défaut structurel démontré |
-| **ARCH-02** | P2 | Les Contexts concentrent état, réseau, transformations et règles | 🟡 **RÉDUIT** | Réseau sorti (API-02), typage posé (TYPE-01). Responsabilités encore mêlées |
-| **ARCH-03** | P2 | Plusieurs sources de vérité pour session/utilisateur/auth | 🟡 **RÉDUIT** | Rafraîchissement unifié. `AppContext`/`UserContext` restent à cartographier |
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **ARCH-01** | P2 | **HORS PÉRIMÈTRE JUSTIFIÉ** | 124 → **116** fichiers > 400 lignes | *La taille seule n'autorise aucun refactoring* (arbitrage Patrick, 19/09). Ne s'ouvre que sur un défaut structurel démontré | — |
+| **ARCH-02** | P2 | **OUVERT** | Les Contexts concentrent état, réseau, transformations et règles | Réseau sorti (API-02), typage posé (TYPE-01) | Responsabilités encore mêlées |
+| **ARCH-03** | P2 | **OUVERT** | `AppContext`, `UserContext`, services d'auth | Rafraîchissement unifié | Cartographie à faire |
 
-# CLIENT, FIDÉLITÉ, TESTS, DOCS
+# CLIENT, FIDÉLITÉ, TESTS, DOCS, UI
 
-| ID | Niveau | Dette | Statut vérifié | Preuve |
-|---|---|---|---|---|
-| **CLIENT-01** | P3 modèle | Le client est fragmenté : crédit par nom, fidélité par téléphone, marketplace par champs | 🔴 **OUVERT** | Projet de modèle à part entière |
-| **CLIENT-02** | P2 dormant | Crédit identifié par `(marchand_id, nom)` : des homonymes partagent une dette | 🔴 **OUVERT** | **Avant extension du crédit** |
-| **FID-01** | P3 | Fidélité non intégrée automatiquement à la vente | 🔴 **OUVERT** | Dette d'intégration, pas bug caisse |
-| **TEST-01** | P2 | La couche d'affichage est moins couverte que les invariants | 🟡 **RÉDUIT** | Tests traversants ARGENT-1/2/3. C'est la raison de garder l'axe 5 conditionnel |
-| **TEST-02** | P2 | Tests en scripts `.mjs`/`.mts` plutôt qu'un système homogène | 🔴 **OUVERT** | Dette de maintenance, pas de correction |
-| **TEST-03** | **P1** | **Un test peut réparer le schéma pour se rendre vert** | ✅ **FERMÉ** | *Ligne ajoutée le 19/09.* `annulation-remise-stock.spec.ts` appliquait une migration dans son `beforeAll` : huit tests passaient en prouvant le contraire de ce qu'on croyait. Rustine retirée, garde-fou posé (`73343a4`) |
-| **TEST-04** | P2 | Les specs d'invariants partagent **une** base ; un numéro de téléphone réutilisé fait passer une suite seule et échouer en groupe | ✅ **FERMÉ** | *Ligne ajoutée le 19/09.* Garde-fou `telephones-tests-uniques` (`974de94`), vérifié dans les deux sens |
-| **DOC-01** | P2 | Des documents décrivent des défauts corrigés ou des architectures antérieures | 🟡 **PARTIEL** | `ca946da` — ADR-0003 corrigé (il annonçait « fait » sur du code mort). **Les autres restent à dater** |
-| **DOC-02** | P2 | Documentations contradictoires sur `migrationsRun` | 🔴 **OUVERT** | **Le code courant fait foi** |
-| **UI-01** | P3 | Dette visuelle / tokens / couleurs littérales | 🔴 **OUVERT** | Hors priorité sauf défaut fonctionnel |
-| **VOICE-01** | À surveiller | Le transcript brut n'est pas exposé à la recette terrain | 🔴 **OUVERT** | Instrumentation de recette, pas fonction métier |
+| ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
+|---|---|---|---|---|---|
+| **CLIENT-01** | P3 modèle | **OUVERT** | Client fragmenté : crédit par nom, fidélité par téléphone, marketplace par champs | — | Projet de modèle à part entière |
+| **CLIENT-02** | P2 dormant | **OUVERT** | Crédit identifié par `(marchand_id, nom)` | — | Des homonymes partagent une dette. **Avant extension du crédit** |
+| **FID-01** | P3 | **OUVERT** | Fidélité non intégrée automatiquement à la vente | — | Dette d'intégration |
+| **TEST-01** | P2 | **OUVERT** | La couche d'affichage reste moins couverte que les invariants | Tests traversants ARGENT-1/2/3 ajoutés | C'est la raison de garder l'axe 5 conditionnel |
+| **TEST-02** | P2 | **OUVERT** | Tests en scripts `.mjs`/`.mts` spécialisés | Acceptable tant qu'ils sont dans `verify` | Dette de maintenance |
+| **TEST-03** | **P1** | **FERMÉ** | `annulation-remise-stock.spec.ts` : **0** occurrence de `LedgerMouvementType`. Garde-fou `schema-ledger-sans-migration.spec.ts` présent | *Ligne ajoutée le 19/09.* Un test appliquait une migration dans son `beforeAll` : huit tests passaient en prouvant le contraire de ce qu'on croyait. C'est ce qui a laissé B1 survivre | — |
+| **TEST-04** | P2 | **FERMÉ** | `telephones-tests-uniques.spec.ts` présent, vérifié dans les deux sens | *Ligne ajoutée le 19/09.* Les specs partagent une base ; un numéro réutilisé fait passer une suite seule et échouer en groupe | — |
+| **DOC-01** | P2 | **OUVERT** | Des documents décrivent des défauts corrigés ou des architectures antérieures | `ca946da` corrige ADR-0003 (il annonçait « fait » sur du code mort) | Les autres documents restent à dater |
+| **DOC-02** | P2 | **OUVERT** | Contradictions sur `migrationsRun` entre docs | — | **Le code courant fait foi** |
+| **DOC-03** | P3 | **OUVERT** | *Ligne ajoutée pendant cette passe.* `stocks-rest.controller.ts:18` affirme encore « Ne montre que les vraies variations de stock (`quantite_retranchee <> 0`) » — **faux depuis ARG-01** | Repéré en vérifiant ARG-01. **Non corrigé : cette passe est une photo, pas un chantier** | Un commentaire qui contredit son code |
+| **UI-01** | P3 | **OUVERT** | Dette visuelle / tokens / couleurs littérales | — | Hors priorité sauf défaut fonctionnel |
+| **VOICE-01** | À surveiller | **OUVERT** | Le transcript brut n'est pas exposé à la recette terrain | — | Instrumentation de recette, pas fonction métier |
 
 ---
 
@@ -168,25 +170,49 @@ La sévérité doit jouer dans les deux sens. Ne sont pas des anomalies :
 - les `fetch()` **du backend** vers BPay, SMS, ElevenLabs, ANSUT — ils n'ont pas
   vocation à passer par le client REST du frontend ;
 - les `any` aux frontières Capacitor / STT / TTS (TYPE-04) ;
-- les 124 gros fichiers : **ce ne sont pas 124 bugs** ;
+- les 116 gros fichiers : **ce ne sont pas 116 bugs** (ARCH-01) ;
 - `ProfileSwitcher` et le mode mock d'Odoo, tous deux correctement protégés.
+
+## Métriques HYGIÈNE finales
+
+| Mesure | Départ (19/09 matin) | À `5e55d57` |
+|---|---|---|
+| Fichiers analysés (`frontend_src/src/app`) | 519 | **423** |
+| Fichiers hors parcours d'atteignabilité | 100 (sur 182 « jamais importés ») | **0** |
+| Fichiers > 400 lignes | 124 | **116** |
+| `fetch()` hors `services/api/` | 222 / 68 fichiers | **196 / 60** — dont **0** sur auth, caisse, vente, stock |
+| `any` sur les parcours d'argent | 440 *(415 annoncé au départ venait d'un motif plus étroit)* | **390** — dont **0** sur une donnée métier aux frontières |
+
+## P0 et P1 encore OUVERTS
+
+**P0 — un seul, et c'est un fait d'environnement**
+
+| ID | Ce qu'il faut |
+|---|---|
+| **STK-01 / SCHEMA-04** | Exécuter `StockOperationIdempotence` sur la base cible, ou prouver qu'elle y est. Non vérifiable depuis le dépôt |
+
+**P1 atteignables en pilote**
+
+| ID | Ce qui reste |
+|---|---|
+| **API-01** | 196 `fetch()` hors couche API (0 sur les parcours d'argent) |
+| **API-03** | Trois voies réseau pour l'auth |
+| **API-04** | `main.tsx` monkey-patche `window.fetch` |
+| **SCHEMA-01 / 02 / 03** | La doctrine de schéma reste multiple |
+| **TYPE-01** | 390 `any` (0 sur une donnée métier aux frontières) |
+
+**P1 NON atteignables en pilote** — `CAISSE_CREDIT_ACTIF = false`.
+Condition de réouverture écrite : **avant toute réactivation du crédit.**
+
+| ID | Ce qui reste |
+|---|---|
+| **ARG-04** | Idempotence de création d'un crédit |
+| **ARG-05** | Atomicité crédit / stock / caisse |
+| **TYPE-02** | DTO et contrats du contrôleur crédit |
+| **CLIENT-02** | Homonymes partageant une dette |
 
 ## Observation non résolue
 
 Un passage complet des invariants a montré **3 échecs dont le détail n'a pas
 été capturé**. Les cinq passages suivants sont verts (189/189). Cause inconnue,
-non reproduite. **Ce n'est pas classé « flake »** : à surveiller au prochain
-run complet, et à instruire s'il revient.
-
-## Ce qui reste avant terrain
-
-Par ordre, et seulement ce qui est **atteignable** :
-
-1. **STK-01 / SCHEMA-04** — la seule ligne P0 encore ouverte. Fait
-   d'environnement : exécuter la migration sur la base cible, ou prouver
-   qu'elle y est.
-2. Les lignes P1 **dormantes du crédit** (ARG-04, ARG-05, TYPE-02, CLIENT-02)
-   ne sont pas atteignables en pilote (`CAISSE_CREDIT_ACTIF = false`) — elles
-   ont une raison explicite et une condition de réouverture écrite :
-   **avant toute réactivation du crédit**.
-3. Tout le reste est P2/P3 ou hors parcours.
+non reproduite. **Ce n'est pas classé « flake »** : à instruire s'il revient.
