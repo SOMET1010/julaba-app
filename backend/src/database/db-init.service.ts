@@ -31,6 +31,15 @@ export class DbInitService {
       await this.dataSource.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS commune_autre TEXT;`);
       await this.dataSource.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS quartier_village TEXT;`);
       await this.dataSource.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255) NULL;`);
+      // SEC-2 — verrou dédié au PIN identificateur. Même règle que pour
+      // `stock_mouvements.type` (B1) et `stock_operation_idempotency` (STK-01) :
+      // une colonne posée par une seule migration n'existe pas sur base vierge.
+      await this.dataSource.query(
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_identificateur_pin_attempts int NOT NULL DEFAULT 0;`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS identificateur_pin_locked_until timestamp NULL;`,
+      );
       await this.dataSource.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL;`);
       await this.dataSource.query(`CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email)) WHERE email IS NOT NULL;`);
       this.logger.log('Colonnes type_point_vente + 9 colonnes admin-divisions verifiees');

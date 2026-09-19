@@ -27,6 +27,7 @@ import type {
 } from '@simplewebauthn/types';
 import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
 import { attenteApresEchecs, essaisAvantAttente, estVerrouHeriteSansFin } from './verrou-pin';
+import { genererPinIdentificateurAcceptable } from './pin-identificateur';
 import { AuditService } from '../audit/audit.service';
 import { PinCryptoService } from './pin-crypto.service';
 import { stripSensitiveUserFields } from '../users/sanitize-user.util';
@@ -534,16 +535,89 @@ export class AuthController {
     if (!(user as any).pinCodeEncryptedIdentificateur) {
       return { valid: false, message: 'Aucun PIN défini pour cet identificateur' };
     }
+
+    // ── SEC-07 : CETTE ROUTE N'AVAIT AUCUN COMPTEUR ──────────────────────────
+    //
+    // Elle comparait en temps constant — bien — puis acceptait un nombre
+    // ILLIMITÉ d'essais sur 4 096 combinaisons. Quelques minutes suffisaient à
+    // les épuiser depuis une session ouverte, par exemple sur un téléphone
+    // volé non verrouillé. Le PIN identificateur protège la modification des
+    // fiches acteurs : ce n'était pas une protection, c'était un péage.
+    //
+    // L'arbitrage « 4 chiffres, alphabet 2–9 » (cf. pin-identificateur.ts) est
+    // posé SUR ce verrou. Sans lui, il ne tient pas. Ce sont donc deux moitiés
+    // du même choix, et les tests vérifient les deux ensemble.
+    const verrou = await this.attenteVerrouPinIdentificateur(user);
+    if (verrou) return { valid: false, ...verrou };
+
     try {
       const pin = this.pinCrypto.decrypt((user as any).pinCodeEncryptedIdentificateur);
       const pinBuffer = Buffer.from(pin.trim().padEnd(4, '\0'));
       const inputBuffer = Buffer.from(body.pin.trim().padEnd(4, '\0'));
       const valid = pinBuffer.length === inputBuffer.length &&
         timingSafeEqual(pinBuffer, inputBuffer);
-      return { valid };
+      if (valid) {
+        await this.reussitePinIdentificateur(user.id);
+        return { valid: true };
+      }
+      return { valid: false, ...(await this.echecPinIdentificateur(user)) };
     } catch {
       return { valid: false, message: 'Erreur lors de la vérification du PIN' };
     }
+  }
+
+  // ── LE VERROU DU PIN IDENTIFICATEUR, EN UN SEUL ENDROIT ───────────────────
+  //
+  // Il utilise l'échelle de `verrou-pin.ts` (3 échecs → 5 min, 6 → 15 min,
+  // 9 et au-delà → 1 h, jamais définitif) mais SES PROPRES COLONNES.
+  //
+  // Pourquoi pas `failedPinAttempts` / `lockedUntil` ? Parce qu'une connexion
+  // par mot de passe réussie les remet à zéro (`auth.service.login`). Partager
+  // ces champs offrirait le contournement exact que Patrick a demandé de
+  // rendre impossible : rater trois fois le PIN, se déconnecter, se
+  // reconnecter, recommencer indéfiniment. Ici, seul un PIN JUSTE remet le
+  // compteur à zéro — ou une réinitialisation, qui change le secret.
+
+  private async attenteVerrouPinIdentificateur(
+    user: User,
+  ): Promise<{ locked: true; attenteMs: number } | null> {
+    const jusqua = (user as any).identificateurPinLockedUntil as Date | null;
+    if (estVerrouHeriteSansFin(jusqua)) {
+      await this.userRepo.update(user.id, {
+        failedIdentificateurPinAttempts: 0,
+        identificateurPinLockedUntil: null,
+      } as any);
+      (user as any).identificateurPinLockedUntil = null;
+      (user as any).failedIdentificateurPinAttempts = 0;
+      return null;
+    }
+    if (jusqua && jusqua.getTime() > Date.now()) {
+      return { locked: true, attenteMs: jusqua.getTime() - Date.now() };
+    }
+    return null;
+  }
+
+  private async reussitePinIdentificateur(id: string): Promise<void> {
+    await this.userRepo.update(id, {
+      failedIdentificateurPinAttempts: 0,
+      identificateurPinLockedUntil: null,
+    } as any);
+  }
+
+  private async echecPinIdentificateur(
+    user: User,
+  ): Promise<{ locked: boolean; attenteMs?: number; essaisRestants?: number }> {
+    const essais = ((user as any).failedIdentificateurPinAttempts ?? 0) + 1;
+    const attente = attenteApresEchecs(essais);
+    if (attente > 0) {
+      await this.userRepo.update(user.id, {
+        failedIdentificateurPinAttempts: essais,
+        identificateurPinLockedUntil: new Date(Date.now() + attente),
+      } as any);
+      return { locked: true, attenteMs: attente };
+    }
+    await this.userRepo.update(user.id, { failedIdentificateurPinAttempts: essais } as any);
+    return { locked: false, essaisRestants: essaisAvantAttente(essais) };
   }
 
   @Post('identificateur/me/change-pin')
@@ -573,11 +647,19 @@ export class AuthController {
     if (!(user as any).pinCodeEncryptedIdentificateur) {
       return { success: false, message: 'Aucun PIN défini' };
     }
+    // Même verrou qu'à la vérification : sans lui, `change-pin` serait
+    // simplement l'autre porte par où deviner le code, à volonté.
+    const verrouChangement = await this.attenteVerrouPinIdentificateur(user);
+    if (verrouChangement) {
+      return { success: false, message: 'Trop d’essais. Réessaie plus tard.', ...verrouChangement };
+    }
     try {
       const pin = this.pinCrypto.decrypt((user as any).pinCodeEncryptedIdentificateur);
       if (pin.trim() !== body.oldPin.trim()) {
-        return { success: false, message: 'Ancien PIN incorrect' };
+        const etat = await this.echecPinIdentificateur(user);
+        return { success: false, message: 'Ancien PIN incorrect', ...etat };
       }
+      await this.reussitePinIdentificateur(req.user.id);
       const newStored = this.pinCrypto.encrypt(body.newPin);
       await this.userRepo.update(req.user.id, { pinCodeEncryptedIdentificateur: newStored } as any);
       try {
@@ -594,31 +676,101 @@ export class AuthController {
     }
   }
 
-  @Get('identificateur/:id/pin-decrypted')
+  // ── SEC-05 / SEC-2 : LE PIN N'EST PLUS JAMAIS RENDU ──────────────────────
+  //
+  // CE QUI ÉTAIT ICI. `GET identificateur/:id/pin-decrypted` déchiffrait le PIN
+  // et le renvoyait en clair à tout `super_admin` ou `admin_general`. L'audit
+  // `PIN_READ` traçait la lecture ; il ne l'empêchait pas. Le secret était
+  // révélable à volonté depuis le back-office — ce qui vidait de son sens le
+  // correctif SEC-01, où l'on venait d'interdire au PIN d'entrer dans un
+  // journal : on protégeait la trace d'un code que l'application donnait
+  // toujours sur demande.
+  //
+  // CE QUI LE REMPLACE, et pourquoi ce n'est PAS la même chose. Une
+  // réinitialisation, pas une récupération. Le serveur tire un nouveau code,
+  // l'envoie par SMS, et ne le dit à personne d'autre — pas même à
+  // l'administrateur qui a déclenché l'opération. La réponse ne porte donc
+  // aucun secret, et il n'existe plus aucune route capable d'en révéler un.
+  //
+  // CE QU'ON A REFUSÉ D'ÉCRIRE. Un repli « on affiche le code une seule fois si
+  // le SMS échoue ». Arbitrage de Patrick, 19/09/2026 : « on recréerait SEC-05
+  // sous une forme un peu plus propre ». En cas d'échec d'envoi on remonte
+  // `SMS_NON_DELIVRE` et on propose de renvoyer — jamais le code.
+  //
+  // CE QUI RESTE OUVERT, et c'est écrit au registre : AUTH-RECOVERY-01, le cas
+  // « numéro perdu ou changé ». Il n'a pas de solution ici, et improviser une
+  // récupération de compte dans cette route serait rouvrir SEC-05 par la
+  // fenêtre.
+  @Post('identificateur/:id/reinitialiser-pin')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin', 'admin_general')
-  async getDecryptedPin(@Param('id') id: string, @Request() req: any) {
+  @HttpCode(HttpStatus.OK)
+  async reinitialiserPinIdentificateur(@Param('id') id: string, @Request() req: any) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user || (user as any).role !== 'identificateur') {
-      return { success: false, message: 'Identificateur introuvable' };
+      return { success: false, code: 'INTROUVABLE', message: 'Identificateur introuvable' };
     }
-    if (!(user as any).pinCodeEncryptedIdentificateur) {
-      return { success: false, message: 'Aucun PIN défini' };
+    const phone = (user as any).phone;
+    if (!phone) {
+      // Sans numéro il n'y a pas de canal : on ne réinitialise pas dans le vide,
+      // et surtout on n'invente pas un canal de secours. C'est AUTH-RECOVERY-01.
+      return { success: false, code: 'SANS_NUMERO', message: 'Cet identificateur n’a pas de numéro : le code ne peut pas être envoyé' };
     }
-    try {
-      const pin = this.pinCrypto.decrypt((user as any).pinCodeEncryptedIdentificateur);
-      await this.auditService.log({
-        userId: req.user?.id ?? null,
-        action: 'PIN_READ',
-        entite: 'identificateur',
-        entiteId: id,
-        details: { context: 'BO admin lookup' },
-        ip: req.ip ?? null,
-      });
-      return { success: true, pin: pin.trim() };
-    } catch {
-      return { success: false, message: 'Erreur lors du déchiffrement' };
+
+    const nouveauPin = genererPinIdentificateurAcceptable();
+    await this.userRepo.update(id, {
+      pinCodeEncryptedIdentificateur: this.pinCrypto.encrypt(nouveauPin),
+      // L'ancien code cesse d'exister À CET INSTANT : il est écrasé, pas
+      // marqué obsolète. Et le verrou repart à zéro, sinon la personne
+      // recevrait un code qu'elle ne pourrait pas utiliser avant une heure.
+      failedIdentificateurPinAttempts: 0,
+      identificateurPinLockedUntil: null,
+    } as any);
+
+    // Les sessions ouvertes tombent. Un code réinitialisé l'est souvent parce
+    // qu'on soupçonne quelque chose ; laisser vivre les sessions existantes
+    // rendrait le geste décoratif.
+    await this.authService.revokeAllUserTokens(id);
+
+    await this.auditService.log({
+      userId: req.user?.id ?? null,
+      action: 'PIN_RESET',
+      entite: 'identificateur',
+      entiteId: id,
+      // Aucun fragment du code, pas même les deux derniers chiffres : sur
+      // 4 chiffres, en divulguer deux divise l'espace de recherche par 64.
+      details: { resetBy: req.user?.id ?? null, canal: 'sms' },
+      ip: req.ip ?? null,
+    });
+
+    const envoye = await this.feedbakSmsService.notifyPinIdentificateurReset(
+      String(phone),
+      String((user as any).firstName || 'Utilisateur'),
+      nouveauPin,
+    );
+
+    // Le code est déjà changé, même si le SMS n'est pas parti : on ne revient
+    // pas en arrière sur une invalidation de secret. L'écran doit dire la
+    // vérité — « le code a changé, mais le SMS n'est pas passé » — et proposer
+    // de renvoyer. Il ne doit pas proposer de l'afficher.
+    if (!envoye) {
+      return { success: false, code: 'SMS_NON_DELIVRE', pinChange: true };
     }
+    return { success: true };
+  }
+
+  // Renvoi du SMS après un `SMS_NON_DELIVRE`. Ce n'est PAS une seconde
+  // réinitialisation : ce serait envoyer un troisième code et perdre celui que
+  // la personne a peut-être déjà reçu. On ne peut pas relire le code stocké
+  // sans rouvrir SEC-05, donc renvoyer, ici, c'est réinitialiser à nouveau —
+  // assumé et dit tel quel. La temporisation empêche d'en faire un robinet.
+  @Throttle({ default: { limit: 3, ttl: 600000 } })
+  @Post('identificateur/:id/renvoyer-pin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('super_admin', 'admin_general')
+  @HttpCode(HttpStatus.OK)
+  async renvoyerPinIdentificateur(@Param('id') id: string, @Request() req: any) {
+    return this.reinitialiserPinIdentificateur(id, req);
   }
 
   @Post('create-acteur')
@@ -649,25 +801,33 @@ export class AuthController {
       if (result.user?.id) {
         await this.userRepo.update(result.user.id, { mustChangePassword: true } as any);
       }
-      let pinGenere: string | undefined;
+      // SEC-06 / SEC-07 — le code ne repart plus dans la réponse, et il n'est
+      // plus tiré avec `Math.random()`.
+      //
+      // CE QUI CHANGE SUR LE TERRAIN, et c'est un arbitrage assumé de Patrick
+      // (19/09/2026) : l'administrateur qui crée un identificateur ne peut plus
+      // lui lire son code sur place. Le geste devient création → SMS →
+      // première authentification. C'est plus lent d'une minute, et c'est la
+      // seule façon d'avoir un secret que seule la personne connaît.
+      //
+      // `smsCodeEnvoye` dit si le SMS est parti. Il ne porte AUCUN fragment du
+      // code : c'est un état d'acheminement, pas un lot de consolation.
+      let smsCodeEnvoye: boolean | undefined;
       if ((body as any).role === 'identificateur' && result.user?.id) {
-        const digits = ['2','3','4','5','6','7','8','9'];
-        pinGenere = Array.from({ length: 4 }, () => digits[Math.floor(Math.random() * digits.length)]).join('');
-        const stored = this.pinCrypto.encrypt(pinGenere);
+        const codeInitial = genererPinIdentificateurAcceptable();
+        const stored = this.pinCrypto.encrypt(codeInitial);
         await this.userRepo.update(result.user.id, { pinCodeEncryptedIdentificateur: stored } as any);
-        try {
-          if ((body as any).phone) {
-            await this.feedbakSmsService.notifyPinIdentificateurCreated(
-              String((body as any).phone),
-              String((body as any).firstName || 'Utilisateur'),
-              pinGenere,
-            );
-          }
-        } catch {
-          void 0;
+        if ((body as any).phone) {
+          smsCodeEnvoye = await this.feedbakSmsService.notifyPinIdentificateurCreated(
+            String((body as any).phone),
+            String((body as any).firstName || 'Utilisateur'),
+            codeInitial,
+          );
+        } else {
+          smsCodeEnvoye = false;
         }
       }
-      return { user: result.user, success: true, pinGenere };
+      return { user: result.user, success: true, smsCodeEnvoye };
     } catch (e: any) {
       if (e.status === 409) throw e;
       throw e;

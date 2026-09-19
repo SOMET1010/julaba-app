@@ -86,7 +86,6 @@ export function BOActeurs() {
   const [filterGenre, setFilterGenre] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filterRole, setFilterRole] = useState<string>('all');
-  const [pinVisible, setPinVisible] = useState<Record<string, boolean>>({});
   const [modifierPinActeur, setModifierPinActeur] = useState<{ id: string; nom: string } | null>(null);
   const [nouveauPin, setNouveauPin] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
@@ -292,14 +291,6 @@ export function BOActeurs() {
     return () => unregisterNewAction();
   }, [registerNewAction, unregisterNewAction, navigate]);
 
-  React.useEffect(() => {
-    const visibleKeys = Object.keys(pinVisible).filter(k => pinVisible[k]);
-    if (visibleKeys.length === 0) return;
-    const timeoutId = setTimeout(() => {
-      setPinVisible({});
-    }, 5000);
-    return () => clearTimeout(timeoutId);
-  }, [pinVisible]);
 
   React.useEffect(() => {
     setSelectedIds(new Set());
@@ -451,32 +442,70 @@ export function BOActeurs() {
     generateCSV(selected, false);
   };
 
-  const fetchPin = async (acteurId: string) => {
-    if (pinVisible[acteurId]) {
-      setPinVisible(prev => ({ ...prev, [acteurId]: false }));
-      return;
-    }
+  // ── SEC-2 : « Voir le PIN » n'existe plus ────────────────────────────────
+  //
+  // CE QU'IL Y AVAIT ICI. Un bouton qui appelait `GET .../pin-decrypted`,
+  // récupérait le code en clair de l'identificateur et l'affichait cinq
+  // secondes. Le serveur ne rend plus ce code — à personne, jamais.
+  //
+  // CE QUI LE REMPLACE. Une réinitialisation : le serveur tire un nouveau code
+  // et l'envoie par SMS. L'administrateur déclenche, il ne lit pas. Il faut
+  // donc que l'écran le DISE clairement avant de le faire, parce que le geste
+  // n'est plus anodin — l'ancien code cesse de fonctionner immédiatement et
+  // les sessions ouvertes de la personne tombent.
+  //
+  // CE QU'ON N'AFFICHERA JAMAIS, même si le SMS échoue : le code. En cas
+  // d'échec d'envoi on propose de renvoyer, rien d'autre.
+  const reinitialiserPin = useCallback(async (acteur: Acteur, renvoi = false) => {
+    const chemin = renvoi ? 'renvoyer-pin' : 'reinitialiser-pin';
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
     try {
-      const res = await fetch(`${API_URL}/auth/identificateur/${acteurId}/pin-decrypted`, {
+      const res = await fetch(`${API_URL}/auth/identificateur/${acteur.id}/${chemin}`, {
+        method: 'POST',
         credentials: 'include',
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
-      if (!res.ok) { toast.error('Impossible de récupérer le PIN'); return; }
-      await res.json();
-      setPinVisible(prev => ({ ...prev, [acteurId]: true }));
+      if (res.status === 429) {
+        toast.error('Trop de renvois. Patientez quelques minutes avant de réessayer.');
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data?.success) {
+        toast.success('Nouveau code envoyé par SMS. L’ancien ne fonctionne plus.');
+        return;
+      }
+      if (data?.code === 'SMS_NON_DELIVRE') {
+        // On dit exactement où en est la situation : le code A changé, mais la
+        // personne ne l'a pas reçu. Taire l'un des deux la laisserait dehors.
+        setConfirmAction({
+          open: true,
+          title: 'Le SMS n’est pas parti',
+          message: `Le code de ${getActeurName(acteur)} a bien été changé — l’ancien ne fonctionne plus — mais le SMS n’a pas pu être délivré. Voulez-vous réessayer l’envoi ?`,
+          severity: 'warning',
+          confirmLabel: 'Renvoyer le code',
+          onConfirm: () => {
+            setConfirmAction(null);
+            void reinitialiserPin(acteur, true);
+          },
+        });
+        return;
+      }
+      if (data?.code === 'SANS_NUMERO') {
+        toast.error('Cet identificateur n’a pas de numéro : le code ne peut pas être envoyé.');
+        return;
+      }
+      toast.error('La réinitialisation a échoué');
     } catch (err) {
       clearTimeout(timeoutId);
       if ((err as any)?.name === 'AbortError') {
         toast.error('Délai dépassé, vérifiez votre connexion');
         return;
       }
-      console.warn('[BOActeurs] fetchPin failed:', err instanceof Error ? err.message : err);
       toast.error('Erreur réseau');
     }
-  };
+  }, []);
 
   const getActeurName = useCallback((acteur: Acteur) => (
     `${acteur.prenoms || ''} ${acteur.nom || ''}`.trim() || acteur.full_name || 'cet acteur'
@@ -624,10 +653,20 @@ export function BOActeurs() {
         onClick: () => navigate(`/backoffice/acteurs/${acteur.id}?tab=enrolements`),
       });
       items.push({
-        id: 'voir-pin',
-        label: pinVisible[acteur.id] ? 'Masquer le PIN' : 'Voir le PIN',
+        id: 'reinitialiser-pin',
+        label: 'Réinitialiser le PIN',
         icon: KeyRound,
-        onClick: () => fetchPin(acteur.id),
+        onClick: () => setConfirmAction({
+          open: true,
+          title: 'Réinitialiser le PIN ?',
+          message: `${getActeurName(acteur)} recevra un nouveau code par SMS. Son ancien code cessera de fonctionner immédiatement et ses sessions ouvertes seront fermées. Personne — vous non plus — ne verra ce code.`,
+          severity: 'warning',
+          confirmLabel: 'Réinitialiser et envoyer',
+          onConfirm: () => {
+            setConfirmAction(null);
+            void reinitialiserPin(acteur);
+          },
+        }),
       });
       items.push({
         id: 'modifier-pin',
@@ -723,7 +762,7 @@ export function BOActeurs() {
   }, [
     bo.user?.role,
     boUser?.role,
-    fetchPin,
+    reinitialiserPin,
     getActeurName,
     handleSingleChangerType,
     handleSingleReactivate,
@@ -731,7 +770,6 @@ export function BOActeurs() {
     handleSingleSuspend,
     hasPermission,
     navigate,
-    pinVisible,
     softDeleteActeur,
   ]);
 
@@ -764,7 +802,6 @@ export function BOActeurs() {
       clearTimeout(timeoutId);
       if (!res.ok) { toast.error('Erreur lors de la modification du PIN'); return; }
       toast.success(`PIN de ${pendingPinChange.nom} modifié avec succès`);
-      setPinVisible(prev => ({ ...prev, [pendingPinChange.id]: true }));
       setModifierPinActeur(null);
       setPendingPinChange(null);
       setNouveauPin('');
