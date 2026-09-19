@@ -58,55 +58,97 @@ export class AdminDivisionsSeedService {
     `);
   }
 
-  // Appelé APRÈS le bind du port (depuis main.ts), en arrière-plan.
+  // ── SEED-01 : CHAQUE NIVEAU EST IDEMPOTENT POUR LUI-MÊME ─────────────────
+  //
+  // CE QU'IL Y AVAIT. Une seule garde pour toute la cascade :
+  //     if (districtCount === 0) { …districts, régions, départements, communes… }
+  // « La table districts n'est pas vide » y tenait lieu de « tout le découpage
+  // est en place ». Un district créé à la main, ou un premier démarrage
+  // interrompu après le premier INSERT, et les communes n'étaient JAMAIS
+  // posées — sans erreur, sans trace, et `recoltes-prevues` perdait ses
+  // données en silence.
+  //
+  // CE QU'ON FAIT À LA PLACE. On compare, niveau par niveau, les codes du jeu
+  // de seed à ceux déjà en base, et on n'insère que ce qui manque. Aucun
+  // niveau ne décide pour un autre. Le seed n'est pas refondu : mêmes données,
+  // même ordre, mêmes entités — seule la condition d'insertion change.
+  //
+  // Les cartes parent sont relues EN BASE après chaque insertion, pas
+  // construites à partir des seules lignes qu'on vient d'écrire : sur une base
+  // partiellement remplie, les parents existants doivent servir de points
+  // d'accroche aux enfants manquants.
   async runSeed() {
     try {
       await this.ensureTables();
-      const districtCount = await this.districtRepo.count();
-      if (districtCount === 0) {
-        this.logger.log('Seed admin-divisions: insertion en cours');
-        const districts = await this.districtRepo.save(
-          DISTRICTS_SEED.map((d) => this.districtRepo.create(d)),
-        );
-        const districtMap = new Map(districts.map((d) => [d.code, d.id]));
 
-        const regions = await this.regionRepo.save(
-          REGIONS_SEED.map((r) =>
-            this.regionRepo.create({
-              code: r.code,
-              nom: r.nom,
-              districtId: districtMap.get(r.districtCode)!,
-            }),
+      const codesPresents = async (repo: Repository<any>): Promise<Set<string>> =>
+        new Set((await repo.find()).map((r: any) => String(r.code)));
+      const carteParCode = async (repo: Repository<any>): Promise<Map<string, string>> =>
+        new Map((await repo.find()).map((r: any) => [String(r.code), r.id]));
+
+      const poses = { districts: 0, regions: 0, departements: 0, communes: 0 };
+
+      // 1. Districts
+      const dPresents = await codesPresents(this.districtRepo);
+      const dManquants = DISTRICTS_SEED.filter((d) => !dPresents.has(d.code));
+      if (dManquants.length) {
+        await this.districtRepo.save(dManquants.map((d) => this.districtRepo.create(d)));
+        poses.districts = dManquants.length;
+      }
+      const districtMap = await carteParCode(this.districtRepo);
+
+      // 2. Régions
+      const rPresents = await codesPresents(this.regionRepo);
+      const rManquantes = REGIONS_SEED.filter(
+        (r) => !rPresents.has(r.code) && districtMap.has(r.districtCode),
+      );
+      if (rManquantes.length) {
+        await this.regionRepo.save(
+          rManquantes.map((r) =>
+            this.regionRepo.create({ code: r.code, nom: r.nom, districtId: districtMap.get(r.districtCode)! }),
           ),
         );
-        const regionMap = new Map(regions.map((r) => [r.code, r.id]));
+        poses.regions = rManquantes.length;
+      }
+      const regionMap = await carteParCode(this.regionRepo);
 
-        const departements = await this.departementRepo.save(
-          DEPARTEMENTS_SEED.map((d) =>
-            this.departementRepo.create({
-              code: d.code,
-              nom: d.nom,
-              regionId: regionMap.get(d.regionCode)!,
-            }),
+      // 3. Départements
+      const dpPresents = await codesPresents(this.departementRepo);
+      const dpManquants = DEPARTEMENTS_SEED.filter(
+        (d) => !dpPresents.has(d.code) && regionMap.has(d.regionCode),
+      );
+      if (dpManquants.length) {
+        await this.departementRepo.save(
+          dpManquants.map((d) =>
+            this.departementRepo.create({ code: d.code, nom: d.nom, regionId: regionMap.get(d.regionCode)! }),
           ),
         );
-        const departementMap = new Map(departements.map((d) => [d.code, d.id]));
+        poses.departements = dpManquants.length;
+      }
+      const departementMap = await carteParCode(this.departementRepo);
 
+      // 4. Communes
+      const cPresentes = await codesPresents(this.communeRepo);
+      const cManquantes = COMMUNES_ABIDJAN_SEED.filter(
+        (c) => !cPresentes.has(c.code) && departementMap.has(c.departementCode),
+      );
+      if (cManquantes.length) {
         await this.communeRepo.save(
-          COMMUNES_ABIDJAN_SEED.map((c) =>
-            this.communeRepo.create({
-              code: c.code,
-              nom: c.nom,
-              departementId: departementMap.get(c.departementCode)!,
-            }),
+          cManquantes.map((c) =>
+            this.communeRepo.create({ code: c.code, nom: c.nom, departementId: departementMap.get(c.departementCode)! }),
           ),
         );
+        poses.communes = cManquantes.length;
+      }
 
-        this.logger.log(
-          `Seed admin-divisions termine: ${DISTRICTS_SEED.length} districts, ${REGIONS_SEED.length} regions, ${DEPARTEMENTS_SEED.length} departements, ${COMMUNES_ABIDJAN_SEED.length} communes Abidjan`,
-        );
+      const total = poses.districts + poses.regions + poses.departements + poses.communes;
+      if (total === 0) {
+        this.logger.log('Seed admin-divisions : rien à poser, tout est déjà en place');
       } else {
-        this.logger.log(`Seed admin-divisions deja effectue (${districtCount} districts en BD)`);
+        this.logger.log(
+          `Seed admin-divisions : ${poses.districts} districts, ${poses.regions} regions, ` +
+          `${poses.departements} departements, ${poses.communes} communes Abidjan posés`,
+        );
       }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
