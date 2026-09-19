@@ -21,7 +21,7 @@ n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte l
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 17 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 52 OUVERT.**
+**Compte courant : 20 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 51 OUVERT.**
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
