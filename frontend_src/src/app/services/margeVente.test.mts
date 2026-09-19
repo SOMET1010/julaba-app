@@ -35,8 +35,20 @@ eq(beneficeDepuisDetails([
   { total: 800, quantite: 20, prix_achat: 0 },      // ignorée
 ]), 1200, "mixte : seule la ligne coûtée compte (1200)");
 
-// Plancher à 0 : vente à perte n'affiche pas un bénéfice négatif
-eq(beneficeDepuisDetails([{ total: 100, quantite: 1, prix_achat: 200 }]), 0, "vente à perte → plancher 0");
+// RÈGLE INVERSÉE LE 19/09/2026 — arbitrage de Patrick, et ce test est modifié
+// EN CONNAISSANCE DE CAUSE, malgré le gel de test:ci.
+//
+// Il affirmait « vente à perte → plancher 0 ». Cette règle est précisément
+// celle qui a été jugée fausse : elle rendait une vente à perte indistinguable
+// d'une vente au coût inconnu — deux situations opposées, un seul affichage
+// « marge — » — et surévaluait les bénéfices cumulés d'autant, sans signal.
+//
+// Doctrine posée : « ne jamais masquer une réalité économique ». Un test qui
+// garde l'ancienne règle ne protège plus rien : il empêche la correction.
+// Ce qu'il protège VRAIMENT est conservé juste au-dessus — « coût inconnu »
+// n'est toujours pas « coût nul », et une ligne sans prix d'achat reste ignorée.
+eq(beneficeDepuisDetails([{ total: 100, quantite: 1, prix_achat: 200 }]), -100,
+   "vente à perte → la perte est rendue (−100), plus de plancher");
 
 if (failures > 0) { console.error(`\n${failures} test(s) en échec`); process.exit(1); }
 console.log("\nTous les tests margeVente sont au vert.");

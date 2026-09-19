@@ -402,7 +402,18 @@ export class CaisseRestController {
       prixAchat = lignes.reduce((s: number, p: any) =>
         s + (Number(p.prix_achat ?? p.prixAchat) || 0) * (Number(p.quantite) || 1), 0);
     }
-    const marge = prixAchat > 0 ? Math.max(0, prixVente - prixAchat) : 0;
+    // UNE PERTE EST UNE PERTE — arbitrage de Patrick, 19/09/2026.
+    //
+    // `Math.max(0, …)` rendait une vente à perte IMPOSSIBLE à voir : produit
+    // acheté 1 000 F, vendu 800 F, résultat stocké 0 au lieu de −200. Ses
+    // bénéfices cumulés étaient surévalués d'autant, et rien ne le signalait.
+    // Sa doctrine : ne jamais masquer une réalité économique. Une marchande
+    // qui vend à perte doit le savoir le jour même, pas à l'inventaire.
+    //
+    // Le plancher à 0 reste pour un COÛT INCONNU : là, ce n'est pas une perte,
+    // c'est une absence d'information — et inventer une perte serait aussi
+    // faux qu'inventer un gain.
+    const marge = prixAchat > 0 ? prixVente - prixAchat : 0;
 
     // Journée toujours ouverte (vente jamais bloquée, argent rattaché au jour).
     await this.ensureSessionOuverte(user.id);
