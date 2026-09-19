@@ -190,7 +190,12 @@ export function vendreVocalUnifie(
   // c'est le seul moment où une marchande qui ne lit pas peut détecter un
   // malentendu sur la quantité ou le montant. Voir phraseCompris().
   if (deps.guidageVocalActif()) {
-    deps.speak(phraseCompris({ nom: ligne.nom, quantite: qte, total: ligne.total }));
+    // L'unité RETENUE est celle du produit du catalogue quand il est apparié
+    // (c'est elle qui a servi à décider du prix), sinon celle qu'elle a
+    // prononcée. Dire « 3 tas de tomate » au lieu de « 3 tomates » est ce qui
+    // lui permet d'entendre un malentendu AVANT d'encaisser.
+    const uniteLigne = produitCat?.unite || uniteParlee || null;
+    deps.speak(phraseCompris({ nom: ligne.nom, quantite: qte, total: ligne.total, unite: uniteLigne }));
   }
 
   if (!produitCat) {

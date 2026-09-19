@@ -1,7 +1,7 @@
 # ADR-0003 — Unités, devise, stockabilité : six arbitrages de Patrick
 
 **Date :** 19/09/2026
-**Statut :** deux appliqués, quatre décidés et DIFFÉRÉS
+**Statut :** trois appliqués (1, 2, 5), trois décidés et DIFFÉRÉS (3, 4, 6)
 **Décideur :** Patrick Somet
 **Origine :** trois audits en lecture seule sur `main` = `8e296ba`, dont un
 mené à la lumière de trois jours passés sur Odoo.
@@ -66,7 +66,7 @@ relevée.
 
 ---
 
-## 2. Unité de la vente — 🔒 DÉCIDÉ, DIFFÉRÉ
+## 2. Unité de la vente — ✅ APPLIQUÉ le 19/09/2026
 
 **Décision :** persister l'unité **dans chaque ligne de vente**, pas seulement
 dans le produit.
@@ -78,10 +78,26 @@ passe la tomate du tas au kilo, **toutes ses ventes passées se relisent au
 kilo**. Un reçu dit « 3 × Tomate » — trois quoi ? Plus personne ne peut le
 savoir, et aucune reconstitution n'est possible.
 
-**Pourquoi différé :** touche `caisse_transactions`, gelée par PILOTE-2.
+**AUCUN CHANGEMENT DE SCHÉMA N'A ÉTÉ NÉCESSAIRE**, contrairement à ce qu'on
+craignait. La colonne `details` est un `jsonb` déjà persisté qui porte chaque
+ligne de la vente : l'unité y est simplement ajoutée. Et c'est le bon endroit —
+une vente à deux produits a DEUX unités, l'unité appartient donc à la ligne, pas
+à la transaction. Le gel PILOTE-2 n'était pas réellement en cause.
 
-**Urgence :** c'est le seul des six qui **détruit de l'information chaque jour
-qui passe**. À traiter dès la levée du gel, avant la recette terrain élargie.
+**Ce qui a été fait :**
+- `CartItem.unite`, capturée depuis le produit **à la création de la ligne** et
+  figée — même règle que `prix_achat`, pour que l'historique ne bouge pas quand
+  le catalogue change ;
+- envoyée dans les DEUX chemins d'encaissement (espèces et crédit) ;
+- le reçu lit l'unité de la LIGNE : « 3 tas de Tomate », plus « 3 × Tomate » ;
+- **Tata la dit** au moment de l'ajout au panier : « J'ai compris : 3 tas de
+  tomate » — c'est là, avant l'encaissement, qu'un malentendu se rattrape ;
+- les ventes d'AVANT ce correctif n'ont pas d'unité : elles gardent la forme
+  historique « 3 × Tomate ». On ne réécrit pas le passé, on cesse de le perdre.
+
+**Accords prudents :** « tas » reste invariable, « sac » prend son pluriel,
+« kg » ne se pluralise jamais. Un pluriel manquant vaut mieux qu'un mot inventé.
+« unité » est traitée comme neutre — « 3 unité » n'apprend rien.
 
 ## 3. Cinq vocabulaires d'unités — 🔒 DÉCIDÉ, DIFFÉRÉ
 
@@ -137,8 +153,7 @@ doit pas changer de modèle de données sous les pieds de celle qui le teste.
 
 **Ordre à la reprise, par coût d'attente :**
 
-1. **#2 (unité de la vente)** — seul défaut qui détruit de l'information chaque
-   jour. Dès la levée du gel PILOTE-2.
+1. ~~#2 (unité de la vente)~~ — **fait le 19/09**, sans changement de schéma.
 2. **#3 (vocabulaire d'unités)**, partie lecture d'abord, migration ensuite.
 3. **#6 (stockabilité)** — débloque les alertes de rupture.
 4. **#4 (facteurs par produit)** — le moins urgent : l'argent est déjà juste.

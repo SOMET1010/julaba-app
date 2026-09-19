@@ -5,6 +5,7 @@
  * affiche, d'après docs/SPEC_VENTE_VOCALE.md §6. Séparé de l'UI pour être testé
  * au tsx et réutilisé à l'identique par la voix (clips/synthèse) et le tactile.
  */
+import { quantiteAvecUnite } from '../utils/unite.utils';
 import type { LigneProvisoire } from './ligneProvisoire.js';
 
 function fr(n: number): string {
@@ -88,9 +89,27 @@ export function phraseCompris(args: {
   nom: string;
   quantite: number;
   total: number;
+  /** Unité de la ligne — « tas », « sac », « kg »… Facultative : une vente
+   *  d'avant le 19/09/2026, ou un article libre, n'en a pas. */
+  unite?: string | null;
 }): string {
+  // L'UNITÉ SE DIT — arbitrage de Patrick, 19/09/2026. « J'ai compris : 3
+  // tomates » et « J'ai compris : 3 tas de tomate » ne décrivent pas la même
+  // vente, et l'écart peut valoir plusieurs milliers de francs. C'est ici, au
+  // moment où elle peut encore corriger, que l'unité doit s'entendre — pas sur
+  // un reçu qu'elle ne lira jamais.
   const nom = args.quantite > 1 ? plurielNom(args.nom) : args.nom;
-  return `J'ai compris : ${args.quantite} ${nom} pour ${fr(args.total)} francs. ${AJOUT_PANIER}`;
+  const quantite = uniteParlable(args.unite)
+    ? `${quantiteAvecUnite(args.quantite, args.unite)} de ${args.nom}`
+    : `${args.quantite} ${nom}`;
+  return `J'ai compris : ${quantite} pour ${fr(args.total)} francs. ${AJOUT_PANIER}`;
+}
+
+/** Une unité mérite-t-elle d'être prononcée ? « unité » n'apprend rien. */
+function uniteParlable(u?: string | null): boolean {
+  if (!u) return false;
+  const n = String(u).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return n !== '' && n !== 'unite' && n !== 'unites';
 }
 export const ERREUR_MOTEUR = "Ma voix ne marche pas ici. Tape ta vente, je t'accompagne.";
 

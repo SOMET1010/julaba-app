@@ -112,6 +112,20 @@ export interface CartItem {
    *  Invalidé (undefined) dès que la ligne est modifiée manuellement
    *  (quantité, prix, fusion) : il ne vaut que pour la ligne telle que créée. */
   totalExact?: number;
+  /** L'UNITÉ AU MOMENT DE LA VENTE — « tas », « kg », « sac », « régime »…
+   *
+   *  POURQUOI ELLE VIT SUR LA LIGNE, arbitrage de Patrick du 19/09/2026.
+   *  L'unité ne vivait que dans `produits.unite`, que la marchande peut changer
+   *  à tout moment. Le jour où elle passe la tomate du tas au kilo, TOUTES ses
+   *  ventes passées se relisaient au kilo — et un reçu disant « 3 × Tomate »
+   *  devenait indéchiffrable : trois quoi ? Aucune reconstitution n'était
+   *  possible, l'information était détruite.
+   *
+   *  Une vente doit garder son contexte historique. Le catalogue peut changer
+   *  après ; ce qui a été vendu, non. C'est la même règle que `prix_achat`,
+   *  figé à la vente pour que la marge d'hier ne bouge pas quand le
+   *  fournisseur change de tarif. */
+  unite?: string;
   /** D'où vient CETTE ligne. Posé à 'vocal' quand c'est la voix qui l'a créée.
    *
    *  POURQUOI CE CHAMP EXISTE, relevé par Patrick le 18/09 sur ses ventes
@@ -543,6 +557,9 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       : [...cart, {
           productId: product.id, nom: product.nom, prix: prixEffectif(product), quantite,
           prix_achat: Number(product.prix_achat) || 0,
+          // FIGÉE À LA CRÉATION DE LA LIGNE, comme le prix d'achat : c'est
+          // l'unité telle qu'elle était au moment de la vente.
+          ...(product.unite ? { unite: String(product.unite) } : {}),
           ...(totalExact != null && totalExact > 0 ? { totalExact } : {}),
           ...(origine ? { origine } : {}),
         }];
