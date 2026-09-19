@@ -1,7 +1,7 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 7 — après ARGENT-4.**
+**Révision 8 — après ARGENT-4b (contre-audit de la révision 7).**
 Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
 une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
 Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
@@ -10,6 +10,13 @@ passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
 Révision 4 : **SEC-05, SEC-06 et SEC-07 fermés** ; **SEC-08** ouverte (le PIN
 n'est plus lisible, mais il est encore *choisi* par un administrateur) ;
 **SEED-01** ouverte — c'est le diagnostic des 3 échecs jusqu'ici non expliqués.
+Révision 8 : le contre-audit a trouvé **deux défauts réels** dans ARGENT-4, tous
+deux confirmés dans le code avant correction. **ARG-10 rouvert puis refermé** —
+`reglement_credit` n'entrait pas dans la caisse théorique : écart fantôme de
+7 000 F. **ARG-03 : ma déclaration était trop large** — elle portait sur
+l'écriture, pas sur la clôture. **ARG-12 ouverte et fermée** : le vrai client
+n'envoyait aucune clé d'idempotence, donc I5 était fermé dans le test et pas
+dans le parcours. **ARG-11 corrigé** : sa liste de bloqueurs était incomplète.
 Révision 7 : **ARGENT-4 livré** — ARG-03, ARG-05 et ARG-10 fermés par une
 primitive transactionnelle unique dont la **nature est calculée**, jamais
 fournie. **ARG-11** inscrit la condition bloquante de réouverture du crédit, et
@@ -26,7 +33,7 @@ n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte l
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 24 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT.**
+**Compte courant : 25 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT.**
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -71,9 +78,10 @@ reste multiple.
 |---|---|---|---|---|---|
 | **ARG-01** / B3 | P1 terrain | **FERMÉ** | `stocks-rest.controller.ts` : le `WHERE` ne porte plus aucun filtre sur `quantite_retranchee` (les 2 occurrences restantes sont des commentaires). `mouvement-mapper.ts` expose `quantite_affichee`, `manquant`, `hors_stock` | `853dff7` — invariant `argent-3` + `test:mouvements-hors-stock` | — |
 | **ARG-02** / B2 | P1 terrain | **FERMÉ** | **DEUX couches mentaient, pas une — le contre-audit n'avait relevé que la première.** (1) Serveur : `COALESCE(sm.unite, p.unite)` remplacé par `sm.unite` seule, et la jointure sur `produits` disparaît avec le repli. (2) **Écran** : la fiche produit affichait `{m.qty} {selectedStock.unit}` — l'unité du catalogue d'aujourd'hui, sans même regarder celle du mouvement ; le correctif serveur ne pouvait rien pour ces lignes. Trois rendus corrigés. Une unité absente est **dite** (`uniteConnue` + « unité non enregistrée »), jamais empruntée | `ecc1ae6` — reproduction avant correctif : `COALESCE` remis, 3 des 4 invariants rougissent. Le 4ᵉ passe dans les deux cas : il couvre B2, pas ARG-02, et c'est écrit | — |
-| **ARG-03** | P1 | **FERMÉ** | Les **trois** chemins d'encaissement passent par `encaisser-credit.ts` : création avec acompte, acompte ultérieur, règlement final. Le contrôleur ne contient **0** `INSERT INTO caisse_transactions` | `45e99ff` — c'était fermé sur un seul chemin sur trois ; mon test d'alors ne couvrait pas l'acompte initial | — |
-| **ARG-10** | P1 | **FERMÉ** | `/payer` encaisse réellement le reste : ligne de caisse en `reglement_credit`, `acompte` porté au total, `montant_du` réduit — le tout dans une transaction | `45e99ff` — il posait `statut='paye'` et laissait `acompte` à l'ancienne valeur : la table disait « elle a versé X », la vue « il ne reste rien » | — |
-| **ARG-11** | **P1** | **OUVERT** | **Condition bloquante de réouverture du crédit, posée par Patrick.** `CAISSE_CREDIT_ACTIF` ne repasse à `true` qu'une fois la primitive unique prouvée verte — ce qu'elle est depuis `45e99ff`. **Restent ouverts avant réactivation : ARG-04** (idempotence de la *création* d'un crédit, `blockers.spec.ts` I4 toujours `it.failing`), **I6** (une vente à crédit ne laisse aucune trace `type='credit'` en caisse), **CLIENT-02** (homonymes partageant une dette) et **TYPE-02** | — | ARGENT-4 traite l'**encaissement**, pas la création ni la traçabilité de la vente à crédit |
+| **ARG-03** | P1 | **FERMÉ** | Les trois chemins d'encaissement passent par `encaisser-credit.ts` ; le contrôleur contient **0** `INSERT INTO caisse_transactions` ; **et la clôture comprend les deux natures** | `a959ec5` — *ma déclaration « les trois chemins sont fermés » était trop large en révision 7 : elle portait sur l'écriture, pas sur la lecture de clôture. Une écriture d'argent n'est finie que quand la clôture la comprend* | — |
+| **ARG-10** | P1 | **FERMÉ** | *Rouvert au contre-audit de la révision 7, puis refermé.* `/payer` encaisse le reste **et la clôture le compte** : `caisseTheorique` somme `acompte_credit` **et** `reglement_credit`. Un invariant ferme réellement la journée après un règlement et exige **écart = 0** | `a959ec5` — j'avais fermé ARG-10 sur une ligne de caisse correctement écrite que la clôture ignorait : écart fantôme de 7 000 F, mesuré en reproduisant. Mon test ne fermait jamais la journée, il ne pouvait pas le voir | — |
+| **ARG-11** | **P1** | **OUVERT** | **Condition bloquante de réouverture du crédit.** `CAISSE_CREDIT_ACTIF` ne repasse à `true` qu'une fois TOUT ce qui suit fermé — et la liste de la révision 7 était **incomplète**, le contre-audit l'a corrigée. **Restent ouverts : ARG-04** (idempotence de la *création* — `CreerCreditData` ne dédoublonne pas le crédit lui-même, `blockers.spec.ts` I4 toujours `it.failing`), **I6** (une vente à crédit ne laisse aucune trace `type='credit'` en caisse), **CLIENT-02**, **TYPE-02** | — | ARGENT-4 + 4b traitent l'**encaissement** et sa **clôture**. Rien d'autre |
+| **ARG-12** / I5 réel | **P1** | **FERMÉ** | *Ouverte et fermée dans le même lot, au contre-audit.* Le vrai client (`caisse-api.ts`) n'envoyait **aucune** clé : le serveur en fabriquait une avec `Date.now()`, donc deux envois de la même tentative encaissaient **deux fois** — pendant que `blockers.spec.ts` I5 restait vert, puisqu'il fournissait la clé lui-même. Les trois fonctions client envoient désormais une clé ; test dédié sur le vrai client ; le serveur **refuse** un acompte sans clé au lieu d'en deviner une | `a959ec5` — « un test qui fournit ce que le vrai client ne fournit pas ne teste pas le vrai client ». I5 est annoté pour dire ce qu'il prouve et ce qu'il ne prouve pas | — |
 | **ARG-04** | P1 dormant | **OUVERT** | `POST /caisse/credits` sans `idempotency_key` — vérifié : la seule clé du fichier est celle de l'acompte | — | Idempotence de création. **Avant réactivation du crédit** |
 | **ARG-05** | P1 | **FERMÉ** | Atomicité crédit / client / caisse / audit : les quatre écritures dans la même transaction, les quatre ou aucune. Verrou `FOR UPDATE` : deux paiements simultanés s'additionnent au lieu de s'écraser | `45e99ff` — un test exige qu'un encaissement refusé ne laisse **rien** derrière lui | — |
 | **ARG-06** | P2 modèle | **OUVERT** | `caisse-transaction.entity.ts` porte toujours **2 colonnes** `marge` et `benefice`, alimentées par la même valeur | Côté écran, un seul champ depuis `ed9321b` | La fusion des colonnes demande une migration. Le serveur écrit encore deux fois le même chiffre |
