@@ -1,7 +1,7 @@
 # ADR-0003 — Unités, devise, stockabilité : six arbitrages de Patrick
 
 **Date :** 19/09/2026
-**Statut :** trois appliqués (1, 2, 5), trois décidés et DIFFÉRÉS (3, 4, 6)
+**Statut :** deux appliqués (1, 2), un PARTIEL (5), trois décidés et DIFFÉRÉS (3, 4, 6)
 **Décideur :** Patrick Somet
 **Origine :** trois audits en lecture seule sur `main` = `8e296ba`, dont un
 mené à la lumière de trois jours passés sur Odoo.
@@ -50,7 +50,7 @@ ne lit pas ne l'apprendrait jamais autrement.
 Le plancher reste pour un **coût inconnu** : ce n'est pas une perte, c'est une
 absence d'information. Inventer une perte serait aussi faux qu'inventer un gain.
 
-## 5. Devise — ✅ APPLIQUÉ (côté code)
+## 5. Devise — 🟡 PARTIELLEMENT APPLIQUÉ
 
 **Décision :** XOF explicite dans le modèle, invisible dans l'UX quotidienne.
 La marchande voit « F » ; la donnée sait « XOF ».
@@ -59,7 +59,12 @@ La marchande voit « F » ; la donnée sait « XOF ».
 devise, son symbole, sa forme parlée. Le « FCFA » en dur dans des dizaines
 d'écrans cesse d'être la source de vérité.
 
-**Reste à faire quand le gel PILOTE-2 sera levé :** une colonne `devise` sur la
+**PARTIEL, ET IL FAUT LE DIRE AINSI** (relevé par Patrick le 19/09) :
+l'implicite CÔTÉ CODE est corrigé, mais **la vente ne persiste toujours pas sa
+devise**. Tant que cette colonne n'existe pas, le XOF reste une convention, pas
+une donnée.
+
+**Reste à faire :** une colonne `devise` sur la
 ligne de vente, remplie depuis cette constante. Le portefeuille en a une
 (`currency DEFAULT 'XOF'`), la vente non — c'est cette asymétrie qui a été
 relevée.

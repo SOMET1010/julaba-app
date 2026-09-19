@@ -471,11 +471,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // `??` ET NON `||` — corrigé le 18/09/2026. En JavaScript `0 || x`
           // vaut `x` : un bénéfice serveur valant EXACTEMENT ZÉRO déclenchait
           // donc le recalcul client, qui n'applique pas la même règle. Le
-          // serveur plafonne la marge sur le TOTAL de la vente ; le client la
-          // plafonne LIGNE PAR LIGNE. Sur une vente à deux lignes dont l'une
-          // part à perte, le serveur dit 0 (juste) et le client dit 300 (faux)
-          // — et c'est le faux qui s'affichait. Zéro est une réponse, pas une
-          // absence de réponse.
+          // serveur et le client plafonnaient la marge à des endroits
+          // DIFFÉRENTS — le serveur sur le total de la vente, le client ligne
+          // par ligne — et donnaient donc deux chiffres pour une même vente.
+          // Les deux étaient faux : depuis l'arbitrage du 19/09, une vente
+          // globalement déficitaire doit afficher sa PERTE, pas un zéro.
+          // Ce qui reste vrai ici, et qui motive le `??` : zéro est une
+          // RÉPONSE du serveur, pas une absence de réponse. `0 || x` la
+          // remplaçait silencieusement par un recalcul.
           totalBenefice: nombreOuNull(tx.benefice) ?? beneficeDepuisDetails(tx.details),
           totalMargin: nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
@@ -1113,11 +1116,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // `??` ET NON `||` — corrigé le 18/09/2026. En JavaScript `0 || x`
           // vaut `x` : un bénéfice serveur valant EXACTEMENT ZÉRO déclenchait
           // donc le recalcul client, qui n'applique pas la même règle. Le
-          // serveur plafonne la marge sur le TOTAL de la vente ; le client la
-          // plafonne LIGNE PAR LIGNE. Sur une vente à deux lignes dont l'une
-          // part à perte, le serveur dit 0 (juste) et le client dit 300 (faux)
-          // — et c'est le faux qui s'affichait. Zéro est une réponse, pas une
-          // absence de réponse.
+          // serveur et le client plafonnaient la marge à des endroits
+          // DIFFÉRENTS — le serveur sur le total de la vente, le client ligne
+          // par ligne — et donnaient donc deux chiffres pour une même vente.
+          // Les deux étaient faux : depuis l'arbitrage du 19/09, une vente
+          // globalement déficitaire doit afficher sa PERTE, pas un zéro.
+          // Ce qui reste vrai ici, et qui motive le `??` : zéro est une
+          // RÉPONSE du serveur, pas une absence de réponse. `0 || x` la
+          // remplaçait silencieusement par un recalcul.
           totalBenefice: nombreOuNull(tx.benefice) ?? beneficeDepuisDetails(tx.details),
           totalMargin: nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
