@@ -55,16 +55,29 @@ export class FeedbakSmsService {
     await this.send(phone, message, 'MUTATION_ZONE');
   }
 
-  private async send(phone: string, message: string, event: string): Promise<void> {
+  // `send` RÉPOND MAINTENANT si le message est parti.
+  //
+  // Elle renvoyait `void` : chaque appelant supposait l'envoi réussi. Pour une
+  // notification d'information c'est sans conséquence. Pour un SMS qui porte le
+  // SEUL exemplaire d'un code d'accès, non : depuis SEC-2, l'administrateur
+  // doit pouvoir lire « le code a changé mais le SMS n'est pas passé » au lieu
+  // de croire la personne joignable. Elle n'en devient pas bloquante pour
+  // autant — un échec reste journalisé, jamais lancé.
+  //
+  // Les appelants existants ignorent la valeur de retour : leur comportement
+  // est inchangé.
+  private async send(phone: string, message: string, event: string): Promise<boolean> {
     try {
       const result = await this.smsService.sendSms(phone, message);
       if (result.success) {
         this.logger.log(`Feedbak_SMS [${event}] envoyé → ${phone}`);
-      } else {
-        this.logger.warn(`Feedbak_SMS [${event}] échec → ${phone} : ${result.error}`);
+        return true;
       }
+      this.logger.warn(`Feedbak_SMS [${event}] échec → ${phone} : ${result.error}`);
+      return false;
     } catch (err) {
       this.logger.error(`Feedbak_SMS [${event}] erreur → ${phone}`, err instanceof Error ? err.stack : String(err));
+      return false;
     }
   }
 
@@ -87,9 +100,17 @@ export class FeedbakSmsService {
   //
   // Les deux passent désormais par `send()`, comme tout le reste.
 
-  async notifyPinIdentificateurCreated(phone: string, prenom: string, pin: string): Promise<void> {
+  async notifyPinIdentificateurCreated(phone: string, prenom: string, pin: string): Promise<boolean> {
     const message = `Bonjour ${prenom}, ton compte identificateur Jùlaba a été créé. Ton code PIN à 4 chiffres est : ${pin}. Garde-le en sécurité, il te sera demandé pour modifier les fiches acteurs. Tu peux le changer dans Paramètres.`;
-    await this.send(phone, message, 'PIN_IDENTIFICATEUR_CREE');
+    return this.send(phone, message, 'PIN_IDENTIFICATEUR_CREE');
+  }
+
+  // SEC-2 : le SMS de réinitialisation. Depuis la suppression de
+  // `pin-decrypted`, c'est le SEUL exemplaire du nouveau code — d'où le retour
+  // booléen, que l'appelant traduit en `SMS_NON_DELIVRE`.
+  async notifyPinIdentificateurReset(phone: string, prenom: string, pin: string): Promise<boolean> {
+    const message = `Bonjour ${prenom}, ton code PIN Jùlaba a été réinitialisé. Ton nouveau code à 4 chiffres est : ${pin}. L'ancien ne fonctionne plus. Si tu n'as rien demandé, contacte immédiatement ton superviseur.`;
+    return this.send(phone, message, 'PIN_IDENTIFICATEUR_RESET');
   }
 
   async notifyPinChanged(phone: string, prenom: string): Promise<void> {
