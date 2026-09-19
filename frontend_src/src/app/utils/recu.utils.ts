@@ -1,11 +1,18 @@
 // ── Reçu numérique unitaire par vente (écart CDC 8.1.2 « facture/reçu numérique ») ──
 // La marchande peut PARTAGER un reçu (WhatsApp via le partage natif) ou le
 // TÉLÉCHARGER en PDF, pour chaque transaction. Zéro dépendance serveur.
+//
+// « 3 TAS DE TOMATE », PAS « 3 × TOMATE » — 19/09/2026. Ce reçu disait
+// « 3 × Tomate » : trois quoi ? L'unité n'était nulle part dans la vente, elle
+// n'existait que dans le catalogue, modifiable à tout moment. Un reçu est une
+// preuve remise à une cliente : il doit dire ce qui a été vendu, pas ce que le
+// catalogue affiche aujourd'hui.
+import { ligneLisible } from './unite.utils';
 
 interface RecuTx {
   id?: string;
   montant?: number;
-  produits?: Array<{ nom?: string; produit?: string; quantite?: number; prix_unitaire?: number; prix?: number }> | any;
+  produits?: Array<{ nom?: string; produit?: string; quantite?: number; prix_unitaire?: number; prix?: number; unite?: string }> | any;
   date?: string;
   mode_paiement?: string;
   notes?: string;
@@ -24,7 +31,9 @@ function lignesProduits(tx: RecuTx): string[] {
     const q = p.quantite != null ? p.quantite : 1;
     // Lignes voix (prix_unitaire) ET panier (prix) : même reçu pour les deux circuits.
     const pu = p.prix_unitaire ?? p.prix ?? (tx.montant || 0);
-    return `${q} × ${nom} — ${Number(pu).toLocaleString('fr-FR')} F`;
+    // L'unité vient de la LIGNE (figée à la vente), jamais du catalogue actuel.
+    // Sans unité — ventes d'avant ce correctif — on retombe sur « 3 × Tomate ».
+    return `${ligneLisible(q, nom, p.unite)} — ${Number(pu).toLocaleString('fr-FR')} F`;
   });
 }
 

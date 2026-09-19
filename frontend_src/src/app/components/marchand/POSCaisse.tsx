@@ -10,6 +10,7 @@ import { CreditModal } from './CreditModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { partagerRecu } from '../../utils/recu.utils';
+import { ligneLisible } from '../../utils/unite.utils';
 import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
 import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/fcfa';
 import { BilletDessine, PieceDessinee } from './CoupureDessinee';
@@ -225,6 +226,12 @@ export function POSCaisse() {
         // en FCFA, `prix` n'est qu'un unitaire arrondi (voir CartItem.totalExact).
         total: i.totalExact ?? i.prix * i.quantite,
         prix_achat: (i as any).prixAchat ?? (i as any).prix_achat ?? 0,
+        // L'UNITÉ PART AVEC LA VENTE — arbitrage du 19/09/2026. Elle est
+        // enregistrée dans `details` (jsonb déjà persisté), donc figée au
+        // moment de la vente. Sans elle, changer l'unité d'un produit
+        // réécrivait le sens de tout l'historique : « 3 × Tomate » vendues au
+        // tas se relisaient au kilo, sans aucun moyen de le savoir.
+        unite: i.unite,
       }));
       // D'OÙ VIENT CETTE VENTE. La voix ne fait que remplir le panier : c'est
       // toujours ce bouton qui enregistre. La seule chose qui sache si la
@@ -286,6 +293,8 @@ export function POSCaisse() {
       prix: i.prix,
       total: i.totalExact ?? i.prix * i.quantite,
       prix_achat: (i as any).prixAchat ?? (i as any).prix_achat ?? 0,
+      // Même règle que la vente en espèces : l'unité est figée à la vente.
+      unite: i.unite,
     }));
     void refreshProducts();
     // Confirmation parlée ET sentie aussi pour la vente à crédit.
@@ -568,7 +577,7 @@ export function POSCaisse() {
               <div style={{ background:'rgba(255,255,255,0.92)', backdropFilter:'blur(12px)', border:'1.5px solid rgba(175,91,35,0.2)', borderRadius:18, padding:'13px 16px', display:'flex', alignItems:'center', gap:10 }}>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:11, color:'var(--encre-4)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                    {cart.map(i => `${i.nom} ×${i.quantite}`).join(' · ')}
+                    {cart.map(i => ligneLisible(i.quantite, i.nom, i.unite)).join(' · ')}
                   </div>
                   <div style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} <span style={{ fontSize:12, fontWeight:700 }}>FCFA</span></div>
                 </div>
