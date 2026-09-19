@@ -1,7 +1,7 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 4 — après SEC-2 (`b904db6`).**
+**Révision 5 — après SEED-01 (`8b66407`) et SEC-08 (`3d3e00c`).**
 Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
 une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
 Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
@@ -10,9 +10,13 @@ passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
 Révision 4 : **SEC-05, SEC-06 et SEC-07 fermés** ; **SEC-08** ouverte (le PIN
 n'est plus lisible, mais il est encore *choisi* par un administrateur) ;
 **SEED-01** ouverte — c'est le diagnostic des 3 échecs jusqu'ici non expliqués.
+Révision 5 : **SEED-01 et SEC-08 fermés**. La batterie d'invariants est
+redevenue déterministe (trois exécutions complètes d'affilée, 208/208), et il
+n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte le
+PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 15 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 54 OUVERT.**
+**Compte courant : 17 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 52 OUVERT.**
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -34,6 +38,12 @@ comme vérité courante** (cf. DOC-01).
 | **FERMÉ** | Le défaut décrit n'existe plus **dans le code actuel**, vérifié, avec un test qui échouait avant |
 | **OUVERT** | Le défaut existe encore, en tout ou en partie. **Un progrès partiel ne ferme pas une ligne** |
 | **HORS PÉRIMÈTRE JUSTIFIÉ** | Ce n'est pas une anomalie, et la raison est écrite |
+
+**Règle de séquence (Patrick, 19/09/2026).** Un défaut extérieur au lot courant
+peut être corrigé immédiatement **s'il rend les gates non déterministes ou
+affaiblit la valeur de preuve du lot** — à quatre conditions : le nommer, le
+reproduire, limiter le diff au strict nécessaire, et l'inscrire séparément au
+registre. SEED-01 est le premier cas d'application.
 
 Pas de « à voir », « probablement », « assumé » sans justification, ni
 « documenté » — **documenter une dette ne la ferme pas.** Une route concurrente
@@ -129,7 +139,7 @@ reste multiple.
 | **SEC-07** | P1 | **FERMÉ** | `crypto.randomInt` dans `pin-identificateur.ts` ; garde statique : **0** `Math.random(` dans les modules sensibles. 4 chiffres / alphabet 2–9 **conservés** (arbitrage terrain Patrick : mémorisation, dictée, voix, utilisatrices peu alphabétisées) | `b904db6`. **La condition de cet arbitrage n'était pas remplie et c'est ce lot qui la pose** : `identificateur/me/verify-pin` n'avait **aucun** compteur — essais illimités sur 4 096 combinaisons — et `change-pin` offrait la même porte sur `oldPin`. Les deux passent par `verrou-pin.ts`, sur **deux colonnes dédiées** (partager `failed_pin_attempts` aurait laissé une reconnexion effacer le verrou). Reproduction : verrou neutralisé → 3 tests rouges | — |
 | **SEC-04** | P3 | **OUVERT** | `users.service.ts:334` journalise le terme de recherche saisi | Relevé en balayant SEC-01. **Donnée personnelle, pas un secret** | Journalisation de donnée personnelle |
 | **AUTH-RECOVERY-01** | P1 | **OUVERT** | *Dette ouverte par arbitrage de Patrick au moment de SEC-2.* Depuis `b904db6` la remise à zéro d'un PIN passe **uniquement par SMS**, et c'est vérifié. Aucun parcours n'existe pour « numéro perdu ou changé » | **Ouverte délibérément pour ne pas polluer SEC-2 avec une récupération de compte improvisée** | Un identificateur qui perd son numéro n'a aucune voie de retour. Si le terrain impose un secours sans SMS, **ne jamais afficher le vrai PIN** : code de récupération à usage unique, TTL court, consommable une fois, qui oblige ensuite à choisir son propre PIN. Autre credential, autre route — pas un contournement de SEC-05 |
-| **SEC-08** | **P1** | **OUVERT** | **Nouveau, vu en faisant SEC-2.** `POST /auth/identificateur/:id/pin` (`auth.controller.ts`) laisse un administrateur **choisir** le PIN d'un identificateur : il le connaît donc. Et c'est aujourd'hui le **seul** moyen d'en attribuer un, puisque `POST /users/backoffice/create` — la vraie voie de création d'un identificateur — n'en pose aucun, et que la branche PIN de `create-acteur` est inatteignable (cf. SEC-06) | — | **Le modèle « seule la personne connaît son code » n'est pas encore atteint** : SEC-2 a fermé la lecture, pas l'attribution. Cible : la création back-office génère et envoie par SMS comme `reinitialiser-pin`, et la route à PIN choisi disparaît. **Arbitrage Patrick requis** : ça change le geste d'enrôlement et touche un second module |
+| **SEC-08** | **P1** | **FERMÉ** | `POST /auth/identificateur/:id/pin` n'existe plus (404 vérifié), et `POST /users/backoffice/create` — la vraie voie de création — génère le PIN par `crypto.randomInt`, l'écrit chiffré, l'envoie par SMS et ne le rend nulle part. Audit `PIN_IDENTIFICATEUR_CREE` sans aucun fragment du code. Preuve qui **traverse** : SMS → base chiffrée → `verify-pin` accepte | `3d3e00c` — il ne reste que trois chemins : création (serveur → SMS), réinitialisation (serveur → SMS), et `me/change-pin` où l'identificateur choisit le **sien**. Garde statique : aucune route paramétrée par l'identifiant d'autrui n'accepte un PIN dans son corps — **écrit faux d'abord** (il passait au vert sur la route à interdire), corrigé, puis prouvé sur route témoin | — |
 
 # SMS ET INTÉGRATIONS
 
@@ -156,7 +166,7 @@ reste multiple.
 | **SCHEMA-04** | P1 | **FERMÉ** | = STK-01, fermé par `6ef6560`. Ce n'était pas un fait d'environnement : le dépôt suffisait à le prouver | `6ef6560` | — |
 | **SCHEMA-05** | **P1** | **OUVERT** | **Nouveau (issu du garde-fou systématique).** `api_keys` est lue et écrite par du code vivant du back-office partenaires, et n'est créée que par une migration **archivée**, volontairement hors de la chaîne exécutable (ADR-0002). Sur base neuve la table n'existe pas | — | Toute fonction partenaire adossée à `api_keys` échoue sur un déploiement neuf. Décider : réintégrer la création, ou retirer le code mort |
 | **SCHEMA-06** | **P1** | **OUVERT** | **Nouveau (issu du garde-fou systématique).** `keiwa_config_items` est lue, insérée, modifiée et supprimée par `admin-wallets.service.ts`, et créée **nulle part** : ni entité, ni migration, ni DbInit | — | La configuration Keiwa échoue sur toute base, neuve ou non, sauf table posée à la main |
-| **SEED-01** | **P1** | **OUVERT** | **Nouveau — c'est le diagnostic de l'« observation non résolue ».** `AdminDivisionsSeedService.runSeed()` garde toute la cascade derrière `districtCount === 0`. **Un seul district présent, quelle qu'en soit l'origine, empêche définitivement le seed des régions, départements et communes.** « Districts non vide » y tient lieu de « tout est seedé » : deux sens pour une même donnée | — | En production : un district créé à la main, ou un premier démarrage interrompu après l'insertion des districts, et les communes ne sont **jamais** posées — `GET /producteurs/recoltes-prevues` perd silencieusement ses données. En test : `cooperatives-liste-colonnes` insère un district et ne le retire pas, donc `communes-gps-distance` échoue quand Jest le place après — d'où 3 rouges sur ~1 exécution complète sur 3. **Correctif : rendre chaque niveau idempotent séparément** |
+| **SEED-01** | **P1** | **FERMÉ** | Chaque niveau du seed compare les codes du jeu à ceux en base et n'insère que ce qui manque ; aucun niveau ne décide pour un autre. Les cartes parent sont relues en base après chaque insertion | `8b66407` — reproduction déterministe avant correctif (le test pose lui-même le district parasite) : 3 rouges. Après : 4 verts, et **la batterie complète est redevenue déterministe** — cinq exécutions d'affilée, 205/205 | — |
 
 # ARCHITECTURE
 
@@ -224,8 +234,6 @@ données de production.
 | **API-04** | `main.tsx` monkey-patche `window.fetch` |
 | **SCHEMA-01 / 02 / 03** | La doctrine de schéma reste multiple |
 | **SCHEMA-05 / 06** | Deux tables écrites par du code vivant, créées nulle part qui s'exécute |
-| **SEC-08** | Le PIN identificateur est encore **choisi** par un administrateur — arbitrage requis |
-| **SEED-01** | Un district suffit à empêcher le seed des communes, en test **comme en production** |
 | **TYPE-01** | 390 `any` (0 sur une donnée métier aux frontières) |
 
 **P1 NON atteignables en pilote** — `CAISSE_CREDIT_ACTIF = false`.
