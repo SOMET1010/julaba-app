@@ -295,21 +295,37 @@ export class CaisseRestController {
     const [somme] = await this.dataSource.query(
       `SELECT
          COALESCE(SUM(CASE WHEN type = 'vente'          THEN montant ELSE 0 END), 0) AS ventes,
-         COALESCE(SUM(CASE WHEN type = 'acompte_credit' THEN montant ELSE 0 END), 0) AS acomptes,
+         COALESCE(SUM(CASE WHEN type IN ('acompte_credit', 'reglement_credit')
+                           THEN montant ELSE 0 END), 0) AS encaissements_credit,
          COALESCE(SUM(CASE WHEN type = 'depense'        THEN montant ELSE 0 END), 0) AS depenses
        FROM caisse_transactions
       WHERE marchand_id = $1 AND statut <> 'annulee' AND created_at::date = $2::date`,
       [marchandId, date],
     );
-    // LES ACOMPTES SONT DE L'ARGENT DANS LA BOÎTE — 19/09/2026. Ils n'étaient
-    // comptés nulle part côté serveur, alors que le téléphone les comptait :
-    // la clôture journalisait un écart fantôme, du montant exact des acomptes
-    // du jour. Ce n'est PAS de la recette (elle a été comptée à la vente à
-    // crédit) — c'est de l'encaissement, et la caisse théorique est un compte
-    // d'espèces, pas un compte de résultat.
+    // LES ENCAISSEMENTS DE CRÉANCE SONT DE L'ARGENT DANS LA BOÎTE.
+    //
+    // Premier correctif (19/09/2026) : les acomptes n'étaient comptés nulle
+    // part côté serveur alors que le téléphone les comptait ; la clôture
+    // journalisait un écart fantôme, du montant exact des acomptes du jour.
+    //
+    // SECOND CORRECTIF, ARGENT-4b — LE MÊME DÉFAUT REVENU PAR L'AUTRE MOITIÉ.
+    // ARGENT-4 a introduit `reglement_credit` pour le paiement qui SOLDE la
+    // dette, et cette somme ne l'a pas suivi : elle ne lisait que
+    // `acompte_credit`. Un règlement final de 6 000 F entrait physiquement
+    // dans la caisse, était correctement journalisé… et la clôture l'ignorait,
+    // recréant un écart fantôme de 6 000 F. Le test d'ARGENT-4 vérifiait que la
+    // ligne existait et ne gonflait pas la recette — il ne fermait jamais la
+    // journée après un règlement, donc il ne pouvait pas le voir.
+    //
+    // La leçon, pour la prochaine nature qu'on ajoutera : une écriture d'argent
+    // n'est pas finie quand elle est écrite, mais quand la CLÔTURE la comprend.
+    //
+    // Ce n'est PAS de la recette (elle a été comptée à la vente à crédit) —
+    // c'est de l'encaissement, et la caisse théorique est un compte d'espèces,
+    // pas un compte de résultat.
     return fondInitial
       + Number(somme?.ventes ?? 0)
-      + Number(somme?.acomptes ?? 0)
+      + Number(somme?.encaissements_credit ?? 0)
       - Number(somme?.depenses ?? 0);
   }
 
