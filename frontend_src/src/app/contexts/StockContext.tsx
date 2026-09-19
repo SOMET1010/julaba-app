@@ -3,6 +3,7 @@ import { useApp } from './AppContext';
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import * as stocksApi from '../services/api/stocks-api';
+import type { StockServeur, AliasSaisieProduit } from '../types/vente';
 import { enfilerOperation } from '../voice-offline/offlineCaisse';
 
 function genererCleStock(): string {
@@ -53,15 +54,15 @@ interface StockContextType {
 
 const StockContext = createContext<StockContextType | undefined>(undefined);
 
-function normalize(s: any): StockItem {
+function normalize(s: StockServeur): StockItem {
   return {
-    id: s.id,
+    id: s.id ?? '',
     marchandId: s.proprietaire_id || '',
     produit: s.produit || '',
-    quantite: parseFloat(s.quantite) || 0,
+    quantite: parseFloat(String(s.quantite ?? '')) || 0,
     unite: s.unite || 'unité',
-    prixUnitaire: parseFloat(s.prix_unitaire || s.prix) || 0,
-    seuilAlerte: s.seuil_alerte != null ? (parseFloat(s.seuil_alerte) || 0) : undefined,
+    prixUnitaire: parseFloat(String(s.prix_unitaire ?? s.prix ?? '')) || 0,
+    seuilAlerte: s.seuil_alerte != null ? (parseFloat(String(s.seuil_alerte)) || 0) : undefined,
     categorie: s.categorie || undefined,
     image: s.image || null,
     datePeremption: s.date_peremption || null,
@@ -112,14 +113,14 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
   const { user: appUser } = useApp();
   useEffect(() => { if (appUser?.id) refreshStocks(); }, [appUser?.id]);
 
-  const addStock = async (data: Omit<StockItem, 'id' | 'derniereModification'> & { nom?: string }) => {
+  const addStock = async (data: Omit<StockItem, 'id' | 'derniereModification'> & AliasSaisieProduit) => {
     // L'ÉCHEC DE CRÉATION ÉTAIT MUET. Cet appel ne regardait pas la réponse :
     // un refus du serveur repartait comme un succès, et les trois appelants —
     // qui entourent tous `addProduct` d'un try/catch avec un message parlé —
     // annonçaient « C'est fait ! … ajoutés au stock » pour un produit qui
     // n'existait pas. À une marchande qui ne lit pas, c'est la voix elle-même
     // qui mentait. `apiRequest` lève ; les appelants font déjà le reste.
-    await stocksApi.creerStock({ nom: data.nom || data.produit, produit: data.nom || data.produit, quantite: data.quantite, unite: data.unite, prix: (data as any).prixVente || data.prixUnitaire || 0, prix_achat: (data as any).prix_achat || (data as any).prixAchat || (data as any).purchasePrice || 0, categorie: (data as any).categorie || 'General', image: (data as any).image || null, seuil_alerte: (data as any).seuilAlerte ?? (data as any).seuil_alerte ?? null, date_peremption: (data as any).datePeremption ?? (data as any).date_peremption ?? null });
+    await stocksApi.creerStock({ nom: data.nom || data.produit, produit: data.nom || data.produit, quantite: data.quantite, unite: data.unite, prix: data.prixVente || data.prixUnitaire || 0, prix_achat: data.prix_achat || data.prixAchat || data.purchasePrice || 0, categorie: data.categorie || 'General', image: data.image || null, seuil_alerte: data.seuilAlerte ?? data.seuil_alerte ?? null, date_peremption: data.datePeremption ?? data.date_peremption ?? null });
     eventBus.emit(EVENTS.STOCK_CREATED, data, { priority: 'medium' });
     await refreshStocks();
   };

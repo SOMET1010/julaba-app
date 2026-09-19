@@ -1,3 +1,4 @@
+import type { LigneDeVente } from '../../types/vente';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, ChevronDown, Search, Filter, FileDown, TrendingUp, Banknote, Package, ShoppingBag, Volume2 } from 'lucide-react';
@@ -31,11 +32,32 @@ function dayLabel(date: Date): string {
 }
 
 // ── Card vente dépliable ──────────────────────────────────────
-function VenteCard({ sale, index, query }: { sale: any; index: number; query: string }) {
+/** Une vente telle que cet écran l'affiche. Le champ `any` d'origine avait
+ *  laissé passer, sans un mot du compilateur, un renommage qui aurait mis
+ *  toutes les marges à zéro (cf. axe 3). */
+interface VenteAffichee {
+  id?: string;
+  type?: string;
+  montant?: number;
+  price?: number;
+  benefice?: number;
+  source?: string;
+  statut?: string;
+  date: string;
+  productName?: string;
+  produit?: string;
+  notes?: string;
+  mode_paiement?: string;
+  paymentMethod?: string;
+  details?: LigneDeVente[] | unknown;
+  produits?: LigneDeVente[] | unknown;
+}
+
+function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number; query: string }) {
   const [open, setOpen] = useState(false);
   const { user, speak, reloadTransactions } = useApp();
   const { refreshProducts } = useCaisse();
-  const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Marchande';
+  const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.nom || 'Marchande';
   const montant = sale.montant || sale.price || 0;
   const marge = sale.benefice || 0;
   const source = sale.source || 'kassa';
@@ -55,6 +77,9 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
     e.stopPropagation();
     setAnnulEtat('loading');
     try {
+      // `estAnnulable` exige déjà un identifiant ; la garde le dit au
+      // compilateur plutôt qu'à la confiance.
+      if (!sale.id) throw new Error('vente sans identifiant');
       await annulerVenteMarchand(sale.id);
       await Promise.all([reloadTransactions(), refreshProducts()]);
       // Succès : on SORT de l'état 'loading'. Sinon le libellé « Annulation en
@@ -347,7 +372,7 @@ export function VentesPassees() {
 
   // Grouper par jour
   const grouped = useMemo(() => {
-    const map = new Map<string, any[]>();
+    const map = new Map<string, VenteAffichee[]>();
     filtered.forEach(t => {
       const d = new Date(t.date);
       const key = format(d, 'yyyy-MM-dd');

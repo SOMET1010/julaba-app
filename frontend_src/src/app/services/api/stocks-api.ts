@@ -13,6 +13,7 @@
 
 import { apiRequest as _apiRequest } from './api-client';
 import { API_URL } from '../../utils/api';
+import type { StockServeur } from '../../types/vente';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);
@@ -20,9 +21,10 @@ function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> 
 
 /** Lecture du stock. Le serveur a renvoyé plusieurs formes selon les versions ;
  *  on les réduit ici à UNE seule liste, au lieu de refaire ce tri à l'appel. */
-export async function fetchStocks(): Promise<any[]> {
-  const data = await apiRequest<any>('/stocks');
-  return data?.stocks || data?.data || (Array.isArray(data) ? data : []);
+export async function fetchStocks(): Promise<StockServeur[]> {
+  const data = await apiRequest<{ stocks?: StockServeur[]; data?: StockServeur[] } | StockServeur[]>('/stocks');
+  if (Array.isArray(data)) return data;
+  return data?.stocks || data?.data || [];
 }
 
 export async function creerStock(payload: Record<string, unknown>): Promise<unknown> {

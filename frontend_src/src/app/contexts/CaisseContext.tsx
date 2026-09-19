@@ -8,6 +8,7 @@ import { getImageByNom } from '../data/catalogue-produits';
 import { NOT_AUTHENTICATED, apiRequest } from '../services/api/api-client';
 import { API_URL } from '../utils/api';
 import { prixEffectif } from '../utils/promo.utils';
+import type { LigneDeVente, ProduitServeur, AliasSaisieProduit } from '../types/vente';
 import { jourLocal } from '../utils/jourLocal';
 // Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.
 import {
@@ -61,7 +62,7 @@ export interface CaisseTransaction {
   marchandId: string;
   type: 'vente' | 'depense' | 'approvisionnement';
   montant: number;
-  produits?: any;
+  produits?: LigneDeVente[] | unknown;
   mode_paiement?: string;
   notes?: string;
   date: string;
@@ -158,7 +159,7 @@ interface CaisseContextType {
   selectedProduct: CaisseProduct | null;
   setSelectedProduct: (p: CaisseProduct | null) => void;
   
-  enregistrerVente: (montant: number, produits?: any, modePaiement?: string, notes?: string, source?: 'vocal' | 'kassa') => Promise<void>;
+  enregistrerVente: (montant: number, produits?: LigneDeVente[], modePaiement?: string, notes?: string, source?: 'vocal' | 'kassa') => Promise<void>;
   enregistrerDepense: (montant: number, notes?: string) => Promise<void>;
   
   // POS Cart
@@ -246,11 +247,11 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       const { transactions: data } = await caisseApi.fetchCaisseTransactions();
 
-      const txList: CaisseTransaction[] = data.map((tx: any) => ({
+      const txList: CaisseTransaction[] = data.map((tx: caisseApi.CaisseTransaction) => ({
         id: tx.id,
         marchandId: tx.marchand_id,
         type: tx.type,
-        montant: parseFloat(tx.montant) || 0,
+        montant: parseFloat(String(tx.montant)) || 0,
         produits: tx.produits,
         mode_paiement: tx.mode_paiement,
         notes: tx.notes,
@@ -423,7 +424,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // ── Ventes / Cahier ──────────────────────────────────────
   const enregistrerVente = async (
     montant: number,
-    produits?: any,
+    produits?: LigneDeVente[],
     modePaiement?: string,
     notes?: string,
     /** D'où vient la vente. Le backend l'accepte déjà (`source: body.source ||
@@ -434,7 +435,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de vente invalide');
     // Calculer prix_achat depuis les produits du panier
     const lignes = Array.isArray(produits) ? produits : [];
-    const prixAchatTotal = lignes.reduce((sum: number, p: any) => {
+    const prixAchatTotal = lignes.reduce((sum: number, p: LigneDeVente) => {
       const qte = Number(p.quantite || p.quantity || 1);
       const pa = Number(p.prix_achat || p.prixAchat || p.purchasePrice || 0);
       return sum + (pa * qte);
@@ -507,7 +508,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
 
   const addTransaction = async (tx: Omit<CaisseTransaction, 'id' | 'date'>) => {
     if (tx.type === 'vente') {
-      await enregistrerVente(tx.montant, tx.produits, tx.mode_paiement, tx.notes);
+      await enregistrerVente(tx.montant, tx.produits as LigneDeVente[] | undefined, tx.mode_paiement, tx.notes);
     } else if (tx.type === 'depense') {
       await enregistrerDepense(tx.montant, tx.notes);
     }
@@ -651,11 +652,18 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       // Les DEUX échecs (réponse en erreur, coupure réseau) tombent maintenant
       // dans le même `catch` et servent le cache.
       const { produits } = await caisseApi.fetchProduitsCaisse();
-      const mapped = produits.map((p: any) => ({
-        id: p.id, nom: p.nom, prix: Number(p.prix),
+      // DÉFAUT NOMMÉ, VOLONTAIREMENT NON CORRIGÉ DANS CE LOT. Le typage de la
+      // réponse montre que le serveur peut omettre l'identifiant ou le nom : un
+      // tel article entre dans la caisse et la vente partira ensuite sans
+      // produit. L'écarter serait la bonne correction — mais un article qui
+      // disparaît de l'écran, c'est un changement visible par la marchande, donc
+      // un chantier fonctionnel, pas de l'hygiène. On DÉCLARE le trou ; on ne le
+      // bouche pas ici. Le comportement reste strictement celui d'avant.
+      const mapped = produits.map((p: ProduitServeur) => ({
+        id: p.id as string, nom: p.nom as string, prix: Number(p.prix),
         prix_achat: Number(p.prix_achat ?? p.prixAchat ?? 0) || 0,
-        categorie: p.categorie, stock: Number(p.stock),
-        unite: p.unite, image: p.image || getImageByNom(p.nom),
+        categorie: p.categorie as string, stock: Number(p.stock),
+        unite: p.unite as string, image: p.image || getImageByNom(p.nom as string),
         seuil_alerte: p.seuil_alerte != null ? Number(p.seuil_alerte) : undefined,
         date_peremption: p.date_peremption || null,
         prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
@@ -675,32 +683,38 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     if (appUser?.id) loadProducts();
   }, [appUser?.id, loadProducts]);
 
-  const addProduct = async (product: Omit<CaisseProduct, 'id'>) => {
+  const addProduct = async (product: Omit<CaisseProduct, 'id'> & AliasSaisieProduit) => {
     try {
       const imageToStore = product.image && product.image.startsWith('http') ? product.image : null;
       const produitData = {
         nom: product.nom, prix: product.prix, categorie: product.categorie, stock: product.stock || 0, unite: product.unite, image: imageToStore,
-        ...((() => { const pa = Number(product.prix_achat ?? (product as any).prixAchat ?? (product as any).purchasePrice ?? 0); return pa > 0 ? { prix_achat: pa } : {}; })()),
-        ...((product as any).seuil_alerte != null || (product as any).seuilAlerte != null || (product as any).threshold != null
-          ? { seuil_alerte: Number((product as any).seuil_alerte ?? (product as any).seuilAlerte ?? (product as any).threshold) } : {}),
-        ...((product as any).date_peremption || (product as any).datePeremption ? { date_peremption: (product as any).date_peremption ?? (product as any).datePeremption } : {}),
-        ...((product as any).prix_promo != null || (product as any).prixPromo != null
-          ? { prix_promo: Number((product as any).prix_promo ?? (product as any).prixPromo) || null } : {}),
-        ...((product as any).promo_fin || (product as any).promoFin ? { promo_fin: (product as any).promo_fin ?? (product as any).promoFin } : {}),
+        ...((() => { const pa = Number(product.prix_achat ?? product.prixAchat ?? product.purchasePrice ?? 0); return pa > 0 ? { prix_achat: pa } : {}; })()),
+        ...(product.seuil_alerte != null || product.seuilAlerte != null || product.threshold != null
+          ? { seuil_alerte: Number(product.seuil_alerte ?? product.seuilAlerte ?? product.threshold) } : {}),
+        ...(product.date_peremption || product.datePeremption ? { date_peremption: product.date_peremption ?? product.datePeremption } : {}),
+        ...(product.prix_promo != null || product.prixPromo != null
+          ? { prix_promo: Number(product.prix_promo ?? product.prixPromo) || null } : {}),
+        ...(product.promo_fin || product.promoFin ? { promo_fin: product.promo_fin ?? product.promoFin } : {}),
       };
       const data = await caisseApi.creerProduitCaisse(produitData);
       eventBus.emit(EVENTS.PRODUCT_CREATED, produitData, { priority: 'medium' });
       {
         const p = data.produit;
+        // UN PRODUIT SANS IDENTIFIANT N'EST PAS UN PRODUIT. Le typage de la
+        // réponse (axe 4) a montré que ce bloc l'acceptait : la ligne entrait
+        // dans le catalogue avec `id: undefined`, et la première vente de cet
+        // article partait donc sans produit — invendable, sans message.
+        // Même défaut nommé qu'au chargement du catalogue, même retenue : le
+        // refuser ferait échouer une création qui « passait » avant.
         setProducts(prev => [...prev, {
-          id: p.id,
-          nom: p.nom,
+          id: p.id as string,
+          nom: p.nom ?? product.nom,
           prix: Number(p.prix),
           prix_achat: Number(p?.prix_achat ?? p?.prixAchat ?? product.prix_achat ?? 0) || 0,
-          categorie: p.categorie,
+          categorie: p.categorie ?? product.categorie,
           stock: Number(p.stock),
-          unite: p.unite,
-          image: p.image || getImageByNom(p.nom),
+          unite: p.unite ?? product.unite,
+          image: p.image || getImageByNom(p.nom ?? product.nom),
           prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
           promo_fin: p.promo_fin || null,
         }]);
@@ -711,23 +725,23 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateProduct = async (id: string, updates: Partial<CaisseProduct>) => {
+  const updateProduct = async (id: string, updates: Partial<CaisseProduct> & AliasSaisieProduit) => {
     try {
       const current = products.find(p => p.id === id);
       const updated = { ...current, ...updates };
       const prixAchat = Number(
-        (updates as any).prix_achat ??
-        (updates as any).prixAchat ??
-        (updates as any).purchasePrice ??
+        updates.prix_achat ??
+        updates.prixAchat ??
+        updates.purchasePrice ??
         current?.prix_achat ?? 0
       );
-      const seuil = (updates as any).seuil_alerte ?? (updates as any).seuilAlerte ?? (updates as any).threshold;
-      const peremption = (updates as any).date_peremption ?? (updates as any).datePeremption;
+      const seuil = updates.seuil_alerte ?? updates.seuilAlerte ?? updates.threshold;
+      const peremption = updates.date_peremption ?? updates.datePeremption;
       // Promo : présente dans `updates` seulement si le formulaire l'a envoyée.
       // On la transmet alors explicitement (valeur ou null pour la retirer).
-      const promoFournie = 'prix_promo' in updates || 'prixPromo' in (updates as any);
-      const prixPromoRaw = (updates as any).prix_promo ?? (updates as any).prixPromo;
-      const promoFin = (updates as any).promo_fin ?? (updates as any).promoFin ?? null;
+      const promoFournie = 'prix_promo' in updates || 'prixPromo' in updates;
+      const prixPromoRaw = updates.prix_promo ?? updates.prixPromo;
+      const promoFin = updates.promo_fin ?? updates.promoFin ?? null;
       const updatedWithPrixAchat = {
         ...updated,
         prix_achat: prixAchat,

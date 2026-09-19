@@ -12,9 +12,11 @@
  * une vente mixte n'est jamais surévaluée par ses lignes sans coût, et une vente
  * à perte affiche sa perte.
  */
+import type { LigneDeVente } from '../types/vente';
+
 export function beneficeDepuisDetails(details: unknown): number {
   if (!Array.isArray(details)) return 0;
-  return details.reduce((s: number, it: any) => {
+  return (details as LigneDeVente[]).reduce((s: number, it) => {
     const coutUnitaire = Number(it?.prix_achat ?? it?.prixAchat) || 0;
     // Coût inconnu (≤ 0) → ligne NON comptée : on n'invente pas de marge (on ne
     // renvoie surtout pas le prix de vente entier). Ne surévalue jamais, même sur

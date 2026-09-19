@@ -9,21 +9,29 @@
 
 import { apiRequest as _apiRequest } from './api-client';
 import { API_URL } from '../../utils/api';
+import type { ProduitServeur } from '../../types/vente';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);
 }
 
-export async function fetchCatalogueMaitre(limit = 200): Promise<any> {
-  return apiRequest<any>(`/catalogue-maitre?limit=${limit}`);
+/** Une référence du catalogue maître : ce que la marchande peut adopter. */
+export interface ReferenceMaitreServeur {
+  default_code?: string;
+  nom?: string;
+  categorie?: string | null;
 }
 
-export async function fetchProduitsAdoptes(): Promise<any> {
-  return apiRequest<any>('/catalogue-maitre/adoptees');
+export async function fetchCatalogueMaitre(limit = 200): Promise<{ references?: ReferenceMaitreServeur[] }> {
+  return apiRequest<{ references?: ReferenceMaitreServeur[] }>(`/catalogue-maitre?limit=${limit}`);
 }
 
-export async function adopterProduits(payload: Record<string, unknown>): Promise<any> {
-  return apiRequest<any>('/catalogue-maitre/adopter', {
+export async function fetchProduitsAdoptes(): Promise<{ codes?: string[] }> {
+  return apiRequest<{ codes?: string[] }>('/catalogue-maitre/adoptees');
+}
+
+export async function adopterProduits(payload: Record<string, unknown>): Promise<{ produit?: ProduitServeur }> {
+  return apiRequest<{ produit?: ProduitServeur }>('/catalogue-maitre/adopter', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

@@ -4,6 +4,7 @@
 
 import { apiRequest as _apiRequest } from './api-client';
 import { API_URL } from '../../utils/api';
+import type { LigneDeVente, ProduitServeur, SessionCaisseServeur, CreditServeur } from '../../types/vente';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);
@@ -17,17 +18,24 @@ export interface CaisseTransaction {
   id: string;
   marchand_id: string;
   type: 'vente' | 'depense' | 'approvisionnement';
-  montant: number;
-  produits?: any;
+  /** Colonne `decimal` de Postgres : elle arrive en CHAÎNE via TypeORM. Elle
+   *  était déclarée `number` alors que tous les appelants faisaient déjà un
+   *  `parseFloat` — le type mentait, le code avait raison. */
+  montant: number | string;
+  produits?: LigneDeVente[];
+  details?: LigneDeVente[];
+  /** 'validee' | 'annulee' — l'annulation self-service (#20). Ce champ était
+   *  lu par la caisse sans être déclaré. */
+  statut?: string;
   mode_paiement?: string;
   notes?: string;
   created_at: string;
 }
 
 export interface EnregistrerVenteData {
-  details?: any[];
+  details?: LigneDeVente[];
   montant: number;
-  produits?: any;
+  produits?: LigneDeVente[];
   mode_paiement?: string;
   notes?: string;
   prix_achat?: number;
@@ -77,7 +85,7 @@ export async function fetchCaisseTransactions(): Promise<{ transactions: CaisseT
   // cessait de décroître. Il couvre 50 000 transactions.
   const toutes: CaisseTransaction[] = [];
   for (let page = 1; page <= PAGES_MAX; page++) {
-    const data = await apiRequest<any>(`/caisse/transactions?limit=${PAR_PAGE}&page=${page}`);
+    const data = await apiRequest<{ transactions?: CaisseTransaction[] } | CaisseTransaction[]>(`/caisse/transactions?limit=${PAR_PAGE}&page=${page}`);
     const lot: CaisseTransaction[] = Array.isArray(data) ? data : (data.transactions || []);
     toutes.push(...lot);
     // Page incomplète = dernière page. C'est le seul signal fiable quel que
@@ -132,7 +140,7 @@ export interface Credit {
   statut: 'en_attente' | 'en_retard' | 'bientot' | 'paye';
   statut_calcule: 'en_attente' | 'en_retard' | 'bientot' | 'paye';
   jours_restants: number;
-  articles: any[];
+  articles: LigneDeVente[];
   notes: string;
   paye_le: string | null;
   transaction_id: string | null;
@@ -157,7 +165,7 @@ export interface CreerCreditData {
   montant_total: number;
   acompte?: number;
   echeance: string;
-  articles?: any[];
+  articles?: LigneDeVente[];
   notes?: string;
   transaction_id?: string | null;
 }
@@ -169,7 +177,7 @@ export interface CreerCreditData {
 // Le backend renvoie statut/montant_restant/echeance ; l'UI attend en plus
 // statut_calcule + jours_restants. On les DÉRIVE ici pour tous les consommateurs
 // (corrige le badge « undefinedj restants »).
-function enrichirCredit(c: any): Credit {
+function enrichirCredit(c: CreditServeur): Credit {
   let jours_restants = 0;
   if (c?.echeance) {
     const d = new Date(c.echeance);
@@ -184,11 +192,18 @@ function enrichirCredit(c: any): Credit {
     : jours_restants < 0 ? 'en_retard'
     : jours_restants <= 2 ? 'bientot'
     : 'en_attente';
-  return { ...c, jours_restants, statut_calcule };
+  // DÉFAUT NOMMÉ, VOLONTAIREMENT NON CORRIGÉ DANS CE LOT. Le typage de la
+  // réponse montre que le serveur peut omettre l'identifiant, la cliente ou le
+  // montant restant. Écarter ces lignes serait la bonne correction — mais un
+  // crédit qui disparaît de l'écran, c'est de l'argent qui disparaît aux yeux
+  // de la marchande. Ce n'est pas de l'hygiène, c'est un chantier fonctionnel.
+  // On ne met SURTOUT pas 0 par défaut sur un montant : ce serait dire « cette
+  // cliente ne doit plus rien ». Le comportement reste celui d'avant.
+  return { ...(c as unknown as Credit), jours_restants, statut_calcule };
 }
 
 export async function fetchCredits(): Promise<{ credits: Credit[]; total_du: number }> {
-  const r = await apiRequest<{ credits: any[]; total_du: number }>('/caisse/credits');
+  const r = await apiRequest<{ credits: CreditServeur[]; total_du: number }>('/caisse/credits');
   return { credits: (r.credits || []).map(enrichirCredit), total_du: r.total_du };
 }
 
@@ -235,13 +250,13 @@ export async function rechercherClient(nom: string): Promise<{ client: ClientMar
 // tourner. Ils passent désormais par `apiRequest`, comme la vente elle-même.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function fetchProduitsCaisse(): Promise<{ produits: any[] }> {
-  const data = await apiRequest<any>('/caisse/produits');
+export async function fetchProduitsCaisse(): Promise<{ produits: ProduitServeur[] }> {
+  const data = await apiRequest<{ produits?: ProduitServeur[] }>('/caisse/produits');
   return { produits: data?.produits || [] };
 }
 
-export async function creerProduitCaisse(produit: Record<string, unknown>): Promise<{ produit: any }> {
-  return apiRequest<{ produit: any }>('/caisse/produits', {
+export async function creerProduitCaisse(produit: Record<string, unknown>): Promise<{ produit: ProduitServeur }> {
+  return apiRequest<{ produit: ProduitServeur }>('/caisse/produits', {
     method: 'POST',
     body: JSON.stringify(produit),
   });
@@ -270,12 +285,12 @@ export async function supprimerProduitCaisse(id: string): Promise<unknown> {
 // qu'on y a compté le soir. Elle mérite la même porte que la vente.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function fetchSessionDuJour(date: string): Promise<{ session: any | null }> {
-  return apiRequest<{ session: any | null }>(`/caisse/session/${date}`);
+export async function fetchSessionDuJour(date: string): Promise<{ session: SessionCaisseServeur | null }> {
+  return apiRequest<{ session: SessionCaisseServeur | null }>(`/caisse/session/${date}`);
 }
 
-export async function ouvrirSession(fondInitial: number, notes?: string): Promise<{ session: any; fond_conserve?: boolean }> {
-  return apiRequest<{ session: any; fond_conserve?: boolean }>('/caisse/session/ouvrir', {
+export async function ouvrirSession(fondInitial: number, notes?: string): Promise<{ session: SessionCaisseServeur; fond_conserve?: boolean }> {
+  return apiRequest<{ session: SessionCaisseServeur; fond_conserve?: boolean }>('/caisse/session/ouvrir', {
     method: 'POST',
     body: JSON.stringify({ fond_initial: fondInitial, notes }),
   });
@@ -288,8 +303,8 @@ export async function fermerSession(comptageReel: number, notes?: string): Promi
   });
 }
 
-export async function modifierFondSession(fondInitial: number): Promise<{ session: any }> {
-  return apiRequest<{ session: any }>('/caisse/session/fond', {
+export async function modifierFondSession(fondInitial: number): Promise<{ session: SessionCaisseServeur }> {
+  return apiRequest<{ session: SessionCaisseServeur }>('/caisse/session/fond', {
     method: 'PATCH',
     body: JSON.stringify({ fond_initial: fondInitial }),
   });
