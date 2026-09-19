@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { definirPin, desactiverPin } from '../../services/api/auth-api';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Settings,
@@ -524,13 +525,12 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
 
   const handleSavePin = async (newPin: string, currentPin?: string) => {
     try {
-      const res = await fetch(`${API_URL}/auth/pin/set`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: newPin, currentPin }),
-      });
-      const data = await res.json() as { success?: boolean; message?: string };
-      if (!res.ok || !data.success) { toast.error(data.message || 'Erreur PIN'); return; }
+      // API-01 : la session expirée est un état à part, jamais un « PIN
+      // incorrect ». Sinon on reproche à la marchande une faute qu'elle n'a
+      // pas commise.
+      const r = await definirPin(newPin, currentPin);
+      if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'erreur_metier') { toast.error(r.message || 'Erreur PIN'); return; }
       if (appUser) setUser({ ...appUser, pinSecurityEnabled: true });
       toast.success('Code PIN activé');
     } catch { toast.error('Erreur réseau'); }
@@ -538,13 +538,9 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
 
   const handleDisablePin = async (currentPin: string) => {
     try {
-      const res = await fetch(`${API_URL}/auth/pin/disable`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPin }),
-      });
-      const data = await res.json() as { success?: boolean; message?: string };
-      if (!res.ok || !data.success) { toast.error(data.message || 'PIN incorrect'); return; }
+      const r = await desactiverPin(currentPin);
+      if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'erreur_metier') { toast.error(r.message || 'PIN incorrect'); return; }
       if (appUser) setUser({ ...appUser, pinSecurityEnabled: false });
       toast.success('Code PIN désactivé');
     } catch { toast.error('Erreur réseau'); }

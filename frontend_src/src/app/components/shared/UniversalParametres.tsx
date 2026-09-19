@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { definirPin, desactiverPin, enregistrerPreferences, supprimerCompte, listerSessions, revoquerSession } from '../../services/api/auth-api';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Bell, Shield, Fingerprint, Lock, Mic, Globe, Smartphone,
@@ -237,14 +238,11 @@ function ModalDeleteAccount({ isOpen, onClose }: {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/auth/account`, {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-      const data = await res.json() as { success?: boolean; message?: string };
-      if (!res.ok || !data.success) { setError(data.message || 'Erreur'); return; }
+      // API-01 : « mot de passe refusé » et « session finie » ne sont pas la
+      // même chose — surtout sur une suppression de compte.
+      const r = await supprimerCompte(password);
+      if (r.etat === 'session_expiree') { setError('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'erreur_metier') { setError(r.message || 'Erreur'); return; }
       toast.success('Compte supprimé');
       navigate('/');
     } catch { setError('Erreur réseau'); }
@@ -334,16 +332,23 @@ function ModalSessions({ isOpen, onClose, color }: {
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    fetch(`${API_URL}/auth/sessions`, { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => setSessions(d.sessions || []))
-      .catch(() => setSessions([]))
+    // API-01 : sur un 401, l'ancien code affichait « aucune session active » —
+    // c'est-à-dire l'inverse de la vérité, sur l'écran même où l'on gère ses
+    // connexions. `listerSessions` rafraîchit d'abord ; si la session est
+    // vraiment finie, la liste reste vide mais l'écran n'invente rien.
+    listerSessions()
+      .then(r => setSessions(r.etat === 'ok' ? r.valeur : []))
       .finally(() => setLoading(false));
   }, [isOpen]);
 
   const handleRevoke = async (id: string) => {
     try {
-      await fetch(`${API_URL}/auth/sessions/${id}`, { method: 'DELETE', credentials: 'include' });
+      // Et surtout : ne plus retirer la ligne de l'écran quand la révocation
+      // a échoué. L'ancien code ne regardait même pas la réponse — la session
+      // disparaissait de la liste tout en restant ouverte côté serveur.
+      const r = await revoquerSession(id);
+      if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'erreur_metier') { toast.error(r.message || 'Erreur réseau'); return; }
       setSessions(prev => prev.filter(s => s.id !== id));
       toast.success('Session révoquée');
     } catch { toast.error('Erreur réseau'); }
@@ -602,13 +607,9 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
   const handleSave = useCallback(async (silent = false) => {
     const newPrefs = buildPrefs();
     try {
-      const res = await fetch(`${API_URL}/auth/preferences`, {
-        method: 'PATCH', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPrefs),
-      });
-      const data = await res.json() as { success?: boolean; message?: string };
-      if (!res.ok || !data.success) { if (!silent) toast.error(data.message || 'Erreur'); return; }
+      const r = await enregistrerPreferences(newPrefs);
+      if (r.etat === 'session_expiree') { if (!silent) toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'erreur_metier') { if (!silent) toast.error(r.message || 'Erreur'); return; }
       updateUser({ preferences: newPrefs });
       setSaved(true);
       if (!silent) { speak('Paramètres sauvegardés'); toast.success('Paramètres sauvegardés'); }
@@ -624,13 +625,9 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
 
   const handleSavePin = async (newPin: string, currentPin?: string) => {
     try {
-      const res = await fetch(`${API_URL}/auth/pin/set`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: newPin, currentPin }),
-      });
-      const data = await res.json() as { success?: boolean; message?: string };
-      if (!res.ok || !data.success) { toast.error(data.message || 'Erreur PIN'); return; }
+      const r = await definirPin(newPin, currentPin);
+      if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'erreur_metier') { toast.error(r.message || 'Erreur PIN'); return; }
       if (user) setUser({ ...user, pinSecurityEnabled: true });
       toast.success('Code PIN activé');
     } catch { toast.error('Erreur réseau'); }
@@ -638,13 +635,9 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
 
   const handleDisablePin = async (currentPin: string) => {
     try {
-      const res = await fetch(`${API_URL}/auth/pin/disable`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPin }),
-      });
-      const data = await res.json() as { success?: boolean; message?: string };
-      if (!res.ok || !data.success) { toast.error(data.message || 'PIN incorrect'); return; }
+      const r = await desactiverPin(currentPin);
+      if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'erreur_metier') { toast.error(r.message || 'PIN incorrect'); return; }
       if (user) setUser({ ...user, pinSecurityEnabled: false });
       toast.success('Code PIN désactivé');
     } catch { toast.error('Erreur réseau'); }
