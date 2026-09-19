@@ -1,9 +1,15 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 2 — après le contre-audit de Patrick du 19/09/2026 (`921301e`).**
-Deux fermetures rouvertes, une métrique corrigée, cinq dettes ajoutées, un P0
-requalifié. Le détail de chaque correction est dans la colonne « preuve ».
+**Révision 3 — après la fermeture de STK-01 (`6ef6560`).**
+Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
+une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
+Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
+passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
+(`keiwa_config_items`) ; **AUTH-RECOVERY-01** ouverte par arbitrage avant SEC-2.
+Le détail de chaque correction est dans la colonne « preuve ».
+
+**Compte courant : 12 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 55 OUVERT.**
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -55,7 +61,7 @@ reste multiple.
 
 | ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
 |---|---|---|---|---|---|
-| **STK-01** | **P0 publication** | **OUVERT** | **REQUALIFIÉ : ce n'est pas un inconnu d'environnement, c'est B1 une seconde fois, et c'est prouvé d'ici.** Vérifié : `db-init.service.ts` ne crée **0** fois `stock_operation_idempotency` ; sur une base bâtie par DbInit seul (aucune table `migrations`), la table **n'existe pas**. Or `stocks-rest.controller.ts:190` y fait un `INSERT` dès qu'une clé d'idempotence est fournie — et `StockContext.updateStock` en envoie une à **chaque** mise à jour | — | **Sur toute base neuve, toute modification de stock échoue.** Même famille que B1 : une table créée par une seule migration, sur un système où les migrations ne tournent pas sur base vierge |
+| **STK-01** | **P0 publication** | **FERMÉ** | `db-init.service.ts` crée désormais `stock_operation_idempotency` et son index, DDL identique à la migration `1781500000000`. Deux tests sur une base bâtie par DbInit **seul** (aucune table `migrations`) : la table existe, et l'`INSERT` réel du contrôleur s'exécute. Les deux échouaient avant | `6ef6560` | — *(la dette de mécanisme reste SCHEMA-03 : DbInit et les migrations ne convergent pas, ils sont maintenus en parallèle)* |
 | **STK-02** | P2 modèle | **OUVERT** | `stock = 0` confond « épuisé » et « non suivi » | ADR-0003 #6, différé par arbitrage | Séparer quantité de `suivi_stock` |
 | **STK-03** | P2 architecture | **OUVERT** | Deux modèles coexistent : `produits` (marchand) et `stocks` (producteur/coopérateur) | `974de94` rend la dualité **explicite** (les alertes interrogent les deux) au lieu de la subir | Les deux tables demeurent |
 | **STK-04** | P2 | **OUVERT** | Les réapprovisionnements manuels ne passent pas par le ledger | — | Décider si tout mouvement doit être historisé |
@@ -119,6 +125,7 @@ reste multiple.
 | **SEC-06** | P1 | **OUVERT** | *Ligne ajoutée au contre-audit.* `auth.controller.ts:670` : `return { user, success: true, pinGenere }` — le PIN repart **en clair dans la réponse HTTP** de `create-acteur` | — | Le SMS fonctionne désormais (`5e55d57`) : la surface d'exposition est doublée sans nécessité |
 | **SEC-07** | P1 | **OUVERT** | *Ligne ajoutée au contre-audit.* `auth.controller.ts:655` : PIN généré par `Math.random()` sur 8 chiffres × 4 positions = **4 096 combinaisons**, générateur non cryptographique | Le verrouillage des essais (`verrou-pin.ts`) limite la force brute **à distance** | `Math.random()` n'est pas adapté à la génération d'un identifiant |
 | **SEC-04** | P3 | **OUVERT** | `users.service.ts:334` journalise le terme de recherche saisi | Relevé en balayant SEC-01. **Donnée personnelle, pas un secret** | Journalisation de donnée personnelle |
+| **AUTH-RECOVERY-01** | P1 | **OUVERT** | *Dette ouverte par arbitrage de Patrick au moment de SEC-2.* La remise à zéro d'un PIN passe **uniquement par SMS**. Aucun parcours n'existe pour « numéro perdu ou changé » | **Ouverte délibérément pour ne pas polluer SEC-2 avec une récupération de compte improvisée** | Un identificateur qui perd son numéro n'a aucune voie de retour. Si le terrain impose un secours sans SMS, **ne jamais afficher le vrai PIN** : code de récupération à usage unique, TTL court, consommable une fois, qui oblige ensuite à choisir son propre PIN. Autre credential, autre route — pas un contournement de SEC-05 |
 
 # SMS ET INTÉGRATIONS
 
@@ -141,8 +148,10 @@ reste multiple.
 |---|---|---|---|---|---|
 | **SCHEMA-01** | P1 | **OUVERT** | Trois mécanismes coexistent : migrations TypeORM, `DbInitService`, `synchronize` | — | **La doctrine de schéma reste structurellement multiple** |
 | **SCHEMA-02** | P1 | **OUVERT** | `schema-flags.ts` : base vierge → `synchronize`, base existante → migrations si `DB_MIGRATIONS_RUN` | Décision volontaire aujourd'hui | Multiplie les chemins de construction du schéma |
-| **SCHEMA-03** | P1 | **OUVERT** | Des évolutions doivent être recopiées à la main dans DbInit | `73343a4` ferme **une instance** (B1 : `stock_mouvements.type` absent → annulation de vente cassée sur base neuve) et pose le garde-fou `schema-ledger-sans-migration` | **Le mécanisme qui produit ce défaut demeure.** Le garde-fou détecte, il ne converge pas |
-| **SCHEMA-04** | P1 | **OUVERT** | = STK-01 | — | Fait d'environnement, à fermer avec preuve sur la base cible |
+| **SCHEMA-03** | P1 | **OUVERT** | Des évolutions doivent être recopiées à la main dans DbInit | `73343a4` ferme **une instance** (B1 : `stock_mouvements.type` absent → annulation de vente cassée sur base neuve) et pose le garde-fou `schema-ledger-sans-migration`. `6ef6560` ferme **une seconde instance** (STK-01) et élargit le garde-fou : il énumère désormais **toutes** les tables écrites en SQL brut par le code et exige qu'elles existent après DbInit seul — c'est lui qui a révélé SCHEMA-05 et SCHEMA-06 | **Le mécanisme qui produit ce défaut demeure.** Le garde-fou détecte, il ne converge pas |
+| **SCHEMA-04** | P1 | **FERMÉ** | = STK-01, fermé par `6ef6560`. Ce n'était pas un fait d'environnement : le dépôt suffisait à le prouver | `6ef6560` | — |
+| **SCHEMA-05** | **P1** | **OUVERT** | **Nouveau (issu du garde-fou systématique).** `api_keys` est lue et écrite par du code vivant du back-office partenaires, et n'est créée que par une migration **archivée**, volontairement hors de la chaîne exécutable (ADR-0002). Sur base neuve la table n'existe pas | — | Toute fonction partenaire adossée à `api_keys` échoue sur un déploiement neuf. Décider : réintégrer la création, ou retirer le code mort |
+| **SCHEMA-06** | **P1** | **OUVERT** | **Nouveau (issu du garde-fou systématique).** `keiwa_config_items` est lue, insérée, modifiée et supprimée par `admin-wallets.service.ts`, et créée **nulle part** : ni entité, ni migration, ni DbInit | — | La configuration Keiwa échoue sur toute base, neuve ou non, sauf table posée à la main |
 
 # ARCHITECTURE
 
@@ -194,11 +203,15 @@ La sévérité doit jouer dans les deux sens. Ne sont pas des anomalies :
 
 ## P0 et P1 encore OUVERTS
 
-**P0 — un seul, et c'est un fait d'environnement**
+**P0**
 
 | ID | Ce qu'il faut |
 |---|---|
-| **STK-01 / SCHEMA-04** | **Poser `stock_operation_idempotency` dans DbInit**, comme pour `stock_mouvements.type` (B1). Prouvé d'ici : sans elle, toute modification de stock échoue sur base neuve. La vérification sur la base cible reste utile pour savoir si la production est **déjà** cassée |
+| **SEC-05** | **Supprimer `GET /auth/identificateur/:id/pin-decrypted`** et remplacer l'action back-office par « Réinitialiser le PIN » : génération cryptographique côté serveur, envoi par SMS, réponse `{ success: true }` sans jamais porter le PIN, audit `PIN_RESET`, ancien PIN invalidé immédiatement. **Pas de repli back-office** — un affichage « une seule fois » recréerait SEC-05 sous une forme plus propre. SEC-06 et SEC-07 se ferment dans le même geste |
+
+*STK-01 / SCHEMA-04 était l'autre P0 : fermé par `6ef6560`. La vérification sur
+la base de production reste utile pour savoir si elle est **déjà** cassée — mais
+le défaut de code, lui, n'existe plus.*
 
 **P1 atteignables en pilote**
 
@@ -242,5 +255,5 @@ devient, « variable absente ⇒ mock » doit être réexaminé.
 ## Observation non résolue
 
 Un passage complet des invariants a montré **3 échecs dont le détail n'a pas
-été capturé**. Les cinq passages suivants sont verts (189/189). Cause inconnue,
+été capturé**. Les passages suivants sont verts (189/189 puis 192/192 après STK-01). Cause inconnue,
 non reproduite. **Ce n'est pas classé « flake »** : à instruire s'il revient.
