@@ -1,7 +1,7 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 5 — après SEED-01 (`8b66407`) et SEC-08 (`3d3e00c`).**
+**Révision 6 — après ARG-02 et API-01.**
 Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
 une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
 Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
@@ -10,6 +10,11 @@ passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
 Révision 4 : **SEC-05, SEC-06 et SEC-07 fermés** ; **SEC-08** ouverte (le PIN
 n'est plus lisible, mais il est encore *choisi* par un administrateur) ;
 **SEED-01** ouverte — c'est le diagnostic des 3 échecs jusqu'ici non expliqués.
+Révision 6 : **ARG-02 fermé** (deux couches mentaient sur l'historique, pas
+une : la lecture serveur ET l'affichage front) et **API-01 fermé sur le
+périmètre reformulé** — un 401 ne peut plus être lu comme un verdict métier.
+**API-10** sort le décompte d'architecture pour qu'il ne soit pas fermé par la
+bande ; **API-01b** ouvre le cas WebAuthn, mesuré et non corrigé.
 Révision 5 : **SEED-01 et SEC-08 fermés**. La batterie d'invariants est
 redevenue déterministe (trois exécutions complètes d'affilée, 208/208), et il
 n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte le
@@ -60,7 +65,7 @@ reste multiple.
 | ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
 |---|---|---|---|---|---|
 | **ARG-01** / B3 | P1 terrain | **FERMÉ** | `stocks-rest.controller.ts` : le `WHERE` ne porte plus aucun filtre sur `quantite_retranchee` (les 2 occurrences restantes sont des commentaires). `mouvement-mapper.ts` expose `quantite_affichee`, `manquant`, `hors_stock` | `853dff7` — invariant `argent-3` + `test:mouvements-hors-stock` | — |
-| **ARG-02** / B2 | P1 terrain | **OUVERT** | Fermé **pour les nouveaux mouvements** : `db-init.service.ts` pose `unite`, les 2 INSERT la portent. **Mais `stocks-rest.controller.ts:46` fait `COALESCE(sm.unite, p.unite)`** : une ligne ancienne (`sm.unite IS NULL`) relit encore l'unité ACTUELLE du catalogue. Un vieux « 5 tas » peut toujours devenir « 5 kg » | `853dff7` + migration `1780500000000` — **rouvert au contre-audit** : sous le contrat « FERMÉ = le défaut n'existe plus dans le code actuel », le repli sur `p.unite` est le défaut lui-même | Supprimer le repli : une ligne sans unité historisée doit renvoyer `null`, pas l'unité d'aujourd'hui. Afficher une unité actuelle comme si elle était historique est un mensonge de plus, pas un moindre mal |
+| **ARG-02** / B2 | P1 terrain | **FERMÉ** | **DEUX couches mentaient, pas une — le contre-audit n'avait relevé que la première.** (1) Serveur : `COALESCE(sm.unite, p.unite)` remplacé par `sm.unite` seule, et la jointure sur `produits` disparaît avec le repli. (2) **Écran** : la fiche produit affichait `{m.qty} {selectedStock.unit}` — l'unité du catalogue d'aujourd'hui, sans même regarder celle du mouvement ; le correctif serveur ne pouvait rien pour ces lignes. Trois rendus corrigés. Une unité absente est **dite** (`uniteConnue` + « unité non enregistrée »), jamais empruntée | `ecc1ae6` — reproduction avant correctif : `COALESCE` remis, 3 des 4 invariants rougissent. Le 4ᵉ passe dans les deux cas : il couvre B2, pas ARG-02, et c'est écrit | — |
 | **ARG-03** / A3 | P1 dormant | **OUVERT** | Fermé **pour un seul des trois chemins**. Vérifié : `POST /caisse/credits` insère `acompte` directement dans `credits` — **0 occurrence de `acompte_credit`** dans ce chemin. Un crédit créé AVEC acompte initial reste donc invisible à `caisseTheorique`. Et dans `PATCH :id/acompte`, l'écriture de caisse est dans un `try/catch` qui **avale l'erreur** : `success: true` est possible sans trace de caisse | `853dff7` couvre `PATCH :id/acompte` — **rouvert au contre-audit**, qui a trouvé le second chemin que mon test ne couvrait pas | Acompte initial à la création + atomicité de l'encaissement |
 | **ARG-10** | P1 dormant | **OUVERT** | *Ligne ajoutée au contre-audit.* `PATCH /caisse/credits/:id/payer` marque le crédit payé et réduit `clients.montant_du`, **sans aucune écriture de caisse**. Route atteinte : `VentesPassees.tsx:325` appelle `marquerCreditPaye(id)` | — | Le règlement du reste dû est de l'argent reçu qui n'entre jamais dans la caisse théorique. **Même fermeture que ARG-03/04/05 : création avec acompte, acompte ultérieur et solde final doivent passer par UN seul mécanisme transactionnel d'encaissement** |
 | **ARG-04** | P1 dormant | **OUVERT** | `POST /caisse/credits` sans `idempotency_key` — vérifié : la seule clé du fichier est celle de l'acompte | — | Idempotence de création. **Avant réactivation du crédit** |
@@ -91,7 +96,7 @@ reste multiple.
 
 | ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
 |---|---|---|---|---|---|
-| **API-01** | P1 hygiène | **OUVERT** | Mesuré : **196 `fetch()` / 60 fichiers** hors `services/api/`. **CORRECTION du contre-audit :** le garde-fou `convergenceApi.test.mts:141` teste `/(caisse\|stocks?\|catalogue-maitre)/` — **`auth` n'y est PAS**. Mon affirmation « 0 sur auth/caisse/vente/stock » était **fausse**, et le commentaire du garde-fou le prétendait aussi : exactement l'écart commentaire/garde-fou que ce registre doit débusquer | `9d74fec` — 222/68 → 196/60, et **0 sur caisse / vente / stock / catalogue-maître dans le périmètre contrôlé** | 196 appels, dont les voies `auth` non couvertes par le garde-fou |
+| **API-01** | P1 | **FERMÉ** | **Reformulation, 19/09/2026 : « le vrai problème n'est pas qu'il y a trop de `fetch()` directs ; c'est qu'un 401 sur un appel auth peut être interprété comme une erreur métier ».** Sur ce périmètre : `WalletPage`, `UniversalParametres`, `UniversalProfil` passent par `services/api/auth-api.ts`, qui ne rend que trois états — succès métier, erreur métier, reconnexion requise. Garde-fou corrigé **dans les deux sens** : la regex couvre `auth`, et le non-convergé est **nommé** dans `RESTE_A_CONVERGER` au lieu d'être masqué ; un contrôle fait rougir toute exception périmée (il en a trouvé 3 posées par excès) | `1c90b97` — conséquence mesurée sur vrai serveur : bon PIN + jeton expiré → 401 → `data.valid` **undefined** → « Code PIN incorrect ». La marchande tapait le bon code de son portefeuille et l'application lui disait non | **Le décompte d'architecture reste, et il est sorti dans API-10 : rien n'est caché ici** |
 | **API-02** | P1 | **FERMÉ** | `StockContext.tsx` : **0** `fetch(` | `9d74fec` — `stocks-api.ts` | — |
 | **API-03** | P1 | **OUVERT** | `authService` (4), `useWebAuthn` (7), `api-client` (3) : trois voies subsistent | `9d74fec` — rafraîchissement de session **4 → 1**. Les cérémonies d'auth restent directes **délibérément** : un 401 y signifie « mauvais code », pas « session expirée » | Une autorité de transport unique reste à poser |
 | **API-04** | P1 architecture | **OUVERT** | `main.tsx` monkey-patche `window.fetch` pour le bearer | — | Comportement d'auth hors de la couche API |
@@ -100,6 +105,8 @@ reste multiple.
 | **API-07** | P2 | **OUVERT** | `useRealtime.ts` : 7 appels propres | — | Fragmentation |
 | **API-08** | P2 | **OUVERT** | `utils/api.ts` : 1 appel direct | — | Fragmentation |
 | **API-09** | P2 | **OUVERT** | `backoffice-api.ts` : **50** appels, vérifié | Hors périmètre auth/caisse/vente/stock du mandat HYGIÈNE-1 | 50 appels |
+| **API-10** | P2 hygiène | **OUVERT** | **Sorti d'API-01 pour ne pas le fermer par la bande.** Mesuré : **173** `fetch()` directs hors `services/api/` *(et non 196 — le chiffre précédent était périmé)*, dont **69** hors back-office. Aucun ne produit plus de message faux sur un parcours marchande | — | C'est de la fragmentation, pas un défaut de comportement. À traiter au fil des écrans, jamais en masse |
+| **API-01b** | **P1** | **OUVERT** | **Nouveau, mesuré le 19/09/2026.** `useWebAuthn.ts`, 7 appels. Cinq sont **en session** et peuvent donc recevoir un 401 : `/auth/me`, `register/options`, `register/verify`, et les deux de `verifyWebAuthnForKeiwa`. Deux sont **avant session** (connexion biométrique) et ne sont pas concernés. **`verifyWebAuthnForKeiwa` porte la MÊME classe de mensonge que `WalletPage`** : sur jeton expiré, `getConnectedUserPhone()` rend `null` → `return false` → « ton téléphone ne t'a pas reconnue », alors que **l'invite d'empreinte ne s'affiche même pas** | — | Séparation vérifiée et propre : un échec WebAuthn normal est une **exception levée** par `@simplewebauthn/browser` v13 (`WebAuthnError`, avec `.code` et `.name` — `NotAllowedError`, `InvalidStateError`, `AbortError`, `NotSupportedError`, `SecurityError`), une session expirée est un **401 HTTP** de notre serveur. Les deux ne se confondent jamais |
 
 # ROUTES ET MARKETPLACE
 
@@ -189,7 +196,7 @@ reste multiple.
 | **TEST-04** | P2 | **FERMÉ** | `telephones-tests-uniques.spec.ts` présent, vérifié dans les deux sens | *Ligne ajoutée le 19/09.* Les specs partagent une base ; un numéro réutilisé fait passer une suite seule et échouer en groupe | — |
 | **DOC-01** | P2 | **OUVERT** | Des documents décrivent des défauts corrigés ou des architectures antérieures | `ca946da` corrige ADR-0003 (il annonçait « fait » sur du code mort) | Les autres documents restent à dater |
 | **DOC-02** | P2 | **OUVERT** | Contradictions sur `migrationsRun` entre docs | — | **Le code courant fait foi** |
-| **DOC-03** | P3 | **OUVERT** | *Ligne ajoutée pendant cette passe.* `stocks-rest.controller.ts:18` affirme encore « Ne montre que les vraies variations de stock (`quantite_retranchee <> 0`) » — **faux depuis ARG-01** | Repéré en vérifiant ARG-01. **Non corrigé : cette passe est une photo, pas un chantier** | Un commentaire qui contredit son code |
+| **DOC-03** | P3 | **FERMÉ** | La docstring de `lireMouvements` décrit ce que le code fait : toutes les variations remontent, ventes hors stock comprises | `ecc1ae6` — corrigée sur le chemin même d'ARG-02, la ligne au-dessus de celle qui changeait | — |
 | **UI-01** | P3 | **OUVERT** | Dette visuelle / tokens / couleurs littérales | — | Hors priorité sauf défaut fonctionnel |
 | **VOICE-01** | À surveiller | **OUVERT** | Le transcript brut n'est pas exposé à la recette terrain | — | Instrumentation de recette, pas fonction métier |
 
@@ -229,7 +236,7 @@ données de production.
 
 | ID | Ce qui reste |
 |---|---|
-| **API-01** | 196 `fetch()` hors couche API (0 sur les parcours d'argent) |
+| **API-01b** | `verifyWebAuthnForKeiwa` : même mensonge que WalletPage, par l'empreinte |
 | **API-03** | Trois voies réseau pour l'auth |
 | **API-04** | `main.tsx` monkey-patche `window.fetch` |
 | **SCHEMA-01 / 02 / 03** | La doctrine de schéma reste multiple |
@@ -250,7 +257,7 @@ Condition de réouverture écrite : **avant toute réactivation du crédit.**
 
 | ID | Décision | Ce que j'avais eu tort d'affirmer |
 |---|---|---|
-| **ARG-02** | **Rouvert** | « Fermé » alors que le repli `p.unite` fait toujours dépendre l'historique du catalogue |
+| **ARG-02** | **Rouvert, puis fermé** | « Fermé » alors que le repli `p.unite` faisait toujours dépendre l'historique du catalogue. Fermé depuis — et la reprise a révélé un **second** défaut, à l'écran, que ni le contre-audit ni moi n'avions vu |
 | **ARG-03** | **Rouvert** | « Fermé » sur un seul des trois chemins d'encaissement ; mon test ne couvrait pas l'acompte initial |
 | **ARG-10** | **Ajouté** | Le règlement total échappe aussi à la caisse — je ne l'avais pas cherché |
 | **API-01** | **Preuve corrigée** | « 0 sur auth/caisse/vente/stock » était **faux** : le garde-fou ne teste pas `auth`, et son propre commentaire le prétendait |
