@@ -14,14 +14,15 @@ Révision 6 : **ARG-02 fermé** (deux couches mentaient sur l'historique, pas
 une : la lecture serveur ET l'affichage front) et **API-01 fermé sur le
 périmètre reformulé** — un 401 ne peut plus être lu comme un verdict métier.
 **API-10** sort le décompte d'architecture pour qu'il ne soit pas fermé par la
-bande ; **API-01b** ouvre le cas WebAuthn, mesuré et non corrigé.
+bande ; **API-01b** a ouvert puis fermé le cas WebAuthn : même mensonge que le PIN,
+par l'empreinte, et en pire — l'invite ne s'affichait même pas.
 Révision 5 : **SEED-01 et SEC-08 fermés**. La batterie d'invariants est
 redevenue déterministe (trois exécutions complètes d'affilée, 208/208), et il
 n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte le
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 20 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 51 OUVERT.**
+**Compte courant : 21 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 50 OUVERT.**
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -106,7 +107,7 @@ reste multiple.
 | **API-08** | P2 | **OUVERT** | `utils/api.ts` : 1 appel direct | — | Fragmentation |
 | **API-09** | P2 | **OUVERT** | `backoffice-api.ts` : **50** appels, vérifié | Hors périmètre auth/caisse/vente/stock du mandat HYGIÈNE-1 | 50 appels |
 | **API-10** | P2 hygiène | **OUVERT** | **Sorti d'API-01 pour ne pas le fermer par la bande.** Mesuré : **173** `fetch()` directs hors `services/api/` *(et non 196 — le chiffre précédent était périmé)*, dont **69** hors back-office. Aucun ne produit plus de message faux sur un parcours marchande | — | C'est de la fragmentation, pas un défaut de comportement. À traiter au fil des écrans, jamais en masse |
-| **API-01b** | **P1** | **OUVERT** | **Nouveau, mesuré le 19/09/2026.** `useWebAuthn.ts`, 7 appels. Cinq sont **en session** et peuvent donc recevoir un 401 : `/auth/me`, `register/options`, `register/verify`, et les deux de `verifyWebAuthnForKeiwa`. Deux sont **avant session** (connexion biométrique) et ne sont pas concernés. **`verifyWebAuthnForKeiwa` porte la MÊME classe de mensonge que `WalletPage`** : sur jeton expiré, `getConnectedUserPhone()` rend `null` → `return false` → « ton téléphone ne t'a pas reconnue », alors que **l'invite d'empreinte ne s'affiche même pas** | — | Séparation vérifiée et propre : un échec WebAuthn normal est une **exception levée** par `@simplewebauthn/browser` v13 (`WebAuthnError`, avec `.code` et `.name` — `NotAllowedError`, `InvalidStateError`, `AbortError`, `NotSupportedError`, `SecurityError`), une session expirée est un **401 HTTP** de notre serveur. Les deux ne se confondent jamais |
+| **API-01b** | **P1** | **FERMÉ** | `EtatBiometrie` remplace le booléen : ok / non_reconnue / annulee / session_expiree / indisponible. Les 5 appels **en session** passent par la couche auth ; les 2 appels **avant session** (connexion biométrique) restent directs, il n'y a pas de jeton à rafraîchir. Le typage a forcé les 4 appelants à traiter chaque cas | `d4fdd7c` — séparation vérifiée : un échec WebAuthn normal est une **exception levée** par le navigateur, une session finie est un **401 HTTP**. Couture `navigateurWebAuthn` ajoutée pour que le test couvre autre chose que le seul cas « session expirée ». `PropositionReconnaissance` ne note plus un refus sur session expirée — ça l'aurait privée de la proposition pour une raison qui ne la concerne pas | — |
 
 # ROUTES ET MARKETPLACE
 
@@ -236,7 +237,6 @@ données de production.
 
 | ID | Ce qui reste |
 |---|---|
-| **API-01b** | `verifyWebAuthnForKeiwa` : même mensonge que WalletPage, par l'empreinte |
 | **API-03** | Trois voies réseau pour l'auth |
 | **API-04** | `main.tsx` monkey-patche `window.fetch` |
 | **SCHEMA-01 / 02 / 03** | La doctrine de schéma reste multiple |
