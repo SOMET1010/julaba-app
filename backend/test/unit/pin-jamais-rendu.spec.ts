@@ -75,7 +75,44 @@ describe('le PIN ne sort ni par une route, ni par une réponse', () => {
     expect(coupables).toEqual([]);
   });
 
-  // SEC-07 — un secret ne se tire pas avec un générateur non cryptographique.
+  // SEC-08 — aucune route ne laisse un tiers POSER le PIN d'un autre.
+  //
+  // SEC-2 avait fermé la lecture ; l'attribution restait un geste humain, ce
+  // qui revenait au même : le secret était connu d'un administrateur. Une route
+  // paramétrée par l'identifiant d'AUTRUI (`:id`) ne doit jamais accepter un
+  // PIN dans son corps. `me/change-pin` reste autorisée : l'identificateur y
+  // choisit le SIEN, seul cas légitime, et c'est `me` qui le dit.
+it('aucune route tierce n’accepte un PIN fourni dans le corps', () => {
+    // PREMIÈRE VERSION FAUSSE, gardée en mémoire : elle coupait le bloc au
+    // premier « { » rencontré — or ce « { » est justement celui de
+    // `@Body() body: { pin: string }`. Le garde-fou passait au vert sur la
+    // route qu'il devait interdire. Un garde-fou qui ne rougit pas sur son
+    // propre cas est pire que pas de garde-fou : il endort.
+    // On capture donc explicitement la LISTE DE PARAMÈTRES de la méthode.
+    const coupables: string[] = [];
+    for (const f of sensibles) {
+      const code = codeNu(readFileSync(f, 'utf8'));
+      const blocs = code.split(/(?=@(?:Get|Post|Patch|Put|Delete)\()/);
+      for (const bloc of blocs) {
+        const route = bloc.match(/@(?:Get|Post|Patch|Put|Delete)\(\s*['"`]([^'"`]*)['"`]/);
+        if (!route) continue;
+        const chemin = route[1];
+        // Une route « me/… » agit sur l'appelant lui-même : l'identificateur y
+        // choisit SON code, seul cas légitime. Seules les routes paramétrées
+        // par l'identifiant d'AUTRUI sont concernées.
+        if (!chemin.includes(':id')) continue;
+        const methode = bloc.match(/async\s+\w+\s*\(([\s\S]*?)\)\s*(?::[\s\S]*?)?\{/);
+        if (!methode) continue;
+        const parametres = methode[1];
+        if (/@Body\(/.test(parametres) && /\bpin\b/i.test(parametres)) {
+          coupables.push(`${f} → ${chemin}`);
+        }
+      }
+    }
+    expect(coupables).toEqual([]);
+  });
+
+    // SEC-07 — un secret ne se tire pas avec un générateur non cryptographique.
   it('aucun secret n’est tiré avec Math.random', () => {
     const coupables: string[] = [];
     for (const f of sensibles) {
