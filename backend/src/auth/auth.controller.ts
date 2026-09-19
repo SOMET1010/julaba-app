@@ -132,7 +132,18 @@ export class AuthController {
       const result = await this.authService.rotateRefreshToken(token, deviceInfo, ipAddress);
         const isBO = BO_ROLES.includes(result.user?.role);
       this.setTokenCookies(res, result.accessToken, result.refreshToken, isBO);
-      return { success: true, accessToken: result.accessToken };
+      // LE JETON DE RAFRAÎCHISSEMENT PART AUSSI DANS LE CORPS — HYGIÈNE-1 axe 2.
+      // `login` le fait déjà, et pour une raison écrite juste au-dessus : sur
+      // mobile, les cookies cross-domaine (julaba-web ↔ julaba-api) sont
+      // bloqués. `refresh` ne l'avait jamais suivi. Conséquence dans l'APK : le
+      // téléphone rejouait indéfiniment le MÊME jeton stocké, puisqu'il n'en
+      // recevait jamais le suivant. Or la rotation marque l'ancien « used », et
+      // rejouer un jeton « used » est traité comme une COMPROMISSION :
+      // `rotateRefreshToken` révoque alors TOUTES les sessions de la marchande.
+      // Une session qui se renouvelle normalement finissait donc par déconnecter
+      // partout celle qui vend. La rotation est maintenant complète des deux
+      // côtés : celui qui présente un jeton reçoit son successeur.
+      return { success: true, accessToken: result.accessToken, refreshToken: result.refreshToken };
     } catch (e) {
       res.clearCookie('access_token', this.getTokenCookieBaseOptions());
       res.clearCookie('refresh_token', this.getTokenCookieBaseOptions());

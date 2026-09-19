@@ -223,3 +223,74 @@ export async function rechercherClient(nom: string): Promise<{ client: ClientMar
     `/caisse/credits/clients/${encodeURIComponent(nom)}`
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRODUITS DE LA CAISSE — HYGIÈNE-1 axe 2 (convergence API)
+//
+// Ces quatre appels vivaient en `fetch()` direct dans CaisseContext. Ils
+// franchissaient donc le réseau SANS le rafraîchissement silencieux du jeton :
+// une session simplement expirée faisait échouer la lecture du catalogue au
+// lieu de se renouveler. Le catalogue, c'est ce que Tata lit à voix haute et ce
+// sur quoi la vente s'appuie — il ne doit pas dépendre d'un cookie qui vient de
+// tourner. Ils passent désormais par `apiRequest`, comme la vente elle-même.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function fetchProduitsCaisse(): Promise<{ produits: any[] }> {
+  const data = await apiRequest<any>('/caisse/produits');
+  return { produits: data?.produits || [] };
+}
+
+export async function creerProduitCaisse(produit: Record<string, unknown>): Promise<{ produit: any }> {
+  return apiRequest<{ produit: any }>('/caisse/produits', {
+    method: 'POST',
+    body: JSON.stringify(produit),
+  });
+}
+
+export async function modifierProduitCaisse(id: string, produit: Record<string, unknown>): Promise<unknown> {
+  if (!id?.trim()) throw new Error('ID produit requis');
+  return apiRequest(`/caisse/produits/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(produit),
+  });
+}
+
+export async function supprimerProduitCaisse(id: string): Promise<unknown> {
+  if (!id?.trim()) throw new Error('ID produit requis');
+  return apiRequest(`/caisse/produits/${id}`, { method: 'DELETE' });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SESSION DE CAISSE (ouverture, fermeture, fond) — HYGIÈNE-1 axe 2
+//
+// Ces quatre appels vivaient en `fetch()` direct dans AppContext, avec leur
+// propre fabrique d'en-têtes (`caisseAuthHeaders`) qui recomposait à la main
+// l'en-tête Authorization déjà posé par l'intercepteur global de `main.tsx`.
+// C'est la journée de caisse : ce qu'il y avait dans la caisse le matin, ce
+// qu'on y a compté le soir. Elle mérite la même porte que la vente.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function fetchSessionDuJour(date: string): Promise<{ session: any | null }> {
+  return apiRequest<{ session: any | null }>(`/caisse/session/${date}`);
+}
+
+export async function ouvrirSession(fondInitial: number, notes?: string): Promise<{ session: any; fond_conserve?: boolean }> {
+  return apiRequest<{ session: any; fond_conserve?: boolean }>('/caisse/session/ouvrir', {
+    method: 'POST',
+    body: JSON.stringify({ fond_initial: fondInitial, notes }),
+  });
+}
+
+export async function fermerSession(comptageReel: number, notes?: string): Promise<unknown> {
+  return apiRequest('/caisse/session/fermer', {
+    method: 'POST',
+    body: JSON.stringify({ comptage_reel: comptageReel, notes }),
+  });
+}
+
+export async function modifierFondSession(fondInitial: number): Promise<{ session: any }> {
+  return apiRequest<{ session: any }>('/caisse/session/fond', {
+    method: 'PATCH',
+    body: JSON.stringify({ fond_initial: fondInitial }),
+  });
+}

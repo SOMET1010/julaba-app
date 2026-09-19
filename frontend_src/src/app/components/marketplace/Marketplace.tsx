@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as caisseApi from '../../services/api/caisse-api';
 import { motion } from 'motion/react';
 import { Search, Filter, MapPin, Star } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -22,10 +23,13 @@ export function Marketplace() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetch(`${API_URL}/caisse/produits`, { headers: { } })
-      .then(r => r.json())
+    // CET APPEL N'ENVOYAIT PAS LA SESSION — `headers: {}`, pas de
+    // `credentials`. Troisième lecteur du catalogue de la caisse, et le seul à
+    // ne pas s'authentifier : il ne pouvait ramener que du vide ou un refus.
+    // Il passe par la même porte que les deux autres.
+    caisseApi.fetchProduitsCaisse()
       .then(d => {
-        const list = d.produits || d.data || (Array.isArray(d) ? d : []);
+        const list = d.produits;
         setItems(list.map((p: any) => ({
           id: p.id,
           sellerId: p.marchand_id || '',

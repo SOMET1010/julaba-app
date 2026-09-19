@@ -2,10 +2,8 @@ import { eventBus, EVENTS } from '../services/eventBus';
 import { useApp } from './AppContext';
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
-import { API_URL } from '../utils/api';
+import * as stocksApi from '../services/api/stocks-api';
 import { enfilerOperation } from '../voice-offline/offlineCaisse';
-
-const headers = () => ({ 'Content-Type': 'application/json' });
 
 function genererCleStock(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
@@ -91,10 +89,14 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
     })();
     if (!stocks?.length) setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/stocks`, { credentials: 'include', headers: headers() });
-      if (!res.ok) return;
-      const data = await res.json();
-      const list = data.stocks || data.data || (Array.isArray(data) ? data : []);
+      // UN SERVEUR QUI RÉPOND MAL EST PIRE QU'UN SERVEUR ABSENT. L'ancien code
+      // faisait `if (!res.ok) return;` : sur un 500 ou un 503, la marchande se
+      // retrouvait avec un stock VIDE alors que son téléphone en gardait la
+      // copie. Le catalogue de la caisse avait déjà été corrigé ainsi le
+      // 18/09/2026 ; le stock, lui, était resté en arrière. Désormais les DEUX
+      // échecs — réponse en erreur et coupure réseau — tombent dans le `catch`
+      // et servent le dernier stock connu.
+      const list = await stocksApi.fetchStocks();
       const normalized = list.map(normalize);
       setStocks(normalized);
       // Cache local : dernier stock connu (consultation hors-ligne).
@@ -111,10 +113,13 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
   useEffect(() => { if (appUser?.id) refreshStocks(); }, [appUser?.id]);
 
   const addStock = async (data: Omit<StockItem, 'id' | 'derniereModification'> & { nom?: string }) => {
-    await fetch(`${API_URL}/stocks`, {
-      method: 'POST', credentials: 'include', headers: headers(),
-      body: JSON.stringify({ nom: data.nom || data.produit, produit: data.nom || data.produit, quantite: data.quantite, unite: data.unite, prix: (data as any).prixVente || data.prixUnitaire || 0, prix_achat: (data as any).prix_achat || (data as any).prixAchat || (data as any).purchasePrice || 0, categorie: (data as any).categorie || 'General', image: (data as any).image || null, seuil_alerte: (data as any).seuilAlerte ?? (data as any).seuil_alerte ?? null, date_peremption: (data as any).datePeremption ?? (data as any).date_peremption ?? null }),
-    });
+    // L'ÉCHEC DE CRÉATION ÉTAIT MUET. Cet appel ne regardait pas la réponse :
+    // un refus du serveur repartait comme un succès, et les trois appelants —
+    // qui entourent tous `addProduct` d'un try/catch avec un message parlé —
+    // annonçaient « C'est fait ! … ajoutés au stock » pour un produit qui
+    // n'existait pas. À une marchande qui ne lit pas, c'est la voix elle-même
+    // qui mentait. `apiRequest` lève ; les appelants font déjà le reste.
+    await stocksApi.creerStock({ nom: data.nom || data.produit, produit: data.nom || data.produit, quantite: data.quantite, unite: data.unite, prix: (data as any).prixVente || data.prixUnitaire || 0, prix_achat: (data as any).prix_achat || (data as any).prixAchat || (data as any).purchasePrice || 0, categorie: (data as any).categorie || 'General', image: (data as any).image || null, seuil_alerte: (data as any).seuilAlerte ?? (data as any).seuil_alerte ?? null, date_peremption: (data as any).datePeremption ?? (data as any).date_peremption ?? null });
     eventBus.emit(EVENTS.STOCK_CREATED, data, { priority: 'medium' });
     await refreshStocks();
   };
@@ -140,10 +145,9 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
       return;
     }
     try {
-      const response = await fetch(`${API_URL}/stocks/${id}`, {
-        method: 'PATCH', credentials: 'include', headers: headers(), body: JSON.stringify(payload),
-      });
-      if (!response.ok) throw Object.assign(new Error(`Mise à jour stock refusée (${response.status})`), { status: response.status });
+      // `apiRequest` lève une HttpError qui PORTE `.status` — c'est exactement
+      // ce que `doitEnfilerStock` lit pour décider d'enfiler l'opération.
+      await stocksApi.modifierStock(id, payload);
       applyLocal();
     } catch (error) {
       if (!doitEnfilerStock(error)) throw error;
@@ -156,10 +160,9 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
   };
 
   const deleteStock = async (id: string) => {
-    const res = await fetch(`${API_URL}/stocks/${id}`, { method: 'DELETE', credentials: 'include', headers: headers() });
     // On REMONTE l'échec (401, etc.) : sans ça, l'appelant annonçait « supprimé »
     // alors que rien n'était supprimé (illusion de perte de donnée relevée en recette).
-    if (!res.ok) throw new Error(`Suppression stock refusée (${res.status})`);
+    await stocksApi.supprimerStock(id);
     eventBus.emit(EVENTS.STOCK_DELETED, { id }, { priority: 'medium' });
     await refreshStocks();
   };

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { API_URL } from '../utils/api';
+import * as catalogueApi from '../services/api/catalogue-maitre-api';
+import { HttpError } from '../services/api/api-client';
 
 /**
  * Référentiel maître (Odoo) côté marchande — OFFLINE-FIRST.
@@ -80,9 +81,7 @@ export function useCatalogueMaitre(userId?: string) {
   const charger = useCallback(async () => {
     setChargement(true);
     try {
-      const res = await fetch(`${API_URL}/catalogue-maitre?limit=200`, { credentials: 'include' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = await catalogueApi.fetchCatalogueMaitre(200);
       const liste: ReferenceMaitre[] = (data.references || []).map((r: Record<string, unknown>) => ({
         default_code: String(r.default_code),
         nom: String(r.nom),
@@ -105,9 +104,7 @@ export function useCatalogueMaitre(userId?: string) {
   const chargerAdoptees = useCallback(async () => {
     if (!userId) return;
     try {
-      const res = await fetch(`${API_URL}/catalogue-maitre/adoptees`, { credentials: 'include' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = await catalogueApi.fetchProduitsAdoptes();
       const codes: string[] = data.codes || [];
       setAdoptees(codes);
       ecrireCache(cleAdoptees(userId), codes);
@@ -155,28 +152,27 @@ export function useCatalogueMaitre(userId?: string) {
         return { ok: false, message: 'Pas de réseau : tu pourras ajouter cet article dès qu\'il revient.' };
       }
       try {
-        const res = await fetch(`${API_URL}/catalogue-maitre/adopter`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(demande),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (res.ok) {
-          const codes = [...new Set([...adoptees, demande.default_code])];
-          setAdoptees(codes);
-          ecrireCache(cleAdoptees(userId), codes);
-          return { ok: true, produit: data.produit };
+        const data = await catalogueApi.adopterProduits(demande as unknown as Record<string, unknown>);
+        const codes = [...new Set([...adoptees, demande.default_code])];
+        setAdoptees(codes);
+        ecrireCache(cleAdoptees(userId), codes);
+        return { ok: true, produit: data.produit };
+      } catch (e) {
+        // `HttpError` PORTE le statut ET le corps : les deux réponses du
+        // backend restent donc lisibles telles quelles. C'est ce qui permet de
+        // converger sans perdre le message écrit pour une marchande.
+        if (e instanceof HttpError) {
+          const corps = e.body as { message?: string | string[] } | null;
+          if (e.status === 409) {
+            const m409 = corps?.message;
+            return { ok: false, deja: true, message: (Array.isArray(m409) ? m409[0] : m409) || 'Cet article est déjà dans ton catalogue.' };
+          }
+          // Le backend renvoie déjà des messages écrits pour une marchande
+          // (voir adopter-reference.dto.ts) : on les affiche tels quels plutôt
+          // que de les remplacer par un « erreur » générique.
+          const m = corps?.message;
+          return { ok: false, message: (Array.isArray(m) ? m[0] : m) || 'Impossible d\'ajouter cet article.' };
         }
-        if (res.status === 409) {
-          return { ok: false, deja: true, message: data?.message || 'Cet article est déjà dans ton catalogue.' };
-        }
-        // Le backend renvoie déjà des messages écrits pour une marchande
-        // (voir adopter-reference.dto.ts) : on les affiche tels quels plutôt
-        // que de les remplacer par un « erreur » générique.
-        const m = data?.message;
-        return { ok: false, message: Array.isArray(m) ? m[0] : m || 'Impossible d\'ajouter cet article.' };
-      } catch {
         return { ok: false, message: 'Réseau indisponible : réessaie dans un moment.' };
       }
     },
