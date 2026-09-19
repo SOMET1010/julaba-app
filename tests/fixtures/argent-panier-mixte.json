@@ -1,0 +1,18 @@
+{
+  "_pourquoi": "LA PREUVE DOIT TRAVERSER. Ce panier est la MÊME donnée pour le test serveur (entrée métier -> contrôleur -> ligne persistée) et pour le test d'affichage/voix (ligne persistée -> écran -> phrase de Tata). Un seul fichier, pour qu'aucun des deux côtés ne puisse se tromper tout seul en restant vert.",
+  "_scenario": "Deux articles. Le Riz a un prix d'achat connu (400) et se vend 500 : 100 F de marge réelle. Le second article se vend 300 mais son prix d'achat n'est pas connu (produit dicté à la voix, ou fiche sans coût renseigné). Il ne doit RIEN apporter au calcul : ni gain, ni perte.",
+  "vente": {
+    "montant": 800,
+    "details": [
+      { "nom": "Riz-ARGENT1", "quantite": 1, "prix": 500, "total": 500, "prix_achat": 400, "unite": "kg" },
+      { "nom": "Piment-ARGENT1", "quantite": 1, "prix": 300, "total": 300, "unite": "tas" }
+    ]
+  },
+  "attendu": {
+    "marge_persistee": 100,
+    "_pourquoi_pas_400": "800 - 400 = 400 compte le prix de vente ENTIER de la ligne sans coût comme du bénéfice : il la traite comme offerte. C'est la faute #134, corrigée côté téléphone et laissée côté serveur.",
+    "etat": "partielle",
+    "libelle_ecran": "Marge connue : 100 F",
+    "phrase_tata": "Sur les articles dont tu connais le prix d'achat, tu as gagné 100 francs."
+  }
+}
