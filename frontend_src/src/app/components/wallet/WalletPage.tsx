@@ -431,9 +431,19 @@ export function WalletPage() {
 
   const handleBiometricKeiwa = async () => {
     try {
-      const ok = await verifyWebAuthnForKeiwa();
-      if (ok) {
+      // API-01b — MÊME MENSONGE QUE LE PIN, PAR L'EMPREINTE, ET EN PIRE.
+      // Sur session expirée, l'invite d'empreinte ne s'ouvrait même pas : la
+      // marchande n'avait pas l'occasion d'essayer, et on lui répondait que
+      // son téléphone ne l'avait pas reconnue.
+      const r = await verifyWebAuthnForKeiwa();
+      if (r.etat === 'ok') {
         setPinLocked(false);
+      } else if (r.etat === 'session_expiree') {
+        setPinError('Ta session a expiré. Reconnecte-toi — ce n\'est pas ton doigt.');
+      } else if (r.etat === 'annulee') {
+        setPinError('Tu as annulé. Réessaie ou utilise ton code.');
+      } else if (r.etat === 'indisponible') {
+        setPinError('La reconnaissance ne marche pas ici. Utilise ton code.');
       } else {
         setPinError('Ton téléphone ne t\'a pas reconnue. Réessaie ou utilise ton code.');
       }

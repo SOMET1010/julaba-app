@@ -156,15 +156,14 @@ const CHEMINS_SENSIBLES = /\/(auth|caisse|stocks?|vente|catalogue-maitre)\b/;
 
 // Appels AVANT session : il n'y a pas encore de jeton, donc pas de 401 à
 // rafraîchir. Les faire passer par la couche API n'apporterait rien.
-const AVANT_SESSION = /\/auth\/(login|check-phone|change-password|activer|refresh|recover-super-admin|reset-super-admin-password|super-admin-status|test-login|create-super-admin|users\/create|create-acteur|contacts-recovery-bo)/;
+// `webauthn/authenticate/*` : c'est la CONNEXION par empreinte, avant toute
+// session. Les mêmes routes appelées EN session (ouverture du keiwa) passent,
+// elles, par la couche API — d'où la distinction faite dans `useWebAuthn.ts`
+// plutôt qu'ici : ce garde-fou voit des chemins, pas des moments.
+const AVANT_SESSION = /\/auth\/(login|check-phone|change-password|activer|refresh|webauthn\/authenticate\/|recover-super-admin|reset-super-admin-password|super-admin-status|test-login|create-super-admin|users\/create|create-acteur|contacts-recovery-bo)/;
 
 // NON ENCORE CONVERGÉ, avec la raison. Cette liste doit RÉTRÉCIR.
 const RESTE_A_CONVERGER: Record<string, string> = {
-  // 7 appels WebAuthn. Sémantique propre — défi, fenêtre temporelle,
-  // annulation par la personne, credential absent, authenticator indisponible.
-  // Il faut d'abord distinguer un 401 de session expirée d'un échec WebAuthn
-  // normal, sinon on remplace un faux message par un autre. Mesuré à part.
-  'hooks/useWebAuthn.ts': 'API-01b — WebAuthn, sémantique distincte à instruire',
   // Gère DÉJÀ le 401 par `rafraichirSession` (corrigé en HYGIÈNE-1). Converger
   // son chargement de profil est souhaitable, pas urgent : aucun message faux.
   'contexts/AppContext.tsx': 'API-01c — gère déjà le 401, convergence de confort',

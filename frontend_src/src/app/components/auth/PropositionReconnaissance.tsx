@@ -53,11 +53,17 @@ export function PropositionReconnaissance() {
     if (enCours) return;
     setEnCours(true);
     try {
-      const result = await registerWebAuthn();
-      if (result.success) {
+      const r = await registerWebAuthn();
+      if (r.etat === 'ok') {
         try { marquerBiometrie(window.localStorage, phoneRef.current, true); } catch { /* ignore */ }
         vibrerSucces();
         if (guidageVocal()) speak('C\'est fait ! La prochaine fois, ton téléphone te reconnaîtra.');
+      } else if (r.etat === 'session_expiree') {
+        // API-01b : on ne note PAS un refus, et on ne lui dit pas que « ça n'a
+        // pas marché ». Elle n'a rien raté — c'est sa session qui a fini.
+        // Noter un refus ici la priverait de la proposition à l'avenir, pour
+        // une raison qui ne la concerne pas.
+        if (guidageVocal()) speak('Ta session a expiré. Reconnecte-toi, puis on réessaiera.');
       } else {
         // Échec ou annulation : on n'insiste pas (même politesse qu'un « Non »).
         // L'activation reste possible à tout moment dans Paramètres → Sécurité.
