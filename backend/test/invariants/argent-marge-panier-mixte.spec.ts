@@ -32,13 +32,17 @@ const FIXTURE = JSON.parse(
   readFileSync(join(__dirname, '../../../tests/fixtures/argent-panier-mixte.json'), 'utf8'),
 );
 
+// Numéros dans la plage RÉSERVÉE aux suites ARGENT (+22507888800xx) : les
+// specs partagent UNE base pour toute la suite, et un numéro déjà pris rend un
+// signup 409 — la suite passe seule et échoue en groupe. Cf. le garde-fou
+// backend/test/unit/telephones-tests-uniques.spec.ts.
 describe('ARGENT-1 — marge d’un panier mixte (coût connu + coût inconnu)', () => {
   let app: INestApplication;
   let ds: DataSource;
   let token: string;
   let marchandId: string;
 
-  const PHONE = '+2250700000091';
+  const PHONE = '+2250788880001';
 
   beforeAll(async () => {
     const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();

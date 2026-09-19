@@ -27,13 +27,17 @@ import * as request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { DbInitService } from '../../src/database/db-init.service';
 
+// Numéros dans la plage RÉSERVÉE aux suites ARGENT (+22507888800xx) : les
+// specs partagent UNE base pour toute la suite, et un numéro déjà pris rend un
+// signup 409 — la suite passe seule et échoue en groupe. Cf. le garde-fou
+// backend/test/unit/telephones-tests-uniques.spec.ts.
 describe('ARGENT-2 — la marchande est prévenue quand son stock tombe', () => {
   let app: INestApplication;
   let ds: DataSource;
   let token: string;
   let marchandId: string;
 
-  const PHONE = '+2250700000095';
+  const PHONE = '+2250788880005';
   const PRODUIT = 'Riz-ALERTE';
 
   const notifications = async (type: string): Promise<any[]> =>

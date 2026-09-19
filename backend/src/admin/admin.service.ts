@@ -65,8 +65,10 @@ export class AdminService {
         this.txRepo.createQueryBuilder('t')
           .select('SUM(t.montant)', 'total')
           .getRawOne(),
+        // Le filtre `type='vente'` était là ; celui sur `statut` manquait —
+        // une vente annulée comptait donc dans le volume affiché. ARGENT-2.
         this.dataSource.query(
-          "SELECT COUNT(*) as nb, COALESCE(SUM(montant),0) as total FROM caisse_transactions WHERE type='vente'"
+          "SELECT COUNT(*) as nb, COALESCE(SUM(montant),0) as total FROM caisse_transactions WHERE type='vente' AND statut <> 'annulee'"
         ),
       ]);
 
