@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { useAutoRefresh } from '../hooks/useAutoRefresh';
 import * as caisseApi from '../services/api/caisse-api';
 import { getImageByNom } from '../data/catalogue-produits';
-import { NOT_AUTHENTICATED } from '../services/api/api-client';
+import { NOT_AUTHENTICATED, apiRequest } from '../services/api/api-client';
 import { API_URL } from '../utils/api';
 import { prixEffectif } from '../utils/promo.utils';
 import { jourLocal } from '../utils/jourLocal';
@@ -26,16 +26,13 @@ async function posterOperation(endpoint: OfflineEndpoint, payload: unknown, meth
   if (endpoint === '/caisse/vente') await caisseApi.enregistrerVente(payload as caisseApi.EnregistrerVenteData);
   else if (endpoint === '/caisse/depense') await caisseApi.enregistrerDepense(payload as caisseApi.EnregistrerDepenseData);
   else {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method,
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      const error = Object.assign(new Error(`Synchronisation stock refusée (${response.status})`), { status: response.status });
-      throw error;
-    }
+    // Rejeu d'une opération de STOCK (`/stocks/:id`). Passe par le client
+    // commun : l'erreur levée est une HttpError qui porte `.status`, ce que
+    // `doitEnfiler` lit déjà pour distinguer un 5xx transitoire d'un 4xx
+    // définitif. Le rejeu hors-ligne survient souvent après de longues heures —
+    // c'est précisément le moment où le jeton a expiré et où le
+    // rafraîchissement silencieux évite de perdre l'opération.
+    await apiRequest(API_URL, endpoint, { method, body: JSON.stringify(payload) });
   }
 }
 
@@ -646,20 +643,14 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       catch { return 'julaba_cache_produits_anon'; }
     })();
     try {
-      const res = await fetch(`${API_URL}/caisse/produits`, { credentials: 'include' });
-      if (!res.ok) {
-        // UN SERVEUR QUI RÉPOND MAL EST PIRE QU'UN SERVEUR ABSENT — corrigé le
-        // 18/09/2026. Ce `return` laissait le catalogue VIDE sur un 500/503,
-        // alors que le cache local contenait ses produits et leurs prix : une
-        // coupure franche (traitée dans le `catch` plus bas) était donc mieux
-        // servie qu'un réseau dégradé. Sur un marché, le réseau dégradé est le
-        // cas NORMAL — et un catalogue vide, c'est une marchande qui ne peut
-        // plus rien vendre ni faire dire un prix à Tata.
-        restaurerDepuisCache(cacheKey);
-        return;
-      }
-      const data = await res.json();
-      const produits = data.produits || [];
+      // UN SERVEUR QUI RÉPOND MAL EST PIRE QU'UN SERVEUR ABSENT — corrigé le
+      // 18/09/2026. Le catalogue restait VIDE sur un 500/503 alors que le cache
+      // local contenait ses produits et leurs prix. Sur un marché, le réseau
+      // dégradé est le cas NORMAL — et un catalogue vide, c'est une marchande
+      // qui ne peut plus rien vendre ni faire dire un prix à Tata.
+      // Les DEUX échecs (réponse en erreur, coupure réseau) tombent maintenant
+      // dans le même `catch` et servent le cache.
+      const { produits } = await caisseApi.fetchProduitsCaisse();
       const mapped = produits.map((p: any) => ({
         id: p.id, nom: p.nom, prix: Number(p.prix),
         prix_achat: Number(p.prix_achat ?? p.prixAchat ?? 0) || 0,
@@ -697,10 +688,9 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
           ? { prix_promo: Number((product as any).prix_promo ?? (product as any).prixPromo) || null } : {}),
         ...((product as any).promo_fin || (product as any).promoFin ? { promo_fin: (product as any).promo_fin ?? (product as any).promoFin } : {}),
       };
-      const res = await fetch(`${API_URL}/caisse/produits`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(produitData) });
-      if (res.ok) eventBus.emit(EVENTS.PRODUCT_CREATED, produitData, { priority: 'medium' });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await caisseApi.creerProduitCaisse(produitData);
+      eventBus.emit(EVENTS.PRODUCT_CREATED, produitData, { priority: 'medium' });
+      {
         const p = data.produit;
         setProducts(prev => [...prev, {
           id: p.id,
@@ -714,8 +704,6 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
           prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
           promo_fin: p.promo_fin || null,
         }]);
-      } else {
-        throw new Error(`Erreur ${res.status} lors de la création du produit`);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la création du produit';
@@ -749,8 +737,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
           ? { prix_promo: prixPromoRaw != null && prixPromoRaw !== '' ? Number(prixPromoRaw) : null, promo_fin: promoFin || null }
           : {}),
       };
-      const res = await fetch(`${API_URL}/caisse/produits/${id}`, { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedWithPrixAchat) });
-      if (!res.ok) throw new Error(`Erreur ${res.status} lors de la mise à jour`);
+      await caisseApi.modifierProduitCaisse(id, updatedWithPrixAchat as Record<string, unknown>);
       eventBus.emit(EVENTS.PRODUCT_UPDATED, { id, ...updated }, { idempotencyKey: 'prod-' + id, priority: 'medium' });
       setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
     } catch (err: unknown) {
@@ -761,8 +748,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
 
   const deleteProduct = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/caisse/produits/${id}`, { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) throw new Error(`Erreur ${res.status} lors de la suppression`);
+      await caisseApi.supprimerProduitCaisse(id);
       eventBus.emit(EVENTS.PRODUCT_DELETED, { id }, { priority: 'medium' });
       setProducts(prev => prev.filter(p => p.id !== id));
     } catch (err: unknown) {

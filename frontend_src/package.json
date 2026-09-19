@@ -9,7 +9,7 @@
     "build": "vite build",
     "check:bundle-budget": "node scripts/check-bundle-budget.mjs",
     "typecheck": "tsc -b",
-    "verify": "npm run typecheck && npm run test:api-url && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:stats && npm run test:rupture && npm run test:route-access && npm run test:audio-unlock && npm run test:appellation && npm run test:vignette && npm run test:icones && npm run test:cible-tactile && npm run test:source-vente && npm run test:verrou-connexion && npm run test:prix-catalogue && npm run test:fusion-panier && npm run test:stats-multi && npm run test:marge-perte && npm run test:unite-vente && npm run test:unite-persistee && npm run test:voix-native",
+    "verify": "npm run typecheck && npm run test:api-url && npm run test:cart && npm run test:voix && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:stats && npm run test:rupture && npm run test:route-access && npm run test:audio-unlock && npm run test:appellation && npm run test:vignette && npm run test:icones && npm run test:cible-tactile && npm run test:source-vente && npm run test:verrou-connexion && npm run test:prix-catalogue && npm run test:fusion-panier && npm run test:stats-multi && npm run test:marge-perte && npm run test:unite-vente && npm run test:unite-persistee && npm run test:voix-native && npm run test:convergence-api",
     "preview": "vite preview",
     "test:audio": "tsx src/app/services/audioManager.test.mts",
     "test:cart": "tsx src/app/services/cartStorage.test.mts",
@@ -72,7 +72,8 @@
     "test:cible-tactile": "node scripts/test-cible-tactile.mjs",
     "test:icones": "node scripts/test-icones.mjs",
     "icones:generer": "node scripts/generer-icones.mjs",
-    "test:voix-native": "tsx src/app/services/voixNative.test.mts"
+    "test:voix-native": "tsx src/app/services/voixNative.test.mts",
+    "test:convergence-api": "tsx src/app/services/api/convergenceApi.test.mts"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
