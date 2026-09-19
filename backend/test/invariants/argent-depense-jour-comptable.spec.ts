@@ -32,13 +32,17 @@ const jourISO = (decalageJours: number): string => {
   return d.toISOString().split('T')[0];
 };
 
+// Numéros dans la plage RÉSERVÉE aux suites ARGENT (+22507888800xx) : les
+// specs partagent UNE base pour toute la suite, et un numéro déjà pris rend un
+// signup 409 — la suite passe seule et échoue en groupe. Cf. le garde-fou
+// backend/test/unit/telephones-tests-uniques.spec.ts.
 describe('ARGENT-1 — la dépense porte son jour comptable', () => {
   let app: INestApplication;
   let ds: DataSource;
   let token: string;
   let marchandId: string;
 
-  const PHONE = '+2250700000092';
+  const PHONE = '+2250788880002';
   const HIER = jourISO(-1);
   const AUJOURDHUI = jourISO(0);
 

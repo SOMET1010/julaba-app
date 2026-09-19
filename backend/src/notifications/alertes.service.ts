@@ -59,19 +59,62 @@ export class AlertesService {
     this.logger.log(`[ALERTE] ${data.type} → ${data.userId}`);
   }
 
+  // ── OÙ VIT LE STOCK DE CETTE PERSONNE ? ──────────────────────────────────
+  //
+  // ARGENT-2, 19/09/2026. Ces alertes lisaient `FROM stocks` et rien d'autre.
+  // Or le stock d'une MARCHANDE vit toujours dans `produits` : la branche qui
+  // écrit dans `stocks` est réservée à `cooperateur` et `producteur`
+  // (stocks-rest.controller.ts). Aucun chemin n'a jamais inséré une ligne de
+  // marchande dans `stocks`.
+  //
+  // Conséquence : `stock_rupture` et `stock_faible` étaient, pour une
+  // marchande, du CODE MORT. Elle partait au marché sans riz sans avoir été
+  // prévenue. L'avertissement existe bien au moment de la vente, mais il ne
+  // survit pas à la fermeture de l'écran — et il ne lui sert à rien la veille
+  // au soir, quand elle décide de ses achats. C'est précisément le moment où
+  // une application qui parle devrait parler.
+  //
+  // On interroge donc LES DEUX tables, ramenées à une seule forme. Pas de test
+  // de rôle : il en existe déjà ailleurs, et un deuxième endroit qui décide
+  // « qui a du stock où » serait une deuxième vérité de plus. Les deux tables
+  // restent une dette nommée — les fusionner demande une migration.
+  //
+  // `filtreProduit` sert au contrôle APRÈS une vente (un seul produit) ; vide
+  // pour la vérification quotidienne (tout le stock).
+  private async stockSousSeuil(userId: string, produitNom?: string): Promise<Array<{
+    id: string; produit: string; quantite: number; unite: string | null; seuil_alerte: number | null;
+  }>> {
+    const params: unknown[] = produitNom ? [userId, `%${produitNom}%`] : [userId];
+    const clauseProduits = produitNom ? 'AND LOWER(p.nom) LIKE LOWER($2)' : '';
+    const clauseStocks = produitNom ? 'AND LOWER(s.produit) LIKE LOWER($2)' : '';
+    return this.dataSource.query(`
+      SELECT p.id::text AS id, p.nom AS produit, p.stock::float AS quantite, p.unite AS unite,
+             p.seuil_alerte::float AS seuil_alerte
+        FROM produits p
+       WHERE p.marchand_id = $1::text
+         AND p.actif = true
+         AND p.stock IS NOT NULL
+         AND p.seuil_alerte IS NOT NULL
+         AND p.stock <= p.seuil_alerte
+         ${clauseProduits}
+      UNION ALL
+      SELECT s.id::text AS id, s.produit AS produit, s.quantite::float AS quantite, s.unite AS unite,
+             s.seuil_alerte::float AS seuil_alerte
+        FROM stocks s
+       WHERE s.proprietaire_id::text = $1::text
+         AND s.quantite IS NOT NULL
+         AND s.seuil_alerte IS NOT NULL
+         AND s.quantite <= s.seuil_alerte
+         ${clauseStocks}
+    `, params);
+  }
+
   // ── Vérifier stocks faibles d'un marchand ──────────────────
   async checkStocksFaibles(userId: string): Promise<void> {
     const user = await this.dataSource.query(`SELECT preferences FROM users WHERE id = $1`, [userId]);
     const prefs = (user[0]?.preferences) || {};
     if (prefs.notif_stock_faible === false) return;
-    const stocks = await this.dataSource.query(`
-      SELECT id, produit, quantite, unite, seuil_alerte
-      FROM stocks
-      WHERE proprietaire_id = $1
-        AND quantite IS NOT NULL
-        AND seuil_alerte IS NOT NULL
-        AND quantite <= seuil_alerte
-    `, [userId]);
+    const stocks = await this.stockSousSeuil(userId);
 
     for (const s of stocks) {
       const type = s.quantite == 0 ? 'stock_rupture' : 'stock_faible';
@@ -137,15 +180,7 @@ export class AlertesService {
   // ── Vérifier stock après vente (event-driven) ──────────────
   async checkStockApreVente(userId: string, produitNom: string): Promise<void> {
     if (!produitNom) return;
-    const stocks = await this.dataSource.query(`
-      SELECT id, produit, quantite, unite, seuil_alerte
-      FROM stocks
-      WHERE proprietaire_id = $1
-        AND LOWER(produit) LIKE LOWER($2)
-        AND quantite IS NOT NULL
-        AND seuil_alerte IS NOT NULL
-        AND quantite <= seuil_alerte
-    `, [userId, `%${produitNom}%`]);
+    const stocks = await this.stockSousSeuil(userId, produitNom);
 
     for (const s of stocks) {
       const type = s.quantite == 0 ? 'stock_rupture' : 'stock_faible';

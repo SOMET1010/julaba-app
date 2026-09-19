@@ -25,14 +25,26 @@ import { AppModule } from '../../src/app.module';
 import { DbInitService } from '../../src/database/db-init.service';
 import { User } from '../../src/users/entities/user.entity';
 
+// Numéros dans la plage RÉSERVÉE aux suites ARGENT (+22507888800xx) : les
+// specs partagent UNE base pour toute la suite, et un numéro déjà pris rend un
+// signup 409 — la suite passe seule et échoue en groupe. Cf. le garde-fou
+// backend/test/unit/telephones-tests-uniques.spec.ts.
 describe('ARGENT-2 — les agrégats administrateur disent une recette, pas une somme', () => {
   let app: INestApplication;
   let ds: DataSource;
   let jwt: JwtService;
   let tokenMarchande: string;
   let tokenAdmin: string;
+  let marchandId: string;
 
-  const PHONE = '+2250700000093';
+  const PHONE = '+2250788880003';
+  /** Agrégats AVANT nos écritures : les autres suites partagent cette base, et
+   *  ces endpoints sont GLOBAUX par nature (tableaux de bord de plateforme).
+   *  On mesure donc un DELTA, comme m6-m8 le fait pour les comptes admin. Une
+   *  assertion en valeur absolue passerait seule et échouerait en groupe —
+   *  exactement le genre de test qui apprend à ignorer les rouges. */
+  let revenusAvant = 0;
+  let volumeAdminAvant = 0;
   const VENTE_VALIDE = 40000;
   const VENTE_ANNULEE = 15000;
   const DEPENSE = 12000;
@@ -56,6 +68,7 @@ describe('ARGENT-2 — les agrégats administrateur disent une recette, pas une 
       .send({ phone: PHONE, firstName: 'Awa', lastName: 'Agregat', role: 'marchand', genre: 'femme' });
     expect([200, 201]).toContain(su.status);
     tokenMarchande = su.body.accessToken;
+    marchandId = su.body.user.id;
 
     await request(app.getHttpServer())
       .post('/api/v1/auth/change-password')
@@ -66,13 +79,23 @@ describe('ARGENT-2 — les agrégats administrateur disent une recette, pas une 
     // (à raison) tout rôle administratif — cf. m6-m8-role-escalation.
     const repo = ds.getRepository(User);
     const admin: any = await repo.save(repo.create({
-      phone: '+2250700000094', firstName: 'Admin', lastName: 'Agregat', genre: 'homme',
+      phone: '+2250788880004', firstName: 'Admin', lastName: 'Agregat', genre: 'homme',
       role: 'super_admin', status: 'actif', passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     tokenAdmin = await jwt.signAsync(
       { sub: admin.id, phone: admin.phone, role: admin.role },
       { secret: process.env.JWT_SECRET },
     );
+
+    const avant1 = await request(app.getHttpServer())
+      .get('/api/v1/dashboard/stats').set('Authorization', `Bearer ${tokenAdmin}`);
+    expect(avant1.status).toBe(200);
+    revenusAvant = Number(avant1.body.revenus);
+
+    const avant2 = await request(app.getHttpServer())
+      .get('/api/v1/admin/stats').set('Authorization', `Bearer ${tokenAdmin}`);
+    expect(avant2.status).toBe(200);
+    volumeAdminAvant = Number(avant2.body.montant_total);
 
     // Une journée de marché : une vente, une vente annulée, une dépense.
     const venteOk = await request(app.getHttpServer())
@@ -106,12 +129,13 @@ describe('ARGENT-2 — les agrégats administrateur disent une recette, pas une 
   });
 
   it('les trois écritures sont bien en base, avec leurs types et statuts', async () => {
+    // Restreint à NOTRE marchande : la base est partagée par toute la suite.
     const [r] = await ds.query(`
       SELECT
         COALESCE(SUM(montant) FILTER (WHERE type='vente'   AND statut <> 'annulee'),0)::float AS recette,
         COALESCE(SUM(montant) FILTER (WHERE type='vente'   AND statut = 'annulee'),0)::float AS annulee,
         COALESCE(SUM(montant) FILTER (WHERE type='depense'),0)::float                        AS depense
-      FROM caisse_transactions`);
+      FROM caisse_transactions WHERE marchand_id = $1`, [marchandId]);
     expect(r.recette).toBe(RECETTE_REELLE);
     expect(r.annulee).toBe(VENTE_ANNULEE);
     expect(r.depense).toBe(DEPENSE);
@@ -123,8 +147,9 @@ describe('ARGENT-2 — les agrégats administrateur disent une recette, pas une 
       .set('Authorization', `Bearer ${tokenAdmin}`);
     expect(r.status).toBe(200);
     // La dépense d'une marchande n'est pas un revenu ; une vente annulée non plus.
-    expect(Number(r.body.revenus)).toBe(RECETTE_REELLE);
-    expect(Number(r.body.revenus)).not.toBe(SOMME_AVEUGLE);
+    const delta = Number(r.body.revenus) - revenusAvant;
+    expect(delta).toBe(RECETTE_REELLE);
+    expect(delta).not.toBe(SOMME_AVEUGLE);
   });
 
   // CE TEST DIT UN FAIT, PAS UN SOUHAIT. L'audit signalait un troisième agrégat
@@ -152,8 +177,8 @@ describe('ARGENT-2 — les agrégats administrateur disent une recette, pas une 
       .get('/api/v1/admin/stats')
       .set('Authorization', `Bearer ${tokenAdmin}`);
     expect(r.status).toBe(200);
-    // Aucune écriture de portefeuille dans cette base : le montant total se
-    // réduit donc à la part caisse, qui doit exclure l'annulée.
-    expect(Number(r.body.montant_total)).toBe(RECETTE_REELLE);
+    // Le montant total mêle portefeuille et caisse ; seule la part caisse bouge
+    // du fait de nos écritures, et elle doit exclure l'annulée.
+    expect(Number(r.body.montant_total) - volumeAdminAvant).toBe(RECETTE_REELLE);
   });
 });
