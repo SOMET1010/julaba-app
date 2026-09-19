@@ -13,6 +13,7 @@
     "_pourquoi_pas_400": "800 - 400 = 400 compte le prix de vente ENTIER de la ligne sans coût comme du bénéfice : il la traite comme offerte. C'est la faute #134, corrigée côté téléphone et laissée côté serveur.",
     "etat": "partielle",
     "libelle_ecran": "Marge connue : 100 F",
-    "phrase_tata": "Sur les articles dont tu connais le prix d'achat, tu as gagné 100 francs."
+    "_note_espace": "L’espace entre le montant et le F est INSÉCABLE (U+00A0), posé par montantAffiche() dans config/devise.ts : un « 1 500 » séparé de son « F » en fin de ligne se lit comme deux nombres. Le test construit donc la chaîne attendue avec montantAffiche(), pas à la main — c’est le formateur canonique qui fait foi, pas une recopie.",
+    "phrase_tata": "Sur les articles dont tu connais le prix d’achat, tu as gagné 100 francs."
   }
 }

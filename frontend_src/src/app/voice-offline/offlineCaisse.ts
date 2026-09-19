@@ -370,7 +370,17 @@ export async function nbSansProprietaire(store: OutboxStore = defaultStore()): P
  * au jour où elle a eu lieu — sinon la marchande compte faux le soir, des deux
  * côtés de minuit.
  */
-const ENDPOINTS_DATES = ['/caisse/vente'];
+// Les DEUX côtés du livre portent leur jour — ARGENT-1, 19/09/2026.
+//
+// Cette liste ne contenait que la vente. La dépense partait donc sans sa date,
+// et le serveur l'enregistrait au jour du retour du réseau. La caisse théorique
+// du soir — fond + ventes − dépenses — était fausse des deux côtés : trop haute
+// hier, trop basse aujourd'hui.
+//
+// `/stocks/` reste HORS de cette liste, et c'est délibéré : une mise à jour de
+// stock n'a pas de jour comptable, et lui en joindre un avait cassé
+// `test:offline-stock` la première fois.
+const ENDPOINTS_DATES = ['/caisse/vente', '/caisse/depense'];
 
 export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
   poster: (endpoint: E, payload: unknown, method: OfflineMethod) => Promise<void>,

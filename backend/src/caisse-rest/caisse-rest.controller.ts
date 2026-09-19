@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { dateOperationValide } from './date-operation';
+import { resumeMargeDesLignes, coutDesLignesCoutees } from './marge-vente';
 import { CaisseTransaction, TransactionStatus } from './caisse-transaction.entity';
 import { restituerStock } from './stock-restitution';
 import { AlertesService } from '../notifications/alertes.service';
@@ -395,13 +396,23 @@ export class CaisseRestController {
     // Validation montant
     const prixVente = parseFloat(body.montant) || 0;
     if (prixVente <= 0) throw new BadRequestException('Le montant doit être positif');
-    // Coût total : le prix_achat de premier niveau valait 0 → marge/bénéfice
-    // toujours nuls. On AGRÈGE depuis les articles (prix_achat × quantité).
-    let prixAchat = parseFloat(body.prix_achat) || 0;
-    if (prixAchat <= 0 && Array.isArray(lignes)) {
-      prixAchat = lignes.reduce((s: number, p: any) =>
-        s + (Number(p.prix_achat ?? p.prixAchat) || 0) * (Number(p.quantite) || 1), 0);
-    }
+    // LA MARGE SE CALCULE LIGNE PAR LIGNE — ARGENT-1, 19/09/2026.
+    //
+    // Ce bloc agrégeait le coût sur TOUTES les lignes (une ligne sans coût y
+    // contribuant 0) puis soustrayait du montant de TOUTE la vente. Sur un
+    // panier Riz (acheté 400, vendu 500) + Piment (vendu 300, coût inconnu) :
+    // 800 − 400 = 400. Le prix de vente ENTIER du Piment devenait du bénéfice,
+    // comme s'il avait été offert. La bonne réponse est 100.
+    //
+    // La règle vit désormais dans `marge-vente.ts`, et elle est tenue par un
+    // test qui traverse jusqu'à la ligne persistée.
+    const resume = resumeMargeDesLignes(lignes);
+    // `prix_achat` reste le coût des lignes COÛTÉES : c'est une information
+    // vraie et utile. Mais `prix_vente − prix_achat` n'est PLUS la marge dès
+    // qu'une ligne manque de coût — et c'est justement le point.
+    let prixAchat = resume.lignesCoutees > 0
+      ? coutDesLignesCoutees(lignes)
+      : (parseFloat(body.prix_achat) || 0);
     // UNE PERTE EST UNE PERTE — arbitrage de Patrick, 19/09/2026.
     //
     // `Math.max(0, …)` rendait une vente à perte IMPOSSIBLE à voir : produit
@@ -413,7 +424,12 @@ export class CaisseRestController {
     // Le plancher à 0 reste pour un COÛT INCONNU : là, ce n'est pas une perte,
     // c'est une absence d'information — et inventer une perte serait aussi
     // faux qu'inventer un gain.
-    const marge = prixAchat > 0 ? prixVente - prixAchat : 0;
+    // Des lignes détaillées ⇒ la règle par ligne. Aucune ligne (vente libre
+    // ancienne, coût global envoyé par le téléphone) ⇒ l'ancien calcul global,
+    // qui reste juste quand il n'y a qu'un seul article.
+    const marge = resume.lignesCoutees > 0
+      ? resume.montant
+      : (prixAchat > 0 ? prixVente - prixAchat : 0);
 
     // Journée toujours ouverte (vente jamais bloquée, argent rattaché au jour).
     await this.ensureSessionOuverte(user.id);
@@ -439,6 +455,10 @@ export class CaisseRestController {
     // trace d'un mouvement de stock (I3 : jamais de clamp silencieux — le
     // manquant est explicitement journalisé dans le ledger, dans la MÊME
     // transaction). Toute erreur d'inventaire annule la vente (rien n'est avalé).
+    // Évaluée UNE fois (elle l'était deux fois de suite — fonction pure, sans
+    // conséquence, mais on lit mieux une intention qu'un appel répété).
+    const dateVente = dateOperationValide(body.date_operation);
+
     const qr = this.dataSource.createQueryRunner();
     await qr.connect();
     await qr.startTransaction();
@@ -457,9 +477,7 @@ export class CaisseRestController {
         // elle a EU LIEU, pas au jour où le réseau est revenu. Bornée côté
         // serveur (voir date-operation.ts) — on ne laisse pas un client
         // réécrire le passé. Absente ou hors bornes : `created_at` par défaut.
-        ...(dateOperationValide(body.date_operation)
-          ? { created_at: dateOperationValide(body.date_operation) as Date }
-          : {}),
+        ...(dateVente ? { created_at: dateVente } : {}),
       } as any) as unknown as CaisseTransaction;
       result = await txRepo.save(created);
 
@@ -530,6 +548,24 @@ export class CaisseRestController {
     if (!body.montant || parseFloat(body.montant) <= 0) throw new BadRequestException('Le montant doit être positif');
     // Journée toujours ouverte (dépense rattachée au jour, comme la vente).
     await this.ensureSessionOuverte(user.id);
+    // LA DÉPENSE APPARTIENT AU JOUR OÙ ELLE A ÉTÉ FAITE — ARGENT-1, 19/09/2026.
+    //
+    // Le commentaire trois lignes plus haut l'affirmait déjà (« dépense
+    // rattachée au jour, comme la vente ») mais ce bloc ne lisait jamais
+    // `date_operation`. `caisseTheorique` = fond + ventes − dépenses, filtré
+    // sur `created_at::date` : une dépense de 2 000 F faite à 23h55 sans réseau
+    // et remontée à 00h05 laissait la caisse d'hier trop HAUTE de 2 000 F, et
+    // celle d'aujourd'hui trop BASSE d'autant. C'est le chiffre qu'on confronte
+    // à ce que la marchande a réellement en main le soir : le correctif du jour
+    // comptable avait été fait pour le protéger, et il le laissait faux par
+    // l'autre côté du livre.
+    //
+    // Mêmes bornes que la vente (`date-operation.ts`) : 10 minutes dans le
+    // futur, 14 jours dans le passé. Hors bornes, la dépense est enregistrée
+    // sur aujourd'hui — on n'écrit jamais dans un mois clos sur la foi de
+    // l'horloge d'un téléphone.
+    const dateDepense = dateOperationValide(body.date_operation);
+
     let result;
     try {
       result = await this.repo.save(this.repo.create({
@@ -537,6 +573,7 @@ export class CaisseRestController {
         session_id: body.session_id || '', montant: body.montant,
         type: 'depense', description: body.description || '', source: body.source || 'kassa',
         mode_paiement: body.mode_paiement || 'especes', idempotency_key: idemKey,
+        ...(dateDepense ? { created_at: dateDepense } : {}),
       } as any));
     } catch (e: any) {
       if (this.estViolationUnicite(e)) {
