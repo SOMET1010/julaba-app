@@ -159,6 +159,32 @@ export interface ClientMarchand {
   derniere_visite: string;
 }
 
+/**
+ * UNE CLÉ PAR TENTATIVE MÉTIER — ARG-12 / ARGENT-4b.
+ *
+ * Le serveur savait déjà rejouer une clé identique sans encaisser deux fois.
+ * Le client, lui, n'en envoyait AUCUNE : `ajouterAcompte` postait `{ montant }`
+ * tout court, et le serveur compensait en fabriquant
+ * `credit-acompte-<id>-<montant>-<Date.now()>`. Deux envois de la même
+ * tentative — un doigt qui appuie deux fois, un rejeu réseau — recevaient donc
+ * deux clés différentes et encaissaient DEUX FOIS.
+ *
+ * L'invariant `blockers.spec.ts` I5 passait pourtant : il fournissait la clé
+ * lui-même. Il prouvait « si l'appelant fournit une clé stable, le serveur sait
+ * la rejouer » — pas le parcours JULABA. Un test qui fournit ce que le vrai
+ * client ne fournit pas ne teste pas le vrai client.
+ *
+ * La clé naît ici, UNE FOIS, et part dans le corps : tout rejeu de ce même
+ * corps — la relance après rafraîchissement de session dans `apiRequest`, ou
+ * demain la file hors-ligne — présente la même clé.
+ */
+function genererCleCredit(prefixe: string): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefixe}-${crypto.randomUUID()}`;
+  }
+  return `${prefixe}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export interface CreerCreditData {
   client_nom: string;
   client_phone?: string;
@@ -168,6 +194,12 @@ export interface CreerCreditData {
   articles?: LigneDeVente[];
   notes?: string;
   transaction_id?: string | null;
+  /**
+   * Clé d'idempotence de l'ACOMPTE initial. Attention : elle ne dédoublonne
+   * PAS la création du crédit lui-même — c'est ARG-04, toujours ouverte. Ne
+   * pas lire cette clé comme une garantie qu'elle ne donne pas.
+   */
+  idempotency_key?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -210,22 +242,49 @@ export async function fetchCredits(): Promise<{ credits: Credit[]; total_du: num
 export async function creerCredit(data: CreerCreditData): Promise<{ credit: Credit }> {
   return apiRequest<{ credit: Credit }>('/caisse/credits', {
     method: 'POST',
-    body: JSON.stringify(data),
+    // La clé ne couvre que l'acompte initial (cf. `CreerCreditData`).
+    body: JSON.stringify({
+      ...data,
+      idempotency_key: data.idempotency_key ?? genererCleCredit('creation'),
+    }),
   });
 }
 
-export async function marquerCreditPaye(id: string): Promise<{ success: boolean }> {
+/**
+ * Le règlement final était DÉJÀ idempotent sans rien envoyer : le serveur
+ * dérive sa clé du seul identifiant du crédit (`credit-reglement-<id>`), qui
+ * est stable par construction. On l'envoie tout de même explicitement — une
+ * garantie qui tient par accident finit par ne plus tenir.
+ */
+export async function marquerCreditPaye(
+  id: string,
+  idempotencyKey?: string,
+): Promise<{ success: boolean }> {
+  if (!id?.trim()) throw new Error('ID crédit requis');
   return apiRequest<{ success: boolean }>(`/caisse/credits/${id}/payer`, {
     method: 'PATCH',
+    body: JSON.stringify({ idempotency_key: idempotencyKey ?? `reglement-${id}` }),
   });
 }
 
-export async function ajouterAcompte(id: string, montant: number): Promise<{ success: boolean; solde: boolean }> {
+export async function ajouterAcompte(
+  id: string,
+  montant: number,
+  /**
+   * Clé de CETTE tentative. L'écran la fournit s'il veut qu'un réessai
+   * explicite reste le même encaissement ; sinon elle est tirée ici, une fois,
+   * pour ce corps de requête.
+   */
+  idempotencyKey?: string,
+): Promise<{ success: boolean; solde: boolean }> {
   if (!id?.trim()) throw new Error('ID crédit requis');
   if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant acompte invalide');
   return apiRequest<{ success: boolean; solde: boolean }>(`/caisse/credits/${id}/acompte`, {
     method: 'PATCH',
-    body: JSON.stringify({ montant }),
+    body: JSON.stringify({
+      montant,
+      idempotency_key: idempotencyKey ?? genererCleCredit(`acompte-${id}`),
+    }),
   });
 }
 

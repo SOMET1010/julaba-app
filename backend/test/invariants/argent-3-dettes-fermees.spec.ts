@@ -171,8 +171,14 @@ describe('DETTE — constats A3 / B2 / B3 vérifiés, non corrigés', () => {
       const avant = await ds.query(
         `SELECT count(*)::int AS n FROM caisse_transactions WHERE marchand_id = $1`, [marchandId]);
 
+      // ARGENT-4b : `/acompte` EXIGE désormais une clé d'idempotence. Le
+      // serveur en fabriquait une avec `Date.now()` quand elle manquait, ce
+      // qui faisait passer deux envois de la MÊME tentative pour deux
+      // encaissements distincts. Cet appel-ci en fournit donc une — la
+      // propriété testée ici (« l'acompte écrit une ligne de caisse de type
+      // `acompte_credit` ») est inchangée.
       const a = await api().patch(`/api/v1/caisse/credits/${creditId}/acompte`).set(auth())
-        .send({ montant: 2000 });
+        .send({ montant: 2000, idempotency_key: 'a3-acompte-mariam' });
       expect([200, 201]).toContain(a.status);
 
       const apres = await ds.query(

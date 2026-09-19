@@ -178,6 +178,11 @@ export class CreditsController {
   async ajouterAcompte(@Param('id') id: string, @Body() body: any, @CurrentUser() user: User) {
     const montant = parseFloat(body?.montant);
     if (isNaN(montant) || montant <= 0) throw new BadRequestException('montant invalide');
+    if (!body?.idempotency_key) {
+      throw new BadRequestException(
+        'idempotency_key requise : sans elle, un même paiement peut être encaissé deux fois',
+      );
+    }
 
     const qr = this.ds.createQueryRunner();
     await qr.connect();
@@ -187,11 +192,19 @@ export class CreditsController {
         creditId: id,
         marchandId: user.id,
         montant,
-        // Clé fournie par le téléphone quand il en a une (file hors-ligne) ;
-        // sinon dérivée du cumul atteint, comme avant ce lot.
-        idempotencyKey: body?.idempotency_key
-          ? `credit-acompte-${body.idempotency_key}`
-          : `credit-acompte-${id}-${montant}-${Date.now()}`,
+        // ARGENT-4b — LE SERVEUR NE DEVINE PLUS LA CLÉ.
+        //
+        // Il fabriquait `credit-acompte-<id>-<montant>-<Date.now()>` quand le
+        // client n'en envoyait pas. C'était pire qu'un refus : deux envois de
+        // la MÊME tentative recevaient deux clés différentes et encaissaient
+        // deux fois — tout en donnant l'apparence d'un système idempotent.
+        // L'invariant I5 ne le voyait pas : il fournissait la clé lui-même.
+        //
+        // Une clé absente est désormais un refus (voir la validation plus
+        // haut). Le crédit est gelé pour le pilote, et il ne reviendra qu'avec
+        // un client qui envoie sa clé : c'est le moment de l'exiger plutôt que
+        // de compenser.
+        idempotencyKey: `credit-acompte-${body.idempotency_key}`,
       });
       await qr.commitTransaction();
       return { success: true, solde: r.soldé, nature: r.nature, reste_apres: r.resteApres, rejeu: r.rejeu };
