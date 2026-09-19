@@ -102,7 +102,15 @@ SELECT column_name FROM information_schema.columns
 
 ## B2 — Changer l'unité d'un produit réécrit le sens de tout son historique
 
-**Statut : CONFIRMÉ, reproduit.**
+**Statut : ✅ CORRIGÉ le 19/09/2026.** L'unité est désormais **figée dans le
+ledger** au moment du mouvement (colonne `unite`, posée dans DbInit *et* dans
+la migration `1780500000000-LedgerUniteFigee`, règle ADR-0002). La lecture fait
+`COALESCE(sm.unite, p.unite)` : l'unité figée gagne toujours, la jointure ne
+sert plus que de repli pour les mouvements écrits avant ce jour — qu'on ne peut
+pas reconstituer, puisque le catalogue a pu changer entre-temps. Une annulation
+rend ce qui avait été pris **dans l'unité où il avait été pris**.
+
+**Diagnostic d'origine, conservé :**
 
 `stocks-rest.controller.ts` lit l'unité d'un mouvement **passé** dans le
 catalogue **d'aujourd'hui** :
@@ -131,7 +139,18 @@ précisément ce qu'elle ne peut pas recouper de mémoire.
 
 ## B3 — Une vente hors stock est journalisée, puis rendue invisible
 
-**Statut : CONFIRMÉ, reproduit.**
+**Statut : ✅ CORRIGÉ le 19/09/2026.** Le filtre
+`AND sm.quantite_retranchee <> 0` a disparu de la requête de lecture, et
+`quantite_demandee` / `manquant` remontent jusqu'à l'écran. Le panneau montre
+désormais **ce qui est sorti de la boutique** (4 kg), en rouge comme toute
+sortie, avec la mention **« ⚠ hors stock »**. Un « 0 » n'apprend rien à
+quelqu'un qui vient de remettre 4 kg à sa cliente.
+
+La règle d'affichage vit dans **un seul endroit**, le mapper pur
+`mouvement-mapper.ts` (`quantite_affichee`, `manquant`, `hors_stock`), et elle
+est testée des deux côtés.
+
+**Diagnostic d'origine, conservé :**
 
 À chaque vente, le contrôleur écrit `manquant = demandée − retranchée`. Cette
 colonne n'est **lue par personne** : aucun `SELECT`, aucune route, aucun écran.
@@ -153,7 +172,20 @@ reflété ce qu'elle a vendu.
 
 ## A3 — Un acompte de crédit est de l'argent reçu que la clôture ignore
 
-**Statut : CONFIRMÉ, reproduit. LATENT en pilote.**
+**Statut : ✅ CORRIGÉ le 19/09/2026**, bien que le crédit reste désactivé en
+pilote — la chaîne est rendue correcte et testée maintenant, pour ne pas
+laisser dormir une dette monétaire qui ressurgirait à la réactivation.
+
+Chaque acompte écrit désormais une ligne dans `caisse_transactions`, de type
+**`acompte_credit`** — distinct de `vente`, et c'est essentiel : la recette a
+déjà été comptée à la vente à crédit, la compter une seconde fois à
+l'encaissement serait le symétrique exact du défaut réparé. Tous les agrégats
+de recette filtrent sur `type='vente'`, donc cette écriture leur est invisible.
+`caisseTheorique` l'ajoute explicitement comme espèces entrées : **la caisse
+théorique est un compte d'espèces, pas un compte de résultat.** Clé
+d'idempotence dérivée du crédit et du cumul atteint.
+
+**Diagnostic d'origine, conservé :**
 
 `caisseTheorique` = fond + ventes − dépenses, calculé sur
 `caisse_transactions` **seulement**. Or `PATCH /caisse/credits/:id/acompte`
@@ -182,10 +214,12 @@ réactivation du crédit.**
 Aucune correction. Aucune migration. Aucun changement visible par la marchande.
 Le lot de vérification s'arrête ici, conformément à l'arbitrage.
 
-**B1 a été corrigé** (voir son statut ci-dessus) : le correctif est additif et
-idempotent, donc juste que la production porte déjà la colonne ou non. Les
-trois autres restent en dette assumée — B2 et B3 dégradent l'information sans
-perdre d'argent, A3 dort derrière `CAISSE_CREDIT_ACTIF = false`.
+**Les quatre constats sont corrigés.** Doctrine posée par Patrick le
+19/09/2026 : *on ne part pas au terrain avec des dettes connues et atteignables
+simplement parce qu'elles sont documentées — le terrain ne doit pas servir à
+redécouvrir des défauts déjà compris.* Une dette n'est acceptable avant terrain
+que si elle est réellement hors parcours, volontairement désactivée, sans
+impact monétaire ni historique, et avec une raison explicite.
 
 **Reste utile à savoir, pas à décider** : si la base Render ne portait PAS la
 colonne, l'annulation de vente y était déjà cassée avant ce correctif. La

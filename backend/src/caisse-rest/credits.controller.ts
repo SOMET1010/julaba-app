@@ -130,6 +130,46 @@ export class CreditsController {
     );
     const estSolde = maj?.[0]?.solde === true;
 
+    // ─────────────────────────────────────────────────────────────────────
+    // L'ACOMPTE EST DE L'ARGENT QUI ENTRE DANS LA CAISSE — 19/09/2026.
+    //
+    // Il n'écrivait rien ici : seule la table `credits` bougeait. Or
+    // `caisseTheorique` (fond + ventes − dépenses) se calcule sur
+    // `caisse_transactions` SEULEMENT, tandis que le téléphone, lui, compte
+    // les acomptes dans sa caisse. Les deux nombres divergeaient donc du
+    // montant des acomptes du jour, et le serveur journalisait un « écart de
+    // fermeture » sur une journée où rien ne manquait. La marchande, elle, ne
+    // voyait jamais cet écart : la réponse de la clôture le porte, mais le
+    // client la jette.
+    //
+    // TYPE DISTINCT, ET C'EST ESSENTIEL : `acompte_credit`, pas `vente`. La
+    // recette a DÉJÀ été comptée au moment de la vente à crédit ; la compter
+    // une seconde fois à l'encaissement serait le symétrique exact du défaut
+    // qu'on répare. Tous les agrégats de recette filtrent sur `type='vente'`,
+    // donc cette écriture leur est invisible — et `caisseTheorique` l'ajoute
+    // explicitement comme espèces entrées. La colonne `type` est un varchar :
+    // aucune migration d'énumération.
+    //
+    // Clé d'idempotence dérivée du crédit et du cumul atteint : un rejeu
+    // hors-ligne du même acompte ne peut pas créer deux encaissements.
+    const cumul = await this.ds.query(
+      `SELECT COALESCE(acompte,0)::text AS cumul FROM credits WHERE id=$1`, [id],
+    );
+    const cle = `acompte-${id}-${cumul?.[0]?.cumul ?? montant}`;
+    try {
+      await this.ds.query(
+        `INSERT INTO caisse_transactions
+           (user_id, marchand_id, session_id, montant, type, description, source,
+            mode_paiement, idempotency_key)
+         VALUES ($1, $2, '', $3, 'acompte_credit', $4, 'kassa', 'especes', $5)
+         ON CONFLICT DO NOTHING`,
+        [user.id, user.id, montant, `Acompte — ${credit[0].client_nom}`, cle],
+      );
+    } catch {
+      // L'encaissement du crédit reste acquis même si la trace de caisse
+      // échoue : on ne refuse pas un paiement déjà reçu en main propre.
+    }
+
     return { success: true, solde: estSolde };
   }
 

@@ -751,6 +751,11 @@ export function GestionStock() {
               <div style={{ fontSize:12, fontWeight:800, color:P, marginBottom:12 }}>Derniers mouvements</div>
               <div style={{ display:'flex', gap:8 }}>
                 {mouvements.slice(0,3).map((m,i) => {
+                  // Le SIGNE porte la couleur et la flèche ; le NOMBRE affiché
+                  // est ce qui est sorti de la boutique. Une vente de 4 kg faite
+                  // sur un stock à zéro montrait « rien du tout » avant le
+                  // 19/09/2026 — elle était filtrée par le backend. Elle montre
+                  // maintenant 4, avec la mention « hors stock ».
                   const isPlus = m.qty > 0;
                   return (
                     <motion.div key={i} initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.1 }}
@@ -760,8 +765,14 @@ export function GestionStock() {
                           {isPlus?<><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>:<><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></>}
                         </svg>
                       </div>
-                      <div style={{ fontSize:17, fontWeight:900, color:isPlus?'#16a34a':'#ef4444' }}>{isPlus?'+':''}{m.qty}</div>
+                      <div style={{ fontSize:17, fontWeight:900, color:isPlus?'#16a34a':'#ef4444' }}>{isPlus?'+':'−'}{m.qtyAffichee}</div>
                       <div style={{ fontSize:9, fontWeight:700, color:isPlus?'#16a34a':'#ef4444' }}>{m.unit} {m.name}</div>
+                      {m.horsStock && (
+                        // Le stock enregistré ne couvrait pas cette sortie. On le
+                        // DIT : sans ça, son stock reste à zéro et rien ne lui
+                        // apprend ce qu'elle a réellement écoulé.
+                        <div style={{ fontSize:9, fontWeight:800, color:'#b45309', marginTop:2 }}>⚠ hors stock</div>
+                      )}
                       <div style={{ fontSize:9, color:'var(--encre-4)', marginTop:2 }}>{m.day}</div>
                     </motion.div>
                   );
