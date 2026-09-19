@@ -23,7 +23,6 @@ import { DataSource } from 'typeorm';
 import * as request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { DbInitService } from '../../src/database/db-init.service';
-import { LedgerMouvementType1780400000000 } from '../../src/database/migrations/1780400000000-LedgerMouvementType';
 
 describe('DETTE — constats A3 / B2 / B3 vérifiés, non corrigés', () => {
   let app: INestApplication;
@@ -44,30 +43,10 @@ describe('DETTE — constats A3 / B2 / B3 vérifiés, non corrigés', () => {
     ds = app.get(DataSource);
     await app.get(DbInitService, { strict: false }).runInit();
 
-    // ─────────────────────────────────────────────────────────────────────
-    // CETTE RUSTINE EST ELLE-MÊME LA PREUVE DU CONSTAT B1.
-    //
-    // Sans elle, `GET /stocks/mouvements` répond 500 : « column sm.type does
-    // not exist ». La colonne `type` du ledger n'est créée NI par le CREATE
-    // TABLE de DbInit, NI par `synchronize` (la table n'a pas d'entité), NI par
-    // la chaîne de migrations (qui ne tourne pas sur une base vierge :
-    // schema-flags -> synchronize:true, migrationsRun:false).
-    //
-    // Le seul endroit qui la crée est cette migration — que
-    // `annulation-remise-stock.spec.ts` applique déjà de la même façon, dans
-    // son propre beforeAll. Autrement dit : LE TEST QUI AURAIT DÛ ATTRAPER LE
-    // DÉFAUT RÉPARE LE SCHÉMA POUR SE RENDRE VERT. En production, sur une base
-    // neuve, personne ne le fait.
-    //
-    // Je l'applique ici pour pouvoir vérifier B2 et B3 sur un schéma complet.
-    // Sans cette ligne, B2 et B3 ne sont pas vérifiables — ils sont MASQUÉS par
-    // un défaut plus grave.
-    // ─────────────────────────────────────────────────────────────────────
-    {
-      const qr = ds.createQueryRunner();
-      await new LedgerMouvementType1780400000000().up(qr);
-      await qr.release();
-    }
+    // La rustine qui vivait ici — appliquer la migration du ledger typé pour
+    // disposer de `type` — a été RETIRÉE le 19/09/2026 : la colonne est
+    // désormais posée par DbInit, le seul mécanisme garanti en production.
+    // C'était le constat B1, et il est corrigé.
 
     const su = await api()
       .post('/api/v1/auth/signup')
