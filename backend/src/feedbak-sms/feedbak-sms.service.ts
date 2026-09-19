@@ -68,15 +68,35 @@ export class FeedbakSmsService {
     }
   }
 
+  // ── UN SECRET N'ENTRE JAMAIS DANS UN JOURNAL — corrigé le 19/09/2026 ──────
+  //
+  // Ces deux méthodes journalisaient le message COMPLET, PIN à 4 chiffres en
+  // clair compris, avec le numéro de téléphone. Et ce n'était pas du code mort :
+  // `auth.controller.ts` appelle bien `notifyPinIdentificateurCreated` à la
+  // création d'un compte identificateur. Le code d'accès partait donc dans les
+  // journaux du serveur — conservés, consultables par quiconque a accès au
+  // tableau de bord d'hébergement. Un code d'accès dans un journal n'est plus
+  // un code d'accès.
+  //
+  // Deuxième défaut dans les deux mêmes lignes : LE SMS N'ÉTAIT JAMAIS ENVOYÉ.
+  // La trace REMPLAÇAIT l'envoi, sous un TODO périmé — alors que `send()`
+  // existe juste au-dessus, passe par le vrai `SmsService`, ne journalise QUE
+  // l'événement et le numéro (jamais le corps du message), et que neuf autres
+  // notifications de ce fichier l'utilisent déjà. L'identificateur ne recevait
+  // donc jamais son code.
+  //
+  // Les deux passent désormais par `send()`, comme tout le reste.
+
   async notifyPinIdentificateurCreated(phone: string, prenom: string, pin: string): Promise<void> {
     const message = `Bonjour ${prenom}, ton compte identificateur Jùlaba a été créé. Ton code PIN à 4 chiffres est : ${pin}. Garde-le en sécurité, il te sera demandé pour modifier les fiches acteurs. Tu peux le changer dans Paramètres.`;
-    // TODO: brancher l'envoi SMS quand l'API sera configurée
-    console.log('[SMS PIN CREATED]', phone, message);
+    await this.send(phone, message, 'PIN_IDENTIFICATEUR_CREE');
   }
 
   async notifyPinChanged(phone: string, prenom: string): Promise<void> {
+    // Aucun secret ici, mais elle était bloquée de la même façon :
+    // l'identificateur n'était jamais averti qu'on avait changé son code —
+    // précisément l'alerte qui compte en cas de compromission.
     const message = `Bonjour ${prenom}, ton code PIN Jùlaba a été modifié avec succès. Si tu n'es pas à l'origine de ce changement, contacte immédiatement ton superviseur.`;
-    // TODO: brancher l'envoi SMS quand l'API sera configurée
-    console.log('[SMS PIN CHANGED]', phone, message);
+    await this.send(phone, message, 'PIN_CHANGE');
   }
 }
