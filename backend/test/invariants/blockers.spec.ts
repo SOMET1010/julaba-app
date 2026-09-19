@@ -70,8 +70,18 @@ describe('Invariants blockers argent (🔴 attendu — it.failing)', () => {
     expect(await montantDu(client)).toBe(5000);
   }, 30000);
 
-  // I5 — Idempotence de l'acompte.
-  it.failing('I5 — acompte rejoué ⇒ un seul encaissement', async () => {
+  // I5 — Idempotence de l'acompte. FERMÉ par ARGENT-4, donc PROMU.
+  //
+  // Le mécanisme de ce fichier a fonctionné exactement comme annoncé dans son
+  // en-tête : marqué `it.failing` tant que le blocker était ouvert, il est
+  // devenu ROUGE dès qu'un correctif l'a satisfait, forçant sa promotion dans
+  // le même lot. Ce n'est pas une régression, c'est le signal.
+  //
+  // I4 et I6 restent `it.failing` : l'idempotence de la CRÉATION d'un crédit
+  // (ARG-04) et la trace `type='credit'` de la vente à crédit (I6) ne sont pas
+  // fermées par ARGENT-4, qui ne traite que l'ENCAISSEMENT. Les promouvoir
+  // aussi serait s'attribuer un travail non fait.
+  it('I5 — acompte rejoué ⇒ un seul encaissement', async () => {
     const c = await creerCredit({ client_nom: 'Client-I5', montant_total: '4000', acompte: '0', echeance: '2027-12-31' });
     const id = c.body.credit.id;
     const payer = () =>
