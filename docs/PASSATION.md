@@ -35,7 +35,7 @@ elle refera ce qui est déjà fait.
 | | |
 |---|---|
 | Branche de travail | **`claude/clever-allen-dnr8by`** |
-| Tête de branche | **`40dde11`** |
+| Tête de branche | voir `git log -1` — la table ci-dessous liste les lots, pas la tête |
 | `main` | **`59b9142`** — 14 commits en retard |
 | Fusion vers `main` | **PAS faite. Aucune PR ouverte** (aucune n'a été demandée) |
 
@@ -72,7 +72,7 @@ npx jest --config backend/jest-invariants.config.cjs --runInBand --forceExit
 | `974de94` | ARGENT-2 | « revenus » = recette (67 000 → 40 000) + les alertes de rupture partent enfin |
 | `08abbde` | Dette | A3/B2/B3 vérifiés sans correction — **et B1 confirmé** |
 | `5777475` | Passation | État du 19/09, décision ouverte, pièges |
-| `40dde11` | **B1** | La colonne du ledger posée par DbInit + le garde-fou qui l'exige |
+| `73343a4` | **B1** | La colonne du ledger posée par DbInit + le garde-fou qui l'exige |
 
 ## ✅ B1 — CORRIGÉ le 19/09/2026
 
