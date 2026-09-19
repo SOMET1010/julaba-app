@@ -122,9 +122,10 @@ export interface Transaction {
   date: string;
   location?: string;
   purchasePrice?: number;
-  margin?: number;
-  totalMargin?: number;
-  totalBenefice?: number;
+  /** Le bénéfice de la vente — UN champ, pas trois (HYGIÈNE-1 axe 3). Il y
+   *  avait `margin`, jamais lu, et deux autres qui recevaient la même valeur
+   *  depuis deux colonnes que le serveur remplit à l'identique. */
+  benefice?: number;
   source?: string;
   synced?: boolean;
   montant?: number;
@@ -446,8 +447,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Ce qui reste vrai ici, et qui motive le `??` : zéro est une
           // RÉPONSE du serveur, pas une absence de réponse. `0 || x` la
           // remplaçait silencieusement par un recalcul.
-          totalBenefice: nombreOuNull(tx.benefice) ?? beneficeDepuisDetails(tx.details),
-          totalMargin: nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
+          // Les deux colonnes du serveur portent la même valeur ; on lit la
+          // première disponible, et à défaut on recalcule depuis les lignes.
+          benefice: nombreOuNull(tx.benefice) ?? nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
           statut: tx.statut,
@@ -1038,8 +1040,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Ce qui reste vrai ici, et qui motive le `??` : zéro est une
           // RÉPONSE du serveur, pas une absence de réponse. `0 || x` la
           // remplaçait silencieusement par un recalcul.
-          totalBenefice: nombreOuNull(tx.benefice) ?? beneficeDepuisDetails(tx.details),
-          totalMargin: nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
+          // Les deux colonnes du serveur portent la même valeur ; on lit la
+          // première disponible, et à défaut on recalcule depuis les lignes.
+          benefice: nombreOuNull(tx.benefice) ?? nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
           statut: tx.statut,
