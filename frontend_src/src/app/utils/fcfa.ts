@@ -1,3 +1,4 @@
+import { DEVISE_PARLEE } from '../config/devise';
 /**
  * Billets et pièces FCFA (inclusion — docs/INCLUSION.md §2.2). Module PUR.
  *
@@ -87,5 +88,7 @@ export function direCoupure(valeur: number): string {
     500: 'cinq cents', 250: 'deux cent cinquante', 200: 'deux cents',
     100: 'cent', 50: 'cinquante', 25: 'vingt-cinq',
   };
-  return `${noms[valeur] ?? formatF(valeur)} francs`;
+  // « francs » vient de config/devise.ts — HYGIÈNE-1 axe 3 (ADR-0003, #5).
+  // C'était le dernier endroit du parcours monnaie à écrire le mot lui-même.
+  return `${noms[valeur] ?? formatF(valeur)} ${DEVISE_PARLEE}`;
 }

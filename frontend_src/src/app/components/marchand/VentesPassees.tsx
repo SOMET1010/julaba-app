@@ -37,7 +37,7 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
   const { refreshProducts } = useCaisse();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Marchande';
   const montant = sale.montant || sale.price || 0;
-  const marge = sale.totalMargin || 0;
+  const marge = sale.benefice || 0;
   const source = sale.source || 'kassa';
   const dateObj = new Date(sale.date);
 
@@ -300,8 +300,8 @@ export function VentesPassees() {
       source: 'credit',
       statut: 'validee',            // une vente à crédit est une vente active (comptée)
       date: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
-      totalBenefice: 0,
-      totalMargin: 0,
+      // Un crédit n'a pas de bénéfice connu tant qu'il n'est pas soldé.
+      benefice: 0,
     }));
     return [...cashSales, ...ventesCredit];
   }, [cashSales, credits]);

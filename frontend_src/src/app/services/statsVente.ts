@@ -97,10 +97,16 @@ export function montantLigne(t: LigneVente): number {
 export interface ResumeVentes {
   /** CA : somme des montants des ventes NON annulees. */
   totalVentes: number;
-  /** Somme des benefices (fallback marge) des ventes non annulees. */
+  /** Somme des benefices des ventes non annulees.
+   *
+   *  IL N'Y A PLUS QU'UN SEUL CHIFFRE — HYGIÈNE-1 axe 3. Ce résumé en
+   *  renvoyait deux, alimentés par deux champs distincts eux-mêmes lus dans
+   *  deux colonnes distinctes (`benefice`, `marge`). Or le serveur écrit LA
+   *  MÊME VALEUR dans les deux (`marge, benefice: marge`), et le second total
+   *  n'était affiché nulle part. Deux noms pour un seul chiffre, c'est la
+   *  promesse qu'ils diffèreront un jour — et personne ne saura alors lequel
+   *  est juste. */
   totalBenefices: number;
-  /** Somme des marges des ventes non annulees. */
-  totalMarges: number;
   /** Nombre de ventes NON annulees. */
   totalCount: number;
   /** Panier moyen = totalVentes / totalCount (arrondi), 0 si aucune vente. */
@@ -110,8 +116,8 @@ export interface ResumeVentes {
 export interface VenteResumable {
   montant?: number;
   price?: number;
-  totalMargin?: number;
-  totalBenefice?: number;
+  /** Le bénéfice de la vente. Un seul champ, un seul sens. */
+  benefice?: number;
   statut?: string;
 }
 
@@ -123,11 +129,10 @@ export interface VenteResumable {
 export function resumeVentes(sales: VenteResumable[]): ResumeVentes {
   const actives = sales.filter(venteComptee);
   const totalVentes = actives.reduce((s, t) => s + (Number(t.montant ?? t.price ?? 0) || 0), 0);
-  const totalMarges = actives.reduce((s, t) => s + (Number(t.totalMargin ?? 0) || 0), 0);
-  const totalBenefices = actives.reduce((s, t) => s + (Number(t.totalBenefice ?? t.totalMargin ?? 0) || 0), 0);
+  const totalBenefices = actives.reduce((s, t) => s + (Number(t.benefice ?? 0) || 0), 0);
   const totalCount = actives.length;
   const panierMoyen = totalCount > 0 ? Math.round(totalVentes / totalCount) : 0;
-  return { totalVentes, totalBenefices, totalMarges, totalCount, panierMoyen };
+  return { totalVentes, totalBenefices, totalCount, panierMoyen };
 }
 
 /**

@@ -68,9 +68,9 @@ function main() {
   console.log("\n[7] #20 — une vente ANNULÉE ne compte dans AUCUN KPI (resumeVentes)");
   {
     const ventes = [
-      { montant: 6000, totalBenefice: 2000, statut: "annulee" }, // annulée → exclue partout
-      { montant: 500,  totalBenefice: 150,  statut: "validee" },
-      { montant: 2000, totalBenefice: 800 },                     // statut absent → comptée
+      { montant: 6000, benefice: 2000, statut: "annulee" }, // annulée → exclue partout
+      { montant: 500,  benefice: 150,  statut: "validee" },
+      { montant: 2000, benefice: 800 },                     // statut absent → comptée
     ];
     const r = resumeVentes(ventes);
     eq(r.totalVentes, 2500, "CA exclut la vente annulée (500 + 2000, pas 8500)");
