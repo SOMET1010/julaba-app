@@ -1,7 +1,7 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 6 — après ARG-02 et API-01.**
+**Révision 7 — après ARGENT-4.**
 Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
 une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
 Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
@@ -10,6 +10,10 @@ passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
 Révision 4 : **SEC-05, SEC-06 et SEC-07 fermés** ; **SEC-08** ouverte (le PIN
 n'est plus lisible, mais il est encore *choisi* par un administrateur) ;
 **SEED-01** ouverte — c'est le diagnostic des 3 échecs jusqu'ici non expliqués.
+Révision 7 : **ARGENT-4 livré** — ARG-03, ARG-05 et ARG-10 fermés par une
+primitive transactionnelle unique dont la **nature est calculée**, jamais
+fournie. **ARG-11** inscrit la condition bloquante de réouverture du crédit, et
+nomme ce qui reste ouvert avant : ARG-04, I6, CLIENT-02, TYPE-02.
 Révision 6 : **ARG-02 fermé** (deux couches mentaient sur l'historique, pas
 une : la lecture serveur ET l'affichage front) et **API-01 fermé sur le
 périmètre reformulé** — un 401 ne peut plus être lu comme un verdict métier.
@@ -22,7 +26,7 @@ n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte l
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 21 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 50 OUVERT.**
+**Compte courant : 24 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT.**
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -67,10 +71,11 @@ reste multiple.
 |---|---|---|---|---|---|
 | **ARG-01** / B3 | P1 terrain | **FERMÉ** | `stocks-rest.controller.ts` : le `WHERE` ne porte plus aucun filtre sur `quantite_retranchee` (les 2 occurrences restantes sont des commentaires). `mouvement-mapper.ts` expose `quantite_affichee`, `manquant`, `hors_stock` | `853dff7` — invariant `argent-3` + `test:mouvements-hors-stock` | — |
 | **ARG-02** / B2 | P1 terrain | **FERMÉ** | **DEUX couches mentaient, pas une — le contre-audit n'avait relevé que la première.** (1) Serveur : `COALESCE(sm.unite, p.unite)` remplacé par `sm.unite` seule, et la jointure sur `produits` disparaît avec le repli. (2) **Écran** : la fiche produit affichait `{m.qty} {selectedStock.unit}` — l'unité du catalogue d'aujourd'hui, sans même regarder celle du mouvement ; le correctif serveur ne pouvait rien pour ces lignes. Trois rendus corrigés. Une unité absente est **dite** (`uniteConnue` + « unité non enregistrée »), jamais empruntée | `ecc1ae6` — reproduction avant correctif : `COALESCE` remis, 3 des 4 invariants rougissent. Le 4ᵉ passe dans les deux cas : il couvre B2, pas ARG-02, et c'est écrit | — |
-| **ARG-03** / A3 | P1 dormant | **OUVERT** | Fermé **pour un seul des trois chemins**. Vérifié : `POST /caisse/credits` insère `acompte` directement dans `credits` — **0 occurrence de `acompte_credit`** dans ce chemin. Un crédit créé AVEC acompte initial reste donc invisible à `caisseTheorique`. Et dans `PATCH :id/acompte`, l'écriture de caisse est dans un `try/catch` qui **avale l'erreur** : `success: true` est possible sans trace de caisse | `853dff7` couvre `PATCH :id/acompte` — **rouvert au contre-audit**, qui a trouvé le second chemin que mon test ne couvrait pas | Acompte initial à la création + atomicité de l'encaissement |
-| **ARG-10** | P1 dormant | **OUVERT** | *Ligne ajoutée au contre-audit.* `PATCH /caisse/credits/:id/payer` marque le crédit payé et réduit `clients.montant_du`, **sans aucune écriture de caisse**. Route atteinte : `VentesPassees.tsx:325` appelle `marquerCreditPaye(id)` | — | Le règlement du reste dû est de l'argent reçu qui n'entre jamais dans la caisse théorique. **Même fermeture que ARG-03/04/05 : création avec acompte, acompte ultérieur et solde final doivent passer par UN seul mécanisme transactionnel d'encaissement** |
+| **ARG-03** | P1 | **FERMÉ** | Les **trois** chemins d'encaissement passent par `encaisser-credit.ts` : création avec acompte, acompte ultérieur, règlement final. Le contrôleur ne contient **0** `INSERT INTO caisse_transactions` | `45e99ff` — c'était fermé sur un seul chemin sur trois ; mon test d'alors ne couvrait pas l'acompte initial | — |
+| **ARG-10** | P1 | **FERMÉ** | `/payer` encaisse réellement le reste : ligne de caisse en `reglement_credit`, `acompte` porté au total, `montant_du` réduit — le tout dans une transaction | `45e99ff` — il posait `statut='paye'` et laissait `acompte` à l'ancienne valeur : la table disait « elle a versé X », la vue « il ne reste rien » | — |
+| **ARG-11** | **P1** | **OUVERT** | **Condition bloquante de réouverture du crédit, posée par Patrick.** `CAISSE_CREDIT_ACTIF` ne repasse à `true` qu'une fois la primitive unique prouvée verte — ce qu'elle est depuis `45e99ff`. **Restent ouverts avant réactivation : ARG-04** (idempotence de la *création* d'un crédit, `blockers.spec.ts` I4 toujours `it.failing`), **I6** (une vente à crédit ne laisse aucune trace `type='credit'` en caisse), **CLIENT-02** (homonymes partageant une dette) et **TYPE-02** | — | ARGENT-4 traite l'**encaissement**, pas la création ni la traçabilité de la vente à crédit |
 | **ARG-04** | P1 dormant | **OUVERT** | `POST /caisse/credits` sans `idempotency_key` — vérifié : la seule clé du fichier est celle de l'acompte | — | Idempotence de création. **Avant réactivation du crédit** |
-| **ARG-05** | P1 dormant | **OUVERT** | Crédit, stock et caisse ne forment pas une transaction unique | — | Atomicité. Invariants I4/I5/I6 rouges |
+| **ARG-05** | P1 | **FERMÉ** | Atomicité crédit / client / caisse / audit : les quatre écritures dans la même transaction, les quatre ou aucune. Verrou `FOR UPDATE` : deux paiements simultanés s'additionnent au lieu de s'écraser | `45e99ff` — un test exige qu'un encaissement refusé ne laisse **rien** derrière lui | — |
 | **ARG-06** | P2 modèle | **OUVERT** | `caisse-transaction.entity.ts` porte toujours **2 colonnes** `marge` et `benefice`, alimentées par la même valeur | Côté écran, un seul champ depuis `ed9321b` | La fusion des colonnes demande une migration. Le serveur écrit encore deux fois le même chiffre |
 | **ARG-07** | P2 | **OUVERT** | « Bénéfice » ambigu entre marge commerciale et résultat ventes−dépenses | — | Deux concepts à nommer distinctement |
 | **ARG-08** | P2 modèle | **OUVERT** | Vérifié : **0** colonne `devise` sur `caisse_transactions` | ADR-0003 #5, explicitement partiel | Le XOF reste une convention, pas une donnée |
@@ -248,8 +253,7 @@ Condition de réouverture écrite : **avant toute réactivation du crédit.**
 
 | ID | Ce qui reste |
 |---|---|
-| **ARG-04** | Idempotence de création d'un crédit |
-| **ARG-05** | Atomicité crédit / stock / caisse |
+| **ARG-04** | Idempotence de création d'un crédit — `blockers.spec.ts` I4, toujours `it.failing` |
 | **TYPE-02** | DTO et contrats du contrôleur crédit |
 | **CLIENT-02** | Homonymes partageant une dette |
 
