@@ -78,7 +78,14 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
     setOpen(prochainOuvert);
     if (prochainOuvert && guidageVocal()) {
       const quand = format(dateObj, "d MMMM 'à' HH'h'mm", { locale: fr });
-      const texteMarge = marge > 0 ? `, marge ${marge.toLocaleString('fr-FR')} francs` : '';
+      // UNE PERTE SE DIT AUSSI. La règle du projet vaut ici plus qu'ailleurs :
+      // aucune information importante ne doit exister uniquement sous forme de
+      // texte. Une marchande qui ne lit pas n'apprendrait jamais, autrement,
+      // qu'elle a vendu en dessous de son prix d'achat.
+      const texteMarge =
+        marge > 0 ? `, marge ${marge.toLocaleString('fr-FR')} francs`
+        : marge < 0 ? `, mais tu as perdu ${Math.abs(marge).toLocaleString('fr-FR')} francs dessus`
+        : '';
       try { speak(`${sale.productName || 'Vente'} : ${montant.toLocaleString('fr-FR')} francs${texteMarge}, le ${quand}.`); } catch { /* ignore */ }
     }
   };
@@ -131,10 +138,23 @@ function VenteCard({ sale, index, query }: { sale: any; index: number; query: st
         {/* Montant + marge */}
         <div style={{ textAlign:'right', flexShrink:0 }}>
           <div style={{ fontSize:17, fontWeight:900, color: estAnnulee ? '#9ca3af' : '#1D9E75', textDecoration: estAnnulee ? 'line-through' : 'none' }}>+{montant.toLocaleString('fr-FR')} F</div>
-          {marge > 0
-            ? <div style={{ fontSize:10, color: estAnnulee ? '#9ca3af' : '#16a34a', marginTop:2, fontWeight:700, textDecoration: estAnnulee ? 'line-through' : 'none' }}>+{marge.toLocaleString('fr-FR')} F marge</div>
-            : <div style={{ fontSize:10, color:'#ccc', marginTop:2 }}>marge —</div>
-          }
+          {/* UNE PERTE SE VOIT — arbitrage de Patrick, 19/09/2026. La marge était
+              plafonnée à zéro côté serveur : une vente à perte s'affichait
+              « marge — », exactement comme une vente dont on ignore le coût.
+              Deux situations opposées, un seul affichage. Elle ne pouvait pas
+              savoir qu'elle vendait en dessous de son prix d'achat.
+              Le ROUGE et le mot « Perte » sont volontaires : pour qui ne lit
+              pas, la couleur porte le sens avant le mot, et un signe « − » seul
+              se confond trop facilement avec un tiret. */}
+          {marge > 0 && (
+            <div style={{ fontSize:10, color: estAnnulee ? '#9ca3af' : '#16a34a', marginTop:2, fontWeight:700, textDecoration: estAnnulee ? 'line-through' : 'none' }}>+{marge.toLocaleString('fr-FR')} F marge</div>
+          )}
+          {marge < 0 && (
+            <div style={{ fontSize:10, color: estAnnulee ? '#9ca3af' : '#c0392b', marginTop:2, fontWeight:800, textDecoration: estAnnulee ? 'line-through' : 'none' }}>Perte : {Math.abs(marge).toLocaleString('fr-FR')} F</div>
+          )}
+          {marge === 0 && (
+            <div style={{ fontSize:10, color:'#ccc', marginTop:2 }}>marge —</div>
+          )}
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration:0.25 }} style={{ display:'flex', justifyContent:'flex-end', marginTop:2 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
           </motion.div>
