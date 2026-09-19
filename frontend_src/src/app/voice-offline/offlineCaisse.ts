@@ -1,3 +1,4 @@
+import type { LigneDeVente } from '../types/vente';
 // ──────────────────────────────────────────────────────────────────────────
 // File d'attente HORS-LIGNE des opérations de caisse (couche 2).
 //
@@ -32,12 +33,39 @@ export type StockEndpoint = `/stocks/${string}`;
 export type OfflineEndpoint = CaisseEndpoint | StockEndpoint;
 export type OfflineMethod = 'POST' | 'PATCH';
 
+/** Ce qu'une opération mise en file transporte : une VENTE, une DÉPENSE ou une
+ *  mise à jour de STOCK. Les trois portent une clé d'idempotence — c'est elle
+ *  qui empêche qu'une vente rejouée soit comptée deux fois.
+ *
+ *  Ce champ était `any`. C'est la donnée la plus exposée de l'application :
+ *  elle est écrite sur le téléphone, survit à une coupure, à une fermeture de
+ *  l'application, parfois à une mise à jour — et repart plus tard vers le
+ *  serveur sans que personne ne la relise. Un `any` ici, c'est une vente qui
+ *  peut partir déformée sans qu'aucun outil ne l'ait signalé. */
+export type PayloadOperation = {
+  idempotency_key?: string;
+  montant?: number;
+  produits?: LigneDeVente[];
+  details?: LigneDeVente[];
+  mode_paiement?: string;
+  notes?: string;
+  prix_achat?: number;
+  prix_vente?: number;
+  source?: 'vocal' | 'kassa';
+  date_operation?: string;
+  /** Mise à jour de stock : quantité et prix de la ligne visée. */
+  quantite?: number;
+  prix_unitaire?: number;
+  seuil_alerte?: number;
+  categorie?: string;
+  date_peremption?: string | null;
+};
+
 export interface OperationCaisse {
   id: string;                 // clé d'idempotence (uuid)
   endpoint: OfflineEndpoint;
   method?: OfflineMethod;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payload: any;
+  payload: PayloadOperation;
   ts: number;
   attempts?: number;          // essais TRANSITOIRES uniquement
   // P0-1 : propriétaire de l'opération (l'utilisateur connecté au moment de la
@@ -247,8 +275,8 @@ export async function enfilerOperation(
       `Une opération financière ou de stock ne peut jamais être mise en file sous un propriétaire de secours ('anon' ou vide).`,
     );
   }
-  const cle = (payload as { idempotency_key?: string } | null)?.idempotency_key;
-  const op: OperationCaisse = { id: cle || uuid(), endpoint, method, payload, ts: Date.now(), userId };
+  const cle = (payload as PayloadOperation | null)?.idempotency_key;
+  const op: OperationCaisse = { id: cle || uuid(), endpoint, method, payload: payload as PayloadOperation, ts: Date.now(), userId };
   await store.enqueue(op);
   return op.id;
 }

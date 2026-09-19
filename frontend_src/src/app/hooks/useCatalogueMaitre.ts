@@ -82,10 +82,10 @@ export function useCatalogueMaitre(userId?: string) {
     setChargement(true);
     try {
       const data = await catalogueApi.fetchCatalogueMaitre(200);
-      const liste: ReferenceMaitre[] = (data.references || []).map((r: Record<string, unknown>) => ({
+      const liste: ReferenceMaitre[] = (data.references || []).map((r) => ({
         default_code: String(r.default_code),
         nom: String(r.nom),
-        categorie: (r.categorie as string) ?? null,
+        categorie: r.categorie ?? null,
       }));
       setReferences(liste);
       ecrireCache(CLE_CACHE, liste);
@@ -156,7 +156,7 @@ export function useCatalogueMaitre(userId?: string) {
         const codes = [...new Set([...adoptees, demande.default_code])];
         setAdoptees(codes);
         ecrireCache(cleAdoptees(userId), codes);
-        return { ok: true, produit: data.produit };
+        return { ok: true, produit: data.produit as ResultatAdoption['produit'] };
       } catch (e) {
         // `HttpError` PORTE le statut ET le corps : les deux réponses du
         // backend restent donc lisibles telles quelles. C'est ce qui permet de

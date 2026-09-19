@@ -20,6 +20,16 @@ import { beneficeDepuisDetails } from '../services/margeVente';
  * correctif du 18/09 : distinguer « la marge vaut zéro » de « je ne sais pas ».
  * Rendre `null` uniquement quand la valeur est absente ou illisible.
  */
+const TYPES_CONNUS = ['vente', 'depense', 'recolte'] as const;
+
+/** Range un type de transaction dans les valeurs que ce contexte sait traiter.
+ *  Tout le reste devient 'autre' — cf. le commentaire de `Transaction.type`. */
+function typeTransaction(brut: unknown): Transaction['type'] {
+  return (TYPES_CONNUS as readonly string[]).includes(String(brut))
+    ? (brut as Transaction['type'])
+    : 'autre';
+}
+
 function nombreOuNull(v: unknown): number | null {
   if (v === null || v === undefined || v === '') return null;
   const n = Number(v);
@@ -33,6 +43,7 @@ import * as audioManager from '../services/audioManager';
 import { API_URL } from '../utils/api';
 import { rafraichirSession, apiRequest } from '../services/api/api-client';
 import * as caisseApi from '../services/api/caisse-api';
+import type { VenteServeur, LigneDeVente, CreditServeur } from '../types/vente';
 import { jourLocal } from '../utils/jourLocal';
 import { enfilerOperation } from '../voice-offline/offlineCaisse';
 import { clearAuthClientState } from '../utils/clearAuthClientState';
@@ -113,7 +124,16 @@ export interface User {
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'vente' | 'depense' | 'recolte';
+  /** Le type déclaré par le serveur.
+   *
+   *  `'autre'` N'EST PAS UN FOURRE-TOUT COMMODE : c'est la seule façon
+   *  HONNÊTE de représenter un type que ce contexte ne connaît pas (le
+   *  serveur écrit aussi 'approvisionnement'). Le ranger d'office en 'vente'
+   *  le ferait compter dans le chiffre d'affaires ; en 'depense', dans le
+   *  cahier. Les deux mentiraient sur l'argent. 'autre' ne correspond à aucun
+   *  filtre financier — c'est exactement ce que faisait déjà, sans le dire,
+   *  une chaîne inconnue avant le typage de l'axe 4. */
+  type: 'vente' | 'depense' | 'recolte' | 'autre';
   productName: string;
   quantity: number;
   price: number;
@@ -129,6 +149,9 @@ export interface Transaction {
   source?: string;
   synced?: boolean;
   montant?: number;
+  /** Les lignes de la vente. Elles étaient lues via `(transaction as any)`
+   *  alors que le reste des champs du même objet étaient, eux, déclarés. */
+  produits?: LigneDeVente[];
   statut?: string; // 'validee' | 'annulee' | … — pour l'annulation self-service (#20)
 }
 
@@ -425,10 +448,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       {
         
-        const mappedTx: Transaction[] = txData.map((tx: any) => ({
-          id: tx.id,
-          userId: tx.marchand_id || tx.user_id,
-          type: tx.type,
+        const mappedTx: Transaction[] = txData.map((tx: VenteServeur) => ({
+          // Ces trois lectures étaient typées `any`. Le typage montre que le
+          // serveur peut omettre id et type. On NE comble pas : on laisse
+          // exactement la valeur d'avant (`undefined` restait `undefined`), et
+          // on nomme le trou. Combler changerait des écrans.
+          id: tx.id as string,
+          userId: (tx.marchand_id || tx.user_id) as string,
+          type: typeTransaction(tx.type),
           productName: tx.description || tx.produit || 'Depense',
           quantity: Number(tx.quantite) || 1,
           price: Number(tx.montant) || 0,
@@ -470,12 +497,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       {
         const sessionData = sessionResponse?.session;
         if (sessionData) {
+          // DÉFAUT NOMMÉ, NON CORRIGÉ DANS CE LOT : le typage de la réponse
+          // montre que le serveur peut omettre `ouvert`, `id`, `date`. La
+          // journée devient alors « ni ouverte ni fermée ». Lui donner une
+          // valeur par défaut changerait l'état visible de la caisse au
+          // démarrage — donc ce que voit la marchande. Hors hygiène.
           setCurrentSession({
-            id: sessionData.id,
-            userId: sessionData.marchand_id,
-            date: sessionData.date,
+            id: sessionData.id as string,
+            userId: sessionData.marchand_id as string,
+            date: sessionData.date as string,
             fondInitial: Number(sessionData.fond_initial) || 0,
-            opened: sessionData.ouvert,
+            opened: sessionData.ouvert as boolean,
             openedAt: sessionData.heure_ouverture,
             closedAt: sessionData.heure_fermeture,
             notes: sessionData.notes,
@@ -766,16 +798,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ? {
             montant: transaction.price * transaction.quantity,
             description: transaction.productName || '',
-            categorie: (transaction as any).category || 'autre',
+            categorie: transaction.category || 'autre',
             mode_paiement: transaction.paymentMethod || 'especes',
           }
         : {
-            montant: (transaction as any).montant || transaction.price * transaction.quantity,
+            // Quatre `as any` ici, sur l'écriture d'une VENTE — alors que
+            // `category`, `montant` et `source` étaient déjà déclarés sur
+            // `Transaction`. Seul `produits` manquait ; il a été ajouté.
+            // C'est ce genre de cast qui avait laissé `source` ne jamais
+            // partir : le compilateur ne pouvait rien en dire.
+            montant: transaction.montant || transaction.price * transaction.quantity,
             produit: transaction.productName,
-            produits: (transaction as any).produits || [{ nom: transaction.productName, quantite: transaction.quantity }],
+            produits: transaction.produits || [{ nom: transaction.productName, quantite: transaction.quantity }],
             quantite: transaction.quantity,
             mode_paiement: transaction.paymentMethod,
-            source: (transaction as any).source || 'kassa',
+            source: transaction.source || 'kassa',
           };
       try {
         // #6 : un POST en erreur (4xx/5xx) ne "réussissait" plus en silence —
@@ -1004,7 +1041,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // requête vers la même ressource, avec sa propre gestion d'erreur.
       const json = await caisseApi.fetchCredits();
       const rows = Array.isArray(json?.credits) ? json.credits : [];
-      setCreditsJour(rows.map((c: any) => ({
+      setCreditsJour(rows.map((c: CreditServeur) => ({
         montant_total: Number(c.montant_total) || 0,
         acompte: Number(c.acompte) || 0,
         created_at: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
@@ -1019,10 +1056,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // s'arrête à 500 rendrait le correctif inutile dès la première mise à jour.
       const { transactions: txData } = await caisseApi.fetchCaisseTransactions();
       {
-        const mappedTx: Transaction[] = txData.map((tx: any) => ({
-          id: tx.id,
-          userId: tx.marchand_id || tx.user_id,
-          type: tx.type,
+        const mappedTx: Transaction[] = txData.map((tx: VenteServeur) => ({
+          // Ces trois lectures étaient typées `any`. Le typage montre que le
+          // serveur peut omettre id et type. On NE comble pas : on laisse
+          // exactement la valeur d'avant (`undefined` restait `undefined`), et
+          // on nomme le trou. Combler changerait des écrans.
+          id: tx.id as string,
+          userId: (tx.marchand_id || tx.user_id) as string,
+          type: typeTransaction(tx.type),
           productName: tx.description || tx.produit || 'Depense',
           quantity: Number(tx.quantite) || 1,
           price: Number(tx.montant) || 0,

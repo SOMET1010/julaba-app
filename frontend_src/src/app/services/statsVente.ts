@@ -1,3 +1,4 @@
+import type { LigneDeVente } from '../types/vente';
 // ──────────────────────────────────────────────────────────────────────────
 // Statistiques de vente — calcul PUR et testable du top produits.
 //
@@ -24,16 +25,10 @@ export interface LigneVente {
   /** Lignes réelles de la vente, telles que le panier les a envoyées.
    *  C'est la SEULE source qui sache ce qui a vraiment été vendu quand une
    *  transaction porte plusieurs produits. */
-  details?: unknown;
+  details?: LigneDeVente[] | unknown;
 }
 
-/** Une ligne du panier, telle que POSCaisse la construit. */
-interface LigneDetail {
-  nom?: string;
-  quantite?: number;
-  prix?: number;
-  total?: number;
-}
+// La ligne du panier est décrite une seule fois, dans types/vente.ts.
 
 /**
  * Éclate une vente en ses vrais produits — correctif du 18/09/2026.
@@ -54,7 +49,7 @@ interface LigneDetail {
  */
 function eclaterEnProduits(t: LigneVente): { nom: string; qte: number; total: number }[] | null {
   if (!Array.isArray(t.details) || t.details.length === 0) return null;
-  const lignes = (t.details as LigneDetail[])
+  const lignes = (t.details as LigneDeVente[])
     .map((d) => {
       const nom = typeof d?.nom === 'string' ? d.nom.trim() : '';
       const qte = Number(d?.quantite) || 0;
