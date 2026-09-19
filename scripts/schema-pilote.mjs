@@ -36,6 +36,23 @@ const RACINE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const EMPREINTE = join(RACINE, 'docs', 'schema', 'EMPREINTE-PILOTE.json');
 const figer = process.argv.includes('--figer');
 
+// --figer EST INTERDIT EN CI, et le refus est ICI plutôt que dans le fichier de
+// workflow. Un gel est une DÉCISION : il dit « ce schéma-là est celui qu'on
+// emporte ». Laisser une machine le prendre reviendrait à ce que toute PR qui
+// change le schéma se régularise elle-même — le gate deviendrait décoratif, ce
+// qu'il est précisément là pour ne pas être. Mettre la règle dans le workflow
+// ne la protégerait pas : un autre workflow pourrait appeler le script.
+if (figer && (process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true')) {
+  console.error(
+    '\u001b[31m✗ REFUS : --figer ne s’exécute jamais en CI.\u001b[0m\n' +
+    '  Le gel du schéma est une décision humaine. Si ce gate échoue en CI parce\n' +
+    '  que le schéma a changé, c’est le signal attendu : relancer localement\n' +
+    '    node scripts/schema-pilote.mjs --figer\n' +
+    '  puis committer la nouvelle empreinte, en connaissance de cause.',
+  );
+  process.exit(2);
+}
+
 const titre = (n, t) => console.log(`\n\u001b[1m[${n}/5] ${t}\u001b[0m`);
 const ok = (m) => console.log(`  ✓ ${m}`);
 const ko = (m) => { console.error(`  ✗ ${m}`); process.exit(1); };

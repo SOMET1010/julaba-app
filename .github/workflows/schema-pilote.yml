@@ -1,0 +1,82 @@
+name: SCHEMA-PILOTE (chemin de schéma figé)
+
+# LE VERROU DE SORTIE DU SCHÉMA — 19/09/2026.
+#
+# POURQUOI CE WORKFLOW EXISTE. La doctrine de schéma de JULABA est multiple :
+# migrations TypeORM, `DbInitService`, et `synchronize` depuis les entités
+# (SCHEMA-01/02/03, toujours OUVERTES). Ce mécanisme a produit TROIS défauts
+# distincts, tous invisibles aux tests unitaires parce qu'ils n'apparaissent
+# qu'à l'exécution SQL :
+#   • B1        — `stock_mouvements.type` absent       ⇒ toute annulation ;
+#   • STK-01    — `stock_operation_idempotency` absente ⇒ toute modif de stock ;
+#   • SCHEMA-07 — cinq colonnes de `bpay_transactions`  ⇒ tout paiement B-Pay.
+#
+# Les deux premiers ont été trouvés à l'usage. Le TROISIÈME a été trouvé par le
+# garde-fou au niveau colonne de `scripts/schema-pilote.mjs`, avant le terrain.
+# Ce workflow existe pour que ce garde-fou ne dépende plus de la discipline de
+# quelqu'un : il tourne à chaque PR et à chaque fusion.
+#
+# CE QU'IL NE FAIT PAS. Il ne ferme pas SCHEMA-01/02/03. La doctrine reste
+# multiple et la dette reste ouverte au registre. Il rend le risque NON
+# ATTEIGNABLE pour la sortie pilote, par un chemin unique reconstruit, testé,
+# figé — et désormais imposé.
+#
+# `--figer` N'EST JAMAIS LANCÉ ICI, et le script lui-même le refuse quand `CI`
+# est posé : un gel est une décision humaine. Une PR qui change le schéma doit
+# rougir, pas se régulariser toute seule.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  schema-pilote:
+    name: Chemin de schéma reconstruit, prouvé, figé
+    runs-on: ubuntu-latest
+    # 30 min : le gate reconstruit une base vierge, joue le garde-fou
+    # tables + colonnes, rejoue DbInit deux fois et fait tourner TOUS les
+    # invariants. On ne cherche pas à l'optimiser maintenant.
+    timeout-minutes: 30
+
+    env:
+      NODE_ENV: test
+      # `pg-test-local.sh` tourne ici sous l'utilisateur du runner, pas root :
+      # PGDATA doit vivre dans un répertoire qu'il peut écrire.
+      PGDATA: ${{ runner.temp }}/pgdata-schema-pilote
+      PGBIN: /usr/lib/postgresql/16/bin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js 22 (LTS)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: PostgreSQL 16 disponible
+        # L'image ubuntu-latest embarque déjà PostgreSQL 16 ; on ne l'installe
+        # que si ce n'est pas le cas, et on échoue clairement sinon — le gate
+        # n'a aucun sens sans une vraie base.
+        run: |
+          if [ ! -x "$PGBIN/initdb" ]; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-16
+          fi
+          "$PGBIN/initdb" --version
+
+      - name: Install (workspaces, racine)
+        run: npm ci
+
+      - name: SCHEMA-PILOTE
+        # Le script fait tout : base vierge par le seul chemin autorisé,
+        # garde-fou tables ET colonnes, second démarrage, invariants complets,
+        # puis vérification de l'empreinte figée. Jamais `--figer`.
+        run: node scripts/schema-pilote.mjs
