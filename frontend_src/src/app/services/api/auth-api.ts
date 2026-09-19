@@ -47,6 +47,10 @@ export type Resultat<T> =
  * lève `NOT_AUTHENTICATED`, c'est que la session est réellement finie — pas
  * qu'un jeton était simplement périmé.
  */
+export async function appelerAuth<T>(chemin: string, options: RequestInit = {}): Promise<Resultat<T>> {
+  return appeler<T>(chemin, options);
+}
+
 async function appeler<T>(chemin: string, options: RequestInit = {}): Promise<Resultat<T>> {
   try {
     return { etat: 'ok', valeur: await apiRequest<T>(API_URL, chemin, options) };
