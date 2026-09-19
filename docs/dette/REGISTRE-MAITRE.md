@@ -1,15 +1,18 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 3 — après la fermeture de STK-01 (`6ef6560`).**
+**Révision 4 — après SEC-2 (`b904db6`).**
 Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
 une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
 Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
 passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
 (`keiwa_config_items`) ; **AUTH-RECOVERY-01** ouverte par arbitrage avant SEC-2.
+Révision 4 : **SEC-05, SEC-06 et SEC-07 fermés** ; **SEC-08** ouverte (le PIN
+n'est plus lisible, mais il est encore *choisi* par un administrateur) ;
+**SEED-01** ouverte — c'est le diagnostic des 3 échecs jusqu'ici non expliqués.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 12 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 55 OUVERT.**
+**Compte courant : 15 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 54 OUVERT.**
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -121,11 +124,12 @@ reste multiple.
 | **SEC-01** | **P0** | **FERMÉ** | `feedbak-sms.service.ts` : **0** appel `console.*`, **11** appels `await this.send(...)` | `5e55d57` — test comportemental espionnant `console` ET `Logger`, sur succès **et** échec d'envoi | — |
 | **SEC-02** | **P0** | **FERMÉ** | Le chemin d'appel depuis `auth.controller.ts` existe toujours ; c'est le contenu du journal qui a changé | `5e55d57` | — |
 | **SEC-03** | P1 | **FERMÉ** | Les deux notifications PIN passent par `send()` → vrai `SmsService` | `5e55d57` — **le SMS n'était jamais envoyé non plus**, ni à la création ni au changement | — |
-| **SEC-05** | **P0 conception** | **OUVERT** | *Ligne ajoutée au contre-audit.* `GET /auth/identificateur/:id/pin-decrypted` (`auth.controller.ts:597`) **déchiffre et renvoie le PIN en clair**, pour `super_admin` et `admin_general`. Route atteinte : `BOActeurs.tsx:462` l'appelle | — | **Le secret est révélable à volonté depuis le back-office.** L'audit `PIN_READ` trace la lecture, il ne l'empêche pas. La cible saine est un **reset**, jamais une récupération — ce qui permettrait ensuite de passer d'un chiffrement réversible à une empreinte de vérification. **C'est plus grave que SEC-01 : on a sécurisé la journalisation d'un PIN que l'application donne toujours en clair par conception** |
-| **SEC-06** | P1 | **OUVERT** | *Ligne ajoutée au contre-audit.* `auth.controller.ts:670` : `return { user, success: true, pinGenere }` — le PIN repart **en clair dans la réponse HTTP** de `create-acteur` | — | Le SMS fonctionne désormais (`5e55d57`) : la surface d'exposition est doublée sans nécessité |
-| **SEC-07** | P1 | **OUVERT** | *Ligne ajoutée au contre-audit.* `auth.controller.ts:655` : PIN généré par `Math.random()` sur 8 chiffres × 4 positions = **4 096 combinaisons**, générateur non cryptographique | Le verrouillage des essais (`verrou-pin.ts`) limite la force brute **à distance** | `Math.random()` n'est pas adapté à la génération d'un identifiant |
+| **SEC-05** | **P0 conception** | **FERMÉ** | `GET .../pin-decrypted` n'existe plus : ni la route, ni un remplaçant. Garde statique `pin-jamais-rendu` — analyse le code **sans les commentaires** — : **0** route déclarant `pin-decrypted`, **0** `return` transportant un PIN déchiffré. L'action back-office est devenue « Réinitialiser le PIN » | `b904db6` — reset, jamais récupération : serveur → SMS, réponse `{ success: true }`, audit `PIN_RESET` sans aucun fragment du code, ancien PIN invalidé, sessions révoquées. **Aucun repli back-office** (arbitrage Patrick) | — *(le cas « numéro perdu » est AUTH-RECOVERY-01, délibérément à part)* |
+| **SEC-06** | P1 | **FERMÉ** | `create-acteur` ne renvoie plus `pinGenere` ; garde statique : **0** occurrence dans `auth/`, `users/`, `sms/`, `feedbak-sms/` | `b904db6`. **Correction de ma propre preuve :** en voulant la tester, la branche s'est révélée **inatteignable** — `signup` est fail-closed pour les rôles administratifs (`rolesCreablesPar('super_admin') = []`), donc personne ne pouvait créer un identificateur par cette route (403 vérifié). La fuite était **réelle dans le code, non exploitable par ce chemin** | — |
+| **SEC-07** | P1 | **FERMÉ** | `crypto.randomInt` dans `pin-identificateur.ts` ; garde statique : **0** `Math.random(` dans les modules sensibles. 4 chiffres / alphabet 2–9 **conservés** (arbitrage terrain Patrick : mémorisation, dictée, voix, utilisatrices peu alphabétisées) | `b904db6`. **La condition de cet arbitrage n'était pas remplie et c'est ce lot qui la pose** : `identificateur/me/verify-pin` n'avait **aucun** compteur — essais illimités sur 4 096 combinaisons — et `change-pin` offrait la même porte sur `oldPin`. Les deux passent par `verrou-pin.ts`, sur **deux colonnes dédiées** (partager `failed_pin_attempts` aurait laissé une reconnexion effacer le verrou). Reproduction : verrou neutralisé → 3 tests rouges | — |
 | **SEC-04** | P3 | **OUVERT** | `users.service.ts:334` journalise le terme de recherche saisi | Relevé en balayant SEC-01. **Donnée personnelle, pas un secret** | Journalisation de donnée personnelle |
-| **AUTH-RECOVERY-01** | P1 | **OUVERT** | *Dette ouverte par arbitrage de Patrick au moment de SEC-2.* La remise à zéro d'un PIN passe **uniquement par SMS**. Aucun parcours n'existe pour « numéro perdu ou changé » | **Ouverte délibérément pour ne pas polluer SEC-2 avec une récupération de compte improvisée** | Un identificateur qui perd son numéro n'a aucune voie de retour. Si le terrain impose un secours sans SMS, **ne jamais afficher le vrai PIN** : code de récupération à usage unique, TTL court, consommable une fois, qui oblige ensuite à choisir son propre PIN. Autre credential, autre route — pas un contournement de SEC-05 |
+| **AUTH-RECOVERY-01** | P1 | **OUVERT** | *Dette ouverte par arbitrage de Patrick au moment de SEC-2.* Depuis `b904db6` la remise à zéro d'un PIN passe **uniquement par SMS**, et c'est vérifié. Aucun parcours n'existe pour « numéro perdu ou changé » | **Ouverte délibérément pour ne pas polluer SEC-2 avec une récupération de compte improvisée** | Un identificateur qui perd son numéro n'a aucune voie de retour. Si le terrain impose un secours sans SMS, **ne jamais afficher le vrai PIN** : code de récupération à usage unique, TTL court, consommable une fois, qui oblige ensuite à choisir son propre PIN. Autre credential, autre route — pas un contournement de SEC-05 |
+| **SEC-08** | **P1** | **OUVERT** | **Nouveau, vu en faisant SEC-2.** `POST /auth/identificateur/:id/pin` (`auth.controller.ts`) laisse un administrateur **choisir** le PIN d'un identificateur : il le connaît donc. Et c'est aujourd'hui le **seul** moyen d'en attribuer un, puisque `POST /users/backoffice/create` — la vraie voie de création d'un identificateur — n'en pose aucun, et que la branche PIN de `create-acteur` est inatteignable (cf. SEC-06) | — | **Le modèle « seule la personne connaît son code » n'est pas encore atteint** : SEC-2 a fermé la lecture, pas l'attribution. Cible : la création back-office génère et envoie par SMS comme `reinitialiser-pin`, et la route à PIN choisi disparaît. **Arbitrage Patrick requis** : ça change le geste d'enrôlement et touche un second module |
 
 # SMS ET INTÉGRATIONS
 
@@ -152,6 +156,7 @@ reste multiple.
 | **SCHEMA-04** | P1 | **FERMÉ** | = STK-01, fermé par `6ef6560`. Ce n'était pas un fait d'environnement : le dépôt suffisait à le prouver | `6ef6560` | — |
 | **SCHEMA-05** | **P1** | **OUVERT** | **Nouveau (issu du garde-fou systématique).** `api_keys` est lue et écrite par du code vivant du back-office partenaires, et n'est créée que par une migration **archivée**, volontairement hors de la chaîne exécutable (ADR-0002). Sur base neuve la table n'existe pas | — | Toute fonction partenaire adossée à `api_keys` échoue sur un déploiement neuf. Décider : réintégrer la création, ou retirer le code mort |
 | **SCHEMA-06** | **P1** | **OUVERT** | **Nouveau (issu du garde-fou systématique).** `keiwa_config_items` est lue, insérée, modifiée et supprimée par `admin-wallets.service.ts`, et créée **nulle part** : ni entité, ni migration, ni DbInit | — | La configuration Keiwa échoue sur toute base, neuve ou non, sauf table posée à la main |
+| **SEED-01** | **P1** | **OUVERT** | **Nouveau — c'est le diagnostic de l'« observation non résolue ».** `AdminDivisionsSeedService.runSeed()` garde toute la cascade derrière `districtCount === 0`. **Un seul district présent, quelle qu'en soit l'origine, empêche définitivement le seed des régions, départements et communes.** « Districts non vide » y tient lieu de « tout est seedé » : deux sens pour une même donnée | — | En production : un district créé à la main, ou un premier démarrage interrompu après l'insertion des districts, et les communes ne sont **jamais** posées — `GET /producteurs/recoltes-prevues` perd silencieusement ses données. En test : `cooperatives-liste-colonnes` insère un district et ne le retire pas, donc `communes-gps-distance` échoue quand Jest le place après — d'où 3 rouges sur ~1 exécution complète sur 3. **Correctif : rendre chaque niveau idempotent séparément** |
 
 # ARCHITECTURE
 
@@ -203,15 +208,12 @@ La sévérité doit jouer dans les deux sens. Ne sont pas des anomalies :
 
 ## P0 et P1 encore OUVERTS
 
-**P0**
+**P0 — aucun.**
 
-| ID | Ce qu'il faut |
-|---|---|
-| **SEC-05** | **Supprimer `GET /auth/identificateur/:id/pin-decrypted`** et remplacer l'action back-office par « Réinitialiser le PIN » : génération cryptographique côté serveur, envoi par SMS, réponse `{ success: true }` sans jamais porter le PIN, audit `PIN_RESET`, ancien PIN invalidé immédiatement. **Pas de repli back-office** — un affichage « une seule fois » recréerait SEC-05 sous une forme plus propre. SEC-06 et SEC-07 se ferment dans le même geste |
-
-*STK-01 / SCHEMA-04 était l'autre P0 : fermé par `6ef6560`. La vérification sur
-la base de production reste utile pour savoir si elle est **déjà** cassée — mais
-le défaut de code, lui, n'existe plus.*
+STK-01 / SCHEMA-04 fermés par `6ef6560`, SEC-05 par `b904db6`. C'est la
+première fois que cette section est vide. Elle ne dit rien sur les P1 : SEC-08
+et SEED-01, ouvertes le même jour, touchent l'une un credential, l'autre des
+données de production.
 
 **P1 atteignables en pilote**
 
@@ -221,6 +223,9 @@ le défaut de code, lui, n'existe plus.*
 | **API-03** | Trois voies réseau pour l'auth |
 | **API-04** | `main.tsx` monkey-patche `window.fetch` |
 | **SCHEMA-01 / 02 / 03** | La doctrine de schéma reste multiple |
+| **SCHEMA-05 / 06** | Deux tables écrites par du code vivant, créées nulle part qui s'exécute |
+| **SEC-08** | Le PIN identificateur est encore **choisi** par un administrateur — arbitrage requis |
+| **SEED-01** | Un district suffit à empêcher le seed des communes, en test **comme en production** |
 | **TYPE-01** | 390 `any` (0 sur une donnée métier aux frontières) |
 
 **P1 NON atteignables en pilote** — `CAISSE_CREDIT_ACTIF = false`.
@@ -252,8 +257,21 @@ HORS PÉRIMÈTRE — avec une nuance écrite sur MOCK-01 : accepté **seulement*
 parce qu'Odoo n'est pas une dépendance obligatoire du pilote. Le jour où il le
 devient, « variable absente ⇒ mock » doit être réexaminé.
 
-## Observation non résolue
+## L'observation « non résolue » est résolue — c'était SEED-01
 
-Un passage complet des invariants a montré **3 échecs dont le détail n'a pas
-été capturé**. Les passages suivants sont verts (189/189 puis 192/192 après STK-01). Cause inconnue,
-non reproduite. **Ce n'est pas classé « flake »** : à instruire s'il revient.
+La révision 2 notait **3 échecs dont le détail n'avait pas été capturé**, non
+classés « flake » en attendant mieux. Ils sont revenus, ils ont été capturés,
+et ce n'était pas une instabilité.
+
+Toujours les mêmes trois tests de `communes-gps-distance.spec.ts`, et toujours
+la même cause : `runSeed()` ne pose les 13 communes d'Abidjan **que si la table
+`districts` est vide**. `cooperatives-liste-colonnes.spec.ts` insère un district
+et ne le retire pas. Selon l'ordre dans lequel Jest choisit les fichiers, le
+seed s'exécute ou est sauté — vert quand la suite GPS passe en 3ᵉ position,
+rouge quand elle passe en 26ᵉ ou 41ᵉ. Mesuré sur trois exécutions complètes :
+verte, rouge, verte.
+
+Ce n'est pas un défaut de test. Le même raccourci casse une **production** où
+un district existe sans que les communes aient été posées. La dette est
+inscrite en **SEED-01**, et aucun correctif n'a été fait dans ce lot : il
+n'appartient pas à SEC-2.
