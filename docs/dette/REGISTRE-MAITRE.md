@@ -1,7 +1,7 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 10 — après SCHEMA-PILOTE.**
+**Révision 11 — après SCHEMA-PILOTE et SCHEMA-CI.**
 Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
 une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
 Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
@@ -10,6 +10,10 @@ passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
 Révision 4 : **SEC-05, SEC-06 et SEC-07 fermés** ; **SEC-08** ouverte (le PIN
 n'est plus lisible, mais il est encore *choisi* par un administrateur) ;
 **SEED-01** ouverte — c'est le diagnostic des 3 échecs jusqu'ici non expliqués.
+Révision 11 : **SCHEMA-CI** — le gate n'est plus une discipline humaine, il
+tourne à chaque PR et à chaque fusion. **SCHEMA-01/02/03 restent OUVERTES P1
+architecture et ne bloquent plus l'APK pilote.** Aucun bloqueur de sortie ne
+subsiste dans la section « P1 atteignables ».
 Révision 10 : **SCHEMA-PILOTE** — un chemin de déploiement unique, prouvé et
 figé (60 tables, 684 colonnes). Il **ne ferme pas** SCHEMA-01/02/03 : il rend le
 risque non atteignable pour cette sortie. Son garde-fou au niveau **colonne** a
@@ -257,11 +261,19 @@ première fois que cette section est vide. Elle ne dit rien sur les P1 : SEC-08
 et SEED-01, ouvertes le même jour, touchent l'une un credential, l'autre des
 données de production.
 
-**P1 atteignables en pilote**
+**P1 atteignables en pilote — aucun bloqueur de sortie**
 
-| ID | Ce qui reste |
+> **SCHEMA-01/02/03 restent OUVERTES P1 architecture. Elles ne bloquent plus
+> l'APK pilote parce que le chemin unique de construction du schéma pilote est
+> reconstruit, testé, figé et imposé par CI à chaque fusion.**
+
+| ID | Ce qui reste, et ce qui le tient |
 |---|---|
-| **SCHEMA-01 / 02 / 03** | La doctrine de schéma reste multiple. **Maintenus P1**, et le gate `SCHEMA-PILOTE` (`scripts/schema-pilote.mjs`) ne les ferme pas : il rend le risque **non atteignable pour cette sortie** par un chemin unique, prouvé et figé. Il a d'ailleurs trouvé une **troisième** instance (SCHEMA-07) que le garde-fou précédent ne pouvait pas voir. **Condition de sortie APK : ce gate vert, et rejoué à chaque évolution de DbInit ou des migrations** |
+| **SCHEMA-01 / 02 / 03** | La doctrine de schéma reste multiple — migrations TypeORM, `DbInitService`, `synchronize`. **Rien de cela n'est fermé.** Ce qui a changé : `.github/workflows/schema-pilote.yml` lance `node scripts/schema-pilote.mjs` à chaque PR et à chaque fusion. Empreinte différente, colonne manquante, second démarrage divergent ou invariant tombé ⇒ **PR rouge**. `--figer` est **refusé par le script lui-même** en CI : un gel est une décision humaine, sinon toute PR qui change le schéma se régulariserait elle-même. **La dette demeure ; son atteignabilité pour cette sortie, non** |
+
+*Et ce gate n'est pas décoratif : il a trouvé **SCHEMA-07** à son premier
+passage — une troisième instance du mécanisme, sur une forme que le garde-fou
+au niveau table ne pouvait pas voir. Trouvée avant le terrain, cette fois.*
 
 *Reclassés en P2 sur mesure, pas sur impression (révision 9) : **API-03**,
 **API-04**, **TYPE-01** — architecture imparfaite, aucun comportement faux de
