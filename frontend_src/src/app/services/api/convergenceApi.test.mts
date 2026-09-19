@@ -138,23 +138,83 @@ function fichiers(dir: string, acc: string[] = []): string[] {
 }
 
 const RACINE_APP = new URL('../../', import.meta.url).pathname;
-const CHEMINS_ARGENT = /\/(caisse|stocks?|catalogue-maitre)\b/;
+
+// API-01 — LE GARDE-FOU DISAIT LE CONTRAIRE DE CE QU'IL FAISAIT.
+//
+// Son titre annonce « auth / caisse / vente / stock ». Sa regex ne contenait
+// que `caisse|stocks?|catalogue-maitre` : ni `auth`, ni `vente`. J'ai ensuite
+// écrit au registre « 0 fetch direct sur auth/caisse/vente/stock » — une
+// affirmation que ce fichier ne prouvait pas, et qui était fausse : 37 appels
+// directs vers `/auth` vivaient hors de la couche API.
+//
+// C'est le défaut exact que je reproche ailleurs : un commentaire qui décrit
+// autre chose que le code. Il est corrigé dans les deux sens — la regex couvre
+// `auth`, et ce qui n'est pas encore convergé est NOMMÉ ci-dessous au lieu
+// d'être masqué par une regex trop étroite. Une exception qu'on lit est une
+// dette ; une exception qu'on ne voit pas est un mensonge.
+const CHEMINS_SENSIBLES = /\/(auth|caisse|stocks?|vente|catalogue-maitre)\b/;
+
+// Appels AVANT session : il n'y a pas encore de jeton, donc pas de 401 à
+// rafraîchir. Les faire passer par la couche API n'apporterait rien.
+const AVANT_SESSION = /\/auth\/(login|check-phone|change-password|activer|refresh|recover-super-admin|reset-super-admin-password|super-admin-status|test-login|create-super-admin|users\/create|create-acteur|contacts-recovery-bo)/;
+
+// NON ENCORE CONVERGÉ, avec la raison. Cette liste doit RÉTRÉCIR.
+const RESTE_A_CONVERGER: Record<string, string> = {
+  // 7 appels WebAuthn. Sémantique propre — défi, fenêtre temporelle,
+  // annulation par la personne, credential absent, authenticator indisponible.
+  // Il faut d'abord distinguer un 401 de session expirée d'un échec WebAuthn
+  // normal, sinon on remplace un faux message par un autre. Mesuré à part.
+  'hooks/useWebAuthn.ts': 'API-01b — WebAuthn, sémantique distincte à instruire',
+  // Gère DÉJÀ le 401 par `rafraichirSession` (corrigé en HYGIÈNE-1). Converger
+  // son chargement de profil est souhaitable, pas urgent : aucun message faux.
+  'contexts/AppContext.tsx': 'API-01c — gère déjà le 401, convergence de confort',
+  // Écrans internes hors parcours marchande.
+  'components/identificateur/IdentificateurPinChangeSection.tsx': 'API-01d — écran identificateur',
+  'components/shared/FicheActeurDetailModal.tsx': 'API-01d — écran identificateur',
+  'services/authService.ts': 'API-01e — service de connexion, appels avant session',
+  // (AdminRecovery, CreateSuperAdmin et SetupMarchand n'ont QUE des appels
+  //  d'avant-session : ils n'ont besoin d'aucune exception, et le contrôle
+  //  ci-dessous les a signalés quand je leur en avais mis une par excès.)
+};
+
 const fautifs: string[] = [];
 for (const f of fichiers(RACINE_APP)) {
-  if (f.includes('/services/api/') || f.includes('/backoffice/') || f.endsWith('backoffice-api.ts')) continue;
+  if (f.includes('/services/api/') || f.includes('/backoffice/')
+      || f.endsWith('backoffice-api.ts')
+      // Le back-office n'est pas la caisse d'une marchande et suit son propre
+      // client — même motif que `backoffice-api.ts`, dont ce contexte est le
+      // pendant côté React ; il vit juste hors du dossier `/backoffice/`.
+      || f.endsWith('contexts/BackOfficeContext.tsx')) continue;
+  const relatif = f.replace(RACINE_APP, '');
   // EXCEPTION NOMMÉE : la place de marché lit `/caisse/produits`, qui ne
   // renvoie que le catalogue de la marchande elle-même. L'authentifier lui
   // présenterait son propre stock comme l'offre d'autres vendeurs. Tant que
   // cet écran n'a pas de source correcte, il reste NON converti — et c'est
   // écrit ici pour que personne ne « corrige » ça par réflexe.
   if (f.endsWith('/marketplace/Marketplace.tsx')) continue;
+  if (relatif in RESTE_A_CONVERGER) continue;
   const code = readFileSync(f, 'utf8');
   for (const ligne of code.split('\n')) {
     const m = /fetch\(\s*`\$\{API_URL\}([^`]*)`/.exec(ligne);
-    if (m && CHEMINS_ARGENT.test(m[1])) fautifs.push(`${f.replace(RACINE_APP, '')} → ${m[1]}`);
+    if (m && CHEMINS_SENSIBLES.test(m[1]) && !AVANT_SESSION.test(m[1])) {
+      fautifs.push(`${relatif} → ${m[1]}`);
+    }
   }
 }
-ok(fautifs.length === 0, `aucun fetch() direct vers la caisse, le stock ou le catalogue${fautifs.length ? ` (${fautifs.join(' ; ')})` : ''}`);
+
+// Une exception qui ne sert plus doit sortir de la liste, sinon elle protège
+// un fichier déjà propre et la dette a l'air plus grosse qu'elle n'est.
+const inutiles = Object.keys(RESTE_A_CONVERGER).filter((rel) => {
+  let code: string;
+  try { code = readFileSync(RACINE_APP + rel, 'utf8'); } catch { return true; }
+  return !code.split('\n').some((l) => {
+    const m = /fetch\(\s*`\$\{API_URL\}([^`]*)`/.exec(l);
+    return m && CHEMINS_SENSIBLES.test(m[1]) && !AVANT_SESSION.test(m[1]);
+  });
+});
+ok(inutiles.length === 0, `aucune exception périmée dans RESTE_A_CONVERGER${inutiles.length ? ` (${inutiles.join(' ; ')})` : ''}`);
+
+ok(fautifs.length === 0, `aucun fetch() direct vers auth, la caisse, le stock ou le catalogue hors des exceptions nommées${fautifs.length ? ` (${fautifs.join(' ; ')})` : ''}`);
 
 console.log(echecs === 0 ? '\n✓ convergence API — tous les cas passent' : `\n✗ ${echecs} échec(s)`);
 process.exit(echecs === 0 ? 0 : 1);
