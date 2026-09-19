@@ -266,6 +266,16 @@ export class DbInitService {
       await this.dataSource.query(
         `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS type varchar NOT NULL DEFAULT 'vente';`,
       );
+      // L'UNITÉ EST FIGÉE AU MOUVEMENT, pas relue du catalogue — 19/09/2026.
+      // Elle était jointe depuis `produits` : changer l'unité d'un produit
+      // réécrivait donc le sens de tout son historique (« −5 tas » devenait
+      // « −5 kg »). Règle 2 de la doctrine, déjà tenue côté vente.
+      // NULLABLE : les mouvements antérieurs n'en ont pas, et on ne l'invente
+      // pas rétroactivement — le catalogue a pu changer entre-temps, c'est tout
+      // le problème. Miroir de la migration 1780500000000-LedgerUniteFigee.
+      await this.dataSource.query(
+        `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS unite varchar;`,
+      );
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS idx_stock_mouvements_tx ON stock_mouvements (transaction_id);`,
       );

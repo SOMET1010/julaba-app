@@ -159,15 +159,17 @@ supplémentaire avant.
 | Constat | Où | Gravité |
 |---|---|---|
 | ~~**B1**~~ — `stock_mouvements.type` absent sur base neuve | `docs/dette/AUDIT-BASE-constats-verifies.md` | ✅ **corrigé**, avec garde-fou |
+| ~~**B2**~~ — unité d'un mouvement passé relue du catalogue | idem | ✅ **corrigé** — unité figée au ledger |
+| ~~**B3**~~ — vente hors stock invisible à l'écran | idem | ✅ **corrigé** — « 4 » + « ⚠ hors stock » |
+| ~~**A3**~~ — acompte de crédit ignoré par la clôture | idem | ✅ **corrigé** — écriture `acompte_credit` |
 | **B2** — l'unité d'un mouvement passé est relue du catalogue actuel (5 tas deviennent 5 kg) | idem | Dégrade l'information |
 | **B3** — `manquant` écrit, jamais lu ; la vente hors stock est exclue de l'affichage | idem | Dégrade l'information |
 | **A3** — un acompte de crédit n'écrit aucune transaction de caisse → écart de clôture fantôme | idem | **Latent** (`CAISSE_CREDIT_ACTIF = false`) |
 
-Les reproductions sont exécutables :
-`backend/test/invariants/dette-audit-a3-b2-b3.spec.ts`. Ce test **décrit** les
-défauts sans les approuver — il affirme le comportement actuel pour rester
-vert. **Le jour où quelqu'un corrige, il échouera**, et ce rouge voudra dire
-« c'est réparé, mets le registre à jour », pas « régression ».
+Les quatre dettes sont **fermées**. Le fichier qui décrivait les défauts est
+devenu celui qui prouve leur correction :
+`backend/test/invariants/argent-3-dettes-fermees.spec.ts` — ses assertions ont
+été retournées, ce qui fut le test-d'abord du lot ARGENT-3.
 
 Registres des lots : `docs/hygiene/HYGIENE-1-axe{1,2,3,4}-*.md`.
 

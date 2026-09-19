@@ -28,12 +28,26 @@ export class StocksRestController {
     }
     params.push(limit);
     const rows = await this.repo.manager.query(
-      `SELECT sm.id, sm.produit_nom, sm.quantite_retranchee, sm.type, sm.created_at, p.unite
+      // DEUX CORRECTIFS, 19/09/2026.
+      //
+      // B2 — `COALESCE(sm.unite, p.unite)` : l'unité FIGÉE au mouvement gagne
+      // toujours. La jointure ne sert plus que de repli pour les mouvements
+      // écrits avant ce jour, qui n'ont pas d'unité figée — au mieux, faute de
+      // pouvoir l'inventer rétroactivement.
+      //
+      // B3 — le filtre `AND sm.quantite_retranchee <> 0` a disparu. Il excluait
+      // de l'affichage toute vente faite hors stock (retranchée = 0), c'est-à-
+      // dire précisément celles que la marchande ne pouvait deviner autrement :
+      // son stock restait à zéro, aucune sortie n'apparaissait, et rien ne lui
+      // disait ce qu'elle avait écoulé. `quantite_demandee` et `manquant`
+      // remontent désormais pour que l'écran puisse le dire.
+      `SELECT sm.id, sm.produit_nom, sm.quantite_demandee, sm.quantite_retranchee,
+              sm.manquant, sm.type, sm.created_at,
+              COALESCE(sm.unite, p.unite) AS unite
          FROM stock_mouvements sm
          LEFT JOIN produits p ON p.id = sm.produit_id
         WHERE sm.marchand_id = $1
           ${filtreProduit}
-          AND sm.quantite_retranchee <> 0
         ORDER BY sm.created_at DESC
         LIMIT $${params.length}`,
       params,

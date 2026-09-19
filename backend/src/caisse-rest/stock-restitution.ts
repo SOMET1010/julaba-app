@@ -22,11 +22,12 @@ export async function restituerStock(
   m: EntityManager,
   transactionId: string,
 ): Promise<Restitution[]> {
-  const nets: Array<{ produit_id: string; produit_nom: string; marchand_id: string; net: string }> =
+  const nets: Array<{ produit_id: string; produit_nom: string; marchand_id: string; unite: string | null; net: string }> =
     await m.query(
       `SELECT produit_id,
               MAX(produit_nom)  AS produit_nom,
               MAX(marchand_id)  AS marchand_id,
+              MAX(unite)        AS unite,
               COALESCE(SUM(quantite_retranchee), 0) AS net
          FROM stock_mouvements
         WHERE transaction_id = $1 AND produit_id IS NOT NULL
@@ -51,10 +52,12 @@ export async function restituerStock(
       row.produit_id,
     ]);
     await m.query(
+      // L'unité vient du MOUVEMENT D'ORIGINE, pas du catalogue : une annulation
+      // rend ce qui avait été pris, dans l'unité où il avait été pris.
       `INSERT INTO stock_mouvements
-         (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant, type)
-       VALUES ($1::text, $2, $3, $4, $5, $6, $7, 0, 'annulation')`,
-      [row.marchand_id, transactionId, row.produit_id, row.produit_nom, stockAvant, net, -net],
+         (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant, type, unite)
+       VALUES ($1::text, $2, $3, $4, $5, $6, $7, 0, 'annulation', $8)`,
+      [row.marchand_id, transactionId, row.produit_id, row.produit_nom, stockAvant, net, -net, row.unite ?? null],
     );
     restitutions.push({ produit_id: row.produit_id, produit_nom: row.produit_nom, quantite: net });
   }

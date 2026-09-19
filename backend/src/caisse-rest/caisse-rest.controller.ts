@@ -294,13 +294,23 @@ export class CaisseRestController {
   private async caisseTheorique(marchandId: string, fondInitial: number, date: string): Promise<number> {
     const [somme] = await this.dataSource.query(
       `SELECT
-         COALESCE(SUM(CASE WHEN type = 'vente'   THEN montant ELSE 0 END), 0) AS ventes,
-         COALESCE(SUM(CASE WHEN type = 'depense' THEN montant ELSE 0 END), 0) AS depenses
+         COALESCE(SUM(CASE WHEN type = 'vente'          THEN montant ELSE 0 END), 0) AS ventes,
+         COALESCE(SUM(CASE WHEN type = 'acompte_credit' THEN montant ELSE 0 END), 0) AS acomptes,
+         COALESCE(SUM(CASE WHEN type = 'depense'        THEN montant ELSE 0 END), 0) AS depenses
        FROM caisse_transactions
       WHERE marchand_id = $1 AND statut <> 'annulee' AND created_at::date = $2::date`,
       [marchandId, date],
     );
-    return fondInitial + Number(somme?.ventes ?? 0) - Number(somme?.depenses ?? 0);
+    // LES ACOMPTES SONT DE L'ARGENT DANS LA BOÎTE — 19/09/2026. Ils n'étaient
+    // comptés nulle part côté serveur, alors que le téléphone les comptait :
+    // la clôture journalisait un écart fantôme, du montant exact des acomptes
+    // du jour. Ce n'est PAS de la recette (elle a été comptée à la vente à
+    // crédit) — c'est de l'encaissement, et la caisse théorique est un compte
+    // d'espèces, pas un compte de résultat.
+    return fondInitial
+      + Number(somme?.ventes ?? 0)
+      + Number(somme?.acomptes ?? 0)
+      - Number(somme?.depenses ?? 0);
   }
 
   // Fermer la journée = déclarer ce qu'on a RÉELLEMENT en main, et confronter.
@@ -490,13 +500,13 @@ export class CaisseRestController {
         // stock d'une autre marchande, même avec un identifiant fourni.
         const rows = l.id
           ? await qr.manager.query(
-              `SELECT id, COALESCE(stock, 0) AS stock FROM produits
+              `SELECT id, COALESCE(stock, 0) AS stock, unite FROM produits
                WHERE marchand_id = $1::text AND id = $2 AND actif = true
                LIMIT 1 FOR UPDATE`,
               [user.id, l.id],
             )
           : await qr.manager.query(
-              `SELECT id, COALESCE(stock, 0) AS stock FROM produits
+              `SELECT id, COALESCE(stock, 0) AS stock, unite FROM produits
                WHERE marchand_id = $1::text AND lower(nom) = lower($2) AND actif = true
                LIMIT 1 FOR UPDATE`,
               [user.id, l.nom],
@@ -511,10 +521,13 @@ export class CaisseRestController {
           [stockAvant - retranchee, rows[0].id],
         );
         await qr.manager.query(
+          // `unite` est FIGÉE ICI, au moment où le mouvement a lieu. Elle
+          // était relue du catalogue à l'affichage : changer l'unité d'un
+          // produit réécrivait alors tout son historique.
           `INSERT INTO stock_mouvements
-             (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant)
-           VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8)`,
-          [user.id, result.id, rows[0].id, l.nom, stockAvant, demandee, retranchee, manquant],
+             (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant, unite)
+           VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [user.id, result.id, rows[0].id, l.nom, stockAvant, demandee, retranchee, manquant, rows[0].unite ?? null],
         );
       }
 
