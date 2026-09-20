@@ -13,7 +13,7 @@
  *
  * Lancer : npm run test:unite-vente
  */
-import { quantiteAvecUnite, ligneLisible, accorderUnite } from './unite.utils.js';
+import { quantiteAvecUnite, ligneLisible, accorderUnite, uniteSeule } from './unite.utils.js';
 
 let echecs = 0;
 const ok = (cond: boolean, quoi: string) => {
@@ -55,6 +55,16 @@ ok(
   `les milliers restent lisibles, obtenu « ${quantiteAvecUnite(1500, 'kg')} »`,
 );
 ok(quantiteAvecUnite(3, null) === '3', 'sans unité : le nombre seul');
+
+console.log("\nL'unité seule, pour la ligne de panier (la quantité est un champ à part)");
+
+ok(uniteSeule(3, 'tas') === 'tas', '« tas » ne prend pas de s');
+ok(uniteSeule(2, 'sac') === 'sacs', '« sacs » s’accorde');
+ok(uniteSeule(1, 'sac') === 'sac', 'au singulier, pas de s');
+ok(uniteSeule(3, 'kg') === 'kg', 'une abréviation ne s’accorde jamais');
+ok(uniteSeule(3, 'pièce') === 'pièces', '« pièce » n’est pas neutre');
+ok(uniteSeule(3, 'unité') === '', '« unité » n’apprend rien : rien à afficher');
+ok(uniteSeule(3, null) === '', 'sans unité : rien à afficher');
 
 if (echecs > 0) {
   console.log(`\n✗ unité de la vente — ${echecs} échec(s)`);

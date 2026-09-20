@@ -56,6 +56,21 @@ export function quantiteAvecUnite(quantite: number, unite?: string | null): stri
 }
 
 /**
+ * L'UNITÉ SEULE — « tas », « kg », « pièces » — pour les endroits où la
+ * quantité est déjà affichée à part (un champ qu'on modifie, par exemple) et
+ * où recomposer « 3 tas » en une seule chaîne n'est pas possible.
+ *
+ * Renvoie '' quand l'unité n'apprend rien (« unité »), exactement comme
+ * `quantiteAvecUnite` : « × 3 unités » est du bruit là où « × 3 » suffit.
+ * L'accord suit la quantité, sinon on écrirait « 3 tas » et « 2 sac ».
+ */
+export function uniteSeule(quantite: number, unite?: string | null): string {
+  if (!unite || UNITES_NEUTRES.has(sansAccents(String(unite)))) return '';
+  const q = Number.isFinite(quantite) ? quantite : 1;
+  return accorderUnite(String(unite), q);
+}
+
+/**
  * Une ligne de vente telle qu'elle se lit sur un reçu : « 3 tas de Tomate ».
  * Le « de » disparaît quand il n'y a pas d'unité — « 3 de Tomate » ne se dit
  * pas — et on retombe alors sur la forme historique « 3 × Tomate ».
