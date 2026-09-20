@@ -19,6 +19,7 @@ import {
   type TTSLang,
 } from "../services/elevenlabs";
 import * as audioManager from "../services/audioManager";
+import * as vtrace from "../utils/voiceTrace"; // VOICE-01 : journal de voix (transcript brut, intention, choix clip) — observation seule
 import { tataClipUrl } from "../services/tataVoice";
 import { tataUiClipForText } from "../services/tataUiClips";
 import { playTataChoice, resolveLocalVoiceChoice } from "../services/localVoiceChoice";
@@ -236,11 +237,14 @@ function startTypewriter(
 // pour une phrase FIXE, on joue la vraie voix ivoirienne (sur l'appareil, zéro
 // cloud) au lieu de la voix de synthèse. Sinon on retombe sur le flux normal.
 async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): Promise<void> {
+  vtrace.ttsAppel('useVoiceCore.ttsSpeak', text, { lang, clip: clip ?? null });
+  if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') vtrace.ttsIgnoree('useVoiceCore.ttsSpeak', text, 'voix-desactivee (julaba_voice_disabled)');
   if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') return;
   if (lang === "french") {
     // Choix B : clip Tata enregistré ou texte seul. Jamais de voix navigateur.
     const clipUrl = (clip ? tataClipUrl(clip) : null) || tataUiClipForText(text) || undefined;
     const choice = resolveLocalVoiceChoice(clipUrl);
+    vtrace.ttsChoix('useVoiceCore.ttsSpeak', text, choice.mode, clipUrl ?? null);
     if (choice.mode === "clip") {
       await playTataChoice(choice, (url) => audioManager.playClip({ url }, { priority: "user" }));
     } else if (typeof window !== 'undefined') {
@@ -251,6 +255,7 @@ async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): 
   // Dioula/Bambara : aucun appel réseau n’est autorisé dans le runtime marchand.
   // Une voix locale ne sera jouée que lorsqu’un pack Tata embarqué aura été fourni.
   // En attendant, le texte reste visible et l’application ne feint pas de traduire.
+  vtrace.ttsIgnoree('useVoiceCore.ttsSpeak', text, `pack-${lang}-absent`);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('julaba:voice-pack-missing', { detail: { lang } }));
   }
@@ -258,6 +263,7 @@ async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): 
 }
 
 async function ttsPlayBase64(base64: string, fallback: string): Promise<void> {
+  vtrace.ttsAppel('useVoiceCore.ttsPlayBase64', fallback, { base64: true });
   if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') return;
   // Joue le clip base64 ; s'il échoue, la voix de secours dit `fallback` (même créneau).
   await audioManager.speakClipOrText({ base64, text: fallback }, { priority: "user" });
@@ -472,6 +478,7 @@ export function useVoiceCore({
   }, []);
 
   const stopRecording = useCallback(() => {
+    vtrace.ecoute('fin', 'useVoiceCore');
     if (timerRef.current) clearInterval(timerRef.current);
     stopVolumeAnalysis();
     stopSilenceDetection();
@@ -567,6 +574,7 @@ export function useVoiceCore({
     // comme réponse de l'assistant. Le vrai feedback (« C'est dans ton
     // panier. ») est produit par l'effet métier lui-même (onAction), pas ici.
     const bypassed = (confirmationBypassIntents ?? []).includes(data.intent);
+    vtrace.info('EXECUTION', { intent: data.intent, action: data.action?.type ?? null, bypass: bypassed, confirme: confirmed, confirmationDemandee: data.needsConfirmation });
 
     if (!bypassed) {
       setResponse(data); setTranscript(data.transcript || userText);
@@ -750,6 +758,7 @@ export function useVoiceCore({
   // Les chiffres viennent du contexte fourni par l'écran (état local/API).
   const answerQuestion = useCallback(async (texte: string): Promise<boolean> => {
     const question = detecterQuestion(texte);
+    vtrace.intention('useVoiceCore.answerQuestion', texte, question ? { intent: `question_${question}`, action: { type: 'question' } } : null);
     if (!question) return false;
     const chiffres: ChiffresJour = {
       ventes: Number(context.ventes) || 0,
@@ -790,6 +799,7 @@ export function useVoiceCore({
       // VIGILANCE iOS : le repli mp4 du MediaRecorder est a tester sur appareils reels.
       audioBlob = new Blob(chunksRef.current, { type: mimeType });
       audioFilename = mimeType.includes("mp4") ? "audio.mp4" : mimeType.includes("webm") ? "audio.webm" : "audio.wav";
+      if (audioBlob.size < 800) vtrace.info('STT_RIEN_CAPTE', { octets: audioBlob.size, mime: mimeType });
       if (audioBlob.size < 800) {
         // Rien capté : si une confirmation est en attente, on y reste (les boutons
         // Oui/Non restent visibles) au lieu de retomber en veille et bloquer.
@@ -808,13 +818,16 @@ export function useVoiceCore({
     setState("thinking");
     startThinkingPhrases();
     try {
+      vtrace.info('STT_MOTEUR_PRET', { moteur: 'sherpa-native', pret: offlineModelReady() });
       if (!offlineModelReady()) {
         // Pas encore prêt : première fois, ou après un rechargement de page.
         setLiveTranscript("Je prépare ta voix…");
         void ttsSpeak("Je prépare ta voix, un petit instant.");
         await ensureOfflineModel(); // télécharge si besoin, sinon ré-active depuis le cache
       }
+      const _sttT0 = vtrace.sttDebut('useVoiceCore.processAudio', { mime: mimeType, octets: audioBlob.size });
       const texte = await transcribeWav(audioBlob);
+      vtrace.sttFin('useVoiceCore.processAudio', 'sherpa-native', texte, _sttT0);
       if (texte) setTranscript(texte); // affiche « tu as dit … »
 
       // ── RÉPONSE À UNE CONFIRMATION EN COURS (« c'est bien ça ? ») ──────────
@@ -822,6 +835,7 @@ export function useVoiceCore({
       // lieu de la traiter comme une nouvelle vente.
       if (pendingResponseRef.current) {
         const rep = interpretYesNo(texte || "");
+        vtrace.intention('useVoiceCore.confirmation', texte || '', rep ? { intent: `confirmation_${rep}`, action: { type: rep } } : null);
         clearThinkingTimer();
         if (rep === "oui") { confirmAttemptsRef.current = 0; await confirmActionRef.current?.(); return; }
         if (rep === "non") { confirmAttemptsRef.current = 0; await cancelActionRef.current?.(); return; }
@@ -839,6 +853,7 @@ export function useVoiceCore({
       }
 
       const local = texte ? intentLocal(texte) : null;
+      vtrace.intention('useVoiceCore.processAudio', texte || '', local);
       if (local) {
         clearThinkingTimer();
         await handleResponse(local as Partial<VoiceProcessResponse>, texte);
@@ -859,6 +874,7 @@ export function useVoiceCore({
       // d'erreur que si state === "error"). Résultat vécu : « on dirait que rien
       // n'enregistre », alors que Tata avait bien une explication à donner.
       clearThinkingTimer();
+      vtrace.erreur('useVoiceCore.processAudio', 'moteur voix indisponible ou transcription échouée (ensureOfflineModel / transcribeWav)');
       const msg = navigator.onLine
         ? "Je n'ai pas réussi à préparer ta voix. Vérifie le réseau et réessaie."
         : "Je n'ai pas réussi à t'écouter, réessaie.";
@@ -880,6 +896,7 @@ export function useVoiceCore({
       // mot-réveil : avant, il passait par le serveur (mort) et donnait « souci
       // technique » au tout début. Désormais, tout est compris localement.
       const local = intentLocal(text);
+      vtrace.intention('useVoiceCore.sendText', text, local);
       if (local) {
         clearThinkingTimer();
         // #8 : on remonte le vrai succès de l'enregistrement (true seulement si
@@ -926,6 +943,7 @@ try {
     // inutile de tenter getUserMedia, on guide l'utilisateur vers un vrai navigateur.
     if (!navigator.mediaDevices?.getUserMedia || window.isSecureContext === false) {
       const msg = "Micro non accessible dans cette application. Ouvre Jùlaba dans Safari ou Chrome pour utiliser la voix.";
+      vtrace.erreur('useVoiceCore.startRecording', msg);
       setError(msg);
       setState("error"); setLiveTranscript("");
       if (onError) onError(msg);
@@ -946,6 +964,7 @@ try {
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => { stream.getTracks().forEach((t) => t.stop()); processAudio(mimeType); };
       mr.start(100);
+      vtrace.ecoute('debut', 'useVoiceCore', { mime: mimeType });
       mediaRecorderRef.current = mr;
       playBip('start'); // Bip démarrage
       startVolumeAnalysis(stream);
@@ -967,6 +986,7 @@ try {
           msg = "Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie.";
         }
       }
+      vtrace.erreur('useVoiceCore.startRecording', msg);
       setError(msg);
       setState("error"); setLiveTranscript("");
       if (onError) onError(err instanceof Error ? err.message : msg);

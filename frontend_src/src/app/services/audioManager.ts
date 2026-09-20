@@ -28,6 +28,7 @@
  * Node sans DOM ni speechSynthesis.
  */
 
+import * as vtrace from "../utils/voiceTrace"; // VOICE-01 : journal de voix (observation seule, jamais de décision)
 export type VoicePriority = "user" | "auto";
 export type PlayResult = "ended" | "failed" | "cancelled";
 
@@ -107,16 +108,19 @@ function realStartTts(text: string): Playback {
       if (cancelled) return;
       for (const chunk of chunks) {
         if (cancelled) return;
+        const _tMorceau = vtrace.top();
 
         // 1. Synthèse native (APK) : rend un WAV. `null` sur le web.
         const wav = await _ttsSynthetiser(chunk);
         if (cancelled) return;
+        vtrace.ttsMoteur(wav ? 'native-sherpa' : 'navigateur', { chunk, voix: wav ? 'Piper/SIWIS via SherpaTts (WAV)' : 'speechSynthesis du téléphone (voir TTS_VOIX_NAVIGATEUR)' });
 
         if (wav) {
           // On joue par le LECTEUR DE CLIPS, pas par une seconde chaîne audio :
           // il sait déjà s'arrêter et s'annuler proprement (principe 1).
           lectureNative = _clipPlayer({ base64: wav });
           const res = await lectureNative.promise;
+          vtrace.ttsMorceauFin('native-sherpa', chunk, _tMorceau, res);
           lectureNative = null;
           if (cancelled || res === "cancelled") return;
           // Si la lecture échoue (WAV illisible), on ne reste pas muet : on
@@ -127,7 +131,9 @@ function realStartTts(text: string): Playback {
 
         // 2. Repli : voix du navigateur. Seul chemin sur le web, et filet sur
         //    l'APK si la synthèse native manque ou échoue.
+        if (wav) vtrace.ttsMoteur('navigateur', { chunk, repli: 'WAV natif illisible → voix du téléphone' });
         await _ttsSpeakChunk(chunk);
+        vtrace.ttsMorceauFin('navigateur', chunk, _tMorceau);
         if (cancelled) return;
       }
       done("ended");
@@ -181,6 +187,7 @@ function realStartClip(source: { base64?: string; url?: string }): Playback {
   (async () => {
     try {
       let url = source.url ?? "";
+      vtrace.ttsMoteur('clip', { url: source.url ?? null, base64: !!source.base64, note: source.base64 ? 'audio en mémoire (WAV de la synthèse native, ou clip base64)' : 'clip mp3 embarqué' });
       if (source.base64) {
         const { base64ToBlob } = await import("./elevenlabs");
         if (settled) return;
@@ -221,6 +228,7 @@ function hardStop(): void {
   _inFlight = false;
   const cur = _current;
   _current = null;
+  if (cur) vtrace.ttsCoupee();
   if (cur) cur.stop();
 }
 
@@ -251,10 +259,13 @@ function isThrottled(opts?: VoiceOptions): boolean {
 
 /** Joue un handle en l'enregistrant comme lecture active ; renvoie son résultat. */
 async function playHandle(pb: Playback, myGen: number): Promise<PlayResult> {
+  if (_generation !== myGen || _muted) vtrace.ttsIgnoree('audioManager.playHandle', '', _muted ? 'muet' : 'supplantee-avant-lecture');
   if (_generation !== myGen || _muted) {
     pb.stop();
     return "cancelled";
   }
+  const _idLecture = vtrace.ttsDebut();
+  pb.promise.then((r) => vtrace.ttsFin(_idLecture, r));
   _current = pb;
   try {
     return await pb.promise; // résout toujours (ended/failed/cancelled)
@@ -269,10 +280,13 @@ async function playHandle(pb: Playback, myGen: number): Promise<PlayResult> {
  * supplantée entre-temps.
  */
 function runExclusive(job: (myGen: number) => Promise<void>, opts?: VoiceOptions): Promise<void> {
+  if (_muted) vtrace.ttsIgnoree('audioManager.runExclusive', opts?.dedupeKey ?? '', 'muet');
   if (_muted) return Promise.resolve();
   const priority: VoicePriority = opts?.priority ?? "auto";
 
+  if (isThrottled(opts)) vtrace.ttsIgnoree('audioManager.runExclusive', opts?.dedupeKey ?? '', 'anti-repetition');
   if (isThrottled(opts)) return Promise.resolve(); // règle 4
+  if (priority === "auto" && _inFlight) vtrace.ttsIgnoree('audioManager.runExclusive', opts?.dedupeKey ?? '', 'auto-en-cours');
   if (priority === "auto" && _inFlight) return Promise.resolve(); // règle 3
 
   hardStop(); // règles 1,2,5 : coupe l'actif (et résout sa promesse)
@@ -281,6 +295,7 @@ function runExclusive(job: (myGen: number) => Promise<void>, opts?: VoiceOptions
   if (opts?.dedupeKey) _lastSpokenAt.set(opts.dedupeKey, Date.now());
 
   _chain = _chain.then(async () => {
+    if (_generation !== myGen || _muted) vtrace.ttsIgnoree('audioManager.runExclusive', opts?.dedupeKey ?? '', _muted ? 'muet' : 'supplantee-en-file');
     if (_generation !== myGen || _muted) {
       if (_generation === myGen) _inFlight = false;
       return; // supplanté (« la plus récente gagne ») ou mute
@@ -301,6 +316,7 @@ function runExclusive(job: (myGen: number) => Promise<void>, opts?: VoiceOptions
 
 /** Fait parler (voix navigateur). Priorité 'user' par défaut (interrompt). */
 export function speak(text: string, opts?: VoiceOptions): Promise<void> {
+  vtrace.ttsDemande('audioManager.speak', text, opts);
   if (!text?.trim()) return Promise.resolve();
   return runExclusive((g) => playHandle(_ttsPlayer(text), g).then(() => {}), {
     priority: "user",
@@ -310,6 +326,7 @@ export function speak(text: string, opts?: VoiceOptions): Promise<void> {
 
 /** Annonce automatique (n'interrompt jamais, ne s'empile pas ; dédup conseillée). */
 export function speakAuto(text: string, opts?: Omit<VoiceOptions, "priority">): Promise<void> {
+  vtrace.ttsDemande('audioManager.speakAuto', text, { ...(opts || {}), priority: 'auto' });
   if (!text?.trim()) return Promise.resolve();
   return runExclusive((g) => playHandle(_ttsPlayer(text), g).then(() => {}), {
     ...opts,
@@ -322,6 +339,7 @@ export function playClip(
   source: { base64?: string; url?: string },
   opts?: VoiceOptions
 ): Promise<void> {
+  vtrace.ttsDemande('audioManager.playClip', source.url ?? '(clip base64)', opts);
   return runExclusive((g) => playHandle(_clipPlayer(source), g).then(() => {}), {
     priority: "user",
     ...opts,
@@ -337,6 +355,7 @@ export function speakClipOrText(
   args: { clipUrl?: string; base64?: string; text?: string },
   opts?: VoiceOptions
 ): Promise<void> {
+  vtrace.ttsDemande('audioManager.speakClipOrText', args.text ?? args.clipUrl ?? '(clip base64)', { ...(opts || {}), clip: args.clipUrl ?? (args.base64 ? 'base64' : null) });
   return runExclusive(async (g) => {
     if (args.clipUrl || args.base64) {
       const res = await playHandle(_clipPlayer({ url: args.clipUrl, base64: args.base64 }), g);
@@ -356,6 +375,7 @@ export function speakDynamic(
   resolveSource: () => Promise<{ base64?: string; url?: string; text?: string }>,
   opts?: VoiceOptions
 ): Promise<void> {
+  vtrace.ttsDemande('audioManager.speakDynamic', '(source résolue à chaud)', opts);
   return runExclusive(async (myGen) => {
     const cancelled = () => _generation !== myGen || _muted;
     let src: { base64?: string; url?: string; text?: string } = {};
