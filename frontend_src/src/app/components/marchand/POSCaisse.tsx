@@ -4,7 +4,7 @@ import { Search, Plus, Minus, Trash2, X, Check, ArrowLeft, Package, FileText } f
 import { useCaisse } from '../../contexts/CaisseContext';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { useApp } from '../../contexts/AppContext';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { CreditModal } from './CreditModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
@@ -19,6 +19,9 @@ import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
 import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMaitre';
+import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
+import { ObjectifProvider } from '../../contexts/ObjectifContext';
+import { MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -38,8 +41,15 @@ const CAISSE_CREDIT_ACTIF: boolean = false;
 // Réactivation = chantier mobile money dédié. Typé `boolean` volontairement.
 const CAISSE_MOBILE_MONEY_ACTIF: boolean = false;
 
-export function POSCaisse() {
+function POSCaisseInner() {
   const navigate = useNavigate();
+  const location = useLocation();
+  // PRODUIT PRÉSÉLECTIONNÉ — arrive par l'ÉTAT DE ROUTE, jamais par une
+  // variable globale ni un état caché : « Vendre » depuis la fiche d'un
+  // produit (Mon stock) ouvre CETTE page avec le produit déjà choisi. C'est la
+  // convention déjà en place dans JULABA (voir RoleDashboard, LoginPassword…),
+  // donc lisible, testable, et vide quand on arrive autrement.
+  const produitPreselectionne = ((location.state as { produitPreselectionne?: ProduitPreselectionne } | null)?.produitPreselectionne) ?? null;
   const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, refreshProducts, transactions } = useCaisse();
   const { speak, reloadTransactions, user, isOnline } = useApp();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Ma boutique';
@@ -584,6 +594,15 @@ export function POSCaisse() {
       <div className="lg:flex lg:items-start lg:gap-4">
       <div className="lg:flex-1 lg:min-w-0" style={{ flex:1, overflowY:'auto', padding:'14px 0 0' }}>
         <SyncEchecsBanner />
+
+        {/* LE MICRO — présent AUX TROIS MOMENTS de la vente (lot B).
+            Il est rendu ici sans aucune condition : ni sur l'état du panier,
+            ni sur celui de l'encaissement. C'est la règle de VOIX-01 rendue
+            vérifiable — il n'existe aucun état de la vente où la marchande
+            regarde cet écran sans voir le micro. Le moteur vocal est monté
+            DANS ce composant : le bouton ne peut pas exister sans lui, ce qui
+            interdit le retour du micro décoratif de 2026. */}
+        <MicroVenteCaisse produitPreselectionne={produitPreselectionne} />
         {/* UNE ÉTIQUETTE, PAS UNE BOÎTE — le défaut relevé par Patrick le 18/09.
             Il a tapé « banane » et rien n'est arrivé dans le champ : l'écran a
             continué d'afficher l'oignon. La cause n'était pas le filtre, elle
@@ -1021,5 +1040,27 @@ export function POSCaisse() {
         )}
       </AnimatePresence>
     </SubPageLayout>
+  );
+}
+
+/**
+ * LA CAISSE MONTE LES PROVIDERS DU MOTEUR VOCAL (lot B).
+ *
+ * `useVoiceCore` lit `useObjectif()` et `useRaccourcis()`. Sans ces deux
+ * providers, ils ne LÈVENT PAS d'erreur : ils retombent sur des valeurs
+ * nulles. On obtiendrait donc un micro qui a l'air de marcher — exactement le
+ * défaut que VOIX-01 décrit. Ils sont montés ici, au plus près du seul écran
+ * qui en a besoin, comme le faisaient l'accueil et Mon stock avant que la
+ * vente ne converge sur la caisse.
+ */
+export function POSCaisse() {
+  const { getTodayStats } = useApp();
+  const stats = getTodayStats();
+  return (
+    <RaccourcisProvider>
+      <ObjectifProvider ventes={stats?.ventes || 0}>
+        <POSCaisseInner />
+      </ObjectifProvider>
+    </RaccourcisProvider>
   );
 }

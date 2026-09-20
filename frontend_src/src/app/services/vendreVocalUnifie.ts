@@ -18,7 +18,7 @@
  * - le feedback est désormais « C'est dans le panier. » (jamais « Ta vente
  *   est enregistrée. ») — `useVoiceCore` ne parle plus rien lui-même pour
  *   cette intention (voir `confirmationBypassIntents` dans
- *   `VenteVocaleModal.tsx`), c'est cette fonction qui parle.
+ *   `MicroVenteCaisse.tsx`), c'est cette fonction qui parle.
  */
 import {
   apparierProduit,

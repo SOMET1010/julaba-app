@@ -6,7 +6,6 @@ import { salutation } from '../../utils/appellation';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { IMG_LOGO_JULABA } from '../../assets/images';
 import { BrandSignature } from '../shared/BrandSignature';
-import { VenteVocaleModal } from './VenteVocaleModal';
 import { PropositionReconnaissance } from '../auth/PropositionReconnaissance';
 import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
 import { ResumeModal, CloseDayModal, EditFondModal } from './MarchandModals';
@@ -49,13 +48,12 @@ function MarchandAccueilVoiceInner() {
     window.addEventListener(CONFORT_EVENT, sync);
     return () => window.removeEventListener(CONFORT_EVENT, sync);
   }, []);
-  const [showVente, setShowVente] = useState(false);
   const [showResume, setShowResume] = useState(false);
   const [showClose, setShowClose] = useState(false);
   const [showEditFond, setShowEditFond] = useState(false);
 
-  // Panier en cours : bannière de reprise (la caisse complète se rejoint depuis
-  // l'écran vocal — cf. VenteVocaleModal — plus depuis un second bouton ici).
+  // Panier en cours : bannière de reprise. « Vendre » et « Reprendre » mènent
+  // désormais au MÊME endroit — la caisse, seule surface de vente.
   const { venteEnCours, cart, getTotalCart, staleCart, resumeStaleCart, discardStaleCart } = useCaisse();
   const nbItems = cart.reduce((s, i) => s + i.quantite, 0);
   const totalPanier = getTotalCart();
@@ -155,14 +153,14 @@ function MarchandAccueilVoiceInner() {
           </motion.button>
         ) : null}
 
-        {/* UN SEUL geste évident pour vendre (loi Julaba, cf. doc du composant) : deux
-            boutons côte à côte (« Nouvelle vente » → caisse tactile, « Vendre à la voix »
-            → Tata Nanti Lou) faisaient deux écrans concurrents pour la même intention —
-            source de confusion réelle en test terrain. La voix est désormais LE chemin
-            par défaut ; la caisse complète (plusieurs articles, crédit, mobile money) se
-            rejoint DEPUIS cet écran vocal, pas en façade de l'accueil. */}
+        {/* UN SEUL geste évident pour vendre, et il ouvre LA CAISSE (lot B —
+            VOIX-01, arbitrage du 20/09/2026). Il ouvrait auparavant un écran
+            vocal distinct qui, la ligne une fois au panier, renvoyait vers la
+            caisse : deux démarrages pour un seul parcours, et plus aucun micro
+            à l'arrivée. La caisse est désormais la seule surface de vente —
+            elle porte le micro, les produits, le panier et l'encaissement. */}
         <motion.button
-          whileTap={{ scale: 0.97 }} onClick={() => setShowVente(true)} aria-label="Vendre"
+          whileTap={{ scale: 0.97 }} onClick={allerCaisse} aria-label="Vendre"
           className="commerce-sell">
           <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg>
           <span>Vendre</span>
@@ -182,8 +180,6 @@ function MarchandAccueilVoiceInner() {
         </div>
 
       </div>
-
-      <VenteVocaleModal isOpen={showVente} onClose={() => setShowVente(false)} />
 
       {/* Résumé du jour — ouvert en touchant la carte caisse (Phase 2).
           La clôture de journée + le fond y sont relogés (Q-C). */}

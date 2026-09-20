@@ -39,7 +39,9 @@ const verifier = (quoi, ok, pourquoi) => {
 const api = src('app', 'services', 'api', 'caisse-api.ts');
 const contexte = src('app', 'contexts', 'CaisseContext.tsx');
 const caisse = src('app', 'components', 'marchand', 'POSCaisse.tsx');
-const modale = src('app', 'components', 'marchand', 'VenteVocaleModal.tsx');
+// Le moteur vocal a convergé vers la caisse (VOIX-01, lot B) : VenteVocaleModal
+// n'existe plus, c'est MicroVenteCaisse qui remplit le panier à la voix.
+const micro = src('app', 'components', 'marchand', 'MicroVenteCaisse.tsx');
 
 console.log('\nLe câblage qui distingue une vente dictée d’une vente tapée');
 
@@ -51,7 +53,7 @@ verifier(
 
 verifier(
   'la voix marque ses lignes en `vocal`',
-  (modale.match(/addToCart\([^;]*'vocal'\)/g) || []).length >= 2,
+  (micro.match(/addToCart\([^;]*'vocal'\)/g) || []).length >= 2,
   'les DEUX appels comptent : produit du catalogue ET produit inconnu (vente libre).',
 );
 
