@@ -26,7 +26,8 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { MESSAGES_TTS, INTENTIONS_STT, entreeTts, entreeIntent } from '../catalog.js';
-import { codesLocales, manifest, LOCALES_PROVISOIRES } from '../registry.js';
+import { codesLocales, manifest, estLocaleConnue, LOCALES_PROVISOIRES, LOCALE_PAR_PREFERENCE } from '../registry.js';
+import { intentLocal } from '../../../voice-offline/localIntent.js';
 import { journalFallbacks, resoudreMessage, viderJournalFallbacks, surFallback, t, variantesIntention } from '../runtime.js';
 import { LOCALE_REFERENCE } from '../types.js';
 
@@ -129,6 +130,30 @@ console.log('\n[gate 3] aucune clé orpheline');
   // Une clé « a_migrer » lue par le code est un statut périmé : on le dit.
   const luesNonMigrees = [...lues.keys()].filter((id) => entreeTts(id)?.statut === 'a_migrer');
   ok(luesNonMigrees.length === 0, `aucune clé lue par le code n'est encore marquée « a_migrer »${luesNonMigrees.length ? ` — à corriger : ${luesNonMigrees.join(', ')}` : ''}`);
+}
+
+// ── I18N-02 : chaque préférence sélectionnable a un manifest ; le journal ne
+// se noie pas. Contre-audit QA du 20/09/2026 : « bambara » → `bm` était mappé
+// mais non enregistré (une trace locale_inconnue par appel) ; en dioula,
+// chaque intentLocal émettait 7 traces I18N_FALLBACK vers l'anneau de 200
+// entrées du lot E — trente dictées le vidaient. Règle : un repli est tracé
+// UNE fois par (type, id, locale demandée, raison) par session.
+console.log('\n[I18N-02] préférences enregistrées, traces dédupliquées');
+{
+  for (const [pref, code] of Object.entries(LOCALE_PAR_PREFERENCE)) {
+    ok(estLocaleConnue(code), `préférence « ${pref} » → ${code} : manifest enregistré`);
+  }
+  viderJournalFallbacks();
+  intentLocal('vends 3 tomates à 500 francs', 'dyu-ci');
+  const n1 = journalFallbacks().length;
+  intentLocal('vends 3 tomates à 500 francs', 'dyu-ci');
+  intentLocal('oui valide', 'dyu-ci');
+  const n2 = journalFallbacks().length;
+  ok(n1 > 0, `un premier intentLocal en dyu-ci trace ses replis (${n1})`);
+  ok(n2 === n1, `les appels suivants ne retracent pas les mêmes replis (${n2 - n1} trace(s) de plus)`);
+  viderJournalFallbacks();
+  intentLocal('vends 3 tomates à 500 francs', 'dyu-ci');
+  ok(journalFallbacks().length === n1, 'vider le journal réarme la déduplication (session de test)');
 }
 
 // ── Gate 6 : repli tracé ────────────────────────────────────────────────────

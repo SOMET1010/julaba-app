@@ -23,6 +23,8 @@ import { INTENTIONS_STT, MESSAGES_TTS, entreeIntent, entreeTts } from '../catalo
 import { codesLocales, manifest } from '../registry.js';
 import { normaliserPour, variantesIntention } from '../runtime.js';
 import { LOCALE_REFERENCE, type IntentId, type VariantesIntention } from '../types.js';
+import { detecterEncaissement } from '../../../voice-offline/grammaireEncaissement.js';
+import { intentLocal } from '../../../voice-offline/localIntent.js';
 
 let echecs = 0;
 const ok = (cond: boolean, quoi: string) => { if (cond) console.log('  ✓', quoi); else { console.log('  ✗', quoi); echecs++; } };
@@ -68,6 +70,44 @@ for (const code of codesLocales()) {
     }
   } else {
     ok(true, 'INT_OUI_VALIDE absent : la locale repliera sur la liste blanche de fr-ci (tracé)');
+  }
+}
+
+// ── I18N-01 : la préférence de langue ne change pas la grammaire d'argent ──
+// Contre-audit QA du 20/09/2026 : avec la préférence « Dioula », dyu-ci n'a
+// aucune variante validée, la grammaire hérite donc de celles de fr-ci — mais
+// elle normalisait la phrase avec la normalisation de dyu-ci (normaliserBambara,
+// qui remplace tout [^a-z0-9] par un espace et casse les apostrophes) :
+// « oui c'est bon valide » → null au lieu de oui_valide, « c'est combien » →
+// null. Règle : la normalisation s'applique avec la locale SERVIE (celle dont
+// viennent les variantes), jamais avec la locale demandée. Tant qu'une locale
+// n'a pas ses propres intentions validées finance, elle répond EXACTEMENT
+// comme fr-ci sur ce corpus — apostrophes droites et courbes, accents,
+// ponctuation, espaces insécables, majuscules compris.
+console.log('\n[I18N-01] même grammaire d\'encaissement quelle que soit la locale demandée');
+{
+  const CORPUS_LOCALES = [
+    "oui c'est bon valide", 'oui c’est bon valide', "c'est combien", 'c’est combien', 'oui valide ça', 'oui valide ca', 'Oui, valide !',
+    'oui\u00a0valide', 'arrête', 'arrete', 'ça fait combien', 'non, pas valide', 'encaisse', 'on encaisse', 'termine la vente', 'combien elle doit ?',
+    'elle doit combien', 'le total', 'oui', 'valide', 'ouais je valide', 'oui je valide pas', 'attends', 'pas encore', 'vends 3 tomates à 500 francs',
+    "j'ai dépensé 1000 pour le taxi", 'oui validé', 'Encaisse !', 'ok valide', 'oui valide, non attends',
+  ];
+  const LOCALES_TEST = ['dyu-ci', 'bci', 'any', 'bm', 'xx-inconnue'];
+  for (const loc of LOCALES_TEST) {
+    const ecarts = CORPUS_LOCALES.filter((p) => detecterEncaissement(p, loc) !== detecterEncaissement(p, LOCALE_REFERENCE))
+      .map((p) => `« ${p} » : ${String(detecterEncaissement(p, loc))} ≠ ${String(detecterEncaissement(p, LOCALE_REFERENCE))}`);
+    ok(ecarts.length === 0, `${loc} : ${CORPUS_LOCALES.length} phrases, même intention qu'en fr-ci${ecarts.length ? ` — ${ecarts.join(' ; ')}` : ''}`);
+    const ecartsLocal = CORPUS_LOCALES.filter((p) => JSON.stringify(intentLocal(p, loc)) !== JSON.stringify(intentLocal(p, LOCALE_REFERENCE)));
+    ok(ecartsLocal.length === 0, `${loc} : intentLocal identique à fr-ci sur le corpus${ecartsLocal.length ? ` — ${ecartsLocal.join(' ; ')}` : ''}`);
+  }
+  // Une locale qui porte une normalisation mais aucune intention validée
+  // finance ne doit pas l'appliquer aux intentions critiques : la
+  // normalisation retournée pour ces intentions est celle de la locale servie.
+  const { normaliserPourIntention } = await import('../runtime.js');
+  for (const id of ['INT_OUI_VALIDE', 'INT_ANNULER_VALIDATION', 'INT_ENCAISSER', 'INT_COMBIEN_DOIT'] as IntentId[]) {
+    const r = normaliserPourIntention(id, 'dyu-ci');
+    ok(r.locale === LOCALE_REFERENCE && r.normaliser("c'est") === normaliserPour(LOCALE_REFERENCE)("c'est"),
+      `${id} en dyu-ci : variantes ET normalisation servies par fr-ci (« c'est » → « ${r.normaliser("c'est").trim()} »)`);
   }
 }
 
