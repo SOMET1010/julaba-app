@@ -42,7 +42,7 @@
 // bruit est exactement le genre d'erreur qu'on ne veut pas découvrir le soir.
 // ──────────────────────────────────────────────────────────────────────────
 
-import { compilerMotif, localeActive, normaliserPour, variantesIntention } from '../i18n/voice/runtime';
+import { compilerMotif, localeActive, normaliserReference, variantesIntention } from '../i18n/voice/runtime';
 import type { LocaleCode } from '../i18n/voice/types';
 
 export type IntentionEncaissement =
@@ -84,29 +84,45 @@ export function estIntentionEncaissement(type: string): type is IntentionEncaiss
 // ponctuation aplatie, bordée d'espaces — la reconnaissance vocale est
 // irrégulière sur les accents, la détection ne doit jamais en dépendre).
 
+type Normaliser = (texte: string) => string;
+
+/**
+ * Chaque intention porte SA normalisation : celle de la locale qui a servi ses
+ * variantes (I18N-01, contre-audit du 20/09/2026). Avec la préférence
+ * « dioula » et une locale dyu-ci sans intentions validées, les variantes
+ * viennent de fr-ci — et doivent être comparées avec la normalisation de
+ * fr-ci, pas avec celle de dyu-ci (qui remplace tout [^a-z0-9] par un espace
+ * et cassait « oui c'est bon valide »). La normalisation n'est jamais celle de
+ * la locale DEMANDÉE ; en fr-ci, les quatre sont la référence : comportement
+ * identique à 576fd62 (empreinte `grammaire`, calculée par locale).
+ */
 interface Reconnaisseurs {
-  normaliser: (texte: string) => string;
   /** Liste blanche FERMÉE : la phrase entière normalisée, ou rien. */
-  validation: ReadonlySet<string>;
-  annulation: RegExp;
-  encaisser: RegExp;
-  combienDoit: RegExp;
+  validation: { liste: ReadonlySet<string>; normaliser: Normaliser };
+  annulation: { motif: RegExp; normaliser: Normaliser };
+  encaisser: { motif: RegExp; normaliser: Normaliser };
+  combienDoit: { motif: RegExp; normaliser: Normaliser };
 }
 
 /** Une expression qui ne reconnaît rien : ce qu'on obtient si une langue n'a AUCUNE variante, même en repli. */
 const RIEN = /(?!)/;
 
 function reconnaisseurs(locale: LocaleCode): Reconnaisseurs {
-  const motif = (id: 'INT_ANNULER_VALIDATION' | 'INT_ENCAISSER' | 'INT_COMBIEN_DOIT'): RegExp => {
-    const v = variantesIntention(id, locale)?.variantes;
-    return v && v.mode === 'motif' ? compilerMotif(v) : RIEN;
+  const motif = (id: 'INT_ANNULER_VALIDATION' | 'INT_ENCAISSER' | 'INT_COMBIEN_DOIT') => {
+    const v = variantesIntention(id, locale);
+    return {
+      motif: v && v.variantes.mode === 'motif' ? compilerMotif(v.variantes) : RIEN,
+      normaliser: v?.normaliser ?? normaliserReference,
+    };
   };
-  const liste = variantesIntention('INT_OUI_VALIDE', locale)?.variantes;
+  const v = variantesIntention('INT_OUI_VALIDE', locale);
   return {
-    normaliser: normaliserPour(locale),
     // Une liste blanche est OBLIGATOIREMENT en mode phrase entière : tout autre
     // mode ne valide rien (validateCriticalMessages l'interdit en amont).
-    validation: liste && liste.mode === 'phrase_entiere' ? new Set(liste.phrases) : new Set<string>(),
+    validation: {
+      liste: v && v.variantes.mode === 'phrase_entiere' ? new Set(v.variantes.phrases) : new Set<string>(),
+      normaliser: v?.normaliser ?? normaliserReference,
+    },
     annulation: motif('INT_ANNULER_VALIDATION'),
     encaisser: motif('INT_ENCAISSER'),
     combienDoit: motif('INT_COMBIEN_DOIT'),
@@ -121,21 +137,20 @@ function reconnaisseurs(locale: LocaleCode): Reconnaisseurs {
 export function detecterEncaissement(texte: string, locale: LocaleCode = localeActive()): IntentionEncaissement | null {
   if (!texte || !texte.trim()) return null;
   const r = reconnaisseurs(locale);
-  const t = r.normaliser(texte);
 
   // L'ANNULATION PASSE AVANT TOUT. « non, pas valide » contient « valid » :
   // si la validation était testée d'abord, un refus deviendrait un paiement.
   // C'est l'ordre de ces deux blocs qui rend ce module sûr.
-  if (r.annulation.test(t)) return 'annuler_validation';
+  if (r.annulation.motif.test(r.annulation.normaliser(texte))) return 'annuler_validation';
 
   // La phrase ENTIÈRE, ou rien. « oui je valide pas », « oui valide la
   // dépense », « ma cliente a dit oui valide » ne sont dans aucune liste :
   // elles ne valent rien ici, et retombent en « je n'ai pas compris ».
-  if (r.validation.has(t.trim())) return 'oui_valide';
+  if (r.validation.liste.has(r.validation.normaliser(texte).trim())) return 'oui_valide';
 
-  if (r.encaisser.test(t)) return 'encaisser';
+  if (r.encaisser.motif.test(r.encaisser.normaliser(texte))) return 'encaisser';
 
-  if (r.combienDoit.test(t)) return 'combien_doit';
+  if (r.combienDoit.motif.test(r.combienDoit.normaliser(texte))) return 'combien_doit';
 
   return null;
 }

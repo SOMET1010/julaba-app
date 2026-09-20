@@ -85,13 +85,15 @@ console.log('\n[argent] la porte unique et l\'ordre de la grammaire, inchangés'
     'machineEncaissement : les quatre conditions de la porte, dans le même ordre');
   ok(!/toLocaleString|francs/.test(machine), 'machineEncaissement : ni formatage ni « francs » — les phrases sont des clés');
   const grammaire = sansCommentaires(readFileSync(join(SRC, 'voice-offline/grammaireEncaissement.ts'), 'utf8'));
-  const iAnnul = grammaire.indexOf("r.annulation.test(t)) return 'annuler_validation'");
-  const iValid = grammaire.indexOf("r.validation.has(t.trim())) return 'oui_valide'");
-  const iEnc = grammaire.indexOf("r.encaisser.test(t)) return 'encaisser'");
-  const iComb = grammaire.indexOf("r.combienDoit.test(t)) return 'combien_doit'");
+  const iAnnul = grammaire.indexOf("r.annulation.motif.test(r.annulation.normaliser(texte))) return 'annuler_validation'");
+  const iValid = grammaire.indexOf("r.validation.liste.has(r.validation.normaliser(texte).trim())) return 'oui_valide'");
+  const iEnc = grammaire.indexOf("r.encaisser.motif.test(r.encaisser.normaliser(texte))) return 'encaisser'");
+  const iComb = grammaire.indexOf("r.combienDoit.motif.test(r.combienDoit.normaliser(texte))) return 'combien_doit'");
   ok(iAnnul !== -1 && iValid !== -1 && iEnc !== -1 && iComb !== -1 && iAnnul < iValid && iValid < iEnc && iEnc < iComb,
     'grammaireEncaissement : annulation, puis liste blanche (phrase entière), puis encaisser, puis combien — dans cet ordre');
-  ok(/mode === 'phrase_entiere' \? new Set\(liste\.phrases\) : new Set<string>\(\)/.test(grammaire), 'grammaireEncaissement : la validation n\'accepte qu\'une liste blanche en mode phrase entière');
+  ok(/mode === 'phrase_entiere' \? new Set\(v\.variantes\.phrases\) : new Set<string>\(\)/.test(grammaire), 'grammaireEncaissement : la validation n\'accepte qu\'une liste blanche en mode phrase entière');
+  ok(!/normaliserPour\(/.test(grammaire) && (grammaire.match(/\.normaliser\(texte\)/g) || []).length === 4,
+    'grammaireEncaissement : chaque intention normalise avec SA locale servie, jamais avec la locale demandée (I18N-01)');
   ok(!/new Set\(\[\s*'oui valide'/.test(grammaire) && !/\/\\b\(non\|annule/.test(grammaire), 'grammaireEncaissement : plus aucune variante française écrite en dur (données de fr-ci)');
 }
 

@@ -39,7 +39,10 @@ import { creerLigneProvisoire } from '../../../services/ligneProvisoire.js';
 /** Empreintes relevées sur 576fd62 (base du lot). */
 export const EMPREINTES_BASE = {
   machine: '5e0a499ca8313f722d00d38e641837dbbb4e0d6901cf9d51e98256128f0ff52b',
-  grammaire: '0dd33503a13f888695f5554d24b25b346901b4048170304b96a24e7425a7010a',
+  // Recalculée sur la SOURCE de 576fd62 avec la formule « par locale » (I18N-01) :
+  // la fonction de base ignore le second argument, donc chaque locale y répond
+  // comme fr-ci. L'ancienne valeur (corpus historique seul) était 0dd33503….
+  grammaire: '63edc90fc7e3b924064fd15f0a94038ec1e9626d90602b62eaccebd8a0e2aa9d',
   intentLocal: 'f6c8bc76ebd92dcccddb9424b86ab749d70b3053db3c8dfccd07535d90dcaedd',
   dialogues: '89f1731f9425dede5d23e1a1958a79685b54c959cb8c6dba3e39d23c23c017b7',
   relecture: 'dcb722cc97358781a2a3eb0e2d58b89bee9c5dd6051dc90c0bf03a17bc64dd89',
@@ -130,9 +133,34 @@ export function corpusGrammaire(): string[] {
   return [...base, ...grille];
 }
 
+/**
+ * Locales sous lesquelles la grammaire doit répondre comme fr-ci tant
+ * qu'elles n'ont pas leurs propres intentions validées (I18N-01) : les
+ * squelettes livrés, la préférence bambara, et une locale inconnue.
+ */
+export const LOCALES_EMPREINTE = ['fr-ci', 'dyu-ci', 'bci', 'any', 'bm', 'xx-inconnue'] as const;
+
+/** Phrases du contre-audit I18N-01 : apostrophes droites/courbes, accents, ponctuation, espace insécable. */
+export function corpusLocales(): string[] {
+  return [
+    "oui c'est bon valide", 'oui c’est bon valide', "c'est combien", 'c’est combien', 'oui valide ça', 'oui valide ca', 'Oui, valide !',
+    'oui\u00a0valide', 'arrête', 'arrete', 'ça fait combien', 'non, pas valide', 'encaisse', 'on encaisse', 'termine la vente', 'combien elle doit ?',
+    'elle doit combien', 'le total', 'oui', 'valide', 'ouais je valide', 'oui je valide pas', 'attends', 'pas encore', 'vends 3 tomates à 500 francs',
+    "j'ai dépensé 1000 pour le taxi", 'oui validé', 'Encaisse !', 'ok valide', 'oui valide, non attends',
+  ];
+}
+
+/**
+ * Deux volets : (1) le corpus historique, appelé SANS locale (identique à
+ * l'étape 0) ; (2) le corpus I18N-01, appelé AVEC chaque locale — sur la
+ * source de 576fd62 (qui ignore le second argument) il donne la réponse fr-ci
+ * pour chaque locale : c'est cette valeur qui est figée, et que la migration
+ * doit rendre pour toute locale sans variantes validées.
+ */
 export function empreinteGrammaire(): string {
   const h = createHash('sha256');
   for (const phrase of corpusGrammaire()) h.update(`${phrase}→${String(detecterEncaissement(phrase))}\n`);
+  for (const locale of LOCALES_EMPREINTE) for (const phrase of corpusLocales()) h.update(`${locale}|${phrase}→${String(detecterEncaissement(phrase, locale))}\n`);
   return h.digest('hex');
 }
 
