@@ -70,8 +70,32 @@ describe('Invariants blockers argent (🔴 attendu — it.failing)', () => {
     expect(await montantDu(client)).toBe(5000);
   }, 30000);
 
-  // I5 — Idempotence de l'acompte.
-  it.failing('I5 — acompte rejoué ⇒ un seul encaissement', async () => {
+  // I5 — Idempotence de l'acompte, CÔTÉ SERVEUR SEULEMENT.
+  //
+  // ATTENTION À CE QUE CE TEST PROUVE, et à ce qu'il ne prouve pas. Il fournit
+  // lui-même `idempotency_key: 'I5-K'`. Il établit donc : « si l'appelant
+  // fournit une clé stable, le serveur ne compte pas deux fois ». Il
+  // n'établissait RIEN sur le parcours JULABA — et le contre-audit du
+  // 19/09/2026 a montré que le vrai client, lui, n'envoyait aucune clé : deux
+  // envois de la même tentative encaissaient deux fois, pendant que ce test
+  // restait vert.
+  //
+  // Le maillon client est désormais tenu ailleurs, là où il doit l'être :
+  // `frontend_src/src/app/services/api/creditsCleIdempotence.test.mts`.
+  // Depuis ARGENT-4b, une clé absente est d'ailleurs REFUSÉE par le serveur.
+  //
+  // FERMÉ par ARGENT-4, donc PROMU.
+  //
+  // Le mécanisme de ce fichier a fonctionné exactement comme annoncé dans son
+  // en-tête : marqué `it.failing` tant que le blocker était ouvert, il est
+  // devenu ROUGE dès qu'un correctif l'a satisfait, forçant sa promotion dans
+  // le même lot. Ce n'est pas une régression, c'est le signal.
+  //
+  // I4 et I6 restent `it.failing` : l'idempotence de la CRÉATION d'un crédit
+  // (ARG-04) et la trace `type='credit'` de la vente à crédit (I6) ne sont pas
+  // fermées par ARGENT-4, qui ne traite que l'ENCAISSEMENT. Les promouvoir
+  // aussi serait s'attribuer un travail non fait.
+  it('I5 — acompte rejoué ⇒ un seul encaissement', async () => {
     const c = await creerCredit({ client_nom: 'Client-I5', montant_total: '4000', acompte: '0', echeance: '2027-12-31' });
     const id = c.body.credit.id;
     const payer = () =>

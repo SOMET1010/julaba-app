@@ -205,12 +205,26 @@ describe('SEC-2 — le PIN identificateur ne sort plus, et il est verrouillé', 
     const [{ n }] = await ds.query(
       `SELECT count(*)::int n FROM audit_logs WHERE action = 'PIN_RESET' AND entite_id = $1`, [identId]);
     expect(n).toBeGreaterThan(0);
+    // MON ASSERTION ÉTAIT INSTABLE, ET C'EST MOI QUI L'AVAIS ÉCRITE.
+    //
+    // Elle cherchait les deux premiers et les deux derniers chiffres du PIN
+    // comme SOUS-CHAÎNES de `details`. Or `details` contient un UUID
+    // (`resetBy`), et un UUID tiré au hasard contient tôt ou tard n'importe
+    // quelle paire de chiffres : la suite passait seule et échouait environ
+    // une fois sur deux en batterie complète. Exactement le genre de rouge
+    // intermittent qui apprend à ne plus lire les rouges.
+    //
+    // La propriété RÉELLE — « la trace ne porte aucun fragment du code » — se
+    // vérifie sur la FORME de la trace, pas par recherche de sous-chaînes :
+    // on exige les clés exactes, et qu'aucune valeur ne contienne le code.
     const [trace] = await ds.query(
       `SELECT details::text AS d FROM audit_logs WHERE action='PIN_RESET' AND entite_id=$1
         ORDER BY created_at DESC LIMIT 1`, [identId]);
-    expect(trace.d).not.toContain(nouveauPin);
-    expect(trace.d).not.toContain(nouveauPin.slice(0, 2));
-    expect(trace.d).not.toContain(nouveauPin.slice(-2));
+    const details = JSON.parse(trace.d) as Record<string, unknown>;
+    expect(Object.keys(details).sort()).toEqual(['canal', 'resetBy']);
+    for (const v of Object.values(details)) {
+      expect(String(v)).not.toContain(nouveauPin);
+    }
 
     // (d) l'ANCIENNE session est révoquée : son jeton de rafraîchissement
     //     ne rend plus la main.

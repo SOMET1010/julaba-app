@@ -1,7 +1,7 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 6 — après ARG-02 et API-01.**
+**Révision 11 — après SCHEMA-PILOTE et SCHEMA-CI.**
 Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
 une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
 Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
@@ -10,6 +10,31 @@ passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
 Révision 4 : **SEC-05, SEC-06 et SEC-07 fermés** ; **SEC-08** ouverte (le PIN
 n'est plus lisible, mais il est encore *choisi* par un administrateur) ;
 **SEED-01** ouverte — c'est le diagnostic des 3 échecs jusqu'ici non expliqués.
+Révision 11 : **SCHEMA-CI** — le gate n'est plus une discipline humaine, il
+tourne à chaque PR et à chaque fusion. **SCHEMA-01/02/03 restent OUVERTES P1
+architecture et ne bloquent plus l'APK pilote.** Aucun bloqueur de sortie ne
+subsiste dans la section « P1 atteignables ».
+Révision 10 : **SCHEMA-PILOTE** — un chemin de déploiement unique, prouvé et
+figé (60 tables, 684 colonnes). Il **ne ferme pas** SCHEMA-01/02/03 : il rend le
+risque non atteignable pour cette sortie. Son garde-fou au niveau **colonne** a
+trouvé une **troisième** instance du mécanisme, **SCHEMA-07** — `bpay_transactions`
+n'a jamais eu les colonnes que le code écrit, sur aucun chemin. Trouvée avant le
+terrain, cette fois.
+Révision 9 : **cinq P1 reclassés en P2 sur MESURE**, aucun fermé. API-03,
+API-04 et TYPE-01 : architecture imparfaite, aucun comportement faux de la
+marchande démontré. SCHEMA-05 et SCHEMA-06 : défauts réels, mais aucune voie du
+pilote terrain ne les atteint. **SCHEMA-01/02/03 restent P1**, délibérément.
+Révision 8 : le contre-audit a trouvé **deux défauts réels** dans ARGENT-4, tous
+deux confirmés dans le code avant correction. **ARG-10 rouvert puis refermé** —
+`reglement_credit` n'entrait pas dans la caisse théorique : écart fantôme de
+7 000 F. **ARG-03 : ma déclaration était trop large** — elle portait sur
+l'écriture, pas sur la clôture. **ARG-12 ouverte et fermée** : le vrai client
+n'envoyait aucune clé d'idempotence, donc I5 était fermé dans le test et pas
+dans le parcours. **ARG-11 corrigé** : sa liste de bloqueurs était incomplète.
+Révision 7 : **ARGENT-4 livré** — ARG-03, ARG-05 et ARG-10 fermés par une
+primitive transactionnelle unique dont la **nature est calculée**, jamais
+fournie. **ARG-11** inscrit la condition bloquante de réouverture du crédit, et
+nomme ce qui reste ouvert avant : ARG-04, I6, CLIENT-02, TYPE-02.
 Révision 6 : **ARG-02 fermé** (deux couches mentaient sur l'historique, pas
 une : la lecture serveur ET l'affichage front) et **API-01 fermé sur le
 périmètre reformulé** — un 401 ne peut plus être lu comme un verdict métier.
@@ -22,7 +47,7 @@ n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte l
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 21 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 50 OUVERT.**
+**Compte courant : 26 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT.**
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -67,10 +92,12 @@ reste multiple.
 |---|---|---|---|---|---|
 | **ARG-01** / B3 | P1 terrain | **FERMÉ** | `stocks-rest.controller.ts` : le `WHERE` ne porte plus aucun filtre sur `quantite_retranchee` (les 2 occurrences restantes sont des commentaires). `mouvement-mapper.ts` expose `quantite_affichee`, `manquant`, `hors_stock` | `853dff7` — invariant `argent-3` + `test:mouvements-hors-stock` | — |
 | **ARG-02** / B2 | P1 terrain | **FERMÉ** | **DEUX couches mentaient, pas une — le contre-audit n'avait relevé que la première.** (1) Serveur : `COALESCE(sm.unite, p.unite)` remplacé par `sm.unite` seule, et la jointure sur `produits` disparaît avec le repli. (2) **Écran** : la fiche produit affichait `{m.qty} {selectedStock.unit}` — l'unité du catalogue d'aujourd'hui, sans même regarder celle du mouvement ; le correctif serveur ne pouvait rien pour ces lignes. Trois rendus corrigés. Une unité absente est **dite** (`uniteConnue` + « unité non enregistrée »), jamais empruntée | `ecc1ae6` — reproduction avant correctif : `COALESCE` remis, 3 des 4 invariants rougissent. Le 4ᵉ passe dans les deux cas : il couvre B2, pas ARG-02, et c'est écrit | — |
-| **ARG-03** / A3 | P1 dormant | **OUVERT** | Fermé **pour un seul des trois chemins**. Vérifié : `POST /caisse/credits` insère `acompte` directement dans `credits` — **0 occurrence de `acompte_credit`** dans ce chemin. Un crédit créé AVEC acompte initial reste donc invisible à `caisseTheorique`. Et dans `PATCH :id/acompte`, l'écriture de caisse est dans un `try/catch` qui **avale l'erreur** : `success: true` est possible sans trace de caisse | `853dff7` couvre `PATCH :id/acompte` — **rouvert au contre-audit**, qui a trouvé le second chemin que mon test ne couvrait pas | Acompte initial à la création + atomicité de l'encaissement |
-| **ARG-10** | P1 dormant | **OUVERT** | *Ligne ajoutée au contre-audit.* `PATCH /caisse/credits/:id/payer` marque le crédit payé et réduit `clients.montant_du`, **sans aucune écriture de caisse**. Route atteinte : `VentesPassees.tsx:325` appelle `marquerCreditPaye(id)` | — | Le règlement du reste dû est de l'argent reçu qui n'entre jamais dans la caisse théorique. **Même fermeture que ARG-03/04/05 : création avec acompte, acompte ultérieur et solde final doivent passer par UN seul mécanisme transactionnel d'encaissement** |
+| **ARG-03** | P1 | **FERMÉ** | Les trois chemins d'encaissement passent par `encaisser-credit.ts` ; le contrôleur contient **0** `INSERT INTO caisse_transactions` ; **et la clôture comprend les deux natures** | `a959ec5` — *ma déclaration « les trois chemins sont fermés » était trop large en révision 7 : elle portait sur l'écriture, pas sur la lecture de clôture. Une écriture d'argent n'est finie que quand la clôture la comprend* | — |
+| **ARG-10** | P1 | **FERMÉ** | *Rouvert au contre-audit de la révision 7, puis refermé.* `/payer` encaisse le reste **et la clôture le compte** : `caisseTheorique` somme `acompte_credit` **et** `reglement_credit`. Un invariant ferme réellement la journée après un règlement et exige **écart = 0** | `a959ec5` — j'avais fermé ARG-10 sur une ligne de caisse correctement écrite que la clôture ignorait : écart fantôme de 7 000 F, mesuré en reproduisant. Mon test ne fermait jamais la journée, il ne pouvait pas le voir | — |
+| **ARG-11** | **P1** | **OUVERT** | **Condition bloquante de réouverture du crédit.** `CAISSE_CREDIT_ACTIF` ne repasse à `true` qu'une fois TOUT ce qui suit fermé — et la liste de la révision 7 était **incomplète**, le contre-audit l'a corrigée. **Restent ouverts : ARG-04** (idempotence de la *création* — `CreerCreditData` ne dédoublonne pas le crédit lui-même, `blockers.spec.ts` I4 toujours `it.failing`), **I6** (une vente à crédit ne laisse aucune trace `type='credit'` en caisse), **CLIENT-02**, **TYPE-02** | — | ARGENT-4 + 4b traitent l'**encaissement** et sa **clôture**. Rien d'autre |
+| **ARG-12** / I5 réel | **P1** | **FERMÉ** | *Ouverte et fermée dans le même lot, au contre-audit.* Le vrai client (`caisse-api.ts`) n'envoyait **aucune** clé : le serveur en fabriquait une avec `Date.now()`, donc deux envois de la même tentative encaissaient **deux fois** — pendant que `blockers.spec.ts` I5 restait vert, puisqu'il fournissait la clé lui-même. Les trois fonctions client envoient désormais une clé ; test dédié sur le vrai client ; le serveur **refuse** un acompte sans clé au lieu d'en deviner une | `a959ec5` — « un test qui fournit ce que le vrai client ne fournit pas ne teste pas le vrai client ». I5 est annoté pour dire ce qu'il prouve et ce qu'il ne prouve pas | — |
 | **ARG-04** | P1 dormant | **OUVERT** | `POST /caisse/credits` sans `idempotency_key` — vérifié : la seule clé du fichier est celle de l'acompte | — | Idempotence de création. **Avant réactivation du crédit** |
-| **ARG-05** | P1 dormant | **OUVERT** | Crédit, stock et caisse ne forment pas une transaction unique | — | Atomicité. Invariants I4/I5/I6 rouges |
+| **ARG-05** | P1 | **FERMÉ** | Atomicité crédit / client / caisse / audit : les quatre écritures dans la même transaction, les quatre ou aucune. Verrou `FOR UPDATE` : deux paiements simultanés s'additionnent au lieu de s'écraser | `45e99ff` — un test exige qu'un encaissement refusé ne laisse **rien** derrière lui | — |
 | **ARG-06** | P2 modèle | **OUVERT** | `caisse-transaction.entity.ts` porte toujours **2 colonnes** `marge` et `benefice`, alimentées par la même valeur | Côté écran, un seul champ depuis `ed9321b` | La fusion des colonnes demande une migration. Le serveur écrit encore deux fois le même chiffre |
 | **ARG-07** | P2 | **OUVERT** | « Bénéfice » ambigu entre marge commerciale et résultat ventes−dépenses | — | Deux concepts à nommer distinctement |
 | **ARG-08** | P2 modèle | **OUVERT** | Vérifié : **0** colonne `devise` sur `caisse_transactions` | ADR-0003 #5, explicitement partiel | Le XOF reste une convention, pas une donnée |
@@ -99,8 +126,8 @@ reste multiple.
 |---|---|---|---|---|---|
 | **API-01** | P1 | **FERMÉ** | **Reformulation, 19/09/2026 : « le vrai problème n'est pas qu'il y a trop de `fetch()` directs ; c'est qu'un 401 sur un appel auth peut être interprété comme une erreur métier ».** Sur ce périmètre : `WalletPage`, `UniversalParametres`, `UniversalProfil` passent par `services/api/auth-api.ts`, qui ne rend que trois états — succès métier, erreur métier, reconnexion requise. Garde-fou corrigé **dans les deux sens** : la regex couvre `auth`, et le non-convergé est **nommé** dans `RESTE_A_CONVERGER` au lieu d'être masqué ; un contrôle fait rougir toute exception périmée (il en a trouvé 3 posées par excès) | `1c90b97` — conséquence mesurée sur vrai serveur : bon PIN + jeton expiré → 401 → `data.valid` **undefined** → « Code PIN incorrect ». La marchande tapait le bon code de son portefeuille et l'application lui disait non | **Le décompte d'architecture reste, et il est sorti dans API-10 : rien n'est caché ici** |
 | **API-02** | P1 | **FERMÉ** | `StockContext.tsx` : **0** `fetch(` | `9d74fec` — `stocks-api.ts` | — |
-| **API-03** | P1 | **OUVERT** | `authService` (4), `useWebAuthn` (7), `api-client` (3) : trois voies subsistent | `9d74fec` — rafraîchissement de session **4 → 1**. Les cérémonies d'auth restent directes **délibérément** : un 401 y signifie « mauvais code », pas « session expirée » | Une autorité de transport unique reste à poser |
-| **API-04** | P1 architecture | **OUVERT** | `main.tsx` monkey-patche `window.fetch` pour le bearer | — | Comportement d'auth hors de la couche API |
+| **API-03** | **P2 architecture** | **OUVERT** | **Re-mesuré après API-01/01b :** `useWebAuthn` est passé de **7 → 2** appels directs, et il ne reste **qu'UNE** implémentation de rafraîchissement de session (`api-client.ts:70`). Les appels directs restants sont **tous d'avant-session** — `login`, `activer`, `create-acteur`, connexion biométrique — où un 401 a un sens métier (« identifiants faux »), pas « session expirée ». Tout appel EN session passe par la couche | Reclassé P1→P2 sur mesure, pas sur impression | *Le décompte « trois voies » était périmé.* La fragmentation demeure, sans conséquence terrain démontrée |
+| **API-04** | **P2 architecture** | **OUVERT** | **Mesuré, et plus grave que « une imperfection » :** `api-client.ts` ne pose **jamais** l'en-tête `Authorization` — le patch global de `main.tsx` est donc **porteur**, pas un confort. Vérifié en revanche : il s'applique bien au rejeu hors-ligne (la file tourne dans la page, le service worker ne sert qu'aux notifications), et le rejeu après rafraîchissement relit le jeton neuf | Reclassé P1→P2 sur mesure | **Point unique de défaillance hors de la couche API.** Aucun comportement faux démontré aujourd'hui ; la cible est que la couche pose l'en-tête elle-même |
 | **API-05** | P2 | **OUVERT** | `authService.getCurrentUser()` présent, retourne toujours `null` | — | Supprimer après preuve d'absence de consommateur |
 | **API-06** | P2 | **FERMÉ** | `services/academyService.ts` : **absent du dépôt** | `ee30077` — code mort prouvé inatteignable, registre `docs/hygiene/HYGIENE-1-axe1-code-mort.md` § « Contenu d'académie non branché » | — |
 | **API-07** | P2 | **OUVERT** | `useRealtime.ts` : 7 appels propres | — | Fragmentation |
@@ -130,7 +157,7 @@ reste multiple.
 
 | ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
 |---|---|---|---|---|---|
-| **TYPE-01** | P1/P2 | **OUVERT** | Mesuré : **390** `any` sur les parcours d'argent | `56b4168` — **48 `any` de DONNÉE → 0** aux frontières argent/identité/produit/quantité/stock/session/hors-ligne ; `types/vente.ts` créé | 390, dont les `catch (e: any)` qui ne décrivent aucune donnée |
+| **TYPE-01** | **P2 architecture** | **OUVERT** | Re-mesuré : **502** `: any` + **265** `as any` *(le « 390 » du registre comptait autrement — les deux mesures sont données pour qu'on cesse de comparer des chiffres incomparables)*, dont **125** `catch (e: any)`. Et surtout : **0** sur une donnée métier aux frontières argent (montant, prix, quantité, stock, solde, acompte, total) | `56b4168` puis reclassé P1→P2 sur mesure | Dette de typage, pas de défaut de comportement. **Condition de réouverture : toute donnée d'argent qui redeviendrait `any` à une frontière** |
 | **TYPE-02** | P1 | **OUVERT** | `credits.controller.ts` : 4 `: any` | — | DTO/contrats. **Avant réactivation du crédit** |
 | **TYPE-03** | P2 | **OUVERT** | Le monkey-patch de `main.tsx` prend `input: any, init: any` | — | Disparaît avec API-04 |
 | **TYPE-04** | Faible | **HORS PÉRIMÈTRE JUSTIFIÉ** | `type Any = any` dans `nativeStt.ts` / `nativeTts.ts` | Frontière plugin Capacitor, où le type n'est pas connaissable. **Ne pas « nettoyer » pour le score** | — |
@@ -168,12 +195,13 @@ reste multiple.
 
 | ID | Gravité | Statut | Preuve actuelle (code) | Commit / justification | Dette résiduelle |
 |---|---|---|---|---|---|
-| **SCHEMA-01** | P1 | **OUVERT** | Trois mécanismes coexistent : migrations TypeORM, `DbInitService`, `synchronize` | — | **La doctrine de schéma reste structurellement multiple** |
-| **SCHEMA-02** | P1 | **OUVERT** | `schema-flags.ts` : base vierge → `synchronize`, base existante → migrations si `DB_MIGRATIONS_RUN` | Décision volontaire aujourd'hui | Multiplie les chemins de construction du schéma |
-| **SCHEMA-03** | P1 | **OUVERT** | Des évolutions doivent être recopiées à la main dans DbInit | `73343a4` ferme **une instance** (B1 : `stock_mouvements.type` absent → annulation de vente cassée sur base neuve) et pose le garde-fou `schema-ledger-sans-migration`. `6ef6560` ferme **une seconde instance** (STK-01) et élargit le garde-fou : il énumère désormais **toutes** les tables écrites en SQL brut par le code et exige qu'elles existent après DbInit seul — c'est lui qui a révélé SCHEMA-05 et SCHEMA-06 | **Le mécanisme qui produit ce défaut demeure.** Le garde-fou détecte, il ne converge pas |
+| **SCHEMA-01** | **P1** | **OUVERT** | Trois mécanismes coexistent : migrations TypeORM, `DbInitService`, `synchronize` | `591524c` — **SCHEMA-PILOTE ne ferme pas cette ligne et ne prétend pas le faire.** Il prouve qu'**un seul** de ces chemins construit la base du pilote, et il le fige | **La doctrine reste structurellement multiple.** Le risque est rendu non atteignable pour CETTE sortie, pas supprimé |
+| **SCHEMA-02** | **P1** | **OUVERT** | `schema-flags.ts` : base vierge → `synchronize`, base existante → migrations si `DB_MIGRATIONS_RUN` | `591524c` — le gate vérifie que la branche « vierge » est bien celle du pilote et qu'aucune table `migrations` n'apparaît | Multiplie les chemins de construction du schéma |
+| **SCHEMA-03** | **P1** | **OUVERT** | Des évolutions doivent être recopiées à la main dans DbInit | `73343a4` (B1), `6ef6560` (STK-01), `591524c` (**SCHEMA-PILOTE** : garde-fou étendu aux **COLONNES** — 41 tables, 344 colonnes — + empreinte figée de 60 tables / 684 colonnes) | **Le mécanisme qui produit ce défaut demeure — et il a produit une TROISIÈME instance, SCHEMA-07, que le garde-fou au niveau table ne pouvait pas voir.** Le garde-fou détecte, il ne converge toujours pas |
 | **SCHEMA-04** | P1 | **FERMÉ** | = STK-01, fermé par `6ef6560`. Ce n'était pas un fait d'environnement : le dépôt suffisait à le prouver | `6ef6560` | — |
-| **SCHEMA-05** | **P1** | **OUVERT** | **Nouveau (issu du garde-fou systématique).** `api_keys` est lue et écrite par du code vivant du back-office partenaires, et n'est créée que par une migration **archivée**, volontairement hors de la chaîne exécutable (ADR-0002). Sur base neuve la table n'existe pas | — | Toute fonction partenaire adossée à `api_keys` échoue sur un déploiement neuf. Décider : réintégrer la création, ou retirer le code mort |
-| **SCHEMA-06** | **P1** | **OUVERT** | **Nouveau (issu du garde-fou systématique).** `keiwa_config_items` est lue, insérée, modifiée et supprimée par `admin-wallets.service.ts`, et créée **nulle part** : ni entité, ni migration, ni DbInit | — | La configuration Keiwa échoue sur toute base, neuve ou non, sauf table posée à la main |
+| **SCHEMA-05** | **P2 — non bloquant pilote** | **OUVERT** | `api_keys` est lue et écrite par du code vivant (`partner/partner.controller.ts`, `partner-api-keys.service.ts`) et créée seulement par une migration **archivée** : elle n'existe pas sur base neuve. **Le défaut est réel** | Reclassé P1→P2 par Patrick (19/09/2026), sources vérifiées : aucune étape partenaire dans `docs/RECETTE-TERRAIN-GROUPEE.md` ni au périmètre du pilote espèces (`docs/INVENTAIRE_RECETTES_V1.md`) | **Aucune voie du pilote terrain n'atteint cette fonction. À fermer avant activation de l'API partenaires** |
+| **SCHEMA-06** | **P2 — non bloquant pilote** | **OUVERT** | `keiwa_config_items` est lue, insérée, modifiée et supprimée par `admin-wallets.service.ts`, et créée **nulle part**. **Le défaut est réel** | Reclassé P1→P2 par Patrick (19/09/2026) : Keiwa/paiements sont des services **conditionnels**, No-Go maintenu, terrain décrit comme « pilote espèces fonctionnellement fermé » (`docs/AUDIT_UX.md`, `JULABA_DECISIONS.md`, `docs/RECETTE.md`) | **Aucune voie du pilote terrain n'atteint cette fonction. À fermer avant activation Keiwa** |
+| **SCHEMA-07** | **P1** | **FERMÉ** | **Troisième instance du mécanisme SCHEMA-03, trouvée par le garde-fou COLONNE de SCHEMA-PILOTE — avant le terrain, pas à l'usage.** `bpay_transactions` était créée avec `montant` alors que le code insère `amount`, `merchant_tx_id`, `provider`, `type` et met à jour `error_message` : cinq colonnes qui n'existaient **ni dans DbInit, ni dans la baseline**. Ce n'était donc pas une divergence DbInit/migrations comme B1 et STK-01, mais une table qui n'a **jamais** correspondu au code | `591524c` — corrigé dans DbInit **et** par migration ; `montant` conservée (on ne supprime pas une colonne qui peut porter des données) | — *(tout paiement B-Pay et toute recharge échouaient, sur base neuve **comme** sur base migrée — hors parcours pilote, Keiwa étant No-Go)* |
 | **SEED-01** | **P1** | **FERMÉ** | Chaque niveau du seed compare les codes du jeu à ceux en base et n'insère que ce qui manque ; aucun niveau ne décide pour un autre. Les cartes parent sont relues en base après chaque insertion | `8b66407` — reproduction déterministe avant correctif (le test pose lui-même le district parasite) : 3 rouges. Après : 4 verts, et **la batterie complète est redevenue déterministe** — cinq exécutions d'affilée, 205/205 | — |
 
 # ARCHITECTURE
@@ -233,23 +261,32 @@ première fois que cette section est vide. Elle ne dit rien sur les P1 : SEC-08
 et SEED-01, ouvertes le même jour, touchent l'une un credential, l'autre des
 données de production.
 
-**P1 atteignables en pilote**
+**P1 atteignables en pilote — aucun bloqueur de sortie**
 
-| ID | Ce qui reste |
+> **SCHEMA-01/02/03 restent OUVERTES P1 architecture. Elles ne bloquent plus
+> l'APK pilote parce que le chemin unique de construction du schéma pilote est
+> reconstruit, testé, figé et imposé par CI à chaque fusion.**
+
+| ID | Ce qui reste, et ce qui le tient |
 |---|---|
-| **API-03** | Trois voies réseau pour l'auth |
-| **API-04** | `main.tsx` monkey-patche `window.fetch` |
-| **SCHEMA-01 / 02 / 03** | La doctrine de schéma reste multiple |
-| **SCHEMA-05 / 06** | Deux tables écrites par du code vivant, créées nulle part qui s'exécute |
-| **TYPE-01** | 390 `any` (0 sur une donnée métier aux frontières) |
+| **SCHEMA-01 / 02 / 03** | La doctrine de schéma reste multiple — migrations TypeORM, `DbInitService`, `synchronize`. **Rien de cela n'est fermé.** Ce qui a changé : `.github/workflows/schema-pilote.yml` lance `node scripts/schema-pilote.mjs` à chaque PR et à chaque fusion. Empreinte différente, colonne manquante, second démarrage divergent ou invariant tombé ⇒ **PR rouge**. `--figer` est **refusé par le script lui-même** en CI : un gel est une décision humaine, sinon toute PR qui change le schéma se régulariserait elle-même. **La dette demeure ; son atteignabilité pour cette sortie, non** |
+
+*Et ce gate n'est pas décoratif : il a trouvé **SCHEMA-07** à son premier
+passage — une troisième instance du mécanisme, sur une forme que le garde-fou
+au niveau table ne pouvait pas voir. Trouvée avant le terrain, cette fois.*
+
+*Reclassés en P2 sur mesure, pas sur impression (révision 9) : **API-03**,
+**API-04**, **TYPE-01** — architecture imparfaite, aucun comportement faux de
+la marchande démontré ; **SCHEMA-05**, **SCHEMA-06** — défauts réels, mais
+aucune voie du pilote terrain ne les atteint. Aucune de ces cinq lignes n'est
+fermée.*
 
 **P1 NON atteignables en pilote** — `CAISSE_CREDIT_ACTIF = false`.
 Condition de réouverture écrite : **avant toute réactivation du crédit.**
 
 | ID | Ce qui reste |
 |---|---|
-| **ARG-04** | Idempotence de création d'un crédit |
-| **ARG-05** | Atomicité crédit / stock / caisse |
+| **ARG-04** | Idempotence de création d'un crédit — `blockers.spec.ts` I4, toujours `it.failing` |
 | **TYPE-02** | DTO et contrats du contrôleur crédit |
 | **CLIENT-02** | Homonymes partageant une dette |
 
