@@ -53,6 +53,18 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
 
   const isActive = (tab: typeof tabs[0]) => location.pathname === tab.path;
 
+  // UN SEUL MICRO SUR LA CAISSE (VOIX-03, décision de Patrick du 20/09/2026).
+  // La caisse a son propre micro, orange, câblé à la vente ET à
+  // l'encaissement, qui entend l'unité dictée. Celui-ci — le bouton vert
+  // « Tata » → TantieSagesseModal — vend SANS l'unité (« deux tas de gombo »
+  // devient « 2 unité ») et ne connaît pas « encaisse ». Deux micros sur le
+  // même écran dont l'un se trompe sur l'unité et ignore l'argent : rien ne
+  // les distingue pour une marchande qui ne lit pas. On masque donc le
+  // BOUTON sur la route de la caisse, pas la barre : Accueil, Stock, Profil
+  // restent atteignables, et l'assistant reste partout ailleurs.
+  const ROUTES_SANS_TATA = ['/marchand/caisse'];
+  const tataMasquee = ROUTES_SANS_TATA.includes(location.pathname);
+
   // Masquer la bottom bar sur la page Wallet
   if (location.pathname.endsWith('/keiwa')) return null;
   if (isAnyModalOpen) return null;
@@ -60,21 +72,25 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bottom-bar-container commerce-bottom"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-      <motion.button
-        type="button"
-        onClick={handleMicClick}
-        aria-label="Ouvrir Tata Nanti Lou"
-        className="absolute flex flex-col items-center justify-center"
-        style={{
-          right: 18, top: -26, width: 52, height: 52, borderRadius: '50%',
-          background: 'var(--commerce-green)', color: '#fff', border: '3px solid var(--commerce-paper, #fff)',
-          boxShadow: '0 8px 18px -6px rgba(0,86,59,0.55)',
-        }}
-        whileTap={{ scale: 0.94 }}
-      >
-        <Mic aria-hidden="true" size={20} strokeWidth={2} />
-      </motion.button>
-      <span aria-hidden="true" className="absolute text-[10px] font-extrabold" style={{ right: 24, top: -34, color: 'var(--commerce-green)' }}>Tata</span>
+      {!tataMasquee && (
+        <>
+          <motion.button
+            type="button"
+            onClick={handleMicClick}
+            aria-label="Ouvrir Tata Nanti Lou"
+            className="absolute flex flex-col items-center justify-center"
+            style={{
+              right: 18, top: -26, width: 52, height: 52, borderRadius: '50%',
+              background: 'var(--commerce-green)', color: '#fff', border: '3px solid var(--commerce-paper, #fff)',
+              boxShadow: '0 8px 18px -6px rgba(0,86,59,0.55)',
+            }}
+            whileTap={{ scale: 0.94 }}
+          >
+            <Mic aria-hidden="true" size={20} strokeWidth={2} />
+          </motion.button>
+          <span aria-hidden="true" className="absolute text-[10px] font-extrabold" style={{ right: 24, top: -34, color: 'var(--commerce-green)' }}>Tata</span>
+        </>
+      )}
 
       <nav aria-label="Navigation principale" className="flex items-stretch px-2" style={{ minHeight: 72 }}>
         {tabs.map((tab) => {
@@ -98,6 +114,7 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
           );
         })}
       </nav>
+
     </div>
   );
 }

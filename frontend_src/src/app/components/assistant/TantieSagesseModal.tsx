@@ -79,7 +79,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
   const suggestions = ROLE_SUGGESTIONS[role] || ROLE_SUGGESTIONS.marchand;
 
   // « vendre » = ajout au panier partagé, jamais un encaissement direct (voir
-  // vendreVocalUnifie.ts — même fonction que VenteVocaleModal, seul chemin
+  // vendreVocalUnifie.ts — même fonction que MicroVenteCaisse, seul chemin
   // vocal restant qui écrivait encore directement enregistrerVente). Aucune
   // confirmation vocale bloquante pour un simple ajout panier, ni de mise en
   // attente hors-ligne : le panier peut être manipulé immédiatement.
@@ -91,7 +91,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
       vibrerSucces,
       notifierAjoutPanier: (message) => toast.success(message),
       // Pas de carte "j'ajoute ce produit à ta boutique ?" dans cet assistant
-      // générique (contrairement à VenteVocaleModal) — voir tataMarchandActions.ts.
+      // générique (contrairement à MicroVenteCaisse) — voir tataMarchandActions.ts.
       proposerCreationProduit: () => {},
       stockage: typeof window !== 'undefined' ? window.localStorage : null,
       estEnLigne: () => typeof navigator !== 'undefined' ? navigator.onLine !== false : true,

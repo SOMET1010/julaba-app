@@ -1,32 +1,40 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, Minus, Trash2, ShoppingCart, X, Check, ArrowLeft, Package, FileText, WifiOff } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, X, Check, Package, FileText, Banknote, ChevronRight, Leaf, Zap } from 'lucide-react';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { useApp } from '../../contexts/AppContext';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { CreditModal } from './CreditModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { partagerRecu } from '../../utils/recu.utils';
-import { ligneLisible } from '../../utils/unite.utils';
+import { uniteSeule } from '../../utils/unite.utils';
 import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
 import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/fcfa';
 import { BilletDessine, PieceDessinee } from './CoupureDessinee';
 import { avertissementRupture } from '../../services/ruptureStock';
 import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
-import { getPictogrammeByNom } from '../../data/catalogue-produits';
+import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
+import { phraseRelecture, phraseLigneAjoutee, type EtatEncaissement as EtatRelu } from '../../services/relectureSpontanee';
+import { ChoixUnite } from './ChoixUnite';
 import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMaitre';
-import { PaveMontant } from '../shared/PaveMontant';
-import {
-  presenterResultatOperation,
-  type ResultatOperationCaisse,
-} from '../../services/statutOperationCaisse';
+import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
+import { ObjectifProvider } from '../../contexts/ObjectifContext';
+import { MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
+import { ETAT_INITIAL, empreintePanier, reduire, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
+import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 
-const P = '#AF5B23';
-const BG = '#F6F0E4';
+// PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Les constantes `P` et `BG`
+// portaient l'ancienne charte ; la caisse lit maintenant la charte de la
+// maquette dans styles/commerce.css (`--caisse-*`), seule source de vérité —
+// garde-fou : caisseCharte.test.mts.
+//
+// Les icônes lucide prennent une TAILLE en nombre (attribut SVG), pas une
+// variable CSS : la planche dit 24 px, on le recopie ici, une fois.
+const ICONE = 24;
 
 // Pilote ESPÈCES uniquement : la vente à crédit est désactivée en caisse tant
 // que les blockers « argent gelé » (I4/I5/I6) ne sont pas traités — le backend
@@ -43,8 +51,15 @@ const CAISSE_CREDIT_ACTIF: boolean = false;
 // Réactivation = chantier mobile money dédié. Typé `boolean` volontairement.
 const CAISSE_MOBILE_MONEY_ACTIF: boolean = false;
 
-export function POSCaisse() {
+function POSCaisseInner() {
   const navigate = useNavigate();
+  const location = useLocation();
+  // PRODUIT PRÉSÉLECTIONNÉ — arrive par l'ÉTAT DE ROUTE, jamais par une
+  // variable globale ni un état caché : « Vendre » depuis la fiche d'un
+  // produit (Mon stock) ouvre CETTE page avec le produit déjà choisi. C'est la
+  // convention déjà en place dans JULABA (voir RoleDashboard, LoginPassword…),
+  // donc lisible, testable, et vide quand on arrive autrement.
+  const produitPreselectionne = ((location.state as { produitPreselectionne?: ProduitPreselectionne } | null)?.produitPreselectionne) ?? null;
   const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, refreshProducts, transactions } = useCaisse();
   const { speak, reloadTransactions, user, isOnline } = useApp();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Ma boutique';
@@ -58,7 +73,11 @@ export function POSCaisse() {
   const dire = (t: string) => { if (guidageVocal()) speak(t); };
 
   const [search, setSearch] = useState('');
-  const [showCart, setShowCart] = useState(false);
+  // Aperçu produits sur téléphone (lot A) : la grille est repliée à quelques
+  // vignettes tant que la marchande ne demande pas à voir plus. Le panier et
+  // l'encaissement sont SOUS la grille — sans ce repli ils seraient à
+  // plusieurs écrans de défilement, et la « surface unique » serait un mot.
+  const [voirPlusProduits, setVoirPlusProduits] = useState(false);
   const [showCredit, setShowCredit] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
 
@@ -74,19 +93,18 @@ export function POSCaisse() {
   const [refRecherche, setRefRecherche] = useState('');
   const [refChoisie, setRefChoisie] = useState<ReferenceMaitre | null>(null);
   const [refUnite, setRefUnite] = useState('unité');
+  // L'UNITÉ DE L'ARTICLE LIBRE SE CHOISIT (lot E). Elle était écrite en dur
+  // (« unite ») : la marchande vendait « quelque chose à 500 F » et le code
+  // décidait à sa place que c'était « à l'unité » — un tas de gombo devenait
+  // une unité de gombo au reçu. Le chemin voisin (référence du catalogue
+  // maître) demandait, lui, l'unité ; celui-ci ne demandait rien.
+  const [libreUnite, setLibreUnite] = useState('unité');
   const [adoptionEnCours, setAdoptionEnCours] = useState(false);
   const [adoptionMessage, setAdoptionMessage] = useState<string | null>(null);
 
   // Encaissement (Phase 3, lots 2-4) : montant reçu (espèces) + écran « Vente réussie ».
   const [montantRecu, setMontantRecu] = useState('');
-  const [saisieEspeces, setSaisieEspeces] = useState<'chiffres' | 'coupures'>('chiffres');
-  const [lastSale, setLastSale] = useState<{
-    montant: number;
-    moyen: string;
-    monnaie: number;
-    produits: any[];
-    resultat: ResultatOperationCaisse;
-  } | null>(null);
+  const [lastSale, setLastSale] = useState<{ montant: number; moyen: string; monnaie: number; produits: any[] } | null>(null);
   // Mobile money DÉCLARÉ (Chemin A) : opérateur choisi, aucune intégration/argent.
   const [mmOperator, setMmOperator] = useState<string | null>(null);
 
@@ -99,13 +117,23 @@ export function POSCaisse() {
   // Ajout au panier VOCALISÉ : une non-lectrice entend ce qu'elle vient d'ajouter
   // et peut vérifier son panier avant d'encaisser.
   const ajouterAuPanier = (p: any) => {
+    // CE QU'ELLE ENTEND : la ligne AVEC son unité, et le TOTAL du panier
+    // (lot D). « Tomate ajouté » ne disait ni combien, ni à quel prix, ni où
+    // en est le panier — et le total ne se disait que si on touchait le
+    // chiffre. Le calcul se fait AVANT que l'état ne bouge, sur le panier du
+    // rendu courant : un seul addToCart par geste, même fusion de ligne que
+    // CaisseContext.addToCart.
+    const existante = cart.find(i => i.productId === p.id);
+    const q = (existante?.quantite ?? 0) + 1;
+    const prixU = prixEffectif(p);
+    const totalLigne = (existante?.totalExact ?? (existante ? existante.prix * existante.quantite : 0)) + prixU;
     addToCart(p, 1);
-    dire(`${p?.nom || p?.name || 'Produit'} ajouté`);
+    dire(phraseLigneAjoutee({ nom: p?.nom || p?.name || 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }));
   };
 
   const fermerAutreArticle = () => {
     setShowLibre(false);
-    setLibreMontant(''); setLibreDesc('');
+    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité');
     setRefRecherche(''); setRefChoisie(null); setRefUnite('unité'); setAdoptionMessage(null);
   };
 
@@ -170,11 +198,13 @@ export function POSCaisse() {
     const nom = libreDesc.trim() || 'Autre article';
     const produitLibre: any = {
       id: `libre-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
-      nom, prix: montant, prix_achat: 0, categorie: 'Autre', stock: 0, unite: 'unite',
+      nom, prix: montant, prix_achat: 0, categorie: 'Autre', stock: 0, unite: libreUnite,
     };
     addToCart(produitLibre, 1);
-    dire(`${nom} ajouté`);
-    setLibreMontant(''); setLibreDesc(''); setShowLibre(false);
+    dire(phraseLigneAjoutee({ nom, quantite: 1, unite: libreUnite, totalLigne: montant, totalPanier: total + montant }));
+    // L'unité revient au défaut : sinon le « tas » de la vente précédente
+    // collerait, en silence, à l'article libre suivant.
+    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setShowLibre(false);
   };
 
   const total = getTotalCart();
@@ -185,7 +215,6 @@ export function POSCaisse() {
   // + monnaie à rendre décomposée en coupures concrètes.
   const recu = Number(montantRecu) || 0;
   const monnaie = Math.max(0, recu - total);
-  const montantRecuManquant = recu <= 0;
   const insuffisant = recu > 0 && recu < total;
   const ajouterCoupure = (valeur: number) => {
     setMontantRecu(String(recu + valeur));
@@ -223,7 +252,6 @@ export function POSCaisse() {
       return;
     }
     if (paymentMethod === 'credit') return;
-    if (paymentMethod === 'cash' && montantRecuManquant) { dire('Entre le montant reçu ou choisis compte juste'); return; }
     if (paymentMethod === 'cash' && insuffisant) { dire('Montant reçu insuffisant'); return; }
     if (paymentMethod === 'mobile_money' && !mmOperator) { dire('Choisis l\'opérateur'); return; }
     const estMM = paymentMethod === 'mobile_money';
@@ -254,8 +282,7 @@ export function POSCaisse() {
       // puis complété au doigt reste un panier où la voix a servi, et c'est ce
       // qu'elle cherchera dans « Par la voix ».
       const source = cart.some((i) => i.origine === 'vocal') ? 'vocal' : 'kassa';
-      const resultat = await enregistrerVente(total, details, moyen, undefined, source);
-      const presentation = presenterResultatOperation('vente', total, resultat);
+      await enregistrerVente(total, details, moyen, undefined, source);
       // Rupture éventuelle (décision n°6) : calculée AVANT le décrément optimiste.
       // Le serveur borne déjà le stock à 0 et journalise le manquant (I3) ; ici on
       // AVERTIT à la voix au lieu de plancher en silence. La vente passe toujours.
@@ -274,22 +301,18 @@ export function POSCaisse() {
       // absolu, calculé sur un état local possiblement périmé, écrasait le
       // décrément serveur (stock trop haut, divergence stock/ledger). On reflète
       // désormais l'état autoritaire par un simple refetch.
-      if (resultat.statut === 'confirmee') void refreshProducts();
-      // Le même écran porte deux vérités distinctes : succès SERVEUR ou vente
-      // gardée sur le téléphone. Une mise en file ne doit jamais être intitulée
-      // « Vente réussie » tant que le serveur ne l'a pas confirmée.
-      setLastSale({ montant: total, moyen, monnaie: estMM ? 0 : monnaie, produits: details, resultat });
+      void refreshProducts();
+      // Écran « Vente réussie » (Phase 3, lot 4) — capturé AVANT de vider le panier.
+      setLastSale({ montant: total, moyen, monnaie: estMM ? 0 : monnaie, produits: details });
       clearCart();
       setPaymentMethod('cash');
       setMmOperator(null);
       setMontantRecu('');
-      setShowCart(false);
       setShowSuccess(true);
-      // Le retour se VOIT, s'ENTEND et se SENT, sans confondre conservation
-      // locale et confirmation centrale.
-      if (resultat.statut === 'confirmee') vibrerSucces();
-      else vibrerTic();
-      dire(`${presentation.voix}${avertRupture ? ' ' + avertRupture : ''}`);
+      // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
+      // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
+      vibrerSucces();
+      dire(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs${avertRupture ? '. ' + avertRupture : ''}`);
     } catch (e) {
       console.error(e);
       vibrerErreur();
@@ -297,6 +320,111 @@ export function POSCaisse() {
     }
     finally { paiementEnCoursRef.current = false; setIsProcessing(false); }
   };
+
+  // ── ENCAISSEMENT À LA VOIX (VOIX-01, lot C) ──────────────────────────────
+  // « Encaisse » ne paie jamais : Tata relit le compte (« Elle doit 4 000.
+  // Elle t'a donné 5 000. Tu rends 1 000. Je valide ? ») et attend « oui
+  // valide ». La décision est prise par `reduire` (machineEncaissement.ts),
+  // une fonction pure : cet écran ne fait que lui donner l'état financier de
+  // l'instant et exécuter l'effet qu'elle rend. Quand l'effet est
+  // `encaisser`, on appelle `handlePay` — LA MÊME primitive que le bouton
+  // « Payer en espèces », avec le même verrou `paiementEnCoursRef` et les
+  // mêmes gardes. Il n'existe pas de second chemin vers `enregistrerVente`.
+  //
+  // L'ÉTAT FINANCIER DE L'INSTANT. Ce sont les trois nombres que Tata relit
+  // et que « oui valide » doit retrouver à l'identique. Les lignes portent le
+  // même total que `handlePay` envoie au serveur : l'exact dicté quand il
+  // existe, sinon prix × quantité — l'empreinte confirme la vente qui sera
+  // écrite, pas une approximation.
+  const etatFinancier: EtatFinancier = {
+    panierVide: cart.length === 0,
+    total,
+    recu,
+    monnaie,
+    // Le bouton accepte un reçu à 0 (elle n'a pas touché les billets) ; la
+    // voix, non : « Elle t'a donné 0 » n'est pas un compte qu'on peut relire.
+    // Tata demande alors de toucher les billets — au doigt, jamais dictés.
+    suffisant: recu > 0 && !insuffisant,
+    empreinte: {
+      total,
+      recu,
+      lignes: empreintePanier(cart.map(i => ({ productId: i.productId, quantite: i.quantite, total: i.totalExact ?? i.prix * i.quantite }))),
+    },
+  };
+  // UN REF, PAS UN useState, et c'est une décision de sécurité : la
+  // transition doit être SYNCHRONE. Deux « oui valide » qui arrivent dans la
+  // même frame liraient le même état React (« attente ») et paieraient deux
+  // fois avant le re-render ; avec un ref, le premier consomme l'attente et
+  // le second trouve « repos ». Rien n'est rendu à partir de cet état — il ne
+  // pilote que la voix — donc aucun re-render n'est perdu.
+  const etatEncaissementRef = useRef<EtatEncaissement>(ETAT_INITIAL);
+  const traiterIntentionEncaissement = (intention: IntentionEncaissement) => {
+    const { etat, effet } = reduire(etatEncaissementRef.current, intention, etatFinancier);
+    etatEncaissementRef.current = etat;
+    if (effet.type === 'rien') return;
+    // La réponse à une PHRASE se dit toujours — `speak`, pas `dire`. `dire`
+    // tait les confirmations automatiques en mode lecture, parce que l'écran
+    // les affiche déjà ; ici la relecture EST la garantie : une marchande qui
+    // dit « encaisse » et n'entend rien dirait « oui valide » sans avoir
+    // entendu le compte qu'elle confirme. Même règle que les réponses du
+    // micro (MicroVenteCaisse parle par `speak`).
+    if (effet.texte) speak(effet.texte);
+    if (effet.type === 'encaisser') void handlePay();
+  };
+  // Le moteur vocal tient son gestionnaire dans des fermetures qui peuvent
+  // dater d'un rendu antérieur (l'enregistrement a commencé avant que la
+  // cliente ajoute un article). Un ref « dernier rendu » garantit que la
+  // phrase est jugée sur le panier, le reçu et le `handlePay` d'AUJOURD'HUI —
+  // jamais sur ceux d'il y a trois gestes.
+  const traiterIntentionRef = useRef(traiterIntentionEncaissement);
+  traiterIntentionRef.current = traiterIntentionEncaissement;
+  const onIntentionEncaissement = useCallback((intention: IntentionEncaissement) => traiterIntentionRef.current(intention), []);
+  // LE PANIER OU LE REÇU BOUGE → LA CONFIRMATION TOMBE. Un article ajouté
+  // pendant que la cliente cherche sa monnaie, un billet touché, « Vider »,
+  // le bouton « Payer » lui-même (qui vide le panier) : tout passe par ici, et
+  // la machine ne garde une attente que si l'empreinte relue est encore la
+  // vraie. Et c'est ici que Tata relit D'ELLE-MÊME (parcours cible, étapes
+  // 6→8) : « encaisse », elle touche les billets, et dès que le reçu couvre,
+  // la machine rend la relecture du compte de l'instant — on la DIT. Cet
+  // effet ne peut jamais être `encaisser` (la machine ne paie que sur « oui
+  // valide », et l'énumération exhaustive de son test le prouve) : on ne
+  // traite donc que la parole ici, jamais le paiement — `handlePay` n'a
+  // qu'un seul appelant vocal, plus haut.
+  const etatFinancierRef = useRef(etatFinancier);
+  etatFinancierRef.current = etatFinancier;
+  const cleEmpreinte = `${total}|${recu}|${etatFinancier.empreinte.lignes}`;
+  useEffect(() => {
+    const { etat, effet } = reduire(etatEncaissementRef.current, 'etat_financier_change', etatFinancierRef.current);
+    etatEncaissementRef.current = etat;
+    if (effet.type === 'dire') speak(effet.texte);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'à l'empreinte financière ; `speak` est stable (contexte)
+  }, [cleEmpreinte]);
+
+  // RELECTURE SPONTANÉE (lot D) : ce que l'écran recalcule, Tata le redit
+  // d'elle-même — « Il manque 2 000 », « Compte juste », « Tu rends 1 000 ».
+  // Le total, la monnaie et « compte juste » ne parlaient que si on les
+  // touchait : pour une non-lectrice, une information derrière un appui sur
+  // un chiffre n'existe pas.
+  //
+  // DEUX VOIX, UNE SEULE À LA FOIS. Quand la marchande a dit « encaisse », la
+  // machine du lot C tient la parole et relit le compte complet (« …Je
+  // valide ? ») dès que le reçu suffit ; cette relecture-ci se tait alors
+  // sur le compte suffisant pour ne pas dire deux fois la même chose, mais
+  // continue de dire « Il manque… » pendant qu'elle compte les billets — la
+  // machine, elle, ne parle qu'au moment du compte plein.
+  //
+  // On mémorise le dernier état SOUMIS, pas le dernier état DIT : sinon vente
+  // A → panier vidé → vente B identique rendrait B muette (cas testé dans
+  // relectureSpontanee.test.mts).
+  const dernierEtatReluRef = useRef<EtatRelu | null>(null);
+  useEffect(() => {
+    const etat: EtatRelu = { total, recu, nbLignes: cart.length };
+    const phrase = phraseRelecture(etat, dernierEtatReluRef.current);
+    dernierEtatReluRef.current = etat;
+    if (!phrase) return;
+    const machineParle = etatEncaissementRef.current.phase !== 'repos' && recu >= total;
+    if (!machineParle) dire(phrase);
+  }, [total, recu, cart.length]);
 
   // Crédit désactivé en pilote espèces (CAISSE_CREDIT_ACTIF=false) : ce handler
   // n'est plus atteignable (modal non monté). Conservé pour la réactivation
@@ -320,7 +448,7 @@ export function POSCaisse() {
     dire(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
     // Recharge les totaux du jour (la vente à crédit doit apparaître : convention A).
     void reloadTransactions?.();
-    setLastSale({ montant: total, moyen: 'Crédit', monnaie: 0, produits: details, resultat: { statut: 'confirmee' } });
+    setLastSale({ montant: total, moyen: 'Crédit', monnaie: 0, produits: details });
     clearCart();
     setPaymentMethod('cash');
     setMontantRecu('');
@@ -328,18 +456,27 @@ export function POSCaisse() {
     setShowSuccess(true);
   };
 
+  // « 500 F / tas » — le prix ET l'unité, comme l'étiquette de la maquette
+  // (« Unité toujours affichée » : le client comprend immédiatement). Le prix
+  // en texte courant semibold, l'unité en gris : deux poids, une seule ligne
+  // qui se replie proprement quand la vignette est étroite (« 1 000 F » puis
+  // « / kg » dessous).
   const Prix = ({ prix, unite }: { prix: number; unite: string }) => (
-    <div style={{ margin:'3px 0' }}>
-      <span style={{ fontSize:20, fontWeight:900, color:P }}>{prix.toLocaleString('fr-FR')} </span>
-      <span style={{ fontSize:13, fontWeight:800, color:'var(--encre-3)' }}>FCFA/{unite}</span>
+    <div style={{ marginTop:'var(--caisse-esp-1)', display:'flex', flexWrap:'wrap', columnGap:'var(--caisse-esp-1)', alignItems:'baseline', justifyContent:'center', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>
+      <span>{prix.toLocaleString('fr-FR')} F</span>
+      <span style={{ fontWeight:400, fontSize:14, color:'var(--caisse-gris-texte)' }}>/ {unite}</span>
     </div>
   );
 
+  // Le stock, en pastille discrète sur la photo : rouge (alerte) quand il
+  // reste peu, sinon un chiffre sur fond sombre translucide. Sans le mot
+  // « restants » : la vignette fait 80 px, et une non-lectrice lit la
+  // couleur, pas le mot — le mot reste dans l'infobulle.
   const StockBadge = ({ stock }: { stock: number }) => {
     const low = stock < 10;
     return (
-      <div style={{ position:'absolute', bottom:8, left:8, background: low ? 'rgba(239,68,68,0.9)' : 'rgba(29,158,117,0.9)', borderRadius:8, padding:'4px 8px', fontSize:12, fontWeight:800, color:'white' }}>
-        {stock} {low ? 'restants' : 'en stock'}
+      <div title={`${stock} ${low ? 'restants' : 'en stock'}`} style={{ position:'absolute', top:'var(--caisse-esp-1)', left:'var(--caisse-esp-1)', background: low ? 'var(--caisse-alerte)' : 'var(--caisse-vert-fonce)', opacity: low ? 1 : 0.8, borderRadius:'var(--caisse-rayon-2)', padding:'2px 6px', font:'var(--caisse-font-legende)', fontWeight:600, color:'white', fontVariantNumeric:'tabular-nums' }}>
+        {stock}
       </div>
     );
   };
@@ -347,13 +484,65 @@ export function POSCaisse() {
   // Lignes du panier — factorisées pour être identiques dans le panneau
   // permanent (grand écran) et le panneau coulissant (mobile) : même logique
   // de négoce/prix/quantité, un seul endroit à faire évoluer.
+  //
+  // LA LIGNE DE LA MAQUETTE (lot F) : vignette · nom · « 3 tas » · 500 F ·
+  // 1 500 F · − / +. Sur deux rangées et non une, et c'est un arbitrage
+  // lisibilité : à 390 px, une seule rangée obligerait à des boutons de 32 px
+  // — sous la cible tactile de 44 px du dépôt — ou à un nom tronqué. Rangée 1 :
+  // la vignette, le nom, le total de la ligne (ce qu'elle regarde). Rangée 2 :
+  // les gestes − / + autour de la quantité, l'unité et le prix unitaire.
+  // Les boutons − / + appellent `updateCartItemQuantity`, la même fonction que
+  // les vignettes de la grille appelaient déjà ; la corbeille reste, parce
+  // qu'en gros une ligne de 40 cuvettes ne s'enlève pas en 40 gestes.
   const renderCartLines = () => (
     <>
       {cart.map(item => (
-        <div key={item.productId} style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 0', borderBottom:'1px solid #f5f0eb' }}>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:15, fontWeight:700, color:'var(--encre)' }}>{item.nom}</div>
-            <div style={{ fontSize:12, color:'var(--encre-4)', marginTop:4, display:'flex', alignItems:'center', gap:6 }}>
+        <div key={item.productId} style={{ padding:'var(--caisse-esp-3) 0', borderBottom:'1px solid var(--commerce-line)' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)' }}>
+            <ImageWithFallback src={products.find(p => p.id === item.productId)?.image || undefined} fallbackSrc={getImageByNom(item.nom)} alt="" aria-hidden="true"
+              style={{ width:44, height:44, borderRadius:'var(--caisse-rayon-2)', objectFit:'cover', flexShrink:0, background:'var(--caisse-sable)' }} />
+            <div style={{ flex:1, minWidth:0, font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.nom}</div>
+            <div style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{(item.totalExact ?? item.prix * item.quantite).toLocaleString('fr-FR')} F</div>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)', marginTop:'var(--caisse-esp-2)', flexWrap:'wrap' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)' }}>
+              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.productId, item.quantite-1)} aria-label={`Un ${item.nom} de moins`}
+                style={{ width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', borderRadius:'50%', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-succes)', color:'var(--caisse-vert-fonce)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
+                <Minus size={ICONE} strokeWidth={2.5} />
+              </motion.button>
+              {estNegoce ? (
+                /* Quantité TAPÉE directement (indispensable en gros). */
+                <input key={`q-${item.productId}-${item.quantite}`} defaultValue={item.quantite}
+                  inputMode="numeric" aria-label={`Quantité de ${item.nom}`}
+                  onBlur={e => {
+                    const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
+                    if (v > 0 && v !== item.quantite) {
+                      updateCartItemQuantity(item.productId, v);
+                      dire(`${item.nom} : ${v}`);
+                    } else { e.target.value = String(item.quantite); }
+                  }}
+                  style={{ width:56, minHeight:'var(--caisse-cible-tactile)', border:'1.5px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-2)', padding:'0 var(--caisse-esp-1)', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', textAlign:'center', background:'var(--caisse-ivoire)', fontVariantNumeric:'tabular-nums' }} />
+              ) : (
+                <span style={{ minWidth:32, textAlign:'center', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{item.quantite}</span>
+              )}
+              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.productId, item.quantite+1)} aria-label={`Un ${item.nom} de plus`}
+                style={{ width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', borderRadius:'50%', border:'none', background:'var(--caisse-vert)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
+                <Plus size={ICONE} strokeWidth={2.5} />
+              </motion.button>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', fontVariantNumeric:'tabular-nums' }}>
+              {/* L'UNITÉ, SUR LA LIGNE DE PANIER (lot A — VOIX-01).
+                  Elle n'existait, sur téléphone, que dans la barre flottante
+                  « Encaisser » — qui vient de disparaître avec la feuille. Sans
+                  elle, le panier dit « 3 » : trois quoi ? Trois tas, trois
+                  kilos, trois pièces ? C'est la même information que
+                  l'étiquette du produit (500 F / tas) et que le reçu ; elle
+                  doit se lire au même endroit que la quantité qu'on modifie.
+                  Vide quand l'unité n'apprend rien (« unité »). */}
+              {uniteSeule(item.quantite, item.unite) && (
+                <span style={{ fontWeight:600, color:'var(--encre)' }}>{uniteSeule(item.quantite, item.unite)}</span>
+              )}
+              <span>·</span>
               {estNegoce ? (
                 /* Prix CONVENU pour cette vente — modifiable (négoce). */
                 <input key={`p-${item.productId}-${item.prix}`} defaultValue={item.prix}
@@ -365,29 +554,17 @@ export function POSCaisse() {
                       dire(`${item.nom} : ${v.toLocaleString('fr-FR')} francs l'unité`);
                     } else { e.target.value = String(item.prix); }
                   }}
-                  style={{ width:84, minHeight:44, border:'1.5px solid var(--trait)', borderRadius:10, padding:'8px 7px', fontSize:16, fontWeight:800, color:'var(--encre)', textAlign:'right', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
+                  style={{ width:72, minHeight:'var(--caisse-cible-tactile)', border:'1.5px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-2)', padding:'0 var(--caisse-esp-1)', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', textAlign:'right', background:'var(--caisse-ivoire)', fontVariantNumeric:'tabular-nums' }} />
               ) : (
-                <span>{item.prix.toLocaleString('fr-FR')} FCFA</span>
+                <span>{item.prix.toLocaleString('fr-FR')}</span>
               )}
-              <span>{estNegoce ? 'F ×' : '×'}</span>
-              {/* Quantité TAPÉE directement (indispensable en gros). */}
-              <input key={`q-${item.productId}-${item.quantite}`} defaultValue={item.quantite}
-                inputMode="numeric" aria-label={`Quantité de ${item.nom}`}
-                onBlur={e => {
-                  const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
-                  if (v > 0 && v !== item.quantite) {
-                    updateCartItemQuantity(item.productId, v);
-                    dire(`${item.nom} : ${v}`);
-                  } else { e.target.value = String(item.quantite); }
-                }}
-                style={{ width:64, minHeight:44, border:'1.5px solid var(--trait)', borderRadius:10, padding:'8px 7px', fontSize:16, fontWeight:800, color:'var(--encre)', textAlign:'center', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
+              <span>F</span>
             </div>
+            <motion.button type="button" whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={`Enlever ${item.nom}`}
+              style={{ marginLeft:'auto', width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', background:'none', border:'none', borderRadius:'var(--caisse-rayon-2)', color:'var(--caisse-gris-texte)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
+              <Trash2 size={ICONE} />
+            </motion.button>
           </div>
-          <div style={{ fontSize:15, fontWeight:800, color:P }}>{(item.totalExact ?? item.prix * item.quantite).toLocaleString('fr-FR')} FCFA</div>
-          <motion.button whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={`Enlever ${item.nom}`}
-            style={{ width:44, height:44, background:'#FEF2F2', border:'none', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-            <Trash2 size={16} color="#ef4444" />
-          </motion.button>
         </div>
       ))}
     </>
@@ -401,132 +578,158 @@ export function POSCaisse() {
     <>
       {/* Le total s'ENTEND d'un toucher (tout montant affiché doit
           pouvoir être entendu — docs/INCLUSION.md §2.2). */}
+      {/* LA BARRE TOTAL de la maquette : fond succès, « Total » en titre de
+          section, le montant en grand titre — c'est LE chiffre de l'écran,
+          celui qu'elle regarde avant de dire le prix à la cliente. */}
       <button type="button" onClick={() => dire(`Total : ${total.toLocaleString('fr-FR')} francs`)}
         aria-label={`Total ${total.toLocaleString('fr-FR')} francs — touche pour entendre`}
-        style={{ width:'100%', display:'flex', justifyContent:'space-between', marginBottom:12, background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit' }}>
-        <span style={{ fontSize:16, fontWeight:700, color:'var(--encre)' }}>Total</span>
-        <span style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} FCFA</span>
+        style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-4)', background:'var(--caisse-succes)', border:'none', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-3) var(--caisse-esp-4)', minHeight:'var(--caisse-cible-tactile)', cursor:'pointer', fontFamily:'inherit' }}>
+        <span style={{ font:'var(--caisse-font-h2)', color:'var(--encre)' }}>Total</span>
+        <span style={{ font:'var(--caisse-font-h1)', color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums' }}>{total.toLocaleString('fr-FR')} F</span>
       </button>
 
-      {/* Moyen de paiement — espèces / mobile money (déclaré) / crédit */}
-      <div style={{ display:'flex', gap:8, marginBottom:12 }}>
+      <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:'0 0 var(--caisse-esp-2)' }}>Paiement</h2>
+
+      {/* Moyen de paiement — espèces / mobile money (déclaré) / crédit.
+          En pilote il n'y a qu'un chip : il ne s'étire pas sur toute la
+          largeur, et la mention « espèces uniquement » tient à côté. */}
+      <div style={{ display:'flex', alignItems:'center', flexWrap:'wrap', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-3)' }}>
         <button type="button" onClick={() => setPaymentMethod('cash')}
-          style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
-            border: paymentMethod==='cash' ? `2px solid ${P}` : '1.5px solid var(--trait)',
-            background: paymentMethod==='cash' ? '#FFF3E9' : '#fff', color: paymentMethod==='cash' ? P : '#8A7A6A' }}>
+          style={{ flex:'0 1 auto', minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit',
+            border: paymentMethod==='cash' ? '2px solid var(--caisse-vert)' : '1.5px solid var(--commerce-line)',
+            background: paymentMethod==='cash' ? 'var(--caisse-succes)' : 'var(--caisse-ivoire)', color: paymentMethod==='cash' ? 'var(--caisse-vert-fonce)' : 'var(--caisse-gris-texte)' }}>
           Espèces
         </button>
         {CAISSE_MOBILE_MONEY_ACTIF && (
         <button type="button" onClick={() => setPaymentMethod('mobile_money')}
-          style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer', lineHeight:1.15,
-            border: paymentMethod==='mobile_money' ? `2px solid ${P}` : '1.5px solid var(--trait)',
-            background: paymentMethod==='mobile_money' ? '#FFF3E9' : '#fff', color: paymentMethod==='mobile_money' ? P : '#8A7A6A' }}>
+          style={{ flex:1, minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit', lineHeight:1.15,
+            border: paymentMethod==='mobile_money' ? '2px solid var(--caisse-vert)' : '1.5px solid var(--commerce-line)',
+            background: paymentMethod==='mobile_money' ? 'var(--caisse-succes)' : 'var(--caisse-ivoire)', color: paymentMethod==='mobile_money' ? 'var(--caisse-vert-fonce)' : 'var(--caisse-gris-texte)' }}>
           Mobile money
         </button>
         )}
         {CAISSE_CREDIT_ACTIF && (
-        <button type="button" onClick={() => { setShowCart(false); setPaymentMethod('credit'); setShowCredit(true); }}
-          style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
-            border:'1.5px solid var(--trait)', background:'#fff', color:'var(--encre-3)' }}>
+        <button type="button" onClick={() => { setPaymentMethod('credit'); setShowCredit(true); }}
+          style={{ flex:1, minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit',
+            border:'1.5px solid var(--commerce-line)', background:'var(--caisse-ivoire)', color:'var(--caisse-gris-texte)' }}>
           Crédit
         </button>
         )}
-      </div>
 
-      {/* Pilote ESPÈCES : crédit et/ou mobile money désactivés (voir #16). */}
-      {(!CAISSE_CREDIT_ACTIF || !CAISSE_MOBILE_MONEY_ACTIF) && (
-        <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:-6, marginBottom:12, textAlign:'center' }}>
-          Caisse pilote : espèces uniquement.
-        </div>
-      )}
+        {/* Pilote ESPÈCES : crédit et/ou mobile money désactivés (voir #16). */}
+        {(!CAISSE_CREDIT_ACTIF || !CAISSE_MOBILE_MONEY_ACTIF) && (
+          <div style={{ font:'var(--caisse-font-legende)', color:'var(--caisse-gris-texte)' }}>
+            Caisse pilote : espèces uniquement.
+          </div>
+        )}
+      </div>
 
       {/* Mobile money DÉCLARÉ : choix de l'opérateur (aucune intégration) */}
       {CAISSE_MOBILE_MONEY_ACTIF && paymentMethod === 'mobile_money' && (
-        <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
+        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-3)', flexWrap:'wrap' }}>
           {MOBILE_OPERATORS.map(op => (
             <button type="button" key={op.id} onClick={() => setMmOperator(op.id)}
-              style={{ flex:'1 0 30%', padding:'11px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
-                border: mmOperator===op.id ? `2px solid ${op.color}` : '1.5px solid var(--trait)',
-                background: mmOperator===op.id ? op.color : '#fff', color: mmOperator===op.id ? op.textColor : '#5a4a3a' }}>
+              style={{ flex:'1 0 30%', minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2)', borderRadius:'var(--caisse-rayon-3)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit',
+                border: mmOperator===op.id ? `2px solid ${op.color}` : '1.5px solid var(--commerce-line)',
+                background: mmOperator===op.id ? op.color : 'var(--caisse-ivoire)', color: mmOperator===op.id ? op.textColor : 'var(--caisse-gris-texte)' }}>
               {op.name}
             </button>
           ))}
         </div>
       )}
 
-      {/* Espèces : deux gestes simples, jamais superposés. Le pavé XXL est le
-          défaut ; la marchande peut basculer vers les coupures qu'elle tient. */}
+      {/* Espèces : montant reçu EN BILLETS (geste du marché) + monnaie
+          à rendre décomposée en coupures. Le champ chiffres reste le
+          filet pour celle qui préfère taper.
+          ORDRE DES GESTES (lot F) : d'abord les billets qu'elle touche, puis
+          la carte « Reçu | Monnaie » de la maquette qui en résulte, juste
+          au-dessus du bouton qui termine — le dernier chiffre qu'elle voit
+          avant de payer est la monnaie à rendre. */}
       {paymentMethod === 'cash' && (
-      <div style={{ marginBottom:12 }}>
-        <div role="group" aria-label="Comment entrer le montant reçu" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10 }}>
-          <button type="button" aria-pressed={saisieEspeces === 'chiffres'} onClick={() => setSaisieEspeces('chiffres')}
-            style={{ minHeight:48, borderRadius:13, border:`2px solid ${saisieEspeces === 'chiffres' ? P : '#E2D7CC'}`, background:saisieEspeces === 'chiffres' ? '#FFF3E8' : '#fff', color:P, fontWeight:900, fontSize:15, cursor:'pointer' }}>
-            1 2 3 · Chiffres
-          </button>
-          <button type="button" aria-pressed={saisieEspeces === 'coupures'} onClick={() => setSaisieEspeces('coupures')}
-            style={{ minHeight:48, borderRadius:13, border:`2px solid ${saisieEspeces === 'coupures' ? P : '#E2D7CC'}`, background:saisieEspeces === 'coupures' ? '#FFF3E8' : '#fff', color:P, fontWeight:900, fontSize:15, cursor:'pointer' }}>
-            Billets · Pièces
+      <div style={{ marginBottom:'var(--caisse-esp-4)' }}>
+        {/* Les billets qu'elle vient de recevoir : un toucher = un billet
+            ajouté (et dit à voix haute). Couleurs proches des vraies coupures. */}
+        {/* alignItems:'flex-end' : les billets n'ont plus tous la même hauteur
+            (les vraies coupures non plus). Alignés par le bas, ils se lisent
+            comme une liasse posée sur la table, pas comme une grille bancale. */}
+        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'flex-end' }}>
+          {COUPURES.filter(c => c.forme === 'billet').map(c => (
+            <BilletDessine key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
+          ))}
+        </div>
+        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginTop:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'center' }}>
+          {COUPURES.filter(c => c.forme === 'piece').map(c => (
+            <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
+          ))}
+          <button type="button" onClick={() => setMontantRecu(String(total))}
+            style={{ flex:1, minWidth:104, minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-succes)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+            Compte juste
           </button>
         </div>
-        {saisieEspeces === 'chiffres' ? (
-          <PaveMontant value={montantRecu} onChange={setMontantRecu} color={P}
-            ariaLabel="Montant reçu de la cliente"
-            onSpeak={(m) => { if (m > 0) dire(`${formatF(m)} francs reçus`); }} />
-        ) : (
-          <>
-            <button type="button" onClick={() => { if (recu > 0) dire(`${formatF(recu)} francs reçus`); }}
-              style={{ width:'100%', minHeight:58, borderRadius:14, border:`2px solid ${P}`, background:'#fff', color:P, fontSize:26, fontWeight:900, marginBottom:8, cursor:'pointer' }}>
-              {formatF(recu)} F
-            </button>
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'flex-end' }}>
-              {COUPURES.filter(c => c.forme === 'billet').map(c => (
-                <BilletDessine key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
-              ))}
+
+        {/* LA CARTE PAIEMENT de la maquette : Reçu | Monnaie. Le reçu reste un
+            champ (le filet pour celle qui tape), la monnaie s'entend d'un
+            toucher, et se décompose en coupures concrètes dessous. */}
+        <div style={{ display:'flex', alignItems:'stretch', gap:'var(--caisse-esp-3)', marginTop:'var(--caisse-esp-3)', background:'var(--caisse-ivoire)', border:'1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-4)', padding:'var(--caisse-esp-3) var(--caisse-esp-4)', minWidth:0 }}>
+          <div aria-hidden="true" style={{ alignSelf:'center', width:44, height:44, borderRadius:'50%', background:'var(--caisse-succes)', color:'var(--caisse-vert)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Banknote size={ICONE} />
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>Reçu :</div>
+            <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', minWidth:0 }}>
+              {/* minWidth:0 — sans lui, un input vide garde un min-content flexbox
+                  qui peut dépasser un conteneur étroit (panneau permanent 400px,
+                  repéré en recette visuelle) au lieu de rétrécir avec flex:1. */}
+              <input value={montantRecu} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—" aria-label="Montant reçu"
+                style={{ flex:1, minWidth:0, width:'100%', minHeight:'var(--caisse-cible-tactile)', border:'none', outline:'none', textAlign:'left', font:'var(--caisse-font-h2)', fontWeight:600, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums', padding:0 }} />
+              <span style={{ font:'var(--caisse-font-h2)', color:'var(--encre)' }}>F</span>
+              {recu > 0 && (
+                <button type="button" aria-label="Effacer le montant reçu" onClick={() => setMontantRecu('')}
+                  style={{ width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', borderRadius:'50%', border:'none', background:'transparent', color:'var(--caisse-alerte)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0, flexShrink:0 }}>
+                  <X size={ICONE} />
+                </button>
+              )}
             </div>
-            <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap', alignItems:'center' }}>
-              {COUPURES.filter(c => c.forme === 'piece').map(c => (
-                <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
-              ))}
-            </div>
-          </>
-        )}
-        <button type="button" onClick={() => { setMontantRecu(String(total)); dire('Compte juste'); }}
-          style={{ width:'100%', minHeight:50, marginTop:8, borderRadius:12, border:'1.5px solid #A8D8B9', background:'#EAF7EE', color:'#0E7A47', fontWeight:900, fontSize:15, cursor:'pointer' }}>
-          Compte juste · {formatF(total)} F
-        </button>
-        {recu > 0 && !insuffisant && (
+          </div>
+          <div aria-hidden="true" style={{ width:1, background:'var(--commerce-line)', flexShrink:0 }} />
+          {recu > 0 && !insuffisant ? (
           <button type="button" onClick={() => dire(`Monnaie à rendre : ${formatF(monnaie)} francs`)}
             aria-label={`Monnaie à rendre ${formatF(monnaie)} francs — touche pour entendre`}
-            style={{ width:'100%', background:'none', border:'none', padding:0, marginTop:10, cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', fontSize:15, fontWeight:800, color:'#0E7A47' }}>
-              <span>Monnaie à rendre</span><span style={{ fontVariantNumeric:'tabular-nums' }}>{formatF(monnaie)} F</span>
-            </div>
+            style={{ flex:1, minWidth:0, background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>Monnaie :</div>
+            <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>{formatF(monnaie)} F</div>
             {/* La monnaie EN COUPURES concrètes : « 2000 ×1 · 500 ×1 » */}
             {monnaie > 0 && monnaieDecomposee.lignes.length > 0 && (
-              <div style={{ display:'flex', gap:5, marginTop:6, flexWrap:'wrap' }}>
+              <div style={{ display:'flex', gap:'var(--caisse-esp-1)', marginTop:'var(--caisse-esp-1)', flexWrap:'wrap' }}>
                 {monnaieDecomposee.lignes.map(l => (
-                  <span key={l.valeur} style={{ padding:'4px 9px', borderRadius:8, background:'#EAF7EE', border:'1px solid #A8D8B9', color:'#0E7A47', fontWeight:800, fontSize:12, fontVariantNumeric:'tabular-nums' }}>
+                  <span key={l.valeur} style={{ padding:'2px var(--caisse-esp-2)', borderRadius:'var(--caisse-rayon-2)', background:'var(--caisse-succes)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-legende)', fontWeight:600, fontVariantNumeric:'tabular-nums' }}>
                     {formatF(l.valeur)} ×{l.nb}
                   </span>
                 ))}
                 {monnaieDecomposee.reste > 0 && (
-                  <span style={{ padding:'4px 9px', borderRadius:8, background:'#FFF7E6', border:'1px solid #F0D9A8', color:'#8A6A1A', fontWeight:800, fontSize:12 }}>
+                  <span style={{ padding:'2px var(--caisse-esp-2)', borderRadius:'var(--caisse-rayon-2)', background:'var(--caisse-sable)', color:'var(--caisse-gris-texte)', font:'var(--caisse-font-legende)', fontWeight:600 }}>
                     + {formatF(monnaieDecomposee.reste)} F
                   </span>
                 )}
               </div>
             )}
           </button>
-        )}
+          ) : (
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>Monnaie :</div>
+            <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>—</div>
+          </div>
+          )}
+        </div>
         {insuffisant && (
-          <div style={{ marginTop:8, fontSize:13, fontWeight:700, color:'#c0392b' }}>Montant reçu insuffisant</div>
+          <div role="alert" style={{ marginTop:'var(--caisse-esp-2)', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--caisse-alerte)' }}>Montant reçu insuffisant</div>
         )}
       </div>
       )}
 
       {(() => {
         const bloque = isProcessing
-          || (paymentMethod === 'cash' && (montantRecuManquant || insuffisant))
+          || (paymentMethod === 'cash' && insuffisant)
           || (paymentMethod === 'mobile_money' && !mmOperator);
         // CTA unique et fort (mockup validé) : « Payer en espèces » plutôt
         // qu'un « Valider » générique — le moyen de paiement pilote est déjà
@@ -534,16 +737,22 @@ export function POSCaisse() {
         const label = isProcessing ? 'Traitement...'
           : paymentMethod === 'mobile_money'
             ? (mmOperator ? `Valider — payé par ${getMobileOperator(mmOperator).name}` : 'Choisis l\'opérateur')
-            : montantRecuManquant
-              ? 'Entre le montant reçu'
-              : (monnaie > 0 ? `Payer en espèces · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Payer en espèces');
+            : (monnaie > 0 ? `Payer en espèces · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Payer en espèces');
         return (
           <motion.button whileTap={{ scale: bloque ? 1 : 0.97 }} onClick={handlePay} disabled={bloque}
-            style={{ width:'100%', border:'none', borderRadius:18, padding:'17px 0', fontSize:16, fontWeight:800, color:'white', cursor: bloque ? 'not-allowed':'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, background: bloque ? '#CBB9A8' : P }}>
+            style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-2)', border:'none', borderRadius:'var(--caisse-rayon-4)', padding:'var(--caisse-esp-4) var(--caisse-esp-3)', minHeight:56, font:'var(--caisse-font-bouton)', color:'white', cursor: bloque ? 'not-allowed':'pointer', textWrap:'balance', background: bloque ? 'var(--caisse-gris-texte)' : 'var(--caisse-vert)' }}>
+            <Banknote size={ICONE} aria-hidden="true" style={{ flexShrink:0 }} />
             {label}
           </motion.button>
         );
       })()}
+
+      {/* La signature de la maquette, en légende : la seule ligne de cet
+          écran qui ne sert pas à vendre — elle dit pour qui on le fait. */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-1)', marginTop:'var(--caisse-esp-3)', font:'var(--caisse-font-legende)', fontStyle:'italic', color:'var(--caisse-vert)' }}>
+        <Leaf size={14} aria-hidden="true" />
+        <span>Des marchés plus forts, des familles plus heureuses</span>
+      </div>
     </>
   );
 
@@ -551,14 +760,22 @@ export function POSCaisse() {
     <SubPageLayout
       role="marchand"
       title="Caisse du jour"
+      variante="caisse"
       rightContent={
-        <div style={{ display:'flex', gap:7, alignItems:'center' }}>
-          {/* Statut réseau — simple et permanent (mockup validé) : la donnée
-              existe déjà globalement (useApp().isOnline), on ne fait que
-              l'afficher ici au lieu de seulement lors d'une coupure. */}
-          <div style={{ height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', gap:6, padding:'0 11px' }}>
-            <span style={{ width:8, height:8, borderRadius:'50%', background: isOnline ? '#4ADE80' : '#F87171', flexShrink:0 }} />
-            <span style={{ fontSize:12, fontWeight:700, color:'white', whiteSpace:'nowrap' }}>{isOnline ? 'En ligne' : 'Hors-ligne'}</span>
+        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', alignItems:'center' }}>
+          {/* L'EN-TÊTE DE LA MAQUETTE : la date du jour et « Bonnes ventes ! »
+              sous un soleil. Le statut réseau — simple et permanent (mockup
+              validé), la donnée existe déjà globalement (useApp().isOnline) —
+              reste lisible sans mot : le point vert ou rouge, et « Hors-ligne »
+              remplace le souhait quand il n'y a pas de réseau. */}
+          <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)', minHeight:'var(--caisse-cible-tactile)' }} aria-label={isOnline ? 'En ligne' : 'Hors-ligne'}>
+            <div style={{ textAlign:'left' }}>
+              <div style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', whiteSpace:'nowrap' }}>{(d => d.charAt(0).toUpperCase() + d.slice(1))(new Date().toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' }))}</div>
+              <div style={{ font:'var(--caisse-font-legende)', color: isOnline ? 'var(--caisse-gris-texte)' : 'var(--caisse-alerte)', display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', whiteSpace:'nowrap' }}>
+                <span aria-hidden="true" style={{ width:8, height:8, borderRadius:'50%', background: isOnline ? 'var(--caisse-vert)' : 'var(--caisse-alerte)', flexShrink:0 }} />
+                {isOnline ? 'Bonnes ventes !' : 'Hors-ligne'}
+              </div>
+            </div>
           </div>
           {CAISSE_CREDIT_ACTIF && (
           <motion.button whileTap={{ scale: nbItems > 0 ? 0.95 : 1 }}
@@ -567,59 +784,42 @@ export function POSCaisse() {
               if (nbItems === 0) { dire('Ajoute d\'abord des produits au panier.'); return; }
               setPaymentMethod('credit'); setShowCredit(true);
             }}
-            style={{ height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 12px', gap:6, cursor: nbItems > 0 ? 'pointer' : 'not-allowed', opacity: nbItems > 0 ? 1 : 0.5 }}>
-            <FileText size={13} color="white" />
-            <span style={{ fontSize:12, fontWeight:700, color:'white' }}>À crédit</span>
+            style={{ minHeight:'var(--caisse-cible-tactile)', borderRadius:'var(--caisse-rayon-3)', background:'var(--caisse-ivoire)', border:'1px solid var(--commerce-line)', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 var(--caisse-esp-3)', gap:'var(--caisse-esp-1)', cursor: nbItems > 0 ? 'pointer' : 'not-allowed', opacity: nbItems > 0 ? 1 : 0.5 }}>
+            <FileText size={ICONE} color="var(--caisse-vert)" />
+            <span style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)' }}>À crédit</span>
           </motion.button>
           )}
-          {/* Panier permanent sur grand écran (panneau à droite, voir plus
-              bas) : ce bouton devient redondant en lg — gardé uniquement en
-              mobile, où le panier reste un panneau coulissant sur demande.
-              La classe lg:hidden est posée sur un wrapper SANS style inline
-              conflictuel : un display inline sur le bouton lui-même aurait
-              gagné sur la règle Tailwind (spécificité du style attribute). */}
-          <div className="lg:hidden">
-          <motion.button whileTap={{ scale:0.9 }} onClick={() => setShowCart(true)}
-            style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
-            <ShoppingCart size={16} color="white" />
-            {nbItems > 0 && <span style={{ position:'absolute', top:-4, right:-4, minWidth:17, height:17, background:'#ef4444', borderRadius:'50%', fontSize:9, fontWeight:800, color:'white', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #8f4418' }}>{nbItems}</span>}
-          </motion.button>
-          </div>
-        </div>
-      }
-      bottomAction={
-        // Barre flottante « Encaisser » — mobile uniquement : sur grand écran
-        // le panier permanent affiche déjà le total et le CTA en continu.
-        <div className="lg:hidden">
-        <AnimatePresence>
-          {nbItems > 0 && (
-            <motion.div initial={{ y:80 }} animate={{ y:0 }} exit={{ y:80 }}
-              style={{ flexShrink:0, padding:'10px 14px 24px', background:BG }}>
-              <div style={{ background:'rgba(255,255,255,0.92)', backdropFilter:'blur(12px)', border:'1.5px solid rgba(175,91,35,0.2)', borderRadius:18, padding:'13px 16px', display:'flex', alignItems:'center', gap:10 }}>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:11, color:'var(--encre-4)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                    {cart.map(i => ligneLisible(i.quantite, i.nom, i.unite)).join(' · ')}
-                  </div>
-                  <div style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} <span style={{ fontSize:12, fontWeight:700 }}>FCFA</span></div>
-                </div>
-                <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowCart(true)}
-                  style={{ background:P, border:'none', borderRadius:14, padding:'13px 20px', fontSize:15, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', boxShadow:`0 4px 14px ${P}55` }}>
-                  Encaisser {total.toLocaleString('fr-FR')} F
-                </motion.button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          {/* PLUS DE BOUTON « PANIER » ICI (lot A — VOIX-01).
+              Il ouvrait une feuille coulissante : le panier et TOUT
+              l'encaissement vivaient derrière un bouton que la marchande
+              devait savoir chercher. Le panier est maintenant sur la surface,
+              sous les produits, aux deux tailles d'écran. Un bouton qui
+              n'ouvre plus rien n'a pas à rester. */}
         </div>
       }
     >
 
-      {/* CONTENU — sur grand écran : grille produits + panier permanent à
-          droite (mockup validé, option 1 « delta minimal »). Sur mobile :
-          inchangé, le panier reste un panneau coulissant sur demande. */}
+      {/* CONTENU — UNE SEULE SURFACE (lot A — VOIX-01).
+          Grand écran : grille produits + panier permanent à DROITE.
+          Téléphone portrait : grille produits (repliée en aperçu) + panier et
+          encaissement SOUS la grille, sur la même page. Dans les deux cas,
+          produits, panier, total et « Payer en espèces » vivent sur la même
+          route : plus aucune feuille à ouvrir, plus aucun écran à changer. */}
       <div className="lg:flex lg:items-start lg:gap-4">
       <div className="lg:flex-1 lg:min-w-0" style={{ flex:1, overflowY:'auto', padding:'14px 0 0' }}>
         <SyncEchecsBanner />
+
+        {/* LE MICRO — présent AUX TROIS MOMENTS de la vente (lot B).
+            Il est rendu ici sans aucune condition : ni sur l'état du panier,
+            ni sur celui de l'encaissement. C'est la règle de VOIX-01 rendue
+            vérifiable — il n'existe aucun état de la vente où la marchande
+            regarde cet écran sans voir le micro. Le moteur vocal est monté
+            DANS ce composant : le bouton ne peut pas exister sans lui, ce qui
+            interdit le retour du micro décoratif de 2026.
+            `onIntentionEncaissement` (lot C) : le micro RECONNAÎT « encaisse »
+            et « oui valide », c'est cette page qui décide — elle seule tient
+            le compte et la primitive de paiement. */}
+        <MicroVenteCaisse produitPreselectionne={produitPreselectionne} onIntentionEncaissement={onIntentionEncaissement} />
         {/* UNE ÉTIQUETTE, PAS UNE BOÎTE — le défaut relevé par Patrick le 18/09.
             Il a tapé « banane » et rien n'est arrivé dans le champ : l'écran a
             continué d'afficher l'oignon. La cause n'était pas le filtre, elle
@@ -635,7 +835,49 @@ export function POSCaisse() {
             La hauteur passe à 44 px (13 px de marge haute et basse) : c'est la
             même règle de cible tactile que pour les billets — un doigt, pas un
             curseur. */}
-        <label style={{ marginBottom:12, background:'white', border:'1.5px solid var(--trait)', borderRadius:13, padding:'13px 14px', display:'flex', alignItems:'center', gap:9, cursor:'text' }}>
+        {/* ── PRODUITS (lot F) — l'en-tête de section de la maquette :
+            « Produits » à gauche, « Voir plus › » à droite.
+            « Voir plus » DÉPLIE la grille SUR PLACE, il ne change pas d'écran
+            (lot A). Sur téléphone la grille n'affiche que les premières
+            vignettes : sans ce repli, le panier qui la suit serait à plusieurs
+            écrans de défilement et la surface unique ne serait qu'un mot.
+            Au-dessus de 1024 px le panier est à CÔTÉ, pas dessous : la grille y
+            reste entière et ce bouton n'existe pas (cf. .pos-grille-apercu
+            dans styles/commerce.css). */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
+          <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>Produits</h2>
+          {filtered.length > 4 && (
+            <div className="lg:hidden">
+              <button type="button" onClick={() => setVoirPlusProduits(v => !v)} aria-expanded={voirPlusProduits}
+                style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', minHeight:'var(--caisse-cible-tactile)', padding:'0 var(--caisse-esp-2) 0 var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'1px solid var(--commerce-line)', background:'var(--caisse-ivoire)', color:'var(--encre)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                {voirPlusProduits ? 'Voir moins' : 'Voir plus'}
+                <ChevronRight size={ICONE} aria-hidden="true" style={{ transform: voirPlusProduits ? 'rotate(90deg)' : 'none' }} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Le filtre et « Autre article », sur une seule rangée sous l'en-tête :
+            deux outils, pas deux sections — la maquette n'en montre aucun, ils
+            restent pour celle qui a trente produits ou vend un article qui
+            n'est pas listé. */}
+        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
+        {/* UNE ÉTIQUETTE, PAS UNE BOÎTE — le défaut relevé par Patrick le 18/09.
+            Il a tapé « banane » et rien n'est arrivé dans le champ : l'écran a
+            continué d'afficher l'oignon. La cause n'était pas le filtre, elle
+            était ici. Le champ était une <div> : seul le rectangle EXACT de
+            l'<input> prenait le focus. La loupe, les 14 px de marge, la bordure
+            — tout cela avait l'air d'une barre de recherche et ne répondait
+            pas. Une marchande qui vise la loupe tape dans le vide, et ne trouve
+            donc AUCUN produit : elle ne peut pas vendre ce qu'elle ne trouve
+            pas.
+            Une <label> qui ENTOURE l'input donne le focus depuis n'importe
+            lequel de ses points. C'est du HTML d'origine, pas un gestionnaire
+            de clic à maintenir.
+            La hauteur passe à 44 px (13 px de marge haute et basse) : c'est la
+            même règle de cible tactile que pour les billets — un doigt, pas un
+            curseur. */}
+        <label style={{ flex:1, minWidth:0, background:'var(--caisse-ivoire)', border:'1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-3)', padding:'13px 14px', display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)', cursor:'text' }}>
           {/* PAS DE MICROPHONE ICI, ET C'EST VOLONTAIRE.
               Il y en avait un, purement décoratif, à côté du mot « Dites ».
               L'intention était d'éviter un bouton d'apparence cliquable ; le
@@ -646,163 +888,158 @@ export function POSCaisse() {
               qui ne lit pas.
               Ce champ est un FILTRE qu'on tape. Il le dit maintenant. Le seul
               microphone de l'écran est celui qui marche. */}
-          <span aria-hidden="true" style={{ display:'flex', alignItems:'center', flexShrink:0 }}>
-            <Search size={14} color="var(--encre-4)" />
+          <span aria-hidden="true" style={{ display:'flex', alignItems:'center', flexShrink:0, color:'var(--caisse-gris-texte)' }}>
+            <Search size={18} />
           </span>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Chercher un produit…"
-            style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:15, color:'var(--encre)', fontFamily:'inherit', minWidth:0 }} />
-          {search && <motion.button type="button" aria-label="Effacer la recherche" whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, flexShrink:0 }}>
-            <X size={16} color="#aaa" />
+            style={{ flex:1, border:'none', outline:'none', background:'transparent', font:'var(--caisse-font-texte)', lineHeight:'18px', color:'var(--encre)', fontFamily:'inherit', minWidth:0 }} />
+          {search && <motion.button type="button" aria-label="Effacer la recherche" whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, flexShrink:0, color:'var(--caisse-gris-texte)', display:'flex' }}>
+            <X size={ICONE} />
           </motion.button>}
         </label>
 
         {/* AUTRE ARTICLE — vendre un montant libre, sans produit listé (Phase 3) */}
-        <motion.button whileTap={{ scale:0.98 }} onClick={() => setShowLibre(true)}
-          style={{ width:'100%', marginBottom:14, padding:'12px', borderRadius:13, border:`1.5px dashed ${P}`, background:'#fff', color:P, fontWeight:800, fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-          <Plus size={16} /> Autre article
+        <motion.button type="button" whileTap={{ scale:0.98 }} onClick={() => setShowLibre(true)}
+          style={{ minHeight:'var(--caisse-cible-tactile)', padding:'0 var(--caisse-esp-3) 0 var(--caisse-esp-2)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px dashed var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-1)', whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0 }}>
+          <Plus size={ICONE} aria-hidden="true" /> Autre article
         </motion.button>
+        </div>
 
-        {/* VENTE RAPIDE */}
-        {search === '' && topProducts.length > 0 && (
-          <div style={{ marginBottom:16 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-              <div style={{ width:3, height:14, background:P, borderRadius:2 }} />
-              <span style={{ fontSize:11, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.1em' }}>Vente rapide</span>
-              <span style={{ fontSize:10, color:'var(--encre-4)' }}>· dynamique selon tes ventes</span>
-            </div>
-            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              {topProducts.map((p, i) => (
-                <motion.button key={p.id} whileTap={{ scale:0.97 }}
-                  onClick={() => ajouterAuPanier(p)}
-                  style={{ borderRadius:18, overflow:'hidden', position:'relative', height:96, border:'none', cursor:'pointer', padding:0 }}>
-                  <ImageWithFallback src={p.image || undefined} fallbackSrc={getPictogrammeByNom(p.nom)} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', position:'absolute', top:0, left:0 }} />
-                  <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right,rgba(0,0,0,0.72) 0%,rgba(0,0,0,0.25) 55%,transparent 100%)' }} />
-                  <div style={{ position:'absolute', inset:0, padding:'0 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                    <div style={{ textAlign:'left' }}>
-                      <div style={{ fontSize:20, fontWeight:900, color:'white' }}>{p.nom}</div>
-                      <div style={{ fontSize:15, color:'rgba(255,255,255,0.92)', fontWeight:700, marginTop:1 }}>
-                        {(p.prix||0).toLocaleString('fr-FR')} <span style={{ fontSize:11 }}>FCFA/{p.unite}</span>
-                      </div>
-                    </div>
-                    <motion.div
-                      animate={{ scale:[1,1.12,1], boxShadow:['0 2px 8px 0 rgba(0,0,0,0.25)','0 0 0 6px rgba(255,255,255,0)','0 2px 8px 0 rgba(0,0,0,0.25)'] }}
-                      transition={{ duration:2, repeat:Infinity, delay: i * 0.8 }}
-                      style={{ width:44, height:44, borderRadius:'50%', background:'white', border:'none', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    </motion.div>
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TOUS LES PRODUITS */}
-        <div style={{ marginBottom:14 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-            <div style={{ width:3, height:14, background:'#EDE7DE', borderRadius:2 }} />
-            <span style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', letterSpacing:'0.1em' }}>Tous les produits</span>
-          </div>
+        {/* LA GRILLE — les cartes ivoire de la maquette : photo, nom,
+            « 500 F / tas ». La CARTE ENTIÈRE est le bouton qui ajoute au
+            panier (`ajouterAuPanier`, qui le DIT) : plus de « + Ajouter » à
+            viser sous la photo. Quand le produit est au panier, la carte se
+            borde de vert et porte « ×3 » ; les gestes − / + vivent sur la
+            ligne du panier, juste dessous, comme la maquette les dessine.
+            « VENTE RAPIDE », fondue ici (lot F) : les deux produits les plus
+            vendus (`topProducts`, calculé sur ses ventes réelles) portent un
+            éclair au lieu d'une section à part qui les affichait deux fois. */}
+        <div style={{ marginBottom:'var(--caisse-esp-5)' }}>
           {filtered.length === 0 ? (
-            <div style={{ textAlign:'center', padding:'40px 0', color:'var(--encre-4)' }}>
-              <Package size={48} style={{ margin:'0 auto 12px', opacity:0.3 }} />
-              <p style={{ marginBottom:16 }}>Aucun produit</p>
-              <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowLibre(true)}
-                style={{ padding:'12px 22px', borderRadius:14, border:'none', background:P, color:'#fff', fontWeight:800, fontSize:15, cursor:'pointer' }}>
+            <div style={{ textAlign:'center', padding:'var(--caisse-esp-7) 0', color:'var(--caisse-gris-texte)', font:'var(--caisse-font-texte)' }}>
+              <Package size={48} style={{ margin:'0 auto var(--caisse-esp-3)', opacity:0.4 }} />
+              <p style={{ marginBottom:'var(--caisse-esp-4)' }}>Aucun produit</p>
+              <motion.button type="button" whileTap={{ scale:0.97 }} onClick={() => setShowLibre(true)}
+                style={{ minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-3) var(--caisse-esp-5)', borderRadius:'var(--caisse-rayon-4)', border:'none', background:'var(--caisse-vert)', color:'white', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
                 + Autre article
               </motion.button>
             </div>
           ) : (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            <div className={voirPlusProduits ? 'pos-grille' : 'pos-grille pos-grille-apercu'}>
               {filtered.map((p, i) => {
                 const inCart = cart.find(c => c.productId === p.id);
                 const enPromo = promoActive(p as any);
-                const cartTotal = inCart ? inCart.quantite * inCart.prix : 0;
+                const rapide = topProducts.some(t => t.id === p.id);
                 return (
-                  <motion.div key={p.id} initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} transition={{ delay: i*0.04 }}
-                    role={!inCart ? 'button' : undefined}
-                    tabIndex={!inCart ? 0 : undefined}
-                    aria-label={!inCart ? `Ajouter ${p.nom}, ${prixEffectif(p as any).toLocaleString('fr-FR')} francs` : undefined}
-                    onClick={!inCart ? () => ajouterAuPanier(p) : undefined}
-                    onKeyDown={!inCart ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ajouterAuPanier(p); } } : undefined}
-                    style={{ background:'white', border:`1.5px solid ${inCart ? P : '#EDE7DE'}`, borderRadius:20, overflow:'hidden', boxShadow: inCart ? `0 4px 20px rgba(175,91,35,0.18)` : 'none', cursor: inCart ? 'default' : 'pointer' }}>
-                    <div style={{ position:'relative', height:110 }}>
-                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getPictogrammeByNom(p.nom)} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
-                      <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.55) 100%)' }} />
+                  <motion.button key={p.id} type="button" initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} transition={{ delay: i*0.04 }} whileTap={{ scale:0.96 }}
+                    onClick={() => ajouterAuPanier(p)} aria-label={`Ajouter ${p.nom} au panier`}
+                    style={{ background:'var(--caisse-ivoire)', border: inCart ? '2px solid var(--caisse-vert)' : '1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-3)', overflow:'hidden', padding:0, cursor:'pointer', fontFamily:'inherit', textAlign:'center', display:'flex', flexDirection:'column', minWidth:0 }}>
+                    <div style={{ position:'relative', width:'100%', aspectRatio:'1 / 1', background:'var(--caisse-sable)' }}>
+                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getImageByNom(p.nom)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                       <StockBadge stock={p.stock || 0} />
                       {enPromo && (
-                        <div style={{ position:'absolute', top:8, left:8, background:'#C0392B', borderRadius:10, padding:'3px 9px', fontSize:11, fontWeight:900, color:'white', boxShadow:'0 2px 8px rgba(192,57,43,0.4)' }}>
+                        <div style={{ position:'absolute', top:'var(--caisse-esp-1)', right:'var(--caisse-esp-1)', background:'var(--caisse-alerte)', borderRadius:'var(--caisse-rayon-2)', padding:'2px 6px', font:'var(--caisse-font-legende)', fontWeight:600, color:'white' }}>
                           -{remisePct(p as any)}%
                         </div>
                       )}
+                      {rapide && !inCart && (
+                        <div title="Vente rapide : parmi tes produits les plus vendus" style={{ position:'absolute', bottom:'var(--caisse-esp-1)', right:'var(--caisse-esp-1)', width:24, height:24, borderRadius:'50%', background:'var(--caisse-vert-fonce)', color:'white', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          <Zap size={14} aria-hidden="true" />
+                        </div>
+                      )}
                       {inCart && (
-                        <div style={{ position:'absolute', top:8, right:8, background:P, borderRadius:10, padding:'3px 10px', fontSize:11, fontWeight:800, color:'white' }}>
-                          {cartTotal.toLocaleString('fr-FR')} FCFA
+                        <div style={{ position:'absolute', bottom:'var(--caisse-esp-1)', right:'var(--caisse-esp-1)', background:'var(--caisse-vert)', borderRadius:'var(--caisse-rayon-2)', padding:'2px 6px', font:'var(--caisse-font-legende)', fontWeight:600, color:'white', fontVariantNumeric:'tabular-nums' }}>
+                          ×{inCart.quantite}
                         </div>
                       )}
                     </div>
-                    <div style={{ padding:'11px 12px' }}>
-                      <div style={{ fontSize:16, fontWeight:800, color:'var(--encre)' }}>{p.nom}</div>
+                    <div style={{ padding:'var(--caisse-esp-2) var(--caisse-esp-1)', width:'100%', boxSizing:'border-box' }}>
+                      <div style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nom}</div>
                       {enPromo ? (
-                        <div style={{ margin:'3px 0', display:'flex', alignItems:'baseline', gap:6, flexWrap:'wrap' }}>
-                          <span style={{ fontSize:20, fontWeight:900, color:'#C0392B' }}>{prixEffectif(p as any).toLocaleString('fr-FR')}</span>
-                          <span style={{ fontSize:13, fontWeight:800, color:'#C0392B' }}>FCFA/{p.unite}</span>
-                          <span style={{ fontSize:12, fontWeight:700, color:'var(--encre-4)', textDecoration:'line-through' }}>{(p.prix||0).toLocaleString('fr-FR')}</span>
+                        <div style={{ marginTop:'var(--caisse-esp-1)', display:'flex', flexWrap:'wrap', columnGap:'var(--caisse-esp-1)', alignItems:'baseline', justifyContent:'center', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--caisse-alerte)', fontVariantNumeric:'tabular-nums' }}>
+                          <span>{prixEffectif(p as any).toLocaleString('fr-FR')} F</span>
+                          <span style={{ fontWeight:400, fontSize:14, color:'var(--caisse-gris-texte)' }}>/ {p.unite}</span>
+                          <span style={{ fontWeight:400, fontSize:12, color:'var(--caisse-gris-texte)', textDecoration:'line-through' }}>{(p.prix||0).toLocaleString('fr-FR')}</span>
                         </div>
                       ) : (
                         <Prix prix={p.prix||0} unite={p.unite} />
                       )}
-                      {inCart ? (
-                        <div style={{ display:'flex', alignItems:'center', background:'#FFF3EA', borderRadius:12, padding:4, marginTop:8, gap:4 }}>
-                          <motion.button whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(p.id, inCart.quantite-1)} aria-label="Enlever un"
-                            style={{ width:44, height:44, background:'white', border:'none', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'0 1px 4px rgba(0,0,0,0.08)' }}>
-                            <Minus size={18} color={P} />
-                          </motion.button>
-                          <span style={{ flex:1, textAlign:'center', fontSize:20, fontWeight:900, color:P }}>{inCart.quantite}</span>
-                          <motion.button whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(p.id, inCart.quantite+1)} aria-label="Ajouter un"
-                            style={{ width:44, height:44, background:P, border:'none', borderRadius:10, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-                            <Plus size={18} color="white" />
-                          </motion.button>
-                        </div>
-                      ) : (
-                        <div aria-hidden="true"
-                          style={{ width:'100%', background:P, borderRadius:12, padding:'11px 0', fontSize:15, fontWeight:800, color:'white', textAlign:'center', marginTop:8 }}>
-                          + Ajouter
-                        </div>
-                      )}
                     </div>
-                  </motion.div>
+                  </motion.button>
                 );
               })}
             </div>
           )}
         </div>
+
+        {/* ── PANIER + ENCAISSEMENT SUR LA MÊME SURFACE (lot A — VOIX-01) ──
+            Ce bloc n'existait qu'en `lg:` (le panneau de droite) ; sur
+            téléphone — le support du pilote — le panier et TOUT
+            l'encaissement étaient dans une feuille coulissante. Une marchande
+            qui ne lit pas devait donc deviner qu'un bouton cachait l'argent.
+            Ici, rien ne cache rien : les lignes, le total, le montant reçu,
+            la monnaie et « Payer en espèces » sont sur la page, sous les
+            produits, et se rejoignent en faisant défiler — jamais en ouvrant.
+            Même `renderCartLines()` / `renderCartFooter()` que le panneau de
+            droite : une seule logique, deux dispositions. */}
+        <section className="lg:hidden" style={{ marginBottom:'var(--caisse-esp-5)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
+            <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>
+              Panier actuel{nbItems > 0 && <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}> ({nbItems})</span>}
+            </h2>
+            {nbItems > 0 && (
+              <button type="button" onClick={clearCart}
+                style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', minHeight:'var(--caisse-cible-tactile)', padding:'0 var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'none', background:'var(--caisse-sable)', color:'var(--encre)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+                <Trash2 size={ICONE} aria-hidden="true" color="var(--caisse-gris-texte)" />
+                Vider le panier
+              </button>
+            )}
+          </div>
+          {nbItems === 0 ? (
+            <div style={{ background:'var(--caisse-ivoire)', border:'1.5px dashed var(--commerce-line)', borderRadius:'var(--caisse-rayon-4)', textAlign:'center', padding:'var(--caisse-esp-5) var(--caisse-esp-4)', color:'var(--caisse-gris-texte)', font:'var(--caisse-font-texte)' }}>
+              Touche un produit pour l'ajouter au panier.
+            </div>
+          ) : (
+            <>
+              <div style={{ background:'var(--caisse-ivoire)', border:'1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-4)', padding:'0 var(--caisse-esp-4)', marginBottom:'var(--caisse-esp-3)' }}>
+                {renderCartLines()}
+              </div>
+              <div>
+                {renderCartFooter()}
+              </div>
+            </>
+          )}
+        </section>
       </div>
 
       {/* Panier permanent — grand écran uniquement (mockup validé). Même
           logique/JSX que le panneau coulissant mobile, via renderCartLines()/
           renderCartFooter() : rien de dupliqué, juste affiché autrement. */}
-      <aside className="hidden lg:flex lg:flex-col" style={{ width:400, flexShrink:0, position:'sticky', top:100, maxHeight:'calc(100vh - 120px)', background:'white', border:'1.5px solid var(--trait)', borderRadius:20, marginTop:14, overflow:'hidden' }}>
-        <div style={{ padding:'16px 18px 6px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-          <span style={{ fontSize:17, fontWeight:900, color:'var(--encre)' }}>
-            Mon panier {nbItems > 0 && <span style={{ fontWeight:400, fontSize:13, color:'var(--encre-4)' }}>({nbItems})</span>}
-          </span>
+      <aside className="hidden lg:flex lg:flex-col" style={{ width:400, flexShrink:0, position:'sticky', top:100, maxHeight:'calc(100vh - 120px)', background:'var(--caisse-ivoire)', border:'1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-4)', marginTop:'var(--caisse-esp-4)', overflowY:'auto' }}>
+        <div style={{ padding:'var(--caisse-esp-4) var(--caisse-esp-4) var(--caisse-esp-2)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', flexShrink:0 }}>
+          <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>
+            Panier actuel {nbItems > 0 && <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>({nbItems})</span>}
+          </h2>
           {nbItems > 0 && (
-            <button type="button" onClick={clearCart} style={{ background:'none', border:'none', color:'#AE3A38', fontWeight:700, fontSize:12, cursor:'pointer' }}>
+            <button type="button" onClick={clearCart} style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', minHeight:'var(--caisse-cible-tactile)', padding:'0 var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'none', background:'var(--caisse-sable)', color:'var(--encre)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
+              <Trash2 size={ICONE} aria-hidden="true" color="var(--caisse-gris-texte)" />
               Vider
             </button>
           )}
         </div>
         {nbItems === 0 ? (
-          <div style={{ textAlign:'center', padding:'40px 18px', color:'var(--encre-4)', fontSize:13 }}>
+          <div style={{ textAlign:'center', padding:'var(--caisse-esp-7) var(--caisse-esp-4)', color:'var(--caisse-gris-texte)', font:'var(--caisse-font-texte)' }}>
             Touche un produit pour l'ajouter au panier.
           </div>
         ) : (
           <>
-            <div style={{ flex:1, overflowY:'auto', padding:'0 18px', minHeight:0 }}>
+            {/* Le panneau défile EN ENTIER (overflowY sur l'aside) : avec les
+                billets, le pied est plus haut qu'un écran de portable, et un
+                bloc de lignes en flex:1 était écrasé à zéro — panier invisible. */}
+            <div style={{ flexShrink:0, padding:'0 var(--caisse-esp-4)' }}>
               {renderCartLines()}
             </div>
-            <div style={{ padding:'14px 18px 18px', flexShrink:0 }}>
+            <div style={{ padding:'var(--caisse-esp-4)', flexShrink:0 }}>
               {renderCartFooter()}
             </div>
           </>
@@ -810,54 +1047,14 @@ export function POSCaisse() {
       </aside>
       </div>
 
-      {/* PANIER MODAL */}
-      <AnimatePresence>
-        {showCart && (
-          <>
-            <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-              style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:50 }} onClick={() => setShowCart(false)} />
-            <motion.div initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }} transition={{ type:'spring', damping:28 }}
-              // LE BOUTON QUI ENCAISSE PASSAIT SOUS LE BORD DE L'ÉCRAN.
-              // Remonté en recette (16/09/2026) : dès qu'un montant reçu est
-              // saisi, le pied s'allonge (billets, pièces, monnaie à rendre) et
-              // « Payer en espèces » sortait de la feuille — mesuré 718→776 px
-              // dans une fenêtre de 745. La feuille est en position fixe collée
-              // en bas : ce qui déborde n'est pas atteignable, et rien ne
-              // défile. Le geste qui TERMINE LA VENTE devenait invisible, avec
-              // la cliente qui attend.
-              //
-              // Trois manques, tous absents ici alors que le panneau grand
-              // écran (voir plus haut, :750 et :753) les a :
-              //   - la zone défilante n'avait pas minHeight:0, donc elle refuse
-              //     de rétrécir (un enfant flex ne passe pas sous sa taille de
-              //     contenu sans ça) ;
-              //   - le pied n'avait pas flexShrink:0, donc c'est LUI qu'on
-              //     écrasait, et son contenu débordait ;
-              //   - 75vh ne suffit pas quand le pied contient le pavé des
-              //     coupures.
-              style={{ position:'fixed', bottom:0, left:0, right:0, background:'white', borderRadius:'24px 24px 0 0', zIndex:51, maxHeight:'92vh', display:'flex', flexDirection:'column' }}>
-              <div style={{ width:40, height:4, borderRadius:2, background:'#EDE7DE', margin:'14px auto 0' }} />
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px 10px' }}>
-                <span style={{ fontSize:19, fontWeight:900, color:'var(--encre)' }}>Panier <span style={{ fontSize:14, fontWeight:400, color:'var(--encre-4)' }}>({nbItems} article{nbItems>1?'s':''})</span></span>
-                <motion.button whileTap={{ scale:0.9 }} onClick={() => setShowCart(false)} aria-label="Fermer le panier"
-                  style={{ width:44, height:44, borderRadius:10, background:'#f0f0f0', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <X size={16} color="#888" />
-                </motion.button>
-              </div>
-              <div style={{ flex:1, overflowY:'auto', minHeight:0, padding:'0 16px' }}>
-                {renderCartLines()}
-              </div>
-              {/* flexShrink:0 — le pied porte le bouton d'encaissement : il ne
-                  doit JAMAIS être celui qu'on rogne. overflowY:auto en dernier
-                  recours, pour que même sur un très petit écran le bouton reste
-                  atteignable en faisant défiler. */}
-              <div style={{ padding:'14px 16px 32px', flexShrink:0, overflowY:'auto' }}>
-                {renderCartFooter()}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* PLUS DE FEUILLE « PANIER » (lot A — VOIX-01).
+          Elle portait, sur téléphone, le panier ET tout l'encaissement :
+          total, montant reçu, coupures, monnaie, « Payer en espèces ». Tout
+          cela est maintenant SUR la page (voir la section <section
+          className="lg:hidden"> plus haut). Une feuille en position fixe
+          avait de surcroît un défaut mesuré en recette : quand son pied
+          s'allongeait, le bouton qui TERMINE la vente sortait de l'écran et
+          rien ne défilait. Sur la page, ce problème n'existe pas. */}
 
       {/* Crédit désactivé en pilote espèces : le modal n'est jamais monté (les
           boutons déclencheurs sont masqués ; ce garde interdit tout accès résiduel). */}
@@ -883,9 +1080,9 @@ export function POSCaisse() {
             <motion.div
               initial={{ y:40 }} animate={{ y:0 }} exit={{ y:40 }}
               onClick={e => e.stopPropagation()}
-              style={{ width:'100%', maxWidth:480, background:'#fff', borderTopLeftRadius:24, borderTopRightRadius:24, padding:'20px 18px calc(20px + env(safe-area-inset-bottom))' }}
+              style={{ width:'100%', maxWidth:480, background:'var(--caisse-ivoire)', borderTopLeftRadius:'var(--caisse-rayon-5)', borderTopRightRadius:'var(--caisse-rayon-5)', padding:'var(--caisse-esp-5) var(--caisse-esp-4) calc(var(--caisse-esp-5) + env(safe-area-inset-bottom))' }}
             >
-              <div style={{ fontSize:18, fontWeight:800, color:'var(--encre)', marginBottom:14 }}>Autre article</div>
+              <div style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', marginBottom:'var(--caisse-esp-4)' }}>Autre article</div>
 
               {/* ── 1. Chercher dans le catalogue maître (Odoo) ────────────
                   La recherche est LOCALE (voir useCatalogueMaitre) : elle
@@ -918,7 +1115,7 @@ export function POSCaisse() {
                               type="button" key={r.default_code}
                               onClick={() => { if (!deja) choisirReference(r); }}
                               disabled={deja}
-                              style={{ textAlign:'left', border:'1.5px solid var(--trait)', borderRadius:13, padding:'11px 13px', background: deja ? '#F6F2EC' : '#fff', cursor: deja ? 'default' : 'pointer', fontFamily:'inherit', opacity: deja ? 0.7 : 1 }}
+                              style={{ textAlign:'left', border:'1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-3)', minHeight:'var(--caisse-cible-tactile)', background: deja ? 'var(--caisse-sable)' : 'white', cursor: deja ? 'default' : 'pointer', fontFamily:'inherit', opacity: deja ? 0.7 : 1 }}
                             >
                               <div style={{ fontSize:15, fontWeight:700, color:'var(--encre)' }}>{r.nom}</div>
                               <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:2 }}>
@@ -947,14 +1144,14 @@ export function POSCaisse() {
 
               {/* ── 2. Référence choisie : elle pose SON prix ─────────────── */}
               {refChoisie && (
-                <div style={{ border:`1.5px solid ${P}`, borderRadius:14, padding:'11px 13px', marginBottom:14, background:'#FFF8F3' }}>
+                <div style={{ border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-3)', marginBottom:'var(--caisse-esp-4)', background:'var(--caisse-succes)' }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
                     <div>
                       <div style={{ fontSize:15, fontWeight:800, color:'var(--encre)' }}>{refChoisie.nom}</div>
                       <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:2 }}>{refChoisie.categorie || 'Catalogue JULABA'}</div>
                     </div>
                     <button type="button" onClick={() => { setRefChoisie(null); setLibreDesc(''); setAdoptionMessage(null); }}
-                      style={{ background:'none', border:'none', color:P, fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit', padding:6 }}>
+                      style={{ background:'none', border:'none', color:'var(--caisse-vert)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit', padding:'var(--caisse-esp-2)', minHeight:'var(--caisse-cible-tactile)' }}>
                       Changer
                     </button>
                   </div>
@@ -981,7 +1178,7 @@ export function POSCaisse() {
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6, marginBottom:14 }}>
                     {['unité', 'tas', 'kg', 'sac', 'bassine', 'régime'].map(u => (
                       <button type="button" key={u} onClick={() => setRefUnite(u)}
-                        style={{ border:`1.5px solid ${refUnite === u ? P : 'var(--trait)'}`, background: refUnite === u ? `${P}12` : '#fff', color: refUnite === u ? P : 'var(--encre-3)', borderRadius:11, padding:'8px 13px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+                        style={{ border:`1.5px solid ${refUnite === u ? 'var(--caisse-vert)' : 'var(--commerce-line)'}`, background: refUnite === u ? 'var(--caisse-succes)' : 'white', color: refUnite === u ? 'var(--caisse-vert-fonce)' : 'var(--caisse-gris-texte)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', minHeight:'var(--caisse-cible-tactile)', minWidth:'var(--caisse-cible-tactile)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                         {u}
                       </button>
                     ))}
@@ -996,13 +1193,20 @@ export function POSCaisse() {
                     value={libreDesc}
                     onChange={e => setLibreDesc(e.target.value)}
                     placeholder="ex. bananes"
-                    style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:18, fontSize:15, color:'var(--encre)', outline:'none', fontFamily:'inherit' }}
+                    style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:12, fontSize:15, color:'var(--encre)', outline:'none', fontFamily:'inherit' }}
                   />
+                  {/* L'UNITÉ SE CHOISIT, ELLE N'EST PLUS INVENTÉE (lot E) : les
+                      six unités du dépôt, cibles de 44 px, et l'unité choisie se
+                      dit (« au tas », « au kilo ») — la voix fait partie du
+                      parcours, pas de l'écran. */}
+                  <div style={{ marginBottom:18 }}>
+                    <ChoixUnite valeur={libreUnite} onChoisir={setLibreUnite} dire={dire} />
+                  </div>
                 </>
               )}
 
               {adoptionMessage && (
-                <div role="alert" style={{ background:'#FDECEA', border:'1.5px solid #E4B4AE', borderRadius:12, padding:'10px 12px', marginBottom:12, fontSize:13, color:'#8C2F23', lineHeight:1.45 }}>
+                <div role="alert" style={{ background:'white', border:'1.5px solid var(--caisse-alerte)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', marginBottom:'var(--caisse-esp-3)', font:'var(--caisse-font-texte)', color:'var(--caisse-alerte)' }}>
                   {adoptionMessage}
                 </div>
               )}
@@ -1011,7 +1215,7 @@ export function POSCaisse() {
                 type="button"
                 onClick={refChoisie ? adopterReference : ajouterMontantLibre}
                 disabled={!libreMontant || Number(libreMontant) <= 0 || adoptionEnCours}
-                style={{ width:'100%', padding:'16px', borderRadius:16, border:'none', color:'#fff', fontWeight:800, fontSize:16, cursor:'pointer', background: (!libreMontant || Number(libreMontant) <= 0 || adoptionEnCours) ? '#CBB9A8' : P }}
+                style={{ width:'100%', padding:'var(--caisse-esp-4)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'none', color:'white', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit', background: (!libreMontant || Number(libreMontant) <= 0 || adoptionEnCours) ? 'var(--caisse-gris-texte)' : 'var(--caisse-vert)' }}
               >
                 {adoptionEnCours ? 'Ajout…' : refChoisie ? 'Ajouter à mon catalogue' : 'Ajouter'}
               </button>
@@ -1023,44 +1227,53 @@ export function POSCaisse() {
       {/* Écran « Vente réussie » (Phase 3, lot 4) */}
       <AnimatePresence>
         {showSuccess && lastSale && (
-          (() => {
-            const presentation = presenterResultatOperation('vente', lastSale.montant, lastSale.resultat);
-            const confirme = lastSale.resultat.statut === 'confirmee';
-            return (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-            style={{ position:'fixed', inset:0, zIndex:120, background:'#FFFCF7', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px', textAlign:'center' }}>
-            <div style={{ width:88, height:88, borderRadius:'50%', background: confirme ? '#EAF7EE' : '#FFF4D6', display:'grid', placeItems:'center', marginBottom:16 }}>
-              {confirme ? <Check size={48} color="#0E7A47" /> : <WifiOff size={46} color="#9A6700" />}
+            style={{ position:'fixed', inset:0, zIndex:120, background:'var(--caisse-sable)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'var(--caisse-esp-5)', textAlign:'center' }}>
+            <div style={{ width:88, height:88, borderRadius:'50%', background:'var(--caisse-succes)', display:'grid', placeItems:'center', marginBottom:'var(--caisse-esp-4)' }}>
+              <Check size={48} color="var(--caisse-vert)" />
             </div>
-            <div role="status" aria-live="polite" style={{ fontSize:24, fontWeight:900, color: confirme ? '#0E7A47' : '#7A5200', marginBottom:8 }}>{presentation.titre}</div>
-            <div style={{ fontSize:34, fontWeight:900, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{lastSale.montant.toLocaleString('fr-FR')} F</div>
-            <div style={{ fontSize:14, color:'var(--encre-3)', marginTop:6 }}>
+            <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-vert)', marginBottom:'var(--caisse-esp-2)' }}>Vente réussie</div>
+            <div style={{ font:'var(--caisse-font-h1)', fontSize:36, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{lastSale.montant.toLocaleString('fr-FR')} F</div>
+            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', marginTop:'var(--caisse-esp-2)' }}>
               {lastSale.moyen}{lastSale.monnaie > 0 ? ` · rendu ${lastSale.monnaie.toLocaleString('fr-FR')} F` : ''}
             </div>
-            {!confirme && (
-              <div style={{ maxWidth:340, marginTop:16, padding:'14px 16px', borderRadius:14, background:'#FFF4D6', color:'#6B4A00', fontSize:16, fontWeight:700, lineHeight:1.45 }}>
-                {presentation.detail}
-              </div>
-            )}
-            <div style={{ width:'100%', maxWidth:360, marginTop:28, display:'flex', flexDirection:'column', gap:10 }}>
-              {confirme && (
+            <div style={{ width:'100%', maxWidth:360, marginTop:'var(--caisse-esp-6)', display:'flex', flexDirection:'column', gap:'var(--caisse-esp-3)' }}>
               <button type="button"
                 onClick={() => { void partagerRecu({ montant: lastSale.montant, produits: lastSale.produits, mode_paiement: lastSale.moyen, created_at: new Date().toISOString() } as any, marchandNom); }}
-                style={{ width:'100%', padding:'14px', borderRadius:16, border:'1.5px solid #25D366', background:'#fff', color:'#128C4B', fontWeight:800, fontSize:15, cursor:'pointer' }}>
+                style={{ width:'100%', padding:'var(--caisse-esp-4)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
                 Envoyer le reçu (WhatsApp)
               </button>
-              )}
               <button type="button"
                 onClick={() => { setShowSuccess(false); setLastSale(null); }}
-                style={{ width:'100%', padding:'16px', borderRadius:16, border:'none', background:P, color:'#fff', fontWeight:800, fontSize:16, cursor:'pointer' }}>
-                {confirme ? 'Nouvelle vente' : 'J’ai compris'}
+                style={{ width:'100%', padding:'var(--caisse-esp-4)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'none', background:'var(--caisse-vert)', color:'white', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
+                Nouvelle vente
               </button>
             </div>
           </motion.div>
-            );
-          })()
         )}
       </AnimatePresence>
     </SubPageLayout>
+  );
+}
+
+/**
+ * LA CAISSE MONTE LES PROVIDERS DU MOTEUR VOCAL (lot B).
+ *
+ * `useVoiceCore` lit `useObjectif()` et `useRaccourcis()`. Sans ces deux
+ * providers, ils ne LÈVENT PAS d'erreur : ils retombent sur des valeurs
+ * nulles. On obtiendrait donc un micro qui a l'air de marcher — exactement le
+ * défaut que VOIX-01 décrit. Ils sont montés ici, au plus près du seul écran
+ * qui en a besoin, comme le faisaient l'accueil et Mon stock avant que la
+ * vente ne converge sur la caisse.
+ */
+export function POSCaisse() {
+  const { getTodayStats } = useApp();
+  const stats = getTodayStats();
+  return (
+    <RaccourcisProvider>
+      <ObjectifProvider ventes={stats?.ventes || 0}>
+        <POSCaisseInner />
+      </ObjectifProvider>
+    </RaccourcisProvider>
   );
 }
