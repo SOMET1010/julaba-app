@@ -8,9 +8,22 @@
  * 100 % piloté par les modules PURS (ligneProvisoire, dialoguesTata) : ce composant
  * ne calcule aucun prix lui-même et ne touche ni au panier ni à l'enregistrement.
  * Il émet la ligne CONFIRMÉE via onConfirmer ; le parent décide de l'ajout.
+ *
+ * CE QUI EST ÉCRIT ICI EST DIT (VOIX-01, lot D). Sur `f0c965c`, ce fichier ne
+ * contenait aucun appel à `speak` : la répétition de Tata était affichée,
+ * jamais prononcée. Or on arrive ici parce que la DICTÉE vient d'échouer —
+ * une marchande qui ne lit pas y trouvait un écran muet, à l'étape même où
+ * elle doit pouvoir entendre l'écart entre « 5 tomates » et « 15 tomates ».
+ * Désormais la phrase affichée part à la synthèse, une fois par état de
+ * ligne (pas à chaque rendu), et un bouton « réécouter » la redonne à la
+ * demande. Le garde-fou `repliParle.test.mts` empêche le silence de revenir.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
+import { Volume2 } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
+import { guidageVocal } from '../../utils/accessMode';
+import { quantiteAvecUnite } from '../../utils/unite.utils';
 import {
   type LigneProvisoire, estResolue, confirmer,
   corrigerQuantite, corrigerPrix, resoudreAmbiguite,
@@ -19,6 +32,33 @@ import { phraseConfirmation, phraseAmbiguite, resumeLigne } from '../../services
 
 const VERT = '#0E7A47';
 const ORANGE = '#B74725';
+
+/** Cible tactile minimale, en pixels — même règle que la barre de recherche de la caisse (test-cible-tactile.mjs). */
+export const CIBLE_TACTILE = 44;
+
+/** Un montant à DIRE : « 1 500 francs », jamais « 1 500 F » (la synthèse lit « F » comme une lettre). */
+const francs = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} francs`;
+
+/** Question posée quand elle ouvre la correction : les deux choses qu'elle peut changer. */
+const QUESTION_CORRECTION = "Qu'est-ce qui est faux ? Change la quantité, ou le prix.";
+
+/**
+ * « Réécouter » — pour les deux écrans du repli (celui-ci et SaisieGuidee, qui
+ * l'importe). Si elle n'a pas saisi ce que Tata a dit, son seul recours sans
+ * ce bouton est de refaire la ligne. L'appui est un geste EXPLICITE : il parle
+ * même si le profil a coupé le guidage automatique — elle l'a demandé.
+ */
+export function BoutonReecouter({ phrase }: { phrase: () => string }) {
+  const { speak } = useApp();
+  return (
+    <button type="button" onClick={() => speak(phrase())} aria-label="Réécouter Tata"
+      style={{ minHeight: CIBLE_TACTILE, minWidth: CIBLE_TACTILE, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        padding: '0 12px', background: 'white', border: `1.5px solid ${VERT}55`, borderRadius: 14, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>
+      <Volume2 size={20} color={VERT} />
+      <span style={{ fontSize: 12, fontWeight: 800, color: VERT }}>Réécouter</span>
+    </button>
+  );
+}
 
 interface Props {
   ligne: LigneProvisoire;
@@ -39,24 +79,63 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
   const [corrige, setCorrige] = useState(false);
   const [prixSaisi, setPrixSaisi] = useState('');
   const [modePrix, setModePrix] = useState<'unitaire' | 'total'>('unitaire');
+  const { speak } = useApp();
 
   const resolue = estResolue(ligne);
   const ambigu = ligne.interpretationPrix === 'a_confirmer';
+  const montantADemander = ambigu && montantAmbigu != null && montantAmbigu > 0 ? montantAmbigu : null;
+
+  // UNE SEULE phrase de Tata par état de ligne : celle qu'on affiche. On la
+  // calcule une fois, on la rend ET on la dit — impossible de diverger.
+  const texteAffiche = montantADemander != null
+    ? phraseAmbiguite(ligne.quantite, montantADemander)
+    : phraseConfirmation(ligne);
+
+  // Dernière phrase dite : garde l'effet contre les rendus répétés (même
+  // phrase → silence) et alimente « réécouter ». Le guidage automatique suit
+  // le profil (muet seulement si elle a choisi « je lis »).
+  const dernierePhraseRef = useRef('');
+  const dire = (t: string) => {
+    dernierePhraseRef.current = t;
+    if (guidageVocal()) speak(t);
+  };
+  // Une fois par ÉTAT de ligne : la phrase change quand la ligne change
+  // (correction, levée d'ambiguïté), pas quand l'écran se redessine.
+  useEffect(() => {
+    if (dernierePhraseRef.current !== texteAffiche) dire(texteAffiche);
+  }, [texteAffiche]); // eslint-disable-line react-hooks/exhaustive-deps -- `dire` ne dépend que d'un ref et du contexte
+
+  const reecouter = () => dernierePhraseRef.current || texteAffiche;
+
+  // Dans le panneau de correction, chaque geste se DIT : « 3 tas » quand
+  // elle touche +, « 1 500 francs » quand elle tape le prix. La ligne
+  // corrigée, elle, sera redite par l'effet ci-dessus, puisque sa phrase change.
+  const corrigerEtDire = (q: number) => {
+    onLigneChange(corrigerQuantite(ligne, q));
+    dire(quantiteAvecUnite(q, ligne.unite));
+  };
+  const taperPrix = (valeur: string) => {
+    setPrixSaisi(valeur);
+    dire(valeur ? francs(parseInt(valeur, 10)) : 'Prix effacé.');
+  };
 
   // Cas AMBIGU avec un montant connu → question « d'un seul / de tous les N » (§5).
-  if (ambigu && montantAmbigu && montantAmbigu > 0) {
+  if (montantADemander != null) {
     return (
       <div style={{ background: '#F6F0E4', border: `2px solid ${ORANGE}`, borderRadius: 20, padding: 16 }}>
-        <p style={{ fontSize: 16, fontWeight: 700, color: '#1F2937', marginBottom: 14, lineHeight: 1.35 }}>
-          {phraseAmbiguite(ligne.quantite, montantAmbigu)}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
+          <p style={{ flex: 1, fontSize: 16, fontWeight: 700, color: '#1F2937', margin: 0, lineHeight: 1.35 }}>
+            {texteAffiche}
+          </p>
+          <BoutonReecouter phrase={reecouter} />
+        </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <motion.button whileTap={{ scale: 0.97 }} style={{ ...btnBase, background: 'white', color: ORANGE, border: `2px solid ${ORANGE}` }}
-            onClick={() => onLigneChange(resoudreAmbiguite(ligne, montantAmbigu, 'unitaire'))}>
+            onClick={() => onLigneChange(resoudreAmbiguite(ligne, montantADemander, 'unitaire'))}>
             D'un seul
           </motion.button>
           <motion.button whileTap={{ scale: 0.97 }} style={{ ...btnBase, background: ORANGE, color: 'white' }}
-            onClick={() => onLigneChange(resoudreAmbiguite(ligne, montantAmbigu, 'total'))}>
+            onClick={() => onLigneChange(resoudreAmbiguite(ligne, montantADemander, 'total'))}>
             De tous les {ligne.quantite}
           </motion.button>
         </div>
@@ -66,10 +145,13 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
 
   return (
     <div style={{ background: '#F6F0E4', border: `2px solid ${ORANGE}`, borderRadius: 20, padding: 16 }}>
-      {/* Répétition de Tata */}
-      <p style={{ fontSize: 16, fontWeight: 700, color: '#1F2937', marginBottom: 14, lineHeight: 1.35 }}>
-        {phraseConfirmation(ligne)}
-      </p>
+      {/* Répétition de Tata — affichée ET dite (voir l'effet ci-dessus). */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
+        <p style={{ flex: 1, fontSize: 16, fontWeight: 700, color: '#1F2937', margin: 0, lineHeight: 1.35 }}>
+          {texteAffiche}
+        </p>
+        <BoutonReecouter phrase={reecouter} />
+      </div>
 
       {/* Panneau de CORRECTION */}
       {corrige ? (
@@ -79,11 +161,11 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
             <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Combien ?</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <motion.button whileTap={{ scale: 0.9 }} aria-label="Moins"
-                onClick={() => onLigneChange(corrigerQuantite(ligne, Math.max(1, ligne.quantite - 1)))}
+                onClick={() => corrigerEtDire(Math.max(1, ligne.quantite - 1))}
                 style={{ width: 48, height: 48, borderRadius: 14, background: 'white', border: '1.5px solid #e5e0d8', fontSize: 24, fontWeight: 800, color: '#555', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
               <span style={{ fontSize: 26, fontWeight: 900, color: 'var(--encre)', minWidth: 40, textAlign: 'center' }}>{ligne.quantite}</span>
               <motion.button whileTap={{ scale: 0.9 }} aria-label="Plus"
-                onClick={() => onLigneChange(corrigerQuantite(ligne, ligne.quantite + 1))}
+                onClick={() => corrigerEtDire(ligne.quantite + 1)}
                 style={{ width: 48, height: 48, borderRadius: 14, background: ORANGE, border: 'none', fontSize: 24, fontWeight: 800, color: 'white', cursor: 'pointer', flexShrink: 0 }}>+</motion.button>
               <span style={{ fontSize: 14, color: 'var(--encre-4)', fontWeight: 700 }}>{ligne.unite}</span>
             </div>
@@ -93,8 +175,8 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
             <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Le prix ?</p>
             <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
               {(['unitaire', 'total'] as const).map(m => (
-                <button key={m} onClick={() => setModePrix(m)}
-                  style={{ flex: 1, minHeight: 44, borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
+                <button key={m} onClick={() => { setModePrix(m); dire(m === 'unitaire' ? "Prix d'un seul." : 'Prix du tout.'); }}
+                  style={{ flex: 1, minHeight: CIBLE_TACTILE, borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
                     border: `1.5px solid ${modePrix === m ? ORANGE : '#e5e0d8'}`, background: modePrix === m ? '#FDE9D6' : 'white', color: modePrix === m ? ORANGE : '#888' }}>
                   {m === 'unitaire' ? "Prix d'un" : 'Prix du tout'}
                 </button>
@@ -107,16 +189,16 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
-                <button key={d} type="button" onClick={() => setPrixSaisi(prev => (prev === '0' ? d : prev + d).slice(0, 6))}
+                <button key={d} type="button" onClick={() => taperPrix((prixSaisi === '0' ? d : prixSaisi + d).slice(0, 6))}
                   style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 18, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
                   {d}
                 </button>
               ))}
-              <button type="button" onClick={() => setPrixSaisi('')}
+              <button type="button" onClick={() => taperPrix('')}
                 style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 13, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>C</button>
-              <button type="button" onClick={() => setPrixSaisi(prev => (prev === '0' ? '0' : prev + '0').slice(0, 6))}
+              <button type="button" onClick={() => taperPrix((prixSaisi === '0' ? '0' : prixSaisi + '0').slice(0, 6))}
                 style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 18, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>0</button>
-              <button type="button" onClick={() => setPrixSaisi(prev => prev.slice(0, -1))} aria-label="Effacer un chiffre"
+              <button type="button" onClick={() => taperPrix(prixSaisi.slice(0, -1))} aria-label="Effacer un chiffre"
                 style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 15, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>⌫</button>
             </div>
             <motion.button whileTap={{ scale: 0.97 }} disabled={!prixSaisi}
@@ -145,7 +227,7 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
               ✓ Oui, c'est bon
             </motion.button>
             <div style={{ display: 'flex', gap: 10 }}>
-              <motion.button whileTap={{ scale: 0.97 }} onClick={() => setCorrige(true)}
+              <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setCorrige(true); dire(QUESTION_CORRECTION); }}
                 style={{ ...btnBase, background: 'white', color: ORANGE, border: `2px solid ${ORANGE}` }}>
                 Non, corriger
               </motion.button>
