@@ -26,6 +26,9 @@ export default mergeConfig(base, {
       { find: /^(.*\/)?StockContext$/, replacement: stub('StockContext') },
       { find: /^(.*\/)?RaccourcisContext$/, replacement: stub('RaccourcisContext') },
       { find: /^(.*\/)?ObjectifContext$/, replacement: stub('ObjectifContext') },
+      // Le moteur vocal : pas de micro en headless, l'intention est injectée
+      // (voir stubs/useVoiceCore.ts). La machine d'encaissement, elle, est la vraie.
+      { find: /^(.*\/)?hooks\/useVoiceCore$/, replacement: resolve(ici, 'stubs', 'useVoiceCore.ts') },
     ],
   },
   server: { port: 5199, strictPort: true, host: '127.0.0.1' },
