@@ -71,6 +71,61 @@ export function uniteSeule(quantite: number, unite?: string | null): string {
 }
 
 /**
+ * CE QU'ELLE A DIT, ÉCRIT COMME LA BOUTIQUE L'ÉCRIT — VOIX-01, lot E.
+ *
+ * Le moteur vocal rend l'unité telle qu'elle a été entendue : « kilos »,
+ * « sacs », « regime ». Le sélecteur tactile, lui, écrit « kg », « sac »,
+ * « régime ». Si la ligne de vente gardait le mot brut, une même marchandise
+ * vendue au doigt et à la voix porterait deux graphies — c'est exactement la
+ * dérive que `config/unites.ts` a dû unifier une première fois. Une seule
+ * donnée, une seule écriture.
+ *
+ * La comparaison est faite sans accents ni majuscules (`sansAccents`, comme
+ * partout dans ce module) ; la VALEUR RENDUE est la graphie canonique, celle
+ * des boutons de la caisse. Le singulier suit l'inverse d'`accorderUnite` : on
+ * ne retire un « s » que si le ré-accord redonne le mot entendu — « tas » est
+ * protégé par la table, il ne deviendra jamais « ta ».
+ *
+ * Ce n'est PAS `MEMES_UNITES` de prixVocal.ts, et ce n'est pas un oubli :
+ * là-bas la question est « même mesure ? » (« pièce » y vaut « unité » pour
+ * décider d'un prix) ; ici la question est « comment l'écrire ? », et
+ * « 3 pièces de banane » doit rester écrit ainsi — voir UNITES_NEUTRES.
+ *
+ * Renvoie `null` quand rien d'utilisable n'a été entendu : c'est à l'appelant
+ * de dire ce qu'il en fait (la ligne libre pose « unité »), pas à ce module
+ * d'inventer une unité qu'elle n'a pas prononcée.
+ */
+const GRAPHIES_CANONIQUES: Record<string, string[]> = {
+  unité: ['unite', 'unites'],
+  tas: ['tas'],
+  kg: ['kg', 'kilo', 'kilos', 'kilogramme', 'kilogrammes'],
+  sac: ['sac', 'sacs'],
+  bassine: ['bassine', 'bassines'],
+  régime: ['regime', 'regimes'],
+  pièce: ['piece', 'pieces'],
+  litre: ['litre', 'litres', 'l'],
+  morceau: ['morceau', 'morceaux'],
+  boîte: ['boite', 'boites'],
+};
+
+export function uniteEntendue(unite?: string | null): string | null {
+  const brut = typeof unite === 'string' ? unite.trim().toLowerCase() : '';
+  if (!brut) return null;
+  const cle = sansAccents(brut);
+  for (const [canonique, graphies] of Object.entries(GRAPHIES_CANONIQUES)) {
+    if (graphies.includes(cle)) return canonique;
+  }
+  // Mot hors table : on le garde tel qu'elle l'a dit, au singulier si — et
+  // seulement si — `accorderUnite` aurait produit ce pluriel-là. LIMITE
+  // ASSUMÉE : un singulier en « s » inconnu de la table serait amputé (sans
+  // dictionnaire, « bus » ressemble à « bidons »). C'est pour cela que « tas »
+  // est dans la table, et que tout mot du même genre devra y entrer.
+  const singulier = brut.slice(0, -1);
+  if (/s$/.test(brut) && singulier && accorderUnite(singulier, 2) === brut) return singulier;
+  return brut;
+}
+
+/**
  * Une ligne de vente telle qu'elle se lit sur un reçu : « 3 tas de Tomate ».
  * Le « de » disparaît quand il n'y a pas d'unité — « 3 de Tomate » ne se dit
  * pas — et on retombe alors sur la forme historique « 3 × Tomate ».
