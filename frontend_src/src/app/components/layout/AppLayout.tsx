@@ -13,6 +13,7 @@ import { getRoleConfig } from '../../config/roleConfig';
 import { checkRouteAccess } from '../../types/constants';
 import { NotificationToastContainer } from '../shared/NotificationToast';
 import * as audioManager from '../../services/audioManager';
+import * as vtrace from '../../utils/voiceTrace'; // VOICE-01 : « arrivée sur un écran » dans le journal de voix
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -58,6 +59,7 @@ export function AppLayout() {
   // une voix du nouvel écran SURVIT. (Ne pas annuler dans le corps de l'effet : il
   // s'exécute APRÈS les effets enfants du nouvel écran et les couperait.)
   useEffect(() => {
+    vtrace.ecran(location.pathname);
     return () => audioManager.cancelObsoleteVoice();
   }, [location.pathname]);
 
