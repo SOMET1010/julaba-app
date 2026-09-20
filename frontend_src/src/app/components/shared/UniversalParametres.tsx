@@ -27,6 +27,7 @@ import { marquerBiometrie } from '../../services/comptesMemorises';
 import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
 import { API_URL } from '../../utils/api';
 import { toast } from 'sonner';
+import { setVoiceLevel as appliquerNiveauVoix } from '../../services/audioManager';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -540,6 +541,10 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
   const [autoExport, setAutoExport] = useState<boolean>(prefs.auto_export ?? false);
   const [emailInstitution, setEmailInstitution] = useState<string>(prefs.email_institution ?? (user as any)?.email ?? '');
   const [voiceLevel, setVoiceLevel] = useState<number>(typeof prefs.voice_level === 'number' ? prefs.voice_level : 1);
+  const changerNiveauVoix = (niveau: number) => {
+    setVoiceLevel(niveau);
+    appliquerNiveauVoix(niveau);
+  };
   const [textSize, setTextSize] = useState<number>(typeof prefs.text_size === 'number' ? prefs.text_size : 3);
   const [reduceAnimations, setReduceAnimations] = useState<boolean>(prefs.reduce_animations ?? false);
   const [vibrations, setVibrations] = useState<boolean>(prefs.vibrations ?? true);
@@ -923,7 +928,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
 
           <Section title="Accessibilité" icon={Mic} color={color}>
             {role !== 'institution' && (
-              <VoiceLevelSelector value={voiceLevel} onChange={setVoiceLevel} color={color} />
+              <VoiceLevelSelector value={voiceLevel} onChange={changerNiveauVoix} color={color} />
             )}
             <TextSizeSlider value={textSize} onChange={setTextSize} color={color} />
             <RowToggle color={color} label="Mode sombre" sublabel="Interface sombre" value={isDark} onChange={() => toggleDark()} />

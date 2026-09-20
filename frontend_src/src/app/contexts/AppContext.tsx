@@ -726,6 +726,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // en direct sans passer par ce `speak`.
   useEffect(() => { audioManager.setVoiceMuted(voiceMuted); }, [voiceMuted]);
 
+  // Le réglage « Silencieux / Essentiel / Complet » pilote réellement le même
+  // orchestre audio pour les clips, la TTS et les annonces automatiques.
+  useEffect(() => {
+    let niveau = Number((user as any)?.preferences?.voice_level);
+    if (![0, 1, 2].includes(niveau)) {
+      try { niveau = Number(localStorage.getItem('julaba_voice_level')); } catch { niveau = 1; }
+    }
+    audioManager.setVoiceLevel([0, 1, 2].includes(niveau) ? niveau : 1);
+  }, [user?.id, (user as any)?.preferences?.voice_level]);
+
   // Activer la voix après la première interaction utilisateur
   useEffect(() => {
     const handleInteraction = () => {
