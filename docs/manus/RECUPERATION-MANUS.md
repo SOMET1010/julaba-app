@@ -16,6 +16,41 @@ jamais le patch Manus qui entre tel quel : c'est un lot Claude qui reprend son i
 assouplir un invariant financier ou métier. Si un garde-fou rougit, c'est la récupération
 qui plie, pas le garde-fou.
 
+**Règle d'extraction sélective (Patrick, 20/09, après constat de divergence).**
+Les deux branches ont divergé : la branche Manus porte 49 commits d'avance et 51 de
+retard, et son diff touche encore le backend de la caisse, la caisse elle-même, le
+contexte de caisse, la couche d'API, la file hors ligne et des garde-fous. **Ce n'est
+donc plus une couche graphique : c'est une seconde implémentation du produit.**
+
+> **Claude est l'unique source de vérité fonctionnelle. Manus n'est jamais une seconde
+> implémentation du produit. Manus dessine ce que Claude fait ; Manus ne redéfinit
+> jamais ce que Claude fait.**
+
+**La PR #245 n'est plus une candidate à la fusion.** Elle devient une **bibliothèque de
+référence visuelle et vocale**, un catalogue où l'on vient puiser. **Interdiction de la
+fusionner**, en bloc ou par branche.
+
+**Méthode obligatoire pour chaque lot A.** On ne part jamais du fichier Manus :
+1. prendre le fichier **Claude actuel** comme base ;
+2. repérer dans la version Manus les seules lignes visuelles ou vocales ;
+3. les reporter sur le fichier Claude ;
+4. conserver **toute** la logique fonctionnelle Claude, sans exception ;
+5. lancer le garde-fou du chemin d'argent si le fichier est dans son périmètre ;
+6. prouver que les invariants métier sont inchangés ;
+7. **ne jamais prendre le fichier Manus entier pour gagner du temps.**
+
+**Ce que Manus ne fournit plus.** Backend, API, logique de caisse, stock, crédit,
+authentification, hors-ligne, idempotence, règles métier ; aucune fonction de calcul ni
+de paiement ; ni le contexte de caisse, ni la couche d'API de caisse, ni la file hors
+ligne, ni les machines financières ; ni une réécriture d'un garde-fou fonctionnel.
+Quand un fichier mêle design et logique — la caisse en premier — **Manus ne fournit pas
+le fichier, il fournit un patch visuel minimal applicable au fichier Claude.**
+
+**Ce que Manus fournit.** Feuilles de style, mise en page, espacements, responsive ;
+images, icônes, actifs ; composants purement présentatifs ; clips audio et registres de
+voix ; textes et traductions validés ; améliorations tactiles et visuelles ; tests
+visuels qui n'altèrent aucun test métier.
+
 **Règle de fidélité visuelle (Patrick, précision du 20/09).** On ne choisit pas « Claude
 contre Manus ». La cible est **le socle fonctionnel Claude avec le design, l'UX et la voix
 Manus validés**. Le design produit par Manus est à **conserver**, pas à refaire : il ne
