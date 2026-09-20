@@ -52,7 +52,7 @@ ok(/const tataMasquee = ROUTES_SANS_TATA\.includes\(location\.pathname\)/.test(b
 const bouton = barre.indexOf('aria-label="Ouvrir Tantie Nanti Lou"');
 const garde = barre.lastIndexOf("{!tataMasquee && (", bouton);
 ok(bouton !== -1 && garde !== -1, "le bouton « Ouvrir Tantie Nanti Lou » est rendu sous la garde `!tataMasquee`");
-ok(/isOpen=\{\s*\w+\s*&& !tataMasquee\s*\}/.test(cadre),
+ok(cadre.includes('isOpen={tataOuverte && !tataMasquee}'),
   "la modale Tata ne peut pas s'ouvrir non plus (double-tap global) sur la caisse");
 ok(!/if \(tataMasquee\) return null/.test(barre) && /<nav aria-label="Navigation principale"/.test(barre),
   "la barre elle-même n'est PAS retirée : Accueil, Stock, Profil restent atteignables");
@@ -64,7 +64,7 @@ ok(!/TantieSagesseModal/.test(barre), "la BottomBar ne la monte plus : elle ne f
 ok(!/TantieSagesseModal/.test(flanc), "la Sidebar non plus");
 ok(/const tataMasquee = location\.pathname === '\/marchand\/caisse'/.test(cadre),
   "AppLayout décide le masquage sur la route de la caisse, comme la BottomBar");
-ok(/if \(tataMasquee && \w+\) set\w+\(false\)/.test(cadre),
+ok(cadre.includes('if (tataMasquee && tataOuverte) setTataOuverte(false);'),
   "et si la modale était ouverte en arrivant sur la caisse, AppLayout la referme de force");
 
 console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
