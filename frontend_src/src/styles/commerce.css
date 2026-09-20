@@ -326,6 +326,11 @@ html.dark {
 @media (min-width: 600px) and (max-width: 1023px) {
   .pos-grille { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+/* Le `display` des cartes est ICI et non en style inline (UI-03) : un
+   `display:flex` écrit dans l'attribut style bat le `display:none` de
+   .pos-grille-apercu, et toute la grille s'affichait sur téléphone — mesuré
+   sur la capture F2. La règle d'aperçu (plus spécifique) gagne sur celle-ci. */
+.pos-grille > * { display: flex; flex-direction: column; }
 @media (min-width: 1024px) {
   .pos-grille { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--caisse-esp-3); }
 }

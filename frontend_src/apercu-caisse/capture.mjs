@@ -39,7 +39,7 @@ const SORTIE = resolve(racine, '..', 'docs', 'parcours', 'captures');
 const MAQUETTE = process.env.MAQUETTE_CAISSE || '';
 // Suffixe des fichiers produits (lotF, F2…) : on ne réécrit pas l'histoire,
 // chaque passe laisse sa capture.
-const PASSE = process.env.PASSE_CAPTURE || 'F2';
+const PASSE = process.env.PASSE_CAPTURE || 'UI03';
 // L'ÉCRAN DU TÉLÉPHONE dans 8.webp, mesuré au pixel (scan des bords sombres
 // du cadre, puis de la barre d'état) : intérieur x 97→844, du haut de
 // « Caisse du jour » (y 135, sous la barre d'état) au bas visible (y 1611).
@@ -129,6 +129,11 @@ try {
       zoneVoixBas: zoneVoix ? Math.round(zoneVoix.bottom) : null,
       enTetePx: enTete ? Math.round(enTete.height) : null,
       carteProduitPx: haut(document.querySelector('.pos-grille > *')),
+      cartesVisibles: [...document.querySelectorAll('.pos-grille > *')].filter(visible).length,
+      // Positions dans le PREMIER viewport (défilement à 0) : doivent être < 844.
+      panierHautPx: Math.round(([...document.querySelectorAll('h2')].find(h => /^Panier actuel/.test(h.textContent || '') && visible(h)) || { getBoundingClientRect: () => ({ top: NaN }) }).getBoundingClientRect().top),
+      totalHautPx: Math.round(([...document.querySelectorAll('[aria-label^="Total "]')].find(visible) || { getBoundingClientRect: () => ({ top: NaN }) }).getBoundingClientRect().top),
+      totalBasPx: Math.round(([...document.querySelectorAll('[aria-label^="Total "]')].find(visible) || { getBoundingClientRect: () => ({ bottom: NaN }) }).getBoundingClientRect().bottom),
       barreTotalPx: haut(document.querySelector('[aria-label^="Total "]')),
       carteRecuMonnaiePx: haut(carteRecu),
       boutonPayerPx: haut(boutonPayer),
@@ -168,8 +173,8 @@ try {
   await encart.waitFor();
   const relecture = await encart.innerText();
   await pageR.waitForTimeout(400);
-  // Le viewport commence sur la barre Total : total, relecture, reçu | monnaie, Payer — l'argent en un écran.
-  await pageR.evaluate(() => { const t = document.querySelector('[aria-label^="Total "]'); const y = t.getBoundingClientRect().top + window.scrollY - 12; window.scrollTo(0, y); });
+  // Le viewport commence sur « Paiement » : billets, relecture, reçu | monnaie, Payer — l'encaissement en un écran.
+  await pageR.evaluate(() => { const t = [...document.querySelectorAll('h2')].find(h => /^Paiement$/.test((h.textContent || '').trim()) && h.getBoundingClientRect().width > 0); const y = t.getBoundingClientRect().top + window.scrollY - 12; window.scrollTo(0, y); });
   await pageR.waitForTimeout(300);
   const cheminRelecture = resolve(SORTIE, `caisse-portrait-${PASSE}-relecture.png`);
   await pageR.screenshot({ path: cheminRelecture, fullPage: false });
@@ -230,6 +235,8 @@ try {
   if (mesures.ciblesSous44.length) { console.error(`✗ ${mesures.ciblesSous44.length} cible(s) tactile(s) sous ${CIBLE_MIN} px`); code = 1; }
   if (mesuresRelecture.scrollWidth > VIEWPORT.width || mesuresRelecture.ciblesSous44.length) { console.error('✗ état « encaisse » : débordement ou cible < 44 px'); code = 1; }
   if (erreursPage.length) { console.error(`✗ ${erreursPage.length} erreur(s) de page`); code = 1; }
+  if (!(mesures.totalBasPx < VIEWPORT.height) || !(mesures.panierHautPx < VIEWPORT.height)) { console.error(`✗ le début du panier (${mesures.panierHautPx}) ou la barre Total (bas ${mesures.totalBasPx}) sort du premier viewport`); code = 1; }
+  if (mesures.cartesVisibles > 4) { console.error(`✗ ${mesures.cartesVisibles} cartes visibles : l'aperçu replié doit n'en montrer qu'une rangée (4)`); code = 1; }
   if (code === 0) console.log(`✓ 390 px sans débordement, ${mesures.interactifs} cibles interactives toutes ≥ ${CIBLE_MIN} px`);
 } finally {
   await navigateur.close();

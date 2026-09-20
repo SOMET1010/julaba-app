@@ -69,12 +69,15 @@ const ICONE = 24;
 // LE MICRO DOMINE LE PREMIER ÉCRAN (retour de Patrick, passe F2) : « dans la
 // cible, la question et le micro orange dominent immédiatement ; dans le
 // rendu, le micro ressemble encore à un contrôle parmi d'autres. Ce n'est
-// pas cosmétique : c'est l'action principale. » 150 px de bouton dans un
-// halo de 180, icône de 64 : des nombres (attributs SVG et animation motion),
-// pas des variables CSS — c'est la seule raison de les écrire ici.
-const MICRO = 150;
-const MICRO_HALO = 180;
-const MICRO_ICONE = 64;
+// pas cosmétique : c'est l'action principale. » Puis UI-03 : « conserver le
+// micro comme action dominante, mais supprimer l'espace inutile autour » —
+// 124 px de bouton dans un halo de 140, icône de 52 : toujours la plus grande
+// chose de l'écran, sans que la zone voix dépasse 270 px. Des nombres
+// (attributs SVG et animation motion), pas des variables CSS — c'est la seule
+// raison de les écrire ici.
+const MICRO = 124;
+const MICRO_HALO = 140;
+const MICRO_ICONE = 52;
 
 export interface ProduitPreselectionne {
   nom: string;
@@ -327,9 +330,11 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   const isError = state === 'error';
   const isDone = state === 'idle' && !!response;
 
-  // La bulle de Tata : une QUESTION, pas une annonce. « Que voulez-vous
-  // vendre ? » invite à répondre ; « je suis là pour vous aider » n'invite à
-  // rien (arbitrage du 20/09/2026, maquette verte).
+  // La bulle de Tata : une INVITATION à répondre, pas une annonce (arbitrage
+  // du 20/09/2026, maquette verte). Au repos elle ne répète pas le grand titre
+  // qui est juste au-dessus (UI-02) : « Dis-moi ce que tu vends » — et non
+  // « Je vous écoute », parce que le micro n'écoute pas encore ; ce qui est DIT
+  // à l'arrivée reste la question du titre (introLigne).
   const bulle = isRecording ? 'Je vous écoute'
     : isLoading ? 'Un instant…'
     : isSpeaking ? 'Tata parle…'
@@ -410,6 +415,17 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
             </span>
             <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>{bulle}</span>
           </button>
+          {/* LE REPLI, SUR LA MÊME SURFACE (arbitrage n°3). Il n'envoie plus vers
+              un autre écran : la saisie guidée s'ouvre ici, et les photos des
+              produits sont déjà juste en dessous, dans la grille de cette page.
+              SECONDAIRE (UI-03) : un lien discret sous la bulle, sans cadre —
+              44 px de haut quand même, c'est un doigt qui le touche. */}
+          <button type="button" onClick={() => setSaisieOuverte(v => !v)}
+            aria-label="Saisir sans parler"
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-1)', minHeight: 'var(--caisse-cible-tactile)', background: saisieOuverte ? 'var(--caisse-orange-voix)' : 'transparent', border: 'none', borderRadius: 'var(--caisse-rayon-3)', padding: '0 var(--caisse-esp-2)', cursor: 'pointer', fontFamily: 'inherit' }}>
+            <Keyboard size={20} color={saisieOuverte ? 'white' : 'var(--caisse-gris-texte)'} />
+            <span style={{ font: 'var(--caisse-font-legende)', fontSize: 14, lineHeight: '18px', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--caisse-gris-texte)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Saisir sans parler</span>
+          </button>
         </div>
       </div>
 
@@ -435,8 +451,8 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
           composant ne décide rien de l'argent, il rappelle le mot qui le fait
           relire par la caisse (lot C). */}
       {cart.length > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--caisse-esp-2)' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', background: 'var(--caisse-ivoire)', border: '1px solid var(--commerce-line)', borderRadius: 'var(--caisse-rayon-3)', padding: 'var(--caisse-esp-2) var(--caisse-esp-4)', minHeight: 'var(--caisse-cible-tactile)', font: 'var(--caisse-font-texte)', color: 'var(--encre)' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--caisse-esp-1)' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', background: 'var(--caisse-ivoire)', border: '1px solid var(--commerce-line)', borderRadius: 'var(--caisse-rayon-3)', padding: 'var(--caisse-esp-1) var(--caisse-esp-3)', font: 'var(--caisse-font-texte)', color: 'var(--encre)' }}>
             <AudioLines size={ICONE} color="var(--caisse-vert)" aria-hidden="true" style={{ flexShrink: 0 }} />
             <span>Dis <strong>« encaisser »</strong> pour terminer</span>
           </div>
@@ -487,17 +503,6 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         </button>
       )}
 
-      {/* LE REPLI, SUR LA MÊME SURFACE (arbitrage n°3). Il n'envoie plus vers
-          un autre écran : la saisie guidée s'ouvre ici, et les photos des
-          produits sont déjà juste en dessous, dans la grille de cette page. */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--caisse-esp-3)' }}>
-        <button type="button" onClick={() => setSaisieOuverte(v => !v)}
-          aria-label="Saisir sans parler"
-          style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', minHeight: 'var(--caisse-cible-tactile)', background: saisieOuverte ? 'var(--caisse-orange-voix)' : 'var(--caisse-ivoire)', border: `1px solid ${saisieOuverte ? 'var(--caisse-orange-voix)' : 'var(--commerce-line)'}`, borderRadius: 'var(--caisse-rayon-3)', padding: 'var(--caisse-esp-2) var(--caisse-esp-4)', cursor: 'pointer', fontFamily: 'inherit' }}>
-          <Keyboard size={ICONE} color={saisieOuverte ? 'white' : 'var(--caisse-gris-texte)'} />
-          <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--encre)' }}>Saisir sans parler</span>
-        </button>
-      </div>
       {saisieOuverte && (
         <div style={{ marginTop: 'var(--caisse-esp-3)' }}>
           <SaisieGuidee
