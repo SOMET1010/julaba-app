@@ -6,7 +6,8 @@ le **comment** de chaque contre-audit, court, pour qu'on puisse le rejouer.
 Règle de pilotage : *QA par lot dès la première livraison ; le lot est audité
 avant que sa fermeture n'entre dans le registre.*
 
-Les lots A et F s'ajouteront ici. Un lot **audité mais non fusionné** a une
+Les lots A et F s'ajouteront ici. Une PR externe (Manus) auditée a son entrée
+au même titre qu'un lot. Un lot **audité mais non fusionné** a une
 entrée aussi : elle dit ce qui est prouvé et ce qui attend une décision.
 
 ---
@@ -476,3 +477,163 @@ un drift de type, de défaut ou de nullabilité (noms seulement) ; les tables
 paresseuses hors seed (`cron_jobs_config`, `support_config`,
 `cooperative_besoins`) et le SQL brut hors `INSERT/UPDATE` ; `apply` concurrent
 (deux instances Render) ; la CI `schema-pilote.yml` (inchangée, non exécutée ici).
+
+---
+
+## PR #245 — Manus, refonte UX/UI et voix (AUDITÉE, NON FUSIONNÉE)
+
+**Source** : `origin/manus/refonte-ui-ux-voix`, tête locale **`907523d`** (47
+commits, 120 fichiers, merge-base `3917bb7`) ; GitHub déjà à **`9a14bcc`**
+(+1 commit PWA : `sw.js`, `vite.config.ts`, `test-offline-first-update.mjs`, lu
+sans toucher `origin/*`). **Base mesurée : `2277bf0`** (rév. 22).
+**Contre-auditée** le 20/09/2026 (QA-Manus), lecture seule, aucun commentaire
+GitHub. **Non fusionnée : décisions ligne par ligne réservées à Patrick.**
+**Registre** : révision 24 — aucune ligne Manus n'entre dans les tables ; deux
+dettes **plateforme** révélées (DEP-01, OFF-01) y entrent, car elles sont sur la
+branche aujourd'hui.
+
+### Gates
+
+Fusion à blanc de #245 sur `2277bf0` : **2 conflits textuels** (`package.json`,
+`AppLayout.tsx`), **9 fichiers touchés des deux côtés** (les 9 annoncés).
+Résolution de mesure : `verify` = chaîne plateforme + les 2 ajouts Manus ;
+`test:ci` **remise à la chaîne gelée de `f0c965c`** ; `AppLayout.tsx` = `vtrace`
+(lot E) + `TantieSagesseModal` (Manus).
+
+| Gate | Combiné (`2277bf0` + #245) | #245 seule | Base |
+|---|---|---|---|
+| `check-tsc-baseline` | **0** | 0 | — |
+| `verify` | **1** — seul rouge `test:voix-trace-source` (**11 écarts**) ; tout le reste vert ; `home-voice`/`netlify-auth-proxy` seuls : 0 | 0 (sa chaîne n'a ni `api-authorization` ni `voix-trace*`) | `voix-trace-source` 0 |
+| `test:ci` (chaîne gelée) | **0** | 0 (chaîne Manus = 12 ajouts + gelée) | — |
+| `build` | **0** (190 chunks + 152 clips) | 0 | — |
+| `test:unit` backend | **0** (28 / 210) | 0 | — |
+| `test:invariants` | **non exécuté** (pas de Postgres ; TEST-05) | — | — |
+
+30 garde-fous rejoués un par un sur l'arbre combiné : **tous 0** (dont
+`api-authorization` : toujours 164 `fetch()` directs, **0 ajouté par Manus**).
+**Conclusion** : « cassé par la combinaison », pas « cassé par Manus » — le seul
+rouge est le garde-fou du lot E qui fige 7 fichiers voix contre `3917bb7`.
+
+### Classification (120 fichiers, résumé)
+
+- **CMNA** (changement métier non autorisé) : `caisse-rest.controller.ts`
+  (backend interdit — sur un défaut réel, DEP-01) ; `POSCaisse.handlePay`
+  (montant reçu **obligatoire** en espèces : règle nouvelle, contredit le
+  commentaire plateforme « le bouton accepte un reçu à 0 ») ;
+  `CaisseContext.enregistrerVente`/`enregistrerDepense` **réécrits** (délégués à
+  `soumettreOperationCaisse`, type de retour changé) ; `LoginPassword.tsx`
+  (`check-phone` non-OK → erreur bloquante au lieu de passer à l'étape code) ;
+  `routes.tsx` (`/login`, `/welcome` fermés).
+- **`test:ci` modifiée** : 12 scripts ajoutés en tête (règle absolue) — tous
+  verts, statiques, déplaçables tels quels dans `verify`.
+- **Garde-fous édités** : `caisseUnSeulMicro` **affaibli par OR** (accepte
+  BottomBar ou AppLayout sans exiger un seul monteur) ; `test-cible-tactile`
+  **verrouille la règle nouvelle** de `handlePay` ; `fcfa.test` et
+  `tataMarchandActions.test` adaptés (équivalents) ; `offlineCaisse.test` et
+  `caisseSurfaceUnique` renforcés. Aucun invariant argent affaibli.
+- **Voix produit** : `entreeVoix`, `onboardingVoix`, `accueilMarchandVoix` —
+  clips prototype (15 mp3, 947 Ko, voix synthétique « Callirrhoe ») **muets
+  sauf `VITE_JULABA_VOICE_PREVIEW=true`**, drapeau défini nulle part : sur un
+  build standard, Welcome, Onboarding, Numéro, Code, erreurs et **« Écouter ma
+  caisse » sont silencieux** ; `direCaisse` ne dit plus le montant. Niveau voix
+  « Essentiel » par défaut après connexion (mute « Compte juste », « Je n'ai pas
+  compris », accueils), blocage **avant toute trace** (`runExclusive` l. 327).
+- **Déploiement** : `public/_redirects` = proxy Netlify `/api/v1/*` →
+  `julaba-api.onrender.com` (**production**) ; preview publique
+  `julaba-manus.netlify.app` branchée sur l'API de production avec un compte
+  réel. PWA : précache de tous les chunks + tous les mp3, `await` dans
+  `waitUntil` → **≈ 13 Mo (`907523d`) à 18 Mo (`9a14bcc`)** à la première
+  installation.
+- **UX pure et renommage « Tata → Tantie »** : le reste (PaveMontant, montants
+  privés, pictogrammes, palette `--julaba-*` de 10 tokens dans `commerce.css`,
+  500 F billet → pièce, `MesCommandes` refus hors-ligne, 17 fichiers de
+  renommage 0 ligne hors nom).
+
+### Affirmations de la PR, vérifiées
+
+| Affirmation | Verdict |
+|---|---|
+| « Ne change pas les règles métier d'auth, vente, stock, encaissement » | **Infirmée** : `handlePay`, `enregistrerVente/Depense`, backend dépense, flux `check-phone`. Stock / machine / grammaire / `localIntent` : **intacts** |
+| « Arbre combiné vert : test:ci, 45 suites / 233 invariants, build » | `test:ci` gelée et build : confirmés ; `verify` combiné : **rouge** (lot E) ; invariants : **non vérifiable** ici |
+| « 137 clips, 128 mappés, 9 orphelins » | Confirmée — mais le build précache **152** clips (137 + 15 prototypes) |
+| « Aucune seconde application » | **Confirmée** (pas de nouvelle entrée, pas de second moteur vocal sur la caisse, modale montée une fois) |
+| « Une opération offline en attente n'est jamais présentée comme confirmée » | **Infirmée pour la vente** (hunk perdu) ; vraie pour la dépense |
+| « Le paiement espèces reste bloqué sans montant reçu » | Vraie — mais c'est une **règle nouvelle**, pas une conservation |
+| « Test rouge avant correction, commit autonome » | **Non tenue** pour argent / backend / auth |
+| « Le prototype vocal reste muet par défaut en production » | Vraie — et c'est le problème P1 voix |
+
+### Conflits sémantiques avec les lots
+
+- **Lot D** (fusionné) : aucun `fetch` direct ajouté ; `_redirects` introduit un
+  **3ᵉ mode de déploiement** (Netlify, `/api/v1` relatif proxifié) — API-07/09
+  « deux domaines » deviennent trois.
+- **Lot E** (fusionné) : 11 écarts `voix-trace-source` (6 fichiers instrumentés
+  modifiés hors `vtrace`, 3 fichiers de règles de voix, 2 écarts d'appels —
+  `onboardingVoix` et 17 appels de `LoginPassword`) ; trou de journal l. 327 ;
+  `vtrace.ecran` conservé.
+- **VOIX-01/02/03, UI-02/03/04** (fermées) : intactes ; UI-03 : les hauteurs
+  mesurées (zone voix 260 px, panier 658 px) changent avec le raccourci panier
+  sticky et le pavé XXL → **banc `capture.mjs` à rejouer**.
+- **Lot A** (auth, en attente) : `LoginPassword.tsx` (~90 lignes), `routes.tsx`,
+  `PropositionReconnaissance.tsx`, `Welcome.tsx` → conflits probables +
+  changement de flux `check-phone`.
+- **Lot B** (crédit, en attente) : `CreditModal.tsx` (1 ligne),
+  `VentesPassees.tsx` (zone l. 340-352 d'ARG-11 réécrite), `AppContext.tsx`
+  (l. 1008-1029 décalées de +12) → à refusionner.
+- **Lot F** (i18n) : 3 registres de clips Manus (`ENTREE_VOICE_CLIPS`,
+  `INTRO_CLIPS`, `ACCUEIL_MARCHAND_VOICE_CLIPS`) + `importancePourTexte` par
+  regex sur le français = **architecture parallèle** à `contrat-audio.ts` ; à
+  réconcilier avant F.
+
+### Chevauchements (règle 22 bis — aucune dette ne se ferme par effet de bord)
+
+| Dette | Ce que #245 change | Statut |
+|---|---|---|
+| **VOIX-04** (owner Manus) | Ne fournit ni clip `pas_compris`/`rien_entendu` ni voix de secours ; **supprime** le message écran « clip … pas encore enregistré » (reste `console.info`) ; institue la doctrine **inverse** (« un clip absent n'est JAMAIS remplacé ») et l'étend à l'entrée/accueil ; le niveau « Essentiel » mute en plus « Je n'ai pas compris » | **Reste OUVERTE, aggravée** |
+| **VOIX-05** (owner Manus) | Supprime `managerSpeak` ; tout passe par clips prototype — un seul timbre **sous drapeau preview, sinon silence** | Reste OUVERTE (la PR ne la revendique pas) |
+| **GARDE-02** | Nouveau silence **non journalisé** (`runExclusive` l. 327) | Reste OUVERTE ; **L4** consignée comme chevauchement à venir |
+| **GARDE-01** | `test-cible-tactile` édité ; comptage multi-lignes non corrigé, 164 inchangé | Sans effet |
+| **ARG-11** | `VentesPassees` et `AppContext` réécrits/décalés ; double compte non corrigé | Reste OUVERTE ; lot B à refusionner |
+| API-07/08/11, SEC-08b, TEST-05, ARG-13/14 | Non touchés | Sans chevauchement |
+
+Dettes **plateforme** révélées (non enregistrées avant) : **DEP-01** (motif de
+dépense perdu : `CaisseContext` l. 486 envoie `notes`, backend l. 603 lit
+`description`, même perte au rejeu de la file) et **OFF-01** (vente enfilée hors
+ligne annoncée « Vente réussie » : `POSCaisse` l. 310-319 sans lire le résultat,
+`enregistrerVente` rend `Promise<void>`). Toutes deux vérifiées sur `e00a16c` et
+ouvertes au registre ; la PR les corrige (DEP-01 en zone interdite ; OFF-01 par
+une frontière `statutOperationCaisse` dont le branchement sur la vente a été
+**perdu** dans ses fusions — la dépense y est honnête).
+
+### Les 16 écarts — sévérité et recommandation
+
+| # | Écart | Sév. | Recommandation QA (Patrick tranche) |
+|---|---|---|---|
+| 1 | `test:ci` modifiée (12 ajouts) | P1 règle absolue | Refuser ; déplacer dans `verify` |
+| 2 | Entrée / onboarding / accueil muets par défaut, caisse plus lue | P1 produit | Renvoyer à Manus avec arbitrage : clips attestés ou voix de secours, jamais le silence ; VOIX-04 reste ouverte |
+| 3 | Vente offline toujours « Vente réussie » (hunk perdu) + `enregistrerVente` réécrit | P1 argent/offline | Reprendre côté plateforme (**OFF-01**) ou renvoyer à Manus sous contre-audit |
+| 4 | Backend dépense (`caisse-rest.controller.ts`) | P1 périmètre / défaut réel | Frontend : conserver ; backend : reprendre côté plateforme (**DEP-01**) |
+| 5 | `handlePay` reçu obligatoire + verrou dans `test-cible-tactile` | P1 CMNA | Patrick tranche ; si oui → reprendre côté plateforme ; sinon refuser le hunk |
+| 6 | Preview Netlify publique sur l'API de production (+ `_redirects`) | P1 gouvernance / sécurité | Interdire la preview sur prod ; `_redirects` vers une recette ou retiré |
+| 7 | `verify` rouge (`voix-trace-source`, 11 écarts) | P1 gate | Reprendre côté plateforme après fusion (règle E × F) — pas un défaut Manus |
+| 8 | Auth : `check-phone` bloquant, `/login` fermé | P2 CMNA / lot A | Renvoyer à Manus ou confier au lot A |
+| 9 | Niveau « Essentiel » par défaut, silence non journalisé | P2 | Manus décide du défaut ; plateforme ajoute `vtrace.ttsIgnoree('niveau')` |
+| 10 | Précache SW 13-18 Mo à l'installation | P2 terrain | Renvoyer à Manus : revenir au seuil, voix en tâche de fond ; mesurer sur 3G |
+| 11 | Diagnostic « clip absent » masqué (`useVoiceCore`) | P2 (VOIX-04) | Renvoyer à Manus : garder un signal utilisateur |
+| 12 | `caisseUnSeulMicro` affaibli par OR | P2 garde-fou | Reprendre côté plateforme (exiger un seul monteur) |
+| 13 | Lot F : 3 registres de clips + regex FR | P2 architecture | Réconcilier avec `contrat-audio.ts` avant F |
+| 14 | Palette `--julaba-*` | P3 | Patrick tranche |
+| 15 | `test:nom-tantie` interdit l'ancien nom dans `src/`/`public/` | P3 gouvernance | Garder dans `verify` seulement ; `MANUS-REGLES.md` à jour |
+| 16 | 500 F billet → pièce, `MesCommandes` hors-ligne, `useCountUp` retiré | P3 UX | Conserver |
+
+Obligations de livraison non tenues : aucune capture/mesure visuelle committée ;
+`test:ci` modifiée ; garde-fous édités ; PR toujours brouillon.
+
+### Ce que ça ne prouve pas
+
+Les 45/233 invariants Postgres (non exécutés, TEST-05) ; les mesures 390×844 du
+banc `apercu-caisse` (hauteurs changées, à rejouer) ; le comportement sonore réel
+(autoplay, `AbortError`, SW sur Android) ; l'APK (workflow non lancé) ; l'écoute
+humaine ivoirienne des clips « Callirrhoe » ; l'état exact de `9a14bcc` au-delà
+de son diff de 3 fichiers ; tout ce qui se passe sur `julaba-manus.netlify.app`
+(non visité).
