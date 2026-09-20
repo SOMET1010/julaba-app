@@ -1337,9 +1337,14 @@ export function GestionStock() {
                         // VENDRE OUVRE LA CAISSE (lot B — VOIX-01, voie 2).
                         // « Mon stock » ne vend plus elle-même : elle demande
                         // à la caisse de s'ouvrir avec ce produit déjà choisi.
-                        // Le produit voyage par l'ÉTAT DE ROUTE — explicite,
-                        // lisible dans l'URL de navigation, testable, et
-                        // simplement vide si on arrive à la caisse autrement.
+                        // Le produit voyage par l'ÉTAT DE ROUTE de React
+                        // Router — un objet passé à `navigate`, PAS un
+                        // paramètre d'URL : il n'apparaît pas dans l'adresse
+                        // et ne survit pas à un rechargement de page. C'est
+                        // suffisant ici (le geste est immédiat) et ça reste
+                        // explicite et testable, contrairement à une variable
+                        // globale. La caisse le lit, et fonctionne sans quand
+                        // on y arrive autrement.
                         onClick={() => {
                           setShowEdit(false);
                           navigate('/marchand/caisse', { state: { produitPreselectionne: {
