@@ -147,6 +147,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
           <div className="flex items-center justify-center gap-4">
             {/* Haut-parleur : réécouter (distinct de l'action) */}
             <motion.button
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); handleListen(); }}
               whileTap={{ scale: 0.9 }}
               aria-label={isSpeaking ? 'Arrêter Tantie Nanti Lou' : 'Réécouter Tantie Nanti Lou'}

@@ -25,6 +25,10 @@ console.log('\n[1] Classification des annonces');
 ok(audio.importancePourTexte('Bienvenue, on est ensemble') === 'accompagnement', 'un accueil est un accompagnement');
 ok(audio.importancePourTexte('Vente confirmée : 500 francs') === 'essentiel', 'argent et confirmation sont essentiels');
 ok(audio.importancePourTexte('Erreur réseau, la dépense est gardée') === 'essentiel', 'erreur et hors-ligne sont essentiels');
+ok(audio.resoudreNiveauVoix(undefined, null, false) === 2, 'avant connexion, une préférence absente active l’accompagnement complet');
+ok(audio.resoudreNiveauVoix(undefined, null, true) === 1, 'après connexion, une préférence absente garde les annonces essentielles');
+ok(audio.resoudreNiveauVoix(undefined, '0', false) === 0, 'un choix silencieux explicite reste respecté');
+ok(audio.resoudreNiveauVoix(2, '0', true) === 2, 'la préférence du profil prime sur le stockage local');
 
 console.log('\n[2] Silencieux bloque tout');
 audio.__reset();

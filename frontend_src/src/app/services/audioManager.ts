@@ -252,6 +252,24 @@ export function setVoiceLevel(level: number): void {
   if (prochain < precedent) hardStop();
 }
 
+/**
+ * Résout le niveau sans transformer une préférence absente (`null`) en zéro.
+ * Avant connexion, l'accueil doit pouvoir parler : le défaut est donc Complet.
+ * Après connexion, l'absence de choix explicite conserve le défaut Essentiel.
+ */
+export function resoudreNiveauVoix(
+  niveauProfil: unknown,
+  niveauStocke: string | null,
+  utilisatriceConnectee: boolean,
+): 0 | 1 | 2 {
+  const normaliser = (valeur: unknown): 0 | 1 | 2 | null => {
+    if (valeur === null || valeur === undefined || valeur === '') return null;
+    const nombre = Number(valeur);
+    return nombre === 0 || nombre === 1 || nombre === 2 ? nombre : null;
+  };
+  return normaliser(niveauProfil) ?? normaliser(niveauStocke) ?? (utilisatriceConnectee ? 1 : 2);
+}
+
 export function importancePourTexte(text: string): VoiceImportance {
   const t = text.toLowerCase();
   const essentiel = /\d|franc|fcfa|montant|caisse|vente|dépense|depense|pay|confirm|enregistr|gardée|gardee|envoy|hors[- ]ligne|réseau|reseau|erreur|problème|probleme|refus|attention|insuffisant|stock|rupture|code secret|bloqu|annul/.test(t);
