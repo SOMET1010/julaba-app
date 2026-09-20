@@ -1,34 +1,35 @@
 {
-  "packId": "julaba-fr-ci-preview-2026-09-20-mature-v2",
+  "packId": "julaba-fr-ci-preview-2026-09-20-natural-v3",
   "statut": "prototype_validation_humaine_requise",
   "usage": "prévisualisation de la branche manus/refonte-ui-ux-voix uniquement",
   "langue": "fr-CI",
   "personnage": "Tantie Nanti Lou",
-  "voix": "Sulafat, voix préconstruite, timbre mûri localement",
-  "style": "français ivoirien chaleureux, posé et maternel ; registre abaissé et rythme ralenti pour éviter une identité trop jeune",
+  "voix": "Sulafat, voix préconstruite, correction locale légère",
+  "style": "français ivoirien naturel, chaleureux, ouvert et rassurant ; débit conversationnel normal, ni lent ni rapide",
   "texteExact": "Akwaba. Pour vendre, touche un produit, ou parle à Tata. On est ensemble.",
   "fichier": "tata-accueil-preview.mp3",
-  "sha256": "de906de651ed9620bda6ab655d9ce319252576689fd3b8888d98f7829d7813e8",
+  "sha256": "871846099cbdb7678857c3873cc47d58cd214b701738ddde02090736f1eb0bb0",
   "transformation": {
     "source": "tata-accueil-sulafat.wav",
-    "tempo": 0.94,
-    "hauteur": 0.89,
+    "tempo": 1.0,
+    "hauteur": 0.96,
     "formants": "préservés",
-    "objectif": "voix féminine plus mûre sans changer le texte ni la langue"
+    "egalisation": "chaleur et présence légères",
+    "objectif": "garder un débit entièrement naturel avec une maturité très discrète"
   },
   "technique": {
     "format": "MP3",
     "canaux": 1,
     "frequenceHz": 48000,
-    "debitApproxBps": 96245,
-    "dureeSecondes": 10.848,
-    "niveauMoyenDb": -19.6,
-    "niveauMaximumDb": -2.4
+    "debitApproxBps": 96261,
+    "dureeSecondes": 10.2,
+    "niveauMoyenDb": -19.4,
+    "niveauMaximumDb": -1.8
   },
   "validation": {
     "texte": "transcription automatique cohérente ; Akwaba doit rester vérifié à l'écoute humaine",
-    "agePercuEtChaleur": "à valider par le propriétaire et des marchandes ivoiriennes cibles",
+    "naturelEtAgePercu": "à valider par le propriétaire et des marchandes ivoiriennes cibles",
     "production": false
   },
-  "note": "Le générateur vocal principal a échoué à trois reprises le 20 septembre 2026. Ce clip est donc une correction locale et réversible du prototype existant, pas un clonage et pas une voix humaine finale."
+  "note": "Cette v3 annule le ralentissement de la v2. Le générateur vocal principal ayant échoué à trois reprises, elle reste une correction légère et réversible du prototype existant, pas une voix humaine finale."
 }
