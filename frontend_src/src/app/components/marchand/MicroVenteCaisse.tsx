@@ -333,9 +333,8 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   const bulle = isRecording ? 'Je vous écoute'
     : isLoading ? 'Un instant…'
     : isSpeaking ? 'Tata parle…'
-    : isError ? "Je n'ai pas compris"
-    : produitPreselectionne ? `Dis ce que tu as vendu de ${produitPreselectionne.nom}`
-    : 'Que voulez-vous vendre ?';
+    : isError ? 'On recommence'
+    : 'Écouter Tata';
 
   return (
     <section
