@@ -44,7 +44,7 @@ import _logoMoov        from "../../assets/images/logo-moov.png";
 import _logoWave        from "../../assets/images/logo-wave.png";
 import _logoTonDje      from "../../assets/images/logo-tondje.png";
 
-// ── Tata Nanti Lou -- variantes completes ─────────────────────
+// ── Tantie Nanti Lou -- variantes completes ─────────────────────
 export const IMG_TANTIE_SAGESSE                    = _tantieMarchand;
 export const IMG_TANTIE_SAGESSE_ADMIN              = _tantieMarchand;
 export const IMG_TANTIE_SAGESSE_COOPERATIVE        = _tantieCooperative;
@@ -53,7 +53,7 @@ export const IMG_TANTIE_SAGESSE_PRODUCTEUR         = _tantieProducteur;
 export const IMG_TANTIE_SAGESSE_INSTITUTION        = _tantieInstitution;
 export const IMG_TANTIE_SAGESSE_VENTE              = _tantieMarchand;
 
-// ── Tata Nanti Lou -- icones BottomBar ────────────────────────
+// ── Tantie Nanti Lou -- icones BottomBar ────────────────────────
 export const IMG_TANTIE_SAGESSE_ICON               = _tantieIconMarchand;
 export const IMG_TANTIE_SAGESSE_ICON_COOPERATIVE   = _tantieIconCooperative;
 export const IMG_TANTIE_SAGESSE_ICON_PRODUCTEUR    = _tantieIconProducteur;
