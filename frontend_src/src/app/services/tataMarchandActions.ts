@@ -50,7 +50,7 @@ export function trouverProduitTata(produit: string | undefined, produits: Produi
  * « vendre » n'est PAS géré ici : ce n'est plus une écriture backend (voir
  * convergence voix/tactile POS, Lot 2) mais un ajout au panier partagé —
  * `TantieSagesseModal.tsx` le route directement vers `vendreVocalUnifie`
- * (même fonction que `VenteVocaleModal`), avant même d'appeler ce helper.
+ * (même fonction que `MicroVenteCaisse`), avant même d'appeler ce helper.
  * Aucun chemin vocal ne doit plus appeler `enregistrerVente` en dehors du
  * bouton tactile « Payer en espèces » de `POSCaisse`.
  */
