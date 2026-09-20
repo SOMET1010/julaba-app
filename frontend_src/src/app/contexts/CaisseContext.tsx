@@ -17,8 +17,9 @@ import {
 // Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.
 import {
   enfilerOperation, synchroniser,
+  nbEnAttente as offlineNbEnAttente, operationsEnAttente as offlineOperationsEnAttente,
   nbEchecs as offlineNbEchecs, lettresMortes as offlineLettresMortes, purgerLettreMorte as offlinePurger,
-  type OfflineEndpoint, type OfflineMethod, type LettreMorte,
+  type OfflineEndpoint, type OfflineMethod, type LettreMorte, type OperationCaisse,
 } from '../voice-offline/offlineCaisse';
 // Persistance locale du panier (Phase 1) : module pur, stockage injecté.
 import { loadCart, saveCart, clearStoredCart, type KVStore } from '../services/cartStorage';
@@ -68,6 +69,10 @@ export interface CaisseTransaction {
   montant: number;
   produits?: LigneDeVente[] | unknown;
   mode_paiement?: string;
+  /** Nom lisible utilisé pour calculer les raccourcis de vente. */
+  productName?: string;
+  /** Motif d'une dépense. */
+  description?: string;
   notes?: string;
   date: string;
   source?: string;
@@ -200,6 +205,9 @@ interface CaisseContextType {
   
   refreshTransactions: () => Promise<void>;
 
+  // File hors-ligne — opérations gardées sur le téléphone, pas encore confirmées.
+  syncEnAttente: number;
+  syncOperationsEnAttente: OperationCaisse[];
   // File hors-ligne — rejets définitifs (4xx) sortis de la file au rejeu.
   /** Nombre d'opérations hors-ligne refusées définitivement, à revoir. */
   syncEchecs: number;
@@ -233,10 +241,24 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // Rejets définitifs (4xx) sortis de la file au rejeu : surfaçage obligatoire.
   const [syncEchecs, setSyncEchecs] = useState(0);
   const [syncLettresMortes, setSyncLettresMortes] = useState<LettreMorte[]>([]);
+  const [syncEnAttente, setSyncEnAttente] = useState(0);
+  const [syncOperationsEnAttente, setSyncOperationsEnAttente] = useState<OperationCaisse[]>([]);
   const rafraichirEchecs = useCallback(async () => {
     const uid = appUser?.id;
-    if (!uid) { setSyncEchecs(0); setSyncLettresMortes([]); return; }
-    try { setSyncEchecs(await offlineNbEchecs(uid)); setSyncLettresMortes(await offlineLettresMortes(uid)); }
+    if (!uid) {
+      setSyncEnAttente(0); setSyncOperationsEnAttente([]);
+      setSyncEchecs(0); setSyncLettresMortes([]); return;
+    }
+    try {
+      const [enAttente, operations, echecs, lettres] = await Promise.all([
+        offlineNbEnAttente(uid), offlineOperationsEnAttente(uid),
+        offlineNbEchecs(uid), offlineLettresMortes(uid),
+      ]);
+      setSyncEnAttente(enAttente);
+      setSyncOperationsEnAttente(operations);
+      setSyncEchecs(echecs);
+      setSyncLettresMortes(lettres);
+    }
     catch { /* IndexedDB indisponible : on ignore */ }
   }, [appUser?.id]);
   const purgerEchecSync = useCallback(async (id: string) => {
@@ -251,17 +273,23 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       const { transactions: data } = await caisseApi.fetchCaisseTransactions();
 
-      const txList: CaisseTransaction[] = data.map((tx: caisseApi.CaisseTransaction) => ({
-        id: tx.id,
-        marchandId: tx.marchand_id,
-        type: tx.type,
-        montant: parseFloat(String(tx.montant)) || 0,
-        produits: tx.produits,
-        mode_paiement: tx.mode_paiement,
-        notes: tx.notes,
-        date: tx.created_at,
-        statut: tx.statut,
-      }));
+      const txList: CaisseTransaction[] = data.map((tx: caisseApi.CaisseTransaction) => {
+        const lignes = tx.details || tx.produits || [];
+        return {
+          id: tx.id,
+          marchandId: tx.marchand_id,
+          type: tx.type,
+          montant: parseFloat(String(tx.montant)) || 0,
+          produits: tx.produits || tx.details,
+          mode_paiement: tx.mode_paiement,
+          description: tx.description || tx.notes,
+          notes: tx.notes || tx.description,
+          productName: tx.produit || tx.description || lignes[0]?.nom || '',
+          source: tx.source,
+          date: tx.created_at,
+          statut: tx.statut,
+        };
+      });
       setTransactions(txList);
       // Cache local : dernière version connue de l'historique (lecture hors-ligne).
       try { localStorage.setItem(cacheKey, JSON.stringify(txList)); } catch { /* ignore */ }
@@ -328,6 +356,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       try {
         const avant = await offlineNbEchecs(uid).catch(() => 0);
         const { ok, echecs, reste } = await synchroniser(posterOperation, uid);
+        setSyncEnAttente(reste);
         if (ok > 0) await loadTransactions();
         await rafraichirEchecs();
         if (echecs > avant) {
@@ -470,6 +499,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       },
       enfiler: async () => {
         const operationId = await enfilerOperation('/caisse/vente', payload, appUser?.id);
+        await rafraichirEchecs();
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
         return operationId;
       },
@@ -479,7 +509,12 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
 
   const enregistrerDepense = async (montant: number, notes?: string) => {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de dépense invalide');
-    const payload: caisseApi.EnregistrerDepenseData = { montant, notes, idempotency_key: genererCle() };
+    // `description` est le contrat canonique du backend et du cahier. `notes`
+    // reste dupliqué temporairement pour que toute file issue d'une ancienne
+    // version soit rejouable sans perdre son motif.
+    const payload: caisseApi.EnregistrerDepenseData = {
+      montant, description: notes, notes, idempotency_key: genererCle(),
+    };
     return soumettreOperationCaisse({
       horsLigne: typeof navigator !== 'undefined' && navigator.onLine === false,
       envoyer: async () => {
@@ -489,6 +524,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       },
       enfiler: async () => {
         const operationId = await enfilerOperation('/caisse/depense', payload, appUser?.id);
+        await rafraichirEchecs();
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
         return operationId;
       },
@@ -805,6 +841,8 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     getVentesJour,
     getCahierJour,
     refreshTransactions,
+    syncEnAttente,
+    syncOperationsEnAttente,
     syncEchecs,
     syncLettresMortes,
     purgerEchecSync,

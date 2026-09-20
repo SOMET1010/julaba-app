@@ -52,6 +52,7 @@ async function run() {
     ok(res.reste === 0, "T1 file active vidée");
     const dead = await store.deadList();
     ok(dead.length === 1 && dead[0].id === "a" && dead[0].echec.status === 403, "T1 lettre morte = op1 (status 403)");
+    ok(dead[0].echec.cause === "rejet_metier", "T1 un 4xx est nommé rejet métier");
   }
 
   // T2 — transitoire (5xx) : conservé + attempts, puis parqué au CAP.
@@ -65,6 +66,8 @@ async function run() {
     for (let i = 2; i < oc.REPLAY_CAP; i++) await oc.synchroniser(p, UID, store); // essais 2..CAP-1
     const rCap = await oc.synchroniser(p, UID, store); // essai CAP → lettre morte
     ok(rCap.echecs === 1 && rCap.reste === 0, `T2 parqué en lettre morte après ${oc.REPLAY_CAP} essais`);
+    const dead = await store.deadList();
+    ok(dead[0].echec.cause === "essais_epuises", "T2 un 503 épuisé reste un envoi à vérifier, pas un refus métier");
   }
 
   // T3 — INVARIANT 1 : attempts n'augmente PAS sur un rejet permanent.

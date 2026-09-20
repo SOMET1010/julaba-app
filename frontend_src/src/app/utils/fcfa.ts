@@ -24,7 +24,7 @@ export const COUPURES: Coupure[] = [
   { valeur: 5000,  forme: 'billet', couleur: '#3E7CB1', encre: '#FFFFFF' }, // bleu-vert
   { valeur: 2000,  forme: 'billet', couleur: '#2E8B6F', encre: '#FFFFFF' }, // vert
   { valeur: 1000,  forme: 'billet', couleur: '#B0503C', encre: '#FFFFFF' }, // rouge-brun
-  { valeur: 500,   forme: 'billet', couleur: '#C98A2D', encre: '#FFFFFF' }, // ocre
+  { valeur: 500,   forme: 'piece',  couleur: '#C9B037', encre: '#4A3A10' }, // bicolore dorée
   { valeur: 250,   forme: 'piece',  couleur: '#C9B037', encre: '#4A3A10' }, // dorée
   { valeur: 200,   forme: 'piece',  couleur: '#BFC5CC', encre: '#3A4148' }, // argentée
   { valeur: 100,   forme: 'piece',  couleur: '#BFC5CC', encre: '#3A4148' },

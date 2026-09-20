@@ -13,6 +13,7 @@ import {
   type ResultatOperationCaisse,
 } from '../../services/statutOperationCaisse';
 import { vibrerSucces, vibrerTic } from '../../utils/haptique';
+import { SyncEchecsBanner } from './SyncEchecsBanner';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -234,6 +235,8 @@ export function DepenseForm() {
     >
       <div style={{ flex:1, overflowY:'auto', padding:'16px 0 16px', display:'flex', flexDirection:'column', gap:14 }}>
 
+        <SyncEchecsBanner />
+
         {/* ACTIONS RAPIDES */}
         <div>
           <div style={{ fontSize:11, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Actions rapides</div>
@@ -352,6 +355,8 @@ export function DepenseForm() {
       }
     >
       <div style={{ flex:1, overflowY:'auto', padding:'14px 16px 16px' }}>
+
+        <SyncEchecsBanner />
 
         {/* Description + Changer */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
