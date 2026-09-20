@@ -18,11 +18,11 @@ que les validations linguistiques natives ne sont pas terminées.
 
 | État | Lignes | Sens |
 |---|---|---|
-| `MAPPE` | 104 | Correspondance directe et sans réserve |
+| `MAPPE` | 103 | Correspondance directe et sans réserve |
 | `COMPOSE_EN_FR` | 48 | Aucun mot français direct : notre analyseur compose |
 | `HORS_TABLE` | 8 | Unité absente de notre table canonique |
-| `A_SCINDER` | 4 | La ligne mélange écoute et parole |
-| `MAPPE_FRAGMENT` | 2 | Correspond à une partie d'une de nos phrases |
+| `SCINDE` | 6 | Cible d'écoute et cible de parole indiquées séparément |
+| `MAPPE_NON_ACTIVABLE` | 1 | Famille fonctionnelle donnée, activation interdite |
 | `A_ARBITRER` | 1 | Demande une décision avant toute traduction |
 | `SANS_EQUIVALENT` | 1 | Aucune clé chez nous |
 
@@ -46,18 +46,24 @@ Aucun identifiant nouveau n'a été inventé.
 
 ## Les huit points qui demandent une décision
 
-1. **Liste blanche de validation.** `PROVISIONAL_FRM_INTENT_03` propose « Oui, tu peux
-   valider. » La liste blanche française est **fermée** à huit réponses. Cette phrase n'y
-   est pas. Elle n'entre ni en français ni dans une autre langue sans validation native et
-   sans le drapeau finance.
+1. **Liste blanche de validation — tranché.** `PROVISIONAL_FRM_INTENT_03` propose « Oui,
+   tu peux valider. » Décision de Patrick : la correspondance vers la famille fonctionnelle
+   est autorisée, **l'activation est interdite**. La phrase reste une proposition
+   linguistique en brouillon et ne rejoint pas la liste blanche financière, fermée à ses
+   huit réponses françaises. Elle est donc mappée pour être traduite et validée, jamais
+   pour être reconnue en l'état.
 2. **« Je valide ? » n'existe pas seule.** Chez nous la question est soudée à la relecture
    des trois nombres. Produire un clip isolé « Je valide ? » casserait la règle : aucune
    phrase vocale n'écrit de l'argent sans confirmer exactement l'état financier qu'elle
    vient de relire.
-3. **Quatre lignes mélangent écoute et parole** (`INTENT_05`, `11`, `12`, `15`). Les
-   phrases dites et les phrases écoutées ne se traduisent pas de la même façon : une
-   variante d'écoute doit couvrir plusieurs manières de dire, une phrase dite n'en a
-   qu'une. À scinder avant traduction.
+3. **Six lignes portent désormais deux cibles séparées.** Sur demande de Patrick, aucune
+   correspondance ambiguë n'est forcée : quand l'écoute et la parole sont deux objets
+   différents, la cellule nomme les deux, sous la forme
+   `TTS_OUTPUT=… ; STT_INPUT=…`. Deux d'entre elles ont réellement une cible de chaque
+   côté (`INTENT_12`, `INTENT_15`) ; les quatre autres n'ont pas de cible d'écoute, et
+   c'est dit. `INTENT_14` reste en arbitrage : la famille est juste, mais la forme exacte
+   « c'est à combien » n'est couverte par aucun motif actuel ; l'ajouter serait une
+   décision de grammaire financière, pas une traduction.
 4. **« Vérifie bien le compte » n'a pas d'équivalent.** Créer cette clé suppose de décider
    si Tantie peut inviter à vérifier sans relire les montants. En l'état, la doctrine dit
    non.
