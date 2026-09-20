@@ -14,6 +14,7 @@ import { ResumeModal, CloseDayModal, EditFondModal } from './MarchandModals';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
+import { useMontantsPrives } from '../../hooks/useMontantsPrives';
 
 /**
  * Accueil marchand « voix & icônes d'abord ».
@@ -33,7 +34,8 @@ function MarchandAccueilVoiceInner() {
   // utils/appellation) : un marchand était accueilli par « Bonjour Maman ».
   const accueil = salutation((user as { appellation?: string } | undefined)?.appellation, prenom);
 
-  const [soldeVisible, setSoldeVisible] = useState(true);
+  const { montantsMasques, basculerMontants } = useMontantsPrives();
+  const soldeVisible = !montantsMasques;
   // Mode SOLEIL (inclusion §2.4) : un seul geste, visible sur l'accueil — pas
   // caché dans les réglages. Tout devient plus grand et plus franc.
   const [soleil, setSoleil] = useState(() => getConfortVisuel() === 'soleil');
@@ -120,7 +122,8 @@ function MarchandAccueilVoiceInner() {
             <motion.button whileTap={{ scale: 0.9 }} onClick={direCaisse} aria-label="Écouter ma caisse">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>
             </motion.button>
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSoldeVisible(v => !v)} aria-label="Cacher ou montrer">
+            <motion.button whileTap={{ scale: 0.9 }} onClick={basculerMontants}
+              aria-label={soldeVisible ? 'Cacher mes montants' : 'Montrer mes montants'}>
               {soldeVisible
                 ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>}

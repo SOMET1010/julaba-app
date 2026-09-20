@@ -2,12 +2,11 @@ import { etatMarge, libelleMarge, phraseMarge } from '../../services/margeVente'
 import type { LigneDeVente } from '../../types/vente';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, ChevronDown, Search, Filter, FileDown, TrendingUp, Banknote, Package, ShoppingBag, Volume2 } from 'lucide-react';
+import { ChevronDown, Search, Filter, FileDown, TrendingUp, Banknote, Package, ShoppingBag, Volume2, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
-import { useCountUp } from '../../hooks/useCountUp';
 import { format, isToday, isYesterday } from 'date-fns';
 import { fetchCredits, marquerCreditPaye, annulerVenteMarchand, type Credit } from '../../services/api/caisse-api';
 import { fr } from 'date-fns/locale';
@@ -18,6 +17,7 @@ import { resumeVentes, venteComptee } from '../../services/statsVente';
 import { toast } from 'sonner';
 import { NotificationButton } from './NotificationButton';
 import { SubPageLayout } from '../layout/SubPageLayout';
+import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -54,7 +54,7 @@ interface VenteAffichee {
   produits?: LigneDeVente[] | unknown;
 }
 
-function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number; query: string }) {
+function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffichee; index: number; query: string; montantsMasques: boolean }) {
   const [open, setOpen] = useState(false);
   const { user, speak, reloadTransactions } = useApp();
   const { refreshProducts } = useCaisse();
@@ -107,7 +107,7 @@ function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number;
   const basculer = () => {
     const prochainOuvert = !open;
     setOpen(prochainOuvert);
-    if (prochainOuvert && guidageVocal()) {
+    if (prochainOuvert && guidageVocal() && !montantsMasques) {
       const quand = format(dateObj, "d MMMM 'à' HH'h'mm", { locale: fr });
       // UNE PERTE SE DIT AUSSI. La règle du projet vaut ici plus qu'ailleurs :
       // aucune information importante ne doit exister uniquement sous forme de
@@ -169,7 +169,7 @@ function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number;
         </div>
         {/* Montant + marge */}
         <div style={{ textAlign:'right', flexShrink:0 }}>
-          <div style={{ fontSize:17, fontWeight:900, color: estAnnulee ? '#9ca3af' : '#1D9E75', textDecoration: estAnnulee ? 'line-through' : 'none' }}>+{montant.toLocaleString('fr-FR')} F</div>
+          <div style={{ fontSize:17, fontWeight:900, color: estAnnulee ? '#9ca3af' : '#1D9E75', textDecoration: estAnnulee ? 'line-through' : 'none' }}>{montantsMasques ? '••••• F' : `+${montant.toLocaleString('fr-FR')} F`}</div>
           {/* UNE PERTE SE VOIT — arbitrage de Patrick, 19/09/2026. La marge était
               plafonnée à zéro côté serveur : une vente à perte s'affichait
               « marge — », exactement comme une vente dont on ignore le coût.
@@ -191,7 +191,7 @@ function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number;
               : marge < 0 ? '#c0392b'
               : etat.type === 'partielle' ? '#b45309'
               : '#16a34a',
-          }}>{libelleMarge(etat)}</div>
+          }}>{montantsMasques ? 'Montant caché' : libelleMarge(etat)}</div>
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration:0.25 }} style={{ display:'flex', justifyContent:'flex-end', marginTop:2 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
           </motion.div>
@@ -212,7 +212,7 @@ function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number;
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Montant</span>
-                <span style={{ fontSize:14, fontWeight:900, color: estAnnulee ? '#9ca3af' : '#1D9E75', textDecoration: estAnnulee ? 'line-through' : 'none' }}>{montant.toLocaleString('fr-FR')} FCFA</span>
+                <span style={{ fontSize:14, fontWeight:900, color: estAnnulee ? '#9ca3af' : '#1D9E75', textDecoration: estAnnulee ? 'line-through' : 'none' }}>{montantPrive(montant, montantsMasques, 'FCFA')}</span>
               </div>
               {etat.type !== 'inconnue' && (
                 <div style={{ display:'flex', justifyContent:'space-between' }}>
@@ -225,7 +225,7 @@ function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number;
                   </span>
                   <span style={{ fontSize:12, fontWeight:700, textDecoration: estAnnulee ? 'line-through' : 'none',
                     color: estAnnulee ? '#9ca3af' : marge < 0 ? '#c0392b' : etat.type === 'partielle' ? '#b45309' : '#16a34a' }}>
-                    {marge < 0 ? '−' : '+'}{Math.abs(marge).toLocaleString('fr-FR')} FCFA
+                    {montantsMasques ? '••••• FCFA' : `${marge < 0 ? '−' : '+'}${Math.abs(marge).toLocaleString('fr-FR')} FCFA`}
                   </span>
                 </div>
               )}
@@ -234,6 +234,7 @@ function VenteCard({ sale, index, query }: { sale: VenteAffichee; index: number;
               <div style={{ display:'flex', gap:8, marginTop:4 }}>
                 <button type="button"
                   onClick={async () => {
+                    if (montantsMasques) { toast('Montants cachés — montre-les avant de partager le reçu.'); return; }
                     const r = await partagerRecu(sale, marchandNom);
                     if (r === 'copie') toast.success('Reçu copié'); else if (r === 'echec') toast.error('Partage indisponible');
                   }}
@@ -290,8 +291,10 @@ export function VentesPassees() {
   // 1er clic = « Confirmer ? » (Tata prévient) ; 2e clic = on marque payé.
   const [confirmPayId, setConfirmPayId] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showOutils, setShowOutils] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const { montantsMasques, basculerMontants } = useMontantsPrives();
 
   useEffect(() => { reloadTransactions(); }, []);
 
@@ -358,26 +361,24 @@ export function VentesPassees() {
   // purs/testés : services/statsVente.ts (resumeVentes / venteComptee).
   const { totalVentes, totalCount, totalBenefices, panierMoyen } =
     useMemo(() => resumeVentes(allSales), [allSales]);
-  const animVentes    = useCountUp(totalVentes, 1000);
-  const animBenefices = useCountUp(totalBenefices, 1000);
-  const animCount     = useCountUp(totalCount, 800);
-  const animPanier    = useCountUp(panierMoyen, 900);
-
   // Écran « Mes ventes » : une non-lectrice arrive ici pour SAVOIR combien elle a
   // fait -> on l'annonce à voix haute dès que les données sont là (une seule fois).
   const dejaAnnonce = useRef(false);
   useEffect(() => {
-    if (dejaAnnonce.current || allSales.length === 0) return;
+    if (dejaAnnonce.current || allSales.length === 0 || montantsMasques) return;
     dejaAnnonce.current = true;
     speak(totalCount > 0
       ? `Tu as vendu ${totalVentes.toLocaleString('fr-FR')} francs en tout, sur ${totalCount} vente${totalCount > 1 ? 's' : ''}.`
       : "Tu n'as pas encore de vente.");
-  }, [allSales, totalVentes, totalCount, speak]);
+  }, [allSales, totalVentes, totalCount, speak, montantsMasques]);
 
   // Ré-écouter le total (bouton haut-parleur).
-  const direTotal = () => speak(totalCount > 0
-    ? `Tu as vendu ${totalVentes.toLocaleString('fr-FR')} francs, sur ${totalCount} vente${totalCount > 1 ? 's' : ''}.`
-    : "Tu n'as pas encore de vente.");
+  const direTotal = () => {
+    if (montantsMasques) { speak('Tes montants sont cachés.'); return; }
+    speak(totalCount > 0
+      ? `Tu as vendu ${totalVentes.toLocaleString('fr-FR')} francs, sur ${totalCount} vente${totalCount > 1 ? 's' : ''}.`
+      : "Tu n'as pas encore de vente.");
+  };
 
   // Filtrage
   const filtered = useMemo(() => {
@@ -415,6 +416,7 @@ export function VentesPassees() {
   }, [filtered]);
 
   const handleExport = () => {
+    if (montantsMasques) { toast('Montants cachés — montre-les avant de créer le reçu.'); return; }
     const rows = allSales.map(t => ({
       label: formatDate(t.date) + ' — ' + (t.productName || 'Produit'),
       value: formatCurrency(t.montant || t.price || 0),
@@ -444,13 +446,14 @@ export function VentesPassees() {
       subtitle={ventesDuJour > 0 ? `${ventesDuJour} vente${ventesDuJour > 1 ? 's' : ''} aujourd'hui` : undefined}
       rightContent={
         <div style={{ display:'flex', gap:7 }}>
+          <motion.button whileTap={{ scale:0.9 }} onClick={basculerMontants}
+            aria-label={montantsMasques ? 'Montrer mes montants' : 'Cacher mes montants'}
+            style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+            {montantsMasques ? <EyeOff size={19} color="white" /> : <Eye size={19} color="white" />}
+          </motion.button>
           <motion.button whileTap={{ scale:0.9 }} onClick={direTotal} aria-label="Écouter le total des ventes"
             style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
             <Volume2 size={18} color="white" />
-          </motion.button>
-          <motion.button whileTap={{ scale:0.9 }} onClick={handleExport} aria-label="Exporter en PDF"
-            style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-            <FileDown size={16} color="white" />
           </motion.button>
           {/* Cloche « Notifications » standard, plus l'« Alertes » (stock)
               spécifique à Mon stock — même icône générique cloche que
@@ -462,7 +465,26 @@ export function VentesPassees() {
 
       {/* CONTENU */}
       <div style={{ flex:1, overflowY:'auto', padding:'14px 0 100px', display:'flex', flexDirection:'column', gap:12 }}>
-        {/* KPIs 2x2 avec UniversalKPI */}
+        <motion.button whileTap={{ scale:0.99 }} onClick={() => setShowOutils(v => !v)}
+          aria-expanded={showOutils}
+          style={{ width:'100%', minHeight:52, background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', color:'var(--encre)' }}>
+          <span style={{ display:'flex', alignItems:'center', gap:10, fontSize:15, fontWeight:800 }}>
+            <TrendingUp size={20} color={P} /> Mes chiffres et filtres
+          </span>
+          <motion.span animate={{ rotate: showOutils ? 180 : 0 }}><ChevronDown size={18} /></motion.span>
+        </motion.button>
+
+        <AnimatePresence>
+        {showOutils && (
+        <motion.div initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:'auto' }} exit={{ opacity:0, height:0 }}
+          style={{ overflow:'hidden', display:'flex', flexDirection:'column', gap:10 }}>
+        {/* KPIs 2x2 avec UniversalKPI — secondaires, donc repliés au départ. */}
+        {montantsMasques ? (
+          <div style={{ minHeight:92, borderRadius:16, background:'#F2F6F3', border:'1.5px solid #B7D1C1', padding:'16px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+            <div><strong style={{ display:'block', fontSize:16, color:'#0E513D' }}>Montants cachés</strong><span style={{ fontSize:13, color:'var(--encre-3)' }}>Personne autour de toi ne voit tes chiffres.</span></div>
+            <button type="button" onClick={basculerMontants} style={{ minWidth:48, height:48, borderRadius:14, border:'none', background:'#197455', color:'white', display:'grid', placeItems:'center' }} aria-label="Montrer mes montants"><EyeOff size={21} /></button>
+          </div>
+        ) : (
         <KPIGrid cols={2}>
           <UniversalKPI
             label="Ventes FCFA"
@@ -524,6 +546,14 @@ export function VentesPassees() {
             ]}
           />
         </KPIGrid>
+        )}
+        <button type="button" onClick={handleExport}
+          style={{ minHeight:48, borderRadius:14, border:'1.5px solid var(--trait)', background:'white', display:'flex', alignItems:'center', justifyContent:'center', gap:9, color:P, fontSize:14, fontWeight:800 }}>
+          <FileDown size={18} /> Créer mon bilan PDF
+        </button>
+        </motion.div>
+        )}
+        </AnimatePresence>
 
 
         {/* Recherche */}
@@ -604,7 +634,7 @@ export function VentesPassees() {
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div>
                   <div style={{ fontSize:10, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', marginBottom:4 }}>Total dû</div>
-                  <div style={{ fontSize:24, fontWeight:900, color:'#ef4444' }}>{totalDu.toLocaleString('fr-FR')} <span style={{ fontSize:12 }}>FCFA</span></div>
+                  <div style={{ fontSize:24, fontWeight:900, color:'#ef4444' }}>{montantPrive(totalDu, montantsMasques, 'FCFA')}</div>
                   <div style={{ fontSize:11, color:'var(--encre-4)', marginTop:2 }}>{credits.filter(c => c.statut !== 'paye').length} client(s) en attente</div>
                 </div>
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -661,11 +691,11 @@ export function VentesPassees() {
                       )}
                       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
                         <span style={{ fontSize:12, color:'var(--encre-4)' }}>Acompte versé</span>
-                        <span style={{ fontSize:12, fontWeight:700, color:'#1D9E75' }}>{Number(credit.acompte).toLocaleString('fr-FR')} FCFA</span>
+                        <span style={{ fontSize:12, fontWeight:700, color:'#1D9E75' }}>{montantPrive(Number(credit.acompte), montantsMasques, 'FCFA')}</span>
                       </div>
                       <div style={{ display:'flex', justifyContent:'space-between' }}>
                         <span style={{ fontSize:13, fontWeight:700, color:'var(--encre)' }}>Reste dû</span>
-                        <span style={{ fontSize:16, fontWeight:900, color:statutColor }}>{Number(credit.montant_restant).toLocaleString('fr-FR')} FCFA</span>
+                        <span style={{ fontSize:16, fontWeight:900, color:statutColor }}>{montantPrive(Number(credit.montant_restant), montantsMasques, 'FCFA')}</span>
                       </div>
                     </div>
 
@@ -717,9 +747,9 @@ export function VentesPassees() {
               {/* Header jour */}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:11, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.1em', padding:'4px 0 8px', borderBottom:'1px solid var(--trait)', marginBottom:8 }}>
                 <span>{group.label}</span>
-                <span style={{ color:'var(--encre-4)', fontWeight:600 }}>{group.count} vente{group.count > 1 ? 's' : ''} · {group.total.toLocaleString('fr-FR')} F</span>
+                <span style={{ color:'var(--encre-4)', fontWeight:600 }}>{group.count} vente{group.count > 1 ? 's' : ''} · {montantPrive(group.total, montantsMasques)}</span>
               </div>
-              {group.sales.map((sale, i) => <VenteCard key={sale.id || i} sale={sale} index={i} query={search} />)}
+              {group.sales.map((sale, i) => <VenteCard key={sale.id || i} sale={sale} index={i} query={search} montantsMasques={montantsMasques} />)}
             </div>
           ))
         )}
