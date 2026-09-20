@@ -16,7 +16,7 @@ import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/f
 import { BilletDessine, PieceDessinee } from './CoupureDessinee';
 import { avertissementRupture } from '../../services/ruptureStock';
 import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
-import { getImageByNom } from '../../data/catalogue-produits';
+import { getPictogrammeByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 import { phraseRelecture, phraseLigneAjoutee, type EtatEncaissement as EtatRelu } from '../../services/relectureSpontanee';
 import { ChoixUnite } from './ChoixUnite';
@@ -26,6 +26,7 @@ import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
 import { ETAT_INITIAL, empreintePanier, reduire, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
 import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
+import { PaveMontant } from '../shared/PaveMontant';
 
 // PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Les constantes `P` et `BG`
 // portaient l'ancienne charte ; la caisse lit maintenant la charte de la
@@ -104,6 +105,7 @@ function POSCaisseInner() {
 
   // Encaissement (Phase 3, lots 2-4) : montant reçu (espèces) + écran « Vente réussie ».
   const [montantRecu, setMontantRecu] = useState('');
+  const [saisieEspeces, setSaisieEspeces] = useState<'chiffres' | 'coupures'>('chiffres');
   const [lastSale, setLastSale] = useState<{ montant: number; moyen: string; monnaie: number; produits: any[] } | null>(null);
   // Mobile money DÉCLARÉ (Chemin A) : opérateur choisi, aucune intégration/argent.
   const [mmOperator, setMmOperator] = useState<string | null>(null);
@@ -215,6 +217,7 @@ function POSCaisseInner() {
   // + monnaie à rendre décomposée en coupures concrètes.
   const recu = Number(montantRecu) || 0;
   const monnaie = Math.max(0, recu - total);
+  const montantRecuManquant = recu <= 0;
   const insuffisant = recu > 0 && recu < total;
   const ajouterCoupure = (valeur: number) => {
     setMontantRecu(String(recu + valeur));
@@ -252,6 +255,7 @@ function POSCaisseInner() {
       return;
     }
     if (paymentMethod === 'credit') return;
+    if (paymentMethod === 'cash' && montantRecuManquant) { dire('Entre le montant reçu ou choisis compte juste'); return; }
     if (paymentMethod === 'cash' && insuffisant) { dire('Montant reçu insuffisant'); return; }
     if (paymentMethod === 'mobile_money' && !mmOperator) { dire('Choisis l\'opérateur'); return; }
     const estMM = paymentMethod === 'mobile_money';
@@ -499,7 +503,7 @@ function POSCaisseInner() {
       {cart.map(item => (
         <div key={item.productId} style={{ padding:'var(--caisse-esp-3) 0', borderBottom:'1px solid var(--commerce-line)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)' }}>
-            <ImageWithFallback src={products.find(p => p.id === item.productId)?.image || undefined} fallbackSrc={getImageByNom(item.nom)} alt="" aria-hidden="true"
+            <ImageWithFallback src={products.find(p => p.id === item.productId)?.image || undefined} fallbackSrc={getPictogrammeByNom(item.nom)} alt="" aria-hidden="true"
               style={{ width:44, height:44, borderRadius:'var(--caisse-rayon-2)', objectFit:'cover', flexShrink:0, background:'var(--caisse-sable)' }} />
             <div style={{ flex:1, minWidth:0, font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.nom}</div>
             <div style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{(item.totalExact ?? item.prix * item.quantite).toLocaleString('fr-FR')} F</div>
@@ -647,25 +651,39 @@ function POSCaisseInner() {
           avant de payer est la monnaie à rendre. */}
       {paymentMethod === 'cash' && (
       <div style={{ marginBottom:'var(--caisse-esp-4)' }}>
-        {/* Les billets qu'elle vient de recevoir : un toucher = un billet
-            ajouté (et dit à voix haute). Couleurs proches des vraies coupures. */}
-        {/* alignItems:'flex-end' : les billets n'ont plus tous la même hauteur
-            (les vraies coupures non plus). Alignés par le bas, ils se lisent
-            comme une liasse posée sur la table, pas comme une grille bancale. */}
-        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'flex-end' }}>
-          {COUPURES.filter(c => c.forme === 'billet').map(c => (
-            <BilletDessine key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
-          ))}
-        </div>
-        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginTop:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'center' }}>
-          {COUPURES.filter(c => c.forme === 'piece').map(c => (
-            <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
-          ))}
-          <button type="button" onClick={() => setMontantRecu(String(total))}
-            style={{ flex:1, minWidth:104, minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-succes)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-            Compte juste
+        <div role="group" aria-label="Comment entrer le montant reçu" className="caisse-cash-choice">
+          <button type="button" aria-pressed={saisieEspeces === 'chiffres'} onClick={() => setSaisieEspeces('chiffres')}>
+            <span aria-hidden="true">1 2 3</span><strong>Chiffres</strong>
+          </button>
+          <button type="button" aria-pressed={saisieEspeces === 'coupures'} onClick={() => setSaisieEspeces('coupures')}>
+            <Banknote aria-hidden="true" size={ICONE} /><strong>Billets · Pièces</strong>
           </button>
         </div>
+
+        {saisieEspeces === 'chiffres' ? (
+          <PaveMontant value={montantRecu} onChange={setMontantRecu} color="var(--caisse-vert)"
+            ariaLabel="Montant reçu de la cliente"
+            onSpeak={(m) => { if (m > 0) dire(`${formatF(m)} francs reçus`); }} />
+        ) : (
+          <>
+            {/* Les billets qu'elle vient de recevoir : un toucher = un billet
+                ajouté (et dit à voix haute). */}
+            <div style={{ display:'flex', gap:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'flex-end' }}>
+              {COUPURES.filter(c => c.forme === 'billet').map(c => (
+                <BilletDessine key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
+              ))}
+            </div>
+            <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginTop:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'center' }}>
+              {COUPURES.filter(c => c.forme === 'piece').map(c => (
+                <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
+              ))}
+            </div>
+          </>
+        )}
+        <button type="button" onClick={() => { setMontantRecu(String(total)); dire('Compte juste'); }}
+          className="caisse-compte-juste">
+          Compte juste · {formatF(total)} F
+        </button>
 
         {/* LA CARTE PAIEMENT de la maquette : Reçu | Monnaie. Le reçu reste un
             champ (le filet pour celle qui tape), la monnaie s'entend d'un
@@ -729,7 +747,7 @@ function POSCaisseInner() {
 
       {(() => {
         const bloque = isProcessing
-          || (paymentMethod === 'cash' && insuffisant)
+          || (paymentMethod === 'cash' && (montantRecuManquant || insuffisant))
           || (paymentMethod === 'mobile_money' && !mmOperator);
         // CTA unique et fort (mockup validé) : « Payer en espèces » plutôt
         // qu'un « Valider » générique — le moyen de paiement pilote est déjà
@@ -737,7 +755,9 @@ function POSCaisseInner() {
         const label = isProcessing ? 'Traitement...'
           : paymentMethod === 'mobile_money'
             ? (mmOperator ? `Valider — payé par ${getMobileOperator(mmOperator).name}` : 'Choisis l\'opérateur')
-            : (monnaie > 0 ? `Payer en espèces · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Payer en espèces');
+            : montantRecuManquant
+              ? 'Entre le montant reçu'
+              : (monnaie > 0 ? `Payer en espèces · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Payer en espèces');
         return (
           <motion.button whileTap={{ scale: bloque ? 1 : 0.97 }} onClick={handlePay} disabled={bloque}
             style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-2)', border:'none', borderRadius:'var(--caisse-rayon-4)', padding:'var(--caisse-esp-4) var(--caisse-esp-3)', minHeight:56, font:'var(--caisse-font-bouton)', color:'white', cursor: bloque ? 'not-allowed':'pointer', textWrap:'balance', background: bloque ? 'var(--caisse-gris-texte)' : 'var(--caisse-vert)' }}>
@@ -935,7 +955,7 @@ function POSCaisseInner() {
                     onClick={() => ajouterAuPanier(p)} aria-label={`Ajouter ${p.nom} au panier`}
                     style={{ background:'var(--caisse-ivoire)', border: inCart ? '2px solid var(--caisse-vert)' : '1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-3)', overflow:'hidden', padding:0, cursor:'pointer', fontFamily:'inherit', textAlign:'center', display:'flex', flexDirection:'column', minWidth:0 }}>
                     <div style={{ position:'relative', width:'100%', aspectRatio:'1 / 1', background:'var(--caisse-sable)' }}>
-                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getImageByNom(p.nom)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getPictogrammeByNom(p.nom)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                       <StockBadge stock={p.stock || 0} />
                       {enPromo && (
                         <div style={{ position:'absolute', top:'var(--caisse-esp-1)', right:'var(--caisse-esp-1)', background:'var(--caisse-alerte)', borderRadius:'var(--caisse-rayon-2)', padding:'2px 6px', font:'var(--caisse-font-legende)', fontWeight:600, color:'white' }}>

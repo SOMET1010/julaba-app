@@ -20,7 +20,7 @@ import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces } from '../../utils/haptique';
 import { toast } from 'sonner';
-import tataLouImg from "../../../assets/images/tantie-portrait.png";
+import tataLouImg from "../../../assets/redesign/tata-accueil.webp";
 import tantieVenteImg from "../../../assets/images/tantie-vente-vocale.png";
 
 interface TantieSagesseModalProps {

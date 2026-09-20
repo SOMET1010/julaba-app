@@ -56,7 +56,7 @@ import type { LigneProvisoire } from '../../services/ligneProvisoire';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces } from '../../utils/haptique';
 import { SaisieGuidee } from './SaisieGuidee';
-import tantieImg from '../../../assets/images/tantie-vente-vocale.png';
+import tataAccueil from '../../../assets/redesign/tata-accueil.webp';
 
 // PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Le lot B avait recopié
 // l'orange et le vert de la planche dans ce fichier : deux sources de vérité
@@ -331,7 +331,8 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   return (
     <section
       aria-label="Vendre à la voix"
-      style={{ background: 'var(--caisse-sable)', borderRadius: 'var(--caisse-rayon-5)', padding: 'var(--caisse-esp-4) var(--caisse-esp-3)', marginBottom: 'var(--caisse-esp-4)' }}
+      className="caisse-voice-guide"
+      style={{ marginBottom: 'var(--caisse-esp-4)' }}
     >
       {/* LA QUESTION — écrite ET dite. Elle est écrite pour celle qui lit, et
           prononcée à l'arrivée pour celle qui ne lit pas : aucune information
@@ -341,11 +342,11 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
           négative lui rend la largeur de la carte : à 390 px la question
           tient sur une ligne ; plus étroit, elle se coupe en deux lignes
           équilibrées (text-wrap: balance), jamais avec le « ? » orphelin. */}
-      <h1 style={{ textAlign: 'center', font: 'var(--caisse-font-h1)', color: 'var(--encre)', margin: '0 calc(-1 * var(--caisse-esp-3)) var(--caisse-esp-4)', textWrap: 'balance' }}>
+      <h1 className="caisse-voice-question" style={{ font: 'var(--caisse-font-h1)', textWrap: 'balance' }}>
         {produitPreselectionne ? produitPreselectionne.nom : 'Que voulez-vous vendre ?'}
       </h1>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--caisse-esp-3)' }}>
+      <div className="caisse-voice-row">
         {/* LE MICRO. Énorme, orange, au centre, et PERMANENT : il ne rétrécit
             pas, ne se déplace pas et ne disparaît à aucun moment de la vente
             — ni panier vide, ni panier plein, ni pendant l'encaissement. Un
@@ -390,12 +391,12 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         {/* Tata — le visage et la bulle, comme la maquette : l'avatar en haut
             à droite, la bulle dessous avec son haut-parleur. Le haut-parleur
             DIT ce que la bulle affiche : la bulle n'est pas une légende à lire. */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--caisse-esp-2)', minWidth: 0, flex: 1, maxWidth: 200 }}>
-          <img src={tantieImg} alt="" aria-hidden="true"
-            style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', flexShrink: 0, border: '3px solid var(--caisse-succes)', background: 'var(--caisse-succes)' }} />
+        <div className="caisse-voice-tata-side">
+          <img src={tataAccueil} alt="" aria-hidden="true" className="caisse-voice-tata" />
           <button type="button" onClick={() => speak(dernierePhraseRef.current || introLigne())}
             aria-label={dernierePhraseRef.current ? "Réécouter ce que Tata a compris" : 'Réécouter la question'}
-            style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', background: 'white', border: 'none', borderRadius: 'var(--caisse-rayon-4)', borderTopRightRadius: 'var(--caisse-rayon-1)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)', cursor: 'pointer', fontFamily: 'inherit', minWidth: 0, maxWidth: '100%', textAlign: 'left' }}>
+            className="caisse-voice-bubble"
+            style={{ gap: 'var(--caisse-esp-2)', borderRadius: 'var(--caisse-rayon-4)', borderTopRightRadius: 'var(--caisse-rayon-1)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)' }}>
             <span aria-hidden="true" style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--caisse-succes)', color: 'var(--caisse-vert)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Volume2 size={18} />
             </span>

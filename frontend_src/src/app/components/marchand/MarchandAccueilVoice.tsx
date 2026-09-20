@@ -5,6 +5,8 @@ import { useApp } from '../../contexts/AppContext';
 import { salutation } from '../../utils/appellation';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { IMG_LOGO_JULABA } from '../../assets/images';
+import tataAccueil from '../../../assets/redesign/tata-accueil.webp';
+import bandeauMarche from '../../../assets/redesign/bandeau-marche.webp';
 import { BrandSignature } from '../shared/BrandSignature';
 import { PropositionReconnaissance } from '../auth/PropositionReconnaissance';
 import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
@@ -79,40 +81,46 @@ function MarchandAccueilVoiceInner() {
   ];
 
   return (
-    <div className="commerce-home">
+    <div className="commerce-home commerce-home-redesign">
       <div>
-        <div className="commerce-home-header">
-          <div className="commerce-home-heading">
-            <button type="button" className="commerce-brand" onClick={bonjour} aria-label="Écouter le message de bienvenue">
-              <img src={IMG_LOGO_JULABA} alt="JULABA" />
+        <section className="commerce-home-hero">
+          <img src={bandeauMarche} alt="" aria-hidden="true" className="commerce-home-hero-bg" />
+          <div className="commerce-home-hero-veil" aria-hidden="true" />
+          <div className="commerce-home-header">
+            <button type="button" className="commerce-brand commerce-brand-hero" onClick={bonjour} aria-label="Écouter le message de bienvenue">
+              <img src={IMG_LOGO_JULABA} alt="JÙLABA" />
               <BrandSignature />
             </button>
-            <h1>{accueil}</h1>
+            <motion.button whileTap={{ scale: 0.92 }} onClick={basculerSoleil}
+              className="commerce-sun-button"
+              aria-pressed={soleil}
+              aria-label={soleil ? 'Repasser en affichage normal' : 'Mode soleil — tout plus grand'}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            </motion.button>
           </div>
-          <motion.button whileTap={{ scale: 0.92 }} onClick={basculerSoleil}
-            aria-label={soleil ? 'Repasser en affichage normal' : 'Mode soleil — tout plus grand'}
-            style={{ width: 44, height: 44, borderRadius: 14, background: soleil ? '#F5A623' : '#F5D6BD', color: soleil ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
-            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-          </motion.button>
-          {/* Icône profil retirée : doublon exact de l'onglet « Moi » de la
-              barre du bas — un seul chemin vers le profil (audit accueil/profil). */}
-        </div>
+          <button type="button" onClick={bonjour} className="commerce-home-welcome" aria-label="Écouter Tata dire bonjour">
+            <span className="commerce-home-welcome-copy">
+              <small>Ton comptoir est prêt</small>
+              <strong>{accueil}</strong>
+              <em>On vend ensemble aujourd’hui.</em>
+            </span>
+            <img src={tataAccueil} alt="Tata Nanti Lou" />
+          </button>
+        </section>
 
         {/* Caisse — montant réel, résumé et lecture vocale */}
-        <div className="commerce-balance">
-          <button type="button" style={{ minWidth: 0, cursor: 'pointer', textAlign: 'left' }} onClick={() => setShowResume(true)} aria-label="Voir le résumé du jour">
+        <div className="commerce-balance commerce-balance-redesign">
+          <button type="button" className="commerce-balance-main" onClick={() => setShowResume(true)} aria-label="Voir le résumé du jour">
             <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', opacity: 0.92 }}>Ma caisse aujourd'hui</div>
-            <div style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, marginTop: 4, fontVariantNumeric: 'tabular-nums', cursor: 'pointer' }}>
-              {soldeVisible ? Math.round(caisse).toLocaleString('fr-FR') : '●●●●●'}<small style={{ fontSize: 16, fontWeight: 700, opacity: 0.85 }}> F</small>
+            <div className="commerce-balance-value">
+              {soldeVisible ? Math.round(caisse).toLocaleString('fr-FR') : '●●●●●'}<small> F</small>
             </div>
           </button>
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <motion.button whileTap={{ scale: 0.9 }} onClick={direCaisse} aria-label="Écouter ma caisse"
-              style={{ width: 46, height: 46, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer', color: '#fff' }}>
+          <div className="commerce-balance-actions">
+            <motion.button whileTap={{ scale: 0.9 }} onClick={direCaisse} aria-label="Écouter ma caisse">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>
             </motion.button>
-            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSoldeVisible(v => !v)} aria-label="Cacher ou montrer"
-              style={{ width: 46, height: 46, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer', color: '#fff' }}>
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setSoldeVisible(v => !v)} aria-label="Cacher ou montrer">
               {soldeVisible
                 ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>}
@@ -160,21 +168,23 @@ function MarchandAccueilVoiceInner() {
             elle porte le micro, les produits, le panier et l'encaissement. */}
         <motion.button
           whileTap={{ scale: 0.97 }} onClick={allerCaisse} aria-label="Vendre"
-          className="commerce-sell">
-          <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg>
-          <span>Vendre</span>
+          className="commerce-sell commerce-sell-redesign">
+          <span className="commerce-sell-icon">
+            <svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4"/></svg>
+          </span>
+          <span className="commerce-sell-copy"><strong>Vendre</strong><small>Parler ou toucher les produits</small></span>
+          <span className="commerce-sell-arrow" aria-hidden="true">›</span>
         </motion.button>
 
         {/* Tuiles — icônes vectorielles locales + un seul libellé (hors-ligne) */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
+        <div className="commerce-home-tools" aria-label="Mes outils">
           {tuiles.map((t) => (
             <motion.button key={t.label} whileTap={{ scale: 0.94 }} onClick={() => { speak(t.parle); t.go(); }}
-              className="commerce-home-tile"
-              style={t.label === 'Mes ventes' ? { gridColumn: '1 / -1' } : undefined}>
-              <span style={{ color: t.teinte, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              className="commerce-home-tile">
+              <span className="commerce-home-tile-icon" style={{ color: t.teinte }}>
                 {t.icon}
               </span>
-              <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--encre)' }}>{t.label}</span>
+              <span>{t.label}</span>
             </motion.button>
           ))}
         </div>

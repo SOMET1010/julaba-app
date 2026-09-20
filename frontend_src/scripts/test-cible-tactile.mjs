@@ -86,13 +86,13 @@ if (source.includes('</label>') === false) {
 }
 
 console.log('\nCartes produit et encaissement inclusifs');
-if (/role=\{!inCart \? 'button'/.test(source) && /onClick=\{!inCart \? \(\) => ajouterAuPanier\(p\)/.test(source)) {
+if (/<motion\.button key=\{p\.id\} type="button"/.test(source) && /onClick=\{\(\) => ajouterAuPanier\(p\)/.test(source)) {
   passe('toute la carte produit ajoute l’article, pas seulement un petit bouton');
 } else {
   rate('la carte produit entière n’est pas une cible de sélection');
 }
 
-if ((source.match(/minHeight:44/g) || []).length >= 2) {
+if ((source.match(/minHeight:'var\(--caisse-cible-tactile\)'/g) || []).length >= 2) {
   passe('les champs prix et quantité négociés atteignent 44 px');
 } else {
   rate('les champs financiers de négoce restent sous 44 px');

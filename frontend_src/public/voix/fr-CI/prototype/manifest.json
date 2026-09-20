@@ -1,0 +1,24 @@
+{
+  "packId": "julaba-fr-ci-preview-2026-09-20",
+  "statut": "prototype_validation_humaine_requise",
+  "usage": "prévisualisation de la branche manus/refonte-ui-ux-voix uniquement",
+  "langue": "fr-CI",
+  "voix": "Sulafat, voix préconstruite",
+  "style": "français ivoirien chaleureux, lent, sans caricature",
+  "texteExact": "Akwaba. Pour vendre, touche un produit, ou parle à Tata. On est ensemble.",
+  "fichier": "tata-accueil-preview.mp3",
+  "sha256": "3bc68e60bfbf59d609329643d4a766a529fdfcafa03e0392ca54c9fce0d6bb7c",
+  "technique": {
+    "format": "MP3",
+    "canaux": 1,
+    "frequenceHz": 48000,
+    "debitApproxBps": 96261,
+    "dureeSecondes": 10.2
+  },
+  "validation": {
+    "texte": "à vérifier mot à mot",
+    "accentEtChaleur": "à valider par une personne ivoirienne et une marchande cible",
+    "production": false
+  },
+  "note": "Ce clip ne reproduit pas et ne clone pas les voix fixes Bon Chauffeur. Il s'agit d'une proposition produite à partir d'une voix préconstruite, à comparer humainement aux références autorisées."
+}

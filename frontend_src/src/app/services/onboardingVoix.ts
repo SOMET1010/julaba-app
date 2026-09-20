@@ -20,17 +20,19 @@ export interface IntroClip {
   file: string;   // clip de la VRAIE Tata (déposé par le studio d'enregistrement)
   texte: string;  // texte EXACT à enregistrer et valider humainement
   atteste: boolean; // vrai seulement si le fichier existe et a été validé
+  prototype?: boolean; // audition de prévisualisation, jamais active en production par défaut
 }
+
+const PROTOTYPES_VOIX_ACTIFS = import.meta.env.VITE_JULABA_VOICE_PREVIEW === 'true';
 
 // clé → clip de l'onboarding. Fichiers à enregistrer une seule fois (script fourni).
 export const INTRO_CLIPS: Record<string, IntroClip> = {
   // Écran d'accueil (logo)
   accueil: {
-    file: `${BASE}/intro-accueil.mp3`,
+    file: '/voix/fr-CI/prototype/tata-accueil-preview.mp3',
     atteste: false,
-    texte: "Bonjour ! Moi, c'est Tata Nanti Lou. Je serai avec toi pour vendre, compter ton argent " +
-      'et faire grandir ton commerce. Beaucoup de commerçantes travaillent déjà avec moi. ' +
-      "Maintenant, c'est ton tour. On commence ?",
+    prototype: true,
+    texte: 'Akwaba. Pour vendre, touche un produit, ou parle à Tata. On est ensemble.',
   },
   retour: {
     file: `${BASE}/intro-retour.mp3`,
@@ -95,7 +97,8 @@ export async function direIntro(key: keyof typeof INTRO_CLIPS): Promise<void> {
   if (!clip) return;
   // V1 (packs) : un clip d'intro PUBLIÉ par manifeste (clé « intro_<clé> »)
   // prime sur le fichier embarqué — les 9 intros arriveront sans rebuild.
-  const clipUrl = packClipUrl(`intro_${String(key)}`) ?? (clip.atteste ? clip.file : null);
+  const clipLocalAutorise = clip.atteste || (clip.prototype && PROTOTYPES_VOIX_ACTIFS);
+  const clipUrl = packClipUrl(`intro_${String(key)}`) ?? (clipLocalAutorise ? clip.file : null);
   if (!clipUrl) return;
   try { await playClip({ url: clipUrl }); }
   catch { /* muet plutôt que planter */ }
@@ -113,8 +116,8 @@ export function preloadIntroClips(): void {
   if (_preloaded || typeof window === 'undefined') return;
   _preloaded = true;
   try {
-    for (const { file, atteste } of Object.values(INTRO_CLIPS)) {
-      if (!atteste) continue;
+    for (const { file, atteste, prototype } of Object.values(INTRO_CLIPS)) {
+      if (!atteste && !(prototype && PROTOTYPES_VOIX_ACTIFS)) continue;
       const a = new Audio(); a.preload = 'auto'; a.src = file;
     }
   } catch { /* ignore */ }

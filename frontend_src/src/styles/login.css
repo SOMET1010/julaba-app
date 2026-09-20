@@ -1,4 +1,4 @@
-/* Entrer en confiance — presentation shared by Welcome and LoginPassword. */
+/* Entrer en confiance — présentation partagée par Welcome et LoginPassword. */
 .login-welcome,.login-page{color:var(--encre);background:var(--commerce-paper);min-height:100dvh}
 .login-welcome{display:flex;flex-direction:column;align-items:center;padding:max(24px,env(safe-area-inset-top)) 24px max(20px,env(safe-area-inset-bottom))}
 .login-brand{display:flex;align-items:center;justify-content:center;gap:10px}
@@ -18,6 +18,44 @@ html.dark .login-logo img{filter:brightness(0) invert(1)}
 .login-help{display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:10px;margin:8px auto;color:var(--encre-2);cursor:pointer}
 .login-partners{display:flex;justify-content:center;align-items:center;gap:24px;padding-top:12px}
 .login-partners img{height:32px;width:auto;object-fit:contain}
+
+/* Écran d'entrée « Le comptoir de Tata ». La scène raconte le marché sans
+   demander de lire ; la feuille ivoire contient tous les gestes. */
+.login-welcome-redesign{position:relative;isolation:isolate;overflow:hidden;display:block;padding:0;background:#173F31;color:#fff}
+.login-market-scene{position:absolute;inset:0;z-index:-3}
+.login-market-scene img{width:100%;height:100%;object-fit:cover;object-position:center 46%}
+.login-market-veil{position:absolute;inset:0;z-index:-2;background:linear-gradient(180deg,rgba(14,81,61,.82) 0%,rgba(14,81,61,.18) 42%,rgba(33,27,24,.78) 72%,rgba(33,27,24,.94) 100%)}
+.login-brand-on-scene{position:absolute;z-index:2;left:20px;right:20px;top:max(22px,env(safe-area-inset-top));justify-content:flex-start;width:max-content;padding:10px 14px;border-radius:16px;background:rgba(255,249,239,.94);box-shadow:0 10px 32px rgba(33,27,24,.16)}
+.login-brand-on-scene .login-logo{width:118px}
+.login-brand-on-scene .login-logo img{filter:none}
+.login-market-message{position:absolute;left:22px;right:22px;top:16%;max-width:420px;text-shadow:0 3px 18px rgba(20,18,16,.38)}
+.login-market-kicker{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:rgba(255,249,239,.92);color:#0E513D;font-size:14px;font-weight:850;text-shadow:none}
+.login-market-message h1{margin:14px 0 6px;color:#fff;font-size:clamp(38px,11vw,56px);line-height:1.02;letter-spacing:-.045em;font-weight:900;text-align:left}
+.login-market-message p{margin:0;color:#fff;font-size:20px;font-weight:750;letter-spacing:.01em}
+.login-market-sheet{position:absolute;z-index:3;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));width:auto;max-width:520px;margin:0 auto;padding:14px;border-radius:28px;background:rgba(255,249,239,.97);box-shadow:0 22px 60px rgba(20,18,16,.28);color:var(--encre)}
+.login-tata-inline{width:100%;min-height:82px;display:grid;grid-template-columns:64px 1fr 48px;align-items:center;gap:10px;padding:6px 4px 10px;border:0;background:transparent;text-align:left;cursor:pointer}
+.login-tata-inline>img{width:68px;height:76px;align-self:end;object-fit:cover;object-position:top;border-radius:18px 18px 12px 12px}
+.login-tata-inline strong{display:block;font-size:17px;line-height:1.2;color:#0E513D}
+.login-tata-inline small{display:block;margin-top:4px;font-size:14px;line-height:1.25;color:var(--encre-3)}
+.login-tata-inline .login-replay{position:static;width:46px;height:46px;background:#E6F3EA;border-color:#197455;color:#197455}
+.login-market-primary{min-height:68px;border-radius:18px;background:#197455;box-shadow:0 10px 22px rgba(25,116,85,.25)}
+.login-market-partners{padding-top:10px;opacity:.78}
+.login-market-partners img{height:26px}
+.login-market-sheet button:focus-visible{outline-color:#F3B640}
+
+/* Présentation de Tata : la mascotte est grande et le geste reste dans une
+   feuille stable. L'image de marché est décorative et ne porte aucune info. */
+.onboarding-tata-redesign{background:#0E513D;color:var(--encre)}
+.onboarding-market-backdrop{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}
+.onboarding-market-veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,81,61,.78) 0%,rgba(14,81,61,.12) 48%,rgba(33,27,24,.74) 100%)}
+.onboarding-tata-figure{position:absolute;z-index:5;right:-11%;top:7%;height:min(66vh,620px);width:auto;object-fit:contain;filter:drop-shadow(0 18px 28px rgba(33,27,24,.25));pointer-events:none}
+.onboarding-tata-sheet{box-sizing:border-box;padding:18px 18px 16px;border-radius:28px;background:rgba(255,249,239,.97);box-shadow:0 22px 54px rgba(33,27,24,.3);text-align:center}
+.onboarding-tata-pill{display:inline-flex;padding:7px 12px;border-radius:999px;background:#E6F3EA;color:#0E513D;font-size:13px;font-weight:850}
+.onboarding-tata-title{margin:10px 0 4px;color:#0E513D;font-size:28px;line-height:1.08}
+.onboarding-tata-copy{max-width:310px;margin:0 0 16px;color:var(--encre-2);font-size:16px;font-weight:650;line-height:1.35}
+.onboarding-listen{color:#197455;border:2px solid #197455}
+.onboarding-continue{background:#197455;color:#fff}
+@media(max-height:700px){.onboarding-tata-figure{top:3%;height:57vh}.onboarding-tata-sheet{padding:12px}.onboarding-tata-copy{margin-bottom:10px}.onboarding-tata-title{font-size:24px}}
 .login-page h1{color:var(--encre);font-size:28px;font-weight:800;line-height:1.2;text-align:center;margin:20px 0 12px}
 .login-guide{display:flex;align-items:center;justify-content:center;gap:14px;margin:6px 0 14px}
 .login-guide>img{width:72px;height:72px;border-radius:50%;object-fit:cover}
@@ -37,4 +75,5 @@ html.dark .login-logo img{filter:brightness(0) invert(1)}
 .login-account{display:flex;flex-direction:column;align-items:center;gap:8px}
 .login-account img{width:96px;height:96px;border-radius:50%;object-fit:cover}
 .login-account-placeholder{width:96px;height:96px;display:grid;place-items:center;border-radius:50%;background:var(--commerce-apricot);color:var(--encre)}
-@media(max-height:700px){.login-welcome-body{padding:20px 0}.login-tata-welcome>img{width:150px}.login-page h1{margin:12px 0 8px;font-size:25px}.login-guide>img{width:56px;height:56px}}
+@media(max-height:700px){.login-welcome-body{padding:20px 0}.login-tata-welcome>img{width:150px}.login-page h1{margin:12px 0 8px;font-size:25px}.login-guide>img{width:56px;height:56px}.login-market-message{top:14%}.login-market-message h1{font-size:36px}.login-market-sheet{padding:10px}.login-tata-inline{min-height:70px}.login-tata-inline>img{height:64px}.login-market-primary{min-height:60px}.login-market-partners{display:none}}
+@media(min-width:768px){.login-market-sheet{left:auto;right:6vw;bottom:6vh;width:430px}.login-market-message{left:7vw;top:24%}.login-market-scene img{object-position:center 45%}}

@@ -28,6 +28,8 @@ console.log('\n[4] Onboarding honnête tant que les MP3 humains manquent');
 const onboarding = readFileSync(new URL('./onboardingVoix.ts', import.meta.url), 'utf8');
 ok(!/speakClipOrText/.test(onboarding), 'aucune pseudo-voix synthétique ne remplace silencieusement Tata');
 ok((onboarding.match(/atteste:\s*false/g) || []).length === 9, 'les neuf intros absentes restent explicitement non attestées');
+ok(/VITE_JULABA_VOICE_PREVIEW\s*===\s*'true'/.test(onboarding), 'un clip prototype exige un drapeau de prévisualisation explicite');
+ok(/clip\.prototype\s*&&\s*PROTOTYPES_VOIX_ACTIFS/.test(onboarding), 'un prototype non attesté reste muet hors prévisualisation');
 ok(/if \(!clipUrl\) return/.test(onboarding), 'une intro non attestée laisse le parcours visuel et tactile continuer');
 
 console.log(failures === 0 ? '\nTous les garde-fous voix honnête sont verts ✅\n' : `\n${failures} échec(s) ❌\n`);

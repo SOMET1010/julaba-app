@@ -2,8 +2,9 @@ import React, { useCallback, useEffect } from 'react';
 import { motion } from 'motion/react';
 
 import logoJulabaSvg from "../../../assets/images/logo-julaba.svg";
-import tataNantiLou from "../../../assets/images/tata-nanti-lou.png";
-import { ArrowRight, Volume2 } from "lucide-react";
+import tataAccueil from "../../../assets/redesign/tata-accueil.webp";
+import heroMarchande from "../../../assets/redesign/hero-marchande.webp";
+import { ArrowRight, Volume2, Store } from "lucide-react";
 import { BrandSignature } from "../shared/BrandSignature";
 import { useNavigate } from "react-router";
 import logoDge from "../../../assets/images/logo-dge.png";
@@ -40,27 +41,38 @@ export function Welcome({ onComplete }: WelcomeProps) {
   const commencer = () => { stopIntro(); if (onComplete) onComplete(); else navigate('/login'); };
 
   return (
-    <main className="login-welcome">
-      <div className="login-brand">
-        <span className="login-logo"><img src={logoJulabaSvg} alt="JULABA" /></span>
-        <BrandSignature />
+    <main className="login-welcome login-welcome-redesign">
+      <div className="login-market-scene" aria-hidden="true">
+        <img src={heroMarchande} alt="" />
       </div>
-      <section className="login-welcome-body">
-        <button type="button" onClick={accueille} className="login-tata-welcome" aria-label="Écouter Tata Nanti Lou">
-          <img src={tataNantiLou} alt="Tata Nanti Lou" />
-          <span className="login-replay"><Volume2 aria-hidden="true" size={28} /></span>
-        </button>
-        <h1>Bienvenue</h1>
-        <p>Je suis Tata Nanti Lou</p>
+      <div className="login-market-veil" aria-hidden="true" />
+
+      <header className="login-brand login-brand-on-scene">
+        <span className="login-logo"><img src={logoJulabaSvg} alt="JÙLABA" /></span>
+        <BrandSignature />
+      </header>
+
+      <section className="login-market-message" aria-labelledby="welcome-title">
+        <span className="login-market-kicker"><Store aria-hidden="true" size={18} /> Mon commerce</span>
+        <h1 id="welcome-title">Ton commerce,<br />dans ta main.</h1>
+        <p>Vends. Compte. Avance.</p>
       </section>
-      <div className="login-welcome-actions">
-        <motion.button type="button" onClick={commencer} className="login-primary" whileTap={{ scale: 0.98 }}>
-          Commencer <ArrowRight aria-hidden="true" size={30} />
-        </motion.button>
-        <button type="button" onClick={accueille} className="login-help">
-          <Volume2 aria-hidden="true" size={22} /> Écouter l’aide
+
+      <div className="login-welcome-actions login-market-sheet">
+        <button type="button" onClick={accueille} className="login-tata-inline" aria-label="Écouter Tata Nanti Lou">
+          <img src={tataAccueil} alt="Tata Nanti Lou" />
+          <span>
+            <strong>Akwaba, je suis Tata.</strong>
+            <small>Je t’aide à vendre et compter.</small>
+          </span>
+          <span className="login-replay"><Volume2 aria-hidden="true" size={24} /></span>
         </button>
-        <div className="login-partners">
+
+        <motion.button type="button" onClick={commencer} className="login-primary login-market-primary" whileTap={{ scale: 0.98 }}>
+          Entrer dans ma boutique <ArrowRight aria-hidden="true" size={30} />
+        </motion.button>
+
+        <div className="login-partners login-market-partners">
           <img src={logoDge} alt="Direction Générale de l’Emploi" />
           <img src={logoAnsut} alt="ANSUT" />
         </div>
