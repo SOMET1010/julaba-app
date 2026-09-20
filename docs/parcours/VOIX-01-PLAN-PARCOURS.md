@@ -383,9 +383,13 @@ simplement disparaître. Trois voies, et le choix n'est pas technique :
    câblage. Le plus rapide, et le plus cher ensuite : deux moteurs vocaux à
    maintenir, c'est la dette VOIX-01 qu'on recrée ailleurs.
 
-**Je recommande la 1** : elle tient l'exigence « un seul micro, et il marche »
-sans toucher à `GestionStock` dans ce lot. Mais elle crée un hook partagé,
-donc un changement d'architecture — et cela ne se décide pas sans Patrick.
+*Ma recommandation était la 1. **Patrick a tranché la 2**, et a corrigé ce
+plan au passage : « avec la voie 2, je ne demanderais pas d'extraire le moteur
+dans un hook partagé. Ce serait contradictoire : le moteur doit converger vers
+la caisse, pas être abstrait pour continuer à alimenter deux surfaces. » Sa
+raison sur `GestionStock` : « le second appelant est précisément la preuve qui
+justifie cette petite extension de périmètre » — ce n'est pas du périmètre qui
+déborde, c'est le périmètre réel de la dette.*
 
 ### Ordre de travail proposé pour le lot B, une fois la voie choisie
 
@@ -398,3 +402,66 @@ donc un changement d'architecture — et cela ne se décide pas sans Patrick.
 5. Garde-fou : un test qui **échoue si le micro disparaît d'un seul des trois
    moments**, et un autre qui échoue si un micro est rendu **sans** que le
    moteur soit monté au-dessus de lui.
+
+---
+
+## 10. Lot B — livré le 20/09/2026 (voie 2)
+
+### Ce qui a changé
+
+| Avant | Après |
+|---|---|
+| La voix vivait dans `VenteVocaleModal` — un écran séparé qui, la ligne une fois au panier, renvoyait vers la caisse, **où il n'y avait plus aucun micro** | `MicroVenteCaisse.tsx` : le moteur vocal (`useVoiceCore` + l'adaptateur `vendreVocalUnifie`) et le gros micro orange sont **dans le même composant**. Le bouton ne peut pas exister sans son moteur |
+| La route `/marchand/caisse` ne montait **aucun** des providers du moteur | `POSCaisse` monte `RaccourcisProvider` et `ObjectifProvider` au-dessus de l'écran |
+| « Vendre » depuis l'accueil ouvrait l'écran vocal, qui renvoyait ensuite à la caisse — **deux démarrages pour un parcours** | « Vendre » ouvre **directement** `/marchand/caisse` |
+| « Vendre » depuis la fiche d'un produit ouvrait ce même écran vocal | Il navigue vers la caisse avec le produit dans l'**état de route** (`produitPreselectionne` : nom, prix, unité, image) |
+| Le repli tactile (`SaisieGuidee`) s'ouvrait dans l'écran vocal, ailleurs | Il s'ouvre **sur la surface caisse** (arbitrage n°3), au-dessus de la grille de photos qui est déjà là |
+| `VenteVocaleModal.tsx`, 537 lignes | Supprimé. Zéro appelant restant, vérifié fichier par fichier |
+
+### Le micro « présent aux trois moments », rendu vérifiable
+Il est rendu **sans aucune condition** — ni sur l'état du panier, ni sur celui
+de l'encaissement. Le garde-fou lit la ligne de rendu et **échoue** si elle
+porte un `&&`, un ternaire, ou si la ligne au-dessus ouvre une condition.
+C'est ce qui transforme « la voix ne disparaît jamais » d'une intention en un
+fait qu'une machine sait contrôler.
+
+### Le piège que ce lot devait éviter, et pourquoi il était réel
+`useObjectif()` et `useRaccourcis()` **ne lèvent aucune erreur** sans leur
+provider : ils retombent sur des valeurs nulles. Poser le micro sans monter
+les providers aurait donné **un micro qui a l'air de marcher** — la marchande
+parle, rien n'arrive. C'est mot pour mot le défaut que `POSCaisse` documentait
+depuis des mois. Le garde-fou vérifie donc les providers, pas seulement le
+bouton.
+
+### Preuve
+- `caisseMicroPermanent.test.mts`, suite **`verify`** (jamais `test:ci`) : les
+  **cinq points** demandés — le produit qui voyage avec nom, prix et unité ;
+  l'accueil qui mène à la caisse ; le micro câblé à son moteur **et** à ses
+  providers ; son absence de condition ; l'absence totale d'appelant de
+  l'ancien écran, cherchée fichier par fichier dans tout `src/`.
+- **Reproduction** : lancé contre la source **d'avant** le lot → **13 échecs**,
+  et il nomme les deux importeurs (`GestionStock`, `MarchandAccueilVoice`).
+- `typecheck`, `verify`, `test:ci` (gelée) et `build` verts.
+
+### Une erreur que ce garde-fou a attrapée — la mienne
+Mon premier nettoyeur de commentaires retirait les commentaires JSX
+`{/* … */}` **avant** les blocs `/* … */`. Sur `interface Props {` suivi d'un
+JSDoc, la forme « accolade, commentaire, accolade » matchait jusqu'à la
+première accolade fermante suivant un `*/` : **10 000 caractères avalés,
+moteur vocal compris**. Le test a échoué là où le code était juste. Corrigé en
+retirant les blocs d'abord — et le commentaire du test dit pourquoi, pour que
+personne ne réintroduise l'ordre inverse.
+
+### Ce que cette preuve ne dit pas
+**Aucune dictée réelle sur un téléphone.** Le garde-fou prouve le câblage ; il
+ne prouve pas que « cinq tomates » est reconnu, ni que les « deux voix » au
+démarrage ont disparu. Ces deux observations du terrain **restent non
+diagnostiquées** — le 🐞 *Rapport de test* de l'application reste l'artefact
+qui les transformerait en données.
+
+### Reste à faire pour VOIX-01
+Lots **C** (grammaire d'encaissement : « encaisser », puis la confirmation en
+deux temps de l'arbitrage n°1), **D** (relecture spontanée du total, du reçu
+et de la monnaie ; fin du repli muet dans `SaisieGuidee` et
+`ConfirmationLigne`), **E** (unité sans exception sur le produit libre).
+**La dette reste OUVERTE.**
