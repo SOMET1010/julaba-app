@@ -1085,17 +1085,23 @@
     },
     "frontend_src/src/app/components/marchand/caisseUnSeulMicro.test.mts": {
       "script": "test:caisse-un-seul-micro",
-      "assertions": 8,
+      "assertions": 14,
       "expects": 0,
       "empreintes": {
         "ok·/'\\/marchand\\/caisse'/ ⟂ qui contient '/marchand/caisse'": 1,
+        "ok·/<TantieSagesseModal/ ⟂ AppLayout monte TantieSagesseModal": 1,
+        "ok·/TantieSagesseModal/ ⟂ la BottomBar ne la monte plus : elle ne fait que demander l'ouverture": 1,
+        "ok·/TantieSagesseModal/ ⟂ la Sidebar non plus": 1,
         "ok·/const tataMasquee = ROUTES_SANS_TATA\\.includes\\(location\\.pathname\\)/ ⟂ le masquage est décidé sur le pathname courant (même mécanisme que /keiwa, mais ciblé)": 1,
+        "ok·/const tataMasquee = location\\.pathname === '\\/marchand\\/caisse'/ ⟂ AppLayout décide le masquage sur la route de la caisse, comme la BottomBar": 1,
+        "ok·/if \\(tataMasquee && \\w+\\) set\\w+\\(false\\)/ ⟂ et si la modale était ouverte en arrivant sur la caisse, AppLayout la referme de force": 1,
         "ok·/if \\(tataMasquee\\) return null/ ⟂ /<nav aria-label=\"Navigation principale\"/ ⟂ la barre elle-même n'est PAS retirée : Accueil, Stock, Profil restent atteignables": 1,
-        "ok·/isOpen=\\{isTantieOpen && !tataMasquee\\}/ ⟂ la modale Tata ne peut pas s'ouvrir non plus (double-tap global) sur la caisse": 1,
+        "ok·/isOpen=\\{\\s*\\w+\\s*&& !tataMasquee\\s*\\}/ ⟂ la modale Tata ne peut pas s'ouvrir non plus (double-tap global) sur la caisse": 1,
         "ok·/path:\\s*\"\\/marchand\",\\s*element:\\s*<AppLayout \\/>/ ⟂ /marchand est rendu sous AppLayout": 1,
         "ok·/path:\\s*\"caisse\",\\s*element:[^\\n]*POSCaisse/ ⟂ et /marchand/caisse y est la route de POSCaisse": 1,
+        "ok·et il la monte UNE SEULE FOIS": 1,
         "ok·la BottomBar porte une liste ROUTES_SANS_TATA": 1,
-        "ok·le bouton « Ouvrir Tata Nanti Lou » est rendu sous la garde `!tataMasquee`": 1
+        "ok·le bouton « Ouvrir Tantie Nanti Lou » est rendu sous la garde `!tataMasquee`": 1
       }
     },
     "frontend_src/src/app/components/marchand/caisseCharte.test.mts": {
@@ -1409,6 +1415,22 @@
         "verifier·les invariants exigés sont nommés ⟂ /INVARIANTS EXIGÉS/ ⟂ /test:caisse-un-seul-micro/": 1,
         "verifier·mais l’alerte est imprimée en évidence ⟂ /GARDE-ASSOUPLIE/": 1,
         "verifier·sans preuve d’exécution, la sortie est 1 ⟂ sortie ${}": 1
+      }
+    },
+    "frontend_src/src/app/components/shared/PaveMontant.test.mts": {
+      "script": "test:pave-montant",
+      "assertions": 9,
+      "expects": 0,
+      "empreintes": {
+        "eq·12 ⟂ ignore une touche inconnue": 1,
+        "eq·12000 ⟂ touche trois zéros": 1,
+        "eq·12345678 ⟂ respecte la longueur maximale": 1,
+        "eq·125 ⟂ efface le dernier chiffre": 1,
+        "eq·5 ⟂ premier chiffre": 1,
+        "eq·50 ⟂ ajoute un chiffre": 1,
+        "eq·7 ⟂ remplace un zéro initial": 1,
+        "eq·⟂ efface tout": 1,
+        "eq·⟂ interdit trois zéros comme premier geste": 1
       }
     },
     "backend/test/invariants/annulation-remise-stock.spec.ts": {
