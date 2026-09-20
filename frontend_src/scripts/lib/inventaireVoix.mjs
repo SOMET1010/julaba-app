@@ -24,11 +24,11 @@ import { join, relative, sep } from 'node:path';
 /** Fonctions qui FONT parler (nom du dernier segment de l'appelé). */
 export const FONCTIONS_VOCALES = new Set([
   'speak', 'dire', 'direEtRetenir', 'ttsSpeak', 'speakAuto', 'speakClipOrText',
-  'direIntro', 'parle', 'parler', 'speakText', 'speakMessage', 'direMessage',
+  'direIntro', 'parle', 'parler', 'speakText', 'speakMessage', 'direMessage', 'direEtRetenirMessage',
 ]);
 
 /** Fonctions i18n : un appel dont le 1er argument est une CLÉ, pas une phrase. */
-export const FONCTIONS_I18N = new Set(['speakMessage', 'direMessage', 't', 'resoudreMessage', 'renduDuMessage']);
+export const FONCTIONS_I18N = new Set(['speakMessage', 'direMessage', 'direEtRetenirMessage', 't', 'resoudreMessage', 'renduDuMessage']);
 
 /** Dossiers hors périmètre (tests, outils de dev). */
 const EXCLUS = ['.test.', '.spec.', `${sep}components${sep}dev${sep}`, `${sep}__tests__${sep}`];
@@ -73,7 +73,7 @@ export function domaineDe(rel) {
 /** Fichiers d'ARGENT : tout ce qu'ils disent est critique par construction. */
 const FICHIERS_ARGENT = /machineEncaissement|grammaireEncaissement|relectureSpontanee|POSCaisse|CaisseContext|vendreVocalUnifie|fcfa\.ts/;
 /** Mots qui trahissent une phrase d'argent, où qu'elle soit. */
-const MOTS_ARGENT = /\bfrancs?\b|\bfcfa\b|\bvalide|\bmonnaie\b|\brends?\b|\bmanque\b|\bcompte juste\b|\bencaiss|\bdoit\b|\bre[çc]u\b|\btotal\b|\bcr[ée]dit\b|\bsolde\b|\bmontant\b|\bprix\b|\bpay[ée]/i;
+const MOTS_ARGENT = /\bfrancs?\b|\bfcfa\b|\bvalide|\bmonnaie\b|\brends?\b|\bcompte juste\b|\bencaiss|\btotal\b|\bcr[ée]dit\b|\bsolde\b|\bmontant\b|\bprix\b|\bpay[ée]|\bacompte\b/i;
 
 export function estCritiqueArgent(rel, texte) {
   if (FICHIERS_ARGENT.test(rel)) return true;
@@ -85,7 +85,7 @@ export function nomVariable(expr) {
   let e = expr.trim();
   // fr(x), formatF(x), Math.round(x), String(x), Number(x) → x
   for (;;) {
-    const m = e.match(/^(?:fr|fmt|formatF|francs|Math\.round|String|Number|Math\.max|Math\.abs)\((.*)\)$/s);
+    const m = e.match(/^(?:fr|FR|fmt|formatF|francs|Math\.round|String|Number|Math\.max|Math\.abs)\((.*)\)$/s);
     if (!m) break;
     e = m[1].trim();
   }
@@ -138,7 +138,8 @@ export function gabaritsDe(sf, node) {
       const g = gabaritsDe(sf, node.left);
       const d = gabaritsDe(sf, node.right);
       if (g.length === 1 && d.length === 1 && g[0].kind !== 'dynamique' && d[0].kind !== 'dynamique') {
-        return [{ kind: 'template', texte: g[0].texte + d[0].texte, variables: [...g[0].variables, ...d[0].variables] }];
+        const variables = [...g[0].variables, ...d[0].variables];
+        return [{ kind: variables.length ? 'template' : 'literal', texte: g[0].texte + d[0].texte, variables }];
       }
     }
   }
@@ -191,7 +192,12 @@ export function scannerFichier(chemin, rel) {
           if (prop && ts.isPropertyAssignment(prop)) cible = prop.initializer;
         }
         const relais = estRelais(node, cible);
-        const gabarits = relais ? [{ kind: 'relais', texte: texteDeNoeud(sf, cible), variables: [] }] : gabaritsDe(sf, cible);
+        // direIntro('accueil') : l'argument est une CLÉ de clip (INTRO_*), pas une phrase.
+        let gabarits = nom === 'direIntro' && (ts.isStringLiteral(cible) || ts.isNoSubstitutionTemplateLiteral(cible))
+          ? [{ kind: 'cle_i18n', texte: `INTRO_${cible.text.toUpperCase()}`, variables: [] }]
+          : relais ? [{ kind: 'relais', texte: texteDeNoeud(sf, cible), variables: [] }] : gabaritsDe(sf, cible);
+        // speakMessage('CLE') / direMessage(cond ? 'CLE_A' : 'CLE_B') : des clés, pas des phrases.
+        if (FONCTIONS_I18N.has(nom)) gabarits = gabarits.map((g) => (g.kind === 'literal' && /^[A-Z][A-Z0-9_]+$/.test(g.texte) ? { ...g, kind: 'cle_i18n' } : g));
         appels.push({ fichier: rel, ligne: line + 1, fonction: nom, gabarits });
       }
     }
@@ -217,3 +223,70 @@ export function normaliserPhrase(s) {
     .replace(/[’‘]/g, "'")
     .trim();
 }
+
+// ── 2. Corpus fixes : fichiers dont TOUS les littéraux « phrase » sont dits ──
+// (ou destinés à l'être : un clip enregistré, un script à enregistrer).
+export const CORPUS_FIXES = [
+  ['services/tataUiClips.ts', 'clips Tata enregistrés (137 fichiers ui-*.mp3) — appariés par TEXTE exact'],
+  ['services/tataVoice.ts', 'clips Tata par CLÉ (vente_enregistree, hors_ligne…)'],
+  ['services/onboardingVoix.ts', 'clips d\'onboarding (texte = filet si le .mp3 manque)'],
+  ['services/loginVoiceScript.ts', 'script de connexion / chiffres / pipeline (à enregistrer ; ids AUTH_*, NUM_*, CORE_*)'],
+  ['hooks/useVoiceCore.ts', 'moteur vocal : attentes, accusés, erreurs, confirmations locales'],
+  ['services/dialoguesTata.ts', 'dialogues purs de la vente guidée'],
+  ['services/machineEncaissement.ts', 'relecture financière (machine d\'encaissement)'],
+  ['services/relectureSpontanee.ts', 'relecture spontanée (billets touchés, ligne ajoutée)'],
+  ['services/vendreVocalUnifie.ts', 'refus de prix, produit inconnu'],
+  ['services/intentionsCaisse.ts', 'réponses aux questions « chiffres du jour »'],
+  ['services/ruptureStock.ts', 'avertissement de rupture dit après la vente'],
+  ['voice-offline/localIntent.ts', '`response` de confirmation locale (vente/dépense)'],
+  ['utils/fcfa.ts', 'coupures dites (« cinq mille francs »)'],
+  ['components/marchand/ChoixUnite.tsx', 'unité dite (« au tas », « au kilo »)'],
+  ['utils/accessMode.ts', 'proposition d\'adaptation du mode (dite par Tata)'],
+  ['contexts/ObjectifContext.tsx', 'annonces automatiques d\'objectif (audioManager.speakAuto)'],
+  ['contexts/AppContext.tsx', 'annonces du contexte applicatif (fond du jour…)'],
+];
+
+/** Un littéral passé à `console.*` est un message de diagnostic, pas une phrase dite. */
+export function dansConsole(node) {
+  let p = node.parent;
+  while (p && !ts.isCallExpression(p)) p = p.parent;
+  return !!p && /^console\./.test(p.expression.getText());
+}
+
+export function litterauxDe(SRC, rel) {
+  const chemin = join(SRC, rel);
+  const source = readFileSync(chemin, 'utf8');
+  const sf = ts.createSourceFile(chemin, source, ts.ScriptTarget.Latest, true, rel.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const out = [];
+  const pousser = (node, g) => {
+    const t = g.texte;
+    // Une phrase : au moins un espace ou une ponctuation finale, 4 caractères.
+    // Un jeton bordé d'espaces (« non », « oui ») est un mot de grammaire STT, pas une phrase dite : §6.
+    if (t.length >= 4 && (/\s/.test(t) || /[.?!…]$/.test(t)) && !/^\s/.test(t) && !/^[\w./-]+$/.test(t) && !/^\/voix\//.test(t) && !/^https?:/.test(t) && !/var\(--|px\b|\[role=/.test(t)) {
+      const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
+      out.push({ ligne: line + 1, kind: g.kind, texte: t, variables: g.variables });
+    }
+  };
+  const visiter = (node) => {
+    // Ni imports, ni clés d'objet, ni littéraux de type, ni `case`.
+    if (ts.isImportDeclaration(node) || ts.isTypeNode(node)) return;
+    // `'…' + '…'` : une seule phrase écrite sur plusieurs lignes (clips d'onboarding).
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken && !dansConsole(node)) {
+      const gs = gabaritsDe(sf, node);
+      if (gs.length === 1 && gs[0].kind !== 'dynamique') { pousser(node, gs[0]); return; }
+    }
+    if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node))
+      && !(node.parent && (ts.isPropertyAssignment(node.parent) && node.parent.name === node))
+      && !(node.parent && ts.isCaseClause(node.parent))
+      && !(node.parent && ts.isCallExpression(node.parent) && /^(new RegExp|RegExp)$/.test(node.parent.expression.getText(sf)))
+      && !(node.parent && ts.isJsxAttribute(node.parent))
+      && !dansConsole(node)) {
+      for (const g of gabaritsDe(sf, node)) pousser(node, g);
+      return;
+    }
+    ts.forEachChild(node, visiter);
+  };
+  visiter(sf);
+  return out;
+}
+

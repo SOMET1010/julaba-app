@@ -1,4 +1,4 @@
-import { DEVISE_PARLEE } from '../config/devise';
+import { lexique, t } from '../i18n/voice/runtime';
 /**
  * Billets et pièces FCFA (inclusion — docs/INCLUSION.md §2.2). Module PUR.
  *
@@ -83,12 +83,9 @@ export function formatF(montant: number): string {
 
 /** « dix mille francs » à dire à voix haute pour une coupure touchée. */
 export function direCoupure(valeur: number): string {
-  const noms: Record<number, string> = {
-    10000: 'dix mille', 5000: 'cinq mille', 2000: 'deux mille', 1000: 'mille',
-    500: 'cinq cents', 250: 'deux cent cinquante', 200: 'deux cents',
-    100: 'cent', 50: 'cinquante', 25: 'vingt-cinq',
-  };
-  // « francs » vient de config/devise.ts — HYGIÈNE-1 axe 3 (ADR-0003, #5).
-  // C'était le dernier endroit du parcours monnaie à écrire le mot lui-même.
-  return `${noms[valeur] ?? formatF(valeur)} ${DEVISE_PARLEE}`;
+  // Les noms des coupures sont du LEXIQUE de la langue (i18n/voice/locales/
+  // fr-ci/lexicon.ts, monnaie.coupures) et « francs » reste celui de
+  // config/devise.ts, lu par le gabarit TATA_MONTANT_DEVISE (« {montant} {devise} »).
+  const nom = lexique().monnaie.coupures[valeur] ?? formatF(valeur);
+  return t('TATA_MONTANT_DEVISE', { montant: nom });
 }

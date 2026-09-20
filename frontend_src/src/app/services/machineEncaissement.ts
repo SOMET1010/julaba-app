@@ -28,6 +28,8 @@
 // primitive métier (`handlePay`), la même que le bouton tactile.
 // ──────────────────────────────────────────────────────────────────────────
 
+import { t } from '../i18n/voice/runtime';
+
 /** Les trois nombres qui font la vente, figés au moment de la relecture. */
 export interface EmpreinteFinanciere {
   /** Total à payer, en francs. */
@@ -94,7 +96,14 @@ export type EffetEncaissement =
 
 export const ETAT_INITIAL: EtatEncaissement = { phase: 'repos' };
 
-const fr = (n: number) => Math.round(n).toLocaleString('fr-FR');
+// LES PHRASES VIENNENT DU CATALOGUE I18N (lot langues, 20/09/2026) : ce module
+// ne connaît plus le français, seulement des clés TATA_* et les trois nombres.
+// Le texte rendu est UNE chaîne, dite ET affichée (garde-fou
+// caisseRelectureAffichee) ; en fr-ci elle est identique au caractère près à
+// celle de 576fd62 (preuve : validators/empreintesArgent.mts). On arrondit
+// ici comme avant ; le formatage « fr-FR » (espaces insécables) est celui de
+// la locale, appliqué par le runtime.
+const r = (n: number) => Math.round(n);
 
 export function memeEmpreinte(a: EmpreinteFinanciere, b: EmpreinteFinanciere): boolean {
   return a.total === b.total && a.recu === b.recu && a.lignes === b.lignes;
@@ -107,14 +116,13 @@ export function memeEmpreinte(a: EmpreinteFinanciere, b: EmpreinteFinanciere): b
  */
 export function phraseRelecture(fin: EtatFinancier): string {
   if (fin.monnaie === 0) {
-    return `Elle doit ${fr(fin.total)} francs. Elle t'a donné ${fr(fin.recu)}. Compte juste. Je valide ?`;
+    return t('TATA_RELECTURE_COMPTE_JUSTE', { total: r(fin.total), recu: r(fin.recu) });
   }
-  return `Elle doit ${fr(fin.total)} francs. Elle t'a donné ${fr(fin.recu)}. Tu rends ${fr(fin.monnaie)}. Je valide ?`;
+  return t('TATA_RELECTURE_MONNAIE', { total: r(fin.total), recu: r(fin.recu), monnaie: r(fin.monnaie) });
 }
 
-const PANIER_VIDE = "Ton panier est vide. Dis-moi d'abord ce que tu vends.";
-const COMPTE_LES_BILLETS = (total: number) =>
-  `Elle doit ${fr(total)} francs. Touche les billets qu'elle te donne.`;
+const PANIER_VIDE = () => t('TATA_PANIER_VIDE_DIS_VENTE');
+const COMPTE_LES_BILLETS = (total: number) => t('TATA_TOUCHE_LES_BILLETS', { total: r(total) });
 
 /**
  * Ouvre — ou rouvre — une confirmation sur l'état ACTUEL. Jamais un paiement :
@@ -123,7 +131,7 @@ const COMPTE_LES_BILLETS = (total: number) =>
  */
 function demanderConfirmation(fin: EtatFinancier): { etat: EtatEncaissement; effet: EffetEncaissement } {
   if (fin.panierVide || fin.total <= 0) {
-    return { etat: { phase: 'repos' }, effet: { type: 'dire', texte: PANIER_VIDE } };
+    return { etat: { phase: 'repos' }, effet: { type: 'dire', texte: PANIER_VIDE() } };
   }
   if (!fin.suffisant) {
     return { etat: { phase: 'preparation' }, effet: { type: 'dire', texte: COMPTE_LES_BILLETS(fin.total) } };
@@ -183,17 +191,17 @@ export function reduire(
     case 'annuler_validation':
       // Le doute profite toujours au refus.
       if (etat.phase === 'repos') return { etat, effet: { type: 'rien' } };
-      return { etat: { phase: 'repos' }, effet: { type: 'dire', texte: "D'accord, je ne valide pas." } };
+      return { etat: { phase: 'repos' }, effet: { type: 'dire', texte: t('TATA_NE_VALIDE_PAS') } };
 
     case 'combien_doit': {
       // LECTURE SEULE : l'état ne bouge pas. Poser une question ne doit ni
       // ouvrir ni fermer une confirmation en cours.
       if (fin.panierVide || fin.total <= 0) {
-        return { etat, effet: { type: 'dire', texte: 'Ton panier est vide.' } };
+        return { etat, effet: { type: 'dire', texte: t('TATA_PANIER_VIDE') } };
       }
       const texte = fin.recu > 0 && fin.suffisant
-        ? `Elle doit ${fr(fin.total)} francs. Elle t'a donné ${fr(fin.recu)}. Tu rends ${fr(fin.monnaie)}.`
-        : `Elle doit ${fr(fin.total)} francs.`;
+        ? t('TATA_DOIT_DONNE_RENDS', { total: r(fin.total), recu: r(fin.recu), monnaie: r(fin.monnaie) })
+        : t('TATA_DOIT', { total: r(fin.total) });
       return { etat, effet: { type: 'dire', texte } };
     }
 
@@ -223,7 +231,7 @@ export function reduire(
       if (etat.phase === 'attente_confirmation') {
         const suite = demanderConfirmation(fin);
         if (suite.effet.type === 'dire') {
-          return { ...suite, effet: { type: 'dire', texte: `Le compte a changé. ${suite.effet.texte}` } };
+          return { ...suite, effet: { type: 'dire', texte: t('TATA_COMPTE_A_CHANGE', { suite: suite.effet.texte }) } };
         }
         return suite;
       }

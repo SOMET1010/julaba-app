@@ -45,7 +45,10 @@ export const EMPREINTES_BASE = {
   relecture: 'dcb722cc97358781a2a3eb0e2d58b89bee9c5dd6051dc90c0bf03a17bc64dd89',
   vendreVocal: 'd110032ac26ae09374b0482ded9a54bd155392e34c96dcb38cc2d4aacd408aa9',
   questions: '3fb1e9e82b3b2c0dad9586a360419b0d7b18a5403ca6a42fce5e0c9d08621d7e',
-  coupures: '4d6fe489f675f69d4f92e85cceb418e96d791e292166bb49ed3d5bd0980b82b5',
+  // Recalculée sur la source de 576fd62 après correction du corpus (la
+  // première passe itérait les objets `Coupure` au lieu de leurs valeurs) :
+  // même méthode, même source, empreinte des valeurs réelles.
+  coupures: '398353c4c393fe932e3e9142cf23119a911bfaa46747209e73c50f5331c47ea6',
   rupture: 'aa384a97f5066746c6b36d79cf4efbb6caf8fb788e4ed5c5be3224570c314504',
 };
 
@@ -160,9 +163,13 @@ function lignesTypes() {
 
 export function empreinteDialogues(): string {
   const h = createHash('sha256');
+  // Sur 576fd62 c'étaient des constantes exportées (INVITE…) ; ce sont
+  // désormais des fonctions (invite()…) — on hache la VALEUR, sous le même label.
   const constante = (v: unknown) => (typeof v === 'function' ? (v as () => string)() : String(v));
-  for (const nom of ['INVITE', 'RIEN_COMPRIS', 'AJOUT_PANIER', 'ANNULATION_ETAPE', 'ERREUR_MOTEUR'] as const) {
-    h.update(`${nom}=${constante((dialogues as Record<string, unknown>)[nom])}\n`);
+  const NOMS: Array<[string, string]> = [['INVITE', 'invite'], ['RIEN_COMPRIS', 'rienCompris'], ['AJOUT_PANIER', 'ajoutPanier'], ['ANNULATION_ETAPE', 'annulationEtape'], ['ERREUR_MOTEUR', 'erreurMoteur']];
+  for (const [label, nouveau] of NOMS) {
+    const d = dialogues as Record<string, unknown>;
+    h.update(`${label}=${constante(d[label] ?? d[nouveau])}\n`);
   }
   h.update(`prixManquant=${dialogues.phrasePrixManquant()}\n`);
   for (const nom of ['tomate', 'ce produit', '', 'banane plantain']) h.update(`quantiteManquante(${nom})=${dialogues.phraseQuantiteManquante(nom)}\n`);
@@ -240,7 +247,7 @@ export function empreinteQuestions(): string {
 
 export function empreinteCoupures(): string {
   const h = createHash('sha256');
-  for (const v of [...COUPURES, 25, 250, 15000, 75]) h.update(`${v}→${direCoupure(v)}\n`);
+  for (const v of [...COUPURES.map((c) => c.valeur), 25, 250, 15000, 75]) h.update(`${v}→${direCoupure(v)}\n`);
   return h.digest('hex');
 }
 
