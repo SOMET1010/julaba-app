@@ -1,7 +1,7 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 11 — après SCHEMA-PILOTE et SCHEMA-CI.**
+**Révision 12 — après le contre-audit du `main` fusionné (`531bb7f`).**
 Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
 une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
 Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
@@ -10,6 +10,14 @@ passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
 Révision 4 : **SEC-05, SEC-06 et SEC-07 fermés** ; **SEC-08** ouverte (le PIN
 n'est plus lisible, mais il est encore *choisi* par un administrateur) ;
 **SEED-01** ouverte — c'est le diagnostic des 3 échecs jusqu'ici non expliqués.
+Révision 12 : plus aucun **défaut produit** P0/P1 atteignable par la recette
+terrain marchande. Un défaut de **chaîne de fabrication** trouvé et fermé —
+**REL-01** : l'APK se construisait par défaut depuis une branche de travail, pas
+depuis le `main` audité. Deux formulations resserrées : **I6** est une
+spécification **périmée** (la viser ferait implémenter une mauvaise cible), et
+« aucun P1 atteignable en pilote » devient « par la recette terrain
+marchande » — AUTH-RECOVERY-01 reste P1 OUVERT et n'est pas fermé par cette
+séance.
 Révision 11 : **SCHEMA-CI** — le gate n'est plus une discipline humaine, il
 tourne à chaque PR et à chaque fusion. **SCHEMA-01/02/03 restent OUVERTES P1
 architecture et ne bloquent plus l'APK pilote.** Aucun bloqueur de sortie ne
@@ -47,7 +55,7 @@ n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte l
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 26 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT.**
+**Compte courant : 27 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT.**
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -94,8 +102,9 @@ reste multiple.
 | **ARG-02** / B2 | P1 terrain | **FERMÉ** | **DEUX couches mentaient, pas une — le contre-audit n'avait relevé que la première.** (1) Serveur : `COALESCE(sm.unite, p.unite)` remplacé par `sm.unite` seule, et la jointure sur `produits` disparaît avec le repli. (2) **Écran** : la fiche produit affichait `{m.qty} {selectedStock.unit}` — l'unité du catalogue d'aujourd'hui, sans même regarder celle du mouvement ; le correctif serveur ne pouvait rien pour ces lignes. Trois rendus corrigés. Une unité absente est **dite** (`uniteConnue` + « unité non enregistrée »), jamais empruntée | `ecc1ae6` — reproduction avant correctif : `COALESCE` remis, 3 des 4 invariants rougissent. Le 4ᵉ passe dans les deux cas : il couvre B2, pas ARG-02, et c'est écrit | — |
 | **ARG-03** | P1 | **FERMÉ** | Les trois chemins d'encaissement passent par `encaisser-credit.ts` ; le contrôleur contient **0** `INSERT INTO caisse_transactions` ; **et la clôture comprend les deux natures** | `a959ec5` — *ma déclaration « les trois chemins sont fermés » était trop large en révision 7 : elle portait sur l'écriture, pas sur la lecture de clôture. Une écriture d'argent n'est finie que quand la clôture la comprend* | — |
 | **ARG-10** | P1 | **FERMÉ** | *Rouvert au contre-audit de la révision 7, puis refermé.* `/payer` encaisse le reste **et la clôture le compte** : `caisseTheorique` somme `acompte_credit` **et** `reglement_credit`. Un invariant ferme réellement la journée après un règlement et exige **écart = 0** | `a959ec5` — j'avais fermé ARG-10 sur une ligne de caisse correctement écrite que la clôture ignorait : écart fantôme de 7 000 F, mesuré en reproduisant. Mon test ne fermait jamais la journée, il ne pouvait pas le voir | — |
-| **ARG-11** | **P1** | **OUVERT** | **Condition bloquante de réouverture du crédit.** `CAISSE_CREDIT_ACTIF` ne repasse à `true` qu'une fois TOUT ce qui suit fermé — et la liste de la révision 7 était **incomplète**, le contre-audit l'a corrigée. **Restent ouverts : ARG-04** (idempotence de la *création* — `CreerCreditData` ne dédoublonne pas le crédit lui-même, `blockers.spec.ts` I4 toujours `it.failing`), **I6** (une vente à crédit ne laisse aucune trace `type='credit'` en caisse), **CLIENT-02**, **TYPE-02** | — | ARGENT-4 + 4b traitent l'**encaissement** et sa **clôture**. Rien d'autre |
+| **ARG-11** | **P1** | **OUVERT** | **Condition bloquante de réouverture du crédit.** `CAISSE_CREDIT_ACTIF` ne repasse à `true` qu'une fois TOUT ce qui suit fermé — et la liste de la révision 7 était **incomplète**, le contre-audit l'a corrigée. **Restent ouverts : ARG-04** (idempotence de la *création* — `CreerCreditData` ne dédoublonne pas le crédit lui-même, `blockers.spec.ts` I4 toujours `it.failing`), **I6 — MAIS SA SPÉCIFICATION EST PÉRIMÉE** : `blockers.spec.ts` exige encore une ligne `caisse_transactions.type = 'credit'`, alors que la convention de caisse est `vente` / `depense` / `acompte_credit` / `reglement_credit` — `'credit'` n'en fait pas partie. **Le viser tel quel ferait implémenter une mauvaise cible.** Le vrai besoin est plus large : une vente à crédit doit produire une trace de vente comptablement correcte **et** décrémenter le stock atomiquement. **I6 est à réécrire avant tout chantier de réactivation**, **CLIENT-02**, **TYPE-02** | — | ARGENT-4 + 4b traitent l'**encaissement** et sa **clôture**. Rien d'autre |
 | **ARG-12** / I5 réel | **P1** | **FERMÉ** | *Ouverte et fermée dans le même lot, au contre-audit.* Le vrai client (`caisse-api.ts`) n'envoyait **aucune** clé : le serveur en fabriquait une avec `Date.now()`, donc deux envois de la même tentative encaissaient **deux fois** — pendant que `blockers.spec.ts` I5 restait vert, puisqu'il fournissait la clé lui-même. Les trois fonctions client envoient désormais une clé ; test dédié sur le vrai client ; le serveur **refuse** un acompte sans clé au lieu d'en deviner une | `a959ec5` — « un test qui fournit ce que le vrai client ne fournit pas ne teste pas le vrai client ». I5 est annoté pour dire ce qu'il prouve et ce qu'il ne prouve pas | — |
+| **REL-01** | **P1 sortie** | **FERMÉ** | *Défaut de chaîne de FABRICATION, pas de produit, trouvé au contre-audit du `main` fusionné.* `apk.yml` construisait par défaut `claude/clever-allen-dnr8by` et la recette terrain disait de laisser les valeurs par défaut — option B incluse. L'APK aurait été **tracé comme venant d'une branche de travail**, pas du `main` qui a traversé la chaîne de preuve | `335b483` — au moment de la fusion les deux arbres étaient identiques (`main` n'a qu'un merge commit de plus), donc le binaire aurait été le même ; **dès le commit suivant sur `main`, la construction devenait réellement périmée sans que rien ne le signale** | — |
 | **ARG-04** | P1 dormant | **OUVERT** | `POST /caisse/credits` sans `idempotency_key` — vérifié : la seule clé du fichier est celle de l'acompte | — | Idempotence de création. **Avant réactivation du crédit** |
 | **ARG-05** | P1 | **FERMÉ** | Atomicité crédit / client / caisse / audit : les quatre écritures dans la même transaction, les quatre ou aucune. Verrou `FOR UPDATE` : deux paiements simultanés s'additionnent au lieu de s'écraser | `45e99ff` — un test exige qu'un encaissement refusé ne laisse **rien** derrière lui | — |
 | **ARG-06** | P2 modèle | **OUVERT** | `caisse-transaction.entity.ts` porte toujours **2 colonnes** `marge` et `benefice`, alimentées par la même valeur | Côté écran, un seul champ depuis `ed9321b` | La fusion des colonnes demande une migration. Le serveur écrit encore deux fois le même chiffre |
@@ -261,7 +270,15 @@ première fois que cette section est vide. Elle ne dit rien sur les P1 : SEC-08
 et SEED-01, ouvertes le même jour, touchent l'une un credential, l'autre des
 données de production.
 
-**P1 atteignables en pilote — aucun bloqueur de sortie**
+**P1 atteignables par la RECETTE TERRAIN MARCHANDE — aucun bloqueur de sortie**
+
+> **Formulation resserrée au contre-audit du 20/09/2026.** Dire « aucun P1
+> atteignable en pilote » était trop large : le périmètre JULABA inclut
+> l'identificateur, et **AUTH-RECOVERY-01 reste P1 OUVERT**. Ce qui est vrai,
+> et seulement cela : la feuille `docs/RECETTE-TERRAIN-GROUPEE.md` que nous
+> allons exécuter ne teste **qu'une marchande sur un téléphone connu**, et
+> aucun scénario identificateur n'y figure. AUTH-RECOVERY-01 est donc **non
+> bloquant pour CETTE séance d'APK — pas fermé, et pas hors périmètre.**
 
 > **SCHEMA-01/02/03 restent OUVERTES P1 architecture. Elles ne bloquent plus
 > l'APK pilote parce que le chemin unique de construction du schéma pilote est

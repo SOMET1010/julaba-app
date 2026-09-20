@@ -21,8 +21,13 @@ tout autre geste.
 
 1. Aller dans l'onglet **Actions** du dépôt → workflow
    **« APK pilote — construction à la demande »** → bouton **Run workflow**.
-2. Laisser les deux valeurs par défaut (branche `claude/clever-allen-dnr8by`,
-   URL de l'API) et lancer. Compter **~3 minutes**.
+2. Laisser les deux valeurs par défaut (branche **`main`**, URL de l'API) et
+   lancer. Compter **~3 minutes**.
+
+   > **Construire `main`, et rien d'autre** (REL-01). `main` est la seule
+   > référence qui ait traversé la chaîne de preuve complète — CI, invariants
+   > financiers, SCHEMA-PILOTE et contre-audit. Construire une branche de
+   > travail donnerait un APK dont on ne peut pas dire ce qu'il contient.
 3. En bas du run terminé, télécharger l'artefact **`julaba-apk-<sha>`**. Le
    `<sha>` est celui du code réellement construit : il doit correspondre à la
    tête de la branche. C'est un `.zip` contenant `app-debug.apk` (~123 Mo,
@@ -56,8 +61,8 @@ publiable sur un store — c'est le périmètre du pilote.
 ### Option B — le construire soi-même
 
 ```bash
-git fetch origin claude/clever-allen-dnr8by
-git checkout claude/clever-allen-dnr8by
+git fetch origin main
+git checkout main          # REL-01 : la seule référence auditée
 npm ci
 
 export VITE_API_URL=https://julaba-api.onrender.com/api/v1   # OBLIGATOIRE
@@ -74,7 +79,8 @@ n'atteint aucun backend — c'est un défaut déjà payé une fois (`1958d6a`), 
 il se voit immédiatement : « Réponse inattendue » à la connexion.
 
 **Ce qui est vérifié ici, et ce qui ne peut pas l'être.** Les trois premières
-commandes ont été exécutées sur `claude/clever-allen-dnr8by` (16/09/2026) :
+commandes ont été exécutées sur `claude/clever-allen-dnr8by` (16/09/2026,
+avant que cette branche ne soit fusionnée dans `main`) :
 le build sort dans `frontend/dist` (le `webDir` de `capacitor.config.ts`),
 `npx cap sync android` copie **exactement** ce build (même empreinte de
 bundle `index-*.js`), l'URL de l'API y est bien incluse et le paquet posé est
