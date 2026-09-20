@@ -1001,3 +1001,60 @@ lignes à 390 px.
 - Les « deux voix au démarrage » et le « cinq tomates » mal entendu du
   terrain restent **non diagnostiqués** : le rapport de test de l'application
   reste l'artefact qui les transformerait en données.
+
+---
+
+## 15. Contre-audit n°4 — passe UI-03 + UI-02, sur `96c7b64` (20/09/2026)
+
+> Court, même méthode. Aucune ligne applicative modifiée.
+
+### 15.1 Chemin d'argent
+`git diff 5bf2b0a..96c7b64` : **0 ligne** sur `machineEncaissement`,
+`grammaireEncaissement`, `localIntent`, `CaisseContext`, `vendreVocalUnifie`.
+`POSCaisse` (45 lignes), hors style : `const [recuEnSaisie, …] = useState(false)`
+(booléen d'affichage posé par `onFocus`/`onBlur`) ; `value={recuEnSaisie ||
+recu === 0 ? montantRecu : recu.toLocaleString('fr-FR')}` — l'état
+`montantRecu` et **`onChange` sont identiques au caractère près** avant/après ;
+`renderCartTotal()` extrait (même `onClick={() => dire(…)}`) et rendu **2 fois**
+(l. 1069, 1106) ; le `display:'flex'` inline retiré de la carte (§15.2). Rien
+d'autre. `handlePay` : **2 appelants** (l. 804 bouton, l. 392 effet).
+`MicroVenteCaisse` (69 lignes), hors style : `MICRO 150→124`, `MICRO_HALO
+180→140`, `MICRO_ICONE 64→52` ; bulle au repos `'Dis-moi ce que tu vends'` ;
+bouton « Saisir sans parler » déplacé (même `onClick`, même `aria-label`).
+**Aucun test existant modifié** (diff sur `*.test.mts` : vide) ; `test:ci`
+identique à `f0c965c`.
+
+### 15.2 UI-04 — reproduit, fermé, et la limite du garde-fou
+Sur `5bf2b0a`, la carte produit portait `display:'flex'` **dans `style`** ; un
+style inline bat `.pos-grille-apercu > *:nth-child(n + 5) { display: none }`
+→ **8 cartes sur téléphone au lieu de 4** (deux rangées visibles sur
+`caisse-portrait-F2-comparaison.png`). Sur `96c7b64` : **0** `display` inline
+sur la carte ; `commerce.css` l. 276 `.pos-grille > * { display: flex;
+flex-direction: column }`, moins spécifique que la règle d'aperçu, qui gagne.
+Le banc `capture.mjs` compte `.pos-grille > *` visibles et **échoue au-delà
+de 4** (l. 239). **Limite du garde-fou** : `caisseSurfaceUnique.test.mts`
+l. 79-83 vérifie que la classe est dans le JSX et la règle dans le CSS — la
+présence, pas l'effet ; il est resté vert pendant trois révisions avec
+l'aperçu cassé. Inscrit au registre (UI-04, FERMÉ, dette de test notée).
+
+### 15.3 Mesures et écart structurel
+Banc (390 × 844, défilement 0) : zone voix **260 px** (cible 240-270), haut
+du panier **658**, Total **702-768** — dans le premier écran ; 38 cibles
+≥ 44 px ; `scrollWidth` 390. Le banc rougit si le panier ou le Total sort du
+viewport. Captures : `-comparaison.png` montre voix + une rangée de produits +
+« Panier actuel (6) » + **Total 2 900 F** ; `-relecture.png` montre Reçu
+**5 000** F, Monnaie 2 100 F, relecture « 5 000 » (une seule graphie), bouton
+« Payer en espèces · rendre 2 100 F » sur deux lignes (retour volontaire au
+point médian, lisible). **Écart structurel à trancher par Patrick, pas un
+défaut** : la barre **Total est AU-DESSUS des lignes du panier**
+(`renderCartTotal()` avant `renderCartLines()`), la maquette la met
+**dessous** — choix de l'agent pour que le Total tienne dans le premier écran
+avec dix lignes.
+
+### 15.4 Batterie
+`tsc -b` 0 · `verify` 0 · `test:ci` 0 · `build` 0 · `check:bundle-budget` 0
+(565 Ko / 800).
+
+### 15.5 Verdicts et limites
+**UI-02 FERMÉ, UI-03 FERMÉ, UI-04 FERMÉ.** Toujours **aucun appareil réel** :
+captures headless, intention `encaisser` injectée dans le banc.
