@@ -27,13 +27,14 @@ const buildDate = new Date().toISOString().slice(0, 16).replace("T", " ")
 const buildId = `${gitHash} · ${buildDate}`
 
 // Tamponne l'identifiant de build dans le service worker COPIÉ dans dist, ET y
-// injecte la liste des chunks de route à PRÉ-CHARGER pour le HORS-LIGNE.
+// injecte la liste des assets à PRÉ-CHARGER pour le HORS-LIGNE.
 //
 // Sans ça : (1) sw.js ne change jamais entre deux déploiements → l'appli reste
 // coincée sur l'ancienne version ; (2) les pages sont chargées à la demande
 // (import dynamique) → hors-ligne, une page jamais ouverte ne se charge pas et
 // l'appli plante (« Oops, une erreur est survenue »). On pré-cache donc TOUS les
-// JS/CSS du build. Exclure les gros paquets communs (index, recharts…) laissait
+// assets du build (JS, CSS, images et polices). Exclure les gros paquets communs
+// (index, recharts…) laissait
 // l'écran vide si le réseau disparaissait juste après la toute première ouverture,
 // car le nouveau service worker ne contrôlait pas encore leurs requêtes initiales.
 
@@ -59,9 +60,9 @@ function stampServiceWorker(outDir: string): Plugin {
         const assetsDir = join(outDir, "assets")
         let precache: string[] = []
         try {
-          precache = readdirSync(assetsDir)
-            .filter((f) => f.endsWith(".js") || f.endsWith(".css"))
-            .map((f) => `/assets/${f}`)
+          precache = readdirSync(assetsDir, { withFileTypes: true })
+            .filter((entree) => entree.isFile())
+            .map((entree) => `/assets/${entree.name}`)
         } catch (e) {
           console.warn("[stamp-sw] liste de pré-cache indisponible:", (e as Error)?.message)
         }

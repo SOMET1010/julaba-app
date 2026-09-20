@@ -18,9 +18,11 @@ console.log('\n[1] Installation offline dès l’ouverture');
 ok(/navigator\.serviceWorker\s*\.register\('\/sw\.js',\s*\{\s*updateViaCache:\s*'none'\s*\}\)/s.test(main),
   'le service worker est enregistré au démarrage sans réutiliser un sw.js périmé');
 ok(/await\s+Promise\.allSettled\(PRECACHE\.map/.test(sw),
-  'tous les chunks applicatifs sont réellement attendus pendant l’installation');
-ok(!/PRECACHE_MAX_BYTES|statSync\(join\(assetsDir/.test(vite),
-  'aucun chunk JS/CSS essentiel n’est exclu du pré-cache à cause de sa taille');
+  'tous les assets applicatifs sont réellement attendus pendant l’installation');
+ok(/readdirSync\(assetsDir,\s*\{\s*withFileTypes:\s*true\s*\}\)[\s\S]{0,160}entree\.isFile\(\)/.test(vite),
+  'scripts, styles, images et polices du build entrent tous dans le pré-cache');
+ok(!/PRECACHE_MAX_BYTES|statSync\(join\(assetsDir|endsWith\("\.js"\)|endsWith\("\.css"\)/.test(vite),
+  'aucun asset essentiel n’est exclu à cause de sa taille ou de son extension');
 ok(/caches\.match\('\/index\.html'\)/.test(sw),
   'une navigation sans réseau retombe sur l’application en cache');
 
