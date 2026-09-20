@@ -32,11 +32,12 @@ ok(/VITE_JULABA_VOICE_PREVIEW\s*===\s*'true'/.test(onboarding), 'un clip prototy
 ok(/clip\.prototype\s*&&\s*PROTOTYPES_VOIX_ACTIFS/.test(onboarding), 'un prototype non attesté reste muet hors prévisualisation');
 ok(/if \(!clipUrl\) return/.test(onboarding), 'une intro non attestée laisse le parcours visuel et tactile continuer');
 
-console.log('\n[5] Un seul déclenchement par bouton de réécoute');
+console.log('\n[5] Un geste sonore explicite, sans double déclenchement');
 const welcome = readFileSync(new URL('../components/auth/Welcome.tsx', import.meta.url), 'utf8');
 const onboardingSlides = readFileSync(new URL('../components/auth/OnboardingSlides.tsx', import.meta.url), 'utf8');
 ok(/login-tata-inline[\s\S]{0,180}aria-label="Écouter Tantie Nanti Lou"/.test(welcome), 'le haut-parleur d’accueil reste identifiable');
-ok(/onPointerDown=\{\(e\) => e\.stopPropagation\(\)\}/.test(welcome), 'le haut-parleur d’accueil ne déclenche pas aussi le filet global');
+ok(!/window\.addEventListener\('pointerdown'/.test(welcome), 'aucun premier toucher global ne vole ou ne double le geste choisi');
+ok(/const commencer[\s\S]{0,260}laisserIntroContinuer\.current = true;[\s\S]{0,80}accueille\(\)/.test(welcome), '« Écouter et entrer » démarre la voix sur un geste autorisé et la laisse continuer');
 ok(/onPointerDown=\{\(e\) => e\.stopPropagation\(\)\}[\s\S]{0,120}handleListen/.test(onboardingSlides), 'la réécoute de présentation ne lance qu’une seule lecture');
 
 console.log(failures === 0 ? '\nTous les garde-fous voix honnête sont verts ✅\n' : `\n${failures} échec(s) ❌\n`);

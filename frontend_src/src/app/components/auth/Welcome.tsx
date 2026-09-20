@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 
 import logoJulabaSvg from "../../../assets/images/logo-julaba.svg";
@@ -18,6 +18,7 @@ interface WelcomeProps {
 
 export function Welcome({ onComplete }: WelcomeProps) {
   const navigate = useNavigate();
+  const laisserIntroContinuer = useRef(false);
   // Tata ACCUEILLE (elle ne présente pas une appli) : elle parle du COMMERCE de
   // la marchande, et crée tout de suite un lien d'appartenance. VRAIE voix
   // (clip enregistré), le robot n'est qu'un filet. Le navigateur bloque l'audio
@@ -28,17 +29,21 @@ export function Welcome({ onComplete }: WelcomeProps) {
 
   useEffect(() => {
     const t = setTimeout(accueille, 350);
-    const onFirst = () => accueille();
-    window.addEventListener('pointerdown', onFirst, { once: true });
     return () => {
       clearTimeout(t);
-      window.removeEventListener('pointerdown', onFirst);
-      stopIntro();
+      // Si « Écouter et entrer » vient d'être touché, la phrase déjà lancée
+      // accompagne l'écran suivant au lieu d'être coupée par le changement de route.
+      if (!laisserIntroContinuer.current) stopIntro();
     };
   }, [accueille]);
 
-  // Toucher l'écran = commencer (Tata s'arrête, on entre).
-  const commencer = () => { stopIntro(); if (onComplete) onComplete(); else navigate('/login'); };
+  // Le navigateur interdit l'autoplay. Ce bouton est donc à la fois le premier
+  // geste autorisé pour le son et l'entrée dans le parcours — aucune devinette.
+  const commencer = () => {
+    laisserIntroContinuer.current = true;
+    accueille();
+    if (onComplete) onComplete(); else navigate('/login');
+  };
 
   return (
     <main className="login-welcome login-welcome-redesign">
@@ -59,17 +64,17 @@ export function Welcome({ onComplete }: WelcomeProps) {
       </section>
 
       <div className="login-welcome-actions login-market-sheet">
-        <button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={accueille} className="login-tata-inline" aria-label="Écouter Tantie Nanti Lou">
+        <button type="button" onClick={accueille} className="login-tata-inline" aria-label="Écouter Tantie Nanti Lou">
           <img src={tataAccueil} alt="Tantie Nanti Lou" />
           <span>
             <strong>Akwaba, je suis Tantie Nanti Lou.</strong>
-            <small>Je t’aide à vendre et compter.</small>
+            <small>Touche ici pour écouter ma voix.</small>
           </span>
           <span className="login-replay"><Volume2 aria-hidden="true" size={24} /></span>
         </button>
 
         <motion.button type="button" onClick={commencer} className="login-primary login-market-primary" whileTap={{ scale: 0.98 }}>
-          Entrer dans ma boutique <ArrowRight aria-hidden="true" size={30} />
+          Écouter et entrer <ArrowRight aria-hidden="true" size={30} />
         </motion.button>
 
         <div className="login-partners login-market-partners">
