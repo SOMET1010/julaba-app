@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Plus, Minus, Trash2, X, Check, ArrowLeft, Package, FileText } from 'lucide-react';
 import { useCaisse } from '../../contexts/CaisseContext';
@@ -22,6 +22,8 @@ import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMai
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
+import { ETAT_INITIAL, empreintePanier, reduire, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
+import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -292,6 +294,77 @@ function POSCaisseInner() {
     }
     finally { paiementEnCoursRef.current = false; setIsProcessing(false); }
   };
+
+  // ── ENCAISSEMENT À LA VOIX (VOIX-01, lot C) ──────────────────────────────
+  // « Encaisse » ne paie jamais : Tata relit le compte (« Elle doit 4 000.
+  // Elle t'a donné 5 000. Tu rends 1 000. Je valide ? ») et attend « oui
+  // valide ». La décision est prise par `reduire` (machineEncaissement.ts),
+  // une fonction pure : cet écran ne fait que lui donner l'état financier de
+  // l'instant et exécuter l'effet qu'elle rend. Quand l'effet est
+  // `encaisser`, on appelle `handlePay` — LA MÊME primitive que le bouton
+  // « Payer en espèces », avec le même verrou `paiementEnCoursRef` et les
+  // mêmes gardes. Il n'existe pas de second chemin vers `enregistrerVente`.
+  //
+  // L'ÉTAT FINANCIER DE L'INSTANT. Ce sont les trois nombres que Tata relit
+  // et que « oui valide » doit retrouver à l'identique. Les lignes portent le
+  // même total que `handlePay` envoie au serveur : l'exact dicté quand il
+  // existe, sinon prix × quantité — l'empreinte confirme la vente qui sera
+  // écrite, pas une approximation.
+  const etatFinancier: EtatFinancier = {
+    panierVide: cart.length === 0,
+    total,
+    recu,
+    monnaie,
+    // Le bouton accepte un reçu à 0 (elle n'a pas touché les billets) ; la
+    // voix, non : « Elle t'a donné 0 » n'est pas un compte qu'on peut relire.
+    // Tata demande alors de toucher les billets — au doigt, jamais dictés.
+    suffisant: recu > 0 && !insuffisant,
+    empreinte: {
+      total,
+      recu,
+      lignes: empreintePanier(cart.map(i => ({ productId: i.productId, quantite: i.quantite, total: i.totalExact ?? i.prix * i.quantite }))),
+    },
+  };
+  // UN REF, PAS UN useState, et c'est une décision de sécurité : la
+  // transition doit être SYNCHRONE. Deux « oui valide » qui arrivent dans la
+  // même frame liraient le même état React (« attente ») et paieraient deux
+  // fois avant le re-render ; avec un ref, le premier consomme l'attente et
+  // le second trouve « repos ». Rien n'est rendu à partir de cet état — il ne
+  // pilote que la voix — donc aucun re-render n'est perdu.
+  const etatEncaissementRef = useRef<EtatEncaissement>(ETAT_INITIAL);
+  const traiterIntentionEncaissement = (intention: IntentionEncaissement) => {
+    const { etat, effet } = reduire(etatEncaissementRef.current, intention, etatFinancier);
+    etatEncaissementRef.current = etat;
+    if (effet.type === 'rien') return;
+    // La réponse à une PHRASE se dit toujours — `speak`, pas `dire`. `dire`
+    // tait les confirmations automatiques en mode lecture, parce que l'écran
+    // les affiche déjà ; ici la relecture EST la garantie : une marchande qui
+    // dit « encaisse » et n'entend rien dirait « oui valide » sans avoir
+    // entendu le compte qu'elle confirme. Même règle que les réponses du
+    // micro (MicroVenteCaisse parle par `speak`).
+    if (effet.texte) speak(effet.texte);
+    if (effet.type === 'encaisser') void handlePay();
+  };
+  // Le moteur vocal tient son gestionnaire dans des fermetures qui peuvent
+  // dater d'un rendu antérieur (l'enregistrement a commencé avant que la
+  // cliente ajoute un article). Un ref « dernier rendu » garantit que la
+  // phrase est jugée sur le panier, le reçu et le `handlePay` d'AUJOURD'HUI —
+  // jamais sur ceux d'il y a trois gestes.
+  const traiterIntentionRef = useRef(traiterIntentionEncaissement);
+  traiterIntentionRef.current = traiterIntentionEncaissement;
+  const onIntentionEncaissement = useCallback((intention: IntentionEncaissement) => traiterIntentionRef.current(intention), []);
+  // LE PANIER OU LE REÇU BOUGE → LA CONFIRMATION TOMBE. Un article ajouté
+  // pendant que la cliente cherche sa monnaie, un billet touché, « Vider »,
+  // le bouton « Payer » lui-même (qui vide le panier) : tout passe par ici, et
+  // la machine ne garde une attente que si l'empreinte relue est encore la
+  // vraie. Aucune phrase n'est dite — elle manipule, elle n'écoute pas ; Tata
+  // relira quand elle redemandera.
+  const etatFinancierRef = useRef(etatFinancier);
+  etatFinancierRef.current = etatFinancier;
+  const cleEmpreinte = `${total}|${recu}|${etatFinancier.empreinte.lignes}`;
+  useEffect(() => {
+    etatEncaissementRef.current = reduire(etatEncaissementRef.current, 'etat_financier_change', etatFinancierRef.current).etat;
+  }, [cleEmpreinte]);
 
   // Crédit désactivé en pilote espèces (CAISSE_CREDIT_ACTIF=false) : ce handler
   // n'est plus atteignable (modal non monté). Conservé pour la réactivation
@@ -601,8 +674,11 @@ function POSCaisseInner() {
             vérifiable — il n'existe aucun état de la vente où la marchande
             regarde cet écran sans voir le micro. Le moteur vocal est monté
             DANS ce composant : le bouton ne peut pas exister sans lui, ce qui
-            interdit le retour du micro décoratif de 2026. */}
-        <MicroVenteCaisse produitPreselectionne={produitPreselectionne} />
+            interdit le retour du micro décoratif de 2026.
+            `onIntentionEncaissement` (lot C) : le micro RECONNAÎT « encaisse »
+            et « oui valide », c'est cette page qui décide — elle seule tient
+            le compte et la primitive de paiement. */}
+        <MicroVenteCaisse produitPreselectionne={produitPreselectionne} onIntentionEncaissement={onIntentionEncaissement} />
         {/* UNE ÉTIQUETTE, PAS UNE BOÎTE — le défaut relevé par Patrick le 18/09.
             Il a tapé « banane » et rien n'est arrivé dans le champ : l'écran a
             continué d'afficher l'oignon. La cause n'était pas le filtre, elle

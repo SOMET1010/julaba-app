@@ -21,6 +21,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 
 import { extraire } from './extraction';
+import { detecterEncaissement, type IntentionEncaissement } from './grammaireEncaissement';
 import { plurielNom } from '../services/dialoguesTata';
 
 const fmt = (n: number) => n.toLocaleString('fr-FR');
@@ -39,13 +40,53 @@ export interface LocalVoiceResult {
 }
 
 /**
+ * Une intention d'encaissement, au MÊME format que les autres. `response` est
+ * vide et `needsConfirmation` faux, et ce n'est pas un oubli : le moteur vocal
+ * ne doit ni parler ni demander « oui/non » ici. C'est la machine
+ * d'encaissement (POSCaisse) qui relit le compte et attend la seconde phrase —
+ * sa confirmation à elle est liée au panier et au reçu, pas à une question.
+ */
+function resultatEncaissement(texte: string, intention: IntentionEncaissement): LocalVoiceResult {
+  return {
+    transcript: texte,
+    normalizedText: texte,
+    intent: intention,
+    action: { type: intention },
+    response: '',
+    needsConfirmation: false,
+    audioBase64: null,
+    navigate: null,
+    offline: true,
+  };
+}
+
+/**
  * @param texte transcription brute (STT on-device)
  * @returns la réponse locale, ou null si non reconnu avec assez de confiance.
  */
 export function intentLocal(texte: string): LocalVoiceResult | null {
   if (!texte || !texte.trim()) return null;
+
+  // L'ENCAISSEMENT EST CONSULTÉ EN PREMIER (VOIX-01, lot C). « Combien elle
+  // doit » contient « doit », qu'`extraire` lit comme un crédit ; « encaisse »
+  // et « oui valide » ne contiennent rien qu'elle connaisse. Passée après,
+  // la grammaire d'encaissement ne verrait jamais la première phrase et les
+  // deux autres finiraient en « je n'ai pas bien compris » — c'est exactement
+  // ce qui était mesuré sur cc26647.
+  //
+  // UNE SEULE EXCEPTION : l'annulation attend la fin. Sa grammaire est large
+  // par choix (« non », « attends », « laisse »… : le doute profite au refus),
+  // mais « attends, vends deux tomates à 500 » n'est pas un abandon, c'est
+  // une correction qui porte une vente entière — et c'était une vente avant
+  // ce lot. Une annulation n'écrit jamais d'argent, et une vente ajoutée au
+  // panier invalide d'elle-même toute confirmation en attente (l'empreinte
+  // change) : laisser la vente gagner ne coûte rien sur l'argent, alors que
+  // l'avaler en silence coûterait la ligne.
+  const encaissement = detecterEncaissement(texte);
+  if (encaissement && encaissement !== 'annuler_validation') return resultatEncaissement(texte, encaissement);
+
   const p = extraire(texte);
-  if (!p.intention) return null;
+  if (!p.intention) return encaissement ? resultatEncaissement(texte, encaissement) : null;
 
   // On ne traite localement que le transactionnel financier sûr (vente/dépense).
   // Le reste (soldes, questions ouvertes) reste au serveur quand on est en ligne.
@@ -65,7 +106,9 @@ export function intentLocal(texte: string): LocalVoiceResult | null {
   let intent: string | null = null;
   if (p.intention === 'vente' && (p.montant != null || p.produit)) { type = 'vendre'; intent = 'vendre'; }
   else if (p.intention === 'depense' && p.montant != null) { type = 'depense'; intent = 'depense'; }
-  if (!type || !intent) return null;
+  // Pas de vente ni de dépense reconnue : un refus entendu plus haut vaut
+  // alors pour ce qu'il est, une annulation.
+  if (!type || !intent) return encaissement ? resultatEncaissement(texte, encaissement) : null;
 
   const action: LocalVoiceResult['action'] = { type };
   if (p.produit) action.produit = p.produit;
