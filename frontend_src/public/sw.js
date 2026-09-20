@@ -26,10 +26,11 @@ self.addEventListener('install', (event) => {
     // Pré-cache des pages : tolérant aux échecs (un chunk manquant ne bloque pas
     // l'installation). addAll échouerait en bloc → on ajoute un par un.
     await Promise.allSettled(PRECACHE.map((u) => cache.add(u)));
-    // Pré-cache de la VOIX de Tata : idem, un par un et tolérant. On n'attend PAS
-    // que ce soit fini pour activer (waitUntil ci-dessus couvre déjà l'essentiel) ;
-    // ces 7 Mo se remplissent en tâche de fond sans retarder la 1re ouverture.
-    Promise.allSettled(PRECACHE_VOICE.map((u) => cache.add(u)));
+    // Pré-cache de la VOIX de Tata : idem, un par un et tolérant. Cette promesse
+    // fait partie de `waitUntil` : quand le worker est installé, les clips requis
+    // sont réellement en cache. Sans cet `await`, une coupure juste après la
+    // première ouverture pouvait laisser le parcours critique silencieux.
+    await Promise.allSettled(PRECACHE_VOICE.map((u) => cache.add(u)));
   })());
   self.skipWaiting();
 });

@@ -18,7 +18,7 @@ import { extractPhoneDigits, fusionnerChiffresDictes } from '../../utils/frenchD
 import { tataUiClipForText } from '../../services/tataUiClips';
 import { voixSecoursNom } from '../../services/elevenlabs';
 import { speak as managerSpeak, speakClipOrText } from '../../services/audioManager';
-import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
+import { startLiveDictation, offlineModelReady, offlineModelInstalled, verifierOfflineModel } from '../../voice-offline/offlineStt';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
@@ -118,7 +118,26 @@ export function LoginPassword() {
   // signal de certification MINIMAL (design v0.3). Fausse aujourd'hui sur le web
   // et sur l'APK sans moteur → le NUMÉRO se saisit au PAVÉ, sans micro trompeur.
   // (Lot 5 remplacera ce signal par une certification vocale complète.)
-  const voixEcouteDispo = (() => { try { return offlineModelReady(); } catch { return false; } })();
+  const [voixEcouteDispo, setVoixEcouteDispo] = useState(() => {
+    try { return offlineModelReady(); } catch { return false; }
+  });
+  // Le plugin Android peut finir son démarrage APRÈS le premier rendu React.
+  // Sonde courte et bornée : le pavé reste utilisable, puis le micro apparaît
+  // sans exiger un rechargement dès que Sherpa répond.
+  useEffect(() => {
+    let actif = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let tentative = 0;
+    const sonder = async () => {
+      tentative += 1;
+      const prete = await verifierOfflineModel().catch(() => false);
+      if (!actif) return;
+      setVoixEcouteDispo(prete);
+      if (!prete && tentative < 10) timer = setTimeout(() => { void sonder(); }, 700);
+    };
+    void sonder();
+    return () => { actif = false; if (timer) clearTimeout(timer); };
+  }, []);
   // Le pavé est la référence : toujours visible tant que la voix n'écoute pas.
   const clavierVisible = showKeypad || !voixEcouteDispo;
   // Un numéro est déjà là (dicté ou tapé) : l'écran n'a plus à le DEMANDER,
@@ -137,7 +156,7 @@ export function LoginPassword() {
       try { localStorage.setItem('julaba_pin_images', next ? '1' : '0'); } catch { /* ignore */ }
       // Annonce le CHANGEMENT DE MODE, jamais le PIN — la correspondance est
       // publique (variante A), donc rien de secret n'est dit ici.
-      if (guidageVocal(accessMode)) {
+      if (guidageVocal()) {
         parle(next ? 'Maintenant, des images à la place des chiffres.' : 'Retour aux chiffres.');
       }
       return next;
@@ -284,11 +303,11 @@ export function LoginPassword() {
       step,
       compteConnu: !!compteConnu,
       biometrie: compteConnu?.biometrie ?? null,
-      guidage: guidageVocal(accessMode),
+      guidage: guidageVocal(),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { if (error) { vibrerErreur(); if (guidageVocal(accessMode)) parle(error); } }, [error]);
+  useEffect(() => { if (error) { vibrerErreur(); if (guidageVocal()) parle(error); } }, [error]);
   // VOIX-V5 — la consigne du code était la SEULE des trois étapes sans filet
   // de rattrapage audio (les deux autres l'ont : voir direAccueilReconnaissance
   // et direConsigneNumero). Une marchande connue de l'appareil mais SANS
@@ -304,14 +323,14 @@ export function LoginPassword() {
   const arriveeDirecteSurCode = useRef(step === 'password').current;
   const direConsigneCode = useCallback(() => {
     if (step !== 'password') return;
-    if (!guidageVocal(accessMode)) return; // mode lecture : pas de consigne auto
+    if (!guidageVocal()) return; // lecture explicitement choisie : pas de consigne auto
     parle('Entre ton code secret à 4 chiffres');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, accessMode]);
 
   useEffect(() => {
     if (step === 'password') {
-      vlog('VOIX_CODE_TENTEE', { arriveeDirecte: arriveeDirecteSurCode, guidage: guidageVocal(accessMode) });
+      vlog('VOIX_CODE_TENTEE', { arriveeDirecte: arriveeDirecteSurCode, guidage: guidageVocal() });
     }
     direConsigneCode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -319,7 +338,7 @@ export function LoginPassword() {
 
   useAudioUnlockFallback(
     () => { vlog('VOIX_CODE_REJOUEE_APRES_GESTE'); direConsigneCode(); },
-    arriveeDirecteSurCode && step === 'password' && guidageVocal(accessMode),
+    arriveeDirecteSurCode && step === 'password' && guidageVocal(),
   );
   // « Tata se souvient de moi » : à l'arrivée, Tata SALUE par le prénom et dit le
   // geste à faire — l'écran n'a rien à lire. (Une seule fois, au montage.)
@@ -329,7 +348,7 @@ export function LoginPassword() {
   // préalable dans CETTE session, l'audio reste bloqué par le navigateur.
   // Même filet que Welcome.tsx/OnboardingSlides.tsx.
   const direAccueilReconnaissance = useCallback(() => {
-    if (!(step === 'reconnaissance' && compteConnu && guidageVocal(accessMode))) return;
+    if (!(step === 'reconnaissance' && compteConnu && guidageVocal())) return;
     const salut = `${salutation(compteConnu.appellation, compteConnu.prenom)} !`;
     const geste = compteConnu.biometrie
       ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
@@ -343,7 +362,7 @@ export function LoginPassword() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useAudioUnlockFallback(direAccueilReconnaissance, step === 'reconnaissance' && !!compteConnu && guidageVocal(accessMode));
+  useAudioUnlockFallback(direAccueilReconnaissance, step === 'reconnaissance' && !!compteConnu && guidageVocal());
   // Tata propose l'adaptation (mode 'auto') : elle le DIT (une fois) — c'est une
   // question, pas un réglage à trouver. On l'énonce dès l'affichage.
   useEffect(() => {
@@ -698,7 +717,7 @@ export function LoginPassword() {
   // suffit pas à quelqu'un qui ne lit pas et n'a jamais vu cet écran.
   const direConsigneNumero = useCallback(() => {
     if (step !== 'phone') return;
-    if (!guidageVocal(accessMode)) return; // mode lecture : pas d'accueil vocal auto
+    if (!guidageVocal()) return; // lecture explicitement choisie : pas d'accueil vocal auto
     const consigne = voixEcouteDispo
       ? 'Pour entrer, dis ton numéro à voix haute, ou tape les chiffres un par un. Les ronds en haut se rempliront.'
       : 'Tape les chiffres de ton numéro, un par un. Les ronds en haut se rempliront.';
@@ -711,7 +730,7 @@ export function LoginPassword() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  useAudioUnlockFallback(direConsigneNumero, step === 'phone' && guidageVocal(accessMode));
+  useAudioUnlockFallback(direConsigneNumero, step === 'phone' && guidageVocal());
 
   useEffect(() => {
     const tel = document.querySelector('input[autocomplete="tel"]') as HTMLInputElement | null;
@@ -1026,7 +1045,7 @@ export function LoginPassword() {
       // de vibration différent) + un mot dit à voix haute. « Effacé » ne révèle
       // aucun chiffre : rien à cacher, contrairement au numéro lui-même.
       try { navigator.vibrate?.([10, 30, 10]); } catch { /* ignore */ }
-      if (guidageVocal(accessMode)) parle('Effacé.');
+      if (guidageVocal()) parle('Effacé.');
     } else {
       if (pinInput.length === 0) {
         retourDepuisCode();
