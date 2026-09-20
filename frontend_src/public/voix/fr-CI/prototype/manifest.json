@@ -1,24 +1,34 @@
 {
-  "packId": "julaba-fr-ci-preview-2026-09-20",
+  "packId": "julaba-fr-ci-preview-2026-09-20-mature-v2",
   "statut": "prototype_validation_humaine_requise",
   "usage": "prévisualisation de la branche manus/refonte-ui-ux-voix uniquement",
   "langue": "fr-CI",
-  "voix": "Sulafat, voix préconstruite",
-  "style": "français ivoirien chaleureux, lent, sans caricature",
+  "personnage": "Tantie Nanti Lou",
+  "voix": "Sulafat, voix préconstruite, timbre mûri localement",
+  "style": "français ivoirien chaleureux, posé et maternel ; registre abaissé et rythme ralenti pour éviter une identité trop jeune",
   "texteExact": "Akwaba. Pour vendre, touche un produit, ou parle à Tata. On est ensemble.",
   "fichier": "tata-accueil-preview.mp3",
-  "sha256": "3bc68e60bfbf59d609329643d4a766a529fdfcafa03e0392ca54c9fce0d6bb7c",
+  "sha256": "de906de651ed9620bda6ab655d9ce319252576689fd3b8888d98f7829d7813e8",
+  "transformation": {
+    "source": "tata-accueil-sulafat.wav",
+    "tempo": 0.94,
+    "hauteur": 0.89,
+    "formants": "préservés",
+    "objectif": "voix féminine plus mûre sans changer le texte ni la langue"
+  },
   "technique": {
     "format": "MP3",
     "canaux": 1,
     "frequenceHz": 48000,
-    "debitApproxBps": 96261,
-    "dureeSecondes": 10.2
+    "debitApproxBps": 96245,
+    "dureeSecondes": 10.848,
+    "niveauMoyenDb": -19.6,
+    "niveauMaximumDb": -2.4
   },
   "validation": {
-    "texte": "à vérifier mot à mot",
-    "accentEtChaleur": "à valider par une personne ivoirienne et une marchande cible",
+    "texte": "transcription automatique cohérente ; Akwaba doit rester vérifié à l'écoute humaine",
+    "agePercuEtChaleur": "à valider par le propriétaire et des marchandes ivoiriennes cibles",
     "production": false
   },
-  "note": "Ce clip ne reproduit pas et ne clone pas les voix fixes Bon Chauffeur. Il s'agit d'une proposition produite à partir d'une voix préconstruite, à comparer humainement aux références autorisées."
+  "note": "Le générateur vocal principal a échoué à trois reprises le 20 septembre 2026. Ce clip est donc une correction locale et réversible du prototype existant, pas un clonage et pas une voix humaine finale."
 }
