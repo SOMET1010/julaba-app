@@ -37,6 +37,16 @@ const VIEWPORT = { width: 390, height: 844 };
 const CIBLE_MIN = 44;
 const SORTIE = resolve(racine, '..', 'docs', 'parcours', 'captures');
 const MAQUETTE = process.env.MAQUETTE_CAISSE || '';
+// Suffixe des fichiers produits (lotF, F2…) : on ne réécrit pas l'histoire,
+// chaque passe laisse sa capture.
+const PASSE = process.env.PASSE_CAPTURE || 'F2';
+// L'ÉCRAN DU TÉLÉPHONE dans 8.webp, mesuré au pixel (scan des bords sombres
+// du cadre, puis de la barre d'état) : intérieur x 97→844, du haut de
+// « Caisse du jour » (y 135, sous la barre d'état) au bas visible (y 1611).
+// 747 px d'image = 390 px CSS : c'est CETTE échelle qui sert à la comparaison,
+// la même pour la maquette et pour le rendu — jamais un redimensionnement
+// différent des deux côtés.
+const ECRAN_MAQUETTE = { x: 97, y: 135, largeur: 747, hauteur: 1476 };
 const EXECUTABLE = process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
 mkdirSync(SORTIE, { recursive: true });
@@ -109,7 +119,12 @@ try {
     const debordent = rects.filter(({ r }) => r.left < -0.5 || r.right > largeur + 0.5).map(({ el, r }) => ({ quoi: libelle(el), left: Math.round(r.left), right: Math.round(r.right) }));
     const petites = rects.filter(({ r }) => Math.min(r.width, r.height) < cibleMin - 0.5).map(({ el, r }) => ({ quoi: libelle(el), w: Math.round(r.width), h: Math.round(r.height) }));
     const h1 = document.querySelector('h1');
+    const zoneVoix = document.querySelector('section[aria-label="Vendre à la voix"]')?.getBoundingClientRect();
+    const enTete = document.querySelector('button[aria-label="Retour"]')?.closest('div[style*="fixed"]')?.getBoundingClientRect();
     return {
+      zoneVoixPx: zoneVoix ? Math.round(zoneVoix.height) : null,
+      zoneVoixBas: zoneVoix ? Math.round(zoneVoix.bottom) : null,
+      enTetePx: enTete ? Math.round(enTete.height) : null,
       scrollWidth: document.documentElement.scrollWidth,
       scrollHeight: document.documentElement.scrollHeight,
       interactifs: rects.length,
@@ -122,15 +137,19 @@ try {
   }, { largeur: VIEWPORT.width, cibleMin: CIBLE_MIN });
 
   // 5. Captures.
-  const cheminPleine = resolve(SORTIE, 'caisse-portrait-lotF-pleine.png');
+  const cheminPleine = resolve(SORTIE, `caisse-portrait-${PASSE}-pleine.png`);
   await page.screenshot({ path: cheminPleine, fullPage: true });
   await page.context().close();
 
   // Le viewport en 390 × 844 exacts (1 px CSS = 1 px image), comme demandé.
   const page1x = await monterCaisse(navigateur, VIEWPORT, 1);
-  const cheminViewport = resolve(SORTIE, 'caisse-portrait-lotF.png');
+  const cheminViewport = resolve(SORTIE, `caisse-portrait-${PASSE}.png`);
   await page1x.screenshot({ path: cheminViewport, fullPage: false });
   await page1x.context().close();
+  const page2x = await monterCaisse(navigateur, VIEWPORT, 2);
+  const cheminViewport2x = resolve(ici, '.viewport-2x.png');
+  await page2x.screenshot({ path: cheminViewport2x, fullPage: false });
+  await page2x.context().close();
 
   // Contrôle grand écran (deux colonnes, panier à droite) — hors dépôt.
   if (process.env.APERCU_LARGE) {
@@ -141,28 +160,37 @@ try {
 
   let cheminComparaison = null;
   if (MAQUETTE && existsSync(MAQUETTE)) {
-    cheminComparaison = resolve(SORTIE, 'caisse-portrait-lotF-comparaison.png');
+    cheminComparaison = resolve(SORTIE, `caisse-portrait-${PASSE}-comparaison.png`);
     const html = resolve(ici, '.comparaison.html');
+    // Même échelle des deux côtés : 2 px d'image par px CSS. La maquette est
+    // RECADRÉE à l'écran du téléphone (ECRAN_MAQUETTE) et mise à 780 px de
+    // large (= 390 px CSS × 2) ; le rendu est le viewport 390 × 844 capturé
+    // à 2× (780 × 1688). Aucun des deux n'est redimensionné autrement.
+    const k = (VIEWPORT.width * 2) / ECRAN_MAQUETTE.largeur;
+    const hMaquette = Math.round(ECRAN_MAQUETTE.hauteur * k);
     writeFileSync(html, `<!doctype html><html lang="fr"><meta charset="utf-8">
 <style>
   body { margin: 0; background: #F5EBDD; font: 600 16px/24px Inter, system-ui, sans-serif; color: #332533; }
   .cadre { display: flex; gap: 24px; padding: 24px; align-items: flex-start; }
   figure { margin: 0; display: flex; flex-direction: column; gap: 8px; }
   figcaption { text-align: center; }
-  img { display: block; height: 1600px; width: auto; border-radius: 16px; background: #fff; }
-  img.rendu { box-shadow: 0 0 0 1px #D8CDC5; }
+  .maquette { width: ${VIEWPORT.width * 2}px; height: ${hMaquette}px; overflow: hidden; position: relative; border-radius: 16px; background: #fff; }
+  .maquette img { position: absolute; left: ${-Math.round(ECRAN_MAQUETTE.x * k)}px; top: ${-Math.round(ECRAN_MAQUETTE.y * k)}px; width: ${Math.round(941 * k)}px; display: block; }
+  img.rendu { display: block; width: ${VIEWPORT.width * 2}px; height: ${VIEWPORT.height * 2}px; border-radius: 16px; box-shadow: 0 0 0 1px #D8CDC5; }
+  .legende { font: 400 14px/20px Inter, system-ui, sans-serif; color: #6E6A63; text-align: center; }
 </style>
 <div class="cadre" id="cadre">
-  <figure><figcaption>Maquette validée (8.webp)</figcaption><img src="file://${MAQUETTE}" alt=""></figure>
-  <figure><figcaption>Rendu réel, page entière (390 px de large, données de démonstration, sans réseau)</figcaption><img class="rendu" src="file://${cheminPleine}" alt=""></figure>
+  <figure><figcaption>Maquette (8.webp), écran du téléphone recadré</figcaption><div class="maquette"><img src="file://${MAQUETTE}" alt=""></div><div class="legende">${ECRAN_MAQUETTE.largeur} × ${ECRAN_MAQUETTE.hauteur} px d'image → ${VIEWPORT.width} × ${Math.round(ECRAN_MAQUETTE.hauteur / ECRAN_MAQUETTE.largeur * VIEWPORT.width)} px CSS</div></figure>
+  <figure><figcaption>Rendu réel, premier viewport ${VIEWPORT.width} × ${VIEWPORT.height} (données de démonstration, sans réseau)</figcaption><img class="rendu" src="file://${cheminViewport2x}" alt=""><div class="legende">même échelle : 2 px d'image par px CSS des deux côtés</div></figure>
 </div></html>`);
-    const p2 = await navigateur.newPage({ viewport: { width: 1400, height: 1700 }, deviceScaleFactor: 1 });
+    const p2 = await navigateur.newPage({ viewport: { width: 1660, height: 1800 }, deviceScaleFactor: 1 });
     await p2.goto('file://' + html);
     await p2.waitForLoadState('load');
     await p2.evaluate(() => Promise.all([...document.images].map(i => i.decode().catch(() => {}))));
     await p2.locator('#cadre').screenshot({ path: cheminComparaison });
     await p2.close();
     unlinkSync(html);
+    unlinkSync(cheminViewport2x);
   }
 
   const rapport = { ...mesures, requetesBloquees: bloquees.length, erreursPage, captures: { viewport: cheminViewport, pleine: cheminPleine, comparaison: cheminComparaison } };
