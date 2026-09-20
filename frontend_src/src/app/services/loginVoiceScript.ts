@@ -6,9 +6,11 @@
 // ce sont des phrases NEUF, pas encore dites par la vraie voix, écrites dans
 // le registre retenu (aînée du marché, phrases courtes, cf. discussion produit).
 //
-// NOM : « Tantie Nanti Lou » — identité posée comme non négociable dans
-// docs/PLAN_PACKS_TATA_LANGUES.md (accord explicite de Tata requis pour tout
-// nouvel enregistrement) ; ne pas la renommer « Tantie » sans son accord.
+// NOM : « Tantie Nanti Lou » — nom validé par Patrick le 20/09/2026 et repris
+// du lot A1 de la récupération du design (docs/manus/RECUPERATION-MANUS.md).
+// Il remplace « Tata Nanti Lou », qui ne doit plus apparaître à l'écran ni
+// dans une phrase dite. L'accord de la personne qui prête sa voix reste requis
+// pour tout nouvel enregistrement (docs/PLAN_PACKS_TATA_LANGUES.md).
 //
 // `texteDyu` est une traduction dioula de travail (non validée par une
 // locuthrice native) — gardée pour préparer un futur enregistrement dioula,
