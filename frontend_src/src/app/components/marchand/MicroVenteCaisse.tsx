@@ -51,7 +51,8 @@ import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncais
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
 import { produitPourVente } from '../../services/preselectionVente';
-import { AJOUT_PANIER } from '../../services/dialoguesTata';
+import { useSpeakMessage } from '../../i18n/voice/speakMessage';
+import { t } from '../../i18n/voice/runtime';
 import type { LigneProvisoire } from '../../services/ligneProvisoire';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces } from '../../utils/haptique';
@@ -102,6 +103,11 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, speak } = useApp();
+  // Les phrases de Tata sont des CLÉS du catalogue i18n (lot langues) : ce
+  // composant ne connaît plus le français. `speakMessage` résout la clé dans
+  // la langue active et la remet au rendu vocal (contrat-audio.ts), dont le
+  // défaut est ce même `speak`.
+  const speakMessage = useSpeakMessage();
   // `cart` en LECTURE SEULE (lot F) : sert au seul rappel « Dis "encaisser"
   // pour terminer », affiché quand il y a quelque chose à encaisser. Ce
   // composant continue de REMPLIR le panier ; il ne le lit que pour le dire.
@@ -118,6 +124,9 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     dernierePhraseRef.current = texte;
     speak(texte);
   }, [speak]);
+  const direEtRetenirMessage = useCallback((id: string, vars?: Record<string, string | number>) => {
+    dernierePhraseRef.current = speakMessage(id, vars).texte;
+  }, [speakMessage]);
 
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
@@ -164,7 +173,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     }
     vibrerSucces();
     toast.success(`C'est dans le panier : ${l.quantite} × ${l.nomAffiche}`);
-    if (guidageVocal()) speak(AJOUT_PANIER);
+    if (guidageVocal()) speakMessage('TATA_AJOUT_PANIER');
     setSaisieOuverte(false);
   };
 
@@ -256,7 +265,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         } else if (r?.action?.type === 'depense') {
           const montant = r.action.montant || 0;
           if (!montant || montant <= 0 || isNaN(montant)) {
-            direEtRetenir("Je n'ai pas compris combien tu as dépensé. Redis-moi le montant.");
+            direEtRetenirMessage('TATA_DEPENSE_MONTANT_INCOMPRIS');
             return;
           }
           await enregistrerDepense(montant, r.action.description || r.nom);
@@ -269,7 +278,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
           // montant : sans cette phrase, rien ne s'affiche, rien ne se dit,
           // rien ne vibre — elle croit sa dépense notée. Aucun catalogue ne
           // peut fournir le prix d'une dépense : on ne peut que le redemander.
-          direEtRetenir("Je n'ai pas compris combien tu as dépensé. Redis-moi le montant.");
+          direEtRetenirMessage('TATA_DEPENSE_MONTANT_INCOMPRIS');
           return;
         }
         await enregistrerDepense(montant, action.description || 'Dépense vocale');
@@ -289,15 +298,17 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // Retour terrain : la marchande ne comprenait ni qu'il fallait appuyer, ni
   // pourquoi parler. Un mot dit à voix haute vaut mieux que la même
   // explication écrite en haut de l'écran — qu'elle ne lit pas.
-  const introLigne = useCallback(() => (
+  // Une clé et ses variables ; le texte résolu sert aussi à « réécouter ».
+  const introMessage = useCallback((): [string, Record<string, string | number>] => (
     produitPreselectionne
-      ? `Appuie sur le micro, et dis ce que tu as vendu de ${produitPreselectionne.nom}.`
-      : 'Que voulez-vous vendre ?'
+      ? ['TATA_MICRO_INTRO_PRESELECTION', { produit: produitPreselectionne.nom }]
+      : ['TATA_QUE_VENDRE', {}]
   ), [produitPreselectionne]);
+  const introLigne = useCallback(() => t(...introMessage()), [introMessage]);
 
   useEffect(() => {
     if (!guidageVocal()) return;
-    speak(introLigne());
+    speakMessage(...introMessage());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule fois à l'arrivée sur la caisse, pas à chaque re-render
   }, []);
 
@@ -309,9 +320,9 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     try {
       await addProduct({ nom: propositionProduit.nom, prix: propositionProduit.prix, categorie: 'Autre', stock: 0, unite: 'unité' });
       vibrerSucces();
-      if (guidageVocal()) speak(`C'est fait. ${propositionProduit.nom} est dans ta boutique.`);
+      if (guidageVocal()) speakMessage('TATA_PRODUIT_AJOUTE_BOUTIQUE', { produit: propositionProduit.nom });
     } catch {
-      if (guidageVocal()) speak("Ça n'a pas marché. Tu pourras l'ajouter depuis Mon stock.");
+      if (guidageVocal()) speakMessage('TATA_AJOUT_BOUTIQUE_ECHEC');
     } finally {
       setCreationEnCours(false);
       setPropositionProduit(null);
@@ -320,7 +331,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   const refuserCreation = () => {
     if (!propositionProduit) return;
     try { noterRefusCreation(window.localStorage, propositionProduit.nom); } catch { /* ignore */ }
-    if (guidageVocal()) speak("D'accord, on ne change rien.");
+    if (guidageVocal()) speakMessage('TATA_ON_NE_CHANGE_RIEN');
     setPropositionProduit(null);
   };
 
