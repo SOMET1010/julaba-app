@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { suggererProduits, getImageByNom, rechercherProduitCatalogue, CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
-import { Package, TrendingUp, AlertCircle, Plus, Search, Trash2, X, Mic, MicOff, Edit3, Receipt, Wallet, BarChart3 } from 'lucide-react';
+import { Package, TrendingUp, AlertCircle, Plus, Search, Trash2, X, Mic, MicOff, Edit3, Receipt, Wallet, BarChart3, Eye, EyeOff, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { Montant } from '../shared/Montant';
 import { SubPageLayout } from '../layout/SubPageLayout';
@@ -24,6 +24,7 @@ import { API_URL } from '../../utils/api';
 import { mapApiMouvements, quantiteMouvement, mentionUniteInconnue, type MouvementUI } from '../../services/mouvementsStock';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
+import { useMontantsPrives } from '../../hooks/useMontantsPrives';
 
 const P = '#AF5B23';
 
@@ -35,24 +36,7 @@ interface Stock {
   promoPrice?: number | null; promoFin?: string | null;
 }
 
-function AnimatedNumber({ value, color, size = 28 }: { value: number; color: string; size?: number }) {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    let start = 0; const end = value;
-    if (start === end) { setDisplay(end); return; }
-    const step = (end - start) / (800 / 16);
-    let current = start;
-    const timer = setInterval(() => {
-      current += step;
-      if ((step > 0 && current >= end) || (step < 0 && current <= end)) { setDisplay(end); clearInterval(timer); }
-      else setDisplay(Math.round(current));
-    }, 16);
-    return () => clearInterval(timer);
-  }, [value]);
-  return <span style={{ fontSize: size, fontWeight: 900, color }}>{display.toLocaleString('fr-FR')}</span>;
-}
-
-function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => void; onDelete: () => void }) {
+function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Stock; montantsMasques: boolean; onTap: () => void; onDelete: () => void }) {
   const x = useMotionValue(0);
   const deleteOpacity = useTransform(x, [-72, -20], [1, 0]);
   const isLow = stock.quantity < stock.threshold;
@@ -131,7 +115,7 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
               {isEmpty ? '✕ Rupture' : isLow ? '⚠ Stock bas' : '✓ En stock'}
             </div>
             {/* Pill marge haut droite */}
-            {marginPct !== 0 && (
+            {!montantsMasques && marginPct !== 0 && (
               <div style={{
                 position: 'absolute', top: 8, right: 8,
                 background: 'rgba(255,255,255,0.2)',
@@ -160,11 +144,9 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
               display: 'flex', alignItems: 'baseline', justifyContent: 'center',
               gap: 4, marginBottom: 8,
             }}>
-              <AnimatedNumber
-                value={stock.quantity}
-                color={isEmpty ? '#dc2626' : isLow ? '#ef4444' : '#16a34a'}
-                size={40}
-              />
+              <span style={{ fontSize:40, fontWeight:900, color:isEmpty ? '#dc2626' : isLow ? '#ef4444' : '#16a34a' }}>
+                {stock.quantity.toLocaleString('fr-FR')}
+              </span>
               <span style={{
                 fontSize: 13, fontWeight: 700,
                 color: isEmpty ? '#dc2626' : isLow ? '#ef4444' : 'var(--encre-4)',
@@ -214,7 +196,7 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
                   textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3,
                 }}>Achat</div>
                 <div style={{ fontSize: 13, fontWeight: 900, color: '#EA580C', lineHeight: 1 }}>
-                  {(stock.purchasePrice || 0).toLocaleString('fr-FR')}
+                  {montantsMasques ? '•••••' : (stock.purchasePrice || 0).toLocaleString('fr-FR')}
                 </div>
                 <div style={{ fontSize: 8, fontWeight: 600, color: '#C2410C', opacity: 0.65, marginTop: 2 }}>
                   FCFA/{stock.unit}
@@ -229,7 +211,7 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
                   textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3,
                 }}>Vente</div>
                 <div style={{ fontSize: 13, fontWeight: 900, color: '#16A34A', lineHeight: 1 }}>
-                  {(stock.salePrice || 0).toLocaleString('fr-FR')}
+                  {montantsMasques ? '•••••' : (stock.salePrice || 0).toLocaleString('fr-FR')}
                 </div>
                 <div style={{ fontSize: 8, fontWeight: 600, color: '#15803D', opacity: 0.65, marginTop: 2 }}>
                   FCFA/{stock.unit}
@@ -249,7 +231,8 @@ export function GestionStock() {
   const { user } = useUser();
   const { showToast, ToastContainer } = useToast();
   const { products, addProduct, updateProduct, deleteProduct, refreshProducts } = useCaisse();
-  const { speak, setIsModalOpen } = useApp();
+  const { speak, setIsModalOpen, isOnline } = useApp();
+  const { montantsMasques, basculerMontants } = useMontantsPrives();
   // Retour vocal des ERREURS DE FORMULAIRE selon le profil (muet en 'lecture', où
   // le toast suffit). Les réponses aux COMMANDES VOCALES, elles, parlent toujours.
   const dire = (t: string) => { if (guidageVocal()) speak(t); };
@@ -403,6 +386,10 @@ export function GestionStock() {
         const low = stocks.filter(s => s.quantity < s.threshold);
         speak(low.length === 0 ? 'Tous tes stocks sont bons' : `${low.length} produits en stock bas : ${low.map(s => s.name).join(', ')}`);
       } else if (text.includes('valeur')) {
+        if (montantsMasques) {
+          speak("Tes montants sont cachés. Appuie sur l'œil pour les afficher.");
+          return;
+        }
         const val = stocks.reduce((s, p) => s + p.quantity * p.salePrice, 0);
         speak(`La valeur totale est ${val.toLocaleString('fr-FR')} francs`);
       }
@@ -612,6 +599,12 @@ export function GestionStock() {
       subtitle={`${stocks.length} produit${stocks.length > 1 ? 's' : ''} · ${lowStocks.length} alerte${lowStocks.length > 1 ? 's' : ''}`}
       rightContent={
         <div style={{ display: 'flex', gap: 7 }}>
+          <motion.button whileTap={{ scale: 0.9 }}
+            onClick={() => { if (!montantsMasques) setSortByMargin(false); basculerMontants(); }}
+            aria-label={montantsMasques ? 'Afficher les montants' : 'Cacher les montants'}
+            style={{ width:44, height:44, borderRadius:14, background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+            {montantsMasques ? <EyeOff size={19} color="white" /> : <Eye size={19} color="white" />}
+          </motion.button>
           {/* Alertes de stock : icône DÉLIBÉRÉMENT différente de la cloche
               Notifications (même icône que celle-ci ailleurs prêtait à
               confusion — audit accueil/tuiles). Alertes de rupture, distinct
@@ -631,11 +624,18 @@ export function GestionStock() {
     >
         <div style={{ padding:'14px 0 0' }}>
 
+          {!isOnline && (
+            <div role="status" style={{ marginBottom:12, background:'#FFF7ED', border:'1.5px solid #FDBA74', borderRadius:16, padding:'11px 12px', display:'flex', gap:10, alignItems:'flex-start' }}>
+              <WifiOff size={20} color="#C2410C" style={{ flexShrink:0, marginTop:1 }} />
+              <div style={{ fontSize:13, lineHeight:1.4, color:'#7C2D12' }}><strong>Hors connexion.</strong> Tu vois le stock gardé sur ce téléphone. Les changements seront confirmés quand le réseau revient.</div>
+            </div>
+          )}
+
           <KPIGrid cols={2}>
             <UniversalKPI label="Produits" animatedTarget={stocks.length} icon={Package} color="#2563eb" bgColor="rgba(239,246,255,0.9)" borderColor="rgba(59,130,246,0.35)" iconAnimation="bounce" onClick={() => setActiveKPI('all')} active={activeKPI==='all'} />
             <UniversalKPI label="Alertes" animatedTarget={lowStocks.length} icon={AlertCircle} color="#ea580c" bgColor="rgba(255,247,237,0.9)" borderColor="rgba(249,115,22,0.35)" iconAnimation="pulse" onClick={() => setActiveKPI(activeKPI==='alerts'?'all':'alerts')} active={activeKPI==='alerts'} />
-            <UniversalKPI label="Valeur stock" animatedTarget={totalValue} suffix="FCFA" icon={TrendingUp} color="#16a34a" bgColor="rgba(240,253,244,0.9)" borderColor="rgba(34,197,94,0.35)" iconAnimation="float" onClick={() => setShowValue(true)} />
-            <UniversalKPI label="Prix moyen" animatedTarget={stocks.length > 0 ? Math.round(totalValue / stocks.length) : 0} suffix="FCFA" icon={BarChart3} color="#9F8170" bgColor="rgba(249,244,240,0.9)" borderColor="rgba(159,129,112,0.35)" iconAnimation="float" />
+            <UniversalKPI label="Valeur stock" value={totalValue.toLocaleString('fr-FR')} masque={montantsMasques} suffix="FCFA" icon={TrendingUp} color="#16a34a" bgColor="rgba(240,253,244,0.9)" borderColor="rgba(34,197,94,0.35)" iconAnimation="none" onClick={() => setShowValue(true)} />
+            <UniversalKPI label="Prix moyen" value={(stocks.length > 0 ? Math.round(totalValue / stocks.length) : 0).toLocaleString('fr-FR')} masque={montantsMasques} suffix="FCFA" icon={BarChart3} color="#9F8170" bgColor="rgba(249,244,240,0.9)" borderColor="rgba(159,129,112,0.35)" iconAnimation="none" />
           </KPIGrid>
 
           {/* Raccourcis */}
@@ -677,11 +677,11 @@ export function GestionStock() {
                 {isListening ? <MicOff size={18} color={P} /> : <Mic size={18} color="#aaa" />}
               </motion.button>
             </div>
-            <motion.button whileTap={{ scale:0.95 }} onClick={() => setSortByMargin(!sortByMargin)}
+            {!montantsMasques && <motion.button whileTap={{ scale:0.95 }} onClick={() => setSortByMargin(!sortByMargin)}
               style={{ background:sortByMargin?P:'white', border:`1.5px solid ${sortByMargin?P:'#EDE7DE'}`, borderRadius:12, padding:'0 10px', display:'flex', alignItems:'center', gap:5, height:46, cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
               <TrendingUp size={13} color={sortByMargin?'white':P} />
               <span style={{ fontSize:11, fontWeight:700, color:sortByMargin?'white':P, whiteSpace:'nowrap' }}>Top marge</span>
-            </motion.button>
+            </motion.button>}
           </div>
 
           {/* Ajout PAR LA VOIX — la voie principale pour une non-lectrice.
@@ -713,6 +713,7 @@ export function GestionStock() {
               <SwipeableCard
                 key={stock.id}
                 stock={stock}
+                montantsMasques={montantsMasques}
                 onTap={() => {
                   setSelectedStock(stock);
                   setShowEdit(true);
@@ -1062,11 +1063,9 @@ export function GestionStock() {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </motion.button>
                       <div style={{ textAlign: 'center' }}>
-                        <AnimatedNumber
-                          value={selectedStock.quantity}
-                          color={selectedStock.quantity <= 0 ? '#dc2626' : selectedStock.quantity < selectedStock.threshold ? '#ef4444' : '#16a34a'}
-                          size={44}
-                        />
+                        <span style={{ fontSize:44, fontWeight:900, color:selectedStock.quantity <= 0 ? '#dc2626' : selectedStock.quantity < selectedStock.threshold ? '#ef4444' : '#16a34a' }}>
+                          {selectedStock.quantity.toLocaleString('fr-FR')}
+                        </span>
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre-4)', marginTop: 2 }}>{selectedStock.unit}</div>
                       </div>
                       <motion.button
@@ -1428,18 +1427,18 @@ export function GestionStock() {
                     ].map((k) => (
                       <div key={k.label} style={{ background:k.bg, borderRadius:14, padding:14, border:`1.5px solid ${k.color}33` }}>
                         <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>{k.label}</div>
-                        <Montant value={k.value} size="md" color={k.color} />
+                        <Montant value={k.value} size="md" color={k.color} masque={montantsMasques} />
                       </div>
                     ))}
                     <div style={{ background:'#FFF3EA', borderRadius:14, padding:14, border:`1.5px solid ${P}33` }}>
                       <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>Marge totale</div>
                       {margeConnue
-                        ? <Montant value={marge} size="md" color={P} />
+                        ? <Montant value={marge} size="md" color={P} masque={montantsMasques} />
                         : <div style={{ fontSize:22, fontWeight:900, color:'var(--encre-4)' }}>—</div>}
                     </div>
                     <div style={{ background:'#F5F0FF', borderRadius:14, padding:14, border:'1.5px solid #a78bfa33' }}>
                       <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>ROI</div>
-                      <div style={{ fontSize:22, fontWeight:900, color: margeConnue ? '#7c3aed' : 'var(--encre-4)' }}>{margeConnue ? `+${roi}%` : '—'}</div>
+                      <div style={{ fontSize:22, fontWeight:900, color: margeConnue ? '#7c3aed' : 'var(--encre-4)' }}>{montantsMasques ? '•••••' : (margeConnue ? `+${roi}%` : '—')}</div>
                     </div>
                   </div>
                   {!margeConnue && (
@@ -1458,7 +1457,7 @@ export function GestionStock() {
                             <div style={{ fontSize:11, color:'var(--encre-4)' }}>{p.quantity} {p.unit}</div>
                           </div>
                         </div>
-                        <Montant value={p.val} size="sm" color="#1D9E75" />
+                        <Montant value={p.val} size="sm" color="#1D9E75" masque={montantsMasques} />
                       </div>
                     ))}
                   </div>

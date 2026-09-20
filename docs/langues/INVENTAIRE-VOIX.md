@@ -8,25 +8,25 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **411** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 436 |
-| — littéraux (phrase fixe en dur) | 214 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **413** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 438 |
+| — littéraux (phrase fixe en dur) | 216 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 97 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
 | — relais (`dire = (t) => speak(t)`) | 17 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 38 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **264** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **266** |
 | Dont dynamiques (avec variables) | 97 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **67** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
 | Fichiers avec au moins un site d'appel | 78 |
-| Attributs `aria-label` (lecteur d'écran uniquement) | 280 — **hors parcours vocal**, voir §8 |
+| Attributs `aria-label` (lecteur d'écran uniquement) | 291 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
 
 | Fichier | Domaine | Appels | Littéraux | Gabarits | Dynamiques | Relais | Clés | Critiques argent |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| `components/marchand/GestionStock.tsx` | stock | 30 | 20 | 10 | 2 | 1 | 0 | 8 |
+| `components/marchand/GestionStock.tsx` | stock | 31 | 21 | 10 | 2 | 1 | 0 | 8 |
 | `components/producteur/CommandesProducteurPage.tsx` | producteur | 26 | 14 | 15 | 0 | 0 | 0 | 3 |
 | `components/marchand/POSCaisse.tsx` | caisse | 25 | 0 | 0 | 8 | 2 | 16 | 0 |
 | `components/producteur/Stocks.tsx` | stock | 23 | 11 | 12 | 0 | 0 | 0 | 1 |
@@ -67,13 +67,13 @@
 | `components/cooperative/Stock.tsx` | stock | 3 | 2 | 1 | 0 | 0 | 0 | 0 |
 | `components/cooperative/TresorerieCooperative.tsx` | cooperative | 3 | 2 | 1 | 0 | 0 | 0 | 2 |
 | `components/marchand/Fidelite.tsx` | marchand_autre | 3 | 1 | 2 | 0 | 0 | 0 | 2 |
+| `components/marchand/MarchandDepenses.tsx` | depense | 3 | 3 | 2 | 0 | 0 | 0 | 2 |
 | `components/producteur/RecolteForm.tsx` | producteur | 3 | 2 | 1 | 0 | 0 | 0 | 0 |
 | `components/shared/DocumentsCertificationsModalUniversal.tsx` | partage | 3 | 3 | 0 | 0 | 0 | 0 | 0 |
 | `components/shared/UniversalParametres.tsx` | marchand_autre | 3 | 3 | 0 | 0 | 0 | 0 | 0 |
 | `components/academy/UniversalAcademy.tsx` | academy | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `components/backoffice/BOLayout.tsx` | backoffice | 2 | 1 | 1 | 0 | 0 | 0 | 0 |
 | `components/backoffice/BOProfil.tsx` | backoffice | 2 | 1 | 0 | 0 | 1 | 0 | 0 |
-| `components/marchand/MarchandDepenses.tsx` | depense | 2 | 2 | 2 | 0 | 0 | 0 | 2 |
 | `components/marchand/TontineDetail.tsx` | marchand_autre | 2 | 3 | 0 | 0 | 0 | 0 | 0 |
 | `components/producteur/ProducteurAlertes.tsx` | producteur | 2 | 1 | 0 | 1 | 0 | 0 | 0 |
 | `components/producteur/ProducteurModals.tsx` | producteur | 2 | 2 | 0 | 0 | 0 | 0 | 0 |
@@ -110,7 +110,7 @@
 | Domaine | Appels | Phrases (littéraux + gabarits) | Critiques argent |
 |---|---:|---:|---:|
 | producteur | 71 | 71 | 6 |
-| stock | 56 | 56 | 9 |
+| stock | 57 | 57 | 9 |
 | marchand_autre | 50 | 46 | 20 |
 | auth | 39 | 27 | 0 |
 | partage | 37 | 24 | 0 |
@@ -119,8 +119,8 @@
 | caisse | 27 | 0 | 0 |
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 17 | 9 | 1 |
+| depense | 9 | 10 | 3 |
 | credit | 8 | 7 | 4 |
-| depense | 8 | 9 | 3 |
 | backoffice | 5 | 4 | 0 |
 | pages | 5 | 1 | 0 |
 | academy | 2 | 0 | 0 |
@@ -356,39 +356,40 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 255 | `speak` | relais | t |  |  |
-| 353 | `speak` | dynamique | nomPropre |  |  |
-| 355 | `speak` | literal | Je n'ai pas entendu le nom. Réessaie, s'il te plaît. |  |  |
-| 370 | `speak` | literal | Quel produit veux-tu ajouter ? |  |  |
-| 371 | `speak` | template | Combien de {nom} veux-tu ajouter ? | `nom` |  |
-| 381 | `speak` | template | {qte} {unit} de {name} ajoutés. Tu as maintenant {newQty} {unit}. | `qte` `unit` `name` `newQty` `unit` |  |
-| 382 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 395 | `speak` | template | C'est fait ! {qte} {unite} de {nom} à {prixVente} francs, ajoutés au stock. | `qte` `unite` `nom` `prixVente` | € |
-| 395 | `speak` | template | {nom} ajouté au stock. Dis-moi son prix quand tu veux. | `nom` | € |
-| 398 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 404 | `speak` | literal | Tous tes stocks sont bons |  |  |
-| 404 | `speak` | template | {low} produits en stock bas : {join} | `low` `join` |  |
-| 407 | `speak` | template | La valeur totale est {val} francs | `val` | € |
-| 466 | `dire` | literal | Saisis le nom du produit |  |  |
-| 467 | `dire` | literal | Le prix de vente n'est pas bon. Redis le prix. |  | € |
-| 468 | `speak` | literal | La quantité n'est pas bonne. |  |  |
-| 474 | `dire` | literal | Tu n'as pas mis le prix d'achat. On ne pourra pas calculer ton bénéfice. |  | € |
-| 480 | `speak` | template | {quantity} {unit} de {name} ajouté au stock | `quantity` `unit` `name` |  |
-| 486 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 495 | `speak` | literal | C'est mis à jour. |  |  |
-| 498 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 510 | `speak` | literal | Saisis une quantité valide |  | € |
-| 515 | `speak` | template | {reappNum} {unit} de {name} ajoutés. Stock à {newQty} {unit} | `reappNum` `unit` `name` `newQty` `unit` |  |
-| 544 | `speak` | template | {name} supprimé | `name` |  |
-| 552 | `speak` | literal | Ça n'a pas marché. Le produit n'est pas supprimé. |  |  |
-| 598 | `speak` | template | {name} mis à jour | `name` |  |
-| 602 | `speak` | literal | Ça n'a pas été enregistré. Réessaie, s'il te plaît. |  |  |
-| 819 | `speak` | dynamique | p.nom |  |  |
-| 860 | `dire` | literal | Nom du produit |  |  |
-| 897 | `dire` | literal | Prix de vente |  | € |
-| 904 | `dire` | literal | Plus de détails |  |  |
-| 904 | `dire` | literal | Moins de détails |  |  |
-| 912 | `dire` | literal | Prix d'achat, facultatif |  | € |
+| 238 | `speak` | relais | t |  |  |
+| 336 | `speak` | dynamique | nomPropre |  |  |
+| 338 | `speak` | literal | Je n'ai pas entendu le nom. Réessaie, s'il te plaît. |  |  |
+| 353 | `speak` | literal | Quel produit veux-tu ajouter ? |  |  |
+| 354 | `speak` | template | Combien de {nom} veux-tu ajouter ? | `nom` |  |
+| 364 | `speak` | template | {qte} {unit} de {name} ajoutés. Tu as maintenant {newQty} {unit}. | `qte` `unit` `name` `newQty` `unit` |  |
+| 365 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 378 | `speak` | template | C'est fait ! {qte} {unite} de {nom} à {prixVente} francs, ajoutés au stock. | `qte` `unite` `nom` `prixVente` | € |
+| 378 | `speak` | template | {nom} ajouté au stock. Dis-moi son prix quand tu veux. | `nom` | € |
+| 381 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 387 | `speak` | literal | Tous tes stocks sont bons |  |  |
+| 387 | `speak` | template | {low} produits en stock bas : {join} | `low` `join` |  |
+| 390 | `speak` | literal | Tes montants sont cachés. Appuie sur l'œil pour les afficher. |  |  |
+| 394 | `speak` | template | La valeur totale est {val} francs | `val` | € |
+| 453 | `dire` | literal | Saisis le nom du produit |  |  |
+| 454 | `dire` | literal | Le prix de vente n'est pas bon. Redis le prix. |  | € |
+| 455 | `speak` | literal | La quantité n'est pas bonne. |  |  |
+| 461 | `dire` | literal | Tu n'as pas mis le prix d'achat. On ne pourra pas calculer ton bénéfice. |  | € |
+| 467 | `speak` | template | {quantity} {unit} de {name} ajouté au stock | `quantity` `unit` `name` |  |
+| 473 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 482 | `speak` | literal | C'est mis à jour. |  |  |
+| 485 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 497 | `speak` | literal | Saisis une quantité valide |  | € |
+| 502 | `speak` | template | {reappNum} {unit} de {name} ajoutés. Stock à {newQty} {unit} | `reappNum` `unit` `name` `newQty` `unit` |  |
+| 531 | `speak` | template | {name} supprimé | `name` |  |
+| 539 | `speak` | literal | Ça n'a pas marché. Le produit n'est pas supprimé. |  |  |
+| 585 | `speak` | template | {name} mis à jour | `name` |  |
+| 589 | `speak` | literal | Ça n'a pas été enregistré. Réessaie, s'il te plaît. |  |  |
+| 820 | `speak` | dynamique | p.nom |  |  |
+| 861 | `dire` | literal | Nom du produit |  |  |
+| 898 | `dire` | literal | Prix de vente |  | € |
+| 905 | `dire` | literal | Plus de détails |  |  |
+| 905 | `dire` | literal | Moins de détails |  |  |
+| 913 | `dire` | literal | Prix d'achat, facultatif |  | € |
 
 ### `components/marchand/MaCooperative.tsx` — marchand_autre
 
@@ -410,16 +411,17 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 467 | `speak` | dynamique | texte |  |  |
+| 483 | `speak` | dynamique | texte |  |  |
 
 ### `components/marchand/MarchandDepenses.tsx` — depense
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 206 | `speak` | template | Aujourd'hui tu as dépensé {kpiToday} francs. | `kpiToday` | € |
-| 206 | `speak` | literal | Tu n'as pas encore de dépense aujourd'hui. |  |  |
-| 211 | `speak` | template | Aujourd'hui tu as dépensé {kpiToday} francs. | `kpiToday` | € |
-| 211 | `speak` | literal | Tu n'as pas encore de dépense aujourd'hui. |  |  |
+| 210 | `speak` | template | Aujourd'hui tu as dépensé {kpiToday} francs. | `kpiToday` | € |
+| 210 | `speak` | literal | Tu n'as pas encore de dépense aujourd'hui. |  |  |
+| 216 | `speak` | literal | Tes montants sont cachés. |  |  |
+| 217 | `speak` | template | Aujourd'hui tu as dépensé {kpiToday} francs. | `kpiToday` | € |
+| 217 | `speak` | literal | Tu n'as pas encore de dépense aujourd'hui. |  |  |
 
 ### `components/marchand/MarchandModals.tsx` — marchand_autre
 
@@ -836,7 +838,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 206 | `speak` | dynamique | `${label} : ${lu} ${suffixe}`.trim() |  |  |
+| 209 | `speak` | dynamique | `${label} : ${lu} ${suffixe}`.trim() |  |  |
 
 ### `components/wallet/RechargeWalletModal.tsx` — wallet
 
@@ -1127,183 +1129,183 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
-| 30 | literal | Premier accueil |  |
-| 30 | literal | Bonjour ma fille. Moi, c'est Tata Nanti Lou. Viens, je vais te montrer. |  |
-| 30 | literal | I ni sɔgɔma n'denmuso. N'tɔgɔ ye Tata Nanti Lou. Na yan, n'b'a yira i la. |  |
-| 31 | literal | Eh, ma fille ! Te voilà. On continue ? |  |
-| 31 | literal | Eh, n'denmuso ! I nana wa ? An b'a to yen ? |  |
-| 32 | literal | Présenter son aide |  |
-| 32 | literal | Chaque vente, tu la mets ici. Comme ça, tu n'oublies rien, et tes comptes sont là. |  |
-| 32 | literal | Feere o feere, i b'a bila yan. O la, i tɛ fɔyi ɲinɛ, i ka konte bɛɛ bɛ yan. |  |
-| 33 | literal | Bon, pour commencer, appuie ici. |  |
-| 33 | literal | Bon, walasa an ka daminɛ, a digi yan. |  |
-| 34 | literal | Demander le numéro |  |
-| 34 | literal | Mets ton numéro de téléphone ici. |  |
-| 34 | literal | I ka telefɔni nimɔrɔ, a bila yan. |  |
-| 35 | literal | Proposer la voix |  |
-| 35 | literal | Tu peux aussi me le dire. Appuie sur le micro d'abord. |  |
-| 35 | literal | I bise fana ka fɔ n'ye. A digi mikoro kan fɔlɔ. |  |
-| 36 | literal | Expliquer la dictée |  |
-| 36 | literal | Dis les chiffres doucement doucement, un par un. |  |
-| 36 | literal | Nimɔrɔw fɔ dɔɔnin dɔɔnin, kelen kelen. |  |
-| 37 | literal | Écouter le numéro saisi |  |
-| 37 | literal | Tu veux réécouter ? Appuie ici. |  |
-| 37 | literal | I b'a fɛ k'a mɛn tugun wa ? A digi yan. |  |
-| 38 | literal | C'est bien ton numéro ? Appuie ici pour continuer. |  |
-| 38 | literal | I ka nimɔrɔ yɛrɛ le do wa ? A digi yan walasa k'a to yen. |  |
-| 39 | literal | Tu t'es trompée ? C'est rien, y'a pas problème. Appuie ici pour effacer. |  |
-| 39 | literal | I filila wa ? Gɛlɛya t'a la. A digi yan k'a josi. |  |
-| 40 | literal | Numéro incomplet |  |
-| 40 | literal | Il manque encore des chiffres. Continue. |  |
-| 40 | literal | Dɔ b'a la fɔlɔ. Fɔ ka t'a la. |  |
-| 41 | literal | Numéro invalide |  |
-| 41 | literal | Regarde bien, il y a un chiffre qui ne va pas. |  |
-| 41 | literal | A filɛ ka ɲa, nimɔrɔ dɔ ma sɔrɔ ka ɲa. |  |
-| 42 | literal | Dictée mal comprise |  |
-| 42 | literal | Je n'ai pas bien entendu. Redis-le, doucement. |  |
-| 42 | literal | N'ma mɛn ka ɲa. A fɔ tugun, dɔɔnin dɔɔnin. |  |
-| 43 | literal | Proposer le clavier |  |
-| 43 | literal | Si tu veux, tape ton numéro ici. |  |
-| 43 | literal | Ni a ka di i ye, i ka nimɔrɔ sɛbɛn yan. |  |
-| 44 | literal | Autorisation du micro |  |
-| 44 | literal | Pour que je t'entende, appuie sur Autoriser. |  |
-| 44 | literal | Walasa n'ka i kan mɛn, a digi Autoriser kan. |  |
-| 45 | literal | Micro indisponible |  |
-| 45 | literal | Le micro ne marche pas là. Tape ton numéro ici. |  |
-| 45 | literal | Mikoro tɛ baara kɛra sisan. I ka nimɔrɔ sɛbɛn yan. |  |
-| 46 | literal | Micro disponible |  |
-| 46 | literal | C'est bon. Appuie sur le micro, et parle. |  |
-| 46 | literal | A bɛna. A digi mikoro kan, k'i kuma. |  |
-| 47 | literal | Attends un peu, je regarde. |  |
-| 47 | literal | Mɔgɔni kɔn dɔɔnin, n'b'a filɛ. |  |
-| 48 | literal | Code en chiffres |  |
-| 48 | literal | Bon, mets les quatre chiffres de ton code. |  |
-| 48 | literal | Bon, i ka kɔdi nimɔrɔ naani bila yan. |  |
-| 49 | literal | Code en images |  |
-| 49 | literal | Appuie sur tes quatre images, une par une, dans l'ordre. |  |
-| 49 | literal | I ka ja naani digi, kelen kelen, cogo min na u bɛ ɲɔgɔn kɔ. |  |
-| 50 | literal | Passage aux images |  |
-| 50 | literal | Voilà les images à la place des chiffres. Ton code n'a pas changé. |  |
-| 50 | literal | Ja le bɛ yan sisan nimɔrɔw nɔrɔ la. I ka kɔdi ma yɛlɛma. |  |
-| 51 | literal | Retour aux chiffres |  |
-| 51 | literal | Et voilà les chiffres. Mets ton code comme avant. |  |
-| 51 | literal | Nimɔrɔw nana tugun. I ka kɔdi bila i n'a fɔ kɔrɔlen. |  |
-| 52 | literal | Ton code, c'est pour toi seule. Faut pas le dire à quelqu'un. |  |
-| 52 | literal | I ka kɔdi, i kelenpe ta le. Kana fɔ mɔgɔ si ye. |  |
-| 53 | literal | C'est effacé. |  |
-| 53 | literal | A josila. |  |
-| 54 | literal | Entrer avec le téléphone |  |
-| 54 | literal | Appuie ici. Ton téléphone va te dire quoi faire. |  |
-| 54 | literal | A digi yan. I ka telefɔni bɛna a fɔ i ye k'i ka min kɛ. |  |
-| 55 | literal | Reconnaissance échouée |  |
-| 55 | literal | Ça n'a pas marché. On fait avec ton code. |  |
-| 55 | literal | A ma taga. An b'a kɛ n'i ka kɔdi ye. |  |
-| 56 | literal | Autre personne sur le téléphone |  |
-| 56 | literal | Ce n'est pas toi ? Y'a pas problème, appuie ici pour mettre ton numéro. |  |
-| 56 | literal | E tɛ wa ? Gɛlɛya t'a la, a digi yan k'i ka nimɔrɔ bila. |  |
-| 57 | literal | Numéro ou code incorrect |  |
-| 57 | literal | Le numéro ou le code n'est pas bon. Regarde bien pour reprendre. |  |
-| 57 | literal | Nimɔrɔ walima kɔdi man ɲi. A filɛ ka ɲa ka kɔsegi a la. |  |
-| 58 | literal | Dernier essai |  |
-| 58 | literal | Attention, il te reste un seul essai. Prends ton temps. |  |
-| 58 | literal | Kɔlɔsi, kelenpe dɔrɔn le tora i bolo. I kanto i yɛrɛ la. |  |
-| 59 | literal | Trop de tentatives |  |
-| 59 | literal | Tu as essayé trop de fois. Attends un peu avant de reprendre. |  |
-| 59 | literal | I y'a ɲini siɲɛ caaman kojugu. Makɔnni dɔɔnin sanni k'a daminɛ tugun. |  |
-| 60 | literal | Accès bloqué |  |
-| 60 | literal | Ma fille, là c'est bloqué. Faut voir ton agent pour t'aider. |  |
-| 60 | literal | N'denmuso, sira datugura sisan. Taga i ka azan filɛ, a bɛna i dɛmɛ. |  |
-| 61 | literal | Connexion impossible |  |
-| 61 | literal | Eh, ça ne passe pas là. Réessaie dans un petit moment. |  |
-| 61 | literal | Eh, a tɛ tagara dɛ. Kɔsegi a la dɔɔnin kɔfɛ. |  |
-| 62 | literal | Nouvelle tentative automatique |  |
-| 62 | literal | Ça prend un peu de temps. Patiente, je réessaie. |  |
-| 62 | literal | A bɛ waati dɔɔnin ta. Sabali dɔɔnin, n'bɛ kɔsegi a la. |  |
-| 63 | literal | Changement de code |  |
-| 63 | literal | Maintenant, choisis ton propre code. C'est pour toi seule. |  |
-| 63 | literal | Sisan, i yɛrɛ ka kɔdi sugandi. I kelenpe ta le. |  |
-| 64 | literal | Choix enregistré |  |
-| 64 | literal | D'accord, on va faire comme ça. |  |
-| 64 | literal | Ayiwa, an b'a kɛ ten. |  |
-| 65 | literal | Choix conservé |  |
-| 65 | literal | D'accord, on continue comme avant. |  |
-| 65 | literal | Ayiwa, an b'a to ten i n'a fɔ kɔrɔlen. |  |
-| 66 | literal | Fin de l'accueil |  |
-| 66 | literal | Voilà, ma fille. On y va ! |  |
-| 66 | literal | A banna, n'denmuso. An ka taga ! |  |
-| 69 | literal | Chiffre 0 |  |
-| 70 | literal | Chiffre 1 |  |
-| 71 | literal | Chiffre 2 |  |
-| 72 | literal | Chiffre 3 |  |
-| 73 | literal | Chiffre 4 |  |
-| 74 | literal | Chiffre 5 |  |
-| 75 | literal | Chiffre 6 |  |
-| 76 | literal | Chiffre 7 |  |
-| 77 | literal | Chiffre 8 |  |
-| 78 | literal | Chiffre 9 |  |
-| 81 | literal | Phrase d'attente |  |
-| 81 | literal | Je réfléchis... |  |
-| 81 | literal | N'b'a kɔlɔsi dɔɔnin... |  |
-| 82 | literal | Phrase d'attente |  |
-| 82 | literal | Un instant... |  |
-| 82 | literal | Sabali dɔɔnin... |  |
+| 32 | literal | Premier accueil |  |
+| 32 | literal | Bonjour ma fille. Moi, c'est Tantie Nanti Lou. Viens, je vais te montrer. |  |
+| 32 | literal | I ni sɔgɔma n'denmuso. N'tɔgɔ ye Tantie Nanti Lou. Na yan, n'b'a yira i la. |  |
+| 33 | literal | Eh, ma fille ! Te voilà. On continue ? |  |
+| 33 | literal | Eh, n'denmuso ! I nana wa ? An b'a to yen ? |  |
+| 34 | literal | Présenter son aide |  |
+| 34 | literal | Chaque vente, tu la mets ici. Comme ça, tu n'oublies rien, et tes comptes sont là. |  |
+| 34 | literal | Feere o feere, i b'a bila yan. O la, i tɛ fɔyi ɲinɛ, i ka konte bɛɛ bɛ yan. |  |
+| 35 | literal | Bon, pour commencer, appuie ici. |  |
+| 35 | literal | Bon, walasa an ka daminɛ, a digi yan. |  |
+| 36 | literal | Demander le numéro |  |
+| 36 | literal | Mets ton numéro de téléphone ici. |  |
+| 36 | literal | I ka telefɔni nimɔrɔ, a bila yan. |  |
+| 37 | literal | Proposer la voix |  |
+| 37 | literal | Tu peux aussi me le dire. Appuie sur le micro d'abord. |  |
+| 37 | literal | I bise fana ka fɔ n'ye. A digi mikoro kan fɔlɔ. |  |
+| 38 | literal | Expliquer la dictée |  |
+| 38 | literal | Dis les chiffres doucement doucement, un par un. |  |
+| 38 | literal | Nimɔrɔw fɔ dɔɔnin dɔɔnin, kelen kelen. |  |
+| 39 | literal | Écouter le numéro saisi |  |
+| 39 | literal | Tu veux réécouter ? Appuie ici. |  |
+| 39 | literal | I b'a fɛ k'a mɛn tugun wa ? A digi yan. |  |
+| 40 | literal | C'est bien ton numéro ? Appuie ici pour continuer. |  |
+| 40 | literal | I ka nimɔrɔ yɛrɛ le do wa ? A digi yan walasa k'a to yen. |  |
+| 41 | literal | Tu t'es trompée ? C'est rien, y'a pas problème. Appuie ici pour effacer. |  |
+| 41 | literal | I filila wa ? Gɛlɛya t'a la. A digi yan k'a josi. |  |
+| 42 | literal | Numéro incomplet |  |
+| 42 | literal | Il manque encore des chiffres. Continue. |  |
+| 42 | literal | Dɔ b'a la fɔlɔ. Fɔ ka t'a la. |  |
+| 43 | literal | Numéro invalide |  |
+| 43 | literal | Regarde bien, il y a un chiffre qui ne va pas. |  |
+| 43 | literal | A filɛ ka ɲa, nimɔrɔ dɔ ma sɔrɔ ka ɲa. |  |
+| 44 | literal | Dictée mal comprise |  |
+| 44 | literal | Je n'ai pas bien entendu. Redis-le, doucement. |  |
+| 44 | literal | N'ma mɛn ka ɲa. A fɔ tugun, dɔɔnin dɔɔnin. |  |
+| 45 | literal | Proposer le clavier |  |
+| 45 | literal | Si tu veux, tape ton numéro ici. |  |
+| 45 | literal | Ni a ka di i ye, i ka nimɔrɔ sɛbɛn yan. |  |
+| 46 | literal | Autorisation du micro |  |
+| 46 | literal | Pour que je t'entende, appuie sur Autoriser. |  |
+| 46 | literal | Walasa n'ka i kan mɛn, a digi Autoriser kan. |  |
+| 47 | literal | Micro indisponible |  |
+| 47 | literal | Le micro ne marche pas là. Tape ton numéro ici. |  |
+| 47 | literal | Mikoro tɛ baara kɛra sisan. I ka nimɔrɔ sɛbɛn yan. |  |
+| 48 | literal | Micro disponible |  |
+| 48 | literal | C'est bon. Appuie sur le micro, et parle. |  |
+| 48 | literal | A bɛna. A digi mikoro kan, k'i kuma. |  |
+| 49 | literal | Attends un peu, je regarde. |  |
+| 49 | literal | Mɔgɔni kɔn dɔɔnin, n'b'a filɛ. |  |
+| 50 | literal | Code en chiffres |  |
+| 50 | literal | Bon, mets les quatre chiffres de ton code. |  |
+| 50 | literal | Bon, i ka kɔdi nimɔrɔ naani bila yan. |  |
+| 51 | literal | Code en images |  |
+| 51 | literal | Appuie sur tes quatre images, une par une, dans l'ordre. |  |
+| 51 | literal | I ka ja naani digi, kelen kelen, cogo min na u bɛ ɲɔgɔn kɔ. |  |
+| 52 | literal | Passage aux images |  |
+| 52 | literal | Voilà les images à la place des chiffres. Ton code n'a pas changé. |  |
+| 52 | literal | Ja le bɛ yan sisan nimɔrɔw nɔrɔ la. I ka kɔdi ma yɛlɛma. |  |
+| 53 | literal | Retour aux chiffres |  |
+| 53 | literal | Et voilà les chiffres. Mets ton code comme avant. |  |
+| 53 | literal | Nimɔrɔw nana tugun. I ka kɔdi bila i n'a fɔ kɔrɔlen. |  |
+| 54 | literal | Ton code, c'est pour toi seule. Faut pas le dire à quelqu'un. |  |
+| 54 | literal | I ka kɔdi, i kelenpe ta le. Kana fɔ mɔgɔ si ye. |  |
+| 55 | literal | C'est effacé. |  |
+| 55 | literal | A josila. |  |
+| 56 | literal | Entrer avec le téléphone |  |
+| 56 | literal | Appuie ici. Ton téléphone va te dire quoi faire. |  |
+| 56 | literal | A digi yan. I ka telefɔni bɛna a fɔ i ye k'i ka min kɛ. |  |
+| 57 | literal | Reconnaissance échouée |  |
+| 57 | literal | Ça n'a pas marché. On fait avec ton code. |  |
+| 57 | literal | A ma taga. An b'a kɛ n'i ka kɔdi ye. |  |
+| 58 | literal | Autre personne sur le téléphone |  |
+| 58 | literal | Ce n'est pas toi ? Y'a pas problème, appuie ici pour mettre ton numéro. |  |
+| 58 | literal | E tɛ wa ? Gɛlɛya t'a la, a digi yan k'i ka nimɔrɔ bila. |  |
+| 59 | literal | Numéro ou code incorrect |  |
+| 59 | literal | Le numéro ou le code n'est pas bon. Regarde bien pour reprendre. |  |
+| 59 | literal | Nimɔrɔ walima kɔdi man ɲi. A filɛ ka ɲa ka kɔsegi a la. |  |
+| 60 | literal | Dernier essai |  |
+| 60 | literal | Attention, il te reste un seul essai. Prends ton temps. |  |
+| 60 | literal | Kɔlɔsi, kelenpe dɔrɔn le tora i bolo. I kanto i yɛrɛ la. |  |
+| 61 | literal | Trop de tentatives |  |
+| 61 | literal | Tu as essayé trop de fois. Attends un peu avant de reprendre. |  |
+| 61 | literal | I y'a ɲini siɲɛ caaman kojugu. Makɔnni dɔɔnin sanni k'a daminɛ tugun. |  |
+| 62 | literal | Accès bloqué |  |
+| 62 | literal | Ma fille, là c'est bloqué. Faut voir ton agent pour t'aider. |  |
+| 62 | literal | N'denmuso, sira datugura sisan. Taga i ka azan filɛ, a bɛna i dɛmɛ. |  |
+| 63 | literal | Connexion impossible |  |
+| 63 | literal | Eh, ça ne passe pas là. Réessaie dans un petit moment. |  |
+| 63 | literal | Eh, a tɛ tagara dɛ. Kɔsegi a la dɔɔnin kɔfɛ. |  |
+| 64 | literal | Nouvelle tentative automatique |  |
+| 64 | literal | Ça prend un peu de temps. Patiente, je réessaie. |  |
+| 64 | literal | A bɛ waati dɔɔnin ta. Sabali dɔɔnin, n'bɛ kɔsegi a la. |  |
+| 65 | literal | Changement de code |  |
+| 65 | literal | Maintenant, choisis ton propre code. C'est pour toi seule. |  |
+| 65 | literal | Sisan, i yɛrɛ ka kɔdi sugandi. I kelenpe ta le. |  |
+| 66 | literal | Choix enregistré |  |
+| 66 | literal | D'accord, on va faire comme ça. |  |
+| 66 | literal | Ayiwa, an b'a kɛ ten. |  |
+| 67 | literal | Choix conservé |  |
+| 67 | literal | D'accord, on continue comme avant. |  |
+| 67 | literal | Ayiwa, an b'a to ten i n'a fɔ kɔrɔlen. |  |
+| 68 | literal | Fin de l'accueil |  |
+| 68 | literal | Voilà, ma fille. On y va ! |  |
+| 68 | literal | A banna, n'denmuso. An ka taga ! |  |
+| 71 | literal | Chiffre 0 |  |
+| 72 | literal | Chiffre 1 |  |
+| 73 | literal | Chiffre 2 |  |
+| 74 | literal | Chiffre 3 |  |
+| 75 | literal | Chiffre 4 |  |
+| 76 | literal | Chiffre 5 |  |
+| 77 | literal | Chiffre 6 |  |
+| 78 | literal | Chiffre 7 |  |
+| 79 | literal | Chiffre 8 |  |
+| 80 | literal | Chiffre 9 |  |
 | 83 | literal | Phrase d'attente |  |
-| 83 | literal | Je vois ça... |  |
-| 83 | literal | N'b'a lajɛra... |  |
+| 83 | literal | Je réfléchis... |  |
+| 83 | literal | N'b'a kɔlɔsi dɔɔnin... |  |
 | 84 | literal | Phrase d'attente |  |
-| 84 | literal | Je m'en occupe... |  |
-| 84 | literal | N'bɛ baara kɛ a la... |  |
-| 85 | literal | Phrase d'attente calcul |  |
-| 85 | literal | Je calcule ça... |  |
-| 85 | literal | N'b'a jatebɔ la... |  |
-| 86 | literal | Phrase d'attente vente |  |
-| 86 | literal | Je note ta vente... |  |
-| 86 | literal | N'bɛ i ka feere sɛbɛn... |  |
-| 87 | literal | Phrase d'attente réessai |  |
-| 87 | literal | Laisse-moi réessayer... |  |
-| 87 | literal | A to n'ka kɔsegi a la... |  |
-| 88 | literal | Accusé réception |  |
-| 88 | literal | C'est fait ! |  |
-| 88 | literal | A banna ! |  |
-| 89 | literal | Accusé réception |  |
-| 89 | literal | Bien reçu ! |  |
-| 89 | literal | A mɛnna ka ɲa ! |  |
+| 84 | literal | Un instant... |  |
+| 84 | literal | Sabali dɔɔnin... |  |
+| 85 | literal | Phrase d'attente |  |
+| 85 | literal | Je vois ça... |  |
+| 85 | literal | N'b'a lajɛra... |  |
+| 86 | literal | Phrase d'attente |  |
+| 86 | literal | Je m'en occupe... |  |
+| 86 | literal | N'bɛ baara kɛ a la... |  |
+| 87 | literal | Phrase d'attente calcul |  |
+| 87 | literal | Je calcule ça... |  |
+| 87 | literal | N'b'a jatebɔ la... |  |
+| 88 | literal | Phrase d'attente vente |  |
+| 88 | literal | Je note ta vente... |  |
+| 88 | literal | N'bɛ i ka feere sɛbɛn... |  |
+| 89 | literal | Phrase d'attente réessai |  |
+| 89 | literal | Laisse-moi réessayer... |  |
+| 89 | literal | A to n'ka kɔsegi a la... |  |
 | 90 | literal | Accusé réception |  |
-| 90 | literal | Je note ça ! |  |
-| 90 | literal | N'b'a sɛbɛn ! |  |
+| 90 | literal | C'est fait ! |  |
+| 90 | literal | A banna ! |  |
 | 91 | literal | Accusé réception |  |
-| 91 | literal | C'est noté ! |  |
-| 91 | literal | A sɛbɛnna ! |  |
+| 91 | literal | Bien reçu ! |  |
+| 91 | literal | A mɛnna ka ɲa ! |  |
 | 92 | literal | Accusé réception |  |
-| 92 | literal | C'est enregistré ! |  |
-| 92 | literal | A bilala ka ɲa ! |  |
-| 93 | literal | Validation vente finale |  |
-| 93 | literal | C'est noté, ta vente est bien enregistrée. |  |
-| 93 | literal | A banna, i ka feere bilala ka ɲa. |  |
-| 94 | literal | Annulation vente |  |
-| 94 | literal | D'accord, j'annule. Pas de souci. |  |
-| 94 | literal | Ayiwa, n'b'a to yen. Gɛlɛya t'a la. |  |
-| 95 | literal | Non compris |  |
-| 95 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
-| 95 | literal | N'ma a faamu ka ɲa. A fɔ n'ye kokura, sabali. |  |
-| 96 | literal | Rien entendu |  |
-| 96 | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |
-| 96 | literal | N'ma foyi mɛn. Kɔsegi a la, i kan kɔrɔta dɔɔnin. |  |
-| 97 | literal | Choix confirmation ambigu |  |
-| 97 | literal | Dis oui pour valider, ou non pour annuler. |  |
-| 97 | literal | A fɔ 'Awo' walasa k'a sɔn, walima 'Ayi' walasa k'a dabila. |  |
-| 98 | literal | Rappel écran |  |
-| 98 | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |
-| 98 | literal | A digi 'Awo' walima 'Ayi' kan ekran na, sabali. |  |
-| 99 | literal | Préparation moteur |  |
-| 99 | literal | Je prépare ta voix, un petit instant. |  |
-| 99 | literal | N'bɛ kan labɛnna, makɔnni dɔɔnin. |  |
-| 100 | literal | Erreur réseau moteur |  |
-| 100 | literal | Je n'ai pas réussi à préparer ta voix. Vérifie le réseau et réessaie. |  |
-| 100 | literal | N'ma se ka kan labɛn. Reso lajɛ ka kɔsegi a la. |  |
-| 104 | literal | Connexion (accueil, numéro, code) |  |
-| 105 | literal | Chiffres isolés (0 à 9) |  |
-| 106 | literal | Pipeline vocal — attentes et accusés fréquents |  |
+| 92 | literal | Je note ça ! |  |
+| 92 | literal | N'b'a sɛbɛn ! |  |
+| 93 | literal | Accusé réception |  |
+| 93 | literal | C'est noté ! |  |
+| 93 | literal | A sɛbɛnna ! |  |
+| 94 | literal | Accusé réception |  |
+| 94 | literal | C'est enregistré ! |  |
+| 94 | literal | A bilala ka ɲa ! |  |
+| 95 | literal | Validation vente finale |  |
+| 95 | literal | C'est noté, ta vente est bien enregistrée. |  |
+| 95 | literal | A banna, i ka feere bilala ka ɲa. |  |
+| 96 | literal | Annulation vente |  |
+| 96 | literal | D'accord, j'annule. Pas de souci. |  |
+| 96 | literal | Ayiwa, n'b'a to yen. Gɛlɛya t'a la. |  |
+| 97 | literal | Non compris |  |
+| 97 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
+| 97 | literal | N'ma a faamu ka ɲa. A fɔ n'ye kokura, sabali. |  |
+| 98 | literal | Rien entendu |  |
+| 98 | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |
+| 98 | literal | N'ma foyi mɛn. Kɔsegi a la, i kan kɔrɔta dɔɔnin. |  |
+| 99 | literal | Choix confirmation ambigu |  |
+| 99 | literal | Dis oui pour valider, ou non pour annuler. |  |
+| 99 | literal | A fɔ 'Awo' walasa k'a sɔn, walima 'Ayi' walasa k'a dabila. |  |
+| 100 | literal | Rappel écran |  |
+| 100 | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |
+| 100 | literal | A digi 'Awo' walima 'Ayi' kan ekran na, sabali. |  |
+| 101 | literal | Préparation moteur |  |
+| 101 | literal | Je prépare ta voix, un petit instant. |  |
+| 101 | literal | N'bɛ kan labɛnna, makɔnni dɔɔnin. |  |
+| 102 | literal | Erreur réseau moteur |  |
+| 102 | literal | Je n'ai pas réussi à préparer ta voix. Vérifie le réseau et réessaie. |  |
+| 102 | literal | N'ma se ka kan labɛn. Reso lajɛ ka kɔsegi a la. |  |
+| 106 | literal | Connexion (accueil, numéro, code) |  |
+| 107 | literal | Chiffres isolés (0 à 9) |  |
+| 108 | literal | Pipeline vocal — attentes et accusés fréquents |  |
 
 ### `hooks/useVoiceCore.ts` — moteur vocal : attentes, accusés, erreurs, confirmations locales (53)
 
@@ -1542,7 +1544,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 ## 8. Ce qui n'est PAS dans le parcours vocal (et pourquoi)
 
-- **`aria-label` (280)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
+- **`aria-label` (291)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
 - **Toasts** (`toast.success(…)`) et libellés d'écran : affichés, jamais dits. Hors inventaire vocal.
 - **`texteDyu`** de `loginVoiceScript.ts` : traduction dioula de travail, NON validée (le fichier le dit). Elle n'est ni activée ni reprise : Manus tranche.
 
