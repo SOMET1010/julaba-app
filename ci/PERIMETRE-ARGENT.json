@@ -168,7 +168,7 @@
     },
     {
       "symbole": "caisseTheorique",
-      "zone": "api-caisse",
+      "zone": "calcul-financier",
       "argent": "Ce que la caisse DEVRAIT contenir : la référence contre laquelle on compte les billets le soir."
     },
     {
@@ -206,6 +206,21 @@
       "symbole": "decomposerMonnaie",
       "zone": "calcul-financier",
       "argent": "Le rendu de monnaie annoncé à la cliente ; une erreur ici se voit à la main, pas à l'écran."
+    },
+    {
+      "symbole": "beneficeDepuisDetails",
+      "zone": "calcul-financier",
+      "argent": "La marge d'une vente, recalculée depuis ses lignes : c'est le bénéfice annoncé à la marchande."
+    },
+    {
+      "symbole": "venteComptee",
+      "zone": "calcul-financier",
+      "argent": "Ce qui décide qu'une ligne entre dans le chiffre ; une annulée comptée est de l'argent inventé."
+    },
+    {
+      "symbole": "resumeVentes",
+      "zone": "calcul-financier",
+      "argent": "L'agrégat du jour lu sur le téléphone : total encaissé, nombre de ventes, panier moyen."
     },
     {
       "symbole": "nature_caisse",
@@ -430,7 +445,7 @@
     },
     "backend/src/caisse-rest/caisse-rest.controller.ts": {
       "zones": [
-        "api-caisse",
+        "calcul-financier",
         "enregistrement-vente",
         "idempotence",
         "paiement",
@@ -474,6 +489,7 @@
     "backend/src/caisse-rest/encaisser-credit.ts": {
       "zones": [
         "api-caisse",
+        "calcul-financier",
         "enregistrement-vente",
         "idempotence",
         "paiement"
@@ -481,16 +497,19 @@
       "symboles": [
         "caisseTheorique",
         "caisse_transactions",
+        "encaisser-credit",
         "idempotency_key",
         "mode_paiement"
       ]
     },
     "backend/src/caisse-rest/rapport-hebdo.controller.ts": {
       "zones": [
+        "calcul-financier",
         "enregistrement-vente"
       ],
       "symboles": [
-        "caisse_transactions"
+        "caisse_transactions",
+        "venteComptee"
       ]
     },
     "backend/src/caisse-rest/stock-restitution.ts": {
@@ -914,6 +933,7 @@
       "zones": [
         "api-caisse",
         "caisse-context",
+        "calcul-financier",
         "enregistrement-vente",
         "paiement"
       ],
@@ -922,7 +942,9 @@
         "annulerVente",
         "caisse-api",
         "marquerCreditPaye",
-        "mode_paiement"
+        "mode_paiement",
+        "resumeVentes",
+        "venteComptee"
       ]
     },
     "frontend_src/src/app/components/shared/UniversalProfil.tsx": {
@@ -953,21 +975,25 @@
       "zones": [
         "api-caisse",
         "caisse-context",
+        "calcul-financier",
         "offline-synchronisation",
         "paiement"
       ],
       "symboles": [
         "CaisseContext",
+        "beneficeDepuisDetails",
         "caisse-api",
         "caisseTheorique",
         "mode_paiement",
-        "offlineCaisse"
+        "offlineCaisse",
+        "venteComptee"
       ]
     },
     "frontend_src/src/app/contexts/CaisseContext.tsx": {
       "zones": [
         "api-caisse",
         "caisse-context",
+        "calcul-financier",
         "enregistrement-vente",
         "idempotence",
         "offline-synchronisation",
@@ -975,6 +1001,7 @@
       ],
       "symboles": [
         "CaisseContext",
+        "beneficeDepuisDetails",
         "caisse-api",
         "enregistrerDepense",
         "enregistrerVente",
@@ -1045,6 +1072,7 @@
         "local-intent"
       ],
       "symboles": [
+        "detectIntent",
         "localIntent"
       ]
     },
@@ -1084,6 +1112,7 @@
         "CaisseContext",
         "ajouterAcompte",
         "annulerVente",
+        "caisse-api",
         "creerCredit",
         "enregistrerDepense",
         "enregistrerVente",
@@ -1138,7 +1167,16 @@
         "EvenementEncaissement",
         "empreintePanier",
         "handlePay",
+        "machineEncaissement",
         "phraseRelecture"
+      ]
+    },
+    "frontend_src/src/app/services/margeVente.ts": {
+      "zones": [
+        "calcul-financier"
+      ],
+      "symboles": [
+        "beneficeDepuisDetails"
       ]
     },
     "frontend_src/src/app/services/prixVocal.ts": {
@@ -1158,6 +1196,15 @@
       "symboles": [
         "EtatEncaissement",
         "phraseRelecture"
+      ]
+    },
+    "frontend_src/src/app/services/statsVente.ts": {
+      "zones": [
+        "calcul-financier"
+      ],
+      "symboles": [
+        "resumeVentes",
+        "venteComptee"
       ]
     },
     "frontend_src/src/app/services/tataMarchandActions.ts": {
@@ -1220,6 +1267,7 @@
       ],
       "symboles": [
         "detecterEncaissement",
+        "grammaireEncaissement",
         "machineEncaissement"
       ]
     },
@@ -1233,21 +1281,25 @@
     },
     "frontend_src/src/app/voice-offline/localIntent.ts": {
       "zones": [
-        "grammaire-intention-financiere"
+        "grammaire-intention-financiere",
+        "local-intent"
       ],
       "symboles": [
         "detecterEncaissement",
-        "grammaireEncaissement"
+        "grammaireEncaissement",
+        "localIntent"
       ]
     },
     "frontend_src/src/app/voice-offline/offlineCaisse.ts": {
       "zones": [
         "idempotence",
+        "offline-synchronisation",
         "paiement"
       ],
       "symboles": [
         "idempotency_key",
-        "mode_paiement"
+        "mode_paiement",
+        "offlineCaisse"
       ]
     }
   },

@@ -408,14 +408,21 @@ function noyauCalcule(perimetre, gardes) {
   const absents = perimetre.symboles.filter((s) => s.statut === 'absent');
   for (const f of fichiers) {
     if (exclus.has(f)) continue;
+    // Le symbole est cherché dans le CONTENU **et dans le CHEMIN**. Sans le
+    // chemin, `voice-offline/localIntent.ts` n'entrerait pas dans sa propre
+    // zone : un module ne se nomme pas lui-même dans son corps. Un symbole
+    // comme `caisse-api`, `encaisser-credit` ou `vente-stock` EST un nom de
+    // module — le chercher ailleurs que dans le chemin n'aurait pas de sens.
     const texte = readFileSync(join(RACINE, f), 'utf8');
-    const symboles = vivants.filter((s) => texte.includes(s.symbole)).map((s) => s.symbole);
+    const porte = (s) => texte.includes(s.symbole) || f.includes(s.symbole);
+    const symboles = vivants.filter(porte).map((s) => s.symbole);
     if (!symboles.length) continue;
     const zones = [...new Set(vivants.filter((s) => symboles.includes(s.symbole)).map((s) => s.zone))].sort();
     noyau[f] = { zones, symboles: symboles.sort() };
   }
   for (const s of absents) {
-    const porteurs = fichiers.filter((f) => !exclus.has(f) && readFileSync(join(RACINE, f), 'utf8').includes(s.symbole));
+    const porteurs = fichiers.filter((f) => !exclus.has(f)
+      && (f.includes(s.symbole) || readFileSync(join(RACINE, f), 'utf8').includes(s.symbole)));
     if (porteurs.length) fantomes.push({ symbole: s.symbole, porteurs });
   }
   const ordonne = {};
