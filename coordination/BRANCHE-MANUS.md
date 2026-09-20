@@ -7,7 +7,7 @@
 
 ## Point de contrôle — 20 septembre 2026
 
-La branche Manus a intégré explicitement `claude/clever-allen-dnr8by@af108bb`, puis ajouté le commit autonome `ad9ca89` : **une vente ou une dépense gardée dans la file hors ligne n'est plus annoncée comme réussie ou enregistrée par le serveur**.
+La branche Manus a intégré explicitement `claude/clever-allen-dnr8by@960b452`, puis ajouté le commit autonome `ad9ca89` : **une vente ou une dépense gardée dans la file hors ligne n'est plus annoncée comme réussie ou enregistrée par le serveur**.
 
 Le contrat partagé retourne désormais `confirmee` ou `en_attente` jusqu'aux écrans tactile et vocal. En attente, Jùlaba affiche un état ambré, dit que l'opération est gardée sur le téléphone et qu'elle n'est pas encore envoyée, n'émet pas la vibration de succès et ne propose pas de reçu comme si la vente était définitive. Les rejets métier 4xx restent des erreurs visibles et ne sont pas maquillés en attente.
 
