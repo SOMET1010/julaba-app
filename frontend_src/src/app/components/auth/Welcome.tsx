@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 
 import logoJulabaSvg from "../../../assets/images/logo-julaba.svg";
@@ -18,6 +18,7 @@ interface WelcomeProps {
 
 export function Welcome({ onComplete }: WelcomeProps) {
   const navigate = useNavigate();
+  const laisserPresentationContinuer = useRef(false);
   // Tata ACCUEILLE (elle ne présente pas une appli) : elle parle du COMMERCE de
   // la marchande, et crée tout de suite un lien d'appartenance. Clip local
   // uniquement : jamais de voix du navigateur en repli.
@@ -29,15 +30,17 @@ export function Welcome({ onComplete }: WelcomeProps) {
     const t = setTimeout(accueille, 350);
     return () => {
       clearTimeout(t);
-      stopIntro();
+      if (!laisserPresentationContinuer.current) stopIntro();
     };
   }, [accueille]);
 
-  // L'action d'entrée ne lance plus le clip d'accueil : sinon il était coupé
-  // 450 ms plus tard par la présentation de l'écran suivant. Le bouton audio
-  // dédié reste disponible ; l'écran suivant parle avec la même voix.
+  // Démarre la présentation SUR le geste autorisé, puis la laisse accompagner
+  // l'écran suivant. Cela évite à la fois le blocage autoplay et le chevauchement
+  // accueil/présentation : stopIntro coupe d'abord l'éventuel accueil en cours.
   const commencer = () => {
     stopIntro();
+    laisserPresentationContinuer.current = true;
+    void direIntro('histoire1');
     if (onComplete) onComplete(); else navigate('/login');
   };
 
@@ -70,7 +73,7 @@ export function Welcome({ onComplete }: WelcomeProps) {
         </button>
 
         <motion.button type="button" onClick={commencer} className="login-primary login-market-primary" whileTap={{ scale: 0.98 }}>
-          Entrer <ArrowRight aria-hidden="true" size={30} />
+          Écouter et entrer <ArrowRight aria-hidden="true" size={30} />
         </motion.button>
 
         <div className="login-partners login-market-partners">
