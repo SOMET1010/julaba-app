@@ -15,6 +15,7 @@ import { useObjectif } from '../../contexts/ObjectifContext';
 import { stopAllAudio, preloadAudioContext } from '../../services/elevenlabs';
 import { unlockAudioContextIOS } from '../../services/earlyAudioCache';
 import { executerActionTataMarchand } from '../../services/tataMarchandActions';
+import { presenterResultatOperation } from '../../services/statutOperationCaisse';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces } from '../../utils/haptique';
@@ -142,7 +143,11 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
           enregistrerDepense,
           mettreAJourStock: stockCtx.updateStock,
         });
-        if (outcome.kind === 'stock_unknown') {
+        if (outcome.kind === 'depense' && outcome.resultat.statut === 'en_attente') {
+          const presentation = presenterResultatOperation('depense', outcome.montant, outcome.resultat);
+          toast.info(presentation.titre, { description: presentation.detail, duration: 8000 });
+          await speak(presentation.voix);
+        } else if (outcome.kind === 'stock_unknown') {
           toast.info('Produit non trouvé : choisissez-le depuis la fiche stock avant de confirmer.');
         } else if (outcome.kind === 'not_handled' && action.type === 'ouvrir_journee') {
           const montant = action.montant || 0;

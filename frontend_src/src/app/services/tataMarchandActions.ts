@@ -1,3 +1,5 @@
+import type { ResultatOperationCaisse } from './statutOperationCaisse';
+
 export type TataMarchandAction = {
   type?: string;
   montant?: number;
@@ -15,12 +17,12 @@ export type ProduitCaisseTata = {
 
 export type TataMarchandDependencies = {
   produits: ProduitCaisseTata[];
-  enregistrerDepense: (montant: number, notes: string) => Promise<void>;
+  enregistrerDepense: (montant: number, notes: string) => Promise<ResultatOperationCaisse>;
   mettreAJourStock: (id: string, data: { quantite: number }) => Promise<void>;
 };
 
 export type TataMarchandOutcome =
-  | { kind: 'depense' }
+  | { kind: 'depense'; resultat: ResultatOperationCaisse; montant: number }
   | { kind: 'stock' }
   | { kind: 'stock_unknown' }
   | { kind: 'not_handled' };
@@ -59,8 +61,8 @@ export async function executerActionTataMarchand(
   deps: TataMarchandDependencies,
 ): Promise<TataMarchandOutcome> {
   if ((action.type === 'depense' || (action.montant && !action.type)) && action.montant && action.montant > 0) {
-    await deps.enregistrerDepense(action.montant, action.description || 'Dépense vocale Tata');
-    return { kind: 'depense' };
+    const resultat = await deps.enregistrerDepense(action.montant, action.description || 'Dépense vocale Tata');
+    return { kind: 'depense', resultat, montant: action.montant };
   }
 
   if (action.type === 'ajouter_stock') {

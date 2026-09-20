@@ -1,13 +1,18 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Delete } from 'lucide-react';
+import { ArrowLeft, Check, Delete, WifiOff, Volume2 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import TATA_BLEU from '../../../assets/images/tata-nanti-lou.png';
 import { emojiTile } from '../../utils/emojiTile';
+import {
+  presenterResultatOperation,
+  type ResultatOperationCaisse,
+} from '../../services/statutOperationCaisse';
+import { vibrerSucces, vibrerTic } from '../../utils/haptique';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -49,6 +54,34 @@ export function DepenseForm() {
   const enregEnCoursRef = useRef(false);
   const [showOthers, setShowOthers]   = useState(false);
   const vocalHint = useMemo(() => getVocalHint(), []);
+  const [dernierResultat, setDernierResultat] = useState<{
+    montant: number;
+    resultat: ResultatOperationCaisse;
+  } | null>(null);
+
+  const afficherResultat = (m: number, resultat: ResultatOperationCaisse) => {
+    const presentation = presenterResultatOperation('depense', m, resultat);
+    setDernierResultat({ montant: m, resultat });
+    setDescription('');
+    setMontant('');
+    setStep(1);
+    if (resultat.statut === 'confirmee') {
+      vibrerSucces();
+      // Le contexte caisse a déjà rechargé ses données. AppContext alimente
+      // aussi le résumé d'accueil : sa mise à jour ne doit pas transformer un
+      // succès financier en erreur si ce rafraîchissement secondaire échoue.
+      void reloadTransactions().catch((error: unknown) => {
+        console.warn('[DepenseForm] rafraîchissement secondaire impossible:', error);
+      });
+    } else {
+      vibrerTic();
+    }
+    try {
+      speak(presentation.voix);
+    } catch (error) {
+      console.warn('[DepenseForm] lecture du résultat impossible:', error);
+    }
+  };
 
   const { startRecording, stopRecording, isListening, confirmAction, cancelAction, pendingResponse, state: voiceState } = useVoiceCore({
     context: { module: 'depense', prenom: user?.firstName || 'ma chère', genre: (user as any)?.genre || 'femme', userId: user?.id },
@@ -60,12 +93,8 @@ export function DepenseForm() {
         const desc = String(a.description || a.categorie || '').trim() || 'Dépense';
         const montant = Number(a.montant);
         try {
-          await enregistrerDepense(montant, desc);
-          await reloadTransactions();
-          await speak('Dépense enregistrée');
-          setDescription('');
-          setMontant('');
-          setStep(1);
+          const resultat = await enregistrerDepense(montant, desc);
+          afficherResultat(montant, resultat);
         } catch (error) {
           await speak('Erreur, réessaie');
         }
@@ -98,10 +127,8 @@ export function DepenseForm() {
     enregEnCoursRef.current = true;
     setIsProcessing(true);
     try {
-      await enregistrerDepense(m, description.trim());
-      await reloadTransactions();
-      speak('Dépense de ' + m.toLocaleString() + ' francs enregistrée');
-      navigate(-1);
+      const resultat = await enregistrerDepense(m, description.trim());
+      afficherResultat(m, resultat);
     } catch (e: any) { console.warn('[DepenseForm] handleSave failed:', e?.message); speak("Erreur lors de l'enregistrement"); }
     finally { enregEnCoursRef.current = false; setIsProcessing(false); }
   };
@@ -134,6 +161,40 @@ export function DepenseForm() {
   // STEP 1
   // ══════════════════════════════════════════════════════════
   const PC = '#B74725';
+  if (dernierResultat) {
+    const presentation = presenterResultatOperation('depense', dernierResultat.montant, dernierResultat.resultat);
+    const confirme = dernierResultat.resultat.statut === 'confirmee';
+    return (
+      <div style={{ minHeight:'100dvh', background:'#FFFCF7', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24, textAlign:'center' }}>
+        <div style={{ width:88, height:88, borderRadius:'50%', background: confirme ? '#EAF7EE' : '#FFF4D6', display:'grid', placeItems:'center', marginBottom:16 }}>
+          {confirme ? <Check size={48} color="#0E7A47" /> : <WifiOff size={46} color="#9A6700" />}
+        </div>
+        <div role="status" aria-live="polite" style={{ fontSize:24, fontWeight:900, color: confirme ? '#0E7A47' : '#7A5200', marginBottom:8 }}>
+          {presentation.titre}
+        </div>
+        <div style={{ fontSize:38, fontWeight:900, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>
+          {dernierResultat.montant.toLocaleString('fr-FR')} F
+        </div>
+        <div style={{ maxWidth:340, marginTop:16, padding:'14px 16px', borderRadius:14, background: confirme ? '#EAF7EE' : '#FFF4D6', color: confirme ? '#0E6A43' : '#6B4A00', fontSize:16, fontWeight:700, lineHeight:1.45 }}>
+          {presentation.detail}
+        </div>
+        <button type="button" onClick={() => { void speak(presentation.voix); }}
+          style={{ marginTop:16, minHeight:48, display:'flex', alignItems:'center', gap:8, padding:'10px 16px', borderRadius:14, border:'1.5px solid var(--trait)', background:'#fff', color:P, fontWeight:800, fontSize:15, cursor:'pointer' }}>
+          <Volume2 size={22} /> Réécouter
+        </button>
+        <div style={{ width:'100%', maxWidth:360, marginTop:28, display:'flex', flexDirection:'column', gap:10 }}>
+          <button type="button" onClick={() => setDernierResultat(null)}
+            style={{ width:'100%', minHeight:54, borderRadius:16, border:'none', background:P, color:'#fff', fontWeight:800, fontSize:16, cursor:'pointer' }}>
+            Noter une autre dépense
+          </button>
+          <button type="button" onClick={() => navigate(-1)}
+            style={{ width:'100%', minHeight:50, borderRadius:16, border:`1.5px solid ${P}`, background:'#fff', color:P, fontWeight:800, fontSize:15, cursor:'pointer' }}>
+            Retour
+          </button>
+        </div>
+      </div>
+    );
+  }
   if (isConfirming && pendingResponse) return (
     <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
       <div style={{background:'white',borderRadius:'24px 24px 0 0',padding:24,width:'100%',maxWidth:420}}>

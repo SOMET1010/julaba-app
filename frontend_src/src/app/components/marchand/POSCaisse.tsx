@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, Minus, Trash2, ShoppingCart, X, Check, ArrowLeft, Package, FileText } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, ShoppingCart, X, Check, ArrowLeft, Package, FileText, WifiOff } from 'lucide-react';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { useApp } from '../../contexts/AppContext';
@@ -19,6 +19,10 @@ import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
 import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMaitre';
+import {
+  presenterResultatOperation,
+  type ResultatOperationCaisse,
+} from '../../services/statutOperationCaisse';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -74,7 +78,13 @@ export function POSCaisse() {
 
   // Encaissement (Phase 3, lots 2-4) : montant reçu (espèces) + écran « Vente réussie ».
   const [montantRecu, setMontantRecu] = useState('');
-  const [lastSale, setLastSale] = useState<{ montant: number; moyen: string; monnaie: number; produits: any[] } | null>(null);
+  const [lastSale, setLastSale] = useState<{
+    montant: number;
+    moyen: string;
+    monnaie: number;
+    produits: any[];
+    resultat: ResultatOperationCaisse;
+  } | null>(null);
   // Mobile money DÉCLARÉ (Chemin A) : opérateur choisi, aucune intégration/argent.
   const [mmOperator, setMmOperator] = useState<string | null>(null);
 
@@ -240,7 +250,8 @@ export function POSCaisse() {
       // puis complété au doigt reste un panier où la voix a servi, et c'est ce
       // qu'elle cherchera dans « Par la voix ».
       const source = cart.some((i) => i.origine === 'vocal') ? 'vocal' : 'kassa';
-      await enregistrerVente(total, details, moyen, undefined, source);
+      const resultat = await enregistrerVente(total, details, moyen, undefined, source);
+      const presentation = presenterResultatOperation('vente', total, resultat);
       // Rupture éventuelle (décision n°6) : calculée AVANT le décrément optimiste.
       // Le serveur borne déjà le stock à 0 et journalise le manquant (I3) ; ici on
       // AVERTIT à la voix au lieu de plancher en silence. La vente passe toujours.
@@ -259,19 +270,22 @@ export function POSCaisse() {
       // absolu, calculé sur un état local possiblement périmé, écrasait le
       // décrément serveur (stock trop haut, divergence stock/ledger). On reflète
       // désormais l'état autoritaire par un simple refetch.
-      void refreshProducts();
-      // Écran « Vente réussie » (Phase 3, lot 4) — capturé AVANT de vider le panier.
-      setLastSale({ montant: total, moyen, monnaie: estMM ? 0 : monnaie, produits: details });
+      if (resultat.statut === 'confirmee') void refreshProducts();
+      // Le même écran porte deux vérités distinctes : succès SERVEUR ou vente
+      // gardée sur le téléphone. Une mise en file ne doit jamais être intitulée
+      // « Vente réussie » tant que le serveur ne l'a pas confirmée.
+      setLastSale({ montant: total, moyen, monnaie: estMM ? 0 : monnaie, produits: details, resultat });
       clearCart();
       setPaymentMethod('cash');
       setMmOperator(null);
       setMontantRecu('');
       setShowCart(false);
       setShowSuccess(true);
-      // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
-      // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
-      vibrerSucces();
-      dire(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs${avertRupture ? '. ' + avertRupture : ''}`);
+      // Le retour se VOIT, s'ENTEND et se SENT, sans confondre conservation
+      // locale et confirmation centrale.
+      if (resultat.statut === 'confirmee') vibrerSucces();
+      else vibrerTic();
+      dire(`${presentation.voix}${avertRupture ? ' ' + avertRupture : ''}`);
     } catch (e) {
       console.error(e);
       vibrerErreur();
@@ -302,7 +316,7 @@ export function POSCaisse() {
     dire(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
     // Recharge les totaux du jour (la vente à crédit doit apparaître : convention A).
     void reloadTransactions?.();
-    setLastSale({ montant: total, moyen: 'Crédit', monnaie: 0, produits: details });
+    setLastSale({ montant: total, moyen: 'Crédit', monnaie: 0, produits: details, resultat: { statut: 'confirmee' } });
     clearCart();
     setPaymentMethod('cash');
     setMontantRecu('');
@@ -997,29 +1011,42 @@ export function POSCaisse() {
       {/* Écran « Vente réussie » (Phase 3, lot 4) */}
       <AnimatePresence>
         {showSuccess && lastSale && (
+          (() => {
+            const presentation = presenterResultatOperation('vente', lastSale.montant, lastSale.resultat);
+            const confirme = lastSale.resultat.statut === 'confirmee';
+            return (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
             style={{ position:'fixed', inset:0, zIndex:120, background:'#FFFCF7', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px', textAlign:'center' }}>
-            <div style={{ width:88, height:88, borderRadius:'50%', background:'#EAF7EE', display:'grid', placeItems:'center', marginBottom:16 }}>
-              <Check size={48} color="#0E7A47" />
+            <div style={{ width:88, height:88, borderRadius:'50%', background: confirme ? '#EAF7EE' : '#FFF4D6', display:'grid', placeItems:'center', marginBottom:16 }}>
+              {confirme ? <Check size={48} color="#0E7A47" /> : <WifiOff size={46} color="#9A6700" />}
             </div>
-            <div style={{ fontSize:24, fontWeight:900, color:'#0E7A47', marginBottom:8 }}>Vente réussie</div>
+            <div role="status" aria-live="polite" style={{ fontSize:24, fontWeight:900, color: confirme ? '#0E7A47' : '#7A5200', marginBottom:8 }}>{presentation.titre}</div>
             <div style={{ fontSize:34, fontWeight:900, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{lastSale.montant.toLocaleString('fr-FR')} F</div>
             <div style={{ fontSize:14, color:'var(--encre-3)', marginTop:6 }}>
               {lastSale.moyen}{lastSale.monnaie > 0 ? ` · rendu ${lastSale.monnaie.toLocaleString('fr-FR')} F` : ''}
             </div>
+            {!confirme && (
+              <div style={{ maxWidth:340, marginTop:16, padding:'14px 16px', borderRadius:14, background:'#FFF4D6', color:'#6B4A00', fontSize:16, fontWeight:700, lineHeight:1.45 }}>
+                {presentation.detail}
+              </div>
+            )}
             <div style={{ width:'100%', maxWidth:360, marginTop:28, display:'flex', flexDirection:'column', gap:10 }}>
+              {confirme && (
               <button type="button"
                 onClick={() => { void partagerRecu({ montant: lastSale.montant, produits: lastSale.produits, mode_paiement: lastSale.moyen, created_at: new Date().toISOString() } as any, marchandNom); }}
                 style={{ width:'100%', padding:'14px', borderRadius:16, border:'1.5px solid #25D366', background:'#fff', color:'#128C4B', fontWeight:800, fontSize:15, cursor:'pointer' }}>
                 Envoyer le reçu (WhatsApp)
               </button>
+              )}
               <button type="button"
                 onClick={() => { setShowSuccess(false); setLastSale(null); }}
                 style={{ width:'100%', padding:'16px', borderRadius:16, border:'none', background:P, color:'#fff', fontWeight:800, fontSize:16, cursor:'pointer' }}>
-                Nouvelle vente
+                {confirme ? 'Nouvelle vente' : 'J’ai compris'}
               </button>
             </div>
           </motion.div>
+            );
+          })()
         )}
       </AnimatePresence>
     </SubPageLayout>

@@ -10,6 +10,10 @@ import { API_URL } from '../utils/api';
 import { prixEffectif } from '../utils/promo.utils';
 import type { LigneDeVente, ProduitServeur, AliasSaisieProduit } from '../types/vente';
 import { jourLocal } from '../utils/jourLocal';
+import {
+  soumettreOperationCaisse,
+  type ResultatOperationCaisse,
+} from '../services/statutOperationCaisse';
 // Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.
 import {
   enfilerOperation, synchroniser,
@@ -159,8 +163,8 @@ interface CaisseContextType {
   selectedProduct: CaisseProduct | null;
   setSelectedProduct: (p: CaisseProduct | null) => void;
   
-  enregistrerVente: (montant: number, produits?: LigneDeVente[], modePaiement?: string, notes?: string, source?: 'vocal' | 'kassa') => Promise<void>;
-  enregistrerDepense: (montant: number, notes?: string) => Promise<void>;
+  enregistrerVente: (montant: number, produits?: LigneDeVente[], modePaiement?: string, notes?: string, source?: 'vocal' | 'kassa') => Promise<ResultatOperationCaisse>;
+  enregistrerDepense: (montant: number, notes?: string) => Promise<ResultatOperationCaisse>;
   
   // POS Cart
   addToCart: (product: CaisseProduct, quantite?: number, totalExact?: number, origine?: 'vocal') => void;
@@ -453,57 +457,43 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       ...(source ? { source } : {}),
       idempotency_key: genererCle(),
     };
-    // Hors-ligne : on met la vente dans la file durable (rejeu à la reconnexion).
-    // FAIL CLOSED : si appUser?.id est absent (session perdue), enfilerOperation
-    // refuse — jamais de vente mise en file sous un propriétaire de secours
-    // ('anon'). L'erreur remonte à l'appelant (déjà géré par l'UI existante).
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      await enfilerOperation('/caisse/vente', payload, appUser?.id);
-      eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
-      return;
-    }
-    try {
-      await caisseApi.enregistrerVente(payload);
-      await loadTransactions();
-      // Notifier AppContext de recharger ses transactions
-      eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
-    } catch (error: any) {
-      // Ne JAMAIS perdre une vente : hors-ligne, token expiré, panne réseau ou
-      // serveur temporairement KO -> on l'enfile (rejeu avec la MÊME clé, donc
-      // pas de double-comptage même si la vente était déjà passée). Une vraie
-      // erreur métier 4xx est remontée à l'utilisateur.
-      if (doitEnfiler(error)) {
-        await enfilerOperation('/caisse/vente', payload, appUser?.id);
+    // Le résultat remonte jusqu'à l'écran : seule une réponse serveur réussie
+    // vaut `confirmee`. Une copie IndexedDB est `en_attente`, même si la requête
+    // a peut-être atteint le serveur avant de perdre sa réponse. La clé
+    // d'idempotence permettra au rejeu de trancher sans double-comptage.
+    return soumettreOperationCaisse({
+      horsLigne: typeof navigator !== 'undefined' && navigator.onLine === false,
+      envoyer: async () => {
+        await caisseApi.enregistrerVente(payload);
+        await loadTransactions();
+        eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
+      },
+      enfiler: async () => {
+        const operationId = await enfilerOperation('/caisse/vente', payload, appUser?.id);
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
-        return;
-      }
-      throw error;
-    }
+        return operationId;
+      },
+      doitEnfiler,
+    });
   };
 
   const enregistrerDepense = async (montant: number, notes?: string) => {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de dépense invalide');
     const payload: caisseApi.EnregistrerDepenseData = { montant, notes, idempotency_key: genererCle() };
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      await enfilerOperation('/caisse/depense', payload, appUser?.id);
-      eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
-      return;
-    }
-    try {
-      await caisseApi.enregistrerDepense(payload);
-      await loadTransactions();
-      // Notifier AppContext de recharger ses transactions
-      eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
-    } catch (error: any) {
-      // Ne JAMAIS perdre une dépense : hors-ligne, token expiré, panne réseau ou
-      // serveur temporairement KO -> on l'enfile (rejeu avec la MÊME clé).
-      if (doitEnfiler(error)) {
-        await enfilerOperation('/caisse/depense', payload, appUser?.id);
+    return soumettreOperationCaisse({
+      horsLigne: typeof navigator !== 'undefined' && navigator.onLine === false,
+      envoyer: async () => {
+        await caisseApi.enregistrerDepense(payload);
+        await loadTransactions();
+        eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
+      },
+      enfiler: async () => {
+        const operationId = await enfilerOperation('/caisse/depense', payload, appUser?.id);
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
-        return;
-      }
-      throw error;
-    }
+        return operationId;
+      },
+      doitEnfiler,
+    });
   };
 
   const addTransaction = async (tx: Omit<CaisseTransaction, 'id' | 'date'>) => {
