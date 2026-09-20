@@ -119,12 +119,19 @@ try {
     const debordent = rects.filter(({ r }) => r.left < -0.5 || r.right > largeur + 0.5).map(({ el, r }) => ({ quoi: libelle(el), left: Math.round(r.left), right: Math.round(r.right) }));
     const petites = rects.filter(({ r }) => Math.min(r.width, r.height) < cibleMin - 0.5).map(({ el, r }) => ({ quoi: libelle(el), w: Math.round(r.width), h: Math.round(r.height) }));
     const h1 = document.querySelector('h1');
+    const haut = (el) => el ? Math.round(el.getBoundingClientRect().height) : null;
+    const boutonPayer = [...document.querySelectorAll('button')].find(b => /Payer en espèces/.test(b.textContent || '') && visible(b));
+    const carteRecu = [...document.querySelectorAll('div')].find(d => /^Reçu :$/.test((d.textContent || '').trim()) && visible(d))?.parentElement?.parentElement;
     const zoneVoix = document.querySelector('section[aria-label="Vendre à la voix"]')?.getBoundingClientRect();
     const enTete = document.querySelector('button[aria-label="Retour"]')?.closest('div[style*="fixed"]')?.getBoundingClientRect();
     return {
       zoneVoixPx: zoneVoix ? Math.round(zoneVoix.height) : null,
       zoneVoixBas: zoneVoix ? Math.round(zoneVoix.bottom) : null,
       enTetePx: enTete ? Math.round(enTete.height) : null,
+      carteProduitPx: haut(document.querySelector('.pos-grille > *')),
+      barreTotalPx: haut(document.querySelector('[aria-label^="Total "]')),
+      carteRecuMonnaiePx: haut(carteRecu),
+      boutonPayerPx: haut(boutonPayer),
       scrollWidth: document.documentElement.scrollWidth,
       scrollHeight: document.documentElement.scrollHeight,
       interactifs: rects.length,
@@ -150,6 +157,29 @@ try {
   const cheminViewport2x = resolve(ici, '.viewport-2x.png');
   await page2x.screenshot({ path: cheminViewport2x, fullPage: false });
   await page2x.context().close();
+
+  // « ENCAISSE » DIT, REÇU 5 000 : l'encart de relecture financière en
+  // situation. L'intention est INJECTÉE au stub du moteur vocal (pas de
+  // micro en headless) sous la forme exacte que le vrai moteur passe à
+  // onAction ; la machine, la phrase et l'affichage sont ceux de POSCaisse.
+  const pageR = await monterCaisse(navigateur, VIEWPORT, 1);
+  await pageR.evaluate(() => window.__apercuVoix.injecter({ action: { type: 'encaisser' }, transcript: 'encaisse', intent: 'encaisser' }));
+  const encart = pageR.locator('[role="status"]').locator('visible=true').first();
+  await encart.waitFor();
+  const relecture = await encart.innerText();
+  await pageR.waitForTimeout(400);
+  // Le viewport commence sur la barre Total : total, relecture, reçu | monnaie, Payer — l'argent en un écran.
+  await pageR.evaluate(() => { const t = document.querySelector('[aria-label^="Total "]'); const y = t.getBoundingClientRect().top + window.scrollY - 12; window.scrollTo(0, y); });
+  await pageR.waitForTimeout(300);
+  const cheminRelecture = resolve(SORTIE, `caisse-portrait-${PASSE}-relecture.png`);
+  await pageR.screenshot({ path: cheminRelecture, fullPage: false });
+  const mesuresRelecture = await pageR.evaluate(() => {
+    const els = [...document.querySelectorAll('button, input, [role="button"]')].filter(el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; }).map(el => (el.tagName === 'INPUT' && el.closest('label')) ? el.closest('label') : el);
+    const petites = els.filter(el => { const r = el.getBoundingClientRect(); return Math.min(r.width, r.height) < 43.5; }).map(el => (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 40));
+    const st = document.querySelector('[role="status"]');
+    return { scrollWidth: document.documentElement.scrollWidth, ciblesSous44: petites, encartPx: st ? Math.round(st.getBoundingClientRect().height) : null };
+  });
+  await pageR.context().close();
 
   // Contrôle grand écran (deux colonnes, panier à droite) — hors dépôt.
   if (process.env.APERCU_LARGE) {
@@ -193,11 +223,12 @@ try {
     unlinkSync(cheminViewport2x);
   }
 
-  const rapport = { ...mesures, requetesBloquees: bloquees.length, erreursPage, captures: { viewport: cheminViewport, pleine: cheminPleine, comparaison: cheminComparaison } };
+  const rapport = { ...mesures, relecture: { texte: relecture, ...mesuresRelecture }, requetesBloquees: bloquees.length, erreursPage, captures: { viewport: cheminViewport, pleine: cheminPleine, relecture: cheminRelecture, comparaison: cheminComparaison } };
   console.log(JSON.stringify(rapport, null, 2));
   if (mesures.scrollWidth > VIEWPORT.width) { console.error(`✗ débordement horizontal : scrollWidth ${mesures.scrollWidth} > ${VIEWPORT.width}`); code = 1; }
   if (mesures.debordent.length) { console.error(`✗ ${mesures.debordent.length} élément(s) interactif(s) sortent du viewport`); code = 1; }
   if (mesures.ciblesSous44.length) { console.error(`✗ ${mesures.ciblesSous44.length} cible(s) tactile(s) sous ${CIBLE_MIN} px`); code = 1; }
+  if (mesuresRelecture.scrollWidth > VIEWPORT.width || mesuresRelecture.ciblesSous44.length) { console.error('✗ état « encaisse » : débordement ou cible < 44 px'); code = 1; }
   if (erreursPage.length) { console.error(`✗ ${erreursPage.length} erreur(s) de page`); code = 1; }
   if (code === 0) console.log(`✓ 390 px sans débordement, ${mesures.interactifs} cibles interactives toutes ≥ ${CIBLE_MIN} px`);
 } finally {
