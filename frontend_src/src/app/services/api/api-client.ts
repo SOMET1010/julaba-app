@@ -1,7 +1,30 @@
 /**
-* JÙLABA — Client API (100% PostgreSQL via NestJS)
-* Auth via cookie httpOnly — aucun token en localStorage.
-*/
+ * JÙLABA — Client API (100% PostgreSQL via NestJS)
+ *
+ * L'AUTHENTIFICATION PART D'ICI — API-04, 20/09/2026.
+ *
+ * L'en-tête de ce fichier disait « auth via cookie httpOnly — aucun token en
+ * localStorage ». C'était faux depuis longtemps : sur mobile, les cookies
+ * cross-domaine (julaba-web ↔ julaba-api) sont bloqués, le jeton vit donc dans
+ * `localStorage` et part en `Authorization: Bearer …`. Mais ce n'est pas cette
+ * couche qui le posait : c'était un monkey-patch de `window.fetch` dans
+ * `main.tsx`, qui l'ajoutait à tout appel contenant `/api/v1`. Tous les tests
+ * de ce dossier importaient donc un client qui, sans `main.tsx`, envoyait
+ * chaque requête NUE — un client qui n'a jamais existé en production.
+ *
+ * Désormais `apiRequest` pose l'en-tête lui-même. Deux règles, tenues par
+ * `apiClientAuthorization.test.mts` :
+ *   • le jeton est LU AU MOMENT DE CHAQUE ESSAI, jamais mémorisé — le rejeu
+ *     après `rafraichirSession` part avec le jeton neuf, et la file hors-ligne
+ *     (qui rejoue par cette même porte) part avec le jeton courant, quel que
+ *     soit celui qui régnait à l'enfilage ;
+ *   • un `Authorization` fourni par l'appelant n'est jamais écrasé, et sans
+ *     jeton stocké on n'envoie rien (jamais « Bearer null »).
+ *
+ * Le patch de `main.tsx` reste, comme FILET, pour les appels `fetch()` directs
+ * qui vivent encore hors de cette couche (API-10) : il ne porte plus la couche,
+ * il porte ce qui n'y est pas encore.
+ */
 
 export const NOT_AUTHENTICATED = 'NOT_AUTHENTICATED';
 
@@ -63,6 +86,28 @@ function ecrireStockage(cle: string, valeur: string): void {
   try { localStorage.setItem(cle, valeur); } catch { /* stockage indisponible */ }
 }
 
+/**
+ * Les en-têtes d'UN essai. Appelée à chaque essai — l'initial et le rejeu
+ * après rafraîchissement — précisément pour relire le jeton : entre les deux,
+ * `rafraichirSession` l'a remplacé. Une lecture faite une fois « à la
+ * construction » renverrait le jeton périmé au rejeu, et le 401 se répéterait.
+ *
+ * Normalisé par `Headers` (objet, tableau ou instance acceptés, casse
+ * indifférente) puis rendu en objet simple : `fetch` et ses doublures de test
+ * lisent les deux.
+ */
+function enTetesPourEssai(options: RequestInit, isFormData: boolean): Record<string, string> {
+  const h = new Headers(options.headers);
+  // Un FormData porte sa propre frontière multipart : c'est le navigateur qui
+  // écrit le Content-Type, jamais nous.
+  if (!isFormData && !h.has('Content-Type')) h.set('Content-Type', 'application/json');
+  const jeton = lireStockage(CLE_ACCES);
+  if (jeton && !h.has('Authorization')) h.set('Authorization', `Bearer ${jeton}`);
+  const plat: Record<string, string> = {};
+  h.forEach((valeur, nom) => { plat[nom] = valeur; });
+  return plat;
+}
+
 export function rafraichirSession(baseUrl: string): Promise<boolean> {
   if (_suspendRefresh) return Promise.resolve(false);
   if (_refreshPromise) return _refreshPromise;
@@ -102,14 +147,11 @@ export async function apiRequest<T>(
     ? AbortSignal.any([options.signal, timeoutSignal])
     : timeoutSignal;
   const isFormData = options.body instanceof FormData;
-  const baseHeaders: Record<string, string> = isFormData
-    ? { ...(options.headers as Record<string, string>) }
-    : { 'Content-Type': 'application/json', ...(options.headers as Record<string, string>) };
   const response = await fetch(`${baseUrl}${endpoint}`, {
     ...options,
     credentials: 'include',
     signal: combinedSignal,
-    headers: baseHeaders,
+    headers: enTetesPourEssai(options, isFormData),
   });
 
   if (response.status === 401) {
@@ -126,7 +168,8 @@ export async function apiRequest<T>(
         ...options,
         credentials: 'include',
         signal: retryCombinedSignal,
-        headers: baseHeaders,
+        // Relu ICI : le jeton neuf que le rafraîchissement vient de ranger.
+        headers: enTetesPourEssai(options, isFormData),
       });
       if (retry.status === 401) {
         if (!_sessionExpiredDispatched) {
