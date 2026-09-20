@@ -746,3 +746,137 @@ Ce que ce contre-audit ne prouve pas :
   mesurée.
 - Les « deux voix au démarrage » du terrain restent **non diagnostiquées** ;
   VOIX-03 est une **hypothèse** plausible de leur origine, pas un diagnostic.
+
+---
+
+## 13. Contre-audit n°2 — VOIX-02 et VOIX-03 sur `df17cc7` (20/09/2026)
+
+> Même méthode qu'au §12 : code lu, tests relancés, garde-fous rejoués sur
+> la source d'avant (`a947f2a`), attaques par scripts jetables hors dépôt.
+> Aucune ligne applicative modifiée. Le lot F (visuel) travaille en parallèle
+> sur une autre branche : rien de lui ici.
+
+### 13.1 VOIX-02 — la liste blanche tient
+
+**Ce qui a changé** (`99d8ef8`) : `grammaireEncaissement.ts` remplace les deux
+regex `AFFIRMATION_PUIS_VALIDE` / `VALIDE_PUIS_AFFIRMATION` par
+`REPONSES_VALIDATION` (l. 92-101), **huit réponses autonomes**, et compare la
+**phrase entière** normalisée (l. 139 : `has(t.trim())`). L'annulation reste
+testée avant (l. 134). `normaliser` (l. 76-85) : minuscules, NFD sans
+diacritiques, apostrophes `'’\`` → `'`, `.,!;:?` → espace, `\s+` → un espace.
+
+**Attaque** — 71 phrases, chacune traversée grammaire → `intentLocal` →
+`reduire` **sans** relecture puis **après** relecture (état 4 000 / 5 000) :
+
+| Famille | Exemples | Résultat |
+|---|---|---|
+| Doublons, concaténations | « oui valide oui valide », « oui valide, oui valide », « oui valide\noui valide », « valide oui valide », « oui oui valide », « oui valide oui » | **null** |
+| Refus, objets, discours rapporté | « oui je valide pas », « oui valide pas », « oui c'est bon valide pas », « oui valide la dépense », « ma cliente a dit oui valide », « oui on valide plus tard » | **null** |
+| Chiffres, ventes collées | « oui valide 2 », « oui valide 2 tomates », « 2 oui valide » | **null** |
+| Ponctuation non aplatie | « oui-valide », « oui valide… », « « oui valide » », « (oui valide) », « oui valide / », « oui valide - », « oui valide " » | **null** (le caractère reste dans la phrase, elle ne matche plus) |
+| Homoglyphes, largeur nulle | « ouı valide » (ı sans point), « oui vаlide » (а cyrillique), « ｏｕｉ ｖａｌｉｄｅ », « oui​valide » (U+200B) | **null** |
+| Formes verbales hors liste | « oui valider », « oui validation », « oui validez », « oui valid », « oui vali de » | **null** |
+| **Variantes acceptées** (22) | casse « OUI VALIDE » ; accent « oui validé », « Oui, Validé. », accent combinant ; ponctuation **finale** « oui valide. », « ! », « ? », « ; », « : » ; apostrophe typographique / backtick « oui c’est bon valide » ; espaces multiples, tabulation, **NBSP U+00A0 et U+202F** ; « oui valide ca », « oui valide çà » ; les huit entrées | `oui_valide` |
+
+**Bilan : 22 acceptées, toutes des variantes de normalisation d'une des huit
+entrées ; 0 phrase non autonome acceptée ; `encaisser` sans relecture : 0 ;
+`encaisser` après relecture : 22 (une par phrase acceptée, jamais deux).**
+Deux tolérances à connaître, pas des défauts : « oui validé » (participe) et
+« oui valide çà » (« çà » → « ca ») valent « oui valide ».
+
+**Faux négatifs réalistes du marché — limites consignées** : « oui c'est bon
+je valide », « oui valide ma chérie », « oui Tata valide », « oui valide
+hein », « oui valide vas-y », « hm hm valide », « ouais c'est bon valide »,
+« oui d'accord valide », « oui valide ma fille », « c'est bon valide »,
+« valide valide », « oui je valide ça » → `null` → « je n'ai pas bien
+compris », l'attente reste ouverte, elle redit. C'est le prix d'une liste
+fermée, et c'est le choix de Patrick.
+
+**Garde-fous rejoués sur `a947f2a`** : `grammaireEncaissement.test.mts`
+**12 échecs** (annoncé 12) ; `caisseEncaissementVocal.test.mts` **7 échecs**
+(annoncé 7). **Machine : 0 ligne de diff** entre `a947f2a` et `df17cc7`.
+
+### 13.2 Cas mixte « encaisse + … » — mesuré, 17 phrases
+
+`localIntent.ts` : « encaisse » et l'annulation sont **différés** ; une vente
+ou une dépense extraite gagne ; « encaisse » suivi d'un **produit** vaut verbe
+de vente (`venteParEncaisse`, l. 100-101).
+
+| Phrase | Vendu | Encaissé | Perdu |
+|---|---|---|---|
+| « encaisse », « on encaisse », « encaisse la vente » | — | oui | — |
+| « encaisse deux tomates à 500 » | tomate ×2, 500 | non | l'encaissement (elle redit « encaisse ») |
+| « encaisse deux gombos à 500 » | **gombo ×2, 500** (gombo est connu d'`extraire`, contrairement à l'hypothèse du brief) | non | idem |
+| « encaisse trois tas de tomate à 1500 » | tomate ×3, 1 500, **unité tas** | non | idem |
+| « encaisse deux kilos d'oignon à 800 » | oignon ×2, 800, unité kilos | non | idem |
+| « encaisse deux tomates » | tomate ×2, prix catalogue | non | idem |
+| « encaisse 500 francs de tomate » | tomate, 500 | non | idem |
+| « deux tomates à 500 encaisse », « termine la vente deux tomates à 500 », « vends deux tomates à 500 et encaisse » | tomate ×2, 500 | non | idem |
+| « encaisse 500 », « encaisse cinq mille » | — | oui, **chiffre ignoré** | le chiffre (limite documentée : montant reçu dicté hors périmètre) |
+| « encaisse dépense 2000 transport » | — (dépense 2 000) | non | l'encaissement |
+| **« encaisse la tomate »** | **tomate ×1, prix catalogue** | non | l'encaissement — **et le sens** : « encaisse la tomate » voulait sans doute dire « encaisse la vente de tomate » ; ça ajoute une tomate au panier |
+| « encaisse deux tomates à 500 non » | — | non | tout : `annuler_validation` (le « non » gagne sur la vente, par construction) |
+
+Aucune de ces phrases n'écrit d'argent. Deux **limites** à consigner :
+« encaisse la tomate » ajoute une ligne (décision de forme : un produit sans
+quantité ni prix après « encaisse » pourrait rester un encaissement) ; une
+phrase « vente + encaisse » n'enchaîne pas l'encaissement, elle le redemande.
+
+### 13.3 VOIX-03 — un seul moteur vocal sur la caisse, vérifié par lecture
+
+- `routes.tsx` l. 58-60 : `/marchand` → `AppLayout` ; `caisse` → `POSCaisse`,
+  **sans route enfant**.
+- `BottomBar.tsx` : `ROUTES_SANS_TATA = ['/marchand/caisse']`, `tataMasquee =
+  ROUTES_SANS_TATA.includes(location.pathname)` ; bouton + étiquette sous
+  `{!tataMasquee && (…)}` ; modale sous `isOpen={isTantieOpen && !tataMasquee}`.
+- **Autres portes vers un second moteur, toutes fermées sur la caisse** :
+  `TantieSagesseModal` n'a **qu'un** monteur (`BottomBar` l. 133) ; le
+  **double-tap global** (`AppContext` l. 1198-1210, `touchend`) et **Alt+V**
+  (l. 1213-1218) ne font que lever `globalVoiceOpen`, que `BottomBar` retombe
+  sur `isTantieOpen` — modale masquée ; `POSCaisse` n'importe ni `SearchBar`
+  (qui porte un `useVoiceCore`) ni `TantieSagesseModal` ; le seul
+  `useVoiceCore` monté sur la caisse est celui de `MicroVenteCaisse`
+  (l. 154). Sur grand écran, `BottomBar` est `lg:hidden` de toute façon.
+- **Les autres routes marchandes gardent le bouton** : seule la caisse est
+  dans la liste ; `hiddenPaths` d'`AppLayout` (l. 81) est inchangé.
+- **Égalité stricte de `pathname`** : les six appelants (`GestionStock`,
+  `MarchandAccueilVoice`, `VentesPassees`, `RoleDashboard`, `roleConfig`,
+  `BottomBar`) naviguent tous vers `/marchand/caisse` **sans** slash final ni
+  sous-chemin ; la query n'est pas dans `pathname`. Une future sous-route
+  `/marchand/caisse/…` ne serait **pas** masquée — risque faible, noté, pas un
+  défaut aujourd'hui.
+- **Observation non mesurée** : un double-tap sur la caisse met `isTantieOpen`
+  à `true` sans ouvrir la modale ; à la **prochaine** route, elle s'ouvrirait
+  sans geste. Hypothèse par lecture, à regarder sur téléphone.
+- Garde-fou `caisseUnSeulMicro.test.mts` (suite `verify`) rejoué sur
+  `a947f2a` : **5 échecs** (annoncé 5).
+
+### 13.4 Batterie et gelée
+
+`tsc -b` 0 · `verify` 0 (dont `test:caisse-un-seul-micro`) · `test:ci` 0 ·
+`build` 0. `test:ci` **identique** à `f0c965c` (diff : 0 ligne). Marqueurs de
+conflit : la seule occurrence de `<<<<<<<` dans `HEAD` est le motif grep
+écrit en clair dans le §12 de ce document — pas un conflit.
+
+### 13.5 Verdicts
+
+- **VOIX-02 : FERMÉ.** Aucune phrase non autonome n'entre ; 0 paiement hors
+  liste ; garde-fous rouges sur la source d'avant.
+- **VOIX-03 : FERMÉ.** Plus aucun second moteur vocal atteignable sur la
+  caisse, par aucune des quatre portes (bouton, modale, double-tap, clavier).
+- **VOIX-01 : OUVERTE**, sur un point unique tranché par Patrick : la
+  relecture financière est **dite** (`speak`, conservé) mais **n'est affichée
+  nulle part** (`POSCaisse` l. 351). Elle doit l'être, **dérivée du même
+  snapshot de machine** que la voix — prévu après le lot F. Rien d'autre ne
+  retient la dette.
+
+### 13.6 Ce que ce contre-audit ne prouve pas
+
+Toujours **aucune dictée réelle** : la liste blanche est jugée sur des chaînes,
+pas sur ce que le STT du téléphone rend de « oui valide » dans le bruit — un
+STT qui produit « oui, valide » ou « oui validé » passe ; un STT qui produit
+« oui valide » suivi d'un mot parasite ne passe pas, et c'est voulu. Le
+comportement de la modale « fantôme » après double-tap (13.3) est une lecture,
+pas une mesure. Les « deux voix au démarrage » du terrain restent non
+diagnostiquées ; VOIX-03 en était une hypothèse, sa fermeture ne la vérifie
+pas.
