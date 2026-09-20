@@ -40,6 +40,7 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 import { normalizeRole } from '../types/constants';
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import * as audioManager from '../services/audioManager';
+import * as vtrace from '../utils/voiceTrace'; // VOICE-01 : journal de voix (observation seule)
 import { API_URL } from '../utils/api';
 import { rafraichirSession, apiRequest } from '../services/api/api-client';
 import * as caisseApi from '../services/api/caisse-api';
@@ -700,8 +701,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ═══════════════════════════════════════════════════════════════════
   
   const speak = async (text: string) => {
+    vtrace.ttsAppel('AppContext.speak', text, { role: user?.role ?? null, muet: voiceMuted });
     if (!text?.trim()) return;
+    if (user?.role !== 'marchand') vtrace.ttsIgnoree('AppContext.speak', text, 'role-non-marchand');
     if (user?.role !== 'marchand') return;
+    if (voiceMuted) vtrace.ttsIgnoree('AppContext.speak', text, 'muet');
     if (voiceMuted) return;
     // Plus de garde « if (isSpeaking) return » : une action utilisateur DOIT
     // pouvoir interrompre l'annonce en cours. Le chef d'orchestre (audioManager)

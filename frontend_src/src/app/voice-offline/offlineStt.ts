@@ -19,6 +19,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 
 import { nativeStt } from './nativeStt';
+import * as vtrace from '../utils/voiceTrace'; // VOICE-01 : moteur STT, transcript brut, durée — observation seule
 
 // Drapeau PERSISTANT : le moteur natif a déjà répondu « disponible » sur cet
 // appareil. Permet à offlineModelInstalled() (synchrone) d'être juste dès le
@@ -45,6 +46,7 @@ function probeEngine(): Promise<boolean> {
     probePromise = (async () => {
       const ok = await nativeStt.isAvailable();
       engineReady = ok;
+      vtrace.info('STT_SONDE', { moteur: 'sherpa-native', disponible: ok });
       if (ok) { try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ } }
       return ok;
     })().catch(() => { probePromise = null; return false; });
@@ -126,6 +128,7 @@ export async function startLiveDictation(
     }
   };
   dbg('LIVE_WIRED');
+  vtrace.ecoute('debut', 'offlineStt.startLiveDictation', { moteur: 'sherpa-native', sampleRate: ctx.sampleRate, etat: ctx.state });
 
   const concat = (): Float32Array => {
     const out = new Float32Array(totalSamples);
@@ -144,7 +147,9 @@ export async function startLiveDictation(
     if (busy) return '';
     busy = true;
     try {
+      const _t0 = vtrace.top();
       const texte = await nativeStt.transcribe(concat(), ctx.sampleRate);
+      vtrace.sttFin('offlineStt.startLiveDictation', 'sherpa-native', texte, _t0, { finale, secondesAudio: Math.round((totalSamples / ctx.sampleRate) * 10) / 10 });
       if (!stopped || finale) onText(texte, finale);
       return texte;
     } catch { return ''; }
@@ -160,6 +165,7 @@ export async function startLiveDictation(
   const stop = async (): Promise<void> => {
     if (stopped) return;
     stopped = true;
+    vtrace.ecoute('fin', 'offlineStt.startLiveDictation');
     clearInterval(timer);
     try { processor.onaudioprocess = null as unknown as (ev: AudioProcessingEvent) => void; } catch { /* */ }
     try { processor.disconnect(); } catch { /* */ }
@@ -196,5 +202,6 @@ export async function transcribeWav(wav: Blob | ArrayBuffer, useGrammar = true, 
   await ensureOfflineModel();
   const arrayBuf = wav instanceof Blob ? await wav.arrayBuffer() : wav.slice(0);
   const audioBuf = await getCtx().decodeAudioData(arrayBuf as ArrayBuffer);
+  vtrace.info('STT_MOTEUR', { moteur: 'sherpa-native', sampleRate: audioBuf.sampleRate, secondesAudio: Math.round(audioBuf.duration * 10) / 10 });
   return nativeStt.transcribe(audioBuf.getChannelData(0), audioBuf.sampleRate);
 }

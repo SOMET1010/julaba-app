@@ -103,6 +103,27 @@ export async function registerWebAuthn(): Promise<EtatBiometrie> {
   return ver.valeur?.verified === true ? { etat: 'ok' } : { etat: 'non_reconnue' };
 }
 
+/**
+ * API-03 — LES DEUX SEULS APPELS DIRECTS DE CE FICHIER, ET POURQUOI ILS LE RESTENT.
+ *
+ * `authenticateWebAuthn` est la CONNEXION par empreinte : appelée depuis
+ * `LoginPassword.handleBiometric`, AVANT toute session. Il n'y a pas de jeton
+ * à rafraîchir — c'est cette réponse qui EN DONNE un (`accessToken`,
+ * `refreshToken`, rangés ensuite par l'écran de connexion). Un 401 ou un
+ * `verified: false` ici ne dit donc pas « session finie » : c'est le verdict
+ * métier « ce téléphone n'est pas reconnu pour ce numéro ». Faire passer ces
+ * deux appels par `appelerAuth` ferait pire, pas mieux : sur un refus,
+ * `apiRequest` tenterait un rafraîchissement sans jeton, puis lèverait
+ * `julaba:session-expired` — purge du stockage local et POST /auth/logout —
+ * sur un écran qui n'a pas de session à perdre.
+ *
+ * Même route, deux moments. EN session (ouverture du keiwa),
+ * `verifyWebAuthnForKeiwa` ci-dessous appelle `/webauthn/authenticate/*` PAR
+ * la couche, parce que là, un 401 est bien une session finie. Le garde-fou de
+ * `convergenceApi.test.mts` (`AVANT_SESSION`) voit des chemins, pas des
+ * moments ; la distinction se fait ici. Proposé au registre : classer ces deux
+ * appels « avant-session, à ne pas converger », comme `login` et `activer`.
+ */
 export async function authenticateWebAuthn(phone: string): Promise<{ success: boolean; user?: any; accessToken?: string; refreshToken?: string; error?: string }> {
   try {
     const optRes = await fetch(`${API_URL}/auth/webauthn/authenticate/options`, {
