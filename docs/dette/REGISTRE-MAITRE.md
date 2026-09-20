@@ -1,7 +1,7 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 12 — après le contre-audit du `main` fusionné (`531bb7f`).**
+**Révision 13 — après le premier APK terrain (`julaba-apk-2f34941`).**
 Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
 une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
 Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
@@ -10,6 +10,11 @@ passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
 Révision 4 : **SEC-05, SEC-06 et SEC-07 fermés** ; **SEC-08** ouverte (le PIN
 n'est plus lisible, mais il est encore *choisi* par un administrateur) ;
 **SEED-01** ouverte — c'est le diagnostic des 3 échecs jusqu'ici non expliqués.
+Révision 13 : **le terrain a trouvé ce qu'aucun test ne pouvait trouver.**
+**VOIX-01** ouverte — la voix sait commencer et remplir une vente, pas la
+terminer ; et le repli tactile, emprunté justement quand la dictée échoue, est
+muet. Ce n'est pas une dette de code : c'est une dette de **produit**, et la
+première de ce registre. La doctrine voix s'en trouve agrandie.
 Révision 12 : plus aucun **défaut produit** P0/P1 atteignable par la recette
 terrain marchande. Un défaut de **chaîne de fabrication** trouvé et fermé —
 **REL-01** : l'APK se construisait par défaut depuis une branche de travail, pas
@@ -55,7 +60,7 @@ n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte l
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 27 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT.**
+**Compte courant : 27 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 49 OUVERT.**
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -83,6 +88,17 @@ peut être corrigé immédiatement **s'il rend les gates non déterministes ou
 affaiblit la valeur de preuve du lot** — à quatre conditions : le nommer, le
 reproduire, limiter le diff au strict nécessaire, et l'inscrire séparément au
 registre. SEED-01 est le premier cas d'application.
+
+**Doctrine voix, agrandie par le terrain du 20/09/2026.** La règle existante
+disait : *aucune information importante ne doit exister uniquement sous forme de
+texte.* Le terrain a montré le corollaire qui manquait :
+
+> **Aucune information importante ne doit exister uniquement sous forme de texte.**
+> **Aucune ÉTAPE importante ne doit exister uniquement sous forme tactile.**
+> **La voix est une propriété du PARCOURS, pas de l'écran.**
+
+C'est une règle d'architecture, pas un détail d'interface : elle explique
+pourquoi chaque écran fait ce qu'il annonce alors que l'ensemble ne marche pas.
 
 Pas de « à voir », « probablement », « assumé » sans justification, ni
 « documenté » — **documenter une dette ne la ferme pas.** Une route concurrente
@@ -236,6 +252,7 @@ reste multiple.
 | **DOC-02** | P2 | **OUVERT** | Contradictions sur `migrationsRun` entre docs | — | **Le code courant fait foi** |
 | **DOC-03** | P3 | **FERMÉ** | La docstring de `lireMouvements` décrit ce que le code fait : toutes les variations remontent, ventes hors stock comprises | `ecc1ae6` — corrigée sur le chemin même d'ARG-02, la ligne au-dessus de celle qui changeait | — |
 | **UI-01** | P3 | **OUVERT** | Dette visuelle / tokens / couleurs littérales | — | Hors priorité sauf défaut fonctionnel |
+| **VOIX-01** | **P1 produit** | **OUVERT** | **Continuité vocale de bout en bout du parcours de vente.** *Trouvée au terrain le 20/09/2026, sur l'APK `julaba-apk-2f34941`. Aucun des 233 invariants ne pouvait la produire : ils prouvent qu'une vente est **juste**, jamais qu'elle est **praticable**.* **Le diagnostic, de Patrick :** « JULABA n'est pas en logique de caisse POS — ce sont des fonctionnalités affichées qui se perdent au fil du workflow. On peut commencer avec la voix et, à l'étape suivante, ne plus avoir de fonctionnalité vocale. » **Vérifié dans le code, pas déduit :** `vendreVocalUnifie.ts` l'énonce lui-même — « la voix ajoute une ligne au panier ; **l'encaissement reste exclusivement le bouton tactile “Payer en espèces”** ». **DEUX coutures, pas une.** (1) *Le parcours principal* : la voix sait **commencer et remplir** la vente, elle ne sait pas la **terminer** — panier, encaissement, montant reçu, « compte juste », paiement sont tactiles. (2) *La branche d'échec*, non couverte par la première mesure : `SaisieGuidee` et `ConfirmationLigne` contiennent **0** appel `speak()`. La « répétition de Tata » — « j'ai compris : 3 tas à 500, c'est bon ? » — y est **écrite, jamais dite**. **C'est le repli emprunté quand la dictée vient d'échouer** : on envoie une marchande qui n'a pas été comprise vers un écran qui ne lui parle pas | — | **Ce n'est PAS « ajouter un micro sur POSCaisse »** : ce serait retomber dans le piège écran par écran que cette dette décrit. **La cible est un parcours, pas un écran.** `docs/AUDIT_UX.md` la disait déjà — « une tâche, un parcours : UN panier ; la voix entre, le tactile complète » et « marchande non lectrice : **vendre sans lire** ». La première moitié est tenue (un panier partagé), la seconde non |
 | **VOICE-01** | À surveiller | **OUVERT** | Le transcript brut n'est pas exposé à la recette terrain | — | Instrumentation de recette, pas fonction métier |
 
 ---
