@@ -110,7 +110,7 @@ export async function registerWebAuthn(): Promise<EtatBiometrie> {
  * `LoginPassword.handleBiometric`, AVANT toute session. Il n'y a pas de jeton
  * à rafraîchir — c'est cette réponse qui EN DONNE un (`accessToken`,
  * `refreshToken`, rangés ensuite par l'écran de connexion). Un 401 ou un
- * `verified: false` ici n'est donc pas « session expirée » : c'est le verdict
+ * `verified: false` ici ne dit donc pas « session finie » : c'est le verdict
  * métier « ce téléphone n'est pas reconnu pour ce numéro ». Faire passer ces
  * deux appels par `appelerAuth` ferait pire, pas mieux : sur un refus,
  * `apiRequest` tenterait un rafraîchissement sans jeton, puis lèverait
