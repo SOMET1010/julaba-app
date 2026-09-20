@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, Minus, Trash2, X, Check, Package, FileText, Banknote, ChevronRight, Leaf, Zap } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, X, Check, Package, FileText, Banknote, ChevronRight, Leaf, Zap, Volume2 } from 'lucide-react';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { useApp } from '../../contexts/AppContext';
@@ -24,7 +24,7 @@ import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMai
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
-import { ETAT_INITIAL, empreintePanier, reduire, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
+import { ETAT_INITIAL, empreintePanier, reduire, type EffetEncaissement, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
 import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 
 // PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Les constantes `P` et `BG`
@@ -358,6 +358,19 @@ function POSCaisseInner() {
   // le second trouve « repos ». Rien n'est rendu à partir de cet état — il ne
   // pilote que la voix — donc aucun re-render n'est perdu.
   const etatEncaissementRef = useRef<EtatEncaissement>(ETAT_INITIAL);
+  // LA RELECTURE SE VOIT AUSSI (décision de Patrick, 20/09/2026) : « conserver
+  // speak ; afficher simultanément à l'écran la même relecture financière
+  // exacte que celle prononcée, dérivée du même snapshot de machine ». Cet
+  // état ne reçoit JAMAIS autre chose que `effet.texte` — pas de phrase
+  // reconstruite depuis `total`/`recu` du rendu, qui pourrait différer du
+  // compte que la machine a réellement relu. Une seule chaîne, dite et
+  // affichée ; null dès que la machine revient au repos (paiement,
+  // annulation, panier vidé), et remplacée par la relecture suivante.
+  const [relectureAffichee, setRelectureAffichee] = useState<string | null>(null);
+  const afficherRelecture = (etat: EtatEncaissement, effet: EffetEncaissement) => {
+    if (etat.phase === 'repos') setRelectureAffichee(null);
+    else if (effet.type === 'dire') setRelectureAffichee(effet.texte);
+  };
   const traiterIntentionEncaissement = (intention: IntentionEncaissement) => {
     const { etat, effet } = reduire(etatEncaissementRef.current, intention, etatFinancier);
     etatEncaissementRef.current = etat;
@@ -367,7 +380,9 @@ function POSCaisseInner() {
     // les affiche déjà ; ici la relecture EST la garantie : une marchande qui
     // dit « encaisse » et n'entend rien dirait « oui valide » sans avoir
     // entendu le compte qu'elle confirme. Même règle que les réponses du
-    // micro (MicroVenteCaisse parle par `speak`).
+    // micro (MicroVenteCaisse parle par `speak`). Et l'écran montre la même
+    // phrase, pour celle qui n'a pas entendu — le bruit, le doute.
+    afficherRelecture(etat, effet);
     if (effet.texte) speak(effet.texte);
     if (effet.type === 'encaisser') void handlePay();
   };
@@ -385,19 +400,21 @@ function POSCaisseInner() {
   // la machine ne garde une attente que si l'empreinte relue est encore la
   // vraie. Et c'est ici que Tata relit D'ELLE-MÊME (parcours cible, étapes
   // 6→8) : « encaisse », elle touche les billets, et dès que le reçu couvre,
-  // la machine rend la relecture du compte de l'instant — on la DIT. Cet
-  // effet ne peut jamais être `encaisser` (la machine ne paie que sur « oui
-  // valide », et l'énumération exhaustive de son test le prouve) : on ne
-  // traite donc que la parole ici, jamais le paiement — `handlePay` n'a
-  // qu'un seul appelant vocal, plus haut.
+  // la machine rend la relecture du compte de l'instant — on la DIT et on
+  // l'AFFICHE, par le même geste que plus haut. Cet effet ne peut jamais
+  // être `encaisser` (la machine ne paie que sur « oui valide », et
+  // l'énumération exhaustive de son test le prouve) : on ne traite donc que
+  // la parole ici, jamais le paiement — `handlePay` n'a qu'un seul appelant
+  // vocal, plus haut.
   const etatFinancierRef = useRef(etatFinancier);
   etatFinancierRef.current = etatFinancier;
   const cleEmpreinte = `${total}|${recu}|${etatFinancier.empreinte.lignes}`;
   useEffect(() => {
     const { etat, effet } = reduire(etatEncaissementRef.current, 'etat_financier_change', etatFinancierRef.current);
     etatEncaissementRef.current = etat;
+    afficherRelecture(etat, effet);
     if (effet.type === 'dire') speak(effet.texte);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'à l'empreinte financière ; `speak` est stable (contexte)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'à l'empreinte financière ; `speak` est stable (contexte), `afficherRelecture` n'est qu'un setter
   }, [cleEmpreinte]);
 
   // RELECTURE SPONTANÉE (lot D) : ce que l'écran recalcule, Tata le redit
@@ -666,6 +683,25 @@ function POSCaisseInner() {
             Compte juste
           </button>
         </div>
+
+        {/* LA RELECTURE FINANCIÈRE, ÉCRITE. Exactement la phrase que Tata
+            vient de dire — la même chaîne, pas une reconstruction — là où
+            l'œil est au moment d'encaisser : au-dessus du Reçu | Monnaie et
+            du bouton qui termine. Quand elle finit par « Je valide ? », c'est
+            la question à laquelle « oui valide » répond, et elle reste
+            visible jusqu'à ce que la machine revienne au repos. « Réécouter »
+            rejoue la même chaîne. */}
+        {relectureAffichee && (
+          <div role="status" aria-live="polite"
+            style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-3)', marginTop:'var(--caisse-esp-3)', background:'var(--caisse-succes)', border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-4)', padding:'var(--caisse-esp-3) var(--caisse-esp-4)', minWidth:0 }}>
+            <Volume2 aria-hidden="true" size={ICONE} style={{ color:'var(--caisse-vert)', flexShrink:0 }} />
+            <p style={{ flex:1, minWidth:0, margin:0, font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)' }}>{relectureAffichee}</p>
+            <button type="button" onClick={() => speak(relectureAffichee)} aria-label="Réécouter la relecture"
+              style={{ minWidth:'var(--caisse-cible-tactile)', minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
+              Réécouter
+            </button>
+          </div>
+        )}
 
         {/* LA CARTE PAIEMENT de la maquette : Reçu | Monnaie. Le reçu reste un
             champ (le filet pour celle qui tape), la monnaie s'entend d'un
