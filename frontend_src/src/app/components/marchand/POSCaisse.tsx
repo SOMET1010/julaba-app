@@ -104,6 +104,11 @@ function POSCaisseInner() {
 
   // Encaissement (Phase 3, lots 2-4) : montant reçu (espèces) + écran « Vente réussie ».
   const [montantRecu, setMontantRecu] = useState('');
+  // UI-02 — AFFICHAGE SEULEMENT : le champ montre « 5 000 » hors saisie et la
+  // valeur brute pendant qu'elle tape (le curseur ne se bat pas avec les
+  // espaces de milliers). `montantRecu` et son `onChange` restent la seule
+  // vérité ; ce booléen ne dit que si le clavier est ouvert sur ce champ.
+  const [recuEnSaisie, setRecuEnSaisie] = useState(false);
   const [lastSale, setLastSale] = useState<{ montant: number; moyen: string; monnaie: number; produits: any[] } | null>(null);
   // Mobile money DÉCLARÉ (Chemin A) : opérateur choisi, aucune intégration/argent.
   const [mmOperator, setMmOperator] = useState<string | null>(null);
@@ -591,20 +596,28 @@ function POSCaisseInner() {
   // version de cette logique, affichée soit dans le sheet mobile, soit dans
   // le panneau permanent grand écran (mockup validé : « Payer en espèces »
   // comme CTA principal unique).
+  //
+  // LA BARRE TOTAL de la maquette : fond succès, « Total » en titre de
+  // section, le montant en grand titre — c'est LE chiffre de l'écran, celui
+  // qu'elle regarde avant de dire le prix à la cliente. EN TÊTE DU PANIER, pas
+  // sous les lignes (UI-03, arbitrage de Patrick : « faire remonter au minimum
+  // le début du panier + la barre Total dans le premier viewport ») : sous les
+  // lignes, trois articles suffisaient à la pousser hors du premier écran, et
+  // dix l'auraient mise à deux écrans de défilement. Le même bouton, dans les
+  // deux dispositions ; il parle toujours (« touche pour entendre »).
+  const renderCartTotal = () => (
+    <button type="button" onClick={() => dire(`Total : ${total.toLocaleString('fr-FR')} francs`)}
+      aria-label={`Total ${total.toLocaleString('fr-FR')} francs — touche pour entendre`}
+      style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-3)', background:'var(--caisse-succes)', border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-3) var(--caisse-esp-4)', minHeight:64, cursor:'pointer', fontFamily:'inherit' }}>
+      <span style={{ font:'var(--caisse-font-h1)', fontSize:24, color:'var(--encre)' }}>Total</span>
+      <span style={{ font:'var(--caisse-font-h1)', fontSize:34, lineHeight:'40px', color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums' }}>{total.toLocaleString('fr-FR')} F</span>
+    </button>
+  );
+
   const renderCartFooter = () => (
     <>
       {/* Le total s'ENTEND d'un toucher (tout montant affiché doit
           pouvoir être entendu — docs/INCLUSION.md §2.2). */}
-      {/* LA BARRE TOTAL de la maquette : fond succès, « Total » en titre de
-          section, le montant en grand titre — c'est LE chiffre de l'écran,
-          celui qu'elle regarde avant de dire le prix à la cliente. */}
-      <button type="button" onClick={() => dire(`Total : ${total.toLocaleString('fr-FR')} francs`)}
-        aria-label={`Total ${total.toLocaleString('fr-FR')} francs — touche pour entendre`}
-        style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-4)', background:'var(--caisse-succes)', border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-4) var(--caisse-esp-4)', minHeight:72, cursor:'pointer', fontFamily:'inherit' }}>
-        <span style={{ font:'var(--caisse-font-h1)', fontSize:24, color:'var(--encre)' }}>Total</span>
-        <span style={{ font:'var(--caisse-font-h1)', fontSize:34, lineHeight:'40px', color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums' }}>{total.toLocaleString('fr-FR')} F</span>
-      </button>
-
       <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:'0 0 var(--caisse-esp-2)' }}>Paiement</h2>
 
       {/* Moyen de paiement — espèces / mobile money (déclaré) / crédit.
@@ -735,7 +748,7 @@ function POSCaisseInner() {
               {/* minWidth:0 — sans lui, un input vide garde un min-content flexbox
                   qui peut dépasser un conteneur étroit (panneau permanent 400px,
                   repéré en recette visuelle) au lieu de rétrécir avec flex:1. */}
-              <input value={montantRecu} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—" aria-label="Montant reçu"
+              <input value={recuEnSaisie || recu === 0 ? montantRecu : recu.toLocaleString('fr-FR')} onFocus={() => setRecuEnSaisie(true)} onBlur={() => setRecuEnSaisie(false)} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—" aria-label="Montant reçu"
                 style={{ flex:1, minWidth:0, width:'100%', minHeight:'var(--caisse-cible-tactile)', border:'none', outline:'none', textAlign:'left', font:'var(--caisse-font-h1)', fontSize:26, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums', padding:0 }} />
               <span style={{ font:'var(--caisse-font-h1)', fontSize:26, color:'var(--encre)' }}>F</span>
             </div>
@@ -963,7 +976,7 @@ function POSCaisseInner() {
             « VENTE RAPIDE », fondue ici (lot F) : les deux produits les plus
             vendus (`topProducts`, calculé sur ses ventes réelles) portent un
             éclair au lieu d'une section à part qui les affichait deux fois. */}
-        <div style={{ marginBottom:'var(--caisse-esp-5)' }}>
+        <div style={{ marginBottom:'var(--caisse-esp-4)' }}>
           {filtered.length === 0 ? (
             <div style={{ textAlign:'center', padding:'var(--caisse-esp-7) 0', color:'var(--caisse-gris-texte)', font:'var(--caisse-font-texte)' }}>
               <Package size={48} style={{ margin:'0 auto var(--caisse-esp-3)', opacity:0.4 }} />
@@ -982,8 +995,8 @@ function POSCaisseInner() {
                 return (
                   <motion.button key={p.id} type="button" initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} transition={{ delay: i*0.04 }} whileTap={{ scale:0.96 }}
                     onClick={() => ajouterAuPanier(p)} aria-label={`Ajouter ${p.nom} au panier`}
-                    style={{ background:'var(--caisse-ivoire)', border: inCart ? '2px solid var(--caisse-vert)' : '1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-3)', overflow:'hidden', padding:0, cursor:'pointer', fontFamily:'inherit', textAlign:'center', display:'flex', flexDirection:'column', minWidth:0 }}>
-                    <div style={{ position:'relative', width:'100%', aspectRatio:'1 / 1', background:'var(--caisse-sable)', overflow:'hidden' }}>
+                    style={{ background:'var(--caisse-ivoire)', border: inCart ? '2px solid var(--caisse-vert)' : '1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-3)', overflow:'hidden', padding:0, cursor:'pointer', fontFamily:'inherit', textAlign:'center', minWidth:0 }}>
+                    <div style={{ position:'relative', width:'100%', aspectRatio:'4 / 3', background:'var(--caisse-sable)', overflow:'hidden' }}>
                       {/* La photo REMPLIT la vignette (F2 : « la densité est trop
                           forte ») : les vignettes emoji hors ligne ont une marge
                           interne, on les grossit légèrement dans leur cadre. */}
@@ -1005,7 +1018,7 @@ function POSCaisseInner() {
                         </div>
                       )}
                     </div>
-                    <div style={{ padding:'var(--caisse-esp-2) var(--caisse-esp-1) var(--caisse-esp-3)', width:'100%', boxSizing:'border-box' }}>
+                    <div style={{ padding:'var(--caisse-esp-1) var(--caisse-esp-1) var(--caisse-esp-2)', width:'100%', boxSizing:'border-box' }}>
                       <div style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nom}</div>
                       {enPromo ? (
                         <div style={{ marginTop:'var(--caisse-esp-1)', display:'flex', flexWrap:'wrap', columnGap:'var(--caisse-esp-1)', alignItems:'baseline', justifyContent:'center', font:'var(--caisse-font-bouton)', color:'var(--caisse-alerte)', fontVariantNumeric:'tabular-nums' }}>
@@ -1053,6 +1066,7 @@ function POSCaisseInner() {
             </div>
           ) : (
             <>
+              {renderCartTotal()}
               <div style={{ background:'var(--caisse-ivoire)', border:'1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-4)', padding:'0 var(--caisse-esp-4)', marginBottom:'var(--caisse-esp-3)' }}>
                 {renderCartLines()}
               </div>
@@ -1089,6 +1103,7 @@ function POSCaisseInner() {
                 billets, le pied est plus haut qu'un écran de portable, et un
                 bloc de lignes en flex:1 était écrasé à zéro — panier invisible. */}
             <div style={{ flexShrink:0, padding:'0 var(--caisse-esp-4)' }}>
+              {renderCartTotal()}
               {renderCartLines()}
             </div>
             <div style={{ padding:'var(--caisse-esp-4)', flexShrink:0 }}>
