@@ -44,13 +44,13 @@ function contient(texte: string, fragments: string[]): boolean {
   return fragments.some(f => texte.includes(f));
 }
 
-const MOTS_ANNULE = ['annule', 'annuler', 'recommence', 'recommencer', 'oublie', 'oublier', 'laisse tomber'];
-const MOTS_SUPPRIME = ['enleve', 'enlever', 'retire', 'retirer', 'supprime', 'supprimer', 'jette', 'jeter'];
-const MOTS_ENCAISSE = ['encaisse', 'encaisser', 'termine', 'terminer', 'fini', 'finir', "c'est tout", "c'est fini", 'termine la'];
-const MOTS_SUIVANT = ["j'ajoute", 'autre chose', 'autre article', 'encore un', 'un autre', 'aussi', 'et aussi', 'ajoute autre'];
-const MOTS_REFUS = ['non', 'pas ca', "c'est pas ca", "c'est faux", 'faux', 'pas bon', "c'est pas bon", 'errone', 'erreur'];
-const MOTS_CONFIRME = ['oui', "c'est bon", "c'est ca", "c'est exact", 'voila', 'exact', 'ok', 'okay', "d'accord", 'daccord', 'parfait', 'bon'];
-const MOTS_TOTAL = ['le tout', 'au total', 'en tout', 'tout ca', 'ensemble', 'pour les', 'les deux', 'les trois'];
+export const MOTS_ANNULE = ['annule', 'annuler', 'recommence', 'recommencer', 'oublie', 'oublier', 'laisse tomber'];
+export const MOTS_SUPPRIME = ['enleve', 'enlever', 'retire', 'retirer', 'supprime', 'supprimer', 'jette', 'jeter'];
+export const MOTS_ENCAISSE = ['encaisse', 'encaisser', 'termine', 'terminer', 'fini', 'finir', "c'est tout", "c'est fini", 'termine la'];
+export const MOTS_SUIVANT = ["j'ajoute", 'autre chose', 'autre article', 'encore un', 'un autre', 'aussi', 'et aussi', 'ajoute autre'];
+export const MOTS_REFUS = ['non', 'pas ca', "c'est pas ca", "c'est faux", 'faux', 'pas bon', "c'est pas bon", 'errone', 'erreur'];
+export const MOTS_CONFIRME = ['oui', "c'est bon", "c'est ca", "c'est exact", 'voila', 'exact', 'ok', 'okay', "d'accord", 'daccord', 'parfait', 'bon'];
+export const MOTS_TOTAL = ['le tout', 'au total', 'en tout', 'tout ca', 'ensemble', 'pour les', 'les deux', 'les trois'];
 
 /**
  * Interprète une réponse en état « confirmation attendue / correction ».
