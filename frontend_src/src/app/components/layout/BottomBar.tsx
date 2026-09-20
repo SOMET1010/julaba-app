@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { motion } from 'motion/react';
 import { Home, ShoppingCart, Mic, Package, User, ShoppingBag, Warehouse, TrendingUp, UserCircle, UserCheck, BarChart3, Users, UserPlus, Truck, Store, Wallet } from 'lucide-react';
-import { useApp } from '../../contexts/AppContext';
 import { useModal } from '../../contexts/ModalContext';
-import { TantieSagesseModal } from '../assistant/TantieSagesseModal';
 import { getRoleConfig, getRoleColor } from '../../config/roleConfig';
+import tataAccueil from '../../../assets/redesign/tata-accueil.webp';
 interface BottomBarProps {
   role: 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur';
   onMicClick?: () => void;
@@ -29,17 +28,7 @@ const ICON_MAP: Record<string, any> = {
 export function BottomBar({ role, onMicClick }: BottomBarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { speak, isModalOpen: isLegacyModalOpen, globalVoiceOpen, setGlobalVoiceOpen } = useApp();
   const { isAnyModalOpen } = useModal();
-  const [isTantieOpen, setIsTantieOpen] = useState(false);
-
-  // Synchro avec double-tap global
-  useEffect(() => {
-    if (globalVoiceOpen) {
-      setIsTantieOpen(true);
-      setGlobalVoiceOpen(false);
-    }
-  }, [globalVoiceOpen, setGlobalVoiceOpen]);
 
   // Utiliser roleConfig pour obtenir la couleur et les items
   const roleConfig = getRoleConfig(role);
@@ -60,7 +49,6 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
   }));
 
   const handleMicClick = () => {
-    setIsTantieOpen(true);
     if (onMicClick) onMicClick();
   };
 
@@ -90,22 +78,17 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
           <motion.button
             type="button"
             onClick={handleMicClick}
-            aria-label="Ouvrir Tata Nanti Lou"
-            className="absolute flex flex-col items-center justify-center"
-            style={{
-              right: 18, top: -26, width: 52, height: 52, borderRadius: '50%',
-              background: 'var(--commerce-green)', color: '#fff', border: '3px solid var(--commerce-paper, #fff)',
-              boxShadow: '0 8px 18px -6px rgba(0,86,59,0.55)',
-            }}
+            aria-label="Ouvrir Tantie Nanti Lou"
+            className="commerce-tata-dock absolute flex flex-col items-center justify-center"
             whileTap={{ scale: 0.94 }}
           >
-            <Mic aria-hidden="true" size={20} strokeWidth={2} />
+            <img src={tataAccueil} alt="" aria-hidden="true" />
           </motion.button>
-          <span aria-hidden="true" className="absolute text-[10px] font-extrabold" style={{ right: 24, top: -34, color: 'var(--commerce-green)' }}>Tata</span>
+          <span aria-hidden="true" className="commerce-tata-label absolute">Tantie</span>
         </>
       )}
 
-      <nav aria-label="Navigation principale" className="flex items-stretch px-2" style={{ minHeight: 72 }}>
+      <nav aria-label="Navigation principale" className="flex items-stretch px-2 commerce-bottom-nav" style={{ minHeight: 74 }}>
         {tabs.map((tab) => {
           const Icon = tab.icon || Home;
           const active = isActive(tab);
@@ -116,25 +99,18 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
               onClick={() => navigate(tab.path)}
               aria-current={active ? 'page' : undefined}
               aria-label={tab.label}
-              className="relative flex flex-1 min-w-0 flex-col items-center justify-center gap-1 px-1 py-3"
-              style={{ color: active ? activeColor : 'var(--encre-3)',
-                borderTop: active ? `3px solid ${activeColor}` : '3px solid transparent' }}
+              className="relative flex flex-1 min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 commerce-bottom-tab"
+              data-active={active ? 'true' : 'false'}
+              style={{ color: active ? activeColor : 'var(--encre-3)' }}
               whileTap={{ scale: 0.98 }}
             >
-              <Icon aria-hidden="true" size={24} strokeWidth={active ? 2.5 : 2} />
+              <span className="commerce-bottom-icon"><Icon aria-hidden="true" size={24} strokeWidth={active ? 2.7 : 2} /></span>
               <span className="text-xs font-semibold">{tab.label}</span>
             </motion.button>
           );
         })}
       </nav>
-      {/* Le double-tap global (globalVoiceOpen) ouvre aussi cette modale :
-          sur la caisse, il ne doit pas rouvrir le second moteur par la
-          fenêtre après l'avoir fermé par la porte. */}
-      <TantieSagesseModal
-        isOpen={isTantieOpen && !tataMasquee}
-        onClose={() => setIsTantieOpen(false)}
-        role={role}
-      />
+
     </div>
   );
 }
