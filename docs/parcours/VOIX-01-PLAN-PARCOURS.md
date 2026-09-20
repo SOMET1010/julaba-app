@@ -1,8 +1,7 @@
 # VOIX-01 — Plan de parcours (proposition, non implémentée)
 
-> **Statut : PROPOSITION SOUMISE À VALIDATION.** Aucun code applicatif n'est
-> modifié par ce document. Rien n'est écrit dans `frontend_src/` tant que
-> Patrick n'a pas validé ce plan et tranché les points « À DÉFINIR ».
+> **Statut : PLAN VALIDÉ le 20/09/2026. Les quatre arbitrages du §5 sont
+> FIGÉS (voir §7). Le lot A est livré (voir §8).**
 
 Dette d'origine : **VOIX-01 — continuité vocale de bout en bout du parcours de
 vente** (registre maître, révision 13, première dette *produit* du registre).
@@ -188,7 +187,12 @@ inventée par le code. C'est petit, c'est faux, et c'est exactement le
 
 ---
 
-## 5. Points que je ne tranche pas — « À DÉFINIR »
+## 5. Points que je ne tranchais pas — TRANCHÉS le 20/09/2026
+
+> Les quatre questions ci-dessous sont **fermées**. Les réponses de Patrick
+> sont reportées telles quelles au §7. Le texte d'origine est conservé parce
+> qu'il dit **pourquoi** la question se posait — c'est ce qui rend la décision
+> relisible dans six mois.
 
 ### 5.1 — « valide » encaisse-t-il vraiment à la voix ?
 L'étape 8 dit « **valide** ou touche Payer ». Je la mets en œuvre telle quelle
@@ -249,5 +253,89 @@ démarrages de vente** pour un seul parcours — et c'est peut-être l'origine d
 
 ---
 
-*Document de travail. Rien n'est implémenté. En attente de validation et des
-quatre arbitrages du §5.*
+## 7. Les arbitrages, figés le 20/09/2026
+
+Décisions de Patrick, reprises sans reformulation :
+
+1. **« valide » peut encaisser à la voix, mais uniquement en deux temps.**
+   Tata relit d'abord : « Elle doit 4 000. Elle t'a donné 5 000. Tu rends
+   1 000. Je valide ? » Puis il faut une **seconde réponse explicite**, par
+   exemple **« Oui, valide »**. **Un simple « oui » ne doit jamais suffire.**
+   Le bouton **Payer en espèces** reste toujours disponible et appelle
+   **exactement la même fonction métier**.
+2. **Montant reçu : billets uniquement pour le pilote.** Pas de « il m'a donné
+   5 000 ». La voix peut annoncer le total, demander de compter, dire chaque
+   coupure touchée et annoncer la monnaie — elle **ne transcrit pas un montant
+   financier libre dans le bruit**. À rouvrir après mesure terrain.
+3. **Repli après échec : absorption dans la surface unique.** Après un ou deux
+   échecs, Tata dit « Je n'ai pas compris. Choisis avec la photo. » et **la
+   grille produits de la même caisse devient le repli**. « Autre article »
+   reste sur cette même surface. Pas de couture supplémentaire.
+4. **L'accueil ouvre directement la caisse au Moment 1.** Le bouton **Vendre**
+   ouvre `/marchand/caisse`, Tata demande « Que voulez-vous vendre ? », le gros
+   micro est déjà actif sur cette surface. Le chemin
+   `Accueil → VenteVocaleModal → Caisse` disparaît du parcours pilote.
+   *Précision de Patrick : cela ne prétend pas expliquer les « deux voix »
+   observées — ce défaut reste à diagnostiquer séparément, avec le rapport de
+   test.*
+
+**Cible fonctionnelle figée :**
+
+> **Surface portrait unique.**
+> **Vendre ouvre directement la caisse.**
+> **La voix peut conduire tout le parcours, sauf la saisie du montant reçu qui
+> reste par billets pour le pilote.**
+> **Toute écriture d'argent vocale exige une confirmation en deux temps.**
+> **Le repli après échec reste sur la même surface.**
+
+**Contrainte posée sur le lot A :** il doit rester **purement structurel** — il
+ne touche **ni aux intentions vocales, ni au moteur STT, ni à l'argent
+backend**.
+
+---
+
+## 8. Lot A — livré le 20/09/2026
+
+### Ce qui a changé
+
+| Avant | Après |
+|---|---|
+| Sur téléphone, le panier **et tout l'encaissement** (total, montant reçu, coupures, monnaie, « Payer en espèces ») vivaient dans une **feuille coulissante** `showCart` | Ils sont **sur la page**, sous les produits, dans une `<section className="lg:hidden">` qui rend **les mêmes** `renderCartLines()` / `renderCartFooter()` que le panneau grand écran |
+| Un **bouton panier** dans l'en-tête et une **barre flottante « Encaisser »** servaient de poignées pour ouvrir cette feuille | Supprimés tous les deux : un bouton qui n'ouvre plus rien n'a pas à rester |
+| La grille produits était entière : le panier qui la suit aurait été à plusieurs écrans de défilement | La grille se replie à **quatre vignettes** sur téléphone, avec **« Voir plus »** qui **déplie sur place** (jamais une navigation). Au-dessus de 1024 px la grille reste entière, le panier étant à côté |
+| La **ligne de panier ne portait pas l'unité** — elle n'existait, sur téléphone, que dans la barre flottante supprimée. Le panier disait « 3 » : trois quoi ? | Chaque ligne affiche son unité (`uniteSeule`), comme l'étiquette produit (`500 F / tas`) et comme le reçu |
+
+Le crédit, le Mobile Money et la carte étaient déjà absents du pilote
+(`CAISSE_CREDIT_ACTIF = false`, `CAISSE_MOBILE_MONEY_ACTIF = false`) : rien à
+faire, et rien n'a été touché.
+
+### Ce qui n'a PAS été touché
+Aucune intention vocale, aucun moteur STT, aucune écriture d'argent backend,
+aucun changement sur `/marchand/caisse` côté route. `handlePay` est **identique
+au caractère près**. Le lot A ne déplace que **l'endroit où les choses sont
+affichées**.
+
+### Preuve
+- **Garde-fou de source** `caisseSurfaceUnique.test.mts`, suite **`verify`**
+  (jamais `test:ci`, gelée) : 13 assertions — plus aucun `showCart`, plus
+  aucun `bottomAction`, la section téléphone rend **les lignes ET le pied**,
+  `renderCartLines`/`renderCartFooter` rendus **exactement deux fois** (une
+  logique, deux dispositions), l'unité sur la ligne, « Voir plus » sans
+  navigation, la règle CSS d'aperçu bornée sous 1024 px.
+- **Reproduction** : le même garde-fou lancé contre la source **d'avant** le
+  lot A donne **8 échecs**. Il ne se contente donc pas de décrire l'état
+  actuel — il aurait attrapé le défaut.
+- `npm run verify` verte, `npm run test:ci` (gelée) verte, `npm run build` OK.
+
+### Ce que cette preuve ne dit pas
+**Aucune capture sur un vrai téléphone.** Le garde-fou prouve que la feuille
+n'existe plus dans le code ; il ne prouve pas que la page est agréable à
+faire défiler avec une cliente qui attend. **Cela se juge sur l'APK, pas en
+CI.** À vérifier au prochain APK : que « Payer en espèces » soit atteignable
+sans défilement interminable quand le panier a six lignes.
+
+### Reste à faire pour VOIX-01
+Lots **B** (micro permanent aux trois moments), **C** (grammaire
+d'encaissement dans `localIntent`), **D** (relecture spontanée et fin du repli
+muet), **E** (unité sans exception sur le produit libre). **La dette reste
+OUVERTE.**
