@@ -45,10 +45,14 @@ jobs:
 
     env:
       NODE_ENV: test
-      # `pg-test-local.sh` tourne ici sous l'utilisateur du runner, pas root :
-      # PGDATA doit vivre dans un répertoire qu'il peut écrire.
-      PGDATA: ${{ runner.temp }}/pgdata-schema-pilote
       PGBIN: /usr/lib/postgresql/16/bin
+      # PAS DE `PGDATA` ICI. Le contexte `runner` n'existe pas encore au niveau
+      # du job — il n'est peuplé qu'une fois le runner instancié. Une
+      # expression invalide ici fait REFUSER le workflow par GitHub avant même
+      # d'allouer une machine : échec instantané, zéro job, et aucun log de
+      # gate. C'est ce qui est arrivé aux deux premières exécutions
+      # (`592a50e`, `af108bb`). `PGDATA` est donc posé sur l'étape qui en a
+      # besoin, plus bas.
 
     steps:
       - name: Checkout
@@ -79,4 +83,9 @@ jobs:
         # Le script fait tout : base vierge par le seul chemin autorisé,
         # garde-fou tables ET colonnes, second démarrage, invariants complets,
         # puis vérification de l'empreinte figée. Jamais `--figer`.
+        env:
+          # `pg-test-local.sh` tourne ici sous l'utilisateur du runner, pas
+          # root : PGDATA doit vivre dans un répertoire qu'il peut écrire.
+          # C'est la SEULE étape qui démarre PostgreSQL.
+          PGDATA: ${{ runner.temp }}/pgdata-schema-pilote
         run: node scripts/schema-pilote.mjs
