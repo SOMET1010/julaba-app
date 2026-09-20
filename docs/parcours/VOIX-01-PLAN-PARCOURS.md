@@ -880,3 +880,124 @@ comportement de la modale « fantôme » après double-tap (13.3) est une lectur
 pas une mesure. Les « deux voix au démarrage » du terrain restent non
 diagnostiquées ; VOIX-03 en était une hypothèse, sa fermeture ne la vérifie
 pas.
+
+---
+
+## 14. Contre-audit n°3 — lots F, F2 et relecture affichée, sur `e45feb6` (20/09/2026)
+
+> Même méthode : code lu, diffs relus ligne à ligne, batterie relancée,
+> garde-fous rejoués sur la source d'avant, attaques rejouées. Aucune ligne
+> applicative modifiée.
+
+### 14.1 Le chemin d'argent n'a pas bougé
+
+`git diff a273f2e..e45feb6` : **0 ligne** sur `machineEncaissement.ts`,
+`grammaireEncaissement.ts`, `localIntent.ts`, `preselectionVente.ts`,
+`vendreVocalUnifie.ts`, `CaisseContext.tsx`, `relectureSpontanee.ts`,
+`unite.utils.ts`, `BottomBar.tsx`.
+
+`POSCaisse.tsx` (640 lignes de diff) — **toutes les lignes hors style**, et
+ce qu'elles câblent :
+
+| Ligne hors style | Ce qu'elle appelle | Corps modifié ? |
+|---|---|---|
+| Carte produit entière = `<motion.button onClick={() => ajouterAuPanier(p)}>` ; les − / + qui vivaient sur la carte (`updateCartItemQuantity(p.id, …)`) ont **disparu** (0 occurrence) | `ajouterAuPanier` (existante, dit la ligne + unité + total) | non |
+| Section « Vente rapide » (`search === '' && topProducts…`) retirée ; `const rapide = topProducts.some(…)` → **badge éclair** sur la carte quand `rapide && !inCart` | lecture seule de `topProducts` (inchangé) | — |
+| `StockBadge` : rend `{stock}` seul, les mots passent en `title` | — | non (affichage) |
+| « Voir plus » : `onClick={() => setVoirPlusProduits(v => !v)}`, libellé sans le compte, `aria-expanded` | `setVoirPlusProduits` | non |
+| Ligne de panier : **− / +** `onClick={() => updateCartItemQuantity(item.productId, item.quantite ∓ 1)}` (nouveaux) ; l'input de quantité (`onBlur` → `updateCartItemQuantity` + `dire`) n'est rendu que si `estNegoce`, sinon un `<span>` ; l'input de prix (`updateCartItemPrice` + `dire`) reste sous `estNegoce` | fonctions existantes ; **les deux `onBlur` sont identiques au caractère près** à ceux d'avant (ils ont changé de place dans le diff, pas de corps) | non |
+| « Enlever » `removeFromCart`, « Vider » `clearCart`, « Effacer » `setMontantRecu('')`, « Compte juste » `setMontantRecu(String(total))`, coupures `ajouterCoupure`, « Autre article » `setShowLibre(true)` | existantes | non |
+| `{recu > 0 && !insuffisant ? (…) : (…)}` : ternaire au lieu de `&&` — la branche `else` rend le bloc Monnaie **grisé** au lieu de rien | affichage | — |
+| **Nouveau** : `relectureAffichee` / `afficherRelecture` (§14.2) | `setRelectureAffichee` | — |
+| `handlePay` | **2 appelants** (l. 791 bouton, l. 387 effet) ; `enregistrerVente` : 1 | non |
+
+`MicroVenteCaisse.tsx` : une seule ligne hors style — `cart` lu depuis
+`useCaisse()` pour afficher « Dis « encaisser » pour terminer » quand
+`cart.length > 0` (lecture seule ; le composant ne décide toujours rien de
+l'argent). `ChoixUnite` : couleurs seulement, `dire?.(phraseUnite(u))` et les
+44 px intacts. `SubPageLayout` : prop `variante`, couleurs seulement.
+
+**Attaque a→h rejouée : 17/17. Énumération : 2 560 000 conversations, 19 312
+paiements, 0 violation.**
+
+### 14.2 La relecture financière existe sous les deux formes
+
+- `POSCaisse` l. 369-373 : `relectureAffichee` ne reçoit **que `effet.texte`**
+  (`else if (effet.type === 'dire') setRelectureAffichee(effet.texte)`) — il
+  n'existe **aucune autre construction** de cette chaîne : pas de phrase
+  refaite depuis `total`/`recu` du rendu. `null` dès que `etat.phase ===
+  'repos'` (paiement, annulation, panier vidé).
+- Appelée aux **deux seuls** endroits où `reduire` est invoqué : la phrase
+  (l. 385) et le changement d'état financier (l. 415). Même snapshot que la
+  voix, par construction.
+- Rendue dans `renderCartFooter` (l. 694), lui-même rendu exactement deux
+  fois (téléphone l. 1060, grand écran l. 1095) : **les deux dispositions**.
+- Le bouton « Réécouter » rejoue `speak(relectureAffichee)` — la même chaîne.
+- Garde-fou `caisseRelectureAffichee.test.mts` (suite `verify`) rejoué sur
+  `fe14759` (après le lot F, avant la relecture) : **17 échecs**.
+- Capture `caisse-portrait-F2-relecture.png` : « Elle doit 2 900 francs. Elle
+  t'a donné 5 000. Tu rends 2 100. Je valide ? » dans l'encart, au-dessus de
+  Reçu | Monnaie et du bouton.
+
+Deux choix à connaître, pas des défauts :
+1. **« combien elle doit » pendant une attente** : l'effet est `dire` en
+   phase `attente_confirmation`, donc le texte affiché **devient** « Elle doit
+   X. Elle t'a donné Y. Tu rends Z. » — les mêmes nombres, **sans « Je
+   valide ? »** — alors que la machine attend toujours et qu'un « oui valide »
+   paierait. Dit et affiché restent identiques ; c'est la question qui
+   disparaît de l'écran. Décision de forme, P3 au plus.
+2. **L'encart n'existe qu'en mode espèces** (`paymentMethod === 'cash'`,
+   l. 675). Le pilote n'a que ce mode (`CAISSE_MOBILE_MONEY_ACTIF = false`).
+
+**Verdict doctrine voix : la relecture financière n'existe plus uniquement
+sous forme vocale, ni uniquement sous forme tactile. VOIX-01 est fermable sur
+ce critère, et fermée (registre, révision 19).**
+
+### 14.3 Non-régression des garde-fous, gelée, batterie
+
+`git diff a273f2e..e45feb6 -- '*.test.mts' 'frontend_src/scripts/*.mjs'` :
+**deux fichiers ajoutés** (`caisseCharte`, `caisseRelectureAffichee`), **aucun
+test existant modifié**. `test:ci` identique à `f0c965c` (0 ligne). Les deux
+scripts sont dans `verify`. `tsc -b` 0 · `verify` 0 · `test:ci` 0 · `build`
+0 · `check:bundle-budget` 0 (565 Ko / 800). `apercu-caisse` : **0 fichier**
+dans `frontend/dist`, 0 occurrence dans son contenu. 0 marqueur de conflit
+hors docs.
+
+### 14.4 Captures — arbitrage visuel à trancher (UI-03)
+
+`caisse-portrait-F2-comparaison.png`, même échelle (2 px d'image par px CSS).
+La maquette (390 × 771) montre **voix + produits + panier + Total + Paiement +
+bouton** dans le premier écran. Le rendu F2 (390 × 844) montre voix + « Dis
+encaisser » + « Saisir sans parler » + Produits (une rangée) ; le panier, le
+Total et le Paiement sont **sous le pli**. Hauteurs mesurées par l'agent F2,
+maquette → rendu : zone voix **217 → 386 px** (46 % du viewport), carte
+produit 99 → 180, Total 36 → 74, Reçu | Monnaie 86 → 170, bouton 48 → 92.
+
+Deux consignes de Patrick tirent en sens inverse à 844 px : « agrandir
+nettement » (la zone voix) et « donner du poids à l'argent ». **Ce n'est pas
+au contre-audit de trancher.** Trois voies visibles : garder 386 px et
+accepter l'argent sous le pli ; revenir vers 217-260 px pour ramener Total et
+Paiement dans le premier écran ; réduire le pli autrement (« Saisir sans
+parler » plus discret, une rangée de produits de moins).
+
+Vu aussi sur ces captures, ouvert en **UI-02** (P3) : le Reçu affiche
+« **5000** F » (valeur brute de l'input, l. 738) à côté de « Monnaie : 2 100 F »
+et d'une relecture qui dit « 5 000 » ; au repos la bulle de Tata répète mot
+pour mot le H1 « Que voulez-vous vendre ? » (la maquette y met « Je vous
+écoute »). Non mesuré, hypothèse : « Payer en espèces · rendre X F » sur deux
+lignes à 390 px.
+
+### 14.5 Ce que ce contre-audit ne prouve pas
+
+- **Aucun appareil réel.** Les captures sont **headless** (banc
+  `apercu-caisse`, données de démonstration, sans réseau) ; l'intention
+  `encaisser` y est **injectée** dans le banc, **pas reconnue depuis l'audio**.
+  Ni la reconnaissance, ni l'ordre des phrases, ni la lisibilité au soleil ne
+  sont mesurés.
+- La preuve de la relecture affichée est structurelle (source lue par le
+  garde-fou) ; React n'est pas monté par les tests. Que l'encart apparaisse
+  **au même instant** que la voix est une propriété de React (`setState`
+  dans le même gestionnaire que `speak`), pas une mesure.
+- Les « deux voix au démarrage » et le « cinq tomates » mal entendu du
+  terrain restent **non diagnostiqués** : le rapport de test de l'application
+  reste l'artefact qui les transformerait en données.
