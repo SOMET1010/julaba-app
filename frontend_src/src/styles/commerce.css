@@ -13,6 +13,18 @@
   --commerce-secondary: #655866;
   --commerce-sidebar: #332533;
   --commerce-inverse: #FFFCF7;
+  /* Refonte « Le comptoir de Tata » — mêmes usages sur entrée, accueil et
+     caisse. Les règles métier n'utilisent jamais ces valeurs. */
+  --julaba-ivoire: #FFF9EF;
+  --julaba-sable: #F5E5C9;
+  --julaba-terre: #A8442E;
+  --julaba-cuivre: #C56532;
+  --julaba-mangue: #F3B640;
+  --julaba-vert-feuille: #197455;
+  --julaba-vert-fonce: #0E513D;
+  --julaba-orange-voix: #D96C2D;
+  --julaba-aubergine: #3A2437;
+  --julaba-encre: #211B18;
   --background: var(--commerce-paper);
   --foreground: var(--encre);
   --card: var(--commerce-surface);
@@ -158,16 +170,58 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 .commerce-signature::before { content: ''; width: 0.75rem; height: 0.25rem; background: #C0522E; border-radius: 1px; }
 .commerce-signature::after { content: ''; width: 0.5rem; height: 0.75rem; background: #00563B; border-radius: 1px; }
 .commerce-brand-inverse .commerce-signature::after { background: #87C3A6; }
-.commerce-brand-inverse img { background: #FFFCF7; padding: 0.25rem 0.5rem; border-radius: 0.5rem; }
+.commerce-brand-inverse img { background: transparent; padding: 0; border-radius: 0; filter: brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,.24)); opacity: .94; }
 
 .commerce-home { max-width: 60rem; margin-inline: auto; padding: 1.25rem 1rem 2rem; }
-.commerce-home-header { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-bottom: 1.5rem; }
-.commerce-home-heading { flex: 1; min-width: 10rem; }
-.commerce-home-heading h1 { font-size: 1.5rem; line-height: 1.3; font-weight: 800; margin-top: 0.75rem; }
+.commerce-home-redesign { padding: 0 0 7rem; background: var(--julaba-ivoire); min-height: 100dvh; }
+.commerce-home-redesign > div { max-width: 60rem; margin-inline: auto; }
+.commerce-home-hero { position: relative; isolation: isolate; min-height: 250px; overflow: hidden; border-radius: 0 0 30px 30px; color: white; }
+.commerce-home-hero-bg { position: absolute; z-index: -3; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.commerce-home-hero-veil { position: absolute; z-index: -2; inset: 0; background: linear-gradient(180deg, rgba(14,81,61,.88), rgba(14,81,61,.32) 54%, rgba(33,27,24,.76)); }
+.commerce-home-header { display: flex; gap: 1rem; align-items: center; justify-content: space-between; margin: 0; padding: max(18px, env(safe-area-inset-top)) 18px 0; }
+.commerce-brand-hero { padding: 0; border-radius: 0; background: transparent; }
+.commerce-brand-hero img { filter: brightness(0) invert(1) drop-shadow(0 3px 8px rgba(14,81,61,.5)); opacity: .96; }
+.commerce-sun-button { width: 48px; height: 48px; border-radius: 16px; border: 1px solid rgba(255,255,255,.45); display: grid; place-items: center; color: white; background: rgba(255,255,255,.17); backdrop-filter: blur(10px); cursor: pointer; flex-shrink: 0; }
+.commerce-sun-button[aria-pressed="true"] { color: var(--julaba-encre); background: var(--julaba-mangue); border-color: var(--julaba-mangue); }
+.commerce-home-welcome { position: absolute; inset: auto 0 0; width: 100%; min-height: 172px; display: flex; align-items: flex-end; justify-content: space-between; overflow: hidden; padding: 26px 12px 20px 20px; border: 0; background: transparent; color: white; text-align: left; cursor: pointer; }
+.commerce-home-welcome-copy { position: relative; z-index: 2; max-width: 62%; display: flex; flex-direction: column; align-items: flex-start; }
+.commerce-home-welcome-copy small { display: inline-flex; margin-bottom: 7px; padding: 6px 10px; border-radius: 999px; background: var(--julaba-mangue); color: var(--julaba-encre); font-size: 12px; font-weight: 900; }
+.commerce-home-welcome-copy strong { font-size: clamp(25px, 7vw, 34px); line-height: 1.04; font-weight: 900; letter-spacing: -.035em; }
+.commerce-home-welcome-copy em { margin-top: 6px; color: rgba(255,255,255,.9); font-size: 14px; font-style: normal; font-weight: 650; }
+.commerce-home-welcome > img { position: absolute; z-index: 1; right: -14px; bottom: -57px; width: 164px; height: auto; filter: drop-shadow(0 12px 20px rgba(33,27,24,.24)); }
 .commerce-balance { border-radius: 1rem; padding: 1.25rem; background: #332533; color: #FFFCF7; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.commerce-balance-redesign { position: relative; z-index: 4; margin: -18px 14px 0; padding: 18px; border: 2px solid rgba(243,182,64,.55); border-radius: 22px; background: var(--julaba-aubergine); box-shadow: 0 12px 26px rgba(58,36,55,.18); }
+.commerce-balance-main { min-width: 0; cursor: pointer; text-align: left; color: inherit; }
+.commerce-balance-value { margin-top: 4px; font-size: 38px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+.commerce-balance-value small { font-size: 16px; font-weight: 750; opacity: .85; }
+.commerce-balance-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.commerce-balance-actions button { width: 48px; height: 48px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.2); border-radius: 50%; background: rgba(255,255,255,.14); color: white; cursor: pointer; }
+.commerce-home-redesign > div > :not(.commerce-home-hero):not(.commerce-balance-redesign) { margin-left: 14px; margin-right: 14px; }
 .commerce-sell { width: 100%; margin-top: 1rem; border-radius: 0.875rem; padding: 1.125rem; border: 0; background: var(--commerce-action); color: white; display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; font-weight: 800; font-size: 1.25rem; }
-.commerce-home-tile { border: 1px solid var(--commerce-line); border-radius: 0.875rem; padding: 1rem; min-height: 6rem; background: var(--commerce-surface); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0.75rem; cursor: pointer; color: var(--encre); }
-.commerce-bottom { background: var(--commerce-surface); border-top: 1px solid var(--commerce-line); }
+.commerce-sell-redesign { min-height: 78px; justify-content: flex-start; padding: 12px 16px 12px 12px; border-radius: 22px; background: var(--julaba-vert-feuille); box-shadow: 0 10px 22px rgba(25,116,85,.22); }
+.commerce-sell-icon { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 17px; background: rgba(255,255,255,.16); }
+.commerce-sell-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: flex-start; }
+.commerce-sell-copy strong { font-size: 23px; line-height: 1.1; }
+.commerce-sell-copy small { margin-top: 3px; color: rgba(255,255,255,.82); font-size: 13px; font-weight: 650; }
+.commerce-sell-arrow { font-size: 38px; font-weight: 300; line-height: 1; }
+.commerce-home-tools { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-top: 14px; }
+.commerce-home-tile { min-width: 0; min-height: 106px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 10px 6px; border: 1px solid #E2D7C8; border-radius: 18px; background: var(--commerce-surface); color: var(--encre); cursor: pointer; box-shadow: 0 5px 14px rgba(33,27,24,.055); }
+.commerce-home-tile-icon { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 16px; background: var(--julaba-sable); flex-shrink: 0; }
+.commerce-home-tile > span:last-child { max-width: 100%; font-size: 13px; font-weight: 850; line-height: 1.15; text-align: center; }
+.commerce-bottom { background: rgba(255,249,239,.96); border-top: 1px solid #E2D7C8; box-shadow: 0 -8px 24px rgba(33,27,24,.08); backdrop-filter: blur(14px); }
+.commerce-bottom-nav { padding-top: 4px; }
+.commerce-bottom-tab { border-top: 0; }
+.commerce-bottom-icon { width: 38px; height: 34px; display: grid; place-items: center; border-radius: 14px; transition: background-color .18s ease, transform .18s ease; }
+.commerce-bottom-tab[data-active="true"] .commerce-bottom-icon { background: var(--julaba-sable); transform: translateY(-2px); }
+.commerce-bottom-tab[data-active="true"]::after { content: ''; position: absolute; bottom: 4px; width: 20px; height: 3px; border-radius: 999px; background: currentColor; }
+.commerce-tata-dock { right: 14px; top: -34px; width: 66px; height: 66px; padding: 0; overflow: hidden; border-radius: 50%; border: 4px solid var(--julaba-ivoire); background: var(--julaba-vert-feuille); box-shadow: 0 10px 24px rgba(14,81,61,.38); }
+.commerce-tata-dock img { width: 78px; height: 94px; object-fit: cover; object-position: 50% 8%; transform: translateY(12px); }
+.commerce-tata-label { right: 30px; top: -47px; padding: 3px 8px; border-radius: 999px; background: var(--julaba-vert-fonce); color: white; font-size: 10px; font-weight: 900; box-shadow: 0 4px 12px rgba(14,81,61,.22); }
+
+html.soleil .commerce-home-redesign { --julaba-ivoire: #FFFFFF; }
+html.soleil .commerce-home-tile { border-width: 2px; }
+html.dark .commerce-home-redesign { --julaba-ivoire: #201A22; --julaba-sable: #493344; }
+@media(min-width:768px){.commerce-home-redesign{padding-inline:16px}.commerce-home-hero{margin-top:16px;border-radius:30px}.commerce-balance-redesign{margin-inline:32px}.commerce-home-redesign > div > :not(.commerce-home-hero):not(.commerce-balance-redesign){margin-left:32px;margin-right:32px}.commerce-home-welcome>img{width:190px}}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
@@ -268,7 +322,10 @@ html.dark {
    l'aperçu replié (.pos-grille-apercu, 4 enfants) exactement une rangée.
    Au-dessus de 1024 px la colonne produits est large : autant de vignettes
    que la largeur en accepte, jamais moins de 150 px chacune. */
-.pos-grille { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--caisse-esp-2); }
+.pos-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--caisse-esp-2); }
+@media (min-width: 600px) and (max-width: 1023px) {
+  .pos-grille { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 /* Le `display` des cartes est ICI et non en style inline (UI-03) : un
    `display:flex` écrit dans l'attribut style bat le `display:none` de
    .pos-grille-apercu, et toute la grille s'affichait sur téléphone — mesuré
@@ -277,3 +334,30 @@ html.dark {
 @media (min-width: 1024px) {
   .pos-grille { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--caisse-esp-3); }
 }
+
+/* Panier visible sans second écran : ce dock reste dans le flux et conduit au
+   paiement déjà présent sur la même page. Il ne contient aucune action d'argent. */
+.caisse-panier-raccourci { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--caisse-esp-2); margin: 0 0 var(--caisse-esp-3); padding: var(--caisse-esp-2); border: 1px solid rgba(30,122,58,.3); border-radius: var(--caisse-rayon-4); background: color-mix(in srgb, var(--caisse-ivoire) 92%, transparent); box-shadow: 0 8px 22px rgba(18,74,42,.13); backdrop-filter: blur(10px); }
+.caisse-panier-raccourci-total { min-width: 0; display: flex; flex-direction: column; padding-left: var(--caisse-esp-2); color: var(--encre); }
+.caisse-panier-raccourci-total span { font: var(--caisse-font-legende); color: var(--caisse-gris-texte); }
+.caisse-panier-raccourci-total strong { font: var(--caisse-font-h2); color: var(--caisse-vert-fonce); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.caisse-panier-raccourci button { min-height: 52px; display: flex; align-items: center; justify-content: center; gap: var(--caisse-esp-1); padding: 0 var(--caisse-esp-3); border: none; border-radius: var(--caisse-rayon-3); background: var(--caisse-vert); color: white; font: var(--caisse-font-bouton); font-family: inherit; cursor: pointer; }
+@media (min-width: 1024px) { .caisse-panier-raccourci { display: none; } }
+
+/* Tata dans la caisse : l'image raconte le marché, mais le seul contrôle vocal
+   reste le vrai bouton orange géré par MicroVenteCaisse. */
+.caisse-voice-guide { position: relative; isolation: isolate; overflow: hidden; padding: var(--caisse-esp-4) var(--caisse-esp-3); border: 1px solid rgba(14,81,61,.22); border-radius: var(--caisse-rayon-5); background: var(--caisse-sable); box-shadow: 0 10px 24px rgba(33,27,24,.08); }
+.caisse-voice-guide::before { content: ''; position: absolute; z-index: -2; inset: 0; background-image: url('../assets/redesign/bandeau-marche.webp'); background-size: cover; background-position: center; opacity: .28; }
+.caisse-voice-guide::after { content: ''; position: absolute; z-index: -1; inset: 0; background: linear-gradient(180deg, rgba(255,249,241,.88), rgba(245,235,221,.96)); }
+.caisse-voice-question { width: max-content; max-width: 100%; margin: 0 auto var(--caisse-esp-4); padding: 7px 13px; border-radius: 999px; background: rgba(255,249,241,.92); color: var(--caisse-vert-fonce); text-align: center; }
+.caisse-voice-row { display: flex; align-items: center; justify-content: center; gap: var(--caisse-esp-3); }
+.caisse-voice-tata-side { display: flex; min-width: 0; flex: 1; max-width: 210px; flex-direction: column; align-items: flex-end; gap: var(--caisse-esp-2); }
+.caisse-voice-tata { width: 92px; height: 102px; margin: -10px 4px -8px 0; object-fit: cover; object-position: 50% 8%; border-radius: 28px 28px 16px 16px; filter: drop-shadow(0 8px 12px rgba(33,27,24,.15)); flex-shrink: 0; }
+.caisse-voice-bubble { display: flex; align-items: center; width: 100%; max-width: 100%; min-width: 0; border: 1px solid rgba(14,81,61,.18); background: var(--caisse-ivoire); color: var(--encre); text-align: left; cursor: pointer; font-family: inherit; box-shadow: 0 6px 16px rgba(33,27,24,.06); }
+.caisse-cash-choice { display: grid; grid-template-columns: 1fr 1fr; gap: var(--caisse-esp-2); margin-bottom: var(--caisse-esp-3); }
+.caisse-cash-choice button { min-height: 56px; display: flex; align-items: center; justify-content: center; gap: var(--caisse-esp-2); padding: var(--caisse-esp-2); border: 2px solid var(--commerce-line); border-radius: var(--caisse-rayon-3); background: var(--caisse-ivoire); color: var(--caisse-gris-texte); font: var(--caisse-font-texte); font-family: inherit; cursor: pointer; }
+.caisse-cash-choice button[aria-pressed="true"] { border-color: var(--caisse-vert); background: var(--caisse-succes); color: var(--caisse-vert-fonce); }
+.caisse-cash-choice button span { font-size: 17px; font-weight: 800; letter-spacing: .08em; }
+.caisse-cash-choice button strong { font-weight: 700; }
+.caisse-compte-juste { width: 100%; min-height: 52px; margin-top: var(--caisse-esp-2); padding: var(--caisse-esp-2) var(--caisse-esp-3); border: 1.5px solid var(--caisse-vert); border-radius: var(--caisse-rayon-3); background: var(--caisse-succes); color: var(--caisse-vert-fonce); font: var(--caisse-font-texte); font-weight: 700; font-family: inherit; cursor: pointer; }
+@media(max-width:370px){.caisse-voice-guide{padding-inline:var(--caisse-esp-2)}.caisse-voice-row{gap:var(--caisse-esp-1)}.caisse-voice-tata{width:78px;height:88px}.caisse-voice-question{font-size:23px}}
