@@ -527,3 +527,222 @@ propriétés — et un commentaire faux finit toujours par servir d'argument.
 Toujours **aucune dictée réelle**. Ces tests prouvent que la chaîne transporte
 le bon produit ; ils ne prouvent pas que « trois tas » est reconnu par le
 téléphone de Jeanne.
+
+---
+
+## 12. Lots C, D, E — contre-audit (20/09/2026, `a947f2a`)
+
+> Contre-audit transverse, fait sur le **code** de `a947f2a`, pas sur les
+> messages de commit ni sur les rapports des agents. Aucune ligne applicative
+> n'a été modifiée ; les défauts trouvés sont **reproduits, mesurés, et laissés
+> ouverts** au registre (révision 17). Scripts jetables hors dépôt.
+
+### 12.1 Ce qui est PROUVÉ
+
+**Le chemin d'argent à la voix a une seule porte, et elle tient.**
+
+- `machineEncaissement.ts` : **un seul** `type: 'encaisser'` dans tout le
+  fichier (l. 218), gardé par cinq conditions conjointes (l. 211-216) :
+  `phase === 'attente_confirmation'`, `memeEmpreinte(etat.empreinte,
+  fin.empreinte)` (total, reçu, composition triée du panier), `!panierVide`,
+  `suffisant`, `total > 0`. La branche `etat_financier_change` (l. 148-181)
+  ne rend que `rien` ou `dire` : elle **ne peut pas** émettre `encaisser`.
+- `POSCaisse.tsx` : `handlePay` (l. 241) a **exactement deux appelants** —
+  le bouton « Payer en espèces » (`onClick={handlePay}`, l. 671) et l'effet
+  `encaisser` (`void handlePay()`, l. 366). Le verrou `paiementEnCoursRef`
+  est **dans** `handlePay` (l. 242), donc couvre les deux. `enregistrerVente`
+  n'a **qu'un** appelant dans `POSCaisse` (l. 279). Le `bloque` du bouton
+  (l. 660-662 : `isProcessing`, reçu insuffisant, opérateur MM manquant) est
+  **strictement inclus** dans les gardes de `handlePay` : la voix ne peut pas
+  contourner un état où le bouton est gris.
+- `suffisant` vocal = `recu > 0 && !insuffisant` (l. 335) : la voix **refuse
+  le reçu à 0** que le bouton accepte.
+- `MicroVenteCaisse.tsx` : 0 `handlePay`, 0 `enregistrerVente`, aucun état
+  de confirmation financière ; l'intention est transmise et le gestionnaire
+  **s'arrête** (`return`, l. 187). `useVoiceCore` ne parle pas sur une
+  intention contournée (`bypassed`, l. 569-604) : la seule voix de
+  l'encaissement est celle de la machine.
+- **Énumération exhaustive relancée** (`test:machine-encaissement`) :
+  2 560 000 conversations, 19 312 paiements émis, **0 sans relecture exacte
+  du même compte juste avant**.
+
+**Attaque du critère de fermeture** (« aucune phrase vocale ne peut écrire de
+l'argent sans confirmer EXACTEMENT l'état financier qu'elle vient de
+relire »), script jetable important `reduire`, `empreintePanier`,
+`ETAT_INITIAL`, état financier construit **comme POSCaisse le construit**
+(l. 328-345). Résultats mesurés, `encaisser` émis / attendu :
+
+| Cas | Séquence | Mesuré |
+|---|---|---|
+| a | « encaisse » (reçu 0) → billet 5 000 → relecture 4 000/5 000 → panier passe à 6 000 → « oui valide » | **0 paiement** ; Tata : « Elle doit 6 000 francs. Touche les billets » ; après billet 1 000 → relecture 6 000/6 000 → « oui valide » → 1 paiement, **de l'état relu** |
+| a2 | idem, reçu 10 000 couvrant les deux totaux | le changement relit d'elle-même 6 000/10 000 ; le « oui valide » suivant paie **6 000**, jamais 4 000 |
+| b | 2 tomates à 1 000 relues, panier recomposé en 1 tomate à 2 000 (même total) → « oui valide » | **rejet** : « Le compte a changé… » (empreinte `tomate:2:2000` ≠ `tomate:1:2000`) |
+| c | reçu 5 000 relu, « oui valide » avec reçu 6 000 | **rejet**, relecture du nouveau compte |
+| d | double « oui valide » sur le même état | **1 seul** paiement ; le second relit |
+| e | « oui valide » au repos | **0 paiement**, relecture puis attente |
+| f | reçu 0, panier plein, « encaisse » puis 3 × « oui valide », puis attente **forgée** sur reçu 0 | **0 paiement** dans les quatre cas |
+| g | relecture puis panier vidé puis « oui valide » (y compris attente forgée) | **0 paiement**, « Ton panier est vide » |
+| h1 | retrait puis ré-ajout d'une ligne → empreinte identique à celle relue | chaque changement **relit** ; le paiement final porte l'état relu |
+| h2 | mêmes lignes dans l'autre ordre | empreinte triée : paiement légitime |
+| h3 | total flottant (500/3 × 3) puis 500,4 : empreinte arrondie identique, `total` différent | **rejet** (le `total` de l'empreinte est comparé en plus des lignes) |
+| h4 | « non » puis « oui valide » | **0 paiement** |
+| h5 | « combien elle doit » entre relecture et « oui valide » | lecture seule, l'attente survit, 1 paiement |
+| h6 | attente forgée avec reçu insuffisant | **rejet** |
+| h7 | « encaisse » deux fois puis « oui valide » | 1 paiement |
+| h8 | paiement, panier vidé, **nouveau panier identique** + billets, « oui valide » sans nouvel « encaisse » | **0 paiement** (repos → relecture d'abord) |
+
+**17 scénarios, 0 violation.** Une « violation » est apparue au premier
+passage sur (a) : elle était dans **mon attendu** (j'avais compté 0 paiement
+pour toute la séquence alors que le second « oui valide » suivait une
+relecture fraîche de 6 000/6 000). Corrigée dans le script, dite ici.
+
+**Les garde-fous mordent.** Rejoués sur la source d'avant, dans un worktree
+temporaire : `repliParle` sur `f0c965c` → **14 échecs** (annoncé 14) ;
+`choixUnite` sur `f7d1916` (composant existant, non posé) → **3 échecs**
+(annoncé 3) ; `caisseEncaissementVocal` sur `f0c965c` → **plante à l'import**
+(`INTENTIONS_ENCAISSEMENT` n'existe pas encore) et, avec la grammaire et la
+machine actuelles copiées, **30 échecs** (annoncé 28 : le chiffre dépend de
+la version des modules purs copiés ; rouge dans les deux cas).
+
+**Gelée intacte.** `git diff f0c965c..HEAD -- frontend_src/package.json` :
+la ligne `test:ci` est **inchangée** ; les sept scripts ajoutés sont tous dans
+`verify`. `git grep '<<<<<<<\|>>>>>>>' HEAD` : **vide**.
+
+**Batterie relancée** : `tsc -b` 0 · `verify` 0 · `test:ci` 0 · `build` 0 ·
+`test-cible-tactile` 0 (ce script ne teste **que** la barre de recherche ;
+`ChoixUnite` l. 69-70 et `BoutonReecouter` l. 55 sont à ≥ 44 px **par
+lecture**, pas par ce script).
+
+**Lot E sur ses deux trous nommés** : `POSCaisse` `unite: libreUnite`
+(l. 195, choisi par `ChoixUnite`, l. 1127) ; `vendreVocalUnifie` l. 193
+`unite: uniteParlee ?? 'unité'` via `uniteEntendue` (« kilos » → `kg`).
+
+### 12.2 Ce que le contre-audit a TROUVÉ (reproduit, laissé ouvert)
+
+**VOIX-02 — « oui je valide pas » écrit de l'argent.** La grammaire lit
+`AFFIRMATION_PUIS_VALIDE` (l. 83-85) avant tout sauf `ANNULATION` (l. 92),
+et `ANNULATION` ne connaît pas « pas » seul (seulement « pas encore »). À
+l'oral, le « ne » tombe : « oui je valide pas », « oui valide pas », « oui,
+je valide pas » sont lus **`oui_valide`**. Traversée mesurée : grammaire →
+`intentLocal` → machine en `attente_confirmation` sur l'état relu → effet
+**`encaisser`** → `handlePay`. Le critère de Patrick est **respecté à la
+lettre** (l'argent écrit est exactement l'état relu) et **contredit dans son
+esprit** : Tata demande « Je valide ? », elle répond non, ça paie. Le
+commentaire de la grammaire (« le doute profite TOUJOURS au refus ») décrit
+une règle que le code ne tient pas sur cette forme. Dégât borné : les billets
+ont été touchés, le montant est celui qu'elle vient d'entendre ; il reste une
+vente enregistrée contre un refus dit, à annuler ensuite. Pas corrigé ici.
+
+**Autres phrases ordinaires qui déclenchent la grammaire** (aucune n'écrit
+d'argent sans relecture — c'est la machine qui protège, pas la grammaire) :
+« oui je valide mon panier plus tard » → `oui_valide` ; « ma cliente a dit
+oui valide », « oui valide la dépense » → `oui_valide` ; « c'est bon on
+encaisse demain », « encaissement » → `encaisser` (ouvre une préparation,
+n'écrit rien) ; « le total du jour », « total », « mon total » →
+`combien_doit` (Tata répond sur la dette de la cliente, pas sur la journée —
+lecture seule) ; « j'ai laissé 500 francs » → `annuler_validation`
+(sans coût). **Ne déclenchent rien, comme voulu** : « oui », « d'accord »,
+« valide », « ok valide », « ça va valider », « ouais c'est ça », « combien
+j'ai vendu aujourd'hui », « elle a validé hier », « il m'a donné cinq
+mille ». **Manqués (faux négatifs, sans risque)** : « oui c'est bon je
+valide », « oui je la valide », « oui alors valide », « oui madame valide »,
+« oui ma chérie valide » → `null` → « je n'ai pas bien compris ».
+
+**`localIntent`, nuance d'annulation différée — mesurée** : « attends, vends
+deux tomates à 500 francs » → `vendre` (tomate, 2, 500) ✔ ; « vends trois
+tas de tomates non mûres » → `vendre` ✔ ; « non, pas valide » →
+`annuler_validation` ✔. **« encaisse deux tomates à 500 » → `encaisser`** :
+la vente portée par la phrase est **perdue** (la grammaire gagne avant
+`extraire`). Pas silencieux — Tata relit le panier tel qu'il est ou dit
+« Ton panier est vide » — mais la ligne n'entre pas. Acceptable pour un
+pilote ? **À trancher** (§12.3).
+
+**VOIX-03 — un second micro vivant sur la surface de vente, qui ne sait ni
+l'unité ni « encaisse ».** `/marchand/caisse` est rendu sous `AppLayout`
+(`routes.tsx` l. 58), qui monte `BottomBar` (`AppLayout` l. 116) partout sauf
+sur `hiddenPaths` (l. 81) — la caisse n'y est pas. `BottomBar` affiche sur
+téléphone (`lg:hidden`) un **bouton rond vert « Tata »** (l. 76-88) qui ouvre
+`TantieSagesseModal`, lequel vend dans le **même panier** par
+`vendreVocalUnifie(nomParle, quantite, montant)` **sans transmettre l'unité
+dictée** (l. 85-86, 128-131). Mesuré, même phrase « vends deux tas de gombo
+à 500 » : micro de la caisse → ligne `unite: "tas"`, Tata dit « 2 tas de
+gombo » ; micro vert → ligne **`unite: "unité"`**, Tata dit « 2 gombos ».
+L'agent du lot E l'avait signalé hors lot ; le contre-audit établit que ce
+chemin est **atteignable par une marchande, sur la caisse elle-même, dans le
+pilote**. Ce micro ne déclare pas `onIntentionEncaissement` : « encaisse »
+dit dedans passe par `intentLocal` (partagé) → `encaisser` → non contourné →
+`executerActionTataMarchand` → `not_handled` → **rien** (lecture du code ;
+la phrase exacte qu'il prononce alors n'est pas mesurée — hypothèse). C'est
+le motif même de VOIX-01 (« deux voix », un micro qui ne finit pas la
+vente), reformé sur la surface que le lot B rendait unique. Non corrigé ici.
+
+### 12.3 Décisions qui appartiennent à Patrick
+
+1. **`speak` vs `dire` dans le bloc machine** (`POSCaisse` l. 365 et 393).
+   Raison écrite par l'agent : « la relecture EST la garantie : une
+   marchande qui dit “encaisse” et n'entend rien dirait “oui valide” sans
+   avoir entendu le compte qu'elle confirme ». Le contre-audit ajoute un
+   fait qui pèse : **le texte de la relecture n'est affiché nulle part**
+   (« rien n'est rendu à partir de cet état », l. 351). Deux lectures :
+   - *`speak` (état actuel)* : en profil « lecture », la caisse parle quand
+     même — mais seulement en réponse à une phrase que la marchande a
+     elle-même dite, et la confirmation en deux temps reste réelle. Coût :
+     une voix automatique dans un profil qui l'a refusée, et une
+     **incohérence** : « deux mille francs » (coupure), « Il manque… »,
+     « Vente enregistrée » restent muets (`dire`) tandis que la relecture
+     parle.
+   - *`dire`* : en profil « lecture », « encaisse » ne produirait **ni son ni
+     texte**, la machine passerait quand même en attente, et « oui valide »
+     paierait un état qu'elle n'a **ni entendu ni lu**. Ce serait
+     l'arbitrage n°1 vidé de son sens dans ce profil.
+   Ni l'une ni l'autre n'est un défaut de code ; c'est une **décision
+   produit** (et, si `speak` est retenu, décider si la relecture doit aussi
+   s'afficher). Rien au registre.
+2. **VOIX-02** : ajouter « pas » au voisinage de « valide » à l'annulation
+   (ou toute autre règle) — ce n'est pas au contre-audit de choisir la forme.
+3. **« encaisse deux tomates à 500 »** perd la ligne : accepter pour le
+   pilote, ou faire gagner la vente et différer « encaisser » comme
+   l'annulation ?
+4. **VOIX-03** : masquer le micro vert sur `/marchand/caisse`, ou lui faire
+   transmettre l'unité et les intentions d'encaissement, ou le retirer du
+   parcours marchand pilote. Trois voies, une seule règle : **un micro qui
+   marche, pas deux dont un qui ne finit pas la vente**.
+5. **Statut de VOIX-01** : le contre-audit la laisse **OUVERTE** (§12.4) ;
+   Patrick peut requalifier la gravité de VOIX-02/VOIX-03 et décider si
+   elles bloquent l'APK.
+
+### 12.4 Verdict sur VOIX-01 et ce que ce contre-audit NE prouve PAS
+
+**VOIX-01 reste OUVERTE**, pour deux raisons précises et pas une de plus :
+(1) une phrase de **refus** écrit de l'argent sur le chemin même du lot C
+(VOIX-02) ; (2) un second micro sur la surface de vente perd l'unité et ne
+sait pas finir la vente (VOIX-03) — le lot E n'est donc pas « sans
+exception » sur un chemin atteignable, et le lot B n'est pas « un seul
+micro ». Tout le reste — surface unique, micro permanent, machine à porte
+unique, relecture spontanée, repli parlé, unité sur les deux trous nommés —
+est **vérifié dans le code et mesuré**.
+
+Ce que ce contre-audit ne prouve pas :
+- **Rien n'a été entendu sur un vrai téléphone.** Ni la reconnaissance de
+  « oui valide » dans le bruit, ni l'ordre réel des phrases quand deux
+  `speak` se suivent dans la même frame (coupure puis relecture), ni si la
+  synthèse coupe la précédente. La séquence du point 8 du brief est déduite
+  du code : « encaisse » (reçu 0) → *« Elle doit 4 000 francs. Touche les
+  billets qu'elle te donne. »* → billet 2 000 → *« deux mille francs »*
+  (`dire`) puis *« Il manque 2 000 francs. »* (`dire`, lot D) → billet 2 000
+  → *« deux mille francs »* puis *« Elle doit 4 000 francs. Elle t'a donné
+  4 000. Compte juste. Je valide ? »* (`speak`, machine ; lot D se tait) →
+  billet 1 000 → *« mille francs »* puis *« Elle doit 4 000 francs. Elle t'a
+  donné 5 000. Tu rends 1 000. Je valide ? »* → « oui valide » → aucune
+  phrase de la machine (texte vide), `handlePay`, *« Vente enregistrée.
+  4 000 francs »* (`dire`). **Aucune phrase dite deux fois, aucune étape
+  muette en profil voix** ; en profil « lecture », tout est muet sauf les
+  trois relectures de la machine (cf. décision 1).
+- React n'est pas monté par les garde-fous : que le `useEffect` sur
+  l'empreinte s'exécute avant qu'une phrase suivante soit traitée est une
+  propriété de React, pas une preuve de ces tests. La machine, elle,
+  rejette de toute façon une empreinte périmée (cas c, h6).
+- La réaction exacte du micro vert à « encaisse » (VOIX-03) est lue, pas
+  mesurée.
+- Les « deux voix au démarrage » du terrain restent **non diagnostiquées** ;
+  VOIX-03 est une **hypothèse** plausible de leur origine, pas un diagnostic.
