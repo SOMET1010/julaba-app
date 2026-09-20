@@ -61,3 +61,24 @@ marchande entend.
 Claude ne retouche plus au design. Un agent plateforme qui rencontre un
 conflit avec une modification Manus **le signale** ; il ne « répare » pas l'UI
 lui-même.
+
+## Langues (mission i18n, 20/09/2026)
+
+**Claude** : architecture i18n ; extraction de toutes les intentions et
+phrases ; clés stables ; séparation `STT_INPUT` / `TTS_OUTPUT` ; structure
+multilingue ; lexiques produits / unités / nombres ; validation des
+placeholders ; branchement des textes et intentions dans le moteur ;
+garde-fous métier, surtout argent.
+
+**Manus** : français marché ; traductions/adaptations Dioula, Baoulé, Agni,
+Bété, Adioukrou, Ébrié, Sénoufo, etc. ; variantes naturelles de phrases ; et
+toute la partie voix — choix des voix, enregistrements, TTS, clips, packs
+audio, qualité/prosodie, association langue → voix, intégration audio côté
+produit.
+
+Point de rencontre : `docs/langues/JULABA-LANG-CATALOG.csv` (généré par le
+rail plateforme, rempli par Manus) et les fichiers `locales/<langue>/` +
+`audio/manifest.ts` (contrat et validateurs côté Claude, contenu côté Manus).
+Les variantes STT **financières** (« oui valide », « encaisse », etc.) ne
+s'activent qu'avec `validation.finance = true`, et la liste blanche de
+`oui_valide` reste aussi stricte dans toutes les langues.
