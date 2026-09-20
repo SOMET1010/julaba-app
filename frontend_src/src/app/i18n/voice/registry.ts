@@ -17,6 +17,7 @@ import { FR_CI } from './locales/fr-ci';
 import { DYU_CI } from './locales/dyu-ci';
 import { BCI } from './locales/bci';
 import { ANY } from './locales/any';
+import { BM } from './locales/bm';
 
 const REGISTRE = new Map<LocaleCode, ManifestLocale>();
 
@@ -89,3 +90,6 @@ enregistrerLocale(FR_CI);
 enregistrerLocale(DYU_CI);
 enregistrerLocale(BCI);
 enregistrerLocale(ANY);
+// « bambara » est sélectionnable dans Paramètres : sans manifest, chaque
+// appel traçait locale_inconnue (I18N-02). Squelette, tout retombe sur fr-ci.
+enregistrerLocale(BM);
