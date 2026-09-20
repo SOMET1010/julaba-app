@@ -23,8 +23,8 @@
 import { extraire } from './extraction';
 import { detecterEncaissement, type IntentionEncaissement } from './grammaireEncaissement';
 import { plurielNom } from '../services/dialoguesTata';
-
-const fmt = (n: number) => n.toLocaleString('fr-FR');
+import { localeActive, t } from '../i18n/voice/runtime';
+import type { LocaleCode } from '../i18n/voice/types';
 
 // Réponse minimale au MÊME format que le serveur (champs utiles au flux).
 export interface LocalVoiceResult {
@@ -64,7 +64,7 @@ function resultatEncaissement(texte: string, intention: IntentionEncaissement): 
  * @param texte transcription brute (STT on-device)
  * @returns la réponse locale, ou null si non reconnu avec assez de confiance.
  */
-export function intentLocal(texte: string): LocalVoiceResult | null {
+export function intentLocal(texte: string, locale: LocaleCode = localeActive()): LocalVoiceResult | null {
   if (!texte || !texte.trim()) return null;
 
   // L'ENCAISSEMENT EST CONSULTÉ EN PREMIER (VOIX-01, lot C). « Combien elle
@@ -91,7 +91,7 @@ export function intentLocal(texte: string): LocalVoiceResult | null {
   // la vente gagner ne coûte rien sur l'argent, alors que l'avaler en
   // silence coûterait la ligne. « oui valide » et « combien elle doit »,
   // eux, sont rendus tout de suite.
-  const encaissement = detecterEncaissement(texte);
+  const encaissement = detecterEncaissement(texte, locale);
   if (encaissement === 'oui_valide' || encaissement === 'combien_doit') return resultatEncaissement(texte, encaissement);
 
   const p = extraire(texte);
@@ -130,14 +130,16 @@ export function intentLocal(texte: string): LocalVoiceResult | null {
   // que les dialogues de la vente guidée.
   const nomProduit = p.produit
     ? (p.quantite && p.quantite > 1 ? plurielNom(p.produit) : p.produit)
-    : 'produit';
+    : t('TATA_PRODUIT_GENERIQUE', {}, locale);
   // Sans montant dicté, on n'en ANNONCE aucun : le prix sera celui du
   // catalogue, et affirmer un chiffre qu'on n'a pas serait pire que se taire.
-  const partMontant = p.montant != null ? ` pour ${fmt(p.montant)} francs` : '';
+  // Phrases du catalogue i18n : les morceaux (quantité, montant, produit)
+  // sont eux-mêmes des clés, pour qu'une langue puisse les ordonner autrement.
+  const partMontant = p.montant != null ? t('TATA_PART_POUR_MONTANT', { montant: p.montant }, locale) : '';
   const response =
     intent === 'vendre'
-      ? `Vente de ${p.quantite ? `${p.quantite} ` : ''}${nomProduit}${partMontant}, c'est bien ça ?`
-      : `Dépense de ${fmt(p.montant!)} francs${p.produit ? ` pour ${p.produit}` : ''}, c'est bien ça ?`;
+      ? t('TATA_CONFIRME_VENTE', { quantite: p.quantite ? t('TATA_PART_QUANTITE', { quantite: String(p.quantite) }, locale) : '', produit: nomProduit, montant: partMontant }, locale)
+      : t('TATA_CONFIRME_DEPENSE', { montant: p.montant!, produit: p.produit ? t('TATA_PART_POUR_PRODUIT', { produit: p.produit }, locale) : '' }, locale);
 
   return {
     transcript: texte,

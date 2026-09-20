@@ -22,7 +22,10 @@ export interface ExtractionResult {
 // Parseur de nombres en lettres françaises
 // ──────────────────────────────────────────────
 
-const UNITES: Record<string, number> = {
+// Tables EXPORTÉES pour le lexique i18n (i18n/voice/locales/fr-ci/lexicon.ts) :
+// une seule source, jamais recopiée. Le parseur ci-dessous reste le seul à
+// les interpréter.
+export const UNITES: Record<string, number> = {
   zéro: 0, zero: 0,
   un: 1, une: 1,
   deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9,
@@ -36,7 +39,7 @@ const UNITES: Record<string, number> = {
   'soixante-et-onze': 71,
 };
 
-const DIZAINES: Record<string, number> = {
+export const DIZAINES: Record<string, number> = {
   vingt: 20, trente: 30, quarante: 40, cinquante: 50, soixante: 60,
   'soixante-dix': 70,
   'soixante-onze': 71, 'soixante-douze': 72, 'soixante-treize': 73,
@@ -126,11 +129,11 @@ function extractNumberTokens(words: string[]): NumberToken[] {
 // ──────────────────────────────────────────────
 
 // Marqueurs AVANT le nombre → montant (« à 2000 », « pour 1000 »)
-const MARQUEURS_AVANT = new Set(['à', 'a', 'pour']);
+export const MARQUEURS_AVANT = new Set(['à', 'a', 'pour']);
 // Marqueurs APRÈS le nombre → montant (« 2000 francs »)
-const MARQUEURS_APRES = new Set(['francs', 'franc']);
+export const MARQUEURS_APRES = new Set(['francs', 'franc']);
 // Mots intermédiaires tolérés entre le nombre et le produit (pour la quantité)
-const MOTS_UNITE = new Set([
+export const MOTS_UNITE = new Set([
   'tas', 'sac', 'sacs', 'kilo', 'kilos', 'kilogramme', 'kilogrammes',
   'bidon', 'bidons', 'botte', 'bottes', 'sachet', 'sachets', 'boite', 'boites',
   'paquet', 'paquets', 'morceau', 'morceaux', 'litre', 'litres', 'régime', 'regime', 'regimes', 'régimes',

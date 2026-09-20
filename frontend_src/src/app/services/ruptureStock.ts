@@ -11,6 +11,8 @@
 // à 0 et on AVERTIT. La vente passe toujours (jamais bloquée).
 // ──────────────────────────────────────────────────────────────────────────
 
+import { t } from '../i18n/voice/runtime';
+
 export interface Rupture {
   nom: string;
   manquant: number;
@@ -28,19 +30,21 @@ export function collecterRuptures(
   lignes: { nom: string; quantite: number; stockAvant: number }[],
 ): Rupture[] {
   return lignes
-    .map((l) => ({ nom: (l.nom || 'ce produit').trim() || 'ce produit', manquant: manquantLigne(l.quantite, l.stockAvant) }))
+    .map((l) => ({ nom: (l.nom || t('TATA_CE_PRODUIT')).trim() || t('TATA_CE_PRODUIT'), manquant: manquantLigne(l.quantite, l.stockAvant) }))
     .filter((r) => r.manquant > 0);
 }
 
 /** Phrase d'avertissement parlée, ou null s'il n'y a aucune rupture. */
 export function messageRupture(ruptures: Rupture[]): string | null {
   if (!ruptures.length) return null;
-  const bouts = ruptures.map((r) => `${r.manquant} ${r.nom}`);
+  // Phrase et séparateurs d'énumération viennent du catalogue i18n : une
+  // langue peut lier autrement (« , » / « et »).
+  const bouts = ruptures.map((r) => t('TATA_RUPTURE_LIGNE', { manquant: String(r.manquant), produit: r.nom }));
   const liste =
     bouts.length === 1
       ? bouts[0]
-      : bouts.slice(0, -1).join(', ') + ' et ' + bouts[bouts.length - 1];
-  return `Attention, il manquait ${liste}. Pense à réapprovisionner.`;
+      : bouts.slice(0, -1).join(t('TATA_LISTE_VIRGULE')) + t('TATA_LISTE_ET') + bouts[bouts.length - 1];
+  return t('TATA_RUPTURE', { liste });
 }
 
 /** Raccourci : à partir des lignes, renvoie la phrase parlée (ou null). */

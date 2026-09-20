@@ -29,6 +29,7 @@ import {
 import { phraseCompris } from './dialoguesTata';
 import { resoudrePrixVocal } from './prixVocal';
 import { uniteEntendue } from '../utils/unite.utils';
+import { t } from '../i18n/voice/runtime';
 
 /**
  * Forme minimale attendue par `CaisseContext.addToCart` — reprise ici plutôt
@@ -143,14 +144,12 @@ export function vendreVocalUnifie(
     // pas ». Chaque refus a son mot, pour qu'elle sache quoi redire.
     if (deps.guidageVocalActif()) {
       if (prix.type === 'unite_incompatible') {
-        deps.speak(
-          `Tu dis ${prix.uniteParlee}, mais ${prix.nom} est au prix du ${prix.uniteCatalogue}. Dis-moi combien tu l'as vendu.`,
-        );
+        deps.speak(t('TATA_UNITE_INCOMPATIBLE', { uniteParlee: prix.uniteParlee, produit: prix.nom, uniteCatalogue: prix.uniteCatalogue }));
       } else {
         deps.speak(
           prix.nom
-            ? `Je n'ai pas le prix de ${prix.nom}. Redis-moi combien tu l'as vendu.`
-            : "Je n'ai pas compris le prix. Redis-moi combien tu as vendu.",
+            ? t('TATA_PRIX_INCONNU_PRODUIT', { produit: prix.nom })
+            : t('TATA_PRIX_INCOMPRIS'),
         );
       }
     }
@@ -222,7 +221,7 @@ export function vendreVocalUnifie(
         deps.planifier(() => {
           deps.proposerCreationProduit({ nom: nomPropre, prix: ligne.prix });
           if (deps.guidageVocalActif()) {
-            deps.speak(`Je ne connais pas ${nomPropre} dans ta boutique. Je l'ajoute ?`);
+            deps.speak(t('TATA_PRODUIT_INCONNU_AJOUTER', { produit: nomPropre }));
           }
         }, 2200);
       }

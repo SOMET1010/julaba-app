@@ -35,7 +35,11 @@ export interface ChiffresJour {
   topProduit?: { nom: string; quantite?: number } | null;
 }
 
-const fr = (n: number) => Math.round(n).toLocaleString('fr-FR');
+import { t } from '../i18n/voice/runtime';
+
+// Les réponses viennent du catalogue i18n (clés QUEST_*) ; on arrondit ici
+// comme avant, le formatage des nombres est celui de la locale.
+const r = (n: number) => Math.round(n);
 
 // Minuscules + sans accents : la reconnaissance vocale est irrégulière sur les
 // accents, la détection ne doit pas en dépendre.
@@ -91,38 +95,38 @@ export function phraseReponse(question: QuestionCaisse, c: ChiffresJour): string
 
   switch (question) {
     case 'ventes_jour': {
-      if (ventes <= 0) return "Tu n'as pas encore de vente aujourd'hui. Ça va venir !";
+      if (ventes <= 0) return t('QUEST_VENTES_AUCUNE');
       const n = Number(c.nombreVentes) || 0;
       return n > 1
-        ? `Aujourd'hui, tu as vendu pour ${fr(ventes)} francs, en ${n} ventes.`
-        : `Aujourd'hui, tu as vendu pour ${fr(ventes)} francs.`;
+        ? t('QUEST_VENTES_JOUR_PLURIEL', { ventes: r(ventes), nombre: String(n) })
+        : t('QUEST_VENTES_JOUR', { ventes: r(ventes) });
     }
     case 'depenses_jour':
       return depenses <= 0
-        ? "Aucune dépense notée aujourd'hui."
-        : `Aujourd'hui, tu as dépensé ${fr(depenses)} francs.`;
+        ? t('QUEST_DEPENSES_AUCUNE')
+        : t('QUEST_DEPENSES_JOUR', { depenses: r(depenses) });
     case 'solde_caisse': {
       if (c.caisse != null && !Number.isNaN(Number(c.caisse))) {
-        return `Dans ta caisse, il y a ${fr(Number(c.caisse))} francs.`;
+        return t('QUEST_SOLDE_CAISSE', { caisse: r(Number(c.caisse)) });
       }
       const solde = ventes - depenses;
       return solde >= 0
-        ? `Ventes moins dépenses, il te reste ${fr(solde)} francs aujourd'hui.`
-        : `Aujourd'hui, tes dépenses dépassent tes ventes de ${fr(-solde)} francs.`;
+        ? t('QUEST_SOLDE_CALCULE', { solde: r(solde) })
+        : t('QUEST_SOLDE_NEGATIF', { solde: r(-solde) });
     }
     case 'benefice_jour': {
       const resultat = ventes - depenses;
-      if (ventes <= 0 && depenses <= 0) return "Pas encore de ventes ni de dépenses aujourd'hui.";
+      if (ventes <= 0 && depenses <= 0) return t('QUEST_BENEFICE_VIDE');
       return resultat >= 0
-        ? `Aujourd'hui : ${fr(ventes)} francs de ventes, ${fr(depenses)} de dépenses. Il te reste ${fr(resultat)} francs.`
-        : `Aujourd'hui : ${fr(ventes)} francs de ventes, ${fr(depenses)} de dépenses. Tu as dépensé ${fr(-resultat)} francs de plus que tes ventes.`;
+        ? t('QUEST_BENEFICE_POSITIF', { ventes: r(ventes), depenses: r(depenses), resultat: r(resultat) })
+        : t('QUEST_BENEFICE_NEGATIF', { ventes: r(ventes), depenses: r(depenses), resultat: r(-resultat) });
     }
     case 'meilleure_vente': {
       const top = c.topProduit;
-      if (!top || !top.nom) return "Je n'ai pas encore assez de ventes pour te dire ça aujourd'hui.";
+      if (!top || !top.nom) return t('QUEST_MEILLEURE_VENTE_INCONNUE');
       return top.quantite && top.quantite > 1
-        ? `Ce qui marche le mieux aujourd'hui : ${top.nom}, ${fr(top.quantite)} vendus.`
-        : `Ce qui marche le mieux aujourd'hui : ${top.nom}.`;
+        ? t('QUEST_MEILLEURE_VENTE_QUANTITE', { produit: top.nom, quantite: r(top.quantite) })
+        : t('QUEST_MEILLEURE_VENTE', { produit: top.nom });
     }
   }
 }
