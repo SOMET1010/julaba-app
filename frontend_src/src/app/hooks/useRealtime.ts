@@ -65,6 +65,25 @@ const ACTIVE_INTERVAL = 30000;
 const IDLE_INTERVAL = 30000;
 const ACTIVITY_MAX = 50;
 
+/**
+ * API-07 — POURQUOI CES APPELS NE PASSENT PAS PAR `services/api/api-client.ts`
+ * (décision du 20/09/2026, à reprendre avec API-09).
+ *
+ * Ce hook n'alimente que `BODashboard` : c'est le BACK-OFFICE, qui a sa propre
+ * session (jeton en sessionStorage `julaba:bo:access-token`, cookie
+ * `bo_access_token`, événement `julaba:bo-session-expired`) et son propre
+ * client (`backoffice-api.ts`, dette API-09). Brancher ce sondage toutes les
+ * 30 s sur le client de la marchande ne serait pas neutre : sur un 401,
+ * `apiRequest` appellerait `rafraichirSession` — qui ferait tourner le jeton de
+ * rafraîchissement par le cookie — puis lèverait `julaba:session-expired`, que
+ * le back-office n'écoute pas. Converger ici, c'est vers le client du
+ * back-office, quand API-09 sera traité — pas vers celui de la caisse.
+ *
+ * Noté au passage, sans le corriger ici : la base est `/api/v1` RELATIVE, pas
+ * `API_URL`. Sur le déploiement à deux domaines (julaba-web ↔ julaba-api), ces
+ * quatre lectures visent donc le site statique. Changer l'URL est un changement
+ * de comportement : il appartient à API-09.
+ */
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(API + path, { credentials: 'include' });
   if (!res.ok) throw new Error(String(res.status));

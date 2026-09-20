@@ -129,5 +129,7 @@ export async function isAuthenticated(): Promise<boolean> {
   return !!token;
 }
 
-// Export vide pour compatibilité avec les imports existants
-export function getCurrentUser() { return null; }
+// API-05 (20/09/2026) : `getCurrentUser()` — qui rendait toujours `null` « pour
+// compatibilité avec les imports existants » — est supprimé. Mesuré avant :
+// aucun import de ce nom dans `src/` ; le seul consommateur de ce module est
+// `ActivationScreen` (`activerCompte`).
