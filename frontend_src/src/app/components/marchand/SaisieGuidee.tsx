@@ -11,16 +11,37 @@
  * Ici : le produit se choisit en touchant sa photo (comme l'ajout de produit
  * dans Mon stock), la quantité et le prix se pilotent avec un gros chiffre +
  * boutons / clavier numérique — jamais un <input> texte nu.
+ *
+ * ET CHAQUE ÉTAPE SE DIT (VOIX-01, lot D). Sur `f0c965c`, cet écran ne
+ * contenait aucun appel à `speak` : « Combien ? », « Prix (FCFA) », le gros
+ * chiffre — tout n'existait que sous forme de texte, dans le repli emprunté
+ * précisément parce que la dictée venait d'échouer. « Aucune étape importante
+ * ne doit exister uniquement sous forme tactile » (doctrine du propriétaire).
+ * Désormais Tata pose la question de l'étape en cours (au changement d'étape,
+ * pas à chaque rendu), redit la quantité quand elle touche +/−, le prix quand
+ * elle le tape, et un bouton « réécouter » redonne la dernière phrase. Les
+ * questions sont celles des dialogues de Tata (`phraseQuantiteManquante`,
+ * `phrasePrixManquant`) : la voix et le repli parlent la même langue.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
+import { useApp } from '../../contexts/AppContext';
+import { guidageVocal } from '../../utils/accessMode';
+import { quantiteAvecUnite } from '../../utils/unite.utils';
 import { creerLigneProvisoire, type LigneProvisoire } from '../../services/ligneProvisoire';
-import { ConfirmationLigne } from './ConfirmationLigne';
+import { phrasePrixManquant, phraseQuantiteManquante } from '../../services/dialoguesTata';
+import { BoutonReecouter, ConfirmationLigne } from './ConfirmationLigne';
 import { CATALOGUE_PRODUITS, getImageByNom, rechercherProduitCatalogue } from '../../data/catalogue-produits';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
 
 const ORANGE = '#B74725';
+
+/** Étape 1, dite : la photo est le geste, la voix le nomme. */
+const QUESTION_PRODUIT = 'Touche la photo de ce que tu as vendu.';
+
+/** Un montant à DIRE : « 1 500 francs », jamais « 1 500 F » (la synthèse lit « F » comme une lettre). */
+const francs = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} francs`;
 
 /** Résultat d'appariement au catalogue (fourni par le parent, qui connaît les produits). */
 export interface AppariementCatalogue {
@@ -60,6 +81,31 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
   const [autreOuvert, setAutreOuvert] = useState(false);
 
   const produitImage = produit ? (rechercherProduitCatalogue(produit)?.image || getImageByNom(produit)) : '';
+  const produitChoisi = produit.trim().length >= 2;
+
+  // VOIX. Dernière phrase dite : garde l'effet d'étape contre les rendus
+  // répétés et alimente « réécouter ». Le guidage automatique suit le profil
+  // (muet seulement si elle a choisi « je lis ») ; réécouter parle toujours.
+  const { speak } = useApp();
+  const dernierePhraseRef = useRef('');
+  const dire = (t: string) => {
+    dernierePhraseRef.current = t;
+    if (guidageVocal()) speak(t);
+  };
+  // L'unité sert à dire « 3 tas » plutôt que « 3 » — la même que celle qui
+  // ira sur la ligne (apparier), pas une devinette.
+  const uniteProduit = produitChoisi && apparier ? (apparier(produit)?.unite ?? null) : null;
+  // La question de l'étape EN COURS. Quand elle tape un nom libre (« Pas dans
+  // la liste »), on ne redit pas le nom à chaque lettre : « ce produit ».
+  const questionEtape = !produitChoisi
+    ? QUESTION_PRODUIT
+    : `${phraseQuantiteManquante(autreOuvert ? '' : produit)} ${prixModifiable ? phrasePrixManquant() : `Le prix est de ${francs(parseInt(prix || '0', 10) || 0)}.`}`;
+  // Posée au CHANGEMENT d'étape, jamais à chaque rendu — et pas pendant que
+  // ConfirmationLigne est affichée : c'est elle qui parle alors.
+  useEffect(() => {
+    if (etape !== 'saisie') return;
+    if (dernierePhraseRef.current !== questionEtape) dire(questionEtape);
+  }, [etape, produitChoisi, prixModifiable, autreOuvert]); // eslint-disable-line react-hooks/exhaustive-deps -- la phrase est relue au moment où l'étape change
 
   const choisirProduit = (nom: string, prixVente: number) => {
     setProduit(nom);
@@ -74,8 +120,18 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
     setAutreOuvert(false);
   };
 
-  const appuyerChiffre = (d: string) => setPrix(prev => (prev === '0' ? d : prev + d).slice(0, 6));
-  const effacerChiffre = () => setPrix(prev => prev.slice(0, -1));
+  // Le prix tapé se DIT à chaque touche (« 500 francs ») : la synthèse coupe
+  // la phrase précédente, donc taper vite ne fait entendre que la dernière.
+  const taperPrix = (valeur: string) => {
+    setPrix(valeur);
+    dire(valeur ? francs(parseInt(valeur, 10)) : 'Prix effacé.');
+  };
+  const appuyerChiffre = (d: string) => taperPrix((prix === '0' ? d : prix + d).slice(0, 6));
+  const effacerChiffre = () => taperPrix(prix.slice(0, -1));
+  const changerQuantite = (q: number) => {
+    setQuantite(q);
+    dire(quantiteAvecUnite(q, uniteProduit));
+  };
 
   const verifier = () => {
     const q = Math.max(1, quantite);
@@ -113,12 +169,14 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
     );
   }
 
-  const produitChoisi = produit.trim().length >= 2;
   const pret = produitChoisi && parseInt(prix || '0', 10) > 0;
 
   return (
     <div style={{ background: '#FFFCF7', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <p style={{ fontSize: 13, fontWeight: 800, color: ORANGE, letterSpacing: '0.05em', margin: 0 }}>SAISIR SANS PARLER</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <p style={{ fontSize: 13, fontWeight: 800, color: ORANGE, letterSpacing: '0.05em', margin: 0 }}>SAISIR SANS PARLER</p>
+        <BoutonReecouter phrase={() => dernierePhraseRef.current || questionEtape} />
+      </div>
 
       {/* ÉTAPE 1 — PRODUIT : on touche une photo, jamais un nom à écrire. */}
       {!produitChoisi ? (
@@ -159,10 +217,10 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
         <div>
           <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--encre-4)', textAlign: 'center', margin: '0 0 8px' }}>Combien ?</p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
-            <motion.button whileTap={{ scale: 0.9 }} aria-label="Moins" onClick={() => setQuantite(q => Math.max(1, q - 1))}
+            <motion.button whileTap={{ scale: 0.9 }} aria-label="Moins" onClick={() => changerQuantite(Math.max(1, quantite - 1))}
               style={{ width: 52, height: 52, borderRadius: 14, background: 'white', border: '1.5px solid #e5e0d8', fontSize: 26, fontWeight: 800, color: '#555', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
             <span style={{ fontSize: 42, fontWeight: 900, color: 'var(--encre)', minWidth: 60, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{quantite}</span>
-            <motion.button whileTap={{ scale: 0.9 }} aria-label="Plus" onClick={() => setQuantite(q => q + 1)}
+            <motion.button whileTap={{ scale: 0.9 }} aria-label="Plus" onClick={() => changerQuantite(quantite + 1)}
               style={{ width: 52, height: 52, borderRadius: 14, background: ORANGE, border: 'none', fontSize: 26, fontWeight: 800, color: 'white', cursor: 'pointer', flexShrink: 0 }}>+</motion.button>
           </div>
         </div>
@@ -190,7 +248,7 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
                   {d}
                 </button>
               ))}
-              <button type="button" onClick={() => setPrix('')}
+              <button type="button" onClick={() => taperPrix('')}
                 style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 14, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>
                 C
               </button>
@@ -208,7 +266,7 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
 
         <div style={{ display: 'flex', gap: 8 }}>
           {(['unitaire', 'total'] as const).map(m => (
-            <button key={m} onClick={() => setMode(m)}
+            <button key={m} onClick={() => { setMode(m); dire(m === 'unitaire' ? "Prix d'un seul." : 'Prix du tout.'); }}
               style={{ flex: 1, minHeight: 44, borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
                 border: `1.5px solid ${mode === m ? ORANGE : '#e5e0d8'}`, background: mode === m ? '#FDE9D6' : 'white', color: mode === m ? ORANGE : '#888' }}>
               {m === 'unitaire' ? "Prix d'un" : 'Prix du tout'}
