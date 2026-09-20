@@ -214,11 +214,46 @@ describe('SCHEMA-PILOTE — un seul chemin, prouvé et figé', () => {
       (parTable[l.table_name] ||= []).push(l.column_name);
     }
 
-    // On compare le schéma ENTIER, table par table. Une colonne ajoutée sans
-    // rejouer le gate fait échouer ici — c'est tout l'objet du gel.
+    // CE QUE LE GEL COUVRE, ET CE QU'IL NE PEUT PAS COUVRIR.
+    //
+    // L'empreinte décrit le schéma produit par LE CHEMIN AUTORISÉ. Or certains
+    // services posent leur propre table au PREMIER USAGE
+    // (`CREATE TABLE IF NOT EXISTS` dans le service : `cron_jobs_config`,
+    // `support_config`, `cooperative_besoins`…). C'est la troisième façon de
+    // construire le schéma, déjà comptée en SCHEMA-01 — elle n'appartient pas
+    // à ce chemin, et rien ne dit si elle s'est déclenchée ou non au moment où
+    // ce test tourne.
+    //
+    // POURQUOI CETTE PRÉCISION EXISTE. La première version comparait le schéma
+    // ENTIER. Elle passait quand ce fichier s'exécutait tôt dans la batterie,
+    // et échouait quand il s'exécutait après la suite qui touche la
+    // configuration des tâches planifiées : la base avait alors 61 tables au
+    // lieu de 60. Vert en local, rouge sur le runner, pour une raison qui
+    // n'avait rien à voir avec le schéma du pilote — exactement la classe de
+    // défaut qu'on a corrigée dans SEED-01, cette fois dans MON test.
+    //
+    // On compare donc ce dont DbInit est responsable, et on EXIGE que chaque
+    // table de l'empreinte soit intacte. Une table posée paresseusement en
+    // plus est ignorée ; une table de l'empreinte qui disparaît, ou dont les
+    // colonnes bougent, fait échouer. Le gel garde tout son mordant sur ce
+    // qu'il gouverne.
+    const poseesAuPremierUsage = new Set<string>();
+    for (const f of fichiersSrc(join(__dirname, '..', '..', 'src'))) {
+      // `src/database/` est EXCLU : DbInit emploie lui aussi
+      // `CREATE TABLE IF NOT EXISTS`, et le scanner ici viderait le gel de sa
+      // substance en excusant précisément les tables qu'il doit gouverner.
+      if (f.includes(`${join('src', 'database')}`)) continue;
+      for (const m of readFileSync(f, 'utf8')
+        .matchAll(/CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi)) {
+        poseesAuPremierUsage.add(m[1].toLowerCase());
+      }
+    }
+
     const ecarts: string[] = [];
     for (const t of new Set([...Object.keys(parTable), ...Object.keys(figee.parTable)])) {
-      const a = (figee.parTable[t] ?? []).join(',');
+      const gelee = figee.parTable[t];
+      if (!gelee && poseesAuPremierUsage.has(t.toLowerCase())) continue;
+      const a = (gelee ?? []).join(',');
       const b = (parTable[t] ?? []).join(',');
       if (a !== b) ecarts.push(t);
     }
