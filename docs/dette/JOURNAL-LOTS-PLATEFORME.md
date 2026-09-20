@@ -6,7 +6,7 @@ le **comment** de chaque contre-audit, court, pour qu'on puisse le rejouer.
 Règle de pilotage : *QA par lot dès la première livraison ; le lot est audité
 avant que sa fermeture n'entre dans le registre.*
 
-Les lots A et F s'ajouteront ici. Une PR externe (Manus) auditée a son entrée
+Le lot F s'ajoutera ici. Une PR externe (Manus) auditée a son entrée
 au même titre qu'un lot. Un lot **audité mais non fusionné** a une
 entrée aussi : elle dit ce qui est prouvé et ce qui attend une décision.
 
@@ -637,3 +637,177 @@ banc `apercu-caisse` (hauteurs changées, à rejouer) ; le comportement sonore r
 humaine ivoirienne des clips « Callirrhoe » ; l'état exact de `9a14bcc` au-delà
 de son diff de 3 fichiers ; tout ce qui se passe sur `julaba-manus.netlify.app`
 (non visité).
+
+---
+
+## Lot A — récupération de compte (AUDITÉ, NON FUSIONNÉ, reprise lancée)
+
+**Livré** : `521e1da` (base `3917bb7`, = `e17992a` arbre identique).
+**Contre-audité** le 20/09/2026 (QA-A) sur bases dédiées `julaba_qaa_*` (7 créées,
+7 détruites), fusion simulée sur `e18ba29` pour mesurer ce qui rougit.
+**Non fusionné : reprise en cours** contre la doctrine de Patrick (révision 22).
+**Registre** : révision 25 — aucun statut existant ne change ; SEC-09 et AUTH-02
+(introduits par A) n'entrent qu'à la fusion ; **SEC-10 et AUTH-03 (préexistants)
+entrent maintenant**.
+
+### Gates
+
+| Gate | Exit | Observation |
+|---|---|---|
+| `check-tsc-baseline` | **0** | 0 = baseline 0 |
+| `test:unit` backend | **0** | 28 suites / 232 tests |
+| `test:invariants` (`julaba_qaa_test`) | **1** | 46 suites : 45 vertes, **1 rouge = `schema-pilote › empreinte`, écart exactement `pin_recovery_codes`** ; `auth-recovery-01` 8/8, `sec-2-pin-identificateur` vert. **`credits*` absents** sur base dédiée : ce que A voyait venait de `julaba_test` — contamination **B→A** prouvée (TEST-05, dans l'autre sens que QA-B) |
+| `schema-pilote.mjs` | **1** | même cause ; `--figer` non lancé |
+| `verify-dbinit-subsumed` | base **0** / lot **1** | 12 objets (9 colonnes, pkey, index) |
+| `verify` frontend | **0** | `test:recuperation-code` en fin de chaîne `verify` seulement |
+| `test:ci` frontend | **0** | **gelée confirmée** : md5 de la ligne identique à `f0c965c` |
+| `build` | **0** | |
+| `test:api-authorization` (lot D) | 1 seul / **0** sur fusion simulée | 164 `fetch()` inchangé, A n'en ajoute aucun |
+| fusion simulée `e18ba29` + A | **1 conflit** | `frontend_src/package.json` seul ; ensuite `api-authorization`, `voix-trace`, `voix-trace-source`, `recuperation-code` : **tous 0** |
+
+### Reproduction (rouge sur la base)
+
+- `auth-recovery-01-code-recuperation.spec.ts` sur `3917bb7` (import remplacé par
+  des constantes inline, sinon rouge à la compilation, ce qui ne prouve rien) :
+  **8/8 rouges sur l'invariant** (`404 Cannot POST /api/v1/auth/recuperation-pin`).
+- `pin-jamais-rendu.spec.ts` (version A) sur la base : **2 rouges** sur les 4
+  gardes nouvelles ; **les 2 autres passent au vert sur la base** (« aucune
+  réponse ne rend le PIN choisi », « aucune trace d'audit ne porte le code ») :
+  gardes **vacues**, pas des reproductions — A disait « +4 gardes » sans le dire.
+- `code-recuperation.spec.ts` sur la base : module absent, 0 test (trivial).
+
+### Attaques (HTTP réel via supertest, base dédiée)
+
+- **(a) Course de consommation** : 2 consommations simultanées du même code → 1
+  succès, 1 `CODE_INVALIDE`, état cohérent (`UPDATE … WHERE used_at IS NULL`
+  tient). **Mais (a2) 2 émissions simultanées → 2 codes vivants, tous deux
+  consommables**, 2 audits `PIN_RECOVERY_CONSUMED` — « un seul code vivant »
+  (`pin-recovery.service.ts` l. 86-89, `update` puis `save` sans transaction)
+  faux sous concurrence → **AUTH-02**.
+- **(b) Périmètre** : hors zone, cible sans zone, émetteur sans zone, autre
+  identificateur, soi-même, compte BO, institution → **403** ; cible inactive →
+  `COMPTE_INACTIF` ; témoin même zone → code. **Bornage de zone côté serveur,
+  prouvé.**
+- **(c) Rôles** : tous les autres rôles → 403 ; `gestionnaire_zone` /
+  `operateur_terrain` **avec** `bo_permissions['auth.recovery.issue']=true` →
+  403 ; `identificateur` **sans** permission → 200 + code : **le pouvoir vient
+  de la nature du rôle**, `bo_permissions` n'est lu nulle part dans le lot.
+- **(d) Énumération** : inexistant 2,7 ms, sans code 3,1 ms, expiré 3,0 ms,
+  **code vivant + faux 84,5 ms** (bcrypt seulement s'il existe une ligne
+  vivante) ; forme différente (`locked`/`essaisRestants` seulement avec un code
+  vivant ; `VERROU` même sur code expiré, l. 139 avant l. 149) → oracle « ce
+  numéro a un code vivant » → **SEC-09**.
+- **(e) Fuites** : réponse `{success:true}` ; `audit_logs` 0 secret ; journal
+  Nest (prototype `Logger` capturé) 0 fuite ; table `code_hash` bcrypt, clair
+  absent ; un seul porteur de `codeRecuperation`.
+- **(f) Ré-émission** : ancien code refusé après ré-émission ; second usage
+  refusé ; code expiré : 4 faux → `failed_attempts` reste 0.
+- **(g) Secret** : `passwordHash` **et** `pin_code_encrypted_identificateur`
+  écrasés (l. 177 et 185) ; `12345`, `Julaba2026!`, `47a1` → `PIN_REFUSE`
+  (4 chiffres exigés) ; référence doctrinale : `change-password` accepte
+  `abcd` et `1234` (≥ 4 caractères, aucune règle de simplicité).
+- **(h) Révocation** : refresh antérieur révoqué ; **jeton d'accès antérieur →
+  `/auth/me` 200 après consommation** (`jwt.strategy.ts` `validate`, aucune
+  révocation ; `exp − iat` = 900 s) ; identique pour `reinitialiser-pin` →
+  **AUTH-03** (préexistant).
+- **(i) Throttle** : court-circuité dans les invariants → 429 non prouvés ; par
+  lecture `@Throttle 10/600000` (émission), `5/60000` (consommation) ;
+  **`reset-user-password` n'a aucun throttle**.
+- **(j) SEC-08b / SEC-10** : `POST auth/reset-user-password` fonctionnel sur le
+  lot (admin choisit, login réussi, **session ancienne intacte**) ;
+  **`POST users/:id/admin-reset-password`** → 200 avec `defaultPassword` /
+  `motDePasseInitial` **en clair**, login réussi ; `BOActeurs` jette le secret
+  rendu (toast) → compte inutilisable → **SEC-10** (préexistant). Grep exhaustif
+  des écritures de secret : 7 sites dans `auth.controller.ts`, `users.service.ts`
+  l. 490 (tiers lit), `admin-users.service.ts` l. 135/242 et
+  `backoffice-users.service.ts` l. 221 (mot de passe initial de création, rendu
+  en clair — même famille, hors AUTH-RECOVERY).
+- **(k) Frontend** : `auth-api.ts` → `apiRequest`, **0 fetch direct nouveau**,
+  0 hex, cibles ≥ 44 px, aria présents ; `test:cible-tactile` ne couvre que
+  `POSCaisse`. Voix : `RecuperationCode.tsx` dit consigne/erreurs/succès, mais
+  **le lien « J'ai perdu mon code » n'est jamais dit** (consigne de l'étape code
+  inchangée) — une non-lectrice ne peut pas découvrir la porte.
+  `ROLES_RECUPERABLES` contient `'cooperative'`, absent de `UserRole`.
+
+### Écarts lot ↔ doctrine de Patrick (liste pour la reprise)
+
+1. **Émetteurs / permission dédiée** : retirer `identificateur` de
+   `@Roles` (l. 793) ; garde = `super_admin`/`admin_general`, sinon
+   `boPermissions['auth.recovery.issue'] === true` (mécanisme de
+   `users.controller.ts` l. 112), bornage de zone au **sujet** pour tout
+   non-admin ; permission à ajouter à la liste blanche (l. 407) ; UI
+   conditionnée ; tests rouge → vert (c).
+2. **Un code = un secret désigné** : l'émission désigne `connexion` |
+   `pin_identificateur`, stocké sur la ligne (colonne + DDL + entité), la
+   consommation n'écrit que celui-là ; test 4 (« les DEUX ») à réécrire.
+   Point SEC-2 : reposer `pinCodeEncryptedIdentificateur` hors SMS n'est
+   autorisé que si Patrick désigne ce secret.
+3. **Règles du nouveau secret = `change-password`** (≥ 4 caractères, tout
+   caractère) au lieu de 4 chiffres ; **à trancher** : le pavé de connexion
+   (`LoginPassword.tsx` l. 1471-1474) n'accepte que 4 chiffres.
+4. **SEC-08b + SEC-10** : supprimer `auth/reset-user-password` et
+   `users/:id/admin-reset-password` avec leurs boutons ; test négatif dans
+   `pin-jamais-rendu` sur `newPassword`/`password`/`defaultPassword`/
+   `motDePasseInitial`.
+5. **Concurrence d'émission** (AUTH-02) : transaction + `FOR UPDATE` ou index
+   partiel unique `(user_id) WHERE used_at IS NULL` ; test (a2) rouge → vert.
+6. **Oracle** (SEC-09) : forme unique pour tout refus ; expiration avant verrou ;
+   bcrypt factice quand aucune ligne vivante.
+7. **Voix** : dire le lien dans la consigne de l'étape code ;
+   `navigate('/login')` de `RecuperationCode.tsx` atterrit sur EntryGate sous
+   Manus #245.
+
+### Défauts nouveaux reproduits
+
+| N° | Sévérité | Origine | Entrée au registre |
+|---|---|---|---|
+| **SEC-09** | P3 sécurité | introduit par A — oracle « code vivant » par le temps et par la forme (`pin-recovery.service.ts` l. 139-166) | **à la fusion** |
+| **AUTH-02** | P2 | introduit par A — deux émissions simultanées → deux codes vivants consommables (l. 86-89 sans transaction) | **à la fusion** |
+| **AUTH-03** | P2 sécurité | **préexistant** — révocation = refresh seulement, jeton d'accès valable 15 min après tout reset (`jwt.strategy.ts` `validate`) | **révision 25, ouverte** |
+| **SEC-10** | P1 sécurité | **préexistant** — `users/:id/admin-reset-password` rend un mot de passe permanent en clair à l'admin, sans révocation ni throttle | **révision 25, ouverte** |
+
+### Verdicts proposés
+
+| Dette | Verdict |
+|---|---|
+| AUTH-RECOVERY-01 | **OUVERT** (non fusionné). Prouvé sur le lot : TTL 15 min, bcrypt(10) seul, consommation atomique, rejeu refusé, ancien secret écrasé, refresh révoqués, audits sans secret, journal sans secret, aucune restitution, émission sans corps, cible `actif` obligatoire, bornage de zone serveur. Non conforme : écarts 1-3 ; plus AUTH-02, SEC-09, AUTH-03 |
+| SEC-02 (lot SEC-2) | **reste FERMÉ** sur la base et sur le lot ; **chevauchement** : `pin-recovery.service.ts` l. 185 écrit le PIN identificateur hors SMS, à fusionner seulement une fois le secret désigné — mention ajoutée dans sa ligne |
+| SEC-08b | **OUVERT, reproduit sur le lot** ; périmètre étendu à `users/:id/admin-reset-password` (SEC-10) — mention ajoutée |
+| SEC-10 / AUTH-03 | **OUVERTES au registre** (préexistantes, présentes sur `f5f26df`) |
+
+### Chevauchements (règle 22 bis)
+
+- **SEC-02** : mêmes fichiers (`auth.controller.ts`, `PinCryptoService`) ;
+  écriture hors SMS du PIN identificateur.
+- **SEC-08 / SEC-08b / SEC-10** : même contrôleur ; `pin-jamais-rendu` reste
+  vert sur la nouvelle route (sans corps) ; A n'a pas touché
+  `reset-user-password` (hors lot, correct) mais son rapport en fait un « à
+  arbitrer » alors que c'est tranché.
+- **SCHEMA-01/02/03** : `pin-recovery-code.entity.ts` + DDL manuscrit
+  (`db-init.service.ts` l. 50-77) = **quatrième instance** du mécanisme
+  SCHEMA-03 ; **la PK porte deux noms selon le chemin** (`pin_recovery_codes_pkey`
+  vs `PK_<hash>`) — une migration générée par C tentera de la renommer ;
+  `code_hash varchar` sans longueur ; aucune FK vers `users` ;
+  `verify-dbinit-subsumed` rouge (12 objets) ; empreinte à re-figer.
+- **TEST-05** : contamination B→A prouvée.
+- **API-10 / lot D** : 0 fetch direct ajouté, `test:api-authorization` vert sur
+  fusion simulée.
+- **AUTH-01** : `getValidToken` non utilisé par A — aucun chevauchement.
+- **PR Manus #245** : `merge-tree` → conflit `package.json` seul ; `/login`
+  devient `Navigate to="/"` → les deux `navigate('/login')` de
+  `RecuperationCode.tsx` atterrissent sur EntryGate ; `LoginPassword.tsx`
+  réécrit (191 lignes), validation sémantique du lien sur l'écran Manus à faire.
+- **Lot F / règle E × F** : `RecuperationCode.tsx` ajoute des `speak` dans un
+  fichier **hors de l'inventaire fixe** de `test-voix-trace-source.mjs` (vert
+  sur fusion) : **angle mort du snapshot** ; résolution sémantique à vérifier
+  par E/QA, fixture jamais régénérée par A.
+
+### Ce que ça ne prouve pas
+
+Aucun 429 bout en bout (throttler remplacé dans toutes les suites) ; temps de (d)
+mesurés en processus, pas sur réseau réel ; aucun rendu ni appareil (cibles,
+aria, voix par lecture et regex) ; fusion avec Manus mesurée par `merge-tree`,
+fusion plateforme exécutée sur 4 tests ciblés seulement ; chemin DbInit seul
+mesuré par `verify-dbinit-subsumed`, pas par un boot réel sans `synchronize` ;
+course à 2 requêtes sur un seul processus ; `credits*` non vérifiés sur la
+branche B (seulement leur absence sur base dédiée A).
