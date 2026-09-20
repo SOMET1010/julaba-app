@@ -3,8 +3,16 @@
 Arbitrage de Patrick, 20/09/2026. Deux rails parallèles, qui ne se mélangent
 jamais dans les mêmes commits :
 
-- **Manus = expérience visuelle** (présentation, UI, UX).
-- **Claude multi-agent = plateforme** (sécurité, argent, schéma, API, observabilité).
+- **Manus = design + voix produit** : présentation, UI, UX, et l'expérience
+  vocale côté produit — voix TTS, choix de voix, tonalité, rendu vocal,
+  ergonomie vocale, la perception des « deux voix », la cohérence entre les
+  voix, le comportement ressenti par l'utilisatrice.
+- **Claude multi-agent = plateforme** : backend, auth, argent/crédit, schéma,
+  API, typage, observabilité technique et QA. Côté voix, Claude
+  **instrumente seulement** (transcript brut, moteur STT, intention retenue,
+  voix TTS réellement sélectionnée, événements et timings STT/TTS, erreurs,
+  contexte réseau/appareil) et ne modifie **jamais** un comportement vocal ni
+  un choix de voix.
 
 ## Branche
 
@@ -14,15 +22,21 @@ plus ancien.
 
 ## Périmètre — ce que Manus fait
 
-Présentation, UI, UX uniquement. Livrable = **du code**, pas seulement des
-maquettes.
+Présentation, UI, UX, et l'expérience vocale produit (ci-dessus). Livrable =
+**du code**, pas seulement des maquettes. Le journal d'observabilité voix
+(transcript brut, moteur STT, intention, voix sélectionnée, timings) est
+fourni par le rail plateforme pour diagnostiquer ; Manus décide de ce que la
+marchande entend.
 
 ## Interdits — ce que Manus ne touche pas
 
 - aucun backend ;
 - aucune machine d'encaissement (`services/machineEncaissement.ts`) ;
-- aucune grammaire vocale (`voice-offline/grammaireEncaissement.ts`,
-  `localIntent.ts`) ;
+- aucune grammaire vocale ni reconnaissance d'intention
+  (`voice-offline/grammaireEncaissement.ts`, `localIntent.ts`) — la voix
+  produit, oui ; ce que les phrases DÉCLENCHENT, non ;
+- aucun texte de relecture financière : ils sont émis par la machine
+  d'encaissement (argent) et affichés tels quels ;
 - aucun `handlePay`, `enregistrerVente`, stock, auth ou logique métier ;
 - aucune nouvelle source de tokens parallèle : la charte de la caisse vit dans
   `frontend_src/src/styles/commerce.css` (`--caisse-*`), point ;
