@@ -295,6 +295,24 @@ Manus, le QA vérifie en plus que seuls des fichiers de règles ou de clips
 bougent. *(La proposition de QA-E §5c — régénération par l'auteur dans son
 commit — est remplacée par cette règle.)*
 
+**Règle de chevauchement (Patrick, 20/09/2026, révision 22 bis).** Quand un
+agent ferme une dette, il dit explicitement **quelles autres dettes ouvertes
+touchent les mêmes fichiers ou la même règle métier** — pour ne pas recréer
+par intégration une dette que l'on vient de fermer. Corollaire immédiat :
+**aucune dette ne se ferme par effet de bord.** Si un lot voisin (F, Manus)
+modifie le comportement visé par une dette qui ne lui est pas confiée —
+première application : **VOIX-04**, « clip absent ≠ silence » — le QA le
+signale comme *chevauchement* ; la dette reste OUVERTE jusqu'au lot
+explicitement consacré à son invariant et à son test rouge → vert.
+
+**Règle de programme — critère de sortie (Patrick, 20/09/2026).** Le nombre
+brut de lignes OUVERTES n'est pas le critère. Avant le terrain : **zéro dette
+ouverte connue capable de fausser** l'argent, le stock, l'historique,
+l'authentification, le hors-ligne et l'idempotence, une voix indispensable ou
+un parcours marchand réellement atteignable. Ce qui reste ne survit que comme
+dette **non bloquante, justifiée dans sa ligne et tracée** — jamais « parce
+que ça n'a pas encore cassé ».
+
 **Doctrine voix, agrandie par le terrain du 20/09/2026.** La règle existante
 disait : *aucune information importante ne doit exister uniquement sous forme de
 texte.* Le terrain a montré le corollaire qui manquait :
