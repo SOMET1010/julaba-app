@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { motion } from 'motion/react';
 import { Home, ShoppingCart, Mic, Package, User, ShoppingBag, Warehouse, TrendingUp, UserCircle, UserCheck, BarChart3, Users, UserPlus, Truck, Store, Wallet } from 'lucide-react';
-import { useApp } from '../../contexts/AppContext';
 import { useModal } from '../../contexts/ModalContext';
-import { TantieSagesseModal } from '../assistant/TantieSagesseModal';
 import { getRoleConfig, getRoleColor } from '../../config/roleConfig';
 interface BottomBarProps {
   role: 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur';
@@ -29,17 +27,7 @@ const ICON_MAP: Record<string, any> = {
 export function BottomBar({ role, onMicClick }: BottomBarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { speak, isModalOpen: isLegacyModalOpen, globalVoiceOpen, setGlobalVoiceOpen } = useApp();
   const { isAnyModalOpen } = useModal();
-  const [isTantieOpen, setIsTantieOpen] = useState(false);
-
-  // Synchro avec double-tap global
-  useEffect(() => {
-    if (globalVoiceOpen) {
-      setIsTantieOpen(true);
-      setGlobalVoiceOpen(false);
-    }
-  }, [globalVoiceOpen, setGlobalVoiceOpen]);
 
   // Utiliser roleConfig pour obtenir la couleur et les items
   const roleConfig = getRoleConfig(role);
@@ -60,7 +48,6 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
   }));
 
   const handleMicClick = () => {
-    setIsTantieOpen(true);
     if (onMicClick) onMicClick();
   };
 
@@ -111,11 +98,6 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
           );
         })}
       </nav>
-      <TantieSagesseModal
-        isOpen={isTantieOpen}
-        onClose={() => setIsTantieOpen(false)}
-        role={role}
-      />
     </div>
   );
 }

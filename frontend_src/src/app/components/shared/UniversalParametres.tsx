@@ -15,7 +15,7 @@ import { useUser } from '../../contexts/UserContext';
 import { useVoluntaryLogout } from '../../hooks/useVoluntaryLogout';
 import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useLangPref, LANG_FLAGS, LANG_LABELS, type AppLang } from '../../hooks/useLangPref';
+import { useLangPref, LANG_FLAGS, LANG_LABELS, langueDisponible, type AppLang } from '../../hooks/useLangPref';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { IdentificateurPinChangeSection } from '../identificateur/IdentificateurPinChangeSection';
 import { VoiceLevelSelector } from './VoiceLevelSelector';
@@ -27,6 +27,7 @@ import { marquerBiometrie } from '../../services/comptesMemorises';
 import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
 import { API_URL } from '../../utils/api';
 import { toast } from 'sonner';
+import { setVoiceLevel as appliquerNiveauVoix } from '../../services/audioManager';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -447,16 +448,28 @@ function ModalLang({ isOpen, onClose, lang, setLang, color }: {
             <div className="space-y-3">
               {LANGS.map(id => {
                 const isActive = lang === id;
+                const disponible = langueDisponible(id);
                 return (
-                  <motion.button key={id} onClick={() => { setLang(id); onClose(); }}
+                  <motion.button key={id} disabled={!disponible}
+                    aria-disabled={!disponible}
+                    onClick={() => { if (disponible) { setLang(id); onClose(); } }}
                     whileTap={{ scale: 0.98 }}
                     className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left"
-                    style={{ borderColor: isActive ? color : '#E5E7EB', backgroundColor: isActive ? `${color}08` : 'white' }}
+                    style={{
+                      borderColor: isActive ? color : '#E5E7EB',
+                      backgroundColor: isActive ? `${color}08` : 'white',
+                      opacity: disponible ? 1 : 0.72,
+                      cursor: disponible ? 'pointer' : 'not-allowed',
+                      minHeight: 68,
+                    }}
                   >
                     <span className="text-3xl">{LANG_FLAGS[id]}</span>
-                    <div>
+                    <div className="flex-1">
                       <p className="font-bold encre">{LANG_LABELS[id]}</p>
                       {isActive && <p className="text-xs mt-0.5" style={{ color }}>Langue actuelle</p>}
+                      {!disponible && (
+                        <p className="text-sm mt-1 encre-3">Audio humain en préparation</p>
+                      )}
                     </div>
                     {isActive && <Check className="w-5 h-5 ml-auto" style={{ color }} strokeWidth={3} />}
                   </motion.button>
@@ -528,6 +541,10 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
   const [autoExport, setAutoExport] = useState<boolean>(prefs.auto_export ?? false);
   const [emailInstitution, setEmailInstitution] = useState<string>(prefs.email_institution ?? (user as any)?.email ?? '');
   const [voiceLevel, setVoiceLevel] = useState<number>(typeof prefs.voice_level === 'number' ? prefs.voice_level : 1);
+  const changerNiveauVoix = (niveau: number) => {
+    setVoiceLevel(niveau);
+    appliquerNiveauVoix(niveau);
+  };
   const [textSize, setTextSize] = useState<number>(typeof prefs.text_size === 'number' ? prefs.text_size : 3);
   const [reduceAnimations, setReduceAnimations] = useState<boolean>(prefs.reduce_animations ?? false);
   const [vibrations, setVibrations] = useState<boolean>(prefs.vibrations ?? true);
@@ -911,7 +928,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
 
           <Section title="Accessibilité" icon={Mic} color={color}>
             {role !== 'institution' && (
-              <VoiceLevelSelector value={voiceLevel} onChange={setVoiceLevel} color={color} />
+              <VoiceLevelSelector value={voiceLevel} onChange={changerNiveauVoix} color={color} />
             )}
             <TextSizeSlider value={textSize} onChange={setTextSize} color={color} />
             <RowToggle color={color} label="Mode sombre" sublabel="Interface sombre" value={isDark} onChange={() => toggleDark()} />

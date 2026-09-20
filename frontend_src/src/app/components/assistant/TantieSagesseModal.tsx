@@ -15,6 +15,7 @@ import { useObjectif } from '../../contexts/ObjectifContext';
 import { stopAllAudio, preloadAudioContext } from '../../services/elevenlabs';
 import { unlockAudioContextIOS } from '../../services/earlyAudioCache';
 import { executerActionTataMarchand } from '../../services/tataMarchandActions';
+import { presenterResultatOperation } from '../../services/statutOperationCaisse';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces } from '../../utils/haptique';
@@ -142,7 +143,11 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
           enregistrerDepense,
           mettreAJourStock: stockCtx.updateStock,
         });
-        if (outcome.kind === 'stock_unknown') {
+        if (outcome.kind === 'depense' && outcome.resultat.statut === 'en_attente') {
+          const presentation = presenterResultatOperation('depense', outcome.montant, outcome.resultat);
+          toast.info(presentation.titre, { description: presentation.detail, duration: 8000 });
+          await speak(presentation.voix);
+        } else if (outcome.kind === 'stock_unknown') {
           toast.info('Produit non trouvé : choisissez-le depuis la fiche stock avant de confirmer.');
         } else if (outcome.kind === 'not_handled' && action.type === 'ouvrir_journee') {
           const montant = action.montant || 0;
@@ -192,6 +197,9 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
   return (
         <motion.div
           className="fixed inset-0 z-[200]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Tata Nanti Lou"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           onClick={onClose}
         >
@@ -211,7 +219,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
             </div>
 
             {/* Bouton Fermer */}
-            <motion.button onClick={() => { resetHistory(); onClose(); }}
+            <motion.button onClick={() => { resetHistory(); onClose(); }} aria-label="Fermer Tata Nanti Lou"
               className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center z-20 hover:bg-white/30"
               whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
               <X className="w-5 h-5 text-white" strokeWidth={2.5} />

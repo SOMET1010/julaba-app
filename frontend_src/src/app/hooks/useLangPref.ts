@@ -15,13 +15,29 @@ export const LANG_FLAGS: Record<AppLang, string> = {
   bambara: '🌍',
 };
 
+/** Une langue n'est activable que lorsque TOUS les textes actifs disposent de
+ * leur audio humain validé et embarqué. Les parseurs et traductions de travail
+ * ne constituent pas une langue produit disponible. */
+export const LANGUE_PRETE: Record<AppLang, boolean> = {
+  french: true,
+  dioula: false,
+  bambara: false,
+};
+
+export function langueDisponible(lang: AppLang): boolean {
+  return LANGUE_PRETE[lang] === true;
+}
+
 export function getLangPref(): AppLang {
-  return (localStorage.getItem('julaba_lang') as AppLang) || 'french';
+  const memorisee = localStorage.getItem('julaba_lang') as AppLang | null;
+  return memorisee && langueDisponible(memorisee) ? memorisee : 'french';
 }
 
 export function setLangPref(lang: AppLang) {
+  if (!langueDisponible(lang)) return false;
   localStorage.setItem('julaba_lang', lang);
   window.dispatchEvent(new CustomEvent('julaba:lang-change', { detail: lang }));
+  return true;
 }
 
 export function useLangPref() {
@@ -37,8 +53,7 @@ export function useLangPref() {
   }, []);
 
   const setLang = useCallback((newLang: AppLang) => {
-    setLangPref(newLang);
-    setLangState(newLang);
+    if (setLangPref(newLang)) setLangState(newLang);
   }, []);
 
   return { lang, setLang };

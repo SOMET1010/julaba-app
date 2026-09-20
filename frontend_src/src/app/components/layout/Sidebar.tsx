@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { motion } from 'motion/react';
 import { Home, ShoppingCart, Mic, Package, User, Menu, X, ShoppingBag, Warehouse, TrendingUp, UserCheck, BarChart3, Users, LogOut, UserPlus, Truck } from 'lucide-react';
@@ -53,8 +53,6 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
     : profileUser
       ? `${(profileUser.prenoms || '?').charAt(0)}${(profileUser.nom || '').charAt(0)}`
       : '?';
-  const [isListening, setIsListening] = useState(false);
-
   // Utiliser roleConfig pour obtenir la couleur et les items
   const roleConfig = getRoleConfig(role);
   const activeColor = getRoleColor(role);
@@ -87,11 +85,7 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
 
   const handleTabClick = (tab: typeof tabs[0]) => {
     if (tab.isMic) {
-      // Activate Tata Nanti Lou
-      setIsListening(!isListening);
-      if (onMicClick) {
-        onMicClick();
-      }
+      onMicClick?.();
     } else if (tab.path) {
       navigate(tab.path);
     }
@@ -132,7 +126,7 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
           }}>
           <Mic aria-hidden="true" size={24} />
           <span><span className="block font-semibold">Tata Nanti Lou</span>
-            <span className="block text-sm">{isListening ? "Je t'écoute..." : "Besoin d'aide ?"}</span>
+            <span className="block text-sm">Besoin d'aide ?</span>
           </span>
         </button>
         {(appUser || profileUser) && (

@@ -29,6 +29,7 @@
  */
 
 export type VoicePriority = "user" | "auto";
+export type VoiceImportance = "essentiel" | "accompagnement";
 export type PlayResult = "ended" | "failed" | "cancelled";
 
 /** Une lecture en cours : sa promesse résout TOUJOURS ; stop() la force à résoudre. */
@@ -39,6 +40,7 @@ export interface Playback {
 
 export interface VoiceOptions {
   priority?: VoicePriority;
+  importance?: VoiceImportance;
   dedupeKey?: string;
   minRepeatMs?: number;
 }
@@ -49,6 +51,7 @@ const DEFAULT_MIN_REPEAT_MS = 8000;
 let _generation = 0; // bump à chaque coupure → « la plus récente gagne »
 let _inFlight = false; // une requête est réservée ou en cours
 let _muted = false;
+let _voiceLevel: 0 | 1 | 2 = 2;
 let _chain: Promise<void> = Promise.resolve(); // sérialise les lectures
 let _current: Playback | null = null; // lecture active (pour la couper)
 const _lastSpokenAt = new Map<string, number>();
@@ -240,6 +243,27 @@ export function setVoiceMuted(muted: boolean): void {
   if (muted) hardStop();
 }
 
+/** 0=silencieux, 1=alertes/argent/confirmations, 2=accompagnement complet. */
+export function setVoiceLevel(level: number): void {
+  const prochain: 0 | 1 | 2 = level <= 0 ? 0 : level >= 2 ? 2 : 1;
+  const precedent = _voiceLevel;
+  _voiceLevel = prochain;
+  try { localStorage.setItem('julaba_voice_level', String(prochain)); } catch { /* Node / stockage indisponible */ }
+  if (prochain < precedent) hardStop();
+}
+
+export function importancePourTexte(text: string): VoiceImportance {
+  const t = text.toLowerCase();
+  const essentiel = /\d|franc|fcfa|montant|caisse|vente|dépense|depense|pay|confirm|enregistr|gardée|gardee|envoy|hors[- ]ligne|réseau|reseau|erreur|problème|probleme|refus|attention|insuffisant|stock|rupture|code secret|bloqu|annul/.test(t);
+  return essentiel ? "essentiel" : "accompagnement";
+}
+
+function voixAutorisee(importance: VoiceImportance): boolean {
+  if (_voiceLevel === 0) return false;
+  if (_voiceLevel === 1 && importance === "accompagnement") return false;
+  return true;
+}
+
 function isThrottled(opts?: VoiceOptions): boolean {
   if (!opts?.dedupeKey) return false;
   const last = _lastSpokenAt.get(opts.dedupeKey) ?? 0;
@@ -270,6 +294,7 @@ async function playHandle(pb: Playback, myGen: number): Promise<PlayResult> {
  */
 function runExclusive(job: (myGen: number) => Promise<void>, opts?: VoiceOptions): Promise<void> {
   if (_muted) return Promise.resolve();
+  if (!voixAutorisee(opts?.importance ?? "essentiel")) return Promise.resolve();
   const priority: VoicePriority = opts?.priority ?? "auto";
 
   if (isThrottled(opts)) return Promise.resolve(); // règle 4
@@ -304,6 +329,7 @@ export function speak(text: string, opts?: VoiceOptions): Promise<void> {
   if (!text?.trim()) return Promise.resolve();
   return runExclusive((g) => playHandle(_ttsPlayer(text), g).then(() => {}), {
     priority: "user",
+    importance: importancePourTexte(text),
     ...opts,
   });
 }
@@ -314,6 +340,7 @@ export function speakAuto(text: string, opts?: Omit<VoiceOptions, "priority">): 
   return runExclusive((g) => playHandle(_ttsPlayer(text), g).then(() => {}), {
     ...opts,
     priority: "auto",
+    importance: opts?.importance ?? "accompagnement",
   });
 }
 
@@ -344,7 +371,7 @@ export function speakClipOrText(
       if (_generation !== g || _muted) return; // coupé pendant le clip → ne pas enchaîner
     }
     if (args.text?.trim()) await playHandle(_ttsPlayer(args.text), g);
-  }, { priority: "user", ...opts });
+  }, { priority: "user", importance: args.text ? importancePourTexte(args.text) : "essentiel", ...opts });
 }
 
 /**
@@ -433,6 +460,7 @@ export function __reset(): void {
   _generation = 0;
   _inFlight = false;
   _muted = false;
+  _voiceLevel = 2;
   _chain = Promise.resolve();
   _current = null;
   _lastSpokenAt.clear();

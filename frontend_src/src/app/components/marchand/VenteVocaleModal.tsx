@@ -13,6 +13,7 @@ import { resumeIncidentHorsLigne } from "../../voice-offline/incidentsHorsLigne"
 import { apparierProduit, noterRefusCreation } from "../../services/venteVocale";
 import { extraire } from '../../voice-offline/extraction';
 import { vendreVocalUnifie } from "../../services/vendreVocalUnifie";
+import { presenterResultatOperation } from '../../services/statutOperationCaisse';
 import { guidageVocal } from "../../utils/accessMode";
 import { vibrerSucces } from "../../utils/haptique";
 import { SaisieGuidee } from "./SaisieGuidee";
@@ -53,6 +54,15 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
     [speak],
   );
   const { enregistrerDepense, refreshTransactions, stats: caisseStats, products, addProduct, addToCart, syncEchecs, syncLettresMortes, purgerEchecSync, cart, getTotalCart } = useCaisse();
+  const enregistrerDepenseHonnetement = async (montant: number, notes: string) => {
+    const resultat = await enregistrerDepense(montant, notes);
+    if (resultat.statut === 'en_attente') {
+      const presentation = presenterResultatOperation('depense', montant, resultat);
+      toast.info(presentation.titre, { description: presentation.detail, duration: 8000 });
+      direEtRetenir(presentation.voix);
+    }
+    return resultat;
+  };
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
   const progression = objectifCtx?.progression ?? 0;
@@ -197,7 +207,7 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
             direEtRetenir("Je n'ai pas compris combien tu as dépensé. Redis-moi le montant.");
             return;
           }
-          await enregistrerDepense(montant, r.action.description || r.nom);
+          await enregistrerDepenseHonnetement(montant, r.action.description || r.nom);
         }
       } else if (action?.type === "depense") {
         const montant = action.montant || 0;
@@ -215,7 +225,7 @@ export function VenteVocaleModal({ isOpen, onClose, initialProduct = null }: Pro
           direEtRetenir("Je n'ai pas compris combien tu as dépensé. Redis-moi le montant.");
           return;
         }
-        await enregistrerDepense(montant, action.description || "Dépense vocale");
+        await enregistrerDepenseHonnetement(montant, action.description || "Dépense vocale");
       } else if (action?.type === "consulter_solde" || data.intent === "consulter_solde") {
         navigate('/marchand/caisse');
         onClose();

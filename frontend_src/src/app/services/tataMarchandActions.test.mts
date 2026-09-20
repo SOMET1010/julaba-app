@@ -16,7 +16,7 @@ let depense: unknown = null;
 let stock: unknown = null;
 const deps: TataMarchandDependencies = {
   produits,
-  enregistrerDepense: async (...args: unknown[]) => { depense = args; },
+  enregistrerDepense: async (...args: unknown[]) => { depense = args; return { statut: 'confirmee' }; },
   mettreAJourStock: async (...args: unknown[]) => { stock = args; },
 };
 
@@ -37,7 +37,7 @@ const depenseOutcome = await executerActionTataMarchand(
   { type: 'depense', montant: 500, description: 'Transport' },
   deps,
 );
-assert.deepEqual(depenseOutcome, { kind: 'depense' });
+assert.deepEqual(depenseOutcome, { kind: 'depense', resultat: { statut: 'confirmee' }, montant: 500 });
 assert.deepEqual(depense, [500, 'Transport']);
 
 const stockOutcome = await executerActionTataMarchand(

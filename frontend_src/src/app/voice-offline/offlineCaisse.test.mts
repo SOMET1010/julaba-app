@@ -7,6 +7,10 @@
  * (ni perte ni doublon) ; idempotence ; ordre préservé sur transitoire.
  */
 import * as oc from "./offlineCaisse.js";
+import {
+  presenterResultatOperation,
+  soumettreOperationCaisse,
+} from "../services/statutOperationCaisse.js";
 
 let failures = 0;
 function ok(cond: boolean, label: string) {
@@ -48,6 +52,7 @@ async function run() {
     ok(res.reste === 0, "T1 file active vidée");
     const dead = await store.deadList();
     ok(dead.length === 1 && dead[0].id === "a" && dead[0].echec.status === 403, "T1 lettre morte = op1 (status 403)");
+    ok(dead[0].echec.cause === "rejet_metier", "T1 un 4xx est nommé rejet métier");
   }
 
   // T2 — transitoire (5xx) : conservé + attempts, puis parqué au CAP.
@@ -61,6 +66,8 @@ async function run() {
     for (let i = 2; i < oc.REPLAY_CAP; i++) await oc.synchroniser(p, UID, store); // essais 2..CAP-1
     const rCap = await oc.synchroniser(p, UID, store); // essai CAP → lettre morte
     ok(rCap.echecs === 1 && rCap.reste === 0, `T2 parqué en lettre morte après ${oc.REPLAY_CAP} essais`);
+    const dead = await store.deadList();
+    ok(dead[0].echec.cause === "essais_epuises", "T2 un 503 épuisé reste un envoi à vérifier, pas un refus métier");
   }
 
   // T3 — INVARIANT 1 : attempts n'augmente PAS sur un rejet permanent.
@@ -225,6 +232,72 @@ async function run() {
     const r = await oc.synchroniser(posterQui({}), "user-A", store);
     ok(r.echecs === 0, "T13 synchroniser() sous A ne retourne PAS les lettres mortes de B (plus de deadCount() global)");
     ok(r.reste === 0, "T13 synchroniser() sous A ne retourne PAS les opérations actives de B (plus d'activeCount() global)");
+  }
+
+  // T14 — HONNÊTETÉ OFFLINE : une opération conservée sur le téléphone n'est
+  // jamais présentée comme confirmée par le serveur. Le même contrat sert à la
+  // vente et à la dépense pour éviter deux implémentations qui divergent.
+  {
+    let envois = 0;
+    let misesEnFile = 0;
+    const resultat = await soumettreOperationCaisse({
+      horsLigne: true,
+      envoyer: async () => { envois++; },
+      enfiler: async () => { misesEnFile++; return 'offline-vente-1'; },
+      doitEnfiler: () => true,
+    });
+    ok(resultat.statut === 'en_attente', "T14 hors-ligne → statut explicite en_attente");
+    ok(resultat.statut === 'en_attente' && resultat.operationId === 'offline-vente-1', "T14 l'identifiant durable remonte à l'interface");
+    ok(envois === 0 && misesEnFile === 1, "T14 hors-ligne → aucun faux envoi serveur, une mise en file");
+
+    const presentation = presenterResultatOperation('vente', 2500, resultat);
+    ok(presentation.titre === 'Vente gardée', "T14 le titre n'affirme jamais « Vente réussie »");
+    ok(presentation.detail.includes('pas encore envoyée'), "T14 l'écran dit clairement que le serveur n'a pas confirmé");
+    ok(presentation.voix.includes('réseau revient'), "T14 la même vérité est disponible à la voix");
+  }
+
+  // T15 — EN LIGNE : seule une réponse serveur réussie donne le statut confirmé.
+  {
+    let misesEnFile = 0;
+    const resultat = await soumettreOperationCaisse({
+      horsLigne: false,
+      envoyer: async () => undefined,
+      enfiler: async () => { misesEnFile++; return 'ne-doit-pas-servir'; },
+      doitEnfiler: () => true,
+    });
+    ok(resultat.statut === 'confirmee', "T15 réponse serveur réussie → statut confirmee");
+    ok(misesEnFile === 0, "T15 succès serveur → aucune copie offline créée");
+    ok(presenterResultatOperation('depense', 500, resultat).titre === 'Dépense enregistrée', "T15 la dépense confirmée garde son retour existant");
+  }
+
+  // T16 — 5xx/réseau : file durable et statut en attente ; 4xx métier : erreur
+  // remontée, sans maquiller le rejet en attente.
+  {
+    const transitoire = Object.assign(new Error('Serveur indisponible'), { status: 503 });
+    const permanent = Object.assign(new Error('Dépense refusée'), { status: 400 });
+    let misesEnFile = 0;
+
+    const pending = await soumettreOperationCaisse({
+      horsLigne: false,
+      envoyer: async () => { throw transitoire; },
+      enfiler: async () => { misesEnFile++; return 'offline-depense-1'; },
+      doitEnfiler: (error) => (error as { status?: number }).status === 503,
+    });
+    ok(pending.statut === 'en_attente' && misesEnFile === 1, "T16 5xx → gardé et annoncé en attente");
+
+    let rejetRemonte = false;
+    try {
+      await soumettreOperationCaisse({
+        horsLigne: false,
+        envoyer: async () => { throw permanent; },
+        enfiler: async () => { misesEnFile++; return 'interdit'; },
+        doitEnfiler: () => false,
+      });
+    } catch (error) {
+      rejetRemonte = error === permanent;
+    }
+    ok(rejetRemonte, "T16 4xx métier → erreur originale remontée");
+    ok(misesEnFile === 1, "T16 4xx métier → aucune mise en file trompeuse");
   }
 
   console.log(failures === 0 ? "\nTous les tests file hors-ligne sont verts ✅" : `\n${failures} test(s) en échec ❌`);

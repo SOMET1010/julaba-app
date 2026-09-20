@@ -11,6 +11,13 @@ import { CaisseTransaction, TransactionStatus } from './caisse-transaction.entit
 import { restituerStock } from './stock-restitution';
 import { AlertesService } from '../notifications/alertes.service';
 
+/** Contrat transitoire de dépense : `description` est canonique, `notes` reste
+ * accepté pour les files offline créées avant la migration du frontend. */
+export function descriptionDepenseDepuisBody(body: { description?: unknown; notes?: unknown }): string {
+  const valeur = body.description ?? body.notes ?? '';
+  return typeof valeur === 'string' ? valeur.trim() : String(valeur).trim();
+}
+
 @UseGuards(JwtAuthGuard)
 @Controller('caisse')
 export class CaisseRestController {
@@ -600,7 +607,10 @@ export class CaisseRestController {
       result = await this.repo.save(this.repo.create({
         user_id: user.id, marchand_id: user.id,
         session_id: body.session_id || '', montant: body.montant,
-        type: 'depense', description: body.description || '', source: body.source || 'kassa',
+        // `notes` était le nom envoyé par les anciennes versions du frontend et
+        // par leurs files offline. On le lit encore au rejeu, mais le contrat
+        // canonique est désormais `description`, comme l'entité et le cahier.
+        type: 'depense', description: descriptionDepenseDepuisBody(body), source: body.source || 'kassa',
         mode_paiement: body.mode_paiement || 'especes', idempotency_key: idemKey,
         ...(dateDepense ? { created_at: dateDepense } : {}),
       } as any));

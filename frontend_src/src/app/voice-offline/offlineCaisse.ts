@@ -48,6 +48,9 @@ export type PayloadOperation = {
   produits?: LigneDeVente[];
   details?: LigneDeVente[];
   mode_paiement?: string;
+  /** Motif métier d'une dépense, affiché dans le cahier. */
+  description?: string;
+  /** Ancien nom du motif, conservé pour rejouer les files déjà présentes. */
   notes?: string;
   prix_achat?: number;
   prix_vente?: number;
@@ -83,7 +86,13 @@ export interface OperationCaisse {
 }
 
 export interface LettreMorte extends OperationCaisse {
-  echec: { status: number | null; message: string; failedAt: number };
+  echec: {
+    status: number | null;
+    message: string;
+    failedAt: number;
+    /** Absent sur les anciennes files : l'UI le déduit alors du statut HTTP. */
+    cause?: 'rejet_metier' | 'essais_epuises';
+  };
 }
 
 /** Classe une erreur de rejeu. PERMANENT = statut HTTP 4xx (rejet métier). */
@@ -432,13 +441,19 @@ export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
     } catch (e) {
       if (estPermanent(e)) {
         // Rejet métier définitif : lettre morte (atomique) + on CONTINUE.
-        await store.moveToDead(op.id, { status: statutDe(e), message: String((e as Error)?.message ?? ''), failedAt: Date.now() });
+        await store.moveToDead(op.id, {
+          status: statutDe(e), message: String((e as Error)?.message ?? ''),
+          failedAt: Date.now(), cause: 'rejet_metier',
+        });
         continue;
       }
       // Transitoire UNIQUEMENT : on incrémente les essais.
       const n = await store.incrementAttempts(op.id);
       if (n >= REPLAY_CAP) {
-        await store.moveToDead(op.id, { status: statutDe(e), message: String((e as Error)?.message ?? ''), failedAt: Date.now() });
+        await store.moveToDead(op.id, {
+          status: statutDe(e), message: String((e as Error)?.message ?? ''),
+          failedAt: Date.now(), cause: 'essais_epuises',
+        });
         continue;
       }
       break; // réseau/serveur instable : on préserve l'ordre et on retentera

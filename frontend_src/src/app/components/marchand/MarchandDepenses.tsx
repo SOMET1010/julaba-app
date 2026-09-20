@@ -9,6 +9,7 @@ import { eventBus, EVENTS } from '../../services/eventBus';
 import { fr } from 'date-fns/locale';
 import TATA_BLEU from '../../../assets/images/tata-nanti-lou.png';
 import { NotificationButton } from './NotificationButton';
+import { SyncEchecsBanner } from './SyncEchecsBanner';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -262,6 +263,8 @@ export function MarchandDepenses() {
 
       {/* CONTENU */}
       <div style={{ flex:1, overflowY:'auto', padding:'14px 14px 100px', display:'flex', flexDirection:'column', gap:12 }}>
+
+        <SyncEchecsBanner />
 
         {/* KPIs 2x2 standard */}
         <KPIGrid cols={2}>
