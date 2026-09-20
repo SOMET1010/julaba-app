@@ -35,7 +35,7 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, CheckCircle, Keyboard, Loader, Mic, Volume2 } from 'lucide-react';
+import { AlertCircle, AudioLines, CheckCircle, Keyboard, Loader, Mic, Volume2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
@@ -58,9 +58,14 @@ import { vibrerSucces } from '../../utils/haptique';
 import { SaisieGuidee } from './SaisieGuidee';
 import tantieImg from '../../../assets/images/tantie-vente-vocale.png';
 
-/** Orange « voix » du design system JULABA — la couleur du micro, et d'elle seule. */
-const ORANGE = '#F68A1F';
-const VERT = '#1E7A3A';
+// PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Le lot B avait recopié
+// l'orange et le vert de la planche dans ce fichier : deux sources de vérité
+// pour une même valeur. La charte de la caisse vit dans styles/commerce.css
+// (`--caisse-*`) — garde-fou : caisseCharte.test.mts.
+//
+// Les icônes lucide prennent une TAILLE en nombre (attribut SVG), pas une
+// variable CSS : la planche dit 24 px, on le recopie ici, une fois.
+const ICONE = 24;
 
 export interface ProduitPreselectionne {
   nom: string;
@@ -85,9 +90,12 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, speak } = useApp();
+  // `cart` en LECTURE SEULE (lot F) : sert au seul rappel « Dis "encaisser"
+  // pour terminer », affiché quand il y a quelque chose à encaisser. Ce
+  // composant continue de REMPLIR le panier ; il ne le lit que pour le dire.
   const {
     enregistrerDepense, refreshTransactions, stats: caisseStats,
-    products, addProduct, addToCart,
+    products, addProduct, addToCart, cart,
   } = useCaisse();
 
   // Dernière phrase prononcée par Tata. Sert au bouton « réécouter » : si la
@@ -323,26 +331,34 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   return (
     <section
       aria-label="Vendre à la voix"
-      style={{ background: '#F5EBDD', border: '1.5px solid rgba(175,91,35,0.18)', borderRadius: 24, padding: '18px 16px 16px', marginBottom: 18 }}
+      style={{ background: 'var(--caisse-sable)', borderRadius: 'var(--caisse-rayon-5)', padding: 'var(--caisse-esp-4) var(--caisse-esp-3)', marginBottom: 'var(--caisse-esp-4)' }}
     >
       {/* LA QUESTION — écrite ET dite. Elle est écrite pour celle qui lit, et
           prononcée à l'arrivée pour celle qui ne lit pas : aucune information
-          importante ne doit exister uniquement sous forme de texte. */}
-      <p style={{ textAlign: 'center', fontSize: 22, fontWeight: 900, color: 'var(--encre)', margin: '0 0 14px' }}>
+          importante ne doit exister uniquement sous forme de texte.
+          C'est le GRAND TITRE de la maquette (Inter semibold 28/34) : la seule
+          question de l'écran, en plus gros que tout le reste. La marge
+          négative lui rend la largeur de la carte : à 390 px la question
+          tient sur une ligne ; plus étroit, elle se coupe en deux lignes
+          équilibrées (text-wrap: balance), jamais avec le « ? » orphelin. */}
+      <h1 style={{ textAlign: 'center', font: 'var(--caisse-font-h1)', color: 'var(--encre)', margin: '0 calc(-1 * var(--caisse-esp-3)) var(--caisse-esp-4)', textWrap: 'balance' }}>
         {produitPreselectionne ? produitPreselectionne.nom : 'Que voulez-vous vendre ?'}
-      </p>
+      </h1>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--caisse-esp-3)' }}>
         {/* LE MICRO. Énorme, orange, au centre, et PERMANENT : il ne rétrécit
             pas, ne se déplace pas et ne disparaît à aucun moment de la vente
             — ni panier vide, ni panier plein, ni pendant l'encaissement. Un
             micro visible est une instruction fonctionnelle, pas une
             décoration ; celui-ci est câblé à `handleMicClick` du moteur monté
-            juste au-dessus. */}
+            juste au-dessus. Le halo clair autour (maquette) est un disque
+            orange à faible opacité : la même variable, aucune teinte dérivée
+            écrite en dur. */}
         <div style={{ position: 'relative', width: 132, height: 132, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'var(--caisse-orange-voix)', opacity: 0.18 }} />
           {(isRecording || isSpeaking) && [1, 2, 3].map(ring => (
-            <motion.div key={ring} style={{ position: 'absolute', borderRadius: '50%', width: 108 + ring * 10, height: 108 + ring * 10, border: `2px solid ${ORANGE}55` }}
-              animate={{ scale: [1, 1.14, 1], opacity: [0.7, 0, 0.7] }}
+            <motion.div key={ring} style={{ position: 'absolute', borderRadius: '50%', width: 108 + ring * 10, height: 108 + ring * 10, border: '2px solid var(--caisse-orange-voix)' }}
+              animate={{ scale: [1, 1.14, 1], opacity: [0.5, 0, 0.5] }}
               transition={{ duration: 1.5, repeat: Infinity, delay: ring * 0.25, ease: 'easeOut' }} />
           ))}
           <motion.button
@@ -356,48 +372,65 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
             transition={{ duration: 0.9, repeat: isRecording ? Infinity : 0 }}
             style={{
               width: 108, height: 108, borderRadius: '50%', border: 'none', padding: 0,
-              background: isRecording ? '#E14B2F' : `linear-gradient(150deg, ${ORANGE}, #E2741A)`,
+              background: isRecording ? 'var(--caisse-alerte)' : 'var(--caisse-orange-voix)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: isLoading ? 'not-allowed' : 'pointer', position: 'relative', zIndex: 2,
-              boxShadow: `0 8px 24px ${ORANGE}66`,
+              boxShadow: '0 8px 24px var(--caisse-sable)',
             }}>
             {isLoading ? (
               <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} style={{ display: 'flex' }}>
-                <Loader size={44} color="white" />
+                <Loader size={48} color="white" />
               </motion.span>
-            ) : isDone ? <CheckCircle size={46} color="white" />
-              : isError ? <AlertCircle size={46} color="white" />
-              : <Mic size={46} color="white" />}
+            ) : isDone ? <CheckCircle size={52} color="white" />
+              : isError ? <AlertCircle size={52} color="white" />
+              : <Mic size={52} color="white" strokeWidth={2.25} />}
           </motion.button>
         </div>
 
-        {/* Tata — le visage et la bulle. Le haut-parleur de la bulle DIT ce
-            qu'elle affiche : la bulle n'est pas une légende à lire. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        {/* Tata — le visage et la bulle, comme la maquette : l'avatar en haut
+            à droite, la bulle dessous avec son haut-parleur. Le haut-parleur
+            DIT ce que la bulle affiche : la bulle n'est pas une légende à lire. */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--caisse-esp-2)', minWidth: 0, flex: 1, maxWidth: 200 }}>
+          <img src={tantieImg} alt="" aria-hidden="true"
+            style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', flexShrink: 0, border: '3px solid var(--caisse-succes)', background: 'var(--caisse-succes)' }} />
           <button type="button" onClick={() => speak(dernierePhraseRef.current || introLigne())}
             aria-label={dernierePhraseRef.current ? "Réécouter ce que Tata a compris" : 'Réécouter la question'}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', border: '1.5px solid rgba(175,91,35,0.18)', borderRadius: 16, padding: '9px 11px', cursor: 'pointer', fontFamily: 'inherit', minWidth: 0 }}>
-            <Volume2 size={18} color={VERT} style={{ flexShrink: 0 }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre)', textAlign: 'left' }}>{bulle}</span>
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', background: 'white', border: 'none', borderRadius: 'var(--caisse-rayon-4)', borderTopRightRadius: 'var(--caisse-rayon-1)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)', cursor: 'pointer', fontFamily: 'inherit', minWidth: 0, maxWidth: '100%', textAlign: 'left' }}>
+            <span aria-hidden="true" style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--caisse-succes)', color: 'var(--caisse-vert)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Volume2 size={18} />
+            </span>
+            <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>{bulle}</span>
           </button>
-          <img src={tantieImg} alt="" aria-hidden="true"
-            style={{ width: 54, height: 54, borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', flexShrink: 0, border: '2px solid white' }} />
         </div>
       </div>
 
-      {/* CE QUE TATA A COMPRIS — visible, et déjà dit par le moteur. */}
+      {/* CE QUE TATA A COMPRIS — visible, et déjà dit par le moteur. Le chip
+          vert « J'ai compris : … » de la maquette. */}
       {isRecording && liveTranscript && (
-        <p style={{ textAlign: 'center', marginTop: 12, fontSize: 14, fontWeight: 700, color: 'var(--encre-3)' }}>« {liveTranscript} »</p>
+        <p style={{ textAlign: 'center', marginTop: 'var(--caisse-esp-3)', font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--caisse-gris-texte)' }}>« {liveTranscript} »</p>
       )}
       {!isRecording && transcript && (
-        <div style={{ marginTop: 12, background: 'white', border: '1.5px solid #DDEFD9', borderRadius: 16, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CheckCircle size={18} color={VERT} style={{ flexShrink: 0 }} />
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--encre)' }}>J'ai compris : {transcript}</span>
+        <div style={{ marginTop: 'var(--caisse-esp-3)', background: 'var(--caisse-succes)', borderRadius: 'var(--caisse-rayon-4)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--caisse-esp-2)' }}>
+          <CheckCircle size={ICONE} color="var(--caisse-vert)" style={{ flexShrink: 0 }} />
+          <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>J'ai compris : {transcript}</span>
         </div>
       )}
       {isError && error && (
-        <div style={{ marginTop: 12, background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 16, padding: '10px 12px' }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#B91C1C', margin: 0 }}>{error}</p>
+        <div role="alert" style={{ marginTop: 'var(--caisse-esp-3)', background: 'white', border: '1px solid var(--caisse-alerte)', borderRadius: 'var(--caisse-rayon-4)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)' }}>
+          <p style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--caisse-alerte)', margin: 0 }}>{error}</p>
+        </div>
+      )}
+
+      {/* « Dis "encaisser" pour terminer » — le rappel de la maquette, dès
+          qu'il y a quelque chose à encaisser. Lecture seule du panier : ce
+          composant ne décide rien de l'argent, il rappelle le mot qui le fait
+          relire par la caisse (lot C). */}
+      {cart.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--caisse-esp-2)' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', background: 'var(--caisse-ivoire)', border: '1px solid var(--commerce-line)', borderRadius: 'var(--caisse-rayon-3)', padding: 'var(--caisse-esp-1) var(--caisse-esp-3)', font: 'var(--caisse-font-texte)', color: 'var(--encre)' }}>
+            <AudioLines size={20} color="var(--caisse-vert)" aria-hidden="true" style={{ flexShrink: 0 }} />
+            <span>Dis <strong>« encaisser »</strong> pour terminer</span>
+          </div>
         </div>
       )}
 
@@ -406,13 +439,13 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       <AnimatePresence>
         {isConfirming && pendingResponse && (
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            style={{ marginTop: 12, background: 'white', border: `2px solid ${ORANGE}`, borderRadius: 18, padding: 14 }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--encre)', marginBottom: 12 }}>{pendingResponse.response || pendingResponse.reponse}</p>
-            <div style={{ display: 'flex', gap: 10 }}>
+            style={{ marginTop: 'var(--caisse-esp-3)', background: 'white', border: '2px solid var(--caisse-orange-voix)', borderRadius: 'var(--caisse-rayon-4)', padding: 'var(--caisse-esp-4)' }}>
+            <p style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)', marginBottom: 'var(--caisse-esp-3)' }}>{pendingResponse.response || pendingResponse.reponse}</p>
+            <div style={{ display: 'flex', gap: 'var(--caisse-esp-2)' }}>
               <button type="button" onClick={cancelAction}
-                style={{ flex: 1, padding: '12px 0', borderRadius: 14, fontWeight: 800, fontSize: 14, border: `2px solid ${ORANGE}`, color: ORANGE, background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
+                style={{ flex: 1, minHeight: 'var(--caisse-cible-tactile)', padding: 'var(--caisse-esp-3) 0', borderRadius: 'var(--caisse-rayon-3)', font: 'var(--caisse-font-bouton)', border: '2px solid var(--caisse-orange-voix)', color: 'var(--caisse-orange-voix)', background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
               <button type="button" onClick={confirmAction}
-                style={{ flex: 1, padding: '12px 0', borderRadius: 14, fontWeight: 800, fontSize: 14, color: 'white', background: ORANGE, cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}>Oui</button>
+                style={{ flex: 1, minHeight: 'var(--caisse-cible-tactile)', padding: 'var(--caisse-esp-3) 0', borderRadius: 'var(--caisse-rayon-3)', font: 'var(--caisse-font-bouton)', color: 'white', background: 'var(--caisse-orange-voix)', cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}>Oui</button>
             </div>
           </motion.div>
         )}
@@ -422,15 +455,15 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       <AnimatePresence>
         {propositionProduit && (
           <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-            style={{ marginTop: 12, background: 'white', border: `2px solid ${ORANGE}`, borderRadius: 18, padding: 14 }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--encre)', marginBottom: 12 }}>
+            style={{ marginTop: 'var(--caisse-esp-3)', background: 'white', border: '2px solid var(--caisse-orange-voix)', borderRadius: 'var(--caisse-rayon-4)', padding: 'var(--caisse-esp-4)' }}>
+            <p style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)', marginBottom: 'var(--caisse-esp-3)' }}>
               J'ajoute « {propositionProduit.nom} » à ta boutique à {propositionProduit.prix.toLocaleString('fr-FR')} F ?
             </p>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 'var(--caisse-esp-2)' }}>
               <button type="button" onClick={refuserCreation} disabled={creationEnCours}
-                style={{ flex: 1, padding: '12px 0', borderRadius: 14, fontWeight: 800, fontSize: 14, border: `2px solid ${ORANGE}`, color: ORANGE, background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
+                style={{ flex: 1, minHeight: 'var(--caisse-cible-tactile)', padding: 'var(--caisse-esp-3) 0', borderRadius: 'var(--caisse-rayon-3)', font: 'var(--caisse-font-bouton)', border: '2px solid var(--caisse-orange-voix)', color: 'var(--caisse-orange-voix)', background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>Non</button>
               <button type="button" onClick={accepterCreation} disabled={creationEnCours}
-                style={{ flex: 1, padding: '12px 0', borderRadius: 14, fontWeight: 800, fontSize: 14, color: 'white', background: creationEnCours ? '#CBB9A8' : ORANGE, cursor: creationEnCours ? 'wait' : 'pointer', border: 'none', fontFamily: 'inherit' }}>
+                style={{ flex: 1, minHeight: 'var(--caisse-cible-tactile)', padding: 'var(--caisse-esp-3) 0', borderRadius: 'var(--caisse-rayon-3)', font: 'var(--caisse-font-bouton)', color: 'white', background: creationEnCours ? 'var(--caisse-gris-texte)' : 'var(--caisse-orange-voix)', cursor: creationEnCours ? 'wait' : 'pointer', border: 'none', fontFamily: 'inherit' }}>
                 {creationEnCours ? 'Un instant…' : 'Oui, ajoute'}
               </button>
             </div>
@@ -440,7 +473,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
 
       {(isDone || isError) && (
         <button type="button" onClick={reset}
-          style={{ width: '100%', marginTop: 12, padding: '13px 0', borderRadius: 16, fontWeight: 800, fontSize: 14, color: 'white', background: ORANGE, cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}>
+          style={{ width: '100%', marginTop: 'var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)', padding: 'var(--caisse-esp-3) 0', borderRadius: 'var(--caisse-rayon-4)', font: 'var(--caisse-font-bouton)', color: 'white', background: 'var(--caisse-orange-voix)', cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}>
           Reparler à Tata
         </button>
       )}
@@ -448,16 +481,16 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       {/* LE REPLI, SUR LA MÊME SURFACE (arbitrage n°3). Il n'envoie plus vers
           un autre écran : la saisie guidée s'ouvre ici, et les photos des
           produits sont déjà juste en dessous, dans la grille de cette page. */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--caisse-esp-3)' }}>
         <button type="button" onClick={() => setSaisieOuverte(v => !v)}
           aria-label="Saisir sans parler"
-          style={{ display: 'flex', alignItems: 'center', gap: 8, background: saisieOuverte ? ORANGE : 'white', border: `1.5px solid ${saisieOuverte ? ORANGE : 'rgba(175,91,35,0.22)'}`, borderRadius: 14, padding: '11px 14px', cursor: 'pointer', fontFamily: 'inherit' }}>
-          <Keyboard size={18} color={saisieOuverte ? 'white' : 'var(--encre-3)'} />
-          <span style={{ fontSize: 13, fontWeight: 800, color: saisieOuverte ? 'white' : 'var(--encre-3)' }}>Saisir sans parler</span>
+          style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', minHeight: 'var(--caisse-cible-tactile)', background: saisieOuverte ? 'var(--caisse-orange-voix)' : 'var(--caisse-ivoire)', border: `1px solid ${saisieOuverte ? 'var(--caisse-orange-voix)' : 'var(--commerce-line)'}`, borderRadius: 'var(--caisse-rayon-3)', padding: 'var(--caisse-esp-2) var(--caisse-esp-4)', cursor: 'pointer', fontFamily: 'inherit' }}>
+          <Keyboard size={ICONE} color={saisieOuverte ? 'white' : 'var(--caisse-gris-texte)'} />
+          <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--encre)' }}>Saisir sans parler</span>
         </button>
       </div>
       {saisieOuverte && (
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 'var(--caisse-esp-3)' }}>
           <SaisieGuidee
             onValider={ajouterLigneAuPanier}
             apparier={(nom) => {
