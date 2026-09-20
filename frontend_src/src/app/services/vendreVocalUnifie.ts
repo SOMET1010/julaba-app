@@ -28,6 +28,7 @@ import {
 } from './venteVocale';
 import { phraseCompris } from './dialoguesTata';
 import { resoudrePrixVocal } from './prixVocal';
+import { uniteEntendue } from '../utils/unite.utils';
 
 /**
  * Forme minimale attendue par `CaisseContext.addToCart` — reprise ici plutôt
@@ -115,9 +116,11 @@ export function vendreVocalUnifie(
    *  catalogue prend alors le relais. */
   montant: number,
   deps: DependancesVendreVocalUnifie,
-  /** Unité RÉELLEMENT prononcée (« tas », « kilos »…), si l'extraction l'a vue.
-   *  Sans elle, on ne peut pas savoir si le prix du catalogue est le bon. */
-  uniteParlee?: string | null,
+  /** Unité RÉELLEMENT prononcée (« tas », « kilos »…), telle que l'extraction
+   *  l'a vue, sans retouche. Sans elle, on ne peut pas savoir si le prix du
+   *  catalogue est le bon — et quand il ne l'est pas, c'est SON mot qu'on lui
+   *  redit (« Tu dis kilos… »), pas notre graphie. */
+  uniteDictee?: string | null,
 ): void {
   const produitCat = apparierProduit(nomParle || '', deps.products);
   const qte = quantite > 0 ? quantite : 1;
@@ -130,7 +133,7 @@ export function vendreVocalUnifie(
     montantDicte: montant,
     quantite: qte,
     produit: produitCat as never,
-    uniteParlee,
+    uniteParlee: uniteDictee,
     nomParle,
   });
 
@@ -156,6 +159,16 @@ export function vendreVocalUnifie(
 
   const ligne = construireLigneVocale({ nomParle, quantite: qte, montant: prix.total, produit: produitCat });
 
+  // L'UNITÉ PARLÉE, DANS LA GRAPHIE DE LA BOUTIQUE — lot E. Elle dit « deux
+  // tas de gombo », gombo est inconnu : la ligne libre posait « unité » en dur
+  // pendant que Tata répétait « 2 tas de gombo ». Le reçu contredisait la
+  // voix — deux sens à la même donnée. C'est CETTE valeur, et elle seule, qui
+  // va sur la ligne ET dans la phrase dite ; « kilos » y devient « kg » pour
+  // que la voix écrive comme le doigt (voir uniteEntendue). `null` si rien
+  // n'a été prononcé : on n'invente pas une unité, on pose le défaut « unité »
+  // de tout article libre.
+  const uniteParlee = uniteEntendue(uniteDictee);
+
   if (produitCat) {
     // Produit APPARIÉ : vrai produit du catalogue (prix d'achat → marge
     // réelle à l'encaissement futur, stock décrémenté SEULEMENT à ce
@@ -177,7 +190,7 @@ export function vendreVocalUnifie(
     // du même produit inconnu créent deux lignes distinctes plutôt que de
     // risquer d'écraser silencieusement un prix différent.
     deps.addToCart(
-      { id: 'libre-' + deps.creerIdLigne(), nom: ligne.nom, prix: ligne.prix, categorie: 'Autre', stock: 0, unite: 'unité' },
+      { id: 'libre-' + deps.creerIdLigne(), nom: ligne.nom, prix: ligne.prix, categorie: 'Autre', stock: 0, unite: uniteParlee ?? 'unité' },
       qte,
       ligne.total,
       'vocal',
@@ -192,8 +205,10 @@ export function vendreVocalUnifie(
   if (deps.guidageVocalActif()) {
     // L'unité RETENUE est celle du produit du catalogue quand il est apparié
     // (c'est elle qui a servi à décider du prix), sinon celle qu'elle a
-    // prononcée. Dire « 3 tas de tomate » au lieu de « 3 tomates » est ce qui
-    // lui permet d'entendre un malentendu AVANT d'encaisser.
+    // prononcée — la MÊME valeur que la ligne libre vient d'enregistrer, pas
+    // une relecture du mot brut. Dire « 3 tas de tomate » au lieu de
+    // « 3 tomates » est ce qui lui permet d'entendre un malentendu AVANT
+    // d'encaisser.
     const uniteLigne = produitCat?.unite || uniteParlee || null;
     deps.speak(phraseCompris({ nom: ligne.nom, quantite: qte, total: ligne.total, unite: uniteLigne }));
   }
