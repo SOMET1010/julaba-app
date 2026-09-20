@@ -16,6 +16,24 @@ jamais le patch Manus qui entre tel quel : c'est un lot Claude qui reprend son i
 assouplir un invariant financier ou métier. Si un garde-fou rougit, c'est la récupération
 qui plie, pas le garde-fou.
 
+**Règle de fidélité visuelle (Patrick, précision du 20/09).** On ne choisit pas « Claude
+contre Manus ». La cible est **le socle fonctionnel Claude avec le design, l'UX et la voix
+Manus validés**. Le design produit par Manus est à **conserver**, pas à refaire : il ne
+faut pas revenir visuellement à l'ancienne version Claude là où Manus avait déjà amélioré
+un écran. Pour la caisse en particulier, on garde l'habillage, la hiérarchie visuelle, les
+composants, les espacements, les états, les pictogrammes, les coupures, le responsive et
+les éléments d'accessibilité, **tant qu'ils ne modifient pas la logique métier**.
+Conséquences pratiques :
+- chaque récupération se fait **à fidélité visuelle maximale**, écran par écran, en
+  comparant l'écran Manus et l'écran obtenu après reprise ;
+- **aucune refonte graphique nouvelle** n'est engagée : on récupère l'existant, on ne le
+  réinvente pas ;
+- la catégorie **A n'est donc pas une liste d'agréments optionnels** : c'est le design
+  validé, et le laisser de côté serait une régression au même titre qu'un test rouge ;
+- quand un fichier mêle habillage et logique — `POSCaisse.tsx` en est le cas type — on
+  prend l'habillage **en entier** et on laisse la logique au socle. C'est la ligne de
+  découpe, pas un choix entre les deux versions.
+
 ---
 
 ## Périmètre mesuré
@@ -37,8 +55,9 @@ vérifications refaites sur `dad1136` pour les points fonctionnels.
 
 ## A — À RÉCUPÉRER
 
-*UI, UX, design, responsive, accessibilité, voix, sans incidence fonctionnelle. Entre
-après passage des tests existants de la caisse, en lots courts.*
+*UI, UX, design, responsive, accessibilité, voix, sans incidence fonctionnelle. **Design
+validé à conserver**, pas à refaire : fidélité visuelle maximale, comparaison écran par
+écran. Entre après passage des tests existants de la caisse, en lots courts.*
 
 ### A1. Renommage « Tata » → « Tantie Nanti Lou » (17 fichiers, 0 ligne hors renommage)
 `assets/images.ts`, `academy/UniversalAcademy.tsx`, `academy/types.ts`,
