@@ -32,6 +32,7 @@
 // AUDIO
 // ─────────────────────────────────────────────────────────────────
 
+import * as vtrace from "../utils/voiceTrace"; // VOICE-01 : on NOTE la voix retenue, on ne la choisit pas ici
 let _currentAudio: HTMLAudioElement | null = null;
 let _sharedAudioContext: AudioContext | null = null;
 
@@ -131,6 +132,7 @@ export function speakBrowser(text: string): Promise<void> {
       u.pitch = 1.1; // léger + aigu → timbre plus féminin (discret, sans déformer)
       u.onend = () => resolve();
       u.onerror = () => resolve();
+      vtrace.ttsVoixNavigateur(voix, u.lang, u.rate, u.pitch);
       synth.cancel();
       synth.speak(u);
     } catch { resolve(); }
