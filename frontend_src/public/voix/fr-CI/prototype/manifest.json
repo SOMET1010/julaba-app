@@ -1,35 +1,47 @@
 {
-  "packId": "julaba-fr-ci-preview-2026-09-20-natural-v4",
+  "packId": "julaba-fr-ci-preview-2026-09-20-bonchauffeur-v5",
   "statut": "prototype_validation_humaine_requise",
   "usage": "prévisualisation de la branche manus/refonte-ui-ux-voix uniquement",
   "langue": "fr-CI",
   "personnage": "Tantie Nanti Lou",
-  "voix": "Sulafat, voix préconstruite, correction locale légère",
-  "style": "français ivoirien naturel, chaleureux, ouvert et rassurant ; débit conversationnel légèrement vif, sans précipitation",
+  "voix": "Callirrhoe, voix féminine préconstruite",
+  "style": "guide ivoirienne adulte, chaleureuse, claire et naturelle ; débit conversationnel non ralenti",
   "texteExact": "Akwaba. Pour vendre, touche un produit, ou parle à Tata. On est ensemble.",
   "fichier": "tata-accueil-preview.mp3",
-  "sha256": "4935882075c6506224bdc4b831a9cc432ae43c39c2f8242cad87306ad09d758b",
+  "sha256": "0a863d6a9a8356eb0ccfcdd7a741281d1a9dced742be4eac3184f1479f3f9709",
+  "selection": {
+    "reference": "kit privé Bon Chauffeur, profil guide-ivoirienne",
+    "methode": "comparaison locale d'empreintes de locuteur sur neuf maîtres ; choix humain encore requis",
+    "similariteCentroideGuide": 0.8879,
+    "comparatifSulafatSource": 0.8748,
+    "limite": "la similarité ne prouve pas l'identité de la voix d'origine",
+    "clonage": false
+  },
   "transformation": {
-    "source": "tata-accueil-sulafat.wav",
-    "tempo": 1.06,
-    "hauteur": 0.97,
-    "formants": "préservés",
-    "egalisation": "chaleur et présence légères",
-    "objectif": "voix vivante et naturelle, moins lente que la v3, sans débit précipité"
+    "source": "tata-accueil-callirrhoe.wav",
+    "tempo": 1.0,
+    "hauteur": 1.0,
+    "traitement": "normalisation mono 48 kHz uniquement",
+    "objectif": "retrouver la chaleur et le débit de la guide Bon Chauffeur sans imitation biométrique"
   },
   "technique": {
     "format": "MP3",
     "canaux": 1,
     "frequenceHz": 48000,
-    "debitApproxBps": 96276,
-    "dureeSecondes": 9.624,
-    "niveauMoyenDb": -19.1,
+    "debitApproxBps": 96287,
+    "dureeSecondes": 9.264,
+    "niveauMoyenDb": -19.0,
     "niveauMaximumDb": -2.4
+  },
+  "droits": {
+    "source": "kit Bon Chauffeur fourni par le propriétaire",
+    "scope": "prototype interne Jùlaba autorisé par le propriétaire",
+    "voiceCloningAllowed": false,
+    "thirdPartyPublication": false
   },
   "validation": {
     "texte": "à vérifier mot à mot à l'écoute humaine",
     "naturelEtAgePercu": "à valider par le propriétaire et des marchandes ivoiriennes cibles",
     "production": false
-  },
-  "note": "Cette v4 accélère très légèrement la source de 6 %, après rejet de la v3 jugée encore trop lente. Elle reste une correction légère et réversible du prototype existant, pas une voix humaine finale."
+  }
 }
