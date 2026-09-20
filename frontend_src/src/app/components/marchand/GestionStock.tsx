@@ -14,11 +14,8 @@ import { ImagePickerField } from '../shared/ImagePickerField';
 import { ModalPortal } from '../shared/ModalPortal';
 import { SelectWithAutre } from '../shared/SelectWithAutre';
 import { NotificationButton } from './NotificationButton';
-import { VenteVocaleModal } from './VenteVocaleModal';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { useStock } from '../../contexts/StockContext';
-import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
-import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { eventBus, EVENTS } from '../../services/eventBus';
 import { guidageVocal } from '../../utils/accessMode';
 import { toast } from 'sonner';
@@ -251,7 +248,7 @@ export function GestionStock() {
   const navigate = useNavigate();
   const { user } = useUser();
   const { showToast, ToastContainer } = useToast();
-  const { products, addProduct, updateProduct, deleteProduct, refreshProducts, stats: caisseStats } = useCaisse();
+  const { products, addProduct, updateProduct, deleteProduct, refreshProducts } = useCaisse();
   const { speak, setIsModalOpen } = useApp();
   // Retour vocal des ERREURS DE FORMULAIRE selon le profil (muet en 'lecture', où
   // le toast suffit). Les réponses aux COMMANDES VOCALES, elles, parlent toujours.
@@ -298,7 +295,6 @@ export function GestionStock() {
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showValue, setShowValue] = useState(false);
-  const [showVente, setShowVente] = useState(false);
   const [reappQty, setReappQty] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false); // repli des champs optionnels de l'ajout produit
@@ -338,7 +334,7 @@ export function GestionStock() {
     if (lowCount > 0 && navigator.vibrate) navigator.vibrate([100, 50, 100]);
   }, [stocks.length]);
 
-  useEffect(() => { setIsModalOpen(showAdd || showEdit || showVente); }, [showAdd, showEdit, showVente, setIsModalOpen]);
+  useEffect(() => { setIsModalOpen(showAdd || showEdit); }, [showAdd, showEdit, setIsModalOpen]);
   useEffect(() => { if (!showAdd) setShowAdvanced(false); }, [showAdd]); // l'ajout rouvre toujours replié
 
   const { startRecording, stopRecording } = useVoiceCore({
@@ -1338,7 +1334,26 @@ export function GestionStock() {
                       <motion.button
                         type="button"
                         whileTap={{ scale: 0.97 }}
-                        onClick={() => { setShowEdit(false); setShowVente(true); }}
+                        // VENDRE OUVRE LA CAISSE (lot B — VOIX-01, voie 2).
+                        // « Mon stock » ne vend plus elle-même : elle demande
+                        // à la caisse de s'ouvrir avec ce produit déjà choisi.
+                        // Le produit voyage par l'ÉTAT DE ROUTE de React
+                        // Router — un objet passé à `navigate`, PAS un
+                        // paramètre d'URL : il n'apparaît pas dans l'adresse
+                        // et ne survit pas à un rechargement de page. C'est
+                        // suffisant ici (le geste est immédiat) et ça reste
+                        // explicite et testable, contrairement à une variable
+                        // globale. La caisse le lit, et fonctionne sans quand
+                        // on y arrive autrement.
+                        onClick={() => {
+                          setShowEdit(false);
+                          navigate('/marchand/caisse', { state: { produitPreselectionne: {
+                            nom: selectedStock.name,
+                            prix: selectedStock.salePrice,
+                            unite: selectedStock.unit,
+                            image: selectedStock.image || getImageByNom(selectedStock.name),
+                          } } });
+                        }}
                         style={{ padding: '13px 0', borderRadius: 14, background: P, border: 'none', fontSize: 14, fontWeight: 800, color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
                       >
                         Vendre
@@ -1455,15 +1470,6 @@ export function GestionStock() {
       </AnimatePresence>
 
       <ToastContainer />
-      <RaccourcisProvider>
-        <ObjectifProvider ventes={caisseStats?.ventesJour || 0}>
-          <VenteVocaleModal
-            isOpen={showVente}
-            onClose={() => setShowVente(false)}
-            initialProduct={selectedStock ? { nom: selectedStock.name, prix: selectedStock.salePrice, unite: selectedStock.unit, image: selectedStock.image || getImageByNom(selectedStock.name) } : null}
-          />
-        </ObjectifProvider>
-      </RaccourcisProvider>
       {/* Confirmation de suppression : rendue via ModalPortal (document.body) pour
           échapper au stacking context de la fiche produit (zIndex:200) qui la
           masquait auparavant (elle était en z-50, peinte SOUS la fiche → invisible

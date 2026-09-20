@@ -13,7 +13,7 @@
  *
  * Lancer : npm run test:unite-vente
  */
-import { quantiteAvecUnite, ligneLisible, accorderUnite } from './unite.utils.js';
+import { quantiteAvecUnite, ligneLisible, accorderUnite, uniteSeule, uniteEntendue } from './unite.utils.js';
 
 let echecs = 0;
 const ok = (cond: boolean, quoi: string) => {
@@ -55,6 +55,34 @@ ok(
   `les milliers restent lisibles, obtenu « ${quantiteAvecUnite(1500, 'kg')} »`,
 );
 ok(quantiteAvecUnite(3, null) === '3', 'sans unité : le nombre seul');
+
+console.log("\nL'unité seule, pour la ligne de panier (la quantité est un champ à part)");
+
+ok(uniteSeule(3, 'tas') === 'tas', '« tas » ne prend pas de s');
+ok(uniteSeule(2, 'sac') === 'sacs', '« sacs » s’accorde');
+ok(uniteSeule(1, 'sac') === 'sac', 'au singulier, pas de s');
+ok(uniteSeule(3, 'kg') === 'kg', 'une abréviation ne s’accorde jamais');
+ok(uniteSeule(3, 'pièce') === 'pièces', '« pièce » n’est pas neutre');
+ok(uniteSeule(3, 'unité') === '', '« unité » n’apprend rien : rien à afficher');
+ok(uniteSeule(3, null) === '', 'sans unité : rien à afficher');
+
+console.log('\nCe qu’elle a dit, écrit comme la boutique l’écrit (lot E)');
+
+ok(uniteEntendue('tas') === 'tas', '« tas » reste « tas » — jamais « ta »');
+ok(uniteEntendue('kilos') === 'kg', '« kilos » s’écrit « kg », comme sur le bouton de la caisse');
+ok(uniteEntendue('Kilo') === 'kg', 'la casse ne compte pas');
+ok(uniteEntendue('sacs') === 'sac', '« sacs » → « sac » : l’unité est figée au singulier, l’accord se fait à la lecture');
+ok(uniteEntendue('regimes') === 'régime', 'sans accent à l’oreille, avec accent à l’écrit : une seule graphie');
+ok(uniteEntendue('unités') === 'unité', '« unités » → « unité », la valeur par défaut d’un article libre');
+ok(uniteEntendue('pièces') === 'pièce', '« pièce » n’est pas ramenée à « unité » — elle se dit, donc elle s’écrit');
+ok(uniteEntendue('morceaux') === 'morceau', 'un pluriel en x connu de la table');
+ok(uniteEntendue('bidons') === 'bidon', 'hors table : le singulier n’est pris que si accorderUnite le ré-accorde');
+// LIMITE ASSUMÉE : sans dictionnaire, un singulier en « s » hors table est
+// indistinguable d’un pluriel régulier. C’est pourquoi « tas » est DANS la
+// table — et pourquoi tout nouveau mot du même genre devra y entrer.
+ok(uniteEntendue('tas') === 'tas' && uniteEntendue('bassines') === 'bassine', 'la table protège les singuliers en s ; le reste suit le pluriel régulier');
+ok(uniteEntendue(null) === null, 'rien d’entendu → null : ce module n’invente pas d’unité');
+ok(uniteEntendue('   ') === null, 'un blanc n’est pas une unité');
 
 if (echecs > 0) {
   console.log(`\n✗ unité de la vente — ${echecs} échec(s)`);
