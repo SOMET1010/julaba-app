@@ -42,14 +42,26 @@ export function offlineModelInstalled(): boolean {
 /** Sonde le moteur natif (idempotent, partagé). Met à jour les drapeaux. */
 function probeEngine(): Promise<boolean> {
   if (!probePromise) {
-    probePromise = (async () => {
+    const tentative = (async () => {
       const ok = await nativeStt.isAvailable();
       engineReady = ok;
       if (ok) { try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ } }
       return ok;
-    })().catch(() => { probePromise = null; return false; });
+    })().catch(() => false);
+    probePromise = tentative;
+    // Android peut monter l'interface avant que le plugin soit prêt. Un premier
+    // `false` ne doit pas être mémorisé pour toute la session : l'écran pourra
+    // sonder de nouveau quelques instants plus tard.
+    void tentative.then((ok) => {
+      if (!ok && probePromise === tentative) probePromise = null;
+    });
   }
   return probePromise;
+}
+
+/** Sonde publique, rapide et sans réseau, pour rendre le bouton micro réactif. */
+export function verifierOfflineModel(): Promise<boolean> {
+  return probeEngine();
 }
 
 /**

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { toast } from 'sonner';
 import { useApp } from '../../contexts/AppContext';
@@ -13,12 +13,34 @@ import { getRoleConfig } from '../../config/roleConfig';
 import { checkRouteAccess } from '../../types/constants';
 import { NotificationToastContainer } from '../shared/NotificationToast';
 import * as audioManager from '../../services/audioManager';
+import { TantieSagesseModal } from '../assistant/TantieSagesseModal';
 
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isOnline, loading, user } = useApp();
+  const { isOnline, loading, user, globalVoiceOpen, setGlobalVoiceOpen } = useApp();
   const { setUser: setUserProfile } = useUser();
+  const [tataOuverte, setTataOuverte] = useState(false);
+  const tataMasquee = location.pathname === '/marchand/caisse';
+
+  // Une seule propriétaire pour Tata : le bouton mobile, la sidebar desktop et
+  // le double-tap global ouvrent exactement la même modale.
+  useEffect(() => {
+    if (!globalVoiceOpen) return;
+    if (tataMasquee) {
+      setTataOuverte(false);
+      setGlobalVoiceOpen(false);
+      return;
+    }
+    setTataOuverte(true);
+    setGlobalVoiceOpen(false);
+  }, [globalVoiceOpen, setGlobalVoiceOpen, tataMasquee]);
+
+  // Les callbacks restent identiques pour desktop et mobile ; si un geste ou
+  // un événement global tente d'ouvrir Tantie sur la caisse, on referme aussitôt.
+  useEffect(() => {
+    if (tataMasquee && tataOuverte) setTataOuverte(false);
+  }, [tataMasquee, tataOuverte]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -89,7 +111,7 @@ export function AppLayout() {
         userRole={user.role}
       />
       {/* Sidebar Desktop Unifié */}
-      <Sidebar role={user.role as 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur'} />
+      <Sidebar role={user.role as 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur'} onMicClick={() => setTataOuverte(true)} />
 
       {/* Offline Badge */}
       <AnimatePresence>
@@ -113,7 +135,13 @@ export function AppLayout() {
       </main>
 
       {/* Bottom Navigation Mobile — masquée sur Academy */}
-      {!hideBottomBar && <BottomBar role={user.role as 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur'} />}
+      {!hideBottomBar && <BottomBar role={user.role as 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur'} onMicClick={() => setTataOuverte(true)} />}
+
+      <TantieSagesseModal
+        isOpen={tataOuverte && !tataMasquee}
+        onClose={() => setTataOuverte(false)}
+        role={user.role}
+      />
 
       {/* Dev Profile Switcher - Only in development */}
       {import.meta.env.DEV && <ProfileSwitcher />}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Sprout, MapPin, CalendarClock, Package, Navigation as NavIcon, Store } from 'lucide-react';
+import { Sprout, MapPin, CalendarClock, Package, Navigation as NavIcon, Store, WifiOff, RefreshCw } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { API_URL } from '../../utils/api';
@@ -28,12 +28,13 @@ function formatDateFr(iso: string): string {
 }
 
 export function RecoltesPrevues() {
-  const { user: appUser } = useApp();
+  const { user: appUser, isOnline } = useApp();
   const isGrossiste = appUser?.role === 'marchand' && appUser?.sousProfilMarchand === 'grossiste';
 
   const [loading, setLoading] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
   const [data, setData] = useState<RecoltesPrevuesResponse | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (!isGrossiste) {
@@ -59,7 +60,7 @@ export function RecoltesPrevues() {
         setLoading(false);
       });
     return () => controller.abort();
-  }, [isGrossiste]);
+  }, [isGrossiste, retryKey]);
 
   if (!isGrossiste) {
     return (
@@ -80,6 +81,12 @@ export function RecoltesPrevues() {
   return (
     <SubPageLayout role="marchand" title="Récoltes prévues">
       <div className="pt-2 pb-32 lg:pb-8 lg:pl-[320px] max-w-2xl lg:max-w-7xl mx-auto min-h-screen" style={{ backgroundColor: '#F6F0E4' }}>
+        {!isOnline && (
+          <div role="status" className="mb-4 rounded-2xl border-2 border-amber-300 bg-amber-50 p-3 flex items-start gap-3">
+            <WifiOff className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-900"><strong>Hors connexion.</strong> Les nouvelles récoltes ne peuvent pas être chargées maintenant.</p>
+          </div>
+        )}
         {data?.cooperative && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 bg-white rounded-2xl border-2 border-gray-200 p-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
@@ -109,7 +116,10 @@ export function RecoltesPrevues() {
         {!loading && erreur && (
           <div className="flex flex-col items-center justify-center py-16 text-center px-6">
             <p className="text-red-500 font-bold mb-1">Chargement impossible</p>
-            <p className="text-sm text-gray-500">{erreur}</p>
+            <p className="text-sm text-gray-500">{isOnline ? 'Réessaie dans un moment.' : 'Attends le retour du réseau puis réessaie.'}</p>
+            <button type="button" onClick={() => setRetryKey(v => v + 1)} disabled={!isOnline} className="mt-4 min-h-11 px-5 rounded-2xl bg-[#B74725] text-white font-bold disabled:opacity-50 flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> Réessayer
+            </button>
           </div>
         )}
 

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────
-// Voix « Tata Nanti Lou » — bibliothèque de phrases PRÉ-ENREGISTRÉES.
+// Voix « Tantie Nanti Lou » — bibliothèque de phrases PRÉ-ENREGISTRÉES.
 //
 // Vraie voix ivoirienne (enregistrée par une vraie personne), embarquée dans
 // l'appli : 100 % sur l'appareil, ZÉRO cloud, zéro coût, marche hors-ligne.

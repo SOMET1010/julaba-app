@@ -232,7 +232,7 @@ function startTypewriter(
   }, speedMs);
 }
 
-// TTS unifié. `clip` (optionnel) = clé d'un clip pré-enregistré « Tata Nanti Lou » :
+// TTS unifié. `clip` (optionnel) = clé d'un clip pré-enregistré « Tantie Nanti Lou » :
 // pour une phrase FIXE, on joue la vraie voix ivoirienne (sur l'appareil, zéro
 // cloud) au lieu de la voix de synthèse. Sinon on retombe sur le flux normal.
 async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): Promise<void> {
@@ -344,10 +344,15 @@ export function useVoiceCore({
     const onVoicePackMissing = (event: Event) => {
       const detail = event as CustomEvent<{ lang?: string; kind?: string }>;
       const isFrenchClip = detail.detail?.lang === 'french' && detail.detail?.kind === 'clip';
+      // Une réponse métier reste correcte même si son clip fixe n'existe pas
+      // encore. Ne jamais remplacer cette réponse par un diagnostic technique
+      // destiné aux développeurs : le texte et les gestes restent utilisables.
+      if (isFrenchClip) {
+        console.info('[voice] Clip français absent : réponse conservée à l’écran');
+        return;
+      }
       const lang = detail.detail?.lang === 'bambara' ? 'Bambara' : 'Dioula';
-      const message = isFrenchClip
-        ? "Cette réponse est affichée. Son clip Tata Nanti Lou n’est pas encore enregistré."
-        : `Le pack vocal ${lang} n’est pas encore installé. Le texte reste disponible, sans utiliser Internet.`;
+      const message = `La voix en ${lang} n’est pas encore prête. Continue avec les images et les boutons.`;
       setError(message);
       setLiveTranscript(message);
     };
@@ -715,7 +720,7 @@ export function useVoiceCore({
       // Une phrase fixe affirmant « ta vente est bien enregistrée » serait
       // FAUSSE pour ces cas — on ne peut pas l'accorder ici à l'intention
       // réelle sans plomberie supplémentaire, donc on reste volontairement
-      // neutre. Clip « bien_recu » (voix RÉELLE de Tata Nanti Lou, pas un
+      // neutre. Clip « bien_recu » (voix RÉELLE de Tantie Nanti Lou, pas un
       // texte de secours) — déjà utilisé ailleurs, dit littéralement
       // « J'ai compris » : honnête pour toutes les intentions confirmées ici.
       await ttsSpeak("J'ai compris", "french", "bien_recu");
@@ -728,7 +733,7 @@ export function useVoiceCore({
   const cancelAction = useCallback(async () => {
     if (!pendingResponse) return;
     setPendingResponse(null); setState("idle"); setLiveTranscript("");
-    // Voix réelle de Tata Nanti Lou pour l'annulation (phrase fixe).
+    // Voix réelle de Tantie Nanti Lou pour l'annulation (phrase fixe).
     await ttsSpeak("D'accord, j'annule. Pas de souci.", "french", "annule");
   }, [pendingResponse]);
 
@@ -846,7 +851,7 @@ export function useVoiceCore({
       }
       // V4 : pas une vente/dépense — peut-être une question sur les chiffres du jour.
       if (texte && (await answerQuestion(texte))) return;
-      // Entendu mais pas compris (ou rien entendu) : voix réelle de Tata Nanti Lou.
+      // Entendu mais pas compris (ou rien entendu) : voix réelle de Tantie Nanti Lou.
       clearThinkingTimer(); setState("idle"); setLiveTranscript("");
       if (texte) await ttsSpeak("Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît.", "french", "pas_compris");
       else await ttsSpeak("Je n'ai rien entendu. Réessaie, parle un peu plus fort.", "french", "rien_entendu");
@@ -890,7 +895,7 @@ export function useVoiceCore({
       // V4 : pas une vente/dépense — peut-être une question sur les chiffres du
       // jour. `true` = traitée (une question rejouée hors-ligne n'a pas de sens).
       if (await answerQuestion(text)) return true;
-      // Pas une opération financière reconnue : voix réelle de Tata Nanti Lou.
+      // Pas une opération financière reconnue : voix réelle de Tantie Nanti Lou.
       // Retour false : un rejeu dont le texte n'est plus reconnu doit rester en
       // file (visible « en attente »), pas disparaître comme un faux succès.
       clearThinkingTimer(); setState("idle"); setLiveTranscript("");

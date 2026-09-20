@@ -4,11 +4,9 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { RootLayout } from './components/layout/RootLayout';
 import { AppLayout } from './components/layout/AppLayout';
 import { EntryGate } from './components/auth/EntryGate';
-import { LoginPassword } from './components/auth/LoginPassword';
 import { ChangePasswordScreen } from './components/auth/ChangePasswordScreen';
 import { ActivationScreen } from './components/auth/ActivationScreen';
 import { UnregisteredPhone } from './components/auth/UnregisteredPhone';
-import { Welcome } from './components/auth/Welcome';
 import { BORoot } from './components/backoffice/BORoot';
 import { BOLogin } from './components/backoffice/BOLogin';
 import { IdentificateurLayout } from './components/identificateur/IdentificateurLayout';
@@ -41,8 +39,10 @@ export const router = createBrowserRouter([
     children: [
       { path: "/", element: <EntryGate /> },
       { path: "/non-enregistre", element: <UnregisteredPhone /> },
-      { path: "/welcome", element: <Welcome /> },
-      { path: "/login", element: <LoginPassword /> },
+      // Une seule porte d'entrée : ces anciens liens ne doivent jamais sauter
+      // le splash, l'accueil de Tata ou la logique de retour.
+      { path: "/welcome", element: <Navigate to="/" replace /> },
+      { path: "/login", element: <Navigate to="/" replace /> },
       { path: '/change-password', element: <ChangePasswordScreen /> },
       { path: '/activation', element: <ActivationScreen /> },
       // Console interne du Studio Voice (enregistrement des clips de Tata) —

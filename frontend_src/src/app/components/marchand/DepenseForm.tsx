@@ -1,13 +1,20 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Delete } from 'lucide-react';
+import { ArrowLeft, Check, WifiOff, Volume2 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import TATA_BLEU from '../../../assets/images/tata-nanti-lou.png';
 import { emojiTile } from '../../utils/emojiTile';
+import {
+  presenterResultatOperation,
+  type ResultatOperationCaisse,
+} from '../../services/statutOperationCaisse';
+import { vibrerSucces, vibrerTic } from '../../utils/haptique';
+import { SyncEchecsBanner } from './SyncEchecsBanner';
+import { PaveMontant } from '../shared/PaveMontant';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -49,6 +56,34 @@ export function DepenseForm() {
   const enregEnCoursRef = useRef(false);
   const [showOthers, setShowOthers]   = useState(false);
   const vocalHint = useMemo(() => getVocalHint(), []);
+  const [dernierResultat, setDernierResultat] = useState<{
+    montant: number;
+    resultat: ResultatOperationCaisse;
+  } | null>(null);
+
+  const afficherResultat = (m: number, resultat: ResultatOperationCaisse) => {
+    const presentation = presenterResultatOperation('depense', m, resultat);
+    setDernierResultat({ montant: m, resultat });
+    setDescription('');
+    setMontant('');
+    setStep(1);
+    if (resultat.statut === 'confirmee') {
+      vibrerSucces();
+      // Le contexte caisse a déjà rechargé ses données. AppContext alimente
+      // aussi le résumé d'accueil : sa mise à jour ne doit pas transformer un
+      // succès financier en erreur si ce rafraîchissement secondaire échoue.
+      void reloadTransactions().catch((error: unknown) => {
+        console.warn('[DepenseForm] rafraîchissement secondaire impossible:', error);
+      });
+    } else {
+      vibrerTic();
+    }
+    try {
+      speak(presentation.voix);
+    } catch (error) {
+      console.warn('[DepenseForm] lecture du résultat impossible:', error);
+    }
+  };
 
   const { startRecording, stopRecording, isListening, confirmAction, cancelAction, pendingResponse, state: voiceState } = useVoiceCore({
     context: { module: 'depense', prenom: user?.firstName || 'ma chère', genre: (user as any)?.genre || 'femme', userId: user?.id },
@@ -60,12 +95,8 @@ export function DepenseForm() {
         const desc = String(a.description || a.categorie || '').trim() || 'Dépense';
         const montant = Number(a.montant);
         try {
-          await enregistrerDepense(montant, desc);
-          await reloadTransactions();
-          await speak('Dépense enregistrée');
-          setDescription('');
-          setMontant('');
-          setStep(1);
+          const resultat = await enregistrerDepense(montant, desc);
+          afficherResultat(montant, resultat);
         } catch (error) {
           await speak('Erreur, réessaie');
         }
@@ -83,13 +114,6 @@ export function DepenseForm() {
   const handleMic = () => { if (isListening) stopRecording(); else startRecording(); };
   const isConfirming = voiceState === 'confirming';
 
-  const handleKey = (k: string) => {
-    if (k === '<') { setMontant(p => p.slice(0, -1)); return; }
-    if (k === '000') { setMontant(p => p === '0' || p === '' ? p : p + '000'); return; }
-    if (montant.length >= 8) return;
-    setMontant(p => p === '0' ? k : p + k);
-  };
-
   const handleSave = async () => {
     if (enregEnCoursRef.current) return; // anti double-clic (synchrone)
     if (!description.trim() || !montant || montant === '0') return;
@@ -98,10 +122,8 @@ export function DepenseForm() {
     enregEnCoursRef.current = true;
     setIsProcessing(true);
     try {
-      await enregistrerDepense(m, description.trim());
-      await reloadTransactions();
-      speak('Dépense de ' + m.toLocaleString() + ' francs enregistrée');
-      navigate(-1);
+      const resultat = await enregistrerDepense(m, description.trim());
+      afficherResultat(m, resultat);
     } catch (e: any) { console.warn('[DepenseForm] handleSave failed:', e?.message); speak("Erreur lors de l'enregistrement"); }
     finally { enregEnCoursRef.current = false; setIsProcessing(false); }
   };
@@ -134,6 +156,40 @@ export function DepenseForm() {
   // STEP 1
   // ══════════════════════════════════════════════════════════
   const PC = '#B74725';
+  if (dernierResultat) {
+    const presentation = presenterResultatOperation('depense', dernierResultat.montant, dernierResultat.resultat);
+    const confirme = dernierResultat.resultat.statut === 'confirmee';
+    return (
+      <div style={{ minHeight:'100dvh', background:'#FFFCF7', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24, textAlign:'center' }}>
+        <div style={{ width:88, height:88, borderRadius:'50%', background: confirme ? '#EAF7EE' : '#FFF4D6', display:'grid', placeItems:'center', marginBottom:16 }}>
+          {confirme ? <Check size={48} color="#0E7A47" /> : <WifiOff size={46} color="#9A6700" />}
+        </div>
+        <div role="status" aria-live="polite" style={{ fontSize:24, fontWeight:900, color: confirme ? '#0E7A47' : '#7A5200', marginBottom:8 }}>
+          {presentation.titre}
+        </div>
+        <div style={{ fontSize:38, fontWeight:900, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>
+          {dernierResultat.montant.toLocaleString('fr-FR')} F
+        </div>
+        <div style={{ maxWidth:340, marginTop:16, padding:'14px 16px', borderRadius:14, background: confirme ? '#EAF7EE' : '#FFF4D6', color: confirme ? '#0E6A43' : '#6B4A00', fontSize:16, fontWeight:700, lineHeight:1.45 }}>
+          {presentation.detail}
+        </div>
+        <button type="button" onClick={() => { void speak(presentation.voix); }}
+          style={{ marginTop:16, minHeight:48, display:'flex', alignItems:'center', gap:8, padding:'10px 16px', borderRadius:14, border:'1.5px solid var(--trait)', background:'#fff', color:P, fontWeight:800, fontSize:15, cursor:'pointer' }}>
+          <Volume2 size={22} /> Réécouter
+        </button>
+        <div style={{ width:'100%', maxWidth:360, marginTop:28, display:'flex', flexDirection:'column', gap:10 }}>
+          <button type="button" onClick={() => setDernierResultat(null)}
+            style={{ width:'100%', minHeight:54, borderRadius:16, border:'none', background:P, color:'#fff', fontWeight:800, fontSize:16, cursor:'pointer' }}>
+            Noter une autre dépense
+          </button>
+          <button type="button" onClick={() => navigate(-1)}
+            style={{ width:'100%', minHeight:50, borderRadius:16, border:`1.5px solid ${P}`, background:'#fff', color:P, fontWeight:800, fontSize:15, cursor:'pointer' }}>
+            Retour
+          </button>
+        </div>
+      </div>
+    );
+  }
   if (isConfirming && pendingResponse) return (
     <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
       <div style={{background:'white',borderRadius:'24px 24px 0 0',padding:24,width:'100%',maxWidth:420}}>
@@ -172,6 +228,8 @@ export function DepenseForm() {
       }
     >
       <div style={{ flex:1, overflowY:'auto', padding:'16px 0 16px', display:'flex', flexDirection:'column', gap:14 }}>
+
+        <SyncEchecsBanner />
 
         {/* ACTIONS RAPIDES */}
         <div>
@@ -250,7 +308,7 @@ export function DepenseForm() {
 
         {/* TATA NANTI LOU + MICRO */}
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, paddingTop:8, borderTop:'1px solid var(--trait)' }}>
-          <motion.img src={TATA_BLEU} alt="Tata Nanti Lou"
+          <motion.img src={TATA_BLEU} alt="Tantie Nanti Lou"
             style={{ width:160, height:160, objectFit:'contain', filter:'drop-shadow(0 12px 28px rgba(175,91,35,0.2))' }}
             animate={{ y:[0,-7,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut' }} />
           <motion.button whileTap={{ scale:0.9 }} onClick={handleMic} style={{ background:'none', border:'none', cursor:'pointer', padding:8 }}>
@@ -292,6 +350,8 @@ export function DepenseForm() {
     >
       <div style={{ flex:1, overflowY:'auto', padding:'14px 16px 16px' }}>
 
+        <SyncEchecsBanner />
+
         {/* Description + Changer */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
           <span style={{ fontSize:15, fontWeight:800, color:P }}>{description}</span>
@@ -301,12 +361,15 @@ export function DepenseForm() {
           </motion.button>
         </div>
 
-        {/* Montant */}
-        <div style={{ textAlign:'center', padding:'8px 0 4px' }}>
-          <motion.div key={montant} initial={{ y:8, opacity:0 }} animate={{ y:0, opacity:1 }} transition={{ duration:0.15 }}
-            style={{ fontSize:64, fontWeight:900, color:montantColor, letterSpacing:'-3px', lineHeight:1, transition:'color 0.3s' }}>
-            {montantNum.toLocaleString('fr-FR')}
-          </motion.div>
+        {/* Montant — pavé XXL partagé avec la caisse. */}
+        <PaveMontant
+          value={montant}
+          onChange={setMontant}
+          color={montantColor}
+          ariaLabel="Montant de la dépense"
+          onSpeak={(m) => { if (m > 0) void speak(`${m.toLocaleString('fr-FR')} francs`); }}
+        />
+        <div style={{ textAlign:'center', padding:'0 0 4px' }}>
           <div style={{ fontSize:12, height:18, marginTop:4, color:montantColor, fontStyle:'italic', opacity: montantHint ? 1 : 0 }}>
             {montantHint}
           </div>
@@ -318,16 +381,6 @@ export function DepenseForm() {
           <span style={{ fontSize:11, color:P, fontWeight:700 }}>
             {derniereDepense ? `${derniereDepense.toLocaleString('fr-FR')} F` : '—'}
           </span>
-        </div>
-
-        {/* Clavier */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:16 }}>
-          {['1','2','3','4','5','6','7','8','9','000','0','<'].map(k => (
-            <motion.button key={k} whileTap={{ scale:0.86 }} onClick={() => handleKey(k)}
-              style={{ background: k==='0' ? P : k==='<' ? '#EBEBEB' : '#FDE8D8', border:'none', borderRadius:14, padding:'18px 0', fontSize:24, fontWeight:800, color: k==='0' ? 'white' : k==='<' ? '#888' : P, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'inherit' }}>
-              {k === '<' ? <Delete size={24} color="#888" /> : k}
-            </motion.button>
-          ))}
         </div>
 
         {/* Micro */}

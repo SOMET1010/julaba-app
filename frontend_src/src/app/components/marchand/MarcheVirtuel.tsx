@@ -5,6 +5,7 @@ import {
   Wheat, Leaf, Apple, Flame, Check, Trash2, TrendingDown, TrendingUp,
   Wallet, Banknote, ShoppingBag, MessageSquare, Zap, History, Users,
   Store, Smartphone, CreditCard, QrCode, Filter, Sprout, ChevronRight,
+  Eye, EyeOff, WifiOff,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
@@ -33,6 +34,7 @@ import { SubPageLayout } from '../layout/SubPageLayout';
 import { API_URL } from '../../utils/api';
 import { apiRequest } from '../../services/api/api-client';
 import { vignetteProduit } from '../../utils/emojiTile';
+import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
 
 interface Product {
   id: string; name: string; emoji: string; image: string;
@@ -75,7 +77,8 @@ export function MarcheVirtuel() {
   const { user } = useUser();
   const { showToast, ToastContainer } = useToast();
   const { creerCommandeDirecte, commandes, loading: commandesLoading } = useCommande();
-  const { accessToken, user: appUser } = useApp();
+  const { accessToken, user: appUser, isOnline } = useApp();
+  const { montantsMasques, basculerMontants } = useMontantsPrives();
   const isGrossiste = appUser?.sousProfilMarchand === 'grossiste';
   const sousProfil = appUser?.sousProfilMarchand ?? null;
   const isDemiGrossiste = sousProfil === 'demi_grossiste';
@@ -281,7 +284,9 @@ export function MarcheVirtuel() {
         addToCart(pendingProduct.product.id, pendingProduct.quantity);
         const total = pendingProduct.product.price * pendingProduct.quantity;
 
-        showToast(`${pendingProduct.quantity} ${pendingProduct.product.unit} de ${pendingProduct.product.name} ajouté (${(total || 0).toLocaleString()} FCFA)`, 'success');
+        showToast(montantsMasques
+          ? `${pendingProduct.quantity} ${pendingProduct.product.unit} de ${pendingProduct.product.name} ajouté`
+          : `${pendingProduct.quantity} ${pendingProduct.product.unit} de ${pendingProduct.product.name} ajouté (${(total || 0).toLocaleString()} FCFA)`, 'success');
         setPendingProduct(null); setConversationState('idle'); return;
       } else if (lc.includes('non') || lc.includes('annule')) {
 
@@ -349,6 +354,7 @@ export function MarcheVirtuel() {
   };
 
   const handleRepublierSubmit = async () => {
+    if (!isOnline) { showToast('Le réseau est coupé. Réessaie quand il revient.', 'error'); return; }
     if (!produitARepublier) return;
     if (republierQuantite <= 0) { showToast('La quantité doit être supérieure à 0', 'error'); return; }
     if (republierPrix <= 0) { showToast('Le prix doit être supérieur à 0', 'error'); return; }
@@ -375,6 +381,7 @@ export function MarcheVirtuel() {
   };
 
   const handleNegotiationSubmit = async () => {
+    if (!isOnline) { showToast('Le réseau est coupé. Réessaie quand il revient.', 'error'); return; }
     try {
       if (!user || !productToNegotiate) throw new Error('Informations manquantes');
       if (negotiationQuantity <= 0) throw new Error('La quantité doit être supérieure à 0');
@@ -401,6 +408,7 @@ export function MarcheVirtuel() {
   };
 
   const handlePayment = async () => {
+    if (!isOnline) { setErrorMessage('Le réseau est coupé. Réessaie quand il revient.'); setShowErrorModal(true); return; }
     if (!livraisonNom.trim()) {
       setErrorMessage(modeReception === 'livraison' ? 'Nom complet obligatoire' : 'Nom du livreur obligatoire');
       setShowErrorModal(true);
@@ -447,7 +455,7 @@ export function MarcheVirtuel() {
       setShowErrorModal(true);
       return;
     }
-    speakSilent(`Paiement de ${(cartTotal || 0).toLocaleString()} francs CFA par ${label} effectué avec succès`);
+    speakSilent(montantsMasques ? `Paiement par ${label} effectué avec succès` : `Paiement de ${(cartTotal || 0).toLocaleString()} francs CFA par ${label} effectué avec succès`);
     resetPaymentState();
   };
 
@@ -466,6 +474,7 @@ export function MarcheVirtuel() {
   };
 
   const handlePinValidation = async () => {
+    if (!isOnline) { setErrorMessage('Le réseau est coupé. Réessaie quand il revient.'); setShowErrorModal(true); return; }
     if (pinCode.length !== 4) { setErrorMessage('Le code PIN doit contenir 4 chiffres'); setShowErrorModal(true); speakSilent('Le code PIN doit contenir 4 chiffres'); return; }
     try {
       const data = await apiRequest<{ valid?: boolean }>(API_URL, '/auth/pin/verify', {
@@ -480,7 +489,7 @@ export function MarcheVirtuel() {
       setShowErrorModal(true);
       return;
     }
-    speakSilent(`Paiement de ${(cartTotal || 0).toLocaleString()} francs CFA effectué avec succès depuis ton Wallet`);
+    speakSilent(montantsMasques ? 'Paiement effectué avec succès depuis ton Wallet' : `Paiement de ${(cartTotal || 0).toLocaleString()} francs CFA effectué avec succès depuis ton Wallet`);
     setShowPinModal(false); setPinCode(''); resetPaymentState();
   };
 
@@ -492,6 +501,7 @@ export function MarcheVirtuel() {
   };
 
   const handleSubmitSignalement = async () => {
+    if (!isOnline) { showToast('Le réseau est coupé. Réessaie quand il revient.', 'error'); return; }
     if (!signalementCommande || !signalementDescription.trim()) return;
     setSignalementLoading(true);
     try {
@@ -594,6 +604,10 @@ export function MarcheVirtuel() {
       title="Marché virtuel"
       rightContent={(
         <div className="flex items-center gap-2">
+          <motion.button onClick={basculerMontants} whileTap={{ scale: 0.9 }} aria-label={montantsMasques ? 'Afficher les montants' : 'Cacher les montants'}
+            style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+            {montantsMasques ? <EyeOff className="w-5 h-5 text-white" /> : <Eye className="w-5 h-5 text-white" />}
+          </motion.button>
           <NotificationButton />
           <motion.button onClick={() => setShowCart(true)} whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.9 }}
             style={{ width:40, height:40, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative', flexShrink:0 }}>
@@ -618,6 +632,12 @@ export function MarcheVirtuel() {
     >
       <div className="pt-2 pb-32 lg:pb-8 lg:pl-[320px] max-w-2xl lg:max-w-7xl mx-auto min-h-screen"
         style={{ backgroundColor: '#F6F0E4' }}>
+        {!isOnline && (
+          <div role="status" className="mb-4 rounded-2xl border-2 border-amber-300 bg-amber-50 p-3 flex items-start gap-3">
+            <WifiOff className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-900"><strong>Hors connexion.</strong> Tu peux consulter ce qui est déjà chargé et préparer ton panier. Attends le réseau pour commander, négocier ou payer.</p>
+          </div>
+        )}
         {profilIncomplet && (
           <div role="alert" style={{ margin:'0 0 12px', background:'#FFF4E5', border:'1.5px solid #F0C48A', borderRadius:16, padding:'12px 16px' }}>
             <p style={{ margin:0, fontSize:14, fontWeight:800, color:'#8A4B12' }}>Ton profil marchand n'est pas complet</p>
@@ -629,7 +649,7 @@ export function MarcheVirtuel() {
         <KPIGrid cols={2}>
           <UniversalKPI
             label={activeTab === 'cooperatives' ? 'Coopératives' : activeTab === 'producteurs' ? 'Producteurs' : 'Commandes'}
-            animatedTarget={activeTab === 'cooperatives' ? allProducts.filter(p => p.sellerType === 'cooperative').length : activeTab === 'producteurs' ? allProducts.filter(p => p.sellerType === 'producteur').length : commandesMarcheFromContext.length}
+            value={(activeTab === 'cooperatives' ? allProducts.filter(p => p.sellerType === 'cooperative').length : activeTab === 'producteurs' ? allProducts.filter(p => p.sellerType === 'producteur').length : commandesMarcheFromContext.length).toLocaleString('fr-FR')}
             icon={Users}
             color="#2563eb"
             iconAnimation="pulse"
@@ -637,7 +657,7 @@ export function MarcheVirtuel() {
           />
           <UniversalKPI
             label="Produits disponibles"
-            animatedTarget={activeTab === 'historique' ? allProducts.length : activeTab === 'cooperatives' ? allProducts.filter(p => p.sellerType === 'cooperative').length : allProducts.filter(p => p.sellerType === 'producteur').length}
+            value={(activeTab === 'historique' ? allProducts.length : activeTab === 'cooperatives' ? allProducts.filter(p => p.sellerType === 'cooperative').length : allProducts.filter(p => p.sellerType === 'producteur').length).toLocaleString('fr-FR')}
             icon={ShoppingBag}
             color="#ea580c"
             iconAnimation="bounce"
@@ -645,7 +665,8 @@ export function MarcheVirtuel() {
           />
           <UniversalKPI
             label={activeTab === 'historique' ? 'Total dépensé' : 'Commandes'}
-            animatedTarget={activeTab === 'historique' ? commandesMarcheFromContext.reduce((s, c) => s + c.montantTotal, 0) : commandesMarcheFromContext.length}
+            value={(activeTab === 'historique' ? commandesMarcheFromContext.reduce((s, c) => s + c.montantTotal, 0) : commandesMarcheFromContext.length).toLocaleString('fr-FR')}
+            masque={activeTab === 'historique' && montantsMasques}
             suffix={activeTab === 'historique' ? 'FCFA' : undefined}
             icon={TrendingUp}
             color="#16a34a"
@@ -654,7 +675,7 @@ export function MarcheVirtuel() {
           />
           <UniversalKPI
             label="Négociations en cours"
-            animatedTarget={commandesMarcheFromContext.filter(c => c.statut === 'en_attente').length}
+            value={commandesMarcheFromContext.filter(c => c.statut === 'en_attente').length.toLocaleString('fr-FR')}
             icon={MessageSquare}
             color="#7c3aed"
             iconAnimation="pulse"
@@ -774,7 +795,7 @@ export function MarcheVirtuel() {
                   {sellerNotes[product.sellerId]?.total > 0 && (
                     <div className="mb-1.5"><EtoilesMoyenne note={sellerNotes[product.sellerId].moyenne} total={sellerNotes[product.sellerId].total} size={12} /></div>
                   )}
-                  <p className="text-2xl font-bold text-[#B74725] mb-3"><Montant value={product.price} unit={product.unit} size="xl" color="#B74725" /></p>
+                  <p className="text-2xl font-bold text-[#B74725] mb-3"><Montant value={product.price} unit={product.unit} size="xl" color="#B74725" masque={montantsMasques} /></p>
                   <motion.button onClick={(e) => { e.stopPropagation(); addToCart(product.id); showToast(`${product.name} ajouté au panier`, 'success'); speakSilent(`${product.name} ajouté au panier`); }} className="w-full py-2.5 rounded-xl bg-[#B74725] text-white font-bold text-sm flex items-center justify-center gap-1.5 shadow-md" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02, boxShadow: '0 8px 20px rgba(196, 98, 16, 0.3)' }}>
                     <Plus className="w-4 h-4" strokeWidth={3} />Ajouter
                   </motion.button>
@@ -798,7 +819,7 @@ export function MarcheVirtuel() {
                 <div className="relative w-full h-48 bg-gray-100 rounded-2xl overflow-hidden"><ImageWithFallback src={selectedProduct.image} alt={selectedProduct.name} fallbackSrc={vignetteProduit(selectedProduct.name)} className="w-full h-full object-cover" /></div>
                 <div className="text-center">
                   <h3 className="text-xl font-bold text-gray-900 mb-1">{selectedProduct.name}</h3>
-                  <p className="text-3xl font-bold text-[#B74725]"><Montant value={selectedProduct.price} unit={selectedProduct.unit} size="2xl" color="#B74725" /></p>
+                  <p className="text-3xl font-bold text-[#B74725]"><Montant value={selectedProduct.price} unit={selectedProduct.unit} size="2xl" color="#B74725" masque={montantsMasques} /></p>
                 </div>
                 <div className={`rounded-2xl p-3 space-y-2.5 ${selectedProduct.sellerType === 'producteur' ? 'bg-green-50' : 'bg-blue-50'}`}>
                   <div className="flex items-center gap-3">
@@ -853,7 +874,7 @@ export function MarcheVirtuel() {
                           <div className="flex-1">
                             <h3 className="font-bold text-gray-900">{item.product.name}</h3>
                             <p className="text-sm text-gray-500">{item.product.sellerName}</p>
-                            <p className="text-lg font-bold text-[#B74725] mt-1"><Montant value={item.product.price} unit={item.product.unit} size="md" color="#B74725" /></p>
+                            <p className="text-lg font-bold text-[#B74725] mt-1"><Montant value={item.product.price} unit={item.product.unit} size="md" color="#B74725" masque={montantsMasques} /></p>
                           </div>
                         </div>
                         <div className="flex items-center justify-between">
@@ -862,14 +883,14 @@ export function MarcheVirtuel() {
                             <span className="w-12 text-center font-bold">{item.quantity}</span>
                             <motion.button onClick={() => updateCartQuantity(item.product.id, item.quantity + 1)} className="w-8 h-8 rounded-full bg-[#B74725] text-white flex items-center justify-center" whileTap={{ scale: 0.9 }}><Plus className="w-4 h-4" /></motion.button>
                           </div>
-                          <p className="text-xl font-bold text-gray-900">{(item.product.price * item.quantity).toLocaleString()} F</p>
+                          <p className="text-xl font-bold text-gray-900">{montantPrive(item.product.price * item.quantity, montantsMasques)}</p>
                         </div>
                       </motion.div>
                     ))}
                     <div className="border-t-2 border-gray-200 pt-4">
                       <div className="flex items-center justify-between mb-4">
                         <span className="text-lg font-bold text-gray-900">Total</span>
-                        <span className="text-3xl font-bold text-[#B74725]"><Montant value={cartTotal} size="2xl" color="#B74725" /></span>
+                        <span className="text-3xl font-bold text-[#B74725]"><Montant value={cartTotal} size="2xl" color="#B74725" masque={montantsMasques} /></span>
                       </div>
                       <motion.button onClick={() => { speakSilent('Choisis ton mode de paiement'); setShowPaymentModal(true); }} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#B74725] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
                         <span className="flex items-center justify-center gap-2"><Zap className="w-5 h-5" />Commander maintenant</span>
@@ -932,7 +953,7 @@ export function MarcheVirtuel() {
                 <motion.button onClick={() => { setShowPaymentModal(false); setPaymentMethod(null); setSelectedOperator(null); setPhoneNumber(''); setCardNumber(''); setShowMobileOperators(false); }} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-3 max-h-[70vh] overflow-y-auto">
-                <div className="bg-orange-50 rounded-2xl p-4 mb-4"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#B74725]"><Montant value={cartTotal} size="2xl" color="#B74725" /></p></div>
+                <div className="bg-orange-50 rounded-2xl p-4 mb-4"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#B74725]"><Montant value={cartTotal} size="2xl" color="#B74725" masque={montantsMasques} /></p></div>
                 <div className="rounded-2xl bg-gray-50 p-4 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-gray-700">Informations de livraison</p>
@@ -1053,7 +1074,7 @@ export function MarcheVirtuel() {
                       <motion.button onClick={() => { setPaymentMethod(method.id); if (method.id === 'mobile_money') { setShowMobileOperators(true); } else { setShowMobileOperators(false); setSelectedOperator(null); } }} className={`w-full p-4 rounded-2xl border-2 transition-all ${isSelected ? `border-[${method.borderColor}]` : 'bg-white border-gray-200'}`} style={isSelected ? { backgroundColor: method.bgColor, borderColor: method.borderColor } : {}} whileTap={{ scale: 0.98 }}>
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: isSelected ? `${method.color}20` : '#F3F4F6' }}><IconComp className="w-6 h-6" style={{ color: isSelected ? method.color : 'var(--encre-3)' }} /></div>
-                          <div className="flex-1 text-left"><h3 className="font-bold text-gray-900">{method.label}</h3><p className="text-xs text-gray-500 mt-0.5">{method.id === 'keiwa' ? `Solde: ${(keiwaBalance || 0).toLocaleString('fr-FR')} FCFA` : method.sublabel}</p></div>
+                          <div className="flex-1 text-left"><h3 className="font-bold text-gray-900">{method.label}</h3><p className="text-xs text-gray-500 mt-0.5">{method.id === 'keiwa' ? `Solde : ${montantPrive(keiwaBalance || 0, montantsMasques, 'FCFA')}` : method.sublabel}</p></div>
                           {isSelected && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500 }}><Check className="w-6 h-6" style={{ color: method.color }} /></motion.div>}
                         </div>
                       </motion.button>
@@ -1100,7 +1121,7 @@ export function MarcheVirtuel() {
                 <motion.button onClick={() => { setShowPinModal(false); setPinCode(''); }} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-4">
-                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#B74725]">{(cartTotal || 0).toLocaleString('fr-FR')} FCFA</p></div>
+                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#B74725]">{montantPrive(cartTotal || 0, montantsMasques, 'FCFA')}</p></div>
                 <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Entrez votre code PIN à 4 chiffres</p><input type="password" value={pinCode} onChange={(e) => setPinCode(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#B74725] focus:outline-none text-base placeholder:text-gray-400 shadow-sm" maxLength={4} /></div>
                 <motion.button onClick={handlePinValidation} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#B74725] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Valider</motion.button>
               </div>
@@ -1119,7 +1140,7 @@ export function MarcheVirtuel() {
                 <motion.button onClick={() => setShowSuccessModal(false)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-4">
-                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant payé</p><p className="text-3xl font-bold text-[#B74725]">{(paidTotal || 0).toLocaleString('fr-FR')} FCFA</p></div>
+                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant payé</p><p className="text-3xl font-bold text-[#B74725]">{montantPrive(paidTotal || 0, montantsMasques, 'FCFA')}</p></div>
                 <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Votre commande a été validée avec succès</p><p className="text-lg font-bold text-gray-900">Merci pour votre achat !</p></div>
                 <motion.button onClick={() => setShowSuccessModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#B74725] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
               </div>
@@ -1138,7 +1159,7 @@ export function MarcheVirtuel() {
                 <motion.button onClick={() => setShowErrorModal(false)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-4">
-                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#B74725]">{(cartTotal || 0).toLocaleString('fr-FR')} FCFA</p></div>
+                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[#B74725]">{montantPrive(cartTotal || 0, montantsMasques, 'FCFA')}</p></div>
                 <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Une erreur s'est produite</p><p className="text-lg font-bold text-red-500">{errorMessage}</p></div>
                 <motion.button onClick={() => setShowErrorModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#B74725] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
               </div>
@@ -1179,8 +1200,8 @@ export function MarcheVirtuel() {
                     <motion.button onClick={() => setNegotiationPrice(negotiationPrice + 50)} className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center" whileTap={{ scale: 0.9 }}><Plus className="w-5 h-5 text-gray-600" /></motion.button>
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
-                    <div><p className="text-sm text-gray-600">Prix catalogue</p><p className="text-lg font-bold text-gray-400 line-through">{(productToNegotiate.price * negotiationQuantity).toLocaleString()} <span className="text-[11px] opacity-60">FCFA</span></p></div>
-                    <div className="text-right"><p className="text-sm text-gray-600">Ton total</p><p className="text-2xl font-bold text-[#B74725]"><Montant value={negotiationPrice * negotiationQuantity} size="xl" color="#B74725" /></p></div>
+                    <div><p className="text-sm text-gray-600">Prix catalogue</p><p className="text-lg font-bold text-gray-400 line-through">{montantPrive(productToNegotiate.price * negotiationQuantity, montantsMasques, 'FCFA')}</p></div>
+                    <div className="text-right"><p className="text-sm text-gray-600">Ton total</p><p className="text-2xl font-bold text-[#B74725]"><Montant value={negotiationPrice * negotiationQuantity} size="xl" color="#B74725" masque={montantsMasques} /></p></div>
                   </div>
                   {negotiationPrice < productToNegotiate.price && <div className="mt-3 bg-green-100 rounded-lg p-3 text-center"><p className="text-sm font-bold text-green-700">Économie: {(((productToNegotiate.price - negotiationPrice) / productToNegotiate.price) * 100).toFixed(0)}%</p></div>}
                 </div>
@@ -1253,7 +1274,7 @@ export function MarcheVirtuel() {
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
                     <div><p className="text-sm text-gray-600">Quantité totale</p><p className="text-lg font-bold text-gray-900">{republierQuantite} {produitARepublier.unit}</p></div>
-                    <div className="text-right"><p className="text-sm text-gray-600">Valeur totale</p><p className="text-2xl font-bold text-[#2072AF]"><Montant value={republierPrix * republierQuantite} size="xl" color="#2072AF" /></p></div>
+                    <div className="text-right"><p className="text-sm text-gray-600">Valeur totale</p><p className="text-2xl font-bold text-[#2072AF]"><Montant value={republierPrix * republierQuantite} size="xl" color="#2072AF" masque={montantsMasques} /></p></div>
                   </div>
                 </div>
                 <motion.button type="button" onClick={handleRepublierSubmit} disabled={savingRepublier || republierPrix <= 0 || republierQuantite <= 0} className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 ${savingRepublier || republierPrix <= 0 || republierQuantite <= 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#2072AF] text-white'}`} whileTap={savingRepublier ? {} : { scale: 0.95 }}>
@@ -1286,7 +1307,7 @@ export function MarcheVirtuel() {
             <p className="text-sm text-gray-600 mb-4">
               Montant :{' '}
               <span className="font-black text-[#B74725]">
-                {((signalementCommande as { total?: number }).total ?? signalementCommande.montantTotal ?? 0).toLocaleString('fr-FR')} FCFA
+                {montantPrive((signalementCommande as { total?: number }).total ?? signalementCommande.montantTotal ?? 0, montantsMasques, 'FCFA')}
               </span>
             </p>
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Type de signalement</p>
@@ -1344,7 +1365,7 @@ export function MarcheVirtuel() {
         </div>
       )}
 
-      {/* Tata Nanti Lou */}
+      {/* Tantie Nanti Lou */}
 
       <ToastContainer />
     </SubPageLayout>

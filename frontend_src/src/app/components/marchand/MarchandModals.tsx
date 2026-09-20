@@ -12,6 +12,7 @@ import {
 import { useApp } from '../../contexts/AppContext';
 import { stopAllAudio } from '../../services/elevenlabs';
 import { Montant, MontantCard } from '../shared/Montant';
+import { useMontantsPrives } from '../../hooks/useMontantsPrives';
 
 import {
   IMG_BILLET_500, IMG_BILLET_1000, IMG_BILLET_2000, IMG_BILLET_5000, IMG_BILLET_10000,
@@ -543,6 +544,7 @@ interface CloseDayModalProps {
 
 export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
   const { closeDay, speak, getSalesHistory, getFinancialSummary } = useApp();
+  const { montantsMasques } = useMontantsPrives();
   const navigate = useNavigate();
   // LE CHAMP DE COMPTAGE PART VIDE, ET C'EST ESSENTIEL.
   //
@@ -649,7 +651,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
           <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: '#86EFAC' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Ventes du jour</p>
             <MontantCard accentColor="#10B981" className="rounded-xl">
-              <Montant value={stats.ventes} size="xl" color="#15803d" />
+              <Montant value={stats.ventes} size="xl" color="#15803d" masque={montantsMasques} />
             </MontantCard>
             <p className="text-xs text-gray-500 mt-1">{stats.nombreVentes} vente{stats.nombreVentes > 1 ? 's' : ''}</p>
           </div>
@@ -657,21 +659,21 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
           <div className="p-4 rounded-2xl border bg-red-50" style={{ borderColor: '#FCA5A5' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Cahier du jour</p>
             <MontantCard accentColor="#EF4444" className="rounded-xl">
-              <Montant value={stats.cahier} size="xl" color="#b91c1c" />
+              <Montant value={stats.cahier} size="xl" color="#b91c1c" masque={montantsMasques} />
             </MontantCard>
           </div>
 
           <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? '#86EFAC' : '#FCA5A5' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Marge</p>
             <MontantCard accentColor={marge >= 0 ? '#10B981' : '#EF4444'} className="rounded-xl">
-              <Montant value={marge} size="xl" color={marge >= 0 ? '#15803d' : '#b91c1c'} showPlus />
+              <Montant value={marge} size="xl" color={marge >= 0 ? '#15803d' : '#b91c1c'} showPlus masque={montantsMasques} />
             </MontantCard>
           </div>
 
           <div className="p-4 rounded-2xl border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Caisse théorique</p>
             <MontantCard accentColor="#B74725" className="rounded-xl">
-              <Montant value={stats.caisse} size="xl" color="#B74725" />
+              <Montant value={stats.caisse} size="xl" color="#B74725" masque={montantsMasques} />
             </MontantCard>
           </div>
 
@@ -686,7 +688,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
             />
             {ecart !== null && ecart !== 0 && (
               <p className={`text-xs font-medium mt-2 ${ecart > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                Écart: <Montant value={ecart} size="sm" color={ecart > 0 ? '#16a34a' : '#dc2626'} showPlus />
+                Écart: <Montant value={ecart} size="sm" color={ecart > 0 ? '#16a34a' : '#dc2626'} showPlus masque={montantsMasques} />
               </p>
             )}
           </div>
@@ -738,7 +740,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
                           </div>
                         </div>
                         <p className="text-xs font-bold" style={{ color: '#B74725' }}>
-                          {formatMontantFR(product.total || 0)} FCFA
+                          {montantsMasques ? '••••• FCFA' : `${formatMontantFR(product.total || 0)} FCFA`}
                         </p>
                       </div>
                     ))}
@@ -1011,6 +1013,7 @@ interface ResumeModalProps {
 
 export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifierFond }: ResumeModalProps) {
   const marge = stats.ventes - stats.cahier;
+  const { montantsMasques } = useMontantsPrives();
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
@@ -1038,7 +1041,7 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
           <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: '#86EFAC' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Ventes du jour</p>
             <MontantCard accentColor="#10B981" className="rounded-xl">
-              <Montant value={stats.ventes} size="xl" color="#15803d" />
+              <Montant value={stats.ventes} size="xl" color="#15803d" masque={montantsMasques} />
             </MontantCard>
             <p className="text-xs text-gray-500 mt-1">{stats.nombreVentes} vente{stats.nombreVentes > 1 ? 's' : ''}</p>
           </div>
@@ -1046,27 +1049,24 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
           <div className="p-4 rounded-2xl border bg-red-50" style={{ borderColor: '#FCA5A5' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Cahier du jour</p>
             <MontantCard accentColor="#EF4444" className="rounded-xl">
-              <Montant value={stats.cahier} size="xl" color="#b91c1c" />
+              <Montant value={stats.cahier} size="xl" color="#b91c1c" masque={montantsMasques} />
             </MontantCard>
           </div>
 
           <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? '#86EFAC' : '#FCA5A5' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Marge</p>
             <MontantCard accentColor={marge >= 0 ? '#10B981' : '#EF4444'} className="rounded-xl">
-              <Montant value={marge} size="xl" color={marge >= 0 ? '#15803d' : '#b91c1c'} showPlus />
+              <Montant value={marge} size="xl" color={marge >= 0 ? '#15803d' : '#b91c1c'} showPlus masque={montantsMasques} />
             </MontantCard>
           </div>
 
           <div className="p-4 rounded-2xl border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Caisse théorique</p>
             <MontantCard accentColor="#B74725" className="rounded-xl">
-              <Montant value={stats.caisse} size="xl" color="#B74725" />
+              <Montant value={stats.caisse} size="xl" color="#B74725" masque={montantsMasques} />
             </MontantCard>
           </div>
 
-          <div className="p-4 rounded-2xl bg-gray-50 border border-gray-300">
-            <p className="text-xs font-semibold text-gray-700 mb-2">Comptage réel</p>
-          </div>
         </div>
 
         <div className="px-6 pb-6 space-y-2">
@@ -1076,7 +1076,7 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
               onClick={onFermerJournee}
               className="w-full py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold"
             >
-              Fermer ma journée
+              Compter et fermer ma journée
             </button>
           )}
           {onModifierFond && (

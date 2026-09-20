@@ -335,7 +335,7 @@ export function ResumeCaisse() {
                   : `Attention ! Tu as plus dépensé que gagné aujourd'hui. Fais attention à tes dépenses.`
                 }
               </div>
-              <div style={{ fontSize:10, color:'var(--encre-4)', marginTop:2 }}>Tata Nanti Lou · appuie sur lecture</div>
+              <div style={{ fontSize:10, color:'var(--encre-4)', marginTop:2 }}>Tantie Nanti Lou · appuie sur lecture</div>
             </div>
             <motion.button whileTap={{ scale:0.9 }} onClick={() => {
               const resume = financialData.beneficeNet >= 0

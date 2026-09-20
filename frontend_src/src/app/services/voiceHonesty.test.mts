@@ -1,0 +1,52 @@
+import { readFileSync } from 'node:fs';
+import { LANGUE_PRETE, langueDisponible } from '../hooks/useLangPref.js';
+
+let failures = 0;
+function ok(condition: boolean, label: string) {
+  if (condition) console.log('  ✅', label);
+  else { console.log('  ❌', label); failures += 1; }
+}
+
+console.log('\n[1] Disponibilité linguistique honnête');
+ok(LANGUE_PRETE.french && langueDisponible('french'), 'le français livré reste activable');
+ok(!LANGUE_PRETE.dioula && !langueDisponible('dioula'), 'le Dioula incomplet est marqué en préparation');
+ok(!LANGUE_PRETE.bambara && !langueDisponible('bambara'), 'le Bambara incomplet est marqué en préparation');
+
+console.log('\n[2] Pré-cache vocal réellement attendu à l’installation');
+const sw = readFileSync(new URL('../../../public/sw.js', import.meta.url), 'utf8');
+ok(
+  /await\s+Promise\.allSettled\(PRECACHE_VOICE\.map/.test(sw),
+  'waitUntil attend la tentative de pré-cache de tous les clips Tata',
+);
+
+console.log('\n[3] Connexion Auto jamais rendue muette par apprentissage clavier');
+const login = readFileSync(new URL('../components/auth/LoginPassword.tsx', import.meta.url), 'utf8');
+ok(!/guidageVocal\(accessMode\)/.test(login), 'LoginPassword ne transforme plus Auto effectif Lecture en silence');
+ok(/verifierOfflineModel/.test(login), 'LoginPassword re-sonde le moteur Android et rend le micro réactif');
+
+console.log('\n[4] Onboarding honnête tant que les MP3 humains manquent');
+const onboarding = readFileSync(new URL('./onboardingVoix.ts', import.meta.url), 'utf8');
+ok(!/speakClipOrText/.test(onboarding), 'aucune pseudo-voix synthétique ne remplace silencieusement Tata');
+ok((onboarding.match(/atteste:\s*false/g) || []).length === 9, 'les neuf intros absentes restent explicitement non attestées');
+ok(/VITE_JULABA_VOICE_PREVIEW\s*===\s*'true'/.test(onboarding), 'un clip prototype exige un drapeau de prévisualisation explicite');
+ok(/clip\.prototype\s*&&\s*PROTOTYPES_VOIX_ACTIFS/.test(onboarding), 'un prototype non attesté reste muet hors prévisualisation');
+ok(/if \(!clipUrl\) return/.test(onboarding), 'une intro non attestée laisse le parcours visuel et tactile continuer');
+
+console.log('\n[5] Un geste sonore explicite, sans double déclenchement');
+const welcome = readFileSync(new URL('../components/auth/Welcome.tsx', import.meta.url), 'utf8');
+const onboardingSlides = readFileSync(new URL('../components/auth/OnboardingSlides.tsx', import.meta.url), 'utf8');
+ok(/login-tata-inline[\s\S]{0,180}aria-label="Écouter Tantie Nanti Lou"/.test(welcome), 'le haut-parleur d’accueil reste identifiable');
+ok(!/window\.addEventListener\('pointerdown'/.test(welcome), 'aucun premier toucher global ne vole ou ne double le geste choisi');
+ok(/const commencer[\s\S]{0,220}stopIntro\(\);[\s\S]{0,100}direIntro\('histoire1'\)[\s\S]{0,100}(onComplete|navigate)/.test(welcome), '« Écouter et entrer » démarre la présentation sur le geste puis navigue');
+ok(/onPointerDown=\{\(e\) => e\.stopPropagation\(\)\}[\s\S]{0,120}handleListen/.test(onboardingSlides), 'la réécoute de présentation ne lance qu’une seule lecture');
+
+console.log('\n[6] Aucun diagnostic technique dans le parcours de vente');
+const voiceCore = readFileSync(new URL('../hooks/useVoiceCore.ts', import.meta.url), 'utf8');
+const microVente = readFileSync(new URL('../components/marchand/MicroVenteCaisse.tsx', import.meta.url), 'utf8');
+ok(!/Cette réponse est affichée\. Son clip/.test(voiceCore), 'un clip français absent ne remplace plus la réponse métier');
+ok(/if \(isFrenchClip\)[\s\S]{0,220}return;/.test(voiceCore), 'le clip français absent reste un état non bloquant');
+ok(/Choisir à l’écran/.test(microVente), 'le repli tactile dit directement le geste attendu');
+ok(/Parler encore à Tantie/.test(microVente) && !/Reparler à Tata/.test(microVente), 'la reprise utilise le nom et une formulation simples');
+
+console.log(failures === 0 ? '\nTous les garde-fous voix honnête sont verts ✅\n' : `\n${failures} échec(s) ❌\n`);
+if (failures > 0) process.exit(1);

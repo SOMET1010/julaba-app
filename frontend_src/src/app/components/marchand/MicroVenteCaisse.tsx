@@ -56,7 +56,7 @@ import type { LigneProvisoire } from '../../services/ligneProvisoire';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces } from '../../utils/haptique';
 import { SaisieGuidee } from './SaisieGuidee';
-import tantieImg from '../../../assets/images/tantie-vente-vocale.png';
+import tataAccueil from '../../../assets/redesign/tata-accueil.webp';
 
 // PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Le lot B avait recopié
 // l'orange et le vert de la planche dans ce fichier : deux sources de vérité
@@ -337,29 +337,29 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // à l'arrivée reste la question du titre (introLigne).
   const bulle = isRecording ? 'Je vous écoute'
     : isLoading ? 'Un instant…'
-    : isSpeaking ? 'Tata parle…'
-    : isError ? "Je n'ai pas compris"
-    : produitPreselectionne ? `Dis ce que tu as vendu de ${produitPreselectionne.nom}`
-    : 'Dis-moi ce que tu vends';
+    : isSpeaking ? 'Tantie parle…'
+    : isError ? 'Essaie encore'
+    : 'Écouter Tantie';
 
   return (
     <section
       aria-label="Vendre à la voix"
-      style={{ background: 'var(--caisse-sable)', borderRadius: 'var(--caisse-rayon-5)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', marginBottom: 'var(--caisse-esp-4)' }}
+      className="caisse-voice-guide"
+      style={{ marginBottom: 'var(--caisse-esp-4)' }}
     >
       {/* LA QUESTION — écrite ET dite. Elle est écrite pour celle qui lit, et
           prononcée à l'arrivée pour celle qui ne lit pas : aucune information
           importante ne doit exister uniquement sous forme de texte.
           C'est le GRAND TITRE de la maquette (Inter semibold 28/34) : la seule
           question de l'écran, en plus gros que tout le reste. La marge
-          négative de 4 px lui rend les 374 px dont elle a besoin à 390 px pour
-          tenir sur UNE ligne (mesuré) ; plus étroit, elle se coupe en deux
-          lignes équilibrées (text-wrap: balance), jamais avec le « ? » orphelin. */}
-      <h1 style={{ textAlign: 'center', font: 'var(--caisse-font-h1)', color: 'var(--encre)', margin: '0 calc(-1 * var(--caisse-esp-1)) var(--caisse-esp-2)', textWrap: 'balance' }}>
+          négative lui rend la largeur de la carte : à 390 px la question
+          tient sur une ligne ; plus étroit, elle se coupe en deux lignes
+          équilibrées (text-wrap: balance), jamais avec le « ? » orphelin. */}
+      <h1 className="caisse-voice-question" style={{ font: 'var(--caisse-font-h1)', textWrap: 'balance' }}>
         {produitPreselectionne ? produitPreselectionne.nom : 'Que voulez-vous vendre ?'}
       </h1>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--caisse-esp-3)' }}>
+      <div className="caisse-voice-row">
         {/* LE MICRO. Énorme, orange, au centre, et PERMANENT : il ne rétrécit
             pas, ne se déplace pas et ne disparaît à aucun moment de la vente
             — ni panier vide, ni panier plein, ni pendant l'encaissement. Un
@@ -404,14 +404,14 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         {/* Tata — le visage et la bulle, comme la maquette : l'avatar en haut
             à droite, la bulle dessous avec son haut-parleur. Le haut-parleur
             DIT ce que la bulle affiche : la bulle n'est pas une légende à lire. */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--caisse-esp-1)', minWidth: 0, flex: 1 }}>
-          <img src={tantieImg} alt="" aria-hidden="true"
-            style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', flexShrink: 0, border: '3px solid var(--caisse-succes)', background: 'var(--caisse-succes)' }} />
+        <div className="caisse-voice-tata-side">
+          <img src={tataAccueil} alt="" aria-hidden="true" className="caisse-voice-tata" />
           <button type="button" onClick={() => speak(dernierePhraseRef.current || introLigne())}
             aria-label={dernierePhraseRef.current ? "Réécouter ce que Tata a compris" : 'Réécouter la question'}
-            style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', background: 'white', border: 'none', borderRadius: 'var(--caisse-rayon-4)', borderTopRightRadius: 'var(--caisse-rayon-1)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)', cursor: 'pointer', fontFamily: 'inherit', minWidth: 0, maxWidth: '100%', textAlign: 'left' }}>
-            <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--caisse-succes)', color: 'var(--caisse-vert)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Volume2 size={20} />
+            className="caisse-voice-bubble"
+            style={{ gap: 'var(--caisse-esp-2)', borderRadius: 'var(--caisse-rayon-4)', borderTopRightRadius: 'var(--caisse-rayon-1)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)' }}>
+            <span aria-hidden="true" style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--caisse-succes)', color: 'var(--caisse-vert)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Volume2 size={ICONE} />
             </span>
             <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>{bulle}</span>
           </button>
@@ -421,10 +421,10 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
               SECONDAIRE (UI-03) : un lien discret sous la bulle, sans cadre —
               44 px de haut quand même, c'est un doigt qui le touche. */}
           <button type="button" onClick={() => setSaisieOuverte(v => !v)}
-            aria-label="Saisir sans parler"
+            aria-label="Choisir la vente à l’écran"
             style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-1)', minHeight: 'var(--caisse-cible-tactile)', background: saisieOuverte ? 'var(--caisse-orange-voix)' : 'transparent', border: 'none', borderRadius: 'var(--caisse-rayon-3)', padding: '0 var(--caisse-esp-2)', cursor: 'pointer', fontFamily: 'inherit' }}>
             <Keyboard size={20} color={saisieOuverte ? 'white' : 'var(--caisse-gris-texte)'} />
-            <span style={{ font: 'var(--caisse-font-legende)', fontSize: 14, lineHeight: '18px', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--caisse-gris-texte)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Saisir sans parler</span>
+            <span style={{ font: 'var(--caisse-font-legende)', fontSize: 14, lineHeight: '18px', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--caisse-gris-texte)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Choisir à l’écran</span>
           </button>
         </div>
       </div>
@@ -499,7 +499,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       {(isDone || isError) && (
         <button type="button" onClick={reset}
           style={{ width: '100%', marginTop: 'var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)', padding: 'var(--caisse-esp-3) 0', borderRadius: 'var(--caisse-rayon-4)', font: 'var(--caisse-font-bouton)', color: 'white', background: 'var(--caisse-orange-voix)', cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}>
-          Reparler à Tata
+          Parler encore à Tantie
         </button>
       )}
 

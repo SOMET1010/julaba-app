@@ -38,6 +38,19 @@ const buildId = `${gitHash} · ${buildDate}`
 // normalement.
 const PRECACHE_MAX_BYTES = 200 * 1024
 
+function listerMp3Recursivement(racine: string, dossier = racine): string[] {
+  const fichiers: string[] = []
+  for (const entree of readdirSync(dossier, { withFileTypes: true })) {
+    const absolu = join(dossier, entree.name)
+    if (entree.isDirectory()) fichiers.push(...listerMp3Recursivement(racine, absolu))
+    else if (entree.isFile() && entree.name.endsWith(".mp3")) {
+      const relatif = path.relative(racine, absolu).split(path.sep).join("/")
+      fichiers.push(`/voix/${relatif}`)
+    }
+  }
+  return fichiers
+}
+
 function stampServiceWorker(outDir: string): Plugin {
   return {
     name: "julaba-stamp-sw",
@@ -56,16 +69,14 @@ function stampServiceWorker(outDir: string): Plugin {
         } catch (e) {
           console.warn("[stamp-sw] liste de pré-cache indisponible:", (e as Error)?.message)
         }
-        // Clips de la VOIX de Tata Nanti Lou (public/voix/tata/*.mp3) : c'est l'ADN
+        // Clips de la VOIX de Tantie Nanti Lou (public/voix/**/*.mp3) : c'est l'ADN
         // vocal de l'appli. On les PRÉ-CACHE à l'installation du service worker pour
         // qu'une marchande hors-ligne DÈS LE PREMIER JOUR entende quand même Tata.
         // ~7 Mo, fichiers immuables → aucun coût récurrent, servis ensuite sans réseau.
         let voicePrecache: string[] = []
         try {
-          const voiceDir = join(outDir, "voix", "tata")
-          voicePrecache = readdirSync(voiceDir)
-            .filter((f) => f.endsWith(".mp3"))
-            .map((f) => `/voix/tata/${f}`)
+          const voiceDir = join(outDir, "voix")
+          voicePrecache = listerMp3Recursivement(voiceDir)
         } catch (e) {
           console.warn("[stamp-sw] liste de pré-cache voix indisponible:", (e as Error)?.message)
         }

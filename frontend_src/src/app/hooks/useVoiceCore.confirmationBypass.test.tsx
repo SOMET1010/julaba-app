@@ -4,7 +4,7 @@
  * - supprime bien l'état "confirming" (et la fausse question visuelle
  *   résiduelle, `response`) pour une intention listée, quand elle est passée ;
  * - laisse le comportement PAR DÉFAUT strictement intact quand elle n'est
- *   pas passée (Tata Nanti Lou générique, `TantieSagesseModal`, qui ne passe
+ *   pas passée (Tantie Nanti Lou générique, `TantieSagesseModal`, qui ne passe
  *   jamais cette option) ;
  * - ne bypasse QUE les intentions listées : « dépense » reste confirmée même
  *   quand « vendre » est bypassée pour la même instance.

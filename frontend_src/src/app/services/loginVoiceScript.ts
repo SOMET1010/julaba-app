@@ -1,12 +1,12 @@
 // ──────────────────────────────────────────────────────────────────────────
-// Script de voix « Tata Nanti Lou » — écran de connexion + chiffres + noyau du
+// Script de voix « Tantie Nanti Lou » — écran de connexion + chiffres + noyau du
 // pipeline vocal (phrases d'attente/accusés les plus fréquentes en caisse).
 //
 // Distinct des 137 clips déjà enregistrés (tataVoice.ts / tataUiClips.ts) :
 // ce sont des phrases NEUF, pas encore dites par la vraie voix, écrites dans
 // le registre retenu (aînée du marché, phrases courtes, cf. discussion produit).
 //
-// NOM : « Tata Nanti Lou » — identité posée comme non négociable dans
+// NOM : « Tantie Nanti Lou » — identité posée comme non négociable dans
 // docs/PLAN_PACKS_TATA_LANGUES.md (accord explicite de Tata requis pour tout
 // nouvel enregistrement) ; ne pas la renommer « Tantie » sans son accord.
 //
@@ -27,7 +27,7 @@ export interface PhraseScript {
 
 export const SCRIPT_TATA: PhraseScript[] = [
   // ── CONNEXION (01 à 37) ──────────────────────────────────────────────────
-  { id: 'AUTH_01', categorie: 'CONNEXION', moment: 'Premier accueil', texteFr: "Bonjour ma fille. Moi, c'est Tata Nanti Lou. Viens, je vais te montrer.", texteDyu: "I ni sɔgɔma n'denmuso. N'tɔgɔ ye Tata Nanti Lou. Na yan, n'b'a yira i la." },
+  { id: 'AUTH_01', categorie: 'CONNEXION', moment: 'Premier accueil', texteFr: "Bonjour ma fille. Moi, c'est Tantie Nanti Lou. Viens, je vais te montrer.", texteDyu: "I ni sɔgɔma n'denmuso. N'tɔgɔ ye Tantie Nanti Lou. Na yan, n'b'a yira i la." },
   { id: 'AUTH_02', categorie: 'CONNEXION', moment: 'Retour', texteFr: "Eh, ma fille ! Te voilà. On continue ?", texteDyu: "Eh, n'denmuso ! I nana wa ? An b'a to yen ?" },
   { id: 'AUTH_03', categorie: 'CONNEXION', moment: 'Présenter son aide', texteFr: "Chaque vente, tu la mets ici. Comme ça, tu n'oublies rien, et tes comptes sont là.", texteDyu: "Feere o feere, i b'a bila yan. O la, i tɛ fɔyi ɲinɛ, i ka konte bɛɛ bɛ yan." },
   { id: 'AUTH_04', categorie: 'CONNEXION', moment: 'Commencer', texteFr: "Bon, pour commencer, appuie ici.", texteDyu: "Bon, walasa an ka daminɛ, a digi yan." },

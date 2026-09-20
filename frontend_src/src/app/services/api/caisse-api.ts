@@ -28,7 +28,10 @@ export interface CaisseTransaction {
    *  lu par la caisse sans être déclaré. */
   statut?: string;
   mode_paiement?: string;
+  description?: string;
+  produit?: string;
   notes?: string;
+  source?: string;
   created_at: string;
 }
 
@@ -54,6 +57,9 @@ export interface EnregistrerVenteData {
 
 export interface EnregistrerDepenseData {
   montant: number;
+  /** Motif visible dans le cahier : transport, taxe, repas… */
+  description?: string;
+  /** Compatibilité avec les opérations offline créées avant le correctif. */
   notes?: string;
   /** Clé d'idempotence : le backend ne compte pas deux fois la même dépense. */
   idempotency_key?: string;

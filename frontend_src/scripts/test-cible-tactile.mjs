@@ -85,6 +85,37 @@ if (source.includes('</label>') === false) {
   rate('aucune </label> fermante — le balisage est cassé');
 }
 
+console.log('\nCartes produit et encaissement inclusifs');
+if (/<motion\.button key=\{p\.id\} type="button"/.test(source) && /onClick=\{\(\) => ajouterAuPanier\(p\)/.test(source)) {
+  passe('toute la carte produit ajoute l’article, pas seulement un petit bouton');
+} else {
+  rate('la carte produit entière n’est pas une cible de sélection');
+}
+
+if ((source.match(/minHeight:'var\(--caisse-cible-tactile\)'/g) || []).length >= 2) {
+  passe('les champs prix et quantité négociés atteignent 44 px');
+} else {
+  rate('les champs financiers de négoce restent sous 44 px');
+}
+
+if (/PaveMontant/.test(source) && /saisieEspeces/.test(source)) {
+  passe('le montant reçu dispose du pavé XXL et du choix coupures');
+} else {
+  rate('le montant reçu dépend encore d’un petit champ système');
+}
+
+if (/montantRecuManquant/.test(source) && /Entre le montant reçu/.test(source)) {
+  passe('une vente espèces sans montant reçu est bloquée et expliquée');
+} else {
+  rate('la caisse peut encore confirmer sans montant reçu explicite');
+}
+
+if (/fallbackSrc=\{getPictogrammeByNom\(p\.nom\)\}/.test(source)) {
+  passe('les photos produit ont un repli pictographique local');
+} else {
+  rate('les photos produit n’ont pas de repli pictographique spécifique hors ligne');
+}
+
 if (echecs > 0) {
   console.log('\n✗ cible tactile — échec');
   process.exit(1);

@@ -8,7 +8,7 @@
  * ✅ Chargement automatique données utilisateur
  * ✅ Synchronisation temps réel
  * ✅ Support offline/online
- * ✅ Tata Nanti Lou (ElevenLabs TTS)
+ * ✅ Tantie Nanti Lou (ElevenLabs TTS)
  */
 
 import { eventBus, EVENTS } from '../services/eventBus';
@@ -726,6 +726,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // en direct sans passer par ce `speak`.
   useEffect(() => { audioManager.setVoiceMuted(voiceMuted); }, [voiceMuted]);
 
+  // Le réglage « Silencieux / Essentiel / Complet » pilote réellement le même
+  // orchestre audio pour les clips, la TTS et les annonces automatiques.
+  useEffect(() => {
+    let niveauStocke: string | null = null;
+    try { niveauStocke = localStorage.getItem('julaba_voice_level'); } catch { /* stockage indisponible */ }
+    audioManager.setVoiceLevel(audioManager.resoudreNiveauVoix(
+      (user as any)?.preferences?.voice_level,
+      niveauStocke,
+      Boolean(user),
+    ));
+  }, [user?.id, (user as any)?.preferences?.voice_level]);
+
   // Activer la voix après la première interaction utilisateur
   useEffect(() => {
     const handleInteraction = () => {
@@ -1194,7 +1206,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const roleColor = user ? ROLE_COLORS[user.role] : '#C46210';
 
-  // Double-tap global pour ouvrir Tata Nanti Lou
+  // Double-tap global pour ouvrir Tantie Nanti Lou
   useEffect(() => {
     let lastTap = 0;
     const handleDoubleTap = (e: TouchEvent) => {

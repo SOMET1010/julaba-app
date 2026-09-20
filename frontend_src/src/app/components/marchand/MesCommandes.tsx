@@ -5,6 +5,7 @@ import {
   ShoppingBag, Clock, CheckCircle, XCircle,
   MapPin, Calendar, TrendingUp, Package,
   MessageSquare, ThumbsUp, ThumbsDown, ChevronRight,
+  Eye, EyeOff, WifiOff, SlidersHorizontal,
 } from 'lucide-react';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { useCommande } from '../../contexts/CommandeContext';
@@ -18,6 +19,7 @@ import {
 import { ReceptionPaiementModal } from '../shared/ReceptionPaiementModal';
 import { NoterCommande } from '../shared/NoterCommande';
 import { toast } from 'sonner';
+import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -68,12 +70,14 @@ const NEG_STATUT_LABELS: Record<string, { label: string; color: string; bg: stri
 
 export function MesCommandes() {
   const { commandes, annulerCommande, updateCommande, refreshCommandes, recupererPaiement } = useCommande();
-  const { speak, user } = useApp();
+  const { speak, user, isOnline } = useApp();
+  const { montantsMasques, basculerMontants } = useMontantsPrives();
   const [filtreStatut, setFiltreStatut] = useState<string>('tous');
   const [filtreType, setFiltreType] = useState<'tous' | 'achat' | 'vente'>('tous');
   const [showMontantModal, setShowMontantModal] = useState(false);
   const [commandeReception, setCommandeReception] = useState<any>(null);
   const [confirmAnnulerCmd, setConfirmAnnulerCmd] = useState<string | null>(null);
+  const [showFiltres, setShowFiltres] = useState(false);
   // Flux paiement actif : cloture hors enum (statut_paiement/paye_at), paiement cash via /paiement.
   const RECEPTION_PAIEMENT_ACTIF = true;
 
@@ -163,42 +167,46 @@ export function MesCommandes() {
   // ── Actions ────────────────────────────────────────────────────────────────
 
   const handleAnnuler = async (id: string) => {
+    if (!isOnline) { speak('Le réseau est coupé. Réessaie quand il revient.'); return; }
     try {
       await annulerCommande(id);
       speak('Commande annulée');
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Erreur inattendue';
-      speak(message);
+    } catch {
+      toast.error('Annulation impossible. Réessaie.');
+      speak("Ça n'a pas marché. Vérifie le réseau et réessaie.");
     }
   };
 
   const handleConfirmerVente = async (id: string) => {
+    if (!isOnline) { speak('Le réseau est coupé. Réessaie quand il revient.'); return; }
     try {
       await updateCommande(id, { statut: 'confirmee' });
       speak('Vente confirmée');
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Erreur inattendue';
-      speak(message);
+    } catch {
+      toast.error('Confirmation impossible. Réessaie.');
+      speak("Ça n'a pas marché. Vérifie le réseau et réessaie.");
     }
   };
 
   const handleRefuserVente = async (id: string) => {
+    if (!isOnline) { speak('Le réseau est coupé. Réessaie quand il revient.'); return; }
     try {
       await updateCommande(id, { statut: 'annulee' });
       speak('Vente refusée');
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Erreur inattendue';
-      speak(message);
+    } catch {
+      toast.error('Refus impossible. Réessaie.');
+      speak("Ça n'a pas marché. Vérifie le réseau et réessaie.");
     }
   };
 
   const handleMarquerLivree = async (id: string) => {
+    if (!isOnline) { speak('Le réseau est coupé. Réessaie quand il revient.'); return; }
     try {
       await updateCommande(id, { statut: 'livree' });
       speak('Commande marquée comme livrée');
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Erreur inattendue';
-      speak(message);
+    } catch {
+      toast.error('Mise à jour impossible. Réessaie.');
+      speak("Ça n'a pas marché. Vérifie le réseau et réessaie.");
     }
   };
 
@@ -208,29 +216,31 @@ export function MesCommandes() {
 
   const handleAccepterContreOffre = async (neg: Negociation) => {
     if (!neg.prixContreOffre) return;
+    if (!isOnline) { speak('Le réseau est coupé. Réessaie quand il revient.'); return; }
     setSubmittingNeg(neg.id);
     try {
       await marchandRepondreNegociation(neg.id, { statut: 'accepte' });
-      speak(`Contre-offre acceptée : ${neg.prixContreOffre.toLocaleString('fr-FR')} FCFA/${neg.unite}`);
+      speak(montantsMasques ? 'Contre-offre acceptée.' : `Contre-offre acceptée : ${neg.prixContreOffre.toLocaleString('fr-FR')} FCFA/${neg.unite}`);
       const { negociations: data } = await fetchNegociations();
       setNegociations((data ?? []).map(mapNegociation));
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Erreur inattendue';
-      speak(`Erreur : ${message}`);
+    } catch {
+      toast.error('Réponse impossible. Réessaie.');
+      speak("Ça n'a pas marché. Vérifie le réseau et réessaie.");
     } finally {
       setSubmittingNeg(null);
     }
   };
 
   const handleRefuserContreOffre = async (neg: Negociation) => {
+    if (!isOnline) { speak('Le réseau est coupé. Réessaie quand il revient.'); return; }
     setSubmittingNeg(neg.id);
     try {
       await marchandRepondreNegociation(neg.id, { statut: 'refuse' });
       setNegociations(prev => prev.filter(n => n.id !== neg.id));
       speak('Contre-offre refusée.');
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Erreur inattendue';
-      speak(`Erreur : ${message}`);
+    } catch {
+      toast.error('Réponse impossible. Réessaie.');
+      speak("Ça n'a pas marché. Vérifie le réseau et réessaie.");
     } finally {
       setSubmittingNeg(null);
     }
@@ -242,15 +252,21 @@ export function MesCommandes() {
     <SubPageLayout
       role="marchand"
       title="Mes commandes"
-      subtitle="Suivez vos achats en temps réel"
-      rightContent={<NotificationButton />}
+      subtitle="Achats, ventes et livraisons"
+      rightContent={<div className="flex items-center gap-2"><button type="button" onClick={basculerMontants} aria-label={montantsMasques ? 'Afficher les montants' : 'Cacher les montants'} className="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center">{montantsMasques ? <EyeOff className="w-5 h-5 text-white" /> : <Eye className="w-5 h-5 text-white" />}</button><NotificationButton /></div>}
     >
+      {!isOnline && (
+        <div role="status" className="mt-3 rounded-2xl border-2 border-amber-300 bg-amber-50 p-3 flex items-start gap-3">
+          <WifiOff className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-900"><strong>Hors connexion.</strong> Tu peux relire les commandes déjà chargées. Attends le réseau pour confirmer, refuser ou marquer une livraison.</p>
+        </div>
+      )}
       {/* KPIs */}
       <div style={{ padding: '14px 0 0' }}>
         <KPIGrid cols={2}>
           <UniversalKPI
             label="Total commandes"
-            animatedTarget={statsCommandes.total}
+            value={statsCommandes.total.toLocaleString('fr-FR')}
             icon={ShoppingBag}
             color="#ea580c"
             bgColor="rgba(255,247,237,0.85)"
@@ -260,7 +276,7 @@ export function MesCommandes() {
           />
           <UniversalKPI
             label="En cours"
-            animatedTarget={statsCommandes.enCours}
+            value={statsCommandes.enCours.toLocaleString('fr-FR')}
             icon={Clock}
             color="#2563eb"
             bgColor="rgba(239,246,255,0.85)"
@@ -269,17 +285,18 @@ export function MesCommandes() {
           />
           <UniversalKPI
             label="Livrées"
-            animatedTarget={statsCommandes.livrees}
+            value={statsCommandes.livrees.toLocaleString('fr-FR')}
             icon={CheckCircle}
             color="#16a34a"
             bgColor="rgba(240,253,244,0.85)"
             borderColor="rgba(34,197,94,0.4)"
             iconAnimation="spin"
           />
-          <div onClick={() => setShowMontantModal(true)} className="cursor-pointer">
+          <div onClick={() => { if (!montantsMasques) setShowMontantModal(true); }} className="cursor-pointer">
             <UniversalKPI
               label="Montant total"
-              animatedTarget={statsCommandes.montantTotal}
+              value={statsCommandes.montantTotal.toLocaleString('fr-FR')}
+              masque={montantsMasques}
               suffix="FCFA"
               icon={TrendingUp}
               color="#7c3aed"
@@ -291,7 +308,7 @@ export function MesCommandes() {
         </KPIGrid>
       </div>
       <AnimatePresence>
-        {showMontantModal && (
+        {showMontantModal && !montantsMasques && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -412,14 +429,14 @@ export function MesCommandes() {
                       <div className="bg-gray-50 rounded-xl p-2 text-center">
                         <p className="text-[10px] text-gray-500 font-semibold">Mon prix proposé</p>
                         <p className="font-bold text-gray-700 text-sm">
-                          {(neg.prixPropose || 0).toLocaleString('fr-FR')} FCFA
+                          {montantPrive(neg.prixPropose || 0, montantsMasques, 'FCFA')}
                         </p>
                       </div>
                       {isContreOffre && neg.prixContreOffre && (
                         <div className="bg-purple-50 rounded-xl p-2 text-center border border-purple-200">
                           <p className="text-[10px] text-purple-600 font-semibold">Contre-offre reçue</p>
                           <p className="font-bold text-purple-700 text-sm">
-                            {neg.prixContreOffre.toLocaleString('fr-FR')} FCFA
+                            {montantPrive(neg.prixContreOffre, montantsMasques, 'FCFA')}
                           </p>
                         </div>
                       )}
@@ -468,6 +485,16 @@ export function MesCommandes() {
 
       {/* ══ FILTRES TYPE + STATUT ═════════════════════════════════════════════ */}
       <div className="bg-white border-b sticky top-0 z-10 mt-4">
+        <div className="px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="font-black text-gray-900">Tes commandes</p>
+            <p className="text-xs text-gray-500">Les plus récentes d’abord</p>
+          </div>
+          <button type="button" onClick={() => setShowFiltres(v => !v)} aria-expanded={showFiltres} className="min-h-11 px-4 rounded-2xl border-2 border-gray-200 bg-white text-gray-700 font-bold text-sm flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4" /> Filtrer
+          </button>
+        </div>
+        {showFiltres && <>
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex flex-wrap gap-2">
             {([
@@ -515,6 +542,7 @@ export function MesCommandes() {
             ))}
           </div>
         </div>
+        </>}
       </div>
 
       {/* ══ LISTE COMMANDES ════════════════════════════════════════════════════ */}
@@ -582,8 +610,8 @@ export function MesCommandes() {
                         <span className="text-gray-500 text-sm ml-2">×{commande.quantite}</span>
                       </div>
                       <div className="font-semibold text-gray-800">
-                        {(commande.prixUnitaire || 0).toLocaleString()}{' '}
-                        <span className="text-[10px] opacity-60">FCFA{commande.unite ? `/${commande.unite}` : ''}</span>
+                        {montantPrive(commande.prixUnitaire || 0, montantsMasques, 'FCFA')}
+                        {commande.unite && !montantsMasques ? <span className="text-[10px] opacity-60">/{commande.unite}</span> : null}
                       </div>
                     </div>
                   </div>
@@ -592,8 +620,7 @@ export function MesCommandes() {
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600 font-medium">Montant total</span>
                       <span className="text-xl font-bold text-gray-800">
-                        {(commande.total || 0).toLocaleString()}{' '}
-                        <span className="text-sm opacity-60">FCFA</span>
+                        {montantPrive(commande.total || 0, montantsMasques, 'FCFA')}
                       </span>
                     </div>
                     <div className="flex flex-col gap-2 mt-3">
@@ -606,6 +633,7 @@ export function MesCommandes() {
                           variant="outline"
                           className="flex-1 border-red-300 text-red-700 hover:bg-red-50"
                           size="sm"
+                          disabled={!isOnline}
                         >
                           <XCircle className="w-4 h-4 mr-2" />
                           Annuler
@@ -617,6 +645,7 @@ export function MesCommandes() {
                             onClick={() => { void handleConfirmerVente(commande.id); }}
                             className="flex-1 bg-[#2072AF] text-white hover:bg-[#1a5d92]"
                             size="sm"
+                            disabled={!isOnline}
                           >
                             <CheckCircle className="w-4 h-4 mr-2" />
                             Confirmer la vente
@@ -626,6 +655,7 @@ export function MesCommandes() {
                             variant="outline"
                             className="flex-1 border-red-300 text-red-700 hover:bg-red-50"
                             size="sm"
+                            disabled={!isOnline}
                           >
                             <XCircle className="w-4 h-4 mr-2" />
                             Refuser
@@ -637,6 +667,7 @@ export function MesCommandes() {
                           onClick={() => { void handleMarquerLivree(commande.id); }}
                           className="flex-1 bg-[#16A34A] text-white hover:bg-[#138a3e]"
                           size="sm"
+                          disabled={!isOnline}
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
                           Marquer comme livrée
@@ -647,6 +678,7 @@ export function MesCommandes() {
                           onClick={() => handleOuvrirReception(commande)}
                           className="flex-1 bg-[#16A34A] text-white hover:bg-[#138a3e]"
                           size="sm"
+                          disabled={!isOnline}
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
                           Marquer comme payée
