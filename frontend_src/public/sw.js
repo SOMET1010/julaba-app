@@ -6,7 +6,7 @@ const BUILD = '__SW_BUILD__'.indexOf('__SW') === 0 ? 'dev' : '__SW_BUILD__';
 const CACHE_NAME = 'julaba-' + BUILD;
 const STATIC_ASSETS = ['/', '/index.html'];
 
-// Liste des chunks de route à PRÉ-CHARGER (injectée au build par vite.config).
+// Liste de tous les chunks JS/CSS à PRÉ-CHARGER (injectée au build par vite.config).
 // Permet d'ouvrir n'importe quelle page HORS-LIGNE, même jamais visitée en ligne
 // → « vendre sans réseau » sans planter. En dev (placeholder non remplacé), [].
 function _safeParse(s) { try { return JSON.parse(s); } catch { return []; } }
@@ -23,7 +23,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     try { await cache.addAll(STATIC_ASSETS); } catch (e) { /* tolérant */ }
-    // Pré-cache des pages : tolérant aux échecs (un chunk manquant ne bloque pas
+    // Pré-cache de l'application : tolérant aux échecs (un chunk manquant ne bloque pas
     // l'installation). addAll échouerait en bloc → on ajoute un par un.
     await Promise.allSettled(PRECACHE.map((u) => cache.add(u)));
     // Pré-cache de la VOIX de Tata : idem, un par un et tolérant. Cette promesse

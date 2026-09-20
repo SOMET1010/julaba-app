@@ -3,7 +3,7 @@ import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import path from "path"
 import { execSync } from "node:child_process"
-import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs"
+import { readFileSync, writeFileSync, readdirSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -32,11 +32,10 @@ const buildId = `${gitHash} · ${buildDate}`
 // Sans ça : (1) sw.js ne change jamais entre deux déploiements → l'appli reste
 // coincée sur l'ancienne version ; (2) les pages sont chargées à la demande
 // (import dynamique) → hors-ligne, une page jamais ouverte ne se charge pas et
-// l'appli plante (« Oops, une erreur est survenue »). On pré-cache donc tous les
-// petits chunks (< 200 Ko : les pages marchand, etc.). Les gros paquets communs
-// (index, recharts, modèle vocal) sont chargés à la 1ʳᵉ visite et mis en cache
-// normalement.
-const PRECACHE_MAX_BYTES = 200 * 1024
+// l'appli plante (« Oops, une erreur est survenue »). On pré-cache donc TOUS les
+// JS/CSS du build. Exclure les gros paquets communs (index, recharts…) laissait
+// l'écran vide si le réseau disparaissait juste après la toute première ouverture,
+// car le nouveau service worker ne contrôlait pas encore leurs requêtes initiales.
 
 function listerMp3Recursivement(racine: string, dossier = racine): string[] {
   const fichiers: string[] = []
@@ -62,9 +61,6 @@ function stampServiceWorker(outDir: string): Plugin {
         try {
           precache = readdirSync(assetsDir)
             .filter((f) => f.endsWith(".js") || f.endsWith(".css"))
-            .filter((f) => {
-              try { return statSync(join(assetsDir, f)).size <= PRECACHE_MAX_BYTES } catch { return false }
-            })
             .map((f) => `/assets/${f}`)
         } catch (e) {
           console.warn("[stamp-sw] liste de pré-cache indisponible:", (e as Error)?.message)
