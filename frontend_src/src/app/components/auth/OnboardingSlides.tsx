@@ -138,7 +138,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
         >
           <span className="onboarding-tata-pill">Ton guide dans le marché</span>
           <p className="font-extrabold onboarding-tata-title">
-            Moi, c'est Tata.
+            Moi, c'est Tantie Nanti Lou.
           </p>
           <p className="onboarding-tata-copy">
             Tu peux toucher, parler et écouter. Je reste avec toi.

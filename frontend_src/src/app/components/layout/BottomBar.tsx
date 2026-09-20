@@ -84,7 +84,7 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
           >
             <img src={tataAccueil} alt="" aria-hidden="true" />
           </motion.button>
-          <span aria-hidden="true" className="commerce-tata-label absolute">Tata</span>
+          <span aria-hidden="true" className="commerce-tata-label absolute">Tantie</span>
         </>
       )}
 

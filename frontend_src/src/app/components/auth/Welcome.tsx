@@ -62,7 +62,7 @@ export function Welcome({ onComplete }: WelcomeProps) {
         <button type="button" onClick={accueille} className="login-tata-inline" aria-label="Écouter Tantie Nanti Lou">
           <img src={tataAccueil} alt="Tantie Nanti Lou" />
           <span>
-            <strong>Akwaba, je suis Tata.</strong>
+            <strong>Akwaba, je suis Tantie Nanti Lou.</strong>
             <small>Je t’aide à vendre et compter.</small>
           </span>
           <span className="login-replay"><Volume2 aria-hidden="true" size={24} /></span>
