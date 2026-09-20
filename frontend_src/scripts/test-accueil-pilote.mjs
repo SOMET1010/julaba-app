@@ -9,6 +9,7 @@ const layout = lire('layout/AppLayout.tsx');
 const sidebar = lire('layout/Sidebar.tsx');
 const bottom = lire('layout/BottomBar.tsx');
 const tata = lire('assistant/TantieSagesseModal.tsx');
+const modales = lire('marchand/MarchandModals.tsx');
 
 let echecs = 0;
 const ok = (condition, label) => {
@@ -28,6 +29,10 @@ ok((layout.match(/<TantieSagesseModal/g) || []).length === 1, 'le layout monte u
 ok(!bottom.includes('<TantieSagesseModal') && !sidebar.includes('<TantieSagesseModal'), 'aucune seconde modale concurrente dans les navigations');
 ok(!sidebar.includes("Je t'écoute..."), 'desktop ne prétend plus écouter sans ouvrir l’assistante');
 ok(/role="dialog"/.test(tata) && /aria-modal="true"/.test(tata), 'Tata est annoncée comme une vraie boîte de dialogue');
+
+console.log('\n[3] Résumé vers clôture');
+ok(!/Résumé du jour[\s\S]*Comptage réel[\s\S]*Compter et fermer ma journée/.test(modales), 'le résumé n’affiche plus une fausse zone de comptage vide');
+ok(modales.includes('Compter et fermer ma journée'), 'le bouton explique que le comptage se fait dans l’étape suivante');
 
 console.log(echecs === 0 ? '\nTous les garde-fous accueil pilote sont verts ✅\n' : `\n${echecs} échec(s) ❌\n`);
 if (echecs) process.exit(1);

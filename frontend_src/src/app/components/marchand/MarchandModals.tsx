@@ -1064,9 +1064,6 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
             </MontantCard>
           </div>
 
-          <div className="p-4 rounded-2xl bg-gray-50 border border-gray-300">
-            <p className="text-xs font-semibold text-gray-700 mb-2">Comptage réel</p>
-          </div>
         </div>
 
         <div className="px-6 pb-6 space-y-2">
@@ -1076,7 +1073,7 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
               onClick={onFermerJournee}
               className="w-full py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold"
             >
-              Fermer ma journée
+              Compter et fermer ma journée
             </button>
           )}
           {onModifierFond && (
