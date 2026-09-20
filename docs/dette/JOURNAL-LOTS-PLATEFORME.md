@@ -6,7 +6,7 @@ le **comment** de chaque contre-audit, court, pour qu'on puisse le rejouer.
 Règle de pilotage : *QA par lot dès la première livraison ; le lot est audité
 avant que sa fermeture n'entre dans le registre.*
 
-Le lot F s'ajoutera ici. Une PR externe (Manus) auditée a son entrée
+Reprises A et F en cours ; B étape 2 en attente de décisions. Une PR externe (Manus) auditée a son entrée
 au même titre qu'un lot. Un lot **audité mais non fusionné** a une
 entrée aussi : elle dit ce qui est prouvé et ce qui attend une décision.
 
@@ -811,3 +811,172 @@ fusion plateforme exécutée sur 4 tests ciblés seulement ; chemin DbInit seul
 mesuré par `verify-dbinit-subsumed`, pas par un boot réel sans `synchronize` ;
 course à 2 requêtes sur un seul processus ; `credits*` non vérifiés sur la
 branche B (seulement leur absence sur base dédiée A).
+
+---
+
+## Lot F — architecture i18n voix (AUDITÉ, NON FUSIONNÉ, reprise lancée)
+
+**Livré** : `2a62e9a` sur `worktree-agent-aa5477802e769afe6` — base `576fd62`,
+**fusion de `b9534e7` incluse** (lots D + E ; `a95df9f`, d'abord commis avec des
+marqueurs de conflit puis amendé, signalé par l'agent). **Contre-audité** le
+20/09/2026 (QA-F) sur 4 worktrees (`2a62e9a`, `b9534e7`, `576fd62`, `f325a3a`
+avant migration). **Non fusionné : reprise en cours.** **Registre** : révision 26
+— aucun statut ne change ; I18N-01/02 n'entrent qu'à la fusion ; GARDE-02 L5
+(fait plateforme) inscrite.
+
+### Périmètre
+
+41 fichiers frontend/docs (+5376 / −196), backend intact, `package-lock`
+inchangé. **Inventaire** (`d5e65ee`, sur `576fd62`) : 406 sites d'appel vocaux
+dans 78 fichiers, 291 phrases distinctes en dur dont 97 critiques argent.
+**Catalogue** `i18n/voice/catalog.ts` : 475 messages TTS + 26 intentions STT
+(`owner`, `frMarche: null`, IDs nommés stables). **Migration** : 88 clés
+`TATA_*`/`QUEST_*` dans 13 fichiers (`machineEncaissement`,
+`relectureSpontanee`, `dialoguesTata`, `vendreVocalUnifie`, `intentionsCaisse`,
+`ruptureStock`, `localIntent`, `grammaireEncaissement`, `fcfa`, `SaisieGuidee`,
+`ConfirmationLigne`, `MicroVenteCaisse`, `POSCaisse`) ; reste 264 phrases en dur
+(67 critiques) dans 59 fichiers, toutes au catalogue `a_migrer`. Locales
+`fr-ci` (dérivée du catalogue), `dyu-ci`/`bci`/`any` (squelettes vides →
+repli fr-ci tracé). **9 gates dans `verify`**, jamais dans `test:ci` ; export
+CSV Manus (33 colonnes, 501 lignes, idempotent).
+
+### Gates (QA-F, sur `2a62e9a`)
+
+| Gate | Résultat |
+|---|---|
+| `check-tsc-baseline` | **0** (script à la racine `ci/`, pas `frontend_src/ci/`) |
+| `verify` | **0** — 4 gates i18n verts, énumération 2 560 000 / 19 312 / 0, 9 empreintes = base |
+| `test:ci` | **0** — chaîne **identique valeur contre valeur** à `f0c965c` |
+| `build` | **0** |
+| `check:bundle-budget` | **0** — **728 Ko / 800** ; base `b9534e7` = **574 Ko** → **+154 Ko attribuables à F** (catalogue de 167 Ko de source, `source`/`note` compris, dans le chunk initial) ; marge restante 72 Ko |
+| `test:voix-trace-source` (lot E) | vert ; fixture `parole-3917bb7.json` absente du diff |
+
+### Réponses A à J, condensées
+
+- **A — vert du garde-fou E légitime, par disjonction réelle** : aucun des 13
+  fichiers migrés n'est dans les 16 inventoriés ni les 14 empreintes. **Mais**
+  un trou reproduit → **GARDE-02 L5** (voir registre).
+- **B — empreintes non circulaires, prouvé** : `empreintesArgent.mts` final
+  copié sur `576fd62` et `b9534e7`, `--calculer` → les 9 empreintes identiques
+  aux constantes, y compris `coupures = 398353c4…` (valeur corrigée dans
+  `ba4aff5` ; l'ancienne itérait des objets, corpus faux, pas source fausse).
+  Les 13 modules d'argent sont identiques entre `576fd62` et `b9534e7`.
+- **C — invariant 1, tenu octet pour octet** : le script de F comparait modulo
+  normalisation ; QA a rejoué les 91 lignes en comparaison stricte : **83/83
+  identiques, 0 écart, 7 compositions, 1 hors i18n**. `POSCaisse:320`
+  recomposée en deux clés : `"Vente enregistrée. 2 000 francs"` et
+  `"… francs. Attention, …"` **=== ancien** dans les deux cas ; `toLocaleString('fr-FR')`
+  (U+202F) conservé. Gating `guidageVocal()` inchangé pour `dire`/`direMessage`.
+- **D — invariants 2-4 tenus pour fr-ci** : STT/TTS séparés (475 sans `INT_`,
+  26 `INT_`) ; `draft` ou `finance !== true` refusés au runtime sur intention
+  critique (testé avec une locale `zz-draft`, traces `non_valide_finance`) ;
+  liste blanche fr-ci = exactement les 8 réponses de `576fd62`, gate figé.
+  Non tenu pour la préférence dioula (**I18N-01**).
+- **E — modifications de comportement** : `detecterEncaissement(texte, locale =
+  localeActive())`, `intentLocal(texte, locale = localeActive())` — appelé sans
+  locale par `useVoiceCore.ts:855/898`, donc **suit désormais la préférence de
+  langue** (source d'I18N-01) ; constantes → fonctions sans appelant restant ;
+  `const` → `export const` sur 3 modules (tableaux exportés mutables, pas de
+  copie défensive).
+- **F — bundle** : voir tableau.
+- **G — rouges d'abord** : sur `f325a3a` (avant migration), `validateLocale` et
+  `validateSource` **rouges** ; `validateCriticalMessages` et `empreintes`
+  **verts** (vacues expliqués : données déjà là ; gate de non-régression).
+  Mutations sur `2a62e9a` : texte altéré → empreintes rouge ; `'oui'` ajouté →
+  2 gates rouges ; `dire('Bonjour Tantie')` → source rouge ; clé rétrogradée
+  `draft` → 2 gates rouges ; **ordre annulation/validation inversé → source
+  rouge mais empreintes vert** (corpus sans phrase mixte par construction).
+- **H — owner uniforme** : 501/501 `owner: 'manus'`, 0 `'claude'` — le champ ne
+  discrimine rien, le partage est porté par `CHAMPS_CLAUDE` ; CSV conforme
+  (BOM, 33 colonnes, IDs nommés) ; réserves : `{devise}` implicite absent de
+  `VARIABLES`, deux formes d'`INT_OUI_VALIDE`.
+- **I — chevauchements** : voir ci-dessous.
+- **J** : 0 marqueur de conflit dans `src/` et `package.json` ; `a95df9f`
+  fusion propre.
+- **Fixture E** : régénération simulée vers le scratchpad → **fichier octet
+  pour octet identique** ; rien à régénérer, règle E × F respectée.
+
+### Écarts rapport F ↔ observé (7)
+
+1. « Texte de la clé = ancien texte » : vrai **modulo normalisation** ; le
+   contrôle strict de QA le confirme a posteriori. 2. Bundle : base non mesurée
+   par F ; **574 → 728, +154 Ko** (21 % du chunk initial). 3. « Mon périmètre
+   ne recoupe aucun fichier E » : exact, mais le garde-fou E est aveugle aux
+   nouveaux verbes (L5). 4. « `owner` partout » : sans valeur discriminante.
+   5. « En fr-ci aucun repli » : rien n'est dit de la préférence
+   dioula/bambara déjà offerte (I18N-01/02). 6. Chemin de
+   `check-tsc-baseline.mjs` (racine). 7. Registre cité à la révision 24, la
+   tête était à la 25.
+
+### Défauts nouveaux reproduits (n'entrent dans les tables qu'à la fusion)
+
+| N° | Sévérité | Constat |
+|---|---|---|
+| **I18N-01** | **P1 argent** (introduit par F) | La préférence « Dioula » (déjà sélectionnable dans `UniversalParametres`) change la grammaire d'encaissement : `speakMessage.ts` branche `localeActive()` sur `getLangPref()` → `dyu-ci` ; `intentLocal` sans locale → `detecterEncaissement(texte, 'dyu-ci')` prend les **variantes de fr-ci (repli)** mais la **normalisation de dyu-ci** (`normaliserBambara`, qui casse les apostrophes). Reproduit : `"oui c'est bon valide"` → `null` (fr-ci : `oui_valide`), `"c'est combien"` → `null` ; **3 écarts sur 19 phrases**. Sens sûr (rien ne paie de trop) mais comportement financier différent de `576fd62` ; l'empreinte `grammaire` ne le voit pas (appel sans locale). Piste : normaliser avec la locale **servie**, ou interdire un `normaliser` sur une locale sans `intents` validés. Bloquant pour la fusion tant que Paramètres offre « Dioula » |
+| **I18N-02** | P2 observabilité (introduit par F) | `bm` (Bambara) déclaré dans `LOCALES_PROVISOIRES` et `LOCALE_PAR_PREFERENCE` mais **sans manifest** → `locale_inconnue` à chaque appel ; en dioula, **7 traces `I18N_FALLBACK` par `intentLocal`**, 4 par « oui valide », 1 par `t()` → une trentaine de dictées vident l'anneau de 200 du journal E (GARDE-02 L1) de ses événements TTS/STT |
+| GARDE-02 **L5** | P3 outillage (**fait plateforme**) | `test-voix-trace-source.mjs` ne voit ni `speakMessage(`, ni `direMessage(`, ni `dire(`, ni `direEtRetenir(` ; message « #-1 (absent)/(absent) » — **inscrite au registre maintenant** |
+
+Observations non classées : tableaux `MOTS_*`/`GRAPHIES_CANONIQUES` exportés
+mutables ; le gate 5 ne teste pas `draft + finance:true` (tenu au runtime,
+vérifié par QA).
+
+### Verdict
+
+Le lot F **ne ferme aucune ligne existante** (aucune dette LANG-/I18N- n'était
+ouverte ; VOIX-04, VOIX-05, ARG-08/09, UNI-01, GARDE-01/02 restent OUVERTES ;
+VOICE-01 reste FERMÉE et intacte). Il apporte une architecture nouvelle dont les
+**4 invariants QA sont FERMÉS pour fr-ci** et **OUVERTS pour dioula** (I18N-01).
+À la fusion : I18N-01 OUVERT (P1, bloquant si Paramètres continue d'offrir
+« Dioula » ; sinon HORS PÉRIMÈTRE JUSTIFIÉ le temps de désactiver le choix),
+I18N-02 OUVERT (P2).
+
+### Chevauchements (règle 22 bis)
+
+- **VOIX-04** : strictement intact (`useVoiceCore.ts` non touché, diff
+  `b9534e7..2a62e9a` vide ; `CORE_ERR_01/02` au catalogue `a_migrer`, non
+  branchés).
+- **ARG-09** (« francs » en dur, 480 occurrences) : **réduite** — 8 modules
+  passent par `{devise}` — mais les occurrences d'écran restent ; **non fermée**.
+- **UNI-01**, **ARG-08** : non touchées.
+- **PR #245 (Manus)** : **4 fichiers communs** (`package.json`, `POSCaisse.tsx`,
+  `MicroVenteCaisse.tsx`, `fcfa.ts`) ; Manus ajoute **4 `dire(littéral)`** dans
+  `POSCaisse` (« Entre le montant reçu ou choisis compte juste », « … francs
+  reçus », « Compte juste », « Panier {total}. Je descends vers le paiement. »)
+  → **rouges au gate 7 de F à la fusion** ; `fcfa.ts` conflit textuel probable,
+  sémantiquement disjoint. **Deux modèles voix concurrents** : F = clé → texte
+  résolu → `RenduVocal` (`contrat-audio.ts`, `(id, locale)`) ; Manus = registres
+  par écran (`ENTREE_VOICE_CLIPS`, `INTRO_CLIPS`, `ACCUEIL_MARCHAND_VOICE_CLIPS`)
+  + `importancePourTexte()` par regex sur le français (inopérant en
+  dioula/baoulé) et `atteste`/`prototype` qui doublonne `Validation`. Sans
+  trancher : seul le contrat de F porte `(id, locale)` ; les registres Manus
+  peuvent devenir un `RenduVocal` (clip par id) et `importancePourTexte` une
+  donnée du catalogue (`critiqueArgent`). **Arbitrage Patrick.**
+- **Lot E / règle E × F** : fixture inchangée, rien à régénérer ; L5 à corriger
+  côté plateforme avant que F n'introduise ses verbes.
+
+### À DÉFINIR relus (les 7 de F, avec recommandation QA)
+
+1. Codes de langue provisoires : d'accord ; **corriger d'abord `bm`** (I18N-02).
+2. fr-ci `field_validated` / `finance: true` : acceptable pour le texte actuel ;
+   toute `SURCHARGE` future devrait naître `draft`.
+3. `frMarche` → `SURCHARGES` manuel : oui, garder « rien d'automatique ».
+4. `texteDyu` de `loginVoiceScript` : Manus ; pas de manifest tant qu'I18N-01
+   n'est pas réglé.
+5. `productId` = libellé FR : hors lot, mais le lexique l'expose comme
+   identifiant stable au CSV — dire à Manus que ces IDs peuvent changer.
+6. Composition grammaticale en code : accepter ; les clés « morceaux »
+   (`TATA_PART_*`, `TATA_LISTE_*`) sont une dette de conception à nommer.
+7. STT par langue : **ne pas laisser `normaliserPour(locale)` s'appliquer à des
+   variantes héritées** (I18N-01) ; une locale ne porte un `normaliser` que si
+   elle porte ses propres `intents` validés.
+
+### Ce que ça ne prouve pas
+
+Rien n'a été entendu sur appareil (rendu React non exercé ; `tataUiClips`
+apparie par texte exact — identité prouvée, appariement non exercé) ; les
+empreintes prouvent l'identité sur des corpus finis (l'inversion
+annulation/validation leur échappe, seul le contrôle de source la voit) ; les
+4 composants ne sont couverts que par identité de chaînes et garde-fous de
+forme ; I18N-01/02 constatés au runtime `tsx`, pas sur téléphone ; pas de
+Postgres, pas de backend ; effet des +154 Ko sur un téléphone d'entrée de gamme
+non mesuré.
