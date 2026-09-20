@@ -170,7 +170,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 .commerce-signature::before { content: ''; width: 0.75rem; height: 0.25rem; background: #C0522E; border-radius: 1px; }
 .commerce-signature::after { content: ''; width: 0.5rem; height: 0.75rem; background: #00563B; border-radius: 1px; }
 .commerce-brand-inverse .commerce-signature::after { background: #87C3A6; }
-.commerce-brand-inverse img { background: #FFFCF7; padding: 0.25rem 0.5rem; border-radius: 0.5rem; }
+.commerce-brand-inverse img { background: #FFFCF7; padding: 0.25rem 0.5rem; border-radius: 0.5rem; filter: brightness(0); }
 
 .commerce-home { max-width: 60rem; margin-inline: auto; padding: 1.25rem 1rem 2rem; }
 .commerce-home-redesign { padding: 0 0 7rem; background: var(--julaba-ivoire); min-height: 100dvh; }
