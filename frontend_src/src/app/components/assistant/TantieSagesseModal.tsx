@@ -197,6 +197,9 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
   return (
         <motion.div
           className="fixed inset-0 z-[200]"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Tata Nanti Lou"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           onClick={onClose}
         >
@@ -216,7 +219,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
             </div>
 
             {/* Bouton Fermer */}
-            <motion.button onClick={() => { resetHistory(); onClose(); }}
+            <motion.button onClick={() => { resetHistory(); onClose(); }} aria-label="Fermer Tata Nanti Lou"
               className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center z-20 hover:bg-white/30"
               whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
               <X className="w-5 h-5 text-white" strokeWidth={2.5} />
