@@ -41,6 +41,7 @@ import { useStock, type StockItem } from '../../contexts/StockContext';
 import { extraire } from '../../voice-offline/extraction';
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
+import { produitPourVente } from '../../services/preselectionVente';
 import { AJOUT_PANIER } from '../../services/dialoguesTata';
 import type { LigneProvisoire } from '../../services/ligneProvisoire';
 import { guidageVocal } from '../../utils/accessMode';
@@ -183,7 +184,14 @@ export function MicroVenteCaisse({ produitPreselectionne = null }: Props) {
         const brut = Number(action.montant);
         const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
         const quantite = action.quantite || 1;
-        vendreUnifie(action.produit, quantite, montant, extraire(data.transcript || '').uniteParlee);
+        // LE PRODUIT DÉJÀ TOUCHÉ N'EST PAS À REDIRE (lot B2). Elle vient de
+        // toucher « Tomate » dans Mon stock et dit « trois tas » : sans ce
+        // repli, le moteur recevait `undefined`, n'appariait rien, et Tata
+        // redemandait un prix que l'application connaissait déjà — panier
+        // vide. La parole prime toujours : « deux kilos d'oignons » vend des
+        // oignons. Seul le NOM est repris ; l'unité et le prix restent
+        // l'affaire de resoudrePrixVocal (voir preselectionVente.ts).
+        vendreUnifie(produitPourVente(action.produit, produitPreselectionne), quantite, montant, extraire(data.transcript || '').uniteParlee);
       } else if (action?.type === 'utiliser_raccourci') {
         const r = matchRaccourci ? matchRaccourci(action.declencheur || data.transcript || '') : null;
         if (r?.action?.type === 'vendre') {
@@ -193,7 +201,10 @@ export function MicroVenteCaisse({ produitPreselectionne = null }: Props) {
           const brutR = Number(r.action.montant);
           const montant = Number.isFinite(brutR) && brutR > 0 ? brutR : 0;
           const quantite = r.action.quantite || 1;
-          vendreUnifie(r.action.produit, quantite, montant);
+          // Même repli que la vente directe : un raccourci résolu en vente est
+          // le même acte métier, il n'y a aucune raison qu'il oublie le
+          // produit touché quand la vente directe s'en souvient.
+          vendreUnifie(produitPourVente(r.action.produit, produitPreselectionne), quantite, montant);
         } else if (r?.action?.type === 'depense') {
           const montant = r.action.montant || 0;
           if (!montant || montant <= 0 || isNaN(montant)) {

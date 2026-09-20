@@ -70,6 +70,15 @@ ok(/location\.state[\s\S]{0,200}produitPreselectionne/.test(codeCaisse),
   "la caisse LIT cet état de route (sinon le produit partirait dans le vide)");
 ok(/<MicroVenteCaisse\s+produitPreselectionne=\{produitPreselectionne\}/.test(codeCaisse),
   "et le passe au micro, qui s'en sert pour sa question d'ouverture");
+// LE POINT QUI MANQUAIT AU LOT B (contre-audit, lot B2). Le produit arrivait
+// bien à l'écran — question d'ouverture, repli tactile — mais le MOTEUR
+// recevait toujours `action.produit` seul. Elle touchait Tomate, disait
+// « trois tas », et Tata redemandait un prix que l'application connaissait
+// déjà. L'écran savait ; la voix avait oublié.
+ok(/vendreUnifie\(produitPourVente\(action\.produit,\s*produitPreselectionne\)/.test(codeMicro),
+  "la vente dictée passe le produit présélectionné au moteur (produitPourVente)");
+ok(/vendreUnifie\(produitPourVente\(r\.action\.produit,\s*produitPreselectionne\)/.test(codeMicro),
+  "un raccourci résolu en vente s'en souvient aussi — c'est le même acte métier");
 
 console.log("\n[2] « Vendre » depuis l'accueil arrive sur la caisse");
 ok(/const allerCaisse = \(\) => navigate\('\/marchand\/caisse'\)/.test(codeAccueil),
