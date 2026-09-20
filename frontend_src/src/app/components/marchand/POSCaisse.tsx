@@ -16,7 +16,7 @@ import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/f
 import { BilletDessine, PieceDessinee } from './CoupureDessinee';
 import { avertissementRupture } from '../../services/ruptureStock';
 import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
-import { getImageByNom } from '../../data/catalogue-produits';
+import { getPictogrammeByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 import { phraseRelecture, phraseLigneAjoutee, type EtatEncaissement as EtatRelu } from '../../services/relectureSpontanee';
 import { ChoixUnite } from './ChoixUnite';
@@ -26,6 +26,7 @@ import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
 import { ETAT_INITIAL, empreintePanier, reduire, type EffetEncaissement, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
 import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
+import { PaveMontant } from '../shared/PaveMontant';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
 import { t } from '../../i18n/voice/runtime';
 
@@ -114,6 +115,19 @@ function POSCaisseInner() {
 
   // Encaissement (Phase 3, lots 2-4) : montant reçu (espèces) + écran « Vente réussie ».
   const [montantRecu, setMontantRecu] = useState('');
+  // CHIFFRES OU COUPURES — un choix d'AFFICHAGE, rien d'autre. Les deux
+  // chemins écrivent le même `montantRecu` par le même `setMontantRecu` :
+  // celle qui touche les billets et celle qui tape le montant produisent
+  // exactement la même vérité. Aucun calcul, aucune garde, aucun envoi ne
+  // dépend de ce choix — il ne décide que de ce qui est dessiné.
+  //
+  // LE DÉFAUT RESTE « COUPURES », et c'est délibéré (lot A9). La maquette
+  // Manus ouvre sur le pavé de chiffres ; ce serait déplacer le geste premier
+  // de la caisse. Toucher les billets qu'on vient de recevoir est le geste du
+  // marché (inclusion §2.2) et c'est celui que ce socle rend par défaut depuis
+  // le lot F — le mettre derrière un onglet changerait le parcours, pas son
+  // habillage. Le pavé est AJOUTÉ comme second chemin, à un doigt d'ici.
+  const [saisieEspeces, setSaisieEspeces] = useState<'chiffres' | 'coupures'>('coupures');
   // UI-02 — AFFICHAGE SEULEMENT : le champ montre « 5 000 » hors saisie et la
   // valeur brute pendant qu'elle tape (le curseur ne se bat pas avec les
   // espaces de milliers). `montantRecu` et son `onChange` restent la seule
@@ -532,7 +546,7 @@ function POSCaisseInner() {
       {cart.map(item => (
         <div key={item.productId} style={{ padding:'var(--caisse-esp-3) 0', borderBottom:'1px solid var(--commerce-line)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)' }}>
-            <ImageWithFallback src={products.find(p => p.id === item.productId)?.image || undefined} fallbackSrc={getImageByNom(item.nom)} alt="" aria-hidden="true"
+            <ImageWithFallback src={products.find(p => p.id === item.productId)?.image || undefined} fallbackSrc={getPictogrammeByNom(item.nom)} alt="" aria-hidden="true"
               style={{ width:44, height:44, borderRadius:'var(--caisse-rayon-2)', objectFit:'cover', flexShrink:0, background:'var(--caisse-sable)' }} />
             <div style={{ flex:1, minWidth:0, font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.nom}</div>
             <div style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{(item.totalExact ?? item.prix * item.quantite).toLocaleString('fr-FR')} F</div>
@@ -688,25 +702,54 @@ function POSCaisseInner() {
           avant de payer est la monnaie à rendre. */}
       {paymentMethod === 'cash' && (
       <div style={{ marginBottom:'var(--caisse-esp-4)' }}>
-        {/* Les billets qu'elle vient de recevoir : un toucher = un billet
-            ajouté (et dit à voix haute). Couleurs proches des vraies coupures. */}
-        {/* alignItems:'flex-end' : les billets n'ont plus tous la même hauteur
-            (les vraies coupures non plus). Alignés par le bas, ils se lisent
-            comme une liasse posée sur la table, pas comme une grille bancale. */}
-        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'flex-end' }}>
-          {COUPURES.filter(c => c.forme === 'billet').map(c => (
-            <BilletDessine key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
-          ))}
-        </div>
-        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginTop:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'center' }}>
-          {COUPURES.filter(c => c.forme === 'piece').map(c => (
-            <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
-          ))}
-          <button type="button" onClick={() => setMontantRecu(String(total))}
-            style={{ flex:1, minWidth:104, minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-succes)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-            Compte juste
+        {/* CHIFFRES OU COUPURES — le choix de la maquette. Deux façons
+            d'entrer LE MÊME montant reçu : celle qui compte de tête tape, celle
+            qui a les billets en main les touche. `aria-pressed` dit lequel est
+            actif à une lectrice d'écran ; les deux cibles font 56 px de haut
+            (.caisse-cash-choice, styles/commerce.css). */}
+        <div role="group" aria-label="Comment entrer le montant reçu" className="caisse-cash-choice">
+          <button type="button" aria-pressed={saisieEspeces === 'chiffres'} onClick={() => setSaisieEspeces('chiffres')}>
+            <span aria-hidden="true">1 2 3</span><strong>Chiffres</strong>
+          </button>
+          <button type="button" aria-pressed={saisieEspeces === 'coupures'} onClick={() => setSaisieEspeces('coupures')}>
+            <Banknote aria-hidden="true" size={ICONE} /><strong>Billets · Pièces</strong>
           </button>
         </div>
+
+        {saisieEspeces === 'chiffres' ? (
+          /* Le PAVÉ de la maquette : grandes touches, montant en grand, aucune
+             dépendance au clavier système. Il écrit dans le même `montantRecu`
+             que les coupures — `onChange={setMontantRecu}`, rien de plus. */
+          <PaveMontant value={montantRecu} onChange={setMontantRecu} color="var(--caisse-vert)"
+            ariaLabel="Montant reçu de la cliente" />
+        ) : (
+          <>
+            {/* Les billets qu'elle vient de recevoir : un toucher = un billet
+                ajouté (et dit à voix haute). Couleurs proches des vraies coupures. */}
+            {/* alignItems:'flex-end' : les billets n'ont plus tous la même hauteur
+                (les vraies coupures non plus). Alignés par le bas, ils se lisent
+                comme une liasse posée sur la table, pas comme une grille bancale. */}
+            <div style={{ display:'flex', gap:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'flex-end' }}>
+              {COUPURES.filter(c => c.forme === 'billet').map(c => (
+                <BilletDessine key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
+              ))}
+            </div>
+            <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginTop:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'center' }}>
+              {COUPURES.filter(c => c.forme === 'piece').map(c => (
+                <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
+              ))}
+            </div>
+          </>
+        )}
+        {/* « COMPTE JUSTE » SORT DE LA RANGÉE DE PIÈCES et devient pleine
+            largeur, sous les deux modes : c'est le geste de celle qui ne compte
+            pas les billets. Il porte le total, pour qu'elle voie ce qu'elle
+            valide. Le `onClick` n'a pas changé. (Le « montant reçu obligatoire »
+            de Manus est HORS de ce lot : catégorie C, non arbitré.) */}
+        <button type="button" onClick={() => setMontantRecu(String(total))}
+          className="caisse-compte-juste">
+          Compte juste · {formatF(total)} F
+        </button>
 
         {/* LA RELECTURE FINANCIÈRE, ÉCRITE. Exactement la phrase que Tata
             vient de dire — la même chaîne, pas une reconstruction — là où
@@ -893,6 +936,42 @@ function POSCaisseInner() {
             et « oui valide », c'est cette page qui décide — elle seule tient
             le compte et la primitive de paiement. */}
         <MicroVenteCaisse produitPreselectionne={produitPreselectionne} onIntentionEncaissement={onIntentionEncaissement} />
+
+        {/* RACCOURCI DE CONTINUITÉ — LE TOTAL AU PREMIER ÉCRAN (règle du
+            premier écran, tranchée par Patrick : « sur la caisse portrait le
+            Total doit rester visible sans défilement »). Il apparaît dès
+            qu'un article est au panier, AU-DESSUS DU PLI (mesuré au banc,
+            390x844 : y 520-590), et c'est cette position statique qui satisfait
+            la règle. LIMITE CONNUE, dette UI-05 : sa CSS porte bien
+            `position: sticky`, mais le conteneur parent (l. 925, `overflowY:
+            auto`, antérieur à ce lot) devient son scrollport et ne défile
+            jamais sur téléphone — l'épinglage ne s'active donc pas. Un total
+            reste malgré tout visible en continu : le raccourci sort vers
+            y 590, la barre Total entre vers y 335 de défilement.
+            IL NE PAIE RIEN ET N'OUVRE AUCUN ÉCRAN : « Encaisser » fait
+            seulement défiler vers le panier complet, déjà présent plus bas sur
+            la même surface — la règle « une seule surface » (lot A) tient.
+            `role="group"`, ET NON `role="status"` que Manus emploie ici : la
+            seule région vivante de cet écran est la relecture financière
+            (« Elle doit…, elle t'a donné…, tu rends… »). Avec deux `status`,
+            c'est le raccourci — plus haut dans le DOM — qui est lu et mesuré à
+            la place du compte : relevé au banc, qui rapportait « Panier · 6 /
+            2 900 F » là où il attend la relecture. */}
+        {nbItems > 0 && (
+          <div className="caisse-panier-raccourci" role="group" aria-label={`Panier : ${nbItems} article${nbItems > 1 ? 's' : ''}, total ${formatF(total)} francs`}>
+            <div className="caisse-panier-raccourci-total">
+              <span>Panier · {nbItems}</span>
+              <strong>{formatF(total)} F</strong>
+            </div>
+            <button type="button" onClick={() => {
+              document.getElementById('caisse-paiement-mobile')?.scrollIntoView({ behavior:'smooth', block:'start' });
+            }}>
+              <Banknote size={ICONE} aria-hidden="true" />
+              <span>Encaisser</span>
+              <ChevronRight size={ICONE} aria-hidden="true" />
+            </button>
+          </div>
+        )}
         {/* UNE ÉTIQUETTE, PAS UNE BOÎTE — le défaut relevé par Patrick le 18/09.
             Il a tapé « banane » et rien n'est arrivé dans le champ : l'écran a
             continué d'afficher l'oignon. La cause n'était pas le filtre, elle
@@ -1011,7 +1090,7 @@ function POSCaisseInner() {
                       {/* La photo REMPLIT la vignette (F2 : « la densité est trop
                           forte ») : les vignettes emoji hors ligne ont une marge
                           interne, on les grossit légèrement dans leur cadre. */}
-                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getImageByNom(p.nom)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', transform:'scale(1.22)' }} />
+                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getPictogrammeByNom(p.nom)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', transform:'scale(1.22)' }} />
                       <StockBadge stock={p.stock || 0} />
                       {enPromo && (
                         <div style={{ position:'absolute', top:'var(--caisse-esp-1)', right:'var(--caisse-esp-1)', background:'var(--caisse-alerte)', borderRadius:'var(--caisse-rayon-2)', padding:'2px 6px', font:'var(--caisse-font-legende)', fontWeight:600, color:'white' }}>
@@ -1058,7 +1137,7 @@ function POSCaisseInner() {
             produits, et se rejoignent en faisant défiler — jamais en ouvrant.
             Même `renderCartLines()` / `renderCartFooter()` que le panneau de
             droite : une seule logique, deux dispositions. */}
-        <section className="lg:hidden" style={{ marginBottom:'var(--caisse-esp-5)' }}>
+        <section className="lg:hidden" id="caisse-paiement-mobile" style={{ marginBottom:'var(--caisse-esp-5)', scrollMarginTop:'var(--caisse-esp-3)' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
             <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>
               Panier actuel{nbItems > 0 && <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}> ({nbItems})</span>}
@@ -1308,8 +1387,14 @@ function POSCaisseInner() {
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
             style={{ position:'fixed', inset:0, zIndex:120, background:'var(--caisse-sable)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'var(--caisse-esp-5)', textAlign:'center' }}>
             <div style={{ width:88, height:88, borderRadius:'50%', background:'var(--caisse-succes)', display:'grid', placeItems:'center', marginBottom:'var(--caisse-esp-4)' }}>
-              <Check size={48} color="var(--caisse-vert)" />
+              <Check size={48} color="var(--caisse-vert)" aria-hidden="true" />
             </div>
+            {/* PAS de `role="status"` ni d'`aria-live` ici, et c'est délibéré.
+                OFF-01 (P1, OUVERTE) : cet écran dit « Vente réussie » même
+                quand la vente n'est qu'enfilée hors ligne — l'appelant ne lit
+                pas le résultat. Tant que la dette n'est pas fermée, en faire
+                une région annoncée porterait le mensonge sur le canal des
+                marchandes qui ne lisent pas. Ni Manus ni la base ne l'ont. */}
             <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-vert)', marginBottom:'var(--caisse-esp-2)' }}>Vente réussie</div>
             <div style={{ font:'var(--caisse-font-h1)', fontSize:36, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{lastSale.montant.toLocaleString('fr-FR')} F</div>
             <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', marginTop:'var(--caisse-esp-2)' }}>
