@@ -39,3 +39,6 @@ erreur.txt
 # Build frontend versionne par erreur (la source est dans frontend_src/, build via frontend_src/Dockerfile)
 frontend/
 frontend_src/tsconfig.tsbuildinfo
+
+# Fichier intermediaire du banc de capture (apercu-caisse/capture.mjs, jetable)
+frontend_src/apercu-caisse/.viewport-2x.png
