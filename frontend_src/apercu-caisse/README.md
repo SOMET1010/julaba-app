@@ -25,3 +25,12 @@ Ce dossier n'entre ni dans `npm run build` (l'entrée de production reste
 `index.html`), ni dans `tsc -b` (`tsconfig.json` n'inclut que `src`). Ce qu'il
 **ne prouve pas** : le comportement réel (voix, argent, hors-ligne) — seulement
 l'apparence, sur des données de démonstration.
+
+## État « encaisse dit, reçu 5 000 » (F2)
+
+`stubs/useVoiceCore.ts` remplace le moteur vocal (aucun micro en headless) et
+expose `window.__apercuVoix.injecter(...)` : le banc **injecte** l'intention
+`encaisser` sous la forme exacte que le vrai moteur passe à `onAction`. La
+machine d'encaissement, la phrase relue et son affichage sont ceux de
+`POSCaisse`. Capture : `caisse-portrait-F2-relecture.png` (viewport calé sur
+la barre Total). L'intention est injectée, pas reconnue depuis l'audio.
