@@ -902,6 +902,27 @@ function POSCaisseInner() {
             et « oui valide », c'est cette page qui décide — elle seule tient
             le compte et la primitive de paiement. */}
         <MicroVenteCaisse produitPreselectionne={produitPreselectionne} onIntentionEncaissement={onIntentionEncaissement} />
+
+        {/* RACCOURCI DE CONTINUITÉ — il ne paie rien et n'ouvre aucun écran.
+            Dès qu'un article est au panier, le total et le prochain geste
+            restent visibles pendant le choix des produits. « Encaisser » fait
+            seulement défiler vers le panier complet déjà présent plus bas. */}
+        {nbItems > 0 && (
+          <div className="caisse-panier-raccourci" role="status" aria-label={`Panier : ${nbItems} article${nbItems > 1 ? 's' : ''}, total ${formatF(total)}`}>
+            <div className="caisse-panier-raccourci-total">
+              <span>Panier · {nbItems}</span>
+              <strong>{formatF(total)}</strong>
+            </div>
+            <button type="button" onClick={() => {
+              document.getElementById('caisse-paiement-mobile')?.scrollIntoView({ behavior:'smooth', block:'start' });
+              dire(`Panier ${formatF(total)}. Je descends vers le paiement.`);
+            }}>
+              <Banknote size={ICONE} aria-hidden="true" />
+              <span>Encaisser</span>
+              <ChevronRight size={ICONE} aria-hidden="true" />
+            </button>
+          </div>
+        )}
         {/* UNE ÉTIQUETTE, PAS UNE BOÎTE — le défaut relevé par Patrick le 18/09.
             Il a tapé « banane » et rien n'est arrivé dans le champ : l'écran a
             continué d'afficher l'oignon. La cause n'était pas le filtre, elle
@@ -1067,7 +1088,7 @@ function POSCaisseInner() {
             produits, et se rejoignent en faisant défiler — jamais en ouvrant.
             Même `renderCartLines()` / `renderCartFooter()` que le panneau de
             droite : une seule logique, deux dispositions. */}
-        <section className="lg:hidden" style={{ marginBottom:'var(--caisse-esp-5)' }}>
+        <section className="lg:hidden" id="caisse-paiement-mobile" style={{ marginBottom:'var(--caisse-esp-5)', scrollMarginTop:'var(--caisse-esp-3)' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
             <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>
               Panier actuel{nbItems > 0 && <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}> ({nbItems})</span>}

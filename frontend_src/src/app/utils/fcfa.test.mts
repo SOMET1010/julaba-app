@@ -3,6 +3,13 @@
  * Lancer : npm run test:fcfa   (tsx, sans DOM ni navigateur)
  */
 import { COUPURES, decomposerMonnaie, direCoupure, hauteurBillet } from "./fcfa.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const composantCoupure = readFileSync(
+  fileURLToPath(new URL("../components/marchand/CoupureDessinee.tsx", import.meta.url)),
+  "utf8",
+);
 
 let failures = 0;
 function ok(cond: boolean, label: string) {
@@ -20,6 +27,16 @@ function main() {
     ok(COUPURES.every(c => c.forme === 'billet' ? c.valeur >= 1000 : c.valeur <= 500), "billets ≥ 1 000, pièces ≤ 500");
     ok(COUPURES.find(c => c.valeur === 500)?.forme === 'piece', "500 FCFA est présentée comme une pièce");
     ok(COUPURES.every((c, i) => i === 0 || COUPURES[i - 1].valeur > c.valeur), "ordre strictement décroissant");
+    eq(
+      COUPURES.filter(c => c.forme === 'billet').map(c => [c.valeur, c.couleur, c.repere]),
+      [
+        [10000, '#76539D', 'technologie'],
+        [5000, '#347A4B', 'agriculture'],
+        [2000, '#3577AE', 'transport'],
+        [1000, '#B34E45', 'education'],
+      ],
+      "couleurs dominantes et thèmes simplifiés alignés sur les références BCEAO",
+    );
   }
 
   console.log("\n[2] Décomposition de la monnaie (glouton canonique)");
@@ -65,6 +82,15 @@ function main() {
       "l'écart entre le plus gros et le plus petit billet se voit à l'œil nu",
     );
     ok(hauteurBillet(123456) >= 44, "valeur inattendue → taille plancher, jamais 0");
+  }
+
+  console.log("\n[5] Repères visuels sans reproduction des billets");
+  {
+    ok(/data-billet-repere=\{coupure\.repere\}/.test(composantCoupure), "le thème de chaque billet est matérialisé dans le dessin");
+    for (const icone of ["RadioTower", "Sprout", "BusFront", "BookOpen"]) {
+      ok(composantCoupure.includes(icone), `le repère ${icone} est disponible`);
+    }
+    ok(!/logo BCEAO|numéro de série|signe de sécurité/i.test(composantCoupure.replace(/\/\*[\s\S]*?\*\//g, "")), "aucun élément sécurisé n'est reproduit dans le rendu");
   }
 
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);

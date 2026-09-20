@@ -83,5 +83,15 @@ ok(/\.pos-grille-apercu\s*>\s*\*:nth-child\(n\s*\+\s*5\)/.test(css),
 ok(/@media\s*\(max-width:\s*1023px\)[\s\S]{0,200}pos-grille-apercu/.test(css),
   "elle ne s'applique QUE sous 1024 px : au-dessus, le panier est à côté et la grille reste entière");
 
+console.log("\n[6] Le total reste visible sans deuxième parcours");
+ok(/className="caisse-panier-raccourci"/.test(code),
+  "un résumé panier compact apparaît dès le premier article");
+ok(/id="caisse-paiement-mobile"/.test(code),
+  "le panier complet possède une destination explicite sur la même page");
+ok(/getElementById\('caisse-paiement-mobile'\)\?\.scrollIntoView/.test(code),
+  "« Encaisser » fait seulement défiler vers le paiement existant");
+ok(/\.caisse-panier-raccourci\s*\{[^}]*position:\s*sticky/.test(css),
+  "le résumé reste visible pendant le choix des produits sans recouvrir la page");
+
 console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
 if (failures > 0) process.exit(1);
