@@ -29,17 +29,30 @@ import { DEVISE_PARLEE, DEVISE_SYMBOLE } from '../../../../config/devise';
 import type { Lexique } from '../../types';
 
 /** PRODUITS_FORMES (forme → identifiant), inversé en identifiant → formes, ordre du source conservé. */
-function inverser(formes: Readonly<Record<string, string>>): Record<string, string[]> {
+function inverser(formes: Readonly<Record<string, string>>): Readonly<Record<string, readonly string[]>> {
   const out: Record<string, string[]> = {};
   for (const [forme, id] of Object.entries(formes)) (out[id] ??= []).push(forme);
-  return out;
+  for (const k of Object.keys(out)) Object.freeze(out[k]);
+  return Object.freeze(out);
+}
+
+/**
+ * Les tables importées sont des objets MUTABLES exportés par leurs modules
+ * d'origine ; le lexique en prend une copie figée au chargement (contre-audit
+ * du 20/09/2026) : modifier GRAPHIES_CANONIQUES ou UNITES ailleurs ne peut
+ * plus modifier le lexique par identité. La source reste unique.
+ */
+function copieFigee<T extends Record<string, unknown>>(table: T): Readonly<T> {
+  const copie = { ...table } as Record<string, unknown>;
+  for (const k of Object.keys(copie)) if (Array.isArray(copie[k])) copie[k] = Object.freeze([...(copie[k] as unknown[])]);
+  return Object.freeze(copie) as Readonly<T>;
 }
 
 export const LEXIQUE_FR_CI: Lexique = {
   produits: inverser(PRODUITS_FORMES),
-  unites: GRAPHIES_CANONIQUES,
+  unites: copieFigee(GRAPHIES_CANONIQUES),
   nombres: {
-    mots: { ...UNITES, ...DIZAINES },
+    mots: copieFigee({ ...UNITES, ...DIZAINES }),
     echelles: { cent: 100, cents: 100, mille: 1000 },
     connecteurs: ['et'],
   },
@@ -55,7 +68,7 @@ export const LEXIQUE_FR_CI: Lexique = {
       100: 'cent', 50: 'cinquante', 25: 'vingt-cinq',
     },
   },
-  verbesMetier: INTENTIONS_MAP,
+  verbesMetier: copieFigee(INTENTIONS_MAP),
   // La tournure est celle du marché (« je vends au kilo »), pas celle du
   // bouton (« kg » ne se prononce pas). Ex-components/marchand/ChoixUnite.tsx.
   unitesDites: {

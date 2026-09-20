@@ -19,9 +19,13 @@
  *     clips, packs, prosodie, association langue → voix).
  *   Quand une entrée porte les deux (c'est le cas général : un identifiant
  *   posé par Claude, un contenu remplissable par Manus), `owner` désigne la
- *   partie ÉDITABLE PAR MANUS. Les champs qui restent à Claude quel que soit
- *   `owner` sont listés dans `CHAMPS_CLAUDE` : les changer est une décision
- *   d'ingénierie, pas de langue.
+ *   partie ÉDITABLE PAR MANUS : `manus` sur une phrase entière que Manus peut
+ *   reformuler et traduire librement ; `claude` sur une clé de COMPOSITION
+ *   (morceau `TATA_PART_*`, séparateur `TATA_LISTE_*`, gabarit d'assemblage
+ *   comme `TATA_MESURE_DE_PRODUIT` ou `TATA_COMPTE_A_CHANGE`) dont la forme
+ *   est de la structure — la traduire, c'est décider de l'ordre des morceaux,
+ *   une décision d'ingénierie prise avec Manus. Les champs qui restent à
+ *   Claude quel que soit `owner` sont listés dans `CHAMPS_CLAUDE`.
  *
  * CODES DE LANGUE — PROVISOIRES. Plusieurs variétés ne sont pas tranchées
  * (Sénoufo : cebaara/nyarafolo/tagwana ; Bété : gagnoa/daloa/guiberoua ;

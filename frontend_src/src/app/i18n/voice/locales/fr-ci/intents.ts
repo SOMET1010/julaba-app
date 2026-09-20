@@ -29,15 +29,23 @@ const PILOTE: Validation = { linguistique: 'field_validated', finance: true };
 const PILOTE_LECTURE: Validation = { linguistique: 'field_validated', finance: true };
 
 /** Mots de vocabulaire.ts qui mènent à une intention donnée (une seule source : INTENTIONS_MAP). */
-const motsPour = (intention: string): string[] =>
-  Object.entries(INTENTIONS_MAP).filter(([, i]) => i === intention).map(([mot]) => mot);
+const motsPour = (intention: string): readonly string[] =>
+  Object.freeze(Object.entries(INTENTIONS_MAP).filter(([, i]) => i === intention).map(([mot]) => mot));
+
+/**
+ * Les listes de grammaireCorrection.ts sont des tableaux MUTABLES exportés ;
+ * on en prend une copie figée au chargement, pour que personne ne puisse
+ * modifier les variantes d'une intention en modifiant le tableau d'origine
+ * (contre-audit du 20/09/2026). La source reste grammaireCorrection.ts.
+ */
+const fige = (mots: readonly string[]): readonly string[] => Object.freeze([...mots]);
 
 export const INTENTS_FR_CI: Readonly<Record<IntentId, IntentLocalise>> = {
   // ── Encaissement — déménagé de grammaireEncaissement.ts (576fd62), à l'identique ──
   INT_ANNULER_VALIDATION: {
     // Large volontairement : abandonner ne coûte rien, se tromper en payant
     // coûte de l'argent. Le doute profite TOUJOURS au refus.
-    variantes: { mode: 'motif', mots: ['non', 'annule', 'annuler', 'attends', 'attend', 'arrete', 'arreter', 'pas encore', 'laisse'] },
+    variantes: { mode: 'motif', mots: fige(['non', 'annule', 'annuler', 'attends', 'attend', 'arrete', 'arreter', 'pas encore', 'laisse']) },
     validation: PILOTE,
   },
   INT_OUI_VALIDE: {
@@ -60,7 +68,7 @@ export const INTENTS_FR_CI: Readonly<Record<IntentId, IntentLocalise>> = {
     // « encaisse » sous ses formes réellement dites, plus deux tournures
     // naturelles sans ambiguïté. Pas « fini », « c'est tout » ni « voilà »
     // seuls : mots de conversation ordinaire.
-    variantes: { mode: 'motif', mots: ['encaisse', 'encaisser', 'encaissement', 'encaissons'], motifs: ['\\b(termine|terminer|finis|finir) (la )?vente\\b'] },
+    variantes: { mode: 'motif', mots: fige(['encaisse', 'encaisser', 'encaissement', 'encaissons']), motifs: ['\\b(termine|terminer|finis|finir) (la )?vente\\b'] },
     validation: PILOTE,
   },
   INT_COMBIEN_DOIT: {
@@ -80,13 +88,13 @@ export const INTENTS_FR_CI: Readonly<Record<IntentId, IntentLocalise>> = {
   INT_REAPPRO: { variantes: { mode: 'motif', mots: motsPour('reappro') }, validation: PILOTE_LECTURE },
 
   // ── Réponses en confirmation de ligne — grammaireCorrection.ts (référence) ──
-  INT_LIGNE_CONFIRMATION: { variantes: { mode: 'motif', mots: MOTS_CONFIRME }, validation: PILOTE },
-  INT_LIGNE_REFUS: { variantes: { mode: 'motif', mots: MOTS_REFUS }, validation: PILOTE_LECTURE },
-  INT_LIGNE_ANNULATION: { variantes: { mode: 'motif', mots: MOTS_ANNULE }, validation: PILOTE_LECTURE },
-  INT_LIGNE_SUPPRESSION: { variantes: { mode: 'motif', mots: MOTS_SUPPRIME }, validation: PILOTE_LECTURE },
-  INT_LIGNE_ARTICLE_SUIVANT: { variantes: { mode: 'motif', mots: MOTS_SUIVANT }, validation: PILOTE_LECTURE },
-  INT_LIGNE_ENCAISSER: { variantes: { mode: 'motif', mots: MOTS_ENCAISSE }, validation: PILOTE },
-  INT_LIGNE_CORRECTION_PRIX: { variantes: { mode: 'motif', mots: MOTS_TOTAL }, validation: PILOTE },
+  INT_LIGNE_CONFIRMATION: { variantes: { mode: 'motif', mots: fige(MOTS_CONFIRME) }, validation: PILOTE },
+  INT_LIGNE_REFUS: { variantes: { mode: 'motif', mots: fige(MOTS_REFUS) }, validation: PILOTE_LECTURE },
+  INT_LIGNE_ANNULATION: { variantes: { mode: 'motif', mots: fige(MOTS_ANNULE) }, validation: PILOTE_LECTURE },
+  INT_LIGNE_SUPPRESSION: { variantes: { mode: 'motif', mots: fige(MOTS_SUPPRIME) }, validation: PILOTE_LECTURE },
+  INT_LIGNE_ARTICLE_SUIVANT: { variantes: { mode: 'motif', mots: fige(MOTS_SUIVANT) }, validation: PILOTE_LECTURE },
+  INT_LIGNE_ENCAISSER: { variantes: { mode: 'motif', mots: fige(MOTS_ENCAISSE) }, validation: PILOTE },
+  INT_LIGNE_CORRECTION_PRIX: { variantes: { mode: 'motif', mots: fige(MOTS_TOTAL) }, validation: PILOTE },
 
   // INT_LIGNE_CORRECTION_QUANTITE (nombre nu), INT_QUESTION_* (motifs dans
   // intentionsCaisse.ts) et INT_OUI / INT_NON (useVoiceCore.ts, agent E) n'ont

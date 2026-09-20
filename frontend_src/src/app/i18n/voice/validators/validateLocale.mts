@@ -47,6 +47,20 @@ console.log('\n[catalogue] STT_INPUT et TTS_OUTPUT séparés, identifiants uniqu
   ok(INTENTIONS_STT.every((i) => i.type === 'stt_intent' && i.id.startsWith('INT_')), 'toute intention STT porte un identifiant INT_');
   ok(MESSAGES_TTS.every((m) => m.frMarche === null), 'frMarche est null partout (le français « marché » appartient à Manus)');
   ok([...MESSAGES_TTS, ...INTENTIONS_STT].every((e) => e.owner === 'manus' || e.owner === 'claude'), 'owner renseigné sur chaque entrée');
+  const nbClaude = MESSAGES_TTS.filter((m) => m.owner === 'claude').length;
+  ok(nbClaude > 0 && nbClaude < MESSAGES_TTS.length, `owner discrimine : ${nbClaude} clés de composition à claude, ${MESSAGES_TTS.length - nbClaude} phrases à manus`);
+  ok(MESSAGES_TTS.filter((m) => /^TATA_(PART_|LISTE_)/.test(m.id)).every((m) => m.owner === 'claude'), 'tout morceau TATA_PART_* / TATA_LISTE_* est à claude');
+  // Les intentions critiques de fr-ci : la liste blanche du catalogue (exemples) et celle du runtime sont la même forme.
+  const ref = manifest(LOCALE_REFERENCE)!;
+  const lb = ref.intents.INT_OUI_VALIDE?.variantes;
+  ok(!!lb && lb.mode === 'phrase_entiere' && JSON.stringify([...lb.phrases]) === JSON.stringify([...(entreeIntent('INT_OUI_VALIDE')?.exemplesFR ?? [])]),
+    'INT_OUI_VALIDE : les exemples du catalogue sont exactement la liste blanche du runtime (une seule forme vraie)');
+  // Tables du lexique et variantes : figées (une mutation d'un tableau d'origine ne les touche pas).
+  const lex = ref.lexique!;
+  ok(Object.isFrozen(lex.unites) && Object.isFrozen(lex.verbesMetier) && Object.isFrozen(lex.nombres.mots) && Object.isFrozen(lex.produits),
+    'lexique fr-ci : tables figées (copies, pas des références mutables)');
+  ok(Object.values(ref.intents).every((it) => it.variantes.mode !== 'motif' || !it.variantes.mots || Object.isFrozen(it.variantes.mots)),
+    'intents fr-ci : listes de mots figées');
   ok(MESSAGES_TTS.every((m) => JSON.stringify([...m.variables].sort()) === JSON.stringify(varsDe(m.frActuel).sort())), 'les variables déclarées sont exactement celles du gabarit frActuel');
 }
 
