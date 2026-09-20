@@ -17,6 +17,9 @@ import {
   ShoppingCart,
   AlertTriangle,
   DollarSign,
+  Eye,
+  EyeOff,
+  WifiOff,
 } from 'lucide-react';
 import { Share2, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,6 +28,7 @@ import { SubPageLayout } from '../layout/SubPageLayout';
 import { useStock } from '../../contexts/StockContext';
 import { useApp } from '../../contexts/AppContext';
 import { construireReappro, coutTotalReappro, partagerReappro, telechargerReapproPDF } from '../../utils/reappro.utils';
+import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
 
 const COLOR = '#E67E22'; // couleur marchand orange
 
@@ -118,7 +122,8 @@ function AlerteCard({
         {onDismiss && (
           <motion.button
             onClick={onDismiss}
-            className="w-7 h-7 rounded-full bg-white/60 flex items-center justify-center flex-shrink-0"
+            aria-label={`Masquer l’alerte ${title}`}
+            className="w-11 h-11 rounded-full bg-white/60 flex items-center justify-center flex-shrink-0"
             whileTap={{ scale: 0.85 }}
           >
             <X className={`w-3.5 h-3.5 ${cfg.text}`} />
@@ -158,8 +163,9 @@ function EcranVide() {
 
 export function MarchandAlertes() {
   const navigate = useNavigate();
-  const { speak, user } = useApp();
+  const { speak, user, isOnline } = useApp();
   const { stock, getStockFaible, getValeurTotaleStock } = useStock();
+  const { montantsMasques, basculerMontants } = useMontantsPrives();
 
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Marchande';
 
@@ -219,7 +225,7 @@ export function MarchandAlertes() {
       title: `${s.produit} — Rupture de stock`,
       subtitle: 'Ce produit n\'est plus disponible à la vente',
       detail: 'Réapprovisionnez rapidement pour ne pas perdre de ventes',
-      actionLabel: 'Réapprovisionner',
+      actionLabel: 'Ouvrir le stock',
       onAction: () => navigate('/marchand/stock'),
     });
   });
@@ -279,7 +285,7 @@ export function MarchandAlertes() {
       urgence: 'info',
       icon: DollarSign,
       title: 'Valeur stock importante',
-      subtitle: `${(valeurStock || 0).toLocaleString()} FCFA de stock en cours`,
+      subtitle: montantsMasques ? 'Valeur du stock cachée' : `${(valeurStock || 0).toLocaleString()} FCFA de stock en cours`,
       detail: 'Assurez-vous que vos produits sont bien sécurisés',
       actionLabel: 'Voir le détail',
       onAction: () => navigate('/marchand/stock'),
@@ -315,16 +321,19 @@ export function MarchandAlertes() {
       role="marchand"
       title="Alertes"
       subtitle={count === 0 ? 'Aucune alerte active' : `${count} alerte${count > 1 ? 's' : ''} active${count > 1 ? 's' : ''}`}
-      rightContent={countCritique > 0 ? (
-        <motion.div
-          className="px-3 py-1.5 rounded-full bg-red-500 flex items-center gap-1.5"
-          animate={{ scale: [1, 1.08, 1] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        >
-          <Zap className="w-3.5 h-3.5 text-white" />
-          <span className="text-white font-bold text-sm">{countCritique}</span>
-        </motion.div>
-      ) : undefined}
+      rightContent={(
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={basculerMontants} aria-label={montantsMasques ? 'Afficher les montants' : 'Cacher les montants'} className="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center">
+            {montantsMasques ? <EyeOff className="w-5 h-5 text-white" /> : <Eye className="w-5 h-5 text-white" />}
+          </button>
+          {countCritique > 0 && (
+            <motion.div className="px-3 py-1.5 rounded-full bg-red-500 flex items-center gap-1.5" animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 1.5, repeat: Infinity }}>
+              <Zap className="w-3.5 h-3.5 text-white" />
+              <span className="text-white font-bold text-sm">{countCritique}</span>
+            </motion.div>
+          )}
+        </div>
+      )}
       headerChildren={count > 0 ? (
         <div className="flex gap-2 flex-wrap">
           {countCritique > 0 && (
@@ -345,6 +354,13 @@ export function MarchandAlertes() {
     >
       <div className="pb-10 space-y-3">
 
+        {!isOnline && (
+          <div role="status" className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-3 flex items-start gap-3">
+            <WifiOff className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-900"><strong>Hors connexion.</strong> Les alertes viennent des données déjà enregistrées sur ce téléphone.</p>
+          </div>
+        )}
+
         {/* Bouton rafraîchir */}
         <div className="flex justify-end mb-1">
           <motion.button
@@ -356,7 +372,7 @@ export function MarchandAlertes() {
             whileTap={{ scale: 0.93 }}
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Rafraîchir
+            Tout réafficher
           </motion.button>
         </div>
 
@@ -377,7 +393,7 @@ export function MarchandAlertes() {
                 <p className="font-bold" style={{ color: COLOR }}>Liste de réappro prête</p>
                 <p className="text-sm text-gray-700">
                   {reappro.length} produit{reappro.length > 1 ? 's' : ''} à commander
-                  {coutReappro > 0 && <> · ≈ {coutReappro.toLocaleString('fr-FR')} FCFA</>}
+                  {coutReappro > 0 && <> · ≈ {montantPrive(coutReappro, montantsMasques, 'FCFA')}</>}
                 </p>
               </div>
             </div>
@@ -395,7 +411,9 @@ export function MarchandAlertes() {
               )}
             </div>
 
-            {/* Actions : envoyer au fournisseur / PDF */}
+            <p className="mt-3 text-xs text-gray-600">Cette liste n’envoie pas une commande automatiquement.</p>
+
+            {/* Actions : partager la liste / PDF */}
             <div className="mt-3 flex gap-2">
               <motion.button
                 onClick={envoyerReappro}
@@ -405,7 +423,7 @@ export function MarchandAlertes() {
                 whileTap={{ scale: 0.96 }}
               >
                 <Share2 className="w-4 h-4" />
-                Envoyer au fournisseur
+                Partager la liste
               </motion.button>
               <motion.button
                 onClick={() => telechargerReapproPDF(reappro, marchandNom).catch(() => toast.error('Téléchargement impossible'))}
@@ -457,13 +475,11 @@ export function MarchandAlertes() {
             <div>
               <p className="font-bold text-gray-800 text-sm">Conseil Tantie Nanti Lou</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Traitez d'abord les alertes critiques pour éviter les pertes de ventes. 
-                Un stock bien géré, c'est un marchand prospère !
+                Commence par les alertes rouges. Puis ouvre ton stock pour ajouter les produits manquants.
               </p>
               <motion.button
                 onClick={() => {
-                  const texte =
-                    "Traitez d'abord les alertes critiques pour éviter les pertes de ventes. Un stock bien géré, c'est un marchand prospère !";
+                  const texte = "Commence par les alertes rouges. Puis ouvre ton stock pour ajouter les produits manquants.";
                   speak(texte);
                 }}
                 className="mt-2 flex items-center gap-1 text-xs font-semibold"

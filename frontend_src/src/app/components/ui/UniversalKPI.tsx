@@ -50,6 +50,8 @@ export interface UniversalKPIProps {
   label: string;
   value?: string;
   animatedTarget?: number;
+  /** Cache la valeur à l'écran et interdit sa lecture vocale. */
+  masque?: boolean;
   suffix?: string;
   prefix?: string;
   icon: LucideIcon | React.ElementType | any;
@@ -178,7 +180,7 @@ function KPIDetailModal({
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 export function UniversalKPI({
-  label, value, animatedTarget, suffix, prefix,
+  label, value, animatedTarget, masque = false, suffix, prefix,
   icon: Icon, color,
   bgColor, borderColor,
   iconAnimation = 'float',
@@ -197,6 +199,7 @@ export function UniversalKPI({
   // voix dit le nombre COMPLET (« douze mille cinq cents francs »).
   const { speak } = useApp();
   const direKPI = () => {
+    if (masque) return;
     if (!guidageVocal()) return;
     const v = animatedTarget !== undefined ? animatedTarget
       : (typeof value === 'string' && value.trim() !== '' ? value : null);
@@ -212,10 +215,6 @@ export function UniversalKPI({
     onClick?.();
   };
 
-  const displayValue = animatedTarget !== undefined
-    ? animatedTarget
-    : (typeof value === 'string' ? parseFloat(value) || 0 : 0);
-
   return (
     <>
       <motion.button type="button" onClick={handleClick}
@@ -230,7 +229,9 @@ export function UniversalKPI({
           <div style={{ display:'flex', flexWrap:'wrap', alignItems:'baseline', gap:3, flex:1 }}>
             <span style={{ fontSize:22, fontWeight:900, color, lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%' }}>
               {prefix}
-              {animatedTarget !== undefined
+              {masque
+                ? '•••••'
+                : animatedTarget !== undefined
                 ? <AnimatedCounter target={animatedTarget} />
                 : value}
             </span>
@@ -257,7 +258,7 @@ export function UniversalKPI({
       <KPIDetailModal
         open={modalOpen} onClose={() => setModalOpen(false)}
         label={label}
-        value={animatedTarget !== undefined ? animatedTarget : (value || 0)}
+        value={masque ? '•••••' : (animatedTarget !== undefined ? animatedTarget : (value || 0))}
         suffix={suffix} color={color} bgColor={bg} borderColor={border}
         explication={explication} formule={formule} details={details}
       />
