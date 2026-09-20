@@ -465,3 +465,65 @@ deux temps de l'arbitrage n°1), **D** (relecture spontanée du total, du reçu
 et de la monnaie ; fin du repli muet dans `SaisieGuidee` et
 `ConfirmationLigne`), **E** (unité sans exception sur le produit libre).
 **La dette reste OUVERTE.**
+
+---
+
+## 11. Lot B2 — le défaut que le lot B avait laissé passer (20/09/2026)
+
+### Le constat, de Patrick
+Contre-audit de `9cb89a5` : *« Le produit présélectionné arrive bien dans
+POSCaisse, puis dans MicroVenteCaisse, et il sert à la question d'ouverture
+ainsi qu'au repli SaisieGuidee. Mais il n'est pas utilisé par le moteur vocal
+pour compléter une commande de vente. »* Exact — et c'est **la couture même
+que le lot B prétendait avoir fermée** : l'écran savait qu'on parlait de
+tomate, la voix l'avait oublié.
+
+### Ce que ça donnait vraiment, mesuré
+`vendreVocalUnifie(undefined, 3, 0, …)` avec Tomate à 500 F le tas au
+catalogue :
+
+```
+panier   : []
+Tata dit : « Je n'ai pas compris le prix. Redis-moi combien tu as vendu. »
+```
+
+Ce n'était donc pas seulement un contexte perdu : **l'application redemandait
+un prix qu'elle connaissait déjà**, et la vente n'existait pas.
+
+### La règle, et sa limite
+`preselectionVente.ts`, module pur, appliqué aux **deux** chemins de vente (la
+vente directe et le raccourci résolu en vente — c'est le même acte métier) :
+
+- **la parole prime toujours.** « deux kilos d'oignons » après avoir touché
+  Tomate vend des oignons : ce qu'elle dit est plus récent, donc plus vrai,
+  que ce qu'elle a touché ;
+- **seul le NOM est repris.** Ni l'unité ni le prix de la fiche ne sont
+  injectés : les forcer court-circuiterait `resoudrePrixVocal`, celui qui
+  refuse de vendre un « tas » au prix du kilo. Une fois le nom connu, le
+  catalogue fournit le reste comme pour n'importe quelle vente dictée ;
+- **sans parole et sans présélection, Tata redemande.** On n'invente jamais un
+  produit. Ce cas est testé, pour que le repli ne devienne pas une devinette.
+
+### Preuve
+- `preselectionVente.test.mts` (suite **`verify`**) joue les trois cas exigés à
+  travers la **vraie chaîne** — `produitPourVente` puis `vendreVocalUnifie` —
+  et non sur la seule fonction de décision : c'est le chaînage qui était cassé,
+  pas la règle.
+- **Reproduction** : la fonction ramenée au comportement de `9cb89a5` donne
+  **7 échecs**, pendant que les cas « parole explicite » et « sans
+  présélection » **restent verts** — le correctif ne change que ce qu'il doit.
+- Deux assertions de câblage ajoutées au garde-fou du lot B, **rouges elles
+  aussi sur `9cb89a5`**.
+- `typecheck`, `verify`, `test:ci` (gelée), `build` verts.
+
+### Une phrase fausse, corrigée sans en faire un lot
+Le commentaire de `GestionStock` disait l'état de route « lisible dans l'URL
+de navigation ». C'est faux : l'état de React Router n'est pas inscrit dans
+l'adresse et **ne survit pas à un rechargement de page**. Le mécanisme reste
+le bon pour ce geste immédiat ; c'est la phrase qui mentait sur ses
+propriétés — et un commentaire faux finit toujours par servir d'argument.
+
+### Ce que cette preuve ne dit pas
+Toujours **aucune dictée réelle**. Ces tests prouvent que la chaîne transporte
+le bon produit ; ils ne prouvent pas que « trois tas » est reconnu par le
+téléphone de Jeanne.
