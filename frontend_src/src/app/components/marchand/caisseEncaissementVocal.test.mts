@@ -149,6 +149,23 @@ for (const [phrase, attendu] of [
 }
 ok(intentLocal('vends 3 tomates à 500 francs')?.action.type !== undefined && !estIntentionEncaissement(intentLocal('vends 3 tomates à 500 francs')!.action.type),
   'le micro ne routerait pas cette vente vers la caisse');
+{
+  // LE CAS MIXTE « encaisse + vente » (Patrick : « sans perdre la vente »).
+  // Mesuré sur a947f2a : « encaisse deux tomates à 500 » → `encaisser`, la
+  // ligne était PERDUE — Tata relisait un panier sans les tomates. Comme pour
+  // l'annulation, « encaisse » est différé : une vente acceptée gagne.
+  const mixte = intentLocal('encaisse deux tomates à 500');
+  ok(!!mixte && mixte.action.type === 'vendre' && mixte.action.quantite === 2 && mixte.action.montant === 500 && mixte.action.produit === 'tomate',
+    '« encaisse deux tomates à 500 » → vendre 2 × 500 (la ligne n\'est pas perdue)');
+  ok(typeDe('encaisse') === 'encaisser', '« encaisse » seul → encaisser');
+  ok(typeDe('on encaisse') === 'encaisser', '« on encaisse » → encaisser');
+  ok(typeDe('encaisse la vente') === 'encaisser', '« encaisse la vente » → encaisser (« vente » sans produit ni montant n\'est pas une vente)');
+  // LIMITE : « encaisse 500 » — un chiffre sans produit. Ce pourrait être le
+  // montant reçu dicté (hors périmètre du pilote, jamais reconnu) ou une
+  // ligne libre ; on n'invente ni l'un ni l'autre : on prépare l'encaissement,
+  // et le chiffre est ignoré.
+  ok(typeDe('encaisse 500') === 'encaisser', '« encaisse 500 » → encaisser, le chiffre est ignoré (montant reçu dicté : hors périmètre)');
+}
 
 console.log('\n[B2] La chaîne complète : phrase → intentLocal → machine, sur le compte réel');
 // Le panier tel que POSCaisse le voit : lignes (productId, quantite, total exact ou prix × quantité).
@@ -196,6 +213,20 @@ function parler(etat: EtatEncaissement, phrase: string, f: EtatFinancier) {
   ok(s.effet.type === 'encaisser', 'ENFIN « oui valide » sur le compte relu → effet encaisser (c\'est ici, et seulement ici, que POSCaisse appelle handlePay)');
   const bis = parler(etat, 'oui valide', f3);
   ok(bis.effet.type !== 'encaisser', 'un second « oui valide » ne paie pas une seconde fois');
+}
+{
+  // VOIX-02, LA TRAVERSÉE COMPLÈTE : après relecture, un refus qui contient
+  // « oui valide » ne doit produire AUCUN effet `encaisser`. Sur b752c78,
+  // « oui je valide pas » traversait grammaire → intentLocal → machine et
+  // payait le compte relu.
+  const f = panier([{ productId: 'tomate', quantite: 4, prix: 500 }, { productId: 'oignon', quantite: 2, prix: 1000 }], 5000);
+  for (const refus of ['oui je valide pas', 'oui valide pas', 'oui, je valide pas', 'oui valide la dépense', 'ma cliente a dit oui valide', 'oui je valide mon panier plus tard', 'ok valide', 'ça va valider', "ouais c'est ça", 'oui', "d'accord", 'valide']) {
+    const attente = reduire(ETAT_INITIAL, 'encaisser', f).etat;
+    const s = parler(attente, refus, f);
+    ok(s.effet.type !== 'encaisser', `relecture puis « ${refus} » → 0 effet encaisser (obtenu : ${s.effet.type})`);
+  }
+  const attente = reduire(ETAT_INITIAL, 'encaisser', f).etat;
+  ok(parler(attente, 'oui valide', f).effet.type === 'encaisser', 'et « oui valide », seul, paie toujours le compte relu');
 }
 {
   // Total exact d'une ligne dictée (500 F pour 3) : c'est lui qui entre dans

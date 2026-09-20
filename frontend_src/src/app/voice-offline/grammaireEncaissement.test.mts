@@ -64,16 +64,20 @@ table('[2] « combien elle doit » — lecture seule, plus accueillante', [
   ['total', 'combien_doit'],
 ]);
 
-table('[3] La validation exige DEUX mots concordants et VOISINS', [
+table('[3] La validation est une LISTE BLANCHE de réponses autonomes — la phrase ENTIÈRE, rien avant, rien après', [
   ['oui valide', 'oui_valide'],
   ['oui, valide', 'oui_valide'],
   ['Oui, valide !', 'oui_valide'],
+  ['  oui   valide  ', 'oui_valide'],
   ['oui je valide', 'oui_valide'],
   ['ouais valide', 'oui_valide'],
+  ['ouais je valide', 'oui_valide'],
   ['oui validé', 'oui_valide'],
   ["oui c'est bon valide", 'oui_valide'],
+  ["oui c’est bon valide", 'oui_valide'],
+  ['oui on valide', 'oui_valide'],
+  ['oui valide ça', 'oui_valide'],
   ['valide oui', 'oui_valide'],
-  ['voilà, valide', 'oui_valide'],
 ]);
 
 table("[4] Ce qui ne vaut RIEN — le bruit du marché ne paie pas", [
@@ -82,9 +86,13 @@ table("[4] Ce qui ne vaut RIEN — le bruit du marché ne paie pas", [
   ["d'accord", null],
   ['ok', null],
   ["c'est bon", null],
+  ["ouais c'est ça", null],
   ['valide', null],
   ['validé', null],
   ['je valide', null],
+  ['ok valide', null],
+  ['ça va valider', null],
+  ['voilà, valide', null],
   ['oui je regarderai si je valide demain', null],
   ['bonjour', null],
   ['', null],
@@ -92,6 +100,33 @@ table("[4] Ce qui ne vaut RIEN — le bruit du marché ne paie pas", [
   ['fini', null],
   ["c'est tout", null],
   ['voilà', null],
+]);
+
+table('[4b] VOIX-02 — « oui valide » AU MILIEU D\'AUTRE CHOSE ne paie JAMAIS (rouge sur b752c78)', [
+  // Reproduit par le QA et l'orchestrateur sur b752c78 : « oui je valide
+  // pas » → oui_valide → après relecture, effet `encaisser`. Le montant
+  // était bien celui relu ; c'est l'esprit du critère qui était contredit :
+  // un refus écrivait de l'argent. La regex cherchait « oui … valide »
+  // quelque part dans la phrase. Décision de Patrick : une phrase qui écrit
+  // de l'argent se reconnaît par sa FORME EXACTE — liste blanche fermée —
+  // pas par des mots qui traînent. Tout le reste : rien, ou annulation si un
+  // mot d'annulation est présent.
+  ['oui je valide pas', null],
+  ['oui valide pas', null],
+  ['oui, je valide pas', null],
+  ['oui valide la dépense', null],
+  ['ma cliente a dit oui valide', null],
+  ['oui je valide mon panier plus tard', null],
+  ['oui valide rien', null],
+  ['oui je ne valide plus', null],
+  ['jamais valide', null],
+  ['oui valide pour elle', null],
+  ['bon oui valide', null],
+  ['oui valide merci', null],
+  ['oui valide oui valide', null],
+  ['oui valide non', 'annuler_validation'],
+  ['non oui valide', 'annuler_validation'],
+  ['oui valide, attends', 'annuler_validation'],
 ]);
 
 table('[5] L\'annulation passe AVANT la validation — « non, pas valide » contient « valid »', [
