@@ -1,0 +1,2014 @@
+{
+  "genereLe": "2026-09-20",
+  "gardes": {
+    "frontend_src/src/app/utils/api.test.mts": {
+      "script": "test:api-url",
+      "assertions": 13,
+      "expects": 0,
+      "empreintes": {
+        "eq·${} : URL impossible et reconnaissable": 1,
+        "eq·${} configure : l'URL du build, sans alerte": 1,
+        "eq·/api/v1 ⟂ VITE_API_URL vide equivaut a absente": 1,
+        "eq·VITE_API_URL passe avant le filet onrender": 1,
+        "eq·dev / meme domaine : chemin relatif (comportement historique inchange)": 1,
+        "eq·https://api.exemple.test/api/v1 ⟂ espaces autour de VITE_API_URL ignores": 1,
+        "eq·production web : front et back sont sur DEUX domaines": 1,
+        "vrai·${} : JAMAIS un chemin relatif": 1,
+        "vrai·${} : le defaut de build est signale": 1,
+        "vrai·/\\.invalid(\\/|$)/ ⟂ domaine en .invalid (RFC 2606)": 1,
+        "vrai·/api/v1 ⟂ ${} : JAMAIS « /api/v1 »": 1,
+        "vrai·ne pointe vers aucun vrai backend": 1,
+        "vrai·string ⟂ API_URL est une chaine non vide": 1
+      }
+    },
+    "frontend_src/src/app/services/cartStorage.test.mts": {
+      "script": "test:cart",
+      "assertions": 25,
+      "expects": 0,
+      "empreintes": {
+        "eq·B ne voit pas le panier de A": 1,
+        "eq·JSON invalide → null": 1,
+        "eq·chaîne vide → null": 1,
+        "eq·clé présente mais 0 ligne → loadCart null": 1,
+        "eq·enveloppe versionnée v=1": 1,
+        "eq·julaba_cart_A ⟂ forme de clé attendue": 1,
+        "eq·les lignes valides survivent au round-trip": 1,
+        "eq·null → null": 1,
+        "eq·p1 ⟂ c'est bien la bonne ligne": 1,
+        "eq·panier effacé après clearStoredCart": 1,
+        "eq·recent ⟂ -2 h → récent": 1,
+        "eq·recent ⟂ panier récent → age recent": 1,
+        "eq·recent ⟂ pile au seuil → récent": 1,
+        "eq·saveCart signale l'échec (ok:false)": 1,
+        "eq·seule la ligne valide est conservée": 1,
+        "eq·stale ⟂ -13 h → ancien": 1,
+        "eq·stale ⟂ date invalide → ancien (prudent)": 1,
+        "eq·stale ⟂ panier vieux → age stale": 1,
+        "eq·version inconnue → null": 1,
+        "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·A et B ont des clés distinctes": 1,
+        "ok·A voit bien son panier": 1,
+        "ok·clé effacée quand le panier devient vide": 1,
+        "ok·clé présente après un ajout": 1,
+        "ok·saveCart ne lève pas malgré l'erreur de stockage": 1
+      }
+    },
+    "frontend_src/src/app/services/venteVocale.test.mts": {
+      "script": "test:voix",
+      "assertions": 42,
+      "expects": 0,
+      "empreintes": {
+        "eq·Produit vocal ⟂ nom absent → « Produit vocal »": 1,
+        "eq·Tomate ⟂ nom du CATALOGUE (pas le nom dicté)": 1,
+        "eq·alias prix_unitaire aligné": 1,
+        "eq·attiéké ⟂ nom dicté conservé": 1,
+        "eq·catalogue vide → null": 1,
+        "eq·deux candidats → ambigu → null (pas de mauvais stock)": 1,
+        "eq·mai ⟂ accent + pluriel (maïs → mai)": 1,
+        "eq·nom vide → null": 1,
+        "eq·os ⟂ mot de 2 lettres : s final conservé": 1,
+        "eq·p1 ⟂ l'égalité exacte prime sur l'inclusion": 1,
+        "eq·p1 ⟂ productId présent": 1,
+        "eq·p1 ⟂ « tomate » ⊂ « Tomate cerise » (unique) → apparié": 1,
+        "eq·p1 ⟂ « tomates » retrouve « Tomate »": 1,
+        "eq·p2 ⟂ insensible à la casse": 1,
+        "eq·pas de prix d'achat inventé": 1,
+        "eq·pas de productId": 1,
+        "eq·piment ⟂ espaces superflus effacés": 1,
+        "eq·prix d'achat UNITAIRE du catalogue (marge réelle)": 1,
+        "eq·prix unitaire arrondi (500/3)": 1,
+        "eq·prix_achat 0 → omis (le backend agrège pa × qte)": 1,
+        "eq·prix_achat absent → omis": 1,
+        "eq·produit inconnu → null": 1,
+        "eq·quantité 0 → 1 (jamais de division par zéro)": 1,
+        "eq·quantité absente → 1": 1,
+        "eq·quantité dictée": 1,
+        "eq·riz ⟂ mot court : le z final n'est pas un pluriel": 1,
+        "eq·tomate sechee ⟂ accents, majuscules et pluriels effacés": 1,
+        "eq·total = montant dicté": 1,
+        "eq·total = montant dicté (source de vérité, bug #11)": 1,
+        "eq·⟂ chaîne vide inoffensive": 1,
+        "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·mémoire illisible → on propose (jamais de casse)": 1,
+        "ok·nom générique → pas de proposition": 1,
+        "ok·nom trop court → pas de proposition": 1,
+        "ok·nom vide → pas de proposition": 1,
+        "ok·nom vide → refus non enregistré": 1,
+        "ok·produit apparié au catalogue → rien à proposer": 1,
+        "ok·produit inconnu + nom exploitable → on propose": 1,
+        "ok·quota plein → false, pas d'exception": 1,
+        "ok·refus mémorisé": 1,
+        "ok·refus respecté, accents/casse confondus": 1,
+        "ok·un refus ne bloque QUE ce produit": 1
+      }
+    },
+    "frontend_src/src/app/services/comptesMemorises.test.mts": {
+      "script": "test:comptes",
+      "assertions": 39,
+      "expects": 0,
+      "empreintes": {
+        "eq·0708123456 ⟂ numéro retenu (plus jamais 10 chiffres à redonner)": 1,
+        "eq·Adjoua ⟂ un compte existant remonte en tête (pas de doublon)": 1,
+        "eq·Awa ⟂ accueillie par son prénom": 1,
+        "eq·Awa ⟂ l'autre compte reste": 1,
+        "eq·JSON invalide → liste vide (connexion classique)": 1,
+        "eq·Mariam ⟂ la dernière entrée est accueillie": 1,
+        "eq·biométrie pas encore connue sur ce téléphone": 1,
+        "eq·clé supprimée quand la liste est vide": 1,
+        "eq·compte malformé écarté, les valides survivent": 1,
+        "eq·drapeau retombé": 1,
+        "eq·jamais plus de ${} comptes": 1,
+        "eq·le plus ancien (Awa) est sorti": 1,
+        "eq·rien n'est écrit": 1,
+        "eq·toujours borné après remontée": 1,
+        "eq·un compte mémorisé SANS ce champ reste valide": 1,
+        "eq·un nom d’adresse du mauvais type écarte le compte": 1,
+        "eq·une entrée par code ne fait pas oublier que l'empreinte marche": 1,
+        "eq·version inconnue → liste vide": 1,
+        "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·9 chiffres → refusé": 1,
+        "ok·Papa Kouassi ⟂ son choix est mémorisé avec le prénom": 1,
+        "ok·Papa Kouassi ⟂ un appel sans ce champ ne l'efface pas": 1,
+        "ok·compte inconnu → false, rien d'écrit": 2,
+        "ok·connue, sans reconnaissance → on propose": 1,
+        "ok·dernier compte oublié": 1,
+        "ok·déjà reconnue ici → pas de proposition": 1,
+        "ok·elle dit « Non » → noté": 1,
+        "ok·le refus survit aux reconnexions": 1,
+        "ok·mémorisation acceptée": 1,
+        "ok·oubli accepté": 1,
+        "ok·personne inconnue → pas de proposition": 1,
+        "ok·préfixe +225 → refusé (format national attendu)": 1,
+        "ok·quota plein → false, pas d'exception": 1,
+        "ok·reconnaissance active → plus rien à proposer": 1,
+        "ok·reconnaissance réussie notée": 1,
+        "ok·refus respecté → on ne redemande pas": 1,
+        "ok·son nom d’adresse est simplement inconnu": 1,
+        "ok·échec matériel → on peut repasser à false": 1
+      }
+    },
+    "frontend_src/src/app/voice-offline/nombresBambara.test.mts": {
+      "script": "test:bambara",
+      "assertions": 40,
+      "expects": 0,
+      "empreintes": {
+        "eq·1 000 recollé": 1,
+        "eq·12 500 avec séparateur de milliers recollé": 1,
+        "eq·12500 d'un bloc": 1,
+        "eq·1500 au milieu d'une phrase": 1,
+        "eq·500 simple": 1,
+        "eq·ba fila ni kɛmɛ duuru = 2500": 1,
+        "eq·ba kelen = 1000": 1,
+        "eq·ba mugan = 20 000": 1,
+        "eq·bi kɔnɔntɔn ni kɔnɔntɔn = 99": 1,
+        "eq·bi saba = 30": 1,
+        "eq·bi saba ni fila = 32": 1,
+        "eq·chaîne vide → null": 1,
+        "eq·duuru = 5": 1,
+        "eq·dɔrɔmɛ kɛmɛ = 100 dɔrɔmɛ = 500 FCFA": 1,
+        "eq·dɔrɔmɛ mugan = 20 dɔrɔmɛ = 100 FCFA": 1,
+        "eq·dɔrɔmɛ tan ni duuru = 15 dɔrɔmɛ = 75 FCFA": 1,
+        "eq·kelen = 1": 1,
+        "eq·keme ⟂ ɛ → e, minuscules": 1,
+        "eq·kononton ⟂ ɔ → o": 1,
+        "eq·kɔnɔntɔn = 9": 1,
+        "eq·kɛmɛ = 100": 1,
+        "eq·kɛmɛ fila = 200": 1,
+        "eq·kɛmɛ saba ni bi duuru ni duuru = 355": 1,
+        "eq·le mot dɔrɔmɛ agit où qu'il soit dans le nombre": 1,
+        "eq·le nombre est trouvé dans la phrase (vente à 500)": 1,
+        "eq·mugan = 20": 1,
+        "eq·mugan ni duuru = 25": 1,
+        "eq·pas de nombre → null": 1,
+        "eq·tan = 10": 1,
+        "eq·tan ni duuru = 15": 1,
+        "eq·tan ni kelen = 11": 1,
+        "eq·tan ni kelen ⟂ ponctuation et espaces nettoyés": 1,
+        "eq·waa fila = 2000 (variante waa)": 1,
+        "eq·waa tan = 10 000": 1,
+        "eq·waga = variante orthographique": 1,
+        "eq·wooro ⟂ voyelles spéciales rabattues": 1,
+        "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·contientNombreBambara détecte kɛmɛ": 1,
+        "ok·multiplicateur composé non géré (obtenu ${}, v1 assume 10002 — documenté)": 1,
+        "ok·pas de faux positif sur mots ordinaires": 1
+      }
+    },
+    "frontend_src/src/app/utils/fcfa.test.mts": {
+      "script": "test:fcfa",
+      "assertions": 19,
+      "expects": 0,
+      "empreintes": {
+        "eq·0 → rien à rendre": 1,
+        "eq·17 500 en 4 coupures": 1,
+        "eq·2 500 = 2000 + 500": 1,
+        "eq·400 = 200 × 2": 1,
+        "eq·75 = 50 + 25": 1,
+        "eq·cinq cents francs ⟂ 500 se dit": 1,
+        "eq·dix mille francs ⟂ 10 000 se dit": 1,
+        "eq·montant non rond → reste explicite": 1,
+        "eq·négatif → rien (jamais de monnaie négative)": 1,
+        "eq·toutes les coupures, décroissantes": 1,
+        "eq·vingt-cinq francs ⟂ 25 se dit": 1,
+        "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·aucun billet sous la cible tactile de 44 px": 1,
+        "ok·billets ≥ 500, pièces ≤ 250": 1,
+        "ok·cinq billets proposés à l'encaissement": 1,
+        "ok·l'écart entre le plus gros et le plus petit se voit à l'œil nu": 1,
+        "ok·le billet grandit avec la valeur, comme les vraies coupures": 1,
+        "ok·ordre strictement décroissant": 1,
+        "ok·valeur inattendue → taille plancher, jamais 0": 1
+      }
+    },
+    "frontend_src/src/app/services/antiJargon.test.mts": {
+      "script": "test:jargon",
+      "assertions": 3,
+      "expects": 0,
+      "empreintes": {
+        "verdict·\\n${} violation(s) ❌ — reformule avec le geste et le résultat (docs/INCLUSION.md §3.1)\\n": 1,
+        "verdict·✅ aucune chaîne jargonneuse — l\\'interface parle le langage de la marchande\\n": 1,
+        "verdict·❌ ${} — « ${} » contient « ${} »": 1
+      }
+    },
+    "frontend_src/src/app/utils/confortVisuel.test.mts": {
+      "script": "test:confort",
+      "assertions": 20,
+      "expects": 0,
+      "empreintes": {
+        "eq·normal ⟂ ancien sombre éteint → normal": 1,
+        "eq·normal ⟂ pas de stockage → normal": 1,
+        "eq·normal ⟂ rien de mémorisé → normal": 1,
+        "eq·normal ⟂ valeur inconnue → normal (jamais de casse)": 1,
+        "eq·soleil ⟂ le NOUVEAU réglage gagne toujours sur l'ancien": 1,
+        "eq·soleil ⟂ soleil mémorisé → soleil": 1,
+        "eq·sombre ⟂ ancien sombre actif, rien dans le nouveau réglage → sombre (elle retrouve son écran)": 1,
+        "eq·sombre ⟂ mode mémorisé": 1,
+        "eq·sombre ⟂ sombre mémorisé → sombre": 1,
+        "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·classe posée": 1,
+        "ok·classes retirées": 1,
+        "ok·la classe est posée MALGRÉ le stockage en panne": 1,
+        "ok·normal → aucune classe": 1,
+        "ok·retour au normal": 1,
+        "ok·retour soleil → dark RETIRÉE": 1,
+        "ok·soleil → classe soleil seule": 1,
+        "ok·sombre → dark posée, soleil RETIRÉE": 1,
+        "ok·écriture réussie": 1,
+        "ok·écriture → false (pas d'exception)": 1
+      }
+    },
+    "frontend_src/src/app/utils/tailleTexte.test.mts": {
+      "script": "test:taille",
+      "assertions": 13,
+      "expects": 0,
+      "empreintes": {
+        "eq·1 ⟂ retour au cran normal → 1": 1,
+        "eq·1.2 ⟂ variable --zoom-texte posée": 1,
+        "eq·NaN → 100 %": 1,
+        "eq·cran 5 → zoom 120 % renvoyé": 1,
+        "eq·cran maximum → 130 %": 1,
+        "eq·cran minimum → 85 %": 1,
+        "eq·cran normal (3) → 100 %": 1,
+        "eq·cran négatif → 100 %": 1,
+        "eq·cran trop grand → 100 %": 1,
+        "eq·valeur décimale 1.4 → arrondie au cran 1 (90 %)": 1,
+        "eq·valeur décimale 2.6 → arrondie au cran 3 (100 %)": 1,
+        "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·cran ${} strictement plus grand que le cran ${}": 1
+      }
+    },
+    "frontend_src/src/app/services/tokens.test.mts": {
+      "script": "test:tokens",
+      "assertions": 7,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} usages de tokens dans ${} fichiers balayés": 1,
+        "ok·:root définit des tokens": 1,
+        "ok·aucun token fantôme": 1,
+        "ok·surcharge soleil « ${} » existe dans :root": 1,
+        "ok·surcharge sombre « ${} » existe dans :root": 1,
+        "ok·« ${} » surchargé par le soleil l'est aussi par le sombre": 1,
+        "ok·« ${} » surchargé par le sombre l'est aussi par le soleil": 1
+      }
+    },
+    "frontend_src/src/app/services/supportLu.test.mts": {
+      "script": "test:support",
+      "assertions": 12,
+      "expects": 0,
+      "empreintes": {
+        "eq·2 réponses du support, jamais rien vu": 1,
+        "eq·aucun ticket → 0": 1,
+        "eq·mémoire bornée à 100 tickets": 1,
+        "eq·mémoire illisible → on recompte tout": 1,
+        "eq·pas de stockage → tout compte (jamais de casse)": 1,
+        "eq·que des messages user → 0": 1,
+        "eq·t1 vu, t2 jamais vu → 1": 1,
+        "eq·tout vu → 0": 1,
+        "eq·une réponse POSTÉRIEURE au dernier vu → 1": 1,
+        "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·marquage accepté": 1,
+        "ok·quota plein → false, pas d'exception": 1
+      }
+    },
+    "frontend_src/src/app/services/statsVente.test.mts": {
+      "script": "test:stats",
+      "assertions": 18,
+      "expects": 0,
+      "empreintes": {
+        "eq·3+2 = 5 vendus, 500+400 = 900 FCFA": 1,
+        "eq·500 pour 3 → total 500 (pas 501, pas 1500)": 1,
+        "eq·CA exclut la vente annulée (500 + 2000, pas 8500)": 1,
+        "eq·aucune vente comptée → 0 partout": 1,
+        "eq·bénéfices excluent la vente annulée (150 + 800)": 1,
+        "eq·dépense exclue ; top 2 par CA décroissant": 1,
+        "eq·l'annulée ne gonfle ni la quantité (2, pas 32) ni le CA (400, pas 6400)": 1,
+        "eq·montant utilisé tel quel": 1,
+        "eq·ni montant ni price → 0": 1,
+        "eq·panier moyen = 2500 / 2 (pas 8500 / 3)": 1,
+        "eq·price en repli (pas *3)": 1,
+        "eq·somme des tops (${}) = total ventes (${})": 1,
+        "eq·volume exclut la vente annulée (2, pas 3)": 1,
+        "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·annulee exclue": 1,
+        "ok·riz ×10 à 1000 FCFA → CA 1000 (et surtout pas 10 000)": 1,
+        "ok·statut absent → comptée (ventes historiques / crédits)": 1,
+        "ok·validee comptée": 1
+      }
+    },
+    "frontend_src/src/app/services/ruptureStock.test.mts": {
+      "script": "test:rupture",
+      "assertions": 11,
+      "expects": 0,
+      "empreintes": {
+        "eq·5 demandés, 3 en stock → 2 manquants": 1,
+        "eq·Attention, il manquait 2 tomate et 4 piment. Pense à réapprovisionner. ⟂ deux ruptures jointes par « et »": 1,
+        "eq·Attention, il manquait 2 tomate. Pense à réapprovisionner. ⟂ une rupture": 1,
+        "eq·assez de stock → 0": 1,
+        "eq·aucune rupture → rien à dire": 1,
+        "eq·oignon (assez) exclu": 1,
+        "eq·stock négatif traité comme 0": 1,
+        "eq·stock vide → tout manque": 1,
+        "eq·vente pile au stock → aucun avertissement": 1,
+        "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·10 vendus sur 2 en stock → « 8 riz » annoncés": 1
+      }
+    },
+    "frontend_src/src/app/types/constants.test.mts": {
+      "script": "test:route-access",
+      "assertions": 16,
+      "expects": 0,
+      "empreintes": {
+        "ok·/marchand ⟂ …redirection vers son espace marchand": 1,
+        "ok·marchand + estMembreCooperative=true → /cooperative/stock AUTORISÉ (le défaut corrigé)": 1,
+        "ok·marchand SANS coopérative → /cooperative/stock toujours refusé": 1,
+        "ok·marchand membre → /cooperative/finances reste refusé": 1,
+        "ok·marchand membre → /cooperative/membres reste refusé (pas de cumul générique)": 1,
+        "ok·marchand sans estMembreCooperative (undefined) → toujours refusé par défaut": 1,
+        "ok·marchand → /backoffice refusé": 1,
+        "ok·marchand → /marchand/* autorisé": 1,
+        "ok·marchand → /producteur/* refusé": 1,
+        "ok·producteur (même avec le flag) → /cooperative/stock refusé : le cumul ne concerne que le marchand": 1,
+        "ok·producteur → /producteur/* autorisé": 1,
+        "ok·responsable coop (DB=cooperateur) → /cooperative/* autorisé": 1,
+        "ok·super_admin → /backoffice autorisé": 1,
+        "ok·…et pas signalé comme refus pour absence de coopérative": 1,
+        "ok·…refus normal (hors périmètre du cumul), pas 'sans coopérative'": 1,
+        "ok·…refus signalé comme légitime (absence de coopérative), pas silencieux": 1
+      }
+    },
+    "frontend_src/src/app/hooks/useAudioUnlockFallback.test.tsx": {
+      "script": "test:audio-unlock",
+      "assertions": 7,
+      "expects": 0,
+      "empreintes": {
+        "ok·actif=false ne rejoue jamais (mode lecture, mauvaise étape)": 1,
+        "ok·consigne à jour ⟂ la consigne rejouée suit l\\'état courant de l\\'écran": 1,
+        "ok·l\\'écouteur est retiré au démontage (pas de fuite)": 1,
+        "ok·le premier toucher rejoue la consigne": 1,
+        "ok·rien n\\'est joué tant qu\\'aucun geste n\\'a eu lieu": 1,
+        "ok·trois touchers ne rejouent qu\\'une fois": 1,
+        "ok·un premier tap sur un BOUTON rejoue quand même la consigne": 1
+      }
+    },
+    "frontend_src/src/app/utils/appellation.test.mts": {
+      "script": "test:appellation",
+      "assertions": 12,
+      "expects": 0,
+      "empreintes": {
+        "ok·Awa ⟂ choix en blancs : prénom seul": 1,
+        "ok·Awa ⟂ prénom seul": 1,
+        "ok·Bonjour Kouassi ⟂ sans choix : prénom seul": 1,
+        "ok·Bonjour Maman Awa ⟂ avec son choix": 1,
+        "ok·Bonjour ⟂ rien de connu : « Bonjour », et rien de faux": 1,
+        "ok·Kouassi ⟂ choix vide : prénom seul": 1,
+        "ok·Maman Awa ⟂ espaces nettoyés": 1,
+        "ok·Maman Awa ⟂ son choix est employé tel quel": 1,
+        "ok·Papa Kouassi ⟂ un marchand choisit son titre": 1,
+        "ok·Tantie Awa ⟂ un autre choix, tout aussi respecté": 1,
+        "ok·la fonction ne prend que le choix et le prénom": 1,
+        "ok·⟂ rien de connu : rien à dire": 1
+      }
+    },
+    "frontend_src/src/app/utils/emojiTile.test.mts": {
+      "script": "test:vignette",
+      "assertions": 13,
+      "expects": 0,
+      "empreintes": {
+        "ok·/https?:\\/\\// ⟂ aucune adresse distante — rien à télécharger": 1,
+        "ok·image embarquée dans la page, pas une URL": 1,
+        "ok·🌶️ ⟂ majuscules et espaces": 1,
+        "ok·🍅 ⟂ minuscules et pluriel": 1,
+        "ok·🍅 ⟂ tomate": 1,
+        "ok·🍆 ⟂ aubergine": 1,
+        "ok·🍌 ⟂ nom composé": 1,
+        "ok·🍌 ⟂ plantain reconnu": 1,
+        "ok·🍠 ⟂ igname": 1,
+        "ok·🥜 ⟂ arachide": 1,
+        "ok·🧺 ⟂ nom absent : un panier aussi": 1,
+        "ok·🧺 ⟂ nom vide : un panier aussi": 1,
+        "ok·🧺 ⟂ produit inconnu : un panier, pas du vide": 1
+      }
+    },
+    "frontend_src/scripts/test-icones.mjs": {
+      "script": "test:icones",
+      "assertions": 8,
+      "expects": 0,
+      "empreintes": {
+        "verdict·\\n✓ icônes — tous les cas passent": 1,
+        "verdict·\\n✗ icônes — échec": 1,
+        "verdict·✓ aucune icône embarquée pour rien": 1,
+        "verdict·✓ aucune icône utilisée ne manque à l’appel": 1,
+        "verdict·✓ index.html n’appelle aucune ressource distante": 1,
+        "verdict·✗ ${} icône(s) embarquée(s) mais plus utilisée(s) : ${}": 1,
+        "verdict·✗ ${} icône(s) utilisée(s) mais PAS embarquée(s) : ${}": 1,
+        "verdict·✗ index.html appelle encore : ${}": 1
+      }
+    },
+    "frontend_src/scripts/test-cible-tactile.mjs": {
+      "script": "test:cible-tactile",
+      "assertions": 7,
+      "expects": 0,
+      "empreintes": {
+        "passe·la barre fait ~${} px de haut (minimum ${})": 1,
+        "passe·le champ est entouré d’une <label> — toute la barre donne le focus": 1,
+        "rate·aucune </label> fermante — le balisage est cassé": 1,
+        "rate·impossible de trouver l’élément qui entoure le champ": 1,
+        "rate·la barre ne fait que ~${} px — en dessous de la cible tactile de ${} px": 1,
+        "rate·le champ est entouré d’une ${}… et non d’une <label> :": 1,
+        "rate·marge verticale de la barre illisible": 1
+      }
+    },
+    "frontend_src/scripts/test-source-vente.mjs": {
+      "script": "test:source-vente",
+      "assertions": 6,
+      "expects": 0,
+      "empreintes": {
+        "verifier·la source part vraiment dans la vente envoyée ⟂ /\\.\\.\\.\\(source \\? \\{ source \\} : \\{\\}\\)/ ⟂ elle doit être dans le payload, donc aussi dans la file hors-ligne.": 1,
+        "verifier·la voix marque ses lignes en `vocal` ⟂ les DEUX appels comptent : produit du catalogue ET produit inconnu (vente libre).": 1,
+        "verifier·le contrat d’API porte un champ `source` ⟂ /source\\?:\\s*'vocal'\\s*\\|\\s*'kassa'/ ⟂ sans lui, rien ne peut partir au serveur — le défaut d’origine.": 1,
+        "verifier·le panier sait porter cette origine ⟂ /origine\\?:\\s*'vocal'/ ⟂ la ligne est la seule à savoir qui l’a créée ; la vente en hérite.": 1,
+        "verifier·l’encaissement déduit la source du panier ⟂ /cart\\.some\\(\\(i\\) => i\\.origine === 'vocal'\\)/ ⟂ c’est le seul endroit qui voit toutes les lignes au moment d’enregistrer.": 1,
+        "verifier·l’origine SURVIT à la fusion de deux lignes ⟂ /\\.\\.\\.\\(origine \\? \\{ origine \\} : \\{\\}\\)/ ⟂ un panier dicté puis complété au doigt reste un panier où la voix a servi.": 1
+      }
+    },
+    "frontend_src/scripts/test-verrou-connexion.mjs": {
+      "script": "test:verrou-connexion",
+      "assertions": 5,
+      "expects": 0,
+      "empreintes": {
+        "verifier·ce qui est affiché est aussi DIT ⟂ les deux cas comptent : l’attente ET l’avertissement.": 1,
+        "verifier·l’attente affichée vient du SERVEUR ⟂ /result\\.attenteMs/ ⟂ sans la durée renvoyée, on ne peut pas dire QUAND réessayer.": 1,
+        "verifier·l’avertissement avant palier vient du SERVEUR ⟂ /result\\.essaisRestants/ ⟂ c’est lui qui évite le blocage : rien ne prévenait avant.": 1,
+        "verifier·plus de compteur d’essais en mémoire ⟂ /loginAttempts/ ⟂ un compteur local ment dès le premier rechargement — c’était tout le défaut.": 1,
+        "verifier·plus d’échelle de paliers dupliquée ici ⟂ /dureeBlocagePalier|PALIER_1|PALIER_2|PALIER_3/ ⟂ une seule échelle, côté serveur : deux règles finissent toujours par diverger.": 1
+      }
+    },
+    "frontend_src/src/app/services/prixCatalogueVocal.test.mts": {
+      "script": "test:prix-catalogue",
+      "assertions": 18,
+      "expects": 0,
+      "empreintes": {
+        "ok·/Gombo/ ⟂ Tata nomme le produit concerné : « ${} »": 1,
+        "ok·/prix/i ⟂ Tata annonce qu’elle n’a pas le prix : « ${} »": 1,
+        "ok·/tas/ ⟂ /kg/ ⟂ Tata nomme les DEUX unités : « ${} »": 1,
+        "ok·2 × 100 = 200, obtenu ${}": 1,
+        "ok·aucune ligne ajoutée — aucune écriture financière": 1,
+        "ok·deux bananes : une ligne": 1,
+        "ok·la promo s'applique : 2 × 70 = 140, obtenu ${}": 1,
+        "ok·la quantité est bien 2": 1,
+        "ok·le montant dicté prime sur la promo, obtenu ${}": 1,
+        "ok·le montant dicté écrase le catalogue (350), obtenu ${}": 1,
+        "ok·le total vaut le prix catalogue (150), obtenu ${}": 1,
+        "ok·p-piment ⟂ c’est bien le produit du catalogue, pas une ligne libre": 1,
+        "ok·prix catalogue à 0 : aucune ligne": 1,
+        "ok·prix dicté sur un produit sans prix : la vente passe": 1,
+        "ok·une ligne est ajoutée au panier": 1,
+        "ok·unité incompatible : aucune ligne, aucun prix inventé": 1,
+        "ok·vocal ⟂ la vente est marquée « vocal »": 1,
+        "ok·« trois kilos » sur un prix au kg : 3 × 500 = 1500, obtenu ${}": 1
+      }
+    },
+    "frontend_src/scripts/test-fusion-panier.mjs": {
+      "script": "test:fusion-panier",
+      "assertions": 4,
+      "expects": 0,
+      "empreintes": {
+        "verifier·elle ADDITIONNE les deux totaux réels ⟂ /totalExact:\\s*\\(item\\.totalExact \\?\\? item\\.prix \\* item\\.quantite\\)/ ⟂ le total de chaque côté est son totalExact, sinon prix × quantité.": 1,
+        "verifier·la fusion ne jette plus le total exact ⟂ /quantite: item\\.quantite \\+ quantite,\\s*totalExact: undefined/ ⟂ c’est la forme exacte qui faisait perdre 200 F sur deux prix négociés.": 1,
+        "verifier·le nouveau côté passe par prixEffectif, comme le reste de la caisse ⟂ /\\(totalExact \\?\\? prixEffectif\\(product\\) \\* quantite\\)/ ⟂ sans quoi une promotion s’appliquerait à la création de ligne mais pas à la fusion.": 1,
+        "verifier·un serveur qui répond MAL retombe sur le cache, comme une coupure ⟂ /catch \\(err: unknown\\) \\{[\\s\\S]{0,300}restaurerDepuisCache\\(cacheKey\\)/ ⟂ /await caisseApi\\.fetchProduitsCaisse\\(\\)/ ⟂ /if \\(!res\\.ok\\)[\\s\\S]{0,200}return;/ ⟂ un 503 laissait le catalogue vide alors que les prix étaient sur le téléphone.": 1
+      }
+    },
+    "frontend_src/src/app/services/statsMultiProduits.test.mts": {
+      "script": "test:stats-multi",
+      "assertions": 12,
+      "expects": 0,
+      "empreintes": {
+        "ok·Banane à 300 F, obtenu ${}": 1,
+        "ok·Tomate cumulée : 500 + 250 = 750, obtenu ${}": 1,
+        "ok·Tomate à 500 F, obtenu ${}": 1,
+        "ok·Tomate ⟂ le classement met la Tomate en tête": 1,
+        "ok·aucun produit « Tomate, Banane » inventé": 1,
+        "ok·détails qui ne totalisent rien : on préfère le montant réel de la vente": 1,
+        "ok·détails sans nom : on ne crée pas un produit anonyme": 1,
+        "ok·détails vides : même repli": 1,
+        "ok·l'argent est conservé : ${} = 800": 1,
+        "ok·la quantité suit le bon produit": 1,
+        "ok·sans détails : repli sur la transaction entière": 1,
+        "ok·une vente annulée n’apparaît dans aucun produit": 1
+      }
+    },
+    "frontend_src/src/app/services/margePerte.test.mts": {
+      "script": "test:marge-perte",
+      "assertions": 8,
+      "expects": 0,
+      "empreintes": {
+        "ok·aucun prix d’achat → 0, jamais « 500 de marge »": 1,
+        "ok·détails absents → 0": 1,
+        "ok·détails illisibles → 0": 1,
+        "ok·ligne sans coût ignorée, la perte subsiste : ${}": 1,
+        "ok·prix d’achat à zéro → ligne ignorée, pas un bénéfice de 500": 1,
+        "ok·un vrai bénéfice reste un bénéfice : 600 − 3×100 = 300": 1,
+        "ok·vendu 800 ce qui a coûté 1 000 → −200 (et non 0)": 1,
+        "ok·vente mixte : −400 + 300 = −100 (l'ancien calcul disait +300), obtenu ${}": 1
+      }
+    },
+    "frontend_src/src/app/utils/uniteVente.test.mts": {
+      "script": "test:unite-vente",
+      "assertions": 35,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} kg ⟂ les milliers restent lisibles, obtenu « ${} »": 1,
+        "ok·1 sac de Riz ⟂ au singulier, pas de « s » parasite": 1,
+        "ok·2 sacs de Riz ⟂ « 2 sacs de Riz », obtenu « ${} »": 1,
+        "ok·3 pièces de Banane ⟂ « pièce » n’est PAS neutre — une marchande le dit": 1,
+        "ok·3 tas de Tomate ⟂ « 3 tas de Tomate », obtenu « ${} »": 1,
+        "ok·3 tas ⟂ « 3 tas »": 1,
+        "ok·3 × Savon ⟂ même chose sans accent (article libre)": 1,
+        "ok·3 × Savon ⟂ unité vide : idem": 1,
+        "ok·3 × Savon ⟂ vente d’AVANT ce correctif : forme historique conservée": 1,
+        "ok·3 × Savon ⟂ « unité » est neutre : on retombe sur « 3 × Savon »": 1,
+        "ok·3 ⟂ sans unité : le nombre seul": 1,
+        "ok·bidon ⟂ hors table : le singulier n’est pris que si accorderUnite le ré-accorde": 1,
+        "ok·kg ⟂ la casse ne compte pas": 1,
+        "ok·kg ⟂ une abréviation ne se pluralise jamais : « 3 kg »": 1,
+        "ok·kg ⟂ une abréviation ne s’accorde jamais": 1,
+        "ok·kg ⟂ « kilos » s’écrit « kg », comme sur le bouton de la caisse": 1,
+        "ok·litres ⟂ « litres »": 1,
+        "ok·morceau ⟂ un pluriel en x connu de la table": 1,
+        "ok·pièce ⟂ « pièce » n’est pas ramenée à « unité » — elle se dit, donc elle s’écrit": 1,
+        "ok·pièces ⟂ « pièce » n’est pas neutre": 1,
+        "ok·portion ⟂ quantité 1 : aucun pluriel": 1,
+        "ok·rien d’entendu → null : ce module n’invente pas d’unité": 1,
+        "ok·régime ⟂ sans accent à l’oreille, avec accent à l’écrit : une seule graphie": 1,
+        "ok·sac ⟂ au singulier, pas de s": 1,
+        "ok·sac ⟂ « sacs » → « sac » : l’unité est figée au singulier, l’accord se fait à la lecture": 1,
+        "ok·sacs ⟂ « sac » prend son pluriel": 1,
+        "ok·sacs ⟂ « sacs » s’accorde": 1,
+        "ok·tas ⟂ bassine ⟂ la table protège les singuliers en s ; le reste suit le pluriel régulier": 1,
+        "ok·tas ⟂ « tas » est invariable — on n’invente pas « tass »": 1,
+        "ok·tas ⟂ « tas » ne prend pas de s": 1,
+        "ok·tas ⟂ « tas » reste « tas » — jamais « ta »": 1,
+        "ok·un blanc n’est pas une unité": 1,
+        "ok·unité ⟂ « unités » → « unité », la valeur par défaut d’un article libre": 1,
+        "ok·⟂ sans unité : rien à afficher": 1,
+        "ok·⟂ « unité » n’apprend rien : rien à afficher": 1
+      }
+    },
+    "frontend_src/scripts/test-unite-persistee.mjs": {
+      "script": "test:unite-persistee",
+      "assertions": 6,
+      "expects": 0,
+      "empreintes": {
+        "verifier·Tata la DIT au moment où la marchande peut encore corriger ⟂ /unite\\?:\\s*string \\| null/ ⟂ /quantiteAvecUnite/ ⟂ « 3 tomates » et « 3 tas de tomate » ne décrivent pas la même vente.": 1,
+        "verifier·elle est FIGÉE à la création de la ligne, depuis le produit ⟂ /\\.\\.\\.\\(product\\.unite \\? \\{ unite: String\\(product\\.unite\\) \\} : \\{\\}\\)/ ⟂ captée une fois pour toutes, comme prix_achat.": 1,
+        "verifier·elle part dans la vente — les DEUX chemins, espèces et crédit ⟂ un seul chemin corrigé laisserait la moitié des ventes sans unité.": 1,
+        "verifier·la ligne du panier porte une unité ⟂ /unite\\?:\\s*string/ ⟂ sans champ sur la ligne, l’unité n’existe qu’au catalogue — donc elle change avec lui.": 1,
+        "verifier·la vente vocale fournit l’unité retenue ⟂ /const uniteLigne = produitCat\\?\\.unite \\|\\| uniteParlee \\|\\| null;/ ⟂ celle du catalogue si le produit est apparié, sinon celle qu’elle a prononcée.": 1,
+        "verifier·le reçu la lit depuis la LIGNE, jamais depuis le catalogue ⟂ /ligneLisible\\(q, nom, p\\.unite\\)/ ⟂ c’est une preuve remise à une cliente : elle doit dire ce qui a été vendu.": 1
+      }
+    },
+    "frontend_src/src/app/services/voixNative.test.mts": {
+      "script": "test:voix-native",
+      "assertions": 13,
+      "expects": 0,
+      "empreintes": {
+        "verifier·aucune lecture de clip": 1,
+        "verifier·aucune lecture de clip déclenchée": 1,
+        "verifier·c’est bien le WAV synthétisé": 1,
+        "verifier·la lecture native a démarré": 1,
+        "verifier·la lecture se termine et libère la chaîne": 1,
+        "verifier·la promesse se résout au lieu de rester pendante": 1,
+        "verifier·la promesse se résout quand même (l’écran n’attend pas indéfiniment)": 1,
+        "verifier·la voix du navigateur a parlé": 1,
+        "verifier·la voix du navigateur n’est PAS utilisée quand le natif répond": 1,
+        "verifier·la voix du navigateur prend le relais au lieu du silence": 1,
+        "verifier·rien n’est parti au navigateur sur une exception": 1,
+        "verifier·stop() a coupé la lecture native": 1,
+        "verifier·un WAV natif est confié au lecteur de clips": 1
+      }
+    },
+    "frontend_src/src/app/services/api/convergenceApi.test.mts": {
+      "script": "test:convergence-api",
+      "assertions": 17,
+      "expects": 0,
+      "empreintes": {
+        "eq·acces-2 ⟂ le nouveau jeton d’accès est rangé": 1,
+        "eq·forme tableau nu": 1,
+        "eq·forme { data: [...] }": 1,
+        "eq·forme { stocks: [...] }": 1,
+        "eq·jeton-1 ⟂ le jeton stocké est envoyé dans le corps (cas APK)": 1,
+        "eq·jeton-2 ⟂ le SUCCESSEUR remplace le jeton présenté": 1,
+        "eq·l’erreur porte son statut HTTP (5xx → l’opération sera enfilée)": 1,
+        "eq·…avec son propre aller-retour": 1,
+        "eq·…mais UN SEUL aller-retour réseau (le verrou tient)": 1,
+        "ok·${}${}, obtenu ${})`}": 1,
+        "ok·aucun fetch() direct vers auth, la caisse, le stock ou le catalogue hors des exceptions nommées${})` : ''}": 1,
+        "ok·aucune exception périmée dans RESTE_A_CONVERGER${})` : ''}": 1,
+        "ok·deux appels simultanés réussissent tous les deux": 1,
+        "ok·un 200 qui contient { error } n’est PAS un succès": 1,
+        "ok·un appel plus tard repart normalement": 1,
+        "ok·un corps avec accessToken est un succès": 1,
+        "ok·un refus du serveur à la création de stock REMONTE (il ne repart plus en succès)": 1
+      }
+    },
+    "frontend_src/src/app/services/api/authApiSessionExpiree.test.mts": {
+      "script": "test:auth-session-expiree",
+      "assertions": 13,
+      "expects": 0,
+      "empreintes": {
+        "eq·erreur_metier ⟂ Ce PIN est trop simple ⟂ …et le message du serveur arrive intact à l’écran": 1,
+        "eq·erreur_metier ⟂ c’est une erreur, pas une fin de session": 1,
+        "eq·erreur_metier ⟂ definirPin : refus métier…": 1,
+        "eq·erreur_metier ⟂ …avec le statut 0 : « pas de réponse »": 1,
+        "eq·le rafraîchissement a bien eu lieu": 1,
+        "eq·ok ⟂ aucune régression sur le cas normal": 1,
+        "eq·ok ⟂ la requête est rejouée et aboutit": 1,
+        "eq·ok ⟂ le bon code est reconnu bon": 1,
+        "eq·ok ⟂ le serveur a répondu : c’est un verdict métier": 1,
+        "eq·ok ⟂ …et le verdict est « faux »": 1,
+        "eq·session_expiree ⟂ definirPin : session expirée": 1,
+        "eq·session_expiree ⟂ l’état est « session expirée »…": 1,
+        "eq·session_expiree ⟂ …et il ne porte AUCUN verdict sur le code : il n’y en a pas eu": 1
+      }
+    },
+    "frontend_src/src/app/services/api/biometrieSessionExpiree.test.mts": {
+      "script": "test:biometrie-session",
+      "assertions": 6,
+      "expects": 0,
+      "empreintes": {
+        "eq·annulee ⟂ annulation distinguée du refus": 1,
+        "eq·non_reconnue ⟂ le serveur dit non : c’est un verdict": 1,
+        "eq·non_reconnue ⟂ échec WebAuthn = non reconnue": 1,
+        "eq·non_reconnue ⟂ …et surtout PAS « elle n’a pas été reconnue »": 1,
+        "eq·ok ⟂ aucune régression sur le cas normal": 1,
+        "eq·session_expiree ⟂ l’état dit « session expirée »…": 1
+      }
+    },
+    "frontend_src/src/app/services/api/creditsCleIdempotence.test.mts": {
+      "script": "test:credits-cle",
+      "assertions": 10,
+      "expects": 0,
+      "empreintes": {
+        "eq·la clé fournie est envoyée telle quelle": 1,
+        "eq·le montant est bien là, lui aussi": 1,
+        "eq·reglement-credit-2 ⟂ …stable, dérivée du crédit : le même règlement rejoué reste le même": 1,
+        "eq·…et le réessai présente la MÊME": 1,
+        "eq·…et rien n’est parti": 1,
+        "ok·deux tentatives voulues ne s’annulent pas l’une l’autre": 1,
+        "ok·montant nul refusé avant tout appel réseau": 1,
+        "ok·string ⟂ creerCredit envoie une clé — pour l’ACOMPTE initial seulement (ARG-04 reste ouverte)": 1,
+        "ok·string ⟂ le corps porte une `idempotency_key`": 1,
+        "ok·string ⟂ marquerCreditPaye envoie une clé": 1
+      }
+    },
+    "frontend_src/src/app/services/margePartielle.test.mts": {
+      "script": "test:marge-partielle",
+      "assertions": 21,
+      "expects": 0,
+      "empreintes": {
+        "eq·+${} marge ⟂ l’écran garde sa formulation actuelle": 1,
+        "eq·Marge connue : ${} ⟂ l’écran dit « Marge connue », pas « marge »": 1,
+        "eq·Perte : ${} ⟂ l’écran nomme la perte": 1,
+        "eq·Perte connue : ${} ⟂ l’écran dit la perte ET sa limite": 1,
+        "eq·Sur les articles dont tu connais le prix d’achat, tu as perdu 200 francs. ⟂ Tata dit la perte ET sa limite": 1,
+        "eq·Tata dit le chiffre ET sa limite": 1,
+        "eq·connue ⟂ toutes les lignes coûtées → « connue »": 1,
+        "eq·connue ⟂ une perte reste un état CONNU": 1,
+        "eq·inconnue ⟂ aucune ligne coûtée → « inconnue »": 1,
+        "eq·la perte connue n’est pas masquée par la ligne inconnue": 1,
+        "eq·le montant est celui des seules lignes coûtées (100)": 1,
+        "eq·l’état est « partielle » : on sait une partie, pas tout": 1,
+        "eq·mais tu as perdu 200 francs dessus ⟂ la voix nomme la perte": 1,
+        "eq·marge 100 francs ⟂ la voix garde sa formulation actuelle": 1,
+        "eq·marge — ⟂ l’écran ne fabrique aucun chiffre": 1,
+        "eq·partielle ⟂ partielle, même quand la partie connue est une perte": 1,
+        "eq·une marge partielle ne s’affiche JAMAIS comme une marge complète": 1,
+        "eq·une perte est une perte : −200": 1,
+        "eq·…et c’est bien le libellé écrit dans le fichier de données": 1,
+        "eq·…et la marge vaut 100": 1,
+        "eq·⟂ Tata se tait plutôt que d’inventer": 1
+      }
+    },
+    "frontend_src/src/app/services/mouvementsStockHorsStock.test.mts": {
+      "script": "test:mouvements-hors-stock",
+      "assertions": 11,
+      "expects": 0,
+      "empreintes": {
+        "eq·aucune mention « hors stock »": 1,
+        "eq·cinq tas rendus": 1,
+        "eq·et aucune mention inventée": 1,
+        "eq·kg ⟂ l’unité vient du mouvement": 1,
+        "eq·le nombre montré est ce qui est SORTI (4), pas le delta de stock (0)": 1,
+        "eq·le signe est positif : c’est rentré": 1,
+        "eq·le signe reste négatif : c’est lui qui porte la couleur et la flèche": 1,
+        "eq·sans les nouveaux champs : repli sur |quantite|, l’ancien affichage": 1,
+        "eq·tas ⟂ dans l’unité où ils avaient été pris — B2": 1,
+        "eq·trois kilos sortis, trois affichés": 1,
+        "eq·…et l’écran sait qu’il doit dire « hors stock »": 1
+      }
+    },
+    "frontend_src/src/app/services/mouvementsStockUniteHistorique.test.mts": {
+      "script": "test:mouvements-unite-historique",
+      "assertions": 13,
+      "expects": 0,
+      "empreintes": {
+        "eq·+5 tas ⟂ une rentrée porte son signe": 1,
+        "eq·-5 tas ⟂ le nombre et son unité, dits ensemble": 1,
+        "eq·-5 tas ⟂ …au tas, comme le jour de la vente": 1,
+        "eq·-5 ⟂ le nombre seul : on n’emprunte aucune unité": 1,
+        "eq·-5 ⟂ …et rien n’est collé au nombre": 1,
+        "eq·aucune mention à afficher": 1,
+        "eq·le mouvement passé s’affiche à l’identique": 1,
+        "eq·l’unité du catalogue d’aujourd’hui n’apparaît NULLE PART": 1,
+        "eq·l’écran sait qu’il ne sait pas — état typé, pas un blanc": 1,
+        "eq·tas ⟂ l’unité affichée est celle du mouvement": 1,
+        "eq·unité non enregistrée ⟂ …et il a de quoi le DIRE": 1,
+        "eq·« ${} » ne passe pas pour une unité connue": 1,
+        "eq·…et l’écran sait qu’il peut la dire": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/caisseSurfaceUnique.test.mts": {
+      "script": "test:caisse-surface",
+      "assertions": 12,
+      "expects": 0,
+      "empreintes": {
+        "ok·/@media\\s*\\(max-width:\\s*1023px\\)[\\s\\S]{0,200}pos-grille-apercu/ ⟂ elle ne s'applique QUE sous 1024 px : au-dessus, le panier est à côté et la grille reste entière": 1,
+        "ok·/\\.pos-grille-apercu\\s*>\\s*\\*:nth-child\\(n\\s*\\+\\s*5\\)/ ⟂ la règle d'aperçu existe dans styles/commerce.css": 1,
+        "ok·/\\bbottomAction\\s*=/ ⟂ aucune barre flottante `bottomAction` : elle n'était qu'une poignée pour ouvrir la feuille": 1,
+        "ok·/\\bshowCart\\b/ ⟂ aucun état `showCart` : il n'existe plus d'écran caché à ouvrir": 1,
+        "ok·/pos-grille-apercu/ ⟂ la grille repliée porte la classe .pos-grille-apercu": 1,
+        "ok·/renderCartFooter\\(\\)/ ⟂ elle rend le PIED : total, montant reçu, monnaie, « Payer en espèces »": 1,
+        "ok·/renderCartLines\\(\\)/ ⟂ elle rend les LIGNES du panier": 1,
+        "ok·/setVoirPlusProduits\\(/ ⟂ « Voir plus » bascule un état local (aucune navigation)": 1,
+        "ok·/uniteSeule\\(item\\.quantite,\\s*item\\.unite\\)/ ⟂ chaque ligne de panier affiche son unité (uniteSeule), comme l'étiquette du produit et le reçu": 1,
+        "ok·renderCartFooter() rendu exactement 2 fois (obtenu ${})": 1,
+        "ok·renderCartLines() rendu exactement 2 fois (obtenu ${} : panneau grand écran + section téléphone)": 1,
+        "ok·une <section className=\\\"lg:hidden\\\"> porte le panier sur téléphone": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/caisseMicroPermanent.test.mts": {
+      "script": "test:caisse-micro",
+      "assertions": 19,
+      "expects": 0,
+      "empreintes": {
+        "ok·/(&&|\\?|:)$/ ⟂ la ligne qui le précède n'ouvre aucune condition (« ${} »)": 1,
+        "ok·/<MicroVenteCaisse\\s+produitPreselectionne=\\{produitPreselectionne\\}/ ⟂ et le passe au micro, qui s'en sert pour sa question d'ouverture": 1,
+        "ok·/<POSCaisseInner \\/>/ ⟂ elle les monte AU-DESSUS de l'écran, donc au-dessus du micro": 1,
+        "ok·/<RaccourcisProvider>/ ⟂ /<ObjectifProvider ventes=/ ⟂ la caisse monte les providers dont le moteur a besoin (Raccourcis, Objectif)": 1,
+        "ok·/^\\s*<MicroVenteCaisse produitPreselectionne=\\{produitPreselectionne\\} onIntentionEncaissement=\\{onIntentionEncaissement\\} \\/>\\s*$/ ⟂ il est rendu seul sur sa ligne, sans garde `&&` ni ternaire": 1,
+        "ok·/const allerCaisse = \\(\\) => navigate\\('\\/marchand\\/caisse'\\)/ ⟂ l'accueil sait aller à la caisse": 1,
+        "ok·/location\\.state[\\s\\S]{0,200}produitPreselectionne/ ⟂ la caisse LIT cet état de route (sinon le produit partirait dans le vide)": 1,
+        "ok·/onClick=\\{allerCaisse\\}\\s+aria-label=\"Vendre\"/ ⟂ le bouton « Vendre » y mène DIRECTEMENT (plus d'écran vocal intermédiaire)": 1,
+        "ok·/onClick=\\{handleMicClick\\}/ ⟂ le bouton micro appelle le moteur — pas un gestionnaire décoratif": 1,
+        "ok·/return null/ ⟂ le composant du micro ne se retire jamais de lui-même (aucun `return null`)": 1,
+        "ok·/useVoiceCore\\(\\{/ ⟂ le composant du micro monte lui-même le moteur vocal (useVoiceCore)": 1,
+        "ok·/vendreUnifie\\(produitPourVente\\(action\\.produit,\\s*produitPreselectionne\\)/ ⟂ la vente dictée passe le produit présélectionné au moteur (produitPourVente)": 1,
+        "ok·/vendreUnifie\\(produitPourVente\\(r\\.action\\.produit,\\s*produitPreselectionne\\)/ ⟂ un raccourci résolu en vente s'en souvient aussi — c'est le même acte métier": 1,
+        "ok·GestionStock navigue vers /marchand/caisse en passant `produitPreselectionne` dans l'état de route": 1,
+        "ok·POSCaisse ne dessine aucun micro de son côté (${} trouvé(s)) : le seul micro de l'écran est celui qui marche": 1,
+        "ok·VenteVocaleModal.tsx est supprimé — pas de composant fantôme gardé « au cas où »": 1,
+        "ok·aucun fichier ne l'importe (${} trouvé(s)${})": 1,
+        "ok·le micro est rendu une seule fois (${})": 1,
+        "ok·le produit transmis porte son « ${} »": 1
+      }
+    },
+    "frontend_src/src/app/services/preselectionVente.test.mts": {
+      "script": "test:preselection-vente",
+      "assertions": 15,
+      "expects": 0,
+      "empreintes": {
+        "ok·3 tas (obtenu ${})": 1,
+        "ok·Oignon ⟂ et c'est de l'Oignon, PAS de la Tomate (obtenu « ${} »)": 1,
+        "ok·Tata ne redemande plus un prix que l’application connaît": 1,
+        "ok·Tomate ⟂ et c'est bien de la Tomate (obtenu « ${} »)": 1,
+        "ok·Tomate ⟂ la vente dictée marche comme avant (obtenu « ${} »)": 1,
+        "ok·Tomate ⟂ sans parole, la présélection prend le relais": 1,
+        "ok·Tomate ⟂ une parole vide n’est pas une parole": 1,
+        "ok·et Tata le dit, au lieu de se taire": 1,
+        "ok·oignons ⟂ la parole prime sur la présélection": 1,
+        "ok·rien n’entre au panier quand on ne sait pas quoi vendre": 1,
+        "ok·sans rien : rien — on n’invente pas de produit": 1,
+        "ok·tomate ⟂ le nom dicté est nettoyé de ses espaces": 1,
+        "ok·une ligne entre au panier (obtenu ${})": 2,
+        "ok·une présélection vide ne vaut pas présélection": 1
+      }
+    },
+    "frontend_src/src/app/voice-offline/grammaireEncaissement.test.mts": {
+      "script": "test:grammaire-encaissement",
+      "assertions": 11,
+      "expects": 0,
+      "empreintes": {
+        "ok·ni « vendre », ni « depense », ni la chaîne vide": 1,
+        "ok·quatre intentions, pas une de plus (${})": 1,
+        "ok·« ${} » en fait partie": 1,
+        "ok·« ${} » → ${}${})`}": 1,
+        "table·[1] « encaisse » PRÉPARE — sous ses formes réellement dites": 1,
+        "table·[2] « combien elle doit » — lecture seule, plus accueillante": 1,
+        "table·[3] La validation est une LISTE BLANCHE de réponses autonomes — la phrase ENTIÈRE, rien avant, rien après": 1,
+        "table·[4] Ce qui ne vaut RIEN — le bruit du marché ne paie pas": 1,
+        "table·[4b] VOIX-02 — « oui valide » AU MILIEU D\\'AUTRE CHOSE ne paie JAMAIS (rouge sur b752c78)": 1,
+        "table·[5] L\\'annulation passe AVANT la validation — « non, pas valide » contient « valid »": 1,
+        "table·[6] Une vente ou une question du jour n'est PAS un encaissement": 1
+      }
+    },
+    "frontend_src/src/app/services/machineEncaissement.test.mts": {
+      "script": "test:machine-encaissement",
+      "assertions": 64,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} conversations explorées, ${} paiements émis": 1,
+        "ok·(les deux paniers font le même total)": 1,
+        "ok·Elle doit ${} francs. Elle t'a donné ${}. Tu rends ${}. ⟂ « ${} »": 1,
+        "ok·Elle doit ${} francs. ⟂ « ${} »": 1,
+        "ok·Le compte a changé. ${} ⟂ et Tata relit avec le nouveau reçu": 1,
+        "ok·Le compte a changé. ${} ⟂ relecture du nouveau compte": 1,
+        "ok·Tata demande de toucher les billets": 1,
+        "ok·Tata dit que le compte a changé": 1,
+        "ok·Tata relit le compte : « ${} »": 1,
+        "ok·Ton panier est vide. ⟂ panier vide : « Ton panier est vide. »": 1,
+        "ok·ZÉRO écriture : 6 000 n\\'est pas le compte relu": 1,
+        "ok·attente_confirmation ⟂ il déclenche une relecture, et c\\'est tout": 1,
+        "ok·attente_confirmation ⟂ la machine attend la seconde phrase": 1,
+        "ok·attente_confirmation ⟂ la nouvelle attente porte la NOUVELLE empreinte": 1,
+        "ok·attente_confirmation ⟂ mais on passe en relecture du compte maintenant complet": 1,
+        "ok·attente_confirmation ⟂ poser la question ne ferme pas la confirmation en cours": 1,
+        "ok·au repos, « oui valide » ne paie pas — même avec un compte parfait": 1,
+        "ok·aucun effet encaisser": 3,
+        "ok·aucun paiement sans relecture EXACTE du même compte juste avant (${} violation(s))": 1,
+        "ok·depuis « preparation » (pas encore relu) : pas de paiement": 1,
+        "ok·dire ⟂ D'accord, je ne valide pas. ⟂ Tata confirme qu\\'elle ne valide pas": 1,
+        "ok·dire ⟂ le billet de plus déclenche la relecture du NOUVEAU compte (reçu 10 000)": 1,
+        "ok·dire ⟂ le billet qui complète (4 000) déclenche la relecture — « Compte juste »": 1,
+        "ok·dire ⟂ reçu passe à 5 000 → Tata relit d\\'elle-même : « ⟂ »": 1,
+        "ok·dire ⟂ « encaisse » avec reçu 0 → préparation, Tata demande les billets": 1,
+        "ok·encaisser ⟂ et c\\'est le dernier effet": 1,
+        "ok·encaisser ⟂ le second est une relecture, pas un paiement": 1,
+        "ok·encaisser ⟂ repos ⟂ puis « oui valide » → UN effet encaisser": 1,
+        "ok·et Tata le dit": 1,
+        "ok·et relit le NOUVEAU total": 1,
+        "ok·et « oui valide » n\\'y paie pas : il faut « encaisse » d\\'abord": 1,
+        "ok·et « oui valide » paie 6 000 / reçu 10 000, le compte entendu": 1,
+        "ok·exactement un effet encaisser": 1,
+        "ok·l\\'ANCIENNE empreinte (reçu 5 000) ne vaut plus : « oui valide » dessus ne paie pas": 1,
+        "ok·l\\'ordre des lignes ne change pas l\\'empreinte": 1,
+        "ok·la relecture porte les trois nombres : total, reçu, monnaie": 1,
+        "ok·même panier dans un autre ordre : confirmé": 1,
+        "ok·même quand le nouveau compte serait payable : on relit, on ne paie pas": 1,
+        "ok·même total mais composition différente → rejeté : c\\'est la vente qu\\'on confirme, pas un chiffre": 1,
+        "ok·preparation ⟂ le reçu ne couvre plus : retour en préparation": 1,
+        "ok·preparation ⟂ reçu insuffisant : préparation, pas de relecture": 1,
+        "ok·preparation ⟂ rien ⟂ reçu 3 000 (insuffisant) → toujours préparation, effet rien : elle compte encore": 1,
+        "ok·preparation ⟂ sans billets touchés : préparation, pas de relecture": 1,
+        "ok·repos ⟂ Tata dit que le panier est vide": 1,
+        "ok·repos ⟂ encaisser ⟂ « oui valide » paie le nouveau compte relu — celui qu\\'elle vient d\\'entendre": 1,
+        "ok·repos ⟂ la machine revient au repos : la confirmation est consommée": 1,
+        "ok·repos ⟂ la vente suivante, billets touchés sans « encaisse » → aucune relecture spontanée": 1,
+        "ok·repos ⟂ panier vide : rien à encaisser, on reste au repos": 1,
+        "ok·repos ⟂ préparation puis panier vidé → repos aussi": 1,
+        "ok·repos ⟂ rien ⟂ attente puis panier vidé → repos, sans un mot": 1,
+        "ok·repos ⟂ rien ⟂ au repos, rien à annuler, on ne dit rien": 1,
+        "ok·repos ⟂ rien ⟂ repos + billets suffisants → rien": 1,
+        "ok·repos ⟂ état inchangé (repos)": 1,
+        "ok·reçu = total → « Compte juste », pas « tu rends 0 »": 1,
+        "ok·rien ⟂ dire ⟂ silence tant que ça ne couvre pas, relecture dès que ça couvre": 1,
+        "ok·trois « oui valide » : le 1er paie, le 2e relit, le 3e confirme la relecture — jamais deux de suite": 1,
+        "ok·un `etat_financier_change` sans changement réel (re-render) ne casse pas une confirmation légitime": 1,
+        "ok·un billet touché entre-temps annule la confirmation": 1,
+        "ok·un second « oui valide », sur ce nouveau compte relu, paie — une fois": 1,
+        "ok·un seul paiement (${})": 1,
+        "ok·un « oui valide » après l\\'annulation ne paie pas : il faut tout relire": 1,
+        "ok·« Vider » puis « oui valide » : rien à payer": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/caisseEncaissementVocal.test.mts": {
+      "script": "test:caisse-encaissement",
+      "assertions": 50,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} combinaisons état × compte : 0 effet encaisser (${})": 1,
+        "ok·/'etat_financier_change'/ ⟂ /useEffect\\(\\(\\) => \\{[\\s\\S]{0,600}?'etat_financier_change'/ ⟂ un useEffect envoie `etat_financier_change` : le panier ou le reçu qui bouge invalide la confirmation": 1,
+        "ok·/\\.\\.\\.INTENTIONS_ENCAISSEMENT/ ⟂ /'vendre'/ ⟂ confirmationBypassIntents = [${}] — c'est l'effet métier qui parle, pas le moteur": 1,
+        "ok·/\\.\\.\\.INTENTIONS_ENCAISSEMENT/ ⟂ /'vendre'/ ⟂ offlineLocalIntents = [${}] — elles n'écrivent rien au serveur elles-mêmes": 1,
+        "ok·/\\benregistrerVente\\b/ ⟂ ni `enregistrerVente`": 1,
+        "ok·/\\bhandlePay\\b/ ⟂ MicroVenteCaisse ne contient pas `handlePay`": 1,
+        "ok·/\\breduire\\(/ ⟂ et la fait tourner (`reduire`)": 1,
+        "ok·/const handlePay = async \\(\\) =>/ ⟂ qui reste `async () =>`, sans paramètre : voix et doigt convergent sur la même fonction et le même verrou": 1,
+        "ok·/effet\\.type === 'encaisser'[\\s\\S]{0,400}?\\bhandlePay\\(\\)/ ⟂ et cet appel est dans la branche de l\\'effet `encaisser`": 1,
+        "ok·/estIntentionEncaissement\\([^)]*\\)\\)\\s*\\{\\s*onIntentionEncaissement\\([^)]*\\);\\s*return;\\s*\\}/ ⟂ et `return` aussitôt : rien d\\'autre ne se passe sur une phrase d\\'encaissement": 1,
+        "ok·/from '\\.\\.\\/\\.\\.\\/services\\/machineEncaissement'/ ⟂ POSCaisse importe la machine": 1,
+        "ok·/from '\\.\\/grammaireEncaissement'/ ⟂ localIntent importe la grammaire": 1,
+        "ok·/handlePay/ ⟂ et ce useEffect ne contient pas `handlePay` : il parle, il ne paie pas": 1,
+        "ok·/if \\(effet\\.type === 'dire'\\) speak\\(effet\\.texte\\)/ ⟂ le useEffect de POSCaisse DIT l\\'effet `dire` rendu par ce changement (sinon la relecture spontanée serait muette)": 1,
+        "ok·/onClick=\\{handlePay\\}/ ⟂ le bouton « Payer en espèces » appelle toujours la même primitive": 1,
+        "ok·/onIntentionEncaissement:\\s*\\(intention:\\s*IntentionEncaissement\\)\\s*=>\\s*void/ ⟂ il déclare la prop `onIntentionEncaissement` (obligatoire : sans elle, les phrases d\\'encaissement seraient avalées)": 1,
+        "ok·/onIntentionEncaissement=\\{onIntentionEncaissement\\}/ ⟂ le micro reçoit `onIntentionEncaissement` sur sa ligne de rendu": 1,
+        "ok·/phraseRelecture\\(/ ⟂ mais elle sait relire (phraseRelecture) : c\\'est Tata qui relit d\\'elle-même quand les billets couvrent": 1,
+        "ok·/type:\\s*'encaisser'/ ⟂ cette branche ne contient aucun `type: \\'encaisser\\'` : un changement de panier ou de reçu ne paie jamais": 1,
+        "ok·AVANT `extraire` — sinon « combien elle doit » deviendrait un crédit": 1,
+        "ok·\\`handlePay()\\` est appelé exactement une fois dans POSCaisse (${})": 1,
+        "ok·attente_confirmation ⟂ « d\\'accord » → rien non plus": 1,
+        "ok·attente_confirmation ⟂ « oui » seul → rien, l\\'attente reste ouverte": 1,
+        "ok·dire ⟂ Tata relit le nouveau compte (6 000)": 1,
+        "ok·dire ⟂ attente_confirmation ⟂ « encaisse » → relecture du compte 4 000 / reçu 5 000": 1,
+        "ok·dire ⟂ repos ⟂ « combien elle doit ? » → Tata annonce, état inchangé": 1,
+        "ok·dire ⟂ repos ⟂ « non » → annulé": 1,
+        "ok·dire ⟂ « on encaisse » → relecture 6 000 / reçu 10 000 / rends 4 000": 1,
+        "ok·encaisser ⟂ ENFIN « oui valide » sur le compte relu → effet encaisser (c\\'est ici, et seulement ici, que POSCaisse appelle handlePay)": 1,
+        "ok·encaisser ⟂ et « oui valide », seul, paie toujours le compte relu": 1,
+        "ok·encaisser ⟂ panier passé à 6 000 → « oui valide » ne paie PAS": 1,
+        "ok·encaisser ⟂ relecture puis « ${} » → 0 effet encaisser (obtenu : ${})": 1,
+        "ok·encaisser ⟂ un second « oui valide » ne paie pas une seconde fois": 1,
+        "ok·encaisser ⟂ « encaisse 500 » → encaisser, le chiffre est ignoré (montant reçu dicté : hors périmètre)": 1,
+        "ok·encaisser ⟂ « encaisse la vente » → encaisser (« vente » sans produit ni montant n\\'est pas une vente)": 1,
+        "ok·encaisser ⟂ « encaisse » seul → encaisser": 1,
+        "ok·encaisser ⟂ « on encaisse » → encaisser": 1,
+        "ok·encaisser ⟂ « oui valide » sans relecture préalable → pas de paiement (relecture)": 1,
+        "ok·et ${} relecture(s) spontanée(s) quand le reçu vient couvrir": 1,
+        "ok·et l\\'appelle": 1,
+        "ok·l\\'empreinte suit le total EXACT de la ligne (500), pas 3 × 167": 1,
+        "ok·la liste de référence porte exactement les quatre": 1,
+        "ok·la machine a une branche `etat_financier_change`": 1,
+        "ok·le micro ne routerait pas cette vente vers la caisse": 1,
+        "ok·onAction appelle `onIntentionEncaissement(...)` avant de regarder « vendre »": 1,
+        "ok·vendre ⟂ tomate ⟂ « encaisse deux tomates à 500 » → vendre 2 × 500 (la ligne n\\'est pas perdue)": 1,
+        "ok·vendre ⟂ « attends, vends deux tomates à 500 francs » reste une vente : un refus qui porte une vente entière est une correction, pas un abandon (mesuré : c\\'était une vente sur f0c965c)": 1,
+        "ok·vendre ⟂ « vends 3 tomates à 500 francs » reste une vente (3 × 500), pas un encaissement": 1,
+        "ok·« ${} » → ${}${})`}": 1,
+        "ok·⟂ encaisser ⟂ un résultat d\\'encaissement : needsConfirmation false, response vide (la machine parle, pas le moteur)": 1
+      }
+    },
+    "frontend_src/src/app/services/relectureSpontanee.test.mts": {
+      "script": "test:relecture-spontanee",
+      "assertions": 29,
+      "expects": 0,
+      "empreintes": {
+        "eq·1 sachet de sel, ${} francs. Total : ${} francs. ⟂ le total du panier est dit même quand la ligne est petite : c\\'est lui qu\\'elle annonce à la cliente": 1,
+        "eq·1 tomate, ${} francs. Total : ${} francs. ⟂ quantité 1, sans unité : singulier": 1,
+        "eq·2 kg de riz, ${} francs. Total : ${} francs. ⟂ abréviation « kg » invariable, comme phraseCompris": 1,
+        "eq·2 tomates, ${} francs. Total : ${} francs. ⟂ « unité » n\\'apprend rien : on pluralise le produit (« 2 tomates »)": 1,
+        "eq·3 tas de tomate, ${} francs. Total : ${} francs. ⟂ « 3 tas de tomate, 1 500 francs. Total : 4 000 francs. »": 1,
+        "eq·Compte juste. ⟂ reçu = total → « Compte juste. »": 1,
+        "eq·Elle t'a donné ${} francs. Tu rends ${} francs. ⟂ avant l\\'ajout : elle rend 500": 1,
+        "eq·Elle t'a donné ${} francs. Tu rends ${} francs. ⟂ les milliers sont formatés comme à l\\'écran (fr-FR)": 1,
+        "eq·Elle t'a donné ${} francs. Tu rends ${} francs. ⟂ ligne retirée, même reçu : elle rend 1 000": 1,
+        "eq·Elle t'a donné ${} francs. Tu rends ${} francs. ⟂ reçu 2 000 pour 1 500 → « Elle t\\'a donné 2 000 francs. Tu rends 500 francs. »": 1,
+        "eq·Elle t'a donné ${} francs. Tu rends ${} francs. ⟂ troisième billet : elle rend 1 000": 1,
+        "eq·Il manque ${} francs. ⟂ après l\\'ajout, même reçu : il manque 500 (recalculé)": 1,
+        "eq·Il manque ${} francs. ⟂ deuxième billet : il manque 1 000": 1,
+        "eq·Il manque ${} francs. ⟂ premier billet : il manque 1 500": 1,
+        "eq·Il manque ${} francs. ⟂ reçu 1 000 pour 1 500 → « Il manque 500 francs. »": 1,
+        "eq·et encore → silence": 1,
+        "eq·le même état resoumis (re-render) → silence": 1,
+        "eq·panier plein mais rien reçu → silence (le total a été dit à l\\'ajout)": 1,
+        "eq·panier vidé : silence": 1,
+        "eq·rien au panier mais un billet posé → silence (pas d\\'argent en jeu)": 1,
+        "eq·rien au panier, rien reçu → silence": 1,
+        "eq·vente B, identique : dite à nouveau": 1,
+        "ok·/\\bF\\b/ ⟂ jamais « F » seul : la synthèse le lirait comme une lettre": 1,
+        "ok·la première fois, Tata parle": 1,
+        "ok·le total est formaté par toLocaleString(fr-FR), donc identique à l\\'écran": 1,
+        "ok·memeEtat : mêmes chiffres → même état": 1,
+        "ok·memeEtat : sans précédent, rien n\\'est « déjà dit »": 1,
+        "ok·memeEtat : une ligne de plus → état différent": 1,
+        "ok·vente A : dite": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/repliParle.test.mts": {
+      "script": "test:repli-parle",
+      "assertions": 14,
+      "expects": 0,
+      "empreintes": {
+        "ok·/BoutonReecouter/ ⟂ SaisieGuidee affiche aussi le bouton réécouter": 1,
+        "ok·/\\{texteAffiche\\}/ ⟂ et c\\'est texteAffiche qui est rendu à l\\'écran — même variable, pas de paraphrase": 1,
+        "ok·/aria-label=\"Réécouter/ ⟂ le bouton réécouter est nommé pour le lecteur d\\'écran": 1,
+        "ok·/const texteAffiche\\s*=[\\s\\S]{0,200}phraseConfirmation\\(ligne\\)/ ⟂ la phrase affichée (texteAffiche) est produite par phraseConfirmation(ligne)": 1,
+        "ok·/dire\\(texteAffiche\\)/ ⟂ et c\\'est texteAffiche qui part à la synthèse": 1,
+        "ok·/guidageVocal\\(\\)/ ⟂ ConfirmationLigne passe par guidageVocal()": 1,
+        "ok·/guidageVocal\\(\\)/ ⟂ SaisieGuidee passe par guidageVocal()": 1,
+        "ok·/minHeight:\\s*CIBLE_TACTILE/ ⟂ /minWidth:\\s*CIBLE_TACTILE/ ⟂ le bouton réécouter applique CIBLE_TACTILE en hauteur ET en largeur": 1,
+        "ok·/phraseQuantiteManquante\\(/ ⟂ la question « Combien de … ? » est celle des dialogues de Tata, pas une phrase maison": 1,
+        "ok·/useEffect\\(/ ⟂ la répétition est dite depuis un useEffect (une fois par état de ligne, pas à chaque rendu)": 1,
+        "ok·/useEffect\\(/ ⟂ les questions d\\'étape partent d\\'un useEffect (au changement d\\'étape, pas à chaque rendu)": 1,
+        "ok·CIBLE_TACTILE ≥ 44 px (obtenu ${})": 1,
+        "ok·ConfirmationLigne.tsx appelle speak( au moins une fois (obtenu ${})": 1,
+        "ok·SaisieGuidee.tsx appelle speak( au moins une fois (obtenu ${})": 1
+      }
+    },
+    "frontend_src/src/app/services/vendreVocalUnifieUnite.test.mts": {
+      "script": "test:vendre-unifie-unite",
+      "assertions": 18,
+      "expects": 0,
+      "empreintes": {
+        "eq·AUCUNE ligne : un tas n'est pas un kilo, on ne prend pas le prix du catalogue": 1,
+        "eq·kg ⟂ la ligne porte l'unité du produit apparié": 1,
+        "eq·kg ⟂ « kilos » entendu → « kg » enregistré, comme au doigt": 1,
+        "eq·prix du catalogue accepté (kilos ≡ kg)": 1,
+        "eq·sac ⟂ « Sacs » → « sac » : singulier, minuscule ; l'accord se fait à la lecture": 1,
+        "eq·tas ⟂ la ligne enregistre l'unité PRONONCÉE, pas « unité »": 1,
+        "eq·une ligne libre ajoutée au panier": 1,
+        "eq·unité ⟂ uniteParlee=null → « unité »": 1,
+        "eq·unité ⟂ valeur par défaut d'un article libre : « unité »": 1,
+        "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·/\\bkg\\b/ ⟂ Tata dit l'unité du catalogue": 1,
+        "ok·/\\bkg\\b/ ⟂ et c'est « kg » que Tata dit — pas un autre mot que celui qui est enregistré": 1,
+        "ok·/\\btas\\b/ ⟂ Tata dit « tas » — obtenu « ${} »": 1,
+        "ok·/combien/i ⟂ et lui demande le prix au lieu de l'inventer": 1,
+        "ok·/tas/ ⟂ /kg/ ⟂ Tata nomme les deux unités pour qu'elle entende le désaccord — obtenu « ${} »": 1,
+        "ok·/unit/i ⟂ « unité » n'apprend rien : elle ne se dit pas (« 2 gombos »)": 1,
+        "ok·Tata accorde à la lecture : « 3 sacs de gombo »": 1,
+        "ok·la phrase dite est construite avec l'unité ENREGISTRÉE : un seul sens pour la même donnée": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/choixUnite.test.mts": {
+      "script": "test:choix-unite",
+      "assertions": 16,
+      "expects": 0,
+      "empreintes": {
+        "ok·/<ChoixUnite\\b/ ⟂ et le pose dans la feuille « Autre article »": 1,
+        "ok·/import\\s*\\{[^}]*\\bChoixUnite\\b[^}]*\\}\\s*from\\s*'\\.\\/ChoixUnite'/ ⟂ POSCaisse importe ChoixUnite": 1,
+        "ok·/unite:\\s*'unit[ée]'/ ⟂ il n'enregistre PLUS `unite: 'unite'` en dur : l'unité vient de ce qu'elle a choisi": 1,
+        "ok·UNITES_CHOIX exporte exactement ces six unités": 1,
+        "ok·au kilo ⟂ « kg » se DIT « au kilo » — on ne prononce pas une abréviation": 1,
+        "ok·au tas ⟂ Tata dit « au tas » (obtenu « ${} »)": 1,
+        "ok·aucun bouton sous ${} px de haut (${} en défaut)": 1,
+        "ok·l'unité retenue est marquée (aria-pressed), et elle seule": 1,
+        "ok·le bouton « tas » existe dans l'arbre": 1,
+        "ok·le chemin « montant libre » (ajouterMontantLibre) existe toujours dans POSCaisse": 1,
+        "ok·sans `dire`, la sélection fonctionne sans parler": 1,
+        "ok·six boutons rendus (obtenu ${})": 1,
+        "ok·tas ⟂ onChoisir reçoit « tas »": 1,
+        "ok·type=\\\"button\\\" : jamais une soumission de formulaire par surprise": 1,
+        "ok·« ${} » est proposée": 1,
+        "ok·à l'unité ⟂ à la bassine ⟂ les tournures sont celles du marché": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/caisseUnSeulMicro.test.mts": {
+      "script": "test:caisse-un-seul-micro",
+      "assertions": 8,
+      "expects": 0,
+      "empreintes": {
+        "ok·/'\\/marchand\\/caisse'/ ⟂ qui contient '/marchand/caisse'": 1,
+        "ok·/const tataMasquee = ROUTES_SANS_TATA\\.includes\\(location\\.pathname\\)/ ⟂ le masquage est décidé sur le pathname courant (même mécanisme que /keiwa, mais ciblé)": 1,
+        "ok·/if \\(tataMasquee\\) return null/ ⟂ /<nav aria-label=\"Navigation principale\"/ ⟂ la barre elle-même n'est PAS retirée : Accueil, Stock, Profil restent atteignables": 1,
+        "ok·/isOpen=\\{isTantieOpen && !tataMasquee\\}/ ⟂ la modale Tata ne peut pas s'ouvrir non plus (double-tap global) sur la caisse": 1,
+        "ok·/path:\\s*\"\\/marchand\",\\s*element:\\s*<AppLayout \\/>/ ⟂ /marchand est rendu sous AppLayout": 1,
+        "ok·/path:\\s*\"caisse\",\\s*element:[^\\n]*POSCaisse/ ⟂ et /marchand/caisse y est la route de POSCaisse": 1,
+        "ok·la BottomBar porte une liste ROUTES_SANS_TATA": 1,
+        "ok·le bouton « Ouvrir Tata Nanti Lou » est rendu sous la garde `!tataMasquee`": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/caisseCharte.test.mts": {
+      "script": "test:caisse-charte",
+      "assertions": 27,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} : chaque token lu est déclaré (${})": 1,
+        "ok·${} = ${}": 1,
+        "ok·${} n'écrit aucune couleur hexadécimale (${}${})": 1,
+        "ok·/#AF5B23/i ⟂ ${} ne contient plus #AF5B23 (l'ancien accent de la caisse)": 1,
+        "ok·/#B74725/i ⟂ ${} ne contient plus #B74725 (l'action commerce)": 1,
+        "ok·/--caisse-font-bouton\\s*:\\s*600 18px\\/24px/ ⟂ bouton : Semibold 18/24": 1,
+        "ok·/--caisse-font-h1\\s*:\\s*600 28px\\/34px/ ⟂ H1 : Inter Semibold 28/34": 1,
+        "ok·/--caisse-font-h2\\s*:\\s*600 20px\\/28px/ ⟂ H2 : Semibold 20/28": 1,
+        "ok·/--caisse-font-legende\\s*:\\s*400 12px\\/16px/ ⟂ légende : Regular 12/16": 1,
+        "ok·/--caisse-font-texte\\s*:\\s*400 16px\\/24px/ ⟂ texte courant : Regular 16/24": 1,
+        "ok·/--caisse-police\\s*:\\s*'Inter'/ ⟂ /fonts\\.googleapis|@import url\\(/ ⟂ la famille est Inter, et commerce.css n'appelle aucune police distante": 1,
+        "ok·/Des marchés plus forts, des familles plus heureuses/ ⟂ la signature en légende": 1,
+        "ok·/J'ai compris :/ ⟂ le chip « J'ai compris : … » existe": 1,
+        "ok·/Payer en espèces/ ⟂ /<Banknote\\b/ ⟂ POSCaisse : « Payer en espèces » avec l'icône billet": 1,
+        "ok·/Que voulez-vous vendre \\?/ ⟂ /<h1\\b/ ⟂ MicroVenteCaisse : « Que voulez-vous vendre ? » est le H1": 1,
+        "ok·/Vider le panier/ ⟂ /Panier actuel/ ⟂ « Panier actuel » et « Vider le panier »": 1,
+        "ok·/^\\s*const\\s+(P|BG|ORANGE|VERT)\\s*=/m ⟂ ${} ne déclare plus de constante P, BG, ORANGE ou VERT": 1,
+        "ok·/couleur = 'var\\(--caisse-vert\\)'/ ⟂ ChoixUnite prend le vert de la charte par défaut": 1,
+        "ok·/pour terminer/ ⟂ /cart\\.length > 0 &&/ ⟂ et rappelle « Dis “encaisser” pour terminer » quand le panier n'est pas vide (lecture seule)": 1,
+        "ok·/var\\(--caisse-orange-voix\\)/ ⟂ et POSCaisse ne l'utilise nulle part : pour qui ne lit pas, orange veut dire « parler », jamais « payer » ni « décor »": 1,
+        "ok·/var\\(--caisse-orange-voix\\)/ ⟂ le micro est orange voix — la couleur du micro, et d'elle seule": 1,
+        "ok·/var\\(--caisse-succes\\)/ ⟂ /Total/ ⟂ la barre Total est sur fond succès": 1,
+        "ok·/variante=\"caisse\"/ ⟂ l'en-tête clair passe par la variante de SubPageLayout, sans changer les autres écrans": 1,
+        "ok·MicroVenteCaisse consomme var(--caisse-…) (${} usages)": 1,
+        "ok·POSCaisse consomme var(--caisse-…) (${} usages)": 1,
+        "ok·espacement ${} = ${}px": 1,
+        "ok·rayon ${} = ${}px": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/caisseRelectureAffichee.test.mts": {
+      "script": "test:caisse-relecture-affichee",
+      "assertions": 23,
+      "expects": 0,
+      "empreintes": {
+        "ok·/<Volume2 aria-hidden=\"true\" size=\\{ICONE\\}/ ⟂ une icône haut-parleur de 24 px (ICONE)": 1,
+        "ok·/\\{relectureAffichee\\}/ ⟂ le texte affiché est `relectureAffichee` tel quel — « Je valide ? » compris": 1,
+        "ok·/afficherRelecture\\(etat, effet\\)/ ⟂ /speak\\(effet\\.texte\\)/ ⟂ le useEffect [cleEmpreinte] (relecture spontanée) aussi : affichée puis dite": 1,
+        "ok·/afficherRelecture\\(etat, effet\\)/ ⟂ /speak\\(effet\\.texte\\)/ ⟂ traiterIntentionEncaissement affiche puis DIT la même `effet.texte`": 1,
+        "ok·/background:'var\\(--caisse-succes\\)'/ ⟂ /border:'1\\.5px solid var\\(--caisse-vert\\)'/ ⟂ fond succès, bordure verte — les tokens de la charte": 1,
+        "ok·/const \\[relectureAffichee, setRelectureAffichee\\] = useState<string \\| null>\\(null\\)/ ⟂ l'état `relectureAffichee` existe (string | null, null au départ)": 1,
+        "ok·/else if \\(effet\\.type === 'dire'\\) setRelectureAffichee\\(effet\\.texte\\)/ ⟂ sinon la `effet.texte` du `dire` — la relecture suivante remplace la précédente": 1,
+        "ok·/font:'var\\(--caisse-font-texte\\)'/ ⟂ /borderRadius:'var\\(--caisse-rayon-\\d\\)'/ ⟂ /var\\(--caisse-esp-\\d\\)/ ⟂ texte courant, rayon et espacements en tokens": 1,
+        "ok·/if \\(etat\\.phase === 'repos'\\) setRelectureAffichee\\(null\\)/ ⟂ null quand la machine revient au repos (paiement, annulation, panier vidé)": 1,
+        "ok·/import \\{[^}]*\\bphraseRelecture\\b[^}]*\\} from '\\.\\.\\/\\.\\.\\/services\\/machineEncaissement'/ ⟂ POSCaisse n'importe pas `phraseRelecture` de la machine : il ne reconstruit jamais la phrase": 1,
+        "ok·/minHeight:'var\\(--caisse-cible-tactile\\)'/ ⟂ /minWidth:'var\\(--caisse-cible-tactile\\)'/ ⟂ et mesure au moins la cible tactile (44 px) en hauteur et en largeur": 1,
+        "ok·/onClick=\\{\\(\\) => speak\\(relectureAffichee\\)\\}/ ⟂ qui rejoue `speak(relectureAffichee)` — la même chaîne": 1,
+        "ok·/setRelectureAffichee\\(/ ⟂ aucune autre affectation ailleurs : la règle n'existe qu'une fois": 1,
+        "ok·`afficherRelecture(etat, effet)` porte cette règle": 1,
+        "ok·chaque affectation est \\`effet.texte\\` ou \\`null\\` (${})": 1,
+        "ok·handlePay() n'a toujours qu'un appelant vocal": 1,
+        "ok·il vit dans renderCartFooter — rendu par le panneau grand écran ET la section téléphone": 1,
+        "ok·juste au-dessus de la carte « Reçu | Monnaie », elle-même au-dessus de « Payer en espèces »": 1,
+        "ok·l'encart est rendu sous la garde `relectureAffichee &&`": 1,
+        "ok·les deux formes existent : on affiche, et on efface": 1,
+        "ok·renderCartFooter() est rendu exactement 2 fois (${}) : même compte que caisseSurfaceUnique": 1,
+        "ok·setRelectureAffichee est appelé (${} fois)": 1,
+        "ok·un bouton « Réécouter »": 1
+      }
+    },
+    "frontend_src/src/app/services/api/apiClientAuthorization.test.mts": {
+      "script": "test:api-authorization",
+      "assertions": 29,
+      "expects": 0,
+      "empreintes": {
+        "eq·Bearer explicite ⟂ l’en-tête explicite gagne (comparaison insensible à la casse)": 1,
+        "eq·Bearer jeton-1 ⟂ apiRequest envoie « Authorization: Bearer <jeton stocké> » de lui-même": 1,
+        "eq·Bearer jeton-A ⟂ premier appel : jeton A": 1,
+        "eq·Bearer jeton-B ⟂ la vente rejouée porte le jeton COURANT (B), pas celui de l’enfilage (A)": 1,
+        "eq·Bearer jeton-B ⟂ le stock rejoué porte lui aussi le jeton courant": 1,
+        "eq·Bearer jeton-B ⟂ second appel : jeton B — rien n’a été mis en cache": 1,
+        "eq·Bearer jeton-neuf ⟂ le rejeu porte le jeton que rafraichirSession vient de ranger — pas l’ancien": 1,
+        "eq·Bearer jeton-perime ⟂ le premier essai portait le jeton périmé": 1,
+        "eq·Bearer jeton-photo ⟂ Authorization présent": 1,
+        "eq·Bearer jeton-rafraichi ⟂ le rejeu de la file porte le jeton neuf": 1,
+        "eq·appel (401), rafraîchissement, rejeu": 1,
+        "eq·application/json ⟂ …sans perdre le Content-Type": 1,
+        "eq·aucun Content-Type forcé (le navigateur pose la frontière multipart)": 1,
+        "eq·deux appels réseau": 1,
+        "eq·jeton-neuf ⟂ et le stockage tient bien le jeton neuf": 1,
+        "eq·la même clé d’idempotence aux deux essais : rejouée, pas comptée deux fois": 1,
+        "eq·la vente finit par passer": 1,
+        "eq·les deux opérations sont rejouées": 1,
+        "eq·pas de jeton stocké → pas d’en-tête Authorization": 1,
+        "eq·t1 ⟂ la requête aboutit après rejeu": 1,
+        "eq·trois allers-retours : appel, rafraîchissement, rejeu": 1,
+        "eq·v-1 ⟂ la clé d’idempotence voyage avec la vente": 1,
+        "eq·…et sort de la file": 1,
+        "ok·${}${}, obtenu ${})`}": 1,
+        "ok·la vente part par caisse-api": 1,
+        "ok·le deuxième est le rafraîchissement": 1,
+        "ok·le filet de main.tsx est encore là : ${} appel(s) direct(s) n’ont que lui pour porter le jeton": 1,
+        "ok·le stock part par apiRequest": 1,
+        "ok·plus aucun appel direct ne dépend du filet de main.tsx : il doit être retiré (API-04, dernier pas)": 1
+      }
+    },
+    "frontend_src/src/app/utils/voiceTrace.test.mts": {
+      "script": "test:voix-trace",
+      "assertions": 34,
+      "expects": 0,
+      "empreintes": {
+        "verifier·ECOUTE_DEBUT / ECOUTE_FIN présents": 1,
+        "verifier·ECRAN garde le chemin ⟂ /marchand/caisse": 1,
+        "verifier·ERREUR gardée avec sa source ⟂ useVoiceCore.startRecording": 1,
+        "verifier·INTENTION null → « pas compris » ⟂ pas_compris": 1,
+        "verifier·INTENTION reconnue → intent + action (dérivés de la phrase) ⟂ vendre ⟂ vendre": 1,
+        "verifier·STT_FIN garde le transcript BRUT, le moteur et la durée ⟂ cinq tomates ⟂ sherpa-native ⟂ number": 1,
+        "verifier·TTS_APPEL garde source + texte ⟂ AppContext.speak ⟂ Que voulez-vous vendre ?": 1,
+        "verifier·TTS_CHOIX expose le mode retenu (clip / text_only) ⟂ clip": 1,
+        "verifier·TTS_COUPEE (interruption) enregistrée": 1,
+        "verifier·TTS_DEMANDE porte une pile courte (appelant) ⟂ string": 1,
+        "verifier·TTS_FIN porte le résultat et une durée ⟂ ended ⟂ number": 1,
+        "verifier·TTS_IGNOREE garde la raison ⟂ anti-repetition": 1,
+        "verifier·TTS_MOTEUR distingue navigateur / clip ⟂ navigateur ⟂ clip": 1,
+        "verifier·TTS_VOIX_NAVIGATEUR garde le nom et la langue de la voix native ⟂ Google français ⟂ fr-FR": 1,
+        "verifier·borné à 200 entrées ⟂ reçu ${}": 1,
+        "verifier·chaque ligne porte le nom de l\\'événement": 1,
+        "verifier·contient la voix retenue et le moteur (VOIX RETENUE)": 1,
+        "verifier·contient le contexte appareil/version (CONTEXTE)": 1,
+        "verifier·contient le journal de voix en anneau (JOURNAL VOIX)": 1,
+        "verifier·dernierTranscript() = le dernier transcript brut ⟂ cinq tomates": 1,
+        "verifier·derniereVoix() = la dernière voix/moteur utilisé ⟂ clip": 1,
+        "verifier·garde la section historique « JOURNAL DICTÉE »": 1,
+        "verifier·horodatage non décroissant": 1,
+        "verifier·la dernière est la plus récente (i=249)": 1,
+        "verifier·le journal est écrit dans localStorage ⟂ stockées : ${}": 1,
+        "verifier·le rapport dit quel moteur STT a tourné": 1,
+        "verifier·le rapport dit quelle intention est sortie": 1,
+        "verifier·le transcript brut est lisible tel quel": 1,
+        "verifier·les plus ANCIENNES sont évincées (la première restante porte i=50)": 1,
+        "verifier·les écarts (+Δms) sont rendus": 1,
+        "verifier·met en évidence le DERNIER TRANSCRIPT BRUT": 1,
+        "verifier·rechargé depuis localStorage au démarrage (survit à un redémarrage) ⟂ cinq tomates": 1,
+        "verifier·une ligne par événement ⟂ ${} lignes / ${} entrées": 1,
+        "verifier·vlogStart n\\'efface PAS le journal en anneau": 1
+      }
+    },
+    "frontend_src/scripts/test-voix-trace-source.mjs": {
+      "script": "test:voix-trace-source",
+      "assertions": 29,
+      "expects": 0,
+      "empreintes": {
+        "verifier·${} : mêmes appels de parole, mêmes arguments, même ordre (${})": 1,
+        "verifier·${} : règle de choix de voix intouchée": 1,
+        "verifier·${} : sans ses lignes de journal, identique à ${} ⟂ seules des lignes entières portant `vtrace.` / `voiceTrace` peuvent être ajoutées ici ; toute autre modification est hors lot": 1,
+        "verifier·AppContext.speak journalise l\\'appel (source des voix d\\'écran) ⟂ /vtrace\\.ttsAppel\\(/": 1,
+        "verifier·AppContext.speak journalise ses refus (rôle, muet)": 1,
+        "verifier·Paramètres (UniversalParametres) propose « Rapport de test » ⟂ /Rapport de test/": 1,
+        "verifier·audioManager importe le journal ⟂ /from [\"']\\.\\.\\/utils\\/voiceTrace[\"']/": 1,
+        "verifier·audioManager.${}() journalise la demande ⟂ /vtrace\\.ttsDemande\\(/ ⟂ une voix partie sans trace : le rapport mentirait par omission": 1,
+        "verifier·celui de l\\'écran de connexion est conservé ⟂ /Rapport de test/ ⟂ /vlogPartager\\(\\)/": 1,
+        "verifier·chaque appel à intentLocal() est suivi d\\'une trace INTENTION": 1,
+        "verifier·chaque transcribeWav() est suivi d\\'une trace STT_FIN (transcript brut + moteur + durée)": 1,
+        "verifier·début/fin d\\'écoute journalisés ⟂ /vtrace\\.ecoute\\(\\s*['\"]debut['\"]/ ⟂ /vtrace\\.ecoute\\(\\s*['\"]fin['\"]/": 1,
+        "verifier·hardStop journalise l\\'interruption (TTS_COUPEE) ⟂ /vtrace\\.ttsCoupee\\(/": 1,
+        "verifier·l\\'arrivée sur un écran est journalisée (ECRAN) ⟂ /vtrace\\.ecran\\(/": 1,
+        "verifier·la dictée en direct (connexion) journalise chaque passe STT (moteur + durée) ⟂ /vtrace\\.sttFin\\(/": 1,
+        "verifier·la question « chiffres du jour » est journalisée comme intention": 1,
+        "verifier·la référence 3917bb7 existe (scripts/fixtures/parole-3917bb7.json)": 1,
+        "verifier·la réponse oui/non dictée est journalisée comme intention": 1,
+        "verifier·la sonde de la synthèse native est journalisée ⟂ /TTS_NATIF_SONDE/": 1,
+        "verifier·la sonde du moteur STT est journalisée ⟂ /STT_SONDE/": 1,
+        "verifier·playHandle journalise début et fin de lecture (durée) ⟂ /vtrace\\.ttsDebut\\(/ ⟂ /vtrace\\.ttsFin\\(/": 1,
+        "verifier·realStartClip journalise le moteur « clip » ⟂ /vtrace\\.ttsMoteur\\(\\s*['\"]clip['\"]/": 1,
+        "verifier·realStartTts journalise le MOTEUR retenu par morceau (native / navigateur) ⟂ /vtrace\\.ttsMoteur\\(/": 1,
+        "verifier·runExclusive journalise les demandes IGNORÉES (muet, anti-répétition, auto en cours)": 1,
+        "verifier·speakBrowser journalise la voix native retenue (nom, langue) ⟂ /vtrace\\.ttsVoixNavigateur\\(/": 1,
+        "verifier·useVoiceCore importe le journal ⟂ /from [\"']\\.\\.\\/utils\\/voiceTrace[\"']/": 1,
+        "verifier·useVoiceCore.ttsPlayBase64 journalise l\\'appel ⟂ /vtrace\\.ttsAppel\\(/": 1,
+        "verifier·useVoiceCore.ttsSpeak journalise l\\'appel ET le choix clip / text_only ⟂ /vtrace\\.ttsAppel\\(/ ⟂ /vtrace\\.ttsChoix\\(/": 1,
+        "verifier·… en réutilisant vlogPartager() (un seul rapport, une seule source) ⟂ /vlogPartager\\(\\)/": 1
+      }
+    },
+    "frontend_src/src/app/i18n/voice/validators/validateLocale.mts": {
+      "script": "test:i18n-locales",
+      "assertions": 40,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} : aucune variable de gabarit perdue ni inventée${})` : ''}": 1,
+        "ok·${} : chaîne de repli sans cycle": 1,
+        "ok·${} : documenté dans LOCALES_PROVISOIRES": 1,
+        "ok·${} : intents uniquement INT_": 1,
+        "ok·${} : messages sans INT_": 1,
+        "ok·${} : repli « ${} » connu": 1,
+        "ok·${} : toute clé d'intention existe au catalogue": 1,
+        "ok·${} : toute clé de message existe au catalogue": 1,
+        "ok·aucun identifiant en double (${} entrées)": 1,
+        "ok·aucun message TTS ne porte un identifiant INT_": 1,
+        "ok·aucune clé critique manquante en fr-ci${})` : ''}": 1,
+        "ok·aucune clé lue par le code n'est encore marquée « a_migrer »${}` : ''}": 1,
+        "ok·et le repli d\\'intention est tracé aussi": 1,
+        "ok·fr-ci porte les ${} messages du catalogue": 1,
+        "ok·fr-ci porte les variantes des quatre intentions d\\'encaissement": 1,
+        "ok·fr-ci ⟂ dyu-ci ⟂ dyu-ci sans traduction → servi depuis fr-ci, marqué fallback": 1,
+        "ok·fr-ci ⟂ fr-ci ne replie jamais": 1,
+        "ok·fr-ci ⟂ locale inconnue → fr-ci, sans exception": 1,
+        "ok·fr-ci ⟂ variantes d\\'intention absentes en bci → celles de fr-ci": 1,
+        "ok·frMarche est null partout (le français « marché » appartient à Manus)": 1,
+        "ok·intents fr-ci : listes de mots figées": 1,
+        "ok·la référence ${} est enregistrée": 1,
+        "ok·la référence n\\'a pas de repli et porte un lexique": 1,
+        "ok·la trace nomme la clé, la locale demandée et la locale servie (${})": 1,
+        "ok·le journal interne garde la trace": 1,
+        "ok·le texte servi est exactement celui de fr-ci": 1,
+        "ok·les appels suivants ne retracent pas les mêmes replis (${} trace(s) de plus)": 1,
+        "ok·les variables déclarées sont exactement celles du gabarit frActuel": 1,
+        "ok·lexique fr-ci : tables figées (copies, pas des références mutables)": 1,
+        "ok·owner discrimine : ${} clés de composition à claude, ${} phrases à manus": 1,
+        "ok·owner renseigné sur chaque entrée": 1,
+        "ok·phrase_entiere ⟂ INT_OUI_VALIDE : les exemples du catalogue sont exactement la liste blanche du runtime (une seule forme vraie)": 1,
+        "ok·préférence « ${} » → ${} : manifest enregistré": 1,
+        "ok·tout morceau TATA_PART_* / TATA_LISTE_* est à claude": 1,
+        "ok·toute clé critique de fr-ci est validée finance (sinon le runtime la refuserait)": 1,
+        "ok·toute clé demandée par un appel existe au catalogue (${} clés lues)${}` : ''}": 1,
+        "ok·toute clé « migre » du catalogue est lue par le code (${} migrées)${}` : ''}": 1,
+        "ok·toute intention STT porte un identifiant INT_": 1,
+        "ok·un premier intentLocal en dyu-ci trace ses replis (${})": 1,
+        "ok·vider le journal réarme la déduplication (session de test)": 1
+      }
+    },
+    "frontend_src/src/app/i18n/voice/validators/validateCriticalMessages.mts": {
+      "script": "test:i18n-argent",
+      "assertions": 18,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} : ${} phrases, même intention qu'en fr-ci${}` : ''}": 1,
+        "ok·${} : intentLocal identique à fr-ci sur le corpus${}` : ''}": 1,
+        "ok·${} en dyu-ci : variantes ET normalisation servies par fr-ci (« c'est » → « ${} »)": 1,
+        "ok·${} est critique (relecture financière, montant insuffisant, compte juste, reçu, monnaie, validation)": 1,
+        "ok·(les deux entrées sont bien critiques au catalogue)": 1,
+        "ok·INT_OUI_VALIDE absent : la locale repliera sur la liste blanche de fr-ci (tracé)": 1,
+        "ok·aucun doublon": 1,
+        "ok·aucun message critique en brouillon / non validé finance${})` : ''}": 1,
+        "ok·aucune phrase de validation ne contient un mot d'annulation de la locale${})` : ''}": 1,
+        "ok·aucune variante STT financière en brouillon / non validée finance${})` : ''}": 1,
+        "ok·chaque phrase est écrite sous sa forme normalisée (minuscules, sans accents, sans ponctuation)": 1,
+        "ok·chaque réponse autonome fait au moins deux mots (jamais « oui » ou « valide » seul)": 1,
+        "ok·fr-ci : la liste blanche est exactement celle de 576fd62 (huit réponses, même ordre)": 1,
+        "ok·fr-ci ⟂ message critique en brouillon → servi depuis fr-ci, texte fr-ci exact": 1,
+        "ok·fr-ci ⟂ variantes critiques validées native mais finance=false → celles de fr-ci": 1,
+        "ok·les quatre intentions d\\'encaissement sont critiques": 1,
+        "ok·phrase_entiere ⟂ INT_OUI_VALIDE est en mode phrase_entiere (liste blanche fermée)": 1,
+        "ok·zz-test ⟂ Invite test ⟂ un message NON critique en brouillon est servi (seul l\\'argent est verrouillé)": 1
+      }
+    },
+    "frontend_src/src/app/i18n/voice/validators/validateSource.mts": {
+      "script": "test:i18n-source",
+      "assertions": 15,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} : aucun gabarit de phrase hors catalogue${})` : ''}": 1,
+        "ok·${}${}` : ''}": 1,
+        "ok·/(['\"`])[^'\"`\\n]*\\bfrancs\\b[^'\"`\\n]*\\1/ ⟂ ${} : le mot « francs » n'y est plus écrit dans une chaîne (il vient du lexique)": 1,
+        "ok·/etat\\.phase === 'attente_confirmation'\\s*&&\\s*memeEmpreinte\\(etat\\.empreinte, fin\\.empreinte\\)\\s*&&\\s*!fin\\.panierVide\\s*&&\\s*fin\\.suffisant\\s*&&\\s*fin\\.total > 0/ ⟂ machineEncaissement : les quatre conditions de la porte, dans le même ordre": 1,
+        "ok·/mode === 'phrase_entiere' \\? new Set\\(v\\.variantes\\.phrases\\) : new Set<string>\\(\\)/ ⟂ grammaireEncaissement : la validation n\\'accepte qu\\'une liste blanche en mode phrase entière": 1,
+        "ok·/new Set\\(\\[\\s*'oui valide'/ ⟂ /\\/\\\\b\\(non\\|annule/ ⟂ grammaireEncaissement : plus aucune variante française écrite en dur (données de fr-ci)": 1,
+        "ok·/normaliserPour\\(/ ⟂ grammaireEncaissement : chaque intention normalise avec SA locale servie, jamais avec la locale demandée (I18N-01)": 1,
+        "ok·/toLocaleString|francs/ ⟂ machineEncaissement : ni formatage ni « francs » — les phrases sont des clés": 1,
+        "ok·aucune phrase dite absente du catalogue${} absente(s) : ${}${}` : ''}": 1,
+        "ok·et aucune dans le périmètre migré": 1,
+        "ok·grammaireEncaissement : annulation, puis liste blanche (phrase entière), puis encaisser, puis combien — dans cet ordre": 1,
+        "ok·machineEncaissement : un seul effet `encaisser` émis": 1,
+        "ok·migre ⟂ ${} clés lues par le code (statut migre)": 1,
+        "ok·phrases distinctes : inventaire ${} = source ${}": 1,
+        "ok·sites d'appel : inventaire ${} = source ${} (sinon : npm run i18n:inventaire)": 1
+      }
+    },
+    "frontend_src/src/app/i18n/voice/validators/empreintesArgent.mts": {
+      "script": "test:i18n-empreintes-argent",
+      "assertions": 2,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} : empreinte ${}… ${} base ${}…": 1,
+        "ok·énumération exhaustive : ${} conversations / ${} paiements / ${} violation(s)": 1
+      }
+    },
+    "frontend_src/scripts/test-garde-argent.mjs": {
+      "script": "test:garde-argent",
+      "assertions": 28,
+      "expects": 0,
+      "empreintes": {
+        "verifier·--liste-invariants n’imprime que des commandes": 1,
+        "verifier·POSCaisse.tsx est nommé ⟂ /POSCaisse\\.tsx/": 1,
+        "verifier·`node ci/garde-argent.mjs` est vert sur le dépôt": 1,
+        "verifier·assouplissement + argent dans le MÊME commit : refusé ⟂ sortie ${} :\\n${}": 1,
+        "verifier·assouplissement déclaré SEUL : accepté ⟂ sortie ${} :\\n${}": 1,
+        "verifier·avec la preuve que les invariants ont tourné, la sortie est 0 ⟂ sortie ${} :\\n${}": 1,
+        "verifier·et elle est dite comme telle ⟂ /promu|PROMOTION/i": 1,
+        "verifier·et il le dit : aucun fichier du chemin d’argent ⟂ /aucun fichier du chemin d’argent/i": 1,
+        "verifier·et le refus dit pourquoi ⟂ /même commit|ne se desserre pas/i": 1,
+        "verifier·il cite l’assertion disparue ⟂ /la barre elle-même n’est PAS retirée|la barre elle-même n'est PAS retirée/": 1,
+        "verifier·il dit que le périmètre a bougé sans déclaration ⟂ /entré dans le périmètre|PÉRIMÈTRE A BOUGÉ/i": 1,
+        "verifier·il nomme le fichier entrant ⟂ /backend\\/src\\/ledger\\/journal-ventes\\.ts/": 1,
+        "verifier·il nomme le garde touché ⟂ /caisseUnSeulMicro\\.test\\.mts/": 1,
+        "verifier·il nomme le maillon ajouté ⟂ /test:nouveau/": 1,
+        "verifier·il nomme le symbole qui l’y fait entrer ⟂ /caisse_transactions/": 1,
+        "verifier·il n’exige aucun invariant ⟂ /INVARIANTS EXIGÉS/": 1,
+        "verifier·il parle d’assouplissement ⟂ /ASSOUPLI/i": 1,
+        "verifier·la promotion est acceptée (sortie 0) ⟂ sortie ${} :\\n${}": 1,
+        "verifier·la zone « paiement » est nommée ⟂ /\\bpaiement\\b/": 1,
+        "verifier·le chemin d’argent est détecté ⟂ /CHEMIN D’ARGENT TOUCHÉ/": 1,
+        "verifier·le garde-fou reste silencieux (sortie 0) ⟂ sortie ${} :\\n${}": 1,
+        "verifier·le gate échoue (sortie 1) ⟂ sortie ${} :\\n${}": 3,
+        "verifier·le gel ${} réussit dans le bac à sable": 1,
+        "verifier·les invariants exigés sont nommés ⟂ /INVARIANTS EXIGÉS/ ⟂ /test:caisse-un-seul-micro/": 1,
+        "verifier·mais l’alerte est imprimée en évidence ⟂ /GARDE-ASSOUPLIE/": 1,
+        "verifier·sans preuve d’exécution, la sortie est 1 ⟂ sortie ${}": 1
+      }
+    },
+    "backend/test/invariants/annulation-remise-stock.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 9,
+      "expects": 40,
+      "empreintes": {
+        "describe·Invariant R7 — annulation vente → remise en stock (🟢)": 1,
+        "it·#20 — le marchand annule SA vente du jour : stock rendu + statut annulee + ledger typé": 1,
+        "it·#20 — re-annulation self-service rejetée (déjà annulée) : pas de double remise": 1,
+        "it·#20 — un marchand ne peut PAS annuler la vente d’un autre (404)": 1,
+        "it·#20 — vente d’un AUTRE JOUR : non annulable en self-service (400)": 1,
+        "it·autorité : un marchand ne peut pas annuler (403)": 1,
+        "it·idempotence : une 2ᵉ annulation ne re-restitue pas": 1,
+        "it·survente (manquant) : on ne restitue QUE ce qui fut réellement retranché": 1,
+        "it·vente normale puis annulation : stock restitué + mouvement inverse (net 0)": 1
+      }
+    },
+    "backend/test/invariants/arg-02-unite-historique.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 5,
+      "expects": 13,
+      "empreintes": {
+        "describe·ARG-02 — l’unité d’un mouvement vient du mouvement, ou de nulle part": 1,
+        "it·changer encore le catalogue ne change AUCUN mouvement passé": 1,
+        "it·la lecture du ledger ne joint plus le catalogue du tout": 1,
+        "it·une sortie SANS unité figée renvoie null — jamais l’unité du catalogue": 1,
+        "it·une sortie faite AU TAS reste au tas après passage du catalogue au kilo": 1
+      }
+    },
+    "backend/test/invariants/argent-3-dettes-fermees.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 10,
+      "expects": 29,
+      "empreintes": {
+        "describe·A3 — un acompte de crédit est de l’argent que la caisse voit": 1,
+        "describe·B2 — un mouvement passé garde SON unité passée": 1,
+        "describe·B3 — une vente hors stock se VOIT": 1,
+        "describe·DETTE — constats A3 / B2 / B3 vérifiés, non corrigés": 1,
+        "it·cet encaissement N’EST PAS une recette — elle a déjà été comptée à la vente": 1,
+        "it·la clôture ne journalise AUCUN écart : l’argent est là, et la caisse le sait": 1,
+        "it·lundi : 5 tas sortent du stock, le mouvement dit « tas »": 1,
+        "it·l’acompte écrit une transaction de caisse, de type acompte_credit": 1,
+        "it·mercredi : elle passe le produit au kilo — le mouvement de LUNDI dit toujours « tas »": 1,
+        "it·vendre 4 kg avec 0 en stock : l’écran le montre, et dit que le stock ne couvrait pas": 1
+      }
+    },
+    "backend/test/invariants/argent-4-encaissement-unique.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 12,
+      "expects": 50,
+      "empreintes": {
+        "describe·ARGENT-4 — tout encaissement de crédit passe par la même porte": 1,
+        "it·/payer encaisse réellement le reste et l’écrit en caisse": 1,
+        "it·aucun encaissement de crédit n’entre dans la recette": 1,
+        "it·deux acomptes simultanés s’additionnent, sans en perdre un": 1,
+        "it·encaisser sur un crédit déjà soldé ne réécrit rien": 1,
+        "it·le contrôleur crédits n’écrit plus jamais la caisse lui-même": 1,
+        "it·rejouer la même clé n’encaisse pas deux fois": 1,
+        "it·un acompte qui laisse du reste est bien un ACOMPTE": 1,
+        "it·un acompte qui termine exactement la dette est un RÈGLEMENT, pas un acompte": 1,
+        "it·un acompte versé à la création produit une ligne de caisse": 1,
+        "it·un crédit SANS acompte n’écrit aucune ligne de caisse": 1,
+        "it·un encaissement refusé ne laisse RIEN derrière lui": 1
+      }
+    },
+    "backend/test/invariants/argent-4b-cloture-encaissements.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 4,
+      "expects": 15,
+      "empreintes": {
+        "describe·ARGENT-4b — un règlement final ne crée plus d’écart fantôme": 1,
+        "it·journée complète avec acompte ET règlement final : écart = 0": 1,
+        "it·la caisse théorique somme les DEUX natures, pas une seule": 1,
+        "it·un acompte sans clé d’idempotence est REFUSÉ, pas deviné": 1
+      }
+    },
+    "backend/test/invariants/argent-agregats-administrateur.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 5,
+      "expects": 18,
+      "empreintes": {
+        "describe·ARGENT-2 — les agrégats administrateur disent une recette, pas une somme": 1,
+        "it·GET /admin/stats : le volume de caisse exclut les ventes annulées": 1,
+        "it·GET /dashboard/stats : « revenus » ne compte NI les dépenses NI les ventes annulées": 1,
+        "it·GET /transactions est servi par TransactionsRestController, pas par misc-rest": 1,
+        "it·les trois écritures sont bien en base, avec leurs types et statuts": 1
+      }
+    },
+    "backend/test/invariants/argent-alerte-rupture-marchande.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 4,
+      "expects": 10,
+      "empreintes": {
+        "describe·ARGENT-2 — la marchande est prévenue quand son stock tombe": 1,
+        "it·la vérification quotidienne voit aussi un stock sous le seuil": 1,
+        "it·le stock de la marchande est bien dans `produits`, et PAS dans `stocks`": 1,
+        "it·vendre les 3 derniers kilos déclenche une alerte de RUPTURE": 1
+      }
+    },
+    "backend/test/invariants/argent-depense-jour-comptable.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 4,
+      "expects": 8,
+      "empreintes": {
+        "describe·ARGENT-1 — la dépense porte son jour comptable": 1,
+        "it·une date aberrante est REFUSÉE comme pour la vente, pas silencieusement acceptée": 1,
+        "it·une dépense d’hier, remontée aujourd’hui, est comptée SUR HIER": 1,
+        "it·une dépense sans date reste sur aujourd’hui — rien ne change pour la saisie normale": 1
+      }
+    },
+    "backend/test/invariants/argent-gele-b2.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 2,
+      "expects": 3,
+      "empreintes": {
+        "describe·Invariant B2 — argent gele sur le cycle de commande": 1,
+        "it·create + reserve + confirm + cancel ne touche aucun portefeuille": 1
+      }
+    },
+    "backend/test/invariants/argent-marge-panier-mixte.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 4,
+      "expects": 8,
+      "empreintes": {
+        "describe·ARGENT-1 — marge d’un panier mixte (coût connu + coût inconnu)": 1,
+        "it·une ligne sans prix d’achat n’apporte NI gain NI perte à la marge persistée": 1,
+        "it·une vente dont AUCUNE ligne n’a de coût ne fabrique pas de marge": 1,
+        "it·une vente entièrement coûtée, à perte, garde sa perte": 1
+      }
+    },
+    "backend/test/invariants/blocage-wallet-admin.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 5,
+      "expects": 29,
+      "empreintes": {
+        "describe·Invariant B3 — blocage réel d'un wallet (bloquer/débloquer)": 1,
+        "it·B3a — bloquer un compte bascule réellement users.status sur suspendu": 1,
+        "it·B3b — compte bloqué : crédit ET débit admin refusés, soldes inchangés": 1,
+        "it·B3c — compte bloqué : paiement Keiwa refusé même déclenché par l'autre partie, rollback intégral": 1,
+        "it·B3d — débloquer réautorise immédiatement crédit admin et paiement Keiwa": 1
+      }
+    },
+    "backend/test/invariants/blockers.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 4,
+      "expects": 5,
+      "empreintes": {
+        "describe·Invariants blockers argent (🔴 attendu — it.failing)": 1,
+        "it.failing·I4 — même crédit rejoué ⇒ une seule dette (montant_du non doublé)": 1,
+        "it.failing·I6 — une vente à crédit laisse une trace en caisse (caisse_transaction)": 1,
+        "it·I5 — acompte rejoué ⇒ un seul encaissement": 1
+      }
+    },
+    "backend/test/invariants/bo-communication-send-bulk.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 3,
+      "expects": 16,
+      "empreintes": {
+        "describe·Invariant — Communication BO : envoi groupé réel via /notifications/send-bulk": 1,
+        "it·admin_general : envoi groupé réel crée une notification par destinataire ciblé, aucune pour les tiers": 1,
+        "it·marchand : envoi groupé refusé (403), aucune ligne notifications écrite": 1
+      }
+    },
+    "backend/test/invariants/bo-cron-toggle-reel.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 6,
+      "expects": 24,
+      "empreintes": {
+        "describe·Invariant — toggle BO cron ⇒ effet réel sur les jobs @Cron()": 1,
+        "it·GET /cron reflète les VRAIS jobs (pas la liste inventée sync_acteurs/rapport_hebdo/nettoyage_sessions)": 1,
+        "it·comportement par défaut : un job jamais togglé reste actif (pas de régression sur la prod actuelle)": 1,
+        "it·même mécanique côté job BPay : désactivé ⇒ no-op, réactivé ⇒ s’exécute": 1,
+        "it·toggle → désactivé ⇒ le prochain déclenchement (simulé) du job alertes ne fait RIEN": 1,
+        "it·toggle → réactivé ⇒ le job alertes s’exécute de nouveau et enregistre son passage": 1
+      }
+    },
+    "backend/test/invariants/caisse-fond-declare.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 10,
+      "expects": 38,
+      "empreintes": {
+        "describe·Invariant ARGENT — fond de caisse declare": 1,
+        "it·ARGENT — la fermeture garde ce qu’elle a compte, et l’ecart": 1,
+        "it·REGRESSION — le fond saisi ensuite REMPLACE le 0 et survit a une relecture": 1,
+        "it·declarer son fond AVANT toute vente cree la journee (le seul chemin reel)": 1,
+        "it·fermer puis rouvrir la journee laisse le fond du jour intact": 1,
+        "it·la colonne fond_declare_at et le journal existent sur une base migree": 1,
+        "it·refuse un montant negatif, sans rien ecrire": 1,
+        "it·rouvrir ne touche JAMAIS un fond deja declare, et le dit": 1,
+        "it·vendre avant d’ouvrir cree la journee a 0, fond NON declare": 1,
+        "it·« Modifier le fond » ecrit le nouveau montant ET le journalise": 1
+      }
+    },
+    "backend/test/invariants/commande-negociation-lien.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 3,
+      "expects": 12,
+      "empreintes": {
+        "describe·Lien Commande ↔ Négociation (🟢)": 1,
+        "it·accepter une négociation crée une commande portant negociation_id, exposé par GET /commandes": 1,
+        "it·backfill : le lien historique dans les notes est reclassé, un id inconnu ne l\\'est pas": 1
+      }
+    },
+    "backend/test/invariants/communes-gps-distance.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 6,
+      "expects": 15,
+      "empreintes": {
+        "describe·Invariant — GPS communes (schema neuf) + distance recoltes-prevues": 1,
+        "it·GET /producteurs/recoltes-prevues calcule et trie par distance Haversine reelle": 1,
+        "it·communes.latitude/longitude et cooperatives.commune_id existent sur un schema reconstruit depuis zero": 1,
+        "it·la FK cooperatives.commune_id -> communes(id) est posee (idempotente)": 1,
+        "it·les coordonnees seedees sont les vraies valeurs WGS84 (pas inventees)": 1,
+        "it·re-executer DbInit.runInit() est un no-op sans erreur (idempotence)": 1
+      }
+    },
+    "backend/test/invariants/cooperatives-liste-colonnes.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 6,
+      "expects": 16,
+      "empreintes": {
+        "describe·Invariant — cooperatives : colonnes reellement existantes": 1,
+        "it·GET /cooperatives/liste repond 200 (et non 500) sur une base migree": 1,
+        "it·GET /cooperatives/ma-cooperative repond 200 apres une adhesion reelle": 1,
+        "it·conserve le contrat attendu par le front, sans inventer de donnee": 1,
+        "it·n’expose jamais une cooperative inactive": 1,
+        "it·remonte la commune et le responsable depuis les tables qui les portent": 1
+      }
+    },
+    "backend/test/invariants/fidelite-cycle.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 8,
+      "expects": 41,
+      "empreintes": {
+        "describe·Invariant Fidélité — cycle réel paramétrage→points→seuil→récompense (🟢 attendu)": 1,
+        "it·1) le barème paramétré est réellement PERSISTÉ (relecture indépendante)": 1,
+        "it·2) un achat qualifiant crédite RÉELLEMENT des points (fidelite_clients + journal)": 1,
+        "it·3) rejouer la MÊME clé d’idempotence ne recrédite JAMAIS (rejeu réseau sans danger)": 1,
+        "it·4) le seuil atteint déclenche l’éligibilité à la récompense": 1,
+        "it·5) la récompense accordée DÉDUIT les points ET laisse une trace immuable": 1,
+        "it·6) rejouer la clé de récompense ne déduit JAMAIS deux fois": 1,
+        "it·7) sous le seuil, la récompense est REFUSÉE (aucun octroi, aucune trace créée)": 1
+      }
+    },
+    "backend/test/invariants/financial-score-self-access.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 4,
+      "expects": 14,
+      "empreintes": {
+        "describe·Invariant Score Financier Réel — accès self et forme de réponse (🟢 attendu)": 1,
+        "it·sans authentification, la route est refusée (401)": 1,
+        "it·un marchand NE PEUT PAS consulter le score financier d'un AUTRE utilisateur (contrôle d'accès self-or-admin inchangé)": 1,
+        "it·un marchand authentifié consulte SON PROPRE score financier réel (self) → 200, avec montantEligible et niveau": 1
+      }
+    },
+    "backend/test/invariants/fuite-champs-sensibles-membres.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 9,
+      "expects": 52,
+      "empreintes": {
+        "describe·Invariant Sécurité — aucun champ sensible User dans les réponses REST (🟢 attendu)": 1,
+        "describe·Invariant — POST /cooperatives refuse proprement un doublon (🟢 attendu, pas de 500 brut)": 1,
+        "it·GET /acteurs et GET /acteurs/:id : aucun champ sensible dans la réponse JSON (même correctif, même lot)": 1,
+        "it·GET /auth/me : aucun champ sensible dans la réponse JSON (fuite résiduelle corrigée — AuthController.me)": 1,
+        "it·GET /cooperatives/membres : aucun champ sensible dans la réponse JSON, scoreJulaba fonctionne toujours": 1,
+        "it·GET /users (admin, backoffice) : aucun champ sensible dans la réponse JSON (findAll — SELECT u.* brut mal filtré)": 1,
+        "it·GET /users/me : aucun champ sensible dans la réponse JSON (UsersService.findOne, même correctif)": 1,
+        "it·GET /wallets/me : aucun champ sensible dans le user imbriqué (fuite résiduelle corrigée — WalletsService.getByUserId)": 1,
+        "it·un compte ayant déjà une coopérative (auto-provisionnée à l\\'inscription) reçoit 409/400, jamais 500": 1
+      }
+    },
+    "backend/test/invariants/i1-i3-atomicite-stock.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 4,
+      "expects": 19,
+      "empreintes": {
+        "describe·Invariants I1 + I3 — atomicité vente↔stock + survente tracée (🟢)": 1,
+        "it·scénario 1 — vente normale : caisse + stock + mouvement cohérents": 1,
+        "it·scénario 2 (I3) — stock 3 / vente 10 : acceptée, stock 0, manquant 7 tracé": 1,
+        "it·scénario 3 (I1) — panne pendant l\\'effet stock : NI vente NI mouvement partiel": 1
+      }
+    },
+    "backend/test/invariants/i2-idempotence-vente.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 2,
+      "expects": 10,
+      "empreintes": {
+        "describe·Invariant I2 — idempotence de la vente (🟢 attendu)": 1,
+        "it·même idempotency_key rejoué ⇒ UNE transaction ET UN seul décrément": 1
+      }
+    },
+    "backend/test/invariants/institution-isolation.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 9,
+      "expects": 23,
+      "empreintes": {
+        "describe·Invariant — isolement inter-institutions (/institution/...)": 1,
+        "it·GET /institutions ne renvoie QUE la propre fiche institution du compte, jamais celles des autres": 1,
+        "it·GET /institutions/:id sur la fiche d\\'une AUTRE institution → 404 (pas de confirmation d\\'existence)": 1,
+        "it·deux institutions, deux zones distinctes : chacune ne voit QUE ses propres acteurs (GET /institution/acteurs)": 1,
+        "it·deux institutions, deux zones distinctes : chacune ne voit QUE ses propres transactions (GET /institution/transactions)": 1,
+        "it·deux institutions, deux zones distinctes : les macro-KPI du dashboard ne comptent QUE le perimetre propre": 1,
+        "it·institution SANS perimetre configure (aucune fiche institution liee) : 403, jamais un fallback global": 1,
+        "it·institution avec fiche liee mais SANS zone_id configuree : 403, jamais un fallback global": 1,
+        "it·institution avec zone configuree mais SANS acces au module \"acteurs\" : 403 (dimension module de InstitutionPermissions)": 1
+      }
+    },
+    "backend/test/invariants/keiwa-paiement-commande.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 4,
+      "expects": 39,
+      "empreintes": {
+        "describe·Invariant K1 — paiement Keiwa d'une commande (bout-en-bout, atomique, idempotent)": 1,
+        "it·K1a — bout-en-bout : soldes exacts, 2 écritures tracées, commande payée, historique consultable": 1,
+        "it·K1b — idempotence : rejouer le même paiement ne double AUCUN mouvement": 1,
+        "it·K1c — atomicité : panne pendant l'écriture ⇒ NI mouvement partiel NI commande marquée payée": 1
+      }
+    },
+    "backend/test/invariants/m6-m8-role-escalation.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 25,
+      "expects": 26,
+      "empreintes": {
+        "describe·Invariants M6+M8 — escalade de rôle interdite": 1,
+        "it·appel direct : createur INCONNU (non mappé) → marchand → refus (fail-closed)": 1,
+        "it·appel direct : createur absent + cible administrative (admin_general) → refus": 1,
+        "it·appel direct : createur=admin_general → identificateur → refus": 1,
+        "it·appel direct : createur=admin_general → institution → refus": 1,
+        "it·appel direct : createur=admin_general → marchand → refus (admin_* non mappé)": 1,
+        "it·appel direct : rôle CIBLE inconnu (createur=identificateur) → refus": 1,
+        "it·appel direct : rôle CIBLE inconnu (public) → refus": 1,
+        "it·aucun NOUVEAU compte à rôle administratif créé pendant la suite": 1,
+        "it·authService.signup(role=identificateur) sans créateur → refus (public)": 1,
+        "it·authService.signup(role=super_admin) → refus (jamais de super_admin générique)": 1,
+        "it·identificateur → admin_general via create-acteur → refusé, non créé": 1,
+        "it·identificateur → institution via create-acteur → refusé, non créé": 1,
+        "it·identificateur → marchand via create-acteur → OK": 1,
+        "it·identificateur → producteur / cooperateur via create-acteur → OK": 1,
+        "it·identificateur → super_admin via create-acteur → refusé, non créé": 1,
+        "it·inscription publique producteur / cooperateur → OK": 1,
+        "it·inscription publique role=admin_general → refusé, non créé": 1,
+        "it·inscription publique role=identificateur → refusé, non créé": 1,
+        "it·inscription publique role=institution → refusé, non créé": 1,
+        "it·inscription publique role=marchand → OK": 1,
+        "it·inscription publique role=super_admin → refusé, non créé": 1,
+        "it·operateur_terrain → admin_general via create-acteur → refusé, non créé": 1,
+        "it·operateur_terrain → institution via create-acteur → refusé, non créé": 1,
+        "it·operateur_terrain → super_admin via create-acteur → refusé, non créé": 1
+      }
+    },
+    "backend/test/invariants/mutation-zone-reaffectation.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 4,
+      "expects": 16,
+      "empreintes": {
+        "describe·Invariant — mutation de zone : approbation réaffecte réellement users.zone_id": 1,
+        "it·approbation par super_admin → users.zone_id réellement réaffecté à la zone demandée": 1,
+        "it·décision sur une mutation déjà tranchée → refusée, pas de nouvelle écriture": 1,
+        "it·rejet par gestionnaire_zone → users.zone_id INCHANGÉ": 1
+      }
+    },
+    "backend/test/invariants/negociation-reservation-stock.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 6,
+      "expects": 44,
+      "empreintes": {
+        "describe·Invariant B2 — négociation couverte par la réservation de stock": 1,
+        "it·I-NEG-1 : négociation acceptée réserve ET convertit le stock de sa publication d\\'origine": 1,
+        "it·I-NEG-2 : un deuxième acheteur ne peut pas sur-vendre le stock déjà consommé par une négociation acceptée": 1,
+        "it·I-NEG-3 : marchandRepondreContreOffre réserve/bloque de la même façon": 1,
+        "it·I-NEG-4 : le disponible restant suit le même cycle réservation/libération qu\\'une commande classique ; annuler une négociation déjà convertie ne restitue pas le stock": 1,
+        "it·I-NEG-5 : le marchand peut re-contre-offrir dans la limite de 3 contre-offres, sans créer de commande ni toucher le stock": 1
+      }
+    },
+    "backend/test/invariants/p0-activation-backoffice.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 5,
+      "expects": 25,
+      "empreintes": {
+        "describe·Invariant P0.0 (back-office) — POST /users/backoffice/create ne réintroduit plus le takeover 0000": 1,
+        "it·exemption documentée : compte ADMIN créé par un super_admin reste ACTIF avec mot de passe réel (non cassé par ce lot)": 1,
+        "it·le code d’activation émis par le chemin BO active réellement le compte via POST /auth/activer (bout en bout)": 1,
+        "it·login {numéro, 0000} sur un compte fraîchement créé par le BO → REJETÉ (le takeover de masse reste mort)": 1,
+        "it·marchand créé via le BO : AUCUN mot de passe exploitable renvoyé, compte en_attente_activation": 1
+      }
+    },
+    "backend/test/invariants/p0-activation-sms-honnete.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 4,
+      "expects": 9,
+      "empreintes": {
+        "describe·Invariant P0.0 (SMS) — DOSSIER_VALIDE honnête selon la vraie provenance du mot de passe": 1,
+        "it·chemin légitime NON cassé : acteur jamais passé par P0.0 (mot de passe réellement 0000) → SMS original conservé": 1,
+        "it·compte P0.0 déjà activé par l’acteur lui-même : le SMS n’affirme pas non plus \\'0000\\'": 1,
+        "it·compte P0.0 encore en_attente_activation : le SMS n'affirme PAS '0000' ni un accès immédiat": 1
+      }
+    },
+    "backend/test/invariants/p0-activation.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 5,
+      "expects": 7,
+      "empreintes": {
+        "describe·Invariant P0.0 — enrôlement inerte + activation (fin du takeover 0000)": 1,
+        "it·activation : la marchande pose SON secret → compte loginable": 1,
+        "it·code à USAGE UNIQUE : rejeu du même code → REJETÉ": 1,
+        "it·login {numéro, 0000} sur compte inerte → REJETÉ (le takeover de masse est mort)": 1,
+        "it·secret trop simple (0000/1234) refusé à l’activation": 1
+      }
+    },
+    "backend/test/invariants/protection-sociale-cotisations.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 5,
+      "expects": 37,
+      "empreintes": {
+        "describe·Invariant PS1 — cotisations sociales CNPS/CNAM (persistance réelle, débit Keiwa atomique, isolation)": 1,
+        "it·PS1a — espèces / mobile money : persistée telle quelle, AUCUN mouvement wallet": 1,
+        "it·PS1b — keiwa + solde suffisant : débit exact, cotisation rattachée à la transaction wallet": 1,
+        "it·PS1c — keiwa + solde INSUFFISANT : refusée (400), AUCUNE cotisation créée, wallet intact (rollback complet)": 1,
+        "it·PS1d — isolation stricte : un utilisateur ne voit et ne crée que ses PROPRES cotisations": 1
+      }
+    },
+    "backend/test/invariants/publication-authorship.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 5,
+      "expects": 9,
+      "empreintes": {
+        "describe·Invariant B1 — autorite de publication (POST /publications)": 1,
+        "it·cooperateur : POST /publications autorise (201)": 1,
+        "it·institution : POST /publications refuse (403), aucune ligne ecrite": 1,
+        "it·marchand (detaillant) : POST /publications refuse (403), aucune ligne ecrite": 1,
+        "it·producteur : POST /publications autorise (201)": 1
+      }
+    },
+    "backend/test/invariants/readiness-garde-fous.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 8,
+      "expects": 15,
+      "empreintes": {
+        "describe·R4 — GET /caisse/transactions plafonné et paginé (🟢 attendu)": 1,
+        "describe·R5 — seed de démo interdit en production sans opt-in (🟢 attendu)": 1,
+        "it·?limit démesuré ⇒ borné à 1000, jamais l’historique entier": 1,
+        "it·?limit/?page paginent dans l’ordre chronologique inverse": 1,
+        "it·NODE_ENV=production + SEED_DEMO=\"true\" ⇒ le seed reprend (opt-in assumé)": 1,
+        "it·NODE_ENV=production sans SEED_DEMO ⇒ runSeed sort AVANT tout accès à la base": 1,
+        "it·sans paramètre ⇒ 500 lignes (défaut), les plus récentes d’abord": 1,
+        "it·valeurs absurdes (limit négatif) ⇒ au moins une ligne, jamais d’erreur": 1
+      }
+    },
+    "backend/test/invariants/schema-ledger-sans-migration.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 8,
+      "expects": 8,
+      "empreintes": {
+        "describe·Schéma — ce que DbInit pose suffit, sans aucune migration": 1,
+        "it·aucune migration n’a tourné — on vérifie bien le chemin de production": 1,
+        "it·la requête réelle du panneau « Derniers mouvements » s’exécute": 1,
+        "it·la table d’idempotence des opérations de stock existe": 1,
+        "it·le ledger porte toutes les colonnes que le code écrit et lit": 1,
+        "it·l’INSERT réel d’une clé d’idempotence de stock s’exécute": 1,
+        "it·l’insertion réelle de la restitution s’exécute": 1,
+        "it·toutes les tables écrites en SQL brut par le code existent après DbInit seul": 1
+      }
+    },
+    "backend/test/invariants/schema-pilote.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 7,
+      "expects": 7,
+      "empreintes": {
+        "describe·SCHEMA-PILOTE — un seul chemin, prouvé et figé": 1,
+        "it·la base de cette exécution a bien été bâtie par ce chemin, sans migration": 1,
+        "it·le schéma obtenu correspond à l’empreinte figée du pilote": 1,
+        "it·rejouer DbInit ne modifie ni ne casse le schéma": 1,
+        "it·sur base vierge, le chemin autorisé est : entités → synchronize → DbInit": 1,
+        "it·toute COLONNE écrite en SQL brut existe — c’était la forme exacte de B1": 1,
+        "it·toute TABLE écrite en SQL brut existe après ce seul chemin": 1
+      }
+    },
+    "backend/test/invariants/score-membres-cooperative.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 3,
+      "expects": 16,
+      "empreintes": {
+        "describe·Invariant Score Membres Coopérative — scoreJulaba réel et cohérent (🟢 attendu)": 1,
+        "it·le scoreJulaba du membre actif est IDENTIQUE au score calculé par GET /scores/me pour ce même utilisateur (source unique)": 1,
+        "it·un membre avec activité réelle (ventes) a un scoreJulaba > 0, un membre sans activité reste à 0": 1
+      }
+    },
+    "backend/test/invariants/sec-2-pin-identificateur.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 14,
+      "expects": 65,
+      "empreintes": {
+        "describe·SEC-08 — plus personne ne choisit le PIN d’un autre": 1,
+        "describe·SEC-2 — le PIN identificateur ne sort plus, et il est verrouillé": 1,
+        "it·SMS non délivré : on le dit, on ne montre jamais le code — et le reset tient quand même": 1,
+        "it·après reset : ancien code refusé, ancienne session morte, nouveau code accepté, PIN_RESET écrit": 1,
+        "it·change-pin ne contourne pas le verrou : c’est l’autre porte, elle est fermée aussi": 1,
+        "it·changer de session ne lève pas le verrou — le compteur vit sur le compte": 1,
+        "it·create-acteur refuse le rôle identificateur — la fuite SEC-06 était morte": 1,
+        "it·la création back-office pose le PIN, l’envoie par SMS, et ne le rend pas": 1,
+        "it·la route de déchiffrement du PIN n’existe plus": 1,
+        "it·la route à PIN choisi n’existe plus": 1,
+        "it·la réinitialisation lève le verrou — sinon on enverrait un code inutilisable": 1,
+        "it·le code envoyé à la création est bien celui qui ouvre le compte": 1,
+        "it·le palier tombe à ${} essais ratés, et le verrou est réel": 1,
+        "it·sur une création qui aboutit, rien qui ressemble à un code ne revient": 1
+      }
+    },
+    "backend/test/invariants/seed-divisions-idempotent.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 6,
+      "expects": 12,
+      "empreintes": {
+        "describe·SEED-01 — le seed du découpage administratif est idempotent niveau par niveau": 1,
+        "it·la présence d’une commune étrangère ne bloque aucun autre niveau": 1,
+        "it·les districts du seed sont tous présents, parasite ou non": 1,
+        "it·rejouer le seed n’écrit rien en double": 1,
+        "it·un district étranger au seed ne bloque plus la cascade": 1,
+        "it·un niveau intermédiaire amputé est reconstruit, pas ignoré": 1
+      }
+    },
+    "backend/test/invariants/stock-commun-cooperative.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 7,
+      "expects": 70,
+      "empreintes": {
+        "describe·Invariant — Stock commun coopérative (apport / distribution / isolation)": 1,
+        "it·1) un apport augmente réellement le stock commun (avant/après, montant exact)": 1,
+        "it·2) une distribution valide décrémente réellement le stock et trace un mouvement PAR membre destinataire": 1,
+        "it·3) une distribution qui dépasse le stock disponible est refusée (>=400) — rien ne bouge": 1,
+        "it·4) isolation stricte entre deux coopératives : la coopérative B ne voit ni ne modifie le stock de la coopérative A": 1,
+        "it·5) une distribution notifie chaque destinataire ET apparaît dans son historique personnel (GET /cooperatives/mes-distributions)": 1,
+        "it·6) un membre sans aucune coopérative se voit refuser l'apport (403), jamais de fallback silencieux": 1
+      }
+    },
+    "backend/test/invariants/stock-reservation.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 10,
+      "expects": 34,
+      "empreintes": {
+        "describe·Invariant B2 — reservation de stock sur commande": 1,
+        "it·D2-a: vente directe (recolte_id, confirmee) decremente la recolte + trace le mouvement": 1,
+        "it·D2-b: vente directe SANS recolte_id est refusee (400), aucun stock touche": 1,
+        "it·D3: une reservation en_attente reste active (pas de TTL / expiration)": 1,
+        "it·I-B(recolte): confirmer une vente marche decremente la recolte liee (une fois)": 1,
+        "it·I-C: en_livraison puis livree ne modifie ni disponible ni recolte": 1,
+        "it·annuler libere la reservation (disponible restitue, ligne liberee)": 1,
+        "it·bloque (409) si la demande depasse le disponible, sans effet": 1,
+        "it·confirmer convertit (decrement garde, ligne convertie) et est idempotent": 1,
+        "it·creer en_attente reserve le stock (disponible -= q, ligne active)": 1
+      }
+    },
+    "backend/test/invariants/suppression-compte-anonymisation.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 2,
+      "expects": 47,
+      "empreintes": {
+        "describe·Invariant — suppression de compte avec anonymisation réelle (loi n°2013-450)": 1,
+        "it·aucun champ personnel identifiant ne survit en clair, et l'historique d'argent reste intact": 1
+      }
+    },
+    "backend/test/invariants/tontine-cycle-complet.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 6,
+      "expects": 75,
+      "empreintes": {
+        "describe·Invariant TN — tontine réelle (ordre fixe, distribution automatique tracée)": 1,
+        "it·TNa — création : ordre assigné selon l’ordre du tableau fourni": 1,
+        "it·TNb+TNc+TNd+TNe — cycle complet : débit exact, distribution auto au bon moment, double cotisation refusée, terminaison": 1,
+        "it·TNf — solde insuffisant : refus propre, rien ne bouge (wallet, mouvement, cycle)": 1,
+        "it·TNg — isolation stricte : un tiers ne peut ni lire ni cotiser": 1,
+        "it·TNh — concurrence réelle : deux membres cotisent au même instant → aucune double distribution, aucune corruption de cycleCourant": 1
+      }
+    },
+    "backend/test/invariants/transfert-compte-a-compte.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 7,
+      "expects": 62,
+      "empreintes": {
+        "describe·Invariant T1 — transfert compte-à-compte (atomique, idempotent, tracé)": 1,
+        "it·T1a — bout-en-bout : recherche destinataire puis transfert, soldes exacts, 2 écritures liées, historique consultable": 1,
+        "it·T1b — idempotence : rejouer la même clé ne double AUCUN mouvement": 1,
+        "it·T1c — solde insuffisant : transfert refusé, rien ne bouge": 1,
+        "it·T1d — compte destinataire bloqué : transfert refusé, rollback intégral": 1,
+        "it·T1d-bis — compte EXPÉDITEUR bloqué : transfert refusé même s'il tente lui-même l'envoi": 1,
+        "it·T1e — atomicité : panne pendant l'écriture ⇒ NI mouvement partiel NI solde modifié, retry ultérieur aboutit": 1
+      }
+    },
+    "backend/test/invariants/tresorerie-stock-lecture.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 5,
+      "expects": 22,
+      "empreintes": {
+        "describe·Invariant — Lecture trésorerie coopérative et stock (jamais de 500)": 1,
+        "it·GET /cooperatives/tresorerie répond 200 (pas 500) pour le président d\\'une coopérative fraîchement créée": 1,
+        "it·GET /stocks répond 200 (pas 500) pour un producteur sans aucun produit — repli sur la table `stocks`": 1,
+        "it·le cycle écriture -> lecture de la trésorerie fonctionne réellement (POST puis PATCH reflétés par GET)": 1,
+        "it·le cycle écriture -> lecture du stock personnel fonctionne réellement (POST puis GET)": 1
+      }
+    }
+  }
+}
