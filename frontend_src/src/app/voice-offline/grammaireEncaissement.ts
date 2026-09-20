@@ -43,6 +43,21 @@ export type IntentionEncaissement =
   | 'annuler_validation';
 
 /**
+ * LA LISTE DE RÉFÉRENCE, en un seul endroit. Le micro de la caisse doit
+ * déclarer ces quatre intentions dans DEUX listes du moteur vocal (dispense de
+ * confirmation orale, exécution immédiate hors ligne) : une intention oubliée
+ * dans l'une des deux ne casserait rien de visible — elle serait juste mise
+ * en file ou parlée deux fois. On les écrit ici, et nulle part ailleurs.
+ */
+export const INTENTIONS_ENCAISSEMENT: readonly IntentionEncaissement[] =
+  ['encaisser', 'combien_doit', 'oui_valide', 'annuler_validation'];
+
+/** Vrai si `type` (un `action.type` du moteur vocal) est une intention d'encaissement. */
+export function estIntentionEncaissement(type: string): type is IntentionEncaissement {
+  return (INTENTIONS_ENCAISSEMENT as readonly string[]).includes(type);
+}
+
+/**
  * Minuscules, sans accents, ponctuation aplatie, bordée d'espaces. La
  * reconnaissance vocale est irrégulière sur les accents : la détection ne doit
  * jamais en dépendre. Les bords en espace permettent d'écrire `\bmot\b` sans

@@ -24,6 +24,14 @@
  * eu un, décoratif ; la marchande parlait, rien n'arrivait. Le remède n'était
  * pas « aucun micro », c'était « un seul, et il marche ». Ce composant monte
  * le moteur ET le bouton ensemble : l'un ne peut pas exister sans l'autre.
+ *
+ * L'ENCAISSEMENT PASSE PAR ICI, MAIS NE S'Y FAIT PAS (VOIX-01, lot C). Le
+ * moteur reconnaît aussi « encaisse », « combien elle doit », « oui valide »
+ * et « non ». Ce composant les TRANSMET à la caisse (`onIntentionEncaissement`)
+ * et s'arrête là : il ne connaît ni le total, ni le montant reçu, ni la
+ * primitive de paiement. La machine qui relit le compte et la seule fonction
+ * qui écrit de l'argent vivent dans POSCaisse — la frontière de ce fichier
+ * reste : remplir le panier, jamais encaisser.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -39,6 +47,7 @@ import { useRaccourcis } from '../../contexts/RaccourcisContext';
 import { useObjectif } from '../../contexts/ObjectifContext';
 import { useStock, type StockItem } from '../../contexts/StockContext';
 import { extraire } from '../../voice-offline/extraction';
+import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
 import { produitPourVente } from '../../services/preselectionVente';
@@ -65,9 +74,14 @@ interface Props {
    * fait pas redire un nom qu'elle vient de toucher. Arrive par l'état de
    * route, jamais par une variable globale — voir POSCaisse. */
   produitPreselectionne?: ProduitPreselectionne | null;
+  /** Une phrase d'encaissement a été reconnue : la caisse en fait ce qu'elle
+   * veut (relire, annoncer, annuler, ou appeler SA primitive de paiement).
+   * Obligatoire, et c'est voulu : sans destinataire, ces phrases seraient
+   * reconnues puis avalées en silence — « elle parle, rien n'arrive ». */
+  onIntentionEncaissement: (intention: IntentionEncaissement) => void;
 }
 
-export function MicroVenteCaisse({ produitPreselectionne = null }: Props) {
+export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEncaissement }: Props) {
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, speak } = useApp();
@@ -155,9 +169,23 @@ export function MicroVenteCaisse({ produitPreselectionne = null }: Props) {
     // même fonction que le tactile. L'encaissement reste le bloc « Payer en
     // espèces » de cette même page. « vendre » n'attend pas de confirmation
     // orale et agit même hors ligne (panier local, aucune écriture serveur).
-    confirmationBypassIntents: ['vendre'],
-    offlineLocalIntents: ['vendre'],
+    //
+    // Les intentions d'ENCAISSEMENT (lot C) sont dans les deux listes pour les
+    // mêmes raisons, à une nuance près : elles ont bien une confirmation,
+    // mais c'est celle de la machine (relecture du compte, puis « oui
+    // valide »), pas le « oui/non » du moteur — les deux empilées, Tata
+    // demanderait deux fois. Et elles n'écrivent rien elles-mêmes : quand
+    // « oui valide » aboutit, c'est `handlePay` → `enregistrerVente` qui
+    // écrit, avec sa propre file hors ligne, exactement comme le bouton.
+    confirmationBypassIntents: ['vendre', ...INTENTIONS_ENCAISSEMENT],
+    offlineLocalIntents: ['vendre', ...INTENTIONS_ENCAISSEMENT],
     onAction: async (data) => {
+      // L'ENCAISSEMENT N'EST PAS À MOI. Transmis à la caisse, et on s'arrête :
+      // pas de vente, pas de rafraîchissement, rien. Tout ce qui suit dans ce
+      // gestionnaire remplit le panier ; une phrase d'encaissement n'y
+      // touche pas.
+      if (data.action?.type && estIntentionEncaissement(data.action.type)) { onIntentionEncaissement(data.action.type); return; }
+
       // `uniteParlee` : l'unité RÉELLEMENT prononcée (« un TAS de piment »).
       // Sans elle, reprendre le prix du catalogue peut être faux — un tas
       // n'est pas un kilo, et l'écart se paie sur l'argent de la marchande.

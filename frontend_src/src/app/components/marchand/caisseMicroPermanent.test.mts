@@ -109,7 +109,9 @@ ok(rendus === 1, `le micro est rendu une seule fois (${rendus})`);
 // « Présent aux trois moments » se prouve en montrant qu'il n'est conditionné
 // par RIEN : ni panier vide, ni panier plein, ni encaissement ouvert.
 const ligneRendu = codeCaisse.split("\n").find(l => l.includes("<MicroVenteCaisse produitPreselectionne"));
-ok(!!ligneRendu && /^\s*<MicroVenteCaisse produitPreselectionne=\{produitPreselectionne\} \/>\s*$/.test(ligneRendu || ""),
+// `onIntentionEncaissement` (lot C) est une prop de plus sur la MÊME ligne :
+// le micro transmet l'encaissement à la caisse, il ne l'exécute pas.
+ok(!!ligneRendu && /^\s*<MicroVenteCaisse produitPreselectionne=\{produitPreselectionne\} onIntentionEncaissement=\{onIntentionEncaissement\} \/>\s*$/.test(ligneRendu || ""),
   "il est rendu seul sur sa ligne, sans garde `&&` ni ternaire");
 const ligneAvant = (codeCaisse.slice(0, codeCaisse.indexOf("<MicroVenteCaisse")).trimEnd().split("\n").pop() || "").trim();
 ok(!/(&&|\?|:)$/.test(ligneAvant),
