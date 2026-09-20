@@ -8,7 +8,7 @@
  * ✅ Chargement automatique données utilisateur
  * ✅ Synchronisation temps réel
  * ✅ Support offline/online
- * ✅ Tata Nanti Lou (ElevenLabs TTS)
+ * ✅ Tantie Nanti Lou (ElevenLabs TTS)
  */
 
 import { eventBus, EVENTS } from '../services/eventBus';
@@ -1204,7 +1204,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const roleColor = user ? ROLE_COLORS[user.role] : '#C46210';
 
-  // Double-tap global pour ouvrir Tata Nanti Lou
+  // Double-tap global pour ouvrir Tantie Nanti Lou
   useEffect(() => {
     let lastTap = 0;
     const handleDoubleTap = (e: TouchEvent) => {

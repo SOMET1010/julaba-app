@@ -107,7 +107,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
       <div className="onboarding-market-veil" aria-hidden="true" />
       <motion.img
         src={tataAccueil}
-        alt="Tata Nanti Lou"
+        alt="Tantie Nanti Lou"
         className="onboarding-tata-figure"
         initial={{ opacity: 0, y: 28 }}
         animate={{ opacity: 1, y: 0 }}
@@ -149,7 +149,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
             <motion.button
               onClick={(e) => { e.stopPropagation(); handleListen(); }}
               whileTap={{ scale: 0.9 }}
-              aria-label={isSpeaking ? 'Arrêter Tata Nanti Lou' : 'Réécouter Tata Nanti Lou'}
+              aria-label={isSpeaking ? 'Arrêter Tantie Nanti Lou' : 'Réécouter Tantie Nanti Lou'}
               className="grid place-items-center rounded-full bg-white shadow-lg onboarding-listen"
               style={{ width: 56, height: 56 }}
             >

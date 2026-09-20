@@ -65,7 +65,7 @@ import('./app/voice-offline/offlineStt')
 // embarqués d'office (ci-dessous) : c'est la voix propre de l'appli, pas de coût
 // de données à surprise.
 
-// Précharge les clips de la voix « Tata Nanti Lou » (lecture instantanée + cache
+// Précharge les clips de la voix « Tantie Nanti Lou » (lecture instantanée + cache
 // hors-ligne). Différé pour ne pas ralentir le premier affichage.
 import('./app/services/tataVoice')
   .then(({ preloadTataClips }) => {

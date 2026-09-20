@@ -215,7 +215,7 @@ export function LoginPassword() {
   const greetTitle = `${salutation(compteConnu?.appellation, cachedPrenom)} !`;
   const greetSub = cachedPrenom
     ? 'Je suis heureuse de vous revoir aujourd’hui.'
-    : 'Je suis Tata Nanti Lou. Je serai à vos côtés pour vous aider.';
+    : 'Je suis Tantie Nanti Lou. Je serai à vos côtés pour vous aider.';
 
   // « Écouter Tata » : accueil vocal. On utilise la VOIX DU NAVIGATEUR (fiable et
   // correcte) — le clip enregistré /voix/tata/phrase-1.mp3 côté serveur contenait
@@ -1105,15 +1105,15 @@ export function LoginPassword() {
         </div>
         <h1>{step === 'phone' ? 'Ton numéro' : step === 'password' ? 'Ton code secret' : salutation(compteConnu?.appellation, compteConnu?.prenom)}</h1>
         <div className="login-guide">
-          <img src={tataNantiLou} alt="Tata Nanti Lou" />
+          <img src={tataNantiLou} alt="Tantie Nanti Lou" />
           <button type="button" onClick={ecouterTata} className="login-replay"
-            aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tata Nanti Lou'}>
+            aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tantie Nanti Lou'}>
             <Volume2 aria-hidden="true" size={26} />
           </button>
         </div>
         {step === 'password' && <button type="button" onClick={retourDepuisCode} className="login-help" disabled={isLoading}><ChevronLeft aria-hidden="true" size={22} />Retour</button>}
         {devMode && (
-          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tata Nanti Lou · dev</span>
+          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tantie Nanti Lou · dev</span>
         )}
       </motion.div>
 

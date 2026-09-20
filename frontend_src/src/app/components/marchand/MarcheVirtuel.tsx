@@ -1344,7 +1344,7 @@ export function MarcheVirtuel() {
         </div>
       )}
 
-      {/* Tata Nanti Lou */}
+      {/* Tantie Nanti Lou */}
 
       <ToastContainer />
     </SubPageLayout>

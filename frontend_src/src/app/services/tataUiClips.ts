@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Voix « Tata Nanti Lou » — messages FIXES de l'appli, dits dans la VRAIE voix.
+// Voix « Tantie Nanti Lou » — messages FIXES de l'appli, dits dans la VRAIE voix.
 //
 // GÉNÉRÉ à partir des 137 clips post-produits (silences coupés, volume harmonisé
 // à -16 LUFS, débit ralenti ~10 %). Chaque entrée relie le TEXTE exact prononcé

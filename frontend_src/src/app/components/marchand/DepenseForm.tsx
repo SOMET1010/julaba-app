@@ -308,7 +308,7 @@ export function DepenseForm() {
 
         {/* TATA NANTI LOU + MICRO */}
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, paddingTop:8, borderTop:'1px solid var(--trait)' }}>
-          <motion.img src={TATA_BLEU} alt="Tata Nanti Lou"
+          <motion.img src={TATA_BLEU} alt="Tantie Nanti Lou"
             style={{ width:160, height:160, objectFit:'contain', filter:'drop-shadow(0 12px 28px rgba(175,91,35,0.2))' }}
             animate={{ y:[0,-7,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut' }} />
           <motion.button whileTap={{ scale:0.9 }} onClick={handleMic} style={{ background:'none', border:'none', cursor:'pointer', padding:8 }}>

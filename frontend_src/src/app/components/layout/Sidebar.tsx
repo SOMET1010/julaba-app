@@ -73,10 +73,10 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
       path: item.path,
       isMic: false,
     })),
-    // Ajouter Tata Nanti Lou à la fin pour Desktop
+    // Ajouter Tantie Nanti Lou à la fin pour Desktop
     {
       id: 'mic',
-      label: 'Tata Nanti Lou',
+      label: 'Tantie Nanti Lou',
       icon: Mic,
       path: null,
       isMic: true,
@@ -125,7 +125,7 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
             if (micTab) handleTabClick(micTab);
           }}>
           <Mic aria-hidden="true" size={24} />
-          <span><span className="block font-semibold">Tata Nanti Lou</span>
+          <span><span className="block font-semibold">Tantie Nanti Lou</span>
             <span className="block text-sm">Besoin d'aide ?</span>
           </span>
         </button>

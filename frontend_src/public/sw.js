@@ -12,7 +12,7 @@ const STATIC_ASSETS = ['/', '/index.html'];
 function _safeParse(s) { try { return JSON.parse(s); } catch { return []; } }
 const PRECACHE = _safeParse('__PRECACHE_JSON__');
 
-// Clips de la VOIX de Tata Nanti Lou (~7 Mo, injectés au build). Pré-chargés à
+// Clips de la VOIX de Tantie Nanti Lou (~7 Mo, injectés au build). Pré-chargés à
 // l'installation → la marchande entend Tata même HORS-LIGNE dès le premier jour.
 // (Le modèle Vosk ~40 Mo reste, lui, à installation consentie : trop lourd pour
 // être poussé d'office sur des données mobiles.)

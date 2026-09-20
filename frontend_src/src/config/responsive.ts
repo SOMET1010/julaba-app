@@ -131,10 +131,10 @@ export const SIDEBAR_WIDTH = {
  * Base mobile reste INTACTE
  */
 export const RESPONSIVE_IMAGES = {
-  // Tata Nanti Lou image (cards dashboard)
+  // Tantie Nanti Lou image (cards dashboard)
   tataLou: "w-32 md:w-36 lg:w-40 xl:w-44",
   
-  // Tata Nanti Lou modal (grande image)
+  // Tantie Nanti Lou modal (grande image)
   tataLouModal: "w-40 md:w-48 lg:w-56 xl:w-64",
   
   // Logos principaux

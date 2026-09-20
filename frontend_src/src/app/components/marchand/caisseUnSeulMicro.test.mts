@@ -47,9 +47,9 @@ ok(liste !== null, "la BottomBar porte une liste ROUTES_SANS_TATA");
 ok(liste !== null && /'\/marchand\/caisse'/.test(liste[1]), "qui contient '/marchand/caisse'");
 ok(/const tataMasquee = ROUTES_SANS_TATA\.includes\(location\.pathname\)/.test(barre),
   "le masquage est décidé sur le pathname courant (même mécanisme que /keiwa, mais ciblé)");
-const bouton = barre.indexOf('aria-label="Ouvrir Tata Nanti Lou"');
+const bouton = barre.indexOf('aria-label="Ouvrir Tantie Nanti Lou"');
 const garde = barre.lastIndexOf("{!tataMasquee && (", bouton);
-ok(bouton !== -1 && garde !== -1, "le bouton « Ouvrir Tata Nanti Lou » est rendu sous la garde `!tataMasquee`");
+ok(bouton !== -1 && garde !== -1, "le bouton « Ouvrir Tantie Nanti Lou » est rendu sous la garde `!tataMasquee`");
 ok(/isOpen=\{isTantieOpen && !tataMasquee\}/.test(barre),
   "la modale Tata ne peut pas s'ouvrir non plus (double-tap global) sur la caisse");
 ok(!/if \(tataMasquee\) return null/.test(barre) && /<nav aria-label="Navigation principale"/.test(barre),

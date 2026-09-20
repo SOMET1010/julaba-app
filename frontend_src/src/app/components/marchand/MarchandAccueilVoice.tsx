@@ -104,7 +104,7 @@ function MarchandAccueilVoiceInner() {
               <strong>{accueil}</strong>
               <em>On vend ensemble aujourd’hui.</em>
             </span>
-            <img src={tataAccueil} alt="Tata Nanti Lou" />
+            <img src={tataAccueil} alt="Tantie Nanti Lou" />
           </button>
         </section>
 

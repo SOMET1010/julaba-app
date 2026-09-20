@@ -401,7 +401,7 @@ export function MarchandDepenses() {
         {depenses.length === 0 ? (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }}
             style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:'40px 24px', textAlign:'center' }}>
-            <img src={TATA_BLEU} style={{ width:120, height:120, objectFit:'contain' }} alt="Tata Nanti Lou" />
+            <img src={TATA_BLEU} style={{ width:120, height:120, objectFit:'contain' }} alt="Tantie Nanti Lou" />
             <p style={{ fontSize:16, fontWeight:800, color:'var(--encre)', margin:0 }}>
               {search ? 'Aucune dépense trouvée' : 'Aucune dépense'}
             </p>

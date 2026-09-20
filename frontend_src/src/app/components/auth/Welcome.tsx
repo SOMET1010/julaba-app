@@ -59,8 +59,8 @@ export function Welcome({ onComplete }: WelcomeProps) {
       </section>
 
       <div className="login-welcome-actions login-market-sheet">
-        <button type="button" onClick={accueille} className="login-tata-inline" aria-label="Écouter Tata Nanti Lou">
-          <img src={tataAccueil} alt="Tata Nanti Lou" />
+        <button type="button" onClick={accueille} className="login-tata-inline" aria-label="Écouter Tantie Nanti Lou">
+          <img src={tataAccueil} alt="Tantie Nanti Lou" />
           <span>
             <strong>Akwaba, je suis Tata.</strong>
             <small>Je t’aide à vendre et compter.</small>

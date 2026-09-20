@@ -78,7 +78,7 @@ export function BottomBar({ role, onMicClick }: BottomBarProps) {
           <motion.button
             type="button"
             onClick={handleMicClick}
-            aria-label="Ouvrir Tata Nanti Lou"
+            aria-label="Ouvrir Tantie Nanti Lou"
             className="commerce-tata-dock absolute flex flex-col items-center justify-center"
             whileTap={{ scale: 0.94 }}
           >

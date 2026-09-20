@@ -66,7 +66,7 @@ export function stopAllAudio(): void {
   try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
 }
 
-// Choix d'une voix FRANÇAISE FÉMININE pour la voix de secours : Tata Nanti Lou
+// Choix d'une voix FRANÇAISE FÉMININE pour la voix de secours : Tantie Nanti Lou
 // est une femme. Par défaut le navigateur choisit souvent une voix masculine —
 // on force donc une voix de femme quand l'appareil en propose une.
 let _voicesCache: SpeechSynthesisVoice[] = [];
@@ -117,7 +117,7 @@ if (typeof window !== "undefined" && window.speechSynthesis) {
 // Voix de SECOURS GRATUITE : la voix intégrée du navigateur (aucun coût, tourne
 // sur l'appareil, marche hors-ligne). Utilisée quand un clip pré-enregistré n'est
 // pas disponible ou pour les phrases dynamiques (montants). On force une voix de
-// FEMME pour rester cohérent avec Tata Nanti Lou. Jamais muette.
+// FEMME pour rester cohérent avec Tantie Nanti Lou. Jamais muette.
 export function speakBrowser(text: string): Promise<void> {
   return new Promise((resolve) => {
     try {
