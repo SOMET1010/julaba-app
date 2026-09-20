@@ -6,7 +6,7 @@ le **comment** de chaque contre-audit, court, pour qu'on puisse le rejouer.
 Règle de pilotage : *QA par lot dès la première livraison ; le lot est audité
 avant que sa fermeture n'entre dans le registre.*
 
-Les lots A, C et F s'ajouteront ici. Un lot **audité mais non fusionné** a une
+Les lots A et F s'ajouteront ici. Un lot **audité mais non fusionné** a une
 entrée aussi : elle dit ce qui est prouvé et ce qui attend une décision.
 
 ---
@@ -290,3 +290,189 @@ réactivant le drapeau ; le crash entre deux écritures est couvert par
 construction (une transaction), non par expérience ; concurrence testée à 2
 requêtes ; `mode_paiement='credit'` est une chaîne libre sans contrainte ; les 44
 autres suites d'invariants n'ont pas été relues ligne à ligne.
+
+---
+
+## Lot C — schéma (AUDITÉ, NON FUSIONNÉ)
+
+**Livré** : `9d15935` (base `3917bb7`). **Contre-audité** le 20/09/2026 (QA-C).
+**Non fusionné** : fusion suspendue aux décisions 1-5 de Patrick ci-dessous,
+dont l'ADR-0002. **Registre** : révision 23 — **aucun statut ne bouge** ; les
+verdicts et les défauts SCHEMA-08 à SCHEMA-12 sont *proposés* et n'entrent dans
+les tables qu'à la fusion.
+
+### Périmètre
+
+20 fichiers, backend et docs, **0 sous `frontend_src`** ; `package-lock`
+inchangé. `docs/schema/EMPREINTE-PILOTE.json` **identique à l'octet**
+(`git diff 3917bb7 9d15935` vide) ; **`--figer` non lancé** (empreinte figée
+toujours 60/684, `genereLe: 2026-09-19`) ; l'empreinte PROPOSÉE est un fichier
+à part, 62/707 : les 60 tables figées y sont strictement inchangées, seules
+`api_keys` (9 col.) et `keiwa_config_items` (14 col.) s'ajoutent. Mécanisme
+livré : convergence des entités vers DbInit sous drapeau `DB_SCHEMA_ENTITES`
+(`off` / `plan` / `apply`), carte des mécanismes, plan des entités.
+
+### Reproduction (rejouée par QA-C, bases dédiées `julaba_qac_*`, détruites)
+
+| Étape | Base `3917bb7` | Lot `9d15935` |
+|---|---|---|
+| Empreinte figée | — | diff **vide** |
+| `check-tsc-baseline` | — | 0 = 0, **exit 0** |
+| `test:unit` | — | 28 suites / 216 tests, **exit 0** |
+| `test:invariants` | — | 47 suites : 45 vertes, **2 rouges = empreinte** (`api_keys`, `keiwa_config_items`) ; les 5 autres tests d'`un-seul-chemin` verts ; **exit 1** |
+| `schema-pilote.mjs` | **exit 0** | **exit 1** à l'étape 2/5, uniquement « le schéma a changé » (2 tables) |
+| 3 specs nouvelles sur la base | `05-06` : **7/8 rouges** (relation absente) ; `un-seul-chemin` : **3/6 rouges sur l'invariant** (13 tables au lieu de 60, divergence 44, plan avec écarts) ; `schema-entites-dbinit` (unitaire) : 2/7 rouges **seulement faute des deux fichiers docs** — elle prouve la fraîcheur des docs, pas un défaut de la base | verts (sauf empreinte) |
+| Bugs `const [row]` | **reproduits** : `updateConfigItem`/`setActive` sur uuid inexistant → `[]` sans lever ; existant → tableau | **corrigés** : `NotFoundException` / objet |
+| `verify-dbinit-subsumed` (ADR-0002) | **exit 0** (« 0 ajouté ») | **exit 1** en `plan` **et** `apply` : 32 objets = les 2 tables ; rien d'autre (migrations ≡ entités pour les 900 autres objets) |
+
+### Ce qui a été attaqué — tenu / pas tenu
+
+**Tenu**
+- **Mode `plan` = zéro écriture** : sur base vierge, « Render-like » (13 tables
+  + 1 vue) et synchronize, `convergerEntites` émet **exactement 4 requêtes,
+  toutes `SELECT`** ; empreinte identique avant/après ; un seul `logger.warn`
+  (ligne la plus longue 1 454 caractères) ; entièrement sous `try/catch`,
+  lancé après `app.listen` — **un déploiement en `plan` ne peut pas échouer au
+  démarrage**.
+- **Mode `off` = base + 3** : 82 → 85 requêtes, exactement `CREATE TABLE
+  api_keys`, `CREATE INDEX idx_api_keys_key`, `CREATE TABLE keiwa_config_items`
+  (SCHEMA-05/06), même ordre. Mais **variable absente ⇒ `plan`, pas `off`** :
+  à écrire noir sur blanc.
+- **`off` puis `apply`** : 14 → 59 relations, 732 instructions, 0 échec ;
+  `runInit()` complet en `apply` → 62 = PROPOSÉE.
+- **Idempotence** : deux `runInit()` en `apply`, empreinte strictement
+  identique, 239 requêtes à chaque fois (pas « ~120 »).
+- **Additivité** : aucun `DROP`/`ALTER COLUMN`/`RENAME` ; colonne existante
+  d'un autre type laissée telle quelle ; `ADD COLUMN … NOT NULL` sur table
+  peuplée → refusée, isolée, journalisée, second `apply` identique. Aucune des
+  3 colonnes isolées « sans chemin » n'est NOT NULL.
+
+**Pas tenu**
+- **Type divergent non signalé** : `schema-entites.ts` et `CHANTIER-SCHEMA.md`
+  §3 promettent « laissée telle quelle **et signalée** » ; `diagnostiquerEntites`
+  compare les **noms** seulement — `activation_codes.selector integer` (entité
+  varchar), `user_id text` (entité uuid) → après `apply`, types inchangés et
+  journal « aucun écart » → **SCHEMA-09**.
+- **Ordre de boot réel en `apply` sur base vierge** : `main.ts` lance
+  `AdminDivisionsSeedService.runSeed()` **avant** `runInit()` ; le seed crée
+  `districts/regions/departements/communes` avec ses propres contraintes
+  inline, DbInit ajoute celles de l'entité par-dessus → **9 contraintes en
+  double**, PK `*_pkey` au lieu de `PK_…`, `gen_random_uuid()` au lieu de
+  `uuid_generate_v4()` — et le plan dit « aucun écart ». Le gate
+  `schema-un-seul-chemin` appelle `runInit()` directement et **ne rejoue pas
+  l'ordre de `main.ts`** → **SCHEMA-10**.
+
+### Écarts entre le rapport de C et l'observé
+
+1. **« 117 colonnes sans aucun chemin » est faux : c'est 97.** Les 117
+   incluent les 15 colonnes de la **vue** `credits_avec_statut` (créée par
+   DbInit, présente dans la baseline ; `sansCheminSurBaseExistante` ignore
+   `dbInit.vues`) et **5 colonnes camelCase qui sont dans la baseline**
+   (`objectifs_journaliers."userId"/"createdAt"`,
+   `raccourcis_vocaux."userId"/"createdAt"/"updatedAt"`) : `lireDdl` met tout
+   en minuscules, `userid ≠ userId`. Reste **11 tables (94 colonnes) + 3
+   colonnes = 97**. Les 11 tables : `activation_codes`, `cooperative_stock`,
+   `cooperative_stock_mouvements`, `cooperative_transactions`,
+   `cotisations_sociales`, `fidelite_evenements`, `tontine_membres`,
+   `tontine_mouvements`, `tontines`, `voice_provider_config`,
+   `voice_service_metrics` (absentes de la baseline, présentes seulement dans
+   les migrations postérieures). Le chiffre faux est repris dans
+   `CARTE-MECANISMES.md` et `CHANTIER-SCHEMA.md` §1/§3 → **SCHEMA-08**.
+2. Promesse « type divergent signalé » non tenue (SCHEMA-09).
+3. « DbInit seul posait 12 tables » vs « 13 » : mesuré **13 tables + 1 vue**.
+4. « ~120 aller-retours » en `apply` : **239** par `runInit()`.
+5. « Trois specs rouges sur la base » : vrai pour `05-06` et `un-seul-chemin`,
+   **pas** pour `schema-entites-dbinit` (rouge seulement faute des docs).
+6. `verify-dbinit-subsumed` passe de vert (base) à rouge (lot) ; C ne le dit
+   pas → **SCHEMA-12**.
+7. Le mode par défaut n'est pas « rien » : variable absente ⇒ `plan`.
+8. Tout le reste conforme : plan 47 tables / 538 col. / 19 enums / 13
+   contraintes / 20 index / 15 FK recompté, déterministe ; `computeBootDbFlags`
+   inchangé hors `apply` ; DDL `api_keys` = migration archivée sauf
+   `gen_random_uuid()`.
+
+### Verdicts proposés (n'entrent au registre qu'à la fusion)
+
+| Dette | Verdict proposé |
+|---|---|
+| SCHEMA-01 | **reste OUVERT** — les trois mécanismes coexistent (`synchronize`, branche vierge, 27 migrations) ; `apply` n'est pas posé ; `computeBootDbFlags(true,{})` rend toujours `synchronize:'true'` |
+| SCHEMA-02 | **reste OUVERT** — `schema-flags.ts` garde ses deux branches, un troisième chemin sous drapeau s'ajoute |
+| SCHEMA-03 | **reste OUVERT (mécanisme livré, non activé)** — sous `plan`, toute évolution d'entité doit encore être recopiée à la main dans DbInit ; sur base Render-like, le plan journalise 111 objets et n'en applique aucun ; 14 colonnes restent manuscrites |
+| SCHEMA-05 | **FERMÉ à la fusion, conditionné au gel 62/707** — DbInit pose `api_keys` (7/8 rouges sur la base → verts) ; tant que `--figer` n'est pas fait, gate et invariant restent rouges |
+| SCHEMA-06 | **FERMÉ à la fusion, même condition** — `keiwa_config_items` avec `UNIQUE (type,item_id)` ; `updateConfigItem` corrigé (`[]` → `NotFound`) |
+| SCHEMA-07 | **non concernée** — `bpay_transactions` non touchée, garde-fou colonne vert |
+
+**Défauts nouveaux proposés** (prochain numéro libre : SCHEMA-08)
+
+| N° | Sévérité | Constat reproduit |
+|---|---|---|
+| **SCHEMA-08** | P2 actif (doc/outillage) | La carte compte 117 colonnes sans chemin, il y en a 97 : `lireDdl` écrase la casse des identifiants quotés, `sansCheminSurBaseExistante` ignore les vues DbInit. Un chiffre faux dans le document qui sert à décider `apply` |
+| **SCHEMA-09** | P2 dormant (`apply` seulement) | `diagnostiquerEntites` ne compare que les noms : une colonne présente avec un autre type n'est ni convergée ni signalée, contrairement à la promesse écrite. Sur Render, un drift de type resterait invisible sous « aucun écart » |
+| **SCHEMA-10** | P2 dormant (base vierge + `apply`) | L'ordre réel de `main.ts` (seed divisions → DbInit) produit une base différente de celle prouvée par le gate (9 contraintes dupliquées, PK/défauts différents) ; `schema-un-seul-chemin` ne rejoue pas cet ordre |
+| **SCHEMA-11** | P3 actif (outillage, chevauche TEST-05) | `schema-un-seul-chemin.spec.ts` crée `${DB_NAME}_dbinit_seul` et ne la supprime jamais : une base de plus sur le Postgres partagé à chaque run |
+| **SCHEMA-12** | P2 actif (gouvernance ADR) | Le lot fait passer `verify:dbinit-subsumed` (ADR-0002 Étape 2) de exit 0 à exit 1 (32 objets), quel que soit le mode, sans modifier l'ADR — il propose seulement de l'acter |
+| (remarque) | P3 | Défaut de `DB_SCHEMA_ENTITES` = `plan`, pas `off` : à documenter |
+
+### Décisions attendues de Patrick (QA-C §6)
+
+1. **Prochain déploiement Render en `plan`** (tel que `render.yaml` le pose) —
+   recommandé par QA : zéro écriture prouvé, incapable de faire tomber le boot,
+   seule mesure réelle de l'écart sur Render. Il ne dira rien des colonnes dont
+   seul le type diverge (SCHEMA-09).
+2. **Passage en `apply`** — pas avant : lecture du journal `plan`, correction de
+   SCHEMA-09, SCHEMA-10 si une base vierge doit être bâtie en `apply`,
+   `--figer`. Risques résiduels : `uuid_generate_v4()` suppose `uuid-ossp` dans
+   le `search_path` de Render (non prouvable d'ici) ; contraintes refusées par
+   des données existantes (journalisées, base non dégradée, rejouées à chaque
+   boot).
+3. **Retrait de `synchronize` et de la branche vierge** — après un déploiement
+   `apply` observé ; c'est cela qui fermerait SCHEMA-01/02, pas ce lot.
+4. **ADR-0002** — la chaîne de migrations est cohérente avec les entités
+   (redondante, pas fausse) ; trancher explicitement la cible (« DbInit dérivé
+   des entités » vs « migrations autoritaires ») **avant** de fusionner C,
+   parce que C casse déjà son gate Étape 2 (SCHEMA-12) et B ajoute 5 objets au
+   même compteur (32 + 5).
+5. **`--figer` 62/707** — décision de Patrick seul ; au moment de la fusion de
+   C, sachant que A (`pin_recovery_codes`) et B (`credits.client_id`, …) le
+   feront bouger à nouveau : un gel par fusion, ou un seul après les trois.
+
+### Chevauchements (règle de chevauchement, révision 22 bis)
+
+- **TEST-05** : `schema-un-seul-chemin.spec.ts` **aggrave** le mécanisme
+  (SCHEMA-11) ; `schema-pilote.mjs` tourne sur `julaba_test` sauf `DB_NAME`
+  exporté. TEST-05 reste OUVERTE, C n'y touche pas — mention ajoutée dans sa
+  ligne.
+- **Point d'intégration B** (`credits.client_id`, `credits.idempotency_key`,
+  `credits_avec_statut.client_id`, `idx_credits_client`,
+  `ux_credits_marchand_idempotency`) : `credits` n'a pas d'entité → B pose du
+  manuscrit sur table sans entité, pas de conflit avec `HORS_ENTITE_CONNUES`,
+  mais l'empreinte bouge encore, `verify-dbinit-subsumed` cumule 32 + 5, la
+  carte les recensera « DBINIT seul ». Les migrations restent un chemin
+  documenté mais jamais exécuté : c'est la décision 4.
+- **Lot A — `pin_recovery_codes`** (entité **et** DbInit) : à la fusion A+C,
+  `PLAN-ENTITES.sql`, `CARTE-MECANISMES.md` et l'empreinte sont périmés →
+  `schema-entites-dbinit.spec.ts` rouge, `--figer` à refaire ; si le DDL
+  manuscrit de A nomme ses contraintes autrement que TypeORM, doublon de type
+  SCHEMA-10.
+- **DOC-02** : C ajoute des énoncés (« les migrations ne tournent nulle part au
+  boot ») sans réconcilier les anciens → reste OUVERTE — mention ajoutée dans
+  sa ligne.
+- **ARG-06** (`marge`/`benefice` doublées) : les deux colonnes entrent telles
+  quelles dans le plan ; rien ne se ferme.
+- **Les 14 colonnes `HORS_ENTITE_CONNUES`** (`stocks` ×8, `communes` ×2,
+  `marches` ×2, `cooperatives.commune_id`, `cycles.statut`) : tout lot qui
+  touche ces entités ou ces `ALTER` manuscrits fait rougir l'unitaire à
+  égalité stricte — à signaler aux lots stock/marchés.
+- Aucune dette fermée par effet de bord : les corrections `const [row]`
+  relèvent de SCHEMA-05/06 (code jamais exécuté avant).
+
+### Ce que ça ne prouve pas
+
+Rien sur la base de **production** (contenu, `uuid-ossp` dans le `search_path`,
+comportement d'`apply` sur ses données) ; que `apply` sur base vierge dans
+l'ordre réel de `main.ts` donne la base du gate (SCHEMA-10 prouve le contraire
+pour 4 tables, d'autres tables paresseuses non cherchées) ; que le plan détecte
+un drift de type, de défaut ou de nullabilité (noms seulement) ; les tables
+paresseuses hors seed (`cron_jobs_config`, `support_config`,
+`cooperative_besoins`) et le SQL brut hors `INSERT/UPDATE` ; `apply` concurrent
+(deux instances Render) ; la CI `schema-pilote.yml` (inchangée, non exécutée ici).
