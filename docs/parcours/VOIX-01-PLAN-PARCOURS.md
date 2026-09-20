@@ -339,3 +339,62 @@ Lots **B** (micro permanent aux trois moments), **C** (grammaire
 d'encaissement dans `localIntent`), **D** (relecture spontanée et fin du repli
 muet), **E** (unité sans exception sur le produit libre). **La dette reste
 OUVERTE.**
+
+---
+
+## 9. Lot B — étude préalable, et l'arbitrage qu'elle fait remonter
+
+> **Rien n'est codé pour le lot B.** Cette section est le résultat de la
+> lecture du code, faite après le lot A. Elle s'arrête sur une décision qui
+> appartient à Patrick.
+
+### Ce que « le micro permanent » demande réellement
+
+Le micro qui marche n'est pas un bouton : c'est tout le moteur vocal de
+`VenteVocaleModal` (537 lignes). Il tient à `useVoiceCore`, alimenté par un
+contexte d'une vingtaine de champs (caisse du jour, ventes, dépenses, session
+ouverte, prénom, genre, langue, objectif, progression, top stocks, dernier
+produit…), plus un adaptateur `onAction` qui appelle `vendreVocalUnifie`, plus
+le repli `SaisieGuidee`, plus la proposition de création de produit.
+
+**Prérequis structurel mesuré :** ce moteur exige les providers
+`RaccourcisProvider` et `ObjectifProvider` (et `RapportHebdoProvider` sur
+l'accueil). `MarchandAccueilVoice` et `GestionStock` les montent tous les
+deux ; **la route `/marchand/caisse` n'en monte aucun.** Poser le micro sur la
+caisse sans les monter ne donnerait pas une erreur bruyante : `useObjectif()`
+et `useRaccourcis()` retombent sur des valeurs nulles, et on obtiendrait un
+micro **qui a l'air de marcher**. C'est exactement le piège que le commentaire
+de `POSCaisse` dénonçait.
+
+### L'arbitrage qui remonte
+
+L'arbitrage n°4 sort `VenteVocaleModal` du parcours de vente pilote. Mais ce
+composant a **un second appelant** : `GestionStock.tsx` l'ouvre avec un
+`initialProduct` (vendre depuis la fiche d'un produit). Il ne peut donc pas
+simplement disparaître. Trois voies, et le choix n'est pas technique :
+
+1. **Extraire le moteur** dans un hook partagé (`useVenteVocale`) monté par la
+   caisse **et** par le modal, qui reste pour `GestionStock`. Plus sûr, plus
+   long ; deux surfaces vocales coexistent un temps.
+2. **Déplacer le moteur dans la caisse** et faire de `GestionStock` un simple
+   « ouvrir la caisse avec ce produit déjà dicté ». Plus proche de la cible
+   « une seule surface » ; touche un écran hors périmètre du lot.
+3. **Monter les providers sur la route caisse** et dupliquer temporairement le
+   câblage. Le plus rapide, et le plus cher ensuite : deux moteurs vocaux à
+   maintenir, c'est la dette VOIX-01 qu'on recrée ailleurs.
+
+**Je recommande la 1** : elle tient l'exigence « un seul micro, et il marche »
+sans toucher à `GestionStock` dans ce lot. Mais elle crée un hook partagé,
+donc un changement d'architecture — et cela ne se décide pas sans Patrick.
+
+### Ordre de travail proposé pour le lot B, une fois la voie choisie
+
+1. Monter les providers manquants sur la route `/marchand/caisse`.
+2. Extraire le moteur (voie retenue) **sans changer un seul comportement** —
+   `VenteVocaleModal` doit continuer de fonctionner à l'identique, c'est la
+   preuve que l'extraction n'a rien cassé.
+3. Poser le micro sur la surface caisse, présent aux **trois moments**.
+4. Basculer « Vendre » de l'accueil vers `/marchand/caisse` (arbitrage n°4).
+5. Garde-fou : un test qui **échoue si le micro disparaît d'un seul des trois
+   moments**, et un autre qui échoue si un micro est rendu **sans** que le
+   moteur soit monté au-dessus de lui.
