@@ -69,8 +69,20 @@ const abonnes = new Set<(t: TraceFallback) => void>();
 /** Les derniers replis, pour les tests et le diagnostic (bornés). */
 const journal: TraceFallback[] = [];
 const JOURNAL_MAX = 200;
+/**
+ * Replis déjà tracés dans cette session — UNE trace par (type, id, locale
+ * demandée, raison). I18N-02 : en dioula, chaque intentLocal émettait sept
+ * traces identiques vers l'anneau de 200 entrées du journal de voix (lot E) ;
+ * trente dictées le vidaient de ses événements TTS/STT. Un repli qui se
+ * répète n'apprend rien de plus que la première fois ; la locale servie est
+ * la même tant que les données ne changent pas.
+ */
+const dejaTraces = new Set<string>();
 
 function tracer(t: TraceFallback): void {
+  const cle = `${t.type}|${t.id}|${t.localeDemandee}|${t.raison}`;
+  if (dejaTraces.has(cle)) return;
+  dejaTraces.add(cle);
   journal.push(t);
   if (journal.length > JOURNAL_MAX) journal.shift();
   for (const cb of abonnes) { try { cb(t); } catch { /* un observateur ne casse jamais la voix */ } }
@@ -83,7 +95,8 @@ export function surFallback(cb: (t: TraceFallback) => void): () => void {
 }
 
 export function journalFallbacks(): readonly TraceFallback[] { return journal; }
-export function viderJournalFallbacks(): void { journal.length = 0; }
+/** Vide le journal ET réarme la déduplication (nouvelle session de test). */
+export function viderJournalFallbacks(): void { journal.length = 0; dejaTraces.clear(); }
 
 // ── Chaîne de repli ─────────────────────────────────────────────────────────
 
