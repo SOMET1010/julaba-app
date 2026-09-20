@@ -29,6 +29,8 @@ const sansCommentaires = (s: string) => s
   .replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const barre = sansCommentaires(lire("../layout/BottomBar.tsx"));
+const cadre = sansCommentaires(lire("../layout/AppLayout.tsx"));
+const flanc = sansCommentaires(lire("../layout/Sidebar.tsx"));
 const routes = sansCommentaires(lire("../../routes.tsx"));
 
 let failures = 0;
@@ -47,13 +49,23 @@ ok(liste !== null, "la BottomBar porte une liste ROUTES_SANS_TATA");
 ok(liste !== null && /'\/marchand\/caisse'/.test(liste[1]), "qui contient '/marchand/caisse'");
 ok(/const tataMasquee = ROUTES_SANS_TATA\.includes\(location\.pathname\)/.test(barre),
   "le masquage est décidé sur le pathname courant (même mécanisme que /keiwa, mais ciblé)");
-const bouton = barre.indexOf('aria-label="Ouvrir Tata Nanti Lou"');
+const bouton = barre.indexOf('aria-label="Ouvrir Tantie Nanti Lou"');
 const garde = barre.lastIndexOf("{!tataMasquee && (", bouton);
-ok(bouton !== -1 && garde !== -1, "le bouton « Ouvrir Tata Nanti Lou » est rendu sous la garde `!tataMasquee`");
-ok(/isOpen=\{isTantieOpen && !tataMasquee\}/.test(barre),
+ok(bouton !== -1 && garde !== -1, "le bouton « Ouvrir Tantie Nanti Lou » est rendu sous la garde `!tataMasquee`");
+ok(/isOpen=\{\s*\w+\s*&& !tataMasquee\s*\}/.test(cadre),
   "la modale Tata ne peut pas s'ouvrir non plus (double-tap global) sur la caisse");
 ok(!/if \(tataMasquee\) return null/.test(barre) && /<nav aria-label="Navigation principale"/.test(barre),
   "la barre elle-même n'est PAS retirée : Accueil, Stock, Profil restent atteignables");
+
+console.log("\n[3] Un seul propriétaire de la modale (lot A3 : elle est montée par AppLayout)");
+ok(/<TantieSagesseModal/.test(cadre), "AppLayout monte TantieSagesseModal");
+ok((cadre.match(/<TantieSagesseModal/g) || []).length === 1, "et il la monte UNE SEULE FOIS");
+ok(!/TantieSagesseModal/.test(barre), "la BottomBar ne la monte plus : elle ne fait que demander l'ouverture");
+ok(!/TantieSagesseModal/.test(flanc), "la Sidebar non plus");
+ok(/const tataMasquee = location\.pathname === '\/marchand\/caisse'/.test(cadre),
+  "AppLayout décide le masquage sur la route de la caisse, comme la BottomBar");
+ok(/if \(tataMasquee && \w+\) set\w+\(false\)/.test(cadre),
+  "et si la modale était ouverte en arrivant sur la caisse, AppLayout la referme de force");
 
 console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
 if (failures > 0) process.exit(1);
