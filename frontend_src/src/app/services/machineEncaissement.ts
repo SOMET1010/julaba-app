@@ -145,15 +145,40 @@ export function reduire(
   fin: EtatFinancier,
 ): { etat: EtatEncaissement; effet: EffetEncaissement } {
   switch (evenement) {
-    case 'etat_financier_change':
-      // Le panier ou le reçu a bougé depuis la relecture : la confirmation
-      // portait sur un autre compte, elle ne vaut plus rien. On ne dit rien
-      // ici — elle est en train de manipuler, pas d'écouter ; Tata relira
-      // quand elle redemandera.
-      if (etat.phase === 'attente_confirmation' && !memeEmpreinte(etat.empreinte, fin.empreinte)) {
-        return { etat: { phase: 'preparation' }, effet: { type: 'rien' } };
+    case 'etat_financier_change': {
+      // Rien en cours : les billets touchés ne relisent rien. La relecture
+      // spontanée n'existe qu'APRÈS « encaisse » — la cliente suivante ne
+      // doit pas s'entendre relire un compte que personne n'a demandé.
+      if (etat.phase === 'repos') return { etat, effet: { type: 'rien' } };
+
+      // PANIER VIDÉ → REPOS. Un paiement (au doigt ou à la voix) ou « Vider » :
+      // l'encaissement demandé n'existe plus, on ne reste pas en préparation
+      // d'une vente qui n'est plus là.
+      if (fin.panierVide || fin.total <= 0) return { etat: { phase: 'repos' }, effet: { type: 'rien' } };
+
+      // Le compte relu a bougé : la confirmation portait sur un autre
+      // compte, elle ne vaut plus rien. Elle retombe en préparation…
+      const enPreparation = etat.phase === 'preparation'
+        || !memeEmpreinte(etat.empreinte, fin.empreinte);
+
+      // … et c'est LE PARCOURS CIBLE (étapes 6→8) : « encaisse », puis elle
+      // touche les billets, puis Tata relit D'ELLE-MÊME. Dès que le reçu couvre
+      // le total, on relit le compte de l'instant et on attend « oui valide »
+      // — une seule phrase pour elle, pas trois. La transition est sûre :
+      // l'attente est liée à l'empreinte EXACTE qui vient d'être relue, et la
+      // seconde phrase reste obligatoire. Un billet de plus sur un compte déjà
+      // relu passe par ici aussi : ancienne empreinte tombée, nouveau compte
+      // relu, dans le même événement.
+      if (enPreparation && fin.suffisant) {
+        return {
+          etat: { phase: 'attente_confirmation', empreinte: fin.empreinte },
+          effet: { type: 'dire', texte: phraseRelecture(fin) },
+        };
       }
+      // Ça ne couvre pas encore : elle compte, Tata se tait.
+      if (enPreparation) return { etat: { phase: 'preparation' }, effet: { type: 'rien' } };
       return { etat, effet: { type: 'rien' } };
+    }
 
     case 'annuler_validation':
       // Le doute profite toujours au refus.

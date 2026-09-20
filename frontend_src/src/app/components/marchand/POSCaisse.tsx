@@ -357,13 +357,21 @@ function POSCaisseInner() {
   // pendant que la cliente cherche sa monnaie, un billet touché, « Vider »,
   // le bouton « Payer » lui-même (qui vide le panier) : tout passe par ici, et
   // la machine ne garde une attente que si l'empreinte relue est encore la
-  // vraie. Aucune phrase n'est dite — elle manipule, elle n'écoute pas ; Tata
-  // relira quand elle redemandera.
+  // vraie. Et c'est ici que Tata relit D'ELLE-MÊME (parcours cible, étapes
+  // 6→8) : « encaisse », elle touche les billets, et dès que le reçu couvre,
+  // la machine rend la relecture du compte de l'instant — on la DIT. Cet
+  // effet ne peut jamais être `encaisser` (la machine ne paie que sur « oui
+  // valide », et l'énumération exhaustive de son test le prouve) : on ne
+  // traite donc que la parole ici, jamais le paiement — `handlePay` n'a
+  // qu'un seul appelant vocal, plus haut.
   const etatFinancierRef = useRef(etatFinancier);
   etatFinancierRef.current = etatFinancier;
   const cleEmpreinte = `${total}|${recu}|${etatFinancier.empreinte.lignes}`;
   useEffect(() => {
-    etatEncaissementRef.current = reduire(etatEncaissementRef.current, 'etat_financier_change', etatFinancierRef.current).etat;
+    const { etat, effet } = reduire(etatEncaissementRef.current, 'etat_financier_change', etatFinancierRef.current);
+    etatEncaissementRef.current = etat;
+    if (effet.type === 'dire') speak(effet.texte);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'à l'empreinte financière ; `speak` est stable (contexte)
   }, [cleEmpreinte]);
 
   // Crédit désactivé en pilote espèces (CAISSE_CREDIT_ACTIF=false) : ce handler
