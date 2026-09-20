@@ -1,0 +1,174 @@
+name: GARDE-ARGENT (chemin d'argent protégé)
+
+# LE GARDE-FOU PERMANENT DU CHEMIN D'ARGENT — 20/09/2026.
+#
+# POURQUOI CE WORKFLOW EXISTE. Une refonte d'interface a modifié `handlePay`,
+# réécrit `enregistrerVente`, touché le contrôleur de caisse backend et
+# AFFAIBLI un garde-fou existant (`caisseUnSeulMicro.test.mts`) pour passer.
+# Aucun mécanisme ne l'en empêchait : la revue humaine était le seul filet.
+# Ce workflow met le filet dans la machine.
+#
+# RÈGLE D'OR (Patrick) : « UNE caisse. UNE logique métier. UNE source de
+# vérité. L'UI et la voix viennent se poser dessus sans le réinventer. »
+#
+# CE QU'IL FAIT, dans cet ordre :
+#   1. il DÉTECTE si le diff touche le chemin d'argent — par le noyau recalculé
+#      depuis les symboles, ou par un import direct d'un fichier du noyau ;
+#   2. si oui, il fait TOURNER les invariants de chaque zone touchée : frontend
+#      ici même, backend en APPELANT `invariants.yml` (même PostgreSQL, même
+#      montage — il n'est pas recopié) ;
+#   3. quoi qu'il arrive, il vérifie que la chaîne `test:ci` est identique à
+#      celle de `f0c965c` valeur contre valeur, que le périmètre n'a pas dérivé
+#      en silence, et que l'empreinte des gardes tient.
+#
+# CE QU'IL NE FAIT PAS. `--figer-perimetre` et `--figer-gardes` ne sont JAMAIS
+# lancés ici, et le script les refuse lui-même quand `CI` est posé : un gel est
+# une décision humaine. Une PR qui change le périmètre doit rougir, pas se
+# régulariser toute seule. Aucun test nouveau n'entre dans `test:ci`, qui est
+# GELÉE : les contrôles de ce workflow vivent dans `ci/garde-argent.mjs` et
+# dans `verify`.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # ═════════════════════════════════════════════════════════════════════════
+  # 1. Détection — le chemin d'argent est-il touché, et par quelles zones ?
+  # ═════════════════════════════════════════════════════════════════════════
+  detection:
+    name: Le chemin d'argent est-il touché ?
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      base: ${{ steps.base.outputs.base }}
+      touche: ${{ steps.detecter.outputs.touche }}
+      postgres: ${{ steps.detecter.outputs.postgres }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # Historique COMPLET : le gate calcule un `merge-base` et relit la
+          # chaîne `test:ci` de `f0c965c` dans git. Un clone superficiel
+          # rendrait les deux impossibles.
+          fetch-depth: 0
+
+      - name: Setup Node.js 22 (LTS)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Base de comparaison
+        id: base
+        run: |
+          if [ -n "${{ github.event.pull_request.base.sha }}" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            BASE="${{ github.event.before }}"
+          else
+            BASE="$(git rev-parse HEAD~1)"
+          fi
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "Base : $BASE"
+
+      - name: Zones touchées et invariants exigés
+        id: detecter
+        run: |
+          # `--liste-invariants` n'imprime QUE des commandes : c'est la requête,
+          # pas le verdict. Le verdict est rendu par le job `verdict`, après que
+          # ces commandes ont réellement tourné.
+          node ci/garde-argent.mjs --base "${{ steps.base.outputs.base }}" --liste-invariants > invariants.txt
+          echo "── invariants exigés ──"
+          cat invariants.txt
+          if [ -s invariants.txt ]; then echo "touche=true" >> "$GITHUB_OUTPUT"; else echo "touche=false" >> "$GITHUB_OUTPUT"; fi
+          if grep -q -- '-w backend' invariants.txt; then echo "postgres=true" >> "$GITHUB_OUTPUT"; else echo "postgres=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Rapport lisible (ce que le gate dit, sans trancher)
+        run: node ci/garde-argent.mjs --base "${{ steps.base.outputs.base }}" || true
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # 2. Invariants backend — le MÊME montage PostgreSQL, appelé, pas recopié
+  # ═════════════════════════════════════════════════════════════════════════
+  # `invariants.yml` monte un service `postgres:16`, pose `DB_NAME=julaba_test`
+  # et lance `npm run test:invariants -w backend`. Dupliquer ce bloc ici aurait
+  # créé deux montages qui divergent au premier changement — exactement la
+  # faute que ce garde-fou est là pour empêcher ailleurs. On l'APPELLE.
+  invariants-backend:
+    name: Invariants backend (PostgreSQL)
+    needs: detection
+    if: needs.detection.outputs.postgres == 'true'
+    uses: ./.github/workflows/invariants.yml
+
+  # ═════════════════════════════════════════════════════════════════════════
+  # 3. Verdict — invariants frontend, puis l'arbitrage complet
+  # ═════════════════════════════════════════════════════════════════════════
+  verdict:
+    name: Verdict du garde-fou
+    needs: [detection, invariants-backend]
+    # `always()` : le verdict tombe MÊME si les invariants backend ont échoué
+    # ou n'ont pas tourné. Les contrôles qui ne dépendent d'aucun diff — chaîne
+    # `test:ci` gelée, périmètre non dérivé, empreinte des gardes — doivent
+    # être rendus quoi qu'il arrive.
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22 (LTS)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install (workspaces, racine)
+        run: npm ci
+
+      - name: Invariants frontend des zones touchées
+        # Chaque commande exigée qui n'est pas backend tourne ici. Une commande
+        # n'entre dans la PREUVE que si elle est sortie en 0 : le gate ne croit
+        # pas sur parole qu'un invariant a tourné, il lit la liste de ce qui a
+        # réellement été vert.
+        run: |
+          node ci/garde-argent.mjs --base "${{ needs.detection.outputs.base }}" --liste-invariants > exigees.txt
+          : > preuve.txt
+          echec=0
+          while IFS= read -r cmd; do
+            [ -z "$cmd" ] && continue
+            case "$cmd" in *"-w backend"*) continue ;; esac
+            echo "── $cmd"
+            if eval "$cmd"; then echo "$cmd" >> preuve.txt; else echo "✗ ÉCHEC : $cmd"; echec=1; fi
+          done < exigees.txt
+          # On ne fait PAS échouer cette étape : un invariant rouge n'entre pas
+          # dans la preuve, et c'est le VERDICT — une seule place — qui refuse.
+          # Sans cela, l'étape de verdict serait sautée et la PR n'aurait jamais
+          # le rapport complet sous les yeux.
+          if [ "$echec" = 1 ]; then echo "→ des invariants sont rouges : le verdict refusera."; fi
+
+      - name: La preuve du backend, si son job a réussi
+        if: needs.invariants-backend.result == 'success'
+        run: |
+          grep -- '-w backend' exigees.txt >> preuve.txt || true
+          echo "── invariants backend : job \`invariants-backend\` vert, versé à la preuve"
+
+      - name: Le backend était exigé et n'a pas été vert
+        if: needs.detection.outputs.postgres == 'true' && needs.invariants-backend.result != 'success'
+        run: |
+          echo "✗ Une zone d'argent backend est touchée et \`invariants-backend\` n'est pas vert"
+          echo "  (résultat : ${{ needs.invariants-backend.result }})."
+          echo "  La preuve restera incomplète et le verdict refusera — c'est voulu."
+
+      - name: GARDE-ARGENT — verdict
+        # Périmètre recalculé, invariants déclarés existants, chaîne `test:ci`
+        # gelée relue dans git, empreinte des gardes, `GARDE-ASSOUPLIE`, et
+        # enfin la preuve que les invariants exigés ont bien tourné.
+        run: node ci/garde-argent.mjs --base "${{ needs.detection.outputs.base }}" --preuve preuve.txt
