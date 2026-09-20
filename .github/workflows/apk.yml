@@ -18,9 +18,22 @@ on:
   workflow_dispatch:
     inputs:
       branche:
-        description: 'Branche à construire'
+        # REL-01 — LA VÉRITÉ DE SORTIE EST `main`, PLUS UNE BRANCHE DE TRAVAIL.
+        #
+        # Ce défaut n'est pas théorique. Tant que le défaut par défaut pointait
+        # une branche de développement, l'APK aurait été TRACÉ comme venant de
+        # cette branche, et non du `main` audité — alors même que la chaîne de
+        # preuve (CI, invariants, SCHEMA-PILOTE, contre-audit) porte sur `main`.
+        # Au moment de la fusion du 20/09/2026 les deux arbres étaient
+        # identiques, donc le binaire aurait été le même ; dès le commit
+        # suivant sur `main`, on aurait construit du code périmé sans que rien
+        # ne le signale.
+        #
+        # Un autre nom reste saisissable à la main pour une construction
+        # exploratoire. Ce qui change, c'est ce qu'on obtient sans y penser.
+        description: 'Branche à construire (défaut : main, la seule auditée)'
         required: true
-        default: 'claude/clever-allen-dnr8by'
+        default: 'main'
       api_url:
         description: 'VITE_API_URL — sans elle, l app n atteint aucun backend'
         required: true
