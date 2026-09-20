@@ -165,7 +165,7 @@ export function t(id: MessageId, vars: Variables = {}, locale: LocaleCode = loca
  * validation explicite » (étape 6), appliquée au runtime et non seulement
  * dans un gate.
  */
-export function variantesIntention(id: IntentId, locale: LocaleCode = localeActive()): { variantes: VariantesIntention; locale: LocaleCode } | null {
+export function variantesIntention(id: IntentId, locale: LocaleCode = localeActive()): { variantes: VariantesIntention; locale: LocaleCode; normaliser: (texte: string) => string } | null {
   const critique = entreeIntent(id)?.critiqueArgent ?? true;
   const m0 = manifest(locale) ?? manifest(LOCALE_REFERENCE);
   const localeDemandee = m0 ? locale : LOCALE_REFERENCE;
@@ -175,16 +175,37 @@ export function variantesIntention(id: IntentId, locale: LocaleCode = localeActi
     if (!it) { replis.push('absent'); continue; }
     if (critique && (!it.validation.finance || it.validation.linguistique === 'draft')) { replis.push('non_valide_finance'); continue; }
     if (m.code !== localeDemandee) for (const raison of replis) tracer({ type: 'intent', id, localeDemandee, localeServie: m.code, raison });
-    return { variantes: it.variantes, locale: m.code };
+    // I18N-01 : la normalisation va AVEC les variantes. Des variantes héritées
+    // de fr-ci se comparent avec la normalisation de fr-ci — jamais avec celle
+    // de la locale demandée, qui n'a pas encore d'intentions validées et dont
+    // la normalisation (ɛ→e, apostrophes cassées…) casserait la liste blanche.
+    return { variantes: it.variantes, locale: m.code, normaliser: normaliserPour(m.code) };
   }
   tracer({ type: 'intent', id, localeDemandee, localeServie: LOCALE_REFERENCE, raison: 'absent' });
   return null;
 }
 
-/** Normalisation STT de la locale (celle de fr-ci par défaut). */
+/**
+ * La normalisation à appliquer AVANT de comparer une phrase aux variantes
+ * d'une intention : celle de la locale qui SERT les variantes. Sans variantes
+ * nulle part : celle de fr-ci (rien ne sera reconnu de toute façon).
+ */
+export function normaliserPourIntention(id: IntentId, locale: LocaleCode = localeActive()): { locale: LocaleCode; normaliser: (texte: string) => string } {
+  const v = variantesIntention(id, locale);
+  if (v) return { locale: v.locale, normaliser: v.normaliser };
+  return { locale: LOCALE_REFERENCE, normaliser: normaliserPour(LOCALE_REFERENCE) };
+}
+
+/**
+ * Normalisation STT PROPRE à une locale (celle de fr-ci par défaut). Pour
+ * comparer une phrase aux variantes d'une intention, ne pas l'appeler avec la
+ * locale demandée : passer par `normaliserPourIntention`, qui rend celle de la
+ * locale servie (I18N-01). Ici, on ne remonte PAS la chaîne de repli : une
+ * locale sans `normaliser` propre utilise la référence, pas celle d'un repli
+ * intermédiaire.
+ */
 export function normaliserPour(locale: LocaleCode = localeActive()): (texte: string) => string {
-  for (const m of chaine(locale)) if (m.normaliser) return m.normaliser;
-  return normaliserReference;
+  return manifest(locale)?.normaliser ?? normaliserReference;
 }
 
 /**
