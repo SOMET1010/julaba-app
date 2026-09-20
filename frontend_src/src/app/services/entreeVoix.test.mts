@@ -25,6 +25,7 @@ const clips = [
 console.log('\n[1] Une seule source vocale pour Numéro et Code');
 ok(!/managerSpeak|speakClipOrText|tataUiClipForText/.test(login), 'LoginPassword n’appelle plus la synthèse navigateur ni l’ancien pack');
 ok(/direEntreeTexte/.test(login) && /direEntree\('code'\)/.test(login), 'le login utilise le pack d’entrée local');
+ok(!/useAudioUnlockFallback/.test(login), 'Numéro et Code ne relancent pas une seconde lecture sur le même toucher');
 ok(!/\bspeak\(|speakClipOrText/.test(service), 'le service d’entrée ne contient aucun repli TTS');
 ok(/resolveLocalVoiceChoice/.test(service), 'une phrase sans clip devient texte seul');
 

@@ -24,7 +24,6 @@ import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../servi
 import { salutation } from '../../utils/appellation';
 import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 import { glyphePourChiffre } from '../../services/clavierImage';
-import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
 
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
@@ -270,19 +269,9 @@ export function LoginPassword() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { if (error) { vibrerErreur(); if (guidageVocal()) parle(error); } }, [error]);
-  // VOIX-V5 — la consigne du code était la SEULE des trois étapes sans filet
-  // de rattrapage audio (les deux autres l'ont : voir direAccueilReconnaissance
-  // et direConsigneNumero). Une marchande connue de l'appareil mais SANS
-  // biométrie atterrit directement ici — step vaut 'password' dès le premier
-  // rendu (état initial plus haut). La consigne partait donc avant tout geste
-  // dans la page et la politique autoplay la coupait EN SILENCE, définitivement
-  // pour la session : l'écran PIN restait muet.
-  //
-  // Le filet n'est armé QUE si 'password' est l'étape de MONTAGE — le seul cas
-  // où l'audio est encore verrouillé. Arrivée depuis 'reconnaissance' ou
-  // 'phone', le geste de navigation a déjà débloqué l'audio et la consigne est
-  // passée : réarmer la rejouerait par-dessus la frappe du code.
-  const arriveeDirecteSurCode = useRef(step === 'password').current;
+  // La consigne est tentée à l'arrivée puis reste disponible sur le cadenas.
+  // Aucun écouteur global ne la relance sur ce même toucher : deux lectures
+  // simultanées s'annulaient avec AbortError sur le web.
   const direConsigneCode = useCallback(() => {
     if (step !== 'password') return;
     if (!guidageVocal()) return; // lecture explicitement choisie : pas de consigne auto
@@ -292,16 +281,12 @@ export function LoginPassword() {
 
   useEffect(() => {
     if (step === 'password') {
-      vlog('VOIX_CODE_TENTEE', { arriveeDirecte: arriveeDirecteSurCode, guidage: guidageVocal() });
+      vlog('VOIX_CODE_TENTEE', { guidage: guidageVocal() });
     }
     direConsigneCode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  useAudioUnlockFallback(
-    () => { vlog('VOIX_CODE_REJOUEE_APRES_GESTE'); direConsigneCode(); },
-    arriveeDirecteSurCode && step === 'password' && guidageVocal(),
-  );
   // « Tata se souvient de moi » : à l'arrivée, Tata SALUE par le prénom et dit le
   // geste à faire — l'écran n'a rien à lire. (Une seule fois, au montage.)
   // FILET DE RATTRAPAGE : cet écran ('reconnaissance') peut être le TOUT
@@ -320,7 +305,6 @@ export function LoginPassword() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useAudioUnlockFallback(direAccueilReconnaissance, step === 'reconnaissance' && !!compteConnu && guidageVocal());
   // Tata propose l'adaptation (mode 'auto') : elle le DIT (une fois) — c'est une
   // question, pas un réglage à trouver. On l'énonce dès l'affichage.
   useEffect(() => {
@@ -657,25 +641,6 @@ export function LoginPassword() {
 
   // Tata parle DÈS L'ENTRÉE dans l'écran numéro.
   //
-  // AVANT : on supposait qu'à ce stade du parcours (après Welcome +
-  // Onboarding, dans la même session SPA) un geste utilisateur avait déjà eu
-  // lieu, donc rien ne bloquait la voix — un filet de rattrapage avait même
-  // été essayé puis RETIRÉ pour cette raison. CORRECTIF (silence encore
-  // constaté en recette terrain sur CET écran précisément) : cette hypothèse
-  // est FAUSSE dès qu'on revient dans l'app après l'avoir quittée — EntryGate
-  // saute directement à cet écran (drapeaux julaba_seen_splash et
-  // julaba_completed_onboarding persistés en localStorage), sans passer par
-  // Welcome/Onboarding dans CETTE page fraîchement chargée, donc sans aucun
-  // geste préalable pour débloquer l'audio.
-  //
-  // Le filet est donc RÉINTRODUIT, mais SANS le piège de la version d'avant :
-  // l'ancien filet filtrait la cible du geste (closest sur button/img) et,
-  // comme l'écouteur était en mode « une seule fois », un premier tap sur le
-  // gros micro consommait l'écouteur SANS jamais jouer le son — silence pour
-  // le reste de la session. Le nouveau filet (useAudioUnlockFallback) ne
-  // filtre RIEN : le tout premier toucher, où qu'il tombe, rejoue la même
-  // consigne — comme sur Welcome.tsx et OnboardingSlides.tsx.
-  //
   // On explique aussi le GESTE, pas seulement le champ ("tape un chiffre à la
   // fois, les ronds se remplissent") — lire seulement "entre ton numéro" ne
   // suffit pas à quelqu'un qui ne lit pas et n'a jamais vu cet écran.
@@ -690,8 +655,6 @@ export function LoginPassword() {
     direConsigneNumero();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
-
-  useAudioUnlockFallback(direConsigneNumero, step === 'phone' && guidageVocal());
 
   useEffect(() => {
     const tel = document.querySelector('input[autocomplete="tel"]') as HTMLInputElement | null;

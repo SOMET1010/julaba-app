@@ -15,6 +15,7 @@ import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { useMontantsPrives } from '../../hooks/useMontantsPrives';
+import { direAccueilMarchand } from '../../services/accueilMarchandVoix';
 
 /**
  * Accueil marchand « voix & icônes d'abord ».
@@ -26,7 +27,7 @@ import { useMontantsPrives } from '../../hooks/useMontantsPrives';
  */
 function MarchandAccueilVoiceInner() {
   const navigate = useNavigate();
-  const { user, speak, getTodayStats, currentSession } = useApp();
+  const { user, getTodayStats, currentSession } = useApp();
   const stats = getTodayStats();
   const caisse = stats?.caisse || 0;
   const prenom = user?.firstName || user?.prenoms || user?.prenom || user?.nom || '';
@@ -43,7 +44,6 @@ function MarchandAccueilVoiceInner() {
     const prochain = soleil ? 'normal' : 'soleil';
     setConfortVisuel(prochain); // exclusif : allumer le soleil éteint le sombre
     setSoleil(prochain === 'soleil');
-    speak(prochain === 'soleil' ? 'Mode soleil : tout est plus grand.' : 'Mode normal.');
   };
   // Le mode peut changer ailleurs (Paramètres, mode sombre auto 18h) : on se
   // resynchronise sur l'événement de l'arbitre confortVisuel.
@@ -66,9 +66,9 @@ function MarchandAccueilVoiceInner() {
 
   const direCaisse = () => {
     if (!soldeVisible) return;
-    speak(`Ta caisse : ${Math.round(caisse).toLocaleString('fr-FR')} francs`);
+    void direAccueilMarchand('caisse');
   };
-  const bonjour = () => speak(accueil);
+  const bonjour = () => { void direAccueilMarchand('comptoir'); };
 
   // Grosses tuiles : icônes vectorielles LOCALES (marchent hors-ligne, aucune
   // dépendance réseau) + un seul libellé clair. Avant : illustrations distantes
@@ -76,10 +76,10 @@ function MarchandAccueilVoiceInner() {
   const svg = (d: ReactNode) => (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
   );
-  const tuiles: Array<{ icon: ReactNode; label: string; parle: string; go: () => void; teinte: string }> = [
-    { icon: svg(<><path d="M21 8V16a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8z"/><path d="M3.27 6.96 12 12l8.73-5.04"/><path d="M12 22V12"/></>), label: 'Mon stock',    parle: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: '#0E7A47' },
-    { icon: svg(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>), label: 'Mes dépenses', parle: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: '#B74725' },
-    { icon: svg(<><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="9"/><line x1="18" y1="20" x2="18" y2="4"/></>), label: 'Mes ventes',   parle: 'Mes ventes',   go: () => navigate('/marchand/ventes-passees'), teinte: '#2C6E9E' },
+  const tuiles: Array<{ icon: ReactNode; label: string; go: () => void; teinte: string }> = [
+    { icon: svg(<><path d="M21 8V16a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4z"/><path d="M3.27 6.96 12 12l8.73-5.04"/><path d="M12 22V12"/></>), label: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: '#0E7A47' },
+    { icon: svg(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>), label: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: '#B74725' },
+    { icon: svg(<><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="9"/><line x1="18" y1="20" x2="18" y2="4"/></>), label: 'Mes ventes',   go: () => navigate('/marchand/ventes-passees'), teinte: '#2C6E9E' },
   ];
 
   return (
@@ -182,7 +182,7 @@ function MarchandAccueilVoiceInner() {
         {/* Tuiles — icônes vectorielles locales + un seul libellé (hors-ligne) */}
         <div className="commerce-home-tools" aria-label="Mes outils">
           {tuiles.map((t) => (
-            <motion.button key={t.label} whileTap={{ scale: 0.94 }} onClick={() => { speak(t.parle); t.go(); }}
+            <motion.button key={t.label} whileTap={{ scale: 0.94 }} onClick={t.go}
               className="commerce-home-tile">
               <span className="commerce-home-tile-icon" style={{ color: t.teinte }}>
                 {t.icon}

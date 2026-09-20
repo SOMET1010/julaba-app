@@ -65,6 +65,55 @@
       "texteExact": "Touche le grand bouton. Ton téléphone va te reconnaître.",
       "sha256": "17fba3cee98c38ee2518b9d56e032a7adf56ca5be589a0581783309dc6e46e98",
       "dureeSecondes": 3.984
+    },
+    {
+      "cle": "accueilComptoir",
+      "fichier": "tata-accueil-comptoir.mp3",
+      "texteExact": "Ton comptoir est prêt. On vend ensemble aujourd'hui.",
+      "sha256": "62882cd8999fbaf2c27597716e53e2d65c393e266ad6bd3bbc78040b9ab2469a",
+      "dureeSecondes": 4.032
+    },
+    {
+      "cle": "accueilCaisse",
+      "fichier": "tata-accueil-caisse.mp3",
+      "texteExact": "Le montant de ta caisse est affiché ici. Touche l'œil pour le cacher.",
+      "sha256": "ed66a4446fb3d24c62c1b0e2372371101def242b98a7238e98a35ffa6a092f5f",
+      "dureeSecondes": 4.92
+    },
+    {
+      "cle": "reconnaissanceProposition",
+      "fichier": "tata-reconnaissance-proposition.mp3",
+      "texteExact": "Veux-tu que ton téléphone te reconnaisse la prochaine fois ? Ce sera plus rapide.",
+      "sha256": "f433114c0deeae71581de20b8154c0a1914d8f7f28f665dd5439237214645241",
+      "dureeSecondes": 4.584
+    },
+    {
+      "cle": "reconnaissanceReussie",
+      "fichier": "tata-reconnaissance-reussie.mp3",
+      "texteExact": "C'est fait. La prochaine fois, ton téléphone te reconnaîtra.",
+      "sha256": "2439b289511700902c00560a7283a216753cdc20411a470a10026c22ca7f7115",
+      "dureeSecondes": 4.752
+    },
+    {
+      "cle": "reconnaissanceSession",
+      "fichier": "tata-reconnaissance-session.mp3",
+      "texteExact": "Ta session est terminée. Reconnecte-toi, puis on réessaiera.",
+      "sha256": "f240f91b729d22f8e61dc9055cfed0f561ee63f04140fa80337b0b07706270be",
+      "dureeSecondes": 5.112
+    },
+    {
+      "cle": "reconnaissanceErreur",
+      "fichier": "tata-reconnaissance-erreur.mp3",
+      "texteExact": "Ça n'a pas marché ici. Tu pourras réessayer plus tard dans les réglages.",
+      "sha256": "b3f8f1bb2044486a41b1fcd65bc6ed6f365685b27c5cd77b7f610237d31b9474",
+      "dureeSecondes": 4.92
+    },
+    {
+      "cle": "reconnaissanceRefus",
+      "fichier": "tata-reconnaissance-refus.mp3",
+      "texteExact": "D'accord. On ne change rien.",
+      "sha256": "81a93adec3b2dc25a3e52a78f1d02d8fb2484827868165446138c58be2c0bdd2",
+      "dureeSecondes": 2.76
     }
   ],
   "selection": {
@@ -79,7 +128,7 @@
     "tempo": 1.0,
     "hauteur": 1.0,
     "traitement": "normalisation mono 48 kHz, 96 kb/s, cible -18 LUFS",
-    "objectif": "garder une seule identité vocale sur accueil, présentation, numéro et code"
+    "objectif": "garder une seule identité vocale sur entrée, accueil marchand et reconnaissance"
   },
   "technique": {
     "format": "MP3",
@@ -94,7 +143,7 @@
     "thirdPartyRedistribution": false
   },
   "validation": {
-    "texte": "les sept nouveaux clips ont été contrôlés par transcription automatique ; écoute mot à mot humaine encore requise",
+    "texte": "les quatorze nouveaux clips ont été contrôlés par transcription automatique ; écoute mot à mot humaine encore requise",
     "naturelEtAgePercu": "à valider par le propriétaire et des marchandes ivoiriennes cibles",
     "production": false
   }
