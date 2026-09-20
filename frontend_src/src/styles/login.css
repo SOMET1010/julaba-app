@@ -25,9 +25,9 @@ html.dark .login-logo img{filter:brightness(0) invert(1)}
 .login-market-scene{position:absolute;inset:0;z-index:-3}
 .login-market-scene img{width:100%;height:100%;object-fit:cover;object-position:center 46%}
 .login-market-veil{position:absolute;inset:0;z-index:-2;background:linear-gradient(180deg,rgba(14,81,61,.82) 0%,rgba(14,81,61,.18) 42%,rgba(33,27,24,.78) 72%,rgba(33,27,24,.94) 100%)}
-.login-brand-on-scene{position:absolute;z-index:2;left:20px;right:20px;top:max(22px,env(safe-area-inset-top));justify-content:flex-start;width:max-content;padding:10px 14px;border-radius:16px;background:rgba(255,249,239,.94);box-shadow:0 10px 32px rgba(33,27,24,.16)}
+.login-brand-on-scene{position:absolute;z-index:2;left:20px;right:20px;top:max(22px,env(safe-area-inset-top));justify-content:flex-start;width:max-content;padding:0;background:transparent}
 .login-brand-on-scene .login-logo{width:118px}
-.login-brand-on-scene .login-logo img{filter:none}
+.login-brand-on-scene .login-logo img{filter:brightness(0) invert(1) drop-shadow(0 3px 8px rgba(14,81,61,.5));opacity:.96}
 .login-market-message{position:absolute;left:22px;right:22px;top:16%;max-width:420px;text-shadow:0 3px 18px rgba(20,18,16,.38)}
 .login-market-kicker{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:rgba(255,249,239,.92);color:#0E513D;font-size:14px;font-weight:850;text-shadow:none}
 .login-market-message h1{margin:14px 0 6px;color:#fff;font-size:clamp(38px,11vw,56px);line-height:1.02;letter-spacing:-.045em;font-weight:900;text-align:left}
@@ -39,8 +39,8 @@ html.dark .login-logo img{filter:brightness(0) invert(1)}
 .login-tata-inline small{display:block;margin-top:4px;font-size:14px;line-height:1.25;color:var(--encre-3)}
 .login-tata-inline .login-replay{position:static;width:46px;height:46px;background:#E6F3EA;border-color:#197455;color:#197455}
 .login-market-primary{min-height:68px;border-radius:18px;background:#197455;box-shadow:0 10px 22px rgba(25,116,85,.25)}
-.login-market-partners{padding-top:10px;opacity:.78}
-.login-market-partners img{height:26px}
+.login-market-partners{padding-top:10px;opacity:.62}
+.login-market-partners img{height:23px;filter:saturate(.78)}
 .login-market-sheet button:focus-visible{outline-color:#F3B640}
 
 /* Présentation de Tata : la mascotte est grande et le geste reste dans une

@@ -170,7 +170,7 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 .commerce-signature::before { content: ''; width: 0.75rem; height: 0.25rem; background: #C0522E; border-radius: 1px; }
 .commerce-signature::after { content: ''; width: 0.5rem; height: 0.75rem; background: #00563B; border-radius: 1px; }
 .commerce-brand-inverse .commerce-signature::after { background: #87C3A6; }
-.commerce-brand-inverse img { background: #FFFCF7; padding: 0.25rem 0.5rem; border-radius: 0.5rem; filter: brightness(0); }
+.commerce-brand-inverse img { background: transparent; padding: 0; border-radius: 0; filter: brightness(0) invert(1) drop-shadow(0 2px 6px rgba(0,0,0,.24)); opacity: .94; }
 
 .commerce-home { max-width: 60rem; margin-inline: auto; padding: 1.25rem 1rem 2rem; }
 .commerce-home-redesign { padding: 0 0 7rem; background: var(--julaba-ivoire); min-height: 100dvh; }
@@ -179,8 +179,8 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 .commerce-home-hero-bg { position: absolute; z-index: -3; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; }
 .commerce-home-hero-veil { position: absolute; z-index: -2; inset: 0; background: linear-gradient(180deg, rgba(14,81,61,.88), rgba(14,81,61,.32) 54%, rgba(33,27,24,.76)); }
 .commerce-home-header { display: flex; gap: 1rem; align-items: center; justify-content: space-between; margin: 0; padding: max(18px, env(safe-area-inset-top)) 18px 0; }
-.commerce-brand-hero { padding: 8px 11px; border-radius: 14px; background: rgba(255,249,239,.94); }
-.commerce-brand-hero img { filter: brightness(0); }
+.commerce-brand-hero { padding: 0; border-radius: 0; background: transparent; }
+.commerce-brand-hero img { filter: brightness(0) invert(1) drop-shadow(0 3px 8px rgba(14,81,61,.5)); opacity: .96; }
 .commerce-sun-button { width: 48px; height: 48px; border-radius: 16px; border: 1px solid rgba(255,255,255,.45); display: grid; place-items: center; color: white; background: rgba(255,255,255,.17); backdrop-filter: blur(10px); cursor: pointer; flex-shrink: 0; }
 .commerce-sun-button[aria-pressed="true"] { color: var(--julaba-encre); background: var(--julaba-mangue); border-color: var(--julaba-mangue); }
 .commerce-home-welcome { position: absolute; inset: auto 0 0; width: 100%; min-height: 172px; display: flex; align-items: flex-end; justify-content: space-between; overflow: hidden; padding: 26px 12px 20px 20px; border: 0; background: transparent; color: white; text-align: left; cursor: pointer; }
