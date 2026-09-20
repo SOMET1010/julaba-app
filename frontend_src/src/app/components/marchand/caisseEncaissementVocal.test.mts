@@ -96,6 +96,24 @@ ok(/onClick=\{handlePay\}/.test(codeCaisse), 'le bouton « Payer en espèces » 
 ok(/const handlePay = async \(\) =>/.test(codeCaisse), 'qui reste `async () =>`, sans paramètre : voix et doigt convergent sur la même fonction et le même verrou');
 ok(/'etat_financier_change'/.test(codeCaisse) && /useEffect\(\(\) => \{[\s\S]{0,600}?'etat_financier_change'/.test(codeCaisse),
   'un useEffect envoie `etat_financier_change` : le panier ou le reçu qui bouge invalide la confirmation');
+// UN CHANGEMENT DE PANIER NE PAIE JAMAIS. Depuis le complément du lot C, la
+// machine relit d'elle-même sur `etat_financier_change` (billets touchés
+// après « encaisse »), et POSCaisse DIT cet effet. Le jour où quelqu'un ferait
+// émettre `encaisser` à cette branche, un article ajouté ou un billet touché
+// écrirait de l'argent sans « oui valide ». On le rend impossible à deux
+// niveaux : dans le source de la machine, et sur toutes ses entrées.
+const codeMachine = sansCommentaires(lire('../../services/machineEncaissement.ts'));
+const brancheChangement = codeMachine.match(/case 'etat_financier_change':[\s\S]*?(?=\n\s*case ')/);
+ok(brancheChangement !== null, 'la machine a une branche `etat_financier_change`');
+ok(brancheChangement !== null && !/type:\s*'encaisser'/.test(brancheChangement[0]),
+  'cette branche ne contient aucun `type: \'encaisser\'` : un changement de panier ou de reçu ne paie jamais');
+ok(brancheChangement !== null && /phraseRelecture\(/.test(brancheChangement[0]),
+  'mais elle sait relire (phraseRelecture) : c\'est Tata qui relit d\'elle-même quand les billets couvrent');
+const blocEffet = codeCaisse.match(/useEffect\(\(\) => \{[\s\S]{0,600}?'etat_financier_change'[\s\S]*?\}, \[cleEmpreinte\]\)/);
+ok(blocEffet !== null && /if \(effet\.type === 'dire'\) speak\(effet\.texte\)/.test(blocEffet[0]),
+  'le useEffect de POSCaisse DIT l\'effet `dire` rendu par ce changement (sinon la relecture spontanée serait muette)');
+ok(blocEffet !== null && !/handlePay/.test(blocEffet[0]),
+  'et ce useEffect ne contient pas `handlePay` : il parle, il ne paie pas');
 const ligneRendu = codeCaisse.split('\n').find(l => l.includes('<MicroVenteCaisse produitPreselectionne'));
 ok(!!ligneRendu && /onIntentionEncaissement=\{onIntentionEncaissement\}/.test(ligneRendu || ''),
   'le micro reçoit `onIntentionEncaissement` sur sa ligne de rendu');
@@ -185,6 +203,25 @@ function parler(etat: EtatEncaissement, phrase: string, f: EtatFinancier) {
   const a = panier([{ productId: 'tomate', quantite: 3, prix: 167, totalExact: 500 }], 500);
   const b = panier([{ productId: 'tomate', quantite: 3, prix: 167 }], 500);
   ok(a.empreinte.lignes !== b.empreinte.lignes && a.total === 500, 'l\'empreinte suit le total EXACT de la ligne (500), pas 3 × 167');
+}
+
+console.log('\n[B3] `etat_financier_change` n\'émet jamais `encaisser`, quel que soit l\'état');
+{
+  const T = { productId: 'tomate', quantite: 4, prix: 500 };
+  const fins = [panier([], 0), panier([T], 0), panier([T], 1000), panier([T], 2000), panier([T], 5000)];
+  const etats: EtatEncaissement[] = [
+    { phase: 'repos' }, { phase: 'preparation' },
+    ...fins.map(f => ({ phase: 'attente_confirmation' as const, empreinte: f.empreinte })),
+  ];
+  let paiements = 0;
+  let relectures = 0;
+  for (const e of etats) for (const f of fins) {
+    const r = reduire(e, 'etat_financier_change', f);
+    if (r.effet.type === 'encaisser') paiements++;
+    if (r.effet.type === 'dire') relectures++;
+  }
+  ok(paiements === 0, `${etats.length * fins.length} combinaisons état × compte : 0 effet encaisser (${paiements})`);
+  ok(relectures > 0, `et ${relectures} relecture(s) spontanée(s) quand le reçu vient couvrir`);
 }
 
 console.log(echecs === 0 ? '\nTous les tests de câblage passent.' : `\n${echecs} échec(s).`);

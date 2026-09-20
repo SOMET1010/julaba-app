@@ -189,13 +189,16 @@ console.log('\n[6] Montant reçu modifié entre relecture et confirmation → RE
 }
 {
   // Le chemin réel de l'écran : le changement arrive par `etat_financier_change`
-  // (useEffect sur l'empreinte), AVANT la phrase suivante.
+  // (useEffect sur l'empreinte), AVANT la phrase suivante. Un billet de plus
+  // sur un compte déjà relu : l'ancienne empreinte ne vaut plus, et Tata
+  // relit D'ELLE-MÊME le nouveau compte — un seul événement, une seule phrase.
   const relu = fin([TOMATES, OIGNONS], 5000);
   const change = fin([TOMATES, OIGNONS], 10000);
   const r = jouer([['encaisser', relu], ['etat_financier_change', change], ['oui_valide', change]]);
-  ok(r.effets[1].type === 'rien', 'le changement lui-même ne parle pas : elle manipule, elle n\'écoute pas');
-  ok(r.paiements === 0, 'la confirmation relue est tombée : pas de paiement');
-  ok(r.etat.phase === 'attente_confirmation', '« oui valide » rouvre une relecture sur le nouveau compte');
+  ok(r.effets[1].type === 'dire' && r.effets[1].texte === phraseRelecture(change), 'le billet de plus déclenche la relecture du NOUVEAU compte (reçu 10 000)');
+  ok(r.etat.phase === 'repos' && r.paiements === 1 && r.effets[2].type === 'encaisser', '« oui valide » paie le nouveau compte relu — celui qu\'elle vient d\'entendre');
+  const ancien = jouer([['encaisser', relu], ['etat_financier_change', change], ['oui_valide', relu]]);
+  ok(ancien.paiements === 0, 'l\'ANCIENNE empreinte (reçu 5 000) ne vaut plus : « oui valide » dessus ne paie pas');
 }
 {
   const f = fin([TOMATES, OIGNONS], 5000);
@@ -235,6 +238,59 @@ console.log('\n[8] « non, pas valide » → annulation, jamais de paiement');
   const r = jouer([['encaisser', f], ['etat_financier_change', vide], ['oui_valide', vide]]);
   ok(r.paiements === 0, '« Vider » puis « oui valide » : rien à payer');
   ok(r.etat.phase === 'repos' && dit(r.dernier).includes('panier est vide'), 'Tata dit que le panier est vide');
+}
+
+console.log('\n[10] Le parcours cible (étapes 6→8) : « encaisse » → billets touchés → Tata relit D\'ELLE-MÊME → « oui valide »');
+{
+  // LA BASE, MESURÉE SUR b2fe028 : « encaisse » avant les billets laissait la
+  // machine en `preparation` ; les billets touchés n'y changeaient rien
+  // (effet `rien`), et il fallait redire « encaisse » — trois phrases au
+  // lieu d'une. Ce bloc est rouge sur b2fe028.
+  const sansBillets = fin([TOMATES, OIGNONS], 0);
+  const billets = fin([TOMATES, OIGNONS], 5000);
+  const r = jouer([['encaisser', sansBillets], ['etat_financier_change', billets], ['oui_valide', billets]]);
+  ok(r.effets[0].type === 'dire' && r.effets[0].texte.includes('Touche les billets'), '« encaisse » avec reçu 0 → préparation, Tata demande les billets');
+  ok(r.effets[1].type === 'dire' && r.effets[1].texte === phraseRelecture(billets), 'reçu passe à 5 000 → Tata relit d\'elle-même : « ' + phraseRelecture(billets) + ' »');
+  ok(r.paiements === 1 && r.effets[2].type === 'encaisser' && r.etat.phase === 'repos', 'puis « oui valide » → UN effet encaisser');
+}
+{
+  const sansBillets = fin([TOMATES, OIGNONS], 0);
+  const pasAssez = fin([TOMATES, OIGNONS], 3000);
+  const r = jouer([['encaisser', sansBillets], ['etat_financier_change', pasAssez]]);
+  ok(r.etat.phase === 'preparation' && r.effets[1].type === 'rien', 'reçu 3 000 (insuffisant) → toujours préparation, effet rien : elle compte encore');
+  const suite = jouer([['etat_financier_change', fin([TOMATES, OIGNONS], 4000)]], r.etat);
+  ok(suite.effets[0].type === 'dire' && suite.effets[0].texte.includes('Compte juste'), 'le billet qui complète (4 000) déclenche la relecture — « Compte juste »');
+}
+{
+  // Un article ajouté pendant qu'elle compte : le compte relu tombe, puis le
+  // billet qui couvre le NOUVEAU total relance la relecture — de ce nouveau
+  // compte, et de lui seul.
+  const relu = fin([TOMATES, OIGNONS], 5000);
+  const plusUnArticle = fin([TOMATES, OIGNONS, PIMENT], 5000);   // 6 000 : plus couvert
+  const complete = fin([TOMATES, OIGNONS, PIMENT], 10000);
+  const r = jouer([['encaisser', relu], ['etat_financier_change', plusUnArticle], ['etat_financier_change', complete], ['oui_valide', complete]]);
+  ok(r.effets[1].type === 'rien' && r.effets[2].type === 'dire' && r.effets[2].texte === phraseRelecture(complete), 'silence tant que ça ne couvre pas, relecture dès que ça couvre');
+  ok(r.paiements === 1, 'et « oui valide » paie 6 000 / reçu 10 000, le compte entendu');
+}
+{
+  // PANIER VIDÉ → REPOS. Après un paiement (au doigt ou à la voix) ou un
+  // « Vider », l'encaissement demandé n'existe plus : la cliente suivante ne
+  // doit pas s'entendre relire un compte que personne n'a demandé.
+  const relu = fin([TOMATES, OIGNONS], 5000);
+  const vide = fin([], 0);
+  const r = jouer([['encaisser', relu], ['etat_financier_change', vide]]);
+  ok(r.etat.phase === 'repos' && r.effets[1].type === 'rien', 'attente puis panier vidé → repos, sans un mot');
+  const suivante = jouer([['etat_financier_change', fin([PIMENT], 0)], ['etat_financier_change', fin([PIMENT], 2000)]], r.etat);
+  ok(suivante.etat.phase === 'repos' && suivante.effets.every(e => e.type === 'rien'), 'la vente suivante, billets touchés sans « encaisse » → aucune relecture spontanée');
+  ok(jouer([['oui_valide', fin([PIMENT], 2000)]], suivante.etat).paiements === 0, 'et « oui valide » n\'y paie pas : il faut « encaisse » d\'abord');
+  const prep = jouer([['encaisser', fin([TOMATES], 0)], ['etat_financier_change', vide]]);
+  ok(prep.etat.phase === 'repos', 'préparation puis panier vidé → repos aussi');
+}
+{
+  // Depuis le REPOS, les billets ne relisent rien : la relecture spontanée
+  // n'existe qu'après « encaisse ».
+  const r = jouer([['etat_financier_change', fin([TOMATES, OIGNONS], 5000)]]);
+  ok(r.etat.phase === 'repos' && r.effets[0].type === 'rien', 'repos + billets suffisants → rien');
 }
 
 console.log('\n[9] LA PREUVE TRAVERSE — toutes les suites courtes d\'événements');
