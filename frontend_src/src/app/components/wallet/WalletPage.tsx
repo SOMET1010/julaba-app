@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { verifierPin, definirPin } from '../../services/api/auth-api';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
@@ -430,9 +431,19 @@ export function WalletPage() {
 
   const handleBiometricKeiwa = async () => {
     try {
-      const ok = await verifyWebAuthnForKeiwa();
-      if (ok) {
+      // API-01b — MÊME MENSONGE QUE LE PIN, PAR L'EMPREINTE, ET EN PIRE.
+      // Sur session expirée, l'invite d'empreinte ne s'ouvrait même pas : la
+      // marchande n'avait pas l'occasion d'essayer, et on lui répondait que
+      // son téléphone ne l'avait pas reconnue.
+      const r = await verifyWebAuthnForKeiwa();
+      if (r.etat === 'ok') {
         setPinLocked(false);
+      } else if (r.etat === 'session_expiree') {
+        setPinError('Ta session a expiré. Reconnecte-toi — ce n\'est pas ton doigt.');
+      } else if (r.etat === 'annulee') {
+        setPinError('Tu as annulé. Réessaie ou utilise ton code.');
+      } else if (r.etat === 'indisponible') {
+        setPinError('La reconnaissance ne marche pas ici. Utilise ton code.');
       } else {
         setPinError('Ton téléphone ne t\'a pas reconnue. Réessaie ou utilise ton code.');
       }
@@ -487,15 +498,14 @@ export function WalletPage() {
     }
     setCreatePinLoading(true);
     try {
-      const res = await fetch(`${API_URL}/auth/pin/set`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: pin1 }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setCreatePinError(data.message || 'Erreur lors de la création du PIN');
+      const r = await definirPin(pin1);
+      if (r.etat === 'session_expiree') {
+        setCreatePinError('Ta session a expiré. Reconnecte-toi, puis recommence.');
+        setCreatePin2(''); setCreateStep(1); setCreatePin1('');
+        return;
+      }
+      if (r.etat === 'erreur_metier') {
+        setCreatePinError(r.message || 'Erreur lors de la création du PIN');
         setCreatePin2('');
         setCreateStep(1);
         setCreatePin1('');
@@ -535,14 +545,23 @@ export function WalletPage() {
     setPinLoading(true);
     setPinError('');
     try {
-      const res = await fetch(`${API_URL}/auth/pin/verify`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: code }),
-      });
-      const data = await res.json();
-      if (data.valid) {
+      // API-01 — ICI ÉTAIT LE MENSONGE. L'ancien code lisait `data.valid` sur
+      // la réponse brute : un 401 (jeton de 15 minutes expiré, jamais
+      // rafraîchi sur un `fetch` direct) donnait `undefined`, donc faux, donc
+      // « Code PIN incorrect ». La marchande tapait le BON code de son
+      // portefeuille et l'application lui disait non. Elle ne lit pas : rien
+      // ne distinguait « session finie » de « mauvais code ».
+      //
+      // `verifierPin` ne rend plus que trois états, et la session expirée en
+      // est un À PART ENTIÈRE. Elle ne peut plus se déguiser en code faux.
+      const r = await verifierPin(code);
+      if (r.etat === 'session_expiree') {
+        setPinError('Ta session a expiré. Reconnecte-toi — ton code est bon.');
+        setPinInput('');
+      } else if (r.etat === 'erreur_metier') {
+        setPinError(r.status === 0 ? 'Pas de réseau. Réessaie.' : (r.message || 'Erreur'));
+        setPinInput('');
+      } else if (r.valeur) {
         setPinLocked(false);
       } else {
         setPinError('Code PIN incorrect');

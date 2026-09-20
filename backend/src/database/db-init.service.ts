@@ -31,6 +31,15 @@ export class DbInitService {
       await this.dataSource.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS commune_autre TEXT;`);
       await this.dataSource.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS quartier_village TEXT;`);
       await this.dataSource.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255) NULL;`);
+      // SEC-2 — verrou dédié au PIN identificateur. Même règle que pour
+      // `stock_mouvements.type` (B1) et `stock_operation_idempotency` (STK-01) :
+      // une colonne posée par une seule migration n'existe pas sur base vierge.
+      await this.dataSource.query(
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_identificateur_pin_attempts int NOT NULL DEFAULT 0;`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS identificateur_pin_locked_until timestamp NULL;`,
+      );
       await this.dataSource.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL;`);
       await this.dataSource.query(`CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email)) WHERE email IS NOT NULL;`);
       this.logger.log('Colonnes type_point_vente + 9 colonnes admin-divisions verifiees');
@@ -237,11 +246,76 @@ export class DbInitService {
           created_at timestamptz DEFAULT now()
         );
       `);
+      // LA COLONNE `type` MANQUAIT ICI, ET C'ÉTAIT BLOQUANT — 19/09/2026.
+      //
+      // Le code l'ÉCRIT (`stock-restitution.ts` insère type='annulation') et la
+      // LIT (`stocks-rest.controller.ts` la sélectionne). Mais elle n'était
+      // créée que par la migration `1780400000000-LedgerMouvementType`, et sur
+      // une base vierge les migrations NE TOURNENT PAS : `computeBootDbFlags`
+      // renvoie synchronize:true, migrationsRun:false. `synchronize` ne la crée
+      // pas non plus — `stock_mouvements` n'a aucune entité TypeORM. DbInit
+      // était donc le seul mécanisme possible, et il ne le faisait pas.
+      //
+      // Conséquence sur tout déploiement neuf : annuler une vente échouait sur
+      // « column "type" does not exist », l'exception remontait hors de la
+      // transaction, et le ROLLBACK rendait la vente à nouveau valide —
+      // l'argent restait compté, le stock restait retranché, et la marchande
+      // entendait « Je n'ai pas pu annuler cette vente » sans recours. En
+      // parallèle, `GET /stocks/mouvements` répondait 500 en permanence.
+      //
+      // Ce que le défaut a coûté en plus : `annulation-remise-stock.spec.ts`
+      // appliquait cette migration LUI-MÊME dans son beforeAll. Le test qui
+      // aurait dû attraper le défaut réparait le schéma pour se rendre vert.
+      // Cette rustine est retirée dans le même commit.
+      //
+      // DDL identique à la migration (même type, même défaut) : c'est la règle
+      // « DbInit ⊆ migrations » de l'ADR-0002, que ce fichier revendique déjà
+      // pour `caisse_sessions`. Additif et idempotent — juste que la colonne
+      // existe déjà ou non.
+      await this.dataSource.query(
+        `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS type varchar NOT NULL DEFAULT 'vente';`,
+      );
+      // L'UNITÉ EST FIGÉE AU MOUVEMENT, pas relue du catalogue — 19/09/2026.
+      // Elle était jointe depuis `produits` : changer l'unité d'un produit
+      // réécrivait donc le sens de tout son historique (« −5 tas » devenait
+      // « −5 kg »). Règle 2 de la doctrine, déjà tenue côté vente.
+      // NULLABLE : les mouvements antérieurs n'en ont pas, et on ne l'invente
+      // pas rétroactivement — le catalogue a pu changer entre-temps, c'est tout
+      // le problème. Miroir de la migration 1780500000000-LedgerUniteFigee.
+      await this.dataSource.query(
+        `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS unite varchar;`,
+      );
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS idx_stock_mouvements_tx ON stock_mouvements (transaction_id);`,
       );
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS idx_stock_mouvements_marchand ON stock_mouvements (marchand_id, created_at);`,
+      );
+      // STK-01 — LA MÊME FAUTE QUE B1, UNE SECONDE FOIS. 19/09/2026.
+      //
+      // `stock_operation_idempotency` n'était créée que par la migration
+      // 1781500000000. Sur une base vierge les migrations ne tournent pas, et
+      // la table n'a pas d'entité : `synchronize` ne la crée pas non plus.
+      // Or `stocks-rest.controller.ts` y insère dès qu'une clé d'idempotence
+      // est fournie — et `StockContext.updateStock` en envoie une à CHAQUE
+      // mise à jour, en ligne comme au rejeu hors-ligne.
+      //
+      // Conséquence sur tout déploiement neuf : TOUTE modification de stock
+      // échouait. Pas « une migration à appliquer un jour » : la caisse d'une
+      // marchande ne pouvait pas corriger une quantité.
+      //
+      // DDL identique à la migration. Règle « DbInit ⊆ migrations » (ADR-0002).
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS stock_operation_idempotency (
+          idempotency_key varchar(128) PRIMARY KEY,
+          stock_id varchar(128) NOT NULL,
+          marchand_id varchar(128) NOT NULL,
+          created_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS ix_stock_operation_idempotency_marchand
+         ON stock_operation_idempotency (marchand_id, created_at DESC);`,
       );
       this.logger.log('Ledger stock_mouvements (append-only) vérifié');
     } catch (e: unknown) {
@@ -516,6 +590,37 @@ export class DbInitService {
           updated_at timestamptz DEFAULT now()
         );
       `);
+      // SCHEMA-07 — TROISIÈME INSTANCE DE LA MÊME FAUTE, trouvée par le
+      // garde-fou au niveau COLONNE de SCHEMA-PILOTE (19/09/2026).
+      //
+      // La table était créée avec `montant`, mais `wallets.controller.ts` et
+      // `wallets-public.controller.ts` insèrent `amount`, `merchant_tx_id`,
+      // `provider`, `type`, et mettent à jour `error_message`. Ces cinq
+      // colonnes n'existaient NULLE PART — ni ici, ni dans la baseline
+      // (`1780200000000`). Ce n'est donc pas une divergence DbInit/migrations
+      // comme B1 et STK-01 : c'est une définition de table qui n'a JAMAIS
+      // correspondu au code. Tout paiement B-Pay et toute recharge de
+      // portefeuille échouaient, sur base neuve comme sur base migrée.
+      //
+      // Le garde-fou posé après B1 ne vérifiait que les TABLES : il ne pouvait
+      // pas voir ça. C'est exactement l'argument de Patrick pour bloquer l'APK
+      // sur SCHEMA-01/02/03 — « il détecte des divergences connues, il ne
+      // garantit pas que le troisième oubli n'existe pas sous une forme qu'il
+      // ne teste pas encore ». Le troisième existait.
+      //
+      // `montant` est conservée : on ne supprime pas une colonne qui peut
+      // porter des données en production.
+      for (const [col, type] of [
+        ['amount', 'numeric'],
+        ['merchant_tx_id', 'text'],
+        ['provider', 'text'],
+        ['type', 'text'],
+        ['error_message', 'text'],
+      ]) {
+        await this.dataSource.query(
+          `ALTER TABLE bpay_transactions ADD COLUMN IF NOT EXISTS ${col} ${type};`,
+        );
+      }
       this.logger.log('Table bpay_transactions vérifiée');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);

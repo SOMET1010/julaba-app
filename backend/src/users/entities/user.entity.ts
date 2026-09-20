@@ -242,6 +242,19 @@ export class User {
   @Column({ name: 'locked_until', type: 'timestamp', nullable: true })
   lockedUntil: Date | null;
 
+  // LE VERROU DU PIN IDENTIFICATEUR A SON PROPRE COMPTEUR — et ce n'est pas
+  // une duplication paresseuse. `failedPinAttempts` / `lockedUntil` servent au
+  // MOT DE PASSE (auth.service.login) et au PIN acteur (pin/verify). Or une
+  // connexion par mot de passe réussie les remet à zéro. Si le PIN
+  // identificateur partageait ces champs, il suffirait de se reconnecter pour
+  // effacer le verrou : exactement le contournement par changement de session
+  // que Patrick a demandé de rendre impossible le 19/09/2026.
+  @Column({ name: 'failed_identificateur_pin_attempts', type: 'int', default: 0 })
+  failedIdentificateurPinAttempts: number;
+
+  @Column({ name: 'identificateur_pin_locked_until', type: 'timestamp', nullable: true })
+  identificateurPinLockedUntil: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

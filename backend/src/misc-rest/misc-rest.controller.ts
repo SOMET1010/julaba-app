@@ -211,7 +211,27 @@ export class MiscRestController {
       ] = await Promise.all([
         this.usersRepo.count(),
         this.usersRepo.count({ where: { status: 'actif' as any } }),
-        this.dataSource.query(`SELECT COUNT(*) as total, COALESCE(SUM(montant), 0) as revenus FROM caisse_transactions`),
+        // UN REVENU N'EST PAS UNE SOMME DE MONTANTS — ARGENT-2, 19/09/2026.
+        //
+        // C'était `SUM(montant)` sans aucun filtre. Or `montant` est une valeur
+        // ABSOLUE : son SENS vit dans `type` (une dépense y est positive comme
+        // une vente) et sa VALIDITÉ dans `statut`. Les oublier revenait à
+        // additionner les DÉPENSES des marchandes aux recettes et à appeler ça
+        // « revenus », et à compter comme encaissées des ventes annulées.
+        //
+        // Sur une journée à 40 000 F de ventes, 15 000 F annulés et 12 000 F de
+        // dépenses, l'écran annonçait 67 000 F. La réponse est 40 000 F.
+        //
+        // Ce n'est pas un écran de marchande : c'est le chiffre sur lequel le
+        // pilote est jugé de l'extérieur, et il surévaluait le volume du montant
+        // exact de ce que les marchandes avaient dépensé.
+        //
+        // `statut` est NOT NULL DEFAULT 'validee' : le prédicat ne cache aucune
+        // ligne (vérifié en base, pas supposé).
+        this.dataSource.query(`
+          SELECT COUNT(*) AS total,
+                 COALESCE(SUM(montant) FILTER (WHERE type = 'vente' AND statut <> 'annulee'), 0) AS revenus
+            FROM caisse_transactions`),
         this.dataSource.query(`SELECT COUNT(*) as total FROM identifications`),
         this.dataSource.query(`SELECT COUNT(*) as total FROM users WHERE created_at >= NOW() - INTERVAL '7 days'`),
         this.dataSource.query(`
@@ -265,9 +285,21 @@ export class MiscRestController {
        LIMIT $1 OFFSET $2`,
         [limit, offset],
       );
-      const [countResult] = await this.dataSource.query(
-        `SELECT COUNT(*) as total, COALESCE(SUM(montant), 0) as montant_total FROM caisse_transactions`,
-      );
+      // ROUTE MASQUÉE — constat d'ARGENT-2, à lire avant de toucher ce fichier.
+      //
+      // Ce handler n'est JAMAIS ATTEINT : `TransactionsRestController` déclare
+      // `@Controller('transactions')` avec un `@Get()` qui gagne la route
+      // `GET /api/v1/transactions`. Un test d'invariant le constate.
+      //
+      // Son agrégat portait la même faute que `dashboard/stats` (somme aveugle
+      // de tous les types et de tous les statuts). Il est aligné sur la règle
+      // par prudence — si le masquage change un jour, le chiffre sera juste —
+      // mais que ce soit clair : CORRIGER CE CODE NE CHANGE RIEN POUR PERSONNE.
+      // Ce qu'il faut décider, c'est si cette route doit exister.
+      const [countResult] = await this.dataSource.query(`
+        SELECT COUNT(*) AS total,
+               COALESCE(SUM(montant) FILTER (WHERE type = 'vente' AND statut <> 'annulee'), 0) AS montant_total
+          FROM caisse_transactions`);
       return {
         data: rows,
         total: parseInt(countResult.total),

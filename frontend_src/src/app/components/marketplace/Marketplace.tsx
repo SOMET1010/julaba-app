@@ -22,6 +22,21 @@ export function Marketplace() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
+    // EXCEPTION JUSTIFIÉE, ET ELLE N'EST PAS TECHNIQUE — 19/09/2026.
+    //
+    // Cet appel n'envoie pas la session (`headers: {}`, pas de `credentials`) :
+    // il ne ramène donc rien, et la place de marché reste vide. Je l'avais
+    // « converti » sur le client commun pendant HYGIÈNE-1 — c'était une faute.
+    //
+    // `GET /caisse/produits` filtre `marchand_id = $1` : il renvoie le
+    // catalogue DE LA MARCHANDE ELLE-MÊME. L'authentifier ferait donc
+    // apparaître son propre stock dans la place de marché, étiqueté
+    // « Vendeur », comme l'offre de quelqu'un d'autre. Un écran vide est
+    // préférable à un écran qui lui propose d'acheter ses propres tomates.
+    //
+    // Cet écran n'a PAS de source de données correcte : il lit la mauvaise
+    // ressource. Il ne sera pas convergé tant que la vraie n'existe pas — c'est
+    // un manque fonctionnel, pas de la dette technique.
     fetch(`${API_URL}/caisse/produits`, { headers: { } })
       .then(r => r.json())
       .then(d => {

@@ -86,11 +86,6 @@ export function BOActeurs() {
   const [filterGenre, setFilterGenre] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filterRole, setFilterRole] = useState<string>('all');
-  const [pinVisible, setPinVisible] = useState<Record<string, boolean>>({});
-  const [modifierPinActeur, setModifierPinActeur] = useState<{ id: string; nom: string } | null>(null);
-  const [nouveauPin, setNouveauPin] = useState('');
-  const [pinLoading, setPinLoading] = useState(false);
-  const [pendingPinChange, setPendingPinChange] = useState<{ id: string; nom: string; pin: string; lastTwoDigits: string } | null>(null);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [duplicateUserIds, setDuplicateUserIds] = useState<Set<string>>(new Set());
   const [flaggedUserIds, setFlaggedUserIds] = useState<Set<string>>(new Set());
@@ -292,14 +287,6 @@ export function BOActeurs() {
     return () => unregisterNewAction();
   }, [registerNewAction, unregisterNewAction, navigate]);
 
-  React.useEffect(() => {
-    const visibleKeys = Object.keys(pinVisible).filter(k => pinVisible[k]);
-    if (visibleKeys.length === 0) return;
-    const timeoutId = setTimeout(() => {
-      setPinVisible({});
-    }, 5000);
-    return () => clearTimeout(timeoutId);
-  }, [pinVisible]);
 
   React.useEffect(() => {
     setSelectedIds(new Set());
@@ -451,32 +438,70 @@ export function BOActeurs() {
     generateCSV(selected, false);
   };
 
-  const fetchPin = async (acteurId: string) => {
-    if (pinVisible[acteurId]) {
-      setPinVisible(prev => ({ ...prev, [acteurId]: false }));
-      return;
-    }
+  // ── SEC-2 : « Voir le PIN » n'existe plus ────────────────────────────────
+  //
+  // CE QU'IL Y AVAIT ICI. Un bouton qui appelait `GET .../pin-decrypted`,
+  // récupérait le code en clair de l'identificateur et l'affichait cinq
+  // secondes. Le serveur ne rend plus ce code — à personne, jamais.
+  //
+  // CE QUI LE REMPLACE. Une réinitialisation : le serveur tire un nouveau code
+  // et l'envoie par SMS. L'administrateur déclenche, il ne lit pas. Il faut
+  // donc que l'écran le DISE clairement avant de le faire, parce que le geste
+  // n'est plus anodin — l'ancien code cesse de fonctionner immédiatement et
+  // les sessions ouvertes de la personne tombent.
+  //
+  // CE QU'ON N'AFFICHERA JAMAIS, même si le SMS échoue : le code. En cas
+  // d'échec d'envoi on propose de renvoyer, rien d'autre.
+  const reinitialiserPin = useCallback(async (acteur: Acteur, renvoi = false) => {
+    const chemin = renvoi ? 'renvoyer-pin' : 'reinitialiser-pin';
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
     try {
-      const res = await fetch(`${API_URL}/auth/identificateur/${acteurId}/pin-decrypted`, {
+      const res = await fetch(`${API_URL}/auth/identificateur/${acteur.id}/${chemin}`, {
+        method: 'POST',
         credentials: 'include',
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
-      if (!res.ok) { toast.error('Impossible de récupérer le PIN'); return; }
-      await res.json();
-      setPinVisible(prev => ({ ...prev, [acteurId]: true }));
+      if (res.status === 429) {
+        toast.error('Trop de renvois. Patientez quelques minutes avant de réessayer.');
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data?.success) {
+        toast.success('Nouveau code envoyé par SMS. L’ancien ne fonctionne plus.');
+        return;
+      }
+      if (data?.code === 'SMS_NON_DELIVRE') {
+        // On dit exactement où en est la situation : le code A changé, mais la
+        // personne ne l'a pas reçu. Taire l'un des deux la laisserait dehors.
+        setConfirmAction({
+          open: true,
+          title: 'Le SMS n’est pas parti',
+          message: `Le code de ${getActeurName(acteur)} a bien été changé — l’ancien ne fonctionne plus — mais le SMS n’a pas pu être délivré. Voulez-vous réessayer l’envoi ?`,
+          severity: 'warning',
+          confirmLabel: 'Renvoyer le code',
+          onConfirm: () => {
+            setConfirmAction(null);
+            void reinitialiserPin(acteur, true);
+          },
+        });
+        return;
+      }
+      if (data?.code === 'SANS_NUMERO') {
+        toast.error('Cet identificateur n’a pas de numéro : le code ne peut pas être envoyé.');
+        return;
+      }
+      toast.error('La réinitialisation a échoué');
     } catch (err) {
       clearTimeout(timeoutId);
       if ((err as any)?.name === 'AbortError') {
         toast.error('Délai dépassé, vérifiez votre connexion');
         return;
       }
-      console.warn('[BOActeurs] fetchPin failed:', err instanceof Error ? err.message : err);
       toast.error('Erreur réseau');
     }
-  };
+  }, []);
 
   const getActeurName = useCallback((acteur: Acteur) => (
     `${acteur.prenoms || ''} ${acteur.nom || ''}`.trim() || acteur.full_name || 'cet acteur'
@@ -624,22 +649,20 @@ export function BOActeurs() {
         onClick: () => navigate(`/backoffice/acteurs/${acteur.id}?tab=enrolements`),
       });
       items.push({
-        id: 'voir-pin',
-        label: pinVisible[acteur.id] ? 'Masquer le PIN' : 'Voir le PIN',
+        id: 'reinitialiser-pin',
+        label: 'Réinitialiser le PIN',
         icon: KeyRound,
-        onClick: () => fetchPin(acteur.id),
-      });
-      items.push({
-        id: 'modifier-pin',
-        label: 'Modifier le PIN',
-        icon: Key,
-        onClick: () => {
-          setModifierPinActeur({
-            id: acteur.id,
-            nom: `${acteur.prenoms || ''} ${acteur.nom || ''}`.trim() || 'Identificateur',
-          });
-          setNouveauPin('');
-        },
+        onClick: () => setConfirmAction({
+          open: true,
+          title: 'Réinitialiser le PIN ?',
+          message: `${getActeurName(acteur)} recevra un nouveau code par SMS. Son ancien code cessera de fonctionner immédiatement et ses sessions ouvertes seront fermées. Personne — vous non plus — ne verra ce code.`,
+          severity: 'warning',
+          confirmLabel: 'Réinitialiser et envoyer',
+          onConfirm: () => {
+            setConfirmAction(null);
+            void reinitialiserPin(acteur);
+          },
+        }),
       });
     }
 
@@ -723,7 +746,7 @@ export function BOActeurs() {
   }, [
     bo.user?.role,
     boUser?.role,
-    fetchPin,
+    reinitialiserPin,
     getActeurName,
     handleSingleChangerType,
     handleSingleReactivate,
@@ -731,55 +754,14 @@ export function BOActeurs() {
     handleSingleSuspend,
     hasPermission,
     navigate,
-    pinVisible,
     softDeleteActeur,
   ]);
 
-  const handleModifierPin = async () => {
-    if (!modifierPinActeur || pendingPinChange) return;
-    if (!/^\d{4}$/.test(nouveauPin)) { toast.error('Le PIN doit contenir exactement 4 chiffres'); return; }
-    const PINS_INTERDITS = ['0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999', '1234', '4321', '1212', '2121', '1010'];
-    if (PINS_INTERDITS.includes(nouveauPin)) { toast.error('Ce PIN est trop simple. Choisissez une combinaison moins évidente.'); return; }
-    setPendingPinChange({
-      id: modifierPinActeur.id,
-      nom: modifierPinActeur.nom,
-      pin: nouveauPin,
-      lastTwoDigits: nouveauPin.slice(-2),
-    });
-  };
-
-  const confirmModifierPin = async () => {
-    if (!pendingPinChange) return;
-    setPinLoading(true);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
-    try {
-      const res = await fetch(`${API_URL}/auth/identificateur/${pendingPinChange.id}/pin`, {
-        method: 'POST',
-        credentials: 'include',
-        signal: controller.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: pendingPinChange.pin }),
-      });
-      clearTimeout(timeoutId);
-      if (!res.ok) { toast.error('Erreur lors de la modification du PIN'); return; }
-      toast.success(`PIN de ${pendingPinChange.nom} modifié avec succès`);
-      setPinVisible(prev => ({ ...prev, [pendingPinChange.id]: true }));
-      setModifierPinActeur(null);
-      setPendingPinChange(null);
-      setNouveauPin('');
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if ((err as any)?.name === 'AbortError') {
-        toast.error('Délai dépassé, vérifiez votre connexion');
-        return;
-      }
-      console.warn('[BOActeurs] handleModifierPin failed:', err instanceof Error ? err.message : err);
-      toast.error('Erreur réseau');
-    } finally {
-      setPinLoading(false);
-    }
-  };
+  // SEC-08 — « Modifier le PIN » a disparu : un administrateur ne choisit plus
+  // le code d'un identificateur, donc ne le connaît plus. Le serveur le tire à
+  // la création (backoffice/create) et à chaque réinitialisation, et l'envoie
+  // par SMS. Seul l'identificateur lui-même choisit son code, depuis son propre
+  // écran (`me/change-pin`).
 
   return (
     <div className="px-4 lg:px-8 py-6 max-w-7xl mx-auto overflow-hidden">
@@ -1194,102 +1176,7 @@ export function BOActeurs() {
         </div>
       )}
 
-      <AnimatePresence>
-        {modifierPinActeur && (
-          <motion.div
-            className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setModifierPinActeur(null)}
-          >
-            <motion.div
-              className="bg-white rounded-3xl p-6 w-full max-w-sm border-2"
-              style={{ borderColor: BO_PRIMARY }}
-              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9 }}
-              onClick={e => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="modal-modifier-pin-title"
-            >
-              <h3 id="modal-modifier-pin-title" className="font-black text-gray-900 text-lg mb-1">Modifier le PIN</h3>
-              <p className="text-sm text-gray-500 mb-5">{modifierPinActeur.nom}</p>
-              <label htmlFor="nouveau-pin-input" className="sr-only">Nouveau PIN</label>
-              <input
-                id="nouveau-pin-input"
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                value={nouveauPin}
-                onChange={e => setNouveauPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                placeholder="Nouveau PIN à 4 chiffres"
-                className="w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-center font-mono text-2xl tracking-widest mb-5"
-                style={{ borderColor: nouveauPin.length === 4 ? BO_PRIMARY : undefined }}
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setModifierPinActeur(null);
-                    setPendingPinChange(null);
-                  }}
-                  className="flex-1 py-3 rounded-2xl border-2 border-gray-200 font-bold text-gray-700"
-                >
-                  Annuler
-                </button>
-                <motion.button
-                  onClick={handleModifierPin}
-                  disabled={nouveauPin.length !== 4 || pinLoading}
-                  className="flex-1 py-3 rounded-2xl font-bold text-white disabled:opacity-50"
-                  style={{ backgroundColor: BO_PRIMARY }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  {pinLoading ? 'Enregistrement...' : 'Confirmer'}
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {pendingPinChange && (
-          <motion.div
-            className="fixed inset-0 bg-black/50 z-[210] flex items-center justify-center p-4"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setPendingPinChange(null)}
-          >
-            <motion.div
-              className="bg-white rounded-3xl p-6 w-full max-w-md border-2"
-              style={{ borderColor: '#F59E0B' }}
-              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9 }}
-              onClick={e => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="modal-confirm-pin-change-title"
-            >
-              <h3 id="modal-confirm-pin-change-title" className="font-black text-gray-900 text-lg mb-2">Confirmer le changement de PIN</h3>
-              <p className="text-sm text-gray-700 mb-5">
-                {`Confirmer le changement de PIN de ${pendingPinChange.nom} ? Le nouveau PIN sera ••${pendingPinChange.lastTwoDigits}. Cette action sera enregistrée dans l’audit avec votre identifiant et l’horodatage.`}
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setPendingPinChange(null)}
-                  className="flex-1 py-3 rounded-2xl border-2 border-gray-200 font-bold text-gray-700"
-                >
-                  Annuler
-                </button>
-                <motion.button
-                  onClick={confirmModifierPin}
-                  disabled={pinLoading}
-                  className="flex-1 py-3 rounded-2xl font-bold text-white disabled:opacity-50"
-                  style={{ backgroundColor: BO_PRIMARY }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  {pinLoading ? 'Enregistrement...' : 'Confirmer'}
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {confirmAction && (
         <UniversalConfirmModalBO

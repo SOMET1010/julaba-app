@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { definirPin, desactiverPin } from '../../services/api/auth-api';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Settings,
@@ -524,13 +525,12 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
 
   const handleSavePin = async (newPin: string, currentPin?: string) => {
     try {
-      const res = await fetch(`${API_URL}/auth/pin/set`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: newPin, currentPin }),
-      });
-      const data = await res.json() as { success?: boolean; message?: string };
-      if (!res.ok || !data.success) { toast.error(data.message || 'Erreur PIN'); return; }
+      // API-01 : la session expirée est un état à part, jamais un « PIN
+      // incorrect ». Sinon on reproche à la marchande une faute qu'elle n'a
+      // pas commise.
+      const r = await definirPin(newPin, currentPin);
+      if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'erreur_metier') { toast.error(r.message || 'Erreur PIN'); return; }
       if (appUser) setUser({ ...appUser, pinSecurityEnabled: true });
       toast.success('Code PIN activé');
     } catch { toast.error('Erreur réseau'); }
@@ -538,35 +538,39 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
 
   const handleDisablePin = async (currentPin: string) => {
     try {
-      const res = await fetch(`${API_URL}/auth/pin/disable`, {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPin }),
-      });
-      const data = await res.json() as { success?: boolean; message?: string };
-      if (!res.ok || !data.success) { toast.error(data.message || 'PIN incorrect'); return; }
+      const r = await desactiverPin(currentPin);
+      if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'erreur_metier') { toast.error(r.message || 'PIN incorrect'); return; }
       if (appUser) setUser({ ...appUser, pinSecurityEnabled: false });
       toast.success('Code PIN désactivé');
     } catch { toast.error('Erreur réseau'); }
   };
 
   const handleRegisterBiometric = async () => {
-    const result = await registerWebAuthn();
-    if (result.success) {
-      toast.success('FaceID / Empreinte activé');
-      try {
-        const tel = String((appUser as any)?.phone || '').replace(/^\+225/, '');
-        if (/^\d{10}$/.test(tel)) marquerBiometrie(window.localStorage, tel, true);
-      } catch { /* ignore */ }
-    } else {
-      toast.error(result.error || 'Ça n\'a pas marché ici. Réessaie.');
-    }
+    const r = await registerWebAuthn();
+    // API-01b : chaque cas dit ce qui s'est VRAIMENT passé. Une session finie
+    // n'est pas un doigt refusé, et une annulation n'est pas un échec.
+    if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi, puis réessaie.'); return; }
+    if (r.etat === 'annulee') { toast('Tu as annulé. Tu peux réessayer quand tu veux.'); return; }
+    if (r.etat === 'indisponible') { toast.error(r.message || 'Ça ne marche pas sur ce téléphone.'); return; }
+    if (r.etat === 'non_reconnue') { toast.error('Ton téléphone n’a pas pu enregistrer. Réessaie.'); return; }
+    toast.success('FaceID / Empreinte activé');
+    try {
+      const tel = String((appUser as any)?.phone || '').replace(/^\+225/, '');
+      if (/^\d{10}$/.test(tel)) marquerBiometrie(window.localStorage, tel, true);
+    } catch { /* ignore */ }
   };
 
   const handleTestBiometric = async () => {
-    const ok = await verifyWebAuthnForKeiwa();
-    if (ok) toast.success('Ton téléphone t\'a reconnue');
-    else toast.error('Ton téléphone ne t\'a pas reconnue. Réessaie.');
+    const r = await verifyWebAuthnForKeiwa();
+    if (r.etat === 'ok') { toast.success('Ton téléphone t’a reconnue'); return; }
+    // ICI ÉTAIT LE REPROCHE INJUSTE : sur session expirée, l'invite d'empreinte
+    // ne s'ouvrait même pas, et on lui disait pourtant qu'elle n'avait pas été
+    // reconnue.
+    if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi — ce n’est pas ton doigt.'); return; }
+    if (r.etat === 'annulee') { toast('Tu as annulé.'); return; }
+    if (r.etat === 'indisponible') { toast.error(r.message || 'La reconnaissance ne marche pas ici.'); return; }
+    toast.error('Ton téléphone ne t’a pas reconnue. Réessaie.');
   };
 
   if (!user) return null;
