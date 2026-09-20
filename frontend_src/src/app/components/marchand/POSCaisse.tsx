@@ -16,9 +16,10 @@ import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/f
 import { BilletDessine, PieceDessinee } from './CoupureDessinee';
 import { avertissementRupture } from '../../services/ruptureStock';
 import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
-import { getImageByNom } from '../../data/catalogue-produits';
+import { getPictogrammeByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMaitre';
+import { PaveMontant } from '../shared/PaveMontant';
 import {
   presenterResultatOperation,
   type ResultatOperationCaisse,
@@ -78,6 +79,7 @@ export function POSCaisse() {
 
   // Encaissement (Phase 3, lots 2-4) : montant reçu (espèces) + écran « Vente réussie ».
   const [montantRecu, setMontantRecu] = useState('');
+  const [saisieEspeces, setSaisieEspeces] = useState<'chiffres' | 'coupures'>('chiffres');
   const [lastSale, setLastSale] = useState<{
     montant: number;
     moyen: string;
@@ -183,6 +185,7 @@ export function POSCaisse() {
   // + monnaie à rendre décomposée en coupures concrètes.
   const recu = Number(montantRecu) || 0;
   const monnaie = Math.max(0, recu - total);
+  const montantRecuManquant = recu <= 0;
   const insuffisant = recu > 0 && recu < total;
   const ajouterCoupure = (valeur: number) => {
     setMontantRecu(String(recu + valeur));
@@ -220,6 +223,7 @@ export function POSCaisse() {
       return;
     }
     if (paymentMethod === 'credit') return;
+    if (paymentMethod === 'cash' && montantRecuManquant) { dire('Entre le montant reçu ou choisis compte juste'); return; }
     if (paymentMethod === 'cash' && insuffisant) { dire('Montant reçu insuffisant'); return; }
     if (paymentMethod === 'mobile_money' && !mmOperator) { dire('Choisis l\'opérateur'); return; }
     const estMM = paymentMethod === 'mobile_money';
@@ -327,14 +331,14 @@ export function POSCaisse() {
   const Prix = ({ prix, unite }: { prix: number; unite: string }) => (
     <div style={{ margin:'3px 0' }}>
       <span style={{ fontSize:20, fontWeight:900, color:P }}>{prix.toLocaleString('fr-FR')} </span>
-      <span style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)' }}>FCFA/{unite}</span>
+      <span style={{ fontSize:13, fontWeight:800, color:'var(--encre-3)' }}>FCFA/{unite}</span>
     </div>
   );
 
   const StockBadge = ({ stock }: { stock: number }) => {
     const low = stock < 10;
     return (
-      <div style={{ position:'absolute', bottom:8, left:8, background: low ? 'rgba(239,68,68,0.9)' : 'rgba(29,158,117,0.9)', borderRadius:8, padding:'3px 8px', fontSize:10, fontWeight:700, color:'white' }}>
+      <div style={{ position:'absolute', bottom:8, left:8, background: low ? 'rgba(239,68,68,0.9)' : 'rgba(29,158,117,0.9)', borderRadius:8, padding:'4px 8px', fontSize:12, fontWeight:800, color:'white' }}>
         {stock} {low ? 'restants' : 'en stock'}
       </div>
     );
@@ -361,7 +365,7 @@ export function POSCaisse() {
                       dire(`${item.nom} : ${v.toLocaleString('fr-FR')} francs l'unité`);
                     } else { e.target.value = String(item.prix); }
                   }}
-                  style={{ width:72, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'right', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
+                  style={{ width:84, minHeight:44, border:'1.5px solid var(--trait)', borderRadius:10, padding:'8px 7px', fontSize:16, fontWeight:800, color:'var(--encre)', textAlign:'right', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
               ) : (
                 <span>{item.prix.toLocaleString('fr-FR')} FCFA</span>
               )}
@@ -376,7 +380,7 @@ export function POSCaisse() {
                     dire(`${item.nom} : ${v}`);
                   } else { e.target.value = String(item.quantite); }
                 }}
-                style={{ width:56, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'center', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
+                style={{ width:64, minHeight:44, border:'1.5px solid var(--trait)', borderRadius:10, padding:'8px 7px', fontSize:16, fontWeight:800, color:'var(--encre)', textAlign:'center', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
             </div>
           </div>
           <div style={{ fontSize:15, fontWeight:800, color:P }}>{(item.totalExact ?? item.prix * item.quantite).toLocaleString('fr-FR')} FCFA</div>
@@ -450,45 +454,46 @@ export function POSCaisse() {
         </div>
       )}
 
-      {/* Espèces : montant reçu EN BILLETS (geste du marché) + monnaie
-          à rendre décomposée en coupures. Le champ chiffres reste le
-          filet pour celle qui préfère taper. */}
+      {/* Espèces : deux gestes simples, jamais superposés. Le pavé XXL est le
+          défaut ; la marchande peut basculer vers les coupures qu'elle tient. */}
       {paymentMethod === 'cash' && (
       <div style={{ marginBottom:12 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid var(--trait)', borderRadius:12, padding:'10px 12px', minWidth:0 }}>
-          <span style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)', whiteSpace:'nowrap' }}>Montant reçu</span>
-          {/* minWidth:0 — sans lui, un input vide garde un min-content flexbox
-              qui peut dépasser un conteneur étroit (panneau permanent 400px,
-              repéré en recette visuelle) au lieu de rétrécir avec flex:1. */}
-          <input value={montantRecu} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—"
-            style={{ flex:1, minWidth:0, border:'none', outline:'none', textAlign:'right', fontSize:18, fontWeight:800, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums' }} />
-          <span style={{ fontSize:13, fontWeight:700, color:'var(--encre-3)' }}>F</span>
-          {recu > 0 && (
-            <button type="button" aria-label="Effacer le montant reçu" onClick={() => setMontantRecu('')}
-              style={{ width:30, height:30, borderRadius:9, border:'none', background:'#FEF2F2', color:'#c0392b', fontWeight:900, fontSize:14, cursor:'pointer' }}>
-              ✕
-            </button>
-          )}
-        </div>
-        {/* Les billets qu'elle vient de recevoir : un toucher = un billet
-            ajouté (et dit à voix haute). Couleurs proches des vraies coupures. */}
-        {/* alignItems:'flex-end' : les billets n'ont plus tous la même hauteur
-            (les vraies coupures non plus). Alignés par le bas, ils se lisent
-            comme une liasse posée sur la table, pas comme une grille bancale. */}
-        <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap', alignItems:'flex-end' }}>
-          {COUPURES.filter(c => c.forme === 'billet').map(c => (
-            <BilletDessine key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
-          ))}
-        </div>
-        <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap', alignItems:'center' }}>
-          {COUPURES.filter(c => c.forme === 'piece').map(c => (
-            <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
-          ))}
-          <button type="button" onClick={() => { setMontantRecu(String(total)); dire('Compte juste'); }}
-            style={{ flex:1, minWidth:104, padding:'13px 10px', borderRadius:12, border:'1.5px solid #A8D8B9', background:'#EAF7EE', color:'#0E7A47', fontWeight:800, fontSize:13, cursor:'pointer' }}>
-            Compte juste
+        <div role="group" aria-label="Comment entrer le montant reçu" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:10 }}>
+          <button type="button" aria-pressed={saisieEspeces === 'chiffres'} onClick={() => setSaisieEspeces('chiffres')}
+            style={{ minHeight:48, borderRadius:13, border:`2px solid ${saisieEspeces === 'chiffres' ? P : '#E2D7CC'}`, background:saisieEspeces === 'chiffres' ? '#FFF3E8' : '#fff', color:P, fontWeight:900, fontSize:15, cursor:'pointer' }}>
+            1 2 3 · Chiffres
+          </button>
+          <button type="button" aria-pressed={saisieEspeces === 'coupures'} onClick={() => setSaisieEspeces('coupures')}
+            style={{ minHeight:48, borderRadius:13, border:`2px solid ${saisieEspeces === 'coupures' ? P : '#E2D7CC'}`, background:saisieEspeces === 'coupures' ? '#FFF3E8' : '#fff', color:P, fontWeight:900, fontSize:15, cursor:'pointer' }}>
+            Billets · Pièces
           </button>
         </div>
+        {saisieEspeces === 'chiffres' ? (
+          <PaveMontant value={montantRecu} onChange={setMontantRecu} color={P}
+            ariaLabel="Montant reçu de la cliente"
+            onSpeak={(m) => { if (m > 0) dire(`${formatF(m)} francs reçus`); }} />
+        ) : (
+          <>
+            <button type="button" onClick={() => { if (recu > 0) dire(`${formatF(recu)} francs reçus`); }}
+              style={{ width:'100%', minHeight:58, borderRadius:14, border:`2px solid ${P}`, background:'#fff', color:P, fontSize:26, fontWeight:900, marginBottom:8, cursor:'pointer' }}>
+              {formatF(recu)} F
+            </button>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'flex-end' }}>
+              {COUPURES.filter(c => c.forme === 'billet').map(c => (
+                <BilletDessine key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
+              ))}
+            </div>
+            <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap', alignItems:'center' }}>
+              {COUPURES.filter(c => c.forme === 'piece').map(c => (
+                <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
+              ))}
+            </div>
+          </>
+        )}
+        <button type="button" onClick={() => { setMontantRecu(String(total)); dire('Compte juste'); }}
+          style={{ width:'100%', minHeight:50, marginTop:8, borderRadius:12, border:'1.5px solid #A8D8B9', background:'#EAF7EE', color:'#0E7A47', fontWeight:900, fontSize:15, cursor:'pointer' }}>
+          Compte juste · {formatF(total)} F
+        </button>
         {recu > 0 && !insuffisant && (
           <button type="button" onClick={() => dire(`Monnaie à rendre : ${formatF(monnaie)} francs`)}
             aria-label={`Monnaie à rendre ${formatF(monnaie)} francs — touche pour entendre`}
@@ -521,7 +526,7 @@ export function POSCaisse() {
 
       {(() => {
         const bloque = isProcessing
-          || (paymentMethod === 'cash' && insuffisant)
+          || (paymentMethod === 'cash' && (montantRecuManquant || insuffisant))
           || (paymentMethod === 'mobile_money' && !mmOperator);
         // CTA unique et fort (mockup validé) : « Payer en espèces » plutôt
         // qu'un « Valider » générique — le moyen de paiement pilote est déjà
@@ -529,7 +534,9 @@ export function POSCaisse() {
         const label = isProcessing ? 'Traitement...'
           : paymentMethod === 'mobile_money'
             ? (mmOperator ? `Valider — payé par ${getMobileOperator(mmOperator).name}` : 'Choisis l\'opérateur')
-            : (monnaie > 0 ? `Payer en espèces · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Payer en espèces');
+            : montantRecuManquant
+              ? 'Entre le montant reçu'
+              : (monnaie > 0 ? `Payer en espèces · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Payer en espèces');
         return (
           <motion.button whileTap={{ scale: bloque ? 1 : 0.97 }} onClick={handlePay} disabled={bloque}
             style={{ width:'100%', border:'none', borderRadius:18, padding:'17px 0', fontSize:16, fontWeight:800, color:'white', cursor: bloque ? 'not-allowed':'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, background: bloque ? '#CBB9A8' : P }}>
@@ -668,7 +675,7 @@ export function POSCaisse() {
                 <motion.button key={p.id} whileTap={{ scale:0.97 }}
                   onClick={() => ajouterAuPanier(p)}
                   style={{ borderRadius:18, overflow:'hidden', position:'relative', height:96, border:'none', cursor:'pointer', padding:0 }}>
-                  <ImageWithFallback src={p.image || undefined} fallbackSrc={getImageByNom(p.nom)} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', position:'absolute', top:0, left:0 }} />
+                  <ImageWithFallback src={p.image || undefined} fallbackSrc={getPictogrammeByNom(p.nom)} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', position:'absolute', top:0, left:0 }} />
                   <div style={{ position:'absolute', inset:0, background:'linear-gradient(to right,rgba(0,0,0,0.72) 0%,rgba(0,0,0,0.25) 55%,transparent 100%)' }} />
                   <div style={{ position:'absolute', inset:0, padding:'0 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                     <div style={{ textAlign:'left' }}>
@@ -713,9 +720,14 @@ export function POSCaisse() {
                 const cartTotal = inCart ? inCart.quantite * inCart.prix : 0;
                 return (
                   <motion.div key={p.id} initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} transition={{ delay: i*0.04 }}
-                    style={{ background:'white', border:`1.5px solid ${inCart ? P : '#EDE7DE'}`, borderRadius:20, overflow:'hidden', boxShadow: inCart ? `0 4px 20px rgba(175,91,35,0.18)` : 'none' }}>
+                    role={!inCart ? 'button' : undefined}
+                    tabIndex={!inCart ? 0 : undefined}
+                    aria-label={!inCart ? `Ajouter ${p.nom}, ${prixEffectif(p as any).toLocaleString('fr-FR')} francs` : undefined}
+                    onClick={!inCart ? () => ajouterAuPanier(p) : undefined}
+                    onKeyDown={!inCart ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ajouterAuPanier(p); } } : undefined}
+                    style={{ background:'white', border:`1.5px solid ${inCart ? P : '#EDE7DE'}`, borderRadius:20, overflow:'hidden', boxShadow: inCart ? `0 4px 20px rgba(175,91,35,0.18)` : 'none', cursor: inCart ? 'default' : 'pointer' }}>
                     <div style={{ position:'relative', height:110 }}>
-                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getImageByNom(p.nom)} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getPictogrammeByNom(p.nom)} alt={p.nom} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                       <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.55) 100%)' }} />
                       <StockBadge stock={p.stock || 0} />
                       {enPromo && (
@@ -734,7 +746,7 @@ export function POSCaisse() {
                       {enPromo ? (
                         <div style={{ margin:'3px 0', display:'flex', alignItems:'baseline', gap:6, flexWrap:'wrap' }}>
                           <span style={{ fontSize:20, fontWeight:900, color:'#C0392B' }}>{prixEffectif(p as any).toLocaleString('fr-FR')}</span>
-                          <span style={{ fontSize:11, fontWeight:700, color:'#C0392B' }}>FCFA/{p.unite}</span>
+                          <span style={{ fontSize:13, fontWeight:800, color:'#C0392B' }}>FCFA/{p.unite}</span>
                           <span style={{ fontSize:12, fontWeight:700, color:'var(--encre-4)', textDecoration:'line-through' }}>{(p.prix||0).toLocaleString('fr-FR')}</span>
                         </div>
                       ) : (
@@ -753,10 +765,10 @@ export function POSCaisse() {
                           </motion.button>
                         </div>
                       ) : (
-                        <motion.button whileTap={{ scale:0.97 }} onClick={() => ajouterAuPanier(p)}
-                          style={{ width:'100%', background:P, border:'none', borderRadius:12, padding:'11px 0', fontSize:15, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit', marginTop:8 }}>
+                        <div aria-hidden="true"
+                          style={{ width:'100%', background:P, borderRadius:12, padding:'11px 0', fontSize:15, fontWeight:800, color:'white', textAlign:'center', marginTop:8 }}>
                           + Ajouter
-                        </motion.button>
+                        </div>
                       )}
                     </div>
                   </motion.div>
