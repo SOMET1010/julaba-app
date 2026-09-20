@@ -19,6 +19,18 @@ eq(jourLabel("2026-08-01T10:00:00", now), "1 août", "≥ 7 jours → date court
 eq(jourLabel("", now), "", "vide → vide");
 eq(jourLabel("pas-une-date", now), "", "date invalide → vide");
 
+// FICHIER GELÉ (test:ci) — MODIFIÉ LE 19/09/2026, ET IL FAUT LE DIRE.
+//
+// Les deux assertions ci-dessous comparent l'objet ENTIER renvoyé par
+// `mapApiMouvements`. Le contrat de cette fonction a grandi, sur instruction
+// explicite de Patrick (fermer la dette B3 avant l'APK terrain) : une vente
+// faite hors stock doit désormais s'afficher, avec ce qui est réellement sorti
+// de la boutique et la mention « hors stock ». Trois champs sont donc apparus.
+//
+// Les VALEURS attendues sont inchangées ; seuls les champs nouveaux ont été
+// ajoutés à la forme comparée. Aucun cas de test n'a été ajouté ici — les
+// nouveaux vivent dans `mouvementsStockHorsStock.test.mts`, branché sur
+// `verify`, conformément au gel de `test:ci`.
 console.log("mouvementsStock — mapApiMouvements");
 eq(mapApiMouvements(null), [], "null → []");
 eq(mapApiMouvements(undefined), [], "undefined → []");
@@ -26,14 +38,18 @@ eq(
   mapApiMouvements([
     { id: "1", type: "vente", quantite: -7, produit_nom: "Tomate", unite: "kg", date: "2026-08-16T09:00:00" },
   ], now),
-  [{ id: "1", type: "vente", qty: -7, name: "Tomate", unit: "kg", day: "aujourd'hui" }],
+  // ARG-02 : `uniteConnue` s'ajoute ici — l'attente fige la FORME exacte de
+  // l'objet, et c'est justement ce qui l'a fait rougir quand le champ est
+  // apparu. Aucun test n'est ajouté à cette suite gelée : on met à jour deux
+  // attentes existantes pour qu'elles décrivent la forme réelle.
+  [{ id: "1", type: "vente", qty: -7, qtyAffichee: 7, horsStock: false, name: "Tomate", unit: "kg", uniteConnue: true, day: "aujourd'hui" }],
   "vente : signe conservé, unité/nom mappés",
 );
 eq(
   mapApiMouvements([
     { id: "2", type: "annulation", quantite: 5, produit_nom: null, unite: null, date: "2026-08-15T10:00:00" },
   ], now),
-  [{ id: "2", type: "annulation", qty: 5, name: "", unit: "", day: "hier" }],
+  [{ id: "2", type: "annulation", qty: 5, qtyAffichee: 5, horsStock: false, name: "", unit: "", uniteConnue: false, day: "hier" }],
   "annulation : nom/unité nuls → défauts vides",
 );
 eq(

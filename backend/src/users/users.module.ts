@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersService } from './users.service';
 import { DuplicatesService } from './duplicates.service';
 import { AdminUsersService } from './admin-users.service';
+import { PinCryptoService } from '../auth/pin-crypto.service';
 import { BackofficeUsersService } from './backoffice-users.service';
 import { UsersController } from './users.controller';
 import { User } from './entities/user.entity';
@@ -30,6 +31,11 @@ import { ActivationModule } from '../auth/activation.module';
     DuplicatesService,
     AdminUsersService,
     BackofficeUsersService,
+    // SEC-08 : la création back-office pose désormais le PIN de l'identificateur.
+    // `PinCryptoService` n'a aucune dépendance d'injection (clé lue dans
+    // l'environnement à l'init) — on le fournit ici plutôt que d'importer
+    // AuthModule, qui créerait un cycle avec UsersModule.
+    PinCryptoService,
   ],
   exports: [
     UsersService,

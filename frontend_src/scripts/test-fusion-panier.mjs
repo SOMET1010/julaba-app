@@ -66,9 +66,18 @@ verifier(
   'sans quoi une promotion s’appliquerait à la création de ligne mais pas à la fusion.',
 );
 
+// RÉÉCRIT LE 19/09/2026 (HYGIÈNE-1 axe 2). Cette vérification lisait la FORME
+// du code — `if (!res.ok) { … restaurerDepuisCache }` — et non la garantie.
+// La convergence du catalogue sur le client API commun a supprimé ce `if` : le
+// client LÈVE désormais sur une réponse en erreur, si bien que les deux échecs
+// (serveur qui répond mal, réseau coupé) arrivent dans le MÊME `catch`. La
+// garantie tient toujours, mieux qu'avant ; c'était l'assertion qui était
+// attachée à une écriture particulière. On vérifie maintenant la garantie.
 verifier(
   'un serveur qui répond MAL retombe sur le cache, comme une coupure',
-  /if \(!res\.ok\) \{[\s\S]{0,400}restaurerDepuisCache/.test(code),
+  /catch \(err: unknown\) \{[\s\S]{0,300}restaurerDepuisCache\(cacheKey\)/.test(code)
+    && /await caisseApi\.fetchProduitsCaisse\(\)/.test(code)
+    && !/if \(!res\.ok\)[\s\S]{0,200}return;/.test(code),
   'un 503 laissait le catalogue vide alors que les prix étaient sur le téléphone.',
 );
 

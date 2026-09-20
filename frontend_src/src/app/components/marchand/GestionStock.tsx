@@ -24,7 +24,7 @@ import { guidageVocal } from '../../utils/accessMode';
 import { toast } from 'sonner';
 import { UNITES_COURANTES } from '../../config/unites';
 import { API_URL } from '../../utils/api';
-import { mapApiMouvements, type MouvementUI } from '../../services/mouvementsStock';
+import { mapApiMouvements, quantiteMouvement, mentionUniteInconnue, type MouvementUI } from '../../services/mouvementsStock';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
 
@@ -751,6 +751,11 @@ export function GestionStock() {
               <div style={{ fontSize:12, fontWeight:800, color:P, marginBottom:12 }}>Derniers mouvements</div>
               <div style={{ display:'flex', gap:8 }}>
                 {mouvements.slice(0,3).map((m,i) => {
+                  // Le SIGNE porte la couleur et la flèche ; le NOMBRE affiché
+                  // est ce qui est sorti de la boutique. Une vente de 4 kg faite
+                  // sur un stock à zéro montrait « rien du tout » avant le
+                  // 19/09/2026 — elle était filtrée par le backend. Elle montre
+                  // maintenant 4, avec la mention « hors stock ».
                   const isPlus = m.qty > 0;
                   return (
                     <motion.div key={i} initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.1 }}
@@ -760,8 +765,19 @@ export function GestionStock() {
                           {isPlus?<><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>:<><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></>}
                         </svg>
                       </div>
-                      <div style={{ fontSize:17, fontWeight:900, color:isPlus?'#16a34a':'#ef4444' }}>{isPlus?'+':''}{m.qty}</div>
-                      <div style={{ fontSize:9, fontWeight:700, color:isPlus?'#16a34a':'#ef4444' }}>{m.unit} {m.name}</div>
+                      <div style={{ fontSize:17, fontWeight:900, color:isPlus?'#16a34a':'#ef4444' }}>{isPlus?'+':'−'}{m.qtyAffichee}</div>
+                      <div style={{ fontSize:9, fontWeight:700, color:isPlus?'#16a34a':'#ef4444' }}>{m.uniteConnue ? `${m.unit} ${m.name}` : m.name}</div>
+                      {mentionUniteInconnue(m) && (
+                        // ARG-02 : on ne comble pas le blanc avec l'unité du
+                        // catalogue d'aujourd'hui. On dit qu'on ne sait pas.
+                        <div style={{ fontSize:9, fontWeight:700, color:'var(--encre-4)', marginTop:2 }}>{mentionUniteInconnue(m)}</div>
+                      )}
+                      {m.horsStock && (
+                        // Le stock enregistré ne couvrait pas cette sortie. On le
+                        // DIT : sans ça, son stock reste à zéro et rien ne lui
+                        // apprend ce qu'elle a réellement écoulé.
+                        <div style={{ fontSize:9, fontWeight:800, color:'#b45309', marginTop:2 }}>⚠ hors stock</div>
+                      )}
                       <div style={{ fontSize:9, color:'var(--encre-4)', marginTop:2 }}>{m.day}</div>
                     </motion.div>
                   );
@@ -1102,7 +1118,7 @@ export function GestionStock() {
                         {produitMouvements[0]?.day || '—'}
                       </div>
                       <div style={{ fontSize: 9, fontWeight: 700, color: produitMouvements[0]?.qty > 0 ? '#16a34a' : '#ef4444', marginTop: 2 }}>
-                        {produitMouvements[0] ? `${produitMouvements[0].qty > 0 ? '+' : ''}${produitMouvements[0].qty} ${selectedStock.unit}` : '—'}
+                        {produitMouvements[0] ? quantiteMouvement(produitMouvements[0], produitMouvements[0].qty) : '—'}
                       </div>
                     </div>
                   </div>
@@ -1155,10 +1171,12 @@ export function GestionStock() {
                         </div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre)' }}>{m.type === 'annulation' ? 'Annulation' : 'Vente'}</div>
-                          <div style={{ fontSize: 10, color: 'var(--encre-4)', fontWeight: 600, marginTop: 1 }}>{m.day}</div>
+                          <div style={{ fontSize: 10, color: 'var(--encre-4)', fontWeight: 600, marginTop: 1 }}>
+                            {m.day}{mentionUniteInconnue(m) ? ` · ${mentionUniteInconnue(m)}` : ''}
+                          </div>
                         </div>
                         <span style={{ fontSize: 13, fontWeight: 900, color: m.qty > 0 ? '#16a34a' : '#ef4444' }}>
-                          {m.qty > 0 ? '+' : ''}{m.qty} {selectedStock.unit}
+                          {quantiteMouvement(m, m.qty)}
                         </span>
                       </div>
                     ))}

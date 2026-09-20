@@ -20,39 +20,14 @@ import { beneficeDepuisDetails } from '../services/margeVente';
  * correctif du 18/09 : distinguer « la marge vaut zéro » de « je ne sais pas ».
  * Rendre `null` uniquement quand la valeur est absente ou illisible.
  */
-/**
- * Toutes les transactions, VRAIMENT toutes — correctif du 18/09/2026.
- *
- * Ces deux appels ne demandaient ni page ni limite : le serveur renvoyait ses
- * 500 dernières et personne ne réclamait la suite. À 501 ventes de 1 000 F, le
- * tableau de bord — et la voix de Tata — annonçaient 500 000 F au lieu de
- * 501 000 F. Une caisse qui se trompe d'autant plus qu'on l'utilise n'est pas
- * une caisse.
- *
- * Le plafond de pages n'est pas un confort : c'est un garde-fou contre une
- * boucle sans fin si le serveur cessait de décroître.
- */
-const TX_PAR_PAGE = 1000;
-const TX_PAGES_MAX = 50;
+const TYPES_CONNUS = ['vente', 'depense', 'recolte'] as const;
 
-async function chargerToutesLesTransactions(
-  apiUrl: string,
-  entetes: HeadersInit,
-): Promise<any[]> {
-  const toutes: any[] = [];
-  for (let page = 1; page <= TX_PAGES_MAX; page++) {
-    const res = await fetch(
-      `${apiUrl}/caisse/transactions?limit=${TX_PAR_PAGE}&page=${page}`,
-      { credentials: 'include', headers: entetes },
-    );
-    if (!res.ok) break;
-    const json = await res.json();
-    const lot = Array.isArray(json) ? json : (json.transactions || []);
-    toutes.push(...lot);
-    // Page incomplète = dernière page, quel que soit le format de réponse.
-    if (lot.length < TX_PAR_PAGE) break;
-  }
-  return toutes;
+/** Range un type de transaction dans les valeurs que ce contexte sait traiter.
+ *  Tout le reste devient 'autre' — cf. le commentaire de `Transaction.type`. */
+function typeTransaction(brut: unknown): Transaction['type'] {
+  return (TYPES_CONNUS as readonly string[]).includes(String(brut))
+    ? (brut as Transaction['type'])
+    : 'autre';
 }
 
 function nombreOuNull(v: unknown): number | null {
@@ -66,6 +41,9 @@ import { normalizeRole } from '../types/constants';
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import * as audioManager from '../services/audioManager';
 import { API_URL } from '../utils/api';
+import { rafraichirSession, apiRequest } from '../services/api/api-client';
+import * as caisseApi from '../services/api/caisse-api';
+import type { VenteServeur, LigneDeVente, CreditServeur } from '../types/vente';
 import { jourLocal } from '../utils/jourLocal';
 import { enfilerOperation } from '../voice-offline/offlineCaisse';
 import { clearAuthClientState } from '../utils/clearAuthClientState';
@@ -146,7 +124,16 @@ export interface User {
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'vente' | 'depense' | 'recolte';
+  /** Le type déclaré par le serveur.
+   *
+   *  `'autre'` N'EST PAS UN FOURRE-TOUT COMMODE : c'est la seule façon
+   *  HONNÊTE de représenter un type que ce contexte ne connaît pas (le
+   *  serveur écrit aussi 'approvisionnement'). Le ranger d'office en 'vente'
+   *  le ferait compter dans le chiffre d'affaires ; en 'depense', dans le
+   *  cahier. Les deux mentiraient sur l'argent. 'autre' ne correspond à aucun
+   *  filtre financier — c'est exactement ce que faisait déjà, sans le dire,
+   *  une chaîne inconnue avant le typage de l'axe 4. */
+  type: 'vente' | 'depense' | 'recolte' | 'autre';
   productName: string;
   quantity: number;
   price: number;
@@ -155,12 +142,16 @@ export interface Transaction {
   date: string;
   location?: string;
   purchasePrice?: number;
-  margin?: number;
-  totalMargin?: number;
-  totalBenefice?: number;
+  /** Le bénéfice de la vente — UN champ, pas trois (HYGIÈNE-1 axe 3). Il y
+   *  avait `margin`, jamais lu, et deux autres qui recevaient la même valeur
+   *  depuis deux colonnes que le serveur remplit à l'identique. */
+  benefice?: number;
   source?: string;
   synced?: boolean;
   montant?: number;
+  /** Les lignes de la vente. Elles étaient lues via `(transaction as any)`
+   *  alors que le reste des champs du même objet étaient, eux, déclarés. */
+  produits?: LigneDeVente[];
   statut?: string; // 'validee' | 'annulee' | … — pour l'annulation self-service (#20)
 }
 
@@ -272,13 +263,6 @@ const ROLE_COLORS: Record<UserRole, string> = {
 };
 
 /** Session par cookie : ne pas envoyer Authorization: Bearer cookie ; JWT réel sinon. */
-function caisseAuthHeaders(accessToken: string | null): HeadersInit {
-  const h: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (accessToken && accessToken !== 'cookie') {
-    h['Authorization'] = `Bearer ${accessToken}`;
-  }
-  return h;
-}
 
 // Génération pour l'état visuel « isSpeaking » : seule la voix la plus récente
 // réinitialise l'animation (évite le clignotement quand une voix en interrompt
@@ -348,11 +332,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let finalUserResponse = userResponse;
 
       if (userResponse.status === 401) {
-        // Token expiré → tenter refresh silencieux
-        const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
-          method: 'POST',
-          credentials: 'include',
-        });
+        // Token expiré → rafraîchissement par L'UNIQUE porte (verrouillée).
+        // Ce bloc en avait sa propre copie, sans verrou et sans corps : dans
+        // l'APK elle ne pouvait pas aboutir, et lancée en même temps qu'une
+        // autre elle révoquait toutes les sessions de la marchande.
+        const refreshRes = { ok: await rafraichirSession(API_URL) };
         if (refreshRes.ok) {
           const retryRes = await fetch(`${API_URL}/users/me`, {
             credentials: 'include',
@@ -453,14 +437,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       // Charger transactions
-      const txData = await chargerToutesLesTransactions(API_URL, caisseAuthHeaders(token));
+      // UNE SEULE LECTURE DES TRANSACTIONS — HYGIÈNE-1 axe 2. Ce contexte
+      // portait sa propre boucle de pagination, écrite le même jour et avec le
+      // même commentaire que celle de `caisse-api` : deux copies du correctif
+      // « Tu as vendu … en tout », qu'il aurait fallu penser à corriger deux
+      // fois. Elle recomposait en plus à la main l'en-tête Authorization déjà
+      // posé par l'intercepteur de main.tsx — une cinquième façon de
+      // s'authentifier auprès du même serveur.
+      const { transactions: txData } = await caisseApi.fetchCaisseTransactions();
 
       {
         
-        const mappedTx: Transaction[] = txData.map((tx: any) => ({
-          id: tx.id,
-          userId: tx.marchand_id || tx.user_id,
-          type: tx.type,
+        const mappedTx: Transaction[] = txData.map((tx: VenteServeur) => ({
+          // Ces trois lectures étaient typées `any`. Le typage montre que le
+          // serveur peut omettre id et type. On NE comble pas : on laisse
+          // exactement la valeur d'avant (`undefined` restait `undefined`), et
+          // on nomme le trou. Combler changerait des écrans.
+          id: tx.id as string,
+          userId: (tx.marchand_id || tx.user_id) as string,
+          type: typeTransaction(tx.type),
           productName: tx.description || tx.produit || 'Depense',
           quantity: Number(tx.quantite) || 1,
           price: Number(tx.montant) || 0,
@@ -479,8 +474,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Ce qui reste vrai ici, et qui motive le `??` : zéro est une
           // RÉPONSE du serveur, pas une absence de réponse. `0 || x` la
           // remplaçait silencieusement par un recalcul.
-          totalBenefice: nombreOuNull(tx.benefice) ?? beneficeDepuisDetails(tx.details),
-          totalMargin: nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
+          // Les deux colonnes du serveur portent la même valeur ; on lit la
+          // première disponible, et à défaut on recalcule depuis les lignes.
+          benefice: nombreOuNull(tx.benefice) ?? nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
           statut: tx.statut,
@@ -496,23 +492,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // Charger session du jour
       const today = new Date().toISOString().split('T')[0];
-      const sessionResponse = await fetch(
-        `${API_URL}/caisse/session/${today}`,
-        {
-          credentials: 'include',
-          headers: caisseAuthHeaders(token),
-        },
-      );
+      const sessionResponse = await caisseApi.fetchSessionDuJour(today).catch(() => null);
 
-      if (sessionResponse.ok) {
-        const { session: sessionData } = await sessionResponse.json();
+      {
+        const sessionData = sessionResponse?.session;
         if (sessionData) {
+          // DÉFAUT NOMMÉ, NON CORRIGÉ DANS CE LOT : le typage de la réponse
+          // montre que le serveur peut omettre `ouvert`, `id`, `date`. La
+          // journée devient alors « ni ouverte ni fermée ». Lui donner une
+          // valeur par défaut changerait l'état visible de la caisse au
+          // démarrage — donc ce que voit la marchande. Hors hygiène.
           setCurrentSession({
-            id: sessionData.id,
-            userId: sessionData.marchand_id,
-            date: sessionData.date,
+            id: sessionData.id as string,
+            userId: sessionData.marchand_id as string,
+            date: sessionData.date as string,
             fondInitial: Number(sessionData.fond_initial) || 0,
-            opened: sessionData.ouvert,
+            opened: sessionData.ouvert as boolean,
             openedAt: sessionData.heure_ouverture,
             closedAt: sessionData.heure_fermeture,
             notes: sessionData.notes,
@@ -535,19 +530,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Token expiré → tenter refresh silencieux. On envoie le refresh token
         // stocké dans le corps (le cookie refresh est bloqué cross-domaine mobile).
         if (res.status === 401) {
-          let storedRefresh: string | null = null;
-          try { storedRefresh = localStorage.getItem('julaba_refresh_token'); } catch { /* ignore */ }
-          const refreshRes = await fetch(`${API_URL}/auth/refresh`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(storedRefresh ? { refreshToken: storedRefresh } : {}),
-          });
-          if (refreshRes.ok) {
-            try {
-              const j = await refreshRes.clone().json();
-              if (j?.accessToken) localStorage.setItem('julaba_access_token', j.accessToken);
-            } catch { /* ignore */ }
+          // C'était la SEULE des quatre copies qui envoyait le jeton stocké,
+          // donc la seule capable d'aboutir dans l'APK. Son comportement est
+          // devenu celui de tout le monde : `rafraichirSession` envoie le jeton,
+          // range celui d'après, et tient le verrou.
+          if (await rafraichirSession(API_URL)) {
             res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
           }
         }
@@ -620,13 +607,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     // Silent refresh automatique toutes les 13 minutes
-    silentRefreshRef.current = setInterval(async () => {
-      try {
-        await fetch(`${API_URL}/auth/refresh`, {
-          method: 'POST',
-          credentials: 'include',
-        });
-      } catch { /* silencieux */ }
+    silentRefreshRef.current = setInterval(() => {
+      // Même porte que partout ailleurs : la minuterie ne doit surtout pas
+      // rafraîchir en parallèle d'une vente qui rafraîchit déjà.
+      void rafraichirSession(API_URL);
     }, 13 * 60 * 1000);
 
     checkSession();
@@ -814,29 +798,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ? {
             montant: transaction.price * transaction.quantity,
             description: transaction.productName || '',
-            categorie: (transaction as any).category || 'autre',
+            categorie: transaction.category || 'autre',
             mode_paiement: transaction.paymentMethod || 'especes',
           }
         : {
-            montant: (transaction as any).montant || transaction.price * transaction.quantity,
+            // Quatre `as any` ici, sur l'écriture d'une VENTE — alors que
+            // `category`, `montant` et `source` étaient déjà déclarés sur
+            // `Transaction`. Seul `produits` manquait ; il a été ajouté.
+            // C'est ce genre de cast qui avait laissé `source` ne jamais
+            // partir : le compilateur ne pouvait rien en dire.
+            montant: transaction.montant || transaction.price * transaction.quantity,
             produit: transaction.productName,
-            produits: (transaction as any).produits || [{ nom: transaction.productName, quantite: transaction.quantity }],
+            produits: transaction.produits || [{ nom: transaction.productName, quantite: transaction.quantity }],
             quantite: transaction.quantity,
             mode_paiement: transaction.paymentMethod,
-            source: (transaction as any).source || 'kassa',
+            source: transaction.source || 'kassa',
           };
       try {
-        const res = await fetch(
-          `${API_URL}${endpoint}`,
-          {
-            method: 'POST',
-            credentials: 'include',
-            headers: caisseAuthHeaders(accessToken),
-            body: JSON.stringify(payload),
-          }
-        );
-        // #6 : un POST en erreur (4xx/5xx) ne "réussissait" plus en silence.
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // #6 : un POST en erreur (4xx/5xx) ne "réussissait" plus en silence —
+        // `apiRequest` lève, et son erreur porte le statut. Cette écriture de
+        // vente passe désormais par la MÊME porte que celle de la caisse, avec
+        // le rafraîchissement de session que ce chemin n'avait pas.
+        await apiRequest(API_URL, endpoint, { method: 'POST', body: JSON.stringify(payload) });
 
         // Marquer comme synchronisé
         setTransactions((prev) =>
@@ -890,20 +873,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // on ne bloque jamais la vendeuse.
     if (accessToken) {
       try {
-        const reponse = await fetch(
-          `${API_URL}/caisse/session/ouvrir`,
-          {
-            method: 'POST',
-            credentials: 'include',
-            headers: caisseAuthHeaders(accessToken),
-            body: JSON.stringify({
-              fond_initial: fondInitial,
-              notes,
-            }),
-          }
-        );
-        if (reponse.ok) {
-          const { session, fond_conserve } = await reponse.json();
+        const reponse = await caisseApi.ouvrirSession(fondInitial, notes);
+        {
+          const { session, fond_conserve } = reponse;
           if (session) {
             const fondRetenu = Number(session.fond_initial) || 0;
             setCurrentSession({
@@ -948,18 +920,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Sync avec API
     if (accessToken) {
       try {
-        await fetch(
-          `${API_URL}/caisse/session/fermer`,
-          {
-            method: 'POST',
-            credentials: 'include',
-            headers: caisseAuthHeaders(accessToken),
-            body: JSON.stringify({
-              comptage_reel: comptageReel,
-              notes: closingNotes,
-            }),
-          }
-        );
+        await caisseApi.fermerSession(comptageReel, closingNotes);
       } catch (error: any) {
         console.warn('[AppContext] closeDay sync failed:', error?.message);
       }
@@ -1005,17 +966,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (accessToken) {
       try {
-        const reponse = await fetch(
-          `${API_URL}/caisse/session/fond`,
-          {
-            method: 'PATCH',
-            credentials: 'include',
-            headers: caisseAuthHeaders(accessToken),
-            body: JSON.stringify({ fond_initial: newFond }),
-          }
-        );
-        if (reponse.ok) {
-          const { session } = await reponse.json();
+        const reponse = await caisseApi.modifierFondSession(newFond);
+        {
+          const { session } = reponse;
           if (session) {
             setCurrentSession((prev) => ({
               id: session.id || prev?.id || `local-${Date.now()}`,
@@ -1026,10 +979,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
               openedAt: session.heure_ouverture || prev?.openedAt,
             }));
           }
-        } else {
-          console.warn('[AppContext] updateFondInitial refusé :', reponse.status);
         }
       } catch (error: any) {
+        // Un refus du serveur arrive maintenant ICI, avec son statut porté par
+        // l'erreur : un seul endroit à lire pour savoir que le fond n'a pas été
+        // enregistré, au lieu de deux branches qui disaient la même chose.
         console.warn('[AppContext] updateFondInitial sync failed:', error?.message);
       }
     }
@@ -1083,12 +1037,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // les stats espèces restent justes, seul l'apport crédit manque temporairement.
   const reloadCreditsJour = async () => {
     try {
-      const res = await fetch(`${API_URL}/caisse/credits`,
-        { credentials: 'include', headers: caisseAuthHeaders(accessToken) });
-      if (!res.ok) return;
-      const json = await res.json();
+      // Même lecture des crédits que la caisse elle-même : c'était une seconde
+      // requête vers la même ressource, avec sa propre gestion d'erreur.
+      const json = await caisseApi.fetchCredits();
       const rows = Array.isArray(json?.credits) ? json.credits : [];
-      setCreditsJour(rows.map((c: any) => ({
+      setCreditsJour(rows.map((c: CreditServeur) => ({
         montant_total: Number(c.montant_total) || 0,
         acompte: Number(c.acompte) || 0,
         created_at: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
@@ -1101,12 +1054,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       // Même pagination que le chargement initial : un rechargement qui
       // s'arrête à 500 rendrait le correctif inutile dès la première mise à jour.
-      const txData = await chargerToutesLesTransactions(API_URL, caisseAuthHeaders(accessToken));
+      const { transactions: txData } = await caisseApi.fetchCaisseTransactions();
       {
-        const mappedTx: Transaction[] = txData.map((tx: any) => ({
-          id: tx.id,
-          userId: tx.marchand_id || tx.user_id,
-          type: tx.type,
+        const mappedTx: Transaction[] = txData.map((tx: VenteServeur) => ({
+          // Ces trois lectures étaient typées `any`. Le typage montre que le
+          // serveur peut omettre id et type. On NE comble pas : on laisse
+          // exactement la valeur d'avant (`undefined` restait `undefined`), et
+          // on nomme le trou. Combler changerait des écrans.
+          id: tx.id as string,
+          userId: (tx.marchand_id || tx.user_id) as string,
+          type: typeTransaction(tx.type),
           productName: tx.description || tx.produit || 'Depense',
           quantity: Number(tx.quantite) || 1,
           price: Number(tx.montant) || 0,
@@ -1124,8 +1081,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Ce qui reste vrai ici, et qui motive le `??` : zéro est une
           // RÉPONSE du serveur, pas une absence de réponse. `0 || x` la
           // remplaçait silencieusement par un recalcul.
-          totalBenefice: nombreOuNull(tx.benefice) ?? beneficeDepuisDetails(tx.details),
-          totalMargin: nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
+          // Les deux colonnes du serveur portent la même valeur ; on lit la
+          // première disponible, et à défaut on recalcule depuis les lignes.
+          benefice: nombreOuNull(tx.benefice) ?? nombreOuNull(tx.marge) ?? beneficeDepuisDetails(tx.details),
           date: tx.created_at ? new Date(tx.created_at).toISOString() : new Date().toISOString(),
           paymentMethod: tx.mode_paiement,
           statut: tx.statut,

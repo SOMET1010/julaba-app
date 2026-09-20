@@ -18,7 +18,6 @@ import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../../src/app.module';
 import { DbInitService } from '../../src/database/db-init.service';
 import { User, UserRole, UserStatus } from '../../src/users/entities/user.entity';
-import { LedgerMouvementType1780400000000 } from '../../src/database/migrations/1780400000000-LedgerMouvementType';
 
 describe('Invariant R7 — annulation vente → remise en stock (🟢)', () => {
   let app: INestApplication;
@@ -43,15 +42,15 @@ describe('Invariant R7 — annulation vente → remise en stock (🟢)', () => {
     jwt = app.get(JwtService);
     await app.get(DbInitService, { strict: false }).runInit();
 
-    // Le schéma de test est bâti par synchronize+DbInit (les invariants
-    // n'exécutent pas la chaîne de migrations). On applique la migration ADDITIVE
-    // du ledger typé pour disposer de la colonne `type` — source unique : la
-    // migration elle-même (pas de DDL dupliqué, pas de DDL via DbInit).
-    {
-      const qr = ds.createQueryRunner();
-      await new LedgerMouvementType1780400000000().up(qr);
-      await qr.release();
-    }
+    // RUSTINE RETIRÉE LE 19/09/2026. Ce bloc appliquait ici la migration du
+    // ledger typé pour disposer de la colonne `type`. L'intention était bonne
+    // (ne pas dupliquer du DDL), la conséquence ne l'était pas : ce test
+    // RÉPARAIT le schéma pour se rendre vert, et masquait donc le fait que la
+    // production, elle, ne l'a jamais. Huit tests passaient en prouvant le
+    // contraire de ce qu'on croyait.
+    //
+    // La colonne est désormais posée par DbInit — le seul mécanisme garanti en
+    // production. Ce test la CONSTATE maintenant, au lieu de la fabriquer.
 
     const su = await request(app.getHttpServer())
       .post('/api/v1/auth/signup')

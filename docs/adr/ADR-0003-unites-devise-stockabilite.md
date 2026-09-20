@@ -55,9 +55,24 @@ absence d'information. Inventer une perte serait aussi faux qu'inventer un gain.
 **Décision :** XOF explicite dans le modèle, invisible dans l'UX quotidienne.
 La marchande voit « F » ; la donnée sait « XOF ».
 
-**Fait :** `frontend_src/src/app/config/devise.ts` — un seul endroit nomme la
-devise, son symbole, sa forme parlée. Le « FCFA » en dur dans des dizaines
-d'écrans cesse d'être la source de vérité.
+**Fait :** `frontend_src/src/app/config/devise.ts` — un seul endroit DÉCIDE de
+la devise, de son symbole et de sa forme parlée. Il est importé par
+`utils/fcfa.ts` (rendu de la monnaie, 8 consommateurs) et par
+`services/margeVente.ts` (libellés de marge).
+
+**CE QUE CETTE LIGNE A AFFIRMÉ À TORT, et il faut le dire ici parce que c'est
+un document de passation.** Elle disait : « Le "FCFA" en dur dans des dizaines
+d'écrans cesse d'être la source de vérité. » C'était faux deux fois. D'abord
+parce qu'à l'écriture de cet ADR (19/09), `devise.ts` n'était importé par
+PERSONNE : c'était du code mort annoncé comme appliqué. Un auditeur externe l'a
+relevé, à raison. Ensuite parce que même après câblage, **107 fichiers écrivent
+encore « FCFA » en dur** — ce sont des libellés d'affichage, pas des sources de
+vérité, et les convertir serait un renommage de masse sans gain. La dette est
+réelle, elle est nommée, elle n'est pas résorbée.
+
+La leçon vaut au-delà de la devise : **un ADR qui dit « fait » alors que le
+code n'est pas branché coûte plus cher qu'un ADR qui dit « décidé, pas fait ».**
+Le second se reprend ; le premier se re-instruit de zéro un mois plus tard.
 
 **PARTIEL, ET IL FAUT LE DIRE AINSI** (relevé par Patrick le 19/09) :
 l'implicite CÔTÉ CODE est corrigé, mais **la vente ne persiste toujours pas sa

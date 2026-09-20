@@ -1,3 +1,4 @@
+import type { LigneDeVente } from '../types/vente';
 // ──────────────────────────────────────────────────────────────────────────
 // Statistiques de vente — calcul PUR et testable du top produits.
 //
@@ -24,16 +25,10 @@ export interface LigneVente {
   /** Lignes réelles de la vente, telles que le panier les a envoyées.
    *  C'est la SEULE source qui sache ce qui a vraiment été vendu quand une
    *  transaction porte plusieurs produits. */
-  details?: unknown;
+  details?: LigneDeVente[] | unknown;
 }
 
-/** Une ligne du panier, telle que POSCaisse la construit. */
-interface LigneDetail {
-  nom?: string;
-  quantite?: number;
-  prix?: number;
-  total?: number;
-}
+// La ligne du panier est décrite une seule fois, dans types/vente.ts.
 
 /**
  * Éclate une vente en ses vrais produits — correctif du 18/09/2026.
@@ -54,7 +49,7 @@ interface LigneDetail {
  */
 function eclaterEnProduits(t: LigneVente): { nom: string; qte: number; total: number }[] | null {
   if (!Array.isArray(t.details) || t.details.length === 0) return null;
-  const lignes = (t.details as LigneDetail[])
+  const lignes = (t.details as LigneDeVente[])
     .map((d) => {
       const nom = typeof d?.nom === 'string' ? d.nom.trim() : '';
       const qte = Number(d?.quantite) || 0;
@@ -97,10 +92,16 @@ export function montantLigne(t: LigneVente): number {
 export interface ResumeVentes {
   /** CA : somme des montants des ventes NON annulees. */
   totalVentes: number;
-  /** Somme des benefices (fallback marge) des ventes non annulees. */
+  /** Somme des benefices des ventes non annulees.
+   *
+   *  IL N'Y A PLUS QU'UN SEUL CHIFFRE — HYGIÈNE-1 axe 3. Ce résumé en
+   *  renvoyait deux, alimentés par deux champs distincts eux-mêmes lus dans
+   *  deux colonnes distinctes (`benefice`, `marge`). Or le serveur écrit LA
+   *  MÊME VALEUR dans les deux (`marge, benefice: marge`), et le second total
+   *  n'était affiché nulle part. Deux noms pour un seul chiffre, c'est la
+   *  promesse qu'ils diffèreront un jour — et personne ne saura alors lequel
+   *  est juste. */
   totalBenefices: number;
-  /** Somme des marges des ventes non annulees. */
-  totalMarges: number;
   /** Nombre de ventes NON annulees. */
   totalCount: number;
   /** Panier moyen = totalVentes / totalCount (arrondi), 0 si aucune vente. */
@@ -110,8 +111,8 @@ export interface ResumeVentes {
 export interface VenteResumable {
   montant?: number;
   price?: number;
-  totalMargin?: number;
-  totalBenefice?: number;
+  /** Le bénéfice de la vente. Un seul champ, un seul sens. */
+  benefice?: number;
   statut?: string;
 }
 
@@ -123,11 +124,10 @@ export interface VenteResumable {
 export function resumeVentes(sales: VenteResumable[]): ResumeVentes {
   const actives = sales.filter(venteComptee);
   const totalVentes = actives.reduce((s, t) => s + (Number(t.montant ?? t.price ?? 0) || 0), 0);
-  const totalMarges = actives.reduce((s, t) => s + (Number(t.totalMargin ?? 0) || 0), 0);
-  const totalBenefices = actives.reduce((s, t) => s + (Number(t.totalBenefice ?? t.totalMargin ?? 0) || 0), 0);
+  const totalBenefices = actives.reduce((s, t) => s + (Number(t.benefice ?? 0) || 0), 0);
   const totalCount = actives.length;
   const panierMoyen = totalCount > 0 ? Math.round(totalVentes / totalCount) : 0;
-  return { totalVentes, totalBenefices, totalMarges, totalCount, panierMoyen };
+  return { totalVentes, totalBenefices, totalCount, panierMoyen };
 }
 
 /**
