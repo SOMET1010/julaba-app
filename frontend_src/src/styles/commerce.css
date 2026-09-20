@@ -269,6 +269,11 @@ html.dark {
    Au-dessus de 1024 px la colonne produits est large : autant de vignettes
    que la largeur en accepte, jamais moins de 150 px chacune. */
 .pos-grille { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--caisse-esp-2); }
+/* Le `display` des cartes est ICI et non en style inline (UI-03) : un
+   `display:flex` écrit dans l'attribut style bat le `display:none` de
+   .pos-grille-apercu, et toute la grille s'affichait sur téléphone — mesuré
+   sur la capture F2. La règle d'aperçu (plus spécifique) gagne sur celle-ci. */
+.pos-grille > * { display: flex; flex-direction: column; }
 @media (min-width: 1024px) {
   .pos-grille { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--caisse-esp-3); }
 }
