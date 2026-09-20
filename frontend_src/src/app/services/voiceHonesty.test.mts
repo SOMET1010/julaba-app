@@ -40,5 +40,13 @@ ok(!/window\.addEventListener\('pointerdown'/.test(welcome), 'aucun premier touc
 ok(/const commencer[\s\S]{0,260}laisserIntroContinuer\.current = true;[\s\S]{0,80}accueille\(\)/.test(welcome), '« Écouter et entrer » démarre la voix sur un geste autorisé et la laisse continuer');
 ok(/onPointerDown=\{\(e\) => e\.stopPropagation\(\)\}[\s\S]{0,120}handleListen/.test(onboardingSlides), 'la réécoute de présentation ne lance qu’une seule lecture');
 
+console.log('\n[6] Aucun diagnostic technique dans le parcours de vente');
+const voiceCore = readFileSync(new URL('../hooks/useVoiceCore.ts', import.meta.url), 'utf8');
+const microVente = readFileSync(new URL('../components/marchand/MicroVenteCaisse.tsx', import.meta.url), 'utf8');
+ok(!/Cette réponse est affichée\. Son clip/.test(voiceCore), 'un clip français absent ne remplace plus la réponse métier');
+ok(/if \(isFrenchClip\)[\s\S]{0,220}return;/.test(voiceCore), 'le clip français absent reste un état non bloquant');
+ok(/Choisir à l’écran/.test(microVente), 'le repli tactile dit directement le geste attendu');
+ok(/Parler encore à Tantie/.test(microVente) && !/Reparler à Tata/.test(microVente), 'la reprise utilise le nom et une formulation simples');
+
 console.log(failures === 0 ? '\nTous les garde-fous voix honnête sont verts ✅\n' : `\n${failures} échec(s) ❌\n`);
 if (failures > 0) process.exit(1);

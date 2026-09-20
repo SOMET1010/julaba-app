@@ -337,9 +337,9 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // à l'arrivée reste la question du titre (introLigne).
   const bulle = isRecording ? 'Je vous écoute'
     : isLoading ? 'Un instant…'
-    : isSpeaking ? 'Tata parle…'
-    : isError ? 'On recommence'
-    : 'Écouter Tata';
+    : isSpeaking ? 'Tantie parle…'
+    : isError ? 'Essaie encore'
+    : 'Écouter Tantie';
 
   return (
     <section
@@ -421,10 +421,10 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
               SECONDAIRE (UI-03) : un lien discret sous la bulle, sans cadre —
               44 px de haut quand même, c'est un doigt qui le touche. */}
           <button type="button" onClick={() => setSaisieOuverte(v => !v)}
-            aria-label="Saisir sans parler"
+            aria-label="Choisir la vente à l’écran"
             style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-1)', minHeight: 'var(--caisse-cible-tactile)', background: saisieOuverte ? 'var(--caisse-orange-voix)' : 'transparent', border: 'none', borderRadius: 'var(--caisse-rayon-3)', padding: '0 var(--caisse-esp-2)', cursor: 'pointer', fontFamily: 'inherit' }}>
             <Keyboard size={20} color={saisieOuverte ? 'white' : 'var(--caisse-gris-texte)'} />
-            <span style={{ font: 'var(--caisse-font-legende)', fontSize: 14, lineHeight: '18px', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--caisse-gris-texte)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Saisir sans parler</span>
+            <span style={{ font: 'var(--caisse-font-legende)', fontSize: 14, lineHeight: '18px', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--caisse-gris-texte)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Choisir à l’écran</span>
           </button>
         </div>
       </div>
@@ -499,7 +499,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       {(isDone || isError) && (
         <button type="button" onClick={reset}
           style={{ width: '100%', marginTop: 'var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)', padding: 'var(--caisse-esp-3) 0', borderRadius: 'var(--caisse-rayon-4)', font: 'var(--caisse-font-bouton)', color: 'white', background: 'var(--caisse-orange-voix)', cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}>
-          Reparler à Tata
+          Parler encore à Tantie
         </button>
       )}
 

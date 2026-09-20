@@ -344,10 +344,15 @@ export function useVoiceCore({
     const onVoicePackMissing = (event: Event) => {
       const detail = event as CustomEvent<{ lang?: string; kind?: string }>;
       const isFrenchClip = detail.detail?.lang === 'french' && detail.detail?.kind === 'clip';
+      // Une réponse métier reste correcte même si son clip fixe n'existe pas
+      // encore. Ne jamais remplacer cette réponse par un diagnostic technique
+      // destiné aux développeurs : le texte et les gestes restent utilisables.
+      if (isFrenchClip) {
+        console.info('[voice] Clip français absent : réponse conservée à l’écran');
+        return;
+      }
       const lang = detail.detail?.lang === 'bambara' ? 'Bambara' : 'Dioula';
-      const message = isFrenchClip
-        ? "Cette réponse est affichée. Son clip Tantie Nanti Lou n’est pas encore enregistré."
-        : `Le pack vocal ${lang} n’est pas encore installé. Le texte reste disponible, sans utiliser Internet.`;
+      const message = `La voix en ${lang} n’est pas encore prête. Continue avec les images et les boutons.`;
       setError(message);
       setLiveTranscript(message);
     };
