@@ -74,19 +74,29 @@ export function intentLocal(texte: string): LocalVoiceResult | null {
   // deux autres finiraient en « je n'ai pas bien compris » — c'est exactement
   // ce qui était mesuré sur cc26647.
   //
-  // UNE SEULE EXCEPTION : l'annulation attend la fin. Sa grammaire est large
-  // par choix (« non », « attends », « laisse »… : le doute profite au refus),
-  // mais « attends, vends deux tomates à 500 » n'est pas un abandon, c'est
-  // une correction qui porte une vente entière — et c'était une vente avant
-  // ce lot. Une annulation n'écrit jamais d'argent, et une vente ajoutée au
-  // panier invalide d'elle-même toute confirmation en attente (l'empreinte
-  // change) : laisser la vente gagner ne coûte rien sur l'argent, alors que
-  // l'avaler en silence coûterait la ligne.
+  // DEUX EXCEPTIONS, DIFFÉRÉES : l'annulation et « encaisse » attendent la
+  // fin, et une vente ou une dépense acceptée gagne sur elles.
+  // - L'annulation est large par choix (« non », « attends », « laisse »… :
+  //   le doute profite au refus), mais « attends, vends deux tomates à 500 »
+  //   n'est pas un abandon, c'est une correction qui porte une vente entière
+  //   — et c'était une vente avant ce lot.
+  // - « Encaisse deux tomates à 500 » (cas mixte, Patrick : « sans perdre la
+  //   vente ») : sur a947f2a, la ligne était PERDUE, Tata relisait un panier
+  //   sans les tomates. « Encaisse » suivi d'un PRODUIT vaut ici verbe de
+  //   vente ; « encaisse » seul, « encaisse la vente », « encaisse 500 »
+  //   (un chiffre sans produit : peut-être le montant reçu dicté, hors
+  //   périmètre — on n'invente pas une ligne) restent un encaissement.
+  // Aucune des deux n'écrit d'argent, et une vente ajoutée au panier invalide
+  // d'elle-même toute confirmation en attente (l'empreinte change) : laisser
+  // la vente gagner ne coûte rien sur l'argent, alors que l'avaler en
+  // silence coûterait la ligne. « oui valide » et « combien elle doit »,
+  // eux, sont rendus tout de suite.
   const encaissement = detecterEncaissement(texte);
-  if (encaissement && encaissement !== 'annuler_validation') return resultatEncaissement(texte, encaissement);
+  if (encaissement === 'oui_valide' || encaissement === 'combien_doit') return resultatEncaissement(texte, encaissement);
 
   const p = extraire(texte);
-  if (!p.intention) return encaissement ? resultatEncaissement(texte, encaissement) : null;
+  const venteParEncaisse = encaissement === 'encaisser' && p.intention === null && !!p.produit;
+  if (!p.intention && !venteParEncaisse) return encaissement ? resultatEncaissement(texte, encaissement) : null;
 
   // On ne traite localement que le transactionnel financier sûr (vente/dépense).
   // Le reste (soldes, questions ouvertes) reste au serveur quand on est en ligne.
@@ -104,10 +114,10 @@ export function intentLocal(texte: string): LocalVoiceResult | null {
   // ce qu'on a payé.
   let type: string | null = null;
   let intent: string | null = null;
-  if (p.intention === 'vente' && (p.montant != null || p.produit)) { type = 'vendre'; intent = 'vendre'; }
+  if ((p.intention === 'vente' || venteParEncaisse) && (p.montant != null || p.produit)) { type = 'vendre'; intent = 'vendre'; }
   else if (p.intention === 'depense' && p.montant != null) { type = 'depense'; intent = 'depense'; }
-  // Pas de vente ni de dépense reconnue : un refus entendu plus haut vaut
-  // alors pour ce qu'il est, une annulation.
+  // Pas de vente ni de dépense reconnue : un refus ou un « encaisse » entendu
+  // plus haut vaut alors pour ce qu'il est.
   if (!type || !intent) return encaissement ? resultatEncaissement(texte, encaissement) : null;
 
   const action: LocalVoiceResult['action'] = { type };
