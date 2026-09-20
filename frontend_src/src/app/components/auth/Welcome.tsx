@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { motion } from 'motion/react';
 
 import logoJulabaSvg from "../../../assets/images/logo-julaba.svg";
@@ -18,11 +18,9 @@ interface WelcomeProps {
 
 export function Welcome({ onComplete }: WelcomeProps) {
   const navigate = useNavigate();
-  const laisserIntroContinuer = useRef(false);
   // Tata ACCUEILLE (elle ne présente pas une appli) : elle parle du COMMERCE de
-  // la marchande, et crée tout de suite un lien d'appartenance. VRAIE voix
-  // (clip enregistré), le robot n'est qu'un filet. Le navigateur bloque l'audio
-  // avant tout geste → on tente à l'ouverture ET on débloque au 1er contact.
+  // la marchande, et crée tout de suite un lien d'appartenance. Clip local
+  // uniquement : jamais de voix du navigateur en repli.
   const accueille = useCallback(() => {
     try { direIntro(estHabituee() ? 'retour' : 'accueil'); } catch { /* ignore */ }
   }, []);
@@ -31,17 +29,15 @@ export function Welcome({ onComplete }: WelcomeProps) {
     const t = setTimeout(accueille, 350);
     return () => {
       clearTimeout(t);
-      // Si « Écouter et entrer » vient d'être touché, la phrase déjà lancée
-      // accompagne l'écran suivant au lieu d'être coupée par le changement de route.
-      if (!laisserIntroContinuer.current) stopIntro();
+      stopIntro();
     };
   }, [accueille]);
 
-  // Le navigateur interdit l'autoplay. Ce bouton est donc à la fois le premier
-  // geste autorisé pour le son et l'entrée dans le parcours — aucune devinette.
+  // L'action d'entrée ne lance plus le clip d'accueil : sinon il était coupé
+  // 450 ms plus tard par la présentation de l'écran suivant. Le bouton audio
+  // dédié reste disponible ; l'écran suivant parle avec la même voix.
   const commencer = () => {
-    laisserIntroContinuer.current = true;
-    accueille();
+    stopIntro();
     if (onComplete) onComplete(); else navigate('/login');
   };
 
@@ -74,7 +70,7 @@ export function Welcome({ onComplete }: WelcomeProps) {
         </button>
 
         <motion.button type="button" onClick={commencer} className="login-primary login-market-primary" whileTap={{ scale: 0.98 }}>
-          Écouter et entrer <ArrowRight aria-hidden="true" size={30} />
+          Entrer <ArrowRight aria-hidden="true" size={30} />
         </motion.button>
 
         <div className="login-partners login-market-partners">

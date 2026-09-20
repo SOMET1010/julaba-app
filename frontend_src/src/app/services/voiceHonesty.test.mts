@@ -37,7 +37,7 @@ const welcome = readFileSync(new URL('../components/auth/Welcome.tsx', import.me
 const onboardingSlides = readFileSync(new URL('../components/auth/OnboardingSlides.tsx', import.meta.url), 'utf8');
 ok(/login-tata-inline[\s\S]{0,180}aria-label="Écouter Tantie Nanti Lou"/.test(welcome), 'le haut-parleur d’accueil reste identifiable');
 ok(!/window\.addEventListener\('pointerdown'/.test(welcome), 'aucun premier toucher global ne vole ou ne double le geste choisi');
-ok(/const commencer[\s\S]{0,260}laisserIntroContinuer\.current = true;[\s\S]{0,80}accueille\(\)/.test(welcome), '« Écouter et entrer » démarre la voix sur un geste autorisé et la laisse continuer');
+ok(/const commencer[\s\S]{0,120}stopIntro\(\);[\s\S]{0,100}(onComplete|navigate)/.test(welcome), 'Entrer coupe l’accueil avant que la présentation démarre, sans deux voix superposées');
 ok(/onPointerDown=\{\(e\) => e\.stopPropagation\(\)\}[\s\S]{0,120}handleListen/.test(onboardingSlides), 'la réécoute de présentation ne lance qu’une seule lecture');
 
 console.log('\n[6] Aucun diagnostic technique dans le parcours de vente');

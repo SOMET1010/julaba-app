@@ -41,9 +41,10 @@ export const INTRO_CLIPS: Record<string, IntroClip> = {
   },
   // Les 4 écrans-histoire
   histoire1: {
-    file: `${BASE}/intro-1.mp3`,
+    file: '/voix/fr-CI/prototype/tata-entree-presentation.mp3',
     atteste: false,
-    texte: 'Je serai avec toi chaque jour dans ton commerce. On est ensemble.',
+    prototype: true,
+    texte: "Je serai avec toi chaque jour dans ton commerce. Tu peux toucher l'écran. Tu peux aussi écouter. On est ensemble.",
   },
   histoire2: {
     file: `${BASE}/intro-2.mp3`,

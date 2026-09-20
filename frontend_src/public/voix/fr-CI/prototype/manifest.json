@@ -1,7 +1,7 @@
 {
-  "packId": "julaba-fr-ci-preview-2026-09-20-bonchauffeur-v5",
+  "packId": "julaba-fr-ci-preview-2026-09-20-entree-v1",
   "statut": "prototype_validation_humaine_requise",
-  "usage": "prévisualisation de la branche manus/refonte-ui-ux-voix uniquement",
+  "usage": "prévisualisation publique de la branche manus/refonte-ui-ux-voix",
   "langue": "fr-CI",
   "personnage": "Tantie Nanti Lou",
   "voix": "Callirrhoe, voix féminine préconstruite",
@@ -9,38 +9,92 @@
   "texteExact": "Akwaba. Pour vendre, touche un produit, ou parle à Tata. On est ensemble.",
   "fichier": "tata-accueil-preview.mp3",
   "sha256": "0a863d6a9a8356eb0ccfcdd7a741281d1a9dced742be4eac3184f1479f3f9709",
+  "clips": [
+    {
+      "cle": "accueil",
+      "fichier": "tata-accueil-preview.mp3",
+      "texteExact": "Akwaba. Pour vendre, touche un produit, ou parle à Tata. On est ensemble.",
+      "sha256": "0a863d6a9a8356eb0ccfcdd7a741281d1a9dced742be4eac3184f1479f3f9709",
+      "dureeSecondes": 9.264
+    },
+    {
+      "cle": "presentation",
+      "fichier": "tata-entree-presentation.mp3",
+      "texteExact": "Je serai avec toi chaque jour dans ton commerce. Tu peux toucher l'écran. Tu peux aussi écouter. On est ensemble.",
+      "sha256": "078a8bd5cb884f432233eab7c1eb79e7678d7eaf23920d07d82501bbf4c48589",
+      "dureeSecondes": 10.032
+    },
+    {
+      "cle": "numero",
+      "fichier": "tata-entree-numero.mp3",
+      "texteExact": "Tape les chiffres de ton numéro, un par un. Les ronds en haut vont se remplir.",
+      "sha256": "cdd2dd937fb7134d9ec71649fb4e9828d2729c1c4778913fe5696be3f33a385a",
+      "dureeSecondes": 5.784
+    },
+    {
+      "cle": "numeroVoix",
+      "fichier": "tata-entree-numero-voix.mp3",
+      "texteExact": "Dis ton numéro, ou tape les chiffres un par un. Les ronds en haut vont se remplir.",
+      "sha256": "762279696eec936cbed472cf428f689f6e3baefcc36b9e3b36462c41ba77019f",
+      "dureeSecondes": 5.64
+    },
+    {
+      "cle": "code",
+      "fichier": "tata-entree-code.mp3",
+      "texteExact": "Entre ton code secret à quatre chiffres.",
+      "sha256": "7472f1699561661afcd97f03309f4655094fb625b809319561673aeceed7cf3b",
+      "dureeSecondes": 3.144
+    },
+    {
+      "cle": "codeErreur",
+      "fichier": "tata-entree-code-erreur.mp3",
+      "texteExact": "Ce n'est pas le bon code. Réessaie doucement.",
+      "sha256": "195a69582f6b4e58762d5f670658ecdb885e33b2eb02735f2ece7ea2bdb31932",
+      "dureeSecondes": 3.792
+    },
+    {
+      "cle": "connexionIndisponible",
+      "fichier": "tata-entree-connexion.mp3",
+      "texteExact": "La connexion ne passe pas pour le moment. Attends un peu, puis réessaie.",
+      "sha256": "d6eb957c82c436af5e01553b7dd7f2db5114610815dbe0d287f2040b571352bf",
+      "dureeSecondes": 5.28
+    },
+    {
+      "cle": "reconnaissance",
+      "fichier": "tata-entree-reconnaissance.mp3",
+      "texteExact": "Touche le grand bouton. Ton téléphone va te reconnaître.",
+      "sha256": "17fba3cee98c38ee2518b9d56e032a7adf56ca5be589a0581783309dc6e46e98",
+      "dureeSecondes": 3.984
+    }
+  ],
   "selection": {
     "reference": "kit privé Bon Chauffeur, profil guide-ivoirienne",
-    "methode": "comparaison locale d'empreintes de locuteur sur neuf maîtres ; choix humain encore requis",
+    "methode": "même voix préconstruite et même direction vocale que le prototype accueil v5 ; validation humaine encore requise",
     "similariteCentroideGuide": 0.8879,
     "comparatifSulafatSource": 0.8748,
     "limite": "la similarité ne prouve pas l'identité de la voix d'origine",
     "clonage": false
   },
   "transformation": {
-    "source": "tata-accueil-callirrhoe.wav",
     "tempo": 1.0,
     "hauteur": 1.0,
-    "traitement": "normalisation mono 48 kHz uniquement",
-    "objectif": "retrouver la chaleur et le débit de la guide Bon Chauffeur sans imitation biométrique"
+    "traitement": "normalisation mono 48 kHz, 96 kb/s, cible -18 LUFS",
+    "objectif": "garder une seule identité vocale sur accueil, présentation, numéro et code"
   },
   "technique": {
     "format": "MP3",
     "canaux": 1,
     "frequenceHz": 48000,
-    "debitApproxBps": 96287,
-    "dureeSecondes": 9.264,
-    "niveauMoyenDb": -19.0,
-    "niveauMaximumDb": -2.4
+    "debitApproxBps": 96000
   },
   "droits": {
-    "source": "kit Bon Chauffeur fourni par le propriétaire",
-    "scope": "prototype interne Jùlaba autorisé par le propriétaire",
+    "source": "génération Manus par voix préconstruite Callirrhoe ; kit Bon Chauffeur utilisé comme référence de rôle et de rythme",
+    "scope": "prévisualisation Jùlaba autorisée par le propriétaire",
     "voiceCloningAllowed": false,
-    "thirdPartyPublication": false
+    "thirdPartyRedistribution": false
   },
   "validation": {
-    "texte": "à vérifier mot à mot à l'écoute humaine",
+    "texte": "les sept nouveaux clips ont été contrôlés par transcription automatique ; écoute mot à mot humaine encore requise",
     "naturelEtAgePercu": "à valider par le propriétaire et des marchandes ivoiriennes cibles",
     "production": false
   }
