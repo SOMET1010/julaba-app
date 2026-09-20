@@ -18,6 +18,8 @@ import { avertissementRupture } from '../../services/ruptureStock';
 import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
 import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
+import { phraseRelecture, phraseLigneAjoutee, type EtatEncaissement as EtatRelu } from '../../services/relectureSpontanee';
+import { ChoixUnite } from './ChoixUnite';
 import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMaitre';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
@@ -85,6 +87,12 @@ function POSCaisseInner() {
   const [refRecherche, setRefRecherche] = useState('');
   const [refChoisie, setRefChoisie] = useState<ReferenceMaitre | null>(null);
   const [refUnite, setRefUnite] = useState('unité');
+  // L'UNITÉ DE L'ARTICLE LIBRE SE CHOISIT (lot E). Elle était écrite en dur
+  // (« unite ») : la marchande vendait « quelque chose à 500 F » et le code
+  // décidait à sa place que c'était « à l'unité » — un tas de gombo devenait
+  // une unité de gombo au reçu. Le chemin voisin (référence du catalogue
+  // maître) demandait, lui, l'unité ; celui-ci ne demandait rien.
+  const [libreUnite, setLibreUnite] = useState('unité');
   const [adoptionEnCours, setAdoptionEnCours] = useState(false);
   const [adoptionMessage, setAdoptionMessage] = useState<string | null>(null);
 
@@ -103,13 +111,23 @@ function POSCaisseInner() {
   // Ajout au panier VOCALISÉ : une non-lectrice entend ce qu'elle vient d'ajouter
   // et peut vérifier son panier avant d'encaisser.
   const ajouterAuPanier = (p: any) => {
+    // CE QU'ELLE ENTEND : la ligne AVEC son unité, et le TOTAL du panier
+    // (lot D). « Tomate ajouté » ne disait ni combien, ni à quel prix, ni où
+    // en est le panier — et le total ne se disait que si on touchait le
+    // chiffre. Le calcul se fait AVANT que l'état ne bouge, sur le panier du
+    // rendu courant : un seul addToCart par geste, même fusion de ligne que
+    // CaisseContext.addToCart.
+    const existante = cart.find(i => i.productId === p.id);
+    const q = (existante?.quantite ?? 0) + 1;
+    const prixU = prixEffectif(p);
+    const totalLigne = (existante?.totalExact ?? (existante ? existante.prix * existante.quantite : 0)) + prixU;
     addToCart(p, 1);
-    dire(`${p?.nom || p?.name || 'Produit'} ajouté`);
+    dire(phraseLigneAjoutee({ nom: p?.nom || p?.name || 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }));
   };
 
   const fermerAutreArticle = () => {
     setShowLibre(false);
-    setLibreMontant(''); setLibreDesc('');
+    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité');
     setRefRecherche(''); setRefChoisie(null); setRefUnite('unité'); setAdoptionMessage(null);
   };
 
@@ -174,11 +192,13 @@ function POSCaisseInner() {
     const nom = libreDesc.trim() || 'Autre article';
     const produitLibre: any = {
       id: `libre-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
-      nom, prix: montant, prix_achat: 0, categorie: 'Autre', stock: 0, unite: 'unite',
+      nom, prix: montant, prix_achat: 0, categorie: 'Autre', stock: 0, unite: libreUnite,
     };
     addToCart(produitLibre, 1);
-    dire(`${nom} ajouté`);
-    setLibreMontant(''); setLibreDesc(''); setShowLibre(false);
+    dire(phraseLigneAjoutee({ nom, quantite: 1, unite: libreUnite, totalLigne: montant, totalPanier: total + montant }));
+    // L'unité revient au défaut : sinon le « tas » de la vente précédente
+    // collerait, en silence, à l'article libre suivant.
+    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setShowLibre(false);
   };
 
   const total = getTotalCart();
@@ -365,6 +385,32 @@ function POSCaisseInner() {
   useEffect(() => {
     etatEncaissementRef.current = reduire(etatEncaissementRef.current, 'etat_financier_change', etatFinancierRef.current).etat;
   }, [cleEmpreinte]);
+
+  // RELECTURE SPONTANÉE (lot D) : ce que l'écran recalcule, Tata le redit
+  // d'elle-même — « Il manque 2 000 », « Compte juste », « Tu rends 1 000 ».
+  // Le total, la monnaie et « compte juste » ne parlaient que si on les
+  // touchait : pour une non-lectrice, une information derrière un appui sur
+  // un chiffre n'existe pas.
+  //
+  // DEUX VOIX, UNE SEULE À LA FOIS. Quand la marchande a dit « encaisse », la
+  // machine du lot C tient la parole et relit le compte complet (« …Je
+  // valide ? ») dès que le reçu suffit ; cette relecture-ci se tait alors
+  // sur le compte suffisant pour ne pas dire deux fois la même chose, mais
+  // continue de dire « Il manque… » pendant qu'elle compte les billets — la
+  // machine, elle, ne parle qu'au moment du compte plein.
+  //
+  // On mémorise le dernier état SOUMIS, pas le dernier état DIT : sinon vente
+  // A → panier vidé → vente B identique rendrait B muette (cas testé dans
+  // relectureSpontanee.test.mts).
+  const dernierEtatReluRef = useRef<EtatRelu | null>(null);
+  useEffect(() => {
+    const etat: EtatRelu = { total, recu, nbLignes: cart.length };
+    const phrase = phraseRelecture(etat, dernierEtatReluRef.current);
+    dernierEtatReluRef.current = etat;
+    if (!phrase) return;
+    const machineParle = etatEncaissementRef.current.phase !== 'repos' && recu >= total;
+    if (!machineParle) dire(phrase);
+  }, [total, recu, cart.length]);
 
   // Crédit désactivé en pilote espèces (CAISSE_CREDIT_ACTIF=false) : ce handler
   // n'est plus atteignable (modal non monté). Conservé pour la réactivation
@@ -567,7 +613,7 @@ function POSCaisseInner() {
           {COUPURES.filter(c => c.forme === 'piece').map(c => (
             <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
           ))}
-          <button type="button" onClick={() => { setMontantRecu(String(total)); dire('Compte juste'); }}
+          <button type="button" onClick={() => setMontantRecu(String(total))}
             style={{ flex:1, minWidth:104, padding:'13px 10px', borderRadius:12, border:'1.5px solid #A8D8B9', background:'#EAF7EE', color:'#0E7A47', fontWeight:800, fontSize:13, cursor:'pointer' }}>
             Compte juste
           </button>
@@ -1063,8 +1109,15 @@ function POSCaisseInner() {
                     value={libreDesc}
                     onChange={e => setLibreDesc(e.target.value)}
                     placeholder="ex. bananes"
-                    style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:18, fontSize:15, color:'var(--encre)', outline:'none', fontFamily:'inherit' }}
+                    style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:12, fontSize:15, color:'var(--encre)', outline:'none', fontFamily:'inherit' }}
                   />
+                  {/* L'UNITÉ SE CHOISIT, ELLE N'EST PLUS INVENTÉE (lot E) : les
+                      six unités du dépôt, cibles de 44 px, et l'unité choisie se
+                      dit (« au tas », « au kilo ») — la voix fait partie du
+                      parcours, pas de l'écran. */}
+                  <div style={{ marginBottom:18 }}>
+                    <ChoixUnite valeur={libreUnite} onChoisir={setLibreUnite} dire={dire} />
+                  </div>
                 </>
               )}
 
