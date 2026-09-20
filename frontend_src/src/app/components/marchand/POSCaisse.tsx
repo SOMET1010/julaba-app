@@ -26,6 +26,8 @@ import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
 import { ETAT_INITIAL, empreintePanier, reduire, type EffetEncaissement, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
 import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
+import { useSpeakMessage } from '../../i18n/voice/speakMessage';
+import { t } from '../../i18n/voice/runtime';
 
 // PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Les constantes `P` et `BG`
 // portaient l'ancienne charte ; la caisse lit maintenant la charte de la
@@ -71,6 +73,14 @@ function POSCaisseInner() {
   // Confirmations vocales AUTO selon le profil (le même que la connexion) :
   // silencieuses en mode 'lecture' (l'écran affiche déjà tout), parlées en voix/mixte.
   const dire = (t: string) => { if (guidageVocal()) speak(t); };
+  // LES PHRASES SONT DES CLÉS (lot langues, 20/09/2026). `direMessage` suit
+  // la même règle de profil que `dire`, mais résout une clé du catalogue i18n
+  // dans la langue active et la remet au rendu vocal (contrat-audio.ts), dont
+  // le défaut est ce même `speak`. Les phrases de la MACHINE d'encaissement
+  // (`effet.texte`) ne passent pas ici : elles sont déjà résolues par la
+  // machine et restent dites ET affichées telles quelles.
+  const speakMessage = useSpeakMessage();
+  const direMessage = (id: string, vars?: Record<string, string | number>) => { if (guidageVocal()) speakMessage(id, vars); };
 
   const [search, setSearch] = useState('');
   // Aperçu produits sur téléphone (lot A) : la grille est repliée à quelques
@@ -146,7 +156,7 @@ function POSCaisseInner() {
     setRefChoisie(r);
     setAdoptionMessage(null);
     setLibreDesc(r.nom);
-    dire(`${r.nom}. Quel est ton prix ?`);
+    direMessage('TATA_QUEL_PRIX', { produit: r.nom });
   };
 
   /**
@@ -165,7 +175,7 @@ function POSCaisseInner() {
     const prix = Number(libreMontant);
     if (!prix || prix <= 0) {
       setAdoptionMessage('Il faut indiquer ton prix de vente.');
-      dire('Il faut indiquer ton prix');
+      direMessage('TATA_INDIQUE_PRIX');
       vibrerErreur();
       return;
     }
@@ -177,7 +187,7 @@ function POSCaisseInner() {
       });
       if (!res.ok || !res.produit) {
         setAdoptionMessage(res.message || "Impossible d'ajouter cet article.");
-        dire(res.message || "Impossible d'ajouter cet article");
+        dire(res.message || t('TATA_ARTICLE_IMPOSSIBLE'));
         vibrerErreur();
         return;
       }
@@ -188,7 +198,7 @@ function POSCaisseInner() {
         unite: res.produit.unite,
       } as any, 1);
       vibrerSucces();
-      dire(`${res.produit.nom} ajouté à ton catalogue et au panier`);
+      direMessage('TATA_ARTICLE_AJOUTE_CATALOGUE', { produit: res.produit.nom });
       fermerAutreArticle();
     } finally {
       setAdoptionEnCours(false);
@@ -253,12 +263,12 @@ function POSCaisseInner() {
     if (paiementEnCoursRef.current) return; // anti double-clic (synchrone)
     if (cart.length === 0) return;
     if (total <= 0) {
-      dire('Montant total invalide');
+      direMessage('TATA_MONTANT_TOTAL_INVALIDE');
       return;
     }
     if (paymentMethod === 'credit') return;
-    if (paymentMethod === 'cash' && insuffisant) { dire('Montant reçu insuffisant'); return; }
-    if (paymentMethod === 'mobile_money' && !mmOperator) { dire('Choisis l\'opérateur'); return; }
+    if (paymentMethod === 'cash' && insuffisant) { direMessage('TATA_MONTANT_RECU_INSUFFISANT'); return; }
+    if (paymentMethod === 'mobile_money' && !mmOperator) { direMessage('TATA_CHOISIS_OPERATEUR'); return; }
     const estMM = paymentMethod === 'mobile_money';
     const moyen = estMM ? getMobileOperator(mmOperator as string).name : 'Espèces';
     paiementEnCoursRef.current = true;
@@ -317,11 +327,12 @@ function POSCaisseInner() {
       // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
       // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
       vibrerSucces();
-      dire(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs${avertRupture ? '. ' + avertRupture : ''}`);
+      if (avertRupture) direMessage('TATA_VENTE_ENREGISTREE_RUPTURE', { total, avertissement: avertRupture });
+      else direMessage('TATA_VENTE_ENREGISTREE', { total });
     } catch (e) {
       console.error(e);
       vibrerErreur();
-      dire("La vente n'a pas pu être enregistrée. Réessaie.");
+      direMessage('TATA_VENTE_ECHEC');
     }
     finally { paiementEnCoursRef.current = false; setIsProcessing(false); }
   };
@@ -467,7 +478,7 @@ function POSCaisseInner() {
     void refreshProducts();
     // Confirmation parlée ET sentie aussi pour la vente à crédit.
     vibrerSucces();
-    dire(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
+    direMessage('TATA_VENTE_CREDIT_ENREGISTREE', { total });
     // Recharge les totaux du jour (la vente à crédit doit apparaître : convention A).
     void reloadTransactions?.();
     setLastSale({ montant: total, moyen: 'Crédit', monnaie: 0, produits: details });
@@ -540,7 +551,7 @@ function POSCaisseInner() {
                     const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
                     if (v > 0 && v !== item.quantite) {
                       updateCartItemQuantity(item.productId, v);
-                      dire(`${item.nom} : ${v}`);
+                      direMessage('TATA_QUANTITE_LIGNE', { produit: item.nom, quantite: String(v) });
                     } else { e.target.value = String(item.quantite); }
                   }}
                   style={{ width:56, minHeight:'var(--caisse-cible-tactile)', border:'1.5px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-2)', padding:'0 var(--caisse-esp-1)', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', textAlign:'center', background:'var(--caisse-ivoire)', fontVariantNumeric:'tabular-nums' }} />
@@ -573,7 +584,7 @@ function POSCaisseInner() {
                     const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
                     if (v > 0 && v !== item.prix) {
                       updateCartItemPrice(item.productId, v);
-                      dire(`${item.nom} : ${v.toLocaleString('fr-FR')} francs l'unité`);
+                      direMessage('TATA_PRIX_UNITE_LIGNE', { produit: item.nom, prix: v });
                     } else { e.target.value = String(item.prix); }
                   }}
                   style={{ width:72, minHeight:'var(--caisse-cible-tactile)', border:'1.5px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-2)', padding:'0 var(--caisse-esp-1)', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', textAlign:'right', background:'var(--caisse-ivoire)', fontVariantNumeric:'tabular-nums' }} />
@@ -606,7 +617,7 @@ function POSCaisseInner() {
   // dix l'auraient mise à deux écrans de défilement. Le même bouton, dans les
   // deux dispositions ; il parle toujours (« touche pour entendre »).
   const renderCartTotal = () => (
-    <button type="button" onClick={() => dire(`Total : ${total.toLocaleString('fr-FR')} francs`)}
+    <button type="button" onClick={() => direMessage('TATA_TOTAL', { total })}
       aria-label={`Total ${total.toLocaleString('fr-FR')} francs — touche pour entendre`}
       style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-3)', background:'var(--caisse-succes)', border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-3) var(--caisse-esp-4)', minHeight:64, cursor:'pointer', fontFamily:'inherit' }}>
       <span style={{ font:'var(--caisse-font-h1)', fontSize:24, color:'var(--encre)' }}>Total</span>
@@ -755,7 +766,7 @@ function POSCaisseInner() {
           </div>
           <div aria-hidden="true" style={{ width:1, background:'var(--commerce-line)', flexShrink:0 }} />
           {recu > 0 && !insuffisant ? (
-          <button type="button" onClick={() => dire(`Monnaie à rendre : ${formatF(monnaie)} francs`)}
+          <button type="button" onClick={() => direMessage('TATA_MONNAIE_A_RENDRE', { monnaie })}
             aria-label={`Monnaie à rendre ${formatF(monnaie)} francs — touche pour entendre`}
             style={{ flex:1, minWidth:0, background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
             <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>Monnaie :</div>
@@ -843,7 +854,7 @@ function POSCaisseInner() {
           <motion.button whileTap={{ scale: nbItems > 0 ? 0.95 : 1 }}
             onClick={() => {
               // On n'ouvre le crédit QUE si le panier n'est pas vide (B4).
-              if (nbItems === 0) { dire('Ajoute d\'abord des produits au panier.'); return; }
+              if (nbItems === 0) { direMessage('TATA_AJOUTE_PRODUITS_D_ABORD'); return; }
               setPaymentMethod('credit'); setShowCredit(true);
             }}
             style={{ minHeight:'var(--caisse-cible-tactile)', borderRadius:'var(--caisse-rayon-3)', background:'var(--caisse-ivoire)', border:'1px solid var(--commerce-line)', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 var(--caisse-esp-3)', gap:'var(--caisse-esp-1)', cursor: nbItems > 0 ? 'pointer' : 'not-allowed', opacity: nbItems > 0 ? 1 : 0.5 }}>

@@ -29,6 +29,8 @@ import {
   corrigerQuantite, corrigerPrix, resoudreAmbiguite,
 } from '../../services/ligneProvisoire';
 import { phraseConfirmation, phraseAmbiguite, resumeLigne } from '../../services/dialoguesTata';
+import { resoudreMessage } from '../../i18n/voice/runtime';
+import { rendreMessage } from '../../i18n/voice/contrat-audio';
 
 const VERT = '#0E7A47';
 const ORANGE = '#B74725';
@@ -36,11 +38,6 @@ const ORANGE = '#B74725';
 /** Cible tactile minimale, en pixels — même règle que la barre de recherche de la caisse (test-cible-tactile.mjs). */
 export const CIBLE_TACTILE = 44;
 
-/** Un montant à DIRE : « 1 500 francs », jamais « 1 500 F » (la synthèse lit « F » comme une lettre). */
-const francs = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} francs`;
-
-/** Question posée quand elle ouvre la correction : les deux choses qu'elle peut changer. */
-const QUESTION_CORRECTION = "Qu'est-ce qui est faux ? Change la quantité, ou le prix.";
 
 /**
  * « Réécouter » — pour les deux écrans du repli (celui-ci et SaisieGuidee, qui
@@ -99,6 +96,13 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
     dernierePhraseRef.current = t;
     if (guidageVocal()) speak(t);
   };
+  // Même règle, pour une CLÉ du catalogue i18n (lot langues) : résolue dans la
+  // langue active, retenue pour « réécouter », remise au rendu vocal.
+  const direMessage = (id: string, vars?: Record<string, string | number>) => {
+    const m = resoudreMessage(id, vars);
+    dernierePhraseRef.current = m.texte;
+    if (guidageVocal()) void rendreMessage(m, speak);
+  };
   // Une fois par ÉTAT de ligne : la phrase change quand la ligne change
   // (correction, levée d'ambiguïté), pas quand l'écran se redessine.
   useEffect(() => {
@@ -116,7 +120,9 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
   };
   const taperPrix = (valeur: string) => {
     setPrixSaisi(valeur);
-    dire(valeur ? francs(parseInt(valeur, 10)) : 'Prix effacé.');
+    // Un montant à DIRE : « 1 500 francs », jamais « 1 500 F » (la synthèse lit « F » comme une lettre).
+    if (valeur) direMessage('TATA_MONTANT_DEVISE', { montant: Math.round(parseInt(valeur, 10)) });
+    else direMessage('TATA_PRIX_EFFACE');
   };
 
   // Cas AMBIGU avec un montant connu → question « d'un seul / de tous les N » (§5).
@@ -175,7 +181,7 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
             <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Le prix ?</p>
             <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
               {(['unitaire', 'total'] as const).map(m => (
-                <button key={m} onClick={() => { setModePrix(m); dire(m === 'unitaire' ? "Prix d'un seul." : 'Prix du tout.'); }}
+                <button key={m} onClick={() => { setModePrix(m); direMessage(m === 'unitaire' ? 'TATA_PRIX_D_UN_SEUL' : 'TATA_PRIX_DU_TOUT'); }}
                   style={{ flex: 1, minHeight: CIBLE_TACTILE, borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
                     border: `1.5px solid ${modePrix === m ? ORANGE : '#e5e0d8'}`, background: modePrix === m ? '#FDE9D6' : 'white', color: modePrix === m ? ORANGE : '#888' }}>
                   {m === 'unitaire' ? "Prix d'un" : 'Prix du tout'}
@@ -227,7 +233,8 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
               ✓ Oui, c'est bon
             </motion.button>
             <div style={{ display: 'flex', gap: 10 }}>
-              <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setCorrige(true); dire(QUESTION_CORRECTION); }}
+              {/* Question posée quand elle ouvre la correction : les deux choses qu'elle peut changer. */}
+              <motion.button whileTap={{ scale: 0.97 }} onClick={() => { setCorrige(true); direMessage('TATA_QUESTION_CORRECTION'); }}
                 style={{ ...btnBase, background: 'white', color: ORANGE, border: `2px solid ${ORANGE}` }}>
                 Non, corriger
               </motion.button>

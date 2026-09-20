@@ -22,7 +22,7 @@ import ts from 'typescript';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { scannerTout, domaineDe, estCritiqueArgent, gabaritsDe, listerSources } from './lib/inventaireVoix.mjs';
+import { scannerTout, domaineDe, estCritiqueArgent, listerSources, CORPUS_FIXES, litterauxDe } from './lib/inventaireVoix.mjs';
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const SRC = join(ICI, '..', 'src', 'app');
@@ -31,65 +31,7 @@ const SORTIE = join(ICI, '..', '..', 'docs', 'langues', 'INVENTAIRE-VOIX.md');
 // ── 1. Sites d'appel ────────────────────────────────────────────────────────
 const appels = scannerTout(SRC);
 
-// ── 2. Corpus fixes : fichiers dont TOUS les littéraux « phrase » sont dits ──
-// (ou destinés à l'être : un clip enregistré, un script à enregistrer).
-const CORPUS_FIXES = [
-  ['services/tataUiClips.ts', 'clips Tata enregistrés (137 fichiers ui-*.mp3) — appariés par TEXTE exact'],
-  ['services/tataVoice.ts', 'clips Tata par CLÉ (vente_enregistree, hors_ligne…)'],
-  ['services/onboardingVoix.ts', 'clips d\'onboarding (texte = filet si le .mp3 manque)'],
-  ['services/loginVoiceScript.ts', 'script de connexion / chiffres / pipeline (à enregistrer ; ids AUTH_*, NUM_*, CORE_*)'],
-  ['hooks/useVoiceCore.ts', 'moteur vocal : attentes, accusés, erreurs, confirmations locales'],
-  ['services/dialoguesTata.ts', 'dialogues purs de la vente guidée'],
-  ['services/machineEncaissement.ts', 'relecture financière (machine d\'encaissement)'],
-  ['services/relectureSpontanee.ts', 'relecture spontanée (billets touchés, ligne ajoutée)'],
-  ['services/vendreVocalUnifie.ts', 'refus de prix, produit inconnu'],
-  ['services/intentionsCaisse.ts', 'réponses aux questions « chiffres du jour »'],
-  ['services/ruptureStock.ts', 'avertissement de rupture dit après la vente'],
-  ['voice-offline/localIntent.ts', '`response` de confirmation locale (vente/dépense)'],
-  ['utils/fcfa.ts', 'coupures dites (« cinq mille francs »)'],
-  ['components/marchand/ChoixUnite.tsx', 'unité dite (« au tas », « au kilo »)'],
-  ['utils/accessMode.ts', 'proposition d\'adaptation du mode (dite par Tata)'],
-  ['contexts/ObjectifContext.tsx', 'annonces automatiques d\'objectif (audioManager.speakAuto)'],
-  ['contexts/AppContext.tsx', 'annonces du contexte applicatif (fond du jour…)'],
-];
-
-/** Un littéral passé à `console.*` est un message de diagnostic, pas une phrase dite. */
-function dansConsole(node) {
-  let p = node.parent;
-  while (p && !ts.isCallExpression(p)) p = p.parent;
-  return !!p && /^console\./.test(p.expression.getText());
-}
-
-function litterauxDe(rel) {
-  const chemin = join(SRC, rel);
-  const source = readFileSync(chemin, 'utf8');
-  const sf = ts.createSourceFile(chemin, source, ts.ScriptTarget.Latest, true, rel.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
-  const out = [];
-  const visiter = (node) => {
-    // Ni imports, ni clés d'objet, ni littéraux de type, ni `case`.
-    if (ts.isImportDeclaration(node) || ts.isTypeNode(node)) return;
-    if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node))
-      && !(node.parent && (ts.isPropertyAssignment(node.parent) && node.parent.name === node))
-      && !(node.parent && ts.isCaseClause(node.parent))
-      && !(node.parent && ts.isCallExpression(node.parent) && /^(new RegExp|RegExp)$/.test(node.parent.expression.getText(sf)))
-      && !(node.parent && ts.isJsxAttribute(node.parent))
-      && !dansConsole(node)) {
-      for (const g of gabaritsDe(sf, node)) {
-        const t = g.texte;
-        // Une phrase : au moins un espace ou une ponctuation finale, 4 caractères.
-        // Un jeton bordé d'espaces (« non », « oui ») est un mot de grammaire STT, pas une phrase dite : §6.
-        if (t.length >= 4 && (/\s/.test(t) || /[.?!…]$/.test(t)) && !/^\s/.test(t) && !/^[\w./-]+$/.test(t) && !/^\/voix\//.test(t) && !/^https?:/.test(t)) {
-          const { line } = sf.getLineAndCharacterOfPosition(node.getStart(sf));
-          out.push({ ligne: line + 1, kind: g.kind, texte: t, variables: g.variables });
-        }
-      }
-      return;
-    }
-    ts.forEachChild(node, visiter);
-  };
-  visiter(sf);
-  return out;
-}
+// ── 2. Corpus fixes : voir CORPUS_FIXES / litterauxDe dans scripts/lib/inventaireVoix.mjs ──
 
 // ── 3. Intentions et variantes STT existantes (lecture des constantes) ─────
 function constantesDe(rel, noms) {
@@ -175,7 +117,7 @@ for (const a of appels) {
   parDomaine.set(dom, d);
 }
 
-const corpus = CORPUS_FIXES.map(([rel, quoi]) => ({ rel, quoi, litteraux: litterauxDe(rel) }));
+const corpus = CORPUS_FIXES.map(([rel, quoi]) => ({ rel, quoi, litteraux: litterauxDe(SRC, rel) }));
 const nbCorpus = corpus.reduce((s, c) => s + c.litteraux.length, 0);
 
 // ── 6. Rendu Markdown ────────────────────────────────────────────────────────

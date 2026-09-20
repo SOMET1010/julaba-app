@@ -30,18 +30,14 @@ import { guidageVocal } from '../../utils/accessMode';
 import { quantiteAvecUnite } from '../../utils/unite.utils';
 import { creerLigneProvisoire, type LigneProvisoire } from '../../services/ligneProvisoire';
 import { phrasePrixManquant, phraseQuantiteManquante } from '../../services/dialoguesTata';
+import { resoudreMessage, t } from '../../i18n/voice/runtime';
+import { rendreMessage } from '../../i18n/voice/contrat-audio';
 import { BoutonReecouter, ConfirmationLigne } from './ConfirmationLigne';
 import { CATALOGUE_PRODUITS, getImageByNom, rechercherProduitCatalogue } from '../../data/catalogue-produits';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
 
 const ORANGE = '#B74725';
-
-/** Étape 1, dite : la photo est le geste, la voix le nomme. */
-const QUESTION_PRODUIT = 'Touche la photo de ce que tu as vendu.';
-
-/** Un montant à DIRE : « 1 500 francs », jamais « 1 500 F » (la synthèse lit « F » comme une lettre). */
-const francs = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} francs`;
 
 /** Résultat d'appariement au catalogue (fourni par le parent, qui connaît les produits). */
 export interface AppariementCatalogue {
@@ -92,14 +88,22 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
     dernierePhraseRef.current = t;
     if (guidageVocal()) speak(t);
   };
+  // Même règle, pour une CLÉ du catalogue i18n : résolue dans la langue
+  // active, retenue pour « réécouter », remise au rendu vocal (défaut : speak).
+  const direMessage = (id: string, vars?: Record<string, string | number>) => {
+    const m = resoudreMessage(id, vars);
+    dernierePhraseRef.current = m.texte;
+    if (guidageVocal()) void rendreMessage(m, speak);
+  };
   // L'unité sert à dire « 3 tas » plutôt que « 3 » — la même que celle qui
   // ira sur la ligne (apparier), pas une devinette.
   const uniteProduit = produitChoisi && apparier ? (apparier(produit)?.unite ?? null) : null;
   // La question de l'étape EN COURS. Quand elle tape un nom libre (« Pas dans
   // la liste »), on ne redit pas le nom à chaque lettre : « ce produit ».
+  // Étape 1, dite : la photo est le geste, la voix le nomme (TATA_REPLI_TOUCHE_PHOTO).
   const questionEtape = !produitChoisi
-    ? QUESTION_PRODUIT
-    : `${phraseQuantiteManquante(autreOuvert ? '' : produit)} ${prixModifiable ? phrasePrixManquant() : `Le prix est de ${francs(parseInt(prix || '0', 10) || 0)}.`}`;
+    ? t('TATA_REPLI_TOUCHE_PHOTO')
+    : `${phraseQuantiteManquante(autreOuvert ? '' : produit)} ${prixModifiable ? phrasePrixManquant() : t('TATA_REPLI_PRIX_CONNU', { montant: Math.round(parseInt(prix || '0', 10) || 0) })}`;
   // Posée au CHANGEMENT d'étape, jamais à chaque rendu — et pas pendant que
   // ConfirmationLigne est affichée : c'est elle qui parle alors.
   useEffect(() => {
@@ -124,7 +128,9 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
   // la phrase précédente, donc taper vite ne fait entendre que la dernière.
   const taperPrix = (valeur: string) => {
     setPrix(valeur);
-    dire(valeur ? francs(parseInt(valeur, 10)) : 'Prix effacé.');
+    // Un montant à DIRE : « 1 500 francs », jamais « 1 500 F » (la synthèse lit « F » comme une lettre).
+    if (valeur) direMessage('TATA_MONTANT_DEVISE', { montant: Math.round(parseInt(valeur, 10)) });
+    else direMessage('TATA_PRIX_EFFACE');
   };
   const appuyerChiffre = (d: string) => taperPrix((prix === '0' ? d : prix + d).slice(0, 6));
   const effacerChiffre = () => taperPrix(prix.slice(0, -1));
@@ -266,7 +272,7 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
 
         <div style={{ display: 'flex', gap: 8 }}>
           {(['unitaire', 'total'] as const).map(m => (
-            <button key={m} onClick={() => { setMode(m); dire(m === 'unitaire' ? "Prix d'un seul." : 'Prix du tout.'); }}
+            <button key={m} onClick={() => { setMode(m); direMessage(m === 'unitaire' ? 'TATA_PRIX_D_UN_SEUL' : 'TATA_PRIX_DU_TOUT'); }}
               style={{ flex: 1, minHeight: 44, borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
                 border: `1.5px solid ${mode === m ? ORANGE : '#e5e0d8'}`, background: mode === m ? '#FDE9D6' : 'white', color: mode === m ? ORANGE : '#888' }}>
               {m === 'unitaire' ? "Prix d'un" : 'Prix du tout'}
