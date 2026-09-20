@@ -13,8 +13,20 @@
 | **Ne touche jamais** | le contenu linguistique (aucune traduction inventée, `frMarche` reste `null` côté Claude) | la logique métier, la machine d'encaissement, la grammaire, les gates, les identifiants |
 
 Le CSV `docs/langues/JULABA-LANG-CATALOG.csv` (`npm run i18n:export`) est le
-support d'échange : colonne `OWNER` = `manus` sur chaque ligne (la partie
-éditable), colonne `NOTES` = quelles cellules sont à remplir.
+support d'échange : colonne `OWNER` = `manus` sur une phrase que Manus
+reformule et traduit librement, `claude` sur une **clé de composition**
+(morceau `TATA_PART_*`, séparateur `TATA_LISTE_*`, gabarit d'assemblage
+comme `TATA_MESURE_DE_PRODUIT`) dont l'ordre des morceaux se décide avec
+l'ingénierie — Manus y propose sa traduction dans `NOTES` ; colonne
+`VARIABLES_IMPLICITES` = `{devise}` / `{symboleDevise}` fournis par le
+lexique ; colonne `NOTES` = quelles cellules sont à remplir. Pour une
+intention STT, `FR_ACTUEL` montre les variantes **telles que le moteur les
+compare** (forme normalisée : minuscules, sans accents, sans ponctuation).
+
+Règle du runtime (I18N-01) : tant qu'une langue n'a pas ses propres
+intentions validées `finance`, la grammaire d'argent lui répond **exactement
+comme fr-ci** — variantes ET normalisation viennent de la locale servie, jamais
+de la locale demandée. Une langue vide ne change donc rien à l'argent.
 
 ## Les quatre gestes
 

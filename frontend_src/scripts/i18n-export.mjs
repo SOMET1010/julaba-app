@@ -38,7 +38,10 @@ const LANGUES = [
   ['DIDA', 'dida'], ['GOURO', 'goa'], ['AVIKAM', 'avi'], ['ABIDJI', 'abi'], ['ALLADIAN', 'ald'],
 ];
 
-const COLONNES = ['ID', 'TYPE', 'DOMAINE', 'CRITIQUE_ARGENT', 'OWNER', 'FR_ACTUEL', 'FR_MARCHE', 'VARIABLES', 'FR_STT_VARIANTS',
+// VARIABLES_IMPLICITES : `{devise}` (« francs ») et `{symboleDevise}` (« F »)
+// viennent du lexique (config/devise.ts), pas de l'appelant — elles
+// apparaissent dans FR_ACTUEL sans être dans VARIABLES.
+const COLONNES = ['ID', 'TYPE', 'DOMAINE', 'CRITIQUE_ARGENT', 'OWNER', 'FR_ACTUEL', 'FR_MARCHE', 'VARIABLES', 'VARIABLES_IMPLICITES', 'FR_STT_VARIANTS',
   ...LANGUES.map(([c]) => c), 'STATUT_LINGUISTIQUE', 'AUDIO_STATUS', 'STATUT_INTEGRATION', 'SOURCE', 'NOTES'];
 
 const cellule = (v) => {
@@ -69,22 +72,24 @@ function traduction(code, id, type) {
   return it.variantes.mode === 'phrase_entiere' ? it.variantes.phrases.join(' | ') : [...(it.variantes.mots ?? []), ...(it.variantes.motifs ?? [])].join(' | ');
 }
 
-const NOTE_MANUS_TTS = 'Cellules Manus : FR_MARCHE, colonnes de langues, STATUT_LINGUISTIQUE, AUDIO_STATUS, NOTES. Garder les {variables} telles quelles ; {devise} = francs, {symboleDevise} = F.';
-const NOTE_MANUS_STT = 'Cellules Manus : FR_STT_VARIANTS (propositions), colonnes de langues (variantes séparées par |), STATUT_LINGUISTIQUE, NOTES. Une variante d\'argent n\'est activée qu\'après validation explicite (finance).';
+const NOTE_MANUS_TTS = 'Cellules Manus : FR_MARCHE, colonnes de langues, STATUT_LINGUISTIQUE, AUDIO_STATUS, NOTES. Garder les {variables} telles quelles ; VARIABLES_IMPLICITES = celles que le lexique fournit ({devise} = francs, {symboleDevise} = F).';
+const NOTE_MANUS_TTS_CLAUDE = 'Clé de COMPOSITION (owner = claude) : morceau ou gabarit d\'assemblage ; l\'ordre des morceaux se décide avec l\'ingénierie — proposer la traduction dans NOTES.';
+const NOTE_MANUS_STT = 'Cellules Manus : FR_STT_VARIANTS (propositions), colonnes de langues (variantes séparées par |), STATUT_LINGUISTIQUE, NOTES. Une variante d\'argent n\'est activée qu\'après validation explicite (finance). FR_ACTUEL = les variantes fr-ci telles que le moteur les compare (forme normalisée : minuscules, sans accents, sans ponctuation).';
+const implicites = (texte) => [...new Set([...texte.matchAll(/\{(devise|symboleDevise)\}/g)].map((m) => `{${m[1]}}`))].join(' ');
 
 const lignes = [COLONNES.join(',')];
 for (const m of MESSAGES_TTS) {
   const statutFr = fr?.messages[m.id]?.validation.linguistique ?? '';
   lignes.push([
-    m.id, 'TTS_OUTPUT', m.domaine, m.critiqueArgent ? 'OUI' : 'non', m.owner, m.frActuel, m.frMarche ?? '', m.variables.join(' '), '',
+    m.id, 'TTS_OUTPUT', m.domaine, m.critiqueArgent ? 'OUI' : 'non', m.owner, m.frActuel, m.frMarche ?? '', m.variables.join(' '), implicites(m.frActuel), '',
     ...LANGUES.map(([, code]) => traduction(code, m.id, 'tts')),
-    statutFr, '', m.statut, m.source, [m.note, NOTE_MANUS_TTS].filter(Boolean).join(' — '),
+    statutFr, '', m.statut, m.source, [m.note, m.owner === 'claude' ? NOTE_MANUS_TTS_CLAUDE : NOTE_MANUS_TTS].filter(Boolean).join(' — '),
   ].map(cellule).join(','));
 }
 for (const i of INTENTIONS_STT) {
   const statutFr = fr?.intents[i.id]?.validation.linguistique ?? '';
   lignes.push([
-    i.id, 'STT_INPUT', i.domaine, i.critiqueArgent ? 'OUI' : 'non', i.owner, i.exemplesFR.join(' | '), '', '', variantesFr(i.id),
+    i.id, 'STT_INPUT', i.domaine, i.critiqueArgent ? 'OUI' : 'non', i.owner, i.exemplesFR.join(' | '), '', '', '', variantesFr(i.id),
     ...LANGUES.map(([, code]) => traduction(code, i.id, 'stt')),
     statutFr, '', `action=${i.action}`, i.source, [i.note, NOTE_MANUS_STT].filter(Boolean).join(' — '),
   ].map(cellule).join(','));
