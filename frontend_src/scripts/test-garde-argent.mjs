@@ -190,7 +190,7 @@ describe('Invariant I2 — idempotence de la vente', () => {
 
   // Gel initial — autorisé hors du dépôt réel (bac à sable jetable).
   for (const arg of ['--figer-perimetre', '--figer-gardes']) {
-    const g = gate(racine, [arg]);
+    const g = gateVerbeux(racine, [arg]);
     if (g.code !== 0) verifier(`le gel ${arg} réussit dans le bac à sable`, false, g.sortie.slice(0, 600));
   }
   git(racine, 'add', '-A');
@@ -198,7 +198,11 @@ describe('Invariant I2 — idempotence de la vente', () => {
   return racine;
 }
 
-/** Lance le gate sur un bac à sable. Rend { code, sortie }. */
+/**
+ * Lance le gate sur un bac à sable. Rend { code, sortie }.
+ * `GARDE_ARGENT_VERBEUX=1` imprime la sortie brute du gate : c'est ce qu'on
+ * colle dans un rapport de contre-audit pour montrer ce que le gate DIT.
+ */
 function gate(racine, args) {
   try {
     const sortie = execFileSync(process.execPath, [GATE, '--racine', racine, ...args], {
@@ -211,6 +215,12 @@ function gate(racine, args) {
     }
     return { code: e.status ?? 1, sortie: `${e.stdout ?? ''}${e.stderr ?? ''}` };
   }
+}
+const gateOrig = gate;
+function gateVerbeux(racine, args) {
+  const r = gateOrig(racine, args);
+  if (process.env.GARDE_ARGENT_VERBEUX) console.log(`\n--- gate ${args.join(' ')} → sortie ${r.code}\n${r.sortie}---\n`);
+  return r;
 }
 
 function commit(racine, message) {
@@ -231,7 +241,7 @@ export function Bandeau() {
 }
 `);
   commit(r, 'ui: arrondir le bandeau');
-  const { code, sortie } = gate(r, ['--base', 'HEAD~1']);
+  const { code, sortie } = gateVerbeux(r, ['--base', 'HEAD~1']);
   verifier('le garde-fou reste silencieux (sortie 0)', code === 0, `sortie ${code} :\n${sortie}`);
   verifier('et il le dit : aucun fichier du chemin d’argent',
     /aucun fichier du chemin d’argent/i.test(sortie), sortie);
@@ -247,20 +257,20 @@ console.log('\n[2] Un commit qui modifie `handlePay` dans POSCaisse.tsx');
     'const rendu = decomposerMonnaie(1000);',
     'const rendu = decomposerMonnaie(1000); /* reçu obligatoire */ imprimerRecu();'));
   commit(r, 'ui: repenser l’écran de paiement');
-  const { code, sortie } = gate(r, ['--base', 'HEAD~1']);
+  const { code, sortie } = gateVerbeux(r, ['--base', 'HEAD~1']);
   verifier('le chemin d’argent est détecté', /CHEMIN D’ARGENT TOUCHÉ/.test(sortie), sortie);
   verifier('POSCaisse.tsx est nommé', /POSCaisse\.tsx/.test(sortie), sortie);
   verifier('la zone « paiement » est nommée', /\bpaiement\b/.test(sortie), sortie);
   verifier('les invariants exigés sont nommés',
     /INVARIANTS EXIGÉS/.test(sortie) && /test:caisse-un-seul-micro/.test(sortie), sortie);
   verifier('sans preuve d’exécution, la sortie est 1', code === 1, `sortie ${code}`);
-  const liste = gate(r, ['--base', 'HEAD~1', '--liste-invariants']);
+  const liste = gateVerbeux(r, ['--base', 'HEAD~1', '--liste-invariants']);
   verifier('--liste-invariants n’imprime que des commandes',
     liste.sortie.trim().split('\n').every((l) => l.startsWith('npm run ')), liste.sortie);
   // Avec la preuve, la sortie redevient 0.
   const preuve = join(r, 'preuve.txt');
   writeFileSync(preuve, liste.sortie);
-  const avec = gate(r, ['--base', 'HEAD~1', '--preuve', preuve]);
+  const avec = gateVerbeux(r, ['--base', 'HEAD~1', '--preuve', preuve]);
   verifier('avec la preuve que les invariants ont tourné, la sortie est 0',
     avec.code === 0, `sortie ${avec.code} :\n${avec.sortie}`);
 }
@@ -273,7 +283,7 @@ console.log('\n[3] Un commit qui retire une assertion de caisseUnSeulMicro.test.
   ecrire(r, p, readFileSync(join(r, p), 'utf8')
     .replace(/ok\(!barre\.includes\("return null"\), "la barre elle-même n'est PAS retirée"\);\n/, ''));
   commit(r, 'ui: simplifier le garde-fou de la barre');
-  const { code, sortie } = gate(r, ['--base', 'HEAD~1']);
+  const { code, sortie } = gateVerbeux(r, ['--base', 'HEAD~1']);
   verifier('le gate échoue (sortie 1)', code === 1, `sortie ${code} :\n${sortie}`);
   verifier('il parle d’assouplissement', /ASSOUPLI/i.test(sortie), sortie);
   verifier('il nomme le garde touché', /caisseUnSeulMicro\.test\.mts/.test(sortie), sortie);
@@ -291,7 +301,7 @@ export async function graver(m) {
 }
 `);
   commit(r, 'feat: journal des ventes');
-  const { code, sortie } = gate(r, ['--base', 'HEAD~1']);
+  const { code, sortie } = gateVerbeux(r, ['--base', 'HEAD~1']);
   verifier('le gate échoue (sortie 1)', code === 1, `sortie ${code} :\n${sortie}`);
   verifier('il dit que le périmètre a bougé sans déclaration',
     /entré dans le périmètre|PÉRIMÈTRE A BOUGÉ/i.test(sortie), sortie);
@@ -306,7 +316,7 @@ console.log('\n[5] `it.failing(...)` promu en `it(...)` — introduction, pas af
   const p = 'backend/test/invariants/i2-idempotence-vente.spec.ts';
   ecrire(r, p, readFileSync(join(r, p), 'utf8').replace('it.failing(', 'it('));
   commit(r, 'fix: la clé brute inter-marchandes ne fait plus 409');
-  const { code, sortie } = gate(r, ['--base', 'HEAD~1']);
+  const { code, sortie } = gateVerbeux(r, ['--base', 'HEAD~1']);
   verifier('la promotion est acceptée (sortie 0)', code === 0, `sortie ${code} :\n${sortie}`);
   verifier('et elle est dite comme telle', /promu|PROMOTION/i.test(sortie), sortie);
 }
@@ -320,7 +330,7 @@ console.log('\n[6] `GARDE-ASSOUPLIE:` — jamais dans le commit qui change l’a
     .replace(/ok\(!barre\.includes\("return null"\), "la barre elle-même n'est PAS retirée"\);\n/, '');
   ecrire(r, p, sansAssertion);
   commit(r, 'test: retirer une garde devenue fausse\n\nGARDE-ASSOUPLIE: la BottomBar ne peut plus se retirer, la règle est ailleurs.');
-  const seul = gate(r, ['--base', 'HEAD~1']);
+  const seul = gateVerbeux(r, ['--base', 'HEAD~1']);
   verifier('assouplissement déclaré SEUL : accepté', seul.code === 0, `sortie ${seul.code} :\n${seul.sortie}`);
   verifier('mais l’alerte est imprimée en évidence', /GARDE-ASSOUPLIE/.test(seul.sortie), seul.sortie);
 
@@ -330,7 +340,7 @@ console.log('\n[6] `GARDE-ASSOUPLIE:` — jamais dans le commit qui change l’a
     .replace(/ok\(!barre\.includes\("return null"\), "la barre elle-même n'est PAS retirée"\);\n/, ''));
   ecrire(r2, p2, readFileSync(join(r2, p2), 'utf8').replace('handlePay', 'handlePayer'));
   commit(r2, 'refonte: caisse\n\nGARDE-ASSOUPLIE: la garde gênait la refonte.');
-  const ensemble = gate(r2, ['--base', 'HEAD~1']);
+  const ensemble = gateVerbeux(r2, ['--base', 'HEAD~1']);
   verifier('assouplissement + argent dans le MÊME commit : refusé', ensemble.code === 1,
     `sortie ${ensemble.code} :\n${ensemble.sortie}`);
   verifier('et le refus dit pourquoi',
@@ -345,7 +355,7 @@ console.log('\n[7] La chaîne `test:ci` est gelée, valeur contre valeur');
   pkg.scripts['test:ci'] = 'npm run test:a && npm run test:b && npm run test:nouveau';
   ecrire(r, 'frontend_src/package.json', JSON.stringify(pkg, null, 2) + '\n');
   commit(r, 'test: ajouter un test à la CI');
-  const { code, sortie } = gate(r, ['--base', 'HEAD~1']);
+  const { code, sortie } = gateVerbeux(r, ['--base', 'HEAD~1']);
   verifier('le gate échoue (sortie 1)', code === 1, `sortie ${code} :\n${sortie}`);
   verifier('il nomme le maillon ajouté', /test:nouveau/.test(sortie), sortie);
 }
