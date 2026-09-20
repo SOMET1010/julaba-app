@@ -5,6 +5,14 @@
 **Création :** 19 septembre 2026  
 **Statut :** branche d’intégration indépendante ; aucun merge direct vers `main` sans revue comparative.
 
+## Point de contrôle — 20 septembre 2026
+
+La branche Manus a intégré explicitement `claude/clever-allen-dnr8by@af108bb`, puis ajouté le commit autonome `ad9ca89` : **une vente ou une dépense gardée dans la file hors ligne n'est plus annoncée comme réussie ou enregistrée par le serveur**.
+
+Le contrat partagé retourne désormais `confirmee` ou `en_attente` jusqu'aux écrans tactile et vocal. En attente, Jùlaba affiche un état ambré, dit que l'opération est gardée sur le téléphone et qu'elle n'est pas encore envoyée, n'émet pas la vibration de succès et ne propose pas de reçu comme si la vente était définitive. Les rejets métier 4xx restent des erreurs visibles et ne sont pas maquillés en attente.
+
+**Preuves sur l'arbre combiné Manus + Claude :** installation `npm ci`, typecheck frontend, suite CI frontend, 27 suites / 207 tests unitaires backend, 45 suites / 233 tests d'invariants backend et build frontend/backend réussis. Le build confirme 137 clips vocaux pré-cachés. Aucun déploiement de production n'a été déclenché.
+
 ## Objectif
 
 Cette branche permet à Manus de corriger et valider le socle de production Jùlaba sans perturber le travail parallèle de Claude. Elle cible d’abord la fiabilité, l’intégrité financière, l’expérience marchande inclusive et la cohérence web/APK. Les nouvelles fonctions de scoring et de tontine restent hors de cette branche tant que les gates de stabilisation ne sont pas closes.
