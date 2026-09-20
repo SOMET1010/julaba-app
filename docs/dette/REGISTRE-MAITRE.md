@@ -1,7 +1,25 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 20 — UI-02 et UI-03 FERMÉES au contre-audit n°4 (`96c7b64`) ; UI-04 ouverte et fermée dans la même passe (le lot F avait cassé l'aperçu du lot A en silence) ; chemin d'argent intact.**
+**Révision 21 — lot D (couche API) contre-audité et fusionné (`19eeeaa`) : API-04, TYPE-03, API-03 et API-05 FERMÉES ; API-07, API-08 et API-10 restent OUVERTES sur justification vérifiée dans le code ; API-11 (backend), AUTH-01 et GARDE-01 ouvertes ; règle nouvelle : jamais deux suites d'invariants en parallèle sur le Postgres partagé.**
+Révision 21 : **contre-audit du lot D sur `738fb53`** (base `3917bb7`), fusionné
+en `19eeeaa`. **Reproduction rejouée** : `test:api-authorization` contre
+l'`api-client.ts` de `3917bb7` → **9 ❌**, contre `738fb53` → **0**.
+`api-client.ts` pose `Authorization` **lui-même**, jeton relu à chaque essai
+(initial et rejeu après rafraîchissement) ; file hors-ligne vérifiée sur le vrai
+`CaisseContext.posterOperation`, pas sur la copie du test. Le patch de `main.tsx`
+**n'est plus porteur** : il reste un filet pour les `fetch()` directs hors couche
+— et le registre se corrige : **TYPE-03 disparaît avec API-10, pas avec API-04**.
+API-10 re-mesuré **173**, méthode écrite (le garde-fou compte 164 sur une ligne :
+même réalité, 9 appels multi-lignes). API-07 et API-08 : convergence **refusée**,
+et les deux raisons tiennent dans le code — d'où **API-11** (backend :
+`/system/settings` gardée par JWT mais consultée avant connexion). Gelée
+respectée : `test:ci` identique, aucun test existant modifié, un script ajouté
+dans `verify`. `tsc -b`, `verify`, `test:ci`, `build` : 0. **Règle nouvelle**,
+trouvée en croisant les rapports des lots A et B — chacun voyait les tables de
+l'autre dans son gate : **jamais deux suites d'invariants en parallèle sur le
+Postgres partagé** (écrite dans les règles ci-dessous). Détail :
+`docs/dette/JOURNAL-LOTS-PLATEFORME.md`.
 Révision 20 : **contre-audit n°4 sur `96c7b64`** (passe UI-03 + UI-02, `62636e6`).
 **Chemin d'argent : 0 ligne de diff** sur `machineEncaissement`, `grammaireEncaissement`,
 `localIntent`, `CaisseContext`, `vendreVocalUnifie` ; `POSCaisse` : `recuEnSaisie`
@@ -143,7 +161,7 @@ n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte l
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 33 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT** *(recompté ligne à ligne à la révision 20 : 86 lignes ; UI-02 et UI-03 passent à FERMÉ ; UI-04 ajoutée FERMÉE)*.
+**Compte courant : 37 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 47 OUVERT** *(recompté ligne à ligne à la révision 21 : 89 lignes ; API-03, API-04, API-05 et TYPE-03 passent à FERMÉ ; API-11, AUTH-01 et GARDE-01 ajoutées OUVERTES)*.
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -171,6 +189,13 @@ peut être corrigé immédiatement **s'il rend les gates non déterministes ou
 affaiblit la valeur de preuve du lot** — à quatre conditions : le nommer, le
 reproduire, limiter le diff au strict nécessaire, et l'inscrire séparément au
 registre. SEED-01 est le premier cas d'application.
+
+**Règle des gates sur base partagée (Patrick, 20/09/2026, révision 21).** Jamais
+deux suites d'invariants en parallèle sur le Postgres partagé. Trouvée en
+croisant les rapports des lots A et B : chacun voyait les tables de l'autre dans
+son gate, et un vert comme un rouge pouvait venir du voisin. Une suite
+d'invariants ne prouve quelque chose que si elle est **seule sur sa base** :
+enchaîner les suites, ou une base par suite — jamais côte à côte.
 
 **Doctrine voix, agrandie par le terrain du 20/09/2026.** La règle existante
 disait : *aucune information importante ne doit exister uniquement sous forme de
@@ -234,15 +259,16 @@ reste multiple.
 |---|---|---|---|---|---|
 | **API-01** | P1 | **FERMÉ** | **Reformulation, 19/09/2026 : « le vrai problème n'est pas qu'il y a trop de `fetch()` directs ; c'est qu'un 401 sur un appel auth peut être interprété comme une erreur métier ».** Sur ce périmètre : `WalletPage`, `UniversalParametres`, `UniversalProfil` passent par `services/api/auth-api.ts`, qui ne rend que trois états — succès métier, erreur métier, reconnexion requise. Garde-fou corrigé **dans les deux sens** : la regex couvre `auth`, et le non-convergé est **nommé** dans `RESTE_A_CONVERGER` au lieu d'être masqué ; un contrôle fait rougir toute exception périmée (il en a trouvé 3 posées par excès) | `1c90b97` — conséquence mesurée sur vrai serveur : bon PIN + jeton expiré → 401 → `data.valid` **undefined** → « Code PIN incorrect ». La marchande tapait le bon code de son portefeuille et l'application lui disait non | **Le décompte d'architecture reste, et il est sorti dans API-10 : rien n'est caché ici** |
 | **API-02** | P1 | **FERMÉ** | `StockContext.tsx` : **0** `fetch(` | `9d74fec` — `stocks-api.ts` | — |
-| **API-03** | **P2 architecture** | **OUVERT** | **Re-mesuré après API-01/01b :** `useWebAuthn` est passé de **7 → 2** appels directs, et il ne reste **qu'UNE** implémentation de rafraîchissement de session (`api-client.ts:70`). Les appels directs restants sont **tous d'avant-session** — `login`, `activer`, `create-acteur`, connexion biométrique — où un 401 a un sens métier (« identifiants faux »), pas « session expirée ». Tout appel EN session passe par la couche | Reclassé P1→P2 sur mesure, pas sur impression | *Le décompte « trois voies » était périmé.* La fragmentation demeure, sans conséquence terrain démontrée |
-| **API-04** | **P2 architecture** | **OUVERT** | **Mesuré, et plus grave que « une imperfection » :** `api-client.ts` ne pose **jamais** l'en-tête `Authorization` — le patch global de `main.tsx` est donc **porteur**, pas un confort. Vérifié en revanche : il s'applique bien au rejeu hors-ligne (la file tourne dans la page, le service worker ne sert qu'aux notifications), et le rejeu après rafraîchissement relit le jeton neuf | Reclassé P1→P2 sur mesure | **Point unique de défaillance hors de la couche API.** Aucun comportement faux démontré aujourd'hui ; la cible est que la couche pose l'en-tête elle-même |
-| **API-05** | P2 | **OUVERT** | `authService.getCurrentUser()` présent, retourne toujours `null` | — | Supprimer après preuve d'absence de consommateur |
+| **API-03** | **P2 architecture** | **FERMÉ** | *Fermée à la révision 21 (lot D, contre-audit QA sur `738fb53`).* Ce qui ferme est l'**état mesuré**, pas le commentaire de `1c26ee3` : une seule implémentation de rafraîchissement ; dans `useWebAuthn`, **tout appel EN session** (`/auth/me`, `register/*`, `verifyWebAuthnForKeiwa`) passe par `appelerAuth` → `apiRequest` ; les **2** appels directs restants (`authenticateWebAuthn`, l. 129 et 138) n'ont qu'un appelant, `LoginPassword.handleBiometric` (l. 761), qui **range les jetons reçus** (l. 770-771) : avant-session, la réponse est celle qui crée la session. Exemption **nommée** dans `convergenceApi.test.mts` (`AVANT_SESSION`, l. 163), pas masquée. `test:biometrie-session` intact (diff vide) et vert | `1c26ee3` (écrit dans le code) + mesure QA. Ces 2 appels ne doivent **pas** converger : par `apiRequest`, un refus tenterait un rafraîchissement sans jeton puis lèverait `julaba:session-expired` sur un écran sans session | Les 2 appels avant-session restent comptés dans **API-10**, comme `login` et `activer` |
+| **API-04** | **P2 architecture** | **FERMÉ** | *Fermée à la révision 21 (lot D, `d306e95`, contre-audit QA).* `api-client.ts` pose `Authorization` **lui-même** : `enTetesPourEssai()` relit le jeton **à chaque essai** (appelée aux deux `fetch`, l. 154 et 172) ; le rejeu après rafraîchissement porte le jeton **neuf** ; un `Authorization` fourni n'est jamais écrasé ; sans jeton, aucun en-tête (jamais « Bearer null »). File hors-ligne vérifiée sur le vrai `CaisseContext.posterOperation` (→ `caisse-api` / `apiRequest`). Le patch de `main.tsx` pose **le même en-tête depuis la même clé**, chacun derrière `Headers.has` : ni écrasement ni doublon | `d306e95` — `test:api-authorization` (dans `verify`) : **9 ❌ contre `3917bb7`, 0 contre `738fb53`**, rejoué par QA ; `test:ci` identique ; aucun test existant modifié | Le patch de `main.tsx` **n'est plus porteur** : il reste un filet pour API-10. Décisions locales de 401 hors couche (`ChangePasswordScreen:129`, `AppContext:334/532/589`) : préexistantes, non touchées par D, **périmètre API-10** |
+| **API-05** | P2 | **FERMÉ** | *Fermée à la révision 21 (lot D).* `getCurrentUser()` supprimé ; grep QA : **0** consommateur, seul importateur de `authService` = `ActivationScreen` (`activerCompte`) | `05b115f` | — *(le même module garde deux fonctions mortes : **AUTH-01**)* |
 | **API-06** | P2 | **FERMÉ** | `services/academyService.ts` : **absent du dépôt** | `ee30077` — code mort prouvé inatteignable, registre `docs/hygiene/HYGIENE-1-axe1-code-mort.md` § « Contenu d'académie non branché » | — |
-| **API-07** | P2 | **OUVERT** | `useRealtime.ts` : 7 appels propres | — | Fragmentation |
-| **API-08** | P2 | **OUVERT** | `utils/api.ts` : 1 appel direct | — | Fragmentation |
+| **API-07** | P2 | **OUVERT** | *Convergence **refusée** au lot D, justification vérifiée au contre-audit.* `useRealtime` n'alimente que `BODashboard` (l. 44 ; les 3 autres imports sont des types) avec la **session back-office** (jeton `sessionStorage`, événement `julaba:bo-session-expired`). Le brancher sur `apiRequest` ferait tourner le rafraîchissement de la **marchande** et lèverait `julaba:session-expired`, que le back-office n'écoute pas | `0d01f6b` (écrit dans le code). À converger vers `backoffice-api` avec **API-09**, pas vers la caisse | Fragmentation. Noté : base `/api/v1` **relative** (l. 8) — sur le déploiement à deux domaines, ces lectures visent le site statique ; changement de comportement → API-09 |
+| **API-08** | P2 | **OUVERT** | *Convergence **refusée** au lot D, justification vérifiée au contre-audit.* `getSystemSettings` — seul consommateur `UnregisteredPhone` (l. 47), **avant session**. Backend : `misc-rest.controller.ts` `@UseGuards(JwtAuthGuard, RolesGuard)` au contrôleur (l. 11), `GET system/settings` (l. 146) sans exception, **aucun mécanisme `@Public` dans le backend** → 401 avant connexion, secours silencieux. Par `apiRequest`, ce 401 lèverait `julaba:session-expired` sans session | `0d01f6b` (écrit dans le code) | **Bloquée par API-11** (défaut backend). Fermer API-08 après API-11 |
 | **API-09** | P2 | **OUVERT** | `backoffice-api.ts` : **50** appels, vérifié | Hors périmètre auth/caisse/vente/stock du mandat HYGIÈNE-1 | 50 appels |
-| **API-10** | P2 hygiène | **OUVERT** | **Sorti d'API-01 pour ne pas le fermer par la bande.** Mesuré : **173** `fetch()` directs hors `services/api/` *(et non 196 — le chiffre précédent était périmé)*, dont **69** hors back-office. Aucun ne produit plus de message faux sur un parcours marchande | — | C'est de la fragmentation, pas un défaut de comportement. À traiter au fil des écrans, jamais en masse |
+| **API-10** | P2 hygiène | **OUVERT** | **Re-mesuré au lot D : 173, inchangé.** Méthode écrite : tout `fetch(` hors `services/api/`, hors `*.test.*`, hors lignes-commentaires = **179** ; moins **6** hors API (nominatim, cloudinary, météo, 3 data-URL) = **173**. Le garde-fou de `test:api-authorization` compte **164** : même réalité **moins 9 appels multi-lignes ou à URL en variable** (`AppContext:324`, `BOScoreFinancier:273,326`, `GestionStock:440`, `backoffice-api:701,718,735,1279`, `clearAuthClientState:52`). Aucun ne produit de message faux sur un parcours marchande | — | Fragmentation, pas défaut de comportement. À traiter au fil des écrans, jamais en masse. **Dernier pas : le retrait du filet de `main.tsx`**, exigé par le garde-fou quand son compte tombe à 0 (limite : GARDE-01). Les 4 décisions locales de 401 (`ChangePasswordScreen`, `AppContext`) sont dans ce périmètre |
 | **API-01b** | **P1** | **FERMÉ** | `EtatBiometrie` remplace le booléen : ok / non_reconnue / annulee / session_expiree / indisponible. Les 5 appels **en session** passent par la couche auth ; les 2 appels **avant session** (connexion biométrique) restent directs, il n'y a pas de jeton à rafraîchir. Le typage a forcé les 4 appelants à traiter chaque cas | `d4fdd7c` — séparation vérifiée : un échec WebAuthn normal est une **exception levée** par le navigateur, une session finie est un **401 HTTP**. Couture `navigateurWebAuthn` ajoutée pour que le test couvre autre chose que le seul cas « session expirée ». `PropositionReconnaissance` ne note plus un refus sur session expirée — ça l'aurait privée de la proposition pour une raison qui ne la concerne pas | — |
+| **API-11** | **P2 backend** | **OUVERT** | *Ouverte à la révision 21 (lot D).* `GET /system/settings` est **consultée avant connexion** (`UnregisteredPhone`, numéro de support) mais **gardée par JWT** : `misc-rest.controller.ts` l. 11 `@UseGuards(JwtAuthGuard, RolesGuard)` au contrôleur, aucun décorateur public dans le backend (`IS_PUBLIC` : 0 occurrence). L'écran ne reçoit donc **jamais** le vrai numéro de support et retombe en silence sur son numéro de secours | Trouvée en refusant la convergence d'API-08 : le défaut n'est pas dans l'appel front, il est dans la garde | Rendre la route publique (ou poser un `@Public` pris en charge par `JwtAuthGuard`), puis faire passer `getSystemSettings` par la couche et **fermer API-08** |
 
 # ROUTES ET MARKETPLACE
 
@@ -260,6 +286,7 @@ reste multiple.
 | **DEAD-01** | P1 hygiène | **FERMÉ** | `scripts/hygiene/atteignabilite.mjs` : **423 fichiers analysés, 423 atteints, 0 hors parcours** | `ee30077` — 99 supprimés / 17 899 lignes, 1 conservé. **Registre d'atteignabilité : `docs/hygiene/HYGIENE-1-axe1-code-mort.md`**, chaque fichier SUPPRIMÉ ou CONSERVÉ avec preuve | — |
 | **DEAD-02** | P2 | **HORS PÉRIMÈTRE JUSTIFIÉ** | `mockUsers.ts` présent, consommé par `ProfileSwitcher` | `ProfileSwitcher` est monté sous `import.meta.env.DEV` — vérifié dans `AppLayout` | — |
 | **DEAD-03** | Faible | **HORS PÉRIMÈTRE JUSTIFIÉ** | `ProfileSwitcher` importé dans plusieurs layouts | Toutes les utilisations vérifiées sont sous `import.meta.env.DEV` | — |
+| **AUTH-01** | P3 hygiène | **OUVERT** | *Ouverte à la révision 21 (lot D).* `authService.ts` l. 121-130 : `getValidToken()` rend **toujours `null`** (« token géré via cookie httpOnly ») et `isAuthenticated()` donc **toujours `false`**. **0** consommateur : les `isAuthenticated` d'`AppContext`/`BackOfficeContext` sont des propriétés homonymes, le `getValidToken` de `backoffice-api.ts` une fonction locale distincte ; seul importateur du module : `ActivationScreen` (`activerCompte`) | Relevé au passage d'API-05 | Supprimer sur preuve, même recette qu'API-05. *(Première ligne de la série `AUTH-nn` ; `AUTH-RECOVERY-01` est une série à part)* |
 
 # TYPAGE
 
@@ -267,7 +294,7 @@ reste multiple.
 |---|---|---|---|---|---|
 | **TYPE-01** | **P2 architecture** | **OUVERT** | Re-mesuré : **502** `: any` + **265** `as any` *(le « 390 » du registre comptait autrement — les deux mesures sont données pour qu'on cesse de comparer des chiffres incomparables)*, dont **125** `catch (e: any)`. Et surtout : **0** sur une donnée métier aux frontières argent (montant, prix, quantité, stock, solde, acompte, total) | `56b4168` puis reclassé P1→P2 sur mesure | Dette de typage, pas de défaut de comportement. **Condition de réouverture : toute donnée d'argent qui redeviendrait `any` à une frontière** |
 | **TYPE-02** | P1 | **OUVERT** | `credits.controller.ts` : 4 `: any` | — | DTO/contrats. **Avant réactivation du crédit** |
-| **TYPE-03** | P2 | **OUVERT** | Le monkey-patch de `main.tsx` prend `input: any, init: any` | — | Disparaît avec API-04 |
+| **TYPE-03** | P2 | **FERMÉ** | *Fermée à la révision 21 (lot D, `ebb91a1`).* Le patch prend `input: RequestInfo \| URL, init?: RequestInit` — plus aucun `any` ; `tsc -b` vert | `ebb91a1` | **Correction du registre : ce patch ne « disparaît pas avec API-04 » mais avec API-10.** Il est le filet des 173 `fetch()` directs, à garder tant que le compte > 0 ; garde-fou dans `test:api-authorization` qui rougit quand son compte (mono-ligne : 164) tombe à 0 |
 | **TYPE-04** | Faible | **HORS PÉRIMÈTRE JUSTIFIÉ** | `type Any = any` dans `nativeStt.ts` / `nativeTts.ts` | Frontière plugin Capacitor, où le type n'est pas connaissable. **Ne pas « nettoyer » pour le score** | — |
 
 # SÉCURITÉ
@@ -342,6 +369,7 @@ reste multiple.
 | **UI-03** | **Arbitrage Patrick** | **FERMÉ** | *Fermée à la révision 20 (`62636e6`, contre-audit n°4).* Mesures du banc (`capture.mjs`, viewport 390 × 844, défilement 0) : zone voix **260 px** (cible 240-270), haut du panier **658 px**, barre Total **702-768 px** — dans le premier écran ; 38 cibles ≥ 44 px ; `scrollWidth` 390 (pas de défilement horizontal). Le banc **rougit** désormais si le haut du panier ou le bas du Total sort du viewport. Capture `caisse-portrait-UI03-comparaison.png` : voix + produits (une rangée) + « Panier actuel (6) » + **Total 2 900 F** visibles ; micro 124 px. **Écart structurel, à trancher par Patrick (pas un défaut)** : la barre **Total est AU-DESSUS des lignes du panier** (`renderCartTotal()` avant `renderCartLines()`, l. 1069-1071 et 1106-1107), alors que la maquette la met **dessous** — choix de l'agent pour que le Total reste au-dessus du pli avec dix lignes de panier. Le défaut d'origine : **hiérarchie du premier écran (F2) : à 390 × 844, panier, Total et Paiement passaient sous le pli.** Mesures de l'agent F2, à la même échelle (2 px d'image par px CSS), maquette → rendu : zone voix **217 → 386 px** (46 % du viewport), carte produit 99 → 180, Total 36 → 74, Reçu | Monnaie 86 → 170, bouton 48 → 92. Sur `caisse-portrait-F2-comparaison.png`, la maquette montre voix + produits + panier + Total + Paiement + bouton dans **771 px** ; le rendu F2 montre voix + « Dis encaisser » + « Saisir sans parler » + Produits (une rangée) dans **844 px**, le panier et l'argent en dessous. Deux consignes de Patrick tirent en sens inverse à cette hauteur : « agrandir nettement » (la zone voix) et « donner du poids à l'argent » | — *(consigné, pas tranché : ce n'est pas au contre-audit de choisir)* | **À trancher par Patrick** : garder la zone voix à 386 px et accepter l'argent sous le pli ; ou revenir vers 217-260 px pour ramener Total et Paiement dans le premier écran ; ou réduire le pli autrement (« Saisir sans parler » plus discret, une rangée de produits de moins). Captures headless, aucun appareil réel |
 | **UI-04** | P2 | **FERMÉ** | *Ouverte et fermée à la révision 20 (`62636e6`, trouvée par l'agent UI-03, reproduite au contre-audit n°4).* **Le lot F avait cassé l'aperçu du lot A en silence.** Sur `5bf2b0a`, la carte produit (`<motion.button onClick={() => ajouterAuPanier(p)}>`) portait `display:'flex'` **dans l'attribut `style`** ; un style inline bat la règle `.pos-grille-apercu > *:nth-child(n + 5) { display: none }` — **8 cartes visibles sur téléphone au lieu de 4** (visible sur `caisse-portrait-F2-comparaison.png` : deux rangées). Sur `96c7b64` : **0** `display` inline sur la carte ; `commerce.css` l. 276 `.pos-grille > * { display: flex; flex-direction: column }`, moins spécifique que la règle d'aperçu, qui gagne. Le banc `capture.mjs` compte `.pos-grille > *` visibles et **échoue au-delà de 4**. | `62636e6` | **Limite du garde-fou, à écrire** : `caisseSurfaceUnique.test.mts` l. 79-83 vérifie que la classe existe dans le JSX et que la règle existe dans le CSS — **la présence, pas l'effet**. Il est resté vert pendant trois révisions (F, relecture, F2) avec l'aperçu cassé. Seul un rendu (le banc headless) l'a vu. Une dette de test : soit le garde-fou vérifie aussi l'absence de `display` inline sur les enfants de `.pos-grille`, soit le banc entre dans `verify` |
 | **VOICE-01** | À surveiller | **OUVERT** | Le transcript brut n'est pas exposé à la recette terrain | — | Instrumentation de recette, pas fonction métier |
+| **GARDE-01** | P3 outillage | **OUVERT** | *Ouverte à la révision 21 (lot D).* Deux limites de garde-fous, **reproduites** : (1) `test:jargon` (`antiJargon.test.mts` l. 57-60) extrait les chaînes par regex sans lexer et **lit donc les commentaires** — sur `0d01f6b`, 2 violations, toutes deux dans des commentaires (l'apostrophe de « n'est » ouvre une pseudo-chaîne fermée par celle de « c'est ») ; `738fb53` a reformulé plutôt qu'affaibli la règle. (2) `test:api-authorization` compte les `fetch(` directs **sur une ligne** (164) et rate les 9 multi-lignes / URL en variable (173 réels) : le jour où ne resteraient que ceux-là, il dirait « retire le filet » à tort | Pas un défaut des lots : les deux garde-fous ont fait leur travail | Lexer minimal pour l'anti-jargon (ignorer les commentaires) ; comptage multi-ligne pour le filet. Ne bloque rien aujourd'hui |
 
 ---
 
@@ -409,8 +437,9 @@ au niveau table ne pouvait pas voir. Trouvée avant le terrain, cette fois.*
 *Reclassés en P2 sur mesure, pas sur impression (révision 9) : **API-03**,
 **API-04**, **TYPE-01** — architecture imparfaite, aucun comportement faux de
 la marchande démontré ; **SCHEMA-05**, **SCHEMA-06** — défauts réels, mais
-aucune voie du pilote terrain ne les atteint. Aucune de ces cinq lignes n'est
-fermée.*
+aucune voie du pilote terrain ne les atteint. Aucune de ces cinq lignes n'était
+fermée à la révision 9 ; **API-03 et API-04 le sont depuis la révision 21** (lot D,
+contre-audité) — sur mesure encore : 9 ❌ rejoués sur la source d'avant, 0 après.*
 
 **P1 NON atteignables en pilote** — `CAISSE_CREDIT_ACTIF = false`.
 Condition de réouverture écrite : **avant toute réactivation du crédit.**

@@ -26,6 +26,7 @@ import { registerWebAuthn, verifyWebAuthnForKeiwa } from '../../hooks/useWebAuth
 import { marquerBiometrie } from '../../services/comptesMemorises';
 import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
 import { API_URL } from '../../utils/api';
+import { vlogPartager } from '../../utils/voiceDebug';
 import { toast } from 'sonner';
 
 // ─── Types ────────────────────────────────────────────────────
@@ -961,6 +962,26 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
           <div className="flex items-center justify-center gap-2 py-2">
             <Smartphone className="w-4 h-4 encre-4" />
             <p className="text-xs encre-4">{cfg.version} · Projet DGE × ANSUT · édité par Icone Solution</p>
+          </div>
+
+          {/* VOICE-01 — « Rapport de test » atteignable SANS se déconnecter (celui de
+              l'écran de connexion obligeait à perdre la session). Même rapport, même
+              source (vlogPartager) : version/build, appareil, voix retenue, journal de
+              voix (ce qui a été dit et entendu, moteurs, intentions), dernier
+              transcript brut. Rendu volontairement minimal — à habiller par Manus. */}
+          <div className="flex items-center justify-center pb-2">
+            <button
+              type="button"
+              aria-label="Rapport de test"
+              className="text-xs encre-4 underline underline-offset-2 px-3 py-2 min-h-[44px]"
+              onClick={async () => {
+                const r = await vlogPartager();
+                if (r.methode === 'copie') toast.success('Rapport copié — colle-le dans la conversation.');
+                else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
+              }}
+            >
+              🐞 Rapport de test
+            </button>
           </div>
 
           {/* ATTRIBUTION OBLIGATOIRE — ce n'est pas une politesse.

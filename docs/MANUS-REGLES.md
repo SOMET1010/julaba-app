@@ -61,3 +61,43 @@ marchande entend.
 Claude ne retouche plus au design. Un agent plateforme qui rencontre un
 conflit avec une modification Manus **le signale** ; il ne « répare » pas l'UI
 lui-même.
+
+## Langues (mission i18n, 20/09/2026)
+
+**Claude** : architecture i18n ; extraction de toutes les intentions et
+phrases ; clés stables ; séparation `STT_INPUT` / `TTS_OUTPUT` ; structure
+multilingue ; lexiques produits / unités / nombres ; validation des
+placeholders ; branchement des textes et intentions dans le moteur ;
+garde-fous métier, surtout argent.
+
+**Manus** : français marché ; traductions/adaptations Dioula, Baoulé, Agni,
+Bété, Adioukrou, Ébrié, Sénoufo, etc. ; variantes naturelles de phrases ; et
+toute la partie voix — choix des voix, enregistrements, TTS, clips, packs
+audio, qualité/prosodie, association langue → voix, intégration audio côté
+produit.
+
+**Partage final, très simple :** Claude = texte structuré + intentions + i18n
++ moteur métier. Manus = langues naturelles + voix + audio, **propriétaire de
+bout en bout** (il ne « prépare » pas les voix : il les possède).
+
+Claude ne porte **aucune** responsabilité sur le choix de voix, l'audio, le
+TTS, les clips, la prosodie ni le branchement audio final. Il fournit à Manus
+des **IDs stables** et un **contrat d'intégration** :
+
+```
+TATA_025
+INT_ENCAISSER
+INT_OUI_VALIDE
+```
+
+Manus branche librement la bonne voix et le bon audio derrière ces IDs, sans
+toucher à la logique métier.
+
+Point de rencontre : `docs/langues/JULABA-LANG-CATALOG.csv` (généré par le
+rail plateforme, rempli par Manus), les fichiers `locales/<langue>/`
+(structure côté Claude, contenu côté Manus) et le contrat d'intégration audio
+(`frontend_src/src/app/i18n/voice/contrat-audio.ts` : interface côté Claude,
+implémentation côté Manus).
+Les variantes STT **financières** (« oui valide », « encaisse », etc.) ne
+s'activent qu'avec `validation.finance = true`, et la liste blanche de
+`oui_valide` reste aussi stricte dans toutes les langues.

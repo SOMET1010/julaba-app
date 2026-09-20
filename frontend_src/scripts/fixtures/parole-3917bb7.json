@@ -1,0 +1,102 @@
+{
+  "reference": "3917bb7",
+  "empreintes": {
+    "services/audioManager.ts": "41496e7ba86a22101544c6e38f5a019529d39ec62b1c65b7c7c81ebf9d8c9b35",
+    "services/elevenlabs.ts": "33fb3b14eef9f5cd8e8d4c8140a3dad7e26a7fcc29db840f056113a8cf353907",
+    "hooks/useVoiceCore.ts": "7a814b2f5db63e01817ed50b454a272b9435451b4d7074473215c71452070f68",
+    "contexts/AppContext.tsx": "cc820093682b3ec9af3fe6a52f2e484cb910681be20d209a4673a1c2e255cecb",
+    "voice-offline/offlineStt.ts": "b23034c5a33240bb3ed97b51aa13c39071abf5d577750e2eb94c91ec1ceede25",
+    "voice-offline/nativeTts.ts": "60b237ffe615d5bbc530c51827d978f8e6a011d9fc52a9c388598a9529eb101d",
+    "components/layout/AppLayout.tsx": "38f946919a8574378e324b889fbf5641454370244b554851ba9d6bec116e2ce3",
+    "services/tataVoice.ts": "7c55d2de5405a1bb6d16ef9dec0f7c4295c7e06a0f91b05961982d3033382dfc",
+    "services/tataUiClips.ts": "254938fb91e188a147cf90743391ab5f9ed023b8541408117ef5dd5d1b379ef4",
+    "services/localVoiceChoice.ts": "60278cad1f3cebbc33d6aa0e1817db83fa7e7d3a04e3acf8273e525844f01918",
+    "services/voicePacksRuntime.ts": "bc382c1d23f66733363e61016a8d0f9854fc44599cbda0c292997f6258531eb1",
+    "services/onboardingVoix.ts": "005eef860337dfa2d777b6e5b9b0cfdbc66f3ea58e27f7fe3275b4bd45b0e614",
+    "voice-offline/nativeStt.ts": "c1b87d795378cdf4c9953241e35f0bc48038a6bcb73fb93bbbc2bb15da97a995",
+    "contexts/ObjectifContext.tsx": "1e6093003b78398829391edad8cfc12479e6d8dbd4b8fb285f17c11058a14d46"
+  },
+  "appels": {
+    "services/audioManager.ts": [
+      "speakBrowser(chunk)"
+    ],
+    "services/elevenlabs.ts": [
+      "speak(u)"
+    ],
+    "hooks/useVoiceCore.ts": [
+      "playClip({ url }, { priority: \"user\" })",
+      "speakClipOrText({ base64, text: fallback }, { priority: \"user\" })",
+      "ttsSpeak(text)",
+      "ttsPlayBase64(data.audioBase64, data.response || ack)",
+      "ttsSpeak(data.response || ack, buildContext().lang as TTSLang)",
+      "ttsSpeak(m)",
+      "ttsPlayBase64(data.audioBase64, data.response)",
+      "ttsSpeak(data.response, buildContext().lang as TTSLang)",
+      "ttsSpeak(\"J'ai compris\", \"french\", \"bien_recu\")",
+      "ttsSpeak(\"D'accord, j'annule. Pas de souci.\", \"french\", \"annule\")",
+      "ttsSpeak(phrase)",
+      "ttsSpeak(\"Je prépare ta voix, un petit instant.\")",
+      "ttsSpeak(\"Dis oui pour valider, ou non pour annuler.\")",
+      "ttsSpeak(\"Touche Oui ou Non à l'écran, s'il te plaît.\")",
+      "ttsSpeak(\"Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît.\", \"french\", \"pas_compris\")",
+      "ttsSpeak(\"Je n'ai rien entendu. Réessaie, parle un peu plus fort.\", \"french\", \"rien_entendu\")",
+      "ttsSpeak(msg)",
+      "ttsSpeak(\"Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît.\", \"french\", \"pas_compris\")",
+      "ttsSpeak(\"Je n'ai pas réussi, réessaie.\")"
+    ],
+    "contexts/AppContext.tsx": [
+      "speak(safeText, { priority: \"user\" })",
+      "speak(`Ta journée est déjà ouverte avec ${fondRetenu} francs. Pour changer ce montant, touche Modifier le fond.`,)"
+    ],
+    "voice-offline/offlineStt.ts": [],
+    "voice-offline/nativeTts.ts": [],
+    "components/layout/AppLayout.tsx": [],
+    "services/tataVoice.ts": [],
+    "services/tataUiClips.ts": [],
+    "services/localVoiceChoice.ts": [
+      "playClip(choice.clipUrl)"
+    ],
+    "services/voicePacksRuntime.ts": [],
+    "services/onboardingVoix.ts": [
+      "speakClipOrText({ clipUrl, text: clip.texte })"
+    ],
+    "voice-offline/nativeStt.ts": [],
+    "contexts/ObjectifContext.tsx": [
+      "speakAuto(`Félicitations ! Tu as atteint 50% de ton objectif. Continue ma chère, tu es sur la bonne voie !`, { dedupeKey: 'objectif-50', minRepeatMs: 5 * 60 * 1000 })",
+      "speakAuto(`Bravo ! Tu es à 80% de ton objectif. Plus que ${Math.round(state.objectif - ventes).toLocaleString('fr-FR')} FCFA, allez courage !`, { dedupeKey: 'objectif-80', minRepeatMs: 5 * 60 * 1000 })",
+      "speakAuto(`Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère !`, { dedupeKey: 'objectif-100', minRepeatMs: 10 * 60 * 1000 })",
+      "speak(`Super ! Ton objectif du jour est fixé à ${montant.toLocaleString('fr-FR')} FCFA. Bonne chance ma chère !`, { priority: 'user' })"
+    ],
+    "components/auth/LoginPassword.tsx": [
+      "parle(next ? 'Maintenant, des images à la place des chiffres.' : 'Retour aux chiffres.')",
+      "managerSpeak(`${greetTitle}. ${greetSub}. ${consigne}`)",
+      "speakClipOrText({ clipUrl: clip ?? undefined, text: texte })",
+      "speakClipOrText({ clipUrl: clip ?? undefined, text: texte })",
+      "parle(error)",
+      "parle('Entre ton code secret à 4 chiffres')",
+      "managerSpeak(`${salut} ${geste}`)",
+      "managerSpeak(suggestion.texte)",
+      "parle('C\\'est fait. Je m\\'adapte à toi.')",
+      "parle('D\\'accord, on ne change rien.')",
+      "parleSuite(relecture)",
+      "parleSuite(relecture, \"Je n'ai pas compris. Tape ton numéro, ou réessaie.\")",
+      "parleSuite(\"Je n'ai pas compris. Tape ton numéro, ou réessaie.\")",
+      "parle(\"Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro.\")",
+      "parleSuite('Problème avec le micro — réessaie')",
+      "parleSuite(\"Je n'ai pas compris. Tape ton numéro, ou réessaie.\")",
+      "parle(consigne)",
+      "parle(message)",
+      "parle(message)",
+      "parle('Effacé.')",
+      "parle(chiffresEpeles(phone))",
+      "parle('Voilà, tu peux parler maintenant. Touche le micro et dis ton numéro.')",
+      "parle('Entre ton code secret à 4 chiffres')",
+      "parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)"
+    ],
+    "components/shared/UniversalParametres.tsx": [
+      "speak('Paramètres sauvegardés')",
+      "speak('Export en cours')",
+      "speak('Déconnexion en cours')"
+    ]
+  }
+}
