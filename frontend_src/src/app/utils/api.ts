@@ -109,8 +109,21 @@ export interface ApiResponse<T = any> {
 
 /**
  * Récupérer les paramètres système (numéro de support, etc.)
+ *
+ * API-08 — POURQUOI CET APPEL NE PASSE PAS PAR `apiRequest` (décision du
+ * 20/09/2026). Son seul consommateur est `UnregisteredPhone` — l'écran
+ * « numéro inconnu » de la connexion, AVANT toute session. Or, côté serveur,
+ * `GET /system/settings` vit dans `misc-rest.controller.ts` sous
+ * `@UseGuards(JwtAuthGuard, RolesGuard)`, sans `@Public()` : sans session il
+ * répond 401, et l'écran garde son numéro de secours (c'est déjà ce qui se
+ * passe aujourd'hui, en silence). Le faire passer par la couche ne serait PAS
+ * neutre : sur ce 401, `apiRequest` tenterait un rafraîchissement sans jeton
+ * puis lèverait `julaba:session-expired` — purge du stockage local et
+ * POST /auth/logout — sur un écran qui n'a pas de session. Le vrai défaut est
+ * côté serveur (une route consultée avant connexion, gardée par un JWT) : hors
+ * périmètre de ce chantier, signalé au registre.
  */
-export async function getSystemSettings(): Promise<{ 
+export async function getSystemSettings(): Promise<{
   success?: boolean;
   error?: string;
   settings?: {
