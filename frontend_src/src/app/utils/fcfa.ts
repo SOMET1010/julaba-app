@@ -16,15 +16,17 @@ export interface Coupure {
   couleur: string;
   /** Couleur du texte lisible sur ce fond. */
   encre: string;
+  /** Thème simplifié du recto, utilisé comme repère non contrefaisant. */
+  repere?: 'technologie' | 'agriculture' | 'transport' | 'education';
 }
 
 /** Coupures proposées à l'encaissement (billets puis pièces, décroissant). */
 export const COUPURES: Coupure[] = [
-  { valeur: 10000, forme: 'billet', couleur: '#7B5AA6', encre: '#FFFFFF' }, // violet
-  { valeur: 5000,  forme: 'billet', couleur: '#3E7CB1', encre: '#FFFFFF' }, // bleu-vert
-  { valeur: 2000,  forme: 'billet', couleur: '#2E8B6F', encre: '#FFFFFF' }, // vert
-  { valeur: 1000,  forme: 'billet', couleur: '#B0503C', encre: '#FFFFFF' }, // rouge-brun
-  { valeur: 500,   forme: 'billet', couleur: '#C98A2D', encre: '#FFFFFF' }, // ocre
+  { valeur: 10000, forme: 'billet', couleur: '#76539D', encre: '#FFFFFF', repere: 'technologie' }, // BCEAO : violet
+  { valeur: 5000,  forme: 'billet', couleur: '#347A4B', encre: '#FFFFFF', repere: 'agriculture' },  // BCEAO : vert
+  { valeur: 2000,  forme: 'billet', couleur: '#3577AE', encre: '#FFFFFF', repere: 'transport' },    // BCEAO : bleu
+  { valeur: 1000,  forme: 'billet', couleur: '#B34E45', encre: '#FFFFFF', repere: 'education' },   // BCEAO : rouge
+  { valeur: 500,   forme: 'piece',  couleur: '#C9B037', encre: '#4A3A10' }, // bicolore dorée
   { valeur: 250,   forme: 'piece',  couleur: '#C9B037', encre: '#4A3A10' }, // dorée
   { valeur: 200,   forme: 'piece',  couleur: '#BFC5CC', encre: '#3A4148' }, // argentée
   { valeur: 100,   forme: 'piece',  couleur: '#BFC5CC', encre: '#3A4148' },
