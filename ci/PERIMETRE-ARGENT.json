@@ -1,0 +1,1255 @@
+{
+  "_lisezMoi": [
+    "PÉRIMÈTRE DE L'ARGENT — la matière première du garde-fou `ci/garde-argent.mjs`.",
+    "",
+    "RÈGLE D'OR (Patrick) : « UNE caisse. UNE logique métier. UNE source de vérité.",
+    "L'UI et la voix viennent se poser dessus sans le réinventer. »",
+    "",
+    "CE QUI S'ÉCRIT À LA MAIN, UNE FOIS : `zones`, `symboles`, `invariants`,",
+    "`chaineTestCiGelee`, `racinesScannees`. Un symbole est un MARQUEUR D'ARGENT :",
+    "sa présence dans un fichier suffit à faire entrer ce fichier dans le périmètre.",
+    "",
+    "CE QUI NE S'ÉCRIT JAMAIS À LA MAIN : `noyau`. Il est RECALCULÉ depuis",
+    "`symboles` à chaque exécution du gate et comparé à ce qui est committé ici.",
+    "Un fichier qui entre ou sort du périmètre fait ÉCHOUER le gate en se nommant.",
+    "C'est ce qui interdit la « liste approximative de fichiers » : elle ne peut",
+    "pas dériver en silence.",
+    "",
+    "POUR LE RÉGÉNÉRER — ⚠ HUMAIN SEULEMENT, JAMAIS LA CI, JAMAIS UN AGENT :",
+    "    node ci/garde-argent.mjs --figer-perimetre",
+    "Le script REFUSE de le faire quand `CI` ou `GITHUB_ACTIONS` est posé, comme",
+    "`--figer` de `scripts/schema-pilote.mjs`. Un gel est une décision : il dit",
+    "« ce périmètre-là est celui qu'on protège ». Une PR qui change le périmètre",
+    "doit rougir, pas se régulariser toute seule."
+  ],
+  "zones": {
+    "machine-encaissement": "La machine à états qui conduit un encaissement de bout en bout : empreinte du panier, phases, effets. C'est elle qui décide qu'une vente est prise.",
+    "grammaire-intention-financiere": "Ce qui transforme une phrase parlée en intention d'argent (« encaisse », « c'est bon », un montant). Une grammaire trop large prend un mot pour un paiement.",
+    "local-intent": "La reconnaissance d'intention hors ligne, qui décide seule, sans serveur, de ce que la marchande vient de demander.",
+    "caisse-context": "La source de vérité de la caisse côté téléphone : panier, session, transactions. Une seconde caisse se crée ici.",
+    "paiement": "Le geste qui prend l'argent : le montant reçu, le mode de règlement, le rendu de monnaie.",
+    "enregistrement-vente": "Ce qui grave la vente ou la dépense — côté téléphone comme côté serveur — dans le registre `caisse_transactions`.",
+    "api-caisse": "Le seul chemin entre le téléphone et le serveur d'argent : ventes, dépenses, crédits, sessions de caisse.",
+    "stock": "La marchandise qui part à la vente et qui revient à l'annulation. Un stock faux est de l'argent faux.",
+    "offline-synchronisation": "L'argent encaissé sans réseau, mis en file, puis rejoué. C'est là que naissent les doubles comptes et les ventes perdues.",
+    "idempotence": "Ce qui garantit qu'un rejeu ne compte pas deux fois : la clé, son unicité, son scope.",
+    "calcul-financier": "Toute arithmétique de monnaie : rendu, marge, perte, agrégats, caisse théorique."
+  },
+  "racinesScannees": [
+    "frontend_src/src",
+    "backend/src",
+    "database"
+  ],
+  "_symbolesLisezMoi": [
+    "`statut: \"absent\"` = symbole décrit dans la doctrine mais PAS ENCORE dans le",
+    "code. Le gate échoue le jour où il apparaît : c'est un fichier d'argent neuf",
+    "qui arrive, il doit être classé avant, pas après."
+  ],
+  "symboles": [
+    {
+      "symbole": "machineEncaissement",
+      "zone": "machine-encaissement",
+      "argent": "Le module qui conduit l'encaissement : le changer, c'est changer la façon dont l'argent est pris."
+    },
+    {
+      "symbole": "EmpreinteFinanciere",
+      "zone": "machine-encaissement",
+      "argent": "L'empreinte du panier : c'est elle qui prouve qu'on encaisse bien ce qui a été annoncé."
+    },
+    {
+      "symbole": "EtatEncaissement",
+      "zone": "machine-encaissement",
+      "argent": "Les phases de l'encaissement ; une phase ajoutée ou sautée change le moment où l'argent est pris."
+    },
+    {
+      "symbole": "EvenementEncaissement",
+      "zone": "machine-encaissement",
+      "argent": "Les événements qui font avancer la prise d'argent."
+    },
+    {
+      "symbole": "EffetEncaissement",
+      "zone": "machine-encaissement",
+      "argent": "Les effets déclenchés par la machine, dont l'enregistrement de la vente."
+    },
+    {
+      "symbole": "empreintePanier",
+      "zone": "machine-encaissement",
+      "argent": "Le calcul de l'empreinte : s'il change, deux paniers différents peuvent se confondre."
+    },
+    {
+      "symbole": "phraseRelecture",
+      "zone": "machine-encaissement",
+      "argent": "Ce qui est relu à voix haute avant de valider : la dernière chance de voir une erreur d'argent."
+    },
+    {
+      "symbole": "grammaireEncaissement",
+      "zone": "grammaire-intention-financiere",
+      "argent": "La grammaire qui reconnaît un ordre d'encaissement dans une phrase parlée."
+    },
+    {
+      "symbole": "detecterEncaissement",
+      "zone": "grammaire-intention-financiere",
+      "argent": "La fonction qui dit « ceci est un paiement » : trop large, elle encaisse sur un mot de passage."
+    },
+    {
+      "symbole": "REPONSES_VALIDATION",
+      "zone": "grammaire-intention-financiere",
+      "argent": "Les formes acceptées pour valider une vente (« oui c'est bon »). En retirer une rend une marchande incapable de valider."
+    },
+    {
+      "symbole": "localIntent",
+      "zone": "local-intent",
+      "argent": "La reconnaissance d'intention hors ligne : elle décide seule ce que la marchande demande, sans serveur pour la corriger."
+    },
+    {
+      "symbole": "detectIntent",
+      "zone": "local-intent",
+      "argent": "Le routage d'intention i18n, qui aiguille vers la vente, l'encaissement ou la dépense."
+    },
+    {
+      "symbole": "CaisseContext",
+      "zone": "caisse-context",
+      "argent": "La source de vérité de la caisse. UNE caisse : tout ce qui la réimplémente ailleurs est une seconde caisse."
+    },
+    {
+      "symbole": "handlePay",
+      "zone": "paiement",
+      "argent": "Le geste qui prend l'argent dans l'écran de caisse. C'est exactement ce que la refonte d'interface avait modifié."
+    },
+    {
+      "symbole": "mode_paiement",
+      "zone": "paiement",
+      "argent": "Le mode de règlement gravé avec la transaction ; tous les agrégats s'en servent pour distinguer encaissé et créance."
+    },
+    {
+      "symbole": "enregistrerVente",
+      "zone": "enregistrement-vente",
+      "argent": "Ce qui grave la vente. Le réécrire, c'est réécrire la logique métier depuis l'UI."
+    },
+    {
+      "symbole": "enregistrerDepense",
+      "zone": "enregistrement-vente",
+      "argent": "Ce qui grave la dépense ; une dépense perdue fausse la caisse du jour."
+    },
+    {
+      "symbole": "caisse_transactions",
+      "zone": "enregistrement-vente",
+      "argent": "Le registre de l'argent. Écrire dedans depuis un chemin neuf, c'est créer une seconde caisse."
+    },
+    {
+      "symbole": "annulerVente",
+      "zone": "enregistrement-vente",
+      "argent": "L'annulation défait de l'argent déjà compté ; elle doit rendre la marchandise et retirer la ligne."
+    },
+    {
+      "symbole": "caisse-api",
+      "zone": "api-caisse",
+      "argent": "Le module qui parle au serveur d'argent. Contourner ce chemin, c'est un second chemin d'argent."
+    },
+    {
+      "symbole": "creerCredit",
+      "zone": "api-caisse",
+      "argent": "Une vente à crédit est de l'argent dû : elle entre au registre et à la créance."
+    },
+    {
+      "symbole": "encaisser-credit",
+      "zone": "api-caisse",
+      "argent": "Le règlement d'une créance : de l'argent qui entre réellement en caisse."
+    },
+    {
+      "symbole": "marquerCreditPaye",
+      "zone": "api-caisse",
+      "argent": "Solde une créance ; une créance soldée à tort est de l'argent perdu."
+    },
+    {
+      "symbole": "ajouterAcompte",
+      "zone": "api-caisse",
+      "argent": "Un règlement partiel : le calcul du restant dû en dépend."
+    },
+    {
+      "symbole": "caisseTheorique",
+      "zone": "api-caisse",
+      "argent": "Ce que la caisse DEVRAIT contenir : la référence contre laquelle on compte les billets le soir."
+    },
+    {
+      "symbole": "restituerStock",
+      "zone": "stock",
+      "argent": "Rend la marchandise à l'annulation. Sans elle, l'annulation fait disparaître du stock."
+    },
+    {
+      "symbole": "stock_mouvements",
+      "zone": "stock",
+      "argent": "Le grand livre du stock ; c'est lui qui explique un écart de marge."
+    },
+    {
+      "symbole": "stock_operation_idempotency",
+      "zone": "stock",
+      "argent": "L'anti-rejeu des mouvements de stock (dette STK-01) : sans elle, un rejeu décrémente deux fois."
+    },
+    {
+      "symbole": "vente-stock",
+      "zone": "stock",
+      "argent": "Primitive partagée de décrément à la vente, décrite dans docs/argent/INVENTAIRE-LECTEURS-CAISSE.md.",
+      "statut": "absent"
+    },
+    {
+      "symbole": "offlineCaisse",
+      "zone": "offline-synchronisation",
+      "argent": "La file d'attente des encaissements hors ligne et leur rejeu : la source des doubles comptes et des ventes perdues."
+    },
+    {
+      "symbole": "idempotency_key",
+      "zone": "idempotence",
+      "argent": "La clé qui empêche un rejeu de compter deux fois (invariant I2, dettes ARG-15 / IDEM-3)."
+    },
+    {
+      "symbole": "decomposerMonnaie",
+      "zone": "calcul-financier",
+      "argent": "Le rendu de monnaie annoncé à la cliente ; une erreur ici se voit à la main, pas à l'écran."
+    },
+    {
+      "symbole": "nature_caisse",
+      "zone": "calcul-financier",
+      "argent": "Fonction SQL proposée (C-0 de INVENTAIRE-LECTEURS-CAISSE.md) pour qualifier une ligne de caisse une seule fois.",
+      "statut": "absent"
+    }
+  ],
+  "_invariantsLisezMoi": [
+    "Les commandes qui doivent être VERTES quand une zone est touchée. Le gate",
+    "vérifie que chaque `script` existe vraiment dans le package.json concerné :",
+    "un invariant fantôme est un refus, pas un silence.",
+    "Aucune de ces commandes n'entre dans `test:ci`, qui est GELÉE."
+  ],
+  "invariants": {
+    "machine-encaissement": [
+      {
+        "commande": "npm run test:machine-encaissement -w frontend_src",
+        "script": "test:machine-encaissement"
+      },
+      {
+        "commande": "npm run test:caisse-encaissement -w frontend_src",
+        "script": "test:caisse-encaissement"
+      },
+      {
+        "commande": "npm run test:relecture-spontanee -w frontend_src",
+        "script": "test:relecture-spontanee"
+      },
+      {
+        "commande": "npm run test:i18n-empreintes-argent -w frontend_src",
+        "script": "test:i18n-empreintes-argent"
+      }
+    ],
+    "grammaire-intention-financiere": [
+      {
+        "commande": "npm run test:grammaire-encaissement -w frontend_src",
+        "script": "test:grammaire-encaissement"
+      },
+      {
+        "commande": "npm run test:i18n-argent -w frontend_src",
+        "script": "test:i18n-argent"
+      },
+      {
+        "commande": "npm run test:i18n-empreintes-argent -w frontend_src",
+        "script": "test:i18n-empreintes-argent"
+      }
+    ],
+    "local-intent": [
+      {
+        "commande": "npm run test:intentlocal -w frontend_src",
+        "script": "test:intentlocal"
+      },
+      {
+        "commande": "npm run test:i18n-source -w frontend_src",
+        "script": "test:i18n-source"
+      },
+      {
+        "commande": "npm run test:i18n-locales -w frontend_src",
+        "script": "test:i18n-locales"
+      }
+    ],
+    "caisse-context": [
+      {
+        "commande": "npm run test:source-vente -w frontend_src",
+        "script": "test:source-vente"
+      },
+      {
+        "commande": "npm run test:fusion-panier -w frontend_src",
+        "script": "test:fusion-panier"
+      },
+      {
+        "commande": "npm run test:caisse-surface -w frontend_src",
+        "script": "test:caisse-surface"
+      },
+      {
+        "commande": "npm run test:preselection-vente -w frontend_src",
+        "script": "test:preselection-vente"
+      }
+    ],
+    "paiement": [
+      {
+        "commande": "npm run test:caisse-encaissement -w frontend_src",
+        "script": "test:caisse-encaissement"
+      },
+      {
+        "commande": "npm run test:machine-encaissement -w frontend_src",
+        "script": "test:machine-encaissement"
+      },
+      {
+        "commande": "npm run test:caisse-un-seul-micro -w frontend_src",
+        "script": "test:caisse-un-seul-micro"
+      },
+      {
+        "commande": "npm run test:caisse-relecture-affichee -w frontend_src",
+        "script": "test:caisse-relecture-affichee"
+      },
+      {
+        "commande": "npm run test:fcfa -w frontend_src",
+        "script": "test:fcfa"
+      }
+    ],
+    "enregistrement-vente": [
+      {
+        "commande": "npm run test:source-vente -w frontend_src",
+        "script": "test:source-vente"
+      },
+      {
+        "commande": "npm run test:preselection-vente -w frontend_src",
+        "script": "test:preselection-vente"
+      },
+      {
+        "commande": "npm run test:fusion-panier -w frontend_src",
+        "script": "test:fusion-panier"
+      },
+      {
+        "commande": "npm run test:invariants -w backend",
+        "script": "test:invariants",
+        "postgres": true
+      }
+    ],
+    "api-caisse": [
+      {
+        "commande": "npm run test:convergence-api -w frontend_src",
+        "script": "test:convergence-api"
+      },
+      {
+        "commande": "npm run test:api-authorization -w frontend_src",
+        "script": "test:api-authorization"
+      },
+      {
+        "commande": "npm run test:credits-cle -w frontend_src",
+        "script": "test:credits-cle"
+      },
+      {
+        "commande": "npm run test:invariants -w backend",
+        "script": "test:invariants",
+        "postgres": true
+      }
+    ],
+    "stock": [
+      {
+        "commande": "npm run test:mouvements-hors-stock -w frontend_src",
+        "script": "test:mouvements-hors-stock"
+      },
+      {
+        "commande": "npm run test:mouvements-unite-historique -w frontend_src",
+        "script": "test:mouvements-unite-historique"
+      },
+      {
+        "commande": "npm run test:rupture -w frontend_src",
+        "script": "test:rupture"
+      },
+      {
+        "commande": "npm run test:invariants -w backend",
+        "script": "test:invariants",
+        "postgres": true
+      }
+    ],
+    "offline-synchronisation": [
+      {
+        "commande": "npm run test:offline -w frontend_src",
+        "script": "test:offline"
+      },
+      {
+        "commande": "npm run test:offline-stock -w frontend_src",
+        "script": "test:offline-stock"
+      },
+      {
+        "commande": "npm run test:offline-voice-dispatch -w frontend_src",
+        "script": "test:offline-voice-dispatch"
+      }
+    ],
+    "idempotence": [
+      {
+        "commande": "npm run test:credits-cle -w frontend_src",
+        "script": "test:credits-cle"
+      },
+      {
+        "commande": "npm run test:invariants -w backend",
+        "script": "test:invariants",
+        "postgres": true
+      }
+    ],
+    "calcul-financier": [
+      {
+        "commande": "npm run test:fcfa -w frontend_src",
+        "script": "test:fcfa"
+      },
+      {
+        "commande": "npm run test:marge-perte -w frontend_src",
+        "script": "test:marge-perte"
+      },
+      {
+        "commande": "npm run test:marge-partielle -w frontend_src",
+        "script": "test:marge-partielle"
+      },
+      {
+        "commande": "npm run test:stats -w frontend_src",
+        "script": "test:stats"
+      },
+      {
+        "commande": "npm run test:stats-multi -w frontend_src",
+        "script": "test:stats-multi"
+      }
+    ]
+  },
+  "chaineTestCiGelee": {
+    "ref": "f0c965c",
+    "_pourquoi": "Règle absolue du dépôt : AUCUN test nouveau n'entre dans `test:ci`. Le gate compare la chaîne courante à celle-ci, maillon par maillon, et relit la valeur dans git quand la référence est joignable.",
+    "valeur": "npm run test:audio && npm run test:cart && npm run test:voix && npm run test:vendre-unifie && npm run test:tata-actions && npm run test:comptes && npm run test:bambara && npm run test:fcfa && npm run test:jargon && npm run test:confort && npm run test:taille && npm run test:tokens && npm run test:support && npm run test:offline && npm run test:offline-stock && npm run test:offline-voice-runtime && npm run test:offline-voice-policy && npm run test:offline-voice-dispatch && npm run test:offline-voice-hook && npm run test:offline-voice-queue && npm run test:offline-voice-multiuser && npm run test:voice-confirmation-bypass && npm run test:local-voice-choice && npm run test:marge && npm run test:stats && npm run test:rupture && npm run test:caisse-pilote && npm run test:pdfreport && npm run test:jour && npm run test:mouvements && npm run test:guidage && npm run test:provisoire && npm run test:correction && npm run test:dialogues && npm run test:negociation && npm run test:packs && npm run test:intentlocal && npm run test:studio && npm run test:clavierimg && npm run test:collecte-qualite && npm run test:collecte-prompts && npm run test:collecte-db && npm run test:frenchdigits && npm run test:route-access"
+  },
+  "noyau": {
+    "backend/src/admin/admin.service.ts": {
+      "zones": [
+        "enregistrement-vente",
+        "paiement"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "mode_paiement"
+      ]
+    },
+    "backend/src/caisse-rest/caisse-rest.controller.ts": {
+      "zones": [
+        "api-caisse",
+        "enregistrement-vente",
+        "idempotence",
+        "paiement",
+        "stock"
+      ],
+      "symboles": [
+        "annulerVente",
+        "caisseTheorique",
+        "caisse_transactions",
+        "enregistrerDepense",
+        "enregistrerVente",
+        "idempotency_key",
+        "mode_paiement",
+        "restituerStock",
+        "stock_mouvements"
+      ]
+    },
+    "backend/src/caisse-rest/caisse-transaction.entity.ts": {
+      "zones": [
+        "enregistrement-vente",
+        "idempotence",
+        "paiement"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "idempotency_key",
+        "mode_paiement"
+      ]
+    },
+    "backend/src/caisse-rest/credits.controller.ts": {
+      "zones": [
+        "api-caisse",
+        "idempotence"
+      ],
+      "symboles": [
+        "ajouterAcompte",
+        "encaisser-credit",
+        "idempotency_key"
+      ]
+    },
+    "backend/src/caisse-rest/encaisser-credit.ts": {
+      "zones": [
+        "api-caisse",
+        "enregistrement-vente",
+        "idempotence",
+        "paiement"
+      ],
+      "symboles": [
+        "caisseTheorique",
+        "caisse_transactions",
+        "idempotency_key",
+        "mode_paiement"
+      ]
+    },
+    "backend/src/caisse-rest/rapport-hebdo.controller.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "caisse_transactions"
+      ]
+    },
+    "backend/src/caisse-rest/stock-restitution.ts": {
+      "zones": [
+        "stock"
+      ],
+      "symboles": [
+        "restituerStock",
+        "stock_mouvements"
+      ]
+    },
+    "backend/src/commandes-rest/commandes-rest.controller.ts": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "backend/src/commandes/entities/commande.entity.ts": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "backend/src/cooperatives-rest/cooperative-stock-mouvement.entity.ts": {
+      "zones": [
+        "stock"
+      ],
+      "symboles": [
+        "stock_mouvements"
+      ]
+    },
+    "backend/src/cooperatives-rest/cooperatives-rest.controller.ts": {
+      "zones": [
+        "stock"
+      ],
+      "symboles": [
+        "stock_mouvements"
+      ]
+    },
+    "backend/src/database/db-init.service.ts": {
+      "zones": [
+        "enregistrement-vente",
+        "idempotence",
+        "stock"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "idempotency_key",
+        "stock_mouvements",
+        "stock_operation_idempotency"
+      ]
+    },
+    "backend/src/database/migrations/1780200000000-BaselineSchema.ts": {
+      "zones": [
+        "enregistrement-vente",
+        "idempotence",
+        "paiement",
+        "stock"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "idempotency_key",
+        "mode_paiement",
+        "stock_mouvements"
+      ]
+    },
+    "backend/src/database/migrations/1780400000000-LedgerMouvementType.ts": {
+      "zones": [
+        "stock"
+      ],
+      "symboles": [
+        "stock_mouvements"
+      ]
+    },
+    "backend/src/database/migrations/1780500000000-LedgerUniteFigee.ts": {
+      "zones": [
+        "enregistrement-vente",
+        "stock"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "stock_mouvements"
+      ]
+    },
+    "backend/src/database/migrations/1780800000000-FideliteEvenements.ts": {
+      "zones": [
+        "enregistrement-vente",
+        "idempotence"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "idempotency_key"
+      ]
+    },
+    "backend/src/database/migrations/1781000000001-WalletTransactionTransfertIdempotence.ts": {
+      "zones": [
+        "enregistrement-vente",
+        "idempotence"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "idempotency_key"
+      ]
+    },
+    "backend/src/database/migrations/1781100000000-CooperativeStockCommun.ts": {
+      "zones": [
+        "stock"
+      ],
+      "symboles": [
+        "stock_mouvements"
+      ]
+    },
+    "backend/src/database/migrations/1781200000000-Tontines.ts": {
+      "zones": [
+        "stock"
+      ],
+      "symboles": [
+        "stock_mouvements"
+      ]
+    },
+    "backend/src/database/migrations/1781300000000-CooperativeStockMouvementsMembreIndex.ts": {
+      "zones": [
+        "stock"
+      ],
+      "symboles": [
+        "stock_mouvements"
+      ]
+    },
+    "backend/src/database/migrations/1781500000000-StockOperationIdempotence.ts": {
+      "zones": [
+        "idempotence",
+        "stock"
+      ],
+      "symboles": [
+        "idempotency_key",
+        "stock_operation_idempotency"
+      ]
+    },
+    "backend/src/database/migrations/_archive/1778700000000-AddCaisseTransactionStatusAndMotif.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "caisse_transactions"
+      ]
+    },
+    "backend/src/database/migrations/_archive/1778700200000-AddCaisseTransactionIdempotencyKey.ts": {
+      "zones": [
+        "enregistrement-vente",
+        "idempotence"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "idempotency_key"
+      ]
+    },
+    "backend/src/database/seed-demo.service.ts": {
+      "zones": [
+        "enregistrement-vente",
+        "idempotence",
+        "paiement"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "idempotency_key",
+        "mode_paiement"
+      ]
+    },
+    "backend/src/fidelite-rest/fidelite-evenement.entity.ts": {
+      "zones": [
+        "enregistrement-vente",
+        "idempotence"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "idempotency_key"
+      ]
+    },
+    "backend/src/fidelite-rest/fidelite-rest.controller.ts": {
+      "zones": [
+        "idempotence"
+      ],
+      "symboles": [
+        "idempotency_key"
+      ]
+    },
+    "backend/src/financial-score/financial-score.service.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "caisse_transactions"
+      ]
+    },
+    "backend/src/misc-rest/misc-rest.controller.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "caisse_transactions"
+      ]
+    },
+    "backend/src/odoo-gateway/odoo-gateway.service.ts": {
+      "zones": [
+        "offline-synchronisation"
+      ],
+      "symboles": [
+        "offlineCaisse"
+      ]
+    },
+    "backend/src/odoo-gateway/sync-journal.ts": {
+      "zones": [
+        "idempotence"
+      ],
+      "symboles": [
+        "idempotency_key"
+      ]
+    },
+    "backend/src/scores/scores.service.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "caisse_transactions"
+      ]
+    },
+    "backend/src/stocks-rest/mouvement-mapper.ts": {
+      "zones": [
+        "stock"
+      ],
+      "symboles": [
+        "stock_mouvements"
+      ]
+    },
+    "backend/src/stocks-rest/stocks-rest.controller.ts": {
+      "zones": [
+        "idempotence",
+        "stock"
+      ],
+      "symboles": [
+        "idempotency_key",
+        "stock_mouvements",
+        "stock_operation_idempotency"
+      ]
+    },
+    "backend/src/transactions-rest/transactions-rest.controller.ts": {
+      "zones": [
+        "stock"
+      ],
+      "symboles": [
+        "restituerStock"
+      ]
+    },
+    "backend/src/voice/openai.service.ts": {
+      "zones": [
+        "local-intent"
+      ],
+      "symboles": [
+        "detectIntent"
+      ]
+    },
+    "backend/src/wallets/entities/wallet-transaction.entity.ts": {
+      "zones": [
+        "enregistrement-vente",
+        "idempotence"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "idempotency_key"
+      ]
+    },
+    "backend/src/wallets/wallets.service.ts": {
+      "zones": [
+        "idempotence"
+      ],
+      "symboles": [
+        "idempotency_key"
+      ]
+    },
+    "backend/src/zones/zones.service.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "caisse_transactions"
+      ]
+    },
+    "database/init.sql": {
+      "zones": [
+        "enregistrement-vente",
+        "paiement"
+      ],
+      "symboles": [
+        "caisse_transactions",
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/App.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/components/assistant/TantieSagesseModal.tsx": {
+      "zones": [
+        "caisse-context",
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "enregistrerDepense",
+        "enregistrerVente"
+      ]
+    },
+    "frontend_src/src/app/components/identificateur/IdentificateurLayout.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/CreditModal.tsx": {
+      "zones": [
+        "api-caisse"
+      ],
+      "symboles": [
+        "caisse-api",
+        "creerCredit"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/DepenseForm.tsx": {
+      "zones": [
+        "caisse-context",
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "enregistrerDepense"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/GestionStock.tsx": {
+      "zones": [
+        "caisse-context",
+        "stock"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "stock_mouvements"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/MarchandAccueilVoice.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/MarcheVirtuel.tsx": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "handlePay"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/MicroVenteCaisse.tsx": {
+      "zones": [
+        "caisse-context",
+        "enregistrement-vente",
+        "grammaire-intention-financiere",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "enregistrerDepense",
+        "enregistrerVente",
+        "grammaireEncaissement",
+        "handlePay"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/POSCaisse.tsx": {
+      "zones": [
+        "caisse-context",
+        "calcul-financier",
+        "enregistrement-vente",
+        "grammaire-intention-financiere",
+        "machine-encaissement",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "EffetEncaissement",
+        "EtatEncaissement",
+        "decomposerMonnaie",
+        "empreintePanier",
+        "enregistrerVente",
+        "grammaireEncaissement",
+        "handlePay",
+        "machineEncaissement",
+        "mode_paiement",
+        "phraseRelecture"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/SyncEchecsBanner.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/VentesPassees.tsx": {
+      "zones": [
+        "api-caisse",
+        "caisse-context",
+        "enregistrement-vente",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "annulerVente",
+        "caisse-api",
+        "marquerCreditPaye",
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/components/shared/UniversalProfil.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/components/wallet/PayPage.tsx": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "handlePay"
+      ]
+    },
+    "frontend_src/src/app/config/devise.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "caisse_transactions"
+      ]
+    },
+    "frontend_src/src/app/contexts/AppContext.tsx": {
+      "zones": [
+        "api-caisse",
+        "caisse-context",
+        "offline-synchronisation",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "caisse-api",
+        "caisseTheorique",
+        "mode_paiement",
+        "offlineCaisse"
+      ]
+    },
+    "frontend_src/src/app/contexts/CaisseContext.tsx": {
+      "zones": [
+        "api-caisse",
+        "caisse-context",
+        "enregistrement-vente",
+        "idempotence",
+        "offline-synchronisation",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "caisse-api",
+        "enregistrerDepense",
+        "enregistrerVente",
+        "idempotency_key",
+        "mode_paiement",
+        "offlineCaisse"
+      ]
+    },
+    "frontend_src/src/app/contexts/CommandeContext.tsx": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/contexts/StockContext.tsx": {
+      "zones": [
+        "idempotence",
+        "offline-synchronisation"
+      ],
+      "symboles": [
+        "idempotency_key",
+        "offlineCaisse"
+      ]
+    },
+    "frontend_src/src/app/hooks/useOfflineVoiceQueue.ts": {
+      "zones": [
+        "offline-synchronisation"
+      ],
+      "symboles": [
+        "offlineCaisse"
+      ]
+    },
+    "frontend_src/src/app/hooks/useVoiceCore.ts": {
+      "zones": [
+        "local-intent"
+      ],
+      "symboles": [
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/hooks/useVoluntaryLogout.ts": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/i18n/voice/catalog.ts": {
+      "zones": [
+        "grammaire-intention-financiere",
+        "local-intent",
+        "machine-encaissement",
+        "paiement"
+      ],
+      "symboles": [
+        "REPONSES_VALIDATION",
+        "grammaireEncaissement",
+        "handlePay",
+        "localIntent",
+        "machineEncaissement"
+      ]
+    },
+    "frontend_src/src/app/i18n/voice/detectIntent.ts": {
+      "zones": [
+        "local-intent"
+      ],
+      "symboles": [
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/i18n/voice/locales/fr-ci/intents.ts": {
+      "zones": [
+        "grammaire-intention-financiere"
+      ],
+      "symboles": [
+        "grammaireEncaissement"
+      ]
+    },
+    "frontend_src/src/app/i18n/voice/locales/fr-ci/lexicon.ts": {
+      "zones": [
+        "local-intent"
+      ],
+      "symboles": [
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/i18n/voice/runtime.ts": {
+      "zones": [
+        "grammaire-intention-financiere"
+      ],
+      "symboles": [
+        "grammaireEncaissement"
+      ]
+    },
+    "frontend_src/src/app/services/api/caisse-api.ts": {
+      "zones": [
+        "api-caisse",
+        "caisse-context",
+        "enregistrement-vente",
+        "idempotence",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "ajouterAcompte",
+        "annulerVente",
+        "creerCredit",
+        "enregistrerDepense",
+        "enregistrerVente",
+        "idempotency_key",
+        "marquerCreditPaye",
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/services/api/commandes-api.ts": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/services/collecteVoixDB.ts": {
+      "zones": [
+        "offline-synchronisation"
+      ],
+      "symboles": [
+        "offlineCaisse"
+      ]
+    },
+    "frontend_src/src/app/services/fidelite.service.ts": {
+      "zones": [
+        "caisse-context",
+        "idempotence"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "idempotency_key"
+      ]
+    },
+    "frontend_src/src/app/services/ligneProvisoire.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "enregistrerVente"
+      ]
+    },
+    "frontend_src/src/app/services/machineEncaissement.ts": {
+      "zones": [
+        "machine-encaissement",
+        "paiement"
+      ],
+      "symboles": [
+        "EffetEncaissement",
+        "EmpreinteFinanciere",
+        "EtatEncaissement",
+        "EvenementEncaissement",
+        "empreintePanier",
+        "handlePay",
+        "phraseRelecture"
+      ]
+    },
+    "frontend_src/src/app/services/prixVocal.ts": {
+      "zones": [
+        "caisse-context",
+        "local-intent"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/services/relectureSpontanee.ts": {
+      "zones": [
+        "machine-encaissement"
+      ],
+      "symboles": [
+        "EtatEncaissement",
+        "phraseRelecture"
+      ]
+    },
+    "frontend_src/src/app/services/tataMarchandActions.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "enregistrerDepense",
+        "enregistrerVente"
+      ]
+    },
+    "frontend_src/src/app/services/vendreVocalUnifie.ts": {
+      "zones": [
+        "caisse-context",
+        "enregistrement-vente",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "enregistrerVente",
+        "handlePay"
+      ]
+    },
+    "frontend_src/src/app/types/payment.ts": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/types/vente.ts": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/utils/fcfa.ts": {
+      "zones": [
+        "calcul-financier"
+      ],
+      "symboles": [
+        "decomposerMonnaie"
+      ]
+    },
+    "frontend_src/src/app/utils/recu.utils.ts": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/voice-offline/grammaireEncaissement.ts": {
+      "zones": [
+        "grammaire-intention-financiere",
+        "machine-encaissement"
+      ],
+      "symboles": [
+        "detecterEncaissement",
+        "machineEncaissement"
+      ]
+    },
+    "frontend_src/src/app/voice-offline/incidentsHorsLigne.ts": {
+      "zones": [
+        "offline-synchronisation"
+      ],
+      "symboles": [
+        "offlineCaisse"
+      ]
+    },
+    "frontend_src/src/app/voice-offline/localIntent.ts": {
+      "zones": [
+        "grammaire-intention-financiere"
+      ],
+      "symboles": [
+        "detecterEncaissement",
+        "grammaireEncaissement"
+      ]
+    },
+    "frontend_src/src/app/voice-offline/offlineCaisse.ts": {
+      "zones": [
+        "idempotence",
+        "paiement"
+      ],
+      "symboles": [
+        "idempotency_key",
+        "mode_paiement"
+      ]
+    }
+  },
+  "genereLe": "2026-09-20"
+}
