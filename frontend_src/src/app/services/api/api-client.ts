@@ -1,7 +1,7 @@
 /**
  * JÙLABA — Client API (100% PostgreSQL via NestJS)
  *
- * L'AUTHENTIFICATION PART D'ICI — API-04, 20/09/2026.
+ * LE JETON PART D'ICI — API-04, 20/09/2026.
  *
  * L'en-tête de ce fichier disait « auth via cookie httpOnly — aucun token en
  * localStorage ». C'était faux depuis longtemps : sur mobile, les cookies
