@@ -1,35 +1,35 @@
 {
-  "packId": "julaba-fr-ci-preview-2026-09-20-natural-v3",
+  "packId": "julaba-fr-ci-preview-2026-09-20-natural-v4",
   "statut": "prototype_validation_humaine_requise",
   "usage": "prévisualisation de la branche manus/refonte-ui-ux-voix uniquement",
   "langue": "fr-CI",
   "personnage": "Tantie Nanti Lou",
   "voix": "Sulafat, voix préconstruite, correction locale légère",
-  "style": "français ivoirien naturel, chaleureux, ouvert et rassurant ; débit conversationnel normal, ni lent ni rapide",
+  "style": "français ivoirien naturel, chaleureux, ouvert et rassurant ; débit conversationnel légèrement vif, sans précipitation",
   "texteExact": "Akwaba. Pour vendre, touche un produit, ou parle à Tata. On est ensemble.",
   "fichier": "tata-accueil-preview.mp3",
-  "sha256": "871846099cbdb7678857c3873cc47d58cd214b701738ddde02090736f1eb0bb0",
+  "sha256": "4935882075c6506224bdc4b831a9cc432ae43c39c2f8242cad87306ad09d758b",
   "transformation": {
     "source": "tata-accueil-sulafat.wav",
-    "tempo": 1.0,
-    "hauteur": 0.96,
+    "tempo": 1.06,
+    "hauteur": 0.97,
     "formants": "préservés",
     "egalisation": "chaleur et présence légères",
-    "objectif": "garder un débit entièrement naturel avec une maturité très discrète"
+    "objectif": "voix vivante et naturelle, moins lente que la v3, sans débit précipité"
   },
   "technique": {
     "format": "MP3",
     "canaux": 1,
     "frequenceHz": 48000,
-    "debitApproxBps": 96261,
-    "dureeSecondes": 10.2,
-    "niveauMoyenDb": -19.4,
-    "niveauMaximumDb": -1.8
+    "debitApproxBps": 96276,
+    "dureeSecondes": 9.624,
+    "niveauMoyenDb": -19.1,
+    "niveauMaximumDb": -2.4
   },
   "validation": {
-    "texte": "transcription automatique cohérente ; Akwaba doit rester vérifié à l'écoute humaine",
+    "texte": "à vérifier mot à mot à l'écoute humaine",
     "naturelEtAgePercu": "à valider par le propriétaire et des marchandes ivoiriennes cibles",
     "production": false
   },
-  "note": "Cette v3 annule le ralentissement de la v2. Le générateur vocal principal ayant échoué à trois reprises, elle reste une correction légère et réversible du prototype existant, pas une voix humaine finale."
+  "note": "Cette v4 accélère très légèrement la source de 6 %, après rejet de la v3 jugée encore trop lente. Elle reste une correction légère et réversible du prototype existant, pas une voix humaine finale."
 }
