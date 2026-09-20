@@ -21,14 +21,26 @@ export function AppLayout() {
   const { isOnline, loading, user, globalVoiceOpen, setGlobalVoiceOpen } = useApp();
   const { setUser: setUserProfile } = useUser();
   const [tataOuverte, setTataOuverte] = useState(false);
+  const tataMasquee = location.pathname === '/marchand/caisse';
 
   // Une seule propriétaire pour Tata : le bouton mobile, la sidebar desktop et
   // le double-tap global ouvrent exactement la même modale.
   useEffect(() => {
     if (!globalVoiceOpen) return;
+    if (tataMasquee) {
+      setTataOuverte(false);
+      setGlobalVoiceOpen(false);
+      return;
+    }
     setTataOuverte(true);
     setGlobalVoiceOpen(false);
-  }, [globalVoiceOpen, setGlobalVoiceOpen]);
+  }, [globalVoiceOpen, setGlobalVoiceOpen, tataMasquee]);
+
+  // Les callbacks restent identiques pour desktop et mobile ; si un geste ou
+  // un événement global tente d'ouvrir Tantie sur la caisse, on referme aussitôt.
+  useEffect(() => {
+    if (tataMasquee && tataOuverte) setTataOuverte(false);
+  }, [tataMasquee, tataOuverte]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -126,7 +138,7 @@ export function AppLayout() {
       {!hideBottomBar && <BottomBar role={user.role as 'marchand' | 'producteur' | 'cooperative' | 'institution' | 'identificateur'} onMicClick={() => setTataOuverte(true)} />}
 
       <TantieSagesseModal
-        isOpen={tataOuverte}
+        isOpen={tataOuverte && !tataMasquee}
         onClose={() => setTataOuverte(false)}
         role={user.role}
       />
