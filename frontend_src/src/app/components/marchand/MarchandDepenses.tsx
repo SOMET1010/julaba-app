@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
-import { TrendingUp, ShoppingBag, Calendar, Clock } from 'lucide-react';
+import { TrendingUp, ShoppingBag, Calendar, Clock, Eye, EyeOff, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
@@ -10,6 +10,7 @@ import { fr } from 'date-fns/locale';
 import TATA_BLEU from '../../../assets/images/tata-nanti-lou.png';
 import { NotificationButton } from './NotificationButton';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
+import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -89,7 +90,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
 }
 
 // ── Card dépense dépliable ────────────────────────────────────
-function DepenseCard({ d, index, query }: { d: any; index: number; query: string }) {
+function DepenseCard({ d, index, query, montantsMasques }: { d: any; index: number; query: string; montantsMasques: boolean }) {
   const [open, setOpen] = useState(false);
   const cat = detectCat(d.productName || d.description || '');
   const montant = d.montant || d.price || 0;
@@ -115,7 +116,7 @@ function DepenseCard({ d, index, query }: { d: any; index: number; query: string
           </div>
         </div>
         <div style={{ textAlign:'right', flexShrink:0 }}>
-          <div style={{ fontSize:17, fontWeight:900, color:'#ef4444' }}>-{montant.toLocaleString('fr-FR')} F</div>
+          <div style={{ fontSize:17, fontWeight:900, color:'#ef4444' }}>{montantsMasques ? '••••• F' : `-${montant.toLocaleString('fr-FR')} F`}</div>
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration:0.25 }} style={{ display:'flex', justifyContent:'flex-end', marginTop:2 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
           </motion.div>
@@ -142,7 +143,7 @@ function DepenseCard({ d, index, query }: { d: any; index: number; query: string
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Montant</span>
-                <span style={{ fontSize:14, fontWeight:900, color:'#ef4444' }}>{montant.toLocaleString('fr-FR')} FCFA</span>
+                <span style={{ fontSize:14, fontWeight:900, color:'#ef4444' }}>{montantPrive(montant, montantsMasques, 'FCFA')}</span>
               </div>
             </div>
           </motion.div>
@@ -158,11 +159,13 @@ export function MarchandDepenses() {
   const { transactions, reloadTransactions, speak } = useApp();
   const [period, setPeriod] = useState<Period>('today');
   const [search, setSearch] = useState('');
+  const [showOutils, setShowOutils] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const sliderRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(false);
+  const { montantsMasques, basculerMontants } = useMontantsPrives();
 
   useEffect(() => {
     if (mountedRef.current) return;
@@ -202,16 +205,19 @@ export function MarchandDepenses() {
   // les données arrivent (une seule fois) -> une non-lectrice sait sans lire.
   const dejaAnnonce = useRef(false);
   useEffect(() => {
-    if (dejaAnnonce.current || allDepenses.length === 0) return;
+    if (dejaAnnonce.current || allDepenses.length === 0 || montantsMasques) return;
     dejaAnnonce.current = true;
     speak(kpiToday > 0
       ? `Aujourd'hui tu as dépensé ${kpiToday.toLocaleString('fr-FR')} francs.`
       : "Tu n'as pas encore de dépense aujourd'hui.");
-  }, [allDepenses, kpiToday, speak]);
+  }, [allDepenses, kpiToday, speak, montantsMasques]);
 
-  const direTotal = () => speak(kpiToday > 0
-    ? `Aujourd'hui tu as dépensé ${kpiToday.toLocaleString('fr-FR')} francs.`
-    : "Tu n'as pas encore de dépense aujourd'hui.");
+  const direTotal = () => {
+    if (montantsMasques) { speak('Tes montants sont cachés.'); return; }
+    speak(kpiToday > 0
+      ? `Aujourd'hui tu as dépensé ${kpiToday.toLocaleString('fr-FR')} francs.`
+      : "Tu n'as pas encore de dépense aujourd'hui.");
+  };
 
   // Filtrage par période
   const byPeriod = useMemo(() => {
@@ -249,6 +255,11 @@ export function MarchandDepenses() {
             <span style={{ fontSize:19, fontWeight:900, color:'white', letterSpacing:'-0.3px' }}>Mes dépenses</span>
           </div>
           <div style={{ display:'flex', gap:7 }}>
+            <motion.button whileTap={{ scale:0.9 }} onClick={basculerMontants}
+              aria-label={montantsMasques ? 'Montrer mes montants' : 'Cacher mes montants'}
+              style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+              {montantsMasques ? <EyeOff size={19} color="white" /> : <Eye size={19} color="white" />}
+            </motion.button>
             <motion.button whileTap={{ scale:0.9 }} onClick={direTotal} aria-label="Écouter les dépenses du jour"
               style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
@@ -266,11 +277,33 @@ export function MarchandDepenses() {
 
         <SyncEchecsBanner />
 
+        <motion.button whileTap={{ scale:0.99 }} onClick={() => setShowOutils(v => !v)}
+          aria-expanded={showOutils}
+          style={{ width:'100%', minHeight:54, background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+          <div>
+            <div style={{ fontSize:15, fontWeight:900, color:'var(--encre)' }}>Mes chiffres et filtres</div>
+            <div style={{ fontSize:12, color:'var(--encre-4)', marginTop:2 }}>
+              {montantsMasques ? 'Montants cachés' : `Aujourd'hui : ${kpiToday.toLocaleString('fr-FR')} F`}
+            </div>
+          </div>
+          <motion.span animate={{ rotate: showOutils ? 180 : 0 }} style={{ display:'flex', flexShrink:0 }}>
+            <ChevronDown size={22} color={P} />
+          </motion.span>
+        </motion.button>
+
+        <AnimatePresence initial={false}>
+        {showOutils && (
+        <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }}
+          style={{ overflow:'hidden', display:'flex', flexDirection:'column', gap:12 }}>
         {/* KPIs 2x2 standard */}
-        <KPIGrid cols={2}>
+        {montantsMasques ? (
+          <div style={{ minHeight:76, borderRadius:16, border:'1.5px dashed #d8cabe', background:'rgba(255,255,255,0.7)', display:'flex', alignItems:'center', justifyContent:'center', gap:10, color:'var(--encre-3)', fontWeight:800 }}>
+            <EyeOff size={22} /> Montants cachés
+          </div>
+        ) : <KPIGrid cols={2}>
           <UniversalKPI
             label="Aujourd'hui"
-            animatedTarget={kpiToday}
+            value={kpiToday.toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={TrendingUp}
             color="#ea580c"
@@ -284,7 +317,7 @@ export function MarchandDepenses() {
           />
           <UniversalKPI
             label="Ce mois"
-            animatedTarget={kpiMonth}
+            value={kpiMonth.toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={Calendar}
             color="#2563eb"
@@ -297,7 +330,7 @@ export function MarchandDepenses() {
           />
           <UniversalKPI
             label="Total général"
-            animatedTarget={kpiTotal}
+            value={kpiTotal.toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={ShoppingBag}
             color="#16a34a"
@@ -310,7 +343,7 @@ export function MarchandDepenses() {
           />
           <UniversalKPI
             label="Moy. journalière"
-            animatedTarget={Math.round(kpiMonth / Math.max(new Date().getDate(), 1))}
+            value={Math.round(kpiMonth / Math.max(new Date().getDate(), 1)).toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={Clock}
             color="#7c3aed"
@@ -320,7 +353,7 @@ export function MarchandDepenses() {
             explication="Combien tu dépenses en moyenne chaque jour ce mois-ci."
             formule="Moyenne = Dépenses du mois ÷ Nombre de jours écoulés"
           />
-        </KPIGrid>
+        </KPIGrid>}
 
         {/* Barre recherche */}
         {/* height 46 + padding horizontal seul : la zone tapable du champ suit
@@ -396,6 +429,9 @@ export function MarchandDepenses() {
             )}
           </AnimatePresence>
         </div>
+        </motion.div>
+        )}
+        </AnimatePresence>
 
         {/* Liste */}
         {depenses.length === 0 ? (
@@ -412,7 +448,7 @@ export function MarchandDepenses() {
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {depenses.map((d: any, i: number) => (
-              <DepenseCard key={d.id || i} d={d} index={i} query={search} />
+              <DepenseCard key={d.id || i} d={d} index={i} query={search} montantsMasques={montantsMasques} />
             ))}
           </div>
         )}

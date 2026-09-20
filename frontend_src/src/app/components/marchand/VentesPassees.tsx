@@ -488,7 +488,8 @@ export function VentesPassees() {
         <KPIGrid cols={2}>
           <UniversalKPI
             label="Ventes FCFA"
-            animatedTarget={totalVentes}
+            value={totalVentes.toLocaleString('fr-FR')}
+            suffix="FCFA"
             icon={TrendingUp}
             color="#ea580c"
             bgColor="rgba(255,247,237,0.85)"
@@ -502,7 +503,8 @@ export function VentesPassees() {
           />
           <UniversalKPI
             label="Bénéfices FCFA"
-            animatedTarget={totalBenefices}
+            value={totalBenefices.toLocaleString('fr-FR')}
+            suffix="FCFA"
             icon={Banknote}
             color="#2563eb"
             bgColor="rgba(239,246,255,0.85)"
@@ -517,7 +519,7 @@ export function VentesPassees() {
           />
           <UniversalKPI
             label="Transactions"
-            animatedTarget={totalCount}
+            value={totalCount.toLocaleString('fr-FR')}
             icon={Package}
             color="#16a34a"
             bgColor="rgba(240,253,244,0.85)"
@@ -531,7 +533,8 @@ export function VentesPassees() {
           />
           <UniversalKPI
             label="Panier moyen FCFA"
-            animatedTarget={panierMoyen}
+            value={panierMoyen.toLocaleString('fr-FR')}
+            suffix="FCFA"
             icon={ShoppingBag}
             color="#7c3aed"
             bgColor="rgba(245,243,255,0.85)"
