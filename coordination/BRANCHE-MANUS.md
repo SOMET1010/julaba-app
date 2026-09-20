@@ -13,6 +13,16 @@ Le contrat partagé retourne désormais `confirmee` ou `en_attente` jusqu'aux é
 
 **Preuves sur l'arbre combiné Manus + Claude :** installation `npm ci`, typecheck frontend, suite CI frontend, 27 suites / 207 tests unitaires backend, 45 suites / 233 tests d'invariants backend et build frontend/backend réussis. Le build confirme 137 clips vocaux pré-cachés. Aucun déploiement de production n'a été déclenché.
 
+## Point de contrôle UX/UI et voix — 20 septembre 2026
+
+La branche Manus inclut désormais intégralement `claude/clever-allen-dnr8by@482dd7a`. Les améliorations ont été appliquées au code existant, sans créer de seconde application : contrat de dépense et synchronisation honnête, micro réactif, guidage Auto non muet, langues locales incomplètes marquées « en préparation », onboarding sans pseudo-voix Tata, pavé montant XXL partagé, cartes produit entièrement tactiles, pictogrammes offline, accueil pilote sans Keiwa, Tata unique sur mobile et desktop, entrée unique et niveaux vocaux réellement appliqués.
+
+Le pack français historique est maintenant décrit par un registre reproductible : **137 fichiers**, **128 clips mappés**, **9 actifs orphelins**, empreintes SHA-256 et durées. Son statut reste volontairement `audit_requis` : le code ne prouve pas seul le consentement, l'accent ni la compréhension humaine, et les neuf intros restent à enregistrer.
+
+La validation combinée après synchronisation Claude a réussi : `npm ci`, typecheck, toute la suite `test:ci`, **28 suites / 210 tests unitaires backend**, **45 suites / 233 tests d'invariants backend**, build frontend/backend et pré-cache de **137 clips**. La synchronisation Capacitor vers Android réussit. La compilation APK locale s'arrête avant compilation parce que ce sandbox ne possède ni `ANDROID_HOME` ni `android/local.properties`; ce point doit être confirmé par le workflow APK GitHub ou une machine Android équipée, pas interprété comme un défaut du code.
+
+La recette visuelle automatisée à **390 × 844** confirme l'absence de débordement horizontal, des cartes produit d'environ **174 × 244 px** et des touches de montant d'environ **113 × 58 px**. Tata s'ouvre aussi réellement depuis la sidebar à **1280 × 800**. L'écoute par utilisatrices ivoiriennes et la recette sur téléphone Android physique restent les gates humaines obligatoires.
+
 ## Objectif
 
 Cette branche permet à Manus de corriger et valider le socle de production Jùlaba sans perturber le travail parallèle de Claude. Elle cible d’abord la fiabilité, l’intégrité financière, l’expérience marchande inclusive et la cohérence web/APK. Les nouvelles fonctions de scoring et de tontine restent hors de cette branche tant que les gates de stabilisation ne sont pas closes.
