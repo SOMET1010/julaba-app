@@ -66,6 +66,15 @@ import tantieImg from '../../../assets/images/tantie-vente-vocale.png';
 // Les icônes lucide prennent une TAILLE en nombre (attribut SVG), pas une
 // variable CSS : la planche dit 24 px, on le recopie ici, une fois.
 const ICONE = 24;
+// LE MICRO DOMINE LE PREMIER ÉCRAN (retour de Patrick, passe F2) : « dans la
+// cible, la question et le micro orange dominent immédiatement ; dans le
+// rendu, le micro ressemble encore à un contrôle parmi d'autres. Ce n'est
+// pas cosmétique : c'est l'action principale. » 150 px de bouton dans un
+// halo de 180, icône de 64 : des nombres (attributs SVG et animation motion),
+// pas des variables CSS — c'est la seule raison de les écrire ici.
+const MICRO = 150;
+const MICRO_HALO = 180;
+const MICRO_ICONE = 64;
 
 export interface ProduitPreselectionne {
   nom: string;
@@ -354,10 +363,10 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
             juste au-dessus. Le halo clair autour (maquette) est un disque
             orange à faible opacité : la même variable, aucune teinte dérivée
             écrite en dur. */}
-        <div style={{ position: 'relative', width: 132, height: 132, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ position: 'relative', width: MICRO_HALO, height: MICRO_HALO, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <div aria-hidden="true" style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'var(--caisse-orange-voix)', opacity: 0.18 }} />
           {(isRecording || isSpeaking) && [1, 2, 3].map(ring => (
-            <motion.div key={ring} style={{ position: 'absolute', borderRadius: '50%', width: 108 + ring * 10, height: 108 + ring * 10, border: '2px solid var(--caisse-orange-voix)' }}
+            <motion.div key={ring} style={{ position: 'absolute', borderRadius: '50%', width: MICRO + ring * 12, height: MICRO + ring * 12, border: '2px solid var(--caisse-orange-voix)' }}
               animate={{ scale: [1, 1.14, 1], opacity: [0.5, 0, 0.5] }}
               transition={{ duration: 1.5, repeat: Infinity, delay: ring * 0.25, ease: 'easeOut' }} />
           ))}
@@ -371,7 +380,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
             animate={isRecording ? { scale: [1, 1.04, 1] } : { scale: 1 }}
             transition={{ duration: 0.9, repeat: isRecording ? Infinity : 0 }}
             style={{
-              width: 108, height: 108, borderRadius: '50%', border: 'none', padding: 0,
+              width: MICRO, height: MICRO, borderRadius: '50%', border: 'none', padding: 0,
               background: isRecording ? 'var(--caisse-alerte)' : 'var(--caisse-orange-voix)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: isLoading ? 'not-allowed' : 'pointer', position: 'relative', zIndex: 2,
@@ -379,25 +388,25 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
             }}>
             {isLoading ? (
               <motion.span animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} style={{ display: 'flex' }}>
-                <Loader size={48} color="white" />
+                <Loader size={MICRO_ICONE} color="white" />
               </motion.span>
-            ) : isDone ? <CheckCircle size={52} color="white" />
-              : isError ? <AlertCircle size={52} color="white" />
-              : <Mic size={52} color="white" strokeWidth={2.25} />}
+            ) : isDone ? <CheckCircle size={MICRO_ICONE} color="white" />
+              : isError ? <AlertCircle size={MICRO_ICONE} color="white" />
+              : <Mic size={MICRO_ICONE} color="white" strokeWidth={2.25} />}
           </motion.button>
         </div>
 
         {/* Tata — le visage et la bulle, comme la maquette : l'avatar en haut
             à droite, la bulle dessous avec son haut-parleur. Le haut-parleur
             DIT ce que la bulle affiche : la bulle n'est pas une légende à lire. */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--caisse-esp-2)', minWidth: 0, flex: 1, maxWidth: 200 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--caisse-esp-2)', minWidth: 0, flex: 1 }}>
           <img src={tantieImg} alt="" aria-hidden="true"
-            style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', flexShrink: 0, border: '3px solid var(--caisse-succes)', background: 'var(--caisse-succes)' }} />
+            style={{ width: 76, height: 76, borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', flexShrink: 0, border: '3px solid var(--caisse-succes)', background: 'var(--caisse-succes)' }} />
           <button type="button" onClick={() => speak(dernierePhraseRef.current || introLigne())}
             aria-label={dernierePhraseRef.current ? "Réécouter ce que Tata a compris" : 'Réécouter la question'}
             style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', background: 'white', border: 'none', borderRadius: 'var(--caisse-rayon-4)', borderTopRightRadius: 'var(--caisse-rayon-1)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)', cursor: 'pointer', fontFamily: 'inherit', minWidth: 0, maxWidth: '100%', textAlign: 'left' }}>
-            <span aria-hidden="true" style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--caisse-succes)', color: 'var(--caisse-vert)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Volume2 size={18} />
+            <span aria-hidden="true" style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--caisse-succes)', color: 'var(--caisse-vert)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Volume2 size={ICONE} />
             </span>
             <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>{bulle}</span>
           </button>
@@ -427,8 +436,8 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
           relire par la caisse (lot C). */}
       {cart.length > 0 && (
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--caisse-esp-2)' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', background: 'var(--caisse-ivoire)', border: '1px solid var(--commerce-line)', borderRadius: 'var(--caisse-rayon-3)', padding: 'var(--caisse-esp-1) var(--caisse-esp-3)', font: 'var(--caisse-font-texte)', color: 'var(--encre)' }}>
-            <AudioLines size={20} color="var(--caisse-vert)" aria-hidden="true" style={{ flexShrink: 0 }} />
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', background: 'var(--caisse-ivoire)', border: '1px solid var(--commerce-line)', borderRadius: 'var(--caisse-rayon-3)', padding: 'var(--caisse-esp-2) var(--caisse-esp-4)', minHeight: 'var(--caisse-cible-tactile)', font: 'var(--caisse-font-texte)', color: 'var(--encre)' }}>
+            <AudioLines size={ICONE} color="var(--caisse-vert)" aria-hidden="true" style={{ flexShrink: 0 }} />
             <span>Dis <strong>« encaisser »</strong> pour terminer</span>
           </div>
         </div>

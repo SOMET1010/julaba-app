@@ -479,9 +479,9 @@ function POSCaisseInner() {
   // qui se replie proprement quand la vignette est étroite (« 1 000 F » puis
   // « / kg » dessous).
   const Prix = ({ prix, unite }: { prix: number; unite: string }) => (
-    <div style={{ marginTop:'var(--caisse-esp-1)', display:'flex', flexWrap:'wrap', columnGap:'var(--caisse-esp-1)', alignItems:'baseline', justifyContent:'center', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>
+    <div style={{ marginTop:'var(--caisse-esp-1)', display:'flex', flexWrap:'wrap', columnGap:'var(--caisse-esp-1)', alignItems:'baseline', justifyContent:'center', font:'var(--caisse-font-bouton)', color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums' }}>
       <span>{prix.toLocaleString('fr-FR')} F</span>
-      <span style={{ fontWeight:400, fontSize:14, color:'var(--caisse-gris-texte)' }}>/ {unite}</span>
+      <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>/ {unite}</span>
     </div>
   );
 
@@ -600,9 +600,9 @@ function POSCaisseInner() {
           celui qu'elle regarde avant de dire le prix à la cliente. */}
       <button type="button" onClick={() => dire(`Total : ${total.toLocaleString('fr-FR')} francs`)}
         aria-label={`Total ${total.toLocaleString('fr-FR')} francs — touche pour entendre`}
-        style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-4)', background:'var(--caisse-succes)', border:'none', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-3) var(--caisse-esp-4)', minHeight:'var(--caisse-cible-tactile)', cursor:'pointer', fontFamily:'inherit' }}>
-        <span style={{ font:'var(--caisse-font-h2)', color:'var(--encre)' }}>Total</span>
-        <span style={{ font:'var(--caisse-font-h1)', color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums' }}>{total.toLocaleString('fr-FR')} F</span>
+        style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-4)', background:'var(--caisse-succes)', border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-4) var(--caisse-esp-4)', minHeight:72, cursor:'pointer', fontFamily:'inherit' }}>
+        <span style={{ font:'var(--caisse-font-h1)', fontSize:24, color:'var(--encre)' }}>Total</span>
+        <span style={{ font:'var(--caisse-font-h1)', fontSize:34, lineHeight:'40px', color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums' }}>{total.toLocaleString('fr-FR')} F</span>
       </button>
 
       <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:'0 0 var(--caisse-esp-2)' }}>Paiement</h2>
@@ -693,11 +693,22 @@ function POSCaisseInner() {
             rejoue la même chaîne. */}
         {relectureAffichee && (
           <div role="status" aria-live="polite"
-            style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-3)', marginTop:'var(--caisse-esp-3)', background:'var(--caisse-succes)', border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-4)', padding:'var(--caisse-esp-3) var(--caisse-esp-4)', minWidth:0 }}>
-            <Volume2 aria-hidden="true" size={ICONE} style={{ color:'var(--caisse-vert)', flexShrink:0 }} />
-            <p style={{ flex:1, minWidth:0, margin:0, font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)' }}>{relectureAffichee}</p>
+            style={{ display:'flex', flexDirection:'column', gap:'var(--caisse-esp-3)', marginTop:'var(--caisse-esp-3)', background:'var(--caisse-succes)', border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-4)', borderTopLeftRadius:'var(--caisse-rayon-1)', padding:'var(--caisse-esp-3) var(--caisse-esp-4)', minWidth:0 }}>
+            {/* Une BULLE, pas une alerte (F2) : le haut-parleur dans son disque
+                blanc — le même que celui de la bulle de Tata dans la zone
+                voix — et le coin haut-gauche cassé, comme une parole qui
+                vient d'en haut. La phrase en texte courant semibold, plus
+                grande que les libellés autour : c'est la question à laquelle
+                « oui valide » répond. */}
+            <div style={{ display:'flex', alignItems:'flex-start', gap:'var(--caisse-esp-3)', minWidth:0 }}>
+              <span aria-hidden="true" style={{ width:40, height:40, borderRadius:'50%', background:'white', color:'var(--caisse-vert)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <Volume2 aria-hidden="true" size={ICONE} style={{ color:'var(--caisse-vert)', flexShrink:0 }} />
+              </span>
+              <p style={{ flex:1, minWidth:0, margin:0, font:'var(--caisse-font-texte)', fontSize:18, lineHeight:'26px', fontWeight:600, color:'var(--encre)', alignSelf:'center' }}>{relectureAffichee}</p>
+            </div>
             <button type="button" onClick={() => speak(relectureAffichee)} aria-label="Réécouter la relecture"
-              style={{ minWidth:'var(--caisse-cible-tactile)', minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
+              style={{ alignSelf:'flex-end', display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)', minWidth:'var(--caisse-cible-tactile)', minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-4)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
+              <Volume2 aria-hidden="true" size={20} />
               Réécouter
             </button>
           </div>
@@ -706,19 +717,13 @@ function POSCaisseInner() {
         {/* LA CARTE PAIEMENT de la maquette : Reçu | Monnaie. Le reçu reste un
             champ (le filet pour celle qui tape), la monnaie s'entend d'un
             toucher, et se décompose en coupures concrètes dessous. */}
-        <div style={{ display:'flex', alignItems:'stretch', gap:'var(--caisse-esp-3)', marginTop:'var(--caisse-esp-3)', background:'var(--caisse-ivoire)', border:'1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-4)', padding:'var(--caisse-esp-3) var(--caisse-esp-4)', minWidth:0 }}>
-          <div aria-hidden="true" style={{ alignSelf:'center', width:44, height:44, borderRadius:'50%', background:'var(--caisse-succes)', color:'var(--caisse-vert)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <Banknote size={ICONE} />
+        <div style={{ display:'flex', alignItems:'stretch', gap:'var(--caisse-esp-3)', marginTop:'var(--caisse-esp-3)', background:'var(--caisse-ivoire)', border:'1.5px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-4)', padding:'var(--caisse-esp-4)', minWidth:0 }}>
+          <div aria-hidden="true" style={{ alignSelf:'center', width:52, height:52, borderRadius:'50%', background:'var(--caisse-succes)', color:'var(--caisse-vert)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Banknote size={28} />
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>Reçu :</div>
-            <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', minWidth:0 }}>
-              {/* minWidth:0 — sans lui, un input vide garde un min-content flexbox
-                  qui peut dépasser un conteneur étroit (panneau permanent 400px,
-                  repéré en recette visuelle) au lieu de rétrécir avec flex:1. */}
-              <input value={montantRecu} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—" aria-label="Montant reçu"
-                style={{ flex:1, minWidth:0, width:'100%', minHeight:'var(--caisse-cible-tactile)', border:'none', outline:'none', textAlign:'left', font:'var(--caisse-font-h2)', fontWeight:600, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums', padding:0 }} />
-              <span style={{ font:'var(--caisse-font-h2)', color:'var(--encre)' }}>F</span>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-1)', minHeight:'var(--caisse-cible-tactile)' }}>
+              <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>Reçu :</span>
               {recu > 0 && (
                 <button type="button" aria-label="Effacer le montant reçu" onClick={() => setMontantRecu('')}
                   style={{ width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', borderRadius:'50%', border:'none', background:'transparent', color:'var(--caisse-alerte)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0, flexShrink:0 }}>
@@ -726,14 +731,22 @@ function POSCaisseInner() {
                 </button>
               )}
             </div>
+            <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', minWidth:0 }}>
+              {/* minWidth:0 — sans lui, un input vide garde un min-content flexbox
+                  qui peut dépasser un conteneur étroit (panneau permanent 400px,
+                  repéré en recette visuelle) au lieu de rétrécir avec flex:1. */}
+              <input value={montantRecu} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—" aria-label="Montant reçu"
+                style={{ flex:1, minWidth:0, width:'100%', minHeight:'var(--caisse-cible-tactile)', border:'none', outline:'none', textAlign:'left', font:'var(--caisse-font-h1)', fontSize:26, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums', padding:0 }} />
+              <span style={{ font:'var(--caisse-font-h1)', fontSize:26, color:'var(--encre)' }}>F</span>
+            </div>
           </div>
           <div aria-hidden="true" style={{ width:1, background:'var(--commerce-line)', flexShrink:0 }} />
           {recu > 0 && !insuffisant ? (
           <button type="button" onClick={() => dire(`Monnaie à rendre : ${formatF(monnaie)} francs`)}
             aria-label={`Monnaie à rendre ${formatF(monnaie)} francs — touche pour entendre`}
             style={{ flex:1, minWidth:0, background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
-            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>Monnaie :</div>
-            <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>{formatF(monnaie)} F</div>
+            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>Monnaie :</div>
+            <div style={{ font:'var(--caisse-font-h1)', fontSize:26, color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>{formatF(monnaie)} F</div>
             {/* La monnaie EN COUPURES concrètes : « 2000 ×1 · 500 ×1 » */}
             {monnaie > 0 && monnaieDecomposee.lignes.length > 0 && (
               <div style={{ display:'flex', gap:'var(--caisse-esp-1)', marginTop:'var(--caisse-esp-1)', flexWrap:'wrap' }}>
@@ -752,8 +765,8 @@ function POSCaisseInner() {
           </button>
           ) : (
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>Monnaie :</div>
-            <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>—</div>
+            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>Monnaie :</div>
+            <div style={{ font:'var(--caisse-font-h1)', fontSize:26, color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>—</div>
           </div>
           )}
         </div>
@@ -776,8 +789,8 @@ function POSCaisseInner() {
             : (monnaie > 0 ? `Payer en espèces · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Payer en espèces');
         return (
           <motion.button whileTap={{ scale: bloque ? 1 : 0.97 }} onClick={handlePay} disabled={bloque}
-            style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-2)', border:'none', borderRadius:'var(--caisse-rayon-4)', padding:'var(--caisse-esp-4) var(--caisse-esp-3)', minHeight:56, font:'var(--caisse-font-bouton)', color:'white', cursor: bloque ? 'not-allowed':'pointer', textWrap:'balance', background: bloque ? 'var(--caisse-gris-texte)' : 'var(--caisse-vert)' }}>
-            <Banknote size={ICONE} aria-hidden="true" style={{ flexShrink:0 }} />
+            style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-3)', border:'none', borderBottom: bloque ? 'none' : '4px solid var(--caisse-vert-fonce)', borderRadius:'var(--caisse-rayon-4)', padding:'var(--caisse-esp-4) var(--caisse-esp-3)', minHeight:72, font:'var(--caisse-font-bouton)', fontSize:22, lineHeight:'28px', color:'white', cursor: bloque ? 'not-allowed':'pointer', textWrap:'balance', background: bloque ? 'var(--caisse-gris-texte)' : 'var(--caisse-vert)' }}>
+            <Banknote size={32} aria-hidden="true" style={{ flexShrink:0 }} />
             {label}
           </motion.button>
         );
@@ -970,8 +983,11 @@ function POSCaisseInner() {
                   <motion.button key={p.id} type="button" initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} transition={{ delay: i*0.04 }} whileTap={{ scale:0.96 }}
                     onClick={() => ajouterAuPanier(p)} aria-label={`Ajouter ${p.nom} au panier`}
                     style={{ background:'var(--caisse-ivoire)', border: inCart ? '2px solid var(--caisse-vert)' : '1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-3)', overflow:'hidden', padding:0, cursor:'pointer', fontFamily:'inherit', textAlign:'center', display:'flex', flexDirection:'column', minWidth:0 }}>
-                    <div style={{ position:'relative', width:'100%', aspectRatio:'1 / 1', background:'var(--caisse-sable)' }}>
-                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getImageByNom(p.nom)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                    <div style={{ position:'relative', width:'100%', aspectRatio:'1 / 1', background:'var(--caisse-sable)', overflow:'hidden' }}>
+                      {/* La photo REMPLIT la vignette (F2 : « la densité est trop
+                          forte ») : les vignettes emoji hors ligne ont une marge
+                          interne, on les grossit légèrement dans leur cadre. */}
+                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getImageByNom(p.nom)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', transform:'scale(1.22)' }} />
                       <StockBadge stock={p.stock || 0} />
                       {enPromo && (
                         <div style={{ position:'absolute', top:'var(--caisse-esp-1)', right:'var(--caisse-esp-1)', background:'var(--caisse-alerte)', borderRadius:'var(--caisse-rayon-2)', padding:'2px 6px', font:'var(--caisse-font-legende)', fontWeight:600, color:'white' }}>
@@ -989,12 +1005,12 @@ function POSCaisseInner() {
                         </div>
                       )}
                     </div>
-                    <div style={{ padding:'var(--caisse-esp-2) var(--caisse-esp-1)', width:'100%', boxSizing:'border-box' }}>
+                    <div style={{ padding:'var(--caisse-esp-2) var(--caisse-esp-1) var(--caisse-esp-3)', width:'100%', boxSizing:'border-box' }}>
                       <div style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.nom}</div>
                       {enPromo ? (
-                        <div style={{ marginTop:'var(--caisse-esp-1)', display:'flex', flexWrap:'wrap', columnGap:'var(--caisse-esp-1)', alignItems:'baseline', justifyContent:'center', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--caisse-alerte)', fontVariantNumeric:'tabular-nums' }}>
+                        <div style={{ marginTop:'var(--caisse-esp-1)', display:'flex', flexWrap:'wrap', columnGap:'var(--caisse-esp-1)', alignItems:'baseline', justifyContent:'center', font:'var(--caisse-font-bouton)', color:'var(--caisse-alerte)', fontVariantNumeric:'tabular-nums' }}>
                           <span>{prixEffectif(p as any).toLocaleString('fr-FR')} F</span>
-                          <span style={{ fontWeight:400, fontSize:14, color:'var(--caisse-gris-texte)' }}>/ {p.unite}</span>
+                          <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>/ {p.unite}</span>
                           <span style={{ fontWeight:400, fontSize:12, color:'var(--caisse-gris-texte)', textDecoration:'line-through' }}>{(p.prix||0).toLocaleString('fr-FR')}</span>
                         </div>
                       ) : (
