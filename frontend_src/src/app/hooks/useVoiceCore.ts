@@ -398,7 +398,7 @@ export function useVoiceCore({
   // ventes offline dupliquées. On expose pendingCount/isReplaying à la place.
   //
   // currentUserId = context.userId (déjà fourni par chaque appelant, ex.
-  // VenteVocaleModal passe `userId: user?.id || ""`) : SANS lui, l'effet de
+  // MicroVenteCaisse passe `userId: user?.id || ""`) : SANS lui, l'effet de
   // rejeu du hook ne s'exécute jamais (garde volontaire, cf. useOfflineVoiceQueue),
   // et un terminal partagé pourrait rejouer la file d'une autre marchande.
   const { enqueue, pendingCount: offlinePending, isReplaying: offlineReplaying } = useOfflineVoiceQueue(async (cmd) => {
@@ -561,7 +561,7 @@ export function useVoiceCore({
     addIntent(data.intent);
 
     // Intention bypassée (Lot 2, convergence voix/tactile POS — ex. « vendre »
-    // dans VenteVocaleModal) : `data.response` porte une phrase de
+    // dans MicroVenteCaisse) : `data.response` porte une phrase de
     // confirmation (« ...c'est bien ça ? ») qui n'a plus de sens ici — ni
     // affichée, ni tapée en typewriter, ni parlée (TTS/ACK), ni journalisée
     // comme réponse de l'assistant. Le vrai feedback (« C'est dans ton
@@ -597,7 +597,7 @@ export function useVoiceCore({
     } else {
       // `setResponse(null)`, pas seulement « ne pas y placer la nouvelle
       // question » : une ancienne réponse d'une interaction précédente
-      // resterait sinon affichée dans la carte de réponse (ex. VenteVocaleModal).
+      // resterait sinon affichée dans la carte de réponse (ex. MicroVenteCaisse).
       setResponse(null);
       setTranscript(data.transcript || userText);
       setLiveTranscript("");
@@ -855,7 +855,7 @@ export function useVoiceCore({
       // #148 : cette erreur (moteur voix indisponible, ex. navigateur web sans
       // sherpa-onnx natif) partait auparavant sur setState("idle") — l'écran
       // redevenait silencieusement l'écran de repos, SANS le message d'erreur
-      // pourtant déjà écrit ci-dessous (VenteVocaleModal.tsx n'affiche la carte
+      // pourtant déjà écrit ci-dessous (MicroVenteCaisse.tsx n'affiche la carte
       // d'erreur que si state === "error"). Résultat vécu : « on dirait que rien
       // n'enregistre », alors que Tata avait bien une explication à donner.
       clearThinkingTimer();

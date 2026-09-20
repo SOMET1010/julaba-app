@@ -1,7 +1,90 @@
 # Registre maître de dette technique — JULABA
 
 **Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 12 — après le contre-audit du `main` fusionné (`531bb7f`).**
+**Révision 20 — UI-02 et UI-03 FERMÉES au contre-audit n°4 (`96c7b64`) ; UI-04 ouverte et fermée dans la même passe (le lot F avait cassé l'aperçu du lot A en silence) ; chemin d'argent intact.**
+Révision 20 : **contre-audit n°4 sur `96c7b64`** (passe UI-03 + UI-02, `62636e6`).
+**Chemin d'argent : 0 ligne de diff** sur `machineEncaissement`, `grammaireEncaissement`,
+`localIntent`, `CaisseContext`, `vendreVocalUnifie` ; `POSCaisse` : `recuEnSaisie`
+(booléen d'affichage, `onFocus`/`onBlur`), `value` de l'input calculé depuis
+`montantRecu` inchangé, **`onChange` identique au caractère près**,
+`renderCartTotal()` extrait et rendu 2 fois, rien d'autre ; `handlePay` : 2
+appelants. `MicroVenteCaisse` : constantes de taille, bulle au repos « Dis-moi ce
+que tu vends », bouton « Saisir sans parler » déplacé. **Aucun test existant
+modifié**, `test:ci` identique à `f0c965c`. **UI-04** : depuis le lot F, les cartes
+produit portaient `display:'flex'` **inline**, qui battait le `display:none` de
+`.pos-grille-apercu` — **8 cartes sur téléphone au lieu de 4**, le lot A cassé
+en silence pendant trois révisions sans que `caisseSurfaceUnique` le voie (il
+vérifie la présence de la classe et de la règle, pas leur effet). Corrigé par
+`.pos-grille > *` en CSS ; le banc de capture rougit désormais au-delà de 4
+cartes visibles. Écart structurel consigné, à trancher : la barre **Total est
+au-dessus des lignes du panier** (maquette : dessous). Détail : plan §15.
+Révision 19 : **contre-audit n°3 sur `e45feb6`** (lot F : habillage ; `d9cb463` :
+relecture affichée ; F2 : hiérarchie du premier écran). **Chemin d'argent : 0
+ligne de diff** sur `machineEncaissement`, `grammaireEncaissement`,
+`localIntent`, `preselectionVente`, `vendreVocalUnifie`, `CaisseContext`,
+`relectureSpontanee`, `unite.utils`, `BottomBar`. `POSCaisse` : 640 lignes de
+diff relues, **toutes les lignes hors style câblent une fonction existante**
+(`ajouterAuPanier`, `updateCartItemQuantity`, `updateCartItemPrice`,
+`removeFromCart`, `clearCart`, `setMontantRecu`, `setShowLibre`,
+`setVoirPlusProduits`) ; **aucun corps de handler modifié** ; `handlePay`
+toujours **2 appelants**. Attaque a→h rejouée : 17/17 ; énumération : 2 560 000
+conversations, 0 violation. **Relecture affichée** : l'état `relectureAffichee`
+ne reçoit **que `effet.texte`** (l. 370-373), remis à `null` au repos, rendu
+dans `renderCartFooter` — donc dans les **deux** dispositions. Batterie verte,
+`test:ci` identique à `f0c965c`, `check:bundle-budget` 565/800 Ko, banc
+`apercu-caisse` **absent de `dist`**. **VOIX-01 FERMÉE.** Ouvertes : **UI-02**
+(Reçu affiché brut « 5000 », bulle de Tata qui répète le H1) et **UI-03**
+(hiérarchie du premier écran F2 : panier, Total et Paiement sous le pli à
+844 px — arbitrage de Patrick, mesuré, non tranché). Détail : plan §14.
+Révision 18 : **contre-audit n°2 sur `df17cc7`**. **VOIX-02 fermée** : la
+validation est une **liste blanche fermée** de huit réponses autonomes,
+comparée sur la phrase entière normalisée ; 71 phrases d'attaque (doublons,
+refus, chiffres, apostrophes, espaces insécables, homoglyphes, ponctuation),
+**0 phrase non autonome acceptée, 0 `encaisser` sans relecture**. Le cas mixte
+« encaisse deux tomates à 500 » vend les tomates au lieu de perdre la ligne.
+**VOIX-03 fermée** : le bouton vert « Tata » et sa modale sont masqués sur
+`/marchand/caisse` (y compris par le double-tap global et Alt+V), la barre de
+navigation reste ; garde-fou rejoué **5 échecs** sur `a947f2a`. Machine
+d'encaissement : **0 ligne de diff**. Batterie verte, `test:ci` identique à
+`f0c965c`. **VOIX-01 reste OUVERTE** sur un point, décidé par Patrick : la
+relecture financière (« Elle doit… Je valide ? ») est dite par `speak` mais
+**n'est affichée nulle part** ; elle doit l'être, dérivée du même snapshot de
+machine — prévu après le lot F. Détail : plan §13.
+Révision 17 : **contre-audit des lots C, D, E sur `a947f2a`** — code lu, tests
+relancés, garde-fous rejoués rouges sur la source d'avant. **Le chemin d'argent à
+la voix tient** : une seule porte (`machineEncaissement.ts` l. 218), `handlePay`
+à deux appelants sous un seul verrou, 17 scénarios d'attaque + 2 560 000
+conversations énumérées, **0 paiement sans relecture exacte de l'état écrit**.
+Deux défauts **reproduits et laissés ouverts** : **VOIX-02** — « oui je valide
+pas » (le « ne » tombe à l'oral) est lu `oui_valide` et **écrit de l'argent
+contre un refus** ; **VOIX-03** — sur `/marchand/caisse`, le bouton vert « Tata »
+de la BottomBar est un **second micro vivant** qui vend dans le même panier
+**sans l'unité dictée** (`unité` au lieu de `tas`, mesuré) et ne sait pas
+« encaisse ». Décision produit exposée, non tranchée : `speak` vs `dire` sur la
+relecture de la machine. Détail : `docs/parcours/VOIX-01-PLAN-PARCOURS.md` §12.
+Révision 16 : **lot B2** — le contre-audit de Patrick sur `9cb89a5` a trouvé
+ce que le lot B avait laissé passer. Le produit présélectionné arrivait à
+l'écran mais **pas au moteur vocal** : elle touchait Tomate, disait « trois
+tas », et Tata redemandait un prix que l'application connaissait déjà, panier
+vide. Reproduit au franc avant correction. La parole prime, seul le nom est
+repris, et sans rien on n'invente pas de produit.
+Révision 15 : **lot B livré (voie 2, tranchée par Patrick)** — la caisse
+devient l'unique surface de vente. Le moteur vocal y converge au lieu d'être
+abstrait pour alimenter deux surfaces ; `VenteVocaleModal` est supprimé, sans
+appelant restant. Le micro est rendu **sans aucune condition**, ce qui rend
+« présent aux trois moments » vérifiable par une machine. Le piège évité est
+nommé : sans `RaccourcisProvider` et `ObjectifProvider`, le moteur ne lève
+aucune erreur — il retombe sur des valeurs nulles, et on obtient un micro qui
+a l'air de marcher. **Lots C, D et E non faits : VOIX-01 reste OUVERTE.**
+Révision 14 : Patrick fige la cible du 20/09/2026 — **surface portrait unique,
+« Vendre » ouvre directement la caisse, la voix conduit tout le parcours SAUF
+le montant reçu (billets pour le pilote), toute écriture d'argent vocale exige
+une confirmation en deux temps, le repli après échec reste sur la même
+surface.** Le **lot A** (surface) est livré : sur téléphone, la feuille
+coulissante qui cachait le panier ET tout l'encaissement n'existe plus.
+**VOIX-01 reste OUVERTE** — les lots B (micro permanent), C (grammaire
+d'encaissement), D (relecture spontanée) et E (unité sans exception) ne sont
+pas faits, et livrer un lot n'est pas fermer une dette.
 Révision 2 : contre-audit de Patrick du 19/09/2026 — deux fermetures rouvertes,
 une métrique corrigée, cinq dettes ajoutées, un P0 requalifié.
 Révision 3 : **STK-01 et SCHEMA-04 fermés** ; le garde-fou systématique posé au
@@ -10,6 +93,11 @@ passage a révélé **SCHEMA-05** (`api_keys`) et **SCHEMA-06**
 Révision 4 : **SEC-05, SEC-06 et SEC-07 fermés** ; **SEC-08** ouverte (le PIN
 n'est plus lisible, mais il est encore *choisi* par un administrateur) ;
 **SEED-01** ouverte — c'est le diagnostic des 3 échecs jusqu'ici non expliqués.
+Révision 13 : **le terrain a trouvé ce qu'aucun test ne pouvait trouver.**
+**VOIX-01** ouverte — la voix sait commencer et remplir une vente, pas la
+terminer ; et le repli tactile, emprunté justement quand la dictée échoue, est
+muet. Ce n'est pas une dette de code : c'est une dette de **produit**, et la
+première de ce registre. La doctrine voix s'en trouve agrandie.
 Révision 12 : plus aucun **défaut produit** P0/P1 atteignable par la recette
 terrain marchande. Un défaut de **chaîne de fabrication** trouvé et fermé —
 **REL-01** : l'APK se construisait par défaut depuis une branche de travail, pas
@@ -55,7 +143,7 @@ n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte l
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 27 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT.**
+**Compte courant : 33 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT** *(recompté ligne à ligne à la révision 20 : 86 lignes ; UI-02 et UI-03 passent à FERMÉ ; UI-04 ajoutée FERMÉE)*.
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -83,6 +171,17 @@ peut être corrigé immédiatement **s'il rend les gates non déterministes ou
 affaiblit la valeur de preuve du lot** — à quatre conditions : le nommer, le
 reproduire, limiter le diff au strict nécessaire, et l'inscrire séparément au
 registre. SEED-01 est le premier cas d'application.
+
+**Doctrine voix, agrandie par le terrain du 20/09/2026.** La règle existante
+disait : *aucune information importante ne doit exister uniquement sous forme de
+texte.* Le terrain a montré le corollaire qui manquait :
+
+> **Aucune information importante ne doit exister uniquement sous forme de texte.**
+> **Aucune ÉTAPE importante ne doit exister uniquement sous forme tactile.**
+> **La voix est une propriété du PARCOURS, pas de l'écran.**
+
+C'est une règle d'architecture, pas un détail d'interface : elle explique
+pourquoi chaque écran fait ce qu'il annonce alors que l'ensemble ne marche pas.
 
 Pas de « à voir », « probablement », « assumé » sans justification, ni
 « documenté » — **documenter une dette ne la ferme pas.** Une route concurrente
@@ -236,6 +335,12 @@ reste multiple.
 | **DOC-02** | P2 | **OUVERT** | Contradictions sur `migrationsRun` entre docs | — | **Le code courant fait foi** |
 | **DOC-03** | P3 | **FERMÉ** | La docstring de `lireMouvements` décrit ce que le code fait : toutes les variations remontent, ventes hors stock comprises | `ecc1ae6` — corrigée sur le chemin même d'ARG-02, la ligne au-dessus de celle qui changeait | — |
 | **UI-01** | P3 | **OUVERT** | Dette visuelle / tokens / couleurs littérales | — | Hors priorité sauf défaut fonctionnel |
+| **VOIX-01** | **P1 produit** | **FERMÉ** | **Continuité vocale de bout en bout du parcours de vente.** *Trouvée au terrain le 20/09/2026, sur l'APK `julaba-apk-2f34941`. Aucun des 233 invariants ne pouvait la produire : ils prouvent qu'une vente est **juste**, jamais qu'elle est **praticable**.* **Le diagnostic, de Patrick :** « JULABA n'est pas en logique de caisse POS — ce sont des fonctionnalités affichées qui se perdent au fil du workflow. On peut commencer avec la voix et, à l'étape suivante, ne plus avoir de fonctionnalité vocale. » **Vérifié dans le code, pas déduit :** `vendreVocalUnifie.ts` l'énonce lui-même — « la voix ajoute une ligne au panier ; **l'encaissement reste exclusivement le bouton tactile “Payer en espèces”** ». **DEUX coutures, pas une.** (1) *Le parcours principal* : la voix sait **commencer et remplir** la vente, elle ne sait pas la **terminer** — panier, encaissement, montant reçu, « compte juste », paiement sont tactiles. (2) *La branche d'échec*, non couverte par la première mesure : `SaisieGuidee` et `ConfirmationLigne` contiennent **0** appel `speak()`. La « répétition de Tata » — « j'ai compris : 3 tas à 500, c'est bon ? » — y est **écrite, jamais dite**. **C'est le repli emprunté quand la dictée vient d'échouer** : on envoie une marchande qui n'a pas été comprise vers un écran qui ne lui parle pas | — | **Ce n'est PAS « ajouter un micro sur POSCaisse »** : ce serait retomber dans le piège écran par écran que cette dette décrit. **La cible est un parcours, pas un écran.** `docs/AUDIT_UX.md` la disait déjà — « une tâche, un parcours : UN panier ; la voix entre, le tactile complète » et « marchande non lectrice : **vendre sans lire** ». La première moitié est tenue (un panier partagé), la seconde non. **Plan : `docs/parcours/VOIX-01-PLAN-PARCOURS.md`** (validé le 20/09/2026, quatre arbitrages figés). **Avancement — lot A livré le 20/09/2026** : sur téléphone portrait, produits + panier + total + « Payer en espèces » vivent sur la même route, sans feuille à ouvrir ni écran à changer ; l'unité rejoint la ligne de panier, où elle n'existait que dans la barre flottante supprimée. Garde-fou `caisseSurfaceUnique.test.mts` (suite `verify`), **prouvé rouge sur la source d'avant — 8 échecs**. **Avancement — lot B livré le 20/09/2026** : la caisse est l'unique surface de vente ; le moteur vocal y a convergé (`MicroVenteCaisse.tsx`), l'accueil et la fiche produit y mènent directement (produit transmis par l'état de route), le repli tactile y est absorbé, et `VenteVocaleModal` est supprimé sans appelant restant. Garde-fou `caisseMicroPermanent.test.mts` (suite `verify`) sur les cinq preuves exigées, **prouvé rouge sur la source d'avant — 13 échecs**. **Correction — lot B2 le 20/09/2026** : le produit présélectionné n'atteignait pas le moteur vocal (`vendreUnifie(action.produit, …)`). Symptôme mesuré : « Je n'ai pas compris le prix. Redis-moi combien tu as vendu », panier vide, alors que le prix était au catalogue. Module pur `preselectionVente.ts`, appliqué à la vente directe **et** au raccourci ; la parole prime ; ni l'unité ni le prix de la fiche ne sont forcés. **Reproduit rouge — 7 échecs** sur le comportement d'avant. **Avancement — lots C, D, E livrés le 20/09/2026 et contre-audités (`a947f2a`)** : C — grammaire `grammaireEncaissement.ts` consultée en premier par `intentLocal` (annulation différée si la phrase porte une vente), machine à états `machineEncaissement.ts` avec **un seul** `type: 'encaisser'` (l. 218) gardé par relecture faite + empreinte identique (total, reçu, composition triée) + panier non vide + reçu > 0 suffisant ; `POSCaisse` tient la machine dans un `useRef`, `handlePay` (l. 241) a **deux appelants** (bouton l. 671, effet l. 366) sous le **même** verrou `paiementEnCoursRef` ; `MicroVenteCaisse` transmet et s'arrête (0 `handlePay`, 0 `enregistrerVente`) ; **17 scénarios d'attaque + 2 560 000 conversations énumérées : 0 paiement sans relecture exacte de l'état écrit** ; garde-fou `caisseEncaissementVocal.test.mts` rouge sur `f0c965c` (plante à l'import ; 30 échecs avec les modules purs copiés). D — `relectureSpontanee.ts` (pur) ; `ajouterAuPanier`/`ajouterMontantLibre` disent ligne + unité + total ; « Il manque X », « Compte juste », « Tu rends Y » dits d'eux-mêmes, muets quand la machine relit ; `SaisieGuidee`/`ConfirmationLigne` parlent (`repliParle.test.mts`, **14 échecs** rejoués sur `f0c965c`). E — `uniteEntendue` (« kilos » → `kg`), ligne libre dictée avec l'unité prononcée (`vendreVocalUnifie` l. 193), `ChoixUnite` (≥ 44 px, unité dite) sur l'article libre (`choixUnite.test.mts`, **3 échecs** rejoués sur `f7d1916`). `test:ci` gelée inchangée (diff vérifié), 7 scripts ajoutés dans `verify` ; tsc/verify/test:ci/build à 0 ; 0 marqueur de conflit. **Révision 18 — VOIX-02 et VOIX-03 fermées** (`df17cc7`, plan §13). **Révision 19 — FERMÉE** (`d9cb463`, contre-audit n°3 sur `e45feb6`, plan §14) : la relecture financière existe désormais **sous les deux formes** — dite par `speak` et **affichée** dans un encart au-dessus de Reçu | Monnaie. Preuve par lecture : `POSCaisse` l. 369-373, `relectureAffichee` ne reçoit **jamais autre chose que `effet.texte`** (aucune reconstruction depuis `total`/`recu`), `null` dès que la machine revient au repos ; appelé aux deux seuls endroits où `reduire` est invoqué (l. 385, 415) ; rendu dans `renderCartFooter` (l. 694), lui-même rendu **exactement deux fois** (téléphone l. 1060, grand écran l. 1095) ; bouton « Réécouter » rejoue la **même chaîne**. Garde-fou `caisseRelectureAffichee.test.mts` (suite `verify`) rejoué sur `fe14759` : **17 échecs**. Capture `caisse-portrait-F2-relecture.png` : « Elle doit 2 900 francs. Elle t'a donné 5 000. Tu rends 2 100. Je valide ? » affiché au-dessus de Reçu 5000 / Monnaie 2 100 F. **Le chemin d'argent n'a pas bougé** après F et F2 (0 ligne de diff sur les neuf modules ; `POSCaisse` : lignes hors style toutes câblées sur des fonctions existantes, `handlePay` à 2 appelants ; attaque a→h 17/17 ; énumération 0 violation). Les six lots (A, B, B2, C, D, E) plus la relecture affichée sont dans le code et prouvés rouges avant. **Aucune dictée réelle sur un téléphone à ce jour** — c'est une limite de preuve, pas un défaut de code |
+| **VOIX-02** | **P1** | **FERMÉ** | *Fermée à la révision 18 (`99d8ef8`, contre-audit n°2 sur `df17cc7`).* `grammaireEncaissement.ts` l. 92-101 : `REPONSES_VALIDATION`, **liste blanche fermée de huit réponses autonomes**, comparée sur la **phrase entière** normalisée (l. 139, `has(t.trim())`) — plus aucune sous-chaîne, plus aucun `valid\w*`. L'annulation reste testée avant (l. 134). **Attaque mesurée** (71 phrases : doublons « oui valide oui valide », refus « oui je valide pas », chiffres, objets, discours rapporté, tirets, guillemets, parenthèses, points de suspension, tabulation, espaces insécables U+00A0/U+202F, caractère de largeur nulle, homoglyphes cyrilliques, pleine chasse, accent combinant) : **22 acceptées, toutes variantes de casse/accent/espace/ponctuation finale des huit entrées ; 0 non autonome ; traversée grammaire → `intentLocal` → machine : 0 `encaisser` sans relecture**. « oui je valide pas » → `null` (« je n'ai pas compris », l'attente reste ouverte, « non » l'annule). Garde-fou `grammaireEncaissement.test.mts` rejoué sur `a947f2a` : **12 échecs** ; `caisseEncaissementVocal.test.mts` : **7 échecs** | `99d8ef8` — *forme tranchée par Patrick : liste blanche fermée* | **Limites consignées, pas des défauts** : « oui c'est bon je valide », « oui valide ma chérie », « oui Tata valide », « oui valide hein », « hm hm valide », « ouais c'est bon valide », « oui d'accord valide » → `null` (Tata redemande). « Oui, Validé. » et « oui valide çà » passent (variantes normalisées). Le défaut d'origine : **« Oui je valide pas » écrivait de l'argent.** `grammaireEncaissement.ts` : `ANNULATION` (l. 92) ne connaît pas « pas » seul (seulement « pas encore ») et `AFFIRMATION_PUIS_VALIDE` (l. 83-85) accepte tout ce qui suit `valid\w*`. À l'oral le « ne » tombe : **« oui je valide pas », « oui valide pas », « oui, je valide pas » → `oui_valide`**. Traversée mesurée (script jetable, 20/09/2026) : grammaire → `intentLocal` → `reduire` en `attente_confirmation` sur l'état relu → effet **`encaisser`** → `handlePay`. Aussi : « oui valide la dépense », « ma cliente a dit oui valide » → paient dans le même état. Le critère de fermeture du lot C est **tenu à la lettre** (l'argent écrit est exactement l'état relu) et **contredit dans son esprit** : Tata demande « Je valide ? », elle répond non, ça paie — le commentaire de la grammaire (« le doute profite TOUJOURS au refus ») décrit une règle que le code ne tient pas sur cette forme | — *(trouvée au contre-audit, non corrigée : la forme de la règle appartient à Patrick)* | **Dégât borné** : les billets ont été touchés et le montant est celui qu'elle vient d'entendre ; il reste une vente enregistrée contre un refus dit, à annuler ensuite. Atteignable en pilote dès qu'une relecture a eu lieu. Aucun test rouge ne l'attrape aujourd'hui : `grammaireEncaissement.test.mts` [4]-[5] ne joue pas « valide pas » |
+| **VOIX-03** | **P1 produit** | **FERMÉ** | *Fermée à la révision 18 (`f657838`, contre-audit n°2 sur `df17cc7`).* `BottomBar.tsx` : `ROUTES_SANS_TATA = ['/marchand/caisse']`, `tataMasquee = ROUTES_SANS_TATA.includes(location.pathname)` ; bouton + étiquette sous `!tataMasquee`, modale sous `isTantieOpen && !tataMasquee`. **Vérifié par lecture** : sur `/marchand/caisse`, plus aucun second moteur — le seul `useVoiceCore` monté est celui de `MicroVenteCaisse` (`POSCaisse` n'importe ni `SearchBar` ni `TantieSagesseModal`) ; le **double-tap global** et **Alt+V** (`AppContext` l. 1198-1218) ne font que lever `globalVoiceOpen`, que `BottomBar` retombe sur la modale masquée ; `TantieSagesseModal` n'a qu'un monteur (`BottomBar` l. 133). Les autres routes marchandes gardent le bouton (seule la caisse est dans la liste ; `hiddenPaths` d'`AppLayout` inchangé). Garde-fou `caisseUnSeulMicro.test.mts` (suite `verify`) rejoué sur `a947f2a` : **5 échecs** | `f657838` — *voie tranchée par Patrick : masquer le bouton sur la caisse, garder la barre* | **Observations, pas des défauts** : le masquage est une **égalité stricte** de `pathname` — les six appelants navigent tous vers `/marchand/caisse` sans slash final ni sous-route, et la route n'a pas d'enfant ; un futur `/marchand/caisse/…` ne serait pas masqué (risque faible, noté). Un double-tap sur la caisse laisse `isTantieOpen` à `true` : la modale s'ouvrirait à la **prochaine** route (non mesuré, hypothèse par lecture). Le défaut d'origine : **un second micro vivant sur la surface de vente, qui ne savait ni l'unité ni « encaisse ».** `/marchand/caisse` est rendu sous `AppLayout` (`routes.tsx` l. 58) qui monte `BottomBar` (l. 116) partout sauf `hiddenPaths` (l. 81, la caisse n'y est pas) ; `BottomBar` affiche sur téléphone (`lg:hidden`) un bouton rond vert « Tata » (l. 76-88) qui ouvre `TantieSagesseModal`, lequel vend dans le **même panier** par `vendreVocalUnifie(nomParle, quantite, montant)` **sans transmettre l'unité dictée** (l. 85-86, 128-131). **Mesuré** (script jetable, même phrase « vends deux tas de gombo à 500 ») : micro de la caisse → `unite: "tas"`, Tata dit « 2 tas de gombo » ; micro vert → **`unite: "unité"`**, Tata dit « 2 gombos » — deux sens à la même donnée, sur le reçu. Ce micro ne déclare pas `onIntentionEncaissement` ; « encaisse » dit dedans → `intentLocal` (partagé) → `encaisser` → non contourné → `executerActionTataMarchand` → `not_handled` → rien (lecture du code ; la phrase prononcée alors n'est pas mesurée) | — *(signalé hors lot par l'agent E, établi atteignable au contre-audit ; non corrigé)* | C'est le motif même de VOIX-01 (« deux voix », un micro qui ne finit pas la vente) reformé sur la surface que le lot B rendait unique. **Le lot E n'est donc pas « sans exception »** sur un chemin qu'une marchande atteint depuis la caisse elle-même. Hypothèse, pas diagnostic : origine possible des « deux voix » du terrain. Trois voies (masquer le micro vert sur la caisse, lui transmettre unité + intentions, le retirer du parcours marchand pilote) — **à trancher par Patrick** |
+| **UI-02** | P3 | **FERMÉ** | *Fermée à la révision 20 (`62636e6`, contre-audit n°4).* `POSCaisse` : `value={recuEnSaisie || recu === 0 ? montantRecu : recu.toLocaleString('fr-FR')}` — le Reçu affiche **« 5 000 »** hors saisie (capture `caisse-portrait-UI03-relecture.png` : Reçu 5 000 F, Monnaie 2 100 F, relecture « 5 000 » — une seule graphie) ; la valeur d'état `montantRecu` et `onChange` sont **inchangés**. `MicroVenteCaisse` l. 338 : bulle au repos **« Dis-moi ce que tu vends »**, distincte du H1 (capture `-comparaison.png`). Le libellé « Payer en espèces · rendre 2 100 F » tient sur **deux lignes** à 390 px (vu sur capture) — c'est un retour à la ligne volontaire au point médian, lisible, pas un débordement. Le défaut d'origine : **deux incohérences d'affichage sur la caisse, vues sur capture** (`e45feb6`, contre-audit n°3). (1) Le **Reçu** affiche la valeur **brute** de l'input (`POSCaisse` l. 738 : `value={montantRecu}`, aucune mise en forme) : « **5000** F » à côté de « Monnaie : **2 100** F » et d'une relecture qui dit « 5 000 » — même montant, deux graphies sur le même encart (`caisse-portrait-F2-relecture.png`). (2) Au repos, la **bulle de Tata** (`MicroVenteCaisse` l. 338 : « Que voulez-vous vendre ? ») **répète mot pour mot le H1** (l. 354) juste au-dessus (`caisse-portrait-F2-comparaison.png`) ; sur la maquette la bulle dit « Je vous écoute ». Aucun effet sur l'argent ni sur la voix | — *(trouvées au contre-audit, non corrigées)* | Style et texte seulement. **Non mesuré, hypothèse** : le libellé « Payer en espèces · rendre X F » (l. 789) tiendrait sur deux lignes à 390 px — à vérifier sur capture pleine ou appareil |
+| **UI-03** | **Arbitrage Patrick** | **FERMÉ** | *Fermée à la révision 20 (`62636e6`, contre-audit n°4).* Mesures du banc (`capture.mjs`, viewport 390 × 844, défilement 0) : zone voix **260 px** (cible 240-270), haut du panier **658 px**, barre Total **702-768 px** — dans le premier écran ; 38 cibles ≥ 44 px ; `scrollWidth` 390 (pas de défilement horizontal). Le banc **rougit** désormais si le haut du panier ou le bas du Total sort du viewport. Capture `caisse-portrait-UI03-comparaison.png` : voix + produits (une rangée) + « Panier actuel (6) » + **Total 2 900 F** visibles ; micro 124 px. **Écart structurel, à trancher par Patrick (pas un défaut)** : la barre **Total est AU-DESSUS des lignes du panier** (`renderCartTotal()` avant `renderCartLines()`, l. 1069-1071 et 1106-1107), alors que la maquette la met **dessous** — choix de l'agent pour que le Total reste au-dessus du pli avec dix lignes de panier. Le défaut d'origine : **hiérarchie du premier écran (F2) : à 390 × 844, panier, Total et Paiement passaient sous le pli.** Mesures de l'agent F2, à la même échelle (2 px d'image par px CSS), maquette → rendu : zone voix **217 → 386 px** (46 % du viewport), carte produit 99 → 180, Total 36 → 74, Reçu | Monnaie 86 → 170, bouton 48 → 92. Sur `caisse-portrait-F2-comparaison.png`, la maquette montre voix + produits + panier + Total + Paiement + bouton dans **771 px** ; le rendu F2 montre voix + « Dis encaisser » + « Saisir sans parler » + Produits (une rangée) dans **844 px**, le panier et l'argent en dessous. Deux consignes de Patrick tirent en sens inverse à cette hauteur : « agrandir nettement » (la zone voix) et « donner du poids à l'argent » | — *(consigné, pas tranché : ce n'est pas au contre-audit de choisir)* | **À trancher par Patrick** : garder la zone voix à 386 px et accepter l'argent sous le pli ; ou revenir vers 217-260 px pour ramener Total et Paiement dans le premier écran ; ou réduire le pli autrement (« Saisir sans parler » plus discret, une rangée de produits de moins). Captures headless, aucun appareil réel |
+| **UI-04** | P2 | **FERMÉ** | *Ouverte et fermée à la révision 20 (`62636e6`, trouvée par l'agent UI-03, reproduite au contre-audit n°4).* **Le lot F avait cassé l'aperçu du lot A en silence.** Sur `5bf2b0a`, la carte produit (`<motion.button onClick={() => ajouterAuPanier(p)}>`) portait `display:'flex'` **dans l'attribut `style`** ; un style inline bat la règle `.pos-grille-apercu > *:nth-child(n + 5) { display: none }` — **8 cartes visibles sur téléphone au lieu de 4** (visible sur `caisse-portrait-F2-comparaison.png` : deux rangées). Sur `96c7b64` : **0** `display` inline sur la carte ; `commerce.css` l. 276 `.pos-grille > * { display: flex; flex-direction: column }`, moins spécifique que la règle d'aperçu, qui gagne. Le banc `capture.mjs` compte `.pos-grille > *` visibles et **échoue au-delà de 4**. | `62636e6` | **Limite du garde-fou, à écrire** : `caisseSurfaceUnique.test.mts` l. 79-83 vérifie que la classe existe dans le JSX et que la règle existe dans le CSS — **la présence, pas l'effet**. Il est resté vert pendant trois révisions (F, relecture, F2) avec l'aperçu cassé. Seul un rendu (le banc headless) l'a vu. Une dette de test : soit le garde-fou vérifie aussi l'absence de `display` inline sur les enfants de `.pos-grille`, soit le banc entre dans `verify` |
 | **VOICE-01** | À surveiller | **OUVERT** | Le transcript brut n'est pas exposé à la recette terrain | — | Instrumentation de recette, pas fonction métier |
 
 ---
@@ -271,6 +376,15 @@ et SEED-01, ouvertes le même jour, touchent l'une un credential, l'autre des
 données de production.
 
 **P1 atteignables par la RECETTE TERRAIN MARCHANDE — aucun bloqueur de sortie**
+
+> **Révision 19.** VOIX-01, VOIX-02 et VOIX-03 sont **fermées** et vérifiées par
+> trois contre-audits successifs (`a947f2a`, `df17cc7`, `e45feb6`). Il ne reste
+> **aucun P0 ni P1 produit ouvert** sur le parcours de vente marchande. Ce qui
+> reste ouvert et le concerne : **UI-02** (P3, graphies) et **UI-03** (arbitrage
+> visuel de Patrick). **Rien n'a encore été entendu ni touché sur un appareil
+> réel** : les captures sont headless et l'intention `encaisser` y est injectée,
+> pas reconnue depuis l'audio.
+
 
 > **Formulation resserrée au contre-audit du 20/09/2026.** Dire « aucun P1
 > atteignable en pilote » était trop large : le périmètre JULABA inclut

@@ -172,3 +172,108 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ── Caisse : aperçu produits sur téléphone (VOIX-01, lot A) ────────────────
+ * Le panier et l'encaissement sont SOUS la grille produits sur téléphone
+ * portrait — le support du pilote. Une grille entière les repousserait à
+ * plusieurs écrans de défilement, et la « surface unique » ne serait qu'un
+ * mot : la marchande chercherait son total au lieu de le voir.
+ * La grille est donc repliée à quatre vignettes tant que « Voir plus » n'a
+ * pas été touché. « Voir plus » DÉPLIE SUR PLACE — il ne change pas d'écran.
+ * Au-dessus de 1024 px, le panier est à CÔTÉ et non dessous : la grille reste
+ * entière et cette règle ne s'applique pas.
+ * Règle posée ici et non en style inline : masquer « à partir du 5e enfant »
+ * demande :nth-child(), qu'un attribut style ne sait pas exprimer. */
+@media (max-width: 1023px) {
+  .pos-grille-apercu > *:nth-child(n + 5) { display: none; }
+}
+
+/* ── Caisse : LA CHARTE DE LA MAQUETTE (VOIX-01, lot F) ─────────────────────
+ * D'OÙ VIENNENT CES VALEURS. De la planche « JULABA — Design system · Caisse
+ * tout-en-un · voix continue » validée le 20/09/2026 (palette, typographie
+ * Inter, échelle d'espacement 4→40, rayons 4→24, icônes trait plein 24 px).
+ * Chaque valeur ci-dessous est recopiée de la planche, pas interprétée.
+ *
+ * POURQUOI À CÔTÉ DE `--commerce-*` ET NON À LA PLACE. `--commerce-*` habille
+ * TOUS les écrans marchands (accueil, stock, ventes, dépenses…) et les autres
+ * rôles. La planche, elle, ne redessine que la caisse — le périmètre du
+ * pilote espèces. Fondre les deux palettes aurait repeint des écrans que
+ * personne n'a validés. Le jour où la charte s'étend au reste, c'est ici
+ * qu'elle se lit, et `--commerce-*` la rejoindra écran par écran.
+ *
+ * UNE SEULE SOURCE DE VÉRITÉ. POSCaisse et MicroVenteCaisse consomment ces
+ * variables et n'écrivent plus aucune couleur en dur (le lot B avait recopié
+ * l'orange et le vert de la planche dans le composant : deux endroits pour
+ * une même valeur, c'est la dette que ce bloc ferme — garde-fou :
+ * caisseCharte.test.mts). `design-tokens.ts` (tokens par rôle, trois
+ * composants partagés) n'est PAS concerné : chantier transverse hors lot.
+ *
+ * Inter est déjà auto-hébergée (styles/fonts.css, @fontsource) : aucun appel
+ * réseau. La police se lit en `font` raccourci : graisse taille/interligne
+ * famille, comme la planche l'écrit (« Semibold · 28/34 »). */
+:root {
+  /* Palette (2. Palette de couleurs) */
+  --caisse-vert: #1E7A3A;          /* Vert principal : actions, prix, icônes */
+  --caisse-vert-fonce: #124A2A;    /* Vert foncé : montants forts, bouton pressé */
+  --caisse-orange-voix: #F68A1F;   /* Orange voix : le micro, et lui seul */
+  --caisse-sable: #F5EBDD;         /* Fond sable : la zone voix, l'en-tête */
+  --caisse-ivoire: #FFF9F1;        /* Carte ivoire : produits, panier, paiement */
+  --caisse-succes: #DDEFCF;        /* Succès : barre total, « J'ai compris » */
+  --caisse-gris-texte: #6E6A63;    /* Gris texte : unités, légendes, secondaire */
+  --caisse-alerte: #D95C4F;        /* Alerte : reçu insuffisant, vider, erreur */
+
+  /* Typographie (3. Typographie) — Inter auto-hébergée */
+  --caisse-police: 'Inter', system-ui, sans-serif;
+  --caisse-font-h1: 600 28px/34px var(--caisse-police);      /* Grand titre */
+  --caisse-font-h2: 600 20px/28px var(--caisse-police);      /* Titre de section */
+  --caisse-font-texte: 400 16px/24px var(--caisse-police);   /* Texte courant */
+  --caisse-font-bouton: 600 18px/24px var(--caisse-police);  /* Libellé de bouton */
+  --caisse-font-legende: 400 12px/16px var(--caisse-police); /* Légende */
+
+  /* Échelle d'espacement (5. Mise en page, 8px) */
+  --caisse-esp-1: 4px;
+  --caisse-esp-2: 8px;
+  --caisse-esp-3: 12px;
+  --caisse-esp-4: 16px;
+  --caisse-esp-5: 24px;
+  --caisse-esp-6: 32px;
+  --caisse-esp-7: 40px;
+
+  /* Rayons de bordure (5. Mise en page) */
+  --caisse-rayon-1: 4px;
+  --caisse-rayon-2: 8px;
+  --caisse-rayon-3: 12px;
+  --caisse-rayon-4: 16px;
+  --caisse-rayon-5: 24px;
+
+  /* Icônes : trait plein, 24 px sur mobile. Cible tactile : règle du dépôt
+     (scripts/test-cible-tactile.mjs), pas de la planche — un doigt au marché. */
+  --caisse-icone: 24px;
+  --caisse-cible-tactile: 44px;
+}
+
+/* Mode SOMBRE (confort visuel) : les encres (`--encre`) passent au clair ;
+   les surfaces de la caisse doivent donc s'assombrir, sinon texte clair sur
+   carte ivoire. Les couleurs d'ACTION (vert, orange, alerte) ne bougent pas :
+   ce sont des signaux, pas des fonds. */
+html.dark {
+  --caisse-sable: #2D2530;
+  --caisse-ivoire: #201A22;
+  --caisse-succes: #1F3A26;
+  --caisse-gris-texte: #C2B2C4;
+}
+
+/* Grille produits de la caisse : QUATRE vignettes par rangée sur téléphone,
+   comme la maquette (Tomate · Oignon · Piment · Banane), ce qui fait de
+   l'aperçu replié (.pos-grille-apercu, 4 enfants) exactement une rangée.
+   Au-dessus de 1024 px la colonne produits est large : autant de vignettes
+   que la largeur en accepte, jamais moins de 150 px chacune. */
+.pos-grille { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--caisse-esp-2); }
+/* Le `display` des cartes est ICI et non en style inline (UI-03) : un
+   `display:flex` écrit dans l'attribut style bat le `display:none` de
+   .pos-grille-apercu, et toute la grille s'affichait sur téléphone — mesuré
+   sur la capture F2. La règle d'aperçu (plus spécifique) gagne sur celle-ci. */
+.pos-grille > * { display: flex; flex-direction: column; }
+@media (min-width: 1024px) {
+  .pos-grille { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--caisse-esp-3); }
+}
