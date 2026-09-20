@@ -20,11 +20,21 @@
 //   « oui » seul            → rien
 //   « d'accord »            → rien
 //   « valide » seul         → rien
-//   une phrase où « oui » traîne loin d'un « valide » → rien
+//   « oui valide » AU MILIEU D'AUTRE CHOSE → rien
 //
-// La validation finale exige DEUX mots concordants et VOISINS : une
-// affirmation, puis la validation. C'est ce qui distingue une réponse d'un
-// bruit, pour une phrase qui va écrire de l'argent.
+// LA VALIDATION EST UNE LISTE BLANCHE FERMÉE (VOIX-02, décision de Patrick
+// du 20/09/2026). La première version cherchait « oui … valide » quelque
+// part dans la phrase : « oui je valide pas » devenait une validation, et
+// après relecture, un REFUS écrivait de l'argent — le montant était bien
+// celui relu, l'esprit du critère était contredit. On n'a pas rajouté « pas »
+// à une liste de négations : il y aurait toujours eu la phrase suivante
+// (« oui valide la dépense », « ma cliente a dit oui valide », « oui je
+// valide mon panier plus tard »). Une phrase qui écrit de l'argent se
+// reconnaît par sa FORME EXACTE, pas par des mots qui traînent : la phrase
+// ENTIÈRE, normalisée, doit être l'une des réponses autonomes ci-dessous —
+// rien avant, rien après. La liste est courte, faite de ce qui se dit
+// réellement, et on s'arrête là : l'agrandir, c'est agrandir la surface
+// par laquelle un bruit peut payer.
 //
 // MONTANT REÇU : HORS PÉRIMÈTRE DU PILOTE (arbitrage du 20/09/2026). « Il m'a
 // donné cinq mille » n'est volontairement PAS reconnu. Le montant reçu se
@@ -74,17 +84,21 @@ function normaliser(texte: string): string {
     .trim()} `;
 }
 
-// ── VALIDATION FINALE ─────────────────────────────────────────────────────
-// Une affirmation ET une validation, VOISINES. Le « voisines » est ce qui
-// empêche « oui, je regarderai si je valide demain » de payer une cliente.
-// On tolère entre les deux : une virgule (aplatie en espace), « je »/« on »,
-// et « c'est bon »/« c'est ca » — les liants réellement dits.
-const LIANT = "(?:je |on |c'est bon |c'est ca |ca va |)";
-const AFFIRMATION_PUIS_VALIDE = new RegExp(
-  ` (?:oui|ouais|voila|hm hm|mm hm) (?:${LIANT})?valid\\w*[ ]`,
-);
-// L'ordre inverse se dit aussi : « valide oui ».
-const VALIDE_PUIS_AFFIRMATION = /\bvalid\w* (?:oui|ouais|voila)[ ]/;
+// ── VALIDATION FINALE : LISTE BLANCHE ─────────────────────────────────────
+// Chaque entrée est une réponse AUTONOME, écrite sous sa forme normalisée
+// (minuscules, sans accents, ponctuation aplatie) : « Oui, valide ! »,
+// « oui validé » et « oui valide » sont la même entrée. On compare la phrase
+// entière — jamais une sous-chaîne. Fermée par choix : voir l'en-tête.
+const REPONSES_VALIDATION: ReadonlySet<string> = new Set([
+  'oui valide',
+  'oui je valide',
+  'ouais valide',
+  'ouais je valide',
+  'valide oui',
+  "oui c'est bon valide",
+  'oui on valide',
+  'oui valide ca',
+]);
 
 // ── ANNULATION ────────────────────────────────────────────────────────────
 // Large volontairement : abandonner ne coûte rien, se tromper en payant coûte
@@ -119,7 +133,10 @@ export function detecterEncaissement(texte: string): IntentionEncaissement | nul
   // C'est l'ordre de ces deux blocs qui rend ce module sûr.
   if (ANNULATION.test(t)) return 'annuler_validation';
 
-  if (AFFIRMATION_PUIS_VALIDE.test(t) || VALIDE_PUIS_AFFIRMATION.test(t)) return 'oui_valide';
+  // La phrase ENTIÈRE, ou rien. « oui je valide pas », « oui valide la
+  // dépense », « ma cliente a dit oui valide » ne sont dans aucune liste :
+  // elles ne valent rien ici, et retombent en « je n'ai pas compris ».
+  if (REPONSES_VALIDATION.has(t.trim())) return 'oui_valide';
 
   if (ENCAISSER.test(t)) return 'encaisser';
 
