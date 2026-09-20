@@ -172,3 +172,18 @@ button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ── Caisse : aperçu produits sur téléphone (VOIX-01, lot A) ────────────────
+ * Le panier et l'encaissement sont SOUS la grille produits sur téléphone
+ * portrait — le support du pilote. Une grille entière les repousserait à
+ * plusieurs écrans de défilement, et la « surface unique » ne serait qu'un
+ * mot : la marchande chercherait son total au lieu de le voir.
+ * La grille est donc repliée à quatre vignettes tant que « Voir plus » n'a
+ * pas été touché. « Voir plus » DÉPLIE SUR PLACE — il ne change pas d'écran.
+ * Au-dessus de 1024 px, le panier est à CÔTÉ et non dessous : la grille reste
+ * entière et cette règle ne s'applique pas.
+ * Règle posée ici et non en style inline : masquer « à partir du 5e enfant »
+ * demande :nth-child(), qu'un attribut style ne sait pas exprimer. */
+@media (max-width: 1023px) {
+  .pos-grille-apercu > *:nth-child(n + 5) { display: none; }
+}

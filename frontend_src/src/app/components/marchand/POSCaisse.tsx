@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, Minus, Trash2, ShoppingCart, X, Check, ArrowLeft, Package, FileText } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, X, Check, ArrowLeft, Package, FileText } from 'lucide-react';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { useApp } from '../../contexts/AppContext';
@@ -10,7 +10,7 @@ import { CreditModal } from './CreditModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { partagerRecu } from '../../utils/recu.utils';
-import { ligneLisible } from '../../utils/unite.utils';
+import { uniteSeule } from '../../utils/unite.utils';
 import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
 import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/fcfa';
 import { BilletDessine, PieceDessinee } from './CoupureDessinee';
@@ -53,7 +53,11 @@ export function POSCaisse() {
   const dire = (t: string) => { if (guidageVocal()) speak(t); };
 
   const [search, setSearch] = useState('');
-  const [showCart, setShowCart] = useState(false);
+  // Aperçu produits sur téléphone (lot A) : la grille est repliée à quelques
+  // vignettes tant que la marchande ne demande pas à voir plus. Le panier et
+  // l'encaissement sont SOUS la grille — sans ce repli ils seraient à
+  // plusieurs écrans de défilement, et la « surface unique » serait un mot.
+  const [voirPlusProduits, setVoirPlusProduits] = useState(false);
   const [showCredit, setShowCredit] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
 
@@ -266,7 +270,6 @@ export function POSCaisse() {
       setPaymentMethod('cash');
       setMmOperator(null);
       setMontantRecu('');
-      setShowCart(false);
       setShowSuccess(true);
       // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
       // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
@@ -363,6 +366,17 @@ export function POSCaisse() {
                   } else { e.target.value = String(item.quantite); }
                 }}
                 style={{ width:56, border:'1.5px solid var(--trait)', borderRadius:8, padding:'6px 6px', fontSize:13, fontWeight:800, color:'var(--encre)', textAlign:'center', background:'#FFFCF7', fontVariantNumeric:'tabular-nums' }} />
+              {/* L'UNITÉ, SUR LA LIGNE DE PANIER (lot A — VOIX-01).
+                  Elle n'existait, sur téléphone, que dans la barre flottante
+                  « Encaisser » — qui vient de disparaître avec la feuille. Sans
+                  elle, le panier dit « 3 » : trois quoi ? Trois tas, trois
+                  kilos, trois pièces ? C'est la même information que
+                  l'étiquette du produit (500 F / tas) et que le reçu ; elle
+                  doit se lire au même endroit que la quantité qu'on modifie.
+                  Vide quand l'unité n'apprend rien (« unité »). */}
+              {uniteSeule(item.quantite, item.unite) && (
+                <span style={{ fontWeight:700, color:'var(--encre-3)' }}>{uniteSeule(item.quantite, item.unite)}</span>
+              )}
             </div>
           </div>
           <div style={{ fontSize:15, fontWeight:800, color:P }}>{(item.totalExact ?? item.prix * item.quantite).toLocaleString('fr-FR')} FCFA</div>
@@ -407,7 +421,7 @@ export function POSCaisse() {
         </button>
         )}
         {CAISSE_CREDIT_ACTIF && (
-        <button type="button" onClick={() => { setShowCart(false); setPaymentMethod('credit'); setShowCredit(true); }}
+        <button type="button" onClick={() => { setPaymentMethod('credit'); setShowCredit(true); }}
           style={{ flex:1, padding:'12px 6px', borderRadius:12, fontWeight:800, fontSize:13, cursor:'pointer',
             border:'1.5px solid var(--trait)', background:'#fff', color:'var(--encre-3)' }}>
           Crédit
@@ -551,51 +565,22 @@ export function POSCaisse() {
             <span style={{ fontSize:12, fontWeight:700, color:'white' }}>À crédit</span>
           </motion.button>
           )}
-          {/* Panier permanent sur grand écran (panneau à droite, voir plus
-              bas) : ce bouton devient redondant en lg — gardé uniquement en
-              mobile, où le panier reste un panneau coulissant sur demande.
-              La classe lg:hidden est posée sur un wrapper SANS style inline
-              conflictuel : un display inline sur le bouton lui-même aurait
-              gagné sur la règle Tailwind (spécificité du style attribute). */}
-          <div className="lg:hidden">
-          <motion.button whileTap={{ scale:0.9 }} onClick={() => setShowCart(true)}
-            style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
-            <ShoppingCart size={16} color="white" />
-            {nbItems > 0 && <span style={{ position:'absolute', top:-4, right:-4, minWidth:17, height:17, background:'#ef4444', borderRadius:'50%', fontSize:9, fontWeight:800, color:'white', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid #8f4418' }}>{nbItems}</span>}
-          </motion.button>
-          </div>
-        </div>
-      }
-      bottomAction={
-        // Barre flottante « Encaisser » — mobile uniquement : sur grand écran
-        // le panier permanent affiche déjà le total et le CTA en continu.
-        <div className="lg:hidden">
-        <AnimatePresence>
-          {nbItems > 0 && (
-            <motion.div initial={{ y:80 }} animate={{ y:0 }} exit={{ y:80 }}
-              style={{ flexShrink:0, padding:'10px 14px 24px', background:BG }}>
-              <div style={{ background:'rgba(255,255,255,0.92)', backdropFilter:'blur(12px)', border:'1.5px solid rgba(175,91,35,0.2)', borderRadius:18, padding:'13px 16px', display:'flex', alignItems:'center', gap:10 }}>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:11, color:'var(--encre-4)', marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                    {cart.map(i => ligneLisible(i.quantite, i.nom, i.unite)).join(' · ')}
-                  </div>
-                  <div style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} <span style={{ fontSize:12, fontWeight:700 }}>FCFA</span></div>
-                </div>
-                <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowCart(true)}
-                  style={{ background:P, border:'none', borderRadius:14, padding:'13px 20px', fontSize:15, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap', boxShadow:`0 4px 14px ${P}55` }}>
-                  Encaisser {total.toLocaleString('fr-FR')} F
-                </motion.button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          {/* PLUS DE BOUTON « PANIER » ICI (lot A — VOIX-01).
+              Il ouvrait une feuille coulissante : le panier et TOUT
+              l'encaissement vivaient derrière un bouton que la marchande
+              devait savoir chercher. Le panier est maintenant sur la surface,
+              sous les produits, aux deux tailles d'écran. Un bouton qui
+              n'ouvre plus rien n'a pas à rester. */}
         </div>
       }
     >
 
-      {/* CONTENU — sur grand écran : grille produits + panier permanent à
-          droite (mockup validé, option 1 « delta minimal »). Sur mobile :
-          inchangé, le panier reste un panneau coulissant sur demande. */}
+      {/* CONTENU — UNE SEULE SURFACE (lot A — VOIX-01).
+          Grand écran : grille produits + panier permanent à DROITE.
+          Téléphone portrait : grille produits (repliée en aperçu) + panier et
+          encaissement SOUS la grille, sur la même page. Dans les deux cas,
+          produits, panier, total et « Payer en espèces » vivent sur la même
+          route : plus aucune feuille à ouvrir, plus aucun écran à changer. */}
       <div className="lg:flex lg:items-start lg:gap-4">
       <div className="lg:flex-1 lg:min-w-0" style={{ flex:1, overflowY:'auto', padding:'14px 0 0' }}>
         <SyncEchecsBanner />
@@ -692,7 +677,8 @@ export function POSCaisse() {
               </motion.button>
             </div>
           ) : (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            <div className={voirPlusProduits ? 'pos-grille' : 'pos-grille pos-grille-apercu'}
+              style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
               {filtered.map((p, i) => {
                 const inCart = cart.find(c => c.productId === p.id);
                 const enPromo = promoActive(p as any);
@@ -750,7 +736,59 @@ export function POSCaisse() {
               })}
             </div>
           )}
+
+          {/* « Voir plus » — DÉPLIE la grille SUR PLACE, il ne change pas
+              d'écran (lot A). Sur téléphone la grille n'affiche que les
+              premières vignettes : sans ce repli, le panier qui la suit
+              serait à plusieurs écrans de défilement et la surface unique ne
+              serait qu'un mot. Au-dessus de 1024 px le panier est à CÔTÉ, pas
+              dessous : la grille y reste entière et ce bouton n'existe pas
+              (cf. .pos-grille-apercu dans styles/commerce.css). */}
+          {filtered.length > 4 && (
+            <div className="lg:hidden" style={{ marginTop:12 }}>
+              <button type="button" onClick={() => setVoirPlusProduits(v => !v)}
+                style={{ width:'100%', padding:'13px 0', borderRadius:14, border:'1.5px solid var(--trait)', background:'#fff', color:P, fontWeight:800, fontSize:14, cursor:'pointer', fontFamily:'inherit' }}>
+                {voirPlusProduits ? 'Voir moins' : `Voir plus (${filtered.length - 4})`}
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* ── PANIER + ENCAISSEMENT SUR LA MÊME SURFACE (lot A — VOIX-01) ──
+            Ce bloc n'existait qu'en `lg:` (le panneau de droite) ; sur
+            téléphone — le support du pilote — le panier et TOUT
+            l'encaissement étaient dans une feuille coulissante. Une marchande
+            qui ne lit pas devait donc deviner qu'un bouton cachait l'argent.
+            Ici, rien ne cache rien : les lignes, le total, le montant reçu,
+            la monnaie et « Payer en espèces » sont sur la page, sous les
+            produits, et se rejoignent en faisant défiler — jamais en ouvrant.
+            Même `renderCartLines()` / `renderCartFooter()` que le panneau de
+            droite : une seule logique, deux dispositions. */}
+        <section className="lg:hidden" style={{ marginBottom:20 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+            <span style={{ fontSize:17, fontWeight:900, color:'var(--encre)' }}>
+              Panier actuel{nbItems > 0 && <span style={{ fontWeight:400, fontSize:13, color:'var(--encre-4)' }}> ({nbItems})</span>}
+            </span>
+            {nbItems > 0 && (
+              <button type="button" onClick={clearCart}
+                style={{ background:'none', border:'none', color:'#AE3A38', fontWeight:700, fontSize:12, cursor:'pointer', fontFamily:'inherit', padding:'8px 0' }}>
+                Vider le panier
+              </button>
+            )}
+          </div>
+          {nbItems === 0 ? (
+            <div style={{ background:'white', border:'1.5px dashed var(--trait)', borderRadius:20, textAlign:'center', padding:'26px 18px', color:'var(--encre-4)', fontSize:13 }}>
+              Touche un produit pour l'ajouter au panier.
+            </div>
+          ) : (
+            <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:20, padding:'2px 16px 16px' }}>
+              {renderCartLines()}
+              <div style={{ marginTop:14 }}>
+                {renderCartFooter()}
+              </div>
+            </div>
+          )}
+        </section>
       </div>
 
       {/* Panier permanent — grand écran uniquement (mockup validé). Même
@@ -784,54 +822,14 @@ export function POSCaisse() {
       </aside>
       </div>
 
-      {/* PANIER MODAL */}
-      <AnimatePresence>
-        {showCart && (
-          <>
-            <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
-              style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:50 }} onClick={() => setShowCart(false)} />
-            <motion.div initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }} transition={{ type:'spring', damping:28 }}
-              // LE BOUTON QUI ENCAISSE PASSAIT SOUS LE BORD DE L'ÉCRAN.
-              // Remonté en recette (16/09/2026) : dès qu'un montant reçu est
-              // saisi, le pied s'allonge (billets, pièces, monnaie à rendre) et
-              // « Payer en espèces » sortait de la feuille — mesuré 718→776 px
-              // dans une fenêtre de 745. La feuille est en position fixe collée
-              // en bas : ce qui déborde n'est pas atteignable, et rien ne
-              // défile. Le geste qui TERMINE LA VENTE devenait invisible, avec
-              // la cliente qui attend.
-              //
-              // Trois manques, tous absents ici alors que le panneau grand
-              // écran (voir plus haut, :750 et :753) les a :
-              //   - la zone défilante n'avait pas minHeight:0, donc elle refuse
-              //     de rétrécir (un enfant flex ne passe pas sous sa taille de
-              //     contenu sans ça) ;
-              //   - le pied n'avait pas flexShrink:0, donc c'est LUI qu'on
-              //     écrasait, et son contenu débordait ;
-              //   - 75vh ne suffit pas quand le pied contient le pavé des
-              //     coupures.
-              style={{ position:'fixed', bottom:0, left:0, right:0, background:'white', borderRadius:'24px 24px 0 0', zIndex:51, maxHeight:'92vh', display:'flex', flexDirection:'column' }}>
-              <div style={{ width:40, height:4, borderRadius:2, background:'#EDE7DE', margin:'14px auto 0' }} />
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 20px 10px' }}>
-                <span style={{ fontSize:19, fontWeight:900, color:'var(--encre)' }}>Panier <span style={{ fontSize:14, fontWeight:400, color:'var(--encre-4)' }}>({nbItems} article{nbItems>1?'s':''})</span></span>
-                <motion.button whileTap={{ scale:0.9 }} onClick={() => setShowCart(false)} aria-label="Fermer le panier"
-                  style={{ width:44, height:44, borderRadius:10, background:'#f0f0f0', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <X size={16} color="#888" />
-                </motion.button>
-              </div>
-              <div style={{ flex:1, overflowY:'auto', minHeight:0, padding:'0 16px' }}>
-                {renderCartLines()}
-              </div>
-              {/* flexShrink:0 — le pied porte le bouton d'encaissement : il ne
-                  doit JAMAIS être celui qu'on rogne. overflowY:auto en dernier
-                  recours, pour que même sur un très petit écran le bouton reste
-                  atteignable en faisant défiler. */}
-              <div style={{ padding:'14px 16px 32px', flexShrink:0, overflowY:'auto' }}>
-                {renderCartFooter()}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* PLUS DE FEUILLE « PANIER » (lot A — VOIX-01).
+          Elle portait, sur téléphone, le panier ET tout l'encaissement :
+          total, montant reçu, coupures, monnaie, « Payer en espèces ». Tout
+          cela est maintenant SUR la page (voir la section <section
+          className="lg:hidden"> plus haut). Une feuille en position fixe
+          avait de surcroît un défaut mesuré en recette : quand son pied
+          s'allongeait, le bouton qui TERMINE la vente sortait de l'écran et
+          rien ne défilait. Sur la page, ce problème n'existe pas. */}
 
       {/* Crédit désactivé en pilote espèces : le modal n'est jamais monté (les
           boutons déclencheurs sont masqués ; ce garde interdit tout accès résiduel). */}
