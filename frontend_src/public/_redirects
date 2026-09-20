@@ -1,0 +1,5 @@
+# API Jùlaba : cette règle doit rester AVANT le repli SPA.
+/api/v1/*  https://julaba-api.onrender.com/api/v1/:splat  200
+
+# React Router : toutes les autres routes reviennent à l'application.
+/*  /index.html  200

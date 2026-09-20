@@ -434,15 +434,22 @@ export function LoginPassword() {
           body: JSON.stringify({ phone: curr.startsWith('+225') ? curr : '+225' + curr }),
           signal: abortRef.current.signal,
         });
+        if (!res.ok) {
+          console.warn('[LoginPassword] check-phone failed:', res.status, res.headers.get('content-type'));
+          if (phoneRef.current === curr) {
+            setError('Connexion au serveur impossible. Réessaie dans un instant.');
+            setIsLoading(false);
+          }
+          return;
+        }
         let data: { exists?: boolean };
         try {
           data = await res.json();
         } catch (err) {
           console.warn('[LoginPassword] check-phone json parse failed:', err instanceof Error ? err.message : err);
           if (phoneRef.current === curr) {
-            setStep('password');
+            setError('Connexion au serveur impossible. Réessaie dans un instant.');
             setIsLoading(false);
-            focusPin();
           }
           return;
         }
@@ -465,9 +472,8 @@ export function LoginPassword() {
           setIsLoading(false);
           return;
         }
-        setStep('password');
+        setError('Connexion au serveur impossible. Réessaie dans un instant.');
         setIsLoading(false);
-        focusPin();
       }
     }, 500);
   };
