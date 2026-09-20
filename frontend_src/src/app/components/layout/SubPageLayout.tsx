@@ -15,45 +15,53 @@ interface SubPageLayoutProps {
   noPadding?: boolean;
   children: ReactNode;
   onBackOverride?: () => void;
+  /** Habillage de l'en-tête. `'caisse'` : en-tête CLAIR de la maquette de la
+   *  caisse (VOIX-01, lot F) — fond sable, encre foncée, titre en Inter
+   *  semibold. Par défaut, l'en-tête sombre de tous les autres sous-écrans :
+   *  cette prop ne change RIEN pour eux. */
+  variante?: 'defaut' | 'caisse';
 }
 
 export function SubPageLayout({
   role, title, subtitle, rightContent, headerChildren,
-  bottomAction, noPadding = false, children, onBackOverride
+  bottomAction, noPadding = false, children, onBackOverride, variante = 'defaut'
 }: SubPageLayoutProps) {
   const navigate = useNavigate();
   const config = getRoleConfig(role);
   const primaryColor = config.primaryColor;
-  const bgWarm = 'var(--commerce-paper)';
+  const bgWarm = variante === 'caisse' ? 'var(--caisse-sable)' : 'var(--commerce-paper)';
   const pbContent = bottomAction ? 180 : 100;
+  const clair = variante === 'caisse';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: bgWarm }}>
       {/* ZONE 1 : HEADER FIXE */}
       <div
         style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
-          background: 'var(--commerce-sidebar)' }}
+          background: clair ? 'var(--caisse-ivoire)' : 'var(--commerce-sidebar)',
+          borderBottom: clair ? '1px solid var(--commerce-line)' : 'none' }}
         className="lg:pl-[280px]"
       >
-        <div style={{ height: 16 }} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 18px' }}>
+        <div style={{ height: clair ? 12 : 16 }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: clair ? '0 16px 12px' : '0 16px 18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
               aria-label="Retour"
               onClick={onBackOverride ? onBackOverride : () => navigate(-1)}
-              style={{ width: 44, height: 44, borderRadius: 14,
-                background: 'rgba(255,255,255,0.18)',
-                border: '1px solid rgba(255,255,255,0.28)',
+              style={{ width: 44, height: 44, borderRadius: clair ? 'var(--caisse-rayon-3)' : 14,
+                background: clair ? 'var(--caisse-sable)' : 'rgba(255,255,255,0.18)',
+                border: clair ? '1px solid var(--commerce-line)' : '1px solid rgba(255,255,255,0.28)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', flexShrink: 0 }}
             >
-              <ChevronLeft size={20} color="white" strokeWidth={2.5} />
+              <ChevronLeft size={clair ? 24 : 20} color={clair ? 'var(--encre)' : 'white'} strokeWidth={2.5} />
             </button>
             <div>
-              <div style={{ fontSize: 19, fontWeight: 900, color: 'white',
-                letterSpacing: '-0.3px', lineHeight: 1.2 }}>{title}</div>
+              <div style={clair
+                ? { font: 'var(--caisse-font-h2)', color: 'var(--encre)' }
+                : { fontSize: 19, fontWeight: 900, color: 'white', letterSpacing: '-0.3px', lineHeight: 1.2 }}>{title}</div>
               {subtitle && (
-                <div style={{ fontSize: 13, color: '#D3C6D4', marginTop: 2 }}>{subtitle}</div>
+                <div style={{ fontSize: 13, color: clair ? 'var(--caisse-gris-texte)' : '#D3C6D4', marginTop: 2 }}>{subtitle}</div>
               )}
             </div>
           </div>

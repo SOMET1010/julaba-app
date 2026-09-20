@@ -54,27 +54,30 @@ interface Props {
   onChoisir: (unite: UniteChoix) => void;
   /** Synthèse vocale de l'appelant, déjà gardée par la préférence de guidage. */
   dire?: (texte: string) => void;
-  /** Couleur d'accent de l'écran hôte (celle de la caisse par défaut). */
+  /** Couleur d'accent de l'écran hôte — par défaut le vert de la charte de la
+   *  caisse (styles/commerce.css, lot F). Une variable CSS convient : le fond
+   *  de l'unité choisie est la teinte « Succès » de la planche, jamais une
+   *  transparence calculée sur cette couleur. */
   couleur?: string;
 }
 
-export function ChoixUnite({ valeur, onChoisir, dire, couleur = '#AF5B23' }: Props) {
+export function ChoixUnite({ valeur, onChoisir, dire, couleur = 'var(--caisse-vert)' }: Props) {
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--encre-3)' }}>Tu vends par…</div>
-      <div role="group" aria-label="Unité de vente" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, marginBottom: 14 }}>
+      <div style={{ font: 'var(--caisse-font-legende)', fontWeight: 600, color: 'var(--caisse-gris-texte)' }}>Tu vends par…</div>
+      <div role="group" aria-label="Unité de vente" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--caisse-esp-2)', marginTop: 'var(--caisse-esp-2)', marginBottom: 'var(--caisse-esp-4)' }}>
         {UNITES_CHOIX.map((u) => {
           const choisie = valeur === u;
           const style: CSSProperties = {
             minHeight: CIBLE_TACTILE_MIN,
             minWidth: CIBLE_TACTILE_MIN,
-            padding: '8px 14px',
-            border: `1.5px solid ${choisie ? couleur : 'var(--trait)'}`,
-            background: choisie ? `${couleur}12` : '#fff',
-            color: choisie ? couleur : 'var(--encre-3)',
-            borderRadius: 11,
-            fontSize: 14,
-            fontWeight: 700,
+            padding: 'var(--caisse-esp-2) var(--caisse-esp-3)',
+            border: `1.5px solid ${choisie ? couleur : 'var(--commerce-line)'}`,
+            background: choisie ? 'var(--caisse-succes)' : 'white',
+            color: choisie ? couleur : 'var(--caisse-gris-texte)',
+            borderRadius: 'var(--caisse-rayon-3)',
+            font: 'var(--caisse-font-texte)',
+            fontWeight: 600,
             cursor: 'pointer',
             fontFamily: 'inherit',
           };
