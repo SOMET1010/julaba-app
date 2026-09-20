@@ -16,6 +16,7 @@
     "test:voix": "tsx src/app/services/venteVocale.test.mts",
     "test:vendre-unifie": "tsx src/app/services/vendreVocalUnifie.test.mts",
     "test:vendre-unifie-unite": "tsx src/app/services/vendreVocalUnifieUnite.test.mts",
+    "test:choix-unite": "tsx src/app/components/marchand/choixUnite.test.mts",
     "test:tata-actions": "tsx src/app/services/tataMarchandActions.test.mts",
     "test:comptes": "tsx src/app/services/comptesMemorises.test.mts",
     "test:bambara": "tsx src/app/voice-offline/nombresBambara.test.mts",
