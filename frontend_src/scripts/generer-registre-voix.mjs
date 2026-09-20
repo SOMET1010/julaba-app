@@ -18,6 +18,40 @@ const clips = [...source.matchAll(/\{ file: "([^"]+)", text: "((?:\\.|[^"])*)" \
 const fichiers = readdirSync(dossierAudio).filter((f) => f.endsWith('.mp3')).sort();
 const mappes = new Set(clips.map((c) => c.file.split('/').at(-1)));
 
+// La CI n'installe pas ffprobe. En mode contrôle, elle n'a pas besoin de
+// recalculer la durée : elle vérifie le contrat utile au runtime (mapping,
+// texte, présence, taille et empreinte), ainsi que la présence d'une durée
+// positive déjà enregistrée. La génération complète reste volontairement un
+// outil de maintenance qui utilise ffprobe.
+if (process.argv.includes('--check')) {
+  const actuel = JSON.parse(readFileSync(sortie, 'utf8'));
+  const parFichier = new Map(actuel.clips.map((c) => [c.fichier, c]));
+  const erreurs = [];
+  for (const clip of clips) {
+    const file = clip.file.split('/').at(-1);
+    const entree = parFichier.get(clip.file);
+    if (!file || !fichiers.includes(file)) { erreurs.push(`absent : ${clip.file}`); continue; }
+    if (!entree) { erreurs.push(`non enregistré : ${clip.file}`); continue; }
+    const contenu = readFileSync(join(dossierAudio, file));
+    const sha256 = createHash('sha256').update(contenu).digest('hex');
+    if (entree.texte_exact !== clip.text) erreurs.push(`texte différent : ${clip.file}`);
+    if (entree.sha256 !== sha256) erreurs.push(`empreinte différente : ${clip.file}`);
+    if (entree.octets !== contenu.byteLength) erreurs.push(`taille différente : ${clip.file}`);
+    if (!(entree.duree_ms > 0)) erreurs.push(`durée absente : ${clip.file}`);
+  }
+  const orphelins = fichiers.filter((f) => !mappes.has(f));
+  if (actuel.couverture?.fichiers_mp3 !== fichiers.length) erreurs.push('compte fichiers_mp3 obsolète');
+  if (actuel.couverture?.clips_mappes !== clips.length) erreurs.push('compte clips_mappes obsolète');
+  if (JSON.stringify(actuel.couverture?.fichiers_orphelins) !== JSON.stringify(orphelins)) erreurs.push('liste des orphelins obsolète');
+  if (actuel.clips.length !== clips.length) erreurs.push('nombre d’entrées obsolète');
+  if (erreurs.length) {
+    console.error(`Registre vocal invalide :\n- ${erreurs.join('\n- ')}`);
+    process.exit(1);
+  }
+  console.log(`Registre voix cohérent : ${clips.length} clips mappés, ${fichiers.length} fichiers, ${orphelins.length} orphelins.`);
+  process.exit(0);
+}
+
 function metadata(file) {
   const chemin = join(dossierAudio, file);
   const contenu = readFileSync(chemin);
@@ -69,14 +103,5 @@ const registre = {
 };
 
 const rendu = `${JSON.stringify(registre, null, 2)}\n`;
-if (process.argv.includes('--check')) {
-  const actuel = readFileSync(sortie, 'utf8');
-  if (actuel !== rendu) {
-    console.error('Le registre vocal est obsolète. Lance : npm run voix:registre');
-    process.exit(1);
-  }
-  console.log(`Registre voix cohérent : ${items.length} clips mappés, ${fichiers.length} fichiers, ${registre.couverture.fichiers_orphelins.length} orphelins.`);
-} else {
-  writeFileSync(sortie, rendu);
-  console.log(`Registre écrit : ${sortie}`);
-}
+writeFileSync(sortie, rendu);
+console.log(`Registre écrit : ${sortie}`);
