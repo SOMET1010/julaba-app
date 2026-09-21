@@ -211,9 +211,47 @@ try {
     await page.close();
   }
 
+  // ── P5 — LE PRIX DICTÉ À L'UNITÉ ───────────────────────────────────────
+  // « C'est 500 le tas » est la façon normale de parler au marché. La caisse
+  // lisait ce 500 comme le total de la vente : trois tas entraient au panier
+  // pour 500 F — le TIERS — sans un mot, sans un écran. C'est le geste le
+  // plus banal du métier, et c'était de l'argent perdu en silence.
+  console.log('\n[P5] Prix dicté à l\'unité — « trois tas de tomates à 500 » (catalogue 500 le tas)');
+  {
+    const page = await ouvrir(navigateur, '?panier=vide&voix=on');
+    await dicter(page, 'trois tas de tomates à 500');
+    await page.waitForTimeout(400);
+    const ap = await panier(page);
+    ok(ap.length === 1, 'une ligne entre au panier', ap);
+    ok(ap[0]?.quantite === 3, 'les trois tas dictés', ap[0]);
+    ok(ap[0]?.total === 1500, 'et la vente vaut 1 500 F — pas 500, son tiers', ap[0]);
+    ok(ap[0]?.prix === 500, 'au prix qu\'elle a annoncé : 500 le tas', ap[0]);
+    // Ce qu'elle ENTEND doit porter le même chiffre que ce qu'elle encaissera :
+    // c'est le seul moyen, pour qui ne lit pas, de détecter un malentendu.
+    const parle = (await dits(page)).join(' | ');
+    ok(/1\s?500/.test(parle), 'Tata redit le montant réel de la vente (1 500)', parle);
+    ok(!/\bpour 500 francs\b/.test(parle), 'et jamais 500 — la voix ne contredit pas le panier', parle);
+    await photo(page, 'p5-prix-unitaire');
+    await page.close();
+  }
+
+  // ── P5b — LE MÊME MONTANT, ANNONCÉ COMME TOTAL ─────────────────────────
+  // Le correctif ne doit pas basculer dans l'excès inverse : « trois tas à
+  // 1500 », sur le même catalogue, reste une vente de 1 500 F, jamais 4 500.
+  console.log('\n[P5b] Le même produit, montant annoncé en TOTAL — « trois tas de tomates à 1500 »');
+  {
+    const page = await ouvrir(navigateur, '?panier=vide&voix=on');
+    await dicter(page, 'trois tas de tomates à 1500');
+    await page.waitForTimeout(400);
+    const ap = await panier(page);
+    ok(ap.length === 1 && ap[0]?.total === 1500, 'la vente vaut 1 500 F — jamais 4 500', ap);
+    ok(ap[0]?.prix === 500, 'et le prix du tas s\'en déduit : 500', ap[0]);
+    await page.close();
+  }
+
   console.log('');
   if (erreursPage.length) { console.log('  ❌ erreurs de page :', erreursPage.slice(0, 3)); echecs++; }
-  console.log(echecs === 0 ? '✅ Les 4 parcours vont au bout\n' : `❌ ${echecs} échec(s)\n`);
+  console.log(echecs === 0 ? '✅ Les 5 parcours vont au bout\n' : `❌ ${echecs} échec(s)\n`);
 } finally {
   await navigateur.close();
   serveur.kill();
