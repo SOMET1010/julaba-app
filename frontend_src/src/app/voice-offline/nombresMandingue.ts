@@ -289,7 +289,7 @@ function multiplicateur(j: Jeton | undefined): number | null {
  * numérique contiguë (les « ni » ne comptent que s'ils relient deux parties
  * numériques).
  */
-export function extraireNombreBambara(texte: string): number | null {
+function analyser(texte: string): { valeur: number; dorome: boolean } | null {
   const mots = preparer(texte);
   const jetons: (Jeton | null)[] = mots.map(lireJeton);
 
@@ -360,7 +360,182 @@ export function extraireNombreBambara(texte: string): number | null {
     }
   }
   if (!aLuUnNombre) return null;
-  return enDorome ? total * 5 : total;
+  return { valeur: total, dorome: enDorome };
+}
+
+/**
+ * ⚠️ CHEMIN HISTORIQUE — NE PAS UTILISER POUR LIRE UN PRIX.
+ *
+ * Renvoie un nombre NU où la conversion dɔrɔmɛ (× 5) a déjà été repliée en
+ * silence : `extraireNombreBambara('dɔrɔmɛ kɛmɛ')` vaut 500, et plus rien
+ * ensuite ne sait que c'était 100 dɔrɔmɛ. C'est EXACTEMENT le piège que
+ * l'échelle monétaire ci-dessous existe pour supprimer.
+ *
+ * Conservé tel quel parce qu'il est empreinté (ci/EMPREINTE-GARDES.json) et
+ * utilisé comme parseur de NOMBRE. Pour de l'argent : `lireExpressionMonetaire`.
+ */
+export function extraireNombreBambara(texte: string): number | null {
+  const a = analyser(texte);
+  if (a === null) return null;
+  return a.dorome ? a.valeur * 5 : a.valeur;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * L'ARGENT — pourquoi cette échelle existe, et pourquoi on n'a pas le droit
+ * de la « simplifier ».
+ *
+ * CE QUE DISENT LES SOURCES.
+ *   • Coast Systems, « Dyula and Bambara Numbering and Currency System » :
+ *     dɔrɔmɛ kelen = 5 FCFA. Une RÈGLE, pas une collection de cas :
+ *     montant_FCFA = nombre_de_dɔrɔmɛ × 5. Valable Burkina, Côte d'Ivoire, Mali.
+ *   • « Counting money in West Africa » (whyafricanlanguages.org) :
+ *     « It is not always necessary to say dɔrɔmɛ, ESPECIALLY IN THE MARKET. »
+ *     Exemple attesté, qui est exactement notre cas d'usage : quelqu'un achète
+ *     des tomates pour 100 FCFA — le prix se dit avec le nombre VINGT.
+ *     Raison historique : la pièce de 5 F est la plus petite en circulation
+ *     depuis l'époque coloniale ; elle est DEVENUE l'unité de compte.
+ *
+ * CE QUE ÇA IMPLIQUE, ET C'EST GRAVE.
+ *   Le modèle naïf — « dɔrɔmɛ présent → ×5, sinon francs » — est faux DANS LE
+ *   SENS LE PLUS DANGEREUX : il enregistrerait 20 F là où la marchande a vendu
+ *   pour 100. Un facteur CINQ, en moins, en silence. Le mot qui désambiguïse
+ *   est précisément celui qu'on ne prononce pas au marché.
+ *
+ *   Donc : UN NOMBRE NU, dans un contexte de prix mandingue, est
+ *   INTRINSÈQUEMENT AMBIGU entre francs et dɔrɔmɛ. La grammaire ne peut pas
+ *   trancher — et par la règle de Patrick, « la grammaire tranche, sinon on
+ *   demande », on DEMANDE. Aucune écriture comptable n'en découle seule.
+ *
+ * POURQUOI LE TYPE EST FAIT AINSI — à lire avant de le « simplifier ».
+ *   `ExpressionMonetaire` est une UNION DISCRIMINÉE, et l'incertitude y est un
+ *   ÉTAT (`unit: null` + `resolution`), PAS une troisième monnaie. Ce n'est pas
+ *   du zèle de typage : c'est pour rendre INCOMPILABLE le jour où quelqu'un
+ *   écrira
+ *        switch (unit) { …  default: return value }
+ *   qui recréerait le ×5 silencieux. On ne protège pas l'argent par une règle
+ *   qu'il faut se rappeler, mais par une forme qui ne permet pas de se tromper.
+ *
+ * L'ÉCHELLE, et le fait qu'on ne peut pas sauter un barreau :
+ *      valeur lexicale        `valeurLexicaleMandingue`   — la valeur du MOT
+ *            ↓
+ *      ExpressionMonetaire    `lireExpressionMonetaire`   — valeur + unité, OU
+ *            ↓                                              clarification requise
+ *      MontantResolu          `resoudreMontant`           — des FCFA, SEULEMENT
+ *            ↓                                              si l'unité est résolue
+ *      opération autorisée    (grammaire complète, hors de ce module)
+ *
+ *   `mugan` produit une ExpressionMonetaire et ne devient JAMAIS un
+ *   MontantResolu tout seul : `resoudreMontant` rend `null`. Un MontantResolu
+ *   n'est PAS toujours constructible à partir d'un nombre, et c'est voulu.
+ *
+ *   Reconnaître un nombre, reconnaître une somme d'argent et autoriser une
+ *   opération de caisse sont TROIS notions distinctes. Seule la dernière est
+ *   protégée par la grammaire complète.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/** 1 dɔrɔmɛ = 5 FCFA (Coast Systems). La règle, écrite une fois. */
+export const FCFA_PAR_DOROME = 5;
+
+/** Une unité RÉSOLUE. L'incertitude n'en fait pas partie : c'est un état, pas une monnaie. */
+export type UniteMonetaire = 'DOROME' | 'FRANC';
+
+export type SourceMonetaire =
+  | 'coastsystems-money'
+  | 'whyafricanlanguages-money'
+  | 'marqueur-francais-explicite';
+
+/**
+ * Clé de catalogue de la clarification d'unité (`critiqueArgent`).
+ * La question porte sur l'UNITÉ, jamais sur le nombre : l'interface a déjà
+ * compris « mugan », il ne lui manque qu'une seule information — 20 francs,
+ * ou 20 dɔrɔmɛ, c'est-à-dire 100 francs ? On ne fait pas répéter toute la
+ * phrase. Le module ne rend qu'une CLÉ : aucune phrase en dur ici.
+ */
+export const CLE_CLARIFICATION_UNITE = 'TATA_AMBIGUITE_DOROME';
+
+/**
+ * Étage 2 — valeur + unité, OU incertitude explicite.
+ * Union discriminée : voir le bloc ci-dessus avant d'y toucher.
+ */
+export type ExpressionMonetaire =
+  | { readonly value: number; readonly unit: 'DOROME'; readonly source: SourceMonetaire }
+  | { readonly value: number; readonly unit: 'FRANC'; readonly source: SourceMonetaire }
+  | {
+      readonly value: number;
+      readonly unit: null;
+      readonly resolution: 'REQUIRES_CLARIFICATION';
+      readonly cleClarification: typeof CLE_CLARIFICATION_UNITE;
+    };
+
+/** Étage 3 — des FCFA. N'existe QUE si l'unité est résolue. */
+export interface MontantResolu {
+  readonly fcfa: number;
+  /** La valeur lexicale, conservée : elle ne bouge jamais, c'est l'unité qui donne le sens. */
+  readonly value: number;
+  readonly unit: UniteMonetaire;
+  readonly source: SourceMonetaire;
+}
+
+/**
+ * MARQUEURS FRANÇAIS EXPLICITES, hors lexique mandingue à dessein : ce ne sont
+ * pas des lexèmes mandingues, ce sont des mots français qui peuvent apparaître
+ * dans la transcription. Ils ne servent QUE dans le sens qui augmente la
+ * certitude — leur ABSENCE ne vaut jamais « francs ».
+ */
+const MARQUEURS_FRANC = new Set(['franc', 'francs', 'fcfa', 'cfa']);
+
+/**
+ * Étage 1 — la VALEUR LEXICALE du nombre, jamais convertie.
+ * `valeurLexicaleMandingue('kɛmɛ')` et `valeurLexicaleMandingue('dɔrɔmɛ kɛmɛ')`
+ * valent tous deux 100 : la présence de l'unité change l'INTERPRÉTATION,
+ * jamais la valeur du mot.
+ */
+export function valeurLexicaleMandingue(texte: string): number | null {
+  return analyser(texte)?.valeur ?? null;
+}
+
+/**
+ * Étage 2 — lit une expression monétaire.
+ *   « dɔrɔmɛ mugan » → { value: 20, unit: 'DOROME' }      → 100 FCFA, certain
+ *   « mugan franc »  → { value: 20, unit: 'FRANC' }       →  20 FCFA, certain
+ *   « mugan »        → { value: 20, unit: null, … }       → on DEMANDE
+ * Aucun nombre → `null` : il n'y a rien à lire, ce n'est pas une incertitude.
+ */
+export function lireExpressionMonetaire(texte: string): ExpressionMonetaire | null {
+  const a = analyser(texte);
+  if (a === null) return null;
+  if (a.dorome) return { value: a.valeur, unit: 'DOROME', source: 'coastsystems-money' };
+  const mots = preparer(texte);
+  if (mots.some(m => MARQUEURS_FRANC.has(m))) {
+    return { value: a.valeur, unit: 'FRANC', source: 'marqueur-francais-explicite' };
+  }
+  // Rien ne tranche : le mot dɔrɔmɛ est le plus souvent OMIS au marché, donc
+  // l'absence de marqueur ne prouve RIEN. On refuse de deviner.
+  return { value: a.valeur, unit: null, resolution: 'REQUIRES_CLARIFICATION', cleClarification: CLE_CLARIFICATION_UNITE };
+}
+
+/**
+ * Étage 3 — convertit en FCFA, et SEULEMENT si l'unité est résolue.
+ * Rend `null` quand la clarification est requise : c'est le barreau qu'on ne
+ * peut pas sauter. Pas de repli, pas de valeur « au cas où ».
+ */
+export function resoudreMontant(e: ExpressionMonetaire): MontantResolu | null {
+  if (e.unit === 'DOROME') return { fcfa: e.value * FCFA_PAR_DOROME, value: e.value, unit: 'DOROME', source: e.source };
+  if (e.unit === 'FRANC') return { fcfa: e.value, value: e.value, unit: 'FRANC', source: e.source };
+  return null;
+}
+
+/**
+ * Résout avec la réponse de la marchande à la clarification d'unité.
+ * La VALEUR déjà comprise est conservée : on ne lui a demandé que l'unité.
+ */
+export function resoudreAvecUnite(e: ExpressionMonetaire, unite: UniteMonetaire): MontantResolu {
+  return {
+    fcfa: unite === 'DOROME' ? e.value * FCFA_PAR_DOROME : e.value,
+    value: e.value,
+    unit: unite,
+    source: unite === 'DOROME' ? 'coastsystems-money' : 'marqueur-francais-explicite',
+  };
 }
 
 /** Vrai si le texte contient au moins un mot numérique mandingue (hors chiffres). */
