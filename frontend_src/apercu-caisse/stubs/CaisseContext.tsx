@@ -52,11 +52,26 @@ const TRANSACTIONS_DEMO: CaisseTransaction[] = [
 
 const Ctx = createContext<any>(undefined);
 
+/**
+ * LE COMPTE D'UNE NOUVELLE MARCHANDE — banc de parcours (21/09/2026).
+ * `?catalogue=vide` rejoue exactement l'écran du terrain : « Produits : Aucun
+ * produit », panier vide. C'est dans cet état, et seulement lui, que le trou
+ * principal se voit. `?panier=vide` garde le catalogue mais vide le panier.
+ */
+function param(nom: string): string | null {
+  try { return new URLSearchParams(location.search).get(nom); } catch { return null; }
+}
+
 export function CaisseProvider({ children }: { children: ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>(PANIER_DEMO);
+  const catalogueVide = param('catalogue') === 'vide';
+  const produits = catalogueVide ? [] : PRODUITS_DEMO;
+  const [cart, setCart] = useState<CartItem[]>(catalogueVide || param('panier') === 'vide' ? [] : PANIER_DEMO);
+  // Le panier, lisible par le banc : ce qui entre VRAIMENT au panier est la
+  // seule preuve qui compte sur l'argent — une capture n'en dit rien.
+  React.useEffect(() => { (window as any).__panier = cart; }, [cart]);
   const noop = async () => {};
   const value = {
-    transactions: TRANSACTIONS_DEMO, loading: false, products: PRODUITS_DEMO, cart,
+    transactions: catalogueVide ? [] : TRANSACTIONS_DEMO, loading: false, products: produits, cart,
     stats: { ventesJour: 12500, cahierJour: 0, soldeJour: 12500, nombreVentes: 7, nombreCahier: 0 } as CaisseStats,
     selectedProduct: null, setSelectedProduct: () => {},
     enregistrerVente: noop, enregistrerDepense: noop,
