@@ -61,6 +61,22 @@ appliquerConfortAuDemarrage();
   };
 })();
 
+// ── Routage audio Bluetooth ─────────────────────────────────────────────────
+// Une marchande au marché a les mains pleines et le téléphone au fond du pagne :
+// il faut que la voix de Tantie arrive dans son oreillette et, si elle en porte
+// une, que ce soit SON micro qui écoute. Le routage s'installe ICI, en un seul
+// point, parce qu'il enveloppe `getUserMedia` — exactement comme le filet
+// `window.fetch` juste au-dessus. Tous les micros de l'application en héritent
+// sans qu'aucun écran ne change, et surtout sans rouvrir `useVoiceCore.ts`,
+// `audioManager.ts` ni `offlineStt.ts`, qui sont gelés au caractère près.
+//
+// Non-opération complète hors APK Android (le plugin natif n'existe pas sur le
+// web), et toute erreur est avalée : le routage ne peut pas faire perdre une
+// vente — au pire, la marchande entend Tantie comme aujourd'hui.
+import('./app/services/routageAudio')
+  .then(({ installerRoutageAudio }) => installerRoutageAudio())
+  .catch(() => { /* ignore */ });
+
 // Ré-échauffe le modèle vocal hors-ligne s'il a déjà été installé sur cet appareil.
 // (Le drapeau d'installation est persistant ; le modèle en mémoire, lui, est perdu
 // à chaque rechargement — sans ça la voix retombait sur le cloud mort.)
