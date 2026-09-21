@@ -104,7 +104,10 @@
     "test:api-authorization": "tsx src/app/services/api/apiClientAuthorization.test.mts",
     "test:garde-argent": "node scripts/test-garde-argent.mjs",
     "test:pave-montant": "tsx src/app/components/shared/PaveMontant.test.mts",
-    "test:montants-prives": "tsx src/app/hooks/useMontantsPrives.test.mts"
+    "test:montants-prives": "tsx src/app/hooks/useMontantsPrives.test.mts",
+    "test:accueil-pilote": "node scripts/test-accueil-pilote.mjs",
+    "test:entree-unique": "node scripts/test-entree-unique.mjs",
+    "test:nom-tantie": "node scripts/test-nom-tantie-nanti-lou.mjs"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
