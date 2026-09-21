@@ -33,7 +33,7 @@
  * qui écrit de l'argent vivent dans POSCaisse — la frontière de ce fichier
  * reste : remplir le panier, jamais encaisser.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, AudioLines, CheckCircle, Keyboard, Loader, Mic, Volume2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
@@ -47,6 +47,7 @@ import { useRaccourcis } from '../../contexts/RaccourcisContext';
 import { useObjectif } from '../../contexts/ObjectifContext';
 import { useStock, type StockItem } from '../../contexts/StockContext';
 import { extraire } from '../../voice-offline/extraction';
+import { intentLocal, intentLocalCaisse } from '../../voice-offline/localIntent';
 import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
@@ -99,7 +100,35 @@ interface Props {
   onIntentionEncaissement: (intention: IntentionEncaissement) => void;
 }
 
+/**
+ * UNE VENTE COMPRISE DONT LE PRIX MANQUE (21/09/2026, terrain).
+ *
+ * Le produit dicté n'est pas au catalogue — et celui d'une nouvelle marchande
+ * est VIDE — ou il y est sans prix de vente. Ce composant ne sait pas demander
+ * un prix ; la caisse, elle, a déjà le chemin qui le fait (chercher la
+ * référence, « Quel est ton prix ? », puis adopter l'article au catalogue ET
+ * au panier). Elle s'abonne donc à cette demande, et l'ouvre PRÉ-REMPLIE.
+ *
+ * POURQUOI UN CONTEXTE ET PAS UNE PROP. Le micro est rendu SANS AUCUNE
+ * CONDITION, sur une ligne que le garde-fou `caisseMicroPermanent.test.mts`
+ * lit au caractère près — c'est ce qui garantit qu'il ne disparaît à aucun
+ * moment de la vente. On ne touche donc pas à cette ligne : l'abonnement
+ * passe par le fournisseur ci-dessous, que la caisse monte au-dessus du micro,
+ * comme elle monte déjà les providers Raccourcis et Objectif.
+ *
+ * Sans fournisseur, rien ne change : Tata explique qu'elle n'a pas le prix
+ * (comportement d'avant), et aucune ligne n'entre au panier.
+ */
+export type DemandePrixVocal = (demande: { nom: string; quantite: number; unite: string | null }) => void;
+
+const CtxDemandePrix = createContext<DemandePrixVocal | null>(null);
+
+export function FournisseurDemandePrix({ demander, children }: { demander: DemandePrixVocal; children: React.ReactNode }) {
+  return <CtxDemandePrix.Provider value={demander}>{children}</CtxDemandePrix.Provider>;
+}
+
 export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEncaissement }: Props) {
+  const demanderPrixAuParent = useContext(CtxDemandePrix);
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, speak } = useApp();
@@ -177,6 +206,42 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     setSaisieOuverte(false);
   };
 
+  /**
+   * LA VENTE DICTÉE PART AU PANIER — un seul chemin, deux appelants.
+   *
+   * `uniteParlee` : l'unité RÉELLEMENT prononcée (« un TAS de piment »). Sans
+   * elle, reprendre le prix du catalogue peut être faux — un tas n'est pas un
+   * kilo, et l'écart se paie sur l'argent de la marchande.
+   *
+   * Hissée hors de `onAction` (21/09/2026) : la relecture de caisse (voir
+   * l'effet plus bas) l'appelle aussi, et il ne doit exister qu'UNE façon
+   * d'ajouter une vente dictée au panier.
+   */
+  const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number, uniteParlee?: string | null) =>
+    vendreVocalUnifie(nomParle, quantite, montant, {
+      products,
+      addToCart,
+      speak: direEtRetenir,
+      vibrerSucces,
+      notifierAjoutPanier: (message) => toast.success(message),
+      proposerCreationProduit: (p) => setPropositionProduit(p),
+      stockage: window.localStorage,
+      estEnLigne: () => navigator.onLine !== false,
+      planifier: (effet, delaiMs) => setTimeout(effet, delaiMs),
+      guidageVocalActif: () => guidageVocal(),
+      creerIdLigne: () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`),
+      // AUCUN PRIX TROUVÉ → ON LE DEMANDE, on ne se tait pas. La caisse ouvre
+      // son écran « Autre article » PRÉ-REMPLI (nom et quantité dits) et pose
+      // la question ; la ligne n'entrera au panier qu'une fois le prix donné.
+      // Voir FournisseurDemandePrix, plus haut dans ce fichier.
+      demanderPrix: demanderPrixAuParent
+        ? ({ nom, quantite: qteDite, unite }) => {
+          setSaisieOuverte(false);
+          demanderPrixAuParent({ nom, quantite: qteDite, unite });
+        }
+        : undefined,
+    }, uniteParlee);
+
   const {
     state, response, pendingResponse, transcript, liveTranscript, error,
     handleMicClick, reset, confirmAction, cancelAction, isSpeaking,
@@ -214,24 +279,6 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       // gestionnaire remplit le panier ; une phrase d'encaissement n'y
       // touche pas.
       if (data.action?.type && estIntentionEncaissement(data.action.type)) { onIntentionEncaissement(data.action.type); return; }
-
-      // `uniteParlee` : l'unité RÉELLEMENT prononcée (« un TAS de piment »).
-      // Sans elle, reprendre le prix du catalogue peut être faux — un tas
-      // n'est pas un kilo, et l'écart se paie sur l'argent de la marchande.
-      const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number, uniteParlee?: string | null) =>
-        vendreVocalUnifie(nomParle, quantite, montant, {
-          products,
-          addToCart,
-          speak: direEtRetenir,
-          vibrerSucces,
-          notifierAjoutPanier: (message) => toast.success(message),
-          proposerCreationProduit: (p) => setPropositionProduit(p),
-          stockage: window.localStorage,
-          estEnLigne: () => navigator.onLine !== false,
-          planifier: (effet, delaiMs) => setTimeout(effet, delaiMs),
-          guidageVocalActif: () => guidageVocal(),
-          creerIdLigne: () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`),
-        }, uniteParlee);
 
       const action = data.action;
       if (action?.type === 'vendre') {
@@ -311,6 +358,53 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     speakMessage(...introMessage());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule fois à l'arrivée sur la caisse, pas à chaque re-render
   }, []);
+
+  /**
+   * LA RELECTURE DE CAISSE — « cinq tomates » est une vente ici (21/09/2026).
+   *
+   * LE DÉFAUT, vu sur un vrai téléphone : Patrick dicte « cinq tomates ». Le
+   * bandeau vert affiche « J'ai compris : Cinq tomates »… et il ne se passe
+   * plus RIEN. La raison est dans `intentLocal` : l'extraction a bien vu le
+   * produit et la quantité, mais aucun VERBE (« vends », « vendu ») n'a été
+   * prononcé, alors l'énoncé est rendu `null` et jeté. Ses mots : « il ne
+   * fais que ecrire ce que jai dis 3 tomates et cest tout ».
+   *
+   * Or une marchande ne dit pas « vends trois tomates ». Elle dit « trois
+   * tomates » : sur CET écran, le verbe, c'est le geste d'avoir appuyé sur le
+   * micro de sa caisse. C'est vrai ici et nulle part ailleurs — dans « Mon
+   * stock » ou chez l'assistante, la même phrase ne veut pas dire vendre.
+   *
+   * POURQUOI ICI, ET PAS DANS LE MOTEUR. `intentLocal` sert toutes les
+   * surfaces et son comportement est gelé par l'empreinte d'argent du lot
+   * i18n ; `useVoiceCore` l'est par le garde-fou d'observabilité (seules des
+   * lignes de journal peuvent y entrer). Cet écran-ci, lui, est fait pour
+   * bouger — et c'est lui, et lui seul, qui porte cette lecture. Elle ne
+   * s'applique QU'À CE QUE LE MOTEUR N'A PAS COMPRIS (`intentLocal` nul),
+   * donc elle ne peut rien recouvrir ni doubler.
+   *
+   * ELLE N'ÉCRIT AUCUN ARGENT. Elle aboutit au même `vendreUnifie` que la
+   * dictée ordinaire : sans montant dicté, le prix vient du catalogue, et
+   * à défaut il est DEMANDÉ. Jamais une ligne à 0 F.
+   */
+  const dernierRelu = useRef<string>('');
+  useEffect(() => {
+    const texte = (transcript || '').trim();
+    if (!texte || texte === dernierRelu.current) return;
+    dernierRelu.current = texte;
+    // Le moteur a compris : il a déjà agi, on ne repasse pas derrière lui.
+    if (intentLocal(texte)) return;
+    const local = intentLocalCaisse(texte);
+    if (local?.action?.type !== 'vendre') return;
+    const brut = Number(local.action.montant);
+    const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
+    vendreUnifie(
+      produitPourVente(local.action.produit, produitPreselectionne),
+      local.action.quantite || 1,
+      montant,
+      extraire(texte).uniteParlee,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une relecture par transcription, pas à chaque rendu
+  }, [transcript]);
 
   // Oui → création au prix unitaire DICTÉ (elle le corrigera dans Mon stock si
   // besoin) ; stock 0. Non → refus mémorisé pour CE produit.

@@ -89,6 +89,26 @@ export const INTENTIONS_MAP: Record<string, Intention> = {
   épuisé: 'reappro', epuise: 'reappro',
 };
 
+/**
+ * MOTS QUI DISENT « CE N'EST PAS UNE VENTE » — 21/09/2026.
+ *
+ * Ils ne portent AUCUNE intention (ils ne sont pas dans INTENTIONS_MAP, et une
+ * phrase qui n'en porte pas d'autre ne mène nulle part — c'était déjà vrai
+ * avant). Ils servent de garde-fou à la règle « quantité + produit, sans
+ * verbe, vaut vente » de la caisse : « ajoute 10 tomates au stock » ou
+ * « enlève 2 tomates » ne doivent pas devenir des ventes du seul fait qu'on a
+ * assoupli cette règle. Dans le doute, on ne vend pas.
+ */
+export const MOTS_PAS_UNE_VENTE: readonly string[] = Object.freeze([
+  'ajoute', 'ajouter', 'ajoutes', 'ajoutez',
+  'enleve', 'enlever', 'enleves', 'enlevez',
+  'retire', 'retirer', 'retires', 'retirez',
+  'supprime', 'supprimer', 'supprimes',
+  'stock', 'stocks', 'inventaire',
+  'perdu', 'perdue', 'perte', 'pertes',
+  'jete', 'jetee', 'casse', 'cassee', 'pourri', 'pourrie', 'pourris',
+]);
+
 export const PHRASES_T1: PhraseCible[] = [
   {
     id: 1,

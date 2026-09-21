@@ -10,7 +10,7 @@ import { CreditModal } from './CreditModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { partagerRecu } from '../../utils/recu.utils';
-import { uniteSeule } from '../../utils/unite.utils';
+import { quantiteAvecUnite, uniteSeule } from '../../utils/unite.utils';
 import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
 import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/fcfa';
 import { BilletDessine, PieceDessinee } from './CoupureDessinee';
@@ -23,7 +23,7 @@ import { ChoixUnite } from './ChoixUnite';
 import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMaitre';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
-import { MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
+import { FournisseurDemandePrix, MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
 import { ETAT_INITIAL, empreintePanier, reduire, type EffetEncaissement, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
 import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { PaveMontant } from '../shared/PaveMontant';
@@ -112,6 +112,12 @@ function POSCaisseInner() {
   const [libreUnite, setLibreUnite] = useState('unité');
   const [adoptionEnCours, setAdoptionEnCours] = useState(false);
   const [adoptionMessage, setAdoptionMessage] = useState<string | null>(null);
+  // CE QU'ELLE VIENT DE DICTER, quand il n'en manque que le prix (21/09/2026).
+  // Porte le nom, la QUANTITÉ et l'unité entendus : sans elle, la feuille
+  // « Autre article » s'ouvrait vide et la marchande devait tout retaper —
+  // alors que « cinq tomates » venait d'être compris. `null` = la feuille a
+  // été ouverte au doigt, comme avant.
+  const [venteDictee, setVenteDictee] = useState<{ nom: string; quantite: number; unite: string } | null>(null);
 
   // Encaissement (Phase 3, lots 2-4) : montant reçu (espèces) + écran « Vente réussie ».
   const [montantRecu, setMontantRecu] = useState('');
@@ -167,6 +173,45 @@ function POSCaisseInner() {
     setShowLibre(false);
     setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité');
     setRefRecherche(''); setRefChoisie(null); setRefUnite('unité'); setAdoptionMessage(null);
+    setVenteDictee(null);
+  };
+
+  /**
+   * LA VENTE DICTÉE DONT LE PRIX MANQUE ARRIVE ICI — 21/09/2026, terrain.
+   *
+   * Elle dit « cinq tomates », son catalogue est vide : jusqu'ici l'écran
+   * affichait « J'ai compris : Cinq tomates » et il ne se passait plus RIEN —
+   * ni ligne, ni question, ni un mot. Elle n'avait aucun moyen de savoir
+   * qu'il fallait appuyer sur « + Autre article ».
+   *
+   * On ne réécrit pas de chemin : on branche celui qui existe déjà et qui
+   * fait exactement ce qu'il faut — chercher la référence, demander SON prix
+   * (`TATA_QUEL_PRIX`), puis adopter l'article au catalogue ET au panier
+   * (`TATA_ARTICLE_AJOUTE_CATALOGUE`). La seule différence : il s'ouvre
+   * PRÉ-REMPLI de ce qu'elle a dit — le nom, la quantité, l'unité — pour
+   * qu'il ne reste que le prix à donner. Et tant qu'il n'est pas donné,
+   * aucune ligne n'entre au panier : jamais une vente sans montant.
+   */
+  const ouvrirPrixManquant = ({ nom, quantite, unite }: { nom: string; quantite: number; unite: string | null }) => {
+    const propre = (nom || '').trim();
+    const qte = quantite > 0 ? quantite : 1;
+    const uniteDite = unite || 'unité';
+    setVenteDictee({ nom: propre, quantite: qte, unite: uniteDite });
+    setAdoptionMessage(null);
+    setLibreMontant('');
+    setLibreDesc(propre);
+    setLibreUnite(uniteDite);
+    setRefUnite(uniteDite);
+    setRefRecherche(propre);
+    setShowLibre(true);
+    // Une référence du catalogue maître porte le MÊME nom : on la choisit pour
+    // elle, et son prix la fera entrer dans son catalogue (elle n'aura plus
+    // jamais à le redonner). Sinon on reste sur le montant libre, pré-rempli.
+    const exacte = catalogueMaitre.rechercher(propre)
+      .find(r => r.nom.trim().toLowerCase() === propre.toLowerCase() && !catalogueMaitre.estAdoptee(r.default_code));
+    if (exacte) { choisirReference(exacte); return; }
+    setRefChoisie(null);
+    direMessage('TATA_QUEL_PRIX', { produit: propre });
   };
 
   const choisirReference = (r: ReferenceMaitre) => {
@@ -187,6 +232,9 @@ function POSCaisseInner() {
    * après l'avoir ajouté serait un pas de plus pour rien, devant une cliente
    * qui attend.
    */
+  /** Quantité à poser sur la ligne : celle qu'elle a DITE, sinon 1 (geste tactile). */
+  const quantiteDictee = venteDictee?.quantite && venteDictee.quantite > 0 ? venteDictee.quantite : 1;
+
   const adopterReference = async () => {
     if (!refChoisie || adoptionEnCours) return;
     const prix = Number(libreMontant);
@@ -209,11 +257,17 @@ function POSCaisseInner() {
         return;
       }
       await refreshProducts();
+      // LA QUANTITÉ DITE COMPTE (21/09/2026). Ouverte au doigt, la feuille
+      // ajoute 1 comme avant ; ouverte par « cinq tomates », elle ajoute 5 —
+      // sinon la marchande donnerait son prix, verrait une seule tomate, et
+      // devrait recommencer quatre fois. Le prix qu'elle vient de poser est
+      // celui d'UNE unité (c'est la question de TATA_QUEL_PRIX) : le total de
+      // la ligne est ce prix multiplié, jamais un chiffre inventé.
       addToCart({
         id: res.produit.id, nom: res.produit.nom, prix: Number(res.produit.prix),
         categorie: res.produit.categorie, stock: Number(res.produit.stock),
         unite: res.produit.unite,
-      } as any, 1);
+      } as any, quantiteDictee);
       vibrerSucces();
       direMessage('TATA_ARTICLE_AJOUTE_CATALOGUE', { produit: res.produit.nom });
       fermerAutreArticle();
@@ -232,11 +286,16 @@ function POSCaisseInner() {
       id: `libre-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
       nom, prix: montant, prix_achat: 0, categorie: 'Autre', stock: 0, unite: libreUnite,
     };
-    addToCart(produitLibre, 1);
-    dire(phraseLigneAjoutee({ nom, quantite: 1, unite: libreUnite, totalLigne: montant, totalPanier: total + montant }));
+    // Même règle que l'adoption : la quantité DITE compte, et le montant posé
+    // est celui d'une unité. Ouverte au doigt, la feuille reste à 1 — rien ne
+    // change pour le geste tactile.
+    const qte = quantiteDictee;
+    const totalLigne = montant * qte;
+    addToCart(produitLibre, qte);
+    dire(phraseLigneAjoutee({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }));
     // L'unité revient au défaut : sinon le « tas » de la vente précédente
     // collerait, en silence, à l'article libre suivant.
-    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setShowLibre(false);
+    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setShowLibre(false); setVenteDictee(null);
   };
 
   const total = getTotalCart();
@@ -963,7 +1022,9 @@ function POSCaisseInner() {
             `onIntentionEncaissement` (lot C) : le micro RECONNAÎT « encaisse »
             et « oui valide », c'est cette page qui décide — elle seule tient
             le compte et la primitive de paiement. */}
+        <FournisseurDemandePrix demander={ouvrirPrixManquant}>
         <MicroVenteCaisse produitPreselectionne={produitPreselectionne} onIntentionEncaissement={onIntentionEncaissement} />
+        </FournisseurDemandePrix>
 
         {/* RACCOURCI DE CONTINUITÉ — LE TOTAL AU PREMIER ÉCRAN (règle du
             premier écran, tranchée par Patrick : « sur la caisse portrait le
@@ -1268,6 +1329,26 @@ function POSCaisseInner() {
               style={{ width:'100%', maxWidth:480, background:'var(--caisse-ivoire)', borderTopLeftRadius:'var(--caisse-rayon-5)', borderTopRightRadius:'var(--caisse-rayon-5)', padding:'var(--caisse-esp-5) var(--caisse-esp-4) calc(var(--caisse-esp-5) + env(safe-area-inset-bottom))' }}
             >
               <div style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', marginBottom:'var(--caisse-esp-4)' }}>Autre article</div>
+
+              {/* CE QU'ELLE VIENT DE DIRE, RENDU VISIBLE (21/09/2026). La
+                  feuille s'ouvrait vide alors que « cinq tomates » venait
+                  d'être compris : elle devait tout retaper. Ici, sa phrase est
+                  rappelée telle qu'entendue, et le total se calcule sous ses
+                  yeux dès qu'elle pose son prix — aucun chiffre n'est inventé,
+                  c'est son prix multiplié par ce qu'elle a dit. */}
+              {venteDictee && (
+                <div data-test="rappel-dictee"
+                  style={{ border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-3)', marginBottom:'var(--caisse-esp-4)', background:'var(--caisse-succes)' }}>
+                  <div style={{ font:'var(--caisse-font-texte)', fontWeight:700, color:'var(--encre)' }}>
+                    {quantiteAvecUnite(venteDictee.quantite, venteDictee.unite)} de {venteDictee.nom}
+                  </div>
+                  <div style={{ fontSize:12, color:'var(--encre-3)', marginTop:2 }}>
+                    {Number(libreMontant) > 0
+                      ? `Total : ${formatF(Number(libreMontant) * venteDictee.quantite)} F`
+                      : 'Il ne manque que ton prix.'}
+                  </div>
+                </div>
+              )}
 
               {/* ── 1. Chercher dans le catalogue maître (Odoo) ────────────
                   La recherche est LOCALE (voir useCatalogueMaitre) : elle
