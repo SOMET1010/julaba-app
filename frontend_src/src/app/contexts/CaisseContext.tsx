@@ -74,20 +74,31 @@ function doitEnfiler(error: unknown): boolean {
  * UN OBJET, PAS UNE CHAÎNE NUE : `resultat.statut` se lit à l'appel, ne se
  * confond avec aucun autre `string` de la caisse, et laisse la place à un
  * champ supplémentaire (l'identifiant de file, par exemple) sans toucher aux
- * appelantes. UNE SEULE VÉRITÉ : ce type est produit ICI et nulle part
- * ailleurs — c'est le contexte de caisse, et lui seul, qui sait ce qui est
- * arrivé à la vente. Un écran ne doit JAMAIS redéduire ce statut de
- * `navigator.onLine` après coup.
+ * appelantes.
+ *
+ * OÙ VIT CE TYPE, ET QUI LE PRODUIT. Il est DÉCLARÉ une seule fois, dans
+ * `types/statutEnregistrement` — un module sans dépendance, parce que le reçu
+ * (`utils/recu.utils.ts`) doit le connaître et qu'un util pur n'a rien à faire
+ * d'un module de contexte React. Il est ré-exporté ici pour que les écrans de
+ * caisse continuent de le prendre à un seul endroit.
+ *
+ * Il est PRODUIT par `enregistrerVente`, ci-dessous, qui est le seul à savoir
+ * ce qui est arrivé à la vente. UNE SEULE EXCEPTION, nommée : la vente à
+ * CRÉDIT (`handleCreditSuccess` dans `POSCaisse.tsx`) pose `'confirmee'` en
+ * dur. Elle ne passe pas par ici — le crédit a son propre appel serveur, et ce
+ * gestionnaire ne tourne qu'APRÈS son accusé de réception ; le chemin est de
+ * surcroît inactif en pilote espèces (`CAISSE_CREDIT_ACTIF = false`, modale
+ * non montée). Le rebrancher sur le contexte pour la beauté du commentaire
+ * ferait bouger du code d'argent mort et non couvert : on préfère l'écrire.
+ *
+ * Ce qu'aucun écran ne doit faire, en revanche : REDÉDUIRE ce statut de
+ * `navigator.onLine` après coup. Le navigateur ment quand l'envoi tombe.
  *
  * CE QUI N'EST PAS UN STATUT : une erreur métier 4xx. Elle continue d'être
  * levée — une vente refusée n'est ni confirmée ni en attente.
  */
-export type StatutEnregistrement = 'confirmee' | 'en_attente';
-
-/** Le résultat d'une écriture de caisse depuis le téléphone. */
-export interface ResultatEnregistrement {
-  statut: StatutEnregistrement;
-}
+export type { StatutEnregistrement, ResultatEnregistrement } from '../types/statutEnregistrement';
+import type { ResultatEnregistrement } from '../types/statutEnregistrement';
 
 export interface CaisseTransaction {
   id: string;
