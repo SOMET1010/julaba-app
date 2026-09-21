@@ -450,6 +450,34 @@ rapporter('S5 · succès partiel (la seconde vente reste en file)', s5);
     'S6 un second tour sur une file vide n’annonce RIEN (pas de « nouvelle vente partie » mensongère)');
 }
 
+// ── S7 · PLUSIEURS parties ET des restantes : les deux nombres, ensemble ────
+const s7 = await jouerSync({
+  file: [
+    [VENTE, { montant: 1100, idempotency_key: 'q1' }],
+    [VENTE, { montant: 1200, idempotency_key: 'q2' }],
+    [VENTE, { montant: 1300, idempotency_key: 'q3' }],
+  ],
+  serveur: { q3: 503 },
+});
+rapporter('S7 · deux ventes parties, une encore en file', s7);
+{
+  const voix = appelsVoix(s7.appels);
+  const canaux = [...voix, ...appelsVisuels(s7.appels)];
+  const nombres = nombresTransmis(canaux);
+  ok(s7.postes.length === 2 && (await oc.operationsEnAttente(UID, s7.store)).length === 1,
+    'S7 deux ventes sont parties, une est restée en file');
+  ok(voix.length === 1, `S7 une seule annonce pour la salve (aujourd’hui : ${voix.length})`);
+  ok(nombres.includes(2) && nombres.includes(1),
+    'S7 l’annonce porte les DEUX nombres : deux parties, une restante');
+  ok(!nombres.includes(3), 'S7 elle n’annonce pas trois ventes parties');
+  const e = voix.length === 1 ? entreeTts(voix[0].args[0] as never) : null;
+  ok(!!e && !/\b(tout|toutes|tous)\b/i.test(e.frActuel),
+    'S7 et elle ne dit pas « tout est parti »');
+  ok(!!e && e.variables.length === 2,
+    `S7 sa clé de catalogue déclare bien deux variables (${e ? e.variables.join(', ') : '—'})`);
+}
+
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 2. LE CONTRAT DE `synchroniser` — élargi, jamais cassé
 // ═══════════════════════════════════════════════════════════════════════════
@@ -534,7 +562,8 @@ console.log('\nOrdre, idempotence, comptage, conservation — sur le vrai rejeu 
 console.log('\nLa voix de la vente partie, lue au catalogue :');
 {
   const clesAnnonce = [...new Set([
-    ...appelsVoix(s1.appels), ...appelsVoix(s2.appels), ...appelsVoix(s3.appels), ...appelsVoix(s5.appels),
+    ...appelsVoix(s1.appels), ...appelsVoix(s2.appels), ...appelsVoix(s3.appels),
+    ...appelsVoix(s5.appels), ...appelsVoix(s7.appels),
   ].map((a) => String(a.args[0])))];
   console.log(`  clés annoncées : ${clesAnnonce.join(', ') || 'aucune'}`);
   ok(clesAnnonce.length > 0, 'la vente partie a au moins une clé de catalogue qui lui est propre');
