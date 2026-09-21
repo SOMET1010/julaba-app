@@ -65,7 +65,15 @@ self.addEventListener('fetch', (event) => {
   // de Tata). Les deux → CACHE D'ABORD : lecture INSTANTANÉE et hors-ligne. Un clip
   // absent du cache est récupéré puis mémorisé (garnissage progressif si l'install
   // n'a pas tout pris).
-  const isHashedAsset = url.pathname.startsWith('/assets/') || url.pathname.startsWith('/voix/');
+  // /images/* rejoint /assets/ et /voix/ — B6, 21/09/2026. Ces fichiers sont
+  // stables (icônes et pictogrammes de l'interface) et ils étaient servis
+  // « réseau d'abord » : sur un réseau mort mais pas coupé, chaque affichage
+  // attendait le délai d'expiration avant de retomber sur le cache. Ils ne sont
+  // PAS pré-cachés pour autant — ils ne coûtent rien à l'installation et se
+  // garnissent au premier affichage, puis restent disponibles hors ligne.
+  const isHashedAsset = url.pathname.startsWith('/assets/')
+    || url.pathname.startsWith('/voix/')
+    || url.pathname.startsWith('/images/');
 
   if (isHashedAsset) {
     // CACHE D'ABORD
