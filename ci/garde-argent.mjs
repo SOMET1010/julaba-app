@@ -513,6 +513,71 @@ if (BAC_A_SABLE) dire(JAUNE(`  (bac à sable : ${RACINE})`));
 // ═══════════════════════════════════════════════════════════════════════════
 // [1] Le périmètre n'a pas dérivé en silence
 // ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+// [4b] LES IMPORTATIONS INTERDITES DANS LE PÉRIMÈTRE D'ARGENT
+//
+// RÈGLE D'ARCHITECTURE DE JÙLABA (Patrick, 21/09/2026) :
+//   « Toute information qui a une incidence sur l'argent doit être soit
+//     conservée, soit explicitement marquée comme perdue ; jamais
+//     reconstruite implicitement en aval. »
+//
+// Certaines fonctions violent cette règle PAR CONSTRUCTION : elles replient
+// une unité, un rôle ou une distinction dans une valeur nue. Les corriger
+// demande de desserrer une empreinte, ce qui est une décision de Patrick. En
+// attendant, on ne se contente pas d'un commentaire `@deprecated` — un
+// développeur peut l'ignorer. On l'interdit MÉCANIQUEMENT.
+//
+// La source de vérité du « domaine argent » est `ci/PERIMETRE-ARGENT.json`,
+// recalculé depuis les symboles à chaque exécution (gate [1]) : c'est la même
+// définition que tout le reste du garde, elle n'est pas réinventée ici. Un
+// fichier qui entre dans le périmètre hérite donc automatiquement de ces
+// interdictions — c'est le but.
+//
+// POUR AJOUTER UNE INTERDICTION : une entrée de plus dans `IMPORTS_INTERDITS`.
+// Rien d'autre à écrire.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Chaque entrée : le symbole banni, le module d'où il vient, POURQUOI il est
+ * banni, et par quoi le remplacer. Le « pourquoi » est affiché à l'échec :
+ * un garde qui dit seulement « interdit » se fait contourner.
+ */
+const IMPORTS_INTERDITS = [
+  {
+    symbole: 'extraireNombreBambara',
+    module: 'nombresMandingue',
+    pourquoi: 'elle replie l’unité monétaire (dɔrɔmɛ, × 5) dans un nombre nu : '
+      + '« dɔrɔmɛ kɛmɛ » en ressort à 500 et plus rien ne sait que c’était 100 dɔrɔmɛ. '
+      + 'L’information d’unité est PERDUE SANS ÊTRE MARQUÉE.',
+    aLaPlace: 'parseMandingueMonetaryExpression() puis resolveMoney() — '
+      + 'value et unit voyagent ensemble, la conversion se fait une seule fois, à la fin.',
+  },
+];
+
+function gateImportsInterdits() {
+  dire(`\n${GRAS('[4b] Les importations interdites dans le périmètre d’argent')}`);
+  const fichiers = Object.keys(noyau);
+  dire(`  ${IMPORTS_INTERDITS.length} interdiction(s) appliquée(s) aux ${fichiers.length} fichiers du périmètre`);
+  let fautes = 0;
+  for (const f of fichiers) {
+    let src;
+    try { src = readFileSync(join(RACINE, f), 'utf8'); } catch { continue; }
+    for (const regle of IMPORTS_INTERDITS) {
+      if (!src.includes(regle.symbole)) continue;
+      // Le symbole est présent : vient-il bien d'une importation du module visé ?
+      // (couvre l'import nommé, l'alias, et l'import d'espace de noms).
+      const importe = new RegExp(`from\\s*['"][^'"]*${regle.module}['"]`).test(src);
+      if (!importe) continue;
+      fautes++;
+      rater(`${f} importe « ${regle.symbole} », interdit dans le périmètre d’argent`);
+      dire(ROUGE(`      → pourquoi : ${regle.pourquoi}`));
+      dire(`        à la place : ${regle.aLaPlace}`);
+      dire(`        zone(s) d’argent de ce fichier : ${noyau[f].zones.join(', ')}`);
+    }
+  }
+  if (!fautes) dire(`  ✓ aucun fichier du chemin d’argent n’importe une fonction interdite`);
+}
+
 dire(`\n${GRAS('[1] Le périmètre, recalculé depuis les symboles')}`);
 const noyauFige = perimetre.noyau ?? {};
 {
@@ -705,6 +770,7 @@ if (BASE) {
   if (m) assouplieDeclaree = m[1].trim();
 
   if (!LISTER) {
+    gateImportsInterdits();
     dire(`\n${GRAS('[5] Le diff')}`);
     dire(`  ${modifies.length} fichier(s) modifié(s) depuis ${ref.slice(0, 7)}`);
     if (!touche.length) {
