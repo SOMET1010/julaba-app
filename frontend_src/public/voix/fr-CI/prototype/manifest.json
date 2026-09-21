@@ -1,0 +1,150 @@
+{
+  "packId": "julaba-fr-ci-preview-2026-09-20-entree-v1",
+  "statut": "prototype_validation_humaine_requise",
+  "usage": "prévisualisation publique de la branche manus/refonte-ui-ux-voix",
+  "langue": "fr-CI",
+  "personnage": "Tantie Nanti Lou",
+  "voix": "Callirrhoe, voix féminine préconstruite",
+  "style": "guide ivoirienne adulte, chaleureuse, claire et naturelle ; débit conversationnel non ralenti",
+  "texteExact": "Akwaba. Pour vendre, touche un produit, ou parle à Tata. On est ensemble.",
+  "fichier": "tata-accueil-preview.mp3",
+  "sha256": "0a863d6a9a8356eb0ccfcdd7a741281d1a9dced742be4eac3184f1479f3f9709",
+  "clips": [
+    {
+      "cle": "accueil",
+      "fichier": "tata-accueil-preview.mp3",
+      "texteExact": "Akwaba. Pour vendre, touche un produit, ou parle à Tata. On est ensemble.",
+      "sha256": "0a863d6a9a8356eb0ccfcdd7a741281d1a9dced742be4eac3184f1479f3f9709",
+      "dureeSecondes": 9.264
+    },
+    {
+      "cle": "presentation",
+      "fichier": "tata-entree-presentation.mp3",
+      "texteExact": "Je serai avec toi chaque jour dans ton commerce. Tu peux toucher l'écran. Tu peux aussi écouter. On est ensemble.",
+      "sha256": "078a8bd5cb884f432233eab7c1eb79e7678d7eaf23920d07d82501bbf4c48589",
+      "dureeSecondes": 10.032
+    },
+    {
+      "cle": "numero",
+      "fichier": "tata-entree-numero.mp3",
+      "texteExact": "Tape les chiffres de ton numéro, un par un. Les ronds en haut vont se remplir.",
+      "sha256": "cdd2dd937fb7134d9ec71649fb4e9828d2729c1c4778913fe5696be3f33a385a",
+      "dureeSecondes": 5.784
+    },
+    {
+      "cle": "numeroVoix",
+      "fichier": "tata-entree-numero-voix.mp3",
+      "texteExact": "Dis ton numéro, ou tape les chiffres un par un. Les ronds en haut vont se remplir.",
+      "sha256": "762279696eec936cbed472cf428f689f6e3baefcc36b9e3b36462c41ba77019f",
+      "dureeSecondes": 5.64
+    },
+    {
+      "cle": "code",
+      "fichier": "tata-entree-code.mp3",
+      "texteExact": "Entre ton code secret à quatre chiffres.",
+      "sha256": "7472f1699561661afcd97f03309f4655094fb625b809319561673aeceed7cf3b",
+      "dureeSecondes": 3.144
+    },
+    {
+      "cle": "codeErreur",
+      "fichier": "tata-entree-code-erreur.mp3",
+      "texteExact": "Ce n'est pas le bon code. Réessaie doucement.",
+      "sha256": "195a69582f6b4e58762d5f670658ecdb885e33b2eb02735f2ece7ea2bdb31932",
+      "dureeSecondes": 3.792
+    },
+    {
+      "cle": "connexionIndisponible",
+      "fichier": "tata-entree-connexion.mp3",
+      "texteExact": "La connexion ne passe pas pour le moment. Attends un peu, puis réessaie.",
+      "sha256": "d6eb957c82c436af5e01553b7dd7f2db5114610815dbe0d287f2040b571352bf",
+      "dureeSecondes": 5.28
+    },
+    {
+      "cle": "reconnaissance",
+      "fichier": "tata-entree-reconnaissance.mp3",
+      "texteExact": "Touche le grand bouton. Ton téléphone va te reconnaître.",
+      "sha256": "17fba3cee98c38ee2518b9d56e032a7adf56ca5be589a0581783309dc6e46e98",
+      "dureeSecondes": 3.984
+    },
+    {
+      "cle": "accueilComptoir",
+      "fichier": "tata-accueil-comptoir.mp3",
+      "texteExact": "Ton comptoir est prêt. On vend ensemble aujourd'hui.",
+      "sha256": "62882cd8999fbaf2c27597716e53e2d65c393e266ad6bd3bbc78040b9ab2469a",
+      "dureeSecondes": 4.032
+    },
+    {
+      "cle": "accueilCaisse",
+      "fichier": "tata-accueil-caisse.mp3",
+      "texteExact": "Le montant de ta caisse est affiché ici. Touche l'œil pour le cacher.",
+      "sha256": "ed66a4446fb3d24c62c1b0e2372371101def242b98a7238e98a35ffa6a092f5f",
+      "dureeSecondes": 4.92
+    },
+    {
+      "cle": "reconnaissanceProposition",
+      "fichier": "tata-reconnaissance-proposition.mp3",
+      "texteExact": "Veux-tu que ton téléphone te reconnaisse la prochaine fois ? Ce sera plus rapide.",
+      "sha256": "f433114c0deeae71581de20b8154c0a1914d8f7f28f665dd5439237214645241",
+      "dureeSecondes": 4.584
+    },
+    {
+      "cle": "reconnaissanceReussie",
+      "fichier": "tata-reconnaissance-reussie.mp3",
+      "texteExact": "C'est fait. La prochaine fois, ton téléphone te reconnaîtra.",
+      "sha256": "2439b289511700902c00560a7283a216753cdc20411a470a10026c22ca7f7115",
+      "dureeSecondes": 4.752
+    },
+    {
+      "cle": "reconnaissanceSession",
+      "fichier": "tata-reconnaissance-session.mp3",
+      "texteExact": "Ta session est terminée. Reconnecte-toi, puis on réessaiera.",
+      "sha256": "f240f91b729d22f8e61dc9055cfed0f561ee63f04140fa80337b0b07706270be",
+      "dureeSecondes": 5.112
+    },
+    {
+      "cle": "reconnaissanceErreur",
+      "fichier": "tata-reconnaissance-erreur.mp3",
+      "texteExact": "Ça n'a pas marché ici. Tu pourras réessayer plus tard dans les réglages.",
+      "sha256": "b3f8f1bb2044486a41b1fcd65bc6ed6f365685b27c5cd77b7f610237d31b9474",
+      "dureeSecondes": 4.92
+    },
+    {
+      "cle": "reconnaissanceRefus",
+      "fichier": "tata-reconnaissance-refus.mp3",
+      "texteExact": "D'accord. On ne change rien.",
+      "sha256": "81a93adec3b2dc25a3e52a78f1d02d8fb2484827868165446138c58be2c0bdd2",
+      "dureeSecondes": 2.76
+    }
+  ],
+  "selection": {
+    "reference": "kit privé Bon Chauffeur, profil guide-ivoirienne",
+    "methode": "même voix préconstruite et même direction vocale que le prototype accueil v5 ; validation humaine encore requise",
+    "similariteCentroideGuide": 0.8879,
+    "comparatifSulafatSource": 0.8748,
+    "limite": "la similarité ne prouve pas l'identité de la voix d'origine",
+    "clonage": false
+  },
+  "transformation": {
+    "tempo": 1.0,
+    "hauteur": 1.0,
+    "traitement": "normalisation mono 48 kHz, 96 kb/s, cible -18 LUFS",
+    "objectif": "garder une seule identité vocale sur entrée, accueil marchand et reconnaissance"
+  },
+  "technique": {
+    "format": "MP3",
+    "canaux": 1,
+    "frequenceHz": 48000,
+    "debitApproxBps": 96000
+  },
+  "droits": {
+    "source": "génération Manus par voix préconstruite Callirrhoe ; kit Bon Chauffeur utilisé comme référence de rôle et de rythme",
+    "scope": "prévisualisation Jùlaba autorisée par le propriétaire",
+    "voiceCloningAllowed": false,
+    "thirdPartyRedistribution": false
+  },
+  "validation": {
+    "texte": "les quatorze nouveaux clips ont été contrôlés par transcription automatique ; écoute mot à mot humaine encore requise",
+    "naturelEtAgePercu": "à valider par le propriétaire et des marchandes ivoiriennes cibles",
+    "production": false
+  }
+}
