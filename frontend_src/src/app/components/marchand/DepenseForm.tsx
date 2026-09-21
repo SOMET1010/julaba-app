@@ -1,13 +1,15 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Delete } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import TATA_BLEU from '../../../assets/images/tata-nanti-lou.png';
 import { emojiTile } from '../../utils/emojiTile';
+import { SyncEchecsBanner } from './SyncEchecsBanner';
+import { PaveMontant } from '../shared/PaveMontant';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
@@ -82,13 +84,6 @@ export function DepenseForm() {
 
   const handleMic = () => { if (isListening) stopRecording(); else startRecording(); };
   const isConfirming = voiceState === 'confirming';
-
-  const handleKey = (k: string) => {
-    if (k === '<') { setMontant(p => p.slice(0, -1)); return; }
-    if (k === '000') { setMontant(p => p === '0' || p === '' ? p : p + '000'); return; }
-    if (montant.length >= 8) return;
-    setMontant(p => p === '0' ? k : p + k);
-  };
 
   const handleSave = async () => {
     if (enregEnCoursRef.current) return; // anti double-clic (synchrone)
@@ -173,6 +168,8 @@ export function DepenseForm() {
     >
       <div style={{ flex:1, overflowY:'auto', padding:'16px 0 16px', display:'flex', flexDirection:'column', gap:14 }}>
 
+        <SyncEchecsBanner />
+
         {/* ACTIONS RAPIDES */}
         <div>
           <div style={{ fontSize:11, fontWeight:700, color:P, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:10 }}>Actions rapides</div>
@@ -250,7 +247,7 @@ export function DepenseForm() {
 
         {/* TATA NANTI LOU + MICRO */}
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, paddingTop:8, borderTop:'1px solid var(--trait)' }}>
-          <motion.img src={TATA_BLEU} alt="Tata Nanti Lou"
+          <motion.img src={TATA_BLEU} alt="Tantie Nanti Lou"
             style={{ width:160, height:160, objectFit:'contain', filter:'drop-shadow(0 12px 28px rgba(175,91,35,0.2))' }}
             animate={{ y:[0,-7,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut' }} />
           <motion.button whileTap={{ scale:0.9 }} onClick={handleMic} style={{ background:'none', border:'none', cursor:'pointer', padding:8 }}>
@@ -292,6 +289,8 @@ export function DepenseForm() {
     >
       <div style={{ flex:1, overflowY:'auto', padding:'14px 16px 16px' }}>
 
+        <SyncEchecsBanner />
+
         {/* Description + Changer */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
           <span style={{ fontSize:15, fontWeight:800, color:P }}>{description}</span>
@@ -301,12 +300,15 @@ export function DepenseForm() {
           </motion.button>
         </div>
 
-        {/* Montant */}
-        <div style={{ textAlign:'center', padding:'8px 0 4px' }}>
-          <motion.div key={montant} initial={{ y:8, opacity:0 }} animate={{ y:0, opacity:1 }} transition={{ duration:0.15 }}
-            style={{ fontSize:64, fontWeight:900, color:montantColor, letterSpacing:'-3px', lineHeight:1, transition:'color 0.3s' }}>
-            {montantNum.toLocaleString('fr-FR')}
-          </motion.div>
+        {/* Montant — pavé XXL partagé avec la caisse. */}
+        <PaveMontant
+          value={montant}
+          onChange={setMontant}
+          color={montantColor}
+          ariaLabel="Montant de la dépense"
+          onSpeak={(m) => { if (m > 0) void speak(`${m.toLocaleString('fr-FR')} francs`); }}
+        />
+        <div style={{ textAlign:'center', padding:'0 0 4px' }}>
           <div style={{ fontSize:12, height:18, marginTop:4, color:montantColor, fontStyle:'italic', opacity: montantHint ? 1 : 0 }}>
             {montantHint}
           </div>
@@ -318,16 +320,6 @@ export function DepenseForm() {
           <span style={{ fontSize:11, color:P, fontWeight:700 }}>
             {derniereDepense ? `${derniereDepense.toLocaleString('fr-FR')} F` : '—'}
           </span>
-        </div>
-
-        {/* Clavier */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:16 }}>
-          {['1','2','3','4','5','6','7','8','9','000','0','<'].map(k => (
-            <motion.button key={k} whileTap={{ scale:0.86 }} onClick={() => handleKey(k)}
-              style={{ background: k==='0' ? P : k==='<' ? '#EBEBEB' : '#FDE8D8', border:'none', borderRadius:14, padding:'18px 0', fontSize:24, fontWeight:800, color: k==='0' ? 'white' : k==='<' ? '#888' : P, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'inherit' }}>
-              {k === '<' ? <Delete size={24} color="#888" /> : k}
-            </motion.button>
-          ))}
         </div>
 
         {/* Micro */}
