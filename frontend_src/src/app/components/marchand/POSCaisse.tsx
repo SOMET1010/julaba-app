@@ -1442,8 +1442,12 @@ function POSCaisseInner() {
               </div>
             )}
             <div style={{ width:'100%', maxWidth:360, marginTop:'var(--caisse-esp-6)', display:'flex', flexDirection:'column', gap:'var(--caisse-esp-3)' }}>
+              {/* LE REÇU PART MÊME HORS LIGNE — décision de Patrick, OFF-01.
+                  La vente a eu lieu devant la cliente ; elle a droit à sa
+                  trace. Mais le reçu porte alors son acheminement réel, pris
+                  sur `lastSale.statut` et jamais redéduit de `navigator.onLine`. */}
               <button type="button"
-                onClick={() => { void partagerRecu({ montant: lastSale.montant, produits: lastSale.produits, mode_paiement: lastSale.moyen, created_at: new Date().toISOString() } as any, marchandNom); }}
+                onClick={() => { void partagerRecu({ montant: lastSale.montant, produits: lastSale.produits, mode_paiement: lastSale.moyen, created_at: new Date().toISOString(), statutSynchronisation: lastSale.statut } as any, marchandNom); }}
                 style={{ width:'100%', padding:'var(--caisse-esp-4)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
                 Envoyer le reçu (WhatsApp)
               </button>
