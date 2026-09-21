@@ -996,7 +996,7 @@ function POSCaisseInner() {
             Au-dessus de 1024 px le panier est à CÔTÉ, pas dessous : la grille y
             reste entière et ce bouton n'existe pas (cf. .pos-grille-apercu
             dans styles/commerce.css). */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-1)' }}>
           <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>Produits</h2>
           {filtered.length > 4 && (
             <div className="lg:hidden">
@@ -1013,7 +1013,7 @@ function POSCaisseInner() {
             deux outils, pas deux sections — la maquette n'en montre aucun, ils
             restent pour celle qui a trente produits ou vend un article qui
             n'est pas listé. */}
-        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
+        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-1)' }}>
         {/* UNE ÉTIQUETTE, PAS UNE BOÎTE — le défaut relevé par Patrick le 18/09.
             Il a tapé « banane » et rien n'est arrivé dans le champ : l'écran a
             continué d'afficher l'oignon. La cause n'était pas le filtre, elle
