@@ -57,7 +57,7 @@ function main() {
   console.log("\n[1] Produit inconnu + unité parlée « tas » → la ligne ET la phrase portent « tas »");
   {
     const h = creerDeps();
-    vendreVocalUnifie("gombo", 2, 1000, h.deps, "tas");
+    vendreVocalUnifie("gombo", 2, 1000, h.deps, "tas", "total");
     eq(h.lignes.length, 1, "une ligne libre ajoutée au panier");
     eq(h.lignes[0][0].unite, "tas", "la ligne enregistre l'unité PRONONCÉE, pas « unité »");
     const dit = h.dits.join(" ");
@@ -69,7 +69,7 @@ function main() {
   console.log("\n[2] Produit inconnu SANS unité parlée → « unité », et Tata ne la prononce pas");
   {
     const h = creerDeps();
-    vendreVocalUnifie("gombo", 2, 1000, h.deps);
+    vendreVocalUnifie("gombo", 2, 1000, h.deps, undefined, "total");
     eq(h.lignes[0][0].unite, "unité", "valeur par défaut d'un article libre : « unité »");
     ok(!/unit/i.test(h.dits.join(" ")), "« unité » n'apprend rien : elle ne se dit pas (« 2 gombos »)");
 
@@ -95,12 +95,12 @@ function main() {
     // voix écrivait « kilos », le même gombo aurait deux unités selon la main
     // qui l'a vendu.
     const h = creerDeps();
-    vendreVocalUnifie("gombo", 2, 1000, h.deps, "kilos");
+    vendreVocalUnifie("gombo", 2, 1000, h.deps, "kilos", "total");
     eq(h.lignes[0][0].unite, "kg", "« kilos » entendu → « kg » enregistré, comme au doigt");
     ok(/\bkg\b/.test(h.dits.join(" ")), "et c'est « kg » que Tata dit — pas un autre mot que celui qui est enregistré");
 
     const h2 = creerDeps();
-    vendreVocalUnifie("gombo", 3, 1500, h2.deps, "Sacs");
+    vendreVocalUnifie("gombo", 3, 1500, h2.deps, "Sacs", "total");
     eq(h2.lignes[0][0].unite, "sac", "« Sacs » → « sac » : singulier, minuscule ; l'accord se fait à la lecture");
     ok(h2.dits.join(" ").includes("3 sacs de gombo"), "Tata accorde à la lecture : « 3 sacs de gombo »");
   }

@@ -16,6 +16,19 @@ export interface ExtractionResult {
    *  Ce champ n'est pas utilisé pour apparier : il sert à savoir si l'on PEUT
    *  reprendre le prix du catalogue sans rien inventer. */
   uniteParlee: string | null;
+  /** CE QUE LE MONTANT VEUT DIRE — « à » ou « pour », et ce n'est pas la même
+   *  vente (21/09/2026, décision de Patrick).
+   *
+   *  « Trois tas de tomates À 500 » = 500 LE TAS → 1 500 F.
+   *  « Trois tas de tomates POUR 500 » = 500 LE LOT → 500 F.
+   *  Un triple d'écart, et le parseur connaissait DÉJÀ la différence : `à` et
+   *  `pour` sont tous deux dans `MARQUEURS_AVANT`, où ils servaient seulement
+   *  à reconnaître un montant, après quoi on oubliait lequel des deux avait
+   *  été prononcé. C'est cet oubli qui obligeait l'aval à DEVINER.
+   *
+   *  `null` = la phrase ne tranche pas. On ne devine alors rien ici : c'est
+   *  `resoudrePrix` qui essaie avec le catalogue, et à défaut on DEMANDE. */
+  lecturePrix: 'unitaire' | 'total' | null;
 }
 
 // ──────────────────────────────────────────────
@@ -130,6 +143,33 @@ function extractNumberTokens(words: string[]): NumberToken[] {
 
 // Marqueurs AVANT le nombre → montant (« à 2000 », « pour 1000 »)
 export const MARQUEURS_AVANT = new Set(['à', 'a', 'pour']);
+// Lequel des deux, et ce que ça VEUT DIRE (voir ExtractionResult.lecturePrix) :
+// « à » attache le montant à l'unité, « pour » au lot entier.
+export const MARQUEURS_UNITAIRE = new Set(['à', 'a']);
+export const MARQUEURS_TOTAL = new Set(['pour']);
+/**
+ * LA NÉGOCIATION PORTE SUR LE LOT — toujours. « Je te fais 1 300 » sur trois
+ * tas, c'est 1 300 pour les trois : personne ne négocie à la hausse. Ces
+ * tournures priment donc sur « à », parce qu'on dit « je te fais les trois
+ * tas À 1 300 » sans que ce 1 300 devienne un prix unitaire.
+ *
+ * Volontairement étroit : des tournures qui désignent explicitement
+ * l'ENSEMBLE ou le geste commercial, jamais un mot isolé qui pourrait
+ * apparaître ailleurs.
+ *
+ * DEUX ABSENTES, ET CE N'EST PAS UN OUBLI. « Je te LAISSE 1 300 » et « AU
+ * TOTAL 1 300 » sont bien des négociations en français de marché, mais la
+ * grammaire d'encaissement les prend AVANT nous, et à raison : « laisse » y
+ * vaut abandon (le doute profite au refus) et « total » y vaut « combien elle
+ * doit ». Les mettre ici ne les rattraperait pas — la phrase n'arrive jamais
+ * jusqu'à l'extraction — et laisserait croire qu'on les gère. Les réconcilier
+ * demanderait de toucher cette grammaire-là, ce qui n'est pas ce lot.
+ */
+export const TOURNURES_TOTAL: string[] = [
+  'je te fais', 'je te le fais', 'je te la fais', 'je te les fais',
+  'je te mets', 'le tout', 'tout ca', 'tout ça', 'en tout',
+  'dernier prix', 'prix final',
+];
 // Marqueurs APRÈS le nombre → montant (« 2000 francs »)
 export const MARQUEURS_APRES = new Set(['francs', 'franc']);
 // Mots intermédiaires tolérés entre le nombre et le produit (pour la quantité)
@@ -199,9 +239,17 @@ export function extraire(transcription: string): ExtractionResult {
 
   let uniteParlee: string | null = null;
 
+  // La négociation se lit sur la PHRASE ENTIÈRE, pas sur le voisinage du
+  // nombre : « les trois tas, je te fais 1 300 » a son geste commercial loin
+  // du montant. Sans accent, pour que « ça » et « ca » se valent.
+  const sansAccent = texte.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const negociationDuLot = TOURNURES_TOTAL.some(
+    (tour) => sansAccent.includes(tour.normalize('NFD').replace(/[̀-ͯ]/g, '')),
+  );
+
   // 3. Tokens numériques
   const numTokens = extractNumberTokens(mots);
-  if (numTokens.length === 0) return { intention, produit, quantite: null, montant: null, uniteParlee };
+  if (numTokens.length === 0) return { intention, produit, quantite: null, montant: null, uniteParlee, lecturePrix: null };
 
   // ────────────────────────────────────────────────────────────────────
   // RÈGLES DE PRÉCÉDENCE — immuable, chaque règle s'applique ou non,
@@ -214,6 +262,9 @@ export function extraire(transcription: string): ExtractionResult {
 
   const marqueMontant = new Set<number>(); // index dans numTokens
   const marqueQuantite = new Set<number>();
+  // Le mot qui introduit chaque montant reconnu — c'est lui qui dira si le
+  // chiffre est un prix unitaire ou le prix du lot.
+  const motAvantMontant = new Map<number, string>();
 
   for (let idx = 0; idx < numTokens.length; idx++) {
     const tok = numTokens[idx];
@@ -222,6 +273,7 @@ export function extraire(transcription: string): ExtractionResult {
 
     if ((avant && MARQUEURS_AVANT.has(avant)) || (apres && MARQUEURS_APRES.has(apres))) {
       marqueMontant.add(idx);
+      if (avant && MARQUEURS_AVANT.has(avant)) motAvantMontant.set(idx, avant);
     }
   }
 
@@ -252,9 +304,17 @@ export function extraire(transcription: string): ExtractionResult {
   // Étape C : résoudre à partir des marques
   let montant: number | null = null;
   let quantite: number | null = null;
+  let lecturePrix: 'unitaire' | 'total' | null = null;
 
   if (marqueMontant.size > 0) {
-    montant = numTokens[Math.max(...marqueMontant)].value; // prend le dernier marqué montant
+    const idxMontant = Math.max(...marqueMontant);
+    montant = numTokens[idxMontant].value; // prend le dernier marqué montant
+    // C'EST SON MOT QUI TRANCHE, pas notre devinette. « à » → prix de l'unité,
+    // « pour » → prix du lot. « 2000 francs » sans préposition ne dit rien :
+    // on laisse `null`, et l'aval demandera plutôt que d'inventer.
+    const intro = motAvantMontant.get(idxMontant);
+    if (intro && MARQUEURS_UNITAIRE.has(intro)) lecturePrix = 'unitaire';
+    else if (intro && MARQUEURS_TOTAL.has(intro)) lecturePrix = 'total';
   }
   if (marqueQuantite.size > 0) {
     quantite = numTokens[Math.min(...marqueQuantite)].value;
@@ -286,7 +346,12 @@ export function extraire(transcription: string): ExtractionResult {
     quantite = null;
   }
 
-  return { intention, produit, quantite, montant, uniteParlee };
+  // La négociation porte sur le lot, et elle prime : « les trois tas, je te
+  // fais 1 300 » reste 1 300 pour les trois, même si un « à » traîne dans la
+  // phrase. Personne ne négocie à la hausse.
+  if (negociationDuLot && montant != null) lecturePrix = 'total';
+
+  return { intention, produit, quantite, montant, uniteParlee, lecturePrix };
 }
 
 // ──────────────────────────────────────────────

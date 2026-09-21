@@ -8,13 +8,13 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **409** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 435 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **411** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 437 |
 | — littéraux (phrase fixe en dur) | 209 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 96 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 67 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 68 |
 | — relais (`dire = (t) => speak(t)`) | 17 |
-| — clés i18n (`speakMessage('…')`, `t('…')`) | 46 |
+| — clés i18n (`speakMessage('…')`, `t('…')`) | 47 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **260** |
 | Dont dynamiques (avec variables) | 96 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **67** |
@@ -27,7 +27,7 @@
 | Fichier | Domaine | Appels | Littéraux | Gabarits | Dynamiques | Relais | Clés | Critiques argent |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | `components/marchand/GestionStock.tsx` | stock | 31 | 21 | 10 | 2 | 1 | 0 | 8 |
-| `components/marchand/POSCaisse.tsx` | caisse | 28 | 0 | 0 | 8 | 2 | 19 | 0 |
+| `components/marchand/POSCaisse.tsx` | caisse | 29 | 0 | 0 | 8 | 2 | 20 | 0 |
 | `components/producteur/CommandesProducteurPage.tsx` | producteur | 26 | 14 | 15 | 0 | 0 | 0 | 3 |
 | `components/producteur/Stocks.tsx` | stock | 23 | 11 | 12 | 0 | 0 | 0 | 1 |
 | `hooks/useVoiceCore.ts` | moteur_vocal | 16 | 9 | 0 | 6 | 2 | 0 | 1 |
@@ -57,11 +57,11 @@
 | `components/shared/ScoreResumeCard.tsx` | partage | 5 | 0 | 1 | 4 | 0 | 0 | 0 |
 | `components/wallet/WalletCard.tsx` | wallet | 5 | 7 | 0 | 0 | 0 | 0 | 2 |
 | `pages/CollecteVoix.tsx` | pages | 5 | 1 | 0 | 3 | 1 | 0 | 0 |
+| `services/vendreVocalUnifie.ts` | vente | 5 | 0 | 0 | 2 | 0 | 4 | 0 |
 | `components/auth/ActivationScreen.tsx` | auth | 4 | 2 | 0 | 1 | 1 | 0 | 0 |
 | `components/shared/ReceptionPaiementModal.tsx` | partage | 4 | 2 | 1 | 1 | 0 | 0 | 0 |
 | `components/shared/UniversalParametres.tsx` | marchand_autre | 4 | 3 | 0 | 0 | 0 | 2 | 0 |
 | `contexts/ObjectifContext.tsx` | marchand_autre | 4 | 2 | 2 | 0 | 0 | 0 | 2 |
-| `services/vendreVocalUnifie.ts` | vente | 4 | 0 | 0 | 1 | 0 | 4 | 0 |
 | `components/auth/OnboardingSlides.tsx` | auth | 3 | 0 | 0 | 0 | 0 | 3 | 0 |
 | `components/cooperative/Stock.tsx` | stock | 3 | 2 | 1 | 0 | 0 | 0 | 0 |
 | `components/cooperative/TresorerieCooperative.tsx` | cooperative | 3 | 2 | 1 | 0 | 0 | 0 | 2 |
@@ -112,9 +112,9 @@
 | marchand_autre | 50 | 45 | 19 |
 | partage | 37 | 24 | 0 |
 | wallet | 34 | 36 | 18 |
-| caisse | 32 | 0 | 0 |
+| caisse | 33 | 0 | 0 |
 | auth | 29 | 19 | 0 |
-| vente | 28 | 0 | 0 |
+| vente | 29 | 0 | 0 |
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 17 | 9 | 1 |
 | depense | 10 | 11 | 4 |
@@ -437,17 +437,17 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 153 | `speak` | relais | texte |  |  |
-| 156 | `speakMessage` | relais | id |  |  |
-| 204 | `speakMessage` | cle_i18n | TATA_AJOUT_PANIER |  |  |
-| 306 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
-| 319 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
-| 349 | `speakMessage` | dynamique | ...introMessage() |  |  |
-| 361 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
-| 363 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
-| 372 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
-| 463 | `speak` | dynamique | dernierePhraseRef.current |  |  |
-| 463 | `speak` | dynamique | introLigne() |  |  |
+| 161 | `speak` | relais | texte |  |  |
+| 164 | `speakMessage` | relais | id |  |  |
+| 212 | `speakMessage` | cle_i18n | TATA_AJOUT_PANIER |  |  |
+| 328 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
+| 341 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
+| 371 | `speakMessage` | dynamique | ...introMessage() |  |  |
+| 432 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
+| 434 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
+| 443 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
+| 534 | `speak` | dynamique | dernierePhraseRef.current |  |  |
+| 534 | `speak` | dynamique | introLigne() |  |  |
 
 ### `components/marchand/PinConfirmModal.tsx` — auth
 
@@ -468,32 +468,33 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 76 | `speak` | relais | t |  |  |
 | 84 | `speakMessage` | relais | id |  |  |
 | 169 | `dire` | dynamique | phraseLigneAjoutee({ nom: p?.nom \|\| p?.name \|\| 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }) |  |  |
-| 214 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
-| 221 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
-| 243 | `direMessage` | cle_i18n | TATA_INDIQUE_PRIX |  |  |
-| 255 | `dire` | dynamique | res.message |  |  |
-| 255 | `dire` | cle_i18n | TATA_ARTICLE_IMPOSSIBLE |  |  |
-| 272 | `direMessage` | cle_i18n | TATA_ARTICLE_AJOUTE_CATALOGUE |  |  |
-| 295 | `dire` | dynamique | phraseLigneAjoutee({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }) |  |  |
-| 313 | `dire` | dynamique | direCoupure(valeur) |  |  |
-| 342 | `direMessage` | cle_i18n | TATA_MONTANT_TOTAL_INVALIDE |  |  |
-| 346 | `direMessage` | cle_i18n | TATA_MONTANT_RECU_INSUFFISANT |  |  |
-| 347 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
-| 416 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
-| 417 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
-| 429 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
-| 430 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
-| 435 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 502 | `speak` | dynamique | effet.texte |  |  |
-| 532 | `speak` | dynamique | effet.texte |  |  |
-| 559 | `dire` | dynamique | phrase |  |  |
-| 581 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
-| 655 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
-| 688 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
-| 721 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
-| 863 | `speak` | dynamique | relectureAffichee |  |  |
-| 899 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
-| 987 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
+| 220 | `direMessage` | cle_i18n | TATA_AMBIGUITE |  |  |
+| 223 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
+| 230 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
+| 252 | `direMessage` | cle_i18n | TATA_INDIQUE_PRIX |  |  |
+| 264 | `dire` | dynamique | res.message |  |  |
+| 264 | `dire` | cle_i18n | TATA_ARTICLE_IMPOSSIBLE |  |  |
+| 281 | `direMessage` | cle_i18n | TATA_ARTICLE_AJOUTE_CATALOGUE |  |  |
+| 304 | `dire` | dynamique | phraseLigneAjoutee({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }) |  |  |
+| 322 | `dire` | dynamique | direCoupure(valeur) |  |  |
+| 351 | `direMessage` | cle_i18n | TATA_MONTANT_TOTAL_INVALIDE |  |  |
+| 355 | `direMessage` | cle_i18n | TATA_MONTANT_RECU_INSUFFISANT |  |  |
+| 356 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
+| 425 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
+| 426 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
+| 438 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
+| 439 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
+| 444 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 511 | `speak` | dynamique | effet.texte |  |  |
+| 541 | `speak` | dynamique | effet.texte |  |  |
+| 568 | `dire` | dynamique | phrase |  |  |
+| 590 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
+| 664 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
+| 697 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
+| 730 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
+| 872 | `speak` | dynamique | relectureAffichee |  |  |
+| 908 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
+| 996 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
 
 ### `components/marchand/ProtectionSociale.tsx` — marchand_autre
 
@@ -940,11 +941,12 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 192 | `speak` | cle_i18n | TATA_UNITE_INCOMPATIBLE |  |  |
-| 194 | `speak` | cle_i18n | TATA_PRIX_INCONNU_PRODUIT |  |  |
-| 194 | `speak` | cle_i18n | TATA_PRIX_INCOMPRIS |  |  |
-| 257 | `speak` | dynamique | phraseCompris({ nom: ligne.nom, quantite: qte, total: ligne.total, unite: uniteLigne }) |  |  |
-| 269 | `speak` | cle_i18n | TATA_PRODUIT_INCONNU_AJOUTER |  |  |
+| 211 | `speak` | cle_i18n | TATA_UNITE_INCOMPATIBLE |  |  |
+| 215 | `speak` | dynamique | phraseAmbiguite(prix.quantite, prix.montant) |  |  |
+| 217 | `speak` | cle_i18n | TATA_PRIX_INCONNU_PRODUIT |  |  |
+| 217 | `speak` | cle_i18n | TATA_PRIX_INCOMPRIS |  |  |
+| 280 | `speak` | dynamique | phraseCompris({ nom: ligne.nom, quantite: qte, total: ligne.total, unite: uniteLigne }) |  |  |
+| 292 | `speak` | cle_i18n | TATA_PRODUIT_INCONNU_AJOUTER |  |  |
 
 ## 5. Corpus fixes (phrases qui ne sont pas à un site d'appel)
 
@@ -1369,7 +1371,7 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
-| 245 | template | C'est dans le panier : {qte} × {nom} | `qte` `nom` |
+| 268 | template | C'est dans le panier : {qte} × {nom} | `qte` `nom` |
 
 ### `services/intentionsCaisse.ts` — réponses aux questions « chiffres du jour » (0)
 

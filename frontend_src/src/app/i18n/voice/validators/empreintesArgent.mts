@@ -53,27 +53,31 @@ export const EMPREINTES_BASE = {
   //
   // CE QUI A ÉTÉ CORRIGÉ. Tout montant dicté était lu comme le TOTAL de la
   // vente. « Trois tas de tomates à 500 », catalogue à 500 le tas, entrait au
-  // panier pour 500 F — le tiers. Le montant est désormais arbitré par
-  // `ligneProvisoire.resoudrePrix`, la règle de la saisie guidée (SPEC §5),
-  // que la voix n'avait jamais branchée.
+  // panier pour 500 F — le tiers. C'est désormais la GRAMMAIRE qui décide
+  // (« à » → unitaire, « pour » ou une négociation → le lot), puis le
+  // catalogue, puis la quantité 1 ; et ce que rien ne tranche n'est plus
+  // deviné : il est DEMANDÉ.
   //
   // CE QUI BOUGE DANS LE CORPUS — vérifié ligne à ligne, 1 cas sur 10 :
-  //   ['banane', 2, 400, 'regimes'] : produit INCONNU du catalogue, donc rien
-  //   ne peut départager unitaire/total. Total 400 → 800, unitaire 200 → 400,
-  //   et la phrase dite suit (« pour 400 francs » → « pour 800 francs »).
-  //   C'est la règle assumée : quand le catalogue est muet, on lit le montant
-  //   comme UNITAIRE, la seule lecture qui ne sous-compte jamais sa vente.
+  //   ['banane', 2, 400, 'regimes'] : produit INCONNU du catalogue, aucune
+  //   préposition dans l'appel, quantité 2. 400 peut valoir 400 ou 800.
+  //   AVANT : une ligne entrait au panier à 400 (200 l'unité), sans que rien
+  //   ne le justifie. APRÈS : aucune ligne, aucun franc, et Tata pose la
+  //   question — « 400 francs, c'est le prix d'un seul, ou de tous les 2 ? »
+  //   (clé TATA_AMBIGUITE, critiqueArgent). C'est le cœur de la décision :
+  //   on ne devine pas sur son argent.
   //
   // CE QUI NE BOUGE PAS, et qui est la preuve que le correctif est ciblé :
-  //   ['tomate', 3, 1500, 'tas'] (guidage on ET off) reste à 1 500 — elle a
-  //   annoncé le total, et le catalogue le confirme (3 × 500) ;
+  //   ['tomate', 3, 1500, 'tas'] (guidage on ET off) reste à 1 500 — le
+  //   catalogue confirme 3 × 500 ;
   //   les deux cas sans montant dicté (prix du catalogue), les deux refus
   //   d'unité incompatible, les deux prix manquants, et ['attiéké', 1, 100]
-  //   (quantité 1 : unitaire et total se confondent) sont tous identiques.
+  //   (quantité 1 : les deux lectures donnent le même nombre) sont identiques.
   //
   // Les neuf autres empreintes de cette table sont INCHANGÉES et restent
-  // celles de 576fd62 : aucun autre module d'argent n'a bougé.
-  vendreVocal: 'adcd61c6d95ec4520fc039a615109204aa996ff185723ad6cf93fb80b9b0dc66',
+  // celles de 576fd62 — `intentLocal` comprise : la lecture du montant est
+  // portée par `extraction`, pas par l'intention locale.
+  vendreVocal: '6aee0b5fd505fe3714bbe257bf311b832ba9e922d21fb08b81d6e87a263da700',
   questions: '3fb1e9e82b3b2c0dad9586a360419b0d7b18a5403ca6a42fce5e0c9d08621d7e',
   // Recalculée sur la source de 576fd62 après correction du corpus (la
   // première passe itérait les objets `Coupure` au lieu de leurs valeurs) :

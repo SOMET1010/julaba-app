@@ -26,7 +26,7 @@ import {
   doitProposerCreation,
   type ProduitAppariable,
 } from './venteVocale';
-import { phraseCompris } from './dialoguesTata';
+import { phraseAmbiguite, phraseCompris } from './dialoguesTata';
 import { resoudrePrixVocal } from './prixVocal';
 import { uniteEntendue } from '../utils/unite.utils';
 import { t } from '../i18n/voice/runtime';
@@ -113,8 +113,12 @@ export interface DependancesVendreVocalUnifie {
     quantite: number;
     /** Unité prononcée, ou null si elle n'en a pas dit. */
     unite: string | null;
-    /** Pourquoi on demande : aucun prix connu, ou unité qui ne concorde pas. */
-    raison: 'prix_manquant' | 'unite_incompatible';
+    /** Pourquoi on demande : aucun prix connu, unité qui ne concorde pas, ou
+     *  montant dicté dont on ne sait pas s'il vaut pour un ou pour tous. */
+    raison: 'prix_manquant' | 'unite_incompatible' | 'ambiguite_prix';
+    /** Le montant dicté, UNIQUEMENT pour `ambiguite_prix` : c'est lui qu'on
+     *  lui relit (« 500, c'est le prix d'un seul, ou de tous les 3 ? »). */
+    montant?: number;
   }) => void;
 }
 
@@ -157,6 +161,12 @@ export function vendreVocalUnifie(
    *  catalogue est le bon — et quand il ne l'est pas, c'est SON mot qu'on lui
    *  redit (« Tu dis kilos… »), pas notre graphie. */
   uniteDictee?: string | null,
+  /** CE QUE LA GRAMMAIRE A ENTENDU du montant — « à » (unitaire), « pour » ou
+   *  une négociation (total), `null` si la phrase ne tranche pas. Vient de
+   *  `extraction.lecturePrix`. Sans elle, un montant dicté sur une quantité
+   *  supérieure à 1 que le catalogue ne confirme pas reste AMBIGU, et la
+   *  vente attend une clarification au lieu d'être inventée. */
+  lectureDictee?: 'unitaire' | 'total' | null,
 ): void {
   const produitCat = apparierProduit(nomParle || '', deps.products);
   const qte = quantite > 0 ? quantite : 1;
@@ -171,6 +181,7 @@ export function vendreVocalUnifie(
     produit: produitCat as never,
     uniteParlee: uniteDictee,
     nomParle,
+    lectureDictee,
   });
 
   if (prix.type !== 'prix') {
@@ -185,6 +196,10 @@ export function vendreVocalUnifie(
         quantite: qte,
         unite: uniteEntendue(uniteDictee),
         raison: prix.type,
+        // L'ambiguïté se pose en lui RELISANT son propre chiffre : « 500,
+        // c'est le prix d'un seul, ou de tous les 3 ? ». Sans le montant,
+        // l'écran redemanderait un prix qu'elle vient de donner.
+        ...(prix.type === 'ambiguite_prix' ? { montant: prix.montant } : {}),
       });
       return;
     }
@@ -194,6 +209,10 @@ export function vendreVocalUnifie(
     if (deps.guidageVocalActif()) {
       if (prix.type === 'unite_incompatible') {
         deps.speak(t('TATA_UNITE_INCOMPATIBLE', { uniteParlee: prix.uniteParlee, produit: prix.nom, uniteCatalogue: prix.uniteCatalogue }));
+      } else if (prix.type === 'ambiguite_prix') {
+        // On lui repose SA question, avec SES chiffres — et on ne pose rien
+        // au panier tant qu'elle n'a pas répondu.
+        deps.speak(phraseAmbiguite(prix.quantite, prix.montant));
       } else {
         deps.speak(
           prix.nom

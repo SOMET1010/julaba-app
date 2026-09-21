@@ -235,17 +235,41 @@ try {
     await page.close();
   }
 
-  // ── P5b — LE MÊME MONTANT, ANNONCÉ COMME TOTAL ─────────────────────────
-  // Le correctif ne doit pas basculer dans l'excès inverse : « trois tas à
-  // 1500 », sur le même catalogue, reste une vente de 1 500 F, jamais 4 500.
-  console.log('\n[P5b] Le même produit, montant annoncé en TOTAL — « trois tas de tomates à 1500 »');
+  // ── P5b — LE MÊME MONTANT, ANNONCÉ SUR LE LOT ──────────────────────────
+  // « Pour » ne veut pas dire « à ». Le correctif ne doit pas basculer dans
+  // l'excès inverse : trois tas POUR 500, c'est 500, pas 1 500.
+  console.log('\n[P5b] « trois tas de tomates pour 500 » — « pour » désigne le lot');
   {
     const page = await ouvrir(navigateur, '?panier=vide&voix=on');
-    await dicter(page, 'trois tas de tomates à 1500');
+    await dicter(page, 'trois tas de tomates pour 500');
     await page.waitForTimeout(400);
     const ap = await panier(page);
-    ok(ap.length === 1 && ap[0]?.total === 1500, 'la vente vaut 1 500 F — jamais 4 500', ap);
-    ok(ap[0]?.prix === 500, 'et le prix du tas s\'en déduit : 500', ap[0]);
+    ok(ap.length === 1 && ap[0]?.total === 500, 'la vente vaut 500 F — le prix du lot', ap);
+    ok(ap[0]?.quantite === 3, 'sur les trois tas', ap[0]);
+    await page.close();
+  }
+
+  // ── P5c — CE QUE RIEN NE TRANCHE NE S'ÉCRIT PAS ────────────────────────
+  // Le cœur de la décision de Patrick : ni préposition, ni prix au catalogue,
+  // ni quantité 1. 500 peut valoir 500 ou 1 000 — on ne devine pas, on
+  // demande, et AUCUN franc n'entre au panier avant la réponse.
+  console.log('\n[P5c] Montant réellement ambigu — aucune écriture avant clarification');
+  {
+    const page = await ouvrir(navigateur, '?catalogue=vide&voix=on');
+    await dicter(page, 'deux tas de gombo 500');
+    await page.waitForTimeout(400);
+    const ap = await panier(page);
+    ok(ap.length === 0, 'AUCUNE ligne n\'entre au panier', ap);
+    const jv = await voix(page);
+    const question = jv.find(m => m.id === 'TATA_AMBIGUITE');
+    ok(!!question, 'la question passe par la clé TATA_AMBIGUITE, jamais en dur', jv.map(m => m.id));
+    ok(String(question?.variables?.montant) === '500', 'on lui relit SON chiffre', question?.variables);
+    ok(String(question?.variables?.quantite) === '2', 'et SA quantité', question?.variables);
+    const attendu = await page.evaluate(() => window.__t('TATA_AMBIGUITE', { montant: 500, quantite: '2' }));
+    ok((await dits(page)).includes(attendu), 'et c\'est bien cette phrase-là qui part à la voix', { attendu, dits: await dits(page) });
+    // L'écran s'ouvre aussi : elle le voit même si elle a coupé la voix.
+    ok(await page.getByRole('dialog', { name: 'Autre article' }).isVisible(), 'l\'écran de clarification s\'ouvre, pré-rempli');
+    await photo(page, 'p5c-ambiguite');
     await page.close();
   }
 
