@@ -1,0 +1,245 @@
+{
+  "pack_id": "julaba-corpus-multilingue-draft-2026-09-20",
+  "status": "DRAFT_VALIDATION_NATIVE_REQUISE",
+  "source_rows": 168,
+  "languages": 19,
+  "long_catalog_rows": 3192,
+  "rules": {
+    "business_logic_modified": false,
+    "financial_content_requires_two_native_validators": true,
+    "audio_generation_allowed_before_validation": false,
+    "ids_are_provisional_until_claude_mapping": true
+  },
+  "files": [
+    {
+      "name": "00-fr-marche-rapport.md",
+      "bytes": 4399,
+      "sha256": "e7c05603d9298a614443c792b818af634cae515c879f759a0a50331a01100e71"
+    },
+    {
+      "name": "00-fr-marche.csv",
+      "bytes": 61734,
+      "sha256": "65ebbf393bc9a420070769713b41ea3473633ee1d6a638f95a28dd72fb8b4c71"
+    },
+    {
+      "name": "01-dioula-rapport.md",
+      "bytes": 7746,
+      "sha256": "a9b47a13efe86eec67ef77dbf9d92a7c8c9af4e18d82d688a766c9305f648692"
+    },
+    {
+      "name": "01-dioula.csv",
+      "bytes": 105856,
+      "sha256": "77d7eca969f3a555634535e8d0e28f721766ba82ccc8fcec8aa97f45c1f67110"
+    },
+    {
+      "name": "02-baoule-rapport.md",
+      "bytes": 7436,
+      "sha256": "f1c4ba885da71566591a0cfda2ab6eb5e4814bfc96f18ea02e864d5a71625819"
+    },
+    {
+      "name": "02-baoule.csv",
+      "bytes": 77581,
+      "sha256": "f639c3e30860c05923acd5b4230cded44c1b637bfa7521ba1b2125967e400e25"
+    },
+    {
+      "name": "03-agni-rapport.md",
+      "bytes": 4718,
+      "sha256": "83e90e62f9bf6c7eb048c91f6d64a23d9d6578d35651a9ff0cccb60940812769"
+    },
+    {
+      "name": "03-agni.csv",
+      "bytes": 65697,
+      "sha256": "26151ae184f67562d6850784a386bdde151376f90b140919cafc810422f6f2f0"
+    },
+    {
+      "name": "04-bete-rapport.md",
+      "bytes": 4306,
+      "sha256": "d1a1a1395429d722135b52ffd751c85aeea9c502f353625d44c705745490e199"
+    },
+    {
+      "name": "04-bete.csv",
+      "bytes": 71913,
+      "sha256": "25e605b8a3b2307af479c4f0e6d4169cb72b72fe54c793d847fc64e75e2b43b6"
+    },
+    {
+      "name": "05-adioukrou-rapport.md",
+      "bytes": 4524,
+      "sha256": "bae362d4986904478d01e1aa3d12d1db4f2277a378ecbc463ea0e20a45bc6c88"
+    },
+    {
+      "name": "05-adioukrou.csv",
+      "bytes": 63681,
+      "sha256": "5d51ff4acfd762c03a676038e4564307a147577aecc8775710e095eb17ca12ba"
+    },
+    {
+      "name": "06-ebrie-rapport.md",
+      "bytes": 5046,
+      "sha256": "fd9cfcf1c65e4599187ffdd05e4994166513fc56e1a6752ddcfc5c094b4166ec"
+    },
+    {
+      "name": "06-ebrie.csv",
+      "bytes": 75174,
+      "sha256": "00bb032f832f76fb368a185d0aac5e4c389087e1b461e0dcec214ea15af1e0a7"
+    },
+    {
+      "name": "07-attie-akye-rapport.md",
+      "bytes": 6132,
+      "sha256": "7f8446efa1d3a16f419dc2b1af72af397ac686a633d99115bfb6cfeb6cc07bd3"
+    },
+    {
+      "name": "07-attie-akye.csv",
+      "bytes": 117377,
+      "sha256": "9c83c7134802145f62fc3416dc85980b51197bbd347be6ebb6c194c2f2deb1ed"
+    },
+    {
+      "name": "08-aboure-rapport.md",
+      "bytes": 5784,
+      "sha256": "22415e3444229d41be4d7cdd6d6d51d982f69533f7d0bc356d2a0fb473ca71d8"
+    },
+    {
+      "name": "08-aboure.csv",
+      "bytes": 63345,
+      "sha256": "e11ac32c1bbcc8aa43cf54addad5e0e0ef4c8f9a35ba0fee68a4f01707506b19"
+    },
+    {
+      "name": "09-senoufo-rapport.md",
+      "bytes": 6309,
+      "sha256": "54386703b0b9607d60ce610423150a5cf7312f6ae3458ec06d413dc89dcad793"
+    },
+    {
+      "name": "09-senoufo.csv",
+      "bytes": 72885,
+      "sha256": "68592a16f4a6e124e101dfc678a9eff9d97bb49de679681d38021f18685ecd1f"
+    },
+    {
+      "name": "10-we-guere-rapport.md",
+      "bytes": 6707,
+      "sha256": "cce6a6170fb218284354d025c3a8c5b4af679380935456c1bb99444fb1b1f6fb"
+    },
+    {
+      "name": "10-we-guere.csv",
+      "bytes": 62337,
+      "sha256": "de4e528614c1e82378019e095a968a3116242a4d0b3c019734e3984d83af874e"
+    },
+    {
+      "name": "11-dan-yacouba-rapport.md",
+      "bytes": 4705,
+      "sha256": "09a337a8512ca9aee6fdaebdc7565eef901896a4c752e7c83f63aeb85baff1dc"
+    },
+    {
+      "name": "11-dan-yacouba.csv",
+      "bytes": 70638,
+      "sha256": "a75ead173e082dc89c7e57d4fe25ed43ae7d3af055af889e73bbb0091e5df812"
+    },
+    {
+      "name": "12-abron-rapport.md",
+      "bytes": 5568,
+      "sha256": "6ac30af0923f155de268fd214dd1de0dab9783c0f677e81dd13b25a1d917b509"
+    },
+    {
+      "name": "12-abron.csv",
+      "bytes": 70065,
+      "sha256": "2f521ef3bbad46323f3d365e36ce06e5dfc6a2933f7a299bdd6126d0a67d15f2"
+    },
+    {
+      "name": "13-koulango-rapport.md",
+      "bytes": 4629,
+      "sha256": "688ae1a30d4285a88d1b18a779f05d7b97cb939c25b2ac501d83cd1d769d3714"
+    },
+    {
+      "name": "13-koulango.csv",
+      "bytes": 101718,
+      "sha256": "4f89fd89982f58ca7a35bf97cfeb9516b9f753a9795eacc25e4cf851fd5e2871"
+    },
+    {
+      "name": "14-lobi-rapport.md",
+      "bytes": 7398,
+      "sha256": "72d298c0ccc76ab16c68ce1bdf5963bfb8cbe8084240112ac3752710e5b64c87"
+    },
+    {
+      "name": "14-lobi.csv",
+      "bytes": 144222,
+      "sha256": "5be0e667baa42a85c3818680de68da939bd24af9fe7f1a484a7198f85c29888e"
+    },
+    {
+      "name": "15-dida-rapport.md",
+      "bytes": 5506,
+      "sha256": "c9eacda895b0c0cfba121d2cf842998c34003c91163e25a41e8db15698a0e400"
+    },
+    {
+      "name": "15-dida.csv",
+      "bytes": 91774,
+      "sha256": "a74899422046affac0a1c1b12a6da35c9529f8ba3528704a600de222571907d8"
+    },
+    {
+      "name": "16-gouro-rapport.md",
+      "bytes": 8182,
+      "sha256": "21d5243586fb57ed968e112895397e169197106a7fe01e344fad235b09bd610a"
+    },
+    {
+      "name": "16-gouro.csv",
+      "bytes": 116456,
+      "sha256": "3cf04533f56582b387325bc2e6319721d4d46b4067764b7e823003358a53648c"
+    },
+    {
+      "name": "17-avikam-rapport.md",
+      "bytes": 5598,
+      "sha256": "1d23f12b379d1585137d31931770a3a5229508aa3a11eff438f6512168bab5d5"
+    },
+    {
+      "name": "17-avikam.csv",
+      "bytes": 63849,
+      "sha256": "1429fdad9bd30eabf5b82372778a23eebb3c178affe171edb9949ff91f1044ef"
+    },
+    {
+      "name": "18-abidji-rapport.md",
+      "bytes": 6503,
+      "sha256": "65b8e7d29e05ee970b757a3eaae4b5316479e9cb4014cae51cbe0d2b387ef335"
+    },
+    {
+      "name": "18-abidji.csv",
+      "bytes": 118686,
+      "sha256": "613bb18e3b72cf563e5d945b28e5a3468fe6c7afb6b2a9b56d6f8666954c11ee"
+    },
+    {
+      "name": "19-alladian-rapport.md",
+      "bytes": 6932,
+      "sha256": "94fafb2a444b61e83e0dcbaca10b775ce30b640c4de91c465f707e96a2ad71d4"
+    },
+    {
+      "name": "19-alladian.csv",
+      "bytes": 84028,
+      "sha256": "295320e7c82f04d70fd3d632c3d4069e01f93cf3465f20c9c5accf56e545ad7e"
+    },
+    {
+      "name": "AUDIT-CORPUS-MULTILINGUE.md",
+      "bytes": 2258,
+      "sha256": "7818f22fc2254297a4690bf73a85f882f4a7a7e735f45d6537f7fa825e3b4ec2"
+    },
+    {
+      "name": "CLAUDE-ID-MAPPING-TEMPLATE.csv",
+      "bytes": 48181,
+      "sha256": "f85513ee5c7096cee94eeae4c7c3b57bf951ec0c18e5557402689594924b687b"
+    },
+    {
+      "name": "INDEX-CORPUS.csv",
+      "bytes": 2302,
+      "sha256": "46987c7bed32c9a3cb951277def8c5704207969959eeae1cda890d15301d4e5c"
+    },
+    {
+      "name": "JULABA-LANG-CATALOG-MANUS-DRAFT.csv",
+      "bytes": 924381,
+      "sha256": "d918f157e73d44bd33bebf25871fec279a079b60f78ae9aa305432c3d068cf25"
+    },
+    {
+      "name": "README.md",
+      "bytes": 1645,
+      "sha256": "15c83c3bd5a9bdd81bd4e9aea8e7ebe29d3b23fde5dc1dd9c8ca6319061f71ff"
+    },
+    {
+      "name": "audit-corpus-multilingue.json",
+      "bytes": 7014,
+      "sha256": "fa4db23e7c7adf9e383ab15fa75581f6f92227127aeb97bc56c3dde593b35b2d"
+    }
+  ]
+}
