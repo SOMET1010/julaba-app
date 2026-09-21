@@ -144,8 +144,12 @@ export interface DependancesVendreVocalUnifie {
 export function vendreVocalUnifie(
   nomParle: string | undefined,
   quantite: number,
-  /** Total dicté. `0` (ou absent) signifie « rien n'a été dicté » — le prix du
-   *  catalogue prend alors le relais. */
+  /** MONTANT dicté — et non « total », comme cette ligne l'a dit trop
+   *  longtemps. « Trois tas de tomates à 500 » annonce un prix À L'UNITÉ :
+   *  lire ce 500 comme le total de la vente l'enregistrait à son tiers.
+   *  Ce qu'il représente est décidé en aval par `resoudrePrixVocal`, qui
+   *  relaie `ligneProvisoire.resoudrePrix`. `0` (ou absent) signifie « rien
+   *  n'a été dicté » — le prix du catalogue prend alors le relais. */
   montant: number,
   deps: DependancesVendreVocalUnifie,
   /** Unité RÉELLEMENT prononcée (« tas », « kilos »…), telle que l'extraction
