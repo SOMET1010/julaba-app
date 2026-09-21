@@ -363,6 +363,64 @@ function appels(nom: string): ts.CallExpression[] {
   ok(v.every((n) => !atteignable(n, STATUT_ATTENTE)), 'T10 vibrerSucces() est INATTEIGNABLE quand la vente n’est qu’en attente');
 }
 
+// ── T14 · l'attente SE SENT, sans se faire passer pour autre chose ──────────
+// Arbitrage tranché par Patrick le 21/09/2026 : une impulsion courte unique
+// pour l'état « gardée hors ligne ». La dette VOIX-06 disait qu'aucun canal
+// non visuel ne portait cet état — il n'y avait que le TTS.
+{
+  /** Le `catch` de `handlePay` est une TROISIÈME issue — la vente a levé — et
+   *  non une façon d'attendre : ce qu'il déclenche ne dit rien du statut. */
+  const dansUnCatch = (n: ts.Node) => {
+    for (let x: ts.Node = n; x.parent && x !== corpsHandlePay; x = x.parent) {
+      if (ts.isCatchClause(x.parent)) return true;
+    }
+    return false;
+  };
+
+  /** Les retours haptiques du chemin NOMINAL de `handlePay`, par nom. */
+  const haptiquesDe = (statut: string) => [...new Set(
+    (trouver(corpsHandlePay, (n) =>
+      ts.isCallExpression(n) && ts.isIdentifier(n.expression) && /^vibrer/.test(n.expression.text)) as ts.CallExpression[])
+      .filter((n) => !dansUnCatch(n) && atteignable(n, statut))
+      .map((n) => (n.expression as ts.Identifier).text),
+  )];
+
+  const enAttente = haptiquesDe(STATUT_ATTENTE);
+  console.log(`  haptique si en attente : ${enAttente.join(', ') || 'rien'}`);
+  ok(enAttente.length > 0, 'T14 une vente en attente déclenche un retour haptique (l’état se SENT, pas seulement s’entend)');
+  ok(!enAttente.includes('vibrerSucces') && !enAttente.includes('vibrerErreur'),
+    'T14 et ce n’est ni le motif du succès ni celui de l’erreur');
+
+  // Les motifs sont lus dans le VRAI module, en l'exécutant : une impulsion
+  // unique, plus courte que l'erreur, et qui ne peut pas passer pour la
+  // double impulsion du succès.
+  const attendus = enAttente.filter((nom) => nom !== 'vibrerSucces' && nom !== 'vibrerErreur');
+  const haptique = await import('../utils/haptique.js') as Record<string, () => void>;
+  const motifs = new Map<string, number | number[]>();
+  for (const nom of ['vibrerSucces', 'vibrerErreur', ...attendus]) {
+    let capte: number | number[] | null = null;
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { onLine: true, vibrate: (m: number | number[]) => { capte = m; return true; } },
+    });
+    if (typeof haptique[nom] === 'function') { haptique[nom](); if (capte !== null) motifs.set(nom, capte); }
+  }
+  const duree = (m: number | number[] | undefined) => (Array.isArray(m) ? m.reduce((s, x) => s + x, 0) : (m ?? 0));
+  const unique = (m: number | number[] | undefined) => typeof m === 'number' || (Array.isArray(m) && m.length === 1);
+
+  ok(attendus.length === 1, `T14 un seul motif d’attente, pas une famille (${attendus.join(', ') || 'aucun'})`);
+  for (const nom of attendus) {
+    const m = motifs.get(nom);
+    console.log(`  motif « ${nom} » : ${JSON.stringify(m ?? null)} (succès ${JSON.stringify(motifs.get('vibrerSucces'))}, erreur ${JSON.stringify(motifs.get('vibrerErreur'))})`);
+    ok(m !== undefined, `T14 « ${nom} » fait vraiment vibrer le téléphone`);
+    ok(unique(m), `T14 « ${nom} » est une impulsion UNIQUE (jamais une double, qui se lirait comme le succès)`);
+    ok(duree(m) < duree(motifs.get('vibrerErreur')), `T14 « ${nom} » est plus court que l’erreur (il n’alarme pas)`);
+    ok(JSON.stringify(m) !== JSON.stringify(motifs.get('vibrerSucces')), `T14 « ${nom} » n’est pas le motif du succès sous un autre nom`);
+  }
+  // Le navigateur est rendu à son état de test.
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { onLine: true } });
+}
+
 // ── T11 · la voix ───────────────────────────────────────────────────────────
 const clesDites = (statut: string) => appels('direMessage')
   .filter((n) => atteignable(n, statut))
