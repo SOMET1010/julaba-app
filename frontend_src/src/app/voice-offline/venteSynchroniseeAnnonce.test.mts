@@ -164,6 +164,10 @@ interface Resultat {
   inconnus: string[];
   store: oc.OutboxStore;
   postes: Array<{ endpoint: string; payload: Record<string, unknown> }>;
+  /** Les motifs reellement emis sur `navigator.vibrate` pendant le tour.
+   *  Le module haptique est importe POUR DE VRAI par le contexte : on ne
+   *  l'observe donc pas par son nom, mais la ou il agit. */
+  vibrations: Array<number | number[]>;
 }
 
 const corpsSync = blocDepuis(srcContexte, 'const sync = async () => {');
@@ -209,7 +213,11 @@ const modulesDuContexte = new Map<string, unknown>();
  * réel qui dit ce qu'il fait — ce test n'en présume aucun nom.
  */
 async function jouerSync(salve: Salve, store = oc.memoryOutboxStore()): Promise<Resultat> {
-  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { onLine: true } });
+  const vibrations: Array<number | number[]> = [];
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { onLine: true, vibrate: (m: number | number[]) => { vibrations.push(m); return true; } },
+  });
   for (const [endpoint, payload] of salve.file) {
     await oc.enfilerOperation(endpoint as oc.OfflineEndpoint, payload, UID, store);
   }
@@ -270,7 +278,7 @@ async function jouerSync(salve: Salve, store = oc.memoryOutboxStore()): Promise<
     (p: unknown) => () => Promise<void>;
   await fabrique(portee)();
 
-  return { appels, inconnus: [...inconnus].sort(), store, postes };
+  return { appels, inconnus: [...inconnus].sort(), store, postes, vibrations };
 }
 
 // ── Classer les canaux SÉMANTIQUEMENT, jamais par convention de nommage ─────
@@ -279,10 +287,7 @@ async function jouerSync(salve: Salve, store = oc.memoryOutboxStore()): Promise<
 function appelsVoix(appels: Appel[]): Appel[] {
   return appels.filter((a) => typeof a.args[0] === 'string' && !!entreeTts(a.args[0] as never));
 }
-/** Un appel HAPTIQUE : son nom est une fonction exportée par `utils/haptique`. */
-function appelsHaptique(appels: Appel[], nomsHaptique: Set<string>): Appel[] {
-  return appels.filter((a) => nomsHaptique.has(a.nom));
-}
+
 /** Un appel VISUEL : un poseur d'état React, ou une notification `toast`. */
 function appelsVisuels(appels: Appel[]): Appel[] {
   return appels.filter((a) => a.nom.startsWith('toast.') || /^set[A-Z]/.test(a.nom));
@@ -301,9 +306,9 @@ function nombresTransmis(appels: Appel[]): number[] {
   return out;
 }
 
-// ── Les noms du module haptique, lus dans le vrai module ────────────────────
+// ── Le vrai module haptique : ses fonctions, et le motif de chacune ─────────
 const haptique = await import('../utils/haptique.js') as Record<string, () => void>;
-const NOMS_HAPTIQUE = new Set(Object.keys(haptique).filter((k) => typeof haptique[k] === 'function'));
+const NOMS_HAPTIQUE = Object.keys(haptique).filter((k) => typeof haptique[k] === 'function');
 
 /** Le motif réellement émis par une fonction haptique, capté sur `vibrate`. */
 function motifDe(nom: string): number | number[] | null {
@@ -326,7 +331,7 @@ console.log('\nCe que le VRAI effet de synchronisation fait, joué pour de bon :
 /** Résumé lisible d'une salve : ce qui est parti, ce qui a été dit/senti/montré. */
 function rapporter(titre: string, r: Resultat) {
   const voix = appelsVoix(r.appels).map((a) => `${a.nom}(${JSON.stringify(a.args[0])})`);
-  const hapt = appelsHaptique(r.appels, NOMS_HAPTIQUE).map((a) => a.nom);
+  const hapt = r.vibrations.map((m) => JSON.stringify(m));
   const vis = appelsVisuels(r.appels).map((a) => a.nom);
   console.log(`  ${titre}`);
   console.log(`     postés : ${r.postes.map((p) => p.endpoint).join(', ') || '—'}`);
@@ -340,11 +345,10 @@ const s1 = await jouerSync({ file: [[VENTE, { montant: 1500, idempotency_key: 'v
 rapporter('S1 · une vente rejouée', s1);
 {
   const voix = appelsVoix(s1.appels);
-  const hapt = appelsHaptique(s1.appels, NOMS_HAPTIQUE);
   const vis = appelsVisuels(s1.appels);
   ok(s1.postes.length === 1 && s1.postes[0].endpoint === VENTE, 'S1 la vente est réellement partie (vraie file, vrai rejeu)');
   ok(voix.length === 1, `S1 la vente partie est DITE, une fois (aujourd’hui : ${voix.length} — OFF-02)`);
-  ok(hapt.length === 1, `S1 elle se SENT, une fois (aujourd’hui : ${hapt.length} — OFF-02)`);
+  ok(s1.vibrations.length === 1, `S1 elle se SENT, une fois (aujourd’hui : ${s1.vibrations.length} — OFF-02)`);
   ok(vis.length >= 1, `S1 elle se VOIT (aujourd’hui : ${vis.length} — OFF-02)`);
 }
 
@@ -359,10 +363,9 @@ const s2 = await jouerSync({
 rapporter('S2 · trois ventes dans la même salve', s2);
 {
   const voix = appelsVoix(s2.appels);
-  const hapt = appelsHaptique(s2.appels, NOMS_HAPTIQUE);
   ok(s2.postes.length === 3, 'S2 les trois ventes sont réellement parties');
   ok(voix.length === 1, `S2 une seule annonce parlée pour la salve entière (aujourd’hui : ${voix.length})`);
-  ok(hapt.length === 1, `S2 une seule vibration pour la salve entière (aujourd’hui : ${hapt.length})`);
+  ok(s2.vibrations.length === 1, `S2 une seule vibration pour la salve entière (aujourd’hui : ${s2.vibrations.length})`);
   ok(nombresTransmis([...voix, ...appelsVisuels(s2.appels)]).includes(3),
     'S2 l’annonce porte le NOMBRE de ventes parties (3), elle ne se répète pas');
 }
@@ -397,7 +400,7 @@ rapporter('S4 · rien que des dépenses', s4);
 {
   ok(s4.postes.length === 2, 'S4 les deux dépenses sont réellement parties');
   ok(appelsVoix(s4.appels).length === 0, 'S4 AUCUNE annonce parlée : on ne dit pas « ta vente est partie » sur une dépense');
-  ok(appelsHaptique(s4.appels, NOMS_HAPTIQUE).length === 0, 'S4 aucune vibration de vente partie');
+  ok(s4.vibrations.length === 0, 'S4 aucune vibration de vente partie');
   ok(appelsVisuels(s4.appels).filter((a) => a.nom.startsWith('toast.')).length === 0,
     'S4 aucune notification de vente partie');
 }
@@ -443,7 +446,7 @@ rapporter('S5 · succès partiel (la seconde vente reste en file)', s5);
 
   // Deuxième tour, file vide : le serveur avait déjà la vente, rien à annoncer.
   const r2 = await jouerSync({ file: [] }, store);
-  ok(appelsVoix(r2.appels).length === 0 && appelsHaptique(r2.appels, NOMS_HAPTIQUE).length === 0,
+  ok(appelsVoix(r2.appels).length === 0 && r2.vibrations.length === 0,
     'S6 un second tour sur une file vide n’annonce RIEN (pas de « nouvelle vente partie » mensongère)');
 }
 
@@ -462,7 +465,7 @@ console.log('\nCe que `synchroniser` rend, joué sur une file mélangée :');
 
   const bilan = await oc.synchroniser(async (_e, p) => {
     if ((p as { idempotency_key?: string }).idempotency_key === 'm4') throw new ErreurHttp(503);
-  }, UID, store) as Record<string, unknown>;
+  }, UID, store) as unknown as Record<string, unknown>;
   console.log('  ', JSON.stringify(bilan));
 
   // Non-régression : les appelants actuels lisent ok / reste / echecs /
@@ -561,8 +564,13 @@ console.log('\nLa voix de la vente partie, lue au catalogue :');
 
 console.log('\nLe motif haptique de la vente partie, exécuté depuis le vrai module :');
 {
-  const nomsAnnonce = [...new Set(appelsHaptique(s1.appels, NOMS_HAPTIQUE).map((a) => a.nom))];
+  // Le motif capté pendant S1 est confronté au VRAI module : quelle fonction
+  // de `utils/haptique` l'émet ? Rien n'est déduit d'un nom.
   const CONNUS = ['vibrerSucces', 'vibrerErreur', 'vibrerAttente'];
+  const emis = s1.vibrations.map((m) => JSON.stringify(m));
+  const nomsAnnonce = [...new Set(
+    NOMS_HAPTIQUE.filter((n) => emis.includes(JSON.stringify(motifDe(n)))),
+  )];
   for (const n of [...CONNUS, ...nomsAnnonce]) {
     console.log(`  ${n} → ${JSON.stringify(motifDe(n))}`);
   }
