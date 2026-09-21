@@ -10,6 +10,7 @@
  * rapport : l'intention est injectée, pas reconnue depuis l'audio.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { intentLocal } from '../../src/app/voice-offline/localIntent';
 
 type Donnees = { action?: { type: string; [k: string]: unknown }; transcript?: string; intent?: string };
 
@@ -18,6 +19,21 @@ export function useVoiceCore({ onAction }: { onAction?: (d: Donnees) => unknown;
   useEffect(() => {
     (window as unknown as { __apercuVoix?: unknown }).__apercuVoix = {
       injecter: async (d: Donnees) => { setTranscript(d.transcript || ''); await onAction?.(d); },
+      /**
+       * DICTER POUR DE VRAI (banc de parcours, 21/09/2026). Le STT n'existe
+       * pas en headless, mais tout ce qui vient APRÈS lui est le vrai code :
+       * `intentLocal` comprend la phrase, et son résultat part dans `onAction`
+       * exactement comme le fait `useVoiceCore.handleResponse` hors ligne — y
+       * compris le bandeau « J'ai compris : … », qui s'affiche dès qu'il y a
+       * une transcription, comprise ou non (c'est ce qui a fait croire à
+       * Patrick que sa vente était passée). Seul l'audio est simulé.
+       */
+      dicter: async (texte: string) => {
+        setTranscript(texte);
+        const local = intentLocal(texte);
+        if (local) await onAction?.(local as unknown as Donnees);
+        return local;
+      },
     };
   }, [onAction]);
   const rien = useCallback(() => {}, []);

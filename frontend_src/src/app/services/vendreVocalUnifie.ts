@@ -87,6 +87,35 @@ export interface DependancesVendreVocalUnifie {
   planifier: (effet: () => void, delaiMs: number) => void;
   /** Remplace `guidageVocal()` — préférence globale, jamais lue directement ici. */
   guidageVocalActif: () => boolean;
+  /**
+   * LE PRIX INTROUVABLE SE DEMANDE — correctif du 21/09/2026, terrain.
+   *
+   * Sans ce crochet, ce module ne savait que DIRE qu'il lui manquait le prix,
+   * et seulement si le guidage vocal était actif. Sur le compte de Patrick
+   * (catalogue VIDE, profil « je lis »), cela voulait dire : bandeau vert
+   * « J'ai compris : Cinq tomates », puis RIEN — pas de ligne, pas un mot, pas
+   * un écran. Une vente comprise disparaissait, et l'écran affirmait avoir
+   * compris.
+   *
+   * L'appelant qui fournit ce crochet reçoit la vente comprise et conduit la
+   * marchande à donner le prix — dans la caisse, c'est le chemin d'adoption
+   * qui existe déjà (`POSCaisse`) : « {produit}. Quel est ton prix ? », puis
+   * l'article entre au catalogue ET au panier. On n'invente toujours RIEN :
+   * aucune ligne n'est ajoutée ici tant que le prix n'a pas été donné.
+   *
+   * Optionnel : un appelant qui ne sait pas demander (ex. la modale Tantie)
+   * garde l'ancien comportement — Tata explique, et on s'arrête.
+   */
+  demanderPrix?: (demande: {
+    /** Nom du produit tel qu'on l'a compris (catalogue si apparié, sinon dit). */
+    nom: string;
+    /** Quantité dite — pour qu'elle n'ait pas à la redire. */
+    quantite: number;
+    /** Unité prononcée, ou null si elle n'en a pas dit. */
+    unite: string | null;
+    /** Pourquoi on demande : aucun prix connu, ou unité qui ne concorde pas. */
+    raison: 'prix_manquant' | 'unite_incompatible';
+  }) => void;
 }
 
 /**
@@ -107,8 +136,10 @@ export interface DependancesVendreVocalUnifie {
  *      dit prime sur le prix enregistré ;
  *   2. sinon, prix du catalogue × quantité ;
  *   3. sinon (produit inconnu, ou prix catalogue à zéro) : AUCUNE ligne,
- *      aucune écriture, et Tata le DIT. Inventer un prix, c'est fausser son
- *      argent ; se taire, c'est lui laisser croire que la vente est passée.
+ *      aucune écriture — et la vente n'est pas perdue pour autant : le prix
+ *      est DEMANDÉ (`demanderPrix`), ou à défaut Tata le dit. Inventer un
+ *      prix, c'est fausser son argent ; se taire, c'est lui laisser croire
+ *      que la vente est passée.
  */
 export function vendreVocalUnifie(
   nomParle: string | undefined,
@@ -139,6 +170,20 @@ export function vendreVocalUnifie(
   });
 
   if (prix.type !== 'prix') {
+    // LA VENTE COMPRISE NE DISPARAÎT PLUS (21/09/2026). Quand l'appelant sait
+    // demander un prix, on lui passe la main : la marchande finit sa vente en
+    // donnant le montant, au lieu de recommencer sa phrase. C'est un ÉCRAN
+    // autant qu'une parole : elle le voit même quand elle a coupé la voix —
+    // c'est exactement le cas de terrain. Aucune ligne n'est ajoutée ici.
+    if (deps.demanderPrix) {
+      deps.demanderPrix({
+        nom: prix.nom || (nomParle || '').trim(),
+        quantite: qte,
+        unite: uniteEntendue(uniteDictee),
+        raison: prix.type,
+      });
+      return;
+    }
     // On ne devine JAMAIS un prix, et on ne se tait pas non plus : le silence,
     // pour quelqu'un qui ne lit pas, veut dire « cette application ne marche
     // pas ». Chaque refus a son mot, pour qu'elle sache quoi redire.
