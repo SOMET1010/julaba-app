@@ -110,7 +110,10 @@ export function unitesCompatibles(parlee: string | null | undefined, catalogue: 
 }
 
 export function resoudrePrixVocal(args: {
-  /** Total prononcé par la marchande, s'il y en a un. */
+  /** Montant prononcé par la marchande, s'il y en a un. PAS forcément un
+   *  total : « à 500 » sur trois tas est un prix À L'UNITÉ. C'est
+   *  `resoudrePrix` qui tranche, pas l'appelant — et l'appeler « total » ici
+   *  est précisément l'erreur qui comptait ses ventes au tiers. */
   montantDicte?: number | null;
   quantite: number;
   /** Produit du catalogue, ou null s'il n'a pas été apparié. */
