@@ -40,8 +40,25 @@ export function offlineModelInstalled(): boolean {
   try { return localStorage.getItem(INSTALL_KEY) === '1'; } catch { return false; }
 }
 
-/** Sonde le moteur natif (idempotent, partagé). Met à jour les drapeaux. */
+/**
+ * Sonde le moteur natif. Met à jour les drapeaux.
+ *
+ * UN « NON » NE VAUT QUE POUR L'INSTANT OÙ IL EST DIT — B3, 21/09/2026.
+ * Sur Android, le plugin natif s'enregistre APRÈS le premier écran ; la sonde
+ * de démarrage (`warmOfflineModelIfInstalled`, appelée par `main.tsx` en tâche
+ * de fond) tombe donc régulièrement sur un moteur pas encore monté. La
+ * promesse était gardée telle quelle pour TOUTE la session — seule une
+ * exception la remettait à zéro, jamais un `false` — si bien que le micro
+ * restait mort jusqu'au prochain lancement de l'application alors que le
+ * moteur était là une seconde plus tard. C'est le « micro lent au démarrage »
+ * remonté du terrain.
+ *
+ * Ce qui reste mémorisé, et c'est la raison d'être de ce cache : un OUI
+ * (`engineReady`, on ne resonde plus à chaque phrase) et la sonde EN VOL (N
+ * appels simultanés au démarrage ne déclenchent qu'une sonde).
+ */
 function probeEngine(): Promise<boolean> {
+  if (engineReady) return Promise.resolve(true); // déjà confirmé : rien à redemander
   if (!probePromise) {
     probePromise = (async () => {
       const ok = await nativeStt.isAvailable();
@@ -49,7 +66,10 @@ function probeEngine(): Promise<boolean> {
       vtrace.info('STT_SONDE', { moteur: 'sherpa-native', disponible: ok });
       if (ok) { try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ } }
       return ok;
-    })().catch(() => { probePromise = null; return false; });
+    })()
+      // Négatif : on oublie, pour pouvoir redemander au prochain besoin.
+      .then((ok) => { if (!ok) probePromise = null; return ok; })
+      .catch(() => { probePromise = null; return false; });
   }
   return probePromise;
 }
