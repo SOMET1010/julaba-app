@@ -95,7 +95,7 @@
     ],
     "components/shared/UniversalParametres.tsx": [
       "speak('Paramètres sauvegardés')",
-      "speak(v ? \"D'accord. Je dirai seulement l'argent et les comptes.\" : 'D\\'accord. Je te dis tout.')",
+      "speak(v ? t('REGLAGE_VOIX_ESSENTIEL') : t('REGLAGE_VOIX_COMPLET'))",
       "speak('Export en cours')",
       "speak('Déconnexion en cours')"
     ]
