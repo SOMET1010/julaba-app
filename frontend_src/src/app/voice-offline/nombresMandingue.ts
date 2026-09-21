@@ -56,6 +56,8 @@
  * test « piège » documenté.
  */
 
+import { type Parsed, perdu, resolu } from './perteSemantique';
+
 /** Où la forme est parlée. `mandingue` = commune aux deux variétés. */
 export type VarieteMandingue = 'mandingue' | 'bambara' | 'dioula-ci';
 
@@ -222,6 +224,191 @@ const DIZAINES_ATTACHEES: Readonly<Record<string, string>> = {
   bikonoto: 'bi konoto',        // 90  (bikɔnɔtɔ)
 };
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * LA NORMALISATION N'EST PAS INNOCENTE.
+ *
+ * `normaliserBambara` rabat les tons : `tà` → `ta`, `wà` → `wa`. Ce faisant
+ * elle DÉTRUIT UNE DISTINCTION LINGUISTIQUE UTILE — et pas une distinction
+ * théorique : `tà` (prendre) et `wà` (particule interrogative) sont parmi les
+ * 90 mots les plus fréquents du dioula de Côte d'Ivoire, tandis que `ta` vaut
+ * 10 et `wa` vaut 1000 au lexique.
+ *
+ *     « tà » → PRENDRE, jamais 10        « wà » → PARTICULE, jamais 1000
+ *     « ta » → peut être numérique, AMBIGU
+ *     « wa » → peut être numérique, AMBIGU
+ *
+ * Retirer `ta` et `wa` du lexique ferait perdre une capacité attestée SANS
+ * résoudre le défaut de conception. Le défaut n'est pas dans le lexique : il
+ * est dans une étape de normalisation qui perd de l'information en silence.
+ *
+ * DONC, deux règles :
+ *   1. quand le TON EST LÀ, il tranche : `tà` n'est pas un nombre, point ;
+ *   2. quand le ton est ABSENT — et c'est ce que l'ASR rendra réellement, car
+ *      il ne transcrit pas les tons — ON NE TRANCHE PAS EN FAVEUR DU NOMBRE.
+ *      On conserve l'ambiguïté. Même doctrine que `mugan` pour le dɔrɔmɛ.
+ *
+ * La normalisation devient une étape qui peut PRODUIRE DE L'AMBIGUÏTÉ, pas
+ * seulement une chaîne nettoyée : `normaliserAvecPertes` transporte la perte
+ * au lieu de la cacher.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Homographes tonals : une forme TONALE attestée non numérique, et la forme
+ * NUE — celle que produit la normalisation, et celle que rendra l'ASR — sur
+ * laquelle le lexique, lui, lit un nombre.
+ */
+export interface HomographeTonal {
+  /** La forme avec son ton : elle n'est JAMAIS un nombre. */
+  readonly tonee: string;
+  /** La forme sans ton, sur laquelle la normalisation rabat : ambiguë. */
+  readonly nue: string;
+  /** Ce que veut dire la forme tonale. */
+  readonly sens: string;
+  /** Ce que le lexique lit sur la forme nue. */
+  readonly valeurNue: number;
+  readonly source: SourceLexicale;
+}
+
+export const HOMOGRAPHES_TONALS: readonly HomographeTonal[] = [
+  { tonee: 'tà', nue: 'ta', sens: 'prendre', valeurNue: 10, source: 'coulibaly-haraguchi-1993' },
+  { tonee: 'wà', nue: 'wa', sens: 'particule interrogative', valeurNue: 1000, source: 'coulibaly-haraguchi-1993' },
+];
+
+/** Minuscules et lettres spéciales rabattues, mais TONS CONSERVÉS — ce que la normalisation va détruire. */
+function formeTonale(mot: string): string {
+  return mot
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/ɛ/g, 'e')
+    .replace(/ɔ/g, 'o')
+    .replace(/ŋ/g, 'n')
+    .replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, '');
+}
+
+/**
+ * Jeton de remplacement pour une forme tonale non numérique. Il n'est dans
+ * aucune table, donc `lireJeton` rend `null` : le mot interrompt la suite
+ * numérique, exactement comme n'importe quel mot ordinaire.
+ */
+const JETON_NON_NUMERIQUE = 'zzz';
+
+/** Ce qu'une normalisation a détruit en route. */
+export interface PerteTonale {
+  /** La forme telle qu'elle a été dite / écrite. */
+  readonly origine: string;
+  /** La forme nue sur laquelle elle aurait été rabattue. */
+  readonly rabattue: string;
+  readonly sens: string;
+}
+
+export interface NormalisationTracee {
+  /** Exactement ce que rend `normaliserBambara`. */
+  readonly texte: string;
+  /** Les distinctions perdues. Vide = la normalisation n'a rien détruit. */
+  readonly pertes: readonly PerteTonale[];
+}
+
+/**
+ * Remplace les formes TONALES non numériques avant que la normalisation ne
+ * les rabatte sur un nombre, et dit ce qu'elle a fait.
+ */
+function neutraliserHomographes(texte: string): { texte: string; pertes: PerteTonale[] } {
+  const pertes: PerteTonale[] = [];
+  const sortie = texte.split(/(\s+)/).map(seg => {
+    if (seg.trim() === '') return seg;
+    const noyau = formeTonale(seg);
+    const h = HOMOGRAPHES_TONALS.find(x => formeTonale(x.tonee) === noyau);
+    if (!h) return seg;
+    pertes.push({ origine: h.tonee, rabattue: h.nue, sens: h.sens });
+    return JETON_NON_NUMERIQUE;
+  }).join('');
+  return { texte: sortie, pertes };
+}
+
+/**
+ * Normalisation QUI TRANSPORTE SA PERTE. À préférer partout où la suite du
+ * traitement a besoin de savoir qu'une distinction a été effacée.
+ * `normaliserBambara` en reste la vue « chaîne seule », qui ne la transporte
+ * pas — c'est pour cela qu'elle ne suffit pas.
+ */
+export function normaliserAvecPertes(texte: string): NormalisationTracee {
+  const { texte: neutralise, pertes } = neutraliserHomographes(texte);
+  return { texte: normaliserBambara(neutralise), pertes };
+}
+
+/**
+ * LA NORMALISATION SOUS CONTRAT (`Parsed<string>`).
+ *
+ * Application directe de la règle : « une fonction de normalisation qui
+ * supprime un ton ne devrait jamais pouvoir retourner le même type qu'une
+ * transformation sans perte ». Quand un ton a été rabattu, cette fonction ne
+ * rend PAS une chaîne propre — elle rend une branche `resolved: false` où
+ * `.value` n'existe pas, et où `candidates` porte les lectures possibles.
+ *
+ * `normaliserBambara` rend encore un `string` : c'est la vue historique, et
+ * c'est exactement ce qui rendait la perte invisible. Elle reste parce qu'elle
+ * est gelée, pas parce qu'elle est bonne.
+ */
+export function normaliserSousContrat(texte: string): Parsed<string> {
+  const { texte: propre, pertes } = normaliserAvecPertes(texte);
+  if (pertes.length === 0) return resolu(propre);
+  return perdu(
+    { kind: 'TONE_DROPPED', candidates: pertes.flatMap(p => [p.rabattue, p.sens]) },
+    // Les deux lectures possibles du texte : celle où la forme tonale reste
+    // un mot ordinaire, et celle où elle est rabattue sur son homographe.
+    [propre, normaliserBambara(texte)],
+  );
+}
+
+/**
+ * Ce qu'on a reconnu d'un mot, AVEC son degré de certitude.
+ *
+ * Union discriminée, pour la même raison que `ExpressionMonetaire` : elle
+ * rend incompilable le code qui lirait `.value` sans avoir regardé `.kind`,
+ * donc le code qui prendrait une forme ambiguë pour un nombre sûr.
+ */
+export type NumericRecognition =
+  | { readonly kind: 'NUMBER'; readonly value: number; readonly confidence: 'CERTAIN' }
+  | {
+      readonly kind: 'AMBIGUOUS';
+      readonly candidates: readonly [
+        { readonly kind: 'NUMBER'; readonly value: number },
+        { readonly kind: 'LEXICAL'; readonly meaning: string },
+      ];
+    };
+
+/**
+ * Reconnaît UN mot.
+ *   `recognizeNumber('tà')`  → null        — le ton est là, c'est « prendre »
+ *   `recognizeNumber('ta')`  → AMBIGUOUS   — le ton est parti : on ne tranche PAS
+ *   `recognizeNumber('tan')` → NUMBER 10 CERTAIN
+ * Rend `null` quand le mot n'est pas numérique du tout.
+ */
+export function recognizeNumber(mot: string): NumericRecognition | null {
+  const tonal = formeTonale(mot);
+  // 1. Le ton est présent et tranche : ce n'est pas un nombre.
+  if (HOMOGRAPHES_TONALS.some(h => h.tonee === tonal)) return null;
+
+  const nu = normaliserBambara(mot);
+  // 2. Le ton est absent : si la forme nue est un homographe, on CONSERVE
+  //    l'ambiguïté. C'est le cas réel, celui que l'ASR produit.
+  const h = HOMOGRAPHES_TONALS.find(x => x.nue === nu);
+  if (h) {
+    return {
+      kind: 'AMBIGUOUS',
+      candidates: [
+        { kind: 'NUMBER', value: h.valeurNue },
+        { kind: 'LEXICAL', meaning: h.sens },
+      ],
+    };
+  }
+
+  // 3. Aucune collision connue : le lexique tranche seul.
+  const e = PAR_FORME.get(nu);
+  if (!e) return null;
+  return { kind: 'NUMBER', value: e.valeur, confidence: 'CERTAIN' };
+}
+
 /** Minuscules, sans accents/diacritiques, lettres spéciales rabattues (ɛ→e, ɔ→o, ŋ→n). */
 export function normaliserBambara(s: string): string {
   return s
@@ -247,9 +434,13 @@ export function detacherDizainesAttachees(texte: string): string {
     .join(' ');
 }
 
-/** Normalisation complète avant analyse : orthographe, puis forme. */
+/**
+ * Normalisation complète avant analyse : ton d'abord, puis orthographe, puis forme.
+ * L'étape tonale passe EN PREMIER — sinon la distinction est déjà détruite quand
+ * on voudrait la lire.
+ */
 function preparer(texte: string): string[] {
-  return detacherDizainesAttachees(normaliserBambara(texte)).split(' ').filter(Boolean);
+  return detacherDizainesAttachees(normaliserAvecPertes(texte).texte).split(' ').filter(Boolean);
 }
 
 type Jeton =
@@ -364,15 +555,30 @@ function analyser(texte: string): { valeur: number; dorome: boolean } | null {
 }
 
 /**
- * ⚠️ CHEMIN HISTORIQUE — NE PAS UTILISER POUR LIRE UN PRIX.
+ * @deprecated Analyse numérique legacy.
  *
- * Renvoie un nombre NU où la conversion dɔrɔmɛ (× 5) a déjà été repliée en
- * silence : `extraireNombreBambara('dɔrɔmɛ kɛmɛ')` vaut 500, et plus rien
- * ensuite ne sait que c'était 100 dɔrɔmɛ. C'est EXACTEMENT le piège que
- * l'échelle monétaire ci-dessous existe pour supprimer.
+ * ATTENTION : cette fonction replie les unités monétaires, notamment DOROME,
+ * dans un nombre nu et détruit donc l'information d'unité.
  *
- * Conservé tel quel parce qu'il est empreinté (ci/EMPREINTE-GARDES.json) et
- * utilisé comme parseur de NOMBRE. Pour de l'argent : `lireExpressionMonetaire`.
+ * INTERDITE pour prix, ventes, paiements, monnaie ou toute écriture financière.
+ *
+ * ── Ce que ça veut dire concrètement ──────────────────────────────────────
+ * `extraireNombreBambara('dɔrɔmɛ kɛmɛ')` vaut 500, et plus rien en aval ne
+ * sait que c'était 100 dɔrɔmɛ. C'est le défaut que la règle d'architecture
+ * de JÙLABA interdit : une information qui a une incidence sur l'argent est
+ * ici PERDUE SANS ÊTRE MARQUÉE.
+ *
+ * Elle n'est pas corrigée aujourd'hui : son comportement est gelé par
+ * `ci/EMPREINTE-GARDES.json`, et desserrer une empreinte est une décision de
+ * Patrick. Elle reste donc utilisable comme parseur de NOMBRE hors argent.
+ *
+ * Ce commentaire ne suffit pas — un développeur peut l'ignorer. L'interdiction
+ * est donc aussi MÉCANIQUE : `ci/garde-argent.mjs` refuse que l'un des
+ * fichiers du périmètre d'argent (`ci/PERIMETRE-ARGENT.json`) l'importe.
+ *
+ * ── À utiliser à la place ─────────────────────────────────────────────────
+ *   nombre      → `parseMandingueNumericExpression`  (porte sa perte)
+ *   argent      → `parseMandingueMonetaryExpression` puis `resolveMoney`
  */
 export function extraireNombreBambara(texte: string): number | null {
   const a = analyser(texte);
@@ -523,6 +729,104 @@ export function resoudreMontant(e: ExpressionMonetaire): MontantResolu | null {
   if (e.unit === 'DOROME') return { fcfa: e.value * FCFA_PAR_DOROME, value: e.value, unit: 'DOROME', source: e.source };
   if (e.unit === 'FRANC') return { fcfa: e.value, value: e.value, unit: 'FRANC', source: e.source };
   return null;
+}
+
+/**
+ * LE MONTANT SOUS CONTRAT (`Parsed<MontantResolu>`) — `UNIT_MISSING`.
+ *
+ * C'est la forme à préférer partout : sur la branche non résolue, il n'y a
+ * PAS de `.value`, donc pas de montant lisible par accident. `candidates`
+ * porte les DEUX lectures réelles — 20 F ou 100 F pour « mugan » — ce qui est
+ * exactement ce dont la clarification a besoin pour poser sa question.
+ *
+ * Rend `null` quand il n'y a aucun nombre : rien à lire n'est pas une perte.
+ */
+export function lireMontantSousContrat(texte: string): Parsed<MontantResolu> | null {
+  const e = lireExpressionMonetaire(texte);
+  if (e === null) return null;
+  const direct = resoudreMontant(e);
+  if (direct !== null) return resolu(direct);
+  return perdu({ kind: 'UNIT_MISSING' }, [
+    { fcfa: e.value, value: e.value, unit: 'FRANC', source: 'marqueur-francais-explicite' },
+    { fcfa: e.value * FCFA_PAR_DOROME, value: e.value, unit: 'DOROME', source: 'coastsystems-money' },
+  ]);
+}
+
+/* ── L'API TYPÉE, INDÉPENDANTE DE LA LEGACY ────────────────────────────────
+ * Construite À CÔTÉ d'`extraireNombreBambara`, pas par-dessus : elle conserve
+ * `value + unit` de bout en bout et n'expose jamais un nombre nu qui aurait
+ * absorbé une conversion. C'est elle que doit appeler tout code d'argent.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Le nombre, sous contrat. Rend `null` s'il n'y a aucun nombre ; une branche
+ * NON RÉSOLUE si la normalisation a dû effacer un ton pour le lire.
+ */
+export function parseMandingueNumericExpression(texte: string): Parsed<number> | null {
+  const norme = normaliserSousContrat(texte);
+  if (!norme.resolved) {
+    const lectures = norme.candidates
+      .map(t => analyser(t)?.valeur)
+      .filter((v): v is number => v !== undefined);
+    return perdu(norme.loss, [...new Set(lectures)]);
+  }
+  const v = valeurLexicaleMandingue(texte);
+  return v === null ? null : resolu(v);
+}
+
+/** Une somme exprimée, unité COMPRISE — jamais un nombre nu. */
+export interface MonetaryExpressionMandingue {
+  readonly kind: 'MONETARY_EXPRESSION';
+  readonly value: number;
+  readonly unit: UniteMonetaire;
+}
+
+/** De l'argent, résolu, avec sa devise. */
+export interface Money {
+  readonly amount: number;
+  readonly currency: 'XOF';
+}
+
+/**
+ * L'expression monétaire, sous contrat.
+ *   « dɔrɔmɛ kɛmɛ » → résolu { kind: 'MONETARY_EXPRESSION', value: 100, unit: 'DOROME' }
+ *                     — value vaut 100, JAMAIS 500 : la conversion n'est pas
+ *                       repliée dans la valeur.
+ *   « mugan »       → NON résolu, UNIT_MISSING, deux candidats.
+ */
+export function parseMandingueMonetaryExpression(texte: string): Parsed<MonetaryExpressionMandingue> | null {
+  const e = lireExpressionMonetaire(texte);
+  if (e === null) return null;
+  if (e.unit !== null) return resolu({ kind: 'MONETARY_EXPRESSION', value: e.value, unit: e.unit });
+  return perdu({ kind: 'UNIT_MISSING' }, [
+    { kind: 'MONETARY_EXPRESSION', value: e.value, unit: 'FRANC' },
+    { kind: 'MONETARY_EXPRESSION', value: e.value, unit: 'DOROME' },
+  ]);
+}
+
+/**
+ * Convertit en argent. Prend une expression DÉJÀ RÉSOLUE — jamais un
+ * `Parsed<…>` : c'est la règle d'appel, portée par la signature.
+ */
+export function resolveMoney(e: MonetaryExpressionMandingue): Money {
+  return { amount: e.unit === 'DOROME' ? e.value * FCFA_PAR_DOROME : e.value, currency: 'XOF' };
+}
+
+/**
+ * LA FRONTIÈRE FINANCIÈRE — la règle d'appel, rendue exécutable.
+ *
+ * « Aucune fonction financière ne devrait accepter directement un type
+ *   porteur de perte ; elle devrait exiger un type DÉJÀ RÉSOLU. »
+ *
+ * Cette fonction prend un `MontantResolu`, JAMAIS un `Parsed<MontantResolu>` :
+ * la signature elle-même interdit de lui passer une lecture incertaine. Le
+ * passage de l'un à l'autre est un acte explicite — `resoudreAvecUnite` après
+ * une question posée — et il ne peut pas se faire par un accès de champ.
+ *
+ * Toute fonction qui écrit de l'argent doit être écrite sur ce modèle.
+ */
+export function montantEcrituresAutorisees(m: MontantResolu): number {
+  return m.fcfa;
 }
 
 /**

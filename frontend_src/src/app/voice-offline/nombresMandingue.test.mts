@@ -14,6 +14,15 @@
  *       piège dɔrɔmɛ (1 dɔrɔmɛ = 5 FCFA) reste intact.
  */
 import * as M from "./nombresMandingue.js";
+import * as CONTRAT from "./perteSemantique.js";
+
+/** Le porteur `Parsed<T>`, lu en structurel (le test ne dépend pas de son import de type). */
+type ParsedLike<T> = {
+  resolved: boolean;
+  value?: T;
+  loss?: { kind: string; candidates?: readonly string[] };
+  candidates?: readonly T[];
+};
 
 const { extraireNombreBambara, contientNombreBambara, normaliserBambara } = M;
 
@@ -60,6 +69,14 @@ const CORPUS_FREQUENT: readonly string[] = [
  * mettrait en négatif absolu et serait faux.
  */
 const B_NOMBRES: readonly string[] = ["kélen", "tán", "kɛ̀mɛ"];
+
+/** Ce que rend `recognizeNumber` (lu en structurel, comme le reste du module). */
+type Reconnaissance = {
+  kind: "NUMBER" | "AMBIGUOUS";
+  value?: number;
+  confidence?: string;
+  candidates?: ReadonlyArray<{ kind: string; value?: number; meaning?: string }>;
+};
 
 /**
  * Collisions CONNUES entre le corpus et le lexique existant : `tà` (prendre)
@@ -292,20 +309,156 @@ function main() {
     eq(fcfaDe("dɔrɔmɛ tán"), 50, "C · dɔrɔmɛ tán = 50 FCFA");
     eq(fcfaDe("dɔrɔmɛ kɛ̀mɛ"), 500, "C · dɔrɔmɛ kɛ̀mɛ = 500 FCFA");
 
-    // ── COLLISIONS connues, contenues à l'étage monétaire ──────────────
-    // `tà` (prendre) et `wà` (particule interrogative) tombent sur des formes
-    // du lexique existant (`ta` = 10, `wa` = 1000) qu'il est INTERDIT de
-    // retirer. Elles produisent donc un nombre FAUX — mais aucune écriture
-    // comptable n'en sort, parce qu'un nombre nu ne devient jamais un montant.
-    // C'est la démonstration que la sécurité ne tient pas au lexique.
+    // ── HOMOGRAPHES TONALS — le ton tranche quand il est là ────────────
+    // `tà` (prendre) et `wà` (particule interrogative) tombaient sur des formes
+    // du lexique (`ta` = 10, `wa` = 1000) qu'il est INTERDIT de retirer : les
+    // retirer ferait perdre une capacité attestée sans résoudre le défaut.
+    // Le défaut était dans la NORMALISATION, qui détruisait le ton en silence.
     for (const mot of COLLISIONS) {
-      ok(extraireNombreBambara(mot) !== null, `collision connue : « ${mot} » produit encore un nombre (défaut signalé)`);
-      eq(fcfaDe(mot), null, `collision « ${mot} » : AUCUN montant — l'étage monétaire la contient`);
+      eq(extraireNombreBambara(mot), null, `« ${mot} » porte son ton : ce n'est PAS un nombre`);
+      eq(fcfaDe(mot), null, `« ${mot} » : AUCUN montant`);
+    }
+
+    // ── ET LE CAS RÉEL : l'ASR ne transcrit pas les tons ───────────────
+    // C'est le groupe qui compte le plus. Quand le ton est absent, on NE
+    // TRANCHE PAS en faveur du nombre — on conserve l'ambiguïté.
+    const reconnaitre = (M as Record<string, unknown>).recognizeNumber as
+      | ((m: string) => Reconnaissance | null) | undefined;
+    ok(typeof reconnaitre === "function", "recognizeNumber est exporté");
+    if (reconnaitre) {
+      for (const h of [["tà", "ta", 10, "prendre"], ["wà", "wa", 1000, "particule interrogative"]] as ReadonlyArray<[string, string, number, string]>) {
+        const [tonee, nue, valeur, sens] = h;
+        eq(reconnaitre(tonee), null, `recognizeNumber('${tonee}') → null : le ton tranche`);
+        const r = reconnaitre(nue)!;
+        eq(r.kind, "AMBIGUOUS", `recognizeNumber('${nue}').kind === 'AMBIGUOUS' — ce que l'ASR rendra`);
+        eq(r.candidates![0], { kind: "NUMBER", value: valeur }, `'${nue}' : candidat numérique ${valeur}`);
+        eq(r.candidates![1], { kind: "LEXICAL", meaning: sens }, `'${nue}' : candidat lexical « ${sens} »`);
+        eq((r as { value?: number }).value, undefined, `'${nue}' : aucune valeur directe — il faut regarder .kind`);
+      }
+      // Un nombre sans homographe reste CERTAIN : on n'a pas rendu tout flou.
+      eq(reconnaitre("tan"), { kind: "NUMBER", value: 10, confidence: "CERTAIN" }, "recognizeNumber('tan') reste CERTAIN");
+      eq(reconnaitre("looru"), { kind: "NUMBER", value: 5, confidence: "CERTAIN" }, "recognizeNumber('looru') reste CERTAIN");
+      eq(reconnaitre("fèere"), null, "recognizeNumber('fèere') → null : pas un nombre");
+    }
+
+    // ── La normalisation TRANSPORTE sa perte ───────────────────────────
+    const avecPertes = (M as Record<string, unknown>).normaliserAvecPertes as
+      | ((t: string) => { texte: string; pertes: ReadonlyArray<{ origine: string; rabattue: string; sens: string }> }) | undefined;
+    ok(typeof avecPertes === "function", "normaliserAvecPertes est exporté");
+    if (avecPertes) {
+      eq(avecPertes("kɛmɛ").pertes, [], "rien de perdu sur « kɛmɛ »");
+      const p = avecPertes("à tà wári");
+      eq(p.pertes.length, 1, "« tà » : la perte est SIGNALÉE, pas cachée");
+      eq(p.pertes[0], { origine: "tà", rabattue: "ta", sens: "prendre" }, "la perte dit quoi, vers quoi, et pourquoi");
     }
 
     // La propriété de sécurité centrale, sur le corpus ENTIER.
     const montants = CORPUS_FREQUENT.filter(m => fcfaDe(m) !== null);
     eq(montants, [], "AUCUN mot nu du corpus — même parfaitement reconnu — ne devient un montant FCFA");
+  }
+
+  console.log("\n[H] CONTRAT DE PERTE SÉMANTIQUE — la règle d'architecture");
+  {
+    // « Toute information qui a une incidence sur l'argent doit être soit
+    //   conservée, soit explicitement marquée comme perdue ; jamais
+    //   reconstruite implicitement en aval. »
+    const normContrat = (M as Record<string, unknown>).normaliserSousContrat as
+      | ((t: string) => ParsedLike<string>) | undefined;
+    const montantContrat = (M as Record<string, unknown>).lireMontantSousContrat as
+      | ((t: string) => ParsedLike<{ fcfa: number; unit: string }> | null) | undefined;
+    const frontiere = (M as Record<string, unknown>).montantEcrituresAutorisees as
+      | ((m: { fcfa: number }) => number) | undefined;
+
+    ok(typeof normContrat === "function", "normaliserSousContrat est exporté");
+    ok(typeof montantContrat === "function", "lireMontantSousContrat est exporté");
+    ok(typeof frontiere === "function", "montantEcrituresAutorisees est exporté (frontière financière)");
+
+    if (normContrat && montantContrat && frontiere) {
+      // ── TONE_DROPPED : une normalisation qui perd ne rend PAS le même type ─
+      const propre = normContrat("kɛmɛ");
+      eq(propre.resolved, true, "« kɛmɛ » : rien de perdu → resolved");
+      eq(propre.value, "keme", "« kɛmɛ » : la valeur est accessible");
+
+      const perdue = normContrat("tà");
+      eq(perdue.resolved, false, "« tà » : un ton rabattu → NON résolu");
+      eq(perdue.loss!.kind, "TONE_DROPPED", "la perte est nommée TONE_DROPPED");
+      eq(perdue.value, undefined, "sur la branche non résolue, .value N'EXISTE PAS");
+      ok((perdue.loss!.candidates ?? []).includes("ta"), "TONE_DROPPED dit sur quoi on rabattait (« ta »)");
+      ok((perdue.loss!.candidates ?? []).includes("prendre"), "TONE_DROPPED dit ce que c'était (« prendre »)");
+      ok((perdue.candidates ?? []).length === 2, "les deux lectures possibles sont portées");
+
+      // ── UNIT_MISSING : le nombre nu, sous contrat ──────────────────────
+      const nu = montantContrat("mugan")!;
+      eq(nu.resolved, false, "« mugan » : NON résolu");
+      eq(nu.loss!.kind, "UNIT_MISSING", "la perte est nommée UNIT_MISSING");
+      eq(nu.value, undefined, "« mugan » : aucun .value à lire par accident");
+      eq((nu.candidates ?? []).map(c => c.fcfa), [20, 100], "les DEUX lectures réelles sont portées : 20 F ou 100 F");
+
+      const certain = montantContrat("dɔrɔmɛ mugan")!;
+      eq(certain.resolved, true, "« dɔrɔmɛ mugan » : résolu");
+      eq(certain.value!.fcfa, 100, "« dɔrɔmɛ mugan » = 100 FCFA");
+
+      eq(montantContrat("aucun nombre ici"), null, "rien à lire n'est PAS une perte");
+
+      // ── La frontière financière n'accepte que du résolu ────────────────
+      eq(frontiere(certain.value!), 100, "la frontière accepte un MontantResolu");
+      // Et la branche non résolue n'a pas de .value à lui passer : c'est le
+      // compilateur qui l'interdit, pas une convention. On le constate ici.
+      eq((nu as { value?: unknown }).value, undefined, "aucun montant ne peut franchir la frontière sans résolution explicite");
+    }
+
+    // Les helpers du contrat lui-même.
+    const C = CONTRAT as Record<string, unknown>;
+    const valeurResolue = C.valeurResolue as (<T>(p: ParsedLike<T>) => T | null) | undefined;
+    const resoudreAvecCandidat = C.resoudreAvecCandidat as
+      (<T>(p: ParsedLike<T>, c: T, e?: (a: T, b: T) => boolean) => T | null) | undefined;
+    ok(typeof valeurResolue === "function", "valeurResolue est exporté");
+    if (valeurResolue && resoudreAvecCandidat && montantContrat) {
+      const nu = montantContrat("mugan")!;
+      eq(valeurResolue(nu), null, "valeurResolue d'une perte → null : pas de repli, pas de premier candidat");
+      const choisi = (nu.candidates ?? []).find(c => c.unit === "DOROME")!;
+      eq(resoudreAvecCandidat(nu, choisi)!.fcfa, 100, "résoudre en NOMMANT le candidat retenu : 100 FCFA");
+      eq(resoudreAvecCandidat(nu, { fcfa: 999, unit: "FRANC" }), null, "on ne résout JAMAIS vers une valeur inventée");
+    }
+  }
+
+  console.log("\n[I] L'API TYPÉE — value + unit conservés de bout en bout");
+  {
+    const parseNum = (M as Record<string, unknown>).parseMandingueNumericExpression as
+      | ((t: string) => ParsedLike<number> | null) | undefined;
+    const parseMoney = (M as Record<string, unknown>).parseMandingueMonetaryExpression as
+      | ((t: string) => ParsedLike<{ kind: string; value: number; unit: string }> | null) | undefined;
+    const resolveMoney = (M as Record<string, unknown>).resolveMoney as
+      | ((e: { value: number; unit: string }) => { amount: number; currency: string }) | undefined;
+
+    ok(typeof parseNum === "function", "parseMandingueNumericExpression est exporté");
+    ok(typeof parseMoney === "function", "parseMandingueMonetaryExpression est exporté");
+    ok(typeof resolveMoney === "function", "resolveMoney est exporté");
+
+    if (parseNum && parseMoney && resolveMoney) {
+      eq(parseNum("kɛmɛ")!.value, 100, "parseMandingueNumericExpression('kɛmɛ') → 100, résolu");
+      eq(parseNum("tà")!.resolved, false, "« tà » : le nombre aussi porte sa perte");
+      eq(parseNum("aucun nombre ici"), null, "pas de nombre → null");
+
+      // Le point central : value vaut 100, JAMAIS 500.
+      const dor = parseMoney("dɔrɔmɛ kɛmɛ")!;
+      eq(dor.resolved, true, "« dɔrɔmɛ kɛmɛ » : résolu");
+      eq(dor.value!.kind, "MONETARY_EXPRESSION", "la forme se nomme MONETARY_EXPRESSION");
+      eq(dor.value!.value, 100, "value === 100 — la conversion n'est PAS repliée dans la valeur");
+      eq(dor.value!.unit, "DOROME", "unit === 'DOROME' — l'unité voyage avec la valeur");
+      eq(resolveMoney(dor.value!), { amount: 500, currency: "XOF" }, "resolveMoney → { amount: 500, currency: 'XOF' }");
+
+      // Et le nombre nu reste non résolu, avec ses deux lectures.
+      const nu = parseMoney("mugan")!;
+      eq(nu.resolved, false, "« mugan » : NON résolu");
+      eq(nu.loss!.kind, "UNIT_MISSING", "UNIT_MISSING");
+      eq((nu.candidates ?? []).map(c => resolveMoney(c).amount), [20, 100], "les deux lectures : 20 F ou 100 F");
+      eq(nu.value, undefined, "aucune valeur lisible sans résoudre");
+    }
+
+    // La legacy est marquée, et son défaut est toujours là — c'est pour ça
+    // que l'interdiction est mécanique et pas seulement écrite.
+    eq(extraireNombreBambara("dɔrɔmɛ kɛmɛ"), 500, "legacy : rend 500, un nombre nu qui a absorbé l'unité");
   }
 
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
