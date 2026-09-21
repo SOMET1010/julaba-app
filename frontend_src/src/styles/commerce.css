@@ -337,11 +337,11 @@ html.dark {
 
 /* Panier visible sans second écran : ce dock reste dans le flux et conduit au
    paiement déjà présent sur la même page. Il ne contient aucune action d'argent. */
-.caisse-panier-raccourci { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--caisse-esp-2); margin: 0 0 var(--caisse-esp-3); padding: var(--caisse-esp-2); border: 1px solid rgba(30,122,58,.3); border-radius: var(--caisse-rayon-4); background: color-mix(in srgb, var(--caisse-ivoire) 92%, transparent); box-shadow: 0 8px 22px rgba(18,74,42,.13); backdrop-filter: blur(10px); }
-.caisse-panier-raccourci-total { min-width: 0; display: flex; flex-direction: column; padding-left: var(--caisse-esp-2); color: var(--encre); }
+.caisse-panier-raccourci { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--caisse-esp-2); margin: 0 0 var(--caisse-esp-1); padding: 0 0 0 var(--caisse-esp-2); border: 1px solid rgba(30,122,58,.3); border-radius: var(--caisse-rayon-4); background: color-mix(in srgb, var(--caisse-ivoire) 92%, transparent); box-shadow: 0 8px 22px rgba(18,74,42,.13); backdrop-filter: blur(10px); }
+.caisse-panier-raccourci-total { min-width: 0; display: flex; flex-direction: row; align-items: baseline; gap: var(--caisse-esp-2); padding-left: 0; color: var(--encre); }
 .caisse-panier-raccourci-total span { font: var(--caisse-font-legende); color: var(--caisse-gris-texte); }
 .caisse-panier-raccourci-total strong { font: var(--caisse-font-h2); color: var(--caisse-vert-fonce); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.caisse-panier-raccourci button { min-height: 52px; display: flex; align-items: center; justify-content: center; gap: var(--caisse-esp-1); padding: 0 var(--caisse-esp-3); border: none; border-radius: var(--caisse-rayon-3); background: var(--caisse-vert); color: white; font: var(--caisse-font-bouton); font-family: inherit; cursor: pointer; }
+.caisse-panier-raccourci button { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: var(--caisse-esp-1); padding: 0 var(--caisse-esp-3); border: none; border-radius: var(--caisse-rayon-3); background: var(--caisse-vert); color: white; font: var(--caisse-font-bouton); font-family: inherit; cursor: pointer; }
 @media (min-width: 1024px) { .caisse-panier-raccourci { display: none; } }
 
 /* Tata dans la caisse : l'image raconte le marché, mais le seul contrôle vocal
