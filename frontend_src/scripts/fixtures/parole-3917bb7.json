@@ -4,7 +4,7 @@
     "services/audioManager.ts": "41496e7ba86a22101544c6e38f5a019529d39ec62b1c65b7c7c81ebf9d8c9b35",
     "services/elevenlabs.ts": "33fb3b14eef9f5cd8e8d4c8140a3dad7e26a7fcc29db840f056113a8cf353907",
     "hooks/useVoiceCore.ts": "7a814b2f5db63e01817ed50b454a272b9435451b4d7074473215c71452070f68",
-    "contexts/AppContext.tsx": "cc820093682b3ec9af3fe6a52f2e484cb910681be20d209a4673a1c2e255cecb",
+    "contexts/AppContext.tsx": "83bcd80d59a7b8d2744e4acad672ce04d8d9d620dbaf0bc2daa39401f73933ef",
     "voice-offline/offlineStt.ts": "bac7b80e1c36b8e7a78b2252b8c82b6d7e9d325f0917b72c9b6e27d013a3d5d0",
     "voice-offline/nativeTts.ts": "60b237ffe615d5bbc530c51827d978f8e6a011d9fc52a9c388598a9529eb101d",
     "components/layout/AppLayout.tsx": "addfe8f95e5f505683f552d1efbcbe26e6fb128c2f03d6e19fb7cc6d427af9c2",
@@ -95,6 +95,7 @@
     ],
     "components/shared/UniversalParametres.tsx": [
       "speak('Paramètres sauvegardés')",
+      "speak(v ? \"D'accord. Je dirai seulement l'argent et les comptes.\" : 'D\\'accord. Je te dis tout.')",
       "speak('Export en cours')",
       "speak('Déconnexion en cours')"
     ]

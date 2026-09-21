@@ -40,7 +40,8 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 import { normalizeRole } from '../types/constants';
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import * as audioManager from '../services/audioManager';
-import * as vtrace from '../utils/voiceTrace'; // VOICE-01 : journal de voix (observation seule)
+import * as vtrace from '../utils/voiceTrace';
+import { normaliserNiveau, NIVEAU_VOIX_PAR_DEFAUT, type NiveauVoix } from '../i18n/voice/niveauVoix'; // VOICE-01 : journal de voix (observation seule)
 import { API_URL } from '../utils/api';
 import { rafraichirSession, apiRequest } from '../services/api/api-client';
 import * as caisseApi from '../services/api/caisse-api';
@@ -218,6 +219,10 @@ interface AppContextType {
   speak: (text: string) => void;
   voiceMuted: boolean;
   toggleVoiceMuted: () => void;
+  /** Combien Tantie parle (B5). « complet » par défaut — un réglage ne peut
+   *  JAMAIS taire une phrase critique pour l'argent, voir i18n/voice/niveauVoix.ts. */
+  niveauVoix: NiveauVoix;
+  setNiveauVoix: (n: NiveauVoix) => void;
   isSpeaking: boolean;
   speakingText: string;
   
@@ -301,6 +306,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceMuted, setVoiceMuted] = useState(() => localStorage.getItem('julaba_voice_muted') === 'true');
+  // NIVEAU DE VOIX (B5). `normaliserNiveau` refuse de transformer une absence
+  // de choix — ou un ancien niveau numérique « 0 » resté en mémoire — en
+  // silence : sans choix explicite, on parle.
+  const [niveauVoix, setNiveauVoixEtat] = useState<NiveauVoix>(() => {
+    try { return normaliserNiveau(localStorage.getItem('julaba_niveau_voix')); } catch { return NIVEAU_VOIX_PAR_DEFAUT; }
+  });
+  const setNiveauVoix = (n: NiveauVoix) => {
+    setNiveauVoixEtat(n);
+    try { localStorage.setItem('julaba_niveau_voix', n); } catch { /* stockage indisponible */ }
+    vtrace.info('NIVEAU_VOIX', { niveau: n });
+  };
   const toggleVoiceMuted = () => setVoiceMuted(prev => { const next = !prev; localStorage.setItem('julaba_voice_muted', String(next)); return next; });
   const [userInteracted, setUserInteracted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -1265,6 +1281,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     speak,
     voiceMuted,
     toggleVoiceMuted,
+    niveauVoix,
+    setNiveauVoix,
     isSpeaking,
     speakingText,
     roleColor,
@@ -1324,6 +1342,8 @@ export function useApp() {
       speak: () => {},
       voiceMuted: false,
       toggleVoiceMuted: () => {},
+      niveauVoix: NIVEAU_VOIX_PAR_DEFAUT,
+      setNiveauVoix: () => {},
       isSpeaking: false,
       speakingText: '',
       roleColor: '#C46210',
