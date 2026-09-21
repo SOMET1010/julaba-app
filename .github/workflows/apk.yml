@@ -38,6 +38,19 @@ on:
         description: 'VITE_API_URL — sans elle, l app n atteint aucun backend'
         required: true
         default: 'https://julaba-api.onrender.com/api/v1'
+      voix_prototype:
+        # LES CLIPS PROTOTYPES SONT DANS L'APPLICATION, MAIS ETEINTS.
+        #
+        # Manus les a volontairement laisses inactifs : ce sont des
+        # enregistrements de previsualisation, pas encore valides par une voix
+        # ivoirienne. Drapeau eteint, les ecrans d'entree, d'onboarding et
+        # d'accueil restent MUETS — pas de clip, pas de son, c'est la regle.
+        #
+        # Allume, l'application parle partout avec ces clips. C'est un choix de
+        # recette, jamais un defaut par defaut.
+        description: 'Allumer les clips vocaux prototypes (VITE_JULABA_VOICE_PREVIEW)'
+        required: true
+        default: 'false'
 
 permissions:
   contents: read
@@ -90,6 +103,7 @@ jobs:
       - name: Construire le front
         env:
           VITE_API_URL: ${{ inputs.api_url }}
+          VITE_JULABA_VOICE_PREVIEW: ${{ inputs.voix_prototype }}
         run: npm run build -w frontend_src
 
       - name: Copier le front dans le projet Android
