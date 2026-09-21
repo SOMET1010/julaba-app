@@ -14,8 +14,18 @@ import { jourLocal } from '../utils/jourLocal';
 import {
   enfilerOperation, synchroniser,
   nbEchecs as offlineNbEchecs, lettresMortes as offlineLettresMortes, purgerLettreMorte as offlinePurger,
+  ventesParties, ventesEncoreEnFile,
   type OfflineEndpoint, type OfflineMethod, type LettreMorte,
 } from '../voice-offline/offlineCaisse';
+// OFF-02 — les trois canaux d'une vente qui part enfin : la clé se choisit
+// dans un module pur, la voix passe par le catalogue, la vibration par le
+// module haptique commun. Rien n'est composé ici.
+import { annonceVentesParties } from '../services/annonceVentesParties';
+import { vibrerEnvoyee } from '../utils/haptique';
+import { useSpeakMessage } from '../i18n/voice/speakMessage';
+import { resoudreMessage, type Variables } from '../i18n/voice/runtime';
+import type { MessageId } from '../i18n/voice/types';
+import { guidageVocal } from '../utils/accessMode';
 // Persistance locale du panier (Phase 1) : module pur, stockage injecté.
 import { loadCart, saveCart, clearStoredCart, type KVStore } from '../services/cartStorage';
 
@@ -193,6 +203,16 @@ export interface CaisseStats {
   nombreCahier: number;
 }
 
+/** Des ventes gardées hors ligne viennent d'être acceptées par le serveur.
+ *  `restantes` = les ventes encore en file APRÈS ce tour : sans elle, on
+ *  laisserait croire que tout est parti. */
+export interface VentesSynchronisees {
+  ventes: number;
+  restantes: number;
+  /** Horodatage de la nouvelle (la plus récente l'emporte à l'affichage). */
+  a: number;
+}
+
 interface CaisseContextType {
   transactions: CaisseTransaction[];
   loading: boolean;
@@ -252,6 +272,16 @@ interface CaisseContextType {
   syncLettresMortes: LettreMorte[];
   /** Retire une opération refusée du registre (après revue). */
   purgerEchecSync: (id: string) => Promise<void>;
+
+  // File hors-ligne — ventes GARDÉES qui viennent enfin de partir (OFF-02).
+  /** La dernière nouvelle à donner à la marchande, ou `null` s'il n'y en a
+   *  pas. Elle vit ICI, dans le contexte monté pour toute l'application, et
+   *  non dans l'écran de vente : le rejeu tourne souvent alors que la
+   *  marchande est ailleurs, ou que l'application vient de redémarrer. Une
+   *  notification posée dans un composant démonté serait perdue. */
+  ventesSynchronisees: VentesSynchronisees | null;
+  /** La marchande a vu la nouvelle : on l'efface. */
+  accuserVentesSynchronisees: () => void;
 }
 
 const CaisseContext = createContext<CaisseContextType | undefined>(undefined);
@@ -278,6 +308,19 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // Rejets définitifs (4xx) sortis de la file au rejeu : surfaçage obligatoire.
   const [syncEchecs, setSyncEchecs] = useState(0);
   const [syncLettresMortes, setSyncLettresMortes] = useState<LettreMorte[]>([]);
+  // OFF-02 : la bonne nouvelle, gardée au niveau du contexte pour qu'elle
+  // survive à l'écran de vente refermé (voir CaisseContextType).
+  const [ventesSynchronisees, setVentesSynchronisees] = useState<VentesSynchronisees | null>(null);
+  const accuserVentesSynchronisees = useCallback(() => setVentesSynchronisees(null), []);
+  // LES PHRASES SONT DES CLÉS. `direMessage` dit la phrase quand le guidage
+  // vocal est actif, et rend TOUJOURS son texte résolu — pour que ce qui est
+  // affiché soit exactement ce qui est dit, sans seconde rédaction. Le mute
+  // global reste en aval (AppContext.speak) : muette veut dire muette, argent
+  // compris — arbitrage de Patrick, il n'est pas contourné ici.
+  const speakMessage = useSpeakMessage();
+  const direMessage = (id: MessageId, vars?: Variables) => (
+    guidageVocal() ? speakMessage(id, vars) : resoudreMessage(id, vars)
+  );
   const rafraichirEchecs = useCallback(async () => {
     const uid = appUser?.id;
     if (!uid) { setSyncEchecs(0); setSyncLettresMortes([]); return; }
@@ -372,9 +415,34 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       if (minuterie) { clearTimeout(minuterie); minuterie = null; }
       try {
         const avant = await offlineNbEchecs(uid).catch(() => 0);
-        const { ok, echecs, reste } = await synchroniser(posterOperation, uid);
+        const bilan = await synchroniser(posterOperation, uid);
+        const { ok, echecs, reste } = bilan;
         if (ok > 0) await loadTransactions();
         await rafraichirEchecs();
+        // OFF-02 — LA VENTE QUI PART ENFIN SE SAIT.
+        //
+        // On ne le déduit JAMAIS de `ok`, qui compte des opérations toutes
+        // natures confondues : une dépense rejouée y pèse autant qu'une
+        // vente. On lit la ventilation par point de terminaison, la nature
+        // que la file portait déjà. Zéro vente partie = silence total.
+        //
+        // UNE SALVE, UNE ANNONCE : trois ventes se disent une fois avec leur
+        // nombre. Et tant qu'il en reste en file, la phrase le dit — on
+        // n'annonce pas « tout est parti » sur une file à moitié vidée.
+        const annonce = annonceVentesParties(ventesParties(bilan), ventesEncoreEnFile(bilan));
+        if (annonce) {
+          const message = direMessage(annonce.cle, annonce.variables);
+          vibrerEnvoyee();
+          setVentesSynchronisees((precedent) => ({
+            // Deux salves avant qu'elle n'ait regardé : on additionne, on ne
+            // remplace pas — sinon la première nouvelle disparaîtrait sans
+            // avoir été vue.
+            ventes: (precedent?.ventes ?? 0) + annonce.variables.nombre,
+            restantes: annonce.variables.reste,
+            a: Date.now(),
+          }));
+          toast.success(message.texte);
+        }
         if (echecs > avant) {
           const n = echecs - avant;
           toast.error(`${n} opération${n > 1 ? 's' : ''} hors-ligne refusée${n > 1 ? 's' : ''} — à revoir`);
@@ -880,6 +948,8 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     syncEchecs,
     syncLettresMortes,
     purgerEchecSync,
+    ventesSynchronisees,
+    accuserVentesSynchronisees,
   };
 
 

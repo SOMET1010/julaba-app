@@ -8,18 +8,18 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **418** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 444 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **420** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 446 |
 | — littéraux (phrase fixe en dur) | 216 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 97 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
-| — relais (`dire = (t) => speak(t)`) | 17 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 71 |
+| — relais (`dire = (t) => speak(t)`) | 18 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 44 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **266** |
 | Dont dynamiques (avec variables) | 97 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **67** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
-| Fichiers avec au moins un site d'appel | 78 |
+| Fichiers avec au moins un site d'appel | 79 |
 | Attributs `aria-label` (lecteur d'écran uniquement) | 293 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
@@ -81,6 +81,7 @@
 | `components/shared/FinancialScoreDetailModal.tsx` | partage | 2 | 0 | 0 | 2 | 0 | 0 | 0 |
 | `components/shared/ModeAccesSwitcher.tsx` | partage | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `contexts/AppContext.tsx` | contexte | 2 | 0 | 1 | 1 | 0 | 0 | 1 |
+| `contexts/CaisseContext.tsx` | caisse | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `components/auth/ChangePasswordScreen.tsx` | auth | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/auth/Welcome.tsx` | auth | 1 | 2 | 0 | 0 | 0 | 0 | 0 |
 | `components/backoffice/BOLogin.tsx` | auth | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
@@ -115,7 +116,7 @@
 | auth | 39 | 27 | 0 |
 | partage | 37 | 24 | 0 |
 | wallet | 34 | 36 | 18 |
-| caisse | 29 | 0 | 0 |
+| caisse | 31 | 0 | 0 |
 | vente | 28 | 0 | 0 |
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 17 | 9 | 1 |
@@ -903,6 +904,13 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 |---:|---|---|---|---|:-:|
 | 734 | `speak` | dynamique | safeText |  |  |
 | 912 | `speak` | template | Ta journée est déjà ouverte avec {fondRetenu} francs. Pour changer ce montant, touche Modifier le fond. | `fondRetenu` | € |
+
+### `contexts/CaisseContext.tsx` — caisse
+
+| Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
+|---:|---|---|---|---|:-:|
+| 322 | `speakMessage` | relais | id |  |  |
+| 434 | `direMessage` | dynamique | annonce.cle |  |  |
 
 ### `contexts/ObjectifContext.tsx` — marchand_autre
 
