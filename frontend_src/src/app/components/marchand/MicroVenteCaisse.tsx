@@ -348,7 +348,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // à l'arrivée reste la question du titre (introLigne).
   const bulle = isRecording ? 'Je vous écoute'
     : isLoading ? 'Un instant…'
-    : isSpeaking ? 'Tata parle…'
+    : isSpeaking ? 'Tantie parle…'
     : isError ? "Je n'ai pas compris"
     : produitPreselectionne ? `Dis ce que tu as vendu de ${produitPreselectionne.nom}`
     : 'Dis-moi ce que tu vends';
@@ -423,7 +423,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
               un visage. */}
           <img src={tataAccueil} alt="" aria-hidden="true" className="caisse-voice-tata" />
           <button type="button" onClick={() => speak(dernierePhraseRef.current || introLigne())}
-            aria-label={dernierePhraseRef.current ? "Réécouter ce que Tata a compris" : 'Réécouter la question'}
+            aria-label={dernierePhraseRef.current ? "Réécouter ce que Tantie a compris" : 'Réécouter la question'}
             className="caisse-voice-bubble"
             style={{ gap: 'var(--caisse-esp-2)', borderRadius: 'var(--caisse-rayon-4)', borderTopRightRadius: 'var(--caisse-rayon-1)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)' }}>
             <span aria-hidden="true" style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--caisse-succes)', color: 'var(--caisse-vert)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -515,7 +515,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       {(isDone || isError) && (
         <button type="button" onClick={reset}
           style={{ width: '100%', marginTop: 'var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)', padding: 'var(--caisse-esp-3) 0', borderRadius: 'var(--caisse-rayon-4)', font: 'var(--caisse-font-bouton)', color: 'white', background: 'var(--caisse-orange-voix)', cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}>
-          Reparler à Tata
+          Parler encore à Tantie
         </button>
       )}
 
