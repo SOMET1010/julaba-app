@@ -8,14 +8,14 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **417** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 442 |
-| — littéraux (phrase fixe en dur) | 216 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **418** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 444 |
+| — littéraux (phrase fixe en dur) | 218 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 97 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
 | — relais (`dire = (t) => speak(t)`) | 17 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 42 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **266** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **268** |
 | Dont dynamiques (avec variables) | 97 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **67** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
@@ -61,6 +61,7 @@
 | `components/auth/ActivationScreen.tsx` | auth | 4 | 2 | 0 | 1 | 1 | 0 | 0 |
 | `components/marchand/MarchandAccueilVoice.tsx` | marchand_autre | 4 | 2 | 1 | 2 | 0 | 0 | 1 |
 | `components/shared/ReceptionPaiementModal.tsx` | partage | 4 | 2 | 1 | 1 | 0 | 0 | 0 |
+| `components/shared/UniversalParametres.tsx` | marchand_autre | 4 | 5 | 0 | 0 | 0 | 0 | 0 |
 | `contexts/ObjectifContext.tsx` | marchand_autre | 4 | 2 | 2 | 0 | 0 | 0 | 2 |
 | `services/vendreVocalUnifie.ts` | vente | 4 | 0 | 0 | 1 | 0 | 4 | 0 |
 | `components/auth/OnboardingSlides.tsx` | auth | 3 | 0 | 0 | 0 | 0 | 3 | 0 |
@@ -70,7 +71,6 @@
 | `components/marchand/MarchandDepenses.tsx` | depense | 3 | 3 | 2 | 0 | 0 | 0 | 2 |
 | `components/producteur/RecolteForm.tsx` | producteur | 3 | 2 | 1 | 0 | 0 | 0 | 0 |
 | `components/shared/DocumentsCertificationsModalUniversal.tsx` | partage | 3 | 3 | 0 | 0 | 0 | 0 | 0 |
-| `components/shared/UniversalParametres.tsx` | marchand_autre | 3 | 3 | 0 | 0 | 0 | 0 | 0 |
 | `components/academy/UniversalAcademy.tsx` | academy | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `components/backoffice/BOLayout.tsx` | backoffice | 2 | 1 | 1 | 0 | 0 | 0 | 0 |
 | `components/backoffice/BOProfil.tsx` | backoffice | 2 | 1 | 0 | 0 | 1 | 0 | 0 |
@@ -111,7 +111,7 @@
 |---|---:|---:|---:|
 | producteur | 71 | 71 | 6 |
 | stock | 57 | 57 | 9 |
-| marchand_autre | 52 | 46 | 20 |
+| marchand_autre | 53 | 48 | 20 |
 | auth | 39 | 27 | 0 |
 | partage | 37 | 24 | 0 |
 | wallet | 34 | 36 | 18 |
@@ -835,8 +835,10 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
 | 630 | `speak` | literal | Paramètres sauvegardés |  |  |
-| 916 | `speak` | literal | Export en cours |  |  |
-| 1033 | `speak` | literal | Déconnexion en cours |  |  |
+| 747 | `speak` | literal | D'accord. Je dirai seulement l'argent et les comptes. |  |  |
+| 747 | `speak` | literal | D'accord. Je te dis tout. |  |  |
+| 934 | `speak` | literal | Export en cours |  |  |
+| 1051 | `speak` | literal | Déconnexion en cours |  |  |
 
 ### `components/ui/UniversalKPI.tsx` — partage
 
@@ -899,8 +901,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 718 | `speak` | dynamique | safeText |  |  |
-| 896 | `speak` | template | Ta journée est déjà ouverte avec {fondRetenu} francs. Pour changer ce montant, touche Modifier le fond. | `fondRetenu` | € |
+| 734 | `speak` | dynamique | safeText |  |  |
+| 912 | `speak` | template | Ta journée est déjà ouverte avec {fondRetenu} francs. Pour changer ce montant, touche Modifier le fond. | `fondRetenu` | € |
 
 ### `contexts/ObjectifContext.tsx` — marchand_autre
 
@@ -1442,7 +1444,7 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
-| 897 | template | Ta journée est déjà ouverte avec {fondRetenu} francs. Pour changer ce montant, touche Modifier le fond. | `fondRetenu` |
+| 913 | template | Ta journée est déjà ouverte avec {fondRetenu} francs. Pour changer ce montant, touche Modifier le fond. | `fondRetenu` |
 
 ## 6. Intentions reconnues et variantes STT existantes
 
