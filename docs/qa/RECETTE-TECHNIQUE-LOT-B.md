@@ -82,11 +82,45 @@ police visiblement différente de la maquette ; plantage au lancement.
 
 ---
 
-## 2. Coût réel du pré-cache (B6)
+## 2. Coût réel d'installation
 
-**Ce qu'on vérifie** : B6 a mesuré **10,45 Mo** de pré-cache au build, dont
-5,62 Mo de voix et 4,83 Mo bloquant. Ce chiffre est théorique — voici sa
-contrepartie réelle.
+### Référence arrêtée le 21/09/2026
+
+```
+Commit             : e7e7cad
+Fichier            : app-debug.apk
+Taille exacte      : 269 207 362 octets — 256,74 MiB / 269,21 MB
+SHA-256            : efe72521cb55de15ae7b495de94cf98f1c1c8ab210992cb9462a06393efa0de0
+ZIP de CI          : ~193,09 MB (compressé — ce n'est PAS la taille de l'APK)
+Occupation installée : À MESURER SUR TÉLÉPHONE
+```
+
+**D'où viennent les 269 Mo** (lu dans `android/scripts/installer-voix.sh` et
+`android/app/build.gradle`) :
+
+| Élément | Taille |
+|---|---|
+| Bibliothèque native sherpa-onnx (AAR, **4 architectures**) | ~100 Mo |
+| Modèle d'**écoute** FR « Kroko » (STT) | ~71 Mo |
+| Modèle de **parole** FR siwis / Piper (TTS) | ~79 Mo |
+| Application web (bundle + 137 clips + polices) | ~18 Mo |
+
+**Ce n'est pas du gras : c'est le prix de « Tantie parle et entend sans
+réseau ».** Ne pas le traiter comme un défaut.
+
+> **Correction d'une erreur de la première version de cette feuille.** Elle
+> demandait un ordre de grandeur « cohérent avec les 10,45 Mo » mesurés par
+> B6. C'était faux : B6 n'a mesuré que la **couche web**. Le coût
+> d'installation réel est dix fois supérieur et vit côté Android.
+
+### Ce qui se mesure vraiment
+
+**Le chiffre décisif n'est pas la taille de l'APK, ce sont les deux
+suivants : l'espace libre AVANT installation, et l'espace restant APRÈS.**
+Android a besoin de marge **au-delà** des 269 Mo pour décompresser et
+optimiser l'application ; l'empreinte installée peut donc dépasser la taille
+du fichier. C'est pourquoi un téléphone à **300 Mo libres est un cas limite**,
+où l'installation peut échouer — et c'est exactement le téléphone visé.
 
 **Préparation** : application fraîchement installée, jamais lancée hors ligne.
 
@@ -100,14 +134,22 @@ contrepartie réelle.
 5. Relancer l'application.
 
 **Résultat attendu**
+- L'installation **aboutit** — c'est déjà un résultat en soi sur un téléphone
+  peu garni.
 - L'application se lance hors ligne, **avec ses polices**, sans écran blanc.
-- Le total application + données reste dans un ordre de grandeur cohérent avec
-  les 10,45 Mo annoncés, plus le code.
 
-**Compte comme défaut** : lancement hors ligne impossible ; polices de repli ;
-taille sans rapport avec la mesure (facteur 2 ou plus).
+**Compte comme défaut** : installation refusée faute de place ; lancement hors
+ligne impossible ; polices de repli.
 
-**Noter** : taille application, taille données, temps de lancement hors ligne.
+**Noter, dans cet ordre** :
+1. espace libre **avant** installation ;
+2. espace libre **après** installation ;
+3. taille application et taille données (Réglages → Applications → Jùlaba →
+   Stockage) ;
+4. temps de lancement hors ligne.
+
+La différence entre 1 et 2 est **le chiffre qui manquait au projet**. C'est
+lui qui dit si Jùlaba s'installe chez une marchande, pas la taille du fichier.
 
 ---
 
@@ -275,8 +317,11 @@ vente doit rester **unique**.
 ## Ce qu'on rend à la fin
 
 ```
-APK / commit testé   : <SHA> (branche claude/clever-allen-dnr8by)
-Téléphone / Android  : <modèle> / Android <version> / <espace libre avant>
+APK / commit testé   : e7e7cad — app-debug.apk, 269,21 MB
+Téléphone / Android  : <modèle> / Android <version>
+Espace libre avant   : <Mo>
+Espace libre après   : <Mo>          ← le chiffre décisif
+Occupation installée : <app + données, Mo>
 Résultats            : 1..8, OK ou défaut
 Défauts trouvés      : <lesquels, à quel scénario, reproductibles ou non>
 Défauts corrigés     : <SHA des correctifs>
