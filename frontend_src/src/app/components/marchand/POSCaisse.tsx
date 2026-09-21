@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, Minus, Trash2, X, Check, Package, FileText, Banknote, ChevronRight, Leaf, Zap, Volume2 } from 'lucide-react';
-import { useCaisse } from '../../contexts/CaisseContext';
+import { Search, Plus, Minus, Trash2, X, Check, Package, FileText, Banknote, ChevronRight, Leaf, Zap, Volume2, CloudOff } from 'lucide-react';
+import { useCaisse, type StatutEnregistrement } from '../../contexts/CaisseContext';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { useApp } from '../../contexts/AppContext';
 import { useNavigate, useLocation } from 'react-router';
@@ -15,7 +15,7 @@ import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
 import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/fcfa';
 import { BilletDessine, PieceDessinee } from './CoupureDessinee';
 import { avertissementRupture } from '../../services/ruptureStock';
-import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
+import { vibrerSucces, vibrerErreur, vibrerTic, vibrerAttente } from '../../utils/haptique';
 import { getPictogrammeByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 import { phraseRelecture, phraseLigneAjoutee, type EtatEncaissement as EtatRelu } from '../../services/relectureSpontanee';
@@ -133,7 +133,10 @@ function POSCaisseInner() {
   // espaces de milliers). `montantRecu` et son `onChange` restent la seule
   // vérité ; ce booléen ne dit que si le clavier est ouvert sur ce champ.
   const [recuEnSaisie, setRecuEnSaisie] = useState(false);
-  const [lastSale, setLastSale] = useState<{ montant: number; moyen: string; monnaie: number; produits: any[] } | null>(null);
+  // `statut` : ce que la vente est VRAIMENT devenue (OFF-01). Il vient du
+  // contexte de caisse et de nulle part ailleurs — l'écran ne le redéduit
+  // jamais de `navigator.onLine`, qui ment quand l'envoi tombe.
+  const [lastSale, setLastSale] = useState<{ montant: number; moyen: string; monnaie: number; produits: any[]; statut: StatutEnregistrement } | null>(null);
   // Mobile money DÉCLARÉ (Chemin A) : opérateur choisi, aucune intégration/argent.
   const [mmOperator, setMmOperator] = useState<string | null>(null);
 
@@ -311,7 +314,11 @@ function POSCaisseInner() {
       // puis complété au doigt reste un panier où la voix a servi, et c'est ce
       // qu'elle cherchera dans « Par la voix ».
       const source = cart.some((i) => i.origine === 'vocal') ? 'vocal' : 'kassa';
-      await enregistrerVente(total, details, moyen, undefined, source);
+      // CE QUE LA VENTE EST DEVENUE — OFF-01, 21/09/2026. Le résultat était
+      // jeté : les trois issues d'`enregistrerVente` (hors ligne, acceptée par
+      // le serveur, envoi tombé alors que le navigateur se croyait en ligne)
+      // rendaient `undefined` et s'annonçaient toutes « Vente réussie ».
+      const resultat = await enregistrerVente(total, details, moyen, undefined, source);
       // Rupture éventuelle (décision n°6) : calculée AVANT le décrément optimiste.
       // Le serveur borne déjà le stock à 0 et journalise le manquant (I3) ; ici on
       // AVERTIT à la voix au lieu de plancher en silence. La vente passe toujours.
@@ -331,18 +338,38 @@ function POSCaisseInner() {
       // décrément serveur (stock trop haut, divergence stock/ledger). On reflète
       // désormais l'état autoritaire par un simple refetch.
       void refreshProducts();
-      // Écran « Vente réussie » (Phase 3, lot 4) — capturé AVANT de vider le panier.
-      setLastSale({ montant: total, moyen, monnaie: estMM ? 0 : monnaie, produits: details });
+      // Écran de fin (Phase 3, lot 4) — capturé AVANT de vider le panier. Il
+      // porte le statut : c'est lui qui décide ce que l'écran dit.
+      setLastSale({ montant: total, moyen, monnaie: estMM ? 0 : monnaie, produits: details, statut: resultat.statut });
+      // LE PANIER EST VIDÉ DANS LES DEUX CAS, et c'est voulu : confirmée ou
+      // seulement gardée, la vente est PRISE EN CHARGE (file durable, clé
+      // d'idempotence, rejeu automatique). La laisser au panier la ferait
+      // ressaisir, donc compter deux fois.
       clearCart();
       setPaymentMethod('cash');
       setMmOperator(null);
       setMontantRecu('');
       setShowSuccess(true);
-      // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
-      // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
-      vibrerSucces();
-      if (avertRupture) direMessage('TATA_VENTE_ENREGISTREE_RUPTURE', { total, avertissement: avertRupture });
-      else direMessage('TATA_VENTE_ENREGISTREE', { total });
+      if (resultat.statut === 'confirmee') {
+        // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
+        // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
+        vibrerSucces();
+        if (avertRupture) direMessage('TATA_VENTE_ENREGISTREE_RUPTURE', { total, avertissement: avertRupture });
+        else direMessage('TATA_VENTE_ENREGISTREE', { total });
+      } else {
+        // EN ATTENTE D'ENVOI. Aucun signe de succès : pas de `vibrerSucces()`,
+        // et surtout pas sous un autre nom. Mais l'attente DOIT se sentir —
+        // arbitrage de Patrick du 21/09/2026, qui ferme VOIX-06 : sans canal
+        // tactile, l'état ne tenait plus qu'au TTS, et une marchande qui
+        // n'entend pas (bruit du marché, voix coupée) et qui ne lit pas
+        // n'avait plus rien. Une impulsion COURTE et UNIQUE (90 ms) : ni la
+        // double du succès, ni la longue de l'erreur.
+        vibrerAttente();
+        // Et elle s'ENTEND aussi : doctrine voix — aucune information
+        // importante uniquement à l'écran.
+        if (avertRupture) direMessage('TATA_VENTE_GARDEE_TELEPHONE_RUPTURE', { total, avertissement: avertRupture });
+        else direMessage('TATA_VENTE_GARDEE_TELEPHONE', { total });
+      }
     } catch (e) {
       console.error(e);
       vibrerErreur();
@@ -495,7 +522,8 @@ function POSCaisseInner() {
     direMessage('TATA_VENTE_CREDIT_ENREGISTREE', { total });
     // Recharge les totaux du jour (la vente à crédit doit apparaître : convention A).
     void reloadTransactions?.();
-    setLastSale({ montant: total, moyen: 'Crédit', monnaie: 0, produits: details });
+    // Le crédit a déjà son accusé de réception serveur quand ce handler tourne.
+    setLastSale({ montant: total, moyen: 'Crédit', monnaie: 0, produits: details, statut: 'confirmee' });
     clearCart();
     setPaymentMethod('cash');
     setMontantRecu('');
@@ -1381,28 +1409,46 @@ function POSCaisseInner() {
         )}
       </AnimatePresence>
 
-      {/* Écran « Vente réussie » (Phase 3, lot 4) */}
+      {/* Écran de fin de vente (Phase 3, lot 4) — confirmée OU gardée (OFF-01) */}
       <AnimatePresence>
         {showSuccess && lastSale && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
             style={{ position:'fixed', inset:0, zIndex:120, background:'var(--caisse-sable)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'var(--caisse-esp-5)', textAlign:'center' }}>
-            <div style={{ width:88, height:88, borderRadius:'50%', background:'var(--caisse-succes)', display:'grid', placeItems:'center', marginBottom:'var(--caisse-esp-4)' }}>
-              <Check size={48} color="var(--caisse-vert)" aria-hidden="true" />
+            <div style={{ width:88, height:88, borderRadius:'50%', background: lastSale.statut === 'confirmee' ? 'var(--caisse-succes)' : 'var(--caisse-ivoire)', display:'grid', placeItems:'center', marginBottom:'var(--caisse-esp-4)' }}>
+              {lastSale.statut === 'confirmee'
+                ? <Check size={48} color="var(--caisse-vert)" aria-hidden="true" />
+                : <CloudOff size={48} color="var(--caisse-gris-texte)" aria-hidden="true" />}
             </div>
-            {/* PAS de `role="status"` ni d'`aria-live` ici, et c'est délibéré.
-                OFF-01 (P1, OUVERTE) : cet écran dit « Vente réussie » même
-                quand la vente n'est qu'enfilée hors ligne — l'appelant ne lit
-                pas le résultat. Tant que la dette n'est pas fermée, en faire
-                une région annoncée porterait le mensonge sur le canal des
-                marchandes qui ne lisent pas. Ni Manus ni la base ne l'ont. */}
-            <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-vert)', marginBottom:'var(--caisse-esp-2)' }}>Vente réussie</div>
+            {/* TOUJOURS PAS de `role="status"` ni d'`aria-live` ici — mais plus
+                pour la même raison. OFF-01 est FERMÉE : cet écran ne dit plus
+                « réussie » sur une vente qui n'est que gardée, et les deux
+                issues sont PARLÉES par Tata (`TATA_VENTE_ENREGISTREE*` /
+                `TATA_VENTE_GARDEE_TELEPHONE*`). Annoncer en plus la région à
+                un lecteur d'écran ferait DIRE DEUX FOIS la même chose, à deux
+                voix qui se recouvrent. En faire une région annoncée reste
+                possible et se décide avec Patrick : c'est de la doctrine voix,
+                pas de la correction de dette. Ni Manus ni la base ne l'ont. */}
+            {lastSale.statut === 'confirmee' ? (
+              <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-vert)', marginBottom:'var(--caisse-esp-2)' }}>Vente réussie</div>
+            ) : (
+              <div style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', marginBottom:'var(--caisse-esp-2)' }}>Vente gardée sur le téléphone</div>
+            )}
             <div style={{ font:'var(--caisse-font-h1)', fontSize:36, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{lastSale.montant.toLocaleString('fr-FR')} F</div>
             <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', marginTop:'var(--caisse-esp-2)' }}>
               {lastSale.moyen}{lastSale.monnaie > 0 ? ` · rendu ${lastSale.monnaie.toLocaleString('fr-FR')} F` : ''}
             </div>
+            {lastSale.statut !== 'confirmee' && (
+              <div style={{ font:'var(--caisse-font-texte)', color:'var(--encre)', marginTop:'var(--caisse-esp-3)', maxWidth:360 }}>
+                En attente d'envoi. Je l'envoie dès que le réseau revient.
+              </div>
+            )}
             <div style={{ width:'100%', maxWidth:360, marginTop:'var(--caisse-esp-6)', display:'flex', flexDirection:'column', gap:'var(--caisse-esp-3)' }}>
+              {/* LE REÇU PART MÊME HORS LIGNE — décision de Patrick, OFF-01.
+                  La vente a eu lieu devant la cliente ; elle a droit à sa
+                  trace. Mais le reçu porte alors son acheminement réel, pris
+                  sur `lastSale.statut` et jamais redéduit de `navigator.onLine`. */}
               <button type="button"
-                onClick={() => { void partagerRecu({ montant: lastSale.montant, produits: lastSale.produits, mode_paiement: lastSale.moyen, created_at: new Date().toISOString() } as any, marchandNom); }}
+                onClick={() => { void partagerRecu({ montant: lastSale.montant, produits: lastSale.produits, mode_paiement: lastSale.moyen, created_at: new Date().toISOString(), statutSynchronisation: lastSale.statut } as any, marchandNom); }}
                 style={{ width:'100%', padding:'var(--caisse-esp-4)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
                 Envoyer le reçu (WhatsApp)
               </button>
