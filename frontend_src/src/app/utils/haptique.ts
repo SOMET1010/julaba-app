@@ -23,6 +23,16 @@ export function vibrerErreur(): void {
   vibrer(180);
 }
 
+/** Impulsion courte unique : « c'est pris, mais ce n'est pas encore parti ».
+ *
+ *  Arbitrage de Patrick, 21/09/2026 (OFF-01 / VOIX-06). 90 ms : la moitié de
+ *  l'erreur, donc on ne croit pas à une alarme ; et un seul coup continu bien
+ *  plus long que les 35 ms du succès, donc on ne peut pas le prendre pour une
+ *  moitié de double impulsion, même dans le bruit du marché. */
+export function vibrerAttente(): void {
+  vibrer(90);
+}
+
 /** Petit tic de saisie (toucher d'un billet, d'une touche importante). */
 export function vibrerTic(): void {
   vibrer(15);
