@@ -15,7 +15,7 @@ import { useUser } from '../../contexts/UserContext';
 import { useVoluntaryLogout } from '../../hooks/useVoluntaryLogout';
 import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useLangPref, LANG_FLAGS, LANG_LABELS, type AppLang } from '../../hooks/useLangPref';
+import { useLangPref, LANG_FLAGS, LANG_LABELS, langueDisponible, type AppLang } from '../../hooks/useLangPref';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { IdentificateurPinChangeSection } from '../identificateur/IdentificateurPinChangeSection';
 import { VoiceLevelSelector } from './VoiceLevelSelector';
@@ -443,21 +443,35 @@ function ModalLang({ isOpen, onClose, lang, setLang, color }: {
             className="bg-white rounded-t-3xl w-full p-6 pb-10"
           >
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-5" />
-            <h3 className="text-xl font-bold encre mb-2">Langue de Tata Nanti Lou</h3>
+            <h3 className="text-xl font-bold encre mb-2">Langue de Tantie Nanti Lou</h3>
             <p className="text-sm encre-3 mb-6">Dans quelle langue tu veux me parler aujourd&apos;hui ?</p>
             <div className="space-y-3">
               {LANGS.map(id => {
                 const isActive = lang === id;
+                // LOT A6 — une langue dont l'audio humain n'est pas validé se voit,
+                // mais ne se choisit pas : elle est grisée et le dit. Promettre une
+                // langue qu'on ne sait pas encore parler serait pire que l'absence.
+                const disponible = langueDisponible(id);
                 return (
-                  <motion.button key={id} onClick={() => { setLang(id); onClose(); }}
-                    whileTap={{ scale: 0.98 }}
+                  <motion.button key={id}
+                    disabled={!disponible}
+                    aria-disabled={!disponible}
+                    onClick={() => { if (disponible) { setLang(id); onClose(); } }}
+                    whileTap={disponible ? { scale: 0.98 } : undefined}
                     className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left"
-                    style={{ borderColor: isActive ? color : '#E5E7EB', backgroundColor: isActive ? `${color}08` : 'white' }}
+                    style={{
+                      borderColor: isActive ? color : '#E5E7EB',
+                      backgroundColor: isActive ? `${color}08` : 'white',
+                      opacity: disponible ? 1 : 0.72,
+                      cursor: disponible ? 'pointer' : 'not-allowed',
+                      minHeight: 68,
+                    }}
                   >
                     <span className="text-3xl">{LANG_FLAGS[id]}</span>
-                    <div>
+                    <div className="flex-1">
                       <p className="font-bold encre">{LANG_LABELS[id]}</p>
                       {isActive && <p className="text-xs mt-0.5" style={{ color }}>Langue actuelle</p>}
+                      {!disponible && <p className="text-sm mt-1 encre-3">Audio humain en préparation</p>}
                     </div>
                     {isActive && <Check className="w-5 h-5 ml-auto" style={{ color }} strokeWidth={3} />}
                   </motion.button>
@@ -933,7 +947,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <RowToggle color={color} label="Réduire les animations" sublabel="Améliore les performances sur téléphones bas de gamme" value={reduceAnimations} onChange={setReduceAnimations} />
             <RowToggle color={color} label="Vibrations" sublabel="Retour haptique lors des actions" value={vibrations} onChange={setVibrations} />
             {role !== 'institution' && (
-              <RowAction label="Langue de Tata Nanti Lou" sublabel={LANG_FLAGS[lang] + ' ' + LANG_LABELS[lang]} icon={Globe} onClick={() => setShowLang(true)} />
+              <RowAction label="Langue de Tantie Nanti Lou" sublabel={LANG_FLAGS[lang] + ' ' + LANG_LABELS[lang]} icon={Globe} onClick={() => setShowLang(true)} />
             )}
           </Section>
 
