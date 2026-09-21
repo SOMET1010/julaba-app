@@ -46,7 +46,7 @@ let echecs = 0;
 const ok = (cond: boolean, quoi: string) => { if (cond) console.log('  ✓', quoi); else { console.log('  ✗', quoi); echecs++; } };
 
 /** Les variables de tous les gabarits d'argent — pour comparer des textes complets. */
-const VARS = { montant: 500, total: 1500, rendu: 250, manque: 300, somme: 2000, prix: 750, quantite: 3, produit: 'tomate', unite: 'tas', nom: 'Awa', jour: 'lundi', nombre: 2 };
+const VARS = { montant: 500, montantDorome: 100, total: 1500, rendu: 250, manque: 300, somme: 2000, prix: 750, quantite: 3, produit: 'tomate', unite: 'tas', nom: 'Awa', jour: 'lundi', nombre: 2 };
 
 /**
  * Le dioula tel qu'il sera : tout le décor traduit, en draft. Construit depuis
@@ -118,9 +118,37 @@ console.log(`\n[B] demain — dyu-ci peuplé de ${Object.keys(DECOR).length} phr
   );
   ok(textesDifferents.length === 0, `mot pour mot le texte français${textesDifferents.length ? ` — écart : ${textesDifferents.join(', ')}` : ''}`);
 
+  // ── L'INDICATEUR QU'IL NE FAUT PAS REPRENDRE, ET POURQUOI ───────────────
+  // Ce test a d'abord cherché « aucune lettre dioula (ɛ ɔ ŋ ɲ) dans une phrase
+  // d'argent ». C'était grossier, et ça s'est retourné contre nous dès qu'une
+  // phrase l'a mérité : `TATA_AMBIGUITE_DOROME` est une phrase FRANÇAISE, de
+  // fr-ci, qui CITE le mot mandingue qu'elle demande de lever —
+  //   « 500 francs, ou 500 dɔrɔmɛ — c'est-à-dire 100 francs ? »
+  // Lui retirer ses lettres dioula la rendrait absurde : c'est exactement le
+  // mot sur lequel porte la question. « Contient une lettre dioula » n'est
+  // donc PAS équivalent à « est dite en dioula ».
+  //
+  // Le bon critère compare à la SOURCE : une phrase d'argent a le droit de
+  // porter des lettres dioula à la seule condition d'être, mot pour mot, celle
+  // que sert fr-ci. Une lettre dioula qui apparaîtrait SANS venir de fr-ci
+  // voudrait dire qu'une traduction s'est glissée dans un montant — et là, ça
+  // doit rester rouge.
   const SPECIFIQUES_DYU = /[ɛɔŋɲ]/;
-  const contamines = MESSAGES_CRITIQUES.filter((id) => SPECIFIQUES_DYU.test(resoudreMessage(id, VARS, DYU).texte));
-  ok(contamines.length === 0, `aucune lettre dioula (ɛ ɔ ŋ ɲ) dans une phrase d'argent${contamines.length ? ` (${contamines.join(', ')})` : ''}`);
+  const contamines = MESSAGES_CRITIQUES.filter((id) => {
+    const enDyu = resoudreMessage(id, VARS, DYU).texte;
+    if (!SPECIFIQUES_DYU.test(enDyu)) return false;
+    return enDyu !== resoudreMessage(id, VARS, LOCALE_REFERENCE).texte;
+  });
+  ok(contamines.length === 0, `aucune lettre dioula (ɛ ɔ ŋ ɲ) qui ne vienne pas de fr-ci${contamines.length ? ` (${contamines.join(', ')})` : ''}`);
+
+  // Et on NOMME les citations légitimes, plutôt que de les laisser passer en
+  // silence : un successeur doit voir qu'elles existent, qu'elles sont
+  // françaises, et qu'elles sont servies telles quelles.
+  const citations = MESSAGES_CRITIQUES.filter((id) => SPECIFIQUES_DYU.test(resoudreMessage(id, VARS, LOCALE_REFERENCE).texte));
+  ok(citations.every((id) => resoudreMessage(id, VARS, DYU).locale === LOCALE_REFERENCE),
+    `les ${citations.length} phrase(s) d'argent qui CITENT un mot mandingue restent servies par fr-ci (${citations.join(', ') || '—'})`);
+  ok(citations.every((id) => voixPourMessage(resoudreMessage(id, VARS, DYU)).id === VOIX_REFERENCE.id),
+    'et elles sont dites par la voix française — citer un mot dioula ne fait pas basculer la voix');
 
   ok(!voixPeutDireArgent(VOIX_DYU), 'même peuplé de décor, le dioula ne devient PAS validé sur l\'argent');
 
