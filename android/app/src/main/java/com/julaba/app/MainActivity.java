@@ -12,6 +12,10 @@ public class MainActivity extends BridgeActivity {
     // (voice-offline/nativeStt.ts et voice-offline/nativeTts.ts).
     registerPlugin(SherpaSttPlugin.class);
     registerPlugin(SherpaTtsPlugin.class);
+    // Routage audio Bluetooth : micro de l'oreillette a l'ecoute, voix de
+    // Tantie dans l'oreillette, repli immediat sur le telephone si elle
+    // disparait (services/routageAudio).
+    registerPlugin(RoutageAudioPlugin.class);
     super.onCreate(savedInstanceState);
   }
 }
