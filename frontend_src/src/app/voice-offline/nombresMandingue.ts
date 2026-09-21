@@ -8,9 +8,9 @@
  * VARIÉTÉ DE PREMIER RANG — au même titre que le bambara de Bamako, pas en
  * rattrapage. C'est ce qui colle à Tantie Nanti Lou et à l'usage d'Abidjan.
  *
- * Le fichier s'appelle encore `nombresBambara.ts` : le nom porte une hypothèse
- * devenue fausse, son changement est une décision séparée (renommage purement
- * structurel + figeage du périmètre d'argent). Le NOM ment, pas le code.
+ * Le fichier s'appelait `nombresBambara.ts` : ce nom portait une hypothèse
+ * devenue fausse. Renommé par décision de Patrick, dans un commit purement
+ * structurel — mêmes exports, mêmes tests, aucun changement de logique.
  *
  * ── ORGANISATION ──────────────────────────────────────────────────────────
  *  1. NOYAU MANDINGUE : les formes communes aux deux variétés
