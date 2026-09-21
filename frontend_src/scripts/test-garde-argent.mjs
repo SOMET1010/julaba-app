@@ -267,9 +267,16 @@ console.log('\n[2] Un commit qui modifie `handlePay` dans POSCaisse.tsx');
   const liste = gateVerbeux(r, ['--base', 'HEAD~1', '--liste-invariants']);
   verifier('--liste-invariants n’imprime que des commandes',
     liste.sortie.trim().split('\n').every((l) => l.startsWith('npm run ')), liste.sortie);
-  // Avec la preuve, la sortie redevient 0.
-  const preuve = join(r, 'preuve.txt');
-  writeFileSync(preuve, liste.sortie);
+  // Avec la preuve, la sortie redevient 0. Depuis GARDE-03, une preuve est un
+  // JOURNAL D'EXECUTION — arbre prouve, codes de sortie — et non une liste de
+  // commandes redigee : voir le scenario 9, qui refuse l'ancienne forme.
+  const preuve = join(r, 'preuve.json');
+  const teteScenario2 = execFileSync('git', ['-C', r, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  writeFileSync(preuve, JSON.stringify({
+    version: 1, arbre: teteScenario2, propre: true, base: 'HEAD~1',
+    commandes: liste.sortie.trim().split('\n').filter((l) => l.startsWith('npm run '))
+      .map((commande) => ({ commande, code: 0, debut: new Date().toISOString(), fin: new Date().toISOString(), dureeMs: 1 })),
+  }, null, 2));
   const avec = gateVerbeux(r, ['--base', 'HEAD~1', '--preuve', preuve]);
   verifier('avec la preuve que les invariants ont tourné, la sortie est 0',
     avec.code === 0, `sortie ${avec.code} :\n${avec.sortie}`);
@@ -360,6 +367,66 @@ console.log('\n[7] La chaîne `test:ci` est gelée, valeur contre valeur');
   verifier('il nomme le maillon ajouté', /test:nouveau/.test(sortie), sortie);
 }
 
+// ── Scénario 9 — une preuve d'argent doit avoir TOURNÉ (GARDE-03) ─────────
+//
+// Constat du contre-audit du lot B2 : le garde lisait le fichier `--preuve` et
+// vérifiait SEULEMENT qu'il contenait les chaînes de commande exigées. Jamais
+// qu'elles avaient tourné, ni qu'elles étaient vertes, ni sur quel arbre. Un
+// `printf` suffisait à lui faire dire « les invariants exigés ont tourné ».
+console.log('\n[9] Une preuve d’argent rédigée à la main est refusée');
+{
+  const r = bacASable();
+  const p = 'frontend_src/src/app/components/marchand/POSCaisse.tsx';
+  ecrire(r, p, readFileSync(join(r, p), 'utf8').replace(
+    'const rendu = decomposerMonnaie(1000);',
+    'const rendu = decomposerMonnaie(1000); /* arrondi */'));
+  commit(r, 'ui: retoucher l’écran de paiement');
+
+  const exigees = gateVerbeux(r, ['--base', 'HEAD~1', '--liste-invariants']).sortie;
+  const tete = execFileSync('git', ['-C', r, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  const lignes = exigees.trim().split('\n').filter((l) => l.startsWith('npm run '));
+  const journal = (sur) => lignes.map((commande) => ({
+    commande, code: 0, debut: new Date().toISOString(), fin: new Date().toISOString(), dureeMs: 1,
+  })).map((c) => ({ ...c, ...sur }));
+  const ecrirePreuve = (nom, objet) => {
+    const f = join(r, nom);
+    writeFileSync(f, typeof objet === 'string' ? objet : JSON.stringify(objet, null, 2));
+    return f;
+  };
+
+  // (a) LE DÉFAUT HISTORIQUE : la liste de commandes, écrite à la main.
+  const aLaMain = ecrirePreuve('preuve-main.txt', exigees);
+  const rMain = gateVerbeux(r, ['--base', 'HEAD~1', '--preuve', aLaMain]);
+  verifier('une preuve rédigée à la main est REFUSÉE', rMain.code === 1, rMain.sortie);
+  verifier('et le garde dit qu’il attend un journal d’exécution',
+    /journal d’exécution|journal d'exécution/i.test(rMain.sortie), rMain.sortie);
+
+  // (b) UN JOURNAL VALIDE, produit sur CET arbre, tout vert.
+  const bon = ecrirePreuve('preuve-bonne.json', { version: 1, arbre: tete, propre: true, base: 'HEAD~1', commandes: journal({}) });
+  const rBon = gateVerbeux(r, ['--base', 'HEAD~1', '--preuve', bon]);
+  verifier('un journal d’exécution vert, sur le bon arbre, est accepté', rBon.code === 0, rBon.sortie);
+
+  // (c) UN JOURNAL PÉRIMÉ : produit sur un autre arbre.
+  const perime = ecrirePreuve('preuve-perimee.json', { version: 1, arbre: '0'.repeat(40), propre: true, base: 'HEAD~1', commandes: journal({}) });
+  const rPerime = gateVerbeux(r, ['--base', 'HEAD~1', '--preuve', perime]);
+  verifier('un journal produit sur un AUTRE arbre est refusé', rPerime.code === 1, rPerime.sortie);
+  verifier('et le garde nomme l’arbre attendu', /arbre/i.test(rPerime.sortie), rPerime.sortie);
+
+  // (d) UN INVARIANT ROUGE NE PEUT PAS ENTRER DANS LA PREUVE.
+  const rouge = journal({});
+  rouge[0] = { ...rouge[0], code: 1 };
+  const avecRouge = ecrirePreuve('preuve-rouge.json', { version: 1, arbre: tete, propre: true, base: 'HEAD~1', commandes: rouge });
+  const rRouge = gateVerbeux(r, ['--base', 'HEAD~1', '--preuve', avecRouge]);
+  verifier('un journal qui porte un invariant en échec est refusé', rRouge.code === 1, rRouge.sortie);
+  verifier('et le garde nomme la commande rouge',
+    rRouge.sortie.includes(rouge[0].commande.split(' ')[2] ?? 'npm'), rRouge.sortie);
+
+  // (e) UN ARBRE SALE NE DÉSIGNE RIEN DE NOMMABLE.
+  const sale = ecrirePreuve('preuve-sale.json', { version: 1, arbre: tete, propre: false, base: 'HEAD~1', commandes: journal({}) });
+  const rSale = gateVerbeux(r, ['--base', 'HEAD~1', '--preuve', sale]);
+  verifier('un journal produit sur un arbre non commité est refusé', rSale.code === 1, rSale.sortie);
+}
+
 // ── Scénario 8 — le dépôt réel : périmètre et empreintes à jour ────────────
 console.log('\n[8] Le dépôt réel : périmètre figé et empreintes des gardes à jour');
 {
@@ -378,6 +445,6 @@ console.log('\n[8] Le dépôt réel : périmètre figé et empreintes des gardes
 for (const b of bacs) rmSync(b, { recursive: true, force: true });
 
 console.log(echecs === 0
-  ? '\n✓ garde-argent — les huit scénarios tiennent\n'
+  ? '\n✓ garde-argent — les neuf scénarios tiennent\n'
   : `\n✗ garde-argent — ${echecs} échec(s)\n`);
 if (echecs > 0) process.exit(1);
