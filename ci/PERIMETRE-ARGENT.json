@@ -888,6 +888,7 @@
         "caisse-context",
         "enregistrement-vente",
         "grammaire-intention-financiere",
+        "local-intent",
         "paiement"
       ],
       "symboles": [
@@ -895,7 +896,8 @@
         "enregistrerDepense",
         "enregistrerVente",
         "grammaireEncaissement",
-        "handlePay"
+        "handlePay",
+        "localIntent"
       ]
     },
     "frontend_src/src/app/components/marchand/POSCaisse.tsx": {
@@ -1303,5 +1305,5 @@
       ]
     }
   },
-  "genereLe": "2026-09-20"
+  "genereLe": "2026-09-21"
 }
