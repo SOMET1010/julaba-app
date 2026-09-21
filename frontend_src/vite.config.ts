@@ -53,6 +53,28 @@ function stampServiceWorker(outDir: string): Plugin {
               try { return statSync(join(assetsDir, f)).size <= PRECACHE_MAX_BYTES } catch { return false }
             })
             .map((f) => `/assets/${f}`)
+          // LES POLICES ENTRENT AU PRÉ-CACHE — B6, 21/09/2026.
+          //
+          // Sans elles, un PREMIER lancement hors ligne — le cas d'une marchande
+          // qui installe au marché, réseau mort — s'affiche dans la police de
+          // repli du téléphone. Tout le travail de lisibilité (mode soleil,
+          // tailles de texte, cibles tactiles) est réglé sur Inter : la page
+          // change de métrique, les libellés débordent ou rétrécissent.
+          //
+          // Le coût est MESURÉ, pas supposé : 10 fichiers, 271 Ko, soit 2,7 % du
+          // pré-cache existant. Elles sont hachées et immuables comme le reste
+          // d'`assets/`, donc jamais re-téléchargées. `check:precache-budget`
+          // tient le compte et refuse le dépassement.
+          //
+          // CE QU'ON N'AJOUTE PAS, et c'est l'essentiel du lot : le « tout
+          // précacher ». Les 4 gros chunks volontairement exclus pèsent 1,84 Mo,
+          // et la reprise telle quelle aurait porté l'installation à 13–18 Mo
+          // sur des données mobiles.
+          precache = precache.concat(
+            readdirSync(assetsDir)
+              .filter((f) => /\.(woff2?|ttf|otf)$/i.test(f))
+              .map((f) => `/assets/${f}`),
+          )
         } catch (e) {
           console.warn("[stamp-sw] liste de pré-cache indisponible:", (e as Error)?.message)
         }
