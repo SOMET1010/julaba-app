@@ -422,6 +422,45 @@ function main() {
     }
   }
 
+  console.log("\n[I] L'API TYPÉE — value + unit conservés de bout en bout");
+  {
+    const parseNum = (M as Record<string, unknown>).parseMandingueNumericExpression as
+      | ((t: string) => ParsedLike<number> | null) | undefined;
+    const parseMoney = (M as Record<string, unknown>).parseMandingueMonetaryExpression as
+      | ((t: string) => ParsedLike<{ kind: string; value: number; unit: string }> | null) | undefined;
+    const resolveMoney = (M as Record<string, unknown>).resolveMoney as
+      | ((e: { value: number; unit: string }) => { amount: number; currency: string }) | undefined;
+
+    ok(typeof parseNum === "function", "parseMandingueNumericExpression est exporté");
+    ok(typeof parseMoney === "function", "parseMandingueMonetaryExpression est exporté");
+    ok(typeof resolveMoney === "function", "resolveMoney est exporté");
+
+    if (parseNum && parseMoney && resolveMoney) {
+      eq(parseNum("kɛmɛ")!.value, 100, "parseMandingueNumericExpression('kɛmɛ') → 100, résolu");
+      eq(parseNum("tà")!.resolved, false, "« tà » : le nombre aussi porte sa perte");
+      eq(parseNum("aucun nombre ici"), null, "pas de nombre → null");
+
+      // Le point central : value vaut 100, JAMAIS 500.
+      const dor = parseMoney("dɔrɔmɛ kɛmɛ")!;
+      eq(dor.resolved, true, "« dɔrɔmɛ kɛmɛ » : résolu");
+      eq(dor.value!.kind, "MONETARY_EXPRESSION", "la forme se nomme MONETARY_EXPRESSION");
+      eq(dor.value!.value, 100, "value === 100 — la conversion n'est PAS repliée dans la valeur");
+      eq(dor.value!.unit, "DOROME", "unit === 'DOROME' — l'unité voyage avec la valeur");
+      eq(resolveMoney(dor.value!), { amount: 500, currency: "XOF" }, "resolveMoney → { amount: 500, currency: 'XOF' }");
+
+      // Et le nombre nu reste non résolu, avec ses deux lectures.
+      const nu = parseMoney("mugan")!;
+      eq(nu.resolved, false, "« mugan » : NON résolu");
+      eq(nu.loss!.kind, "UNIT_MISSING", "UNIT_MISSING");
+      eq((nu.candidates ?? []).map(c => resolveMoney(c).amount), [20, 100], "les deux lectures : 20 F ou 100 F");
+      eq(nu.value, undefined, "aucune valeur lisible sans résoudre");
+    }
+
+    // La legacy est marquée, et son défaut est toujours là — c'est pour ça
+    // que l'interdiction est mécanique et pas seulement écrite.
+    eq(extraireNombreBambara("dɔrɔmɛ kɛmɛ"), 500, "legacy : rend 500, un nombre nu qui a absorbé l'unité");
+  }
+
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
   if (failures > 0) process.exit(1);
 }
