@@ -8,13 +8,13 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **415** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 440 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **417** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 442 |
 | — littéraux (phrase fixe en dur) | 216 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 97 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
 | — relais (`dire = (t) => speak(t)`) | 17 |
-| — clés i18n (`speakMessage('…')`, `t('…')`) | 40 |
+| — clés i18n (`speakMessage('…')`, `t('…')`) | 42 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **266** |
 | Dont dynamiques (avec variables) | 97 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **67** |
@@ -33,8 +33,8 @@
 | `components/auth/LoginPassword.tsx` | auth | 16 | 9 | 1 | 6 | 1 | 0 | 0 |
 | `hooks/useVoiceCore.ts` | moteur_vocal | 16 | 9 | 0 | 6 | 2 | 0 | 1 |
 | `components/wallet/WithdrawWalletModal.tsx` | wallet | 15 | 11 | 4 | 0 | 0 | 0 | 10 |
+| `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 5 | 3 | 4 | 0 | 2 | 1 |
 | `components/wallet/RechargeWalletModal.tsx` | wallet | 14 | 10 | 4 | 0 | 0 | 0 | 6 |
-| `components/marchand/MesCommandes.tsx` | marchand_autre | 12 | 5 | 3 | 4 | 0 | 0 | 1 |
 | `components/marchand/MarchandModals.tsx` | marchand_autre | 10 | 4 | 6 | 0 | 0 | 0 | 10 |
 | `components/marchand/MicroVenteCaisse.tsx` | vente | 10 | 0 | 0 | 3 | 2 | 6 | 0 |
 | `components/producteur/ProducteurProduction.tsx` | producteur | 9 | 6 | 2 | 1 | 0 | 0 | 0 |
@@ -111,7 +111,7 @@
 |---|---:|---:|---:|
 | producteur | 71 | 71 | 6 |
 | stock | 57 | 57 | 9 |
-| marchand_autre | 50 | 46 | 20 |
+| marchand_autre | 52 | 46 | 20 |
 | auth | 39 | 27 | 0 |
 | partage | 37 | 24 | 0 |
 | wallet | 34 | 36 | 18 |
@@ -442,18 +442,20 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 168 | `speak` | literal | Commande annulée |  |  |
-| 171 | `speak` | dynamique | message |  |  |
-| 178 | `speak` | literal | Vente confirmée |  |  |
-| 181 | `speak` | dynamique | message |  |  |
-| 188 | `speak` | literal | Vente refusée |  |  |
-| 191 | `speak` | dynamique | message |  |  |
-| 198 | `speak` | literal | Commande marquée comme livrée |  |  |
-| 201 | `speak` | dynamique | message |  |  |
-| 214 | `speak` | template | Contre-offre acceptée : {prixContreOffre} FCFA/{unite} | `prixContreOffre` `unite` | € |
-| 219 | `speak` | template | Erreur : {message} | `message` |  |
-| 230 | `speak` | literal | Contre-offre refusée. |  |  |
-| 233 | `speak` | template | Erreur : {message} | `message` |  |
+| 180 | `speak` | cle_i18n | MARCHAND_HORS_LIGNE_ACTION |  |  |
+| 181 | `speak` | cle_i18n | MARCHAND_ENVOI_TOMBE_ACTION |  |  |
+| 188 | `speak` | literal | Commande annulée |  |  |
+| 193 | `speak` | dynamique | message |  |  |
+| 201 | `speak` | literal | Vente confirmée |  |  |
+| 206 | `speak` | dynamique | message |  |  |
+| 214 | `speak` | literal | Vente refusée |  |  |
+| 219 | `speak` | dynamique | message |  |  |
+| 227 | `speak` | literal | Commande marquée comme livrée |  |  |
+| 232 | `speak` | dynamique | message |  |  |
+| 246 | `speak` | template | Contre-offre acceptée : {prixContreOffre} FCFA/{unite} | `prixContreOffre` `unite` | € |
+| 253 | `speak` | template | Erreur : {message} | `message` |  |
+| 265 | `speak` | literal | Contre-offre refusée. |  |  |
+| 270 | `speak` | template | Erreur : {message} | `message` |  |
 
 ### `components/marchand/MicroVenteCaisse.tsx` — vente
 
@@ -502,19 +504,19 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 288 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
 | 357 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
 | 358 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
-| 369 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
-| 370 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
-| 375 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 442 | `speak` | dynamique | effet.texte |  |  |
-| 472 | `speak` | dynamique | effet.texte |  |  |
-| 499 | `dire` | dynamique | phrase |  |  |
-| 521 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
-| 595 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
-| 628 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
-| 661 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
-| 803 | `speak` | dynamique | relectureAffichee |  |  |
-| 839 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
-| 927 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
+| 370 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
+| 371 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
+| 376 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 443 | `speak` | dynamique | effet.texte |  |  |
+| 473 | `speak` | dynamique | effet.texte |  |  |
+| 500 | `dire` | dynamique | phrase |  |  |
+| 522 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
+| 596 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
+| 629 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
+| 662 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
+| 804 | `speak` | dynamique | relectureAffichee |  |  |
+| 840 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
+| 928 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
 
 ### `components/marchand/ProtectionSociale.tsx` — marchand_autre
 
