@@ -10,12 +10,12 @@
 |---|---|
 | Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **418** |
 | Branches de phrase à ces sites (un ternaire = deux branches) | 444 |
-| — littéraux (phrase fixe en dur) | 218 |
+| — littéraux (phrase fixe en dur) | 216 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 97 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
 | — relais (`dire = (t) => speak(t)`) | 17 |
-| — clés i18n (`speakMessage('…')`, `t('…')`) | 42 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **268** |
+| — clés i18n (`speakMessage('…')`, `t('…')`) | 44 |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **266** |
 | Dont dynamiques (avec variables) | 97 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **67** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
@@ -61,7 +61,7 @@
 | `components/auth/ActivationScreen.tsx` | auth | 4 | 2 | 0 | 1 | 1 | 0 | 0 |
 | `components/marchand/MarchandAccueilVoice.tsx` | marchand_autre | 4 | 2 | 1 | 2 | 0 | 0 | 1 |
 | `components/shared/ReceptionPaiementModal.tsx` | partage | 4 | 2 | 1 | 1 | 0 | 0 | 0 |
-| `components/shared/UniversalParametres.tsx` | marchand_autre | 4 | 5 | 0 | 0 | 0 | 0 | 0 |
+| `components/shared/UniversalParametres.tsx` | marchand_autre | 4 | 3 | 0 | 0 | 0 | 2 | 0 |
 | `contexts/ObjectifContext.tsx` | marchand_autre | 4 | 2 | 2 | 0 | 0 | 0 | 2 |
 | `services/vendreVocalUnifie.ts` | vente | 4 | 0 | 0 | 1 | 0 | 4 | 0 |
 | `components/auth/OnboardingSlides.tsx` | auth | 3 | 0 | 0 | 0 | 0 | 3 | 0 |
@@ -111,7 +111,7 @@
 |---|---:|---:|---:|
 | producteur | 71 | 71 | 6 |
 | stock | 57 | 57 | 9 |
-| marchand_autre | 53 | 48 | 20 |
+| marchand_autre | 53 | 46 | 20 |
 | auth | 39 | 27 | 0 |
 | partage | 37 | 24 | 0 |
 | wallet | 34 | 36 | 18 |
@@ -834,11 +834,11 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 630 | `speak` | literal | Paramètres sauvegardés |  |  |
-| 747 | `speak` | literal | D'accord. Je dirai seulement l'argent et les comptes. |  |  |
-| 747 | `speak` | literal | D'accord. Je te dis tout. |  |  |
-| 934 | `speak` | literal | Export en cours |  |  |
-| 1051 | `speak` | literal | Déconnexion en cours |  |  |
+| 631 | `speak` | literal | Paramètres sauvegardés |  |  |
+| 751 | `speak` | cle_i18n | REGLAGE_VOIX_ESSENTIEL |  |  |
+| 751 | `speak` | cle_i18n | REGLAGE_VOIX_COMPLET |  |  |
+| 936 | `speak` | literal | Export en cours |  |  |
+| 1053 | `speak` | literal | Déconnexion en cours |  |  |
 
 ### `components/ui/UniversalKPI.tsx` — partage
 

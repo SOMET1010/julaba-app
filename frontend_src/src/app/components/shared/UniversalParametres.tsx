@@ -28,6 +28,7 @@ import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/c
 import { API_URL } from '../../utils/api';
 import { vlogPartager } from '../../utils/voiceDebug';
 import { toast } from 'sonner';
+import { t } from '../../i18n/voice/runtime';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -744,9 +745,10 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
               value={niveauVoix === 'essentiel'}
               onChange={(v) => {
                 setNiveauVoix(v ? 'essentiel' : 'complet');
-                speak(v
-                  ? "D'accord. Je dirai seulement l'argent et les comptes."
-                  : 'D\'accord. Je te dis tout.');
+                // La confirmation vient du CATALOGUE, jamais d'une chaîne écrite
+                // ici : deux copies d'une même phrase divergent à la première
+                // retouche de formulation. Une seule vérité.
+                speak(v ? t('REGLAGE_VOIX_ESSENTIEL') : t('REGLAGE_VOIX_COMPLET'));
               }}
               color={color}
             />
