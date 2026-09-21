@@ -555,15 +555,30 @@ function analyser(texte: string): { valeur: number; dorome: boolean } | null {
 }
 
 /**
- * ⚠️ CHEMIN HISTORIQUE — NE PAS UTILISER POUR LIRE UN PRIX.
+ * @deprecated Analyse numérique legacy.
  *
- * Renvoie un nombre NU où la conversion dɔrɔmɛ (× 5) a déjà été repliée en
- * silence : `extraireNombreBambara('dɔrɔmɛ kɛmɛ')` vaut 500, et plus rien
- * ensuite ne sait que c'était 100 dɔrɔmɛ. C'est EXACTEMENT le piège que
- * l'échelle monétaire ci-dessous existe pour supprimer.
+ * ATTENTION : cette fonction replie les unités monétaires, notamment DOROME,
+ * dans un nombre nu et détruit donc l'information d'unité.
  *
- * Conservé tel quel parce qu'il est empreinté (ci/EMPREINTE-GARDES.json) et
- * utilisé comme parseur de NOMBRE. Pour de l'argent : `lireExpressionMonetaire`.
+ * INTERDITE pour prix, ventes, paiements, monnaie ou toute écriture financière.
+ *
+ * ── Ce que ça veut dire concrètement ──────────────────────────────────────
+ * `extraireNombreBambara('dɔrɔmɛ kɛmɛ')` vaut 500, et plus rien en aval ne
+ * sait que c'était 100 dɔrɔmɛ. C'est le défaut que la règle d'architecture
+ * de JÙLABA interdit : une information qui a une incidence sur l'argent est
+ * ici PERDUE SANS ÊTRE MARQUÉE.
+ *
+ * Elle n'est pas corrigée aujourd'hui : son comportement est gelé par
+ * `ci/EMPREINTE-GARDES.json`, et desserrer une empreinte est une décision de
+ * Patrick. Elle reste donc utilisable comme parseur de NOMBRE hors argent.
+ *
+ * Ce commentaire ne suffit pas — un développeur peut l'ignorer. L'interdiction
+ * est donc aussi MÉCANIQUE : `ci/garde-argent.mjs` refuse que l'un des
+ * fichiers du périmètre d'argent (`ci/PERIMETRE-ARGENT.json`) l'importe.
+ *
+ * ── À utiliser à la place ─────────────────────────────────────────────────
+ *   nombre      → `parseMandingueNumericExpression`  (porte sa perte)
+ *   argent      → `parseMandingueMonetaryExpression` puis `resolveMoney`
  */
 export function extraireNombreBambara(texte: string): number | null {
   const a = analyser(texte);
@@ -735,6 +750,66 @@ export function lireMontantSousContrat(texte: string): Parsed<MontantResolu> | n
     { fcfa: e.value, value: e.value, unit: 'FRANC', source: 'marqueur-francais-explicite' },
     { fcfa: e.value * FCFA_PAR_DOROME, value: e.value, unit: 'DOROME', source: 'coastsystems-money' },
   ]);
+}
+
+/* ── L'API TYPÉE, INDÉPENDANTE DE LA LEGACY ────────────────────────────────
+ * Construite À CÔTÉ d'`extraireNombreBambara`, pas par-dessus : elle conserve
+ * `value + unit` de bout en bout et n'expose jamais un nombre nu qui aurait
+ * absorbé une conversion. C'est elle que doit appeler tout code d'argent.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Le nombre, sous contrat. Rend `null` s'il n'y a aucun nombre ; une branche
+ * NON RÉSOLUE si la normalisation a dû effacer un ton pour le lire.
+ */
+export function parseMandingueNumericExpression(texte: string): Parsed<number> | null {
+  const norme = normaliserSousContrat(texte);
+  if (!norme.resolved) {
+    const lectures = norme.candidates
+      .map(t => analyser(t)?.valeur)
+      .filter((v): v is number => v !== undefined);
+    return perdu(norme.loss, [...new Set(lectures)]);
+  }
+  const v = valeurLexicaleMandingue(texte);
+  return v === null ? null : resolu(v);
+}
+
+/** Une somme exprimée, unité COMPRISE — jamais un nombre nu. */
+export interface MonetaryExpressionMandingue {
+  readonly kind: 'MONETARY_EXPRESSION';
+  readonly value: number;
+  readonly unit: UniteMonetaire;
+}
+
+/** De l'argent, résolu, avec sa devise. */
+export interface Money {
+  readonly amount: number;
+  readonly currency: 'XOF';
+}
+
+/**
+ * L'expression monétaire, sous contrat.
+ *   « dɔrɔmɛ kɛmɛ » → résolu { kind: 'MONETARY_EXPRESSION', value: 100, unit: 'DOROME' }
+ *                     — value vaut 100, JAMAIS 500 : la conversion n'est pas
+ *                       repliée dans la valeur.
+ *   « mugan »       → NON résolu, UNIT_MISSING, deux candidats.
+ */
+export function parseMandingueMonetaryExpression(texte: string): Parsed<MonetaryExpressionMandingue> | null {
+  const e = lireExpressionMonetaire(texte);
+  if (e === null) return null;
+  if (e.unit !== null) return resolu({ kind: 'MONETARY_EXPRESSION', value: e.value, unit: e.unit });
+  return perdu({ kind: 'UNIT_MISSING' }, [
+    { kind: 'MONETARY_EXPRESSION', value: e.value, unit: 'FRANC' },
+    { kind: 'MONETARY_EXPRESSION', value: e.value, unit: 'DOROME' },
+  ]);
+}
+
+/**
+ * Convertit en argent. Prend une expression DÉJÀ RÉSOLUE — jamais un
+ * `Parsed<…>` : c'est la règle d'appel, portée par la signature.
+ */
+export function resolveMoney(e: MonetaryExpressionMandingue): Money {
+  return { amount: e.unit === 'DOROME' ? e.value * FCFA_PAR_DOROME : e.value, currency: 'XOF' };
 }
 
 /**
