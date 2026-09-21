@@ -49,6 +49,12 @@ export type PayloadOperation = {
   details?: LigneDeVente[];
   mode_paiement?: string;
   notes?: string;
+  /** LE MOTIF D'UNE DÉPENSE, sous son nom canonique (DEP-01). La file écrivait
+   *  ce motif sous `notes`, que le serveur ne lisait pas : une dépense passée
+   *  hors ligne remontait muette. Les files DÉJÀ POSÉES sur les téléphones
+   *  installés portent encore `notes` ci-dessus — le serveur les accepte en
+   *  transition, le temps qu'elles se vident. */
+  description?: string;
   prix_achat?: number;
   prix_vente?: number;
   source?: 'vocal' | 'kassa';
