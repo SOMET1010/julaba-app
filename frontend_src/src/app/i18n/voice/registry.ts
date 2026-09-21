@@ -48,7 +48,7 @@ export function estLocaleConnue(code: LocaleCode): boolean {
  */
 export const LOCALES_PROVISOIRES: ReadonlyArray<{ code: LocaleCode; nom: string; iso639_3: string | null; note: string }> = [
   { code: 'fr-ci', nom: 'Français (marché ivoirien)', iso639_3: 'fra', note: 'Référence et repli. Le texte servi est celui du code aujourd\'hui (frActuel).' },
-  { code: 'dyu-ci', nom: 'Dioula', iso639_3: 'dyu', note: 'Le parseur de nombres bambara existant (voice-offline/nombresBambara.ts) est déclaré comme base, non validé.' },
+  { code: 'dyu-ci', nom: 'Dioula', iso639_3: 'dyu', note: 'Le parseur de nombres bambara existant (voice-offline/nombresMandingue.ts) est déclaré comme base, non validé.' },
   { code: 'bci', nom: 'Baoulé', iso639_3: 'bci', note: '' },
   { code: 'any', nom: 'Agni', iso639_3: 'any', note: '' },
   { code: 'bete', nom: 'Bété', iso639_3: null, note: 'Variétés de Gagnoa (btg), Daloa (bev), Guibéroua (bet) : à trancher.' },

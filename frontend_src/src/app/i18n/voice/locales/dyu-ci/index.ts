@@ -5,7 +5,7 @@
  * (docs/langues/AJOUTER-UNE-LANGUE.md). Tant que `messages` et `intents` sont
  * vides, tout retombe sur fr-ci — tracé à chaque fois (I18N_FALLBACK).
  *
- * Le parseur de nombres bambara existant (voice-offline/nombresBambara.ts)
+ * Le parseur de nombres bambara existant (voice-offline/nombresMandingue.ts)
  * annonce lui-même qu'il « servira de base au dioula » (langues mandingues
  * très proches). Il est DÉCLARÉ ici comme référence, pas activé : aucune
  * vente ne le lit tant que cette locale n'est pas validée pour l'argent.
@@ -14,7 +14,7 @@
  * services/loginVoiceScript.ts (`texteDyu`). Elle n'est pas reprise : Manus
  * tranche ce qu'il en fait.
  */
-import { extraireNombreBambara, normaliserBambara } from '../../../../voice-offline/nombresBambara';
+import { extraireNombreBambara, normaliserBambara } from '../../../../voice-offline/nombresMandingue';
 import type { ManifestLocale } from '../../types';
 
 export const DYU_CI: ManifestLocale = {

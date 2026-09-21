@@ -13,7 +13,7 @@
  *   [C] la grammaire garde le dernier mot : aucune inférence nouvelle, et le
  *       piège dɔrɔmɛ (1 dɔrɔmɛ = 5 FCFA) reste intact.
  */
-import * as M from "./nombresBambara.js";
+import * as M from "./nombresMandingue.js";
 
 const { extraireNombreBambara, contientNombreBambara, normaliserBambara } = M;
 
