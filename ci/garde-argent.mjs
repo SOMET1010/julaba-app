@@ -758,19 +758,77 @@ if (assouplissements.length) {
   }
 }
 
+// UNE PREUVE D'ARGENT DOIT AVOIR TOURNÉ — GARDE-03, 21/09/2026.
+//
+// Ce bloc lisait le fichier `--preuve` et vérifiait SEULEMENT qu'il contenait
+// les chaînes de commande exigées. Jamais qu'elles avaient tourné, ni qu'elles
+// étaient vertes, ni sur quel état du dépôt. Un `printf` de vingt-sept lignes
+// suffisait donc à faire dire à ce gate « les 27 invariants exigés ont
+// tourné ». Sur un projet dont la doctrine est « sur l'argent, la preuve doit
+// TRAVERSER », le gate qui l'impose aux autres reposait sur la bonne foi.
+//
+// La preuve est désormais un JOURNAL D'EXÉCUTION produit par
+// `ci/prouver-invariants.mjs`, et quatre choses la rendent refusable :
+//   • ce n'est pas un journal (l'ancienne liste rédigée à la main) ;
+//   • elle a été produite sur un AUTRE arbre — on prouverait autre chose que
+//     ce qu'on pousse ;
+//   • elle a été produite sur un arbre NON COMMITÉ, qui ne désigne rien ;
+//   • elle porte un invariant sorti NON NUL.
+//
+// CE QUE ÇA NE PRÉTEND PAS ÊTRE : infalsifiable. Un journal reste un fichier.
+// Ce qui change, c'est qu'on ne peut plus se tromper sans le savoir, ni par
+// commodité, et que l'arbre prouvé est nommé.
+function lireJournalPreuve(chemin) {
+  let brut;
+  try { brut = readFileSync(chemin, 'utf8'); } catch { return { erreur: `preuve illisible : ${chemin}` }; }
+  let journal;
+  try { journal = JSON.parse(brut); } catch {
+    return { erreur: 'la preuve n’est pas un journal d’exécution (JSON) — une liste de commandes rédigée à la main ne prouve rien' };
+  }
+  if (!journal || !Array.isArray(journal.commandes)) {
+    return { erreur: 'la preuve n’est pas un journal d’exécution : aucune liste `commandes`' };
+  }
+  return { journal };
+}
+
 if (touche.length) {
-  const fournis = PREUVE && existsSync(PREUVE)
-    ? new Set(readFileSync(PREUVE, 'utf8').split('\n').map((s) => s.trim()).filter(Boolean))
-    : new Set();
-  const manquants = exigees.filter((c) => !fournis.has(c));
+  dire('');
   if (!PREUVE) {
-    rater(`le chemin d’argent est touché et aucun invariant n’a été prouvé (--preuve absent)`);
+    rater('le chemin d’argent est touché et aucun invariant n’a été prouvé (--preuve absent)');
+    dire(`      à produire : node ci/prouver-invariants.mjs --base ${BASE}`);
     for (const c of exigees) dire(ROUGE(`      → à lancer : ${c}`));
-  } else if (manquants.length) {
-    rater(`${manquants.length} invariant(s) exigé(s) n’ont pas tourné`);
-    for (const c of manquants) dire(ROUGE(`      → manquant : ${c}`));
+  } else if (!existsSync(PREUVE)) {
+    rater(`le fichier de preuve est introuvable : ${PREUVE}`);
   } else {
-    dire(`  ✓ chemin d’argent touché, et les ${exigees.length} invariants exigés ont tourné`);
+    const { journal, erreur } = lireJournalPreuve(PREUVE);
+    if (erreur) {
+      rater(erreur);
+      dire(`      à produire : node ci/prouver-invariants.mjs --base ${BASE}`);
+    } else {
+      const teteAttendue = (() => { try { return git('rev-parse', 'HEAD').trim(); } catch { return null; } })();
+      const refus = [];
+      if (teteAttendue && journal.arbre !== teteAttendue) {
+        refus.push(`la preuve a été produite sur un AUTRE arbre : ${String(journal.arbre ?? '—').slice(0, 12)} au lieu de ${teteAttendue.slice(0, 12)}`);
+      }
+      if (journal.propre === false) {
+        refus.push('la preuve a été produite sur un arbre NON COMMITÉ : elle ne désigne aucun état nommable');
+      }
+      for (const c of journal.commandes.filter((c) => c && c.code !== 0)) {
+        refus.push(`un invariant est sorti NON NUL et ne peut pas entrer dans la preuve : (${c.code}) ${c.commande}`);
+      }
+      const verts = new Set(journal.commandes.filter((c) => c && c.code === 0).map((c) => c.commande));
+      for (const c of exigees.filter((c) => !verts.has(c))) {
+        refus.push(`invariant exigé absent du journal, ou non vert : ${c}`);
+      }
+      if (refus.length) {
+        rater(`la preuve d’exécution est refusée (${refus.length} motif(s))`);
+        for (const m of refus) dire(ROUGE(`      → ${m}`));
+        dire(`      à produire : node ci/prouver-invariants.mjs --base ${BASE}`);
+      } else {
+        dire(`  ✓ chemin d’argent touché, et les ${exigees.length} invariants exigés ont tourné`);
+        dire(`    (journal d’exécution sur l’arbre ${String(journal.arbre).slice(0, 7)}, ${journal.commandes.length} commande(s), toutes à 0)`);
+      }
+    }
   }
 }
 
