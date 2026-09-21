@@ -160,7 +160,10 @@ interface CaisseContextType {
   setSelectedProduct: (p: CaisseProduct | null) => void;
   
   enregistrerVente: (montant: number, produits?: LigneDeVente[], modePaiement?: string, notes?: string, source?: 'vocal' | 'kassa') => Promise<void>;
-  enregistrerDepense: (montant: number, notes?: string) => Promise<void>;
+  /** `description` : le MOTIF de la dépense, sous son nom canonique — celui de
+   *  la colonne, de l'entité et de la route. Il s'appelait `notes` ici, et le
+   *  serveur ne le lisait jamais (DEP-01). */
+  enregistrerDepense: (montant: number, description?: string) => Promise<void>;
   
   // POS Cart
   addToCart: (product: CaisseProduct, quantite?: number, totalExact?: number, origine?: 'vocal') => void;
@@ -481,9 +484,15 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const enregistrerDepense = async (montant: number, notes?: string) => {
+  // LE MOTIF DE LA DÉPENSE PART SOUS SON VRAI NOM — DEP-01, 21/09/2026.
+  //
+  // Ce payload envoyait `notes`. Le serveur lit `description`, la colonne
+  // s'appelle `description` : le motif saisi par la marchande n'arrivait JAMAIS
+  // en base, et rien ne le disait. La même perte se rejouait à la
+  // synchronisation, la file repoussant le payload tel quel.
+  const enregistrerDepense = async (montant: number, description?: string) => {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de dépense invalide');
-    const payload: caisseApi.EnregistrerDepenseData = { montant, notes, idempotency_key: genererCle() };
+    const payload: caisseApi.EnregistrerDepenseData = { montant, description, idempotency_key: genererCle() };
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       await enfilerOperation('/caisse/depense', payload, appUser?.id);
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });

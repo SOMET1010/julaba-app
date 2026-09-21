@@ -11,6 +11,26 @@ import { CaisseTransaction, TransactionStatus } from './caisse-transaction.entit
 import { restituerStock } from './stock-restitution';
 import { AlertesService } from '../notifications/alertes.service';
 
+// LE LIBELLÉ D'UNE DÉPENSE — DEP-01, 21/09/2026.
+//
+// UNE SEULE VÉRITÉ : `description` est le nom CANONIQUE du motif d'une dépense.
+// C'est celui de la colonne, celui de l'entité, et c'est désormais celui que le
+// téléphone envoie.
+//
+// COMPATIBILITÉ DE TRANSITION, PAS CONTRAT PÉRENNE : `notes` est la forme
+// HÉRITÉE. Elle n'est acceptée ici que parce que des files hors ligne écrites
+// avec ce nom dorment DÉJÀ sur les téléphones installés — les refuser ferait
+// perdre le motif d'une dépense que la marchande a réellement saisie, une
+// deuxième fois et pour de bon. Cette lecture disparaît quand ces files se
+// seront vidées ; rien de neuf ne doit s'appuyer dessus.
+//
+// Le canonique gagne. Une chaîne vide n'est pas un motif : elle ne doit pas
+// faire perdre celui que la forme héritée transporte.
+export function libelleDepense(canonique: unknown, herite: unknown): string {
+  const texte = (v: unknown): string => (v === null || v === undefined ? '' : String(v).trim());
+  return texte(canonique) || texte(herite);
+}
+
 @UseGuards(JwtAuthGuard)
 @Controller('caisse')
 export class CaisseRestController {
@@ -600,7 +620,12 @@ export class CaisseRestController {
       result = await this.repo.save(this.repo.create({
         user_id: user.id, marchand_id: user.id,
         session_id: body.session_id || '', montant: body.montant,
-        type: 'depense', description: body.description || '', source: body.source || 'kassa',
+        // DEP-01 : le motif saisi par la marchande DOIT arriver ici. Le
+        // téléphone envoie `description` ; les files hors ligne déjà posées
+        // envoient `notes` (transition — voir `libelleDepense` en tête de
+        // fichier). Avant ce correctif, seul `description` était lu : tout
+        // motif partait dans le vide, sans la moindre erreur.
+        type: 'depense', description: libelleDepense(body.description, body.notes), source: body.source || 'kassa',
         mode_paiement: body.mode_paiement || 'especes', idempotency_key: idemKey,
         ...(dateDepense ? { created_at: dateDepense } : {}),
       } as any));
