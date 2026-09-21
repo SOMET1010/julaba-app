@@ -21,6 +21,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 
 import { extraire } from './extraction';
+import { MOTS_PAS_UNE_VENTE } from './vocabulaire';
 import { detecterEncaissement, type IntentionEncaissement } from './grammaireEncaissement';
 import { plurielNom } from '../services/dialoguesTata';
 import { localeActive, t } from '../i18n/voice/runtime';
@@ -37,6 +38,12 @@ export interface LocalVoiceResult {
   audioBase64: null;
   navigate: null;
   offline: true;
+}
+
+/** La phrase porte-t-elle un mot qui interdit de la lire comme une vente ? */
+function interditDeVendre(texte: string): boolean {
+  const mots = texte.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter(Boolean);
+  return mots.some((m) => MOTS_PAS_UNE_VENTE.includes(m));
 }
 
 /**
@@ -65,6 +72,42 @@ function resultatEncaissement(texte: string, intention: IntentionEncaissement): 
  * @returns la réponse locale, ou null si non reconnu avec assez de confiance.
  */
 export function intentLocal(texte: string, locale: LocaleCode = localeActive()): LocalVoiceResult | null {
+  return analyser(texte, locale, false);
+}
+
+/**
+ * LA MÊME LECTURE, SUR UNE SURFACE QUI NE FAIT QUE VENDRE — 21/09/2026.
+ *
+ * Patrick dicte « cinq tomates » sur la CAISSE. L'extraction comprend tout
+ * (produit=tomate, quantité=5), mais `intention` reste nulle faute de verbe :
+ * `intentLocal` rendait donc `null`, la phrase était jetée, et il ne restait
+ * à l'écran que le bandeau « J'ai compris : Cinq tomates » au-dessus de rien.
+ * Ses mots : « il ne fais que ecrire ce que jai dis 3 tomates et cest tout ».
+ *
+ * Une marchande ne dit pas « vends trois tomates » : elle dit « trois
+ * tomates ». Le verbe, sur cet écran-là, c'est le geste d'avoir appuyé sur le
+ * micro de sa caisse.
+ *
+ * POURQUOI UNE SECONDE PORTE, ET PAS UN ASSOUPLISSEMENT D'`intentLocal`.
+ * `intentLocal` est lue par TOUTES les surfaces (stock, assistante, rejeu
+ * hors ligne) : « trois tomates » n'y veut pas dire la même chose partout, et
+ * son comportement est gelé par l'empreinte d'argent du lot i18n
+ * (`i18n/voice/validators/empreintesArgent.mts`). Cette fonction-ci est
+ * demandée NOMMÉMENT par la caisse, et par elle seule ; ailleurs, rien ne
+ * change.
+ *
+ * Elle reste étroite par construction : il faut un PRODUIT du lexique fermé
+ * ET une QUANTITÉ ; toute autre intention (dépense, crédit, solde…) garde la
+ * main ; l'encaissement aussi (« annule les 3 tomates » reste une
+ * annulation) ; et un mot de stock ou de retrait ferme la porte
+ * (`MOTS_PAS_UNE_VENTE`). Elle n'écrit toujours AUCUN argent : sans montant,
+ * le prix reste à résoudre en aval, et à défaut il est DEMANDÉ.
+ */
+export function intentLocalCaisse(texte: string, locale: LocaleCode = localeActive()): LocalVoiceResult | null {
+  return analyser(texte, locale, true);
+}
+
+function analyser(texte: string, locale: LocaleCode, venteSansVerbeAutorisee: boolean): LocalVoiceResult | null {
   if (!texte || !texte.trim()) return null;
 
   // L'ENCAISSEMENT EST CONSULTÉ EN PREMIER (VOIX-01, lot C). « Combien elle
@@ -96,7 +139,14 @@ export function intentLocal(texte: string, locale: LocaleCode = localeActive()):
 
   const p = extraire(texte);
   const venteParEncaisse = encaissement === 'encaisser' && p.intention === null && !!p.produit;
-  if (!p.intention && !venteParEncaisse) return encaissement ? resultatEncaissement(texte, encaissement) : null;
+
+  // « CINQ TOMATES » EST UNE VENTE — mais seulement là où on ne fait que
+  // vendre (voir intentLocalCaisse). Ailleurs, ce drapeau est faux et rien ne
+  // change : c'est l'appelante qui prend cette responsabilité, nommément.
+  const venteSansVerbe = venteSansVerbeAutorisee
+    && !encaissement && p.intention === null && !!p.produit && p.quantite != null && !interditDeVendre(texte);
+
+  if (!p.intention && !venteParEncaisse && !venteSansVerbe) return encaissement ? resultatEncaissement(texte, encaissement) : null;
 
   // On ne traite localement que le transactionnel financier sûr (vente/dépense).
   // Le reste (soldes, questions ouvertes) reste au serveur quand on est en ligne.
@@ -114,7 +164,7 @@ export function intentLocal(texte: string, locale: LocaleCode = localeActive()):
   // ce qu'on a payé.
   let type: string | null = null;
   let intent: string | null = null;
-  if ((p.intention === 'vente' || venteParEncaisse) && (p.montant != null || p.produit)) { type = 'vendre'; intent = 'vendre'; }
+  if ((p.intention === 'vente' || venteParEncaisse || venteSansVerbe) && (p.montant != null || p.produit)) { type = 'vendre'; intent = 'vendre'; }
   else if (p.intention === 'depense' && p.montant != null) { type = 'depense'; intent = 'depense'; }
   // Pas de vente ni de dépense reconnue : un refus ou un « encaisse » entendu
   // plus haut vaut alors pour ce qu'il est.

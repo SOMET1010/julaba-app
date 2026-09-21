@@ -22,12 +22,31 @@ import '../src/styles/soleil.css';
 import '../src/styles/commerce.css';
 import '../src/styles/login.css';
 import { POSCaisse } from '../src/app/components/marchand/POSCaisse';
+import { enregistrerRenduVocal, RENDU_PAR_DEFAUT } from '../src/app/i18n/voice/contrat-audio';
+import { t } from '../src/app/i18n/voice/runtime';
 import { AppProvider } from './stubs/AppContext';
 import { CaisseProvider } from './stubs/CaisseContext';
 
 // Le guidage vocal lit une préférence locale ; « lecture » évite que le stub
 // `speak` (muet de toute façon) soit sollicité à chaque geste de capture.
-try { localStorage.setItem('julaba_access_mode', 'lecture'); } catch { /* ignore */ }
+// `?voix=on` rejoue au contraire le profil qui ENTEND (banc de parcours).
+try {
+  const voulue = new URLSearchParams(location.search).get('voix') === 'on' ? 'voix' : 'lecture';
+  localStorage.setItem('julaba_access_mode', voulue);
+} catch { /* ignore */ }
+
+// ── JOURNAL DE VOIX DU BANC (parcours.mjs) ────────────────────────────────
+// Une capture d'écran ne prouve pas qu'une phrase a été DITE. On s'enregistre
+// donc comme rendu vocal : on note la CLÉ du catalogue, ses VARIABLES et le
+// texte résolu, puis on laisse le rendu par défaut faire son travail. Rien
+// n'est simulé — c'est le vrai chemin `speakMessage` → `rendreMessage`.
+enregistrerRenduVocal((message, direTexte) => {
+  const j = ((window as any).__journalVoix ??= []);
+  j.push({ id: message.id, variables: message.variables, texte: message.texte });
+  return RENDU_PAR_DEFAUT(message, direTexte);
+});
+(window as any).__t = (id: string, vars?: Record<string, string | number>) => t(id as never, vars ?? {});
+(window as any).__viderJournalVoix = () => { (window as any).__journalVoix = []; (window as any).__journalDits = []; };
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <MemoryRouter initialEntries={['/marchand/caisse']}>

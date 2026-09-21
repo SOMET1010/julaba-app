@@ -8,13 +8,13 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **408** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 434 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **409** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 435 |
 | — littéraux (phrase fixe en dur) | 209 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 96 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 67 |
 | — relais (`dire = (t) => speak(t)`) | 17 |
-| — clés i18n (`speakMessage('…')`, `t('…')`) | 45 |
+| — clés i18n (`speakMessage('…')`, `t('…')`) | 46 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **260** |
 | Dont dynamiques (avec variables) | 96 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **67** |
@@ -27,7 +27,7 @@
 | Fichier | Domaine | Appels | Littéraux | Gabarits | Dynamiques | Relais | Clés | Critiques argent |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | `components/marchand/GestionStock.tsx` | stock | 31 | 21 | 10 | 2 | 1 | 0 | 8 |
-| `components/marchand/POSCaisse.tsx` | caisse | 27 | 0 | 0 | 8 | 2 | 18 | 0 |
+| `components/marchand/POSCaisse.tsx` | caisse | 28 | 0 | 0 | 8 | 2 | 19 | 0 |
 | `components/producteur/CommandesProducteurPage.tsx` | producteur | 26 | 14 | 15 | 0 | 0 | 0 | 3 |
 | `components/producteur/Stocks.tsx` | stock | 23 | 11 | 12 | 0 | 0 | 0 | 1 |
 | `hooks/useVoiceCore.ts` | moteur_vocal | 16 | 9 | 0 | 6 | 2 | 0 | 1 |
@@ -112,7 +112,7 @@
 | marchand_autre | 50 | 45 | 19 |
 | partage | 37 | 24 | 0 |
 | wallet | 34 | 36 | 18 |
-| caisse | 31 | 0 | 0 |
+| caisse | 32 | 0 | 0 |
 | auth | 29 | 19 | 0 |
 | vente | 28 | 0 | 0 |
 | cooperative | 21 | 19 | 4 |
@@ -437,17 +437,17 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 125 | `speak` | relais | texte |  |  |
-| 128 | `speakMessage` | relais | id |  |  |
-| 176 | `speakMessage` | cle_i18n | TATA_AJOUT_PANIER |  |  |
-| 268 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
-| 281 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
-| 311 | `speakMessage` | dynamique | ...introMessage() |  |  |
-| 323 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
-| 325 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
-| 334 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
-| 425 | `speak` | dynamique | dernierePhraseRef.current |  |  |
-| 425 | `speak` | dynamique | introLigne() |  |  |
+| 153 | `speak` | relais | texte |  |  |
+| 156 | `speakMessage` | relais | id |  |  |
+| 204 | `speakMessage` | cle_i18n | TATA_AJOUT_PANIER |  |  |
+| 306 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
+| 319 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
+| 349 | `speakMessage` | dynamique | ...introMessage() |  |  |
+| 361 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
+| 363 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
+| 372 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
+| 463 | `speak` | dynamique | dernierePhraseRef.current |  |  |
+| 463 | `speak` | dynamique | introLigne() |  |  |
 
 ### `components/marchand/PinConfirmModal.tsx` — auth
 
@@ -467,32 +467,33 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 |---:|---|---|---|---|:-:|
 | 76 | `speak` | relais | t |  |  |
 | 84 | `speakMessage` | relais | id |  |  |
-| 163 | `dire` | dynamique | phraseLigneAjoutee({ nom: p?.nom \|\| p?.name \|\| 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }) |  |  |
-| 176 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
-| 195 | `direMessage` | cle_i18n | TATA_INDIQUE_PRIX |  |  |
-| 207 | `dire` | dynamique | res.message |  |  |
-| 207 | `dire` | cle_i18n | TATA_ARTICLE_IMPOSSIBLE |  |  |
-| 218 | `direMessage` | cle_i18n | TATA_ARTICLE_AJOUTE_CATALOGUE |  |  |
-| 236 | `dire` | dynamique | phraseLigneAjoutee({ nom, quantite: 1, unite: libreUnite, totalLigne: montant, totalPanier: total + montant }) |  |  |
-| 254 | `dire` | dynamique | direCoupure(valeur) |  |  |
-| 283 | `direMessage` | cle_i18n | TATA_MONTANT_TOTAL_INVALIDE |  |  |
-| 287 | `direMessage` | cle_i18n | TATA_MONTANT_RECU_INSUFFISANT |  |  |
-| 288 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
-| 357 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
-| 358 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
-| 370 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
-| 371 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
-| 376 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 443 | `speak` | dynamique | effet.texte |  |  |
-| 473 | `speak` | dynamique | effet.texte |  |  |
-| 500 | `dire` | dynamique | phrase |  |  |
-| 522 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
-| 596 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
-| 629 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
-| 662 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
-| 804 | `speak` | dynamique | relectureAffichee |  |  |
-| 840 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
-| 928 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
+| 169 | `dire` | dynamique | phraseLigneAjoutee({ nom: p?.nom \|\| p?.name \|\| 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }) |  |  |
+| 214 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
+| 221 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
+| 243 | `direMessage` | cle_i18n | TATA_INDIQUE_PRIX |  |  |
+| 255 | `dire` | dynamique | res.message |  |  |
+| 255 | `dire` | cle_i18n | TATA_ARTICLE_IMPOSSIBLE |  |  |
+| 272 | `direMessage` | cle_i18n | TATA_ARTICLE_AJOUTE_CATALOGUE |  |  |
+| 295 | `dire` | dynamique | phraseLigneAjoutee({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }) |  |  |
+| 313 | `dire` | dynamique | direCoupure(valeur) |  |  |
+| 342 | `direMessage` | cle_i18n | TATA_MONTANT_TOTAL_INVALIDE |  |  |
+| 346 | `direMessage` | cle_i18n | TATA_MONTANT_RECU_INSUFFISANT |  |  |
+| 347 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
+| 416 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
+| 417 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
+| 429 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
+| 430 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
+| 435 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 502 | `speak` | dynamique | effet.texte |  |  |
+| 532 | `speak` | dynamique | effet.texte |  |  |
+| 559 | `dire` | dynamique | phrase |  |  |
+| 581 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
+| 655 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
+| 688 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
+| 721 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
+| 863 | `speak` | dynamique | relectureAffichee |  |  |
+| 899 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
+| 987 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
 
 ### `components/marchand/ProtectionSociale.tsx` — marchand_autre
 
@@ -939,11 +940,11 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 147 | `speak` | cle_i18n | TATA_UNITE_INCOMPATIBLE |  |  |
-| 149 | `speak` | cle_i18n | TATA_PRIX_INCONNU_PRODUIT |  |  |
-| 149 | `speak` | cle_i18n | TATA_PRIX_INCOMPRIS |  |  |
-| 212 | `speak` | dynamique | phraseCompris({ nom: ligne.nom, quantite: qte, total: ligne.total, unite: uniteLigne }) |  |  |
-| 224 | `speak` | cle_i18n | TATA_PRODUIT_INCONNU_AJOUTER |  |  |
+| 192 | `speak` | cle_i18n | TATA_UNITE_INCOMPATIBLE |  |  |
+| 194 | `speak` | cle_i18n | TATA_PRIX_INCONNU_PRODUIT |  |  |
+| 194 | `speak` | cle_i18n | TATA_PRIX_INCOMPRIS |  |  |
+| 257 | `speak` | dynamique | phraseCompris({ nom: ligne.nom, quantite: qte, total: ligne.total, unite: uniteLigne }) |  |  |
+| 269 | `speak` | cle_i18n | TATA_PRODUIT_INCONNU_AJOUTER |  |  |
 
 ## 5. Corpus fixes (phrases qui ne sont pas à un site d'appel)
 
@@ -1368,7 +1369,7 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
-| 200 | template | C'est dans le panier : {qte} × {nom} | `qte` `nom` |
+| 245 | template | C'est dans le panier : {qte} × {nom} | `qte` `nom` |
 
 ### `services/intentionsCaisse.ts` — réponses aux questions « chiffres du jour » (0)
 
