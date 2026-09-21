@@ -54,7 +54,20 @@ export interface EnregistrerVenteData {
 
 export interface EnregistrerDepenseData {
   montant: number;
-  notes?: string;
+  /** LE MOTIF DE LA DÉPENSE — « transport marché », « taxe mairie ».
+   *
+   *  Ce champ s'appelait `notes`, et c'était tout le défaut (DEP-01) : le
+   *  serveur lisait `description`, la colonne et l'entité s'appellent
+   *  `description`, et le téléphone envoyait `notes`. Le motif tombait dans le
+   *  vide, silencieusement — à la saisie comme au rejeu hors ligne. Une
+   *  dépense sans motif n'est plus une dépense, c'est un trou dans la caisse
+   *  du soir.
+   *
+   *  `description` est le nom CANONIQUE, et il n'y en a plus qu'un ici. Le
+   *  serveur accepte encore `notes` en TRANSITION, pour ne pas perdre les
+   *  files hors ligne déjà posées sur les téléphones installés ; ce n'est pas
+   *  une forme à réintroduire. */
+  description?: string;
   /** Clé d'idempotence : le backend ne compte pas deux fois la même dépense. */
   idempotency_key?: string;
 }
