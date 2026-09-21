@@ -109,3 +109,7 @@ app/src/main/res/xml/config.xml
 # Écoute (~71 Mo) et parole (~79 Mo) : 150 Mo qui n'ont rien à faire dans git.
 app/src/main/assets/sherpa-kroko-fr/
 app/src/main/assets/sherpa-tts-fr/
+# Voix dioula (MMS, ~37 Mo mesurés) : même règle, et une de plus — ces poids
+# sont en CC-BY-NC-4.0. Ils ne doivent pas entrer dans l'historique d'un dépôt
+# dont le produit est commercial.
+app/src/main/assets/sherpa-tts-dyu/
