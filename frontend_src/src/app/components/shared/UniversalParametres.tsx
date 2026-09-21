@@ -28,6 +28,7 @@ import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/c
 import { API_URL } from '../../utils/api';
 import { vlogPartager } from '../../utils/voiceDebug';
 import { toast } from 'sonner';
+import { t } from '../../i18n/voice/runtime';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -496,7 +497,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
   const cfg = ROLE_CONFIG[role];
   const { color } = cfg;
 
-  const { speak, isOnline, user, setUser } = useApp();
+  const { speak, isOnline, user, setUser, niveauVoix, setNiveauVoix } = useApp();
   const { updateUser } = useUser();
   // Déconnexion volontaire — orchestration centralisée (hook réutilisable).
   const logout = useVoluntaryLogout();
@@ -732,6 +733,25 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <ModeAccesSwitcher />
             <RowToggle label="Mode soleil" sublabel="Tout plus grand et plus lisible dehors"
               value={soleil} onChange={basculerSoleil} color={color} />
+            {/* NIVEAU DE VOIX (B5). « Complet » par défaut : on ne retire la
+                parole à personne sans qu'elle l'ait demandé. Et « Moins bavard »
+                NE PEUT PAS taire une phrase d'argent — la décision vient du
+                catalogue, clé par clé (i18n/voice/niveauVoix.ts), jamais des
+                mots de la phrase. C'est pourquoi il n'existe pas de troisième
+                position « silence ». */}
+            <RowToggle
+              label="Moins bavard"
+              sublabel="Tantie ne dit plus que l'argent et les comptes. Elle dira toujours les montants."
+              value={niveauVoix === 'essentiel'}
+              onChange={(v) => {
+                setNiveauVoix(v ? 'essentiel' : 'complet');
+                // La confirmation vient du CATALOGUE, jamais d'une chaîne écrite
+                // ici : deux copies d'une même phrase divergent à la première
+                // retouche de formulation. Une seule vérité.
+                speak(v ? t('REGLAGE_VOIX_ESSENTIEL') : t('REGLAGE_VOIX_COMPLET'));
+              }}
+              color={color}
+            />
           </Section>
 
           <Section title="Notifications" icon={Bell} color={color}>
