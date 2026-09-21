@@ -25,10 +25,10 @@ import { motion } from 'motion/react';
 import { Volume2, VolumeX } from 'lucide-react';
 
 import { accessModeChoisi, getEffectiveMode, type EffectiveMode } from '../../utils/accessMode';
-import bgTataLou from "../../../assets/images/bg-tantie.png";
+import tataAccueil from "../../../assets/redesign/tata-accueil.webp";
+import bandeauMarche from "../../../assets/redesign/bandeau-marche.webp";
 import { stopSpeaking } from '../../services/elevenlabs';
 import { direIntro, stopIntro } from '../../services/onboardingVoix';
-import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
 
 interface OnboardingSlidesProps {
   onComplete?: () => void;
@@ -51,14 +51,9 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     setIsSpeaking(false);
   }, []);
 
-  // Auto-narration : Tata se présente toute seule (« Moi, c'est Tata. Je vais
-  // t'aider. »). CORRECTIF (silence constaté en recette terrain) : on ne peut
-  // PAS supposer que l'audio est déjà débloqué par le geste sur l'écran
-  // d'accueil — cet écran-ci est atteint dans la MÊME navigation SPA que
-  // Welcome, donc le geste précédent (tap « Commencer ») aurait dû suffire en
-  // théorie, mais le silence total observé montre que ce n'est pas fiable sur
-  // l'appareil testé. Même filet de rattrapage que Welcome.tsx : on tente à
-  // l'ouverture ET on rejoue au 1er contact si rien n'a encore joué.
+  // La présentation démarre sur le geste « Écouter et entrer » de Welcome et
+  // accompagne cet écran. La relancer ici par autoplay la ferait bloquer sur
+  // certains navigateurs, ou couperait le début déjà en cours.
   const direTata = useCallback(() => {
     if (niveauVoix() === 'lecture') return; // lectrice : silence
     setIsSpeaking(true);
@@ -66,14 +61,8 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   }, [niveauVoix]);
 
   useEffect(() => {
-    const t = setTimeout(direTata, 450);
-    return () => clearTimeout(t);
-  }, [direTata]);
-
-  useAudioUnlockFallback(direTata, niveauVoix() !== 'lecture');
-
-  useEffect(() => {
-    const img = new Image(); img.src = bgTataLou; // précharge le fond
+    const img = new Image(); img.src = tataAccueil;
+    const fond = new Image(); fond.src = bandeauMarche;
     return () => { stopIntro(); stopSpeaking(); };
   }, []);
 
@@ -98,17 +87,23 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   // Un tap n'importe où continue ; les commandes précises coupent la propagation.
   return (
     <div
-      className="fixed inset-0 overflow-hidden cursor-pointer"
+      className="fixed inset-0 overflow-hidden cursor-pointer onboarding-tata-redesign"
       onClick={terminer}
-      style={{ background: '#B74725' }}
     >
-      {/* Fond : le visage de Tata, voile chaud (jamais couvert par un contrôle) */}
-      <img src={bgTataLou} alt="" className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(196,98,16,0.14) 0%, rgba(196,98,16,0.30) 50%, rgba(196,97,15,0.86) 82%, #B74725 100%)' }} />
+      <img src={bandeauMarche} alt="" className="onboarding-market-backdrop" aria-hidden="true" />
+      <div className="onboarding-market-veil" aria-hidden="true" />
+      <motion.img
+        src={tataAccueil}
+        alt="Tantie Nanti Lou"
+        className="onboarding-tata-figure"
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.65, ease: 'easeOut' }}
+      />
 
       {/* Ondes discrètes autour de Tata (elle parle) — derrière, jamais sur les
           contrôles ; pointer-events none pour ne pas gêner le tap. */}
-      <div className="absolute" style={{ top: '30%', left: '50%', width: 220, height: 220, transform: 'translate(-50%,-50%)', pointerEvents: 'none' }}>
+      <div className="absolute" style={{ top: '36%', left: '67%', width: 210, height: 210, transform: 'translate(-50%,-50%)', pointerEvents: 'none' }}>
         {[0, 1].map((i) => (
           <motion.span
             key={i}
@@ -121,28 +116,30 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
 
       {/* Contenu EN BAS : titre + rangée [haut-parleur] [flèche continuer].
           Aucun contrôle sur le visage de Tata. */}
-      <div className="absolute inset-0 flex flex-col items-center justify-end pb-8 px-6 z-20">
+      <div className="absolute inset-0 flex flex-col items-center justify-end pb-4 px-3 z-20">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
-          className="w-full max-w-md flex flex-col items-center"
+          className="w-full max-w-md flex flex-col items-center onboarding-tata-sheet"
         >
-          <p className="text-white font-extrabold" style={{ fontSize: 26, textShadow: '0 1px 10px rgba(0,0,0,0.35)' }}>
-            Moi, c'est Tata Nanti Lou
+          <span className="onboarding-tata-pill">Ton guide dans le marché</span>
+          <p className="font-extrabold onboarding-tata-title">
+            Moi, c'est Tantie Nanti Lou.
           </p>
-          <p className="text-white/90 mb-6" style={{ fontSize: 16, textShadow: '0 1px 8px rgba(0,0,0,0.3)' }}>
-            Je vais t'aider.
+          <p className="onboarding-tata-copy">
+            Tu peux toucher, parler et écouter. Je reste avec toi.
           </p>
 
           <div className="flex items-center justify-center gap-4">
             {/* Haut-parleur : réécouter (distinct de l'action) */}
             <motion.button
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); handleListen(); }}
               whileTap={{ scale: 0.9 }}
-              aria-label={isSpeaking ? 'Arrêter Tata Nanti Lou' : 'Réécouter Tata Nanti Lou'}
-              className="grid place-items-center rounded-full bg-white shadow-lg"
-              style={{ width: 52, height: 52, color: isSpeaking ? '#ef4444' : '#B74725' }}
+              aria-label={isSpeaking ? 'Arrêter Tantie Nanti Lou' : 'Réécouter Tantie Nanti Lou'}
+              className="grid place-items-center rounded-full bg-white shadow-lg onboarding-listen"
+              style={{ width: 56, height: 56 }}
             >
               {isSpeaking ? <VolumeX style={{ width: 26, height: 26 }} /> : <Volume2 style={{ width: 26, height: 26 }} />}
             </motion.button>
@@ -152,8 +149,8 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
               onClick={(e) => { e.stopPropagation(); terminer(); }}
               whileTap={{ scale: 0.92 }}
               aria-label="Continuer"
-              className="grid place-items-center rounded-full shadow-2xl"
-              style={{ width: 60, height: 60, background: 'linear-gradient(135deg, #F08A24, #B74725)' }}
+              className="grid place-items-center rounded-full shadow-2xl onboarding-continue"
+              style={{ width: 68, height: 68 }}
             >
               <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
             </motion.button>

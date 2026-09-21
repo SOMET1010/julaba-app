@@ -12,7 +12,7 @@
     "services/tataUiClips.ts": "254938fb91e188a147cf90743391ab5f9ed023b8541408117ef5dd5d1b379ef4",
     "services/localVoiceChoice.ts": "60278cad1f3cebbc33d6aa0e1817db83fa7e7d3a04e3acf8273e525844f01918",
     "services/voicePacksRuntime.ts": "bc382c1d23f66733363e61016a8d0f9854fc44599cbda0c292997f6258531eb1",
-    "services/onboardingVoix.ts": "005eef860337dfa2d777b6e5b9b0cfdbc66f3ea58e27f7fe3275b4bd45b0e614",
+    "services/onboardingVoix.ts": "5eee52588c74af2e7659a21327b447b1f55e61c54fa97bc069a1d5b985b72cec",
     "voice-offline/nativeStt.ts": "c1b87d795378cdf4c9953241e35f0bc48038a6bcb73fb93bbbc2bb15da97a995",
     "contexts/ObjectifContext.tsx": "1e6093003b78398829391edad8cfc12479e6d8dbd4b8fb285f17c11058a14d46"
   },
@@ -58,7 +58,7 @@
     ],
     "services/voicePacksRuntime.ts": [],
     "services/onboardingVoix.ts": [
-      "speakClipOrText({ clipUrl, text: clip.texte })"
+      "playClip({ url: clipUrl })"
     ],
     "voice-offline/nativeStt.ts": [],
     "contexts/ObjectifContext.tsx": [
@@ -69,13 +69,8 @@
     ],
     "components/auth/LoginPassword.tsx": [
       "parle(next ? 'Maintenant, des images à la place des chiffres.' : 'Retour aux chiffres.')",
-      "managerSpeak(`${greetTitle}. ${greetSub}. ${consigne}`)",
-      "speakClipOrText({ clipUrl: clip ?? undefined, text: texte })",
-      "speakClipOrText({ clipUrl: clip ?? undefined, text: texte })",
       "parle(error)",
-      "parle('Entre ton code secret à 4 chiffres')",
-      "managerSpeak(`${salut} ${geste}`)",
-      "managerSpeak(suggestion.texte)",
+      "parle(suggestion.texte)",
       "parle('C\\'est fait. Je m\\'adapte à toi.')",
       "parle('D\\'accord, on ne change rien.')",
       "parleSuite(relecture)",
@@ -84,13 +79,11 @@
       "parle(\"Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro.\")",
       "parleSuite('Problème avec le micro — réessaie')",
       "parleSuite(\"Je n'ai pas compris. Tape ton numéro, ou réessaie.\")",
-      "parle(consigne)",
       "parle(message)",
       "parle(message)",
       "parle('Effacé.')",
       "parle(chiffresEpeles(phone))",
       "parle('Voilà, tu peux parler maintenant. Touche le micro et dis ton numéro.')",
-      "parle('Entre ton code secret à 4 chiffres')",
       "parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)"
     ],
     "components/shared/UniversalParametres.tsx": [

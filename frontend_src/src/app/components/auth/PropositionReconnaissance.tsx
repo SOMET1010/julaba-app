@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Fingerprint, X } from 'lucide-react';
+import { Fingerprint, Volume2, X } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { registerWebAuthn } from '../../hooks/useWebAuthn';
 import { doitProposerReconnaissance, marquerBiometrie, noterRefusProposition } from '../../services/comptesMemorises';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces } from '../../utils/haptique';
+import { direAccueilMarchand } from '../../services/accueilMarchandVoix';
 
 /**
  * « Tata propose de me reconnaître » (connexion inclusive, lot 2).
@@ -21,7 +22,7 @@ import { vibrerSucces } from '../../utils/haptique';
  * compte et par téléphone (mémoire dans comptesMemorises).
  */
 export function PropositionReconnaissance() {
-  const { user, speak } = useApp();
+  const { user } = useApp();
   const [visible, setVisible] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const phoneRef = useRef('');
@@ -42,7 +43,7 @@ export function PropositionReconnaissance() {
     const t = setTimeout(() => {
       setVisible(true);
       if (guidageVocal()) {
-        speak(`${prenom || 'Ma sœur'}, veux-tu que Tata Nanti Lou te reconnaisse la prochaine fois ? Ce sera plus rapide.`);
+        void direAccueilMarchand('reconnaissanceProposition');
       }
     }, 1500);
     return () => clearTimeout(t);
@@ -57,22 +58,22 @@ export function PropositionReconnaissance() {
       if (r.etat === 'ok') {
         try { marquerBiometrie(window.localStorage, phoneRef.current, true); } catch { /* ignore */ }
         vibrerSucces();
-        if (guidageVocal()) speak('C\'est fait ! La prochaine fois, ton téléphone te reconnaîtra.');
+        if (guidageVocal()) void direAccueilMarchand('reconnaissanceReussie');
       } else if (r.etat === 'session_expiree') {
         // API-01b : on ne note PAS un refus, et on ne lui dit pas que « ça n'a
         // pas marché ». Elle n'a rien raté — c'est sa session qui a fini.
         // Noter un refus ici la priverait de la proposition à l'avenir, pour
         // une raison qui ne la concerne pas.
-        if (guidageVocal()) speak('Ta session a expiré. Reconnecte-toi, puis on réessaiera.');
+        if (guidageVocal()) void direAccueilMarchand('reconnaissanceSession');
       } else {
         // Échec ou annulation : on n'insiste pas (même politesse qu'un « Non »).
         // L'activation reste possible à tout moment dans Paramètres → Sécurité.
         try { noterRefusProposition(window.localStorage, phoneRef.current); } catch { /* ignore */ }
-        if (guidageVocal()) speak('Ça n\'a pas marché ici. Tu pourras réessayer plus tard dans les réglages.');
+        if (guidageVocal()) void direAccueilMarchand('reconnaissanceErreur');
       }
     } catch {
       try { noterRefusProposition(window.localStorage, phoneRef.current); } catch { /* ignore */ }
-      if (guidageVocal()) speak('Ça n\'a pas marché ici. Tu pourras réessayer plus tard dans les réglages.');
+      if (guidageVocal()) void direAccueilMarchand('reconnaissanceErreur');
     } finally {
       setEnCours(false);
       setVisible(false);
@@ -85,7 +86,7 @@ export function PropositionReconnaissance() {
   // ci-dessus, et vécu comme un popup qui « apparaît et disparaît » pour rien.
   const repondreNon = () => {
     try { noterRefusProposition(window.localStorage, phoneRef.current); } catch { /* ignore */ }
-    if (guidageVocal()) speak('D\'accord, on ne change rien.');
+    if (guidageVocal()) void direAccueilMarchand('reconnaissanceRefus');
     setVisible(false);
   };
 
@@ -95,7 +96,7 @@ export function PropositionReconnaissance() {
         <motion.div
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           style={{ position: 'fixed', inset: 0, zIndex: 120, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-          role="dialog" aria-modal="true" aria-label="Tata Nanti Lou propose de te reconnaître"
+          role="dialog" aria-modal="true" aria-label="Tantie Nanti Lou propose de te reconnaître"
           onClick={(e) => { if (e.target === e.currentTarget) repondreNon(); }}
         >
           <motion.div
@@ -110,8 +111,13 @@ export function PropositionReconnaissance() {
               <Fingerprint style={{ width: 32, height: 32, color: '#B74725' }} />
             </div>
             <p style={{ margin: '0 0 18px', fontSize: 17, fontWeight: 800, color: '#3d1a08', lineHeight: 1.35 }}>
-              {prenom ? `${prenom}, veux-tu` : 'Veux-tu'} que Tata Nanti Lou te reconnaisse la prochaine fois ?
+              {prenom ? `${prenom}, veux-tu` : 'Veux-tu'} que Tantie Nanti Lou te reconnaisse la prochaine fois ?
             </p>
+            <button type="button" onClick={() => { void direAccueilMarchand('reconnaissanceProposition'); }}
+              aria-label="Écouter Tantie Nanti Lou"
+              style={{ width: 52, height: 52, margin: '0 auto 16px', borderRadius: '50%', border: '2px solid rgba(198,106,44,0.35)', background: '#fff7ef', color: '#B74725', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+              <Volume2 aria-hidden="true" size={25} />
+            </button>
             <div style={{ display: 'flex', gap: 10 }}>
               <button type="button" onClick={repondreNon} disabled={enCours}
                 style={{ flex: 1, padding: '15px 0', borderRadius: 16, fontWeight: 800, fontSize: 15, color: '#8A5A34', background: '#fff', border: '2px solid rgba(198,106,44,0.35)', cursor: 'pointer', fontFamily: 'inherit' }}>
