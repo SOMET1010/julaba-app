@@ -192,7 +192,7 @@ function POSCaisseInner() {
    * qu'il ne reste que le prix à donner. Et tant qu'il n'est pas donné,
    * aucune ligne n'entre au panier : jamais une vente sans montant.
    */
-  const ouvrirPrixManquant = ({ nom, quantite, unite }: { nom: string; quantite: number; unite: string | null }) => {
+  const ouvrirPrixManquant = ({ nom, quantite, unite, raison, montant }: { nom: string; quantite: number; unite: string | null; raison?: 'prix_manquant' | 'unite_incompatible' | 'ambiguite_prix'; montant?: number }) => {
     const propre = (nom || '').trim();
     const qte = quantite > 0 ? quantite : 1;
     const uniteDite = unite || 'unité';
@@ -211,6 +211,15 @@ function POSCaisseInner() {
       .find(r => r.nom.trim().toLowerCase() === propre.toLowerCase() && !catalogueMaitre.estAdoptee(r.default_code));
     if (exacte) { choisirReference(exacte); return; }
     setRefChoisie(null);
+    // DEUX RAISONS D'OUVRIR CET ÉCRAN, DEUX QUESTIONS. Le prix introuvable se
+    // demande (« Quel est ton prix ? ») ; le montant AMBIGU se fait préciser
+    // en lui relisant SON chiffre (« 500, c'est le prix d'un seul, ou de tous
+    // les 3 ? »). Redemander « quel est ton prix » à quelqu'un qui vient de le
+    // dire, c'est lui faire croire qu'on ne l'a pas entendue.
+    if (raison === 'ambiguite_prix' && montant != null) {
+      direMessage('TATA_AMBIGUITE', { montant, quantite: String(qte) });
+      return;
+    }
     direMessage('TATA_QUEL_PRIX', { produit: propre });
   };
 

@@ -119,7 +119,14 @@ interface Props {
  * Sans fournisseur, rien ne change : Tata explique qu'elle n'a pas le prix
  * (comportement d'avant), et aucune ligne n'entre au panier.
  */
-export type DemandePrixVocal = (demande: { nom: string; quantite: number; unite: string | null }) => void;
+export type DemandePrixVocal = (demande: {
+  nom: string; quantite: number; unite: string | null;
+  /** Pourquoi l'écran s'ouvre : prix introuvable, unité qui ne concorde pas,
+   *  ou montant dicté dont on ne sait pas s'il vaut pour un ou pour tous. */
+  raison?: 'prix_manquant' | 'unite_incompatible' | 'ambiguite_prix';
+  /** Son montant, pour le cas `ambiguite_prix` : on le lui relit. */
+  montant?: number;
+}) => void;
 
 const CtxDemandePrix = createContext<DemandePrixVocal | null>(null);
 
@@ -217,7 +224,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
    * l'effet plus bas) l'appelle aussi, et il ne doit exister qu'UNE façon
    * d'ajouter une vente dictée au panier.
    */
-  const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number, uniteParlee?: string | null) =>
+  const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number, uniteParlee?: string | null, lectureDictee?: 'unitaire' | 'total' | null) =>
     vendreVocalUnifie(nomParle, quantite, montant, {
       products,
       addToCart,
@@ -235,12 +242,12 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       // la question ; la ligne n'entrera au panier qu'une fois le prix donné.
       // Voir FournisseurDemandePrix, plus haut dans ce fichier.
       demanderPrix: demanderPrixAuParent
-        ? ({ nom, quantite: qteDite, unite }) => {
+        ? ({ nom, quantite: qteDite, unite, raison, montant: montantDit }) => {
           setSaisieOuverte(false);
-          demanderPrixAuParent({ nom, quantite: qteDite, unite });
+          demanderPrixAuParent({ nom, quantite: qteDite, unite, raison, montant: montantDit });
         }
         : undefined,
-    }, uniteParlee);
+    }, uniteParlee, lectureDictee);
 
   const {
     state, response, pendingResponse, transcript, liveTranscript, error,
@@ -295,7 +302,13 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         // vide. La parole prime toujours : « deux kilos d'oignons » vend des
         // oignons. Seul le NOM est repris ; l'unité et le prix restent
         // l'affaire de resoudrePrixVocal (voir preselectionVente.ts).
-        vendreUnifie(produitPourVente(action.produit, produitPreselectionne), quantite, montant, extraire(data.transcript || '').uniteParlee);
+        {
+          // MÊME lecture, MÊME phrase : l'unité prononcée et ce que le montant
+          // veut dire (« à » / « pour » / négociation) viennent de la même
+          // extraction, jamais de deux relectures qui pourraient diverger.
+          const lu = extraire(data.transcript || '');
+          vendreUnifie(produitPourVente(action.produit, produitPreselectionne), quantite, montant, lu.uniteParlee, lu.lecturePrix);
+        }
       } else if (action?.type === 'utiliser_raccourci') {
         const r = matchRaccourci ? matchRaccourci(action.declencheur || data.transcript || '') : null;
         if (r?.action?.type === 'vendre') {
@@ -397,11 +410,13 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     if (local?.action?.type !== 'vendre') return;
     const brut = Number(local.action.montant);
     const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
+    const lu = extraire(texte);
     vendreUnifie(
       produitPourVente(local.action.produit, produitPreselectionne),
       local.action.quantite || 1,
       montant,
-      extraire(texte).uniteParlee,
+      lu.uniteParlee,
+      lu.lecturePrix,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une relecture par transcription, pas à chaque rendu
   }, [transcript]);

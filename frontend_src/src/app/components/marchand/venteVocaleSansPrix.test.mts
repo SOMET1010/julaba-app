@@ -79,7 +79,12 @@ function dicter(phrase: string, products: ProduitAppariable[], guidage = true) {
   if (local?.action?.type === 'vendre') {
     const brut = Number(local.action.montant);
     const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
-    vendreVocalUnifie(local.action.produit, local.action.quantite || 1, montant, j.deps, p.uniteParlee);
+    // `p.lecturePrix` : ce que la GRAMMAIRE a entendu du montant (« à » →
+    // unitaire, « pour » → le lot). Ce harnais s'annonce comme « le vrai
+    // parcours » ; l'oublier ici le ferait diverger de MicroVenteCaisse, qui
+    // le transmet — et un harnais qui ne rejoue plus le vrai chemin ne prouve
+    // plus rien de ce chemin.
+    vendreVocalUnifie(local.action.produit, local.action.quantite || 1, montant, j.deps, p.uniteParlee, p.lecturePrix);
   }
   return { extraction: p, local, ...j };
 }

@@ -78,7 +78,7 @@ console.log('\nLe prix vient du catalogue quand il n’est pas dicté');
   // 3. LE MONTANT DICTÉ PRIME. Une marchande négocie : « deux bananes pour
   //    trois cent cinquante francs » vaut 350, pas 200.
   const { deps, ajouts } = monter([BANANE]);
-  vendreVocalUnifie('banane', 2, 350, deps);
+  vendreVocalUnifie('banane', 2, 350, deps, undefined, 'total');
   ok(ajouts[0]?.[2] === 350, `le montant dicté écrase le catalogue (350), obtenu ${ajouts[0]?.[2]}`);
 }
 
@@ -103,7 +103,7 @@ console.log('\nLe prix vient du catalogue quand il n’est pas dicté');
   // 6. Un produit à prix zéro reste vendable SI elle dicte le prix : c'est
   //    elle qui sait. Le refus ci-dessus ne doit pas devenir un blocage.
   const { deps, ajouts } = monter([SANS_PRIX]);
-  vendreVocalUnifie('gombo', 2, 400, deps);
+  vendreVocalUnifie('gombo', 2, 400, deps, undefined, 'total');
   ok(ajouts.length === 1 && ajouts[0]?.[2] === 400, 'prix dicté sur un produit sans prix : la vente passe');
 }
 
@@ -145,7 +145,7 @@ console.log('\nLes deux cas relevés par Patrick sur l’architecture');
   //     ce qu'elle annonce à sa cliente fait foi.
   const EN_PROMO = { id: 'p-promo2', nom: 'Banane', prix: 100, prix_promo: 70, promo_fin: null, stock: 40, unite: 'régime' };
   const { deps, ajouts } = monter([EN_PROMO as unknown as ProduitAppariable]);
-  vendreVocalUnifie('banane', 2, 250, deps);
+  vendreVocalUnifie('banane', 2, 250, deps, undefined, 'total');
   ok(ajouts[0]?.[2] === 250, `le montant dicté prime sur la promo, obtenu ${ajouts[0]?.[2]}`);
 }
 

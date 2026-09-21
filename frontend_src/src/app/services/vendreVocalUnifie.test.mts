@@ -89,7 +89,7 @@ function main() {
   console.log("\n[3] Produit non apparié → ligne libre ajoutée au panier");
   {
     const h = creerDeps();
-    vendreVocalUnifie("attiéké", 2, 1000, h.deps);
+    vendreVocalUnifie("attiéké", 2, 1000, h.deps, undefined, "total");
     eq(h.appelsAddToCart.length, 1, "addToCart appelé pour la ligne libre aussi");
     const [produit, quantite] = h.appelsAddToCart[0];
     eq(produit.nom, "attiéké", "nom dicté conservé pour une ligne libre");
@@ -105,7 +105,7 @@ function main() {
     // prix passé au second appel. Un id stable dérivé du nom ferait donc
     // silencieusement écraser 2×500 + 1×700 (= 1700F) par 3×500 (= 1500F).
     const h = creerDeps();
-    vendreVocalUnifie("piment", 2, 1000, h.deps); // 2 piments pour 1000F → 500F/unité
+    vendreVocalUnifie("piment", 2, 1000, h.deps, undefined, "total"); // 2 piments pour 1000F → 500F/unité
     vendreVocalUnifie("piment", 1, 700, h.deps); // 1 piment pour 700F → 700F/unité
     eq(h.appelsAddToCart.length, 2, "deux appels à addToCart, un par énoncé");
     const [ligne1, qte1] = h.appelsAddToCart[0];
@@ -135,7 +135,7 @@ function main() {
   console.log("\n[6] Produit non apparié, en ligne, produit inconnu → proposition différée de 2200ms, APRÈS l'ajout");
   {
     const h = creerDeps();
-    vendreVocalUnifie("attiéké", 2, 1000, h.deps);
+    vendreVocalUnifie("attiéké", 2, 1000, h.deps, undefined, "total");
     eq(h.appelsAddToCart.length, 1, "l'ajout au panier a bien eu lieu");
     eq(h.planifications.length, 1, "une planification (la proposition de création)");
     eq(h.planifications[0].delaiMs, 2200, "délai de 2200ms préservé");
@@ -160,7 +160,7 @@ function main() {
   console.log("\n[8] Produit non apparié, HORS-LIGNE → pas de proposition, mais l'ajout au panier reste immédiat");
   {
     const h = creerDeps({ estEnLigne: () => false });
-    vendreVocalUnifie("attiéké", 2, 1000, h.deps);
+    vendreVocalUnifie("attiéké", 2, 1000, h.deps, undefined, "total");
     eq(h.appelsAddToCart.length, 1, "hors-ligne : l'ajout au panier a quand même lieu (c'est tout le sens du Lot 2)");
     eq(h.planifications.length, 0, "hors-ligne → aucune proposition de création (elle parle au serveur)");
   }
@@ -171,7 +171,7 @@ function main() {
     noterRefusCreation(stockage, "Attiéké");
     ok(stockage.data[CLE_REFUS_PRODUITS] !== undefined, "refus bien écrit en mémoire (sanity check)");
     const h = creerDeps({ stockage });
-    vendreVocalUnifie("attieke", 2, 1000, h.deps); // accents/casse différents, refus normalisé
+    vendreVocalUnifie("attieke", 2, 1000, h.deps, undefined, "total"); // accents/casse différents, refus normalisé
     eq(h.appelsAddToCart.length, 1, "l'ajout au panier a toujours lieu");
     eq(h.planifications.length, 0, "refus mémorisé → aucune planification");
   }
@@ -184,7 +184,7 @@ function main() {
     // recevoir le montant dicté EXACT (500) comme 3e argument, quel que soit
     // le produit (apparié ou libre).
     const h = creerDeps();
-    vendreVocalUnifie("tomates", 3, 500, h.deps);
+    vendreVocalUnifie("tomates", 3, 500, h.deps, undefined, "total");
     eq(h.appelsAddToCart.length, 1, "addToCart appelé une fois");
     const [produit, quantite, totalExact] = h.appelsAddToCart[0];
     eq(produit.prix, 167, "prix unitaire ARRONDI pour l'affichage (500/3 → 167)");
@@ -195,7 +195,7 @@ function main() {
     // Même invariant pour une ligne LIBRE (produit non apparié) : « 3 piments
     // pour 500 » ne doit pas non plus dériver vers 501F au panier.
     const h2 = creerDeps();
-    vendreVocalUnifie("piment inconnu", 3, 500, h2.deps);
+    vendreVocalUnifie("piment inconnu", 3, 500, h2.deps, undefined, "total");
     const [ligneLibre, qteLibre, totalLibre] = h2.appelsAddToCart[0];
     eq(ligneLibre.prix, 167, "ligne libre : même arrondi unitaire pour l'affichage");
     eq(qteLibre, 3, "ligne libre : quantité dictée");
@@ -212,7 +212,7 @@ function main() {
     // une vente fausse qu'on ne peut pas rattraper.
     console.log("\nTata dit ce qu'elle a COMPRIS, pas seulement qu'elle a agi");
     const h = creerDeps();
-    vendreVocalUnifie("tomates", 5, 1500, h.deps);
+    vendreVocalUnifie("tomates", 5, 1500, h.deps, undefined, "total");
     const dit = h.appelsSpeak.join(" ");
     ok(dit.length > 0, "Tata parle après la vente");
     ok(/5/.test(dit), "la QUANTITÉ est prononcée (5)");
