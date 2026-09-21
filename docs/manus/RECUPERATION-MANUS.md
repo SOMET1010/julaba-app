@@ -148,6 +148,74 @@ pièce, repères BCEAO. `decomposerMonnaie` rend les mêmes valeurs.
 `caisseSurfaceUnique.test.mts` (renforcé : raccourci panier collant).
 → `test:ci` reste **gelée** : voir C1.
 
+#### Résultat du lot A8 (révision 27 du registre, sur `c527797`)
+**Lus avant d'être branchés**, comme demandé ; aucun renommage, aucun
+desserrement. `test:ci` vérifiée identique à `f0c965c` **valeur contre valeur**
+(1 217 caractères, 44 maillons) avant et après.
+
+| Test | Où | État |
+|---|---|---|
+| `caisseSurfaceUnique.test.mts` (version Manus renforcée, + section [6]) | **dans `verify`**, par `test:caisse-surface` | **vert**, 16/16 |
+| `test-accueil-pilote.mjs` → `test:accueil-pilote` | récupéré, **hors chaîne** | **3 rouges / 11** |
+| `test-entree-unique.mjs` → `test:entree-unique` | récupéré, **hors chaîne** | **5 rouges / 6** |
+| `test-nom-tantie-nanti-lou.mjs` → `test:nom-tantie` | récupéré, **hors chaîne** | **rouge** |
+| `test:montants-prives` (déjà au socle, laissé dehors au lot A2) | **hors chaîne**, toujours | **6 rouges / 13** |
+
+**Pourquoi chacun reste dehors — aucun n'est rouge « pour rien » :**
+- `test-accueil-pilote` : ses 3 rouges sont tous dans la section [1] et portent
+  sur des **décisions produit de Manus que le socle n'a pas reprises** —
+  `MarchandAccueilVoice.tsx` l. 79 garde la tuile `label: 'Mon argent'` et
+  `navigate('/marchand/keiwa')`, et l. 105 le libellé « Ma caisse aujourd'hui »
+  est à `fontSize: 11` là où le test exige 14. Les sections **[2] une seule
+  Tata** (6 assertions) et **[3] résumé vers clôture** (2) sont **déjà vertes**
+  chez nous. Le brancher aujourd'hui **forcerait** le retrait de la tuile Keiwa :
+  c'est un arbitrage de Patrick, pas un effet de bord de lot.
+- `test-entree-unique` : `routes.tsx` l. 44-45 monte encore `/welcome` →
+  `<Welcome />` et `/login` → `<LoginPassword />` en direct ; Manus les redirige
+  vers `EntryGate`. Plus l'ordre attendu dans `maestro/02-connexion.yaml`. Seule
+  « la racine monte EntryGate » est verte. C'est le refactor A9-Manus de la porte
+  d'entrée, non repris.
+- `test-nom-tantie-nanti-lou` : **18 fichiers**, **38 occurrences** de
+  « Tata Nanti Lou » (`useVoiceCore.ts` 6, `i18n/voice/catalog.ts` **4**,
+  `LoginPassword.tsx` 4, `Welcome.tsx` 3, `PropositionReconnaissance.tsx` 3,
+  `elevenlabs.ts` / `AppContext.tsx` / `UniversalParametres.tsx` /
+  `OnboardingSlides.tsx` 2 chacun, 9 fichiers à 1 dont `public/sw.js`). Le plancher
+  « ≥ 20 occurrences du nom officiel » est déjà **largement atteint (68)** : le
+  seul bloquant est l'ancien nom. **Rien n'a été renommé pour le faire passer.**
+  Deux voies, au choix de Patrick : (a) le brancher **après le lot de renommage
+  A1**, qui est sa place naturelle ; (b) le **restreindre à un périmètre** déjà
+  propre pour qu'il garde le terrain gagné — mais le catalogue de voix
+  (`i18n/voice/catalog.ts`, 4 occurrences) est justement l'endroit où le nom est
+  **parlé**, donc celui qu'on voudrait couvrir en premier : une restriction qui
+  l'exclut ne protège pas grand-chose. (a) est recommandé.
+- `test:montants-prives` : **6 rouges, tous sur deux fichiers non récupérés**.
+  1 sur `MarchandAccueilVoice.tsx` (n'importe pas `useMontantsPrives`) et **5 sur
+  `VentesPassees.tsx`** (`useMontantsPrives`, deux gardes `if (montantsMasques)`,
+  `showOutils`, « Mes chiffres et filtres », absence d'`animatedTarget`). Or
+  `VentesPassees.tsx` est explicitement **réservé à l'après-lot B** par le §A10
+  ci-dessous. Il ne peut donc pas entrer dans `verify` avant A10 ; sa condition
+  d'entrée est écrite. Les sections [1] et [2] du test sont vertes.
+
+**Piège évité — `caisseUnSeulMicro.test.mts` : la version Manus N'EST PAS
+reprise.** Elle **affaiblit** le garde-fou : `cadre.includes('isOpen={tataOuverte
+&& !tataMasquee}')` devient un **OU** (`/isOpen=\{isTantieOpen …/.test(barre) ||
+/isOpen=\{tataOuverte …/.test(layout)`), et toute la section **[3] « un seul
+propriétaire de la modale » (6 assertions)** disparaît. Notre version durcie
+reste telle quelle, non modifiée par ce lot.
+
+**Troisième piège — non déclenché.** Aucune assertion **retirée** : parmi les
+fichiers repris, la seule mention du montant reçu est descriptive
+(`caisseSurfaceUnique.test.mts` l. 59 vérifie que `renderCartFooter()` est
+rendu ; le libellé cite « montant reçu » sans rien exiger). **La règle du reçu
+obligatoire (catégorie C) n'est assertée nulle part** dans ce qui est récupéré :
+il n'y avait rien à retirer.
+
+**Limite de ce qui vient d'être gagné** : la section [6] ajoutée lit la
+**déclaration** `position: sticky` dans le CSS, pas l'effet à l'écran — et cette
+déclaration est **inerte** (dette **UI-05** du registre maître). La restriction
+est écrite en commentaire au-dessus de l'assertion pour qu'elle ne soit pas lue
+comme une preuve d'épinglage.
+
 ### A9. Habillage de la caisse
 `marchand/MicroVenteCaisse.tsx` (CSS et libellés), `marchand/POSCaisse.tsx` **partie
 graphique seulement** (pavé de montant, choix chiffres ou coupures, raccourci panier
