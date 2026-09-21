@@ -368,7 +368,10 @@ export async function nbSansProprietaire(store: OutboxStore = defaultStore()): P
  * @returns { ok, reste (actives DE currentUserId uniquement), echecs
  *   (lettres mortes DE currentUserId uniquement), ignorees (d'un AUTRE
  *   compte, non touchées), sansProprietaire (propriétaire inconnu, ni
- *   rejouée ni attribuée — global par nature, nom explicite) }
+ *   rejouée ni attribuée — global par nature, nom explicite),
+ *   okParEndpoint / resteParEndpoint (OFF-02 : la MÊME chose, ventilée par
+ *   point de terminaison — ajout purement additif, les cinq champs
+ *   d'origine gardent leur nom, leur type et leur valeur) }
  */
 /**
  * Opérations dont la DATE compte : celles qui appartiennent à une journée de
@@ -388,19 +391,84 @@ export async function nbSansProprietaire(store: OutboxStore = defaultStore()): P
 // `test:offline-stock` la première fois.
 const ENDPOINTS_DATES = ['/caisse/vente', '/caisse/depense'];
 
+// ── OFF-02 : de quoi savoir CE QUI vient de passer, pas seulement COMBIEN ────
+//
+// La file mélange les natures : une vente, une dépense et un ajustement de
+// stock y voisinent. `ok` les compte ensemble — c'est ce qu'il doit faire, et
+// ça ne bouge pas. Mais annoncer « ta vente est partie » sur un `ok > 0` qui
+// était une dépense serait un mensonge de confirmation, celui-là même
+// qu'OFF-01 vient de fermer côté encaissement.
+//
+// LA NATURE EST DÉJÀ LÀ : chaque opération porte son point de terminaison
+// (`/caisse/vente`, `/caisse/depense`, `/stocks/…`). On s'en sert, on
+// n'invente aucun champ parallèle qui pourrait diverger de lui.
+//
+// CE QUE CETTE VENTILATION NE FAIT PAS, ET C'EST LE POINT : elle n'OBSERVE.
+// Elle est incrémentée à l'endroit exact où `ok++` l'est déjà, et calculée à
+// partir des opérations encore en file. L'ORDRE du rejeu, l'IDEMPOTENCE des
+// clés, le COMPTAGE (`ok`, `reste`, `echecs`) et la CONSERVATION des
+// opérations sont strictement inchangés — contrainte posée par Patrick pour
+// ce lot, et mesurée sur le rejeu réel par `test:vente-synchronisee`.
+//
+// La clé est le point de terminaison TEL QUEL, sans regroupement : un
+// `/stocks/<id>` produit donc une entrée par article. C'est voulu — regrouper
+// demanderait d'inventer un vocabulaire de « nature », et un tour de rejeu
+// porte de toute façon une poignée d'opérations.
+export type CompteParEndpoint = Readonly<Record<string, number>>;
+
+/** Ce qu'un tour de rejeu a produit. Les cinq premiers champs sont le contrat
+ *  d'origine, inchangé ; les deux derniers sont additifs (OFF-02). */
+export interface BilanSynchronisation {
+  ok: number;
+  reste: number;
+  echecs: number;
+  ignorees: number;
+  sansProprietaire: number;
+  /** Combien d'opérations sont VRAIMENT parties, par point de terminaison. */
+  okParEndpoint: CompteParEndpoint;
+  /** Combien restent en file (de `currentUserId`), par point de terminaison. */
+  resteParEndpoint: CompteParEndpoint;
+}
+
+/** Le point de terminaison d'une VENTE — écrit ici, et lu de là par qui doit
+ *  distinguer une vente d'une dépense. Une seule vérité, un seul nom. */
+export const ENDPOINT_VENTE: CaisseEndpoint = '/caisse/vente';
+
+/** Combien de VENTES viennent de partir dans ce tour de rejeu. */
+export function ventesParties(bilan: Pick<BilanSynchronisation, 'okParEndpoint'>): number {
+  return bilan.okParEndpoint[ENDPOINT_VENTE] ?? 0;
+}
+
+/** Combien de VENTES restent en file après ce tour (succès partiel). */
+export function ventesEncoreEnFile(bilan: Pick<BilanSynchronisation, 'resteParEndpoint'>): number {
+  return bilan.resteParEndpoint[ENDPOINT_VENTE] ?? 0;
+}
+
+/** Ventile par point de terminaison les opérations encore en file du compte. */
+async function resteVentile(userId: string, store: OutboxStore): Promise<CompteParEndpoint> {
+  const compte: Record<string, number> = {};
+  for (const op of await operationsEnAttente(userId, store)) {
+    compte[op.endpoint] = (compte[op.endpoint] ?? 0) + 1;
+  }
+  return compte;
+}
+
 export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
   poster: (endpoint: E, payload: unknown, method: OfflineMethod) => Promise<void>,
   currentUserId: string,
   store: OutboxStore = defaultStore(),
-): Promise<{ ok: number; reste: number; echecs: number; ignorees: number; sansProprietaire: number }> {
+): Promise<BilanSynchronisation> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return {
       ok: 0, reste: await nbEnAttente(currentUserId, store), echecs: await nbEchecs(currentUserId, store),
       ignorees: 0, sansProprietaire: await nbSansProprietaire(store),
+      okParEndpoint: {}, resteParEndpoint: await resteVentile(currentUserId, store),
     };
   }
   const ops = await store.list();
   let ok = 0;
+  // OBSERVATION SEULE : ce compteur ne décide de rien dans la boucle.
+  const okParEndpoint: Record<string, number> = {};
   let ignorees = 0;
   let sansProprietaire = 0;
   for (const op of ops) {
@@ -435,6 +503,7 @@ export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
       );
       await store.remove(op.id);
       ok++;
+      okParEndpoint[op.endpoint] = (okParEndpoint[op.endpoint] ?? 0) + 1;
     } catch (e) {
       if (estPermanent(e)) {
         // Rejet métier définitif : lettre morte (atomique) + on CONTINUE.
@@ -453,5 +522,6 @@ export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
   return {
     ok, reste: await nbEnAttente(currentUserId, store), echecs: await nbEchecs(currentUserId, store),
     ignorees, sansProprietaire,
+    okParEndpoint, resteParEndpoint: await resteVentile(currentUserId, store),
   };
 }
