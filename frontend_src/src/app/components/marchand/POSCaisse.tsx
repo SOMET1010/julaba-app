@@ -15,7 +15,7 @@ import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
 import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/fcfa';
 import { BilletDessine, PieceDessinee } from './CoupureDessinee';
 import { avertissementRupture } from '../../services/ruptureStock';
-import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
+import { vibrerSucces, vibrerErreur, vibrerTic, vibrerAttente } from '../../utils/haptique';
 import { getPictogrammeByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 import { phraseRelecture, phraseLigneAjoutee, type EtatEncaissement as EtatRelu } from '../../services/relectureSpontanee';
@@ -358,13 +358,14 @@ function POSCaisseInner() {
         else direMessage('TATA_VENTE_ENREGISTREE', { total });
       } else {
         // EN ATTENTE D'ENVOI. Aucun signe de succès : pas de `vibrerSucces()`,
-        // et surtout pas sous un autre nom. AUCUNE vibration du tout — c'est
-        // la consigne de Patrick, et c'est aussi la prudence : un motif
-        // haptique inédit se confondrait avec le succès dans la poche, au
-        // bruit du marché. L'absence de la double impulsion EST le signal.
-        // (Faut-il malgré tout un motif « en attente » distinct pour une
-        // marchande sourde ? Question ouverte, arbitrage de Patrick.)
-        // La vente en attente s'ENTEND : doctrine voix — aucune information
+        // et surtout pas sous un autre nom. Mais l'attente DOIT se sentir —
+        // arbitrage de Patrick du 21/09/2026, qui ferme VOIX-06 : sans canal
+        // tactile, l'état ne tenait plus qu'au TTS, et une marchande qui
+        // n'entend pas (bruit du marché, voix coupée) et qui ne lit pas
+        // n'avait plus rien. Une impulsion COURTE et UNIQUE (90 ms) : ni la
+        // double du succès, ni la longue de l'erreur.
+        vibrerAttente();
+        // Et elle s'ENTEND aussi : doctrine voix — aucune information
         // importante uniquement à l'écran.
         if (avertRupture) direMessage('TATA_VENTE_GARDEE_TELEPHONE_RUPTURE', { total, avertissement: avertRupture });
         else direMessage('TATA_VENTE_GARDEE_TELEPHONE', { total });
