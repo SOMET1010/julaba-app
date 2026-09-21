@@ -25,7 +25,20 @@ const nu = (s) => s.replace(/\*\*/g, '').replace(/`/g, '').trim();
 // Un identifiant de dette : ARG-11, UI-05, AUTH-RECOVERY-01, SCHEMA-08… et les
 // trois identifiants COMPOSITES hérités des premiers audits (« ARG-01 / B3 »),
 // que toute regex ancrée sur la fin de cellule laisse tomber en silence.
-const ID = /^[A-ZÉÈÀÇ]{2,}(?:-[A-ZÉÈÀÇ]+)*-\d{2}[a-z]?(\s*\/\s*\S.*)?$/;
+//
+// UN SEGMENT PEUT CONTENIR DES CHIFFRES — corrigé le 21/09/2026 (lot outillage).
+// Le motif exigeait des LETTRES SEULES avant le numéro : « I18N-01 » n'était
+// donc pas reconnu, et — c'est le vrai danger — un identifiant non reconnu
+// n'est pas signalé comme mal formé, il est IGNORÉ EN SILENCE. Une dette
+// pouvait exister, être écrite noir sur blanc, et ne jamais être comptée. Un
+// segment DOIT toujours commencer par une lettre (sinon « 2026-09-21 » ou un
+// numéro de lot deviendrait une dette) mais peut ensuite mêler lettres et
+// chiffres. Le numéro final reste deux chiffres, éventuellement suivis d'une
+// lettre (SEC-08b).
+// Premier segment : une LETTRE puis au moins un caractère (donc ≥ 2, comme
+// avant) ; segments suivants : une LETTRE puis ce qu'on veut. Un segment ne
+// commence jamais par un chiffre, sinon « 2026-09-21 » serait une dette.
+const ID = /^[A-ZÉÈÀÇ][A-ZÉÈÀÇ0-9]+(?:-[A-ZÉÈÀÇ][A-ZÉÈÀÇ0-9]*)*-\d{2}[a-z]?(\s*\/\s*\S.*)?$/;
 // Les tableaux de dette ont SIX colonnes. Les annexes (« Ce que le contre-audit
 // a corrigé », listes de sujets) en ont deux ou trois et portent les mêmes
 // identifiants : les compter doublerait des lignes déjà comptées.
@@ -47,7 +60,7 @@ for (const [i, ligne] of lignes.entries()) {
   const statut = STATUTS.find(s => brut.includes(s)) || null;
   if (!statut) { malFormees.push({ n: i + 1, id, raison: `3e cellule sans statut reconnu : « ${brut.slice(0, 40)} »` }); continue; }
   // Conforme = statut SEUL et en gras, tel que le registre l'écrit depuis la révision 20.
-  const idConforme = /^[A-ZÉÈÀÇ]{2,}(?:-[A-ZÉÈÀÇ]+)*-\d{2}[a-z]?$/.test(id);
+  const idConforme = /^[A-ZÉÈÀÇ][A-ZÉÈÀÇ0-9]+(?:-[A-ZÉÈÀÇ][A-ZÉÈÀÇ0-9]*)*-\d{2}[a-z]?$/.test(id);
   const statutConforme = /^\*\*[^*]+\*\*$/.test(cell[2].trim()) && nu(cell[2]) === statut;
   const conforme = idConforme && statutConforme;
   if (!conforme) malFormees.push({ n: i + 1, id, raison: !idConforme
