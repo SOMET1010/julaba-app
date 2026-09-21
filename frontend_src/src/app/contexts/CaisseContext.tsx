@@ -57,6 +57,38 @@ function doitEnfiler(error: unknown): boolean {
   return true; // pas de statut HTTP → transitoire (réseau/technique/session)
 }
 
+/**
+ * CE QU'UNE VENTE EST DEVENUE, DIT À L'APPELANTE — OFF-01, 21/09/2026.
+ *
+ * `enregistrerVente` avait TROIS issues qui rendaient toutes `undefined` :
+ * mise en file parce que le téléphone est hors ligne, acceptée par le serveur,
+ * et mise en file parce que l'envoi est tombé alors que `navigator.onLine`
+ * disait « en ligne » (le cas le plus traître). Indiscernables, l'écran les
+ * annonçait toutes les trois « Vente réussie », avec vibration de succès et
+ * voix de succès, sur une vente qui dormait dans la file.
+ *
+ * DEUX VALEURS, PAS TROIS : ce qui compte pour la marchande n'est pas POURQUOI
+ * la vente attend, c'est QU'ELLE attend. Les deux chemins d'attente rendent
+ * donc le même statut.
+ *
+ * UN OBJET, PAS UNE CHAÎNE NUE : `resultat.statut` se lit à l'appel, ne se
+ * confond avec aucun autre `string` de la caisse, et laisse la place à un
+ * champ supplémentaire (l'identifiant de file, par exemple) sans toucher aux
+ * appelantes. UNE SEULE VÉRITÉ : ce type est produit ICI et nulle part
+ * ailleurs — c'est le contexte de caisse, et lui seul, qui sait ce qui est
+ * arrivé à la vente. Un écran ne doit JAMAIS redéduire ce statut de
+ * `navigator.onLine` après coup.
+ *
+ * CE QUI N'EST PAS UN STATUT : une erreur métier 4xx. Elle continue d'être
+ * levée — une vente refusée n'est ni confirmée ni en attente.
+ */
+export type StatutEnregistrement = 'confirmee' | 'en_attente';
+
+/** Le résultat d'une écriture de caisse depuis le téléphone. */
+export interface ResultatEnregistrement {
+  statut: StatutEnregistrement;
+}
+
 export interface CaisseTransaction {
   id: string;
   marchandId: string;
@@ -159,7 +191,10 @@ interface CaisseContextType {
   selectedProduct: CaisseProduct | null;
   setSelectedProduct: (p: CaisseProduct | null) => void;
   
-  enregistrerVente: (montant: number, produits?: LigneDeVente[], modePaiement?: string, notes?: string, source?: 'vocal' | 'kassa') => Promise<void>;
+  /** Rend TOUJOURS le statut de la vente (OFF-01) : `confirmee` quand le
+   *  serveur a accusé réception, `en_attente` quand elle dort dans la file
+   *  durable. Une erreur métier 4xx est levée, pas rendue. */
+  enregistrerVente: (montant: number, produits?: LigneDeVente[], modePaiement?: string, notes?: string, source?: 'vocal' | 'kassa') => Promise<ResultatEnregistrement>;
   /** `description` : le MOTIF de la dépense, sous son nom canonique — celui de
    *  la colonne, de l'entité et de la route. Il s'appelait `notes` ici, et le
    *  serveur ne le lisait jamais (DEP-01). */
@@ -434,7 +469,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
      *  'kassa'`) ; c'est le front qui ne l'envoyait jamais, d'où un écran où
      *  tout paraissait venir de la caisse. */
     source?: 'vocal' | 'kassa',
-  ) => {
+  ): Promise<ResultatEnregistrement> => {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de vente invalide');
     // Calculer prix_achat depuis les produits du panier
     const lignes = Array.isArray(produits) ? produits : [];
@@ -463,13 +498,17 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       await enfilerOperation('/caisse/vente', payload, appUser?.id);
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
-      return;
+      // La vente est GARDÉE, pas enregistrée : c'est ce que l'appelante doit
+      // pouvoir dire à la marchande (OFF-01).
+      return { statut: 'en_attente' };
     }
     try {
       await caisseApi.enregistrerVente(payload);
       await loadTransactions();
       // Notifier AppContext de recharger ses transactions
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
+      // Le serveur a accusé réception : c'est la SEULE issue qui vaut succès.
+      return { statut: 'confirmee' };
     } catch (error: any) {
       // Ne JAMAIS perdre une vente : hors-ligne, token expiré, panne réseau ou
       // serveur temporairement KO -> on l'enfile (rejeu avec la MÊME clé, donc
@@ -478,7 +517,10 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       if (doitEnfiler(error)) {
         await enfilerOperation('/caisse/vente', payload, appUser?.id);
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
-        return;
+        // LE CAS TRAÎTRE : `navigator.onLine` disait « en ligne », l'envoi est
+        // tombé quand même. La vente attend exactement comme hors ligne, et se
+        // dit de la même façon — une seule attente, un seul statut.
+        return { statut: 'en_attente' };
       }
       throw error;
     }
