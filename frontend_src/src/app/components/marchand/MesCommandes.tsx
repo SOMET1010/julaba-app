@@ -18,6 +18,8 @@ import {
 import { ReceptionPaiementModal } from '../shared/ReceptionPaiementModal';
 import { NoterCommande } from '../shared/NoterCommande';
 import { toast } from 'sonner';
+import { t } from '../../i18n/voice/runtime';
+import { causeEchec, reseauIndisponible, type CauseEchecReseau } from '../../services/actionReseauRequis';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -162,41 +164,70 @@ export function MesCommandes() {
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
+  // SANS RÉSEAU, ON REFUSE ET ON LE DIT — B4, 21/09/2026.
+  //
+  // Ces actions partaient droit au serveur. Sans réseau, `fetch` lève
+  // « TypeError: Failed to fetch » et l'écran disait `e.message` : la marchande
+  // entendait « Failed to fetch ». Elle ne pouvait ni comprendre, ni savoir que
+  // son geste n'était pas parti, ni savoir qu'il fallait recommencer.
+  //
+  // RIEN N'EST MIS EN FILE, et c'est un choix : une action de commande se
+  // négocie à deux, son sens dépend de l'état du serveur au moment où elle
+  // part. La rejouer plus tard sans que la marchande le sache serait pire que
+  // de lui dire non maintenant. Aucune commande ne peut donc être perdue ni
+  // comptée deux fois : hors ligne, on n'appelle simplement pas le serveur.
+  const direEchecReseau = (cause: CauseEchecReseau) => {
+    if (cause === 'hors_ligne') speak(t('MARCHAND_HORS_LIGNE_ACTION'));
+    else speak(t('MARCHAND_ENVOI_TOMBE_ACTION'));
+  };
+
   const handleAnnuler = async (id: string) => {
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     try {
       await annulerCommande(id);
       speak('Commande annulée');
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(message);
     }
   };
 
   const handleConfirmerVente = async (id: string) => {
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     try {
       await updateCommande(id, { statut: 'confirmee' });
       speak('Vente confirmée');
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(message);
     }
   };
 
   const handleRefuserVente = async (id: string) => {
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     try {
       await updateCommande(id, { statut: 'annulee' });
       speak('Vente refusée');
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(message);
     }
   };
 
   const handleMarquerLivree = async (id: string) => {
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     try {
       await updateCommande(id, { statut: 'livree' });
       speak('Commande marquée comme livrée');
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(message);
     }
@@ -208,6 +239,7 @@ export function MesCommandes() {
 
   const handleAccepterContreOffre = async (neg: Negociation) => {
     if (!neg.prixContreOffre) return;
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     setSubmittingNeg(neg.id);
     try {
       await marchandRepondreNegociation(neg.id, { statut: 'accepte' });
@@ -215,6 +247,8 @@ export function MesCommandes() {
       const { negociations: data } = await fetchNegociations();
       setNegociations((data ?? []).map(mapNegociation));
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(`Erreur : ${message}`);
     } finally {
@@ -223,12 +257,15 @@ export function MesCommandes() {
   };
 
   const handleRefuserContreOffre = async (neg: Negociation) => {
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     setSubmittingNeg(neg.id);
     try {
       await marchandRepondreNegociation(neg.id, { statut: 'refuse' });
       setNegociations(prev => prev.filter(n => n.id !== neg.id));
       speak('Contre-offre refusée.');
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(`Erreur : ${message}`);
     } finally {
