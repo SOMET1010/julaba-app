@@ -15,7 +15,10 @@
       "fichier": "tata-accueil-preview.mp3",
       "texteExact": "Akwaba. Pour vendre, touche un produit, ou parle à Tata. On est ensemble.",
       "sha256": "0a863d6a9a8356eb0ccfcdd7a741281d1a9dced742be4eac3184f1479f3f9709",
-      "dureeSecondes": 9.264
+      "dureeSecondes": 9.264,
+      "reenregistrementRequis": true,
+      "texteCible": "Akwaba. Pour vendre, touche un produit, ou parle à Tantie Nanti Lou. On est ensemble.",
+      "motifReenregistrement": "L'audio dit encore « Tata », le nom validé est « Tantie Nanti Lou » (lot A1, 20/09/2026). texteExact décrit ce que le fichier DIT et n'est donc pas corrigé : le corriger ferait mentir le manifeste sur son propre son. Le clip est à réenregistrer sur texteCible."
     },
     {
       "cle": "presentation",
@@ -146,5 +149,10 @@
     "texte": "les quatorze nouveaux clips ont été contrôlés par transcription automatique ; écoute mot à mot humaine encore requise",
     "naturelEtAgePercu": "à valider par le propriétaire et des marchandes ivoiriennes cibles",
     "production": false
-  }
+  },
+  "reenregistrementRequis": true,
+  "texteCible": "Akwaba. Pour vendre, touche un produit, ou parle à Tantie Nanti Lou. On est ensemble.",
+  "motifReenregistrement": "Le clip d'accueil de ce pack dit encore « Tata ». Voir le clip « accueil ». Aucun fichier audio n'a été modifié.",
+  "nomPersonnageValide": "Tantie Nanti Lou",
+  "noteNomsDeFichiers": "Les noms de fichiers gardent le préfixe « tata- » : ce sont des identifiants internes, jamais lus ni entendus par une marchande, et les renommer casserait la correspondance avec les empreintes SHA-256 de ce manifeste."
 }
