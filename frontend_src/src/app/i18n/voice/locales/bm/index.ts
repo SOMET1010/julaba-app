@@ -4,10 +4,10 @@
  * sélectionnable dans l'application (hooks/useLangPref.ts, Paramètres) : sans
  * manifest, chaque appel traçait `locale_inconnue` (I18N-02). Hors de la liste
  * ivoirienne de Patrick — Manus décide de son avenir. Le parseur de nombres
- * bambara existant (voice-offline/nombresBambara.ts) est DÉCLARÉ, pas activé :
+ * bambara existant (voice-offline/nombresMandingue.ts) est DÉCLARÉ, pas activé :
  * rien ne le lit tant que cette locale n'est pas validée pour l'argent.
  */
-import { extraireNombreBambara, normaliserBambara } from '../../../../voice-offline/nombresBambara';
+import { extraireNombreBambara, normaliserBambara } from '../../../../voice-offline/nombresMandingue';
 import type { ManifestLocale } from '../../types';
 
 export const BM: ManifestLocale = {
