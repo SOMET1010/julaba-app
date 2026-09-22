@@ -24,6 +24,7 @@
  * reste dite à un seul endroit (config/devise.ts, ADR-0003).
  */
 import { entreeTts, entreeIntent } from './catalog';
+import { DYU_ARGENT_DE_TEST, LOCALE_ARGENT_DE_TEST } from './drapeauxDeTest';
 import { manifest, estLocaleConnue } from './registry';
 import type { IntentId, Lexique, LocaleCode, ManifestLocale, MessageId, TraceFallback, VariantesIntention } from './types';
 import { LOCALE_REFERENCE } from './types';
@@ -153,7 +154,24 @@ export function resoudreMessage(id: MessageId, vars: Variables = {}, locale: Loc
     const msg = m.messages[id];
     if (!msg) { replis.push('absent'); continue; }
     // Un message d'argent en brouillon ne sort JAMAIS : on repasse au repli, tracé.
-    if (critique && (msg.validation.linguistique === 'draft' || !msg.validation.finance)) { replis.push('non_valide_finance'); continue; }
+    //
+    // LA SEULE EXCEPTION, ET ELLE N'EXISTE PAS DANS UN BUILD LIVRABLE.
+    // `DYU_ARGENT_DE_TEST` est `false` partout sauf dans un build construit
+    // avec JULABA_VOIX_DYU=1 ET JULABA_DYU_ARGENT=1 — deux `define` de
+    // bundler, absents de tout processus Node, donc absents de `verify`, de
+    // `test:ci` et de la CI. Nommé EN PREMIER pour que le bundler replie
+    // `false && …` et efface la clause : dans un build ordinaire, la condition
+    // ci-dessous est littéralement celle d'hier.
+    //
+    // Ce que cette exception sert : écouter une phrase d'argent DITE par la
+    // voix d'essai, pour juger le SON. Ce qu'elle ne sert jamais : juger le
+    // COMPTE. Les nombres de cette langue sont en brouillon et un nombre
+    // mandingue nu est ambigu (francs ou dɔrɔmɛ). La donnée, elle, n'est PAS
+    // maquillée : la validation reste `draft`/`finance: false`, c'est la
+    // vérité, et c'est le build qui assume de passer outre. Voir
+    // drapeauxDeTest.ts.
+    if (critique && (msg.validation.linguistique === 'draft' || !msg.validation.finance)
+        && !(DYU_ARGENT_DE_TEST && m.code === LOCALE_ARGENT_DE_TEST)) { replis.push('non_valide_finance'); continue; }
     const fallback = m.code !== localeDemandee;
     if (fallback) for (const raison of replis) tracer({ type: 'message', id, localeDemandee, localeServie: m.code, raison });
     return { id, locale: m.code, localeDemandee, texte: interpoler(msg.template, vars, m), variables: vars, fallback };
