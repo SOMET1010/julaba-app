@@ -63,7 +63,7 @@ function POSCaisseInner() {
   // convention déjà en place dans JULABA (voir RoleDashboard, LoginPassword…),
   // donc lisible, testable, et vide quand on arrive autrement.
   const produitPreselectionne = ((location.state as { produitPreselectionne?: ProduitPreselectionne } | null)?.produitPreselectionne) ?? null;
-  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, refreshProducts, transactions } = useCaisse();
+  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, refreshProducts, transactions, etatCatalogue } = useCaisse();
   const { speak, reloadTransactions, user, isOnline } = useApp();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Ma boutique';
   // La caisse SUIT le sous-profil (docs/SOUS_PROFILS_MARCHAND.md) : en négoce
@@ -1171,7 +1171,20 @@ function POSCaisseInner() {
           {filtered.length === 0 ? (
             <div style={{ textAlign:'center', padding:'var(--caisse-esp-7) 0', color:'var(--caisse-gris-texte)', font:'var(--caisse-font-texte)' }}>
               <Package size={48} style={{ margin:'0 auto var(--caisse-esp-3)', opacity:0.4 }} />
-              <p style={{ marginBottom:'var(--caisse-esp-4)' }}>Aucun produit</p>
+              {/* CAI-01 — « AUCUN PRODUIT » N'EST DIT QUE SI LE SERVEUR L'A RÉPONDU.
+                  Le banc : « l'écran a demandé au serveur, n'a rien obtenu, et
+                  affirme quand même "Aucun produit" ». C'est l'écran de VENTE :
+                  une marchande qui lit ça range son téléphone. Trois situations,
+                  trois phrases — jamais une seule pour toutes. */}
+              {etatCatalogue.type === 'illisible' ? (
+                <p style={{ marginBottom:'var(--caisse-esp-4)' }}>
+                  Je n’ai pas pu lire tes produits. Ce n’est pas vide&nbsp;: réessaie.
+                </p>
+              ) : etatCatalogue.type === 'attente' ? (
+                <p style={{ marginBottom:'var(--caisse-esp-4)' }}>Je vais chercher tes produits…</p>
+              ) : (
+                <p style={{ marginBottom:'var(--caisse-esp-4)' }}>Aucun produit</p>
+              )}
               <motion.button type="button" whileTap={{ scale:0.97 }} onClick={() => setShowLibre(true)}
                 style={{ minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-3) var(--caisse-esp-5)', borderRadius:'var(--caisse-rayon-4)', border:'none', background:'var(--caisse-vert)', color:'white', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
                 + Autre article

@@ -10,6 +10,7 @@ import { API_URL } from '../utils/api';
 import { prixEffectif } from '../utils/promo.utils';
 import type { LigneDeVente, ProduitServeur, AliasSaisieProduit } from '../types/vente';
 import { jourLocal } from '../utils/jourLocal';
+import { etatCatalogueCaisse, type EtatCatalogueCaisse, type LectureCatalogue } from '../services/etatCatalogueCaisse';
 // Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.
 import {
   enfilerOperation, synchroniser,
@@ -255,6 +256,11 @@ interface CaisseContextType {
   updateProduct: (id: string, updates: Partial<CaisseProduct>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   refreshProducts: () => Promise<void>;
+  /** CAI-01 — ce que la caisse a le DROIT d'affirmer sur son catalogue.
+   *  Ne remplace pas `products` : il dit seulement pourquoi la liste
+   *  est ce qu'elle est. Un écran ne peut plus confondre « rien créé »
+   *  et « pas pu demander ». */
+  etatCatalogue: EtatCatalogueCaisse;
   
   // Transactions (alias)
   addTransaction: (tx: Omit<CaisseTransaction, 'id' | 'date'>) => Promise<void>;
@@ -295,6 +301,15 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<CaisseTransaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<CaisseProduct[]>([]);
+  // ── CAI-01 — OÙ EN EST LA LECTURE DU CATALOGUE ───────────────────────────
+  // `loadProducts` avale son échec et se replie sur le cache du téléphone :
+  // c'est la BONNE décision sur un marché sans réseau. Mais quand le cache est
+  // vide lui aussi, la liste reste `[]` — et `[]` s'affichait « Aucun produit »,
+  // la même phrase que « tu n'as rien créé ». Deux situations, une phrase.
+  // On CONSERVE donc l'information au lieu de la perdre : ce que la caisse a le
+  // droit d'affirmer se décide dans `services/etatCatalogueCaisse.ts`.
+  const [lectureCatalogue, setLectureCatalogue] = useState<LectureCatalogue>('jamais');
+  const [produitsDepuisCache, setProduitsDepuisCache] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<CaisseProduct | null>(null);
 
@@ -764,7 +779,12 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const restaurerDepuisCache = (cacheKey: string) => {
     try {
       const raw = localStorage.getItem(cacheKey);
-      if (raw) setProducts(JSON.parse(raw));
+      if (raw) {
+        setProducts(JSON.parse(raw));
+        // On NOTE que ces produits viennent du téléphone, pas du serveur.
+        // Les montrer est juste ; les présenter comme à jour ne l'est pas.
+        setProduitsDepuisCache(true);
+      }
     } catch { /* un cache illisible ne doit jamais casser l'écran */ }
   };
 
@@ -773,6 +793,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       try { const r = localStorage.getItem('julaba_auth_user'); const id = r ? (JSON.parse(r).id || 'anon') : 'anon'; return `julaba_cache_produits_${id}`; }
       catch { return 'julaba_cache_produits_anon'; }
     })();
+    setLectureCatalogue('chargement');
     try {
       // UN SERVEUR QUI RÉPOND MAL EST PIRE QU'UN SERVEUR ABSENT — corrigé le
       // 18/09/2026. Le catalogue restait VIDE sur un 500/503 alors que le cache
@@ -800,11 +821,15 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         promo_fin: p.promo_fin || null,
       }));
       setProducts(mapped);
+      setProduitsDepuisCache(false);
+      setLectureCatalogue('lu');
       // Cache local : derniers produits connus (vente/stock consultables hors-ligne).
       try { localStorage.setItem(cacheKey, JSON.stringify(mapped)); } catch { /* ignore */ }
     } catch (err: unknown) {
       console.warn('[CaisseContext] loadProducts failed:', err instanceof Error ? err.message : err);
-      // Hors-ligne : servir les derniers produits connus.
+      // Hors-ligne : servir les derniers produits connus. L'échec n'est plus
+      // avalé — il est CONSERVÉ, pour que l'écran cesse de dire « aucun ».
+      setLectureCatalogue('echec');
       restaurerDepuisCache(cacheKey);
     }
   }, []);
@@ -940,6 +965,12 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     updateProduct,
     deleteProduct,
     refreshProducts: loadProducts,
+    // La règle vit dans un module pur, pas ici : elle est relisible seule.
+    etatCatalogue: etatCatalogueCaisse({
+      lecture: lectureCatalogue,
+      nbProduits: products.length,
+      servisDepuisCache: produitsDepuisCache,
+    }),
     addTransaction,
     getSoldeJour,
     getVentesJour,

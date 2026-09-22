@@ -438,8 +438,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 443 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
 | 445 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
 | 454 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
-| 545 | `speak` | dynamique | dernierePhraseRef.current |  |  |
-| 545 | `speak` | dynamique | introLigne() |  |  |
+| 552 | `speak` | dynamique | dernierePhraseRef.current |  |  |
+| 552 | `speak` | dynamique | introLigne() |  |  |
 
 ### `components/marchand/PinConfirmModal.tsx` — auth
 
@@ -877,8 +877,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 322 | `speakMessage` | relais | id |  |  |
-| 434 | `direMessage` | dynamique | annonce.cle |  |  |
+| 337 | `speakMessage` | relais | id |  |  |
+| 449 | `direMessage` | dynamique | annonce.cle |  |  |
 
 ### `contexts/ObjectifContext.tsx` — marchand_autre
 

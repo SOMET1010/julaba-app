@@ -109,7 +109,16 @@ for (const [nom, code] of [["POSCaisse", codeCaisse], ["MicroVenteCaisse", codeM
 }
 
 console.log("\n[5] La maquette est là où on la cherche");
-ok(/Que voulez-vous vendre \?/.test(codeMicro) && /<h1\b/.test(codeMicro), "MicroVenteCaisse : « Que voulez-vous vendre ? » est le H1");
+// CAI-02 — LA GARDE CHANGE DE NATURE, SUR DEMANDE DE PATRICK (22/09/2026).
+// Elle figeait le LITTÉRAL « Que voulez-vous vendre ? » dans le H1. C'est
+// ce littéral qui maintenait le vouvoiement : Tantie tutoie partout
+// ailleurs, et cette phrase partait aussi à voix haute au montage.
+// Elle exige maintenant mieux : que le H1 ne porte AUCUN texte en dur et
+// lise la clé de catalogue. Deux copies d'une phrase finissent toujours
+// par diverger — c'est exactement ce qui s'est passé ici.
+ok(/<h1\b[\s\S]{0,800}?t\('TATA_QUE_VENDRE'\)[\s\S]{0,80}?<\/h1>/.test(codeMicro),
+   "MicroVenteCaisse : le H1 lit la clé TATA_QUE_VENDRE — une seule source pour l'œil et l'oreille");
+ok(!/Que voulez-vous vendre/.test(codeMicro), "et le vouvoiement n'est plus écrit nulle part dans ce fichier");
 ok(/pour terminer/.test(codeMicro) && /cart\.length > 0 &&/.test(codeMicro), "et rappelle « Dis “encaisser” pour terminer » quand le panier n'est pas vide (lecture seule)");
 ok(/J'ai compris :/.test(codeMicro), "le chip « J'ai compris : … » existe");
 ok(/Payer en espèces/.test(codeCaisse) && /<Banknote\b/.test(codeCaisse), "POSCaisse : « Payer en espèces » avec l'icône billet");

@@ -125,6 +125,32 @@ Captures : `docs/parcours/captures/ecran-3/AVANT.png` · `APRES.png`.
 Garde-fou : `test:entree-numero-voix`. Ici le fichier n'était **pas** figé par
 VOICE-01 : correction sur place, sans module parallèle et sans règle en double.
 
+### S5 — Écran 5, Caisse · le dernier du chemin
+
+| Id | Défaut relevé par le banc | Statut |
+|---|---|---|
+| CAI-01 | **Faux « Aucun produit »** — l'écran de VENTE a demandé au serveur, n'a rien obtenu, et affirmait quand même. Une marchande qui lit ça range son téléphone. | **FERMÉ** |
+| CAI-02 | **Vouvoiement, à l'écran ET à voix haute** — « Que voulez-vous vendre ? » était le grand titre ET la phrase dite au montage ; « Je vous écoute » dans la bulle. | **FERMÉ** |
+| CAI-03 | **La question vivait en double** — en dur dans le H1 et dans le catalogue. C'est par là que le vouvoiement a survécu à l'oral après avoir été vu à l'écran. Le H1 lit désormais la clé. | **FERMÉ** |
+| CAI-04 | **Le périmètre d'argent a bougé** : `etatCatalogueCaisse.ts` y est entré (symbole `CaisseContext`). C'est correct — ce module décide ce que l'écran de vente affirme. Le figer demande `--figer-perimetre`. | **OUVERT** — décision de Patrick, jamais d'un agent |
+| CAI-05 | **Une assertion figée a été retirée** : `caisseCharte.test.mts` figeait le littéral « Que voulez-vous vendre ? » comme H1 — c'est lui qui tenait le vouvoiement. Remplacée par une assertion PLUS forte (le H1 ne porte aucun texte en dur et lit la clé), mais le compte d'assertions a bougé. Demande `--figer-gardes`. | **OUVERT** — décision de Patrick, jamais d'un agent |
+| CAI-06 | Le catalogue servi depuis le cache du téléphone est modélisé (état `memoire`) mais pas encore montré : une liste périmée est présentée comme à jour. | **OUVERT** — hors périmètre de ce lot (« pas de dettes voisines ») |
+
+**Preuve de fermeture** (banc, écran 5, sans réseau) :
+
+```
+avant : ZERO QUI MENT (« Aucun produit ») · vouvoie (écran ET voix)
+après : sortie 0 — muet non · impasses aucune · zero.ment false · vouvoie false
+        charte.ok TRUE (499 jetons) — premier écran entièrement vert du parcours
+        « Que veux-tu vendre ? »
+```
+
+Captures : `docs/parcours/captures/ecran-5/AVANT.png` · `APRES.png`.
+Gardes : `test:catalogue-caisse-etat` · `test:caisse-tutoie`.
+
+**Le banc lui-même était faux** : sa `preuve` attendait la phrase vouvoyante.
+Corrigé — la preuve suit l'écran, jamais l'inverse.
+
 ---
 
 ## Le reste du chemin — non commencé
@@ -133,7 +159,6 @@ Périmètre déclaré par Patrick : **écrans 1 → 5 uniquement** pour l'instan
 
 | Écran | Ce que le banc reproche | Statut |
 |---|---|---|
-| 5 — Caisse | `ZÉRO QUI MENT` (« Aucun produit ») · vouvoie (à l'écran ET à voix haute) | OUVERT |
 
 ## Les 25 portes — gelées
 
