@@ -20,6 +20,7 @@ import { useMemo } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import { getLangPref } from '../../hooks/useLangPref';
 import { info as tracerVoix } from '../../utils/voiceTrace';
+import { surEnonceArgent } from './argent/journalArgent';
 import { enregistrerRenduVocal, rendreMessage, type DireTexte } from './contrat-audio';
 import { RENDU_VOIX_LOCALE } from './renduVoixLocale';
 import { LOCALE_PAR_PREFERENCE } from './registry';
@@ -35,6 +36,13 @@ definirFournisseurLocale(() => {
 
 // Chaque repli va au journal de voix (« Rapport de test » de Patrick).
 surFallback((trace) => tracerVoix('I18N_FALLBACK', { ...trace }));
+
+// CHAQUE ÉNONCÉ D'ARGENT AUSSI, et avec ce que Patrick a demandé mot pour
+// mot : valeur source · unité source · texte produit · chemin utilisé ·
+// drapeau expérimental actif ou non. C'est ce qui permet de constater APRÈS
+// COUP, sur le rapport de test d'un vrai téléphone, qu'un montant est bien
+// parti sous sa forme parlée — ou qu'il a été refusé faute d'unité.
+surEnonceArgent((ligne) => tracerVoix('ARGENT_ENONCE', { ...ligne }));
 
 // La voix suit la langue du message RÉSOLU (renduVoixLocale.ts). Pour toute
 // phrase servie en français — donc pour TOUT ce qui porte un montant — ce

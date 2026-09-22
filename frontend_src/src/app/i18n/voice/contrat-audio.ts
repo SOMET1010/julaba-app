@@ -17,10 +17,19 @@
  * packs, voix natives ou secours (tataVoice, tataUiClips, voicePacks,
  * audioManager, elevenlabs, voixNative) : ce chemin appartient à Manus.
  *
- * INVARIANT QUE MANUS DOIT GARDER : `message.texte` est LA chaîne dite ET
- * affichée (garde-fou caisseRelectureAffichee). Un rendu peut jouer un clip à
- * la place de la synthèse ; il ne réécrit pas le texte.
+ * INVARIANT QUE MANUS DOIT GARDER : `message.texte` est LA chaîne AFFICHÉE, et
+ * `message.texteParle` LA chaîne DITE. Un rendu peut jouer un clip à la place
+ * de la synthèse ; il ne réécrit ni l'une ni l'autre.
+ *
+ * POURQUOI DEUX CHAÎNES DEPUIS LE 22/09/2026. Elles n'en faisaient qu'une, et
+ * c'était un défaut d'argent : `3 000` est parfait pour l'œil et faux pour
+ * l'oreille — l'espace fine insécable (U+202F) faisait épeler « trois zéro
+ * zéro zéro » au moteur de synthèse, sur l'APK livré, en français, sur TOUS
+ * les montants. Les deux formes sont DÉRIVÉES de la même source structurée
+ * (i18n/voice/argent/) ; l'affichage n'a pas bougé d'un pixel. Pour toute
+ * phrase sans argent, `texteParle === texte`.
  */
+import { formeParleeDuMessage } from './runtime';
 import type { MessageVocal } from './runtime';
 export type { MessageVocal } from './runtime';
 export { IDS_TTS, IDS_INTENTS, INTENTS_CRITIQUES, MESSAGES_CRITIQUES } from './catalog';
@@ -35,8 +44,16 @@ export type DireTexte = (texte: string) => void | Promise<void>;
  */
 export type RenduVocal = (message: MessageVocal, direTexte: DireTexte) => void | Promise<void>;
 
-/** Comportement d'aujourd'hui : le texte résolu part au `speak` existant. */
-export const RENDU_PAR_DEFAUT: RenduVocal = (message, direTexte) => direTexte(message.texte);
+/**
+ * LA CHAÎNE QUI PART AU MOTEUR DE SYNTHÈSE — et le seul endroit qui le décide.
+ * Tout message issu de `resoudreMessage` porte sa forme parlée ; un
+ * `MessageVocal` forgé à la main dans un test de rendu n'en a pas, et il n'a
+ * pas non plus de montant à dire.
+ */
+export { formeParleeDuMessage as formeDite };
+
+/** Le chemin `speak` existant — avec la forme PARLÉE, pas la forme écran. */
+export const RENDU_PAR_DEFAUT: RenduVocal = (message, direTexte) => direTexte(formeParleeDuMessage(message));
 
 let renduCourant: RenduVocal = RENDU_PAR_DEFAUT;
 
