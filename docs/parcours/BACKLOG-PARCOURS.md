@@ -163,7 +163,8 @@ son téléphone le 22/09.
 | VOX-01b | **« J'ai compris » était un mensonge** : il s'affichait sur une simple transcription. | **FERMÉ** |
 | VOX-01c | **L'écran montrait la sortie brute de la machine.** | **FERMÉ** |
 | CAI-09 | `caisseTheorique` additionne aussi `acompte_credit` et `reglement_credit`. Leurs routes ne passent pas par la nouvelle garde. Même défaut, ailleurs. | **OUVERT** — hors périmètre du lot |
-| MAR-HIS-001 | « Ce mois » affiche « Aujourd'hui tu as gagné… » (`ResumeCaisse.tsx:334`, texte en dur). | **OUVERT** |
+| HIS-01a (MAR-HIS-001) | **« Ce mois » affichait « Aujourd'hui tu as gagné… »** — `ResumeCaisse.tsx:334`. Les chiffres venaient bien de la période choisie ; c'est la PHRASE qui mentait sur ce qu'ils comptaient. « Aujourd'hui » et « Résumé du jour » étaient écrits en dur, à deux endroits. | **FERMÉ** |
+| HIS-01b | **DETTE VOISINE, trouvée en fermant la première** : la phrase DITE assemblait ses trois montants avec `toLocaleString('fr-FR')`, puis partait à `speak(texte)`. L'espace fine insécable (U+202F) atteignait le moteur, qui épelait « trois zéro zéro zéro ». C'est la faute fermée le 22/09 sur la caisse (`deuxFormes`), encore vivante sur le résumé. | **FERMÉ** |
 | MAR-DEP-001 | « + Noter une dépense » à renommer ; catégorie de dépense non enregistrée (le **libellé**, lui, est fermé par `5259490`). | **OUVERT** |
 | MAR-VTE-001 | « Son clip Tata Nanti Lou n'est pas encore enregistré » — `useVoiceCore.ts:355`, **figé par VOICE-01**. | **OUVERT** — desserrage = décision de Patrick |
 | CAI-08 | « Choisir à l'écran » : Patrick a mis **deux heures** à comprendre. L'accueil dit déjà « parler ou toucher les produits » — un concept, deux langues. | **OUVERT** — arbitrage de formulation |
@@ -177,7 +178,25 @@ rouge avant : Expected >= 400 / Received 201  (la vente après clôture passait)
 après       : 239 invariants verts, 47 suites
 ```
 
-Gardes : `cai-02-journee-fermee.spec.ts` · `test:ecoute-caisse`.
+**Preuve de fermeture de HIS-01** (la preuve TRAVERSE : on ne vérifie pas que
+l'écran appelle le catalogue, on lit ce que le catalogue rend, à l'œil et à
+l'oreille, sur les quatre périodes) :
+
+```
+rouge avant : ✗ la phrase affichée ne commence plus par « Aujourd'hui »
+              ✗ la phrase dite ne s'appelle plus « Résumé du jour »
+              ✗ l'écran passe par la règle au lieu de la réécrire
+              ✗ le résumé parlé passe par le catalogue
+après       : 30days → écran   : « Sur les 30 derniers jours, tu as gagné 33 600 francs. »
+              30days → oreille : « … trente-trois mille six cents francs … »
+```
+
+**Ce que HIS-01 NE ferme pas, et qui reste nommé.** Le bouton « Personnalisé »
+dit « Sur la période choisie » — il ne relit pas les deux dates. C'est un choix :
+une date lue à voix haute est un autre sujet (format, ordre, année), et rien ne
+l'exige pour le pilote. **HORS PÉRIMÈTRE JUSTIFIÉ.**
+
+Gardes : `cai-02-journee-fermee.spec.ts` · `test:ecoute-caisse` · `test:resume-periode`.
 
 ---
 

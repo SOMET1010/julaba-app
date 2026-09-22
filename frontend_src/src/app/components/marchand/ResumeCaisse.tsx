@@ -35,12 +35,30 @@ import {
 } from 'recharts';
 
 import { Montant, MontantCard } from '../shared/Montant';
+import { useSpeakMessage } from '../../i18n/voice/speakMessage';
+import { t } from '../../i18n/voice/runtime';
+import {
+  ouverturePhrasePeriode, complementPeriode, type PeriodeResume,
+} from '../../services/resumePeriode';
 
-type Period = 'today' | '7days' | '30days' | 'custom';
+/**
+ * HIS-01 — LA PÉRIODE N'EST PLUS ÉCRITE EN DUR.
+ *
+ * La liste des périodes vit désormais dans `services/resumePeriode.ts`, avec
+ * les mots qui les nomment. Deux endroits qui énuméraient les mêmes quatre
+ * valeurs finissaient par diverger : c'est ainsi qu'« Aujourd'hui » s'est
+ * retrouvé collé au total d'un mois.
+ */
+type Period = PeriodeResume;
 
 export function ResumeCaisse() {
-  const { getFinancialSummary, getSalesHistory, transactions, currentSession, speak, isOnline } = useApp();
+  const { getFinancialSummary, getSalesHistory, transactions, currentSession, isOnline } = useApp();
   const { stocks } = useStock();
+  // La voix passe par le catalogue : c'est le SEUL chemin qui produise la
+  // forme PARLÉE des montants (« trente-trois mille six cents francs »).
+  // `speak(texte)` envoyait « 33 600 », que le moteur épelait « trois zéro
+  // zéro zéro » — la faute fermée le 22/09 sur la caisse, encore vivante ici.
+  const speakMessage = useSpeakMessage();
   
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('today');
   const [customStart, setCustomStart] = useState('');
@@ -235,6 +253,42 @@ export function ResumeCaisse() {
     ) || null;
   }, [stocks]);
 
+  // ── LE BILAN DE TANTIE LOU — HIS-01 ────────────────────────────────────────
+  //
+  // LE DÉFAUT FERMÉ ICI, mot pour mot depuis la recette terrain (MAR-HIS-001) :
+  // « je sélectionne la périodicité "Ce mois" et il est affiché "Aujourd'hui tu
+  // as gagné 33 600 francs" ». Les chiffres, eux, étaient justes — ils venaient
+  // bien de la période choisie. C'est la PHRASE qui mentait sur ce qu'ils
+  // comptaient, parce que « Aujourd'hui » et « du jour » étaient écrits en dur.
+  // Une marchande qui lit ça sur le total d'un mois croit avoir fait une
+  // journée exceptionnelle.
+  //
+  // UNE SEULE SOURCE POUR L'ŒIL ET POUR L'OREILLE. Les deux phrases se
+  // construisent maintenant à partir des MÊMES clés du catalogue, avec la
+  // MÊME période. Elles ne peuvent plus diverger : c'était le cas avant, la
+  // phrase affichée et la phrase dite se recopiaient l'une l'autre à la main.
+  const variablesBilan = {
+    periode: ouverturePhrasePeriode(selectedPeriod),
+    ventes: financialData.totalVentes,
+    depenses: financialData.totalCahier,
+  };
+  const phraseBilan = financialData.beneficeNet >= 0
+    ? (financialData.totalCahier === 0
+        ? t('RESUME_BILAN_SANS_DEPENSE', variablesBilan)
+        : t('RESUME_BILAN_GAGNE', variablesBilan))
+    : t('RESUME_BILAN_PERTE', { periode: ouverturePhrasePeriode(selectedPeriod) });
+
+  const direLeResume = () => {
+    const vars = {
+      complement: complementPeriode(selectedPeriod),
+      ventes: financialData.totalVentes,
+      depenses: financialData.totalCahier,
+      solde: soldeActuel,
+    };
+    if (financialData.beneficeNet >= 0) speakMessage('RESUME_DETAIL', { ...vars, heure: heurePointe });
+    else speakMessage('RESUME_DETAIL_PERTE', vars);
+  };
+
   return (
     <SubPageLayout role="marchand" title="Résumé détaillé">
         <div style={{ padding:'14px 0 0', display:'flex', flexDirection:'column', gap:12 }}>
@@ -330,19 +384,11 @@ export function ResumeCaisse() {
             </div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:12, fontWeight:700, color:'var(--encre)', lineHeight:1.5 }}>
-                {financialData.beneficeNet >= 0
-                  ? `Aujourd'hui tu as gagné ${financialData.totalVentes.toLocaleString('fr-FR')} francs. ${financialData.totalCahier === 0 ? "Tu as rien dépensé. Bravo !" : `Tu as dépensé ${financialData.totalCahier.toLocaleString('fr-FR')} francs.`}`
-                  : `Attention ! Tu as plus dépensé que gagné aujourd'hui. Fais attention à tes dépenses.`
-                }
+                {phraseBilan}
               </div>
               <div style={{ fontSize:10, color:'var(--encre-4)', marginTop:2 }}>Tantie Nanti Lou · appuie sur lecture</div>
             </div>
-            <motion.button whileTap={{ scale:0.9 }} onClick={() => {
-              const resume = financialData.beneficeNet >= 0
-                ? `Résumé du jour. Ventes: ${financialData.totalVentes.toLocaleString('fr-FR')} francs. Dépenses: ${financialData.totalCahier.toLocaleString('fr-FR')} francs. Solde actuel: ${soldeActuel.toLocaleString('fr-FR')} francs. Heure de pointe: ${heurePointe}.`
-                : `Attention. Tu as plus dépensé que gagné. Ventes: ${financialData.totalVentes.toLocaleString('fr-FR')} francs. Dépenses: ${financialData.totalCahier.toLocaleString('fr-FR')} francs. Solde actuel: ${soldeActuel.toLocaleString('fr-FR')} francs.`;
-              speak(resume);
-            }}
+            <motion.button whileTap={{ scale:0.9 }} onClick={direLeResume}
               style={{ width:36, height:36, borderRadius:'50%', background:'#AF5B23', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </motion.button>
