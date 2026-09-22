@@ -167,6 +167,21 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   // SCIEMMENT — et c'est écrit, plutôt que d'aligner le texte sur un son périmé.
   { id: 'AKWABA_ACCUEIL', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Akwaba. Pour vendre, touche un produit, ou parle à Tantie Nanti Lou. On est ensemble.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/Welcome.tsx', note: 'Recours quand aucun clip n\'est embarque. Le clip, lui, dit encore « Tata » : reenregistrement requis (INTRO_CLIPS.accueil).' },
   { id: 'AKWABA_RETOUR', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Re-bonjour ! On y va.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/Welcome.tsx', note: 'Elle est deja venue (utils/parcours.estHabituee). Phrase reprise telle quelle de INTRO_CLIPS.retour.' },
+  // ── RÉSUMÉ DE CAISSE (HIS-01) — la période cesse d'être écrite en dur ───
+  // Recette terrain MAR-HIS-001 : « je sélectionne la périodicité "Ce mois" et il est affiché "Aujourd'hui tu as gagné 33 600 francs" ».
+  //
+  // Les chiffres étaient JUSTES — ils venaient bien de la période choisie.
+  // C'est la phrase qui mentait sur ce qu'ils comptaient. {periode} et
+  // {complement} viennent de `services/resumePeriode.ts`.
+  //
+  // ELLES SONT `critiqueArgent` PARCE QU'ELLES PORTENT DES MONTANTS : c'est ce
+  // qui leur donne la forme PARLÉE (« trois mille francs ») au lieu de la
+  // forme écrite, que le moteur épelait « trois zéro zéro zéro ».
+  { id: 'RESUME_BILAN_GAGNE', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: '{periode}, tu as gagné {ventes} {devise}. Tu as dépensé {depenses} {devise}.', frMarche: null, variables: ['periode', 'ventes', 'depenses'], audioMode: 'none', statut: 'migre', owner: 'manus', source: 'components/marchand/ResumeCaisse.tsx', note: 'Bilan de la periode choisie. {periode} NE DOIT JAMAIS etre fige : c est tout le defaut ferme ici.' },
+  { id: 'RESUME_BILAN_SANS_DEPENSE', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: '{periode}, tu as gagné {ventes} {devise}. Tu as rien dépensé. Bravo !', frMarche: null, variables: ['periode', 'ventes'], audioMode: 'none', statut: 'migre', owner: 'manus', source: 'components/marchand/ResumeCaisse.tsx', note: 'Meme bilan, zero depense. Formulation d origine conservee.' },
+  { id: 'RESUME_BILAN_PERTE', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Attention ! {periode}, tu as plus dépensé que gagné. Fais attention à tes dépenses.', frMarche: null, variables: ['periode'], audioMode: 'none', statut: 'migre', owner: 'manus', source: 'components/marchand/ResumeCaisse.tsx', note: 'Une perte se dit, elle ne se masque pas (arbitrage du 19/09).' },
+  { id: 'RESUME_DETAIL', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Résumé {complement}. Ventes : {ventes} {devise}. Dépenses : {depenses} {devise}. Solde actuel : {solde} {devise}. Heure de pointe : {heure}.', frMarche: null, variables: ['complement', 'ventes', 'depenses', 'solde', 'heure'], audioMode: 'none', statut: 'migre', owner: 'manus', source: 'components/marchand/ResumeCaisse.tsx', note: 'Lecture a voix haute du resume. Les trois montants partent en forme PARLEE.' },
+  { id: 'RESUME_DETAIL_PERTE', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Attention. Tu as plus dépensé que gagné {complement}. Ventes : {ventes} {devise}. Dépenses : {depenses} {devise}. Solde actuel : {solde} {devise}.', frMarche: null, variables: ['complement', 'ventes', 'depenses', 'solde'], audioMode: 'none', statut: 'migre', owner: 'manus', source: 'components/marchand/ResumeCaisse.tsx', note: 'Meme lecture, resultat negatif.' },
   // ── TON NUMÉRO (NUM-01) — écran 3, toujours avant connexion ──────────────
   // Le banc l'a relevé MUET au montage et sous les quatorze éléments, avec une
   // impasse : le bouton d'écoute qui ne fait rien. Les six phrases ci-dessous

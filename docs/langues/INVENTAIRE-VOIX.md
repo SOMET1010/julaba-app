@@ -8,13 +8,13 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **408** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 430 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **409** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 431 |
 | — littéraux (phrase fixe en dur) | 205 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 94 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 69 |
 | — relais (`dire = (t) => speak(t)`) | 17 |
-| — clés i18n (`speakMessage('…')`, `t('…')`) | 44 |
+| — clés i18n (`speakMessage('…')`, `t('…')`) | 46 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **255** |
 | Dont dynamiques (avec variables) | 94 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **65** |
@@ -72,6 +72,7 @@
 | `components/academy/UniversalAcademy.tsx` | academy | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `components/backoffice/BOLayout.tsx` | backoffice | 2 | 1 | 1 | 0 | 0 | 0 | 0 |
 | `components/backoffice/BOProfil.tsx` | backoffice | 2 | 1 | 0 | 0 | 1 | 0 | 0 |
+| `components/marchand/ResumeCaisse.tsx` | caisse | 2 | 0 | 0 | 0 | 0 | 2 | 0 |
 | `components/marchand/TontineDetail.tsx` | marchand_autre | 2 | 3 | 0 | 0 | 0 | 0 | 0 |
 | `components/producteur/ProducteurAlertes.tsx` | producteur | 2 | 1 | 0 | 1 | 0 | 0 | 0 |
 | `components/producteur/ProducteurModals.tsx` | producteur | 2 | 2 | 0 | 0 | 0 | 0 | 0 |
@@ -91,7 +92,6 @@
 | `components/marchand/MaCooperative.tsx` | marchand_autre | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/MarchandAlertes.tsx` | marchand_autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/ProtectionSociale.tsx` | marchand_autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
-| `components/marchand/ResumeCaisse.tsx` | caisse | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/Tontines.tsx` | marchand_autre | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marketplace/Marketplace.tsx` | marketplace | 1 | 0 | 1 | 0 | 0 | 0 | 1 |
 | `components/producteur/MesRecoltesPage.tsx` | producteur | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
@@ -110,8 +110,8 @@
 | stock | 57 | 57 | 9 |
 | marchand_autre | 54 | 41 | 17 |
 | partage | 37 | 24 | 0 |
+| caisse | 34 | 0 | 0 |
 | wallet | 34 | 36 | 18 |
-| caisse | 33 | 0 | 0 |
 | vente | 27 | 0 | 0 |
 | auth | 24 | 17 | 0 |
 | cooperative | 21 | 19 | 4 |
@@ -498,7 +498,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 344 | `speak` | dynamique | resume |  |  |
+| 288 | `speakMessage` | cle_i18n | RESUME_DETAIL |  |  |
+| 289 | `speakMessage` | cle_i18n | RESUME_DETAIL_PERTE |  |  |
 
 ### `components/marchand/SaisieGuidee.tsx` — vente
 
