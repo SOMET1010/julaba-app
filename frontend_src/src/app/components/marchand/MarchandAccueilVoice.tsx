@@ -16,6 +16,11 @@ import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { useMontantsPrives } from '../../hooks/useMontantsPrives';
 import { direAccueilMarchand } from '../../services/accueilMarchandVoix';
+import { etatCaisseAccueil } from '../../services/etatCaisseAccueil';
+import { useLectureHistorique } from '../../hooks/useLectureHistorique';
+import { ventesEnAttenteEnvoi } from '../../voice-offline/incidentsHorsLigne';
+import { useSpeakMessage } from '../../i18n/voice/speakMessage';
+import { guidageVocal } from '../../utils/accessMode';
 
 /**
  * Accueil marchand « voix & icônes d'abord ».
@@ -27,9 +32,38 @@ import { direAccueilMarchand } from '../../services/accueilMarchandVoix';
  */
 function MarchandAccueilVoiceInner() {
   const navigate = useNavigate();
-  const { user, getTodayStats, currentSession } = useApp();
+  const { user, getTodayStats, currentSession, transactions } = useApp();
   const stats = getTodayStats();
-  const caisse = stats?.caisse || 0;
+  const speakMessage = useSpeakMessage();
+
+  // ── ACC-01 — « MA CAISSE AUJOURD'HUI » CESSE DE DIRE ZÉRO QUAND ELLE NE SAIT PAS.
+  //
+  // Avant : `stats?.caisse || 0`. Sans réseau, `transactions` reste vide et
+  // `currentSession` nul ; les trois termes du calcul valent zéro et la
+  // soustraction rend un « 0 F » parfaitement formé. Patrick avait vendu.
+  //
+  // Le CALCUL n'est pas touché — c'est toujours `getTodayStats().caisse`. Ce
+  // qui change, c'est le DROIT de l'afficher : la règle vit dans un module pur
+  // (services/etatCaisseAccueil.ts), relisible seul, et non éparpillée ici.
+  const etatLecture = useLectureHistorique();
+  const [ventesEnFile, setVentesEnFile] = useState(0);
+  useEffect(() => {
+    let vivant = true;
+    ventesEnAttenteEnvoi(String(user?.id ?? '')).then(n => { if (vivant) setVentesEnFile(n); })
+      .catch(() => { /* la file illisible ne doit pas casser l'accueil */ });
+    return () => { vivant = false; };
+  }, [user?.id, etatLecture]);
+
+  // « A-t-on lu quelque chose ? » : une transaction reçue, ou la session du
+  // jour connue. Faux = les termes valaient zéro parce qu'ils étaient VIDES.
+  const aDesDonnees = (transactions?.length ?? 0) > 0 || currentSession != null;
+  const etatCaisse = etatCaisseAccueil({
+    lecture: etatLecture,
+    montant: stats?.caisse ?? Number.NaN,
+    aDesDonnees,
+    ventesEnFile,
+  });
+  const caisseAffichable = etatCaisse.type === 'connue' || etatCaisse.type === 'partielle';
   const prenom = user?.firstName || user?.prenoms || user?.prenom || user?.nom || '';
   // Le nom qu'elle a choisi dans sa fiche, sinon son prénom seul (voir
   // utils/appellation) : un marchand était accueilli par « Bonjour Maman ».
@@ -64,11 +98,49 @@ function MarchandAccueilVoiceInner() {
   const allerCaisse = () => navigate('/marchand/caisse');
   const reprendreStale = () => { resumeStaleCart(); allerCaisse(); };
 
-  const direCaisse = () => {
-    if (!soldeVisible) return;
-    void direAccueilMarchand('caisse');
+  // ── ACC-01 — LES DEUX IMPASSES. Le banc a touché « Écouter Tata dire
+  // bonjour » et « Écouter le message de bienvenue » : rien ne bougeait. La
+  // cause : `accueilMarchandClipUrl` rend `null` quand le drapeau des clips
+  // est éteint — c'est-à-dire dans TOUT build livré — et `direAccueilMarchand`
+  // « ne synthétise jamais un texte ». Deux boutons câblés sur le vide.
+  //
+  // On ne change pas cette règle : le clip enregistré reste PRÉFÉRÉ, parce que
+  // c'est la voix de Tantie. On ajoute seulement ce qui manquait — un recours
+  // quand il n'y en a pas : la clé de catalogue, dite par le même moteur que
+  // la caisse. Un bouton qui promet un son en produit un, ou se tait parce que
+  // la marchande a coupé le son ; jamais parce que personne n'a rien branché.
+  const direBonjour = () => {
+    void direAccueilMarchand('comptoir');
+    speakMessage('ACCUEIL_COMPTOIR');
   };
-  const bonjour = () => { void direAccueilMarchand('comptoir'); };
+
+  /** Ce que la caisse a le droit de DIRE — exactement ce qu'elle affiche.
+   *  Montants masqués : on ne prononce pas un chiffre que l'œil a caché. */
+  const direCaisse = () => {
+    if (!soldeVisible) { speakMessage('ACCUEIL_COMPTOIR'); return; }
+    if (etatCaisse.type === 'connue') speakMessage('ACCUEIL_CAISSE_CONNUE', { caisse: etatCaisse.montant });
+    else if (etatCaisse.type === 'partielle') speakMessage('ACCUEIL_CAISSE_PARTIELLE', { caisse: etatCaisse.montant });
+    else speakMessage('ACCUEIL_CAISSE_ILLISIBLE');
+  };
+  const bonjour = direBonjour;
+
+  // ── ACC-01 — LE SILENCE AU MONTAGE. Le banc : « 0 demande au montage ».
+  // L'écran que toute marchande voit à chaque ouverture ne disait rien.
+  //
+  // UNE SEULE PHRASE, et c'est celle qui porte son argent — pas un bonjour
+  // suivi d'un chiffre suivi d'un conseil. Le bonjour reste sous le doigt.
+  // On attend d'avoir une réponse : tant que l'état est « attente », on ne
+  // sait rien, et ne rien savoir ne se raconte pas.
+  const [ditAuMontage, setDitAuMontage] = useState(false);
+  useEffect(() => {
+    if (ditAuMontage || etatCaisse.type === 'attente') return;
+    if (!guidageVocal()) return;          // profil « je lis » : rien de parlé
+    setDitAuMontage(true);
+    direCaisse();
+    // `direCaisse` relit `etatCaisse` du rendu courant : la dépendance est
+    // le TYPE d'état, pas la fonction, qui change à chaque rendu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etatCaisse.type, ditAuMontage]);
 
   // Grosses tuiles : icônes vectorielles LOCALES (marchent hors-ligne, aucune
   // dépendance réseau) + un seul libellé clair. Avant : illustrations distantes
@@ -128,9 +200,32 @@ function MarchandAccueilVoiceInner() {
           <button type="button" className="commerce-balance-main" onClick={() => setShowResume(true)} aria-label="Voir le résumé du jour">
             <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', opacity: 0.92 }}>Ma caisse aujourd'hui</div>
             <div className="commerce-balance-value">
-              {soldeVisible ? Math.round(caisse).toLocaleString('fr-FR') : '●●●●●'}<small> F</small>
+              {!soldeVisible
+                ? <>●●●●●<small> F</small></>
+                : caisseAffichable
+                  // « au moins » : le chiffre est un PLANCHER. Le taire ferait
+                  // du plancher un total, ce qui est exactement le mensonge
+                  // qu'on ferme — dans l'autre sens.
+                  ? <>{etatCaisse.type === 'partielle' ? <small style={{ fontSize: '0.5em', opacity: 0.85 }}>au moins </small> : null}
+                      {Math.round((etatCaisse as { montant: number }).montant).toLocaleString('fr-FR')}<small> F</small></>
+                  // INCONNU ≠ 0. Un tiret ne se confond avec aucun montant.
+                  : <>—</>}
             </div>
           </button>
+          {soldeVisible && !caisseAffichable ? (
+            <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.35, marginTop: 2, opacity: 0.95 }}>
+              {etatCaisse.type === 'illisible'
+                ? <>Je n’ai pas pu lire ta caisse. Ce n’est pas zéro&nbsp;: ton argent est là.</>
+                : <>Je vais chercher ta caisse…</>}
+            </div>
+          ) : null}
+          {soldeVisible && etatCaisse.type === 'partielle' && etatCaisse.ventesEnFile > 0 ? (
+            <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.35, marginTop: 2, opacity: 0.95 }}>
+              {etatCaisse.ventesEnFile === 1
+                ? <>1 vente est gardée sur ce téléphone, pas encore envoyée.</>
+                : <>{etatCaisse.ventesEnFile} ventes sont gardées sur ce téléphone, pas encore envoyées.</>}
+            </div>
+          ) : null}
           <div className="commerce-balance-actions">
             <motion.button whileTap={{ scale: 0.9 }} onClick={direCaisse} aria-label="Écouter ma caisse">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>
