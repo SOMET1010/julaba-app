@@ -620,12 +620,26 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
               un autre écran : la saisie guidée s'ouvre ici, et les photos des
               produits sont déjà juste en dessous, dans la grille de cette page.
               SECONDAIRE (UI-03) : un lien discret sous la bulle, sans cadre —
-              44 px de haut quand même, c'est un doigt qui le touche. */}
+              44 px de haut quand même, c'est un doigt qui le touche.
+
+              CAI-08 — « TOUCHER LES PRODUITS », arbitrage de Patrick du 22/09.
+              Ce bouton disait « Choisir à l'écran », et ses mots à lui :
+              « j'ai mis deux heures à comprendre ce que ça voulait dire ».
+              Deux fautes dans quatre mots. « Choisir » ne nomme aucun geste —
+              on choisit avec la tête, pas avec la main. Et « à l'écran » ne
+              distingue rien : la voix aussi part d'un bouton à l'écran.
+              Surtout, l'accueil annonce DÉJÀ la caisse par « Parler ou toucher
+              les produits » : le même geste avait deux langues, et une
+              marchande qui ne lit pas se fait lire l'accueil, retient
+              « toucher les produits », et ne le retrouvait nulle part.
+              L'étiquette lue et le texte vu sont désormais LA MÊME phrase :
+              deux libellés pour un bouton, c'est deux boutons pour qui ne voit
+              pas la même chose que qui n'entend pas. */}
           <button type="button" onClick={() => setSaisieOuverte(v => !v)}
-            aria-label="Choisir la vente à l’écran"
+            aria-label="Toucher les produits"
             style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-1)', minHeight: 'var(--caisse-cible-tactile)', background: saisieOuverte ? 'var(--caisse-orange-voix)' : 'transparent', border: 'none', borderRadius: 'var(--caisse-rayon-3)', padding: '0 var(--caisse-esp-2)', cursor: 'pointer', fontFamily: 'inherit' }}>
             <Keyboard size={20} color={saisieOuverte ? 'white' : 'var(--caisse-gris-texte)'} />
-            <span style={{ font: 'var(--caisse-font-legende)', fontSize: 14, lineHeight: '18px', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--caisse-gris-texte)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Choisir à l’écran</span>
+            <span style={{ font: 'var(--caisse-font-legende)', fontSize: 14, lineHeight: '18px', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--caisse-gris-texte)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Toucher les produits</span>
           </button>
         </div>
       </div>

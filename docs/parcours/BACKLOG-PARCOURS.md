@@ -175,7 +175,9 @@ son téléphone le 22/09.
 | STK-01c | **`RETURNING *` puis `result[0]` sur un UPDATE.** `dataSource.query` rend `[lignes, nombre]` sur un UPDATE et les lignes sur un INSERT : la route répondait `{ produit: [ {…} ] }` sur un succès, et **200 `{ produit: [] }`** quand l'id n'était pas à la marchande. L'écran affichait « Produit mis à jour » sur une modification qui n'avait pas eu lieu. | **FERMÉ** |
 | STK-01d | **`Number('')` vaut zéro.** L'écran remet le champ à `''` quand la marchande l'efface ; vider la case du prix l'aurait écrit à **zéro**, et le produit serait parti en caisse à zéro franc. Dette VOISINE trouvée en fermant STK-01a. | **FERMÉ** |
 | MAR-VTE-001 | « Son clip Tata Nanti Lou n'est pas encore enregistré » — `useVoiceCore.ts:355`, **figé par VOICE-01**. | **OUVERT** — desserrage = décision de Patrick |
-| CAI-08 | « Choisir à l'écran » : Patrick a mis **deux heures** à comprendre. L'accueil dit déjà « parler ou toucher les produits » — un concept, deux langues. | **OUVERT** — arbitrage de formulation |
+| CAI-08 | **« Choisir à l'écran »** : Patrick a mis **deux heures** à comprendre. Deux fautes en quatre mots — « choisir » ne nomme aucun geste (on choisit avec la tête), « à l'écran » ne distingue rien (la voix aussi part d'un bouton à l'écran). Et l'accueil annonçait DÉJÀ « Parler ou toucher les produits » : un geste, deux langues. **Arbitrage de Patrick du 22/09 : « Toucher les produits ».** L'étiquette lue et le texte vu sont désormais la même phrase. | **FERMÉ** |
+| CAI-10 | **L'icône du bouton est un CLAVIER** (`Keyboard`, lucide) alors qu'il dit maintenant « Toucher les produits » et qu'il ouvre une grille de produits. Pour une marchande qui ne lit pas, l'icône EST le message : elle dit « écrire » là où la phrase dit « toucher ». Dette VOISINE nommée en fermant CAI-08. | **OUVERT** — arbitrage visuel |
+| CAI-11 | **Un troisième nom pour le même geste** : le panneau que ce bouton ouvre s'intitule « SAISIR SANS PARLER » (`SaisieGuidee.tsx:183`). « Saisir » n'est pas plus un geste de la main que « choisir ». Dette VOISINE nommée, pas fermée. | **OUVERT** — arbitrage de formulation |
 | CAI-07 | Deux « J'ai compris » simultanés à l'écran. À revérifier : VOX-01 a peut-être fermé la cause. | **À REMESURER** |
 
 **Preuve de fermeture de CAI-02** (invariant sur base réelle) :
@@ -250,7 +252,7 @@ une case vidée, pas un zéro.
 Gardes : `cai-02-journee-fermee.spec.ts` · `dep-02-categorie-depense.spec.ts` ·
 `stk-01-modifier-produit.spec.ts` · `produit-champs-a-ecrire.spec.ts` ·
 `test:ecoute-caisse` · `test:resume-periode` · `test:categorie-depense` ·
-`test:depense-libelle`.
+`test:depense-libelle` · `test:geste-tactile`.
 
 ---
 
