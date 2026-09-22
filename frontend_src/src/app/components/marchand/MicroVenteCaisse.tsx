@@ -464,9 +464,11 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // La bulle de Tata : une INVITATION à répondre, pas une annonce (arbitrage
   // du 20/09/2026, maquette verte). Au repos elle ne répète pas le grand titre
   // qui est juste au-dessus (UI-02) : « Dis-moi ce que tu vends » — et non
-  // « Je vous écoute », parce que le micro n'écoute pas encore ; ce qui est DIT
+  // « Je t'écoute », parce que le micro n'écoute pas encore ; ce qui est DIT
   // à l'arrivée reste la question du titre (introLigne).
-  const bulle = isRecording ? 'Je vous écoute'
+  // CAI-02 : Tantie TUTOIE. Le catalogue vocal ne porte pas un vouvoiement ;
+  // cette bulle en portait un, seule de tout l'écran avec le grand titre.
+  const bulle = isRecording ? 'Je t’écoute'
     : isLoading ? 'Un instant…'
     : isSpeaking ? 'Tantie parle…'
     : isError ? "Je n'ai pas compris"
@@ -489,7 +491,12 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
           ligne ; plus étroit, elle se coupe en deux lignes équilibrées
           (text-wrap: balance), jamais avec le « ? » orphelin. */}
       <h1 className="caisse-voice-question" style={{ font: 'var(--caisse-font-h1)', textWrap: 'balance' }}>
-        {produitPreselectionne ? produitPreselectionne.nom : 'Que voulez-vous vendre ?'}
+        {/* CAI-02 — LA QUESTION N'EST PLUS ÉCRITE DEUX FOIS. Elle vivait ici en
+            dur ET dans le catalogue (`TATA_QUE_VENDRE`), qui est ce qui se DIT
+            au montage. Deux copies d'une même phrase finissent toujours par
+            diverger — et c'est par là que le vouvoiement a survécu à l'oral
+            après avoir été vu à l'écran. Une seule source, désormais. */}
+        {produitPreselectionne ? produitPreselectionne.nom : t('TATA_QUE_VENDRE')}
       </h1>
 
       <div className="caisse-voice-row">

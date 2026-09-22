@@ -155,7 +155,10 @@ const TRONC = [
     titre: 'Caisse — la surface de vente',
     chemin: '/marchand/caisse',
     semences: SESSION_MARCHANDE,
-    preuve: 'Que voulez-vous vendre ?',
+    // CAI-02 : la question a cesse de vouvoyer. La preuve suit l'ecran,
+    // jamais l'inverse — un banc qui attend une phrase disparue mesure
+    // son propre retard, pas l'application.
+    preuve: 'Que veux-tu vendre ?',
     sources: [
       'src/app/components/marchand/POSCaisse.tsx',
       'src/app/components/marchand/MicroVenteCaisse.tsx',
