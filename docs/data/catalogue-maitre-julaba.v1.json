@@ -1,0 +1,2086 @@
+{
+  "schema": "julaba.catalogue_maitre/v1",
+  "source": {
+    "fichier": "infra/odoo-poc/scripts/seed_catalogue_maitre.py",
+    "commit": "0553c10662e918f8f48f1d0ac1c5d979d55aa99f",
+    "commit_court": "0553c10",
+    "extrait_le": "2026-09-22",
+    "nature": "référentiel maître injecté et vérifié dans l'Odoo 19 réel (198/198, import idempotent)"
+  },
+  "doctrine": {
+    "prix": "ABSENT PAR CONSTRUCTION — le référentiel ne porte aucun prix. Le prix appartient à chaque marchande, posé à l'adoption, jamais partagé. La table catalogue_maitre n'a pas de colonne prix.",
+    "stock": "absent — une ligne du référentiel n'est jamais directement vendable ; seule une ligne ADOPTÉE dans `produits` l'est.",
+    "hierarchie": "Odoo porte JULABA -> Famille -> Sous-famille (product.category imbriquées). JULABA l'aplatit aujourd'hui dans un seul champ `categorie text` (constat CAT-01)."
+  },
+  "champs_absents_du_referentiel": [
+    "conditionnements",
+    "variante",
+    "facteur_de_conversion",
+    "nom_marchand"
+  ],
+  "note_champs_absents": "Ces quatre champs n existent nulle part dans le depot : les ajouter reviendrait a les inventer. Ils relevent des constats UNI-02, UNI-03 et CAT-01, non tranches. DEUX champs ont ete RETIRES de cette liste le 22/09 : ils existent bel et bien dans le depot. Voir le bloc corrections.",
+  "totaux": {
+    "produits": 198,
+    "familles": 18,
+    "sous_familles": 30,
+    "codes_famille": 25
+  },
+  "familles": [
+    {
+      "famille": "Tubercules et racines",
+      "codes_famille": [
+        "TUB"
+      ],
+      "sous_familles": [
+        "Ignames",
+        "Manioc et autres racines"
+      ],
+      "nb_produits": 16
+    },
+    {
+      "famille": "Bananes",
+      "codes_famille": [
+        "BAN"
+      ],
+      "sous_familles": [
+        "Banane dessert",
+        "Plantain"
+      ],
+      "nb_produits": 8
+    },
+    {
+      "famille": "Céréales",
+      "codes_famille": [
+        "CER"
+      ],
+      "sous_familles": [
+        "Maïs et céréales locales",
+        "Riz"
+      ],
+      "nb_produits": 12
+    },
+    {
+      "famille": "Légumineuses",
+      "codes_famille": [
+        "LEG"
+      ],
+      "sous_familles": [
+        "Arachides et graines",
+        "Haricots et pois"
+      ],
+      "nb_produits": 15
+    },
+    {
+      "famille": "Légumes fruits",
+      "codes_famille": [
+        "AUB",
+        "GOM",
+        "TOM"
+      ],
+      "sous_familles": [
+        "Aubergines",
+        "Gombo",
+        "Tomates"
+      ],
+      "nb_produits": 14
+    },
+    {
+      "famille": "Condiments frais",
+      "codes_famille": [
+        "CON",
+        "OIG",
+        "PIM"
+      ],
+      "sous_familles": [
+        "Aromates",
+        "Oignons et alliacées",
+        "Piments"
+      ],
+      "nb_produits": 19
+    },
+    {
+      "famille": "Légumes feuilles",
+      "codes_famille": [
+        "FEU"
+      ],
+      "sous_familles": [
+        "Feuilles locales"
+      ],
+      "nb_produits": 11
+    },
+    {
+      "famille": "Légumes",
+      "codes_famille": [
+        "COU",
+        "LEG"
+      ],
+      "sous_familles": [
+        "Courges",
+        "Légumes verts et divers"
+      ],
+      "nb_produits": 19
+    },
+    {
+      "famille": "Fruits",
+      "codes_famille": [
+        "AGR",
+        "FRI",
+        "FRT"
+      ],
+      "sous_familles": [
+        "Agrumes",
+        "Fruits importés / complémentaires",
+        "Fruits tropicaux"
+      ],
+      "nb_produits": 28
+    },
+    {
+      "famille": "Palmier et coco",
+      "codes_famille": [
+        "PAL"
+      ],
+      "sous_familles": [
+        "Palmier / coco"
+      ],
+      "nb_produits": 5
+    },
+    {
+      "famille": "Épices et condiments secs",
+      "codes_famille": [
+        "EPI"
+      ],
+      "sous_familles": [
+        "Épices"
+      ],
+      "nb_produits": 10
+    },
+    {
+      "famille": "Huiles alimentaires",
+      "codes_famille": [
+        "HUI"
+      ],
+      "sous_familles": [
+        "Huiles"
+      ],
+      "nb_produits": 5
+    },
+    {
+      "famille": "Produits transformés du manioc",
+      "codes_famille": [
+        "MAN"
+      ],
+      "sous_familles": [
+        "Attiéké et dérivés"
+      ],
+      "nb_produits": 9
+    },
+    {
+      "famille": "Produits transformés",
+      "codes_famille": [
+        "ARA",
+        "TRF"
+      ],
+      "sous_familles": [
+        "Arachide transformée",
+        "Farines et semoules"
+      ],
+      "nb_produits": 12
+    },
+    {
+      "famille": "Produits séchés",
+      "codes_famille": [
+        "SEC"
+      ],
+      "sous_familles": [
+        "Produits vivriers séchés"
+      ],
+      "nb_produits": 7
+    },
+    {
+      "famille": "Champignons",
+      "codes_famille": [
+        "CHA"
+      ],
+      "sous_familles": [
+        "Champignons"
+      ],
+      "nb_produits": 3
+    },
+    {
+      "famille": "Noix et graines",
+      "codes_famille": [
+        "NOI"
+      ],
+      "sous_familles": [
+        "Noix"
+      ],
+      "nb_produits": 3
+    },
+    {
+      "famille": "Produits complémentaires",
+      "codes_famille": [
+        "CAN"
+      ],
+      "sous_familles": [
+        "Canne et miel"
+      ],
+      "nb_produits": 2
+    }
+  ],
+  "produits": [
+    {
+      "reference": "VIV-TUB-001",
+      "code_famille": "TUB",
+      "nom": "Igname Kponan",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Ignames",
+      "chemin_categorie": "JULABA / Tubercules et racines / Ignames",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-002",
+      "code_famille": "TUB",
+      "nom": "Igname Bêtê-Bêtê",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Ignames",
+      "chemin_categorie": "JULABA / Tubercules et racines / Ignames",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-003",
+      "code_famille": "TUB",
+      "nom": "Igname Florido",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Ignames",
+      "chemin_categorie": "JULABA / Tubercules et racines / Ignames",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-004",
+      "code_famille": "TUB",
+      "nom": "Igname Krenglè",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Ignames",
+      "chemin_categorie": "JULABA / Tubercules et racines / Ignames",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-005",
+      "code_famille": "TUB",
+      "nom": "Igname Lokpa",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Ignames",
+      "chemin_categorie": "JULABA / Tubercules et racines / Ignames",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-006",
+      "code_famille": "TUB",
+      "nom": "Igname Assawa",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Ignames",
+      "chemin_categorie": "JULABA / Tubercules et racines / Ignames",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-007",
+      "code_famille": "TUB",
+      "nom": "Igname C18",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Ignames",
+      "chemin_categorie": "JULABA / Tubercules et racines / Ignames",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-008",
+      "code_famille": "TUB",
+      "nom": "Igname Cameroun",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Ignames",
+      "chemin_categorie": "JULABA / Tubercules et racines / Ignames",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-009",
+      "code_famille": "TUB",
+      "nom": "Manioc frais doux",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Manioc et autres racines",
+      "chemin_categorie": "JULABA / Tubercules et racines / Manioc et autres racines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-010",
+      "code_famille": "TUB",
+      "nom": "Manioc frais amer",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Manioc et autres racines",
+      "chemin_categorie": "JULABA / Tubercules et racines / Manioc et autres racines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-011",
+      "code_famille": "TUB",
+      "nom": "Patate douce blanche",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Manioc et autres racines",
+      "chemin_categorie": "JULABA / Tubercules et racines / Manioc et autres racines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-012",
+      "code_famille": "TUB",
+      "nom": "Patate douce orange",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Manioc et autres racines",
+      "chemin_categorie": "JULABA / Tubercules et racines / Manioc et autres racines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-013",
+      "code_famille": "TUB",
+      "nom": "Taro",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Manioc et autres racines",
+      "chemin_categorie": "JULABA / Tubercules et racines / Manioc et autres racines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-014",
+      "code_famille": "TUB",
+      "nom": "Macabo",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Manioc et autres racines",
+      "chemin_categorie": "JULABA / Tubercules et racines / Manioc et autres racines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-015",
+      "code_famille": "TUB",
+      "nom": "Pomme de terre blanche",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Manioc et autres racines",
+      "chemin_categorie": "JULABA / Tubercules et racines / Manioc et autres racines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TUB-016",
+      "code_famille": "TUB",
+      "nom": "Pomme de terre rouge",
+      "famille": "Tubercules et racines",
+      "sous_famille": "Manioc et autres racines",
+      "chemin_categorie": "JULABA / Tubercules et racines / Manioc et autres racines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-BAN-001",
+      "code_famille": "BAN",
+      "nom": "Banane plantain verte",
+      "famille": "Bananes",
+      "sous_famille": "Plantain",
+      "chemin_categorie": "JULABA / Bananes / Plantain",
+      "actif": true
+    },
+    {
+      "reference": "VIV-BAN-002",
+      "code_famille": "BAN",
+      "nom": "Banane plantain mûre",
+      "famille": "Bananes",
+      "sous_famille": "Plantain",
+      "chemin_categorie": "JULABA / Bananes / Plantain",
+      "actif": true
+    },
+    {
+      "reference": "VIV-BAN-003",
+      "code_famille": "BAN",
+      "nom": "Plantain Corne 1",
+      "famille": "Bananes",
+      "sous_famille": "Plantain",
+      "chemin_categorie": "JULABA / Bananes / Plantain",
+      "actif": true
+    },
+    {
+      "reference": "VIV-BAN-004",
+      "code_famille": "BAN",
+      "nom": "Plantain Corne 2",
+      "famille": "Bananes",
+      "sous_famille": "Plantain",
+      "chemin_categorie": "JULABA / Bananes / Plantain",
+      "actif": true
+    },
+    {
+      "reference": "VIV-BAN-005",
+      "code_famille": "BAN",
+      "nom": "Plantain Agnrin",
+      "famille": "Bananes",
+      "sous_famille": "Plantain",
+      "chemin_categorie": "JULABA / Bananes / Plantain",
+      "actif": true
+    },
+    {
+      "reference": "VIV-BAN-006",
+      "code_famille": "BAN",
+      "nom": "Banane douce locale",
+      "famille": "Bananes",
+      "sous_famille": "Banane dessert",
+      "chemin_categorie": "JULABA / Bananes / Banane dessert",
+      "actif": true
+    },
+    {
+      "reference": "VIV-BAN-007",
+      "code_famille": "BAN",
+      "nom": "Banane dessert Cavendish",
+      "famille": "Bananes",
+      "sous_famille": "Banane dessert",
+      "chemin_categorie": "JULABA / Bananes / Banane dessert",
+      "actif": true
+    },
+    {
+      "reference": "VIV-BAN-008",
+      "code_famille": "BAN",
+      "nom": "Banane petite douce",
+      "famille": "Bananes",
+      "sous_famille": "Banane dessert",
+      "chemin_categorie": "JULABA / Bananes / Banane dessert",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-001",
+      "code_famille": "CER",
+      "nom": "Riz local blanc",
+      "famille": "Céréales",
+      "sous_famille": "Riz",
+      "chemin_categorie": "JULABA / Céréales / Riz",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-002",
+      "code_famille": "CER",
+      "nom": "Riz local étuvé",
+      "famille": "Céréales",
+      "sous_famille": "Riz",
+      "chemin_categorie": "JULABA / Céréales / Riz",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-003",
+      "code_famille": "CER",
+      "nom": "Riz importé long grain",
+      "famille": "Céréales",
+      "sous_famille": "Riz",
+      "chemin_categorie": "JULABA / Céréales / Riz",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-004",
+      "code_famille": "CER",
+      "nom": "Riz importé brisé",
+      "famille": "Céréales",
+      "sous_famille": "Riz",
+      "chemin_categorie": "JULABA / Céréales / Riz",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-005",
+      "code_famille": "CER",
+      "nom": "Riz parfumé",
+      "famille": "Céréales",
+      "sous_famille": "Riz",
+      "chemin_categorie": "JULABA / Céréales / Riz",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-006",
+      "code_famille": "CER",
+      "nom": "Riz paddy",
+      "famille": "Céréales",
+      "sous_famille": "Riz",
+      "chemin_categorie": "JULABA / Céréales / Riz",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-007",
+      "code_famille": "CER",
+      "nom": "Maïs blanc sec",
+      "famille": "Céréales",
+      "sous_famille": "Maïs et céréales locales",
+      "chemin_categorie": "JULABA / Céréales / Maïs et céréales locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-008",
+      "code_famille": "CER",
+      "nom": "Maïs jaune sec",
+      "famille": "Céréales",
+      "sous_famille": "Maïs et céréales locales",
+      "chemin_categorie": "JULABA / Céréales / Maïs et céréales locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-009",
+      "code_famille": "CER",
+      "nom": "Maïs frais en épi",
+      "famille": "Céréales",
+      "sous_famille": "Maïs et céréales locales",
+      "chemin_categorie": "JULABA / Céréales / Maïs et céréales locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-010",
+      "code_famille": "CER",
+      "nom": "Mil",
+      "famille": "Céréales",
+      "sous_famille": "Maïs et céréales locales",
+      "chemin_categorie": "JULABA / Céréales / Maïs et céréales locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-011",
+      "code_famille": "CER",
+      "nom": "Sorgho",
+      "famille": "Céréales",
+      "sous_famille": "Maïs et céréales locales",
+      "chemin_categorie": "JULABA / Céréales / Maïs et céréales locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CER-012",
+      "code_famille": "CER",
+      "nom": "Fonio",
+      "famille": "Céréales",
+      "sous_famille": "Maïs et céréales locales",
+      "chemin_categorie": "JULABA / Céréales / Maïs et céréales locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-001",
+      "code_famille": "LEG",
+      "nom": "Niébé blanc",
+      "famille": "Légumineuses",
+      "sous_famille": "Haricots et pois",
+      "chemin_categorie": "JULABA / Légumineuses / Haricots et pois",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-002",
+      "code_famille": "LEG",
+      "nom": "Niébé rouge",
+      "famille": "Légumineuses",
+      "sous_famille": "Haricots et pois",
+      "chemin_categorie": "JULABA / Légumineuses / Haricots et pois",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-003",
+      "code_famille": "LEG",
+      "nom": "Haricot blanc",
+      "famille": "Légumineuses",
+      "sous_famille": "Haricots et pois",
+      "chemin_categorie": "JULABA / Légumineuses / Haricots et pois",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-004",
+      "code_famille": "LEG",
+      "nom": "Haricot rouge",
+      "famille": "Légumineuses",
+      "sous_famille": "Haricots et pois",
+      "chemin_categorie": "JULABA / Légumineuses / Haricots et pois",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-005",
+      "code_famille": "LEG",
+      "nom": "Haricot noir",
+      "famille": "Légumineuses",
+      "sous_famille": "Haricots et pois",
+      "chemin_categorie": "JULABA / Légumineuses / Haricots et pois",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-006",
+      "code_famille": "LEG",
+      "nom": "Haricot moucheté",
+      "famille": "Légumineuses",
+      "sous_famille": "Haricots et pois",
+      "chemin_categorie": "JULABA / Légumineuses / Haricots et pois",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-007",
+      "code_famille": "LEG",
+      "nom": "Pois de terre",
+      "famille": "Légumineuses",
+      "sous_famille": "Haricots et pois",
+      "chemin_categorie": "JULABA / Légumineuses / Haricots et pois",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-008",
+      "code_famille": "LEG",
+      "nom": "Soja",
+      "famille": "Légumineuses",
+      "sous_famille": "Haricots et pois",
+      "chemin_categorie": "JULABA / Légumineuses / Haricots et pois",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-009",
+      "code_famille": "LEG",
+      "nom": "Arachide en coque",
+      "famille": "Légumineuses",
+      "sous_famille": "Arachides et graines",
+      "chemin_categorie": "JULABA / Légumineuses / Arachides et graines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-010",
+      "code_famille": "LEG",
+      "nom": "Arachide décortiquée",
+      "famille": "Légumineuses",
+      "sous_famille": "Arachides et graines",
+      "chemin_categorie": "JULABA / Légumineuses / Arachides et graines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-011",
+      "code_famille": "LEG",
+      "nom": "Arachide grillée",
+      "famille": "Légumineuses",
+      "sous_famille": "Arachides et graines",
+      "chemin_categorie": "JULABA / Légumineuses / Arachides et graines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-012",
+      "code_famille": "LEG",
+      "nom": "Sésame blanc",
+      "famille": "Légumineuses",
+      "sous_famille": "Arachides et graines",
+      "chemin_categorie": "JULABA / Légumineuses / Arachides et graines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-013",
+      "code_famille": "LEG",
+      "nom": "Sésame noir",
+      "famille": "Légumineuses",
+      "sous_famille": "Arachides et graines",
+      "chemin_categorie": "JULABA / Légumineuses / Arachides et graines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-014",
+      "code_famille": "LEG",
+      "nom": "Graines de courge",
+      "famille": "Légumineuses",
+      "sous_famille": "Arachides et graines",
+      "chemin_categorie": "JULABA / Légumineuses / Arachides et graines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-015",
+      "code_famille": "LEG",
+      "nom": "Graines de melon",
+      "famille": "Légumineuses",
+      "sous_famille": "Arachides et graines",
+      "chemin_categorie": "JULABA / Légumineuses / Arachides et graines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TOM-001",
+      "code_famille": "TOM",
+      "nom": "Tomate locale ronde",
+      "famille": "Légumes fruits",
+      "sous_famille": "Tomates",
+      "chemin_categorie": "JULABA / Légumes fruits / Tomates",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TOM-002",
+      "code_famille": "TOM",
+      "nom": "Tomate allongée",
+      "famille": "Légumes fruits",
+      "sous_famille": "Tomates",
+      "chemin_categorie": "JULABA / Légumes fruits / Tomates",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TOM-003",
+      "code_famille": "TOM",
+      "nom": "Tomate salade",
+      "famille": "Légumes fruits",
+      "sous_famille": "Tomates",
+      "chemin_categorie": "JULABA / Légumes fruits / Tomates",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TOM-004",
+      "code_famille": "TOM",
+      "nom": "Tomate cerise",
+      "famille": "Légumes fruits",
+      "sous_famille": "Tomates",
+      "chemin_categorie": "JULABA / Légumes fruits / Tomates",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TOM-005",
+      "code_famille": "TOM",
+      "nom": "Tomate mûre transformation",
+      "famille": "Légumes fruits",
+      "sous_famille": "Tomates",
+      "chemin_categorie": "JULABA / Légumes fruits / Tomates",
+      "actif": true
+    },
+    {
+      "reference": "VIV-OIG-001",
+      "code_famille": "OIG",
+      "nom": "Oignon violet",
+      "famille": "Condiments frais",
+      "sous_famille": "Oignons et alliacées",
+      "chemin_categorie": "JULABA / Condiments frais / Oignons et alliacées",
+      "actif": true
+    },
+    {
+      "reference": "VIV-OIG-002",
+      "code_famille": "OIG",
+      "nom": "Oignon blanc",
+      "famille": "Condiments frais",
+      "sous_famille": "Oignons et alliacées",
+      "chemin_categorie": "JULABA / Condiments frais / Oignons et alliacées",
+      "actif": true
+    },
+    {
+      "reference": "VIV-OIG-003",
+      "code_famille": "OIG",
+      "nom": "Oignon jaune",
+      "famille": "Condiments frais",
+      "sous_famille": "Oignons et alliacées",
+      "chemin_categorie": "JULABA / Condiments frais / Oignons et alliacées",
+      "actif": true
+    },
+    {
+      "reference": "VIV-OIG-004",
+      "code_famille": "OIG",
+      "nom": "Échalote",
+      "famille": "Condiments frais",
+      "sous_famille": "Oignons et alliacées",
+      "chemin_categorie": "JULABA / Condiments frais / Oignons et alliacées",
+      "actif": true
+    },
+    {
+      "reference": "VIV-OIG-005",
+      "code_famille": "OIG",
+      "nom": "Ail local",
+      "famille": "Condiments frais",
+      "sous_famille": "Oignons et alliacées",
+      "chemin_categorie": "JULABA / Condiments frais / Oignons et alliacées",
+      "actif": true
+    },
+    {
+      "reference": "VIV-OIG-006",
+      "code_famille": "OIG",
+      "nom": "Ail importé",
+      "famille": "Condiments frais",
+      "sous_famille": "Oignons et alliacées",
+      "chemin_categorie": "JULABA / Condiments frais / Oignons et alliacées",
+      "actif": true
+    },
+    {
+      "reference": "VIV-OIG-007",
+      "code_famille": "OIG",
+      "nom": "Poireau",
+      "famille": "Condiments frais",
+      "sous_famille": "Oignons et alliacées",
+      "chemin_categorie": "JULABA / Condiments frais / Oignons et alliacées",
+      "actif": true
+    },
+    {
+      "reference": "VIV-OIG-008",
+      "code_famille": "OIG",
+      "nom": "Ciboulette",
+      "famille": "Condiments frais",
+      "sous_famille": "Oignons et alliacées",
+      "chemin_categorie": "JULABA / Condiments frais / Oignons et alliacées",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AUB-001",
+      "code_famille": "AUB",
+      "nom": "Aubergine N'Drowa",
+      "famille": "Légumes fruits",
+      "sous_famille": "Aubergines",
+      "chemin_categorie": "JULABA / Légumes fruits / Aubergines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AUB-002",
+      "code_famille": "AUB",
+      "nom": "Aubergine africaine blanche",
+      "famille": "Légumes fruits",
+      "sous_famille": "Aubergines",
+      "chemin_categorie": "JULABA / Légumes fruits / Aubergines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AUB-003",
+      "code_famille": "AUB",
+      "nom": "Aubergine africaine verte",
+      "famille": "Légumes fruits",
+      "sous_famille": "Aubergines",
+      "chemin_categorie": "JULABA / Légumes fruits / Aubergines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AUB-004",
+      "code_famille": "AUB",
+      "nom": "Aubergine violette",
+      "famille": "Légumes fruits",
+      "sous_famille": "Aubergines",
+      "chemin_categorie": "JULABA / Légumes fruits / Aubergines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AUB-005",
+      "code_famille": "AUB",
+      "nom": "Aubergine longue",
+      "famille": "Légumes fruits",
+      "sous_famille": "Aubergines",
+      "chemin_categorie": "JULABA / Légumes fruits / Aubergines",
+      "actif": true
+    },
+    {
+      "reference": "VIV-PIM-001",
+      "code_famille": "PIM",
+      "nom": "Piment frais rouge",
+      "famille": "Condiments frais",
+      "sous_famille": "Piments",
+      "chemin_categorie": "JULABA / Condiments frais / Piments",
+      "actif": true
+    },
+    {
+      "reference": "VIV-PIM-002",
+      "code_famille": "PIM",
+      "nom": "Piment frais vert",
+      "famille": "Condiments frais",
+      "sous_famille": "Piments",
+      "chemin_categorie": "JULABA / Condiments frais / Piments",
+      "actif": true
+    },
+    {
+      "reference": "VIV-PIM-003",
+      "code_famille": "PIM",
+      "nom": "Piment antillais",
+      "famille": "Condiments frais",
+      "sous_famille": "Piments",
+      "chemin_categorie": "JULABA / Condiments frais / Piments",
+      "actif": true
+    },
+    {
+      "reference": "VIV-PIM-004",
+      "code_famille": "PIM",
+      "nom": "Piment bec d'oiseau",
+      "famille": "Condiments frais",
+      "sous_famille": "Piments",
+      "chemin_categorie": "JULABA / Condiments frais / Piments",
+      "actif": true
+    },
+    {
+      "reference": "VIV-PIM-005",
+      "code_famille": "PIM",
+      "nom": "Piment sec",
+      "famille": "Condiments frais",
+      "sous_famille": "Piments",
+      "chemin_categorie": "JULABA / Condiments frais / Piments",
+      "actif": true
+    },
+    {
+      "reference": "VIV-GOM-001",
+      "code_famille": "GOM",
+      "nom": "Gombo frais petit",
+      "famille": "Légumes fruits",
+      "sous_famille": "Gombo",
+      "chemin_categorie": "JULABA / Légumes fruits / Gombo",
+      "actif": true
+    },
+    {
+      "reference": "VIV-GOM-002",
+      "code_famille": "GOM",
+      "nom": "Gombo frais gros",
+      "famille": "Légumes fruits",
+      "sous_famille": "Gombo",
+      "chemin_categorie": "JULABA / Légumes fruits / Gombo",
+      "actif": true
+    },
+    {
+      "reference": "VIV-GOM-003",
+      "code_famille": "GOM",
+      "nom": "Gombo sec",
+      "famille": "Légumes fruits",
+      "sous_famille": "Gombo",
+      "chemin_categorie": "JULABA / Légumes fruits / Gombo",
+      "actif": true
+    },
+    {
+      "reference": "VIV-GOM-004",
+      "code_famille": "GOM",
+      "nom": "Poudre de gombo",
+      "famille": "Légumes fruits",
+      "sous_famille": "Gombo",
+      "chemin_categorie": "JULABA / Légumes fruits / Gombo",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FEU-001",
+      "code_famille": "FEU",
+      "nom": "Épinard local",
+      "famille": "Légumes feuilles",
+      "sous_famille": "Feuilles locales",
+      "chemin_categorie": "JULABA / Légumes feuilles / Feuilles locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FEU-002",
+      "code_famille": "FEU",
+      "nom": "Amarante",
+      "famille": "Légumes feuilles",
+      "sous_famille": "Feuilles locales",
+      "chemin_categorie": "JULABA / Légumes feuilles / Feuilles locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FEU-003",
+      "code_famille": "FEU",
+      "nom": "Kplala / corète potagère",
+      "famille": "Légumes feuilles",
+      "sous_famille": "Feuilles locales",
+      "chemin_categorie": "JULABA / Légumes feuilles / Feuilles locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FEU-004",
+      "code_famille": "FEU",
+      "nom": "Feuille de manioc",
+      "famille": "Légumes feuilles",
+      "sous_famille": "Feuilles locales",
+      "chemin_categorie": "JULABA / Légumes feuilles / Feuilles locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FEU-005",
+      "code_famille": "FEU",
+      "nom": "Feuille de patate douce",
+      "famille": "Légumes feuilles",
+      "sous_famille": "Feuilles locales",
+      "chemin_categorie": "JULABA / Légumes feuilles / Feuilles locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FEU-006",
+      "code_famille": "FEU",
+      "nom": "Feuille de taro",
+      "famille": "Légumes feuilles",
+      "sous_famille": "Feuilles locales",
+      "chemin_categorie": "JULABA / Légumes feuilles / Feuilles locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FEU-007",
+      "code_famille": "FEU",
+      "nom": "Feuille d'aubergine",
+      "famille": "Légumes feuilles",
+      "sous_famille": "Feuilles locales",
+      "chemin_categorie": "JULABA / Légumes feuilles / Feuilles locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FEU-008",
+      "code_famille": "FEU",
+      "nom": "Feuille de baobab",
+      "famille": "Légumes feuilles",
+      "sous_famille": "Feuilles locales",
+      "chemin_categorie": "JULABA / Légumes feuilles / Feuilles locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FEU-009",
+      "code_famille": "FEU",
+      "nom": "Dah",
+      "famille": "Légumes feuilles",
+      "sous_famille": "Feuilles locales",
+      "chemin_categorie": "JULABA / Légumes feuilles / Feuilles locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FEU-010",
+      "code_famille": "FEU",
+      "nom": "Oseille",
+      "famille": "Légumes feuilles",
+      "sous_famille": "Feuilles locales",
+      "chemin_categorie": "JULABA / Légumes feuilles / Feuilles locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FEU-011",
+      "code_famille": "FEU",
+      "nom": "Feuille de bissap",
+      "famille": "Légumes feuilles",
+      "sous_famille": "Feuilles locales",
+      "chemin_categorie": "JULABA / Légumes feuilles / Feuilles locales",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-016",
+      "code_famille": "LEG",
+      "nom": "Chou vert",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-017",
+      "code_famille": "LEG",
+      "nom": "Chou rouge",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-018",
+      "code_famille": "LEG",
+      "nom": "Laitue",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-019",
+      "code_famille": "LEG",
+      "nom": "Concombre",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-020",
+      "code_famille": "LEG",
+      "nom": "Courgette",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-021",
+      "code_famille": "LEG",
+      "nom": "Haricot vert",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-022",
+      "code_famille": "LEG",
+      "nom": "Poivron vert",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-023",
+      "code_famille": "LEG",
+      "nom": "Poivron rouge",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-024",
+      "code_famille": "LEG",
+      "nom": "Poivron jaune",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-025",
+      "code_famille": "LEG",
+      "nom": "Céleri",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-026",
+      "code_famille": "LEG",
+      "nom": "Persil",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-027",
+      "code_famille": "LEG",
+      "nom": "Carotte",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-028",
+      "code_famille": "LEG",
+      "nom": "Betterave",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-029",
+      "code_famille": "LEG",
+      "nom": "Navet",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-LEG-030",
+      "code_famille": "LEG",
+      "nom": "Radis",
+      "famille": "Légumes",
+      "sous_famille": "Légumes verts et divers",
+      "chemin_categorie": "JULABA / Légumes / Légumes verts et divers",
+      "actif": true
+    },
+    {
+      "reference": "VIV-COU-001",
+      "code_famille": "COU",
+      "nom": "Courge locale",
+      "famille": "Légumes",
+      "sous_famille": "Courges",
+      "chemin_categorie": "JULABA / Légumes / Courges",
+      "actif": true
+    },
+    {
+      "reference": "VIV-COU-002",
+      "code_famille": "COU",
+      "nom": "Potiron",
+      "famille": "Légumes",
+      "sous_famille": "Courges",
+      "chemin_categorie": "JULABA / Légumes / Courges",
+      "actif": true
+    },
+    {
+      "reference": "VIV-COU-003",
+      "code_famille": "COU",
+      "nom": "Citrouille",
+      "famille": "Légumes",
+      "sous_famille": "Courges",
+      "chemin_categorie": "JULABA / Légumes / Courges",
+      "actif": true
+    },
+    {
+      "reference": "VIV-COU-004",
+      "code_famille": "COU",
+      "nom": "Melon local",
+      "famille": "Légumes",
+      "sous_famille": "Courges",
+      "chemin_categorie": "JULABA / Légumes / Courges",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AGR-001",
+      "code_famille": "AGR",
+      "nom": "Orange locale",
+      "famille": "Fruits",
+      "sous_famille": "Agrumes",
+      "chemin_categorie": "JULABA / Fruits / Agrumes",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AGR-002",
+      "code_famille": "AGR",
+      "nom": "Orange importée",
+      "famille": "Fruits",
+      "sous_famille": "Agrumes",
+      "chemin_categorie": "JULABA / Fruits / Agrumes",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AGR-003",
+      "code_famille": "AGR",
+      "nom": "Mandarine",
+      "famille": "Fruits",
+      "sous_famille": "Agrumes",
+      "chemin_categorie": "JULABA / Fruits / Agrumes",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AGR-004",
+      "code_famille": "AGR",
+      "nom": "Clémentine",
+      "famille": "Fruits",
+      "sous_famille": "Agrumes",
+      "chemin_categorie": "JULABA / Fruits / Agrumes",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AGR-005",
+      "code_famille": "AGR",
+      "nom": "Citron vert",
+      "famille": "Fruits",
+      "sous_famille": "Agrumes",
+      "chemin_categorie": "JULABA / Fruits / Agrumes",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AGR-006",
+      "code_famille": "AGR",
+      "nom": "Citron jaune",
+      "famille": "Fruits",
+      "sous_famille": "Agrumes",
+      "chemin_categorie": "JULABA / Fruits / Agrumes",
+      "actif": true
+    },
+    {
+      "reference": "VIV-AGR-007",
+      "code_famille": "AGR",
+      "nom": "Pamplemousse",
+      "famille": "Fruits",
+      "sous_famille": "Agrumes",
+      "chemin_categorie": "JULABA / Fruits / Agrumes",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-001",
+      "code_famille": "FRT",
+      "nom": "Mangue Kent",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-002",
+      "code_famille": "FRT",
+      "nom": "Mangue Amélie",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-003",
+      "code_famille": "FRT",
+      "nom": "Mangue Brooks",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-004",
+      "code_famille": "FRT",
+      "nom": "Papaye",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-005",
+      "code_famille": "FRT",
+      "nom": "Ananas",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-006",
+      "code_famille": "FRT",
+      "nom": "Pastèque",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-007",
+      "code_famille": "FRT",
+      "nom": "Melon",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-008",
+      "code_famille": "FRT",
+      "nom": "Avocat",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-009",
+      "code_famille": "FRT",
+      "nom": "Goyave",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-010",
+      "code_famille": "FRT",
+      "nom": "Corossol",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-011",
+      "code_famille": "FRT",
+      "nom": "Pomme cannelle",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-012",
+      "code_famille": "FRT",
+      "nom": "Fruit de la passion",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRT-013",
+      "code_famille": "FRT",
+      "nom": "Carambole",
+      "famille": "Fruits",
+      "sous_famille": "Fruits tropicaux",
+      "chemin_categorie": "JULABA / Fruits / Fruits tropicaux",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRI-001",
+      "code_famille": "FRI",
+      "nom": "Pomme rouge",
+      "famille": "Fruits",
+      "sous_famille": "Fruits importés / complémentaires",
+      "chemin_categorie": "JULABA / Fruits / Fruits importés / complémentaires",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRI-002",
+      "code_famille": "FRI",
+      "nom": "Pomme verte",
+      "famille": "Fruits",
+      "sous_famille": "Fruits importés / complémentaires",
+      "chemin_categorie": "JULABA / Fruits / Fruits importés / complémentaires",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRI-003",
+      "code_famille": "FRI",
+      "nom": "Poire",
+      "famille": "Fruits",
+      "sous_famille": "Fruits importés / complémentaires",
+      "chemin_categorie": "JULABA / Fruits / Fruits importés / complémentaires",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRI-004",
+      "code_famille": "FRI",
+      "nom": "Raisin rouge",
+      "famille": "Fruits",
+      "sous_famille": "Fruits importés / complémentaires",
+      "chemin_categorie": "JULABA / Fruits / Fruits importés / complémentaires",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRI-005",
+      "code_famille": "FRI",
+      "nom": "Raisin blanc",
+      "famille": "Fruits",
+      "sous_famille": "Fruits importés / complémentaires",
+      "chemin_categorie": "JULABA / Fruits / Fruits importés / complémentaires",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRI-006",
+      "code_famille": "FRI",
+      "nom": "Kiwi",
+      "famille": "Fruits",
+      "sous_famille": "Fruits importés / complémentaires",
+      "chemin_categorie": "JULABA / Fruits / Fruits importés / complémentaires",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRI-007",
+      "code_famille": "FRI",
+      "nom": "Pêche",
+      "famille": "Fruits",
+      "sous_famille": "Fruits importés / complémentaires",
+      "chemin_categorie": "JULABA / Fruits / Fruits importés / complémentaires",
+      "actif": true
+    },
+    {
+      "reference": "VIV-FRI-008",
+      "code_famille": "FRI",
+      "nom": "Prune",
+      "famille": "Fruits",
+      "sous_famille": "Fruits importés / complémentaires",
+      "chemin_categorie": "JULABA / Fruits / Fruits importés / complémentaires",
+      "actif": true
+    },
+    {
+      "reference": "VIV-PAL-001",
+      "code_famille": "PAL",
+      "nom": "Noix de coco fraîche",
+      "famille": "Palmier et coco",
+      "sous_famille": "Palmier / coco",
+      "chemin_categorie": "JULABA / Palmier et coco / Palmier / coco",
+      "actif": true
+    },
+    {
+      "reference": "VIV-PAL-002",
+      "code_famille": "PAL",
+      "nom": "Noix de coco sèche",
+      "famille": "Palmier et coco",
+      "sous_famille": "Palmier / coco",
+      "chemin_categorie": "JULABA / Palmier et coco / Palmier / coco",
+      "actif": true
+    },
+    {
+      "reference": "VIV-PAL-003",
+      "code_famille": "PAL",
+      "nom": "Chair de coco",
+      "famille": "Palmier et coco",
+      "sous_famille": "Palmier / coco",
+      "chemin_categorie": "JULABA / Palmier et coco / Palmier / coco",
+      "actif": true
+    },
+    {
+      "reference": "VIV-PAL-004",
+      "code_famille": "PAL",
+      "nom": "Graine de palme",
+      "famille": "Palmier et coco",
+      "sous_famille": "Palmier / coco",
+      "chemin_categorie": "JULABA / Palmier et coco / Palmier / coco",
+      "actif": true
+    },
+    {
+      "reference": "VIV-PAL-005",
+      "code_famille": "PAL",
+      "nom": "Noix de palme",
+      "famille": "Palmier et coco",
+      "sous_famille": "Palmier / coco",
+      "chemin_categorie": "JULABA / Palmier et coco / Palmier / coco",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CON-001",
+      "code_famille": "CON",
+      "nom": "Gingembre frais",
+      "famille": "Condiments frais",
+      "sous_famille": "Aromates",
+      "chemin_categorie": "JULABA / Condiments frais / Aromates",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CON-002",
+      "code_famille": "CON",
+      "nom": "Curcuma frais",
+      "famille": "Condiments frais",
+      "sous_famille": "Aromates",
+      "chemin_categorie": "JULABA / Condiments frais / Aromates",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CON-003",
+      "code_famille": "CON",
+      "nom": "Basilic local",
+      "famille": "Condiments frais",
+      "sous_famille": "Aromates",
+      "chemin_categorie": "JULABA / Condiments frais / Aromates",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CON-004",
+      "code_famille": "CON",
+      "nom": "Menthe",
+      "famille": "Condiments frais",
+      "sous_famille": "Aromates",
+      "chemin_categorie": "JULABA / Condiments frais / Aromates",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CON-005",
+      "code_famille": "CON",
+      "nom": "Persil africain",
+      "famille": "Condiments frais",
+      "sous_famille": "Aromates",
+      "chemin_categorie": "JULABA / Condiments frais / Aromates",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CON-006",
+      "code_famille": "CON",
+      "nom": "Céleri feuille",
+      "famille": "Condiments frais",
+      "sous_famille": "Aromates",
+      "chemin_categorie": "JULABA / Condiments frais / Aromates",
+      "actif": true
+    },
+    {
+      "reference": "VIV-EPI-001",
+      "code_famille": "EPI",
+      "nom": "Poivre noir",
+      "famille": "Épices et condiments secs",
+      "sous_famille": "Épices",
+      "chemin_categorie": "JULABA / Épices et condiments secs / Épices",
+      "actif": true
+    },
+    {
+      "reference": "VIV-EPI-002",
+      "code_famille": "EPI",
+      "nom": "Poivre blanc",
+      "famille": "Épices et condiments secs",
+      "sous_famille": "Épices",
+      "chemin_categorie": "JULABA / Épices et condiments secs / Épices",
+      "actif": true
+    },
+    {
+      "reference": "VIV-EPI-003",
+      "code_famille": "EPI",
+      "nom": "Clou de girofle",
+      "famille": "Épices et condiments secs",
+      "sous_famille": "Épices",
+      "chemin_categorie": "JULABA / Épices et condiments secs / Épices",
+      "actif": true
+    },
+    {
+      "reference": "VIV-EPI-004",
+      "code_famille": "EPI",
+      "nom": "Cannelle",
+      "famille": "Épices et condiments secs",
+      "sous_famille": "Épices",
+      "chemin_categorie": "JULABA / Épices et condiments secs / Épices",
+      "actif": true
+    },
+    {
+      "reference": "VIV-EPI-005",
+      "code_famille": "EPI",
+      "nom": "Muscade",
+      "famille": "Épices et condiments secs",
+      "sous_famille": "Épices",
+      "chemin_categorie": "JULABA / Épices et condiments secs / Épices",
+      "actif": true
+    },
+    {
+      "reference": "VIV-EPI-006",
+      "code_famille": "EPI",
+      "nom": "Anis",
+      "famille": "Épices et condiments secs",
+      "sous_famille": "Épices",
+      "chemin_categorie": "JULABA / Épices et condiments secs / Épices",
+      "actif": true
+    },
+    {
+      "reference": "VIV-EPI-007",
+      "code_famille": "EPI",
+      "nom": "Laurier",
+      "famille": "Épices et condiments secs",
+      "sous_famille": "Épices",
+      "chemin_categorie": "JULABA / Épices et condiments secs / Épices",
+      "actif": true
+    },
+    {
+      "reference": "VIV-EPI-008",
+      "code_famille": "EPI",
+      "nom": "Akpi / djansang",
+      "famille": "Épices et condiments secs",
+      "sous_famille": "Épices",
+      "chemin_categorie": "JULABA / Épices et condiments secs / Épices",
+      "actif": true
+    },
+    {
+      "reference": "VIV-EPI-009",
+      "code_famille": "EPI",
+      "nom": "Soumbara",
+      "famille": "Épices et condiments secs",
+      "sous_famille": "Épices",
+      "chemin_categorie": "JULABA / Épices et condiments secs / Épices",
+      "actif": true
+    },
+    {
+      "reference": "VIV-EPI-010",
+      "code_famille": "EPI",
+      "nom": "Graines de selim / kili",
+      "famille": "Épices et condiments secs",
+      "sous_famille": "Épices",
+      "chemin_categorie": "JULABA / Épices et condiments secs / Épices",
+      "actif": true
+    },
+    {
+      "reference": "VIV-HUI-001",
+      "code_famille": "HUI",
+      "nom": "Huile de palme rouge",
+      "famille": "Huiles alimentaires",
+      "sous_famille": "Huiles",
+      "chemin_categorie": "JULABA / Huiles alimentaires / Huiles",
+      "actif": true
+    },
+    {
+      "reference": "VIV-HUI-002",
+      "code_famille": "HUI",
+      "nom": "Huile de palme raffinée",
+      "famille": "Huiles alimentaires",
+      "sous_famille": "Huiles",
+      "chemin_categorie": "JULABA / Huiles alimentaires / Huiles",
+      "actif": true
+    },
+    {
+      "reference": "VIV-HUI-003",
+      "code_famille": "HUI",
+      "nom": "Huile d'arachide",
+      "famille": "Huiles alimentaires",
+      "sous_famille": "Huiles",
+      "chemin_categorie": "JULABA / Huiles alimentaires / Huiles",
+      "actif": true
+    },
+    {
+      "reference": "VIV-HUI-004",
+      "code_famille": "HUI",
+      "nom": "Huile de soja",
+      "famille": "Huiles alimentaires",
+      "sous_famille": "Huiles",
+      "chemin_categorie": "JULABA / Huiles alimentaires / Huiles",
+      "actif": true
+    },
+    {
+      "reference": "VIV-HUI-005",
+      "code_famille": "HUI",
+      "nom": "Huile végétale",
+      "famille": "Huiles alimentaires",
+      "sous_famille": "Huiles",
+      "chemin_categorie": "JULABA / Huiles alimentaires / Huiles",
+      "actif": true
+    },
+    {
+      "reference": "VIV-MAN-001",
+      "code_famille": "MAN",
+      "nom": "Attiéké frais",
+      "famille": "Produits transformés du manioc",
+      "sous_famille": "Attiéké et dérivés",
+      "chemin_categorie": "JULABA / Produits transformés du manioc / Attiéké et dérivés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-MAN-002",
+      "code_famille": "MAN",
+      "nom": "Attiéké déshydraté",
+      "famille": "Produits transformés du manioc",
+      "sous_famille": "Attiéké et dérivés",
+      "chemin_categorie": "JULABA / Produits transformés du manioc / Attiéké et dérivés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-MAN-003",
+      "code_famille": "MAN",
+      "nom": "Attiéké type garba",
+      "famille": "Produits transformés du manioc",
+      "sous_famille": "Attiéké et dérivés",
+      "chemin_categorie": "JULABA / Produits transformés du manioc / Attiéké et dérivés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-MAN-004",
+      "code_famille": "MAN",
+      "nom": "Gari blanc",
+      "famille": "Produits transformés du manioc",
+      "sous_famille": "Attiéké et dérivés",
+      "chemin_categorie": "JULABA / Produits transformés du manioc / Attiéké et dérivés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-MAN-005",
+      "code_famille": "MAN",
+      "nom": "Gari jaune",
+      "famille": "Produits transformés du manioc",
+      "sous_famille": "Attiéké et dérivés",
+      "chemin_categorie": "JULABA / Produits transformés du manioc / Attiéké et dérivés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-MAN-006",
+      "code_famille": "MAN",
+      "nom": "Placali frais",
+      "famille": "Produits transformés du manioc",
+      "sous_famille": "Attiéké et dérivés",
+      "chemin_categorie": "JULABA / Produits transformés du manioc / Attiéké et dérivés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-MAN-007",
+      "code_famille": "MAN",
+      "nom": "Pâte de manioc",
+      "famille": "Produits transformés du manioc",
+      "sous_famille": "Attiéké et dérivés",
+      "chemin_categorie": "JULABA / Produits transformés du manioc / Attiéké et dérivés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-MAN-008",
+      "code_famille": "MAN",
+      "nom": "Amidon de manioc",
+      "famille": "Produits transformés du manioc",
+      "sous_famille": "Attiéké et dérivés",
+      "chemin_categorie": "JULABA / Produits transformés du manioc / Attiéké et dérivés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-MAN-009",
+      "code_famille": "MAN",
+      "nom": "Semoule de manioc",
+      "famille": "Produits transformés du manioc",
+      "sous_famille": "Attiéké et dérivés",
+      "chemin_categorie": "JULABA / Produits transformés du manioc / Attiéké et dérivés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TRF-001",
+      "code_famille": "TRF",
+      "nom": "Farine de maïs blanche",
+      "famille": "Produits transformés",
+      "sous_famille": "Farines et semoules",
+      "chemin_categorie": "JULABA / Produits transformés / Farines et semoules",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TRF-002",
+      "code_famille": "TRF",
+      "nom": "Farine de maïs jaune",
+      "famille": "Produits transformés",
+      "sous_famille": "Farines et semoules",
+      "chemin_categorie": "JULABA / Produits transformés / Farines et semoules",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TRF-003",
+      "code_famille": "TRF",
+      "nom": "Semoule de maïs",
+      "famille": "Produits transformés",
+      "sous_famille": "Farines et semoules",
+      "chemin_categorie": "JULABA / Produits transformés / Farines et semoules",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TRF-004",
+      "code_famille": "TRF",
+      "nom": "Farine de mil",
+      "famille": "Produits transformés",
+      "sous_famille": "Farines et semoules",
+      "chemin_categorie": "JULABA / Produits transformés / Farines et semoules",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TRF-005",
+      "code_famille": "TRF",
+      "nom": "Farine de sorgho",
+      "famille": "Produits transformés",
+      "sous_famille": "Farines et semoules",
+      "chemin_categorie": "JULABA / Produits transformés / Farines et semoules",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TRF-006",
+      "code_famille": "TRF",
+      "nom": "Farine de fonio",
+      "famille": "Produits transformés",
+      "sous_famille": "Farines et semoules",
+      "chemin_categorie": "JULABA / Produits transformés / Farines et semoules",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TRF-007",
+      "code_famille": "TRF",
+      "nom": "Farine de manioc",
+      "famille": "Produits transformés",
+      "sous_famille": "Farines et semoules",
+      "chemin_categorie": "JULABA / Produits transformés / Farines et semoules",
+      "actif": true
+    },
+    {
+      "reference": "VIV-TRF-008",
+      "code_famille": "TRF",
+      "nom": "Farine d'igname",
+      "famille": "Produits transformés",
+      "sous_famille": "Farines et semoules",
+      "chemin_categorie": "JULABA / Produits transformés / Farines et semoules",
+      "actif": true
+    },
+    {
+      "reference": "VIV-ARA-001",
+      "code_famille": "ARA",
+      "nom": "Pâte d'arachide",
+      "famille": "Produits transformés",
+      "sous_famille": "Arachide transformée",
+      "chemin_categorie": "JULABA / Produits transformés / Arachide transformée",
+      "actif": true
+    },
+    {
+      "reference": "VIV-ARA-002",
+      "code_famille": "ARA",
+      "nom": "Poudre d'arachide",
+      "famille": "Produits transformés",
+      "sous_famille": "Arachide transformée",
+      "chemin_categorie": "JULABA / Produits transformés / Arachide transformée",
+      "actif": true
+    },
+    {
+      "reference": "VIV-ARA-003",
+      "code_famille": "ARA",
+      "nom": "Arachide grillée salée",
+      "famille": "Produits transformés",
+      "sous_famille": "Arachide transformée",
+      "chemin_categorie": "JULABA / Produits transformés / Arachide transformée",
+      "actif": true
+    },
+    {
+      "reference": "VIV-ARA-004",
+      "code_famille": "ARA",
+      "nom": "Huile artisanale d'arachide",
+      "famille": "Produits transformés",
+      "sous_famille": "Arachide transformée",
+      "chemin_categorie": "JULABA / Produits transformés / Arachide transformée",
+      "actif": true
+    },
+    {
+      "reference": "VIV-SEC-001",
+      "code_famille": "SEC",
+      "nom": "Tomate séchée",
+      "famille": "Produits séchés",
+      "sous_famille": "Produits vivriers séchés",
+      "chemin_categorie": "JULABA / Produits séchés / Produits vivriers séchés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-SEC-002",
+      "code_famille": "SEC",
+      "nom": "Champignon séché",
+      "famille": "Produits séchés",
+      "sous_famille": "Produits vivriers séchés",
+      "chemin_categorie": "JULABA / Produits séchés / Produits vivriers séchés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-SEC-003",
+      "code_famille": "SEC",
+      "nom": "Feuilles séchées",
+      "famille": "Produits séchés",
+      "sous_famille": "Produits vivriers séchés",
+      "chemin_categorie": "JULABA / Produits séchés / Produits vivriers séchés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-SEC-004",
+      "code_famille": "SEC",
+      "nom": "Manioc séché",
+      "famille": "Produits séchés",
+      "sous_famille": "Produits vivriers séchés",
+      "chemin_categorie": "JULABA / Produits séchés / Produits vivriers séchés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-SEC-005",
+      "code_famille": "SEC",
+      "nom": "Cossettes de manioc",
+      "famille": "Produits séchés",
+      "sous_famille": "Produits vivriers séchés",
+      "chemin_categorie": "JULABA / Produits séchés / Produits vivriers séchés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-SEC-006",
+      "code_famille": "SEC",
+      "nom": "Piment séché moulu",
+      "famille": "Produits séchés",
+      "sous_famille": "Produits vivriers séchés",
+      "chemin_categorie": "JULABA / Produits séchés / Produits vivriers séchés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-SEC-007",
+      "code_famille": "SEC",
+      "nom": "Gombo séché moulu",
+      "famille": "Produits séchés",
+      "sous_famille": "Produits vivriers séchés",
+      "chemin_categorie": "JULABA / Produits séchés / Produits vivriers séchés",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CHA-001",
+      "code_famille": "CHA",
+      "nom": "Champignon local frais",
+      "famille": "Champignons",
+      "sous_famille": "Champignons",
+      "chemin_categorie": "JULABA / Champignons / Champignons",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CHA-002",
+      "code_famille": "CHA",
+      "nom": "Pleurote frais",
+      "famille": "Champignons",
+      "sous_famille": "Champignons",
+      "chemin_categorie": "JULABA / Champignons / Champignons",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CHA-003",
+      "code_famille": "CHA",
+      "nom": "Champignon séché",
+      "famille": "Champignons",
+      "sous_famille": "Champignons",
+      "chemin_categorie": "JULABA / Champignons / Champignons",
+      "actif": true
+    },
+    {
+      "reference": "VIV-NOI-001",
+      "code_famille": "NOI",
+      "nom": "Noix de cajou brute",
+      "famille": "Noix et graines",
+      "sous_famille": "Noix",
+      "chemin_categorie": "JULABA / Noix et graines / Noix",
+      "actif": true
+    },
+    {
+      "reference": "VIV-NOI-002",
+      "code_famille": "NOI",
+      "nom": "Noix de cajou décortiquée",
+      "famille": "Noix et graines",
+      "sous_famille": "Noix",
+      "chemin_categorie": "JULABA / Noix et graines / Noix",
+      "actif": true
+    },
+    {
+      "reference": "VIV-NOI-003",
+      "code_famille": "NOI",
+      "nom": "Noix de cajou grillée",
+      "famille": "Noix et graines",
+      "sous_famille": "Noix",
+      "chemin_categorie": "JULABA / Noix et graines / Noix",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CAN-001",
+      "code_famille": "CAN",
+      "nom": "Canne à sucre",
+      "famille": "Produits complémentaires",
+      "sous_famille": "Canne et miel",
+      "chemin_categorie": "JULABA / Produits complémentaires / Canne et miel",
+      "actif": true
+    },
+    {
+      "reference": "VIV-CAN-002",
+      "code_famille": "CAN",
+      "nom": "Miel local",
+      "famille": "Produits complémentaires",
+      "sous_famille": "Canne et miel",
+      "chemin_categorie": "JULABA / Produits complémentaires / Canne et miel",
+      "actif": true
+    }
+  ],
+  "champs_presents_hors_odoo": {
+    "source": "infra/odoo-poc/referentiel-maitre/03_mapping_julaba_local.csv",
+    "note": "Odoo ne porte PAS ces champs, et c est correct : ils appartiennent a JULABA. Mais ils ne sont pas a inventer — ils sont deja ecrits, produit par produit.",
+    "unites_locales_autorisees": {
+      "colonne": "unites_locales_autorisees",
+      "renseignes": "198/198",
+      "valeurs_rencontrees": [
+        "kg",
+        "tas",
+        "sac",
+        "unité",
+        "sachet",
+        "caisse",
+        "panier",
+        "botte",
+        "bassine",
+        "demi-sac",
+        "quart-sac",
+        "filet",
+        "régime",
+        "barquette",
+        "litre",
+        "bouteille",
+        "main",
+        "carton",
+        "pot",
+        "demi-panier",
+        "bidon"
+      ]
+    },
+    "niveau_commerce": {
+      "colonnes": [
+        "gros",
+        "demi_gros",
+        "detail"
+      ],
+      "renseignes": "198/198"
+    }
+  },
+  "corrections": [
+    {
+      "le": "2026-09-22",
+      "par": "audit de donnees JULABA (docs/data/AUDIT-DONNEES.md)",
+      "champ": "champs_absents_du_referentiel / note_champs_absents",
+      "affirmait": "Ces champs n existent NULLE PART dans le depot : les ajouter reviendrait a les inventer — pour les six champs listes.",
+      "mesure": "Deux des six existent. unites_autorisees sous la colonne unites_locales_autorisees (198/198 renseignes), et niveau_commerce sous les colonnes gros / demi_gros / detail (198/198). Les quatre autres — conditionnements, variante, facteur_de_conversion, nom_marchand — sont bien absents, confirme.",
+      "pourquoi_ca_comptait": "Qui agissait sur cette note concluait qu il fallait INVENTER les unites locales. Or tas, bassine, botte, panier, sac et filet sont la depuis le debut, produit par produit. Inventer une unite de vente, c est inventer une quantite — donc un montant.",
+      "ce_qui_a_change": "Les deux champs retires de la liste, la note reformulee, un bloc champs_presents_hors_odoo ajoute. AUCUN produit, AUCUN nom, AUCUNE famille touche."
+    }
+  ],
+  "provenance": {
+    "recu_de": "Patrick, 22/09/2026",
+    "sha256_a_la_reception": "0afdaf818a7b2e21d7135a1521c9bc2273c5b681deda0a1a472478b4c8b12314",
+    "commit_annonce": "0553c10662e918f8f48f1d0ac1c5d979d55aa99f",
+    "commit_present_dans_ce_depot": false,
+    "note": "Le commit annonce n existe pas dans SOMET1010/julaba-app — ni comme objet, ni comme ancetre de la branche. Ce fichier vient d un autre arbre. Sa PROVENANCE n est donc pas rejouable ici ; son CONTENU est verifie exact contre le kit du depot."
+  },
+  "verification": {
+    "refaite_le": "2026-09-22",
+    "contre": [
+      "infra/odoo-poc/referentiel-maitre/02_produits_odoo.csv",
+      "infra/odoo-poc/referentiel-maitre/03_mapping_julaba_local.csv"
+    ],
+    "references_json": 198,
+    "references_communes_aux_trois_sources": 198,
+    "references_en_trop_dans_le_json": [],
+    "references_manquantes_dans_le_json": [],
+    "noms_divergents": 0,
+    "familles_divergentes": 0,
+    "sous_familles_divergentes": 0,
+    "verdict": "Contenu exact : memes 198 references, memes noms, meme hierarchie que le kit d injection du depot."
+  }
+}
