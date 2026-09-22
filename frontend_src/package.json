@@ -22,6 +22,7 @@
     "test:i18n-argent": "tsx src/app/i18n/voice/validators/validateCriticalMessages.mts",
     "test:i18n-source": "tsx src/app/i18n/voice/validators/validateSource.mts",
     "test:i18n-empreintes-argent": "tsx src/app/i18n/voice/validators/empreintesArgent.mts",
+    "test:argent-parle": "tsx src/app/i18n/voice/argent/dixCasArgent.test.mts",
     "test:audio": "tsx src/app/services/audioManager.test.mts",
     "test:cart": "tsx src/app/services/cartStorage.test.mts",
     "test:voix": "tsx src/app/services/venteVocale.test.mts",

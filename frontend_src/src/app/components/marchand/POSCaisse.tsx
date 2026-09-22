@@ -18,7 +18,7 @@ import { avertissementRupture } from '../../services/ruptureStock';
 import { vibrerSucces, vibrerErreur, vibrerTic, vibrerAttente } from '../../utils/haptique';
 import { getPictogrammeByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
-import { phraseRelecture, phraseLigneAjoutee, type EtatEncaissement as EtatRelu } from '../../services/relectureSpontanee';
+import { relectureDeuxFormes, ligneAjouteeDeuxFormes, type EtatEncaissement as EtatRelu } from '../../services/relectureSpontanee';
 import { ChoixUnite } from './ChoixUnite';
 import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMaitre';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
@@ -166,7 +166,7 @@ function POSCaisseInner() {
     const prixU = prixEffectif(p);
     const totalLigne = (existante?.totalExact ?? (existante ? existante.prix * existante.quantite : 0)) + prixU;
     addToCart(p, 1);
-    dire(phraseLigneAjoutee({ nom: p?.nom || p?.name || 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }));
+    dire(ligneAjouteeDeuxFormes({ nom: p?.nom || p?.name || 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }).texteParle);
   };
 
   const fermerAutreArticle = () => {
@@ -301,7 +301,7 @@ function POSCaisseInner() {
     const qte = quantiteDictee;
     const totalLigne = montant * qte;
     addToCart(produitLibre, qte);
-    dire(phraseLigneAjoutee({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }));
+    dire(ligneAjouteeDeuxFormes({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }).texteParle);
     // L'unité revient au défaut : sinon le « tas » de la vente précédente
     // collerait, en silence, à l'article libre suivant.
     setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setShowLibre(false); setVenteDictee(null);
@@ -561,11 +561,14 @@ function POSCaisseInner() {
   const dernierEtatReluRef = useRef<EtatRelu | null>(null);
   useEffect(() => {
     const etat: EtatRelu = { total, recu, nbLignes: cart.length };
-    const phrase = phraseRelecture(etat, dernierEtatReluRef.current);
+    // DEUX FORMES, UNE SOURCE (22/09/2026) : on AFFICHE `texte` (inchangé) et
+    // on DIT `texteParle` — « Il manque trois mille francs » au lieu de
+    // « 3 000 », que le moteur de synthèse épelait « trois zéro zéro zéro ».
+    const relu = relectureDeuxFormes(etat, dernierEtatReluRef.current);
     dernierEtatReluRef.current = etat;
-    if (!phrase) return;
+    if (!relu) return;
     const machineParle = etatEncaissementRef.current.phase !== 'repos' && recu >= total;
-    if (!machineParle) dire(phrase);
+    if (!machineParle) dire(relu.texteParle);
   }, [total, recu, cart.length]);
 
   // Crédit désactivé en pilote espèces (CAISSE_CREDIT_ACTIF=false) : ce handler

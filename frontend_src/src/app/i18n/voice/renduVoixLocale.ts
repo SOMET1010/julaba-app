@@ -22,7 +22,7 @@
  */
 import { speakDynamic } from '../../services/audioManager';
 import * as vtrace from '../../utils/voiceTrace';
-import type { DireTexte, RenduVocal } from './contrat-audio';
+import { formeDite, type DireTexte, type RenduVocal } from './contrat-audio';
 import { choisirVoix, VOIX_REFERENCE } from './voixParLocale';
 
 /**
@@ -37,7 +37,7 @@ export const RENDU_VOIX_LOCALE: RenduVocal = (message, direTexte: DireTexte) => 
     if (choix.raison === 'argent-non-valide') {
       vtrace.info('VOIX_ARGENT_EN_FRANCAIS', { id: message.id, localeDemandee: message.localeDemandee });
     }
-    return direTexte(message.texte);
+    return direTexte(formeDite(message));
   }
   // UN MONTANT QUI PART SUR UNE VOIX NON VALIDÉE NE PASSE JAMAIS EN SILENCE.
   // Cette trace n'existe que dans un build d'essai (JULABA_DYU_ARGENT=1). Elle
@@ -57,13 +57,13 @@ export const RENDU_VOIX_LOCALE: RenduVocal = (message, direTexte: DireTexte) => 
   return speakDynamic(async () => {
     try {
       const { voixNativeDisponible, synthetiserAvecVoix } = await import('../../voice-offline/nativeTtsVoix');
-      if (!(await voixNativeDisponible(choix.voix.id))) return { text: message.texte };
-      const wav = await synthetiserAvecVoix(message.texte, choix.voix.id);
+      if (!(await voixNativeDisponible(choix.voix.id))) return { text: formeDite(message) };
+      const wav = await synthetiserAvecVoix(formeDite(message), choix.voix.id);
       // Sans WAV, on retombe sur le chemin d'aujourd'hui (`text`) : la voix
       // française dira la phrase de décor. Moins bien, jamais muet.
-      return wav ? { base64: wav, text: message.texte } : { text: message.texte };
+      return wav ? { base64: wav, text: formeDite(message) } : { text: formeDite(message) };
     } catch {
-      return { text: message.texte };
+      return { text: formeDite(message) };
     }
   });
 };
