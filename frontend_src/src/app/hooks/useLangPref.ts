@@ -1,5 +1,6 @@
 // useLangPref.ts — Langue préférée de l'utilisateur (french/dioula/bambara)
 import { useState, useCallback, useEffect } from 'react';
+import { VOIX_DYU_EMBARQUEE } from '../i18n/voice/drapeauxDeTest';
 
 export type AppLang = 'french' | 'dioula' | 'bambara';
 
@@ -44,8 +45,29 @@ export const LANGUE_PRETE: Record<AppLang, boolean> = {
   bambara: false,
 };
 
+/**
+ * LES LANGUES QUE CE BUILD-CI SAIT PARLER.
+ *
+ * `LANGUE_PRETE` ci-dessus dit ce qui est PRÊT À ÊTRE LIVRÉ, et il ne bouge
+ * pas : le dioula n'a toujours pas d'audio humain validé, et le jour de la
+ * distribution c'est cette table-là qui fera foi.
+ *
+ * Mais Patrick teste une solution, il ne la distribue pas. Sur
+ * `JULABA_VOIX_DYU=1` — un drapeau de CONSTRUCTION, absent de tout processus
+ * Node, donc invisible pour `verify` et `test:ci` — la voix MMS dioula est
+ * dans l'APK et `dyu-ci` porte du décor : « Dioula » devient alors
+ * sélectionnable, parce qu'à ce moment-là le choisir PRODUIT quelque chose.
+ * Sans le drapeau, le choisir ne produirait rien, et une langue qui ne produit
+ * rien ne doit pas se proposer — c'est exactement ce que le lot A6 a décidé.
+ *
+ * LE GARDE B7 RESTE ENTIER. Il interdit de LIVRER une demi-langue, pas de la
+ * tester : la configuration livrée est celle sans `define`, celle que les
+ * tests mesurent, et le dioula y reste non disponible. Voir
+ * i18n/voice/drapeauxDeTest.ts pour le raisonnement complet.
+ */
 export function langueDisponible(lang: AppLang): boolean {
-  return LANGUE_PRETE[lang] === true;
+  if (LANGUE_PRETE[lang] === true) return true;
+  return lang === 'dioula' && VOIX_DYU_EMBARQUEE;
 }
 
 /** La langue de repli : la seule déclarée prête, et la référence du catalogue. */

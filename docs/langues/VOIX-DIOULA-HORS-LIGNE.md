@@ -61,6 +61,10 @@ exactement la licence pour laquelle `installer-voix.sh` avait écarté
 `vits-mms-fra` au profit de siwis/Piper pour le français. Elle n'a pas changé
 d'avis parce que la langue a changé.
 
+Ce qu'elle interdit exactement : **distribuer**. Elle n'interdit pas de
+**tester** — et au moment de la distribution, ce modèle sera de toute façon
+remplacé par de vrais enregistrements (§5 bis).
+
 Conséquence assumée : **un build ordinaire n'embarque aucune voix dioula.**
 Il faut le demander :
 
@@ -81,6 +85,10 @@ enregistrée par nous.
 **La règle.** Le décor (accueil, encouragements, questions, guidage) peut se
 dire en dioula. **Tout ce qui est `critiqueArgent` continue de se dire en
 français**, jusqu'à validation humaine des 110 nombres par deux locutrices.
+Cela vaut **aussi** dans un build d'essai `JULABA_VOIX_DYU=1` : ce drapeau-là
+ne touche pas à l'argent, et `test:voix-dyu-argent` le prouve, inchangé. La
+seule exception au monde est le **second** drapeau, `JULABA_DYU_ARGENT=1`, qui
+n'existe que pour écouter une voix et jamais pour juger un compte (§5 bis).
 
 **Pourquoi.** Les nombres dioula du corpus sont en DRAFT, et un nombre
 mandingue seul est ambigu entre francs et dɔrɔmɛ : « mugan » vaut 20 F ou
@@ -156,15 +164,12 @@ cache existe). Ouvrir l'application, faire une vente, aller jusqu'à la
 relecture du montant. **Rien ne doit changer** : tout se dit en français, tout
 marche hors ligne, et l'APK ne plante pas alors qu'il porte une voix de plus.
 
-> **À LIRE AVANT DE CHERCHER LE DIOULA DANS L'APPLICATION.** Sélectionner
-> « Dioula » dans les Réglages **ne fera pas encore parler Tantie en dioula**,
-> et c'est VOULU, pas cassé. Le lot B7 a décidé qu'une langue non prête n'est
-> plus servie au moteur (`LANGUE_PRETE.dioula = false`, `useLangPref.ts`) :
-> une marchande qui lit « en préparation » ne doit pas entendre autre chose.
-> Deux choses manquent encore, et aucune n'est de l'ingénierie : le décor
-> dioula validé par Manus, et la décision de déclarer la langue prête. Le §7
-> les nomme. La preuve que le MODÈLE parle dioula hors ligne, elle, est déjà
-> faite : c'est le WAV de l'étape 1.
+> **À LIRE AVANT DE CHERCHER LE DIOULA DANS L'APPLICATION.** Dans un build
+> ORDINAIRE, sélectionner « Dioula » dans les Réglages est impossible : la
+> langue est grisée, et c'est VOULU, pas cassé (lot B7 —
+> `LANGUE_PRETE.dioula = false`). Dans un build d'ESSAI construit avec
+> `JULABA_VOIX_DYU=1`, elle se choisit et Tantie parle dioula. Voir le §5 bis,
+> qui est le cœur de ce lot.
 
 **5. LA MÉMOIRE et LA LATENCE**, pendant que l'application parle :
 
@@ -176,14 +181,103 @@ Relever **trois** valeurs : au lancement, après la première phrase dioula
 (c'est là que le moteur se charge), après dix phrases. Et chronométrer la
 première phrase — le chargement du modèle se paie une fois.
 
-### Le geste qui comptera le plus, le jour où le dioula sera servi
+### Le geste qui compte le plus
 
-Toujours en mode avion, langue réglée sur dioula, faire une **vente** et aller
-jusqu'à la relecture du montant. **Tantie doit annoncer le montant en
-FRANÇAIS.** Si elle l'annonce en dioula, **il faut tout arrêter** : le
-garde-fou a cédé, et une marchande recevrait un chiffre faux avec autorité. Le
-« Rapport de test » doit alors porter des lignes `I18N_FALLBACK` (dyu-ci →
-fr-ci) et, le cas échéant, `VOIX_ARGENT_EN_FRANCAIS`.
+**Sur un build `JULABA_VOIX_DYU=1` seul** (le cas normal du pilote) : mode
+avion, langue réglée sur dioula, faire une **vente** et aller jusqu'à la
+relecture du montant. Le décor doit se dire en dioula — c'est ce qu'on est venu
+écouter — et **Tantie doit annoncer le montant en FRANÇAIS**. Si elle l'annonce
+en dioula, **il faut tout arrêter** : le garde-fou a cédé, et une marchande
+recevrait un chiffre faux avec autorité. Le « Rapport de test » doit porter des
+lignes `I18N_FALLBACK` (dyu-ci → fr-ci) et, le cas échéant,
+`VOIX_ARGENT_EN_FRANCAIS`.
+
+**Sur un build qui porte AUSSI `JULABA_DYU_ARGENT=1`**, le montant en dioula
+est attendu : c'est ce que le drapeau demande. Alors le geste change de sens —
+on écoute **comment ça sonne**, on ne vérifie **jamais le compte**. Et le
+« Rapport de test » doit porter une ligne `VOIX_ARGENT_EN_DIOULA_DE_TEST` par
+montant dit : si elle manque, la dérogation est passée en silence, et c'est
+elle qu'il faut réparer. Voir le §5 bis.
+
+---
+
+## 5 bis. Les deux drapeaux de construction — « tester, pas distribuer »
+
+> « Je suis en train de tester une solution, je ne suis pas en train de la
+> distribuer. Au moment de la distribution, je vais enregistrer des voix. »
+> — Patrick, 22/09/2026
+
+Le lot précédent avait été prudent au mauvais endroit : la licence CC-BY-NC
+interdit une **distribution commerciale**, pas un **build d'essai**. Et à la
+distribution, ce modèle disparaîtra derrière de vrais enregistrements. D'où
+deux interrupteurs, **éteints par défaut**, qui ne changent rien à un build
+ordinaire.
+
+| Drapeau | Ce qu'il commande | L'argent |
+|---|---|---|
+| *(rien)* | le comportement d'aujourd'hui : rien dans l'APK, dioula grisé, `dyu-ci` squelette vide | français |
+| `JULABA_VOIX_DYU=1` | **les trois verrous ensemble** : voix MMS dans les assets, « Dioula » sélectionnable, `dyu-ci` peuplée des **56 phrases de travail** du dépôt (`texteDyu`) | **français** |
+| `+ JULABA_DYU_ARGENT=1` | **en plus** : les clés `critiqueArgent` qui ont une traduction dioula sont dites en dioula | **dioula — dérogation d'essai** |
+
+```bash
+# Un build d'essai complet, du modèle à l'APK
+cd android && JULABA_VOIX_DYU=1 ./scripts/installer-voix.sh
+JULABA_VOIX_DYU=1 npm run build -w frontend_src && cd android && ./gradlew assembleDebug
+```
+
+**Les trois verrous se lèvent ENSEMBLE, et c'est le point.** En lever un seul ne
+sert à rien : une voix sans phrases est muette, des phrases sans voix sont
+illisibles, une langue non sélectionnable n'est ni l'une ni l'autre. C'est pour
+ça qu'il y a UN drapeau et pas trois.
+
+### Pourquoi le garde B7 reste entier
+
+Le lot B7 exige que `dyu-ci` soit un squelette vide et que `LANGUE_PRETE.dioula`
+vaille `false`. Ce lot ne le défait pas, parce qu'il précise ce que ce garde
+interdit :
+
+> **il interdit de LIVRER une demi-langue — pas de la TESTER.**
+
+Les deux drapeaux sont des `define` de bundler. Ils n'existent dans **aucun
+processus Node** : ni `verify`, ni `test:ci`, ni la CI ne les voient. Le train
+de tests mesure donc toujours la configuration **livrable**, et il y voit
+exactement ce que B7 exige. Une variable lue au runtime aurait fait l'inverse :
+elle aurait **désarmé** le garde dans le processus qui l'évalue.
+
+Corollaire assumé : lancer `verify` avec ces variables dans l'environnement ne
+change rien, par construction. Ce que les drapeaux commandent est prouvé
+autrement — `npm run test:drapeaux-dyu` appelle les mêmes fonctions en leur
+passant l'état des drapeaux en argument et compare les **trois états côte à
+côte dans un seul processus**.
+
+### Le second drapeau ouvre un chemin qu'on sait FAUX
+
+`JULABA_DYU_ARGENT=1` **sert à juger le SON, jamais le COMPTE. Il ne doit
+jamais être allumé dans un build remis à une marchande.** Les nombres dioula du
+corpus sont en brouillon, non validés, et un nombre mandingue nu est ambigu
+entre francs et dɔrɔmɛ : « mugan » vaut 20 F ou 100 F. Une Tantie qui annonce
+un montant en dioula peut dire un chiffre juste à l'oreille et **faux au
+compte**.
+
+Il est donc **bruyant**, pour qu'on puisse constater après coup qu'un build
+l'avait allumé :
+
+- `vite` l'écrit en clair au moment de la construction ;
+- la console du téléphone le redit au démarrage de l'application ;
+- **chaque montant réellement dit en dioula** écrit une ligne
+  `VOIX_ARGENT_EN_DIOULA_DE_TEST` au « Rapport de test ».
+
+Et ce qu'il ne lève PAS, même allumé :
+
+- **les chiffres (`NUM_0`…`NUM_9`) restent écartés**, nommément — c'est la
+  matière même du risque ;
+- **les gabarits à variables restent écartés** : un `{montant}` n'entre pas
+  dans une phrase dioula par la porte de derrière ;
+- **les intentions STT restent vides** : ce lot fait *parler* Tantie, il ne
+  change rien à ce qu'elle *entend*, donc rien à la caisse ;
+- **la donnée ne ment pas** : les phrases restent étiquetées
+  `draft` / `finance: false`. C'est le *build* qui assume de passer outre, pas
+  la validation qu'on maquille.
 
 ---
 
@@ -197,7 +291,11 @@ fr-ci) et, le cas échéant, `VOIX_ARGENT_EN_FRANCAIS`.
 | `frontend_src/src/app/i18n/voice/voixParLocale.ts` | **quelle voix dit quoi** — et pourquoi l'argent reste français |
 | `frontend_src/src/app/i18n/voice/renduVoixLocale.ts` | le branchement, sur le point d'extension prévu par `contrat-audio.ts` |
 | `frontend_src/src/app/voice-offline/nativeTtsVoix.ts` | le pont JS multilingue, à côté de `nativeTts.ts` qui reste gelé (VOICE-01) |
-| `frontend_src/src/app/i18n/voice/voixParLocale.test.mts` | la preuve, dans `verify` |
+| `frontend_src/src/app/i18n/voice/voixParLocale.test.mts` | la preuve que l'argent reste français, dans `verify` — **inchangée** |
+| `frontend_src/src/app/i18n/voice/drapeauxDeTest.ts` | **les deux drapeaux**, et le raisonnement complet sur le garde B7 |
+| `frontend_src/src/app/i18n/voice/locales/dyu-ci/decorDeTest.ts` | le décor construit depuis les seules `texteDyu` du dépôt, et le filtre qui l'écarte |
+| `frontend_src/src/app/i18n/voice/drapeauxDyu.test.mts` | les **trois états** côte à côte, dans `verify` |
+| `frontend_src/vite.config.ts` | les deux `define`, et l'avertissement à la construction |
 
 ---
 
@@ -205,8 +303,8 @@ fr-ci) et, le cas échéant, `VOIX_ARGENT_EN_FRANCAIS`.
 
 | Ce qui manque | À qui | Pourquoi ce n'est pas de l'ingénierie |
 |---|---|---|
-| Le décor dioula validé | **Manus** | `dyu-ci.messages` est un squelette, gelé par le lot B7. Les 56 phrases de travail existent (`texteDyu`) et le test montre exactement quel filtre leur appliquer — mais les poser est une livraison linguistique, pas un refactor. |
-| Déclarer le dioula prêt | **Patrick** | `LANGUE_PRETE.dioula = false` (`useLangPref.ts`). Le passer à `true` est une décision produit : c'est dire à une marchande « tu peux choisir cette langue ». |
+| Le décor dioula **validé** | **Manus** | Un build d'essai sert les 56 phrases de travail (`texteDyu`), non validées par une locutrice. Les poser EN DUR dans `dyu-ci.messages` — donc les livrer — est une décision linguistique, pas un refactor. Le filtre qu'il faudra tenir est écrit et prouvé (`decorDeTest.ts`). |
+| Déclarer le dioula prêt | **Patrick** | `LANGUE_PRETE.dioula = false` (`useLangPref.ts`) dit ce qui est prêt à être LIVRÉ, et n'a pas bougé. Le passer à `true` est une décision produit : c'est dire à une marchande « tu peux choisir cette langue ». |
 | Les 110 nombres validés | **deux locutrices ivoiriennes** | C'est le seul verrou entre aujourd'hui et une caisse qui compte en dioula. Tant qu'il tient, l'argent répond en français — et le moteur l'impose. |
 | La licence commerciale | **Patrick** | CC-BY-NC-4.0. Voir §3. |
 | RAM, latence, mode avion | **un téléphone** | §5. |
