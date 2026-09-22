@@ -3,3 +3,7 @@
 # ne sert qu'au moment où l'on cherche un défaut plus bas que le pli.
 *-pleine.png
 *-NON-ATTEINT.png
+
+# Les passes partielles (BANC_ECRANS=…) : vraies, mais elles ne decrivent pas
+# le parcours. Elles ne se versionnent pas.
+banc-terrain-partiel-*.json

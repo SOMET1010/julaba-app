@@ -1250,8 +1250,15 @@ for (const l of rapport) {
   console.log('');
 }
 
-const chemin = resolve(SORTIE, 'banc-terrain.json');
+// UNE PASSE PARTIELLE N'ÉCRASE PAS LE RAPPORT DE RÉFÉRENCE. `BANC_ECRANS=3,4`
+// sert à rejouer un écran ; son résultat est vrai, mais il ne décrit pas le
+// parcours. Écrit sous le même nom, il laissait un fichier versionné qui
+// annonce 30 écrans et n'en contient que deux — le banc mentait sur lui-même,
+// ce qu'il reproche aux écrans. Chaque passe partielle a donc son propre nom.
+const partielle = (process.env.BANC_ECRANS || '').trim().length > 0;
+const chemin = resolve(SORTIE, partielle ? `banc-terrain-partiel-${rapport.map(l => l.n).join('-')}.json` : 'banc-terrain.json');
 writeFileSync(chemin, JSON.stringify({
+  passe: partielle ? `PARTIELLE — écrans ${rapport.map(l => l.n).join(', ')} seulement` : `complète — ${rapport.length} écran(s)`,
   seuilCharte: SEUIL_CHARTE,
   clipsPrototype: process.env.VITE_JULABA_VOICE_PREVIEW === 'true',
   requetesBloquees: [...bloquees].slice(0, 40),
