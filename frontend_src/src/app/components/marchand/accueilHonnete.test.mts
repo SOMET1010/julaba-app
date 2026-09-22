@@ -49,6 +49,14 @@ ok(/au moins/.test(code),
 console.log('\n[2] Les deux impasses — un bouton qui promet un son en produit un');
 ok(/speakMessage\('ACCUEIL_COMPTOIR'\)/.test(code),
    'le bonjour a un recours : la clé de catalogue, quand aucun clip n\'est embarqué');
+ok(/r\.doitDireLeTexte/.test(code),
+   'ce recours est CONDITIONNÉ par ce que le service rapporte — le composant ne devine pas');
+{
+  // La double lecture d'avant : `direAccueilMarchand(...)` et `speakMessage`
+  // côte à côte, inconditionnels. Si le clip existe, deux Tantie en même temps.
+  const enchaine = /direAccueilMarchand\('comptoir'\);\s*\n\s*speakMessage\(/.test(code);
+  ok(!enchaine, 'le clip et le texte ne sont JAMAIS lancés l\'un après l\'autre sans condition');
+}
 {
   // Les deux boutons du banc — le logo et la carte de bienvenue — appellent le
   // MÊME geste. S'ils divergeaient, l'un des deux pourrait redevenir muet sans

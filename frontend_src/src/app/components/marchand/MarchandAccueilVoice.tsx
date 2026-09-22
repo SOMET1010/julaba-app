@@ -109,15 +109,23 @@ function MarchandAccueilVoiceInner() {
   // quand il n'y en a pas : la clé de catalogue, dite par le même moteur que
   // la caisse. Un bouton qui promet un son en produit un, ou se tait parce que
   // la marchande a coupé le son ; jamais parce que personne n'a rien branché.
+  //
+  // UNE SEULE SORTIE. La première version appelait le clip PUIS la clé : là où
+  // le clip est réellement embarqué, la marchande entendait Tantie deux fois,
+  // l'une sur l'autre. Ce composant ne DEVINE plus — `direAccueilMarchand`
+  // rapporte ce qu'il a fait, et porte la décision dans `doitDireLeTexte`.
+  // Une lecture COUPÉE (muet, navigation) ne rattrape rien : ce silence-là est
+  // voulu. Preuve : services/accueilVoixUneSeuleSortie.test.mts.
   const direBonjour = () => {
-    void direAccueilMarchand('comptoir');
-    speakMessage('ACCUEIL_COMPTOIR');
+    void direAccueilMarchand('comptoir').then((r) => {
+      if (r.doitDireLeTexte) speakMessage('ACCUEIL_COMPTOIR');
+    });
   };
 
   /** Ce que la caisse a le droit de DIRE — exactement ce qu'elle affiche.
    *  Montants masqués : on ne prononce pas un chiffre que l'œil a caché. */
   const direCaisse = () => {
-    if (!soldeVisible) { speakMessage('ACCUEIL_COMPTOIR'); return; }
+    if (!soldeVisible) { direBonjour(); return; }
     if (etatCaisse.type === 'connue') speakMessage('ACCUEIL_CAISSE_CONNUE', { caisse: etatCaisse.montant });
     else if (etatCaisse.type === 'partielle') speakMessage('ACCUEIL_CAISSE_PARTIELLE', { caisse: etatCaisse.montant });
     else speakMessage('ACCUEIL_CAISSE_ILLISIBLE');
