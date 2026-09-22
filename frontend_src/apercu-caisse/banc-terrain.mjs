@@ -569,7 +569,25 @@ function mesurerCharte(station) {
 
 const bloquees = new Set();
 
+/** Une lecture de données, c'est un `fetch`/`XHR` — pas un module importé.
+ *
+ *  PREMIÈRE VERSION, FAUSSE, GARDÉE EN MÉMOIRE : elle reconnaissait l'appel à
+ *  son URL, `/api/`. Or le dépôt range ses clients dans `src/app/services/api/`,
+ *  et le banc comptait donc six « lectures serveur » sur un écran qui n'avait
+ *  fait qu'IMPORTER du code. Tous les écrans devenaient coupables. Le type de
+ *  ressource, lui, ne se trompe pas : un module est un `script`, une lecture
+ *  est un `fetch`. */
+const estLectureDeDonnees = (requete) => {
+  const t = requete.resourceType();
+  if (t !== 'fetch' && t !== 'xhr') return false;
+  // Le service worker va rechercher la coquille de l'application (`/`,
+  // `/index.html`) par `fetch` : c'est la page elle-même, pas une donnée.
+  const chemin = new URL(requete.url()).pathname;
+  return chemin !== '/' && chemin !== '/index.html';
+};
+
 async function ouvrirStation(navigateur, station) {
+  const lecturesRatees = [];
   const contexte = await navigateur.newContext({
     viewport: VIEWPORT, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'fr-FR',
   });
@@ -577,6 +595,7 @@ async function ouvrirStation(navigateur, station) {
   // l'application doit tenir debout sans lui. Ce qui manque manque pour de vrai.
   await contexte.route('**/*', route => {
     const u = route.request().url();
+    if (estLectureDeDonnees(route.request())) lecturesRatees.push(u.split('?')[0].slice(0, 120));
     if (u.startsWith(ORIGINE) || u.startsWith('data:') || u.startsWith('blob:')) return route.continue();
     bloquees.add(u.split('?')[0]);
     return route.abort();
@@ -593,7 +612,7 @@ async function ouvrirStation(navigateur, station) {
   page.on('pageerror', e => erreurs.push(String(e && e.message ? e.message : e)));
   page.on('console', m => { if (m.type() === 'error') erreurs.push('[console] ' + m.text().slice(0, 200)); });
   await page.goto(ORIGINE + station.chemin, { waitUntil: 'domcontentloaded' });
-  return { contexte, page, erreurs };
+  return { contexte, page, erreurs, lecturesRatees };
 }
 
 /** Attend la PREUVE que l'écran est là — pas un timer, un texte que la marchande voit. */
@@ -837,6 +856,99 @@ async function auditerTouches(navigateur, station, inventaire) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// E bis. QUESTION 4 — DIT-IL ZÉRO ALORS QU'IL N'A PAS PU DEMANDER ?
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// LE DÉFAUT QUI A COÛTÉ LA CONFIANCE DE PATRICK. Il avait fait des ventes. Les
+// « Ventes passées » affichaient 0. Pas « je n'ai pas pu lire » : ZÉRO. Un zéro
+// et une absence de réponse sont deux choses, et l'écran en faisait une seule —
+// c'est la faute nommée dans la doctrine : « ne jamais donner deux sens à la
+// même donnée ». Sur l'argent, c'est pire qu'un bogue : ça ment.
+//
+// Le banc ne le voyait pas. Il le voit maintenant, et SANS deviner, parce qu'il
+// sait DEUX choses qu'un lecteur d'écran seul ne sait pas :
+//
+//   1. l'écran a-t-il DEMANDÉ au serveur ? (un appel `/api/`, échoué ici) ;
+//   2. l'écran dit-il quand même « 0 » ou « aucun » ?
+//
+// Un écran VRAIMENT vide — « Aucun produit » alors que le catalogue local est
+// vide et qu'aucun serveur n'a été sollicité — ne dit rien de faux : ce n'est
+// pas un défaut, et le banc ne l'accuse pas. Le défaut, c'est l'écran qui a
+// demandé, n'a pas obtenu, et affirme quand même un chiffre.
+//
+// La sortie est l'ABSENCE de sortie : « — », ou des mots qui nomment l'échec.
+// C'est exactement ce que porte la réparation des Ventes passées.
+
+const RE_AFFIRME_VIDE = /(^|[^0-9])0([^0-9,.]|$)|\baucun(e|es)?\b|\brien\b|\bvide\b/i;
+// Le tiret cadratin « — » ne NOMME pas l'échec : il se contente de ne pas
+// mentir. Le compter comme un aveu laisserait passer tout écran qui porte un
+// séparateur décoratif — c'est ce qui a d'abord blanchi « Mes commandes ».
+// On exige des MOTS : la marchande ne lit pas, on les lui dira.
+const RE_NOMME_ECHEC = /pas pu|n['’]ai pas|impossible|r[ée]essa|hors ligne|hors-ligne|connexion|pas de r[ée]seau|serveur|indisponible/i;
+
+const LIRE_AFFIRMATIONS = `() => {
+  const root = document.getElementById('root');
+  const texte = (root ? root.innerText || '' : '');
+  // On juge les LIGNES, pas le bloc entier : « 0 » sur une ligne et « pas pu »
+  // trois écrans plus bas ne se répondent pas l'un l'autre sous les yeux d'une
+  // marchande. Une ligne courte qui porte un chiffre, c'est un compteur.
+  const lignes = texte.split('\\n').map(s => s.trim()).filter(Boolean);
+  return { lignes, longueur: texte.length };
+}`;
+
+function jugerZero(affirmations, lecturesRatees) {
+  const aDemande = lecturesRatees.length > 0;
+  const vides = affirmations.lignes.filter(l => l.length <= 40 && RE_AFFIRME_VIDE.test(l));
+  // On NOMME la ligne qui innocente l'écran. Un verdict qu'on ne peut pas
+  // relire est un verdict qu'on ne peut pas contredire — et le banc s'est
+  // déjà trompé une fois ici.
+  const aveux = affirmations.lignes.filter(l => RE_NOMME_ECHEC.test(l)).slice(0, 4);
+  return {
+    aDemande,
+    lectures: [...new Set(lecturesRatees)].slice(0, 6),
+    affirmations: vides.slice(0, 8),
+    echecNomme: aveux.length > 0,
+    aveux,
+    // Le refus : il a demandé, il n'a pas obtenu, et il affirme quand même.
+    ment: aDemande && vides.length > 0 && aveux.length === 0,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// E ter. QUESTION 5 — À QUI PARLE-T-IL ?
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Tantie Nanti Lou TUTOIE. Le catalogue vocal (i18n/voice/locales/fr-ci) ne
+// contient pas un seul vouvoiement — c'est sa voix, et c'est la règle. Mais des
+// écrans hérités vouvoient encore, et l'un d'eux, la caisse, fait LIRE À VOIX
+// HAUTE son propre titre : « Que voulez-vous vendre ? ». La marchande entend
+// alors une inconnue polie, pas Tantie.
+//
+// C'est le même défaut de fond que « trois zéro zéro zéro » : une seule chaîne
+// sert l'œil et l'oreille. On mesure donc les deux séparément.
+//
+// SIGNALÉ, PAS ENCORE REFUSÉ : corriger le vouvoiement touche soit `frMarche`
+// (qui appartient à Manus — validateLocale exige `null` partout), soit un test
+// figé (caisseCharte fige le H1). L'arbitrage appartient à Patrick, et un banc
+// ne tranche pas à sa place. Le jour où il tranche, cette question rejoint les
+// refus — la ligne est déjà là pour ça.
+
+const RE_VOUVOIEMENT = /\b(vous|votre|vos)\b|-vous\b/i;
+
+const LIRE_ADRESSE = `() => {
+  const root = document.getElementById('root');
+  const texte = (root ? root.innerText || '' : '');
+  return texte.split('\\n').map(s => s.trim()).filter(Boolean)
+    .filter(l => /\\b(vous|votre|vos)\\b|-vous\\b/i.test(l)).slice(0, 8);
+}`;
+
+function jugerAdresse(aLEcran, demandesVoix) {
+  const parle = demandesVoix.filter(d => RE_VOUVOIEMENT.test(d.texte || ''))
+    .map(d => (d.texte || '').slice(0, 80));
+  return { aLEcran, parle, vouvoie: aLEcran.length > 0 || parle.length > 0 };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // F. LE PASSAGE — l'écran N mène-t-il à l'écran N+1 ?
 // ═══════════════════════════════════════════════════════════════════════════
 // Un écran peut réussir les trois questions et rester un cul-de-sac : rien
@@ -902,7 +1014,7 @@ try {
     // Écran 1 : la charte, sans navigateur — elle ne dépend que du source.
     ligne.charte = mesurerCharte(station);
 
-    const { contexte, page, erreurs } = await ouvrirStation(navigateur, station);
+    const { contexte, page, erreurs, lecturesRatees } = await ouvrirStation(navigateur, station);
     try {
       try {
         await attendreEcran(page, station);
@@ -933,6 +1045,10 @@ try {
       await page.screenshot({ path: resolve(SORTIE, `${station.n}-${station.id}-pleine.png`), fullPage: true });
 
       ligne.aLoeil = await ev(page, A_LOEIL);
+      // Q4 et Q5 se lisent SUR L'ÉCRAN POSÉ, avant qu'un doigt n'ait rien changé :
+      // c'est ce que la marchande voit en arrivant.
+      ligne.zero = jugerZero(await ev(page, LIRE_AFFIRMATIONS), lecturesRatees);
+      ligne.adresse = jugerAdresse(await ev(page, LIRE_ADRESSE), ligne.voixMontage.demandes);
       const inventaire = await ev(page, INVENTAIRE);
       ligne.interactifs = inventaire.length;
       ligne.erreursPage = erreurs.slice(0, 5);
@@ -972,6 +1088,9 @@ try {
     if (ligne.inatteignables.length > 0) code = 1;
     if (ligne.confirmationsSansSuite.length > 0) code = 1;
     if (!ligne.charte.ok) code = 1;
+    // Le zéro qui ment est un refus : sur l'argent, la confiance ne se négocie
+    // pas. Le vouvoiement, lui, est SIGNALÉ sans refuser — voir E ter.
+    if (ligne.zero?.ment) code = 1;
 
     rapport.push(ligne);
   }
@@ -1023,7 +1142,10 @@ for (const l of rapport) {
     : `${l.voix.auMontage} au montage, ${l.voix.auGeste}/${l.touches.length} au geste`;
   const imp = `${l.impasses.length}/${l.touches.length}`
     + (l.inatteignables.length ? ` · ${l.inatteignables.length} HORS DE PORTÉE` : '')
-    + (l.confirmationsSansSuite.length ? ` · ${l.confirmationsSansSuite.length} CONFIRMATION SANS SUITE` : '');
+    + (l.confirmationsSansSuite.length ? ` · ${l.confirmationsSansSuite.length} CONFIRMATION SANS SUITE` : '')
+    + (l.zero?.ment ? ' · ZÉRO QUI MENT' : '')
+    + (!l.zero?.ment && l.zero?.aDemande && l.zero?.affirmations.length && l.zero?.echecNomme ? ' · zéro à relire' : '')
+    + (l.adresse?.vouvoie ? ' · vouvoie' : '');
   console.log('  ' + pad(`${l.n}. ${l.titre}`, 34) + pad(charte, 24) + pad(voix, 34) + imp);
 }
 
@@ -1083,6 +1205,32 @@ for (const l of rapport) {
   if (pt.length) {
     console.log(`     à vérifier: ${pt.length} élément(s) ne changent QUE le DOM (aucun mot, aucune adresse, aucune voix) :`);
     pt.forEach(t => console.log(`                 · « ${t.nom} »`));
+  }
+  if (l.zero) {
+    if (l.zero.ment) {
+      console.log(`     ZÉRO QUI MENT : l'écran a demandé au serveur (${l.zero.lectures.length} lecture(s)), n'a rien obtenu,`);
+      console.log(`                 et affirme quand même : ${l.zero.affirmations.map(a => `« ${a} »`).join('  ')}`);
+      console.log(`                 aucun mot ne dit qu'il n'a pas pu lire. Un zéro et une absence de réponse ne sont pas la même chose.`);
+    } else if (l.zero.aDemande && l.zero.affirmations.length && l.zero.echecNomme) {
+      // NI blanchi NI accusé. Le banc voit un aveu d'échec ET des chiffres de
+      // vide, mais il ne peut pas établir que l'aveu COUVRE ces chiffres —
+      // « Impossible de charger les négociations » n'explique pas quatre
+      // compteurs à zéro. Prétendre le contraire serait refaire, dans l'autre
+      // sens, l'erreur que ce banc existe pour ne plus commettre.
+      console.log(`     zéro      : À RELIRE À L'ŒIL — il affirme ${l.zero.affirmations.map(a => `« ${a} »`).join(' ')}`);
+      console.log(`                 et nomme un échec : ${l.zero.aveux.map(a => `« ${a} »`).join(' ')}`);
+      console.log(`                 le banc ne peut pas dire si cet aveu explique CES chiffres-là.`);
+    } else if (l.zero.affirmations.length && !l.zero.aDemande) {
+      console.log(`     zéro      : honnête — le vide est local (aucune lecture serveur), donc vrai.`);
+    } else if (!l.zero.affirmations.length) {
+      console.log(`     zéro      : rien à reprocher — l'écran n'affirme aucun vide chiffré.`);
+    }
+  }
+  if (l.adresse?.vouvoie) {
+    console.log(`     ADRESSE   : cet écran VOUVOIE — Tantie tutoie (0 vouvoiement dans le catalogue vocal).`);
+    if (l.adresse.aLEcran.length) console.log(`                 à l'écran : ${l.adresse.aLEcran.map(x => `« ${x} »`).join('  ')}`);
+    if (l.adresse.parle.length) console.log(`                 À VOIX HAUTE : ${l.adresse.parle.map(x => `« ${x} »`).join('  ')}`);
+    console.log(`                 (signalé, pas un refus : l'arbitrage appartient à Patrick — voir E ter)`);
   }
   if (l.passage) {
     console.log(`     passage   : ${l.passage.ouvertPar ? `« ${l.passage.ouvertPar} » ouvre l'écran suivant` : "AUCUN élément touché n'ouvre l'écran suivant"}`);
