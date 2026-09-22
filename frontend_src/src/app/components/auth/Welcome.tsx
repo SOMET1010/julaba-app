@@ -10,7 +10,7 @@ import { useNavigate } from "react-router";
 import logoDge from "../../../assets/images/logo-dge.png";
 import logoAnsut from "../../../assets/images/logo-ansut.png";
 import { direIntro, stopIntro } from '../../services/onboardingVoix';
-import { direAkwaba } from '../../services/entreeAkwabaVoix';
+import { direEntreeAvantConnexion } from '../../services/entreeVoixAvantConnexion';
 import { tParle } from '../../i18n/voice/runtime';
 import { speak as direTexte } from '../../services/audioManager';
 import { estHabituee } from '../../utils/parcours';
@@ -33,11 +33,11 @@ export function Welcome({ onComplete }: WelcomeProps) {
   // écran du téléphone ne disait pas bonjour, et le bouton qui le promettait
   // ne faisait rien.
   //
-  // `direAkwaba` joue le MÊME clip (registre figé, règle inchangée) mais
+  // `direEntreeAvantConnexion` joue le MÊME clip (registre figé, règle inchangée) mais
   // RAPPORTE ce qu'il en advient. Le texte ne part que s'il ne reste rien à
   // dire — jamais par-dessus le clip, et jamais après une coupure : quand la
   // marchande touche « Écouter et entrer » pendant le bonjour, ce silence est
-  // sa décision. Preuve : services/entreeAkwabaVoix.test.mts.
+  // sa décision. Preuve : services/entreeVoixAvantConnexion.test.mts.
   //
   // ── POURQUOI PAS `speakMessage` ICI ──────────────────────────────────────
   // Le banc l'a montré, et c'est la vraie leçon de cet écran : le rendu de
@@ -52,7 +52,7 @@ export function Welcome({ onComplete }: WelcomeProps) {
   // pas dans la garde de rôle.
   const accueille = useCallback(() => {
     const habituee = estHabituee();
-    void direAkwaba(habituee ? 'retour' : 'accueil')
+    void direEntreeAvantConnexion(habituee ? 'retour' : 'accueil')
       .then((r) => {
         if (!r.doitDireLeTexte) return;
         void direTexte(tParle(habituee ? 'AKWABA_RETOUR' : 'AKWABA_ACCUEIL'));

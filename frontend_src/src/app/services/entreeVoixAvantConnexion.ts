@@ -18,7 +18,7 @@
  *
  * CE QUE CELA COÛTE, ET COMMENT ON LE PAIE. La règle de disponibilité existe
  * donc à deux endroits — ici et là-bas. Deux copies finissent toujours par
- * diverger. `entreeAkwabaVoix.test.mts` relit le fichier figé et vérifie que
+ * diverger. `entreeVoixAvantConnexion.test.mts` relit le fichier figé et vérifie que
  * l'expression y est mot pour mot celle qu'on reprend : si elle change
  * là-bas, le test tombe ici. C'est un constat, pas un desserrage.
  *
@@ -29,7 +29,7 @@
 import { playClip } from './audioManager';
 
 /** Les deux bonjours du premier écran : première venue, ou retour. */
-export type CleAkwaba = 'accueil' | 'retour';
+export type CleEntree = 'accueil' | 'retour';
 
 /**
  * CE QUI S'EST RÉELLEMENT PASSÉ — même dessin qu'à l'accueil marchand, et
@@ -39,7 +39,7 @@ export type CleAkwaba = 'accueil' | 'retour';
  * marchande touche « Écouter et entrer » pendant le bonjour) et le changement
  * d'écran. Rattraper ce silence par une voix de synthèse la contredirait.
  */
-export type ResultatAkwaba =
+export type ResultatEntree =
   | { readonly lu: true; readonly par: 'clip'; readonly doitDireLeTexte: false }
   | { readonly lu: false; readonly raison: 'aucun-clip' | 'clip-echoue'; readonly doitDireLeTexte: true }
   | { readonly lu: false; readonly raison: 'coupe'; readonly doitDireLeTexte: false };
@@ -74,8 +74,8 @@ export function urlDuClip(clip: ClipIntro | undefined, actifs: boolean): string 
   return clip.atteste || (clip.prototype && actifs) ? clip.file : null;
 }
 
-export interface DepsAkwaba {
-  readonly clipUrl: (cle: CleAkwaba) => Promise<string | null>;
+export interface DepsEntree {
+  readonly clipUrl: (cle: CleEntree) => Promise<string | null>;
   readonly jouer: (clipUrl: string) => Promise<ResultatLecture>;
 }
 
@@ -85,7 +85,7 @@ export interface DepsAkwaba {
  * observable — une exception — et rien de plus. Le type porte déjà les trois
  * issues ; le jour où VOICE-01 est desserrée, il y a un mot à changer.
  */
-const DEPS_REELLES: DepsAkwaba = {
+const DEPS_REELLES: DepsEntree = {
   // IMPORT PARESSEUX, ET C'EST VOULU. `onboardingVoix` lit
   // `import.meta.env` à la racine de son module : l'importer statiquement
   // rendrait CE fichier inchargeable hors Vite, donc sa règle improuvable.
@@ -101,10 +101,10 @@ const DEPS_REELLES: DepsAkwaba = {
 };
 
 /** Joue le clip s'il existe, et RAPPORTE s'il reste quelque chose à dire. */
-export async function direAkwaba(
-  cle: CleAkwaba,
-  deps: DepsAkwaba = DEPS_REELLES,
-): Promise<ResultatAkwaba> {
+export async function direEntreeAvantConnexion(
+  cle: CleEntree,
+  deps: DepsEntree = DEPS_REELLES,
+): Promise<ResultatEntree> {
   const url = await deps.clipUrl(cle);
   if (!url) return { lu: false, raison: 'aucun-clip', doitDireLeTexte: true };
   const r = await deps.jouer(url);
