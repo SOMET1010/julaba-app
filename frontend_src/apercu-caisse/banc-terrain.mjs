@@ -65,6 +65,11 @@ const EXECUTABLE = process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium-1194/ch
 const SORTIE = process.env.BANC_SORTIE
   || resolve(racine, '..', 'docs', 'parcours', 'captures', 'banc-terrain');
 const MAX_ELEMENTS = Number(process.env.BANC_MAX_ELEMENTS || 24);
+// La couronne compte 25 écrans : les toucher tous à 24 éléments, c'est ~600
+// démarrages de navigateur. On en examine moins par écran, et le rapport DIT
+// combien n'ont pas été examinés — un banc qui tronque en silence ment.
+const MAX_COURONNE = Number(process.env.BANC_COURONNE_MAX || 12);
+const plafond = station => (station.rang === 'couronne' ? MAX_COURONNE : MAX_ELEMENTS);
 const SEUIL_CHARTE = Number(process.env.BANC_SEUIL_CHARTE || 0.5);
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -98,10 +103,11 @@ const SESSION_MARCHANDE = {
   julaba_auth_user: JSON.stringify(MARCHANDE),
 };
 
-const PARCOURS = [
+const TRONC = [
   {
     n: 1,
     id: 'entree-akwaba',
+    rang: 'tronc',
     titre: 'Entrée — Akwaba (premier écran du téléphone)',
     chemin: '/',
     semences: {},
@@ -111,6 +117,7 @@ const PARCOURS = [
   {
     n: 2,
     id: 'entree-presentation',
+    rang: 'tronc',
     titre: 'Entrée — Tantie Nanti Lou se présente',
     chemin: '/',
     semences: SPLASH_VU,
@@ -120,6 +127,7 @@ const PARCOURS = [
   {
     n: 3,
     id: 'entree-numero',
+    rang: 'tronc',
     titre: 'Entrée — Ton numéro (connexion)',
     chemin: '/',
     semences: ONBOARDING_FAIT,
@@ -129,6 +137,7 @@ const PARCOURS = [
   {
     n: 4,
     id: 'accueil-marchand',
+    rang: 'tronc',
     titre: 'Accueil marchand — le comptoir',
     chemin: '/marchand',
     semences: SESSION_MARCHANDE,
@@ -142,6 +151,7 @@ const PARCOURS = [
   {
     n: 5,
     id: 'caisse',
+    rang: 'tronc',
     titre: 'Caisse — la surface de vente',
     chemin: '/marchand/caisse',
     semences: SESSION_MARCHANDE,
@@ -161,6 +171,354 @@ const PARCOURS = [
     }`,
   },
 ];
+
+// ── LA COURONNE ─────────────────────────────────────────────────────────────
+//
+// Les écrans du TRONC (1 à 5) forment une chaîne : on ne juge pas le 5 avant le
+// 4, et un écran raté arrête tout — c'est le chemin qu'une marchande PARCOURT.
+// Les autres ne forment pas une chaîne : ce sont les portes qui s'ouvrent depuis
+// le comptoir, en étoile. Chacune se juge SEULE, et une porte fermée n'empêche
+// pas de regarder les suivantes — sinon le banc n'aurait jamais donné la carte
+// complète, seulement le premier trou.
+//
+// Les PREUVES ci-dessous ne sont pas écrites de tête : elles viennent du relevé
+// de `apercu-caisse/banc-terrain/reconnaitre.mjs`, qui a ouvert chaque route
+// et lu ce que l'écran affiche vraiment. Si une route change, on relance la
+// reconnaissance — on ne devine pas un nouveau texte.
+//
+// `sources` porte aussi AppLayout : il est RÉELLEMENT monté sous /marchand (il
+// dessine l'en-tête et la barre du bas). Le taire ferait mesurer un écran que
+// personne ne voit.
+
+const COURONNE = [
+  {
+    n: 6,
+    id: 'cahier',
+    rang: 'couronne',
+    titre: 'Cahier de dépenses',
+    chemin: '/marchand/cahier',
+    semences: SESSION_MARCHANDE,
+    preuve: "Mes dépenses",
+    sources: [
+      'src/app/components/marchand/MarchandDepenses.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 7,
+    id: 'depense',
+    rang: 'couronne',
+    titre: 'Noter une dépense',
+    chemin: '/marchand/depense',
+    semences: SESSION_MARCHANDE,
+    preuve: "Quelle dépense ?",
+    sources: [
+      'src/app/components/marchand/DepenseForm.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 8,
+    id: 'stock',
+    rang: 'couronne',
+    titre: 'Mes produits (stock)',
+    chemin: '/marchand/stock',
+    semences: SESSION_MARCHANDE,
+    preuve: "Mes produits",
+    sources: [
+      'src/app/components/marchand/GestionStock.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 9,
+    id: 'ventes-passees',
+    rang: 'couronne',
+    titre: 'Ventes passées',
+    chemin: '/marchand/ventes-passees',
+    semences: SESSION_MARCHANDE,
+    preuve: "Ventes passées",
+    sources: [
+      'src/app/components/marchand/VentesPassees.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 10,
+    id: 'resume-caisse',
+    rang: 'couronne',
+    titre: 'Résumé de la caisse',
+    chemin: '/marchand/resume-caisse',
+    semences: SESSION_MARCHANDE,
+    preuve: "Résumé détaillé",
+    sources: [
+      'src/app/components/marchand/ResumeCaisse.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 11,
+    id: 'commandes',
+    rang: 'couronne',
+    titre: 'Mes commandes',
+    chemin: '/marchand/commandes',
+    semences: SESSION_MARCHANDE,
+    preuve: "Mes commandes",
+    sources: [
+      'src/app/components/marchand/MesCommandes.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 12,
+    id: 'alertes',
+    rang: 'couronne',
+    titre: 'Alertes',
+    chemin: '/marchand/alertes',
+    semences: SESSION_MARCHANDE,
+    preuve: "Alertes",
+    sources: [
+      'src/app/components/marchand/MarchandAlertes.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 13,
+    id: 'profil',
+    rang: 'couronne',
+    titre: 'Mon profil',
+    chemin: '/marchand/profil',
+    semences: SESSION_MARCHANDE,
+    preuve: "Mon profil",
+    sources: [
+      'src/app/components/marchand/MarchandProfil.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 14,
+    id: 'parametres',
+    rang: 'couronne',
+    titre: 'Paramètres',
+    chemin: '/marchand/parametres',
+    semences: SESSION_MARCHANDE,
+    preuve: "Paramètres",
+    sources: [
+      'src/app/components/marchand/Parametres.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 15,
+    id: 'marche',
+    rang: 'couronne',
+    titre: 'Marché virtuel',
+    chemin: '/marchand/marche',
+    semences: SESSION_MARCHANDE,
+    preuve: "Marché virtuel",
+    sources: [
+      'src/app/components/marchand/MarcheVirtuel.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 16,
+    id: 'recoltes-prevues',
+    rang: 'couronne',
+    titre: 'Récoltes prévues',
+    chemin: '/marchand/recoltes-prevues',
+    semences: SESSION_MARCHANDE,
+    preuve: "Récoltes prévues",
+    sources: [
+      'src/app/components/marchand/RecoltesPrevues.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 17,
+    id: 'cooperative',
+    rang: 'couronne',
+    titre: 'Ma coopérative',
+    chemin: '/marchand/cooperative',
+    semences: SESSION_MARCHANDE,
+    preuve: "Ma coopérative",
+    sources: [
+      'src/app/components/marchand/MaCooperative.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 18,
+    id: 'cooperative-besoin',
+    rang: 'couronne',
+    titre: 'Soumettre un besoin',
+    chemin: '/marchand/cooperative/besoin',
+    semences: SESSION_MARCHANDE,
+    preuve: "Soumettre un besoin",
+    sources: [
+      'src/app/components/marchand/BesoinMarchand.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 19,
+    id: 'tontines',
+    rang: 'couronne',
+    titre: 'Mes tontines',
+    chemin: '/marchand/tontines',
+    semences: SESSION_MARCHANDE,
+    preuve: "Mes tontines",
+    sources: [
+      'src/app/components/marchand/Tontines.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 20,
+    id: 'tontine-detail',
+    rang: 'couronne',
+    titre: 'Une tontine',
+    chemin: '/marchand/tontines/1',
+    semences: SESSION_MARCHANDE,
+    preuve: "Tontine",
+    sources: [
+      'src/app/components/marchand/TontineDetail.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 21,
+    id: 'protection-sociale',
+    rang: 'couronne',
+    titre: 'Ma protection sociale',
+    chemin: '/marchand/protection-sociale',
+    semences: SESSION_MARCHANDE,
+    preuve: "Ma protection sociale",
+    sources: [
+      'src/app/components/marchand/ProtectionSociale.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 22,
+    id: 'fidelite',
+    rang: 'couronne',
+    titre: 'Fidélité clients',
+    chemin: '/marchand/fidelite',
+    semences: SESSION_MARCHANDE,
+    preuve: "Fidélité",
+    sources: [
+      'src/app/components/marchand/Fidelite.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 23,
+    id: 'academy',
+    rang: 'couronne',
+    titre: 'Academy',
+    chemin: '/marchand/academy',
+    semences: SESSION_MARCHANDE,
+    preuve: "Julaba Academy",
+    sources: [
+      'src/app/components/academy/UniversalAcademy.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 24,
+    id: 'keiwa',
+    rang: 'couronne',
+    titre: 'Keiwa — le portefeuille',
+    chemin: '/marchand/keiwa',
+    semences: SESSION_MARCHANDE,
+    preuve: "Crée ton code PIN",
+    sources: [
+      'src/app/components/wallet/WalletPage.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 25,
+    id: 'keiwa-transfert',
+    rang: 'couronne',
+    titre: 'Keiwa — transfert',
+    chemin: '/marchand/keiwa/transfert',
+    semences: SESSION_MARCHANDE,
+    preuve: "Transfert",
+    sources: [
+      'src/app/components/wallet/TransfertPage.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 26,
+    id: 'keiwa-paiements',
+    rang: 'couronne',
+    titre: 'Keiwa — paiements',
+    chemin: '/marchand/keiwa/paiements',
+    semences: SESSION_MARCHANDE,
+    preuve: "Paiements",
+    sources: [
+      'src/app/components/wallet/PaiementsPage.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 27,
+    id: 'keiwa-banque',
+    rang: 'couronne',
+    titre: 'Keiwa — ma banque',
+    chemin: '/marchand/keiwa/banque',
+    semences: SESSION_MARCHANDE,
+    preuve: "Lier ma banque",
+    sources: [
+      'src/app/components/wallet/BanquePage.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 28,
+    id: 'keiwa-carte',
+    rang: 'couronne',
+    titre: 'Keiwa — ma carte',
+    chemin: '/marchand/keiwa/carte',
+    semences: SESSION_MARCHANDE,
+    preuve: "Ma carte",
+    sources: [
+      'src/app/components/wallet/CartePage.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 29,
+    id: 'keiwa-historique',
+    rang: 'couronne',
+    titre: 'Keiwa — transactions',
+    chemin: '/marchand/keiwa/historique',
+    semences: SESSION_MARCHANDE,
+    preuve: "Transactions",
+    sources: [
+      'src/app/components/wallet/HistoriquePage.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+  {
+    n: 30,
+    id: 'support',
+    rang: 'couronne',
+    titre: 'Support',
+    chemin: '/marchand/support',
+    semences: SESSION_MARCHANDE,
+    preuve: "Support JÙLABA",
+    sources: [
+      'src/app/components/shared/SupportPage.tsx',
+      'src/app/components/layout/AppLayout.tsx',
+    ],
+  },
+];
+
+const PARCOURS = [...TRONC, ...COURONNE];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // B. QUESTION 1 — EST-IL DANS LA CHARTE ?
@@ -406,7 +764,7 @@ const A_LOEIL = `() => {
 
 async function auditerTouches(navigateur, station, inventaire) {
   const resultats = [];
-  const aExaminer = inventaire.slice(0, MAX_ELEMENTS);
+  const aExaminer = inventaire.slice(0, plafond(station));
   for (let i = 0; i < aExaminer.length; i++) {
     const el = aExaminer[i];
     const { contexte, page } = await ouvrirStation(navigateur, station);
@@ -486,7 +844,9 @@ async function auditerTouches(navigateur, station, inventaire) {
 // touches déjà faites, sans un clic de plus.
 
 function chercherPassage(touches, suivante) {
-  if (!suivante) return null;
+  // Une porte de la couronne n'a pas de « suivante » : elle s'ouvre depuis le
+  // comptoir et y ramène. Chercher un passage y serait un faux défaut.
+  if (!suivante || suivante.rang !== 'tronc') return null;
   const trouve = touches.find(t => t.texteApres && t.texteApres.includes(suivante.preuve));
   return trouve ? { ouvertPar: trouve.nom } : { ouvertPar: null };
 }
@@ -536,7 +896,7 @@ try {
   for (let s = 0; s < PARCOURS.length; s++) {
     const station = PARCOURS[s];
     if (choisis.length && !choisis.includes(station.n)) continue;
-    const ligne = { n: station.n, id: station.id, titre: station.titre, chemin: station.chemin };
+    const ligne = { n: station.n, id: station.id, rang: station.rang, titre: station.titre, chemin: station.chemin };
     process.stderr.write(`\n── Écran ${station.n} — ${station.titre}\n`);
 
     // Écran 1 : la charte, sans navigateur — elle ne dépend que du source.
@@ -554,9 +914,16 @@ try {
         await page.screenshot({ path: resolve(SORTIE, `${station.n}-${station.id}-NON-ATTEINT.png`) }).catch(() => {});
         rapport.push(ligne);
         code = 1;
-        // On ne juge pas l'écran suivant avant d'avoir jugé celui-ci.
-        process.stderr.write(`   ✗ écran non atteint — on s'arrête ici, comme au marché.\n`);
-        break;
+        if (station.rang === 'tronc') {
+          // Le tronc est une CHAÎNE : on ne juge pas l'écran suivant avant
+          // d'avoir jugé celui-ci. Une marchande bloquée ne voit pas la suite.
+          process.stderr.write(`   ✗ écran non atteint — on s'arrête ici, comme au marché.\n`);
+          break;
+        }
+        // La couronne est une ÉTOILE : une porte fermée n'en ferme aucune autre.
+        // On le note et on va voir la suivante — c'est la carte qu'on veut.
+        process.stderr.write(`   ✗ porte fermée — on continue, les autres ne dependent pas d'elle.\n`);
+        continue;
       }
 
       // La voix DU MONTAGE : ce que l'écran dit tout seul quand il apparaît.
@@ -628,11 +995,24 @@ console.log('\n╔════════════════════�
 console.log('║  BANC TERRAIN — parcours de la marchande, catalogue VIDE, sans réseau, 390 × 844      ║');
 console.log('╚══════════════════════════════════════════════════════════════════════════════════════╝\n');
 console.log(`  Seuil de charte : part de jetons --caisse-* ≥ ${SEUIL_CHARTE} ET au moins un jeton.`);
-console.log(`  Clips « prototype » : ${process.env.VITE_JULABA_VOICE_PREVIEW === 'true' ? 'ACTIFS' : 'éteints (comme un build livré)'}\n`);
-console.log('  ' + pad('Écran', 34) + pad('Charte', 24) + pad('Voix', 34) + 'Ne mène nulle part');
-console.log('  ' + '─'.repeat(112));
+console.log(`  Clips « prototype » : ${process.env.VITE_JULABA_VOICE_PREVIEW === 'true' ? 'ACTIFS' : 'éteints (comme un build livré)'}`);
+console.log(`  Éléments touchés par écran : ${MAX_ELEMENTS} dans le tronc, ${MAX_COURONNE} dans la couronne.\n`);
+
+// Deux sections, parce que ce sont deux choses : le CHEMIN qu'une marchande
+// parcourt, et les PORTES qui s'ouvrent depuis son comptoir.
+const titreSection = {
+  tronc: 'LE CHEMIN — ce qu’elle traverse, dans l’ordre, pour vendre',
+  couronne: 'LES PORTES — ce qui s’ouvre depuis le comptoir, chacune jugée seule',
+};
+let sectionCourante = null;
 
 for (const l of rapport) {
+  if (l.rang !== sectionCourante) {
+    sectionCourante = l.rang;
+    console.log(`\n  ${titreSection[l.rang] || l.rang}`);
+    console.log('  ' + pad('Écran', 34) + pad('Charte', 24) + pad('Voix', 34) + 'Ne mène nulle part');
+    console.log('  ' + '─'.repeat(112));
+  }
   if (!l.atteint) {
     console.log('  ' + pad(`${l.n}. ${l.titre}`, 34) + 'NON ATTEINT — ' + l.pourquoi);
     continue;
