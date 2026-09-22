@@ -74,7 +74,7 @@ const unitesConfig = constantesDe('config/unites.ts', ['UNITES_COURANTES']);
 const prixVocal = constantesDe('services/prixVocal.ts', ['MEMES_UNITES']);
 const devise = constantesDe('config/devise.ts', ['DEVISE_CODE', 'DEVISE_SYMBOLE', 'DEVISE_PARLEE']);
 const chiffres = constantesDe('utils/frenchDigits.ts', ['SMALL', 'TENS']);
-const bambara = constantesDe('voice-offline/nombresBambara.ts', ['UNITES', 'TAN', 'MUGAN', 'KEME', 'MILLE', 'BI', 'DOROME', 'CONNECTEUR']);
+const bambara = constantesDe('voice-offline/nombresMandingue.ts', ['UNITES', 'TAN', 'MUGAN', 'KEME', 'MILLE', 'BI', 'DOROME', 'CONNECTEUR']);
 const choixUnite = constantesDe('components/marchand/ChoixUnite.tsx', ['PHRASES']);
 
 // ── 4. aria-label : lus par un lecteur d'écran seulement ─────────────────────
@@ -268,7 +268,7 @@ L('### 7.3 Nombres');
 L();
 L(`- Français, parseur de vente (\`voice-offline/extraction.ts\`) : ${(extraction.UNITES?.valeur || []).length} unités/exceptions + ${(extraction.DIZAINES?.valeur || []).length} dizaines, plus \`cent(s)\`, \`mille\`, \`et\` ; ellipse du marché « mille cinq » = 1 500.`);
 L(`- Français, dictée d'un numéro (\`utils/frenchDigits.ts\`) : ${(chiffres.SMALL?.valeur || []).length} petits nombres, ${(chiffres.TENS?.valeur || []).length} dizaines.`);
-L(`- Bambara (\`voice-offline/nombresBambara.ts\`, existant, base annoncée pour le dioula) : unités ${(bambara.UNITES?.valeur || []).map(([k]) => k).join(', ')} ; échelles ${[...(bambara.TAN?.valeur || []), ...(bambara.MUGAN?.valeur || []), ...(bambara.KEME?.valeur || []), ...(bambara.MILLE?.valeur || []), ...(bambara.BI?.valeur || [])].join(', ')} ; monnaie orale ${(bambara.DOROME?.valeur || []).join(', ')} (= 5 F).`);
+L(`- Bambara (\`voice-offline/nombresMandingue.ts\`, existant, base annoncée pour le dioula) : unités ${(bambara.UNITES?.valeur || []).map(([k]) => k).join(', ')} ; échelles ${[...(bambara.TAN?.valeur || []), ...(bambara.MUGAN?.valeur || []), ...(bambara.KEME?.valeur || []), ...(bambara.MILLE?.valeur || []), ...(bambara.BI?.valeur || [])].join(', ')} ; monnaie orale ${(bambara.DOROME?.valeur || []).join(', ')} (= 5 F).`);
 L();
 L('### 7.4 Monnaie — `config/devise.ts`');
 L();
