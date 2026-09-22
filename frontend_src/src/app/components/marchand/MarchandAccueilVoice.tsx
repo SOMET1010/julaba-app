@@ -76,14 +76,23 @@ function MarchandAccueilVoiceInner() {
   const svg = (d: ReactNode) => (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{d}</svg>
   );
+  // TEINTES : les jetons de la charte caisse (styles/commerce.css, `--caisse-*`),
+  // choisis PAR LE SENS et non par la teinte d'origine — une marchande qui
+  // avance de l'accueil à la caisse ne doit pas sentir qu'elle change d'app.
+  //   stock    → vert        (les produits, comme la grille de la caisse)
+  //   dépenses → alerte      (le seul registre où l'argent SORT)
+  //   ventes   → vert foncé  (« montants forts » : ce qui est déjà rentré)
+  //   argent   → gris texte  (le portefeuille, neutre vis-à-vis de la caisse ;
+  //              c'est la correspondance la plus faible des quatre — la charte
+  //              n'a pas de jeton « portefeuille »)
   const tuiles: Array<{ icon: ReactNode; label: string; go: () => void; teinte: string }> = [
-    { icon: svg(<><path d="M21 8V16a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4z"/><path d="M3.27 6.96 12 12l8.73-5.04"/><path d="M12 22V12"/></>), label: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: '#0E7A47' },
-    { icon: svg(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>), label: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: '#B74725' },
-    { icon: svg(<><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="9"/><line x1="18" y1="20" x2="18" y2="4"/></>), label: 'Mes ventes',   go: () => navigate('/marchand/ventes-passees'), teinte: '#2C6E9E' },
+    { icon: svg(<><path d="M21 8V16a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4z"/><path d="M3.27 6.96 12 12l8.73-5.04"/><path d="M12 22V12"/></>), label: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: 'var(--caisse-vert)' },
+    { icon: svg(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>), label: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: 'var(--caisse-alerte)' },
+    { icon: svg(<><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="9"/><line x1="18" y1="20" x2="18" y2="4"/></>), label: 'Mes ventes',   go: () => navigate('/marchand/ventes-passees'), teinte: 'var(--caisse-vert-fonce)' },
     // La tuile « Mon argent » (Keiwa) est CONSERVÉE : Manus la retire, mais
     // retirer une entrée de navigation est un arbitrage produit, pas un report
     // de design. Seul l'habillage de la tuile vient de Manus.
-    { icon: svg(<><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></>), label: 'Mon argent',   go: () => navigate('/marchand/keiwa'),          teinte: '#7A3B12' },
+    { icon: svg(<><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></>), label: 'Mon argent',   go: () => navigate('/marchand/keiwa'),          teinte: 'var(--caisse-gris-texte)' },
   ];
 
   return (
@@ -135,35 +144,49 @@ function MarchandAccueilVoiceInner() {
           </div>
         </div>
 
-        {/* Bannière de reprise (Lot 3) — deux états distincts */}
+        {/* Bannière de reprise (Lot 3) — deux états distincts.
+            CHARTE : mêmes jetons que la caisse. L'ancienne vente retrouvée est
+            un AVERTISSEMENT (fond sable, bordure alerte) ; la vente en cours
+            est un SUCCÈS (fond succès, bordure verte). Les deux suivaient
+            auparavant des teintes écrites en dur, qui restaient claires en mode
+            sombre : sur un téléphone en mode sombre, ces deux cartes étaient
+            les seules surfaces blanches de la page.
+            LE CAS QUI RÉSISTE : `--caisse-alerte` ne fait que 3,2:1
+            sur `--caisse-sable` — illisible en corps 14/15. Il porte donc la
+            BORDURE et l'icône, et le texte reste sur `--encre` (l'encre
+            principale, que la caisse lit déjà, commerce.css). */}
         {staleCart ? (
-          <div style={{ marginTop: 16, borderRadius: 18, padding: '14px 16px', background: '#FFF4E5',
-            border: '1.5px solid #F0C48A', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 16, borderRadius: 18, padding: '14px 16px', background: 'var(--caisse-sable)',
+            border: '1.5px solid color-mix(in srgb, var(--caisse-alerte) 45%, transparent)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 150 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#8A4B12' }}>Une ancienne vente a été retrouvée</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--encre)' }}>Une ancienne vente a été retrouvée</div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <motion.button whileTap={{ scale: 0.95 }} onClick={reprendreStale}
-                style={{ padding: '9px 16px', borderRadius: 12, border: 'none', background: '#B74725', color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
+                style={{ padding: '9px 16px', borderRadius: 12, border: 'none', background: 'var(--caisse-vert)', color: 'white', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
                 Reprendre
               </motion.button>
               <motion.button whileTap={{ scale: 0.95 }} onClick={discardStaleCart} aria-label="Effacer l'ancienne vente"
-                style={{ padding: '9px 16px', borderRadius: 12, border: '1.5px solid #E0B58A', background: '#fff', color: '#8A4B12', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
+                style={{ padding: '9px 16px', borderRadius: 12, border: '1.5px solid color-mix(in srgb, var(--caisse-alerte) 45%, transparent)', background: 'var(--caisse-ivoire)', color: 'var(--encre)', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
                 Effacer
               </motion.button>
             </div>
           </div>
         ) : venteEnCours ? (
           <motion.button whileTap={{ scale: 0.98 }} onClick={allerCaisse} aria-label="Reprendre la vente en cours"
-            style={{ width: '100%', boxSizing: 'border-box', marginTop: 16, borderRadius: 18, padding: '14px 16px',
-              background: '#EAF7EE', border: '1.5px solid #A8D8B9', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+            style={{ width: 'calc(100% - 2 * var(--julaba-gouttiere))', boxSizing: 'border-box', marginTop: 16, borderRadius: 18, padding: '14px 16px',
+              background: 'var(--caisse-succes)', border: '1.5px solid color-mix(in srgb, var(--caisse-vert) 45%, transparent)', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
             <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#0E7A47' }}>Vente en cours</div>
-              <div style={{ fontSize: 13, color: '#2E6B4A', fontVariantNumeric: 'tabular-nums' }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--caisse-vert-fonce)' }}>Vente en cours</div>
+              {/* « 6 articles · 2 900 F » est un MONTANT, pas une légende : il prend
+                  `--caisse-vert-fonce` (« montants forts ») et non le gris des
+                  légendes, qui tombe à 4,4:1 sur le fond succès. La hiérarchie se
+                  fait au corps et à la graisse, pas en pâlissant le chiffre. */}
+              <div style={{ fontSize: 13, color: 'var(--caisse-vert-fonce)', fontVariantNumeric: 'tabular-nums' }}>
                 {nbItems} article{nbItems > 1 ? 's' : ''} · {Math.round(totalPanier).toLocaleString('fr-FR')} F
               </div>
             </div>
-            <span style={{ padding: '8px 16px', borderRadius: 12, background: '#0E7A47', color: '#fff', fontWeight: 800, fontSize: 14 }}>Reprendre</span>
+            <span style={{ padding: '8px 16px', borderRadius: 12, background: 'var(--caisse-vert)', color: 'white', fontWeight: 800, fontSize: 14 }}>Reprendre</span>
           </motion.button>
         ) : null}
 
