@@ -33,7 +33,7 @@
  * qui écrit de l'argent vivent dans POSCaisse — la frontière de ce fichier
  * reste : remplir le panier, jamais encaisser.
  */
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertCircle, AudioLines, CheckCircle, Keyboard, Loader, Mic, Volume2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
@@ -48,6 +48,7 @@ import { useObjectif } from '../../contexts/ObjectifContext';
 import { useStock, type StockItem } from '../../contexts/StockContext';
 import { extraire } from '../../voice-offline/extraction';
 import { intentLocal, intentLocalCaisse } from '../../voice-offline/localIntent';
+import { finDEcoute, afficheEcoute, libelleVenteComprise, ECOUTE_MAX_MS } from '../../services/ecouteCaisse';
 import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
@@ -264,7 +265,11 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     state, response, pendingResponse, transcript, liveTranscript, error,
     handleMicClick, reset, confirmAction, cancelAction, isSpeaking,
   } = useVoiceCore({
-    maxRecordingSeconds: 60,
+    // VOX-01 — 60 s était la cause directe du paragraphe de six lignes que
+    // Patrick a vu à l'écran : le micro accumulait une minute de tout ce qui
+    // passait. Une vente au marché se dit en quelques secondes. C'est un
+    // FILET : la fin de phrase, elle, se détecte au silence (voir plus bas).
+    maxRecordingSeconds: Math.ceil(ECOUTE_MAX_MS / 1000),
     context: {
       caisse: stats.caisse || 0, ventes: stats.ventes || 0, depenses: caisseStats?.cahierJour || 0,
       sessionOpen: !!(currentSession?.opened),
@@ -410,6 +415,51 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
    * dictée ordinaire : sans montant dicté, le prix vient du catalogue, et
    * à défaut il est DEMANDÉ. Jamais une ligne à 0 F.
    */
+  // ── VOX-01 — LE MICRO S'ARRÊTE QUAND ELLE S'ARRÊTE ───────────────────────
+  //
+  // `useVoiceCore` est FIGÉ par VOICE-01 : on ne lui ajoute rien. Mais il
+  // expose déjà ce qu'il faut — `liveTranscript` qui grandit, et
+  // `handleMicClick` qui referme. La détection de fin vit donc ICI, dans
+  // l'écran, et la règle elle-même dans un module pur (services/ecouteCaisse).
+  //
+  // L'écran du NUMÉRO avait ce mécanisme depuis toujours (« minuteur
+  // d'apaisement »). L'écran de l'ARGENT n'avait rien : c'est ce qui a produit
+  // le paragraphe de six lignes.
+  const ouvertureRef = useRef(0);
+  const dernierMotRef = useRef(0);
+  const texteVuRef = useRef('');
+  // `isRecording` est déclaré plus bas ; on lit la source, pas son alias.
+  const ecouteEnCours = state === 'listening';
+  useEffect(() => {
+    if (!ecouteEnCours) { ouvertureRef.current = 0; texteVuRef.current = ''; return; }
+    const maintenant = Date.now();
+    if (!ouvertureRef.current) { ouvertureRef.current = maintenant; dernierMotRef.current = maintenant; }
+    const vu = (liveTranscript || '').trim();
+    if (vu !== texteVuRef.current) { texteVuRef.current = vu; dernierMotRef.current = maintenant; }
+
+    const t = setInterval(() => {
+      const t0 = ouvertureRef.current;
+      if (!t0) return;
+      const fin = finDEcoute({
+        ecoute: true,
+        aParle: texteVuRef.current.length > 0,
+        msDepuisDernierMot: Date.now() - dernierMotRef.current,
+        msDepuisOuverture: Date.now() - t0,
+      });
+      if (!fin.cesser) return;
+      ouvertureRef.current = 0;   // une seule fermeture par écoute
+      handleMicClick();
+    }, 250);
+    return () => clearInterval(t);
+  }, [ecouteEnCours, liveTranscript, handleMicClick]);
+
+  /** CE QUE LE MOTEUR A RÉELLEMENT EXTRAIT — jamais ce qu'il a entendu.
+   *  `null` tant qu'aucune vente n'est sortie de la phrase. */
+  const compris = useMemo(
+    () => libelleVenteComprise(intentLocalCaisse((transcript || '').trim())?.action),
+    [transcript],
+  );
+
   const dernierRelu = useRef<string>('');
   useEffect(() => {
     const texte = (transcript || '').trim();
@@ -456,6 +506,14 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   };
 
   const isRecording = state === 'listening';
+  /** VOX-01 — ce que la bulle a le droit d'afficher. La règle est pure
+   *  (services/ecouteCaisse) et garantit que la phrase entendue ne ressort
+   *  jamais ici. Calculée AVANT le rendu, et non dans une fonction anonyme
+   *  glissée dans le JSX : `caisseMicroPermanent` interdit à ce fichier de
+   *  rendre un vide, et il a raison — le micro ne se retire jamais de
+   *  lui-même. Le garde-fou lit le source brut, commentaires compris, donc
+   *  l'expression qu'il cherche ne s'écrit nulle part ici. */
+  const vueEcoute = afficheEcoute({ ecoute: isRecording, transcription: transcript || '', compris });
   const isLoading = state === 'processing' || state === 'thinking';
   const isConfirming = state === 'confirming';
   const isError = state === 'error';
@@ -574,13 +632,22 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
 
       {/* CE QUE TATA A COMPRIS — visible, et déjà dit par le moteur. Le chip
           vert « J'ai compris : … » de la maquette. */}
-      {isRecording && liveTranscript && (
-        <p style={{ textAlign: 'center', marginTop: 'var(--caisse-esp-3)', font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--caisse-gris-texte)' }}>« {liveTranscript} »</p>
-      )}
-      {!isRecording && transcript && (
+      {/* VOX-01 — CE QUE CETTE BULLE A LE DROIT DE DIRE.
+          Elle affichait la TRANSCRIPTION BRUTE sous un « J'ai compris », et
+          Patrick y a lu six lignes de sa propre voix pendant qu'aucune vente
+          ne partait. Deux fautes en une : « compris » voulait dire
+          « entendu », et la sortie de la machine passait pour de l'interface.
+          La règle vit dans services/ecouteCaisse — pure, et tenue par un test
+          qui vérifie que la phrase entendue ne ressort JAMAIS d'ici. */}
+      {vueEcoute.type === 'compris' && (
         <div style={{ marginTop: 'var(--caisse-esp-3)', background: 'var(--caisse-succes)', borderRadius: 'var(--caisse-rayon-4)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--caisse-esp-2)' }}>
           <CheckCircle size={ICONE} color="var(--caisse-vert)" style={{ flexShrink: 0 }} />
-          <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>J'ai compris : {transcript}</span>
+          <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>J'ai compris : {vueEcoute.libelle}</span>
+        </div>
+      )}
+      {vueEcoute.type === 'incompris' && (
+        <div role="status" style={{ marginTop: 'var(--caisse-esp-3)', background: 'var(--caisse-sable)', borderRadius: 'var(--caisse-rayon-4)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', textAlign: 'center' }}>
+          <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>Je n’ai pas compris. Redis-moi.</span>
         </div>
       )}
       {isError && error && (
