@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "banc:terrain": "node apercu-caisse/banc-terrain.mjs",
     "check:bundle-budget": "node scripts/check-bundle-budget.mjs",
     "check:precache-budget": "node scripts/check-precache-budget.mjs",
     "test:precache-doctrine": "node scripts/test-precache-doctrine.mjs",
