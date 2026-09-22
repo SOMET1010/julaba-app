@@ -28,7 +28,37 @@ import { accessModeChoisi, getEffectiveMode, type EffectiveMode } from '../../ut
 import tataAccueil from "../../../assets/redesign/tata-accueil.webp";
 import bandeauMarche from "../../../assets/redesign/bandeau-marche.webp";
 import { stopSpeaking } from '../../services/elevenlabs';
-import { direIntro, stopIntro } from '../../services/onboardingVoix';
+import { stopIntro } from '../../services/onboardingVoix';
+import { direEntreeAvantConnexion } from '../../services/entreeVoixAvantConnexion';
+import { tParle } from '../../i18n/voice/runtime';
+import { speak as direTexte } from '../../services/audioManager';
+
+/**
+ * ── TNT-01 — CET ÉCRAN ÉTAIT MUET, ET SON BOUTON « RÉÉCOUTER » AUSSI ───────
+ *
+ * Banc terrain, écran 2 : « MUET » au montage ET sous chacun des trois
+ * éléments touchés. Le design dit « Tata LIT l'écran toute seule » ; en
+ * réalité `direIntro` ne joue qu'un clip enregistré, et dans tout build livré
+ * le drapeau des prototypes est éteint, donc il n'y a pas de clip, donc rien.
+ * Un bouton « Réécouter Tantie Nanti Lou » qui ne répète rien.
+ *
+ * `direEntreeAvantConnexion` joue le MÊME clip par la MÊME règle (registre
+ * figé, VOICE-01 intacte) mais RAPPORTE ce qu'il en advient. Le texte ne part
+ * que s'il ne reste rien à dire : jamais par-dessus le clip, et jamais après
+ * une coupure — ici, un tap n'importe où coupe Tantie pour entrer, et ce
+ * silence est la décision de la marchande.
+ *
+ * AKW-02 RESPECTÉE : on ne passe pas par `speakMessage`, dont le rendu finit
+ * dans `AppContext.speak` et s'y fait refuser (`role-non-marchand`) — sur cet
+ * écran personne n'est encore connecté. On garde la CLÉ de catalogue et on la
+ * remet au moteur audio directement. Le muet global reste respecté : il vit
+ * dans `audioManager`, pas dans la garde de rôle.
+ */
+function direOuLire(cle: 'histoire1' | 'bravo', id: 'TANTIE_PRESENTATION' | 'TANTIE_BRAVO'): Promise<void> {
+  return direEntreeAvantConnexion(cle)
+    .then((r) => (r.doitDireLeTexte ? direTexte(tParle(id)) : undefined))
+    .catch(() => { /* une voix qui casse ne bloque jamais l'entrée */ });
+}
 
 interface OnboardingSlidesProps {
   onComplete?: () => void;
@@ -57,20 +87,28 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   const direTata = useCallback(() => {
     if (niveauVoix() === 'lecture') return; // lectrice : silence
     setIsSpeaking(true);
-    direIntro('histoire1').finally(() => setIsSpeaking(false));
+    void direOuLire('histoire1', 'TANTIE_PRESENTATION').finally(() => setIsSpeaking(false));
   }, [niveauVoix]);
 
   useEffect(() => {
     const img = new Image(); img.src = tataAccueil;
     const fond = new Image(); fond.src = bandeauMarche;
+    // LA PRÉSENTATION EST DITE ICI, ET C'EST NOUVEAU. Le commentaire d'origine
+    // expliquait qu'elle démarrait sur le geste de Welcome et accompagnait cet
+    // écran — ce qui était vrai du CLIP. Sans clip, personne ne prenait le
+    // relais et l'écran restait muet. `direTata` respecte déjà le profil
+    // « je lis » (silence) et le muet global.
+    direTata();
     return () => { stopIntro(); stopSpeaking(); };
+    // Au montage seulement : la présentation ne se redit pas à chaque rendu.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Haut-parleur : RÉÉCOUTER la présentation (distinct de l'action continuer).
   const handleListen = useCallback(() => {
     if (isSpeaking) { stopLocal(); return; }
     setIsSpeaking(true);
-    direIntro('histoire1').finally(() => setIsSpeaking(false));
+    void direOuLire('histoire1', 'TANTIE_PRESENTATION').finally(() => setIsSpeaking(false));
   }, [isSpeaking, stopLocal]);
 
   // FIN : petite récompense parlée, puis on entre dans l'app (filet de sécurité
@@ -80,7 +118,10 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     const go = () => { if (!doneRef.current) { doneRef.current = true; onComplete?.(); } };
     if (niveauVoix() === 'lecture') { stopLocal(); go(); return; }
     setIsSpeaking(true);
-    direIntro('bravo').finally(go);
+    // LA PORTE NE DÉPEND PAS DE LA VOIX. Le filet de 6 s existait déjà ; il
+    // reste, parce qu'une phrase qui n'aboutit pas ne doit jamais retenir la
+    // marchande dehors.
+    void direOuLire('bravo', 'TANTIE_BRAVO').finally(go);
     setTimeout(go, 6000);
   }, [niveauVoix, onComplete, stopLocal]);
 

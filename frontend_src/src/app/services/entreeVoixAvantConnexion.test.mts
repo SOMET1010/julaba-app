@@ -97,6 +97,30 @@ console.log('\n[4] Les textes ne sont pas inventés');
      'le registre dit lui-même que l\'audio enregistré est périmé : la forme PARLÉE dit le bon nom');
 }
 
+console.log('\n[5] L\'ÉCRAN 2 — Tantie se présente (TNT-01)');
+{
+  // Même module, mêmes règles : la présentation et le « bravo » de fin sont
+  // deux clips du MÊME registre figé, et se comportent pareil.
+  const presentation = { file: '/voix/fr-CI/prototype/tata-entree-presentation.mp3', atteste: false, prototype: true };
+  const bravo = { file: '/voix/fr-CI/intro-bravo.mp3', atteste: false };
+  ok(fige.includes(`file: '${presentation.file}'`), 'le registre figé déclare bien le clip de la présentation');
+  ok(urlDuClip(presentation, false) === null, 'build livré : pas de clip de présentation — d\'où le « MUET » du banc');
+  ok(urlDuClip(presentation, true) === presentation.file, 'prototypes allumés : le clip de la présentation');
+  ok(urlDuClip(bravo, true) === null && urlDuClip(bravo, false) === null,
+     '« bravo » n\'est ni attesté ni prototype : aucun clip, dans les deux mondes');
+
+  const r = await direEntreeAvantConnexion('histoire1', { clipUrl: async () => null, jouer: async () => 'ended' });
+  ok(r.doitDireLeTexte === true, 'sans clip, la présentation se dit — l\'écran 2 cesse d\'être muet');
+  const c = await direEntreeAvantConnexion('histoire1', { clipUrl: async () => '/c.mp3', jouer: async () => 'cancelled' });
+  ok(c.doitDireLeTexte === false,
+     'et un tap qui coupe la présentation pour entrer ne la fait pas repartir en synthèse');
+
+  ok(/texte: "Je serai avec toi chaque jour dans ton commerce\./.test(fige),
+     'le texte de la présentation vient du registre, il n\'est pas inventé');
+  ok(fige.includes("texte: 'Bravo ! Nous sommes prêtes. Ouvrons ta boutique.'"),
+     'celui du « bravo » aussi');
+}
+
 console.log(echecs === 0
   ? '\n✅ Akwaba parle une fois, et son bouton aboutit.\n'
   : `\n❌ ${echecs} règle(s) violée(s).\n`);

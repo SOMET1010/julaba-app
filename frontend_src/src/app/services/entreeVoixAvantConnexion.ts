@@ -28,8 +28,14 @@
  */
 import { playClip } from './audioManager';
 
-/** Les deux bonjours du premier écran : première venue, ou retour. */
-export type CleEntree = 'accueil' | 'retour';
+/**
+ * Les clés du registre figé que l'ENTRÉE utilise, avant toute connexion.
+ *
+ *   accueil / retour  — écran 1, Akwaba (première venue, ou retour)
+ *   histoire1         — écran 2, Tantie se présente
+ *   bravo             — écran 2, la récompense avant d'entrer
+ */
+export type CleEntree = 'accueil' | 'retour' | 'histoire1' | 'bravo';
 
 /**
  * CE QUI S'EST RÉELLEMENT PASSÉ — même dessin qu'à l'accueil marchand, et
