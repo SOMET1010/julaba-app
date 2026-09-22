@@ -97,6 +97,11 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
       planifier: (effet, delaiMs) => setTimeout(effet, delaiMs),
       guidageVocalActif: () => guidageVocal(),
       creerIdLigne: () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`),
+      // Cet assistant ne sait pas demander un prix (pas de `demanderPrix`) :
+      // sans ce crochet, une marchande au profil « je lis » n'avait NI ligne,
+      // NI mot, NI écran — la vente comprise disparaissait en silence. Le
+      // texte vient du catalogue i18n, résolu par vendreVocalUnifie.
+      signalerBlocage: ({ texte }) => { toast.warning(texte); },
     });
 
   const {
