@@ -9,15 +9,15 @@
 | Mesure | Valeur |
 |---|---|
 | Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **411** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 437 |
-| — littéraux (phrase fixe en dur) | 209 |
-| — gabarits (`${…}`, phrase dynamique à variables) | 96 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 68 |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 435 |
+| — littéraux (phrase fixe en dur) | 207 |
+| — gabarits (`${…}`, phrase dynamique à variables) | 94 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
 | — relais (`dire = (t) => speak(t)`) | 17 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 47 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **260** |
-| Dont dynamiques (avec variables) | 96 |
-| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **67** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **257** |
+| Dont dynamiques (avec variables) | 94 |
+| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **65** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
 | Fichiers avec au moins un site d'appel | 76 |
 | Attributs `aria-label` (lecteur d'écran uniquement) | 298 — **hors parcours vocal**, voir §8 |
@@ -40,7 +40,7 @@
 | `components/producteur/ProducteurProduction.tsx` | producteur | 9 | 6 | 2 | 1 | 0 | 0 | 0 |
 | `components/marchand/ConfirmationLigne.tsx` | vente | 8 | 0 | 0 | 3 | 1 | 5 | 0 |
 | `components/marchand/CreditModal.tsx` | credit | 8 | 6 | 1 | 0 | 1 | 0 | 4 |
-| `components/marchand/VentesPassees.tsx` | marchand_autre | 8 | 7 | 3 | 0 | 0 | 0 | 4 |
+| `components/marchand/VentesPassees.tsx` | marchand_autre | 8 | 5 | 1 | 2 | 0 | 0 | 2 |
 | `components/marchand/DepenseForm.tsx` | depense | 7 | 5 | 1 | 1 | 0 | 0 | 2 |
 | `components/producteur/CreerPlantationModal.tsx` | producteur | 7 | 5 | 1 | 1 | 0 | 0 | 0 |
 | `components/shared/ProfilUnifieModal.tsx` | partage | 7 | 7 | 0 | 0 | 0 | 0 | 0 |
@@ -109,7 +109,7 @@
 |---|---:|---:|---:|
 | producteur | 71 | 71 | 6 |
 | stock | 57 | 57 | 9 |
-| marchand_autre | 50 | 45 | 19 |
+| marchand_autre | 50 | 41 | 17 |
 | partage | 37 | 24 | 0 |
 | wallet | 34 | 36 | 18 |
 | caisse | 33 | 0 | 0 |
@@ -538,16 +538,14 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 80 | `speak` | literal | Veux-tu vraiment annuler cette vente ? Le stock sera rendu. |  |  |
-| 97 | `speak` | literal | Vente annulée. Le stock a été rendu. |  |  |
-| 100 | `speak` | literal | Je n'ai pas pu annuler cette vente. |  |  |
-| 121 | `speak` | template | {productName} : {montant} francs{texteMarge}, le {quand}. | `productName` `montant` `texteMarge` `quand` | € |
-| 370 | `speak` | template_compose | Tu as vendu {totalVentes} francs en tout, sur {totalCount} vente{s}. | `totalVentes` `totalCount` `s` | € |
-| 370 | `speak` | literal | Tu n'as pas encore de vente. |  |  |
-| 377 | `speak` | literal | Tes montants sont cachés. |  |  |
-| 378 | `speak` | template_compose | Tu as vendu {totalVentes} francs, sur {totalCount} vente{s}. | `totalVentes` `totalCount` `s` | € |
-| 378 | `speak` | literal | Tu n'as pas encore de vente. |  |  |
-| 716 | `speak` | literal | C'est bien payé ? Touche encore pour confirmer. |  | € |
+| 97 | `speak` | literal | Veux-tu vraiment annuler cette vente ? Le stock sera rendu. |  |  |
+| 114 | `speak` | literal | Vente annulée. Le stock a été rendu. |  |  |
+| 117 | `speak` | literal | Je n'ai pas pu annuler cette vente. |  |  |
+| 138 | `speak` | template | {productName} : {montant} francs{texteMarge}, le {quand}. | `productName` `montant` `texteMarge` `quand` | € |
+| 422 | `speakMessage` | dynamique | a.cle |  |  |
+| 427 | `speak` | literal | Tes montants sont cachés. |  |  |
+| 429 | `speakMessage` | dynamique | a.cle |  |  |
+| 806 | `speak` | literal | C'est bien payé ? Touche encore pour confirmer. |  | € |
 
 ### `components/marketplace/Marketplace.tsx` — marketplace
 
@@ -880,8 +878,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 734 | `speak` | dynamique | safeText |  |  |
-| 912 | `speak` | template | Ta journée est déjà ouverte avec {fondRetenu} francs. Pour changer ce montant, touche Modifier le fond. | `fondRetenu` | € |
+| 752 | `speak` | dynamique | safeText |  |  |
+| 930 | `speak` | template | Ta journée est déjà ouverte avec {fondRetenu} francs. Pour changer ce montant, touche Modifier le fond. | `fondRetenu` | € |
 
 ### `contexts/CaisseContext.tsx` — caisse
 
@@ -1425,7 +1423,7 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
-| 913 | template | Ta journée est déjà ouverte avec {fondRetenu} francs. Pour changer ce montant, touche Modifier le fond. | `fondRetenu` |
+| 931 | template | Ta journée est déjà ouverte avec {fondRetenu} francs. Pour changer ce montant, touche Modifier le fond. | `fondRetenu` |
 
 ## 6. Intentions reconnues et variantes STT existantes
 
@@ -1523,7 +1521,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 - Français, parseur de vente (`voice-offline/extraction.ts`) : 33 unités/exceptions + 37 dizaines, plus `cent(s)`, `mille`, `et` ; ellipse du marché « mille cinq » = 1 500.
 - Français, dictée d'un numéro (`utils/frenchDigits.ts`) : 23 petits nombres, 5 dizaines.
-- Bambara (`voice-offline/nombresBambara.ts`, existant, base annoncée pour le dioula) : unités kelen, kele, fila, fla, filla, saba, sabaa, naani, nani, duuru, duru, wooro, woro, wooroo, wolonwula, wolonwla, wolonfila, wolonfla, seegin, segin, segi, seeguin, kononton, konoton, konondon ; échelles tan, ta, mugan, muga, keme, kemee, ba, waa, waga, wa, bi, bii ; monnaie orale dorome, doromee, doromi, drome (= 5 F).
+- Bambara (`voice-offline/nombresMandingue.ts`, existant, base annoncée pour le dioula) : unités  ; échelles  ; monnaie orale  (= 5 F).
 
 ### 7.4 Monnaie — `config/devise.ts`
 

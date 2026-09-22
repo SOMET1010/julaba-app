@@ -5,6 +5,7 @@
 import { apiRequest as _apiRequest } from './api-client';
 import { API_URL } from '../../utils/api';
 import type { LigneDeVente, ProduitServeur, SessionCaisseServeur, CreditServeur } from '../../types/vente';
+import { noterLectureHistorique } from '../lectureHistorique';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);
@@ -96,15 +97,29 @@ export async function fetchCaisseTransactions(): Promise<{ transactions: CaisseT
   // On pagine donc jusqu'au bout. Le plafond de 50 pages n'est pas une limite
   // de confort : c'est un garde-fou contre une boucle infinie si le serveur
   // cessait de décroître. Il couvre 50 000 transactions.
+  //
+  // ON NOTE SI LE SERVEUR A RÉPONDU — HIST-01, et rien d'autre ne change ici.
+  // `AppContext.reloadTransactions` avale l'échec de cet appel ; l'écran
+  // « Mes ventes » présentait donc une absence de réponse comme une réponse
+  // (« Pas encore de ventes enregistrées », 0 FCFA, 0 bénéfice) alors que
+  // Patrick avait vendu. Le seul endroit qui SAIT est ici. On observe, on
+  // RELANCE l'erreur telle quelle : aucun appelant ne voit une différence, le
+  // nombre de pages, l'ordre et le contenu rendus sont ceux d'avant.
   const toutes: CaisseTransaction[] = [];
-  for (let page = 1; page <= PAGES_MAX; page++) {
-    const data = await apiRequest<{ transactions?: CaisseTransaction[] } | CaisseTransaction[]>(`/caisse/transactions?limit=${PAR_PAGE}&page=${page}`);
-    const lot: CaisseTransaction[] = Array.isArray(data) ? data : (data.transactions || []);
-    toutes.push(...lot);
-    // Page incomplète = dernière page. C'est le seul signal fiable quel que
-    // soit le format de réponse (tableau nu ou objet paginé).
-    if (lot.length < PAR_PAGE) break;
+  try {
+    for (let page = 1; page <= PAGES_MAX; page++) {
+      const data = await apiRequest<{ transactions?: CaisseTransaction[] } | CaisseTransaction[]>(`/caisse/transactions?limit=${PAR_PAGE}&page=${page}`);
+      const lot: CaisseTransaction[] = Array.isArray(data) ? data : (data.transactions || []);
+      toutes.push(...lot);
+      // Page incomplète = dernière page. C'est le seul signal fiable quel que
+      // soit le format de réponse (tableau nu ou objet paginé).
+      if (lot.length < PAR_PAGE) break;
+    }
+  } catch (e) {
+    noterLectureHistorique('echec');
+    throw e;
   }
+  noterLectureHistorique('lu'); // même si `toutes` est vide : zéro EST une réponse.
   return { transactions: toutes };
 }
 

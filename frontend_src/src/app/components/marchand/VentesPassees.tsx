@@ -18,6 +18,13 @@ import { toast } from 'sonner';
 import { NotificationButton } from './NotificationButton';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
+import {
+  CHIFFRE_INCONNU, annonceEtat, annonceFile, annonceTotal, chiffresLisibles, etatVentesPassees,
+} from '../../services/etatVentesPassees';
+import { ventesEnAttenteEnvoi } from '../../voice-offline/incidentsHorsLigne';
+import { useSpeakMessage } from '../../i18n/voice/speakMessage';
+import { useLectureHistorique } from '../../hooks/useLectureHistorique';
+import { t } from '../../i18n/voice/runtime';
 
 // LA CHARTE DE LA CAISSE, APPLIQUÉE ICI — rien de nouveau n'est dessiné.
 // Cet écran écrivait ses couleurs en dur (`#AF5B23`, `#1D9E75`, `#7c3aed`…)
@@ -35,6 +42,7 @@ const OMBRE_BOUTON = 'color-mix(in srgb, var(--caisse-vert) 33%, transparent)';
 // Pilote ESPÈCES : crédit désactivé (cf. POSCaisse CAISSE_CREDIT_ACTIF=false, #16-B).
 // On masque aussi l'onglet « Crédits » ici pour rester cohérent avec la caisse.
 const CAISSE_CREDIT_ACTIF = false;
+
 
 // ── Label jour ────────────────────────────────────────────────
 function dayLabel(date: Date): string {
@@ -299,7 +307,11 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
 // ── Composant principal ───────────────────────────────────────
 export function VentesPassees() {
   const navigate = useNavigate();
-  const { getSalesHistory, reloadTransactions, speak } = useApp();
+  const { getSalesHistory, reloadTransactions, speak, user } = useApp();
+  const speakMessage = useSpeakMessage();
+  // HIST-01 : noté par la couche API (services/lectureHistorique), pas déduit
+  // d'un tableau vide — un tableau vide ne dit pas POURQUOI il est vide.
+  const etatHistorique = useLectureHistorique();
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<'tous'|'vocal'|'kassa'|'credits'>('tous');
   const [credits, setCredits] = useState<Credit[]>([]);
@@ -316,6 +328,18 @@ export function VentesPassees() {
   const { montantsMasques, basculerMontants } = useMontantsPrives();
 
   useEffect(() => { reloadTransactions(); }, []);
+
+  // LA FILE HORS LIGNE — HIST-01. L'historique est ENTIÈREMENT serveur : une
+  // vente encaissée sans réseau dort dans la file et n'apparaît nulle part
+  // ici. La marchande vend, regarde ses ventes, ne voit rien, et conclut que
+  // l'application a perdu son argent. On LIT la file, on ne la touche pas, et
+  // on ne déclenche aucune synchronisation pour afficher un écran.
+  const [ventesEnFile, setVentesEnFile] = useState(0);
+  useEffect(() => {
+    let vivant = true;
+    ventesEnAttenteEnvoi(String(user?.id ?? '')).then(n => { if (vivant) setVentesEnFile(n); });
+    return () => { vivant = false; };
+  }, [user?.id, etatHistorique]);
 
   // LES CRÉDITS SONT CHARGÉS AU MONTAGE, PAS SEULEMENT SUR LEUR ONGLET —
   // correctif du 18/09/2026.
@@ -382,21 +406,32 @@ export function VentesPassees() {
     useMemo(() => resumeVentes(allSales), [allSales]);
   // Écran « Mes ventes » : une non-lectrice arrive ici pour SAVOIR combien elle a
   // fait -> on l'annonce à voix haute dès que les données sont là (une seule fois).
+  // CE QUE L'ÉCRAN A LE DROIT D'AFFIRMER — HIST-01. La règle est dans un
+  // module pur (services/etatVentesPassees.ts) pour être relisible et
+  // prouvable ailleurs que dans du JSX.
+  const etat = useMemo(
+    () => etatVentesPassees({ lecture: etatHistorique, nbVentes: allSales.length, ventesEnFile }),
+    [etatHistorique, allSales.length, ventesEnFile],
+  );
+  const lisible = chiffresLisibles(etatHistorique);
+
   const dejaAnnonce = useRef(false);
   useEffect(() => {
-    if (dejaAnnonce.current || allSales.length === 0 || montantsMasques) return;
+    // On n'annonce plus « dès que les données sont là » — il fallait déjà en
+    // avoir. On annonce dès que le serveur A RÉPONDU, quelle que soit la
+    // réponse, et l'échec se dit aussi : pour qui ne lit pas, la voix est le
+    // seul canal, et c'est là que le zéro faisait le plus de dégâts.
+    if (dejaAnnonce.current || etatHistorique === 'jamais' || etatHistorique === 'chargement' || montantsMasques) return;
     dejaAnnonce.current = true;
-    speak(totalCount > 0
-      ? `Tu as vendu ${totalVentes.toLocaleString('fr-FR')} francs en tout, sur ${totalCount} vente${totalCount > 1 ? 's' : ''}.`
-      : "Tu n'as pas encore de vente.");
-  }, [allSales, totalVentes, totalCount, speak, montantsMasques]);
+    const a = annonceTotal(etat, { total: totalVentes, nombre: totalCount });
+    speakMessage(a.cle, a.variables);
+  }, [etat, etatHistorique, totalVentes, totalCount, speakMessage, montantsMasques]);
 
   // Ré-écouter le total (bouton haut-parleur).
   const direTotal = () => {
     if (montantsMasques) { speak('Tes montants sont cachés.'); return; }
-    speak(totalCount > 0
-      ? `Tu as vendu ${totalVentes.toLocaleString('fr-FR')} francs, sur ${totalCount} vente${totalCount > 1 ? 's' : ''}.`
-      : "Tu n'as pas encore de vente.");
+    const a = annonceTotal(etat, { total: totalVentes, nombre: totalCount });
+    speakMessage(a.cle, a.variables);
   };
 
   // Filtrage
@@ -496,6 +531,35 @@ export function VentesPassees() {
 
       {/* CONTENU */}
       <div style={{ flex:1, overflowY:'auto', padding:'14px 0 100px', display:'flex', flexDirection:'column', gap:12 }}>
+
+        {/* « TU AS VENDU, MAIS CE N'EST PAS ENCORE ENVOYÉ » — HIST-01.
+            Le troisième état, et le plus silencieux : l'historique est
+            entièrement serveur, donc une vente encore dans la file hors ligne
+            n'apparaissait NULLE PART ici. Ce bandeau ne remplace jamais l'état
+            de la lecture — il s'ajoute. Une vente en attente d'envoi n'est ni
+            une absence de vente ni un échec de lecture. */}
+        {annonceFile(etat) && (
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:'var(--caisse-rayon-4)', background:'var(--caisse-sable)', border:'1.5px solid var(--commerce-line)' }}>
+            <Package size={20} color="var(--caisse-vert)" aria-hidden="true" />
+            <span style={{ fontSize:13, fontWeight:700, color:'var(--encre)' }}>
+              {t(annonceFile(etat)!.cle, annonceFile(etat)!.variables)}
+            </span>
+          </div>
+        )}
+
+        {/* La lecture a échoué, mais des ventes déjà lues restent à l'écran :
+            on montre la liste ET on dit qu'elle n'est pas à jour. Sans ça, une
+            liste périmée passerait pour la vérité du moment. */}
+        {etat.type === 'liste' && etatHistorique === 'echec' && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'12px 14px', borderRadius:'var(--caisse-rayon-4)', background:'color-mix(in srgb, var(--caisse-alerte) 12%, var(--caisse-ivoire))', border:`1.5px solid color-mix(in srgb, var(--caisse-alerte) 40%, transparent)` }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'var(--encre)' }}>{t('TATA_VENTES_PAS_LUES', {})}</span>
+            <button type="button" onClick={() => { void reloadTransactions(); }}
+              style={{ minHeight:44, flexShrink:0, padding:'0 var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'none', background:P, color:'var(--caisse-ivoire)', fontSize:13, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
+              {t('TATA_VENTES_REESSAYER', {})}
+            </button>
+          </div>
+        )}
+
         <motion.button whileTap={{ scale:0.99 }} onClick={() => setShowOutils(v => !v)}
           aria-expanded={showOutils}
           style={{ width:'100%', minHeight:52, background:'var(--caisse-ivoire)', border:'1.5px solid var(--trait)', borderRadius:16, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', color:'var(--encre)' }}>
@@ -519,23 +583,23 @@ export function VentesPassees() {
         <KPIGrid cols={2}>
           <UniversalKPI
             label="Ventes FCFA"
-            value={totalVentes.toLocaleString('fr-FR')}
-            suffix="FCFA"
+            value={lisible ? totalVentes.toLocaleString('fr-FR') : CHIFFRE_INCONNU}
+            suffix={lisible ? 'FCFA' : undefined}
             icon={TrendingUp}
             color="var(--caisse-vert)"
             bgColor="var(--caisse-succes)"
             borderColor="color-mix(in srgb, var(--caisse-vert) 40%, transparent)"
             iconAnimation="bounce"
             explication="C'est le total de tout l'argent que tu as encaissé sur tes ventes pendant cette période."
-            details={[
+            details={!lisible ? undefined : [
               { label: 'Nombre de ventes', value: totalCount },
               { label: "Aujourd'hui", value: allSales.filter(s => venteComptee(s) && new Date(s.date).toDateString() === new Date().toDateString()).reduce((a,b) => a+(b.montant||0), 0).toLocaleString('fr-FR') + ' FCFA' },
             ]}
           />
           <UniversalKPI
             label="Bénéfices FCFA"
-            value={totalBenefices.toLocaleString('fr-FR')}
-            suffix="FCFA"
+            value={lisible ? totalBenefices.toLocaleString('fr-FR') : CHIFFRE_INCONNU}
+            suffix={lisible ? 'FCFA' : undefined}
             icon={Banknote}
             color="var(--caisse-vert-fonce)"
             bgColor="var(--caisse-succes)"
@@ -543,29 +607,29 @@ export function VentesPassees() {
             iconAnimation="pulse"
             explication="C'est l'argent que tu gardes après avoir payé tes fournisseurs. Si tu achètes un produit à 300 FCFA et tu le vends à 500 FCFA, ton bénéfice est 200 FCFA."
             formule="Bénéfice = Prix de vente − Prix d'achat"
-            details={[
+            details={!lisible ? undefined : [
               { label: 'Total ventes', value: totalVentes.toLocaleString('fr-FR') + ' FCFA' },
               { label: 'Total achats estimé', value: (totalVentes - totalBenefices).toLocaleString('fr-FR') + ' FCFA' },
             ]}
           />
           <UniversalKPI
             label="Transactions"
-            value={totalCount.toLocaleString('fr-FR')}
+            value={lisible ? totalCount.toLocaleString('fr-FR') : CHIFFRE_INCONNU}
             icon={Package}
             color="var(--caisse-gris-texte)"
             bgColor="var(--caisse-sable)"
             borderColor="var(--commerce-line)"
             iconAnimation="spin"
             explication="C'est le nombre de fois que tu as vendu quelque chose. Chaque fois qu'une cliente paie, c'est une transaction."
-            details={[
+            details={!lisible ? undefined : [
               { label: "Aujourd'hui", value: allSales.filter(s => venteComptee(s) && new Date(s.date).toDateString() === new Date().toDateString()).length },
               { label: 'Cette semaine', value: allSales.filter(s => { if (!venteComptee(s)) return false; const d = new Date(s.date); const now = new Date(); return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate()-7); }).length },
             ]}
           />
           <UniversalKPI
             label="Panier moyen FCFA"
-            value={panierMoyen.toLocaleString('fr-FR')}
-            suffix="FCFA"
+            value={lisible ? panierMoyen.toLocaleString('fr-FR') : CHIFFRE_INCONNU}
+            suffix={lisible ? 'FCFA' : undefined}
             icon={ShoppingBag}
             color="var(--caisse-gris-texte)"
             bgColor="var(--caisse-sable)"
@@ -573,7 +637,7 @@ export function VentesPassees() {
             iconAnimation="float"
             explication="C'est combien chaque cliente dépense en moyenne chez toi. Plus ce chiffre est grand, mieux c'est !"
             formule="Panier moyen = Total ventes ÷ Nombre de ventes"
-            details={[
+            details={!lisible ? undefined : [
               { label: 'Total ventes', value: totalVentes.toLocaleString('fr-FR') + ' FCFA' },
               { label: 'Nombre de ventes', value: totalCount },
               { label: 'Résultat', value: panierMoyen.toLocaleString('fr-FR') + ' FCFA', color: 'var(--caisse-gris-texte)' },
@@ -772,8 +836,36 @@ export function VentesPassees() {
         {/* Liste groupée par jour */}
         {grouped.length === 0 ? (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ textAlign:'center', padding:'48px 24px' }}>
-            <p style={{ fontSize:16, fontWeight:800, color:'var(--encre)', margin:'0 0 8px' }}>Aucune vente trouvée</p>
-            <p style={{ fontSize:13, color:'var(--encre-4)', margin:0 }}>{search ? `Aucun résultat pour "${search}"` : 'Pas encore de ventes enregistrées'}</p>
+            {/* TROIS ÉTATS, TROIS PHRASES — HIST-01.
+                Ce bloc affirmait « Pas encore de ventes enregistrées » dès que
+                la liste était vide, sans savoir POURQUOI elle l'était. Quand la
+                requête échouait, il présentait une absence de réponse comme une
+                réponse, sur l'argent déjà gagné. Le filtre de recherche garde sa
+                propre phrase : « aucun résultat » ne parle pas de l'argent, il
+                parle du filtre. */}
+            {search ? (
+              <>
+                <p style={{ fontSize:16, fontWeight:800, color:'var(--encre)', margin:'0 0 8px' }}>Aucune vente trouvée</p>
+                <p style={{ fontSize:13, color:'var(--encre-4)', margin:0 }}>{`Aucun résultat pour "${search}"`}</p>
+              </>
+            ) : etat.type === 'illisible' ? (
+              <>
+                {/* La clé vient du module pur : l'écran ne CHOISIT pas la
+                    phrase, il rend celle que la règle a décidée. */}
+                <p style={{ fontSize:16, fontWeight:800, color:'var(--caisse-alerte)', margin:'0 0 8px' }}>{t(annonceEtat(etat)!.cle, annonceEtat(etat)!.variables)}</p>
+                <button type="button" onClick={() => { void reloadTransactions(); }}
+                  style={{ minHeight:48, marginTop:8, padding:'0 var(--caisse-esp-4)', borderRadius:'var(--caisse-rayon-3)', border:'none', background:P, color:'var(--caisse-ivoire)', fontSize:14, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
+                  {t('TATA_VENTES_REESSAYER', {})}
+                </button>
+              </>
+            ) : etat.type === 'attente' ? (
+              <p style={{ fontSize:14, color:'var(--caisse-gris-texte)', margin:0 }}>{t(annonceEtat(etat)!.cle, annonceEtat(etat)!.variables)}</p>
+            ) : (
+              <>
+                <p style={{ fontSize:16, fontWeight:800, color:'var(--encre)', margin:'0 0 8px' }}>Aucune vente trouvée</p>
+                <p style={{ fontSize:13, color:'var(--encre-4)', margin:0 }}>{t(annonceEtat(etat)!.cle, annonceEtat(etat)!.variables)}</p>
+              </>
+            )}
           </motion.div>
         ) : (
           grouped.map(group => (
