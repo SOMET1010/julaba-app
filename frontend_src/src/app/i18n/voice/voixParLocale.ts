@@ -33,6 +33,7 @@
  * sait résoudre en un dossier d'assets (SherpaTtsPlugin.VOIX).
  */
 import { entreeTts, MESSAGES_CRITIQUES } from './catalog';
+import { DYU_ARGENT_DE_TEST } from './drapeauxDeTest';
 import { resoudreMessage, type MessageVocal } from './runtime';
 import { LOCALE_REFERENCE, type LocaleCode } from './types';
 
@@ -86,7 +87,7 @@ export function __oublierValidationsArgent(): void {
 }
 
 /** Pourquoi la voix n'est pas celle de la langue demandée. */
-export type RaisonVoix = 'langue' | 'repli-i18n' | 'argent-non-valide';
+export type RaisonVoix = 'langue' | 'repli-i18n' | 'argent-non-valide' | 'argent-de-test';
 
 export interface ChoixVoix {
   voix: VoixSynthese;
@@ -94,7 +95,11 @@ export interface ChoixVoix {
    * `langue` : la voix de la langue demandée ;
    * `repli-i18n` : le moteur avait déjà replié le message (clé absente) ;
    * `argent-non-valide` : la clé est un cas d'argent et la langue n'est pas
-   *   validée dessus — le filet a joué, et il faut le TRACER, pas le taire.
+   *   validée dessus — le filet a joué, et il faut le TRACER, pas le taire ;
+   * `argent-de-test` : un build d'essai a explicitement levé le filet
+   *   (JULABA_DYU_ARGENT=1) et un MONTANT part sur une voix non validée. Cette
+   *   raison n'existe dans aucun build livrable ; quand elle apparaît, elle
+   *   doit être BRUYANTE (renduVoixLocale.ts la passe au journal de voix).
    */
   raison: RaisonVoix;
 }
@@ -108,6 +113,14 @@ export function choisirVoix(message: MessageVocal): ChoixVoix {
   const voix = voixPourLocale(message.locale);
   const critique = entreeTts(message.id)?.critiqueArgent ?? false;
   if (critique && !voixPeutDireArgent(voix)) {
+    // LA DÉROGATION D'ESSAI, ET POURQUOI ELLE DOIT ÊTRE ICI AUSSI.
+    // Sans elle, un build JULABA_DYU_ARGENT=1 ferait LIRE un texte dioula par
+    // la voix FRANÇAISE : le pire des deux mondes, et une mesure sans valeur —
+    // on n'entendrait ni le dioula ni le français. Si un build assume de dire
+    // un montant dans une langue non validée, il l'assume jusqu'au bout : le
+    // texte ET la voix. `DYU_ARGENT_DE_TEST` vaut `false` dans tout build
+    // livrable (aucun `define`), donc cette branche n'y existe pas.
+    if (DYU_ARGENT_DE_TEST) return { voix, raison: 'argent-de-test' };
     return { voix: VOIX_REFERENCE, raison: 'argent-non-valide' };
   }
   if (message.locale !== message.localeDemandee) return { voix, raison: 'repli-i18n' };
