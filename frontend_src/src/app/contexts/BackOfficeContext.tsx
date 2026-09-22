@@ -44,6 +44,20 @@ import {
   type BOInstitution,
 } from '../services/backoffice-api';
 import { useBONotifCounts, type BONotifCounts } from '../hooks/useBONotifCounts';
+import {
+  enAttente, indisponible, lue,
+  type EtatLecture, type LectureActeurs, type LectureTransactions,
+  type StatsBO, type DossierCompte, type ZoneCompte,
+} from '../services/etatLectureBO';
+
+/** L'état de lecture de chaque source du back-office — BO-01. */
+export interface LecturesBO {
+  readonly stats: EtatLecture<StatsBO | null>;
+  readonly acteurs: EtatLecture<LectureActeurs>;
+  readonly dossiers: EtatLecture<readonly DossierCompte[]>;
+  readonly zones: EtatLecture<readonly ZoneCompte[]>;
+  readonly transactions: EtatLecture<LectureTransactions>;
+}
 
 interface BackOfficeContextType {
   user: BOUser | null;
@@ -79,6 +93,23 @@ interface BackOfficeContextType {
   refreshInstitutions: () => Promise<void>;
   error: string | null;
   clearError: () => void;
+  /**
+   * L'ÉTAT DE CHAQUE LECTURE, SOURCE PAR SOURCE — BO-01.
+   *
+   * Les listes ci-dessus (`acteurs`, `zones`, `dossiers`…) restent ce qu'elles
+   * étaient : des tableaux, éventuellement vides, que 36 écrans consomment
+   * déjà. Elles ne disent pas, et n'ont jamais dit, la différence entre « il
+   * n'y en a pas » et « je n'ai pas pu lire ».
+   *
+   * `lectures` la dit. Chaque source porte SON état et SA raison d'échec : une
+   * panne sur les zones n'efface plus l'erreur des acteurs, ce que le champ
+   * `error` unique faisait — il ne restait alors qu'un message, sans qu'on
+   * sache de quoi il parlait.
+   *
+   * `error` est conservé pour les écrans qui le lisent encore ; il n'est plus
+   * la seule façon de savoir qu'une lecture a échoué.
+   */
+  lectures: LecturesBO;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   currentPage: string;
@@ -163,6 +194,21 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
   const [cooperativesLoading, setCooperativesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const clearError = () => setError(null);
+
+  // ── BO-01 : L'ÉTAT DE CHAQUE LECTURE, SÉPARÉMENT ─────────────────────────
+  //
+  // Un état PAR SOURCE, et c'est tout le point. Il y avait un seul `error`
+  // pour le back-office entier : la dernière panne écrasait la précédente, et
+  // l'agent ne pouvait pas savoir CE QUI manquait. Ces cinq états ne se
+  // touchent jamais entre eux.
+  //
+  // Ils démarrent tous en `attente` — jamais en `[]`, jamais en `0` : on n'a
+  // encore rien demandé, et ce n'est pas la même chose que « il n'y en a pas ».
+  const [lectureStats, setLectureStats] = useState<EtatLecture<StatsBO | null>>(enAttente);
+  const [lectureActeurs, setLectureActeurs] = useState<EtatLecture<LectureActeurs>>(enAttente);
+  const [lectureDossiers, setLectureDossiers] = useState<EtatLecture<readonly DossierCompte[]>>(enAttente);
+  const [lectureZones, setLectureZones] = useState<EtatLecture<readonly ZoneCompte[]>>(enAttente);
+  const [lectureTransactions, setLectureTransactions] = useState<EtatLecture<LectureTransactions>>(enAttente);
 
   // ── États des données manquantes ──────────────────────────
   const [dossiers, setDossiers] = useState<BODossier[]>([]);
@@ -287,13 +333,24 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
 
   const refreshStats = useCallback(async () => {
     setStatsLoading(true);
-    try { setStats(await boDashboardStats()); }
-    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Erreur stats'); }
+    // Une NOUVELLE TENTATIVE repart de `attente` : tant qu'on n'a pas la
+    // réponse, l'écran ne doit afficher ni l'ancienne erreur ni un chiffre.
+    setLectureStats(enAttente());
+    try {
+      const s = await boDashboardStats();
+      setStats(s);
+      setLectureStats(lue(s ?? null));
+    }
+    catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur stats');
+      setLectureStats(indisponible(e));
+    }
     finally { setStatsLoading(false); }
   }, []);
 
   const refreshActeurs = useCallback(async (retryCount = 0) => {
     setActeursLoading(true);
+    if (retryCount === 0) setLectureActeurs(enAttente());
     try {
       const res = await boGetActeurs({ page: acteursPage, limit: 50, search: acteursSearch || undefined, role: acteursRole || undefined });
       // Normalisation NestJS → format attendu par BODashboard
@@ -315,6 +372,7 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
         : normalized.filter((a: { role?: string }) => a.role !== 'super_admin');
       setActeurs(acteursFiltres);
       setActeursTotal(res.total);
+      setLectureActeurs(lue({ liste: acteursFiltres, total: res.total }));
       setError(null);
     }
     catch (e: unknown) {
@@ -328,6 +386,9 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
         }, 5000);
       } else {
         setError(errorMsg);
+        // On ne déclare la lecture perdue qu'APRÈS les trois tentatives :
+        // pendant les reprises, elle est encore en route.
+        setLectureActeurs(indisponible(errorMsg));
         toast.error(`Impossible de charger les acteurs: ${errorMsg}. Verifiez votre connexion.`);
       }
     }
@@ -348,6 +409,7 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
   const refreshTransactions = useCallback(async (force = false) => {
     if (transactionsLoaded && !force) return;
     setTransactionsLoading(true);
+    setLectureTransactions(enAttente());
     try {
       const res = await boGetTransactions({ page: 1, limit: 50 });
       const normalizedTx = res.data.map((t: any) => ({
@@ -361,8 +423,12 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
       setTransactions(normalizedTx);
       setTransactionsTotal(res.total);
       setTransactionsLoaded(true);
+      setLectureTransactions(lue({ liste: normalizedTx, total: res.total }));
     }
-    catch (e: unknown) { setError(e instanceof Error ? e.message : 'Erreur transactions'); }
+    catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erreur transactions');
+      setLectureTransactions(indisponible(e));
+    }
     finally { setTransactionsLoading(false); }
   }, [transactionsLoaded]);
 
@@ -378,16 +444,32 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
   const refreshDossiers = useCallback(async (force = false) => {
     if (dossiersLoaded && !force) return;
     setDossiersLoading(true);
-    try { setDossiers(await boGetDossiers()); setDossiersLoaded(true); }
-    catch (e: any) { console.error('[BO]', e); }
+    setLectureDossiers(enAttente());
+    try {
+      const d = await boGetDossiers();
+      setDossiers(d);
+      setDossiersLoaded(true);
+      setLectureDossiers(lue(d));
+    }
+    // L'ERREUR N'EST PLUS AVALÉE. `console.error('[BO]', e)` envoyait la panne
+    // dans la console d'un navigateur — qui n'est pas une interface. L'écran
+    // restait vide, et l'agent croyait que c'était vide.
+    catch (e: unknown) { setLectureDossiers(indisponible(e)); }
     finally { setDossiersLoading(false); }
   }, [dossiersLoaded]);
 
   const refreshZones = useCallback(async (force = false) => {
     if (zonesLoaded && !force) return;
     setZonesLoading(true);
-    try { setZones(await boGetZones()); setTerritoires(await boGetTerritoires()); setZonesLoaded(true); }
-    catch (e: any) { console.error('[BO]', e); }
+    setLectureZones(enAttente());
+    try {
+      const z = await boGetZones();
+      setZones(z);
+      setLectureZones(lue(z));
+      setTerritoires(await boGetTerritoires());
+      setZonesLoaded(true);
+    }
+    catch (e: unknown) { setLectureZones(indisponible(e)); }
     finally { setZonesLoading(false); }
   }, [zonesLoaded]);
 
@@ -489,6 +571,13 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
     refreshBOUsers,
     refreshInstitutions,
     error, clearError,
+    lectures: {
+      stats: lectureStats,
+      acteurs: lectureActeurs,
+      dossiers: lectureDossiers,
+      zones: lectureZones,
+      transactions: lectureTransactions,
+    },
     dossiers, zones, zonesMap, territoires, missions,
     searchQuery, setSearchQuery, currentPage, setCurrentPage,
     auditLogs, boUsers, institutions,
@@ -646,6 +735,11 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
     refreshInstitutions,
     refreshAuditLogs,
     error,
+    lectureStats,
+    lectureActeurs,
+    lectureDossiers,
+    lectureZones,
+    lectureTransactions,
     dossiers,
     zones,
     zonesMap,

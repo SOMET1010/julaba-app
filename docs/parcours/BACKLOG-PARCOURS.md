@@ -256,6 +256,42 @@ Gardes : `cai-02-journee-fermee.spec.ts` · `dep-02-categorie-depense.spec.ts` �
 
 ---
 
+### S7 — Le back-office
+
+Ouvert par la mesure du 22/09 (`docs/parcours/MESURE-BACKOFFICE.md`) : 37
+écrans, 33 678 lignes, jamais mesurés. 76 replis qui fabriquent une liste vide,
+158 qui fabriquent un zéro, 32 écrans sur 37 qui n'affichent jamais une erreur.
+
+| Id | Défaut | Statut |
+|---|---|---|
+| BO-01a | **Un seul champ `error` pour tout le back-office.** Une panne sur les zones effaçait l'erreur des acteurs : impossible de dire à l'agent **ce qui** manquait. Chaque source porte maintenant son propre état de lecture (`attente` / `indisponible` + raison / `lue`). | **FERMÉ** |
+| BO-01b | **Les sept compteurs du tableau de bord valaient zéro quand rien n'avait été lu** — sous un commentaire « KPIs - 100 % données réelles ». Une institution taille un programme sur ce genre de nombre. Un zéro **lu** s'affiche ; un zéro **fabriqué** n'existe plus. | **FERMÉ** |
+| BO-01c | **Erreurs avalées** sur les cinq sources du tableau de bord (`catch (e) { console.error('[BO]', e) }`). La console d'un navigateur n'est pas une interface. | **FERMÉ** |
+| BO-02 | Les **autres sources** du contexte (missions, audit, utilisateurs BO, institutions, signalements) avalent encore leurs erreurs : 7 `console.error('[BO]', e)` restants. Elles alimentent les 36 écrans hors périmètre. | **OUVERT** — hors lot BO-01 |
+| BO-03 | Sur le tableau de bord lui-même, les **alertes, graphiques et barres de progression** lisent encore les listes qui valent `[]` quand la lecture échoue. Dette VOISINE nommée en fermant BO-01. | **OUVERT** |
+| BO-04 | **`SEED_DEMO_BO_PASSWORD` n'est pas posée sur Render** : aucun compte d'administration n'existe, donc le banc terrain ne peut pas entrer et rien du back-office n'est mesuré *vivant*. À poser au tableau de bord Render, **jamais dans le dépôt**. | **OUVERT** — décision de Patrick |
+| BO-05 | La tuile affiche « Indisponible » (12 caractères) en corps 22 : elle se tronque sous ~200 px de large. Lisible sur le poste d'un agent, serrée sur un téléphone. | **OUVERT** — arbitrage visuel |
+
+**Preuve de fermeture de BO-01** (règles pures, les quatre exigences de Patrick) :
+
+```
+rouge avant : ✗ BackOfficeContext importe l'état de lecture
+              ✗ le tableau de bord calcule ses sept compteurs par la règle
+              ✗ les cinq sources : l'échec n'était pas nommé
+après       : 1. tout lu, tout vide        → les 8 compteurs rendent 0
+              2. tout en panne             → les 8 disent « indisponible » + raison
+                                             AUCUN ne rend un nombre
+              3. zones KO, acteurs lus     → acteurs 3 / actifs 2 / suspendus 1
+                                             zones seules indisponibles
+                                             « sur N zones » n'invente pas de N
+              4. attente → indisponible → attente → lue(12) → lue(0)
+                                             le chiffre revient, et 0 reste 0
+```
+
+Gardes : `test:etat-lecture-bo`.
+
+---
+
 ## Le reste du chemin — non commencé
 
 Périmètre déclaré par Patrick : **écrans 1 → 5 uniquement** pour l'instant.
