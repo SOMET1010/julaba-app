@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Post, Put, Patch, Delete, Body, Param, ParseUUIDPipe, NotFoundException, UseGuards, Optional, Logger, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Put, Patch, Delete, Body, Param, ParseUUIDPipe, NotFoundException, UseGuards, Optional, Logger, Query, ConflictException } from '@nestjs/common';
 import { EventsGateway } from '../events/events.gateway';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -91,6 +91,9 @@ export class CaisseRestController {
       if (jourVente !== aujourdhui) {
         throw new BadRequestException('Seule une vente du jour peut être annulée. Pour une vente plus ancienne, contacte un responsable.');
       }
+      // CAI-02 — annuler, c'est RETIRER de l'argent d'une journée. Si elle est
+      // déjà comptée, l'écart devient faux dans l'autre sens.
+      await this.exigerJourneeOuverte(user.id);
 
       tx.statut = TransactionStatus.ANNULEE;
       tx.motif = 'Annulation par le marchand';
@@ -408,12 +411,70 @@ export class CaisseRestController {
   // l'ouvre automatiquement (choix produit : la vendeuse n'est jamais bloquée,
   // l'argent reste toujours rattaché à une journée). Idempotent via l'index
   // unique (marchand_id, date).
+  /**
+   * CAI-02 — CETTE FONCTION RESSUSCITAIT UNE JOURNÉE FERMÉE, EN SILENCE.
+   *
+   * Elle faisait `ON CONFLICT … DO UPDATE SET ouvert = true`, et elle est
+   * appelée à CHAQUE vente et CHAQUE dépense. La marchande fermait sa journée,
+   * comptait son argent devant elle, et la clôture gravait trois nombres :
+   * `caisse_theorique`, `fond_final` (ce qu'elle a compté en main) et leur
+   * `ecart`. La vente suivante remettait `ouvert = true` — sans toucher ces
+   * trois nombres. Ils restaient figés sur leurs anciennes valeurs pendant que
+   * l'argent continuait d'entrer. `ecart = 0` voulait dire « tout est juste »
+   * avant, et ne voulait plus rien dire après.
+   *
+   * La recette terrain l'avait vu deux fois (MAR-CAI-002, MAR-CAI-003), les
+   * deux marqués BLOQUANTS.
+   *
+   * L'INTENTION D'ORIGINE EST BONNE, ET ELLE EST CONSERVÉE : « on ne bloque
+   * jamais la vendeuse ». Une marchande qui n'a jamais ouvert sa journée doit
+   * pouvoir vendre — c'est ce que l'INSERT fait, et il reste. Ce qui disparaît,
+   * c'est le `DO UPDATE` : créer une journée absente n'est pas la même chose
+   * que défaire une clôture que quelqu'un a décidée.
+   *
+   * Rouvrir reste possible, par `POST /session/ouvrir`, et c'est un geste
+   * EXPLICITE — parce qu'il invalide un comptage.
+   */
+  /**
+   * CAI-02 — UNE JOURNÉE FERMÉE N'ACCEPTE PLUS D'ÉCRITURE D'ARGENT.
+   *
+   * QUELLES ROUTES, ET POURQUOI CELLES-LÀ. La frontière n'est pas arbitraire :
+   * ce sont exactement les natures que `caisseTheorique` additionne — `vente`,
+   * `depense`, `acompte_credit`, `reglement_credit` — plus l'annulation, qui
+   * retire une ligne du compte (`statut <> 'annulee'`). Une écriture de ces
+   * natures après la clôture rend les trois nombres du soir faux, en silence.
+   *
+   * Le fichier enseigne déjà la moitié de cette leçon, plus haut :
+   * « une écriture d'argent n'est pas finie quand elle est écrite, mais quand
+   * la CLÔTURE la comprend ». Voici l'autre moitié — une clôture n'est pas
+   * finie tant qu'une écriture peut la contredire.
+   *
+   * ON NE BLOQUE PAS LA VENDEUSE, ON LUI DIT QUOI FAIRE. Le message nomme le
+   * geste : rouvrir la journée. C'est un clic, et c'est explicite — parce que
+   * rouvrir invalide un comptage qu'elle a fait devant son argent.
+   */
+  private async exigerJourneeOuverte(marchandId: string) {
+    const today = new Date().toISOString().split('T')[0];
+    const [session] = await this.dataSource.query(
+      'SELECT ouvert FROM caisse_sessions WHERE marchand_id = $1 AND date = $2 LIMIT 1',
+      [marchandId, today],
+    );
+    // Pas de journée du tout : `ensureSessionOuverte` la crée. Une marchande
+    // qui n'a jamais ouvert sa caisse n'est pas une marchande qui l'a fermée.
+    if (!session) return;
+    if (session.ouvert === false) {
+      throw new ConflictException(
+        'Ta journée de caisse est fermée. Rouvre-la pour continuer.',
+      );
+    }
+  }
+
   private async ensureSessionOuverte(marchandId: string) {
     const today = new Date().toISOString().split('T')[0];
     await this.dataSource.query(
       `INSERT INTO caisse_sessions (marchand_id, date, fond_initial, ouvert, heure_ouverture)
        VALUES ($1, $2, 0, true, NOW())
-       ON CONFLICT (marchand_id, date) DO UPDATE SET ouvert = true, updated_at = NOW()`,
+       ON CONFLICT (marchand_id, date) DO NOTHING`,
       [marchandId, today],
     ).catch((e: any) => this.logger?.warn(`[CAISSE] ensureSession: ${e.message}`));
   }
@@ -478,6 +539,7 @@ export class CaisseRestController {
       : (prixAchat > 0 ? prixVente - prixAchat : 0);
 
     // Journée toujours ouverte (vente jamais bloquée, argent rattaché au jour).
+    await this.exigerJourneeOuverte(user.id);
     await this.ensureSessionOuverte(user.id);
 
     // Lignes vendues (produits appariés). Vente libre/voix : aucune ligne stock.
@@ -596,6 +658,7 @@ export class CaisseRestController {
 
     if (!body.montant || parseFloat(body.montant) <= 0) throw new BadRequestException('Le montant doit être positif');
     // Journée toujours ouverte (dépense rattachée au jour, comme la vente).
+    await this.exigerJourneeOuverte(user.id);
     await this.ensureSessionOuverte(user.id);
     // LA DÉPENSE APPARTIENT AU JOUR OÙ ELLE A ÉTÉ FAITE — ARGENT-1, 19/09/2026.
     //
