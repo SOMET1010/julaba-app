@@ -1,22 +1,52 @@
 # Les 198 produits vivriers — aide-mémoire de l'agent
 
-**Généré depuis `infra/odoo-poc/referentiel-maitre/03_mapping_julaba_local.csv`** (198 lignes,
-sha256 vérifié). Rejouable : `python3 scripts/terrain/generer-catalogue-terrain.py`.
+**Généré** depuis `infra/odoo-poc/referentiel-maitre/03_mapping_julaba_local.csv`
+(198 lignes, sha256 couvert par `manifest.json`).
+Rejouable : `python3 scripts/terrain/generer-catalogue-terrain.py`
 
 À imprimer, ou à garder ouvert sur un second téléphone.
 
 ## Pourquoi cette liste existe
 
-Dans l'application, l'écran « nouveau produit » propose **37 tuiles-photo**. Elles
-couvrent **8 des 198 produits** avec le nom exact. Pour les autres, l'agent tape le
-nom — et le nom exact compte : **« Igname » n'est pas « Igname Kponan »**. Quatre
-variétés d'igname se vendent à des prix différents ; les confondre fausse le
-carnet dès la première vente.
+Dans l'application, l'écran « nouveau produit » propose **37 tuiles-photo**.
+Elles couvrent **8 des 198 produits** avec le nom exact. Pour les autres,
+l'agent tape le nom — et le nom exact compte : **« Igname » n'est pas
+« Igname Kponan »**. Quatre variétés d'igname, quatre prix différents ; les
+confondre fausse le carnet dès la première vente.
 
-La colonne **unités** dit ce qui se vend au marché pour ce produit-là. L'écran
-propose `unité · tas · kg · sac · bassine · régime`, et la saisie libre reste
-possible : si la marchande vend à la **botte** ou au **panier**, on écrit botte ou
-panier.
+> ⚠️ **Et les tuiles-photo posent un prix qui n'est pas le sien** (STK-02).
+> Après chaque tuile touchée : **efface les deux prix et demande les siens.**
+
+## Les unités du marché
+
+Le mapping déclare **21 unités de vente distinctes**.
+L'écran n'en propose que six — `unité · tas · kg · sac · bassine · régime` —
+mais **la saisie libre marche partout** : si elle vend à la botte, au panier
+ou au bidon, écris botte, panier ou bidon.
+
+| Unité | Produits concernés |
+|---|---:|
+| `kg` | 191 |
+| `tas` | 149 |
+| `sac` | 90 |
+| `unité` | 78 |
+| `sachet` | 70 |
+| `caisse` | 48 |
+| `panier` | 47 |
+| `botte` | 42 |
+| `bassine` | 35 |
+| `demi-sac` | 20 |
+| `quart-sac` | 20 |
+| `filet` | 15 |
+| `régime` | 13 |
+| `barquette` | 11 |
+| `litre` | 11 |
+| `bouteille` | 9 |
+| `main` | 8 |
+| `carton` | 8 |
+| `pot` | 6 |
+| `demi-panier` | 5 |
+| `bidon` | 5 |
 
 ---
 
@@ -406,4 +436,4 @@ panier.
 
 ---
 
-**198 produits.** Tous vendus au détail.
+**198 produits**, 18 familles. Tous vendus au détail.
