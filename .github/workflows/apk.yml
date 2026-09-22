@@ -40,7 +40,7 @@ on:
         default: 'https://julaba-api.onrender.com/api/v1'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   apk:
@@ -170,3 +170,20 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Préparer l APK pour téléchargement direct
+        run: |
+          mkdir -p dist-apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+            dist-apk/julaba-${{ steps.source.outputs.sha }}.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+            dist-apk/julaba-latest.apk
+
+      - name: Publier dans GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pilote-latest
+          name: JULABA APK pilote
+          prerelease: true
+          files: |
+            dist-apk/julaba-${{ steps.source.outputs.sha }}.apk
+            dist-apk/julaba-latest.apk
