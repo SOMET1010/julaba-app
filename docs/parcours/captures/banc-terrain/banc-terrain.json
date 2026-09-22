@@ -1,0 +1,1662 @@
+{
+  "seuilCharte": 0.5,
+  "clipsPrototype": false,
+  "requetesBloquees": [
+    "https://o4511079112835072.ingest.de.sentry.io/api/4511079194951760/envelope/",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/8CVtMJrW/tomate.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/VktKJB50/image-aubergine.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/vZn04LDf/Image-piment.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/L8PxJBhP/Image-Gombo.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/sgWTM91c/Manioc.png",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/g2hgxqrX/Igname.png",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/9Q9LDtzd/mais.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/zGhxyS3v/Banane.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/XY5srcXx/Plantain.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/FHSTYg1x/Oignon.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/RZtgWQqW/avocat.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/rw4fDCzw/Huile-de-palme.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/2SW01F37/mangue.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/8zvZ7Bs1/ananas.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/rw4fDCzm/arachide.jpg"
+  ],
+  "ecrans": [
+    {
+      "n": 1,
+      "id": "entree-akwaba",
+      "titre": "Entrée — Akwaba (premier écran du téléphone)",
+      "chemin": "/",
+      "charte": {
+        "jetons": 0,
+        "durs": 0,
+        "part": 0,
+        "verdict": "hors charte (aucun jeton — feuille tierce)",
+        "ok": false,
+        "detail": [
+          {
+            "fichier": "src/app/components/auth/Welcome.tsx",
+            "jetons": 0,
+            "durs": 0
+          }
+        ]
+      },
+      "atteint": true,
+      "voixMontage": {
+        "demandes": [],
+        "ignorees": [],
+        "fins": [],
+        "cles": []
+      },
+      "capture": "1-entree-akwaba.png",
+      "aLoeil": {
+        "large": 390,
+        "deborde": [],
+        "petites": []
+      },
+      "interactifs": 2,
+      "erreursPage": [],
+      "touches": [
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Écouter Tantie Nanti Lou",
+          "largeur": 338,
+          "hauteur": 96,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": false,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Mon commerce Ton commerce, dans ta main. Vends. Compte. Avance. Akwaba, je suis Tantie Nanti Lou. Touche ici pour écouter ma voix. Écouter et entrer"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Écouter et entrer",
+          "largeur": 338,
+          "hauteur": 68,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": true,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton guide dans le marché Moi, c'est Tantie Nanti Lou. Tu peux toucher, parler et écouter. Je reste avec toi."
+        }
+      ],
+      "tronque": 0,
+      "voix": {
+        "auMontage": 0,
+        "clesAuMontage": [],
+        "refuseesAuMontage": 0,
+        "auGeste": 0,
+        "muet": true
+      },
+      "impasses": [
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Écouter Tantie Nanti Lou",
+          "largeur": 338,
+          "hauteur": 96,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": false,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Mon commerce Ton commerce, dans ta main. Vends. Compte. Avance. Akwaba, je suis Tantie Nanti Lou. Touche ici pour écouter ma voix. Écouter et entrer"
+        }
+      ],
+      "desactives": [],
+      "inatteignables": [],
+      "confirmationsSansSuite": [],
+      "passage": {
+        "ouvertPar": "Écouter et entrer"
+      }
+    },
+    {
+      "n": 2,
+      "id": "entree-presentation",
+      "titre": "Entrée — Tantie Nanti Lou se présente",
+      "chemin": "/",
+      "charte": {
+        "jetons": 0,
+        "durs": 1,
+        "part": 0,
+        "verdict": "hors charte (zéro jeton)",
+        "ok": false,
+        "detail": [
+          {
+            "fichier": "src/app/components/auth/OnboardingSlides.tsx",
+            "jetons": 0,
+            "durs": 1
+          }
+        ]
+      },
+      "atteint": true,
+      "voixMontage": {
+        "demandes": [],
+        "ignorees": [],
+        "fins": [],
+        "cles": []
+      },
+      "capture": "2-entree-presentation.png",
+      "aLoeil": {
+        "large": 390,
+        "deborde": [],
+        "petites": []
+      },
+      "interactifs": 3,
+      "erreursPage": [],
+      "touches": [
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Réécouter Tantie Nanti Lou",
+          "largeur": 56,
+          "hauteur": 56,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton guide dans le marché Moi, c'est Tantie Nanti Lou. Tu peux toucher, parler et écouter. Je reste avec toi."
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Continuer",
+          "largeur": 68,
+          "hauteur": 68,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": true,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 — — — — — 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "faux-air-cliquable",
+          "balise": "div",
+          "nom": "Ton guide dans le marché Moi, c'est Tantie Nanti",
+          "largeur": 390,
+          "hauteur": 844,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": true,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 — — — — — 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        }
+      ],
+      "tronque": 0,
+      "voix": {
+        "auMontage": 0,
+        "clesAuMontage": [],
+        "refuseesAuMontage": 0,
+        "auGeste": 0,
+        "muet": true
+      },
+      "impasses": [],
+      "desactives": [],
+      "inatteignables": [],
+      "confirmationsSansSuite": [],
+      "passage": {
+        "ouvertPar": "Continuer"
+      }
+    },
+    {
+      "n": 3,
+      "id": "entree-numero",
+      "titre": "Entrée — Ton numéro (connexion)",
+      "chemin": "/",
+      "charte": {
+        "jetons": 0,
+        "durs": 46,
+        "part": 0,
+        "verdict": "hors charte (zéro jeton)",
+        "ok": false,
+        "detail": [
+          {
+            "fichier": "src/app/components/auth/LoginPassword.tsx",
+            "jetons": 0,
+            "durs": 46
+          }
+        ]
+      },
+      "atteint": true,
+      "voixMontage": {
+        "demandes": [],
+        "ignorees": [],
+        "fins": [],
+        "cles": []
+      },
+      "capture": "3-entree-numero.png",
+      "aLoeil": {
+        "large": 390,
+        "deborde": [],
+        "petites": []
+      },
+      "interactifs": 14,
+      "erreursPage": [],
+      "touches": [
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Écouter Tantie Nanti Lou",
+          "largeur": 54,
+          "hauteur": 54,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": false,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 — — — — — 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "1",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 1 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "2",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 2 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "3",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 3 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "4",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 4 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "5",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 5 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "6",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 6 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "7",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 7 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "8",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 8 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "9",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 9 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Connexion par empreinte",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": true,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": true,
+          "mene": false,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 — — — — — 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "0",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 0 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Effacer le dernier chiffre",
+          "largeur": 99,
+          "hauteur": 64,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 — — — — — 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "C’est mon numéro",
+          "largeur": 342,
+          "hauteur": 64,
+          "desactive": true,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": true,
+          "mene": false,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 — — — — — 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        }
+      ],
+      "tronque": 0,
+      "voix": {
+        "auMontage": 0,
+        "clesAuMontage": [],
+        "refuseesAuMontage": 0,
+        "auGeste": 0,
+        "muet": true
+      },
+      "impasses": [
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Écouter Tantie Nanti Lou",
+          "largeur": 54,
+          "hauteur": 54,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": false,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton numéro +225 — — — — — 1 2 3 4 5 6 7 8 9 0 C’est mon numéro"
+        }
+      ],
+      "desactives": [],
+      "inatteignables": [],
+      "confirmationsSansSuite": [],
+      "passage": {
+        "ouvertPar": null
+      }
+    },
+    {
+      "n": 4,
+      "id": "accueil-marchand",
+      "titre": "Accueil marchand — le comptoir",
+      "chemin": "/marchand",
+      "charte": {
+        "jetons": 0,
+        "durs": 21,
+        "part": 0,
+        "verdict": "hors charte (zéro jeton)",
+        "ok": false,
+        "detail": [
+          {
+            "fichier": "src/app/components/marchand/MarchandHome.tsx",
+            "jetons": 0,
+            "durs": 0
+          },
+          {
+            "fichier": "src/app/components/marchand/MarchandAccueilVoice.tsx",
+            "jetons": 0,
+            "durs": 18
+          },
+          {
+            "fichier": "src/app/components/layout/AppLayout.tsx",
+            "jetons": 0,
+            "durs": 3
+          }
+        ]
+      },
+      "atteint": true,
+      "voixMontage": {
+        "demandes": [],
+        "ignorees": [],
+        "fins": [],
+        "cles": []
+      },
+      "capture": "4-accueil-marchand.png",
+      "aLoeil": {
+        "large": 405,
+        "deborde": [],
+        "petites": []
+      },
+      "interactifs": 15,
+      "erreursPage": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5197/src/app/services/api/api-client.ts:122:11\n    at async loadNotifications (http://127.0.0.1:5197/src/a"
+      ],
+      "touches": [
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Écouter le message de bienvenue",
+          "largeur": 142,
+          "hauteur": 44,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": false,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI 0 F Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Mode soleil — tout plus grand",
+          "largeur": 48,
+          "hauteur": 48,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": true,
+            "stockage": true,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI 0 F Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Écouter Tata dire bonjour",
+          "largeur": 390,
+          "hauteur": 172,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": false,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI 0 F Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Voir le résumé du jour",
+          "largeur": 196,
+          "hauteur": 63,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI 0 F Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Résumé du jour Voici un aperçu complet de ta journée. Ventes du jour 0 FCFA 0 vente Cahier du jour 0 FCFA Marge 0 FCFA Caisse théorique 0 FCFA Compter et fermer ma journéeModifier le fond de caisseOK Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Écouter ma caisse",
+          "largeur": 48,
+          "hauteur": 48,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI 0 F Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Cacher mes montants",
+          "largeur": 48,
+          "hauteur": 48,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI ●●●●● F Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Vendre",
+          "largeur": 390,
+          "hauteur": 78,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": true
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 1,
+            "cles": [
+              "TATA_QUE_VENDRE"
+            ],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que voulez-vous vendre ? Dis-moi ce que tu vends Choisir à l’écran Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Mon stock",
+          "largeur": 114,
+          "hauteur": 106,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Mes produits 0 produit · 0 alerte 0 Produits 0 Alertes 0 FCFA Valeur stock 0 FCFA Prix moyen Ventes passées Résumé détaillé Top marge Ajouter en parlant appuie et dis ton produit Écrire Aucun produit Ajoute ton premier produit Ajouter un produit Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Mes dépenses",
+          "largeur": 114,
+          "hauteur": 106,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Mes dépenses Mes chiffres et filtres Aujourd'hui : 0 F Aucune dépense Note tes dépenses pour mieux gérer ton argent + Noter une dépense"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Mes ventes",
+          "largeur": 114,
+          "hauteur": 106,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ventes passées Mes chiffres et filtres Toutes Par la voix Par caisse Filtres avancés Aucune vente trouvée Pas encore de ventes enregistrées + Noter une vente"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Mon argent",
+          "largeur": 114,
+          "hauteur": 106,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Crée ton code PIN Sécurise ton Keiwa Choisis un code à 4 chiffres Nouveau PIN 1 2 3 4 5 6 7 8 9 0 FaceID / Empreinte"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Ouvrir Tantie Nanti Lou",
+          "largeur": 66,
+          "hauteur": 66,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI 0 F Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Tantie Accueil Acheter Moi Tu peux dire: Support & Aide Jùlaba Aujourd'hui j'ai fait combien ? Je veux mettre un peu de cote Quelle est ma meilleure vente ? Voir mon stock Appuie sur Tantie Nanti Lou Ecrire Parler"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Accueil",
+          "largeur": 130,
+          "hauteur": 70,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI 0 F Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Acheter",
+          "largeur": 130,
+          "hauteur": 70,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": true,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Marché virtuel Ton profil marchand n'est pas complet Pour accéder au marché, vois ton identificateur : il précisera si tu es détaillante, demi-grossiste ou grossiste. 0 Commandes 0 Produits disponibles 0 FCFA Total dépensé 0 Négociations en cours Historique Toutes tes commandes passées Aucune commande dans ton historique Les transactions apparaîtront ici Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Moi",
+          "largeur": 130,
+          "hauteur": 70,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Mon profil Afficher ma carte Réglages Carte professionnelle Jùlaba Utilise « Afficher ma carte » pour ouvrir ta carte digitale. JÙLABA Academy Formations et micro-apprentissages MES SERVICES Ma coopérative Rejoindre ou voir ma coop Soumettre un besoin Mes tontines Épargne tournante entre commerçantes Ma protection sociale Cotisations CNPS (retraite) & CNAM (santé) Fidélité clients Points & récompenses — barème réglable Documents et certifications Pièces officielles et suivi Support & Aide JÙLABA Lun-Ven 8h-18h Nous contacter Nouveau ticket MON COMPTE Mot de passe Code PIN Keiwa Active le PIN p"
+        }
+      ],
+      "tronque": 0,
+      "voix": {
+        "auMontage": 0,
+        "clesAuMontage": [],
+        "refuseesAuMontage": 0,
+        "auGeste": 1,
+        "muet": false
+      },
+      "impasses": [
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Écouter le message de bienvenue",
+          "largeur": 142,
+          "hauteur": 44,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": false,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI 0 F Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Écouter Tata dire bonjour",
+          "largeur": 390,
+          "hauteur": 172,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": false,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI 0 F Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Tantie Accueil Acheter Moi"
+        }
+      ],
+      "desactives": [],
+      "inatteignables": [],
+      "confirmationsSansSuite": [],
+      "passage": {
+        "ouvertPar": "Vendre"
+      }
+    },
+    {
+      "n": 5,
+      "id": "caisse",
+      "titre": "Caisse — la surface de vente",
+      "chemin": "/marchand/caisse",
+      "charte": {
+        "jetons": 499,
+        "durs": 0,
+        "part": 1,
+        "verdict": "dans la charte",
+        "ok": true,
+        "detail": [
+          {
+            "fichier": "src/app/components/marchand/POSCaisse.tsx",
+            "jetons": 393,
+            "durs": 0
+          },
+          {
+            "fichier": "src/app/components/marchand/MicroVenteCaisse.tsx",
+            "jetons": 94,
+            "durs": 0
+          },
+          {
+            "fichier": "src/app/components/marchand/ChoixUnite.tsx",
+            "jetons": 12,
+            "durs": 0
+          }
+        ]
+      },
+      "atteint": true,
+      "voixMontage": {
+        "demandes": [
+          {
+            "api": "audioManager.speak",
+            "texte": "Que voulez-vous vendre ?"
+          }
+        ],
+        "ignorees": [],
+        "fins": [
+          "ended"
+        ],
+        "cles": []
+      },
+      "capture": "5-caisse.png",
+      "aLoeil": {
+        "large": 390,
+        "deborde": [],
+        "petites": []
+      },
+      "interactifs": 10,
+      "erreursPage": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5197/src/app/services/api/api-client.ts:122:11\n    at async loadNotifications (http://127.0.0.1:5197/src/a"
+      ],
+      "touches": [
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Retour",
+          "largeur": 44,
+          "hauteur": 44,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": true,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": ""
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Appuie pour parler",
+          "largeur": 124,
+          "hauteur": 124,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que voulez-vous vendre ? Je n'ai pas compris Choisir à l’écran Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie. Parler encore à Tantie Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Réécouter la question",
+          "largeur": 180,
+          "hauteur": 66,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": true
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 1,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que voulez-vous vendre ? Dis-moi ce que tu vends Choisir à l’écran Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Choisir la vente à l’écran",
+          "largeur": 148,
+          "hauteur": 44,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": true
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 1,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que voulez-vous vendre ? Dis-moi ce que tu vends Choisir à l’écran SAISIR SANS PARLER Réécouter Riz Tomate Aubergine Piment Gombo Manioc Igname Maïs Banane Plantain Oignon Avocat Huile de palme Mangue Ananas Arachide Carotte Concombre Courgette Chou Laitue Brocoli Patate douce Pomme de terre Haricot Citron Orange Pastèque Papaye Fraise Noix de coco Café Poisson Poulet Œuf Pain Pas dans la liste ? Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "input",
+          "nom": "Chercher un produit…",
+          "largeur": 149,
+          "hauteur": 18,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": true,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que voulez-vous vendre ? Dis-moi ce que tu vends Choisir à l’écran Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Autre article",
+          "largeur": 145,
+          "hauteur": 46,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": true,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que voulez-vous vendre ? Dis-moi ce que tu vends Choisir à l’écran Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Autre article Chercher un produit OU MONTANT LIBRE Montant F Quoi ? (facultatif) Tu vends par… unité tas kg sac bassine régime Ajouter Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "+ Autre article",
+          "largeur": 172,
+          "hauteur": 48,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": true,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que voulez-vous vendre ? Dis-moi ce que tu vends Choisir à l’écran Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Autre article Chercher un produit OU MONTANT LIBRE Montant F Quoi ? (facultatif) Tu vends par… unité tas kg sac bassine régime Ajouter Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Accueil",
+          "largeur": 125,
+          "hauteur": 70,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI 0 F Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Acheter",
+          "largeur": 125,
+          "hauteur": 70,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": true,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Marché virtuel Ton profil marchand n'est pas complet Pour accéder au marché, vois ton identificateur : il précisera si tu es détaillante, demi-grossiste ou grossiste. 0 Commandes 0 Produits disponibles 0 FCFA Total dépensé 0 Négociations en cours Historique Toutes tes commandes passées Aucune commande dans ton historique Les transactions apparaîtront ici Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Moi",
+          "largeur": 125,
+          "hauteur": 70,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Mon profil Afficher ma carte Réglages Carte professionnelle Jùlaba Utilise « Afficher ma carte » pour ouvrir ta carte digitale. JÙLABA Academy Formations et micro-apprentissages MES SERVICES Ma coopérative Rejoindre ou voir ma coop Soumettre un besoin Mes tontines Épargne tournante entre commerçantes Ma protection sociale Cotisations CNPS (retraite) & CNAM (santé) Fidélité clients Points & récompenses — barème réglable Documents et certifications Pièces officielles et suivi Support & Aide JÙLABA Lun-Ven 8h-18h Nous contacter Nouveau ticket MON COMPTE Mot de passe Code PIN Keiwa Active le PIN p"
+        }
+      ],
+      "tronque": 0,
+      "voix": {
+        "auMontage": 1,
+        "clesAuMontage": [],
+        "refuseesAuMontage": 0,
+        "auGeste": 2,
+        "muet": false
+      },
+      "impasses": [],
+      "desactives": [],
+      "inatteignables": [],
+      "confirmationsSansSuite": [],
+      "passage": null
+    }
+  ]
+}

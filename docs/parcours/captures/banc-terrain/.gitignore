@@ -1,0 +1,5 @@
+# Le banc terrain écrit deux images par écran : la VUE DU TÉLÉPHONE (390 × 844,
+# celle qu'on regarde et qu'on versionne) et la page entière, qui pèse lourd et
+# ne sert qu'au moment où l'on cherche un défaut plus bas que le pli.
+*-pleine.png
+*-NON-ATTEINT.png
