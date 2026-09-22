@@ -22,6 +22,7 @@ import '../src/styles/soleil.css';
 import '../src/styles/commerce.css';
 import '../src/styles/login.css';
 import { POSCaisse } from '../src/app/components/marchand/POSCaisse';
+import { MarchandHome } from '../src/app/components/marchand/MarchandHome';
 import { enregistrerRenduVocal, RENDU_PAR_DEFAUT } from '../src/app/i18n/voice/contrat-audio';
 import { t } from '../src/app/i18n/voice/runtime';
 import { AppProvider } from './stubs/AppContext';
@@ -48,11 +49,17 @@ enregistrerRenduVocal((message, direTexte) => {
 (window as any).__t = (id: string, vars?: Record<string, string | number>) => t(id as never, vars ?? {});
 (window as any).__viderJournalVoix = () => { (window as any).__journalVoix = []; (window as any).__journalDits = []; };
 
+// QUEL ÉCRAN MONTER. Par défaut la caisse, à l'identique — `?ecran=accueil`
+// monte à la place l'ACCUEIL MARCHAND (écran 3 du parcours d'Awa), qui est le
+// premier écran qu'elle voit chaque matin et que le banc ne savait pas rendre.
+// Mêmes stubs, même viewport : seule la racine change.
+const ACCUEIL = (() => { try { return new URLSearchParams(location.search).get('ecran') === 'accueil'; } catch { return false; } })();
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <MemoryRouter initialEntries={['/marchand/caisse']}>
+  <MemoryRouter initialEntries={[ACCUEIL ? '/marchand' : '/marchand/caisse']}>
     <AppProvider>
       <CaisseProvider>
-        <POSCaisse />
+        {ACCUEIL ? <MarchandHome /> : <POSCaisse />}
       </CaisseProvider>
     </AppProvider>
   </MemoryRouter>,
