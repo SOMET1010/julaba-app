@@ -1,6 +1,7 @@
 # ALERTE-SEC-01 — identifiants en clair dans `akoun-dev/julaba`
 
-**Ouverte le 22/09/2026.** Relevée en fermant l'audit de données
+**Ouverte le 22/09/2026 · dépôt confirmé PUBLIC le 22/09 (§4) — rotation S1 urgente.**
+Relevée en fermant l'audit de données
 ([`../data/AUDIT-DONNEES.md`](../data/AUDIT-DONNEES.md), §4).
 
 **Aucune modification n'a été faite au second dépôt.** Ce document constate,
@@ -75,27 +76,57 @@ connus.
 
 ---
 
-## 4. Ce que je n'ai pas pu établir, et qui change la gravité
+## 4. LE DÉPÔT EST PUBLIC — établi le 22/09
 
-**Le dépôt `akoun-dev/julaba` est-il public ou privé ?**
+**`akoun-dev/julaba` est un dépôt PUBLIC.**
 
-Je ne peux pas le déterminer depuis cette session : son accès GitHub est
-limité à `SOMET1010/julaba-app`. C'est pourtant **la première chose à
-vérifier**, parce qu'elle change tout :
+Établi par le contrôle d'accès dépôt de la session, qui répond mot pour mot :
+*« it is a public repository and this session's git proxy serves anonymous git
+reads (clone/fetch) of public GitHub repositories directly. Nothing was
+attached to the session. »* — lecture **anonyme**, sans qu'aucun identifiant de
+Patrick ne soit engagé.
 
-- **dépôt public** → les secrets sont publiés. Rotation **immédiate**, et il
-  faut supposer qu'ils sont déjà connus de tiers ;
-- **dépôt privé** → l'exposition se limite aux personnes ayant accès au dépôt.
-  Rotation quand même — mais le calendrier peut être discuté.
+Corroboration tentée et **échouée** : `api.github.com/repos/akoun-dev/julaba`
+répond **403** à travers le proxy de sortie de cette session. Je n'ai donc
+qu'**une seule source**, mais c'est celle qui fait autorité — c'est le contrôle
+d'accès lui-même, pas une déduction.
 
-Une commande, depuis un navigateur ou un terminal connecté :
+### Ce que ça change
 
-```bash
-gh repo view akoun-dev/julaba --json visibility
+L'alerte passe du scénario « à traiter comme public par prudence » au scénario
+**public, établi**. Concrètement :
+
+| | |
+|---|---|
+| Depuis quand | **le 21/09/2026**, commit `356f1dc` |
+| Qui peut les lire | **n'importe qui**, sans compte GitHub |
+| Hypothèse à tenir | **les secrets sont déjà connus de tiers** |
+| Rotation S1 | **urgente**, plus « dès que possible » |
+
+**Et ce qui reste inconnu, qui ne change pas l'urgence.** On ne sait pas si les
+7 comptes back-office **existent réellement** dans Supabase. Deux cas, et les
+deux appellent une action :
+
+- **ils existent** → des accès d'administration mono-facteur, avec un mot de
+  passe publié et partagé par les 7. **Rotation immédiate.**
+- **ils n'existent pas** → rien à rotater sur ces comptes-là, mais **la valeur
+  est publiée** : elle ne doit être réutilisée nulle part, sur aucun
+  environnement, et le motif — *un mot de passe unique pour tous les
+  administrateurs* — est à vérifier ailleurs.
+
+Le premier contrôle est une **lecture**, pas une correction :
+
+```sql
+select email, actif from bo_users order by email;
 ```
 
-**Tant que la réponse n'est pas connue, traiter comme public.** C'est
-l'hypothèse la moins coûteuse à révoquer.
+### Ce que « supprimer le fichier » ne règle pas, et c'est pire ici
+
+Le dépôt étant public, le fichier a pu être **cloné, mis en cache, indexé**
+depuis le 21/09. Un `git rm`, une réécriture d'historique, ou même le passage
+du dépôt en privé **ne rappellent aucune copie déjà faite**.
+
+**La rotation n'est pas une étape parmi d'autres : c'est la seule qui agit.**
 
 ---
 
@@ -131,9 +162,16 @@ maître sur le pilote — et c'est un bon blocage.
 
 ## 7. Décisions attendues
 
-1. **Le dépôt est-il public ?** (§4) — détermine l'urgence.
-2. **Qui rotate S1 ?** Sept mots de passe d'administration, une valeur
-   différente chacun.
-3. **Le compte `dge.ci` correspond-il à une personne réelle ?**
-4. **Les comptes de test du second dépôt doivent-ils migrer vers une variable
+1. ~~Le dépôt est-il public ?~~ — **RÉPONDU le 22/09 : oui** (§4).
+2. **Qui rotate S1, et quand ?** Sept mots de passe d'administration, **une
+   valeur différente chacun**. Le dépôt étant public, c'est urgent.
+3. **Ces 7 comptes existent-ils dans Supabase ?** Une lecture suffit
+   (`select email, actif from bo_users`). La réponse ne change pas l'urgence de
+   la rotation, elle change seulement ce qu'il y a à rotater.
+4. **Le compte `dge.ci` correspond-il à une personne réelle ?** Domaine tiers,
+   dans un dépôt public.
+5. **Les comptes de test du second dépôt doivent-ils migrer vers une variable
    d'environnement**, comme `SEED_DEMO_BO_PASSWORD` ici ?
+6. **Faut-il balayer le reste du dépôt public** à la recherche d'autres
+   secrets exposés ? Lecture seule, aucune modification — **non fait**, en
+   attente de la décision de Patrick.
