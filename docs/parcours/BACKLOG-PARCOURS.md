@@ -151,6 +151,34 @@ Gardes : `test:catalogue-caisse-etat` · `test:caisse-tutoie`.
 **Le banc lui-même était faux** : sa `preuve` attendait la phrase vouvoyante.
 Corrigé — la preuve suit l'écran, jamais l'inverse.
 
+### S6 — La journée de caisse, et le micro de la vente
+
+Ouvert par la recette terrain v1.0 (matrice de Patrick) et par une capture de
+son téléphone le 22/09.
+
+| Id | Défaut | Statut |
+|---|---|---|
+| CAI-02 | **On pouvait vendre ET annuler après la clôture** (MAR-CAI-002 / MAR-CAI-003, BLOQUANTS). Ce n'était pas une garde manquante : `ensureSessionOuverte` faisait `DO UPDATE SET ouvert = true` à chaque vente et chaque dépense — il **rouvrait** la journée sans toucher aux trois nombres du soir. | **FERMÉ** |
+| VOX-01a | **Le micro écoutait 60 s** sans jamais détecter la fin de phrase. D'où le paragraphe de six lignes. L'écran du numéro avait ce mécanisme depuis toujours ; celui de l'argent n'avait rien. | **FERMÉ** |
+| VOX-01b | **« J'ai compris » était un mensonge** : il s'affichait sur une simple transcription. | **FERMÉ** |
+| VOX-01c | **L'écran montrait la sortie brute de la machine.** | **FERMÉ** |
+| CAI-09 | `caisseTheorique` additionne aussi `acompte_credit` et `reglement_credit`. Leurs routes ne passent pas par la nouvelle garde. Même défaut, ailleurs. | **OUVERT** — hors périmètre du lot |
+| MAR-HIS-001 | « Ce mois » affiche « Aujourd'hui tu as gagné… » (`ResumeCaisse.tsx:334`, texte en dur). | **OUVERT** |
+| MAR-DEP-001 | « + Noter une dépense » à renommer ; catégorie de dépense non enregistrée (le **libellé**, lui, est fermé par `5259490`). | **OUVERT** |
+| MAR-VTE-001 | « Son clip Tata Nanti Lou n'est pas encore enregistré » — `useVoiceCore.ts:355`, **figé par VOICE-01**. | **OUVERT** — desserrage = décision de Patrick |
+| CAI-08 | « Choisir à l'écran » : Patrick a mis **deux heures** à comprendre. L'accueil dit déjà « parler ou toucher les produits » — un concept, deux langues. | **OUVERT** — arbitrage de formulation |
+| CAI-07 | Deux « J'ai compris » simultanés à l'écran. À revérifier : VOX-01 a peut-être fermé la cause. | **À REMESURER** |
+
+**Preuve de fermeture de CAI-02** (invariant sur base réelle) :
+
+```
+rouge avant : Expected >= 400 / Received 201  (la vente après clôture passait)
+              Expected >= 400 / Received 201  (l'annulation aussi)
+après       : 239 invariants verts, 47 suites
+```
+
+Gardes : `cai-02-journee-fermee.spec.ts` · `test:ecoute-caisse`.
+
 ---
 
 ## Le reste du chemin — non commencé

@@ -429,17 +429,17 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 161 | `speak` | relais | texte |  |  |
-| 164 | `speakMessage` | relais | id |  |  |
-| 212 | `speakMessage` | cle_i18n | TATA_AJOUT_PANIER |  |  |
-| 339 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
-| 352 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
-| 382 | `speakMessage` | dynamique | ...introMessage() |  |  |
-| 443 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
-| 445 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
-| 454 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
-| 552 | `speak` | dynamique | dernierePhraseRef.current |  |  |
-| 552 | `speak` | dynamique | introLigne() |  |  |
+| 162 | `speak` | relais | texte |  |  |
+| 165 | `speakMessage` | relais | id |  |  |
+| 213 | `speakMessage` | cle_i18n | TATA_AJOUT_PANIER |  |  |
+| 344 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
+| 357 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
+| 387 | `speakMessage` | dynamique | ...introMessage() |  |  |
+| 493 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
+| 495 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
+| 504 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
+| 610 | `speak` | dynamique | dernierePhraseRef.current |  |  |
+| 610 | `speak` | dynamique | introLigne() |  |  |
 
 ### `components/marchand/PinConfirmModal.tsx` — auth
 
