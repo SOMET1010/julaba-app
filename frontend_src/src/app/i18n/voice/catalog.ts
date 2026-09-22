@@ -167,6 +167,22 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   // SCIEMMENT — et c'est écrit, plutôt que d'aligner le texte sur un son périmé.
   { id: 'AKWABA_ACCUEIL', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Akwaba. Pour vendre, touche un produit, ou parle à Tantie Nanti Lou. On est ensemble.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/Welcome.tsx', note: 'Recours quand aucun clip n\'est embarque. Le clip, lui, dit encore « Tata » : reenregistrement requis (INTRO_CLIPS.accueil).' },
   { id: 'AKWABA_RETOUR', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Re-bonjour ! On y va.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/Welcome.tsx', note: 'Elle est deja venue (utils/parcours.estHabituee). Phrase reprise telle quelle de INTRO_CLIPS.retour.' },
+  // ── TON NUMÉRO (NUM-01) — écran 3, toujours avant connexion ──────────────
+  // Le banc l'a relevé MUET au montage et sous les quatorze éléments, avec une
+  // impasse : le bouton d'écoute qui ne fait rien. Les six phrases ci-dessous
+  // sont reprises MOT POUR MOT du registre `services/entreeVoix.ts` — un test
+  // le vérifie clé par clé.
+  //
+  // CE QUI N'ENTRE PAS ICI, ET POURQUOI. La relecture du numéro composé
+  // (« 0 7 0 9 … ») n'a pas de clé et n'en aura pas : elle passe par
+  // `direEntreeTexte`, qui reste sans repli parlé. Lui en donner un ferait
+  // prononcer le numéro de la marchande à voix haute, au marché.
+  { id: 'ENTREE_NUMERO', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Tape les chiffres de ton numéro, un par un. Les ronds en haut vont se remplir.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/LoginPassword.tsx', note: 'Consigne au montage de l\'etape numero, et bouton d\'ecoute. Explique le GESTE, pas seulement le champ.' },
+  { id: 'ENTREE_NUMERO_VOIX', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Dis ton numéro, ou tape les chiffres un par un. Les ronds en haut vont se remplir.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/LoginPassword.tsx', note: 'Meme consigne quand la dictee est disponible. Une cle par situation : jamais une phrase pour deux.' },
+  { id: 'ENTREE_CODE', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Entre ton code secret à quatre chiffres.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/LoginPassword.tsx', note: 'Etape du code secret. Ne prononce AUCUN chiffre saisi.' },
+  { id: 'ENTREE_CODE_ERREUR', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: "Ce n'est pas le bon code. Réessaie doucement.", frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/LoginPassword.tsx', note: 'Code refuse. Dite sans jamais repeter ce qui a ete tape.' },
+  { id: 'ENTREE_CONNEXION', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'La connexion ne passe pas pour le moment. Attends un peu, puis réessaie.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/LoginPassword.tsx', note: 'Le serveur ne repond pas. Nomme l\'echec au lieu de laisser l\'ecran immobile.' },
+  { id: 'ENTREE_RECONNAISSANCE', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Touche le grand bouton. Ton téléphone va te reconnaître.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/LoginPassword.tsx', note: 'Empreinte disponible : elle designe le grand bouton, pour une personne qui ne lit pas.' },
   // ── TANTIE SE PRÉSENTE (TNT-01) — écran 2, toujours avant connexion ───────
   // Le banc l'a relevé MUET au montage ET sous chacun des trois éléments, y
   // compris « Réécouter Tantie Nanti Lou » — un bouton qui promet de répéter

@@ -101,6 +101,30 @@ Le module de voix de l'entrée a été renommé AVANT ce lot, dans un commit qui
 fait que cela : `entreeAkwabaVoix` → `entreeVoixAvantConnexion`. Il ne sert pas
 qu'Akwaba ; le nom devait cesser de mentir.
 
+### S4 — Écran 3, Ton numéro
+
+| Id | Défaut relevé par le banc | Statut |
+|---|---|---|
+| NUM-01a | **Muet** — `0 demande au montage`, 0 sous les quatorze éléments. L'écran qui explique le geste ne l'expliquait qu'à l'écrit. | **FERMÉ** |
+| NUM-01b | **1 impasse /14** — « Écouter Tantie Nanti Lou » touché, rien ne bougeait. | **FERMÉ** |
+| NUM-02 | **La relecture du numéro composé n'a pas de repli parlé, et n'en aura pas.** `direEntreeTexte` sert aussi à relire « 0 7 0 9… » : lui donner une voix de secours ferait prononcer le numéro de la marchande à voix haute, au marché. Un test l'interdit explicitement. | **HORS PÉRIMÈTRE JUSTIFIÉ** — fermée par construction |
+| NUM-03 | **Le pavé numérique est silencieux.** Les dix chiffres mènent quelque part (`mene: true`) mais aucun ne parle, alors que la consigne promet « les ronds en haut vont se remplir ». Le banc ne le compte pas comme un défaut ; pour une marchande qui ne lit pas, c'en est un. | **OUVERT** — hors périmètre de ce lot, nommé pour ne pas être perdu |
+| NUM-04 | Charte : 0 jeton `--caisse-*`, 46 couleurs en dur. Seule cause restante de la sortie rouge du banc. | **HORS PÉRIMÈTRE JUSTIFIÉ** — « ne traite pas encore les 46 couleurs en dur » |
+
+**Preuve de fermeture** (banc, écran 3, sans réseau) :
+
+```
+avant : MUET (0 au montage, 0/14 au geste)      1 impasse /14
+après : 1 au montage, 1/14 au geste             impasses : aucune
+        « Tape les chiffres de ton numéro, un par un. Les ronds en haut
+          vont se remplir. »
+ZERO REFUS : AKW-02 respectée.
+```
+
+Captures : `docs/parcours/captures/ecran-3/AVANT.png` · `APRES.png`.
+Garde-fou : `test:entree-numero-voix`. Ici le fichier n'était **pas** figé par
+VOICE-01 : correction sur place, sans module parallèle et sans règle en double.
+
 ---
 
 ## Le reste du chemin — non commencé
@@ -109,7 +133,6 @@ Périmètre déclaré par Patrick : **écrans 1 → 5 uniquement** pour l'instan
 
 | Écran | Ce que le banc reproche | Statut |
 |---|---|---|
-| 3 — Ton numéro | muet · 1 impasse /14 · 0 jeton · 46 couleurs en dur | OUVERT |
 | 5 — Caisse | `ZÉRO QUI MENT` (« Aucun produit ») · vouvoie (à l'écran ET à voix haute) | OUVERT |
 
 ## Les 25 portes — gelées

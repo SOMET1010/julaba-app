@@ -16,6 +16,44 @@ import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits, fusionnerChiffresDictes } from '../../utils/frenchDigits';
 import { direEntree, direEntreeTexte, ENTREE_VOICE_CLIPS, type EntreeVoiceKey } from '../../services/entreeVoix';
+import { tParle } from '../../i18n/voice/runtime';
+import { speak as direTexteParMoteur } from '../../services/audioManager';
+import type { MessageId } from '../../i18n/voice/types';
+
+/**
+ * ── NUM-01 — CET ÉCRAN ÉTAIT MUET, ET SON BOUTON D'ÉCOUTE AUSSI ───────────
+ *
+ * Banc terrain, écran 3 : « MUET » au montage et sous les quatorze éléments,
+ * avec une impasse — « Écouter Tantie Nanti Lou » touché, rien ne bouge.
+ * `direEntree` ne joue qu'un clip enregistré ; dans tout build livré le
+ * drapeau des prototypes est éteint, donc il n'y en a pas, donc rien.
+ *
+ * `direEntree` RAPPORTE désormais ce qu'il en advient. Le texte ne part que
+ * s'il ne reste rien à dire : jamais par-dessus le clip, et jamais après une
+ * coupure — ici, taper un chiffre coupe la consigne, et ce silence est la
+ * décision de la marchande.
+ *
+ * AKW-02 RESPECTÉE. On ne passe pas par `speakMessage`, dont le rendu finit
+ * dans `AppContext.speak` et s'y fait refuser (`role-non-marchand`) : sur cet
+ * écran personne n'est encore connecté — c'est l'écran QUI CONNECTE. On garde
+ * la CLÉ de catalogue et on la remet au moteur audio directement. Le muet
+ * global reste respecté : il vit dans `audioManager`, pas dans la garde de rôle.
+ */
+const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
+  numero: 'ENTREE_NUMERO',
+  numeroVoix: 'ENTREE_NUMERO_VOIX',
+  code: 'ENTREE_CODE',
+  codeErreur: 'ENTREE_CODE_ERREUR',
+  connexionIndisponible: 'ENTREE_CONNEXION',
+  reconnaissance: 'ENTREE_RECONNAISSANCE',
+};
+
+/** Le clip s'il existe, sinon la phrase — une seule sortie, jamais deux. */
+function direConsigne(key: EntreeVoiceKey): Promise<void> {
+  return direEntree(key)
+    .then((r) => (r.doitDireLeTexte ? direTexteParMoteur(tParle(CLE_CATALOGUE[key])) : undefined))
+    .catch(() => { /* une consigne qui casse ne bloque jamais la connexion */ });
+}
 import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
@@ -187,7 +225,7 @@ export function LoginPassword() {
       : step === 'reconnaissance' && compteConnu?.biometrie
         ? 'reconnaissance'
         : 'code';
-    try { direEntree(key).finally(() => setTataSpeaking(false)); }
+    try { void direConsigne(key).finally(() => setTataSpeaking(false)); }
     catch { setTataSpeaking(false); }
     setTimeout(() => setTataSpeaking(false), 8000); // filet
   };
@@ -260,7 +298,7 @@ export function LoginPassword() {
   const direConsigneCode = useCallback(() => {
     if (step !== 'password') return;
     if (!guidageVocal(accessMode)) return; // lecture explicitement choisie : pas de consigne auto
-    void direEntree('code');
+    void direConsigne('code');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, accessMode]);
 
@@ -281,7 +319,7 @@ export function LoginPassword() {
   // Même filet que Welcome.tsx/OnboardingSlides.tsx.
   const direAccueilReconnaissance = useCallback(() => {
     if (!(step === 'reconnaissance' && compteConnu && guidageVocal(accessMode))) return;
-    try { void direEntree(compteConnu.biometrie ? 'reconnaissance' : 'code'); } catch { /* ignore */ }
+    try { void direConsigne(compteConnu.biometrie ? 'reconnaissance' : 'code'); } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, compteConnu, accessMode]);
 
@@ -630,7 +668,7 @@ export function LoginPassword() {
   const direConsigneNumero = useCallback(() => {
     if (step !== 'phone') return;
     if (!guidageVocal(accessMode)) return; // lecture explicitement choisie : pas d'accueil vocal auto
-    void direEntree(voixEcouteDispo ? 'numeroVoix' : 'numero');
+    void direConsigne(voixEcouteDispo ? 'numeroVoix' : 'numero');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, accessMode, voixEcouteDispo]);
 
@@ -1376,7 +1414,7 @@ export function LoginPassword() {
             <button
               type="button"
               aria-label="Ton code secret — touche pour écouter"
-              onClick={() => { void direEntree('code'); }}
+              onClick={() => { void direConsigne('code'); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '2px 0 4px', display: 'flex', justifyContent: 'center', width: '100%' }}
             >
               <span style={{ fontSize: 30, lineHeight: 1 }}>🔒</span>
