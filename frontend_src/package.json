@@ -134,7 +134,7 @@
     "test:caisse-accueil-etat": "tsx src/app/services/etatCaisseAccueil.test.mts",
     "test:accueil-honnete": "tsx src/app/components/marchand/accueilHonnete.test.mts",
     "test:accueil-une-sortie": "tsx src/app/services/accueilVoixUneSeuleSortie.test.mts",
-    "test:akwaba-voix": "tsx src/app/services/entreeAkwabaVoix.test.mts"
+    "test:akwaba-voix": "tsx src/app/services/entreeVoixAvantConnexion.test.mts"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

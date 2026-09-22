@@ -14,7 +14,7 @@
  */
 (import.meta as unknown as { env: Record<string, string> }).env ??= {};
 
-const { direAkwaba, urlDuClip } = await import('./entreeAkwabaVoix.js');
+const { direEntreeAvantConnexion, urlDuClip } = await import('./entreeVoixAvantConnexion.js');
 
 const { readFileSync } = await import('node:fs');
 const { dirname, resolve } = await import('node:path');
@@ -35,7 +35,7 @@ console.log('\nLe premier écran du téléphone dit bonjour — une fois\n');
 console.log('[1] Une seule sortie, dans les quatre situations');
 {
   let clips = 0;
-  const r = await direAkwaba('accueil', {
+  const r = await direEntreeAvantConnexion('accueil', {
     clipUrl: async () => '/voix/fr-CI/prototype/tata-accueil-preview.mp3',
     jouer: async () => { clips++; return 'ended'; },
   });
@@ -44,16 +44,16 @@ console.log('[1] Une seule sortie, dans les quatre situations');
 }
 {
   let clips = 0;
-  const r = await direAkwaba('accueil', { clipUrl: async () => null, jouer: async () => { clips++; return 'ended'; } });
+  const r = await direEntreeAvantConnexion('accueil', { clipUrl: async () => null, jouer: async () => { clips++; return 'ended'; } });
   ok(clips === 0 && r.lu === false && r.raison === 'aucun-clip', 'aucun clip : la raison est nommée');
   ok(r.doitDireLeTexte === true, 'le texte prend le relais — le bouton cesse d\'être mort');
 }
 {
-  const r = await direAkwaba('accueil', { clipUrl: async () => '/c.mp3', jouer: async () => 'failed' });
+  const r = await direEntreeAvantConnexion('accueil', { clipUrl: async () => '/c.mp3', jouer: async () => 'failed' });
   ok(r.lu === false && r.raison === 'clip-echoue' && r.doitDireLeTexte, 'un clip qui échoue est rattrapé');
 }
 {
-  const r = await direAkwaba('accueil', { clipUrl: async () => '/c.mp3', jouer: async () => 'cancelled' });
+  const r = await direEntreeAvantConnexion('accueil', { clipUrl: async () => '/c.mp3', jouer: async () => 'cancelled' });
   ok(r.lu === false && r.raison === 'coupe' && !r.doitDireLeTexte,
      'une coupure ne se rattrape pas : ce silence est voulu (barge-in, changement d\'écran)');
 }
