@@ -276,13 +276,34 @@ Ouvert par la mesure du 22/09 (`docs/parcours/MESURE-BACKOFFICE.md`) : 37
 
 | Id | Défaut | Statut |
 |---|---|---|
-| STK-02 | **Les 37 tuiles-photo du formulaire produit pré-remplissent un prix d'achat ET un prix de vente** (`catalogue-produits.ts` : Tomate 300/400, Aubergine 700/800…). Ces prix sont écrits dans le code, pas choisis par la marchande. Toucher la photo et valider lui pose **les prix de quelqu'un d'autre** — et toute sa caisse se calcule dessus. Même famille que le faux zéro, en pire : un zéro se remarque, **400 F ne se remarque pas**. | **OUVERT** |
+| STK-02a | **Les tuiles-photo pré-remplissaient un prix d'achat ET un prix de vente** (`catalogue-produits.ts` : Tomate 300/400, Aubergine 700/800…). Toucher la photo et valider posait à la marchande **les prix de quelqu'un d'autre**. Même famille que le faux zéro, en pire : un zéro se remarque, **400 F ne se remarque pas**. | **FERMÉ** |
+| STK-02b | **Même injection par la suggestion de nom** — au clic, et la liste **affichait** en plus le prix comme s'il s'agissait d'une information sur le produit. | **FERMÉ** |
+| STK-02c | **L'AJOUT À LA VOIX, le pire des trois.** Le code le disait lui-même : « prix dit, **sinon prix du catalogue** ». Elle dictait « ajoute dix kilos de tomate » sans prix ; l'application écrivait 400 F **et le lui annonçait** : « C'est fait ! 10 kg de Tomate à 400 francs, ajoutés au stock. » Pour une marchande qui ne lit pas, **la voix EST la confirmation** — elle entendait un prix qu'elle n'avait jamais dit, énoncé comme un fait accompli. | **FERMÉ** |
+| STK-02d | **Le type de l'état de saisie mentait** : `purchasePrice: number`, alors que les gestionnaires écrivaient `'' as any`. Un champ de prix a **trois** états — un montant, zéro, ou pas encore saisi — et le type n'en connaissait que deux. Dette voisine, trouvée en fermant STK-02. | **FERMÉ** |
 | STK-03 | **Les tuiles ne nomment pas le bon produit.** 37 tuiles pour 198 références ; **8 seulement** portent le nom exact. La tuile « Igname » n'est ni « Igname Kponan », ni « Bêtê-Bêtê », ni « Florido », ni « Krenglè » — quatre variétés, quatre prix. Contourné à la main par l'aide-mémoire terrain. | **OUVERT** |
 
-Contournement livré, pas correction : `docs/terrain/FICHE-AGENT-POSE-PRODUITS.md`
-met le piège des prix en première ligne, et
-`docs/terrain/CATALOGUE-198-PAR-FAMILLE.md` donne les noms exacts et les unités
-du marché, famille par famille.
+**Preuve de fermeture de STK-02** (règle pure, `test:prix-marchande`) :
+
+```
+rouge avant : ✗ l'écran importe la règle
+              ✗ 2 tuiles remplissent encore le formulaire à la main
+              ✗ l'ajout à la voix se replie sur le prix du catalogue
+              ✗ la suggestion affiche un prix qui n'est pas le sien
+après       : une tuile pose un PRODUIT, jamais un PRIX
+              deux tuiles d'affilée : le prix de la première ne reste pas
+              `prixDicte` n'a QU'UN argument — aucun repli possible
+              la voix ne cite un montant que s'il vient d'elle
+```
+
+**Le catalogue garde ses prix.** On n'efface pas une donnée : on cesse de la
+prendre pour une autre. Ces chiffres restent un ordre de grandeur ; ils ne sont
+plus posés comme étant les siens.
+
+**STK-03 reste OUVERT** — les tuiles ne nomment toujours pas le bon produit.
+Contournement terrain maintenu : `docs/terrain/FICHE-AGENT-POSE-PRODUITS.md` et
+`docs/terrain/CATALOGUE-198-PAR-FAMILLE.md` (noms exacts, unités du marché).
+La fiche garde son avertissement sur les prix — il ne coûte rien, et il tient
+même après ce correctif.
 
 **Preuve de fermeture de BO-01** (règles pures, les quatre exigences de Patrick) :
 

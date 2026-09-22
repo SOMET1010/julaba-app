@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/re
 import { Package, TrendingUp, AlertCircle, Plus, Search, Trash2, X, Mic, MicOff, Edit3, Receipt, Wallet, BarChart3, Eye, EyeOff, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { Montant } from '../shared/Montant';
+import { champsDepuisTuile, prixDicte } from '../../services/prixDeLaMarchande';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useUser } from '../../contexts/UserContext';
@@ -226,6 +227,15 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
   );
 }
 
+/** La saisie d'un produit. `''` = pas encore saisi — ce n'est ni un montant,
+ *  ni un zero, et le distinguer est tout l'objet de STK-02. */
+type SaisieProduit = {
+  name: string; image: string; quantity: number; unit: string;
+  purchasePrice: number | ''; salePrice: number | '';
+  threshold: number; category: string; datePeremption: string;
+  promoPrice: number | string; promoFin: string;
+};
+
 export function GestionStock() {
   const navigate = useNavigate();
   const { user } = useUser();
@@ -282,7 +292,13 @@ export function GestionStock() {
   const [isListening, setIsListening] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false); // repli des champs optionnels de l'ajout produit
   const dicteeNomRef = useRef(false); // true = la prochaine reconnaissance vocale remplit le NOM du produit (pas une commande)
-  const [newStock, setNewStock] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'autre', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
+  // STK-02 — LE TYPE DISAIT `number`, LE CODE ECRIVAIT `'' as any`.
+  //
+  // Un champ de prix a trois etats, pas deux : un montant, zero, ou PAS ENCORE
+  // SAISI. Le type n'en connaissait que deux, alors les gestionnaires de
+  // saisie contournaient avec un cast — et un cast est un endroit ou le
+  // compilateur cesse de nous aider. On l'ecrit tel qu'il est.
+  const [newStock, setNewStock] = useState<SaisieProduit>({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:'', salePrice:'', threshold:10, category:'autre', datePeremption:'', promoPrice:'', promoFin:'' });
   const [inlineEdit, setInlineEdit] = useState(false);
   const [editForm, setEditForm] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'autre', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -365,13 +381,25 @@ export function GestionStock() {
           } catch { speak("Ça n'a pas marché. Réessaie, s'il te plaît."); }
           return;
         }
-        // Nouveau produit -> création (prix dit, sinon prix du catalogue).
+        // Nouveau produit — STK-02, LE CHEMIN LE PLUS GRAVE DES TROIS.
+        //
+        // Ce bloc disait lui-meme ce qu'il faisait : « prix dit, SINON prix du
+        // catalogue ». Elle dictait « ajoute dix kilos de tomate » sans prix,
+        // l'application ecrivait 400 F — un chiffre ecrit en dur dans
+        // `data/catalogue-produits.ts` — puis le lui ANNONCAIT : « C'est fait !
+        // 10 kg de Tomate a 400 francs, ajoutes au stock. » Pour une marchande
+        // qui ne lit pas, la voix EST la confirmation : elle entendait un prix
+        // qu'elle n'avait jamais dit, enonce comme un fait accompli.
+        //
+        // Le catalogue garde ce qu'il sait — la famille, l'unite, la photo. Il
+        // ne sait pas a combien ELLE vend. `prixDicte` n'accepte qu'un seul
+        // argument : il n'existe aucun moyen de lui passer un repli.
         const cat = rechercherProduitCatalogue(nom);
-        const prixVente = prix > 0 ? prix : (cat?.prixVente || 0);
+        const prixVente = prixDicte(prix);
         try {
           await addProduct({
             nom, categorie: cat?.categorie || 'autre',
-            prix: prixVente, prix_achat: cat?.prixAchat || 0,
+            prix: prixVente, prix_achat: 0,
             stock: qte, unite: cat?.unite || 'kg',
             image: cat?.image || getImageByNom(nom), seuil_alerte: 10,
           } as any);
@@ -451,23 +479,23 @@ export function GestionStock() {
 
   const addStockItem = async () => {
     if (!newStock.name?.trim()) { toast.error('Nom du produit requis'); dire('Saisis le nom du produit'); return; }
-    if (newStock.salePrice <= 0) { toast.error('Prix de vente invalide'); dire('Le prix de vente n\'est pas bon. Redis le prix.'); return; }
+    if (Number(newStock.salePrice) <= 0) { toast.error('Prix de vente invalide'); dire('Le prix de vente n\'est pas bon. Redis le prix.'); return; }
     if (newStock.quantity < 0) { toast.error('Quantité invalide'); speak('La quantité n\'est pas bonne.'); return; }
     // B2 (recette « prix d'achat 0 ») : on N'EMPÊCHE PAS l'ajout sans prix d'achat
     // (dons, auto-production, marchandise à crédit, coût réellement inconnu), mais on
     // prévient honnêtement — sans coût, on ne peut pas calculer le bénéfice.
-    if (!(newStock.purchasePrice > 0)) {
+    if (!(Number(newStock.purchasePrice) > 0)) {
       toast.warning("Sans prix d'achat, on ne pourra pas calculer ton bénéfice.");
       dire("Tu n'as pas mis le prix d'achat. On ne pourra pas calculer ton bénéfice.");
     }
     const cat = rechercherProduitCatalogue(newStock.name);
     try {
-      await addProduct({ nom:newStock.name, categorie: cat?.categorie || newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
+      await addProduct({ nom:newStock.name, categorie: cat?.categorie || newStock.category, prix:Number(newStock.salePrice), prix_achat:Number(newStock.purchasePrice), stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
       toast.success('Produit ajouté');
       speak(`${newStock.quantity || 0} ${newStock.unit} de ${newStock.name} ajouté au stock`);
       showToast(`${newStock.name} ajouté au stock`, 'success');
       setShowAdd(false);
-      setNewStock({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'', promoPrice:'', promoFin:'' });
+      setNewStock({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:'', salePrice:'', threshold:10, category:'cereales', datePeremption:'', promoPrice:'', promoFin:'' });
     } catch {
       toast.error('Opération impossible. Réessaie.');
       speak("Ça n'a pas marché. Réessaie, s'il te plaît.");
@@ -816,7 +844,12 @@ export function GestionStock() {
                       return (
                         <motion.button key={p.nom} whileTap={{ scale:0.94 }}
                           onClick={() => {
-                            setNewStock({ ...newStock, name:p.nom, image:p.image, unit:p.unite, purchasePrice:p.prixAchat, salePrice:p.prixVente, category:p.categorie });
+                            // STK-02 : la tuile pose le PRODUIT, jamais le PRIX.
+                            // Les deux prix repartent VIDES — et non « non
+                            // remplis » : sans cette remise a vide, le prix
+                            // saisi pour la tuile precedente resterait sur
+                            // celle-ci.
+                            setNewStock({ ...newStock, ...champsDepuisTuile(p) });
                             speak(p.nom);
                           }}
                           style={{ border: actif ? `3px solid ${P}` : '2px solid var(--trait)', borderRadius:14, padding:6, background: actif ? '#FFF3EA' : 'white', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, fontFamily:'inherit' }}>
@@ -863,12 +896,12 @@ export function GestionStock() {
                   {newStock.name.length >= 2 && suggererProduits(newStock.name).length > 0 && !suggererProduits(newStock.name).some(p => p.nom === newStock.name) && (
                     <div style={{ position:'absolute', zIndex:50, width:'100%', marginTop:4, background:'white', borderRadius:14, border:'2px solid #FFF3EA', boxShadow:'0 8px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
                       {suggererProduits(newStock.name).map(p => (
-                        <button key={p.nom} onClick={() => setNewStock({...newStock, name:p.nom, image:p.image, unit:p.unite, purchasePrice:p.prixAchat, salePrice:p.prixVente, category:p.categorie})}
+                        <button key={p.nom} onClick={() => setNewStock({...newStock, ...champsDepuisTuile(p)})}
                           style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', borderBottom:'1px solid #f5f0eb' }}>
                           <ImageWithFallback src={p.image} alt={p.nom} fallbackSrc={vignetteProduit(p.nom)} style={{ width:40, height:40, borderRadius:8, objectFit:'cover' }} />
                           <div style={{ textAlign:'left' }}>
                             <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{p.nom}</div>
-                            <div style={{ fontSize:11, color:'var(--encre-4)' }}>{p.categorie} · {p.unite} · {p.prixVente} FCFA</div>
+                            <div style={{ fontSize:11, color:'var(--encre-4)' }}>{p.categorie} · {p.unite}</div>
                           </div>
                         </button>
                       ))}
@@ -895,7 +928,7 @@ export function GestionStock() {
                 {/* Prix de vente : champ ESSENTIEL, toujours visible (seul obligatoire avec le nom). */}
                 <div>
                   <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix vente (FCFA)</label>
-                  <input type="number" value={newStock.salePrice} onFocus={() => dire('Prix de vente')} onChange={e => setNewStock({...newStock, salePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
+                  <input type="number" value={newStock.salePrice} onFocus={() => dire('Prix de vente')} onChange={e => setNewStock({...newStock, salePrice:e.target.value === '' ? '' : Number(e.target.value)})}
                     style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
                 </div>
 
@@ -910,7 +943,7 @@ export function GestionStock() {
                 {showAdvanced && (<>
                   <div>
                     <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix achat (FCFA) <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
-                    <input type="number" value={newStock.purchasePrice} onFocus={() => dire("Prix d'achat, facultatif")} onChange={e => setNewStock({...newStock, purchasePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
+                    <input type="number" value={newStock.purchasePrice} onFocus={() => dire("Prix d'achat, facultatif")} onChange={e => setNewStock({...newStock, purchasePrice:e.target.value === '' ? '' : Number(e.target.value)})}
                       style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
                   </div>
                   <div>
