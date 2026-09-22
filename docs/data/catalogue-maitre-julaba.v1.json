@@ -2065,8 +2065,14 @@
     "recu_de": "Patrick, 22/09/2026",
     "sha256_a_la_reception": "0afdaf818a7b2e21d7135a1521c9bc2273c5b681deda0a1a472478b4c8b12314",
     "commit_annonce": "0553c10662e918f8f48f1d0ac1c5d979d55aa99f",
-    "commit_present_dans_ce_depot": false,
-    "note": "Le commit annonce n existe pas dans SOMET1010/julaba-app — ni comme objet, ni comme ancetre de la branche. Ce fichier vient d un autre arbre. Sa PROVENANCE n est donc pas rejouable ici ; son CONTENU est verifie exact contre le kit du depot."
+    "commit_present_dans_le_depot": true,
+    "commit_verifie_le": "2026-09-22",
+    "commit_intitule": "ci: publier APK pilote dans GitHub Releases",
+    "commit_date": "2026-09-22T17:09:57Z",
+    "commit_url": "https://github.com/SOMET1010/julaba-app/commit/0553c10662e918f8f48f1d0ac1c5d979d55aa99f",
+    "dans_l_ascendance_de_claude_clever_allen_dnr8by": false,
+    "note": "Le commit annonce EXISTE bien dans SOMET1010/julaba-app : verifie par l API GitHub puis par un fetch cible. Il n appartient pas a l ascendance de la branche de travail claude/clever-allen-dnr8by, ce qui est normal. La provenance de ce fichier est donc rejouable.",
+    "erreur_precedente": "La version versee au commit 26ac5b7 affirmait que 0553c10 n existait pas dans ce depot et que le fichier venait d un autre arbre. C ETAIT FAUX. La cause : le clone de cette session est SUPERFICIEL (shallow, une coupure) — l objet n etait pas en local, et j en ai conclu qu il n existait pas. Un objet absent d un clone tronque n est pas un objet inexistant : c est exactement la faute que ce depot combat — « non lu » n est pas « inexistant ». Corrige le 22/09 sur signalement de Patrick."
   },
   "verification": {
     "refaite_le": "2026-09-22",
