@@ -893,12 +893,23 @@ const LIRE_AFFIRMATIONS = `() => {
   // trois écrans plus bas ne se répondent pas l'un l'autre sous les yeux d'une
   // marchande. Une ligne courte qui porte un chiffre, c'est un compteur.
   const lignes = texte.split('\\n').map(s => s.trim()).filter(Boolean);
-  return { lignes, longueur: texte.length };
+  // ... SAUF quand ce chiffre est une TOUCHE. L'écran de connexion et celui du
+  // code PIN portent un pavé numérique : leur « 0 » est un bouton qu'on presse,
+  // pas un compte qu'on annonce. Le banc les a d'abord accusés tous les deux.
+  const touches = new Set();
+  document.querySelectorAll('button, a[href], [role="button"]').forEach(el => {
+    const n = (el.getAttribute('aria-label') || el.innerText || '').replace(/\\s+/g, ' ').trim();
+    if (n) touches.add(n);
+  });
+  return { lignes, touches: [...touches], longueur: texte.length };
 }`;
 
 function jugerZero(affirmations, lecturesRatees) {
   const aDemande = lecturesRatees.length > 0;
-  const vides = affirmations.lignes.filter(l => l.length <= 40 && RE_AFFIRME_VIDE.test(l));
+  const touches = new Set(affirmations.touches || []);
+  const vides = affirmations.lignes.filter(
+    l => l.length <= 40 && RE_AFFIRME_VIDE.test(l) && !touches.has(l),
+  );
   // On NOMME la ligne qui innocente l'écran. Un verdict qu'on ne peut pas
   // relire est un verdict qu'on ne peut pas contredire — et le banc s'est
   // déjà trompé une fois ici.
