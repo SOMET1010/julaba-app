@@ -8,14 +8,14 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **413** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 436 |
-| — littéraux (phrase fixe en dur) | 207 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **412** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 434 |
+| — littéraux (phrase fixe en dur) | 205 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 94 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
 | — relais (`dire = (t) => speak(t)`) | 17 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 48 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **257** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **255** |
 | Dont dynamiques (avec variables) | 94 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **65** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
@@ -71,7 +71,6 @@
 | `components/shared/DocumentsCertificationsModalUniversal.tsx` | partage | 3 | 3 | 0 | 0 | 0 | 0 | 0 |
 | `services/vendreVocalUnifie.ts` | vente | 3 | 0 | 0 | 2 | 0 | 1 | 0 |
 | `components/academy/UniversalAcademy.tsx` | academy | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
-| `components/auth/Welcome.tsx` | auth | 2 | 2 | 0 | 0 | 0 | 1 | 0 |
 | `components/backoffice/BOLayout.tsx` | backoffice | 2 | 1 | 1 | 0 | 0 | 0 | 0 |
 | `components/backoffice/BOProfil.tsx` | backoffice | 2 | 1 | 0 | 0 | 1 | 0 | 0 |
 | `components/marchand/TontineDetail.tsx` | marchand_autre | 2 | 3 | 0 | 0 | 0 | 0 | 0 |
@@ -83,6 +82,7 @@
 | `contexts/AppContext.tsx` | contexte | 2 | 0 | 1 | 1 | 0 | 0 | 1 |
 | `contexts/CaisseContext.tsx` | caisse | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `components/auth/ChangePasswordScreen.tsx` | auth | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
+| `components/auth/Welcome.tsx` | auth | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
 | `components/backoffice/BOLogin.tsx` | auth | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/backoffice/BONotifications.tsx` | backoffice | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `components/cooperative/CooperativeHome.tsx` | cooperative | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
@@ -114,7 +114,7 @@
 | partage | 37 | 24 | 0 |
 | wallet | 34 | 36 | 18 |
 | caisse | 33 | 0 | 0 |
-| auth | 29 | 19 | 0 |
+| auth | 28 | 17 | 0 |
 | vente | 27 | 0 | 0 |
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 17 | 9 | 1 |
@@ -184,9 +184,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 26 | `direIntro` | literal | retour |  |  |
-| 26 | `direIntro` | literal | accueil |  |  |
-| 43 | `direIntro` | cle_i18n | INTRO_HISTOIRE1 |  |  |
+| 77 | `direIntro` | cle_i18n | INTRO_HISTOIRE1 |  |  |
 
 ### `components/backoffice/BOLayout.tsx` — backoffice
 

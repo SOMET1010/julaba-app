@@ -53,6 +53,29 @@ Garde-fous posés (dans `verify`, **jamais** dans `test:ci`) :
 s'en sert, et ACC-02 ne s'étend pas) · `test:accueil-une-sortie` (quatre situations,
 jamais deux voix pour un seul geste).
 
+### S2 — Écran 1, Akwaba · le premier écran du téléphone
+
+| Id | Défaut relevé par le banc | Statut |
+|---|---|---|
+| AKW-01a | **Muet** — `0 demande au montage`. Le premier écran ne disait pas bonjour. | **FERMÉ** |
+| AKW-01b | **1 impasse /2** — « Écouter Tantie Nanti Lou » touché, rien ne bougeait. | **FERMÉ** |
+| AKW-02 | **La voix était refusée avant connexion.** `AppContext.speak` écarte tout ce qui n'est pas `role === 'marchand'` (`role-non-marchand`) — or sur cet écran personne n'est connecté. Contourné ici en remettant la clé de catalogue au moteur audio directement. Les écrans 2 et 3 ont le même plafond. | **OUVERT** — à traiter avec les écrans 2–3 |
+| AKW-03 | **La règle de disponibilité des clips existe à deux endroits** — `onboardingVoix.ts` (figé VOICE-01) et `entreeAkwabaVoix.ts`. Un test relit le fichier figé et refuse la divergence, mais deux copies restent deux copies. | **OUVERT** — se referme si VOICE-01 est desserrée (décision Patrick) |
+| AKW-04 | Charte : `0 jeton --caisse-*` sur `Welcome.tsx`. C'est la seule cause de la sortie rouge du banc sur cet écran. | **HORS PÉRIMÈTRE JUSTIFIÉ** — « ne fais pas encore la migration générale de charte » |
+
+**Preuve de fermeture** (banc, écran 1, sans réseau) :
+
+```
+avant : MUET (0 au montage, 0 au geste)              1 impasse /2
+après : 1 au montage, 1/2 au geste                   impasses : aucune
+        « Akwaba. Pour vendre, touche un produit, ou parle à Tantie Nanti Lou.
+          On est ensemble. »
+```
+
+Captures : `docs/parcours/captures/ecran-1/AVANT.png` · `APRES.png`.
+Garde-fou : `test:akwaba-voix` (quatre situations, une seule sortie, et la
+règle figée surveillée sans être desserrée).
+
 ---
 
 ## Le reste du chemin — non commencé
@@ -61,7 +84,6 @@ Périmètre déclaré par Patrick : **écrans 1 → 5 uniquement** pour l'instan
 
 | Écran | Ce que le banc reproche | Statut |
 |---|---|---|
-| 1 — Akwaba | muet · 1 impasse /2 · 0 jeton de charte | OUVERT |
 | 2 — Tantie se présente | muet · 0 jeton | OUVERT |
 | 3 — Ton numéro | muet · 1 impasse /14 · 0 jeton · 46 couleurs en dur | OUVERT |
 | 5 — Caisse | `ZÉRO QUI MENT` (« Aucun produit ») · vouvoie (à l'écran ET à voix haute) | OUVERT |
