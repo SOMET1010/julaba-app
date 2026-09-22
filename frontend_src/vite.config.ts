@@ -21,6 +21,31 @@ try {
   /* pas de repo git en CI ou environnement restreint */
 }
 
+// ── LES DEUX DRAPEAUX DE CONSTRUCTION DU DIOULA ────────────────────────────
+// Éteints par défaut : un build ordinaire ne change pas d'un octet.
+//
+//   JULABA_VOIX_DYU=1    voix MMS dioula embarquée (le MÊME interrupteur que
+//                        android/scripts/installer-voix.sh), « Dioula »
+//                        sélectionnable, locale `dyu-ci` peuplée du décor de
+//                        travail du dépôt. L'ARGENT RESTE EN FRANÇAIS.
+//   JULABA_DYU_ARGENT=1  EN PLUS, et seulement avec le premier : les montants
+//                        peuvent être dits en dioula. Pour juger le SON,
+//                        jamais le COMPTE — jamais dans un build remis à une
+//                        marchande.
+//
+// POURQUOI DES `define` ET PAS DES VARIABLES LUES AU RUNTIME : ce sont des
+// constantes de BUILD. Elles n'existent dans aucun processus Node, donc ni
+// `verify`, ni `test:ci`, ni la CI ne les voient : le garde B7 continue de
+// mesurer la configuration LIVRABLE, intact. Il interdit de LIVRER une demi-
+// langue, pas de la tester. Raisonnement complet :
+// src/app/i18n/voice/drapeauxDeTest.ts
+const voixDyu = process.env.JULABA_VOIX_DYU === "1"
+const dyuArgent = voixDyu && process.env.JULABA_DYU_ARGENT === "1"
+if (voixDyu) {
+  console.warn("[vite] BUILD D'ESSAI : voix dioula MMS embarquée (CC-BY-NC-4.0, non commerciale) — ne pas distribuer.")
+  if (dyuArgent) console.warn("[vite] BUILD D'ESSAI : les MONTANTS seront dits en DIOULA (nombres non validés) — ne JAMAIS remettre cet APK à une marchande.")
+}
+
 // Date de build (AAAA-MM-JJ HH:mm en UTC) — lisible par un humain.
 const buildDate = new Date().toISOString().slice(0, 16).replace("T", " ")
 // Identifiant de version compact injecté partout : « <hash> · <date> ».
@@ -113,6 +138,8 @@ export default defineConfig({
     __BUILD_HASH__: JSON.stringify(gitHash),
     __BUILD_DATE__: JSON.stringify(buildDate),
     __BUILD_ID__: JSON.stringify(buildId),
+    __JULABA_VOIX_DYU__: JSON.stringify(voixDyu),
+    __JULABA_DYU_ARGENT__: JSON.stringify(dyuArgent),
   },
   resolve: {
     alias: {

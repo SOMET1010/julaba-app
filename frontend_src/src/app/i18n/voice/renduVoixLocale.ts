@@ -39,6 +39,17 @@ export const RENDU_VOIX_LOCALE: RenduVocal = (message, direTexte: DireTexte) => 
     }
     return direTexte(message.texte);
   }
+  // UN MONTANT QUI PART SUR UNE VOIX NON VALIDÉE NE PASSE JAMAIS EN SILENCE.
+  // Cette trace n'existe que dans un build d'essai (JULABA_DYU_ARGENT=1). Elle
+  // est là pour qu'on puisse constater APRÈS COUP, sur le rapport de test d'un
+  // téléphone, qu'un build avait la dérogation allumée — et pour qu'un APK
+  // qu'on croirait ordinaire se dénonce lui-même.
+  if (choix.raison === 'argent-de-test') {
+    vtrace.info('VOIX_ARGENT_EN_DIOULA_DE_TEST', {
+      id: message.id, locale: message.locale, voix: choix.voix.id,
+      avertissement: 'build d\'essai : montant dit dans une langue NON VALIDÉE (nombres en brouillon, francs/dɔrɔmɛ ambigus). Juger le son, jamais le compte.',
+    });
+  }
   vtrace.info('VOIX_LOCALE', { id: message.id, locale: message.locale, voix: choix.voix.id, raison: choix.raison });
   // Résolue À CHAUD dans le créneau exclusif de l'audioManager : un Stop
   // pendant la synthèse empêche la lecture de démarrer, comme pour la voix
