@@ -107,7 +107,13 @@ console.log('\n[6] LA DETTE VOISINE, NOMMÉE — ACC-02, OUVERTE');
   // Ce garde-fou ne le referme pas : il l'empêche de S'ÉTENDRE. Si le compte
   // monte, quelqu'un a propagé le faux zéro ; s'il descend, ACC-02 avance et
   // le backlog doit suivre (docs/parcours/BACKLOG-PARCOURS.md).
-  const DETTE_ACC02 = 10;   // mesuré le 22/09/2026 : 3 caisse · 3 ventes · 2 cahier · 2 nombreVentes · 1 fondInitial (un 11e vit dans un commentaire, écarté)
+  // MESURÉ LE 22/09/2026, APRÈS FERMETURE DE LA PARTIE QUI ÉCRIT.
+  // Ce qui reste : les 8 chiffres AFFICHÉS dans les deux modales (ventes,
+  // cahier, caisse, nombre de ventes × 2) et l'objectif. Ils ne mentent plus
+  // en silence — les deux modales portent désormais un bandeau qui dit qu'on
+  // n'a pas pu lire. Ce qui ÉCRIT est fermé : la clôture refuse, et le fond
+  // n'est plus pré-rempli à zéro.
+  const DETTE_ACC02 = 9;
   const restants = (code.match(/\?\.[A-Za-z]+\s*\|\|\s*0/g) || []).length;
   ok(restants <= DETTE_ACC02,
      `ACC-02 ne s'étend pas : ${restants} montant(s) en \`?. || 0\` passés aux modales (plafond ${DETTE_ACC02})`);

@@ -86,3 +86,41 @@ export function etatCaisseAccueil(faits: FaitsCaisseAccueil): EtatCaisseAccueil 
     ? { type: 'partielle', montant: faits.montant, ventesEnFile }
     : { type: 'connue', montant: faits.montant, ventesEnFile };
 }
+
+// ── FERMER LA JOURNÉE — ACC-02 ─────────────────────────────────────────────
+
+/**
+ * A-T-ON LE DROIT DE FERMER LA JOURNÉE AVEC CES CHIFFRES ?
+ *
+ * LE DÉFAUT QU'ON FERME. `CloseDayModal` calcule
+ * `ecart = comptageReel − stats.caisse`, et `stats.caisse` arrivait par
+ * `stats?.caisse || 0`. Quand la lecture échoue, ce terme vaut zéro : l'écran
+ * annonce alors à la marchande que TOUT ce qu'elle a compté est un EXCÉDENT.
+ * Elle compte 14 000 F en main, l'application lui dit « +14 000 F d'écart »,
+ * et si elle valide, ce chiffre part en base — daté, signé, définitif.
+ *
+ * C'est le même faux zéro que sur l'accueil (ACC-01), mais avec une
+ * conséquence pire : là-bas il se lisait, ici il s'ÉCRIT.
+ *
+ * LA RÈGLE. Une clôture est un CONSTAT. On ne constate pas sur un chiffre
+ * qu'on n'a pas pu lire. Tant que la caisse théorique est inconnue, on ne
+ * ferme pas — et on dit pourquoi, avec le geste qui débloque.
+ *
+ * LE CAS « partielle » EST AUTORISÉ, ET C'EST VOULU. Le chiffre est un
+ * plancher (lecture d'avant la panne, ou ventes encore sur le téléphone) :
+ * incomplet, mais RÉEL. Le refuser empêcherait de fermer une journée de marché
+ * sans réseau — c'est-à-dire la journée normale. L'écart calculé dessus est
+ * lui aussi un plancher, et l'écran doit le dire.
+ */
+export type DroitDeFermer =
+  | { readonly permis: true; readonly exact: true }
+  /** Les chiffres sont incomplets : on ferme, mais l'écart est un ordre de
+   *  grandeur, pas un verdict. */
+  | { readonly permis: true; readonly exact: false }
+  | { readonly permis: false; readonly raison: 'illisible' | 'attente' };
+
+export function droitDeFermerLaJournee(etat: EtatCaisseAccueil): DroitDeFermer {
+  if (etat.type === 'connue') return { permis: true, exact: true };
+  if (etat.type === 'partielle') return { permis: true, exact: false };
+  return { permis: false, raison: etat.type };
+}
