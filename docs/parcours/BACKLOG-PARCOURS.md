@@ -272,6 +272,18 @@ Ouvert par la mesure du 22/09 (`docs/parcours/MESURE-BACKOFFICE.md`) : 37
 | BO-04 | **`SEED_DEMO_BO_PASSWORD` n'est pas posée sur Render** : aucun compte d'administration n'existe, donc le banc terrain ne peut pas entrer et rien du back-office n'est mesuré *vivant*. À poser au tableau de bord Render, **jamais dans le dépôt**. | **OUVERT** — décision de Patrick |
 | BO-05 | La tuile affiche « Indisponible » (12 caractères) en corps 22 : elle se tronque sous ~200 px de large. Lisible sur le poste d'un agent, serrée sur un téléphone. | **OUVERT** — arbitrage visuel |
 
+### S8 — Le terrain (option B : les prix se posent sur place)
+
+| Id | Défaut | Statut |
+|---|---|---|
+| STK-02 | **Les 37 tuiles-photo du formulaire produit pré-remplissent un prix d'achat ET un prix de vente** (`catalogue-produits.ts` : Tomate 300/400, Aubergine 700/800…). Ces prix sont écrits dans le code, pas choisis par la marchande. Toucher la photo et valider lui pose **les prix de quelqu'un d'autre** — et toute sa caisse se calcule dessus. Même famille que le faux zéro, en pire : un zéro se remarque, **400 F ne se remarque pas**. | **OUVERT** |
+| STK-03 | **Les tuiles ne nomment pas le bon produit.** 37 tuiles pour 198 références ; **8 seulement** portent le nom exact. La tuile « Igname » n'est ni « Igname Kponan », ni « Bêtê-Bêtê », ni « Florido », ni « Krenglè » — quatre variétés, quatre prix. Contourné à la main par l'aide-mémoire terrain. | **OUVERT** |
+
+Contournement livré, pas correction : `docs/terrain/FICHE-AGENT-POSE-PRODUITS.md`
+met le piège des prix en première ligne, et
+`docs/terrain/CATALOGUE-198-PAR-FAMILLE.md` donne les noms exacts et les unités
+du marché, famille par famille.
+
 **Preuve de fermeture de BO-01** (règles pures, les quatre exigences de Patrick) :
 
 ```
