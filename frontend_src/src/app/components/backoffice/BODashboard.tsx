@@ -8,6 +8,10 @@ import {
   ChevronRight, ChevronDown, RefreshCw, Eye, HeartPulse,
 } from 'lucide-react';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
+import {
+  kpisTableauDeBord, motDuKpi, nombreDuKpi, explicationDuKpi, sousTitreZones, lue,
+  type AffichageKpi,
+} from '../../services/etatLectureBO';
 import { BO_PRIMARY, BO_DARK, BO_LIGHT } from './bo-theme';
 import { useNavigate } from 'react-router';
 import {
@@ -23,6 +27,38 @@ import { SystemHealthPanel } from './SystemHealthPanel';
 import { BOProgressBar } from './BOProgressBar';
 import { UniversalDropdownMenuBO } from './universal/UniversalDropdownMenuBO';
 import { UniversalSectionCardBO } from './universal/UniversalSectionCardBO';
+
+/**
+ * CE QU'UNE TUILE REÇOIT — BO-01.
+ *
+ * Un compteur rend l'un de TROIS états, et la tuile les sert différemment :
+ *
+ *   nombre        → `animatedTarget`, le compteur animé d'avant. ZÉRO COMPRIS :
+ *                   un zéro lu est une réponse, et il s'affiche comme telle.
+ *   chargement    → le mot « Lecture… », et AUCUN nombre. Pas de zéro qui
+ *                   clignote en attendant la réponse.
+ *   indisponible  → le mot « Indisponible », et la RAISON dans l'explication
+ *                   (la tuile s'ouvre au clic) : l'agent doit pouvoir décider
+ *                   quoi faire, pas seulement constater qu'il manque un chiffre.
+ *
+ * `animatedTarget` est laissé à `undefined` hors du cas « nombre » : c'est lui
+ * qui, dans `UniversalKPI`, décide d'afficher un compteur plutôt qu'un texte.
+ * Le laisser à `0` remettrait exactement le faux zéro qu'on ferme ici.
+ */
+function kpiTuile(kpi: AffichageKpi, format?: (n: number) => string) {
+  const n = nombreDuKpi(kpi);
+  const mot = motDuKpi(kpi);
+  return {
+    animatedTarget: format ? undefined : n,
+    value: format && n !== undefined ? format(n) : (mot ?? undefined),
+    explication: explicationDuKpi(kpi),
+  };
+}
+
+/** Le volume, écrit court au-dessus du million — inchangé. */
+function montantCourt(v: number): string {
+  return v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v.toLocaleString('fr-FR');
+}
 
 function normalizePhone(p?: string | null): string {
   if (!p) return '';
@@ -75,7 +111,39 @@ export function BODashboard() {
     return () => clearInterval(clock);
   }, []);
 
-  // ─── KPIs calculés depuis les vraies données ──────────────────────────────
+  // ─── LES SEPT COMPTEURS — BO-01 ───────────────────────────────────────────
+  //
+  // CE QUI ÉTAIT ÉCRIT ICI, et le commentaire d'origine disait « KPIs - 100 %
+  // données réelles » juste au-dessus des tuiles :
+  //
+  //   const acteurs  = Array.isArray(_bo.acteurs)  ? _bo.acteurs  : [];
+  //   const dossiers = Array.isArray(_bo.dossiers) ? _bo.dossiers : [];
+  //   const totalActeurs = effectiveStats?.total_acteurs ?? acteurs.length;
+  //
+  // Une lecture qui échouait laissait la liste à `[]`, et les sept compteurs
+  // affichaient ZÉRO. « 0 marchande active dans cette zone » ne veut pas dire
+  // la même chose selon qu'on l'a comptée ou qu'on n'a pas pu la lire — et une
+  // institution taille un programme sur ce genre de nombre.
+  //
+  // La règle vit dans services/etatLectureBO, pure et testée seule : la mesure
+  // n'est appelée QUE sur une lecture réussie. Un zéro LU s'affiche ; un zéro
+  // fabriqué n'existe plus. Chaque source garde son propre échec : une panne
+  // des zones n'efface pas le compte des acteurs.
+  const kpis = kpisTableauDeBord({
+    // Le temps réel prime sur les statistiques chargées, comme avant ; quand il
+    // n'a rien, on retombe sur l'état de lecture du contexte — pas sur `null`.
+    stats: rt.stats ? lue(rt.stats) : _bo.lectures.stats,
+    acteurs: _bo.lectures.acteurs,
+    dossiers: _bo.lectures.dossiers,
+    zones: _bo.lectures.zones,
+    transactions: _bo.lectures.transactions,
+  });
+
+  // Les valeurs NUMÉRIQUES restent calculées comme avant pour le reste de
+  // l'écran (alertes, graphiques, barres de progression). Ces parties-là ne
+  // sont PAS dans ce lot : elles lisent encore des listes qui valent `[]`
+  // quand la lecture a échoué, et c'est nommé au backlog sous BO-03. Une
+  // dette documentée n'est pas une dette fermée.
   const totalActeurs = effectiveStats?.total_acteurs ?? acteurs.length;
   const actifs = effectiveStats?.utilisateurs_actifs ?? acteurs.filter(a => a.statut === 'actif').length;
   const suspendus = acteurs.filter(a => a.statut === 'suspendu').length;
@@ -420,28 +488,35 @@ export function BODashboard() {
       </motion.div>
       )}
 
-      {/* KPIs - 100 % données réelles */}
+      {/* LES SEPT COMPTEURS — BO-01.
+          Chacun passe par `kpiTuile` : un nombre LU s'affiche (zéro compris),
+          une lecture en cours dit « Lecture… », une lecture échouée dit
+          « Indisponible » et porte sa raison dans l'explication. Aucun de ces
+          trois cas ne peut plus en devenir un autre. */}
       {_bo.hasPermission('dashboard.read') && (
       <KPIGrid>
-        <UniversalKPI label="Total acteurs" animatedTarget={totalActeurs} sub="enregistrés" icon={Users} color={BO_PRIMARY} onClick={() => navigate('/backoffice/acteurs')} delay={0} />
-        <UniversalKPI label="Acteurs actifs" animatedTarget={actifs} sub="du total" icon={UserCheck} color="#10B981" onClick={() => navigate('/backoffice/acteurs')} delay={0.04} />
+        <UniversalKPI label="Total acteurs" {...kpiTuile(kpis.totalActeurs)} sub="enregistrés" icon={Users} color={BO_PRIMARY} onClick={() => navigate('/backoffice/acteurs')} delay={0} />
+        <UniversalKPI label="Acteurs actifs" {...kpiTuile(kpis.actifs)} sub="du total" icon={UserCheck} color="#10B981" onClick={() => navigate('/backoffice/acteurs')} delay={0.04} />
         <UniversalKPI
           label="Volume total"
-          value={volumeTotal >= 1000000 ? `${(volumeTotal / 1000000).toFixed(1)}M` : (volumeTotal || 0).toLocaleString('fr-FR')}
-          suffix="FCFA"
+          {...kpiTuile(kpis.volumeTotal, montantCourt)}
+          suffix={kpis.volumeTotal.type === 'nombre' ? 'FCFA' : undefined}
           sub="toutes transactions"
           icon={Wallet}
           color="#3B82F6"
           onClick={() => navigate('/backoffice/supervision')}
           delay={0.08}
         />
-        <UniversalKPI label="Suspendus" animatedTarget={suspendus} sub="acteurs" icon={XCircle} color="#EF4444" iconAnimation="pulse" onClick={() => navigate('/backoffice/acteurs')} delay={0.16} />
-        <UniversalKPI label="En attente" animatedTarget={enAttente} sub="dossiers à valider" icon={Clock} color="#F59E0B" iconAnimation={enAttente > 0 ? 'pulse' : 'float'} onClick={() => navigate('/backoffice/enrolement')} delay={0.2} />
-        <UniversalKPI label="Transactions" animatedTarget={transactionsTotal} sub="enregistrées" icon={Activity} color={BO_DARK} onClick={() => navigate('/backoffice/supervision')} delay={0.24} />
+        <UniversalKPI label="Suspendus" {...kpiTuile(kpis.suspendus)} sub="acteurs" icon={XCircle} color="#EF4444" iconAnimation="pulse" onClick={() => navigate('/backoffice/acteurs')} delay={0.16} />
+        <UniversalKPI label="En attente" {...kpiTuile(kpis.enAttente)} sub="dossiers à valider"
+          icon={Clock} color="#F59E0B"
+          iconAnimation={kpis.enAttente.type === 'nombre' && kpis.enAttente.valeur > 0 ? 'pulse' : 'float'}
+          onClick={() => navigate('/backoffice/enrolement')} delay={0.2} />
+        <UniversalKPI label="Transactions" {...kpiTuile(kpis.transactions)} sub="enregistrées" icon={Activity} color={BO_DARK} onClick={() => navigate('/backoffice/supervision')} delay={0.24} />
         <UniversalKPI
           label="Zones actives"
-          animatedTarget={zones.filter(z => z.actif === true).length}
-          sub={`sur ${zones.length} zones`}
+          {...kpiTuile(kpis.zonesActives)}
+          sub={sousTitreZones(kpis.zonesTotal)}
           icon={MapPin}
           color="#B74725"
           onClick={() => navigate('/backoffice/zones')}
