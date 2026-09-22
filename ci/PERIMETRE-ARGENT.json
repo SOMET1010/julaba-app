@@ -919,8 +919,7 @@
         "grammaireEncaissement",
         "handlePay",
         "machineEncaissement",
-        "mode_paiement",
-        "phraseRelecture"
+        "mode_paiement"
       ]
     },
     "frontend_src/src/app/components/marchand/SyncEchecsBanner.tsx": {
@@ -1139,6 +1138,14 @@
         "offlineCaisse"
       ]
     },
+    "frontend_src/src/app/services/etatCatalogueCaisse.ts": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
     "frontend_src/src/app/services/fidelite.service.ts": {
       "zones": [
         "caisse-context",
@@ -1305,5 +1312,5 @@
       ]
     }
   },
-  "genereLe": "2026-09-21"
+  "genereLe": "2026-09-22"
 }
