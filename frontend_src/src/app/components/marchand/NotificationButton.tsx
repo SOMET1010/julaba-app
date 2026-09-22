@@ -9,7 +9,11 @@ import { ROLE_COLORS } from '../../config/roleConfig';
 import { NotificationsPanel } from '../shared/NotificationsPanel';
 import { NotifBellButton } from '../shared/NotificationsPanel';
 
-export function NotificationButton({ accentColor: accentColorProp }: { accentColor?: string }) {
+/** `variant` n'est que transmis à `NotifBellButton` : la valeur par défaut
+ *  reste `ghost` (cloche blanche, en-tête sombre), donc aucun écran déjà en
+ *  place ne change. « Ventes passées » demande `solid` parce que son en-tête
+ *  est passé au clair et qu'une cloche blanche y serait invisible. */
+export function NotificationButton({ accentColor: accentColorProp, variant }: { accentColor?: string; variant?: 'solid' | 'ghost' }) {
   const { user } = useApp();
   const { user: profileUser } = useUser();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -33,6 +37,7 @@ export function NotificationButton({ accentColor: accentColorProp }: { accentCol
       <NotifBellButton
         userId={userId}
         accentColor={accentColor}
+        variant={variant}
         onOpen={handleClick}
       />
       <NotificationsPanel
