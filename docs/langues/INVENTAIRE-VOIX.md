@@ -394,16 +394,16 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 337 | `speak` | template | {montant} Francs CFA ajoutés. Total : {newValue} Francs CFA | `montant` `newValue` | € |
-| 345 | `speak` | template | {montant} Francs CFA ajoutés. Total : {newValue} Francs CFA | `montant` `newValue` | € |
-| 362 | `speak` | literal | Le montant saisi est invalide |  | € |
-| 368 | `speak` | literal | Le montant doit être un multiple de 5 francs |  | € |
-| 376 | `speak` | template | Ta journée est ouverte avec {montant} Francs CFA | `montant` | € |
-| 464 | `speak` | template | {montant} Francs CFA ajoutés. Total : {newValue} Francs CFA | `montant` `newValue` | € |
-| 471 | `speak` | template | {montant} Francs CFA ajoutés. Total : {newValue} Francs CFA | `montant` `newValue` | € |
-| 477 | `speak` | literal | Le montant saisi est invalide |  | € |
-| 481 | `speak` | template | Ton fond de caisse est maintenant de {montant} Francs CFA | `montant` | € |
-| 575 | `speak` | literal | Compte l'argent de ta boîte, puis entre le montant que tu as trouvé. |  | € |
+| 338 | `speak` | template | {montant} Francs CFA ajoutés. Total : {newValue} Francs CFA | `montant` `newValue` | € |
+| 346 | `speak` | template | {montant} Francs CFA ajoutés. Total : {newValue} Francs CFA | `montant` `newValue` | € |
+| 363 | `speak` | literal | Le montant saisi est invalide |  | € |
+| 369 | `speak` | literal | Le montant doit être un multiple de 5 francs |  | € |
+| 377 | `speak` | template | Ta journée est ouverte avec {montant} Francs CFA | `montant` | € |
+| 474 | `speak` | template | {montant} Francs CFA ajoutés. Total : {newValue} Francs CFA | `montant` `newValue` | € |
+| 481 | `speak` | template | {montant} Francs CFA ajoutés. Total : {newValue} Francs CFA | `montant` `newValue` | € |
+| 487 | `speak` | literal | Le montant saisi est invalide |  | € |
+| 491 | `speak` | template | Ton fond de caisse est maintenant de {montant} Francs CFA | `montant` | € |
+| 589 | `speak` | literal | Compte l'argent de ta boîte, puis entre le montant que tu as trouvé. |  | € |
 
 ### `components/marchand/MesCommandes.tsx` — marchand_autre
 

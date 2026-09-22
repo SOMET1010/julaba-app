@@ -7,7 +7,7 @@
  *
  * Règle de Patrick, mot pour mot : inconnu / non chargé / erreur ≠ 0.
  */
-import { etatCaisseAccueil } from './etatCaisseAccueil.js';
+import { etatCaisseAccueil, droitDeFermerLaJournee } from './etatCaisseAccueil.js';
 
 let echecs = 0;
 const ok = (c: boolean, quoi: string) => {
@@ -78,6 +78,38 @@ console.log('\nL\'accueil ne transforme pas une absence de réponse en zéro\n')
     !('montant' in etatCaisseAccueil({ lecture, montant: 0, aDesDonnees: false, ventesEnFile: 0 })));
   ok(jamaisZeroParDefaut,
      'AUCUN état issu d\'une lecture non aboutie ne porte de montant — inconnu ≠ 0');
+}
+
+console.log('\n── ACC-02 : on ne ferme pas une journée sur un chiffre qu\'on n\'a pas lu ──\n');
+{
+  const illisible = etatCaisseAccueil({ lecture: 'echec', montant: 0, aDesDonnees: false, ventesEnFile: 0 });
+  const d = droitDeFermerLaJournee(illisible);
+  ok(d.permis === false && d.raison === 'illisible',
+     'lecture échouée : la clôture est REFUSÉE — sinon l\'écart s\'écrit, daté et définitif');
+}
+{
+  const attente = etatCaisseAccueil({ lecture: 'jamais', montant: 0, aDesDonnees: false, ventesEnFile: 0 });
+  ok(droitDeFermerLaJournee(attente).permis === false,
+     'avant toute réponse non plus : ne rien savoir n\'est pas savoir que c\'est zéro');
+}
+{
+  const connue = etatCaisseAccueil({ lecture: 'lu', montant: 14000, aDesDonnees: true, ventesEnFile: 0 });
+  const d = droitDeFermerLaJournee(connue);
+  ok(d.permis === true && d.exact === true, 'serveur lu, rien en attente : on ferme, et l\'écart est un verdict');
+}
+{
+  // LE CAS DU MARCHÉ SANS RÉSEAU. Le refuser interdirait de fermer la journée
+  // NORMALE — celle où le réseau ne passe pas.
+  const partielle = etatCaisseAccueil({ lecture: 'echec', montant: 9000, aDesDonnees: true, ventesEnFile: 2 });
+  const d = droitDeFermerLaJournee(partielle);
+  ok(d.permis === true && d.exact === false,
+     'chiffres incomplets mais RÉELS : on ferme, et l\'écart est annoncé comme un ordre de grandeur');
+}
+{
+  const jamaisDeFermetureAveugle = (['jamais', 'chargement', 'echec'] as const).every(lecture =>
+    droitDeFermerLaJournee(etatCaisseAccueil({ lecture, montant: 0, aDesDonnees: false, ventesEnFile: 0 })).permis === false);
+  ok(jamaisDeFermetureAveugle,
+     'AUCUNE lecture non aboutie n\'autorise une clôture — c\'est la règle, pas un cas');
 }
 
 console.log(echecs === 0

@@ -330,18 +330,26 @@ function MarchandAccueilVoiceInner() {
         isOpen={showResume}
         onClose={() => setShowResume(false)}
         stats={{ ventes: stats?.ventes || 0, cahier: stats?.cahier || 0, caisse: stats?.caisse || 0, nombreVentes: stats?.nombreVentes || 0 }}
+        etatCaisse={etatCaisse}
         onFermerJournee={() => { setShowResume(false); setShowClose(true); }}
         onModifierFond={() => { setShowResume(false); setShowEditFond(true); }}
       />
+      {/* ACC-02 — LA CLÔTURE EST UN CONSTAT, ET ON NE CONSTATE PAS À L'AVEUGLE.
+          `CloseDayModal` calcule `ecart = comptage − stats.caisse`. Avec le
+          faux zéro d'avant, une marchande qui compte 14 000 F en main lisait
+          « +14 000 F d'écart » — et en validant, ce chiffre partait en base,
+          daté et définitif. Le même faux zéro que l'accueil, mais ici il
+          s'ÉCRIT au lieu de se lire. L'état traverse donc jusqu'ici. */}
       <CloseDayModal
         isOpen={showClose}
         onClose={() => setShowClose(false)}
         stats={{ ventes: stats?.ventes || 0, cahier: stats?.cahier || 0, caisse: stats?.caisse || 0, nombreVentes: stats?.nombreVentes || 0 }}
+        etatCaisse={etatCaisse}
       />
       <EditFondModal
         isOpen={showEditFond}
         onClose={() => setShowEditFond(false)}
-        currentFond={currentSession?.fondInitial || 0}
+        {...(currentSession ? { currentFond: currentSession.fondInitial } : {})}
       />
 
       {/* « Tata propose de me reconnaître » (lot 2) : une seule fois, juste après

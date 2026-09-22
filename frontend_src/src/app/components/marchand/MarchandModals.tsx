@@ -10,6 +10,7 @@ import {
   RefreshCw, BarChart2, PieChart, TrendingDown, Send, Printer
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { droitDeFermerLaJournee, type EtatCaisseAccueil } from '../../services/etatCaisseAccueil';
 import { stopAllAudio } from '../../services/elevenlabs';
 import { Montant, MontantCard } from '../shared/Montant';
 // MONTANTS PRIVÉS — le même geste que sur les autres écrans marchand
@@ -447,15 +448,24 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
 interface EditFondModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentFond: number;
+  /** ACC-02 — ABSENT veut dire INCONNU, et c'est le point. La prop valait
+   *  `currentSession?.fondInitial || 0` : sans session lue, l'écran proposait
+   *  « Fond actuel : 0 FCFA » et pré-remplissait le champ avec zéro. Une
+   *  marchande qui valide sans y penser écrase son vrai fond par zéro — et
+   *  toute sa caisse théorique du jour avec. C'est le « montant toujours 0 F »
+   *  que la recette terrain a relevé (MAR-CAI-001). */
+  currentFond?: number;
 }
 
 export function EditFondModal({ isOpen, onClose, currentFond }: EditFondModalProps) {
   const { updateFondInitial, speak } = useApp();
-  const [nouveauFond, setNouveauFond] = useState(currentFond.toString());
+  const fondConnu = typeof currentFond === 'number' && Number.isFinite(currentFond);
+  // Champ VIDE quand on ne sait pas : elle tape son vrai fond, elle ne
+  // confirme pas un zéro qu'on lui a soufflé.
+  const [nouveauFond, setNouveauFond] = useState(fondConnu ? String(currentFond) : '');
   useEffect(() => {
-    if (isOpen) setNouveauFond(currentFond.toString());
-  }, [isOpen, currentFond]);
+    if (isOpen) setNouveauFond(fondConnu ? String(currentFond) : '');
+  }, [isOpen, currentFond, fondConnu]);
 
   const handleBilletClick = (montant: number) => {
     const currentValue = parseFloat(nouveauFond) || 0;
@@ -519,7 +529,7 @@ export function EditFondModal({ isOpen, onClose, currentFond }: EditFondModalPro
               onChange={(rawValue) => setNouveauFond(rawValue)}
             />
             <p className="text-sm text-gray-500 mt-2 font-medium">
-              Fond actuel : {formatMontantFR(currentFond || 0)} FCFA
+              Fond actuel : {fondConnu ? `${formatMontantFR(currentFond as number)} FCFA` : '— (pas encore lu)'}
             </p>
           </div>
         </div>
@@ -546,9 +556,13 @@ interface CloseDayModalProps {
     caisse: number;
     nombreVentes: number;
   };
+  /** ACC-02 — d'où viennent ces chiffres, et ce qu'on a le droit d'en faire.
+   *  La clôture est un CONSTAT daté : la refuser sur des chiffres non lus est
+   *  la seule position tenable (services/etatCaisseAccueil). */
+  etatCaisse?: EtatCaisseAccueil;
 }
 
-export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
+export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayModalProps) {
   const { closeDay, speak, getSalesHistory, getFinancialSummary } = useApp();
   const { montantsMasques } = useMontantsPrives();
   const navigate = useNavigate();
@@ -603,11 +617,21 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
     navigate('/marchand/resume-caisse');
   };
 
+  // ACC-02 — LE DROIT DE FERMER. Sans état fourni (appelants historiques), le
+  // comportement d'avant reste : on ne casse aucun écran qu'on n'a pas mesuré.
+  const droit = etatCaisse ? droitDeFermerLaJournee(etatCaisse) : null;
+  const fermetureInterdite = droit ? !droit.permis : false;
+  const chiffresIncomplets = droit?.permis === true && droit.exact === false;
+
   const marge = stats.ventes - stats.cahier;
   // `null` tant qu'elle n'a rien compté : pas d'écart AVANT la mesure. Avec le
   // repli `|| '0'` d'avant, un champ vide affichait un écart égal à moins la
   // caisse entière — un chiffre alarmant et faux, montré avant tout comptage.
-  const ecart = comptageReel.trim() === '' ? null : parseFloat(comptageReel) - stats.caisse;
+  // Et il ne se calcule PAS DU TOUT sur une caisse théorique inconnue : le
+  // résultat serait « tout ce que tu as compté est un excédent ».
+  const ecart = (comptageReel.trim() === '' || fermetureInterdite)
+    ? null
+    : parseFloat(comptageReel) - stats.caisse;
 
   const day = new Date().toISOString().split('T')[0];
 
@@ -652,6 +676,29 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
             Voici le résumé de ta journée avant de fermer.
           </p>
         </div>
+
+        {/* ACC-02 — ON DIT POURQUOI, ET CE QU'IL FAUT FAIRE. Un bouton grisé
+            sans explication est un mur ; une marchande en conclut que
+            l'application est cassée et ferme autrement. */}
+        {fermetureInterdite && (
+          <div role="alert" className="mx-6 mb-4 p-4 rounded-2xl border bg-amber-50" style={{ borderColor: '#FCD34D' }}>
+            <p className="text-sm font-semibold text-gray-900">
+              Je n’ai pas pu lire les chiffres de ta journée.
+            </p>
+            <p className="text-sm text-gray-700 mt-1">
+              Ce n’est pas zéro. Fermer maintenant écrirait un écart faux, pour toujours.
+              Réessaie quand le réseau revient.
+            </p>
+          </div>
+        )}
+        {chiffresIncomplets && (
+          <div role="status" className="mx-6 mb-4 p-4 rounded-2xl border bg-amber-50" style={{ borderColor: '#FCD34D' }}>
+            <p className="text-sm text-gray-800">
+              Ces chiffres sont <strong>incomplets</strong> : des ventes sont encore gardées sur ce
+              téléphone. Tu peux fermer, mais l’écart sera approximatif.
+            </p>
+          </div>
+        )}
 
         <div className="px-6 pb-6 space-y-3">
           <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: '#86EFAC' }}>
@@ -789,7 +836,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
           <StyledButton
             variant="danger"
             onClick={handleClose}
-            disabled={isClosing}
+            disabled={isClosing || fermetureInterdite}
             className="flex-1"
           >
             {isClosing ? 'Fermeture...' : 'Fermer la caisse'}
@@ -1003,6 +1050,9 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
 }
 
 interface ResumeModalProps {
+  /** ACC-02 — même règle que la clôture : ces chiffres viennent d'une lecture
+   *  qui a pu échouer. On ne les présente pas comme des faits acquis. */
+  etatCaisse?: EtatCaisseAccueil;
   isOpen: boolean;
   onClose: () => void;
   stats: {
@@ -1017,7 +1067,9 @@ interface ResumeModalProps {
   onModifierFond?: () => void;
 }
 
-export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifierFond }: ResumeModalProps) {
+export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifierFond, etatCaisse }: ResumeModalProps) {
+  // Les chiffres sont-ils lus ? Sans état fourni, on ne change rien.
+  const chiffresLus = etatCaisse ? droitDeFermerLaJournee(etatCaisse).permis : true;
   const marge = stats.ventes - stats.cahier;
   const { montantsMasques } = useMontantsPrives();
 
@@ -1038,6 +1090,14 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
               </h2>
             </div>
           </div>
+          {!chiffresLus && (
+            <div role="alert" className="mb-3 p-3 rounded-2xl border bg-amber-50" style={{ borderColor: '#FCD34D' }}>
+              <p className="text-sm font-semibold text-gray-900">Je n’ai pas pu lire tes chiffres.</p>
+              <p className="text-sm text-gray-700 mt-1">
+                Ce n’est pas zéro — ton argent est là. Réessaie quand le réseau revient.
+              </p>
+            </div>
+          )}
           <p className="text-gray-600 text-sm leading-relaxed">
             Voici un aperçu complet de ta journée.
           </p>
