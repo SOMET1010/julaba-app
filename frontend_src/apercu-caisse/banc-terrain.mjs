@@ -69,6 +69,18 @@ const MAX_ELEMENTS = Number(process.env.BANC_MAX_ELEMENTS || 24);
 // démarrages de navigateur. On en examine moins par écran, et le rapport DIT
 // combien n'ont pas été examinés — un banc qui tronque en silence ment.
 const MAX_COURONNE = Number(process.env.BANC_COURONNE_MAX || 12);
+
+// ── BANC_CATALOGUE=vide ────────────────────────────────────────────────────
+//
+// Par défaut, AUCUNE lecture n'aboutit : c'est le marché sans réseau, et c'est
+// la condition qui a révélé le faux « Aucun produit ». Mais un écran doit aussi
+// savoir dire « tu n'as rien créé » QUAND C'EST VRAI — et ce cas-là, le banc ne
+// pouvait pas le produire : toutes ses lectures échouent par construction.
+//
+// Ce réglage répond `{"produits": []}` au SEUL catalogue. Le serveur a donc
+// répondu, et il n'a rien. C'est la seule situation où « Aucun produit » ne
+// ment pas, et le banc peut enfin distinguer les deux à l'œil.
+const CATALOGUE_VIDE = process.env.BANC_CATALOGUE === 'vide';
 const plafond = station => (station.rang === 'couronne' ? MAX_COURONNE : MAX_ELEMENTS);
 const SEUIL_CHARTE = Number(process.env.BANC_SEUIL_CHARTE || 0.5);
 
@@ -591,6 +603,7 @@ const estLectureDeDonnees = (requete) => {
 
 async function ouvrirStation(navigateur, station) {
   const lecturesRatees = [];
+  const lecturesReussies = [];
   const contexte = await navigateur.newContext({
     viewport: VIEWPORT, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'fr-FR',
   });
@@ -598,6 +611,15 @@ async function ouvrirStation(navigateur, station) {
   // l'application doit tenir debout sans lui. Ce qui manque manque pour de vrai.
   await contexte.route('**/*', route => {
     const u = route.request().url();
+    if (CATALOGUE_VIDE && /\/api\/v1\/caisse\/produits/.test(u)) {
+      // Le serveur RÉPOND, et il n'a rien. Ni échec, ni silence : une réponse.
+      lecturesReussies.push(u.split('?')[0].slice(0, 120));
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ produits: [] }),
+      });
+    }
     if (estLectureDeDonnees(route.request())) lecturesRatees.push(u.split('?')[0].slice(0, 120));
     if (u.startsWith(ORIGINE) || u.startsWith('data:') || u.startsWith('blob:')) return route.continue();
     bloquees.add(u.split('?')[0]);
@@ -615,7 +637,7 @@ async function ouvrirStation(navigateur, station) {
   page.on('pageerror', e => erreurs.push(String(e && e.message ? e.message : e)));
   page.on('console', m => { if (m.type() === 'error') erreurs.push('[console] ' + m.text().slice(0, 200)); });
   await page.goto(ORIGINE + station.chemin, { waitUntil: 'domcontentloaded' });
-  return { contexte, page, erreurs, lecturesRatees };
+  return { contexte, page, erreurs, lecturesRatees, lecturesReussies };
 }
 
 /** Attend la PREUVE que l'écran est là — pas un timer, un texte que la marchande voit. */
@@ -907,7 +929,7 @@ const LIRE_AFFIRMATIONS = `() => {
   return { lignes, touches: [...touches], longueur: texte.length };
 }`;
 
-function jugerZero(affirmations, lecturesRatees) {
+function jugerZero(affirmations, lecturesRatees, lecturesReussies = []) {
   const aDemande = lecturesRatees.length > 0;
   const touches = new Set(affirmations.touches || []);
   const vides = affirmations.lignes.filter(
@@ -917,14 +939,30 @@ function jugerZero(affirmations, lecturesRatees) {
   // relire est un verdict qu'on ne peut pas contredire — et le banc s'est
   // déjà trompé une fois ici.
   const aveux = affirmations.lignes.filter(l => RE_NOMME_ECHEC.test(l)).slice(0, 4);
+  // DEUXIÈME ERREUR DU BANC, TROUVÉE EN MESURANT (22/09/2026), GARDÉE EN MÉMOIRE.
+  // Avec `BANC_CATALOGUE=vide`, le serveur RÉPOND « aucun produit » : l'écran
+  // qui l'affiche dit la stricte vérité. Le banc l'accusait quand même, parce
+  // que D'AUTRES lectures — la session, les tickets, le stock — échouaient
+  // encore. Il attribuait à l'affirmation un échec qui ne la concernait pas.
+  //
+  // Le banc ne sait pas relier une phrase à l'appel qui la nourrit, et
+  // prétendre le contraire serait refaire son erreur dans l'autre sens. Alors
+  // il distingue ce qu'il sait :
+  //   aucune lecture n'a abouti  → rien ne peut justifier l'affirmation : MENT.
+  //   certaines ont abouti       → l'une d'elles peut la justifier : À RELIRE.
+  const aReussi = lecturesReussies.length > 0;
   return {
     aDemande,
     lectures: [...new Set(lecturesRatees)].slice(0, 6),
+    lecturesReussies: [...new Set(lecturesReussies)].slice(0, 6),
     affirmations: vides.slice(0, 8),
     echecNomme: aveux.length > 0,
     aveux,
-    // Le refus : il a demandé, il n'a pas obtenu, et il affirme quand même.
-    ment: aDemande && vides.length > 0 && aveux.length === 0,
+    // Le refus : il a demandé, RIEN n'a abouti, et il affirme quand même.
+    ment: aDemande && !aReussi && vides.length > 0 && aveux.length === 0,
+    // Ni blanchi ni accusé : quelque chose a abouti, le banc ne peut pas dire
+    // si c'est CE quelque chose qui fonde l'affirmation.
+    aRelire: aDemande && aReussi && vides.length > 0 && aveux.length === 0,
   };
 }
 
@@ -1028,7 +1066,7 @@ try {
     // Écran 1 : la charte, sans navigateur — elle ne dépend que du source.
     ligne.charte = mesurerCharte(station);
 
-    const { contexte, page, erreurs, lecturesRatees } = await ouvrirStation(navigateur, station);
+    const { contexte, page, erreurs, lecturesRatees, lecturesReussies } = await ouvrirStation(navigateur, station);
     try {
       try {
         await attendreEcran(page, station);
@@ -1061,7 +1099,7 @@ try {
       ligne.aLoeil = await ev(page, A_LOEIL);
       // Q4 et Q5 se lisent SUR L'ÉCRAN POSÉ, avant qu'un doigt n'ait rien changé :
       // c'est ce que la marchande voit en arrivant.
-      ligne.zero = jugerZero(await ev(page, LIRE_AFFIRMATIONS), lecturesRatees);
+      ligne.zero = jugerZero(await ev(page, LIRE_AFFIRMATIONS), lecturesRatees, lecturesReussies);
       ligne.adresse = jugerAdresse(await ev(page, LIRE_ADRESSE), ligne.voixMontage.demandes);
       const inventaire = await ev(page, INVENTAIRE);
       ligne.interactifs = inventaire.length;
@@ -1129,7 +1167,8 @@ console.log('║  BANC TERRAIN — parcours de la marchande, catalogue VIDE, san
 console.log('╚══════════════════════════════════════════════════════════════════════════════════════╝\n');
 console.log(`  Seuil de charte : part de jetons --caisse-* ≥ ${SEUIL_CHARTE} ET au moins un jeton.`);
 console.log(`  Clips « prototype » : ${process.env.VITE_JULABA_VOICE_PREVIEW === 'true' ? 'ACTIFS' : 'éteints (comme un build livré)'}`);
-console.log(`  Éléments touchés par écran : ${MAX_ELEMENTS} dans le tronc, ${MAX_COURONNE} dans la couronne.\n`);
+console.log(`  Éléments touchés par écran : ${MAX_ELEMENTS} dans le tronc, ${MAX_COURONNE} dans la couronne.`);
+console.log(`  Catalogue : ${CATALOGUE_VIDE ? 'le serveur RÉPOND et n\'a rien (BANC_CATALOGUE=vide)' : 'aucune lecture n\'aboutit (marché sans réseau)'}\n`);
 
 // Deux sections, parce que ce sont deux choses : le CHEMIN qu'une marchande
 // parcourt, et les PORTES qui s'ouvrent depuis son comptoir.
@@ -1158,7 +1197,7 @@ for (const l of rapport) {
     + (l.inatteignables.length ? ` · ${l.inatteignables.length} HORS DE PORTÉE` : '')
     + (l.confirmationsSansSuite.length ? ` · ${l.confirmationsSansSuite.length} CONFIRMATION SANS SUITE` : '')
     + (l.zero?.ment ? ' · ZÉRO QUI MENT' : '')
-    + (!l.zero?.ment && l.zero?.aDemande && l.zero?.affirmations.length && l.zero?.echecNomme ? ' · zéro à relire' : '')
+    + (!l.zero?.ment && (l.zero?.aRelire || (l.zero?.aDemande && l.zero?.affirmations.length && l.zero?.echecNomme)) ? ' · zéro à relire' : '')
     + (l.adresse?.vouvoie ? ' · vouvoie' : '');
   console.log('  ' + pad(`${l.n}. ${l.titre}`, 34) + pad(charte, 24) + pad(voix, 34) + imp);
 }
@@ -1225,6 +1264,10 @@ for (const l of rapport) {
       console.log(`     ZÉRO QUI MENT : l'écran a demandé au serveur (${l.zero.lectures.length} lecture(s)), n'a rien obtenu,`);
       console.log(`                 et affirme quand même : ${l.zero.affirmations.map(a => `« ${a} »`).join('  ')}`);
       console.log(`                 aucun mot ne dit qu'il n'a pas pu lire. Un zéro et une absence de réponse ne sont pas la même chose.`);
+    } else if (l.zero.aRelire) {
+      console.log(`     zéro      : À RELIRE À L'ŒIL — il affirme ${l.zero.affirmations.map(a => `« ${a} »`).join(' ')}`);
+      console.log(`                 ${l.zero.lecturesReussies.length} lecture(s) ont abouti, ${l.zero.lectures.length} ont échoué.`);
+      console.log(`                 Le banc ne sait pas laquelle fonde cette phrase — il ne l'accuse donc pas.`);
     } else if (l.zero.aDemande && l.zero.affirmations.length && l.zero.echecNomme) {
       // NI blanchi NI accusé. Le banc voit un aveu d'échec ET des chiffres de
       // vide, mais il ne peut pas établir que l'aveu COUVRE ces chiffres —
@@ -1262,6 +1305,7 @@ const partielle = (process.env.BANC_ECRANS || '').trim().length > 0;
 const chemin = resolve(SORTIE, partielle ? `banc-terrain-partiel-${rapport.map(l => l.n).join('-')}.json` : 'banc-terrain.json');
 writeFileSync(chemin, JSON.stringify({
   passe: partielle ? `PARTIELLE — écrans ${rapport.map(l => l.n).join(', ')} seulement` : `complète — ${rapport.length} écran(s)`,
+  catalogue: CATALOGUE_VIDE ? 'serveur répond, zéro produit' : 'aucune lecture n\'aboutit',
   seuilCharte: SEUIL_CHARTE,
   clipsPrototype: process.env.VITE_JULABA_VOICE_PREVIEW === 'true',
   requetesBloquees: [...bloquees].slice(0, 40),

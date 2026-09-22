@@ -1,0 +1,405 @@
+{
+  "passe": "PARTIELLE — écrans 5 seulement",
+  "catalogue": "serveur répond, zéro produit",
+  "seuilCharte": 0.5,
+  "clipsPrototype": false,
+  "requetesBloquees": [
+    "https://o4511079112835072.ingest.de.sentry.io/api/4511079194951760/envelope/",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/8CVtMJrW/tomate.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/VktKJB50/image-aubergine.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/vZn04LDf/Image-piment.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/L8PxJBhP/Image-Gombo.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/sgWTM91c/Manioc.png",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/g2hgxqrX/Igname.png",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/9Q9LDtzd/mais.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/zGhxyS3v/Banane.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/XY5srcXx/Plantain.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/FHSTYg1x/Oignon.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/RZtgWQqW/avocat.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/rw4fDCzw/Huile-de-palme.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/2SW01F37/mangue.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/8zvZ7Bs1/ananas.jpg",
+    "https://res.cloudinary.com/dco5i2v0n/image/fetch/f_webp,q_auto:good,w_600,c_limit/https://i.postimg.cc/rw4fDCzm/arachide.jpg"
+  ],
+  "ecrans": [
+    {
+      "n": 5,
+      "id": "caisse",
+      "rang": "tronc",
+      "titre": "Caisse — la surface de vente",
+      "chemin": "/marchand/caisse",
+      "charte": {
+        "jetons": 501,
+        "durs": 0,
+        "part": 1,
+        "verdict": "dans la charte",
+        "ok": true,
+        "detail": [
+          {
+            "fichier": "src/app/components/marchand/POSCaisse.tsx",
+            "jetons": 395,
+            "durs": 0
+          },
+          {
+            "fichier": "src/app/components/marchand/MicroVenteCaisse.tsx",
+            "jetons": 94,
+            "durs": 0
+          },
+          {
+            "fichier": "src/app/components/marchand/ChoixUnite.tsx",
+            "jetons": 12,
+            "durs": 0
+          }
+        ]
+      },
+      "atteint": true,
+      "voixMontage": {
+        "demandes": [
+          {
+            "api": "audioManager.speak",
+            "texte": "Que veux-tu vendre ?"
+          }
+        ],
+        "ignorees": [],
+        "fins": [
+          "ended"
+        ],
+        "cles": []
+      },
+      "capture": "5-caisse.png",
+      "aLoeil": {
+        "large": 390,
+        "deborde": [],
+        "petites": []
+      },
+      "zero": {
+        "aDemande": true,
+        "lectures": [
+          "http://127.0.0.1:5197/api/v1/tickets/mes-tickets",
+          "http://127.0.0.1:5197/api/v1/support/config",
+          "http://127.0.0.1:5197/api/v1/auth/me",
+          "http://127.0.0.1:5197/api/v1/stocks",
+          "http://127.0.0.1:5197/api/v1/caisse/transactions",
+          "http://127.0.0.1:5197/api/v1/commandes"
+        ],
+        "lecturesReussies": [
+          "http://127.0.0.1:5197/api/v1/caisse/produits"
+        ],
+        "affirmations": [
+          "Aucun produit"
+        ],
+        "echecNomme": false,
+        "aveux": [],
+        "ment": false,
+        "aRelire": true
+      },
+      "adresse": {
+        "aLEcran": [],
+        "parle": [],
+        "vouvoie": false
+      },
+      "interactifs": 10,
+      "erreursPage": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5197/src/app/services/api/api-client.ts:122:11\n    at async loadNotifications (http://127.0.0.1:5197/src/a",
+        "[console] Failed to load resource: net::ERR_FAILED"
+      ],
+      "touches": [
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Retour",
+          "largeur": 44,
+          "hauteur": 44,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": true,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": ""
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Appuie pour parler",
+          "largeur": 124,
+          "hauteur": 124,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que veux-tu vendre ? Je n'ai pas compris Choisir à l’écran Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie. Parler encore à Tantie Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Réécouter la question",
+          "largeur": 180,
+          "hauteur": 66,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": false,
+            "voix": true
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 1,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que veux-tu vendre ? Dis-moi ce que tu vends Choisir à l’écran Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Choisir la vente à l’écran",
+          "largeur": 148,
+          "hauteur": 44,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": true
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 1,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que veux-tu vendre ? Dis-moi ce que tu vends Choisir à l’écran SAISIR SANS PARLER Réécouter Riz Tomate Aubergine Piment Gombo Manioc Igname Maïs Banane Plantain Oignon Avocat Huile de palme Mangue Ananas Arachide Carotte Concombre Courgette Chou Laitue Brocoli Patate douce Pomme de terre Haricot Citron Orange Pastèque Papaye Fraise Noix de coco Café Poisson Poulet Œuf Pain Pas dans la liste ? Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "input",
+          "nom": "Chercher un produit…",
+          "largeur": 149,
+          "hauteur": 18,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": false,
+            "dom": false,
+            "stockage": false,
+            "foyer": true,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que veux-tu vendre ? Dis-moi ce que tu vends Choisir à l’écran Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Autre article",
+          "largeur": 145,
+          "hauteur": 46,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": true,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que veux-tu vendre ? Dis-moi ce que tu vends Choisir à l’écran Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Autre article Chercher un produit OU MONTANT LIBRE Montant F Quoi ? (facultatif) Tu vends par… unité tas kg sac bassine régime Ajouter Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "+ Autre article",
+          "largeur": 172,
+          "hauteur": 48,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": false,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": true,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Caisse du jour Mar. 22 sept. Bonnes ventes ! Que veux-tu vendre ? Dis-moi ce que tu vends Choisir à l’écran Produits Autre article Aucun produit + Autre article Panier actuel Touche un produit pour l'ajouter au panier. Autre article Chercher un produit OU MONTANT LIBRE Montant F Quoi ? (facultatif) Tu vends par… unité tas kg sac bassine régime Ajouter Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Accueil",
+          "largeur": 125,
+          "hauteur": 70,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": true
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 1,
+            "cles": [
+              "ACCUEIL_CAISSE_ILLISIBLE"
+            ],
+            "ignorees": 0
+          },
+          "texteApres": "Ton comptoir est prêt Bonjour Awa On vend ensemble aujourd’hui. MA CAISSE AUJOURD'HUI — Je n’ai pas pu lire ta caisse. Ce n’est pas zéro : ton argent est là. Vendre Parler ou toucher les produits › Mon stock Mes dépenses Mes ventes Mon argent Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Acheter",
+          "largeur": 125,
+          "hauteur": 70,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": true,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Marché virtuel Ton profil marchand n'est pas complet Pour accéder au marché, vois ton identificateur : il précisera si tu es détaillante, demi-grossiste ou grossiste. 0 Commandes 0 Produits disponibles 0 FCFA Total dépensé 0 Négociations en cours Historique Toutes tes commandes passées Aucune commande dans ton historique Les transactions apparaîtront ici Tantie Accueil Acheter Moi"
+        },
+        {
+          "genre": "controle",
+          "balise": "button",
+          "nom": "Moi",
+          "largeur": 125,
+          "hauteur": 70,
+          "desactive": false,
+          "dansEcran": true,
+          "atteignable": true,
+          "raison": "",
+          "force": false,
+          "mene": true,
+          "change": {
+            "adresse": true,
+            "texte": true,
+            "dom": true,
+            "stockage": false,
+            "foyer": false,
+            "voix": false
+          },
+          "confirmationSansSuite": false,
+          "voix": {
+            "demandes": 0,
+            "cles": [],
+            "ignorees": 0
+          },
+          "texteApres": "Mon profil Afficher ma carte Réglages Carte professionnelle Jùlaba Utilise « Afficher ma carte » pour ouvrir ta carte digitale. JÙLABA Academy Formations et micro-apprentissages MES SERVICES Ma coopérative Rejoindre ou voir ma coop Soumettre un besoin Mes tontines Épargne tournante entre commerçantes Ma protection sociale Cotisations CNPS (retraite) & CNAM (santé) Fidélité clients Points & récompenses — barème réglable Documents et certifications Pièces officielles et suivi Support & Aide JÙLABA Lun-Ven 8h-18h Nous contacter Nouveau ticket MON COMPTE Mot de passe Code PIN Keiwa Active le PIN p"
+        }
+      ],
+      "tronque": 0,
+      "voix": {
+        "auMontage": 1,
+        "clesAuMontage": [],
+        "refuseesAuMontage": 0,
+        "auGeste": 3,
+        "muet": false
+      },
+      "impasses": [],
+      "desactives": [],
+      "inatteignables": [],
+      "confirmationsSansSuite": [],
+      "passage": null
+    }
+  ]
+}
