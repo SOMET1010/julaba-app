@@ -14,11 +14,40 @@
  *      (window.__journalVoix, alimenté par le vrai rendu vocal) ;
  *   3. ce qui s'affiche — en dernier, et jamais tout seul.
  *
- * CE QUI EST RÉEL ICI : POSCaisse, MicroVenteCaisse, intentLocal,
- * vendreVocalUnifie, le catalogue i18n, la machine d'encaissement.
- * CE QUI EST SIMULÉ : l'audio (pas de micro ni de synthèse en headless) et le
- * serveur (contextes stubés — aucune écriture réelle). On le dit, on ne le
- * cache pas.
+ * CE QUI EST RÉEL ICI — et la liste a CHANGÉ le 22/09/2026 : POSCaisse,
+ * MicroVenteCaisse, **useVoiceCore** (le moteur vocal entier), intentLocal,
+ * vendreVocalUnifie, le catalogue i18n, audioManager, la machine
+ * d'encaissement.
+ * CE QUI EST SIMULÉ : la TRANSCRIPTION (sherpa-onnx n'existe pas hors de
+ * l'APK — voir stubs/offlineStt.ts), la sortie audio (aucun haut-parleur en
+ * headless : les LECTEURS d'audioManager sont remplacés, pas les décisions qui
+ * y mènent) et le serveur (contextes stubés — aucune écriture réelle).
+ *
+ * POURQUOI CE BANC A MENTI (22/09/2026, deuxième passage de Patrick sur le
+ * même défaut). Il déclarait P1 VERT avec 28 assertions pendant que le même
+ * parcours était muet sur le téléphone. Trois bouchons rendaient ce que
+ * l'application ne rend pas :
+ *
+ *   1. LE MOTEUR VOCAL ÉTAIT BOUCHONNÉ EN ENTIER. `stubs/useVoiceCore.ts`
+ *      réimplémentait la dictée en trois lignes — poser le transcript, et
+ *      appeler `onAction` si `intentLocal` reconnaissait quelque chose. Tout
+ *      ce que le VRAI moteur fait autour (machine d'états, branche « entendu
+ *      mais pas compris », file hors ligne, verrou parole/écoute) n'était donc
+ *      jamais joué. Un banc qui remplace le moteur ne prouve rien du moteur.
+ *   2. « DIT » VOULAIT DIRE « APPELÉ », PAS « ENTENDU ». Le stub d'AppContext
+ *      poussait le texte dans un tableau sans passer par `audioManager` — donc
+ *      sans le mute, sans l'anti-répétition, et surtout sans la règle « la plus
+ *      récente gagne » qui COUPE la phrase en cours. Une phrase supplantée
+ *      10 ms après son début était comptée comme prononcée.
+ *   3. LE CATALOGUE MAÎTRE ÉTAIT TOUJOURS VIDE. Le banc coupe le réseau, et
+ *      son cache local n'était jamais semé : la branche « une référence Odoo
+ *      porte le même nom » de `ouvrirPrixManquant` — celle qu'un vrai
+ *      téléphone emprunte dès la première synchro — n'a jamais été jouée.
+ *
+ * Les trois sont corrigés. `__journalDits` reste ce qui a été DEMANDÉ ;
+ * `__journalRendu` dit ce qui a commencé à être JOUÉ, et avec quelle issue
+ * (`ended` = entendu jusqu'au bout, `cancelled` = coupé par une voix plus
+ * récente). C'est sur le second qu'on juge le silence.
  *
  * Ce banc exige Chromium : il reste un OUTIL À PART, hors de `npm run verify`
  * (qui doit tourner sans navigateur). La garde sans navigateur du même défaut
@@ -64,7 +93,7 @@ const erreursPage = [];
 
 /** Ouvre la caisse dans l'état demandé (catalogue vide ? voix allumée ?). */
 async function ouvrir(navigateur, requete) {
-  const contexte = await navigateur.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'fr-FR' });
+  const contexte = await navigateur.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'fr-FR', permissions: ['microphone'] });
   await contexte.route('**/*', route => {
     const u = route.request().url();
     if (u.startsWith(`http://127.0.0.1:${PORT}/`) || u.startsWith('data:')) return route.continue();
@@ -79,16 +108,75 @@ async function ouvrir(navigateur, requete) {
   return page;
 }
 
-/** Dicte une phrase par le VRAI chemin de compréhension (voir stubs/useVoiceCore). */
+/** APPUIE SUR LE MICRO, comme un doigt : le vrai moteur enregistre, demande la
+ *  transcription (seul maillon bouchonné) et décide de tout le reste lui-même. */
 const dicter = (page, phrase) => page.evaluate(t => window.__apercuVoix.dicter(t), phrase);
 const panier = (page) => page.evaluate(() => (window.__panier || []).map(i => ({ nom: i.nom, quantite: i.quantite, prix: i.prix, total: i.totalExact ?? i.prix * i.quantite })));
 const voix = (page) => page.evaluate(() => window.__journalVoix || []);
 const dits = (page) => page.evaluate(() => window.__journalDits || []);
+/** Ce qui a VRAIMENT commencé à être joué (lecteurs d'audioManager), avec son issue. */
+const rendu = (page) => page.evaluate(() => window.__journalRendu || []);
+/** Ce qui a été ENTENDU jusqu'au bout — une phrase coupée n'a jamais existé pour elle. */
+const entendu = async (page) => (await rendu(page)).filter(m => m.issue === 'ended').map(m => m.texte || m.url);
 const photo = (page, nom) => page.screenshot({ path: resolve(SORTIE, `parcours-${nom}.png`), fullPage: false });
 
-const navigateur = await chromium.launch({ headless: true, executablePath: EXECUTABLE, args: ['--no-sandbox', '--font-render-hinting=none'] });
+// Le moteur vocal est le VRAI : il ouvre un micro et enregistre pour de bon.
+// Chromium fournit un périphérique factice ; seule la TRANSCRIPTION est bouchonnée.
+const navigateur = await chromium.launch({ headless: true, executablePath: EXECUTABLE, args: ['--no-sandbox', '--font-render-hinting=none', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-capture', '--autoplay-policy=no-user-gesture-required'] });
 try {
   await attendreServeur();
+
+  // ── P0 — LE PARCOURS DE PATRICK, TEL QU'IL L'A VÉCU ────────────────────
+  // 22/09/2026, deuxième signalement du MÊME défaut, sur un APK qui portait
+  // déjà le correctif de la veille : « Cet écran me dérange, il est
+  // visuellement ET sonorement muet. »
+  //
+  // Son état exact, et c'est lui que l'ancien banc ne rejouait pas : SON
+  // catalogue est vide (« Produits : Aucun produit ») mais le CATALOGUE MAÎTRE
+  // de son téléphone, lui, est rempli depuis la première synchro. La caisse
+  // emprunte alors une AUTRE branche d'`ouvrirPrixManquant` — celle qui
+  // reconnaît la référence Odoo et propose de l'adopter. Le banc coupait le
+  // réseau ET ne semait pas ce cache : cette branche n'avait jamais tourné.
+  // Voix COUPÉE : le cas le plus dur, celui où aucune phrase ne peut rattraper
+  // un écran muet.
+  console.log("\n[P0] Le cas de Patrick — son catalogue VIDE, catalogue maître GARNI, « trois tomates », voix coupée");
+  {
+    const page = await ouvrir(navigateur, '?catalogue=vide&maitre=garni');
+    await dicter(page, 'trois tomates');
+    await page.waitForTimeout(400);
+    ok(await page.getByText("J'ai compris : trois tomates").isVisible(), "l'écran affiche « J'ai compris »");
+    // LA RÈGLE : ce bandeau ne peut pas être le dernier mot. Soit la vente
+    // continue, soit l'application dit qu'elle ne peut pas — jamais le silence.
+    const feuille = page.getByRole('dialog', { name: 'Autre article' });
+    ok(await feuille.isVisible(), "…et quelque chose S'OUVRE derrière : « J'ai compris » n'est pas un cul-de-sac");
+    const rappel = await page.locator('[data-test="rappel-dictee"]').textContent();
+    ok(/tomate/i.test(rappel || '') && /\b3\b/.test(rappel || ''), 'sa phrase lui est rappelée, produit et quantité', rappel);
+    ok((await panier(page)).length === 0, "et aucune ligne n'entre au panier sans prix");
+    // La référence du catalogue maître est reconnue : elle n'aura plus jamais à
+    // redonner ce prix. C'est exactement la branche que le banc ne jouait pas.
+    ok(/Tomate/.test(await feuille.textContent()), 'la référence du catalogue maître est proposée, pas une ligne anonyme');
+    ok((await entendu(page)).length === 0, "profil « je lis » : rien n'est prononcé — et ce n'est plus un silence, c'est un écran", await entendu(page));
+    await photo(page, 'p0-cas-patrick');
+    await page.close();
+  }
+
+  // ── P0b — LE MÊME, VOIX ALLUMÉE : LA QUESTION EST ENTENDUE ─────────────
+  // « Dite » ne suffit plus : audioManager coupe la lecture en cours dès qu'une
+  // voix plus récente arrive. On juge donc sur ce qui est allé jusqu'au bout.
+  console.log('\n[P0b] Le même, voix allumée — la question du prix est ENTENDUE, pas seulement demandée');
+  {
+    const page = await ouvrir(navigateur, '?catalogue=vide&maitre=garni&voix=on');
+    await dicter(page, 'trois tomates');
+    await page.waitForTimeout(400);
+    const jv = await voix(page);
+    ok(jv.some(m => m.id === 'TATA_QUEL_PRIX'), 'la question passe par la clé TATA_QUEL_PRIX, jamais en dur', jv.map(m => m.id));
+    const attendu = await page.evaluate(() => window.__t('TATA_QUEL_PRIX', { produit: 'Tomate' }));
+    ok((await entendu(page)).includes(attendu),
+      "et cette phrase-là a été jouée JUSQU'AU BOUT — une phrase coupée n'a jamais existé pour elle",
+      { attendu, rendu: await rendu(page) });
+    ok((await panier(page)).length === 0, "toujours aucune ligne tant que le prix n'est pas donné");
+    await page.close();
+  }
 
   // ── P1 — CATALOGUE VIDE, PRODUIT INCONNU, DICTÉ ────────────────────────
   // Le trou principal : sur le téléphone de Patrick, « J'ai compris : Cinq
@@ -142,7 +230,7 @@ try {
     ok(!!quelPrix, 'la question du prix passe par la clé TATA_QUEL_PRIX', jv.map(m => m.id));
     ok(quelPrix?.variables?.produit === 'tomate', 'avec le produit dicté en variable', quelPrix?.variables);
     const attendu = await page.evaluate(() => window.__t('TATA_QUEL_PRIX', { produit: 'tomate' }));
-    ok((await dits(page)).includes(attendu), 'et c\'est bien cette phrase-là qui part à la voix', { attendu, dits: await dits(page) });
+    ok((await entendu(page)).includes(attendu), 'et c\'est bien cette phrase-là qui a été JOUÉE jusqu\'au bout', { attendu, rendu: await rendu(page) });
     ok((await panier(page)).length === 0, 'toujours aucune ligne tant que le prix n\'est pas donné');
     await page.close();
   }
@@ -275,7 +363,7 @@ try {
 
   console.log('');
   if (erreursPage.length) { console.log('  ❌ erreurs de page :', erreursPage.slice(0, 3)); echecs++; }
-  console.log(echecs === 0 ? '✅ Les 5 parcours vont au bout\n' : `❌ ${echecs} échec(s)\n`);
+  console.log(echecs === 0 ? '✅ Tous les parcours vont au bout\n' : `❌ ${echecs} échec(s)\n`);
 } finally {
   await navigateur.close();
   serveur.kill();

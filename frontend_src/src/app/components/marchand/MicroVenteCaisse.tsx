@@ -247,6 +247,17 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
           demanderPrixAuParent({ nom, quantite: qteDite, unite, raison, montant: montantDit });
         }
         : undefined,
+      // AUCUN ÉCRAN DE PRIX AU-DESSUS → ON NE SE TAIT PAS POUR AUTANT.
+      // Sans fournisseur (caisse montée sans `FournisseurDemandePrix`) et avec
+      // le guidage vocal coupé, cette vente comprise se terminait en silence
+      // absolu sous le bandeau « J'ai compris ». Ici, le repli tactile de
+      // CETTE surface s'ouvre et la phrase — celle du catalogue i18n, résolue
+      // par vendreVocalUnifie, jamais réécrite ici — s'affiche.
+      signalerBlocage: ({ texte }) => {
+        setSaisieOuverte(true);
+        toast.warning(texte);
+        dernierePhraseRef.current = texte; // « réécouter » la dit, même différée
+      },
     }, uniteParlee, lectureDictee);
 
   const {
