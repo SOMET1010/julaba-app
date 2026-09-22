@@ -120,6 +120,37 @@ export interface DependancesVendreVocalUnifie {
      *  lui relit (« 500, c'est le prix d'un seul, ou de tous les 3 ? »). */
     montant?: number;
   }) => void;
+  /**
+   * LE DERNIER VERROU CONTRE LE SILENCE — 22/09/2026, deuxième passage de
+   * Patrick sur le même défaut.
+   *
+   * La branche « pas de prix » avait deux issues, et une TROISIÈME que
+   * personne n'avait regardée : quand l'appelant ne sait pas demander
+   * (`demanderPrix` absent) ET que le guidage vocal est coupé (profil « je
+   * lis »), cette fonction RETOURNAIT SANS RIEN FAIRE. Pas de ligne — c'est
+   * la règle, et elle est bonne —, mais pas un mot NI un écran : une vente
+   * comprise disparaissait sous un bandeau « J'ai compris ». C'est exactement
+   * ce que décrit Patrick : « visuellement ET sonorement muet ».
+   *
+   * Ce crochet ferme cette issue. Il est appelé CHAQUE FOIS qu'aucun écran de
+   * prix ne prendra le relais, et il reçoit la phrase DÉJÀ RÉSOLUE depuis le
+   * catalogue i18n — la même que celle qui part à la voix, pour que l'écrit
+   * et le dit ne puissent pas diverger. À l'appelant de la rendre visible
+   * (toast, bandeau) ; il ne construit aucun texte lui-même.
+   *
+   * Optionnel dans le TYPE seulement, pour ne pas casser les harnais de test
+   * existants. Les deux surfaces réelles le câblent, et un garde de source
+   * (`venteSansSilence.test.mts`) interdit qu'une troisième l'oublie.
+   */
+  signalerBlocage?: (info: {
+    /** La phrase à MONTRER — résolue par ce module, jamais écrite en dur ailleurs. */
+    texte: string;
+    /** Pourquoi la vente s'arrête ici. */
+    raison: 'prix_manquant' | 'unite_incompatible' | 'ambiguite_prix';
+    /** Le produit tel que compris, et la quantité dite : de quoi pré-remplir un repli. */
+    nom: string;
+    quantite: number;
+  }) => void;
 }
 
 /**
@@ -206,21 +237,31 @@ export function vendreVocalUnifie(
     // On ne devine JAMAIS un prix, et on ne se tait pas non plus : le silence,
     // pour quelqu'un qui ne lit pas, veut dire « cette application ne marche
     // pas ». Chaque refus a son mot, pour qu'elle sache quoi redire.
-    if (deps.guidageVocalActif()) {
-      if (prix.type === 'unite_incompatible') {
-        deps.speak(t('TATA_UNITE_INCOMPATIBLE', { uniteParlee: prix.uniteParlee, produit: prix.nom, uniteCatalogue: prix.uniteCatalogue }));
-      } else if (prix.type === 'ambiguite_prix') {
-        // On lui repose SA question, avec SES chiffres — et on ne pose rien
-        // au panier tant qu'elle n'a pas répondu.
-        deps.speak(phraseAmbiguite(prix.quantite, prix.montant));
-      } else {
-        deps.speak(
-          prix.nom
+    //
+    // LA PHRASE EST CONSTRUITE UNE SEULE FOIS, puis empruntée par les DEUX
+    // canaux (22/09/2026). Avant, elle n'existait qu'à l'intérieur du `if
+    // (guidageVocalActif())` : profil « je lis » + appelant sans écran de
+    // prix = aucun canal, donc rien du tout. L'écrit ne peut plus manquer, et
+    // il ne peut plus dire autre chose que le dit.
+    const refus =
+      prix.type === 'unite_incompatible'
+        ? t('TATA_UNITE_INCOMPATIBLE', { uniteParlee: prix.uniteParlee, produit: prix.nom, uniteCatalogue: prix.uniteCatalogue })
+        : prix.type === 'ambiguite_prix'
+          // On lui repose SA question, avec SES chiffres — et on ne pose rien
+          // au panier tant qu'elle n'a pas répondu.
+          ? phraseAmbiguite(prix.quantite, prix.montant)
+          : prix.nom
             ? t('TATA_PRIX_INCONNU_PRODUIT', { produit: prix.nom })
-            : t('TATA_PRIX_INCOMPRIS'),
-        );
-      }
-    }
+            : t('TATA_PRIX_INCOMPRIS');
+    // VU, toujours — même quand Tata se tait.
+    deps.signalerBlocage?.({
+      texte: refus,
+      raison: prix.type,
+      nom: prix.nom || (nomParle || '').trim(),
+      quantite: qte,
+    });
+    // ENTENDU, quand le guidage vocal est actif — inchangé.
+    if (deps.guidageVocalActif()) deps.speak(refus);
     return;
   }
 

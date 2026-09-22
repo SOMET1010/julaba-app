@@ -3,6 +3,7 @@
  * Une marchande fictive, en ligne, sans session serveur. `speak` ne dit rien.
  */
 import React, { createContext, useContext, type ReactNode } from 'react';
+import * as audioManager from '../../src/app/services/audioManager';
 
 export type UserRole = 'marchand' | 'producteur' | 'cooperative' | 'cooperateur' | 'institution' | 'identificateur' | 'administrateur';
 export interface User { id: string; firstName?: string; lastName?: string; prenoms?: string; genre?: string; role: UserRole; sousProfilMarchand?: string | null; }
@@ -16,13 +17,18 @@ const USER: User = { id: 'demo', firstName: 'Awa', lastName: 'Koné', genre: 'fe
 export function AppProvider({ children }: { children: ReactNode }) {
   const noop = () => {};
   const noopAsync = async () => {};
-  // TOUT CE QUI EST DIT EST ÉCRIT (banc de parcours). `speak` reste muet — il
-  // n'y a pas de synthèse en headless — mais le texte part au journal : une
-  // capture d'écran ne prouve pas qu'une phrase a été prononcée. Les phrases
-  // venues d'une CLÉ du catalogue sont, elles, journalisées avec leur clé et
-  // leurs variables (voir main.tsx).
-  const speak = (texte: string) => {
+  // `speak` PASSE PAR LE CHEF D'ORCHESTRE, comme le vrai (22/09/2026).
+  // L'ancien stub se contentait d'écrire la phrase dans un tableau : le banc
+  // prouvait alors qu'un appel avait eu lieu, jamais qu'un son avait commencé.
+  // Or entre les deux il y a `audioManager` — mute, anti-répétition, et la
+  // règle « la plus récente gagne » qui COUPE la phrase en cours. C'est là que
+  // se joue le silence d'une caisse, et le banc ne le voyait pas.
+  // `__journalDits` reste (ce qui a été DEMANDÉ) ; `__journalRendu`, alimenté
+  // par les lecteurs eux-mêmes dans main.tsx, dit ce qui a été JOUÉ.
+  const speak = async (texte: string) => {
+    if (!texte?.trim()) return;
     try { (((window as any).__journalDits ??= []) as string[]).push(String(texte)); } catch { /* ignore */ }
+    try { await audioManager.speak(String(texte), { priority: 'user' }); } catch { /* ignore */ }
   };
   const value = {
     user: USER, setUser: noop, isAuthenticated: true, accessToken: null, setAccessToken: noop, loading: false,

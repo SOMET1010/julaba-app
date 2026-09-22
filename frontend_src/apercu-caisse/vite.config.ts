@@ -26,9 +26,14 @@ export default mergeConfig(base, {
       { find: /^(.*\/)?StockContext$/, replacement: stub('StockContext') },
       { find: /^(.*\/)?RaccourcisContext$/, replacement: stub('RaccourcisContext') },
       { find: /^(.*\/)?ObjectifContext$/, replacement: stub('ObjectifContext') },
-      // Le moteur vocal : pas de micro en headless, l'intention est injectée
-      // (voir stubs/useVoiceCore.ts). La machine d'encaissement, elle, est la vraie.
-      { find: /^(.*\/)?hooks\/useVoiceCore$/, replacement: resolve(ici, 'stubs', 'useVoiceCore.ts') },
+      // LE MOTEUR VOCAL EST LE VRAI (22/09/2026). Il était bouchonné en
+      // entier : le banc déclarait alors verts des parcours dont il ne jouait
+      // qu'un raccourci de trois lignes. Seule la TRANSCRIPTION est bouchonnée
+      // — sherpa-onnx n'existe pas hors de l'APK — et tout ce que le moteur
+      // fait AUTOUR d'elle (machine d'états, branche « pas compris », file
+      // hors ligne, verrou parole/écoute) est désormais exécuté pour de vrai.
+      // Voir stubs/offlineStt.ts.
+      { find: /^(.*\/)?voice-offline\/offlineStt$/, replacement: resolve(ici, 'stubs', 'offlineStt.ts') },
     ],
   },
   server: { port: 5199, strictPort: true, host: '127.0.0.1' },
