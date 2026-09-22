@@ -110,6 +110,7 @@ function doitEnfiler(error: unknown): boolean {
  */
 export type { StatutEnregistrement, ResultatEnregistrement } from '../types/statutEnregistrement';
 import type { ResultatEnregistrement } from '../types/statutEnregistrement';
+import type { IdCategorieDepense } from '../services/categorieDepense';
 
 export interface CaisseTransaction {
   id: string;
@@ -230,7 +231,7 @@ interface CaisseContextType {
   /** `description` : le MOTIF de la dépense, sous son nom canonique — celui de
    *  la colonne, de l'entité et de la route. Il s'appelait `notes` ici, et le
    *  serveur ne le lisait jamais (DEP-01). */
-  enregistrerDepense: (montant: number, description?: string) => Promise<void>;
+  enregistrerDepense: (montant: number, description?: string, categorie?: IdCategorieDepense) => Promise<void>;
   
   // POS Cart
   addToCart: (product: CaisseProduct, quantite?: number, totalExact?: number, origine?: 'vocal') => void;
@@ -626,9 +627,12 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // s'appelle `description` : le motif saisi par la marchande n'arrivait JAMAIS
   // en base, et rien ne le disait. La même perte se rejouait à la
   // synchronisation, la file repoussant le payload tel quel.
-  const enregistrerDepense = async (montant: number, description?: string) => {
+  // DEP-02 : la catégorie TOUCHÉE traverse jusqu'au serveur. Elle est dans le
+  // `payload`, donc aussi dans la FILE HORS LIGNE — qui rejoue ce payload tel
+  // quel. Une dépense notée au marché sans réseau garde sa catégorie.
+  const enregistrerDepense = async (montant: number, description?: string, categorie?: IdCategorieDepense) => {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de dépense invalide');
-    const payload: caisseApi.EnregistrerDepenseData = { montant, description, idempotency_key: genererCle() };
+    const payload: caisseApi.EnregistrerDepenseData = { montant, description, categorie, idempotency_key: genererCle() };
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       await enfilerOperation('/caisse/depense', payload, appUser?.id);
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });

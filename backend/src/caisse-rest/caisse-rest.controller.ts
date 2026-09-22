@@ -31,6 +31,36 @@ export function libelleDepense(canonique: unknown, herite: unknown): string {
   return texte(canonique) || texte(herite);
 }
 
+// LA CATÉGORIE D'UNE DÉPENSE — DEP-02, 22/09/2026.
+//
+// LE DÉFAUT, même famille que DEP-01 un cran plus loin. À l'écran, la marchande
+// TOUCHE une catégorie (« Taxe mairie », « École »…) — c'est le seul geste
+// qu'une non-lectrice puisse faire. Ce choix n'arrivait jamais ici : la route
+// ne lisait pas `body.categorie`, et la colonne `category`, qui existe depuis
+// toujours sur `caisse_transactions`, restait vide sur CHAQUE dépense.
+//
+// L'écran des dépenses la reconstruisait alors en cherchant des mots-clés
+// français dans le libellé — et se trompait sur deux des onze catégories que
+// l'écran propose lui-même. C'est ce que l'architecture interdit : une
+// information qui pèse sur l'argent est conservée ou nommée perdue, jamais
+// reconstruite en aval.
+//
+// LA LISTE EST FERMÉE, ET ELLE EST VÉRIFIÉE ICI. Un identifiant inconnu n'est
+// pas écrit : il vaut mieux une dépense SANS catégorie — cas que l'écran sait
+// nommer (« Catégorie pas notée ») — qu'une catégorie inventée par le
+// téléphone. Le nom de colonne est `category` (héritage du schéma, figé) ;
+// le nom sur le fil est `categorie`. La correspondance se fait ICI, une fois.
+export const CATEGORIES_DEPENSE = [
+  'transport', 'repas', 'taxe_mairie', 'loyer', 'famille', 'tontine',
+  'sante', 'telephone', 'marchandise', 'ecole', 'autre',
+] as const;
+
+export function categorieDepense(valeur: unknown): string | null {
+  if (typeof valeur !== 'string') return null;
+  const v = valeur.trim();
+  return (CATEGORIES_DEPENSE as readonly string[]).includes(v) ? v : null;
+}
+
 @UseGuards(JwtAuthGuard)
 @Controller('caisse')
 export class CaisseRestController {
@@ -689,6 +719,14 @@ export class CaisseRestController {
         // fichier). Avant ce correctif, seul `description` était lu : tout
         // motif partait dans le vide, sans la moindre erreur.
         type: 'depense', description: libelleDepense(body.description, body.notes), source: body.source || 'kassa',
+        // DEP-02 : la catégorie TOUCHÉE par la marchande. `null` quand le
+        // téléphone n'en envoie pas (file hors ligne d'avant ce correctif) ou
+        // quand l'identifiant n'est pas des onze — et `null` est une réponse,
+        // que l'écran affiche « Catégorie pas notée ». Aucun repli sur
+        // « autre » : « autre » est un choix qu'elle peut faire, lui donner
+        // aussi le sens de « on ne sait pas » serait donner deux sens à la
+        // même donnée.
+        category: categorieDepense(body.categorie ?? body.category),
         mode_paiement: body.mode_paiement || 'especes', idempotency_key: idemKey,
         ...(dateDepense ? { created_at: dateDepense } : {}),
       } as any));

@@ -40,6 +40,7 @@ import { t } from '../../i18n/voice/runtime';
 import {
   ouverturePhrasePeriode, complementPeriode, type PeriodeResume,
 } from '../../services/resumePeriode';
+import { categorieDeLaDepense } from '../../services/categorieDepense';
 
 /**
  * HIS-01 — LA PÉRIODE N'EST PLUS ÉCRITE EN DUR.
@@ -164,11 +165,18 @@ export function ResumeCaisse() {
       (t) => t.type === 'depense' && new Date(t.date) >= startDate
     );
 
-    // Grouper par catégorie
+    // GROUPER PAR CATÉGORIE — DEP-02.
+    //
+    // Cette boucle groupait sur `t.category`, qui contenait en réalité le MOTIF
+    // de la dépense en minuscules (« taxe mairie », « médicaments »). Le
+    // camembert affichait donc une part par texte saisi, sous le titre
+    // « catégories ». Il lit maintenant la catégorie réellement enregistrée, et
+    // les dépenses qui n'en ont pas font une part À PART, nommée — pas une
+    // part « Autres » qu'on confondrait avec la catégorie « Autre ».
     const groupedByCategory: Record<string, number> = {};
     filteredTransactions.forEach((t) => {
-      const category = t.category || 'Autres';
-      groupedByCategory[category] = (groupedByCategory[category] || 0) + t.price * t.quantity;
+      const lue = categorieDeLaDepense({ category: t.category });
+      groupedByCategory[lue.libelle] = (groupedByCategory[lue.libelle] || 0) + t.price * t.quantity;
     });
 
     return Object.entries(groupedByCategory).map(([name, value]) => ({

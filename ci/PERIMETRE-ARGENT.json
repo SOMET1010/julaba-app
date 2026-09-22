@@ -1130,6 +1130,14 @@
         "mode_paiement"
       ]
     },
+    "frontend_src/src/app/services/categorieDepense.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "caisse_transactions"
+      ]
+    },
     "frontend_src/src/app/services/collecteVoixDB.ts": {
       "zones": [
         "offline-synchronisation"

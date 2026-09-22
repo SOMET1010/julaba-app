@@ -165,7 +165,11 @@ son téléphone le 22/09.
 | CAI-09 | `caisseTheorique` additionne aussi `acompte_credit` et `reglement_credit`. Leurs routes ne passent pas par la nouvelle garde. Même défaut, ailleurs. | **OUVERT** — hors périmètre du lot |
 | HIS-01a (MAR-HIS-001) | **« Ce mois » affichait « Aujourd'hui tu as gagné… »** — `ResumeCaisse.tsx:334`. Les chiffres venaient bien de la période choisie ; c'est la PHRASE qui mentait sur ce qu'ils comptaient. « Aujourd'hui » et « Résumé du jour » étaient écrits en dur, à deux endroits. | **FERMÉ** |
 | HIS-01b | **DETTE VOISINE, trouvée en fermant la première** : la phrase DITE assemblait ses trois montants avec `toLocaleString('fr-FR')`, puis partait à `speak(texte)`. L'espace fine insécable (U+202F) atteignait le moteur, qui épelait « trois zéro zéro zéro ». C'est la faute fermée le 22/09 sur la caisse (`deuxFormes`), encore vivante sur le résumé. | **FERMÉ** |
-| MAR-DEP-001 | « + Noter une dépense » à renommer ; catégorie de dépense non enregistrée (le **libellé**, lui, est fermé par `5259490`). | **OUVERT** |
+| DEP-02a (MAR-DEP-001) | **La catégorie de dépense n'était enregistrée nulle part.** La marchande TOUCHE « Taxe mairie » — le seul geste qu'une non-lectrice puisse faire — et ce choix était aplati dans `description`. La colonne `category` de `caisse_transactions` existait et restait vide sur chaque dépense. Chaîne rompue en quatre endroits : l'écran, le contexte, la route, la projection de lecture. | **FERMÉ** |
+| DEP-02b | **Et l'écran la RECONSTRUISAIT par mots-clés français** (`detectCat`). L'écran propose onze catégories, la table en connaissait neuf : « Taxe mairie » (aucun mot-clé) devenait « Autre », « École » tombait sur le mot-clé de FAMILLE. Deux des onze choix ne pouvaient pas revenir tels qu'elle les avait faits. | **FERMÉ** |
+| DEP-02c | **`Transaction.category` contenait le MOTIF en minuscules** (« taxe mairie »), et le camembert « dépenses par catégorie » de `ResumeCaisse` groupait dessus. Un champ nommé « catégorie » qui portait du texte libre. De plus, une projection sur deux ne le lisait pas du tout : après rechargement, la donnée disparaissait. | **FERMÉ** |
+| MAR-DEP-001 (mots) | « + Noter une dépense » → « + Faire une dépense » (2 endroits) ; « Changer » → « Changer la catégorie de dépense ». Le **libellé** de la dépense était déjà fermé par `5259490`. | **FERMÉ** |
+| DEP-03 | « Dernier taxe mairie : — » — l'historique de l'écran 2 colle le motif après « Dernier » sans accord. Vu à la capture 390×844 en fermant DEP-02. Dette VOISINE nommée, pas fermée. | **OUVERT** |
 | MAR-VTE-001 | « Son clip Tata Nanti Lou n'est pas encore enregistré » — `useVoiceCore.ts:355`, **figé par VOICE-01**. | **OUVERT** — desserrage = décision de Patrick |
 | CAI-08 | « Choisir à l'écran » : Patrick a mis **deux heures** à comprendre. L'accueil dit déjà « parler ou toucher les produits » — un concept, deux langues. | **OUVERT** — arbitrage de formulation |
 | CAI-07 | Deux « J'ai compris » simultanés à l'écran. À revérifier : VOX-01 a peut-être fermé la cause. | **À REMESURER** |
@@ -196,7 +200,33 @@ dit « Sur la période choisie » — il ne relit pas les deux dates. C'est un c
 une date lue à voix haute est un autre sujet (format, ordre, année), et rien ne
 l'exige pour le pilote. **HORS PÉRIMÈTRE JUSTIFIÉ.**
 
-Gardes : `cai-02-journee-fermee.spec.ts` · `test:ecoute-caisse` · `test:resume-periode`.
+**Preuve de fermeture de DEP-02** (la preuve TRAVERSE : la ligne relue EN BASE,
+pas le code de retour de la route) :
+
+```
+rouge avant : Expected "transport" / Received null   (les onze, jamais écrites)
+après       : 11/11 catégories relues en base ET rendues par GET /caisse/transactions
+              sans catégorie      → NULL en base, jamais « autre »
+              hors liste          → NULL (« carburant » refusé)
+              libellé à la place  → NULL (« Taxe mairie » n'est pas `taxe_mairie`)
+              14 dépenses × 1 500 F : la comptabilité du jour n'a pas bougé
+```
+
+**Deux gardes desserrées, sur autorisation de Patrick (22/09).**
+`GARDE-ASSOUPLIE:` VOICE-01 refigé — une seule empreinte a changé,
+`contexts/AppContext.tsx` (3 lignes de projection des transactions) ;
+**l'inventaire ordonné des appels de parole est identique**, aucune voix n'a
+bougé. Et `--figer-perimetre` : `services/categorieDepense.ts` entre dans le
+périmètre argent (88 fichiers au lieu de 87).
+
+`test:depense-libelle` a aussi été **renforcé, pas desserré** : son T0 nomme
+désormais ce qui n'est PAS un motif (au lieu de compter tous les champs du
+payload), et deux assertions neuves (T6, T7) prouvent que la catégorie traverse
+la file hors ligne et ne s'invente pas au rejeu.
+
+Gardes : `cai-02-journee-fermee.spec.ts` · `dep-02-categorie-depense.spec.ts` ·
+`test:ecoute-caisse` · `test:resume-periode` · `test:categorie-depense` ·
+`test:depense-libelle`.
 
 ---
 

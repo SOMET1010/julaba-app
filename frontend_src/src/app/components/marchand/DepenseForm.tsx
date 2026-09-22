@@ -10,24 +10,31 @@ import TATA_BLEU from '../../../assets/images/tata-nanti-lou.png';
 import { emojiTile } from '../../utils/emojiTile';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { PaveMontant } from '../shared/PaveMontant';
+import {
+  CATEGORIES_DEPENSE, libelleParId, type IdCategorieDepense,
+} from '../../services/categorieDepense';
 
 const P = '#AF5B23';
 const BG = '#F6F0E4';
 
-const QUICK_ACTIONS = [
-  // Vignettes LOCALES : ces trois images étaient servies par un hébergeur
-  // distant. Sans réseau — le cas courant au marché — une marchande qui ne
-  // lit pas voyait trois cases vides et ne pouvait plus choisir sa catégorie.
-  // Même correction que les tuiles de l'accueil (#157).
-  { id:'transport',   label:'Transports',  img: emojiTile('🚌') },
-  { id:'repas',       label:'Nourritures', img: emojiTile('🍚') },
-  { id:'taxe_mairie', label:'Taxe mairie', img: emojiTile('🏛️') },
-];
+// LES ONZE CATÉGORIES VIENNENT DE `services/categorieDepense.ts` — DEP-02.
+// Elles étaient écrites ici, en deux morceaux, et une TROISIÈME fois dans
+// `MarchandDepenses.tsx` sous forme de mots-clés. Trois listes de la même
+// chose : celle qui affiche ne connaissait ni « Taxe mairie » ni « École ».
+const EN_HAUT: readonly IdCategorieDepense[] = ['transport', 'repas', 'taxe_mairie'];
 
-const OTHER_CATS = [
-  'Loyer', 'Famille', 'Tontine', 'Santé',
-  'Téléphone', 'Marchandise', 'École', 'Autre',
-];
+// Vignettes LOCALES : ces trois images étaient servies par un hébergeur
+// distant. Sans réseau — le cas courant au marché — une marchande qui ne
+// lit pas voyait trois cases vides et ne pouvait plus choisir sa catégorie.
+// Même correction que les tuiles de l'accueil (#157).
+const VIGNETTE: Readonly<Record<string, string>> = {
+  transport:   emojiTile('🚌'),
+  repas:       emojiTile('🍚'),
+  taxe_mairie: emojiTile('🏛️'),
+};
+
+const QUICK_ACTIONS = EN_HAUT.map(id => ({ id, label: libelleParId(id), img: VIGNETTE[id] }));
+const AUTRES_CATEGORIES = CATEGORIES_DEPENSE.filter(c => !EN_HAUT.includes(c.id));
 
 function getVocalHint(): string {
   const h = new Date().getHours();
@@ -45,6 +52,12 @@ export function DepenseForm() {
   const { enregistrerDepense, transactions } = useCaisse();
   const [step, setStep]               = useState<1|2>(1);
   const [description, setDescription] = useState('');
+  // LA CATÉGORIE TOUCHÉE — DEP-02. `undefined` tant qu'elle n'en a touché
+  // aucune, et ça reste `undefined` si elle écrit ou dicte son motif : on
+  // n'invente pas une catégorie à partir de ses mots (c'est ce que faisait
+  // l'écran d'en face). Une dépense sans catégorie s'affiche « Catégorie pas
+  // notée » — une réponse, pas un trou.
+  const [categorie, setCategorie] = useState<IdCategorieDepense | undefined>(undefined);
   const [montant, setMontant]         = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   // Verrou SYNCHRONE anti double-clic (l'état React ne bloque qu'au render suivant).
@@ -62,7 +75,10 @@ export function DepenseForm() {
         const desc = String(a.description || a.categorie || '').trim() || 'Dépense';
         const montant = Number(a.montant);
         try {
-          await enregistrerDepense(montant, desc);
+          // Dictée : aucune catégorie n'a été TOUCHÉE. On envoie celle qui
+          // est éventuellement sélectionnée à l'écran, jamais une déduite des
+          // mots dictés.
+          await enregistrerDepense(montant, desc, categorie);
           await reloadTransactions();
           await speak('Dépense enregistrée');
           setDescription('');
@@ -93,7 +109,7 @@ export function DepenseForm() {
     enregEnCoursRef.current = true;
     setIsProcessing(true);
     try {
-      await enregistrerDepense(m, description.trim());
+      await enregistrerDepense(m, description.trim(), categorie);
       await reloadTransactions();
       speak('Dépense de ' + m.toLocaleString() + ' francs enregistrée');
       navigate(-1);
@@ -161,7 +177,7 @@ export function DepenseForm() {
         <div style={{ flexShrink:0, padding:'12px 14px 28px', background:BG, borderTop:'1px solid var(--trait)' }}>
           <motion.button whileTap={{ scale:0.97 }} onClick={() => { if (canProceed) setStep(2); }}
             style={{ width:'100%', background: canProceed ? P : '#E0E0E0', color: canProceed ? 'white' : 'var(--encre-4)', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor: canProceed ? 'pointer' : 'default', fontFamily:'inherit', boxShadow: canProceed ? `0 4px 16px ${P}55` : 'none', transition:'all 0.2s' }}>
-            + Noter une dépense
+            + Faire une dépense
           </motion.button>
         </div>
       }
@@ -176,7 +192,7 @@ export function DepenseForm() {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
             {QUICK_ACTIONS.map((q, i) => (
               <motion.button key={q.id} whileTap={{ scale:0.94 }}
-                onClick={() => { setDescription(q.label); setStep(2); }}
+                onClick={() => { setDescription(q.label); setCategorie(q.id); setStep(2); }}
                 style={{ borderRadius:16, overflow:'hidden', border:`2px solid ${description===q.label ? P : 'transparent'}`, cursor:'pointer', padding:0, position:'relative', height:110, fontFamily:'inherit' }}>
                 <img src={q.img} alt={q.label} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                 <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom,rgba(0,0,0,0) 30%,rgba(0,0,0,0.65) 100%)' }} />
@@ -201,13 +217,13 @@ export function DepenseForm() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={canProceed ? P : '#aaa'} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             <input
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={e => { setDescription(e.target.value); setCategorie(undefined); }}
               onKeyDown={e => { if (e.key === 'Enter' && canProceed) setStep(2); }}
               placeholder='Ex: "Médicaments", "Électricité"...'
               style={{ flex:1, border:'none', outline:'none', fontSize:13, color:'var(--encre)', background:'transparent', fontFamily:'inherit' }}
             />
             {description && (
-              <motion.button whileTap={{ scale:0.9 }} onClick={() => setDescription('')}
+              <motion.button whileTap={{ scale:0.9 }} onClick={() => { setDescription(''); setCategorie(undefined); }}
                 style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </motion.button>
@@ -232,11 +248,11 @@ export function DepenseForm() {
             {showOthers && (
               <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.25 }} style={{ overflow:'hidden' }}>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
-                  {OTHER_CATS.map(label => (
-                    <motion.button key={label} whileTap={{ scale:0.95 }}
-                      onClick={() => { setDescription(label); setStep(2); }}
-                      style={{ padding:'11px 8px', borderRadius:14, border:`1.5px solid ${description===label ? P : '#EDE7DE'}`, background: description===label ? P : 'white', color: description===label ? 'white' : '#5a4030', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s', textAlign:'center' }}>
-                      {label}
+                  {AUTRES_CATEGORIES.map(c => (
+                    <motion.button key={c.id} whileTap={{ scale:0.95 }}
+                      onClick={() => { setDescription(c.libelle); setCategorie(c.id); setStep(2); }}
+                      style={{ padding:'11px 8px', borderRadius:14, border:`1.5px solid ${categorie===c.id ? P : '#EDE7DE'}`, background: categorie===c.id ? P : 'white', color: categorie===c.id ? 'white' : '#5a4030', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s', textAlign:'center' }}>
+                      {c.libelle}
                     </motion.button>
                   ))}
                 </div>
@@ -291,12 +307,17 @@ export function DepenseForm() {
 
         <SyncEchecsBanner />
 
-        {/* Description + Changer */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+        {/* Ce qu'elle a choisi + le bouton pour y revenir.
+            « Changer » tout court ne disait pas CE QUE ça change : Patrick l'a
+            relevé sur la recette (MAR-DEP-001). Le bouton le nomme, et il passe
+            sous la ligne pour que la phrase entière tienne sur 390 px sans
+            écraser le motif. */}
+        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
           <span style={{ fontSize:15, fontWeight:800, color:P }}>{description}</span>
           <motion.button whileTap={{ scale:0.95 }} onClick={() => setStep(1)}
-            style={{ background:P, color:'white', border:'none', borderRadius:10, padding:'8px 16px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-            Changer
+            aria-label="Changer la catégorie de dépense"
+            style={{ alignSelf:'flex-start', background:P, color:'white', border:'none', borderRadius:10, padding:'10px 16px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+            Changer la catégorie de dépense
           </motion.button>
         </div>
 

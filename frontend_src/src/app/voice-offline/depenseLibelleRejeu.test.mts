@@ -111,7 +111,23 @@ function motifRecu(corps: Record<string, unknown>, champsLus: string[]): boolean
 async function run() {
   const cles = clesDuPayloadDepense();
   const champsLus = champsMotifLusParLeServeur();
-  const champMotif = cles.filter((c) => c !== "montant" && c !== "idempotency_key");
+  // CE QUI N'EST PAS UN MOTIF, et qui est écrit ici plutôt que deviné.
+  //
+  // T0 ne compte que les champs qui pourraient PORTER LE MOTIF : c'est la
+  // duplication `notes` + `description` qu'il surveille. Le payload en porte
+  // d'autres, qui disent autre chose — et ne pas les nommer reviendrait à
+  // faire dire à T0 « le payload n'a qu'un champ », ce qui n'a jamais été son
+  // propos et deviendrait faux au premier ajout légitime.
+  //
+  //   montant, idempotency_key : présents depuis DEP-01.
+  //   categorie                : DEP-02 — la catégorie TOUCHÉE par la
+  //                              marchande. Un identifiant fermé
+  //                              (`taxe_mairie`), pas du texte libre : le
+  //                              serveur le VÉRIFIE contre sa liste, et il ne
+  //                              peut donc pas servir de second motif. Son
+  //                              propre passage par la file est prouvé en T6.
+  const PAS_UN_MOTIF = ["montant", "idempotency_key", "categorie"];
+  const champMotif = cles.filter((c) => !PAS_UN_MOTIF.includes(c));
 
   console.log("\nCe que le code dit aujourd’hui :");
   console.log(`  payload de CaisseContext : { ${cles.join(", ")} }`);
@@ -158,6 +174,30 @@ async function run() {
   {
     const corps = await rejouer({ montant: 300, idempotency_key: "dep-rejeu-4" });
     ok(!motifRecu(corps, champsLus), "T5 une dépense sans motif n’en invente pas un");
+  }
+
+  // T6 — DEP-02 : LA CATÉGORIE TRAVERSE LA FILE, ELLE AUSSI.
+  //
+  // Le motif a été perdu une première fois parce que personne ne regardait ce
+  // qui SORT de la file. La catégorie emprunte exactement le même chemin : une
+  // dépense notée au marché sans réseau dort dans la file et n'est rejouée que
+  // des heures plus tard. Si elle se perdait là, le défaut serait le même,
+  // simplement plus difficile à voir — l'écran afficherait « Catégorie pas
+  // notée » sur une dépense que la marchande a bel et bien catégorisée.
+  {
+    const corps = await rejouer({
+      montant: 2000, description: MOTIF, categorie: "taxe_mairie", idempotency_key: "dep-rejeu-5",
+    });
+    ok(corps.categorie === "taxe_mairie", "T6 la catégorie touchée traverse le rejeu hors ligne, telle quelle");
+    ok(motifRecu(corps, champsLus), "T6 et le motif l’accompagne — la catégorie ne prend pas sa place");
+  }
+
+  // T7 — ET ELLE NE S'INVENTE PAS. Une file écrite avant DEP-02 n'a pas de
+  // catégorie ; le rejeu ne doit pas lui en fabriquer une à partir du motif,
+  // qui est précisément la faute fermée par DEP-02 côté écran.
+  {
+    const corps = await rejouer({ montant: 700, description: MOTIF, idempotency_key: "dep-rejeu-6" });
+    ok(corps.categorie === undefined, "T7 une file d’avant DEP-02 rejoue SANS catégorie — on n’en déduit pas une du motif");
   }
 
   console.log(
