@@ -8,18 +8,18 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **412** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 434 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **408** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 430 |
 | — littéraux (phrase fixe en dur) | 205 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 94 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
 | — relais (`dire = (t) => speak(t)`) | 17 |
-| — clés i18n (`speakMessage('…')`, `t('…')`) | 48 |
+| — clés i18n (`speakMessage('…')`, `t('…')`) | 44 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **255** |
 | Dont dynamiques (avec variables) | 94 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **65** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
-| Fichiers avec au moins un site d'appel | 77 |
+| Fichiers avec au moins un site d'appel | 75 |
 | Attributs `aria-label` (lecteur d'écran uniquement) | 298 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
@@ -62,7 +62,6 @@
 | `components/shared/ReceptionPaiementModal.tsx` | partage | 4 | 2 | 1 | 1 | 0 | 0 | 0 |
 | `components/shared/UniversalParametres.tsx` | marchand_autre | 4 | 3 | 0 | 0 | 0 | 2 | 0 |
 | `contexts/ObjectifContext.tsx` | marchand_autre | 4 | 2 | 2 | 0 | 0 | 0 | 2 |
-| `components/auth/OnboardingSlides.tsx` | auth | 3 | 0 | 0 | 0 | 0 | 3 | 0 |
 | `components/cooperative/Stock.tsx` | stock | 3 | 2 | 1 | 0 | 0 | 0 | 0 |
 | `components/cooperative/TresorerieCooperative.tsx` | cooperative | 3 | 2 | 1 | 0 | 0 | 0 | 2 |
 | `components/marchand/Fidelite.tsx` | marchand_autre | 3 | 1 | 2 | 0 | 0 | 0 | 2 |
@@ -82,7 +81,6 @@
 | `contexts/AppContext.tsx` | contexte | 2 | 0 | 1 | 1 | 0 | 0 | 1 |
 | `contexts/CaisseContext.tsx` | caisse | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `components/auth/ChangePasswordScreen.tsx` | auth | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
-| `components/auth/Welcome.tsx` | auth | 1 | 0 | 0 | 0 | 0 | 1 | 0 |
 | `components/backoffice/BOLogin.tsx` | auth | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/backoffice/BONotifications.tsx` | backoffice | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
 | `components/cooperative/CooperativeHome.tsx` | cooperative | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
@@ -114,8 +112,8 @@
 | partage | 37 | 24 | 0 |
 | wallet | 34 | 36 | 18 |
 | caisse | 33 | 0 | 0 |
-| auth | 28 | 17 | 0 |
 | vente | 27 | 0 | 0 |
+| auth | 24 | 17 | 0 |
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 17 | 9 | 1 |
 | depense | 10 | 11 | 4 |
@@ -171,20 +169,6 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 1166 | `parle` | dynamique | chiffresEpeles(phone) |  |  |
 | 1260 | `parle` | literal | Voilà, tu peux parler maintenant. Touche le micro et dis ton numéro. |  |  |
 | 1501 | `parle` | template | Version {__APP_VERSION__}, {__BUILD_ID__} | `__APP_VERSION__` `__BUILD_ID__` |  |
-
-### `components/auth/OnboardingSlides.tsx` — auth
-
-| Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
-|---:|---|---|---|---|:-:|
-| 60 | `direIntro` | cle_i18n | INTRO_HISTOIRE1 |  |  |
-| 73 | `direIntro` | cle_i18n | INTRO_HISTOIRE1 |  |  |
-| 83 | `direIntro` | cle_i18n | INTRO_BRAVO |  |  |
-
-### `components/auth/Welcome.tsx` — auth
-
-| Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
-|---:|---|---|---|---|:-:|
-| 77 | `direIntro` | cle_i18n | INTRO_HISTOIRE1 |  |  |
 
 ### `components/backoffice/BOLayout.tsx` — backoffice
 

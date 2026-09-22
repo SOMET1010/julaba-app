@@ -76,6 +76,31 @@ Captures : `docs/parcours/captures/ecran-1/AVANT.png` · `APRES.png`.
 Garde-fou : `test:akwaba-voix` (quatre situations, une seule sortie, et la
 règle figée surveillée sans être desserrée).
 
+### S3 — Écran 2, Tantie se présente
+
+| Id | Défaut relevé par le banc | Statut |
+|---|---|---|
+| TNT-01a | **Muet au montage** — le design disait « Tata LIT l'écran toute seule » ; sans clip, personne ne prenait le relais. | **FERMÉ** |
+| TNT-01b | **Muet sous les trois éléments**, dont « Réécouter Tantie Nanti Lou » — un bouton qui promet de répéter et ne répète rien. | **FERMÉ** |
+| TNT-02 | **La présentation partait de deux endroits** — `Welcome.commencer` la lançait pour « accompagner » l'écran suivant, qui la dit désormais lui-même. Avec un clip, la seconde source supplanterait la première en plein milieu. Une seule source maintenant : l'écran 2. | **FERMÉ** |
+| TNT-03 | Charte : `0 jeton --caisse-*`. Seule cause restante de la sortie rouge du banc. | **HORS PÉRIMÈTRE JUSTIFIÉ** |
+
+**Preuve de fermeture** (banc, écrans 1 et 2, sans réseau) :
+
+```
+écran 2 avant : MUET (0 au montage, 0/3 au geste)
+écran 2 après : 1 au montage, 3/3 au geste, impasses aucune
+                « Je serai avec toi chaque jour dans ton commerce. Tu peux
+                  toucher l'écran. Tu peux aussi écouter. On est ensemble. »
+écran 1        : inchangé — 1 au montage, 2/2 au geste, impasses aucune
+ZÉRO REFUS des deux côtés : AKW-02 respectée, on ne passe pas par la garde de rôle.
+```
+
+Captures : `docs/parcours/captures/ecran-2/AVANT.png` · `APRES.png`.
+Le module de voix de l'entrée a été renommé AVANT ce lot, dans un commit qui ne
+fait que cela : `entreeAkwabaVoix` → `entreeVoixAvantConnexion`. Il ne sert pas
+qu'Akwaba ; le nom devait cesser de mentir.
+
 ---
 
 ## Le reste du chemin — non commencé
@@ -84,7 +109,6 @@ Périmètre déclaré par Patrick : **écrans 1 → 5 uniquement** pour l'instan
 
 | Écran | Ce que le banc reproche | Statut |
 |---|---|---|
-| 2 — Tantie se présente | muet · 0 jeton | OUVERT |
 | 3 — Ton numéro | muet · 1 impasse /14 · 0 jeton · 46 couleurs en dur | OUVERT |
 | 5 — Caisse | `ZÉRO QUI MENT` (« Aucun produit ») · vouvoie (à l'écran ET à voix haute) | OUVERT |
 

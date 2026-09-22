@@ -9,7 +9,7 @@ import { BrandSignature } from "../shared/BrandSignature";
 import { useNavigate } from "react-router";
 import logoDge from "../../../assets/images/logo-dge.png";
 import logoAnsut from "../../../assets/images/logo-ansut.png";
-import { direIntro, stopIntro } from '../../services/onboardingVoix';
+import { stopIntro } from '../../services/onboardingVoix';
 import { direEntreeAvantConnexion } from '../../services/entreeVoixAvantConnexion';
 import { tParle } from '../../i18n/voice/runtime';
 import { speak as direTexte } from '../../services/audioManager';
@@ -74,7 +74,11 @@ export function Welcome({ onComplete }: WelcomeProps) {
   const commencer = () => {
     stopIntro();
     laisserPresentationContinuer.current = true;
-    void direIntro('histoire1');
+    // LA PRÉSENTATION APPARTIENT DÉSORMAIS À L'ÉCRAN 2 (TNT-01). Elle était
+    // lancée ici pour contourner le blocage autoplay, et « accompagnait »
+    // l'écran suivant. Mais l'écran 2 la dit maintenant lui-même : la laisser
+    // partir des deux endroits donnerait DEUX sources pour une seule phrase —
+    // avec clip, la seconde supplanterait la première en plein milieu.
     if (onComplete) onComplete(); else navigate('/login');
   };
 

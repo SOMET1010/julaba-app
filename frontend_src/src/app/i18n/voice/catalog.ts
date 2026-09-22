@@ -167,6 +167,12 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   // SCIEMMENT — et c'est écrit, plutôt que d'aligner le texte sur un son périmé.
   { id: 'AKWABA_ACCUEIL', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Akwaba. Pour vendre, touche un produit, ou parle à Tantie Nanti Lou. On est ensemble.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/Welcome.tsx', note: 'Recours quand aucun clip n\'est embarque. Le clip, lui, dit encore « Tata » : reenregistrement requis (INTRO_CLIPS.accueil).' },
   { id: 'AKWABA_RETOUR', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Re-bonjour ! On y va.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/Welcome.tsx', note: 'Elle est deja venue (utils/parcours.estHabituee). Phrase reprise telle quelle de INTRO_CLIPS.retour.' },
+  // ── TANTIE SE PRÉSENTE (TNT-01) — écran 2, toujours avant connexion ───────
+  // Le banc l'a relevé MUET au montage ET sous chacun des trois éléments, y
+  // compris « Réécouter Tantie Nanti Lou » — un bouton qui promet de répéter
+  // et ne répète rien. Textes repris du registre `onboardingVoix.ts`.
+  { id: 'TANTIE_PRESENTATION', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Je serai avec toi chaque jour dans ton commerce. Tu peux toucher l\'écran. Tu peux aussi écouter. On est ensemble.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/OnboardingSlides.tsx', note: 'Recours quand aucun clip n\'est embarque. Sert le montage ET le bouton « Reecouter » — meme phrase, meme cle.' },
+  { id: 'TANTIE_BRAVO', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Bravo ! Nous sommes prêtes. Ouvrons ta boutique.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/OnboardingSlides.tsx', note: 'Dite en entrant. N\'a jamais le droit de RETARDER l\'entree : la porte s\'ouvre, la phrase accompagne.' },
   // ── ACCUEIL MARCHAND (ACC-01) — l'écran vu à CHAQUE ouverture ─────────────
   // Le banc terrain l'a relevé muet, avec deux boutons morts et un « 0 F »
   // affiché alors que rien n'avait pu être lu. Trois situations, trois clés :
