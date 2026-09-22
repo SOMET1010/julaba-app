@@ -10,6 +10,9 @@ import { useNavigate } from "react-router";
 import logoDge from "../../../assets/images/logo-dge.png";
 import logoAnsut from "../../../assets/images/logo-ansut.png";
 import { direIntro, stopIntro } from '../../services/onboardingVoix';
+import { direAkwaba } from '../../services/entreeAkwabaVoix';
+import { tParle } from '../../i18n/voice/runtime';
+import { speak as direTexte } from '../../services/audioManager';
 import { estHabituee } from '../../utils/parcours';
 
 interface WelcomeProps {
@@ -19,11 +22,42 @@ interface WelcomeProps {
 export function Welcome({ onComplete }: WelcomeProps) {
   const navigate = useNavigate();
   const laisserPresentationContinuer = useRef(false);
+
   // Tata ACCUEILLE (elle ne présente pas une appli) : elle parle du COMMERCE de
-  // la marchande, et crée tout de suite un lien d'appartenance. Clip local
-  // uniquement : jamais de voix du navigateur en repli.
+  // la marchande, et crée tout de suite un lien d'appartenance.
+  //
+  // ── AKW-01 — CE BONJOUR N'ARRIVAIT JAMAIS ────────────────────────────────
+  // Banc terrain, écran 1 : « MUET » et « 1 impasse /2 ». `direIntro` ne joue
+  // qu'un clip enregistré et rend `Promise<void>` quand il n'y en a pas — donc
+  // dans TOUT build livré, le drapeau des prototypes étant éteint. Le premier
+  // écran du téléphone ne disait pas bonjour, et le bouton qui le promettait
+  // ne faisait rien.
+  //
+  // `direAkwaba` joue le MÊME clip (registre figé, règle inchangée) mais
+  // RAPPORTE ce qu'il en advient. Le texte ne part que s'il ne reste rien à
+  // dire — jamais par-dessus le clip, et jamais après une coupure : quand la
+  // marchande touche « Écouter et entrer » pendant le bonjour, ce silence est
+  // sa décision. Preuve : services/entreeAkwabaVoix.test.mts.
+  //
+  // ── POURQUOI PAS `speakMessage` ICI ──────────────────────────────────────
+  // Le banc l'a montré, et c'est la vraie leçon de cet écran : le rendu de
+  // `speakMessage` passe par `AppContext.speak`, qui refuse tout ce qui n'est
+  // pas un marchand connecté (`role-non-marchand`). Or SUR CET ÉCRAN PERSONNE
+  // N'EST CONNECTÉ — c'est le premier du téléphone. La phrase partait, était
+  // refusée, et l'écran restait muet en silence.
+  //
+  // On garde donc la CLÉ de catalogue (`tParle` en donne la forme parlée dans
+  // la langue active) et on la remet au moteur audio directement, comme la
+  // caisse le fait. Le muet global reste respecté : il vit dans `audioManager`,
+  // pas dans la garde de rôle.
   const accueille = useCallback(() => {
-    try { direIntro(estHabituee() ? 'retour' : 'accueil'); } catch { /* ignore */ }
+    const habituee = estHabituee();
+    void direAkwaba(habituee ? 'retour' : 'accueil')
+      .then((r) => {
+        if (!r.doitDireLeTexte) return;
+        void direTexte(tParle(habituee ? 'AKWABA_RETOUR' : 'AKWABA_ACCUEIL'));
+      })
+      .catch(() => { /* un bonjour qui casse ne bloque pas l'entrée */ });
   }, []);
 
   useEffect(() => {

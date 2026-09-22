@@ -155,6 +155,18 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'TATA_VENTES_LECTURE_EN_COURS', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Je vais chercher tes ventes…', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'manus', source: 'services/etatVentesPassees.ts', note: 'Avant toute réponse : ni liste, ni zéro, ni « rien vendu ».' },
   { id: 'TATA_VENTES_AUCUNE', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Le serveur a répondu : tu n\'as encore rien vendu.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'manus', source: 'services/etatVentesPassees.ts', note: 'La SEULE situation où « pas encore de vente » est vrai : la requête a réussi et ne rend rien.' },
   { id: 'TATA_VENTES_REESSAYER', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Réessayer de lire mes ventes', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'manus', source: 'components/marchand/VentesPassees.tsx', note: 'Libellé du bouton de nouvelle tentative — un échec sans recours en serait un deuxième.' },
+  // ── AKWABA (AKW-01) — le tout PREMIER écran du téléphone ──────────────────
+  // Le banc l'a relevé muet, avec un bouton « Écouter Tantie Nanti Lou » qui
+  // ne faisait rien. Les phrases ne sont pas inventées : elles viennent du
+  // registre `services/onboardingVoix.ts`.
+  //
+  // UN ÉCART ASSUMÉ, ET NOMMÉ. Le clip enregistré dit encore « parle à Tata » ;
+  // le nom validé est « Tantie Nanti Lou », et le registre le dit lui-même
+  // (« RÉENREGISTREMENT REQUIS »). La forme PARLÉE ci-dessous porte donc le
+  // bon nom, pendant que le clip garde l'ancien. Les deux formes diffèrent
+  // SCIEMMENT — et c'est écrit, plutôt que d'aligner le texte sur un son périmé.
+  { id: 'AKWABA_ACCUEIL', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Akwaba. Pour vendre, touche un produit, ou parle à Tantie Nanti Lou. On est ensemble.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/Welcome.tsx', note: 'Recours quand aucun clip n\'est embarque. Le clip, lui, dit encore « Tata » : reenregistrement requis (INTRO_CLIPS.accueil).' },
+  { id: 'AKWABA_RETOUR', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Re-bonjour ! On y va.', frMarche: null, variables: [], audioMode: 'clip', statut: 'migre', owner: 'manus', source: 'components/auth/Welcome.tsx', note: 'Elle est deja venue (utils/parcours.estHabituee). Phrase reprise telle quelle de INTRO_CLIPS.retour.' },
   // ── ACCUEIL MARCHAND (ACC-01) — l'écran vu à CHAQUE ouverture ─────────────
   // Le banc terrain l'a relevé muet, avec deux boutons morts et un « 0 F »
   // affiché alors que rien n'avait pu être lu. Trois situations, trois clés :
