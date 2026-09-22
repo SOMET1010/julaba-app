@@ -38,6 +38,28 @@ on:
         description: 'VITE_API_URL — sans elle, l app n atteint aucun backend'
         required: true
         default: 'https://julaba-api.onrender.com/api/v1'
+      voix_dyu:
+        # LA VOIX DIOULA, ETEINTE PAR DEFAUT.
+        #
+        # Le modele MMS est en licence CC BY-NC : utilisable pour MESURER, pas
+        # pour distribuer. A la distribution il sera remplace par de vrais
+        # enregistrements. Allume, un seul drapeau leve les trois verrous —
+        # voix dans l'APK, langue selectionnable, decor peuple — et ajoute
+        # ~36,6 Mio. Eteint, l'APK ne contient rien de dioula.
+        description: 'Embarquer la voix dioula et rendre la langue selectionnable (build de TEST)'
+        required: true
+        default: 'false'
+      dyu_argent:
+        # L'ARGENT DIT EN DIOULA — POUR JUGER LE SON, JAMAIS LE COMPTE.
+        #
+        # Exige voix_dyu. Les nombres dioula sont en brouillon non valide, et
+        # un nombre mandingue nu est ambigu entre francs et dorome : un montant
+        # peut sonner juste et etre faux. NE JAMAIS allumer sur un APK remis a
+        # une marchande. Chaque montant dit en dioula laisse une trace au
+        # journal de voix.
+        description: 'AUSSI dire les montants en dioula — build de mesure uniquement'
+        required: true
+        default: 'false'
       voix_prototype:
         # LES CLIPS PROTOTYPES SONT DANS L'APPLICATION, MAIS ETEINTS.
         #
@@ -104,6 +126,8 @@ jobs:
         env:
           VITE_API_URL: ${{ inputs.api_url }}
           VITE_JULABA_VOICE_PREVIEW: ${{ inputs.voix_prototype }}
+          JULABA_VOIX_DYU: ${{ inputs.voix_dyu == 'true' && '1' || '0' }}
+          JULABA_DYU_ARGENT: ${{ inputs.dyu_argent == 'true' && '1' || '0' }}
         run: npm run build -w frontend_src
 
       - name: Copier le front dans le projet Android
@@ -135,6 +159,8 @@ jobs:
 
       - name: Poser la voix hors-ligne
         working-directory: android
+        env:
+          JULABA_VOIX_DYU: ${{ inputs.voix_dyu == 'true' && '1' || '0' }}
         run: ./scripts/installer-voix.sh
 
       - name: Construire l APK de debug
