@@ -157,6 +157,14 @@ jobs:
             android/app/src/main/assets/sherpa-kroko-fr
           key: voix-hors-ligne-${{ hashFiles('android/scripts/installer-voix.sh') }}
 
+      # La conversion de la voix dioula passe par onnx/onnxruntime : le port
+      # publie est un export pour NAVIGATEUR et doit etre reecrit a la
+      # convention de sherpa, puis quantifie. Ces paquets ne servent QUE la
+      # voix dioula, donc on ne les installe que si elle est demandee.
+      - name: Outils de conversion de la voix dioula
+        if: inputs.voix_dyu == 'true'
+        run: python3 -m pip install --quiet --disable-pip-version-check onnx onnxruntime
+
       - name: Poser la voix hors-ligne
         working-directory: android
         env:
