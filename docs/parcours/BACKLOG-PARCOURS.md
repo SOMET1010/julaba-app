@@ -170,6 +170,10 @@ son téléphone le 22/09.
 | DEP-02c | **`Transaction.category` contenait le MOTIF en minuscules** (« taxe mairie »), et le camembert « dépenses par catégorie » de `ResumeCaisse` groupait dessus. Un champ nommé « catégorie » qui portait du texte libre. De plus, une projection sur deux ne le lisait pas du tout : après rechargement, la donnée disparaissait. | **FERMÉ** |
 | MAR-DEP-001 (mots) | « + Noter une dépense » → « + Faire une dépense » (2 endroits) ; « Changer » → « Changer la catégorie de dépense ». Le **libellé** de la dépense était déjà fermé par `5259490`. | **FERMÉ** |
 | DEP-03 | « Dernier taxe mairie : — » — l'historique de l'écran 2 colle le motif après « Dernier » sans accord. Vu à la capture 390×844 en fermant DEP-02. Dette VOISINE nommée, pas fermée. | **OUVERT** |
+| STK-01a (MAR-STK-002) | **« Erreur lors de l'enregistrement du prix produit ».** `PUT /caisse/produits/:id` était un REMPLACEMENT COMPLET déguisé en modification : aucun `COALESCE` sur `nom`, `prix`, `prix_achat`, `categorie`, `stock`, `unite`. `nom` étant NOT NULL, corriger un prix seul renvoyait **500**. | **FERMÉ** |
+| STK-01b | **Et la faute inverse, silencieuse** : `prix` étant NULLABLE, une modification du seul stock (`updateProduct(id, { stock })`, deux appels dans `GestionStock`) **effaçait le prix** sans erreur. Le produit restait en rayon sans prix. | **FERMÉ** |
+| STK-01c | **`RETURNING *` puis `result[0]` sur un UPDATE.** `dataSource.query` rend `[lignes, nombre]` sur un UPDATE et les lignes sur un INSERT : la route répondait `{ produit: [ {…} ] }` sur un succès, et **200 `{ produit: [] }`** quand l'id n'était pas à la marchande. L'écran affichait « Produit mis à jour » sur une modification qui n'avait pas eu lieu. | **FERMÉ** |
+| STK-01d | **`Number('')` vaut zéro.** L'écran remet le champ à `''` quand la marchande l'efface ; vider la case du prix l'aurait écrit à **zéro**, et le produit serait parti en caisse à zéro franc. Dette VOISINE trouvée en fermant STK-01a. | **FERMÉ** |
 | MAR-VTE-001 | « Son clip Tata Nanti Lou n'est pas encore enregistré » — `useVoiceCore.ts:355`, **figé par VOICE-01**. | **OUVERT** — desserrage = décision de Patrick |
 | CAI-08 | « Choisir à l'écran » : Patrick a mis **deux heures** à comprendre. L'accueil dit déjà « parler ou toucher les produits » — un concept, deux langues. | **OUVERT** — arbitrage de formulation |
 | CAI-07 | Deux « J'ai compris » simultanés à l'écran. À revérifier : VOX-01 a peut-être fermé la cause. | **À REMESURER** |
@@ -224,7 +228,27 @@ désormais ce qui n'est PAS un motif (au lieu de compter tous les champs du
 payload), et deux assertions neuves (T6, T7) prouvent que la catégorie traverse
 la file hors ligne et ne s'invente pas au rejeu.
 
+**Preuve de fermeture de STK-01** (invariant sur base réelle) :
+
+```
+rouge avant : PUT { prix: 650 }   → 500   (nom NOT NULL, écrit à NULL)
+              PUT { stock: 8 }    → 500   — et sans le NOT NULL, prix effacé
+              PUT sur le produit d'une AUTRE marchande → 200 « c'est fait »
+              PUT sur un id inconnu                    → 200 « c'est fait »
+après       : 7 invariants verts · 250 invariants / 50 suites au total
+              la modification partielle ne change que ce qu'elle nomme
+              l'id qui n'est pas à elle → 404, et le produit n'a pas bougé
+              `prix: ''` (case vidée) → le prix ne bouge pas
+              `prix: 0` (choix écrit) → s'écrit
+```
+
+**La règle, en une phrase** : c'est la **présence de la clé** qui décide qu'une
+colonne est écrite, jamais la vérité de sa valeur. `{ prix: 0 }` est une
+décision et s'écrit ; `{}` ne dit rien du prix et ne le touche pas ; `''` est
+une case vidée, pas un zéro.
+
 Gardes : `cai-02-journee-fermee.spec.ts` · `dep-02-categorie-depense.spec.ts` ·
+`stk-01-modifier-produit.spec.ts` · `produit-champs-a-ecrire.spec.ts` ·
 `test:ecoute-caisse` · `test:resume-periode` · `test:categorie-depense` ·
 `test:depense-libelle`.
 

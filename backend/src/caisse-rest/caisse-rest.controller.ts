@@ -61,6 +61,85 @@ export function categorieDepense(valeur: unknown): string | null {
   return (CATEGORIES_DEPENSE as readonly string[]).includes(v) ? v : null;
 }
 
+/**
+ * LES COLONNES QU'UNE MODIFICATION DE PRODUIT A LE DROIT D'ÉCRIRE — STK-01.
+ *
+ * Une entrée par colonne, avec la façon de lire sa valeur. Ce qui n'est pas
+ * dans cette table n'est pas écrit : un corps de requête ne choisit pas les
+ * colonnes de la base.
+ *
+ * LA RÈGLE, ET ELLE TIENT EN UNE PHRASE : c'est la PRÉSENCE de la clé qui
+ * décide, jamais la vérité de la valeur. `{ prix: 0 }` est une décision de la
+ * marchande et s'écrit ; `{}` ne dit rien du prix et ne le touche pas. Un
+ * `body.prix || 0` confondrait les deux, et c'est cette confusion — « absent »
+ * lu comme « zéro » — qui revient dans chaque défaut d'argent de ce dépôt.
+ */
+/**
+ * UN NOMBRE SAISI DANS UN FORMULAIRE — et la chaîne vide n'en est pas un.
+ *
+ * L'écran des produits remet le champ à `''` quand la marchande l'efface
+ * (`e.target.value === '' ? '' : Number(...)`). `Number('')` vaut ZÉRO : sans
+ * cette lecture, vider la case du prix l'aurait écrit à zéro, et le produit
+ * serait parti en caisse à zéro franc. Un champ vidé n'est pas une décision de
+ * vendre gratuitement — c'est un champ vidé, et on n'y touche pas.
+ */
+function nombreSaisi(v: unknown): number {
+  if (typeof v === 'string' && v.trim() === '') return NaN; // écarté par l'appelant
+  return Number(v);
+}
+
+const COLONNES_PRODUIT: ReadonlyArray<{ cle: string; colonne: string; lire: (v: unknown) => unknown }> = [
+  { cle: 'nom',             colonne: 'nom',             lire: v => String(v) },
+  { cle: 'prix',            colonne: 'prix',            lire: nombreSaisi },
+  { cle: 'prix_achat',      colonne: 'prix_achat',      lire: nombreSaisi },
+  { cle: 'categorie',       colonne: 'categorie',       lire: v => (v == null ? null : String(v)) },
+  { cle: 'stock',           colonne: 'stock',           lire: nombreSaisi },
+  { cle: 'unite',           colonne: 'unite',           lire: v => (v == null ? null : String(v)) },
+  { cle: 'image',           colonne: 'image',           lire: v => (v == null || v === '' ? null : String(v)) },
+  { cle: 'seuil_alerte',    colonne: 'seuil_alerte',    lire: v => (v == null ? null : nombreSaisi(v)) },
+  { cle: 'date_peremption', colonne: 'date_peremption', lire: v => (v == null || v === '' ? null : v) },
+  // La promo se RETIRE en envoyant `null` : ici, `null` est une valeur, pas une
+  // absence. C'est précisément pourquoi la présence de la clé et la valeur sont
+  // deux questions distinctes.
+  { cle: 'prix_promo',      colonne: 'prix_promo',      lire: v => (v == null || v === '' ? null : Number(v)) },
+  { cle: 'promo_fin',       colonne: 'promo_fin',       lire: v => (v == null || v === '' ? null : v) },
+];
+
+/**
+ * LA PREMIÈRE LIGNE D'UN `RETURNING` — STK-01, et c'est un piège réel.
+ *
+ * `dataSource.query()` ne rend pas la même FORME selon la commande : sur un
+ * INSERT ... RETURNING, les lignes ; sur un UPDATE ... RETURNING, le couple
+ * `[lignes, nombre_de_lignes_touchées]`. L'ancien code faisait `result[0]` dans
+ * les deux cas et répondait donc, sur une modification RÉUSSIE,
+ * `{ produit: [ {…} ] }` — un tableau là où l'écran attend un produit. Et sur
+ * une modification qui ne touchait rien, `{ produit: [] }` avec un 200 : la
+ * forme même empêchait de distinguer le succès de l'échec.
+ *
+ * On lit donc la forme, au lieu de la supposer.
+ */
+export function premiereLigne(resultat: unknown): any | undefined {
+  if (!Array.isArray(resultat)) return undefined;
+  const tete = resultat[0];
+  return Array.isArray(tete) ? tete[0] : tete;
+}
+
+export function colonnesProduitAEcrire(body: Record<string, unknown> | null | undefined): Array<{ colonne: string; valeur: unknown }> {
+  const corps = body ?? {};
+  const sorties: Array<{ colonne: string; valeur: unknown }> = [];
+  for (const { cle, colonne, lire } of COLONNES_PRODUIT) {
+    if (!Object.prototype.hasOwnProperty.call(corps, cle)) continue;
+    const valeur = lire(corps[cle]);
+    // Un nombre illisible (« abc », NaN) n'est pas une valeur : l'écrire
+    // mettrait NULL dans une colonne d'argent. On préfère ne pas y toucher.
+    if (typeof valeur === 'number' && !Number.isFinite(valeur)) continue;
+    // `nom` est NOT NULL : un nom vide n'est pas un nom.
+    if (cle === 'nom' && !String(valeur).trim()) continue;
+    sorties.push({ colonne, valeur });
+  }
+  return sorties;
+}
+
 @UseGuards(JwtAuthGuard)
 @Controller('caisse')
 export class CaisseRestController {
@@ -760,22 +839,63 @@ export class CaisseRestController {
        body.seuil_alerte != null ? Number(body.seuil_alerte) : 10, body.date_peremption || null,
        body.prix_promo != null && body.prix_promo !== '' ? Number(body.prix_promo) : null, body.promo_fin || null]
     );
-    return { produit: result[0] };
+    return { produit: premiereLigne(result) };
   }
 
+  /**
+   * MODIFIER UN PRODUIT — STK-01, 22/09/2026.
+   *
+   * CE QUE CETTE ROUTE FAISAIT. Un `UPDATE ... SET nom=$1, prix=$2, ...` sur
+   * six colonnes sans COALESCE : tout champ que le téléphone n'envoyait PAS
+   * était écrit à NULL. C'était un REMPLACEMENT COMPLET déguisé en
+   * modification, et il produisait deux fautes de natures opposées :
+   *
+   *   • `nom` est NOT NULL → une modification partielle faisait ÉCHOUER la
+   *     requête. C'est le « erreur lors de l'enregistrement du prix produit »
+   *     de la recette terrain (MAR-STK-002) : corriger un prix seul renvoyait
+   *     un 500.
+   *
+   *   • `prix` est NULLABLE → une modification du seul stock EFFAÇAIT le prix,
+   *     sans erreur. Le produit restait en rayon sans prix, et la caisse le
+   *     vendait à ce que l'aval voudrait bien reconstruire. Une information
+   *     d'argent perdue en silence : c'est ce que ce dépôt interdit partout.
+   *
+   *   • `RETURNING *` puis `result[0]` : quand l'id n'est pas à cette
+   *     marchande, aucune ligne n'est touchée, `result[0]` vaut `undefined`,
+   *     et la route répondait 200. L'écran disait « Produit mis à jour » sur
+   *     une modification qui n'avait pas eu lieu.
+   *
+   * CE QU'ELLE FAIT MAINTENANT. Elle n'écrit QUE les colonnes présentes dans
+   * le corps. « Absent » veut dire « on n'en a pas parlé » — jamais « zéro »,
+   * jamais « vide ». Un `prix: 0` explicite, lui, est un choix et s'écrit :
+   * c'est la présence de la clé qui décide, pas la vérité de la valeur.
+   * Et une modification qui ne touche aucune ligne le DIT.
+   */
   @Put('produits/:id')
   async updateProduit(@Param('id') id: string, @Body() body: any, @CurrentUser() user: User) {
+    const champs = colonnesProduitAEcrire(body);
+    if (champs.length === 0) {
+      // Un corps qui ne nomme rien ne modifie rien — et ce n'est pas un succès
+      // muet : sans ça, un formulaire vide repartirait avec « c'est fait ».
+      throw new BadRequestException('Aucun champ à modifier.');
+    }
+
+    const affectations = champs.map((c, i) => `${c.colonne}=$${i + 1}`).join(', ');
+    const valeurs = champs.map(c => c.valeur);
     const result = await this.dataSource.query(
-      `UPDATE produits SET nom=$1, prix=$2, prix_achat=$3, categorie=$4, stock=$5, unite=$6,
-       seuil_alerte=COALESCE($7, seuil_alerte), date_peremption=COALESCE($8, date_peremption),
-       prix_promo=$9, promo_fin=$10, updated_at=NOW()
-       WHERE id=$11 AND marchand_id=$12::text RETURNING *`,
-      [body.nom, body.prix, Number(body.prix_achat) || 0, body.categorie, body.stock, body.unite,
-       body.seuil_alerte != null ? Number(body.seuil_alerte) : null, body.date_peremption || null,
-       body.prix_promo != null && body.prix_promo !== '' ? Number(body.prix_promo) : null, body.promo_fin || null,
-       id, user.id]
+      `UPDATE produits SET ${affectations}, updated_at=NOW()
+        WHERE id=$${champs.length + 1} AND marchand_id=$${champs.length + 2}::text
+        RETURNING *`,
+      [...valeurs, id, user.id],
     );
-    return { produit: result[0] };
+    const produit = premiereLigne(result);
+    if (!produit) {
+      // Aucune ligne : l'id n'existe pas, ou il n'est pas à elle. Dans les deux
+      // cas la modification n'a PAS eu lieu, et le dire est tout l'objet de
+      // cette ligne — l'écran affichait « Produit mis à jour » par-dessus.
+      throw new NotFoundException("Ce produit n'existe pas, ou il n'est pas à toi.");
+    }
+    return { produit };
   }
 
   @Delete('produits/:id')
