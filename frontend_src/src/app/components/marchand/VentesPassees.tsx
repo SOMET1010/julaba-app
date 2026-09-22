@@ -18,12 +18,31 @@ import { toast } from 'sonner';
 import { NotificationButton } from './NotificationButton';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
+import {
+  CHIFFRE_INCONNU, annonceEtat, annonceFile, annonceTotal, chiffresLisibles, etatVentesPassees,
+} from '../../services/etatVentesPassees';
+import { ventesEnAttenteEnvoi } from '../../voice-offline/incidentsHorsLigne';
+import { useSpeakMessage } from '../../i18n/voice/speakMessage';
+import { useLectureHistorique } from '../../hooks/useLectureHistorique';
+import { t } from '../../i18n/voice/runtime';
 
-const P = '#AF5B23';
-const BG = '#F6F0E4';
+// LA CHARTE DE LA CAISSE, APPLIQUÉE ICI — rien de nouveau n'est dessiné.
+// Cet écran écrivait ses couleurs en dur (`#AF5B23`, `#1D9E75`, `#7c3aed`…)
+// pendant que la caisse lisait `--caisse-*` (styles/commerce.css, lot F).
+// Même charte, deux écrans : elle se LIT ici aussi, elle ne se recopie pas.
+// `P` reste le nom local de l'accent principal — c'est désormais le vert de
+// la planche, et `BG` le fond sable de l'écran (celui de `variante="caisse"`).
+const P = 'var(--caisse-vert)';
+const BG = 'var(--caisse-sable)';
+// Une variable CSS ne se concatène pas avec un alpha (`${P}40` donnerait
+// `var(--caisse-vert)40`, invalide). Les deux ombres teintées passent donc
+// par color-mix, comme commerce.css le fait déjà.
+const OMBRE_ONGLET = 'color-mix(in srgb, var(--caisse-vert) 25%, transparent)';
+const OMBRE_BOUTON = 'color-mix(in srgb, var(--caisse-vert) 33%, transparent)';
 // Pilote ESPÈCES : crédit désactivé (cf. POSCaisse CAISSE_CREDIT_ACTIF=false, #16-B).
 // On masque aussi l'onglet « Crédits » ici pour rester cohérent avec la caisse.
 const CAISSE_CREDIT_ACTIF = false;
+
 
 // ── Label jour ────────────────────────────────────────────────
 function dayLabel(date: Date): string {
@@ -126,18 +145,18 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
     if (!query.trim()) return <>{text}</>;
     const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
     return <>{parts.map((p, i) => p.toLowerCase() === query.toLowerCase()
-      ? <mark key={i} style={{ background:'rgba(175,91,35,0.2)', color:P, borderRadius:3, padding:'0 2px' }}>{p}</mark>
+      ? <mark key={i} style={{ background:'color-mix(in srgb, var(--caisse-vert) 20%, transparent)', color:P, borderRadius:3, padding:'0 2px' }}>{p}</mark>
       : p)}</>;
   }
 
   return (
     <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay: index * 0.04 }}
       onClick={basculer}
-      style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, overflow:'hidden', cursor:'pointer', marginBottom:8 }}>
+      style={{ background:'var(--caisse-ivoire)', border:'1.5px solid var(--trait)', borderRadius:16, overflow:'hidden', cursor:'pointer', marginBottom:8 }}>
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'13px 14px' }}>
         {/* Icône */}
-        <div style={{ width:46, height:46, borderRadius:14, background:'#F0FAF5', border:'1.5px solid #9fe1cb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2" strokeLinecap="round">
+        <div style={{ width:46, height:46, borderRadius:14, background:'var(--caisse-succes)', border:'1.5px solid color-mix(in srgb, var(--caisse-vert) 35%, transparent)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--caisse-vert)" strokeWidth="2" strokeLinecap="round">
             <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
             <line x1="3" y1="6" x2="21" y2="6"/>
             <path d="M16 10a4 4 0 0 1-8 0"/>
@@ -155,21 +174,21 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
             {/* Badge source — espacé à droite */}
             <span style={{
               marginLeft:4,
-              background: source === 'vocal' ? '#EBF3FD' : '#FFF3EA',
-              color: source === 'vocal' ? '#378ADD' : P,
-              border: `1px solid ${source === 'vocal' ? '#b5d4f4' : '#f5d5a8'}`,
+              background: source === 'vocal' ? 'var(--caisse-sable)' : 'var(--caisse-succes)',
+              color: source === 'vocal' ? 'var(--caisse-gris-texte)' : P,
+              border: `1px solid ${source === 'vocal' ? 'var(--commerce-line)' : 'color-mix(in srgb, var(--caisse-vert) 35%, transparent)'}`,
               borderRadius:6, padding:'2px 8px', fontSize:10, fontWeight:700
             }}>
               {source === 'vocal' ? 'vocal' : 'kassa'}
             </span>
             {estAnnulee && (
-              <span style={{ marginLeft:4, background:'#FDECEA', color:'#c0392b', border:'1px solid #f3c2b8', borderRadius:6, padding:'2px 8px', fontSize:10, fontWeight:700 }}>Annulée</span>
+              <span style={{ marginLeft:4, background:'color-mix(in srgb, var(--caisse-alerte) 12%, var(--caisse-ivoire))', color:'var(--caisse-alerte)', border:'1px solid color-mix(in srgb, var(--caisse-alerte) 40%, transparent)', borderRadius:6, padding:'2px 8px', fontSize:10, fontWeight:700 }}>Annulée</span>
             )}
           </div>
         </div>
         {/* Montant + marge */}
         <div style={{ textAlign:'right', flexShrink:0 }}>
-          <div style={{ fontSize:17, fontWeight:900, color: estAnnulee ? '#9ca3af' : '#1D9E75', textDecoration: estAnnulee ? 'line-through' : 'none' }}>{montantsMasques ? '••••• F' : `+${montant.toLocaleString('fr-FR')} F`}</div>
+          <div style={{ fontSize:17, fontWeight:900, color: estAnnulee ? 'var(--caisse-gris-texte)' : 'var(--caisse-vert)', textDecoration: estAnnulee ? 'line-through' : 'none' }}>{montantsMasques ? '••••• F' : `+${montant.toLocaleString('fr-FR')} F`}</div>
           {/* UNE PERTE SE VOIT — arbitrage de Patrick, 19/09/2026. La marge était
               plafonnée à zéro côté serveur : une vente à perte s'affichait
               « marge — », exactement comme une vente dont on ignore le coût.
@@ -181,19 +200,27 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
           {/* Le libellé vient de `libelleMarge` : « Marge connue : … » quand une
               ligne du panier n'a pas de prix d'achat. Le VERT reste réservé à
               une marge complète ; une marge partielle est ambrée, parce qu'elle
-              dit « je sais une partie ». */}
+              dit « je sais une partie ».
+              EXCEPTION ASSUMÉE : `#b45309` reste en dur. La charte de la
+              caisse n'a que quatre signaux — vert, vert foncé, alerte, gris —
+              et AUCUN avertissement. Prendre le gris effacerait la nuance que
+              ce comment vient d'expliquer ; prendre le rouge dirait « perte »
+              là où il n'y en a pas. Une couleur inventée serait pire encore.
+              Le jour où la planche porte un jeton d'avertissement, il vient
+              ici (deux occurrences dans ce fichier, plus l'ambre « Bientôt »
+              du crédit). */}
           <div style={{
             fontSize:10, marginTop:2,
             fontWeight: etat.type === 'inconnue' ? 400 : (marge < 0 ? 800 : 700),
             textDecoration: estAnnulee ? 'line-through' : 'none',
-            color: estAnnulee ? '#9ca3af'
-              : etat.type === 'inconnue' ? '#ccc'
-              : marge < 0 ? '#c0392b'
+            color: estAnnulee ? 'var(--caisse-gris-texte)'
+              : etat.type === 'inconnue' ? 'var(--caisse-gris-texte)'
+              : marge < 0 ? 'var(--caisse-alerte)'
               : etat.type === 'partielle' ? '#b45309'
-              : '#16a34a',
+              : 'var(--caisse-vert)',
           }}>{montantsMasques ? 'Montant caché' : libelleMarge(etat)}</div>
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration:0.25 }} style={{ display:'flex', justifyContent:'flex-end', marginTop:2 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--caisse-gris-texte)" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
           </motion.div>
         </div>
       </div>
@@ -201,18 +228,18 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
       <AnimatePresence>
         {open && (
           <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.25 }} style={{ overflow:'hidden' }}>
-            <div style={{ borderTop:'1px solid #f5f0eb', padding:'12px 14px', background:'#FDFAF7', display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ borderTop:'1px solid var(--commerce-line)', padding:'12px 14px', background:'var(--caisse-sable)', display:'flex', flexDirection:'column', gap:8 }}>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Date complète</span>
                 <span style={{ fontSize:12, fontWeight:700, color:'var(--encre)' }}>{format(dateObj, 'dd MMMM yyyy à HH:mm', { locale:fr })}</span>
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Source</span>
-                <span style={{ fontSize:12, fontWeight:700, color: source==='vocal' ? '#378ADD' : P }}>{source}</span>
+                <span style={{ fontSize:12, fontWeight:700, color: source==='vocal' ? 'var(--caisse-gris-texte)' : P }}>{source}</span>
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Montant</span>
-                <span style={{ fontSize:14, fontWeight:900, color: estAnnulee ? '#9ca3af' : '#1D9E75', textDecoration: estAnnulee ? 'line-through' : 'none' }}>{montantPrive(montant, montantsMasques, 'FCFA')}</span>
+                <span style={{ fontSize:14, fontWeight:900, color: estAnnulee ? 'var(--caisse-gris-texte)' : 'var(--caisse-vert)', textDecoration: estAnnulee ? 'line-through' : 'none' }}>{montantPrive(montant, montantsMasques, 'FCFA')}</span>
               </div>
               {etat.type !== 'inconnue' && (
                 <div style={{ display:'flex', justifyContent:'space-between' }}>
@@ -224,7 +251,7 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
                     {etat.type === 'partielle' ? (marge < 0 ? 'Perte connue' : 'Marge connue') : (marge < 0 ? 'Perte' : 'Marge')}
                   </span>
                   <span style={{ fontSize:12, fontWeight:700, textDecoration: estAnnulee ? 'line-through' : 'none',
-                    color: estAnnulee ? '#9ca3af' : marge < 0 ? '#c0392b' : etat.type === 'partielle' ? '#b45309' : '#16a34a' }}>
+                    color: estAnnulee ? 'var(--caisse-gris-texte)' : marge < 0 ? 'var(--caisse-alerte)' : etat.type === 'partielle' ? '#b45309' : 'var(--caisse-vert)' }}>
                     {montantsMasques ? '••••• FCFA' : `${marge < 0 ? '−' : '+'}${Math.abs(marge).toLocaleString('fr-FR')} FCFA`}
                   </span>
                 </div>
@@ -238,7 +265,7 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
                     const r = await partagerRecu(sale, marchandNom);
                     if (r === 'copie') toast.success('Reçu copié'); else if (r === 'echec') toast.error('Partage indisponible');
                   }}
-                  style={{ flex:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, padding:'11px 0', borderRadius:14, border:'none', background:'#1FA463', color:'#fff', fontWeight:800, fontSize:13, cursor:'pointer' }}>
+                  style={{ flex:1, display:'inline-flex', alignItems:'center', justifyContent:'center', gap:7, padding:'11px 0', borderRadius:14, border:'none', background:'var(--caisse-vert)', color:'var(--caisse-ivoire)', fontWeight:800, fontSize:13, cursor:'pointer' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
                   Partager le reçu
                 </button>
@@ -247,20 +274,20 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
               {/* Annulation self-service (#20) — vente du jour uniquement ; au-delà = responsable. */}
               {estAnnulable && annulEtat === 'idle' && (
                 <button type="button" onClick={demanderAnnulation}
-                  style={{ marginTop:2, padding:'11px 0', borderRadius:14, border:'1.5px solid #f3c2b8', background:'#fff', color:'#c0392b', fontWeight:800, fontSize:13, cursor:'pointer' }}>
+                  style={{ marginTop:2, padding:'11px 0', borderRadius:14, border:'1.5px solid color-mix(in srgb, var(--caisse-alerte) 40%, transparent)', background:'var(--caisse-ivoire)', color:'var(--caisse-alerte)', fontWeight:800, fontSize:13, cursor:'pointer' }}>
                   Annuler cette vente
                 </button>
               )}
               {estAnnulable && annulEtat === 'confirm' && (
                 <div style={{ marginTop:2, display:'flex', flexDirection:'column', gap:8 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:'#c0392b', textAlign:'center' }}>Annuler cette vente ? Le stock sera rendu.</div>
+                  <div style={{ fontSize:12, fontWeight:700, color:'var(--caisse-alerte)', textAlign:'center' }}>Annuler cette vente ? Le stock sera rendu.</div>
                   <div style={{ display:'flex', gap:8 }}>
                     <button type="button" onClick={(e) => { e.stopPropagation(); setAnnulEtat('idle'); }}
-                      style={{ flex:1, padding:'11px 0', borderRadius:14, border:'1.5px solid var(--trait)', background:'#fff', color:'var(--encre-3)', fontWeight:800, fontSize:13, cursor:'pointer' }}>
+                      style={{ flex:1, padding:'11px 0', borderRadius:14, border:'1.5px solid var(--trait)', background:'var(--caisse-ivoire)', color:'var(--encre-3)', fontWeight:800, fontSize:13, cursor:'pointer' }}>
                       Non, garder
                     </button>
                     <button type="button" onClick={confirmerAnnulation}
-                      style={{ flex:1, padding:'11px 0', borderRadius:14, border:'none', background:'#c0392b', color:'#fff', fontWeight:800, fontSize:13, cursor:'pointer' }}>
+                      style={{ flex:1, padding:'11px 0', borderRadius:14, border:'none', background:'var(--caisse-alerte)', color:'var(--caisse-ivoire)', fontWeight:800, fontSize:13, cursor:'pointer' }}>
                       Oui, annuler
                     </button>
                   </div>
@@ -280,7 +307,11 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
 // ── Composant principal ───────────────────────────────────────
 export function VentesPassees() {
   const navigate = useNavigate();
-  const { getSalesHistory, reloadTransactions, speak } = useApp();
+  const { getSalesHistory, reloadTransactions, speak, user } = useApp();
+  const speakMessage = useSpeakMessage();
+  // HIST-01 : noté par la couche API (services/lectureHistorique), pas déduit
+  // d'un tableau vide — un tableau vide ne dit pas POURQUOI il est vide.
+  const etatHistorique = useLectureHistorique();
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState<'tous'|'vocal'|'kassa'|'credits'>('tous');
   const [credits, setCredits] = useState<Credit[]>([]);
@@ -297,6 +328,18 @@ export function VentesPassees() {
   const { montantsMasques, basculerMontants } = useMontantsPrives();
 
   useEffect(() => { reloadTransactions(); }, []);
+
+  // LA FILE HORS LIGNE — HIST-01. L'historique est ENTIÈREMENT serveur : une
+  // vente encaissée sans réseau dort dans la file et n'apparaît nulle part
+  // ici. La marchande vend, regarde ses ventes, ne voit rien, et conclut que
+  // l'application a perdu son argent. On LIT la file, on ne la touche pas, et
+  // on ne déclenche aucune synchronisation pour afficher un écran.
+  const [ventesEnFile, setVentesEnFile] = useState(0);
+  useEffect(() => {
+    let vivant = true;
+    ventesEnAttenteEnvoi(String(user?.id ?? '')).then(n => { if (vivant) setVentesEnFile(n); });
+    return () => { vivant = false; };
+  }, [user?.id, etatHistorique]);
 
   // LES CRÉDITS SONT CHARGÉS AU MONTAGE, PAS SEULEMENT SUR LEUR ONGLET —
   // correctif du 18/09/2026.
@@ -363,21 +406,32 @@ export function VentesPassees() {
     useMemo(() => resumeVentes(allSales), [allSales]);
   // Écran « Mes ventes » : une non-lectrice arrive ici pour SAVOIR combien elle a
   // fait -> on l'annonce à voix haute dès que les données sont là (une seule fois).
+  // CE QUE L'ÉCRAN A LE DROIT D'AFFIRMER — HIST-01. La règle est dans un
+  // module pur (services/etatVentesPassees.ts) pour être relisible et
+  // prouvable ailleurs que dans du JSX.
+  const etat = useMemo(
+    () => etatVentesPassees({ lecture: etatHistorique, nbVentes: allSales.length, ventesEnFile }),
+    [etatHistorique, allSales.length, ventesEnFile],
+  );
+  const lisible = chiffresLisibles(etatHistorique);
+
   const dejaAnnonce = useRef(false);
   useEffect(() => {
-    if (dejaAnnonce.current || allSales.length === 0 || montantsMasques) return;
+    // On n'annonce plus « dès que les données sont là » — il fallait déjà en
+    // avoir. On annonce dès que le serveur A RÉPONDU, quelle que soit la
+    // réponse, et l'échec se dit aussi : pour qui ne lit pas, la voix est le
+    // seul canal, et c'est là que le zéro faisait le plus de dégâts.
+    if (dejaAnnonce.current || etatHistorique === 'jamais' || etatHistorique === 'chargement' || montantsMasques) return;
     dejaAnnonce.current = true;
-    speak(totalCount > 0
-      ? `Tu as vendu ${totalVentes.toLocaleString('fr-FR')} francs en tout, sur ${totalCount} vente${totalCount > 1 ? 's' : ''}.`
-      : "Tu n'as pas encore de vente.");
-  }, [allSales, totalVentes, totalCount, speak, montantsMasques]);
+    const a = annonceTotal(etat, { total: totalVentes, nombre: totalCount });
+    speakMessage(a.cle, a.variables);
+  }, [etat, etatHistorique, totalVentes, totalCount, speakMessage, montantsMasques]);
 
   // Ré-écouter le total (bouton haut-parleur).
   const direTotal = () => {
     if (montantsMasques) { speak('Tes montants sont cachés.'); return; }
-    speak(totalCount > 0
-      ? `Tu as vendu ${totalVentes.toLocaleString('fr-FR')} francs, sur ${totalCount} vente${totalCount > 1 ? 's' : ''}.`
-      : "Tu n'as pas encore de vente.");
+    const a = annonceTotal(etat, { total: totalVentes, nombre: totalCount });
+    speakMessage(a.cle, a.variables);
   };
 
   // Filtrage
@@ -443,31 +497,72 @@ export function VentesPassees() {
     <SubPageLayout
       role="marchand"
       title="Ventes passées"
+      /* L'EN-TÊTE VIOLET VENAIT D'ICI, PAR DÉFAUT. `SubPageLayout` a deux
+         habillages : `defaut`, l'en-tête sombre `--commerce-sidebar`
+         (#332533, l'aubergine) de tous les sous-écrans, et `caisse`, l'en-tête
+         clair de la planche. La caisse demandait déjà `variante="caisse"` ;
+         cet écran ne demandait rien et héritait donc de l'aubergine. On
+         aligne la PROPRIÉTÉ de l'écran — le composant, lui, ne change pas,
+         et les autres sous-écrans gardent leur en-tête sombre. */
+      variante="caisse"
       subtitle={ventesDuJour > 0 ? `${ventesDuJour} vente${ventesDuJour > 1 ? 's' : ''} aujourd'hui` : undefined}
       rightContent={
         <div style={{ display:'flex', gap:7 }}>
           <motion.button whileTap={{ scale:0.9 }} onClick={basculerMontants}
             aria-label={montantsMasques ? 'Montrer mes montants' : 'Cacher mes montants'}
-            style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-            {montantsMasques ? <EyeOff size={19} color="white" /> : <Eye size={19} color="white" />}
+            style={{ width:44, height:44, borderRadius:13, background:'var(--caisse-sable)', border:'1px solid var(--commerce-line)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+            {montantsMasques ? <EyeOff size={19} color="var(--encre)" /> : <Eye size={19} color="var(--encre)" />}
           </motion.button>
           <motion.button whileTap={{ scale:0.9 }} onClick={direTotal} aria-label="Écouter le total des ventes"
-            style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-            <Volume2 size={18} color="white" />
+            style={{ width:44, height:44, borderRadius:13, background:'var(--caisse-sable)', border:'1px solid var(--commerce-line)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+            <Volume2 size={18} color="var(--encre)" />
           </motion.button>
           {/* Cloche « Notifications » standard, plus l'« Alertes » (stock)
               spécifique à Mon stock — même icône générique cloche que
               là-bas prêtait à confusion (audit accueil/tuiles). */}
-          <NotificationButton />
+          {/* La cloche par défaut est BLANCHE SUR FOND TRANSPARENT : dessinée
+              pour l'en-tête sombre, elle disparaîtrait sur l'en-tête clair.
+              On demande donc sa forme pleine, dans le vert de la charte —
+              le comportement et l'icône ne changent pas. */}
+          <NotificationButton variant="solid" accentColor="var(--caisse-vert)" />
         </div>
       }
     >
 
       {/* CONTENU */}
       <div style={{ flex:1, overflowY:'auto', padding:'14px 0 100px', display:'flex', flexDirection:'column', gap:12 }}>
+
+        {/* « TU AS VENDU, MAIS CE N'EST PAS ENCORE ENVOYÉ » — HIST-01.
+            Le troisième état, et le plus silencieux : l'historique est
+            entièrement serveur, donc une vente encore dans la file hors ligne
+            n'apparaissait NULLE PART ici. Ce bandeau ne remplace jamais l'état
+            de la lecture — il s'ajoute. Une vente en attente d'envoi n'est ni
+            une absence de vente ni un échec de lecture. */}
+        {annonceFile(etat) && (
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:'var(--caisse-rayon-4)', background:'var(--caisse-sable)', border:'1.5px solid var(--commerce-line)' }}>
+            <Package size={20} color="var(--caisse-vert)" aria-hidden="true" />
+            <span style={{ fontSize:13, fontWeight:700, color:'var(--encre)' }}>
+              {t(annonceFile(etat)!.cle, annonceFile(etat)!.variables)}
+            </span>
+          </div>
+        )}
+
+        {/* La lecture a échoué, mais des ventes déjà lues restent à l'écran :
+            on montre la liste ET on dit qu'elle n'est pas à jour. Sans ça, une
+            liste périmée passerait pour la vérité du moment. */}
+        {etat.type === 'liste' && etatHistorique === 'echec' && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'12px 14px', borderRadius:'var(--caisse-rayon-4)', background:'color-mix(in srgb, var(--caisse-alerte) 12%, var(--caisse-ivoire))', border:`1.5px solid color-mix(in srgb, var(--caisse-alerte) 40%, transparent)` }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'var(--encre)' }}>{t('TATA_VENTES_PAS_LUES', {})}</span>
+            <button type="button" onClick={() => { void reloadTransactions(); }}
+              style={{ minHeight:44, flexShrink:0, padding:'0 var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'none', background:P, color:'var(--caisse-ivoire)', fontSize:13, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
+              {t('TATA_VENTES_REESSAYER', {})}
+            </button>
+          </div>
+        )}
+
         <motion.button whileTap={{ scale:0.99 }} onClick={() => setShowOutils(v => !v)}
           aria-expanded={showOutils}
-          style={{ width:'100%', minHeight:52, background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', color:'var(--encre)' }}>
+          style={{ width:'100%', minHeight:52, background:'var(--caisse-ivoire)', border:'1.5px solid var(--trait)', borderRadius:16, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', color:'var(--encre)' }}>
           <span style={{ display:'flex', alignItems:'center', gap:10, fontSize:15, fontWeight:800 }}>
             <TrendingUp size={20} color={P} /> Mes chiffres et filtres
           </span>
@@ -480,78 +575,78 @@ export function VentesPassees() {
           style={{ overflow:'hidden', display:'flex', flexDirection:'column', gap:10 }}>
         {/* KPIs 2x2 avec UniversalKPI — secondaires, donc repliés au départ. */}
         {montantsMasques ? (
-          <div style={{ minHeight:92, borderRadius:16, background:'#F2F6F3', border:'1.5px solid #B7D1C1', padding:'16px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
-            <div><strong style={{ display:'block', fontSize:16, color:'#0E513D' }}>Montants cachés</strong><span style={{ fontSize:13, color:'var(--encre-3)' }}>Personne autour de toi ne voit tes chiffres.</span></div>
-            <button type="button" onClick={basculerMontants} style={{ minWidth:48, height:48, borderRadius:14, border:'none', background:'#197455', color:'white', display:'grid', placeItems:'center' }} aria-label="Montrer mes montants"><EyeOff size={21} /></button>
+          <div style={{ minHeight:92, borderRadius:16, background:'var(--caisse-succes)', border:'1.5px solid color-mix(in srgb, var(--caisse-vert) 35%, transparent)', padding:'16px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:12 }}>
+            <div><strong style={{ display:'block', fontSize:16, color:'var(--caisse-vert-fonce)' }}>Montants cachés</strong><span style={{ fontSize:13, color:'var(--encre-3)' }}>Personne autour de toi ne voit tes chiffres.</span></div>
+            <button type="button" onClick={basculerMontants} style={{ minWidth:48, height:48, borderRadius:14, border:'none', background:'var(--caisse-vert)', color:'var(--caisse-ivoire)', display:'grid', placeItems:'center' }} aria-label="Montrer mes montants"><EyeOff size={21} /></button>
           </div>
         ) : (
         <KPIGrid cols={2}>
           <UniversalKPI
             label="Ventes FCFA"
-            value={totalVentes.toLocaleString('fr-FR')}
-            suffix="FCFA"
+            value={lisible ? totalVentes.toLocaleString('fr-FR') : CHIFFRE_INCONNU}
+            suffix={lisible ? 'FCFA' : undefined}
             icon={TrendingUp}
-            color="#ea580c"
-            bgColor="rgba(255,247,237,0.85)"
-            borderColor="rgba(249,115,22,0.4)"
+            color="var(--caisse-vert)"
+            bgColor="var(--caisse-succes)"
+            borderColor="color-mix(in srgb, var(--caisse-vert) 40%, transparent)"
             iconAnimation="bounce"
             explication="C'est le total de tout l'argent que tu as encaissé sur tes ventes pendant cette période."
-            details={[
+            details={!lisible ? undefined : [
               { label: 'Nombre de ventes', value: totalCount },
               { label: "Aujourd'hui", value: allSales.filter(s => venteComptee(s) && new Date(s.date).toDateString() === new Date().toDateString()).reduce((a,b) => a+(b.montant||0), 0).toLocaleString('fr-FR') + ' FCFA' },
             ]}
           />
           <UniversalKPI
             label="Bénéfices FCFA"
-            value={totalBenefices.toLocaleString('fr-FR')}
-            suffix="FCFA"
+            value={lisible ? totalBenefices.toLocaleString('fr-FR') : CHIFFRE_INCONNU}
+            suffix={lisible ? 'FCFA' : undefined}
             icon={Banknote}
-            color="#2563eb"
-            bgColor="rgba(239,246,255,0.85)"
-            borderColor="rgba(59,130,246,0.4)"
+            color="var(--caisse-vert-fonce)"
+            bgColor="var(--caisse-succes)"
+            borderColor="color-mix(in srgb, var(--caisse-vert-fonce) 40%, transparent)"
             iconAnimation="pulse"
             explication="C'est l'argent que tu gardes après avoir payé tes fournisseurs. Si tu achètes un produit à 300 FCFA et tu le vends à 500 FCFA, ton bénéfice est 200 FCFA."
             formule="Bénéfice = Prix de vente − Prix d'achat"
-            details={[
+            details={!lisible ? undefined : [
               { label: 'Total ventes', value: totalVentes.toLocaleString('fr-FR') + ' FCFA' },
               { label: 'Total achats estimé', value: (totalVentes - totalBenefices).toLocaleString('fr-FR') + ' FCFA' },
             ]}
           />
           <UniversalKPI
             label="Transactions"
-            value={totalCount.toLocaleString('fr-FR')}
+            value={lisible ? totalCount.toLocaleString('fr-FR') : CHIFFRE_INCONNU}
             icon={Package}
-            color="#16a34a"
-            bgColor="rgba(240,253,244,0.85)"
-            borderColor="rgba(34,197,94,0.4)"
+            color="var(--caisse-gris-texte)"
+            bgColor="var(--caisse-sable)"
+            borderColor="var(--commerce-line)"
             iconAnimation="spin"
             explication="C'est le nombre de fois que tu as vendu quelque chose. Chaque fois qu'une cliente paie, c'est une transaction."
-            details={[
+            details={!lisible ? undefined : [
               { label: "Aujourd'hui", value: allSales.filter(s => venteComptee(s) && new Date(s.date).toDateString() === new Date().toDateString()).length },
               { label: 'Cette semaine', value: allSales.filter(s => { if (!venteComptee(s)) return false; const d = new Date(s.date); const now = new Date(); return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate()-7); }).length },
             ]}
           />
           <UniversalKPI
             label="Panier moyen FCFA"
-            value={panierMoyen.toLocaleString('fr-FR')}
-            suffix="FCFA"
+            value={lisible ? panierMoyen.toLocaleString('fr-FR') : CHIFFRE_INCONNU}
+            suffix={lisible ? 'FCFA' : undefined}
             icon={ShoppingBag}
-            color="#7c3aed"
-            bgColor="rgba(245,243,255,0.85)"
-            borderColor="rgba(139,92,246,0.4)"
+            color="var(--caisse-gris-texte)"
+            bgColor="var(--caisse-sable)"
+            borderColor="var(--commerce-line)"
             iconAnimation="float"
             explication="C'est combien chaque cliente dépense en moyenne chez toi. Plus ce chiffre est grand, mieux c'est !"
             formule="Panier moyen = Total ventes ÷ Nombre de ventes"
-            details={[
+            details={!lisible ? undefined : [
               { label: 'Total ventes', value: totalVentes.toLocaleString('fr-FR') + ' FCFA' },
               { label: 'Nombre de ventes', value: totalCount },
-              { label: 'Résultat', value: panierMoyen.toLocaleString('fr-FR') + ' FCFA', color: '#7c3aed' },
+              { label: 'Résultat', value: panierMoyen.toLocaleString('fr-FR') + ' FCFA', color: 'var(--caisse-gris-texte)' },
             ]}
           />
         </KPIGrid>
         )}
         <button type="button" onClick={handleExport}
-          style={{ minHeight:48, borderRadius:14, border:'1.5px solid var(--trait)', background:'white', display:'flex', alignItems:'center', justifyContent:'center', gap:9, color:P, fontSize:14, fontWeight:800 }}>
+          style={{ minHeight:48, borderRadius:14, border:'1.5px solid var(--trait)', background:'var(--caisse-ivoire)', display:'flex', alignItems:'center', justifyContent:'center', gap:9, color:P, fontSize:14, fontWeight:800 }}>
           <FileDown size={18} /> Créer mon bilan PDF
         </button>
         </motion.div>
@@ -564,27 +659,27 @@ export function VentesPassees() {
             alors la hauteur de la barre (alignSelf stretch). Avec un padding
             VERTICAL, la boite de contenu restait celle du texte — 20px — et
             l'etirement ne donnait rien. Meme forme que la recherche du stock. */}
-        <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'0 14px', height:46, display:'flex', alignItems:'center', gap:8 }}>
-          <Search size={14} color="#aaa" />
+        <div style={{ background:'var(--caisse-ivoire)', border:'1.5px solid var(--trait)', borderRadius:14, padding:'0 14px', height:46, display:'flex', alignItems:'center', gap:8 }}>
+          <Search size={14} color="var(--caisse-gris-texte)" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une vente..."
             style={{ flex:1, alignSelf:'stretch', minWidth:0, border:'none', outline:'none', fontSize:13, color:'var(--encre)', background:'transparent', fontFamily:'inherit' }} />
           {search && <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} aria-label="Effacer la recherche"
             style={{ flexShrink:0, width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', background:'none', border:'none', cursor:'pointer', padding:0 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--caisse-gris-texte)" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </motion.button>}
         </div>
 
         {/* Sélecteur iOS */}
-        <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:4, display:'flex', position:'relative' }}>
+        <div style={{ background:'var(--caisse-ivoire)', border:'1.5px solid var(--trait)', borderRadius:16, padding:4, display:'flex', position:'relative' }}>
           <motion.div
-            style={{ position:'absolute', top:4, height:'calc(100% - 8px)', background:P, borderRadius:12, boxShadow:`0 2px 8px ${P}40` }}
+            style={{ position:'absolute', top:4, height:'calc(100% - 8px)', background:P, borderRadius:12, boxShadow:`0 2px 8px ${OMBRE_ONGLET}` }}
             animate={{ left:`calc(${sliderIndex * tabPct}% + 4px)`, width:`calc(${tabPct}% - 6px)` }}
             transition={{ type:'spring', stiffness:300, damping:30 }}
           />
           {SOURCE_TABS.map(t => (
             <button key={t.id} onClick={() => setSourceFilter(t.id)}
               // minHeight 44 : cible tactile mesurée à 35px (390×844).
-              style={{ flex:1, minHeight:44, padding:'9px 4px', fontSize:11, fontWeight:700, color: sourceFilter===t.id ? 'white' : 'var(--encre-4)', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', transition:'color 0.2s', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+              style={{ flex:1, minHeight:44, padding:'9px 4px', fontSize:11, fontWeight:700, color: sourceFilter===t.id ? 'var(--caisse-ivoire)' : 'var(--encre-4)', background:'none', border:'none', cursor:'pointer', position:'relative', zIndex:1, fontFamily:'inherit', transition:'color 0.2s', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
               {t.label}
             </button>
           ))}
@@ -593,19 +688,19 @@ export function VentesPassees() {
         {/* Filtres avancés */}
         <div>
           <motion.button whileTap={{ scale:0.99 }} onClick={() => setShowFilters(v => !v)}
-            style={{ width:'100%', background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
+            style={{ width:'100%', background:'var(--caisse-ivoire)', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <Filter size={14} color={P} />
-              <span style={{ fontSize:13, fontWeight:600, color:'#555' }}>Filtres avancés</span>
+              <span style={{ fontSize:13, fontWeight:600, color:'var(--caisse-gris-texte)' }}>Filtres avancés</span>
             </div>
             <motion.span animate={{ rotate: showFilters ? 180 : 0 }} transition={{ duration:0.25 }}>
-              <ChevronDown size={12} color="#aaa" />
+              <ChevronDown size={12} color="var(--caisse-gris-texte)" />
             </motion.span>
           </motion.button>
           <AnimatePresence>
             {showFilters && (
               <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.25 }} style={{ overflow:'hidden' }}>
-                <div style={{ background:'white', border:'1.5px solid var(--trait)', borderTop:'none', borderRadius:'0 0 14px 14px', padding:'12px 14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div style={{ background:'var(--caisse-ivoire)', border:'1.5px solid var(--trait)', borderTop:'none', borderRadius:'0 0 14px 14px', padding:'12px 14px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                   <div>
                     <label style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', display:'block', marginBottom:4 }}>Date début</label>
                     <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
@@ -618,7 +713,7 @@ export function VentesPassees() {
                   </div>
                   {(startDate || endDate) && (
                     <motion.button whileTap={{ scale:0.97 }} onClick={() => { setStartDate(''); setEndDate(''); }}
-                      style={{ gridColumn:'1/-1', background:'#f5f0eb', border:'none', borderRadius:10, padding:'8px', fontSize:12, fontWeight:700, color:'#888', cursor:'pointer', fontFamily:'inherit' }}>
+                      style={{ gridColumn:'1/-1', background:'var(--caisse-sable)', border:'none', borderRadius:10, padding:'8px', fontSize:12, fontWeight:700, color:'var(--caisse-gris-texte)', cursor:'pointer', fontFamily:'inherit' }}>
                       Réinitialiser
                     </motion.button>
                   )}
@@ -632,15 +727,15 @@ export function VentesPassees() {
         {sourceFilter === 'credits' && (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
             {/* KPI total dû */}
-            <div style={{ background:'white', border:'1.5px solid #fca5a5', borderRadius:16, padding:'14px 16px', position:'relative', overflow:'hidden' }}>
-              <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:'#ef4444', borderRadius:'2px 2px 0 0' }} />
+            <div style={{ background:'var(--caisse-ivoire)', border:'1.5px solid color-mix(in srgb, var(--caisse-alerte) 45%, transparent)', borderRadius:16, padding:'14px 16px', position:'relative', overflow:'hidden' }}>
+              <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:'var(--caisse-alerte)', borderRadius:'2px 2px 0 0' }} />
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div>
                   <div style={{ fontSize:10, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', marginBottom:4 }}>Total dû</div>
-                  <div style={{ fontSize:24, fontWeight:900, color:'#ef4444' }}>{montantPrive(totalDu, montantsMasques, 'FCFA')}</div>
+                  <div style={{ fontSize:24, fontWeight:900, color:'var(--caisse-alerte)' }}>{montantPrive(totalDu, montantsMasques, 'FCFA')}</div>
                   <div style={{ fontSize:11, color:'var(--encre-4)', marginTop:2 }}>{credits.filter(c => c.statut !== 'paye').length} client(s) en attente</div>
                 </div>
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="color-mix(in srgb, var(--caisse-alerte) 45%, transparent)" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               </div>
             </div>
 
@@ -654,14 +749,14 @@ export function VentesPassees() {
             )}
 
             {!creditsLoading && credits.length > 0 && credits.map(credit => {
-              const statutColor = credit.statut_calcule === 'en_retard' ? '#ef4444'
+              const statutColor = credit.statut_calcule === 'en_retard' ? 'var(--caisse-alerte)'
                 : credit.statut_calcule === 'bientot' ? '#f59e0b'
-                : credit.statut_calcule === 'paye' ? '#1D9E75'
-                : '#AF5B23';
-              const statutBg = credit.statut_calcule === 'en_retard' ? '#FEF2F2'
+                : credit.statut_calcule === 'paye' ? 'var(--caisse-vert)'
+                : P;
+              const statutBg = credit.statut_calcule === 'en_retard' ? 'color-mix(in srgb, var(--caisse-alerte) 12%, var(--caisse-ivoire))'
                 : credit.statut_calcule === 'bientot' ? '#FFFBEB'
-                : credit.statut_calcule === 'paye' ? '#F0FAF5'
-                : '#FFF3EA';
+                : credit.statut_calcule === 'paye' ? 'var(--caisse-succes)'
+                : 'var(--caisse-succes)';
               const statutLabel = credit.statut_calcule === 'en_retard' ? 'En retard'
                 : credit.statut_calcule === 'bientot' ? 'Bientôt'
                 : credit.statut_calcule === 'paye' ? 'Payé'
@@ -669,7 +764,7 @@ export function VentesPassees() {
 
               return (
                 <motion.div key={credit.id} initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }}
-                  style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, overflow:'hidden' }}>
+                  style={{ background:'var(--caisse-ivoire)', border:'1.5px solid var(--trait)', borderRadius:16, overflow:'hidden' }}>
                   <div style={{ padding:'13px 14px' }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -681,12 +776,12 @@ export function VentesPassees() {
                           {credit.client_phone && <div style={{ fontSize:11, color:'var(--encre-4)' }}>{credit.client_phone}</div>}
                         </div>
                       </div>
-                      <span style={{ background:statutBg, color:statutColor, border:`1px solid ${statutColor}33`, borderRadius:8, padding:'3px 10px', fontSize:10, fontWeight:700 }}>
+                      <span style={{ background:statutBg, color:statutColor, border:`1px solid ${statutColor}`, borderRadius:8, padding:'3px 10px', fontSize:10, fontWeight:700 }}>
                         {statutLabel}
                       </span>
                     </div>
 
-                    <div style={{ background:'#f9f9f9', borderRadius:10, padding:'10px 12px', marginBottom:10 }}>
+                    <div style={{ background:'var(--caisse-sable)', borderRadius:10, padding:'10px 12px', marginBottom:10 }}>
                       {(credit.articles || []).length > 0 && (
                         <div style={{ fontSize:12, color:'var(--encre-4)', marginBottom:6 }}>
                           {credit.articles.map((a:any) => `${a.nom} ×${a.quantite}`).join(' · ')}
@@ -694,7 +789,7 @@ export function VentesPassees() {
                       )}
                       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
                         <span style={{ fontSize:12, color:'var(--encre-4)' }}>Acompte versé</span>
-                        <span style={{ fontSize:12, fontWeight:700, color:'#1D9E75' }}>{montantPrive(Number(credit.acompte), montantsMasques, 'FCFA')}</span>
+                        <span style={{ fontSize:12, fontWeight:700, color:'var(--caisse-vert)' }}>{montantPrive(Number(credit.acompte), montantsMasques, 'FCFA')}</span>
                       </div>
                       <div style={{ display:'flex', justifyContent:'space-between' }}>
                         <span style={{ fontSize:13, fontWeight:700, color:'var(--encre)' }}>Reste dû</span>
@@ -724,7 +819,7 @@ export function VentesPassees() {
                             setPayingIds(prev => { const s = new Set(prev); s.delete(credit.id); return s; });
                           }}
                           disabled={payingIds.has(credit.id)}
-                          style={{ background: confirmPayId === credit.id ? '#16a34a' : P, border:'none', borderRadius:10, padding:'8px 14px', fontSize:12, fontWeight:700, color:'white', cursor:'pointer', fontFamily:'inherit' }}>
+                          style={{ background: confirmPayId === credit.id ? 'var(--caisse-vert-fonce)' : P, border:'none', borderRadius:10, padding:'8px 14px', fontSize:12, fontWeight:700, color:'var(--caisse-ivoire)', cursor:'pointer', fontFamily:'inherit' }}>
                           {confirmPayId === credit.id ? 'Confirmer ?' : 'Marquer payé'}
                         </motion.button>
                       )}
@@ -741,8 +836,36 @@ export function VentesPassees() {
         {/* Liste groupée par jour */}
         {grouped.length === 0 ? (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} style={{ textAlign:'center', padding:'48px 24px' }}>
-            <p style={{ fontSize:16, fontWeight:800, color:'var(--encre)', margin:'0 0 8px' }}>Aucune vente trouvée</p>
-            <p style={{ fontSize:13, color:'var(--encre-4)', margin:0 }}>{search ? `Aucun résultat pour "${search}"` : 'Pas encore de ventes enregistrées'}</p>
+            {/* TROIS ÉTATS, TROIS PHRASES — HIST-01.
+                Ce bloc affirmait « Pas encore de ventes enregistrées » dès que
+                la liste était vide, sans savoir POURQUOI elle l'était. Quand la
+                requête échouait, il présentait une absence de réponse comme une
+                réponse, sur l'argent déjà gagné. Le filtre de recherche garde sa
+                propre phrase : « aucun résultat » ne parle pas de l'argent, il
+                parle du filtre. */}
+            {search ? (
+              <>
+                <p style={{ fontSize:16, fontWeight:800, color:'var(--encre)', margin:'0 0 8px' }}>Aucune vente trouvée</p>
+                <p style={{ fontSize:13, color:'var(--encre-4)', margin:0 }}>{`Aucun résultat pour "${search}"`}</p>
+              </>
+            ) : etat.type === 'illisible' ? (
+              <>
+                {/* La clé vient du module pur : l'écran ne CHOISIT pas la
+                    phrase, il rend celle que la règle a décidée. */}
+                <p style={{ fontSize:16, fontWeight:800, color:'var(--caisse-alerte)', margin:'0 0 8px' }}>{t(annonceEtat(etat)!.cle, annonceEtat(etat)!.variables)}</p>
+                <button type="button" onClick={() => { void reloadTransactions(); }}
+                  style={{ minHeight:48, marginTop:8, padding:'0 var(--caisse-esp-4)', borderRadius:'var(--caisse-rayon-3)', border:'none', background:P, color:'var(--caisse-ivoire)', fontSize:14, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
+                  {t('TATA_VENTES_REESSAYER', {})}
+                </button>
+              </>
+            ) : etat.type === 'attente' ? (
+              <p style={{ fontSize:14, color:'var(--caisse-gris-texte)', margin:0 }}>{t(annonceEtat(etat)!.cle, annonceEtat(etat)!.variables)}</p>
+            ) : (
+              <>
+                <p style={{ fontSize:16, fontWeight:800, color:'var(--encre)', margin:'0 0 8px' }}>Aucune vente trouvée</p>
+                <p style={{ fontSize:13, color:'var(--encre-4)', margin:0 }}>{t(annonceEtat(etat)!.cle, annonceEtat(etat)!.variables)}</p>
+              </>
+            )}
           </motion.div>
         ) : (
           grouped.map(group => (
@@ -763,7 +886,7 @@ export function VentesPassees() {
       {/* BOUTON BAS */}
       <div style={{ flexShrink:0, padding:'8px 14px 32px', background:BG }}>
         <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/caisse')}
-          style={{ width:'100%', background:P, color:'white', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor:'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55` }}>
+          style={{ width:'100%', background:P, color:'var(--caisse-ivoire)', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor:'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${OMBRE_BOUTON}` }}>
           + Noter une vente
         </motion.button>
       </div>
