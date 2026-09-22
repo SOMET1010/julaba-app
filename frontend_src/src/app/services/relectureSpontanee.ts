@@ -33,7 +33,7 @@
  */
 import { quantiteAvecUnite } from '../utils/unite.utils';
 import { plurielNom } from './dialoguesTata';
-import { t } from '../i18n/voice/runtime';
+import { formeParleeDuMessage, resoudreMessage, t } from '../i18n/voice/runtime';
 
 /** Ce que la caisse sait au moment où elle recalcule. Tous en FCFA. */
 export interface EtatEncaissement {
@@ -73,14 +73,33 @@ export function memeEtat(a: EtatEncaissement | null, b: EtatEncaissement | null)
  * dater du rendu d'avant.
  */
 export function phraseRelecture(etat: EtatEncaissement, precedent: EtatEncaissement | null): string | null {
+  return relectureDeuxFormes(etat, precedent)?.texte ?? null;
+}
+
+/**
+ * LA MÊME RELECTURE, SOUS SES DEUX FORMES (22/09/2026).
+ *
+ * `texte` est ce qui s'affiche — identique au caractère près à ce que
+ * `phraseRelecture` rendait hier. `texteParle` est ce qui part à la voix :
+ * « Il manque trois mille francs » là où le moteur de synthèse lisait
+ * « Il manque 3 000 francs » en épelant « trois zéro zéro zéro » (l'espace
+ * fine insécable U+202F du formatage fr-FR). Voir i18n/voice/argent/.
+ *
+ * Les deux viennent du MÊME appel au runtime : rien n'est reconstruit depuis
+ * l'autre.
+ */
+export function relectureDeuxFormes(etat: EtatEncaissement, precedent: EtatEncaissement | null): { texte: string; texteParle: string } | null {
   if (etat.nbLignes <= 0) return null;
   if (!(etat.recu > 0)) return null;
   if (memeEtat(etat, precedent)) return null;
 
   const manque = etat.total - etat.recu;
-  if (manque > 0) return t('TATA_MANQUE', { montant: r(manque) });
-  if (manque === 0) return t('TATA_COMPTE_JUSTE');
-  return t('TATA_DONNE_RENDS', { recu: r(etat.recu), monnaie: r(-manque) });
+  const m = manque > 0
+    ? resoudreMessage('TATA_MANQUE', { montant: r(manque) })
+    : manque === 0
+      ? resoudreMessage('TATA_COMPTE_JUSTE')
+      : resoudreMessage('TATA_DONNE_RENDS', { recu: r(etat.recu), monnaie: r(-manque) });
+  return { texte: m.texte, texteParle: formeParleeDuMessage(m) };
 }
 
 /** Une ligne qui vient d'entrer au panier, et le panier après elle. */
@@ -115,10 +134,16 @@ function uniteParlable(u?: string | null): boolean {
  * annoncer à la cliente.
  */
 export function phraseLigneAjoutee(l: LigneAjoutee): string {
+  return ligneAjouteeDeuxFormes(l).texte;
+}
+
+/** La ligne ajoutée sous ses deux formes — même règle que `relectureDeuxFormes`. */
+export function ligneAjouteeDeuxFormes(l: LigneAjoutee): { texte: string; texteParle: string } {
   const q = Number.isFinite(l.quantite) && l.quantite >= 1 ? l.quantite : 1;
   const nom = q > 1 ? plurielNom(l.nom) : l.nom;
   const quantite = uniteParlable(l.unite)
     ? t('TATA_MESURE_DE_PRODUIT', { mesure: quantiteAvecUnite(q, l.unite), produit: l.nom })
     : t('TATA_QUANTITE_PRODUIT', { quantite: quantiteAvecUnite(q, null), produit: nom });
-  return t('TATA_LIGNE_AJOUTEE', { quantite, montantLigne: r(l.totalLigne), totalPanier: r(l.totalPanier) });
+  const m = resoudreMessage('TATA_LIGNE_AJOUTEE', { quantite, montantLigne: r(l.totalLigne), totalPanier: r(l.totalPanier) });
+  return { texte: m.texte, texteParle: formeParleeDuMessage(m) };
 }

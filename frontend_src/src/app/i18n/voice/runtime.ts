@@ -23,6 +23,10 @@
  * lexique : `{devise}` (« francs ») et `{symboleDevise}` (« F ») — la devise
  * reste dite à un seul endroit (config/devise.ts, ADR-0003).
  */
+import { formeParlee, nombreEnMotsFr, type MotsMonnaie } from './argent/deuxFormes';
+import { resoudreMontant } from './argent/enonceArgent';
+import { journaliserArgent } from './argent/journalArgent';
+import { natureDeLaVariable, UNITE_DES_VARIABLES } from './argent/variablesArgent';
 import { entreeTts, entreeIntent } from './catalog';
 import { DYU_ARGENT_DE_TEST, LOCALE_ARGENT_DE_TEST } from './drapeauxDeTest';
 import { manifest, estLocaleConnue } from './registry';
@@ -39,7 +43,27 @@ export interface MessageVocal {
   locale: LocaleCode;
   /** Locale demandée. */
   localeDemandee: LocaleCode;
+  /**
+   * LA FORME ÉCRAN. Inchangée depuis toujours, au caractère près — espaces
+   * fines insécables comprises. C'est elle qui s'affiche.
+   */
   texte: string;
+  /**
+   * LA FORME PARLÉE — ce qui part au moteur de synthèse.
+   *
+   * Identique à `texte` pour toute phrase qui ne porte pas d'argent. Pour un
+   * message `critiqueArgent`, les nombres y sont en toutes lettres, dérivés
+   * d'un `MoneyUtterance` structuré et non de la chaîne affichée : `3 000 F`
+   * à l'œil, « trois mille francs » à l'oreille (voir argent/deuxFormes.ts).
+   *
+   * TOUJOURS PRÉSENT sur ce que `resoudreMessage` produit — c'est-à-dire sur
+   * tout message qui vient de la caisse, du catalogue ou d'un écran. Le champ
+   * est optionnel pour la seule raison qu'un `MessageVocal` peut être FORGÉ à
+   * la main dans un test de rendu (voixParLocale.test.mts, section D) ; un tel
+   * objet n'a pas de montant à dire, et `formeDite` lit alors `texte`. Aucun
+   * montant ne passe par là : `interpolerParle` est le seul producteur.
+   */
+  texteParle?: string;
   variables: Variables;
   fallback: boolean;
 }
@@ -136,6 +160,100 @@ export function interpoler(template: string, vars: Variables, m: ManifestLocale)
   });
 }
 
+// ── L'argent : deux formes, une source (22/09/2026) ─────────────────────────
+//
+// `formaterValeur` A CESSÉ DE SERVIR LES DEUX. Il reste le formateur de
+// l'ÉCRAN — et il ne change pas d'un caractère. Pour une variable de montant
+// dans un message `critiqueArgent`, c'est `interpolerParle` qui produit ce
+// qui part à la voix, à partir d'un `MoneyUtterance` structuré.
+//
+// LE DÉFAUT QU'ON FERME : `(3000).toLocaleString('fr-FR')` rend « 3 000 » avec
+// U+202F (8239) entre le 3 et les zéros. Le moteur de synthèse y voit deux
+// jetons et épelle : « trois zéro zéro zéro ». Constaté par Patrick sur l'APK
+// livré, en français, sur TOUS les montants.
+
+/** Les mots de la monnaie d'une locale, tels que son lexique les donne. */
+function motsMonnaie(m: ManifestLocale): MotsMonnaie {
+  const lex = m.lexique ?? manifest(LOCALE_REFERENCE)?.lexique ?? null;
+  return {
+    parlee: lex?.monnaie.parlee ?? 'francs',
+    symbole: lex?.monnaie.symbole ?? 'F',
+    formatNombre: m.formatNombre,
+    uniteOraleParlee: lex?.monnaie.uniteOrale?.formes[0],
+  };
+}
+
+/**
+ * Le gabarit dit-il déjà la devise juste après cette variable ?
+ * « Elle doit {total} {devise} » : inutile de répéter « francs ».
+ */
+function deviseSuitLaVariable(template: string, apres: number): boolean {
+  return /^\s*\{(devise|symboleDevise)\}/.test(template.slice(apres));
+}
+
+/**
+ * L'interpolation qui part à l'OREILLE. Mêmes règles que `interpoler` pour
+ * tout ce qui n'est pas un nombre ; pour les nombres d'un message d'argent :
+ *
+ *  - variable déclarée comme ARGENT  → `MoneyUtterance` résolu → forme parlée ;
+ *  - variable déclarée de COMPTAGE   → nombre en toutes lettres, sans devise ;
+ *  - variable NON DÉCLARÉE           → REFUS : la forme écrite est conservée,
+ *    et le refus est journalisé avec la clé, la variable et la valeur. Pas de
+ *    repli silencieux : un repli nommé, relisible dans le rapport de test.
+ *
+ * `{symboleDevise}` (« F ») devient la devise PARLÉE : « F » se lit comme une
+ * lettre, ce que le catalogue note déjà pour les résumés d'écran.
+ */
+export function interpolerParle(template: string, vars: Variables, m: ManifestLocale, cle: MessageId, critiqueArgent: boolean): string {
+  const lex = m.lexique ?? manifest(LOCALE_REFERENCE)?.lexique ?? null;
+  if (!critiqueArgent) return interpoler(template, vars, m);
+  const mots = motsMonnaie(m);
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (tout, nom: string, position: number) => {
+    if (!Object.prototype.hasOwnProperty.call(vars, nom)) {
+      if (nom === 'devise' && lex) return lex.monnaie.parlee;
+      // À l'oreille, le SYMBOLE devient le mot : « F » seul se lit « èffe ».
+      if (nom === 'symboleDevise' && lex) return lex.monnaie.parlee;
+      return tout;
+    }
+    const valeur = vars[nom];
+    if (typeof valeur !== 'number') return String(valeur);
+    const nature = natureDeLaVariable(nom);
+    const experimental = DYU_ARGENT_DE_TEST;
+    if (nature === 'comptage') {
+      const texteProduit = nombreEnMotsFr(valeur);
+      journaliserArgent({ cle, variable: nom, locale: m.code, valeurSource: valeur, uniteSource: null, texteProduit, chemin: 'comptage-parle', experimental });
+      return texteProduit;
+    }
+    if (nature === 'non_declaree') {
+      // AUCUNE UNITÉ SÉMANTIQUE DÉCLARÉE : on ne produit pas d'énoncé
+      // d'argent. `resoudreMontant` le dit dans les types (`UNIT_MISSING`) ;
+      // ici on le dit dans le journal, et le nombre garde sa forme écrite.
+      const refus = resoudreMontant({ amount: valeur, locale: m.code, source: 'catalogue-i18n' });
+      const texteProduit = formaterValeur(valeur, m);
+      journaliserArgent({
+        cle, variable: nom, locale: m.code, valeurSource: valeur,
+        uniteSource: null, texteProduit,
+        chemin: refus.resolved ? 'forme-parlee' : 'refus-unite-absente',
+        experimental,
+      });
+      return texteProduit;
+    }
+    const semanticUnit = UNITE_DES_VARIABLES[nom];
+    const resolu = resoudreMontant({ amount: valeur, currency: 'XOF', semanticUnit, locale: m.code, source: 'catalogue-i18n' });
+    if (!resolu.resolved) {
+      // Inatteignable tant qu'une unité est déclarée — mais on ne lit jamais
+      // `.value` sans avoir traité la perte : c'est toute la garantie de
+      // `Parsed<T>`, et elle ne se contourne pas ici non plus.
+      const texteProduit = formaterValeur(valeur, m);
+      journaliserArgent({ cle, variable: nom, locale: m.code, valeurSource: valeur, uniteSource: null, texteProduit, chemin: 'refus-unite-absente', experimental });
+      return texteProduit;
+    }
+    const texteProduit = formeParlee(resolu.value, mots, { avecUnite: !deviseSuitLaVariable(template, position + tout.length) });
+    journaliserArgent({ cle, variable: nom, locale: m.code, valeurSource: valeur, uniteSource: semanticUnit, texteProduit, chemin: 'forme-parlee', experimental });
+    return texteProduit;
+  });
+}
+
 /**
  * Résout un message dans une locale. Règles, dans l'ordre :
  *  1. la locale demandée a le message ET il est servable (voir `servable`) ;
@@ -174,16 +292,39 @@ export function resoudreMessage(id: MessageId, vars: Variables = {}, locale: Loc
         && !(DYU_ARGENT_DE_TEST && m.code === LOCALE_ARGENT_DE_TEST)) { replis.push('non_valide_finance'); continue; }
     const fallback = m.code !== localeDemandee;
     if (fallback) for (const raison of replis) tracer({ type: 'message', id, localeDemandee, localeServie: m.code, raison });
-    return { id, locale: m.code, localeDemandee, texte: interpoler(msg.template, vars, m), variables: vars, fallback };
+    return {
+      id, locale: m.code, localeDemandee,
+      texte: interpoler(msg.template, vars, m),
+      texteParle: interpolerParle(msg.template, vars, m, id, critique),
+      variables: vars, fallback,
+    };
   }
   // Clé inconnue partout : visible à l'écran plutôt qu'une exception dans la caisse.
   tracer({ type: 'message', id, localeDemandee, localeServie: LOCALE_REFERENCE, raison: 'absent' });
-  return { id, locale: LOCALE_REFERENCE, localeDemandee, texte: `[${id}]`, variables: vars, fallback: true };
+  return { id, locale: LOCALE_REFERENCE, localeDemandee, texte: `[${id}]`, texteParle: `[${id}]`, variables: vars, fallback: true };
 }
 
-/** Le texte, tout simplement. */
+/** Le texte tel qu'il s'AFFICHE. Inchangé — c'est la forme écran. */
 export function t(id: MessageId, vars: Variables = {}, locale: LocaleCode = localeActive()): string {
   return resoudreMessage(id, vars, locale).texte;
+}
+
+/**
+ * Le texte tel qu'il se DIT. Pour une phrase sans argent, c'est exactement
+ * `t(...)` ; pour un message `critiqueArgent`, les montants y sont en toutes
+ * lettres — « trois mille francs » et non « 3 000 », que le moteur épelait.
+ */
+export function tParle(id: MessageId, vars: Variables = {}, locale: LocaleCode = localeActive()): string {
+  return formeParleeDuMessage(resoudreMessage(id, vars, locale));
+}
+
+/**
+ * LA CHAÎNE QUI PART AU MOTEUR DE SYNTHÈSE, et la règle en un seul endroit.
+ * Un message résolu porte toujours sa forme parlée ; un `MessageVocal` forgé à
+ * la main (tests de rendu) n'en a pas, et n'a pas de montant à dire.
+ */
+export function formeParleeDuMessage(message: MessageVocal): string {
+  return message.texteParle ?? message.texte;
 }
 
 // ── Intentions (STT_INPUT) ──────────────────────────────────────────────────
