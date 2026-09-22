@@ -65,6 +65,11 @@ export interface VenteServeur {
    *  (« Tomate, Banane ») — ce n'est PAS un article. */
   produit?: string;
   description?: string;
+  /** LA CATÉGORIE DE DÉPENSE TOUCHÉE — DEP-02. Nom de la COLONNE (`category`,
+   *  héritage du schéma) ; l'identifiant qu'elle porte est l'un des onze de
+   *  `services/categorieDepense.ts`. Absente sur toutes les dépenses écrites
+   *  avant le 22/09/2026, et sur les ventes — qui n'en ont pas. */
+  category?: string;
   quantite?: number | string;
   mode_paiement?: string;
   notes?: string;

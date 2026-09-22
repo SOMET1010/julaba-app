@@ -478,7 +478,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           price: Number(tx.montant) || 0,
           montant: Number(tx.montant) || 0,
           source: tx.source || 'kassa',
-          category: tx.description ? tx.description.toLowerCase() : (tx.produit || '').toLowerCase(),
+          // DEP-02 : `category` PORTE UNE CATÉGORIE. Cette ligne y mettait le
+          // MOTIF en minuscules (« taxe mairie », « médicaments ») — un champ
+          // nommé « catégorie » qui contenait du texte libre, et sur lequel le
+          // camembert « dépenses par catégorie » groupait. Deux sens sur une
+          // même donnée, et la vraie catégorie touchée n'arrivait jamais
+          // jusqu'ici. On lit maintenant la colonne, et rien d'autre : absente
+          // = absente, ce que l'écran sait nommer.
+          category: tx.category,
           details: tx.details || null,
           // `??` ET NON `||` — corrigé le 18/09/2026. En JavaScript `0 || x`
           // vaut `x` : un bénéfice serveur valant EXACTEMENT ZÉRO déclenchait
@@ -818,7 +825,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ? {
             montant: transaction.price * transaction.quantity,
             description: transaction.productName || '',
-            categorie: transaction.category || 'autre',
+            // DEP-02 : la catégorie part telle qu'elle a été TOUCHÉE, ou
+            // pas du tout. Le `|| 'autre'` envoyait « autre » sur une dépense
+            // sans catégorie — un CHOIX possible de la marchande, collé sur
+            // une absence de choix.
+            categorie: transaction.category,
             mode_paiement: transaction.paymentMethod || 'especes',
           }
         : {
@@ -1089,6 +1100,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           price: Number(tx.montant) || 0,
           montant: Number(tx.montant) || 0,
           source: tx.source || 'kassa',
+          // Cette seconde projection des MÊMES lignes ne lisait pas `category`
+          // du tout : après un rechargement, la catégorie d'une dépense
+          // disparaissait de l'écran. Deux lectures d'une même table qui ne
+          // rendent pas la même chose — on les aligne.
+          category: tx.category,
           details: tx.details || null,
           // `??` ET NON `||` — corrigé le 18/09/2026. En JavaScript `0 || x`
           // vaut `x` : un bénéfice serveur valant EXACTEMENT ZÉRO déclenchait

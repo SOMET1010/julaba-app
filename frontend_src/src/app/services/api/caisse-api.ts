@@ -69,6 +69,18 @@ export interface EnregistrerDepenseData {
    *  files hors ligne déjà posées sur les téléphones installés ; ce n'est pas
    *  une forme à réintroduire. */
   description?: string;
+  /**
+   * LA CATÉGORIE TOUCHÉE — DEP-02.
+   *
+   * L'identifiant, pas le libellé : `'taxe_mairie'`, jamais « Taxe mairie ».
+   * Le libellé est du texte affichable, il change avec la langue et il ne
+   * distingue rien ; l'identifiant est le CHOIX de la marchande.
+   *
+   * Absent = elle n'en a pas donné. Le serveur écrit alors `null`, et l'écran
+   * dit « Catégorie pas notée ». Surtout pas un repli sur « autre », qui est
+   * l'une des onze réponses possibles.
+   */
+  categorie?: import('../categorieDepense').IdCategorieDepense;
   /** Clé d'idempotence : le backend ne compte pas deux fois la même dépense. */
   idempotency_key?: string;
 }

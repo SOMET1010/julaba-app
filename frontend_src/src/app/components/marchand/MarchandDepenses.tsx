@@ -17,62 +17,66 @@ const BG = '#F6F0E4';
 
 type Period = 'today' | 'month' | 'all';
 
-// ── Détection catégorie par mots-clés ─────────────────────────
-const CAT_RULES: { id: string; label: string; keywords: string[]; color: string; bg: string; border: string; icon: React.ReactNode }[] = [
-  {
-    id: 'transport', label: 'Transport', color: '#AF5B23', bg: '#FFF3EA', border: '#f5d5a8',
-    keywords: ['transport','yango','taxi','moto','bus','gbaka','woro','carburant','essence','uber'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#AF5B23" strokeWidth="2" strokeLinecap="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-  },
-  {
-    id: 'repas', label: 'Repas', color: '#E24B4A', bg: '#FEF3F2', border: '#fca5a5',
-    keywords: ['repas','manger','nourriture','restaurant','maquis','attiéké','attieke','riz','alloco','foutou','placali','kedjenou','soupe','dejeuner','dîner','petit-dejeuner'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2" strokeLinecap="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
-  },
-  {
-    id: 'loyer', label: 'Loyer', color: '#378ADD', bg: '#F0F4FF', border: '#b5d4f4',
-    keywords: ['loyer','maison','chambre','studio','logement','appartement','location','propriétaire'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#378ADD" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-  },
-  {
-    id: 'tontine', label: 'Tontine', color: '#7F77DD', bg: '#FDF4FF', border: '#cecbf6',
-    keywords: ['tontine','cotisation','association','nath','tour'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-  },
-  {
-    id: 'sante', label: 'Santé', color: '#1D9E75', bg: '#F0FFF4', border: '#9fe1cb',
-    keywords: ['sante','santé','pharmacie','médicament','medicament','docteur','médecin','medecin','hôpital','hopital','clinique','ordonnance','consultation'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-  },
-  {
-    id: 'telephone', label: 'Téléphone', color: '#B74725', bg: '#F6F0E4', border: '#f5d5a8',
-    keywords: ['telephone','téléphone','credit','crédit','forfait','airtime','mtn','orange','moov','wave','recharge'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B74725" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-  },
-  {
-    id: 'famille', label: 'Famille', color: '#E24B4A', bg: '#FFF0F0', border: '#fca5a5',
-    keywords: ['famille','enfant','enfants','fils','fille','mari','femme','parent','mère','mere','père','pere','frère','frere','sœur','soeur','school','école','ecole','scolarité','scolarite'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-  },
-  {
-    id: 'marchandise', label: 'Marchandise', color: '#1D9E75', bg: '#F0FAF5', border: '#9fe1cb',
-    keywords: ['marchandise','stock','achat','produit','légume','legume','tomate','piment','igname','manioc','banane','riz','oignon','gombo','aubergine'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2" strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-  },
-];
+// ── LA CATÉGORIE : LUE, PLUS DEVINÉE — DEP-02 ──────────────────
+//
+// CE QUI ÉTAIT ICI. Une table de 8 catégories × ~15 mots-clés français, et un
+// `detectCat(description)` qui cherchait ces mots dans le motif de la dépense
+// pour en RECONSTRUIRE la catégorie — parce que personne ne l'avait
+// enregistrée. C'est l'interdit central de ce dépôt : une information qui pèse
+// sur l'argent est conservée, ou nommée perdue, jamais reconstruite en aval.
+//
+// ET ELLE SE TROMPAIT SUR L'ÉCRAN D'EN FACE. Le formulaire propose onze
+// catégories ; cette table en connaissait neuf. « Taxe mairie » n'avait aucun
+// mot-clé → « Autre ». « École » tombait sur le mot-clé `école` de FAMILLE →
+// la dépense de scolarité devenait « Famille ». Deux des onze choix qu'elle
+// peut toucher ne pouvaient PAS revenir tels qu'elle les avait faits.
+//
+// Le choix voyage maintenant jusqu'à la colonne `category`. Ici, on le lit.
+// Il ne reste de l'ancienne table que ses COULEURS et ses ICÔNES — de la
+// décoration, qui n'a jamais eu d'incidence sur l'argent.
+import { CATEGORIES_DEPENSE, categorieDeLaDepense, type IdCategorieDepense } from '../../services/categorieDepense';
 
-const CAT_AUTRE = {
-  id: 'autre', label: 'Autre', color: 'var(--encre-3)', bg: '#F5F5F5', border: '#ddd',
-  icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+interface ApparenceCategorie { color: string; bg: string; border: string; icon: React.ReactNode }
+
+const svg = (stroke: string, chemin: React.ReactNode): React.ReactNode => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round">{chemin}</svg>
+);
+const GENS = <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>;
+
+const APPARENCE: Readonly<Record<IdCategorieDepense, ApparenceCategorie>> = {
+  transport:   { color:'#AF5B23', bg:'#FFF3EA', border:'#f5d5a8', icon: svg('#AF5B23', <><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></>) },
+  repas:       { color:'#E24B4A', bg:'#FEF3F2', border:'#fca5a5', icon: svg('#E24B4A', <><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>) },
+  taxe_mairie: { color:'#7F77DD', bg:'#F4F3FE', border:'#cecbf6', icon: svg('#7F77DD', <><line x1="3" y1="21" x2="21" y2="21"/><line x1="5" y1="21" x2="5" y2="10"/><line x1="19" y1="21" x2="19" y2="10"/><line x1="12" y1="21" x2="12" y2="10"/><polygon points="3 10 12 3 21 10"/></>) },
+  loyer:       { color:'#378ADD', bg:'#F0F4FF', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>) },
+  famille:     { color:'#E24B4A', bg:'#FFF0F0', border:'#fca5a5', icon: svg('#E24B4A', GENS) },
+  tontine:     { color:'#7F77DD', bg:'#FDF4FF', border:'#cecbf6', icon: svg('#7F77DD', GENS) },
+  sante:       { color:'#1D9E75', bg:'#F0FFF4', border:'#9fe1cb', icon: svg('#1D9E75', <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>) },
+  telephone:   { color:'#B74725', bg:'#F6F0E4', border:'#f5d5a8', icon: svg('#B74725', <><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></>) },
+  marchandise: { color:'#1D9E75', bg:'#F0FAF5', border:'#9fe1cb', icon: svg('#1D9E75', <><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></>) },
+  ecole:       { color:'#378ADD', bg:'#F0F4FF', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></>) },
+  autre:       { color:'#888', bg:'#F5F5F5', border:'#ddd', icon: svg('#888', <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>) },
 };
 
-function detectCat(description: string) {
-  const d = (description || '').toLowerCase();
-  for (const cat of CAT_RULES) {
-    if (cat.keywords.some(k => d.includes(k))) return cat;
-  }
-  return CAT_AUTRE;
+// L'APPARENCE DU « PAS NOTÉ ». Volontairement DIFFÉRENTE de celle d'« Autre » :
+// une non-lectrice distingue les pastilles, pas les mots. Confondre les deux
+// remettrait les deux sens sur une même donnée.
+const SANS_CATEGORIE: ApparenceCategorie = {
+  color:'#9A8F84', bg:'#FAF7F3', border:'#E4DCD2',
+  icon: svg('#9A8F84', <><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></>),
+};
+
+/** Ce qu'il faut pour PEINDRE une dépense — son libellé de catégorie et ses
+ *  couleurs. Rien n'est déduit du texte : on lit ce qui a été enregistré. */
+function apparenceDepense(d: any): ApparenceCategorie & { label: string } {
+  const lue = categorieDeLaDepense(d);
+  return lue.connue
+    ? { ...APPARENCE[lue.id], label: lue.libelle }
+    : { ...SANS_CATEGORIE, label: lue.libelle };
 }
+
+/** Les catégories vraiment présentes dans une liste — pour les filtres, si un
+ *  jour on en ajoute. Exportée nulle part : elle documente l'ordre canonique. */
+void CATEGORIES_DEPENSE;
 
 // ── Surlignage recherche ──────────────────────────────────────
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -92,7 +96,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
 // ── Card dépense dépliable ────────────────────────────────────
 function DepenseCard({ d, index, query, montantsMasques }: { d: any; index: number; query: string; montantsMasques: boolean }) {
   const [open, setOpen] = useState(false);
-  const cat = detectCat(d.productName || d.description || '');
+  const cat = apparenceDepense(d);
   const montant = d.montant || d.price || 0;
   const dateObj = new Date(d.date);
 
@@ -457,7 +461,7 @@ export function MarchandDepenses() {
       <div style={{ position:'fixed', bottom:0, left:0, right:0, padding:'12px 14px 28px', background:`linear-gradient(to top,${BG} 70%,transparent)`, zIndex:10 }}>
         <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/depense')}
           style={{ width:'100%', background:P, color:'white', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor:'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, letterSpacing:'-0.2px' }}>
-          + Noter une dépense
+          + Faire une dépense
         </motion.button>
       </div>
     </div>

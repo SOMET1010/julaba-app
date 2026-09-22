@@ -223,7 +223,7 @@ const COURONNE = [
     n: 7,
     id: 'depense',
     rang: 'couronne',
-    titre: 'Noter une dépense',
+    titre: 'Faire une dépense',
     chemin: '/marchand/depense',
     semences: SESSION_MARCHANDE,
     preuve: "Quelle dépense ?",
