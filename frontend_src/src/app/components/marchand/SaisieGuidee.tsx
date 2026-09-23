@@ -180,7 +180,16 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
   return (
     <div style={{ background: '#FFFCF7', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <p style={{ fontSize: 13, fontWeight: 800, color: ORANGE, letterSpacing: '0.05em', margin: 0 }}>SAISIR SANS PARLER</p>
+        {/* CAI-11 — LE PANNEAU PORTE LE NOM DU GESTE QUI L'OUVRE.
+            Il s'intitulait « SAISIR SANS PARLER ». Troisième nom pour le même
+            geste, après « Choisir à l'écran » (CAI-08) et l'icône clavier
+            (CAI-10). Deux fautes, les mêmes qu'avant : « saisir » n'est pas un
+            geste de la main — on saisit au clavier, on ne saisit pas un
+            légume ; et « sans parler » se définit par ce qu'on NE fait pas,
+            ce qui ne dit toujours pas quoi faire. Le bouton dit « Toucher les
+            produits » : le panneau qu'il ouvre le dit aussi, au mot près.
+            Arbitrage de Patrick, 23/09/2026. */}
+        <p style={{ fontSize: 13, fontWeight: 800, color: ORANGE, letterSpacing: '0.05em', margin: 0 }}>TOUCHER LES PRODUITS</p>
         <BoutonReecouter phrase={() => dernierePhraseRef.current || questionEtape} />
       </div>
 

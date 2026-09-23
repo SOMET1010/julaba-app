@@ -35,7 +35,7 @@
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, AudioLines, CheckCircle, Keyboard, Loader, Mic, Volume2 } from 'lucide-react';
+import { AlertCircle, AudioLines, CheckCircle, Hand, Loader, Mic, Volume2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
@@ -637,11 +637,19 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
               « toucher les produits », et ne le retrouvait nulle part.
               L'étiquette lue et le texte vu sont désormais LA MÊME phrase :
               deux libellés pour un bouton, c'est deux boutons pour qui ne voit
-              pas la même chose que qui n'entend pas. */}
+              pas la même chose que qui n'entend pas.
+
+              CAI-10 — ET L'ICÔNE EST UN NOM, ELLE AUSSI. Elle est restée un
+              CLAVIER après CAI-08 : la phrase disait « toucher », l'image
+              disait « écrire », et le bouton ouvre une grille de photos où
+              l'on n'écrit rien. Pour une marchande qui ne lit pas, l'icône
+              n'accompagne pas le message — elle EST le message, et c'est le
+              seul qu'elle reçoive. Une main, donc : le geste de son corps,
+              celui que la phrase nomme déjà. */}
           <button type="button" onClick={() => setSaisieOuverte(v => !v)}
             aria-label="Toucher les produits"
             style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-1)', minHeight: 'var(--caisse-cible-tactile)', background: saisieOuverte ? 'var(--caisse-orange-voix)' : 'transparent', border: 'none', borderRadius: 'var(--caisse-rayon-3)', padding: '0 var(--caisse-esp-2)', cursor: 'pointer', fontFamily: 'inherit' }}>
-            <Keyboard size={20} color={saisieOuverte ? 'white' : 'var(--caisse-gris-texte)'} />
+            <Hand size={20} color={saisieOuverte ? 'white' : 'var(--caisse-gris-texte)'} />
             <span style={{ font: 'var(--caisse-font-legende)', fontSize: 14, lineHeight: '18px', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--caisse-gris-texte)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Toucher les produits</span>
           </button>
         </div>
