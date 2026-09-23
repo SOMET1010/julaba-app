@@ -89,8 +89,20 @@ ok(/onClick=\{allerCaisse\}\s+aria-label="Vendre"/.test(codeAccueil),
 console.log("\n[3] Le micro est CÂBLÉ, pas seulement affiché");
 ok(/useVoiceCore\(\{/.test(codeMicro),
   "le composant du micro monte lui-même le moteur vocal (useVoiceCore)");
-ok(/onClick=\{handleMicClick\}/.test(codeMicro),
-  "le bouton micro appelle le moteur — pas un gestionnaire décoratif");
+// VOX-02 — ASSERTION REMPLACÉE PAR UNE PLUS FORTE, PAS RETIRÉE.
+//
+// Elle exigeait `onClick={handleMicClick}` en direct. Or `handleMicClick` (dans
+// `useVoiceCore`, figé par VOICE-01) ne traite pas l'état `confirming` : en
+// exiger l'appel DIRECT, c'était exiger le trou qui a bloqué le téléphone de
+// Patrick le 23/09. L'écran passe désormais par `toucherLeMicro`, qui consulte
+// une règle EXHAUSTIVE sur les sept états et appelle le moteur ensuite.
+//
+// La nouvelle exigence est plus forte : le bouton doit mener au moteur ET par
+// une règle qui ne peut pas oublier un état.
+ok(/onClick=\{toucherLeMicro\}/.test(codeMicro),
+  "le bouton micro passe par la règle des sept états — pas un gestionnaire décoratif");
+ok(/gesteDuMicro\(/.test(codeMicro) && /handleMicClick\(\)/.test(codeMicro),
+  "et cette règle mène BIEN au moteur vocal (handleMicClick), pas dans le vide");
 // useObjectif()/useRaccourcis() ne LÈVENT PAS d'erreur sans provider : ils
 // retombent sur des valeurs nulles. On obtiendrait un micro qui a l'air de
 // marcher, c'est-à-dire exactement la dette qu'on ferme.
