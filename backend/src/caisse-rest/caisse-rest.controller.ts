@@ -9,6 +9,7 @@ import { dateOperationValide } from './date-operation';
 import { resumeMargeDesLignes, coutDesLignesCoutees } from './marge-vente';
 import { CaisseTransaction, TransactionStatus } from './caisse-transaction.entity';
 import { restituerStock } from './stock-restitution';
+import { exigerJourneeOuverte } from './journee-ouverte';
 import { AlertesService } from '../notifications/alertes.service';
 
 // LE LIBELLÉ D'UNE DÉPENSE — DEP-01, 21/09/2026.
@@ -562,20 +563,11 @@ export class CaisseRestController {
    * geste : rouvrir la journée. C'est un clic, et c'est explicite — parce que
    * rouvrir invalide un comptage qu'elle a fait devant son argent.
    */
+  // CAI-09 — LA RÈGLE A DÉMÉNAGÉ, ELLE N'A PAS CHANGÉ. Son corps vit dans
+  // `journee-ouverte.ts` : les crédits, servis par un autre contrôleur, ne
+  // pouvaient pas atteindre une méthode privée, et ils l'ont donc ignorée.
   private async exigerJourneeOuverte(marchandId: string) {
-    const today = new Date().toISOString().split('T')[0];
-    const [session] = await this.dataSource.query(
-      'SELECT ouvert FROM caisse_sessions WHERE marchand_id = $1 AND date = $2 LIMIT 1',
-      [marchandId, today],
-    );
-    // Pas de journée du tout : `ensureSessionOuverte` la crée. Une marchande
-    // qui n'a jamais ouvert sa caisse n'est pas une marchande qui l'a fermée.
-    if (!session) return;
-    if (session.ouvert === false) {
-      throw new ConflictException(
-        'Ta journée de caisse est fermée. Rouvre-la pour continuer.',
-      );
-    }
+    await exigerJourneeOuverte(this.dataSource, marchandId);
   }
 
   private async ensureSessionOuverte(marchandId: string) {
