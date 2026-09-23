@@ -12,7 +12,7 @@ import logoAnsut from "../../../assets/images/logo-ansut.png";
 import { stopIntro } from '../../services/onboardingVoix';
 import { direEntreeAvantConnexion } from '../../services/entreeVoixAvantConnexion';
 import { tParle } from '../../i18n/voice/runtime';
-import { speak as direTexte } from '../../services/audioManager';
+import { parlerAvantConnexion } from '../../services/paroleEntree';
 import { estHabituee } from '../../utils/parcours';
 
 interface WelcomeProps {
@@ -55,7 +55,12 @@ export function Welcome({ onComplete }: WelcomeProps) {
     void direEntreeAvantConnexion(habituee ? 'retour' : 'accueil')
       .then((r) => {
         if (!r.doitDireLeTexte) return;
-        void direTexte(tParle(habituee ? 'AKWABA_RETOUR' : 'AKWABA_ACCUEIL'));
+        // AKW-02 — LA VOIE D'ENTRÉE EST NOMMÉE, PLUS UNE PORTE DÉROBÉE.
+        // Cet écran passait directement par `audioManager` pour échapper à la
+        // garde de rôle de `AppContext.speak`. Le contournement marchait, mais
+        // AUCUNE règle ne disait qui avait le droit de l'emprunter : n'importe
+        // quel écran pouvait faire pareil. La permission se demande désormais.
+        void parlerAvantConnexion('akwaba', tParle(habituee ? 'AKWABA_RETOUR' : 'AKWABA_ACCUEIL'));
       })
       .catch(() => { /* un bonjour qui casse ne bloque pas l'entrée */ });
   }, []);

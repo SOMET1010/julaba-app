@@ -17,7 +17,6 @@ import { API_URL } from '../../utils/api';
 import { extractPhoneDigits, fusionnerChiffresDictes } from '../../utils/frenchDigits';
 import { direEntree, direEntreeTexte, ENTREE_VOICE_CLIPS, type EntreeVoiceKey } from '../../services/entreeVoix';
 import { tParle } from '../../i18n/voice/runtime';
-import { speak as direTexteParMoteur } from '../../services/audioManager';
 import type { MessageId } from '../../i18n/voice/types';
 
 /**
@@ -51,7 +50,11 @@ const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
 /** Le clip s'il existe, sinon la phrase — une seule sortie, jamais deux. */
 function direConsigne(key: EntreeVoiceKey): Promise<void> {
   return direEntree(key)
-    .then((r) => (r.doitDireLeTexte ? direTexteParMoteur(tParle(CLE_CATALOGUE[key])) : undefined))
+    // AKW-02 — QUATRIÈME PORTE, TROUVÉE EN FERMANT LES TROIS AUTRES : cet
+    // écran parlait AUSSI par le moteur en direct, à côté de son propre
+    // `parle()`. Deux portes dans un seul fichier — la preuve qu'une porte
+    // non nommée s'en fait toujours une autre.
+    .then((r) => (r.doitDireLeTexte ? parlerAvantConnexion('connexion', tParle(CLE_CATALOGUE[key])).then(() => undefined) : undefined))
     .catch(() => { /* une consigne qui casse ne bloque jamais la connexion */ });
 }
 import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
@@ -63,6 +66,7 @@ import { salutation } from '../../utils/appellation';
 import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 import { glyphePourChiffre } from '../../services/clavierImage';
 import { retourFrappe, type EtapeSaisie } from '../../services/retourDeFrappe';
+import { parlerAvantConnexion } from '../../services/paroleEntree';
 
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
@@ -255,9 +259,15 @@ export function LoginPassword() {
 
   // Une phrase fixe n'est dite que si son clip Tantie exact est embarqué.
   // Aucune voix navigateur étrangère ne remplace un clip manquant.
+  // AKW-02 — LA VOIE D'ENTRÉE EST NOMMÉE. Cet écran parlait par
+  // `direEntreeTexte`, qui court-circuite la garde de rôle de
+  // `AppContext.speak` — légitime ici (personne n'est connecté), mais aucune
+  // règle ne disait qui avait le droit de le faire. La permission se demande.
   const parle = (texte: string) => {
     if (!texte) return;
-    try { void direEntreeTexte(texte); } catch { /* ignore */ }
+    // `direEntreeTexte` reste le CANAL — clip exact, aucune voix étrangère en
+    // repli. La primitive décide seulement si la porte s'ouvre.
+    void parlerAvantConnexion('connexion', texte, direEntreeTexte);
   };
   // Enchaîne PLUSIEURS prises de parole sans qu'elles se coupent. audioManager
   // ne sert qu'un créneau exclusif à la fois et toute nouvelle demande annule

@@ -31,7 +31,7 @@ import { stopSpeaking } from '../../services/elevenlabs';
 import { stopIntro } from '../../services/onboardingVoix';
 import { direEntreeAvantConnexion } from '../../services/entreeVoixAvantConnexion';
 import { tParle } from '../../i18n/voice/runtime';
-import { speak as direTexte } from '../../services/audioManager';
+import { parlerAvantConnexion } from '../../services/paroleEntree';
 
 /**
  * ── TNT-01 — CET ÉCRAN ÉTAIT MUET, ET SON BOUTON « RÉÉCOUTER » AUSSI ───────
@@ -56,7 +56,8 @@ import { speak as direTexte } from '../../services/audioManager';
  */
 function direOuLire(cle: 'histoire1' | 'bravo', id: 'TANTIE_PRESENTATION' | 'TANTIE_BRAVO'): Promise<void> {
   return direEntreeAvantConnexion(cle)
-    .then((r) => (r.doitDireLeTexte ? direTexte(tParle(id)) : undefined))
+    // AKW-02 — même voie nommée que l'écran 1 : la permission se demande.
+    .then((r) => (r.doitDireLeTexte ? parlerAvantConnexion('onboarding', tParle(id)).then(() => undefined) : undefined))
     .catch(() => { /* une voix qui casse ne bloque jamais l'entrée */ });
 }
 
