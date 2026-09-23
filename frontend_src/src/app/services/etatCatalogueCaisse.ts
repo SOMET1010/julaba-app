@@ -70,3 +70,27 @@ export function etatCatalogueCaisse(faits: FaitsCatalogueCaisse): EtatCatalogueC
   if (nbProduits === 0) return faits.servisDepuisCache ? { type: 'illisible' } : { type: 'vide' };
   return { type: 'liste', nbProduits };
 }
+
+/**
+ * FAUT-IL PRÉVENIR QUE CET ÉTAL VIENT DU TÉLÉPHONE ? — CAI-06.
+ *
+ * L'état `memoire` existait depuis CAI-01, CALCULÉ et jamais MONTRÉ. L'écran
+ * ne lisait `etatCatalogue` que dans la branche « liste vide » : dès qu'il y
+ * avait des produits, la grille s'affichait telle quelle, qu'ils viennent du
+ * serveur ou d'un souvenir vieux de trois jours. Une liste périmée présentée
+ * comme à jour — la faute que ce dépôt combat partout.
+ *
+ * `memoire` COUVRE AUSSI LE CHARGEMENT EN COURS, et c'est voulu : tant qu'on
+ * n'a pas de réponse, on ne SAIT pas si ces produits sont à jour. Ne rien dire
+ * reviendrait à laisser entendre qu'ils le sont.
+ *
+ * ON PRÉVIENT, ON NE BLOQUE PAS. Au marché il n'y a pas de réseau : `memoire`
+ * est la situation NORMALE, pas une panne. L'étal reste entier et vendable, et
+ * le ton reste factuel.
+ *
+ * `illisible` NE DÉCLENCHE RIEN ICI : il n'y a aucun produit gardé à annoncer,
+ * et l'écran a déjà sa phrase propre depuis CAI-01.
+ */
+export function avertirEtalGarde(etat: EtatCatalogueCaisse): boolean {
+  return etat.type === 'memoire';
+}

@@ -134,7 +134,8 @@ VOICE-01 : correction sur place, sans module parallèle et sans règle en double
 | CAI-03 | **La question vivait en double** — en dur dans le H1 et dans le catalogue. C'est par là que le vouvoiement a survécu à l'oral après avoir été vu à l'écran. Le H1 lit désormais la clé. | **FERMÉ** |
 | CAI-04 | **Le périmètre d'argent avait bougé** : `etatCatalogueCaisse.ts` y est entré (symbole `CaisseContext`). Le gel demandé a été fait par Patrick le 22/09 (`c2a5e49`, « figeage du perimetre et des empreintes — autorise par Patrick ») : le fichier est au noyau depuis, et le garde est vert. **Le backlog l'a affirmée ouverte pendant un jour de plus qu'elle ne l'était** — relu et corrigé au recensement du 23/09. | **FERMÉ** |
 | CAI-05 | **Une assertion figée avait été retirée** : `caisseCharte.test.mts` figeait le littéral « Que voulez-vous vendre ? » comme H1. Remplacée par une assertion PLUS forte (le H1 lit la clé `TATA_QUE_VENDRE`), le compte avait bougé. Regelé par Patrick le 22/09 dans le MÊME commit `c2a5e49`. L'empreinte porte aujourd'hui les DEUX assertions (le H1 par la clé, et « le vouvoiement n'est plus écrit nulle part »), et le garde dit « aucune assertion retirée ». Même correction de recensement que CAI-04. | **FERMÉ** |
-| CAI-06 | Le catalogue servi depuis le cache du téléphone est modélisé (état `memoire`) mais pas encore montré : une liste périmée est présentée comme à jour. | **OUVERT** — hors périmètre de ce lot (« pas de dettes voisines ») |
+| CAI-06 | **L'état `memoire` était CALCULÉ depuis CAI-01 et jamais MONTRÉ.** `POSCaisse` ne lisait `etatCatalogue` que dans la branche « liste vide » : dès qu'il y avait des produits, la grille s'affichait telle quelle, qu'ils viennent du serveur ou d'un souvenir vieux de trois jours. Une liste périmée présentée comme à jour. Un bandeau factuel se pose désormais **au-dessus** de la grille : « Derniers produits gardés sur ce téléphone ». | **FERMÉ** |
+
 
 **Preuve de fermeture** (banc, écran 5, sans réseau) :
 
@@ -207,6 +208,36 @@ confondre ; renommé `prixDelle`.
 Les deux fonctions du catalogue qui restent (`getImageByNom`,
 `rechercherProduitCatalogue`) ne servent plus qu'à retrouver une **image** par
 son nom. Jamais un prix.
+
+**Preuve de fermeture de CAI-06** :
+
+```
+rouge avant : le module n'exposait aucune règle d'avertissement,
+              et POSCaisse ne lisait `etatCatalogue` que sur liste vide
+après       : [1] frais → aucun bandeau (ni sur un étal réellement vide)
+              [2] mémoire → bandeau ; chargement en cours → bandeau aussi
+              [3] échec sans mémoire → PAS de « derniers produits gardés »,
+                  et la phrase CAI-01 « je n'ai pas pu lire » reste
+              [4] la grille reste entière et touchable — la vente continue
+              [5] les mots viennent du catalogue i18n : ni « cache », ni
+                  « synchronisation », ni « serveur », ni « réseau »
+```
+
+TROIS CONTRE-ESSAIS : bandeau débranché → rouge ; bandeau qui REMPLACE la
+grille → rouge ; règle qui s'allume aussi sur un état frais → rouge.
+
+**LE PREMIER N'A ROUGI QU'APRÈS DURCISSEMENT** : chercher `avertirEtalGarde`
+n'importe où dans le fichier attrapait l'**import**. Borné au bloc de rendu
+(jusqu'à `t('CAISSE_ETAL_GARDE')`). Cinquième fois de la session.
+
+**ET LE TEST CONTENAIT UNE VALEUR QUI N'EXISTE PAS** : `lecture: 'ok'` — le
+type n'admet que `jamais | chargement | lu | echec`. Il tombait dans la
+dernière branche et donnait le bon résultat PAR ACCIDENT. `tsx` ne typant pas,
+seul `tsc` l'a vu. Corrigé en `'lu'`.
+
+`memoire` couvre aussi le chargement en cours, et c'est voulu : tant qu'on n'a
+pas de réponse, on ne SAIT pas si ces produits sont à jour — ne rien dire
+laisserait entendre qu'ils le sont.
 
 **Preuve de fermeture de STK-03c** :
 

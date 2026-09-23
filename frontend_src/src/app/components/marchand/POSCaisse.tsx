@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, Minus, Trash2, X, Check, Package, FileText, Banknote, ChevronRight, Leaf, Zap, Volume2, CloudOff } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, X, Check, Package, FileText, Banknote, ChevronRight, Leaf, Zap, Volume2, CloudOff, Smartphone } from 'lucide-react';
 import { useCaisse, type StatutEnregistrement } from '../../contexts/CaisseContext';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { useApp } from '../../contexts/AppContext';
@@ -29,6 +29,7 @@ import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaiss
 import { PaveMontant } from '../shared/PaveMontant';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
 import { t } from '../../i18n/voice/runtime';
+import { avertirEtalGarde } from '../../services/etatCatalogueCaisse';
 
 // PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Les constantes `P` et `BG`
 // portaient l'ancienne charte ; la caisse lit maintenant la charte de la
@@ -1168,6 +1169,24 @@ function POSCaisseInner() {
             vendus (`topProducts`, calculé sur ses ventes réelles) portent un
             éclair au lieu d'une section à part qui les affichait deux fois. */}
         <div style={{ marginBottom:'var(--caisse-esp-4)' }}>
+          {/* CAI-06 — CET ÉTAL VIENT DU TÉLÉPHONE, ET ON LE DIT.
+              L'état `memoire` était calculé depuis CAI-01 et jamais montré :
+              dès qu'il y avait des produits, la grille s'affichait telle
+              quelle, qu'ils viennent du serveur ou d'un souvenir vieux de
+              trois jours. Une liste périmée présentée comme à jour.
+
+              ON INFORME, ON N'ALARME PAS, ET ON NE BLOQUE RIEN. Au marché il
+              n'y a pas de réseau : c'est la situation NORMALE. Le bandeau se
+              pose AU-DESSUS de la grille, qui reste entière et touchable — un
+              avertissement qui fermerait la caisse la fermerait tous les
+              jours. Les mots sont ceux de l'objet qu'elle tient : « ce
+              téléphone », jamais « cache », « serveur » ni « synchronisation ». */}
+          {avertirEtalGarde(etatCatalogue) && (
+            <div role="status" style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-3)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', background:'var(--caisse-sable)', borderRadius:'var(--caisse-rayon-3)', font:'var(--caisse-font-legende)', color:'var(--caisse-gris-texte)' }}>
+              <Smartphone size={16} aria-hidden="true" style={{ flexShrink:0 }} />
+              <span>{t('CAISSE_ETAL_GARDE')}</span>
+            </div>
+          )}
           {filtered.length === 0 ? (
             <div style={{ textAlign:'center', padding:'var(--caisse-esp-7) 0', color:'var(--caisse-gris-texte)', font:'var(--caisse-font-texte)' }}>
               <Package size={48} style={{ margin:'0 auto var(--caisse-esp-3)', opacity:0.4 }} />

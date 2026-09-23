@@ -458,36 +458,36 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 76 | `speak` | relais | t |  |  |
-| 84 | `speakMessage` | relais | id |  |  |
-| 169 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom: p?.nom \|\| p?.name \|\| 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }).texteParle |  |  |
-| 220 | `direMessage` | cle_i18n | TATA_AMBIGUITE |  |  |
-| 223 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
-| 230 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
-| 252 | `direMessage` | cle_i18n | TATA_INDIQUE_PRIX |  |  |
-| 264 | `dire` | dynamique | res.message |  |  |
-| 264 | `dire` | cle_i18n | TATA_ARTICLE_IMPOSSIBLE |  |  |
-| 281 | `direMessage` | cle_i18n | TATA_ARTICLE_AJOUTE_CATALOGUE |  |  |
-| 304 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }).texteParle |  |  |
-| 322 | `dire` | dynamique | direCoupure(valeur) |  |  |
-| 351 | `direMessage` | cle_i18n | TATA_MONTANT_TOTAL_INVALIDE |  |  |
-| 355 | `direMessage` | cle_i18n | TATA_MONTANT_RECU_INSUFFISANT |  |  |
-| 356 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
-| 425 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
-| 426 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
-| 438 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
-| 439 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
-| 444 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 511 | `speak` | dynamique | effet.texte |  |  |
-| 541 | `speak` | dynamique | effet.texte |  |  |
-| 571 | `dire` | dynamique | relu.texteParle |  |  |
-| 593 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
-| 667 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
-| 700 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
-| 733 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
-| 875 | `speak` | dynamique | relectureAffichee |  |  |
-| 911 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
-| 999 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
+| 77 | `speak` | relais | t |  |  |
+| 85 | `speakMessage` | relais | id |  |  |
+| 170 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom: p?.nom \|\| p?.name \|\| 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }).texteParle |  |  |
+| 221 | `direMessage` | cle_i18n | TATA_AMBIGUITE |  |  |
+| 224 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
+| 231 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
+| 253 | `direMessage` | cle_i18n | TATA_INDIQUE_PRIX |  |  |
+| 265 | `dire` | dynamique | res.message |  |  |
+| 265 | `dire` | cle_i18n | TATA_ARTICLE_IMPOSSIBLE |  |  |
+| 282 | `direMessage` | cle_i18n | TATA_ARTICLE_AJOUTE_CATALOGUE |  |  |
+| 305 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }).texteParle |  |  |
+| 323 | `dire` | dynamique | direCoupure(valeur) |  |  |
+| 352 | `direMessage` | cle_i18n | TATA_MONTANT_TOTAL_INVALIDE |  |  |
+| 356 | `direMessage` | cle_i18n | TATA_MONTANT_RECU_INSUFFISANT |  |  |
+| 357 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
+| 426 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
+| 427 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
+| 439 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
+| 440 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
+| 445 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 512 | `speak` | dynamique | effet.texte |  |  |
+| 542 | `speak` | dynamique | effet.texte |  |  |
+| 572 | `dire` | dynamique | relu.texteParle |  |  |
+| 594 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
+| 668 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
+| 701 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
+| 734 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
+| 876 | `speak` | dynamique | relectureAffichee |  |  |
+| 912 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
+| 1000 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
 
 ### `components/marchand/ProtectionSociale.tsx` — marchand_autre
 
