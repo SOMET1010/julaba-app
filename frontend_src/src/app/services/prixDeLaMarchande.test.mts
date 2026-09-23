@@ -86,7 +86,15 @@ console.log('\n[4] LES TROIS CHEMINS DE L\'ÉCRAN PASSENT PAR LA RÈGLE');
 {
   const g = source('components', 'marchand', 'GestionStock.tsx');
 
-  ok(/champsDepuisTuile/.test(g), 'l\'écran importe la règle');
+  // STK-03c — CETTE ASSERTION A ÉTÉ REMPLACÉE PAR UNE PLUS FORTE, PAS RETIRÉE.
+  // Elle vérifiait que l'écran importe `champsDepuisTuile`, la règle qui VIDE
+  // les prix d'une tuile de catalogue avant de remplir le formulaire. Depuis
+  // que la création est passée au parcours partagé, l'écran n'a plus de
+  // formulaire à remplir : il n'y a plus rien à vider. Vérifier qu'il importe
+  // une règle de nettoyage serait désormais plus faible que vérifier qu'il n'a
+  // plus rien à nettoyer.
+  ok(/<AjoutProduitGuide[\s/>]/.test(g),
+     'l\'écran ne pose plus AUCUN prix : la création est passée au parcours partagé');
 
   // Les deux tuiles (photo et suggestion) ne posent plus de prix.
   const tuiles = g.match(/setNewStock\(\{[^}]*p\.nom[^}]*\}\)/g) || [];

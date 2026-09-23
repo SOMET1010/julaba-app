@@ -208,6 +208,32 @@ Les deux fonctions du catalogue qui restent (`getImageByNom`,
 `rechercherProduitCatalogue`) ne servent plus qu'à retrouver une **image** par
 son nom. Jamais un prix.
 
+**Preuve de fermeture de STK-03c** :
+
+```
+rouge avant : ✗ aucune des 37 tuiles ne sert plus à créer un produit
+              ✗ ni par une suggestion de nom
+              ✗ le bouton ouvre LE MÊME parcours que la caisse
+              ✗ l'ancien formulaire n'écrit plus rien
+              ✗ caisse et stock montent le MÊME composant
+après       : 8 règles vertes, et l'édition / le réapprovisionnement d'un
+              produit DÉJÀ adopté restent en place (vérifié par deux assertions)
+```
+
+CONTRE-ESSAIS : modal qui réaffiche les 37 tuiles → rouge ; parcours partagé
+remplacé par un formulaire local → rouge. **Le second n'a rougi qu'après
+durcissement** : `/<AjoutProduitGuide/` matchait `AjoutProduitGuideX`. Borné à
+`/<AjoutProduitGuide[\s/>]/`. C'est la quatrième fois de la session qu'un test
+de câblage passe pour la mauvaise raison — le contre-essai est le seul juge.
+
+UNE ASSERTION DE STK-02 A ÉTÉ REMPLACÉE PAR UNE PLUS FORTE, PAS RETIRÉE.
+`prixDeLaMarchande.test.mts` vérifiait que `GestionStock` importe
+`champsDepuisTuile` — la règle qui VIDE les prix d'une tuile avant de remplir
+le formulaire. Il n'y a plus de formulaire à remplir : vérifier qu'il importe
+une règle de nettoyage serait plus faible que vérifier qu'il n'a plus rien à
+nettoyer. Le garde confirme : « aucune assertion retirée, renommée ni
+désarmée ».
+
 **Preuve de fermeture de STK-03 §2 + STK-03f** :
 
 ```
@@ -439,7 +465,9 @@ Ouvert par la mesure du 22/09 (`docs/parcours/MESURE-BACKOFFICE.md`) : 37
 | STK-03d | **TROU OUVERT PAR MON PROPRE CORRECTIF, fermé dans la foulée.** Retirer les 37 tuiles était juste ; laisser à leur place une **grille vide** et un lien souligné « Pas dans la liste ? » ne l'était pas. Une marchande qui ne lit pas y trouvait une surface blanche et aucun geste. **Un écran vide qui ne dit pas quoi faire est plus dur qu'un écran faux : le faux, au moins, se corrige.** Étal vide → une cible large qui pose la question et donne le geste, dite à voix haute par `TATA_ETAL_VIDE`. | **FERMÉ** |
 | STK-03e | **Poser un produit sur son étal — trois questions.** « Qu'est-ce que tu vends ? » → « Tu le vends comment ? » → « À combien ? ». Ni catégorie, ni stock, ni seuil, ni prix d'achat, ni péremption : une marchande ne décrit pas son produit, elle le vend. Une seule écriture, `addProduct` de la caisse. Le prix n'est **jamais** prérempli — sans lui, le produit n'existe pas. | **FERMÉ** |
 | STK-03f | **Le périmètre d'argent avait bougé, et il a refusé de se régulariser tout seul.** `AjoutProduitGuide.tsx` et `premierProduit.ts` portent le symbole `CaisseContext` — correct : ces deux fichiers décident ce qui entre dans son étal, donc ce qui se vend. **Autorisation explicite de Patrick, 23/09** ; `--figer-perimetre` relancé par sa décision, jamais de ma propre initiative. Noyau **89 → 91**, 2 entrés, **0 sorti, 0 reclassé**, et `zones` / `symboles` / `invariants` / `chaineTestCiGelee` / `racinesScannees` tous inchangés (comparés clé à clé). | **FERMÉ** |
-| STK-03c | **Dette VOISINE nommée, pas fermée** : `GestionStock.tsx:842` affiche encore les 37 tuiles génériques pour AJOUTER un produit. Là c'est légitime (choisir un produit à adopter) et `champsDepuisTuile` y vide déjà les prix depuis STK-02 — mais le NOM reste générique : adopter « Igname » plutôt que « Kponan ». Hors périmètre du lot. | **OUVERT** |
+| STK-03c | **Le stock adoptait encore par les 37 tuiles génériques.** Toucher « Igname » posait le nom « Igname » — alors que le référentiel en connaît **neuf**, à quatre prix. Elle adoptait un produit qui n'était pas le sien, puis lui collait son prix : **le prix juste sur le mauvais nom**. Et le formulaire réclamait catégorie, stock, seuil, prix d'achat, péremption, promo — sept champs pour poser un légume. Le bouton « Ajouter un produit » ouvre désormais **le même `AjoutProduitGuide` que la caisse**. | **FERMÉ** |
+| STK-03g | **`addStockItem` était une SECONDE naissance**, trouvée en fermant STK-03c : elle reprenait catégorie et image d'une entrée du catalogue générique, imposait un seuil d'alerte par défaut, et acceptait un stock initial que la marchande n'avait pas compté. Deux naissances, c'est deux règles — et celle-ci n'avait jamais reçu les correctifs de l'autre. Supprimée avec son formulaire (166 + 25 lignes). | **FERMÉ** |
+
 
 **Preuve de fermeture de STK-02** (règle pure, `test:prix-marchande`) :
 
