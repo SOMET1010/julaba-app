@@ -179,11 +179,34 @@ son téléphone le 22/09.
 | STK-01d | **`Number('')` vaut zéro.** L'écran remet le champ à `''` quand la marchande l'efface ; vider la case du prix l'aurait écrit à **zéro**, et le produit serait parti en caisse à zéro franc. Dette VOISINE trouvée en fermant STK-01a. | **FERMÉ** |
 | MAR-VTE-001 | « Son clip Tata Nanti Lou n'est pas encore enregistré » — `useVoiceCore.ts:355`, **figé par VOICE-01**. | **OUVERT** — desserrage = décision de Patrick |
 | CAI-08 | **« Choisir à l'écran »** : Patrick a mis **deux heures** à comprendre. Deux fautes en quatre mots — « choisir » ne nomme aucun geste (on choisit avec la tête), « à l'écran » ne distingue rien (la voix aussi part d'un bouton à l'écran). Et l'accueil annonçait DÉJÀ « Parler ou toucher les produits » : un geste, deux langues. **Arbitrage de Patrick du 22/09 : « Toucher les produits ».** L'étiquette lue et le texte vu sont désormais la même phrase. | **FERMÉ** |
-| CAI-10 | **L'icône du bouton est un CLAVIER** (`Keyboard`, lucide) alors qu'il dit maintenant « Toucher les produits » et qu'il ouvre une grille de produits. Pour une marchande qui ne lit pas, l'icône EST le message : elle dit « écrire » là où la phrase dit « toucher ». Dette VOISINE nommée en fermant CAI-08. | **OUVERT** — arbitrage visuel |
-| CAI-11 | **Un troisième nom pour le même geste** : le panneau que ce bouton ouvre s'intitule « SAISIR SANS PARLER » (`SaisieGuidee.tsx:183`). « Saisir » n'est pas plus un geste de la main que « choisir ». Dette VOISINE nommée, pas fermée. | **OUVERT** — arbitrage de formulation |
+| CAI-10 | **L'icône du bouton était un CLAVIER** (`Keyboard`, lucide) alors qu'il dit « Toucher les produits » et qu'il ouvre une grille de photos où l'on n'écrit rien. Pour une marchande qui ne lit pas, l'icône n'accompagne pas le message : elle EST le message, et c'est le seul qu'elle reçoive. **Arbitrage de Patrick du 23/09 : une icône du toucher, pas de l'écriture.** → `Hand` : le geste de son corps, celui que la phrase nomme déjà. | **FERMÉ** |
+| CAI-11 | **Un troisième nom pour le même geste** : le panneau ouvert par ce bouton s'intitulait « SAISIR SANS PARLER » (`SaisieGuidee.tsx:183`). Deux fautes, les mêmes qu'à CAI-08 : « saisir » n'est pas un geste de la main (on saisit au clavier, on ne saisit pas un légume), et « sans parler » se définit par ce qu'on NE fait pas — ce qui ne dit toujours pas quoi faire. → « TOUCHER LES PRODUITS », au mot près comme le bouton. | **FERMÉ** |
 | CAI-07a | **Deux « J'ai compris » simultanés à l'écran**, remesuré le 23/09 : REPRODUIT, VOX-01 n'avait pas fermé la cause. Deux blocs FRÈRES du même `<section>` de `MicroVenteCaisse` (bandeau vert l.656 ; `SaisieGuidee` → `ConfirmationLigne` l.730), aucune des deux conditions ne mentionnant l'autre. La formule avait DEUX SENS en même temps : « j'ai extrait une vente de ta phrase » (passé, peut-être échoué) et « voici ce que je vais enregistrer, confirme » (engage l'argent). Pour une non-lectrice, le premier contredit le second à l'instant où elle décide. **Arbitrage de Patrick du 23/09 : un seul à la fois ; le bandeau micro est transitoire et disparaît dès que `SaisieGuidee` s'ouvre ; ne pas maquiller les libellés pour contourner.** | **FERMÉ** |
 | CAI-07b | **Et l'écran ouvrait le second LUI-MÊME** : `signalerBlocage` (vente comprise, prix introuvable) fait `setSaisieOuverte(true)` — sans aucun geste de la marchande. Le commentaire d'alors décrivait déjà l'état sans y voir un défaut (« se terminait en silence absolu SOUS le bandeau J'ai compris ») : on avait ajouté un panneau sous le premier au lieu de retirer le premier. | **FERMÉ** |
 | CAI-07c | **CAUSE DE FOND, nommée en mesurant** : `useVoiceCore` n'écrit `setTranscript` qu'en 4 endroits et ne le remet **JAMAIS** à `''`. Or `compris` ne dérive que de `transcript` : le bandeau survivait à tout, bien après que la vente soit partie ou ait échoué. Le correctif ne vide pas `transcript` (ce serait toucher le moteur vocal) — il rend la règle d'affichage consciente du second écran. **Dette VOISINE nommée : `transcript` reste un état qui ne se termine jamais.** | **OUVERT** — hors périmètre de ce lot |
+
+**Preuve de fermeture de CAI-10 + CAI-11** (un seul lot : c'est UNE règle, pas
+deux — le garde de CAI-08 a été ÉTENDU plutôt que doublé, deux gardes sur un
+même geste, ce serait deux règles) :
+
+```
+rouge avant : ✗ plus de « SAISIR SANS PARLER »
+              ✗ « saisir » ne sert plus de titre
+              ✗ le panneau nomme le geste avec LES MÊMES MOTS
+              ✗ aucun titre en creux (« sans parler »)
+              ✗ l'icône du bouton n'est plus un clavier — c'est « Keyboard »
+              ✗ et elle ne dit pas « écrire »
+après       : [5] le panneau porte le même nom que le bouton — 4 ✓
+              [6] l'icône dit le même geste que la phrase — 4 ✓  (« Hand »)
+              et les 7 règles de CAI-08 restent vertes
+```
+
+LE GARDE NE FIGE PAS UNE PHRASE, il vérifie la RÈGLE : le geste porte le même
+nom partout (bouton vu, étiquette lue, titre du panneau), le verbe est un geste
+de la main, et l'icône ne dit pas « écrire ». Une reformulation reste possible
+sans desserrer la garde ; un quatrième nom, non.
+
+**Aucune logique métier ni d'argent modifiée** : trois libellés et une icône.
 
 **Preuve de fermeture de CAI-07** (le chemin exact demandé par Patrick :
 « deux gombos » → prix manquant → saisie guidée → prix → Vérifier) :

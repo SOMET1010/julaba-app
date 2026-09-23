@@ -1,5 +1,5 @@
 /**
- * UN GESTE, UN SEUL NOM — CAI-08.
+ * UN GESTE, UN SEUL NOM — CAI-08, puis CAI-10 + CAI-11.
  *
  * LE DÉFAUT, dans les mots de Patrick : « "Choisir à l'écran" ? j'ai mis deux
  * heures à comprendre ce que ça voulait dire ». Il a écrit l'application.
@@ -16,6 +16,23 @@
  * faute que ce dépôt combat partout : la même chose sous deux noms.
  *
  * ARBITRAGE DE PATRICK, 22/09/2026 : « TOUCHER LES PRODUITS ».
+ *
+ * CE QUE LE 23/09 A AJOUTÉ — LE MÊME DÉFAUT, DEUX ÉTAGES PLUS BAS.
+ * Fermer CAI-08 avait nommé deux dettes voisines, et elles disaient la même
+ * chose que lui :
+ *
+ *   CAI-10 — l'ICÔNE du bouton restait un CLAVIER pendant que sa phrase
+ *   disait « Toucher les produits » et qu'il ouvre une grille de photos. Pour
+ *   une marchande qui ne lit pas, l'icône EST le message : elle disait
+ *   « écrire » là où la phrase disait « toucher ». Un troisième nom, muet.
+ *
+ *   CAI-11 — le PANNEAU que ce bouton ouvre s'intitulait « SAISIR SANS
+ *   PARLER ». Troisième nom pour le même geste, et « saisir » n'est pas plus
+ *   un geste de la main que « choisir » : on saisit au clavier. Et se définir
+ *   par ce qu'on ne fait pas (« sans parler ») ne dit toujours pas quoi faire.
+ *
+ * ARBITRAGE DE PATRICK, 23/09/2026 : « Même geste partout : Toucher les
+ * produits. » Un geste, un nom — dans les mots, dans le titre, dans l'icône.
  *
  * CE QUE CE TEST VÉRIFIE, ET POURQUOI IL NE FIGE PAS UNE PHRASE. Geler le
  * littéral obligerait à desserrer la garde à la première reformulation — c'est
@@ -87,6 +104,38 @@ console.log('\n[4] LE VERBE EST UN GESTE DE LA MAIN');
   const fautifs = VERBES_MENTAUX.filter(v => new RegExp(`${v}\\s+(à|a)\\s+l['’]écran`, 'i').test(caisse));
   ok(fautifs.length === 0,
      `aucun verbe mental n'est proposé comme geste${fautifs.length ? ' — ' + fautifs.join(', ') : ''}`);
+}
+
+console.log('\n[5] LE PANNEAU OUVERT PORTE LE MÊME NOM QUE LE BOUTON — CAI-11');
+{
+  const PANNEAU = sansCommentaires(source('components', 'marchand', 'SaisieGuidee.tsx'));
+  ok(!/SAISIR SANS PARLER/i.test(PANNEAU),
+     'plus de « SAISIR SANS PARLER » — un troisième nom pour le même geste');
+  ok(!/\bsaisir\b/i.test(PANNEAU.match(/<p[^>]*>([^<]*)<\/p>/)?.[1] ?? ''),
+     '« saisir » ne sert plus de titre : on saisit au clavier, on ne saisit pas un légume');
+  ok(nommeLeGeste(PANNEAU),
+     'le panneau nomme le geste avec LES MÊMES MOTS que le bouton qui l\'ouvre');
+  // Se définir par ce qu'on NE fait pas ne dit pas quoi faire.
+  ok(!/sans\s+parler/i.test(PANNEAU),
+     'aucun titre en creux (« sans parler ») : on nomme le geste, pas son absence');
+}
+
+console.log('\n[6] L\'ICÔNE DIT LE MÊME GESTE QUE LA PHRASE — CAI-10');
+{
+  // Pour une marchande qui ne lit pas, l'icône EST le message. Une icône qui
+  // contredit la phrase est un nom de plus, et c'est le seul qu'elle lira.
+  const bloc = caisse.match(/<button[^>]*onClick=\{\(\) => setSaisieOuverte[\s\S]*?<\/button>/);
+  const icone = bloc?.[0].match(/<([A-Z][A-Za-z0-9]*)\s+size=/)?.[1] ?? '';
+  ok(icone !== 'Keyboard',
+     `l'icône du bouton n'est plus un clavier — c'est « ${icone || '(aucune)'} »`);
+  const ECRITURE = ['Keyboard', 'Type', 'PenLine', 'Pen', 'Pencil', 'Edit', 'Edit2', 'Edit3', 'TextCursor', 'TextCursorInput'];
+  ok(!ECRITURE.includes(icone),
+     'et elle ne dit pas « écrire » : ce bouton ouvre une grille de photos, pas un clavier');
+  ok(icone !== '', 'le bouton garde une icône — la retirer ne dirait rien du tout');
+  // Elle doit être IMPORTÉE : une icône fantôme casserait le build, mais on
+  // préfère le dire ici, dans les mots de la règle.
+  ok(new RegExp(`\\b${icone}\\b`).test(caisse.split('\n').filter(l => /^import/.test(l)).join('\n')),
+     `l'icône « ${icone} » vient bien de la bibliothèque d'icônes`);
 }
 
 console.log(echecs === 0
