@@ -158,19 +158,19 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 180 | `parle` | literal | Maintenant, des images à la place des chiffres. |  |  |
-| 180 | `parle` | literal | Retour aux chiffres. |  |  |
-| 294 | `parle` | dynamique | error |  |  |
-| 334 | `parle` | dynamique | suggestion.texte |  |  |
-| 342 | `parle` | literal | C'est fait. Je m'adapte à toi. |  |  |
-| 345 | `parle` | literal | D'accord, on ne change rien. |  |  |
-| 648 | `parle` | literal | Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro. |  |  |
-| 822 | `parle` | dynamique | message |  |  |
-| 833 | `parle` | dynamique | message |  |  |
-| 993 | `parle` | literal | Effacé. |  |  |
-| 1204 | `parle` | dynamique | chiffresEpeles(phone) |  |  |
-| 1298 | `parle` | literal | Voilà, tu peux parler maintenant. Touche le micro et dis ton numéro. |  |  |
-| 1539 | `parle` | template | Version {__APP_VERSION__}, {__BUILD_ID__} | `__APP_VERSION__` `__BUILD_ID__` |  |
+| 181 | `parle` | literal | Maintenant, des images à la place des chiffres. |  |  |
+| 181 | `parle` | literal | Retour aux chiffres. |  |  |
+| 295 | `parle` | dynamique | error |  |  |
+| 335 | `parle` | dynamique | suggestion.texte |  |  |
+| 343 | `parle` | literal | C'est fait. Je m'adapte à toi. |  |  |
+| 346 | `parle` | literal | D'accord, on ne change rien. |  |  |
+| 649 | `parle` | literal | Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro. |  |  |
+| 823 | `parle` | dynamique | message |  |  |
+| 834 | `parle` | dynamique | message |  |  |
+| 1017 | `parle` | literal | Effacé. |  |  |
+| 1229 | `parle` | dynamique | chiffresEpeles(phone) |  |  |
+| 1323 | `parle` | literal | Voilà, tu peux parler maintenant. Touche le micro et dis ton numéro. |  |  |
+| 1564 | `parle` | template | Version {__APP_VERSION__}, {__BUILD_ID__} | `__APP_VERSION__` `__BUILD_ID__` |  |
 
 ### `components/backoffice/BOLayout.tsx` — backoffice
 
