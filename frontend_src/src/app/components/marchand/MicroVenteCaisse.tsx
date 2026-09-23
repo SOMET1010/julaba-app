@@ -49,6 +49,7 @@ import { useStock, type StockItem } from '../../contexts/StockContext';
 import { extraire } from '../../voice-offline/extraction';
 import { intentLocal, intentLocalCaisse } from '../../voice-offline/localIntent';
 import { finDEcoute, afficheEcoute, libelleVenteComprise, ECOUTE_MAX_MS } from '../../services/ecouteCaisse';
+import { gesteDuMicro, sortieVisible, type EtatVoix } from '../../services/gesteDuMicro';
 import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
@@ -263,7 +264,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
 
   const {
     state, response, pendingResponse, transcript, liveTranscript, error,
-    handleMicClick, reset, confirmAction, cancelAction, isSpeaking,
+    handleMicClick, reset, confirmAction, cancelAction, isSpeaking, startRecording,
   } = useVoiceCore({
     // VOX-01 — 60 s était la cause directe du paragraphe de six lignes que
     // Patrick a vu à l'écran : le micro accumulait une minute de tout ce qui
@@ -518,6 +519,27 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // seul « J'ai compris » qui engage l'argent. Le bandeau du micro se retire.
   const vueEcoute = afficheEcoute({ ecoute: isRecording, transcription: transcript || '', compris, saisieOuverte });
   const isLoading = state === 'processing' || state === 'thinking';
+  /**
+   * VOX-02 — L'APPUI SUR LE MICRO RÉPOND DANS LES SEPT ÉTATS.
+   *
+   * `handleMicClick` (dans `useVoiceCore`, FIGÉ par VOICE-01) ne traite pas
+   * `confirming` : l'appui n'y faisait RIEN. Et vendre est une intention
+   * financière, donc le piège se refermait sur le geste le plus courant.
+   *
+   * On ne touche pas au fichier figé : l'écran DÉCIDE avant d'appeler, avec
+   * une règle exhaustive que le compilateur tient.
+   */
+  const toucherLeMicro = () => {
+    if (gesteDuMicro(state as EtatVoix) === 'reprendre') {
+      // Une question attend, et elle appuie pour PARLER : on abandonne la
+      // question et on rouvre l'oreille dans le même geste.
+      cancelAction();
+      void startRecording();
+      return;
+    }
+    handleMicClick();
+  };
+
   const isConfirming = state === 'confirming';
   const isError = state === 'error';
   const isDone = state === 'idle' && !!response;
@@ -578,7 +600,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
           ))}
           <motion.button
             type="button"
-            onClick={handleMicClick}
+            onClick={toucherLeMicro}
             disabled={isLoading}
             aria-label={isRecording ? 'Appuie pour terminer' : 'Appuie pour parler'}
             whileTap={{ scale: 0.93 }}
@@ -731,7 +753,12 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         )}
       </AnimatePresence>
 
-      {(isDone || isError) && (
+      {/* VOX-02 — UNE SORTIE EXISTE DÈS QUE L'ÉCRAN ATTEND QUELQUE CHOSE.
+          Elle ne s'affichait que si `isDone || isError` : deux états sur sept.
+          Partout ailleurs, aucun geste ne remettait l'écran à zéro — et avec un
+          micro inerte en `confirming`, l'écran était mort. Patrick, 23/09 :
+          « Je dois sortir mais il n'y a pas de vrai bouton pour sortir. » */}
+      {sortieVisible(state as EtatVoix, !!response) && (
         <button type="button" onClick={reset}
           style={{ width: '100%', marginTop: 'var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)', padding: 'var(--caisse-esp-3) 0', borderRadius: 'var(--caisse-rayon-4)', font: 'var(--caisse-font-bouton)', color: 'white', background: 'var(--caisse-orange-voix)', cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}>
           Parler encore à Tantie
