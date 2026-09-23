@@ -147,6 +147,27 @@ export const MARQUEURS_AVANT = new Set(['à', 'a', 'pour']);
 // « à » attache le montant à l'unité, « pour » au lot entier.
 export const MARQUEURS_UNITAIRE = new Set(['à', 'a']);
 export const MARQUEURS_TOTAL = new Set(['pour']);
+
+/**
+ * ARG-12 — « À » NE TRANCHE RIEN, ET LE PRENDRE POUR UNE DÉCISION ÉTAIT DÉJÀ
+ * DEVINER.
+ *
+ * Le testeur du 23/09 : « 2 tas de piments à 1000 → il applique le prix
+ * unitaire de 1000. À corriger. » Au marché, selon les habitudes, ce même
+ * « à 1000 » veut dire 1 000 le tas OU 1 000 pour les deux. Trancher d'un
+ * côté fait perdre de l'argent de l'autre : « 5 tas de gombos à 1500 »
+ * posait 7 500 F au panier alors qu'elle pouvait vouloir dire 1 500.
+ *
+ * ARBITRAGE DE PATRICK : quand la quantité est multiple et qu'aucun mot ne
+ * tranche, ON DEMANDE. Et seulement là — « l'ambiguïté n'est levée que
+ * lorsqu'elle existe vraiment ». Une question de trop sur chaque vente ferait
+ * abandonner l'outil aussi sûrement qu'un faux prix.
+ *
+ * CES MOTS-LÀ TRANCHENT VRAIMENT, eux. Ils nomment explicitement l'unité ou
+ * l'ensemble ; il n'y a plus rien à demander.
+ */
+export const DIT_EXPLICITEMENT_UNITE = /\b(chacun|chacune|chaque|le unit[ée]|l'unit[ée]|la pi[èe]ce|le kilo|le kg|le tas|le sac|le panier|la botte|le r[ée]gime|le litre|le sachet|la bassine)(?![a-zàâçéèêëîïôûùüÿñ])/i;
+export const DIT_EXPLICITEMENT_LOT = /\b(le tout|en tout|les deux|les trois|les quatre|les cinq|les six|l(es)? ensemble)(?![a-zàâçéèêëîïôûùüÿñ])/i;
 /**
  * LA NÉGOCIATION PORTE SUR LE LOT — toujours. « Je te fais 1 300 » sur trois
  * tas, c'est 1 300 pour les trois : personne ne négocie à la hausse. Ces
@@ -305,6 +326,7 @@ export function extraire(transcription: string): ExtractionResult {
   let montant: number | null = null;
   let quantite: number | null = null;
   let lecturePrix: 'unitaire' | 'total' | null = null;
+  let aDitA = false;
 
   if (marqueMontant.size > 0) {
     const idxMontant = Math.max(...marqueMontant);
@@ -313,12 +335,25 @@ export function extraire(transcription: string): ExtractionResult {
     // « pour » → prix du lot. « 2000 francs » sans préposition ne dit rien :
     // on laisse `null`, et l'aval demandera plutôt que d'inventer.
     const intro = motAvantMontant.get(idxMontant);
-    if (intro && MARQUEURS_UNITAIRE.has(intro)) lecturePrix = 'unitaire';
+    // ARG-12 — L'ORDRE COMPTE. Un mot qui nomme EXPLICITEMENT l'unité ou le
+    // lot prime sur la préposition : « à 1000 chacun » n'a rien d'ambigu,
+    // « les deux tas à 1000 » non plus. On les lit AVANT de regarder « à ».
+    if (DIT_EXPLICITEMENT_LOT.test(texte)) lecturePrix = 'total';
+    else if (DIT_EXPLICITEMENT_UNITE.test(texte)) lecturePrix = 'unitaire';
     else if (intro && MARQUEURS_TOTAL.has(intro)) lecturePrix = 'total';
+    else if (intro && MARQUEURS_UNITAIRE.has(intro)) {
+      // « À » SEUL NE DIT RIEN QUAND IL Y EN A PLUSIEURS. On retient qu'il a
+      // été prononcé ; la décision attend de connaître la quantité, juste
+      // dessous — sur une seule unité il n'existe aucune autre lecture, et
+      // demander serait une question pour rien.
+      aDitA = true;
+    }
   }
   if (marqueQuantite.size > 0) {
     quantite = numTokens[Math.min(...marqueQuantite)].value;
   }
+
+
 
   // Étape D : tokens non encore assignés → heuristique de dernier recours
   const assignes = new Set([...marqueMontant, ...marqueQuantite]);
@@ -350,6 +385,17 @@ export function extraire(transcription: string): ExtractionResult {
   // fais 1 300 » reste 1 300 pour les trois, même si un « à » traîne dans la
   // phrase. Personne ne négocie à la hausse.
   if (negociationDuLot && montant != null) lecturePrix = 'total';
+
+  // ARG-12 — L'AMBIGUÏTÉ N'EXISTE QU'AU PLURIEL, ET LA QUANTITÉ N'EST SÛRE
+  // QU'ICI. L'heuristique de dernier recours (étape D) peut encore l'assigner
+  // plus haut ; décider avant elle faisait lire « 2 tas à 1000 » comme une
+  // seule unité. « un tas à 1000 » ne peut vouloir dire qu'une chose ;
+  // « 2 tas à 1000 » en veut dire deux. On ne laisse donc `null` — c'est-à-dire
+  // « demande » — que là où la question a un sens. Patrick : « l'ambiguïté
+  // n'est levée que lorsqu'elle existe vraiment ».
+  if (aDitA && lecturePrix === null && (quantite == null || quantite <= 1)) {
+    lecturePrix = 'unitaire';
+  }
 
   return { intention, produit, quantite, montant, uniteParlee, lecturePrix };
 }
