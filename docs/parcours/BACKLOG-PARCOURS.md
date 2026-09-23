@@ -162,7 +162,9 @@ son téléphone le 22/09.
 | VOX-01a | **Le micro écoutait 60 s** sans jamais détecter la fin de phrase. D'où le paragraphe de six lignes. L'écran du numéro avait ce mécanisme depuis toujours ; celui de l'argent n'avait rien. | **FERMÉ** |
 | VOX-01b | **« J'ai compris » était un mensonge** : il s'affichait sur une simple transcription. | **FERMÉ** |
 | VOX-01c | **L'écran montrait la sortie brute de la machine.** | **FERMÉ** |
-| CAI-09 | `caisseTheorique` additionne aussi `acompte_credit` et `reglement_credit`. Leurs routes ne passent pas par la nouvelle garde. Même défaut, ailleurs. | **OUVERT** — hors périmètre du lot |
+| CAI-09a | `caisseTheorique` additionne aussi `acompte_credit` et `reglement_credit`. Leurs routes ne passaient pas par la garde de CAI-02. Le trou ne venait pas d'un oubli mais d'un RANGEMENT : `exigerJourneeOuverte` était une méthode **privée** de `CaisseRestController`, et `CreditsController` — autre classe, même module — ne pouvait pas l'atteindre. Une règle rangée dans un objet ne protège que cet objet. | **FERMÉ** |
+| CAI-09b | **DETTE VOISINE, trouvée en relisant les routes** : `POST /caisse/credits` avec `acompte > 0` appelle la MÊME primitive `encaisserCredit` et écrit donc la même ligne `acompte_credit`. Fermer `payer` et `acompte` en laissant celui-là, c'était fermer la porte et laisser la fenêtre. | **FERMÉ** |
+| CAI-09c | **Et la garde se prouve des deux côtés** : noter une dette **sans** acompte ne déplace aucun argent et reste possible après la clôture. Refuser là aussi aurait fait PERDRE l'information — la marchande n'aurait écrit le crédit nulle part. | **FERMÉ** |
 | HIS-01a (MAR-HIS-001) | **« Ce mois » affichait « Aujourd'hui tu as gagné… »** — `ResumeCaisse.tsx:334`. Les chiffres venaient bien de la période choisie ; c'est la PHRASE qui mentait sur ce qu'ils comptaient. « Aujourd'hui » et « Résumé du jour » étaient écrits en dur, à deux endroits. | **FERMÉ** |
 | HIS-01b | **DETTE VOISINE, trouvée en fermant la première** : la phrase DITE assemblait ses trois montants avec `toLocaleString('fr-FR')`, puis partait à `speak(texte)`. L'espace fine insécable (U+202F) atteignait le moteur, qui épelait « trois zéro zéro zéro ». C'est la faute fermée le 22/09 sur la caisse (`deuxFormes`), encore vivante sur le résumé. | **FERMÉ** |
 | DEP-02a (MAR-DEP-001) | **La catégorie de dépense n'était enregistrée nulle part.** La marchande TOUCHE « Taxe mairie » — le seul geste qu'une non-lectrice puisse faire — et ce choix était aplati dans `description`. La colonne `category` de `caisse_transactions` existait et restait vide sur chaque dépense. Chaîne rompue en quatre endroits : l'écran, le contexte, la route, la projection de lecture. | **FERMÉ** |
@@ -179,6 +181,20 @@ son téléphone le 22/09.
 | CAI-10 | **L'icône du bouton est un CLAVIER** (`Keyboard`, lucide) alors qu'il dit maintenant « Toucher les produits » et qu'il ouvre une grille de produits. Pour une marchande qui ne lit pas, l'icône EST le message : elle dit « écrire » là où la phrase dit « toucher ». Dette VOISINE nommée en fermant CAI-08. | **OUVERT** — arbitrage visuel |
 | CAI-11 | **Un troisième nom pour le même geste** : le panneau que ce bouton ouvre s'intitule « SAISIR SANS PARLER » (`SaisieGuidee.tsx:183`). « Saisir » n'est pas plus un geste de la main que « choisir ». Dette VOISINE nommée, pas fermée. | **OUVERT** — arbitrage de formulation |
 | CAI-07 | Deux « J'ai compris » simultanés à l'écran. À revérifier : VOX-01 a peut-être fermé la cause. | **À REMESURER** |
+
+**Preuve de fermeture de CAI-09** (invariant sur base réelle — la preuve
+TRAVERSE : on ne vérifie pas qu'une route répond 4xx, on RELIT en base que la
+clôture n'a pas bougé) :
+
+```
+rouge avant : Expected >= 400 / Received 200  (second acompte après clôture)
+              Expected >= 400 / Received 201  (création avec acompte, contre-essai isolé)
+après       : 252 invariants verts, 50 suites
+              ouvert=false, fond_final=12000, caisse_theorique=12000, ecart=0 — inchangés
+              lignes acompte_credit/reglement_credit : nombre et somme inchangés
+              credits.acompte et statut : inchangés
+              et le crédit SANS acompte, lui, s'écrit toujours (201)
+```
 
 **Preuve de fermeture de CAI-02** (invariant sur base réelle) :
 
