@@ -73,3 +73,26 @@ export function tuilesDeLEtal(etal: readonly ProduitDeLEtal[]): TuileDeLEtal[] {
 export function prixDeLaTuile(tuile: TuileDeLEtal): number {
   return tuile.prix;
 }
+
+/**
+ * CE QUE LE PANNEAU MONTRE — son étal, ou la question du premier produit.
+ *
+ * LE TROU QUE CETTE RÈGLE FERME. Retirer les 37 tuiles était juste ; laisser à
+ * leur place une grille vide et un lien souligné « Pas dans la liste ? » ne
+ * l'est pas. Une marchande qui ne lit pas y trouvait une surface blanche et
+ * aucun geste — un écran vide qui ne dit pas quoi faire est plus dur qu'un
+ * écran faux : le faux, au moins, se corrige.
+ *
+ * UN ÉTAL VIDE N'EST PAS UNE PANNE, c'est un premier jour. L'écran le traite
+ * comme tel : il pose la question et donne le geste.
+ */
+export type VueEtal =
+  /** Elle a des produits : on montre les siens. */
+  | { readonly type: 'etal'; readonly tuiles: TuileDeLEtal[] }
+  /** Elle n'en a pas encore : on demande le premier, on ne montre pas du vide. */
+  | { readonly type: 'premier-produit' };
+
+export function vueDeLEtal(etal: readonly ProduitDeLEtal[]): VueEtal {
+  const tuiles = tuilesDeLEtal(etal);
+  return tuiles.length > 0 ? { type: 'etal', tuiles } : { type: 'premier-produit' };
+}
