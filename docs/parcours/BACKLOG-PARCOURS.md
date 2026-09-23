@@ -185,6 +185,29 @@ son téléphone le 22/09.
 | CAI-07b | **Et l'écran ouvrait le second LUI-MÊME** : `signalerBlocage` (vente comprise, prix introuvable) fait `setSaisieOuverte(true)` — sans aucun geste de la marchande. Le commentaire d'alors décrivait déjà l'état sans y voir un défaut (« se terminait en silence absolu SOUS le bandeau J'ai compris ») : on avait ajouté un panneau sous le premier au lieu de retirer le premier. | **FERMÉ** |
 | CAI-07c | **ÉNONCÉ CORRIGÉ AU RECENSEMENT DU 23/09 — la première rédaction était FAUSSE.** Elle disait que `useVoiceCore` « ne remet JAMAIS `transcript` à `''` ». C'est inexact : il le vide en deux endroits (`reset()` l.542, câblé sur le bouton « Parler encore à Tantie » ; et `startRecording()` l.941, à chaque nouvelle dictée). La mesure d'origine avait filtré les lignes portant un `//`, et ces deux lignes en portent une. **Ce qui reste vrai, et c'est plus étroit** : `transcript` n'est vidé qu'au DÉBUT du cycle suivant, jamais à la FIN du cycle en cours. Une vente partie au panier laisse donc « J'ai compris : 3 tomates » affiché — un état passé présenté au présent — jusqu'à ce qu'elle reparle ou touche le bouton. Depuis CAI-07, ce bandeau est au moins SEUL à l'écran. | **OUVERT** — Patrick, 23/09 : « je ne rouvrirais pas CAI-07c maintenant » |
 
+**Preuve de fermeture de STK-03** (les quatre cas exigés par Patrick) :
+
+```
+rouge avant : ✗ SaisieGuidee ne lit plus la liste des 37 tuiles en dur
+              ✗ et ne lit plus AUCUN `prixVente` du catalogue générique
+              ✗ elle lit l'étal de la marchande
+après       : [1] son Gombo à 700 → tuile à 700, SON unité « tas », et surtout
+                  pas le 400 du catalogue générique
+              [2] étal vide → ZÉRO tuile ; un produit sans prix d'elle n'a pas
+                  de tuile non plus — il n'y a rien à poser
+              [3] « Pas dans la liste ? » toujours là : un produit neuf ne
+                  bloque personne
+              [4] plus aucune lecture de CATALOGUE_PRODUITS ni de `prixVente`
+```
+
+TROUVÉ EN FERMANT : le paramètre de `choisirProduit` s'appelait `prixVente` —
+le nom du champ du catalogue. Un mot qui désigne deux choses finit par les
+confondre ; renommé `prixDelle`.
+
+Les deux fonctions du catalogue qui restent (`getImageByNom`,
+`rechercherProduitCatalogue`) ne servent plus qu'à retrouver une **image** par
+son nom. Jamais un prix.
+
 **Preuve de fermeture de CAI-10 + CAI-11** (un seul lot : c'est UNE règle, pas
 deux — le garde de CAI-08 a été ÉTENDU plutôt que doublé, deux gardes sur un
 même geste, ce serait deux règles) :
@@ -368,7 +391,9 @@ Ouvert par la mesure du 22/09 (`docs/parcours/MESURE-BACKOFFICE.md`) : 37
 | STK-02b | **Même injection par la suggestion de nom** — au clic, et la liste **affichait** en plus le prix comme s'il s'agissait d'une information sur le produit. | **FERMÉ** |
 | STK-02c | **L'AJOUT À LA VOIX, le pire des trois.** Le code le disait lui-même : « prix dit, **sinon prix du catalogue** ». Elle dictait « ajoute dix kilos de tomate » sans prix ; l'application écrivait 400 F **et le lui annonçait** : « C'est fait ! 10 kg de Tomate à 400 francs, ajoutés au stock. » Pour une marchande qui ne lit pas, **la voix EST la confirmation** — elle entendait un prix qu'elle n'avait jamais dit, énoncé comme un fait accompli. | **FERMÉ** |
 | STK-02d | **Le type de l'état de saisie mentait** : `purchasePrice: number`, alors que les gestionnaires écrivaient `'' as any`. Un champ de prix a **trois** états — un montant, zéro, ou pas encore saisi — et le type n'en connaissait que deux. Dette voisine, trouvée en fermant STK-02. | **FERMÉ** |
-| STK-03 | **Les tuiles ne nomment pas le bon produit.** 37 tuiles pour 198 références ; **8 seulement** portent le nom exact. La tuile « Igname » n'est ni « Igname Kponan », ni « Bêtê-Bêtê », ni « Florido », ni « Krenglè » — quatre variétés, quatre prix. Contourné à la main par l'aide-mémoire terrain. | **OUVERT** |
+| STK-03a | **La saisie guidée vendait le catalogue, pas son étal.** `SaisieGuidee.tsx:201` faisait `choisirProduit(p.nom, p.prixVente)` sur les 37 tuiles en dur, puis `setPrixModifiable(false)` : toucher « Tomate » posait **400 F qui ne sont pas les siens**, et elle ne pouvait pas les corriger. C'était STK-02 encore vivant, sur le chemin de l'argent — ce prix partait au panier, puis dans la marge, puis dans le bilan. **Arbitrage de Patrick du 23/09 : la caisse montre l'étal personnel de la marchande.** Le panneau lit désormais `products` : son nom, son prix, son unité. | **FERMÉ** |
+| STK-03b | **Et le nom mentait aussi.** Mesure du 23/09 (`224fc01`) : 21 des 37 tuiles couvrent plusieurs références maître ; « Igname » en couvre **neuf** (Kponan, Bêtê-Bêtê, Florido, Krenglè, Lokpa, Assawa…). Fermé par le même correctif, mais **sans aucune taxonomie** : elle ne voit ni famille, ni sous-famille, ni les 198 — elle voit ses produits, qu'elle nomme elle-même. | **FERMÉ** |
+| STK-03c | **Dette VOISINE nommée, pas fermée** : `GestionStock.tsx:842` affiche encore les 37 tuiles génériques pour AJOUTER un produit. Là c'est légitime (choisir un produit à adopter) et `champsDepuisTuile` y vide déjà les prix depuis STK-02 — mais le NOM reste générique : adopter « Igname » plutôt que « Kponan ». Hors périmètre du lot. | **OUVERT** |
 
 **Preuve de fermeture de STK-02** (règle pure, `test:prix-marchande`) :
 

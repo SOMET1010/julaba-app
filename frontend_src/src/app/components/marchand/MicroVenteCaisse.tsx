@@ -741,6 +741,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       {saisieOuverte && (
         <div style={{ marginTop: 'var(--caisse-esp-3)' }}>
           <SaisieGuidee
+            etal={products}
             onValider={ajouterLigneAuPanier}
             apparier={(nom) => {
               const p = apparierProduit(nom, products);

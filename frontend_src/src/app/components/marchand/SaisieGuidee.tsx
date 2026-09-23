@@ -33,7 +33,11 @@ import { phrasePrixManquant, phraseQuantiteManquante } from '../../services/dial
 import { resoudreMessage, t } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
 import { BoutonReecouter, ConfirmationLigne } from './ConfirmationLigne';
-import { CATALOGUE_PRODUITS, getImageByNom, rechercherProduitCatalogue } from '../../data/catalogue-produits';
+// STK-03 — on ne lit plus `CATALOGUE_PRODUITS` : ses 37 entrées portent des
+// PRIX qui ne sont pas ceux de la marchande. Les deux fonctions qui restent ne
+// servent qu'à retrouver une IMAGE par son nom, jamais un prix.
+import { getImageByNom, rechercherProduitCatalogue } from '../../data/catalogue-produits';
+import { tuilesDeLEtal, type ProduitDeLEtal } from '../../services/etalDeLaMarchande';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
 
@@ -48,6 +52,9 @@ export interface AppariementCatalogue {
 }
 
 interface Props {
+  /** SON étal : les produits qu'elle vend, à SES prix. STK-03 — c'est la SEULE
+   *  source des tuiles. Vide = aucune tuile, jamais un catalogue de secours. */
+  etal: readonly ProduitDeLEtal[];
   /** Reçoit la ligne CONFIRMÉE (statut 'confirmee'). Le parent l'ajoute au panier. */
   onValider: (l: LigneProvisoire) => void;
   /** Apparie le nom tapé à un produit du catalogue (null si inconnu → ligne libre). */
@@ -60,10 +67,14 @@ interface Props {
 
 const CHIFFRES_CLAVIER = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
-export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix }: Props) {
+export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initialPrix }: Props) {
   const [etape, setEtape] = useState<'saisie' | 'confirmation'>('saisie');
-  const catalogueInitial = initialProduit ? rechercherProduitCatalogue(initialProduit) : null;
-  const prixConnuInitial = initialPrix ?? catalogueInitial?.prixVente ?? null;
+  // STK-03 — LE PRIX PRÉ-REMPLI NE PEUT VENIR QUE D'ELLE. Il lisait
+  // `rechercherProduitCatalogue(nom)?.prixVente` en repli : le prix du
+  // catalogue en dur se posait dans le formulaire sans qu'elle l'ait dit, et
+  // `prixModifiable` passait à false — elle ne pouvait même pas le corriger.
+  // `initialPrix` vient du produit PRÉSÉLECTIONNÉ de son étal : c'est le sien.
+  const prixConnuInitial = initialPrix ?? null;
 
   const [produit, setProduit] = useState(initialProduit || '');
   const [quantite, setQuantite] = useState(1);
@@ -111,9 +122,12 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
     if (dernierePhraseRef.current !== questionEtape) dire(questionEtape);
   }, [etape, produitChoisi, prixModifiable, autreOuvert]); // eslint-disable-line react-hooks/exhaustive-deps -- la phrase est relue au moment où l'étape change
 
-  const choisirProduit = (nom: string, prixVente: number) => {
+  // STK-03 — le paramètre s'appelait `prixVente`, le nom du champ du catalogue
+  // générique. Un mot qui désigne deux choses finit par les confondre : ici le
+  // prix vient de SA tuile, donc d'elle.
+  const choisirProduit = (nom: string, prixDelle: number) => {
     setProduit(nom);
-    setPrix(String(prixVente));
+    setPrix(String(prixDelle));
     setPrixModifiable(false);
   };
 
@@ -197,11 +211,15 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
       {!produitChoisi ? (
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            {CATALOGUE_PRODUITS.filter(p => p.nom !== 'Autre').map(p => (
-              <motion.button key={p.nom} whileTap={{ scale: 0.94 }} onClick={() => choisirProduit(p.nom, p.prixVente)}
+            {tuilesDeLEtal(etal).map(p => (
+              <motion.button key={p.id} whileTap={{ scale: 0.94 }} onClick={() => choisirProduit(p.nom, p.prix)}
                 style={{ border: '2px solid var(--trait)', borderRadius: 14, padding: 6, background: 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
                 <ImageWithFallback src={p.image} alt={p.nom} fallbackSrc={vignetteProduit(p.nom)} style={{ width: '100%', aspectRatio: '1', borderRadius: 10, objectFit: 'cover' }} />
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--encre)' }}>{p.nom}</span>
+                {/* SON prix, sur la tuile. Elle ne va pas le chercher ailleurs. */}
+                <span style={{ fontSize: 11, fontWeight: 800, color: ORANGE }}>
+                  {p.prix.toLocaleString('fr-FR')} F / {p.unite}
+                </span>
               </motion.button>
             ))}
           </div>
