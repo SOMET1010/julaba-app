@@ -5,7 +5,8 @@ import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/re
 import { Package, TrendingUp, AlertCircle, Plus, Search, Trash2, X, Mic, MicOff, Edit3, Receipt, Wallet, BarChart3, Eye, EyeOff, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { Montant } from '../shared/Montant';
-import { champsDepuisTuile, prixDicte } from '../../services/prixDeLaMarchande';
+import { prixDicte } from '../../services/prixDeLaMarchande';
+import { AjoutProduitGuide } from './AjoutProduitGuide';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useUser } from '../../contexts/UserContext';
@@ -477,30 +478,21 @@ export function GestionStock() {
     return () => { vivant = false; };
   }, [selectedStock?.id, chargerMouvements]);
 
-  const addStockItem = async () => {
-    if (!newStock.name?.trim()) { toast.error('Nom du produit requis'); dire('Saisis le nom du produit'); return; }
-    if (Number(newStock.salePrice) <= 0) { toast.error('Prix de vente invalide'); dire('Le prix de vente n\'est pas bon. Redis le prix.'); return; }
-    if (newStock.quantity < 0) { toast.error('Quantité invalide'); speak('La quantité n\'est pas bonne.'); return; }
-    // B2 (recette « prix d'achat 0 ») : on N'EMPÊCHE PAS l'ajout sans prix d'achat
-    // (dons, auto-production, marchandise à crédit, coût réellement inconnu), mais on
-    // prévient honnêtement — sans coût, on ne peut pas calculer le bénéfice.
-    if (!(Number(newStock.purchasePrice) > 0)) {
-      toast.warning("Sans prix d'achat, on ne pourra pas calculer ton bénéfice.");
-      dire("Tu n'as pas mis le prix d'achat. On ne pourra pas calculer ton bénéfice.");
-    }
-    const cat = rechercherProduitCatalogue(newStock.name);
-    try {
-      await addProduct({ nom:newStock.name, categorie: cat?.categorie || newStock.category, prix:Number(newStock.salePrice), prix_achat:Number(newStock.purchasePrice), stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
-      toast.success('Produit ajouté');
-      speak(`${newStock.quantity || 0} ${newStock.unit} de ${newStock.name} ajouté au stock`);
-      showToast(`${newStock.name} ajouté au stock`, 'success');
-      setShowAdd(false);
-      setNewStock({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:'', salePrice:'', threshold:10, category:'cereales', datePeremption:'', promoPrice:'', promoFin:'' });
-    } catch {
-      toast.error('Opération impossible. Réessaie.');
-      speak("Ça n'a pas marché. Réessaie, s'il te plaît.");
-    }
-  };
+  // STK-03c — `addStockItem` A DISPARU AVEC SON FORMULAIRE.
+  //
+  // Il était la SECONDE naissance d'un produit : il reprenait la catégorie et
+  // l'image d'une entrée du catalogue générique (`rechercherProduitCatalogue`),
+  // imposait un seuil d'alerte par défaut, et acceptait un stock initial que
+  // la marchande n'avait pas compté. Deux naissances, c'est deux règles — et
+  // celle-ci n'a jamais reçu les correctifs de l'autre.
+  //
+  // La création passe désormais par `AjoutProduitGuide`, le même écran que la
+  // caisse : son nom, son unité, son prix. Rien d'autre.
+  //
+  // CE QUI RESTE ICI est ce que le stock sait faire et que la caisse ne fait
+  // pas : MODIFIER et RÉAPPROVISIONNER un produit DÉJÀ adopté. Là, les champs
+  // gardent leur sens — elle corrige ce qu'elle a elle-même posé.
+
 
   const updateQty = async (id: string, qty: number) => {
     stockCtx.updateStock(id, { quantite: qty });
@@ -813,7 +805,18 @@ export function GestionStock() {
         </div>
     </SubPageLayout>
 
-      {/* MODAL AJOUT */}
+      {/* MODAL AJOUT — STK-03c.
+          IL AFFICHAIT LES 37 TUILES GÉNÉRIQUES. Toucher « Igname » posait le
+          nom « Igname » — alors que le référentiel en connaît NEUF (Kponan,
+          Bêtê-Bêtê, Florido, Krenglè, Lokpa, Assawa…), à quatre prix
+          différents. Elle adoptait donc un produit qui n'était pas le sien,
+          puis lui collait son prix : le prix juste sur le mauvais nom.
+          Et le formulaire réclamait catégorie, stock, seuil, prix d'achat,
+          péremption, promo — sept champs pour poser un légume.
+
+          C'EST LE MÊME GESTE QUE DANS LA CAISSE, donc c'est le MÊME écran.
+          Un second formulaire, si fidèle soit-il, est un second endroit où la
+          règle peut changer sans l'autre. */}
       <AnimatePresence>
         {showAdd && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
@@ -832,152 +835,19 @@ export function GestionStock() {
                   </motion.button>
                 </div>
               </div>
-              <div style={{ padding:16, display:'flex', flexDirection:'column', gap:14 }}>
-                {/* Catalogue 100 % IMAGES : toucher une photo remplit tout (nom, unité,
-                    prix, catégorie) et dit le nom à voix haute — aucun texte à taper.
-                    Conçu pour une vendeuse qui ne lit pas. */}
-                <div>
-                  <div style={{ fontSize:14, fontWeight:800, color:'var(--encre-2)', marginBottom:8 }}>👇 Touche ton produit</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8 }}>
-                    {CATALOGUE_PRODUITS.filter(p => p.nom !== 'Autre').map(p => {
-                      const actif = newStock.name === p.nom;
-                      return (
-                        <motion.button key={p.nom} whileTap={{ scale:0.94 }}
-                          onClick={() => {
-                            // STK-02 : la tuile pose le PRODUIT, jamais le PRIX.
-                            // Les deux prix repartent VIDES — et non « non
-                            // remplis » : sans cette remise a vide, le prix
-                            // saisi pour la tuile precedente resterait sur
-                            // celle-ci.
-                            setNewStock({ ...newStock, ...champsDepuisTuile(p) });
-                            speak(p.nom);
-                          }}
-                          style={{ border: actif ? `3px solid ${P}` : '2px solid var(--trait)', borderRadius:14, padding:6, background: actif ? '#FFF3EA' : 'white', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, fontFamily:'inherit' }}>
-                          <ImageWithFallback src={p.image} alt={p.nom} fallbackSrc={vignetteProduit(p.nom)} style={{ width:'100%', aspectRatio:'1', borderRadius:10, objectFit:'cover' }} />
-                          <div style={{ fontSize:12, fontWeight:700, color:'var(--encre)' }}>{p.nom}</div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                  {newStock.name && (
-                    <div style={{ marginTop:10, fontSize:13, fontWeight:700, color:P, textAlign:'center' }}>
-                      ✓ {newStock.name} — indique la quantité puis « Ajouter »
-                    </div>
-                  )}
-                  <div style={{ fontSize:12, color:'var(--encre-4)', textAlign:'center', marginTop:10 }}>Pas dans la liste ? Écris son nom ci-dessous.</div>
-                </div>
-                {(() => {
-                  const cat = rechercherProduitCatalogue(newStock.name);
-                  return cat ? (
-                    <div style={{ display:'flex', alignItems:'center', gap:12, padding:12, background:'#FFF3EA', border:`2px solid ${P}`, borderRadius:14 }}>
-                      <ImageWithFallback src={cat.image} alt={newStock.name} fallbackSrc={vignetteProduit(newStock.name)} style={{ width:56, height:56, borderRadius:10, objectFit:'cover' }} />
-                      <div>
-                        <div style={{ fontSize:10, fontWeight:800, color:P, textTransform:'uppercase', letterSpacing:'0.1em' }}>Image officielle Julaba</div>
-                        <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{newStock.name}</div>
-                      </div>
-                    </div>
-                  ) : (
-                    <ImagePickerField label="Photo du produit" value={newStock.image||''} onChange={url => setNewStock({...newStock, image:url})} primaryColor={P} shape="rect" size={96} />
-                  );
-                })()}
-                <div style={{ position:'relative' }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)' }}>Nom du produit</label>
-                    {/* Dicter le nom : capte la parole et remplit le champ (cf. dicteeNomRef).
-                        Pour une vendeuse qui ne lit/écrit pas et dont le produit n'est pas au catalogue. */}
-                    <motion.button type="button" whileTap={{ scale:0.92 }} aria-label="Dire le nom du produit"
-                      onClick={() => { dicteeNomRef.current = true; setIsListening(true); startRecording(); }}
-                      style={{ display:'flex', alignItems:'center', gap:6, background: isListening ? P : '#F0E7DE', color: isListening ? 'white' : P, border:'none', borderRadius:10, padding:'6px 12px', fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
-                      {isListening ? <MicOff size={14} /> : <Mic size={14} />} Dis le nom
-                    </motion.button>
-                  </div>
-                  <input value={newStock.name} onFocus={() => dire('Nom du produit')} onChange={e => setNewStock({...newStock, name:e.target.value})} placeholder="Ex: Tomate, Riz, Gombo..."
-                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  {newStock.name.length >= 2 && suggererProduits(newStock.name).length > 0 && !suggererProduits(newStock.name).some(p => p.nom === newStock.name) && (
-                    <div style={{ position:'absolute', zIndex:50, width:'100%', marginTop:4, background:'white', borderRadius:14, border:'2px solid #FFF3EA', boxShadow:'0 8px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
-                      {suggererProduits(newStock.name).map(p => (
-                        <button key={p.nom} onClick={() => setNewStock({...newStock, ...champsDepuisTuile(p)})}
-                          style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', borderBottom:'1px solid #f5f0eb' }}>
-                          <ImageWithFallback src={p.image} alt={p.nom} fallbackSrc={vignetteProduit(p.nom)} style={{ width:40, height:40, borderRadius:8, objectFit:'cover' }} />
-                          <div style={{ textAlign:'left' }}>
-                            <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{p.nom}</div>
-                            <div style={{ fontSize:11, color:'var(--encre-4)' }}>{p.categorie} · {p.unite}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Quantité</label>
-                    {/* Réglage au doigt (− / +) pour éviter de taper un nombre. */}
-                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                      <motion.button type="button" whileTap={{ scale:0.9 }} aria-label="Moins"
-                        onClick={() => setNewStock({...newStock, quantity: Math.max(0, (Number(newStock.quantity)||0) - 1)})}
-                        style={{ width:44, height:46, flexShrink:0, borderRadius:12, border:'none', background:'#F0E7DE', color:P, fontSize:24, fontWeight:900, cursor:'pointer' }}>−</motion.button>
-                      <input type="number" value={newStock.quantity} onChange={e => setNewStock({...newStock, quantity:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                        style={{ width:'100%', minWidth:0, padding:'12px 6px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:18, fontWeight:800, textAlign:'center', fontFamily:'inherit', boxSizing:'border-box' }} />
-                      <motion.button type="button" whileTap={{ scale:0.9 }} aria-label="Plus"
-                        onClick={() => setNewStock({...newStock, quantity: (Number(newStock.quantity)||0) + 1})}
-                        style={{ width:44, height:46, flexShrink:0, borderRadius:12, border:'none', background:P, color:'white', fontSize:24, fontWeight:900, cursor:'pointer' }}>+</motion.button>
-                    </div>
-                  </div>
-                  <SelectWithAutre label="Unité" value={newStock.unit} onChange={v => setNewStock({...newStock, unit:v})} options={UNITES_COURANTES} primaryColor={P} placeholder="Ex: bouteille..." />
-                </div>
-                {/* Prix de vente : champ ESSENTIEL, toujours visible (seul obligatoire avec le nom). */}
-                <div>
-                  <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix vente (FCFA)</label>
-                  <input type="number" value={newStock.salePrice} onFocus={() => dire('Prix de vente')} onChange={e => setNewStock({...newStock, salePrice:e.target.value === '' ? '' : Number(e.target.value)})}
-                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                </div>
-
-                {/* Repli : les champs optionnels (prix d'achat, seuil, péremption, promo)
-                    sont masqués par défaut pour ne pas noyer une vendeuse qui ne lit pas.
-                    Seuls Nom + Prix de vente sont nécessaires ; le reste s'ouvre à la demande. */}
-                <button type="button" onClick={() => { const v = !showAdvanced; setShowAdvanced(v); dire(v ? 'Plus de détails' : 'Moins de détails'); }}
-                  style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, background:'none', border:'none', color:P, fontSize:13, fontWeight:800, cursor:'pointer', fontFamily:'inherit', padding:'4px 0' }}>
-                  {showAdvanced ? 'Moins de détails ▾' : 'Plus de détails ▸'}
-                </button>
-
-                {showAdvanced && (<>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix achat (FCFA) <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
-                    <input type="number" value={newStock.purchasePrice} onFocus={() => dire("Prix d'achat, facultatif")} onChange={e => setNewStock({...newStock, purchasePrice:e.target.value === '' ? '' : Number(e.target.value)})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Seuil d'alerte</label>
-                    <input type="number" value={newStock.threshold} onChange={e => setNewStock({...newStock, threshold:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Date de péremption <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
-                    <input type="date" value={newStock.datePeremption} onChange={e => setNewStock({...newStock, datePeremption:e.target.value})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  </div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                    <div>
-                      <label style={{ fontSize:13, fontWeight:700, color:'#C0392B', display:'block', marginBottom:6 }}>🏷️ Prix promo <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
-                      <input type="number" value={newStock.promoPrice} placeholder="ex : 400" onChange={e => setNewStock({...newStock, promoPrice:e.target.value === '' ? '' : Number(e.target.value)})}
-                        style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #F1D3CE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Fin promo</label>
-                      <input type="date" value={newStock.promoFin} onChange={e => setNewStock({...newStock, promoFin:e.target.value})}
-                        style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                    </div>
-                  </div>
-                </>)}
-                <motion.button whileTap={{ scale:0.97 }} onClick={addStockItem}
-                  style={{ width:'100%', background:P, border:'none', borderRadius:16, padding:'17px 0', fontSize:17, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit' }}>
-                  Ajouter au stock
-                </motion.button>
+              <div style={{ padding:16 }}>
+                {/* SES unités déjà employées passent devant celles du marché. */}
+                <AjoutProduitGuide
+                  sesUnites={(products || []).map(p => p.unite || '').filter(Boolean)}
+                  onPose={() => { setShowAdd(false); void refreshProducts(); }}
+                  onAnnuler={() => setShowAdd(false)}
+                />
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
 
       {/* MODAL EDITION */}
       <AnimatePresence>

@@ -129,6 +129,41 @@ console.log('\n[7] LA PREUVE TRAVERSE — l\'étal vide ouvre bien CE parcours')
      'à qui l\'on passe SES unités déjà employées');
 }
 
+console.log('\n[8] STK-03c — LE STOCK ADOPTE PAR LE MÊME PARCOURS QUE LA CAISSE');
+{
+  const GS = readFileSync(
+    new URL('../components/marchand/GestionStock.tsx', import.meta.url), 'utf-8');
+  const gs = GS.replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n').filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+  // Le bloc de CRÉATION seul : l'édition et le réapprovisionnement d'un produit
+  // DÉJÀ adopté gardent leurs champs — on ne touche qu'à la naissance.
+  const modalAjout = gs.slice(gs.indexOf('{showAdd && ('), gs.indexOf('{showEdit &&'));
+
+  ok(!/CATALOGUE_PRODUITS/.test(modalAjout),
+     'aucune des 37 tuiles génériques ne sert plus à créer un produit');
+  ok(!/champsDepuisTuile|suggererProduits/.test(modalAjout),
+     'ni par une suggestion de nom, qui posait le même produit générique');
+  ok(/<AjoutProduitGuide[\s/>]/.test(modalAjout),
+     'le bouton « Ajouter un produit » ouvre LE MÊME parcours que la caisse');
+  ok(!/addProduct\s*\(\s*\{\s*nom\s*:\s*newStock/.test(gs),
+     'et l\'ancien formulaire n\'écrit plus rien : une seule naissance, un seul chemin');
+  // Ce que le stock garde : modifier et réapprovisionner un produit adopté.
+  ok(/updateProduct\s*\(/.test(gs), 'la modification d\'un produit adopté reste en place');
+  ok(/showEdit/.test(gs), 'et son écran d\'édition aussi');
+
+  // MÊME PRODUIT DES DEUX CÔTÉS : les deux écrans montent le même composant,
+  // qui appelle la même règle pure. Kponan → tas → 1500 ne peut pas naître
+  // différemment selon la porte par laquelle elle est passée.
+  const SG = readFileSync(
+    new URL('../components/marchand/SaisieGuidee.tsx', import.meta.url), 'utf-8');
+  ok(/<AjoutProduitGuide[\s/>]/.test(SG) && /<AjoutProduitGuide[\s/>]/.test(gs),
+     'caisse et stock montent le MÊME composant — pas deux formulaires jumeaux');
+  const AP = readFileSync(
+    new URL('../components/marchand/AjoutProduitGuide.tsx', import.meta.url), 'utf-8');
+  ok(/produitACreer/.test(AP),
+     'et ce composant passe par la règle pure : un seul endroit décide ce qui naît');
+}
+
 console.log(echecs === 0
   ? '\n✅ Trois questions, son prix, un seul enregistrement.\n'
   : `\n❌ ${echecs} échec(s)\n`);

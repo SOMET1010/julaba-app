@@ -8,28 +8,28 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **415** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 437 |
-| — littéraux (phrase fixe en dur) | 205 |
-| — gabarits (`${…}`, phrase dynamique à variables) | 94 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **404** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 425 |
+| — littéraux (phrase fixe en dur) | 195 |
+| — gabarits (`${…}`, phrase dynamique à variables) | 93 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 69 |
 | — relais (`dire = (t) => speak(t)`) | 18 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 50 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **255** |
-| Dont dynamiques (avec variables) | 94 |
-| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **65** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **245** |
+| Dont dynamiques (avec variables) | 93 |
+| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **61** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
 | Fichiers avec au moins un site d'appel | 76 |
-| Attributs `aria-label` (lecteur d'écran uniquement) | 304 — **hors parcours vocal**, voir §8 |
+| Attributs `aria-label` (lecteur d'écran uniquement) | 301 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
 
 | Fichier | Domaine | Appels | Littéraux | Gabarits | Dynamiques | Relais | Clés | Critiques argent |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| `components/marchand/GestionStock.tsx` | stock | 31 | 21 | 10 | 2 | 1 | 0 | 8 |
 | `components/marchand/POSCaisse.tsx` | caisse | 29 | 0 | 0 | 8 | 2 | 20 | 0 |
 | `components/producteur/CommandesProducteurPage.tsx` | producteur | 26 | 14 | 15 | 0 | 0 | 0 | 3 |
 | `components/producteur/Stocks.tsx` | stock | 23 | 11 | 12 | 0 | 0 | 0 | 1 |
+| `components/marchand/GestionStock.tsx` | stock | 20 | 11 | 9 | 1 | 1 | 0 | 4 |
 | `hooks/useVoiceCore.ts` | moteur_vocal | 16 | 9 | 0 | 6 | 2 | 0 | 1 |
 | `components/wallet/WithdrawWalletModal.tsx` | wallet | 15 | 11 | 4 | 0 | 0 | 0 | 10 |
 | `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 6 | 3 | 4 | 0 | 2 | 1 |
@@ -108,8 +108,8 @@
 | Domaine | Appels | Phrases (littéraux + gabarits) | Critiques argent |
 |---|---:|---:|---:|
 | producteur | 71 | 71 | 6 |
-| stock | 57 | 57 | 9 |
 | marchand_autre | 54 | 41 | 17 |
+| stock | 46 | 46 | 5 |
 | partage | 37 | 24 | 0 |
 | caisse | 34 | 0 | 0 |
 | wallet | 34 | 36 | 18 |
@@ -337,40 +337,28 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 248 | `speak` | relais | t |  |  |
-| 352 | `speak` | dynamique | nomPropre |  |  |
-| 354 | `speak` | literal | Je n'ai pas entendu le nom. Réessaie, s'il te plaît. |  |  |
-| 369 | `speak` | literal | Quel produit veux-tu ajouter ? |  |  |
-| 370 | `speak` | template | Combien de {nom} veux-tu ajouter ? | `nom` |  |
-| 380 | `speak` | template | {qte} {unit} de {name} ajoutés. Tu as maintenant {newQty} {unit}. | `qte` `unit` `name` `newQty` `unit` |  |
-| 381 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 406 | `speak` | template | C'est fait ! {qte} {unite} de {nom} à {prixVente} francs, ajoutés au stock. | `qte` `unite` `nom` `prixVente` | € |
-| 406 | `speak` | template | {nom} ajouté au stock. Dis-moi son prix quand tu veux. | `nom` | € |
-| 409 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 415 | `speak` | literal | Tous tes stocks sont bons |  |  |
-| 415 | `speak` | template | {low} produits en stock bas : {join} | `low` `join` |  |
-| 418 | `speak` | literal | Tes montants sont cachés. Appuie sur l'œil pour les afficher. |  |  |
-| 422 | `speak` | template | La valeur totale est {val} francs | `val` | € |
-| 481 | `dire` | literal | Saisis le nom du produit |  |  |
-| 482 | `dire` | literal | Le prix de vente n'est pas bon. Redis le prix. |  | € |
-| 483 | `speak` | literal | La quantité n'est pas bonne. |  |  |
-| 489 | `dire` | literal | Tu n'as pas mis le prix d'achat. On ne pourra pas calculer ton bénéfice. |  | € |
-| 495 | `speak` | template | {quantity} {unit} de {name} ajouté au stock | `quantity` `unit` `name` |  |
-| 501 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 510 | `speak` | literal | C'est mis à jour. |  |  |
-| 513 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 525 | `speak` | literal | Saisis une quantité valide |  | € |
-| 530 | `speak` | template | {reappNum} {unit} de {name} ajoutés. Stock à {newQty} {unit} | `reappNum` `unit` `name` `newQty` `unit` |  |
-| 559 | `speak` | template | {name} supprimé | `name` |  |
-| 567 | `speak` | literal | Ça n'a pas marché. Le produit n'est pas supprimé. |  |  |
-| 613 | `speak` | template | {name} mis à jour | `name` |  |
-| 617 | `speak` | literal | Ça n'a pas été enregistré. Réessaie, s'il te plaît. |  |  |
-| 853 | `speak` | dynamique | p.nom |  |  |
-| 894 | `dire` | literal | Nom du produit |  |  |
-| 931 | `dire` | literal | Prix de vente |  | € |
-| 938 | `dire` | literal | Plus de détails |  |  |
-| 938 | `dire` | literal | Moins de détails |  |  |
-| 946 | `dire` | literal | Prix d'achat, facultatif |  | € |
+| 249 | `speak` | relais | t |  |  |
+| 353 | `speak` | dynamique | nomPropre |  |  |
+| 355 | `speak` | literal | Je n'ai pas entendu le nom. Réessaie, s'il te plaît. |  |  |
+| 370 | `speak` | literal | Quel produit veux-tu ajouter ? |  |  |
+| 371 | `speak` | template | Combien de {nom} veux-tu ajouter ? | `nom` |  |
+| 381 | `speak` | template | {qte} {unit} de {name} ajoutés. Tu as maintenant {newQty} {unit}. | `qte` `unit` `name` `newQty` `unit` |  |
+| 382 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 407 | `speak` | template | C'est fait ! {qte} {unite} de {nom} à {prixVente} francs, ajoutés au stock. | `qte` `unite` `nom` `prixVente` | € |
+| 407 | `speak` | template | {nom} ajouté au stock. Dis-moi son prix quand tu veux. | `nom` | € |
+| 410 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 416 | `speak` | literal | Tous tes stocks sont bons |  |  |
+| 416 | `speak` | template | {low} produits en stock bas : {join} | `low` `join` |  |
+| 419 | `speak` | literal | Tes montants sont cachés. Appuie sur l'œil pour les afficher. |  |  |
+| 423 | `speak` | template | La valeur totale est {val} francs | `val` | € |
+| 502 | `speak` | literal | C'est mis à jour. |  |  |
+| 505 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 517 | `speak` | literal | Saisis une quantité valide |  | € |
+| 522 | `speak` | template | {reappNum} {unit} de {name} ajoutés. Stock à {newQty} {unit} | `reappNum` `unit` `name` `newQty` `unit` |  |
+| 551 | `speak` | template | {name} supprimé | `name` |  |
+| 559 | `speak` | literal | Ça n'a pas marché. Le produit n'est pas supprimé. |  |  |
+| 605 | `speak` | template | {name} mis à jour | `name` |  |
+| 609 | `speak` | literal | Ça n'a pas été enregistré. Réessaie, s'il te plaît. |  |  |
 
 ### `components/marchand/MaCooperative.tsx` — marchand_autre
 
@@ -1532,7 +1520,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 ## 8. Ce qui n'est PAS dans le parcours vocal (et pourquoi)
 
-- **`aria-label` (304)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
+- **`aria-label` (301)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
 - **Toasts** (`toast.success(…)`) et libellés d'écran : affichés, jamais dits. Hors inventaire vocal.
 - **`texteDyu`** de `loginVoiceScript.ts` : traduction dioula de travail, NON validée (le fichier le dit). Elle n'est ni activée ni reprise : Manus tranche.
 
