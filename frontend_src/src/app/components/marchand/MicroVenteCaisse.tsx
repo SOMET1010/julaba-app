@@ -513,7 +513,10 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
    *  rendre un vide, et il a raison — le micro ne se retire jamais de
    *  lui-même. Le garde-fou lit le source brut, commentaires compris, donc
    *  l'expression qu'il cherche ne s'écrit nulle part ici. */
-  const vueEcoute = afficheEcoute({ ecoute: isRecording, transcription: transcript || '', compris });
+  // CAI-07 — `saisieOuverte` entre dans les faits : tant que la saisie guidée
+  // est ouverte, c'est ELLE qui parle, et son `ConfirmationLigne` porte le
+  // seul « J'ai compris » qui engage l'argent. Le bandeau du micro se retire.
+  const vueEcoute = afficheEcoute({ ecoute: isRecording, transcription: transcript || '', compris, saisieOuverte });
   const isLoading = state === 'processing' || state === 'thinking';
   const isConfirming = state === 'confirming';
   const isError = state === 'error';

@@ -97,6 +97,15 @@ export interface FaitsAffichage {
   /** Ce que le moteur a réellement EXTRAIT, déjà mis en mots par l'appelant
    *  (« 3 piments à 500 F »). `null` = il n'a rien tiré de la phrase. */
   readonly compris: string | null;
+  /**
+   * CAI-07 — UN AUTRE ÉCRAN PORTE-T-IL DÉJÀ LA PAROLE ?
+   *
+   * Vrai quand la saisie guidée est ouverte. Ce fait est REQUIS, pas
+   * optionnel : un appelant qui l'oublierait retomberait en silence sur
+   * l'ancien comportement, et c'est exactement comme ça que le défaut a
+   * vécu. Chaque écran doit RÉPONDRE à la question, pas la laisser deviner.
+   */
+  readonly saisieOuverte: boolean;
 }
 
 export type AfficheEcoute =
@@ -116,6 +125,25 @@ export function afficheEcoute(faits: FaitsAffichage): AfficheEcoute {
   // honnête pour un ingénieur et un mur de mots pour une marchande. Le micro
   // qui bat et la bulle « Je t'écoute » disent déjà qu'on l'entend.
   if (faits.ecoute) return { type: 'ecoute' };
+
+  // CAI-07 — UN SEUL « J'AI COMPRIS » À LA FOIS. Arbitrage de Patrick, 23/09.
+  //
+  // Le bandeau du micro est TRANSITOIRE : il dit « j'ai extrait une vente de
+  // ta phrase ». La saisie guidée, elle, mène à `ConfirmationLigne`, qui dit
+  // « voici ce que je vais enregistrer, confirme » — la même formule, mais
+  // qui engage l'argent. Les deux ont cohabité à l'écran, et le premier
+  // contredisait le second à l'instant où elle décide.
+  //
+  // C'EST UN RETRAIT, PAS UN RENOMMAGE. On n'a pas changé les mots de l'un
+  // pour qu'ils cessent de ressembler à ceux de l'autre : la formule est
+  // juste dans les deux cas. Ce qui était faux, c'est qu'elle soit là deux
+  // fois.
+  //
+  // ET SÛREMENT PAS « INCOMPRIS ». Le repli naturel serait de laisser la
+  // suite retomber sur « Je n'ai pas compris » puisque la transcription n'est
+  // pas vide. Ce serait remplacer un doublon par un MENSONGE : elle avait
+  // compris, et c'est même pour ça que la saisie s'est ouverte. Repos.
+  if (faits.saisieOuverte) return { type: 'repos' };
 
   const compris = (faits.compris ?? '').trim();
   if (compris) return { type: 'compris', libelle: compris };

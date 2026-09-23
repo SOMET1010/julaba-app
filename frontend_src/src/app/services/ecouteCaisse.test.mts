@@ -59,21 +59,21 @@ ok(finDEcoute({ ecoute: false, aParle: true, msDepuisDernierMot: 99999, msDepuis
 
 console.log('\n[2] « J\'ai compris » ne se dit que si on a compris');
 {
-  const a = afficheEcoute({ ecoute: false, transcription: LE_PARAGRAPHE, compris: null });
+  const a = afficheEcoute({ ecoute: false, transcription: LE_PARAGRAPHE, compris: null, saisieOuverte: false });
   ok(a.type === 'incompris',
      'le paragraphe de Patrick, sans extraction : « incompris » — PLUS de « J\'ai compris »');
 }
 {
-  const a = afficheEcoute({ ecoute: false, transcription: 'ajoute dix piments à cinq cents', compris: '10 piments à 500 F' });
+  const a = afficheEcoute({ ecoute: false, transcription: 'ajoute dix piments à cinq cents', compris: '10 piments à 500 F', saisieOuverte: false });
   ok(a.type === 'compris' && a.libelle === '10 piments à 500 F',
      'une vente extraite : on affiche LA VENTE');
 }
 {
-  ok(afficheEcoute({ ecoute: false, transcription: '', compris: null }).type === 'repos',
+  ok(afficheEcoute({ ecoute: false, transcription: '', compris: null, saisieOuverte: false }).type === 'repos',
      'rien dit, rien compris : la bulle invite, elle n\'accuse pas');
-  ok(afficheEcoute({ ecoute: false, transcription: '   ', compris: null }).type === 'repos',
+  ok(afficheEcoute({ ecoute: false, transcription: '   ', compris: null, saisieOuverte: false }).type === 'repos',
      'du blanc n\'est pas une phrase');
-  ok(afficheEcoute({ ecoute: false, transcription: 'x', compris: '   ' }).type === 'incompris',
+  ok(afficheEcoute({ ecoute: false, transcription: 'x', compris: '   ', saisieOuverte: false }).type === 'incompris',
      'une compréhension vide n\'est pas une compréhension');
 }
 
@@ -83,11 +83,11 @@ console.log('\n[3] LA TRANSCRIPTION BRUTE NE SORT JAMAIS');
   // ne contient pas la phrase entendue — sauf si c'est exactement ce que le
   // moteur a compris, et alors ce n'est plus une transcription, c'est une vente.
   const entrees = [
-    { ecoute: true, transcription: LE_PARAGRAPHE, compris: null },
-    { ecoute: true, transcription: LE_PARAGRAPHE, compris: '10 piments à 500 F' },
-    { ecoute: false, transcription: LE_PARAGRAPHE, compris: null },
-    { ecoute: false, transcription: 'trois tomates', compris: null },
-    { ecoute: false, transcription: '', compris: null },
+    { ecoute: true, transcription: LE_PARAGRAPHE, compris: null, saisieOuverte: false },
+    { ecoute: true, transcription: LE_PARAGRAPHE, compris: '10 piments à 500 F', saisieOuverte: false },
+    { ecoute: false, transcription: LE_PARAGRAPHE, compris: null, saisieOuverte: false },
+    { ecoute: false, transcription: 'trois tomates', compris: null, saisieOuverte: false },
+    { ecoute: false, transcription: '', compris: null, saisieOuverte: false },
   ];
   let fuite = '';
   for (const e of entrees) {
@@ -97,9 +97,9 @@ console.log('\n[3] LA TRANSCRIPTION BRUTE NE SORT JAMAIS');
   ok(!fuite, `aucune sortie ne recopie la phrase entendue${fuite ? ' — fuite sur : ' + fuite.slice(0, 40) : ''}`);
 }
 {
-  ok(afficheEcoute({ ecoute: true, transcription: LE_PARAGRAPHE, compris: null }).type === 'ecoute',
+  ok(afficheEcoute({ ecoute: true, transcription: LE_PARAGRAPHE, compris: null, saisieOuverte: false }).type === 'ecoute',
      'PENDANT l\'écoute, aucun texte : le micro qui bat suffit à dire qu\'on l\'entend');
-  const a = afficheEcoute({ ecoute: true, transcription: LE_PARAGRAPHE, compris: '10 piments' });
+  const a = afficheEcoute({ ecoute: true, transcription: LE_PARAGRAPHE, compris: '10 piments', saisieOuverte: false });
   ok(a.type === 'ecoute',
      'et même une vente déjà extraite ne s\'affiche pas tant qu\'elle parle — on ne la double pas');
 }
@@ -123,7 +123,7 @@ ok(libelleVenteComprise({ type: 'vendre', produit: 'igname', quantite: -4 }) ===
 console.log('\n[5] La règle, énoncée comme telle');
 {
   const jamaisComprisSansComprehension = [LE_PARAGRAPHE, 'trois tomates', 'bonjour', ''].every(t =>
-    afficheEcoute({ ecoute: false, transcription: t, compris: null }).type !== 'compris');
+    afficheEcoute({ ecoute: false, transcription: t, compris: null, saisieOuverte: false }).type !== 'compris');
   ok(jamaisComprisSansComprehension,
      'AUCUNE transcription, si claire soit-elle, ne produit « J\'ai compris » à elle seule');
 }
