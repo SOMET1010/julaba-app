@@ -142,6 +142,11 @@
       "argent": "L'annulation défait de l'argent déjà compté ; elle doit rendre la marchandise et retirer la ligne."
     },
     {
+      "symbole": "exigerJourneeOuverte",
+      "zone": "enregistrement-vente",
+      "argent": "La règle qui décide si une écriture d'argent a encore le droit d'entrer dans le registre. Une journée fermée est un CONSTAT daté : `caisse_theorique`, `fond_final` et leur `ecart` sont gravés. Toute écriture postérieure les rend faux en silence. La règle vivait en méthode privée d'un seul contrôleur — les crédits, servis par un autre, ne pouvaient pas l'atteindre (CAI-09). Elle est sortie dans un fichier à elle, et ce symbole est ce qui l'y fait SURVEILLER : sans lui, le fichier qui décide de tout n'exigeait aucun invariant."
+    },
+    {
       "symbole": "caisse-api",
       "zone": "api-caisse",
       "argent": "Le module qui parle au serveur d'argent. Contourner ce chemin, c'est un second chemin d'argent."
@@ -457,6 +462,7 @@
         "caisse_transactions",
         "enregistrerDepense",
         "enregistrerVente",
+        "exigerJourneeOuverte",
         "idempotency_key",
         "mode_paiement",
         "restituerStock",
@@ -478,11 +484,13 @@
     "backend/src/caisse-rest/credits.controller.ts": {
       "zones": [
         "api-caisse",
+        "enregistrement-vente",
         "idempotence"
       ],
       "symboles": [
         "ajouterAcompte",
         "encaisser-credit",
+        "exigerJourneeOuverte",
         "idempotency_key"
       ]
     },
@@ -500,6 +508,14 @@
         "encaisser-credit",
         "idempotency_key",
         "mode_paiement"
+      ]
+    },
+    "backend/src/caisse-rest/journee-ouverte.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "exigerJourneeOuverte"
       ]
     },
     "backend/src/caisse-rest/rapport-hebdo.controller.ts": {
@@ -1320,5 +1336,5 @@
       ]
     }
   },
-  "genereLe": "2026-09-22"
+  "genereLe": "2026-09-23"
 }
