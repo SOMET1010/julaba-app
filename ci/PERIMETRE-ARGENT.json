@@ -854,6 +854,14 @@
         "CaisseContext"
       ]
     },
+    "frontend_src/src/app/components/marchand/AjoutProduitGuide.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
     "frontend_src/src/app/components/marchand/CreditModal.tsx": {
       "zones": [
         "api-caisse"
@@ -1210,6 +1218,14 @@
       ],
       "symboles": [
         "beneficeDepuisDetails"
+      ]
+    },
+    "frontend_src/src/app/services/premierProduit.ts": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
       ]
     },
     "frontend_src/src/app/services/prixVocal.ts": {
