@@ -208,6 +208,30 @@ Les deux fonctions du catalogue qui restent (`getImageByNom`,
 `rechercherProduitCatalogue`) ne servent plus qu'à retrouver une **image** par
 son nom. Jamais un prix.
 
+**Preuve de fermeture de STK-03d** (et la leçon de méthode qui va avec) :
+
+```
+contre-essai 1 : bloc du premier produit débranché ({false ? …})
+                 ✗ le bouton du premier produit est bien SOUS la règle
+contre-essai 2 : grille rebranchée sur une autre liste
+                 ✗ et la grille lit les tuiles de la règle, jamais une autre liste
+après          : 5 règles vertes — étal vide → question ; un produit → son étal ;
+                 la phrase vit dans le catalogue i18n ; l'écran la lit par sa clé ;
+                 aucune phrase en dur
+```
+
+**IL A FALLU DURCIR DEUX FOIS, ET LE PREMIER JET ÉTAIT VERT POUR RIEN.**
+`/TATA_ETAL_VIDE/.test(source)` passait alors que le bloc visuel était
+débranché : la clé restait présente dans la phrase DITE. Le deuxième jet
+matchait `vue.type === 'premier-produit' ?` — mais cette condition existe AUSSI
+à la ligne de la phrase dite, donc il passait encore. Seule une regex bornée au
+bloc de rendu (jusqu'à son `aria-label`) rougit vraiment.
+
+**La leçon** : chercher un identifiant quelque part dans un fichier ne prouve
+pas qu'il pilote quelque chose. Un test de câblage se valide par contre-essai —
+on débranche, et on regarde s'il rougit. Trois fois cette session un test est
+passé pour la mauvaise raison.
+
 **Preuve de fermeture de CAI-10 + CAI-11** (un seul lot : c'est UNE règle, pas
 deux — le garde de CAI-08 a été ÉTENDU plutôt que doublé, deux gardes sur un
 même geste, ce serait deux règles) :
@@ -393,6 +417,7 @@ Ouvert par la mesure du 22/09 (`docs/parcours/MESURE-BACKOFFICE.md`) : 37
 | STK-02d | **Le type de l'état de saisie mentait** : `purchasePrice: number`, alors que les gestionnaires écrivaient `'' as any`. Un champ de prix a **trois** états — un montant, zéro, ou pas encore saisi — et le type n'en connaissait que deux. Dette voisine, trouvée en fermant STK-02. | **FERMÉ** |
 | STK-03a | **La saisie guidée vendait le catalogue, pas son étal.** `SaisieGuidee.tsx:201` faisait `choisirProduit(p.nom, p.prixVente)` sur les 37 tuiles en dur, puis `setPrixModifiable(false)` : toucher « Tomate » posait **400 F qui ne sont pas les siens**, et elle ne pouvait pas les corriger. C'était STK-02 encore vivant, sur le chemin de l'argent — ce prix partait au panier, puis dans la marge, puis dans le bilan. **Arbitrage de Patrick du 23/09 : la caisse montre l'étal personnel de la marchande.** Le panneau lit désormais `products` : son nom, son prix, son unité. | **FERMÉ** |
 | STK-03b | **Et le nom mentait aussi.** Mesure du 23/09 (`224fc01`) : 21 des 37 tuiles couvrent plusieurs références maître ; « Igname » en couvre **neuf** (Kponan, Bêtê-Bêtê, Florido, Krenglè, Lokpa, Assawa…). Fermé par le même correctif, mais **sans aucune taxonomie** : elle ne voit ni famille, ni sous-famille, ni les 198 — elle voit ses produits, qu'elle nomme elle-même. | **FERMÉ** |
+| STK-03d | **TROU OUVERT PAR MON PROPRE CORRECTIF, fermé dans la foulée.** Retirer les 37 tuiles était juste ; laisser à leur place une **grille vide** et un lien souligné « Pas dans la liste ? » ne l'était pas. Une marchande qui ne lit pas y trouvait une surface blanche et aucun geste. **Un écran vide qui ne dit pas quoi faire est plus dur qu'un écran faux : le faux, au moins, se corrige.** Étal vide → une cible large qui pose la question et donne le geste, dite à voix haute par `TATA_ETAL_VIDE`. | **FERMÉ** |
 | STK-03c | **Dette VOISINE nommée, pas fermée** : `GestionStock.tsx:842` affiche encore les 37 tuiles génériques pour AJOUTER un produit. Là c'est légitime (choisir un produit à adopter) et `champsDepuisTuile` y vide déjà les prix depuis STK-02 — mais le NOM reste générique : adopter « Igname » plutôt que « Kponan ». Hors périmètre du lot. | **OUVERT** |
 
 **Preuve de fermeture de STK-02** (règle pure, `test:prix-marchande`) :

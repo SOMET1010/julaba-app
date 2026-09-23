@@ -37,7 +37,7 @@ import { BoutonReecouter, ConfirmationLigne } from './ConfirmationLigne';
 // PRIX qui ne sont pas ceux de la marchande. Les deux fonctions qui restent ne
 // servent qu'à retrouver une IMAGE par son nom, jamais un prix.
 import { getImageByNom, rechercherProduitCatalogue } from '../../data/catalogue-produits';
-import { tuilesDeLEtal, type ProduitDeLEtal } from '../../services/etalDeLaMarchande';
+import { vueDeLEtal, type ProduitDeLEtal } from '../../services/etalDeLaMarchande';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
 
@@ -87,6 +87,8 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
   // Repli rare : produit absent du catalogue-images → un mot à taper, pas plus.
   const [autreOuvert, setAutreOuvert] = useState(false);
 
+  // STK-03 — l'écran ne décide pas s'il a des tuiles : la règle le dit.
+  const vue = vueDeLEtal(etal);
   const produitImage = produit ? (rechercherProduitCatalogue(produit)?.image || getImageByNom(produit)) : '';
   const produitChoisi = produit.trim().length >= 2;
 
@@ -112,8 +114,10 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
   // La question de l'étape EN COURS. Quand elle tape un nom libre (« Pas dans
   // la liste »), on ne redit pas le nom à chaque lettre : « ce produit ».
   // Étape 1, dite : la photo est le geste, la voix le nomme (TATA_REPLI_TOUCHE_PHOTO).
+  // Étal vide : la phrase dite est la question du premier produit, pas
+  // « touche la photo » — il n'y a aucune photo à toucher.
   const questionEtape = !produitChoisi
-    ? t('TATA_REPLI_TOUCHE_PHOTO')
+    ? (vue.type === 'premier-produit' ? t('TATA_ETAL_VIDE') : t('TATA_REPLI_TOUCHE_PHOTO'))
     : `${phraseQuantiteManquante(autreOuvert ? '' : produit)} ${prixModifiable ? phrasePrixManquant() : t('TATA_REPLI_PRIX_CONNU', { montant: Math.round(parseInt(prix || '0', 10) || 0) })}`;
   // Posée au CHANGEMENT d'étape, jamais à chaque rendu — et pas pendant que
   // ConfirmationLigne est affichée : c'est elle qui parle alors.
@@ -210,8 +214,24 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
       {/* ÉTAPE 1 — PRODUIT : on touche une photo, jamais un nom à écrire. */}
       {!produitChoisi ? (
         <div>
+          {/* STK-03 — PREMIER JOUR : SON ÉTAL EST VIDE.
+              Retirer les 37 tuiles était juste ; laisser à leur place une
+              grille vide et un lien souligné ne l'est pas. Une marchande qui
+              ne lit pas y trouvait une surface blanche et aucun geste. Un
+              écran vide qui ne dit pas quoi faire est plus dur qu'un écran
+              faux : le faux, au moins, se corrige. On pose donc la question,
+              et on donne le geste — en une seule cible, large. */}
+          {vue.type === 'premier-produit' ? (
+            <button type="button" onClick={() => setAutreOuvert(true)}
+              aria-label={t('TATA_ETAL_VIDE')}
+              style={{ width: '100%', minHeight: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+                background: 'white', border: `2px dashed ${ORANGE}`, borderRadius: 18, padding: 18, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <span style={{ fontSize: 34, lineHeight: 1 }} aria-hidden="true">👆</span>
+              <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--encre)', textAlign: 'center' }}>{t('TATA_ETAL_VIDE')}</span>
+            </button>
+          ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            {tuilesDeLEtal(etal).map(p => (
+            {vue.tuiles.map(p => (
               <motion.button key={p.id} whileTap={{ scale: 0.94 }} onClick={() => choisirProduit(p.nom, p.prix)}
                 style={{ border: '2px solid var(--trait)', borderRadius: 14, padding: 6, background: 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
                 <ImageWithFallback src={p.image} alt={p.nom} fallbackSrc={vignetteProduit(p.nom)} style={{ width: '100%', aspectRatio: '1', borderRadius: 10, objectFit: 'cover' }} />
@@ -223,6 +243,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
               </motion.button>
             ))}
           </div>
+          )}
           {!autreOuvert ? (
             <button type="button" onClick={() => setAutreOuvert(true)}
               style={{ marginTop: 10, background: 'none', border: 'none', color: 'var(--encre-4)', fontSize: 12, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>

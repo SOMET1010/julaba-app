@@ -28,7 +28,7 @@
  */
 import { readFileSync } from 'node:fs';
 import {
-  tuilesDeLEtal, prixDeLaTuile, type ProduitDeLEtal,
+  tuilesDeLEtal, prixDeLaTuile, vueDeLEtal, type ProduitDeLEtal,
 } from './etalDeLaMarchande.js';
 
 let echecs = 0;
@@ -90,6 +90,42 @@ console.log('\n[4] AUCUN PRIX DU CATALOGUE GÉNÉRIQUE NE PEUT PARTIR AU PANIER'
      'ni par la recherche catalogue, qui rendait elle aussi un prix');
   ok(/products|etal/i.test(code),
      'elle lit l\'étal de la marchande');
+}
+
+console.log('\n[5] ÉTAL VIDE — ELLE N\'EST PAS DEVANT UN ÉCRAN MUET');
+{
+  // LE TROU OUVERT PAR LE CORRECTIF PRÉCÉDENT. Retirer les 37 tuiles était
+  // juste ; laisser à leur place une grille vide et un lien souligné
+  // « Pas dans la liste ? » ne l'est pas. Une marchande qui ne lit pas y
+  // trouve une surface blanche et aucun geste.
+  const vide = vueDeLEtal([]);
+  ok(vide.type === 'premier-produit',
+     'étal vide → l\'écran demande son premier produit, il ne se contente pas d\'être vide');
+  const plein = vueDeLEtal([{ id: 'p1', nom: 'Kponan', prix: 1500, unite: 'tas' }]);
+  ok(plein.type === 'etal' && plein.tuiles.length === 1,
+     'dès qu\'elle a un produit, c\'est son étal qui s\'affiche');
+
+  // La question et le geste sont DITS : une non-lectrice ne reçoit rien d'un
+  // titre. Le catalogue i18n porte les deux phrases, l'écran ne les réécrit pas.
+  const CATALOGUE = readFileSync(
+    new URL('../i18n/voice/catalog.ts', import.meta.url), 'utf-8');
+  ok(/TATA_ETAL_VIDE/.test(CATALOGUE),
+     'la question « Qu\'est-ce que tu vends aujourd\'hui ? » vit dans le catalogue i18n');
+  ok(/TATA_ETAL_VIDE/.test(code),
+     'et l\'écran la lit par sa clé, sans la réécrire');
+  // DURCI APRÈS CONTRE-ESSAI : chercher la clé dans le fichier ne prouvait
+  // RIEN — elle reste présente dans la phrase dite même si le bloc visuel est
+  // débranché. Ce qui compte est que la RÈGLE pilote l'affichage.
+  // DEUXIÈME DURCISSEMENT : la première version matchait la PHRASE DITE
+  // (ligne 120), qui teste la même chose — le bloc visuel pouvait être
+  // débranché sans que le test bronche. On borne au bloc de RENDU, qui est le
+  // seul à porter le bouton et son étiquette lue.
+  ok(/premier-produit'\s*\?\s*\([\s\S]{0,600}?aria-label=\{t\('TATA_ETAL_VIDE'\)\}/.test(code),
+     'le bouton du premier produit est bien SOUS la règle — pas un bloc qu\'on peut débrancher en silence');
+  ok(/vue\.tuiles\.map/.test(code),
+     'et la grille lit les tuiles de la règle, jamais une autre liste');
+  ok(!/Qu['’]est-ce que tu vends/.test(code),
+     'aucune phrase en dur dans l\'écran : une seule source pour l\'œil et l\'oreille');
 }
 
 console.log(echecs === 0
