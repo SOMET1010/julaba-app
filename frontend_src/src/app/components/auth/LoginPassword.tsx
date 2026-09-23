@@ -62,6 +62,7 @@ import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../servi
 import { salutation } from '../../utils/appellation';
 import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 import { glyphePourChiffre } from '../../services/clavierImage';
+import { retourFrappe, type EtapeSaisie } from '../../services/retourDeFrappe';
 
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
@@ -942,6 +943,30 @@ export function LoginPassword() {
     if (newCount >= 5) { setShowDevButton(true); setLogoClickCount(0); }
   };
 
+  // NUM-03 — UN APPUI SE SENT, DANS LES DEUX ÉTAPES.
+  //
+  // L'étape NUMÉRO vibrait, l'étape CODE ne rendait RIEN : ni vibration, ni
+  // son. Quatre chiffres à chaque connexion — le geste le plus répété de
+  // l'application — sans aucun signe que l'appui a compté. Les deux vivaient
+  // dans cette même fonction : l'une avait reçu son correctif, l'autre pas.
+  //
+  // La règle sort donc de l'écran (`services/retourDeFrappe`), et elle garde
+  // NUM-02 : le chiffre n'est JAMAIS dit à voix haute. Au marché elle est
+  // entourée. La main sait, l'oreille ne saura pas.
+  // CE HELPER NE FAIT QUE VIBRER, ET C'EST VOICE-01 QUI L'A DÉCIDÉ.
+  //
+  // Il portait aussi la parole (`parle(r.ditVoixHaute)`). La garde de
+  // traçabilité vocale l'a refusé : elle fige les appels de parole de cet
+  // écran À LA LETTRE, arguments compris, et `parle('Effacé.')` devenu
+  // `parle(r.ditVoixHaute)` casse la trace. Elle a raison — ce qui est dit à
+  // une marchande ne doit pas changer de forme au détour d'un refactor.
+  //
+  // La parole reste donc EXACTEMENT où elle était. Ce module décide du retour
+  // TACTILE, qui est le trou réel : l'étape CODE ne rendait rien.
+  const rendreALaMain = (etape: EtapeSaisie, geste: 'chiffre' | 'effacement') => {
+    try { navigator.vibrate?.([...retourFrappe(etape, geste).vibration]); } catch { /* ignore */ }
+  };
+
   const handleKeyPress = (digit: string) => {
     if (isLoading || isFinalizingDictation || (step === 'phone' && isListening)) return;
     dernierCanalRef.current = 'clavier'; // elle TAPE (apprentissage 'auto')
@@ -950,9 +975,7 @@ export function LoginPassword() {
         const next = phone + digit;
         setPhone(next);
         setError('');
-        // Retour tactile à CHAQUE chiffre tapé — perceptible sans lire ni entendre,
-        // et sans jamais révéler le chiffre à voix haute (confidentialité du numéro).
-        try { navigator.vibrate?.(12); } catch { /* ignore */ }
+        rendreALaMain('numero', 'chiffre');
         if (import.meta.env.DEV && next === '0501604040') setShowDevButton(true);
         if (next.length === 10) {
           if (!numeroCIComplet(next, TEST_PHONES)) {
@@ -968,6 +991,8 @@ export function LoginPassword() {
         const next = pinInput + digit;
         setPinInput(next);
         setError('');
+        // C'ÉTAIT LE TROU : cette branche ne rendait rien du tout.
+        rendreALaMain('code', 'chiffre');
         if (next.length === 4) setTimeout(() => { void handleLogin(next); }, 300);
       }
     }
@@ -986,10 +1011,9 @@ export function LoginPassword() {
     if (step === 'phone') {
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
       setPhone(p => p.slice(0, -1));
-      // Effacer est ANNONCÉ — geste distinct du simple ajout d'un chiffre (motif
-      // de vibration différent) + un mot dit à voix haute. « Effacé » ne révèle
-      // aucun chiffre : rien à cacher, contrairement au numéro lui-même.
-      try { navigator.vibrate?.([10, 30, 10]); } catch { /* ignore */ }
+      // Effacer est un AUTRE geste : motif distinct, et un mot — « Effacé » ne
+      // révèle aucun chiffre, contrairement au numéro lui-même.
+      rendreALaMain('numero', 'effacement');
       if (guidageVocal(accessMode)) parle('Effacé.');
     } else {
       if (pinInput.length === 0) {
@@ -997,6 +1021,7 @@ export function LoginPassword() {
       } else {
         const next = pinInput.slice(0, -1);
         setPinInput(next);
+        rendreALaMain('code', 'effacement');
       }
     }
     setError('');
