@@ -33,6 +33,7 @@ import { phrasePrixManquant, phraseQuantiteManquante } from '../../services/dial
 import { resoudreMessage, t } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
 import { BoutonReecouter, ConfirmationLigne } from './ConfirmationLigne';
+import { AjoutProduitGuide } from './AjoutProduitGuide';
 // STK-03 — on ne lit plus `CATALOGUE_PRODUITS` : ses 37 entrées portent des
 // PRIX qui ne sont pas ceux de la marchande. Les deux fonctions qui restent ne
 // servent qu'à retrouver une IMAGE par son nom, jamais un prix.
@@ -86,6 +87,9 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
   const [prixModifiable, setPrixModifiable] = useState(prixConnuInitial == null);
   // Repli rare : produit absent du catalogue-images → un mot à taper, pas plus.
   const [autreOuvert, setAutreOuvert] = useState(false);
+  // STK-03 §2 — poser un produit sur son étal n'est pas vendre : c'est un
+  // autre geste, et il a son propre écran.
+  const [poseOuverte, setPoseOuverte] = useState(false);
 
   // STK-03 — l'écran ne décide pas s'il a des tuiles : la règle le dit.
   const vue = vueDeLEtal(etal);
@@ -175,6 +179,17 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
 
   const recommencer = () => { setEtape('saisie'); setLigne(null); };
 
+  // STK-03 §2 — SES unités déjà employées passent devant celles du marché.
+  if (poseOuverte) {
+    return (
+      <AjoutProduitGuide
+        sesUnites={etal.map(p => p.unite ?? '').filter(Boolean)}
+        onPose={() => setPoseOuverte(false)}
+        onAnnuler={() => setPoseOuverte(false)}
+      />
+    );
+  }
+
   if (etape === 'confirmation' && ligne) {
     return (
       <ConfirmationLigne
@@ -222,7 +237,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
               faux : le faux, au moins, se corrige. On pose donc la question,
               et on donne le geste — en une seule cible, large. */}
           {vue.type === 'premier-produit' ? (
-            <button type="button" onClick={() => setAutreOuvert(true)}
+            <button type="button" onClick={() => setPoseOuverte(true)}
               aria-label={t('TATA_ETAL_VIDE')}
               style={{ width: '100%', minHeight: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
                 background: 'white', border: `2px dashed ${ORANGE}`, borderRadius: 18, padding: 18, cursor: 'pointer', fontFamily: 'inherit' }}>
