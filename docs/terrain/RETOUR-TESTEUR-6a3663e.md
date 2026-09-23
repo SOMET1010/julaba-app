@@ -10,7 +10,7 @@ mesuré ici est exactement ce qui tourne sur le téléphone.
 | # | Ce que le testeur a vu | Verdict | Cause mesurée |
 |---|---|---|---|
 | 1 | « 2 tas de piments » → écrit **« 2 piments »** | **REPRODUIT** | L'unité EST extraite (`uniteParlee: 'tas'`) puis **jetée** par `libelleVenteComprise` |
-| 2 | Vente reprise sans sortir de l'écran → ne capte plus | **NON MESURÉ** | Demande un vrai micro ; je ne peux pas le reproduire ici sans mentir |
+| 2 | Vente reprise sans sortir de l'écran → ne capte plus | **REPRODUIT — CAUSE TROUVÉE** | `VoiceState` a **7** valeurs, `handleMicClick` en traite **6** : `confirming` n'est traité NULLE PART. Le bouton micro devient inerte. |
 | 3 | « 2 tas de piments **à 1000** » → 1000 pris comme prix **unitaire** | **REPRODUIT** | `extraire` tranche `lecturePrix: 'unitaire'` sur le mot « à » → la ligne naît `resolue: true` et **la levée d'ambiguïté n'est jamais posée** |
 | 4 | « 2000 francs » dit **« 2 zéro zéro zéro »** | **REPRODUIT** | `toLocaleString('fr-FR')` glisse U+202F. Le catalogue i18n dit correctement « deux mille francs » — mais **des écrans envoient le brut à la voix** |
 | 5 | « Encaisser » répété → « Je n'ai pas compris » | **REPRODUIT** | `estIntentionEncaissement('encaisser encaisser')` → **NON** |
@@ -90,12 +90,39 @@ information existe, et quelqu'un en aval la jette ou la re-devine.**
 
 ---
 
-## Ce que je n'ai pas mesuré, et pourquoi
+## #2 — LA CAUSE, TROUVÉE APRÈS COUP (capture de Patrick, 20h57)
 
-**#2** (le micro ne se rouvre pas sans quitter l'écran) demande un vrai micro
-et un vrai cycle d'écoute. Je ne peux pas le reproduire ici. Ce que je peux
-dire : `finDEcoute` et la réouverture vivent dans `MicroVenteCaisse`, et
-`useVoiceCore` ne vide `transcript` qu'au DÉBUT d'un nouvel enregistrement
-(CAI-07c) — une piste, pas une cause établie.
+La capture montre « Je n'ai pas compris. Redis-moi. » figé sur l'écran de
+caisse. Elle a permis de remonter à la cause, et elle est structurelle.
 
-**Je ne le déclare donc ni reproduit ni corrigé.**
+```
+VoiceState = "idle" | "listening" | "processing" | "thinking"
+           | "speaking" | "confirming" | "error"        ← SEPT valeurs
+
+handleMicClick traite :  speaking, idle, error, listening, thinking, processing
+                         ← SIX. `confirming` n'apparaît dans AUCUNE branche.
+
+setState("confirming") est posé 4 fois :
+  l.624  confirmation d'une intention FINANCIÈRE (FINANCIAL_INTENTS)
+  l.681  question qui attend oui/non (« J'ajoute gombo à ta boutique ? »)
+  l.703  auto-écoute juste après la question
+  l.845  réponse pas claire, on redemande
+```
+
+**Dès qu'une confirmation est en cours, le bouton micro ne fait RIEN.** Pas
+d'erreur, pas de retour, pas de son : aucune branche ne correspond. Le seul
+moyen d'en sortir est de quitter l'écran — ce qui démonte le composant et
+remet `state` à `idle`. C'est mot pour mot ce que le testeur décrit.
+
+**ET VENDRE EST UNE INTENTION FINANCIÈRE.** Le piège se referme donc sur le
+geste le plus courant : première vente → `confirming` → micro mort.
+
+**CE N'EST PAS UN OUBLI ISOLÉ, C'EST UNE FAMILLE D'ÉTATS NON EXHAUSTIVE.** Une
+suite de `if/else if` sur un type à sept valeurs, sans branche finale ni
+vérification d'exhaustivité : le compilateur ne dit rien, et l'état oublié
+devient un trou noir. `confirming` est le seul aujourd'hui — rien n'empêche le
+prochain.
+
+**Conséquence sur la gravité** : ce défaut passe DEVANT #3 + #6. Il ne fait pas
+perdre d'argent, il rend la caisse vocale **inutilisable après la première
+vente**.
