@@ -34,6 +34,7 @@ import { resoudreMessage, t } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
 import { BoutonReecouter, ConfirmationLigne } from './ConfirmationLigne';
 import { AjoutProduitGuide } from './AjoutProduitGuide';
+import { BoutonDirePrix } from './BoutonDirePrix';
 // STK-03 — on ne lit plus `CATALOGUE_PRODUITS` : ses 37 entrées portent des
 // PRIX qui ne sont pas ceux de la marchande. Les deux fonctions qui restent ne
 // servent qu'à retrouver une IMAGE par son nom, jamais un prix.
@@ -310,6 +311,21 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
             {prix || '—'}{prix ? ' F' : ''}
           </div>
           {prixModifiable && (
+            <>
+            {/* VOX-03 — ELLE PEUT DIRE SON PRIX.
+                Cet écran n'avait AUCUN micro : un pavé de chiffres et un champ
+                texte, devant une marchande qui ne lit pas. Et c'est l'écran de
+                l'ARGENT. Constat de Patrick sur le terrain, 24/09 : « il me
+                demande mon prix, mais avec une interface pour saisir — si je ne
+                sais pas lire ? »
+                Le micro s'ouvre tout seul, Tantie pose la question, le clavier
+                reste juste dessous pour qui préfère taper. */}
+            <BoutonDirePrix
+              ouvrirToutSeul
+              question={phrasePrixManquant()}
+              dire={dire}
+              onMontant={(m) => taperPrix(String(m))}
+            />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {CHIFFRES_CLAVIER.map(d => (
                 <button key={d} type="button" onClick={() => appuyerChiffre(d)}
@@ -330,6 +346,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
                 ⌫
               </button>
             </div>
+            </>
           )}
         </div>
 
