@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import {
-  Calendar, DollarSign, AlertCircle, Package, Receipt, Wallet,
+  Calendar, DollarSign, AlertCircle, Package, Wallet,
   TrendingUp, Award, FileText, X, Check, ChevronDown, ChevronUp,
   ArrowRight, Star, Clock, User, Phone, MapPin, Search, Plus,
   Minus, Trash2, Edit2, Eye, Download, Share2, Info, Loader2,
@@ -608,11 +608,6 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
     }
   };
 
-  const handleNavigateToSales = () => {
-    onClose();
-    navigate('/marchand/ventes-passees');
-  };
-
   const handleNavigateToCaisse = () => {
     onClose();
     navigate('/marchand/resume-caisse');
@@ -804,28 +799,22 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
             </motion.div>
           )}
 
-          {/* Boutons de navigation */}
-          <div className="grid grid-cols-2 gap-2 pt-2">
-            <motion.button
-              onClick={handleNavigateToSales}
-              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[var(--commerce-action)] transition-colors whitespace-nowrap"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              disabled={isClosing}
-            >
-              <Receipt className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--commerce-action)' }} />
-              <span className="text-xs font-semibold text-gray-700">Ventes</span>
-            </motion.button>
-
+          {/* UNE SEULE PORTE VERS LES CHIFFRES — 24/09/2026.
+              Il y en avait deux ici, côte à côte, même taille et même icône
+              orange : « Ventes » et « Résumé caisse ». Deux écrans de chiffres
+              différents, indiscernables pour une marchande qui ne lit pas.
+              Le résumé est la réponse à « combien j'ai fait » ; le détail
+              vente par vente s'ouvre DEPUIS ce résumé. */}
+          <div className="pt-2">
             <motion.button
               onClick={handleNavigateToCaisse}
-              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[var(--commerce-action)] transition-colors whitespace-nowrap"
+              className="w-full flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[var(--commerce-action)] transition-colors whitespace-nowrap"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               disabled={isClosing}
             >
               <Wallet className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--commerce-action)' }} />
-              <span className="text-xs font-semibold text-gray-700">Résumé caisse</span>
+              <span className="text-xs font-semibold text-gray-700">Combien j'ai fait aujourd'hui</span>
             </motion.button>
           </div>
         </div>

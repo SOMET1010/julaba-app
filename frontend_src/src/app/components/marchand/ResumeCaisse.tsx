@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router';
 import {
   Wallet,
   TrendingUp,
@@ -54,6 +55,7 @@ type Period = PeriodeResume;
 
 export function ResumeCaisse() {
   const { getFinancialSummary, getSalesHistory, transactions, currentSession, isOnline } = useApp();
+  const navigate = useNavigate();
   const { stocks } = useStock();
   // La voix passe par le catalogue : c'est le SEUL chemin qui produise la
   // forme PARLÉE des montants (« trente-trois mille six cents francs »).
@@ -476,6 +478,19 @@ export function ResumeCaisse() {
               ))}
             </div>
           )}
+
+          {/* LE DÉTAIL S'OUVRE D'ICI, ET SEULEMENT D'ICI — 24/09/2026.
+              « Mes ventes » (accueil) ouvre CE résumé : « combien j'ai fait
+              aujourd'hui », la question du soir. La liste vente par vente est
+              un DÉTAIL de cette réponse, pas une destination concurrente.
+              C'était l'inverse, et sept portes menaient aux deux écrans. */}
+          <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/ventes-passees')}
+            style={{ width:'100%', background:'white', border:'2px solid var(--trait)', borderRadius:18, padding:'15px 14px', display:'flex', alignItems:'center', gap:11, cursor:'pointer', fontFamily:'inherit', marginTop:12 }}>
+            <div style={{ width:38, height:38, borderRadius:12, background:'var(--commerce-orange-50)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--commerce-action)" strokeWidth="2.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <span style={{ fontSize:15, fontWeight:900, color:'var(--encre)' }}>Voir chaque vente</span>
+          </motion.button>
 
         </div>
     </SubPageLayout>

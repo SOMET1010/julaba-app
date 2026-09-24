@@ -168,7 +168,17 @@ function MarchandAccueilVoiceInner() {
   const tuiles: Array<{ icon: ReactNode; label: string; go: () => void; teinte: string }> = [
     { icon: svg(<><path d="M21 8V16a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4z"/><path d="M3.27 6.96 12 12l8.73-5.04"/><path d="M12 22V12"/></>), label: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: 'var(--caisse-vert)' },
     { icon: svg(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>), label: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: 'var(--caisse-alerte)' },
-    { icon: svg(<><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="9"/><line x1="18" y1="20" x2="18" y2="4"/></>), label: 'Mes ventes',   go: () => navigate('/marchand/ventes-passees'), teinte: 'var(--caisse-vert-fonce)' },
+    { icon: svg(<><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="9"/><line x1="18" y1="20" x2="18" y2="4"/></>), label: 'Mes ventes',   go: () => navigate('/marchand/resume-caisse'), teinte: 'var(--caisse-vert-fonce)' },
+    // « MES VENTES » OUVRE LE RÉSUMÉ DU JOUR, PAS LA LISTE — 24/09/2026.
+    //
+    // La question qu'elle pose tous les soirs est « combien j'ai fait
+    // aujourd'hui ? », pas « montre-moi chaque ligne ». Cette tuile ouvrait la
+    // LISTE ; le résumé, lui, n'était atteignable que par deux raccourcis
+    // enfouis dans l'écran du stock. On a inversé : le résumé est la porte,
+    // la liste est le détail — et elle s'ouvre DEPUIS le résumé.
+    //
+    // Décision déjà rendue : « "Résumé caisse" n'est plus une destination
+    // concurrente : il appartient à "Mes ventes". »
     // LA TUILE « MON ARGENT » A ÉTÉ RETIRÉE — décision de Patrick, 24/09.
     //
     // Le commentaire précédent disait qu'elle était CONSERVÉE faute d'arbitrage :
