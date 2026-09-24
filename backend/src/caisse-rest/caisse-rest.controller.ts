@@ -9,6 +9,7 @@ import { dateOperationValide } from './date-operation';
 import { resumeMargeDesLignes, coutDesLignesCoutees } from './marge-vente';
 import { CaisseTransaction, TransactionStatus } from './caisse-transaction.entity';
 import { restituerStock } from './stock-restitution';
+import { identifiantProduit } from '../commun/identifiant-produit';
 import { exigerJourneeOuverte } from './journee-ouverte';
 import { AlertesService } from '../notifications/alertes.service';
 
@@ -653,7 +654,12 @@ export class CaisseRestController {
       ? lignes.map((p: any) => ({
           nom: p.nom || p.name || '',
           qte: Number(p.quantite) || 1,
-          id: p.productId || p.produit_id || p.id || null,
+          // ARG-16 : un identifiant de produit est un UUID, ou il n'y en a
+          // pas. `libre-...` est un identifiant de LIGNE DE PANIER (article
+          // libre, produit dicté non apparié) : le laisser passer ici partait
+          // en `id = 'libre-...'` sur une colonne `uuid` et faisait ÉCHOUER LA
+          // VENTE ENTIÈRE. Écarté, la ligne retombe sur le repli par nom.
+          id: identifiantProduit(p.productId ?? p.produit_id ?? p.id),
         }))
       : (nomProduit ? [{ nom: nomProduit, qte: Number(qteTotale) || 1, id: null }] : []);
 
