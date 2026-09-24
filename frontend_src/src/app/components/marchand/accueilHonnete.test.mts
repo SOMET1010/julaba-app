@@ -122,6 +122,53 @@ console.log('\n[6] LA DETTE VOISINE, NOMMÉE — ACC-02, OUVERTE');
   }
 }
 
+console.log("\n[PILOTE] SEPT PORTES, PAS VINGT-SIX");
+{
+  // Décision de Patrick, 24/09 (docs/parcours/CIBLE-UX-MARCHANDE-PILOTE.md) :
+  // la marchande comprend l'application comme « ouvrir → vendre → encaisser »,
+  // pas comme une collection de modules. 26 destinations étaient déclarées sous
+  // /marchand ; elle n'en utilise que quelques-unes.
+  //
+  // RIEN N'EST SUPPRIMÉ : les routes et le code restent. Seules les PORTES
+  // VISIBLES se réduisent. On remet une tuile en une ligne si besoin.
+  const lire = (rel: string) => readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), rel), 'utf-8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
+    .filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+
+  const accueil = lire('./MarchandAccueilVoice.tsx');
+  const roles = lire('../../config/roleConfig.ts');
+
+  // KEIWA — un produit financier entier logé dans la caisse d'une marchande,
+  // 6 des 26 destinations à lui seul. C'est par la tuile « Mon argent » qu'on
+  // tombait sur « Keiwa verrouillé · Entre ton code PIN » : un écran de
+  // sécurité, devant une femme qui ne lit pas, avec ZÉRO parole.
+  ok(!/\/marchand\/keiwa/.test(accueil),
+     "l'accueil n'ouvre plus Keiwa — l'écran de code PIN n'est plus atteignable");
+  ok(!/Mon argent/.test(accueil), "et la tuile « Mon argent » a disparu de l'accueil");
+
+  // LE MARCHÉ VIRTUEL — s'approvisionner est un autre métier que vendre.
+  const barreMarchand = roles.match(/marchand:\s*\{[\s\S]*?bottomBar:\s*\{[\s\S]*?\]/)?.[0] ?? '';
+  ok(!/\/marchand\/marche/.test(barreMarchand),
+     "la barre du bas n'ouvre plus le marché virtuel");
+
+  // CE QUI RESTE, et que la marchande doit toujours trouver.
+  for (const [chemin, quoi] of [
+    ['/marchand/caisse', 'vendre'],
+    ['/marchand/stock', 'son étal'],
+    ['/marchand/cahier', 'ses dépenses'],
+    ['/marchand/ventes-passees', 'ses ventes'],
+  ] as const) {
+    ok(accueil.includes(chemin), `l'accueil garde la porte vers ${quoi}`);
+  }
+  for (const [chemin, quoi] of [
+    ['/marchand', "l'accueil"],
+    ['/marchand/commandes', 'ses commandes'],
+    ['/marchand/profil', 'elle-même'],
+  ] as const) {
+    ok(barreMarchand.includes(`'${chemin}'`), `la barre du bas garde la porte vers ${quoi}`);
+  }
+}
+
 console.log(echecs === 0
   ? '\n✅ Les trois familles restent fermées.\n'
   : `\n❌ ${echecs} garde(s) tombée(s).\n`);

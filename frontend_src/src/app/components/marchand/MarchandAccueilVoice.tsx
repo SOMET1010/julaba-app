@@ -169,10 +169,18 @@ function MarchandAccueilVoiceInner() {
     { icon: svg(<><path d="M21 8V16a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4z"/><path d="M3.27 6.96 12 12l8.73-5.04"/><path d="M12 22V12"/></>), label: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: 'var(--caisse-vert)' },
     { icon: svg(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>), label: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: 'var(--caisse-alerte)' },
     { icon: svg(<><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="9"/><line x1="18" y1="20" x2="18" y2="4"/></>), label: 'Mes ventes',   go: () => navigate('/marchand/ventes-passees'), teinte: 'var(--caisse-vert-fonce)' },
-    // La tuile « Mon argent » (Keiwa) est CONSERVÉE : Manus la retire, mais
-    // retirer une entrée de navigation est un arbitrage produit, pas un report
-    // de design. Seul l'habillage de la tuile vient de Manus.
-    { icon: svg(<><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></>), label: 'Mon argent',   go: () => navigate('/marchand/keiwa'),          teinte: 'var(--caisse-gris-texte)' },
+    // LA TUILE « MON ARGENT » A ÉTÉ RETIRÉE — décision de Patrick, 24/09.
+    //
+    // Le commentaire précédent disait qu'elle était CONSERVÉE faute d'arbitrage :
+    // « retirer une entrée de navigation est un arbitrage produit ». L'arbitrage
+    // est désormais rendu.
+    //
+    // Elle ouvrait `/marchand/keiwa` — un produit financier entier logé dans la
+    // caisse d'une marchande, 6 des 26 destinations à lui seul. C'est par cette
+    // tuile qu'on tombait sur « Keiwa verrouillé · Entre ton code PIN » : un
+    // écran de sécurité, devant une femme qui ne lit pas, avec ZÉRO parole.
+    //
+    // LA ROUTE EXISTE TOUJOURS : rien n'est supprimé, seule la porte se ferme.
   ];
 
   return (
