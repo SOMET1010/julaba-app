@@ -44,17 +44,28 @@ const CHIFFRES = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 interface Props {
   /** Ses unités déjà employées : elles passent devant celles du marché. */
   sesUnites: readonly string[];
+  /**
+   * CE QU'ELLE A DÉJÀ DIT — STK-05.
+   *
+   * Quand elle a nommé son produit à voix haute (« ajoute 10 piments à
+   * 500 »), il serait absurde de le lui redemander. Le parcours démarre sur
+   * ce qu'elle a donné et `etapeCourante` l'amène directement à la seule
+   * question qui reste. Ce qui n'est pas là n'est JAMAIS inventé : c'est
+   * précisément ce qu'on lui demande.
+   */
+  depart?: { nom?: string; unite?: string; prix?: number | null };
   /** Le produit est sur son étal. Le parent referme et rafraîchit. */
   onPose: () => void;
   onAnnuler: () => void;
 }
 
-export function AjoutProduitGuide({ sesUnites, onPose, onAnnuler }: Props) {
+export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Props) {
   const { speak } = useApp();
   const { addProduct, refreshProducts } = useCaisse();
-  const [nom, setNom] = useState('');
-  const [unite, setUnite] = useState('');
-  const [prix, setPrix] = useState('');
+  const [nom, setNom] = useState(depart?.nom ?? '');
+  const [unite, setUnite] = useState(depart?.unite ?? '');
+  const [prix, setPrix] = useState(
+    typeof depart?.prix === 'number' && depart.prix > 0 ? String(depart.prix) : '');
   const [uniteLibre, setUniteLibre] = useState(false);
   const [enCours, setEnCours] = useState(false);
 

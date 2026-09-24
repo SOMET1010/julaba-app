@@ -7,6 +7,8 @@ import { useNavigate } from 'react-router';
 import { Montant } from '../shared/Montant';
 import { prixDicte } from '../../services/prixDeLaMarchande';
 import { AjoutProduitGuide } from './AjoutProduitGuide';
+import { BoutonDireProduit } from './BoutonDireProduit';
+import type { EcouteProduit } from '../../services/produitDit';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useUser } from '../../contexts/UserContext';
@@ -291,6 +293,8 @@ export function GestionStock() {
   const [showValue, setShowValue] = useState(false);
   const [reappQty, setReappQty] = useState('');
   const [isListening, setIsListening] = useState(false);
+  /** STK-05 — ce qu'elle vient de dire, qui preremplit le parcours guide. */
+  const [departDit, setDepartDit] = useState<EcouteProduit['brouillon'] | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false); // repli des champs optionnels de l'ajout produit
   const dicteeNomRef = useRef(false); // true = la prochaine reconnaissance vocale remplit le NOM du produit (pas une commande)
   // STK-02 — LE TYPE DISAIT `number`, LE CODE ECRIVAIT `'' as any`.
@@ -359,57 +363,22 @@ export function GestionStock() {
       const a: any = data.action || {};
       const text = (data.transcript || '').toLowerCase();
 
-      // ── AJOUT / RÉAPPRO PAR LA VOIX ────────────────────────────────────────
-      // « Ajoute 10 piments à 500 » : plus besoin de taper le formulaire. Si le
-      // produit existe déjà -> on réapprovisionne ; sinon on le CRÉE (avec le prix
-      // dit, ou le prix du catalogue), et sa photo est trouvée automatiquement.
-      if (a.type === 'ajouter_stock' || data.intent === 'ajouter_stock') {
-        const nom = String(a.produit || '').trim();
-        const qte = Number(a.quantite) || 0;
-        const prix = Number(a.prix ?? a.montant) || 0;
-        if (!nom) { speak('Quel produit veux-tu ajouter ?'); return; }
-        if (qte <= 0) { speak(`Combien de ${nom} veux-tu ajouter ?`); return; }
-
-        const existant = stocks.find(s =>
-          s.name?.toLowerCase() === nom.toLowerCase() ||
-          s.name?.toLowerCase().includes(nom.toLowerCase()));
-        if (existant) {
-          const newQty = (existant.quantity || 0) + qte;
-          try {
-            await updateProduct(existant.id, { stock: newQty });
-            stockCtx.updateStock(existant.id, { quantite: newQty });
-            speak(`${qte} ${existant.unit} de ${existant.name} ajoutés. Tu as maintenant ${newQty} ${existant.unit}.`);
-          } catch { speak("Ça n'a pas marché. Réessaie, s'il te plaît."); }
-          return;
-        }
-        // Nouveau produit — STK-02, LE CHEMIN LE PLUS GRAVE DES TROIS.
-        //
-        // Ce bloc disait lui-meme ce qu'il faisait : « prix dit, SINON prix du
-        // catalogue ». Elle dictait « ajoute dix kilos de tomate » sans prix,
-        // l'application ecrivait 400 F — un chiffre ecrit en dur dans
-        // `data/catalogue-produits.ts` — puis le lui ANNONCAIT : « C'est fait !
-        // 10 kg de Tomate a 400 francs, ajoutes au stock. » Pour une marchande
-        // qui ne lit pas, la voix EST la confirmation : elle entendait un prix
-        // qu'elle n'avait jamais dit, enonce comme un fait accompli.
-        //
-        // Le catalogue garde ce qu'il sait — la famille, l'unite, la photo. Il
-        // ne sait pas a combien ELLE vend. `prixDicte` n'accepte qu'un seul
-        // argument : il n'existe aucun moyen de lui passer un repli.
-        const cat = rechercherProduitCatalogue(nom);
-        const prixVente = prixDicte(prix);
-        try {
-          await addProduct({
-            nom, categorie: cat?.categorie || 'autre',
-            prix: prixVente, prix_achat: 0,
-            stock: qte, unite: cat?.unite || 'kg',
-            image: cat?.image || getImageByNom(nom), seuil_alerte: 10,
-          } as any);
-          speak(prixVente > 0
-            ? `C'est fait ! ${qte} ${cat?.unite || 'kg'} de ${nom} à ${prixVente.toLocaleString('fr-FR')} francs, ajoutés au stock.`
-            : `${nom} ajouté au stock. Dis-moi son prix quand tu veux.`);
-        } catch { speak("Ça n'a pas marché. Réessaie, s'il te plaît."); }
-        return;
-      }
+      // LE BLOC `ajouter_stock` A ÉTÉ RETIRÉ — STK-05, 24/09.
+      //
+      // Il attendait une action que RIEN ne produisait : `ajouter_stock` avait
+      // quatre occurrences dans le dépôt, toutes consommatrices, aucun
+      // producteur. `intentLocal` ne fabrique que `vendre` et `depense`, et le
+      // mot « ajoute » est dans `MOTS_PAS_UNE_VENTE` — il ferme une porte au
+      // lieu d'en ouvrir une. Ce bloc n'a jamais pu s'exécuter.
+      //
+      // Il portait en plus une SECONDE NAISSANCE de produit : catégorie, unité
+      // et seuil d'alerte repris d'un catalogue générique, stock initial qu'elle
+      // n'avait pas compté. C'est STK-03g, que l'autre naissance avait déjà
+      // payé. Deux naissances, deux règles — et celle-ci ne recevait jamais les
+      // correctifs de l'autre.
+      //
+      // L'ajout par la voix passe maintenant par `BoutonDireProduit` →
+      // `produitDit` → `AjoutProduitGuide` : un seul chemin de création.
 
       if (text.includes('alerte') || text.includes('stock bas')) {
         const low = stocks.filter(s => s.quantity < s.threshold);
@@ -704,19 +673,18 @@ export function GestionStock() {
             </motion.button>}
           </div>
 
-          {/* Ajout PAR LA VOIX — la voie principale pour une non-lectrice.
-              Elle appuie, dit « ajoute 10 piments à 500 », et c'est créé. */}
-          <motion.button whileTap={{ scale:0.98 }} onClick={toggleMic}
-            aria-label={isListening ? 'J\'écoute, parle' : 'Ajouter un produit en parlant'}
-            style={{ width:'100%', minHeight:56, marginBottom:10, borderRadius:16, border:'none', cursor:'pointer', fontFamily:'inherit',
-              background: isListening ? '#1D9E75' : `linear-gradient(145deg, ${P}, #8f4418)`, color:'white',
-              display:'flex', alignItems:'center', justifyContent:'center', gap:10, padding:'10px 16px', boxShadow:'0 4px 16px rgba(175,91,35,0.28)' }}>
-            {isListening ? <MicOff size={22} /> : <Mic size={22} />}
-            <div style={{ textAlign:'left', lineHeight:1.15 }}>
-              <div style={{ fontSize:16, fontWeight:900 }}>{isListening ? 'Je t\'écoute…' : 'Ajouter en parlant'}</div>
-              <div style={{ fontSize:11.5, fontWeight:600, opacity:0.9 }}>{isListening ? 'dis : « ajoute 10 piments à 500 »' : 'appuie et dis ton produit'}</div>
-            </div>
-          </motion.button>
+          {/* AJOUT PAR LA VOIX — la voie principale pour une non-lectrice.
+              STK-05 : ce bouton dictait « dis : "ajoute 10 piments a 500" » et
+              rien ne comprenait cette phrase. Il ecoute vraiment maintenant, et
+              ce qu'elle donne prerempli le parcours guide : on ne lui redemande
+              que ce qui manque. Plus d'exemple syntaxique — elle ne le lit pas. */}
+          <div style={{ marginBottom: 10 }}>
+            <BoutonDireProduit
+              sesProduits={(products || []).map(p => ({ nom: p.nom }))}
+              dire={speak}
+              onProduit={(lu) => { setDepartDit(lu.brouillon); setShowAdd(true); }}
+            />
+          </div>
 
           {/* Ajouter un produit à l'écrit : l'AUTRE façon de faire le même
               geste que le gros bouton vocal au-dessus — pas « Vendre », qui
@@ -839,8 +807,9 @@ export function GestionStock() {
                 {/* SES unités déjà employées passent devant celles du marché. */}
                 <AjoutProduitGuide
                   sesUnites={(products || []).map(p => p.unite || '').filter(Boolean)}
-                  onPose={() => { setShowAdd(false); void refreshProducts(); }}
-                  onAnnuler={() => setShowAdd(false)}
+                  depart={departDit ?? undefined}
+                  onPose={() => { setShowAdd(false); setDepartDit(null); void refreshProducts(); }}
+                  onAnnuler={() => { setShowAdd(false); setDepartDit(null); }}
                 />
               </div>
             </motion.div>

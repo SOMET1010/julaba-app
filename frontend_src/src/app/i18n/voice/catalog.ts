@@ -646,6 +646,7 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'CLIP_UI_137', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'À bientôt sur Jùlaba', frMarche: null, variables: [], audioMode: 'clip', statut: 'a_migrer', owner: 'manus', source: 'services/tataUiClips.ts (ui-137.mp3) ; components/layout/Sidebar.tsx:64' },
   { id: 'GUIDAGE_001', type: 'tts', domaine: 'guidage', critiqueArgent: false, frActuel: 'J\'ai remarqué que tu préfères me parler. Veux-tu que Julaba s\'adapte ?', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'utils/accessMode.ts:100' },
   { id: 'GUIDAGE_002', type: 'tts', domaine: 'guidage', critiqueArgent: false, frActuel: 'J\'ai remarqué que tu préfères le clavier. Veux-tu que Julaba s\'adapte ?', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'utils/accessMode.ts:97' },
+  { id: 'STOCK_046', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Je n\'ai pas entendu de produit. Dis-moi ce que tu vends.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'claude', source: 'components/marchand/BoutonDireProduit.tsx', note: 'STK-05 — rien compris au micro du stock. On le DIT, on n\'ouvre pas un formulaire vide en faisant comme si on avait entendu.' },
 ];
 
 // ── STT_INPUT — ce que la marchande peut dire ───────────────────────────────
