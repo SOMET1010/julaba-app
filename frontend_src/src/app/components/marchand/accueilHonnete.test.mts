@@ -156,7 +156,11 @@ console.log("\n[PILOTE] SEPT PORTES, PAS VINGT-SIX");
     ['/marchand/caisse', 'vendre'],
     ['/marchand/stock', 'son étal'],
     ['/marchand/cahier', 'ses dépenses'],
-    ['/marchand/ventes-passees', 'ses ventes'],
+    // « Mes ventes » ouvre désormais le RÉSUMÉ du jour, pas la liste — 24/09.
+    // La porte est la même et le libellé aussi ; c'est ce qu'elle ouvre qui
+    // change. « Combien j'ai fait aujourd'hui » est la question du soir ; le
+    // détail vente par vente s'ouvre DEPUIS ce résumé (portesChiffres.test.mts).
+    ['/marchand/resume-caisse', 'ses ventes'],
   ] as const) {
     ok(accueil.includes(chemin), `l'accueil garde la porte vers ${quoi}`);
   }

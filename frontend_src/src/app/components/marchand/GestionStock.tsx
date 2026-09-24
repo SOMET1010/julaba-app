@@ -3,7 +3,7 @@ import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { suggererProduits, getImageByNom, rechercherProduitCatalogue, CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
-import { Package, TrendingUp, AlertCircle, Plus, Search, Trash2, X, Mic, MicOff, Edit3, Receipt, Wallet, BarChart3, Eye, EyeOff, WifiOff } from 'lucide-react';
+import { Package, TrendingUp, AlertCircle, Plus, Search, Trash2, X, Mic, MicOff, Edit3, BarChart3, Eye, EyeOff, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { Montant } from '../shared/Montant';
 import { prixDicte } from '../../services/prixDeLaMarchande';
@@ -628,24 +628,23 @@ export function GestionStock() {
             <UniversalKPI label="Prix moyen" value={(stocks.length > 0 ? Math.round(totalValue / stocks.length) : 0).toLocaleString('fr-FR')} masque={montantsMasques} suffix="FCFA" icon={BarChart3} color="#9F8170" bgColor="rgba(249,244,240,0.9)" borderColor="rgba(159,129,112,0.35)" iconAnimation="none" />
           </KPIGrid>
 
-          {/* Raccourcis */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
-            <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/ventes-passees')}
-              style={{ background:'white', border:'2px solid var(--trait)', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
-              <div style={{ width:30, height:30, borderRadius:9, background:'var(--commerce-orange-50)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Receipt size={14} color={P} /></div>
-              <span style={{ fontSize:12, fontWeight:700, color:'var(--color-gray-700)' }}>Ventes passées</span>
-            </motion.button>
-            <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/resume-caisse')}
-              style={{ background:'white', border:'2px solid var(--trait)', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
-              <div style={{ width:30, height:30, borderRadius:9, background:'var(--commerce-orange-50)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Wallet size={14} color={P} /></div>
-              {/* Renommé « Résumé détaillé » : distinct du « Résumé du jour »
-                  (fenêtre rapide de l'accueil, avec fermer-journée/fond) —
-                  même nom que deux endroits différents prêtait à confusion
-                  (audit accueil/tuiles). Celui-ci va plus loin (heure de
-                  pointe, etc.), mais c'est un complément, pas le même écran. */}
-              <span style={{ fontSize:12, fontWeight:700, color:'var(--color-gray-700)' }}>Résumé détaillé</span>
-            </motion.button>
-          </div>
+          {/* LES DEUX PORTES VERS LES CHIFFRES SONT PARTIES D'ICI — 24/09/2026.
+              Décision déjà rendue : « "Résumé caisse" n'est plus une
+              destination concurrente : il appartient à "Mes ventes" », et
+              « "Ventes passées" et "Résumé détaillé" cessent d'être deux
+              portes depuis le stock ».
+
+              CE QU'IL Y AVAIT. Deux boutons côte à côte, même taille, même
+              fond, même couleur d'icône, menant à deux écrans de chiffres
+              différents — dans l'écran du STOCK. Une marchande qui ne lit pas
+              n'a aucun moyen de les distinguer.
+
+              Mesuré le 24/09 : SEPT portes menaient à ces deux écrans depuis
+              le parcours marchande. Il en reste UNE, la tuile « Mes ventes »
+              de l'accueil, qui ouvre le résumé du jour ; le détail vente par
+              vente s'ouvre DEPUIS ce résumé.
+
+              Le stock montre l'étal, pas les chiffres (STK-03). */}
 
           {/* Recherche + Top marge */}
           <div style={{ display:'flex', gap:8, marginBottom:12, minWidth:0 }}>

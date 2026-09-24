@@ -506,29 +506,14 @@ export function ScoreResumeCard({
               {resumeCfg.historique}
             </div>
 
-            {/* Boutons navigation rapide - Marchand uniquement */}
-            {role === 'marchand' && (
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => { e.stopPropagation(); navigate('/marchand/resume-caisse'); }}
-                  className="py-2 rounded-xl border-2 border-orange-200 hover:bg-orange-50 transition-colors flex items-center justify-center gap-1 text-xs font-semibold text-orange-700 cursor-pointer"
-                >
-                  <BarChart3 className="w-3 h-3" />
-                  Résumé caisse
-                </div>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => { e.stopPropagation(); navigate('/marchand/ventes-passees'); }}
-                  className="py-2 rounded-xl border-2 border-orange-200 hover:bg-orange-50 transition-colors flex items-center justify-center gap-1 text-xs font-semibold text-orange-700 cursor-pointer"
-                >
-                  <BarChart3 className="w-3 h-3" />
-                  Historique ventes
-                </div>
-              </div>
-            )}
+            {/* LES DEUX BOUTONS « MARCHAND UNIQUEMENT » SONT PARTIS — 24/09/2026.
+                « Résumé caisse » et « Historique ventes », côte à côte, MÊME
+                icône BarChart3, même bordure orange — et le bouton juste
+                au-dessus menait déjà au résumé, avec la même icône encore.
+                Trois boutons identiques à l'œil pour deux écrans.
+                Une marchande qui ne lit pas n'avait aucun moyen de choisir.
+                Le bouton du dessus suffit : il ouvre le résumé du jour, et le
+                détail vente par vente s'ouvre DEPUIS ce résumé. */}
           </SharedCard>
         </motion.div>
       </motion.div>
