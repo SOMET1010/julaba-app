@@ -219,7 +219,7 @@ export function ResumeCaisse() {
 
   const soldeActuel = (currentSession?.fondInitial || 0) + financialData.totalVentes - financialData.totalCahier;
 
-  const COLORS = ['#B74725', '#00563B', '#2072AF', '#702963', '#F59E0B', '#EF4444'];
+  const COLORS = ['var(--commerce-action)', 'var(--commerce-green)', '#2072AF', '#702963', '#F59E0B', 'var(--color-red-500)'];
 
   const periodLabels: Record<Period, string> = {
     today: "Aujourd'hui",
@@ -308,7 +308,7 @@ export function ResumeCaisse() {
               animatedTarget={financialData.totalVentes}
               suffix="FCFA"
               icon={TrendingUp}
-              color="#16a34a"
+              color="var(--color-green-600)"
               bgColor="rgba(240,253,244,0.85)"
               borderColor="rgba(34,197,94,0.4)"
               iconAnimation="bounce"
@@ -320,7 +320,7 @@ export function ResumeCaisse() {
               animatedTarget={financialData.totalCahier}
               suffix="FCFA"
               icon={TrendingDown}
-              color="#dc2626"
+              color="var(--destructive)"
               bgColor="rgba(254,242,242,0.85)"
               borderColor="rgba(239,68,68,0.4)"
               iconAnimation="pulse"
@@ -332,7 +332,7 @@ export function ResumeCaisse() {
               animatedTarget={Math.abs(financialData.beneficeNet)}
               suffix="FCFA"
               icon={Banknote}
-              color={financialData.beneficeNet >= 0 ? '#2563eb' : '#dc2626'}
+              color={financialData.beneficeNet >= 0 ? '#2563eb' : 'var(--destructive)'}
               bgColor={financialData.beneficeNet >= 0 ? 'rgba(239,246,255,0.85)' : 'rgba(254,242,242,0.85)'}
               borderColor={financialData.beneficeNet >= 0 ? 'rgba(59,130,246,0.4)' : 'rgba(239,68,68,0.4)'}
               iconAnimation="spin"
@@ -344,7 +344,7 @@ export function ResumeCaisse() {
               animatedTarget={soldeActuel}
               suffix="FCFA"
               icon={Wallet}
-              color="#ea580c"
+              color="var(--color-orange-600)"
               bgColor="rgba(255,247,237,0.85)"
               borderColor="rgba(249,115,22,0.4)"
               iconAnimation="float"
@@ -418,8 +418,8 @@ export function ResumeCaisse() {
           {evolutionData.length > 0 && (
             <div style={{ background:'white', borderRadius:18, padding:14, border:'1.5px solid var(--trait)' }}>
               <div style={{ fontSize:13, fontWeight:900, color:'var(--encre)', marginBottom:4 }}>Évolution de tes ventes</div>
-              <div style={{ fontSize:12, fontWeight:700, color:'#16a34a', marginBottom:10, display:'flex', alignItems:'center', gap:4 }}>
-                <TrendingUp size={13} color="#16a34a" />
+              <div style={{ fontSize:12, fontWeight:700, color:'var(--color-green-600)', marginBottom:10, display:'flex', alignItems:'center', gap:4 }}>
+                <TrendingUp size={13} color="var(--color-green-600)" />
                 {financialData.totalVentes > 0 ? "Tu vends bien !" : "Pas encore de ventes"}
               </div>
               <div style={{ height:120 }}>

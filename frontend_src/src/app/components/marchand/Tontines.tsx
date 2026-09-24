@@ -8,7 +8,7 @@ import { useApp } from '../../contexts/AppContext';
 import { API_URL } from '../../utils/api';
 import { apiRequest, HttpError } from '../../services/api/api-client';
 
-const COLOR = '#B74725';
+const COLOR = 'var(--commerce-action)';
 
 interface TontineListItem {
   id: string;
@@ -29,9 +29,9 @@ interface MembreCandidat {
 }
 
 const STATUT_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  active: { label: 'En cours', color: '#16A34A', bg: '#DCFCE7' },
-  terminee: { label: 'Terminée', color: '#6B7280', bg: '#F3F4F6' },
-  annulee: { label: 'Annulée', color: '#DC2626', bg: '#FEE2E2' },
+  active: { label: 'En cours', color: 'var(--color-green-600)', bg: 'var(--color-green-100)' },
+  terminee: { label: 'Terminée', color: 'var(--muted-foreground)', bg: 'var(--color-gray-100)' },
+  annulee: { label: 'Annulée', color: 'var(--destructive)', bg: 'var(--color-red-100)' },
 };
 
 const CADENCES = [
@@ -262,7 +262,7 @@ function CreerTontineModal({ onClose, onCree }: { onClose: () => void; onCree: (
                   <button
                     key={c.jours} type="button" onClick={() => setCadenceJours(c.jours)}
                     className="px-3 py-2 rounded-xl text-xs font-bold border-2"
-                    style={cadenceJours === c.jours ? { borderColor: COLOR, background: `${COLOR}12`, color: COLOR } : { borderColor: '#E5E7EB', color: '#6B7280' }}
+                    style={cadenceJours === c.jours ? { borderColor: COLOR, background: `${COLOR}12`, color: COLOR } : { borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
                   >
                     {c.label}
                   </button>

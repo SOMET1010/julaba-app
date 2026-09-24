@@ -33,7 +33,7 @@ import { startLiveDictation } from '../../voice-offline/offlineStt';
 import { stopAllVoice } from '../../services/audioManager';
 import { montantDit } from '../../services/montantDit';
 
-const ORANGE = '#B74725';
+const ORANGE = 'var(--commerce-action)';
 /** Même cible tactile que le reste de la caisse : un doigt, pas un curseur. */
 const CIBLE = 44;
 /** Au-delà, ce n'est plus un prix qu'on dit : on rend la main au clavier. */

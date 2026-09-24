@@ -108,16 +108,16 @@ function StyledButton({ onClick, variant = 'primary', disabled, children, classN
     success: 'text-white shadow-lg hover:shadow-xl',
   };
 
-  let bgColor = '#B74725';
-  if (variant === 'danger') bgColor = '#DC2626';
-  if (variant === 'success') bgColor = '#16A34A';
+  let bgColor = 'var(--commerce-action)';
+  if (variant === 'danger') bgColor = 'var(--destructive)';
+  if (variant === 'success') bgColor = 'var(--color-green-600)';
 
   return (
     <motion.button
       onClick={onClick}
       disabled={disabled}
       className={`${baseStyle} ${variantStyles[variant]} ${fullWidth ? 'w-full' : ''} ${className}`}
-      style={variant === 'primary' || variant === 'success' ? { backgroundColor: bgColor } : variant === 'outline' ? { borderWidth: '2px', borderColor: '#E5E7EB' } : undefined}
+      style={variant === 'primary' || variant === 'success' ? { backgroundColor: bgColor } : variant === 'outline' ? { borderWidth: '2px', borderColor: 'var(--border)' } : undefined}
       whileHover={!disabled ? { scale: 1.02 } : {}}
       whileTap={!disabled ? { scale: 0.98 } : {}}
     >
@@ -152,7 +152,7 @@ function StyledInput({ id, type, placeholder, value, onChange, error, autoFocus,
           ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
           : 'border-gray-300 focus:ring-orange-100'
       } disabled:bg-gray-100 disabled:cursor-not-allowed`}
-      style={!error ? { borderWidth: '2px', borderColor: '#D1D5DB' } : undefined}
+      style={!error ? { borderWidth: '2px', borderColor: 'var(--color-gray-300)' } : undefined}
     />
   );
 }
@@ -191,7 +191,7 @@ function MontantFCFAInput({ id, value, onChange, placeholder, error, autoFocus, 
           ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
           : 'border-gray-300 focus:ring-orange-100'
       } disabled:bg-gray-100 disabled:cursor-not-allowed`}
-      style={!error ? { borderWidth: '2px', borderColor: '#D1D5DB' } : undefined}
+      style={!error ? { borderWidth: '2px', borderColor: 'var(--color-gray-300)' } : undefined}
     />
   );
 }
@@ -382,7 +382,7 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: 'var(--commerce-action)' }}>
         {/* Header */}
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
@@ -390,10 +390,10 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <Calendar className="w-7 h-7" style={{ color: '#B74725' }} />
+              <Calendar className="w-7 h-7" style={{ color: 'var(--commerce-action)' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--commerce-action)' }}>
                 Ouvre ta journée
               </h2>
             </div>
@@ -495,17 +495,17 @@ export function EditFondModal({ isOpen, onClose, currentFond }: EditFondModalPro
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: 'var(--commerce-action)' }}>
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <DollarSign className="w-7 h-7" style={{ color: '#B74725' }} />
+              <DollarSign className="w-7 h-7" style={{ color: 'var(--commerce-action)' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--commerce-action)' }}>
                 Modifier le fond
               </h2>
             </div>
@@ -702,32 +702,32 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
         )}
 
         <div className="px-6 pb-6 space-y-3">
-          <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: '#86EFAC' }}>
+          <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: 'var(--color-green-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Ventes du jour</p>
             <MontantCard accentColor="#10B981" className="rounded-xl">
-              <Montant value={stats.ventes} size="xl" color="#15803d" masque={montantsMasques} />
+              <Montant value={stats.ventes} size="xl" color="var(--color-green-700)" masque={montantsMasques} />
             </MontantCard>
             <p className="text-xs text-gray-500 mt-1">{stats.nombreVentes} vente{stats.nombreVentes > 1 ? 's' : ''}</p>
           </div>
 
-          <div className="p-4 rounded-2xl border bg-red-50" style={{ borderColor: '#FCA5A5' }}>
+          <div className="p-4 rounded-2xl border bg-red-50" style={{ borderColor: 'var(--color-red-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Cahier du jour</p>
-            <MontantCard accentColor="#EF4444" className="rounded-xl">
-              <Montant value={stats.cahier} size="xl" color="#b91c1c" masque={montantsMasques} />
+            <MontantCard accentColor="var(--color-red-500)" className="rounded-xl">
+              <Montant value={stats.cahier} size="xl" color="var(--color-red-700)" masque={montantsMasques} />
             </MontantCard>
           </div>
 
-          <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? '#86EFAC' : '#FCA5A5' }}>
+          <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? 'var(--color-green-300)' : 'var(--color-red-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Marge</p>
-            <MontantCard accentColor={marge >= 0 ? '#10B981' : '#EF4444'} className="rounded-xl">
-              <Montant value={marge} size="xl" color={marge >= 0 ? '#15803d' : '#b91c1c'} showPlus masque={montantsMasques} />
+            <MontantCard accentColor={marge >= 0 ? '#10B981' : 'var(--color-red-500)'} className="rounded-xl">
+              <Montant value={marge} size="xl" color={marge >= 0 ? 'var(--color-green-700)' : 'var(--color-red-700)'} showPlus masque={montantsMasques} />
             </MontantCard>
           </div>
 
-          <div className="p-4 rounded-2xl border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }}>
+          <div className="p-4 rounded-2xl border" style={{ backgroundColor: 'var(--color-orange-50)', borderColor: 'var(--color-orange-200)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Caisse théorique</p>
-            <MontantCard accentColor="#B74725" className="rounded-xl">
-              <Montant value={stats.caisse} size="xl" color="#B74725" masque={montantsMasques} />
+            <MontantCard accentColor="var(--commerce-action)" className="rounded-xl">
+              <Montant value={stats.caisse} size="xl" color="var(--commerce-action)" masque={montantsMasques} />
             </MontantCard>
           </div>
 
@@ -742,7 +742,7 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
             />
             {ecart !== null && ecart !== 0 && (
               <p className={`text-xs font-medium mt-2 ${ecart > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                Écart: <Montant value={ecart} size="sm" color={ecart > 0 ? '#16a34a' : '#dc2626'} showPlus masque={montantsMasques} />
+                Écart: <Montant value={ecart} size="sm" color={ecart > 0 ? 'var(--color-green-600)' : 'var(--destructive)'} showPlus masque={montantsMasques} />
               </p>
             )}
           </div>
@@ -758,7 +758,7 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
                 className="w-full flex items-center justify-between text-left"
               >
                 <div className="flex items-center gap-2">
-                  <Package className="w-4 h-4" style={{ color: '#B74725' }} />
+                  <Package className="w-4 h-4" style={{ color: 'var(--commerce-action)' }} />
                   <p className="text-xs font-bold text-gray-700">Analyse détaillée</p>
                 </div>
                 <motion.div
@@ -784,7 +784,7 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
                         <div className="flex items-center gap-2">
                           <div
                             className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                            style={{ backgroundColor: '#B74725' }}
+                            style={{ backgroundColor: 'var(--commerce-action)' }}
                           >
                             {index + 1}
                           </div>
@@ -793,7 +793,7 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
                             <p className="text-xs text-gray-500">{product.quantity} unité{product.quantity > 1 ? 's' : ''}</p>
                           </div>
                         </div>
-                        <p className="text-xs font-bold" style={{ color: '#B74725' }}>
+                        <p className="text-xs font-bold" style={{ color: 'var(--commerce-action)' }}>
                           {montantsMasques ? '••••• FCFA' : `${formatMontantFR(product.total || 0)} FCFA`}
                         </p>
                       </div>
@@ -808,23 +808,23 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
           <div className="grid grid-cols-2 gap-2 pt-2">
             <motion.button
               onClick={handleNavigateToSales}
-              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[#B74725] transition-colors whitespace-nowrap"
+              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[var(--commerce-action)] transition-colors whitespace-nowrap"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               disabled={isClosing}
             >
-              <Receipt className="w-4 h-4 flex-shrink-0" style={{ color: '#B74725' }} />
+              <Receipt className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--commerce-action)' }} />
               <span className="text-xs font-semibold text-gray-700">Ventes</span>
             </motion.button>
 
             <motion.button
               onClick={handleNavigateToCaisse}
-              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[#B74725] transition-colors whitespace-nowrap"
+              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[var(--commerce-action)] transition-colors whitespace-nowrap"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               disabled={isClosing}
             >
-              <Wallet className="w-4 h-4 flex-shrink-0" style={{ color: '#B74725' }} />
+              <Wallet className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--commerce-action)' }} />
               <span className="text-xs font-semibold text-gray-700">Résumé caisse</span>
             </motion.button>
           </div>
@@ -875,7 +875,7 @@ export function StatsVentesModal({ isOpen, onClose, montant }: StatsVentesModalP
         </div>
 
         <div className="px-6 pb-6">
-          <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-green-50 to-green-100 border" style={{ borderColor: '#86EFAC' }}>
+          <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-green-50 to-green-100 border" style={{ borderColor: 'var(--color-green-300)' }}>
             <p className="text-sm font-semibold text-gray-600 mb-2">Total des ventes</p>
             <MontantCard accentColor="#10B981" className="rounded-xl">
               <motion.div
@@ -884,7 +884,7 @@ export function StatsVentesModal({ isOpen, onClose, montant }: StatsVentesModalP
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 200 }}
               >
-                <Montant value={montant} size="2xl" color="#15803d" />
+                <Montant value={montant} size="2xl" color="var(--color-green-700)" />
               </motion.div>
             </MontantCard>
           </div>
@@ -931,11 +931,11 @@ export function StatsMargeModal({ isOpen, onClose, marge }: StatsMargeModalProps
         </div>
 
         <div className="px-6 pb-6">
-          <div className={`text-center p-8 rounded-2xl bg-gradient-to-br border ${isPositive ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100'}`} style={{ borderColor: isPositive ? '#86EFAC' : '#FCA5A5' }}>
+          <div className={`text-center p-8 rounded-2xl bg-gradient-to-br border ${isPositive ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100'}`} style={{ borderColor: isPositive ? 'var(--color-green-300)' : 'var(--color-red-300)' }}>
             <p className="text-sm font-semibold text-gray-600 mb-2">Marge</p>
-            <MontantCard accentColor={isPositive ? '#10B981' : '#EF4444'} className="rounded-xl">
+            <MontantCard accentColor={isPositive ? '#10B981' : 'var(--color-red-500)'} className="rounded-xl">
               <div className="flex justify-center">
-                <Montant value={marge} size="2xl" color={isPositive ? '#15803d' : '#b91c1c'} showPlus />
+                <Montant value={marge} size="2xl" color={isPositive ? 'var(--color-green-700)' : 'var(--color-red-700)'} showPlus />
               </div>
             </MontantCard>
           </div>
@@ -981,17 +981,17 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: 'var(--commerce-action)' }}>
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <Award className="w-7 h-7" style={{ color: '#B74725' }} />
+              <Award className="w-7 h-7" style={{ color: 'var(--commerce-action)' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--commerce-action)' }}>
                 Mes Points JULABA
               </h2>
             </div>
@@ -1002,10 +1002,10 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
         </div>
 
         <div className="px-6 pb-6">
-          <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 border mb-6" style={{ borderColor: '#FED7AA' }}>
+          <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 border mb-6" style={{ borderColor: 'var(--color-orange-200)' }}>
             <motion.p
               className="text-6xl font-bold"
-              style={{ color: '#B74725' }}
+              style={{ color: 'var(--commerce-action)' }}
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 200 }}
@@ -1030,8 +1030,8 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }}>
-            <p className="text-sm font-bold mb-2" style={{ color: '#B74725' }}>
+          <div className="p-4 rounded-2xl border" style={{ backgroundColor: 'var(--color-orange-50)', borderColor: 'var(--color-orange-200)' }}>
+            <p className="text-sm font-bold mb-2" style={{ color: 'var(--commerce-action)' }}>
               C'est déjà !
             </p>
             <p className="text-sm text-gray-600 leading-relaxed">
@@ -1076,17 +1076,17 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: 'var(--commerce-action)' }}>
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <FileText className="w-7 h-7" style={{ color: '#B74725' }} />
+              <FileText className="w-7 h-7" style={{ color: 'var(--commerce-action)' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--commerce-action)' }}>
                 Résumé du jour
               </h2>
             </div>
@@ -1105,32 +1105,32 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
         </div>
 
         <div className="px-6 pb-6 space-y-3">
-          <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: '#86EFAC' }}>
+          <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: 'var(--color-green-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Ventes du jour</p>
             <MontantCard accentColor="#10B981" className="rounded-xl">
-              <Montant value={stats.ventes} size="xl" color="#15803d" masque={montantsMasques} />
+              <Montant value={stats.ventes} size="xl" color="var(--color-green-700)" masque={montantsMasques} />
             </MontantCard>
             <p className="text-xs text-gray-500 mt-1">{stats.nombreVentes} vente{stats.nombreVentes > 1 ? 's' : ''}</p>
           </div>
 
-          <div className="p-4 rounded-2xl border bg-red-50" style={{ borderColor: '#FCA5A5' }}>
+          <div className="p-4 rounded-2xl border bg-red-50" style={{ borderColor: 'var(--color-red-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Cahier du jour</p>
-            <MontantCard accentColor="#EF4444" className="rounded-xl">
-              <Montant value={stats.cahier} size="xl" color="#b91c1c" masque={montantsMasques} />
+            <MontantCard accentColor="var(--color-red-500)" className="rounded-xl">
+              <Montant value={stats.cahier} size="xl" color="var(--color-red-700)" masque={montantsMasques} />
             </MontantCard>
           </div>
 
-          <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? '#86EFAC' : '#FCA5A5' }}>
+          <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? 'var(--color-green-300)' : 'var(--color-red-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Marge</p>
-            <MontantCard accentColor={marge >= 0 ? '#10B981' : '#EF4444'} className="rounded-xl">
-              <Montant value={marge} size="xl" color={marge >= 0 ? '#15803d' : '#b91c1c'} showPlus masque={montantsMasques} />
+            <MontantCard accentColor={marge >= 0 ? '#10B981' : 'var(--color-red-500)'} className="rounded-xl">
+              <Montant value={marge} size="xl" color={marge >= 0 ? 'var(--color-green-700)' : 'var(--color-red-700)'} showPlus masque={montantsMasques} />
             </MontantCard>
           </div>
 
-          <div className="p-4 rounded-2xl border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }}>
+          <div className="p-4 rounded-2xl border" style={{ backgroundColor: 'var(--color-orange-50)', borderColor: 'var(--color-orange-200)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Caisse théorique</p>
-            <MontantCard accentColor="#B74725" className="rounded-xl">
-              <Montant value={stats.caisse} size="xl" color="#B74725" masque={montantsMasques} />
+            <MontantCard accentColor="var(--commerce-action)" className="rounded-xl">
+              <Montant value={stats.caisse} size="xl" color="var(--commerce-action)" masque={montantsMasques} />
             </MontantCard>
           </div>
 

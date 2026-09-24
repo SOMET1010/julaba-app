@@ -33,7 +33,7 @@ import { resoudreMessage } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
 
 const VERT = '#0E7A47';
-const ORANGE = '#B74725';
+const ORANGE = 'var(--commerce-action)';
 
 /** Cible tactile minimale, en pixels — même règle que la barre de recherche de la caisse (test-cible-tactile.mjs). */
 export const CIBLE_TACTILE = 44;
@@ -136,9 +136,9 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
   // Cas AMBIGU avec un montant connu → question « d'un seul / de tous les N » (§5).
   if (montantADemander != null) {
     return (
-      <div style={{ background: '#F6F0E4', border: `2px solid ${ORANGE}`, borderRadius: 20, padding: 16 }}>
+      <div style={{ background: 'var(--commerce-paper)', border: `2px solid ${ORANGE}`, borderRadius: 20, padding: 16 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
-          <p style={{ flex: 1, fontSize: 16, fontWeight: 700, color: '#1F2937', margin: 0, lineHeight: 1.35 }}>
+          <p style={{ flex: 1, fontSize: 16, fontWeight: 700, color: 'var(--color-gray-800)', margin: 0, lineHeight: 1.35 }}>
             {texteAffiche}
           </p>
           <BoutonReecouter phrase={reecouter} />
@@ -158,10 +158,10 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
   }
 
   return (
-    <div style={{ background: '#F6F0E4', border: `2px solid ${ORANGE}`, borderRadius: 20, padding: 16 }}>
+    <div style={{ background: 'var(--commerce-paper)', border: `2px solid ${ORANGE}`, borderRadius: 20, padding: 16 }}>
       {/* Répétition de Tata — affichée ET dite (voir l'effet ci-dessus). */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
-        <p style={{ flex: 1, fontSize: 16, fontWeight: 700, color: '#1F2937', margin: 0, lineHeight: 1.35 }}>
+        <p style={{ flex: 1, fontSize: 16, fontWeight: 700, color: 'var(--color-gray-800)', margin: 0, lineHeight: 1.35 }}>
           {texteAffiche}
         </p>
         <BoutonReecouter phrase={reecouter} />
@@ -247,7 +247,7 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
                 Non, corriger
               </motion.button>
               <motion.button whileTap={{ scale: 0.97 }} onClick={onAnnuler}
-                style={{ ...btnBase, background: 'white', color: '#9ca3af', border: '2px solid #e5e0d8' }}>
+                style={{ ...btnBase, background: 'white', color: 'var(--color-gray-400)', border: '2px solid #e5e0d8' }}>
                 Annuler
               </motion.button>
             </div>

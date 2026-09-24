@@ -30,7 +30,7 @@ import { startLiveDictation } from '../../voice-offline/offlineStt';
 import { stopAllVoice } from '../../services/audioManager';
 import { produitDit, type EcouteProduit } from '../../services/produitDit';
 
-const ORANGE = '#B74725';
+const ORANGE = 'var(--commerce-action)';
 const CIBLE = 44;
 /** Au-delà, ce n'est plus un produit qu'on nomme : on rend la main au tactile. */
 const ECOUTE_MAX_MS = 12000;

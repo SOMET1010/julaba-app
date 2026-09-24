@@ -48,7 +48,7 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
   const isEmpty = stock.quantity <= 0;
   const benefice = stock.salePrice - stock.purchasePrice;
   const marginPct = stock.purchasePrice > 0 ? Math.round((benefice / stock.purchasePrice) * 100) : 0;
-  const borderColor = isEmpty ? '#dc2626' : isLow ? '#ef4444' : '#16a34a';
+  const borderColor = isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--color-green-600)';
   const stockPct = Math.min(100, Math.round((stock.quantity / Math.max(stock.threshold * 2, 1)) * 100));
 
   return (
@@ -56,7 +56,7 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
       {/* Fond swipe suppression */}
       <motion.div style={{
         position: 'absolute', right: 0, top: 0, bottom: 0, width: 72,
-        background: '#ef4444', display: 'flex', alignItems: 'center',
+        background: 'var(--color-red-500)', display: 'flex', alignItems: 'center',
         justifyContent: 'center', borderRadius: 22, opacity: deleteOpacity,
       }}>
         <Trash2 size={20} color="white" />
@@ -149,12 +149,12 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
               display: 'flex', alignItems: 'baseline', justifyContent: 'center',
               gap: 4, marginBottom: 8,
             }}>
-              <span style={{ fontSize:40, fontWeight:900, color:isEmpty ? '#dc2626' : isLow ? '#ef4444' : '#16a34a' }}>
+              <span style={{ fontSize:40, fontWeight:900, color:isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--color-green-600)' }}>
                 {stock.quantity.toLocaleString('fr-FR')}
               </span>
               <span style={{
                 fontSize: 13, fontWeight: 700,
-                color: isEmpty ? '#dc2626' : isLow ? '#ef4444' : 'var(--encre-4)',
+                color: isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--encre-4)',
               }}>
                 {stock.unit}
               </span>
@@ -178,10 +178,10 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
                   style={{
                     height: '100%', borderRadius: 20,
                     background: isEmpty
-                      ? '#dc2626'
+                      ? 'var(--destructive)'
                       : isLow
-                        ? 'linear-gradient(90deg,#fb923c,#ef4444)'
-                        : 'linear-gradient(90deg,#4ade80,#16a34a)',
+                        ? 'linear-gradient(90deg,var(--color-orange-400),var(--color-red-500))'
+                        : 'linear-gradient(90deg,var(--color-green-400),var(--color-green-600))',
                   }}
                 />
               </div>
@@ -197,28 +197,28 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
                 borderRadius: 12, padding: '7px 6px', textAlign: 'center',
               }}>
                 <div style={{
-                  fontSize: 8, fontWeight: 900, color: '#C2410C',
+                  fontSize: 8, fontWeight: 900, color: 'var(--color-orange-700)',
                   textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3,
                 }}>Achat</div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: '#EA580C', lineHeight: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--color-orange-600)', lineHeight: 1 }}>
                   {montantsMasques ? '•••••' : (stock.purchasePrice || 0).toLocaleString('fr-FR')}
                 </div>
-                <div style={{ fontSize: 8, fontWeight: 600, color: '#C2410C', opacity: 0.65, marginTop: 2 }}>
+                <div style={{ fontSize: 8, fontWeight: 600, color: 'var(--color-orange-700)', opacity: 0.65, marginTop: 2 }}>
                   FCFA/{stock.unit}
                 </div>
               </div>
               <div style={{
-                background: '#F0FDF4', border: '1.5px solid #BBF7D0',
+                background: 'var(--color-green-50)', border: '1.5px solid var(--color-green-200)',
                 borderRadius: 12, padding: '7px 6px', textAlign: 'center',
               }}>
                 <div style={{
-                  fontSize: 8, fontWeight: 900, color: '#15803D',
+                  fontSize: 8, fontWeight: 900, color: 'var(--color-green-700)',
                   textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3,
                 }}>Vente</div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: '#16A34A', lineHeight: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--color-green-600)', lineHeight: 1 }}>
                   {montantsMasques ? '•••••' : (stock.salePrice || 0).toLocaleString('fr-FR')}
                 </div>
-                <div style={{ fontSize: 8, fontWeight: 600, color: '#15803D', opacity: 0.65, marginTop: 2 }}>
+                <div style={{ fontSize: 8, fontWeight: 600, color: 'var(--color-green-700)', opacity: 0.65, marginTop: 2 }}>
                   FCFA/{stock.unit}
                 </div>
               </div>
@@ -603,7 +603,7 @@ export function GestionStock() {
             style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
             <AlertCircle size={19} color="rgba(255,255,255,0.9)" strokeWidth={2} />
             {lowStocks.length > 0 && (
-              <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, padding: '0 3px', background: '#ef4444', borderRadius: 9, fontSize: 9, fontWeight: 900, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid rgba(143,68,24,0.9)' }}>
+              <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, padding: '0 3px', background: 'var(--color-red-500)', borderRadius: 9, fontSize: 9, fontWeight: 900, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid rgba(143,68,24,0.9)' }}>
                 {lowStocks.length > 9 ? '9+' : lowStocks.length}
               </span>
             )}
@@ -615,16 +615,16 @@ export function GestionStock() {
         <div style={{ padding:'14px 0 0' }}>
 
           {!isOnline && (
-            <div role="status" style={{ marginBottom:12, background:'#FFF7ED', border:'1.5px solid #FDBA74', borderRadius:16, padding:'11px 12px', display:'flex', gap:10, alignItems:'flex-start' }}>
-              <WifiOff size={20} color="#C2410C" style={{ flexShrink:0, marginTop:1 }} />
-              <div style={{ fontSize:13, lineHeight:1.4, color:'#7C2D12' }}><strong>Hors connexion.</strong> Tu vois le stock gardé sur ce téléphone. Les changements seront confirmés quand le réseau revient.</div>
+            <div role="status" style={{ marginBottom:12, background:'var(--color-orange-50)', border:'1.5px solid var(--color-orange-300)', borderRadius:16, padding:'11px 12px', display:'flex', gap:10, alignItems:'flex-start' }}>
+              <WifiOff size={20} color="var(--color-orange-700)" style={{ flexShrink:0, marginTop:1 }} />
+              <div style={{ fontSize:13, lineHeight:1.4, color:'var(--color-orange-900)' }}><strong>Hors connexion.</strong> Tu vois le stock gardé sur ce téléphone. Les changements seront confirmés quand le réseau revient.</div>
             </div>
           )}
 
           <KPIGrid cols={2}>
             <UniversalKPI label="Produits" animatedTarget={stocks.length} icon={Package} color="#2563eb" bgColor="rgba(239,246,255,0.9)" borderColor="rgba(59,130,246,0.35)" iconAnimation="bounce" onClick={() => setActiveKPI('all')} active={activeKPI==='all'} />
-            <UniversalKPI label="Alertes" animatedTarget={lowStocks.length} icon={AlertCircle} color="#ea580c" bgColor="rgba(255,247,237,0.9)" borderColor="rgba(249,115,22,0.35)" iconAnimation="pulse" onClick={() => setActiveKPI(activeKPI==='alerts'?'all':'alerts')} active={activeKPI==='alerts'} />
-            <UniversalKPI label="Valeur stock" value={totalValue.toLocaleString('fr-FR')} masque={montantsMasques} suffix="FCFA" icon={TrendingUp} color="#16a34a" bgColor="rgba(240,253,244,0.9)" borderColor="rgba(34,197,94,0.35)" iconAnimation="none" onClick={() => setShowValue(true)} />
+            <UniversalKPI label="Alertes" animatedTarget={lowStocks.length} icon={AlertCircle} color="var(--color-orange-600)" bgColor="rgba(255,247,237,0.9)" borderColor="rgba(249,115,22,0.35)" iconAnimation="pulse" onClick={() => setActiveKPI(activeKPI==='alerts'?'all':'alerts')} active={activeKPI==='alerts'} />
+            <UniversalKPI label="Valeur stock" value={totalValue.toLocaleString('fr-FR')} masque={montantsMasques} suffix="FCFA" icon={TrendingUp} color="var(--color-green-600)" bgColor="rgba(240,253,244,0.9)" borderColor="rgba(34,197,94,0.35)" iconAnimation="none" onClick={() => setShowValue(true)} />
             <UniversalKPI label="Prix moyen" value={(stocks.length > 0 ? Math.round(totalValue / stocks.length) : 0).toLocaleString('fr-FR')} masque={montantsMasques} suffix="FCFA" icon={BarChart3} color="#9F8170" bgColor="rgba(249,244,240,0.9)" borderColor="rgba(159,129,112,0.35)" iconAnimation="none" />
           </KPIGrid>
 
@@ -633,7 +633,7 @@ export function GestionStock() {
             <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/ventes-passees')}
               style={{ background:'white', border:'2px solid var(--trait)', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
               <div style={{ width:30, height:30, borderRadius:9, background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Receipt size={14} color={P} /></div>
-              <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Ventes passées</span>
+              <span style={{ fontSize:12, fontWeight:700, color:'var(--color-gray-700)' }}>Ventes passées</span>
             </motion.button>
             <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/resume-caisse')}
               style={{ background:'white', border:'2px solid var(--trait)', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
@@ -643,7 +643,7 @@ export function GestionStock() {
                   même nom que deux endroits différents prêtait à confusion
                   (audit accueil/tuiles). Celui-ci va plus loin (heure de
                   pointe, etc.), mais c'est un complément, pas le même écran. */}
-              <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Résumé détaillé</span>
+              <span style={{ fontSize:12, fontWeight:700, color:'var(--color-gray-700)' }}>Résumé détaillé</span>
             </motion.button>
           </div>
 
@@ -745,14 +745,14 @@ export function GestionStock() {
                   const isPlus = m.qty > 0;
                   return (
                     <motion.div key={i} initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.1 }}
-                      style={{ flex:1, background:isPlus?'#F0FAF5':'#FEF2F2', borderRadius:14, padding:'10px 6px', textAlign:'center', border:`1.5px solid ${isPlus?'#9fe1cb':'#fca5a5'}` }}>
-                      <div style={{ width:38, height:38, borderRadius:'50%', background:isPlus?'#16a34a':'#ef4444', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 5px' }}>
+                      style={{ flex:1, background:isPlus?'#F0FAF5':'var(--color-red-50)', borderRadius:14, padding:'10px 6px', textAlign:'center', border:`1.5px solid ${isPlus?'#9fe1cb':'var(--color-red-300)'}` }}>
+                      <div style={{ width:38, height:38, borderRadius:'50%', background:isPlus?'var(--color-green-600)':'var(--color-red-500)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 5px' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
                           {isPlus?<><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>:<><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></>}
                         </svg>
                       </div>
-                      <div style={{ fontSize:17, fontWeight:900, color:isPlus?'#16a34a':'#ef4444' }}>{isPlus?'+':'−'}{m.qtyAffichee}</div>
-                      <div style={{ fontSize:9, fontWeight:700, color:isPlus?'#16a34a':'#ef4444' }}>{m.uniteConnue ? `${m.unit} ${m.name}` : m.name}</div>
+                      <div style={{ fontSize:17, fontWeight:900, color:isPlus?'var(--color-green-600)':'var(--color-red-500)' }}>{isPlus?'+':'−'}{m.qtyAffichee}</div>
+                      <div style={{ fontSize:9, fontWeight:700, color:isPlus?'var(--color-green-600)':'var(--color-red-500)' }}>{m.uniteConnue ? `${m.unit} ${m.name}` : m.name}</div>
                       {mentionUniteInconnue(m) && (
                         // ARG-02 : on ne comble pas le blanc avec l'unité du
                         // catalogue d'aujourd'hui. On dit qu'on ne sait pas.
@@ -858,7 +858,7 @@ export function GestionStock() {
                         Seuil : {selectedStock.threshold} {selectedStock.unit}
                       </span>
                       <span style={{
-                        background: selectedStock.quantity <= 0 ? '#dc2626' : selectedStock.quantity < selectedStock.threshold ? '#ef4444' : '#16a34a',
+                        background: selectedStock.quantity <= 0 ? 'var(--destructive)' : selectedStock.quantity < selectedStock.threshold ? 'var(--color-red-500)' : 'var(--color-green-600)',
                         color: 'white', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 800,
                       }}>
                         {selectedStock.quantity <= 0 ? 'Rupture' : selectedStock.quantity < selectedStock.threshold ? 'Stock bas' : 'En stock'}
@@ -886,28 +886,28 @@ export function GestionStock() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                       <div style={{ background: '#FFF7F0', border: '1.5px solid #FDDFC4', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
-                        <div style={{ fontSize: 8, fontWeight: 900, color: '#C2410C', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Achat</div>
-                        <div style={{ fontSize: 20, fontWeight: 900, color: '#EA580C', lineHeight: 1, marginBottom: 2 }}>
+                        <div style={{ fontSize: 8, fontWeight: 900, color: 'var(--color-orange-700)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Achat</div>
+                        <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--color-orange-600)', lineHeight: 1, marginBottom: 2 }}>
                           {(selectedStock.purchasePrice || 0).toLocaleString('fr-FR')}
                         </div>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: '#C2410C', opacity: 0.65, marginBottom: 5 }}>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--color-orange-700)', opacity: 0.65, marginBottom: 5 }}>
                           FCFA / {selectedStock.unit}
                         </div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: '#C2410C' }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-orange-700)' }}>
                           {selectedStock.purchasePrice > 0
                             ? `Marge : ${(selectedStock.salePrice - selectedStock.purchasePrice).toLocaleString('fr-FR')} FCFA`
                             : 'Bénéfice inconnu'}
                         </div>
                       </div>
-                      <div style={{ background: '#F0FDF4', border: '1.5px solid #BBF7D0', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
-                        <div style={{ fontSize: 8, fontWeight: 900, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Vente</div>
-                        <div style={{ fontSize: 20, fontWeight: 900, color: '#16A34A', lineHeight: 1, marginBottom: 2 }}>
+                      <div style={{ background: 'var(--color-green-50)', border: '1.5px solid var(--color-green-200)', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 8, fontWeight: 900, color: 'var(--color-green-700)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Vente</div>
+                        <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--color-green-600)', lineHeight: 1, marginBottom: 2 }}>
                           {(selectedStock.salePrice || 0).toLocaleString('fr-FR')}
                         </div>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: '#15803D', opacity: 0.65, marginBottom: 5 }}>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--color-green-700)', opacity: 0.65, marginBottom: 5 }}>
                           FCFA / {selectedStock.unit}
                         </div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: '#15803D' }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-green-700)' }}>
                           {selectedStock.purchasePrice > 0
                             ? `+${Math.round(((selectedStock.salePrice - selectedStock.purchasePrice) / selectedStock.purchasePrice) * 100)}% bénéfice`
                             : '— bénéfice'
@@ -923,7 +923,7 @@ export function GestionStock() {
                   <div style={{ background: '#FFF8F3', border: '1.5px solid #FDDFC4', borderRadius: 16, padding: '12px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Stock actuel</span>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#EA580C' }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-orange-600)' }}>
                         {Math.min(100, Math.round((selectedStock.quantity / Math.max(selectedStock.threshold * 2, 1)) * 100))}%
                       </span>
                     </div>
@@ -936,7 +936,7 @@ export function GestionStock() {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </motion.button>
                       <div style={{ textAlign: 'center' }}>
-                        <span style={{ fontSize:44, fontWeight:900, color:selectedStock.quantity <= 0 ? '#dc2626' : selectedStock.quantity < selectedStock.threshold ? '#ef4444' : '#16a34a' }}>
+                        <span style={{ fontSize:44, fontWeight:900, color:selectedStock.quantity <= 0 ? 'var(--destructive)' : selectedStock.quantity < selectedStock.threshold ? 'var(--color-red-500)' : 'var(--color-green-600)' }}>
                           {selectedStock.quantity.toLocaleString('fr-FR')}
                         </span>
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre-4)', marginTop: 2 }}>{selectedStock.unit}</div>
@@ -957,15 +957,15 @@ export function GestionStock() {
                         style={{
                           height: '100%', borderRadius: 20,
                           background: selectedStock.quantity <= 0
-                            ? '#dc2626'
+                            ? 'var(--destructive)'
                             : selectedStock.quantity < selectedStock.threshold
-                              ? 'linear-gradient(90deg,#fb923c,#ef4444)'
-                              : 'linear-gradient(90deg,#4ade80,#16a34a)',
+                              ? 'linear-gradient(90deg,var(--color-orange-400),var(--color-red-500))'
+                              : 'linear-gradient(90deg,var(--color-green-400),var(--color-green-600))',
                         }}
                       />
                     </div>
                     {selectedStock.quantity < selectedStock.threshold && (
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', marginTop: 4 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-red-500)', marginTop: 4 }}>
                         Stock bas — réapprovisionner
                       </div>
                     )}
@@ -985,7 +985,7 @@ export function GestionStock() {
                       <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--encre)' }}>
                         {produitMouvements[0]?.day || '—'}
                       </div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: produitMouvements[0]?.qty > 0 ? '#16a34a' : '#ef4444', marginTop: 2 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: produitMouvements[0]?.qty > 0 ? 'var(--color-green-600)' : 'var(--color-red-500)', marginTop: 2 }}>
                         {produitMouvements[0] ? quantiteMouvement(produitMouvements[0], produitMouvements[0].qty) : '—'}
                       </div>
                     </div>
@@ -1031,10 +1031,10 @@ export function GestionStock() {
                       </div>
                     ) : produitMouvements.map((m, i) => (
                       <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < produitMouvements.length - 1 ? '1px solid #f5f0ea' : 'none' }}>
-                        <div style={{ width: 30, height: 30, borderRadius: 10, background: m.qty > 0 ? '#DCFCE7' : '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <div style={{ width: 30, height: 30, borderRadius: 10, background: m.qty > 0 ? 'var(--color-green-100)' : 'var(--color-red-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {m.qty > 0
-                            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-green-600)" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-red-500)" strokeWidth="3" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                           }
                         </div>
                         <div style={{ flex: 1 }}>
@@ -1043,7 +1043,7 @@ export function GestionStock() {
                             {m.day}{mentionUniteInconnue(m) ? ` · ${mentionUniteInconnue(m)}` : ''}
                           </div>
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 900, color: m.qty > 0 ? '#16a34a' : '#ef4444' }}>
+                        <span style={{ fontSize: 13, fontWeight: 900, color: m.qty > 0 ? 'var(--color-green-600)' : 'var(--color-red-500)' }}>
                           {quantiteMouvement(m, m.qty)}
                         </span>
                       </div>
@@ -1116,7 +1116,7 @@ export function GestionStock() {
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--encre-4)', marginBottom: 2 }}>%</div>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: editForm.purchasePrice > 0 ? '#16a34a' : 'var(--encre-4)' }}>
+                        <div style={{ fontSize: 17, fontWeight: 900, color: editForm.purchasePrice > 0 ? 'var(--color-green-600)' : 'var(--encre-4)' }}>
                           {editForm.purchasePrice > 0
                             ? `+${Math.round(((editForm.salePrice - editForm.purchasePrice) / editForm.purchasePrice) * 100)}%`
                             : '—'
@@ -1235,7 +1235,7 @@ export function GestionStock() {
                       type="button"
                       whileTap={{ scale: 0.97 }}
                       onClick={() => deleteItem(selectedStock.id)}
-                      style={{ width: '100%', padding: '11px 0', borderRadius: 14, background: 'white', border: '1.5px solid #fca5a5', fontSize: 13, fontWeight: 700, color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit' }}
+                      style={{ width: '100%', padding: '11px 0', borderRadius: 14, background: 'white', border: '1.5px solid var(--color-red-300)', fontSize: 13, fontWeight: 700, color: 'var(--color-red-500)', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Supprimer ce produit
                     </motion.button>
@@ -1295,7 +1295,7 @@ export function GestionStock() {
                 <div style={{ padding:16, display:'flex', flexDirection:'column', gap:12 }}>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                     {[
-                      { label:'Valeur achat', value:totalBuy, color:'#ef4444', bg:'#FEF2F2' },
+                      { label:'Valeur achat', value:totalBuy, color:'var(--color-red-500)', bg:'var(--color-red-50)' },
                       { label:'Valeur vente', value:totalSell, color:'#1D9E75', bg:'#F0FAF5' },
                     ].map((k) => (
                       <div key={k.label} style={{ background:k.bg, borderRadius:14, padding:14, border:`1.5px solid ${k.color}33` }}>
@@ -1315,7 +1315,7 @@ export function GestionStock() {
                     </div>
                   </div>
                   {!margeConnue && (
-                    <div style={{ fontSize:11, fontWeight:700, color:'#C2410C', background:'#FFF7ED', border:'1.5px solid #FED7AA', borderRadius:12, padding:'10px 12px' }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:'var(--color-orange-700)', background:'var(--color-orange-50)', border:'1.5px solid var(--color-orange-200)', borderRadius:12, padding:'10px 12px' }}>
                       ⚠ {sansCout} produit{sansCout > 1 ? 's' : ''} sans prix d'achat — renseigne-le pour voir ta marge réelle.
                     </div>
                   )}
@@ -1324,7 +1324,7 @@ export function GestionStock() {
                     {stocks.map(s=>({...s,val:s.quantity*s.salePrice})).sort((a,b)=>b.val-a.val).slice(0,3).map((p,i) => (
                       <div key={p.id} style={{ padding:'12px 14px', borderBottom:i<2?'1px solid #f5f0eb':'none', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                          <div style={{ width:28, height:28, borderRadius:8, background:i===0?'#f59e0b':i===1?'#9ca3af':'#c97316', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:'white' }}>{i+1}</div>
+                          <div style={{ width:28, height:28, borderRadius:8, background:i===0?'#f59e0b':i===1?'var(--color-gray-400)':'#c97316', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:'white' }}>{i+1}</div>
                           <div>
                             <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{p.name}</div>
                             <div style={{ fontSize:11, color:'var(--encre-4)' }}>{p.quantity} {p.unit}</div>

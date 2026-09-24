@@ -16,7 +16,7 @@ import {
 } from '../../services/categorieDepense';
 
 const P = '#AF5B23';
-const BG = '#F6F0E4';
+const BG = 'var(--commerce-paper)';
 
 // LES ONZE CATÉGORIES VIENNENT DE `services/categorieDepense.ts` — DEP-02.
 // Elles étaient écrites ici, en deux morceaux, et une TROISIÈME fois dans
@@ -145,7 +145,7 @@ export function DepenseForm() {
   // ══════════════════════════════════════════════════════════
   // STEP 1
   // ══════════════════════════════════════════════════════════
-  const PC = '#B74725';
+  const PC = 'var(--commerce-action)';
   if (isConfirming && pendingResponse) return (
     <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
       <div style={{background:'white',borderRadius:'24px 24px 0 0',padding:24,width:'100%',maxWidth:420}}>
@@ -269,9 +269,9 @@ export function DepenseForm() {
             animate={{ y:[0,-7,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut' }} />
           <motion.button whileTap={{ scale:0.9 }} onClick={handleMic} style={{ background:'none', border:'none', cursor:'pointer', padding:8 }}>
             <svg width="38" height="38" viewBox="0 0 22 22" fill="none">
-              <rect x="7" y="2" width="8" height="12" rx="4" fill={isListening ? '#ef4444' : P}/>
-              <path d="M4 11c0 3.9 3.1 7 7 7s7-3.1 7-7" stroke={isListening ? '#ef4444' : P} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-              <line x1="11" y1="18" x2="11" y2="21" stroke={isListening ? '#ef4444' : P} strokeWidth="1.8" strokeLinecap="round"/>
+              <rect x="7" y="2" width="8" height="12" rx="4" fill={isListening ? 'var(--color-red-500)' : P}/>
+              <path d="M4 11c0 3.9 3.1 7 7 7s7-3.1 7-7" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
+              <line x1="11" y1="18" x2="11" y2="21" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
           </motion.button>
           <div style={{ fontSize:12, color:'#B8937A', fontStyle:'italic', textAlign:'center' }}>{vocalHint}</div>
@@ -348,9 +348,9 @@ export function DepenseForm() {
         <div style={{ display:'flex', justifyContent:'center', marginBottom:8 }}>
           <motion.button whileTap={{ scale:0.9 }} onClick={handleMic} style={{ background:'none', border:'none', cursor:'pointer', padding:8 }}>
             <svg width="38" height="38" viewBox="0 0 22 22" fill="none">
-              <rect x="7" y="2" width="8" height="12" rx="4" fill={isListening ? '#ef4444' : P}/>
-              <path d="M4 11c0 3.9 3.1 7 7 7s7-3.1 7-7" stroke={isListening ? '#ef4444' : P} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-              <line x1="11" y1="18" x2="11" y2="21" stroke={isListening ? '#ef4444' : P} strokeWidth="1.8" strokeLinecap="round"/>
+              <rect x="7" y="2" width="8" height="12" rx="4" fill={isListening ? 'var(--color-red-500)' : P}/>
+              <path d="M4 11c0 3.9 3.1 7 7 7s7-3.1 7-7" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
+              <line x1="11" y1="18" x2="11" y2="21" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
           </motion.button>
         </div>

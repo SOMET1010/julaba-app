@@ -10,7 +10,7 @@ import { apiRequest } from '../../services/api/api-client';
 import { useCooperativesListe } from '../../hooks/useCooperativesListe';
 import { fetchMesDistributions, type DistributionRecue } from '../../services/api/cooperatives-api';
 
-const COLOR = '#B74725';
+const COLOR = 'var(--commerce-action)';
 
 /** Réponse `GET /api/v1/cooperatives/ma-cooperative` (objet plat) */
 interface MaCooperativeInfo {
@@ -74,9 +74,9 @@ export function MaCooperative() {
   };
 
   const STATUT_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-    actif: { label: 'Membre actif', color: '#16A34A', bg: '#DCFCE7' },
+    actif: { label: 'Membre actif', color: 'var(--color-green-600)', bg: 'var(--color-green-100)' },
     en_attente: { label: 'En attente de validation', color: '#D97706', bg: '#FEF3C7' },
-    suspendu: { label: 'Suspendu', color: '#DC2626', bg: '#FEE2E2' },
+    suspendu: { label: 'Suspendu', color: 'var(--destructive)', bg: 'var(--color-red-100)' },
   };
 
   return (
@@ -166,7 +166,7 @@ export function MaCooperative() {
                     }
                   }}
                   className="w-full py-3 rounded-2xl text-white font-bold text-sm"
-                  style={{ backgroundColor: '#16A34A' }}
+                  style={{ backgroundColor: 'var(--color-green-600)' }}
                   whileTap={{ scale: 0.97 }}
                 >
                   Payer ma cotisation{'\u00A0'}: 25{'\u00A0'}000 FCFA
@@ -268,7 +268,7 @@ export function MaCooperative() {
                 onChange={e => setSelectedCoopId(e.target.value)}
                 className="w-full h-12 px-4 rounded-xl border-2 border-gray-200 text-sm focus:outline-none"
                 onFocus={e => (e.target.style.borderColor = COLOR)}
-                onBlur={e => (e.target.style.borderColor = '#E5E7EB')}
+                onBlur={e => (e.target.style.borderColor = 'var(--border)')}
               >
                 <option value="">Choisis une coopérative…</option>
                 {cooperativesListe.map(c => {

@@ -169,7 +169,7 @@ export function Fidelite() {
             {/* Progression vers la récompense */}
             <div className="mt-3">
               <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
-                <motion.div className="h-full rounded-full" style={{ backgroundColor: eligible ? '#16A34A' : COLOR }}
+                <motion.div className="h-full rounded-full" style={{ backgroundColor: eligible ? 'var(--color-green-600)' : COLOR }}
                   initial={{ width: 0 }} animate={{ width: `${pct}%` }} />
               </div>
               <p className="text-xs text-gray-500 mt-1">
@@ -179,7 +179,7 @@ export function Fidelite() {
 
             {eligible && (
               <motion.button onClick={utiliser} whileTap={{ scale: 0.97 }}
-                className="mt-3 w-full py-3 rounded-2xl text-white font-bold flex items-center justify-center gap-2" style={{ backgroundColor: '#16A34A' }}>
+                className="mt-3 w-full py-3 rounded-2xl text-white font-bold flex items-center justify-center gap-2" style={{ backgroundColor: 'var(--color-green-600)' }}>
                 <Gift className="w-5 h-5" /> Utiliser la récompense ({Number(config?.recompense_fcfa).toLocaleString('fr-FR')} FCFA)
               </motion.button>
             )}
@@ -201,7 +201,7 @@ export function Fidelite() {
                         ? `Achat ${Number(ev.montant_achat).toLocaleString('fr-FR')} FCFA`
                         : `Récompense ${Number(ev.remise_fcfa).toLocaleString('fr-FR')} FCFA`}
                     </span>
-                    <span className="font-semibold" style={{ color: ev.type === 'gain' ? '#16A34A' : COLOR }}>
+                    <span className="font-semibold" style={{ color: ev.type === 'gain' ? 'var(--color-green-600)' : COLOR }}>
                       {ev.points_delta > 0 ? '+' : ''}{Math.round(Number(ev.points_delta))} pts
                     </span>
                   </div>
@@ -262,9 +262,9 @@ export function Fidelite() {
               {/* Activer / désactiver */}
               <button onClick={() => setConfigState({ ...config, actif: !config.actif })}
                 className="w-full flex items-center justify-between p-3 rounded-2xl border-2 mb-3"
-                style={{ borderColor: config.actif ? '#16A34A' : '#E5E7EB', backgroundColor: config.actif ? '#16A34A10' : '#fff' }}>
+                style={{ borderColor: config.actif ? 'var(--color-green-600)' : 'var(--border)', backgroundColor: config.actif ? '#16A34A10' : '#fff' }}>
                 <span className="font-semibold text-gray-800">Programme {config.actif ? 'activé' : 'désactivé'}</span>
-                <span className="w-12 h-7 rounded-full flex items-center px-1 transition-all" style={{ backgroundColor: config.actif ? '#16A34A' : '#ccc', justifyContent: config.actif ? 'flex-end' : 'flex-start' }}>
+                <span className="w-12 h-7 rounded-full flex items-center px-1 transition-all" style={{ backgroundColor: config.actif ? 'var(--color-green-600)' : '#ccc', justifyContent: config.actif ? 'flex-end' : 'flex-start' }}>
                   <span className="w-5 h-5 rounded-full bg-white" />
                 </span>
               </button>

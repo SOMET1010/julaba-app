@@ -272,7 +272,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                         style={{ width:'100%', borderRadius:14, padding:'14px 16px', fontSize:17, fontWeight:800, cursor:'pointer', border:`2px solid ${clientNom===c.nom ? P : '#EDE7DE'}`, background: clientNom===c.nom ? P : 'white', color: clientNom===c.nom ? 'white' : '#1a1206', fontFamily:'inherit', textAlign:'left', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginBottom:8 }}>
                         <span style={{ flex:'1 1 auto', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.nom}</span>
                         {c.montant_du > 0 && (
-                          <span style={{ fontSize:11, color: clientNom===c.nom ? 'rgba(255,255,255,0.75)' : '#ef4444', fontWeight:600, flexShrink:0, whiteSpace:'nowrap', paddingLeft:6 }}>
+                          <span style={{ fontSize:11, color: clientNom===c.nom ? 'rgba(255,255,255,0.75)' : 'var(--color-red-500)', fontWeight:600, flexShrink:0, whiteSpace:'nowrap', paddingLeft:6 }}>
                             doit {c.montant_du.toLocaleString('fr-FR')} FCFA
                           </span>
                         )}
@@ -297,7 +297,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                 <AnimatePresence>
                   {clientDette && (
                     <motion.div initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:'auto' }} exit={{ opacity:0, height:0 }}
-                      style={{ background:'#FEF2F2', border:'1px solid #fca5a5', borderRadius:10, padding:'9px 12px', marginBottom:10, fontSize:13, color:'#ef4444', fontWeight:700 }}>
+                      style={{ background:'var(--color-red-50)', border:'1px solid var(--color-red-300)', borderRadius:10, padding:'9px 12px', marginBottom:10, fontSize:13, color:'var(--color-red-500)', fontWeight:700 }}>
                       ⚠️ Doit encore {clientDette.montant.toLocaleString('fr-FR')} FCFA
                     </motion.div>
                   )}
@@ -420,7 +420,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                     </div>
                   </div>
                   {aADonne && acompte && (
-                    <div style={{ fontSize:13, color: Number(acompte) >= total ? '#ef4444' : P, fontWeight:700, marginTop:10 }}>
+                    <div style={{ fontSize:13, color: Number(acompte) >= total ? 'var(--color-red-500)' : P, fontWeight:700, marginTop:10 }}>
                       {Number(acompte) >= total
                         ? 'Acompte trop élevé — doit être inférieur au total'
                         : `Reste à payer : ${(total - Number(acompte)).toLocaleString('fr-FR')} FCFA`}
