@@ -63,9 +63,23 @@ console.log('\n[3] La phrase DITE est la phrase AFFICHÉE');
 // La répétition de Tata est produite par phraseConfirmation(ligne). Elle doit
 // partir à la synthèse SOUS CETTE FORME — pas une paraphrase qui divergerait
 // le jour où la spec §6 change.
-ok(/const texteAffiche\s*=[\s\S]{0,200}phraseConfirmation\(ligne\)/.test(confirmation),
-  'la phrase affichée (texteAffiche) est produite par phraseConfirmation(ligne)');
-ok(/dire\(texteAffiche\)/.test(confirmation), 'et c\'est texteAffiche qui part à la synthèse');
+// CES DEUX ASSERTIONS ONT ÉTÉ REMPLACÉES PAR DE PLUS FORTES, PAS RETIRÉES.
+//
+// Elles exigeaient que la phrase AFFICHÉE soit exactement celle qui part à la
+// synthèse (`dire(texteAffiche)`). L'intention était juste — l'écran et la voix
+// ne doivent pas diverger — mais elle FIGEAIT le défaut : une forme unique ne
+// peut pas servir les deux. À l'œil « 2 000 F » se lit ; à l'oreille il
+// s'épelait « 2 zéro zéro zéro » (terrain du 24/09, dans la vente).
+//
+// Ce qui les remplace est plus dur : les deux formes doivent venir du MÊME
+// APPEL — donc toujours pas de divergence possible — ET chacune doit aller où
+// elle sert. Exiger « la même variable partout » revenait à exiger le défaut.
+ok(/const phrase\s*=[\s\S]{0,200}confirmationDeuxFormes\(ligne\)/.test(confirmation),
+  'la phrase vient d\'un seul appel qui rend les DEUX formes');
+ok(/const texteAffiche\s*=\s*phrase\.texte/.test(confirmation),
+  'l\'écran prend la forme ÉCRAN de ce même appel');
+ok(/dire\(phrase\.texteParle\)/.test(confirmation),
+  'et la synthèse prend la forme DITE du même appel — elles ne peuvent pas diverger');
 ok(/\{texteAffiche\}/.test(confirmation), 'et c\'est texteAffiche qui est rendu à l\'écran — même variable, pas de paraphrase');
 // Une fois par ligne, pas à chaque re-render : la répétition part d'un effet,
 // pas du corps du composant.

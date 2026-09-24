@@ -28,7 +28,7 @@ import {
   type LigneProvisoire, estResolue, confirmer,
   corrigerQuantite, corrigerPrix, resoudreAmbiguite,
 } from '../../services/ligneProvisoire';
-import { phraseConfirmation, phraseAmbiguite, resumeLigne } from '../../services/dialoguesTata';
+import { confirmationDeuxFormes, ambiguiteDeuxFormes, phraseConfirmation, phraseAmbiguite, resumeLigne } from '../../services/dialoguesTata';
 import { resoudreMessage } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
 
@@ -84,9 +84,17 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
 
   // UNE SEULE phrase de Tata par état de ligne : celle qu'on affiche. On la
   // calcule une fois, on la rend ET on la dit — impossible de diverger.
-  const texteAffiche = montantADemander != null
-    ? phraseAmbiguite(ligne.quantite, montantADemander)
-    : phraseConfirmation(ligne);
+  // DEUX FORMES, UN SEUL APPEL — terrain du 24/09.
+  //
+  // Une seule phrase servait l'œil ET l'oreille : « impossible de diverger »,
+  // disait le commentaire, et c'était juste. Mais une forme unique ne peut pas
+  // servir les deux : à l'œil « 2 000 F » se lit, à l'oreille il s'épelait
+  // « 2 zéro zéro zéro ». Les deux formes sortent maintenant du MÊME appel —
+  // elles ne peuvent toujours pas diverger, et chacune va où elle sert.
+  const phrase = montantADemander != null
+    ? ambiguiteDeuxFormes(ligne.quantite, montantADemander)
+    : confirmationDeuxFormes(ligne);
+  const texteAffiche = phrase.texte;
 
   // Dernière phrase dite : garde l'effet contre les rendus répétés (même
   // phrase → silence) et alimente « réécouter ». Le guidage automatique suit
@@ -106,8 +114,8 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
   // Une fois par ÉTAT de ligne : la phrase change quand la ligne change
   // (correction, levée d'ambiguïté), pas quand l'écran se redessine.
   useEffect(() => {
-    if (dernierePhraseRef.current !== texteAffiche) dire(texteAffiche);
-  }, [texteAffiche]); // eslint-disable-line react-hooks/exhaustive-deps -- `dire` ne dépend que d'un ref et du contexte
+    if (dernierePhraseRef.current !== phrase.texteParle) dire(phrase.texteParle);
+  }, [phrase.texteParle]); // eslint-disable-line react-hooks/exhaustive-deps -- `dire` ne dépend que d'un ref et du contexte
 
   const reecouter = () => dernierePhraseRef.current || texteAffiche;
 
