@@ -24,7 +24,7 @@
  */
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Check, Mic } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { guidageVocal } from '../../utils/accessMode';
@@ -32,6 +32,7 @@ import { resoudreMessage } from '../../i18n/voice/runtime';
 import {
   etapeCourante, unitesProposees, produitACreer, type BrouillonProduit,
 } from '../../services/premierProduit';
+import { BoutonDirePrix } from './BoutonDirePrix';
 
 const ORANGE = '#B74725';
 const VERT = '#0E7A47';
@@ -107,9 +108,7 @@ export function AjoutProduitGuide({ sesUnites, onPose, onAnnuler }: Props) {
           <input autoFocus value={nom} onChange={e => setNom(e.target.value)}
             aria-label="Qu'est-ce que tu vends ?" placeholder="Son nom"
             style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid #e5e0d8', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
-          <p style={{ fontSize: 12, color: 'var(--encre-4)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Mic size={14} color={ORANGE} aria-hidden="true" /> ou dis-le à Tantie
-          </p>
+
         </>
       )}
 
@@ -156,6 +155,17 @@ export function AjoutProduitGuide({ sesUnites, onPose, onAnnuler }: Props) {
           <div aria-live="polite" style={{ minHeight: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: `2px solid ${prix ? VERT : '#e5e0d8'}`, borderRadius: 14, fontSize: 26, fontWeight: 800, color: 'var(--encre)' }}>
             {prix ? `${Number(prix).toLocaleString('fr-FR')} F` : '—'}
           </div>
+          {/* VOX-03 — LE GESTE PAR DÉFAUT EST CELUI QU'ELLE SAIT FAIRE.
+              Ici vivait une icône `aria-hidden` sous « ou dis-le à Tantie » :
+              une image qui promettait la voix sans la donner. Le micro s'ouvre
+              maintenant tout seul, Tantie pose la question, et le clavier reste
+              juste dessous pour qui préfère taper. */}
+          <BoutonDirePrix
+            ouvrirToutSeul
+            question={`Le ${unite}, à combien ?`}
+            dire={dire}
+            onMontant={(m) => setPrix(String(m))}
+          />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             {CHIFFRES.map(d => (
               <button key={d} type="button" onClick={() => taperChiffre(d)}

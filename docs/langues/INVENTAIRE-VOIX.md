@@ -8,19 +8,19 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **404** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 425 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **405** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 426 |
 | — littéraux (phrase fixe en dur) | 195 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 93 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 69 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
 | — relais (`dire = (t) => speak(t)`) | 18 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 50 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **245** |
 | Dont dynamiques (avec variables) | 93 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **61** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
-| Fichiers avec au moins un site d'appel | 76 |
-| Attributs `aria-label` (lecteur d'écran uniquement) | 301 — **hors parcours vocal**, voir §8 |
+| Fichiers avec au moins un site d'appel | 77 |
+| Attributs `aria-label` (lecteur d'écran uniquement) | 302 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
 
@@ -89,6 +89,7 @@
 | `components/cooperative/FinancesCooperative.tsx` | cooperative | 1 | 0 | 1 | 0 | 0 | 0 | 1 |
 | `components/layout/Sidebar.tsx` | partage | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/BesoinMarchand.tsx` | marchand_autre | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| `components/marchand/BoutonDirePrix.tsx` | autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/ChoixUnite.tsx` | caisse | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/MaCooperative.tsx` | marchand_autre | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/MarchandAlertes.tsx` | marchand_autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
@@ -119,7 +120,7 @@
 | moteur_vocal | 17 | 9 | 1 |
 | depense | 10 | 11 | 4 |
 | credit | 8 | 7 | 4 |
-| autre | 6 | 0 | 0 |
+| autre | 7 | 0 | 0 |
 | backoffice | 5 | 4 | 0 |
 | pages | 5 | 1 | 0 |
 | academy | 2 | 0 | 0 |
@@ -267,18 +268,24 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 60 | `speak` | relais | t |  |  |
-| 65 | `dire` | dynamique | resoudreMessage(id, vars).texte |  |  |
-| 84 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
-| 87 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 95 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
-| 127 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
+| 61 | `speak` | relais | t |  |  |
+| 66 | `dire` | dynamique | resoudreMessage(id, vars).texte |  |  |
+| 85 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
+| 88 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 96 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
+| 126 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
 
 ### `components/marchand/BesoinMarchand.tsx` — marchand_autre
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
 | 55 | `speak` | literal | Votre besoin a été soumis à la coopérative |  |  |
+
+### `components/marchand/BoutonDirePrix.tsx` — autre
+
+| Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
+|---:|---|---|---|---|:-:|
+| 102 | `dire` | dynamique | question |  |  |
 
 ### `components/marchand/ChoixUnite.tsx` — caisse
 
@@ -506,13 +513,13 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 106 | `speak` | relais | t |  |  |
-| 130 | `dire` | dynamique | questionEtape |  |  |
-| 154 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
-| 155 | `direMessage` | cle_i18n | TATA_PRIX_EFFACE |  |  |
-| 161 | `dire` | dynamique | quantiteAvecUnite(q, uniteProduit) |  |  |
-| 338 | `direMessage` | cle_i18n | TATA_PRIX_D_UN_SEUL |  |  |
-| 338 | `direMessage` | cle_i18n | TATA_PRIX_DU_TOUT |  |  |
+| 107 | `speak` | relais | t |  |  |
+| 131 | `dire` | dynamique | questionEtape |  |  |
+| 155 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
+| 156 | `direMessage` | cle_i18n | TATA_PRIX_EFFACE |  |  |
+| 162 | `dire` | dynamique | quantiteAvecUnite(q, uniteProduit) |  |  |
+| 355 | `direMessage` | cle_i18n | TATA_PRIX_D_UN_SEUL |  |  |
+| 355 | `direMessage` | cle_i18n | TATA_PRIX_DU_TOUT |  |  |
 
 ### `components/marchand/TontineDetail.tsx` — marchand_autre
 
@@ -1520,7 +1527,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 ## 8. Ce qui n'est PAS dans le parcours vocal (et pourquoi)
 
-- **`aria-label` (301)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
+- **`aria-label` (302)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
 - **Toasts** (`toast.success(…)`) et libellés d'écran : affichés, jamais dits. Hors inventaire vocal.
 - **`texteDyu`** de `loginVoiceScript.ts` : traduction dioula de travail, NON validée (le fichier le dit). Elle n'est ni activée ni reprise : Manus tranche.
 
