@@ -17,6 +17,7 @@
  * (c'est `MicroVenteCaisse.tsx`, hors de ce lot), ni ce que dit réellement
  * le moteur STT.
  */
+import { readFileSync } from 'node:fs';
 import { vendreVocalUnifie, type DependancesVendreVocalUnifie, type ProduitPourPanier } from "./vendreVocalUnifie.js";
 import type { ProduitAppariable } from "./venteVocale.js";
 import { quantiteAvecUnite } from "../utils/unite.utils.js";
@@ -114,6 +115,31 @@ function main() {
     eq(h.lignes.length, 1, "prix du catalogue accepté (kilos ≡ kg)");
     eq(h.lignes[0][0].unite, "kg", "la ligne porte l'unité du produit apparié");
     ok(/\bkg\b/.test(h.dits.join(" ")), "Tata dit l'unité du catalogue");
+  }
+
+  // ── CE QUI EST DIT DOIT AUSSI ÊTRE ÉCRIT ───────────────────────────────
+  //
+  // Retour terrain du 24/09 : « il prononce bien 2 tas de piments, mais écrit
+  // "2 piments" ». Mesuré : `extraire` rend bien `uniteParlee: "tas"`, et
+  // `vendreVocalUnifie` la garde jusqu'à la parole. L'information EXISTE.
+  //
+  // C'est l'ÉCRIT qui la jetait : le retour au panier composait
+  // `${l.quantite} × ${l.nomAffiche}` à la main, sans unité — alors que
+  // `resumeQuantite` existe, compose « 2 tas de piment » et gère l'accord.
+  //
+  // Pour une marchande qui ne lit pas, entendre une chose et voir l'autre est
+  // pire que ne rien voir : c'est la voix qu'elle croit, et l'écran la
+  // contredit sur SA vente.
+  {
+    const src = readFileSync(
+      new URL('../components/marchand/MicroVenteCaisse.tsx', import.meta.url), 'utf-8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
+      .filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+
+    ok(/resumeQuantite\(/.test(src),
+       "le retour au panier passe par la règle qui compose quantité + unité + produit");
+    ok(!/\$\{[a-z]\.quantite\}\s*×\s*\$\{[a-z]\.nomAffiche\}/.test(src),
+       "et plus aucune composition à la main qui jette l'unité");
   }
 
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
