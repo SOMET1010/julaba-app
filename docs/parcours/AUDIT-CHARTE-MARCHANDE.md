@@ -303,3 +303,97 @@ fichier — un raccourci. Le reste des chiffres est confirmé.
   produit ». Parler et toucher sont des moyens.
 - **« Résumé caisse » rejoint « Mes ventes »** — donc « Ventes passées » et
   « Résumé détaillé » cessent d'être deux portes depuis le stock.
+
+---
+
+## 7. La cascade mesurée — 24/09, 23h
+
+Patrick a transmis un tableau opposant deux thèmes :
+
+| Fichier | Rôle annoncé | Valeurs |
+|---|---|---|
+| `src/styles/theme.css` | Thème générique (back-office, composants partagés) | `--primary: #030213` · `--border: #E5E7EB` · `--ring: #B5B5B5` · `--input: transparent` |
+| `src/styles/commerce.css` | Thème dédié au commerce (caisse, stock, marchand) | `--primary: var(--commerce-action)` · `--border: var(--commerce-line)` · `--input-background: var(--commerce-surface)` · `--ring: var(--commerce-action)` |
+
+**Ce tableau décrit une intention. Mesuré, la réalité est différente — et elle
+change le chantier.**
+
+### Les deux thèmes ne se partagent pas l'application : l'un écrase l'autre
+
+Les deux déclarent sur le **même sélecteur `:root`** (`theme.css:3`,
+`commerce.css:5`), et `main.tsx` importe `commerce.css` **après** `theme.css`
+(lignes 14 et 19). À spécificité égale, le dernier déclaré gagne — **partout**,
+pas seulement sur les écrans de commerce.
+
+En mode sombre, c'est encore plus net : `theme.css` pose `.dark` (spécificité
+0-1-0), `commerce.css` pose `html.dark` (0-1-1). **Commerce gagne même sans
+l'ordre d'import.**
+
+### Mesure
+
+```
+theme.css   :root déclare 88 variables
+commerce.css :root déclare 90 variables
+
+ÉCRASÉES (la valeur de theme.css ne s'applique NULLE PART) : 45
+  --primary   #030213  → var(--commerce-action)
+  --border    #E5E7EB  → var(--commerce-line)
+  --ring      #B5B5B5  → var(--commerce-action)
+  --radius    0.625rem → 0.875rem
+  + les 10 gris, les 10 oranges, les 8 jetons de sidebar, card/popover/muted/accent…
+
+SURVIVENT (commerce.css ne les redéfinit pas) : 42
+  les verts, les rouges, les violets, les 5 --chart-*, --destructive,
+  --input, --switch-background, --font-size, --font-weight-*
+```
+
+Les trois valeurs du tableau de Patrick pour `theme.css` — `--primary`,
+`--border`, `--ring` — sont donc **mortes**. Seule `--input: transparent` survit,
+parce que `commerce.css` ne la redéfinit pas.
+
+**Vérifié aussi, et sain** : `tokens.css` (`:root`, 5 variables) et `soleil.css`
+(`html.soleil`, 2 variables) n'ont **aucune collision divergente** avec
+`commerce.css`. Le mode SOLEIL n'est pas affecté.
+
+### Ce que ça change pour le chantier charte
+
+La consigne était : **« On n'invente pas une nouvelle charte. Il faut généraliser
+celle de la caisse. »** Au niveau des **jetons**, c'est déjà fait : la charte
+commerce est la seule appliquée, back-office compris — à son insu.
+
+Ce qui produit les écrans dépareillés n'est donc **pas** le thème. C'est que
+beaucoup de composants **n'utilisent pas les jetons du tout** :
+
+```
+parcours marchande (components/marchand/*.tsx)
+  couleurs écrites en dur (#rrggbb) .... 603
+  usages de jetons var(--commerce|--caisse) ... 657
+```
+
+Et la concentration désigne exactement les écrans que Patrick trouve « pas de la
+même » :
+
+```
+142  GestionStock.tsx
+ 95  MarcheVirtuel.tsx
+ 76  MarchandModals.tsx
+ 66  MarchandDepenses.tsx
+ 44  CreditModal.tsx
+ 42  ResumeCaisse.tsx
+```
+
+La caisse refaite (`POSCaisse`, `MicroVenteCaisse`) n'est pas en tête de cette
+liste : elle lit ses jetons.
+
+**Le chantier n'est pas « migrer les thèmes » — il est déjà fait. C'est
+« remplacer 603 couleurs en dur par les jetons qui existent déjà ».** Ce qui est
+exactement la méthode posée par Patrick : migrer vers les jetons existants
+plutôt que redessiner.
+
+### Ce qui reste à décider
+
+`theme.css` garde 45 valeurs mortes et 42 vivantes dans le même fichier. Un
+lecteur — humain ou agent — croit y lire la charte du back-office. **Personne ne
+peut savoir, en lisant ce fichier, laquelle de ses lignes s'applique.** Le
+nettoyer est un geste de charte, donc un arbitrage de Patrick, à faire après
+l'APK terrain.
