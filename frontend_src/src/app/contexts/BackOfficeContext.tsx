@@ -50,14 +50,38 @@ import {
   type StatsBO, type DossierCompte, type ZoneCompte,
 } from '../services/etatLectureBO';
 
-/** L'état de lecture de chaque source du back-office — BO-01. */
+/** L'état de lecture de chaque source du back-office — BO-01, puis BO-02.
+ *
+ *  LES CINQ PREMIÈRES sont celles du tableau de bord, fermées par BO-01.
+ *
+ *  LES SIX SUIVANTES sont celles que BO-02 sortait du silence. Elles
+ *  n'avaient pas d'état du tout : leur `catch` faisait `console.error('[BO]',
+ *  e)` et rien d'autre. La console d'un navigateur n'est pas une interface —
+ *  l'agent voyait une liste vide et croyait qu'elle était vide. Ces six-là
+ *  alimentent les 36 écrans hors du tableau de bord ; on ne touche pas à ces
+ *  écrans ici, mais on cesse de leur mentir à la source.
+ *
+ *  AUCUN SECOND MÉCANISME : ce sont les mêmes trois états que BO-01
+ *  (`attente` / `indisponible` + raison / `lue`), les mêmes constructeurs, la
+ *  même règle — la mesure n'est faite que sur `lue`.
+ */
 export interface LecturesBO {
   readonly stats: EtatLecture<StatsBO | null>;
   readonly acteurs: EtatLecture<LectureActeurs>;
   readonly dossiers: EtatLecture<readonly DossierCompte[]>;
   readonly zones: EtatLecture<readonly ZoneCompte[]>;
   readonly transactions: EtatLecture<LectureTransactions>;
+  readonly missions: EtatLecture<readonly MissionCompte[]>;
+  readonly auditLogs: EtatLecture<readonly unknown[]>;
+  readonly boUsers: EtatLecture<readonly unknown[]>;
+  readonly institutions: EtatLecture<readonly unknown[]>;
+  readonly signalements: EtatLecture<readonly unknown[]>;
+  readonly notifications: EtatLecture<readonly unknown[]>;
 }
+
+/** La forme minimale dont les alertes du tableau de bord ont besoin d'une
+ *  mission. On ne dépend pas du type complet de l'API : ce champ-là suffit. */
+export interface MissionCompte { readonly statut?: string }
 
 interface BackOfficeContextType {
   user: BOUser | null;
@@ -209,6 +233,15 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
   const [lectureDossiers, setLectureDossiers] = useState<EtatLecture<readonly DossierCompte[]>>(enAttente);
   const [lectureZones, setLectureZones] = useState<EtatLecture<readonly ZoneCompte[]>>(enAttente);
   const [lectureTransactions, setLectureTransactions] = useState<EtatLecture<LectureTransactions>>(enAttente);
+  // BO-02 — les six sources qui avalaient encore leur erreur. Même mécanisme,
+  // pas un second : `attente` au départ, `lue` sur réponse, `indisponible`
+  // avec sa raison sur échec.
+  const [lectureMissions, setLectureMissions] = useState<EtatLecture<readonly MissionCompte[]>>(enAttente);
+  const [lectureAuditLogs, setLectureAuditLogs] = useState<EtatLecture<readonly unknown[]>>(enAttente);
+  const [lectureBOUsers, setLectureBOUsers] = useState<EtatLecture<readonly unknown[]>>(enAttente);
+  const [lectureInstitutions, setLectureInstitutions] = useState<EtatLecture<readonly unknown[]>>(enAttente);
+  const [lectureSignalements, setLectureSignalements] = useState<EtatLecture<readonly unknown[]>>(enAttente);
+  const [lectureNotifications, setLectureNotifications] = useState<EtatLecture<readonly unknown[]>>(enAttente);
 
   // ── États des données manquantes ──────────────────────────
   const [dossiers, setDossiers] = useState<BODossier[]>([]);
@@ -477,19 +510,32 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
   const refreshMissions = useCallback(async (force = false) => {
     if (missionsLoaded && !force) return;
     setMissionsLoading(true);
-    try { setMissions(await boGetMissions()); setMissionsLoaded(true); }
-    catch (e: any) { console.error('[BO]', e); }
+    setLectureMissions(enAttente());
+    try {
+      const m = await boGetMissions();
+      setMissions(m);
+      setMissionsLoaded(true);
+      setLectureMissions(lue(m));
+    }
+    catch (e: unknown) { setLectureMissions(indisponible(e)); }
     finally { setMissionsLoading(false); }
   }, [missionsLoaded]);
 
   const refreshAuditLogs = useCallback(async (force = false) => {
     if (auditLoaded && !force) return;
-    try { setAuditLogs(await boGetAuditLogs()); setAuditLoaded(true); }
-    catch (e: any) { console.error('[BO]', e); }
+    setLectureAuditLogs(enAttente());
+    try {
+      const a = await boGetAuditLogs();
+      setAuditLogs(a);
+      setAuditLoaded(true);
+      setLectureAuditLogs(lue(a));
+    }
+    catch (e: unknown) { setLectureAuditLogs(indisponible(e)); }
   }, [auditLoaded]);
 
   const refreshBOUsers = useCallback(async (force = false) => {
     if (boUsersLoaded && !force) return;
+    setLectureBOUsers(enAttente());
     try {
       const res: any = await boGetBOUsers();
       const list: any[] = Array.isArray(res) ? res : (Array.isArray(res?.users) ? res.users : (Array.isArray(res?.data) ? res.data : []));
@@ -498,25 +544,43 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
         : list.filter((u: { role?: string }) => u.role !== 'super_admin');
       setBOUsers(filtres);
       setBOUsersLoaded(true);
+      setLectureBOUsers(lue(filtres));
     }
-    catch (e: any) { console.error('[BO]', e); }
+    catch (e: unknown) { setLectureBOUsers(indisponible(e)); }
   }, [boUsersLoaded, user?.role]);
 
   const refreshInstitutions = useCallback(async (force = false) => {
     if (institutionsLoaded && !force) return;
-    try { setInstitutions(await boGetInstitutions()); setInstitutionsLoaded(true); }
-    catch (e: any) { console.error('[BO]', e); }
+    setLectureInstitutions(enAttente());
+    try {
+      const i = await boGetInstitutions();
+      setInstitutions(i);
+      setInstitutionsLoaded(true);
+      setLectureInstitutions(lue(i));
+    }
+    catch (e: unknown) { setLectureInstitutions(indisponible(e)); }
   }, [institutionsLoaded]);
 
   const refreshSignalements = useCallback(async (force = false) => {
     if (signalementsLoaded && !force) return;
-    try { setSignalements(await boGetSignalements()); setSignalementsLoaded(true); }
-    catch (e: any) { console.error('[BO]', e); }
+    setLectureSignalements(enAttente());
+    try {
+      const sg = await boGetSignalements();
+      setSignalements(sg);
+      setSignalementsLoaded(true);
+      setLectureSignalements(lue(sg));
+    }
+    catch (e: unknown) { setLectureSignalements(indisponible(e)); }
   }, [signalementsLoaded]);
 
   const refreshNotifications = useCallback(async () => {
-    try { setNotifications(await boGetNotifications()); }
-    catch (e: any) { console.error('[BO]', e); }
+    setLectureNotifications(enAttente());
+    try {
+      const n = await boGetNotifications();
+      setNotifications(n);
+      setLectureNotifications(lue(n));
+    }
+    catch (e: unknown) { setLectureNotifications(indisponible(e)); }
   }, []);
 
   // Abonnement eventBus — refresh instantane sur actions locales
@@ -577,6 +641,12 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
       dossiers: lectureDossiers,
       zones: lectureZones,
       transactions: lectureTransactions,
+      missions: lectureMissions,
+      auditLogs: lectureAuditLogs,
+      boUsers: lectureBOUsers,
+      institutions: lectureInstitutions,
+      signalements: lectureSignalements,
+      notifications: lectureNotifications,
     },
     dossiers, zones, zonesMap, territoires, missions,
     searchQuery, setSearchQuery, currentPage, setCurrentPage,
@@ -740,6 +810,12 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
     lectureDossiers,
     lectureZones,
     lectureTransactions,
+    lectureMissions,
+    lectureAuditLogs,
+    lectureBOUsers,
+    lectureInstitutions,
+    lectureSignalements,
+    lectureNotifications,
     dossiers,
     zones,
     zonesMap,
