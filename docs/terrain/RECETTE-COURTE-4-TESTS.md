@@ -1,6 +1,9 @@
 # Recette courte — quatre gestes, rien de plus
 
-À faire sur l'APK construit **après** la signature de VOX-02d.
+**APK** : construit sur `9131eb5` — [run 35986111954](https://github.com/SOMET1010/julaba-app/actions/runs/35986111954)
+**Release** : https://github.com/SOMET1010/julaba-app/releases/tag/pilote-latest → `julaba-latest.apk`
+`com.julaba.app` 1.0 · minSdk 24 · target 36 · API `julaba-api.onrender.com/api/v1`
+Voix dioula, montants dioula et clips prototypes **éteints**.
 Objectif : une **preuve terrain**, pas un dixième correctif.
 
 ---
