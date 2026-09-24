@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { quantiteAEcrire } from '../commun/quantite-a-ecrire';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -176,7 +177,7 @@ export class StocksRestController {
            unite=COALESCE($5,unite), categorie=COALESCE($6,categorie), seuil_alerte=COALESCE($7,seuil_alerte),
            image=COALESCE($8,image), updated_at=now()
            WHERE id=$9 AND proprietaire_id=$10`,
-          [body.nom||body.produit||null, body.quantite!=null?Number(body.quantite):null,
+          [body.nom||body.produit||null, quantiteAEcrire(body.quantite),
            body.prix_achat!=null?Number(body.prix_achat):null,
            body.prix_vente!=null?Number(body.prix_vente):body.prix!=null?Number(body.prix):null,
            body.unite||null, body.categorie||null,
@@ -191,7 +192,7 @@ export class StocksRestController {
            prix_promo=CASE WHEN $11::boolean THEN $9 ELSE prix_promo END,
            promo_fin=CASE WHEN $11::boolean THEN $10 ELSE promo_fin END, updated_at=now()
            WHERE id=$12 AND marchand_id=$13`,
-          [body.nom||body.produit||null, body.quantite!=null?Number(body.quantite):null,
+          [body.nom||body.produit||null, quantiteAEcrire(body.quantite),
            body.prix!=null?Number(body.prix):null,
            body.prix_achat!=null?Number(body.prix_achat):null,
            body.unite||null, body.categorie||null,
@@ -227,7 +228,7 @@ export class StocksRestController {
          unite=COALESCE($5,unite), categorie=COALESCE($6,categorie), seuil_alerte=COALESCE($7,seuil_alerte),
          image=COALESCE($8,image), updated_at=now()
          WHERE id=$9 AND proprietaire_id=$10`,
-        [body.nom||body.produit||null, body.quantite!=null?Number(body.quantite):null,
+        [body.nom||body.produit||null, quantiteAEcrire(body.quantite),
          body.prix_achat!=null?Number(body.prix_achat):null,
          body.prix_vente!=null?Number(body.prix_vente):body.prix!=null?Number(body.prix):null,
          body.unite||null, body.categorie||null,
@@ -243,7 +244,7 @@ export class StocksRestController {
        prix_promo=CASE WHEN $11::boolean THEN $9 ELSE prix_promo END,
        promo_fin=CASE WHEN $11::boolean THEN $10 ELSE promo_fin END, updated_at=now()
        WHERE id=$12 AND marchand_id=$13`,
-      [body.nom||body.produit||null, body.quantite!=null?Number(body.quantite):null,
+      [body.nom||body.produit||null, quantiteAEcrire(body.quantite),
        body.prix!=null?Number(body.prix):null,
        body.prix_achat!=null?Number(body.prix_achat):null,
        body.unite||null, body.categorie||null,
