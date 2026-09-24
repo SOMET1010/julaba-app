@@ -75,7 +75,7 @@ export function MaCooperative() {
 
   const STATUT_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
     actif: { label: 'Membre actif', color: 'var(--color-green-600)', bg: 'var(--color-green-100)' },
-    en_attente: { label: 'En attente de validation', color: '#D97706', bg: '#FEF3C7' },
+    en_attente: { label: 'En attente de validation', color: 'var(--herite-ambre-fonce)', bg: 'var(--herite-creme)' },
     suspendu: { label: 'Suspendu', color: 'var(--destructive)', bg: 'var(--color-red-100)' },
   };
 

@@ -608,7 +608,7 @@ export function MarcheVirtuel() {
             style={{ width:40, height:40, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative', flexShrink:0 }}>
             <ShoppingCart className="w-[17px] h-[17px]" style={{ color:'rgba(255,255,255,0.9)' }} />
             {(cartCount ?? 0) > 0 && (
-              <span style={{ position:'absolute', top:-3, right:-3, minWidth:18, height:18, padding:'0 3px', background:'#FFD166', borderRadius:'50%', fontSize:9, fontWeight:900, color:'#7a3800', display:'flex', alignItems:'center', justifyContent:'center', border:'1.5px solid rgba(143,68,24,0.9)' }}>
+              <span style={{ position:'absolute', top:-3, right:-3, minWidth:18, height:18, padding:'0 3px', background:'var(--herite-jaune)', borderRadius:'50%', fontSize:9, fontWeight:900, color:'#7a3800', display:'flex', alignItems:'center', justifyContent:'center', border:'1.5px solid rgba(143,68,24,0.9)' }}>
                 {cartCount}
               </span>
             )}
@@ -617,7 +617,7 @@ export function MarcheVirtuel() {
             style={{ width:40, height:40, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative', flexShrink:0 }}>
             <Heart className="w-[17px] h-[17px]" style={{ color:'rgba(255,255,255,0.9)' }} />
             {(favoritesCount ?? 0) > 0 && (
-              <span style={{ position:'absolute', top:-3, right:-3, minWidth:18, height:18, padding:'0 3px', background:'#FFD166', borderRadius:'50%', fontSize:9, fontWeight:900, color:'#7a3800', display:'flex', alignItems:'center', justifyContent:'center', border:'1.5px solid rgba(143,68,24,0.9)' }}>
+              <span style={{ position:'absolute', top:-3, right:-3, minWidth:18, height:18, padding:'0 3px', background:'var(--herite-jaune)', borderRadius:'50%', fontSize:9, fontWeight:900, color:'#7a3800', display:'flex', alignItems:'center', justifyContent:'center', border:'1.5px solid rgba(143,68,24,0.9)' }}>
                 {favoritesCount}
               </span>
             )}
@@ -646,7 +646,7 @@ export function MarcheVirtuel() {
             label={activeTab === 'cooperatives' ? 'Coopératives' : activeTab === 'producteurs' ? 'Producteurs' : 'Commandes'}
             value={(activeTab === 'cooperatives' ? allProducts.filter(p => p.sellerType === 'cooperative').length : activeTab === 'producteurs' ? allProducts.filter(p => p.sellerType === 'producteur').length : commandesMarcheFromContext.length).toLocaleString('fr-FR')}
             icon={Users}
-            color="#2563eb"
+            color="var(--herite-bleu-vif)"
             iconAnimation="pulse"
             delay={0.1}
           />
@@ -672,7 +672,7 @@ export function MarcheVirtuel() {
             label="Négociations en cours"
             value={commandesMarcheFromContext.filter(c => c.statut === 'en_attente').length.toLocaleString('fr-FR')}
             icon={MessageSquare}
-            color="#7c3aed"
+            color="var(--herite-violet)"
             iconAnimation="pulse"
             delay={0.4}
             explication="Nombre de propositions de prix envoyées aux vendeurs en attente de réponse."
@@ -838,7 +838,7 @@ export function MarcheVirtuel() {
                   <MessageSquare className="w-5 h-5" />Négocier le prix
                 </motion.button>
                 {isGrossiste && selectedProduct.sellerType === 'producteur' && (
-                  <motion.button onClick={() => { setProduitARepublier(selectedProduct); setRepublierPrix(selectedProduct.price); setRepublierQuantite(1); setSelectedProduct(null); setShowRepublierModal(true); }} className="w-full py-3.5 rounded-2xl bg-white border-2 border-[#2072AF] text-[#2072AF] font-bold text-base shadow-sm flex items-center justify-center gap-2" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
+                  <motion.button onClick={() => { setProduitARepublier(selectedProduct); setRepublierPrix(selectedProduct.price); setRepublierQuantite(1); setSelectedProduct(null); setShowRepublierModal(true); }} className="w-full py-3.5 rounded-2xl bg-white border-2 border-[var(--herite-bleu)] text-[var(--herite-bleu)] font-bold text-base shadow-sm flex items-center justify-center gap-2" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
                     <Store className="w-5 h-5" />Republier sur le marché coopératif
                   </motion.button>
                 )}
@@ -887,7 +887,7 @@ export function MarcheVirtuel() {
                         <span className="text-lg font-bold text-gray-900">Total</span>
                         <span className="text-3xl font-bold text-[var(--commerce-action)]"><Montant value={cartTotal} size="2xl" color="var(--commerce-action)" masque={montantsMasques} /></span>
                       </div>
-                      <motion.button onClick={() => { speakSilent('Choisis ton mode de paiement'); setShowPaymentModal(true); }} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
+                      <motion.button onClick={() => { speakSilent('Choisis ton mode de paiement'); setShowPaymentModal(true); }} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
                         <span className="flex items-center justify-center gap-2"><Zap className="w-5 h-5" />Commander maintenant</span>
                       </motion.button>
                     </div>
@@ -1083,21 +1083,21 @@ export function MarcheVirtuel() {
                                 </motion.button>
                               ))}
                             </div>
-                            {selectedOperator && <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mt-2 px-1"><input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9+\s]/g, ''))} placeholder="+225 07 XX XX XX XX" className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#F59E0B] focus:outline-none text-base" maxLength={20} /></motion.div>}
+                            {selectedOperator && <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mt-2 px-1"><input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value.replace(/[^0-9+\s]/g, ''))} placeholder="+225 07 XX XX XX XX" className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[var(--herite-ambre)] focus:outline-none text-base" maxLength={20} /></motion.div>}
                           </motion.div>
                         )}
                       </AnimatePresence>
                       <AnimatePresence>
                         {method.id === 'card' && isSelected && (
                           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden pt-2 px-1">
-                            <input type="text" value={cardNumber} onChange={(e) => setCardNumber(e.target.value.replace(/[^0-9]/g, '').slice(0, 16))} placeholder="Numéro de carte (16 chiffres)" className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#2563EB] focus:outline-none text-base" maxLength={16} />
+                            <input type="text" value={cardNumber} onChange={(e) => setCardNumber(e.target.value.replace(/[^0-9]/g, '').slice(0, 16))} placeholder="Numéro de carte (16 chiffres)" className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[var(--herite-bleu-vif)] focus:outline-none text-base" maxLength={16} />
                           </motion.div>
                         )}
                       </AnimatePresence>
                     </div>
                   );
                 })}
-                <motion.button onClick={handlePayment} disabled={!paymentMethod} className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg mt-4 ${paymentMethod ? 'bg-gradient-to-r from-[var(--commerce-action)] to-[#D97706] text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`} whileTap={paymentMethod ? { scale: 0.95 } : {}} whileHover={paymentMethod ? { scale: 1.02 } : {}}>
+                <motion.button onClick={handlePayment} disabled={!paymentMethod} className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg mt-4 ${paymentMethod ? 'bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`} whileTap={paymentMethod ? { scale: 0.95 } : {}} whileHover={paymentMethod ? { scale: 1.02 } : {}}>
                   {paymentMethod ? 'Valider la commande' : 'Choisir un mode de paiement'}
                 </motion.button>
               </div>
@@ -1118,7 +1118,7 @@ export function MarcheVirtuel() {
               <div className="p-6 space-y-4">
                 <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[var(--commerce-action)]">{montantPrive(cartTotal || 0, montantsMasques, 'FCFA')}</p></div>
                 <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Entrez votre code PIN à 4 chiffres</p><input type="password" value={pinCode} onChange={(e) => setPinCode(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[var(--commerce-action)] focus:outline-none text-base placeholder:text-gray-400 shadow-sm" maxLength={4} /></div>
-                <motion.button onClick={handlePinValidation} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Valider</motion.button>
+                <motion.button onClick={handlePinValidation} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Valider</motion.button>
               </div>
             </motion.div>
           </motion.div>
@@ -1137,7 +1137,7 @@ export function MarcheVirtuel() {
               <div className="p-6 space-y-4">
                 <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant payé</p><p className="text-3xl font-bold text-[var(--commerce-action)]">{montantPrive(paidTotal || 0, montantsMasques, 'FCFA')}</p></div>
                 <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Votre commande a été validée avec succès</p><p className="text-lg font-bold text-gray-900">Merci pour votre achat !</p></div>
-                <motion.button onClick={() => setShowSuccessModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
+                <motion.button onClick={() => setShowSuccessModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
               </div>
             </motion.div>
           </motion.div>
@@ -1156,7 +1156,7 @@ export function MarcheVirtuel() {
               <div className="p-6 space-y-4">
                 <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[var(--commerce-action)]">{montantPrive(cartTotal || 0, montantsMasques, 'FCFA')}</p></div>
                 <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Une erreur s'est produite</p><p className="text-lg font-bold text-red-500">{errorMessage}</p></div>
-                <motion.button onClick={() => setShowErrorModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[#D97706] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
+                <motion.button onClick={() => setShowErrorModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
               </div>
             </motion.div>
           </motion.div>
@@ -1204,7 +1204,7 @@ export function MarcheVirtuel() {
                   <label className="text-sm font-semibold text-gray-700 mb-3 block">Message (optionnel)</label>
                   <textarea value={negotiationMessage} onChange={(e) => setNegotiationMessage(e.target.value)} placeholder="Ajoute un message pour justifier ton prix..." className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[var(--commerce-action)] focus:outline-none text-sm resize-none" rows={3} />
                 </div>
-                <motion.button onClick={handleNegotiationSubmit} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[#D97706] text-white font-bold text-lg shadow-lg flex items-center justify-center gap-2" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
+                <motion.button onClick={handleNegotiationSubmit} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white font-bold text-lg shadow-lg flex items-center justify-center gap-2" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
                   <MessageSquare className="w-5 h-5" />Envoyer la proposition
                 </motion.button>
               </div>
@@ -1256,7 +1256,7 @@ export function MarcheVirtuel() {
                   <label className="text-sm font-semibold text-gray-700 mb-3 block">Quantité ({produitARepublier.unit})</label>
                   <div className="flex items-center gap-3">
                     <motion.button type="button" onClick={() => setRepublierQuantite(Math.max(1, republierQuantite - 1))} className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center" whileTap={{ scale: 0.9 }}><Minus className="w-5 h-5 text-gray-600" /></motion.button>
-                    <input type="number" value={republierQuantite} onChange={(e) => setRepublierQuantite(Math.max(1, parseInt(e.target.value) || 1))} className="flex-1 px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#2072AF] focus:outline-none text-center font-bold text-xl" />
+                    <input type="number" value={republierQuantite} onChange={(e) => setRepublierQuantite(Math.max(1, parseInt(e.target.value) || 1))} className="flex-1 px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[var(--herite-bleu)] focus:outline-none text-center font-bold text-xl" />
                     <motion.button type="button" onClick={() => setRepublierQuantite(republierQuantite + 1)} className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center" whileTap={{ scale: 0.9 }}><Plus className="w-5 h-5 text-gray-600" /></motion.button>
                   </div>
                 </div>
@@ -1264,15 +1264,15 @@ export function MarcheVirtuel() {
                   <label className="text-sm font-semibold text-gray-700 mb-3 block">Ton prix de revente (FCFA/{produitARepublier.unit})</label>
                   <div className="flex items-center gap-3">
                     <motion.button type="button" onClick={() => setRepublierPrix(Math.max(50, republierPrix - 50))} className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center" whileTap={{ scale: 0.9 }}><Minus className="w-5 h-5 text-gray-600" /></motion.button>
-                    <input type="number" value={republierPrix} onChange={(e) => setRepublierPrix(Math.max(0, parseInt(e.target.value) || 0))} className="flex-1 px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[#2072AF] focus:outline-none text-center font-bold text-xl" />
+                    <input type="number" value={republierPrix} onChange={(e) => setRepublierPrix(Math.max(0, parseInt(e.target.value) || 0))} className="flex-1 px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[var(--herite-bleu)] focus:outline-none text-center font-bold text-xl" />
                     <motion.button type="button" onClick={() => setRepublierPrix(republierPrix + 50)} className="w-12 h-12 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center" whileTap={{ scale: 0.9 }}><Plus className="w-5 h-5 text-gray-600" /></motion.button>
                   </div>
                   <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
                     <div><p className="text-sm text-gray-600">Quantité totale</p><p className="text-lg font-bold text-gray-900">{republierQuantite} {produitARepublier.unit}</p></div>
-                    <div className="text-right"><p className="text-sm text-gray-600">Valeur totale</p><p className="text-2xl font-bold text-[#2072AF]"><Montant value={republierPrix * republierQuantite} size="xl" color="#2072AF" masque={montantsMasques} /></p></div>
+                    <div className="text-right"><p className="text-sm text-gray-600">Valeur totale</p><p className="text-2xl font-bold text-[var(--herite-bleu)]"><Montant value={republierPrix * republierQuantite} size="xl" color="var(--herite-bleu)" masque={montantsMasques} /></p></div>
                   </div>
                 </div>
-                <motion.button type="button" onClick={handleRepublierSubmit} disabled={savingRepublier || republierPrix <= 0 || republierQuantite <= 0} className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 ${savingRepublier || republierPrix <= 0 || republierQuantite <= 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#2072AF] text-white'}`} whileTap={savingRepublier ? {} : { scale: 0.95 }}>
+                <motion.button type="button" onClick={handleRepublierSubmit} disabled={savingRepublier || republierPrix <= 0 || republierQuantite <= 0} className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg flex items-center justify-center gap-2 ${savingRepublier || republierPrix <= 0 || republierQuantite <= 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[var(--herite-bleu)] text-white'}`} whileTap={savingRepublier ? {} : { scale: 0.95 }}>
                   <Store className="w-5 h-5" />{savingRepublier ? 'Publication...' : 'Republier'}
                 </motion.button>
               </div>

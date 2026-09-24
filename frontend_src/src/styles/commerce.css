@@ -95,6 +95,43 @@
   --color-orange-900: var(--commerce-orange-900);
   --commerce-orange-950: #35170F;
   --color-orange-950: var(--commerce-orange-950);
+
+  /* ── COULEURS HÉRITÉES — NOMMÉES, PAS ENCORE ARBITRÉES ──────────────────
+     24/09/2026. Ces 21 teintes vivaient en dur dans PLUSIEURS écrans à la
+     fois — 135 occurrences — sans jamais appartenir à la charte. Six gris CSS
+     « par défaut » dispersés dans cinq fichiers, trois verts qui ne sont pas
+     le vert de Jùlaba, deux bleus alors que la charte n'en a AUCUN.
+
+     ON NE CHANGE AUCUN PIXEL ICI : chaque jeton reprend la valeur exacte
+     qu'il remplace. Ce qu'on ferme, c'est la duplication — « ne jamais donner
+     deux sens à la même donnée » vaut aussi pour une couleur.
+
+     CE QUI RESTE À DÉCIDER, et qui appartient à Patrick : ces couleurs
+     doivent-elles rejoindre la charte, ou disparaître au profit des jetons
+     existants ? Le jour où c'est tranché, la réponse tient en une ligne
+     chacune — ici, et nulle part ailleurs.
+     ──────────────────────────────────────────────────────────────────────── */
+  --herite-gris-40: #AAAAAA;   /* gris CSS par défaut — 5 fichiers */
+  --herite-gris-53: #888888;   /* gris CSS par défaut — 4 fichiers */
+  --herite-gris-33: #555555;   /* gris CSS par défaut — 5 fichiers */
+  --herite-gris-80: #CCCCCC;   /* gris CSS par défaut — 3 fichiers */
+  --herite-gris-87: #DDDDDD;   /* gris CSS par défaut — 2 fichiers */
+  --herite-gris-88: #E0E0E0;   /* gris CSS par défaut — 2 fichiers */
+  --herite-blanc-pur: #FFFFFF;   /* blanc pur, à côté du blanc cassé --commerce-surface */
+  --herite-vert-eau: #1D9E75;   /* vert hors charte — 4 fichiers */
+  --herite-vert-menthe: #10B981;   /* vert hors charte — 2 fichiers */
+  --herite-vert-pale: #9FE1CB;   /* vert hors charte — 3 fichiers */
+  --herite-bleu: #2072AF;   /* bleu — la charte Jùlaba n’en a pas */
+  --herite-bleu-vif: #2563EB;   /* bleu — la charte Jùlaba n’en a pas */
+  --herite-ambre: #F59E0B;   /* ambre hors charte — 5 fichiers */
+  --herite-ambre-fonce: #D97706;   /* ambre hors charte — 2 fichiers */
+  --herite-orange: #E67E22;   /* orange hors charte — 4 fichiers */
+  --herite-orange-brule: #B45309;   /* orange hors charte — 3 fichiers */
+  --herite-jaune: #FFD166;   /* jaune hors charte — 2 fichiers */
+  --herite-violet: #7C3AED;   /* violet hors charte — 4 fichiers */
+  --herite-rouge: #E24B4A;   /* rouge hors charte — 2 fichiers */
+  --herite-creme: #FEF3C7;   /* crème hors charte — 2 fichiers */
+  --herite-taupe: #C7BFB2;   /* taupe hors charte — 2 fichiers */
 }
 
 html.dark {

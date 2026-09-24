@@ -30,7 +30,7 @@ import { useApp } from '../../contexts/AppContext';
 import { construireReappro, coutTotalReappro, partagerReappro, telechargerReapproPDF } from '../../utils/reappro.utils';
 import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
 
-const COLOR = '#E67E22'; // couleur marchand orange
+const COLOR = 'var(--herite-orange)'; // couleur marchand orange
 
 // ── Types ────────────────────────────────────────────────────────
 

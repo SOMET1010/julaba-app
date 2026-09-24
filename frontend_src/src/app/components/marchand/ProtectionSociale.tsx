@@ -24,7 +24,7 @@ import {
   type Cotisation,
 } from '../../services/protectionSociale.service';
 
-const COLOR = '#E67E22';
+const COLOR = 'var(--herite-orange)';
 const ORG_STYLE: Record<Organisme, { color: string; icon: React.ElementType }> = {
   CNPS: { color: '#2E7D32', icon: Shield },
   CNAM: { color: '#1565C0', icon: HeartPulse },
@@ -288,7 +288,7 @@ export function ProtectionSociale() {
                       className="py-3 rounded-2xl border-2 font-semibold text-sm flex flex-col items-center gap-1"
                       style={{
                         borderColor: actif ? st.color : 'var(--border)',
-                        backgroundColor: actif ? `${st.color}12` : '#fff',
+                        backgroundColor: actif ? `${st.color}12` : 'var(--herite-blanc-pur)',
                         color: actif ? st.color : 'var(--encre-3)',
                       }}
                     >
@@ -325,7 +325,7 @@ export function ProtectionSociale() {
                     className="flex-1 py-2 rounded-xl border-2 text-xs font-semibold capitalize"
                     style={{
                       borderColor: mode === mp ? COLOR : 'var(--border)',
-                      backgroundColor: mode === mp ? `${COLOR}12` : '#fff',
+                      backgroundColor: mode === mp ? `${COLOR}12` : 'var(--herite-blanc-pur)',
                       color: mode === mp ? COLOR : 'var(--encre-3)',
                     }}
                   >

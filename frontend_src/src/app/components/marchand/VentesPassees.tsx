@@ -217,7 +217,7 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
             color: estAnnulee ? 'var(--caisse-gris-texte)'
               : etat.type === 'inconnue' ? 'var(--caisse-gris-texte)'
               : marge < 0 ? 'var(--caisse-alerte)'
-              : etat.type === 'partielle' ? '#b45309'
+              : etat.type === 'partielle' ? 'var(--herite-orange-brule)'
               : 'var(--caisse-vert)',
           }}>{montantsMasques ? 'Montant caché' : libelleMarge(etat)}</div>
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration:0.25 }} style={{ display:'flex', justifyContent:'flex-end', marginTop:2 }}>
@@ -252,7 +252,7 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
                     {etat.type === 'partielle' ? (marge < 0 ? 'Perte connue' : 'Marge connue') : (marge < 0 ? 'Perte' : 'Marge')}
                   </span>
                   <span style={{ fontSize:12, fontWeight:700, textDecoration: estAnnulee ? 'line-through' : 'none',
-                    color: estAnnulee ? 'var(--caisse-gris-texte)' : marge < 0 ? 'var(--caisse-alerte)' : etat.type === 'partielle' ? '#b45309' : 'var(--caisse-vert)' }}>
+                    color: estAnnulee ? 'var(--caisse-gris-texte)' : marge < 0 ? 'var(--caisse-alerte)' : etat.type === 'partielle' ? 'var(--herite-orange-brule)' : 'var(--caisse-vert)' }}>
                     {montantsMasques ? '••••• FCFA' : `${marge < 0 ? '−' : '+'}${Math.abs(marge).toLocaleString('fr-FR')} FCFA`}
                   </span>
                 </div>
@@ -751,7 +751,7 @@ export function VentesPassees() {
 
             {!creditsLoading && credits.length > 0 && credits.map(credit => {
               const statutColor = credit.statut_calcule === 'en_retard' ? 'var(--caisse-alerte)'
-                : credit.statut_calcule === 'bientot' ? '#f59e0b'
+                : credit.statut_calcule === 'bientot' ? 'var(--herite-ambre)'
                 : credit.statut_calcule === 'paye' ? 'var(--caisse-vert)'
                 : P;
               const statutBg = credit.statut_calcule === 'en_retard' ? 'color-mix(in srgb, var(--caisse-alerte) 12%, var(--caisse-ivoire))'

@@ -128,7 +128,7 @@ export function DepenseForm() {
     if (eleve && !avertEleveRef.current) { avertEleveRef.current = true; speak('Attention, le montant est élevé. Vérifie bien.'); }
     if (!eleve) avertEleveRef.current = false;
   }, [montantNum, speak]);
-  const montantColor = montantNum === 0 ? P : montantNum <= 2000 ? '#1D9E75' : montantNum > 20000 ? '#E24B4A' : P;
+  const montantColor = montantNum === 0 ? P : montantNum <= 2000 ? 'var(--herite-vert-eau)' : montantNum > 20000 ? 'var(--herite-rouge)' : P;
   const montantHint = montantNum > 20000 ? 'Montant élevé — vérifie !' : montantNum > 0 && montantNum <= 2000 ? 'Petit montant' : '';
   const canProceed = description.trim().length > 0;
   const canSave = canProceed && montant && montant !== '0';
@@ -171,13 +171,13 @@ export function DepenseForm() {
         <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')}
           style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid var(--commerce-orange-700)' }} />
+          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'var(--herite-jaune)', borderRadius:'50%', border:'1.5px solid var(--commerce-orange-700)' }} />
         </motion.button>
       }
       bottomAction={
         <div style={{ flexShrink:0, padding:'12px 14px 28px', background:BG, borderTop:'1px solid var(--trait)' }}>
           <motion.button whileTap={{ scale:0.97 }} onClick={() => { if (canProceed) setStep(2); }}
-            style={{ width:'100%', background: canProceed ? P : '#E0E0E0', color: canProceed ? 'white' : 'var(--encre-4)', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor: canProceed ? 'pointer' : 'default', fontFamily:'inherit', boxShadow: canProceed ? `0 4px 16px ${P}55` : 'none', transition:'all 0.2s' }}>
+            style={{ width:'100%', background: canProceed ? P : 'var(--herite-gris-88)', color: canProceed ? 'white' : 'var(--encre-4)', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor: canProceed ? 'pointer' : 'default', fontFamily:'inherit', boxShadow: canProceed ? `0 4px 16px ${P}55` : 'none', transition:'all 0.2s' }}>
             + Faire une dépense
           </motion.button>
         </div>
@@ -215,7 +215,7 @@ export function DepenseForm() {
         <div>
           <div style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Ou décris ta dépense</div>
           <div style={{ background:'white', border:`1.5px solid ${canProceed ? P : 'var(--commerce-gray-100)'}`, borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', gap:10, transition:'border-color 0.2s' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={canProceed ? P : '#aaa'} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={canProceed ? P : 'var(--herite-gris-40)'} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             <input
               value={description}
               onChange={e => { setDescription(e.target.value); setCategorie(undefined); }}
@@ -226,7 +226,7 @@ export function DepenseForm() {
             {description && (
               <motion.button whileTap={{ scale:0.9 }} onClick={() => { setDescription(''); setCategorie(undefined); }}
                 style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-40)" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </motion.button>
             )}
           </div>
@@ -292,13 +292,13 @@ export function DepenseForm() {
         <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')}
           style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid var(--commerce-orange-700)' }} />
+          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'var(--herite-jaune)', borderRadius:'50%', border:'1.5px solid var(--commerce-orange-700)' }} />
         </motion.button>
       }
       bottomAction={
         <div style={{ flexShrink:0, padding:'8px 16px 32px', background:BG }}>
           <motion.button whileTap={{ scale:0.97 }} onClick={handleSave} disabled={isProcessing || !canSave}
-            style={{ width:'100%', background: !canSave ? '#E0E0E0' : P, color: !canSave ? 'var(--encre-4)' : 'white', border:'none', borderRadius:20, padding:'18px 0', fontSize:16, fontWeight:800, cursor: !canSave ? 'default' : 'pointer', fontFamily:'inherit', boxShadow: !canSave ? 'none' : `0 4px 16px ${P}55`, transition:'all 0.2s' }}>
+            style={{ width:'100%', background: !canSave ? 'var(--herite-gris-88)' : P, color: !canSave ? 'var(--encre-4)' : 'white', border:'none', borderRadius:20, padding:'18px 0', fontSize:16, fontWeight:800, cursor: !canSave ? 'default' : 'pointer', fontFamily:'inherit', boxShadow: !canSave ? 'none' : `0 4px 16px ${P}55`, transition:'all 0.2s' }}>
             {isProcessing ? 'Enregistrement...' : 'Enregistrer la dépense'}
           </motion.button>
         </div>

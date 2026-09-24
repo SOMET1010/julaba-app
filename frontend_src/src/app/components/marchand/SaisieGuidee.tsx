@@ -288,7 +288,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
           <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--encre-4)', textAlign: 'center', margin: '0 0 8px' }}>Combien ?</p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
             <motion.button whileTap={{ scale: 0.9 }} aria-label="Moins" onClick={() => changerQuantite(Math.max(1, quantite - 1))}
-              style={{ width: 52, height: 52, borderRadius: 14, background: 'white', border: '1.5px solid var(--commerce-gray-100)', fontSize: 26, fontWeight: 800, color: '#555', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
+              style={{ width: 52, height: 52, borderRadius: 14, background: 'white', border: '1.5px solid var(--commerce-gray-100)', fontSize: 26, fontWeight: 800, color: 'var(--herite-gris-33)', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
             <span style={{ fontSize: 42, fontWeight: 900, color: 'var(--encre)', minWidth: 60, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{quantite}</span>
             <motion.button whileTap={{ scale: 0.9 }} aria-label="Plus" onClick={() => changerQuantite(quantite + 1)}
               style={{ width: 52, height: 52, borderRadius: 14, background: ORANGE, border: 'none', fontSize: 26, fontWeight: 800, color: 'white', cursor: 'pointer', flexShrink: 0 }}>+</motion.button>
@@ -307,7 +307,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
               </button>
             )}
           </div>
-          <div style={{ textAlign: 'center', fontSize: 36, fontWeight: 900, color: prix ? 'var(--encre)' : '#c7bfb2', fontVariantNumeric: 'tabular-nums', marginBottom: prixModifiable ? 10 : 0 }}>
+          <div style={{ textAlign: 'center', fontSize: 36, fontWeight: 900, color: prix ? 'var(--encre)' : 'var(--herite-taupe)', fontVariantNumeric: 'tabular-nums', marginBottom: prixModifiable ? 10 : 0 }}>
             {prix || '—'}{prix ? ' F' : ''}
           </div>
           {prixModifiable && (
@@ -334,7 +334,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
                 </button>
               ))}
               <button type="button" onClick={() => taperPrix('')}
-                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 14, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 14, fontWeight: 800, color: 'var(--herite-gris-53)', cursor: 'pointer', fontFamily: 'inherit' }}>
                 C
               </button>
               <button type="button" onClick={() => appuyerChiffre('0')}
@@ -342,7 +342,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
                 0
               </button>
               <button type="button" onClick={effacerChiffre} aria-label="Effacer un chiffre"
-                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 16, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 16, fontWeight: 800, color: 'var(--herite-gris-53)', cursor: 'pointer', fontFamily: 'inherit' }}>
                 ⌫
               </button>
             </div>
@@ -354,7 +354,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
           {(['unitaire', 'total'] as const).map(m => (
             <button key={m} onClick={() => { setMode(m); direMessage(m === 'unitaire' ? 'TATA_PRIX_D_UN_SEUL' : 'TATA_PRIX_DU_TOUT'); }}
               style={{ flex: 1, minHeight: 44, borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
-                border: `1.5px solid ${mode === m ? ORANGE : 'var(--commerce-gray-100)'}`, background: mode === m ? 'var(--color-orange-100)' : 'white', color: mode === m ? ORANGE : '#888' }}>
+                border: `1.5px solid ${mode === m ? ORANGE : 'var(--commerce-gray-100)'}`, background: mode === m ? 'var(--color-orange-100)' : 'white', color: mode === m ? ORANGE : 'var(--herite-gris-53)' }}>
               {m === 'unitaire' ? "Prix d'un" : 'Prix du tout'}
             </button>
           ))}
