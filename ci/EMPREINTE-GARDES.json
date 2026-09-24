@@ -1,5 +1,5 @@
 {
-  "genereLe": "2026-09-22",
+  "genereLe": "2026-09-24",
   "gardes": {
     "frontend_src/src/app/utils/api.test.mts": {
       "script": "test:api-url",
@@ -949,7 +949,7 @@
     },
     "frontend_src/src/app/components/marchand/caisseMicroPermanent.test.mts": {
       "script": "test:caisse-micro",
-      "assertions": 19,
+      "assertions": 20,
       "expects": 0,
       "empreintes": {
         "ok·/(&&|\\?|:)$/ ⟂ la ligne qui le précède n'ouvre aucune condition (« ${} »)": 1,
@@ -958,9 +958,10 @@
         "ok·/<RaccourcisProvider>/ ⟂ /<ObjectifProvider ventes=/ ⟂ la caisse monte les providers dont le moteur a besoin (Raccourcis, Objectif)": 1,
         "ok·/^\\s*<MicroVenteCaisse produitPreselectionne=\\{produitPreselectionne\\} onIntentionEncaissement=\\{onIntentionEncaissement\\} \\/>\\s*$/ ⟂ il est rendu seul sur sa ligne, sans garde `&&` ni ternaire": 1,
         "ok·/const allerCaisse = \\(\\) => navigate\\('\\/marchand\\/caisse'\\)/ ⟂ l'accueil sait aller à la caisse": 1,
+        "ok·/gesteDuMicro\\(/ ⟂ /handleMicClick\\(\\)/ ⟂ et cette règle mène BIEN au moteur vocal (handleMicClick), pas dans le vide": 1,
         "ok·/location\\.state[\\s\\S]{0,200}produitPreselectionne/ ⟂ la caisse LIT cet état de route (sinon le produit partirait dans le vide)": 1,
         "ok·/onClick=\\{allerCaisse\\}\\s+aria-label=\"Vendre\"/ ⟂ le bouton « Vendre » y mène DIRECTEMENT (plus d'écran vocal intermédiaire)": 1,
-        "ok·/onClick=\\{handleMicClick\\}/ ⟂ le bouton micro appelle le moteur — pas un gestionnaire décoratif": 1,
+        "ok·/onClick=\\{toucherLeMicro\\}/ ⟂ le bouton micro passe par la règle des sept états — pas un gestionnaire décoratif": 1,
         "ok·/return null/ ⟂ le composant du micro ne se retire jamais de lui-même (aucun `return null`)": 1,
         "ok·/useVoiceCore\\(\\{/ ⟂ le composant du micro monte lui-même le moteur vocal (useVoiceCore)": 1,
         "ok·/vendreUnifie\\(produitPourVente\\(action\\.produit,\\s*produitPreselectionne\\)/ ⟂ la vente dictée passe le produit présélectionné au moteur (produitPourVente)": 1,
@@ -1287,6 +1288,24 @@
         "ok·une ligne entre au panier": 1
       }
     },
+    "frontend_src/src/app/services/prixAmbigu.test.mts": {
+      "script": "test:prix-ambigu",
+      "assertions": 11,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} → on demandera": 1,
+        "ok·/7\\s?500/ ⟂ sans jamais annoncer un total qu\\'elle n\\'a pas choisi": 1,
+        "ok·/un seul/i ⟂ /5/ ⟂ et la question nomme les deux lectures — « ${} »": 1,
+        "ok·AUCUNE quantité multiple ne reçoit un prix deviné": 1,
+        "ok·le panier reste VIDE tant qu\\'elle n\\'a pas répondu": 1,
+        "ok·total ⟂ ${} → elle a dit le lot": 1,
+        "ok·total ⟂ « pour » reste le lot": 1,
+        "ok·unitaire ⟂ ${} → elle a dit l'unité": 1,
+        "ok·unitaire ⟂ sans quantité dite : une unité, donc pas d\\'ambiguïté": 1,
+        "ok·unitaire ⟂ un seul tas : le prix est le prix": 1,
+        "ok·unitaire ⟂ écrit en toutes lettres aussi": 1
+      }
+    },
     "frontend_src/src/app/services/vendreVocalUnifieUnite.test.mts": {
       "script": "test:vendre-unifie-unite",
       "assertions": 18,
@@ -1354,6 +1373,32 @@
         "ok·la BottomBar porte une liste ROUTES_SANS_TATA": 1,
         "ok·la modale Tata ne peut pas s'ouvrir non plus (double-tap global) sur la caisse": 1,
         "ok·le bouton « Ouvrir Tantie Nanti Lou » est rendu sous la garde `!tataMasquee`": 1
+      }
+    },
+    "frontend_src/src/app/services/gesteDuMicro.test.mts": {
+      "script": "test:geste-micro",
+      "assertions": 19,
+      "expects": 0,
+      "empreintes": {
+        "ok·/\\{\\(isDone \\|\\| isError\\) && \\(/ ⟂ la sortie n\\'est plus réservée à deux états sur sept": 1,
+        "ok·/const handleMicClick = useCallback\\(\\(\\) => \\{/ ⟂ `handleMicClick` est intact — l\\'écran décide AVANT de l\\'appeler": 1,
+        "ok·/gesteDuMicro\\(/ ⟂ l\\'écran demande le geste à la règle": 1,
+        "ok·/gesteDuMicro|sortieVisible/ ⟂ la règle n\\'est pas entrée dans le fichier figé": 1,
+        "ok·/onClick=\\{toucherLeMicro\\}/ ⟂ et c\\'est bien LE BOUTON MICRO qui passe par elle": 1,
+        "ok·/sortieVisible\\(/ ⟂ et lui demande aussi s\\'il doit montrer une sortie": 1,
+        "ok·arreter ⟂ et surtout pas « arrêter » : elle a appuyé POUR parler": 1,
+        "ok·arreter ⟂ pendant l\\'écoute, on ferme": 1,
+        "ok·au repos sans rien, pas de bouton inutile : le micro suffit": 1,
+        "ok·ecouter ⟂ après une erreur aussi": 1,
+        "ok·ecouter ⟂ au repos, on ouvre l\\'oreille": 1,
+        "ok·ecouter ⟂ quand Tantie parle, on la coupe pour parler": 1,
+        "ok·et au repos APRÈS une réponse, la sortie reste — c\\'est le cas d\\'avant": 1,
+        "ok·interrompre ⟂ pendant la réflexion, on coupe": 1,
+        "ok·interrompre ⟂ pendant le traitement aussi": 1,
+        "ok·la famille est complète — ${} états": 1,
+        "ok·reprendre ⟂ une question en cours : l\\'appui l\\'abandonne ET réécoute, en un seul geste": 1,
+        "ok·« ${} » : un geste remet l'écran à zéro, même sans réponse à afficher": 1,
+        "ok·« ${} » → « ${} » : un appui fait quelque chose": 1
       }
     },
     "frontend_src/src/app/components/marchand/caisseCharte.test.mts": {
@@ -1711,7 +1756,7 @@
     },
     "frontend_src/src/app/voice-offline/depenseLibelleRejeu.test.mts": {
       "script": "test:depense-libelle",
-      "assertions": 9,
+      "assertions": 12,
       "expects": 0,
       "empreintes": {
         "ok·/(^|\\s)description\\??\\s*:/ ⟂ T4 `EnregistrerDepenseData` déclare `description`, le nom canonique": 1,
@@ -1721,8 +1766,11 @@
         "ok·T2 une file hors ligne HÉRITÉE (payload `notes`) rejoue son motif sous un champ que le serveur lit": 1,
         "ok·T3 une file portant `description` rejoue son motif sous un champ que le serveur lit": 1,
         "ok·T5 une dépense sans motif n’en invente pas un": 1,
+        "ok·T6 et le motif l’accompagne — la catégorie ne prend pas sa place": 1,
+        "ok·T7 une file d’avant DEP-02 rejoue SANS catégorie — on n’en déduit pas une du motif": 1,
         "ok·dep-rejeu-1 ⟂ T1 la clé d’idempotence traverse le rejeu (pas de double compte)": 1,
-        "ok·string ⟂ T1 la dépense rejouée porte toujours son jour comptable (ARGENT-1 intact)": 1
+        "ok·string ⟂ T1 la dépense rejouée porte toujours son jour comptable (ARGENT-1 intact)": 1,
+        "ok·taxe_mairie ⟂ T6 la catégorie touchée traverse le rejeu hors ligne, telle quelle": 1
       }
     },
     "frontend_src/src/app/voice-offline/venteHorsLigneStatut.test.mts": {
@@ -2190,13 +2238,17 @@
     },
     "frontend_src/src/app/services/etatCaisseAccueil.test.mts": {
       "script": "test:caisse-accueil-etat",
-      "assertions": 14,
+      "assertions": 19,
       "expects": 0,
       "empreintes": {
         "ok·AUCUN état issu d\\'une lecture non aboutie ne porte de montant — inconnu ≠ 0": 1,
+        "ok·AUCUNE lecture non aboutie n\\'autorise une clôture — c\\'est la règle, pas un cas": 1,
         "ok·attente ⟂ « ${} » → « attente » : on ne sait pas encore, on ne dit pas zéro": 1,
+        "ok·avant toute réponse non plus : ne rien savoir n\\'est pas savoir que c\\'est zéro": 1,
+        "ok·chiffres incomplets mais RÉELS : on ferme, et l\\'écart est annoncé comme un ordre de grandeur": 1,
         "ok·connue ⟂ serveur lu avec de l\\'argent → « connue »": 1,
         "ok·connue ⟂ serveur lu et vraiment zéro → « connue », montant 0 : ce zéro-là est VRAI": 1,
+        "ok·illisible ⟂ lecture échouée : la clôture est REFUSÉE — sinon l\\'écart s\\'écrit, daté et définitif": 1,
         "ok·illisible ⟂ lecture échouée et rien en mémoire → « illisible », jamais « 0 »": 1,
         "ok·illisible ⟂ montant ${} → « illisible » : un non-nombre ne devient pas zéro": 1,
         "ok·le montant N\\'EXISTE PAS sur cette branche : rien à afficher par mégarde": 1,
@@ -2205,6 +2257,7 @@
         "ok·partielle ⟂ on n\\'efface pas un montant déjà lu — c\\'est un plancher": 1,
         "ok·partielle ⟂ serveur lu MAIS 2 ventes dorment sur le téléphone → « partielle »": 1,
         "ok·partielle ⟂ échec APRÈS une lecture réussie → « partielle » : ces 12 500 ont existé": 1,
+        "ok·serveur lu, rien en attente : on ferme, et l\\'écart est un verdict": 1,
         "ok·une file fractionnaire est tronquée : on ne compte pas 2,7 ventes": 1,
         "ok·une file négative est ramenée à 0 : on n\\'affiche pas « -3 ventes en attente »": 1
       }
@@ -2285,6 +2338,30 @@
         "ok·« retour » n\\'est ni attesté ni prototype : aucun clip, dans les deux mondes": 1
       }
     },
+    "frontend_src/src/app/services/paroleEntree.test.mts": {
+      "script": "test:parole-entree",
+      "assertions": 17,
+      "expects": 0,
+      "empreintes": {
+        "ok·/\\bdireTexte\\(/ ⟂ /audioManager\\.speak\\(/ ⟂ ${} n'appelle plus le moteur en direct": 1,
+        "ok·/if \\(user\\?\\.role !== 'marchand'\\) return;/ ⟂ la garde de rôle est toujours là, mot pour mot": 1,
+        "ok·/import \\{[^}]*\\bspeak\\b[^}]*\\} from '\\.\\.\\/\\.\\.\\/services\\/audioManager'/ ⟂ ${} n'importe plus de quoi parler depuis le moteur": 1,
+        "ok·/parlerAvantConnexion\\('connexion', texte, direEntreeTexte\\)/ ⟂ l\\'écran 3 garde `direEntreeTexte` — le son entendu ne change pas": 1,
+        "ok·/parlerAvantConnexion\\(/ ⟂ ${} passe par LA porte": 1,
+        "ok·/paroleAutorisee/ ⟂ ce lot n\\'a rien ajouté dans le fichier figé : la voie est ailleurs": 1,
+        "ok·/vtrace\\.ttsIgnoree\\('AppContext\\.speak', text, 'role-non-marchand'\\)/ ⟂ et sa trace aussi — aucune ligne figée retirée ni déplacée": 1,
+        "ok·et une marchande connectée qui repasse par l\\'entrée l\\'entend aussi": 1,
+        "ok·la caisse parle comme avant": 1,
+        "ok·muet ⟂ « ${} » : elle a coupé le son, on se tait": 1,
+        "ok·role-non-marchand ⟂ et la raison ne change pas — « ${} », comme aujourd'hui": 1,
+        "ok·un appel ordinaire sans personne connectée reste refusé": 1,
+        "ok·un écran qui se déclare « d\\'entrée » sans l\\'être est refusé": 1,
+        "ok·y compris pour une marchande connectée": 1,
+        "ok·« ${} » : elle entend le premier écran de son téléphone": 1,
+        "ok·« ${} » : et l'entrée ne lui ouvre aucune porte": 1,
+        "ok·« ${} » : muet, exactement comme aujourd'hui": 1
+      }
+    },
     "frontend_src/src/app/services/entreeVoixNumero.test.mts": {
       "script": "test:entree-numero-voix",
       "assertions": 12,
@@ -2304,6 +2381,23 @@
         "ok·une phrase inconnue (donc un numéro) ne produit AUCUN son": 1
       }
     },
+    "frontend_src/src/app/services/retourDeFrappe.test.mts": {
+      "script": "test:retour-frappe",
+      "assertions": 10,
+      "expects": 0,
+      "empreintes": {
+        "ok·/'code',\\s*'chiffre'/ ⟂ la branche du CODE aussi — c\\'était elle qui ne rendait rien": 1,
+        "ok·/'numero',\\s*'chiffre'/ ⟂ la branche du NUMÉRO rend un retour": 1,
+        "ok·/\\d/ ⟂ la phrase d\\'effacement ne contient elle-même aucun chiffre": 1,
+        "ok·/navigator\\.vibrate\\?\\.\\(12\\)/ ⟂ la vibration en dur a disparu du traitement : une seule source décide": 1,
+        "ok·/retourFrappe\\(/ ⟂ l\\'écran appelle la règle": 1,
+        "ok·et le MÊME appui donne le MÊME retour : le code n\\'est pas un geste de seconde classe": 1,
+        "ok·« ${} » : et « effacé » se dit — ce mot ne révèle aucun chiffre": 1,
+        "ok·« ${} » : la main distingue effacer d'ajouter sans regarder": 1,
+        "ok·« ${} » : rien n'est dit à voix haute — au marché, on est entourée": 1,
+        "ok·« ${} » : un appui se SENT (${} ms)": 1
+      }
+    },
     "frontend_src/src/app/services/etatCatalogueCaisse.test.mts": {
       "script": "test:catalogue-caisse-etat",
       "assertions": 8,
@@ -2319,6 +2413,29 @@
         "ok·vide ⟂ le serveur a répondu et il n\\'a rien : LÀ seulement « aucun produit » est vrai": 1
       }
     },
+    "frontend_src/src/app/services/etalGarde.test.mts": {
+      "script": "test:etal-garde",
+      "assertions": 16,
+      "expects": 0,
+      "empreintes": {
+        "ok·/CAISSE_ETAL_GARDE/ ⟂ et l\\'écran la lit par sa clé, sans la réécrire": 1,
+        "ok·/CAISSE_ETAL_GARDE/ ⟂ la phrase vit dans le catalogue i18n": 1,
+        "ok·/avertirEtalGarde\\([^)]*\\)\\s*\\?\\s*null\\s*:/ ⟂ le bandeau ne remplace jamais la grille des produits": 1,
+        "ok·/etatCatalogue\\.type === 'illisible'/ ⟂ l\\'écran garde sa phrase propre pour « je n\\'ai pas pu lire »": 1,
+        "ok·/téléphone/i ⟂ elle parle de SON téléphone, l\\'objet qu\\'elle tient": 1,
+        "ok·et l\\'écran doit le dire": 1,
+        "ok·et surtout pas de bandeau « derniers produits gardés » : il n\\'y en a aucun": 1,
+        "ok·il se pose AU-DESSUS de la grille, qui reste entière et touchable": 1,
+        "ok·illisible ⟂ rien lu, rien en réserve : on ne sait pas": 1,
+        "ok·la phrase ne dit pas « ${} » — ce n'est pas un mot de marchande": 1,
+        "ok·le bandeau est bel et bien RENDU quand la règle le demande": 1,
+        "ok·liste ⟂ le serveur a répondu et il y a des produits": 1,
+        "ok·memoire ⟂ le serveur n\\'a pas répondu, le téléphone se souvient": 1,
+        "ok·ni sur un étal réellement vide": 1,
+        "ok·rien à signaler : on ne met pas un bandeau pour rien": 1,
+        "ok·tant qu\\'on ne sait pas, on ne laisse pas entendre « à jour »": 1
+      }
+    },
     "frontend_src/src/app/components/marchand/caisseTutoie.test.mts": {
       "script": "test:caisse-tutoie",
       "assertions": 8,
@@ -2332,6 +2449,314 @@
         "ok·/etatCatalogue\\.type === 'illisible'/ ⟂ « Aucun produit » vient APRÈS le tri des situations, jamais avant": 1,
         "ok·elle tutoie : « ${} »": 1,
         "ok·la clé TATA_QUE_VENDRE existe": 1
+      }
+    },
+    "frontend_src/src/app/services/ecouteCaisse.test.mts": {
+      "script": "test:ecoute-caisse",
+      "assertions": 26,
+      "expects": 0,
+      "empreintes": {
+        "ok·1 gombo ⟂ sans quantité : une unité, comme le tactile": 1,
+        "ok·1 igname ⟂ une quantité absurde retombe sur une unité, jamais sur un nombre négatif": 1,
+        "ok·10 piments à 500 F ⟂ produit, quantité, prix — dans ses mots à elle": 1,
+        "ok·3 tomate ⟂ sans prix : on annonce ce qu\\'on a, on n\\'invente pas un « 0 F »": 1,
+        "ok·AUCUNE transcription, si claire soit-elle, ne produit « J\\'ai compris » à elle seule": 1,
+        "ok·aucune sortie ne recopie la phrase entendue${}": 1,
+        "ok·compris ⟂ 10 piments à 500 F ⟂ une vente extraite : on affiche LA VENTE": 1,
+        "ok·ecoute ⟂ PENDANT l\\'écoute, aucun texte : le micro qui bat suffit à dire qu\\'on l\\'entend": 1,
+        "ok·ecoute ⟂ et même une vente déjà extraite ne s\\'affiche pas tant qu\\'elle parle — on ne la double pas": 1,
+        "ok·elle parle encore : on n\\'interrompt pas": 1,
+        "ok·elle touche, elle réfléchit, elle regarde son étal : on attend": 1,
+        "ok·et il ne coupe pas une milliseconde trop tôt": 1,
+        "ok·incompris ⟂ le paragraphe de Patrick, sans extraction : « incompris » — PLUS de « J\\'ai compris »": 1,
+        "ok·incompris ⟂ une compréhension vide n\\'est pas une compréhension": 1,
+        "ok·le plafond (${} ms) est bien SOUS les 60 s d'avant": 1,
+        "ok·micro fermé : rien à cesser, et surtout aucune boucle": 1,
+        "ok·on lui laisse PLUS de temps pour commencer que pour finir — sinon on coupe avant le premier mot": 1,
+        "ok·repos ⟂ du blanc n\\'est pas une phrase": 1,
+        "ok·repos ⟂ rien dit, rien compris : la bulle invite, elle n\\'accuse pas": 1,
+        "ok·rien extrait : rien à annoncer": 1,
+        "ok·rien-dit ⟂ mais un micro ouvert sur rien se referme, et la raison est nommée": 1,
+        "ok·silence ⟂ ${} ms de silence closent la phrase — c'est le geste qui manquait": 1,
+        "ok·trop-long ⟂ le plafond prime même si elle parle encore : une vente ne dure pas une minute": 1,
+        "ok·un produit sans nom n\\'est pas un produit": 1,
+        "ok·un silence de ${} ms est une hésitation, pas une fin": 1,
+        "ok·une intention qui n\\'est pas une vente n\\'annonce pas une vente": 1
+      }
+    },
+    "frontend_src/src/app/services/cai07-un-seul-jai-compris.test.mts": {
+      "script": "test:cai07-un-seul-compris",
+      "assertions": 16,
+      "expects": 0,
+      "empreintes": {
+        "ok·/J'ai compris : \\{vueEcoute\\.libelle\\}/ ⟂ le libellé du bandeau n\\'a PAS été maquillé pour éviter la collision (arbitrage de Patrick)": 1,
+        "ok·/J['’]ai compris/ ⟂ ConfirmationLigne porte bien la formule : ${}": 1,
+        "ok·/saisieOuverte/ ⟂ l'appel à afficheEcoute reçoit saisieOuverte : ${}": 1,
+        "ok·2 gombo ⟂ la vente comprise se met en mots : ${}": 1,
+        "ok·compris ⟂ compréhension simple, aucune saisie ouverte → bandeau possible": 1,
+        "ok·compris ⟂ plus de bandeau « J\\'ai compris » pendant la saisie": 1,
+        "ok·incompris ⟂ et surtout pas « Je n\\'ai pas compris » : elle AVAIT compris — ce serait un mensonge, pas un correctif": 1,
+        "ok·jamais deux à la fois, à aucun instant": 1,
+        "ok·la saisie guidée s'ouvre sans geste — « ${} »": 1,
+        "ok·la vente n\\'est PAS partie au panier : il manque le prix": 1,
+        "ok·repos ⟂ la bulle revient au repos : un autre écran porte la parole": 1,
+        "ok·un seul « J\\'ai compris » à cet instant": 1,
+        "ok·vendre ⟂ la phrase produit bien une intention de vente": 1,
+        "ok·zéro « J\\'ai compris » venant du micro": 1,
+        "ok·À L'INSTANT DE LA DÉCISION FINANCIÈRE : ${} « J'ai compris » à l'écran (attendu 1 — celui qui engage l'argent)": 1,
+        "ok·⟂ le bandeau reste piloté par vueEcoute — la règle est le seul juge": 1
+      }
+    },
+    "frontend_src/src/app/services/resumePeriode.test.mts": {
+      "script": "test:resume-periode",
+      "assertions": 21,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} → le résumé lu nomme sa période ET dit ses trois montants": 1,
+        "ok·${} → écran : « ${}… »": 1,
+        "ok·/33/ ⟂ ${} → oreille : « trente-trois mille six cents francs », plus aucun groupe de chiffres": 1,
+        "ok·/Aujourd'hui tu as gagné|Aujourd’hui tu as gagné/ ⟂ la phrase affichée ne commence plus par « Aujourd\\'hui » quoi qu\\'il arrive": 1,
+        "ok·/Résumé du jour\\./ ⟂ la phrase dite ne s\\'appelle plus « Résumé du jour » quoi qu\\'il arrive": 1,
+        "ok·/\\d/ ⟂ zéro dépense : la phrase dite ne contient plus AUCUN chiffre — « trois mille francs »": 1,
+        "ok·/ouverturePhrasePeriode|complementPeriode/ ⟂ l\\'écran passe par la règle au lieu de la réécrire": 1,
+        "ok·/speakMessage\\(/ ⟂ le résumé parlé passe par le catalogue — seul chemin vers la forme parlée des montants": 1,
+        "ok·Attention ! Sur les 30 derniers jours, tu as plus dépensé que gagné. Fais attention à tes dépenses. ⟂ la perte aussi nomme sa période — c\\'était « aujourd\\'hui » en dur elle aussi": 1,
+        "ok·Aujourd'hui ⟂ today → « Aujourd\\'hui »": 1,
+        "ok·Résumé ${}. ⟂ Résumé des 30 derniers jours. ⟂ « Résumé des 30 derniers jours. » — et non « Résumé 30 derniers jours »": 1,
+        "ok·Sur la période choisie ⟂ custom → la période choisie": 1,
+        "ok·Sur les 30 derniers jours ⟂ 30days → les 30 derniers jours": 1,
+        "ok·Sur les 7 derniers jours ⟂ 7days → « Sur les 7 derniers jours » — avec sa préposition, pas le libellé du bouton": 1,
+        "ok·aucune période autre que « today » ne parle du jour${}": 1,
+        "ok·aucune période ne fait dire « aujourd'hui » au catalogue${}": 1,
+        "ok·du jour ⟂ Aujourd'hui ⟂ seule « today » a le droit de parler du jour — et elle en garde les mots d\\'origine": 1,
+        "ok·et « Résumé du jour » ne s\\'emploie pas non plus hors du jour": 1,
+        "ok·la phrase parlée n\\'assemble plus les montants avec leur forme ÉCRITE": 1,
+        "ok·les quatre sont DIFFÉRENTES : deux périodes qui se disent pareil, c\\'est le défaut qui revient": 1,
+        "ok·« ${}… » se lit": 1
+      }
+    },
+    "frontend_src/src/app/services/categorieDepense.test.mts": {
+      "script": "test:categorie-depense",
+      "assertions": 28,
+      "expects": 0,
+      "empreintes": {
+        "ok·/CATEGORIES_DEPENSE/ ⟂ le formulaire lit la liste partagée au lieu de la réécrire": 1,
+        "ok·/Changer la catégorie/ ⟂ « Changer » seul ne disait pas quoi — le bouton nomme ce qu\\'il change": 1,
+        "ok·/EnregistrerDepenseData[\\s\\S]{0,900}?categorie\\?:/ ⟂ le contrat d\\'API de la DÉPENSE porte la catégorie": 1,
+        "ok·/EnregistrerDepenseData\\s*=\\s*\\{[^}]*categorie/ ⟂ …et la met dans le payload — donc aussi dans la file hors ligne, qui rejoue CE payload": 1,
+        "ok·/Faire une dépense/ ⟂ /Faire une dépense/ ⟂ « Faire une dépense » aux deux endroits": 1,
+        "ok·/Noter une dépense/ ⟂ /Noter une dépense/ ⟂ « Noter une dépense » ne figure plus nulle part — « noter » veut dire écrire, et elle n\\'écrit pas": 1,
+        "ok·/categorieDeLaDepense/ ⟂ la liste des dépenses LIT la catégorie": 1,
+        "ok·/const OTHER_CATS/ ⟂ la seconde liste du formulaire (OTHER_CATS) a disparu": 1,
+        "ok·/enregistrerDepense\\([^)]*categorie/ ⟂ le formulaire la passe à l\\'enregistrement": 1,
+        "ok·/enregistrerDepense\\s*=\\s*async\\s*\\([^)]*categorie/ ⟂ le contexte reçoit la catégorie de la dépense…": 1,
+        "ok·/function detectCat/ ⟂ et ne la devine plus par mots-clés (detectCat supprimée)": 1,
+        "ok·/keywords/ ⟂ plus aucune table de mots-clés dans l\\'écran des dépenses": 1,
+        "ok·Taxe mairie ⟂ École ⟂ chaque identifiant a son libellé, dans les mots de l\\'écran": 1,
+        "ok·aucun identifiant en double": 1,
+        "ok·aucun identifiant n\\'est inventé : le type lui-même n\\'en porte pas": 1,
+        "ok·aucun libellé en double — deux cases identiques à l\\'écran ne se distinguent pas au doigt": 1,
+        "ok·aucun libellé ne change la catégorie rendue${}": 1,
+        "ok·et sans catégorie enregistrée, AUCUN texte n\\'en fabrique une — même « transport yango »": 1,
+        "ok·le LIBELLÉ n\\'est pas un identifiant — c\\'est toute la confusion qu\\'on ferme": 1,
+        "ok·les onze catégories que l'écran propose (${})": 1,
+        "ok·ni `null` ni `undefined` ne produisent une catégorie": 1,
+        "ok·ni le vide ni un nombre ne passent": 1,
+        "ok·une dépense d\\'avant DEP-02 n\\'a pas de catégorie — et la réponse le nomme": 1,
+        "ok·une valeur venue du serveur qui n\\'est pas des onze est REFUSÉE, pas affichée telle quelle": 1,
+        "ok·« ${} » touchée → « ${} » relue": 1,
+        "ok·« Catégorie pas notée » ≠ « Autre » : « Autre » est un CHOIX, pas une ignorance": 1,
+        "ok·« Taxe mairie » est une catégorie à part entière (l\\'affichage la rendait « Autre »)": 1,
+        "ok·« École » est une catégorie à part entière (l\\'affichage la rendait « Famille »)": 1
+      }
+    },
+    "frontend_src/src/app/services/motsDuGesteTactile.test.mts": {
+      "script": "test:geste-tactile",
+      "assertions": 17,
+      "expects": 0,
+      "empreintes": {
+        "ok·/Choisir la vente à l[’']écran/i ⟂ ni en étiquette d\\'accessibilité — ce que la synthèse vocale lit à sa place": 1,
+        "ok·/Choisir à l[’']écran/i ⟂ plus aucun « Choisir à l\\'écran » affiché": 1,
+        "ok·/SAISIR SANS PARLER/i ⟂ plus de « SAISIR SANS PARLER » — un troisième nom pour le même geste": 1,
+        "ok·/\\bsaisir\\b/i ⟂ « saisir » ne sert plus de titre : on saisit au clavier, on ne saisit pas un légume": 1,
+        "ok·/sans\\s+parler/i ⟂ aucun titre en creux (« sans parler ») : on nomme le geste, pas son absence": 1,
+        "ok·Keyboard ⟂ l'icône du bouton n'est plus un clavier — c'est « ${} »": 1,
+        "ok·aucun verbe mental n'est proposé comme geste${}": 1,
+        "ok·et elle ne dit pas « écrire » : ce bouton ouvre une grille de photos, pas un clavier": 1,
+        "ok·et la caisse, une fois ouverte, emploie LES MÊMES MOTS — c\\'était « Choisir à l\\'écran »": 1,
+        "ok·et les deux sont LA MÊME phrase, au mot près": 1,
+        "ok·l'icône « ${} » vient bien de la bibliothèque d'icônes": 1,
+        "ok·l'étiquette lue nomme le geste — « ${} »": 1,
+        "ok·l\\'accueil annonce la caisse par « toucher les produits » (il le faisait déjà)": 1,
+        "ok·le bouton du repli tactile est bien là (il ne disparaît pas)": 1,
+        "ok·le panneau nomme le geste avec LES MÊMES MOTS que le bouton qui l\\'ouvre": 1,
+        "ok·le texte vu nomme le geste — « ${} »": 1,
+        "ok·⟂ le bouton garde une icône — la retirer ne dirait rien du tout": 1
+      }
+    },
+    "frontend_src/src/app/services/etatLectureBO.test.mts": {
+      "script": "test:etat-lecture-bo",
+      "assertions": 54,
+      "expects": 0,
+      "empreintes": {
+        "ok·/KPIs - 100 % données réelles/ ⟂ le commentaire « 100 % données réelles » ne coiffe plus des compteurs qui pouvaient valoir un faux zéro": 1,
+        "ok·/animatedTarget=\\{[^}]*\\}/ ⟂ et aucune ne passe un `animatedTarget` calculé à la main — il vient de `kpiTuile`, à `undefined` hors du cas « nombre »": 1,
+        "ok·/const \\[lectureZones/ ⟂ /const \\[lectureActeurs/ ⟂ chaque source a SON état — une panne zones n\\'efface plus l\\'erreur acteurs": 1,
+        "ok·/etatLectureBO/ ⟂ BackOfficeContext importe l\\'état de lecture": 1,
+        "ok·/kpisTableauDeBord/ ⟂ le tableau de bord calcule ses sept compteurs par la règle": 1,
+        "ok·/lectures/ ⟂ et l\\'expose aux écrans": 1,
+        "ok·/setLecture[A-Za-z]+\\(enAttente\\(\\)\\)/ ⟂ ${} : une nouvelle tentative repart de « attente », pas de l'ancien chiffre": 1,
+        "ok·/setLecture[A-Za-z]+\\(indisponible\\(/ ⟂ ${} : l'échec devient « indisponible », il n'est plus avalé": 1,
+        "ok·/setLecture[A-Za-z]+\\(lue\\(/ ⟂ ${} : le succès devient « lue » — la valeur, zéro compris": 1,
+        "ok·AUCUN compteur ne rend un nombre quand tout a échoué${}": 1,
+        "ok·aucun mot ne remplace un zéro lu : la tuile montre le chiffre": 1,
+        "ok·aucun nombre pendant l\\'attente — surtout pas un zéro qui clignote": 1,
+        "ok·aucune tuile ne lit plus une liste qui vaut [] quand la lecture échoue${}": 1,
+        "ok·boum ⟂ une Error donne son message": 1,
+        "ok·chacune passe par `kpiTuile` — aucune ne calcule son chiffre elle-même": 1,
+        "ok·chargement ⟂ au départ : chargement": 1,
+        "ok·chargement ⟂ on réessaie : chargement — et surtout PAS un zéro pendant la nouvelle tentative": 1,
+        "ok·chargement ⟂ une source échouée, l\\'autre en route → on attend : elle peut encore arriver": 1,
+        "ok·et ce nombre vaut bien ZÉRO — on ne masque pas un vrai vide": 1,
+        "ok·et ce qui n\\'a pas de message reçoit quand même une raison — jamais une chaîne vide": 1,
+        "ok·et chacun garde la RAISON — « indisponible » sans raison est un autre silence": 1,
+        "ok·et l\\'explication dit en toutes lettres que ce n\\'est pas un zéro": 1,
+        "ok·et la tuile affiche « ${} »": 1,
+        "ok·et le compteur animé ne reçoit AUCUN nombre": 1,
+        "ok·et rien à expliquer : le chiffre est le chiffre": 1,
+        "ok·indisponible ⟂ Acteurs injoignables ⟂ et les compteurs qui en dépendent le disent, avec LEUR raison": 1,
+        "ok·indisponible ⟂ Zones injoignables ⟂ SEULES les zones sont indisponibles, et elles disent pourquoi": 1,
+        "ok·indisponible ⟂ la lecture échoue : indisponible": 1,
+        "ok·indisponible ⟂ les DEUX en panne → « indisponible ». C\\'est exactement le cas qui affichait 0": 1,
+        "ok·indisponible ⟂ seuls les acteurs manquent": 1,
+        "ok·indisponible ⟂ une mesure qui ne rend pas un nombre fini → « indisponible », jamais 0": 1,
+        "ok·la grille des sept compteurs est bien là": 1,
+        "ok·la raison est offerte à l\\'agent, qui doit décider quoi faire": 1,
+        "ok·la tuile affiche « ${} »": 1,
+        "ok·le compteur animé reçoit 0, pas `undefined`": 1,
+        "ok·les huit compteurs rendent un NOMBRE quand tout a été lu${}": 1,
+        "ok·les huit disent « indisponible »": 1,
+        "ok·les sept tuiles sont servies par la règle (${} trouvée(s))": 1,
+        "ok·nombre de zones inconnu ⟂ le « sur N zones » n\\'invente pas de dénominateur — un « sur 0 zones » serait faux": 1,
+        "ok·nombre ⟂ des stats lues SANS `total_acteurs` ne comptent pas les acteurs — on passe au secours": 1,
+        "ok·nombre ⟂ et le champ qui EST là sert normalement": 1,
+        "ok·nombre ⟂ et les actifs aussi : 2": 1,
+        "ok·nombre ⟂ et les suspendus : 1": 1,
+        "ok·nombre ⟂ et une lecture qui rend zéro reste un zéro affiché — l\\'aller-retour n\\'a rien contaminé": 1,
+        "ok·nombre ⟂ la tentative réussit : le chiffre revient": 1,
+        "ok·nombre ⟂ les acteurs ont été lus : 3, malgré la panne des zones": 1,
+        "ok·nombre ⟂ les dossiers, eux, n\\'ont rien à voir avec les acteurs : ils restent valides": 1,
+        "ok·nombre ⟂ les zones sont lues : 2 actives sur 3": 1,
+        "ok·nombre ⟂ stats en panne mais acteurs lus → on compte sur les acteurs (comportement d\\'origine)": 1,
+        "ok·nombre ⟂ un `total_acteurs: 0` renvoyé par le serveur s\\'affiche 0 — et non « indisponible »": 1,
+        "ok·nombre ⟂ un volume de 0 F aussi : une institution qui n\\'a encore rien encaissé a le droit de le voir": 1,
+        "ok·rien demandé encore : les huit disent « chargement »": 1,
+        "ok·sur 3 zones ⟂ et le dénominateur est le vrai": 1,
+        "ok·texte brut ⟂ une chaîne aussi": 1
+      }
+    },
+    "frontend_src/src/app/services/prixDeLaMarchande.test.mts": {
+      "script": "test:prix-marchande",
+      "assertions": 23,
+      "expects": 0,
+      "empreintes": {
+        "ok·/<AjoutProduitGuide[\\s/>]/ ⟂ l\\'écran ne pose plus AUCUN prix : la création est passée au parcours partagé": 1,
+        "ok·/\\{p\\.prixVente\\}/ ⟂ la liste de suggestions n\\'affiche plus un prix comme si c\\'était le sien": 1,
+        "ok·/cat\\?\\.prixVente|cat\\?\\.prixAchat/ ⟂ l\\'ajout à la voix ne se replie plus sur le prix du catalogue": 1,
+        "ok·/prixDicte\\(/ ⟂ il prend le prix qu\\'elle a dit, par la règle": 1,
+        "ok·/prixVente:\\s*\\d+/ ⟂ le catalogue porte toujours ses ordres de grandeur — on n\\'efface pas une donnée, on cesse de la prendre pour une autre": 1,
+        "ok·/purchasePrice\\s*:\\s*p\\.prixAchat|salePrice\\s*:\\s*p\\.prixVente/ ⟂ plus aucun prix de catalogue ne part dans le formulaire": 1,
+        "ok·AUCUNE entrée de catalogue ne produit un prix, quel qu\\'il soit": 1,
+        "ok·LA GARANTIE STRUCTURELLE : la fonction n\\'a qu\\'UN argument — il n\\'existe aucun moyen de lui passer un repli de catalogue": 1,
+        "ok·Piment ⟂ elle touche une seconde tuile : le produit change": 1,
+        "ok·Tomate ⟂ le nom vient du catalogue — c\\'est ce qu\\'un catalogue sait": 1,
+        "ok·aucune tuile ne remplit le formulaire à la main (${} restante(s))": 1,
+        "ok·elle dit « cinq cents » : c\\'est cinq cents": 1,
+        "ok·elle n\\'a rien dit → 0, c\\'est-à-dire « pas encore de prix »": 1,
+        "ok·et aucun des deux montants du catalogue ne ressort, sous aucune forme": 1,
+        "ok·kg ⟂ legumes ⟂ img-tomate ⟂ l\\'unité, la famille et la photo aussi": 1,
+        "ok·prix dit → la confirmation peut le citer": 1,
+        "ok·rien dit → la confirmation NE cite aucun montant (« Dis-moi son prix quand tu veux »)": 1,
+        "ok·rien, vide, illisible : 0 — et jamais un prix de catalogue": 1,
+        "ok·un prix négatif n\\'est pas un prix": 1,
+        "ok·une chaîne numérique reste une valeur": 1,
+        "ok·⟂ le prix d\\'ACHAT reste vide — c\\'était 300 F": 1,
+        "ok·⟂ le prix de VENTE reste vide — c\\'était 400 F": 1,
+        "ok·⟂ ⟂ et les prix qu\\'elle avait saisis pour le PREMIER ne restent pas sur le second": 1
+      }
+    },
+    "frontend_src/src/app/services/etalDeLaMarchande.test.mts": {
+      "script": "test:etal-marchande",
+      "assertions": 20,
+      "expects": 0,
+      "empreintes": {
+        "ok·/CATALOGUE_PRODUITS/ ⟂ SaisieGuidee ne lit plus la liste des 37 tuiles en dur": 1,
+        "ok·/Pas dans la liste/ ⟂ « Pas dans la liste ? » est toujours là — un produit neuf ne bloque personne": 1,
+        "ok·/Qu['’]est-ce que tu vends/ ⟂ aucune phrase en dur dans l\\'écran : une seule source pour l\\'œil et l\\'oreille": 1,
+        "ok·/TATA_ETAL_VIDE/ ⟂ et l\\'écran la lit par sa clé, sans la réécrire": 1,
+        "ok·/TATA_ETAL_VIDE/ ⟂ la question « Qu\\'est-ce que tu vends aujourd\\'hui ? » vit dans le catalogue i18n": 1,
+        "ok·/\\bprixVente\\b/ ⟂ et ne lit plus AUCUN `prixVente` du catalogue générique": 1,
+        "ok·/premier-produit'\\s*\\?\\s*\\([\\s\\S]{0,600}?aria-label=\\{t\\('TATA_ETAL_VIDE'\\)\\}/ ⟂ le bouton du premier produit est bien SOUS la règle — pas un bloc qu\\'on peut débrancher en silence": 1,
+        "ok·/products|etal/i ⟂ elle lit l\\'étal de la marchande": 1,
+        "ok·/rechercherProduitCatalogue\\([^)]*\\)\\??\\.\\s*prixVente/ ⟂ ni par la recherche catalogue, qui rendait elle aussi un prix": 1,
+        "ok·/setAutreOuvert\\(true\\)/ ⟂ et il ouvre bien la saisie du nom": 1,
+        "ok·/vue\\.tuiles\\.map/ ⟂ et la grille lit les tuiles de la règle, jamais une autre liste": 1,
+        "ok·et c\\'est ce prix-là qui part au formulaire": 1,
+        "ok·et surtout pas le 400 du catalogue générique": 1,
+        "ok·etal ⟂ dès qu\\'elle a un produit, c\\'est son étal qui s\\'affiche": 1,
+        "ok·le prix de la tuile est le SIEN — ${}": 1,
+        "ok·premier-produit ⟂ étal vide → l\\'écran demande son premier produit, il ne se contente pas d\\'être vide": 1,
+        "ok·son Gombo est bien une tuile": 1,
+        "ok·tas ⟂ avec SON unité, pas « kg » par défaut": 1,
+        "ok·un produit sans prix d\\'elle n\\'a pas de tuile : il n\\'y a rien à poser": 1,
+        "ok·étal vide → zéro tuile ; on ne comble jamais le vide avec le catalogue": 1
+      }
+    },
+    "frontend_src/src/app/services/premierProduit.test.mts": {
+      "script": "test:premier-produit",
+      "assertions": 40,
+      "expects": 0,
+      "empreintes": {
+        "ok·/<AjoutProduitGuide[\\s/>]/ ⟂ /<AjoutProduitGuide[\\s/>]/ ⟂ caisse et stock montent le MÊME composant — pas deux formulaires jumeaux": 1,
+        "ok·/<AjoutProduitGuide[\\s/>]/ ⟂ le bouton « Ajouter un produit » ouvre LE MÊME parcours que la caisse": 1,
+        "ok·/CATALOGUE_PRODUITS/ ⟂ aucune des 37 tuiles génériques ne sert plus à créer un produit": 1,
+        "ok·/addProduct\\s*\\(/ ⟂ l\\'écran appelle la primitive existante `addProduct`": 1,
+        "ok·/addProduct\\s*\\(\\s*\\{\\s*nom\\s*:\\s*newStock/ ⟂ et l\\'ancien formulaire n\\'écrit plus rien : une seule naissance, un seul chemin": 1,
+        "ok·/categorie:\\s*''/ ⟂ l'écran ne demande pas « ${} »": 1,
+        "ok·/champsDepuisTuile|suggererProduits/ ⟂ ni par une suggestion de nom, qui posait le même produit générique": 1,
+        "ok·/famille|sous.famille|domaine/i ⟂ et aucune taxonomie n\\'apparaît": 1,
+        "ok·/fetch\\s*\\(|axios|stocksApi|creerStock|localStorage/ ⟂ et AUCUN second chemin d\\'écriture : une donnée écrite à deux endroits diverge": 1,
+        "ok·/if \\(poseOuverte\\)[\\s\\S]{0,300}?<AjoutProduitGuide/ ⟂ et c\\'est bien l\\'écran des trois questions qui s\\'affiche": 1,
+        "ok·/premier-produit'\\s*\\?\\s*\\([\\s\\S]{0,400}?onClick=\\{\\(\\) => setPoseOuverte\\(true\\)\\}/ ⟂ le bouton de l\\'étal vide ouvre la POSE d\\'un produit, pas la saisie d\\'une vente": 1,
+        "ok·/produitACreer/ ⟂ et ce composant passe par la règle pure : un seul endroit décide ce qui naît": 1,
+        "ok·/sesUnites=\\{etal\\.map/ ⟂ à qui l\\'on passe SES unités déjà employées": 1,
+        "ok·/showEdit/ ⟂ et son écran d\\'édition aussi": 1,
+        "ok·/updateProduct\\s*\\(/ ⟂ la modification d\\'un produit adopté reste en place": 1,
+        "ok·Djoumgblé de ma tante ⟂ et il est enregistré TEL QU\\'ELLE L\\'A DIT, sans être corrigé": 1,
+        "ok·Kponan ⟂ le nom qu'ELLE a donné — ${}": 1,
+        "ok·SON prix — ${}": 1,
+        "ok·aucune quantité inventée : elle n\\'a pas compté son stock": 1,
+        "ok·aucune unité en double": 1,
+        "ok·avec son prix, il est prêt": 1,
+        "ok·demi-panier ⟂ et conservée telle quelle": 1,
+        "ok·et un produit sans nom n\\'est pas un produit": 1,
+        "ok·la liste reste courte — ${} boutons, pas une encyclopédie": 1,
+        "ok·mais du blanc n\\'est pas une unité": 1,
+        "ok·nom ⟂ on commence par lui demander CE QU\\'ELLE VEND": 1,
+        "ok·prix absent → rien à créer ; on ne complète pas à notre idée": 1,
+        "ok·prix ⟂ puis À COMBIEN — et c\\'est fini": 1,
+        "ok·puis les plus fréquentes du marché, mesurées sur les 198": 1,
+        "ok·sans prix, le produit n\\'est PAS prêt : il n\\'existe pas encore": 1,
+        "ok·tas ⟂ SON unité": 1,
+        "ok·tas ⟂ bassine ⟂ SES unités d'abord — celles qu'elle emploie déjà : ${}": 1,
+        "ok·un nom que le référentiel ne connaît pas se pose quand même": 1,
+        "ok·un prix négatif non plus": 1,
+        "ok·une unité hors de toute liste est acceptée": 1,
+        "ok·unite ⟂ puis COMMENT elle le vend": 1,
+        "ok·zéro n\\'est pas un prix : il entrerait en caisse et fausserait chaque vente": 1,
+        "ok·« Autre » n\\'est PAS une unité : c\\'est un geste, l\\'écran le porte à part": 1,
+        "ok·étal neuf : les unités du marché suffisent à démarrer": 1,
+        "ok·⟂ et aucune catégorie inventée — « autre » serait un mot qu\\'elle n\\'a pas dit": 1
       }
     },
     "backend/test/invariants/annulation-remise-stock.spec.ts": {
@@ -2509,6 +2934,26 @@
         "it·toggle → réactivé ⇒ le job alertes s’exécute de nouveau et enregistre son passage": 1
       }
     },
+    "backend/test/invariants/cai-02-journee-fermee.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 3,
+      "expects": 23,
+      "empreintes": {
+        "describe·CAI-02 — une journée fermée n’accepte plus d’argent": 1,
+        "it·le constat du soir tient : ni vente ni annulation ne peuvent le fausser": 1,
+        "it·rouvrir la journée reste possible — c’est le geste explicite qui manquait": 1
+      }
+    },
+    "backend/test/invariants/cai-09-credit-journee-fermee.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 3,
+      "expects": 30,
+      "empreintes": {
+        "describe·CAI-09 — une journée fermée n’encaisse plus de crédit": 1,
+        "it·le constat du soir tient : aucun encaissement de crédit ne peut le fausser": 1,
+        "it·rouvrir la journée rend l’encaissement possible — le geste devait être VOULU": 1
+      }
+    },
     "backend/test/invariants/caisse-fond-declare.spec.ts": {
       "script": "test:invariants (backend)",
       "assertions": 10,
@@ -2572,6 +3017,18 @@
         "it·le motif envoyé dans `notes` — la forme que le téléphone envoie AUJOURD’HUI — est persisté": 1,
         "it·les deux formes ensemble : `description` est prioritaire, `notes` ne l’écrase jamais": 1,
         "it·sans aucun motif, la dépense passe quand même — le libellé n’est pas obligatoire": 1
+      }
+    },
+    "backend/test/invariants/dep-02-categorie-depense.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 5,
+      "expects": 17,
+      "empreintes": {
+        "describe·DEP-02 — la catégorie touchée est conservée, jamais devinée": 1,
+        "it·chacune des onze catégories touchées arrive en base, et revient à l’écran": 1,
+        "it·la catégorie ne change pas la comptabilité de la journée": 1,
+        "it·sans catégorie, la dépense reste SANS catégorie — pas de repli sur « autre »": 1,
+        "it·une catégorie que l’écran ne propose pas n’est pas écrite": 1
       }
     },
     "backend/test/invariants/fidelite-cycle.spec.ts": {
@@ -2864,6 +3321,21 @@
         "it·rejouer le seed n’écrit rien en double": 1,
         "it·un district étranger au seed ne bloque plus la cascade": 1,
         "it·un niveau intermédiaire amputé est reconstruit, pas ignoré": 1
+      }
+    },
+    "backend/test/invariants/stk-01-modifier-produit.spec.ts": {
+      "script": "test:invariants (backend)",
+      "assertions": 8,
+      "expects": 35,
+      "empreintes": {
+        "describe·STK-01 — modifier un produit ne doit rien effacer en silence": 1,
+        "it·modifier le STOCK n’efface pas le prix — la perte silencieuse": 1,
+        "it·modifier le prix d’un produit qui n’est pas à elle ne répond pas « c’est fait »": 1,
+        "it·un identifiant inconnu est refusé, pas confirmé": 1,
+        "it·un prix explicitement remis à zéro est écrit — zéro est une réponse": 1,
+        "it·une modification COMPLÈTE écrit bien tout ce qu’elle nomme": 1,
+        "it·une modification PARTIELLE ne change que ce qu’elle nomme": 1,
+        "it·vider la case du prix ne le met pas à zéro — le piège de Number(\"\")": 1
       }
     },
     "backend/test/invariants/stock-commun-cooperative.spec.ts": {
