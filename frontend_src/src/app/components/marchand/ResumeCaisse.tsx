@@ -357,7 +357,7 @@ export function ResumeCaisse() {
           {/* ── SÉLECTEUR PÉRIODE iOS ── */}
           <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:4, display:'flex', position:'relative' }}>
             <motion.div
-              style={{ position:'absolute', top:4, height:'calc(100% - 8px)', background:'#AF5B23', borderRadius:12, boxShadow:'0 2px 8px rgba(175,91,35,0.3)' }}
+              style={{ position:'absolute', top:4, height:'calc(100% - 8px)', background:'var(--commerce-action)', borderRadius:12, boxShadow:'0 2px 8px rgba(175,91,35,0.3)' }}
               animate={{
                 left: selectedPeriod === 'today' ? '4px' : selectedPeriod === '7days' ? 'calc(25% + 1px)' : selectedPeriod === '30days' ? 'calc(50% + 1px)' : 'calc(75% + 1px)',
                 width: 'calc(25% - 3px)'
@@ -387,8 +387,8 @@ export function ResumeCaisse() {
 
           {/* ── TANTIE LOU ── */}
           <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:18, padding:'12px 14px', display:'flex', alignItems:'center', gap:12 }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', background:'#FFF3EA', border:'2px solid #AF5B23', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#AF5B23" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--commerce-orange-50)', border:'2px solid var(--commerce-action)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--commerce-action)" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:12, fontWeight:700, color:'var(--encre)', lineHeight:1.5 }}>
@@ -397,21 +397,21 @@ export function ResumeCaisse() {
               <div style={{ fontSize:10, color:'var(--encre-4)', marginTop:2 }}>Tantie Nanti Lou · appuie sur lecture</div>
             </div>
             <motion.button whileTap={{ scale:0.9 }} onClick={direLeResume}
-              style={{ width:36, height:36, borderRadius:'50%', background:'#AF5B23', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+              style={{ width:36, height:36, borderRadius:'50%', background:'var(--commerce-action)', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </motion.button>
           </div>
 
           {/* ── HEURE DE POINTE ── */}
           <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:'12px 14px', display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ width:38, height:38, borderRadius:'50%', background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <Clock size={18} color="#AF5B23" />
+            <div style={{ width:38, height:38, borderRadius:'50%', background:'var(--commerce-orange-50)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <Clock size={18} color="var(--commerce-action)" />
             </div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:12, fontWeight:900, color:'var(--encre)' }}>Tu vends le plus à cette heure</div>
               <div style={{ fontSize:11, color:'#888', marginTop:2 }}>Sois bien approvisionnée</div>
             </div>
-            <div style={{ background:'#AF5B23', color:'white', fontSize:12, fontWeight:900, padding:'5px 12px', borderRadius:20, whiteSpace:'nowrap' }}>{heurePointe}</div>
+            <div style={{ background:'var(--commerce-action)', color:'white', fontSize:12, fontWeight:900, padding:'5px 12px', borderRadius:20, whiteSpace:'nowrap' }}>{heurePointe}</div>
           </div>
 
           {/* ── GRAPHE ANIMÉ ── */}
@@ -425,13 +425,13 @@ export function ResumeCaisse() {
               <div style={{ height:120 }}>
                 <ResponsiveContainer width="100%" height={120}>
                   <LineChart data={evolutionData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f5f0eb" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--commerce-paper)" />
                     <XAxis dataKey="day" stroke="#ddd" style={{ fontSize:'10px' }} tick={{ fill:'#aaa' }} />
                     <YAxis stroke="#ddd" style={{ fontSize:'10px' }} tick={{ fill:'#aaa' }} width={40} />
                     <Tooltip contentStyle={{ backgroundColor:'white', border:'1.5px solid var(--trait)', borderRadius:12, fontSize:11 }}
                       formatter={(v: number) => `${(v||0).toLocaleString('fr-FR')} FCFA`} />
-                    <Line type="monotone" dataKey="solde" stroke="#AF5B23" strokeWidth={2.5}
-                      dot={{ fill:'#AF5B23', r:3 }} activeDot={{ r:5 }}
+                    <Line type="monotone" dataKey="solde" stroke="var(--commerce-action)" strokeWidth={2.5}
+                      dot={{ fill:'var(--commerce-action)', r:3 }} activeDot={{ r:5 }}
                       animationDuration={1500} animationEasing="ease-out" />
                   </LineChart>
                 </ResponsiveContainer>
@@ -441,18 +441,18 @@ export function ResumeCaisse() {
 
           {/* ── PRODUIT STAR ── */}
           {produitStar && (
-            <div style={{ background:'white', border:'2px solid #AF5B23', borderRadius:18, padding:14, display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ width:56, height:56, borderRadius:14, background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#AF5B23" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <div style={{ background:'white', border:'2px solid var(--commerce-action)', borderRadius:18, padding:14, display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:56, height:56, borderRadius:14, background:'var(--commerce-orange-50)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--commerce-action)" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               </div>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:10, fontWeight:900, color:'#AF5B23', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:2 }}>Produit star du jour</div>
+                <div style={{ fontSize:10, fontWeight:900, color:'var(--commerce-action)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:2 }}>Produit star du jour</div>
                 <div style={{ fontSize:18, fontWeight:900, color:'var(--encre)' }}>{produitStar.productName}</div>
                 <div style={{ fontSize:11, color:'#888', fontWeight:700, marginTop:2 }}>{produitStar.quantity} vente{produitStar.quantity > 1 ? 's' : ''}</div>
               </div>
               <div style={{ textAlign:'right' }}>
-                <div style={{ fontSize:20, fontWeight:900, color:'#AF5B23' }}>{(produitStar.total||0).toLocaleString('fr-FR')}</div>
-                <div style={{ fontSize:11, fontWeight:700, color:'#AF5B23' }}>FCFA</div>
+                <div style={{ fontSize:20, fontWeight:900, color:'var(--commerce-action)' }}>{(produitStar.total||0).toLocaleString('fr-FR')}</div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--commerce-action)' }}>FCFA</div>
               </div>
             </div>
           )}
@@ -461,15 +461,15 @@ export function ResumeCaisse() {
           {topProduits.length > 0 && (
             <div style={{ background:'white', borderRadius:18, padding:14, border:'1.5px solid var(--trait)' }}>
               <div style={{ fontSize:13, fontWeight:900, color:'var(--encre)', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#AF5B23" strokeWidth="2.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--commerce-action)" strokeWidth="2.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 Tes meilleurs produits
               </div>
               {topProduits.slice(0,5).map((p, i) => (
-                <div key={p.productName} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom: i < Math.min(topProduits.length,5)-1 ? '1px solid #f5f0eb' : 'none' }}>
-                  <div style={{ width:28, height:28, borderRadius:'50%', background: i===0?'#AF5B23':i===1?'#888':'#b45309', color:'white', fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{i+1}</div>
+                <div key={p.productName} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom: i < Math.min(topProduits.length,5)-1 ? '1px solid var(--commerce-paper)' : 'none' }}>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background: i===0?'var(--commerce-action)':i===1?'#888':'#b45309', color:'white', fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{i+1}</div>
                   <div style={{ flex:1, fontSize:14, fontWeight:900, color:'var(--encre)' }}>{p.productName}</div>
                   <div style={{ textAlign:'right' }}>
-                    <div style={{ fontSize:14, fontWeight:900, color:'#AF5B23' }}>{(p.total||0).toLocaleString('fr-FR')} FCFA</div>
+                    <div style={{ fontSize:14, fontWeight:900, color:'var(--commerce-action)' }}>{(p.total||0).toLocaleString('fr-FR')} FCFA</div>
                     <div style={{ fontSize:10, fontWeight:700, color:'var(--encre-4)' }}>{p.quantity} vente{p.quantity>1?'s':''}</div>
                   </div>
                 </div>

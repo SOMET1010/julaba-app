@@ -31,7 +31,7 @@ import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
 import { useMontantsPrives } from '../../hooks/useMontantsPrives';
 
-const P = '#AF5B23';
+const P = 'var(--commerce-action)';
 
 interface Stock {
   id: string; name: string; image: string;
@@ -170,7 +170,7 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
                 <span>Stock</span>
                 <span>seuil : {stock.threshold} {stock.unit}</span>
               </div>
-              <div style={{ background: '#f0ebe3', borderRadius: 20, height: 5, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--commerce-gray-100)', borderRadius: 20, height: 5, overflow: 'hidden' }}>
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${stockPct}%` }}
@@ -188,12 +188,12 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
             </div>
 
             {/* Séparateur */}
-            <div style={{ height: 1, background: '#f5f0ea', marginBottom: 10 }} />
+            <div style={{ height: 1, background: 'var(--commerce-paper)', marginBottom: 10 }} />
 
             {/* Prix Achat / Vente */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
               <div style={{
-                background: '#FFF7F0', border: '1.5px solid #FDDFC4',
+                background: 'var(--julaba-ivoire)', border: '1.5px solid var(--julaba-sable)',
                 borderRadius: 12, padding: '7px 6px', textAlign: 'center',
               }}>
                 <div style={{
@@ -632,12 +632,12 @@ export function GestionStock() {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
             <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/ventes-passees')}
               style={{ background:'white', border:'2px solid var(--trait)', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
-              <div style={{ width:30, height:30, borderRadius:9, background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Receipt size={14} color={P} /></div>
+              <div style={{ width:30, height:30, borderRadius:9, background:'var(--commerce-orange-50)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Receipt size={14} color={P} /></div>
               <span style={{ fontSize:12, fontWeight:700, color:'var(--color-gray-700)' }}>Ventes passées</span>
             </motion.button>
             <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/resume-caisse')}
               style={{ background:'white', border:'2px solid var(--trait)', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
-              <div style={{ width:30, height:30, borderRadius:9, background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Wallet size={14} color={P} /></div>
+              <div style={{ width:30, height:30, borderRadius:9, background:'var(--commerce-orange-50)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Wallet size={14} color={P} /></div>
               {/* Renommé « Résumé détaillé » : distinct du « Résumé du jour »
                   (fenêtre rapide de l'accueil, avec fermer-journée/fond) —
                   même nom que deux endroits différents prêtait à confusion
@@ -668,7 +668,7 @@ export function GestionStock() {
               </motion.button>
             </div>
             {!montantsMasques && <motion.button whileTap={{ scale:0.95 }} onClick={() => setSortByMargin(!sortByMargin)}
-              style={{ background:sortByMargin?P:'white', border:`1.5px solid ${sortByMargin?P:'#EDE7DE'}`, borderRadius:12, padding:'0 10px', display:'flex', alignItems:'center', gap:5, height:46, cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
+              style={{ background:sortByMargin?P:'white', border:`1.5px solid ${sortByMargin?P:'var(--commerce-gray-100)'}`, borderRadius:12, padding:'0 10px', display:'flex', alignItems:'center', gap:5, height:46, cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
               <TrendingUp size={13} color={sortByMargin?'white':P} />
               <span style={{ fontSize:11, fontWeight:700, color:sortByMargin?'white':P, whiteSpace:'nowrap' }}>Top marge</span>
             </motion.button>}
@@ -714,7 +714,7 @@ export function GestionStock() {
             ))}
             {filtered.length === 0 && (
               <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px 0' }}>
-                <Package size={48} color="#EDE7DE" style={{ margin: '0 auto 12px' }} />
+                <Package size={48} color="var(--commerce-gray-100)" style={{ margin: '0 auto 12px' }} />
                 <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--encre)', marginBottom: 6 }}>Aucun produit</div>
                 {search ? (
                   <div style={{ fontSize: 13, color: 'var(--encre-4)' }}>Aucun résultat pour "{search}"</div>
@@ -745,7 +745,7 @@ export function GestionStock() {
                   const isPlus = m.qty > 0;
                   return (
                     <motion.div key={i} initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.1 }}
-                      style={{ flex:1, background:isPlus?'#F0FAF5':'var(--color-red-50)', borderRadius:14, padding:'10px 6px', textAlign:'center', border:`1.5px solid ${isPlus?'#9fe1cb':'var(--color-red-300)'}` }}>
+                      style={{ flex:1, background:isPlus?'var(--color-green-50)':'var(--color-red-50)', borderRadius:14, padding:'10px 6px', textAlign:'center', border:`1.5px solid ${isPlus?'#9fe1cb':'var(--color-red-300)'}` }}>
                       <div style={{ width:38, height:38, borderRadius:'50%', background:isPlus?'var(--color-green-600)':'var(--color-red-500)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 5px' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
                           {isPlus?<><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>:<><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></>}
@@ -794,7 +794,7 @@ export function GestionStock() {
             <motion.div initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }} transition={{ type:'spring', damping:25 }}
               onClick={e => e.stopPropagation()}
               style={{ background:'white', borderRadius:'24px 24px 0 0', width:'100%', maxHeight:'90vh', overflowY:'auto', fontFamily:'system-ui,sans-serif' }}>
-              <div style={{ background:`linear-gradient(160deg,${P},#8f4418)`, padding:'14px 16px 20px' }}>
+              <div style={{ background:`linear-gradient(160deg,${P},var(--commerce-orange-700))`, padding:'14px 16px 20px' }}>
                 <div style={{ width:40, height:4, background:'rgba(255,255,255,0.3)', borderRadius:2, margin:'0 auto 14px' }} />
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div style={{ fontSize:20, fontWeight:900, color:'white' }}>Ajouter un produit</div>
@@ -885,7 +885,7 @@ export function GestionStock() {
                       Prix & Marge
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <div style={{ background: '#FFF7F0', border: '1.5px solid #FDDFC4', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
+                      <div style={{ background: 'var(--julaba-ivoire)', border: '1.5px solid var(--julaba-sable)', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
                         <div style={{ fontSize: 8, fontWeight: 900, color: 'var(--color-orange-700)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Achat</div>
                         <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--color-orange-600)', lineHeight: 1, marginBottom: 2 }}>
                           {(selectedStock.purchasePrice || 0).toLocaleString('fr-FR')}
@@ -917,10 +917,10 @@ export function GestionStock() {
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: '#f5f0ea' }} />
+                  <div style={{ height: 1, background: 'var(--commerce-paper)' }} />
 
                   {/* 2. STOCK ACTUEL */}
-                  <div style={{ background: '#FFF8F3', border: '1.5px solid #FDDFC4', borderRadius: 16, padding: '12px 14px' }}>
+                  <div style={{ background: 'var(--caisse-ivoire)', border: '1.5px solid var(--julaba-sable)', borderRadius: 16, padding: '12px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Stock actuel</span>
                       <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-orange-600)' }}>
@@ -931,7 +931,7 @@ export function GestionStock() {
                       <motion.button
                         whileTap={{ scale: 0.88 }}
                         onClick={() => updateQty(selectedStock.id, Math.max(0, selectedStock.quantity - 1))}
-                        style={{ width: 44, height: 44, borderRadius: 12, background: 'white', border: '1.5px solid #e5e0d8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                        style={{ width: 44, height: 44, borderRadius: 12, background: 'white', border: '1.5px solid var(--commerce-gray-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
                       >
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </motion.button>
@@ -949,7 +949,7 @@ export function GestionStock() {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </motion.button>
                     </div>
-                    <div style={{ background: '#f0ebe3', borderRadius: 20, height: 5, overflow: 'hidden', marginBottom: 6 }}>
+                    <div style={{ background: 'var(--commerce-gray-100)', borderRadius: 20, height: 5, overflow: 'hidden', marginBottom: 6 }}>
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(100, Math.round((selectedStock.quantity / Math.max(selectedStock.threshold * 2, 1)) * 100))}%` }}
@@ -973,14 +973,14 @@ export function GestionStock() {
 
                   {/* 3. VALEUR + DERNIER MOUVEMENT */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <div style={{ background: '#F8F5F2', borderRadius: 12, padding: '10px 12px' }}>
+                    <div style={{ background: 'var(--caisse-ivoire)', borderRadius: 12, padding: '10px 12px' }}>
                       <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Valeur stock</div>
                       <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--encre)' }}>
                         {(selectedStock.quantity * selectedStock.salePrice || 0).toLocaleString('fr-FR')}
                       </div>
                       <div style={{ fontSize: 9, color: 'var(--encre-4)', fontWeight: 600, marginTop: 2 }}>FCFA total</div>
                     </div>
-                    <div style={{ background: '#F8F5F2', borderRadius: 12, padding: '10px 12px' }}>
+                    <div style={{ background: 'var(--caisse-ivoire)', borderRadius: 12, padding: '10px 12px' }}>
                       <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Dernier mouvement</div>
                       <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--encre)' }}>
                         {produitMouvements[0]?.day || '—'}
@@ -991,7 +991,7 @@ export function GestionStock() {
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: '#f5f0ea' }} />
+                  <div style={{ height: 1, background: 'var(--commerce-paper)' }} />
 
                   {/* 4. REAPPROVISIONNER */}
                   <div style={{ border: '1.5px solid var(--trait)', borderRadius: 16, padding: '12px 14px' }}>
@@ -1018,7 +1018,7 @@ export function GestionStock() {
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: '#f5f0ea' }} />
+                  <div style={{ height: 1, background: 'var(--commerce-paper)' }} />
 
                   {/* 5. DERNIERS MOUVEMENTS */}
                   <div>
@@ -1030,7 +1030,7 @@ export function GestionStock() {
                         Aucune vente enregistrée pour ce produit.
                       </div>
                     ) : produitMouvements.map((m, i) => (
-                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < produitMouvements.length - 1 ? '1px solid #f5f0ea' : 'none' }}>
+                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < produitMouvements.length - 1 ? '1px solid var(--commerce-paper)' : 'none' }}>
                         <div style={{ width: 30, height: 30, borderRadius: 10, background: m.qty > 0 ? 'var(--color-green-100)' : 'var(--color-red-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {m.qty > 0
                             ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-green-600)" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1102,7 +1102,7 @@ export function GestionStock() {
                       />
                     </div>
                   </div>
-                  <div style={{ background: '#FFF8F3', border: '1.5px solid #FDDFC4', borderRadius: 14, padding: '11px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ background: 'var(--caisse-ivoire)', border: '1.5px solid var(--julaba-sable)', borderRadius: 14, padding: '11px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Marge</span>
                     <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                       <div style={{ textAlign: 'right' }}>
@@ -1282,7 +1282,7 @@ export function GestionStock() {
               <motion.div initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }} transition={{ type:'spring', damping:25 }}
                 onClick={e => e.stopPropagation()}
                 style={{ background:'white', borderRadius:'24px 24px 0 0', width:'100%', maxHeight:'85vh', overflowY:'auto', fontFamily:'system-ui,sans-serif' }}>
-                <div style={{ background:'linear-gradient(160deg,#1D9E75,#0f6e56)', padding:'14px 16px 20px' }}>
+                <div style={{ background:'linear-gradient(160deg,#1D9E75,var(--julaba-vert-feuille))', padding:'14px 16px 20px' }}>
                   <div style={{ width:40, height:4, background:'rgba(255,255,255,0.3)', borderRadius:2, margin:'0 auto 14px' }} />
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div style={{ fontSize:20, fontWeight:900, color:'white' }}>Valeur du stock</div>
@@ -1296,20 +1296,20 @@ export function GestionStock() {
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                     {[
                       { label:'Valeur achat', value:totalBuy, color:'var(--color-red-500)', bg:'var(--color-red-50)' },
-                      { label:'Valeur vente', value:totalSell, color:'#1D9E75', bg:'#F0FAF5' },
+                      { label:'Valeur vente', value:totalSell, color:'#1D9E75', bg:'var(--color-green-50)' },
                     ].map((k) => (
                       <div key={k.label} style={{ background:k.bg, borderRadius:14, padding:14, border:`1.5px solid ${k.color}33` }}>
                         <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>{k.label}</div>
                         <Montant value={k.value} size="md" color={k.color} masque={montantsMasques} />
                       </div>
                     ))}
-                    <div style={{ background:'#FFF3EA', borderRadius:14, padding:14, border:`1.5px solid ${P}33` }}>
+                    <div style={{ background:'var(--commerce-orange-50)', borderRadius:14, padding:14, border:`1.5px solid ${P}33` }}>
                       <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>Marge totale</div>
                       {margeConnue
                         ? <Montant value={marge} size="md" color={P} masque={montantsMasques} />
                         : <div style={{ fontSize:22, fontWeight:900, color:'var(--encre-4)' }}>—</div>}
                     </div>
-                    <div style={{ background:'#F5F0FF', borderRadius:14, padding:14, border:'1.5px solid #a78bfa33' }}>
+                    <div style={{ background:'var(--color-purple-50)', borderRadius:14, padding:14, border:'1.5px solid #a78bfa33' }}>
                       <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>ROI</div>
                       <div style={{ fontSize:22, fontWeight:900, color: margeConnue ? '#7c3aed' : 'var(--encre-4)' }}>{montantsMasques ? '•••••' : (margeConnue ? `+${roi}%` : '—')}</div>
                     </div>
@@ -1320,9 +1320,9 @@ export function GestionStock() {
                     </div>
                   )}
                   <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, overflow:'hidden' }}>
-                    <div style={{ padding:'12px 14px', borderBottom:'1px solid #f5f0eb', fontSize:13, fontWeight:800, color:'var(--encre)' }}>Top 3 produits</div>
+                    <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--commerce-paper)', fontSize:13, fontWeight:800, color:'var(--encre)' }}>Top 3 produits</div>
                     {stocks.map(s=>({...s,val:s.quantity*s.salePrice})).sort((a,b)=>b.val-a.val).slice(0,3).map((p,i) => (
-                      <div key={p.id} style={{ padding:'12px 14px', borderBottom:i<2?'1px solid #f5f0eb':'none', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div key={p.id} style={{ padding:'12px 14px', borderBottom:i<2?'1px solid var(--commerce-paper)':'none', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                           <div style={{ width:28, height:28, borderRadius:8, background:i===0?'#f59e0b':i===1?'var(--color-gray-400)':'#c97316', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:'white' }}>{i+1}</div>
                           <div>

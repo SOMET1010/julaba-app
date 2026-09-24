@@ -8,7 +8,7 @@ import { useUser } from '../../contexts/UserContext';
 import { guidageVocal } from '../../utils/accessMode';
 import { toast } from 'sonner';
 
-const P = '#AF5B23';
+const P = 'var(--commerce-action)';
 
 const JOURS = [1,2,3,4,5,6,7,10,14,21,30];
 
@@ -244,7 +244,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
           {/* ══ ÉTAPE 1 ══ */}
           {step === 1 && (
             <>
-              <div style={{ background:`linear-gradient(160deg,${P},#8f4418)`, padding:'14px 16px 22px' }}>
+              <div style={{ background:`linear-gradient(160deg,${P},var(--commerce-orange-700))`, padding:'14px 16px 22px' }}>
                 <div style={{ width:40, height:4, borderRadius:2, background:'rgba(255,255,255,0.3)', margin:'0 auto 16px' }} />
                 <div style={{ display:'flex', gap:7, marginBottom:14 }}>
                   <div style={{ width:32, height:6, borderRadius:3, background:'white' }} />
@@ -256,7 +256,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
               </div>
               <div style={{ padding:'18px' }}>
                 {/* Résumé */}
-                <div style={{ background:'#FFF3EA', borderRadius:14, padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
+                <div style={{ background:'var(--commerce-orange-50)', borderRadius:14, padding:'14px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:18 }}>
                   <span style={{ fontSize:14, color:'var(--encre-2)', fontWeight:600 }}>{cart.map(i=>`${i.nom} ×${i.quantite}`).join(' · ')}</span>
                   <span style={{ fontSize:20, fontWeight:900, color:P }}>{total.toLocaleString('fr-FR')} FCFA</span>
                 </div>
@@ -269,7 +269,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                     </div>
                     {clientsFiltres.slice(0,4).map(c => (
                       <motion.button key={c.id} whileTap={{ scale:0.98 }} onClick={() => selectClient(c)}
-                        style={{ width:'100%', borderRadius:14, padding:'14px 16px', fontSize:17, fontWeight:800, cursor:'pointer', border:`2px solid ${clientNom===c.nom ? P : '#EDE7DE'}`, background: clientNom===c.nom ? P : 'white', color: clientNom===c.nom ? 'white' : '#1a1206', fontFamily:'inherit', textAlign:'left', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginBottom:8 }}>
+                        style={{ width:'100%', borderRadius:14, padding:'14px 16px', fontSize:17, fontWeight:800, cursor:'pointer', border:`2px solid ${clientNom===c.nom ? P : 'var(--commerce-gray-100)'}`, background: clientNom===c.nom ? P : 'white', color: clientNom===c.nom ? 'white' : '#1a1206', fontFamily:'inherit', textAlign:'left', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, marginBottom:8 }}>
                         <span style={{ flex:'1 1 auto', minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.nom}</span>
                         {c.montant_du > 0 && (
                           <span style={{ fontSize:11, color: clientNom===c.nom ? 'rgba(255,255,255,0.75)' : 'var(--color-red-500)', fontWeight:600, flexShrink:0, whiteSpace:'nowrap', paddingLeft:6 }}>
@@ -282,7 +282,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                 )}
 
                 {/* Champ nom */}
-                <div style={{ background:'#f5f0eb', border:`1.5px solid ${clientNom ? P : '#EDE7DE'}`, borderRadius:14, padding:'14px 16px', display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+                <div style={{ background:'var(--commerce-paper)', border:`1.5px solid ${clientNom ? P : 'var(--commerce-gray-100)'}`, borderRadius:14, padding:'14px 16px', display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={clientNom ? P : '#aaa'} strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                   <input value={clientNom}
                     onChange={e => setClientNom(capitalize(e.target.value))}
@@ -309,7 +309,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                       style={{ background:'none', border:'none', fontSize:13, color:P, fontWeight:700, cursor:'pointer', fontFamily:'inherit', padding:'4px 0', marginBottom:18 }}>
                       + Ajouter un numéro de téléphone
                     </motion.button>
-                  : <div style={{ background:'#f5f0eb', border:'1.5px solid var(--trait)', borderRadius:14, padding:'13px 16px', display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
+                  : <div style={{ background:'var(--commerce-paper)', border:'1.5px solid var(--trait)', borderRadius:14, padding:'13px 16px', display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                       <span
                         aria-hidden
@@ -345,7 +345,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
           {/* ══ ÉTAPE 2 ══ */}
           {step === 2 && (
             <>
-              <div style={{ background:`linear-gradient(160deg,${P},#8f4418)`, padding:'14px 16px 22px' }}>
+              <div style={{ background:`linear-gradient(160deg,${P},var(--commerce-orange-700))`, padding:'14px 16px 22px' }}>
                 <div style={{ width:40, height:4, borderRadius:2, background:'rgba(255,255,255,0.3)', margin:'0 auto 16px' }} />
                 <div style={{ display:'flex', gap:7, marginBottom:14 }}>
                   <div style={{ width:32, height:6, borderRadius:3, background:'rgba(255,255,255,0.35)' }} />
@@ -371,7 +371,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, margin:'16px 0 14px' }}>
                   {[{j:1,label:'Demain'},{j:7,label:'1 semaine'},{j:30,label:'1 mois'}].map(({j,label}) => (
                     <motion.button key={j} whileTap={{ scale:0.95 }} onClick={() => jumpTo(j)}
-                      style={{ background: jours===j ? P : '#f5f0eb', border:`1.5px solid ${jours===j ? P : '#EDE7DE'}`, borderRadius:12, padding:'10px 4px', cursor:'pointer', fontFamily:'inherit' }}>
+                      style={{ background: jours===j ? P : 'var(--commerce-paper)', border:`1.5px solid ${jours===j ? P : 'var(--commerce-gray-100)'}`, borderRadius:12, padding:'10px 4px', cursor:'pointer', fontFamily:'inherit' }}>
                       <div style={{ fontSize:13, fontWeight:800, color: jours===j ? 'white' : '#1a1206' }}>{label}</div>
                       <div style={{ fontSize:10, color: jours===j ? 'rgba(255,255,255,0.75)' : '#aaa', marginTop:2 }}>{fmtShort(getDate(j))}</div>
                     </motion.button>
@@ -394,7 +394,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                       return (
                         <div key={j} data-j={j}
                           onClick={() => jumpTo(j)}
-                          style={{ flexShrink:0, width:72, height:84, borderRadius:16, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', scrollSnapAlign:'center', cursor:'pointer', border:`2px solid ${isOn ? P : '#EDE7DE'}`, background: isOn ? P : 'white', transform:`scale(${isOn ? 1.08 : dist===1 ? 0.93 : 0.82})`, opacity: isOn ? 1 : dist===1 ? 0.7 : 0.45, transition:'all 0.2s' }}>
+                          style={{ flexShrink:0, width:72, height:84, borderRadius:16, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', scrollSnapAlign:'center', cursor:'pointer', border:`2px solid ${isOn ? P : 'var(--commerce-gray-100)'}`, background: isOn ? P : 'white', transform:`scale(${isOn ? 1.08 : dist===1 ? 0.93 : 0.82})`, opacity: isOn ? 1 : dist===1 ? 0.7 : 0.45, transition:'all 0.2s' }}>
                           <div style={{ fontSize: isOn ? 22 : 17, fontWeight:900, color: isOn ? 'white' : '#1a1206' }}>{j}</div>
                           <div style={{ fontSize:10, color: isOn ? 'rgba(255,255,255,0.75)' : '#aaa', marginTop:3 }}>{wd}</div>
                         </div>
@@ -404,15 +404,15 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                 </div>
 
                 {/* Acompte */}
-                <div style={{ background:'#FFF3EA', border:'1.5px solid #f5d5a8', borderRadius:16, padding:'16px', marginBottom:8 }}>
+                <div style={{ background:'var(--commerce-orange-50)', border:'1.5px solid var(--color-orange-200)', borderRadius:16, padding:'16px', marginBottom:8 }}>
                   <div style={{ fontSize:17, fontWeight:800, color:'var(--encre)', marginBottom:12 }}>Elle t'a déjà donné quelque chose ?</div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                     <motion.button whileTap={{ scale:0.97 }} onClick={() => { setAADonne(false); setAcompte(''); }}
-                      style={{ borderRadius:12, padding:'14px', textAlign:'center', background: !aADonne ? '#E8E8E8' : 'white', border:`1.5px solid ${!aADonne ? '#999' : '#EDE7DE'}`, cursor:'pointer', fontFamily:'inherit', fontSize:17, fontWeight:800, color: !aADonne ? '#555' : 'var(--encre-4)' }}>
+                      style={{ borderRadius:12, padding:'14px', textAlign:'center', background: !aADonne ? 'var(--muted)' : 'white', border:`1.5px solid ${!aADonne ? '#999' : 'var(--commerce-gray-100)'}`, cursor:'pointer', fontFamily:'inherit', fontSize:17, fontWeight:800, color: !aADonne ? '#555' : 'var(--encre-4)' }}>
                       Non
                     </motion.button>
                     <div onClick={() => setAADonne(true)}
-                      style={{ borderRadius:12, padding:'12px 14px', background:'white', border:`1.5px solid ${aADonne ? P : '#EDE7DE'}`, display:'flex', alignItems:'center', gap:6, cursor:'text' }}>
+                      style={{ borderRadius:12, padding:'12px 14px', background:'white', border:`1.5px solid ${aADonne ? P : 'var(--commerce-gray-100)'}`, display:'flex', alignItems:'center', gap:6, cursor:'text' }}>
                       <input value={acompte} onChange={e => { setAcompte(e.target.value); setAADonne(true); }}
                         placeholder="Montant" type="number"
                         style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:16, color:P, fontWeight:700, fontFamily:'inherit', width:60 }} />
@@ -431,7 +431,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
 
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:8 }}>
                   <motion.button whileTap={{ scale:0.97 }} onClick={() => setStep(1)}
-                    style={{ background:'#f0f0f0', border:'none', borderRadius:14, padding:'16px', fontSize:15, fontWeight:700, color:'var(--encre-3)', cursor:'pointer', fontFamily:'inherit' }}>
+                    style={{ background:'var(--muted)', border:'none', borderRadius:14, padding:'16px', fontSize:15, fontWeight:700, color:'var(--encre-3)', cursor:'pointer', fontFamily:'inherit' }}>
                     ← Retour
                   </motion.button>
                   <motion.button whileTap={{ scale:0.97 }} onClick={() => {
@@ -455,7 +455,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
           {/* ══ ÉTAPE 3 ══ */}
           {step === 3 && (
             <>
-              <div style={{ background:`linear-gradient(160deg,${P},#8f4418)`, padding:'14px 16px 22px' }}>
+              <div style={{ background:`linear-gradient(160deg,${P},var(--commerce-orange-700))`, padding:'14px 16px 22px' }}>
                 <div style={{ width:40, height:4, borderRadius:2, background:'rgba(255,255,255,0.3)', margin:'0 auto 16px' }} />
                 <div style={{ display:'flex', gap:7, marginBottom:14 }}>
                   <div style={{ width:32, height:6, borderRadius:3, background:'rgba(255,255,255,0.35)' }} />
@@ -469,7 +469,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                 {/* Récap lisible */}
                 <div style={{ borderRadius:18, overflow:'hidden', border:'1.5px solid var(--trait)', marginBottom:20 }}>
                   {/* Client */}
-                  <div style={{ padding:'18px', background:'#FFF3EA', borderBottom:'1.5px solid #f5d5a8' }}>
+                  <div style={{ padding:'18px', background:'var(--commerce-orange-50)', borderBottom:'1.5px solid var(--color-orange-200)' }}>
                     <div style={{ fontSize:13, color:'var(--encre-4)', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Client</div>
                     <div style={{ fontSize:26, fontWeight:900, color:'var(--encre)' }}>{clientNom}</div>
                     {clientPhone && <div style={{ fontSize:13, color:'var(--encre-4)', marginTop:2 }}>{clientPhone}</div>}
@@ -493,21 +493,21 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                       <div style={{ fontSize:13, color:'var(--encre-4)', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Remboursement</div>
                       <div style={{ fontSize:19, fontWeight:800, color:'var(--encre)' }}>{echeanceLong}</div>
                     </div>
-                    <div style={{ background:'#FFF3EA', borderRadius:10, padding:'6px 14px' }}>
+                    <div style={{ background:'var(--commerce-orange-50)', borderRadius:10, padding:'6px 14px' }}>
                       <div style={{ fontSize:14, fontWeight:700, color:P }}>dans {jours}j</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Note vocale */}
-                <div style={{ background:'#F0FAF5', border:'1px solid #9fe1cb', borderRadius:12, padding:'12px 14px', display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
+                <div style={{ background:'var(--color-green-50)', border:'1px solid #9fe1cb', borderRadius:12, padding:'12px 14px', display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
                   <span style={{ fontSize:13, color:'#1D9E75', fontWeight:600 }}>Tantie Nanti Lou confirmera vocalement après l'enregistrement</span>
                 </div>
 
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:8 }}>
                   <motion.button whileTap={{ scale:0.97 }} onClick={() => setStep(2)}
-                    style={{ background:'#f0f0f0', border:'none', borderRadius:14, padding:'16px', fontSize:15, fontWeight:700, color:'var(--encre-3)', cursor:'pointer', fontFamily:'inherit' }}>
+                    style={{ background:'var(--muted)', border:'none', borderRadius:14, padding:'16px', fontSize:15, fontWeight:700, color:'var(--encre-3)', cursor:'pointer', fontFamily:'inherit' }}>
                     ← Retour
                   </motion.button>
                   <motion.button whileTap={{ scale:0.97 }} onClick={handleSave} disabled={isSaving}

@@ -32,7 +32,7 @@ import { confirmationDeuxFormes, ambiguiteDeuxFormes, phraseConfirmation, phrase
 import { resoudreMessage } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
 
-const VERT = '#0E7A47';
+const VERT = 'var(--color-green-700)';
 const ORANGE = 'var(--commerce-action)';
 
 /** Cible tactile minimale, en pixels — même règle que la barre de recherche de la caisse (test-cible-tactile.mjs). */
@@ -176,7 +176,7 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <motion.button whileTap={{ scale: 0.9 }} aria-label="Moins"
                 onClick={() => corrigerEtDire(Math.max(1, ligne.quantite - 1))}
-                style={{ width: 48, height: 48, borderRadius: 14, background: 'white', border: '1.5px solid #e5e0d8', fontSize: 24, fontWeight: 800, color: '#555', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
+                style={{ width: 48, height: 48, borderRadius: 14, background: 'white', border: '1.5px solid var(--commerce-gray-100)', fontSize: 24, fontWeight: 800, color: '#555', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
               <span style={{ fontSize: 26, fontWeight: 900, color: 'var(--encre)', minWidth: 40, textAlign: 'center' }}>{ligne.quantite}</span>
               <motion.button whileTap={{ scale: 0.9 }} aria-label="Plus"
                 onClick={() => corrigerEtDire(ligne.quantite + 1)}
@@ -191,7 +191,7 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
               {(['unitaire', 'total'] as const).map(m => (
                 <button key={m} onClick={() => { setModePrix(m); direMessage(m === 'unitaire' ? 'TATA_PRIX_D_UN_SEUL' : 'TATA_PRIX_DU_TOUT'); }}
                   style={{ flex: 1, minHeight: CIBLE_TACTILE, borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
-                    border: `1.5px solid ${modePrix === m ? ORANGE : '#e5e0d8'}`, background: modePrix === m ? '#FDE9D6' : 'white', color: modePrix === m ? ORANGE : '#888' }}>
+                    border: `1.5px solid ${modePrix === m ? ORANGE : 'var(--commerce-gray-100)'}`, background: modePrix === m ? 'var(--color-orange-100)' : 'white', color: modePrix === m ? ORANGE : '#888' }}>
                   {m === 'unitaire' ? "Prix d'un" : 'Prix du tout'}
                 </button>
               ))}
@@ -204,20 +204,20 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
                 <button key={d} type="button" onClick={() => taperPrix((prixSaisi === '0' ? d : prixSaisi + d).slice(0, 6))}
-                  style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 18, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 18, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
                   {d}
                 </button>
               ))}
               <button type="button" onClick={() => taperPrix('')}
-                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 13, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>C</button>
+                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 13, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>C</button>
               <button type="button" onClick={() => taperPrix((prixSaisi === '0' ? '0' : prixSaisi + '0').slice(0, 6))}
-                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 18, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>0</button>
+                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 18, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>0</button>
               <button type="button" onClick={() => taperPrix(prixSaisi.slice(0, -1))} aria-label="Effacer un chiffre"
-                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 15, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>⌫</button>
+                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 15, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>⌫</button>
             </div>
             <motion.button whileTap={{ scale: 0.97 }} disabled={!prixSaisi}
               onClick={() => { const v = parseInt(prixSaisi, 10); if (v > 0) { onLigneChange(corrigerPrix(ligne, v, modePrix)); setCorrige(false); setPrixSaisi(''); } }}
-              style={{ width: '100%', minHeight: 48, background: prixSaisi ? ORANGE : '#d9cfc3', color: 'white', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: prixSaisi ? 'pointer' : 'default', fontFamily: 'inherit' }}>
+              style={{ width: '100%', minHeight: 48, background: prixSaisi ? ORANGE : 'var(--commerce-line)', color: 'white', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: prixSaisi ? 'pointer' : 'default', fontFamily: 'inherit' }}>
               Valider le prix
             </motion.button>
           </div>
@@ -230,7 +230,7 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
         <>
           {/* Résumé chiffré */}
           {resolue && (
-            <div style={{ background: 'white', borderRadius: 14, padding: '10px 12px', marginBottom: 14, border: '1px solid #F0E4D4' }}>
+            <div style={{ background: 'white', borderRadius: 14, padding: '10px 12px', marginBottom: 14, border: '1px solid var(--commerce-gray-100)' }}>
               <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--encre)', textAlign: 'center', margin: 0 }}>{resumeLigne(ligne)}</p>
             </div>
           )}
@@ -247,7 +247,7 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
                 Non, corriger
               </motion.button>
               <motion.button whileTap={{ scale: 0.97 }} onClick={onAnnuler}
-                style={{ ...btnBase, background: 'white', color: 'var(--color-gray-400)', border: '2px solid #e5e0d8' }}>
+                style={{ ...btnBase, background: 'white', color: 'var(--color-gray-400)', border: '2px solid var(--commerce-gray-100)' }}>
                 Annuler
               </motion.button>
             </div>

@@ -37,7 +37,7 @@ import {
 import { BoutonDirePrix } from './BoutonDirePrix';
 
 const ORANGE = 'var(--commerce-action)';
-const VERT = '#0E7A47';
+const VERT = 'var(--color-green-700)';
 /** Même cible tactile que le reste de la caisse : un doigt, pas un curseur. */
 const CIBLE = 44;
 
@@ -141,7 +141,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   };
 
   return (
-    <div style={{ background: 'var(--commerce-surface)', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ background: 'var(--commerce-surface)', border: '1.5px solid var(--commerce-gray-100)', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
       {/* ─── 1. SON NOM ─────────────────────────────────────────────── */}
       {etapeVue === 'nom' && (
@@ -152,7 +152,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
           <input autoFocus value={nom} onChange={e => setNom(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); avancer(); } }}
             aria-label="Qu'est-ce que tu vends ?" placeholder="Son nom"
-            style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid #e5e0d8', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
+            style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid var(--commerce-gray-100)', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
           {/* LES DEUX GESTES — arbitrage de Patrick, 24/09, option C.
               Le grand bouton pour elle : c'est le geste qu'elle sait faire.
               La touche OK du clavier pour qui va vite. Rien n'avance tout
@@ -160,7 +160,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
           <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={avancer}
             disabled={!peutAvancer} aria-label="C'est bon, continue"
             style={{ width: '100%', minHeight: CIBLE + 12, borderRadius: 16, border: 'none',
-              background: peutAvancer ? VERT : '#d9d4cc', color: 'white', fontSize: 18, fontWeight: 800,
+              background: peutAvancer ? VERT : 'var(--commerce-line)', color: 'white', fontSize: 18, fontWeight: 800,
               cursor: peutAvancer ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
             <Check size={24} /> C'est bon
@@ -198,7 +198,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               <input autoFocus value={unite} onChange={e => setUnite(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); avancer(); } }}
                 aria-label="Tu le vends comment ?" placeholder="Comment tu le vends"
-                style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid #e5e0d8', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
+                style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid var(--commerce-gray-100)', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
           {/* LES DEUX GESTES — arbitrage de Patrick, 24/09, option C.
               Le grand bouton pour elle : c'est le geste qu'elle sait faire.
               La touche OK du clavier pour qui va vite. Rien n'avance tout
@@ -206,7 +206,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
           <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={avancer}
             disabled={!peutAvancer} aria-label="C'est bon, continue"
             style={{ width: '100%', minHeight: CIBLE + 12, borderRadius: 16, border: 'none',
-              background: peutAvancer ? VERT : '#d9d4cc', color: 'white', fontSize: 18, fontWeight: 800,
+              background: peutAvancer ? VERT : 'var(--commerce-line)', color: 'white', fontSize: 18, fontWeight: 800,
               cursor: peutAvancer ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
             <Check size={24} /> C'est bon
@@ -224,7 +224,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
           </p>
           {/* JAMAIS PRÉREMPLI. C'est STK-02 : un prix qu'elle n'a pas donné
               n'existe pas, et il ne se devine pas à partir d'un catalogue. */}
-          <div aria-live="polite" style={{ minHeight: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: `2px solid ${prix ? VERT : '#e5e0d8'}`, borderRadius: 14, fontSize: 26, fontWeight: 800, color: 'var(--encre)' }}>
+          <div aria-live="polite" style={{ minHeight: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: `2px solid ${prix ? VERT : 'var(--commerce-gray-100)'}`, borderRadius: 14, fontSize: 26, fontWeight: 800, color: 'var(--encre)' }}>
             {prix ? `${Number(prix).toLocaleString('fr-FR')} F` : '—'}
           </div>
           {/* VOX-03 — LE GESTE PAR DÉFAUT EST CELUI QU'ELLE SAIT FAIRE.
@@ -249,7 +249,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>0</button>
             {/* Éteint tant qu'elle n'a pas donné son prix : rien à valider. */}
             <button type="button" onClick={poser} disabled={!aCreer || enCours} aria-label="C'est bon"
-              style={{ minHeight: CIBLE + 8, borderRadius: 12, border: 'none', background: aCreer ? VERT : '#d9d4cc', color: 'white', fontSize: 20, fontWeight: 800, cursor: aCreer ? 'pointer' : 'not-allowed', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              style={{ minHeight: CIBLE + 8, borderRadius: 12, border: 'none', background: aCreer ? VERT : 'var(--commerce-line)', color: 'white', fontSize: 20, fontWeight: 800, cursor: aCreer ? 'pointer' : 'not-allowed', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Check size={22} />
             </button>
           </div>

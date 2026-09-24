@@ -35,7 +35,7 @@ export function SyncEchecsBanner() {
       <div
         role="status"
         style={{
-          background: '#E3F1E6', color: '#1E6B35', border: '1px solid #1E6B35',
+          background: 'var(--color-green-100)', color: 'var(--color-green-800)', border: '1px solid var(--color-green-800)',
           borderRadius: 10, padding: '10px 14px', fontSize: 14,
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
         }}
@@ -55,7 +55,7 @@ export function SyncEchecsBanner() {
         <button
           type="button"
           onClick={() => accuserVentesSynchronisees()}
-          style={{ minHeight: 44, padding: '0 8px', flexShrink: 0, background: 'none', border: 'none', color: '#1E6B35', textDecoration: 'underline', cursor: 'pointer' }}
+          style={{ minHeight: 44, padding: '0 8px', flexShrink: 0, background: 'none', border: 'none', color: 'var(--color-green-800)', textDecoration: 'underline', cursor: 'pointer' }}
         >
           J’ai vu
         </button>
@@ -65,7 +65,7 @@ export function SyncEchecsBanner() {
     <div
       role="alert"
       style={{
-        background: '#F6E2DF', color: '#AE3A38', border: '1px solid #AE3A38',
+        background: 'var(--color-red-100)', color: '#AE3A38', border: '1px solid #AE3A38',
         borderRadius: 10, padding: '10px 14px', fontSize: 14,
       }}
     >

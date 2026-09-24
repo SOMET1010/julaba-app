@@ -64,7 +64,7 @@ const STATUT_LABELS: Record<string, string> = {
 
 const NEG_STATUT_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   en_attente:   { label: 'En attente',      color: '#f59e0b', bg: '#fef3c7' },
-  accepte:      { label: 'Acceptée',        color: '#10b981', bg: '#d1fae5' },
+  accepte:      { label: 'Acceptée',        color: '#10b981', bg: 'var(--color-green-100)' },
   refuse:       { label: 'Refusée',         color: 'var(--color-red-500)', bg: 'var(--color-red-100)' },
   contre_offre: { label: 'Contre-offre',    color: '#8b5cf6', bg: 'var(--color-purple-100)' },
 };
@@ -698,7 +698,7 @@ export function MesCommandes() {
                       {commande.statut === 'confirmee' && commande.vendeurId === user?.id && (
                         <Button
                           onClick={() => { void handleMarquerLivree(commande.id); }}
-                          className="flex-1 bg-[var(--color-green-600)] text-white hover:bg-[#138a3e]"
+                          className="flex-1 bg-[var(--color-green-600)] text-white hover:bg-[var(--color-green-700)]"
                           size="sm"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
@@ -708,7 +708,7 @@ export function MesCommandes() {
                       {RECEPTION_PAIEMENT_ACTIF && commande.statut === 'livree' && commande.statutPaiement !== 'paye' && commande.vendeurId === user?.id && (
                         <Button
                           onClick={() => handleOuvrirReception(commande)}
-                          className="flex-1 bg-[var(--color-green-600)] text-white hover:bg-[#138a3e]"
+                          className="flex-1 bg-[var(--color-green-600)] text-white hover:bg-[var(--color-green-700)]"
                           size="sm"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />

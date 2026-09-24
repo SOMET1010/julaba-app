@@ -12,7 +12,7 @@ import { NotificationButton } from './NotificationButton';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
 
-const P = '#AF5B23';
+const P = 'var(--commerce-action)';
 const BG = 'var(--commerce-paper)';
 
 type Period = 'today' | 'month' | 'all';
@@ -44,24 +44,24 @@ const svg = (stroke: string, chemin: React.ReactNode): React.ReactNode => (
 const GENS = <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>;
 
 const APPARENCE: Readonly<Record<IdCategorieDepense, ApparenceCategorie>> = {
-  transport:   { color:'#AF5B23', bg:'#FFF3EA', border:'#f5d5a8', icon: svg('#AF5B23', <><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></>) },
-  repas:       { color:'#E24B4A', bg:'#FEF3F2', border:'var(--color-red-300)', icon: svg('#E24B4A', <><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>) },
+  transport:   { color:'var(--commerce-action)', bg:'var(--commerce-orange-50)', border:'var(--color-orange-200)', icon: svg('var(--commerce-action)', <><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></>) },
+  repas:       { color:'#E24B4A', bg:'var(--color-red-50)', border:'var(--color-red-300)', icon: svg('#E24B4A', <><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>) },
   taxe_mairie: { color:'#7F77DD', bg:'#F4F3FE', border:'#cecbf6', icon: svg('#7F77DD', <><line x1="3" y1="21" x2="21" y2="21"/><line x1="5" y1="21" x2="5" y2="10"/><line x1="19" y1="21" x2="19" y2="10"/><line x1="12" y1="21" x2="12" y2="10"/><polygon points="3 10 12 3 21 10"/></>) },
-  loyer:       { color:'#378ADD', bg:'#F0F4FF', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>) },
-  famille:     { color:'#E24B4A', bg:'#FFF0F0', border:'var(--color-red-300)', icon: svg('#E24B4A', GENS) },
-  tontine:     { color:'#7F77DD', bg:'#FDF4FF', border:'#cecbf6', icon: svg('#7F77DD', GENS) },
-  sante:       { color:'#1D9E75', bg:'#F0FFF4', border:'#9fe1cb', icon: svg('#1D9E75', <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>) },
-  telephone:   { color:'var(--commerce-action)', bg:'var(--commerce-paper)', border:'#f5d5a8', icon: svg('var(--commerce-action)', <><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></>) },
-  marchandise: { color:'#1D9E75', bg:'#F0FAF5', border:'#9fe1cb', icon: svg('#1D9E75', <><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></>) },
-  ecole:       { color:'#378ADD', bg:'#F0F4FF', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></>) },
-  autre:       { color:'#888', bg:'#F5F5F5', border:'#ddd', icon: svg('#888', <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>) },
+  loyer:       { color:'#378ADD', bg:'var(--color-gray-100)', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>) },
+  famille:     { color:'#E24B4A', bg:'var(--color-red-50)', border:'var(--color-red-300)', icon: svg('#E24B4A', GENS) },
+  tontine:     { color:'#7F77DD', bg:'var(--color-purple-50)', border:'#cecbf6', icon: svg('#7F77DD', GENS) },
+  sante:       { color:'#1D9E75', bg:'var(--color-green-50)', border:'#9fe1cb', icon: svg('#1D9E75', <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>) },
+  telephone:   { color:'var(--commerce-action)', bg:'var(--commerce-paper)', border:'var(--color-orange-200)', icon: svg('var(--commerce-action)', <><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></>) },
+  marchandise: { color:'#1D9E75', bg:'var(--color-green-50)', border:'#9fe1cb', icon: svg('#1D9E75', <><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></>) },
+  ecole:       { color:'#378ADD', bg:'var(--color-gray-100)', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></>) },
+  autre:       { color:'#888', bg:'var(--muted)', border:'#ddd', icon: svg('#888', <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>) },
 };
 
 // L'APPARENCE DU « PAS NOTÉ ». Volontairement DIFFÉRENTE de celle d'« Autre » :
 // une non-lectrice distingue les pastilles, pas les mots. Confondre les deux
 // remettrait les deux sens sur une même donnée.
 const SANS_CATEGORIE: ApparenceCategorie = {
-  color:'#9A8F84', bg:'#FAF7F3', border:'#E4DCD2',
+  color:'#9A8F84', bg:'var(--caisse-ivoire)', border:'#E4DCD2',
   icon: svg('#9A8F84', <><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></>),
 };
 
@@ -134,7 +134,7 @@ function DepenseCard({ d, index, query, montantsMasques }: { d: any; index: numb
             initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }}
             transition={{ duration:0.25, ease:[0.4,0,0.2,1] }}
             style={{ overflow:'hidden' }}>
-            <div style={{ borderTop:'1px solid #f5f0eb', padding:'12px 14px', background:'#FDFAF7', display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ borderTop:'1px solid var(--commerce-paper)', padding:'12px 14px', background:'var(--commerce-surface)', display:'flex', flexDirection:'column', gap:8 }}>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Date complète</span>
                 <span style={{ fontSize:12, fontWeight:700, color:'var(--encre)' }}>{format(dateObj, 'dd MMMM yyyy à HH:mm', { locale:fr })}</span>
@@ -248,7 +248,7 @@ export function MarchandDepenses() {
     <div style={{ minHeight:'100vh', background:BG, fontFamily:'Plus Jakarta Sans, system-ui, sans-serif', display:'flex', flexDirection:'column' }}>
 
       {/* HEADER */}
-      <div style={{ background:`linear-gradient(160deg,${P} 0%,#8f4418 100%)`, padding:'0 16px 18px', flexShrink:0 }}>
+      <div style={{ background:`linear-gradient(160deg,${P} 0%,var(--commerce-orange-700) 100%)`, padding:'0 16px 18px', flexShrink:0 }}>
         <div style={{ height:16 }} />
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -301,7 +301,7 @@ export function MarchandDepenses() {
           style={{ overflow:'hidden', display:'flex', flexDirection:'column', gap:12 }}>
         {/* KPIs 2x2 standard */}
         {montantsMasques ? (
-          <div style={{ minHeight:76, borderRadius:16, border:'1.5px dashed #d8cabe', background:'rgba(255,255,255,0.7)', display:'flex', alignItems:'center', justifyContent:'center', gap:10, color:'var(--encre-3)', fontWeight:800 }}>
+          <div style={{ minHeight:76, borderRadius:16, border:'1.5px dashed var(--commerce-line)', background:'rgba(255,255,255,0.7)', display:'flex', alignItems:'center', justifyContent:'center', gap:10, color:'var(--encre-3)', fontWeight:800 }}>
             <EyeOff size={22} /> Montants cachés
           </div>
         ) : <KPIGrid cols={2}>
@@ -424,7 +424,7 @@ export function MarchandDepenses() {
                   </div>
                   {(startDate || endDate) && (
                     <motion.button whileTap={{ scale:0.97 }} onClick={() => { setStartDate(''); setEndDate(''); }}
-                      style={{ gridColumn:'1/-1', background:'#f5f0eb', border:'none', borderRadius:10, padding:'8px', fontSize:12, fontWeight:700, color:'var(--encre-3)', cursor:'pointer', fontFamily:'inherit' }}>
+                      style={{ gridColumn:'1/-1', background:'var(--commerce-paper)', border:'none', borderRadius:10, padding:'8px', fontSize:12, fontWeight:700, color:'var(--encre-3)', cursor:'pointer', fontFamily:'inherit' }}>
                       Réinitialiser
                     </motion.button>
                   )}
