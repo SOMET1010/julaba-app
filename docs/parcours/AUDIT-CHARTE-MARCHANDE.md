@@ -181,6 +181,47 @@ passé sur un vrai téléphone, dans une vraie vente.
 
 ---
 
+## 4 bis. HORS PILOTE — l'écran de code Keiwa
+
+**Constaté par Patrick sur téléphone le 24/09 à 17h01.** Consigné ici pour qu'on
+ne le redécouvre pas, et pour qu'on ne perde pas de temps à le repeindre.
+
+`components/wallet/WalletPage.tsx` — **985 lignes, 29 couleurs en dur, 3 jetons,
+et ZÉRO appel de parole.** Pas un `speak`, pas un `dire`.
+
+**C'est un écran de sécurité, devant une femme qui ne lit pas, et il ne dit
+rien.** Elle voit un pavé de chiffres et quatre ronds vides ; rien ne lui
+explique ce qu'on attend d'elle.
+
+Le reste, relevé sur la capture :
+
+| Constat | Ce que ça fait |
+|---|---|
+| « Keiwa verrouillé » | Un nom de produit qu'elle n'a aucune raison de connaître |
+| « PIN » | Mot anglais, répété **quatre fois** sur le même écran : « Entre ton code PIN », « Keiwa verrouillé », « Entre ton code pour accéder », « Code PIN » |
+| « FaceID / Empreinte » | **Coupé par la barre de navigation Android**, à moitié illisible et probablement intouchable |
+| Aucune sortie visible | Pas de retour en haut : elle est enfermée dans l'écran |
+| Contraste | Instructions en gris clair sur blanc |
+
+Quatre messages pour dire une seule chose, dans un vocabulaire qui n'est pas le
+sien, sans un mot prononcé, sans porte de sortie.
+
+### Pourquoi il n'est PAS à corriger
+
+**Cet écran ne doit pas exister dans le pilote.** Keiwa pèse **6 des 26
+destinations** du menu marchande (`keiwa`, `keiwa/transfert`, `keiwa/paiements`,
+`keiwa/banque`, `keiwa/carte`, `keiwa/historique`) — un produit financier entier
+logé dans la caisse d'une marchande.
+
+**Le sortir du menu fait disparaître cet écran, sans écrire une ligne de code
+visuel.** C'est exactement ce que produit la cible à 7 destinations
+(`CIBLE-UX-MARCHANDE-PILOTE.md`). Ce n'est pas un écran à réparer : c'est un
+module à sortir du chemin.
+
+Il redeviendra un sujet le jour où Keiwa sera un produit à part entière — avec sa
+propre voix, son propre vocabulaire et sa propre porte d'entrée. **Décision de
+Patrick, 24/09 : HORS PILOTE.**
+
 ## 5. Ce que cet audit ne fait pas
 
 - Aucune couleur, aucune mise en page modifiée.
