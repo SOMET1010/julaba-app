@@ -222,6 +222,74 @@ Il redeviendra un sujet le jour où Keiwa sera un produit à part entière — a
 propre voix, son propre vocabulaire et sa propre porte d'entrée. **Décision de
 Patrick, 24/09 : HORS PILOTE.**
 
+## 4 ter. OBSTACLE — la migration « sans redessiner » n'existe pas
+
+**Mesuré le 24/09 en ouvrant le chantier. La prémisse du plan est fausse, et il
+faut un arbitrage avant d'aller plus loin.**
+
+La méthode retenue était : *« migrer vers les jetons existants plutôt qu'en
+redessinant chaque écran »*. Elle suppose que les valeurs employées dans les
+écrans correspondent à celles de la charte. Mesure sur `GestionStock` :
+
+| | |
+|---|---|
+| Valeurs de couleur distinctes | **50** |
+| Correspondant **exactement** à un jeton | **0** |
+
+Aucune. Chaque remplacement **changerait la couleur affichée**. Sur cet écran,
+migrer **c'est** redessiner.
+
+### Pire : la charte est plus pauvre que l'usage
+
+L'écran distingue deux rouges qui portent une **information différente** :
+
+| Valeur | Rôle | Usages |
+|---|---|---|
+| `#dc2626` | **rupture** — il n'y en a plus | 7 |
+| `#ef4444` | **stock bas** — il en reste peu | 19 |
+| `--caisse-alerte` (`#D95C4F`) | le seul rouge de la charte | 0 |
+
+Les fusionner en un seul jeton **effacerait la distinction entre « il n'y en a
+plus » et « il en reste peu »** — sur l'écran du stock, chez quelqu'un qui ne
+lit pas et ne dispose que de la couleur pour le savoir. C'est la faute que ce
+dépôt combat : écraser une information qui existe.
+
+Le même manque vaut pour les gris (`#555` texte principal, `#aaa` secondaire —
+un seul `--caisse-gris-texte`) et pour la typographie (14 tailles employées, 5
+jetons `--caisse-font-*`, qui sont des raccourcis `font:` complets).
+
+### Ce qui, lui, est migrable sans changer un pixel
+
+Les rayons de bordure, parce que la charte et l'écran partagent des valeurs :
+
+| | |
+|---|---|
+| Migrables à l'identique | **29 usages** — 12px (×22), 16px (×6), 8px (×1) |
+| Sans équivalent | **36 usages** — 14px (×17), 20px, 22px, 9px, 10px, 30px, 2px |
+
+### Les trois voies, à trancher
+
+1. **Enrichir la charte d'abord** — lui ajouter le second rouge, le second
+   gris, les tailles manquantes, puis migrer. Rien ne change à l'écran, et la
+   migration redevient mécanique. *C'est la voie que je recommande : elle tient
+   la promesse « ne pas redessiner ».*
+2. **Migrer quand même** — la charte l'emporte, l'apparence change, et la
+   distinction rupture / stock bas doit être portée autrement (un mot, une
+   icône, la voix) plutôt que par deux rouges.
+3. **Ne migrer que les rayons** — 29 usages, aucun pixel modifié, mais le
+   problème de fond reste entier.
+
+**Décision de Patrick attendue.** Le chantier est arrêté ici : aller plus loin
+sans arbitrage reviendrait à redessiner les écrans, ce qu'il a explicitement
+exclu.
+
+### Correction d'une approximation de cet audit
+
+La section 3 annonçait `#ef4444` comme « bandeau » de `Mes produits`. Vérifié :
+c'est la couleur d'**alerte** (pastille « Rupture », badge de la cloche,
+compteurs), pas l'en-tête. La mesure prenait le premier `background:` du
+fichier — un raccourci. Le reste des chiffres est confirmé.
+
 ## 5. Ce que cet audit ne fait pas
 
 - Aucune couleur, aucune mise en page modifiée.
