@@ -29,6 +29,7 @@ import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { guidageVocal } from '../../utils/accessMode';
 import { resoudreMessage } from '../../i18n/voice/runtime';
+import { rendreMessage } from '../../i18n/voice/contrat-audio';
 import {
   etapeCourante, unitesProposees, produitACreer, peutValider, etapeSuivante,
   type BrouillonProduit, type EtapeAjout,
@@ -71,11 +72,24 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   const [enCours, setEnCours] = useState(false);
 
   const dire = (t: string) => { if (guidageVocal()) speak(t); };
-  /** Une CLÉ du catalogue, résolue dans la langue active. Les montants passent
-   *  obligatoirement par là : `toLocaleString` glisse une espace fine que la
-   *  synthèse épelle chiffre par chiffre (la faute fermée par HIS-01b). */
-  const direMessage = (id: string, vars?: Record<string, string | number>) =>
-    dire(resoudreMessage(id, vars).texte);
+  /** Une CLÉ du catalogue, résolue dans la langue active, PUIS rendue par le
+   *  contrat audio — qui choisit la forme PARLÉE. Passer par le catalogue ne
+   *  suffit pas : `.texte` est la forme ÉCRAN, avec son espace fine, et la
+   *  synthèse l'épelle chiffre par chiffre. */
+  const direMessage = (id: string, vars?: Record<string, string | number>) => {
+    // LA FORME PARLÉE, PAS LA FORME ÉCRAN — terrain du 24/09.
+    //
+    // Ici on faisait `dire(resoudreMessage(id, vars).texte)`. Or un message du
+    // catalogue porte DEUX formes : `.texte` pour l'ŒIL (« 2 000 francs »,
+    // avec son espace fine qui le rend lisible) et la forme PARLÉE pour
+    // l'OREILLE (« deux mille francs »). En envoyant la première au moteur de
+    // voix, la synthèse recevait un nombre coupé et l'épelait : « 2 zéro zéro
+    // zéro ». Passer par le catalogue ne suffit pas — il faut passer par le
+    // RENDU, qui choisit la bonne forme. C'est ce que font déjà SaisieGuidee,
+    // ConfirmationLigne et speakMessage.
+    const m = resoudreMessage(id, vars);
+    void rendreMessage(m, dire);
+  };
 
   const brouillon: BrouillonProduit = {
     nom, unite,
