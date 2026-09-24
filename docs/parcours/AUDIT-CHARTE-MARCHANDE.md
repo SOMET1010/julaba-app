@@ -130,8 +130,19 @@ Deux moitiés d'une même destination, deux en-têtes différents.
 destination réelle est ailleurs (`Parametres`, et `support` n'a **aucune route**
 déclarée).
 
-**À DÉFINIR** — que contient exactement cette 7ᵉ destination : réglages, aide,
-sortie ? Sans réponse, elle n'est pas auditable.
+**TRANCHÉ par Patrick le 24/09 — elle reste extrêmement simple, et ce n'est
+PAS un nouveau module.** Elle contient, et rien de plus :
+
+- l'identité de la marchande ;
+- la langue ;
+- les réglages voix et accessibilité ;
+- une aide très courte ;
+- l'état de connexion et de synchronisation, **dit en mots qu'elle comprend** ;
+- la déconnexion.
+
+Tout ce qui relève de l'administration ou de la configuration métier **reste
+ailleurs**. L'audit visuel de cette destination attend qu'elle existe sous cette
+forme.
 
 ---
 
@@ -143,14 +154,30 @@ sortie ? Sans réponse, elle n'est pas auditable.
 | **B — harmonisation légère** | Mes ventes (`VentesPassees`), Dépenses (`DepenseForm`) | Remplacer 7 à 14 couleurs, unifier les rayons. |
 | **C — reprise importante** | **Mes produits**, Commandes, `MarchandDepenses`, `ResumeCaisse` | 17 à 52 couleurs chacun, plus la typographie. |
 
-**L'ordre que je recommande, si tu ouvres ce chantier après l'APK terrain :**
+### La direction, tranchée par Patrick le 24/09
 
-1. **Unifier les en-têtes** — c'est ce qui se voit en premier et ce qui coûte le
-   moins. Quatre bandeaux (`#ef4444`, `#FFD166`, `#AF5B23`, `#FDFAF7`) contre
-   deux jetons existants.
-2. **Mes produits** — le plus visité après la caisse, et le plus dégradé.
-3. **Mes ventes** — recoller ses deux moitiés, puisqu'elles n'en font plus qu'une.
-4. **Commandes**, puis le reste.
+> **On n'invente pas une nouvelle charte. On généralise celle de la caisse**, qui
+> est déjà implémentée et testée.
+
+Le contraste `POSCaisse` **0 / 29** contre `GestionStock` **52 / 4** clôt la
+discussion sur la direction graphique : la référence existe, elle tient, elle est
+gardée par `test:caisse-charte` et `test:tokens`. Il n'y a rien à redessiner.
+
+**La méthode est donc une MIGRATION vers les jetons existants, pas une refonte
+écran par écran.** C'est ce qui rend le chantier peu risqué : on remplace des
+valeurs, on ne repense pas des écrans.
+
+**L'ordre validé, à n'ouvrir QU'APRÈS la validation de l'APK terrain :**
+
+1. **Mes produits** — le plus visité après la caisse, et le plus dégradé (52 / 4).
+2. **Commandes** — le seul écran à zéro jeton.
+3. **Dépenses** — et ses deux moitiés à réunir.
+4. **Mes ventes** — et ses deux moitiés à recoller, puisqu'elles n'en font plus
+   qu'une.
+
+**Rien de cet audit ne se corrige maintenant.** L'audit a rempli son rôle : la
+caisse est l'étalon visuel, et on y touchera quand le parcours fonctionnel sera
+passé sur un vrai téléphone, dans une vraie vente.
 
 ---
 
