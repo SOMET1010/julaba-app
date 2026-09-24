@@ -57,6 +57,40 @@ export function etapeCourante(b: BrouillonProduit): EtapeAjout {
 }
 
 /**
+ * PEUT-ELLE AVANCER ? — recette DTDI du 24/09.
+ *
+ * LE DÉFAUT QU'ON FERME : « la zone de saisie du produit ne prend qu'un seul
+ * caractère ». L'écran déduisait l'étape affichée de `etapeCourante`, donc de
+ * la COMPLÉTUDE des données. Dès la première lettre, `nom.trim()` n'était plus
+ * vide, l'étape passait à « unite », et le bloc qui portait l'input était
+ * démonté SOUS SES DOIGTS. Son produit s'appelait « T ». L'unité libre avait
+ * le même défaut : « bassine » devenait « b ».
+ *
+ * LA CAUSE : une même donnée portait deux sens. « Que manque-t-il au produit ? »
+ * et « quel écran afficher pendant qu'elle tape ? » ne sont pas la même
+ * question. `etapeCourante` répond bien à la première — elle ne change pas, et
+ * STK-05 s'en sert pour ouvrir le parcours au bon endroit. La seconde appartient
+ * à l'écran, qui retient où elle en est.
+ *
+ * AVANCER EST UN GESTE. Ces deux règles disent quand il est possible, et vers
+ * quoi. Elles ne décident jamais toutes seules.
+ */
+export function peutValider(etape: EtapeAjout, b: BrouillonProduit): boolean {
+  if (etape === 'nom') return !!propre(b.nom);
+  if (etape === 'unite') return !!propre(b.unite);
+  // Un prix nul ou absent n'est pas un prix : il entrerait en caisse et
+  // fausserait chaque vente (STK-01d).
+  return prixDelle(b.prix) !== null;
+}
+
+/** L'ordre des trois questions. La dernière ne mène nulle part : on pose. */
+export function etapeSuivante(etape: EtapeAjout): EtapeAjout {
+  if (etape === 'nom') return 'unite';
+  if (etape === 'unite') return 'prix';
+  return 'prix';
+}
+
+/**
  * Les unités qu'on lui propose.
  *
  * SES UNITÉS D'ABORD — celles qu'elle emploie déjà sur son étal. C'est sa

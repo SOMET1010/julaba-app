@@ -30,7 +30,8 @@ import { useCaisse } from '../../contexts/CaisseContext';
 import { guidageVocal } from '../../utils/accessMode';
 import { resoudreMessage } from '../../i18n/voice/runtime';
 import {
-  etapeCourante, unitesProposees, produitACreer, type BrouillonProduit,
+  etapeCourante, unitesProposees, produitACreer, peutValider, etapeSuivante,
+  type BrouillonProduit, type EtapeAjout,
 } from '../../services/premierProduit';
 import { BoutonDirePrix } from './BoutonDirePrix';
 
@@ -82,8 +83,26 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
     // zéro se laisserait enregistrer.
     prix: prix === '' ? null : Number(prix),
   };
-  const etape = etapeCourante(brouillon);
+  /**
+   * OÙ ELLE EN EST — recette DTDI du 24/09.
+   *
+   * L'étape affichée était `etapeCourante(brouillon)`, donc recalculée À CHAQUE
+   * TOUCHE. Dès la première lettre du nom, l'étape passait à « unite » et
+   * l'input était démonté sous ses doigts : son produit s'appelait « T ». Le
+   * champ d'unité libre avait le même défaut.
+   *
+   * L'étape affichée est maintenant un ÉTAT, qui n'avance que sur un geste
+   * explicite. `etapeCourante` reste la règle de complétude — elle sert ici à
+   * DÉMARRER au bon endroit quand elle a déjà parlé (STK-05).
+   */
+  const [etapeVue, setEtapeVue] = useState<EtapeAjout>(() => etapeCourante({
+    nom: depart?.nom ?? '', unite: depart?.unite ?? '',
+    prix: typeof depart?.prix === 'number' && depart.prix > 0 ? depart.prix : null,
+  }));
   const aCreer = produitACreer(brouillon);
+  const peutAvancer = peutValider(etapeVue, brouillon);
+  /** Avancer est un GESTE : le grand bouton, ou la touche OK du clavier. */
+  const avancer = () => { if (peutAvancer) setEtapeVue(etapeSuivante(etapeVue)); };
 
   const poser = async () => {
     if (!aCreer || enCours) return;
@@ -111,20 +130,33 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
     <div style={{ background: '#FFFCF7', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
       {/* ─── 1. SON NOM ─────────────────────────────────────────────── */}
-      {etape === 'nom' && (
+      {etapeVue === 'nom' && (
         <>
           <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
             Qu'est-ce que tu vends ?
           </p>
           <input autoFocus value={nom} onChange={e => setNom(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); avancer(); } }}
             aria-label="Qu'est-ce que tu vends ?" placeholder="Son nom"
             style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid #e5e0d8', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
+          {/* LES DEUX GESTES — arbitrage de Patrick, 24/09, option C.
+              Le grand bouton pour elle : c'est le geste qu'elle sait faire.
+              La touche OK du clavier pour qui va vite. Rien n'avance tout
+              seul : c'est ce qui effaçait son nom a chaque lettre. */}
+          <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={avancer}
+            disabled={!peutAvancer} aria-label="C'est bon, continue"
+            style={{ width: '100%', minHeight: CIBLE + 12, borderRadius: 16, border: 'none',
+              background: peutAvancer ? VERT : '#d9d4cc', color: 'white', fontSize: 18, fontWeight: 800,
+              cursor: peutAvancer ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <Check size={24} /> C'est bon
+          </motion.button>
 
         </>
       )}
 
       {/* ─── 2. SON UNITÉ ───────────────────────────────────────────── */}
-      {etape === 'unite' && (
+      {etapeVue === 'unite' && (
         <>
           <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
             {nom}, tu le vends comment ?
@@ -134,7 +166,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                 {unitesProposees(sesUnites).map(u => (
                   <motion.button key={u} type="button" whileTap={{ scale: 0.95 }}
-                    onClick={() => { setUnite(u); direMessage('TATA_UNITE_CHOISIE', { unite: u }); }}
+                    onClick={() => { setUnite(u); direMessage('TATA_UNITE_CHOISIE', { unite: u }); setEtapeVue('prix'); }}
                     style={{ minHeight: CIBLE + 8, borderRadius: 14, border: '2px solid var(--trait)', background: 'white', fontSize: 16, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
                     {u}
                   </motion.button>
@@ -148,15 +180,30 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               </button>
             </>
           ) : (
-            <input autoFocus value={unite} onChange={e => setUnite(e.target.value)}
-              aria-label="Tu le vends comment ?" placeholder="Comment tu le vends"
-              style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid #e5e0d8', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
+            <>
+              <input autoFocus value={unite} onChange={e => setUnite(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); avancer(); } }}
+                aria-label="Tu le vends comment ?" placeholder="Comment tu le vends"
+                style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid #e5e0d8', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
+          {/* LES DEUX GESTES — arbitrage de Patrick, 24/09, option C.
+              Le grand bouton pour elle : c'est le geste qu'elle sait faire.
+              La touche OK du clavier pour qui va vite. Rien n'avance tout
+              seul : c'est ce qui effaçait son nom a chaque lettre. */}
+          <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={avancer}
+            disabled={!peutAvancer} aria-label="C'est bon, continue"
+            style={{ width: '100%', minHeight: CIBLE + 12, borderRadius: 16, border: 'none',
+              background: peutAvancer ? VERT : '#d9d4cc', color: 'white', fontSize: 18, fontWeight: 800,
+              cursor: peutAvancer ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <Check size={24} /> C'est bon
+          </motion.button>
+            </>
           )}
         </>
       )}
 
       {/* ─── 3. SON PRIX ────────────────────────────────────────────── */}
-      {etape === 'prix' && (
+      {etapeVue === 'prix' && (
         <>
           <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
             Le {unite}, à combien ?

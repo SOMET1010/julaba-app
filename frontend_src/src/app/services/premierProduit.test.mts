@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 import {
   etapeCourante, unitesProposees, produitPret, produitACreer,
   UNITES_DU_MARCHE, type BrouillonProduit,
+  peutValider, etapeSuivante,
 } from './premierProduit.js';
 
 let echecs = 0;
@@ -162,6 +163,60 @@ console.log('\n[8] STK-03c — LE STOCK ADOPTE PAR LE MÊME PARCOURS QUE LA CAIS
     new URL('../components/marchand/AjoutProduitGuide.tsx', import.meta.url), 'utf-8');
   ok(/produitACreer/.test(AP),
      'et ce composant passe par la règle pure : un seul endroit décide ce qui naît');
+}
+
+console.log("\n[6] SON NOM S'ÉCRIT EN ENTIER — RECETTE DTDI DU 24/09");
+{
+  // LE DÉFAUT. « La zone de saisie du produit ne prend qu'un seul caractère. »
+  // Mesuré : `etapeCourante` déduisait l'étape de la COMPLÉTUDE des données.
+  // Dès le premier caractère, `nom.trim()` n'était plus vide → l'étape passait
+  // à « unite » → le bloc `{etape === 'nom' && …}` démontait l'input SOUS SES
+  // DOIGTS. Son produit s'appelait « T ». Et l'unité libre avait exactement le
+  // même défaut : « bassine » devenait « b ».
+  //
+  // LA CAUSE DE FOND : une même donnée portait deux sens. « Ce qui manque au
+  // produit » et « quel écran afficher pendant qu'elle tape » ne sont pas la
+  // même question — et `etapeCourante` répondait aux deux.
+
+  // La règle de complétude, elle, ne change pas : c'est la bonne réponse à la
+  // bonne question, et STK-05 s'en sert pour ouvrir le parcours au bon endroit.
+  ok(etapeCourante({ nom: 'T', unite: '', prix: null }) === 'unite',
+     "ce qui MANQUE se déduit toujours des données — cette règle est juste");
+
+  // Ce qui est neuf : avancer est un GESTE, pas une conséquence de la frappe.
+  ok(peutValider('nom', { nom: '', unite: '', prix: null }) === false,
+     "on ne valide pas un nom vide");
+  ok(peutValider('nom', { nom: 'T', unite: '', prix: null }) === true,
+     "mais dès qu'il y a quelque chose, elle PEUT valider — quand elle veut");
+  ok(peutValider('unite', { nom: 'Tomate', unite: '', prix: null }) === false,
+     "ni une unité vide");
+  ok(peutValider('prix', { nom: 'Tomate', unite: 'tas', prix: 0 }) === false,
+     "ni un prix à zéro — il entrerait en caisse");
+  ok(peutValider('prix', { nom: 'Tomate', unite: 'tas', prix: 500 }) === true,
+     "un vrai prix, oui");
+  ok(etapeSuivante('nom') === 'unite' && etapeSuivante('unite') === 'prix'
+     && etapeSuivante('prix') === 'prix',
+     "et l'ordre des questions ne change pas");
+
+  // L'ÉCRAN NE DÉRIVE PLUS SON AFFICHAGE DE LA FRAPPE.
+  const ap = readFileSync(
+    new URL('../components/marchand/AjoutProduitGuide.tsx', import.meta.url), 'utf-8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
+    .filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+
+  // DEUX ASSERTIONS, PAS UNE. La première seule restait VERTE quand on
+  // remettait le défaut d'origine : le mot `etapeVue` survivait à sa
+  // transformation en calcul. C'est la seconde qui mord.
+  ok(/useState<EtapeAjout>/.test(ap),
+     "l'écran garde l'étape OÙ ELLE EN EST — c'est un état, pas un calcul");
+  ok(!/etapeCourante\(brouillon\)/.test(ap),
+     "et elle n'est PLUS dérivée de ce qu'elle vient de taper : c'est CE calcul-là qui effaçait son nom à chaque lettre");
+  ok(/etapeVue === 'nom'/.test(ap) && /etapeVue === 'unite'/.test(ap) && /etapeVue === 'prix'/.test(ap),
+     "et les trois écrans suivent cette étape-là");
+  // LES DEUX GESTES (arbitrage de Patrick, option C) : le grand bouton pour
+  // elle, la touche du clavier pour qui va vite.
+  ok(/onKeyDown/.test(ap), "la touche OK du clavier valide aussi");
+  ok(/peutValider\(/.test(ap), "et l'écran demande à la règle s'il peut avancer");
 }
 
 console.log(echecs === 0
