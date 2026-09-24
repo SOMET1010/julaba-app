@@ -8,7 +8,7 @@ import { useApp } from '../../contexts/AppContext';
 import { API_URL } from '../../utils/api';
 import { apiRequest, HttpError } from '../../services/api/api-client';
 
-const COLOR = '#B74725';
+const COLOR = 'var(--commerce-action)';
 
 interface MembreDetail {
   userId: string;
@@ -117,10 +117,10 @@ export function TontineDetail() {
 
   const statutCfg =
     tontine.statut === 'terminee'
-      ? { label: 'Terminée', color: '#6B7280', bg: '#F3F4F6' }
+      ? { label: 'Terminée', color: 'var(--muted-foreground)', bg: 'var(--color-gray-100)' }
       : tontine.statut === 'annulee'
-        ? { label: 'Annulée', color: '#DC2626', bg: '#FEE2E2' }
-        : { label: 'En cours', color: '#16A34A', bg: '#DCFCE7' };
+        ? { label: 'Annulée', color: 'var(--destructive)', bg: 'var(--color-red-100)' }
+        : { label: 'En cours', color: 'var(--color-green-600)', bg: 'var(--color-green-100)' };
 
   return (
     <SubPageLayout role="marchand" title={tontine.nom}>
@@ -160,7 +160,7 @@ export function TontineDetail() {
                   className="bg-white rounded-2xl border-2 p-3 flex items-center gap-3"
                   style={{ borderColor: estBeneficiaireCeTour ? COLOR : 'rgba(0,0,0,0.06)' }}
                 >
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs text-white shrink-0" style={{ background: m.aRecu ? '#9CA3AF' : COLOR }}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs text-white shrink-0" style={{ background: m.aRecu ? 'var(--color-gray-400)' : COLOR }}>
                     {m.ordre + 1}
                   </div>
                   <div className="min-w-0 flex-1">

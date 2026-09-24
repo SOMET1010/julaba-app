@@ -36,7 +36,7 @@ import {
 } from '../../services/premierProduit';
 import { BoutonDirePrix } from './BoutonDirePrix';
 
-const ORANGE = '#B74725';
+const ORANGE = 'var(--commerce-action)';
 const VERT = '#0E7A47';
 /** Même cible tactile que le reste de la caisse : un doigt, pas un curseur. */
 const CIBLE = 44;
@@ -141,7 +141,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   };
 
   return (
-    <div style={{ background: '#FFFCF7', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ background: 'var(--commerce-surface)', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
       {/* ─── 1. SON NOM ─────────────────────────────────────────────── */}
       {etapeVue === 'nom' && (

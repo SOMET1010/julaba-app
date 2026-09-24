@@ -65,8 +65,8 @@ const STATUT_LABELS: Record<string, string> = {
 const NEG_STATUT_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   en_attente:   { label: 'En attente',      color: '#f59e0b', bg: '#fef3c7' },
   accepte:      { label: 'Acceptée',        color: '#10b981', bg: '#d1fae5' },
-  refuse:       { label: 'Refusée',         color: '#ef4444', bg: '#fee2e2' },
-  contre_offre: { label: 'Contre-offre',    color: '#8b5cf6', bg: '#f3e8ff' },
+  refuse:       { label: 'Refusée',         color: 'var(--color-red-500)', bg: 'var(--color-red-100)' },
+  contre_offre: { label: 'Contre-offre',    color: '#8b5cf6', bg: 'var(--color-purple-100)' },
 };
 
 // ── Composant principal ────────────────────────────────────────────────────────
@@ -304,7 +304,7 @@ export function MesCommandes() {
             label="Total commandes"
             value={statsCommandes.total.toLocaleString('fr-FR')}
             icon={ShoppingBag}
-            color="#ea580c"
+            color="var(--color-orange-600)"
             bgColor="rgba(255,247,237,0.85)"
             borderColor="rgba(249,115,22,0.4)"
             iconAnimation="bounce"
@@ -323,7 +323,7 @@ export function MesCommandes() {
             label="Livrées"
             value={statsCommandes.livrees.toLocaleString('fr-FR')}
             icon={CheckCircle}
-            color="#16a34a"
+            color="var(--color-green-600)"
             bgColor="rgba(240,253,244,0.85)"
             borderColor="rgba(34,197,94,0.4)"
             iconAnimation="spin"
@@ -381,28 +381,28 @@ export function MesCommandes() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#16a34a' }}>Livrées</span>
-                  <span style={{ color: '#16a34a' }}>
+                  <span style={{ color: 'var(--color-green-600)' }}>Livrées</span>
+                  <span style={{ color: 'var(--color-green-600)' }}>
                     {montantsParStatut.livree.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#ef4444' }}>Annulées</span>
-                  <span style={{ color: '#ef4444' }}>
+                  <span style={{ color: 'var(--color-red-500)' }}>Annulées</span>
+                  <span style={{ color: 'var(--color-red-500)' }}>
                     {montantsParStatut.annulee.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
               </div>
               <div className="border-t mt-4 pt-4 flex items-center justify-between">
-                <span className="font-black text-lg" style={{ color: '#B74725' }}>Total général</span>
-                <span className="font-black text-xl" style={{ color: '#B74725' }}>
+                <span className="font-black text-lg" style={{ color: 'var(--commerce-action)' }}>Total général</span>
+                <span className="font-black text-xl" style={{ color: 'var(--commerce-action)' }}>
                   {montantsParStatut.total.toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMontantModal(false)}
-                className="w-full rounded-2xl bg-[#B74725] text-white mt-4 py-3 font-semibold"
+                className="w-full rounded-2xl bg-[var(--commerce-action)] text-white mt-4 py-3 font-semibold"
               >
                 Fermer
               </button>
@@ -445,7 +445,7 @@ export function MesCommandes() {
                   >
                     {/* Header */}
                     <div className="px-4 pt-3 pb-2 flex items-start justify-between"
-                      style={{ background: 'linear-gradient(135deg, #faf5ff, white)' }}
+                      style={{ background: 'linear-gradient(135deg, var(--color-purple-50), white)' }}
                     >
                       <div className="flex-1 min-w-0">
                         <span
@@ -544,7 +544,7 @@ export function MesCommandes() {
                 onClick={() => setFiltreType(f.key)}
                 className={`px-4 py-2 rounded-full text-sm font-medium flex-1 min-w-[calc(33%-8px)] transition-colors ${
                   filtreType === f.key
-                    ? 'bg-[#B74725] text-white'
+                    ? 'bg-[var(--commerce-action)] text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -569,7 +569,7 @@ export function MesCommandes() {
                 onClick={() => setFiltreStatut(f.key)}
                 className={`px-4 py-2 rounded-full text-sm font-medium flex-1 min-w-[calc(33%-8px)] transition-colors ${
                   filtreStatut === f.key
-                    ? 'bg-[#B74725] text-white'
+                    ? 'bg-[var(--commerce-action)] text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -698,7 +698,7 @@ export function MesCommandes() {
                       {commande.statut === 'confirmee' && commande.vendeurId === user?.id && (
                         <Button
                           onClick={() => { void handleMarquerLivree(commande.id); }}
-                          className="flex-1 bg-[#16A34A] text-white hover:bg-[#138a3e]"
+                          className="flex-1 bg-[var(--color-green-600)] text-white hover:bg-[#138a3e]"
                           size="sm"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
@@ -708,7 +708,7 @@ export function MesCommandes() {
                       {RECEPTION_PAIEMENT_ACTIF && commande.statut === 'livree' && commande.statutPaiement !== 'paye' && commande.vendeurId === user?.id && (
                         <Button
                           onClick={() => handleOuvrirReception(commande)}
-                          className="flex-1 bg-[#16A34A] text-white hover:bg-[#138a3e]"
+                          className="flex-1 bg-[var(--color-green-600)] text-white hover:bg-[#138a3e]"
                           size="sm"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />

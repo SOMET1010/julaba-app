@@ -10,7 +10,7 @@ import { CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { API_URL } from '../../utils/api';
 import { apiRequest } from '../../services/api/api-client';
 
-const COLOR = '#B74725';
+const COLOR = 'var(--commerce-action)';
 
 export function BesoinMarchand() {
   const { speak } = useApp();
@@ -92,7 +92,7 @@ export function BesoinMarchand() {
                   placeholder="Ex : Riz, Manioc, Igname..."
                   className="w-full px-4 h-12 rounded-2xl border-2 border-gray-200 text-sm focus:outline-none bg-white"
                   onFocus={e => (e.target.style.borderColor = COLOR)}
-                  onBlur={e => (e.target.style.borderColor = '#E5E7EB')} />
+                  onBlur={e => (e.target.style.borderColor = 'var(--border)')} />
                 {produit.length >= 2 && (() => {
                   const suggestions = CATALOGUE_PRODUITS.filter(p =>
                     p.nom.toLowerCase().includes(produit.toLowerCase()) && p.nom.toLowerCase() !== produit.toLowerCase()
@@ -123,7 +123,7 @@ export function BesoinMarchand() {
                   placeholder="Auto-rempli selon le produit"
                   className="w-full px-4 h-12 rounded-2xl border-2 border-gray-200 text-sm focus:outline-none bg-white"
                   onFocus={e => (e.target.style.borderColor = COLOR)}
-                  onBlur={e => (e.target.style.borderColor = '#E5E7EB')} />
+                  onBlur={e => (e.target.style.borderColor = 'var(--border)')} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -133,7 +133,7 @@ export function BesoinMarchand() {
                     placeholder="Ex : 50"
                     className="w-full px-4 h-12 rounded-2xl border-2 border-gray-200 text-sm focus:outline-none bg-white"
                     onFocus={e => (e.target.style.borderColor = COLOR)}
-                    onBlur={e => (e.target.style.borderColor = '#E5E7EB')} />
+                    onBlur={e => (e.target.style.borderColor = 'var(--border)')} />
                 </div>
                 <SelectWithAutre
                   label="Unité"
@@ -151,7 +151,7 @@ export function BesoinMarchand() {
                   placeholder="Ex : 500"
                   className="w-full px-4 h-12 rounded-2xl border-2 border-gray-200 text-sm focus:outline-none bg-white"
                   onFocus={e => (e.target.style.borderColor = COLOR)}
-                  onBlur={e => (e.target.style.borderColor = '#E5E7EB')} />
+                  onBlur={e => (e.target.style.borderColor = 'var(--border)')} />
               </div>
 
               <div>
@@ -161,8 +161,8 @@ export function BesoinMarchand() {
                     <motion.button key={p} onClick={() => setPriorite(p)} whileTap={{ scale: 0.95 }}
                       className="flex-1 py-2.5 rounded-xl border-2 text-sm font-bold"
                       style={priorite === p
-                        ? { backgroundColor: p === 'urgente' ? '#DC2626' : COLOR, borderColor: 'transparent', color: 'white' }
-                        : { backgroundColor: 'white', borderColor: '#E5E7EB', color: 'var(--encre-3)' }
+                        ? { backgroundColor: p === 'urgente' ? 'var(--destructive)' : COLOR, borderColor: 'transparent', color: 'white' }
+                        : { backgroundColor: 'white', borderColor: 'var(--border)', color: 'var(--encre-3)' }
                       }>
                       {p === 'urgente' ? 'Urgente' : 'Normale'}
                     </motion.button>
@@ -176,7 +176,7 @@ export function BesoinMarchand() {
                   placeholder="Précisions sur le besoin..."
                   className="w-full px-4 py-3 rounded-2xl border-2 border-gray-200 text-sm focus:outline-none bg-white resize-none"
                   onFocus={e => (e.target.style.borderColor = COLOR)}
-                  onBlur={e => (e.target.style.borderColor = '#E5E7EB')} />
+                  onBlur={e => (e.target.style.borderColor = 'var(--border)')} />
               </div>
 
               <motion.button onClick={handleSubmit} disabled={submitting} whileTap={{ scale: 0.97 }}

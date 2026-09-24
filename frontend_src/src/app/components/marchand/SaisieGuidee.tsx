@@ -43,7 +43,7 @@ import { vueDeLEtal, type ProduitDeLEtal } from '../../services/etalDeLaMarchand
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
 
-const ORANGE = '#B74725';
+const ORANGE = 'var(--commerce-action)';
 
 /** Résultat d'appariement au catalogue (fourni par le parent, qui connaît les produits). */
 export interface AppariementCatalogue {
@@ -212,7 +212,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
   const pret = produitChoisi && parseInt(prix || '0', 10) > 0;
 
   return (
-    <div style={{ background: '#FFFCF7', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ background: 'var(--commerce-surface)', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         {/* CAI-11 — LE PANNEAU PORTE LE NOM DU GESTE QUI L'OUVRE.
             Il s'intitulait « SAISIR SANS PARLER ». Troisième nom pour le même
@@ -274,7 +274,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
         // Produit choisi : confirmation en photo, pas en texte à relire.
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#FFF3EB', border: `1.5px solid ${ORANGE}40`, borderRadius: 14, padding: '8px 10px' }}>
           {produitImage && <img src={produitImage} alt={produit} style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />}
-          <span style={{ flex: 1, fontSize: 15, fontWeight: 800, color: '#1F2937' }}>{produit}</span>
+          <span style={{ flex: 1, fontSize: 15, fontWeight: 800, color: 'var(--color-gray-800)' }}>{produit}</span>
           <button type="button" onClick={changerProduit}
             style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
             Changer

@@ -13,7 +13,7 @@ import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
 
 const P = '#AF5B23';
-const BG = '#F6F0E4';
+const BG = 'var(--commerce-paper)';
 
 type Period = 'today' | 'month' | 'all';
 
@@ -45,13 +45,13 @@ const GENS = <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="
 
 const APPARENCE: Readonly<Record<IdCategorieDepense, ApparenceCategorie>> = {
   transport:   { color:'#AF5B23', bg:'#FFF3EA', border:'#f5d5a8', icon: svg('#AF5B23', <><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></>) },
-  repas:       { color:'#E24B4A', bg:'#FEF3F2', border:'#fca5a5', icon: svg('#E24B4A', <><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>) },
+  repas:       { color:'#E24B4A', bg:'#FEF3F2', border:'var(--color-red-300)', icon: svg('#E24B4A', <><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>) },
   taxe_mairie: { color:'#7F77DD', bg:'#F4F3FE', border:'#cecbf6', icon: svg('#7F77DD', <><line x1="3" y1="21" x2="21" y2="21"/><line x1="5" y1="21" x2="5" y2="10"/><line x1="19" y1="21" x2="19" y2="10"/><line x1="12" y1="21" x2="12" y2="10"/><polygon points="3 10 12 3 21 10"/></>) },
   loyer:       { color:'#378ADD', bg:'#F0F4FF', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>) },
-  famille:     { color:'#E24B4A', bg:'#FFF0F0', border:'#fca5a5', icon: svg('#E24B4A', GENS) },
+  famille:     { color:'#E24B4A', bg:'#FFF0F0', border:'var(--color-red-300)', icon: svg('#E24B4A', GENS) },
   tontine:     { color:'#7F77DD', bg:'#FDF4FF', border:'#cecbf6', icon: svg('#7F77DD', GENS) },
   sante:       { color:'#1D9E75', bg:'#F0FFF4', border:'#9fe1cb', icon: svg('#1D9E75', <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>) },
-  telephone:   { color:'#B74725', bg:'#F6F0E4', border:'#f5d5a8', icon: svg('#B74725', <><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></>) },
+  telephone:   { color:'var(--commerce-action)', bg:'var(--commerce-paper)', border:'#f5d5a8', icon: svg('var(--commerce-action)', <><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></>) },
   marchandise: { color:'#1D9E75', bg:'#F0FAF5', border:'#9fe1cb', icon: svg('#1D9E75', <><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></>) },
   ecole:       { color:'#378ADD', bg:'#F0F4FF', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></>) },
   autre:       { color:'#888', bg:'#F5F5F5', border:'#ddd', icon: svg('#888', <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>) },
@@ -120,7 +120,7 @@ function DepenseCard({ d, index, query, montantsMasques }: { d: any; index: numb
           </div>
         </div>
         <div style={{ textAlign:'right', flexShrink:0 }}>
-          <div style={{ fontSize:17, fontWeight:900, color:'#ef4444' }}>{montantsMasques ? '••••• F' : `-${montant.toLocaleString('fr-FR')} F`}</div>
+          <div style={{ fontSize:17, fontWeight:900, color:'var(--color-red-500)' }}>{montantsMasques ? '••••• F' : `-${montant.toLocaleString('fr-FR')} F`}</div>
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration:0.25 }} style={{ display:'flex', justifyContent:'flex-end', marginTop:2 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
           </motion.div>
@@ -147,7 +147,7 @@ function DepenseCard({ d, index, query, montantsMasques }: { d: any; index: numb
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Montant</span>
-                <span style={{ fontSize:14, fontWeight:900, color:'#ef4444' }}>{montantPrive(montant, montantsMasques, 'FCFA')}</span>
+                <span style={{ fontSize:14, fontWeight:900, color:'var(--color-red-500)' }}>{montantPrive(montant, montantsMasques, 'FCFA')}</span>
               </div>
             </div>
           </motion.div>
@@ -310,7 +310,7 @@ export function MarchandDepenses() {
             value={kpiToday.toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={TrendingUp}
-            color="#ea580c"
+            color="var(--color-orange-600)"
             bgColor="rgba(255,247,237,0.85)"
             borderColor="rgba(249,115,22,0.4)"
             iconAnimation="bounce"
@@ -337,7 +337,7 @@ export function MarchandDepenses() {
             value={kpiTotal.toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={ShoppingBag}
-            color="#16a34a"
+            color="var(--color-green-600)"
             bgColor="rgba(240,253,244,0.85)"
             borderColor="rgba(34,197,94,0.4)"
             iconAnimation="spin"
