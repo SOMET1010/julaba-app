@@ -16,7 +16,7 @@ import {
   type FideliteConfig, type FideliteClient, type FideliteEvenement,
 } from '../../services/fidelite.service';
 
-const COLOR = '#E67E22';
+const COLOR = 'var(--herite-orange)';
 
 export function Fidelite() {
   const { speak } = useApp();
@@ -262,9 +262,9 @@ export function Fidelite() {
               {/* Activer / désactiver */}
               <button onClick={() => setConfigState({ ...config, actif: !config.actif })}
                 className="w-full flex items-center justify-between p-3 rounded-2xl border-2 mb-3"
-                style={{ borderColor: config.actif ? 'var(--color-green-600)' : 'var(--border)', backgroundColor: config.actif ? '#16A34A10' : '#fff' }}>
+                style={{ borderColor: config.actif ? 'var(--color-green-600)' : 'var(--border)', backgroundColor: config.actif ? '#16A34A10' : 'var(--herite-blanc-pur)' }}>
                 <span className="font-semibold text-gray-800">Programme {config.actif ? 'activé' : 'désactivé'}</span>
-                <span className="w-12 h-7 rounded-full flex items-center px-1 transition-all" style={{ backgroundColor: config.actif ? 'var(--color-green-600)' : '#ccc', justifyContent: config.actif ? 'flex-end' : 'flex-start' }}>
+                <span className="w-12 h-7 rounded-full flex items-center px-1 transition-all" style={{ backgroundColor: config.actif ? 'var(--color-green-600)' : 'var(--herite-gris-80)', justifyContent: config.actif ? 'flex-end' : 'flex-start' }}>
                   <span className="w-5 h-5 rounded-full bg-white" />
                 </span>
               </button>

@@ -45,16 +45,16 @@ const GENS = <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="
 
 const APPARENCE: Readonly<Record<IdCategorieDepense, ApparenceCategorie>> = {
   transport:   { color:'var(--commerce-action)', bg:'var(--commerce-orange-50)', border:'var(--color-orange-200)', icon: svg('var(--commerce-action)', <><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></>) },
-  repas:       { color:'#E24B4A', bg:'var(--color-red-50)', border:'var(--color-red-300)', icon: svg('#E24B4A', <><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>) },
+  repas:       { color:'var(--herite-rouge)', bg:'var(--color-red-50)', border:'var(--color-red-300)', icon: svg('var(--herite-rouge)', <><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>) },
   taxe_mairie: { color:'#7F77DD', bg:'#F4F3FE', border:'#cecbf6', icon: svg('#7F77DD', <><line x1="3" y1="21" x2="21" y2="21"/><line x1="5" y1="21" x2="5" y2="10"/><line x1="19" y1="21" x2="19" y2="10"/><line x1="12" y1="21" x2="12" y2="10"/><polygon points="3 10 12 3 21 10"/></>) },
   loyer:       { color:'#378ADD', bg:'var(--color-gray-100)', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>) },
-  famille:     { color:'#E24B4A', bg:'var(--color-red-50)', border:'var(--color-red-300)', icon: svg('#E24B4A', GENS) },
+  famille:     { color:'var(--herite-rouge)', bg:'var(--color-red-50)', border:'var(--color-red-300)', icon: svg('var(--herite-rouge)', GENS) },
   tontine:     { color:'#7F77DD', bg:'var(--color-purple-50)', border:'#cecbf6', icon: svg('#7F77DD', GENS) },
-  sante:       { color:'#1D9E75', bg:'var(--color-green-50)', border:'#9fe1cb', icon: svg('#1D9E75', <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>) },
+  sante:       { color:'var(--herite-vert-eau)', bg:'var(--color-green-50)', border:'var(--herite-vert-pale)', icon: svg('var(--herite-vert-eau)', <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>) },
   telephone:   { color:'var(--commerce-action)', bg:'var(--commerce-paper)', border:'var(--color-orange-200)', icon: svg('var(--commerce-action)', <><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></>) },
-  marchandise: { color:'#1D9E75', bg:'var(--color-green-50)', border:'#9fe1cb', icon: svg('#1D9E75', <><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></>) },
+  marchandise: { color:'var(--herite-vert-eau)', bg:'var(--color-green-50)', border:'var(--herite-vert-pale)', icon: svg('var(--herite-vert-eau)', <><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></>) },
   ecole:       { color:'#378ADD', bg:'var(--color-gray-100)', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></>) },
-  autre:       { color:'#888', bg:'var(--muted)', border:'#ddd', icon: svg('#888', <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>) },
+  autre:       { color:'var(--herite-gris-53)', bg:'var(--muted)', border:'var(--herite-gris-87)', icon: svg('var(--herite-gris-53)', <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>) },
 };
 
 // L'APPARENCE DU « PAS NOTÉ ». Volontairement DIFFÉRENTE de celle d'« Autre » :
@@ -122,7 +122,7 @@ function DepenseCard({ d, index, query, montantsMasques }: { d: any; index: numb
         <div style={{ textAlign:'right', flexShrink:0 }}>
           <div style={{ fontSize:17, fontWeight:900, color:'var(--color-red-500)' }}>{montantsMasques ? '••••• F' : `-${montant.toLocaleString('fr-FR')} F`}</div>
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration:0.25 }} style={{ display:'flex', justifyContent:'flex-end', marginTop:2 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-80)" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
           </motion.div>
         </div>
       </div>
@@ -324,7 +324,7 @@ export function MarchandDepenses() {
             value={kpiMonth.toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={Calendar}
-            color="#2563eb"
+            color="var(--herite-bleu-vif)"
             bgColor="rgba(239,246,255,0.85)"
             borderColor="rgba(59,130,246,0.4)"
             iconAnimation="pulse"
@@ -350,7 +350,7 @@ export function MarchandDepenses() {
             value={Math.round(kpiMonth / Math.max(new Date().getDate(), 1)).toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={Clock}
-            color="#7c3aed"
+            color="var(--herite-violet)"
             bgColor="rgba(245,243,255,0.85)"
             borderColor="rgba(139,92,246,0.4)"
             iconAnimation="float"
@@ -365,7 +365,7 @@ export function MarchandDepenses() {
             VERTICAL, la boite de contenu restait celle du texte — 20px — et
             l'etirement ne donnait rien. Meme forme que la recherche du stock. */}
         <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'0 14px', height:46, display:'flex', alignItems:'center', gap:8 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-40)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher une dépense..."
@@ -374,7 +374,7 @@ export function MarchandDepenses() {
           {search && (
             <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} aria-label="Effacer la recherche"
               style={{ flexShrink:0, width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', background:'none', border:'none', cursor:'pointer', padding:0, color:'var(--encre-4)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-40)" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </motion.button>
           )}
         </div>
@@ -402,10 +402,10 @@ export function MarchandDepenses() {
             style={{ width:'100%', background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-              <span style={{ fontSize:13, fontWeight:600, color:'#555' }}>Filtres avancés</span>
+              <span style={{ fontSize:13, fontWeight:600, color:'var(--herite-gris-33)' }}>Filtres avancés</span>
             </div>
             <motion.span animate={{ rotate: showFilters ? 180 : 0 }} transition={{ duration:0.25 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-40)" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
             </motion.span>
           </motion.button>
           <AnimatePresence>

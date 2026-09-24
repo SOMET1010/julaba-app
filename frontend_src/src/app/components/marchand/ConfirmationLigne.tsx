@@ -176,7 +176,7 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <motion.button whileTap={{ scale: 0.9 }} aria-label="Moins"
                 onClick={() => corrigerEtDire(Math.max(1, ligne.quantite - 1))}
-                style={{ width: 48, height: 48, borderRadius: 14, background: 'white', border: '1.5px solid var(--commerce-gray-100)', fontSize: 24, fontWeight: 800, color: '#555', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
+                style={{ width: 48, height: 48, borderRadius: 14, background: 'white', border: '1.5px solid var(--commerce-gray-100)', fontSize: 24, fontWeight: 800, color: 'var(--herite-gris-33)', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
               <span style={{ fontSize: 26, fontWeight: 900, color: 'var(--encre)', minWidth: 40, textAlign: 'center' }}>{ligne.quantite}</span>
               <motion.button whileTap={{ scale: 0.9 }} aria-label="Plus"
                 onClick={() => corrigerEtDire(ligne.quantite + 1)}
@@ -191,14 +191,14 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
               {(['unitaire', 'total'] as const).map(m => (
                 <button key={m} onClick={() => { setModePrix(m); direMessage(m === 'unitaire' ? 'TATA_PRIX_D_UN_SEUL' : 'TATA_PRIX_DU_TOUT'); }}
                   style={{ flex: 1, minHeight: CIBLE_TACTILE, borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
-                    border: `1.5px solid ${modePrix === m ? ORANGE : 'var(--commerce-gray-100)'}`, background: modePrix === m ? 'var(--color-orange-100)' : 'white', color: modePrix === m ? ORANGE : '#888' }}>
+                    border: `1.5px solid ${modePrix === m ? ORANGE : 'var(--commerce-gray-100)'}`, background: modePrix === m ? 'var(--color-orange-100)' : 'white', color: modePrix === m ? ORANGE : 'var(--herite-gris-53)' }}>
                   {m === 'unitaire' ? "Prix d'un" : 'Prix du tout'}
                 </button>
               ))}
             </div>
             {/* Gros chiffre + clavier numérique, jamais une case de texte nue à
                 remplir (même principe que le code à la connexion). */}
-            <div style={{ textAlign: 'center', fontSize: 32, fontWeight: 900, color: prixSaisi ? 'var(--encre)' : '#c7bfb2', fontVariantNumeric: 'tabular-nums', marginBottom: 10 }}>
+            <div style={{ textAlign: 'center', fontSize: 32, fontWeight: 900, color: prixSaisi ? 'var(--encre)' : 'var(--herite-taupe)', fontVariantNumeric: 'tabular-nums', marginBottom: 10 }}>
               {prixSaisi || '—'}{prixSaisi ? ' F' : ''}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
@@ -209,11 +209,11 @@ export function ConfirmationLigne({ ligne, montantAmbigu, onLigneChange, onConfi
                 </button>
               ))}
               <button type="button" onClick={() => taperPrix('')}
-                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 13, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>C</button>
+                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 13, fontWeight: 800, color: 'var(--herite-gris-53)', cursor: 'pointer', fontFamily: 'inherit' }}>C</button>
               <button type="button" onClick={() => taperPrix((prixSaisi === '0' ? '0' : prixSaisi + '0').slice(0, 6))}
                 style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 18, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>0</button>
               <button type="button" onClick={() => taperPrix(prixSaisi.slice(0, -1))} aria-label="Effacer un chiffre"
-                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 15, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>⌫</button>
+                style={{ minHeight: 48, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 15, fontWeight: 800, color: 'var(--herite-gris-53)', cursor: 'pointer', fontFamily: 'inherit' }}>⌫</button>
             </div>
             <motion.button whileTap={{ scale: 0.97 }} disabled={!prixSaisi}
               onClick={() => { const v = parseInt(prixSaisi, 10); if (v > 0) { onLigneChange(corrigerPrix(ligne, v, modePrix)); setCorrige(false); setPrixSaisi(''); } }}

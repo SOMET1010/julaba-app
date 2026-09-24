@@ -699,7 +699,7 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
         <div className="px-6 pb-6 space-y-3">
           <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: 'var(--color-green-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Ventes du jour</p>
-            <MontantCard accentColor="#10B981" className="rounded-xl">
+            <MontantCard accentColor="var(--herite-vert-menthe)" className="rounded-xl">
               <Montant value={stats.ventes} size="xl" color="var(--color-green-700)" masque={montantsMasques} />
             </MontantCard>
             <p className="text-xs text-gray-500 mt-1">{stats.nombreVentes} vente{stats.nombreVentes > 1 ? 's' : ''}</p>
@@ -714,7 +714,7 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
 
           <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? 'var(--color-green-300)' : 'var(--color-red-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Marge</p>
-            <MontantCard accentColor={marge >= 0 ? '#10B981' : 'var(--color-red-500)'} className="rounded-xl">
+            <MontantCard accentColor={marge >= 0 ? 'var(--herite-vert-menthe)' : 'var(--color-red-500)'} className="rounded-xl">
               <Montant value={marge} size="xl" color={marge >= 0 ? 'var(--color-green-700)' : 'var(--color-red-700)'} showPlus masque={montantsMasques} />
             </MontantCard>
           </div>
@@ -866,7 +866,7 @@ export function StatsVentesModal({ isOpen, onClose, montant }: StatsVentesModalP
         <div className="px-6 pb-6">
           <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-green-50 to-green-100 border" style={{ borderColor: 'var(--color-green-300)' }}>
             <p className="text-sm font-semibold text-gray-600 mb-2">Total des ventes</p>
-            <MontantCard accentColor="#10B981" className="rounded-xl">
+            <MontantCard accentColor="var(--herite-vert-menthe)" className="rounded-xl">
               <motion.div
                 className="flex justify-center"
                 initial={{ scale: 0.5, opacity: 0 }}
@@ -922,7 +922,7 @@ export function StatsMargeModal({ isOpen, onClose, marge }: StatsMargeModalProps
         <div className="px-6 pb-6">
           <div className={`text-center p-8 rounded-2xl bg-gradient-to-br border ${isPositive ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100'}`} style={{ borderColor: isPositive ? 'var(--color-green-300)' : 'var(--color-red-300)' }}>
             <p className="text-sm font-semibold text-gray-600 mb-2">Marge</p>
-            <MontantCard accentColor={isPositive ? '#10B981' : 'var(--color-red-500)'} className="rounded-xl">
+            <MontantCard accentColor={isPositive ? 'var(--herite-vert-menthe)' : 'var(--color-red-500)'} className="rounded-xl">
               <div className="flex justify-center">
                 <Montant value={marge} size="2xl" color={isPositive ? 'var(--color-green-700)' : 'var(--color-red-700)'} showPlus />
               </div>
@@ -1096,7 +1096,7 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
         <div className="px-6 pb-6 space-y-3">
           <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: 'var(--color-green-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Ventes du jour</p>
-            <MontantCard accentColor="#10B981" className="rounded-xl">
+            <MontantCard accentColor="var(--herite-vert-menthe)" className="rounded-xl">
               <Montant value={stats.ventes} size="xl" color="var(--color-green-700)" masque={montantsMasques} />
             </MontantCard>
             <p className="text-xs text-gray-500 mt-1">{stats.nombreVentes} vente{stats.nombreVentes > 1 ? 's' : ''}</p>
@@ -1111,7 +1111,7 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
 
           <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? 'var(--color-green-300)' : 'var(--color-red-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Marge</p>
-            <MontantCard accentColor={marge >= 0 ? '#10B981' : 'var(--color-red-500)'} className="rounded-xl">
+            <MontantCard accentColor={marge >= 0 ? 'var(--herite-vert-menthe)' : 'var(--color-red-500)'} className="rounded-xl">
               <Montant value={marge} size="xl" color={marge >= 0 ? 'var(--color-green-700)' : 'var(--color-red-700)'} showPlus masque={montantsMasques} />
             </MontantCard>
           </div>

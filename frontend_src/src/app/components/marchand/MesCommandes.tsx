@@ -63,8 +63,8 @@ const STATUT_LABELS: Record<string, string> = {
 };
 
 const NEG_STATUT_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  en_attente:   { label: 'En attente',      color: '#f59e0b', bg: '#fef3c7' },
-  accepte:      { label: 'Acceptée',        color: '#10b981', bg: 'var(--color-green-100)' },
+  en_attente:   { label: 'En attente',      color: 'var(--herite-ambre)', bg: 'var(--herite-creme)' },
+  accepte:      { label: 'Acceptée',        color: 'var(--herite-vert-menthe)', bg: 'var(--color-green-100)' },
   refuse:       { label: 'Refusée',         color: 'var(--color-red-500)', bg: 'var(--color-red-100)' },
   contre_offre: { label: 'Contre-offre',    color: '#8b5cf6', bg: 'var(--color-purple-100)' },
 };
@@ -314,7 +314,7 @@ export function MesCommandes() {
             label="En cours"
             value={statsCommandes.enCours.toLocaleString('fr-FR')}
             icon={Clock}
-            color="#2563eb"
+            color="var(--herite-bleu-vif)"
             bgColor="rgba(239,246,255,0.85)"
             borderColor="rgba(59,130,246,0.4)"
             iconAnimation="pulse"
@@ -335,7 +335,7 @@ export function MesCommandes() {
               masque={montantsMasques}
               suffix="FCFA"
               icon={TrendingUp}
-              color="#7c3aed"
+              color="var(--herite-violet)"
               bgColor="rgba(245,243,255,0.85)"
               borderColor="rgba(139,92,246,0.4)"
               iconAnimation="float"
@@ -363,20 +363,20 @@ export function MesCommandes() {
               <h3 className="font-black text-gray-900 text-xl mb-4">Détail des montants</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#f59e0b' }}>En attente</span>
-                  <span style={{ color: '#f59e0b' }}>
+                  <span style={{ color: 'var(--herite-ambre)' }}>En attente</span>
+                  <span style={{ color: 'var(--herite-ambre)' }}>
                     {montantsParStatut.enAttente.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#2563eb' }}>Confirmées</span>
-                  <span style={{ color: '#2563eb' }}>
+                  <span style={{ color: 'var(--herite-bleu-vif)' }}>Confirmées</span>
+                  <span style={{ color: 'var(--herite-bleu-vif)' }}>
                     {montantsParStatut.confirmee.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#7c3aed' }}>En cours</span>
-                  <span style={{ color: '#7c3aed' }}>
+                  <span style={{ color: 'var(--herite-violet)' }}>En cours</span>
+                  <span style={{ color: 'var(--herite-violet)' }}>
                     {montantsParStatut.enCours.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
@@ -494,7 +494,7 @@ export function MesCommandes() {
                           onClick={() => handleAccepterContreOffre(neg)}
                           disabled={submittingNeg === neg.id}
                           className="py-3 rounded-2xl font-bold text-white text-xs flex items-center justify-center gap-1 disabled:opacity-50"
-                          style={{ backgroundColor: '#10b981' }}
+                          style={{ backgroundColor: 'var(--herite-vert-menthe)' }}
                           whileTap={{ scale: 0.95 }}
                         >
                           <ThumbsUp className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -678,7 +678,7 @@ export function MesCommandes() {
                         <>
                           <Button
                             onClick={() => { void handleConfirmerVente(commande.id); }}
-                            className="flex-1 bg-[#2072AF] text-white hover:bg-[#1a5d92]"
+                            className="flex-1 bg-[var(--herite-bleu)] text-white hover:bg-[#1a5d92]"
                             size="sm"
                           >
                             <CheckCircle className="w-4 h-4 mr-2" />
@@ -722,7 +722,7 @@ export function MesCommandes() {
                           cibleNom={commande.acheteurId === user?.id
                             ? (commande.vendeurNom?.trim() || 'le vendeur')
                             : ((commande as any).acheteurNom?.trim() || "l'acheteur")}
-                          color="#E67E22"
+                          color="var(--herite-orange)"
                           onNoted={() => { void refreshCommandes(); }}
                         />
                       )}

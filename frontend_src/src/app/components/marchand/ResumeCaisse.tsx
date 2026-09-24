@@ -221,7 +221,7 @@ export function ResumeCaisse() {
 
   const soldeActuel = (currentSession?.fondInitial || 0) + financialData.totalVentes - financialData.totalCahier;
 
-  const COLORS = ['var(--commerce-action)', 'var(--commerce-green)', '#2072AF', '#702963', '#F59E0B', 'var(--color-red-500)'];
+  const COLORS = ['var(--commerce-action)', 'var(--commerce-green)', 'var(--herite-bleu)', '#702963', 'var(--herite-ambre)', 'var(--color-red-500)'];
 
   const periodLabels: Record<Period, string> = {
     today: "Aujourd'hui",
@@ -334,7 +334,7 @@ export function ResumeCaisse() {
               animatedTarget={Math.abs(financialData.beneficeNet)}
               suffix="FCFA"
               icon={Banknote}
-              color={financialData.beneficeNet >= 0 ? '#2563eb' : 'var(--destructive)'}
+              color={financialData.beneficeNet >= 0 ? 'var(--herite-bleu-vif)' : 'var(--destructive)'}
               bgColor={financialData.beneficeNet >= 0 ? 'rgba(239,246,255,0.85)' : 'rgba(254,242,242,0.85)'}
               borderColor={financialData.beneficeNet >= 0 ? 'rgba(59,130,246,0.4)' : 'rgba(239,68,68,0.4)'}
               iconAnimation="spin"
@@ -411,7 +411,7 @@ export function ResumeCaisse() {
             </div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:12, fontWeight:900, color:'var(--encre)' }}>Tu vends le plus à cette heure</div>
-              <div style={{ fontSize:11, color:'#888', marginTop:2 }}>Sois bien approvisionnée</div>
+              <div style={{ fontSize:11, color:'var(--herite-gris-53)', marginTop:2 }}>Sois bien approvisionnée</div>
             </div>
             <div style={{ background:'var(--commerce-action)', color:'white', fontSize:12, fontWeight:900, padding:'5px 12px', borderRadius:20, whiteSpace:'nowrap' }}>{heurePointe}</div>
           </div>
@@ -428,8 +428,8 @@ export function ResumeCaisse() {
                 <ResponsiveContainer width="100%" height={120}>
                   <LineChart data={evolutionData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--commerce-paper)" />
-                    <XAxis dataKey="day" stroke="#ddd" style={{ fontSize:'10px' }} tick={{ fill:'#aaa' }} />
-                    <YAxis stroke="#ddd" style={{ fontSize:'10px' }} tick={{ fill:'#aaa' }} width={40} />
+                    <XAxis dataKey="day" stroke="var(--herite-gris-87)" style={{ fontSize:'10px' }} tick={{ fill:'var(--herite-gris-40)' }} />
+                    <YAxis stroke="var(--herite-gris-87)" style={{ fontSize:'10px' }} tick={{ fill:'var(--herite-gris-40)' }} width={40} />
                     <Tooltip contentStyle={{ backgroundColor:'white', border:'1.5px solid var(--trait)', borderRadius:12, fontSize:11 }}
                       formatter={(v: number) => `${(v||0).toLocaleString('fr-FR')} FCFA`} />
                     <Line type="monotone" dataKey="solde" stroke="var(--commerce-action)" strokeWidth={2.5}
@@ -450,7 +450,7 @@ export function ResumeCaisse() {
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:10, fontWeight:900, color:'var(--commerce-action)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:2 }}>Produit star du jour</div>
                 <div style={{ fontSize:18, fontWeight:900, color:'var(--encre)' }}>{produitStar.productName}</div>
-                <div style={{ fontSize:11, color:'#888', fontWeight:700, marginTop:2 }}>{produitStar.quantity} vente{produitStar.quantity > 1 ? 's' : ''}</div>
+                <div style={{ fontSize:11, color:'var(--herite-gris-53)', fontWeight:700, marginTop:2 }}>{produitStar.quantity} vente{produitStar.quantity > 1 ? 's' : ''}</div>
               </div>
               <div style={{ textAlign:'right' }}>
                 <div style={{ fontSize:20, fontWeight:900, color:'var(--commerce-action)' }}>{(produitStar.total||0).toLocaleString('fr-FR')}</div>
@@ -468,7 +468,7 @@ export function ResumeCaisse() {
               </div>
               {topProduits.slice(0,5).map((p, i) => (
                 <div key={p.productName} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom: i < Math.min(topProduits.length,5)-1 ? '1px solid var(--commerce-paper)' : 'none' }}>
-                  <div style={{ width:28, height:28, borderRadius:'50%', background: i===0?'var(--commerce-action)':i===1?'#888':'#b45309', color:'white', fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{i+1}</div>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background: i===0?'var(--commerce-action)':i===1?'var(--herite-gris-53)':'var(--herite-orange-brule)', color:'white', fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{i+1}</div>
                   <div style={{ flex:1, fontSize:14, fontWeight:900, color:'var(--encre)' }}>{p.productName}</div>
                   <div style={{ textAlign:'right' }}>
                     <div style={{ fontSize:14, fontWeight:900, color:'var(--commerce-action)' }}>{(p.total||0).toLocaleString('fr-FR')} FCFA</div>

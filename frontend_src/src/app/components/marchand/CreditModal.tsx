@@ -232,7 +232,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
               <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
                 style={{ position:'absolute', inset:0, background:'white', borderRadius:'24px 24px 0 0', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', zIndex:10 }}>
                 <motion.div initial={{ scale:0 }} animate={{ scale:1 }} transition={{ type:'spring', stiffness:300 }}
-                  style={{ width:100, height:100, borderRadius:'50%', background:'#1D9E75', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:20 }}>
+                  style={{ width:100, height:100, borderRadius:'50%', background:'var(--herite-vert-eau)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:20 }}>
                   <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                 </motion.div>
                 <div style={{ fontSize:22, fontWeight:900, color:'var(--encre)' }}>Crédit enregistré !</div>
@@ -283,13 +283,13 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
 
                 {/* Champ nom */}
                 <div style={{ background:'var(--commerce-paper)', border:`1.5px solid ${clientNom ? P : 'var(--commerce-gray-100)'}`, borderRadius:14, padding:'14px 16px', display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={clientNom ? P : '#aaa'} strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={clientNom ? P : 'var(--herite-gris-40)'} strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                   <input value={clientNom}
                     onChange={e => setClientNom(capitalize(e.target.value))}
                     placeholder="Nouveau client — tape son nom..."
                     style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:16, color:'var(--encre)', fontFamily:'inherit' }} />
                   {clientNom && <motion.button whileTap={{ scale:0.9 }} onClick={() => setClientNom('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}>
-                    <X size={14} color="#aaa" />
+                    <X size={14} color="var(--herite-gris-40)" />
                   </motion.button>}
                 </div>
 
@@ -310,7 +310,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                       + Ajouter un numéro de téléphone
                     </motion.button>
                   : <div style={{ background:'var(--commerce-paper)', border:'1.5px solid var(--trait)', borderRadius:14, padding:'13px 16px', display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-40)" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                       <span
                         aria-hidden
                         style={{ fontSize: 13, fontWeight: 900, color: 'var(--encre)', padding: '8px 10px', borderRadius: 12, background: 'rgba(198,106,44,0.08)', userSelect: 'none' }}
@@ -335,7 +335,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
 
                 <motion.button whileTap={{ scale:0.97 }}
                   onClick={() => { if (clientNom.trim()) setStep(2); else { toast.error('Dis-moi le nom du client'); dire('Dis-moi d\'abord le nom du client.'); } }}
-                  style={{ width:'100%', background: clientNom.trim() ? P : '#E0E0E0', color: clientNom.trim() ? 'white' : 'var(--encre-4)', border:'none', borderRadius:16, padding:'18px 0', fontSize:18, fontWeight:800, cursor: clientNom.trim() ? 'pointer' : 'default', fontFamily:'inherit', transition:'all 0.2s' }}>
+                  style={{ width:'100%', background: clientNom.trim() ? P : 'var(--herite-gris-88)', color: clientNom.trim() ? 'white' : 'var(--encre-4)', border:'none', borderRadius:16, padding:'18px 0', fontSize:18, fontWeight:800, cursor: clientNom.trim() ? 'pointer' : 'default', fontFamily:'inherit', transition:'all 0.2s' }}>
                   Suivant →
                 </motion.button>
               </div>
@@ -373,7 +373,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                     <motion.button key={j} whileTap={{ scale:0.95 }} onClick={() => jumpTo(j)}
                       style={{ background: jours===j ? P : 'var(--commerce-paper)', border:`1.5px solid ${jours===j ? P : 'var(--commerce-gray-100)'}`, borderRadius:12, padding:'10px 4px', cursor:'pointer', fontFamily:'inherit' }}>
                       <div style={{ fontSize:13, fontWeight:800, color: jours===j ? 'white' : '#1a1206' }}>{label}</div>
-                      <div style={{ fontSize:10, color: jours===j ? 'rgba(255,255,255,0.75)' : '#aaa', marginTop:2 }}>{fmtShort(getDate(j))}</div>
+                      <div style={{ fontSize:10, color: jours===j ? 'rgba(255,255,255,0.75)' : 'var(--herite-gris-40)', marginTop:2 }}>{fmtShort(getDate(j))}</div>
                     </motion.button>
                   ))}
                 </div>
@@ -396,7 +396,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                           onClick={() => jumpTo(j)}
                           style={{ flexShrink:0, width:72, height:84, borderRadius:16, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', scrollSnapAlign:'center', cursor:'pointer', border:`2px solid ${isOn ? P : 'var(--commerce-gray-100)'}`, background: isOn ? P : 'white', transform:`scale(${isOn ? 1.08 : dist===1 ? 0.93 : 0.82})`, opacity: isOn ? 1 : dist===1 ? 0.7 : 0.45, transition:'all 0.2s' }}>
                           <div style={{ fontSize: isOn ? 22 : 17, fontWeight:900, color: isOn ? 'white' : '#1a1206' }}>{j}</div>
-                          <div style={{ fontSize:10, color: isOn ? 'rgba(255,255,255,0.75)' : '#aaa', marginTop:3 }}>{wd}</div>
+                          <div style={{ fontSize:10, color: isOn ? 'rgba(255,255,255,0.75)' : 'var(--herite-gris-40)', marginTop:3 }}>{wd}</div>
                         </div>
                       );
                     })}
@@ -408,7 +408,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                   <div style={{ fontSize:17, fontWeight:800, color:'var(--encre)', marginBottom:12 }}>Elle t'a déjà donné quelque chose ?</div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
                     <motion.button whileTap={{ scale:0.97 }} onClick={() => { setAADonne(false); setAcompte(''); }}
-                      style={{ borderRadius:12, padding:'14px', textAlign:'center', background: !aADonne ? 'var(--muted)' : 'white', border:`1.5px solid ${!aADonne ? '#999' : 'var(--commerce-gray-100)'}`, cursor:'pointer', fontFamily:'inherit', fontSize:17, fontWeight:800, color: !aADonne ? '#555' : 'var(--encre-4)' }}>
+                      style={{ borderRadius:12, padding:'14px', textAlign:'center', background: !aADonne ? 'var(--muted)' : 'white', border:`1.5px solid ${!aADonne ? '#999' : 'var(--commerce-gray-100)'}`, cursor:'pointer', fontFamily:'inherit', fontSize:17, fontWeight:800, color: !aADonne ? 'var(--herite-gris-33)' : 'var(--encre-4)' }}>
                       Non
                     </motion.button>
                     <div onClick={() => setAADonne(true)}
@@ -483,7 +483,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                     {aADonne && acompte && (
                       <div style={{ textAlign:'right' }}>
                         <div style={{ fontSize:13, color:'var(--encre-4)', fontWeight:700, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.08em' }}>Acompte versé</div>
-                        <div style={{ fontSize:20, fontWeight:800, color:'#1D9E75' }}>{Number(acompte).toLocaleString('fr-FR')} FCFA</div>
+                        <div style={{ fontSize:20, fontWeight:800, color:'var(--herite-vert-eau)' }}>{Number(acompte).toLocaleString('fr-FR')} FCFA</div>
                       </div>
                     )}
                   </div>
@@ -500,9 +500,9 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
                 </div>
 
                 {/* Note vocale */}
-                <div style={{ background:'var(--color-green-50)', border:'1px solid #9fe1cb', borderRadius:12, padding:'12px 14px', display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
-                  <span style={{ fontSize:13, color:'#1D9E75', fontWeight:600 }}>Tantie Nanti Lou confirmera vocalement après l'enregistrement</span>
+                <div style={{ background:'var(--color-green-50)', border:'1px solid var(--herite-vert-pale)', borderRadius:12, padding:'12px 14px', display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--herite-vert-eau)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+                  <span style={{ fontSize:13, color:'var(--herite-vert-eau)', fontWeight:600 }}>Tantie Nanti Lou confirmera vocalement après l'enregistrement</span>
                 </div>
 
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:8 }}>
