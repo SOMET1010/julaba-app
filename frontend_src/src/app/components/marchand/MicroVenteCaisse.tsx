@@ -57,6 +57,7 @@ import { produitPourVente } from '../../services/preselectionVente';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
 import { t } from '../../i18n/voice/runtime';
 import type { LigneProvisoire } from '../../services/ligneProvisoire';
+import { resumeQuantite } from '../../services/dialoguesTata';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces } from '../../utils/haptique';
 import { SaisieGuidee } from './SaisieGuidee';
@@ -210,7 +211,13 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       addToCart({ id: 'libre-' + l.id, nom: l.nomAffiche, prix: prixU, categorie: 'Autre', stock: 0, unite: l.unite }, l.quantite, totalExact, 'vocal');
     }
     vibrerSucces();
-    toast.success(`C'est dans le panier : ${l.quantite} × ${l.nomAffiche}`);
+    // CE QUI EST DIT DOIT AUSSI ÊTRE ÉCRIT — retour terrain du 24/09.
+    // Ici on composait `${l.quantite} × ${l.nomAffiche}` à la main : « 2 tas de
+    // piments » revenait « 2 × piment ». L'unité ÉTAIT connue (`l.unite`), elle
+    // était jetée au dernier mètre, et Tata la disait pourtant à voix haute.
+    // Entendre une chose et en voir une autre, c'est l'écran qui la contredit
+    // sur sa propre vente. `resumeQuantite` compose déjà, avec l'accord.
+    toast.success(`C'est dans le panier : ${resumeQuantite(l)}`);
     if (guidageVocal()) speakMessage('TATA_AJOUT_PANIER');
     setSaisieOuverte(false);
   };
