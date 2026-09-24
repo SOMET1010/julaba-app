@@ -15,7 +15,7 @@ import {
   CATEGORIES_DEPENSE, libelleParId, type IdCategorieDepense,
 } from '../../services/categorieDepense';
 
-const P = '#AF5B23';
+const P = 'var(--commerce-action)';
 const BG = 'var(--commerce-paper)';
 
 // LES ONZE CATÉGORIES VIENNENT DE `services/categorieDepense.ts` — DEP-02.
@@ -171,7 +171,7 @@ export function DepenseForm() {
         <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')}
           style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid #8f4418' }} />
+          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid var(--commerce-orange-700)' }} />
         </motion.button>
       }
       bottomAction={
@@ -214,7 +214,7 @@ export function DepenseForm() {
         {/* CHAMP MANUEL */}
         <div>
           <div style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Ou décris ta dépense</div>
-          <div style={{ background:'white', border:`1.5px solid ${canProceed ? P : '#EDE7DE'}`, borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', gap:10, transition:'border-color 0.2s' }}>
+          <div style={{ background:'white', border:`1.5px solid ${canProceed ? P : 'var(--commerce-gray-100)'}`, borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', gap:10, transition:'border-color 0.2s' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={canProceed ? P : '#aaa'} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             <input
               value={description}
@@ -252,7 +252,7 @@ export function DepenseForm() {
                   {AUTRES_CATEGORIES.map(c => (
                     <motion.button key={c.id} whileTap={{ scale:0.95 }}
                       onClick={() => { setDescription(c.libelle); setCategorie(c.id); setStep(2); }}
-                      style={{ padding:'11px 8px', borderRadius:14, border:`1.5px solid ${categorie===c.id ? P : '#EDE7DE'}`, background: categorie===c.id ? P : 'white', color: categorie===c.id ? 'white' : '#5a4030', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s', textAlign:'center' }}>
+                      style={{ padding:'11px 8px', borderRadius:14, border:`1.5px solid ${categorie===c.id ? P : 'var(--commerce-gray-100)'}`, background: categorie===c.id ? P : 'white', color: categorie===c.id ? 'white' : 'var(--encre-3)', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s', textAlign:'center' }}>
                       {c.libelle}
                     </motion.button>
                   ))}
@@ -292,7 +292,7 @@ export function DepenseForm() {
         <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')}
           style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid #8f4418' }} />
+          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid var(--commerce-orange-700)' }} />
         </motion.button>
       }
       bottomAction={

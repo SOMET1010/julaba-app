@@ -755,7 +755,7 @@ export function VentesPassees() {
                 : credit.statut_calcule === 'paye' ? 'var(--caisse-vert)'
                 : P;
               const statutBg = credit.statut_calcule === 'en_retard' ? 'color-mix(in srgb, var(--caisse-alerte) 12%, var(--caisse-ivoire))'
-                : credit.statut_calcule === 'bientot' ? '#FFFBEB'
+                : credit.statut_calcule === 'bientot' ? 'var(--color-orange-50)'
                 : credit.statut_calcule === 'paye' ? 'var(--caisse-succes)'
                 : 'var(--caisse-succes)';
               const statutLabel = credit.statut_calcule === 'en_retard' ? 'En retard'

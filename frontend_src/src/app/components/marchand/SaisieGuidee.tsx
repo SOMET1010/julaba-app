@@ -212,7 +212,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
   const pret = produitChoisi && parseInt(prix || '0', 10) > 0;
 
   return (
-    <div style={{ background: 'var(--commerce-surface)', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ background: 'var(--commerce-surface)', border: '1.5px solid var(--commerce-gray-100)', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         {/* CAI-11 — LE PANNEAU PORTE LE NOM DU GESTE QUI L'OUVRE.
             Il s'intitulait « SAISIR SANS PARLER ». Troisième nom pour le même
@@ -267,12 +267,12 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
             </button>
           ) : (
             <input autoFocus value={produit} onChange={e => setProduit(e.target.value)} placeholder="Nom du produit"
-              style={{ marginTop: 10, width: '100%', boxSizing: 'border-box', border: '1.5px solid #e5e0d8', borderRadius: 12, padding: '12px 14px', fontSize: 16, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
+              style={{ marginTop: 10, width: '100%', boxSizing: 'border-box', border: '1.5px solid var(--commerce-gray-100)', borderRadius: 12, padding: '12px 14px', fontSize: 16, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
           )}
         </div>
       ) : (
         // Produit choisi : confirmation en photo, pas en texte à relire.
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#FFF3EB', border: `1.5px solid ${ORANGE}40`, borderRadius: 14, padding: '8px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--commerce-orange-50)', border: `1.5px solid ${ORANGE}40`, borderRadius: 14, padding: '8px 10px' }}>
           {produitImage && <img src={produitImage} alt={produit} style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />}
           <span style={{ flex: 1, fontSize: 15, fontWeight: 800, color: 'var(--color-gray-800)' }}>{produit}</span>
           <button type="button" onClick={changerProduit}
@@ -288,7 +288,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
           <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--encre-4)', textAlign: 'center', margin: '0 0 8px' }}>Combien ?</p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
             <motion.button whileTap={{ scale: 0.9 }} aria-label="Moins" onClick={() => changerQuantite(Math.max(1, quantite - 1))}
-              style={{ width: 52, height: 52, borderRadius: 14, background: 'white', border: '1.5px solid #e5e0d8', fontSize: 26, fontWeight: 800, color: '#555', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
+              style={{ width: 52, height: 52, borderRadius: 14, background: 'white', border: '1.5px solid var(--commerce-gray-100)', fontSize: 26, fontWeight: 800, color: '#555', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
             <span style={{ fontSize: 42, fontWeight: 900, color: 'var(--encre)', minWidth: 60, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{quantite}</span>
             <motion.button whileTap={{ scale: 0.9 }} aria-label="Plus" onClick={() => changerQuantite(quantite + 1)}
               style={{ width: 52, height: 52, borderRadius: 14, background: ORANGE, border: 'none', fontSize: 26, fontWeight: 800, color: 'white', cursor: 'pointer', flexShrink: 0 }}>+</motion.button>
@@ -329,20 +329,20 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {CHIFFRES_CLAVIER.map(d => (
                 <button key={d} type="button" onClick={() => appuyerChiffre(d)}
-                  style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
                   {d}
                 </button>
               ))}
               <button type="button" onClick={() => taperPrix('')}
-                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 14, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 14, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>
                 C
               </button>
               <button type="button" onClick={() => appuyerChiffre('0')}
-                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
                 0
               </button>
               <button type="button" onClick={effacerChiffre} aria-label="Effacer un chiffre"
-                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 16, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 16, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>
                 ⌫
               </button>
             </div>
@@ -354,7 +354,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
           {(['unitaire', 'total'] as const).map(m => (
             <button key={m} onClick={() => { setMode(m); direMessage(m === 'unitaire' ? 'TATA_PRIX_D_UN_SEUL' : 'TATA_PRIX_DU_TOUT'); }}
               style={{ flex: 1, minHeight: 44, borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
-                border: `1.5px solid ${mode === m ? ORANGE : '#e5e0d8'}`, background: mode === m ? '#FDE9D6' : 'white', color: mode === m ? ORANGE : '#888' }}>
+                border: `1.5px solid ${mode === m ? ORANGE : 'var(--commerce-gray-100)'}`, background: mode === m ? 'var(--color-orange-100)' : 'white', color: mode === m ? ORANGE : '#888' }}>
               {m === 'unitaire' ? "Prix d'un" : 'Prix du tout'}
             </button>
           ))}
@@ -362,7 +362,7 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
 
         <motion.button whileTap={{ scale: 0.97 }} disabled={!pret} onClick={verifier}
           style={{ minHeight: 52, borderRadius: 16, fontWeight: 800, fontSize: 16, border: 'none', fontFamily: 'inherit',
-            background: pret ? ORANGE : '#e0d5c8', color: 'white', cursor: pret ? 'pointer' : 'default' }}>
+            background: pret ? ORANGE : 'var(--commerce-line)', color: 'white', cursor: pret ? 'pointer' : 'default' }}>
           Vérifier
         </motion.button>
       </>)}

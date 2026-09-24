@@ -634,7 +634,7 @@ export function MarcheVirtuel() {
           </div>
         )}
         {profilIncomplet && (
-          <div role="alert" style={{ margin:'0 0 12px', background:'#FFF4E5', border:'1.5px solid #F0C48A', borderRadius:16, padding:'12px 16px' }}>
+          <div role="alert" style={{ margin:'0 0 12px', background:'var(--commerce-orange-50)', border:'1.5px solid #F0C48A', borderRadius:16, padding:'12px 16px' }}>
             <p style={{ margin:0, fontSize:14, fontWeight:800, color:'#8A4B12' }}>Ton profil marchand n'est pas complet</p>
             <p style={{ margin:'4px 0 0', fontSize:13, color:'#8A5A34' }}>
               Pour accéder au marché, vois ton identificateur : il précisera si tu es détaillante, demi-grossiste ou grossiste.
