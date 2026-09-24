@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { suggererProduits, getImageByNom, rechercherProduitCatalogue, CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
@@ -389,7 +390,7 @@ export function GestionStock() {
           return;
         }
         const val = stocks.reduce((s, p) => s + p.quantity * p.salePrice, 0);
-        speak(`La valeur totale est ${val.toLocaleString('fr-FR')} francs`);
+        speak(`La valeur totale est ${nombreEnMotsFr(val)} francs`);
       }
     },
     onError: () => setIsListening(false),

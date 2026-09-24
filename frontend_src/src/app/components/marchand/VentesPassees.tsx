@@ -1,4 +1,5 @@
 import { etatMarge, libelleMarge, phraseMarge } from '../../services/margeVente';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import type { LigneDeVente } from '../../types/vente';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -137,7 +138,7 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
       // ainsi qu'un écran finit par dire autre chose que la donnée.
       const fragment = phraseMarge(etat);
       const texteMarge = fragment ? (etat.type === 'partielle' ? ` ${fragment}` : `, ${fragment}`) : '';
-      try { speak(`${sale.productName || 'Vente'} : ${montant.toLocaleString('fr-FR')} francs${texteMarge}, le ${quand}.`); } catch { /* ignore */ }
+      try { speak(`${sale.productName || 'Vente'} : ${nombreEnMotsFr(montant)} francs${texteMarge}, le ${quand}.`); } catch { /* ignore */ }
     }
   };
 

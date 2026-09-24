@@ -93,6 +93,44 @@ function main() {
     ok(!/logo BCEAO|numéro de série|signe de sécurité/i.test(composantCoupure.replace(/\/\*[\s\S]*?\*\//g, "")), "aucun élément sécurisé n'est reproduit dans le rendu");
   }
 
+  // ── UN MONTANT DIT N'EST PAS UN MONTANT AFFICHÉ ────────────────────────
+  //
+  // Retour terrain, confirmé deux fois : « il lit 2000 francs : 2 zéro zéro
+  // zéro francs ». Mesuré : `(2000).toLocaleString('fr-FR')` rend `2` + U+202F
+  // (espace fine insécable) + `000`, et AUCUNE couche ne la retire avant le
+  // moteur de voix. Celui-ci reçoit un nombre coupé et lit les chiffres un par
+  // un. Sans locale, c'est pire : `toLocaleString()` suit la locale de
+  // l'APPAREIL — le même montant n'est pas dit pareil selon le téléphone.
+  //
+  // LA RÈGLE EXISTE DÉJÀ, on n'en écrit pas une seconde : `nombreEnMotsFr`
+  // (i18n/voice/argent/deuxFormes) rend « deux mille », déterministe, sans ICU.
+  // `formeEcran` garde l'espace fine pour l'ŒIL — elle y est bonne. Ne jamais
+  // donner deux sens à la même donnée : un montant affiché n'est pas un montant
+  // dit, et les confondre est exactement ce qui a produit ce défaut.
+  {
+    const ecrans = [
+      "components/marchand/DepenseForm.tsx",
+      "components/marchand/GestionStock.tsx",
+      "components/marchand/MarchandModals.tsx",
+      "components/marchand/CreditModal.tsx",
+      "components/marchand/MesCommandes.tsx",
+      "components/marchand/VentesPassees.tsx",
+    ];
+    for (const rel of ecrans) {
+      const src = readFileSync(fileURLToPath(new URL(`../${rel}`, import.meta.url)), "utf-8")
+        .replace(/\/\*[\s\S]*?\*\//g, "").split("\n")
+        .filter((l) => !/^\s*(\/\/|\*)/.test(l)).join("\n");
+      const nom = rel.split("/").pop();
+
+      // Un appel de parole qui contient un formatage d'ÉCRAN sur la même ligne.
+      const fautifs = src.split("\n").filter((l) =>
+        /(speak|dire|direEtRetenir|speakAuto)\s*\(/.test(l) &&
+        /toLocaleString|formatMontantFR|formatF\(/.test(l));
+      ok(fautifs.length === 0,
+         `${nom} : aucun montant formaté pour l'écran ne part à la voix (${fautifs.length} restant(s))`);
+    }
+  }
+
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
   if (failures > 0) process.exit(1);
 }

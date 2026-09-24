@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -335,7 +336,7 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
     const newValue = currentValue + montant;
     setFondInitial(newValue.toString());
     setError('');
-    void speak(`${formatMontantFR(montant)} Francs CFA ajoutés. Total : ${formatMontantFR(newValue || 0)} Francs CFA`);
+    void speak(`${nombreEnMotsFr(montant)} Francs CFA ajoutés. Total : ${nombreEnMotsFr(newValue || 0)} Francs CFA`);
   };
 
   const handlePieceClick = (montant: number) => {
@@ -343,7 +344,7 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
     const newValue = currentValue + montant;
     setFondInitial(newValue.toString());
     setError('');
-    void speak(`${formatMontantFR(montant)} Francs CFA ajoutés. Total : ${formatMontantFR(newValue || 0)} Francs CFA`);
+    void speak(`${nombreEnMotsFr(montant)} Francs CFA ajoutés. Total : ${nombreEnMotsFr(newValue || 0)} Francs CFA`);
   };
 
   const handleInputChange = (value: string) => {
@@ -374,7 +375,7 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
     openDay(montant);
     onClose();
     stopAllAudio();
-    setTimeout(() => { void speak(`Ta journée est ouverte avec ${formatMontantFR(montant || 0)} Francs CFA`); }, 500);
+    setTimeout(() => { void speak(`Ta journée est ouverte avec ${nombreEnMotsFr(montant || 0)} Francs CFA`); }, 500);
     setFondInitial('');
     setError('');
   };
@@ -471,14 +472,14 @@ export function EditFondModal({ isOpen, onClose, currentFond }: EditFondModalPro
     const currentValue = parseFloat(nouveauFond) || 0;
     const newValue = currentValue + montant;
     setNouveauFond(newValue.toString());
-    void speak(`${formatMontantFR(montant)} Francs CFA ajoutés. Total : ${formatMontantFR(newValue || 0)} Francs CFA`);
+    void speak(`${nombreEnMotsFr(montant)} Francs CFA ajoutés. Total : ${nombreEnMotsFr(newValue || 0)} Francs CFA`);
   };
 
   const handlePieceClick = (montant: number) => {
     const currentValue = parseFloat(nouveauFond) || 0;
     const newValue = currentValue + montant;
     setNouveauFond(newValue.toString());
-    void speak(`${formatMontantFR(montant)} Francs CFA ajoutés. Total : ${formatMontantFR(newValue || 0)} Francs CFA`);
+    void speak(`${nombreEnMotsFr(montant)} Francs CFA ajoutés. Total : ${nombreEnMotsFr(newValue || 0)} Francs CFA`);
   };
 
   const handleSubmit = () => {
@@ -488,7 +489,7 @@ export function EditFondModal({ isOpen, onClose, currentFond }: EditFondModalPro
       return;
     }
     updateFondInitial(montant);
-    void speak(`Ton fond de caisse est maintenant de ${formatMontantFR(montant || 0)} Francs CFA`);
+    void speak(`Ton fond de caisse est maintenant de ${nombreEnMotsFr(montant || 0)} Francs CFA`);
     onClose();
   };
 
