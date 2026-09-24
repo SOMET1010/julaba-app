@@ -686,13 +686,17 @@ export function GestionStock() {
             />
           </div>
 
-          {/* Ajouter un produit à l'écrit : l'AUTRE façon de faire le même
-              geste que le gros bouton vocal au-dessus — pas « Vendre », qui
-              n'a rien à voir avec la gestion du stock et est déjà accessible
-              en un geste depuis l'accueil (audit accueil/tuiles). */}
+          {/* « ÉCRIRE » N'EXISTE PLUS — STK-18, décision de Patrick.
+              Le geste est « Ajouter un produit ». Parler et toucher n'en sont
+              que des MOYENS ; nommer l'un d'eux « Écrire » en faisait un geste
+              à part, et le mot lui-même désigne ce que la marchande ne sait
+              pas faire. Les deux boutons ouvrent le même parcours guidé
+              (setShowAdd) : l'un après l'avoir écoutée, l'autre directement.
+              Pas « Vendre », qui n'a rien à voir avec la gestion du stock et
+              est déjà accessible en un geste depuis l'accueil. */}
           <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowAdd(true)}
             style={{ width:'100%', background:'white', border:`2px solid ${P}`, borderRadius:14, padding:'12px 0', fontSize:14, fontWeight:800, color:P, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginBottom:14 }}>
-            <Package size={16} /> Écrire
+            <Package size={16} /> Ajouter un produit
           </motion.button>
 
           {/* Grille swipeable */}
