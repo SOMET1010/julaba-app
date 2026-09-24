@@ -106,7 +106,23 @@ console.log('\n[4] LES TROIS CHEMINS DE L\'ÉCRAN PASSENT PAR LA RÈGLE');
   // L'ajout VOCAL.
   ok(!/cat\?\.prixVente|cat\?\.prixAchat/.test(g),
      'l\'ajout à la voix ne se replie plus sur le prix du catalogue');
-  ok(/prixDicte\(/.test(g), 'il prend le prix qu\'elle a dit, par la règle');
+  // STK-05 — CETTE ASSERTION A ÉTÉ REMPLACÉE PAR UNE PLUS FORTE, PAS RETIRÉE.
+  //
+  // Elle exigeait `prixDicte(` dans l'écran : la règle qui refuse de se replier
+  // sur le prix du catalogue. Mesuré le 24/09, ce bloc vocal était INATTEIGNABLE
+  // — `ajouter_stock` n'avait aucun producteur dans le dépôt. L'assertion
+  // gardait donc du code mort, et exiger `prixDicte(` revenait à exiger que ce
+  // code mort reste en place.
+  //
+  // Le bloc a été retiré. Ce qui le remplace est plus fort : l'ajout vocal ne
+  // crée plus rien lui-même — il passe par `AjoutProduitGuide`, où le prix vient
+  // d'elle ou n'existe pas. Un écran qui ne peut PLUS écrire de prix est une
+  // garantie plus dure qu'un écran qui écrit le bon.
+  const blocVocal = (g.match(/onAction:[\s\S]*?onError:/) || [''])[0];
+  ok(!/addProduct\(/.test(blocVocal),
+     'la voix ne crée plus aucun produit elle-même — elle passe par le parcours');
+  ok(!/prix\s*:\s*prixVente|prix_achat\s*:/.test(blocVocal),
+     'et elle n\'écrit plus aucun prix directement');
 
   // L'AFFICHAGE de la suggestion : montrer un prix qui n'est pas le sien,
   // c'est déjà l'affirmer.

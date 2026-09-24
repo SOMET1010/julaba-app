@@ -8,18 +8,18 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **405** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 426 |
-| — littéraux (phrase fixe en dur) | 195 |
-| — gabarits (`${…}`, phrase dynamique à variables) | 93 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **400** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 420 |
+| — littéraux (phrase fixe en dur) | 193 |
+| — gabarits (`${…}`, phrase dynamique à variables) | 89 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
 | — relais (`dire = (t) => speak(t)`) | 18 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 50 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **245** |
-| Dont dynamiques (avec variables) | 93 |
-| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **61** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **241** |
+| Dont dynamiques (avec variables) | 89 |
+| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **59** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
-| Fichiers avec au moins un site d'appel | 77 |
+| Fichiers avec au moins un site d'appel | 78 |
 | Attributs `aria-label` (lecteur d'écran uniquement) | 302 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
@@ -29,9 +29,9 @@
 | `components/marchand/POSCaisse.tsx` | caisse | 29 | 0 | 0 | 8 | 2 | 20 | 0 |
 | `components/producteur/CommandesProducteurPage.tsx` | producteur | 26 | 14 | 15 | 0 | 0 | 0 | 3 |
 | `components/producteur/Stocks.tsx` | stock | 23 | 11 | 12 | 0 | 0 | 0 | 1 |
-| `components/marchand/GestionStock.tsx` | stock | 20 | 11 | 9 | 1 | 1 | 0 | 4 |
 | `hooks/useVoiceCore.ts` | moteur_vocal | 16 | 9 | 0 | 6 | 2 | 0 | 1 |
 | `components/wallet/WithdrawWalletModal.tsx` | wallet | 15 | 11 | 4 | 0 | 0 | 0 | 10 |
+| `components/marchand/GestionStock.tsx` | stock | 14 | 8 | 5 | 1 | 1 | 0 | 2 |
 | `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 6 | 3 | 4 | 0 | 2 | 1 |
 | `components/wallet/RechargeWalletModal.tsx` | wallet | 14 | 10 | 4 | 0 | 0 | 0 | 6 |
 | `components/auth/LoginPassword.tsx` | auth | 12 | 7 | 1 | 5 | 0 | 0 | 0 |
@@ -90,6 +90,7 @@
 | `components/layout/Sidebar.tsx` | partage | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/BesoinMarchand.tsx` | marchand_autre | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/BoutonDirePrix.tsx` | autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
+| `components/marchand/BoutonDireProduit.tsx` | autre | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/ChoixUnite.tsx` | caisse | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/MaCooperative.tsx` | marchand_autre | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/MarchandAlertes.tsx` | marchand_autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
@@ -110,7 +111,7 @@
 |---|---:|---:|---:|
 | producteur | 71 | 71 | 6 |
 | marchand_autre | 54 | 41 | 17 |
-| stock | 46 | 46 | 5 |
+| stock | 40 | 39 | 3 |
 | partage | 37 | 24 | 0 |
 | caisse | 34 | 0 | 0 |
 | wallet | 34 | 36 | 18 |
@@ -119,8 +120,8 @@
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 17 | 9 | 1 |
 | depense | 10 | 11 | 4 |
+| autre | 8 | 1 | 0 |
 | credit | 8 | 7 | 4 |
-| autre | 7 | 0 | 0 |
 | backoffice | 5 | 4 | 0 |
 | pages | 5 | 1 | 0 |
 | academy | 2 | 0 | 0 |
@@ -268,12 +269,12 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 61 | `speak` | relais | t |  |  |
-| 66 | `dire` | dynamique | resoudreMessage(id, vars).texte |  |  |
-| 85 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
-| 88 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 96 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
-| 126 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
+| 72 | `speak` | relais | t |  |  |
+| 77 | `dire` | dynamique | resoudreMessage(id, vars).texte |  |  |
+| 96 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
+| 99 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 107 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
+| 137 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
 
 ### `components/marchand/BesoinMarchand.tsx` — marchand_autre
 
@@ -286,6 +287,12 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
 | 102 | `dire` | dynamique | question |  |  |
+
+### `components/marchand/BoutonDireProduit.tsx` — autre
+
+| Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
+|---:|---|---|---|---|:-:|
+| 77 | `dire` | literal | Je n'ai pas entendu de produit. Dis-moi ce que tu vends. |  |  |
 
 ### `components/marchand/ChoixUnite.tsx` — caisse
 
@@ -344,28 +351,21 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 249 | `speak` | relais | t |  |  |
-| 353 | `speak` | dynamique | nomPropre |  |  |
-| 355 | `speak` | literal | Je n'ai pas entendu le nom. Réessaie, s'il te plaît. |  |  |
-| 370 | `speak` | literal | Quel produit veux-tu ajouter ? |  |  |
-| 371 | `speak` | template | Combien de {nom} veux-tu ajouter ? | `nom` |  |
-| 381 | `speak` | template | {qte} {unit} de {name} ajoutés. Tu as maintenant {newQty} {unit}. | `qte` `unit` `name` `newQty` `unit` |  |
-| 382 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 407 | `speak` | template | C'est fait ! {qte} {unite} de {nom} à {prixVente} francs, ajoutés au stock. | `qte` `unite` `nom` `prixVente` | € |
-| 407 | `speak` | template | {nom} ajouté au stock. Dis-moi son prix quand tu veux. | `nom` | € |
-| 410 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 416 | `speak` | literal | Tous tes stocks sont bons |  |  |
-| 416 | `speak` | template | {low} produits en stock bas : {join} | `low` `join` |  |
-| 419 | `speak` | literal | Tes montants sont cachés. Appuie sur l'œil pour les afficher. |  |  |
-| 423 | `speak` | template | La valeur totale est {val} francs | `val` | € |
-| 502 | `speak` | literal | C'est mis à jour. |  |  |
-| 505 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 517 | `speak` | literal | Saisis une quantité valide |  | € |
-| 522 | `speak` | template | {reappNum} {unit} de {name} ajoutés. Stock à {newQty} {unit} | `reappNum` `unit` `name` `newQty` `unit` |  |
-| 551 | `speak` | template | {name} supprimé | `name` |  |
-| 559 | `speak` | literal | Ça n'a pas marché. Le produit n'est pas supprimé. |  |  |
-| 605 | `speak` | template | {name} mis à jour | `name` |  |
-| 609 | `speak` | literal | Ça n'a pas été enregistré. Réessaie, s'il te plaît. |  |  |
+| 251 | `speak` | relais | t |  |  |
+| 357 | `speak` | dynamique | nomPropre |  |  |
+| 359 | `speak` | literal | Je n'ai pas entendu le nom. Réessaie, s'il te plaît. |  |  |
+| 385 | `speak` | literal | Tous tes stocks sont bons |  |  |
+| 385 | `speak` | template | {low} produits en stock bas : {join} | `low` `join` |  |
+| 388 | `speak` | literal | Tes montants sont cachés. Appuie sur l'œil pour les afficher. |  |  |
+| 392 | `speak` | template | La valeur totale est {val} francs | `val` | € |
+| 471 | `speak` | literal | C'est mis à jour. |  |  |
+| 474 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 486 | `speak` | literal | Saisis une quantité valide |  | € |
+| 491 | `speak` | template | {reappNum} {unit} de {name} ajoutés. Stock à {newQty} {unit} | `reappNum` `unit` `name` `newQty` `unit` |  |
+| 520 | `speak` | template | {name} supprimé | `name` |  |
+| 528 | `speak` | literal | Ça n'a pas marché. Le produit n'est pas supprimé. |  |  |
+| 574 | `speak` | template | {name} mis à jour | `name` |  |
+| 578 | `speak` | literal | Ça n'a pas été enregistré. Réessaie, s'il te plaît. |  |  |
 
 ### `components/marchand/MaCooperative.tsx` — marchand_autre
 
