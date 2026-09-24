@@ -26,10 +26,10 @@ import {
   doitProposerCreation,
   type ProduitAppariable,
 } from './venteVocale';
-import { phraseAmbiguite, phraseCompris } from './dialoguesTata';
+import { ambiguiteDeuxFormes, phraseAmbiguite, phraseCompris } from './dialoguesTata';
 import { resoudrePrixVocal } from './prixVocal';
 import { uniteEntendue } from '../utils/unite.utils';
-import { t } from '../i18n/voice/runtime';
+import { t, tParle } from '../i18n/voice/runtime';
 
 /**
  * Forme minimale attendue par `CaisseContext.addToCart` — reprise ici plutôt
@@ -243,16 +243,27 @@ export function vendreVocalUnifie(
     // (guidageVocalActif())` : profil « je lis » + appelant sans écran de
     // prix = aucun canal, donc rien du tout. L'écrit ne peut plus manquer, et
     // il ne peut plus dire autre chose que le dit.
-    const refus =
+    // DEUX FORMES, MÊME SOURCE — terrain du 24/09. La phrase reste construite
+    // une seule fois, mais elle porte désormais sa forme ÉCRAN et sa forme
+    // DITE : « 1 500 F » se lit, « mille cinq cents francs » s'entend. Avec
+    // une seule forme, la synthèse épelait « 1 zéro zéro zéro ».
+    const refusDeuxFormes: { texte: string; texteParle: string } =
       prix.type === 'unite_incompatible'
-        ? t('TATA_UNITE_INCOMPATIBLE', { uniteParlee: prix.uniteParlee, produit: prix.nom, uniteCatalogue: prix.uniteCatalogue })
+        ? (() => {
+            const v = { uniteParlee: prix.uniteParlee, produit: prix.nom, uniteCatalogue: prix.uniteCatalogue };
+            return { texte: t('TATA_UNITE_INCOMPATIBLE', v), texteParle: tParle('TATA_UNITE_INCOMPATIBLE', v) };
+          })()
         : prix.type === 'ambiguite_prix'
           // On lui repose SA question, avec SES chiffres — et on ne pose rien
           // au panier tant qu'elle n'a pas répondu.
-          ? phraseAmbiguite(prix.quantite, prix.montant)
+          ? ambiguiteDeuxFormes(prix.quantite, prix.montant)
           : prix.nom
-            ? t('TATA_PRIX_INCONNU_PRODUIT', { produit: prix.nom })
-            : t('TATA_PRIX_INCOMPRIS');
+            ? (() => {
+                const v = { produit: prix.nom };
+                return { texte: t('TATA_PRIX_INCONNU_PRODUIT', v), texteParle: tParle('TATA_PRIX_INCONNU_PRODUIT', v) };
+              })()
+            : { texte: t('TATA_PRIX_INCOMPRIS'), texteParle: tParle('TATA_PRIX_INCOMPRIS') };
+    const refus = refusDeuxFormes.texte;
     // VU, toujours — même quand Tata se tait.
     deps.signalerBlocage?.({
       texte: refus,
@@ -261,7 +272,7 @@ export function vendreVocalUnifie(
       quantite: qte,
     });
     // ENTENDU, quand le guidage vocal est actif — inchangé.
-    if (deps.guidageVocalActif()) deps.speak(refus);
+    if (deps.guidageVocalActif()) deps.speak(refusDeuxFormes.texteParle);
     return;
   }
 

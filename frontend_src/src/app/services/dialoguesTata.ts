@@ -7,7 +7,7 @@
  */
 import { quantiteAvecUnite } from '../utils/unite.utils';
 import type { LigneProvisoire } from './ligneProvisoire.js';
-import { t } from '../i18n/voice/runtime';
+import { t, tParle } from '../i18n/voice/runtime';
 
 // Les phrases viennent du catalogue i18n (clés TATA_*). On arrondit ici comme
 // avant ; le formatage « fr-FR » est celui de la locale (runtime). Ce qui
@@ -107,7 +107,46 @@ export function phraseCompris(args: {
   const quantite = uniteParlable(args.unite)
     ? t('TATA_MESURE_DE_PRODUIT', { mesure: quantiteAvecUnite(args.quantite, args.unite), produit: args.nom })
     : t('TATA_QUANTITE_PRODUIT', { quantite: String(args.quantite), produit: nom });
-  return t('TATA_COMPRIS', { quantite, montant: r(args.total), suite: ajoutPanier() });
+  // DITE UNIQUEMENT (vendreVocalUnifie l'envoie à `speak`) : on prend la forme
+  // PARLÉE. `t(...)` rendrait la forme ÉCRAN, avec son espace fine — et la
+  // synthèse épellerait « 2 zéro zéro zéro ». Terrain du 24/09.
+  return tParle('TATA_COMPRIS', { quantite, montant: r(args.total), suite: ajoutPanier() });
+}
+
+/**
+ * DEUX FORMES, UN SEUL APPEL — terrain du 24/09.
+ *
+ * `ConfirmationLigne` AFFICHE la phrase de Tantie autant qu'il la dit, et
+ * revendique « impossible de diverger ». C'est juste — mais une seule forme ne
+ * peut pas servir les deux : à l'œil « 2 000 F » se lit, à l'oreille il
+ * s'épelle « 2 zéro zéro zéro ».
+ *
+ * La réponse existait déjà dans ce dépôt (`relectureDeuxFormes`) : rendre les
+ * DEUX formes du MÊME appel. L'écran prend `texte`, le moteur prend
+ * `texteParle`, et elles ne peuvent pas diverger puisqu'elles sortent d'ici.
+ */
+export interface PhraseDeuxFormes { texte: string; texteParle: string; }
+
+/** La phrase de confirmation, pour l'œil et pour l'oreille. */
+export function confirmationDeuxFormes(ligne: LigneProvisoire): PhraseDeuxFormes {
+  const base = resumeQuantite(ligne);
+  if (ligne.interpretationPrix === 'unitaire' && ligne.prixUnitaire != null && ligne.total != null) {
+    const v = { quantite: base, prixUnitaire: r(ligne.prixUnitaire), total: r(ligne.total) };
+    return { texte: t('TATA_CONFIRMATION_UNITAIRE', v), texteParle: tParle('TATA_CONFIRMATION_UNITAIRE', v) };
+  }
+  if (ligne.interpretationPrix === 'total' && ligne.total != null) {
+    const v = { quantite: base, total: r(ligne.total) };
+    return { texte: t('TATA_CONFIRMATION_TOTAL', v), texteParle: tParle('TATA_CONFIRMATION_TOTAL', v) };
+  }
+  // Sans prix, il n'y a aucun montant à dire : les deux formes coïncident.
+  const p = phrasePrixManquant();
+  return { texte: p, texteParle: p };
+}
+
+/** La question d'ambiguïté, pour l'œil et pour l'oreille. */
+export function ambiguiteDeuxFormes(quantite: number, montant: number): PhraseDeuxFormes {
+  const v = { montant: r(montant), quantite: String(quantite) };
+  return { texte: t('TATA_AMBIGUITE', v), texteParle: tParle('TATA_AMBIGUITE', v) };
 }
 
 /** Une unité mérite-t-elle d'être prononcée ? « unité » n'apprend rien. */
