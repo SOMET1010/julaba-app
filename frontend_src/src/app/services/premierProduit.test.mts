@@ -219,6 +219,31 @@ console.log("\n[6] SON NOM S'ÉCRIT EN ENTIER — RECETTE DTDI DU 24/09");
   ok(/peutValider\(/.test(ap), "et l'écran demande à la règle s'il peut avancer");
 }
 
+console.log("\n[7] CE QU'ELLE ENTEND N'EST PAS CE QU'ON AFFICHE");
+{
+  // Terrain du 24/09, Patrick : « il épelle avec 2000. C'est 2 zéro zéro ».
+  //
+  // MESURÉ. Un message du catalogue porte DEUX formes :
+  //   resoudreMessage(...).texte      -> « gombo, 2 000 francs le tas »  (ŒIL)
+  //   formeParleeDuMessage(...)       -> « gombo, deux mille francs... » (OREILLE)
+  //
+  // `rendreMessage` applique la seconde. SaisieGuidee, ConfirmationLigne et
+  // speakMessage passent tous par lui. Cet écran-ci le court-circuitait :
+  // `dire(resoudreMessage(id, vars).texte)` envoyait la forme ÉCRAN au moteur
+  // de voix, espace fine comprise — et la synthèse épelait.
+  //
+  // Passer par le catalogue ne suffit donc PAS : il faut passer par le RENDU.
+  const ap = readFileSync(
+    new URL('../components/marchand/AjoutProduitGuide.tsx', import.meta.url), 'utf-8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
+    .filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+
+  ok(!/\.texte\s*\)/.test(ap) || !/dire\(resoudreMessage/.test(ap),
+     "l'écran n'envoie plus la forme ÉCRAN au moteur de voix");
+  ok(/rendreMessage\(/.test(ap),
+     'il passe par le rendu vocal, comme les trois autres écrans du catalogue');
+}
+
 console.log(echecs === 0
   ? '\n✅ Trois questions, son prix, un seul enregistrement.\n'
   : `\n❌ ${echecs} échec(s)\n`);
