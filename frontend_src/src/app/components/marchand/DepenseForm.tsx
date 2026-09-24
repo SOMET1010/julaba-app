@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft } from 'lucide-react';
@@ -111,7 +112,7 @@ export function DepenseForm() {
     try {
       await enregistrerDepense(m, description.trim(), categorie);
       await reloadTransactions();
-      speak('Dépense de ' + m.toLocaleString() + ' francs enregistrée');
+      speak('Dépense de ' + nombreEnMotsFr(m) + ' francs enregistrée');
       navigate(-1);
     } catch (e: any) { console.warn('[DepenseForm] handleSave failed:', e?.message); speak("Erreur lors de l'enregistrement"); }
     finally { enregEnCoursRef.current = false; setIsProcessing(false); }
@@ -327,7 +328,7 @@ export function DepenseForm() {
           onChange={setMontant}
           color={montantColor}
           ariaLabel="Montant de la dépense"
-          onSpeak={(m) => { if (m > 0) void speak(`${m.toLocaleString('fr-FR')} francs`); }}
+          onSpeak={(m) => { if (m > 0) void speak(`${nombreEnMotsFr(m)} francs`); }}
         />
         <div style={{ textAlign:'center', padding:'0 0 4px' }}>
           <div style={{ fontSize:12, height:18, marginTop:4, color:montantColor, fontStyle:'italic', opacity: montantHint ? 1 : 0 }}>

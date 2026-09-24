@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { creerCredit, fetchClientsRecents, type ClientMarchand } from '../../services/api/caisse-api';
@@ -199,7 +200,7 @@ export function CreditModal({ isOpen, onClose, cart, total, onSuccess }: Props) 
       if (navigator.vibrate && user?.preferences?.vibrations !== false) navigator.vibrate([50, 30, 50]);
       setShowSuccess(true);
       setTimeout(() => {
-        dire(`Crédit de ${total.toLocaleString('fr-FR')} francs noté pour ${clientNom}. Elle rembourse le ${echeanceLong}`);
+        dire(`Crédit de ${nombreEnMotsFr(total)} francs noté pour ${clientNom}. Elle rembourse le ${echeanceLong}`);
         onSuccess();
         onClose();
       }, 1800);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -251,7 +252,7 @@ export function MesCommandes() {
     setSubmittingNeg(neg.id);
     try {
       await marchandRepondreNegociation(neg.id, { statut: 'accepte' });
-      speak(montantsMasques ? 'Contre-offre acceptée.' : `Contre-offre acceptée : ${neg.prixContreOffre.toLocaleString('fr-FR')} FCFA/${neg.unite}`);
+      speak(montantsMasques ? 'Contre-offre acceptée.' : `Contre-offre acceptée : ${nombreEnMotsFr(neg.prixContreOffre)} FCFA/${neg.unite}`);
       const { negociations: data } = await fetchNegociations();
       setNegociations((data ?? []).map(mapNegociation));
     } catch (e: unknown) {
