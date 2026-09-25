@@ -591,7 +591,12 @@ export function MesCommandes() {
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Aucune commande</h3>
             <p className="text-gray-500 text-sm">
               {filtreStatut === 'tous'
-                ? "Vous n'avez pas encore passé de commandes"
+                // CAI-02 : Tantie TUTOIE, partout. Cette phrase était la
+                // seule du parcours marchande à vouvoyer — repérée par
+                // l'agent de test du 25/09, qui l'a lue à côté de « Tu as
+                // gagné » et « Tes commandes ». Un vouvoiement isolé fait
+                // entendre une AUTRE voix que celle de Tantie.
+                ? "Tu n'as pas encore passé de commande"
                 : `Aucune commande ${STATUT_LABELS[filtreStatut]?.toLowerCase() || ''}`}
             </p>
           </div>

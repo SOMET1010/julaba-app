@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router';
+import { ICONES_NAVIGATION } from './iconesNavigation';
 import { motion } from 'motion/react';
 import { Home, ShoppingCart, Mic, Package, User, Menu, X, ShoppingBag, Warehouse, TrendingUp, UserCheck, BarChart3, Users, LogOut, UserPlus, Truck } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -17,19 +18,11 @@ interface SidebarProps {
 }
 
 // Map des icônes disponibles
-const ICON_MAP: Record<string, any> = {
-  Home,
-  Store: ShoppingCart,
-  Package,
-  User,
-  ShoppingCart,
-  Sprout: Warehouse,
-  Users,
-  UserCheck,
-  UserPlus,
-  BarChart3,
-  Truck,
-};
+// LA MÊME TABLE QUE LA BARRE DU BAS — 25/09/2026. Celle d'ici ignorait
+// `ShoppingBag` (d'où deux maisons) et donnait à `Store` un CADDIE là où la
+// barre du bas affichait un magasin : la même entrée changeait de dessin
+// selon la largeur de l'écran.
+const ICON_MAP = ICONES_NAVIGATION;
 
 export function Sidebar({ role, onMicClick }: SidebarProps) {
   const navigate = useNavigate();

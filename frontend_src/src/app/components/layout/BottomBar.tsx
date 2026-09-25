@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { motion } from 'motion/react';
 import { Home, ShoppingCart, Mic, Package, User, ShoppingBag, Warehouse, TrendingUp, UserCircle, UserCheck, BarChart3, Users, UserPlus, Truck, Store, Wallet, LayoutDashboard, DollarSign, Settings } from 'lucide-react';
+import { ICONES_NAVIGATION } from './iconesNavigation';
 import { useModal } from '../../contexts/ModalContext';
 import { getRoleConfig, getRoleColor } from '../../config/roleConfig';
 import tataAccueil from '../../../assets/redesign/tata-accueil.webp';
@@ -10,42 +11,9 @@ interface BottomBarProps {
   onMicClick?: () => void;
 }
 
-// LA TABLE DOIT CONNAÎTRE TOUTE ICÔNE QUE `roleConfig` DEMANDE — 25/09/2026.
-//
-// LE DÉFAUT, vu sur l'APK 6f4111d : la barre du bas de la marchande affichait
-// DEUX MAISONS. « Accueil » et « Commandes » portaient la même icône.
-//
-// `roleConfig` demandait bien `icon: 'ShoppingBag'` pour Commandes, et
-// `ShoppingBag` était même DÉJÀ IMPORTÉ dans ce fichier. Il manquait
-// seulement dans cette table — et le `|| Home` du calcul des onglets
-// fabriquait alors une maison, en silence.
-//
-// C'est le motif que ce dépôt traque partout : une information existe (ici
-// trois fois : la config, l'import, l'icône elle-même) et quelqu'un en aval
-// la jette puis la re-devine. Pour une marchande qui ne lit pas, deux portes
-// à la même icône sont deux portes indiscernables.
-//
-// Trois autres manquaient de la même façon, pour l'administrateur :
-// LayoutDashboard, DollarSign et Settings — trois onglets sur quatre étaient
-// des maisons. `roleConfigIcones.test.mts` refuse désormais toute icône
-// demandée mais absente d'ici.
-const ICON_MAP: Record<string, any> = {
-  Home,
-  Store,
-  Package,
-  User,
-  ShoppingBag,
-  ShoppingCart,
-  Sprout: Warehouse,
-  Users,
-  UserCheck,
-  UserPlus,
-  BarChart3,
-  Truck,
-  LayoutDashboard,
-  DollarSign,
-  Settings,
-};
+// La table vit dans `iconesNavigation.ts` — une seule, pour la barre du bas
+// ET le menu latéral. Elles étaient deux, et elles avaient déjà divergé.
+const ICON_MAP = ICONES_NAVIGATION;
 
 export function BottomBar({ role, onMicClick }: BottomBarProps) {
   const navigate = useNavigate();
