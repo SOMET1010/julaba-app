@@ -1,5 +1,5 @@
 {
-  "genereLe": "2026-09-24",
+  "genereLe": "2026-09-25",
   "gardes": {
     "frontend_src/src/app/utils/api.test.mts": {
       "script": "test:api-url",
@@ -347,7 +347,7 @@
     },
     "frontend_src/src/app/utils/fcfa.test.mts": {
       "script": "test:fcfa",
-      "assertions": 24,
+      "assertions": 25,
       "expects": 0,
       "empreintes": {
         "eq·0 → rien à rendre": 1,
@@ -363,6 +363,7 @@
         "eq·toutes les coupures, décroissantes": 1,
         "eq·vingt-cinq francs ⟂ 25 se dit": 1,
         "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·${} : aucun montant formaté pour l'écran ne part à la voix (${} restant(s))": 1,
         "ok·/data-billet-repere=\\{coupure\\.repere\\}/ ⟂ le thème de chaque billet est matérialisé dans le dessin": 1,
         "ok·/logo BCEAO|numéro de série|signe de sécurité/i ⟂ aucun élément sécurisé n'est reproduit dans le rendu": 1,
         "ok·aucun billet sous la cible tactile de 44 px": 1,
@@ -997,12 +998,17 @@
     },
     "frontend_src/src/app/voice-offline/grammaireEncaissement.test.mts": {
       "script": "test:grammaire-encaissement",
-      "assertions": 11,
+      "assertions": 16,
       "expects": 0,
       "empreintes": {
+        "ok·encaisser ⟂ « ${} » est reconnu": 1,
+        "ok·encaisser ⟂ « ${} » — et il traverse jusqu'à l'intention, pas seulement la grammaire": 1,
+        "ok·encaisser ⟂ « ${} » — le mot dicté est compris par la grammaire": 1,
+        "ok·l'écran dicte bien un mot (${})": 1,
         "ok·ni « vendre », ni « depense », ni la chaîne vide": 1,
         "ok·quatre intentions, pas une de plus (${})": 1,
         "ok·« ${} » en fait partie": 1,
+        "ok·« ${} » n'encaisse PAS": 1,
         "ok·« ${} » → ${}${})`}": 1,
         "table·[1] « encaisse » PRÉPARE — sous ses formes réellement dites": 1,
         "table·[2] « combien elle doit » — lecture seule, plus accueillante": 1,
@@ -1177,14 +1183,15 @@
     },
     "frontend_src/src/app/components/marchand/repliParle.test.mts": {
       "script": "test:repli-parle",
-      "assertions": 14,
+      "assertions": 15,
       "expects": 0,
       "empreintes": {
         "ok·/BoutonReecouter/ ⟂ SaisieGuidee affiche aussi le bouton réécouter": 1,
         "ok·/\\{texteAffiche\\}/ ⟂ et c\\'est texteAffiche qui est rendu à l\\'écran — même variable, pas de paraphrase": 1,
         "ok·/aria-label=\"Réécouter/ ⟂ le bouton réécouter est nommé pour le lecteur d\\'écran": 1,
-        "ok·/const texteAffiche\\s*=[\\s\\S]{0,200}phraseConfirmation\\(ligne\\)/ ⟂ la phrase affichée (texteAffiche) est produite par phraseConfirmation(ligne)": 1,
-        "ok·/dire\\(texteAffiche\\)/ ⟂ et c\\'est texteAffiche qui part à la synthèse": 1,
+        "ok·/const phrase\\s*=[\\s\\S]{0,200}confirmationDeuxFormes\\(ligne\\)/ ⟂ la phrase vient d\\'un seul appel qui rend les DEUX formes": 1,
+        "ok·/const texteAffiche\\s*=\\s*phrase\\.texte/ ⟂ l\\'écran prend la forme ÉCRAN de ce même appel": 1,
+        "ok·/dire\\(phrase\\.texteParle\\)/ ⟂ et la synthèse prend la forme DITE du même appel — elles ne peuvent pas diverger": 1,
         "ok·/guidageVocal\\(\\)/ ⟂ ConfirmationLigne passe par guidageVocal()": 1,
         "ok·/guidageVocal\\(\\)/ ⟂ SaisieGuidee passe par guidageVocal()": 1,
         "ok·/minHeight:\\s*CIBLE_TACTILE/ ⟂ /minWidth:\\s*CIBLE_TACTILE/ ⟂ le bouton réécouter applique CIBLE_TACTILE en hauteur ET en largeur": 1,
@@ -1308,7 +1315,7 @@
     },
     "frontend_src/src/app/services/vendreVocalUnifieUnite.test.mts": {
       "script": "test:vendre-unifie-unite",
-      "assertions": 18,
+      "assertions": 20,
       "expects": 0,
       "empreintes": {
         "eq·AUCUNE ligne : un tas n'est pas un kilo, on ne prend pas le prix du catalogue": 1,
@@ -1321,10 +1328,12 @@
         "eq·unité ⟂ uniteParlee=null → « unité »": 1,
         "eq·unité ⟂ valeur par défaut d'un article libre : « unité »": 1,
         "ok·${} (attendu ${}, obtenu ${})": 1,
+        "ok·/\\$\\{[a-z]\\.quantite\\}\\s*×\\s*\\$\\{[a-z]\\.nomAffiche\\}/ ⟂ et plus aucune composition à la main qui jette l'unité": 1,
         "ok·/\\bkg\\b/ ⟂ Tata dit l'unité du catalogue": 1,
         "ok·/\\bkg\\b/ ⟂ et c'est « kg » que Tata dit — pas un autre mot que celui qui est enregistré": 1,
         "ok·/\\btas\\b/ ⟂ Tata dit « tas » — obtenu « ${} »": 1,
         "ok·/combien/i ⟂ et lui demande le prix au lieu de l'inventer": 1,
+        "ok·/resumeQuantite\\(/ ⟂ le retour au panier passe par la règle qui compose quantité + unité + produit": 1,
         "ok·/tas/ ⟂ /kg/ ⟂ Tata nomme les deux unités pour qu'elle entende le désaccord — obtenu « ${} »": 1,
         "ok·/unit/i ⟂ « unité » n'apprend rien : elle ne se dit pas (« 2 gombos »)": 1,
         "ok·Tata accorde à la lecture : « 3 sacs de gombo »": 1,
@@ -2264,11 +2273,14 @@
     },
     "frontend_src/src/app/components/marchand/accueilHonnete.test.mts": {
       "script": "test:accueil-honnete",
-      "assertions": 20,
+      "assertions": 25,
       "expects": 0,
       "empreintes": {
         "ok·/,/ ⟂ la phrase « je n\\'ai pas pu lire » ne reçoit aucun montant à prononcer": 1,
         "ok·/ACCUEIL_CAISSE_CONNUE/ ⟂ /ACCUEIL_CAISSE_PARTIELLE/ ⟂ /ACCUEIL_CAISSE_ILLISIBLE/ ⟂ les trois états ont chacun leur clé — jamais une phrase pour deux situations": 1,
+        "ok·/Mon argent/ ⟂ et la tuile « Mon argent » a disparu de l'accueil": 1,
+        "ok·/\\/marchand\\/keiwa/ ⟂ l'accueil n'ouvre plus Keiwa — l'écran de code PIN n'est plus atteignable": 1,
+        "ok·/\\/marchand\\/marche/ ⟂ la barre du bas n'ouvre plus le marché virtuel": 1,
         "ok·/\\|\\|\\s*0/ ⟂ le `stats?.caisse || 0` d\\'origine a disparu du bloc affiché — c\\'était lui, le zéro qui mentait": 1,
         "ok·/au moins/ ⟂ un montant PARTIEL est annoncé « au moins » : un plancher n\\'est pas un total": 1,
         "ok·/caisseAffichable/ ⟂ /'—'|>—</ ⟂ quand le montant n\\'est pas affichable, l\\'écran écrit un tiret, pas un chiffre": 1,
@@ -2284,6 +2296,8 @@
         "ok·/speakMessage\\('ACCUEIL_COMPTOIR'\\)/ ⟂ le bonjour a un recours : la clé de catalogue, quand aucun clip n\\'est embarqué": 1,
         "ok·/useEffect\\(\\(\\) => \\{[\\s\\S]{0,400}?ditAuMontage/ ⟂ l\\'écran dit quelque chose en arrivant": 1,
         "ok·ACC-02 ne s'étend pas : ${} montant(s) en \\`?. || 0\\` passés aux modales (plafond ${})": 1,
+        "ok·l'accueil garde la porte vers ${}": 1,
+        "ok·la barre du bas garde la porte vers ${}": 1,
         "ok·le bloc de la caisse est bien là (sinon ce garde-fou ne garde rien)": 1,
         "ok·le clip et le texte ne sont JAMAIS lancés l\\'un après l\\'autre sans condition": 1,
         "ok·les deux boutons « Écouter… » partagent un seul geste (${} trouvé(s), 2 attendus)": 1
@@ -2715,12 +2729,13 @@
     },
     "frontend_src/src/app/services/premierProduit.test.mts": {
       "script": "test:premier-produit",
-      "assertions": 52,
+      "assertions": 54,
       "expects": 0,
       "empreintes": {
         "ok·/<AjoutProduitGuide[\\s/>]/ ⟂ /<AjoutProduitGuide[\\s/>]/ ⟂ caisse et stock montent le MÊME composant — pas deux formulaires jumeaux": 1,
         "ok·/<AjoutProduitGuide[\\s/>]/ ⟂ le bouton « Ajouter un produit » ouvre LE MÊME parcours que la caisse": 1,
         "ok·/CATALOGUE_PRODUITS/ ⟂ aucune des 37 tuiles génériques ne sert plus à créer un produit": 1,
+        "ok·/\\.texte\\s*\\)/ ⟂ /dire\\(resoudreMessage/ ⟂ l'écran n'envoie plus la forme ÉCRAN au moteur de voix": 1,
         "ok·/addProduct\\s*\\(/ ⟂ l\\'écran appelle la primitive existante `addProduct`": 1,
         "ok·/addProduct\\s*\\(\\s*\\{\\s*nom\\s*:\\s*newStock/ ⟂ et l\\'ancien formulaire n\\'écrit plus rien : une seule naissance, un seul chemin": 1,
         "ok·/categorie:\\s*''/ ⟂ l'écran ne demande pas « ${} »": 1,
@@ -2734,6 +2749,7 @@
         "ok·/peutValider\\(/ ⟂ et l'écran demande à la règle s'il peut avancer": 1,
         "ok·/premier-produit'\\s*\\?\\s*\\([\\s\\S]{0,400}?onClick=\\{\\(\\) => setPoseOuverte\\(true\\)\\}/ ⟂ le bouton de l\\'étal vide ouvre la POSE d\\'un produit, pas la saisie d\\'une vente": 1,
         "ok·/produitACreer/ ⟂ et ce composant passe par la règle pure : un seul endroit décide ce qui naît": 1,
+        "ok·/rendreMessage\\(/ ⟂ il passe par le rendu vocal, comme les trois autres écrans du catalogue": 1,
         "ok·/sesUnites=\\{etal\\.map/ ⟂ à qui l\\'on passe SES unités déjà employées": 1,
         "ok·/showEdit/ ⟂ et son écran d\\'édition aussi": 1,
         "ok·/updateProduct\\s*\\(/ ⟂ la modification d\\'un produit adopté reste en place": 1,
@@ -2894,6 +2910,46 @@
         "ok·tout en panne : « ${} » n'est PAS affiché": 1,
         "ok·tout lu et rien à signaler : la phrase rassurante EST affichée — un vrai calme se dit": 1,
         "ok·une barre reste bornée à 100 %, comme avant": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/charteMarchande.test.mts": {
+      "script": "test:charte-marchande",
+      "assertions": 5,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} est bien ${}": 1,
+        "ok·${} jetons portent une couleur littérale": 1,
+        "ok·aucun fichier hors table ne porte de couleur en dur${}": 1,
+        "ok·aucun gain non verrouillé": 1,
+        "ok·les ${} fichiers restent sous leur plafond": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/portesChiffres.test.mts": {
+      "script": "test:portes-chiffres",
+      "assertions": 10,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} ne mène plus à la liste des ventes": 1,
+        "ok·/>\\s*Résumé caisse\\s*</ ⟂ le bouton jumeau « Résumé caisse » aussi": 1,
+        "ok·/Historique ventes/ ⟂ le bouton « Historique ventes » a disparu": 1,
+        "ok·/handleNavigateToSales/ ⟂ et le second gestionnaire a disparu avec son bouton": 1,
+        "ok·/label: 'Mes ventes',[\\s\\S]{0,80}\\/marchand\\/resume-caisse/ ⟂ la tuile « Mes ventes » ouvre /marchand/resume-caisse": 1,
+        "ok·GestionStock ne mène plus au résumé": 1,
+        "ok·ScoreResumeCard ne mène plus à la liste des ventes": 1,
+        "ok·la modale de clôture a UNE porte vers les chiffres": 1,
+        "ok·le RÉSUMÉ est le seul à ouvrir la liste — « Voir chaque vente »": 1,
+        "ok·ni à la liste des ventes": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/gesteAjouterProduit.test.mts": {
+      "script": "test:geste-ajouter-produit",
+      "assertions": 4,
+      "expects": 0,
+      "empreintes": {
+        "ok·/>\\s*Écrire\\s*</ ⟂ /}\\s*Écrire\\b/ ⟂ aucun bouton ne s'appelle « Écrire »": 1,
+        "ok·/Ajouter en parlant/ ⟂ et le bouton vocal dit « Ajouter en parlant » — un MOYEN": 1,
+        "ok·/Ajouter un produit/ ⟂ le bouton tactile dit « Ajouter un produit »": 1,
+        "ok·le tactile et le vocal mènent tous deux au parcours guidé": 1
       }
     },
     "backend/test/invariants/annulation-remise-stock.spec.ts": {
