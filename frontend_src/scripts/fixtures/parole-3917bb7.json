@@ -3,7 +3,7 @@
   "empreintes": {
     "services/audioManager.ts": "41496e7ba86a22101544c6e38f5a019529d39ec62b1c65b7c7c81ebf9d8c9b35",
     "services/elevenlabs.ts": "33fb3b14eef9f5cd8e8d4c8140a3dad7e26a7fcc29db840f056113a8cf353907",
-    "hooks/useVoiceCore.ts": "7a814b2f5db63e01817ed50b454a272b9435451b4d7074473215c71452070f68",
+    "hooks/useVoiceCore.ts": "267762355d46e70bc72a0e3fe8b5a82ba5d3e1733ce4dde114aec389e48b3efd",
     "contexts/AppContext.tsx": "1feb675d6051d9a59e7751af9ecdeb653910e7c5ea0f7b6699f6ab57de70225f",
     "voice-offline/offlineStt.ts": "bac7b80e1c36b8e7a78b2252b8c82b6d7e9d325f0917b72c9b6e27d013a3d5d0",
     "voice-offline/nativeTts.ts": "60b237ffe615d5bbc530c51827d978f8e6a011d9fc52a9c388598a9529eb101d",

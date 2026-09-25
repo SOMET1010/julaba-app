@@ -350,10 +350,32 @@ export function useVoiceCore({
     const onVoicePackMissing = (event: Event) => {
       const detail = event as CustomEvent<{ lang?: string; kind?: string }>;
       const isFrenchClip = detail.detail?.lang === 'french' && detail.detail?.kind === 'clip';
+      // UN CLIP FRANÇAIS MANQUANT NE SE DIT PLUS À LA MARCHANDE — 25/09/2026,
+      // gel VOICE-01 levé par Patrick pour ce seul correctif.
+      //
+      // CE QU'ELLE VOYAIT, sur l'APK 6f4111d, en plein écran de vente et en
+      // rouge : « Cette réponse est affichée. Son clip Tata Nanti Lou n'est
+      // pas encore enregistré. » Une phrase de développeur, devant une femme
+      // qui ne lit pas — et elle PRENAIT LA PLACE de la réponse utile, que la
+      // bulle disait déjà juste au-dessus.
+      //
+      // Elle n'est pas perdue : elle part au journal de voix, donc au
+      // « Rapport de test ». Un silence qu'on ne peut pas relire ne s'explique
+      // pas (limite L4 de GARDE-02).
+      //
+      // CE QUE ÇA NE RÉPARE PAS, et qui reste ouvert : la caisse dit « Je n'ai
+      // pas compris » alors que le seul clip enregistré porte « Je n'ai pas
+      // compris. Tape ton numéro, ou réessaie. » — la phrase du LOGIN. Deux
+      // formulations de la même idée, une seule a une voix. Il manque un
+      // enregistrement, pas une ligne de code.
+      if (isFrenchClip) {
+        vtrace.ttsIgnoree('useVoiceCore.voicePackMissing', '', 'clip-francais-absent');
+        return;
+      }
       const lang = detail.detail?.lang === 'bambara' ? 'Bambara' : 'Dioula';
-      const message = isFrenchClip
-        ? "Cette réponse est affichée. Son clip Tata Nanti Lou n’est pas encore enregistré."
-        : `Le pack vocal ${lang} n’est pas encore installé. Le texte reste disponible, sans utiliser Internet.`;
+      // Celui-ci RESTE affiché : il explique à la marchande pourquoi elle
+      // n'entend rien dans sa langue, et que le texte marche sans Internet.
+      const message = `Le pack vocal ${lang} n’est pas encore installé. Le texte reste disponible, sans utiliser Internet.`;
       setError(message);
       setLiveTranscript(message);
     };
