@@ -167,13 +167,24 @@ Tu annonces 92 fichiers :
 | `WLT_01` → `WLT_07` | 7 | Wave / Mobile Money / Keiwa |
 | **Total** | **92** | |
 
-Cette nomenclature est **meilleure que l'existante** (`ui-001.mp3` …
-`ui-137.mp3`, qui ne dit rien de ce qu'on entend). Je la garde.
+**Correction du 25/09/2026 — une convention existe déjà dans le code.**
+`pages/StudioVoix.tsx`, fonction `nomFichierScript`, impose :
 
-Ce que je change à la conversion, et seulement ça : **minuscules et tirets** —
-`AUTH_01.wav` → `auth-01.mp3`. Raison : les 137 fichiers actuels sont en
-minuscules, et l'assemblage de l'APK recopie ce dossier tel quel vers
-`android/app/src/main/assets/` où la casse compte. Une seule convention.
+```
+AUTH_02  →  login-02.mp3
+NUM_0    →  chiffre-0.mp3
+CORE_*   →  core-wait-01.mp3   (minuscules, tirets)
+```
+
+C'est elle qui fait foi, pas la nomenclature `AUTH_01.wav` que j'avais reprise.
+La colonne `fichier` de `LOT-A-ENREGISTRER.csv` l'applique déjà. Les phrases
+d'écran (`vente-*`, `stk-*`, `dep-*`, `crd-*`, `wlt-*`, `dash-*`) sont neuves :
+elles n'ont pas de convention dans le dépôt, je leur en donne une parlante.
+
+**Autre chose vue au passage** : le studio interne exporte ses masters en
+**WAV 48 kHz mono** (`versWav48kMono`). Le 24 kHz de cette fiche est celui des
+MP3 *finaux*. Un master à 48 kHz est donc parfaitement cohérent — c'est même ce
+que le dépôt fait déjà.
 
 Le pré-cache les prendra automatiquement : il balaie le dossier, il n'y a
 aucune liste à tenir à jour.
