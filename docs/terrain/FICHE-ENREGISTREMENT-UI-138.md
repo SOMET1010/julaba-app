@@ -1,5 +1,19 @@
 # Fiche d'enregistrement — un seul clip, `ui-138.mp3`
 
+> ## ⚠️ CE N'EST PLUS URGENT — 25/09/2026, décision de Patrick
+>
+> **« Le filet parle partout. »** Quand aucun clip ne correspond à une phrase,
+> la synthèse prend désormais le relais au lieu de se taire. La caisse DIT donc
+> déjà « Je n'ai pas compris. Touche le micro et redis-moi. »
+>
+> Ce clip devient un **confort**, plus une nécessité : il remplacera la voix de
+> synthèse par celle de Tata Nanti Lou quand il sera enregistré. Le reste de
+> cette fiche reste valable — seul le caractère urgent tombe.
+>
+> Ce que ça change aussi : la phrase est dite **tout de suite**, sur le
+> prochain APK, sans attendre un passage en studio.
+
+
 **25/09/2026.** Texte choisi par Patrick.
 
 ## Pourquoi
