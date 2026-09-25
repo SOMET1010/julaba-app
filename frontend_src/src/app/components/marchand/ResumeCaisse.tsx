@@ -435,7 +435,14 @@ export function ResumeCaisse() {
                   <LineChart data={evolutionData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--commerce-paper)" />
                     <XAxis dataKey="day" stroke="var(--herite-gris-87)" style={{ fontSize:'10px' }} tick={{ fill:'var(--herite-gris-40)' }} />
-                    <YAxis stroke="var(--herite-gris-87)" style={{ fontSize:'10px' }} tick={{ fill:'var(--herite-gris-40)' }} width={40} />
+                    {/* GRADUATIONS RÉGULIÈRES — 25/09/2026. Sans contrainte,
+                        Recharts choisissait seul et sautait une graduation :
+                        l'agent de test a relevé « 0, 2000, 4000, 8000 », sans
+                        6000. Sur une échelle de MONTANTS, un pas irrégulier
+                        fait mal lire la courbe — deux hauteurs égales ne
+                        valent alors pas le même argent. `allowDecimals` à
+                        false : un demi-franc n'existe pas. */}
+                    <YAxis stroke="var(--herite-gris-87)" style={{ fontSize:'10px' }} tick={{ fill:'var(--herite-gris-40)' }} width={40} tickCount={5} allowDecimals={false} domain={[0, 'auto']} />
                     <Tooltip contentStyle={{ backgroundColor:'white', border:'1.5px solid var(--trait)', borderRadius:12, fontSize:11 }}
                       formatter={(v: number) => `${(v||0).toLocaleString('fr-FR')} FCFA`} />
                     <Line type="monotone" dataKey="solde" stroke="var(--commerce-action)" strokeWidth={2.5}
