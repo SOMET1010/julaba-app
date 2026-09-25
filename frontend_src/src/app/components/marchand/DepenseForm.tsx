@@ -151,6 +151,19 @@ export function DepenseForm() {
   // Elle peut donc avancer avec l'un OU l'autre : une catégorie touchée
   // suffit, un motif écrit aussi.
   const canProceed = description.trim().length > 0 || !!categorie;
+
+  // CE QUI S'AFFICHE À L'ÉTAPE DU MONTANT — 25/09/2026.
+  //
+  // Depuis DEP-03, toucher une catégorie n'écrit plus dans le motif : c'est ce
+  // qu'on voulait. Mais l'en-tête de l'étape 2 lisait `description` — donc une
+  // marchande qui touche seulement « Transports » voyait un en-tête VIDE et
+  // « Dernier : — ». Relevé par l'agent de test le 25/09, et c'est une
+  // régression de ce correctif-là.
+  //
+  // L'intitulé est ce qu'elle a écrit ; à défaut, la catégorie qu'elle a
+  // touchée. Le motif n'est jamais remplacé — il est seulement SUPPLÉÉ quand
+  // il n'y en a pas. C'est la même règle qu'à l'enregistrement.
+  const intitule = description.trim() || (categorie ? libelleParId(categorie) : '');
   const canSave = canProceed && montant && montant !== '0';
   const derniereDepense = useMemo(() => {
     const desc = description.trim().toLowerCase();
@@ -334,7 +347,7 @@ export function DepenseForm() {
             sous la ligne pour que la phrase entière tienne sur 390 px sans
             écraser le motif. */}
         <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
-          <span style={{ fontSize:15, fontWeight:800, color:P }}>{description}</span>
+          <span style={{ fontSize:15, fontWeight:800, color:P }}>{intitule}</span>
           <motion.button whileTap={{ scale:0.95 }} onClick={() => setStep(1)}
             aria-label="Changer la catégorie de dépense"
             style={{ alignSelf:'flex-start', background:P, color:'white', border:'none', borderRadius:10, padding:'10px 16px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
@@ -358,7 +371,7 @@ export function DepenseForm() {
 
         {/* Historique */}
         <div style={{ textAlign:'center', marginBottom:14 }}>
-          <span style={{ fontSize:11, color:'var(--encre-4)' }}>Dernier {description.toLowerCase()} : </span>
+          <span style={{ fontSize:11, color:'var(--encre-4)' }}>Dernier {intitule.toLowerCase()} : </span>
           <span style={{ fontSize:11, color:P, fontWeight:700 }}>
             {derniereDepense ? `${derniereDepense.toLocaleString('fr-FR')} F` : '—'}
           </span>

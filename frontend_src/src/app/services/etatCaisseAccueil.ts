@@ -117,9 +117,32 @@ export type DroitDeFermer =
   /** Les chiffres sont incomplets : on ferme, mais l'écart est un ordre de
    *  grandeur, pas un verdict. */
   | { readonly permis: true; readonly exact: false }
-  | { readonly permis: false; readonly raison: 'illisible' | 'attente' };
+  | { readonly permis: false; readonly raison: 'illisible' | 'attente' | 'deja-fermee' };
 
-export function droitDeFermerLaJournee(etat: EtatCaisseAccueil): DroitDeFermer {
+/**
+ * UNE JOURNÉE DÉJÀ FERMÉE NE SE REFERME PAS — 25/09/2026.
+ *
+ * Agent de test, sur e134158 : « La re-fermeture est acceptée : même toast,
+ * Journée clôturée avec succès. Le bon message n'apparaît que dans la
+ * console. » Le serveur, lui, refusait bien (CAI-10) et son écart de −250
+ * était intact — c'est l'ÉCRAN qui annonçait un succès.
+ *
+ * La marchande croit avoir recompté, alors que son comptage n'a pas été pris.
+ * Sur un constat de fin de journée, c'est le pire des deux mondes : elle
+ * repart avec un chiffre dans la tête que la base ne porte pas.
+ *
+ * ON EMPÊCHE LE GESTE PLUTÔT QUE DE RATTRAPER SON ÉCHEC. Proposer « Compter
+ * et fermer ma journée » sur une journée déjà fermée, c'est promettre quelque
+ * chose qui ne peut pas arriver.
+ *
+ * `dejaFermee` est une information que l'écran a déjà (`currentSession.opened`
+ * et `closedAt`) et qu'il n'utilisait pas.
+ */
+export function droitDeFermerLaJournee(
+  etat: EtatCaisseAccueil,
+  dejaFermee = false,
+): DroitDeFermer {
+  if (dejaFermee) return { permis: false, raison: 'deja-fermee' };
   if (etat.type === 'connue') return { permis: true, exact: true };
   if (etat.type === 'partielle') return { permis: true, exact: false };
   return { permis: false, raison: etat.type };
