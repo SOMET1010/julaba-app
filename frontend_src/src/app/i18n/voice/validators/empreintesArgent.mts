@@ -44,7 +44,7 @@ export const EMPREINTES_BASE = {
   // comme fr-ci. L'ancienne valeur (corpus historique seul) était 0dd33503….
   grammaire: '63edc90fc7e3b924064fd15f0a94038ec1e9626d90602b62eaccebd8a0e2aa9d',
   intentLocal: 'f6c8bc76ebd92dcccddb9424b86ab749d70b3053db3c8dfccd07535d90dcaedd',
-  dialogues: '89f1731f9425dede5d23e1a1958a79685b54c959cb8c6dba3e39d23c23c017b7',
+  dialogues: 'a28182d631c714a973e9a1ac7f49a447d5f64a561c87462802b81f847d89cb09',
   relecture: 'dcb722cc97358781a2a3eb0e2d58b89bee9c5dd6051dc90c0bf03a17bc64dd89',
   // REFIGÉE le 21/09/2026 — la seule empreinte de cette table qui ne vienne
   // plus de 576fd62, et c'est VOULU : le comportement de `vendreVocalUnifie` a
@@ -77,7 +77,7 @@ export const EMPREINTES_BASE = {
   // Les neuf autres empreintes de cette table sont INCHANGÉES et restent
   // celles de 576fd62 — `intentLocal` comprise : la lecture du montant est
   // portée par `extraction`, pas par l'intention locale.
-  vendreVocal: '6aee0b5fd505fe3714bbe257bf311b832ba9e922d21fb08b81d6e87a263da700',
+  vendreVocal: 'b87d46645f7fd1fd40a77e77931f171c1a456e6113b1b429125603f992cbda32',
   questions: '3fb1e9e82b3b2c0dad9586a360419b0d7b18a5403ca6a42fce5e0c9d08621d7e',
   // Recalculée sur la source de 576fd62 après correction du corpus (la
   // première passe itérait les objets `Coupure` au lieu de leurs valeurs) :
