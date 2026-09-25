@@ -238,7 +238,7 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'AUTH_006', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Retour aux chiffres.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'components/auth/LoginPassword.tsx:141' },
   { id: 'AUTH_007', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'C\'est fait. Je m\'adapte à toi.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'components/auth/LoginPassword.tsx:358' },
   { id: 'AUTH_008', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Pour que je puisse t\'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'components/auth/LoginPassword.tsx:660' },
-  { id: 'AUTH_009', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: '{prenom}, veux-tu que Tata Nanti Lou te reconnaisse la prochaine fois ? Ce sera plus rapide.', frMarche: null, variables: ['prenom'], audioMode: 'dynamic', statut: 'a_migrer', owner: 'manus', source: 'components/auth/PropositionReconnaissance.tsx:45' },
+  { id: 'AUTH_009', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: '{prenom}, veux-tu que Tantie Nanti Lou te reconnaisse la prochaine fois ? Ce sera plus rapide.', frMarche: null, variables: ['prenom'], audioMode: 'dynamic', statut: 'a_migrer', owner: 'manus', source: 'components/auth/PropositionReconnaissance.tsx:45' },
   { id: 'AUTH_010', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'C\'est fait ! La prochaine fois, ton téléphone te reconnaîtra.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'components/auth/PropositionReconnaissance.tsx:60' },
   { id: 'AUTH_011', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Ta session a expiré. Reconnecte-toi, puis on réessaiera.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'components/auth/PropositionReconnaissance.tsx:66' },
   { id: 'AUTH_012', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Ça n\'a pas marché ici. Tu pourras réessayer plus tard dans les réglages.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'components/auth/PropositionReconnaissance.tsx:71 ; components/auth/PropositionReconnaissance.tsx:75' },
@@ -429,7 +429,7 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'CORE_014', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'Excellent !', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'hooks/useVoiceCore.ts:181' },
   { id: 'CORE_015', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'Tu gères bien !', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'hooks/useVoiceCore.ts:182' },
   { id: 'CORE_016', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'C\'est du bon travail !', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'hooks/useVoiceCore.ts:183' },
-  { id: 'CORE_017', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'Cette réponse est affichée. Son clip Tata Nanti Lou n’est pas encore enregistré.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'hooks/useVoiceCore.ts:349' },
+  { id: 'CORE_017', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'Cette réponse est affichée. Son clip Tantie Nanti Lou n’est pas encore enregistré.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'hooks/useVoiceCore.ts:349' },
   { id: 'CORE_018', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'Le pack vocal {lang} n’est pas encore installé. Le texte reste disponible, sans utiliser Internet.', frMarche: null, variables: ['lang'], audioMode: 'dynamic', statut: 'a_migrer', owner: 'manus', source: 'hooks/useVoiceCore.ts:350' },
   { id: 'CORE_019', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'Analyse en cours...', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'hooks/useVoiceCore.ts:479' },
   { id: 'CORE_020', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'Enregistrement impossible.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'hooks/useVoiceCore.ts:644' },
@@ -442,7 +442,41 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'CORE_027', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'Accès au micro refusé. Autorise le micro pour Jùlaba dans les réglages de ton téléphone.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'hooks/useVoiceCore.ts:965' },
   { id: 'CORE_028', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'hooks/useVoiceCore.ts:967' },
   { id: 'PAGE_001', type: 'tts', domaine: 'pages', critiqueArgent: false, frActuel: 'Merci !', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'pages/CollecteVoix.tsx:128' },
-  { id: 'AUTH_01', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Bonjour ma fille. Moi, c\'est Tata Nanti Lou. Viens, je vais te montrer.', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/loginVoiceScript.ts (AUTH_01)', note: 'Script à enregistrer — moment : Premier accueil. Une traduction dioula de TRAVAIL (texteDyu, non validée) existe dans le fichier ; Manus tranche.' },
+  // ── LE NOM DU PERSONNAGE — NOM-01, 25/09/2026 ────────────────────────────
+  //
+  // Quatre entrées de ce catalogue disaient encore « Tata Nanti Lou » :
+  // AUTH_01, AUTH_009, CORE_017 et INTRO_ACCUEIL. Elles disent désormais
+  // « Tantie Nanti Lou ».
+  //
+  // CE N'EST PAS UN ARBITRAGE NEUF. Le nom a été tranché par Patrick le
+  // 20/09/2026 et la décision est écrite dans `services/loginVoiceScript.ts` :
+  // « Il remplace "Tata Nanti Lou", qui ne doit plus apparaître à l'écran ni
+  // dans une phrase dite. » Le catalogue ne l'avait pas appliquée.
+  //
+  // DEUX DE CES ENTRÉES CONTREDISAIENT LEUR PROPRE SOURCE DÉCLARÉE :
+  //   AUTH_01  → `loginVoiceScript.ts:32` dit « Tantie » depuis le 20/09 ;
+  //   AUTH_009 → `PropositionReconnaissance.tsx:114` affiche « Tantie ».
+  // Un seul identifiant, deux textes, deux fichiers : « ne jamais donner deux
+  // sens à la même donnée ». Ici la donnée, c'est le nom qu'une marchande
+  // entend au tout premier écran.
+  //
+  // POURQUOI ÇA N'EST PAS COSMÉTIQUE. Un clip n'est pas choisi par son nom de
+  // fichier : `tataUiClips.normalizeForClip` compare le TEXTE, minuscules et
+  // sans accents. « tata » et « tantie » n'y sont pas la même chaîne. Un clip
+  // enregistré sur l'une des deux formes ne serait JAMAIS joué pour l'autre —
+  // sans message d'erreur, sans trace. La marchande entendrait la synthèse à
+  // la place de la vraie voix, et personne ne saurait pourquoi.
+  //
+  // C'est ce qui a fait échouer l'appariement d'AUTH_01 avec le document de
+  // français de marché (docs/langues/TEXTES-PRE-REMPLI-GEMINI.csv) : le
+  // document écrit « Tantie », le catalogue écrivait « Tata », la ligne est
+  // restée vide alors que la traduction existait.
+  //
+  // CE QUI N'EST PAS TOUCHÉ, ET POURQUOI. `AKWABA_ACCUEIL` porte un écart
+  // ASSUMÉ et déjà écrit plus haut : son texte dit « Tantie » pendant que le
+  // clip enregistré dit encore « Tata » (RÉENREGISTREMENT REQUIS). On ne
+  // réaligne pas un texte sur un son périmé.
+  { id: 'AUTH_01', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Bonjour ma fille. Moi, c\'est Tantie Nanti Lou. Viens, je vais te montrer.', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/loginVoiceScript.ts (AUTH_01)', note: 'Script à enregistrer — moment : Premier accueil. Une traduction dioula de TRAVAIL (texteDyu, non validée) existe dans le fichier ; Manus tranche.' },
   { id: 'AUTH_02', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Eh, ma fille ! Te voilà. On continue ?', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/loginVoiceScript.ts (AUTH_02)', note: 'Script à enregistrer — moment : Retour. Une traduction dioula de TRAVAIL (texteDyu, non validée) existe dans le fichier ; Manus tranche.' },
   { id: 'AUTH_03', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Chaque vente, tu la mets ici. Comme ça, tu n\'oublies rien, et tes comptes sont là.', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/loginVoiceScript.ts (AUTH_03)', note: 'Script à enregistrer — moment : Présenter son aide. Une traduction dioula de TRAVAIL (texteDyu, non validée) existe dans le fichier ; Manus tranche.' },
   { id: 'AUTH_04', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Bon, pour commencer, appuie ici.', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/loginVoiceScript.ts (AUTH_04)', note: 'Script à enregistrer — moment : Commencer. Une traduction dioula de TRAVAIL (texteDyu, non validée) existe dans le fichier ; Manus tranche.' },
@@ -509,7 +543,7 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'NUM_7', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Sept', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/loginVoiceScript.ts (NUM_7)', note: 'Script à enregistrer — moment : Chiffre 7. Une traduction dioula de TRAVAIL (texteDyu, non validée) existe dans le fichier ; Manus tranche.' },
   { id: 'NUM_8', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Huit', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/loginVoiceScript.ts (NUM_8)', note: 'Script à enregistrer — moment : Chiffre 8. Une traduction dioula de TRAVAIL (texteDyu, non validée) existe dans le fichier ; Manus tranche.' },
   { id: 'NUM_9', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Neuf', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/loginVoiceScript.ts (NUM_9)', note: 'Script à enregistrer — moment : Chiffre 9. Une traduction dioula de TRAVAIL (texteDyu, non validée) existe dans le fichier ; Manus tranche.' },
-  { id: 'INTRO_ACCUEIL', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Bonjour ! Moi, c\'est Tata Nanti Lou. Je serai avec toi pour vendre, compter ton argent et faire grandir ton commerce. Beaucoup de commerçantes travaillent déjà avec moi. Maintenant, c\'est ton tour. On commence ?', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/onboardingVoix.ts (clé accueil)', note: 'Clip d\'onboarding ; le texte est le filet si le .mp3 manque (docs/CLIPS-VOIX-A-ENREGISTRER.md).' },
+  { id: 'INTRO_ACCUEIL', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Bonjour ! Moi, c\'est Tantie Nanti Lou. Je serai avec toi pour vendre, compter ton argent et faire grandir ton commerce. Beaucoup de commerçantes travaillent déjà avec moi. Maintenant, c\'est ton tour. On commence ?', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/onboardingVoix.ts (clé accueil)', note: 'Clip d\'onboarding ; le texte est le filet si le .mp3 manque (docs/CLIPS-VOIX-A-ENREGISTRER.md).' },
   { id: 'INTRO_BRAVO', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Bravo ! Nous sommes prêtes. Ouvrons ta boutique.', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/onboardingVoix.ts (clé bravo)', note: 'Clip d\'onboarding ; le texte est le filet si le .mp3 manque (docs/CLIPS-VOIX-A-ENREGISTRER.md).' },
   { id: 'INTRO_HISTOIRE1', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Je serai avec toi chaque jour dans ton commerce. On est ensemble.', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/onboardingVoix.ts (clé histoire1)', note: 'Clip d\'onboarding ; le texte est le filet si le .mp3 manque (docs/CLIPS-VOIX-A-ENREGISTRER.md).' },
   { id: 'INTRO_HISTOIRE2', type: 'tts', domaine: 'auth', critiqueArgent: false, frActuel: 'Tu vends. J\'enregistre. Je compte. Tu sais toujours combien tu gagnes.', frMarche: null, variables: [], audioMode: 'none', statut: 'reference', owner: 'manus', source: 'services/onboardingVoix.ts (clé histoire2)', note: 'Clip d\'onboarding ; le texte est le filet si le .mp3 manque (docs/CLIPS-VOIX-A-ENREGISTRER.md).' },

@@ -109,6 +109,48 @@ prononcée qu'il me faut. Sans ce fichier, je ne peux brancher aucun clip.
 
 ---
 
+## 3 bis. Le nom du personnage : « Tantie Nanti Lou »
+
+**Mis à jour le 25/09/2026** — remonté par l'agent de génération, vérifié et
+corrigé dans le dépôt.
+
+Le personnage s'appelle **« Tantie Nanti Lou »**. Pas « Tata ».
+
+Ce n'est pas un arbitrage neuf : Patrick l'a tranché le **20/09/2026** et la
+décision est écrite dans `services/loginVoiceScript.ts` — « Il remplace *Tata
+Nanti Lou*, qui ne doit plus apparaître à l'écran ni dans une phrase dite. »
+
+Quatre entrées du catalogue ne l'avaient pas appliquée : `AUTH_01`, `AUTH_009`,
+`CORE_017`, `INTRO_ACCUEIL` — dont les deux toutes premières phrases qu'une
+marchande entend. Deux d'entre elles **contredisaient leur propre source
+déclarée** (`loginVoiceScript.ts:32` et `PropositionReconnaissance.tsx:114`
+disaient déjà « Tantie »). C'est corrigé, et une garde de non-régression le
+tient désormais (`npm run test:nom-personnage`, dans `verify`).
+
+**Pourquoi ça vaut d'y revenir avant d'enregistrer.** La sélection du clip se
+fait sur le texte normalisé — minuscules, sans accents, sans ponctuation.
+`tata` et `tantie` n'y sont pas la même chaîne :
+
+```
+« Bonjour ma fille. Moi, c'est Tata Nanti Lou. »    → ... c est tata nanti lou
+« Bonjour ma fille. Moi, c'est Tantie Nanti Lou. »  → ... c est tantie nanti lou
+```
+
+Un clip enregistré sur l'une ne serait **jamais** joué pour l'autre. Sans
+erreur, sans trace. 92 clips à refaire en studio pour un mot.
+
+**Une seule exception, déjà consignée** : le clip d'accueil `AKWABA_ACCUEIL`
+enregistré dit encore « Tata ». Son texte, lui, dit « Tantie ». L'écart est
+assumé et écrit dans le catalogue — le clip est marqué RÉENREGISTREMENT REQUIS.
+On ne réaligne pas un texte sur un son périmé.
+
+> **Effet de bord utile.** C'est ce désaccord qui empêchait `AUTH_01` d'être
+> pré-rempli dans `TEXTES-PRE-REMPLI-GEMINI.csv` : le document de français de
+> marché écrivait « Tantie », le catalogue écrivait « Tata », l'appariement par
+> texte exact échouait. Corrigé, le CSV passe de 93 à **94 lignes remplies**.
+
+---
+
 ## 4. Ta nomenclature — ce que j'en fais
 
 Tu annonces 92 fichiers :
@@ -135,6 +177,41 @@ minuscules, et l'assemblage de l'APK recopie ce dossier tel quel vers
 
 Le pré-cache les prendra automatiquement : il balaie le dossier, il n'y a
 aucune liste à tenir à jour.
+
+### Il manque 16 phrases — dont les dix chiffres
+
+`services/loginVoiceScript.ts` contient **67 phrases**, pas 51. La nomenclature
+annoncée en reprend trois familles sur six :
+
+| Famille du script | Dans ta liste | Nombre |
+|---|---|---|
+| `AUTH_01` → `AUTH_37` | ✅ | 37 |
+| `CORE_WAIT_01` → `07` | ✅ | 7 |
+| `CORE_ACK_01` → `07` | ✅ | 7 |
+| **`NUM_0` → `NUM_9`** | ❌ **absent** | **10** |
+| **`CORE_ERR_01` → `04`** | ❌ **absent** | **4** |
+| **`CORE_SYS_01` → `02`** | ❌ **absent** | **2** |
+
+**Les dix chiffres sont les plus rentables du lot.** Zéro, Un, Deux … Neuf :
+dix clips courts qui se recombinent pour dire n'importe quel montant, n'importe
+quelle quantité, n'importe quel code. Ce sont eux qui font qu'une marchande qui
+ne lit pas entend son argent dans une vraie voix plutôt qu'en synthèse. Dix
+fichiers d'une seconde.
+
+**Et `CORE_ERR_01` est précisément la phrase que le banc a trouvée muette :**
+
+```
+CORE_ERR_01  Non compris   « Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. »
+CORE_ERR_02  Rien entendu  « Je n'ai rien entendu. Réessaie, parle un peu plus fort. »
+CORE_ERR_03  Choix ambigu  « Dis oui pour valider, ou non pour annuler. »
+CORE_ERR_04  Rappel écran  « Touche Oui ou Non à l'écran, s'il te plaît. »
+CORE_SYS_01  Préparation   « Je prépare ta voix, un petit instant. »
+CORE_SYS_02  Erreur réseau « Je n'ai pas réussi à préparer ta voix. Vérifie le réseau et réessaie. »
+```
+
+Je propose donc **108 fichiers au lieu de 92** — ta nomenclature inchangée,
+plus `num-0` → `num-9`, `core-err-01` → `04`, `core-sys-01` → `02`. Les seize
+phrases sont déjà écrites dans le script, mot pour mot : rien à rédiger.
 
 ### Deux réserves, qui sont ton arbitrage — pas le mien
 
