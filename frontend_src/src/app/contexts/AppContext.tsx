@@ -1184,6 +1184,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (customStart && customEnd) {
           startDate.setTime(new Date(customStart).getTime());
           endDate.setTime(new Date(customEnd).getTime());
+          // LE DERNIER JOUR COMPTE — 25/09/2026.
+          //
+          // Les trois autres périodes bornent leur fin à 23:59:59.999 ; celle-ci
+          // ne le faisait pas. `new Date('2026-09-25')` vaut MINUIT, donc toute
+          // vente de la journée tombait hors de la période.
+          //
+          // Mesuré par l'agent de test : « Perso du 25/09 au 25/09 affiche 0,
+          // alors qu'Aujourd'hui affiche 11 750 » — et « Perso du 01/09 au
+          // 25/09 » donnait 3 500, MOINS que les 7 derniers jours. Une période
+          // plus longue qui montre moins d'argent : la marchande ne peut que
+          // conclure qu'elle a perdu des ventes.
+          //
+          // Quand elle choisit « du 1er au 25 », elle veut le 25 dedans.
+          startDate.setHours(0, 0, 0, 0);
+          endDate.setHours(23, 59, 59, 999);
         }
         break;
     }
