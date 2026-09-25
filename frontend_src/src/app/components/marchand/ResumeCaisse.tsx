@@ -299,8 +299,14 @@ export function ResumeCaisse() {
     else speakMessage('RESUME_DETAIL_PERTE', vars);
   };
 
+  // « MES VENTES » — 25/09/2026. L'écran s'appelait « Résumé détaillé » alors
+  // que la seule porte qui y mène dit « Mes ventes ». La marchande touchait un
+  // mot et en lisait un autre : pour une non-lectrice guidée par la voix, la
+  // porte et la destination ne se répondaient pas. « Résumé détaillé » datait
+  // du temps où deux portes menaient à deux écrans de chiffres — il n'en reste
+  // qu'une (portesChiffres.test.mts).
   return (
-    <SubPageLayout role="marchand" title="Résumé détaillé">
+    <SubPageLayout role="marchand" title="Mes ventes">
         <div style={{ padding:'14px 0 0', display:'flex', flexDirection:'column', gap:12 }}>
 
           {/* ── KPIs 2x2 JUSTE SOUS LE HEADER ── */}
@@ -472,7 +478,13 @@ export function ResumeCaisse() {
                   <div style={{ flex:1, fontSize:14, fontWeight:900, color:'var(--encre)' }}>{p.productName}</div>
                   <div style={{ textAlign:'right' }}>
                     <div style={{ fontSize:14, fontWeight:900, color:'var(--commerce-action)' }}>{(p.total||0).toLocaleString('fr-FR')} FCFA</div>
-                    <div style={{ fontSize:10, fontWeight:700, color:'var(--encre-4)' }}>{p.quantity} vente{p.quantity>1?'s':''}</div>
+                    {/* « VENDUS », PAS « VENTES » — 25/09/2026.
+                        `quantity` est la QUANTITÉ vendue : AppContext le dit
+                        mot pour mot (« quantite = vraie quantite »). L'écran
+                        la lisait comme un NOMBRE DE VENTES : une seule vente
+                        de 2 tas s'affichait « 2 ventes ». Une même donnée,
+                        deux sens — et celui affiché était faux. */}
+                    <div style={{ fontSize:10, fontWeight:700, color:'var(--encre-4)' }}>{p.quantity} vendu{p.quantity>1?'s':''}</div>
                   </div>
                 </div>
               ))}

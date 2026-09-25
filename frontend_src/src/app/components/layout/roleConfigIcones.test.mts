@@ -27,7 +27,9 @@ import { fileURLToPath } from "node:url";
 
 const lire = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
 
+const table = lire('./iconesNavigation.ts');
 const barre = lire('./BottomBar.tsx');
+const menu = lire('./Sidebar.tsx');
 const roles = lire('../../config/roleConfig.ts');
 
 let failures = 0;
@@ -38,13 +40,19 @@ const ok = (cond: boolean, label: string) => {
 
 // Les clés de ICON_MAP, lues DANS LE SOURCE (pas recopiées à la main : une
 // copie se périme, et c'est précisément ce qu'on empêche).
-const bloc = /const ICON_MAP: Record<string, any> = \{([\s\S]*?)\n\};/.exec(barre);
+const bloc = /export const ICONES_NAVIGATION: Record<string, any> = \{([\s\S]*?)\n\};/.exec(table);
 const connues = new Set(
   [...(bloc?.[1] ?? '').matchAll(/^\s*(\w+)\s*[,:]/gm)].map(m => m[1]),
 );
 
-console.log("\n[1] la table des icônes est bien lue");
-ok(connues.size >= 12, `${connues.size} icônes dans ICON_MAP`);
+console.log("\n[1] UNE SEULE table, pour les deux vues");
+ok(connues.size >= 12, `${connues.size} icônes dans ICONES_NAVIGATION`);
+// Elles étaient DEUX, et elles avaient déjà divergé : `Store` valait un
+// magasin dans la barre du bas et un CADDIE dans le menu latéral.
+ok(/ICON_MAP = ICONES_NAVIGATION/.test(barre), "la barre du bas lit la table partagée");
+ok(/ICON_MAP = ICONES_NAVIGATION/.test(menu), "le menu latéral lit la MÊME table");
+ok(!/const ICON_MAP: Record<string, any> = \{/.test(barre + menu),
+   "aucune des deux vues ne redéfinit sa propre table");
 
 console.log("\n[2] chaque onglet de chaque rôle a son icône");
 // Chaque bloc `bottomBar: { items: [...] }`, avec le rôle qui le porte.
