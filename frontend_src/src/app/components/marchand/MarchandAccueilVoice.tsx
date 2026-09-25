@@ -32,7 +32,7 @@ import { guidageVocal } from '../../utils/accessMode';
  */
 function MarchandAccueilVoiceInner() {
   const navigate = useNavigate();
-  const { user, getTodayStats, currentSession, transactions } = useApp();
+  const { user, getTodayStats, currentSession, transactions, openDay } = useApp();
   const stats = getTodayStats();
   const speakMessage = useSpeakMessage();
 
@@ -87,6 +87,7 @@ function MarchandAccueilVoiceInner() {
     return () => window.removeEventListener(CONFORT_EVENT, sync);
   }, []);
   const [showResume, setShowResume] = useState(false);
+  const [reouvreEnCours, setReouvreEnCours] = useState(false);
   const [showClose, setShowClose] = useState(false);
   const [showEditFond, setShowEditFond] = useState(false);
 
@@ -326,6 +327,41 @@ function MarchandAccueilVoiceInner() {
           <span className="commerce-sell-copy"><strong>Vendre</strong><small>Parler ou toucher les produits</small></span>
           <span className="commerce-sell-arrow" aria-hidden="true">›</span>
         </motion.button>
+
+        {/* SA JOURNÉE EST FERMÉE — ET ELLE PEUT LA ROUVRIR. 25/09/2026.
+            L'agent de test : « L'écran ne propose aucun bouton pour rouvrir la
+            journée. J'ai dû rouvrir directement sur le serveur pour continuer
+            la recette. » Une marchande n'a pas de serveur.
+
+            Ce qu'elle vivait : elle ferme sa journée le soir, une cliente
+            revient, elle touche « Payer » — et rien. La caisse refusait sans
+            porte de sortie. Le serveur, lui, sait rouvrir depuis toujours
+            (« on ne bloque jamais la vendeuse ») ; c'est l'écran qui n'avait
+            pas le bouton.
+
+            Et depuis CAI-10, refermer est refusé pour ne pas écraser le
+            constat du soir : sans cette porte, elle serait vraiment coincée.
+
+            L'information EST DITE autant qu'écrite — elle ne lit pas. */}
+        {currentSession && currentSession.opened === false && currentSession.closedAt && (
+          <div role="status" style={{ background:'var(--commerce-orange-50)', border:'2px solid var(--commerce-action)', borderRadius:18, padding:'14px 15px', marginBottom:14 }}>
+            <div style={{ fontSize:15, fontWeight:900, color:'var(--encre)', marginBottom:4 }}>Ta journée est fermée.</div>
+            <div style={{ fontSize:13, color:'var(--encre-3)', marginBottom:12 }}>Tu ne peux plus vendre. Rouvre-la si une cliente arrive.</div>
+            <motion.button whileTap={{ scale:0.97 }} disabled={reouvreEnCours}
+              onClick={async () => {
+                setReouvreEnCours(true);
+                try {
+                  // Le fond déclaré ne change pas : on rouvre la MÊME journée,
+                  // on n'en déclare pas une nouvelle.
+                  await openDay(currentSession.fondInitial);
+                  speakMessage('ACCUEIL_JOURNEE_ROUVERTE');
+                } finally { setReouvreEnCours(false); }
+              }}
+              style={{ width:'100%', minHeight:52, borderRadius:14, border:'none', background:'var(--commerce-action)', color:'white', fontSize:16, fontWeight:900, cursor:'pointer', fontFamily:'inherit' }}>
+              {reouvreEnCours ? 'Un instant…' : 'Rouvrir ma journée'}
+            </motion.button>
+          </div>
+        )}
 
         {/* Tuiles — icônes vectorielles locales + un seul libellé (hors-ligne) */}
         <div className="commerce-home-tools" aria-label="Mes outils">
