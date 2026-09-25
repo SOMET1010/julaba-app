@@ -561,7 +561,22 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   const bulle = isRecording ? 'Je t’écoute'
     : isLoading ? 'Un instant…'
     : isSpeaking ? 'Tantie parle…'
-    : isError ? "Je n'ai pas compris"
+    // LA PHRASE DE L'ÉCHEC EST CELLE QU'ON FERA ENREGISTRER — 25/09/2026.
+    //
+    // Elle disait « Je n'ai pas compris » : trois mots, AUCUN clip, donc
+    // AUCUNE VOIX. Une marchande qui ne lit pas se retrouvait devant un écran
+    // muet et ne savait pas quoi faire.
+    //
+    // Le seul clip existant qui en approche porte « Je n'ai pas compris. Tape
+    // ton numéro, ou réessaie. » — la phrase du LOGIN, qui n'a aucun sens dans
+    // la caisse. Deux formulations de la même idée, une seule a une voix.
+    //
+    // Texte choisi par Patrick le 25/09. Il dit à la marchande CE QU'ELLE
+    // DOIT FAIRE, pas seulement que ça a raté. La phrase affichée est
+    // désormais MOT POUR MOT celle à enregistrer en ui-138.mp3 : le jour où
+    // le fichier arrive, `tataUiClipForText` l'associe sans qu'on touche à
+    // rien. Le contrat est figé par `clipEchecCaisse.test.mts`.
+    : isError ? "Je n'ai pas compris. Touche le micro et redis-moi."
     : produitPreselectionne ? `Dis ce que tu as vendu de ${produitPreselectionne.nom}`
     : 'Dis-moi ce que tu vends';
 
