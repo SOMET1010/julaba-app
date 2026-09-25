@@ -213,42 +213,86 @@ Je propose donc **108 fichiers au lieu de 92** — ta nomenclature inchangée,
 plus `num-0` → `num-9`, `core-err-01` → `04`, `core-sys-01` → `02`. Les seize
 phrases sont déjà écrites dans le script, mot pour mot : rien à rédiger.
 
-### Deux réserves, qui sont ton arbitrage — pas le mien
+### Les deux réserves sont levées — décisions de Patrick, 25/09/2026
 
-**a) `WLT_01` → `WLT_07` : Keiwa est hors pilote.** Tu l'as consigné toi-même.
-Je peux convertir et ranger les 7 fichiers, mais je ne les branche pas dans le
-parcours du pilote tant que tu ne le dis pas. Dis-moi : **on les garde de côté,
-ou tu rouvres le périmètre Keiwa ?**
+**a) Keiwa (`WLT_01` → `WLT_07`) : on les met de côté, hors pilote.**
+Je les convertis et je les range avec les autres. Je ne les branche dans aucun
+parcours tant que le périmètre Keiwa n'est pas rouvert. Génère-les.
 
-**b) Si ces WAV sont générés par une IA, ce n'est pas la voix de Tata.**
-`docs/PLAN_PACKS_TATA_LANGUES.md`, § « Principe non négociable » :
-
-> « La voix Tata Nanti Lou est une **voix humaine féminine locale**. Julaba ne
-> génère pas une imitation de Tata (…). Les nouveaux audios doivent être
-> enregistrés avec l'accord explicite de Tata, validés par elle. »
-
-Trois sorties possibles, et c'est toi qui tranches :
-
-1. **Enregistrement humain** (Tata ou une autre comédienne) → rien à arbitrer.
-2. **Voix IA distincte, nommée autrement dans l'appli** → ne viole pas le
-   principe, mais ce n'est plus « Tantie Nanti Lou » qui parle. Il faut alors
-   décider du nom, et l'écran de bienvenue change.
-3. **Clonage de la voix réelle de Tata** → c'est exactement ce que le principe
-   interdit. Il faudrait son accord écrit avant, pas après.
-
-Je ne bloque rien et je ne décide pas : je pose la question parce que la règle
-a été écrite comme non négociable dans le dépôt, et qu'une fois les clips
-diffusés dans un APK, on ne les reprend plus.
+**b) L'origine de la voix : une voix IA distincte, qui n'est pas Tata.**
+Pas de clonage de la voix réelle. Les ~95 phrases déjà couvertes par les clips
+humains ne sont pas touchées : la voix IA ne sert que là où l'application parle
+aujourd'hui en synthèse robotique.
 
 ---
 
+## 4 bis. Ce que « distincte » veut dire concrètement — mesuré
+
+La décision soulève une question qui n'est pas évidente : si la voix IA est un
+AUTRE personnage, alors **deux voix cohabitent dans l'application**. J'ai mesuré
+où, plutôt que de le supposer.
+
+### Sur 48 fichiers qui font parler l'appli, 9 mélangeraient les deux voix
+
+```
+27 fichiers  uniquement des clips enregistrés  (voix humaine)
+12 fichiers  uniquement de la synthèse         (voix IA)
+ 9 fichiers  LES DEUX, à la suite
+```
+
+Et ces neuf-là ne sont pas anodins. Les deux plus gênants :
+
+```
+hooks/useVoiceCore.ts    « J'ai compris »                         → voix humaine
+                         « D'accord, j'annule. Pas de souci. »    → voix IA
+   deux voix dans la MÊME conversation de vente vocale
+
+DepenseForm.tsx          « Dépense enregistrée »                  → voix humaine
+                         « Attention, le montant est élevé. »     → voix IA
+   l'avertissement sur l'argent serait dit par la voix la moins familière
+```
+
+### Mais UNE SEULE phrase du lot se présente
+
+C'est ce qui rend le problème petit. Sur les **67 phrases du script à
+enregistrer, une seule prononce le nom** :
+
+```
+AUTH_01  « Bonjour ma fille. Moi, c'est Tantie Nanti Lou. Viens, je vais te montrer. »
+```
+
+Sur l'ensemble du catalogue (525 entrées), elles sont **cinq** : `AUTH_01`,
+`AUTH_009`, `AKWABA_ACCUEIL`, `INTRO_ACCUEIL`, `CORE_017`. Rien d'autre ne dit
+qui parle.
+
+### Ce que je propose — et ce qui reste à trancher
+
+**Une voix qui ne se présente jamais n'usurpe aucune identité.** Le principe
+interdit de faire passer une IA pour Tata. Il n'oblige pas à inventer un second
+prénom : il suffit que la voix IA ne dise jamais « Moi, c'est… ».
+
+Concrètement : **`AUTH_01` reste réservée à la voix humaine**, et les 107 autres
+fichiers peuvent être générés sans qu'aucune présentation ait lieu. La marchande
+entend une voix d'assistance, pas un deuxième personnage qui se nomme.
+
+**Pour l'agent, en attendant** : génère les 107 autres, **saute `AUTH_01`**.
+Si Patrick préfère donner un nom à la seconde voix, seules ces cinq phrases
+changeront — pas le lot.
+
+> **Ce qui reste ouvert et qui appartient à Patrick** : faut-il donner un nom à
+> la seconde voix, ou la laisser sans nom ? Ma recommandation est : sans nom.
+> Tant que ce n'est pas tranché, `AUTH_01` n'est pas générée.
+
 ## 5. Récapitulatif — ce que j'attends de toi
 
-1. **92 fichiers `.wav`** — PCM 16 bits, 24 kHz (ou 44,1/48 kHz), mono,
-   −16 LUFS, silences coupés.
+1. **107 fichiers `.wav`** — les 92 annoncés, moins `AUTH_01` (voix humaine),
+   plus les 16 manquants (`NUM_0`→`9`, `CORE_ERR_01`→`04`, `CORE_SYS_01`→`02`).
+   PCM 16 bits, 24 kHz (ou 44,1/48 kHz), mono, −16 LUFS, silences coupés.
 2. **Un CSV `fichier,texte_exact_prononce`** — sans lui, rien ne se branche.
-3. **Ta réponse sur Keiwa** (les 7 `WLT_`).
-4. **Ta réponse sur l'origine de la voix** (humaine / IA distincte / clonage).
+   Le personnage s'appelle **« Tantie Nanti Lou »** (§ 3 bis).
+3. ~~Ta réponse sur Keiwa~~ — tranché : hors pilote, on génère et on range.
+4. ~~Ta réponse sur l'origine de la voix~~ — tranché : voix IA distincte,
+   pas de clonage. Reste à dire si elle porte un nom (§ 4 bis).
 
 Ce que je fais ensuite, sans rien te redemander : conversion en MP3
 96 kbps / 24 kHz / mono, dépôt dans `frontend_src/public/voix/tata/`, ajout des
