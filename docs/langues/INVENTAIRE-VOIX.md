@@ -8,13 +8,13 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **400** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 420 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **401** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 421 |
 | — littéraux (phrase fixe en dur) | 193 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 88 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 71 |
 | — relais (`dire = (t) => speak(t)`) | 18 |
-| — clés i18n (`speakMessage('…')`, `t('…')`) | 50 |
+| — clés i18n (`speakMessage('…')`, `t('…')`) | 51 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **240** |
 | Dont dynamiques (avec variables) | 88 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **59** |
@@ -52,6 +52,7 @@
 | `components/cooperative/Commandes.tsx` | cooperative | 5 | 3 | 2 | 0 | 0 | 0 | 1 |
 | `components/cooperative/MarcheHub.tsx` | cooperative | 5 | 2 | 3 | 0 | 0 | 0 | 0 |
 | `components/marchand/AjoutProduitGuide.tsx` | autre | 5 | 0 | 0 | 0 | 1 | 4 | 0 |
+| `components/marchand/MarchandAccueilVoice.tsx` | marchand_autre | 5 | 0 | 0 | 0 | 0 | 5 | 0 |
 | `components/producteur/ModifierPublicationModal.tsx` | producteur | 5 | 5 | 0 | 0 | 0 | 0 | 1 |
 | `components/producteur/PublierRecolte.tsx` | producteur | 5 | 4 | 1 | 0 | 0 | 0 | 0 |
 | `components/shared/RoleDashboard.tsx` | partage | 5 | 5 | 0 | 0 | 1 | 0 | 0 |
@@ -59,7 +60,6 @@
 | `components/wallet/WalletCard.tsx` | wallet | 5 | 7 | 0 | 0 | 0 | 0 | 2 |
 | `pages/CollecteVoix.tsx` | pages | 5 | 1 | 0 | 3 | 1 | 0 | 0 |
 | `components/auth/ActivationScreen.tsx` | auth | 4 | 2 | 0 | 1 | 1 | 0 | 0 |
-| `components/marchand/MarchandAccueilVoice.tsx` | marchand_autre | 4 | 0 | 0 | 0 | 0 | 4 | 0 |
 | `components/shared/ReceptionPaiementModal.tsx` | partage | 4 | 2 | 1 | 1 | 0 | 0 | 0 |
 | `components/shared/UniversalParametres.tsx` | marchand_autre | 4 | 3 | 0 | 0 | 0 | 2 | 0 |
 | `contexts/ObjectifContext.tsx` | marchand_autre | 4 | 2 | 2 | 0 | 0 | 0 | 2 |
@@ -110,7 +110,7 @@
 | Domaine | Appels | Phrases (littéraux + gabarits) | Critiques argent |
 |---|---:|---:|---:|
 | producteur | 71 | 71 | 6 |
-| marchand_autre | 54 | 41 | 17 |
+| marchand_autre | 55 | 41 | 17 |
 | stock | 40 | 38 | 3 |
 | partage | 37 | 24 | 0 |
 | caisse | 35 | 0 | 0 |
@@ -376,10 +376,11 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 121 | `speakMessage` | cle_i18n | ACCUEIL_COMPTOIR |  |  |
-| 129 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_CONNUE |  |  |
-| 130 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_PARTIELLE |  |  |
-| 131 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_ILLISIBLE |  |  |
+| 122 | `speakMessage` | cle_i18n | ACCUEIL_COMPTOIR |  |  |
+| 130 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_CONNUE |  |  |
+| 131 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_PARTIELLE |  |  |
+| 132 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_ILLISIBLE |  |  |
+| 357 | `speakMessage` | cle_i18n | ACCUEIL_JOURNEE_ROUVERTE |  |  |
 
 ### `components/marchand/MarchandAlertes.tsx` — marchand_autre
 
