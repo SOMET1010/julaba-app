@@ -26,14 +26,24 @@ aucune pull request, tu ne proposes pas de code.
 **C'est l'étape qui a fait perdre le plus de temps : des défauts ont déjà été
 signalés sur du code corrigé depuis deux jours.**
 
-1. Ouvre **https://julaba-web.onrender.com**
-2. Sur l'écran de connexion, tout en bas, une ligne affiche
-   **`v<version> · <hash> · <date de build>`**
-3. **Note ce hash.** Il doit commencer par `<SHA ATTENDU>`.
+Ouvre directement **https://julaba-web.onrender.com/sw.js** (le fichier du
+service worker, il s'affiche en texte brut).
+
+Dans les premières lignes, tu lis :
+
+```
+const BUILD = '<hash> · <date de build>'
+```
+
+**Note ce hash et cette date.** Le hash doit être `<SHA ATTENDU>`.
 
 - Si le hash est **différent** → le déploiement est en retard. **Dis-le à
-  Patrick et attends** ; ne teste pas.
-- Si tu ne trouves **pas la ligne** → dis-le, et arrête-toi.
+  Patrick et attends** ; ne teste pas, tu décrirais un code périmé.
+- Si la page ne s'ouvre pas → dis-le, et arrête-toi.
+
+*(Une ligne `v<version> · <hash> · <date>` existe aussi tout en bas de l'écran
+de mot de passe, mais elle fait 9 pixels en gris clair : ne compte pas
+dessus.)*
 
 Note aussi la date et l'heure de ton test.
 
@@ -43,8 +53,13 @@ Note aussi la date et l'heure de ton test.
 
 ## 1. Règle de fenêtre
 
-Mets la fenêtre du navigateur à **390 × 844** (format téléphone). La marchande
-n'a pas d'écran large ; un défaut de mise en page n'apparaît qu'à cette taille.
+Mets la fenêtre du navigateur à **390 × 844** (format téléphone) — dans Chrome :
+`F12`, puis l'icône téléphone, puis « iPhone 12 Pro ». La marchande n'a pas
+d'écran large ; un défaut de mise en page n'apparaît qu'à cette taille.
+
+**Si tu n'y arrives pas, ce n'est pas bloquant** : teste quand même, et écris
+dans ton rapport la largeur réelle que tu as eue. Ce qui serait faux, c'est de
+dire « la mise en page est bonne » après l'avoir vue sur 1054 px.
 
 ---
 
