@@ -186,8 +186,19 @@ console.log("\n[6] SON NOM S'ÉCRIT EN ENTIER — RECETTE DTDI DU 24/09");
   // Ce qui est neuf : avancer est un GESTE, pas une conséquence de la frappe.
   ok(peutValider('nom', { nom: '', unite: '', prix: null }) === false,
      "on ne valide pas un nom vide");
-  ok(peutValider('nom', { nom: 'T', unite: '', prix: null }) === true,
+  // Le libellé ne change pas — c'est l'EXEMPLE qui change. STK-20 (« avancer
+  // est un geste ») disait qu'une frappe suffisait ; STK-21 du 25/09 exige au
+  // moins deux caractères, après le produit « A » trouvé dans l'étal. Deux
+  // lettres suffisent pour « ka » ou « ri ».
+  ok(peutValider('nom', { nom: 'Ka', unite: '', prix: null }) === true,
      "mais dès qu'il y a quelque chose, elle PEUT valider — quand elle veut");
+  // STK-21 : une seule lettre n'est pas un produit du marché. L'agent de test
+  // du 25/09 a créé « t » et l'écran a enchaîné sur « t, tu le vends
+  // comment ? » — la règle ne vivait que sur le serveur.
+  ok(peutValider('nom', { nom: 'T', unite: '', prix: null }) === false,
+     "une seule lettre ne passe plus — la règle du serveur vaut aussi ici");
+  ok(peutValider('nom', { nom: ' K ', unite: '', prix: null }) === false,
+     "ni une lettre entourée d'espaces");
   ok(peutValider('unite', { nom: 'Tomate', unite: '', prix: null }) === false,
      "ni une unité vide");
   ok(peutValider('prix', { nom: 'Tomate', unite: 'tas', prix: 0 }) === false,

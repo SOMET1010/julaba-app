@@ -104,13 +104,16 @@ export function DepenseForm() {
 
   const handleSave = async () => {
     if (enregEnCoursRef.current) return; // anti double-clic (synchrone)
-    if (!description.trim() || !montant || montant === '0') return;
+    if ((!description.trim() && !categorie) || !montant || montant === '0') return;
     const m = Number(montant);
     if (!m || m <= 0 || isNaN(m)) return;
     enregEnCoursRef.current = true;
     setIsProcessing(true);
     try {
-      await enregistrerDepense(m, description.trim(), categorie);
+      // Le motif qu'elle a donné prime TOUJOURS. S'il n'y en a pas, le libellé
+      // de la catégorie sert d'intitulé — mais il ne l'a jamais remplacé.
+      const motif = description.trim() || (categorie ? libelleParId(categorie) : '');
+      await enregistrerDepense(m, motif, categorie);
       await reloadTransactions();
       speak('Dépense de ' + nombreEnMotsFr(m) + ' francs enregistrée');
       navigate(-1);
@@ -130,7 +133,24 @@ export function DepenseForm() {
   }, [montantNum, speak]);
   const montantColor = montantNum === 0 ? P : montantNum <= 2000 ? 'var(--herite-vert-eau)' : montantNum > 20000 ? 'var(--herite-rouge)' : P;
   const montantHint = montantNum > 20000 ? 'Montant élevé — vérifie !' : montantNum > 0 && montantNum <= 2000 ? 'Petit montant' : '';
-  const canProceed = description.trim().length > 0;
+  // LA CATÉGORIE N'EST PLUS LE MOTIF — DEP-03, 25/09/2026.
+  //
+  // Agent de test : « j'ai tapé "sac de charbon", touché Transports,
+  // enregistré → la liste affiche "Transports · Transports", et côté serveur
+  // le motif est vide. » Et dans l'autre sens : « le champ contenait déjà
+  // "Transports" et ma saisie s'est collée derrière — Transportssac de
+  // charbon. » Aucun chemin ne gardait les deux.
+  //
+  // LA CAUSE : toucher une catégorie faisait `setDescription(libellé)`. Le
+  // MOTIF (ce qu'elle a acheté) et la CATÉGORIE (dans quel panier ça tombe)
+  // sont deux informations différentes, et elles partageaient un seul champ —
+  // « ne jamais donner deux sens à la même donnée ». DEP-02 avait déjà fermé
+  // la moitié de cette histoire : la catégorie ÉTAIT DEVINÉE depuis le motif.
+  // Elle est désormais lue ; c'est l'inverse qui restait à faire.
+  //
+  // Elle peut donc avancer avec l'un OU l'autre : une catégorie touchée
+  // suffit, un motif écrit aussi.
+  const canProceed = description.trim().length > 0 || !!categorie;
   const canSave = canProceed && montant && montant !== '0';
   const derniereDepense = useMemo(() => {
     const desc = description.trim().toLowerCase();
@@ -193,14 +213,14 @@ export function DepenseForm() {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
             {QUICK_ACTIONS.map((q, i) => (
               <motion.button key={q.id} whileTap={{ scale:0.94 }}
-                onClick={() => { setDescription(q.label); setCategorie(q.id); setStep(2); }}
-                style={{ borderRadius:16, overflow:'hidden', border:`2px solid ${description===q.label ? P : 'transparent'}`, cursor:'pointer', padding:0, position:'relative', height:110, fontFamily:'inherit' }}>
+                onClick={() => { setCategorie(q.id); setStep(2); }}
+                style={{ borderRadius:16, overflow:'hidden', border:`2px solid ${categorie===q.id ? P : 'transparent'}`, cursor:'pointer', padding:0, position:'relative', height:110, fontFamily:'inherit' }}>
                 <img src={q.img} alt={q.label} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                 <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom,rgba(0,0,0,0) 30%,rgba(0,0,0,0.65) 100%)' }} />
                 <motion.div style={{ position:'absolute', top:0, left:0, width:'40%', height:'100%', background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)', pointerEvents:'none' }}
                   animate={{ x:['-130%','-130%','-130%','280%'], opacity:[0,0,1,0] }}
                   transition={{ duration:4.5, repeat:Infinity, ease:'linear', times:[0,0.70,0.72,1], delay: i * 1.3 }} />
-                {description===q.label && (
+                {categorie===q.id && (
                   <div style={{ position:'absolute', top:6, right:6, width:20, height:20, borderRadius:'50%', background:P, display:'flex', alignItems:'center', justifyContent:'center' }}>
                     <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 3.5,6.5 9,1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </div>
@@ -251,7 +271,7 @@ export function DepenseForm() {
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
                   {AUTRES_CATEGORIES.map(c => (
                     <motion.button key={c.id} whileTap={{ scale:0.95 }}
-                      onClick={() => { setDescription(c.libelle); setCategorie(c.id); setStep(2); }}
+                      onClick={() => { setCategorie(c.id); setStep(2); }}
                       style={{ padding:'11px 8px', borderRadius:14, border:`1.5px solid ${categorie===c.id ? P : 'var(--commerce-gray-100)'}`, background: categorie===c.id ? P : 'white', color: categorie===c.id ? 'white' : 'var(--encre-3)', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s', textAlign:'center' }}>
                       {c.libelle}
                     </motion.button>

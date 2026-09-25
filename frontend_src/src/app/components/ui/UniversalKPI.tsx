@@ -10,14 +10,32 @@ import type { LucideIcon } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { guidageVocal } from '../../utils/accessMode';
 
-function formatKPI(n: number): string {
+/**
+ * UN MONTANT NE S'ABRÈGE PAS — 25/09/2026.
+ *
+ * Agent de test : « les cartes arrondissent : 10K pour 10 250, 15K pour
+ * 15 250. » Sur de l'argent, ces 250 francs disparaissent de l'écran de la
+ * marchande. Elle compte ses billets le soir contre un chiffre qui n'est pas
+ * le sien.
+ *
+ * `argent` dit s'il s'agit d'un montant. Quand c'est le cas, on écrit le
+ * nombre en entier — c'est la doctrine de ce dépôt : sur l'argent, la preuve
+ * doit traverser. Un compteur (nombre de ventes, de produits) peut encore
+ * s'abréger : personne ne recompte ses billets avec.
+ */
+function formatKPI(n: number, argent = false): string {
+  if (argent) return n.toLocaleString('fr-FR');
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace('.0','') + 'M';
   if (n >= 10_000)    return Math.round(n / 1_000) + 'K';
   return n.toLocaleString('fr-FR');
 }
 
+/** Ce suffixe désigne-t-il de l'argent ? */
+const estUnMontant = (suffix?: string): boolean =>
+  !!suffix && /^(FCFA|F|XOF|francs?)$/i.test(suffix.trim());
+
 // ─── CountUp ─────────────────────────────────────────────────────────────────
-function AnimatedCounter({ target, duration = 1000 }: { target: number; duration?: number }) {
+function AnimatedCounter({ target, duration = 1000, argent = false }: { target: number; duration?: number; argent?: boolean }) {
   const [count, setCount] = useState(0);
   const startTime = useRef<number | null>(null);
   const rafRef = useRef<number>(0);
@@ -34,7 +52,7 @@ function AnimatedCounter({ target, duration = 1000 }: { target: number; duration
     rafRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(rafRef.current);
   }, [target, duration]);
-  return <>{formatKPI(count || 0)}</>;
+  return <>{formatKPI(count || 0, argent)}</>;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -232,7 +250,7 @@ export function UniversalKPI({
               {masque
                 ? '•••••'
                 : animatedTarget !== undefined
-                ? <AnimatedCounter target={animatedTarget} />
+                ? <AnimatedCounter target={animatedTarget} argent={estUnMontant(suffix)} />
                 : value}
             </span>
             {suffix && <span style={{ fontSize:11, fontWeight:700, color }}>{suffix}</span>}

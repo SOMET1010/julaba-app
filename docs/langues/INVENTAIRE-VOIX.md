@@ -8,11 +8,11 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **399** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 419 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **400** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 420 |
 | — littéraux (phrase fixe en dur) | 193 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 88 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 70 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 71 |
 | — relais (`dire = (t) => speak(t)`) | 18 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 50 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **240** |
@@ -20,13 +20,13 @@
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **59** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
 | Fichiers avec au moins un site d'appel | 78 |
-| Attributs `aria-label` (lecteur d'écran uniquement) | 304 — **hors parcours vocal**, voir §8 |
+| Attributs `aria-label` (lecteur d'écran uniquement) | 306 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
 
 | Fichier | Domaine | Appels | Littéraux | Gabarits | Dynamiques | Relais | Clés | Critiques argent |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| `components/marchand/POSCaisse.tsx` | caisse | 29 | 0 | 0 | 8 | 2 | 20 | 0 |
+| `components/marchand/POSCaisse.tsx` | caisse | 30 | 0 | 0 | 9 | 2 | 20 | 0 |
 | `components/producteur/CommandesProducteurPage.tsx` | producteur | 26 | 14 | 15 | 0 | 0 | 0 | 3 |
 | `components/producteur/Stocks.tsx` | stock | 23 | 11 | 12 | 0 | 0 | 0 | 1 |
 | `hooks/useVoiceCore.ts` | moteur_vocal | 16 | 9 | 0 | 6 | 2 | 0 | 1 |
@@ -113,7 +113,7 @@
 | marchand_autre | 54 | 41 | 17 |
 | stock | 40 | 38 | 3 |
 | partage | 37 | 24 | 0 |
-| caisse | 34 | 0 | 0 |
+| caisse | 35 | 0 | 0 |
 | wallet | 34 | 36 | 18 |
 | vente | 27 | 0 | 0 |
 | auth | 24 | 17 | 0 |
@@ -333,10 +333,10 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 84 | `speak` | literal | Dépense enregistrée |  |  |
 | 89 | `speak` | literal | Erreur, réessaie |  |  |
 | 99 | `speak` | literal | Problème avec le micro — réessaie |  |  |
-| 115 | `speak` | dynamique | 'Dépense de ' + nombreEnMotsFr(m) + ' francs enregistrée' |  |  |
-| 117 | `speak` | literal | Erreur lors de l'enregistrement |  |  |
-| 128 | `speak` | literal | Attention, le montant est élevé. Vérifie bien. |  | € |
-| 331 | `speak` | template | {m} francs | `m` | € |
+| 118 | `speak` | dynamique | 'Dépense de ' + nombreEnMotsFr(m) + ' francs enregistrée' |  |  |
+| 120 | `speak` | literal | Erreur lors de l'enregistrement |  |  |
+| 131 | `speak` | literal | Attention, le montant est élevé. Vérifie bien. |  | € |
+| 351 | `speak` | template | {m} francs | `m` | € |
 
 ### `components/marchand/Fidelite.tsx` — marchand_autre
 
@@ -464,36 +464,37 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 77 | `speak` | relais | t |  |  |
-| 85 | `speakMessage` | relais | id |  |  |
-| 170 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom: p?.nom \|\| p?.name \|\| 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }).texteParle |  |  |
-| 221 | `direMessage` | cle_i18n | TATA_AMBIGUITE |  |  |
-| 224 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
+| 78 | `speak` | relais | t |  |  |
+| 86 | `speakMessage` | relais | id |  |  |
+| 177 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom: p?.nom \|\| p?.name \|\| 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }).texteParle |  |  |
+| 228 | `direMessage` | cle_i18n | TATA_AMBIGUITE |  |  |
 | 231 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
-| 253 | `direMessage` | cle_i18n | TATA_INDIQUE_PRIX |  |  |
-| 265 | `dire` | dynamique | res.message |  |  |
-| 265 | `dire` | cle_i18n | TATA_ARTICLE_IMPOSSIBLE |  |  |
-| 282 | `direMessage` | cle_i18n | TATA_ARTICLE_AJOUTE_CATALOGUE |  |  |
-| 305 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }).texteParle |  |  |
-| 323 | `dire` | dynamique | direCoupure(valeur) |  |  |
-| 352 | `direMessage` | cle_i18n | TATA_MONTANT_TOTAL_INVALIDE |  |  |
-| 356 | `direMessage` | cle_i18n | TATA_MONTANT_RECU_INSUFFISANT |  |  |
-| 357 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
-| 426 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
-| 427 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
-| 439 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
-| 440 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
-| 445 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 512 | `speak` | dynamique | effet.texte |  |  |
-| 542 | `speak` | dynamique | effet.texte |  |  |
-| 572 | `dire` | dynamique | relu.texteParle |  |  |
-| 594 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
-| 668 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
-| 701 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
-| 734 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
-| 876 | `speak` | dynamique | relectureAffichee |  |  |
-| 912 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
-| 1000 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
+| 238 | `direMessage` | cle_i18n | TATA_QUEL_PRIX |  |  |
+| 260 | `direMessage` | cle_i18n | TATA_INDIQUE_PRIX |  |  |
+| 272 | `dire` | dynamique | res.message |  |  |
+| 272 | `dire` | cle_i18n | TATA_ARTICLE_IMPOSSIBLE |  |  |
+| 289 | `direMessage` | cle_i18n | TATA_ARTICLE_AJOUTE_CATALOGUE |  |  |
+| 313 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }).texteParle |  |  |
+| 331 | `dire` | dynamique | direCoupure(valeur) |  |  |
+| 360 | `direMessage` | cle_i18n | TATA_MONTANT_TOTAL_INVALIDE |  |  |
+| 364 | `direMessage` | cle_i18n | TATA_MONTANT_RECU_INSUFFISANT |  |  |
+| 365 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
+| 434 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
+| 435 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
+| 447 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
+| 448 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
+| 471 | `dire` | dynamique | raison |  |  |
+| 473 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 541 | `speak` | dynamique | effet.texte |  |  |
+| 571 | `speak` | dynamique | effet.texte |  |  |
+| 601 | `dire` | dynamique | relu.texteParle |  |  |
+| 623 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
+| 697 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
+| 730 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
+| 763 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
+| 905 | `speak` | dynamique | relectureAffichee |  |  |
+| 941 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
+| 1029 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
 
 ### `components/marchand/ProtectionSociale.tsx` — marchand_autre
 
@@ -821,7 +822,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 209 | `speak` | dynamique | `${label} : ${lu} ${suffixe}`.trim() |  |  |
+| 227 | `speak` | dynamique | `${label} : ${lu} ${suffixe}`.trim() |  |  |
 
 ### `components/wallet/RechargeWalletModal.tsx` — wallet
 
@@ -1526,7 +1527,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 ## 8. Ce qui n'est PAS dans le parcours vocal (et pourquoi)
 
-- **`aria-label` (304)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
+- **`aria-label` (306)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
 - **Toasts** (`toast.success(…)`) et libellés d'écran : affichés, jamais dits. Hors inventaire vocal.
 - **`texteDyu`** de `loginVoiceScript.ts` : traduction dioula de travail, NON validée (le fichier le dit). Elle n'est ni activée ni reprise : Manus tranche.
 
