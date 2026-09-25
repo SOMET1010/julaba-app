@@ -485,6 +485,31 @@ export class CaisseRestController {
     );
     if (!existante) throw new NotFoundException('Aucune journée à fermer');
 
+    // ON NE FERME PAS DEUX FOIS — CAI-10, 25/09/2026.
+    //
+    // L'agent de test a fermé la journée à 11 000 (écart −500), puis de
+    // nouveau à 11 500 (écart 0) : la seconde fermeture a ÉCRASÉ la première,
+    // et l'écart de 500 francs a disparu sans trace.
+    //
+    // L'`UPDATE` ci-dessous ne regardait pas si la journée était déjà fermée.
+    // Or ce dépôt sait déjà pourquoi c'est grave — c'est écrit dans le
+    // périmètre d'argent, à propos de `exigerJourneeOuverte` : « une journée
+    // fermée est un CONSTAT daté : caisse_theorique, fond_final et leur ecart
+    // sont gravés. Toute écriture postérieure les rend faux en silence. » La
+    // règle valait pour les VENTES, jamais pour la fermeture elle-même.
+    //
+    // Un écart, c'est ce qui manque dans la caisse le soir. Le perdre, c'est
+    // perdre la seule mesure qui dit qu'il s'est passé quelque chose.
+    //
+    // ROUVRIR RESTE PERMIS : `POST session/ouvrir` rouvre une journée fermée
+    // (doctrine en place — on ne bloque jamais la vendeuse). Ce qu'on refuse,
+    // c'est d'écraser un constat en silence.
+    if (existante.ouvert === false && existante.heure_fermeture) {
+      throw new BadRequestException(
+        'Ta journée est déjà fermée. Si tu veux recompter, rouvre-la d’abord.',
+      );
+    }
+
     const theorique = await this.caisseTheorique(user.id, Number(existante.fond_initial ?? 0), today);
     const ecart = comptage - theorique;
 

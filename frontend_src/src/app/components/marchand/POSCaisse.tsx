@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 import { Search, Plus, Minus, Trash2, X, Check, Package, FileText, Banknote, ChevronRight, Leaf, Zap, Volume2, CloudOff, Smartphone } from 'lucide-react';
 import { useCaisse, type StatutEnregistrement } from '../../contexts/CaisseContext';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
@@ -449,7 +450,28 @@ function POSCaisseInner() {
     } catch (e) {
       console.error(e);
       vibrerErreur();
-      direMessage('TATA_VENTE_ECHEC');
+      // LE SERVEUR DIT POURQUOI — 25/09/2026. Agent de test : après la
+      // fermeture de la journée, « Payer en espèces » ne faisait RIEN. Ni
+      // message, ni voix. Or le serveur répondait, mot pour mot : « Ta journée
+      // de caisse est fermée. Rouvre-la pour continuer. » — une phrase déjà
+      // écrite POUR LA MARCHANDE, que ce `catch` remplaçait par un générique.
+      //
+      // Une caisse qui refuse une vente sans dire pourquoi est une caisse
+      // morte : elle touche, rien ne se passe, elle recommence. C'est le
+      // scénario vécu par l'agent, qui a dû aller lire la console.
+      //
+      // On DIT et on ÉCRIT la raison quand le serveur en donne une (4xx : une
+      // vraie réponse métier, pas une panne). Sinon le message générique reste.
+      const httpStatus = (e as { status?: unknown } | null)?.status;
+      const raison = typeof httpStatus === 'number' && httpStatus >= 400 && httpStatus < 500
+        ? String((e as Error).message ?? '').trim()
+        : '';
+      if (raison) {
+        toast.error(raison);
+        dire(raison);
+      } else {
+        direMessage('TATA_VENTE_ECHEC');
+      }
     }
     finally { paiementEnCoursRef.current = false; setIsProcessing(false); }
   };

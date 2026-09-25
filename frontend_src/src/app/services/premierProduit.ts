@@ -75,8 +75,25 @@ export function etapeCourante(b: BrouillonProduit): EtapeAjout {
  * AVANCER EST UN GESTE. Ces deux règles disent quand il est possible, et vers
  * quoi. Elles ne décident jamais toutes seules.
  */
+/**
+ * LA MÊME RÈGLE DES DEUX CÔTÉS — STK-21, 25/09/2026.
+ *
+ * L'agent de test a créé un produit nommé « t » : l'écran a enchaîné sur
+ * « t, tu le vends comment ? ». La règle posée le matin même (nom d'au moins
+ * deux caractères) ne vivait que sur le SERVEUR — l'écran laissait passer, et
+ * le refus n'arrivait qu'au bout du parcours, après trois questions.
+ *
+ * C'est la leçon de STK-06, mot pour mot : quand une règle ne vit que d'un
+ * côté, l'autre affirme ce que le serveur refusera. Ici en pire — elle aurait
+ * répondu à trois questions pour rien.
+ *
+ * Deux caractères suffisent pour « ka » ou « ri » ; une lettre seule n'est pas
+ * un produit du marché.
+ */
+export const NOM_PRODUIT_MINIMUM = 2;
+
 export function peutValider(etape: EtapeAjout, b: BrouillonProduit): boolean {
-  if (etape === 'nom') return !!propre(b.nom);
+  if (etape === 'nom') return propre(b.nom).length >= NOM_PRODUIT_MINIMUM;
   if (etape === 'unite') return !!propre(b.unite);
   // Un prix nul ou absent n'est pas un prix : il entrerait en caisse et
   // fausserait chaque vente (STK-01d).
