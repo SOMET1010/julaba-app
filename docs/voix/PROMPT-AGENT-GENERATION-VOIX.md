@@ -52,8 +52,8 @@ devront un jour s'enchaîner sans couture.
 | Niveau | **−16 LUFS** intégré, crête **≤ −1 dBTP** |
 | Silences | coupés en tête et en queue, **≤ 100 ms** |
 
-Ces valeurs sont mesurées sur les 137 clips humains déjà embarqués dans
-l'application, pas recopiées d'une documentation. Les nouveaux fichiers vont
+Ces valeurs sont mesurées sur les clips humains déjà embarqués dans
+l'application (137 fichiers, 128 jouables), pas recopiées d'une documentation. Les nouveaux fichiers vont
 s'enchaîner avec eux dans la même phrase : un écart de niveau ou un silence
 résiduel s'entend immédiatement.
 
@@ -71,7 +71,7 @@ d'une aînée du marché qui explique à une plus jeune : tutoiement, phrases
 courtes, aucune condescendance, aucun jargon.
 
 **Débit ralenti d'environ 10 %** par rapport à un débit de lecture normal. Les
-137 clips existants le sont — c'est une application utilisée dans le bruit d'un
+clips existants le sont — c'est une application utilisée dans le bruit d'un
 marché, par des personnes qui n'ont pas l'habitude qu'une machine leur parle.
 
 ### Ce que cette voix n'est pas
