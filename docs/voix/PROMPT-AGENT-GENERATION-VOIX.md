@@ -20,19 +20,26 @@ reformule pas, ne le corrige pas, n'ajoute ni ne retire un mot.
 
 | Famille | Fichiers | Contenu |
 |---|---|---|
-| `auth-02` → `auth-37` | 36 | accueil, connexion, code, biométrie |
+| `login-02` → `login-37` | 36 | accueil, connexion, code, biométrie |
 | `core-wait-01` → `07` | 7 | phrases d'attente |
 | `core-ack-01` → `07` | 7 | accusés de réception |
 | `core-err-01` → `04` | 4 | incompréhension, silence, choix |
 | `core-sys-01` → `02` | 2 | moteur vocal |
-| `num-0` → `num-9` | 10 | **les dix chiffres** |
+| `chiffre-0` → `chiffre-9` | 10 | les dix chiffres |
 | `vente-*`, `stk-*`, `dep-*`, `crd-*`, `wlt-*`, `dash-*` | 23 | phrases fixes d'écran |
 
-**Les dix chiffres sont les plus importants du lot.** Zéro, Un, Deux … Neuf :
-dix clips d'une seconde qui se recombinent pour dire n'importe quel montant.
-Ce sont eux qui font qu'une marchande qui ne lit pas entend son argent dans une
-vraie voix plutôt qu'en synthèse. Soigne-les autant que les phrases longues :
-articulation nette, même niveau, aucune traîne à la fin.
+**Les noms ne sont pas décoratifs.** `login-NN` et `chiffre-N` sont la
+convention que l'application applique déjà (`pages/StudioVoix.tsx`,
+`nomFichierScript`). Reprends-les exactement — c'est la colonne `fichier` du
+CSV qui fait foi.
+
+**Les dix chiffres : à enregistrer, mais rien ne les joue encore aujourd'hui.**
+Aucune mécanique d'enchaînement de clips n'existe dans l'application : les
+montants sont dits par la synthèse, à partir d'une forme parlée produite en
+texte (« trois mille francs »). Les dix chiffres sont donc enregistrés
+**en prévision** de cette mécanique, pas pour un usage immédiat. Soigne-les
+quand même : articulation nette, même niveau, aucune traîne à la fin — ils
+devront un jour s'enchaîner sans couture.
 
 ## 2. Format technique
 
@@ -115,6 +122,42 @@ dans ce CSV. Ne recopie pas la colonne d'entrée par facilité.
 - **Ne reformule aucun texte**, même si une tournure te paraît maladroite.
   Signale-le, ne le corrige pas.
 - **Ne renomme aucun fichier.**
+
+## 5 bis. Les phrases à variables : ni témoin unique, ni variantes
+
+Question posée : faut-il enregistrer les phrases à variables avec **une valeur
+témoin**, ou avec **plusieurs variantes de valeurs** ?
+
+**Ni l'une ni l'autre. On ne les enregistre pas ce tour-ci.** Ce n'est pas une
+préférence, c'est mesurable dans le code :
+
+1. **Un clip est retrouvé par son TEXTE.** À l'exécution, la phrase comparée
+   contient la vraie valeur : « J'ai bien capté : 3 tomates à 500 francs ». Un
+   témoin enregistré sur 3 tomates à 500 francs ne serait joué que pour cette
+   vente-là, et pour aucune autre. Le taux d'utilisation serait proche de zéro.
+
+2. **Les variantes de valeurs sont combinatoirement impossibles.**
+   « {quantité} {produit} à {prix} francs. Total : {total} francs » croise
+   quatre variables libres. Ce n'est pas un nombre de fichiers, c'est un
+   produit cartésien.
+
+3. **Aucune mécanique d'enchaînement de clips n'existe** dans
+   `services/audioManager.ts` : il joue un clip, ou du texte, jamais une
+   séquence. Même en découpant en fragments, rien ne saurait les recoller
+   aujourd'hui.
+
+4. **Le dépôt l'a déjà écrit**, dans `services/tataVoice.ts` :
+   « Les phrases dynamiques (montants qui changent : "2 000 francs") ne peuvent
+   pas être pré-enregistrées → elles restent dites par la voix de secours. »
+
+5. **Et elles ne sont pas muettes.** Depuis la bascule « le filet parle
+   partout », toute phrase sans clip est dite par la synthèse. Ces 24 phrases
+   se disent déjà.
+
+Elles sont listées dans `LOT-PHRASES-DYNAMIQUES.csv` comme une dette **ouverte**,
+pas comme une tâche de ce lot. Les rendre enregistrables demande d'abord de
+construire l'enchaînement de fragments — c'est un travail de code, pas de
+studio, et il se chiffre à part.
 
 ## 6. Les 7 fichiers `wlt-*`
 
