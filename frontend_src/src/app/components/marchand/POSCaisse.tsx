@@ -97,6 +97,12 @@ function POSCaisseInner() {
   const [showLibre, setShowLibre] = useState(false);
   const [libreMontant, setLibreMontant] = useState('');
   const [libreDesc, setLibreDesc] = useState('');
+  // COMBIEN, AU DOIGT — 25/09/2026. La quantité existait déjà quand la vente
+  // était DICTÉE (`quantiteDictee`) ; ouverte au doigt, la feuille restait à 1.
+  // L'agent de test : « une marchande risque d'entrer directement 2 000 F comme
+  // montant libre » pour deux tas. La vente serait juste sur l'ARGENT et fausse
+  // sur la QUANTITÉ — donc sur le produit vedette et sur ses statistiques.
+  const [libreQte, setLibreQte] = useState(1);
   // « Autre article » sert maintenant DEUX gestes : chercher dans le
   // référentiel maître (Odoo) pour ajouter un vrai article à son catalogue,
   // ou vendre un montant libre quand rien ne correspond. Le second reste
@@ -299,13 +305,14 @@ function POSCaisseInner() {
     // Même règle que l'adoption : la quantité DITE compte, et le montant posé
     // est celui d'une unité. Ouverte au doigt, la feuille reste à 1 — rien ne
     // change pour le geste tactile.
-    const qte = quantiteDictee;
+    // La dictée prime quand elle a parlé ; sinon c'est ce que le doigt a posé.
+    const qte = venteDictee?.quantite && venteDictee.quantite > 0 ? venteDictee.quantite : Math.max(1, libreQte);
     const totalLigne = montant * qte;
     addToCart(produitLibre, qte);
     dire(ligneAjouteeDeuxFormes({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }).texteParle);
     // L'unité revient au défaut : sinon le « tas » de la vente précédente
     // collerait, en silence, à l'article libre suivant.
-    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setShowLibre(false); setVenteDictee(null);
+    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setLibreQte(1); setShowLibre(false); setVenteDictee(null);
   };
 
   const total = getTotalCart();
@@ -1511,6 +1518,25 @@ function POSCaisseInner() {
                       parcours, pas de l'écran. */}
                   <div style={{ marginBottom:18 }}>
                     <ChoixUnite valeur={libreUnite} onChoisir={setLibreUnite} dire={dire} />
+                  </div>
+                  {/* COMBIEN — les mêmes gestes que dans le panier (moins, plus),
+                      cibles de 44 px. Sans ce champ, la marchande qui vend deux
+                      tas posait 2 000 F : la vente était juste sur l'argent et
+                      fausse sur la quantité. */}
+                  <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Combien ?</label>
+                  <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:6, marginBottom:18 }}>
+                    <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => setLibreQte(q => Math.max(1, q - 1))}
+                      aria-label="Un de moins"
+                      style={{ width:48, height:48, borderRadius:14, border:'1.5px solid var(--trait)', background:'white', fontSize:22, fontWeight:900, color:'var(--encre)', cursor:'pointer', fontFamily:'inherit' }}>−</motion.button>
+                    <div aria-live="polite" style={{ minWidth:56, textAlign:'center', fontSize:22, fontWeight:900, color:'var(--encre)' }}>{libreQte}</div>
+                    <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => setLibreQte(q => q + 1)}
+                      aria-label="Un de plus"
+                      style={{ width:48, height:48, borderRadius:14, border:'1.5px solid var(--trait)', background:'white', fontSize:22, fontWeight:900, color:'var(--encre)', cursor:'pointer', fontFamily:'inherit' }}>+</motion.button>
+                    {Number(libreMontant) > 0 && (
+                      <div style={{ marginLeft:'auto', fontSize:13, fontWeight:800, color:'var(--encre-3)' }}>
+                        Total : {formatF(Number(libreMontant) * Math.max(1, libreQte))} F
+                      </div>
+                    )}
                   </div>
                 </>
               )}
