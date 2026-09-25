@@ -564,7 +564,7 @@ interface CloseDayModalProps {
 }
 
 export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayModalProps) {
-  const { closeDay, speak, getSalesHistory, getFinancialSummary } = useApp();
+  const { closeDay, speak, getSalesHistory, getFinancialSummary, currentSession } = useApp();
   const { montantsMasques } = useMontantsPrives();
   const navigate = useNavigate();
   // LE CHAMP DE COMPTAGE PART VIDE, ET C'EST ESSENTIEL.
@@ -615,7 +615,14 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
 
   // ACC-02 — LE DROIT DE FERMER. Sans état fourni (appelants historiques), le
   // comportement d'avant reste : on ne casse aucun écran qu'on n'a pas mesuré.
-  const droit = etatCaisse ? droitDeFermerLaJournee(etatCaisse) : null;
+  // UNE JOURNÉE DÉJÀ FERMÉE NE SE REFERME PAS — 25/09/2026. L'agent de test :
+  // « La re-fermeture est acceptée : même toast, Journée clôturée avec succès. »
+  // Le serveur refusait bien (CAI-10), son écart de −250 était intact — c'est
+  // l'écran qui annonçait un succès, parce que `closeDay` avale l'erreur en
+  // `console.warn`. La marchande repartait avec un chiffre que la base ne
+  // porte pas. On empêche le geste plutôt que de rattraper son échec.
+  const dejaFermee = !!currentSession && currentSession.opened === false && !!currentSession.closedAt;
+  const droit = etatCaisse ? droitDeFermerLaJournee(etatCaisse, dejaFermee) : (dejaFermee ? droitDeFermerLaJournee({ type: 'connue', caisse: 0 } as any, true) : null);
   const fermetureInterdite = droit ? !droit.permis : false;
   const chiffresIncomplets = droit?.permis === true && droit.exact === false;
 
@@ -678,13 +685,27 @@ export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayMo
             l'application est cassée et ferme autrement. */}
         {fermetureInterdite && (
           <div role="alert" className="mx-6 mb-4 p-4 rounded-2xl border bg-amber-50" style={{ borderColor: '#FCD34D' }}>
-            <p className="text-sm font-semibold text-gray-900">
-              Je n’ai pas pu lire les chiffres de ta journée.
-            </p>
-            <p className="text-sm text-gray-700 mt-1">
-              Ce n’est pas zéro. Fermer maintenant écrirait un écart faux, pour toujours.
-              Réessaie quand le réseau revient.
-            </p>
+            {droit && droit.permis === false && droit.raison === 'deja-fermee' ? (
+              <>
+                <p className="text-sm font-semibold text-gray-900">
+                  Ta journée est déjà fermée.
+                </p>
+                <p className="text-sm text-gray-700 mt-1">
+                  Ton comptage du soir est gardé. Si tu veux recompter, rouvre
+                  d’abord ta journée depuis l’accueil.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-gray-900">
+                  Je n’ai pas pu lire les chiffres de ta journée.
+                </p>
+                <p className="text-sm text-gray-700 mt-1">
+                  Ce n’est pas zéro. Fermer maintenant écrirait un écart faux, pour toujours.
+                  Réessaie quand le réseau revient.
+                </p>
+              </>
+            )}
           </div>
         )}
         {chiffresIncomplets && (
