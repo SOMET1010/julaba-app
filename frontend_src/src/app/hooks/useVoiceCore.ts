@@ -897,9 +897,30 @@ export function useVoiceCore({
       // n'enregistre », alors que Tata avait bien une explication à donner.
       clearThinkingTimer();
       vtrace.erreur('useVoiceCore.processAudio', 'moteur voix indisponible ou transcription échouée (ensureOfflineModel / transcribeWav)');
-      const msg = navigator.onLine
-        ? "Je n'ai pas réussi à préparer ta voix. Vérifie le réseau et réessaie."
-        : "Je n'ai pas réussi à t'écouter, réessaie.";
+      // LE MESSAGE DIT LA VRAIE CAUSE — 25/09/2026, gel VOICE-01 levé par
+      // Patrick.
+      //
+      // Agent de test : « Vérifie le réseau » s'affichait sur le web, où le
+      // réseau n'y est pour rien. Il a cherché une panne qui n'existait pas.
+      // Une marchande ferait pire : elle irait chercher du réseau.
+      //
+      // L'INFORMATION ÉTAIT DÉJÀ LÀ, deux lignes plus haut — le commentaire de
+      // ce `catch` dit « moteur voix indisponible, ex. navigateur web sans
+      // sherpa-onnx natif » — et le message la jetait pour parler d'autre
+      // chose. C'est le motif que ce dépôt traque partout.
+      //
+      // La cause est vérifiable, pas devinée : `offlineModelReady()` dit si le
+      // moteur natif est là. Sur le web il ne l'est jamais — décision du
+      // 11/08/2026 (docs/INCLUSION.md) : « moteur vocal unique : sherpa-onnx
+      // (natif, APK) […] conséquence assumée : sur le web, la dictée
+      // hors-ligne n'existe plus — le clavier reste le filet ». Ce n'est donc
+      // pas une panne à réparer, c'est un endroit où la dictée n'existe pas :
+      // on le dit, et on montre la sortie (toucher les produits).
+      const msg = !offlineModelReady()
+        ? "La dictée n'est disponible que dans l'application. Ici, touche les produits."
+        : navigator.onLine
+          ? "Je n'ai pas réussi à préparer ta voix. Réessaie."
+          : "Je n'ai pas réussi à t'écouter, réessaie.";
       setError(msg); setState("error"); setLiveTranscript("");
       await ttsSpeak(msg);
       return;

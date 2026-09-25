@@ -18,7 +18,7 @@
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **240** |
 | Dont dynamiques (avec variables) | 88 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **59** |
-| Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **389** |
+| Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **390** |
 | Fichiers avec au moins un site d'appel | 78 |
 | Attributs `aria-label` (lecteur d'écran uniquement) | 304 — **hors parcours vocal**, voir §8 |
 
@@ -915,9 +915,9 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 872 | `ttsSpeak` | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |  |
 | 888 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
 | 889 | `ttsSpeak` | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |  |
-| 904 | `ttsSpeak` | dynamique | msg |  |  |
-| 936 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
-| 940 | `ttsSpeak` | literal | Je n'ai pas réussi, réessaie. |  |  |
+| 925 | `ttsSpeak` | dynamique | msg |  |  |
+| 957 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
+| 961 | `ttsSpeak` | literal | Je n'ai pas réussi, réessaie. |  |  |
 
 ### `pages/CollecteVoix.tsx` — pages
 
@@ -1289,7 +1289,7 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 | 107 | literal | Chiffres isolés (0 à 9) |  |
 | 108 | literal | Pipeline vocal — attentes et accusés fréquents |  |
 
-### `hooks/useVoiceCore.ts` — moteur vocal : attentes, accusés, erreurs, confirmations locales (52)
+### `hooks/useVoiceCore.ts` — moteur vocal : attentes, accusés, erreurs, confirmations locales (53)
 
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
@@ -1337,14 +1337,15 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 | 888 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
 | 889 | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |
 | 899 | literal | moteur voix indisponible ou transcription échouée (ensureOfflineModel / transcribeWav) |  |
-| 901 | literal | Je n'ai pas réussi à préparer ta voix. Vérifie le réseau et réessaie. |  |
-| 902 | literal | Je n'ai pas réussi à t'écouter, réessaie. |  |
-| 936 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
-| 940 | literal | Je n'ai pas réussi, réessaie. |  |
-| 967 | literal | Micro non accessible dans cette application. Ouvre Jùlaba dans Safari ou Chrome pour utiliser la voix. |  |
-| 1003 | literal | Microphone inaccessible. Vérifie les permissions. |  |
-| 1006 | literal | Accès au micro refusé. Autorise le micro pour Jùlaba dans les réglages de ton téléphone. |  |
-| 1008 | literal | Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie. |  |
+| 920 | literal | La dictée n'est disponible que dans l'application. Ici, touche les produits. |  |
+| 922 | literal | Je n'ai pas réussi à préparer ta voix. Réessaie. |  |
+| 923 | literal | Je n'ai pas réussi à t'écouter, réessaie. |  |
+| 957 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
+| 961 | literal | Je n'ai pas réussi, réessaie. |  |
+| 988 | literal | Micro non accessible dans cette application. Ouvre Jùlaba dans Safari ou Chrome pour utiliser la voix. |  |
+| 1024 | literal | Microphone inaccessible. Vérifie les permissions. |  |
+| 1027 | literal | Accès au micro refusé. Autorise le micro pour Jùlaba dans les réglages de ton téléphone. |  |
+| 1029 | literal | Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie. |  |
 
 ### `services/dialoguesTata.ts` — dialogues purs de la vente guidée (0)
 
