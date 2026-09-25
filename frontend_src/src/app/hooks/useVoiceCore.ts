@@ -22,7 +22,7 @@ import * as audioManager from "../services/audioManager";
 import * as vtrace from "../utils/voiceTrace"; // VOICE-01 : journal de voix (transcript brut, intention, choix clip) — observation seule
 import { tataClipUrl } from "../services/tataVoice";
 import { tataUiClipForText } from "../services/tataUiClips";
-import { playTataChoice, resolveLocalVoiceChoice } from "../services/localVoiceChoice";
+import { resolveLocalVoiceChoice } from "../services/localVoiceChoice";
 import { useOfflineVoiceQueue } from "./useOfflineVoiceQueue";
 import { dispatchVoiceAction } from "../voice-offline/offlineVoiceDispatch";
 
@@ -241,15 +241,38 @@ async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): 
   if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') vtrace.ttsIgnoree('useVoiceCore.ttsSpeak', text, 'voix-desactivee (julaba_voice_disabled)');
   if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') return;
   if (lang === "french") {
-    // Choix B : clip Tata enregistré ou texte seul. Jamais de voix navigateur.
+    // LE FILET PARLE PARTOUT — décision de Patrick, 25/09/2026.
+    //
+    // CE QUI ÉTAIT ICI : « Choix B : clip Tata enregistré ou texte seul. Jamais
+    // de voix navigateur. » Sans clip, RIEN n'était dit — et l'agent de test a
+    // trouvé la caisse muette sur « Je n'ai pas compris », sur le refus d'une
+    // unité vide, sur la fermeture de journée.
+    //
+    // MAIS LE MÊME CODE DISAIT DÉJÀ L'INVERSE AILLEURS : `speakBrowser`, dans
+    // elevenlabs.ts, est documenté comme « filet de dernier recours quand ni un
+    // clip de Tata ni la synthèse native ne peuvent répondre ». Deux règles
+    // pour une seule question, et ce qu'une marchande entendait dépendait du
+    // chemin qu'avait pris la phrase (docs/argent/DEUX-REGLES-DE-VOIX.md).
+    //
+    // Patrick a tranché : le filet parle. Une phrase importante ne se tait
+    // plus faute d'enregistrement — « aucune information importante uniquement
+    // en texte » l'emporte sur « seule la vraie voix a le droit de parler ».
+    //
+    // L'ORDRE NE CHANGE PAS : le clip de Tata d'abord, toujours. La synthèse
+    // ne prend le relais que s'il n'y en a pas, ou s'il échoue. C'est
+    // exactement ce que fait `speakClipOrText`, qui existait déjà pour la
+    // vente vocale — un seul créneau, pas de chevauchement.
+    //
+    // Conséquence : le clip ui-138 (« Je n'ai pas compris. Touche le micro et
+    // redis-moi. ») devient un CONFORT, plus une nécessité. La phrase est dite
+    // tout de suite ; la vraie voix la remplacera quand elle sera enregistrée.
     const clipUrl = (clip ? tataClipUrl(clip) : null) || tataUiClipForText(text) || undefined;
     const choice = resolveLocalVoiceChoice(clipUrl);
     vtrace.ttsChoix('useVoiceCore.ttsSpeak', text, choice.mode, clipUrl ?? null);
-    if (choice.mode === "clip") {
-      await playTataChoice(choice, (url) => audioManager.playClip({ url }, { priority: "user" }));
-    } else if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('julaba:voice-pack-missing', { detail: { lang, kind: 'clip' } }));
-    }
+    await audioManager.speakClipOrText(
+      { clipUrl: choice.mode === "clip" ? clipUrl : undefined, text },
+      { priority: "user" },
+    );
     return;
   }
   // Dioula/Bambara : aucun appel réseau n’est autorisé dans le runtime marchand.
