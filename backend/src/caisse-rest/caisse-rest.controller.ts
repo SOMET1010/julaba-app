@@ -10,6 +10,7 @@ import { resumeMargeDesLignes, coutDesLignesCoutees } from './marge-vente';
 import { CaisseTransaction, TransactionStatus } from './caisse-transaction.entity';
 import { restituerStock } from './stock-restitution';
 import { identifiantProduit } from '../commun/identifiant-produit';
+import { nomDeProduitSaisi, uniteDeProduitSaisie } from '../commun/produit-saisi';
 import { exigerJourneeOuverte } from './journee-ouverte';
 import { AlertesService } from '../notifications/alertes.service';
 
@@ -829,11 +830,17 @@ export class CaisseRestController {
     return { produits };
   }
 
+  // STK-21 — UN PRODUIT ENTRE DANS L'ÉTAL AVEC UN NOM ET UNE UNITÉ.
+  //
+  // Agent de test du 25/09 : un produit nommé « A », 0 kg, en rupture. Cette
+  // route n'exigeait RIEN : `body.nom` partait tel quel, et `body.unite ||
+  // 'unité'` fabriquait une unité quand elle manquait. Arbitrage de Patrick :
+  // « un nom d'au moins 2 caractères et une unité obligatoire ».
   @Post('produits')
   async createProduit(@Body() body: any, @CurrentUser() user: User) {
     const result = await this.dataSource.query(
       'INSERT INTO produits (marchand_id, nom, prix, prix_achat, categorie, stock, unite, image, seuil_alerte, date_peremption, prix_promo, promo_fin) VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
-      [user.id, body.nom, body.prix || 0, Number(body.prix_achat) || 0, body.categorie || 'Général', body.stock || 0, body.unite || 'unité', body.image || null,
+      [user.id, nomDeProduitSaisi(body.nom), body.prix || 0, Number(body.prix_achat) || 0, body.categorie || 'Général', body.stock || 0, uniteDeProduitSaisie(body.unite), body.image || null,
        body.seuil_alerte != null ? Number(body.seuil_alerte) : 10, body.date_peremption || null,
        body.prix_promo != null && body.prix_promo !== '' ? Number(body.prix_promo) : null, body.promo_fin || null]
     );

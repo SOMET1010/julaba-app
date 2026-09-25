@@ -456,7 +456,11 @@ export function ResumeCaisse() {
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:10, fontWeight:900, color:'var(--commerce-action)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:2 }}>Produit star du jour</div>
                 <div style={{ fontSize:18, fontWeight:900, color:'var(--encre)' }}>{produitStar.productName}</div>
-                <div style={{ fontSize:11, color:'var(--herite-gris-53)', fontWeight:700, marginTop:2 }}>{produitStar.quantity} vente{produitStar.quantity > 1 ? 's' : ''}</div>
+                {/* « VENDUS », PAS « VENTES » — la carte du produit star disait encore
+                  « 2 ventes » pour UNE vente de 2 tas, alors que la liste juste
+                  en dessous était corrigée. Deux endroits lisaient la même
+                  donnée, un seul avait été repris (agent de test, 25/09). */}
+              <div style={{ fontSize:11, color:'var(--herite-gris-53)', fontWeight:700, marginTop:2 }}>{produitStar.quantity} vendu{produitStar.quantity > 1 ? 's' : ''}</div>
               </div>
               <div style={{ textAlign:'right' }}>
                 <div style={{ fontSize:20, fontWeight:900, color:'var(--commerce-action)' }}>{(produitStar.total||0).toLocaleString('fr-FR')}</div>
