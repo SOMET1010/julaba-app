@@ -3,8 +3,10 @@
 **25/09/2026.** Réponse à : « si je dois te fournir les fichiers WAV, donne-moi
 les caractéristiques pour qu'ils puissent être utilisés dans ton code ».
 
-Tout ce qui suit est **mesuré sur les 137 clips déjà en place**, pas recopié
-d'une documentation. Là où la doc et les fichiers se contredisent, c'est dit.
+Tout ce qui suit est **mesuré sur les clips déjà en place**, pas recopié d'une
+documentation. Précision du 25/09 : le dossier contient **137 fichiers, dont
+128 déclarés et jouables** — les neuf autres ne sont nommés nulle part et ne
+peuvent être joués par rien (garde `test:clips-embarques`). Là où la doc et les fichiers se contredisent, c'est dit.
 
 ---
 
@@ -14,7 +16,7 @@ d'une documentation. Là où la doc et les fichiers se contredisent, c'est dit.
 |---|---|---|
 | Conteneur | `.wav` (PCM non compressé) | c'est le master : on ne compresse qu'une fois, à la fin |
 | Profondeur | **16 bits** | suffisant pour de la parole ; 24 bits accepté aussi |
-| Échantillonnage | **24 000 Hz** | c'est EXACTEMENT celui des 137 clips existants |
+| Échantillonnage | **24 000 Hz** | c'est EXACTEMENT celui des clips existants |
 | Canaux | **mono** | les 137 clips sont mono ; du stéréo serait replié, sans gain |
 | Niveau | **−16 LUFS intégré**, crête **≤ −1 dBTP** | valeur de post-production des 137 clips |
 | Silences | coupés en tête et en queue, **≤ 100 ms** | sinon un enchaînement de deux clips fait un trou |
@@ -26,7 +28,7 @@ ré-échantillonne à la conversion. Ne monte JAMAIS un fichier de 16 kHz vers
 ### Ce que j'ai mesuré
 
 ```
-frontend_src/public/voix/tata/*.mp3   137 fichiers
+frontend_src/public/voix/tata/*.mp3   137 fichiers (128 jouables, 9 orphelins)
   MPEG-2 layer III · 96 kbps · 24 kHz · mono · ID3v2.4
   5,6 Mo au total · 42 ko en moyenne (~3,6 s) · le plus long 11,7 s
 
