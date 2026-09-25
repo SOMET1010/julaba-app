@@ -253,25 +253,44 @@ export function GestionStock() {
   const stockCtx = useStock();
 
   /** Caisse (Kassa) + API /stocks : fusion par nom, la caisse prime pour qu'un produit créé en Kassa apparaisse même si /stocks n'est pas vide. */
+  // UNE SEULE SOURCE POUR L'ÉTAL — 25/09/2026, arbitrage de Patrick.
+  //
+  // CE QU'IL Y AVAIT. Cette liste FUSIONNAIT deux sources — `products`
+  // (/caisse/produits) et `stockCtx.stock` (/stocks) — puis dédoublonnait PAR
+  // NOM dans une Map. Deux effets, tous deux mauvais :
+  //
+  //  · l'agent de test du 25/09 a vu DEUX « Piment » (15 et 6) dans la caisse
+  //    et UN SEUL ici : le dédoublonnage en cachait un, en silence. La
+  //    marchande ne peut pas corriger ce qu'elle ne voit pas ;
+  //  · pire, `byName.set(...)` garde le DERNIER écrit. Modifier « Piment »
+  //    depuis cet écran touchait donc une ligne au hasard des deux.
+  //
+  // MESURÉ : les deux routes lisent LA MÊME TABLE `produits`. Il n'y a jamais
+  // eu deux tables — seulement deux lectures, et deux lignes réellement créées
+  // sous le même nom. `/caisse/produits` filtre `actif = true` ; `/stocks` ne
+  // le fait pas et rend aussi les produits désactivés, qui n'ont rien à faire
+  // dans l'étal.
+  //
+  // DÉSORMAIS : `products` fait foi, et RIEN N'EST DÉDOUBLONNÉ. Deux produits
+  // de même nom s'affichent tous les deux, chacun avec son `id` : la marchande
+  // les voit, et peut en supprimer un. Montrer la vérité vaut mieux que cacher
+  // le doublon — « ne jamais donner deux sens à la même donnée ».
+  //
+  // LE REPLI n'est PAS une fusion : il ne sert que si `products` est vide (API
+  // muette ET cache froid). Jamais les deux listes en même temps.
   const stocks: Stock[] = useMemo(() => {
-    const seen = new Set<string>();
-    const fromCaisse: Stock[] = (!products || !Array.isArray(products)) ? [] : products
-      .filter(p => {
-        if (seen.has(p.id)) return false;
-        seen.add(p.id);
-        return true;
-      })
-      .map(p => ({
-        id: p.id, name: p.nom, image: p.image || '',
-        quantity: p.stock || 0, unit: p.unite,
-        purchasePrice: Number(p.prix_achat ?? 0) || 0,
-        salePrice: p.prix || 0,
-        threshold: (p as any).seuil_alerte || 10,
-        category: (p.categorie || 'autres').toLowerCase(),
-        promoPrice: (p as any).prix_promo != null ? Number((p as any).prix_promo) : null,
-        promoFin: (p as any).promo_fin || null,
-      }));
-    const fromApi: Stock[] = stockCtx.stock.map(s => ({
+    const duCatalogue: Stock[] = (!products || !Array.isArray(products)) ? [] : products.map(p => ({
+      id: p.id, name: p.nom, image: p.image || '',
+      quantity: p.stock || 0, unit: p.unite,
+      purchasePrice: Number(p.prix_achat ?? 0) || 0,
+      salePrice: p.prix || 0,
+      threshold: (p as any).seuil_alerte || 10,
+      category: (p.categorie || 'autres').toLowerCase(),
+      promoPrice: (p as any).prix_promo != null ? Number((p as any).prix_promo) : null,
+      promoFin: (p as any).promo_fin || null,
+    }));
+    if (duCatalogue.length > 0) return duCatalogue;
+    return stockCtx.stock.map(s => ({
       id: s.id, name: s.produit, image: '',
       quantity: s.quantite, unit: s.unite,
       purchasePrice: (s as any).prixAchat || 0,
@@ -279,10 +298,6 @@ export function GestionStock() {
       threshold: (s as any).seuilAlerte || 10,
       category: ((s as any).categorie || 'autres').toLowerCase(),
     }));
-    const byName = new Map<string, Stock>();
-    for (const s of fromApi) byName.set(s.name.toLowerCase().trim(), s);
-    for (const s of fromCaisse) byName.set(s.name.toLowerCase().trim(), s);
-    return Array.from(byName.values());
   }, [products, stockCtx.stock]);
 
   const [search, setSearch] = useState('');
@@ -558,10 +573,24 @@ export function GestionStock() {
       else await addProduct(champs);
       void stockCtx.updateStock(id, { quantite: editForm.quantity, prixUnitaire: editForm.salePrice })
         .catch((e: any) => console.warn('[GestionStock] stockCtx.updateStock failed:', e?.message));
+      // CE QUE L'ÉCRAN AFFIRME DOIT ÊTRE CE QUE LE SERVEUR ÉCRIT — 25/09/2026.
+      //
+      // Agent de test : « quand on enregistre le champ vide, l'écran affiche
+      // quand même "Produit mis à jour". Pendant quelques secondes la fiche
+      // indique "Épuisé", un stock vide et 0 FCFA, jusqu'au rechargement. »
+      //
+      // Le serveur, lui, avait raison : STK-06 lui fait IGNORER un champ vidé
+      // (« la présence de la clé décide, jamais la vérité de sa valeur »). Mais
+      // l'écran, lui, recopiait le champ vide dans son état local et annonçait
+      // un succès. Les données n'étaient pas touchées — la marchande pouvait
+      // croire qu'elle venait de vider son stock.
+      //
+      // Même règle des deux côtés : un champ vidé ne touche pas à la quantité.
+      const quantiteVidee = String(editForm.quantity ?? '').trim() === '';
       setSelectedStock({
         ...selectedStock,
         name: editForm.name,
-        quantity: editForm.quantity,
+        quantity: quantiteVidee ? selectedStock.quantity : editForm.quantity,
         unit: editForm.unit,
         purchasePrice: editForm.purchasePrice,
         salePrice: editForm.salePrice,
@@ -572,8 +601,13 @@ export function GestionStock() {
         promoFin: editForm.promoFin || null,
       });
       setInlineEdit(false);
-      speak(`${editForm.name} mis à jour`);
-      showToast('Produit mis à jour', 'success');
+      // On ne félicite pas d'une quantité qu'on n'a pas écrite : on dit ce qui
+      // s'est passé, et ce qu'il reste à faire.
+      const dit = quantiteVidee
+        ? `${editForm.name} mis à jour. La quantité n'a pas changé : indique un nombre.`
+        : `${editForm.name} mis à jour`;
+      speak(dit);
+      showToast(quantiteVidee ? 'Mis à jour — indique une quantité' : 'Produit mis à jour', quantiteVidee ? 'info' : 'success');
     } catch (err: unknown) {
       toast.error('Erreur lors de la sauvegarde');
       speak("Ça n'a pas été enregistré. Réessaie, s'il te plaît.");
