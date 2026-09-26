@@ -7,13 +7,34 @@ export type EntreeVoiceKey =
   | 'code'
   | 'codeErreur'
   | 'connexionIndisponible'
-  | 'reconnaissance';
+  | 'reconnaissance'
+  // ── LOT A, 26/09/2026 — voir `lotA` plus bas ────────────────────────────
+  | 'pinImages'
+  | 'pinChiffres';
 
 export interface EntreeVoiceClip {
   file: string;
   texte: string;
+  /** Validé par une oreille ivoirienne. Ne se coche qu'après écoute humaine. */
   atteste: boolean;
   prototype?: boolean;
+  /**
+   * LOT A — VOIX DE SYNTHÈSE CONTRÔLÉE, PAS ENCORE ÉCOUTÉE.
+   *
+   * Pourquoi un troisième état plutôt que `atteste: true`. Ces clips ont passé
+   * un contrôle MÉCANIQUE complet — nom, texte identique à ce que l'écran dit,
+   * fréquence, canaux, niveau, silences (scripts/voix/ingerer-clips.mjs). Mais
+   * personne ne les a ÉCOUTÉS. Les cocher `atteste` mettrait deux sens dans un
+   * seul champ : « validé par une oreille » et « bon pour la production ». On
+   * ne donne pas deux sens à la même donnée, surtout pas à celle qui décide de
+   * ce qu'une marchande entend.
+   *
+   * Ils passent quand même en production : Patrick l'a tranché le 26/09, et
+   * une phrase dite dans une voix contrôlée vaut mieux qu'une phrase muette.
+   * Le jour où une oreille ivoirienne les valide, `atteste` passe à `true` et
+   * ce champ disparaît.
+   */
+  lotA?: boolean;
 }
 
 const BASE = '/voix/fr-CI/prototype';
@@ -71,6 +92,31 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
     atteste: false,
     prototype: true,
   },
+  // ── PASSAGE CHIFFRES ⇄ IMAGES — LOT A, 26/09/2026 ────────────────────────
+  //
+  // LE DÉFAUT QU'ON FERME. `LoginPassword.basculerPinEnImages` annonce le
+  // changement de mode par `parle(...)`, donc par `direEntreeTexte`, qui ne
+  // connaît que les clés de ce fichier. La phrase n'y était pas : l'écran
+  // annonçait le basculement EN SILENCE. Pas une panne — une clé jamais
+  // ajoutée, et rien pour le signaler.
+  //
+  // ET LE TEXTE DIT MAINTENANT PLUS QU'AVANT. Le code disait « Maintenant,
+  // des images à la place des chiffres. » ; le clip ajoute « Ton code n'a pas
+  // changé. » C'est la question que se pose une marchande au moment précis où
+  // son pavé change sous ses yeux. On ne remplace pas une consigne par une
+  // plus pauvre — ici on la remplace par une plus complète.
+  pinImages: {
+    file: '/voix/tata/login-21.mp3',
+    texte: 'Voilà les photos qui sont sorties à la place des chiffres. Ton code n\'a pas changé.',
+    atteste: false,
+    lotA: true,
+  },
+  pinChiffres: {
+    file: '/voix/tata/login-22.mp3',
+    texte: 'Voilà les chiffres maintenant. Mets ton code comme d\'habitude.',
+    atteste: false,
+    lotA: true,
+  },
 };
 
 function normaliser(texte: string): string {
@@ -92,7 +138,7 @@ const INDEX_TEXTE = new Map<string, EntreeVoiceKey>(
 export function urlClipEntree(key: EntreeVoiceKey, actifs: boolean = prototypesVoixActifs()): string | null {
   const clip = ENTREE_VOICE_CLIPS[key];
   if (!clip) return null;
-  return clip.atteste || (clip.prototype && actifs) ? clip.file : null;
+  return clip.atteste || clip.lotA || (clip.prototype && actifs) ? clip.file : null;
 }
 
 export function entreeClipUrl(key: EntreeVoiceKey): string | null {

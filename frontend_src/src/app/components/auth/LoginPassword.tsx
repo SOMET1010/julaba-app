@@ -45,6 +45,11 @@ const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
   codeErreur: 'ENTREE_CODE_ERREUR',
   connexionIndisponible: 'ENTREE_CONNEXION',
   reconnaissance: 'ENTREE_RECONNAISSANCE',
+  // Ces deux-là ont toujours un clip (lot A) : le repli texte ne sert
+  // jamais. La clé est renseignée quand même — le type l'exige, et une
+  // table à trou finirait par mentir le jour où le clip disparaît.
+  pinImages: 'AUTH_21',
+  pinChiffres: 'AUTH_22',
 };
 
 /** Le clip s'il existe, sinon la phrase — une seule sortie, jamais deux. */
@@ -182,7 +187,12 @@ export function LoginPassword() {
       // Annonce le CHANGEMENT DE MODE, jamais le PIN — la correspondance est
       // publique (variante A), donc rien de secret n'est dit ici.
       if (guidageVocal(accessMode)) {
-        parle(next ? 'Maintenant, des images à la place des chiffres.' : 'Retour aux chiffres.');
+        // Textes alignés MOT POUR MOT sur les clips login-21 / login-22
+        // (services/entreeVoix.ts). `direEntreeTexte` retrouve la clé par le
+        // texte : un mot d'écart et l'écran redevient muet, sans rien signaler.
+        parle(next
+          ? 'Voilà les photos qui sont sorties à la place des chiffres. Ton code n\'a pas changé.'
+          : 'Voilà les chiffres maintenant. Mets ton code comme d\'habitude.');
       }
       return next;
     });
