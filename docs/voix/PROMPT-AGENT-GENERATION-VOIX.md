@@ -12,7 +12,7 @@ ne sort pas est un message qui n'existe pas.
 
 ## 1. Ce que tu produis
 
-**90 fichiers `.wav`**, un par ligne du CSV joint (`LOT-A-ENREGISTRER.csv`).
+**82 fichiers `.wav`**, un par ligne du CSV joint (`LOT-A-ENREGISTRER.csv`).
 
 Le CSV a trois colonnes : `fichier`, `texte_a_enregistrer`, `origine`.
 Le nom du fichier est donné — ne le change pas. Le texte est donné — ne le
@@ -82,7 +82,7 @@ une voix humaine locale, et « Julaba ne génère pas une imitation de Tata ».
 Patrick a tranché le 25/09/2026 : **une voix IA distincte**, qui ne prend aucun
 échantillon de la comédienne comme référence.
 
-**Cette voix ne se présente jamais.** Aucune des 90 phrases ne dit « Moi,
+**Cette voix ne se présente jamais.** Aucune des 82 phrases ne dit « Moi,
 c'est… » — c'est vérifié, et c'est pour ça que `auth-01` (« Bonjour ma fille.
 Moi, c'est Tantie Nanti Lou ») **ne fait pas partie du lot**. Ne la génère pas.
 Une voix qui ne se présente pas n'usurpe aucune identité.
@@ -92,7 +92,7 @@ au lieu de générer.
 
 ## 4. Le livrable qui conditionne tout : le CSV des textes
 
-Avec les 90 `.wav`, livre un CSV à deux colonnes :
+Avec les 82 `.wav`, livre un CSV à deux colonnes :
 
 ```csv
 fichier,texte_exact_prononce
@@ -157,7 +157,35 @@ seule ligne, et je l'avais recopiée telle quelle — **mon erreur**. Un clip
 unique énonçant les deux n'aurait été joué ni pour l'un ni pour l'autre.
 
 Le CSV est corrigé : `wlt-01` = « Ton argent est caché », `wlt-08` = « Ton
-argent est affiché ». Le lot passe de 89 à **90**.
+argent est affiché ».
+
+## 4 quater. Huit phrases sont sorties du lot : la vraie voix les dit déjà
+
+En mesurant plutôt qu'en supposant, **huit phrases du document ont déjà un clip
+enregistré par la voix humaine** :
+
+| Fichier prévu | Clip humain existant | Ce que la vraie voix dit |
+|---|---|---|
+| `crd-01` | `ui-083.mp3` | « Numéro de téléphone invalide. Format attendu : 07XXXXXXXX » |
+| `wlt-02` | `ui-118.mp3` | « Solde insuffisant » |
+| `wlt-03` | `ui-063.mp3` | « Le montant doit être un multiple de 100 francs » |
+| `wlt-04` | `ui-093.mp3` | « Paiement en cours — confirme sur ton téléphone » |
+| `wlt-05` | `ui-111.mp3` | « Retrait confirmé ! Ton solde a été mis à jour. » |
+| `wlt-06` | `ui-126.mp3` | « Tu vas être redirigé vers Wave pour confirmer le paiement » |
+| `wlt-07` | `ui-092.mp3` | « Paiement confirmé ! Ton Keiwa est rechargé. » |
+| `dash-04` | `ui-010.mp3` | « Combien tu as en caisse ce matin ? » |
+
+Les générer, puis adopter la reformulation de marché, **remplacerait de la voix
+humaine par du synthétique**. C'est l'inverse de ce qu'on cherche. Sept des huit
+sont des `wlt-*`, sur un périmètre (Keiwa) qui n'est même pas activé : perte
+nette, gain nul.
+
+Elles sont consignées dans `LOT-DEJA-EN-VRAIE-VOIX.csv`. Si Patrick veut un
+jour la formulation de marché sur ces huit-là, ce sera par un
+**ré-enregistrement humain**, pas par un moteur.
+
+**Le lot passe donc de 90 à 82.** La règle générale, pour la suite :
+on ne commande jamais en voix de synthèse une phrase que la vraie voix dit déjà.
 
 ## 5. Ce que tu ne fais pas
 
@@ -216,7 +244,7 @@ perdu, c'est du travail en avance.
 
 ## 7. Ce que tu renvoies
 
-1. Les **90 fichiers `.wav`**.
+1. Les **82 fichiers `.wav`**.
 2. Le **CSV `fichier,texte_exact_prononce`**.
 3. Une **note courte** disant : quel moteur, quel échantillonnage et quelle
    profondeur ont réellement été produits, quel niveau mesuré, et la liste des
