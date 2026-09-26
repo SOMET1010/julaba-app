@@ -49,6 +49,8 @@ const catalogue = readFileSync(join(app, 'i18n/voice/catalog.ts'), 'utf8');
 const CAS = [
   { cle: 'pinImages'  as const, auth: 'AUTH_21', fichier: '/voix/tata/login-21.mp3' },
   { cle: 'pinChiffres' as const, auth: 'AUTH_22', fichier: '/voix/tata/login-22.mp3' },
+  { cle: 'effacement'  as const, auth: 'AUTH_24', fichier: '/voix/tata/login-24.mp3' },
+  { cle: 'numeroIncomplet' as const, auth: 'AUTH_11', fichier: '/voix/tata/login-11.mp3' },
 ];
 
 console.log('\n[1] la clé existe, et pointe le bon clip');
@@ -86,7 +88,18 @@ for (const c of CAS) {
      `${c.auth} : le catalogue dit ce texte`, `obtenu : ${dansCat?.[1]}`);
 }
 
-console.log('\n[5] le texte n\'a pas reculé : il dit toujours que le code est intact');
+console.log('\n[5] effacer ne dit JAMAIS ce qui a été tapé');
+// Le commentaire d'origine de `handleKeyDelete` pose la règle : « Effacer est
+// un AUTRE geste : motif distinct, et un mot — "Effacé" ne révèle aucun
+// chiffre, contrairement au numéro lui-même. » Le clip doit la respecter.
+{
+  const t = norm(ENTREE_VOICE_CLIPS.effacement.texte);
+  ok(!/[0-9]/.test(t) && !/chiffre|numero|code/.test(t),
+     'le clip d\'effacement ne nomme ni chiffre, ni numéro, ni code',
+     `texte : « ${ENTREE_VOICE_CLIPS.effacement.texte} »`);
+}
+
+console.log('\n[6] le texte n\'a pas reculé : il dit toujours que le code est intact');
 ok(/n.a pas change/.test(norm(ENTREE_VOICE_CLIPS.pinImages.texte)),
    'le passage aux images rassure sur le code',
    'c\'est LA question d\'une marchande quand son pavé change sous ses yeux');
