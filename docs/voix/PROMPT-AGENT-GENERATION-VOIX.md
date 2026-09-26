@@ -12,7 +12,7 @@ ne sort pas est un message qui n'existe pas.
 
 ## 1. Ce que tu produis
 
-**89 fichiers `.wav`**, un par ligne du CSV joint (`LOT-A-ENREGISTRER.csv`).
+**90 fichiers `.wav`**, un par ligne du CSV joint (`LOT-A-ENREGISTRER.csv`).
 
 Le CSV a trois colonnes : `fichier`, `texte_a_enregistrer`, `origine`.
 Le nom du fichier est donné — ne le change pas. Le texte est donné — ne le
@@ -26,7 +26,7 @@ reformule pas, ne le corrige pas, n'ajoute ni ne retire un mot.
 | `core-err-01` → `04` | 4 | incompréhension, silence, choix |
 | `core-sys-01` → `02` | 2 | moteur vocal |
 | `chiffre-0` → `chiffre-9` | 10 | les dix chiffres |
-| `vente-*`, `stk-*`, `dep-*`, `crd-*`, `wlt-*`, `dash-*` | 23 | phrases fixes d'écran |
+| `vente-*`, `stk-*`, `dep-*`, `crd-*`, `wlt-*`, `dash-*` | 24 | phrases fixes d'écran |
 
 **Les noms ne sont pas décoratifs.** `login-NN` et `chiffre-N` sont la
 convention que l'application applique déjà (`pages/StudioVoix.tsx`,
@@ -82,7 +82,7 @@ une voix humaine locale, et « Julaba ne génère pas une imitation de Tata ».
 Patrick a tranché le 25/09/2026 : **une voix IA distincte**, qui ne prend aucun
 échantillon de la comédienne comme référence.
 
-**Cette voix ne se présente jamais.** Aucune des 89 phrases ne dit « Moi,
+**Cette voix ne se présente jamais.** Aucune des 90 phrases ne dit « Moi,
 c'est… » — c'est vérifié, et c'est pour ça que `auth-01` (« Bonjour ma fille.
 Moi, c'est Tantie Nanti Lou ») **ne fait pas partie du lot**. Ne la génère pas.
 Une voix qui ne se présente pas n'usurpe aucune identité.
@@ -92,7 +92,7 @@ au lieu de générer.
 
 ## 4. Le livrable qui conditionne tout : le CSV des textes
 
-Avec les 89 `.wav`, livre un CSV à deux colonnes :
+Avec les 90 `.wav`, livre un CSV à deux colonnes :
 
 ```csv
 fichier,texte_exact_prononce
@@ -110,6 +110,54 @@ C'est silencieux, et c'est le piège.
 Si le moteur a prononcé autre chose que le texte demandé (mot avalé, liaison,
 reformulation), **c'est ce qui a été réellement prononcé** qu'il faut écrire
 dans ce CSV. Ne recopie pas la colonne d'entrée par facilité.
+
+## 4 bis. Comment l'appariement marche VRAIMENT — à lire avant de contrôler
+
+Une inquiétude a été remontée : « un mot de trop en tête casse l'appariement ».
+**Ce n'est pas ce qui se passe**, et la nuance change ce qu'il faut surveiller.
+
+L'application ne transcrit jamais l'audio. À l'exécution, elle compare le texte
+qu'elle s'apprête à dire à la colonne `text` d'une table
+(`services/tataUiClips.ts`), qui associe un texte à un nom de fichier :
+
+```ts
+{ file: "/voix/tata/core-wait-05.mp3", text: "Je fais le point..." }
+```
+
+Le `text` déclaré, c'est **ce que l'application dit** — pas ce qu'on entend dans
+le clip. Donc :
+
+- Si le clip prononce « **Et** je fais le point » alors que la table déclare
+  « Je fais le point... », **le clip est joué quand même**. L'appariement n'est
+  pas cassé. Ce qui est cassé, c'est la correspondance entre ce qu'on LIT à
+  l'écran et ce qu'on ENTEND — un défaut réel, mais d'une autre nature, et bien
+  moins grave sur une phrase d'attente que sur un montant.
+- Ce qui casserait vraiment l'appariement, c'est un écart entre la colonne
+  `text` et ce que dit le code. C'est de mon côté, et une garde le tient.
+
+**À quoi sert donc `texte_exact_prononce` ?** À me dire ce qu'il y a
+réellement dans l'audio, pour que je décide, clip par clip : on accepte l'écart,
+ou on refait la prise. Sur une phrase d'attente, un « Et » de trop s'accepte.
+Sur un montant ou une consigne de sécurité, non.
+
+Ne corrige donc rien de toi-même, et ne ré-enregistre pas pour un mot : signale
+l'écart, je tranche.
+
+## 4 ter. `wlt-01` : ce sont DEUX clips, pas un
+
+`WalletCard.tsx:40` dit :
+
+```ts
+speak(showBalance ? 'Solde masqué' : 'Solde affiché');
+```
+
+Deux états, deux chaînes distinctes, deux entrées au catalogue
+(`WALLET_004` / `WALLET_005`). Le document source les avait écrites sur une
+seule ligne, et je l'avais recopiée telle quelle — **mon erreur**. Un clip
+unique énonçant les deux n'aurait été joué ni pour l'un ni pour l'autre.
+
+Le CSV est corrigé : `wlt-01` = « Ton argent est caché », `wlt-08` = « Ton
+argent est affiché ». Le lot passe de 89 à **90**.
 
 ## 5. Ce que tu ne fais pas
 
@@ -168,7 +216,7 @@ perdu, c'est du travail en avance.
 
 ## 7. Ce que tu renvoies
 
-1. Les **89 fichiers `.wav`**.
+1. Les **90 fichiers `.wav`**.
 2. Le **CSV `fichier,texte_exact_prononce`**.
 3. Une **note courte** disant : quel moteur, quel échantillonnage et quelle
    profondeur ont réellement été produits, quel niveau mesuré, et la liste des
