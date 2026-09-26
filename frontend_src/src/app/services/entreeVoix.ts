@@ -14,7 +14,12 @@ export type EntreeVoiceKey =
   | 'effacement'
   | 'numeroIncomplet'
   | 'reconnaissanceEchouee'
-  | 'tropDEssais';
+  | 'tropDEssais'
+  | 'microIndisponible'
+  | 'codeVide'
+  | 'serveurLent'
+  | 'choixEnregistre'
+  | 'choixConserve';
 
 export interface EntreeVoiceClip {
   file: string;
@@ -193,6 +198,45 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
     atteste: false,
     lotA: true,
   },
+
+  // ── CINQ SILENCES DE PLUS, FERMÉS SANS RIEN ENREGISTRER ──────────────────
+  //
+  // Repérés en dépouillant les treize erreurs muettes (AUTH-ERR) : chacun de
+  // ces moments a DÉJÀ un appel de parole au bon endroit dans l'écran. Il ne
+  // manquait que la clé — la phrase partait, et rien ne sortait.
+  //
+  // Les cinq gardent le problème ET le geste. Aucun ne recule.
+  microIndisponible: {
+    file: '/voix/tata/login-16.mp3',
+    texte: 'Le micro ne prend pas là. Faut taper ton numéro ici.',
+    atteste: false,
+    lotA: true,
+  },
+  codeVide: {
+    file: '/voix/tata/login-19.mp3',
+    texte: 'Bon, mets les quatre chiffres de ton code secret.',
+    atteste: false,
+    lotA: true,
+  },
+  serveurLent: {
+    file: '/voix/tata/login-33.mp3',
+    texte: 'Ça pèse un peu. Patiente, je suis en train de relancer.',
+    atteste: false,
+    lotA: true,
+  },
+  choixEnregistre: {
+    file: '/voix/tata/login-35.mp3',
+    texte: 'D\'accord, c\'est calé comme ça.',
+    atteste: false,
+    lotA: true,
+  },
+  choixConserve: {
+    file: '/voix/tata/login-36.mp3',
+    texte: 'D\'accord, on continue comme d\'habitude.',
+    atteste: false,
+    lotA: true,
+  },
+
 };
 
 function normaliser(texte: string): string {
