@@ -9,7 +9,7 @@
     "voice-offline/nativeTts.ts": "60b237ffe615d5bbc530c51827d978f8e6a011d9fc52a9c388598a9529eb101d",
     "components/layout/AppLayout.tsx": "addfe8f95e5f505683f552d1efbcbe26e6fb128c2f03d6e19fb7cc6d427af9c2",
     "services/tataVoice.ts": "7c55d2de5405a1bb6d16ef9dec0f7c4295c7e06a0f91b05961982d3033382dfc",
-    "services/tataUiClips.ts": "07aa2b8e79dc4921d8ae95149cb0f7cec59604af08f8cc421c6ef167ba1f839c",
+    "services/tataUiClips.ts": "8c6765330fcee5df3868b8f8b587ec72f4707b9a47e598b01d9baf9bcbc41076",
     "services/localVoiceChoice.ts": "60278cad1f3cebbc33d6aa0e1817db83fa7e7d3a04e3acf8273e525844f01918",
     "services/voicePacksRuntime.ts": "bc382c1d23f66733363e61016a8d0f9854fc44599cbda0c292997f6258531eb1",
     "services/onboardingVoix.ts": "5eee52588c74af2e7659a21327b447b1f55e61c54fa97bc069a1d5b985b72cec",

@@ -11,8 +11,8 @@
     "validation_par_locutrice_ivoirienne": "à documenter"
   },
   "couverture": {
-    "fichiers_mp3": 219,
-    "clips_mappes": 211,
+    "fichiers_mp3": 220,
+    "clips_mappes": 212,
     "fichiers_orphelins": [
       "ui-037.mp3",
       "ui-041.mp3",
@@ -2284,6 +2284,19 @@
       "sha256": "69e0359e1dd6f30174191847cae9fbbe4a4e5deba831938d059a93e98896e8c5",
       "octets": 40941,
       "duree_ms": 3384
+    },
+    {
+      "id": "login-12-14",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Regarde bien, y'a un chiffre qui n'est pas bon dedans. Si tu veux, tape ton numéro directement ici.",
+      "fichier": "/voix/tata/login-12-14.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "f134089bbe8c297cdd7dacc85be61de17ea2e94035c081883c6b05601e631eda",
+      "octets": 81261,
+      "duree_ms": 6744
     },
     {
       "id": "login-13",

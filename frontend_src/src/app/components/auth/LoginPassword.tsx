@@ -62,6 +62,7 @@ const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
   dicteeIncomprise: 'ENTREE_NUMERO',
   microProbleme: 'ENTREE_NUMERO',
   microPret: 'AUTH_17',
+  numeroPasDIci: 'AUTH_12',
 };
 
 /** Le clip s'il existe, sinon la phrase — une seule sortie, jamais deux. */
@@ -480,7 +481,7 @@ export function LoginPassword() {
     setError('');
     if (sliced.length === 10) {
       if (!numeroCIComplet(sliced, TEST_PHONES)) {
-        setError('Numéro non reconnu, réessaie ou tape-le');
+        setError('Regarde bien, y\'a un chiffre qui n\'est pas bon dedans. Si tu veux, tape ton numéro directement ici.');
         return;
       }
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);

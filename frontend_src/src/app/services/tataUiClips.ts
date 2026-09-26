@@ -231,6 +231,26 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   { file: "/voix/tata/login-10.mp3", text: "Tu t'es trompée ? Y'a pas problème, c'est rien. Appuie ici pour effacer." },
   { file: "/voix/tata/login-11.mp3", text: "Il manque encore des chiffres dedans. Continue." },
   { file: "/voix/tata/login-12.mp3", text: "Regarde bien, y'a un chiffre qui n'est pas bon dedans." },
+
+  // ── UN CLIP COMPOSÉ, POUR RENDRE UN GESTE — AUTH-12+14, 26/09/2026 ───────
+  //
+  // `login-12` nomme mieux le défaut que la phrase d'origine (« Numéro non
+  // reconnu, réessaie ou tape-le »), mais il PERD le geste : il dit ce qui ne
+  // va pas, jamais quoi faire. On l'avait donc laissé de côté deux fois —
+  // « on ne remplace jamais une consigne par une plus pauvre ».
+  //
+  // Arbitrage de Patrick, 26/09 : enchaîner avec `login-14`, qui porte
+  // justement le geste (« tape ton numéro directement ici »).
+  //
+  // POURQUOI UN SEUL FICHIER ET PAS DEUX LECTURES. `parle(error)` ne dit
+  // qu'une phrase, et `audioManager` ne sert qu'un créneau : deux demandes de
+  // suite et la seconde annule la première. Les fondre au montage donne une
+  // clé, un texte, un fichier — et une respiration de 280 ms entre les deux,
+  // qu'aucun enchaînement à l'exécution n'aurait su placer.
+  //
+  // 6,7 s : c'est long pour une erreur. C'est le prix du geste, et il vaut
+  // mieux que six secondes de silence.
+  { file: "/voix/tata/login-12-14.mp3", text: "Regarde bien, y'a un chiffre qui n'est pas bon dedans. Si tu veux, tape ton numéro directement ici." },
   { file: "/voix/tata/login-13.mp3", text: "Je n'ai pas bien entendu, deh. Redis-moi ça doucement." },
   { file: "/voix/tata/login-14.mp3", text: "Si tu veux, tape ton numéro directement ici." },
   { file: "/voix/tata/login-15.mp3", text: "Pour que je puisse bien t'entendre, appuie sur \"Autoriser\"." },
