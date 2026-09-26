@@ -35,6 +35,12 @@ const SORTIE_DEFAUT = join(RACINE, 'frontend_src/public/voix/tata');
 // Tolérances. Elles viennent des 128 clips humains déjà en place, mesurés.
 const CIBLE_LUFS = -16, TOLERANCE_LUFS = 1.0;
 const CIBLE_HZ = 24000, SILENCE_MAX_S = 0.10;
+/** Sous ce seuil, EBU R128 ne sait pas mesurer — on bascule sur le RMS. */
+const SEUIL_COURT_S = 0.6;
+/** Cible RMS des clips courts, relevée sur les clips longs une fois normalisés
+ *  (les huit chiffres mesurables sortent entre -16,8 et -19,4 dBFS). Elle
+ *  existe pour qu'un « un » et un « deux » enchaînés aient le même volume. */
+const CIBLE_RMS_DB = -18.4;
 
 const args = process.argv.slice(2);
 const dossier = args.find((a) => !a.startsWith('--'));
@@ -100,10 +106,18 @@ function sonde(f) {
   const teteS = debuts.length && debuts[0] <= 0.01 && fins.length ? fins[0] : 0;
   const queueS = debuts.length && debuts[debuts.length - 1] > 0 && fins.length < debuts.length
     ? duree - debuts[debuts.length - 1] : 0;
+  // Le RMS, lui, se mesure à n'importe quelle durée.
+  const rms = parseFloat((brut.match(/RMS level dB:\s*(-?[\d.]+)/) || [])[1]);
   return {
     hz: +s.sample_rate || 0, canaux: +s.channels || 0, codec: s.codec_name,
     bits: +(s.bits_per_sample || s.bits_per_raw_sample) || 0,
-    duree, lufs, peak, teteS, queueS,
+    duree, lufs, peak, rms, teteS, queueS,
+    // EBU R128 intègre sur des blocs de 400 ms : sous une demi-seconde, il n'a
+    // pas de quoi mesurer et rend -70 LUFS, son plancher. Lu naïvement, ça
+    // ressemble à un clip muet — alors que `chiffre-1` (0,33 s) crête à -6 dB.
+    // Un contrôle qui renvoie au studio un fichier parfaitement bon coûte aussi
+    // cher qu'un contrôle qui laisse passer un mauvais.
+    tropCourtPourLufs: duree < SEUIL_COURT_S,
   };
 }
 
@@ -155,7 +169,12 @@ for (const f of livres) {
   const pb = [];
   if (m.hz < CIBLE_HZ) pb.push(`${m.hz} Hz — SOUS la cible, on ne remonte pas`);
   if (m.canaux !== 1) pb.push(`${m.canaux} canaux`);
-  if (Number.isFinite(m.lufs) && Math.abs(m.lufs - CIBLE_LUFS) > TOLERANCE_LUFS) pb.push(`${m.lufs} LUFS`);
+  if (m.tropCourtPourLufs) {
+    if (Number.isFinite(m.rms) && Math.abs(m.rms - CIBLE_RMS_DB) > 3)
+      pb.push(`${m.rms} dB RMS (trop court pour le LUFS : ${m.duree.toFixed(2)} s)`);
+  } else if (Number.isFinite(m.lufs) && Math.abs(m.lufs - CIBLE_LUFS) > TOLERANCE_LUFS) {
+    pb.push(`${m.lufs} LUFS`);
+  }
   if (Number.isFinite(m.peak) && m.peak > -1) pb.push(`crête ${m.peak} dBFS`);
   if (m.teteS > SILENCE_MAX_S) pb.push(`${m.teteS.toFixed(2)} s de silence en tête`);
   if (m.queueS > SILENCE_MAX_S) pb.push(`${m.queueS.toFixed(2)} s en queue`);
@@ -200,19 +219,47 @@ for (const f of livres) {
   const src = join(dossier, f), dst = join(SORTIE, nom + '.mp3');
   const coupe = 'silenceremove=start_periods=1:start_silence=0.1:start_threshold=-50dB:detection=peak,'
               + 'areverse,silenceremove=start_periods=1:start_silence=0.1:start_threshold=-50dB:detection=peak,areverse';
-  // passe 1 : mesurer
-  const sortie1 = ffmpegSortie(['-hide_banner', '-nostats', '-i', src,
-    '-af', `${coupe},loudnorm=I=-16:TP=-1:LRA=11:print_format=json`, '-f', 'null', '-']);
-  const bloc = sortie1.slice(sortie1.lastIndexOf('{'));
-  let mesure = null;
-  try { mesure = JSON.parse(bloc); } catch { /* passe simple en repli */ }
-  const ln = mesure
-    ? `loudnorm=I=-16:TP=-1:LRA=11:measured_I=${mesure.input_i}:measured_TP=${mesure.input_tp}`
-      + `:measured_LRA=${mesure.input_lra}:measured_thresh=${mesure.input_thresh}:offset=${mesure.target_offset}:linear=true`
-    : 'loudnorm=I=-16:TP=-1:LRA=11';
+  /**
+   * DEUX CHAÎNES, PARCE QU'UN CLIP D'UN TIERS DE SECONDE NE SE MESURE PAS PAREIL.
+   *
+   * `loudnorm` s'appuie sur EBU R128, qui intègre par blocs de 400 ms. Sur
+   * `chiffre-1` (0,33 s) et `chiffre-3` (0,40 s), la passe de mesure rend -70
+   * LUFS puis la passe de rendu ÉCHOUE — et ffmpeg n'écrit simplement aucun
+   * fichier. Éprouvé : le lot ressortait à 80 clips au lieu de 82, sans un mot.
+   *
+   * Sous le seuil, on normalise donc au RMS, vers la valeur relevée sur les
+   * clips longs une fois normalisés. Ce n'est pas un pis-aller : les dix
+   * chiffres sont faits pour s'enchaîner, et ce qui compte entre « un » et
+   * « deux » c'est d'avoir le MÊME volume, pas d'avoir chacun le bon LUFS.
+   */
+  const court = sonde(src).duree < SEUIL_COURT_S;
+  let filtre;
+  if (court) {
+    const r = parseFloat((ffmpegSortie(['-hide_banner', '-nostats', '-i', src,
+      '-af', `${coupe},astats=metadata=1`, '-f', 'null', '-'])
+      .match(/RMS level dB:\s*(-?[\d.]+)/) || [])[1]);
+    const gain = Number.isFinite(r) ? (CIBLE_RMS_DB - r).toFixed(2) : '0';
+    filtre = `${coupe},volume=${gain}dB,alimiter=limit=0.891:level=disabled`; // -1 dBTP
+  } else {
+    const sortie1 = ffmpegSortie(['-hide_banner', '-nostats', '-i', src,
+      '-af', `${coupe},loudnorm=I=-16:TP=-1:LRA=11:print_format=json`, '-f', 'null', '-']);
+    let mesure = null;
+    try { mesure = JSON.parse(sortie1.slice(sortie1.lastIndexOf('{'))); } catch { /* repli */ }
+    filtre = `${coupe},` + (mesure && Number.isFinite(parseFloat(mesure.input_i))
+      ? `loudnorm=I=-16:TP=-1:LRA=11:measured_I=${mesure.input_i}:measured_TP=${mesure.input_tp}`
+        + `:measured_LRA=${mesure.input_lra}:measured_thresh=${mesure.input_thresh}`
+        + `:offset=${mesure.target_offset}:linear=true`
+      : 'loudnorm=I=-16:TP=-1:LRA=11');
+  }
   ff('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', src,
-    '-af', `${coupe},${ln}`, '-ac', '1', '-ar', String(CIBLE_HZ),
+    '-af', filtre, '-ac', '1', '-ar', String(CIBLE_HZ),
     '-codec:a', 'libmp3lame', '-b:a', '96k', dst]);
+
+  // UN FICHIER QUI N'EST PAS SORTI DOIT ARRÊTER LE LOT, pas le rétrécir.
+  if (!existsSync(dst)) {
+    console.error(`\n❌ ${nom} : la conversion n'a produit aucun fichier. Lot interrompu.`);
+    process.exit(1);
+  }
   entrees.push({ file: `/voix/tata/${nom}.mp3`, text: attendu.get(nom) });
   process.stdout.write('.');
 }
