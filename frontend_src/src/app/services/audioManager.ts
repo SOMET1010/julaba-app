@@ -203,8 +203,12 @@ function realStartClip(source: { base64?: string; url?: string }): Playback {
       }
       if (settled) return;
       audio = new Audio(url);
+      // VOIX-05 — le `vtrace.ttsMoteur` ci-dessous : « ended » ne prouve pas qu'on a ENTENDU. Faits observables (volume, muted, currentTime). Pourquoi : docs/voix/VOIX-05-ENDED-NE-PROUVE-RIEN.md
+      audio.addEventListener('ended', () => vtrace.ttsMoteur('clip', { url: source.url ?? null, issue: 'ended', volume: audio?.volume ?? null, muted: audio?.muted ?? null, lu: Number(audio?.currentTime ?? 0), duree: Number(audio?.duration ?? 0), alerte: (audio?.currentTime ?? 0) < 0.1 ? 'FIN SANS LECTURE' : audio?.muted ? 'ELEMENT COUPE' : (audio?.volume ?? 1) === 0 ? 'VOLUME A ZERO' : null }));
       audio.onended = () => done("ended");
       audio.onerror = () => done("failed");
+      // VOIX-05 — le `vtrace.ttsMoteur` ci-dessous nomme le REFUS d'autoplay (NotAllowedError) : sans lui, « pas de son » et « son refusé » se ressemblent.
+      void audio.play().then(() => vtrace.ttsMoteur('clip', { url: source.url ?? null, issue: 'play-accepte', volume: audio?.volume ?? null, muted: audio?.muted ?? null }), (e) => vtrace.ttsMoteur('clip', { url: source.url ?? null, issue: 'play-refuse', erreur: (e as Error)?.name ?? String(e) }));
       audio.play().catch(() => done("failed"));
     } catch {
       done("failed");
