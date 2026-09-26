@@ -1,0 +1,4 @@
+﻿"fichier","texte_a_enregistrer","origine"
+"login-38.wav","Ça n'a pas bien répondu. Attends un petit moment, puis reprends.","AUTH_38 · Réponse illisible — remplace « Réponse inattendue. Réessaie dans un instant. »"
+"login-39.wav","Ça n'a pas marché comme il faut. Reprends depuis le début.","AUTH_39 · Compte introuvable — remplace « Réponse serveur invalide »"
+"login-40.wav","Ce numéro-là ne commence pas comme un numéro d'ici. Regarde bien le début.","AUTH_40 · Numéro d'ailleurs — remplace « Préfixe invalide »"

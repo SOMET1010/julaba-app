@@ -67,6 +67,27 @@ export const SCRIPT_TATA: PhraseScript[] = [
   { id: 'AUTH_36', categorie: 'CONNEXION', moment: 'Choix conservé', texteFr: "D'accord, on continue comme d'habitude.", texteDyu: "Ayiwa, an b'a to ten i n'a fɔ kɔrɔlen." },
   { id: 'AUTH_37', categorie: 'CONNEXION', moment: "Fin de l'accueil", texteFr: "Voilà, ma fille. On y va !", texteDyu: "A banna, n'denmuso. An ka taga !" },
 
+  // ── LOT B — TROIS ERREURS QUE PERSONNE NE SAVAIT DIRE, 26/09/2026 ────────
+  //
+  // Ces trois-là n'ont PAS de clip : elles sont à enregistrer
+  // (docs/voix/LOT-B-A-ENREGISTRER.csv). Le texte, lui, est déjà posé à
+  // l'écran — parce qu'il y gagne même sans voix.
+  //
+  // CE QU'ELLES REMPLACENT. « Réponse inattendue », « Réponse serveur
+  // invalide », « Préfixe invalide ». Trois messages de technicien, sur
+  // l'écran qui connecte, devant une marchande qui ne lit pas. Ils ne
+  // disaient rien à personne — pas même à qui sait lire.
+  //
+  // CHACUNE DIT LE PROBLÈME PUIS LE GESTE, et les deux premières ont un geste
+  // DIFFÉRENT : on retente pour l'une, on recommence pour l'autre. Une seule
+  // phrase pour les deux enverrait la moitié des marchandes attendre en vain.
+  //
+  // `texteDyu` reste vide : une traduction de travail non validée vaudrait
+  // moins que rien sur un écran d'entrée. Elle viendra avec une locutrice.
+  { id: 'AUTH_38', categorie: 'CONNEXION', moment: "Réponse illisible", texteFr: "Ça n'a pas bien répondu. Attends un petit moment, puis reprends." },
+  { id: 'AUTH_39', categorie: 'CONNEXION', moment: "Compte introuvable", texteFr: "Ça n'a pas marché comme il faut. Reprends depuis le début." },
+  { id: 'AUTH_40', categorie: 'CONNEXION', moment: "Numéro d'ailleurs", texteFr: "Ce numéro-là ne commence pas comme un numéro d'ici. Regarde bien le début." },
+
   // ── CHIFFRES (0 à 9), lecture neutre ─────────────────────────────────────
   { id: 'NUM_0', categorie: 'CHIFFRES', moment: 'Chiffre 0', texteFr: 'Zéro', texteDyu: 'Foyi' },
   { id: 'NUM_1', categorie: 'CHIFFRES', moment: 'Chiffre 1', texteFr: 'Un', texteDyu: 'Kelen' },

@@ -835,7 +835,7 @@ export function LoginPassword() {
       } catch (err) {
         console.warn('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
         vlog('LOGIN_JSON_FAIL', { msg: err instanceof Error ? err.message : String(err) });
-        setError('Réponse inattendue. Réessaie dans un instant.');
+        setError('Ça n\'a pas bien répondu. Attends un petit moment, puis reprends.');
         setIsLoading(false);
         return;
       }
@@ -886,7 +886,7 @@ export function LoginPassword() {
       } catch { /* ignore */ }
       const user = result.user;
       if (!user) {
-        setError('Réponse serveur invalide');
+        setError('Ça n\'a pas marché comme il faut. Reprends depuis le début.');
         setIsLoading(false);
         return;
       }
@@ -1016,7 +1016,7 @@ export function LoginPassword() {
         if (import.meta.env.DEV && next === '0501604040') setShowDevButton(true);
         if (next.length === 10) {
           if (!numeroCIComplet(next, TEST_PHONES)) {
-            setError('Préfixe invalide');
+            setError('Ce numéro-là ne commence pas comme un numéro d\'ici. Regarde bien le début.');
             return;
           }
           if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
