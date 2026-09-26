@@ -1,91 +1,66 @@
-# « La voix de James Park » — ce qu'elle est, et pourquoi on ne peut pas compter dessus
+# « La voix de James Park » — c'était Genspark, donc la nôtre
 
-**26/09/2026.** Retour de Patrick après un test : écrans 1 et 2 en voix
-enregistrée, puis « à partir de l'écran de vente, la voix de James Park, qui
-était vraiment très adaptée et très bien ».
+**26/09/2026.** Ce document a d'abord dit le contraire. Il est corrigé ici, et
+l'erreur est gardée parce qu'elle est instructive.
 
-## Ce nom n'est pas dans le dépôt
+## Ce que Patrick a dit, et ce que j'en ai fait
 
-Cherché partout : aucun `james`, aucun `park`. Ce n'est donc ni un clip, ni un
-identifiant que nous aurions choisi.
+> « Écrans 1 et 2 avaient la voix je pense enregistrée. Mais à partir de
+> l'écran de vente, on avait la voix de James Park qui était vraiment très
+> adaptée et très bien. »
 
-> **Précision du 26/09** : ce test a été fait sur **Render, dans un
-> navigateur** — pas sur l'APK. Le chemin audio n'est donc pas celui
-> d'Android : pas de synthèse native, pas de WebView. C'est
-> `speechSynthesis` du navigateur qui a parlé, avec les voix que CE navigateur
-> expose. Sur l'APK, le même écran peut sonner autrement.
+J'ai cherché « james » et « park » dans le dépôt, n'ai rien trouvé, et j'ai
+conclu : c'est une voix du système, choisie par `speechSynthesis`. J'ai écrit
+tout un document là-dessus, avec une règle de choix, un trou dans un filtre de
+prénoms, une dette ouverte.
 
-C'est **une voix du navigateur**. Quand aucun clip ne correspond, l'application
-demande au système la liste de ses voix (`speechSynthesis.getVoices()`) et en
-retient une, selon cette règle (`services/elevenlabs.ts`) :
+**C'était faux.** « James Park » était une transcription de **Genspark** —
+l'outil qui a produit le lot A. La voix qu'il entendait était **la nôtre**.
 
-1. le dialecte d'abord — `fr-CI` avant `fr-FR` avant n'importe quel `fr-*` ;
-2. puis une voix de FEMME, parce que Tantie Nanti Lou en est une ;
-3. et le choix est mémorisé, pour que toute l'appli parle de la même voix.
+## Pourquoi je me suis trompé, et ce que ça enseigne
 
-## Le compliment est une bonne nouvelle. Et un avertissement.
+J'ai traité une transcription approximative comme une donnée. Le nom n'était
+pas dans le dépôt : au lieu d'en conclure « je n'ai pas compris ce mot », j'en
+ai conclu « ce mot désigne autre chose », et j'ai construit une explication
+cohérente par-dessus.
 
-Si cette voix sonne juste, tant mieux — mais **elle n'est pas la nôtre**. Elle
-appartient à ce téléphone-là. Sur un autre appareil, une autre marque, une
-autre version d'Android, la marchande entendra autre chose : une autre voix,
-un autre accent, parfois aucune voix française du tout.
+Une explication cohérente n'est pas une explication vraie. La bonne réponse
+était de demander, pas de déduire — c'est exactement la règle du projet :
+**information manquante → on demande, on n'invente pas.**
 
-C'est exactement la raison d'être du lot A : une voix qu'on choisit, qui voyage
-avec l'application, et qui ne dépend d'aucun réglage de téléphone.
+## Ce que le vrai retour signifie
 
-**Ce qui est encourageant, en revanche** : ce retour dit qu'une voix de
-synthèse PEUT sonner juste sur ce parcours. C'est la première fois qu'on
-l'entend. Si on sait laquelle c'est, elle devient une référence utile pour
-diriger la voix du lot B.
+**C'est une validation.** La voix du lot A plaît sur le terrain, et sur le
+parcours qui compte. C'est la première fois qu'on a un avis d'usage sur elle,
+et il est bon. Le lot B peut être commandé avec la même direction, en
+confiance.
 
-## Et une contradiction qui vaut d'être notée
+## Ce qui reste à établir
 
-Le banc a rendu **MUET** sur le geste 1 (effacer), journal à l'appui. Patrick,
-lui, dit avoir entendu la voix sur les écrans 1 et 2 — sans certitude
-(« je pense »), mais sur le même Render.
+Quatre clips du lot A seulement sont joués par une phrase écrite en dur dans
+le code — `login-17`, `login-24`, `login-35`, `login-36` — et **tous sur
+l'écran de connexion**. Aucun sur l'écran de vente.
 
-**Le silence n'est donc peut-être pas universel.** Deux navigateurs, deux
-appareils, deux résultats : ça oriente vers l'environnement (politique
-d'autoplay, sortie audio, volume de l'onglet) plutôt que vers notre code —
-ce que le fichier et le lecteur, tous deux mesurés bons, laissaient déjà
-penser (VOIX-05).
+Vingt-quatre autres ont leur texte au catalogue, mais y figurer ne suffit pas :
+encore faut-il que le code dise ce texte-là.
 
-C'est précisément ce que les nouvelles lignes de journal doivent trancher au
-prochain test : `alerte: 'FIN SANS LECTURE'` ou `issue: 'play-refuse'`
-désignera l'environnement ; leur absence désignera autre chose.
+Donc **on ne sait pas encore quel clip il a entendu sur l'écran de vente**.
+Trois possibilités, et le journal les départage :
 
-## Comment savoir exactement laquelle c'est
-
-Le journal la nomme déjà — `vtrace.ttsVoixNavigateur(voix, lang, rate, pitch)`.
-Sur le téléphone qui a produit ce test :
+1. c'était un clip de connexion, entendu juste avant d'arriver à la vente ;
+2. c'était la synthèse native d'Android, prise pour la voix du lot A ;
+3. un clip du lot A est bien joué là-bas par un chemin que je n'ai pas mesuré.
 
 ```js
 JSON.parse(localStorage.getItem('julaba_journal_voix') || '[]')
-  .filter(e => e.type === 'TTS_VOIX_NAVIGATEUR').slice(-5)
+  .filter(e => e.type === 'TTS_MOTEUR').slice(-20)
 ```
 
-On y lira le nom exact, la langue servie, le débit et la hauteur.
+Les entrées portent l'URL du clip. Le nom du fichier tranchera.
 
-## Un trou dans le filtre, relevé au passage — OUVERT
+## Et la voix diffère bien entre Render et l'APK
 
-Le choix « voix de femme » repose sur une liste de PRÉNOMS :
-
-```
-FEMME : amelie, audrey, aurelie, virginie, julie, marie, celine, lea,
-        manon, chloe, sandrine, female, femme, google français…
-HOMME : thomas, nicolas, paul, daniel, male, homme, guillaume, mathieu
-```
-
-Ce sont des prénoms français. Une voix masculine portant un nom étranger —
-« James », précisément — ne figure dans aucune des deux listes : elle échoue au
-test « femme », puis passe le repli « pas un homme », et devient la voix de
-Tantie.
-
-**On ne corrige rien pour l'instant, et c'est délibéré** : la voix entendue a
-été jugée bonne. Changer le filtre la ferait disparaître sans qu'on sache par
-quoi elle serait remplacée — on perdrait un résultat qui plaît pour réparer un
-défaut théorique.
-
-À trancher quand on saura son nom : soit elle est vraiment féminine et la
-liste s'enrichit, soit elle ne l'est pas et c'est la règle « Tantie est une
-femme » qu'il faut revoir, pas la liste.
+Ce point-là tient toujours, et il est indépendant : sur Render c'est
+`speechSynthesis` du navigateur qui assure le repli ; sur l'APK c'est la
+synthèse native d'Android. Deux moteurs, deux voix — pour tout ce qui n'a pas
+de clip. C'est une raison de plus de finir le lot B.
