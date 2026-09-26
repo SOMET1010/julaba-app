@@ -68,7 +68,7 @@
       "speak(`Super ! Ton objectif du jour est fixé à ${montant.toLocaleString('fr-FR')} FCFA. Bonne chance ma chère !`, { priority: 'user' })"
     ],
     "components/auth/LoginPassword.tsx": [
-      "parle(next ? 'Maintenant, des images à la place des chiffres.' : 'Retour aux chiffres.')",
+      "parle(next ? 'Voilà les photos qui sont sorties à la place des chiffres. Ton code n\\'a pas changé.' : 'Voilà les chiffres maintenant. Mets ton code comme d\\'habitude.')",
       "parle(error)",
       "parle(suggestion.texte)",
       "parle('C\\'est fait. Je m\\'adapte à toi.')",
