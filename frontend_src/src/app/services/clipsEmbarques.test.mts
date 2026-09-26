@@ -62,7 +62,7 @@ const orphelins = surDisque.filter((f) => !nommeQuelquePart(f));
 // d'origine. Le compte ne doit pas MONTER : un dixième serait un clip qu'on
 // vient d'embarquer sans le brancher — c'est-à-dire un enregistrement payé et
 // jamais entendu. Le faire baisser demande une écoute, pas un test.
-const PLAFOND_ORPHELINS = 9;
+const PLAFOND_ORPHELINS = 8;
 ok(orphelins.length <= PLAFOND_ORPHELINS,
    `${orphelins.length} fichier(s) embarqué(s) sans déclaration (plafond : ${PLAFOND_ORPHELINS})`,
    orphelins.length > PLAFOND_ORPHELINS
