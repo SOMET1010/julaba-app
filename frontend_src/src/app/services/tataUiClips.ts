@@ -142,6 +142,133 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   { file: "/voix/tata/ui-135.mp3", text: "Voici tous tes produits en production" },
   { file: "/voix/tata/ui-136.mp3", text: "Votre besoin a été soumis à la coopérative" },
   { file: "/voix/tata/ui-137.mp3", text: "À bientôt sur Jùlaba" },
+
+  // ── UN ORPHELIN RENDU À SON EMPLOI — CLIP-02, 26/09/2026 ─────────────────
+  //
+  // `ui-086.mp3` dormait depuis la livraison d'origine : embarqué dans l'APK,
+  // pré-caché par le service worker, déclaré nulle part. Fait transcrire, il
+  // dit « Ouverture des détails de la carte d'identité » — mot pour mot ce que
+  // `DocumentsCertificationsModalUniversal.tsx:133` fait dire à l'application,
+  // aujourd'hui par la synthèse. Son voisin `ui-087` est déjà branché sur la
+  // phrase jumelle (« …de la certification JULABA ») : la famille se tient.
+  //
+  // C'est une phrase rendue à la VRAIE voix sans rien enregistrer ni générer.
+  //
+  // LES HUIT AUTRES ORPHELINS RESTENT DORMANTS, et c'est mesuré, pas supposé :
+  // sept (ui-037, 041, 059, 062, 096, 105, 108) disent des phrases que
+  // l'application ne prononce ni n'affiche nulle part — envoyer, recevoir,
+  // retirer de l'argent, montant de transaction : le parcours portefeuille,
+  // hors pilote. Et `ui-085`, transcrit « Ouverture des détails de
+  // l'opération », ne correspond à AUCUNE des trois phrases de ce fichier —
+  // la troisième dit « …de l'attestation d'activité ». Whisper a peut-être
+  // mal entendu ; on n'aligne pas un texte sur une hypothèse. À ÉCOUTER.
+  { file: "/voix/tata/ui-086.mp3", text: "Ouverture des détails de la carte d'identité" },
+
+  // ── LOT A — 82 clips de la voix de synthèse, 26/09/2026 ──────────────────
+  //
+  // CE QUE C'EST. Les 128 entrées ci-dessus sont la VOIX HUMAINE de Tantie
+  // Nanti Lou. Celles-ci ne le sont pas : ce sont 82 phrases générées par une
+  // voix de synthèse ivoirienne DISTINCTE, décision de Patrick du 25/09 —
+  // « Julaba ne génère pas une imitation de Tata ». Aucune ne se présente :
+  // `login-01` (« Moi, c'est Tantie Nanti Lou ») est volontairement absente,
+  // et une voix qui ne se présente pas n'usurpe aucune identité.
+  //
+  // ELLES NE REMPLACENT AUCUN CLIP HUMAIN. Huit phrases du lot d'origine
+  // avaient déjà leur clip enregistré ; elles ont été retirées avant
+  // production (docs/voix/LOT-DEJA-EN-VRAIE-VOIX.csv). On ne commande jamais
+  // en synthèse ce que la vraie voix dit déjà.
+  //
+  // LE TEXTE FAIT FOI, PAS LE NOM. `login-02.mp3`, `chiffre-0.mp3` : ces noms
+  // viennent de `pages/StudioVoix.tsx` (`nomFichierScript`) et ne sont lus par
+  // aucun code. Ce qui relie un clip à une phrase, c'est la chaîne `text`
+  // ci-dessous, comparée normalisée à ce que l'application s'apprête à dire.
+  //
+  // CONTRÔLÉES À L'ARRIVÉE (scripts/voix/ingerer-clips.mjs) : 82/82 présentes,
+  // 82/82 textes identiques à ce que l'application dit, format et niveau
+  // mesurés fichier par fichier, silences coupés, -16 LUFS. Les dix chiffres,
+  // faits pour s'enchaîner, sortent à moins de 2 dB d'écart entre eux.
+  { file: "/voix/tata/chiffre-0.mp3", text: "Zéro" },
+  { file: "/voix/tata/chiffre-1.mp3", text: "Un" },
+  { file: "/voix/tata/chiffre-2.mp3", text: "Deux" },
+  { file: "/voix/tata/chiffre-3.mp3", text: "Trois" },
+  { file: "/voix/tata/chiffre-4.mp3", text: "Quatre" },
+  { file: "/voix/tata/chiffre-5.mp3", text: "Cinq" },
+  { file: "/voix/tata/chiffre-6.mp3", text: "Six" },
+  { file: "/voix/tata/chiffre-7.mp3", text: "Sept" },
+  { file: "/voix/tata/chiffre-8.mp3", text: "Huit" },
+  { file: "/voix/tata/chiffre-9.mp3", text: "Neuf" },
+  { file: "/voix/tata/core-ack-01.mp3", text: "C'est fait net !" },
+  { file: "/voix/tata/core-ack-02.mp3", text: "C'est bien reçu !" },
+  { file: "/voix/tata/core-ack-03.mp3", text: "J'ai calé ça !" },
+  { file: "/voix/tata/core-ack-04.mp3", text: "C'est noté deh !" },
+  { file: "/voix/tata/core-ack-05.mp3", text: "C'est bien enregistré !" },
+  { file: "/voix/tata/core-ack-06.mp3", text: "C'est calé, ta vente est bien entrée dans la machine." },
+  { file: "/voix/tata/core-ack-07.mp3", text: "D'accord, j'annule ça. Y'a pas de souci." },
+  { file: "/voix/tata/core-err-01.mp3", text: "Je n'ai pas bien capté. Faut me redire ça autrement, s'il te plaît." },
+  { file: "/voix/tata/core-err-02.mp3", text: "Je n'ai rien entendu, deh. Réessaie en haussant un peu la voix." },
+  { file: "/voix/tata/core-err-03.mp3", text: "Dis oui pour confirmer, ou bien dis non pour laisser tomber." },
+  { file: "/voix/tata/core-err-04.mp3", text: "Appuie sur Oui ou sur Non sur l'écran." },
+  { file: "/voix/tata/core-sys-01.mp3", text: "Je chauffe ma voix un coup, patiente deux minutes." },
+  { file: "/voix/tata/core-sys-02.mp3", text: "La voix n'est pas sortie. Regarde ton réseau et puis réessaie." },
+  { file: "/voix/tata/core-wait-01.mp3", text: "Je regarde ça un coup..." },
+  { file: "/voix/tata/core-wait-02.mp3", text: "Attends deux minutes..." },
+  { file: "/voix/tata/core-wait-03.mp3", text: "Je vérifie ça tout de suite..." },
+  { file: "/voix/tata/core-wait-04.mp3", text: "Je gère ça pour toi..." },
+  { file: "/voix/tata/core-wait-05.mp3", text: "Je fais le point..." },
+  { file: "/voix/tata/core-wait-06.mp3", text: "J'enregistre ta vente là tout de suite..." },
+  { file: "/voix/tata/core-wait-07.mp3", text: "Laisse-moi relancer encore..." },
+  { file: "/voix/tata/crd-02.mp3", text: "L'avance qu'elle t'a donnée dépasse ou bien c'est égal au prix total. Enregistre ça comme vente cash directement." },
+  { file: "/voix/tata/crd-04.mp3", text: "Donne-moi d'abord le nom de la cliente." },
+  { file: "/voix/tata/dep-02.mp3", text: "Attention, l'argent-là est beaucoup, deh ! Vérifie bien si tu ne t'es pas trompée." },
+  { file: "/voix/tata/login-02.mp3", text: "Eh, ma fille ! Te voilà. On continue, non ?" },
+  { file: "/voix/tata/login-03.mp3", text: "Chaque vente, tu mets ça ici. Comme ça là, tu n'oublies rien et tout ton point est là." },
+  { file: "/voix/tata/login-04.mp3", text: "Bon, pour commencer là, appuie ici." },
+  { file: "/voix/tata/login-05.mp3", text: "Mets ton numéro de téléphone ici." },
+  { file: "/voix/tata/login-06.mp3", text: "Tu peux me dicter aussi, hein. Appuie sur le micro d'abord." },
+  { file: "/voix/tata/login-07.mp3", text: "Dis les chiffres doucement doucement, un à un." },
+  { file: "/voix/tata/login-08.mp3", text: "Tu veux réécouter ça ? Appuie ici." },
+  { file: "/voix/tata/login-09.mp3", text: "C'est bien ton numéro, non ? Appuie ici pour avancer." },
+  { file: "/voix/tata/login-10.mp3", text: "Tu t'es trompée ? Y'a pas problème, c'est rien. Appuie ici pour effacer." },
+  { file: "/voix/tata/login-11.mp3", text: "Il manque encore des chiffres dedans. Continue." },
+  { file: "/voix/tata/login-12.mp3", text: "Regarde bien, y'a un chiffre qui n'est pas bon dedans." },
+  { file: "/voix/tata/login-13.mp3", text: "Je n'ai pas bien entendu, deh. Redis-moi ça doucement." },
+  { file: "/voix/tata/login-14.mp3", text: "Si tu veux, tape ton numéro directement ici." },
+  { file: "/voix/tata/login-15.mp3", text: "Pour que je puisse bien t'entendre, appuie sur \"Autoriser\"." },
+  { file: "/voix/tata/login-16.mp3", text: "Le micro ne prend pas là. Faut taper ton numéro ici." },
+  { file: "/voix/tata/login-17.mp3", text: "C'est bon maintenant. Appuie sur le micro et puis parle." },
+  { file: "/voix/tata/login-18.mp3", text: "Attends un peu, je vérifie ça pour toi." },
+  { file: "/voix/tata/login-19.mp3", text: "Bon, mets les quatre chiffres de ton code secret." },
+  { file: "/voix/tata/login-20.mp3", text: "Appuie sur tes quatre photos, une à une, comme tu avais choisi là." },
+  { file: "/voix/tata/login-21.mp3", text: "Voilà les photos qui sont sorties à la place des chiffres. Ton code n'a pas changé." },
+  { file: "/voix/tata/login-22.mp3", text: "Voilà les chiffres maintenant. Mets ton code comme d'habitude." },
+  { file: "/voix/tata/login-23.mp3", text: "Ton code là, c'est pour toi seule. Faut jamais montrer ou dire ça à quelqu'un." },
+  { file: "/voix/tata/login-24.mp3", text: "C'est effacé net." },
+  { file: "/voix/tata/login-25.mp3", text: "Appuie ici. Ton propre téléphone va te guider." },
+  { file: "/voix/tata/login-26.mp3", text: "Ça n'a pas pris. On passe par ton code directement." },
+  { file: "/voix/tata/login-27.mp3", text: "Ce n'est pas toi ? Y'a pas problème, appuie ici pour taper ton numéro." },
+  { file: "/voix/tata/login-28.mp3", text: "Le numéro ou le code n'est pas bon, deh. Regarde bien avant de reprendre." },
+  { file: "/voix/tata/login-29.mp3", text: "Attention, hein ! Il te reste une seule chance. Prends bien ton temps." },
+  { file: "/voix/tata/login-30.mp3", text: "Tu as trop forcé. Patiente un peu d'abord avant de réessayer." },
+  { file: "/voix/tata/login-31.mp3", text: "Ma fille, là c'est bloqué net. Faut aller voir ton agent pour te débloquer." },
+  { file: "/voix/tata/login-32.mp3", text: "Eh, le réseau ne passe pas là ! Réessaie dans un petit moment." },
+  { file: "/voix/tata/login-33.mp3", text: "Ça pèse un peu. Patiente, je suis en train de relancer." },
+  { file: "/voix/tata/login-34.mp3", text: "Maintenant là, choisis ton propre code secret. C'est pour toi seule, hein." },
+  { file: "/voix/tata/login-35.mp3", text: "D'accord, c'est calé comme ça." },
+  { file: "/voix/tata/login-36.mp3", text: "D'accord, on continue comme d'habitude." },
+  { file: "/voix/tata/login-37.mp3", text: "Voilà, ma fille. Allons-y !" },
+  { file: "/voix/tata/stk-02.mp3", text: "Quel produit vivrier tu veux faire entrer dans le stock ?" },
+  { file: "/voix/tata/stk-06.mp3", text: "Tout ton stock est bien chargé, y'a pas de manque." },
+  { file: "/voix/tata/stk-08.mp3", text: "Tu n'as pas mis à combien tu as payé ça au gros. On ne pourra pas calculer ton vrai bénéfice." },
+  { file: "/voix/tata/vente-01.mp3", text: "Appuie sur moi et puis dis-moi ce que tu as vendu au marché." },
+  { file: "/voix/tata/vente-02.mp3", text: "Je n'ai pas bien capté. Rapproche le téléphone de ta bouche et puis parle doucement." },
+  { file: "/voix/tata/vente-03.mp3", text: "C'est rentré dans le panier. Tu ajoutes encore ou bien on encaisse l'argent ?" },
+  { file: "/voix/tata/vente-04.mp3", text: "D'accord, on laisse tomber ça. Ton panier n'a pas bougé." },
+  { file: "/voix/tata/vente-05.mp3", text: "Ma voix ne sort pas là. Tape ta vente sur le clavier, je suis avec toi." },
+  { file: "/voix/tata/vente-06.mp3", text: "Et puis c'est à combien ?" },
+  { file: "/voix/tata/vente-14.mp3", text: "Tu n'as pas encore fait de vente aujourd'hui. Y'a pas problème, le marché va s'ouvrir !" },
+  { file: "/voix/tata/vente-18.mp3", text: "L'argent est tombé pile, y'a pas de monnaie." },
+  { file: "/voix/tata/wlt-01.mp3", text: "Ton argent est caché" },
+  { file: "/voix/tata/wlt-08.mp3", text: "Ton argent est affiché" },
 ];
 
 // Normalisation pour comparer le texte prononcé au texte enregistré :
