@@ -53,6 +53,11 @@ const CAS = [
   { cle: 'numeroIncomplet' as const, auth: 'AUTH_11', fichier: '/voix/tata/login-11.mp3' },
   { cle: 'reconnaissanceEchouee' as const, auth: 'AUTH_26', fichier: '/voix/tata/login-26.mp3' },
   { cle: 'tropDEssais' as const, auth: 'AUTH_30', fichier: '/voix/tata/login-30.mp3' },
+  { cle: 'microIndisponible' as const, auth: 'AUTH_16', fichier: '/voix/tata/login-16.mp3' },
+  { cle: 'codeVide' as const, auth: 'AUTH_19', fichier: '/voix/tata/login-19.mp3' },
+  { cle: 'serveurLent' as const, auth: 'AUTH_33', fichier: '/voix/tata/login-33.mp3' },
+  { cle: 'choixEnregistre' as const, auth: 'AUTH_35', fichier: '/voix/tata/login-35.mp3' },
+  { cle: 'choixConserve' as const, auth: 'AUTH_36', fichier: '/voix/tata/login-36.mp3' },
 ];
 
 console.log('\n[1] la clé existe, et pointe le bon clip');

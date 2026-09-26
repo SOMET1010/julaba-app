@@ -54,6 +54,11 @@ const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
   numeroIncomplet: 'AUTH_11',
   reconnaissanceEchouee: 'AUTH_26',
   tropDEssais: 'AUTH_30',
+  microIndisponible: 'AUTH_16',
+  codeVide: 'AUTH_19',
+  serveurLent: 'AUTH_33',
+  choixEnregistre: 'AUTH_35',
+  choixConserve: 'AUTH_36',
 };
 
 /** Le clip s'il existe, sinon la phrase — une seule sortie, jamais deux. */
@@ -364,10 +369,10 @@ export function LoginPassword() {
     if (!suggestion) return;
     if (oui) {
       setAccessMode(suggestion.mode);
-      parle('C\'est fait. Je m\'adapte à toi.');
+      parle('D\'accord, c\'est calé comme ça.');
     } else {
       marquerDemande();
-      parle('D\'accord, on ne change rien.');
+      parle('D\'accord, on continue comme d\'habitude.');
     }
     setSuggReponse(true);
   };
@@ -683,7 +688,7 @@ export function LoginPassword() {
     // ui-058) plutôt qu'une phrase sur mesure qui serait muette. Aucun clip ne
     // dit « autorise le micro » — le texte écrit le précise, la voix dit au
     // moins qu'il y a un problème et qu'on peut réessayer.
-    siMicRefuse: () => { setError('Autorise le micro, ou tape ton numéro 👇'); void parleSuite('Problème avec le micro — réessaie'); setShowKeypad(true); },
+    siMicRefuse: () => { setError('Le micro ne prend pas là. Faut taper ton numéro ici.'); void parleSuite('Problème avec le micro — réessaie'); setShowKeypad(true); },
     siEchec: () => { setShowKeypad(true); void parleSuite("Je n'ai pas compris. Tape ton numéro, ou réessaie."); },
   });
 
@@ -790,9 +795,9 @@ export function LoginPassword() {
 
   const handleLogin = async (pinOverride?: string, retry = 0) => {
     const pwd = pinOverride ?? pinInput;
-    if (phone.length !== 10) { setError('Le numéro doit contenir 10 chiffres'); return; }
+    if (phone.length !== 10) { setError('Il manque encore des chiffres dedans. Continue.'); return; }
     if (import.meta.env.DEV && phone === '0501604040') { setShowDevButton(true); setError(''); return; }
-    if (!pwd || pwd.length === 0) { setError('Entre ton mot de passe'); return; }
+    if (!pwd || pwd.length === 0) { setError('Bon, mets les quatre chiffres de ton code secret.'); return; }
     setIsLoading(true); setError('');
     // Espion de connexion : trace l'URL réellement appelée + le résultat, visible
     // dans « 🐞 Rapport de test ». Permet de diagnostiquer « Erreur de connexion »
@@ -952,7 +957,7 @@ export function LoginPassword() {
       // temps au serveur de démarrer, plutôt que d'échouer sèchement.
       const estReseau = err instanceof TypeError;
       if (estReseau && retry < 2) {
-        setError('Réveil du serveur… reconnexion automatique, patiente 🔄');
+        setError('Ça pèse un peu. Patiente, je suis en train de relancer.');
         setTimeout(() => { handleLogin(pwd, retry + 1); }, 7000);
         return;
       }
