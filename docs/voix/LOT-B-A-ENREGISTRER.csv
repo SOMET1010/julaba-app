@@ -2,3 +2,8 @@
 "login-38.wav","Ça n'a pas bien répondu. Attends un petit moment, puis reprends.","AUTH_38 · Réponse illisible — remplace « Réponse inattendue. Réessaie dans un instant. »"
 "login-39.wav","Ça n'a pas marché comme il faut. Reprends depuis le début.","AUTH_39 · Compte introuvable — remplace « Réponse serveur invalide »"
 "login-40.wav","Ce numéro-là ne commence pas comme un numéro d'ici. Regarde bien le début.","AUTH_40 · Numéro d'ailleurs — remplace « Préfixe invalide »"
+"login-41.wav","Tape les chiffres de ton numéro, un par un. Les ronds en haut vont se remplir.","ENTREE_NUMERO — remplace le clip prototype (voix Callirrhoe, éteint en production)"
+"login-42.wav","Dis ton numéro, ou tape les chiffres un par un. Les ronds en haut vont se remplir.","ENTREE_NUMERO_VOIX — idem"
+"login-43.wav","Entre ton code secret à quatre chiffres.","ENTREE_CODE — idem"
+"login-44.wav","La connexion ne passe pas pour le moment. Attends un peu, puis réessaie.","ENTREE_CODE_ERREUR / ENTREE_CONNEXION — idem"
+"login-45.wav","Touche le grand bouton. Ton téléphone va te reconnaître.","ENTREE_RECONNAISSANCE — idem"
