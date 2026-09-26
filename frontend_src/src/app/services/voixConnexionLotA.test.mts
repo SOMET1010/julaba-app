@@ -51,6 +51,8 @@ const CAS = [
   { cle: 'pinChiffres' as const, auth: 'AUTH_22', fichier: '/voix/tata/login-22.mp3' },
   { cle: 'effacement'  as const, auth: 'AUTH_24', fichier: '/voix/tata/login-24.mp3' },
   { cle: 'numeroIncomplet' as const, auth: 'AUTH_11', fichier: '/voix/tata/login-11.mp3' },
+  { cle: 'reconnaissanceEchouee' as const, auth: 'AUTH_26', fichier: '/voix/tata/login-26.mp3' },
+  { cle: 'tropDEssais' as const, auth: 'AUTH_30', fichier: '/voix/tata/login-30.mp3' },
 ];
 
 console.log('\n[1] la clé existe, et pointe le bon clip');
@@ -97,6 +99,17 @@ console.log('\n[5] effacer ne dit JAMAIS ce qui a été tapé');
   ok(!/[0-9]/.test(t) && !/chiffre|numero|code/.test(t),
      'le clip d\'effacement ne nomme ni chiffre, ni numéro, ni code',
      `texte : « ${ENTREE_VOICE_CLIPS.effacement.texte} »`);
+}
+
+console.log('\n[6bis] les erreurs branchées sont bien celles que l\'écran affiche');
+// `LoginPassword` fait `parle(error)` sur CHAQUE erreur (l.317), et cette porte
+// ne dit que ce qui a une clé. Un `setError` désaligné d'un mot, et l'écran
+// revibre en silence — exactement l'état qu'on vient de quitter.
+for (const cle of ['reconnaissanceEchouee', 'tropDEssais'] as const) {
+  const t = ENTREE_VOICE_CLIPS[cle].texte;
+  ok(ecran.includes(t.replace(/'/g, "\\'")) || ecran.includes(t),
+     `${cle} : un setError de l'écran porte ce texte exact`,
+     `texte : « ${t} »`);
 }
 
 console.log('\n[6] le texte n\'a pas reculé : il dit toujours que le code est intact');

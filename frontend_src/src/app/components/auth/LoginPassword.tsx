@@ -52,6 +52,8 @@ const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
   pinChiffres: 'AUTH_22',
   effacement: 'AUTH_24',
   numeroIncomplet: 'AUTH_11',
+  reconnaissanceEchouee: 'AUTH_26',
+  tropDEssais: 'AUTH_30',
 };
 
 /** Le clip s'il existe, sinon la phrase — une seule sortie, jamais deux. */
@@ -776,11 +778,11 @@ export function LoginPassword() {
       } else {
         // Mots de la MARCHANDE (pas « biométrie ») : dire le problème et le geste
         // de secours. L'effet vocal sur `error` l'énonce automatiquement.
-        setError('Ton téléphone ne t\'a pas reconnue. Utilise ton code.');
+        setError('Ça n\'a pas pris. On passe par ton code directement.');
       }
     } catch (err) {
       console.warn('[LoginPassword] biometric failed:', err instanceof Error ? err.message : err);
-      setError('La reconnaissance n\'a pas marché ici. Utilise ton code.');
+      setError('Ça n\'a pas pris. On passe par ton code directement.');
     } finally {
       setIsLoading(false);
     }
@@ -836,7 +838,7 @@ export function LoginPassword() {
         // Trop de tentatives en 1 minute (rate-limiter) : ce N'EST PAS un mauvais
         // code -> on ne compte pas d'échec et on affiche un message clair.
         if (response.status === 429) {
-          setError('Trop d\'essais. Attends une minute puis réessaie.');
+          setError('Tu as trop forcé. Patiente un peu d\'abord avant de réessayer.');
           setPinInput(""); setIsLoading(false); return;
         }
         // Source de vérité backend : verrouillage total après 9 échecs cumulés.

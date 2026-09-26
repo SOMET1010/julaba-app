@@ -12,7 +12,9 @@ export type EntreeVoiceKey =
   | 'pinImages'
   | 'pinChiffres'
   | 'effacement'
-  | 'numeroIncomplet';
+  | 'numeroIncomplet'
+  | 'reconnaissanceEchouee'
+  | 'tropDEssais';
 
 export interface EntreeVoiceClip {
   file: string;
@@ -155,6 +157,39 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   numeroIncomplet: {
     file: '/voix/tata/login-11.mp3',
     texte: 'Il manque encore des chiffres dedans. Continue.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── TREIZE ERREURS, ZÉRO DITE — AUTH-ERR, 26/09/2026 ─────────────────────
+  //
+  // CE QU'ON A TROUVÉ. `LoginPassword` fait `parle(error)` sur CHAQUE message
+  // d'erreur (l.317). Mais `parle` passe par `direEntreeTexte`, qui ne dit
+  // que ce qui a une clé ici — et aucun des treize messages d'erreur de cet
+  // écran n'en avait. L'écran vibrait, affichait un texte, et se taisait.
+  //
+  // À une marchande qui ne sait pas lire, sur l'écran QUI CONNECTE. Si elle
+  // n'entre pas, rien d'autre dans l'application ne compte.
+  //
+  // POURQUOI ON ACCEPTE UN TEXTE LÉGÈREMENT DIFFÉRENT. La règle est « on ne
+  // remplace jamais une consigne par une plus pauvre ». Elle tient toujours —
+  // mais une consigne qu'on ne dit pas n'est pas une consigne. Ces deux-là
+  // gardent le geste (« on passe par ton code », « patiente avant de
+  // réessayer ») et perdent une nuance : la cause exacte pour l'une, la durée
+  // pour l'autre. De muet à parlé, l'échange est largement gagnant.
+  //
+  // ONZE AUTRES RESTENT MUETS, faute de clip : « Numéro non reconnu »,
+  // « Autorise le micro », « Entre ton mot de passe », « Réponse serveur
+  // invalide »… OUVERT, et c'est le plus gros trou de voix du parcours.
+  reconnaissanceEchouee: {
+    file: '/voix/tata/login-26.mp3',
+    texte: 'Ça n\'a pas pris. On passe par ton code directement.',
+    atteste: false,
+    lotA: true,
+  },
+  tropDEssais: {
+    file: '/voix/tata/login-30.mp3',
+    texte: 'Tu as trop forcé. Patiente un peu d\'abord avant de réessayer.',
     atteste: false,
     lotA: true,
   },
