@@ -59,6 +59,9 @@ const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
   serveurLent: 'AUTH_33',
   choixEnregistre: 'AUTH_35',
   choixConserve: 'AUTH_36',
+  dicteeIncomprise: 'ENTREE_NUMERO',
+  microProbleme: 'ENTREE_NUMERO',
+  microPret: 'AUTH_17',
 };
 
 /** Le clip s'il existe, sinon la phrase — une seule sortie, jamais deux. */
@@ -649,6 +652,15 @@ export function LoginPassword() {
     //     SILENCIEUSES sur le téléphone, alors que ui-058 (« Je n'ai pas
     //     compris. Tape ton numéro, ou réessaie. ») et ui-100 existent et
     //     disent la bonne chose — « ou réessaie » comprise.
+    //
+    //     CORRIGÉ LE 26/09/2026, et le point 3 méritait d'être relu : choisir
+    //     la phrase de ui-058 NE SUFFISAIT PAS. `parle()` ne consulte pas
+    //     `tataUiClips` — il passe par `direEntreeTexte`, qui ne connaît que
+    //     l'index de `services/entreeVoix.ts`. Les deux clips existaient, la
+    //     phrase tombait pile dessus, et rien ne sortait quand même. Il a
+    //     fallu leur ajouter une CLÉ là-bas (`dicteeIncomprise`,
+    //     `microProbleme`). Un commentaire vrai le jour où il est écrit peut
+    //     cesser de l'être sans que personne ne le voie.
     //
     // On relit donc TOUJOURS ce qui a été compris, puis on dit une phrase
     // RÉELLEMENT ENREGISTRÉE. Le clavier reste le filet, il n'est plus la
@@ -1361,7 +1373,7 @@ export function LoginPassword() {
               >
                 <InstallerOffline onReady={() => {
                   setShowVoiceInstall(false);
-                  parle('Voilà, tu peux parler maintenant. Touche le micro et dis ton numéro.');
+                  parle('C\'est bon maintenant. Appuie sur le micro et puis parle.');
                 }} />
               </motion.div>
             )}

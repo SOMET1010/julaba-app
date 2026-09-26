@@ -45,7 +45,7 @@ export const SCRIPT_TATA: PhraseScript[] = [
   { id: 'AUTH_14', categorie: 'CONNEXION', moment: 'Proposer le clavier', texteFr: "Si tu veux, tape ton numéro ici.", texteDyu: "Ni a ka di i ye, i ka nimɔrɔ sɛbɛn yan." },
   { id: 'AUTH_15', categorie: 'CONNEXION', moment: 'Autorisation du micro', texteFr: "Pour que je t'entende, appuie sur Autoriser.", texteDyu: "Walasa n'ka i kan mɛn, a digi Autoriser kan." },
   { id: 'AUTH_16', categorie: 'CONNEXION', moment: 'Micro indisponible', texteFr: "Le micro ne prend pas là. Faut taper ton numéro ici.", texteDyu: "Mikoro tɛ baara kɛra sisan. I ka nimɔrɔ sɛbɛn yan." },
-  { id: 'AUTH_17', categorie: 'CONNEXION', moment: 'Micro disponible', texteFr: "C'est bon. Appuie sur le micro, et parle.", texteDyu: "A bɛna. A digi mikoro kan, k'i kuma." },
+  { id: 'AUTH_17', categorie: 'CONNEXION', moment: 'Micro disponible', texteFr: "C'est bon maintenant. Appuie sur le micro et puis parle.", texteDyu: "A bɛna. A digi mikoro kan, k'i kuma." },
   { id: 'AUTH_18', categorie: 'CONNEXION', moment: 'Vérification', texteFr: "Attends un peu, je regarde.", texteDyu: "Mɔgɔni kɔn dɔɔnin, n'b'a filɛ." },
   { id: 'AUTH_19', categorie: 'CONNEXION', moment: 'Code en chiffres', texteFr: "Bon, mets les quatre chiffres de ton code secret.", texteDyu: "Bon, i ka kɔdi nimɔrɔ naani bila yan." },
   { id: 'AUTH_20', categorie: 'CONNEXION', moment: 'Code en images', texteFr: "Appuie sur tes quatre images, une par une, dans l'ordre.", texteDyu: "I ka ja naani digi, kelen kelen, cogo min na u bɛ ɲɔgɔn kɔ." },
