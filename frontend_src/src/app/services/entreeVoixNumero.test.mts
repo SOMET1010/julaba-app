@@ -57,8 +57,23 @@ ok(urlClipEntree('numero', true) === ENTREE_VOICE_CLIPS.numero.file,
 {
   // Un clip ATTESTÉ (validé par un humain) se joue dans les deux mondes —
   // c'est la moitié de la règle que le drapeau ne commande pas.
-  const atteste = Object.values(ENTREE_VOICE_CLIPS).filter(c => c.atteste);
-  ok(atteste.length === 0, 'aucun clip d\'entrée n\'est encore attesté : c\'est l\'état d\'aujourd\'hui, et il est mesuré');
+  // MIS À JOUR LE 26/09/2026. Cette ligne affirmait « aucun clip d'entrée
+  // n'est encore attesté : c'est l'état d'aujourd'hui, et il est mesuré ».
+  // C'était vrai, et ce ne l'est plus : `ui-058` et `ui-100` — deux clips de
+  // la VOIX HUMAINE, déjà validés — ont reçu leur clé (CLIP-03).
+  //
+  // Un constat daté se périme ; la RÈGLE qu'il servait à illustrer, non. On
+  // vérifie donc celle-ci, écrite juste au-dessus : un clip attesté se joue
+  // dans les deux mondes, drapeau des prototypes allumé OU éteint.
+  const attestes = (Object.keys(ENTREE_VOICE_CLIPS) as (keyof typeof ENTREE_VOICE_CLIPS)[])
+    .filter((k) => ENTREE_VOICE_CLIPS[k].atteste);
+  ok(attestes.length > 0, `${attestes.length} clip(s) d'entrée attesté(s) — la voix humaine`);
+  for (const k of attestes) {
+    ok(urlClipEntree(k, false) === ENTREE_VOICE_CLIPS[k].file,
+       `${k} : joué même prototypes ÉTEINTS — c'est ce que « attesté » veut dire`);
+    ok(!ENTREE_VOICE_CLIPS[k].lotA,
+       `${k} : attesté ET lot A à la fois n'aurait aucun sens`);
+  }
 }
 
 console.log('\n[3] Les six consignes ont chacune leur clé, et aucune ne ment');

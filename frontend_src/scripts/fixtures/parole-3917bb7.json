@@ -83,7 +83,7 @@
       "parle(message)",
       "parle('C\\'est effacé net.')",
       "parle(chiffresEpeles(phone))",
-      "parle('Voilà, tu peux parler maintenant. Touche le micro et dis ton numéro.')",
+      "parle('C\\'est bon maintenant. Appuie sur le micro et puis parle.')",
       "parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)"
     ],
     "components/shared/UniversalParametres.tsx": [

@@ -58,6 +58,7 @@ const CAS = [
   { cle: 'serveurLent' as const, auth: 'AUTH_33', fichier: '/voix/tata/login-33.mp3' },
   { cle: 'choixEnregistre' as const, auth: 'AUTH_35', fichier: '/voix/tata/login-35.mp3' },
   { cle: 'choixConserve' as const, auth: 'AUTH_36', fichier: '/voix/tata/login-36.mp3' },
+  { cle: 'microPret' as const, auth: 'AUTH_17', fichier: '/voix/tata/login-17.mp3' },
 ];
 
 console.log('\n[1] la clé existe, et pointe le bon clip');
@@ -104,6 +105,21 @@ console.log('\n[5] effacer ne dit JAMAIS ce qui a été tapé');
   ok(!/[0-9]/.test(t) && !/chiffre|numero|code/.test(t),
      'le clip d\'effacement ne nomme ni chiffre, ni numéro, ni code',
      `texte : « ${ENTREE_VOICE_CLIPS.effacement.texte} »`);
+}
+
+console.log('\n[5bis] les deux clips HUMAINS sont branchés, et le restent');
+// ui-058 et ui-100 dormaient : la phrase de l'écran tombait pile dessus, mais
+// `parle()` ne consulte pas `tataUiClips`. Les débrancher, ou les remplacer par
+// leurs équivalents de synthèse du lot A (login-13, login-15), troquerait la
+// vraie voix contre une machine.
+for (const [cle, f] of [['dicteeIncomprise', '/voix/tata/ui-058.mp3'],
+                        ['microProbleme', '/voix/tata/ui-100.mp3']] as const) {
+  const clip = ENTREE_VOICE_CLIPS[cle];
+  ok(clip?.file === f, `${cle} → ${f} (voix humaine)`, `obtenu : ${clip?.file}`);
+  ok(clip?.atteste === true && !clip?.lotA,
+     `${cle} : atteste=true — une oreille l'a validé, ce n'est pas de la synthèse`);
+  ok(ecran.includes(clip.texte.replace(/'/g, "\\'")) || ecran.includes(clip.texte),
+     `${cle} : l'écran dit ce texte exact`);
 }
 
 console.log('\n[6bis] les erreurs branchées sont bien celles que l\'écran affiche');

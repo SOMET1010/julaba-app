@@ -19,7 +19,10 @@ export type EntreeVoiceKey =
   | 'codeVide'
   | 'serveurLent'
   | 'choixEnregistre'
-  | 'choixConserve';
+  | 'choixConserve'
+  | 'dicteeIncomprise'
+  | 'microProbleme'
+  | 'microPret';
 
 export interface EntreeVoiceClip {
   file: string;
@@ -233,6 +236,54 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   choixConserve: {
     file: '/voix/tata/login-36.mp3',
     texte: 'D\'accord, on continue comme d\'habitude.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── DEUX CLIPS HUMAINS QUI DORMAIENT SOUS NOS YEUX — CLIP-03, 26/09/2026 ─
+  //
+  // `LoginPassword` porte depuis longtemps ce commentaire : « ui-058 (« Je
+  // n'ai pas compris. Tape ton numéro, ou réessaie. ») et ui-100 existent et
+  // disent la bonne chose ». Les phrases de l'écran ont même été CHOISIES
+  // pour tomber dessus.
+  //
+  // Mais `parle()` passe par `direEntreeTexte`, qui ne consulte QUE l'index
+  // de ce fichier — jamais `tataUiClips`. Les deux clips étaient donc
+  // introuvables par ce chemin, et l'écran se taisait en croyant parler. Le
+  // commentaire disait vrai quand il a été écrit ; il ne l'était plus.
+  //
+  // CE SONT DEUX CLIPS EN VOIX HUMAINE, déjà enregistrés, déjà embarqués,
+  // déjà pré-cachés. `atteste: true` — eux, une oreille les a validés.
+  //
+  // ON NE LES REMPLACE PAS PAR LE LOT A. Les clips login-13 et login-15
+  // disent à peu près la même chose en voix de synthèse : les préférer serait
+  // troquer la vraie voix contre une machine. « On ne commande jamais en
+  // synthèse une phrase que la vraie voix dit déjà » — et à plus forte raison
+  // on ne la débranche pas.
+  dicteeIncomprise: {
+    file: '/voix/tata/ui-058.mp3',
+    texte: 'Je n\'ai pas compris. Tape ton numéro, ou réessaie.',
+    atteste: true,
+  },
+  microProbleme: {
+    file: '/voix/tata/ui-100.mp3',
+    texte: 'Problème avec le micro — réessaie',
+    atteste: true,
+  },
+
+  // ── LE MICRO EST PRÊT — AUTH_17, LOT A ───────────────────────────────────
+  //
+  // `parle('Voilà, tu peux parler maintenant. Touche le micro et dis ton
+  // numéro.')` n'avait pas de clé : muet. Le clip du lot A dit « C'est bon
+  // maintenant. Appuie sur le micro et puis parle. »
+  //
+  // CE QU'ON PERD, ET POURQUOI ON L'ACCEPTE : l'actuel précise « dis ton
+  // NUMÉRO ». Le clip dit seulement « parle ». Sur cet écran, le contexte le
+  // donne — et une consigne qu'on ne dit pas n'est pas une consigne.
+  // La version complète reste à enregistrer si elle manque au terrain. OUVERT.
+  microPret: {
+    file: '/voix/tata/login-17.mp3',
+    texte: 'C\'est bon maintenant. Appuie sur le micro et puis parle.',
     atteste: false,
     lotA: true,
   },
