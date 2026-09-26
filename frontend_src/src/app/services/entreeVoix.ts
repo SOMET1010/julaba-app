@@ -22,7 +22,8 @@ export type EntreeVoiceKey =
   | 'choixConserve'
   | 'dicteeIncomprise'
   | 'microProbleme'
-  | 'microPret';
+  | 'microPret'
+  | 'numeroPasDIci';
 
 export interface EntreeVoiceClip {
   file: string;
@@ -284,6 +285,21 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   microPret: {
     file: '/voix/tata/login-17.mp3',
     texte: 'C\'est bon maintenant. Appuie sur le micro et puis parle.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── LE NUMÉRO N'EST PAS UN NUMÉRO D'ICI — AUTH_12 + AUTH_14 ──────────────
+  //
+  // Laissé OUVERT deux fois : `login-12` nomme mieux le défaut mais perd le
+  // geste. Tranché par Patrick le 26/09 — on enchaîne avec `login-14`, et les
+  // deux clips sont fondus en un seul au montage (voir tataUiClips.ts).
+  //
+  // Le texte porte donc les DEUX phrases : c'est ce qu'on entend, et
+  // `direEntreeTexte` retrouve la clé par le texte entier.
+  numeroPasDIci: {
+    file: '/voix/tata/login-12-14.mp3',
+    texte: 'Regarde bien, y\'a un chiffre qui n\'est pas bon dedans. Si tu veux, tape ton numéro directement ici.',
     atteste: false,
     lotA: true,
   },

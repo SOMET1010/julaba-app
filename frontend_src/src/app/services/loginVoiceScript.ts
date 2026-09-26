@@ -40,7 +40,7 @@ export const SCRIPT_TATA: PhraseScript[] = [
   { id: 'AUTH_09', categorie: 'CONNEXION', moment: 'Confirmer', texteFr: "C'est bien ton numéro ? Appuie ici pour continuer.", texteDyu: "I ka nimɔrɔ yɛrɛ le do wa ? A digi yan walasa k'a to yen." },
   { id: 'AUTH_10', categorie: 'CONNEXION', moment: 'Corriger', texteFr: "Tu t'es trompée ? C'est rien, y'a pas problème. Appuie ici pour effacer.", texteDyu: "I filila wa ? Gɛlɛya t'a la. A digi yan k'a josi." },
   { id: 'AUTH_11', categorie: 'CONNEXION', moment: 'Numéro incomplet', texteFr: "Il manque encore des chiffres dedans. Continue.", texteDyu: "Dɔ b'a la fɔlɔ. Fɔ ka t'a la." },
-  { id: 'AUTH_12', categorie: 'CONNEXION', moment: 'Numéro invalide', texteFr: "Regarde bien, il y a un chiffre qui ne va pas.", texteDyu: "A filɛ ka ɲa, nimɔrɔ dɔ ma sɔrɔ ka ɲa." },
+  { id: 'AUTH_12', categorie: 'CONNEXION', moment: 'Numéro invalide', texteFr: "Regarde bien, y'a un chiffre qui n'est pas bon dedans. Si tu veux, tape ton numéro directement ici.", texteDyu: "A filɛ ka ɲa, nimɔrɔ dɔ ma sɔrɔ ka ɲa." },
   { id: 'AUTH_13', categorie: 'CONNEXION', moment: 'Dictée mal comprise', texteFr: "Je n'ai pas bien entendu. Redis-le, doucement.", texteDyu: "N'ma mɛn ka ɲa. A fɔ tugun, dɔɔnin dɔɔnin." },
   { id: 'AUTH_14', categorie: 'CONNEXION', moment: 'Proposer le clavier', texteFr: "Si tu veux, tape ton numéro ici.", texteDyu: "Ni a ka di i ye, i ka nimɔrɔ sɛbɛn yan." },
   { id: 'AUTH_15', categorie: 'CONNEXION', moment: 'Autorisation du micro', texteFr: "Pour que je t'entende, appuie sur Autoriser.", texteDyu: "Walasa n'ka i kan mɛn, a digi Autoriser kan." },

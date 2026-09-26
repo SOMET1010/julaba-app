@@ -59,6 +59,7 @@ const CAS = [
   { cle: 'choixEnregistre' as const, auth: 'AUTH_35', fichier: '/voix/tata/login-35.mp3' },
   { cle: 'choixConserve' as const, auth: 'AUTH_36', fichier: '/voix/tata/login-36.mp3' },
   { cle: 'microPret' as const, auth: 'AUTH_17', fichier: '/voix/tata/login-17.mp3' },
+  { cle: 'numeroPasDIci' as const, auth: 'AUTH_12', fichier: '/voix/tata/login-12-14.mp3' },
 ];
 
 console.log('\n[1] la clé existe, et pointe le bon clip');
@@ -105,6 +106,15 @@ console.log('\n[5] effacer ne dit JAMAIS ce qui a été tapé');
   ok(!/[0-9]/.test(t) && !/chiffre|numero|code/.test(t),
      'le clip d\'effacement ne nomme ni chiffre, ni numéro, ni code',
      `texte : « ${ENTREE_VOICE_CLIPS.effacement.texte} »`);
+}
+
+console.log('\n[4bis] le clip composé porte bien le GESTE, pas seulement le défaut');
+// AUTH_12 seul disait ce qui ne va pas sans dire quoi faire — c'est pour ça
+// qu'il avait été écarté deux fois. Fondu avec AUTH_14, il porte les deux.
+{
+  const t = ENTREE_VOICE_CLIPS.numeroPasDIci.texte;
+  ok(/tape ton num/i.test(t), 'le texte dit QUOI FAIRE, pas seulement ce qui cloche', t);
+  ok(/pas bon|ne va pas/i.test(t), 'et il dit toujours CE QUI CLOCHE', t);
 }
 
 console.log('\n[5bis] les deux clips HUMAINS sont branchés, et le restent');
