@@ -176,9 +176,14 @@ enregistré par la voix humaine** :
 | `dash-04` | `ui-010.mp3` | « Combien tu as en caisse ce matin ? » |
 
 Les générer, puis adopter la reformulation de marché, **remplacerait de la voix
-humaine par du synthétique**. C'est l'inverse de ce qu'on cherche. Sept des huit
+humaine par du synthétique**. C'est l'inverse de ce qu'on cherche. Six des huit
 sont des `wlt-*`, sur un périmètre (Keiwa) qui n'est même pas activé : perte
 nette, gain nul.
+
+> Corrigé le 26/09 : la prose disait « sept », la table et
+> `LOT-DEJA-EN-VRAIE-VOIX.csv` disaient six. Le compte de six est le bon —
+> `wlt-01` n'est pas un doublon, c'est la moitié du couple d'états scindé plus
+> haut. Erreur relevée par l'agent de génération.
 
 Elles sont consignées dans `LOT-DEJA-EN-VRAIE-VOIX.csv`. Si Patrick veut un
 jour la formulation de marché sur ces huit-là, ce sera par un
