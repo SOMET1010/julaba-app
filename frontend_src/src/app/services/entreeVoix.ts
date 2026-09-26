@@ -10,7 +10,9 @@ export type EntreeVoiceKey =
   | 'reconnaissance'
   // ── LOT A, 26/09/2026 — voir `lotA` plus bas ────────────────────────────
   | 'pinImages'
-  | 'pinChiffres';
+  | 'pinChiffres'
+  | 'effacement'
+  | 'numeroIncomplet';
 
 export interface EntreeVoiceClip {
   file: string;
@@ -114,6 +116,45 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   pinChiffres: {
     file: '/voix/tata/login-22.mp3',
     texte: 'Voilà les chiffres maintenant. Mets ton code comme d\'habitude.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── EFFACER UN CHIFFRE — AUTH_24, LOT A ──────────────────────────────────
+  //
+  // `handleKeyDelete` disait déjà `parle('Effacé.')` — mais ce texte n'était
+  // dans aucune clé, donc il ne sortait pas. Un mot prononcé par personne.
+  //
+  // Le commentaire d'origine explique POURQUOI un seul mot : « Effacé » ne
+  // révèle aucun chiffre, contrairement au numéro lui-même. Le clip respecte
+  // cette règle — « C'est effacé net. » ne dit rien de ce qui a été tapé.
+  effacement: {
+    file: '/voix/tata/login-24.mp3',
+    texte: 'C\'est effacé net.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── IL MANQUE DES CHIFFRES — AUTH_11, LOT A ──────────────────────────────
+  //
+  // Ce que la dictée disait jusqu'ici quand le numéro était trop court :
+  // « Je n'ai pas compris. Tape ton numéro, ou réessaie. » — vrai, mais
+  // générique : elle ne sait pas CE QUI manque. L'écran, lui, l'écrivait
+  // (« Il manque des chiffres… 👇 ») — donc l'information existait, et seule
+  // la marchande qui lit y avait droit.
+  //
+  // C'est exactement le défaut que le projet poursuit partout : une
+  // information qui existe, et que quelqu'un en aval ne transmet pas.
+  //
+  // Le clip la dit, et garde le geste : « Continue. »
+  //
+  // AUTH_12 (« Regarde bien, y'a un chiffre qui n'est pas bon dedans. ») N'EST
+  // PAS branché, et c'est délibéré : il nomme mieux le défaut mais perd le
+  // geste que la phrase actuelle donne (« Tape ton numéro, ou réessaie »).
+  // On ne remplace pas une consigne par une plus pauvre. OUVERT.
+  numeroIncomplet: {
+    file: '/voix/tata/login-11.mp3',
+    texte: 'Il manque encore des chiffres dedans. Continue.',
     atteste: false,
     lotA: true,
   },

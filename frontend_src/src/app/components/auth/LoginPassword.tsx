@@ -50,6 +50,8 @@ const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
   // table à trou finirait par mentir le jour où le clip disparaît.
   pinImages: 'AUTH_21',
   pinChiffres: 'AUTH_22',
+  effacement: 'AUTH_24',
+  numeroIncomplet: 'AUTH_11',
 };
 
 /** Le clip s'il existe, sinon la phrase — une seule sortie, jamais deux. */
@@ -659,7 +661,15 @@ export function LoginPassword() {
         setError(num.length >= 10
           ? 'Vérifie ton numéro : touche le micro pour redire, ou corrige 👇'
           : 'Il manque des chiffres : touche le micro pour redire, ou complète 👇');
-        void parleSuite(relecture, "Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+        // AUTH-11. Trop court : on DIT ce qui manque, au lieu du générique.
+        // L'écran l'écrivait déjà — l'information existait, seule la marchande
+        // qui lit y avait droit. Texte aligné mot pour mot sur login-11.
+        // Numéro complet mais invalide : on garde le générique, qui donne le
+        // GESTE. Le clip AUTH_12 nomme mieux le défaut mais ne dit pas quoi
+        // faire ; on ne troque pas une consigne contre une plus pauvre.
+        void parleSuite(relecture, num.length >= 10
+          ? "Je n'ai pas compris. Tape ton numéro, ou réessaie."
+          : 'Il manque encore des chiffres dedans. Continue.');
         return;
       }
       setError("Je n'ai pas compris. Touche le micro pour redire, ou tape 👇");
@@ -1034,7 +1044,11 @@ export function LoginPassword() {
       // Effacer est un AUTRE geste : motif distinct, et un mot — « Effacé » ne
       // révèle aucun chiffre, contrairement au numéro lui-même.
       rendreALaMain('numero', 'effacement');
-      if (guidageVocal(accessMode)) parle('Effacé.');
+      // Texte aligné MOT POUR MOT sur le clip login-24 (AUTH_24). Il ne dit
+      // toujours rien de ce qui a été tapé — la règle du commentaire ci-dessus
+      // tient. Avant cet alignement, aucune clé ne portait « Effacé. » : le mot
+      // était prononcé par personne.
+      if (guidageVocal(accessMode)) parle('C\'est effacé net.');
     } else {
       if (pinInput.length === 0) {
         retourDepuisCode();
