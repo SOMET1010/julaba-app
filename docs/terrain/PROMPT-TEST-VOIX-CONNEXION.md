@@ -33,9 +33,18 @@ const BUILD = '<hash> · <date>'
 
 1. **Monte le son**, et mets-toi au calme. Certains clips durent moins d'une
    seconde.
-2. **Ouvre la console du navigateur** (F12 → Console). Elle porte un journal
-   de voix : tu y verras des lignes `ttsDemande`, `ttsChoix`, `playClip` avec
-   le nom du fichier joué. C'est ta preuve quand l'oreille hésite.
+2. **Le journal de voix n'est PAS dans la console** — corrigé le 26/09 après
+   un premier test. Il vit dans le stockage local, sous la clé
+   `julaba_journal_voix`, avec des événements `TTS_DEMANDE`, `TTS_MOTEUR`,
+   `TTS_FIN`, `TTS_COUPEE`. Pour le lire :
+
+   ```js
+   JSON.parse(localStorage.getItem('julaba_journal_voix') || '[]').slice(-20)
+   ```
+
+   C'est ta preuve quand l'oreille hésite — et ta seule preuve si tu n'as pas
+   de son du tout. Dis-le si c'est le cas : un verdict au journal reste
+   utile, mais il ne remplace pas une écoute.
 3. Le navigateur **bloque le son tant qu'on n'a pas cliqué** sur la page.
    Clique une fois n'importe où avant de juger un silence.
 
@@ -64,6 +73,13 @@ secret). Appuie dessus, puis appuie encore pour revenir.
 - **Attendu (retour)** : « Voilà les chiffres maintenant. Mets ton code comme
   d'habitude. »
 - Avant : rien.
+
+> **Gestes 3 et 4 : inatteignables dans l'interface actuelle** — constaté le
+> 26/09. Le bouton « C'est mon numéro » est désactivé tant qu'il manque des
+> chiffres, et l'écran du code n'a pas de bouton Valider : `handleLogin` n'est
+> appelé qu'avec quatre chiffres déjà saisis. Ces deux chemins sont donc du
+> code défensif, pas des parcours. Ne t'acharne pas ; passe au geste 5.
+> AUTH_11 reste atteignable par la DICTÉE (geste 7).
 
 ### 3. Valider un numéro trop court
 

@@ -808,6 +808,17 @@ export function LoginPassword() {
 
   const handleLogin = async (pinOverride?: string, retry = 0) => {
     const pwd = pinOverride ?? pinInput;
+    // DEUX GARDES DÉFENSIVES, ET LE BANC A MONTRÉ QU'ELLES NE SE DÉCLENCHENT
+    // PAS — 26/09/2026. Le bouton « C'est mon numéro » est `disabled` tant
+    // qu'il manque des chiffres, et `handleLogin` n'est appelé qu'avec quatre
+    // chiffres déjà saisis (l.1046, l.1525). Ces deux `setError` sont donc
+    // INATTEIGNABLES par l'interface d'aujourd'hui.
+    //
+    // On les garde : le jour où un bouton cesse d'être désactivé, ou qu'un
+    // raccourci clavier ouvre un autre chemin, elles redeviennent le seul
+    // filet. Mais on ne les compte PAS comme des phrases qu'une marchande
+    // entendra — la première reste atteignable par la DICTÉE (`onFinal`), la
+    // seconde par rien du tout.
     if (phone.length !== 10) { setError('Il manque encore des chiffres dedans. Continue.'); return; }
     if (import.meta.env.DEV && phone === '0501604040') { setShowDevButton(true); setError(''); return; }
     if (!pwd || pwd.length === 0) { setError('Bon, mets les quatre chiffres de ton code secret.'); return; }

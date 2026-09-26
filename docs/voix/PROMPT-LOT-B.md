@@ -54,3 +54,27 @@ silences coupés ≤ 100 ms. Même voix que le lot A. Elle ne se présente jamai
 Livre les 3 `.wav` **et** le CSV `fichier,texte_exact_prononce` avec ce qui a
 été réellement prononcé, mot pour mot. Sans lui, rien ne se branche : un mot
 d'écart et le clip n'est jamais joué, sans erreur ni trace.
+
+---
+
+## Ajout du 26/09 — cinq consignes de plus (`login-41` → `login-45`)
+
+**Pourquoi elles s'ajoutent.** Le banc web a relevé ceci : sur le MÊME écran,
+« Entre ton code secret à quatre chiffres » sort en **voix de synthèse du
+navigateur — Microsoft Julie, fr-FR** — puis, quelques secondes plus tard,
+`login-21` sort en voix de Tantie.
+
+Une voix de Windows métropolitaine sur l'écran d'entrée d'une application
+ivoirienne, suivie d'une voix du marché. Personne n'avait choisi ça : c'est ce
+qui reste quand les six clips d'origine sont éteints en production (ils sont
+marqués `prototype`, non validés) et que le texte retombe sur la synthèse.
+
+**Ce qu'on enregistre : exactement les textes actuels, mot pour mot.** Ils
+disent plus que le script (« Les ronds en haut vont se remplir » — c'est ce
+qui dit à une marchande que ça marche), et on ne les remplace pas. On leur
+donne seulement une voix.
+
+Même consigne que pour les trois premières : ne reformule rien, et renvoie ce
+qui a été réellement prononcé.
+
+**Le lot B passe donc à 8 fichiers.**
