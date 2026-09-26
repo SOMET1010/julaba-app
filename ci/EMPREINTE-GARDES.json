@@ -1,5 +1,5 @@
 {
-  "genereLe": "2026-09-25",
+  "genereLe": "2026-09-26",
   "gardes": {
     "frontend_src/src/app/utils/api.test.mts": {
       "script": "test:api-url",
@@ -2378,12 +2378,14 @@
     },
     "frontend_src/src/app/services/entreeVoixNumero.test.mts": {
       "script": "test:entree-numero-voix",
-      "assertions": 12,
+      "assertions": 14,
       "expects": 0,
       "empreintes": {
+        "ok·${} : attesté ET lot A à la fois n'aurait aucun sens": 1,
+        "ok·${} : joué même prototypes ÉTEINTS — c'est ce que « attesté » veut dire": 1,
+        "ok·${} clip(s) d'entrée attesté(s) — la voix humaine": 1,
         "ok·${} dit MOT POUR MOT ce que le clip dit — le texte n'est pas inventé": 1,
         "ok·${} existe au catalogue": 1,
-        "ok·aucun clip d\\'entrée n\\'est encore attesté : c\\'est l\\'état d\\'aujourd\\'hui, et il est mesuré": 1,
         "ok·aucun-clip ⟂ aucun clip : le texte prend le relais — l\\'écran cesse d\\'être muet": 1,
         "ok·build livré (prototypes éteints) : pas de clip — d\\'où le « MUET » du banc": 1,
         "ok·clip-echoue ⟂ un clip qui échoue est rattrapé": 1,
@@ -2729,7 +2731,7 @@
     },
     "frontend_src/src/app/services/premierProduit.test.mts": {
       "script": "test:premier-produit",
-      "assertions": 54,
+      "assertions": 56,
       "expects": 0,
       "empreintes": {
         "ok·/<AjoutProduitGuide[\\s/>]/ ⟂ /<AjoutProduitGuide[\\s/>]/ ⟂ caisse et stock montent le MÊME composant — pas deux formulaires jumeaux": 1,
@@ -2766,6 +2768,7 @@
         "ok·mais du blanc n\\'est pas une unité": 1,
         "ok·mais dès qu'il y a quelque chose, elle PEUT valider — quand elle veut": 1,
         "ok·ni un prix à zéro — il entrerait en caisse": 1,
+        "ok·ni une lettre entourée d'espaces": 1,
         "ok·ni une unité vide": 1,
         "ok·nom ⟂ on commence par lui demander CE QU\\'ELLE VEND": 1,
         "ok·on ne valide pas un nom vide": 1,
@@ -2778,6 +2781,7 @@
         "ok·un nom que le référentiel ne connaît pas se pose quand même": 1,
         "ok·un prix négatif non plus": 1,
         "ok·un vrai prix, oui": 1,
+        "ok·une seule lettre ne passe plus — la règle du serveur vaut aussi ici": 1,
         "ok·une unité hors de toute liste est acceptée": 1,
         "ok·unite ⟂ ce qui MANQUE se déduit toujours des données — cette règle est juste": 1,
         "ok·unite ⟂ prix ⟂ prix ⟂ et l'ordre des questions ne change pas": 1,
@@ -2950,6 +2954,95 @@
         "ok·/Ajouter en parlant/ ⟂ et le bouton vocal dit « Ajouter en parlant » — un MOYEN": 1,
         "ok·/Ajouter un produit/ ⟂ le bouton tactile dit « Ajouter un produit »": 1,
         "ok·le tactile et le vocal mènent tous deux au parcours guidé": 1
+      }
+    },
+    "frontend_src/src/app/components/layout/roleConfigIcones.test.mts": {
+      "script": "test:role-icones",
+      "assertions": 6,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} : ${} onglets, ${} icônes distinctes${}": 1,
+        "ok·${} icônes dans ICONES_NAVIGATION": 1,
+        "ok·/ICON_MAP = ICONES_NAVIGATION/ ⟂ la barre du bas lit la table partagée": 1,
+        "ok·/ICON_MAP = ICONES_NAVIGATION/ ⟂ le menu latéral lit la MÊME table": 1,
+        "ok·/const ICON_MAP: Record<string, any> = \\{/ ⟂ aucune des deux vues ne redéfinit sa propre table": 1,
+        "ok·icône(s) demandée(s) mais absente(s) — repli silencieux sur Home :\\n ${} ⟂ toutes les icônes demandées existent dans ICON_MAP": 1
+      }
+    },
+    "frontend_src/src/app/components/marchand/clipEchecCaisse.test.mts": {
+      "script": "test:clip-echec-caisse",
+      "assertions": 5,
+      "expects": 0,
+      "empreintes": {
+        "ok·/isError \\? \"Je n'ai pas compris\"/ ⟂ l'ancienne phrase de trois mots, sans voix possible, a disparu": 1,
+        "ok·/ui-138\\.mp3/ ⟂ ui-138.mp3 est déclaré — la caisse a enfin une voix sur l'échec": 1,
+        "ok·la caisse ne dit pas « tape ton numéro » — elle n'a pas de clavier de numéro": 1,
+        "ok·le clip du login existe toujours, et reste au login": 1,
+        "ok·« ${} »": 1
+      }
+    },
+    "frontend_src/src/app/services/alerteStockVivante.test.mts": {
+      "script": "test:alerte-vivante",
+      "assertions": 12,
+      "expects": 0,
+      "empreintes": {
+        "eq·12 au-dessus du défaut 10 → fermée": 1,
+        "eq·24 en stock, seuil 5 → plus d'alerte (avant : « il te reste 1 tas »)": 1,
+        "eq·Il te reste 2 tas de Piment. ⟂ deux homonymes : l'identifiant désigne le BON": 1,
+        "eq·Il te reste 3 de gombo. ⟂ pas d'unité connue → pas d'« unités » inventé": 1,
+        "eq·Il te reste 3 tas de gombo. ⟂ 3 tas → « Il te reste 3 tas de gombo. »": 1,
+        "eq·Il te reste 3 tas de gombo. ⟂ alerte ancienne sans identifiant → repli par nom": 1,
+        "eq·Il te reste 8 tas de gombo. ⟂ 8 sous le défaut 10 → alerte": 1,
+        "eq·Plus de gombo ! ⟂ 0 → « Plus de gombo ! »": 1,
+        "eq·ni identifiant ni nom → alerte fermée": 1,
+        "eq·produit supprimé → alerte fermée": 1,
+        "eq·stock illisible → on se tait plutôt que d'afficher un chiffre faux": 1,
+        "eq·étal vide (cache froid) → on n'invente rien": 1
+      }
+    },
+    "frontend_src/src/app/i18n/voice/nomDuPersonnage.test.mts": {
+      "script": "test:nom-personnage",
+      "assertions": 7,
+      "expects": 0,
+      "empreintes": {
+        "ok·/Tantie\\s+Nanti\\s+Lou/ ⟂ le catalogue aussi": 1,
+        "ok·/Tantie\\s+Nanti\\s+Lou/ ⟂ loginVoiceScript.ts nomme « Tantie Nanti Lou »": 1,
+        "ok·AUTH_01 trouvé dans le catalogue": 1,
+        "ok·AUTH_01 trouvé dans loginVoiceScript.ts": 1,
+        "ok·la normalisation des clips ne les confond pas — d\\'où le risque de clip muet": 1,
+        "ok·les deux textes sont identiques — un identifiant, un seul sens ⟂ script : ${}\\n catalogue : ${}": 1,
+        "ok·mais casse, accents et ponctuation, eux, sont bien absorbés": 1
+      }
+    },
+    "frontend_src/src/app/services/clipsEmbarques.test.mts": {
+      "script": "test:clips-embarques",
+      "assertions": 4,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} clips déclarés, tous présents": 1,
+        "ok·${} fichier(s) embarqué(s) sans déclaration (plafond : ${}) ⟂ nouveaux : ${} — déclare-les dans TATA_UI_CLIPS ou retire les fichiers ⟂": 1,
+        "ok·aucun fichier déclaré deux fois (${} entrées)": 1,
+        "ok·chaque clip sert au plus un texte": 1
+      }
+    },
+    "frontend_src/src/app/services/voixConnexionLotA.test.mts": {
+      "script": "test:voix-connexion-lot-a",
+      "assertions": 13,
+      "expects": 0,
+      "empreintes": {
+        "ok·${} : atteste=false, lotA=true ⟂ personne ne les a écoutés — `atteste` reste réservé à l\\'oreille humaine": 1,
+        "ok·${} : atteste=true — une oreille l'a validé, ce n'est pas de la synthèse": 1,
+        "ok·${} : l'écran dit ce texte exact": 1,
+        "ok·${} : l'écran dit ce texte ⟂ un mot d\\'écart et direEntreeTexte ne trouve plus la clé — écran muet, sans erreur": 1,
+        "ok·${} : le catalogue dit ce texte ⟂ obtenu : ${}": 1,
+        "ok·${} : loginVoiceScript dit ce texte ⟂ obtenu : ${}": 1,
+        "ok·${} : un setError de l'écran porte ce texte exact ⟂ texte : « ${} »": 1,
+        "ok·${} est déclarée": 1,
+        "ok·${} est servie même prototypes éteints ⟂ un clip du lot A ne doit pas attendre VITE_JULABA_VOICE_PREVIEW": 1,
+        "ok·${} → ${} (voix humaine) ⟂ obtenu : ${}": 1,
+        "ok·${} → ${} ⟂ obtenu : ${}": 1,
+        "ok·/[0-9]/ ⟂ /chiffre|numero|code/ ⟂ le clip d\\'effacement ne nomme ni chiffre, ni numéro, ni code ⟂ texte : « ${} »": 1,
+        "ok·/n.a pas change/ ⟂ le passage aux images rassure sur le code ⟂ c\\'est LA question d\\'une marchande quand son pavé change sous ses yeux": 1
       }
     },
     "backend/test/invariants/annulation-remise-stock.spec.ts": {
