@@ -9,7 +9,13 @@ enregistrée, puis « à partir de l'écran de vente, la voix de James Park, qui
 Cherché partout : aucun `james`, aucun `park`. Ce n'est donc ni un clip, ni un
 identifiant que nous aurions choisi.
 
-C'est **une voix du téléphone**. Quand aucun clip ne correspond, l'application
+> **Précision du 26/09** : ce test a été fait sur **Render, dans un
+> navigateur** — pas sur l'APK. Le chemin audio n'est donc pas celui
+> d'Android : pas de synthèse native, pas de WebView. C'est
+> `speechSynthesis` du navigateur qui a parlé, avec les voix que CE navigateur
+> expose. Sur l'APK, le même écran peut sonner autrement.
+
+C'est **une voix du navigateur**. Quand aucun clip ne correspond, l'application
 demande au système la liste de ses voix (`speechSynthesis.getVoices()`) et en
 retient une, selon cette règle (`services/elevenlabs.ts`) :
 
@@ -31,6 +37,22 @@ avec l'application, et qui ne dépend d'aucun réglage de téléphone.
 synthèse PEUT sonner juste sur ce parcours. C'est la première fois qu'on
 l'entend. Si on sait laquelle c'est, elle devient une référence utile pour
 diriger la voix du lot B.
+
+## Et une contradiction qui vaut d'être notée
+
+Le banc a rendu **MUET** sur le geste 1 (effacer), journal à l'appui. Patrick,
+lui, dit avoir entendu la voix sur les écrans 1 et 2 — sans certitude
+(« je pense »), mais sur le même Render.
+
+**Le silence n'est donc peut-être pas universel.** Deux navigateurs, deux
+appareils, deux résultats : ça oriente vers l'environnement (politique
+d'autoplay, sortie audio, volume de l'onglet) plutôt que vers notre code —
+ce que le fichier et le lecteur, tous deux mesurés bons, laissaient déjà
+penser (VOIX-05).
+
+C'est précisément ce que les nouvelles lignes de journal doivent trancher au
+prochain test : `alerte: 'FIN SANS LECTURE'` ou `issue: 'play-refuse'`
+désignera l'environnement ; leur absence désignera autre chose.
 
 ## Comment savoir exactement laquelle c'est
 
