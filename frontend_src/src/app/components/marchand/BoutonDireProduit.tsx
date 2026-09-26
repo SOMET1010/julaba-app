@@ -27,6 +27,10 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Mic, Loader } from 'lucide-react';
 import { startLiveDictation } from '../../voice-offline/offlineStt';
+
+/** UNE SEULE SOURCE pour ce refus : l'écran l'affiche, la voix le dit, et les
+ *  deux ne peuvent plus diverger. */
+const MICRO_INDISPONIBLE = 'Le micro ne répond pas. Touche « Ajouter un produit ».';
 import { stopAllVoice } from '../../services/audioManager';
 import { produitDit, type EcouteProduit } from '../../services/produitDit';
 
@@ -80,6 +84,20 @@ export function BoutonDireProduit({ sesProduits, onProduit, dire }: Props) {
       arretRef.current = handle.stop;
       minuteurRef.current = setTimeout(() => { void fermer(); }, ECOUTE_MAX_MS);
     } catch {
+      // STK-22 — LE MUR MUET. Cet écran affichait « Le micro ne répond pas »
+      // et se taisait. Sur le parcours qui est LA voie principale d'une
+      // non-lectrice, l'échec du micro était donc annoncé par le seul canal
+      // qu'elle ne peut pas lire. Elle appuie, rien ne se passe, rien ne le
+      // lui dit : elle n'a aucune raison de deviner qu'il faut toucher
+      // l'autre bouton.
+      //
+      // Retour terrain du 26/09, sur Render : « le micro n'entend pas le nom
+      // du produit » et « elle ne parle pas à toutes les étapes ». Voilà une
+      // des étapes muettes.
+      //
+      // Le texte dit MOT POUR MOT ce que l'écran affiche — si les deux
+      // divergeaient, on aurait deux versions d'un même refus.
+      dire?.(MICRO_INDISPONIBLE);
       setIndisponible(true);
       setEcoute(false);
     }
@@ -90,7 +108,7 @@ export function BoutonDireProduit({ sesProduits, onProduit, dire }: Props) {
   if (indisponible) {
     return (
       <p role="status" style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre-4)', margin: 0, textAlign: 'center' }}>
-        Le micro ne répond pas. Touche « Ajouter un produit ».
+        {MICRO_INDISPONIBLE}
       </p>
     );
   }
