@@ -70,8 +70,16 @@ ok(/const direBonjour\s*=/.test(code) && /const bonjour = direBonjour;/.test(cod
 console.log('\n[3] Le silence au montage — une phrase, la bonne, et une seule');
 ok(/useEffect\(\(\) => \{[\s\S]{0,400}?ditAuMontage/.test(code),
    'l\'écran dit quelque chose en arrivant');
-ok(/if \(ditAuMontage \|\| etatCaisse\.type === 'attente'\) return;/.test(code),
+// A1 (terrain 0459dc0) — l'intention de cette garde est INCHANGÉE, sa
+// condition est plus forte. « attente » ne suffisait pas : au montage, la
+// session du jour est déjà connue alors que les transactions n'arrivent pas
+// encore, l'état est donc « partielle » à 0, et la voix annonçait zéro franc
+// pendant que l'écran affichait 3 150 F. La règle pure `caisseDigneDEtreDite`
+// couvre les deux cas — et elle en couvrira d'autres sans qu'on revienne ici.
+ok(/if \(!caisseDigneDEtreDite\(etatCaisse\)\) return;/.test(code),
    'il ATTEND de savoir : tant qu\'on ignore l\'état, on ne raconte rien');
+ok(/if \(ditAuMontage\) return;\s*\n\s*if \(!caisseDigneDEtreDite/.test(code),
+   'et l\'abstention vient AVANT le verrou « déjà dit » — sinon la voix resterait muette');
 ok(/if \(!guidageVocal\(\)\) return;/.test(code),
    'le profil « je lis » reste silencieux — la voix ne s\'impose pas');
 ok(/setDitAuMontage\(true\)/.test(code),

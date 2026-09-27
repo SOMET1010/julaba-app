@@ -32,15 +32,43 @@
  */
 import type { LectureHistorique } from './etatVentesPassees';
 
+/**
+ * A1 — POURQUOI CE CHIFFRE EST INCOMPLET. Terrain, APK 0459dc0.
+ *
+ * `partielle` avait DEUX SENS, et les deux rendaient un objet IDENTIQUE —
+ * mesuré : au montage `{partielle, montant: 0}`, plancher réel
+ * `{partielle, montant: 0}`, indiscernables.
+ *
+ *   · « un plancher RÉEL » : lu avant la panne, ou des ventes dorment encore
+ *     sur le téléphone. Le chiffre est incomplet mais VRAI.
+ *   · « on est en train de lire » : le chiffre ne veut encore rien dire.
+ *
+ * L'ÉCRAN A LE DROIT DE LES AFFICHER PAREIL — il se rafraîchit tout seul au
+ * rendu suivant, et c'est ce qu'il faisait déjà. LA VOIX, NON : ce qu'elle a
+ * dit est dit. Patrick a entendu « zéro franc » pendant que l'écran affichait
+ * 3 150 F, et rejouer l'annonce donnait le bon montant — la source était
+ * bonne, seul l'INSTANT était faux.
+ *
+ * Ne jamais donner deux sens à la même donnée.
+ */
+export type RaisonPartielle =
+  /** La lecture n'est pas finie. Transitoire : ce chiffre va changer. */
+  | 'chargement'
+  /** La lecture a échoué après avoir rapporté quelque chose. Réel. */
+  | 'echec'
+  /** Le serveur a répondu, mais des ventes attendent sur le téléphone. Réel. */
+  | 'ventes-en-file';
+
 /** Ce que l'accueil a le droit d'affirmer sur « Ma caisse aujourd'hui ». */
 export type EtatCaisseAccueil =
   /** On n'a pas encore de réponse. Ni chiffre, ni zéro. */
   | { readonly type: 'attente'; readonly ventesEnFile: number }
   /** On a demandé, on n'a rien obtenu, et rien en mémoire. « — ». */
   | { readonly type: 'illisible'; readonly ventesEnFile: number }
-  /** Un chiffre existe mais il est INCOMPLET : lu avant une panne, ou bien des
-   *  ventes dorment encore sur le téléphone. C'est un PLANCHER, pas un total. */
-  | { readonly type: 'partielle'; readonly montant: number; readonly ventesEnFile: number }
+  /** Un chiffre existe mais il est INCOMPLET : lu avant une panne, des ventes
+   *  qui dorment sur le téléphone, ou la lecture pas encore finie. C'est un
+   *  PLANCHER, pas un total. */
+  | { readonly type: 'partielle'; readonly montant: number; readonly ventesEnFile: number; readonly raison: RaisonPartielle }
   /** Le serveur a répondu et le téléphone n'a rien en retard : le chiffre est
    *  le chiffre. Y compris quand il vaut zéro — ce zéro-là est une réponse. */
   | { readonly type: 'connue'; readonly montant: number; readonly ventesEnFile: number };
@@ -69,22 +97,45 @@ export function etatCaisseAccueil(faits: FaitsCaisseAccueil): EtatCaisseAccueil 
   // cet argent a existé. Mais on ne le présente plus comme le total.
   if (faits.lecture === 'echec') {
     return faits.aDesDonnees
-      ? { type: 'partielle', montant: faits.montant, ventesEnFile }
+      ? { type: 'partielle', montant: faits.montant, ventesEnFile, raison: 'echec' }
       : { type: 'illisible', ventesEnFile };
   }
 
   // AVANT LA PREMIÈRE RÉPONSE. Ne rien savoir n'est pas savoir qu'il n'y a rien.
   if (faits.lecture === 'jamais' || faits.lecture === 'chargement') {
     return faits.aDesDonnees
-      ? { type: 'partielle', montant: faits.montant, ventesEnFile }
+      ? { type: 'partielle', montant: faits.montant, ventesEnFile, raison: 'chargement' }
       : { type: 'attente', ventesEnFile };
   }
 
   // LE SERVEUR A RÉPONDU — mais s'il reste des ventes non envoyées sur ce
   // téléphone, le serveur ne les connaît pas : son total est un plancher.
   return ventesEnFile > 0
-    ? { type: 'partielle', montant: faits.montant, ventesEnFile }
+    ? { type: 'partielle', montant: faits.montant, ventesEnFile, raison: 'ventes-en-file' }
     : { type: 'connue', montant: faits.montant, ventesEnFile };
+}
+
+/**
+ * A1 — CET ÉTAT MÉRITE-T-IL D'ÊTRE DIT À VOIX HAUTE, MAINTENANT ?
+ *
+ * L'ÉCRAN ET LA VOIX N'ONT PAS LES MÊMES DROITS, et c'est tout le lot : un
+ * affichage se corrige au rendu suivant, une phrase dite ne se reprend pas.
+ * Cette fonction ne change RIEN à ce qui s'affiche — elle ne décide que de
+ * la parole.
+ *
+ * LE DISCRIMINANT EST LA LECTURE, JAMAIS LE MONTANT. La correction paresseuse
+ * serait « on ne dit pas zéro ». Ce serait faux : un vrai zéro est une
+ * réponse — elle n'a rien vendu, elle a le droit de l'entendre, et
+ * `connue` le documente déjà (« ce zéro-là est une réponse »).
+ *
+ * `illisible` SE DIT AUSSI, et ce n'est pas un oubli : se taire sur une
+ * lecture ratée laisserait croire que tout va bien. Pour quelqu'un qui ne
+ * lit pas, le silence veut dire « rien de neuf ».
+ */
+export function caisseDigneDEtreDite(etat: EtatCaisseAccueil): boolean {
+  if (etat.type === 'attente') return false;
+  if (etat.type === 'partielle' && etat.raison === 'chargement') return false;
+  return true;
 }
 
 // ── FERMER LA JOURNÉE — ACC-02 ─────────────────────────────────────────────

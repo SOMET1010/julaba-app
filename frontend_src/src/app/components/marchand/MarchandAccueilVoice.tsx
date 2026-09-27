@@ -16,7 +16,7 @@ import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { useMontantsPrives } from '../../hooks/useMontantsPrives';
 import { direAccueilMarchand } from '../../services/accueilMarchandVoix';
-import { etatCaisseAccueil } from '../../services/etatCaisseAccueil';
+import { etatCaisseAccueil, caisseDigneDEtreDite } from '../../services/etatCaisseAccueil';
 import { useLectureHistorique } from '../../hooks/useLectureHistorique';
 import { ventesEnAttenteEnvoi } from '../../voice-offline/incidentsHorsLigne';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
@@ -140,16 +140,31 @@ function MarchandAccueilVoiceInner() {
   // suivi d'un chiffre suivi d'un conseil. Le bonjour reste sous le doigt.
   // On attend d'avoir une réponse : tant que l'état est « attente », on ne
   // sait rien, et ne rien savoir ne se raconte pas.
+  //
+  // A1 — ET ELLE ATTEND D'AVOIR LU, PAS SEULEMENT D'AVOIR UN ÉTAT. Terrain,
+  // APK 0459dc0 : la voix disait « zéro franc » pendant que l'écran affichait
+  // 3 150 F. Ce n'était pas la valeur qui était fausse, c'était l'INSTANT —
+  // au montage, la session du jour est déjà connue mais les transactions ne
+  // sont pas arrivées, `getTodayStats` rend 0, et l'état était `partielle`,
+  // donc pas `attente`, donc on parlait. Et `ditAuMontage`, posé AVANT toute
+  // abstention, interdisait à la voix de jamais se corriger. L'écran, lui, se
+  // corrigeait tout seul : d'où l'écart que Patrick voyait.
+  //
+  // LE VERROU EST POSÉ APRÈS L'ABSTENTION, et l'ordre est la moitié du
+  // correctif : l'inverser rendrait la caisse définitivement muette, et on
+  // aurait remplacé un mensonge par un silence.
   const [ditAuMontage, setDitAuMontage] = useState(false);
   useEffect(() => {
-    if (ditAuMontage || etatCaisse.type === 'attente') return;
+    if (ditAuMontage) return;
+    if (!caisseDigneDEtreDite(etatCaisse)) return;
     if (!guidageVocal()) return;          // profil « je lis » : rien de parlé
     setDitAuMontage(true);
     direCaisse();
     // `direCaisse` relit `etatCaisse` du rendu courant : la dépendance est
-    // le TYPE d'état, pas la fonction, qui change à chaque rendu.
+    // le TYPE d'état — et la RAISON, qui distingue un chargement en cours
+    // d'un plancher réel sans changer le type.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [etatCaisse.type, ditAuMontage]);
+  }, [etatCaisse.type, (etatCaisse as { raison?: string }).raison, ditAuMontage]);
 
   // Grosses tuiles : icônes vectorielles LOCALES (marchent hors-ligne, aucune
   // dépendance réseau) + un seul libellé clair. Avant : illustrations distantes
