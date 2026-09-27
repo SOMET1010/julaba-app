@@ -13,6 +13,7 @@ import { identifiantProduit } from '../commun/identifiant-produit';
 import { nomDeProduitSaisi, uniteDeProduitSaisie } from '../commun/produit-saisi';
 import { exigerJourneeOuverte } from './journee-ouverte';
 import { AlertesService } from '../notifications/alertes.service';
+import { mouvementDeLigne } from '../commun/reconciliation-stock';
 
 // LE LIBELLÉ D'UNE DÉPENSE — DEP-01, 21/09/2026.
 //
@@ -742,23 +743,40 @@ export class CaisseRestController {
                LIMIT 1 FOR UPDATE`,
               [user.id, l.nom],
             );
-        if (!rows[0]) continue; // produit inconnu (vente libre/voix) : aucun effet stock
-        const stockAvant = Number(rows[0].stock) || 0;
-        const demandee = l.qte;
-        const retranchee = Math.min(demandee, Math.max(0, stockAvant));
-        const manquant = demandee - retranchee;
-        await qr.manager.query(
-          `UPDATE produits SET stock = $1, updated_at = NOW() WHERE id = $2`,
-          [stockAvant - retranchee, rows[0].id],
+        /**
+         * ARG-18 — LE SILENCE EST REMPLACÉ PAR UNE LIGNE, PAS PAR UN REFUS.
+         *
+         * Ici se trouvait `if (!rows[0]) continue;`. Le saut était juste — un
+         * article libre n'a aucun stock à bouger — mais il ne laissait AUCUNE
+         * trace. Le cas voisin, lui, en laisse une : un stock insuffisant
+         * écrit son `manquant`. Le registre savait dire « il en manquait 3 »,
+         * pas « ce produit-là, je ne l'ai pas trouvé ». L'argent juste, le
+         * stock qui diverge, et rien qui l'écrive.
+         *
+         * La décision est dans `reconciliation-stock`, où elle se teste sans
+         * base : elle dit quoi écrire, et `stockApres === null` dit qu'il n'y
+         * a RIEN à écrire dans `produits`. La vente n'est jamais refusée,
+         * aucun stock n'est fabriqué, aucun autre produit n'est deviné.
+         */
+        const mvt = mouvementDeLigne(
+          { nom: l.nom, qte: l.qte, id: l.id },
+          rows[0] ? { id: rows[0].id, stock: Number(rows[0].stock) || 0, unite: rows[0].unite ?? null } : null,
         );
+        if (mvt.stockApres !== null) {
+          await qr.manager.query(
+            `UPDATE produits SET stock = $1, updated_at = NOW() WHERE id = $2`,
+            [mvt.stockApres, mvt.produitId],
+          );
+        }
         await qr.manager.query(
           // `unite` est FIGÉE ICI, au moment où le mouvement a lieu. Elle
           // était relue du catalogue à l'affichage : changer l'unité d'un
           // produit réécrivait alors tout son historique.
           `INSERT INTO stock_mouvements
-             (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant, unite)
-           VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [user.id, result.id, rows[0].id, l.nom, stockAvant, demandee, retranchee, manquant, rows[0].unite ?? null],
+             (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant, unite, type)
+           VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [user.id, result.id, mvt.produitId, mvt.produitNom, mvt.stockAvant,
+           mvt.quantiteDemandee, mvt.quantiteRetranchee, mvt.manquant, mvt.unite, mvt.type],
         );
       }
 
