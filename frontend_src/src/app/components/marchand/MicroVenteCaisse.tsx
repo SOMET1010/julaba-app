@@ -48,7 +48,7 @@ import { useObjectif } from '../../contexts/ObjectifContext';
 import { useStock, type StockItem } from '../../contexts/StockContext';
 import { extraire } from '../../voice-offline/extraction';
 import { intentLocal, intentLocalCaisse } from '../../voice-offline/localIntent';
-import { finDEcoute, afficheEcoute, libelleVenteComprise, ECOUTE_MAX_MS } from '../../services/ecouteCaisse';
+import { finDEcoute, afficheEcoute, libelleVenteComprise, parleMaintenant, ECOUTE_MAX_MS } from '../../services/ecouteCaisse';
 import { gesteDuMicro, sortieVisible, type EtatVoix } from '../../services/gesteDuMicro';
 import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
@@ -270,7 +270,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     }, uniteParlee, lectureDictee);
 
   const {
-    state, response, pendingResponse, transcript, liveTranscript, error,
+    state, response, pendingResponse, transcript, liveTranscript, error, volume,
     handleMicClick, reset, confirmAction, cancelAction, isSpeaking, startRecording,
   } = useVoiceCore({
     // VOX-01 — 60 s était la cause directe du paragraphe de six lignes que
@@ -433,25 +433,45 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // L'écran du NUMÉRO avait ce mécanisme depuis toujours (« minuteur
   // d'apaisement »). L'écran de l'ARGENT n'avait rien : c'est ce qui a produit
   // le paragraphe de six lignes.
+  //
+  // MIC-01 — CE QUI PROUVE QU'ELLE PARLE, C'EST LE SON. Cette boucle lisait
+  // `liveTranscript`, que `useVoiceCore` ne remplit JAMAIS pendant l'écoute :
+  // `aParle` valait toujours faux et le micro se fermait à 6 000 s'écoulées
+  // avec la raison « elle n'a rien dit », en pleine phrase. C'est le défaut
+  // terrain de l'APK 0459dc0. Le NIVEAU du micro, lui, est vivant en direct.
   const ouvertureRef = useRef(0);
-  const dernierMotRef = useRef(0);
-  const texteVuRef = useRef('');
+  const dernierSonRef = useRef(0);
+  const aParleRef = useRef(false);
+  // Le niveau change à chaque image : on le lit dans un ref, JAMAIS dans les
+  // dépendances de l'effet — sinon l'intervalle serait détruit et recréé
+  // soixante fois par seconde, et la mesure du silence repartirait à zéro.
+  const niveauRef = useRef(0);
+  niveauRef.current = volume;
   // `isRecording` est déclaré plus bas ; on lit la source, pas son alias.
   const ecouteEnCours = state === 'listening';
   useEffect(() => {
-    if (!ecouteEnCours) { ouvertureRef.current = 0; texteVuRef.current = ''; return; }
+    if (!ecouteEnCours) { ouvertureRef.current = 0; aParleRef.current = false; return; }
     const maintenant = Date.now();
-    if (!ouvertureRef.current) { ouvertureRef.current = maintenant; dernierMotRef.current = maintenant; }
-    const vu = (liveTranscript || '').trim();
-    if (vu !== texteVuRef.current) { texteVuRef.current = vu; dernierMotRef.current = maintenant; }
+    if (!ouvertureRef.current) {
+      ouvertureRef.current = maintenant;
+      dernierSonRef.current = maintenant;
+      aParleRef.current = false;
+    }
 
     const t = setInterval(() => {
       const t0 = ouvertureRef.current;
       if (!t0) return;
+      // Échantillonné toutes les 250 ms : il faut six mesures consécutives
+      // sous le seuil pour atteindre SILENCE_FIN_MS, ce qui laisse passer les
+      // creux entre deux syllabes sans couper au milieu d'un mot.
+      if (parleMaintenant(niveauRef.current)) {
+        aParleRef.current = true;
+        dernierSonRef.current = Date.now();
+      }
       const fin = finDEcoute({
         ecoute: true,
-        aParle: texteVuRef.current.length > 0,
-        msDepuisDernierMot: Date.now() - dernierMotRef.current,
+        aParle: aParleRef.current,
+        msDepuisDernierMot: Date.now() - dernierSonRef.current,
         msDepuisOuverture: Date.now() - t0,
       });
       if (!fin.cesser) return;
@@ -459,7 +479,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       handleMicClick();
     }, 250);
     return () => clearInterval(t);
-  }, [ecouteEnCours, liveTranscript, handleMicClick]);
+  }, [ecouteEnCours, handleMicClick]);
 
   /**
    * CE QUE LE MOTEUR A TIRÉ DE LA PHRASE — une seule lecture, deux usages.
