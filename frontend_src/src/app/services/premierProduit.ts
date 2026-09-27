@@ -142,8 +142,61 @@ function prixDelle(prix: number | null): number | null {
   return typeof prix === 'number' && Number.isFinite(prix) && prix > 0 ? prix : null;
 }
 
+/**
+ * LA MÊME RÈGLE AUX DEUX PORTES — STK-24, 27/09/2026.
+ *
+ * `peutValider('nom', …)` exigeait deux lettres (STK-21) ; `produitPret`, lui,
+ * se contentait d'un nom non vide. Deux portes du MÊME côté, deux règles.
+ *
+ * Mesuré : le chemin n'est PAS atteignable aujourd'hui. La dictée est la seule
+ * source d'un brouillon de départ, `produitDit` ne rend jamais de nom d'une
+ * lettre, et elle ne remplit jamais l'unité — l'écran ne peut donc pas ouvrir
+ * directement à l'étape du prix avec un nom trop court. Ce n'est pas un défaut
+ * observé : c'est une porte qui n'attend qu'un nouveau chemin d'entrée.
+ *
+ * On l'aligne maintenant, pendant qu'elle est encore sans conséquence.
+ */
 export function produitPret(b: BrouillonProduit): boolean {
-  return !!propre(b.nom) && !!propre(b.unite) && prixDelle(b.prix) !== null;
+  return propre(b.nom).length >= NOM_PRODUIT_MINIMUM
+    && !!propre(b.unite) && prixDelle(b.prix) !== null;
+}
+
+/**
+ * POURQUOI ELLE NE PEUT PAS AVANCER — STK-24, 27/09/2026.
+ *
+ * LE DÉFAUT QU'ON FERME. Le grand bouton « C'est bon » était `disabled` tant
+ * que l'étape n'était pas complète. Une marchande qui ne lit pas appuie
+ * dessus : rien ne bouge, rien ne le lui dit. Le bouton grisé est une
+ * information PUREMENT VISUELLE au milieu d'un parcours conçu pour l'oreille.
+ *
+ * Pire, un bouton `disabled` ne reçoit même pas le clic : le code n'avait
+ * aucun endroit où réagir. Le silence n'était pas un oubli d'appel, il était
+ * dans la structure.
+ *
+ * `peutValider` dit SI elle peut avancer. Ceci dit POURQUOI PAS, et c'est une
+ * règle — donc elle vit ici, avec l'autre, et se teste sans écran.
+ *
+ * ELLE REND UNE RAISON, PAS UNE PHRASE NI UNE CLÉ. Premier jet : elle rendait
+ * l'identifiant du catalogue de voix. La garde i18n l'a refusé, et elle avait
+ * raison — un fichier qui porte des identifiants de messages sans appartenir à
+ * la couche i18n est précisément ce qu'elle écarte. Ce module sait ce qui
+ * MANQUE ; comment on le dit ne le regarde pas. L'écran fait la
+ * correspondance, et son `Record` garantit à la compilation qu'aucune raison
+ * ne reste sans phrase.
+ */
+export type RaisonRefus = 'nom-absent' | 'nom-trop-court' | 'unite-absente' | 'prix-absent';
+
+/** `null` quand elle peut avancer : il n'y a alors rien à dire. */
+export function raisonDuRefus(etape: EtapeAjout, b: BrouillonProduit): RaisonRefus | null {
+  if (peutValider(etape, b)) return null;
+  if (etape === 'nom') {
+    // Deux refus distincts. « Rien tapé » et « une seule lettre » ne se
+    // corrigent pas du même geste : l'une doit parler, l'autre doit CONTINUER.
+    // Les confondre enverrait recommencer quelqu'un qui avait presque fini.
+    return propre(b.nom) ? 'nom-trop-court' : 'nom-absent';
+  }
+  if (etape === 'unite') return 'unite-absente';
+  return 'prix-absent';
 }
 
 /**

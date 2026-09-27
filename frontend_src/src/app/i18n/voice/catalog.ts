@@ -697,6 +697,21 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'STOCK_047', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Qu\'est-ce que tu vends ?', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Première question du parcours guidé — étape « nom ».' },
   { id: 'STOCK_048', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: '{nom}, tu le vends comment ?', frMarche: null, variables: ['nom'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Étape « unite ». Le nom est repris pour qu\'elle sache de quoi on parle.' },
   { id: 'STOCK_049', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Le {unite}, à combien ?', frMarche: null, variables: ['unite'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Étape « prix ». Sur l\'argent : l\'unité est redite, sans quoi « à combien » est ambigu entre le tas et le kilo.' },
+
+  // ── POURQUOI ELLE NE PEUT PAS AVANCER — STK-24, 27/09/2026 ──────────────
+  //
+  // Le grand bouton « C'est bon » était `disabled` tant que l'étape n'était
+  // pas complète : elle appuie, rien ne bouge, rien ne le lui dit. Un bouton
+  // grisé est une information PUREMENT VISUELLE dans un parcours fait pour
+  // l'oreille — et « Aucune information importante uniquement en texte » vaut
+  // aussi pour la couleur d'un bouton.
+  //
+  // Chaque refus dit CE QUI MANQUE et LE GESTE. Un refus qui ne nomme que le
+  // défaut laisse deviner la suite — c'est ce qui avait fait écarter AUTH_12.
+  { id: 'STOCK_050', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Je n\'ai pas son nom. Dis-le, ou tape-le.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'services/premierProduit.ts', note: 'STK-24 — elle a appuyé sans rien mettre, à l\'étape du nom.' },
+  { id: 'STOCK_051', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'C\'est trop court pour un nom. Mets au moins deux lettres.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'services/premierProduit.ts', note: 'STK-24 — le cas « t » de STK-21. Elle a presque fini : on lui dit de CONTINUER, pas de recommencer.' },
+  { id: 'STOCK_052', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Choisis d\'abord comment tu le vends.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'services/premierProduit.ts', note: 'STK-24 — aucune unité touchée. On ne nomme pas d\'unité ici : celles affichées dépendent de son étal.' },
+  { id: 'STOCK_053', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Il manque le prix. Tape-le.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'services/premierProduit.ts', note: 'STK-24 — prix nul ou absent. Un zéro entrerait en caisse et fausserait chaque vente (STK-01d).' },
 ];
 
 // ── STT_INPUT — ce que la marchande peut dire ───────────────────────────────
