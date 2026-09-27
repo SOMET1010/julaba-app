@@ -21,7 +21,26 @@ lève d'exception, et personne ne les signale jamais.
 **Une marchande sur deux, dans ce pilote, ne sait pas lire.** Quand tu hésites
 entre « c'est écrit » et « c'est dit », c'est toujours le dit qui compte.
 
-## Étape 0 — la version, avant tout le reste
+## Étape 0 — LE SHA DE L'APK, avant tout le reste
+
+**Toute anomalie que tu rapportes doit porter ce numéro.** Sans lui, on ne
+saura pas si un défaut a déjà été corrigé, ou si une correction a marché : on
+comparerait des résultats de recette à des versions différentes sans le savoir.
+
+**Sur l'APK** : l'écran de connexion l'affiche en bas —
+
+```
+v5.0.0 · <hash>
+```
+
+Touche cette ligne : elle se **dit aussi à voix haute**. Note le hash, et
+mets-le en tête de ton compte rendu.
+
+**La branche est GELÉE pendant toute la recette.** Rien n'est poussé, rien
+n'est corrigé. Si un défaut apparaît, on note et on continue : une correction
+à chaud invaliderait tout ce qui a été testé avant elle.
+
+## Étape 0 bis — la version sur le web (si tu testes sur Render)
 
 Ouvre `https://julaba-web.onrender.com/sw.js` et cherche :
 
@@ -274,6 +293,8 @@ Un tableau, une ligne par point (A1 à F3) :
 | Point | Entendu / Vu | Conforme ? | Ce que tu as noté |
 |---|---|---|---|
 
+**En tête du compte rendu : le hash relevé à l'étape 0.**
+
 Et **trois choses en plus, qui valent autant que le tableau** :
 
 1. **Tout montant que tu as entendu épelé**, avec le moment exact.
@@ -288,3 +309,7 @@ Et **trois choses en plus, qui valent autant que le tableau** :
 - De juger si c'est grave — dis ce que tu as vu et entendu, on tranche ensuite.
 - De deviner : si tu n'es pas sûr d'avoir entendu, **dis que tu n'es pas sûr**.
   Un doute signalé coûte une minute ; un doute gardé coûte un passage terrain.
+- D'INTERPRÉTER en développeur. Écris ce qu'une marchande ferait et verrait :
+  le geste exact, ce que tu attendais, ce qui s'est passé. Pas la cause
+  probable — ça, c'est notre travail, et une cause supposée oriente la
+  correction avant qu'on ait mesuré.
