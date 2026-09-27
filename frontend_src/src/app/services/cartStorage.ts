@@ -12,15 +12,54 @@
  *  - Un panier VIDE n'est jamais restauré ni conservé.
  */
 
+/**
+ * CE QUI SURVIT À UNE FERMETURE D'APPLICATION — PAN-01, 27/09/2026.
+ *
+ * `CartItem` porte huit champs ; cette forme n'en écrivait que QUATRE. Les
+ * quatre autres n'étaient ni perdus à la lecture ni corrompus : jamais écrits.
+ * Mesuré sur un aller-retour réel :
+ *
+ *   · `prix_achat` → 0, DONC LA MARGE DEVENAIT LE PRIX DE VENTE ENTIER. Un
+ *     sac de riz acheté 15 000 et revendu 20 000 affichait 20 000 F de
+ *     bénéfice au lieu de 5 000. Le champ avait été ajouté au modèle VIVANT
+ *     (`CartItem.prix_achat`, dont le commentaire annonçait déjà ce défaut),
+ *     pas à la persistance.
+ *   · `unite` → « 1 sac de Riz » redevenait « 1 × Riz ». Le défaut du 19/09,
+ *     rouvert par un simple redémarrage.
+ *   · `totalExact` → le total repartait à `prix × quantité` ; en FCFA un
+ *     montant négocié ne retombe pas juste (« 6 régimes pour 5 000 » → 4 998).
+ *   · `origine` → la vente dictée sortait de « Par la voix ».
+ *
+ * LES QUATRE AJOUTS SONT OPTIONNELS, et c'est voulu : un panier écrit avant
+ * ce lot ne les a pas, et on ne les invente pas. Fabriquer une unité qu'elle
+ * n'a jamais dite serait pire que de ne rien savoir.
+ */
 export interface PersistedCartItem {
   productId: string;
   nom: string;
   prix: number;
   quantite: number;
+  /** Prix d'achat UNITAIRE. Sans lui la marge vaut le prix de vente entier. */
+  prix_achat?: number;
+  /** Montant TOTAL convenu pour la ligne. JAMAIS recalculé — voir `sanitizeItems`. */
+  totalExact?: number;
+  /** L'unité au moment de la vente : « tas », « kg », « sac »… */
+  unite?: string;
+  /** D'où vient la ligne. Seule `'vocal'` est significative aujourd'hui. */
+  origine?: 'vocal';
 }
 
+/**
+ * VERSION 2 — quatre champs ajoutés, aucun retiré.
+ *
+ * La lecture accepte encore `v: 1` et le convertit sans rien jeter : un panier
+ * déjà sur un téléphone ne doit pas disparaître au déploiement. Une marchande
+ * en plein marché ne comprendrait pas où sont passés ses articles.
+ */
+export type CartVersion = 1 | 2;
+
 export interface CartEnvelope {
-  v: 1;
+  v: CartVersion;
   items: PersistedCartItem[];
   updatedAt: string; // ISO 8601
 }
@@ -70,35 +109,73 @@ export function isValidItem(x: unknown): x is PersistedCartItem {
   );
 }
 
-/** Ne conserve que les lignes valides, réduites au strict nécessaire. */
+/**
+ * Ne conserve que les lignes valides, réduites au strict nécessaire.
+ *
+ * PAN-01 — LES QUATRE CHAMPS OPTIONNELS NE SONT ÉCRITS QUE S'ILS EXISTENT.
+ * Un champ absent reste absent : c'est ce qui permet à un panier v1 de
+ * traverser sans qu'on lui invente une unité ou un prix d'achat.
+ *
+ * `totalExact` N'EST JAMAIS RECALCULÉ ICI. Il est recopié tel quel, ou pas du
+ * tout. Le dériver de `prix × quantité` reviendrait à fabriquer le montant que
+ * ce champ existe précisément pour préserver — celui qu'elle a négocié.
+ */
 export function sanitizeItems(raw: unknown): PersistedCartItem[] {
   if (!Array.isArray(raw)) return [];
   const out: PersistedCartItem[] = [];
   for (const it of raw) {
-    if (isValidItem(it)) {
-      out.push({ productId: it.productId, nom: it.nom, prix: it.prix, quantite: it.quantite });
-    }
+    if (!isValidItem(it)) continue;
+    const ligne: PersistedCartItem = {
+      productId: it.productId, nom: it.nom, prix: it.prix, quantite: it.quantite,
+    };
+    const brut = it as unknown as Record<string, unknown>;
+    if (isFiniteNumber(brut.prix_achat) && brut.prix_achat >= 0) ligne.prix_achat = brut.prix_achat;
+    if (isFiniteNumber(brut.totalExact) && brut.totalExact >= 0) ligne.totalExact = brut.totalExact;
+    if (typeof brut.unite === 'string' && brut.unite.trim() !== '') ligne.unite = brut.unite;
+    if (brut.origine === 'vocal') ligne.origine = 'vocal';
+    out.push(ligne);
   }
   return out;
 }
 
 /** Sérialise un panier dans une enveloppe versionnée. */
 export function serializeCart(items: PersistedCartItem[], nowIso: string): string {
-  const env: CartEnvelope = { v: 1, items: sanitizeItems(items), updatedAt: nowIso };
+  const env: CartEnvelope = { v: 2, items: sanitizeItems(items), updatedAt: nowIso };
   return JSON.stringify(env);
 }
 
-/** Parse défensif : null si vide, corrompu, ou de forme/version inconnue. */
+/**
+ * Parse défensif : null si vide, corrompu, ou de forme/version inconnue.
+ *
+ * PAN-01 — LA MIGRATION v1 → v2 SE FAIT ICI, ET ELLE NE JETTE RIEN.
+ *
+ * Cette fonction refusait tout ce qui n'était pas `v: 1`. Le jour où l'on
+ * écrit du `v: 2`, elle aurait rendu `null` : le panier d'une marchande
+ * disparaissait en silence au premier déploiement — précisément le défaut
+ * qu'on cherche à éviter en versionnant.
+ *
+ * La conversion est DÉTERMINISTE et sans perte : un panier v1 n'a que ses
+ * quatre champs, `sanitizeItems` n'en invente aucun autre, et il ressort
+ * intact. On ne fabrique ni unité, ni prix d'achat, ni total : ne rien savoir
+ * est plus honnête qu'inventer.
+ *
+ * Une version INCONNUE (3, 0, absente) reste refusée : mieux vaut repartir
+ * d'un panier vide que de deviner la forme d'une donnée d'argent.
+ */
+const VERSIONS_LUES: ReadonlySet<unknown> = new Set<unknown>([1, 2]);
+
 export function parseCart(raw: string | null): CartEnvelope | null {
   if (!raw) return null;
   let data: unknown;
   try { data = JSON.parse(raw); } catch { return null; }
   if (!data || typeof data !== 'object') return null;
   const d = data as Record<string, unknown>;
-  if (d.v !== 1) return null;
+  if (!VERSIONS_LUES.has(d.v)) return null;
   const items = sanitizeItems(d.items);
   const updatedAt = typeof d.updatedAt === 'string' ? d.updatedAt : '';
-  return { v: 1, items, updatedAt };
+  // La version RENDUE est celle d'aujourd'hui : ce qui sort d'ici est déjà
+  // migré, et l'appelant n'a pas à connaître la forme d'origine.
+  return { v: 2, items, updatedAt };
 }
 
 /** Âge du panier vs le seuil (R5). Une date invalide est traitée comme « ancien ». */
