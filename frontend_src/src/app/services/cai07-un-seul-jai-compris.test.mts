@@ -67,7 +67,8 @@ const compris = libelleVenteComprise(action);
 
 console.log('[1] Elle dicte « deux gombos » — le moteur comprend, sans prix');
 ok(action?.type === 'vendre', 'la phrase produit bien une intention de vente');
-ok(compris === '2 gombo', `la vente comprise se met en mots : ${JSON.stringify(compris)}`);
+// VOIX-07 : le nom s'accorde désormais comme la voix le dit (« 2 gombos »).
+ok(compris === '2 gombos', `la vente comprise se met en mots : ${JSON.stringify(compris)}`);
 
 console.log('\n[2] Instant A — micro seul : le bandeau a le droit d\'exister');
 {
