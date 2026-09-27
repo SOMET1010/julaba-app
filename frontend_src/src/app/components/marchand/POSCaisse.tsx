@@ -503,7 +503,11 @@ function POSCaisseInner() {
     empreinte: {
       total,
       recu,
-      lignes: empreintePanier(cart.map(i => ({ productId: i.productId, quantite: i.quantite, total: i.totalExact ?? i.prix * i.quantite }))),
+      // P0.1 — l'empreinte protège « ces lignes EXACTES n'ont pas changé », donc
+      // elle prend l'identité de LIGNE. Avec un identifiant catalogue nullable,
+      // deux articles libres différents auraient la même signature et un panier
+      // modifié passerait pour celui qu'elle a relu.
+      lignes: empreintePanier(cart.map(i => ({ ligneId: i.productId, quantite: i.quantite, total: i.totalExact ?? i.prix * i.quantite }))),
     },
   };
   // UN REF, PAS UN useState, et c'est une décision de sécurité : la
