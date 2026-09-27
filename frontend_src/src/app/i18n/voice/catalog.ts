@@ -712,6 +712,20 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'STOCK_051', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'C\'est trop court pour un nom. Mets au moins deux lettres.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'services/premierProduit.ts', note: 'STK-24 — le cas « t » de STK-21. Elle a presque fini : on lui dit de CONTINUER, pas de recommencer.' },
   { id: 'STOCK_052', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Choisis d\'abord comment tu le vends.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'services/premierProduit.ts', note: 'STK-24 — aucune unité touchée. On ne nomme pas d\'unité ici : celles affichées dépendent de son étal.' },
   { id: 'STOCK_053', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Il manque le prix. Tape-le.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'services/premierProduit.ts', note: 'STK-24 — prix nul ou absent. Un zéro entrerait en caisse et fausserait chaque vente (STK-01d).' },
+
+  // ── L'OBJECTIF DU JOUR SE DIT EN MOTS, PAS EN CHIFFRES — VOIX-09 ─────────
+  //
+  // `ObjectifContext` composait sa phrase à la main avec `toLocaleString`,
+  // qui glisse une espace fine insécable (U+202F) dans « 2 000 ». La synthèse
+  // reçoit un nombre coupé et l'épelle : « 2 zéro zéro zéro ». C'est le
+  // défaut #4 du retour terrain du 23/09 ; c'en était le dernier site.
+  //
+  // Passer par le catalogue, c'est passer par la forme PARLÉE — la seule qui
+  // dise « deux mille francs ». Le ton de la phrase est inchangé : c'est un
+  // choix de Patrick, pas un détail technique.
+  { id: 'OBJECTIF_FIXE', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Super ! Ton objectif du jour est fixé à {montant} {devise}. Bonne chance ma chère !', frMarche: null, variables: ['montant'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'contexts/ObjectifContext.tsx', note: 'VOIX-09 — dernier site où un montant partait brut à la voix (toLocaleString → U+202F → « 2 zéro zéro zéro »).' },
+  { id: 'OBJECTIF_80', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Bravo ! Tu es à 80% de ton objectif. Plus que {montant} {devise}, allez courage !', frMarche: null, variables: ['montant'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'contexts/ObjectifContext.tsx', note: 'VOIX-09 — le reste à faire partait brut à la voix.' },
+  { id: 'DEPENSE_DU_JOUR', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: "Aujourd'hui tu as dépensé {montant} {devise}.", frMarche: null, variables: ['montant'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/MarchandDepenses.tsx', note: 'VOIX-09 — deux sites disaient la même phrase, chacun avec son toLocaleString.' },
 ];
 
 // ── STT_INPUT — ce que la marchande peut dire ───────────────────────────────
