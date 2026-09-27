@@ -8,17 +8,17 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **408** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 428 |
-| — littéraux (phrase fixe en dur) | 193 |
-| — gabarits (`${…}`, phrase dynamique à variables) | 88 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **407** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 425 |
+| — littéraux (phrase fixe en dur) | 192 |
+| — gabarits (`${…}`, phrase dynamique à variables) | 84 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 75 |
-| — relais (`dire = (t) => speak(t)`) | 18 |
+| — relais (`dire = (t) => speak(t)`) | 20 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 54 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **240** |
-| Dont dynamiques (avec variables) | 88 |
-| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **59** |
-| Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **470** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **237** |
+| Dont dynamiques (avec variables) | 84 |
+| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **55** |
+| Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **468** |
 | Fichiers avec au moins un site d'appel | 78 |
 | Attributs `aria-label` (lecteur d'écran uniquement) | 306 — **hors parcours vocal**, voir §8 |
 
@@ -62,11 +62,10 @@
 | `components/auth/ActivationScreen.tsx` | auth | 4 | 2 | 0 | 1 | 1 | 0 | 0 |
 | `components/shared/ReceptionPaiementModal.tsx` | partage | 4 | 2 | 1 | 1 | 0 | 0 | 0 |
 | `components/shared/UniversalParametres.tsx` | marchand_autre | 4 | 3 | 0 | 0 | 0 | 2 | 0 |
-| `contexts/ObjectifContext.tsx` | marchand_autre | 4 | 2 | 2 | 0 | 0 | 0 | 2 |
+| `contexts/ObjectifContext.tsx` | marchand_autre | 4 | 2 | 0 | 0 | 2 | 0 | 0 |
 | `components/cooperative/Stock.tsx` | stock | 3 | 2 | 1 | 0 | 0 | 0 | 0 |
 | `components/cooperative/TresorerieCooperative.tsx` | cooperative | 3 | 2 | 1 | 0 | 0 | 0 | 2 |
 | `components/marchand/Fidelite.tsx` | marchand_autre | 3 | 1 | 2 | 0 | 0 | 0 | 2 |
-| `components/marchand/MarchandDepenses.tsx` | depense | 3 | 3 | 2 | 0 | 0 | 0 | 2 |
 | `components/producteur/RecolteForm.tsx` | producteur | 3 | 2 | 1 | 0 | 0 | 0 | 0 |
 | `components/shared/DocumentsCertificationsModalUniversal.tsx` | partage | 3 | 3 | 0 | 0 | 0 | 0 | 0 |
 | `services/vendreVocalUnifie.ts` | vente | 3 | 0 | 0 | 2 | 0 | 1 | 0 |
@@ -74,6 +73,7 @@
 | `components/backoffice/BOLayout.tsx` | backoffice | 2 | 1 | 1 | 0 | 0 | 0 | 0 |
 | `components/backoffice/BOProfil.tsx` | backoffice | 2 | 1 | 0 | 0 | 1 | 0 | 0 |
 | `components/marchand/BoutonDireProduit.tsx` | autre | 2 | 1 | 0 | 1 | 0 | 0 | 0 |
+| `components/marchand/MarchandDepenses.tsx` | depense | 2 | 2 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/ResumeCaisse.tsx` | caisse | 2 | 0 | 0 | 0 | 0 | 2 | 0 |
 | `components/marchand/TontineDetail.tsx` | marchand_autre | 2 | 3 | 0 | 0 | 0 | 0 | 0 |
 | `components/producteur/ProducteurAlertes.tsx` | producteur | 2 | 1 | 0 | 1 | 0 | 0 | 0 |
@@ -110,7 +110,7 @@
 | Domaine | Appels | Phrases (littéraux + gabarits) | Critiques argent |
 |---|---:|---:|---:|
 | producteur | 71 | 71 | 6 |
-| marchand_autre | 55 | 41 | 17 |
+| marchand_autre | 55 | 39 | 15 |
 | stock | 40 | 38 | 3 |
 | partage | 37 | 24 | 0 |
 | caisse | 35 | 0 | 0 |
@@ -120,7 +120,7 @@
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 18 | 9 | 1 |
 | autre | 13 | 1 | 0 |
-| depense | 10 | 11 | 4 |
+| depense | 9 | 8 | 2 |
 | credit | 8 | 7 | 4 |
 | backoffice | 5 | 4 | 0 |
 | pages | 5 | 1 | 0 |
@@ -398,11 +398,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 214 | `speak` | template | Aujourd'hui tu as dépensé {kpiToday} francs. | `kpiToday` | € |
-| 214 | `speak` | literal | Tu n'as pas encore de dépense aujourd'hui. |  |  |
-| 220 | `speak` | literal | Tes montants sont cachés. |  |  |
-| 221 | `speak` | template | Aujourd'hui tu as dépensé {kpiToday} francs. | `kpiToday` | € |
-| 221 | `speak` | literal | Tu n'as pas encore de dépense aujourd'hui. |  |  |
+| 222 | `speak` | literal | Tu n'as pas encore de dépense aujourd'hui. |  |  |
+| 233 | `speak` | literal | Tes montants sont cachés. |  |  |
 
 ### `components/marchand/MarchandModals.tsx` — marchand_autre
 
@@ -900,10 +897,10 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 73 | `speakAuto` | literal | Félicitations ! Tu as atteint 50% de ton objectif. Continue ma chère, tu es sur la bonne voie ! |  |  |
-| 77 | `speakAuto` | template | Bravo ! Tu es à 80% de ton objectif. Plus que {FR} FCFA, allez courage ! | `FR` | € |
-| 81 | `speakAuto` | literal | Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère ! |  |  |
-| 97 | `speak` | template | Super ! Ton objectif du jour est fixé à {montant} FCFA. Bonne chance ma chère ! | `montant` | € |
+| 21 | `speak` | relais | texte |  |  |
+| 23 | `speakAuto` | relais | texte |  |  |
+| 92 | `speakAuto` | literal | Félicitations ! Tu as atteint 50% de ton objectif. Continue ma chère, tu es sur la bonne voie ! |  |  |
+| 102 | `speakAuto` | literal | Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère ! |  |  |
 
 ### `hooks/useVoiceCore.ts` — moteur_vocal
 
@@ -1496,14 +1493,12 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 | 97 | literal | J'ai remarqué que tu préfères le clavier. Veux-tu que Julaba s'adapte ? |  |
 | 100 | literal | J'ai remarqué que tu préfères me parler. Veux-tu que Julaba s'adapte ? |  |
 
-### `contexts/ObjectifContext.tsx` — annonces automatiques d'objectif (audioManager.speakAuto) (4)
+### `contexts/ObjectifContext.tsx` — annonces automatiques d'objectif (audioManager.speakAuto) (2)
 
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
-| 73 | literal | Félicitations ! Tu as atteint 50% de ton objectif. Continue ma chère, tu es sur la bonne voie ! |  |
-| 77 | template | Bravo ! Tu es à 80% de ton objectif. Plus que {FR} FCFA, allez courage ! | `FR` |
-| 81 | literal | Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère ! |  |
-| 97 | template | Super ! Ton objectif du jour est fixé à {montant} FCFA. Bonne chance ma chère ! | `montant` |
+| 92 | literal | Félicitations ! Tu as atteint 50% de ton objectif. Continue ma chère, tu es sur la bonne voie ! |  |
+| 102 | literal | Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère ! |  |
 
 ### `contexts/AppContext.tsx` — annonces du contexte applicatif (fond du jour…) (1)
 

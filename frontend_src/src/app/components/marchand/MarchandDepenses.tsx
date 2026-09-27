@@ -35,6 +35,7 @@ type Period = 'today' | 'month' | 'all';
 // Il ne reste de l'ancienne table que ses COULEURS et ses ICÔNES — de la
 // décoration, qui n'a jamais eu d'incidence sur l'argent.
 import { CATEGORIES_DEPENSE, categorieDeLaDepense, type IdCategorieDepense } from '../../services/categorieDepense';
+import { useSpeakMessage } from '../../i18n/voice/speakMessage';
 
 interface ApparenceCategorie { color: string; bg: string; border: string; icon: React.ReactNode }
 
@@ -207,20 +208,30 @@ export function MarchandDepenses() {
 
   // Écran « Mes dépenses » : on annonce à voix haute les dépenses du jour dès que
   // les données arrivent (une seule fois) -> une non-lectrice sait sans lire.
+  /**
+   * VOIX-09 — UNE SEULE composition, et elle passe par le catalogue.
+   *
+   * La même phrase était écrite DEUX FOIS, chacune avec son `toLocaleString`.
+   * Celui-ci glisse une espace fine insécable dans « 2 000 » : la synthèse
+   * reçoit un nombre coupé et l'épelle — « 2 zéro zéro zéro ». Deux copies,
+   * c'était aussi deux occasions de diverger.
+   */
+  const direDepense = useSpeakMessage();
+  const direDepenseDuJour = () => {
+    if (kpiToday > 0) direDepense('DEPENSE_DU_JOUR', { montant: kpiToday });
+    else speak("Tu n'as pas encore de dépense aujourd'hui.");
+  };
+
   const dejaAnnonce = useRef(false);
   useEffect(() => {
     if (dejaAnnonce.current || allDepenses.length === 0 || montantsMasques) return;
     dejaAnnonce.current = true;
-    speak(kpiToday > 0
-      ? `Aujourd'hui tu as dépensé ${kpiToday.toLocaleString('fr-FR')} francs.`
-      : "Tu n'as pas encore de dépense aujourd'hui.");
+    direDepenseDuJour();
   }, [allDepenses, kpiToday, speak, montantsMasques]);
 
   const direTotal = () => {
     if (montantsMasques) { speak('Tes montants sont cachés.'); return; }
-    speak(kpiToday > 0
-      ? `Aujourd'hui tu as dépensé ${kpiToday.toLocaleString('fr-FR')} francs.`
-      : "Tu n'as pas encore de dépense aujourd'hui.");
+    direDepenseDuJour();
   };
 
   // Filtrage par période
