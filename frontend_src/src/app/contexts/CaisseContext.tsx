@@ -111,7 +111,7 @@ function doitEnfiler(error: unknown): boolean {
 export type { StatutEnregistrement, ResultatEnregistrement } from '../types/statutEnregistrement';
 import type { ResultatEnregistrement } from '../types/statutEnregistrement';
 import type { IdCategorieDepense } from '../services/categorieDepense';
-import { nouvelleLigneId } from '../services/panierLignes';
+import { ajouterAuPanier, retirerLigne, changerQuantite, changerPrix, type LignePanier } from '../services/panierLignes';
 
 export interface CaisseTransaction {
   id: string;
@@ -689,75 +689,91 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // mieux vaut retomber sur prix*quantite (comportement déjà existant avant
   // ce correctif) que de garder un total exact devenu faux pour la nouvelle
   // quantité.
+  /**
+   * P0.1 — LE SEUL ÉCART ENTRE `LignePanier` ET `CartItem` : `productId`.
+   *
+   * Ce champ est déprécié et vaut l'identité de LIGNE ; il ne survit que le
+   * temps que les derniers lecteurs historiques disparaissent. Cet adaptateur
+   * est l'unique endroit qui le pose, pour qu'il n'y ait rien à chercher le
+   * jour où on le retire.
+   */
+  /**
+   * L'ADAPTATEUR INVERSE, ET IL N'EST PAS DÉCORATIF.
+   *
+   * `CartItem.productId` (déprécié) vaut l'identité de LIGNE, tandis que
+   * `LignePanier.productId` est l'identifiant CATALOGUE. Passer un `CartItem`
+   * directement au module compile — les deux sont des `string` — et casse la
+   * fusion en silence : elle comparerait l'identifiant du produit à une
+   * identité de ligne, et ne trouverait jamais rien. Mesuré : la garde
+   * `fusion-panier` est rouge sans cette conversion.
+   *
+   * C'est précisément le genre d'erreur que ce lot existe pour rendre
+   * impossible — et que seul le nom pouvait trahir, pas le type.
+   */
+  const versLignePanier = (i: CartItem): LignePanier => ({
+    ligneId: i.ligneId,
+    productId: i.productIdCatalogue,
+    nom: i.nom, prix: i.prix, quantite: i.quantite,
+    ...(i.prix_achat !== undefined ? { prix_achat: i.prix_achat } : {}),
+    ...(i.totalExact !== undefined ? { totalExact: i.totalExact } : {}),
+    ...(i.unite !== undefined ? { unite: i.unite } : {}),
+    ...(i.origine !== undefined ? { origine: i.origine } : {}),
+  });
+
+  const versCartItem = (l: LignePanier): CartItem => ({
+    ligneId: l.ligneId,
+    // Le module nomme ce champ `productId` (identifiant catalogue, nullable) ;
+    // le contexte le nomme `productIdCatalogue` pour lever toute ambiguïté
+    // avec le champ déprécié ci-dessous. Même donnée, nom plus explicite.
+    productIdCatalogue: l.productId,
+    productId: l.ligneId,
+    nom: l.nom, prix: l.prix, quantite: l.quantite,
+    ...(l.prix_achat !== undefined ? { prix_achat: l.prix_achat } : {}),
+    ...(l.totalExact !== undefined ? { totalExact: l.totalExact } : {}),
+    ...(l.unite !== undefined ? { unite: l.unite } : {}),
+    ...(l.origine !== undefined ? { origine: l.origine } : {}),
+  });
+
   const addToCart = (product: CaisseProduct, quantite: number = 1, totalExact?: number, origine?: 'vocal') => {
-    // P0.1 — LA FUSION EST CONDITIONNELLE À UN PRODUIT CATALOGUE RÉEL.
-    // Sans le `product.id ?`, un article libre (`productIdCatalogue: null`)
-    // fusionnerait avec TOUS les autres articles libres — `null === null` —
-    // et « Autre article à 500 » puis « à 800 » n'en feraient qu'un.
-    const existing = product.id
-      ? cart.find(item => item.productIdCatalogue === product.id)
-      : undefined;
-    const next = existing
-      ? cart.map(item =>
-          item.ligneId === existing.ligneId
-            // `origine` se CUMULE en fusion (une ligne dictée puis complétée au
-            // doigt reste une ligne où la voix a servi), là où `totalExact` est
-            // invalidé — le total dicté, lui, ne vaut plus pour la nouvelle
-            // quantité.
-            // LA FUSION NE DOIT PAS PERDRE D'ARGENT — corrigé le 18/09/2026.
-            // Avant : la quantité s'additionnait, mais le PRIX de la première
-            // ligne était conservé et `totalExact` jeté. « 1 tomate à 500 »
-            // puis « 1 tomate à 700 » donnait 2 × 500 = 1 000 F au lieu de
-            // 1 200 F. Elle perdait 200 F, sur son propre panier, sans rien
-            // voir.
-            // Désormais on ADDITIONNE les deux totaux réels. Le total de
-            // chaque côté est son `totalExact` s'il en a un (montant négocié
-            // ou dicté), sinon prix × quantité. La règle vaut aussi pour le
-            // tactile, où elle ne change rien : prix × q1 + prix × q2 est
-            // exactement prix × (q1+q2).
-            ? {
-                ...item,
-                quantite: item.quantite + quantite,
-                totalExact:
-                  (item.totalExact ?? item.prix * item.quantite) +
-                  (totalExact ?? prixEffectif(product) * quantite),
-                ...(origine ? { origine } : {}),
-              }
-            : item)
-      // Prix effectif : applique automatiquement le prix promo s'il est actif.
-      : [...cart, {
-          ligneId: nouvelleLigneId(),
-          // Un `libre-*` n'est PAS un identifiant catalogue : il n'en reste
-          // aucune trace ici, c'est l'identité de ligne qui le remplace.
-          productIdCatalogue: product.id && !String(product.id).startsWith('libre-') ? String(product.id) : null,
-          productId: String(product.id), nom: product.nom, prix: prixEffectif(product), quantite,
-          prix_achat: Number(product.prix_achat) || 0,
-          // FIGÉE À LA CRÉATION DE LA LIGNE, comme le prix d'achat : c'est
-          // l'unité telle qu'elle était au moment de la vente.
-          ...(product.unite ? { unite: String(product.unite) } : {}),
-          ...(totalExact != null && totalExact > 0 ? { totalExact } : {}),
-          ...(origine ? { origine } : {}),
-        }];
+    /**
+     * P0.1 — LA RÈGLE VIT DANS `panierLignes`, PAS ICI.
+     *
+     * Ce contexte la réimplémentait : fusion, retrait, changement de quantité
+     * et de prix y étaient écrits une seconde fois, à côté du module pur créé
+     * pour les porter. Deux implémentations de la même règle finissent
+     * toujours par diverger — et celle du module était la seule tenue par les
+     * gardes, l'autre tournait en production sans filet.
+     *
+     * Ce qui reste ici est ce qui appartient VRAIMENT au contexte : le prix
+     * promo du catalogue (`prixEffectif`), l'état React, et la persistance.
+     */
+    const next = ajouterAuPanier(
+      cart.map(versLignePanier),
+      {
+        id: product.id && !String(product.id).startsWith('libre-') ? String(product.id) : null,
+        nom: product.nom,
+        prix: prixEffectif(product),
+        prix_achat: Number(product.prix_achat) || 0,
+        ...(product.unite ? { unite: String(product.unite) } : {}),
+      },
+      quantite,
+      totalExact != null && totalExact > 0 ? totalExact : undefined,
+      origine,
+    ).map(versCartItem);
     setCart(next);
     persistCart(next);
   };
 
-  // P0.1 — on cible la LIGNE, jamais le produit : deux articles libres de même
-  // nom et même prix sont deux lignes, et n'en retirer qu'une doit marcher.
   const removeFromCart = (ligneId: string) => {
-    const next = cart.filter(item => item.ligneId !== ligneId);
+    const next = retirerLigne(cart.map(versLignePanier), ligneId).map(versCartItem);
     setCart(next);
     persistCart(next);
   };
 
   const updateCartItemQuantity = (ligneId: string, quantite: number) => {
-    if (quantite <= 0) {
-      removeFromCart(ligneId);
-      return;
-    }
-    // Le total exact éventuel ne valait que pour l'ancienne quantité.
-    const next = cart.map(item =>
-      item.ligneId === ligneId ? { ...item, quantite, totalExact: undefined } : item);
+    // `changerQuantite` retire la ligne à zéro ou moins : la règle est dans le
+    // module, pas dupliquée ici.
+    const next = changerQuantite(cart.map(versLignePanier), ligneId, quantite).map(versCartItem);
     setCart(next);
     persistCart(next);
   };
@@ -766,9 +782,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // la ligne du panier porte le prix CONVENU, persisté comme le reste.
   const updateCartItemPrice = (ligneId: string, prix: number) => {
     if (!prix || isNaN(prix) || prix <= 0) return;
-    // Le total exact éventuel ne valait que pour l'ancien prix.
-    const next = cart.map(item =>
-      item.ligneId === ligneId ? { ...item, prix, totalExact: undefined } : item);
+    const next = changerPrix(cart.map(versLignePanier), ligneId, prix).map(versCartItem);
     setCart(next);
     persistCart(next);
   };
