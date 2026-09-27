@@ -54,6 +54,7 @@ import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncais
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
 import { produitPourVente } from '../../services/preselectionVente';
+import { lireVenteAuCatalogue } from '../../services/venteAuCatalogue';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
 import { t } from '../../i18n/voice/runtime';
 import type { LigneProvisoire } from '../../services/ligneProvisoire';
@@ -493,9 +494,27 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
    * juge pas ce qui s'affiche, il décide d'une écriture au panier.
    */
   const analyse = useMemo(() => intentLocalCaisse((transcript || '').trim()), [transcript]);
+  /**
+   * CAT-01 — SON CATALOGUE, RELU PAR L'ÉCRAN.
+   *
+   * 111 des 198 produits du catalogue maître sont absents du lexique du
+   * moteur. Cette relecture ne s'applique qu'à ce qu'il n'a pas su nommer, et
+   * elle n'écrit rien : elle rend une intention au même format, que le même
+   * `vendreUnifie` traite ensuite, prix du catalogue compris.
+   */
+  const venteCatalogue = useMemo(
+    () => lireVenteAuCatalogue((transcript || '').trim(), products),
+    [transcript, products],
+  );
   /** CE QUE LE MOTEUR A RÉELLEMENT EXTRAIT — jamais ce qu'il a entendu.
-   *  `null` tant qu'aucune VENTE n'est sortie de la phrase. */
-  const compris = useMemo(() => libelleVenteComprise(analyse?.action), [analyse]);
+   *  `null` tant qu'aucune VENTE n'est sortie de la phrase. Le catalogue de
+   *  la marchande passe avant le lexique en dur : quand il a reconnu un de
+   *  SES produits, c'est son nom à elle qui s'affiche. */
+  const actionVente = useMemo(
+    () => (analyse?.action?.type === 'vendre' || !analyse ? (venteCatalogue ?? analyse?.action) : analyse.action),
+    [analyse, venteCatalogue],
+  );
+  const compris = useMemo(() => libelleVenteComprise(actionVente), [actionVente]);
 
   const dernierRelu = useRef<string>('');
   useEffect(() => {
@@ -505,13 +524,18 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     // Le moteur a compris : il a déjà agi, on ne repasse pas derrière lui.
     if (intentLocal(texte)) return;
     const local = intentLocalCaisse(texte);
-    if (local?.action?.type !== 'vendre') return;
-    const brut = Number(local.action.montant);
+    // Une intention qui n'est PAS une vente (encaissement, dépense) est
+    // traitée ailleurs : on ne la relit pas en vente.
+    if (local && local.action?.type !== 'vendre') return;
+    // CAT-01 — son catalogue d'abord, le lexique du moteur ensuite.
+    const vente = lireVenteAuCatalogue(texte, products) ?? (local?.action?.type === 'vendre' ? local.action : null);
+    if (!vente) return;
+    const brut = Number(vente.montant);
     const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
     const lu = extraire(texte);
     vendreUnifie(
-      produitPourVente(local.action.produit, produitPreselectionne),
-      local.action.quantite || 1,
+      produitPourVente(vente.produit, produitPreselectionne),
+      vente.quantite || 1,
       montant,
       lu.uniteParlee,
       lu.lecturePrix,
@@ -557,7 +581,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // qui n'est pas une vente (les quatre commandes d'encaissement, une
   // dépense) a déjà sa réponse ailleurs, et le bandeau se retire au lieu de
   // démentir le moteur.
-  const vueEcoute = afficheEcoute({ ecoute: isRecording, transcription: transcript || '', compris, saisieOuverte, intentionComprise: !!analyse });
+  const vueEcoute = afficheEcoute({ ecoute: isRecording, transcription: transcript || '', compris, saisieOuverte, intentionComprise: !!(analyse || venteCatalogue) });
   const isLoading = state === 'processing' || state === 'thinking';
   /**
    * VOX-02 — L'APPUI SUR LE MICRO RÉPOND DANS LES SEPT ÉTATS.
