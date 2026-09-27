@@ -6,6 +6,7 @@
  * au tsx et réutilisé à l'identique par la voix (clips/synthèse) et le tactile.
  */
 import { quantiteAvecUnite } from '../utils/unite.utils';
+import { plurielNom, plurielUnite } from './accordFrancais';
 import type { LigneProvisoire } from './ligneProvisoire.js';
 import { t, tParle } from '../i18n/voice/runtime';
 
@@ -15,23 +16,11 @@ import { t, tParle } from '../i18n/voice/runtime';
 // une langue qui accorde autrement devra fournir sa propre composition.
 const r = (n: number) => Math.round(n);
 
-/** Pluriel français simple : +s sauf si le mot finit déjà par s, x ou z. */
-function pluriel(mot: string): string {
-  return /[sxz]$/i.test(mot) ? mot : `${mot}s`;
-}
-/** Abréviations d'unité invariables (« 2 kg », pas « 2 kgs »). */
-const UNITES_INVARIABLES = new Set(['kg', 'g', 'mg', 'l', 'cl', 'ml', 'dl', 'm', 'cm', 'mm', 'km']);
-function plurielUnite(u: string): string {
-  return UNITES_INVARIABLES.has(u.toLowerCase()) ? u : pluriel(u);
-}
-/** Pluralise le DERNIER mot d'un libellé (« banane plantain » → « banane plantains »).
- *  Exporté : la confirmation de vente d'intentLocal (« Vente de 2 tomates ») l'utilise aussi. */
-export function plurielNom(nom: string): string {
-  const mots = nom.trim().split(' ');
-  if (mots.length === 0) return nom;
-  mots[mots.length - 1] = pluriel(mots[mots.length - 1]);
-  return mots.join(' ');
-}
+// VOIX-07 — l'accord vit maintenant dans `accordFrancais.ts`, un module PUR.
+// Il était ici, donc inaccessible à `ecouteCaisse` qui n'importe rien : les
+// deux accordaient différemment la même vente. Réexporté pour ne rien casser
+// chez ceux qui l'importaient d'ici.
+export { plurielNom } from './accordFrancais';
 
 /**
  * « 3 tas de tomate » / « 2 tomates » (unité omise si « unité » générique).

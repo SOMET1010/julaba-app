@@ -32,6 +32,7 @@
  * CE MODULE EST PUR. Il ne touche ni au DOM, ni au micro, ni à l'argent : il
  * répond à deux questions, et il est relisible seul.
  */
+import { plurielNom } from './accordFrancais';
 
 // ── 1. QUAND CESSER D'ÉCOUTER ──────────────────────────────────────────────
 
@@ -152,6 +153,11 @@ export function afficheEcoute(faits: FaitsAffichage): AfficheEcoute {
 }
 
 // ── 3. METTRE EN MOTS CE QUE LE MOTEUR A EXTRAIT ───────────────────────────
+//
+// `accordFrancais` n'importe rien : ce module reste PUR en s'en servant. Il
+// était impossible de partager la règle d'accord tant qu'elle vivait dans
+// `dialoguesTata`, qui tire le catalogue i18n — d'où « 2 piments » à la voix
+// et « 2 piment » à l'écran, sur la même vente (VOIX-07).
 
 /** La forme minimale d'une action de vente, telle que `intentLocalCaisse` la
  *  rend. On ne dépend pas de son type complet : ce module reste pur. */
@@ -160,6 +166,9 @@ export interface ActionVenteComprise {
   readonly produit?: unknown;
   readonly quantite?: unknown;
   readonly montant?: unknown;
+  /** VOIX-07 — l'unité telle qu'elle l'a DITE (« tas », « sacs », « kilos »).
+   *  Le type ne l'avait pas : c'est là que l'information mourait. */
+  readonly unite?: unknown;
 }
 
 /**
@@ -181,9 +190,31 @@ export function libelleVenteComprise(action: ActionVenteComprise | null | undefi
   const qte = Number(action.quantite);
   const quantite = Number.isFinite(qte) && qte > 0 ? Math.trunc(qte) : 1;
   const montant = Number(action.montant);
+  /**
+   * L'UNITÉ FAIT PARTIE DE LA VENTE — VOIX-07.
+   *
+   * Cet aperçu affichait « 2 piment » pendant qu'elle disait « 2 tas de
+   * piments », et le toast d'après affichait « 2 tas de piments ». Deux
+   * libellés pour la même vente, sur le même écran.
+   *
+   * On reprend SON mot, sans le ré-accorder : `uniteParlee` arrive déjà tel
+   * qu'elle l'a prononcé (« sac » / « sacs », « tas » invariable).
+   *
+   * DETTE QUI RESTE OUVERTE, et qu'on ne prétend pas fermer ici : ce libellé
+   * se compose en dur, pas par le catalogue i18n, parce que ce module est PUR
+   * et n'importe rien. Il ne traversera donc pas les langues, contrairement à
+   * `resumeQuantite` qui passe par `TATA_QUANTITE_UNITE_PRODUIT`. La
+   * divergence est antérieure à ce lot ; elle est nommée, pas close.
+   */
+  const unite = String(action.unite ?? '').trim();
+  // Avec unité, c'est l'UNITÉ qui porte le nombre et le produit reste au
+  // singulier (« 2 tas de piment ») — même règle que `resumeQuantite`.
+  const bloc = unite
+    ? `${quantite} ${unite} de ${nom}`
+    : `${quantite} ${quantite > 1 ? plurielNom(nom) : nom}`;
   // Sans prix, on annonce ce qu'on a — et rien de plus. Inventer un « 0 F »
   // ici serait exactement la faute qu'on ferme partout ailleurs.
   return Number.isFinite(montant) && montant > 0
-    ? `${quantite} ${nom} à ${Math.round(montant).toLocaleString('fr-FR')} F`
-    : `${quantite} ${nom}`;
+    ? `${bloc} à ${Math.round(montant).toLocaleString('fr-FR')} F`
+    : bloc;
 }
