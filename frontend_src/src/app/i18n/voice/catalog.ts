@@ -682,6 +682,21 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'GUIDAGE_001', type: 'tts', domaine: 'guidage', critiqueArgent: false, frActuel: 'J\'ai remarqué que tu préfères me parler. Veux-tu que Julaba s\'adapte ?', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'utils/accessMode.ts:100' },
   { id: 'GUIDAGE_002', type: 'tts', domaine: 'guidage', critiqueArgent: false, frActuel: 'J\'ai remarqué que tu préfères le clavier. Veux-tu que Julaba s\'adapte ?', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'utils/accessMode.ts:97' },
   { id: 'STOCK_046', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Je n\'ai pas entendu de produit. Dis-moi ce que tu vends.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'claude', source: 'components/marchand/BoutonDireProduit.tsx', note: 'STK-05 — rien compris au micro du stock. On le DIT, on n\'ouvre pas un formulaire vide en faisant comme si on avait entendu.' },
+
+  // ── LES TROIS QUESTIONS DU PARCOURS GUIDÉ — STK-23, 26/09/2026 ───────────
+  //
+  // Retour terrain : « elle ne parle pas à toutes les étapes ». Mesuré :
+  // AUCUNE des trois questions n'était dite. Le parcours n'émettait que des
+  // ACCUSÉS de réception — l'unité choisie, le montant tapé, le produit posé.
+  //
+  // Une marchande qui ne lit pas entendait donc uniquement des confirmations
+  // de ce qu'elle venait de faire, jamais ce qu'on attendait d'elle. Elle
+  // savait qu'on avait pris note ; elle ne savait pas quoi dire ensuite.
+  //
+  // C'est le parcours d'ajout au stock : la voie par laquelle son étal existe.
+  { id: 'STOCK_047', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Qu\'est-ce que tu vends ?', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Première question du parcours guidé — étape « nom ».' },
+  { id: 'STOCK_048', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: '{nom}, tu le vends comment ?', frMarche: null, variables: ['nom'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Étape « unite ». Le nom est repris pour qu\'elle sache de quoi on parle.' },
+  { id: 'STOCK_049', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Le {unite}, à combien ?', frMarche: null, variables: ['unite'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Étape « prix ». Sur l\'argent : l\'unité est redite, sans quoi « à combien » est ambigu entre le tas et le kilo.' },
 ];
 
 // ── STT_INPUT — ce que la marchande peut dire ───────────────────────────────

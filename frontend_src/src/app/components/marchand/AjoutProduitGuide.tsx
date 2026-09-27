@@ -22,7 +22,7 @@
  * quelles unités proposer, si le produit est prêt. Cet écran ne décide rien,
  * il montre et il parle.
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Check } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -117,6 +117,29 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   const peutAvancer = peutValider(etapeVue, brouillon);
   /** Avancer est un GESTE : le grand bouton, ou la touche OK du clavier. */
   const avancer = () => { if (peutAvancer) setEtapeVue(etapeSuivante(etapeVue)); };
+
+  /**
+   * LA QUESTION DE CHAQUE ÉTAPE EST DITE — STK-23, 26/09/2026.
+   *
+   * Retour terrain : « elle ne parle pas à toutes les étapes ». Mesuré : le
+   * parcours n'émettait que des ACCUSÉS de réception — l'unité choisie, le
+   * montant tapé, le produit posé. Les trois QUESTIONS restaient à l'écran.
+   *
+   * Une marchande qui ne lit pas entendait donc seulement qu'on avait pris
+   * note de ce qu'elle venait de faire, jamais ce qu'on attendait d'elle.
+   * Elle savait qu'on l'écoutait ; elle ne savait pas quoi dire.
+   *
+   * On passe par `direMessage`, donc par le RENDU : à l'étape du prix la
+   * forme parlée compte, et c'est déjà la raison d'être de cette fonction.
+   */
+  useEffect(() => {
+    if (etapeVue === 'nom') direMessage('STOCK_047');
+    else if (etapeVue === 'unite') direMessage('STOCK_048', { nom });
+    else if (etapeVue === 'prix') direMessage('STOCK_049', { unite });
+    // On ne redit pas la question à chaque frappe : seul le changement
+    // d'ÉTAPE la déclenche.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etapeVue]);
 
   const poser = async () => {
     if (!aCreer || enCours) return;
