@@ -461,12 +461,21 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     return () => clearInterval(t);
   }, [ecouteEnCours, liveTranscript, handleMicClick]);
 
+  /**
+   * CE QUE LE MOTEUR A TIRÉ DE LA PHRASE — une seule lecture, deux usages.
+   *
+   * ENC-01 : `intentLocalCaisse` était appelée ici pour la vente, et une
+   * seconde fois plus bas pour la relecture. Le bandeau, lui, ne connaissait
+   * que la vente — d'où « Je n'ai pas compris » sur un « encaisser »
+   * parfaitement reconnu. La lecture rend maintenant DEUX faits au bandeau :
+   * qu'une intention est sortie (`analyse`), et la vente mise en mots
+   * (`compris`). L'effet de relecture plus bas garde son propre appel : il ne
+   * juge pas ce qui s'affiche, il décide d'une écriture au panier.
+   */
+  const analyse = useMemo(() => intentLocalCaisse((transcript || '').trim()), [transcript]);
   /** CE QUE LE MOTEUR A RÉELLEMENT EXTRAIT — jamais ce qu'il a entendu.
-   *  `null` tant qu'aucune vente n'est sortie de la phrase. */
-  const compris = useMemo(
-    () => libelleVenteComprise(intentLocalCaisse((transcript || '').trim())?.action),
-    [transcript],
-  );
+   *  `null` tant qu'aucune VENTE n'est sortie de la phrase. */
+  const compris = useMemo(() => libelleVenteComprise(analyse?.action), [analyse]);
 
   const dernierRelu = useRef<string>('');
   useEffect(() => {
@@ -524,7 +533,11 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // CAI-07 — `saisieOuverte` entre dans les faits : tant que la saisie guidée
   // est ouverte, c'est ELLE qui parle, et son `ConfirmationLigne` porte le
   // seul « J'ai compris » qui engage l'argent. Le bandeau du micro se retire.
-  const vueEcoute = afficheEcoute({ ecoute: isRecording, transcription: transcript || '', compris, saisieOuverte });
+  // ENC-01 — `intentionComprise` entre dans les faits : une phrase comprise
+  // qui n'est pas une vente (les quatre commandes d'encaissement, une
+  // dépense) a déjà sa réponse ailleurs, et le bandeau se retire au lieu de
+  // démentir le moteur.
+  const vueEcoute = afficheEcoute({ ecoute: isRecording, transcription: transcript || '', compris, saisieOuverte, intentionComprise: !!analyse });
   const isLoading = state === 'processing' || state === 'thinking';
   /**
    * VOX-02 — L'APPUI SUR LE MICRO RÉPOND DANS LES SEPT ÉTATS.
