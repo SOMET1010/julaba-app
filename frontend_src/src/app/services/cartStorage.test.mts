@@ -48,7 +48,9 @@ function main() {
     const items = [ITEM(), ITEM({ productId: "p2", nom: "Piment", prix: 100, quantite: 5 })];
     const env = cs.parseCart(cs.serializeCart(items, NOW_ISO));
     eq(env?.items, items, "les lignes valides survivent au round-trip");
-    eq(env?.v, 1, "enveloppe versionnée v=1");
+    // PAN-01 (27/09) : on écrit désormais en v2 — quatre champs de plus,
+    // aucun retiré. La v1 reste LUE (voir « un panier v1 se recharge »).
+    eq(env?.v, 2, "enveloppe versionnée v=2");
   }
 
   console.log("\n[2] Lignes malformées écartées");
@@ -75,7 +77,13 @@ function main() {
     eq(cs.parseCart("{ pas du json"), null, "JSON invalide → null");
     eq(cs.parseCart(null), null, "null → null");
     eq(cs.parseCart(""), null, "chaîne vide → null");
-    eq(cs.parseCart(JSON.stringify({ v: 2, items: [] })), null, "version inconnue → null");
+    // PAN-01 : `v: 2` servait ici d'exemple de version inconnue — il est
+    // devenu la version COURANTE. On prend une version qui ne peut pas être
+    // rattrapée par un lot futur, plutôt que la suivante immédiate.
+    eq(cs.parseCart(JSON.stringify({ v: 99, items: [] })), null, "version inconnue → null");
+    // La v1 reste LUE et ressort migrée en v2. Ce n'est pas `parseCart` qui
+    // écarte un panier vide — c'est `loadCart`, et il le fait plus bas.
+    eq(cs.parseCart(JSON.stringify({ v: 1, items: [] }))?.v, 2, "v1 → lue, et rendue en v2");
   }
 
   console.log("\n[4] Un panier vide n'est jamais restauré");
