@@ -538,7 +538,12 @@ function POSCaisseInner() {
     // micro (MicroVenteCaisse parle par `speak`). Et l'écran montre la même
     // phrase, pour celle qui n'a pas entendu — le bruit, le doute.
     afficherRelecture(etat, effet);
-    if (effet.texte) speak(effet.texte);
+    // ARG-17 — LA FORME PARLÉE, et c'est ici que ça compte le plus : le
+    // commentaire ci-dessus le dit, cette phrase EST la garantie. Elle
+    // s'apprête à confirmer un compte ; l'entendre « 2 zéro zéro zéro » ne lui
+    // apprend rien. Second site du défaut, que ni l'audit externe ni moi
+    // n'avions vu — c'est la garde qui l'a trouvé.
+    if (effet.texteParle) speak(effet.texteParle);
     if (effet.type === 'encaisser') void handlePay();
   };
   // Le moteur vocal tient son gestionnaire dans des fermetures qui peuvent
@@ -568,7 +573,11 @@ function POSCaisseInner() {
     const { etat, effet } = reduire(etatEncaissementRef.current, 'etat_financier_change', etatFinancierRef.current);
     etatEncaissementRef.current = etat;
     afficherRelecture(etat, effet);
-    if (effet.type === 'dire') speak(effet.texte);
+    // ARG-17 — L'OREILLE REÇOIT LA FORME PARLÉE, PAS LA FORME ÉCRAN.
+    // Ici partait `effet.texte`, celui-là même qu'on affiche : « Elle doit
+    // 2 000 francs. » avec son espace fine insécable, que la synthèse épelle
+    // « 2 zéro zéro zéro ». Au moment où elle doit entendre combien on lui doit.
+    if (effet.type === 'dire') speak(effet.texteParle);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'à l'empreinte financière ; `speak` est stable (contexte), `afficherRelecture` n'est qu'un setter
   }, [cleEmpreinte]);
 

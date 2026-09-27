@@ -489,16 +489,16 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 448 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
 | 471 | `dire` | dynamique | raison |  |  |
 | 473 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 541 | `speak` | dynamique | effet.texte |  |  |
-| 571 | `speak` | dynamique | effet.texte |  |  |
-| 601 | `dire` | dynamique | relu.texteParle |  |  |
-| 623 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
-| 697 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
-| 730 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
-| 763 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
-| 905 | `speak` | dynamique | relectureAffichee |  |  |
-| 941 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
-| 1029 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
+| 546 | `speak` | dynamique | effet.texteParle |  |  |
+| 580 | `speak` | dynamique | effet.texteParle |  |  |
+| 610 | `dire` | dynamique | relu.texteParle |  |  |
+| 632 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
+| 706 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
+| 739 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
+| 772 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
+| 914 | `speak` | dynamique | relectureAffichee |  |  |
+| 950 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
+| 1038 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
 
 ### `components/marchand/ProtectionSociale.tsx` — marchand_autre
 

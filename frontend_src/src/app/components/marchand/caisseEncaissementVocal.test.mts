@@ -107,10 +107,13 @@ const brancheChangement = codeMachine.match(/case 'etat_financier_change':[\s\S]
 ok(brancheChangement !== null, 'la machine a une branche `etat_financier_change`');
 ok(brancheChangement !== null && !/type:\s*'encaisser'/.test(brancheChangement[0]),
   'cette branche ne contient aucun `type: \'encaisser\'` : un changement de panier ou de reçu ne paie jamais');
-ok(brancheChangement !== null && /phraseRelecture\(/.test(brancheChangement[0]),
-  'mais elle sait relire (phraseRelecture) : c\'est Tata qui relit d\'elle-même quand les billets couvrent');
+// ARG-17 — le producteur interne s'appelle `relecture()` depuis qu'il rend les
+// DEUX formes (écran et parlée) ; `phraseRelecture` reste exporté et lui
+// délègue. Ce qui est tenu ici est inchangé : cette branche RELIT.
+ok(brancheChangement !== null && /(phraseRelecture|relecture)\(fin\)/.test(brancheChangement[0]),
+  'mais elle sait relire : c\'est Tata qui relit d\'elle-même quand les billets couvrent');
 const blocEffet = codeCaisse.match(/useEffect\(\(\) => \{[\s\S]{0,600}?'etat_financier_change'[\s\S]*?\}, \[cleEmpreinte\]\)/);
-ok(blocEffet !== null && /if \(effet\.type === 'dire'\) speak\(effet\.texte\)/.test(blocEffet[0]),
+ok(blocEffet !== null && /if \(effet\.type === 'dire'\) speak\(effet\.texteParle\)/.test(blocEffet[0]),
   'le useEffect de POSCaisse DIT l\'effet `dire` rendu par ce changement (sinon la relecture spontanée serait muette)');
 ok(blocEffet !== null && !/handlePay/.test(blocEffet[0]),
   'et ce useEffect ne contient pas `handlePay` : il parle, il ne paie pas');
