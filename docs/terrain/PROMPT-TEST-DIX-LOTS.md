@@ -1,13 +1,13 @@
-# Test terrain — les huit lots de la caisse et de la voix
+# Test terrain — les dix lots de la caisse et de la voix
 
-**Version attendue : `ada8ef1` ou plus récente.**
+**Version attendue : `0205116` ou plus récente.**
 URL : https://julaba-web.onrender.com
 
 ---
 
 ## Ce qu'on te demande
 
-Huit corrections ont été faites en deux jours sur le parcours d'une marchande.
+Dix corrections ont été faites en deux jours sur le parcours d'une marchande.
 **Aucune n'a jamais été vue sur un vrai téléphone.** Elles sont toutes vertes
 en test automatique — ce qui prouve seulement qu'elles font ce que le code
 croit faire.
@@ -29,7 +29,7 @@ Ouvre `https://julaba-web.onrender.com/sw.js` et cherche :
 const BUILD = '<hash> · <date>'
 ```
 
-- Hash `ada8ef1` **ou plus récent** → continue.
+- Hash `0205116` **ou plus récent** → continue.
 - Hash plus ancien → **arrête-toi et dis-le.** Render n'a pas fini de
   déployer, et tout ce que tu testerais serait l'ancienne version.
 
@@ -200,9 +200,76 @@ et que le total est juste. C'est tout ce qui te concerne ici.
 
 ---
 
+# E — LE PANIER SURVIT À UNE FERMETURE (lot PAN-01)
+
+**Le test le plus simple du lot, et celui qui portait le plus gros défaut.**
+
+### E1 — la marge après un redémarrage
+
+1. Dans **Mon stock**, assure-toi qu'un produit a un **prix d'achat** renseigné
+   (par exemple : riz, acheté 15 000, vendu 20 000).
+2. Mets-en **un** au panier. **N'encaisse pas.**
+3. **Ferme complètement l'application** (pas seulement l'onglet : quitte-la).
+4. Rouvre-la, reprends le panier, encaisse.
+5. Va voir le **bénéfice** de cette vente.
+
+- ✅ Attendu : la marge réelle — dans l'exemple, **5 000 F**.
+- ❌ Défaut : la marge vaut le prix de vente entier — **20 000 F**.
+
+C'est le défaut qu'on vient de fermer : le prix d'achat n'était pas conservé.
+**Signale le chiffre exact que tu vois.**
+
+### E2 — l'unité et le total négocié
+
+1. Dicte « **3 tas de tomates pour 1 000** » (un montant négocié, pas 3 × un prix rond).
+2. Ferme l'application, rouvre-la, reprends le panier.
+
+- ✅ L'unité « **tas** » est toujours là — pas « 3 × Tomate ».
+- ✅ Le total est toujours **1 000 F**, pas 999 ni 1 002.
+- ✅ La vente reste retrouvable dans « **Par la voix** » après encaissement.
+
+---
+
+# F — DEUX ARTICLES LIBRES SONT DEUX LIGNES (lot P0.1)
+
+**C'est le test de l'argent le plus direct de toute la liste.**
+
+### F1 — ils ne doivent PAS fusionner
+
+1. Ajoute un « **Autre article** » (montant libre) à **500 F**.
+2. Ajoute un second « **Autre article** » à **800 F**.
+
+- ✅ Attendu : **deux lignes** dans le panier, total **1 300 F**.
+- ❌ Défaut : une seule ligne. **Si tu vois une seule ligne, arrête-toi et
+  signale-le** : elle perdrait la différence sur sa propre vente.
+
+Refais avec **deux fois le même montant** — « Autre article » à 500, puis
+encore à 500. **Deux lignes attendues**, total 1 000 F. Même nom, même prix :
+ce sont quand même deux ajouts différents.
+
+### F2 — supprimer l'un ne doit pas emporter l'autre
+
+Avec les deux lignes de F1 à l'écran, **supprime la seconde**.
+
+- ✅ Attendu : il reste **une** ligne, celle à 500 F.
+- ❌ Défaut : les deux disparaissent, ou c'est la mauvaise qui reste.
+
+Refais avec la **quantité** : change la quantité de la première ligne.
+La seconde ne doit **pas** bouger.
+
+### F3 — un vrai produit, lui, fusionne toujours
+
+Ajoute **deux fois le même produit du catalogue** (par exemple deux tomates).
+
+- ✅ Attendu : **une seule ligne**, quantité 2.
+- Puis avec des prix négociés différents : « 1 tomate à 500 », puis « 1 tomate
+  à 700 » → **une ligne**, total **1 200 F** (pas 1 000).
+
+---
+
 # Ce que tu renvoies
 
-Un tableau, une ligne par point (A1 à D) :
+Un tableau, une ligne par point (A1 à F3) :
 
 | Point | Entendu / Vu | Conforme ? | Ce que tu as noté |
 |---|---|---|---|
