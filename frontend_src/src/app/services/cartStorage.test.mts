@@ -36,9 +36,16 @@ function makeThrowingStore(): cs.KVStore {
   };
 }
 
-const ITEM = (o: Partial<cs.PersistedCartItem> = {}): cs.PersistedCartItem => ({
-  productId: "p1", nom: "Tomate", prix: 500, quantite: 2, ...o,
-});
+// P0.1 : `ligneId` et `productIdCatalogue` sont désormais garantis en sortie
+// de `sanitizeItems`. Cette fabrique représente une ligne DÉJÀ migrée ; les
+// cas d'entrée v1 (sans ces champs) sont construits à la main plus bas.
+const ITEM = (o: Partial<cs.PersistedCartItem> = {}): cs.PersistedCartItem => {
+  const productId = o.productId ?? "p1";
+  // `ligneId` SUIT `productId` par défaut : c'est exactement ce que fait la
+  // migration. Le figer en dur ferait diverger la fabrique de la règle.
+  return { ligneId: productId, productIdCatalogue: null,
+           productId, nom: "Tomate", prix: 500, quantite: 2, ...o };
+};
 const NOW = Date.parse("2026-08-10T12:00:00.000Z");
 const NOW_ISO = new Date(NOW).toISOString();
 

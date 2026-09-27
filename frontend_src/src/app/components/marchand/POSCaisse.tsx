@@ -169,7 +169,7 @@ function POSCaisseInner() {
     // chiffre. Le calcul se fait AVANT que l'état ne bouge, sur le panier du
     // rendu courant : un seul addToCart par geste, même fusion de ligne que
     // CaisseContext.addToCart.
-    const existante = cart.find(i => i.productId === p.id);
+    const existante = cart.find(i => i.productIdCatalogue === p.id);
     const q = (existante?.quantite ?? 0) + 1;
     const prixU = prixEffectif(p);
     const totalLigne = (existante?.totalExact ?? (existante ? existante.prix * existante.quantite : 0)) + prixU;
@@ -369,7 +369,10 @@ function POSCaisseInner() {
     setIsProcessing(true);
     try {
       const details = cart.map(i => ({
-        productId: i.productId,
+        // P0.1 — SEUL l'identifiant CATALOGUE traverse. L'identité de ligne
+        // est technique : la laisser passer pour un produit est exactement ce
+        // que `identifiantProduit` (ARG-16) devait rattraper côté serveur.
+        productId: i.productIdCatalogue ?? undefined,
         nom: i.nom,
         quantite: i.quantite,
         prix: i.prix,
@@ -402,6 +405,8 @@ function POSCaisseInner() {
       const avertRupture = avertissementRupture(
         details
           .map((i) => {
+            // `details` est déjà le payload serveur : son `productId` porte
+            // l'identifiant CATALOGUE (ou rien), pas l'identité de ligne.
             const p = products.find((pp) => pp.id === i.productId);
             return p ? { nom: i.nom, quantite: i.quantite, stockAvant: p.stock || 0 } : null;
           })
@@ -507,7 +512,7 @@ function POSCaisseInner() {
       // elle prend l'identité de LIGNE. Avec un identifiant catalogue nullable,
       // deux articles libres différents auraient la même signature et un panier
       // modifié passerait pour celui qu'elle a relu.
-      lignes: empreintePanier(cart.map(i => ({ ligneId: i.productId, quantite: i.quantite, total: i.totalExact ?? i.prix * i.quantite }))),
+      lignes: empreintePanier(cart.map(i => ({ ligneId: i.ligneId, quantite: i.quantite, total: i.totalExact ?? i.prix * i.quantite }))),
     },
   };
   // UN REF, PAS UN useState, et c'est une décision de sécurité : la
@@ -621,7 +626,10 @@ function POSCaisseInner() {
   // refreshProducts(), jamais par un PUT absolu depuis l'écran de caisse.
   const handleCreditSuccess = () => {
     const details = cart.map(i => ({
-      productId: i.productId,
+      // P0.1 — même règle que le chemin espèces : seul l'identifiant
+      // CATALOGUE traverse. Ce chemin est désactivé en pilote, mais il ne doit
+      // pas être le seul à pouvoir renvoyer une identité de ligne au serveur.
+      productId: i.productIdCatalogue ?? undefined,
       nom: i.nom,
       quantite: i.quantite,
       prix: i.prix,
@@ -686,27 +694,27 @@ function POSCaisseInner() {
   const renderCartLines = () => (
     <>
       {cart.map(item => (
-        <div key={item.productId} style={{ padding:'var(--caisse-esp-3) 0', borderBottom:'1px solid var(--commerce-line)' }}>
+        <div key={item.ligneId} style={{ padding:'var(--caisse-esp-3) 0', borderBottom:'1px solid var(--commerce-line)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)' }}>
-            <ImageWithFallback src={products.find(p => p.id === item.productId)?.image || undefined} fallbackSrc={getPictogrammeByNom(item.nom)} alt="" aria-hidden="true"
+            <ImageWithFallback src={products.find(p => p.id === item.productIdCatalogue)?.image || undefined} fallbackSrc={getPictogrammeByNom(item.nom)} alt="" aria-hidden="true"
               style={{ width:44, height:44, borderRadius:'var(--caisse-rayon-2)', objectFit:'cover', flexShrink:0, background:'var(--caisse-sable)' }} />
             <div style={{ flex:1, minWidth:0, font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.nom}</div>
             <div style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{(item.totalExact ?? item.prix * item.quantite).toLocaleString('fr-FR')} F</div>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)', marginTop:'var(--caisse-esp-2)', flexWrap:'wrap' }}>
             <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)' }}>
-              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.productId, item.quantite-1)} aria-label={`Un ${item.nom} de moins`}
+              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.ligneId, item.quantite-1)} aria-label={`Un ${item.nom} de moins`}
                 style={{ width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', borderRadius:'50%', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-succes)', color:'var(--caisse-vert-fonce)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
                 <Minus size={ICONE} strokeWidth={2.5} />
               </motion.button>
               {estNegoce ? (
                 /* Quantité TAPÉE directement (indispensable en gros). */
-                <input key={`q-${item.productId}-${item.quantite}`} defaultValue={item.quantite}
+                <input key={`q-${item.ligneId}-${item.quantite}`} defaultValue={item.quantite}
                   inputMode="numeric" aria-label={`Quantité de ${item.nom}`}
                   onBlur={e => {
                     const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
                     if (v > 0 && v !== item.quantite) {
-                      updateCartItemQuantity(item.productId, v);
+                      updateCartItemQuantity(item.ligneId, v);
                       direMessage('TATA_QUANTITE_LIGNE', { produit: item.nom, quantite: String(v) });
                     } else { e.target.value = String(item.quantite); }
                   }}
@@ -714,7 +722,7 @@ function POSCaisseInner() {
               ) : (
                 <span style={{ minWidth:32, textAlign:'center', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{item.quantite}</span>
               )}
-              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.productId, item.quantite+1)} aria-label={`Un ${item.nom} de plus`}
+              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.ligneId, item.quantite+1)} aria-label={`Un ${item.nom} de plus`}
                 style={{ width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', borderRadius:'50%', border:'none', background:'var(--caisse-vert)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
                 <Plus size={ICONE} strokeWidth={2.5} />
               </motion.button>
@@ -734,12 +742,12 @@ function POSCaisseInner() {
               <span>·</span>
               {estNegoce ? (
                 /* Prix CONVENU pour cette vente — modifiable (négoce). */
-                <input key={`p-${item.productId}-${item.prix}`} defaultValue={item.prix}
+                <input key={`p-${item.ligneId}-${item.prix}`} defaultValue={item.prix}
                   inputMode="numeric" aria-label={`Prix unitaire convenu pour ${item.nom}`}
                   onBlur={e => {
                     const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
                     if (v > 0 && v !== item.prix) {
-                      updateCartItemPrice(item.productId, v);
+                      updateCartItemPrice(item.ligneId, v);
                       direMessage('TATA_PRIX_UNITE_LIGNE', { produit: item.nom, prix: v });
                     } else { e.target.value = String(item.prix); }
                   }}
@@ -749,7 +757,7 @@ function POSCaisseInner() {
               )}
               <span>F</span>
             </div>
-            <motion.button type="button" whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={`Enlever ${item.nom}`}
+            <motion.button type="button" whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.ligneId)} aria-label={`Enlever ${item.nom}`}
               style={{ marginLeft:'auto', width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', background:'none', border:'none', borderRadius:'var(--caisse-rayon-2)', color:'var(--caisse-gris-texte)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
               <Trash2 size={ICONE} />
             </motion.button>
@@ -1254,7 +1262,7 @@ function POSCaisseInner() {
           ) : (
             <div className={voirPlusProduits ? 'pos-grille' : 'pos-grille pos-grille-apercu'}>
               {filtered.map((p, i) => {
-                const inCart = cart.find(c => c.productId === p.id);
+                const inCart = cart.find(c => c.productIdCatalogue === p.id);
                 const enPromo = promoActive(p as any);
                 const rapide = topProducts.some(t => t.id === p.id);
                 return (
