@@ -55,7 +55,8 @@ describe('Invariant I2 — idempotence de la vente (🟢 attendu)', () => {
     const p = await request(app.getHttpServer())
       .post('/api/v1/caisse/produits')
       .set('Authorization', `Bearer ${token}`)
-      .send({ nom: PRODUIT, stock: 100, prix: 200 });
+      // ARG-19 — `unite` exigée par le serveur depuis 6161dd7 (25/09).
+      .send({ nom: PRODUIT, stock: 100, prix: 200, unite: 'kg' });
     expect([200, 201]).toContain(p.status);
   }, 60000);
 
