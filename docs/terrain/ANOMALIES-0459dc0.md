@@ -310,3 +310,53 @@ correction appliquée**.
    d'argent. **Arbitrage de Patrick requis**, pas une correction de recette.
 4. La recette continue-t-elle (blocs E et F) sur `0459dc0`, ou reprend-elle
    depuis le début après un nouveau SHA ?
+
+---
+
+# Corrections — SHA `277d523`
+
+Quatre causes, quatre commits, chacun avec sa garde. **Aucune refonte, aucun
+nouveau sous-chantier.** Ce qui a changé et ce que ça a coûté :
+
+| # | Cause | Commit | Garde | Mesure |
+|---|---|---|---|---|
+| ENC-01 | « encaisser » compris, bandeau qui dit le contraire | `9937f48` | `test:encaissement-incompris` | 6 échecs → 0 |
+| — | deux assertions restées au singulier (VOIX-07) | `95acb6a` | — | `verify` rouge depuis `1384b8c` |
+| MIC-01 | micro coupé à 6 s, toujours | `0b6c2d0` | `test:micro-niveau-parole` | ferme sur le silence, plus sur « rien-dit » |
+| CAT-01 | 111/198 produits invisibles à la voix | `de37a3d` | `test:vente-au-catalogue` | bon produit **1/198 → 196/198** |
+| A1 | « zéro franc » au montage | `277d523` | `test:accueil-caisse-dite` | 4 échecs → 0 |
+
+`verify` passe de 120 à **124 maillons**. **`test:ci` reste figé à 44.**
+
+## Ce qui reste rouge, et qui n'est pas à moi
+
+Trois maillons sur 124, **tous trois en attente d'un refigeage réservé à
+Patrick**, et tous trois antérieurs à ces corrections :
+
+1. `test:voix-trace-source` — gel VOICE-01. Porte sur `useVoiceCore.ts` et
+   `ObjectifContext.tsx`, **deux fichiers que ce lot ne touche pas**.
+2. `test:i18n-empreintes-argent` — `intentLocal` rend
+   `86044262df2ac1a388f91bf9b449b48e9ec7b014605045420709975f948bff6c`,
+   la valeur en attente depuis VOIX-09. **Elle n'a pas bougé** avec ce lot :
+   aucune décision financière du moteur n'a changé.
+3. `test:garde-argent` — périmètre (4 fichiers entrés, dont **1 seul** de ce
+   lot : `venteAuCatalogue.ts`) et gardes (12 assertions perdues, dont **3
+   seulement** de ce lot).
+
+## Le défaut d'argent qui reste ouvert — arbitrage de Patrick
+
+Pour un produit **qu'elle ne possède pas**, le moteur rend toujours
+`{ vendre, montant: 2 }` sur « vends deux mangues séchées », et une ligne
+**« Produit vocal » à 2 F** part au panier en silence. CAT-01 ferme ce cas
+pour tous les produits de son catalogue ; il reste ouvert hors catalogue.
+
+Le fermer revient à décider du sort de **l'article libre vocal** (« vends pour
+500 »), qui emprunte exactement le même chemin. C'est un arbitrage d'argent :
+**signalé, pas corrigé.**
+
+## Une donnée à corriger, pas un code
+
+« Champignon séché » figure **deux fois** dans
+`docs/data/catalogue-maitre-julaba.v1.json`. `apparierProduit` refuse de
+choisir entre deux produits du même nom — et il a raison. Ce sont les deux
+seuls produits sur 198 qui redemandent encore le prix.
