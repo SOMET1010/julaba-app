@@ -107,7 +107,10 @@ console.log('\n[3] LA TRANSCRIPTION BRUTE NE SORT JAMAIS');
 console.log('\n[4] Ce qui s\'affiche après « J\'ai compris » est la VENTE');
 ok(libelleVenteComprise({ type: 'vendre', produit: 'piments', quantite: 10, montant: 500 }) === '10 piments à 500 F',
    'produit, quantité, prix — dans ses mots à elle');
-ok(libelleVenteComprise({ type: 'vendre', produit: 'tomate', quantite: 3 }) === '3 tomate',
+// VOIX-07 (1384b8c) a fait passer ce libellé par `plurielNom` : « 3 tomates »,
+// la même forme que la voix dit. L'assertion était restée au singulier —
+// c'est ELLE qui avait vieilli, pas le code.
+ok(libelleVenteComprise({ type: 'vendre', produit: 'tomate', quantite: 3 }) === '3 tomates',
    'sans prix : on annonce ce qu\'on a, on n\'invente pas un « 0 F »');
 ok(libelleVenteComprise({ type: 'vendre', produit: 'gombo' }) === '1 gombo',
    'sans quantité : une unité, comme le tactile');
