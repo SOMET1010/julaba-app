@@ -31,8 +31,8 @@ import { guidageVocal } from '../../utils/accessMode';
 import { resoudreMessage } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
 import {
-  etapeCourante, unitesProposees, produitACreer, peutValider, etapeSuivante,
-  type BrouillonProduit, type EtapeAjout,
+  etapeCourante, unitesProposees, produitACreer, peutValider, etapeSuivante, raisonDuRefus,
+  type BrouillonProduit, type EtapeAjout, type RaisonRefus,
 } from '../../services/premierProduit';
 import { BoutonDirePrix } from './BoutonDirePrix';
 
@@ -60,6 +60,24 @@ interface Props {
   onPose: () => void;
   onAnnuler: () => void;
 }
+
+/**
+ * CE QU'ON DIT POUR CHAQUE REFUS — STK-24.
+ *
+ * `raisonDuRefus` sait ce qui manque ; cette table sait comment le dire. Le
+ * `Record` n'est pas décoratif : ajouter une raison sans lui donner de phrase
+ * ne compile pas. C'est la seule façon qu'un refus ne puisse pas redevenir
+ * muet par oubli — et c'est exactement par un oubli qu'il l'était.
+ *
+ * Chaque phrase nomme le GESTE, pas seulement le défaut : un refus qui dit
+ * seulement ce qui cloche laisse deviner la suite (leçon AUTH_12).
+ */
+const PHRASE_DU_REFUS: Record<RaisonRefus, string> = {
+  'nom-absent': 'STOCK_050',
+  'nom-trop-court': 'STOCK_051',
+  'unite-absente': 'STOCK_052',
+  'prix-absent': 'STOCK_053',
+};
 
 export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Props) {
   const { speak } = useApp();
@@ -115,8 +133,19 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   }));
   const aCreer = produitACreer(brouillon);
   const peutAvancer = peutValider(etapeVue, brouillon);
-  /** Avancer est un GESTE : le grand bouton, ou la touche OK du clavier. */
-  const avancer = () => { if (peutAvancer) setEtapeVue(etapeSuivante(etapeVue)); };
+  /**
+   * Avancer est un GESTE : le grand bouton, ou la touche OK du clavier.
+   *
+   * ET LE REFUS EST UN MOMENT DE PAROLE — STK-24. Ici on ne faisait rien
+   * quand elle ne pouvait pas avancer, et le bouton était `disabled` : elle
+   * appuyait, rien ne bougeait, rien ne le lui disait. Le bouton grisé est
+   * une information PUREMENT VISUELLE dans un parcours fait pour l'oreille.
+   */
+  const avancer = () => {
+    if (peutAvancer) { setEtapeVue(etapeSuivante(etapeVue)); return; }
+    const refus = raisonDuRefus(etapeVue, brouillon);
+    if (refus) direMessage(PHRASE_DU_REFUS[refus]);
+  };
 
   /**
    * LA QUESTION DE CHAQUE ÉTAPE EST DITE — STK-23, 26/09/2026.
@@ -142,7 +171,15 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   }, [etapeVue]);
 
   const poser = async () => {
-    if (!aCreer || enCours) return;
+    if (enCours) return;
+    // STK-24 — le bouton final n'est plus `disabled` : il reçoit le clic pour
+    // pouvoir DIRE ce qui manque. `enCours` reste un verrou dur : sur
+    // l'argent, un double-clic poserait deux fois le même produit.
+    if (!aCreer) {
+      const refus = raisonDuRefus(etapeVue, brouillon);
+      if (refus) direMessage(PHRASE_DU_REFUS[refus]);
+      return;
+    }
     setEnCours(true);
     try {
       await addProduct(aCreer as never);
@@ -180,8 +217,12 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               Le grand bouton pour elle : c'est le geste qu'elle sait faire.
               La touche OK du clavier pour qui va vite. Rien n'avance tout
               seul : c'est ce qui effaçait son nom a chaque lettre. */}
+          {/* STK-24 — PAS `disabled` : un bouton désactivé ne reçoit pas le clic,
+              donc le code n'a nulle part où dire ce qui manque. Il reste gris
+              pour l'œil et `aria-disabled` pour le lecteur d'écran, mais il
+              répond : c'est le seul moyen qu'elle apprenne ce qui bloque. */}
           <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={avancer}
-            disabled={!peutAvancer} aria-label="C'est bon, continue"
+            aria-disabled={!peutAvancer} aria-label="C'est bon, continue"
             style={{ width: '100%', minHeight: CIBLE + 12, borderRadius: 16, border: 'none',
               background: peutAvancer ? VERT : 'var(--commerce-line)', color: 'white', fontSize: 18, fontWeight: 800,
               cursor: peutAvancer ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
@@ -226,8 +267,12 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               Le grand bouton pour elle : c'est le geste qu'elle sait faire.
               La touche OK du clavier pour qui va vite. Rien n'avance tout
               seul : c'est ce qui effaçait son nom a chaque lettre. */}
+          {/* STK-24 — PAS `disabled` : un bouton désactivé ne reçoit pas le clic,
+              donc le code n'a nulle part où dire ce qui manque. Il reste gris
+              pour l'œil et `aria-disabled` pour le lecteur d'écran, mais il
+              répond : c'est le seul moyen qu'elle apprenne ce qui bloque. */}
           <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={avancer}
-            disabled={!peutAvancer} aria-label="C'est bon, continue"
+            aria-disabled={!peutAvancer} aria-label="C'est bon, continue"
             style={{ width: '100%', minHeight: CIBLE + 12, borderRadius: 16, border: 'none',
               background: peutAvancer ? VERT : 'var(--commerce-line)', color: 'white', fontSize: 18, fontWeight: 800,
               cursor: peutAvancer ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
@@ -270,8 +315,11 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: ORANGE, cursor: 'pointer', fontFamily: 'inherit' }}>⌫</button>
             <button type="button" onClick={() => taperChiffre('0')}
               style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>0</button>
-            {/* Éteint tant qu'elle n'a pas donné son prix : rien à valider. */}
-            <button type="button" onClick={poser} disabled={!aCreer || enCours} aria-label="C'est bon"
+            {/* Gris tant qu'elle n'a pas donné son prix — mais il RÉPOND, et dit
+                ce qui manque (STK-24). `enCours` reste un vrai verrou : sur
+                l'argent, un double-clic poserait deux fois le même produit. */}
+            <button type="button" onClick={poser} disabled={enCours}
+              aria-disabled={!aCreer} aria-label="C'est bon"
               style={{ minHeight: CIBLE + 8, borderRadius: 12, border: 'none', background: aCreer ? VERT : 'var(--commerce-line)', color: 'white', fontSize: 20, fontWeight: 800, cursor: aCreer ? 'pointer' : 'not-allowed', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Check size={22} />
             </button>
