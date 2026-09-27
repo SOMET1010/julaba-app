@@ -1003,19 +1003,37 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
               source (vlogPartager) : version/build, appareil, voix retenue, journal de
               voix (ce qui a été dit et entendu, moteurs, intentions), dernier
               transcript brut. Rendu volontairement minimal — à habiller par Manus. */}
-          <div className="flex items-center justify-center pb-2">
+          {/* AGRANDI POUR LA DURÉE DE LA RECETTE — demande de Patrick, 27/09.
+              Ce bouton est le seul moyen de récupérer la transcription BRUTE
+              (STT_FIN) et l'intention retenue (INTENTION) après une anomalie :
+              sans lui, on diagnostique au récit. Il était en 12 px souligné,
+              au milieu des mentions légales — introuvable sur un téléphone,
+              au moment précis où on en a besoin.
+              C'EST UN RÉGLAGE DE PÉRIODE, pas un choix de charte : à ramener à
+              sa taille discrète quand le pilote sera qualifié. */}
+          <div className="flex flex-col items-stretch gap-1 pb-3 px-2">
             <button
               type="button"
               aria-label="Rapport de test"
-              className="text-xs encre-4 underline underline-offset-2 px-3 py-2 min-h-[44px]"
               onClick={async () => {
                 const r = await vlogPartager();
                 if (r.methode === 'copie') toast.success('Rapport copié — colle-le dans la conversation.');
                 else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
               }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                width: '100%', minHeight: 64, padding: '14px 20px',
+                fontSize: 20, lineHeight: '26px', fontWeight: 800, fontFamily: 'inherit',
+                color: '#7A4A24', background: '#F5D6BD', border: '2px solid #D9A87A',
+                borderRadius: 16, cursor: 'pointer',
+              }}
             >
-              🐞 Rapport de test
+              <span aria-hidden="true" style={{ fontSize: 26 }}>🐞</span>
+              Rapport de test
             </button>
+            <p className="text-xs encre-4 text-center" style={{ margin: 0 }}>
+              Touche ici après un problème, puis colle le rapport dans la conversation.
+            </p>
           </div>
 
           {/* ATTRIBUTION OBLIGATOIRE — ce n'est pas une politesse.
