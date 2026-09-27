@@ -42,6 +42,7 @@ import { afficheEcoute, libelleVenteComprise } from './ecouteCaisse.js';
 import { intentLocal, intentLocalCaisse } from '../voice-offline/localIntent.js';
 import { estIntentionEncaissement, INTENTIONS_ENCAISSEMENT } from '../voice-offline/grammaireEncaissement.js';
 import { reduire, empreintePanier } from './machineEncaissement.js';
+import { readFileSync } from 'node:fs';
 import type { EtatEncaissement, EtatFinancier } from './machineEncaissement.js';
 
 let echecs = 0;
@@ -96,7 +97,7 @@ console.log('\n[6] Ce que le bandeau du micro affiche pour cette même phrase');
 const compris = libelleVenteComprise(res?.action);
 ok(compris === null, `« compris » est nul, parce que ce n'est pas une vente : ${JSON.stringify(compris)}`);
 
-const vue = afficheEcoute({ ecoute: false, transcription: MOT, compris, saisieOuverte: false });
+const vue = afficheEcoute({ ecoute: false, transcription: MOT, compris, intentionComprise: res !== null, saisieOuverte: false });
 console.log(`      → bandeau rendu : « ${vue.type} »`);
 
 ok(vue.type !== 'incompris',
@@ -118,10 +119,25 @@ for (const [phrase, attendue] of [
   const reconnue = a?.type === attendue;
   const bandeau = afficheEcoute({
     ecoute: false, transcription: phrase,
-    compris: libelleVenteComprise(a), saisieOuverte: false,
+    compris: libelleVenteComprise(a), intentionComprise: a != null, saisieOuverte: false,
   }).type;
   ok(reconnue && bandeau !== 'incompris',
      `« ${phrase} » → moteur : ${a?.type ?? 'null'} | bandeau : ${bandeau}`);
+}
+
+console.log('\n[7] LA PREUVE TRAVERSE — l\'écran passe bien le fait à la règle');
+{
+  // Une règle pure verte pendant que l'écran garde l'ancien appel, c'est une
+  // garde qui ne garde rien. Même vérification que CAI-07 [7].
+  const src = readFileSync(new URL('../components/marchand/MicroVenteCaisse.tsx', import.meta.url), 'utf8');
+  const appel = src.split('\n').find(l => l.includes('afficheEcoute({')) ?? '';
+  ok(/intentionComprise/.test(appel),
+     `l'appel à afficheEcoute reçoit intentionComprise : ${appel.trim().slice(0, 150)}`);
+  ok(/saisieOuverte/.test(appel), 'et il n\'a pas perdu saisieOuverte au passage (CAI-07)');
+  // Anti-contournement : le bandeau d'échec n'a pas été supprimé de l'écran —
+  // il doit rester pour une phrase RÉELLEMENT incomprise.
+  ok(/vueEcoute\.type === 'incompris'/.test(src),
+     'le bandeau « Je n\'ai pas compris » existe toujours — on l\'a rendu VRAI, pas muet');
 }
 
 console.log(`\n${echecs === 0 ? '✓ ENC-01 : aucun échec' : `✗ ENC-01 : ${echecs} échec(s) — le défaut terrain est reproduit`}\n`);

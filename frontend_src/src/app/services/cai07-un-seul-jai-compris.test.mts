@@ -71,7 +71,7 @@ ok(compris === '2 gombo', `la vente comprise se met en mots : ${JSON.stringify(c
 
 console.log('\n[2] Instant A — micro seul : le bandeau a le droit d\'exister');
 {
-  const vue = afficheEcoute({ ecoute: false, transcription: PHRASE, compris, saisieOuverte: false });
+  const vue = afficheEcoute({ ecoute: false, transcription: PHRASE, compris, intentionComprise: !!action, saisieOuverte: false });
   ok(vue.type === 'compris', 'compréhension simple, aucune saisie ouverte → bandeau possible');
   ok(compte(texteBandeau(vue)) === 1, 'un seul « J\'ai compris » à cet instant');
 }
@@ -100,7 +100,7 @@ ok(ecran.saisieOuverte === true, `la saisie guidée s'ouvre sans geste — « ${
 
 console.log('\n[4] Instant C — saisie guidée ouverte : le bandeau micro DISPARAÎT');
 {
-  const vue = afficheEcoute({ ecoute: false, transcription: PHRASE, compris, saisieOuverte: ecran.saisieOuverte });
+  const vue = afficheEcoute({ ecoute: false, transcription: PHRASE, compris, intentionComprise: !!action, saisieOuverte: ecran.saisieOuverte });
   ok(vue.type !== 'compris', 'plus de bandeau « J\'ai compris » pendant la saisie');
   ok(vue.type !== 'incompris',
      'et surtout pas « Je n\'ai pas compris » : elle AVAIT compris — ce serait un mensonge, pas un correctif');
@@ -115,7 +115,7 @@ console.log('\n[5] Instant D — elle donne le prix et touche « Vérifier »');
     { produitId: null },
   );
   const texteConfirmation = phraseConfirmation(ligne);
-  const vue = afficheEcoute({ ecoute: false, transcription: PHRASE, compris, saisieOuverte: true });
+  const vue = afficheEcoute({ ecoute: false, transcription: PHRASE, compris, intentionComprise: !!action, saisieOuverte: true });
   ok(/J['’]ai compris/.test(texteConfirmation),
      `ConfirmationLigne porte bien la formule : ${JSON.stringify(texteConfirmation)}`);
   const total = compte(texteBandeau(vue), texteConfirmation);
@@ -138,7 +138,7 @@ console.log('\n[6] Aucun instant du parcours n\'en montre deux');
     ['saisie ouverte (confirm.)', false, true,  true ],
     ['micro rouvert sur saisie',  true,  true,  false],
   ] as Array<[string, boolean, boolean, boolean]>) {
-    const vue = afficheEcoute({ ecoute, transcription: PHRASE, compris, saisieOuverte: saisie });
+    const vue = afficheEcoute({ ecoute, transcription: PHRASE, compris, intentionComprise: !!action, saisieOuverte: saisie });
     instants.push([nom, compte(texteBandeau(vue), confirmation ? conf : null)]);
   }
   for (const [nom, n] of instants) console.log(`      ${nom.padEnd(28)} → ${n}`);

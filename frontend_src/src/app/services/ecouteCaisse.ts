@@ -107,6 +107,29 @@ export interface FaitsAffichage {
    * vécu. Chaque écran doit RÉPONDRE à la question, pas la laisser deviner.
    */
   readonly saisieOuverte: boolean;
+  /**
+   * ENC-01 — LE MOTEUR A-T-IL TIRÉ *QUELQUE CHOSE* DE LA PHRASE ?
+   *
+   * `compris` ne parle que des VENTES. Tout le reste — les quatre commandes
+   * d'encaissement (« encaisser », « combien elle doit », « oui valide »,
+   * « non annule »), une dépense — donnait `compris = null` avec une
+   * transcription non vide, et retombait donc sur « Je n'ai pas compris ».
+   *
+   * LE DÉFAUT TERRAIN, APK 0459dc0, deux captures de Patrick. Panier à
+   * 5 000 F, l'écran promet « Dis "encaisser" pour terminer », il le dit, et
+   * le bandeau répond « Je n'ai pas compris. Redis-moi. » — pendant que
+   * `intentLocal` rendait `{ type: 'encaisser' }` et que la machine
+   * d'encaissement entrait en préparation avec « Elle doit 5 000 francs.
+   * Touche les billets qu'elle te donne. » L'écran démentait le moteur.
+   *
+   * C'EST LA FAUTE VOX-01 RETOURNÉE. Là-bas, « J'ai compris » voulait dire
+   * « j'ai entendu ». Ici, « Je n'ai pas compris » voulait dire « ce n'était
+   * pas une vente ». Ne jamais donner deux sens à la même donnée.
+   *
+   * REQUIS, comme `saisieOuverte`, et pour la même raison : un appelant qui
+   * l'oublierait retomberait en silence sur l'ancien comportement.
+   */
+  readonly intentionComprise: boolean;
 }
 
 export type AfficheEcoute =
@@ -148,6 +171,18 @@ export function afficheEcoute(faits: FaitsAffichage): AfficheEcoute {
 
   const compris = (faits.compris ?? '').trim();
   if (compris) return { type: 'compris', libelle: compris };
+
+  // ENC-01 — COMPRISE, MAIS PAS PAR CE BANDEAU. C'est exactement le
+  // raisonnement de CAI-07 six lignes plus haut, appliqué à l'autre cas : la
+  // phrase A été comprise, une AUTRE surface y répond (la relecture
+  // financière de `POSCaisse` pour l'encaissement, la confirmation parlée
+  // pour la dépense), et le bandeau du micro se retire.
+  //
+  // REPOS, ET SÛREMENT PAS UN SECOND « J'AI COMPRIS ». Le repli tentant
+  // serait d'afficher ici « J'ai compris : encaisser ». Ce serait rouvrir
+  // CAI-07 : deux « J'ai compris » à l'écran au même instant, dont l'un
+  // (la relecture) engage l'argent. Un seul, et c'est celui qui engage.
+  if (faits.intentionComprise) return { type: 'repos' };
 
   return faits.transcription.trim() ? { type: 'incompris' } : { type: 'repos' };
 }
