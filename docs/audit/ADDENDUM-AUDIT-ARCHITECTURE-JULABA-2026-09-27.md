@@ -39,14 +39,66 @@ et non de complaisance :
    puis report **d'une seule ligne** dans `EMPREINTES_BASE`. Si plusieurs
    empreintes bougent, s'arrêter et le signaler.
 
-3. **Les invariants backend n'ont pas été lancés.** Ils tournent sur un
-   PostgreSQL partagé, et TEST-05 interdit deux suites d'invariants en
-   parallèle. Ce qui a tourné : la suite unitaire backend complète —
-   **33 suites, 249 tests, tout passe** — et cela ne remplace pas les
-   invariants.
+3. ~~**Les invariants backend n'ont pas été lancés.**~~ **REJOUÉS le 27/09 —
+   50 suites, 252 tests, tout passe.** Non pas sur le PostgreSQL partagé, mais
+   sur une instance **locale et jetable** montée pour l'occasion
+   (`127.0.0.1:55432/julaba_test`, que `assertBaseDeTest()` protège). TEST-05
+   n'est donc pas en cause : aucune autre suite ne tournait, et la base naît et
+   meurt avec le conteneur. La suite unitaire backend passe également —
+   33 suites, 249 tests.
 
-**Tant que ces trois points ne sont pas rejoués, l'état de la branche est
-« corrigé et mesuré unitairement », pas « validé ».**
+   **Ce passage a coûté une découverte, et elle compte plus que la validation
+   elle-même** : trois de ces suites étaient MORTES depuis le 25/09 (voir
+   ARG-19 ci-dessous). Elles ne prouvaient plus rien, et personne ne l'avait
+   vu — précisément parce que les invariants tournent rarement.
+
+**Les deux premiers points restent ouverts. Tant qu'ils ne sont pas levés,
+l'état de la branche est « corrigé, mesuré unitairement et validé sur les
+invariants », pas « validé ».** `verify` n'a toujours pas été vu vert de bout
+en bout.
+
+---
+
+## ARG-19 — trois invariants d'argent étaient désarmés (découvert le 27/09)
+
+Ce point ne figurait pas dans le rapport d'audit, et n'aurait pas pu y
+figurer : il ne se voit qu'en EXÉCUTANT les invariants, ce que l'audit s'était
+explicitement interdit (`[NV]`).
+
+`6161dd7` (25/09) a ajouté `uniteDeProduitSaisie`, qui refuse une création de
+produit sans unité — « Jamais fabriquée : sans elle, une quantité ne veut rien
+dire ». La règle est juste. Mais trois suites d'invariants créaient leurs
+produits SANS unité, et n'avaient pas été touchées depuis le 12/08, le 19/09 et
+le 12/08 :
+
+| Suite | Ce qu'elle prouvait, et ne prouvait plus |
+|---|---|
+| `i1-i3-atomicite-stock` | atomicité vente↔stock, survente tracée |
+| `i2-idempotence-vente` | une clé rejouée ne décrémente qu'une fois |
+| `annulation-remise-stock` | R7, restitution après annulation |
+
+**Les trois invariants les plus critiques sur l'argent, muets pendant deux
+jours.**
+
+**Le défaut derrière le défaut.** Deux de ces suites ne vérifiaient pas le
+statut de leur propre préparation : leur `createProduit` recevait un 400 en
+silence, et l'assertion tombait bien plus loin sur un `stockOf()` à `NaN` —
+une erreur qui ne dit pas d'où elle vient. `i2`, lui, vérifie et échoue
+franchement. Une préparation qui échoue sans le dire est exactement le défaut
+que ce dépôt combat partout ailleurs. **Il n'a pas été corrigé** : ajouter un
+`expect` à chaque préparation dépasse la réparation minimale, et relève d'un
+arbitrage. Les deux suites restent donc capables de mentir de la même façon.
+
+**Vérification faite avant de conclure.** Les 12 échecs portaient sur
+vente↔stock et annulation — exactement ce qu'ARG-18 venait de toucher. La même
+suite relancée sur le code d'AVANT ARG-18 (`053d726`) échoue à l'identique :
+ce n'était pas la régression, et la coïncidence des fichiers ne suffisait pas
+à conclure.
+
+**Conséquence pour ARG-18** : les invariants d'atomicité vente↔stock,
+d'idempotence et de restitution passent désormais AVEC la modification du
+contrôleur. C'est la validation que la suite unitaire seule ne pouvait pas
+donner.
 
 ---
 
