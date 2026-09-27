@@ -32,7 +32,12 @@ export interface LocalVoiceResult {
   transcript: string;
   normalizedText: string;
   intent: string;
-  action: { type: string; montant?: number; produit?: string; quantite?: number; description?: string };
+  /**
+   * VOIX-07 — `unite` est ADDITIF. Elle était extraite par `extraire`
+   * (`uniteParlee`) puis jetée ici : l'action n'avait pas de champ pour elle.
+   * Aucun champ existant ne bouge ; ce qui ne la lit pas ne voit rien changer.
+   */
+  action: { type: string; montant?: number; produit?: string; quantite?: number; unite?: string; description?: string };
   response: string;
   needsConfirmation: boolean;
   audioBase64: null;
@@ -173,14 +178,45 @@ function analyser(texte: string, locale: LocaleCode, venteSansVerbeAutorisee: bo
   const action: LocalVoiceResult['action'] = { type };
   if (p.produit) action.produit = p.produit;
   if (p.quantite != null) action.quantite = p.quantite;
+  // TELLE QU'ELLE L'A DITE. `uniteParlee` arrive déjà accordée par sa bouche
+  // — « sac » ou « sacs », « kilo » ou « kilos », « tas » invariable. La
+  // ré-accorder reviendrait à lui rendre NOTRE mot à la place du sien, et à
+  // se tromper sur les invariables.
+  if (p.uniteParlee) action.unite = p.uniteParlee;
   if (p.montant != null) action.montant = p.montant;
   if (intent === 'depense' && p.produit) action.description = p.produit;
 
   // Accord du pluriel (« Vente de 2 tomates », pas « 2 tomate ») — même règle
   // que les dialogues de la vente guidée.
+  /**
+   * CE QU'ELLE ENTEND EN RETOUR DOIT ÊTRE CE QU'ELLE A DIT — VOIX-07.
+   *
+   * Elle disait « 5 sacs de riz à 20 000 » et Tata répondait « Vente de 5 riz
+   * pour 20 000 francs, c'est bien ça ? ». Puis elle attendait un OUI.
+   *
+   * Ce n'était pas un défaut d'affichage : la CONFIRMATION portait sur une
+   * phrase amputée. Cinq sacs à 20 000 et cinq unités de riz à 20 000 ne sont
+   * pas la même vente, et c'est elle qui validait la seconde.
+   *
+   * La composition avec unité existait déjà — `TATA_QUANTITE_UNITE_PRODUIT`,
+   * dont `resumeQuantite` se sert pour l'écran. On la réutilise plutôt que
+   * d'en écrire une seconde : deux compositions finiraient par diverger, et
+   * c'est exactement l'écart qu'on est en train de fermer.
+   *
+   * Avec unité le produit reste au SINGULIER (« 2 tas de piment ») : c'est
+   * l'unité qui porte le nombre. Sans unité, il s'accorde comme avant.
+   */
   const nomProduit = p.produit
     ? (p.quantite && p.quantite > 1 ? plurielNom(p.produit) : p.produit)
     : t('TATA_PRODUIT_GENERIQUE', {}, locale);
+  const avecUnite = !!(p.uniteParlee && p.produit);
+  // Le bloc « 2 tas de piment » part ENTIER dans {produit} : la clé garde la
+  // main sur l'ordre des morceaux, pour une langue qui les rangerait autrement.
+  const blocProduit = avecUnite
+    ? t('TATA_QUANTITE_UNITE_PRODUIT',
+        { quantite: String(p.quantite ?? 1), unite: p.uniteParlee!, produit: p.produit! }, locale)
+        .replace(/\s+/g, ' ').trim()
+    : nomProduit;
   // Sans montant dicté, on n'en ANNONCE aucun : le prix sera celui du
   // catalogue, et affirmer un chiffre qu'on n'a pas serait pire que se taire.
   // Phrases du catalogue i18n : les morceaux (quantité, montant, produit)
@@ -188,7 +224,7 @@ function analyser(texte: string, locale: LocaleCode, venteSansVerbeAutorisee: bo
   const partMontant = p.montant != null ? t('TATA_PART_POUR_MONTANT', { montant: p.montant }, locale) : '';
   const response =
     intent === 'vendre'
-      ? t('TATA_CONFIRME_VENTE', { quantite: p.quantite ? t('TATA_PART_QUANTITE', { quantite: String(p.quantite) }, locale) : '', produit: nomProduit, montant: partMontant }, locale)
+      ? t('TATA_CONFIRME_VENTE', { quantite: avecUnite ? '' : (p.quantite ? t('TATA_PART_QUANTITE', { quantite: String(p.quantite) }, locale) : ''), produit: blocProduit, montant: partMontant }, locale)
       : t('TATA_CONFIRME_DEPENSE', { montant: p.montant!, produit: p.produit ? t('TATA_PART_POUR_PRODUIT', { produit: p.produit }, locale) : '' }, locale);
 
   return {
