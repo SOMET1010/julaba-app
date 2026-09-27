@@ -63,11 +63,32 @@ ok(afficher !== null && /else if \(effet\.type === 'dire'\) setRelectureAffichee
 ok(!/setRelectureAffichee\(/.test(code.replace(afficher?.[0] ?? "", "").replace(/const \[relectureAffichee, setRelectureAffichee\][^\n]*/, "")),
   "aucune autre affectation ailleurs : la règle n'existe qu'une fois");
 const traiter = code.match(/const traiterIntentionEncaissement = [\s\S]*?\n  \};/);
-ok(traiter !== null && /afficherRelecture\(etat, effet\)/.test(traiter[0]) && /speak\(effet\.texte\)/.test(traiter[0]),
-  "traiterIntentionEncaissement affiche puis DIT la même `effet.texte`");
+/**
+ * ARG-17, 27/09/2026 — LA RÈGLE EST RESSERRÉE, PAS RELÂCHÉE.
+ *
+ * La décision de Patrick citée en tête exige « la même relecture financière
+ * exacte que celle prononcée, dérivée du MÊME snapshot de machine ». Le danger
+ * qu'elle vise est nommé juste au-dessus : une phrase RECONSTRUITE ailleurs, à
+ * partir du `total`/`recu` du rendu, qui pourrait diverger du snapshot relu.
+ *
+ * Mesuré depuis : `speak(effet.texte)` envoyait à la synthèse la forme ÉCRAN,
+ * avec son espace fine insécable — « Elle doit 2 000 francs » sortait
+ * « 2 zéro zéro zéro ». Elle ne pouvait donc PAS vérifier ce qu'elle allait
+ * confirmer : exactement ce que la décision voulait empêcher, par l'autre bout.
+ *
+ * On exige maintenant DEUX formes issues du MÊME effet : `texte` à l'écran,
+ * `texteParle` à l'oreille. Ce n'est pas deux chaînes concurrentes — c'est une
+ * seule phrase, un seul snapshot, une seule clé de catalogue, rendue pour deux
+ * organes. Toute reconstruction reste interdite, et la garde le vérifie
+ * toujours plus bas (`phraseRelecture` non importé).
+ */
+ok(traiter !== null && /afficherRelecture\(etat, effet\)/.test(traiter[0]) && /speak\(effet\.texteParle\)/.test(traiter[0]),
+  "traiterIntentionEncaissement affiche `texte` puis DIT `texteParle` du même effet");
+ok(traiter !== null && !/speak\(effet\.texte\)/.test(traiter[0]),
+  "et n'envoie JAMAIS la forme écran à la voix — elle porte l'espace fine que la synthèse épelle");
 const effetEmpreinte = code.match(/useEffect\(\(\) => \{[\s\S]{0,600}?'etat_financier_change'[\s\S]*?\}, \[cleEmpreinte\]\)/);
-ok(effetEmpreinte !== null && /afficherRelecture\(etat, effet\)/.test(effetEmpreinte[0]) && /speak\(effet\.texte\)/.test(effetEmpreinte[0]),
-  "le useEffect [cleEmpreinte] (relecture spontanée) aussi : affichée puis dite");
+ok(effetEmpreinte !== null && /afficherRelecture\(etat, effet\)/.test(effetEmpreinte[0]) && /speak\(effet\.texteParle\)/.test(effetEmpreinte[0]),
+  "le useEffect [cleEmpreinte] (relecture spontanée) aussi : affichée puis dite, deux formes");
 ok(!/import \{[^}]*\bphraseRelecture\b[^}]*\} from '\.\.\/\.\.\/services\/machineEncaissement'/.test(code),
   "POSCaisse n'importe pas `phraseRelecture` de la machine : il ne reconstruit jamais la phrase");
 
