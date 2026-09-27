@@ -51,9 +51,9 @@ function fin(lignes: LigneFinanciere[], recu: number): EtatFinancier {
   };
 }
 
-const TOMATES: LigneFinanciere = { productId: 'tomate', quantite: 4, total: 2000 };
-const OIGNONS: LigneFinanciere = { productId: 'oignon', quantite: 2, total: 2000 };
-const PIMENT: LigneFinanciere = { productId: 'piment', quantite: 1, total: 2000 };
+const TOMATES: LigneFinanciere = { ligneId: 'tomate', quantite: 4, total: 2000 };
+const OIGNONS: LigneFinanciere = { ligneId: 'oignon', quantite: 2, total: 2000 };
+const PIMENT: LigneFinanciere = { ligneId: 'piment', quantite: 1, total: 2000 };
 
 /** Rejoue une conversation et rend la trace : états et effets, pas à pas. */
 function jouer(etapes: Array<[EvenementEncaissement, EtatFinancier]>, depart: EtatEncaissement = ETAT_INITIAL) {
@@ -173,7 +173,7 @@ console.log('\n[5] Panier modifié entre relecture et « oui valide » → ancie
 }
 {
   const relu = fin([TOMATES, OIGNONS], 5000);
-  const memeTotalAutrePanier = fin([{ productId: 'tomate', quantite: 2, total: 2000 }, OIGNONS], 5000);
+  const memeTotalAutrePanier = fin([{ ligneId: 'tomate', quantite: 2, total: 2000 }, OIGNONS], 5000);
   ok(relu.total === memeTotalAutrePanier.total, '(les deux paniers font le même total)');
   ok(jouer([['encaisser', relu], ['oui_valide', memeTotalAutrePanier]]).paiements === 0,
     'même total mais composition différente → rejeté : c\'est la vente qu\'on confirme, pas un chiffre');

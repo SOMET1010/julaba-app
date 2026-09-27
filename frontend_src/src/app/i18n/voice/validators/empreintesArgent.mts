@@ -91,9 +91,9 @@ export const ENUMERATION_BASE = { conversations: 2_560_000, paiements: 19_312, v
 
 // ── Corpus déterministes ─────────────────────────────────────────────────────
 
-const TOMATES: LigneFinanciere = { productId: 'tomate', quantite: 4, total: 2000 };
-const OIGNONS: LigneFinanciere = { productId: 'oignon', quantite: 2, total: 2000 };
-const PIMENT: LigneFinanciere = { productId: 'piment', quantite: 1, total: 2000 };
+const TOMATES: LigneFinanciere = { ligneId: 'tomate', quantite: 4, total: 2000 };
+const OIGNONS: LigneFinanciere = { ligneId: 'oignon', quantite: 2, total: 2000 };
+const PIMENT: LigneFinanciere = { ligneId: 'piment', quantite: 1, total: 2000 };
 
 function fin(lignes: LigneFinanciere[], recu: number): EtatFinancier {
   const total = lignes.reduce((s, l) => s + l.total, 0);

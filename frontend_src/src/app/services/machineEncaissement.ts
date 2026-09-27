@@ -42,7 +42,25 @@ export interface EmpreinteFinanciere {
 
 /** Une ligne de panier, réduite à ce qui change le montant dû. */
 export interface LigneFinanciere {
-  productId: string;
+  /**
+   * L'IDENTITÉ DE LA LIGNE — P0.1, 27/09/2026. Ce champ s'appelait
+   * `productId` ; il portait en réalité l'identité de la ligne, puisque les
+   * articles libres y mettaient un `libre-1758…` unique.
+   *
+   * CE N'EST PAS UN RENOMMAGE MÉCANIQUE, et le vérifier était nécessaire :
+   * l'invariant protégé ici est « ces lignes EXACTES n'ont pas changé »
+   * (voir `memeEmpreinte`, et la branche qui retombe en préparation quand le
+   * compte relu a bougé). Y mettre le nouveau `productId`, désormais nullable,
+   * l'aurait AFFAIBLI — mesuré :
+   *
+   *   elle efface « Autre article 500 » et le retape à l'identique
+   *     avec l'identité de ligne : libre-AAA:1:500 ≠ libre-BBB:1:500 → détecté
+   *     avec un productId nullable :      null:1:500 =      null:1:500 → INVISIBLE
+   *
+   * On aurait payé un panier qu'elle n'avait pas relu. Le tri, lui, neutralise
+   * l'ORDRE — pas l'identité.
+   */
+  ligneId: string;
   quantite: number;
   total: number;
 }
@@ -55,7 +73,7 @@ export interface LigneFinanciere {
  */
 export function empreintePanier(lignes: readonly LigneFinanciere[]): string {
   return lignes
-    .map(l => `${l.productId}:${l.quantite}:${Math.round(l.total)}`)
+    .map(l => `${l.ligneId}:${l.quantite}:${Math.round(l.total)}`)
     .sort()
     .join('|');
 }
