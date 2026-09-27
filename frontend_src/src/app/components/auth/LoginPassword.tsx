@@ -1641,9 +1641,10 @@ export function LoginPassword() {
             if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
             else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
           }}
-          style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: '#8A5A34', background: '#F5D6BD', border: 'none', borderRadius: 10, padding: '7px 14px', cursor: 'pointer' }}
+          style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 56, fontSize: 18, lineHeight: '24px', fontWeight: 800, color: '#7A4A24', background: '#F5D6BD', border: '2px solid #D9A87A', borderRadius: 14, padding: '12px 22px', cursor: 'pointer' }}
         >
-          🐞 Rapport de test
+          <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
+          Rapport de test
         </button>
       </motion.div>
       )}
