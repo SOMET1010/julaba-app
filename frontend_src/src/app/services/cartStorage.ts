@@ -35,6 +35,24 @@
  * n'a jamais dite serait pire que de ne rien savoir.
  */
 export interface PersistedCartItem {
+  /**
+   * P0.1 (v3) — L'IDENTITÉ DE LA LIGNE, toujours présente et unique.
+   *
+   * Optionnel dans le TYPE seulement pour que la lecture d'un panier v1/v2
+   * compile : la migration en pose toujours un (voir `parseCart`). Rien de ce
+   * qui sort de ce module n'a de `ligneId` absent.
+   */
+  ligneId?: string;
+  /**
+   * P0.1 (v3) — L'identifiant du produit au CATALOGUE, ou `null`.
+   *
+   * En v1/v2 ce champ portait DEUX sens : un UUID de produit, ou un
+   * `libre-1758…` qui était en réalité une identité de ligne. La migration
+   * les sépare : l'ancienne valeur devient `ligneId` dans TOUS les cas, et ne
+   * reste ici que si c'est un vrai UUID.
+   */
+  productIdCatalogue?: string | null;
+  /** @deprecated v1/v2 — lu à la migration, plus jamais écrit. */
   productId: string;
   nom: string;
   prix: number;
@@ -50,13 +68,14 @@ export interface PersistedCartItem {
 }
 
 /**
- * VERSION 2 — quatre champs ajoutés, aucun retiré.
+ * VERSION 3 — l'identité de la ligne est séparée de celle du produit (P0.1).
+ * VERSION 2 — quatre champs ajoutés, aucun retiré (PAN-01).
  *
  * La lecture accepte encore `v: 1` et le convertit sans rien jeter : un panier
  * déjà sur un téléphone ne doit pas disparaître au déploiement. Une marchande
  * en plein marché ne comprendrait pas où sont passés ses articles.
  */
-export type CartVersion = 1 | 2;
+export type CartVersion = 1 | 2 | 3;
 
 export interface CartEnvelope {
   v: CartVersion;
@@ -125,10 +144,32 @@ export function sanitizeItems(raw: unknown): PersistedCartItem[] {
   const out: PersistedCartItem[] = [];
   for (const it of raw) {
     if (!isValidItem(it)) continue;
-    const ligne: PersistedCartItem = {
-      productId: it.productId, nom: it.nom, prix: it.prix, quantite: it.quantite,
-    };
     const brut = it as unknown as Record<string, unknown>;
+    /**
+     * P0.1 — LA SÉPARATION SE FAIT ICI, ET ELLE EST DÉTERMINISTE.
+     *
+     * L'ancien `productId` devient `ligneId` dans TOUS les cas : c'est une
+     * identité qui existait déjà et qui était unique dans le panier, donc
+     * aucune collision et aucune référence cassée.
+     *
+     * Il ne reste `productIdCatalogue` que si c'est un VRAI UUID. Un
+     * `libre-1758…` n'en devient jamais un — le transformer en faux
+     * identifiant produit serait recréer la confusion qu'on supprime.
+     */
+    const ancien = it.productId;
+    const ligneId = typeof brut.ligneId === 'string' && brut.ligneId ? brut.ligneId : ancien;
+    const catalogue = brut.productIdCatalogue !== undefined
+      ? (typeof brut.productIdCatalogue === 'string' && UUID.test(brut.productIdCatalogue)
+          ? brut.productIdCatalogue : null)
+      : (UUID.test(ancien) ? ancien : null);
+    const ligne: PersistedCartItem = {
+      ligneId,
+      productIdCatalogue: catalogue,
+      // Conservé pour que rien de ce qui lit encore l'ancien champ ne casse
+      // pendant la propagation. Il vaut l'identité de LIGNE, comme avant.
+      productId: ligneId,
+      nom: it.nom, prix: it.prix, quantite: it.quantite,
+    };
     if (isFiniteNumber(brut.prix_achat) && brut.prix_achat >= 0) ligne.prix_achat = brut.prix_achat;
     if (isFiniteNumber(brut.totalExact) && brut.totalExact >= 0) ligne.totalExact = brut.totalExact;
     if (typeof brut.unite === 'string' && brut.unite.trim() !== '') ligne.unite = brut.unite;
@@ -140,7 +181,7 @@ export function sanitizeItems(raw: unknown): PersistedCartItem[] {
 
 /** Sérialise un panier dans une enveloppe versionnée. */
 export function serializeCart(items: PersistedCartItem[], nowIso: string): string {
-  const env: CartEnvelope = { v: 2, items: sanitizeItems(items), updatedAt: nowIso };
+  const env: CartEnvelope = { v: 3, items: sanitizeItems(items), updatedAt: nowIso };
   return JSON.stringify(env);
 }
 
@@ -162,7 +203,10 @@ export function serializeCart(items: PersistedCartItem[], nowIso: string): strin
  * Une version INCONNUE (3, 0, absente) reste refusée : mieux vaut repartir
  * d'un panier vide que de deviner la forme d'une donnée d'argent.
  */
-const VERSIONS_LUES: ReadonlySet<unknown> = new Set<unknown>([1, 2]);
+/** Un identifiant de produit est un UUID, ou il n'en est pas un (ARG-16). */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const VERSIONS_LUES: ReadonlySet<unknown> = new Set<unknown>([1, 2, 3]);
 
 export function parseCart(raw: string | null): CartEnvelope | null {
   if (!raw) return null;
@@ -175,7 +219,7 @@ export function parseCart(raw: string | null): CartEnvelope | null {
   const updatedAt = typeof d.updatedAt === 'string' ? d.updatedAt : '';
   // La version RENDUE est celle d'aujourd'hui : ce qui sort d'ici est déjà
   // migré, et l'appelant n'a pas à connaître la forme d'origine.
-  return { v: 2, items, updatedAt };
+  return { v: 3, items, updatedAt };
 }
 
 /** Âge du panier vs le seuil (R5). Une date invalide est traitée comme « ancien ». */

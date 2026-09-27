@@ -135,18 +135,21 @@ console.log('\n[9] UNE VERSION INCONNUE EST REFUSÉE');
 // assertion ne la tenait. Une garde qui ne peut pas rougir n'en est pas une.
 // Mieux vaut repartir d'un panier vide que deviner la forme d'une donnée
 // d'argent écrite par une version qu'on ne connaît pas.
-for (const v of [0, 3, 99, '2', null, undefined]) {
+// P0.1 (27/09) : `3` est devenue la version courante — retiré de cette liste,
+// exactement comme `2` l'avait été de celle de `cartStorage.test.mts`. On garde
+// des valeurs qu'aucun lot futur ne rattrapera de sitôt.
+for (const v of [0, 42, 99, '2', null, undefined]) {
   const brut = JSON.stringify({ v, updatedAt: ISO, items: [{ productId: 'p', nom: 'X', prix: 1, quantite: 1 }] });
   ok(cs.parseCart(brut) === null, `version ${JSON.stringify(v)} → refusée`,
      "accepter une forme inconnue, c'est deviner ce qu'elle contient");
 }
 {
   // Et les deux versions connues passent, elles.
-  for (const v of [1, 2]) {
+  for (const v of [1, 2, 3]) {
     const brut = JSON.stringify({ v, updatedAt: ISO, items: [{ productId: 'p', nom: 'X', prix: 1, quantite: 1 }] });
     const env = cs.parseCart(brut);
     ok(env !== null, `version ${v} → lue`);
-    ok(env?.v === 2, `version ${v} → rendue en v2 (déjà migrée pour l'appelant)`);
+    ok(env?.v === 3, `version ${v} → rendue en version courante (déjà migrée pour l'appelant)`);
   }
 }
 
