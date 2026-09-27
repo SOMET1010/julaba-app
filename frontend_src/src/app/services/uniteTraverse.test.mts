@@ -50,7 +50,7 @@ const CAS = [
 
 console.log('\n[1] l\'unité est entendue — c\'est le point de départ');
 for (const c of CAS) {
-  const e = extraire(c.dit) as Record<string, unknown>;
+  const e = extraire(c.dit);
   ok(e.uniteParlee === c.unite, `« ${c.dit} » → uniteParlee = ${c.unite}`,
      `obtenu : ${JSON.stringify(e.uniteParlee)}`);
 }
