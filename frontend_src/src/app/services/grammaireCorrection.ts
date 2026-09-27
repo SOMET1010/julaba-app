@@ -48,8 +48,31 @@ export const MOTS_ANNULE = ['annule', 'annuler', 'recommence', 'recommencer', 'o
 export const MOTS_SUPPRIME = ['enleve', 'enlever', 'retire', 'retirer', 'supprime', 'supprimer', 'jette', 'jeter'];
 export const MOTS_ENCAISSE = ['encaisse', 'encaisser', 'termine', 'terminer', 'fini', 'finir', "c'est tout", "c'est fini", 'termine la'];
 export const MOTS_SUIVANT = ["j'ajoute", 'autre chose', 'autre article', 'encore un', 'un autre', 'aussi', 'et aussi', 'ajoute autre'];
-export const MOTS_REFUS = ['non', 'pas ca', "c'est pas ca", "c'est faux", 'faux', 'pas bon', "c'est pas bon", 'errone', 'erreur'];
-export const MOTS_CONFIRME = ['oui', "c'est bon", "c'est ca", "c'est exact", 'voila', 'exact', 'ok', 'okay', "d'accord", 'daccord', 'parfait', 'bon'];
+// VOIX-08 — « pas » GÉNÉRIQUE ajouté, et c'est un rétablissement, pas un ajout.
+//
+// La liste en dur de `useVoiceCore` portait un `" pas "` large. En branchant
+// la confirmation sur cette liste-ci, qui ne connaissait que « pas ca » et
+// « pas bon », on l'a perdu — et « pas d'accord » comme « c'est pas exact »
+// se sont mis à valoir OUI. Une négation explicite validait la vente.
+//
+// Trouvé par contre-essai, pas par lecture : la liste déclarée était plus
+// pauvre que celle qu'elle remplaçait, et rien ne le disait.
+//
+// « pas » est volontairement large — « je n'ai pas fini » part au refus. C'est
+// la doctrine déjà écrite dans `localIntent` : le doute profite au refus. Un
+// refus mal compris coûte une répétition ; un oui mal compris coûte une vente.
+export const MOTS_REFUS = ['non', 'pas', 'pas ca', "c'est pas ca", "c'est faux", 'faux', 'pas bon', "c'est pas bon", 'errone', 'erreur'];
+// VOIX-08 — deux corrections, sur une liste qui décide de valider une vente.
+//
+// « bon » ISOLÉ est retiré. `compilerMotif` en fait `\b(bon)\b`, donc « bon
+// alors » — une hésitation — valait OUI. « c'est bon » reste : il est
+// explicite. Sur une confirmation d'argent, le doute ne profite jamais au oui.
+//
+// « ouais » est AJOUTÉ. Il vivait dans la liste en dur de `useVoiceCore`, pas
+// ici. En branchant la confirmation sur la grammaire déclarée, on l'aurait
+// perdu sans s'en apercevoir : une marchande qui dit « ouais » n'aurait plus
+// été comprise. On ne ferme pas une divergence en perdant ce qu'elle portait.
+export const MOTS_CONFIRME = ['oui', 'ouais', "c'est bon", "c'est ca", "c'est exact", 'voila', 'exact', 'ok', 'okay', "d'accord", 'daccord', 'parfait'];
 export const MOTS_TOTAL = ['le tout', 'au total', 'en tout', 'tout ca', 'ensemble', 'pour les', 'les deux', 'les trois'];
 
 /**

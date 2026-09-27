@@ -25,6 +25,7 @@ import { tataUiClipForText } from "../services/tataUiClips";
 import { resolveLocalVoiceChoice } from "../services/localVoiceChoice";
 import { useOfflineVoiceQueue } from "./useOfflineVoiceQueue";
 import { dispatchVoiceAction } from "../voice-offline/offlineVoiceDispatch";
+import { acquiescement } from '../voice-offline/grammaireAcquiescement';
 
 // ─── TYPES ───────────────────────────────────────────────────────
 
@@ -297,15 +298,22 @@ function ttsStop(): void {
 }
 
 // Interprète une réponse de confirmation dictée : « oui » / « non » / incertain.
-// On teste le NON d'abord (« non », « pas ça », « annule »…), sinon le OUI.
-function interpretYesNo(texte: string): "oui" | "non" | null {
-  const t = " " + (texte || "").toLowerCase().replace(/['']/g, "'").replace(/[.,!?;:]/g, " ").replace(/\s+/g, " ") + " ";
-  const NON = [" non ", " pas ", " faux ", " annule", " efface", " recommence"];
-  const OUI = [" oui ", " ouais ", " voila ", " voilà ", " exact ", " accord ", " ok ", " okay ", " c'est bon ", " c'est ca ", " c'est ça ", " bon ", " ca ", " ça "];
-  if (NON.some((w) => t.includes(w))) return "non";
-  if (OUI.some((w) => t.includes(w))) return "oui";
-  return null;
-}
+//
+// VOIX-08 — CETTE FONCTION AVAIT SA PROPRE LISTE DE MOTS, ET ELLE DÉCIDAIT
+// SEULE. Un « oui » ici appelle `confirmAction` : la vente part. Or le dépôt
+// DÉCLARE déjà cette grammaire — `INT_LIGNE_CONFIRMATION` et
+// `INT_LIGNE_REFUS`, marquées `critiqueArgent`, déclinables par locale. Deux
+// vérités pour le même acte, et c'est la non-déclarée qui tranchait ; une
+// langue pouvait déclarer ses variantes sans que la confirmation les lise.
+//
+// Et la liste en dur acceptait « ca » / « ça » ISOLÉS : « ça fait combien ? »
+// valait OUI, donc validait la vente. Elle pose une question, on encaisse.
+// Le repli prévu plus bas (« Dis oui pour valider… », deux fois, puis les
+// boutons) ne se déclenchait jamais : le doute était déjà compté OUI.
+//
+// La règle est maintenant dans `grammaireAcquiescement`, qui lit la grammaire
+// déclarée et où elle se teste sans React.
+const interpretYesNo = acquiescement;
 
 // ─── BIP AUDIO ────────────────────────────────────────────────────
 // Priorité voix : bip uniquement si aucun audio principal en cours
