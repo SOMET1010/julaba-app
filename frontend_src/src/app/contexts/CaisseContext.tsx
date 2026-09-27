@@ -111,6 +111,7 @@ function doitEnfiler(error: unknown): boolean {
 export type { StatutEnregistrement, ResultatEnregistrement } from '../types/statutEnregistrement';
 import type { ResultatEnregistrement } from '../types/statutEnregistrement';
 import type { IdCategorieDepense } from '../services/categorieDepense';
+import { nouvelleLigneId } from '../services/panierLignes';
 
 export interface CaisseTransaction {
   id: string;
@@ -148,6 +149,23 @@ export interface CaisseProduct {
 }
 
 export interface CartItem {
+  /**
+   * L'IDENTITÉ DE CETTE LIGNE — P0.1, 27/09/2026. Toujours présente, unique
+   * dans le panier. C'est elle qui cible une suppression ou une modification.
+   */
+  ligneId: string;
+  /**
+   * L'identifiant du produit au CATALOGUE, ou `null` s'il n'y en a pas
+   * (article libre, produit dicté non apparié).
+   *
+   * `null` veut dire « pas de produit catalogue ». JAMAIS « c'est le même ».
+   * Il n'est donc jamais une clé de fusion : sans le test d'existence, tous
+   * les articles libres seraient égaux entre eux et s'écraseraient en une
+   * ligne — la faute du 18/09, réintroduite par la correction censée
+   * l'éviter. Voir `services/panierLignes.ts`.
+   */
+  productIdCatalogue: string | null;
+  /** @deprecated P0.1 — vaut l'identité de LIGNE. Retiré à la propagation finale. */
   productId: string;
   nom: string;
   prix: number;
@@ -235,10 +253,10 @@ interface CaisseContextType {
   
   // POS Cart
   addToCart: (product: CaisseProduct, quantite?: number, totalExact?: number, origine?: 'vocal') => void;
-  removeFromCart: (productId: string) => void;
-  updateCartItemQuantity: (productId: string, quantite: number) => void;
+  removeFromCart: (ligneId: string) => void;
+  updateCartItemQuantity: (ligneId: string, quantite: number) => void;
   /** Négoce (demi-grossiste/grossiste) : le prix unitaire se discute à la vente. */
-  updateCartItemPrice: (productId: string, prix: number) => void;
+  updateCartItemPrice: (ligneId: string, prix: number) => void;
   clearCart: () => void;
   getTotalCart: () => number;
 
@@ -672,10 +690,16 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // ce correctif) que de garder un total exact devenu faux pour la nouvelle
   // quantité.
   const addToCart = (product: CaisseProduct, quantite: number = 1, totalExact?: number, origine?: 'vocal') => {
-    const existing = cart.find(item => item.productId === product.id);
+    // P0.1 — LA FUSION EST CONDITIONNELLE À UN PRODUIT CATALOGUE RÉEL.
+    // Sans le `product.id ?`, un article libre (`productIdCatalogue: null`)
+    // fusionnerait avec TOUS les autres articles libres — `null === null` —
+    // et « Autre article à 500 » puis « à 800 » n'en feraient qu'un.
+    const existing = product.id
+      ? cart.find(item => item.productIdCatalogue === product.id)
+      : undefined;
     const next = existing
       ? cart.map(item =>
-          item.productId === product.id
+          item.ligneId === existing.ligneId
             // `origine` se CUMULE en fusion (une ligne dictée puis complétée au
             // doigt reste une ligne où la voix a servi), là où `totalExact` est
             // invalidé — le total dicté, lui, ne vaut plus pour la nouvelle
@@ -702,7 +726,11 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
             : item)
       // Prix effectif : applique automatiquement le prix promo s'il est actif.
       : [...cart, {
-          productId: product.id, nom: product.nom, prix: prixEffectif(product), quantite,
+          ligneId: nouvelleLigneId(),
+          // Un `libre-*` n'est PAS un identifiant catalogue : il n'en reste
+          // aucune trace ici, c'est l'identité de ligne qui le remplace.
+          productIdCatalogue: product.id && !String(product.id).startsWith('libre-') ? String(product.id) : null,
+          productId: String(product.id), nom: product.nom, prix: prixEffectif(product), quantite,
           prix_achat: Number(product.prix_achat) || 0,
           // FIGÉE À LA CRÉATION DE LA LIGNE, comme le prix d'achat : c'est
           // l'unité telle qu'elle était au moment de la vente.
@@ -714,31 +742,33 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     persistCart(next);
   };
 
-  const removeFromCart = (productId: string) => {
-    const next = cart.filter(item => item.productId !== productId);
+  // P0.1 — on cible la LIGNE, jamais le produit : deux articles libres de même
+  // nom et même prix sont deux lignes, et n'en retirer qu'une doit marcher.
+  const removeFromCart = (ligneId: string) => {
+    const next = cart.filter(item => item.ligneId !== ligneId);
     setCart(next);
     persistCart(next);
   };
 
-  const updateCartItemQuantity = (productId: string, quantite: number) => {
+  const updateCartItemQuantity = (ligneId: string, quantite: number) => {
     if (quantite <= 0) {
-      removeFromCart(productId);
+      removeFromCart(ligneId);
       return;
     }
     // Le total exact éventuel ne valait que pour l'ancienne quantité.
     const next = cart.map(item =>
-      item.productId === productId ? { ...item, quantite, totalExact: undefined } : item);
+      item.ligneId === ligneId ? { ...item, quantite, totalExact: undefined } : item);
     setCart(next);
     persistCart(next);
   };
 
   // Négoce (demi-grossiste/grossiste) : le prix se discute à chaque vente —
   // la ligne du panier porte le prix CONVENU, persisté comme le reste.
-  const updateCartItemPrice = (productId: string, prix: number) => {
+  const updateCartItemPrice = (ligneId: string, prix: number) => {
     if (!prix || isNaN(prix) || prix <= 0) return;
     // Le total exact éventuel ne valait que pour l'ancien prix.
     const next = cart.map(item =>
-      item.productId === productId ? { ...item, prix, totalExact: undefined } : item);
+      item.ligneId === ligneId ? { ...item, prix, totalExact: undefined } : item);
     setCart(next);
     persistCart(next);
   };

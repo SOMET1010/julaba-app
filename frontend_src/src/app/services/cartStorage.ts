@@ -38,11 +38,12 @@ export interface PersistedCartItem {
   /**
    * P0.1 (v3) — L'IDENTITÉ DE LA LIGNE, toujours présente et unique.
    *
-   * Optionnel dans le TYPE seulement pour que la lecture d'un panier v1/v2
-   * compile : la migration en pose toujours un (voir `parseCart`). Rien de ce
-   * qui sort de ce module n'a de `ligneId` absent.
+   * TOUJOURS posé en sortie : la migration en fabrique un pour les paniers
+   * v1/v2 (l'ancien `productId`), donc rien de ce qui sort de ce module n'en
+   * manque. Le rendre optionnel obligerait chaque lecteur à gérer un cas qui
+   * n'arrive jamais — et à inventer une identité quand il l'aurait fait.
    */
-  ligneId?: string;
+  ligneId: string;
   /**
    * P0.1 (v3) — L'identifiant du produit au CATALOGUE, ou `null`.
    *
@@ -51,7 +52,7 @@ export interface PersistedCartItem {
    * les sépare : l'ancienne valeur devient `ligneId` dans TOUS les cas, et ne
    * reste ici que si c'est un vrai UUID.
    */
-  productIdCatalogue?: string | null;
+  productIdCatalogue: string | null;
   /** @deprecated v1/v2 — lu à la migration, plus jamais écrit. */
   productId: string;
   nom: string;
