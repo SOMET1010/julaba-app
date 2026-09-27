@@ -45,8 +45,16 @@ export interface LocalVoiceResult {
   offline: true;
 }
 
-/** La phrase porte-t-elle un mot qui interdit de la lire comme une vente ? */
-function interditDeVendre(texte: string): boolean {
+/**
+ * La phrase porte-t-elle un mot qui interdit de la lire comme une vente ?
+ *
+ * EXPORTÉE POUR CAT-01, et pour une seule raison : la lecture au catalogue de
+ * la caisse doit refuser EXACTEMENT les mêmes phrases que celle-ci. Deux
+ * listes d'interdits finiraient par diverger, et la divergence se paierait en
+ * ventes inventées. Le corps ne bouge pas d'une ligne — seul le mot-clé
+ * `export` est ajouté, donc aucun comportement du moteur ne change.
+ */
+export function interditDeVendre(texte: string): boolean {
   const mots = texte.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter(Boolean);
   return mots.some((m) => MOTS_PAS_UNE_VENTE.includes(m));
 }
