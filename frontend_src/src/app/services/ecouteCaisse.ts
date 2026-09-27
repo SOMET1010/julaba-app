@@ -48,14 +48,46 @@ export const ECOUTE_MAX_MS = 12000;
  *  elle regarde son étal. Couper là serait couper avant le premier mot. */
 export const AVANT_PREMIER_MOT_MS = 6000;
 
+/**
+ * MIC-01 — CE QUI PROUVE QU'ELLE PARLE : LE SON, PAS LE TEXTE.
+ *
+ * LE DÉFAUT TERRAIN, APK 0459dc0. L'écran alimentait `aParle` avec
+ * `liveTranscript` — or `useVoiceCore` ne l'écrit JAMAIS pendant l'écoute :
+ * la chaîne est MediaRecorder → blob → sherpa, il n'y a pas de transcription
+ * en direct, et `startSilenceDetection` y est un no-op assumé
+ * (« push-to-talk uniquement »). `aParle` valait donc TOUJOURS faux, et
+ * `finDEcoute` fermait le micro à 6 000 ms avec la raison « elle n'a rien
+ * dit » — pendant qu'elle parlait. La fin de phrase à 1,5 s et le plafond à
+ * 12 s étaient inatteignables.
+ *
+ * VOX-01 ne faisait donc pas ce qu'il annonce (« le micro s'arrête quand
+ * elle s'arrête ») : il s'arrêtait au bout de six secondes, quoi qu'elle dise.
+ *
+ * LA RÈGLE N'A PAS CHANGÉ D'UN IOTA — c'est sa SOURCE qui était fausse. Le
+ * niveau du micro, lui, est vivant en direct (`useVoiceCore.volume`,
+ * rafraîchi à chaque image). C'est lui qui dit qu'une voix porte.
+ */
+
+/** Le niveau (0-100) au-dessus duquel on considère qu'une voix porte.
+ *  Au-dessus du bruit d'une pièce calme, sous une parole normale. */
+export const NIVEAU_PAROLE = 12;
+
+/** Vrai quand le micro entend une voix, à cet instant. */
+export function parleMaintenant(niveau: number): boolean {
+  return Number.isFinite(niveau) && niveau >= NIVEAU_PAROLE;
+}
+
 export interface FaitsEcoute {
   /** Le micro est-il ouvert ? */
   readonly ecoute: boolean;
-  /** Depuis combien de temps le texte entendu n'a plus bougé. */
+  /**
+   * Depuis combien de temps on n'entend plus de voix (MIC-01 : mesuré sur le
+   * NIVEAU du micro, pas sur un texte qui n'arrive qu'à la fin).
+   */
   readonly msDepuisDernierMot: number;
   /** Depuis combien de temps le micro est ouvert. */
   readonly msDepuisOuverture: number;
-  /** A-t-elle dit quelque chose, ne serait-ce qu'un mot ? */
+  /** A-t-elle émis un son de voix, ne serait-ce qu'une fois ? */
   readonly aParle: boolean;
 }
 
