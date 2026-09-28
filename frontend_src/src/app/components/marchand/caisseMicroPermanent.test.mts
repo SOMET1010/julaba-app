@@ -85,8 +85,12 @@ ok(/<MicroVenteCaisse\s+produitPreselectionne=\{produitPreselectionne\}/.test(co
 // « Produit vocal ». C'est le défaut que la recette navigateur a trouvé.
 ok(/vendreUnifie\(produitPourVente\(vente\.produit,\s*produitPreselectionne\)/.test(codeMicro),
   "la vente dictée passe le produit présélectionné au moteur (produitPourVente)");
-ok(/const vente = reluAuCatalogue \?\? action;/.test(codeMicro),
+ok(/const vente = reluAuCatalogue \?\? \(corrige \? \{ \.\.\.action, \.\.\.corrige \} : action\);/.test(codeMicro),
   "et le nom vient d'ABORD du catalogue de la marchande, le moteur en repli");
+// CAT-02 — et quand elle nomme ce qu'elle ne vend pas, le nombre orphelin est
+// une quantité, pas un prix : aucune ligne « Produit vocal » à 2 F.
+ok(/const corrige = reluAuCatalogue \? null : venteSansProduit\(action, data\.transcript \|\| ''\);/.test(codeMicro),
+  "un produit nommé mais inconnu ne devient jamais une ligne à N francs");
 ok(/vendreUnifie\(produitPourVente\(r\.action\.produit,\s*produitPreselectionne\)/.test(codeMicro),
   "un raccourci résolu en vente s'en souvient aussi — c'est le même acte métier");
 

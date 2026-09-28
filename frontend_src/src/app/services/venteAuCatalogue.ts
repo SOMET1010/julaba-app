@@ -36,7 +36,8 @@
  * d'`apparierProduit`, qui rend `null` plutôt que de choisir — sur l'argent,
  * on ne devine pas.
  */
-import { extraire } from '../voice-offline/extraction';
+import { extraire, UNITES, DIZAINES, MOTS_UNITE, MARQUEURS_AVANT, MARQUEURS_APRES } from '../voice-offline/extraction';
+import { INTENTIONS_MAP, PRODUITS_FORMES } from '../voice-offline/vocabulaire';
 import { interditDeVendre } from '../voice-offline/localIntent';
 import { detecterEncaissement } from '../voice-offline/grammaireEncaissement';
 
@@ -202,4 +203,89 @@ export function lireVenteAuCatalogue(
     ...(p.uniteParlee ? { unite: p.uniteParlee } : {}),
   };
   return vente;
+}
+
+
+// ── CAT-02 — « PRODUIT VOCAL À 2 F » : LE NOMBRE ORPHELIN, HORS CATALOGUE ──
+//
+// LE DÉFAUT, reproduit dans un vrai navigateur. Elle dit « vends deux mangues
+// séchées » — un produit qu'elle NE VEND PAS. `extraire` n'a aucun produit à
+// quoi rattacher le nombre et le range en MONTANT :
+//
+//   { produit: null, quantite: null, montant: 2, lecturePrix: null }
+//
+// et une ligne « Produit vocal » à DEUX FRANCS partait au panier, en silence.
+// CAT-01 ferme ce cas pour tous les produits de SON catalogue ; celui-ci le
+// ferme pour ce qu'elle nomme et que personne ne connaît.
+//
+// CE QU'IL NE FAUT SURTOUT PAS CASSER — arbitrage implicite de ce lot :
+// L'ARTICLE LIBRE VOCAL est un usage RÉEL. « vends pour 500 », « vends à
+// 500 », « vends 500 » : elle vend quelque chose qu'elle ne veut pas nommer,
+// pour 500 F. Cette ligne-là doit continuer de partir.
+//
+// LE DISCRIMINANT N'EST PAS LA TAILLE DU NOMBRE — ce serait une devinette, et
+// « vends 50 » deviendrait cinquante articles. C'est :
+//
+//     A-T-ELLE NOMMÉ QUELQUE CHOSE APRÈS LE NOMBRE ?
+//
+//   « vends deux mangues séchées » → elle a nommé  → 2 est une QUANTITÉ
+//   « vends 500 »                  → elle n'a rien nommé → 500 est un PRIX
+//
+// Et la question se pose avec les LISTES DU MOTEUR LUI-MÊME (nombres, unités,
+// marqueurs de prix, verbes d'intention, produits connus), jamais avec une
+// seconde liste écrite ici : deux listes finissent toujours par diverger.
+
+/** Les mots qui ne NOMMENT rien — ils comptent, mesurent, ou annoncent. */
+function motOutil(mot: string): boolean {
+  if (/^[0-9]+$/.test(mot)) return true;
+  if (mot in UNITES || mot in DIZAINES) return true;
+  if (mot === 'cent' || mot === 'cents' || mot === 'mille' || mot === 'et') return true;
+  if (MOTS_UNITE.has(mot)) return true;
+  if (MARQUEURS_AVANT.has(mot) || MARQUEURS_APRES.has(mot)) return true;
+  if (mot in INTENTIONS_MAP) return true;
+  if (mot in PRODUITS_FORMES) return true;   // connu : `extraire` l'aurait pris
+  return ['je', 'j', 'ai', 'me', 'ma', 'mon', 'la', 'le', 'les', 'un', 'une',
+    'du', 'de', 'des', 'ce', 'ca', 'cela', 'ici', 'la', 'cfa', 'francs', 'franc',
+    'stp', 'svp', 'tantie', 'tata'].includes(mot);
+}
+
+/** A-t-elle nommé quelque chose que le moteur ne connaît pas ? */
+export function aNommeUnInconnu(texte: string): boolean {
+  return mots(texte).some((m) => m.length >= 3 && !motOutil(m));
+}
+
+/** Ce qu'une vente SANS produit doit réellement porter. */
+export interface VenteSansProduit {
+  readonly quantite: number;
+  /** `0` = rien n'a été dicté ; le prix sera DEMANDÉ, jamais inventé. */
+  readonly montant: number;
+}
+
+/**
+ * Corrige une action de vente que le moteur rend SANS produit.
+ *
+ * `null` quand il n'y a rien à corriger : l'article libre vocal, lui, passe
+ * intact — ce module ne lui retire rien.
+ */
+export function venteSansProduit(
+  action: { produit?: unknown; quantite?: unknown; montant?: unknown } | null | undefined,
+  texte: string,
+): VenteSansProduit | null {
+  if (!action || action.produit) return null;
+  const p = extraire(texte || '');
+  // Un marqueur de prix a été prononcé (« à », « pour ») : c'est un PRIX, et
+  // l'article libre reste ce qu'il est.
+  if (p.lecturePrix !== null) return null;
+  // Deux nombres séparés : la quantité est déjà à sa place.
+  if (p.quantite != null) return null;
+  if (p.montant == null) return null;
+  // Elle n'a rien nommé : « vends 500 » reste un article libre à 500 F.
+  if (!aNommeUnInconnu(texte)) return null;
+
+  // Elle a nommé quelque chose, et le nombre le COMPTE. Aucune ligne à
+  // N francs ne part : le prix sera demandé, comme pour tout produit dont on
+  // ignore le prix. On ne devine pas, et on ne se tait pas non plus.
+  const n = Number(p.montant);
+  const quantite = Number.isFinite(n) && n > 0 && n <= 100 ? Math.trunc(n) : 1;
+  return { quantite, montant: 0 };
 }
