@@ -1,0 +1,9 @@
+# Dossier des spécifications de features
+#
+# Format attendu :
+#   SPECS/FEATURE-XXX_UX.md          (Phase 0 — Conception UX/UI)
+#   SPECS/FEATURE-XXX.md             (Phase 1 — Capture & Spécification)
+#   SPECS/FEATURE-XXX_TECH_DESIGN.md (Phase 2 — Design Technique)
+#   SPECS/ARCHIVED/                  (Features terminées et archivées)
+#
+# Une fois une feature terminée, déplacer ses fichiers vers SPECS/ARCHIVED/.
