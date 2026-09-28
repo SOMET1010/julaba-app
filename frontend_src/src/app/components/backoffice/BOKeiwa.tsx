@@ -15,6 +15,7 @@ import {
 } from '../../services/backoffice-api';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
 import { API_URL } from '../../utils/api';
+import { apiRequest } from '../../services/api/api-client';
 import { toast } from 'sonner';
 import {
   AreaChart, Area, BarChart, Bar, PieChart as RechartsPie, Pie, Cell,
@@ -96,25 +97,24 @@ const DEFAULT_MM: ConfigItem[] = [
 ];
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
+// INIT-019 — passerelles vers le client API centralisé.
 async function apiGet(path: string): Promise<unknown> {
-  const res = await fetch(`${API_URL}${path}`, { credentials: 'include' });
-  if (!res.ok) throw new Error(`${res.status}`);
-  return res.json();
+  return apiRequest<unknown>(API_URL, path);
 }
 async function apiPost(path: string, body?: unknown): Promise<unknown> {
-  const res = await fetch(`${API_URL}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: body ? JSON.stringify(body) : undefined });
-  if (!res.ok) throw new Error(`${res.status}`);
-  return res.json();
+  return apiRequest<unknown>(API_URL, path, {
+    method: 'POST',
+    body: body ? JSON.stringify(body) : undefined,
+  });
 }
 async function apiPut(path: string, body?: unknown): Promise<unknown> {
-  const res = await fetch(`${API_URL}${path}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: body ? JSON.stringify(body) : undefined });
-  if (!res.ok) throw new Error(`${res.status}`);
-  return res.json();
+  return apiRequest<unknown>(API_URL, path, {
+    method: 'PUT',
+    body: body ? JSON.stringify(body) : undefined,
+  });
 }
 async function apiDelete(path: string): Promise<unknown> {
-  const res = await fetch(`${API_URL}${path}`, { method: 'DELETE', credentials: 'include' });
-  if (!res.ok) throw new Error(`${res.status}`);
-  return res.json();
+  return apiRequest<unknown>(API_URL, path, { method: 'DELETE' });
 }
 
 function downloadCSV(csv: string, filename: string) {

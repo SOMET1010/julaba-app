@@ -26,6 +26,7 @@ import { useZones, type Zone } from '../../contexts/ZoneContext';
 import { useCooperativesListe } from '../../hooks/useCooperativesListe';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { API_URL } from '../../utils/api';
+import { apiRequest, HttpError } from '../../services/api/api-client';
 import {
   boCreateBackofficeUser,
   type CreateBackofficeUserPayload,
@@ -628,23 +629,10 @@ function useAdminCascade(districtId: string, regionId: string, departementId: st
 
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/admin-divisions/districts`, {
-          credentials: 'include',
+        // INIT-019 — passe par le client centralisé.
+        const data = await apiRequest<any>(API_URL, '/admin-divisions/districts', {
           signal: controller.signal,
         });
-        if (!res.ok) {
-          console.warn('[useAdminCascade] districts HTTP error:', res.status);
-          if (isMountedRef.current) setDistricts([]);
-          return;
-        }
-        let data: any = [];
-        try {
-          data = await res.json();
-        } catch (parseErr) {
-          console.warn('[useAdminCascade] districts JSON parse failed:', parseErr instanceof Error ? parseErr.message : parseErr);
-          if (isMountedRef.current) setDistricts([]);
-          return;
-        }
         if (!Array.isArray(data)) {
           console.warn('[useAdminCascade] districts unexpected payload (not an array)');
           if (isMountedRef.current) setDistricts([]);
@@ -671,23 +659,10 @@ function useAdminCascade(districtId: string, regionId: string, departementId: st
 
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/admin-divisions/regions?district_id=${encodeURIComponent(districtId)}`, {
-          credentials: 'include',
+        // INIT-019 — passe par le client centralisé.
+        const data = await apiRequest<any>(API_URL, `/admin-divisions/regions?district_id=${encodeURIComponent(districtId)}`, {
           signal: controller.signal,
         });
-        if (!res.ok) {
-          console.warn('[useAdminCascade] regions HTTP error:', res.status);
-          if (isMountedRef.current) setRegions([]);
-          return;
-        }
-        let data: any = [];
-        try {
-          data = await res.json();
-        } catch (parseErr) {
-          console.warn('[useAdminCascade] regions JSON parse failed:', parseErr instanceof Error ? parseErr.message : parseErr);
-          if (isMountedRef.current) setRegions([]);
-          return;
-        }
         if (!Array.isArray(data)) {
           console.warn('[useAdminCascade] regions unexpected payload (not an array)');
           if (isMountedRef.current) setRegions([]);
@@ -714,23 +689,10 @@ function useAdminCascade(districtId: string, regionId: string, departementId: st
 
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/admin-divisions/departements?region_id=${encodeURIComponent(regionId)}`, {
-          credentials: 'include',
+        // INIT-019 — passe par le client centralisé.
+        const data = await apiRequest<any>(API_URL, `/admin-divisions/departements?region_id=${encodeURIComponent(regionId)}`, {
           signal: controller.signal,
         });
-        if (!res.ok) {
-          console.warn('[useAdminCascade] departements HTTP error:', res.status);
-          if (isMountedRef.current) setDepartements([]);
-          return;
-        }
-        let data: any = [];
-        try {
-          data = await res.json();
-        } catch (parseErr) {
-          console.warn('[useAdminCascade] departements JSON parse failed:', parseErr instanceof Error ? parseErr.message : parseErr);
-          if (isMountedRef.current) setDepartements([]);
-          return;
-        }
         if (!Array.isArray(data)) {
           console.warn('[useAdminCascade] departements unexpected payload (not an array)');
           if (isMountedRef.current) setDepartements([]);
@@ -757,23 +719,10 @@ function useAdminCascade(districtId: string, regionId: string, departementId: st
 
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/admin-divisions/communes?departement_id=${encodeURIComponent(departementId)}`, {
-          credentials: 'include',
+        // INIT-019 — passe par le client centralisé.
+        const data = await apiRequest<any>(API_URL, `/admin-divisions/communes?departement_id=${encodeURIComponent(departementId)}`, {
           signal: controller.signal,
         });
-        if (!res.ok) {
-          console.warn('[useAdminCascade] communes HTTP error:', res.status);
-          if (isMountedRef.current) setCommunes([]);
-          return;
-        }
-        let data: any = [];
-        try {
-          data = await res.json();
-        } catch (parseErr) {
-          console.warn('[useAdminCascade] communes JSON parse failed:', parseErr instanceof Error ? parseErr.message : parseErr);
-          if (isMountedRef.current) setCommunes([]);
-          return;
-        }
         if (!Array.isArray(data)) {
           console.warn('[useAdminCascade] communes unexpected payload (not an array)');
           if (isMountedRef.current) setCommunes([]);
@@ -1369,22 +1318,21 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
       telAbortRef.current = new AbortController();
       setVerificationTel('checking');
       const phone = '+225' + cleaned;
-      fetch(`${API_URL}/users/by-phone/${encodeURIComponent(phone)}`, {
-        credentials: 'include',
+      // INIT-019 — passe par le client centralisé. Sur 404, `apiRequest` jette
+      // une HttpError(404) : on l'utilise pour distinguer exists/available.
+      apiRequest<unknown>(API_URL, `/users/by-phone/${encodeURIComponent(phone)}`, {
         signal: telAbortRef.current.signal,
       })
-        .then(res => {
+        .then(() => {
           if (!isMountedRef.current) return;
-          if (res.ok) {
-            setVerificationTel('exists');
-          } else if (res.status === 404) {
-            setVerificationTel('available');
-          } else {
-            setVerificationTel('idle');
-          }
+          setVerificationTel('exists');
         })
         .catch((e) => {
           if (e instanceof DOMException && e.name === 'AbortError') return;
+          if (e instanceof HttpError && e.status === 404) {
+            if (isMountedRef.current) setVerificationTel('available');
+            return;
+          }
           console.warn('[FicheIdentificationDynamique] phone verification failed:', e instanceof Error ? e.message : e);
           if (isMountedRef.current) setVerificationTel('idle');
         });
@@ -1596,22 +1544,12 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
     const timeoutId = window.setTimeout(() => controller.abort(), 15000);
 
     try {
-      const res = await fetch(`${API_URL}/admin-divisions/reverse-geocode`, {
+      // INIT-019 — passe par le client centralisé.
+      const result: any = await apiRequest<any>(API_URL, '/admin-divisions/reverse-geocode', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ lat, lng }),
         signal: controller.signal,
       });
-      if (!res.ok) throw new Error(`Backend reverse-geocode status ${res.status}`);
-
-      let result: any = null;
-      try {
-        result = await res.json();
-      } catch (parseErr) {
-        console.warn('[reverseGeocodeBackend] JSON parse failed:', parseErr instanceof Error ? parseErr.message : parseErr);
-        return null;
-      }
 
       // Validation structurelle minimale
       if (!result || typeof result !== 'object') {
@@ -1918,19 +1856,30 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
         },
       };
 
-      const res = await fetch(`${API_URL}/identifications/draft`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(draftBody),
-        signal: controller.signal,
-      });
-
-      const createData = await safeJson(res);
+      // INIT-019 — passe par le client centralisé. Sur !res.ok, on récupère le
+      // corps via HttpError.body pour préserver l'affichage du message métier.
+      let createData: any;
+      try {
+        createData = await apiRequest<any>(API_URL, '/identifications/draft', {
+          method: 'POST',
+          body: JSON.stringify(draftBody),
+          signal: controller.signal,
+        });
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') throw err;
+        if (err instanceof HttpError) {
+          createData = (err.body as any) || {};
+          if (createData?.success !== true) {
+            toast.error(`Erreur lors de la sauvegarde du brouillon : ${createData?.error || createData?.message || 'réessaie'}`);
+            return;
+          }
+        }
+        throw err;
+      }
 
       if (!isMountedRef.current) return;
 
-      if (!res.ok || createData?.success !== true) {
+      if (createData?.success !== true) {
         toast.error(`Erreur lors de la sauvegarde du brouillon : ${createData?.error || createData?.message || 'réessaie'}`);
         return;
       }
@@ -1978,16 +1927,25 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
       // PIN identificateur retiré en mode BO (pas de vérification serveur).
       if (!skipPinCheck && data.codeIdentificateur) {
         try {
-          const pinRes = await fetch(`${API_URL}/auth/identificateur/me/verify-pin`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin: data.codeIdentificateur }),
-            signal: controller.signal,
-          });
-          const pinData = await safeJson(pinRes);
+          // INIT-019 — passe par le client centralisé. Sur !res.ok ou `valid !== true`,
+          // on indique « Code incorrect » (comportement historique).
+          let pinData: any;
+          try {
+            pinData = await apiRequest<any>(API_URL, '/auth/identificateur/me/verify-pin', {
+              method: 'POST',
+              body: JSON.stringify({ pin: data.codeIdentificateur }),
+              signal: controller.signal,
+            });
+          } catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError') throw err;
+            if (err instanceof HttpError) {
+              pinData = (err.body as any) || {};
+            } else {
+              throw err;
+            }
+          }
           if (!isMountedRef.current) return;
-          if (!pinRes.ok || pinData?.valid !== true) {
+          if (pinData?.valid !== true) {
             setErrors(prev => ({ ...prev, codeIdentificateur: 'Code incorrect. Vérifie ton PIN.' }));
             return;
           }
@@ -2013,66 +1971,66 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
           const acteurIdToUpdate = (typeof acteurIdRaw === 'string' && acteurIdRaw.length > 0) ? acteurIdRaw : '';
 
           if (acteurIdToUpdate) {
-            const userRes = await fetch(`${API_URL}/users/${acteurIdToUpdate}`, {
-              credentials: 'include',
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                firstName: data.prenoms, lastName: safeNom,
-                commune: data.commune,
-                nationalite: data.nationalite,
-                situationMatrimoniale: data.situationMatrimoniale,
-                numCNPS: data.numCNPS,
-                numCMU: data.numCMU,
-                recepisse: data.recepisse,
-                categorie: data.categorie,
-                typePointVente: data.typePointVente || null,
-                typePointVenteAutre: data.typePointVente === 'autre' ? (data.typePointVenteAutre || null) : null,
-                districtId: data.districtId || null,
-                districtAutre: data.districtAutre || null,
-                regionId: data.regionId || null,
-                regionAutre: data.regionAutre || null,
-                departementId: data.departementId || null,
-                departementAutre: data.departementAutre || null,
-                communeId: data.communeId || null,
-                communeAutre: data.communeAutre || null,
-                quartierVillage: data.quartierVillage || null,
-                estMembreCooperative: data.estMembreCooperative === true,
-                boitePostale: data.boitePostale,
-                statutEntrepreneur: data.statutEntrepreneur, market: data.marche, activity: data.produitsVendus,
-                photoUrl: data.photo || undefined,
-              }),
-              signal: controller.signal,
-            });
-            if (!isMountedRef.current) return;
-            if (!userRes.ok) {
+            try {
+              await apiRequest<unknown>(API_URL, `/users/${acteurIdToUpdate}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                  firstName: data.prenoms, lastName: safeNom,
+                  commune: data.commune,
+                  nationalite: data.nationalite,
+                  situationMatrimoniale: data.situationMatrimoniale,
+                  numCNPS: data.numCNPS,
+                  numCMU: data.numCMU,
+                  recepisse: data.recepisse,
+                  categorie: data.categorie,
+                  typePointVente: data.typePointVente || null,
+                  typePointVenteAutre: data.typePointVente === 'autre' ? (data.typePointVenteAutre || null) : null,
+                  districtId: data.districtId || null,
+                  districtAutre: data.districtAutre || null,
+                  regionId: data.regionId || null,
+                  regionAutre: data.regionAutre || null,
+                  departementId: data.departementId || null,
+                  departementAutre: data.departementAutre || null,
+                  communeId: data.communeId || null,
+                  communeAutre: data.communeAutre || null,
+                  quartierVillage: data.quartierVillage || null,
+                  estMembreCooperative: data.estMembreCooperative === true,
+                  boitePostale: data.boitePostale,
+                  statutEntrepreneur: data.statutEntrepreneur, market: data.marche, activity: data.produitsVendus,
+                  photoUrl: data.photo || undefined,
+                }),
+                signal: controller.signal,
+              });
+            } catch (err) {
+              if (err instanceof DOMException && err.name === 'AbortError') throw err;
+              if (!isMountedRef.current) return;
               toast.error('Mise à jour du profil impossible. Réessaie.');
               return;
             }
           }
 
-          const identPatchRes = await fetch(`${API_URL}/identifications/${locationState2.identificationId}`, {
-            credentials: 'include',
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              statut: 'en_attente',
-              acteur_nom: fullName,
-              commune: data.commune || '',
-              region: data.region || null,
-              latitude: data.gps?.lat ?? null,
-              longitude: data.gps?.lng ?? null,
-              current_step: step,
-              form_data: data,
-              documents: {
-                signature: data.signature || null,
-                photoBase64: data.photo || null,
-              },
-            }),
-            signal: controller.signal,
-          });
-          if (!isMountedRef.current) return;
-          if (!identPatchRes.ok) {
+          try {
+            await apiRequest<unknown>(API_URL, `/identifications/${locationState2.identificationId}`, {
+              method: 'PATCH',
+              body: JSON.stringify({
+                statut: 'en_attente',
+                acteur_nom: fullName,
+                commune: data.commune || '',
+                region: data.region || null,
+                latitude: data.gps?.lat ?? null,
+                longitude: data.gps?.lng ?? null,
+                current_step: step,
+                form_data: data,
+                documents: {
+                  signature: data.signature || null,
+                  photoBase64: data.photo || null,
+                },
+              }),
+              signal: controller.signal,
+            });
+          } catch (err) {
+            if (err instanceof DOMException && err.name === 'AbortError') throw err;
+            if (!isMountedRef.current) return;
             toast.error('Mise à jour de l’identification impossible. Réessaie.');
             return;
           }
@@ -3368,17 +3326,21 @@ function DocumentsStep({ data, setField, errors, cfg }: {
     const signal = nniAbortRef.current.signal;
     setNniStatus('loading');
     try {
-      const res = await fetch(`${API_URL}/oneci/lookup/${nni}`, {
-        credentials: 'include',
-        signal,
-      });
-      if (!isMountedRef.current) return;
-      if (!res.ok) {
-        setNniStatus('notfound');
-        setNniData(null);
-        return;
+      // INIT-019 — passe par le client centralisé. Sur !res.ok, on est en
+      // « notfound » (comportement historique pour NNI introuvable).
+      let result: any;
+      try {
+        result = await apiRequest<any>(API_URL, `/oneci/lookup/${nni}`, { signal });
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') throw err;
+        if (err instanceof HttpError) {
+          if (!isMountedRef.current) return;
+          setNniStatus('notfound');
+          setNniData(null);
+          return;
+        }
+        throw err;
       }
-      const result = await safeJson<any>(res);
       if (!isMountedRef.current) return;
       if (!result || typeof result !== 'object') {
         setNniStatus('notfound');
@@ -3535,9 +3497,8 @@ async function syncZoneForCommuneLabel(
   if (!communeLabel.trim()) return;
   const communeNom = communeLabel.replace('Abidjan - ', '').trim();
   try {
-    const res = await fetch(`${API_URL}/zones`, { credentials: 'include', signal });
-    if (!res.ok) return;
-    const d = await safeJson<{ zones?: Array<{ id: string; nom: string }> }>(res);
+    // INIT-019 — passe par le client centralisé.
+    const d = await apiRequest<{ zones?: Array<{ id: string; nom: string }> }>(API_URL, '/zones', { signal });
     if (!d || !Array.isArray(d.zones)) return;
     const communeShort2 = communeNom.includes(' - ') ? communeNom.split(' - ')[1].trim() : communeNom;
     const zone = d.zones.find((z) =>

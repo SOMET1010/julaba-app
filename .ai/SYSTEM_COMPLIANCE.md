@@ -24,7 +24,7 @@
 
 ### Non-duplication
 - ⚠️ **2 contrôleurs dupliqués** (cycles, recoltes) — non-justifié dans `ARCHITECTURE.md`
-- ⚠️ **2 design systems BO parallèles** (shadcn local + Universal*BO, migration incomplète)
+- ✅ **DS BO unifié en 2 couches** (primitives shadcn + composites `Universal*BO`) — FERMÉ (INIT-018, 2026-09-29) : 6 composants `Universal*BO` morts supprimés, 13 composites vivants conservés (ils consomment déjà shadcn). Voir `backoffice/universal/MIGRATION_GUIDE.md`.
 - ⚠️ **3 modules "doublons"** : `tickets/` vs `tickets-rest/`, `audit/` vs `audit-rest/`, `commandes/` vs `commandes-rest/`
 - ⚠️ **Multiplicité des modales** (7 systèmes)
 - ✅ **Score 60%**
@@ -163,7 +163,7 @@
 21. Adopter i18next pour i18n
 22. Adopter Vitest pour tests frontend standardisés
 23. Réduire 173 `fetch()` directs
-24. Finaliser migration Universal*BO (1 seul DS)
+24. ✅ Finaliser migration Universal*BO (1 seul DS) — FERMÉ (INIT-018, 2026-09-29)
 
 ## Preuves pour chaque vérification
 

@@ -3,6 +3,7 @@ import { eventBus, EVENTS } from '../services/eventBus';
 import { API_URL } from '../utils/api';
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
+import { apiRequest, HttpError, NOT_AUTHENTICATED } from '../services/api/api-client';
 import {
   boDashboardStats,
   boGetActeurs,
@@ -204,15 +205,9 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
 
   const loadUser = useCallback(async (): Promise<boolean> => {
     try {
-      let res = await fetch(`${API_URL}/auth/me`, {
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        sessionStorage.removeItem('julaba_user');
-        setUser(null);
-        return false;
-      }
-      const data = await res.json();
+      // INIT-019 — passe par le client centralisé. Sur 401/403 ou session
+      // expirée, on déconnecte l'utilisateur BO.
+      const data = await apiRequest<any>(API_URL, '/auth/me');
       const u = data.user;
       if (u && ['admin_general', 'operateur_terrain', 'super_admin', 'admin_national', 'gestionnaire_zone'].includes(u.role)) {
         setUser({
@@ -235,7 +230,14 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
       }
     } catch (e) {
       void e;
-      setUser(null);
+      // INIT-019 — sur session expirée (401/403), on purge ; sur erreur réseau,
+      // on garde l'utilisateur en cache (comportement identique à AppContext).
+      const isAuth = e instanceof Error && (e.message === NOT_AUTHENTICATED
+        || (e instanceof HttpError && (e.status === 401 || e.status === 403)));
+      if (isAuth) {
+        sessionStorage.removeItem('julaba_user');
+        setUser(null);
+      }
     }
     return false;
   }, []);

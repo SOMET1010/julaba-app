@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { API_URL } from '../utils/api';
+import { apiRequest } from '../services/api/api-client';
 
 export interface BONotifCounts {
   total: number;
@@ -31,12 +32,10 @@ export function useBONotifCounts(enabled: boolean) {
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      const res = await fetch(`${API_URL}/notifications/bo/counts`, {
-        credentials: 'include',
+      // INIT-019 — passe par le client centralisé.
+      const data = await apiRequest<any>(API_URL, '/notifications/bo/counts', {
         signal: controller.signal,
       });
-      if (!res.ok) return;
-      const data = await res.json();
       if (isMountedRef.current) {
         setCounts({
           total: data.total ?? 0,

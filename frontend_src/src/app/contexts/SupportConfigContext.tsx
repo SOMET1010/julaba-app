@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { API_URL } from '../utils/api';
 import { toast } from 'sonner';
+import { apiRequest } from '../services/api/api-client';
 
 export interface ContactChannel {
   id: string;
@@ -96,8 +97,8 @@ export function SupportConfigProvider({ children }: { children: ReactNode }) {
 
   // Charger depuis l'API au mount
   useEffect(() => {
-    fetch(`${API_URL}/support/config`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
+    // INIT-019 — passe par le client centralisé.
+    apiRequest<{ config?: SupportConfig; updatedAt?: string } | null>(API_URL, '/support/config')
       .then(data => {
         if (data?.config) {
           setConfig({
@@ -114,13 +115,10 @@ export function SupportConfigProvider({ children }: { children: ReactNode }) {
   const persist = useCallback(async (newConfig: SupportConfig) => {
     setIsSaving(true);
     try {
-      const res = await fetch(`${API_URL}/support/config`, {
+      await apiRequest<unknown>(API_URL, '/support/config', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config: newConfig }),
       });
-      if (!res.ok) throw new Error('Erreur sauvegarde config support');
     } catch {
       toast.error('Impossible de sauvegarder la configuration support');
     }

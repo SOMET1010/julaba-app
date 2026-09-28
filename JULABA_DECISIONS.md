@@ -105,7 +105,7 @@ Securite des cles :
 - PIN_ENCRYPTION_KEY (AES-256-GCM) : ne jamais tourner la cle sans migration de rechiffrement. Voir section 10.
 
 Interface back-office :
-- Tous les UniversalFilterPanelBO, dans tous les modules BO, utilisent presentation="dropdown". Jamais sheet ni collapsible.
+- Tous les UniversalFiltreBO, dans tous les modules BO, utilisent presentation="dropdown". Jamais sheet ni collapsible. (Note INIT-018, 2026-09-29 : les anciens UniversalFilterPanelBO et UniversalSearchBarBO legacy ont effectivement ete supprimes du code ; la couche composites BO `Universal*BO` est documentee dans `frontend_src/src/app/components/backoffice/universal/MIGRATION_GUIDE.md`.)
 
 Code :
 - Jamais de window.confirm dans le code.

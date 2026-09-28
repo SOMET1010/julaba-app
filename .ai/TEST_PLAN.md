@@ -10,12 +10,27 @@
 - **3 tests controller** — `src/**/*.spec.ts`
 - **1 test E2E Playwright** — `tests/specs/api.spec.ts` (smoke test prod réelle)
 
-### Frontend (74 tests)
-- **74 fichiers `.test.{ts,tsx,mts}`** via `tsx` (Node direct, **pas de Jest/Vitest**)
-- Helpers ad-hoc `ok(cond, label)` / `eq(a, b, label)`
+### Frontend (74 tests legacy + 3 pilotes Vitest)
+- **74 fichiers `.test.{ts,tsx,mts}`** via `tsx` (Node direct, helpers ad-hoc
+  `ok(cond, label)` / `eq(a, b, label)`) — cohabitent avec Vitest (cf. INIT-021)
+- **3 pilotes Vitest** (`*.vitest.test.{ts,tsx}`) — infrastructure posée
+  2026-09-29 (INIT-021) : `fcfa`, `antiJargon`, `useAudioUnlockFallback`
 - **5 tests d'intégration React** avec `@testing-library/react` + `jsdom`
+  (legacy `tsx`, à migrer vers Vitest)
 - **7 scripts E2E Playwright** `.mjs` dans `e2e/`
 - **8 scripts de garde-fou source** dans `scripts/`
+
+### Frontend — Vitest (INIT-021, mis en place 2026-09-29)
+- **Framework** : Vitest 2.1.9 + `@vitest/coverage-v8` + `@vitest/ui`
+- **Config** : `frontend_src/vitest.config.ts` (jsdom, globals, coverage v8)
+- **Setup global** : `frontend_src/src/test/setup.ts` (cleanup, localStorage)
+- **Wrapper compat** : `frontend_src/src/test/compat.ts` (`ok()`/`eq()` → `it()`)
+- **Convention** : `*.vitest.test.{ts,tsx}` (cohabitation avec `*.test.*` legacy)
+- **Scripts** : `test:vitest`, `test:watch`, `test:coverage`, `test:ui`
+- **3 pilotes** : `fcfa.vitest.test.ts` (18 tests), `antiJargon.vitest.test.ts`
+  (1 test), `useAudioUnlockFallback.vitest.test.tsx` (6 tests) — **25 tests verts**
+- **Coverage** : `npm run test:coverage` génère `coverage/lcov.info` + `lcov-report/`
+- **Migration** : progressive — voir `frontend_src/src/test/README.md`
 
 ### Mobile (Maestro)
 - **5 flux Maestro** dans `maestro/` — ⚠️ **jamais exécutés** (écrits sans appareil ni émulateur)
@@ -96,8 +111,13 @@
 ## 4. Tests à automatiser (manquants)
 
 ### Frontend
-- **Framework de test standard** : Vitest ou Jest (actuellement helpers ad-hoc)
-- **Coverage report** : pas de coverage mesuré
+- ~~**Framework de test standard** : Vitest ou Jest (actuellement helpers ad-hoc)~~
+  → **FAIT (INIT-021, 2026-09-29)** : Vitest 2.1.9 adopté, 3 pilotes migrés,
+    infrastructure en place. Migration des 74 tests restants à étaler sur
+    plusieurs lots (voir `frontend_src/src/test/README.md`).
+- **Coverage report** : ~~pas de coverage mesuré~~ → **FAIT (INIT-021)** :
+  `npm run test:coverage` (v8, reporteurs `text` + `html` + `lcov`). Couverture
+  globale encore faible (3 pilotes seulement) — montera avec la migration.
 - **Tests a11y automatisés** : axe-core en CI
 - **Tests visuels** : Storybook + Chromatic
 - **Bundle analyzer** : `rollup-plugin-visualizer`

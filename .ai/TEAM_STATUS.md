@@ -76,7 +76,7 @@
 ### 🎨 UX/UI (Agent UX/UI Designer)
 - **Design** : Cartographie DS terminée
 - **Wireframes en cours** : Aucun
-- **Design system** : 2 systèmes parallèles (shadcn local + Universal*BO) — dette
+- **Design system** : Un seul DS en 2 couches (primitives shadcn dans `ui/` + composites BO `Universal*BO` dans `backoffice/universal/`) — FRONT-NEW-2 FERMÉ (INIT-018, 2026-09-29)
 - **3 confits visuels** (normal/soleil/sombre) — inclusif remarquable
 - **Voice-first** : Tata Nanti Lou (137 clips pré-cachés)
 

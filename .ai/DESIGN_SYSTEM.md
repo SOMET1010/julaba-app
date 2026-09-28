@@ -29,9 +29,18 @@
 | `login.css` | Styles spécifiques écran login | — |
 | `fonts.css` | Déclarations `@font-face` | — |
 
-## 3. Composants UI (2 systèmes parallèles — dette)
+## 3. Composants UI (un seul DS — couche primitives + couche composites BO)
 
-### Système 1 : shadcn local (`src/app/components/ui/`)
+> **INIT-018 (2026-09-29) :** la dette `FRONT-NEW-2` « 2 design systems BO
+> parallèles » est **FERMÉE**. Les 6 composants `Universal*BO` morts ont été
+> supprimés (`UniversalSearchBarBO`, `UniversalFilterPanelBO`, `UniversalBadgeBO`,
+> `UniversalAvatarBO`, `UniversalTableBO`, `UniversalToastBO` — 1 739 lignes
+> de code mort éliminées). Les 13 composites BO vivants restent dans
+> `backoffice/universal/` et **consomment déjà** les primitives shadcn de
+> `components/ui/` : ils forment la « couche composite BO » du DS unique, pas un
+> fork. Voir `frontend_src/src/app/components/backoffice/universal/MIGRATION_GUIDE.md`.
+
+### Couche 1 — primitives shadcn (`src/app/components/ui/`)
 16 composants :
 - `button.tsx` (cva + variants default/destructive/outline/secondary/ghost/link)
 - `card.tsx`, `input.tsx`, `dialog.tsx`, `alert-dialog.tsx`, `dropdown-menu.tsx`
@@ -39,12 +48,30 @@
 - `sonner.tsx` (toasts), `UniversalKPI.tsx`, `AnimatedChart.tsx`
 - `utils.ts` (helper `cn()`)
 
-### Système 2 : Universal BO (`src/app/components/backoffice/universal/`)
-22 composants `Universal*BO.tsx` (Table, Modal, Drawer, Tabs, Filter, Search, Pagination, Confirm, Action…)
-- Migration en cours (voir `MIGRATION_GUIDE.md`)
-- **Double maintenance** : à terminer pour fusionner vers un seul DS
+### Couche 2 — composites BO (`src/app/components/backoffice/universal/`)
+13 composants `Universal*BO.tsx` qui enveloppent les primitives shadcn en y
+ajoutant le thème `BO_*` (`BO_PRIMARY`, `BO_TINT`, `BO_LIGHT`), les couleurs par
+rôle (`role-config.ts`), des animations framer-motion et des presets métier :
 
-### Modales — multiplicité (dette a11y)
+| Composite BO | Primitive shadcn | Spécificité |
+|---|---|---|
+| `UniversalModalBO` | `Dialog` | Layout modal header/footer + presets `sm/md/lg/xl` |
+| `UniversalConfirmModalBO` | `AlertDialog` | Sévérités `info/warning/danger` |
+| `UniversalActionWithReasonModalBO` | (compose `UniversalModalBO`) | Modale action + champ raison |
+| `UniversalActionButtonBO` | `Button` | Variantes + tailles BO |
+| `UniversalTabsBO` | `Tabs` | Onglets typés avec icône/badge |
+| `UniversalSectionCardBO` | `Card` | 7 variantes couleur + option `shimmer` |
+| `UniversalSkeletonBO` | `Skeleton` | Presets `list/grid/detail/kpi` |
+| `UniversalDropdownMenuBO` | `DropdownMenu` | Items typés `DropdownEntry` |
+| `UniversalPaginationBO` | (aucune — Pagination non embarquée) | Pagination BO animée |
+| `UniversalErrorStateBO` | (aucune) | États d'erreur typés |
+| `UniversalDrawerBO` | (aucune — Dialog sideVariants non embarqué) | Panneau latéral animé |
+| `UniversalRechercheBO` | (compose `Input`) | Recherche + debounce + suggestions |
+| `UniversalFiltreBO` | (compose `Button`) | Filtres multi-groupes |
+
+Voir `MIGRATION_GUIDE.md` du dossier `backoffice/universal/` pour le détail.
+
+### Modales — multiplicité (dette a11y — toujours ouverte, FRONT-NEW-3)
 - `ModalContext` + `Modal.tsx` custom + `ModalPortal` + Radix `Dialog` + `UniversalModalBO` + `ProfilUnifieModal` + `ChangePasswordModal`
 - **Inconsistance focus trap** selon le système — à uniformiser
 
@@ -72,6 +99,19 @@ Migration automatique de l'ancien `julaba_dark_mode` vers le nouveau système.
 - **Taille de texte ajustable** : `TextSizeSlider` + préférence `text_size` (1-5) + `appliquerTailleTexteAuDocument`
 - **Anti-jargon** : test `anti-jargon.test.mts` (vocabulaire marchandes non-lectrices)
 - **Haptique** : `utils/haptique.ts` (`vibrerSucces`, `vibrerErreur`, `vibrerTic`)
+
+## 6.bis. Internationalisation (i18n) — adoptée INIT-020 (28/09/2026)
+
+- **Stack** : `i18next@^23.16` + `react-i18next@^14.1`
+- **Config** : `frontend_src/src/app/i18n/config.ts` — `fallbackLng: 'french'`, `supportedLngs: ['french', 'dioula', 'bambara']`, `interpolation.escapeValue: false` (React échappe déjà).
+- **Locales** : `frontend_src/src/app/i18n/locales/{fr,dioula,bambara}.json`
+  - `fr.json` : source de vérité (chaînes françaises extraites des écrans).
+  - `dioula.json` / `bambara.json` : **PLACEHOLDERS** (chaînes françaises non traduites) — à finaliser par un locuteur natif (processus documenté dans `i18n/README.md`).
+- **Bridge `useLangPref` ↔ i18next** : `setLangPref(lang)` appelle `appliquerLangueI18n(lang)` qui fait `i18n.changeLanguage(lang)` + met à jour `document.documentElement.lang` (codes ISO 639-3 : `fr`/`dyu`/`bm`).
+- **`<html lang>` dynamique** : pré-chargé dans `index.html` (script inline qui lit `localStorage['julaba_lang']`) pour éviter un flash au boot, puis synchronisé au 1er render.
+- **Wrapping app** : `I18nextProvider` au sommet de `App.tsx` (englobe tous les autres providers).
+- **Migration progressive** : écrans migrés → `MesDonnees.tsx`, `Welcome.tsx`, `EntryGate.tsx`. Backlog → `POSCaisse.tsx`, `LoginPassword.tsx`, `UniversalParametres.tsx` (effort L chacun).
+- **Anti-jargon** : `anti-jargon.test.mts` ne scanne QUE les `.ts`/`.tsx` (pas les `.json`). Les chaînes déplacées vers les locales JSON échappent donc au test — il faudra étendre le test pour scanner aussi `i18n/locales/fr.json` (todo quality).
 
 ## 7. Routes / pages (95 routes)
 
@@ -112,9 +152,10 @@ Toutes les routes métier sont **lazy-loadées** via helper `L()` (React.lazy + 
 - `caisseCharte.test.mts` est le garde-fou
 
 ### Composants
-- Tout nouveau composant UI passe dans `src/app/components/ui/` (shadcn style)
-- Tout nouveau composant BO passe dans `src/app/components/backoffice/universal/` (Universal*BO)
-- Ne pas mélanger les 2 systèmes dans un même écran
+- Toute nouvelle primitive UI (bouton, input, carte, etc.) va dans `src/app/components/ui/` (style shadcn, Radix + `cva`)
+- Tout nouveau composite BO (qui consomme une ou plusieurs primitives + thématise `BO_*` + métier `role-config`) va dans `src/app/components/backoffice/universal/` avec le préfixe `Universal*BO`
+- Ne pas utiliser de primitive Radix brute dans un écran BO : passer par le composite `Universal*BO` correspondant
+- Si un composite `Universal*BO` n'existe pas encore, le créer plutôt que d'utiliser la primitive shadcn directement dans l'écran
 
 ### Modales
 - Préférer Radix `Dialog` (focus trap natif)
@@ -134,17 +175,22 @@ Toutes les routes métier sont **lazy-loadées** via helper `L()` (React.lazy + 
 
 ## 10. Dette design (top 5)
 
-1. **2 design systems BO parallèles** — migration incomplète
-2. **7 fichiers CSS** avec override OKLCH->hex workarounds pour Motion
-3. **Multiplicité des modales** — inconsistance a11y
-4. **Pas de Storybook** — pas de démo interactive des composants
-5. **Radix en version `*`** — instabilité potentielle (à pinner en semver)
+1. **7 fichiers CSS** avec override OKLCH->hex workarounds pour Motion
+2. **Multiplicité des modales** — inconsistance a11y (FRONT-NEW-3)
+3. **Pas de Storybook** — pas de démo interactive des composants
+4. **Radix en version `*`** — instabilité potentielle (à pinner en semver)
+5. **Composites BO sur shadcn** — 13 `Universal*BO` restants (P3, voir MIGRATION_GUIDE.md) : si l'on veut à terme tout fusionner dans `components/ui/`, il faudrait étendre les primitives shadcn avec variantes `BO_*` via `cva` puis migrer les 11 écrans BO un par un (~2 semaines, bénéfice marginal).
+
+> FERMÉ (INIT-018, 2026-09-29) : « 2 design systems BO parallèles » — les 6
+> composants `Universal*BO` morts ont été supprimés (1 739 lignes). Les 13
+> composites BO restants consomment déjà les primitives shadcn : le DS est
+> unique avec deux couches (primitives + composites BO). Voir
+> `frontend_src/src/app/components/backoffice/universal/MIGRATION_GUIDE.md`.
 
 ## 11. Recommandations UX/UI (sans modifier le code)
 
-1. **Terminer la migration Universal BO** vers un seul DS
-2. **Uniformiser les modales** vers Radix `Dialog` exclusivement
-3. **Pinner les versions Radix** en semver explicite
-4. **Mettre en place Storybook** pour documenter les composants
-5. **Consolider les 7 fichiers CSS** en 1 design tokens + 1 overrides
-6. **Ajouter un test a11y automatisé** (axe-core en CI)
+1. **Uniformiser les modales** vers Radix `Dialog` exclusivement (FRONT-NEW-3)
+2. **Pinner les versions Radix** en semver explicite
+3. **Mettre en place Storybook** pour documenter les composants
+4. **Consolider les 7 fichiers CSS** en 1 design tokens + 1 overrides
+5. **Ajouter un test a11y automatisé** (axe-core en CI)

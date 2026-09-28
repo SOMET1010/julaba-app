@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true
+  },
+  "include": [
+    "src/caisse-rest/caisse-produit.entity.ts",
+    "src/caisse-rest/caisse-produits.service.ts"
+  ],
+  "exclude": ["node_modules", "test", "dist", "src/**/*.spec.ts"]
+}

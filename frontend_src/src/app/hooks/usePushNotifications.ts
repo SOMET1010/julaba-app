@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { API_URL } from '../utils/api';
+import { apiRequest } from '../services/api/api-client';
 
 const VAPID_PUBLIC_KEY = 'Ez09UNY20LSDPRJcMAeMM-qmKpxtp7MrDhYb6WIHxH6P2xg855zWWDqQ7lLRDq4mf4FatL-hLY6nU37sHOpCyEA';
 
@@ -42,10 +43,9 @@ export function usePushNotifications(userId: string | null) {
         }
 
         // 4. Envoyer le token au backend
-        await fetch(`${API_URL}/notifications/push-token`, {
+        // INIT-019 — passe par le client centralisé.
+        await apiRequest<unknown>(API_URL, '/notifications/push-token', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ token: subscription }),
         });
       } catch (err) {
