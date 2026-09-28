@@ -41,7 +41,7 @@ import { normalizeRole } from '../types/constants';
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import * as audioManager from '../services/audioManager';
 import { API_URL } from '../utils/api';
-import { rafraichirSession, apiRequest } from '../services/api/api-client';
+import { rafraichirSession, apiRequest, HttpError, NOT_AUTHENTICATED } from '../services/api/api-client';
 import * as caisseApi from '../services/api/caisse-api';
 import type { VenteServeur, LigneDeVente, CreditServeur } from '../types/vente';
 import { jourLocal } from '../utils/jourLocal';
@@ -320,121 +320,88 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Charger les données utilisateur depuis API NestJS
   const loadUserData = async (userId: string, token: string) => {
     try {
-      // Charger profil utilisateur via /auth/me (utilise le token JWT)
-      const userResponse = await fetch(
-        `${API_URL}/users/me`,
-        {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-        },
-      );
-
-      let finalUserResponse = userResponse;
-
-      if (userResponse.status === 401) {
-        // Token expiré → rafraîchissement par L'UNIQUE porte (verrouillée).
-        // Ce bloc en avait sa propre copie, sans verrou et sans corps : dans
-        // l'APK elle ne pouvait pas aboutir, et lancée en même temps qu'une
-        // autre elle révoquait toutes les sessions de la marchande.
-        const refreshRes = { ok: await rafraichirSession(API_URL) };
-        if (refreshRes.ok) {
-          const retryRes = await fetch(`${API_URL}/users/me`, {
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-          });
-          if (!retryRes.ok) {
-            setUser(null);
-            setAccessToken(null);
-            setLoading(false);
-            return;
-          }
-          finalUserResponse = retryRes;
-        } else {
-          setUser(null);
-          setAccessToken(null);
-          setLoading(false);
-          return;
+      // INIT-019 — profil utilisateur via le client API centralisé. Le 401 et
+      // le rafraîchissement silencieux sont gérés par `apiRequest` (mutex
+      // partagé, rejeu automatique) : plus de double fetch ni de verrou local.
+      let userJson: any;
+      try {
+        userJson = await apiRequest<any>(API_URL, '/users/me');
+      } catch (err) {
+        if (err instanceof Error && err.message === NOT_AUTHENTICATED) {
+          setUser(null); setAccessToken(null); setLoading(false); return;
         }
+        throw err;
       }
 
-      if (finalUserResponse.ok) {
-        const userJson = await finalUserResponse.json();
-        const userData = userJson.user || userJson;
-        
-        const mappedUser: User = {
-          id: userData.id,
-          phone: userData.phone,
-          firstName: toProperCase(userData.firstName || userData.first_name || ''),
-          lastName: userData.lastName || userData.last_name || '',
-          prenoms: toProperCase(userData.firstName || userData.first_name || ''),
-          genre: userData.genre || 'femme',
-          pinSecurityEnabled: userData.pinSecurityEnabled || userData.pin_security_enabled || false,
-          role: userData.role as UserRole,
-          region: userData.region || '',
-          commune: userData.commune || '',
-          activity: userData.activity || '',
-          market: userData.market,
-          zoneId: userData.zoneId || userData.zone_id || '',
-          cooperativeName: userData.cooperativeName || userData.cooperative_name,
-          institutionName: userData.institutionName || userData.institution_name,
-          score: userData.score || 0,
-          createdAt: userData.createdAt || userData.created_at,
-          validated: userData.validated || false,
-          status: userData.status,
-          email: userData.email,
-          photo: userData.photoUrl || userData.photo_url,
-          nin: userData.nin || '',
-          nationalite: userData.nationalite || userData.nationality || 'Ivoirienne',
-          situationMatrimoniale: userData.situationMatrimoniale || userData.situation_matrimoniale || '',
-          numCNPS: userData.numCNPS || userData.num_cnps || '',
-          numCMU: userData.numCMU || userData.num_cmu || '',
-          recepisse: userData.recepisse || '',
-          dateNaissance: userData.dateNaissance || userData.date_naissance || '',
-          lieuNaissance: userData.lieuNaissance || userData.lieu_naissance || '',
-          estMembreCooperative: userData.estMembreCooperative ?? userData.est_membre_cooperative ?? false,
-          categorie: userData.categorie || undefined,
-          boitePostale: userData.boitePostale || userData.boite_postale || '',
-          statutEntrepreneur: userData.statutEntrepreneur || userData.statut_entrepreneur || '',
-          typePointVente: userData.typePointVente || userData.type_point_vente || '',
-          typePointVenteAutre: userData.typePointVenteAutre || userData.type_point_vente_autre || '',
-          districtId: userData.districtId || userData.district_id || '',
-          districtAutre: userData.districtAutre || userData.district_autre || '',
-          regionId: userData.regionId || userData.region_id || '',
-          regionAutre: userData.regionAutre || userData.region_autre || '',
-          departementId: userData.departementId || userData.departement_id || '',
-          departementAutre: userData.departementAutre || userData.departement_autre || '',
-          communeId: userData.communeId || userData.commune_id || '',
-          communeAutre: userData.communeAutre || userData.commune_autre || '',
-          quartierVillage: userData.quartierVillage || userData.quartier_village || '',
-          mustChangePassword: userData.mustChangePassword ?? userData.must_change_password ?? false,
-          cni: userData.nin || '',
-          sousProfilMarchand: userData.sousProfilMarchand ?? userData.sous_profil_marchand ?? null,
-          cmu: userData.numCMU || userData.num_cmu || '',
-          rsti: userData.recepisse || '',
-          telephone2: userData.telephone2 || userData.phone2 || '',
-          objectifMensuel: userData.objectifMensuel ?? userData.objectif_mensuel ?? null,
-          primeObjectif: userData.primeObjectif ?? userData.prime_objectif ?? null,
-        };
+      const userData = userJson.user || userJson;
 
-        // Résoudre le nom de la zone
-        if (mappedUser.zoneId) {
-          try {
-            const zonesRes = await fetch(`${API_URL}/zones/public/${mappedUser.zoneId}`, {
-              credentials: 'include' });
-            if (zonesRes.ok) {
-              const zoneData = await zonesRes.json();
-              if (zoneData?.nom) mappedUser.zoneNom = zoneData.nom;
-            }
-          } catch (e: any) { console.warn('[AppContext] zone fetch failed:', e?.message); }
-        }
-        setUser(mappedUser);
-        setUserContext(mappedUser);
-        // Déclencher vérification alertes métier au login
-        fetch(`${API_URL}/notifications/alertes/check-user`, {
-          method: 'POST',
-          credentials: 'include',
-        }).catch((e: any) => { console.warn('[AppContext] alertes check-user failed:', e?.message); });
+      const mappedUser: User = {
+        id: userData.id,
+        phone: userData.phone,
+        firstName: toProperCase(userData.firstName || userData.first_name || ''),
+        lastName: userData.lastName || userData.last_name || '',
+        prenoms: toProperCase(userData.firstName || userData.first_name || ''),
+        genre: userData.genre || 'femme',
+        pinSecurityEnabled: userData.pinSecurityEnabled || userData.pin_security_enabled || false,
+        role: userData.role as UserRole,
+        region: userData.region || '',
+        commune: userData.commune || '',
+        activity: userData.activity || '',
+        market: userData.market,
+        zoneId: userData.zoneId || userData.zone_id || '',
+        cooperativeName: userData.cooperativeName || userData.cooperative_name,
+        institutionName: userData.institutionName || userData.institution_name,
+        score: userData.score || 0,
+        createdAt: userData.createdAt || userData.created_at,
+        validated: userData.validated || false,
+        status: userData.status,
+        email: userData.email,
+        photo: userData.photoUrl || userData.photo_url,
+        nin: userData.nin || '',
+        nationalite: userData.nationalite || userData.nationality || 'Ivoirienne',
+        situationMatrimoniale: userData.situationMatrimoniale || userData.situation_matrimoniale || '',
+        numCNPS: userData.numCNPS || userData.num_cnps || '',
+        numCMU: userData.numCMU || userData.num_cmu || '',
+        recepisse: userData.recepisse || '',
+        dateNaissance: userData.dateNaissance || userData.date_naissance || '',
+        lieuNaissance: userData.lieuNaissance || userData.lieu_naissance || '',
+        estMembreCooperative: userData.estMembreCooperative ?? userData.est_membre_cooperative ?? false,
+        categorie: userData.categorie || undefined,
+        boitePostale: userData.boitePostale || userData.boite_postale || '',
+        statutEntrepreneur: userData.statutEntrepreneur || userData.statut_entrepreneur || '',
+        typePointVente: userData.typePointVente || userData.type_point_vente || '',
+        typePointVenteAutre: userData.typePointVenteAutre || userData.type_point_vente_autre || '',
+        districtId: userData.districtId || userData.district_id || '',
+        districtAutre: userData.districtAutre || userData.district_autre || '',
+        regionId: userData.regionId || userData.region_id || '',
+        regionAutre: userData.regionAutre || userData.region_autre || '',
+        departementId: userData.departementId || userData.departement_id || '',
+        departementAutre: userData.departementAutre || userData.departement_autre || '',
+        communeId: userData.communeId || userData.commune_id || '',
+        communeAutre: userData.communeAutre || userData.commune_autre || '',
+        quartierVillage: userData.quartierVillage || userData.quartier_village || '',
+        mustChangePassword: userData.mustChangePassword ?? userData.must_change_password ?? false,
+        cni: userData.nin || '',
+        sousProfilMarchand: userData.sousProfilMarchand ?? userData.sous_profil_marchand ?? null,
+        cmu: userData.numCMU || userData.num_cmu || '',
+        rsti: userData.recepisse || '',
+        telephone2: userData.telephone2 || userData.phone2 || '',
+        objectifMensuel: userData.objectifMensuel ?? userData.objectif_mensuel ?? null,
+        primeObjectif: userData.primeObjectif ?? userData.prime_objectif ?? null,
+      };
+
+      // Résoudre le nom de la zone
+      if (mappedUser.zoneId) {
+        try {
+          const zoneData = await apiRequest<{ nom?: string }>(API_URL, `/zones/public/${mappedUser.zoneId}`);
+          if (zoneData?.nom) mappedUser.zoneNom = zoneData.nom;
+        } catch (e: any) { console.warn('[AppContext] zone fetch failed:', e?.message); }
       }
+      setUser(mappedUser);
+      setUserContext(mappedUser);
+      // Déclencher vérification alertes métier au login (fire-and-forget)
+      apiRequest<unknown>(API_URL, '/notifications/alertes/check-user', { method: 'POST' })
+        .catch((e: any) => { console.warn('[AppContext] alertes check-user failed:', e?.message); });
 
       // Charger transactions
       // UNE SEULE LECTURE DES TRANSACTIONS — HYGIÈNE-1 axe 2. Ce contexte
@@ -524,85 +491,73 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Vérifier session au démarrage via cookie httpOnly → /auth/me
   useEffect(() => {
     const checkSession = async () => {
+      // INIT-019 — la porte unique `apiRequest` gère le 401 + refresh + rejeu.
+      // On récupère trois cas : succès métier, session expirée (NOT_AUTHENTICATED
+      // ou HttpError 401/403 → on purge), erreur réseau (on garde le cache).
       try {
-        let res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
+        const json = await apiRequest<any>(API_URL, '/auth/me');
+        const userData = json.user || json;
 
-        // Token expiré → tenter refresh silencieux. On envoie le refresh token
-        // stocké dans le corps (le cookie refresh est bloqué cross-domaine mobile).
-        if (res.status === 401) {
-          // C'était la SEULE des quatre copies qui envoyait le jeton stocké,
-          // donc la seule capable d'aboutir dans l'APK. Son comportement est
-          // devenu celui de tout le monde : `rafraichirSession` envoie le jeton,
-          // range celui d'après, et tient le verrou.
-          if (await rafraichirSession(API_URL)) {
-            res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
-          }
-        }
-
-        if (res.ok) {
-          const json = await res.json();
-          const userData = json.user || json;
-
-          const userDataMapped = {
-            id: userData.id,
-            phone: userData.phone || '',
-            firstName: toProperCase(userData.firstName || userData.first_name || ''),
-            prenoms: toProperCase(userData.firstName || userData.first_name || ''),
-            lastName: userData.lastName || userData.last_name || '',
-            role: normalizeRole(userData.role) as unknown as UserRole,
-            region: userData.region || '',
-            commune: userData.commune || '',
-            activity: userData.activity || '',
-            market: userData.market || '',
-            zoneId: userData.zoneId || userData.zone_id || '',
-            score: userData.score || 0,
-            createdAt: userData.createdAt || '',
-            validated: userData.validated || false,
-            pinSecurityEnabled: userData.pinSecurityEnabled || userData.pin_security_enabled || false,
-            objectifMensuel: userData.objectifMensuel ?? userData.objectif_mensuel ?? null,
-            primeObjectif: userData.primeObjectif ?? userData.prime_objectif ?? null,
-            sousProfilMarchand: userData.sousProfilMarchand ?? userData.sous_profil_marchand ?? null,
-            mustChangePassword: !!(userData.mustChangePassword ?? userData.must_change_password),
-          };
-          // Détecter mustChangePassword AVANT de monter l'app (évite la cascade qui efface les cookies)
-          const mustChange = !!(userData.mustChangePassword || userData.must_change_password);
-          if (mustChange) {
-            setSuspendRefresh(true);
-            setUser(userDataMapped);
-            setUserContext(userDataMapped);
-            setAccessToken('cookie');
-            setLoading(false);
-            if (!window.location.pathname.includes('change-password')) {
-              window.location.href = '/change-password';
-            }
-            return;
-          }
-          setSuspendRefresh(false);
+        const userDataMapped = {
+          id: userData.id,
+          phone: userData.phone || '',
+          firstName: toProperCase(userData.firstName || userData.first_name || ''),
+          prenoms: toProperCase(userData.firstName || userData.first_name || ''),
+          lastName: userData.lastName || userData.last_name || '',
+          role: normalizeRole(userData.role) as unknown as UserRole,
+          region: userData.region || '',
+          commune: userData.commune || '',
+          activity: userData.activity || '',
+          market: userData.market || '',
+          zoneId: userData.zoneId || userData.zone_id || '',
+          score: userData.score || 0,
+          createdAt: userData.createdAt || '',
+          validated: userData.validated || false,
+          pinSecurityEnabled: userData.pinSecurityEnabled || userData.pin_security_enabled || false,
+          objectifMensuel: userData.objectifMensuel ?? userData.objectif_mensuel ?? null,
+          primeObjectif: userData.primeObjectif ?? userData.prime_objectif ?? null,
+          sousProfilMarchand: userData.sousProfilMarchand ?? userData.sous_profil_marchand ?? null,
+          mustChangePassword: !!(userData.mustChangePassword ?? userData.must_change_password),
+        };
+        // Détecter mustChangePassword AVANT de monter l'app (évite la cascade qui efface les cookies)
+        const mustChange = !!(userData.mustChangePassword || userData.must_change_password);
+        if (mustChange) {
+          setSuspendRefresh(true);
           setUser(userDataMapped);
           setUserContext(userDataMapped);
           setAccessToken('cookie');
-          await loadUserData(userData.id, 'cookie');
-        } else {
-          // Le serveur a RÉPONDU. On ne déconnecte QUE sur un refus d'auth
-          // explicite (401/403). Les autres codes (ex. 5xx pendant le réveil du
-          // serveur Render) ne doivent pas éjecter une session en cache.
-          if (res.status === 401 || res.status === 403) {
-            try {
-              localStorage.removeItem('julaba_auth_user');
-              localStorage.removeItem('julaba_access_token');
-              localStorage.removeItem('julaba_refresh_token');
-            } catch { /* ignore */ }
-            setUser(null); setAccessToken(null);
+          setLoading(false);
+          if (!window.location.pathname.includes('change-password')) {
+            window.location.href = '/change-password';
           }
+          return;
+        }
+        setSuspendRefresh(false);
+        setUser(userDataMapped);
+        setUserContext(userDataMapped);
+        setAccessToken('cookie');
+        await loadUserData(userData.id, 'cookie');
+      } catch (e: any) {
+        // INIT-019 — session expirée (401/403 ou NOT_AUTHENTICATED) : on purge.
+        // Les autres erreurs (HttpError 5xx, réseau) : on garde le cache.
+        const isAuth = e instanceof Error && (e.message === NOT_AUTHENTICATED
+          || (e instanceof HttpError && (e.status === 401 || e.status === 403)));
+        if (isAuth) {
+          try {
+            localStorage.removeItem('julaba_auth_user');
+            localStorage.removeItem('julaba_access_token');
+            localStorage.removeItem('julaba_refresh_token');
+          } catch { /* ignore */ }
+          setUser(null); setAccessToken(null);
+          setLoading(false);
+        } else {
+          // Erreur RÉSEAU (hors-ligne) : on GARDE la session en cache pour rester
+          // connectée hors-ligne — surtout ne pas éjecter vers l'écran de connexion.
+          console.warn('[AppContext] checkSession réseau KO (hors-ligne?):', e?.message);
+          const cached = readCachedUser();
+          if (cached) { setUser(cached); setAccessToken('cookie'); }
           setLoading(false);
         }
-      } catch (e: any) {
-        // Erreur RÉSEAU (hors-ligne) : on GARDE la session en cache pour rester
-        // connectée hors-ligne — surtout ne pas éjecter vers l'écran de connexion.
-        console.warn('[AppContext] checkSession réseau KO (hors-ligne?):', e?.message);
-        const cached = readCachedUser();
-        if (cached) { setUser(cached); setAccessToken('cookie'); }
-        setLoading(false);
       }
     };
 
@@ -652,10 +607,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Déconnexion
   const logout = async () => {
     try {
-      await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      // INIT-019 — passe par le client centralisé. Le 401 ici n'est pas une
+      // erreur : la session est déjà invalidée côté client, on continue.
+      await apiRequest<unknown>(API_URL, '/auth/logout', { method: 'POST' });
     } catch { /* silencieux — on continue la déconnexion locale */ }
 
     if (silentRefreshRef.current) {

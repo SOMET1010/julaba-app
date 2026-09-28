@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { API_URL } from '../utils/api';
+import { apiRequest, HttpError } from '../services/api/api-client';
 const RECOVERY_KEY = 'JULABA_RECOVERY_2026';
 
 type Step = 'menu' | 'diagnostic' | 'reset-pwd' | 'full-recover' | 'test-login' | 'clear-storage';
@@ -70,14 +71,11 @@ function DiagnosticPanel({ onBack }: { onBack: () => void }) {
     setResult(null);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/auth/super-admin-status`, { credentials: 'include',
-        headers: { }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      // INIT-019 — passe par le client centralisé.
+      const data = await apiRequest<any>(API_URL, '/auth/super-admin-status');
       setResult(data);
     } catch (e: any) {
-      setError(e.message);
+      setError(e instanceof HttpError ? (e.message || `HTTP ${e.status}`) : e.message);
     } finally {
       setLoading(false);
     }
@@ -187,16 +185,14 @@ function TestLoginPanel({ onBack }: { onBack: () => void }) {
     if (!phone || !password) { setError('Champs requis'); return; }
     setLoading(true); setResult(null); setError('');
     try {
-      const res = await fetch(`${API_URL}/auth/test-login`, { credentials: 'include',
+      // INIT-019 — passe par le client centralisé.
+      const data = await apiRequest<any>(API_URL, '/auth/test-login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password })
+        body: JSON.stringify({ phone, password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setResult(data);
     } catch (e: any) {
-      setError(e.message);
+      setError(e instanceof HttpError ? (e.message || `HTTP ${e.status}`) : e.message);
     } finally {
       setLoading(false);
     }
@@ -317,16 +313,19 @@ function ResetPasswordPanel({ onBack }: { onBack: () => void }) {
     if (newPassword !== confirm) { setError('Les mots de passe ne correspondent pas'); return; }
     setLoading(true); setResult(null); setError('');
     try {
-      const res = await fetch(`${API_URL}/auth/reset-super-admin-password`, { credentials: 'include',
+      // INIT-019 — passe par le client centralisé.
+      const data = await apiRequest<any>(API_URL, '/auth/reset-super-admin-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, newPassword, secretKey: RECOVERY_KEY })
+        body: JSON.stringify({ phone, newPassword, secretKey: RECOVERY_KEY }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error + (data.details ? ` — ${data.details}` : ''));
       setResult(data);
     } catch (e: any) {
-      setError(e.message);
+      if (e instanceof HttpError) {
+        const body = (e.body as any) || {};
+        setError(body.error ? (body.error + (body.details ? ` — ${body.details}` : '')) : e.message);
+      } else {
+        setError(e.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -427,16 +426,19 @@ function FullRecoveryPanel({ onBack }: { onBack: () => void }) {
     if (password !== confirm) { setError('Les mots de passe ne correspondent pas'); return; }
     setLoading(true); setResult(null); setError('');
     try {
-      const res = await fetch(`${API_URL}/auth/recover-super-admin`, { credentials: 'include',
+      // INIT-019 — passe par le client centralisé.
+      const data = await apiRequest<any>(API_URL, '/auth/recover-super-admin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password, firstName, lastName, secretKey: RECOVERY_KEY })
+        body: JSON.stringify({ phone, password, firstName, lastName, secretKey: RECOVERY_KEY }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error + (data.details ? ` — ${data.details}` : ''));
       setResult(data);
     } catch (e: any) {
-      setError(e.message);
+      if (e instanceof HttpError) {
+        const body = (e.body as any) || {};
+        setError(body.error ? (body.error + (body.details ? ` — ${body.details}` : '')) : e.message);
+      } else {
+        setError(e.message);
+      }
     } finally {
       setLoading(false);
     }

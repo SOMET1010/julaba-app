@@ -1,6 +1,7 @@
 import { useApp } from './AppContext';
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { API_URL } from '../utils/api';
+import { apiRequest, HttpError } from '../services/api/api-client';
 
 // Types d'actions vocales supportées
 export type RaccourciActionType = 'vendre' | 'depense' | 'stock' | 'autre';
@@ -37,14 +38,12 @@ export function RaccourcisProvider({ children }: { children: React.ReactNode }) 
   const [raccourcis, setRaccourcis] = useState<Raccourci[]>([]);
   const [loading, setLoading] = useState(false);
 
-
-  const headers = () => ({ 'Content-Type': 'application/json' });
-
   const refresh = useCallback(async () => {
     if (!raccourcis?.length) setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/raccourcis`, { credentials: 'include', headers: headers() });
-      if (res.ok) setRaccourcis(await res.json());
+      // INIT-019 — passe par le client centralisé.
+      const data = await apiRequest<Raccourci[]>(API_URL, '/raccourcis');
+      setRaccourcis(data);
     } catch (e) { void e; }
     setLoading(false);
   }, []);
@@ -53,16 +52,21 @@ export function RaccourcisProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => { if (appUser?.id) refresh(); }, [appUser?.id]);
 
   const creerRaccourci = useCallback(async (data: Omit<Raccourci, 'id' | 'actif'>) => {
-    const res = await fetch(`${API_URL}/raccourcis`, {
-      method: 'POST', credentials: 'include', headers: headers(), body: JSON.stringify(data),
-    });
-    const result = await res.json();
-    if (!result.error) await refresh();
-    return result;
+    try {
+      const result = await apiRequest<Raccourci & { error?: string }>(API_URL, '/raccourcis', {
+        method: 'POST', body: JSON.stringify(data),
+      });
+      if (!result.error) await refresh();
+      return result;
+    } catch (err) {
+      // INIT-019 — on préserve la signature d'origine (renvoi un objet).
+      if (err instanceof HttpError) return { error: err.message } as Raccourci & { error?: string };
+      throw err;
+    }
   }, [refresh]);
 
   const supprimerRaccourci = useCallback(async (id: string) => {
-    await fetch(`${API_URL}/raccourcis/${id}`, { method: 'DELETE', credentials: 'include', headers: headers() });
+    await apiRequest<unknown>(API_URL, `/raccourcis/${id}`, { method: 'DELETE' });
     await refresh();
   }, [refresh]);
 

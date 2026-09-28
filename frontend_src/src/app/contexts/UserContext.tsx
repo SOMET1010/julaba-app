@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import type { User } from './AppContext';
 import { useApp } from './AppContext';
 import { API_URL } from '../utils/api';
+import { apiRequest } from '../services/api/api-client';
 
 export interface UserData {
   id?: string;
@@ -237,10 +238,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       setUserState({ ...user, ...updates });
       // Persister en BD
       try {
-        await fetch(`${API_URL}/users/${user.id}`, {
+        // INIT-019 — passe par le client centralisé.
+        await apiRequest<unknown>(API_URL, `/users/${user.id}`, {
           method: 'PATCH',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updates),
         });
       } catch (e) { void e; }

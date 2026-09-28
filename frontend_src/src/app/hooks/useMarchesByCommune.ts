@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../utils/api';
+import { apiRequest } from '../services/api/api-client';
 
 export interface MarcheItem {
   id: string;
@@ -24,11 +25,10 @@ export function useMarchesByCommune(commune?: string) {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
-    fetch(`${API_URL}/marches?exclude_statut=en_attente`, {
-      credentials: 'include',
+    // INIT-019 — passe par le client centralisé.
+    apiRequest<MarcheItem[]>(API_URL, '/marches?exclude_statut=en_attente', {
       signal: controller.signal,
     })
-      .then(r => r.ok ? r.json() : [])
       .then(data => {
         if (!isMountedRef.current) return;
         if (Array.isArray(data)) {
@@ -50,15 +50,11 @@ export function useMarchesByCommune(commune?: string) {
 
   const suggestMarche = async (nom: string, communeValue: string): Promise<MarcheItem | null> => {
     try {
-      const res = await fetch(`${API_URL}/marches/suggestion`, {
+      const data = await apiRequest<{ marche?: MarcheItem } | null>(API_URL, '/marches/suggestion', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nom, commune: communeValue }),
       });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.marche ?? null;
+      return data?.marche ?? null;
     } catch (e: any) {
       console.warn('[useMarchesByCommune] suggest failed:', e?.message);
       return null;

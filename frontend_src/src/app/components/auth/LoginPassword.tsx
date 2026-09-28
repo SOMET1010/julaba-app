@@ -14,6 +14,7 @@ import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { BrandSignature } from '../shared/BrandSignature';
 import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
+import { apiRequest } from '../../services/api/api-client';
 import { extractPhoneDigits, fusionnerChiffresDictes } from '../../utils/frenchDigits';
 import { tataUiClipForText } from '../../services/tataUiClips';
 import { voixSecoursNom } from '../../services/elevenlabs';
@@ -370,7 +371,11 @@ export function LoginPassword() {
   // le serveur soit déjà réveillé au moment du « Se connecter ». Silencieux.
   useEffect(() => {
     let annule = false;
-    const reveiller = () => { try { fetch(`${API_URL}/health`, { method: 'GET', cache: 'no-store' }).catch(() => {}); } catch { /* ignore */ } };
+    const reveiller = () => {
+      // INIT-019 — fetch() légitime : ping « réveille-toi » du backend Render,
+      // on ignore la réponse (pas de parsing JSON). `apiRequest` parserait pour rien.
+      try { fetch(`${API_URL}/health`, { method: 'GET', cache: 'no-store' }).catch(() => {}); } catch { /* ignore */ }
+    };
     reveiller();
     // Un 2e ping ~8 s après, au cas où le 1er a lancé le démarrage sans le finir.
     const t = setTimeout(() => { if (!annule) reveiller(); }, 8000);
@@ -408,18 +413,18 @@ export function LoginPassword() {
         setIsLoading(true);
         abortRef.current?.abort();
         abortRef.current = new AbortController();
-        const res = await fetch(`${API_URL}/auth/check-phone`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: curr.startsWith('+225') ? curr : '+225' + curr }),
-          signal: abortRef.current.signal,
-        });
+        // INIT-019 — passe par le client centralisé. L'ancien code lisait le
+        // corps même sur !res.ok : ici tout !res.ok jette et l'on retombe sur
+        // l'écran password (comportement historique en cas d'échec check-phone).
         let data: { exists?: boolean };
         try {
-          data = await res.json();
+          data = await apiRequest<{ exists?: boolean }>(API_URL, '/auth/check-phone', {
+            method: 'POST',
+            body: JSON.stringify({ phone: curr.startsWith('+225') ? curr : '+225' + curr }),
+            signal: abortRef.current.signal,
+          });
         } catch (err) {
-          console.warn('[LoginPassword] check-phone json parse failed:', err instanceof Error ? err.message : err);
+          console.warn('[LoginPassword] check-phone failed:', err instanceof Error ? err.message : err);
           if (phoneRef.current === curr) {
             setStep('password');
             setIsLoading(false);
@@ -803,6 +808,10 @@ export function LoginPassword() {
     vlog('LOGIN_TRY', { url: `${API_URL}/auth/login` });
     try {
       const controller = new AbortController();
+      // INIT-019 — fetch() légitime : l'écran de login lit `response.status`
+      // (429, etc.) ET le corps sur !response.ok (locked, essaisRestants,
+      // attenteMs, error) pour afficher les bons messages vocaux. Trop de
+      // branches spéciales pour basculer sur `apiRequest` sans risque.
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

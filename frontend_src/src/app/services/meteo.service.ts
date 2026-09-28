@@ -98,6 +98,9 @@ export async function getMeteo(): Promise<Meteo | null> {
     `&timezone=Africa%2FAbidjan&forecast_days=4`;
 
   try {
+    // INIT-019 — fetch() légitime : appel à une API externe (Open-Meteo), pas
+    // au backend JÙLABA. Le client centralisé `apiRequest` ajoute `credentials`
+    // et suppose une erreur JSON JÙLABA — inadapté ici.
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();

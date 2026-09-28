@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import * as audioManager from '../services/audioManager';
 import { API_URL } from '../utils/api';
+import { apiRequest } from '../services/api/api-client';
 
 export interface RapportHebdo {
   semaine: { debut: string; fin: string };
@@ -34,13 +35,9 @@ export function RapportHebdoProvider({ children }: { children: React.ReactNode }
   const fetchRapport = useCallback(async () => {
     if (!rapport) setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/rapport/hebdo`, {
-        credentials: 'include'
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setRapport(data);
-      }
+      // INIT-019 — passe par le client centralisé.
+      const data = await apiRequest<RapportHebdo>(API_URL, '/rapport/hebdo');
+      setRapport(data);
     } catch (e) { void e; }
     setLoading(false);
   }, []);

@@ -16,6 +16,23 @@
 - Budget performance (bundle 565/800 KB, Core Web Vitals à instrumenter)
 - Workflows formalisés (7 phases + audit global périodique)
 
+### Modifié — INIT-018 (2026-09-29) : consolidation design system BO
+- Suppression de 6 composants `Universal*BO` morts (jamais importés hors du barrel
+  `index.ts`) : `UniversalSearchBarBO`, `UniversalFilterPanelBO`, `UniversalBadgeBO`,
+  `UniversalAvatarBO`, `UniversalTableBO`, `UniversalToastBO` — 1 739 lignes de
+  code mort éliminées.
+- Documentation du contrat deux-couches du DS unique : primitives shadcn dans
+  `components/ui/` (16 composants) + composites BO dans
+  `components/backoffice/universal/` (13 composants `Universal*BO` qui consomment
+  les primitives shadcn en y ajoutant thème `BO_*`, `role-config`, animations et
+  presets métier).
+- Fermeture de la dette `FRONT-NEW-2` (DEBT_REPORT.md).
+- Mise à jour de `DESIGN_SYSTEM.md`, `ARCHITECTURE.md`, `TASKS.md`,
+  `JULABA_DECISIONS.md` et création de
+  `frontend_src/src/app/components/backoffice/universal/MIGRATION_GUIDE.md`.
+- Vérifications : `npx tsc -b` 0 erreur ; `test:route-access`, `test:tokens`,
+  `test:jargon`, `test:caisse-charte` verts ; `check:bundle-budget` vert (639 Ko).
+
 ## [5.0.0] — Pilote 15/09/2026
 
 ### Ajouté
