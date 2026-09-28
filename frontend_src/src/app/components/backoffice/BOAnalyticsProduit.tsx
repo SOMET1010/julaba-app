@@ -9,7 +9,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { API_URL } from '../../utils/api';
+import { boGetAnalytics } from '../../services/backoffice-api';
 import { toast } from 'sonner';
 
 const FUNNEL_FILLS = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444'];
@@ -29,11 +29,8 @@ export function BOAnalyticsProduit() {
   const [tab, setTab] = useState<'funnel' | 'retention' | 'features' | 'dropoff'>('funnel');
 
   React.useEffect(() => {
-    fetch(`${API_URL}/admin/analytics`, {
-      credentials: 'include',
-      headers: {},
-    })
-      .then(r => { if (!r.ok) throw new Error(`Erreur HTTP ${r.status}`); return r.json(); })
+    // INIT-019 — migration fetch() → boGetAnalytics (client centralisé).
+    boGetAnalytics()
       .then(d => {
         const itemsFromApi = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : [];
         const payload =
@@ -50,9 +47,6 @@ export function BOAnalyticsProduit() {
         if (items.length === 0 && funnelLen === 0 && dailyLen === 0 && retentionLen === 0 && featuresLen === 0 && dropLen === 0) {
           toast.info('Aucune donnée analytics disponible');
         }
-      })
-      .catch((err: unknown) => {
-        toast.error(err instanceof Error ? err.message : 'Erreur chargement analytics produit');
       });
   }, []);
 

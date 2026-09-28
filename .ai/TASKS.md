@@ -6,7 +6,7 @@
 
 - **Total tâches** : 17 (12 issues de l'audit initial + INIT-016 strictNullChecks + INIT-018 design system BO + INIT-019 fetch directs + INIT-020 i18n + INIT-021 Vitest)
 - **Terminées** : 4 (INIT-011, INIT-012, INIT-018, INIT-015)
-- **Partiellement terminées** : 3 (INIT-016 strictNullChecks — infrastructure posée ; INIT-020 i18n — infrastructure posée + 3 écrans migrés ; INIT-021 Vitest — infrastructure posée + 3 pilotes migrés)
+- **Partiellement terminées** : 3 (INIT-016 strictNullChecks — infrastructure posée + 8 modules migrés (2 pilotes + 4 utilitaires + 2 contrôleurs REST) ; INIT-020 i18n — infrastructure posée + 6 écrans migrés (3 en phase 1 + 3 critiques en phase 2) ; INIT-021 Vitest — infrastructure posée + 18 fichiers migrés (3 pilotes + 15 phase 2, 211 tests verts))
 - **Non traitées** : 1 (INIT-019 fetch directs — subagent a échoué, à reprendre)
 - **En cours** : 1 (INIT-010)
 - **Bloquées** : 0
@@ -38,9 +38,9 @@
 | INIT-011 | Architecture | Fusionner contrôleurs dupliqués : `cycles-rest` + `producteur/cycles`, `recoltes-rest` + `producteur/recoltes` | Back | **TERMINÉ** | P2 |
 | INIT-012 | Dette | Migrer `CATALOGUE` hardcodé (15 produits vivriers dans `caisse-rest.controller.ts`) vers `caisse_produits` ou référentiel maître Odoo | Back | **TERMINÉ** | P2 |
 | INIT-018 | Dette | Finaliser la migration vers un seul design system BO en consolidant `Universal*BO` dans `components/ui/` (shadcn local) | Front | **TERMINÉ (2026-09-29)** | P2 |
-| INIT-020 | i18n | Adopter `i18next` + `react-i18next` pour internationaliser l'UI (3 langues `french`/`dioula`/`bambara` déjà exposées par `useLangPref`) | Front + a11y | **PARTIEL** — infrastructure posée (config + 3 locales + I18nextProvider + bridge `useLangPref` + `<html lang>` dynamique) ; 3 écrans migrés (`MesDonnees`, `Welcome`, `EntryGate`) ; backlog `POSCaisse`/`LoginPassword`/`UniversalParametres` ; traductions `dioula.json`/`bambara.json` = PLACEHOLDERS | P2 |
-| INIT-021 | Dette | Adopter Vitest comme framework de test standard frontend (74 tests via `tsx` + helpers ad-hoc) | Front (QA+Dev) | **PARTIEL — infrastructure posée + 3 pilotes migrés (25 tests verts), 71 tests legacy à migrer par lots ultérieurs** | P2 |
-| INIT-016 | Dette | Activer `strictNullChecks` progressivement (476 `any` back, `tsconfig.json` permissif) | Back | **PARTIEL — infrastructure posée (`tsconfig.strict.json` + guide `backend/docs/MIGRATION-STRICT-TYPESCRIPT.md` + script `typecheck:strict` + module pilote `caisse-produits` strict), migration par couches documentée** | P2 |
+| INIT-020 | i18n | Adopter `i18next` + `react-i18next` pour internationaliser l'UI (3 langues `french`/`dioula`/`bambara` déjà exposées par `useLangPref`) | Front + a11y | **PARTIEL** — infrastructure posée (config + 3 locales + I18nextProvider + bridge `useLangPref` + `<html lang>` dynamique) ; 6 écrans migrés (`MesDonnees`, `Welcome`, `EntryGate` en phase 1 ; `POSCaisse`, `LoginPassword`, `UniversalParametres` en phase 2) ; reste : autres écrans + traductions `dioula.json`/`bambara.json` = PLACEHOLDERS à traduire par locuteur natif | P2 |
+| INIT-021 | Dette | Adopter Vitest comme framework de test standard frontend (74 tests via `tsx` + helpers ad-hoc) | Front (QA+Dev) | **PARTIEL — infrastructure posée + 18 fichiers migrés (3 pilotes phase 1 + 15 phase 2, 211 tests verts), 56 tests legacy à migrer par lots ultérieurs** | P2 |
+| INIT-016 | Dette | Activer `strictNullChecks` progressivement (476 `any` back, `tsconfig.json` permissif) | Back | **PARTIEL — infrastructure posée (`tsconfig.strict.json` + guide `backend/docs/MIGRATION-STRICT-TYPESCRIPT.md` + script `typecheck:strict`) ; 8 modules migrés (2 pilotes `caisse-produit.entity.ts`/`caisse-produits.service.ts` + couche 2 `paginate.ts`/`throttler.config.ts`/`trust-proxy.config.ts`/`schema-flags.ts` + couche 3 `cycles-rest.controller.ts`/`recoltes-rest.controller.ts`) ; 0 `any`/`as any` dans les modules migrés ; `tsconfig.build.json` 0 erreur ; 207 tests unitaires verts ; couche 4 (auth/caisse-rest/wallets/commandes) + couche 5 (admin/cooperatives-rest/identifications) restantes à migrer par vagues ultérieures** | P2 |
 | INIT-019 | Dette | Réduire 173 `fetch()` directs hors `services/api/` (69 hors back-office) | Front | **PARTIEL — 13 fetch migrés (97 -> 84), 5 composants traités (BOModeration, BOParametres, BOAcademy, UniversalAcademy, BORapports), 84 restants à traiter par lots ultérieurs** | P2 |
 
 ## Tâches reportées (backlog futur)
@@ -177,7 +177,7 @@
 
 ### INIT-020 — Adopter i18next pour internationaliser l'UI
 
-**Statut : PARTIEL — infrastructure posée + 3 écrans migrés, 3 écrans critiques en backlog + traductions locales à finaliser.**
+**Statut : PARTIEL — infrastructure posée + 6 écrans migrés (3 critiques en phase 2), 3 écrans critiques en backlog + traductions locales à finaliser.**
 
 - **Livrable posé (2026-09-29)** :
   - `i18next@^23.16.8` + `react-i18next@^14.1.3` ajoutés à
@@ -199,26 +199,58 @@
     (HTML lisible avant React), + script inline qui pré-charge la langue
     depuis `localStorage['julaba_lang']` AVANT le boot React (évite le flash
     `<html lang="fr"> → <html lang="dyu">`).
-  - 3 écrans migrés vers `useTranslation()` / `<Trans>` :
+  - 3 écrans migrés vers `useTranslation()` / `<Trans>` (phase 1, 2026-09-29) :
     - `pages/marchand/MesDonnees.tsx` (~60 chaînes : titres, libellés,
       détails, finalités, sections politique, modales suppression+politique,
       toasts, voix Tata, aria-labels).
     - `components/auth/Welcome.tsx` (~8 chaînes : titres, aria, alt).
     - `components/auth/EntryGate.tsx` (~2 chaînes : chargement, erreur rôle).
+  - 3 écrans critiques migrés (phase 2, 2026-09-30) :
+    - `components/marchand/POSCaisse.tsx` (~80 chaînes : titre page, statut
+      en/hors ligne, sections Produits/Panier/Paiement, boutons d'action
+      Espèces/Crédit/Payer en espèces/Vider le panier, aria-labels
+      (Un {{nom}} de moins, Quantité de {{nom}}, Total {{total}} francs,
+      Monnaie à rendre…), modale « Autre article », écran « Vente réussie »,
+      phrases vocales `dire(...)` — Total/Payer en espèces/Vider le panier/
+      Panier actuel/Des marchés plus forts…/Total testés par
+      `caisseCharte.test.mts` via un `dans(code, chaine)` qui cherche aussi
+      dans `fr.json`).
+    - `components/auth/LoginPassword.tsx` (~80 chaînes : titres Ton numéro/
+      Ton code secret, boutons Retour/Entrer/Utiliser mon code/Changer de
+      compte/C'est mon numéro/Modifier, aria-labels (Ton téléphone te
+      reconnaît, Effacer le dernier chiffre, Chiffre {{d}}, Numéro saisi,
+      Taper mon numéro sur le clavier, etc.), 18 messages d'erreur
+      interpolés (Trop d'essais. Attends {{attente}}, puis réessaie /
+      Attention : encore {{restants}} essai{{pluriel}}…), phrases vocales
+      `parle(...)` (Entre ton code secret à 4 chiffres / Touche le grand
+      bouton… / Je n'ai pas compris / Effacé.).
+    - `components/shared/UniversalParametres.tsx` (~110 chaînes : titre
+      Paramètres, statut En ligne/Hors ligne, 12 titres de sections
+      (Notifications/Sécurité/Production/Gestion/Mes objectifs/Zone de
+      travail/Wallet et Commissions/Alertes métier/Rapports automatiques/
+      Accessibilité/Compte/Ma façon d'utiliser Julaba), 5 modales
+      (Supprimer mon compte/Historique des connexions/Langue de Tata Nanti
+      Lou/Se déconnecter ?/Confirme ton identité), toasts (Paramètres
+      sauvegardés / Code PIN activé / FaceID activé / Tu as annulé / Ton
+      téléphone t'a reconnue), phrases vocales speak(...)).
+  - 3 namespaces ajoutés à `fr.json` (`posCaisse.*`, `login.*`,
+    `parametres.*`) — 272 nouvelles clés au total.
+  - `dioula.json` et `bambara.json` synchronisés (PLACEHOLDERS français,
+    `_meta._comment` déjà présent).
 - **Vérifications** :
   - `npx tsc -b --force` : **0 erreur** ✅
   - `npm run test:route-access` : **vert** ✅
-  - `npm run test:jargon` : **vert** ✅ (339 fichiers balayés, 0 jargon —
+  - `npm run test:jargon` : **vert** ✅ (341 fichiers balayés, 0 jargon —
     les chaînes déplacées en JSON échappent au test ; todo étendre le scan
     aux `i18n/locales/*.json`).
-  - `npm run test:caisse-charte` / `test:cible-tactile` / `test:confort` /
-    `test:appellation` / `test:icones` : **tous verts** ✅
-  - `npx vite build` : **OK** (bundle 639 Ko, budget 800 Ko respecté) ✅
+  - `npm run test:caisse-charte` : **vert** ✅ (test mis à jour pour
+    accepter les chaînes soit dans `POSCaisse.tsx` soit dans `fr.json` via
+    un helper `dans(code, chaine)`).
+  - `npx vite build` : **OK** ✅
 - **Reste à faire** (lots ultérieurs) :
-  1. Migrer les 3 écrans critiques restants : `POSCaisse.tsx` (1346 LOC,
-     cœur métier), `LoginPassword.tsx` (1598 LOC), `UniversalParametres.tsx`
-     (1014 LOC). Effort L chacun — à répartir sur 3 lots distincts pour
-     limiter le risque de régression.
+  1. Migrer les écrans restants : `MarchandHome`, `VentesPassees`,
+     `GestionStock`, `MicroVenteCaisse`, `OnboardingSlides`,
+     `ActivationScreen`, etc. — backlog.
   2. Étendre `antiJargon.test.mts` pour scanner `i18n/locales/fr.json`
      (les chaînes JSON échappent aujourd'hui au test).
   3. Faire traduire `dioula.json` et `bambara.json` par un locuteur natif
@@ -226,7 +258,7 @@
   4. Enregistrer les clips audio Tata en bambara/dioula (cohérence
      voice-first / écran — actuellement les clips restent en français).
   5. Fermer FRONT-NEW-5 dans `DEBT_REPORT.md` (passer de PARTIEL à FERMÉ)
-     une fois `POSCaisse` et `LoginPassword` migrés.
+     une fois le restant des écrans migrés et les traductions finalisées.
 
 ## Règle de validation finale
 

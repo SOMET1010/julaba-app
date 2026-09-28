@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { API_URL } from '../../utils/api';
+import { changerPinIdentificateur } from '../../services/api/auth-api';
 
 const COLOR = '#9F8170';
 const GRADIENT = 'linear-gradient(135deg,#9F8170,#B39485)';
@@ -175,27 +175,28 @@ export function IdentificateurPinChangeSection() {
     }, 15000);
 
     try {
-      const res = await fetch(`${API_URL}/auth/identificateur/me/change-pin`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oldPin, newPin }),
-        signal: controller.signal,
-      });
-
-      // Parsing JSON protégé (réponse non JSON possible si erreur infra)
-      let data: { success?: boolean; message?: string } = {};
-      try {
-        data = await res.json() as { success?: boolean; message?: string };
-      } catch {
-        console.warn('[IdentificateurPinChangeSection] JSON parse failed');
-      }
+      // INIT-019 — migration fetch() → changerPinIdentificateur (client centralisé).
+      // La porte `/auth` gère le rafraîchissement du jeton sur 401 et renvoie
+      // un `Resultat` (ok / erreur_metier / session_expiree). L'AbortSignal est
+      // transmis pour préserver le timeout local de 15 s et l'annulation au
+      // unmount.
+      const r = await changerPinIdentificateur(
+        { oldPin, newPin },
+        { signal: controller.signal },
+      );
 
       if (!isMountedRef.current) return;
       if (cycleIdRef.current !== myCycleId) return;
 
-      if (!res.ok || !data.success) {
-        console.warn('[IdentificateurPinChangeSection] change PIN HTTP error:', res.status);
+      // Quatre cas de figure, miroir de l'ancien `!res.ok || !data.success` :
+      //  - session_expiree  → échec métier (la session ne se renouvelle plus)
+      //  - erreur_metier    → échec métier (PIN incorrect, etc.)
+      //  - ok + success     → succès
+      //  - ok + !success    → échec métier (serveur 200 avec success=false)
+      const isFailure = r.etat !== 'ok' || !r.valeur.success;
+      if (isFailure) {
+        const httpStatus = r.etat === 'erreur_metier' ? r.status : 0;
+        console.warn('[IdentificateurPinChangeSection] change PIN HTTP error:', httpStatus);
         const nextFailCount = failCount + 1;
         if (nextFailCount >= MAX_FAIL_COUNT) {
           const nextLockedUntil = Date.now() + LOCKOUT_DURATION_MS;
@@ -206,9 +207,9 @@ export function IdentificateurPinChangeSection() {
           return;
         }
         setFailCount(nextFailCount);
-        const message = typeof data.message === 'string' && data.message.trim()
-          ? data.message
-          : 'Impossible de modifier le PIN';
+        const message = (r.etat === 'erreur_metier' && r.message)
+          || (r.etat === 'ok' && r.valeur.message)
+          || 'Impossible de modifier le PIN';
         setChangePinError(message);
         return;
       }

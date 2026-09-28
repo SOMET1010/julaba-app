@@ -20,7 +20,7 @@ import { eventBus, EVENTS } from '../../services/eventBus';
 import { guidageVocal } from '../../utils/accessMode';
 import { toast } from 'sonner';
 import { UNITES_COURANTES } from '../../config/unites';
-import { API_URL } from '../../utils/api';
+import { fetchMouvementsStock } from '../../services/api/stocks-api';
 import { mapApiMouvements, quantiteMouvement, mentionUniteInconnue, type MouvementUI } from '../../services/mouvementsStock';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
@@ -435,11 +435,11 @@ export function GestionStock() {
   const [mouvements, setMouvements] = useState<MouvementUI[]>([]);
   const [produitMouvements, setProduitMouvements] = useState<MouvementUI[]>([]);
 
-  const chargerMouvements = useCallback(async (url: string): Promise<MouvementUI[]> => {
+  const chargerMouvements = useCallback(async (produitId?: string): Promise<MouvementUI[]> => {
     try {
-      const res = await fetch(url, { credentials: 'include' });
-      if (!res.ok) return [];
-      const data = await res.json();
+      // INIT-019 — migration fetch() → fetchMouvementsStock (client centralisé).
+      // `produitId` absent : tous les mouvements ; présent : filtré par produit.
+      const data = await fetchMouvementsStock(produitId);
       return mapApiMouvements(data?.mouvements);
     } catch { return []; }
   }, []);
@@ -447,7 +447,7 @@ export function GestionStock() {
   useEffect(() => {
     let vivant = true;
     const rafraichir = () => {
-      void chargerMouvements(`${API_URL}/stocks/mouvements`).then(m => { if (vivant) setMouvements(m); });
+      void chargerMouvements().then(m => { if (vivant) setMouvements(m); });
     };
     rafraichir();
     const u1 = eventBus.subscribe(EVENTS.TRANSACTION_CREATED, rafraichir);
@@ -458,7 +458,7 @@ export function GestionStock() {
   useEffect(() => {
     if (!selectedStock?.id) { setProduitMouvements([]); return; }
     let vivant = true;
-    void chargerMouvements(`${API_URL}/stocks/${selectedStock.id}/mouvements`).then(m => { if (vivant) setProduitMouvements(m); });
+    void chargerMouvements(selectedStock.id).then(m => { if (vivant) setProduitMouvements(m); });
     return () => { vivant = false; };
   }, [selectedStock?.id, chargerMouvements]);
 

@@ -33,7 +33,7 @@ export class Recolte {
   userId: string;
 
   @Column({ name: 'cycle_id', type: 'uuid', nullable: true })
-  cycleId: string;
+  cycleId: string | null;
 
   @Column({ length: 100 })
   produit: string;
@@ -57,13 +57,13 @@ export class Recolte {
   prixUnitaire: number;
 
   @Column({ nullable: true, length: 100 })
-  parcelle: string;
+  parcelle: string | null;
 
   @Column({ nullable: true, type: 'text' })
-  notes: string;
+  notes: string | null;
 
   @Column({ name: 'photo_url', nullable: true, type: 'text' })
-  photoUrl: string;
+  photoUrl: string | null;
 
   @Column({ name: 'stock_disponible', type: 'decimal', precision: 10, scale: 2, default: 0 })
   stockDisponible: number;

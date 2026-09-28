@@ -6,6 +6,45 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
 import { Recolte, RecolteQualite, RecolteStatut } from "../producteur/recoltes/entities/recolte.entity";
 
+/**
+ * Body de POST /recoltes — valeurs brutes issues du JSON client.
+ *
+ * Les champs sont permissifs (`string | number` selon le formulaire) car le
+ * frontend envoie tantôt des chaînes, tantôt des nombres. La coercition et la
+ * validation sont faites explicitement dans le corps du contrôleur.
+ */
+interface CreateRecolteBody {
+  date_recolte?: string;
+  dateRecolte?: string;
+  cycle_id?: string;
+  produit?: string;
+  unite?: string;
+  qualite?: string;
+  quantite?: string | number;
+  prix_unitaire?: string | number;
+  parcelle?: string;
+  notes?: string;
+  photo_url?: string;
+}
+
+/**
+ * Body de PATCH /recoltes/:id — tous les champs sont optionnels.
+ */
+interface UpdateRecolteBody {
+  statut?: string;
+  quantite?: string | number;
+  prix_unitaire?: string | number;
+  notes?: string;
+  qualite?: string;
+}
+
+// Tables de traduction qualité : clé string envoyée par le client → enum métier.
+const QUALITE_MAP: Readonly<Record<string, RecolteQualite>> = {
+  standard: RecolteQualite.STANDARD,
+  premium: RecolteQualite.PREMIUM,
+  bio: RecolteQualite.BIO,
+};
+
 @UseGuards(JwtAuthGuard)
 @Controller("recoltes")
 export class RecoltesRestController {
@@ -33,16 +72,10 @@ export class RecoltesRestController {
   }
 
   @Post()
-  async create(@Body() body: any, @CurrentUser() user: User) {
+  async create(@Body() body: CreateRecolteBody, @CurrentUser() user: User) {
     const rawDate = body.date_recolte || body.dateRecolte;
     const parsedDate = rawDate ? new Date(rawDate) : new Date();
     const dateRecolte = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
-
-    const qualiteMap: Record<string, RecolteQualite> = {
-      standard: RecolteQualite.STANDARD,
-      premium: RecolteQualite.PREMIUM,
-      bio: RecolteQualite.BIO,
-    };
 
     const quantite = Number(body.quantite) || 0;
     const pu = Number(body.prix_unitaire);
@@ -52,7 +85,7 @@ export class RecoltesRestController {
       produit: body.produit || "Inconnu",
       quantite,
       unite: body.unite || "kg",
-      qualite: qualiteMap[body.qualite] ?? RecolteQualite.STANDARD,
+      qualite: QUALITE_MAP[body.qualite ?? ""] ?? RecolteQualite.STANDARD,
       dateRecolte: dateRecolte,
       statut: RecolteStatut.DECLAREE,
       prixUnitaire: Number.isFinite(pu) ? pu : 0,
@@ -67,18 +100,20 @@ export class RecoltesRestController {
   }
 
   @Patch(":id")
-  async update(@Param("id") id: string, @Body() body: any, @CurrentUser() user: User) {
-    const qualiteMap: Record<string, RecolteQualite> = {
-      standard: RecolteQualite.STANDARD,
-      premium: RecolteQualite.PREMIUM,
-      bio: RecolteQualite.BIO,
-    };
-    const updateData: any = {};
-    if (body.statut) updateData.statut = body.statut;
+  async update(@Param("id") id: string, @Body() body: UpdateRecolteBody, @CurrentUser() user: User) {
+    const updateData: Partial<Recolte> = {};
+    if (body.statut) {
+      // Cast contrôlé : la DB valide l'enum en colonne (`type: 'enum'`).
+      updateData.statut = body.statut as RecolteStatut;
+    }
     if (body.quantite !== undefined) updateData.quantite = Number(body.quantite);
     if (body.prix_unitaire !== undefined) updateData.prixUnitaire = Number(body.prix_unitaire);
     if (body.notes !== undefined) updateData.notes = body.notes;
-    if (body.qualite) updateData.qualite = qualiteMap[body.qualite] ?? body.qualite;
+    if (body.qualite) {
+      // `QUALITE_MAP[body.qualite]` peut être `undefined` si la clé n'est pas
+      // reconnue ; on retombe sur la valeur brute (cast contrôlé, la DB valide).
+      updateData.qualite = QUALITE_MAP[body.qualite] ?? (body.qualite as RecolteQualite);
+    }
     await this.repo.update({ id, userId: user.id }, updateData);
     const updated = await this.repo.findOne({ where: { id, userId: user.id } });
     return { recolte: updated };

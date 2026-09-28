@@ -49,6 +49,12 @@ export function clearAuthClientState(baseUrl: string = API_URL): void {
     /* */
   }
 
+  // INIT-019 — fetch() légitime : fire-and-forget vers /auth/logout pendant la
+  // purge de l'état client après révocation JWT. On NE passe PAS par le client
+  // centralisé `apiRequest` car (1) la session est déjà cassée — toute tentative
+  // de refresh serait une récursion mortelle, (2) on veut délibérément ignorer
+  // les erreurs (l'utilisateur se deconnecte, pas la peine de lever), (3) aucun
+  // besoin de parser le corps de réponse.
   void fetch(`${baseUrl.replace(/\/$/, '')}/auth/logout`, {
     method: 'POST',
     credentials: 'include',

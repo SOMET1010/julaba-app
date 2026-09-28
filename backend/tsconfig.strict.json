@@ -7,7 +7,13 @@
   },
   "include": [
     "src/caisse-rest/caisse-produit.entity.ts",
-    "src/caisse-rest/caisse-produits.service.ts"
+    "src/caisse-rest/caisse-produits.service.ts",
+    "src/common/paginate.ts",
+    "src/config/throttler.config.ts",
+    "src/config/trust-proxy.config.ts",
+    "src/database/schema-flags.ts",
+    "src/cycles-rest/cycles-rest.controller.ts",
+    "src/recoltes-rest/recoltes-rest.controller.ts"
   ],
   "exclude": ["node_modules", "test", "dist", "src/**/*.spec.ts"]
 }

@@ -58,7 +58,7 @@
 ### TYPAGE (2 dettes)
 | ID | Description | Priorité | Effort | Statut |
 |---|---|---|---|---|
-| TYPE-01 | 502 `: any` + 265 `as any` (0 sur donnée d'argent aux frontières) | P2 | XL | OUVERT (registre) |
+| TYPE-01 | 470 occurrences `any` backend (332 `: any` + 129 `as any` + 9 `<any>`) — 0 sur donnée d'argent aux frontières. **Baisse nette** : 6 modules supplémentaires migrés en strict (INIT-016 phase 2, 2026-09-29) — `paginate.ts`, `throttler.config.ts`, `trust-proxy.config.ts`, `schema-flags.ts`, `cycles-rest.controller.ts`, `recoltes-rest.controller.ts` (0 `any` résiduel dans ces modules). Reste à migrer : couches 4 (auth/caisse-rest/wallets/commandes) + 5 (admin/cooperatives-rest/identifications). | P2 | XL | OUVERT (registre) — **PARTIEL (INIT-016 phases 1+2)** |
 | TYPE-02 | Crédit désactivé — typage incomplet | P1 | M | OUVERT (registre) |
 
 ### SÉCURITÉ (1 dette)
@@ -86,7 +86,7 @@
 | ARCH-NEW-5 | `misc-rest.controller.ts` : 14 routes sous préfixe `''` (vide) — routes disparates à regrouper | P3 | M | OUVERT (audit) |
 | ARCH-NEW-6 | SQL brut massif : 592 `manager.query()` / 774 `.query(` au total | P2 | XL | OUVERT (audit) |
 | ARCH-NEW-7 | Throttler global 300/min/IP/endpoint trop permissif (sans `TRUST_PROXY`, plafond partagé Render) | P2 | S | OUVERT (audit) |
-| ARCH-NEW-8 | 476 `any`/`as any` backend (346 `: any` + 130 `as any`), `tsconfig.json` `strictNullChecks: false`, `noImplicitAny: false` | P2 | XL | OUVERT (audit) |
+| ARCH-NEW-8 | 470 `any`/`as any`/`<any>` backend (332 `: any` + 129 `as any` + 9 `<any>`), `tsconfig.json` `strictNullChecks: false`, `noImplicitAny: false`. **Baisse** : INIT-016 phase 2 a migré 6 modules supplémentaires en `tsconfig.strict.json` (8 au total, 0 `any` résiduel sur ces modules). | P2 | XL | OUVERT (audit) — **PARTIEL (INIT-016 phases 1+2)** |
 
 ### CLIENT/FIDÉLITÉ/TESTS/DOCS/UI (héritées)
 - Voir registre pour détail (DOC-01, DOC-02, CLIENT-02, etc.)
@@ -99,7 +99,7 @@
 | FRONT-NEW-3 | Multiplicité des modales (7 systèmes : ModalContext + Modal.tsx + ModalPortal + Radix Dialog + UniversalModalBO + ProfilUnifieModal + ChangePasswordModal) | P2 | M | OUVERT (audit) |
 | FRONT-NEW-4 | 787 `any`/`as any` frontend (malgré `strict: true`) | P2 | XL | OUVERT (audit) |
 | FRONT-NEW-5 | Pas de i18n (`useLangPref` expose 3 langues mais chaînes UI hardcoded FR) | P2 | L | **FERMÉ (PARTIEL) — INIT-020** : infrastructure i18next + 3 locales + bridge `useLangPref` posées ; 3 écrans migrés (`MesDonnees`, `Welcome`, `EntryGate`) ; backlog `POSCaisse`/`LoginPassword`/`UniversalParametres` (effort L chacun) ; `dioula.json`/`bambara.json` = PLACEHOLDERS à traduire par locuteur natif |
-| FRONT-NEW-6 | Tests sans framework standard (74 fichiers via tsx + helpers ad-hoc) — pas de coverage, pas de watch, pas de snapshot | P2 | L | **PARTIEL (INIT-021, 2026-09-29)** — Infrastructure Vitest 2.1.9 posée (config + setup + wrapper compat `ok()/eq()` + scripts `test:vitest/watch/coverage/ui`) + 3 pilotes migrés (25 tests verts) + coverage v8 opérationnel. Les 74 tests legacy restent à migrer (un par un, convention `*.vitest.test.*` puis élargissement `include`). Voir `frontend_src/src/test/README.md`. |
+| FRONT-NEW-6 | Tests sans framework standard (74 fichiers via tsx + helpers ad-hoc) — pas de coverage, pas de watch, pas de snapshot | P2 | L | **PARTIEL (INIT-021 phase 2, 2026-09-29)** — Infrastructure Vitest 2.1.9 posée (config + setup + wrapper compat `ok()/eq()` + scripts `test:vitest/watch/coverage/ui`) + 18 fichiers `.vitest.test.*` migrés (3 pilotes phase 1 + 15 phase 2, 211 tests verts) + coverage v8 opérationnel. **56 tests legacy** restent à migrer par lots ultérieurs (convention `*.vitest.test.*` puis élargissement `include`). La garde `tokens.test.mts` a été alignée sur `antiJargon.test.mts` pour exclure les fichiers `.vitest.test.*` du scan statique (cohabitation). Voir `frontend_src/src/test/README.md`. |
 | FRONT-NEW-7 | 878 `console.*` dans 162 fichiers, pas de logger structuré | P2 | M | OUVERT (audit) |
 | FRONT-NEW-8 | 7 fichiers CSS avec override OKLCH->hex workarounds pour Motion | P3 | M | OUVERT (audit) |
 | FRONT-NEW-9 | `@nestjs/core` 11.1.28 dans `frontend_src/package.json` (fuite backend, ~5+ MB) | P3 | S | OUVERT (audit) |

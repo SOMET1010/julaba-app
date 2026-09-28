@@ -164,16 +164,10 @@ const AVANT_SESSION = /\/auth\/(login|check-phone|change-password|activer|refres
 
 // NON ENCORE CONVERGÉ, avec la raison. Cette liste doit RÉTRÉCIR.
 const RESTE_A_CONVERGER: Record<string, string> = {
-  // Gère DÉJÀ le 401 par `rafraichirSession` (corrigé en HYGIÈNE-1). Converger
-  // son chargement de profil est souhaitable, pas urgent : aucun message faux.
-  'contexts/AppContext.tsx': 'API-01c — gère déjà le 401, convergence de confort',
-  // Écrans internes hors parcours marchande.
-  'components/identificateur/IdentificateurPinChangeSection.tsx': 'API-01d — écran identificateur',
-  'components/shared/FicheActeurDetailModal.tsx': 'API-01d — écran identificateur',
-  'services/authService.ts': 'API-01e — service de connexion, appels avant session',
-  // (AdminRecovery, CreateSuperAdmin et SetupMarchand n'ont QUE des appels
-  //  d'avant-session : ils n'ont besoin d'aucune exception, et le contrôle
-  //  ci-dessous les a signalés quand je leur en avais mis une par excès.)
+  // (INIT-019 phase 1+2 — AppContext, authService, FicheActeurDetailModal et
+  //  IdentificateurPinChangeSection ont tous été convergés. Cette liste est
+  //  vide : plus aucune exception nommée. Toute nouvelle exception doit être
+  //  ajoutée ICI, avec sa raison, et ne pas juste échapper à la regex.)
 };
 
 const fautifs: string[] = [];

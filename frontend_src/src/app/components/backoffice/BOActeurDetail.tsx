@@ -13,8 +13,8 @@ import { BO_DARK, BO_PRIMARY, BO_LIGHT, BO_MEDIUM, BO_TINT } from './bo-theme';
 import { BOProgressBar } from './BOProgressBar';
 import { UniversalKPI } from '../ui/UniversalKPI';
 import { toast } from 'sonner';
-import { API_URL } from '../../utils/api';
 import { boChangeSousProfilMarchand, boGetUserFlags, boUpdateActeur, type UserFlag } from '../../services/backoffice-api';
+import { resetUserPassword } from '../../services/api/auth-api';
 import { SOUS_PROFILS_MARCHAND } from '../../types/sousProfilMarchand';
 import { CAN_VIEW_ALERTS } from '../../utils/permissions-bo';
 import { getContextualTabLabel, ROLE_OPTIONS, STATUT_CONFIG, TYPE_COLORS } from '../../utils/role-config';
@@ -387,19 +387,29 @@ export function BOActeurDetail() {
     const timeout = window.setTimeout(() => controller.abort(), 15000);
 
     try {
-      const response = await fetch(`${API_URL}/auth/reset-user-password`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: acteur.id, newPassword }),
-        signal: controller.signal,
-      });
-
-      const result = await response.json();
+      // INIT-019 — migration fetch() → resetUserPassword (client centralisé).
+      // L'AbortSignal est transmis à `apiRequest` pour préserver le timeout
+      // local de 15 s et l'annulation côté BO.
+      const r = await resetUserPassword(
+        { userId: acteur.id, newPassword },
+        { signal: controller.signal },
+      );
 
       clearTimeout(timeout);
-      if (!response.ok || result.error || result.success === false) {
-        toast.error(result.error || result.message || 'Erreur lors de la réinitialisation');
+      if (r.etat === 'session_expiree') {
+        toast.error('Session expirée, reconnecte-toi.');
+        setResetPasswordLoading(false);
+        return;
+      }
+      if (r.etat === 'erreur_metier') {
+        toast.error(r.message || 'Erreur lors de la réinitialisation');
+        setResetPasswordLoading(false);
+        return;
+      }
+      // r.etat === 'ok' — `valeur.success` peut encore être false (cas rare
+      // où le serveur répond 200 avec success=false).
+      if (r.valeur && r.valeur.success === false) {
+        toast.error(r.valeur.message || 'Erreur lors de la réinitialisation');
         setResetPasswordLoading(false);
         return;
       }

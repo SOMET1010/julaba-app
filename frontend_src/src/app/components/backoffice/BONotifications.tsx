@@ -11,7 +11,11 @@ import { useNavigate } from 'react-router';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
 import { BO_PRIMARY, BO_DARK } from './bo-theme';
 import { toast } from 'sonner';
-import { API_URL } from '../../utils/api';
+import {
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
+} from '../../services/api/notifications-api';
 
 type NotifLevel = 'critical' | 'warning' | 'info' | 'success';
 type NotifCategory = 'all' | 'fraude' | 'dossiers' | 'systeme' | 'transactions' | 'academy';
@@ -193,14 +197,16 @@ export function BONotifications() {
   const markAsRead = async (id: string) => {
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, lu: true } : n));
     try {
-      await fetch(`${API_URL}/notifications/${id}/read`, { method: 'PATCH', credentials: 'include' });
+      // INIT-019 — migration fetch() → markNotificationAsRead (client centralisé).
+      await markNotificationAsRead(id);
     } catch { }
   };
 
   const markAllRead = async () => {
     setNotifs(prev => prev.map(n => ({ ...n, lu: true })));
     try {
-      await fetch(`${API_URL}/notifications/read-all`, { method: 'PATCH', credentials: 'include' });
+      // INIT-019 — migration fetch() → markAllNotificationsAsRead (client centralisé).
+      await markAllNotificationsAsRead();
     } catch { }
     toast.success('Toutes les notifications marquées comme lues');
   };
@@ -208,7 +214,8 @@ export function BONotifications() {
   const deleteNotif = async (id: string) => {
     setNotifs(prev => prev.filter(n => n.id !== id));
     try {
-      await fetch(`${API_URL}/notifications/${id}`, { method: 'DELETE', credentials: 'include' });
+      // INIT-019 — migration fetch() → deleteNotification (client centralisé).
+      await deleteNotification(id);
     } catch { }
     toast.info('Notification supprimée');
   };

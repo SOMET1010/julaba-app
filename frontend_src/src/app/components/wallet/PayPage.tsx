@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, ChevronRight, ArrowLeft } from 'lucide-react';
-import { verifierStatutBpayPublic } from '../../services/api/wallets-api';
+import { verifierStatutBpayPublic, getWalletPublic, payWalletPublic } from '../../services/api/wallets-api';
+import { HttpError } from '../../services/api/api-client';
 import { IMG_LOGO_WAVE, IMG_LOGO_ORANGE_MONEY, IMG_LOGO_MTN, IMG_LOGO_MOOV } from '../../assets/images';
-import { API_URL } from '../../utils/api';
 
 const C = '#B74725';
 const BG = '#F6F0E4';
@@ -49,8 +49,8 @@ export default function PayPage() {
 
   useEffect(() => {
     if (!marchandId) { setLoading(false); return; }
-    fetch(`${API_URL}/wallets/public/${marchandId}`)
-      .then(r => r.json())
+    // INIT-019 — migration fetch() → getWalletPublic (client centralisé).
+    getWalletPublic(marchandId)
       .then(data => { setMarchand(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, [marchandId]);
@@ -77,18 +77,25 @@ export default function PayPage() {
     if (!marchandId || !provider) { setError('Informations incomplètes'); return; }
     setSubmitting(true); setError('');
     try {
-      const res = await fetch(`${API_URL}/wallets/public/pay`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ marchandId, provider, montant: montantNum, telephone: telephoneDigits }),
+      // INIT-019 — migration fetch() → payWalletPublic (client centralisé).
+      // `apiRequest` lève une `HttpError` portant `.message` (corps JSON
+      // serveur) et `.status` — exactement ce que l'ancien code reconstruisait
+      // à la main depuis `data.message`.
+      const data = await payWalletPublic({
+        marchandId,
+        provider,
+        montant: montantNum,
+        telephone: telephoneDigits,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Erreur');
       setPayToken(data.payToken);
       if (data.paymentUrl) { window.location.href = data.paymentUrl; return; }
       setPolling(true);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Erreur inattendue');
+      if (e instanceof HttpError) {
+        setError(e.message || 'Erreur');
+      } else {
+        setError(e instanceof Error ? e.message : 'Erreur inattendue');
+      }
     } finally {
       setSubmitting(false);
     }

@@ -9,9 +9,8 @@ import { BO_PRIMARY } from './bo-theme';
 import { fadeInUp, hoverGlow, springSnappy } from './bo-animations';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
 import { toast } from 'sonner';
-import { API_URL } from '../../utils/api';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
-import { boGetActeurs } from '../../services/backoffice-api';
+import { boGetActeurs, boGetCommunication } from '../../services/backoffice-api';
 import { sendBulkNotifications } from '../../services/api/notifications-api';
 import { HttpError } from '../../services/api/api-client';
 import { CIV_REGIONS_FILTER } from '../../data/civ-geography';
@@ -82,13 +81,8 @@ export function BOCommunication() {
   const [templates, setTemplates] = useState<Template[]>([]);
 
   const fetchCommunication = React.useCallback(() => {
-    fetch(`${API_URL}/communication`, {
-      credentials: 'include',
-    })
-      .then(r => {
-        if (!r.ok) throw new Error('Erreur chargement communication');
-        return r.json();
-      })
+    // INIT-019 — migration fetch() → boGetCommunication (client centralisé).
+    boGetCommunication()
       .then(d => {
         setCampagnes(Array.isArray(d?.campagnes) ? d.campagnes : []);
         if (d?.templates?.length) setTemplates(d.templates);

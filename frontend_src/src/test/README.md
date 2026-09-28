@@ -83,6 +83,51 @@ Le script `verify` lance désormais `test:vitest` **avant** les tests legacy
 - **antiJargon** : 1 test unique avec `expect.fail()` détaillant TOUTES les
   violations si échec (au lieu d'un `process.exit(1)` brut).
 
+## Lot phase 2 — 15 tests migrés (INIT-021 phase 2)
+
+La phase 2 a étendu la migration à 15 tests legacy supplémentaires, suivant
+les 3 patterns démontrés par les pilotes. **211 tests verts au total** (3
+pilotes + 15 phase 2). Les tests legacy `*.test.{mts,tsx}` restent intacts
+(cohabitation) — la commande `npm run test:vitest` ne sélectionne QUE les
+fichiers `*.vitest.test.*`.
+
+### Catégorie 1 — Tests unitaires purs (10 fichiers, 132 tests)
+
+| Fichier Vitest | Source legacy | Cas de test |
+|---|---|---|
+| `src/app/utils/jourLocal.vitest.test.ts` | `jourLocal.test.mts` | 9 |
+| `src/app/utils/appellation.vitest.test.ts` | `appellation.test.mts` | 12 |
+| `src/app/utils/emojiTile.vitest.test.ts` | `emojiTile.test.mts` | 13 |
+| `src/app/utils/uniteVente.vitest.test.ts` | `uniteVente.test.mts` | 35 |
+| `src/app/utils/frenchDigits.vitest.test.ts` | `frenchDigits.test.mts` | 12 |
+| `src/app/utils/tailleTexte.vitest.test.ts` | `tailleTexte.test.mts` | 11 |
+| `src/app/utils/guidageVocal.vitest.test.ts` | `guidageVocal.test.mts` | 7 |
+| `src/app/utils/confortVisuel.vitest.test.ts` | `confortVisuel.test.mts` | 15 |
+| `src/app/services/margeVente.vitest.test.ts` | `margeVente.test.mts` | 10 |
+| `src/app/services/margePerte.vitest.test.ts` | `margePerte.test.mts` | 8 |
+
+### Catégorie 2 — Tests avec `node:fs` (3 fichiers, 37 tests)
+
+| Fichier Vitest | Source legacy | Cas | Environnement |
+|---|---|---|---|
+| `src/app/services/margePartielle.vitest.test.ts` | `margePartielle.test.mts` | 21 | `// @vitest-environment node` (lecture fixture JSON) |
+| `src/app/services/tokens.vitest.test.ts` | `tokens.test.mts` | 7 | `// @vitest-environment node` (scan statique `src/app`) |
+| `src/app/services/supportLu.vitest.test.ts` | `supportLu.test.mts` | 9 | jsdom (localStorage) |
+
+### Catégorie 3 — Tests d'intégration React (2 fichiers, 17 tests)
+
+| Fichier Vitest | Source legacy | Cas | Bénéfice migration |
+|---|---|---|---|
+| `src/app/hooks/useOfflineVoiceQueue.vitest.test.tsx` | `useOfflineVoiceQueue.test.tsx` | 13 | Plus de JSDOM manuel ; `cleanup()` + `localStorage.clear()` auto entre scénarios |
+| `src/app/hooks/useVoiceCore.confirmationBypass.vitest.test.tsx` | `useVoiceCore.confirmationBypass.test.tsx` | 4 | `AudioContext` stubbé via `vi.stubGlobal`, `fetch` mocké via setup.ts |
+
+### Cohabitation renforcée
+
+La garde `tokens.test.mts` (legacy) a été alignée sur `antiJargon.test.mts`
+pour exclure les fichiers `*.vitest.test.*` de son scan statique — sinon, le
+commentaire d'un test Vitest citant légitimement `var(--encre-noir)` comme
+donnée de comparaison serait signalé comme un token fantôme.
+
 ## Migration d'un test legacy (procédure)
 
 1. **Copier** `foo.test.mts` → `foo.vitest.test.ts` (ou `.tsx` pour React).

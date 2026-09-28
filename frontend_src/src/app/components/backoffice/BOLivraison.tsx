@@ -9,7 +9,7 @@ import { BO_PRIMARY } from './bo-theme';
 import { fadeInUp, hoverGlow } from './bo-animations';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
-import { API_URL } from '../../utils/api';
+import { boGetLivraison, boAssignerLivreur } from '../../services/backoffice-api';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 
@@ -59,10 +59,8 @@ export function BOLivraison() {
   }, [refreshTransactions]);
 
   React.useEffect(() => {
-    fetch(`${API_URL}/admin/livraison`, {
-      credentials: 'include',
-    })
-      .then(r => { if (!r.ok) throw new Error(`Erreur HTTP ${r.status}`); return r.json(); })
+    // INIT-019 — migration fetch() → boGetLivraison (client centralisé).
+    boGetLivraison()
       .then(d => {
         const courses = Array.isArray(d?.courses) ? d.courses : Array.isArray(d) ? d : [];
         if (courses.length === 0) toast.info('Aucune livraison disponible');
@@ -138,8 +136,7 @@ export function BOLivraison() {
             temps: Math.round(agg.total / agg.count),
           })),
         );
-      })
-      .catch(() => { toast.error('Erreur chargement livraison'); });
+      });
   }, []);
   const [search, setSearch] = useState('');
 
@@ -152,13 +149,8 @@ export function BOLivraison() {
 
   const handleAssign = async (courseId: string, livreurNom: string) => {
     try {
-      const res = await fetch(`${API_URL}/admin/livraison/${courseId}/assign`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ livreur: livreurNom }),
-      });
-      if (!res.ok) throw new Error('Erreur assignation livreur');
+      // INIT-019 — migration fetch() → boAssignerLivreur (client centralisé).
+      await boAssignerLivreur(courseId, livreurNom);
       setCourses(prev => prev.map(c => c.id === courseId ? { ...c, livreur: livreurNom, statut: 'en_cours' as const } : c));
       toast.success(`Course assignee a ${livreurNom}`);
     } catch {

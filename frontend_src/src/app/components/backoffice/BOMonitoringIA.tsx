@@ -9,7 +9,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
-import { API_URL } from '../../utils/api';
+import { boGetMonitoring } from '../../services/backoffice-api';
 import { toast } from 'sonner';
 
 export function BOMonitoringIA() {
@@ -27,11 +27,8 @@ export function BOMonitoringIA() {
 
   React.useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API_URL}/admin/monitoring`, {
-      credentials: 'include',
-      signal: controller.signal,
-    })
-      .then(r => { if (!r.ok) throw new Error(`Erreur HTTP ${r.status}`); return r.json(); })
+    // INIT-019 — migration fetch() → boGetMonitoring (client centralisé).
+    boGetMonitoring({ signal: controller.signal })
       .then(d => {
         const data = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : [];
         const payload =
@@ -47,11 +44,6 @@ export function BOMonitoringIA() {
           toast.info('Aucune donnée monitoring disponible');
         }
         setMonitoringData(payload);
-      })
-      .catch(err => {
-        if (err.name === 'AbortError') return;
-        console.warn('[BOMonitoringIA] fetch monitoring failed:', err instanceof Error ? err.message : err);
-        toast.error('Erreur chargement monitoring');
       });
     return () => controller.abort();
   }, []);

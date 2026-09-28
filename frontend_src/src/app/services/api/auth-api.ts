@@ -138,3 +138,87 @@ export async function revoquerSession(id: string): Promise<Resultat<true>> {
   if (r.etat !== 'ok') return r;
   return { etat: 'ok', valeur: true };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VÉRIFICATION PIN IDENTIFICATEUR (INIT-019)
+//
+// `FicheActeurDetailModal` vérifiait le PIN d'identification d'un acteur en
+// `fetch()` direct, sans rafraîchissement de session sur 401 — donc un jeton
+// expiré faisait échouer l'ouverture d'une fiche au lieu de se renouveler
+// silencieusement. On passe par la même porte que `verifierPin` : la réponse
+// devient un `Resultat<boolean>` (ok / erreur_metier / session_expiree), le
+// composant ne décide plus lui-même quoi faire d'un 401.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Vérifie le code PIN d'identification de l'acteur actuellement connecté en
+ * tant qu'identificateur. `valeur` est `true`/`false` — le VERDICT du serveur.
+ */
+export async function verifyIdentificateurPin(pin: string): Promise<Resultat<boolean>> {
+  const r = await poster<{ valid?: boolean; locked?: boolean; attenteMs?: number }>(
+    '/auth/identificateur/me/verify-pin', { pin });
+  if (r.etat !== 'ok') return r;
+  return { etat: 'ok', valeur: r.valeur?.valid === true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANGEMENT PIN IDENTIFICATEUR (INIT-019)
+//
+// Vit auparavant en `fetch()` direct dans `IdentificateurPinChangeSection`.
+// L'AbortSignal est transmis à `apiRequest` pour préserver le mécanisme de
+// timeout local (15 s) et l'annulation au unmount. Sur 401, `apiRequest`
+// tente d'abord le rafraîchissement silencieux puis rejoue — ce qui manquait
+// au flux original.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function changerPinIdentificateur(data: {
+  oldPin: string;
+  newPin: string;
+}, options: RequestInit = {}): Promise<Resultat<{ success: boolean; message?: string }>> {
+  const r = await appeler<{ success?: boolean; message?: string }>(
+    '/auth/identificateur/me/change-pin',
+    { method: 'POST', body: JSON.stringify(data), ...options },
+  );
+  if (r.etat !== 'ok') return r;
+  return { etat: 'ok', valeur: { success: r.valeur?.success === true, message: r.valeur?.message } };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHANGEMENT MOT DE PASSE (INIT-019)
+//
+// Vit auparavant en `fetch()` direct dans `BOProfil.tsx`. Le BO hérite du
+// cookie de session BO via `apiRequest` (qui active l'envoi des identifiants
+// de session cross-origin).
+// L'en-tête Authorization BO est injectée par le caller via `options.headers`
+// si nécessaire (le cookie suffit en première intention).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function changePassword(data: {
+  oldPassword: string;
+  newPassword: string;
+}, options: RequestInit = {}): Promise<Resultat<{ success: boolean; message?: string }>> {
+  const r = await appeler<{ success?: boolean; message?: string }>(
+    '/auth/change-password',
+    { method: 'POST', body: JSON.stringify(data), ...options },
+  );
+  if (r.etat !== 'ok') return r;
+  return { etat: 'ok', valeur: { success: r.valeur?.success !== false, message: r.valeur?.message } };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RESET MOT DE PASSE UTILISATEUR (INIT-019)
+//
+// Vit auparavant en `fetch()` direct dans `BOActeurDetail.tsx` (admin BO
+// réinitialise le mot de passe d'un acteur).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function resetUserPassword(data: {
+  userId: string;
+  newPassword: string;
+}, options: RequestInit = {}): Promise<Resultat<{ success?: boolean; newPassword?: string; message?: string }>> {
+  const r = await appeler<{ success?: boolean; newPassword?: string; message?: string }>(
+    '/auth/reset-user-password',
+    { method: 'POST', body: JSON.stringify(data), ...options },
+  );
+  return r;
+}
