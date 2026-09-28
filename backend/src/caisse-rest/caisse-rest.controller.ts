@@ -10,6 +10,8 @@ import { resumeMargeDesLignes, coutDesLignesCoutees } from './marge-vente';
 import { CaisseTransaction, TransactionStatus } from './caisse-transaction.entity';
 import { restituerStock } from './stock-restitution';
 import { AlertesService } from '../notifications/alertes.service';
+import { CaisseProduitsService } from './caisse-produits.service';
+import { CaisseProduit } from './caisse-produit.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('caisse')
@@ -667,55 +669,67 @@ export class CaisseRestController {
 // ═══════════════════════════════════════════════════════════════════
 // CATALOGUE PRODUITS GLOBAL — accessible sans filtre marchand
 // ═══════════════════════════════════════════════════════════════════
+//
+// INIT-012 : ce catalogue vivait en dur dans ce fichier sous forme d'un
+// tableau `CATALOGUE` (21 produits vivriers) + d'une 2ᵉ classe
+// `CatalogueController`. La donnée a migré vers la table `caisse_produits`
+// (entité TypeORM `CaisseProduit`, seedée au démarrage par `DbInitService`).
+//
+// `CatalogueController` subsiste comme WRAPPER MINCE : il délègue
+// l'intégralité de la logique à `CaisseProduitsService` et ne fait que
+// normaliser la forme de réponse pour préserver le contrat API public
+// historique (mêmes routes, mêmes noms de champs — `prixAchat`/`prixVente`
+// en camelCase comme dans l'ancien tableau). Une fusion directe dans
+// `CaisseRestController` (préfixe `caisse/`) aurait cassé les routes
+// `/catalogue` et `/catalogue/categories` ; le wrapper est l'option
+// explicitement autorisée par la consigne INIT-012 pour préserver l'API.
 
-const CATALOGUE = [
-  { nom: 'Riz',           categorie: 'cereales',    unite: 'kg',     prixAchat: 400,  prixVente: 500,  mots_cles: ['riz', 'rice'] },
-  { nom: 'Tomate',        categorie: 'legumes',     unite: 'kg',     prixAchat: 300,  prixVente: 400,  mots_cles: ['tomate', 'tomato'] },
-  { nom: 'Aubergine',     categorie: 'legumes',     unite: 'kg',     prixAchat: 700,  prixVente: 800,  mots_cles: ['aubergine', 'eggplant'] },
-  { nom: 'Piment',        categorie: 'legumes',     unite: 'tas',    prixAchat: 100,  prixVente: 150,  mots_cles: ['piment', 'pepper'] },
-  { nom: 'Gombo',         categorie: 'legumes',     unite: 'tas',    prixAchat: 120,  prixVente: 150,  mots_cles: ['gombo', 'okra'] },
-  { nom: 'Manioc',        categorie: 'tubercules',  unite: 'kg',     prixAchat: 150,  prixVente: 200,  mots_cles: ['manioc', 'cassava'] },
-  { nom: 'Igname',        categorie: 'tubercules',  unite: 'kg',     prixAchat: 350,  prixVente: 400,  mots_cles: ['igname', 'yam'] },
-  { nom: 'Maïs',          categorie: 'cereales',    unite: 'kg',     prixAchat: 200,  prixVente: 250,  mots_cles: ['mais', 'maïs', 'corn'] },
-  { nom: 'Banane',        categorie: 'fruits',      unite: 'régime', prixAchat: 500,  prixVente: 700,  mots_cles: ['banane', 'banana'] },
-  { nom: 'Plantain',      categorie: 'fruits',      unite: 'régime', prixAchat: 600,  prixVente: 800,  mots_cles: ['plantain', 'alloco'] },
-  { nom: 'Oignon',        categorie: 'legumes',     unite: 'kg',     prixAchat: 300,  prixVente: 400,  mots_cles: ['oignon', 'onion'] },
-  { nom: 'Avocat',        categorie: 'fruits',      unite: 'pièce',  prixAchat: 100,  prixVente: 150,  mots_cles: ['avocat', 'avocado'] },
-  { nom: 'Huile de palme',categorie: 'condiments',  unite: 'L',      prixAchat: 1400, prixVente: 1500, mots_cles: ['huile', 'palm oil'] },
-  { nom: 'Mangue',        categorie: 'fruits',      unite: 'kg',     prixAchat: 200,  prixVente: 300,  mots_cles: ['mangue', 'mango'] },
-  { nom: 'Ananas',        categorie: 'fruits',      unite: 'pièce',  prixAchat: 300,  prixVente: 400,  mots_cles: ['ananas', 'pineapple'] },
-  { nom: 'Arachide',      categorie: 'cereales',    unite: 'kg',     prixAchat: 600,  prixVente: 700,  mots_cles: ['arachide', 'peanut'] },
-  { nom: 'Cacao',         categorie: 'agriculture', unite: 'kg',     prixAchat: 1100, prixVente: 1200, mots_cles: ['cacao', 'cocoa'] },
-  { nom: 'Café robusta',  categorie: 'agriculture', unite: 'kg',     prixAchat: 800,  prixVente: 900,  mots_cles: ['cafe', 'café', 'robusta'] },
-  { nom: 'Anacarde',      categorie: 'agriculture', unite: 'kg',     prixAchat: 600,  prixVente: 650,  mots_cles: ['anacarde', 'cajou', 'cashew'] },
-  { nom: 'Attiéké',       categorie: 'transformation', unite: 'kg',  prixAchat: 400,  prixVente: 500,  mots_cles: ['attieke', 'attiéké'] },
-  { nom: 'Gari',          categorie: 'transformation', unite: 'kg',  prixAchat: 350,  prixVente: 450,  mots_cles: ['gari'] },
-];
+// Format API public historique (camelCase pour les prix, comme l'ancien
+// tableau `CATALOGUE`). Le mapping est explicite pour ne pas laisser la
+// forme DB (snake_case) fuiter vers l'API et casser un éventuel consommateur.
+interface ProduitCataloguePublic {
+  nom: string;
+  categorie: string | null;
+  unite: string | null;
+  prixAchat: number;
+  prixVente: number;
+  mots_cles: string[];
+}
+
+function versPublic(p: CaisseProduit): ProduitCataloguePublic {
+  return {
+    nom: p.nom,
+    categorie: p.categorie ?? null,
+    unite: p.unite ?? null,
+    prixAchat: Number(p.prix_achat ?? 0),
+    prixVente: Number(p.prix_vente ?? 0),
+    mots_cles: Array.isArray(p.mots_cles) ? p.mots_cles : [],
+  };
+}
 
 @UseGuards(JwtAuthGuard)
 @Controller('catalogue')
 export class CatalogueController {
+  constructor(private readonly caisseProduitsService: CaisseProduitsService) {}
 
   @Get()
-  findAll(
+  async findAll(
     @Query('categorie') categorie?: string,
     @Query('q') q?: string,
   ) {
-    let result = CATALOGUE;
-    if (categorie) result = result.filter(p => p.categorie === categorie);
-    if (q) {
-      const lq = q.toLowerCase();
-      result = result.filter(p =>
-        p.nom.toLowerCase().includes(lq) ||
-        p.mots_cles.some(mc => mc.includes(lq))
-      );
-    }
-    return { produits: result, total: result.length };
+    // Sémantique historique préservée : `categorie` filtre d'abord, puis `q`
+    // recherche dans ce sous-ensemble. Sans `q`, on liste (filtré ou non par
+    // catégorie). Avec `q`, on recherche par mot-clé, restreint à `categorie`
+    // si fournie. Même arbre de décision que l'ancien code.
+    const produits = (q && q.trim())
+      ? await this.caisseProduitsService.recherche(q, categorie)
+      : await this.caisseProduitsService.lister(categorie);
+    return { produits: produits.map(versPublic), total: produits.length };
   }
 
   @Get('categories')
-  getCategories() {
-    const cats = [...new Set(CATALOGUE.map(p => p.categorie))].sort();
-    return { categories: cats };
+  async getCategories() {
+    const categories = await this.caisseProduitsService.categories();
+    return { categories };
   }
 }

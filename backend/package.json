@@ -53,7 +53,7 @@
     "web-push": "^3.6.6"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.0.0",
+    "@nestjs/cli": "^11.0.0",
     "@nestjs/testing": "^11.1.28",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.6",
