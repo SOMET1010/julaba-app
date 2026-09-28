@@ -69,6 +69,7 @@ export const router = createBrowserRouter([
         { path: "commandes", element: L(() => import("./components/marchand/MesCommandes").then(m => ({ default: m.MesCommandes }))), errorElement: <ErrorFallback /> },
         { path: "alertes", element: L(() => import("./components/marchand/MarchandAlertes").then(m => ({ default: m.MarchandAlertes }))), errorElement: <ErrorFallback /> },
         { path: "parametres", element: L(() => import("./components/marchand/Parametres").then(m => ({ default: m.Parametres }))), errorElement: <ErrorFallback /> },
+        { path: "mes-donnees", element: L(() => import("./pages/marchand/MesDonnees").then(m => ({ default: m.MesDonnees }))), errorElement: <ErrorFallback /> },
         { path: "cooperative", element: L(() => import("./components/marchand/MaCooperative").then(m => ({ default: m.MaCooperative }))), errorElement: <ErrorFallback /> },
         { path: "cooperative/besoin", element: L(() => import("./components/marchand/BesoinMarchand").then(m => ({ default: m.BesoinMarchand }))), errorElement: <ErrorFallback /> },
         { path: "tontines", element: L(() => import("./components/marchand/Tontines").then(m => ({ default: m.Tontines }))), errorElement: <ErrorFallback /> },
