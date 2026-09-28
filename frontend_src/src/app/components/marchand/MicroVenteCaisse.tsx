@@ -314,12 +314,35 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
 
       const action = data.action;
       if (action?.type === 'vendre') {
+        /**
+         * CAT-01 — C'EST ICI QUE ÇA SE JOUE, ET NULLE PART AILLEURS.
+         *
+         * Trouvé en JOUANT la recette dans un vrai navigateur, pas en lisant
+         * le code : le panier recevait « 1 × Produit vocal = 2 F » alors que
+         * les tests purs de CAT-01 étaient verts.
+         *
+         * POURQUOI. La relecture au catalogue avait été branchée sur l'effet
+         * de SECOURS — celui qui ne tourne que si `intentLocal` n'a RIEN
+         * compris. Or `intentLocal` comprend, et comprend mal : sans produit
+         * dans son lexique, il rend { vendre, montant: 2 } où « deux » est
+         * devenu DEUX FRANCS. Le moteur agit donc en premier, par ce
+         * gestionnaire-ci, et le secours n'est jamais atteint.
+         *
+         * Une porte de plus en aval ne sert à rien quand l'amont répond déjà.
+         *
+         * SON CATALOGUE PASSE DEVANT. La relecture ne rend quelque chose que
+         * si le nom d'un de SES produits est prononcé en entier : c'est une
+         * preuve plus forte que le mot canonique du lexique, et elle rend
+         * `null` au moindre doute — auquel cas le moteur garde la main.
+         */
+        const reluAuCatalogue = lireVenteAuCatalogue(data.transcript || '', products);
+        const vente = reluAuCatalogue ?? action;
         // MONTANT FACULTATIF : le prix est résolu en aval par
         // vendreVocalUnifie, seul à disposer du catalogue. `0` y signifie
         // « rien n'a été dicté » ; un montant réellement prononcé prime.
-        const brut = Number(action.montant);
+        const brut = Number(vente.montant);
         const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
-        const quantite = action.quantite || 1;
+        const quantite = vente.quantite || 1;
         // LE PRODUIT DÉJÀ TOUCHÉ N'EST PAS À REDIRE (lot B2). Elle vient de
         // toucher « Tomate » dans Mon stock et dit « trois tas » : sans ce
         // repli, le moteur recevait `undefined`, n'appariait rien, et Tata
@@ -332,7 +355,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
           // veut dire (« à » / « pour » / négociation) viennent de la même
           // extraction, jamais de deux relectures qui pourraient diverger.
           const lu = extraire(data.transcript || '');
-          vendreUnifie(produitPourVente(action.produit, produitPreselectionne), quantite, montant, lu.uniteParlee, lu.lecturePrix);
+          vendreUnifie(produitPourVente(vente.produit, produitPreselectionne), quantite, montant, lu.uniteParlee, lu.lecturePrix);
         }
       } else if (action?.type === 'utiliser_raccourci') {
         const r = matchRaccourci ? matchRaccourci(action.declencheur || data.transcript || '') : null;

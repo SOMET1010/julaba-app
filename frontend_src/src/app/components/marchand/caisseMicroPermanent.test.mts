@@ -75,8 +75,18 @@ ok(/<MicroVenteCaisse\s+produitPreselectionne=\{produitPreselectionne\}/.test(co
 // recevait toujours `action.produit` seul. Elle touchait Tomate, disait
 // « trois tas », et Tata redemandait un prix que l'application connaissait
 // déjà. L'écran savait ; la voix avait oublié.
-ok(/vendreUnifie\(produitPourVente\(action\.produit,\s*produitPreselectionne\)/.test(codeMicro),
+// CAT-01 (28/09) — la source du NOM a changé, pas la règle. `vente` est la
+// relecture au catalogue de la marchande quand elle a reconnu un de SES
+// produits, et l'action du moteur sinon. Le présélectionné, lui, est passé
+// exactement comme avant : c'est ce que cette garde protège.
+// L'assertion est RENFORCÉE, pas affaiblie : elle exige en plus que le nom
+// vienne de `vente` — sans quoi on retomberait sur `action.produit`, qui est
+// `undefined` pour les 111 produits hors lexique, et la vente repartirait en
+// « Produit vocal ». C'est le défaut que la recette navigateur a trouvé.
+ok(/vendreUnifie\(produitPourVente\(vente\.produit,\s*produitPreselectionne\)/.test(codeMicro),
   "la vente dictée passe le produit présélectionné au moteur (produitPourVente)");
+ok(/const vente = reluAuCatalogue \?\? action;/.test(codeMicro),
+  "et le nom vient d'ABORD du catalogue de la marchande, le moteur en repli");
 ok(/vendreUnifie\(produitPourVente\(r\.action\.produit,\s*produitPreselectionne\)/.test(codeMicro),
   "un raccourci résolu en vente s'en souvient aussi — c'est le même acte métier");
 

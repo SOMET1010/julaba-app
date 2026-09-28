@@ -130,12 +130,26 @@ console.log('\n[5] LA MESURE, SUR LES 198 PRODUITS DU CATALOGUE MAÎTRE');
 console.log('\n[6] LA PREUVE TRAVERSE — l\'écran relit bien SON catalogue');
 {
   const src = readFileSync(new URL('../components/marchand/MicroVenteCaisse.tsx', import.meta.url), 'utf8');
-  ok(/lireVenteAuCatalogue\((?:texte|\(transcript)/.test(src),
-     'l\'écran appelle la relecture au catalogue');
-  ok((src.match(/lireVenteAuCatalogue\(/g) ?? []).length >= 2,
-     'des DEUX côtés : ce qui s\'affiche, et ce qui part au panier — sinon le bandeau promettrait une vente qui n\'arrive pas');
+  ok((src.match(/lireVenteAuCatalogue\(/g) ?? []).length >= 3,
+     'la relecture est appelée aux TROIS endroits qui en ont besoin');
+  // ── CE QUE LA RECETTE NAVIGATEUR A TROUVÉ, ET QUE CE TEST NE VOYAIT PAS ──
+  //
+  // La relecture était branchée sur l'effet de SECOURS (celui qui ne tourne
+  // que si `intentLocal` n'a RIEN compris) et sur le bandeau. Les deux étaient
+  // verts. Mais `intentLocal` COMPREND — et comprend mal : sans produit dans
+  // son lexique il rend { vendre, montant: 2 }, où « deux » est devenu deux
+  // francs. Le moteur agissait donc en premier par `onAction`, et le panier
+  // recevait « 1 × Produit vocal = 2 F » pendant que le bandeau annonçait
+  // « J'ai compris : 2 Arachide grillées ».
+  //
+  // MESURÉ DANS UN VRAI NAVIGATEUR, pas lu. C'est le seul endroit qui compte :
+  // celui où la vente part.
+  ok(/const reluAuCatalogue = lireVenteAuCatalogue\(data\.transcript \|\| '', products\);/.test(src),
+     'onAction — LE chemin que le moteur emprunte — relit d\'abord son catalogue');
+  ok(/const vente = reluAuCatalogue \?\? action;/.test(src),
+     'et son catalogue passe AVANT le lexique, le moteur restant le repli');
   ok(/lireVenteAuCatalogue\(texte, products\) \?\? \(local\?\.action\?\.type === 'vendre'/.test(src),
-     'le catalogue passe AVANT le lexique du moteur, et le moteur reste le repli');
+     'le secours garde la même règle : catalogue d\'abord, moteur ensuite');
   ok(/if \(local && local\.action\?\.type !== 'vendre'\) return;/.test(src),
      'une intention qui n\'est pas une vente n\'est jamais relue en vente');
 }
