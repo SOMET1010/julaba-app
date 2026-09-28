@@ -3,7 +3,7 @@
  * Lancer : npm run test:parcours-guide-parle
  *
  * LE DÉFAUT QU'ON FERME. Le parcours d'ajout au stock pose trois questions —
- * « Qu'est-ce que tu vends ? », « {nom}, tu le vends comment ? », « Le
+ * « Quel produit tu veux ajouter ? », « {nom}, tu le vends comment ? », « Le
  * {unite}, à combien ? ». Les trois étaient ÉCRITES, aucune n'était DITE.
  *
  * L'écran n'émettait que des ACCUSÉS de réception : l'unité choisie, le
@@ -52,7 +52,7 @@ const frActuel = (id: string) => {
 };
 
 const ETAPES = [
-  { etape: 'nom',   id: 'STOCK_047', vars: '',                affiche: "Qu'est-ce que tu vends ?" },
+  { etape: 'nom',   id: 'STOCK_047', vars: '',                affiche: "Quel produit tu veux ajouter ?" },
   { etape: 'unite', id: 'STOCK_048', vars: ", { nom }",       affiche: '{nom}, tu le vends comment ?' },
   { etape: 'prix',  id: 'STOCK_049', vars: ", { unite }",     affiche: 'Le {unite}, à combien ?' },
 ] as const;
