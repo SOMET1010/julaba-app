@@ -44,15 +44,19 @@
 
 ## 5. Production réelle
 
-- **Render** : `julaba-api` (starter 7$/mois, ne s'endort pas), `julaba-web` (statique gratuit), `julaba-db` (PostgreSQL 16, `basic_256mb` payant — free expire 90 jrs).
-- **OVH VPS** `149.56.17.9` / `julaba.online` : conservé mais **non utilisé pour servir** (correction explicite 13/08/2026).
-- **Azure DevOps** : miroir lecture seule, PAT expiré le 08/09/2026 (à régénérer).
+> **Décision formalisée : `docs/adr/ADR-0004-cible-production-render.md`** (28/09/2026).
+> La production réelle est sur **Render**. L'OVH VPS est une chaîne secondaire de DR
+> (non utilisée pour servir en nominal). Azure DevOps est un miroir lecture seule.
+
+- **Render** : `julaba-api` (starter 7$/mois, ne s'endort pas), `julaba-web` (statique gratuit), `julaba-db` (PostgreSQL 16, `basic_256mb` payant — free expire 90 jrs). `autoDeploy: true` sur `main` pour `julaba-api` et `julaba-web`. Health check `/api/v1/health`. Runbook : `docs/DEPLOIEMENT_RENDER.md`.
+- **OVH VPS** `149.56.17.9` / `julaba.online` : conservé mais **non utilisé pour servir** en conditions nominales (correction explicite 13/08/2026, ADR-0004). Rôle : disaster recovery + tests. Workflow `.github/workflows/deploy.yml` en `workflow_dispatch` manuel (jamais branché sur `push`). Runbook : `GUIDE_DEPLOIEMENT.md` (marqué secondaire).
+- **Azure DevOps** : miroir lecture seule via `.github/workflows/mirror-azure.yml` (push `main` + tags, aucun déploiement). `azure-pipelines.yml` **désactivé** (`trigger: none` — l'ancien trigger `master` visait une branche inexistante). PAT Azure expiré le 08/09/2026 (à régénérer, P0 — voir §10).
 - **APK Android** : debug-signed, distribué via GitHub Releases (`pilote-latest`, retention 14 jrs).
 
 ## 6. Conventions de gouvernance existantes
 
 - **Constitution** (`CONSTITUTION.md`) : 8 principes avec mécanismes CI actionnables.
-- **ADR** : 5 existants (`ADR-001`, `ADR-002`, `ADR-0001`, `ADR-0002`, `ADR-0003`) dans `docs/adr/`.
+- **ADR** : 6 existants (`ADR-001`, `ADR-002`, `ADR-0001`, `ADR-0002`, `ADR-0003`, `ADR-0004`) dans `docs/adr/`. ADR-0004 tranche la cible de production (Render).
 - **Registre de dette** : `docs/dette/REGISTRE-MAITRE.md` (révision 20, 33 FERME / 5 HORS PERIMETRE / 48 OUVERT, **0 P0 OUVERT**).
 - **Invariants business** : `docs/invariants/TABLEAU_DE_BORD.md` (I1-I7, 4 en `it.failing`).
 - **Coordination IA<->Humain** : `coordination/` (règle « un fichier = un écrivain », 3 types d'arrêt formalisés).
@@ -125,9 +129,9 @@
 
 - `CONSTITUTION.md` — loi du dépôt (8 principes).
 - `JULABA_DECISIONS.md` — 10 décisions arch majeures + roadmap.
-- `GUIDE_DEPLOIEMENT.md` — déploiement (OVH périmé, Render = prod réelle).
+- `GUIDE_DEPLOIEMENT.md` — runbook OVH VPS (chaîne secondaire DR, voir ADR-0004). La prod réelle est documentée dans `docs/DEPLOIEMENT_RENDER.md`.
 - `todo.md` — todo audit Patrick.
-- `docs/adr/` — 5 ADR.
+- `docs/adr/` — 6 ADR (ADR-0004 = cible de production Render).
 - `docs/dette/REGISTRE-MAITRE.md` — registre dette (révision 20).
 - `docs/invariants/TABLEAU_DE_BORD.md` — invariants I1-I7.
 - `coordination/` — bus IA<->humain.

@@ -1,7 +1,30 @@
-trigger:
-  branches:
-    include:
-      - master
+# ──────────────────────────────────────────────────────────────────────────
+# Pipeline Azure DevOps — DÉSACTIVÉ (28/09/2026).
+#
+# Raison : la production réelle JULABA est sur Render (ADR-0004 — Cible de
+# production : Render, formalisation de la correction explicite du 13/08/2026
+# consignée dans JULABA_DECISIONS.md §9). La chaîne Azure DevOps n'a jamais
+# déployé en production : le trigger historique visait `master`, alors que la
+# branche par défaut du dépôt est `main` — le pipeline ne s'est jamais exécuté.
+#
+# En l'absence d'usage de déploiement Azure et avec un PAT Azure DevOps expiré
+# depuis le 08/09/2026 (à régénérer, action ops P0 listée dans
+# .ai/PROJECT_CONTEXT.md §10), le maintien d'un trigger actif n'aurait aucun
+# sens. Le miroir GitHub → Azure DevOps est assuré par
+# .github/workflows/mirror-azure.yml (poussée de `main` + tags, lecture seule) —
+# c'est le seul canal Azure désormais actif.
+#
+# Le présent fichier est conservé comme RÉFÉRENCE pour une éventuelle réactivation
+# ultérieure (templates Azure DevOps, ACR, Sonar, VMenv). Aucune logique n'est
+# supprimée : seul le `trigger` est passé à `none`.
+#
+# Pour réactiver : remplacer `trigger: none` par un déclencheur explicite sur la
+# branche `main` (et non `master`), après s'être assuré que la cible de
+# déploiement Azure a été désignée et provisionnée. Voir ADR-0004 pour le
+# contexte complet.
+# ──────────────────────────────────────────────────────────────────────────
+
+trigger: none
 
 variables:
   - group: Variables-de-config
