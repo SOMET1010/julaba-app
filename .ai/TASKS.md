@@ -2,11 +2,11 @@
 
 > Version humaine-lisible du backlog. Miroir de `TASKS.xlsx` (à créer à la première feature).
 
-## État au 2026-09-28
+## État au 2026-09-29
 
 - **Total tâches** : 12 (toutes issues de l'audit initial)
 - **Terminées** : 0
-- **En cours** : 0
+- **En cours** : 1 (INIT-010)
 - **Bloquées** : 0
 
 ## Tâches P0 (bloquantes)
@@ -27,7 +27,7 @@
 | INIT-007 | RGPD | Créer `docs/POLITIQUE-CONFIDENTIALITE.md` + écran UI « Mes données » (loi ivoirienne n°2013-450) | Doc + Front | TODO | P1 |
 | INIT-008 | Sécurité | Corriger `SEC-04` : cesser de journaliser le terme de recherche dans `users.service.ts:334` | Back | TODO | P1 |
 | INIT-009 | Architecture | Trancher la cible de production (Render vs OVH vs Azure — actuellement 3 chaînes concurrentes) | Tech Lead + DevOps | TODO | P1 |
-| INIT-010 | Dette | Finaliser ADR-0002 étape 4 (bascule migrations : `DB_MIGRATIONS_RUN=true`, `synchronize` off) | Tech Lead | TODO | P1 |
+| INIT-010 | Dette | Finaliser ADR-0002 étape 4 (bascule migrations : `DB_MIGRATIONS_RUN=true`, `synchronize` off) | Tech Lead | **EN_COURS — runbook préparé, exécution en attente validation Patrick** | P1 |
 
 ## Tâches P2 (fiabilisation)
 
@@ -58,6 +58,35 @@
 - Adopter `devise.ts` partout (480 « FCFA » en dur)
 - Réduire les 173 `fetch()` directs hors `services/api/`
 - Réduire les 35 branches vivantes
+
+## Détail des tâches en cours
+
+### INIT-010 — ADR-0002 étape 4 (bascule migrations prod)
+
+**Statut : EN_COURS — runbook préparé, exécution en attente validation Patrick.**
+
+- **Livrable préparé (2026-09-29)** :
+  - `docs/etape4/RUNBOOK-BASCULE-MIGRATIONS.md` créé (runbook opérationnel
+    détaillé, supersede le runbook historique
+    `docs/etape4/RUNBOOK-bascule-migrations.md` de 2026-08-15, invalidé par
+    l'incident 18/09/2026).
+  - `docs/adr/ADR-0002-convergence-schema-migrations.md` mis à jour (statut
+    étape 4 → « préparée par runbook, en attente de validation humaine pour
+    exécution »).
+- **Reste à faire avant exécution** (hors présent lot, à mener par Alex + Patrick) :
+  1. **Lot de code préalable** : rendre la baseline `1780200000000-BaselineSchema`
+     idempotente (`CREATE TYPE IF NOT EXISTS`) + mettre à jour le test
+     `backend/test/unit/migrations-prod.spec.ts` (qui assert aujourd'hui
+     intentionnellement la non-idempotence).
+  2. **Pré-validation staging** complète (section 3 du runbook).
+  3. **Validation Patrick** (Audit Global humain) — Go formel écrit.
+  4. **Créneau de maintenance** planifié (1-2h, hors heures de marché).
+  5. **Exécution prod** par Alex selon la procédure section 4 du runbook.
+  6. **Stabilisation 1 semaine** puis lot post-bascule (retrait `DbInitService`,
+     création ADR-0005, fermeture SCHEMA-01/02/03 au registre maître).
+- **Référence incident** : `.ai/INCIDENTS.md` — incident 18/09/2026
+  (`caisse_transaction_status_enum already exists`), cause racine documentée
+  dans le préambule du runbook.
 
 ## Règle de validation finale
 

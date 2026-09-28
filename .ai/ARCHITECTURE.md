@@ -181,22 +181,32 @@ ThemeProvider
 
 ## 6. Deploiement
 
+> **Décision formalisée : `docs/adr/ADR-0004-cible-production-render.md`** (28/09/2026).
+> Render = prod réelle ; OVH `julaba.online` = chaîne secondaire DR (non utilisée
+> pour servir en nominal) ; Azure DevOps = miroir lecture seule (aucun
+> déploiement).
+
 ### Render (prod reelle)
 - `julaba-db` : PostgreSQL 16, `basic_256mb` (payant -- free expire 90 jrs)
-- `julaba-api` : NestJS, `starter` (7$/mois, ne s'endort pas), `autoDeploy: true`
-- `julaba-web` : statique gratuit, `autoDeploy: true`
+- `julaba-api` : NestJS, `starter` (7$/mois, ne s'endort pas), `autoDeploy: true` sur `main`
+- `julaba-web` : statique gratuit, `autoDeploy: true` sur `main`
 - Secrets auto-generees : `JWT_SECRET`, `PIN_ENCRYPTION_KEY`, `REFRESH_TOKEN_SALT`
 - ATTENTION **`DB_MIGRATIONS_RUN=false`** en prod (workaround incident 18/09/2026)
+- Health check : `GET https://julaba-api.onrender.com/api/v1/health` -> 200
 
 ### OVH VPS julaba.online (chaine secondaire, non utilisee pour servir)
-- Docker Compose local, `deploy.yml` (workflow_dispatch manuel)
+- Docker Compose local, `deploy.yml` en **`workflow_dispatch` manuel** (jamais branche sur `push`)
+- Rôle : disaster recovery + tests d'integration realiste. Runbook : `GUIDE_DEPLOIEMENT.md` (marque secondaire).
 - Nginx vhost `nginx/julaba.conf` (TLS 1.2/1.3, HSTS sans preload)
+- Health check DR (lorsque la chaine est activee) : `GET https://julaba.online/api/v1/health` -> 200
 
 ### GitHub Releases (APK pilote)
 - `apk.yml` (workflow_dispatch manuel), APK debug-signed, `pilote-latest` tag, retention 14 jrs
 
-### Azure DevOps
-- Miroir lecture seule, **PAT expire le 08/09/2026** (a regenerer)
+### Azure DevOps (miroir lecture seule)
+- `mirror-azure.yml` pousse `main` + tags vers Azure DevOps (aucun deploiement)
+- **`azure-pipelines.yml` DESACTIVE** (`trigger: none`) -- l'ancien trigger `master` visait une branche inexistante ; pipeline jamais execute
+- PAT Azure expire le 08/09/2026 (a regenerer, action ops P0 -- voir `.ai/PROJECT_CONTEXT.md` §10)
 
 ## 7. CI/CD -- 9 workflows GitHub Actions
 
@@ -242,7 +252,7 @@ ThemeProvider
 
 - `CONSTITUTION.md` -- 8 principes + mecanismes CI.
 - `JULABA_DECISIONS.md` -- 10 decisions arch + roadmap.
-- `docs/adr/` -- 5 ADR.
+- `docs/adr/` -- 6 ADR (ADR-0004 = cible de production Render).
 - `docs/dette/REGISTRE-MAITRE.md` -- registre dette (revision 20).
 - `docs/invariants/TABLEAU_DE_BORD.md` -- invariants I1-I7.
 - `render.yaml` -- config prod Render.
