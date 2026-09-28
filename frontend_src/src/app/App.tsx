@@ -32,6 +32,18 @@ import { ShortcutsProvider } from './contexts/ShortcutsContext';
 import { MotionConfig } from 'motion/react';
 import { appliquerTailleTexteAuDocument } from './utils/tailleTexte';
 
+// i18n — initialisé au boot (INIT-020). L'instance est partagée via le
+// `I18nextProvider` ci-dessous pour que `useTranslation()` fonctionne dans
+// tous les écrans. Le bridge avec `useLangPref` se fait dans le hook lui-même.
+import { I18nextProvider } from 'react-i18next';
+import { getI18nInstance } from './i18n/config';
+
+// i18next doit être prêt AVANT le 1er render (sinon les `t('…')` rendent la
+// clé brute le temps de l'init). On démarre l'init au module-load et on lit
+// l'instance synchronément — `initReactI18next` est synchrone par défaut
+// (pas de backend HTTP : les 3 locales sont embarquées en statique).
+const i18nInstance = getI18nInstance();
+
 function AnimationWrapper({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   const { setDark, setMode } = useTheme();
@@ -63,12 +75,13 @@ function AnimationWrapper({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <ShortcutsProvider>
-        <ModalProvider>
-          <AppProvider>
-          <UserProvider>
-            <NotificationsProvider>
+    <I18nextProvider i18n={i18nInstance}>
+      <ThemeProvider>
+        <ShortcutsProvider>
+          <ModalProvider>
+            <AppProvider>
+            <UserProvider>
+              <NotificationsProvider>
                 <AuditProvider>
                   <WalletProvider>
                     <CommandeProvider>
@@ -102,6 +115,7 @@ export default function App() {
         </AppProvider>
         </ModalProvider>
       </ShortcutsProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </I18nextProvider>
   );
 }

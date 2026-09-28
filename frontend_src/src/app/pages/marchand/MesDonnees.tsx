@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
+import { useTranslation, Trans } from 'react-i18next';
 
 import { SubPageLayout } from '../../components/layout/SubPageLayout';
 import { useApp } from '../../contexts/AppContext';
@@ -36,64 +37,48 @@ import { supprimerCompte } from '../../services/api/auth-api';
 type Droit = 'acces' | 'rectification' | 'opposition';
 
 // ─── Données affichées (synthèse lisible, pas le markdown complet) ─
+//
+// Les libellés et détails sont tirés via i18next (clés `mesDonnees.donneesGardees.*`
+// et `mesDonnees.finalites.*` dans `i18n/locales/fr.json`). On ne stocke ici que
+// la structure (clé i18n + icône éventuelle) pour permettre la traduction sans
+// dupliquer les chaînes françaises dans le code.
 
 interface DonneeGardee {
-  label: string;
-  detail: string;
+  cle: 'telephone' | 'nom' | 'photo' | 'activite' | 'caisse' | 'keiwa' | 'nin' | 'geoloc' | 'pin' | 'preferences' | 'audit';
 }
 
 const DONNEES_GARDEES: readonly DonneeGardee[] = [
-  { label: 'Numéro de téléphone', detail: 'Pour te connecter et te contacter' },
-  { label: 'Nom et appellation', detail: 'Pour que Tata t\'appelle par ton nom' },
-  { label: 'Photo de profil', detail: 'Optionnelle — pour te reconnaître à l\'accueil' },
-  { label: 'Activité et marché', detail: 'Pour adapter l\'interface à ton commerce' },
-  { label: 'Stock, ventes, dépenses, crédits', detail: 'Journal immuable de ta caisse' },
-  { label: 'Portefeuille Keiwa', detail: 'Transferts, paiements, retraits' },
-  { label: 'NIN / NNI', detail: 'Optionnel — pour le score financier' },
-  { label: 'Géolocalisation', detail: 'Optionnelle — pour cartographier le réseau' },
-  { label: 'PIN et doigt', detail: 'Pour protéger ton téléphone et ton argent' },
-  { label: 'Préférences (langue, voix, police)', detail: 'Stockées sur ton téléphone' },
-  { label: 'Journaux d\'audit', detail: 'Connexions et actions sensibles tracées' },
+  { cle: 'telephone' },
+  { cle: 'nom' },
+  { cle: 'photo' },
+  { cle: 'activite' },
+  { cle: 'caisse' },
+  { cle: 'keiwa' },
+  { cle: 'nin' },
+  { cle: 'geoloc' },
+  { cle: 'pin' },
+  { cle: 'preferences' },
+  { cle: 'audit' },
 ];
 
 interface Finalite {
-  donnee: string;
-  raison: string;
+  cle: 'telephone' | 'nom' | 'photo' | 'stock' | 'nin' | 'geoloc' | 'pin' | 'audit';
 }
 
 const FINALITES: readonly Finalite[] = [
-  { donnee: 'Téléphone', raison: 'Te connecter et t\'envoyer des SMS de support' },
-  { donnee: 'Nom', raison: 'T\'appeler par ton nom dans les messages vocaux' },
-  { donnee: 'Photo', raison: 'Te reconnaître sur l\'écran d\'accueil' },
-  { donnee: 'Stock et transactions', raison: 'Tenir ta caisse et ton portefeuille Keiwa' },
-  { donnee: 'NIN, CNPS, CMU', raison: 'Calculer un score financier si tu le demandes' },
-  { donnee: 'Géolocalisation', raison: 'Cartographier le réseau des marchandes' },
-  { donnee: 'PIN et doigt', raison: 'Protéger l\'accès à ton téléphone et ton argent' },
-  { donnee: 'Audit logs', raison: 'Détecter les intrusions et prouver les actions' },
+  { cle: 'telephone' },
+  { cle: 'nom' },
+  { cle: 'photo' },
+  { cle: 'stock' },
+  { cle: 'nin' },
+  { cle: 'geoloc' },
+  { cle: 'pin' },
+  { cle: 'audit' },
 ];
 
-interface SectionPolitique {
-  num: number;
-  titre: string;
-  resume: string;
-}
-
-const SECTIONS_POLITIQUE: readonly SectionPolitique[] = [
-  { num: 1, titre: 'Qui sommes-nous', resume: 'ICONE Solutions, éditeur de JULABA, basé à Abidjan.' },
-  { num: 2, titre: 'Données collectées', resume: 'Téléphone, nom, photo, activité, stock, transactions, NIN, géoloc, PIN, préférences — liste exhaustive.' },
-  { num: 3, titre: 'Finalités', resume: 'Une raison claire pour chaque donnée collectée.' },
-  { num: 4, titre: 'Base légale', resume: 'Contrat (caisse), consentement (photo, géoloc), obligation légale (ANSUT).' },
-  { num: 5, titre: 'Durée de conservation', resume: 'Argent = journal immuable ; données perso anonymisées à la suppression du compte.' },
-  { num: 6, titre: 'Sécurité', resume: 'Ton PIN est caché et chiffré, personne ne peut le lire, pas même nous.' },
-  { num: 7, titre: 'Vos droits', resume: 'Accès, rectification, suppression (droit à l\'oubli), opposition, portabilité.' },
-  { num: 8, titre: 'Consentement parlé', resume: 'Pour les non-lectrices : lecture audio, ré-audition, refus, traçabilité version+heure+agent.' },
-  { num: 9, titre: 'Partage avec tiers', resume: 'ANSUT, B-Pay, ONECI, ElevenLabs — jamais de vente de données.' },
-  { num: 10, titre: 'Transferts hors Côte d\'Ivoire', resume: 'Render (USA), Sentry (USA), ElevenLabs (USA) — encadrés contractuellement.' },
-  { num: 11, titre: 'Cookies', resume: 'Cookies httpOnly Secure SameSite pour la session ; localStorage pour les préférences.' },
-  { num: 12, titre: 'Mineurs', resume: 'JULABA cible les adultes ; pas de collecte intentionnelle de mineurs.' },
-  { num: 13, titre: 'Modification', resume: 'Versionnement + notification aux utilisatrices en cas de modification substantielle.' },
-  { num: 14, titre: 'Contact DPO', resume: 'dpo@julaba.online — et ANSUT comme partenaire réglementaire.' },
-  { num: 15, titre: 'Version', resume: 'v1.0 — 28/09/2026 — loi ivoirienne n°2013-450.' },
+// Sections de la politique de confidentialité — clés i18n numérotées 1..15.
+const SECTIONS_POLITIQUE_CLES: readonly (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15)[] = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 ];
 
 // ─── Focus trap simple (a11y) ──────────────────────────────────
@@ -143,6 +128,7 @@ interface ModalSuppressionProps {
 }
 
 function ModalSuppression({ isOpen, onClose, onSupprime, speak }: ModalSuppressionProps) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<1 | 2>(1);
   const [password, setPassword] = useState('');
@@ -173,7 +159,7 @@ function ModalSuppression({ isOpen, onClose, onSupprime, speak }: ModalSuppressi
 
   const handleConfirm = async () => {
     if (password.length < 4) {
-      setError('Code requis (4 chiffres minimum)');
+      setError(t('mesDonnees.modalSuppressionErreurCode'));
       return;
     }
     setLoading(true);
@@ -181,18 +167,18 @@ function ModalSuppression({ isOpen, onClose, onSupprime, speak }: ModalSuppressi
     try {
       const r = await supprimerCompte(password);
       if (r.etat === 'session_expiree') {
-        setError('Ta session a expiré. Reconnecte-toi.');
+        setError(t('mesDonnees.modalSuppressionErreurSession'));
         return;
       }
       if (r.etat === 'erreur_metier') {
         setError(r.message || 'Erreur');
         return;
       }
-      toast.success('Compte anonymisé. Ton argent a été conservé.');
-      speak('Ton compte a été anonymisé. Ton argent a été conservé.');
+      toast.success(t('mesDonnees.toastCompteAnonymise'));
+      speak(t('mesDonnees.voixCompteAnonymise'));
       onSupprime();
     } catch {
-      setError('Erreur réseau. Réessaie.');
+      setError(t('mesDonnees.modalSuppressionErreurReseau'));
     } finally {
       setLoading(false);
     }
@@ -229,17 +215,18 @@ function ModalSuppression({ isOpen, onClose, onSupprime, speak }: ModalSuppressi
                   <Trash2 className="w-8 h-8 text-red-500" aria-hidden="true" />
                 </div>
                 <h3 id="suppression-titre" className="text-xl font-bold text-center mb-2 text-gray-900">
-                  Supprimer mon compte
+                  {t('mesDonnees.modalSuppressionTitre')}
                 </h3>
                 <p className="text-sm text-gray-700 text-center mb-3">
-                  Cette action est <span className="font-bold text-red-600">définitive et irréversible</span>.
+                  <Trans i18nKey="mesDonnees.modalSuppressionTexteDefinitif"
+                    components={{ gras: <span className="font-bold text-red-600" /> }}
+                  />
                 </p>
                 <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-3 mb-4">
                   <p className="text-xs text-amber-900 leading-relaxed">
-                    <span className="font-bold">Attention :</span> ton identité sera anonymisée
-                    (téléphone, photo, NIN, adresse purgés). En revanche,
-                    <span className="font-bold"> ton argent et ton historique de transactions seront conservés</span> —
-                    c'est la loi : l'argent est sacré (Constitution JULABA §7).
+                    <Trans i18nKey="mesDonnees.modalSuppressionAttention"
+                      components={{ gras: <span className="font-bold" /> }}
+                    />
                   </p>
                 </div>
                 <div className="flex gap-3">
@@ -247,27 +234,27 @@ function ModalSuppression({ isOpen, onClose, onSupprime, speak }: ModalSuppressi
                     onClick={onClose}
                     whileTap={{ scale: 0.97 }}
                     className="flex-1 py-3 rounded-2xl border-2 border-gray-200 font-bold text-gray-700"
-                    aria-label="Annuler la suppression du compte"
+                    aria-label={t('mesDonnees.modalSuppressionAriaAnnuler')}
                   >
-                    Annuler
+                    {t('common.annuler')}
                   </motion.button>
                   <motion.button
                     onClick={() => setStep(2)}
                     whileTap={{ scale: 0.97 }}
                     className="flex-1 py-3 rounded-2xl bg-red-500 font-bold text-white"
-                    aria-label="Continuer vers la confirmation de suppression"
+                    aria-label={t('mesDonnees.modalSuppressionAriaContinuer')}
                   >
-                    Continuer
+                    {t('common.continuer')}
                   </motion.button>
                 </div>
               </>
             ) : (
               <>
                 <h3 id="suppression-titre" className="text-xl font-bold text-center mb-2 text-gray-900">
-                  Confirme ton identité
+                  {t('mesDonnees.modalSuppressionConfirmeTitre')}
                 </h3>
                 <p className="text-sm text-gray-700 text-center mb-6">
-                  Entre ton code de connexion (4 chiffres) pour confirmer.
+                  {t('mesDonnees.modalSuppressionConfirmeIndice')}
                 </p>
                 <input
                   type="password"
@@ -277,7 +264,7 @@ function ModalSuppression({ isOpen, onClose, onSupprime, speak }: ModalSuppressi
                   value={password}
                   onChange={(e) => setPassword(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="••••"
-                  aria-label="Ton code de connexion à 4 chiffres"
+                  aria-label={t('mesDonnees.modalSuppressionAriaCode')}
                   className="w-full text-center text-2xl tracking-[0.5em] py-3 rounded-2xl border-2 border-gray-200 focus:border-red-400 focus:outline-none mb-3"
                 />
                 {error && (
@@ -288,18 +275,18 @@ function ModalSuppression({ isOpen, onClose, onSupprime, speak }: ModalSuppressi
                     onClick={() => setStep(1)}
                     whileTap={{ scale: 0.97 }}
                     className="flex-1 py-3 rounded-2xl border-2 border-gray-200 font-bold text-gray-700"
-                    aria-label="Revenir à l'étape précédente"
+                    aria-label={t('mesDonnees.modalSuppressionAriaRetour')}
                   >
-                    Retour
+                    {t('common.retour')}
                   </motion.button>
                   <motion.button
                     onClick={() => void handleConfirm()}
                     whileTap={{ scale: 0.97 }}
                     disabled={loading}
                     className="flex-1 py-3 rounded-2xl bg-red-500 font-bold text-white disabled:opacity-50"
-                    aria-label="Confirmer définitivement la suppression de mon compte"
+                    aria-label={t('mesDonnees.modalSuppressionAriaConfirmer')}
                   >
-                    {loading ? 'Suppression…' : 'Supprimer définitivement'}
+                    {loading ? t('mesDonnees.modalSuppressionBoutonSupprimerEnCours') : t('mesDonnees.modalSuppressionBoutonSupprimer')}
                   </motion.button>
                 </div>
               </>
@@ -319,6 +306,7 @@ interface ModalPolitiqueProps {
 }
 
 function ModalPolitique({ isOpen, onClose }: ModalPolitiqueProps) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   useFocusTrap(ref, isOpen);
 
@@ -356,11 +344,11 @@ function ModalPolitique({ isOpen, onClose }: ModalPolitiqueProps) {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 id="politique-titre" className="text-xl font-bold text-gray-900">
-                Politique de confidentialité
+                {t('mesDonnees.modalPolitiqueTitre')}
               </h3>
               <button
                 onClick={onClose}
-                aria-label="Fermer la politique de confidentialité"
+                aria-label={t('mesDonnees.modalPolitiqueAriaFermer')}
                 className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100"
               >
                 <X className="w-5 h-5 text-gray-600" aria-hidden="true" />
@@ -368,35 +356,39 @@ function ModalPolitique({ isOpen, onClose }: ModalPolitiqueProps) {
             </div>
 
             <p className="text-xs text-gray-500 mb-4">
-              Loi ivoirienne n°2013-450 · v1.0 · 28/09/2026
+              {t('mesDonnees.modalPolitiqueSousTitre')}
             </p>
 
             <ol className="space-y-3">
-              {SECTIONS_POLITIQUE.map((s) => (
-                <li key={s.num} className="border-l-2 pl-3" style={{ borderColor: '#C46210' }}>
+              {SECTIONS_POLITIQUE_CLES.map((num) => (
+                <li key={num} className="border-l-2 pl-3" style={{ borderColor: '#C46210' }}>
                   <p className="font-semibold text-gray-900 text-sm">
-                    {s.num}. {s.titre}
+                    {num}. {t(`mesDonnees.politiqueSections.${num}.titre`)}
                   </p>
-                  <p className="text-xs text-gray-700 mt-0.5 leading-relaxed">{s.resume}</p>
+                  <p className="text-xs text-gray-700 mt-0.5 leading-relaxed">
+                    {t(`mesDonnees.politiqueSections.${num}.resume`)}
+                  </p>
                 </li>
               ))}
             </ol>
 
             <div className="mt-5 p-3 rounded-2xl bg-gray-50 border border-gray-200">
               <p className="text-xs text-gray-600 leading-relaxed">
-                La version officielle complète est dans le fichier{' '}
-                <code className="text-[10px] bg-white px-1 py-0.5 rounded">docs/POLITIQUE-CONFIDENTIALITE.md</code>{' '}
-                du dépôt JULABA. Pour toute question, écris à{' '}
-                <span className="font-semibold">dpo@julaba.online</span>.
+                <Trans i18nKey="mesDonnees.modalPolitiqueTexte"
+                  components={{
+                    fichier: <code className="text-[10px] bg-white px-1 py-0.5 rounded">docs/POLITIQUE-CONFIDENTIALITE.md</code>,
+                    dpo: <span className="font-semibold">dpo@julaba.online</span>,
+                  }}
+                />
               </p>
             </div>
 
             <button
               onClick={onClose}
               className="w-full mt-5 py-3 rounded-2xl bg-[#C46210] text-white font-bold"
-              aria-label="Fermer la politique de confidentialité"
+              aria-label={t('mesDonnees.modalPolitiqueAriaFermer')}
             >
-              J'ai compris
+              {t('mesDonnees.modalPolitiqueBouton')}
             </button>
           </motion.div>
         </motion.div>
@@ -408,6 +400,7 @@ function ModalPolitique({ isOpen, onClose }: ModalPolitiqueProps) {
 // ─── Composant principal ──────────────────────────────────────
 
 export function MesDonnees() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { speak } = useApp();
   const [showSuppression, setShowSuppression] = useState(false);
@@ -417,16 +410,11 @@ export function MesDonnees() {
 
   const lireVoixHaute = () => {
     const texte = [
-      'Mes données.',
-      'Voici les données que JULABA garde sur toi :',
-      'ton numéro de téléphone, ton nom, ta photo si tu en as mis une,',
-      'ton activité, ton stock, tes ventes et tes dépenses,',
-      'ton portefeuille Keiwa, et si tu as accepté, ton NIN et ta position.',
-      'JULABA garde ces données pour tenir ta caisse, te protéger,',
-      'et te proposer un score financier si tu le demandes.',
-      'Tu as le droit de voir, de corriger, de supprimer ou de t\'opposer.',
-      'Si tu supprimes ton compte, ton identité est anonymisée,',
-      'mais ton argent est conservé. C\'est la loi.',
+      t('mesDonnees.voixSyntheseIntro'),
+      t('mesDonnees.voixSyntheseDonnees'),
+      t('mesDonnees.voixSyntheseRaison'),
+      t('mesDonnees.voixSyntheseDroits'),
+      t('mesDonnees.voixSyntheseSuppression'),
     ].join(' ');
     speak(texte);
   };
@@ -434,16 +422,16 @@ export function MesDonnees() {
   const exercerDroit = (droit: Droit) => {
     switch (droit) {
       case 'acces':
-        toast.success('Demande d\'accès enregistrée. Tu recevras un récapitulatif par SMS.');
-        speak('Demande d\'accès enregistrée. Tu recevras un récapitulatif de tes données par message.');
+        toast.success(t('mesDonnees.toastAccesEnregistre'));
+        speak(t('mesDonnees.voixAccesEnregistre'));
         break;
       case 'rectification':
-        speak('Pour corriger une donnée, je t\'emmène à ton profil.');
+        speak(t('mesDonnees.voixRectification'));
         navigate('/marchand/profil');
         break;
       case 'opposition':
-        toast.success('Demande d\'opposition enregistrée. Le support te contactera.');
-        speak('Demande d\'opposition enregistrée. Une personne du support te contactera.');
+        toast.success(t('mesDonnees.toastOppositionEnregistre'));
+        speak(t('mesDonnees.voixOppositionEnregistre'));
         break;
     }
   };
@@ -451,12 +439,12 @@ export function MesDonnees() {
   return (
     <SubPageLayout
       role="marchand"
-      title="Mes données"
-      subtitle="Loi ivoirienne n°2013-450"
+      title={t('mesDonnees.titre')}
+      subtitle={t('mesDonnees.sousTitre')}
       rightContent={
         <button
           onClick={lireVoixHaute}
-          aria-label="Lire mes données à voix haute"
+          aria-label={t('mesDonnees.ariaLireVoixHaute')}
           className="w-11 h-11 rounded-full flex items-center justify-center text-white"
           style={{ backgroundColor: COLOR }}
         >
@@ -475,9 +463,8 @@ export function MesDonnees() {
         >
           <Volume2 className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: COLOR }} aria-hidden="true" />
           <p className="text-sm leading-relaxed" style={{ color: '#5C3A1A' }}>
-            <span className="font-bold">Tata peut te lire cette page.</span>{' '}
-            Touche le bouton micro en haut à droite pour écouter.
-            Tu as le droit de savoir ce que JULABA garde sur toi.
+            <span className="font-bold">{t('mesDonnees.introTataPeutTeLire')}</span>{' '}
+            {t('mesDonnees.introToucheBouton')} {t('mesDonnees.introDroitSavoir')}
           </p>
         </motion.div>
 
@@ -494,13 +481,13 @@ export function MesDonnees() {
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${COLOR}15` }}>
               <Eye className="w-5 h-5" style={{ color: COLOR }} aria-hidden="true" />
             </div>
-            <h3 className="font-bold text-gray-900">Quelles données JULABA garde sur moi</h3>
+            <h3 className="font-bold text-gray-900">{t('mesDonnees.sectionDonneesTitre')}</h3>
           </div>
           <ul className="divide-y divide-gray-100">
             {DONNEES_GARDEES.map((d) => (
-              <li key={d.label} className="px-5 py-3 flex items-start justify-between gap-4">
-                <p className="font-semibold text-gray-900 text-sm">{d.label}</p>
-                <p className="text-xs text-gray-500 text-right max-w-[55%]">{d.detail}</p>
+              <li key={d.cle} className="px-5 py-3 flex items-start justify-between gap-4">
+                <p className="font-semibold text-gray-900 text-sm">{t(`mesDonnees.donneesGardees.${d.cle}.label`)}</p>
+                <p className="text-xs text-gray-500 text-right max-w-[55%]">{t(`mesDonnees.donneesGardees.${d.cle}.detail`)}</p>
               </li>
             ))}
           </ul>
@@ -519,18 +506,18 @@ export function MesDonnees() {
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${COLOR}15` }}>
               <FileText className="w-5 h-5" style={{ color: COLOR }} aria-hidden="true" />
             </div>
-            <h3 className="font-bold text-gray-900">Pourquoi JULABA les garde</h3>
+            <h3 className="font-bold text-gray-900">{t('mesDonnees.sectionFinalitesTitre')}</h3>
           </div>
           <ul className="divide-y divide-gray-100">
             {FINALITES.map((f) => (
-              <li key={f.donnee} className="px-5 py-3 flex items-center gap-3">
+              <li key={f.cle} className="px-5 py-3 flex items-center gap-3">
                 <span
                   className="text-xs font-bold px-2 py-1 rounded-full flex-shrink-0"
                   style={{ backgroundColor: `${COLOR}15`, color: COLOR }}
                 >
-                  {f.donnee}
+                  {t(`mesDonnees.finalites.${f.cle}.donnee`)}
                 </span>
-                <p className="text-sm text-gray-700">{f.raison}</p>
+                <p className="text-sm text-gray-700">{t(`mesDonnees.finalites.${f.cle}.raison`)}</p>
               </li>
             ))}
           </ul>
@@ -549,48 +536,48 @@ export function MesDonnees() {
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${COLOR}15` }}>
               <Shield className="w-5 h-5" style={{ color: COLOR }} aria-hidden="true" />
             </div>
-            <h3 className="font-bold text-gray-900">Mes droits</h3>
+            <h3 className="font-bold text-gray-900">{t('mesDonnees.sectionDroitsTitre')}</h3>
           </div>
           <div className="grid grid-cols-2 gap-3 p-4">
             <button
               onClick={() => exercerDroit('acces')}
-              aria-label="Demander l'accès à mes données"
+              aria-label={t('mesDonnees.ariaDroitAcces')}
               className="rounded-2xl border-2 p-4 text-left hover:bg-gray-50 transition-colors"
               style={{ borderColor: `${COLOR}30` }}
             >
               <Eye className="w-5 h-5 mb-2" style={{ color: COLOR }} aria-hidden="true" />
-              <p className="font-semibold text-sm text-gray-900">Accès</p>
-              <p className="text-xs text-gray-500 mt-0.5">Voir toutes mes données</p>
+              <p className="font-semibold text-sm text-gray-900">{t('mesDonnees.droitAccesTitre')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('mesDonnees.droitAccesDescription')}</p>
             </button>
             <button
               onClick={() => exercerDroit('rectification')}
-              aria-label="Demander la rectification de mes données"
+              aria-label={t('mesDonnees.ariaDroitRectification')}
               className="rounded-2xl border-2 p-4 text-left hover:bg-gray-50 transition-colors"
               style={{ borderColor: `${COLOR}30` }}
             >
               <Pencil className="w-5 h-5 mb-2" style={{ color: COLOR }} aria-hidden="true" />
-              <p className="font-semibold text-sm text-gray-900">Rectification</p>
-              <p className="text-xs text-gray-500 mt-0.5">Corriger une erreur</p>
+              <p className="font-semibold text-sm text-gray-900">{t('mesDonnees.droitRectificationTitre')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('mesDonnees.droitRectificationDescription')}</p>
             </button>
             <button
               onClick={() => setShowSuppression(true)}
-              aria-label="Demander la suppression de mon compte, droit à l'oubli"
+              aria-label={t('mesDonnees.ariaDroitSuppression')}
               className="rounded-2xl border-2 p-4 text-left hover:bg-red-50 transition-colors"
               style={{ borderColor: '#FECACA' }}
             >
               <Trash2 className="w-5 h-5 mb-2 text-red-500" aria-hidden="true" />
-              <p className="font-semibold text-sm text-red-600">Suppression</p>
-              <p className="text-xs text-gray-500 mt-0.5">Droit à l'oubli</p>
+              <p className="font-semibold text-sm text-red-600">{t('mesDonnees.droitSuppressionTitre')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('mesDonnees.droitSuppressionDescription')}</p>
             </button>
             <button
               onClick={() => exercerDroit('opposition')}
-              aria-label="S'opposer à un traitement spécifique"
+              aria-label={t('mesDonnees.ariaDroitOpposition')}
               className="rounded-2xl border-2 p-4 text-left hover:bg-gray-50 transition-colors"
               style={{ borderColor: `${COLOR}30` }}
             >
               <Ban className="w-5 h-5 mb-2" style={{ color: COLOR }} aria-hidden="true" />
-              <p className="font-semibold text-sm text-gray-900">Opposition</p>
-              <p className="text-xs text-gray-500 mt-0.5">Refuser un usage</p>
+              <p className="font-semibold text-sm text-gray-900">{t('mesDonnees.droitOppositionTitre')}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t('mesDonnees.droitOppositionDescription')}</p>
             </button>
           </div>
         </motion.section>
@@ -604,22 +591,21 @@ export function MesDonnees() {
           <div className="flex items-start gap-3 mb-4">
             <AlertTriangle className="w-6 h-6 flex-shrink-0 text-red-500" aria-hidden="true" />
             <div>
-              <h3 className="font-bold text-red-700">Supprimer mon compte</h3>
+              <h3 className="font-bold text-red-700">{t('mesDonnees.sectionSuppressionTitre')}</h3>
               <p className="text-xs text-red-600 mt-1 leading-relaxed">
-                Action <span className="font-bold">définitive et irréversible</span>.
-                Ton identité sera anonymisée (téléphone, photo, NIN, adresse purgés).
-                En revanche, <span className="font-bold">ton argent et ton historique de
-                transactions seront conservés</span> — c'est la loi ivoirienne : l'argent est sacré.
+                <Trans i18nKey="mesDonnees.sectionSuppressionDescription"
+                  components={{ gras: <span className="font-bold" /> }}
+                />
               </p>
             </div>
           </div>
           <button
             onClick={() => setShowSuppression(true)}
             className="w-full py-3 rounded-2xl bg-red-500 text-white font-bold flex items-center justify-center gap-2"
-            aria-label="Supprimer définitivement mon compte, avec confirmation"
+            aria-label={t('mesDonnees.ariaSupprimerCompteConfirme')}
           >
             <Trash2 className="w-5 h-5" aria-hidden="true" />
-            Supprimer mon compte
+            {t('mesDonnees.boutonSupprimerMonCompte')}
           </button>
         </motion.section>
 
@@ -630,15 +616,15 @@ export function MesDonnees() {
           onClick={() => setShowPolitique(true)}
           whileTap={{ scale: 0.99 }}
           className="w-full bg-white rounded-3xl border-2 border-gray-100 px-5 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          aria-label="Voir la politique de confidentialité complète"
+          aria-label={t('mesDonnees.ariaVoirPolitiqueComplete')}
         >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${COLOR}15` }}>
               <FileText className="w-5 h-5" style={{ color: COLOR }} aria-hidden="true" />
             </div>
             <div className="text-left">
-              <p className="font-bold text-gray-900">Voir la politique complète</p>
-              <p className="text-xs text-gray-500">Loi ivoirienne n°2013-450 · v1.0</p>
+              <p className="font-bold text-gray-900">{t('mesDonnees.lienVoirPolitiqueTitre')}</p>
+              <p className="text-xs text-gray-500">{t('mesDonnees.lienVoirPolitiqueSousTitre')}</p>
             </div>
           </div>
           <ChevronRight className="w-5 h-5 text-gray-400" aria-hidden="true" />
@@ -646,8 +632,7 @@ export function MesDonnees() {
 
         {/* Mention ANSUT + ICONE */}
         <p className="text-[10px] text-gray-400 text-center leading-relaxed pt-2">
-          JULABA — édité par ICONE Solutions, Abidjan. Projet DGE × ANSUT.
-          Loi ivoirienne n°2013-450 relative à la protection des données à caractère personnel.
+          {t('mesDonnees.mentionAnsut')}
         </p>
       </div>
 

@@ -21,6 +21,13 @@ export function getLangPref(): AppLang {
 
 export function setLangPref(lang: AppLang) {
   localStorage.setItem('julaba_lang', lang);
+  // Bridge i18next (INIT-020) : synchronise l'instance i18next + `<html lang>`.
+  // Import dynamique pour casser la dépendance circulaire potentielle
+  // (i18n/config.ts importe useLangPref pour le type AppLang ; on évite
+  // l'import statique croisé).
+  import('../i18n/config')
+    .then(({ appliquerLangueI18n }) => appliquerLangueI18n(lang))
+    .catch(() => { /* i18n non initialisé (boot asynchrone) — ignore */ });
   window.dispatchEvent(new CustomEvent('julaba:lang-change', { detail: lang }));
 }
 

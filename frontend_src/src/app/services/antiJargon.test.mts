@@ -33,6 +33,8 @@ const EXCLUS = [
   '/services/backoffice-api',
   '/pages/AdminRecovery',
   '.test.mts',
+  '.test.tsx',
+  '.vitest.test.', // pilotes Vitest (INIT-021) — même régime que les autres tests
   '.spec.',
 ];
 

@@ -1,5 +1,10 @@
 // backoffice-api.ts — NestJS
 import { API_URL } from '../utils/api';
+// INIT-019 — convergence API : ce service passe par le client centralisé
+// `apiRequest` (timeout 30s, mutex de refresh 401, HttpError typée) au lieu
+// d'appeler `fetch()` en direct. Le jeton BO (sessionStorage) est réinjecté
+// via l'en-tête Authorization par `boApiRequest` ci-dessous.
+import { apiRequest as centralApiRequest } from './api/api-client';
 import type { SousProfilMarchand } from '../types/sousProfilMarchand';
 
 // julaba-web et julaba-api sont sur des DOMAINES différents (Render V2) : le
@@ -65,21 +70,40 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-async function getValidToken(): Promise<string | null> {
-  // Token géré via cookie httpOnly — aucune action nécessaire
-  return null;
+/**
+ * Porte unique vers le client API centralisé : ajoute l'en-tête Authorization
+ * BO (sessionStorage) puis délègue à `centralApiRequest` qui gère le timeout,
+ * le mutex de rafraîchissement 401 et la sérialisation JSON.
+ */
+async function boApiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = getBoAccessToken();
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return centralApiRequest<T>(API_URL, endpoint, { ...options, headers });
 }
 
 async function apiGet(path: string): Promise<any> {
-  const res = await fetch(API_URL + path, { headers: authHeaders(), credentials: 'include' });
-  if (!res.ok) throw new Error(String(res.status));
-  return res.json();
+  return boApiRequest<any>(path);
 }
 
 async function apiPost(path: string, body?: any) {
-  const res = await fetch(API_URL + path, { method: 'POST', headers: authHeaders(), body: body ? JSON.stringify(body) : undefined, credentials: 'include' });
-  if (!res.ok) throw new Error(String(res.status));
-  return res.json();
+  return boApiRequest<any>(path, {
+    method: 'POST',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+async function apiPatch(path: string, body?: any) {
+  return boApiRequest<any>(path, {
+    method: 'PATCH',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+async function apiDelete(path: string) {
+  return boApiRequest<any>(path, { method: 'DELETE' });
 }
 
 /** Normalise un identifiant BO saisi (téléphone CIV ou e-mail) pour les appels WebAuthn ou login. */
@@ -125,6 +149,10 @@ export async function boLogin(
     };
   }
 
+  // INIT-019 — fetch() légitime : login BO avec gestion d'erreur spéciale
+  // (attemptsRemaining, httpStatus, message du corps sur 4xx). `centralApiRequest`
+  // lèverait une HttpError générique et perdrait ces informations utilisées par
+  // l'écran de login pour afficher « il reste N tentatives ».
   const res = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -159,19 +187,25 @@ export async function boLogin(
 }
 
 export async function boGetMe(): Promise<BOUser> {
-  const res = await fetch(`${API_URL}/auth/me`, { headers: authHeaders(), credentials: 'include' });
-  return handleResponse(res);
+  return boApiRequest<BOUser>('/auth/me');
 }
 
 export async function boGetContactsRecoveryBo(signal?: AbortSignal): Promise<{
   contacts: Array<{ id: string; firstName: string; lastName: string; phone: string }>;
 }> {
-  const res = await fetch(`${API_URL}/auth/contacts-recovery-bo`, { signal });
-  if (!res.ok) throw new Error(String(res.status));
-  return res.json() as Promise<{ contacts: Array<{ id: string; firstName: string; lastName: string; phone: string }> }>;
+  // INIT-019 — endpoint public (pas d'en-tête Authorization) : on appelle
+  // directement `centralApiRequest` sans la wrapper BO.
+  return centralApiRequest<{ contacts: Array<{ id: string; firstName: string; lastName: string; phone: string }> }>(
+    API_URL,
+    '/auth/contacts-recovery-bo',
+    { signal },
+  );
 }
 
 export async function boWebAuthnAuthenticateOptions(phone: string, signal?: AbortSignal): Promise<Record<string, unknown> & { userId?: string; error?: string }> {
+  // INIT-019 — fetch() légitime : la réponse est lue même sur !res.ok pour
+  // extraire `error` (champ métier WebAuthn). `centralApiRequest` jette sur
+  // !res.ok et perdrait ce champ.
   const res = await fetch(`${API_URL}/auth/webauthn/authenticate/options`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -191,6 +225,8 @@ export async function boWebAuthnAuthenticateVerify(
   webauthnResponse: Record<string, unknown>,
   signal?: AbortSignal,
 ): Promise<{ verified: boolean; user?: BOUser; error?: string }> {
+  // INIT-019 — fetch() légitime : renvoie un payload `{ verified, error }` même
+  // sur !res.ok (échec biométrique attendu, pas une exception).
   const res = await fetch(`${API_URL}/auth/webauthn/authenticate/verify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -433,15 +469,14 @@ export async function boGetActeurs(params?: {
   if (params?.region && params.region !== 'all') q.set('region', params.region);
   if (params?.statut && params.statut !== 'all') q.set('statut', params.statut);
 
-  const res = await fetch(`${API_URL}/users?${q}`, { headers: authHeaders(), credentials: 'include' });
-
-  if (!res.ok) {
-    const errorBody = await res.text().catch(() => '');
-    console.error('[boGetActeurs] HTTP error:', res.status, res.statusText, errorBody);
-    throw new Error(`boGetActeurs HTTP ${res.status}: ${res.statusText}`);
+  let raw: any;
+  try {
+    raw = await boApiRequest<any>(`/users?${q}`);
+  } catch (err) {
+    console.error('[boGetActeurs] HTTP error:', err);
+    throw err;
   }
 
-  const raw = await res.json();
   const list = raw.users || raw.data || (Array.isArray(raw) ? raw : []);
   const mapped = list.map((u: any) => ({
     ...u,
@@ -501,18 +536,15 @@ function normalizeRoleCounts(data: Partial<RoleCounts> | null | undefined): Role
 }
 
 async function fetchRoleCounts(signal?: AbortSignal): Promise<RoleCounts> {
-  const res = await fetch(`${API_URL}/users/counts-by-role`, {
-    headers: authHeaders(),
-    credentials: 'include',
-    signal,
-  });
-
-  if (!res.ok) return DEFAULT_ROLE_COUNTS;
-
-  const counts = normalizeRoleCounts(await res.json());
-  roleCountsCache = counts;
-  roleCountsCacheAt = Date.now();
-  return counts;
+  try {
+    const counts = await boApiRequest<Partial<RoleCounts>>('/users/counts-by-role', { signal });
+    const normalized = normalizeRoleCounts(counts);
+    roleCountsCache = normalized;
+    roleCountsCacheAt = Date.now();
+    return normalized;
+  } catch {
+    return DEFAULT_ROLE_COUNTS;
+  }
 }
 
 export async function boGetActeurCounts(signal?: AbortSignal, force = false): Promise<RoleCounts> {
@@ -532,8 +564,7 @@ export async function boGetActeurCounts(signal?: AbortSignal, force = false): Pr
 }
 
 export async function boGetActeur(id: string): Promise<Acteur> {
-  const res = await fetch(`${API_URL}/users/${id}`, { headers: authHeaders(), credentials: 'include' });
-  const u = await handleResponse<Record<string, any>>(res);
+  const u = await boApiRequest<Record<string, any>>(`/users/${id}`);
   return {
     ...u,
     activite: u.activity || u.activite || '',
@@ -550,23 +581,17 @@ export async function boGetActeur(id: string): Promise<Acteur> {
 }
 
 export async function boCreateActeur(data: Partial<Acteur> & { password: string }): Promise<Acteur> {
-  const res = await fetch(`${API_URL}/users`, {
+  return boApiRequest<Acteur>('/users', {
     method: 'POST',
-    headers: authHeaders(),
-    credentials: 'include',
     body: JSON.stringify(data),
   });
-  return handleResponse(res);
 }
 
 export async function boUpdateActeur(id: string, data: Partial<Acteur>): Promise<Acteur> {
-  const res = await fetch(`${API_URL}/users/${id}`, {
+  return boApiRequest<Acteur>(`/users/${id}`, {
     method: 'PATCH',
-    headers: authHeaders(),
-    credentials: 'include',
     body: JSON.stringify(data),
   });
-  return handleResponse(res);
 }
 
 export async function boChangeSousProfilMarchand(
@@ -574,13 +599,10 @@ export async function boChangeSousProfilMarchand(
   sousProfilMarchand: 'grossiste' | 'demi_grossiste' | 'detaillant',
   motif?: string,
 ): Promise<{ id: string; sousProfilMarchand: string; message: string }> {
-  const res = await fetch(`${API_URL}/users/${id}/sous-profil`, {
+  return boApiRequest<{ id: string; sousProfilMarchand: string; message: string }>(`/users/${id}/sous-profil`, {
     method: 'PATCH',
-    headers: authHeaders(),
-    credentials: 'include',
     body: JSON.stringify({ sousProfilMarchand, motif: motif || undefined }),
   });
-  return handleResponse(res);
 }
 
 export async function boToggleActeur(id: string, is_active: boolean): Promise<Acteur> {
@@ -588,28 +610,20 @@ export async function boToggleActeur(id: string, is_active: boolean): Promise<Ac
 }
 
 export async function boDeleteActeur(id: string): Promise<void> {
-  const res = await fetch(`${API_URL}/users/${id}`, {
-    method: 'DELETE',
-    headers: authHeaders(),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message || `Erreur ${res.status}`);
-  }
+  await boApiRequest<unknown>(`/users/${id}`, { method: 'DELETE' });
 }
 
 export async function boSoftDeleteActeur(id: string): Promise<{ success: boolean }> {
+  // INIT-019 — `centralApiRequest` applique déjà un timeout 30s ; on garde un
+  // AbortController de 20s pour conserver le message historique en cas de coupure.
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 20000);
 
   try {
-    const res = await fetch(`${API_URL}/users/${id}`, {
+    const data = await boApiRequest<Partial<{ success: boolean }>>(`/users/${id}`, {
       method: 'DELETE',
-      headers: authHeaders(),
-      credentials: 'include',
       signal: controller.signal,
     });
-    const data = await handleResponse<Partial<{ success: boolean }>>(res);
     return { success: data.success ?? true };
   } catch (err) {
     if ((err as any)?.name === 'AbortError') {
@@ -641,9 +655,7 @@ export async function boGetTransactions(params?: {
     if (params?.date_to) q.set('date_to', params.date_to);
     if (params?.statut) q.set('statut', params.statut);
     if (params?.region) q.set('region', params.region);
-    const res = await fetch(`${API_URL}/transactions/all?${q}`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { data: [], total: 0 };
-    const raw = await res.json();
+    const raw = await boApiRequest<any>(`/transactions/all?${q}`);
     const data = Array.isArray(raw) ? raw : (raw.data || []);
     return { data, total: raw.meta?.total || raw.total || data.length };
   } catch {
@@ -678,19 +690,18 @@ export async function boUpdateTransactionStatus(
   statut: TransactionStatusValue,
   motif?: string,
 ): Promise<{ id: string; statut: TransactionStatusValue; motif: string | null }> {
-  const res = await fetch(`${API_URL}/transactions/${id}`, {
+  return boApiRequest<{ id: string; statut: TransactionStatusValue; motif: string | null }>(`/transactions/${id}`, {
     method: 'PATCH',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify({ statut, motif }),
   });
-  return handleResponse(res);
 }
 
 export async function boExportTransactions(
   format: 'csv' | 'xlsx' | 'pdf',
   filters?: { date_from?: string; date_to?: string; statut?: string; region?: string },
 ): Promise<Blob> {
+  // INIT-019 — fetch() légitime : la réponse est un Blob binaire (xlsx/pdf/csv),
+  // pas du JSON. `centralApiRequest` ferait `.json()` et échouerait.
   const url = new URL(`${API_URL}/transactions/export`);
   url.searchParams.set('format', format);
   if (filters?.date_from) url.searchParams.set('date_from', filters.date_from);
@@ -711,41 +722,27 @@ export async function boGetTransactionsGeoAggregation(
   filters?: { date_from?: string; date_to?: string },
   signal?: AbortSignal,
 ): Promise<TransactionsGeoAggregationItem[]> {
-  const url = new URL(`${API_URL}/transactions/geo-aggregation`);
-  if (filters?.date_from) url.searchParams.set('date_from', filters.date_from);
-  if (filters?.date_to) url.searchParams.set('date_to', filters.date_to);
-
-  const res = await fetch(url.toString(), {
-    method: 'GET',
-    headers: authHeaders(),
-    credentials: 'include',
-    signal,
-  });
-  return handleResponse(res);
+  const params = new URLSearchParams();
+  if (filters?.date_from) params.set('date_from', filters.date_from);
+  if (filters?.date_to) params.set('date_to', filters.date_to);
+  const qs = params.toString();
+  return boApiRequest<TransactionsGeoAggregationItem[]>(`/transactions/geo-aggregation${qs ? `?${qs}` : ''}`, { signal });
 }
 
 export async function boGetTransactionsByActeurGeo(
   filters?: { date_from?: string; date_to?: string },
   signal?: AbortSignal,
 ): Promise<TransactionsActeurGeoItem[]> {
-  const url = new URL(`${API_URL}/transactions/by-acteur-geo`);
-  if (filters?.date_from) url.searchParams.set('date_from', filters.date_from);
-  if (filters?.date_to) url.searchParams.set('date_to', filters.date_to);
-
-  const res = await fetch(url.toString(), {
-    method: 'GET',
-    headers: authHeaders(),
-    credentials: 'include',
-    signal,
-  });
-  return handleResponse(res);
+  const params = new URLSearchParams();
+  if (filters?.date_from) params.set('date_from', filters.date_from);
+  if (filters?.date_to) params.set('date_to', filters.date_to);
+  const qs = params.toString();
+  return boApiRequest<TransactionsActeurGeoItem[]>(`/transactions/by-acteur-geo${qs ? `?${qs}` : ''}`, { signal });
 }
 
 export async function boGetCooperatives(): Promise<Cooperative[]> {
   try {
-    const res = await fetch(`${API_URL}/institutions`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await boApiRequest<any>('/institutions');
     return data.institutions || data.data || data || [];
   } catch {
     return [];
@@ -753,35 +750,26 @@ export async function boGetCooperatives(): Promise<Cooperative[]> {
 }
 
 export async function boGetCooperative(id: string): Promise<Cooperative> {
-  const res = await fetch(`${API_URL}/institutions/${id}`, { headers: authHeaders(), credentials: 'include' });
-  return handleResponse(res);
+  return boApiRequest<Cooperative>(`/institutions/${id}`);
 }
 
 export async function boCreateCooperative(data: Partial<Cooperative>): Promise<Cooperative> {
-  const res = await fetch(`${API_URL}/institutions`, {
+  return boApiRequest<Cooperative>('/institutions', {
     method: 'POST',
-    headers: authHeaders(),
-    credentials: 'include',
     body: JSON.stringify(data),
   });
-  return handleResponse(res);
 }
 
 export async function boUpdateCooperative(id: string, data: Partial<Cooperative>): Promise<Cooperative> {
-  const res = await fetch(`${API_URL}/institutions/${id}`, {
+  return boApiRequest<Cooperative>(`/institutions/${id}`, {
     method: 'PATCH',
-    headers: authHeaders(),
-    credentials: 'include',
     body: JSON.stringify(data),
   });
-  return handleResponse(res);
 }
 
 export async function boGetDashboard(): Promise<DashboardStats> {
   try {
-    const res = await fetch(`${API_URL}/users`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { total_acteurs: 0, total_transactions: 0, total_cooperatives: 0, montant_total: 0, nouveaux_acteurs_semaine: 0 };
-    const data = await res.json();
+    const data = await boApiRequest<any>('/users');
     const users = Array.isArray(data) ? data : (data.data || data.users || []);
     const total = typeof data.total === 'number' ? data.total : users.length;
     const weekMs = 7 * 24 * 60 * 60 * 1000;
@@ -811,79 +799,44 @@ export async function boGetDashboard(): Promise<DashboardStats> {
 
 export async function boGetRapports() {
   try {
-    const res = await fetch(`${API_URL}/rapport/rapports`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { rapports: [], total: 0 };
-    return res.json();
+    return await boApiRequest<any>('/rapport/rapports');
   } catch { return { rapports: [], total: 0 }; }
 }
 
 export async function boGetModeration() {
   try {
-    const res = await fetch(`${API_URL}/rapport/moderation`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { signalements: [], total: 0 };
-    return res.json();
+    return await boApiRequest<any>('/rapport/moderation');
   } catch { return { signalements: [], total: 0 }; }
 }
 
 export async function boGetLivraison() {
   try {
-    const res = await fetch(`${API_URL}/commandes`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { livraisons: [], total: 0 };
-    return res.json();
+    return await boApiRequest<any>('/commandes');
   } catch { return { livraisons: [], total: 0 }; }
 }
 
 export async function boGetCommunication() {
   try {
-    const res = await fetch(`${API_URL}/notifications`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { messages: [], campagnes: [] };
-    return res.json();
+    return await boApiRequest<any>('/notifications');
   } catch { return { messages: [], campagnes: [] }; }
 }
 
 export async function boGetCron() {
   try {
-    const res = await fetch(`${API_URL}/rapport/cron`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { jobs: [] };
-    return res.json();
+    return await boApiRequest<any>('/rapport/cron');
   } catch { return { jobs: [] }; }
 }
 
 export async function boGetAnalytics() {
   try {
-    const res = await fetch(`${API_URL}/rapport/analytics`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { total_users: 0, by_role: [], daily_active: [], funnel: [] };
-    return res.json();
+    return await boApiRequest<any>('/rapport/analytics');
   } catch { return { total_users: 0, by_role: [], daily_active: [], funnel: [] }; }
 }
 
 export async function boGetMonitoring() {
   try {
-    const res = await fetch(`${API_URL}/rapport/monitoring`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { services: [] };
-    return res.json();
+    return await boApiRequest<any>('/rapport/monitoring');
   } catch { return { services: [] }; }
-}
-
-async function apiRequest(path: string, options: RequestInit = {}) {
-  const token = await getValidToken();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (token) (headers as any)["Authorization"] = "Bearer " + token;
-  const res = await fetch(API_URL + path, { ...options, headers, credentials: "include" });
-  if (!res.ok) throw new Error(String(res.status));
-  return res.json().catch(() => ({}));
-}
-
-async function apiPatch(path: string, body?: any) {
-  const token = await getValidToken();
-  const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (token) (headers as any)["Authorization"] = "Bearer " + token;
-  const res = await fetch(API_URL + path, { method: "PATCH", headers, credentials: "include", body: body ? JSON.stringify(body) : undefined });
-  if (!res.ok) throw new Error(String(res.status));
-  return res.json();
-}
-async function apiDelete(path: string) {
-  return apiRequest(path, { method: 'DELETE' });
 }
 
 // ── Zones ─────────────────────────────────────────────────────
@@ -1114,42 +1067,25 @@ export type AdminEnAttente = {
 };
 
 export async function boCreateAdmin(payload: BoCreateAdminPayload): Promise<BoCreateAdminResult> {
-  const res = await fetch(`${API_URL}/users/admin`, {
+  return boApiRequest<BoCreateAdminResult>('/users/admin', {
     method: 'POST',
-    headers: authHeaders(),
-    credentials: 'include',
     body: JSON.stringify(payload),
   });
-  return handleResponse<BoCreateAdminResult>(res);
 }
 
 export async function boGetAdminsEnAttente(signal?: AbortSignal): Promise<AdminEnAttente[]> {
-  const res = await fetch(`${API_URL}/users/admin/pending`, {
-    method: 'GET',
-    headers: authHeaders(),
-    credentials: 'include',
-    signal,
-  });
-  return handleResponse<AdminEnAttente[]>(res);
+  return boApiRequest<AdminEnAttente[]>('/users/admin/pending', { signal });
 }
 
 export async function boValidateAdmin(userId: string): Promise<BoCreateAdminResult> {
-  const res = await fetch(`${API_URL}/users/admin/${userId}/validate`, {
-    method: 'POST',
-    headers: authHeaders(),
-    credentials: 'include',
-  });
-  return handleResponse<BoCreateAdminResult>(res);
+  return boApiRequest<BoCreateAdminResult>(`/users/admin/${userId}/validate`, { method: 'POST' });
 }
 
 export async function boRejectAdmin(userId: string, motif: string): Promise<BoCreateAdminResult> {
-  const res = await fetch(`${API_URL}/users/admin/${userId}/reject`, {
+  return boApiRequest<BoCreateAdminResult>(`/users/admin/${userId}/reject`, {
     method: 'POST',
-    headers: authHeaders(),
-    credentials: 'include',
     body: JSON.stringify({ motif }),
   });
-  return handleResponse<BoCreateAdminResult>(res);
 }
 
 /** Payload POST /users/backoffice/create (Phase 4A bis-0). */
@@ -1211,14 +1147,11 @@ export async function boCreateBackofficeUser(
   payload: CreateBackofficeUserPayload,
   signal?: AbortSignal,
 ): Promise<CreateBackofficeUserResult> {
-  const res = await fetch(`${API_URL}/users/backoffice/create`, {
+  return boApiRequest<CreateBackofficeUserResult>('/users/backoffice/create', {
     method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(payload),
     signal,
   });
-  return handleResponse<CreateBackofficeUserResult>(res);
 }
 
 export interface DuplicateGroup {
@@ -1261,9 +1194,7 @@ export type FlagResolutionAction = 'avertissement' | 'suspendre' | 'bannir' | 'r
 
 export async function boGetDuplicates(): Promise<{ count: number; groups: DuplicateGroup[] }> {
   try {
-    const res = await fetch(`${API_URL}/users/duplicates`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { count: 0, groups: [] };
-    return await res.json();
+    return await boApiRequest<{ count: number; groups: DuplicateGroup[] }>('/users/duplicates');
   } catch {
     return { count: 0, groups: [] };
   }
@@ -1274,15 +1205,10 @@ export async function boGetUserFlags(
   signal?: AbortSignal,
 ): Promise<{ count: number; items: UserFlagItem[] }> {
   const resolved = typeof resolvedOrFilters === 'boolean' ? resolvedOrFilters : resolvedOrFilters?.resolved;
-  const url = new URL(`${API_URL}/users/flags`);
-  if (resolved !== undefined) url.searchParams.set('resolved', String(resolved));
-  const res = await fetch(url.toString(), {
-    method: 'GET',
-    headers: authHeaders(),
-    credentials: 'include',
-    signal,
-  });
-  return handleResponse<{ count: number; items: UserFlagItem[] }>(res);
+  const params = new URLSearchParams();
+  if (resolved !== undefined) params.set('resolved', String(resolved));
+  const qs = params.toString();
+  return boApiRequest<{ count: number; items: UserFlagItem[] }>(`/users/flags${qs ? `?${qs}` : ''}`, { signal });
 }
 
 export async function boCreateUserFlag(
@@ -1294,14 +1220,11 @@ export async function boCreateUserFlag(
   },
   signal?: AbortSignal,
 ): Promise<{ id: string; flagType: string; raison: string; createdAt: string }> {
-  const res = await fetch(`${API_URL}/users/flags`, {
+  return boApiRequest<{ id: string; flagType: string; raison: string; createdAt: string }>('/users/flags', {
     method: 'POST',
-    headers: authHeaders(),
-    credentials: 'include',
     body: JSON.stringify(payload),
     signal,
   });
-  return handleResponse(res);
 }
 
 export async function boResolveUserFlag(
@@ -1309,13 +1232,10 @@ export async function boResolveUserFlag(
   action: FlagResolutionAction,
   resolutionNote?: string,
 ): Promise<{ id: string; resolved: true; action: string }> {
-  const res = await fetch(`${API_URL}/users/flags/${flagId}/resolve`, {
+  return boApiRequest<{ id: string; resolved: true; action: string }>(`/users/flags/${flagId}/resolve`, {
     method: 'PATCH',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    credentials: 'include',
     body: JSON.stringify({ action, resolutionNote }),
   });
-  return handleResponse<{ id: string; resolved: true; action: string }>(res);
 }
 
 export async function boUpdateBOUserPermissions(id: string, permissions: Record<string, boolean>) {
@@ -1477,14 +1397,12 @@ export async function uploadProfilePhoto(userId: string, file: File): Promise<{
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch(`${API_URL}/users/${userId}/photo`, {
+  // INIT-019 — FormData : `centralApiRequest` détecte `instanceof FormData`
+  // et omet Content-Type (le navigateur pose le boundary multipart).
+  return boApiRequest<{ success: boolean; photoUrl: string; filename: string }>(`/users/${userId}/photo`, {
     method: 'POST',
     body: formData,
-    credentials: 'include',
-    // Ne pas mettre Content-Type: le navigateur le gere automatiquement avec boundary
   });
-
-  return handleResponse<{ success: boolean; photoUrl: string; filename: string }>(res);
 }
 
 /**
@@ -1498,13 +1416,10 @@ export async function updateUserProfile(userId: string, data: {
   region?: string;
   commune?: string;
 }): Promise<any> {
-  const res = await fetch(`${API_URL}/users/${userId}`, {
+  return boApiRequest<any>(`/users/${userId}`, {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  return handleResponse(res);
 }
 
 /**
@@ -1520,35 +1435,21 @@ export async function getMySessions(): Promise<{
     isCurrent: boolean;
   }>;
 }> {
-  const res = await fetch(`${API_URL}/auth/sessions`, {
-    headers: authHeaders(),
-    credentials: 'include',
-  });
-  return handleResponse(res);
+  return boApiRequest<{ sessions: Array<{ id: string; deviceInfo: string; ipAddress: string; createdAt: string; expiresAt: string; isCurrent: boolean; }> }>('/auth/sessions');
 }
 
 /**
  * Revoque une session specifique (deconnecte un appareil)
  */
 export async function revokeSession(sessionId: string): Promise<{ success: boolean }> {
-  const res = await fetch(`${API_URL}/auth/sessions/${sessionId}`, {
-    method: 'DELETE',
-    headers: authHeaders(),
-    credentials: 'include',
-  });
-  return handleResponse(res);
+  return boApiRequest<{ success: boolean }>(`/auth/sessions/${sessionId}`, { method: 'DELETE' });
 }
 
 /**
  * Revoque toutes les sessions sauf la session courante.
  */
 export async function revokeAllSessions(): Promise<{ success: boolean }> {
-  const res = await fetch(`${API_URL}/auth/sessions`, {
-    method: 'DELETE',
-    headers: authHeaders(),
-    credentials: 'include',
-  });
-  return handleResponse(res);
+  return boApiRequest<{ success: boolean }>('/auth/sessions', { method: 'DELETE' });
 }
 
 /**
@@ -1566,11 +1467,7 @@ export async function getMyLogs(limit = 10): Promise<{
   }>;
   total: number;
 }> {
-  const res = await fetch(`${API_URL}/audit/me?limit=${limit}`, {
-    headers: authHeaders(),
-    credentials: 'include',
-  });
-  return handleResponse(res);
+  return boApiRequest<{ logs: Array<{ id: string; action: string; entite: string; entite_id: string; ip: string; details: any; created_at: string; }>; total: number }>(`/audit/me?limit=${limit}`);
 }
 
 /**
@@ -1582,12 +1479,9 @@ export async function updateUserPreferences(prefs: {
   emailNotifications?: boolean;
   pushNotifications?: boolean;
 }): Promise<{ success: boolean; preferences: Record<string, any> }> {
-  const res = await fetch(`${API_URL}/auth/preferences`, {
+  return boApiRequest<{ success: boolean; preferences: Record<string, any> }>('/auth/preferences', {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify(prefs),
-    credentials: 'include',
   });
-  return handleResponse(res);
 }
 

@@ -11,6 +11,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Crown, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
 import { API_URL } from '../utils/api';
+import { apiRequest, HttpError } from '../services/api/api-client';
 
 export default function CreateSuperAdmin() {
   const [phone, setPhone] = useState('0700000001');
@@ -27,28 +28,22 @@ export default function CreateSuperAdmin() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/auth/create-super-admin`, { credentials: 'include',
+      // INIT-019 — passe par le client centralisé.
+      await apiRequest<unknown>(API_URL, '/auth/create-super-admin', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ phone, password, firstName, lastName })
+        body: JSON.stringify({ phone, password, firstName, lastName }),
       });
-
-      const result = await response.json();
-
-      if (!response.ok || result.error) {
-        const errorMsg = result.details 
-          ? `${result.error}: ${result.details}` 
-          : result.error || 'Erreur lors de la création';
-        setError(errorMsg);
-        setIsLoading(false);
-        return;
-      }
-
       setSuccess(true);
     } catch (err) {
-      setError(`Erreur de connexion au serveur: ${err instanceof Error ? err.message : 'Inconnu'}`);
+      if (err instanceof HttpError) {
+        const body = (err.body as any) || {};
+        const errorMsg = body.details
+          ? `${body.error || err.message}: ${body.details}`
+          : body.error || err.message || 'Erreur lors de la création';
+        setError(errorMsg);
+      } else {
+        setError(`Erreur de connexion au serveur: ${err instanceof Error ? err.message : 'Inconnu'}`);
+      }
     } finally {
       setIsLoading(false);
     }

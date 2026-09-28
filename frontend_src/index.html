@@ -18,6 +18,32 @@
     <link rel="manifest" href="/manifest.json" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!--
+      ATTRIBUT `lang` DYNAMIQUE (INIT-020) :
+      La valeur par défaut `fr` ci-dessus reste la source de vérité initiale
+      (HTML statique, lisible par les robots et les lecteurs d'écran AVANT le
+      boot React). Au démarrage, `i18n/config.ts → initI18n()` lit
+      `localStorage['julaba_lang']` et met à jour
+      `document.documentElement.lang` avec le code ISO 639 correspondant
+      (`fr` / `dyu` / `bm`). À chaque changement de langue via `useLangPref`,
+      `appliquerLangueI18n()` met aussi à jour cet attribut (a11y — les
+      lecteurs d'écran s'appuient dessus pour la prononciation).
+    -->
+    <script>
+      // Pré-charge la langue préférée AVANT le boot React pour éviter un
+      // flash `<html lang="fr">` → `<html lang="dyu">` qui désorienterait les
+      // lecteurs d'écran au démarrage. Sans ce script, l'attribut resterait
+      // `fr` jusqu'au 1er render React (~300 ms après le parse HTML).
+      (function () {
+        try {
+          var lang = localStorage.getItem('julaba_lang');
+          var mapping = { french: 'fr', dioula: 'dyu', bambara: 'bm' };
+          if (lang && mapping[lang]) {
+            document.documentElement.lang = mapping[lang];
+          }
+        } catch (_e) { /* ignore — localStorage indisponible ou quota dépassé */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

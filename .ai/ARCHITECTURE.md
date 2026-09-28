@@ -105,8 +105,8 @@ frontend_src/
 |  |  |  +- AppContext.tsx        # ATTENTION : God context 1351 LOC (dette)
 |  |  +- hooks/                   # 24 hooks
 |  |  +- components/
-|  |  |  +- ui/                   # shadcn local (16 composants)
-|  |  |  +- backoffice/universal/ # 2e DS parallele (22 Universal*BO)
+|  |  |  +- ui/                   # shadcn local — primitives (16 composants)
+|  |  |  +- backoffice/universal/ # composites BO — couche au-dessus de ui/ (13 Universal*BO)
 |  |  |  +- ...
 |  |  +- services/api/            # 26 services API types
 |  |  +- types/                   # julaba.types.ts (879 LOC)
@@ -119,7 +119,7 @@ frontend_src/
 |  +- voix/                        # 137 clips mp3 Tata (~7 Mo pre-caches)
 +- e2e/                             # 7 scripts Playwright .mjs
 +- scripts/                         # 8 garde-fous .mjs
-+- tests/                           # 74 tests .test.mts (sans framework)
++- tests/                           # 74 tests .test.mts (tsx legacy) + 3 pilotes .vitest.test.* (Vitest, INIT-021)
 ```
 
 ### Arbre de 16 providers (dette perf + DX)
@@ -225,13 +225,12 @@ ThemeProvider
 ## 8. Dette structurelle majeure (top 10)
 
 1. **God context `AppContext.tsx`** (1351 LOC) + 16 providers imbriques.
-2. **2 design systems BO paralleles** (`components/ui/*` + `components/backoffice/universal/Universal*BO`).
-3. **Typage faible massif** : 476 `any` back + 787 `any` front.
-4. **SQL brut massif** : 592 `manager.query()` back.
-5. **`DbInitService` redondant avec migrations** (765 LOC) -- ADR-0002 documente la convergence.
-6. **`database/init.sql` obsolete** (vestige pre-migrations, dangereux si execute).
-7. **Dependances frontend parasites** dans `backend/package.json` (`@capacitor/cli`, `react-router`).
-8. **3 doctrines schema paralleles** (SCHEMA-01/02/03 P1 OUVERT).
+2. **Typage faible massif** : 476 `any` back + 787 `any` front.
+3. **SQL brut massif** : 592 `manager.query()` back.
+4. **`DbInitService` redondant avec migrations** (765 LOC) -- ADR-0002 documente la convergence.
+5. **`database/init.sql` obsolete** (vestige pre-migrations, dangereux si execute).
+6. **Dependances frontend parasites** dans `backend/package.json` (`@capacitor/cli`, `react-router`).
+7. **3 doctrines schema paralleles** (SCHEMA-01/02/03 P1 OUVERT).
 
 > FERME (INIT-011) : « 2 controleurs dupliques » (`cycles-rest` + `producteur/cycles`,
 > `recoltes-rest` + `producteur/recoltes`) -- les controleurs `producteur/` etaient
@@ -246,6 +245,24 @@ ThemeProvider
 > `CATALOGUE` TS est supprime ; le `CatalogueController` subsiste comme wrapper
 > mince qui delegue au service en preservant le contrat API public
 > (`GET /catalogue`, `GET /catalogue/categories`). Voir `DEBT_REPORT.md` ARCH-NEW-2.
+
+> FERMÉ (INIT-018, 2026-09-29) : « 2 design systems BO parallèles » — les 6
+> composants `Universal*BO` morts ont été supprimés (`UniversalSearchBarBO`,
+> `UniversalFilterPanelBO`, `UniversalBadgeBO`, `UniversalAvatarBO`,
+> `UniversalTableBO`, `UniversalToastBO` — 1 739 lignes). Les 13 composites BO
+> restants consomment déjà les primitives shadcn de `components/ui/` : le DS est
+> unique avec deux couches (primitives + composites BO). Voir
+> `frontend_src/src/app/components/backoffice/universal/MIGRATION_GUIDE.md` et
+> `DEBT_REPORT.md` FRONT-NEW-2.
+
+> FERME (INIT-020, PARTIEL) : « i18n absente — `useLangPref` expose 3 langues mais
+> chaînes UI hardcoded FR » (FRONT-NEW-5). Infrastructure posée :
+> `i18next@^23.16` + `react-i18next@^14.1` + `frontend_src/src/app/i18n/` (config
+> + 3 locales JSON). Bridge `useLangPref ↔ i18n` + `<html lang>` dynamique.
+> 3 écrans migrés (`MesDonnees`, `Welcome`, `EntryGate`). Backlog : `POSCaisse`,
+> `LoginPassword`, `UniversalParametres` (effort L chacun). Traductions
+> `dioula.json` / `bambara.json` = PLACEHOLDERS à finaliser par locuteur natif.
+> Voir `frontend_src/src/app/i18n/README.md`.
 
 ## 9. Forces architecturales remarquables
 

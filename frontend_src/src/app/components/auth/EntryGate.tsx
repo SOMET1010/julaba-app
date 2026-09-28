@@ -14,6 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { useUser } from '../../contexts/UserContext';
 import { useApp } from '../../contexts/AppContext';
 import { normalizeRole, ROLE_ROUTES, isKnownRole, isBORole } from '../../types/constants';
@@ -30,6 +31,7 @@ const STORAGE_KEYS = {
 };
 
 export function EntryGate() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useUser();
   const { user: appUser } = useApp();
@@ -91,7 +93,7 @@ export function EntryGate() {
     // Cas rôle inconnu : logout forcé + toast (anti état zombie post-auth)
     if (!isKnownRole(userRole)) {
       console.warn('[EntryGate] unknown role detected:', userRole);
-      toast.error('Rôle utilisateur non reconnu. Reconnexion requise.');
+      toast.error(t('entryGate.erreurRoleInconnu'));
       // Tentative logout via event global (BackOffice/AppContext écoutent)
       window.dispatchEvent(new CustomEvent('julaba:force-logout'));
       // Fallback navigation immédiate vers login
@@ -140,7 +142,7 @@ export function EntryGate() {
           className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"
           aria-hidden="true"
         ></div>
-        <p className="text-white text-xl font-bold">Chargement...</p>
+        <p className="text-white text-xl font-bold">{t('entryGate.chargement')}</p>
       </div>
     </div>
   );

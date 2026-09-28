@@ -4,8 +4,8 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { eventBus, EVENTS } from '../services/eventBus';
-
-const API = '/api/v1';
+import { API_URL } from '../utils/api';
+import { apiRequest } from '../services/api/api-client';
 
 export interface RealtimeStats {
   total_acteurs: number;
@@ -66,9 +66,8 @@ const IDLE_INTERVAL = 30000;
 const ACTIVITY_MAX = 50;
 
 async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(API + path, { credentials: 'include' });
-  if (!res.ok) throw new Error(String(res.status));
-  return res.json();
+  // INIT-019 — passe par le client centralisé.
+  return apiRequest<T>(API_URL, path);
 }
 
 export function useRealtime(enabled = true) {

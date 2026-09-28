@@ -4,6 +4,7 @@ import {
 } from '@simplewebauthn/browser';
 import { API_URL } from '../utils/api';
 import { appelerAuth } from '../services/api/auth-api';
+import { apiRequest, HttpError } from '../services/api/api-client';
 
 /**
  * API-01b — LA SESSION QUI EXPIRE NE DOIT PAS ACCUSER LA MARCHANDE.
@@ -105,22 +106,33 @@ export async function registerWebAuthn(): Promise<EtatBiometrie> {
 
 export async function authenticateWebAuthn(phone: string): Promise<{ success: boolean; user?: any; accessToken?: string; refreshToken?: string; error?: string }> {
   try {
-    const optRes = await fetch(`${API_URL}/auth/webauthn/authenticate/options`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone }),
-    });
-    if (!optRes.ok) return { success: false, error: 'Erreur options' };
-    const { userId, ...options } = await optRes.json();
+    // INIT-019 — passe par le client centralisé. Sur !res.ok, l'ancien code
+    // renvoyait `{ success: false, error: 'Erreur options' }` sans lire le
+    // corps : on préserve ce comportement via catch HttpError.
+    let optionsJson: any;
+    try {
+      optionsJson = await apiRequest<any>(API_URL, '/auth/webauthn/authenticate/options', {
+        method: 'POST',
+        body: JSON.stringify({ phone }),
+      });
+    } catch {
+      return { success: false, error: 'Erreur options' };
+    }
+    const { userId, ...options } = optionsJson;
     const authResponse = await startAuthentication({ optionsJSON: options });
-    const verRes = await fetch(`${API_URL}/auth/webauthn/authenticate/verify`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ response: authResponse, userId }),
-    });
-    const verData = await verRes.json();
+    // Pour verify : on lit le corps même sur !res.ok (échec biométrique attendu).
+    let verData: any;
+    try {
+      verData = await apiRequest<any>(API_URL, '/auth/webauthn/authenticate/verify', {
+        method: 'POST',
+        body: JSON.stringify({ response: authResponse, userId }),
+      });
+    } catch (err) {
+      // INIT-019 — sur !res.ok, l'ancien code lisait quand même `verData.verified`.
+      // On récupère le corps via `HttpError.body` pour préserver ce comportement.
+      if (err instanceof HttpError) verData = (err.body as any) || {};
+      else throw err;
+    }
     // On remonte AUSSI les jetons (mobile : cookies cross-domaine bloqués) pour
     // que handleBiometric les stocke -> les requêtes suivantes restent authentifiées.
     if (verData.verified) return { success: true, user: verData.user, accessToken: verData.accessToken, refreshToken: verData.refreshToken };

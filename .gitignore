@@ -40,3 +40,6 @@ erreur.txt
 # Build frontend versionne par erreur (la source est dans frontend_src/, build via frontend_src/Dockerfile)
 frontend/
 frontend_src/tsconfig.tsbuildinfo
+
+# Rapports de coverage Vitest (INIT-021) — artefacts de build, jamais committés
+frontend_src/coverage/

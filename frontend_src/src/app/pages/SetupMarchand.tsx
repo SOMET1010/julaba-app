@@ -11,6 +11,7 @@ import {
   AlertCircle, Info, Copy, CheckCheck, ShieldCheck
 } from 'lucide-react';
 import { API_URL } from '../utils/api';
+import { apiRequest, HttpError } from '../services/api/api-client';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -74,22 +75,13 @@ export default function SetupMarchand() {
 
     // Test 1 : Health check
     try {
-      const res = await fetch(`${API_URL}/health`, { credentials: 'include',
-        headers: { }
+      const data = await apiRequest<any>(API_URL, '/health');
+      updateTest(0, {
+        status: 'success',
+        message: 'Edge Function accessible',
+        details: `Backend NestJS connecté`
       });
-      const data = await res.json();
-      if (res.ok) {
-        updateTest(0, {
-          status: 'success',
-          message: 'Edge Function accessible',
-          details: `Backend NestJS connecté`
-        });
-      } else {
-        updateTest(0, { status: 'error', message: 'Edge Function inaccessible', details: JSON.stringify(data) });
-        setTestRunning(false);
-        setTestDone(true);
-        return;
-      }
+      void data;
     } catch (e: any) {
       updateTest(0, { status: 'error', message: 'Impossible de joindre le serveur', details: e.message });
       setTestRunning(false);
@@ -100,11 +92,8 @@ export default function SetupMarchand() {
     // Test 2 : KV Store
     updateTest(1, { status: 'loading', message: 'Test KV...' });
     try {
-      const res = await fetch(`${API_URL}/health`, { credentials: 'include',
-        headers: { }
-      });
-      const data = await res.json();
-      if (res.ok && data.status === 'success') {
+      const data = await apiRequest<any>(API_URL, '/health');
+      if (data.status === 'success') {
         updateTest(1, { status: 'success', message: 'KV Store opérationnel', details: data.kv_test?.message });
       } else {
         updateTest(1, { status: 'error', message: 'Erreur KV Store', details: data.message });
@@ -116,17 +105,16 @@ export default function SetupMarchand() {
     // Test 3 : Table users_julaba via une tentative de login fictive
     updateTest(2, { status: 'loading', message: 'Test table utilisateurs...' });
     try {
-      const res = await fetch(`${API_URL}/auth/login`, { credentials: 'include',
+      // INIT-019 — on s'attend à un 401 (identifiants fictifs) : on lit le corps
+      // de l'erreur via `HttpError.body` pour détecter l'absence de table.
+      await apiRequest<any>(API_URL, '/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ phone: '0000000000', password: 'test_diagnostic_xyz' })
+        body: JSON.stringify({ phone: '0000000000', password: 'test_diagnostic_xyz' }),
       });
-      const data = await res.json();
-      // Si on reçoit "Identifiants incorrects" (401) ou "Profil introuvable" (404), la table existe
-      // Si on reçoit une erreur 500 avec "relation does not exist", la table n'existe pas
-      if (data.details && (data.details.includes('does not exist') || data.details.includes('relation'))) {
+      updateTest(2, { status: 'success', message: 'Table users_julaba accessible', details: 'Réponse inattendue (login réussi?)' });
+    } catch (e: any) {
+      const data = e instanceof HttpError ? (e.body as any) : {};
+      if (data?.details && (data.details.includes('does not exist') || data.details.includes('relation'))) {
         updateTest(2, {
           status: 'error',
           message: 'Table users_julaba inexistante',
@@ -136,24 +124,16 @@ export default function SetupMarchand() {
         updateTest(2, {
           status: 'success',
           message: 'Table users_julaba accessible',
-          details: `Réponse: ${data.error || 'OK'}`
+          details: `Réponse: ${data?.error || e.message || 'OK'}`
         });
       }
-    } catch (e: any) {
-      updateTest(2, { status: 'error', message: 'Erreur réseau', details: e.message });
     }
 
     // Test 4 : Auth NestJS
     updateTest(3, { status: 'loading', message: 'Test NestJS Auth...' });
     try {
-      const res = await fetch(`${API_URL}/health`, { credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      if (res.ok) {
-        updateTest(3, { status: 'success', message: 'Backend NestJS opérationnel', details: 'API connectée' });
-      } else {
-        updateTest(3, { status: 'error', message: 'NestJS Auth inaccessible', details: `HTTP ${res.status}` });
-      }
+      await apiRequest<any>(API_URL, '/health');
+      updateTest(3, { status: 'success', message: 'Backend NestJS opérationnel', details: 'API connectée' });
     } catch (e: any) {
       updateTest(3, { status: 'error', message: 'Erreur Auth', details: e.message });
     }
@@ -172,11 +152,9 @@ export default function SetupMarchand() {
     setCreateResult(null);
 
     try {
-      const res = await fetch(`${API_URL}/auth/users/create`, { credentials: 'include',
+      // INIT-019 — passe par le client centralisé.
+      const data = await apiRequest<any>(API_URL, '/auth/users/create', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({
           phone: form.phone,
           password: form.password,
@@ -187,12 +165,10 @@ export default function SetupMarchand() {
           commune: form.commune,
           activity: form.activity,
           market: form.market
-        })
+        }),
       });
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
+      if (data.success) {
         setCreateStatus('success');
         setCreateResult({
           success: true,
@@ -210,7 +186,12 @@ export default function SetupMarchand() {
       }
     } catch (e: any) {
       setCreateStatus('error');
-      setCreateResult({ error: 'Erreur réseau : ' + e.message });
+      if (e instanceof HttpError) {
+        const body = (e.body as any) || {};
+        setCreateResult({ error: body.error || e.message || 'Erreur lors de la création', details: body.details });
+      } else {
+        setCreateResult({ error: 'Erreur réseau : ' + e.message });
+      }
     }
   };
 

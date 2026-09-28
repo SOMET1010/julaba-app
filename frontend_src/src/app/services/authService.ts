@@ -5,6 +5,7 @@
  */
 
 import { API_URL } from '../utils/api';
+import { apiRequest, HttpError } from './api/api-client';
 
 export interface SignupData {
   phone: string;
@@ -55,29 +56,23 @@ export interface AuthResponse {
 
 export async function signup(data: SignupData): Promise<AuthResponse> {
   try {
-    const response = await fetch(`${API_URL}/auth/create-acteur`, {
+    const result = await apiRequest<any>(API_URL, '/auth/create-acteur', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const result = await response.json();
-    if (!response.ok) return { success: false, error: result.error || "Erreur lors de l'inscription" };
     return { success: true, user: result.user, message: result.message };
   } catch (error) {
+    if (error instanceof HttpError) return { success: false, error: error.message || "Erreur lors de l'inscription" };
     return { success: false, error: 'Erreur de connexion au serveur' };
   }
 }
 
 export async function login(data: LoginData): Promise<AuthResponse> {
   try {
-    const response = await fetch(`${API_URL}/auth/login`, {
+    const result = await apiRequest<any>(API_URL, '/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const result = await response.json();
-    if (!response.ok) return { success: false, error: result.error || 'Identifiants incorrects' };
-
     return {
       success: true,
       accessToken: result.accessToken,
@@ -85,6 +80,7 @@ export async function login(data: LoginData): Promise<AuthResponse> {
       user: result.user,
     };
   } catch (error) {
+    if (error instanceof HttpError) return { success: false, error: error.message || 'Identifiants incorrects' };
     return { success: false, error: 'Erreur de connexion au serveur' };
   }
 }
@@ -95,26 +91,22 @@ export async function login(data: LoginData): Promise<AuthResponse> {
  */
 export async function activerCompte(code: string, nouveauSecret: string): Promise<AuthResponse> {
   try {
-    const response = await fetch(`${API_URL}/auth/activer`, {
+    await apiRequest<unknown>(API_URL, '/auth/activer', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, nouveauSecret }),
     });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) return { success: false, error: result.message || result.error || "Code d'activation invalide ou expiré" };
     return { success: true };
-  } catch {
+  } catch (error) {
+    if (error instanceof HttpError) return { success: false, error: error.message || "Code d'activation invalide ou expiré" };
     return { success: false, error: 'Erreur de connexion au serveur' };
   }
 }
 
 export async function logout(): Promise<AuthResponse> {
   try {
-    await fetch(`${API_URL}/auth/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-  } catch(e) {}
+    // INIT-019 — passe par le client centralisé.
+    await apiRequest<unknown>(API_URL, '/auth/logout', { method: 'POST' });
+  } catch { /* silencieux */ }
   return { success: true, message: 'Déconnexion réussie' };
 }
 

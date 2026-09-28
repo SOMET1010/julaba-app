@@ -26,7 +26,7 @@
 - **Voice-first** pour analphabètes (Tata Nanti Lou)
 - **Cible tactile ≥ 44 px** vérifiée CI (`test-cible-tactile.mjs`)
 - **AccessMode switcher** (lecture/voix/mixte)
-- **HTML `lang="fr"`** correct
+- **HTML `lang="fr"`** correct (dynamique depuis INIT-020 : pré-chargé depuis `localStorage` dans `index.html`, puis synchronisé par `i18n/config.ts`)
 - **Skip-link / ScrollToTop** (`components/layout/ScrollToTop.tsx`)
 - **`theme-color`** déclaré
 - **WebAuthn / passkeys** (`@simplewebauthn/browser`)
@@ -41,7 +41,7 @@
 - **Pas de skip-link visible** sur `<AppLayout>`
 - **BottomBar masquée** sur plusieurs routes (`hiddenPaths`) sans alternative clavier documentée
 - **Pas de test a11y automatisé** (axe-core, pa11y, lighthouse CI non détectés)
-- **i18n absente** : `useLangPref` expose `french`/`dioula`/`bambara` mais chaînes UI hardcoded en français
+- ~~**i18n absente** : `useLangPref` expose `french`/`dioula`/`bambara` mais chaînes UI hardcoded en français~~ → **Résolu par INIT-020** (28/09/2026) : `i18next` + `react-i18next` adoptés, `i18n/config.ts` bridge avec `useLangPref`, `<html lang>` dynamique. Migration progressive — `MesDonnees`, `Welcome`, `EntryGate` migrés ; `POSCaisse`/`LoginPassword`/`UniversalParametres` en backlog (voir `frontend_src/src/app/i18n/README.md`).
 
 ## 4. Règles obligatoires pour toute nouvelle feature frontend
 
@@ -139,4 +139,4 @@ Avant validation finale d'une feature frontend :
 
 ## 8. Score a11y initial (audit 2026-09-28)
 
-**75/100** — design inclusif remarquable (voice-first, mode soleil, haptique, cible tactile testée CI), mais dette sur la multiplicité des modales, l'absence de tests a11y automatisés, et l'i18n absente.
+**80/100** (+5 depuis INIT-020) — design inclusif remarquable (voice-first, mode soleil, haptique, cible tactile testée CI, i18next adopté), mais dette sur la multiplicité des modales, l'absence de tests a11y automatisés, et la migration i18n progressive (écrans critiques restants : `POSCaisse`, `LoginPassword`, `UniversalParametres`).

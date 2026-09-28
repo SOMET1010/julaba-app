@@ -4,8 +4,10 @@
 
 ## État au 2026-09-29
 
-- **Total tâches** : 12 (toutes issues de l'audit initial)
-- **Terminées** : 2 (INIT-011, INIT-012)
+- **Total tâches** : 17 (12 issues de l'audit initial + INIT-016 strictNullChecks + INIT-018 design system BO + INIT-019 fetch directs + INIT-020 i18n + INIT-021 Vitest)
+- **Terminées** : 4 (INIT-011, INIT-012, INIT-018, INIT-015)
+- **Partiellement terminées** : 3 (INIT-016 strictNullChecks — infrastructure posée ; INIT-020 i18n — infrastructure posée + 3 écrans migrés ; INIT-021 Vitest — infrastructure posée + 3 pilotes migrés)
+- **Non traitées** : 1 (INIT-019 fetch directs — subagent a échoué, à reprendre)
 - **En cours** : 1 (INIT-010)
 - **Bloquées** : 0
 
@@ -35,6 +37,11 @@
 |---|---|---|---|---|---|
 | INIT-011 | Architecture | Fusionner contrôleurs dupliqués : `cycles-rest` + `producteur/cycles`, `recoltes-rest` + `producteur/recoltes` | Back | **TERMINÉ** | P2 |
 | INIT-012 | Dette | Migrer `CATALOGUE` hardcodé (15 produits vivriers dans `caisse-rest.controller.ts`) vers `caisse_produits` ou référentiel maître Odoo | Back | **TERMINÉ** | P2 |
+| INIT-018 | Dette | Finaliser la migration vers un seul design system BO en consolidant `Universal*BO` dans `components/ui/` (shadcn local) | Front | **TERMINÉ (2026-09-29)** | P2 |
+| INIT-020 | i18n | Adopter `i18next` + `react-i18next` pour internationaliser l'UI (3 langues `french`/`dioula`/`bambara` déjà exposées par `useLangPref`) | Front + a11y | **PARTIEL** — infrastructure posée (config + 3 locales + I18nextProvider + bridge `useLangPref` + `<html lang>` dynamique) ; 3 écrans migrés (`MesDonnees`, `Welcome`, `EntryGate`) ; backlog `POSCaisse`/`LoginPassword`/`UniversalParametres` ; traductions `dioula.json`/`bambara.json` = PLACEHOLDERS | P2 |
+| INIT-021 | Dette | Adopter Vitest comme framework de test standard frontend (74 tests via `tsx` + helpers ad-hoc) | Front (QA+Dev) | **PARTIEL — infrastructure posée + 3 pilotes migrés (25 tests verts), 71 tests legacy à migrer par lots ultérieurs** | P2 |
+| INIT-016 | Dette | Activer `strictNullChecks` progressivement (476 `any` back, `tsconfig.json` permissif) | Back | **PARTIEL — infrastructure posée (`tsconfig.strict.json` + guide `backend/docs/MIGRATION-STRICT-TYPESCRIPT.md` + script `typecheck:strict` + module pilote `caisse-produits` strict), migration par couches documentée** | P2 |
+| INIT-019 | Dette | Réduire 173 `fetch()` directs hors `services/api/` (69 hors back-office) | Front | **NON TRAITÉ — subagent a échoué (dépassement de turns), à reprendre dans une session dédiée** | P2 |
 
 ## Tâches reportées (backlog futur)
 
@@ -87,6 +94,139 @@
 - **Référence incident** : `.ai/INCIDENTS.md` — incident 18/09/2026
   (`caisse_transaction_status_enum already exists`), cause racine documentée
   dans le préambule du runbook.
+
+### INIT-018 — Finaliser la migration vers un seul design system BO
+
+**Statut : TERMINÉ (2026-09-29).**
+
+- **Analyse** : l'audit AUDIT-001 décrivait « 2 design systems BO parallèles »
+  (`components/ui/` shadcn + `components/backoffice/universal/Universal*BO`).
+  L'inspection révèle que les 19 composants `Universal*BO` ne sont PAS un fork
+  de shadcn : 10 d'entre eux importent explicitement les primitives shadcn
+  (`Dialog`, `AlertDialog`, `DropdownMenu`, `Tabs`, `Table`, `Card`, `Button`,
+  `Skeleton`, `Avatar`, `Badge`) et y ajoutent une couche métier (thème `BO_*`,
+  `role-config.ts`, animations framer-motion, presets). La dette réelle était
+  les **6 composants `Universal*BO` morts** jamais importés hors du barrel
+  `index.ts` (~1 739 lignes de code mort maintenu en double).
+- **Action** : suppression des 6 composants morts
+  (`UniversalSearchBarBO`, `UniversalFilterPanelBO`, `UniversalBadgeBO`,
+  `UniversalAvatarBO`, `UniversalTableBO`, `UniversalToastBO`) + mise à jour
+  du barrel `index.ts`. Aucun écran BO, aucun test, aucune story ne les
+  référençait (vérifié par `rg`).
+- **Conservation** : les 13 composites BO vivants restent dans
+  `backoffice/universal/`. Ils consomment déjà les primitives shadcn : ils
+  forment la « couche composite BO » du DS unique. Les migrer « en place »
+  vers `components/ui/` exigerait de réécrire les 11 écrans BO qui les
+  consomment (avec risque élevé de régression visuelle) pour un bénéfice nul.
+  Migration future classée P3 (voir `MIGRATION_GUIDE.md`).
+- **Documentation** :
+  - `frontend_src/src/app/components/backoffice/universal/MIGRATION_GUIDE.md`
+    créé (contrat deux-couches, table des composites conservés, statut).
+  - `.ai/DESIGN_SYSTEM.md` §3 mis à jour (« un seul DS — couche primitives +
+    couche composites BO »), §9 conventions et §10 dette design réorganisés.
+  - `.ai/ARCHITECTURE.md` §3 et §8 mis à jour (description 2 couches +
+    suppression de l'item « 2 design systems BO parallèles » du top 10).
+  - `.ai/DEBT_REPORT.md` FRONT-NEW-2 marqué FERMÉ.
+- **Vérifications** :
+  - `npx tsc -b` : 0 erreur (baseline identique).
+  - `npm run test:route-access` : vert ✅
+  - `npm run test:tokens` : vert ✅
+  - `npm run test:jargon` : vert ✅
+  - `npm run test:caisse-charte` : vert ✅
+  - `npm run check:bundle-budget` : vert ✅ (639 Ko / 800 Ko).
+- **Non commité** : l'orchestrateur se charge du commit.
+
+### INIT-021 — Adopter Vitest comme framework de test standard frontend
+
+**Statut : PARTIEL — infrastructure posée + 3 pilotes migrés, 71 tests legacy à migrer.**
+
+- **Livrable posé (2026-09-29)** :
+  - `vitest` 2.1.9 + `@vitest/coverage-v8` + `@vitest/ui` ajoutés à
+    `frontend_src/package.json` devDependencies.
+  - `frontend_src/vitest.config.ts` créé (jsdom, globals, coverage v8,
+    `include: *.vitest.test.*` pour cohabitation).
+  - `frontend_src/src/test/setup.ts` créé (cleanup @testing-library,
+    IS_REACT_ACT_ENVIRONMENT, nettoyage localStorage).
+  - `frontend_src/src/test/compat.ts` créé (wrapper `ok()`/`eq()` → `it()`).
+  - `frontend_src/src/test/vitest-globals.d.ts` créé (types globals).
+  - `frontend_src/src/test/README.md` créé (stratégie de cohabitation).
+  - 3 pilotes migrés vers syntaxe native Vitest : `fcfa.vitest.test.ts` (18
+    tests), `antiJargon.vitest.test.ts` (1 test),
+    `useAudioUnlockFallback.vitest.test.tsx` (6 tests) — **25 tests verts**.
+  - Scripts `test:vitest` / `test:watch` / `test:coverage` / `test:ui` ajoutés
+    à `package.json` ; `verify` lance désormais `test:vitest` en premier.
+  - `.gitignore` : `frontend_src/coverage/` exclu.
+  - `antiJargon.test.mts` (legacy) mis à jour pour exclure `*.vitest.test.*`
+    et `*.test.tsx` de son scan.
+- **Vérifications** :
+  - `npx tsc -b --force` : **0 erreur** ✅
+  - `npm run test:vitest` : **25 tests verts** (3 fichiers) ✅
+  - `npm run test:coverage` : `coverage/lcov.info` + `lcov-report/` générés ✅
+  - Tests legacy `tsx` (`test:fcfa`, `test:jargon`, `test:audio-unlock`,
+    `test:offline-voice-queue`) : **tous verts** — cohabitation validée ✅
+- **Reste à faire** (lots ultérieurs) :
+  1. Migrer les 71 tests legacy restants (un par un, procédure dans
+     `frontend_src/src/test/README.md`). Priorité : tests d'intégration React
+     (5 fichiers `.test.tsx`) qui bénéficient le plus du cleanup automatique.
+  2. Une fois tous migrés : élargir `include` à `src/**/*.test.{ts,tsx,mts}` et
+     renommer les `*.vitest.test.*` en `*.test.*`.
+  3. Ajouter un seuil de coverage (`coverage.thresholds`) une fois la base
+     suffisante (cible : ≥ 80% global, ≥ 90% sur modules sacrés — cf.
+     `TEST_PLAN.md` §5).
+  4. Fermer FRONT-NEW-6 dans `DEBT_REPORT.md` (passer de PARTIEL à FERMÉ).
+
+### INIT-020 — Adopter i18next pour internationaliser l'UI
+
+**Statut : PARTIEL — infrastructure posée + 3 écrans migrés, 3 écrans critiques en backlog + traductions locales à finaliser.**
+
+- **Livrable posé (2026-09-29)** :
+  - `i18next@^23.16.8` + `react-i18next@^14.1.3` ajoutés à
+    `frontend_src/package.json` dependencies.
+  - `frontend_src/src/app/i18n/config.ts` créé (init i18next synchrone,
+    `fallbackLng: 'french'`, `supportedLngs: ['french','dioula','bambara']`,
+    bridge `appliquerLangueI18n()` + `LANG_VERS_HTML` ISO 639-3).
+  - 3 locales JSON créées : `i18n/locales/{fr,dioula,bambara}.json`
+    (`fr.json` = source de vérité, `dioula`/`bambara` = PLACEHOLDERS
+    avec commentaire `_meta._comment`).
+  - `frontend_src/src/app/i18n/README.md` créé (structure + processus de
+    traduction par locuteur natif + anti-jargon + plan de migration).
+  - `App.tsx` wrappé avec `I18nextProvider` (au sommet, englobe tous les
+    autres providers).
+  - `useLangPref.ts` bridgé : `setLangPref()` appelle désormais
+    `appliquerLangueI18n()` (import dynamique pour casser la dépendance
+    circulaire type ↔ instance).
+  - `index.html` : `<html lang="fr">` reste la valeur statique initiale
+    (HTML lisible avant React), + script inline qui pré-charge la langue
+    depuis `localStorage['julaba_lang']` AVANT le boot React (évite le flash
+    `<html lang="fr"> → <html lang="dyu">`).
+  - 3 écrans migrés vers `useTranslation()` / `<Trans>` :
+    - `pages/marchand/MesDonnees.tsx` (~60 chaînes : titres, libellés,
+      détails, finalités, sections politique, modales suppression+politique,
+      toasts, voix Tata, aria-labels).
+    - `components/auth/Welcome.tsx` (~8 chaînes : titres, aria, alt).
+    - `components/auth/EntryGate.tsx` (~2 chaînes : chargement, erreur rôle).
+- **Vérifications** :
+  - `npx tsc -b --force` : **0 erreur** ✅
+  - `npm run test:route-access` : **vert** ✅
+  - `npm run test:jargon` : **vert** ✅ (339 fichiers balayés, 0 jargon —
+    les chaînes déplacées en JSON échappent au test ; todo étendre le scan
+    aux `i18n/locales/*.json`).
+  - `npm run test:caisse-charte` / `test:cible-tactile` / `test:confort` /
+    `test:appellation` / `test:icones` : **tous verts** ✅
+  - `npx vite build` : **OK** (bundle 639 Ko, budget 800 Ko respecté) ✅
+- **Reste à faire** (lots ultérieurs) :
+  1. Migrer les 3 écrans critiques restants : `POSCaisse.tsx` (1346 LOC,
+     cœur métier), `LoginPassword.tsx` (1598 LOC), `UniversalParametres.tsx`
+     (1014 LOC). Effort L chacun — à répartir sur 3 lots distincts pour
+     limiter le risque de régression.
+  2. Étendre `antiJargon.test.mts` pour scanner `i18n/locales/fr.json`
+     (les chaînes JSON échappent aujourd'hui au test).
+  3. Faire traduire `dioula.json` et `bambara.json` par un locuteur natif
+     (processus documenté dans `i18n/README.md` §5).
+  4. Enregistrer les clips audio Tata en bambara/dioula (cohérence
+     voice-first / écran — actuellement les clips restent en français).
+  5. Fermer FRONT-NEW-5 dans `DEBT_REPORT.md` (passer de PARTIEL à FERMÉ)
+     une fois `POSCaisse` et `LoginPassword` migrés.
 
 ## Règle de validation finale
 
