@@ -51,7 +51,7 @@ const DONNEES_GARDEES: readonly DonneeGardee[] = [
   { label: 'Portefeuille Keiwa', detail: 'Transferts, paiements, retraits' },
   { label: 'NIN / NNI', detail: 'Optionnel — pour le score financier' },
   { label: 'Géolocalisation', detail: 'Optionnelle — pour cartographier le réseau' },
-  { label: 'PIN et biométrie', detail: 'Pour protéger ton téléphone et ton argent' },
+  { label: 'PIN et doigt', detail: 'Pour protéger ton téléphone et ton argent' },
   { label: 'Préférences (langue, voix, police)', detail: 'Stockées sur ton téléphone' },
   { label: 'Journaux d\'audit', detail: 'Connexions et actions sensibles tracées' },
 ];
@@ -68,7 +68,7 @@ const FINALITES: readonly Finalite[] = [
   { donnee: 'Stock et transactions', raison: 'Tenir ta caisse et ton portefeuille Keiwa' },
   { donnee: 'NIN, CNPS, CMU', raison: 'Calculer un score financier si tu le demandes' },
   { donnee: 'Géolocalisation', raison: 'Cartographier le réseau des marchandes' },
-  { donnee: 'PIN et biométrie', raison: 'Protéger l\'accès à ton téléphone et ton argent' },
+  { donnee: 'PIN et doigt', raison: 'Protéger l\'accès à ton téléphone et ton argent' },
   { donnee: 'Audit logs', raison: 'Détecter les intrusions et prouver les actions' },
 ];
 
@@ -84,7 +84,7 @@ const SECTIONS_POLITIQUE: readonly SectionPolitique[] = [
   { num: 3, titre: 'Finalités', resume: 'Une raison claire pour chaque donnée collectée.' },
   { num: 4, titre: 'Base légale', resume: 'Contrat (caisse), consentement (photo, géoloc), obligation légale (ANSUT).' },
   { num: 5, titre: 'Durée de conservation', resume: 'Argent = journal immuable ; données perso anonymisées à la suppression du compte.' },
-  { num: 6, titre: 'Sécurité', resume: 'AES-256-GCM pour le PIN, bcrypt, JWT + rotation, WebAuthn, sauvegardes chiffrées.' },
+  { num: 6, titre: 'Sécurité', resume: 'Ton PIN est caché et chiffré, personne ne peut le lire, pas même nous.' },
   { num: 7, titre: 'Vos droits', resume: 'Accès, rectification, suppression (droit à l\'oubli), opposition, portabilité.' },
   { num: 8, titre: 'Consentement parlé', resume: 'Pour les non-lectrices : lecture audio, ré-audition, refus, traçabilité version+heure+agent.' },
   { num: 9, titre: 'Partage avec tiers', resume: 'ANSUT, B-Pay, ONECI, ElevenLabs — jamais de vente de données.' },
