@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../../utils/api';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   BarChart3, Download, FileText, TrendingUp, Users, Wallet,
@@ -18,7 +17,7 @@ import { BOProgressBar } from './BOProgressBar';
 import { CIV_REGIONS_LIST } from '../../data/civ-geography';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { UniversalSectionCardBO } from './universal/UniversalSectionCardBO';
-import type { Acteur } from '../../services/backoffice-api';
+import { type Acteur, boGetAdminStatsRaw, boGetAdminAnalytics } from '../../services/backoffice-api';
 import { buildReportPdf, hexToRgb } from '../../utils/pdfReport';
 
 const PERIODES = ['7 derniers jours', '30 derniers jours', '3 derniers mois', '6 derniers mois', 'Cette année', 'Personnalisé'];
@@ -178,14 +177,9 @@ function useLiveStats() {
   const [stats, setStats] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   useEffect(() => {
-    fetch(`${API_URL}/admin/stats`, { credentials: 'include' })
-      .then(r => { if (!r.ok) throw new Error(`stats ${r.status}`); return r.json(); })
-      .then(setStats)
-      .catch(e => console.error('[BORapports stats]', e));
-    fetch(`${API_URL}/admin/analytics`, { credentials: 'include' })
-      .then(r => { if (!r.ok) throw new Error(`analytics ${r.status}`); return r.json(); })
-      .then(setAnalytics)
-      .catch(e => console.error('[BORapports analytics]', e));
+    // INIT-019 — migration vers boGetAdminStatsRaw / boGetAdminAnalytics
+    boGetAdminStatsRaw().then(setStats);
+    boGetAdminAnalytics().then(setAnalytics);
   }, []);
   return { stats, analytics };
 }

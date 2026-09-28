@@ -102,6 +102,13 @@ async function apiPatch(path: string, body?: any) {
   });
 }
 
+async function apiPut(path: string, body?: any) {
+  return boApiRequest<any>(path, {
+    method: 'PUT',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
 async function apiDelete(path: string) {
   return boApiRequest<any>(path, { method: 'DELETE' });
 }
@@ -873,11 +880,12 @@ export async function boDeleteZone(id: string, opts?: { motif?: string }) {
 }
 
 // ── Marchés (module Phase 1) ────────────────────────────────────────────────
-export async function boGetMarches(opts?: { zoneId?: string; region?: string; actif?: boolean }): Promise<any[]> {
+export async function boGetMarches(opts?: { zoneId?: string; region?: string; actif?: boolean; statut?: string }): Promise<any[]> {
   const params = new URLSearchParams();
   if (opts?.zoneId) params.set('zoneId', opts.zoneId);
   if (opts?.region) params.set('region', opts.region);
   if (opts?.actif !== undefined) params.set('actif', String(opts.actif));
+  if (opts?.statut) params.set('statut', opts.statut);
   const qs = params.toString();
   const res = await apiGet(`/marches${qs ? `?${qs}` : ''}`);
   if (Array.isArray(res)) return res;
@@ -912,6 +920,7 @@ export async function boUpdateMarche(
     type: string;
     description: string;
     actif: boolean;
+    statut: string;
   }>,
 ): Promise<any> {
   return apiPatch(`/marches/${id}`, body);
@@ -1485,3 +1494,48 @@ export async function updateUserPreferences(prefs: {
   });
 }
 
+
+// ── INIT-019 — admin/wallets/config (BOParametres) ─────────────────────────
+// Migration des 4 fetch() directs de BOParametres.tsx vers le client centralisé.
+
+export async function boGetWalletsConfigParametres(): Promise<Record<string, string>> {
+  const cfg = await apiGet('/admin/wallets/config/parametres');
+  return cfg && typeof cfg === 'object' ? cfg as Record<string, string> : {};
+}
+
+export async function boGetAdminMonitoring(): Promise<Record<string, any>> {
+  try {
+    const monitoring = await apiGet('/admin/monitoring');
+    return monitoring && typeof monitoring === 'object' ? monitoring as Record<string, any> : {};
+  } catch {
+    return {};
+  }
+}
+
+export async function boPutWalletsConfigParametres(payload: Record<string, string>): Promise<boolean> {
+  await apiPut('/admin/wallets/config/parametres', payload);
+  return true;
+}
+
+export async function boResetWalletsConfigParametres(section: string): Promise<void> {
+  await apiPost(`/admin/wallets/config/parametres/reset?section=${encodeURIComponent(section)}`, {});
+}
+
+// ── INIT-019 — admin/stats brut + admin/analytics (BORapports) ──────────────
+export async function boGetAdminStatsRaw(): Promise<any> {
+  try {
+    return await apiGet('/admin/stats');
+  } catch (e) {
+    console.error('[BORapports stats]', e);
+    return null;
+  }
+}
+
+export async function boGetAdminAnalytics(): Promise<any> {
+  try {
+    return await apiGet('/admin/analytics');
+  } catch (e) {
+    console.error('[BORapports analytics]', e);
+    return null;
+  }
+}

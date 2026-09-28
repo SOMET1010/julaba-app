@@ -41,7 +41,7 @@
 | INIT-020 | i18n | Adopter `i18next` + `react-i18next` pour internationaliser l'UI (3 langues `french`/`dioula`/`bambara` déjà exposées par `useLangPref`) | Front + a11y | **PARTIEL** — infrastructure posée (config + 3 locales + I18nextProvider + bridge `useLangPref` + `<html lang>` dynamique) ; 3 écrans migrés (`MesDonnees`, `Welcome`, `EntryGate`) ; backlog `POSCaisse`/`LoginPassword`/`UniversalParametres` ; traductions `dioula.json`/`bambara.json` = PLACEHOLDERS | P2 |
 | INIT-021 | Dette | Adopter Vitest comme framework de test standard frontend (74 tests via `tsx` + helpers ad-hoc) | Front (QA+Dev) | **PARTIEL — infrastructure posée + 3 pilotes migrés (25 tests verts), 71 tests legacy à migrer par lots ultérieurs** | P2 |
 | INIT-016 | Dette | Activer `strictNullChecks` progressivement (476 `any` back, `tsconfig.json` permissif) | Back | **PARTIEL — infrastructure posée (`tsconfig.strict.json` + guide `backend/docs/MIGRATION-STRICT-TYPESCRIPT.md` + script `typecheck:strict` + module pilote `caisse-produits` strict), migration par couches documentée** | P2 |
-| INIT-019 | Dette | Réduire 173 `fetch()` directs hors `services/api/` (69 hors back-office) | Front | **NON TRAITÉ — subagent a échoué (dépassement de turns), à reprendre dans une session dédiée** | P2 |
+| INIT-019 | Dette | Réduire 173 `fetch()` directs hors `services/api/` (69 hors back-office) | Front | **PARTIEL — 13 fetch migrés (97 -> 84), 5 composants traités (BOModeration, BOParametres, BOAcademy, UniversalAcademy, BORapports), 84 restants à traiter par lots ultérieurs** | P2 |
 
 ## Tâches reportées (backlog futur)
 
