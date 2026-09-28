@@ -694,7 +694,7 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   // savait qu'on avait pris note ; elle ne savait pas quoi dire ensuite.
   //
   // C'est le parcours d'ajout au stock : la voie par laquelle son étal existe.
-  { id: 'STOCK_047', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Qu\'est-ce que tu vends ?', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Première question du parcours guidé — étape « nom ».' },
+  { id: 'STOCK_047', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Quel produit tu veux ajouter ?', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Première question du parcours guidé — étape « nom ». Recette du 27/09 : disait « Qu\'est-ce que tu vends ? » alors qu\'on est venue AJOUTER un produit, pas en vendre un. La question posait le mauvais geste.' },
   { id: 'STOCK_048', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: '{nom}, tu le vends comment ?', frMarche: null, variables: ['nom'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Étape « unite ». Le nom est repris pour qu\'elle sache de quoi on parle.' },
   { id: 'STOCK_049', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Le {unite}, à combien ?', frMarche: null, variables: ['unite'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Étape « prix ». Sur l\'argent : l\'unité est redite, sans quoi « à combien » est ambigu entre le tas et le kilo.' },
 

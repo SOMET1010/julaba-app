@@ -1025,7 +1025,15 @@ function POSCaisseInner() {
   return (
     <SubPageLayout
       role="marchand"
-      title="Caisse du jour"
+      /* RECETTE DU 27/09 — LE TITRE NOMME LE GESTE, PAS LE LIEU.
+         On arrive ici par le bouton « Vendre », et l'écran s'annonçait
+         « Caisse du jour ». Pour une marchande qui se fait lire l'écran, le
+         bouton touché et le titre entendu ne se répondaient pas : elle ne
+         pouvait pas savoir qu'elle était arrivée où elle voulait. Même règle
+         que CAI-08 — l'étiquette du bouton et le titre de l'écran sont LE
+         MÊME MOT. La date et « Bonnes ventes ! » restent juste en dessous :
+         rien de ce que « Caisse du jour » disait n'est perdu. */
+      title="Vendre"
       variante="caisse"
       rightContent={
         <div style={{ display:'flex', gap:'var(--caisse-esp-2)', alignItems:'center' }}>

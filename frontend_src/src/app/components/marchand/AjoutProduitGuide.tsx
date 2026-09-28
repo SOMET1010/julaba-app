@@ -1,7 +1,7 @@
 /**
  * POSER UN PRODUIT SUR SON ÉTAL — trois questions, STK-03 §2.
  *
- *   1. Qu'est-ce que tu vends ?   → son nom, dit ou touché
+ *   1. Quel produit tu veux ajouter ? → son nom, dit ou touché
  *   2. Tu le vends comment ?      → son unité
  *   3. À combien ?                → SON prix
  *
@@ -207,11 +207,11 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       {etapeVue === 'nom' && (
         <>
           <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
-            Qu'est-ce que tu vends ?
+            Quel produit tu veux ajouter ?
           </p>
           <input autoFocus value={nom} onChange={e => setNom(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); avancer(); } }}
-            aria-label="Qu'est-ce que tu vends ?" placeholder="Son nom"
+            aria-label="Quel produit tu veux ajouter ?" placeholder="Son nom"
             style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid var(--commerce-gray-100)', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
           {/* LES DEUX GESTES — arbitrage de Patrick, 24/09, option C.
               Le grand bouton pour elle : c'est le geste qu'elle sait faire.
