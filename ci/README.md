@@ -5,23 +5,45 @@ une **garantie automatique minimale** (install, build, tests, non-régression
 TypeScript) sur chaque `pull_request` et `push` vers `main`, **avant** d'ouvrir
 les chantiers financiers (stock, crédit, idempotence).
 
-## CI ≠ CD — et cible de production **NON VÉRIFIÉE**
+## CI ≠ CD — cible de production **tranchée : Render**
 
-Ce filet **ne déploie rien**. Il **ne choisit aucune cible de production**.
+Ce filet **ne déploie rien**. La cible de production est **désormais tranchée** par
+l'`ADR-0004 — Cible de production : Render` (2026-09-28), qui formalise la correction
+explicite du 13/08/2026 déjà consignée dans `JULABA_DECISIONS.md` §9.
 
-Le dépôt contient **deux chaînes de déploiement concurrentes** :
+Le dépôt porte **trois chaînes de déploiement**, aux rôles désormais distincts :
 
-- **Render** (site statique + API, `render.yaml`) ;
-- **serveur SSH/Docker `julaba.online`** (`.github/workflows/deploy.yml`).
+| Chaîne | Rôle | Déclenchement | Fichier |
+|---|---|---|---|
+| **Render** | **PROD RÉELLE** | `autoDeploy: true` sur `main` | `render.yaml` |
+| **OVH VPS** `julaba.online` | **Chaîne secondaire** (DR / tests), non utilisée pour servir en nominal | `workflow_dispatch` manuel | `.github/workflows/deploy.yml` |
+| **Azure DevOps** | **Miroir lecture seule**, aucun déploiement | `push: main` + tags | `.github/workflows/mirror-azure.yml` |
 
-Rien, dans le dépôt ou la documentation interne consultée, ne prouve **laquelle
-sert réellement la production**. Tant que ce n'est pas tranché par une **preuve
-d'infrastructure ou d'administration** (pas par inférence depuis le dépôt), la
-cible de prod reste **Non vérifiée** et **aucun auto-déploiement n'est branché**.
+### Détail
 
-- `deploy.yml` et `mirror-azure.yml` restent en **déclenchement manuel**
-  (`workflow_dispatch`) — voir lot L2 de ce chantier.
-- Aucun push sur `main` ne déclenche de déploiement.
+- **Render = prod réelle** — `julaba-db` (PostgreSQL 16, `basic_256mb` payant),
+  `julaba-api` (NestJS, `starter` 7 $/mois, `autoDeploy: true`) et `julaba-web`
+  (statique gratuit, `autoDeploy: true`). Un push sur `main` redeploie automatiquement
+  l'API et le frontend. Runbook : `docs/DEPLOIEMENT_RENDER.md`.
+- **OVH VPS julaba.online = chaîne secondaire** — `deploy.yml` reste en
+  `workflow_dispatch` manuel (jamais branché sur `push`). Il sert de **disaster
+  recovery** et de plateforme de tests, mais **ne sert pas la prod en conditions
+  nominales**. Runbook : `GUIDE_DEPLOIEMENT.md` (marqué secondaire).
+- **Azure DevOps = miroir lecture seule** — `mirror-azure.yml` pousse `main` + tags
+  vers Azure DevOps (aucun déploiement). `azure-pipelines.yml` est **désactivé**
+  (`trigger: none`) — le déclenchement historique sur `master` visait une branche
+  inexistante, le pipeline ne s'est jamais exécuté. Le PAT Azure DevOps a expiré le
+  08/09/2026 — sa régénération est une action ops (P0 listé dans
+  `.ai/PROJECT_CONTEXT.md` §10), hors scope de la documentation CI.
+
+### Ce que ça change pour ce filet CI
+
+- Aucun push sur `main` ne déclenche de déploiement OVH ou Azure — le filet CI
+  reste strictement **build + tests**, sans effet CD.
+- Le seul auto-déploiement nominal vient de Render (`autoDeploy: true`), qui est
+  externe à GitHub Actions et piloté par le Blueprint `render.yaml`.
+- `deploy.yml` reste utilisable à la demande pour un exercice DR ou une bascule
+  manuelle — c'est son rôle désormais assumé.
 
 ## Ce que le filet vérifie
 
