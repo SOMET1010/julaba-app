@@ -1,7 +1,21 @@
 # Registre maître de dette technique — JULABA
 
-**Photo fidèle de la branche `claude/clever-allen-dnr8by`.**
-**Révision 20 — UI-02 et UI-03 FERMÉES au contre-audit n°4 (`96c7b64`) ; UI-04 ouverte et fermée dans la même passe (le lot F avait cassé l'aperçu du lot A en silence) ; chemin d'argent intact.**
+**Photo fidèle de `main`.** La branche `claude/clever-allen-dnr8by` que ce
+registre suivait jusqu'à la révision 20 a été fusionnée dans `main` (PR #246,
+20/09/2026) ; `main` en est désormais la seule référence auditée (REL-01).
+**Révision 21 — WS-01 ouverte : l'authentification WebSocket ne revalide pas
+l'état du compte en base (angle mort trouvé par contre-audit indépendant d'un
+audit tiers, jamais couvert par le mandat HYGIÈNE-1).**
+Révision 21 : **contre-audit du 28/09/2026** sur `main` (`53cd010`), en
+réponse à un audit externe (`.ai/AUDITS/AUDIT-002-2026-09-28.md`) dont
+Patrick doutait. Périmètre vérifié : SEC-01/SECRET-01/WS-01 (sécurité),
+SCHEMA-01/05/06 (schéma), MONEY-01/STK-01/02/03 (argent, stock) — preuve par
+lecture de code, `fichier:ligne`, comme l'exige ce registre. Neuf des dix
+constats de l'audit externe recoupaient des lignes déjà connues (parfois avec
+un contexte manquant côté audit externe — ex. SCHEMA-01 ne cite pas le
+garde-fou CI SCHEMA-PILOTE, pourtant déjà en place et déjà efficace). **Un
+seul point neuf et confirmé : WS-01**, ajouté ci-dessous. L'audit externe lui
+même n'a jamais consulté ce registre ni ses garde-fous CI.
 Révision 20 : **contre-audit n°4 sur `96c7b64`** (passe UI-03 + UI-02, `62636e6`).
 **Chemin d'argent : 0 ligne de diff** sur `machineEncaissement`, `grammaireEncaissement`,
 `localIntent`, `CaisseContext`, `vendreVocalUnifie` ; `POSCaisse` : `recuEnSaisie`
@@ -143,7 +157,7 @@ n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte l
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 33 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 48 OUVERT** *(recompté ligne à ligne à la révision 20 : 86 lignes ; UI-02 et UI-03 passent à FERMÉ ; UI-04 ajoutée FERMÉE)*.
+**Compte courant : 33 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 49 OUVERT** *(recompté ligne à ligne à la révision 21 : 87 lignes ; WS-01 ajoutée OUVERTE, trouvée par contre-audit indépendant, hors mandat HYGIÈNE-1)*.
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -282,6 +296,7 @@ reste multiple.
 | **SEC-07** | P1 | **FERMÉ** | `crypto.randomInt` dans `pin-identificateur.ts` ; garde statique : **0** `Math.random(` dans les modules sensibles. 4 chiffres / alphabet 2–9 **conservés** (arbitrage terrain Patrick : mémorisation, dictée, voix, utilisatrices peu alphabétisées) | `b904db6`. **La condition de cet arbitrage n'était pas remplie et c'est ce lot qui la pose** : `identificateur/me/verify-pin` n'avait **aucun** compteur — essais illimités sur 4 096 combinaisons — et `change-pin` offrait la même porte sur `oldPin`. Les deux passent par `verrou-pin.ts`, sur **deux colonnes dédiées** (partager `failed_pin_attempts` aurait laissé une reconnexion effacer le verrou). Reproduction : verrou neutralisé → 3 tests rouges | — |
 | **SEC-04** | P3 | **OUVERT** | `users.service.ts:334` journalise le terme de recherche saisi | Relevé en balayant SEC-01. **Donnée personnelle, pas un secret** | Journalisation de donnée personnelle |
 | **AUTH-RECOVERY-01** | P1 | **OUVERT** | *Dette ouverte par arbitrage de Patrick au moment de SEC-2.* Depuis `b904db6` la remise à zéro d'un PIN passe **uniquement par SMS**, et c'est vérifié. Aucun parcours n'existe pour « numéro perdu ou changé » | **Ouverte délibérément pour ne pas polluer SEC-2 avec une récupération de compte improvisée** | Un identificateur qui perd son numéro n'a aucune voie de retour. Si le terrain impose un secours sans SMS, **ne jamais afficher le vrai PIN** : code de récupération à usage unique, TTL court, consommable une fois, qui oblige ensuite à choisir son propre PIN. Autre credential, autre route — pas un contournement de SEC-05 |
+| **WS-01** | P1 | **OUVERT** | `backend/src/events/events.gateway.ts:51-53` vérifie uniquement la signature JWT (`jwtService.verify(token)`) et fait confiance au `role`/`sub` du payload pour joindre la room `admin`, **sans revalider l'état du compte en base**. L'auth HTTP, elle, ne fait pas ça : `backend/src/auth/strategies/jwt.strategy.ts:33-36` requête `userRepository.findOne` et **rejette explicitement** un statut `SUSPENDU` ou `EN_ATTENTE_ACTIVATION`. Un JWT encore valide d'un compte suspendu ou rétrogradé passe donc le WebSocket, pas l'HTTP | *Trouvée le 28/09/2026, contre-audit indépendant d'un audit externe (WS-01, `.ai/AUDITS/AUDIT-002-2026-09-28.md`) — vérifiée par lecture directe des deux fichiers, divergence réelle confirmée* | Partager la logique d'identité entre WebSocket et HTTP : revalider le compte (statut, rôle) en base dans `events.gateway.ts`, comme le fait déjà `JwtStrategy`. Hors du mandat HYGIÈNE-1 (auth/caisse/vente/stock) qui a borné ce registre jusqu'ici — ce n'est pas une exclusion volontaire, c'est un fichier que ce mandat n'a jamais couvert |
 | **SEC-08** | **P1** | **FERMÉ** | `POST /auth/identificateur/:id/pin` n'existe plus (404 vérifié), et `POST /users/backoffice/create` — la vraie voie de création — génère le PIN par `crypto.randomInt`, l'écrit chiffré, l'envoie par SMS et ne le rend nulle part. Audit `PIN_IDENTIFICATEUR_CREE` sans aucun fragment du code. Preuve qui **traverse** : SMS → base chiffrée → `verify-pin` accepte | `3d3e00c` — il ne reste que trois chemins : création (serveur → SMS), réinitialisation (serveur → SMS), et `me/change-pin` où l'identificateur choisit le **sien**. Garde statique : aucune route paramétrée par l'identifiant d'autrui n'accepte un PIN dans son corps — **écrit faux d'abord** (il passait au vert sur la route à interdire), corrigé, puis prouvé sur route témoin | — |
 
 # SMS ET INTÉGRATIONS
