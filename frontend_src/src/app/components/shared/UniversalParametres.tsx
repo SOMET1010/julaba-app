@@ -27,6 +27,7 @@ import { marquerBiometrie } from '../../services/comptesMemorises';
 import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
 import { API_URL } from '../../utils/api';
 import { toast } from 'sonner';
+import { useTranslation, Trans } from 'react-i18next';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -180,6 +181,7 @@ function ModalDanger({ isOpen, title, message, confirmLabel, onConfirm, onClose 
   isOpen: boolean; title: string; message: string;
   confirmLabel?: string; onConfirm: () => void; onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <AnimatePresence>
       {isOpen && (
@@ -204,13 +206,13 @@ function ModalDanger({ isOpen, title, message, confirmLabel, onConfirm, onClose 
                 onClick={onClose} whileTap={{ scale: 0.97 }}
                 className="flex-1 py-3 rounded-2xl border-2 border-gray-200 font-bold text-gray-700"
               >
-                Annuler
+                {t('parametres.modalDangerAnnuler')}
               </motion.button>
               <motion.button
                 onClick={() => { onConfirm(); onClose(); }} whileTap={{ scale: 0.97 }}
                 className="flex-1 py-3 rounded-2xl bg-red-500 font-bold text-white"
               >
-                {confirmLabel || 'Confirmer'}
+                {confirmLabel || t('parametres.modalDangerConfirmer')}
               </motion.button>
             </div>
           </motion.div>
@@ -225,6 +227,7 @@ function ModalDanger({ isOpen, title, message, confirmLabel, onConfirm, onClose 
 function ModalDeleteAccount({ isOpen, onClose }: {
   isOpen: boolean; onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2>(1);
   const [password, setPassword] = useState('');
@@ -234,18 +237,18 @@ function ModalDeleteAccount({ isOpen, onClose }: {
   const handleClose = () => { setStep(1); setPassword(''); setError(''); onClose(); };
 
   const handleDelete = async () => {
-    if (!password || password.length < 4) { setError('Code requis (4 chiffres min)'); return; }
+    if (!password || password.length < 4) { setError(t('parametres.modalSuppressionErreurCode')); return; }
     setLoading(true);
     setError('');
     try {
       // API-01 : « mot de passe refusé » et « session finie » ne sont pas la
       // même chose — surtout sur une suppression de compte.
       const r = await supprimerCompte(password);
-      if (r.etat === 'session_expiree') { setError('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'session_expiree') { setError(t('parametres.modalSuppressionErreurSession')); return; }
       if (r.etat === 'erreur_metier') { setError(r.message || 'Erreur'); return; }
-      toast.success('Compte supprimé');
+      toast.success(t('parametres.toastCompteSupprime'));
       navigate('/');
-    } catch { setError('Erreur réseau'); }
+    } catch { setError(t('parametres.modalSuppressionErreurReseau')); }
     finally { setLoading(false); }
   };
 
@@ -269,28 +272,30 @@ function ModalDeleteAccount({ isOpen, onClose }: {
                 <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
                   <Trash2 className="w-8 h-8 text-red-500" />
                 </div>
-                <h3 className="text-xl font-bold encre text-center mb-2">Supprimer mon compte</h3>
+                <h3 className="text-xl font-bold encre text-center mb-2">{t('parametres.modalSuppressionTitre')}</h3>
                 <p className="text-sm encre-3 text-center mb-2">
-                  Cette action est <span className="font-bold text-red-600">définitive et irréversible</span>.
+                  <Trans i18nKey="parametres.modalSuppressionTexteDefinitif"
+                    components={{ gras: <span className="font-bold text-red-600" /> }}
+                  />
                 </p>
                 <p className="text-xs encre-4 text-center mb-6">
-                  Toutes tes données, transactions et historiques seront perdus.
+                  {t('parametres.modalSuppressionTexteDonnees')}
                 </p>
                 <div className="flex gap-3">
                   <motion.button onClick={handleClose} whileTap={{ scale: 0.97 }}
                     className="flex-1 py-3 rounded-2xl border-2 border-gray-200 font-bold text-gray-700">
-                    Annuler
+                    {t('parametres.modalDangerAnnuler')}
                   </motion.button>
                   <motion.button onClick={() => setStep(2)} whileTap={{ scale: 0.97 }}
                     className="flex-1 py-3 rounded-2xl bg-red-500 font-bold text-white">
-                    Continuer
+                    {t('parametres.modalSuppressionContinuer')}
                   </motion.button>
                 </div>
               </>
             ) : (
               <>
-                <h3 className="text-xl font-bold encre text-center mb-2">Confirme ton identité</h3>
-                <p className="text-sm encre-3 text-center mb-6">Entre ton code de connexion pour confirmer la suppression</p>
+                <h3 className="text-xl font-bold encre text-center mb-2">{t('parametres.modalSuppressionConfirmeTitre')}</h3>
+                <p className="text-sm encre-3 text-center mb-6">{t('parametres.modalSuppressionConfirmeIndice')}</p>
                 <input
                   type="password"
                   inputMode="numeric"
@@ -304,12 +309,12 @@ function ModalDeleteAccount({ isOpen, onClose }: {
                 <div className="flex gap-3">
                   <motion.button onClick={() => setStep(1)} whileTap={{ scale: 0.97 }}
                     className="flex-1 py-3 rounded-2xl border-2 border-gray-200 font-bold text-gray-700">
-                    Retour
+                    {t('common.retour')}
                   </motion.button>
                   <motion.button onClick={() => { void handleDelete(); }} disabled={loading} whileTap={{ scale: 0.97 }}
                     className="flex-1 py-3 rounded-2xl font-bold text-white"
                     style={{ backgroundColor: loading ? '#9CA3AF' : '#EF4444' }}>
-                    {loading ? 'Suppression...' : 'Supprimer définitivement'}
+                    {loading ? t('parametres.modalSuppressionBoutonSupprimerEnCours') : t('parametres.modalSuppressionBoutonSupprimer')}
                   </motion.button>
                 </div>
               </>
@@ -326,6 +331,7 @@ function ModalDeleteAccount({ isOpen, onClose }: {
 function ModalSessions({ isOpen, onClose, color }: {
   isOpen: boolean; onClose: () => void; color: string;
 }) {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -347,11 +353,11 @@ function ModalSessions({ isOpen, onClose, color }: {
       // a échoué. L'ancien code ne regardait même pas la réponse — la session
       // disparaissait de la liste tout en restant ouverte côté serveur.
       const r = await revoquerSession(id);
-      if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
-      if (r.etat === 'erreur_metier') { toast.error(r.message || 'Erreur réseau'); return; }
+      if (r.etat === 'session_expiree') { toast.error(t('parametres.erreurSessionExpiree')); return; }
+      if (r.etat === 'erreur_metier') { toast.error(r.message || t('parametres.erreurReseau')); return; }
       setSessions(prev => prev.filter(s => s.id !== id));
-      toast.success('Session révoquée');
-    } catch { toast.error('Erreur réseau'); }
+      toast.success(t('parametres.toastSessionRevoquee'));
+    } catch { toast.error(t('parametres.erreurReseau')); }
   };
 
   return (
@@ -370,7 +376,7 @@ function ModalSessions({ isOpen, onClose, color }: {
           >
             <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between rounded-t-3xl">
               <div className="w-12 h-1.5 bg-gray-200 rounded-full absolute top-3 left-1/2 -translate-x-1/2" />
-              <h3 className="font-bold encre text-lg mt-2">Historique des connexions</h3>
+              <h3 className="font-bold encre text-lg mt-2">{t('parametres.modalSessionsTitre')}</h3>
               <motion.button onClick={onClose} whileTap={{ scale: 0.9 }}
                 className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center mt-2">
                 <X className="w-4 h-4 text-gray-600" />
@@ -378,9 +384,9 @@ function ModalSessions({ isOpen, onClose, color }: {
             </div>
             <div className="p-5 space-y-3">
               {loading ? (
-                <p className="text-center encre-4 py-8">Chargement...</p>
+                <p className="text-center encre-4 py-8">{t('parametres.modalSessionsChargement')}</p>
               ) : sessions.length === 0 ? (
-                <p className="text-center encre-4 py-8">Aucune session active</p>
+                <p className="text-center encre-4 py-8">{t('parametres.modalSessionsVide')}</p>
               ) : sessions.map(s => (
                 <div key={s.id}
                   className="flex items-center justify-between p-4 rounded-2xl border-2"
@@ -401,12 +407,12 @@ function ModalSessions({ isOpen, onClose, color }: {
                   </div>
                   {s.isCurrent ? (
                     <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ color, backgroundColor: `${color}15` }}>
-                      Actuelle
+                      {t('parametres.modalSessionsActuelle')}
                     </span>
                   ) : (
                     <motion.button onClick={() => { void handleRevoke(s.id); }} whileTap={{ scale: 0.95 }}
                       className="text-xs font-bold text-red-500 px-3 py-1 rounded-full bg-red-50">
-                      Révoquer
+                      {t('parametres.modalSessionsRevoquer')}
                     </motion.button>
                   )}
                 </div>
@@ -427,6 +433,7 @@ function ModalLang({ isOpen, onClose, lang, setLang, color }: {
   isOpen: boolean; onClose: () => void;
   lang: AppLang; setLang: (l: AppLang) => void; color: string;
 }) {
+  const { t } = useTranslation();
   return (
     <AnimatePresence>
       {isOpen && (
@@ -442,8 +449,8 @@ function ModalLang({ isOpen, onClose, lang, setLang, color }: {
             className="bg-white rounded-t-3xl w-full p-6 pb-10"
           >
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-5" />
-            <h3 className="text-xl font-bold encre mb-2">Langue de Tata Nanti Lou</h3>
-            <p className="text-sm encre-3 mb-6">Dans quelle langue tu veux me parler aujourd&apos;hui ?</p>
+            <h3 className="text-xl font-bold encre mb-2">{t('parametres.modalLangTitre')}</h3>
+            <p className="text-sm encre-3 mb-6">{t('parametres.modalLangIndice')}</p>
             <div className="space-y-3">
               {LANGS.map(id => {
                 const isActive = lang === id;
@@ -456,7 +463,7 @@ function ModalLang({ isOpen, onClose, lang, setLang, color }: {
                     <span className="text-3xl">{LANG_FLAGS[id]}</span>
                     <div>
                       <p className="font-bold encre">{LANG_LABELS[id]}</p>
-                      {isActive && <p className="text-xs mt-0.5" style={{ color }}>Langue actuelle</p>}
+                      {isActive && <p className="text-xs mt-0.5" style={{ color }}>{t('parametres.modalLangActuelle')}</p>}
                     </div>
                     {isActive && <Check className="w-5 h-5 ml-auto" style={{ color }} strokeWidth={3} />}
                   </motion.button>
@@ -477,6 +484,7 @@ interface UniversalParametresProps {
 }
 
 export function UniversalParametres({ role }: UniversalParametresProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const cfg = ROLE_CONFIG[role];
   const { color } = cfg;
@@ -608,13 +616,13 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
     const newPrefs = buildPrefs();
     try {
       const r = await enregistrerPreferences(newPrefs);
-      if (r.etat === 'session_expiree') { if (!silent) toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'session_expiree') { if (!silent) toast.error(t('parametres.erreurSessionExpiree')); return; }
       if (r.etat === 'erreur_metier') { if (!silent) toast.error(r.message || 'Erreur'); return; }
       updateUser({ preferences: newPrefs });
       setSaved(true);
-      if (!silent) { speak('Paramètres sauvegardés'); toast.success('Paramètres sauvegardés'); }
+      if (!silent) { speak(t('parametres.voixParametresSauvegardes')); toast.success(t('parametres.toastParametresSauvegardes')); }
       setTimeout(() => setSaved(false), 2500);
-    } catch { if (!silent) toast.error('Erreur réseau'); }
+    } catch { if (!silent) toast.error(t('parametres.erreurReseau')); }
   }, [buildPrefs, speak, updateUser]);
 
   useEffect(() => {
@@ -626,32 +634,32 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
   const handleSavePin = async (newPin: string, currentPin?: string) => {
     try {
       const r = await definirPin(newPin, currentPin);
-      if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
+      if (r.etat === 'session_expiree') { toast.error(t('parametres.erreurSessionExpiree')); return; }
       if (r.etat === 'erreur_metier') { toast.error(r.message || 'Erreur PIN'); return; }
       if (user) setUser({ ...user, pinSecurityEnabled: true });
-      toast.success('Code PIN activé');
-    } catch { toast.error('Erreur réseau'); }
+      toast.success(t('parametres.toastPinActive'));
+    } catch { toast.error(t('parametres.erreurReseau')); }
   };
 
   const handleDisablePin = async (currentPin: string) => {
     try {
       const r = await desactiverPin(currentPin);
-      if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi.'); return; }
-      if (r.etat === 'erreur_metier') { toast.error(r.message || 'PIN incorrect'); return; }
+      if (r.etat === 'session_expiree') { toast.error(t('parametres.erreurSessionExpiree')); return; }
+      if (r.etat === 'erreur_metier') { toast.error(r.message || t('parametres.erreurPinIncorrect')); return; }
       if (user) setUser({ ...user, pinSecurityEnabled: false });
-      toast.success('Code PIN désactivé');
-    } catch { toast.error('Erreur réseau'); }
+      toast.success(t('parametres.toastPinDesactive'));
+    } catch { toast.error(t('parametres.erreurReseau')); }
   };
 
   const handleRegisterBiometric = async () => {
     const r = await registerWebAuthn();
     // API-01b : chaque cas dit ce qui s'est VRAIMENT passé. Une session finie
     // n'est pas un doigt refusé, et une annulation n'est pas un échec.
-    if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi, puis réessaie.'); return; }
-    if (r.etat === 'annulee') { toast('Tu as annulé. Tu peux réessayer quand tu veux.'); return; }
+    if (r.etat === 'session_expiree') { toast.error(t('parametres.erreurSessionExpiree')); return; }
+    if (r.etat === 'annulee') { toast(t('parametres.toastAnnuleReessayer')); return; }
     if (r.etat === 'indisponible') { toast.error(r.message || 'Ça ne marche pas sur ce téléphone.'); return; }
     if (r.etat === 'non_reconnue') { toast.error('Ton téléphone n’a pas pu enregistrer. Réessaie.'); return; }
-    toast.success('FaceID / Empreinte activé');
+    toast.success(t('parametres.toastFaceIdActive'));
     try {
       const tel = String((user as any)?.phone || '').replace(/^\+225/, '');
       if (/^\d{10}$/.test(tel)) marquerBiometrie(window.localStorage, tel, true);
@@ -660,12 +668,12 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
 
   const handleTestBiometric = async () => {
     const r = await verifyWebAuthnForKeiwa();
-    if (r.etat === 'ok') { toast.success('Ton téléphone t’a reconnue'); return; }
+    if (r.etat === 'ok') { toast.success(t('parametres.toastTelephoneReconnu')); return; }
     // ICI ÉTAIT LE REPROCHE INJUSTE : sur session expirée, l'invite d'empreinte
     // ne s'ouvrait même pas, et on lui disait pourtant qu'elle n'avait pas été
     // reconnue.
-    if (r.etat === 'session_expiree') { toast.error('Ta session a expiré. Reconnecte-toi — ce n’est pas ton doigt.'); return; }
-    if (r.etat === 'annulee') { toast('Tu as annulé.'); return; }
+    if (r.etat === 'session_expiree') { toast.error(t('parametres.erreurSessionExpiree')); return; }
+    if (r.etat === 'annulee') { toast(t('parametres.toastAnnule')); return; }
     if (r.etat === 'indisponible') { toast.error(r.message || 'La reconnaissance ne marche pas ici.'); return; }
     toast.error('Ton téléphone ne t’a pas reconnue. Réessaie.');
   };
@@ -680,7 +688,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
     <>
       <SubPageLayout
         role={role}
-        title="Paramètres"
+        title={t('parametres.titre')}
         rightContent={
           <motion.button
             onClick={() => { void handleSave(false); }}
@@ -705,7 +713,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
               <p className="font-bold encre">{profileName}</p>
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
-                <p className="text-gray-600 text-sm">{isOnline ? 'En ligne' : 'Hors ligne'}</p>
+                <p className="text-gray-600 text-sm">{isOnline ? t('parametres.statutEnLigne') : t('parametres.statutHorsLigne')}</p>
               </div>
             </div>
           </div>
@@ -713,13 +721,13 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
           {role === 'identificateur' && <IdentificateurPinChangeSection />}
 
           {/* Mode d'accès : l'app s'adapte à la façon de travailler de chacune. */}
-          <Section title="Ma façon d'utiliser Julaba" icon={Headphones} color={color}>
+          <Section title={t('parametres.sectionMonUtilisation')} icon={Headphones} color={color}>
             <ModeAccesSwitcher />
-            <RowToggle label="Mode soleil" sublabel="Tout plus grand et plus lisible dehors"
+            <RowToggle label={t('parametres.labelModeSoleil')} sublabel={t('parametres.sublabelModeSoleil')}
               value={soleil} onChange={basculerSoleil} color={color} />
           </Section>
 
-          <Section title="Notifications" icon={Bell} color={color}>
+          <Section title={t('parametres.sectionNotifications')} icon={Bell} color={color}>
             {role === 'marchand' && <>
               <RowToggle color={color} label="Nouvelles commandes" sublabel="Alertes immédiates sur chaque commande" value={notifCommandes} onChange={setNotifCommandes} />
               <RowToggle color={color} label="Paiements" sublabel="Confirmation et échecs de paiement" value={notifPaiements} onChange={setNotifPaiements} />
@@ -775,8 +783,8 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
               plutôt que coupés dans cet écran séparé (audit accueil/profil).
               Il ne reste ici que ce qui est vraiment occasionnel. */}
           {role === 'marchand' && (
-            <Section title="Sécurité" icon={Fingerprint} color={color}>
-              <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
+            <Section title={t('parametres.sectionSecurite')} icon={Fingerprint} color={color}>
+              <RowAction label={t('parametres.labelHistoriqueConnexions')} sublabel={t('parametres.sublabelVoirAccesRecents')} onClick={() => setShowSessions(true)} />
             </Section>
           )}
 
@@ -909,16 +917,16 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             </Section>
           </>)}
 
-          <Section title="Accessibilité" icon={Mic} color={color}>
+          <Section title={t('parametres.sectionAccessibilite')} icon={Mic} color={color}>
             {role !== 'institution' && (
               <VoiceLevelSelector value={voiceLevel} onChange={setVoiceLevel} color={color} />
             )}
             <TextSizeSlider value={textSize} onChange={setTextSize} color={color} />
-            <RowToggle color={color} label="Mode sombre" sublabel="Interface sombre" value={isDark} onChange={() => toggleDark()} />
+            <RowToggle color={color} label={t('parametres.labelModeSombre')} sublabel={t('parametres.sublabelInterfaceSombre')} value={isDark} onChange={() => toggleDark()} />
             <div className="px-5 py-3">
-              <p className="text-xs font-bold encre-3 mb-2">Planification</p>
+              <p className="text-xs font-bold encre-3 mb-2">{t('parametres.labelPlanification')}</p>
               <div className="flex gap-2">
-                {([{ key: 'manuel' as const, label: 'Manuel' }, { key: 'auto' as const, label: 'Auto (18h-6h)' }] as const).map(opt => (
+                {([{ key: 'manuel' as const, label: t('parametres.labelManuel') }, { key: 'auto' as const, label: t('parametres.labelAuto') }] as const).map(opt => (
                   <motion.button key={opt.key} onClick={() => setMode(opt.key)} whileTap={{ scale: 0.95 }}
                     className="flex-1 py-2 rounded-xl border-2 text-xs font-bold"
                     style={mode === opt.key
@@ -929,28 +937,28 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                 ))}
               </div>
             </div>
-            <RowToggle color={color} label="Réduire les animations" sublabel="Améliore les performances sur téléphones bas de gamme" value={reduceAnimations} onChange={setReduceAnimations} />
-            <RowToggle color={color} label="Vibrations" sublabel="Retour haptique lors des actions" value={vibrations} onChange={setVibrations} />
+            <RowToggle color={color} label={t('parametres.labelReduireAnimations')} sublabel={t('parametres.sublabelAmeliorePerformances')} value={reduceAnimations} onChange={setReduceAnimations} />
+            <RowToggle color={color} label={t('parametres.labelVibrations')} sublabel={t('parametres.sublabelRetourHaptique')} value={vibrations} onChange={setVibrations} />
             {role !== 'institution' && (
-              <RowAction label="Langue de Tata Nanti Lou" sublabel={LANG_FLAGS[lang] + ' ' + LANG_LABELS[lang]} icon={Globe} onClick={() => setShowLang(true)} />
+              <RowAction label={t('parametres.labelLangueTata')} sublabel={LANG_FLAGS[lang] + ' ' + LANG_LABELS[lang]} icon={Globe} onClick={() => setShowLang(true)} />
             )}
           </Section>
 
-          <Section title="Compte" icon={Lock} color={color}>
+          <Section title={t('parametres.sectionCompte')} icon={Lock} color={color}>
             <RowAction
-              label="Informations personnelles"
-              sublabel="Modifier mon profil"
+              label={t('parametres.labelInformationsPersonnelles')}
+              sublabel={t('parametres.sublabelModifierProfil')}
               onClick={() => navigate(`/${role === 'cooperative' ? 'cooperative' : role}/profil`)}
             />
-            <RowAction label="Support et aide" sublabel="Contacter l'équipe JÙLABA" icon={Headphones}
+            <RowAction label={t('parametres.labelSupportAide')} sublabel={t('parametres.sublabelContacterEquipe')} icon={Headphones}
               onClick={() => navigate(`/${role}/support`)} />
             {role === 'marchand' && (
-              <RowAction label="Mes données" sublabel="Loi ivoirienne n°2013-450 — voir, corriger, supprimer" icon={FileText}
+              <RowAction label={t('parametres.labelMesDonnees')} sublabel={t('parametres.sublabelLoiIvoirienne')} icon={FileText}
                 onClick={() => navigate('/marchand/mes-donnees')} />
             )}
-            <RowAction label="Supprimer mon compte" sublabel="Suppression définitive et irréversible" danger icon={Trash2}
+            <RowAction label={t('parametres.labelSupprimerMonCompte')} sublabel={t('parametres.sublabelSuppressionDefinitive')} danger icon={Trash2}
               onClick={() => setShowDeleteAccount(true)} />
-            <RowAction label="Se déconnecter" sublabel="Retour à la connexion" danger icon={LogOut}
+            <RowAction label={t('parametres.labelSeDeconnecter')} sublabel={t('parametres.sublabelRetourConnexion')} danger icon={LogOut}
               onClick={() => { if (logout.venteEnCours) logout.openCartConfirm(); else setShowLogout(true); }} />
           </Section>
 
@@ -996,10 +1004,10 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
       <ModalDeleteAccount isOpen={showDeleteAccount} onClose={() => setShowDeleteAccount(false)} />
       <ModalDanger
         isOpen={showLogout}
-        title="Se déconnecter ?"
-        message="Tu seras redirigé vers la page de connexion Jùlaba."
-        confirmLabel="Se déconnecter"
-        onConfirm={async () => { speak('Déconnexion en cours'); await logout.performLogout(); }}
+        title={t('parametres.modalLogoutTitre')}
+        message={t('parametres.modalLogoutMessage')}
+        confirmLabel={t('parametres.modalLogoutConfirmer')}
+        onConfirm={async () => { speak(t('parametres.voixDeconnexionEnCours')); await logout.performLogout(); }}
         onClose={() => setShowLogout(false)}
       />
       {/* R3 — confirmation « panier en cours » (uniquement si une vente est en cours) */}

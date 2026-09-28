@@ -28,6 +28,7 @@ import { salutation } from '../../utils/appellation';
 import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 import { glyphePourChiffre } from '../../services/clavierImage';
 import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
+import { useTranslation } from 'react-i18next';
 
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
@@ -88,6 +89,7 @@ const TEST_PHONES = new Set<string>([
 ]);
 
 export function LoginPassword() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { setUser: setAppUser, setAccessToken, refreshUserData } = useApp();
   const { setUser: setUserProfile } = useUser();
@@ -196,8 +198,8 @@ export function LoginPassword() {
   // suivante.
   const greetTitle = `${salutation(compteConnu?.appellation, cachedPrenom)} !`;
   const greetSub = cachedPrenom
-    ? 'Je suis heureuse de vous revoir aujourd’hui.'
-    : 'Je suis Tata Nanti Lou. Je serai à vos côtés pour vous aider.';
+    ? t('login.voixRevoireAujourdhui')
+    : t('login.voixJeSuisTata');
 
   // « Écouter Tata » : accueil vocal. On utilise la VOIX DU NAVIGATEUR (fiable et
   // correcte) — le clip enregistré /voix/tata/phrase-1.mp3 côté serveur contenait
@@ -208,9 +210,9 @@ export function LoginPassword() {
     // La consigne suit l'ÉTAPE : accueil reconnu (geste unique) ou numéro à dire.
     const consigne = step === 'reconnaissance' && compteConnu
       ? (compteConnu.biometrie
-        ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
-        : 'Touche le grand bouton et entre ton code.')
-      : 'Dis ton numéro, ou tape-le.';
+        ? t('login.voixToucheReconnaissance')
+        : t('login.voixToucheCode'))
+      : t('login.voixDireOuTaper');
     // UNE SEULE voix de secours dans toute l'appli (speakBrowser) : même voix FR,
     // même débit, même timbre partout → fini le « mélange de voix ».
     try { managerSpeak(`${greetTitle}. ${greetSub}. ${consigne}`).finally(() => setTataSpeaking(false)); }
@@ -306,7 +308,7 @@ export function LoginPassword() {
   const direConsigneCode = useCallback(() => {
     if (step !== 'password') return;
     if (!guidageVocal(accessMode)) return; // mode lecture : pas de consigne auto
-    parle('Entre ton code secret à 4 chiffres');
+    parle(t('login.voixEntreCode'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, accessMode]);
 
@@ -333,8 +335,8 @@ export function LoginPassword() {
     if (!(step === 'reconnaissance' && compteConnu && guidageVocal(accessMode))) return;
     const salut = `${salutation(compteConnu.appellation, compteConnu.prenom)} !`;
     const geste = compteConnu.biometrie
-      ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
-      : 'Touche le grand bouton et entre ton code.';
+      ? t('login.voixToucheReconnaissance')
+      : t('login.voixToucheCode');
     try { void managerSpeak(`${salut} ${geste}`); } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, compteConnu, accessMode]);
@@ -356,10 +358,10 @@ export function LoginPassword() {
     if (!suggestion) return;
     if (oui) {
       setAccessMode(suggestion.mode);
-      parle('C\'est fait. Je m\'adapte à toi.');
+      parle(t('login.voixCestFait'));
     } else {
       marquerDemande();
-      parle('D\'accord, on ne change rien.');
+      parle(t('login.voixDaccord'));
     }
     setSuggReponse(true);
   };
@@ -464,7 +466,7 @@ export function LoginPassword() {
     setError('');
     if (sliced.length === 10) {
       if (!numeroCIComplet(sliced, TEST_PHONES)) {
-        setError('Numéro non reconnu, réessaie ou tape-le');
+        setError(t('login.errNumeroNonReconnu'));
         return;
       }
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
@@ -641,7 +643,7 @@ export function LoginPassword() {
     // RÉELLEMENT ENREGISTRÉE. Le clavier reste le filet, il n'est plus la
     // seule porte : le micro demeure atteignable et la phrase le nomme.
     onFinal: (num) => {
-      const relecture = num ? `J'ai compris. ${chiffresEpeles(num)}` : '';
+      const relecture = num ? t('login.voixJaiCompris', { chiffres: chiffresEpeles(num) }) : '';
       if (num.length >= 10 && numeroCIComplet(num, TEST_PHONES)) {
         try { navigator.vibrate?.(30); } catch { /* ignore */ }
         remplirNumero(num);
@@ -653,22 +655,22 @@ export function LoginPassword() {
       if (num.length > 0) {
         setPhone(num);
         setError(num.length >= 10
-          ? 'Vérifie ton numéro : touche le micro pour redire, ou corrige 👇'
-          : 'Il manque des chiffres : touche le micro pour redire, ou complète 👇');
-        void parleSuite(relecture, "Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+          ? t('login.errVerifieNumero')
+          : t('login.errManqueChiffres'));
+        void parleSuite(relecture, t('login.voixPasComprisTape'));
         return;
       }
-      setError("Je n'ai pas compris. Touche le micro pour redire, ou tape 👇");
-      void parleSuite("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+      setError(t('login.errPasComprisTape'));
+      void parleSuite(t('login.voixPasComprisTape'));
     },
     buildTag: 'sherpa-login-live-v2-relecture',
-    siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro."); },
+    siPasPrete: () => { setShowVoiceInstall(true); parle(t('login.voixPourTecouter')); },
     // Micro refusé / moteur en échec : on dit les clips existants (ui-100,
     // ui-058) plutôt qu'une phrase sur mesure qui serait muette. Aucun clip ne
     // dit « autorise le micro » — le texte écrit le précise, la voix dit au
     // moins qu'il y a un problème et qu'on peut réessayer.
-    siMicRefuse: () => { setError('Autorise le micro, ou tape ton numéro 👇'); void parleSuite('Problème avec le micro — réessaie'); setShowKeypad(true); },
-    siEchec: () => { setShowKeypad(true); void parleSuite("Je n'ai pas compris. Tape ton numéro, ou réessaie."); },
+    siMicRefuse: () => { setError(t('login.errAutoriseMicro')); void parleSuite(t('login.voixProblemeMicro')); setShowKeypad(true); },
+    siEchec: () => { setShowKeypad(true); void parleSuite(t('login.voixPasComprisTape')); },
   });
 
   // AUDIT UX B5 (11/08/2026) : le CODE SECRET ne se dicte JAMAIS à voix
@@ -786,11 +788,11 @@ export function LoginPassword() {
       } else {
         // Mots de la MARCHANDE (pas « biométrie ») : dire le problème et le geste
         // de secours. L'effet vocal sur `error` l'énonce automatiquement.
-        setError('Ton téléphone ne t\'a pas reconnue. Utilise ton code.');
+        setError(t('login.errTelephoneNonReconnu'));
       }
     } catch (err) {
       console.warn('[LoginPassword] biometric failed:', err instanceof Error ? err.message : err);
-      setError('La reconnaissance n\'a pas marché ici. Utilise ton code.');
+      setError(t('login.errReconnaissanceEchoue'));
     } finally {
       setIsLoading(false);
     }
@@ -798,9 +800,9 @@ export function LoginPassword() {
 
   const handleLogin = async (pinOverride?: string, retry = 0) => {
     const pwd = pinOverride ?? pinInput;
-    if (phone.length !== 10) { setError('Le numéro doit contenir 10 chiffres'); return; }
+    if (phone.length !== 10) { setError(t('login.errNumero10Chiffres')); return; }
     if (import.meta.env.DEV && phone === '0501604040') { setShowDevButton(true); setError(''); return; }
-    if (!pwd || pwd.length === 0) { setError('Entre ton mot de passe'); return; }
+    if (!pwd || pwd.length === 0) { setError(t('login.errEntreMotDePasse')); return; }
     setIsLoading(true); setError('');
     // Espion de connexion : trace l'URL réellement appelée + le résultat, visible
     // dans « 🐞 Rapport de test ». Permet de diagnostiquer « Erreur de connexion »
@@ -842,7 +844,7 @@ export function LoginPassword() {
       } catch (err) {
         console.warn('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
         vlog('LOGIN_JSON_FAIL', { msg: err instanceof Error ? err.message : String(err) });
-        setError('Réponse inattendue. Réessaie dans un instant.');
+        setError(t('login.errReponseInattendue'));
         setIsLoading(false);
         return;
       }
@@ -850,7 +852,7 @@ export function LoginPassword() {
         // Trop de tentatives en 1 minute (rate-limiter) : ce N'EST PAS un mauvais
         // code -> on ne compte pas d'échec et on affiche un message clair.
         if (response.status === 429) {
-          setError('Trop d\'essais. Attends une minute puis réessaie.');
+          setError(t('login.errTropEssaisMinute'));
           setPinInput(""); setIsLoading(false); return;
         }
         // Source de vérité backend : verrouillage total après 9 échecs cumulés.
@@ -861,8 +863,8 @@ export function LoginPassword() {
         if (result.locked === true) {
           const attente = typeof result.attenteMs === 'number' ? result.attenteMs : 0;
           const message = attente > 0
-            ? `Trop d'essais. Attends ${attenteEnClair(attente)}, puis réessaie.`
-            : "Trop d'essais. Attends un moment, puis réessaie.";
+            ? t('login.errTropEssaisAttente', { attente: attenteEnClair(attente) })
+            : t('login.errTropEssaisMoment');
           setError(message);
           try { parle(message); } catch { /* la voix n'est jamais bloquante */ }
           setPinInput(""); setIsLoading(false); return;
@@ -872,8 +874,8 @@ export function LoginPassword() {
         // le compteur local d'avant mentait dès le premier rechargement.
         const restants = typeof result.essaisRestants === 'number' ? result.essaisRestants : null;
         const message = restants !== null && restants <= 2
-          ? `Ce n'est pas le bon code. Attention : encore ${restants} essai${restants > 1 ? 's' : ''}, après il faudra attendre.`
-          : "Ce n'est pas le bon code. Réessaie.";
+          ? t('login.errMauvaisCodeAttention', { restants, pluriel: restants > 1 ? 's' : '' })
+          : t('login.errMauvaisCode');
         setError(message);
         try { parle(message); } catch { /* la voix n'est jamais bloquante */ }
         setPinInput(""); setIsLoading(false); return;
@@ -893,14 +895,14 @@ export function LoginPassword() {
       } catch { /* ignore */ }
       const user = result.user;
       if (!user) {
-        setError('Réponse serveur invalide');
+        setError(t('login.errReponseServeurInvalide'));
         setIsLoading(false);
         return;
       }
       const boRoles = ['super_admin', 'admin'];
       const isBackOffice = boRoles.includes(user.role ?? '');
       if (result.user?.mustChangePassword) {
-        setError('Mot de passe temporaire, redirection en cours...');
+        setError(t('login.errMotDePasseTemporaire'));
         if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
         navigateTimeoutRef.current = setTimeout(() => {
           setIsLoading(false);
@@ -914,7 +916,7 @@ export function LoginPassword() {
       }
       if (isBackOffice) {
         if (!window.location.pathname.includes('backoffice')) {
-          setError('Accès non autorisé. Utilise le portail administrateur sur julaba.online/backoffice/login');
+          setError(t('login.errAccesNonAutorise'));
           setIsLoading(false);
           return;
         }
@@ -964,11 +966,11 @@ export function LoginPassword() {
       // temps au serveur de démarrer, plutôt que d'échouer sèchement.
       const estReseau = err instanceof TypeError;
       if (estReseau && retry < 2) {
-        setError('Réveil du serveur… reconnexion automatique, patiente 🔄');
+        setError(t('login.errReveilServeur'));
         setTimeout(() => { handleLogin(pwd, retry + 1); }, 7000);
         return;
       }
-      setError('Connexion impossible. Le serveur se réveille (~1 min) — réessaie dans un instant.');
+      setError(t('login.errConnexionImpossible'));
       setIsLoading(false);
     } finally {
       setIsLoading(false);
@@ -1001,7 +1003,7 @@ export function LoginPassword() {
         if (import.meta.env.DEV && next === '0501604040') setShowDevButton(true);
         if (next.length === 10) {
           if (!numeroCIComplet(next, TEST_PHONES)) {
-            setError('Préfixe invalide');
+            setError(t('login.errPrefixeInvalide'));
             return;
           }
           if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
@@ -1035,7 +1037,7 @@ export function LoginPassword() {
       // de vibration différent) + un mot dit à voix haute. « Effacé » ne révèle
       // aucun chiffre : rien à cacher, contrairement au numéro lui-même.
       try { navigator.vibrate?.([10, 30, 10]); } catch { /* ignore */ }
-      if (guidageVocal(accessMode)) parle('Effacé.');
+      if (guidageVocal(accessMode)) parle(t('login.voixEfface'));
     } else {
       if (pinInput.length === 0) {
         retourDepuisCode();
@@ -1093,17 +1095,17 @@ export function LoginPassword() {
         <div className="login-brand">
           <span className="login-logo"><img src={logoJulaba} alt="JULABA" /></span><BrandSignature />
         </div>
-        <h1>{step === 'phone' ? 'Ton numéro' : step === 'password' ? 'Ton code secret' : salutation(compteConnu?.appellation, compteConnu?.prenom)}</h1>
+        <h1>{step === 'phone' ? t('login.titreNumero') : step === 'password' ? t('login.titreCodeSecret') : salutation(compteConnu?.appellation, compteConnu?.prenom)}</h1>
         <div className="login-guide">
           <img src={tataNantiLou} alt="Tata Nanti Lou" />
           <button type="button" onClick={ecouterTata} className="login-replay"
-            aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tata Nanti Lou'}>
+            aria-label={tataSpeaking ? t('login.ariaReecouterTata') : t('login.ariaEcouterTata')}>
             <Volume2 aria-hidden="true" size={26} />
           </button>
         </div>
-        {step === 'password' && <button type="button" onClick={retourDepuisCode} className="login-help" disabled={isLoading}><ChevronLeft aria-hidden="true" size={22} />Retour</button>}
+        {step === 'password' && <button type="button" onClick={retourDepuisCode} className="login-help" disabled={isLoading}><ChevronLeft aria-hidden="true" size={22} />{t('login.boutonRetour')}</button>}
         {devMode && (
-          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tata Nanti Lou · dev</span>
+          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>{t('login.labelTataDev')}</span>
         )}
       </motion.div>
 
@@ -1144,7 +1146,7 @@ export function LoginPassword() {
                   Le geste est DIT par Tata ; l'écran ne l'écrit pas. */}
               <div className="login-account">
                 {compteConnu.photo ? <img src={compteConnu.photo} alt="" /> : <span className="login-account-placeholder"><UserRound aria-hidden="true" size={40} /></span>}
-                <p>Mon compte</p>
+                <p>{t('login.labelMonCompte')}</p>
               </div>
               <AnimatePresence>
                 {error && (
@@ -1163,7 +1165,7 @@ export function LoginPassword() {
               {compteConnu.biometrie ? (
                 <motion.button
                   type="button"
-                  aria-label="Ton téléphone te reconnaît — touche pour entrer"
+                  aria-label={t('login.ariaTelephoneReconnait')}
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={handleBiometric}
                   disabled={isLoading}
@@ -1176,12 +1178,12 @@ export function LoginPassword() {
                   }}
                   whileTap={{ scale: 0.96 }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 22, fontWeight: 750 }}><Fingerprint aria-hidden="true" size={36} />{isLoading ? 'En cours…' : 'Entrer'}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 22, fontWeight: 750 }}><Fingerprint aria-hidden="true" size={36} />{isLoading ? t('login.boutonEnCours') : t('login.boutonEntrer')}</span>
                 </motion.button>
               ) : (
                 <motion.button
                   type="button"
-                  aria-label="Entre ton code secret"
+                  aria-label={t('login.ariaEntrerCodeSecret')}
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={() => { setError(''); setStep('password'); }}
                   style={{
@@ -1193,21 +1195,21 @@ export function LoginPassword() {
                   }}
                   whileTap={{ scale: 0.96 }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 20, fontWeight: 750 }}><KeyRound aria-hidden="true" size={30} />Utiliser mon code</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 20, fontWeight: 750 }}><KeyRound aria-hidden="true" size={30} />{t('login.boutonUtiliserMonCode')}</span>
                 </motion.button>
               )}
               {/* Secours toujours visible : son code à 4 chiffres — sans redonner le numéro. */}
               {compteConnu.biometrie && (
                 <button type="button" onClick={() => { setError(''); setStep('password'); }}
                   style={{ marginTop: 4, padding: '13px 26px', borderRadius: 16, border: '2px solid rgba(198,106,44,0.35)', background: '#fff', color: '#8A5A34', fontWeight: 800, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  <KeyRound aria-hidden="true" size={22} /> Utiliser mon code
+                  <KeyRound aria-hidden="true" size={22} /> {t('login.boutonUtiliserMonCode')}
                 </button>
               )}
               {/* Téléphone partagé : quelqu'un d'autre peut entrer — sans rien effacer. */}
               <button type="button"
                 onClick={() => { setStep('phone'); setPhone(''); setPinInput(''); setError(''); }}
                 style={{ marginTop: 2, background: 'none', border: 'none', color: 'var(--encre-3)', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '8px 12px' }}>
-                <Users aria-hidden="true" size={22} /> Changer de compte
+                <Users aria-hidden="true" size={22} /> {t('login.boutonChangerDeCompte')}
               </button>
             </motion.div>
           ) : step === 'phone' ? (
@@ -1227,9 +1229,9 @@ export function LoginPassword() {
                 <p style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#1e3a8a', textAlign: 'center' }}>{suggestion.texte}</p>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button type="button" onClick={() => repondreSuggestion(false)}
-                    style={{ flex: 1, padding: '11px 0', borderRadius: 12, fontWeight: 800, fontSize: 14, color: '#1e3a8a', background: '#fff', border: '2px solid #C7D8FF', cursor: 'pointer' }}>Non</button>
+                    style={{ flex: 1, padding: '11px 0', borderRadius: 12, fontWeight: 800, fontSize: 14, color: '#1e3a8a', background: '#fff', border: '2px solid #C7D8FF', cursor: 'pointer' }}>{t('login.boutonNon')}</button>
                   <button type="button" onClick={() => repondreSuggestion(true)}
-                    style={{ flex: 1, padding: '11px 0', borderRadius: 12, fontWeight: 800, fontSize: 14, color: '#fff', background: '#2563eb', border: 'none', cursor: 'pointer' }}>Oui, adapte</button>
+                    style={{ flex: 1, padding: '11px 0', borderRadius: 12, fontWeight: 800, fontSize: 14, color: '#fff', background: '#2563eb', border: 'none', cursor: 'pointer' }}>{t('login.boutonOuiAdapte')}</button>
                 </div>
               </motion.div>
             )}
@@ -1238,15 +1240,15 @@ export function LoginPassword() {
                 « elle m'entend ». « J'écoute… » quand le micro est ouvert sans chiffre. */}
             <div className="login-number">
               <span style={{ color: 'var(--encre-3)' }}>+225</span>
-              <span className="login-number-value" aria-label={phone.length ? 'Numéro saisi' : 'Numéro à saisir'}>
-                {(phone.match(/.{1,2}/g) || []).join(' ') || '— — — — —'}
+              <span className="login-number-value" aria-label={phone.length ? t('login.ariaNumeroSaisi') : t('login.ariaNumeroASaisir')}>
+                {(phone.match(/.{1,2}/g) || []).join(' ') || t('login.placeholderNumeroVide')}
               </span>
               {/* CORRECTIF : ce bouton n'apparaissait qu'à 10 chiffres pile —
                   donc jamais dans le cas qui en a le plus besoin, celui où la
                   dictée a avalé un chiffre. Il est désormais là dès le premier
                   chiffre saisi, dicté ou tapé. */}
               {phone.length > 0 && <button type="button" className="login-replay" style={{ width: 44, height: 44, flexShrink: 0 }}
-                disabled={isListening || isLoading} onClick={() => parle(chiffresEpeles(phone))} aria-label="Réécouter mon numéro">
+                disabled={isListening || isLoading} onClick={() => parle(chiffresEpeles(phone))} aria-label={t('login.ariaReecouterNumero')}>
                 <Volume2 aria-hidden="true" size={20} />
               </button>}
             </div>
@@ -1274,7 +1276,7 @@ export function LoginPassword() {
             {voixEcouteDispo && (
             <motion.button
               type="button"
-              aria-label={numeroSaisi ? 'Recommencer et redire votre numéro' : 'Touchez et dites votre numéro'}
+              aria-label={numeroSaisi ? t('login.ariaRedireNumero') : t('login.ariaDireNumero')}
               onPointerDown={(e) => e.preventDefault()}
               onClick={dicterNumero}
               className="login-dictate"
@@ -1287,8 +1289,8 @@ export function LoginPassword() {
             >
               <Mic aria-hidden="true" size={numeroSaisi && !isListening ? 26 : 36} />
               <span>{isListening
-                ? 'Écoute en cours…'
-                : numeroSaisi ? 'Redire mon numéro' : 'Dire mon numéro'}</span>
+                ? t('login.boutonEcouteEnCours')
+                : numeroSaisi ? t('login.boutonRedireNumero') : t('login.boutonDireNumero')}</span>
             </motion.button>
             )}
             <AnimatePresence>
@@ -1324,7 +1326,7 @@ export function LoginPassword() {
                 style={{ textAlign: 'center', padding: '4px 0' }}
               >
                 <p style={{ fontSize: 11, color: 'rgba(198,106,44,0.6)', margin: 0 }}>
-                  Vérification...
+                  {t('login.boutonVerificationCourte')}
                 </p>
               </motion.div>
             )}
@@ -1340,7 +1342,7 @@ export function LoginPassword() {
               >
                 <InstallerOffline onReady={() => {
                   setShowVoiceInstall(false);
-                  parle('Voilà, tu peux parler maintenant. Touche le micro et dis ton numéro.');
+                  parle(t('login.voixVoilaParler'));
                 }} />
               </motion.div>
             )}
@@ -1348,7 +1350,7 @@ export function LoginPassword() {
                 la référence, toujours affiché). */}
             {voixEcouteDispo && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 22 }}>
-              <button type="button" aria-label="Taper mon numéro sur le clavier" onClick={() => setShowKeypad(v => !v)}
+              <button type="button" aria-label={t('login.ariaTaperNumero')} onClick={() => setShowKeypad(v => !v)}
                 style={{ width: 58, height: 58, borderRadius: 18, background: showKeypad ? '#DB7A2C' : '#F5D6BD', color: showKeypad ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
                 <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 13h6"/></svg>
               </button>
@@ -1369,7 +1371,7 @@ export function LoginPassword() {
                     whileTap={{ scale: 0.9 }}
                   >{d}</motion.button>
                 ))}
-                <motion.button type="button" disabled={isLoading || phone.length === 0} aria-label="Connexion par empreinte" onPointerDown={(e) => e.preventDefault()} onClick={handleBiometric}
+                <motion.button type="button" disabled={isLoading || phone.length === 0} aria-label={t('login.ariaConnexionEmpreinte')} onPointerDown={(e) => e.preventDefault()} onClick={handleBiometric}
                   className="login-key"
                   whileTap={{ scale: 0.9, opacity: 1 }}>
                   <Fingerprint style={{ width: 22, height: 22, color: '#B74725' }} />
@@ -1377,7 +1379,7 @@ export function LoginPassword() {
                 <motion.button type="button" disabled={isLoading || isListening} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
                   className="login-key"
                   whileTap={{ scale: 0.9 }}>0</motion.button>
-                <motion.button type="button" aria-label="Effacer le dernier chiffre" onPointerDown={(e) => e.preventDefault()} onClick={handleKeyDelete}
+                <motion.button type="button" aria-label={t('login.ariaEffacerDernier')} onPointerDown={(e) => e.preventDefault()} onClick={handleKeyDelete}
                   className="login-key"
                   whileTap={{ scale: 0.9, opacity: 1 }}>
                   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B74725" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
@@ -1389,7 +1391,7 @@ export function LoginPassword() {
             <button type="button" className="login-primary" style={{ marginTop: 16 }}
               disabled={phone.length !== 10 || !numeroCIComplet(phone, TEST_PHONES) || isListening || isFinalizingDictation || isLoading}
               onClick={() => scheduleTransitionToPasswordAfterCheck(phone)}>
-              <CheckCircle aria-hidden="true" size={26} />{isLoading ? 'Vérification…' : 'C’est mon numéro'}
+              <CheckCircle aria-hidden="true" size={26} />{isLoading ? t('login.boutonVerification') : t('login.boutonCestMonNumero')}
             </button>
             </motion.div>
           ) : (
@@ -1426,7 +1428,7 @@ export function LoginPassword() {
                 }}
                 style={{ fontSize: 11, color: 'rgba(198,106,44,0.65)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
                 whileTap={{ scale: 0.95 }}
-              >Modifier</motion.button>
+              >{t('login.boutonModifier')}</motion.button>
             </div>
             <AnimatePresence>
               {error && (
@@ -1458,8 +1460,8 @@ export function LoginPassword() {
                 On touche le cadenas pour réentendre la consigne. */}
             <button
               type="button"
-              aria-label="Ton code secret — touche pour écouter"
-              onClick={() => parle('Entre ton code secret à 4 chiffres')}
+              aria-label={t('login.ariaCodeSecretTouche')}
+              onClick={() => parle(t('login.voixEntreCode'))}
               style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '2px 0 4px', display: 'flex', justifyContent: 'center', width: '100%' }}
             >
               <span style={{ fontSize: 30, lineHeight: 1 }}>🔒</span>
@@ -1507,13 +1509,13 @@ export function LoginPassword() {
                     zIndex: 2,
                     cursor: 'default',
                   }}
-                  aria-label="Code secret à 4 chiffres"
+                  aria-label={t('login.ariaCodeSecret4')}
                   tabIndex={0}
                 />
               </div>
               <div className="login-keypad">
                 {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
-                  <motion.button type="button" key={d} disabled={isLoading} aria-label={pinEnImages ? glyphePourChiffre(d, true) : `Chiffre ${d}`} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress(d)}
+                  <motion.button type="button" key={d} disabled={isLoading} aria-label={pinEnImages ? glyphePourChiffre(d, true) : t('login.ariaChiffre', { chiffre: d })} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress(d)}
                     className="login-key"
                     whileTap={{ scale: 0.9 }}
                   ><span className={pinEnImages ? 'login-key-image' : undefined}>{glyphePourChiffre(d, pinEnImages)}</span></motion.button>
@@ -1521,7 +1523,7 @@ export function LoginPassword() {
                 <motion.button
                   type="button"
                   disabled={isLoading || phone.length === 0}
-                  aria-label="Ton téléphone te reconnaît — touche pour entrer"
+                  aria-label={t('login.ariaTelephoneReconnait')}
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={handleBiometric}
                   className="login-key"
@@ -1529,11 +1531,11 @@ export function LoginPassword() {
                 >
                   <Fingerprint style={{ width: 22, height: 22, color: '#B74725' }} />
                 </motion.button>
-                <motion.button type="button" disabled={isLoading} aria-label={pinEnImages ? glyphePourChiffre('0', true) : 'Chiffre 0'} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
+                <motion.button type="button" disabled={isLoading} aria-label={pinEnImages ? glyphePourChiffre('0', true) : t('login.ariaChiffre', { chiffre: '0' })} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
                   className="login-key"
                   whileTap={{ scale: 0.9 }}
                 ><span className={pinEnImages ? 'login-key-image' : undefined}>{glyphePourChiffre('0', pinEnImages)}</span></motion.button>
-                <motion.button type="button" aria-label="Effacer le dernier chiffre" onPointerDown={(e) => e.preventDefault()} onClick={handleKeyDelete}
+                <motion.button type="button" aria-label={t('login.ariaEffacerDernier')} onPointerDown={(e) => e.preventDefault()} onClick={handleKeyDelete}
                   className="login-key"
                   whileTap={{ scale: 0.9, opacity: 1 }}
                 >
@@ -1545,9 +1547,9 @@ export function LoginPassword() {
                   seul le glyphe affiché change, le PIN envoyé reste les mêmes chiffres. */}
               <div style={{ display: 'flex', justifyContent: 'center', padding: '2px 0 12px' }}>
                 <button type="button" onClick={basculerPinEnImages}
-                  aria-label={pinEnImages ? 'Revenir aux chiffres' : 'Afficher des images à la place des chiffres'}
+                  aria-label={pinEnImages ? t('login.ariaRevenirChiffres') : t('login.ariaAfficherImages')}
                   style={{ background: 'none', border: 'none', color: '#8A5A34', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '6px 10px' }}>
-                  {pinEnImages ? '🔢 Revenir aux chiffres' : '🍅 Utiliser des images'}
+                  {pinEnImages ? t('login.boutonRevenirChiffres') : t('login.boutonUtiliserImages')}
                 </button>
               </div>
             </div>
@@ -1559,7 +1561,7 @@ export function LoginPassword() {
       {/* Lien secours admin — uniquement sur le portail backoffice (jamais marchande). */}
       {window.location.pathname.includes('backoffice') && (
         <a href="/admin-recovery" style={{ margin: '12px 0', color: 'var(--encre-4)', fontSize: 11, textDecoration: 'none' }}>
-          Problème de connexion admin ?
+          {t('login.labelProblemeConnexionAdmin')}
         </a>
       )}
       {/* Pied de page OUTILS — MODE DÉVELOPPEUR uniquement (5 tapes coin haut-gauche).
@@ -1577,9 +1579,9 @@ export function LoginPassword() {
           style={{ border: '1px solid rgba(124,98,80,0.3)', borderRadius: 22, padding: '9px 22px', color: '#7C6250', fontSize: 12, fontWeight: 600, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#7C6250" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-          Revoir le tutoriel
+          {t('login.boutonRevoirTutoriel')}
         </button>
-        <p style={{ fontSize: 10, color: 'var(--encre-4)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>By Icône Solution</p>
+        <p style={{ fontSize: 10, color: 'var(--encre-4)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>{t('login.labelByIconeSolution')}</p>
         <p
           onClick={() => parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)}
           title="Version de l'application"
@@ -1593,12 +1595,12 @@ export function LoginPassword() {
           type="button"
           onClick={async () => {
             const r = await vlogPartager();
-            if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
+            if (r.methode === 'copie') window.alert(t('login.labelRapportCopie'));
             else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
           }}
           style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: '#8A5A34', background: '#F5D6BD', border: 'none', borderRadius: 10, padding: '7px 14px', cursor: 'pointer' }}
         >
-          🐞 Rapport de test
+          {t('login.boutonRapportTest')}
         </button>
       </motion.div>
       )}

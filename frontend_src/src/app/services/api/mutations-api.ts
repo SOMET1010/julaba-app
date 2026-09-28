@@ -50,3 +50,19 @@ export async function createMutation(
   });
   return { mutation: res.data };
 }
+
+/**
+ * Décide (approuve ou rejette) une mutation en attente.
+ * INIT-019 — vit auparavant en `fetch()` direct dans `BOMutations.tsx`.
+ */
+export async function deciderMutation(
+  mutationId: string,
+  decision: 'approuvee' | 'rejetee',
+  motif?: string,
+): Promise<{ mutation: Mutation }> {
+  const res: any = await apiRequest<any>(`/mutations/${mutationId}/decision`, {
+    method: 'PATCH',
+    body: JSON.stringify({ decision, motif: motif?.trim() || undefined }),
+  });
+  return { mutation: res.data };
+}

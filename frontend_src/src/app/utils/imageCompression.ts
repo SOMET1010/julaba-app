@@ -50,6 +50,10 @@ export async function compressImage(
 }
 
 export async function compressDataUrl(dataUrl: string, opts: CompressOptions = {}): Promise<string> {
+  // INIT-019 — fetch() légitime : `dataUrl` est une `data:` URL locale (base64
+  // produit par `<canvas>.toDataURL()`), pas un appel backend. Le client
+  // centralisé `apiRequest` supposerait une réponse JSON JÙLABA et ajouterait
+  // `credentials`/`Content-Type` inutiles — on garde donc `fetch` natif.
   const res = await fetch(dataUrl);
   const blob = await res.blob();
   return compressImage(blob, opts);

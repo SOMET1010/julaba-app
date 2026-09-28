@@ -25,7 +25,12 @@ function listerFichiers(dir: string): string[] {
     const chemin = join(dir, nom);
     const st = statSync(chemin);
     if (st.isDirectory()) out.push(...listerFichiers(chemin));
-    else if (/\.(ts|tsx)$/.test(nom) && !/\.test\.mts$/.test(nom)) out.push(chemin);
+    // Exclut les tests (legacy `.test.{mts,tsx}` ET nouveaux `.vitest.test.*`)
+    // du scan : un test peut légitimement citer `var(--encre-noir)` à titre de
+    // donnée de comparaison — cohabitation INIT-021 (cf. antiJargon.test.mts).
+    else if (/\.(ts|tsx)$/.test(nom)
+      && !/\.test\.(mts|tsx)$/.test(nom)
+      && !/\.vitest\.test\./.test(nom)) out.push(chemin);
   }
   return out;
 }

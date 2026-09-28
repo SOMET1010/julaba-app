@@ -28,6 +28,40 @@ cd backend && npx tsc --noEmit -p tsconfig.strict.json
 # → 0 erreur
 ```
 
+## Modules migrés
+
+### Phase 1 (INIT-016 phase 1 — pilote)
+
+- ✅ `src/caisse-rest/caisse-produit.entity.ts` (entité)
+- ✅ `src/caisse-rest/caisse-produits.service.ts` (service)
+
+### Phase 2 (INIT-016 phase 2 — extension 2026-09-29)
+
+Couche 2 — Utilitaires :
+
+- ✅ `src/common/paginate.ts` — `any` supprimés : `parsePagination(query: any)` → `PaginationInput` (= `Record<string, unknown> | PaginationParams | undefined`) + helper `readString()` ; `orderBy: any` → `Record<string, 'ASC' | 'DESC'>` (cast `as FindManyOptions<T>['order']` justifié en commentaire) ; `dataSource: any` → `DataSource` ; `params: any[]` → `unknown[]` ; `paginateRaw` devient générique `<T = Record<string, unknown>>`.
+- ✅ `src/config/throttler.config.ts` — déjà propre (0 `any`).
+- ✅ `src/config/trust-proxy.config.ts` — déjà propre (0 `any`).
+- ✅ `src/database/schema-flags.ts` — déjà propre (0 `any`).
+
+Couche 3 — Modules métier stables :
+
+- ✅ `src/cycles-rest/cycles-rest.controller.ts` — `body: any` → interfaces `CreateCycleBody`/`UpdateCycleBody` (champs permissifs `unknown` pour les valeurs brutes JSON) ; `query: any` → `Record<string, string>` (réservé pagination future, paramètre renommé `_query`) ; `const values = []` → `const values: unknown[] = []` ; allow-list `UPDATE_ALLOWED_FIELDS` extraite en constante typée `readonly string[]`.
+- ✅ `src/recoltes-rest/recoltes-rest.controller.ts` — `body: any` → interfaces `CreateRecolteBody`/`UpdateRecolteBody` ; `updateData: any = {}` → `Partial<Recolte>` ; `qualiteMap` local → `QUALITE_MAP` constante typée `Readonly<Record<string, RecolteQualite>>` ; cast `as RecolteStatut`/`as RecolteQualite` documentés (DB valide l'enum côté colonne). Dépendance : `Recolte.entity.ts` mise à jour — champs `cycleId`/`parcelle`/`notes`/`photoUrl` de `string` à `string | null` pour refléter le `nullable: true` du schéma (correctif de typage, pas de changement de comportement DB).
+
+**Bilan phase 2** :
+
+- 6 nouveaux modules ajoutés à `tsconfig.strict.json` (8 au total avec pilotes)
+- 0 `any`/`as any` dans les modules migrés
+- `npx tsc --noEmit -p tsconfig.strict.json` : 0 erreur ✅
+- `npx tsc --noEmit -p tsconfig.build.json` : 0 erreur ✅ (les 3 erreurs préexistantes TS2503 `Cannot find namespace 'Express'` ont disparu après installation de `@types/express` via `npm install`)
+- `npm run test:unit` : 207 tests / 27 suites ✅
+
+### Couches restantes à migrer
+
+- **Couche 4 — Modules sacrés** (effort XL) : `auth/`, reste de `caisse-rest/`, `wallets/`, `commandes/` — exigent tests complets + invariants verts + ADR.
+- **Couche 5 — Backoffice** (effort XL) : `admin/`, `cooperatives-rest/`, `identifications/` — `any` massif (concentrateurs identifiés par l'audit : `auth.controller.ts` 81, `cooperatives-rest.controller.ts` 33, `users.controller.ts` 24, `identifications.controller.ts` 23, `caisse-rest.controller.ts` 23).
+
 ## Stratégie de migration
 
 ### Approche par couches (du sûr vers le risqué)

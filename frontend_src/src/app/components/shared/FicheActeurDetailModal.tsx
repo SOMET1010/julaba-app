@@ -12,7 +12,8 @@ import {
   IdCard, Briefcase, FileText, Star, Lock,
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { API_URL } from '../../utils/api';
+import { getUserHistorique } from '../../services/api/users-api';
+import { verifyIdentificateurPin } from '../../services/api/auth-api';
 
 /* ─── Config par rôle ───────────────────────────────────────── */
 const ROLE_CONFIG: Record<string, {
@@ -124,7 +125,10 @@ function SectionTitle({ children, color }: { children: React.ReactNode; color: s
 export function FicheActeurDetailModal({ acteur, onClose, onEdit, canEdit, contextRole }: Props) {
   const navigate = useNavigate();
   const { speak } = useApp();
-  const [historiqueActeur, setHistoriqueActeur] = useState<Array<{id: string; date: string; type: string; description: string}>>([]);
+  // INIT-019 — type aligné sur `EntreeHistoriqueActeur` du service users-api
+  // (description optionnelle : le backend peut ne pas en renvoyer pour
+  // certains types d'événements). Le rendu tolère déjà `undefined` via `?.`.
+  const [historiqueActeur, setHistoriqueActeur] = useState<Array<{id: string; date: string; type: string; description?: string}>>([]);
   const [loadingHistorique, setLoadingHistorique] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinCode, setPinCode] = useState('');
@@ -160,8 +164,8 @@ export function FicheActeurDetailModal({ acteur, onClose, onEdit, canEdit, conte
     const userId = (acteur as any).acteurId || (acteur as any).acteur_id || acteur.id;
     if (!userId) return;
     setLoadingHistorique(true);
-    fetch(`${API_URL}/users/${userId}/historique`, { credentials: 'include' })
-      .then(r => r.json())
+    // INIT-019 — migration fetch() → getUserHistorique (client centralisé).
+    getUserHistorique(userId)
       .then(data => { if (data.historique) setHistoriqueActeur(data.historique); })
       .catch((e: any) => { console.warn('[FicheActeurDetailModal] historique failed:', e?.message); })
       .finally(() => setLoadingHistorique(false));
@@ -379,7 +383,7 @@ export function FicheActeurDetailModal({ acteur, onClose, onEdit, canEdit, conte
                 {!loadingHistorique && historiqueActeur.map((h) => (
                   <div key={h.id} className="flex gap-3 p-3 bg-gray-50 rounded-xl mb-2">
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900 text-sm">{h.description}</p>
+                      <p className="font-medium text-gray-900 text-sm">{h.description || h.type}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         {new Date(h.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                         {' '}a{' '}
@@ -497,15 +501,21 @@ export function FicheActeurDetailModal({ acteur, onClose, onEdit, canEdit, conte
                   if (pinCode.length !== 4) { setPinError('Le code doit contenir 4 chiffres'); return; }
                   setPinVerifyLoading(true);
                   try {
-                    const res = await fetch(`${API_URL}/auth/identificateur/me/verify-pin`, {
-                      method: 'POST',
-                      credentials: 'include',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ pin: pinCode }),
-                    });
-                    const data = await res.json();
-                    if (!res.ok || !data.valid) {
-                      setPinError(data.message || 'PIN incorrect');
+                    // INIT-019 — migration fetch() → verifyIdentificateurPin
+                    // (client centralisé). La porte unique `/auth` gère le
+                    // rafraîchissement du jeton sur 401 : un jeton expiré ne
+                    // se traduit plus par un « PIN incorrect » mensonger.
+                    const r = await verifyIdentificateurPin(pinCode);
+                    if (r.etat === 'session_expiree') {
+                      setPinError('Ta session a expiré. Reconnecte-toi.');
+                      return;
+                    }
+                    if (r.etat === 'erreur_metier') {
+                      setPinError(r.message || 'PIN incorrect');
+                      return;
+                    }
+                    if (!r.valeur) {
+                      setPinError('PIN incorrect');
                       return;
                     }
                     setShowPinModal(false);

@@ -12,7 +12,6 @@ import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
 import { stopAllAudio } from '../../services/elevenlabs';
 import { PartenairesLogos } from '../shared/PartenairesLogos';
-import { API_URL } from '../../utils/api';
 import {
   uploadProfilePhoto,
   updateUserProfile,
@@ -21,6 +20,7 @@ import {
   getMyLogs,
   updateUserPreferences,
 } from '../../services/backoffice-api';
+import { changePassword } from '../../services/api/auth-api';
 
 const parseUserAgent = (ua: string): string => {
   if (!ua || typeof ua !== 'string') return 'Appareil inconnu';
@@ -287,15 +287,24 @@ export function BOProfil() {
     if (mdpForm.nouveau.length < 8) { toast.error('Le mot de passe doit contenir au moins 8 caractères'); return; }
     setSavingMDP(true);
     try {
-      const res = await fetch(`${API_URL}/auth/change-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ oldPassword: mdpForm.actuel, newPassword: mdpForm.nouveau }),
+      // INIT-019 — migration fetch() → changePassword (client centralisé).
+      // La porte `/auth` gère le rafraîchissement du jeton sur 401 et renvoie
+      // un `Resultat` (ok / erreur_metier / session_expiree) — le composant ne
+      // décide plus lui-même quoi faire d'un statut HTTP.
+      const r = await changePassword({
+        oldPassword: mdpForm.actuel,
+        newPassword: mdpForm.nouveau,
       });
-      const payload = await res.json().catch(() => ({} as any));
-      if (!res.ok || payload?.success === false) {
-        toast.error(payload?.message || 'Impossible de modifier le mot de passe');
+      if (r.etat === 'session_expiree') {
+        toast.error('Session expirée, reconnecte-toi.');
+        return;
+      }
+      if (r.etat === 'erreur_metier') {
+        toast.error(r.message || 'Impossible de modifier le mot de passe');
+        return;
+      }
+      if (!r.valeur.success) {
+        toast.error(r.valeur.message || 'Impossible de modifier le mot de passe');
         return;
       }
       toast.success('Mot de passe modifié avec succès');

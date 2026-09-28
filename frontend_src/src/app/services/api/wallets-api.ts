@@ -97,6 +97,61 @@ export async function verifierStatutBpayPublic(payToken: string): Promise<{ stat
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PAIEMENT PUBLIC (page /pay/:marchandId — INIT-019)
+//
+// Ces deux endpoints sont publics (aucun cookie de session requis), mais ils
+// parlaient le backend JÙLABA en `fetch()` direct depuis PayPage. On les ramène
+// sous le client centralisé : timeout 30s, erreur JSON typée, point de
+// journalisation unique. `apiRequest` reste compatible : il envoie les
+// identifiants de session cross-origin (sans effet pour un marchand non
+// authentifié) et ne tente le refresh que sur 401 — statut qu'un endpoint
+// public ne renvoie pas.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface MarchandPublic {
+  id: string;
+  nom: string;
+  phone: string;
+  activity?: string;
+  market?: string;
+  commune?: string;
+  photoUrl?: string;
+}
+
+/**
+ * Récupère les informations publiques d'un marchand pour la page de paiement.
+ */
+export async function getWalletPublic(marchandId: string): Promise<MarchandPublic> {
+  return apiRequest<MarchandPublic>(`/wallets/public/${marchandId}`);
+}
+
+export interface PayloadPaiementPublic {
+  marchandId: string;
+  provider: string;
+  montant: number;
+  telephone: string;
+}
+
+export interface ReponsePaiementPublic {
+  payToken: string;
+  paymentUrl?: string;
+  message?: string;
+  status?: string;
+}
+
+/**
+ * Initie un paiement mobile money vers le wallet public d'un marchand.
+ * Lève `HttpError` avec `.message` et `.status` en cas d'erreur métier
+ * (montant invalide, numéro invalide, etc.).
+ */
+export async function payWalletPublic(payload: PayloadPaiementPublic): Promise<ReponsePaiementPublic> {
+  return apiRequest<ReponsePaiementPublic>('/wallets/public/pay', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TRANSFERT COMPTE-À-COMPTE (Jùlaba vers Jùlaba)
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@ import {
   User, Phone, Mail, MapPin, Shield, Edit3, Save,
   Camera, Download, RotateCw, Lock, ChevronDown, ChevronRight, ChevronUp, Briefcase, X,
 } from 'lucide-react';
-import { API_URL } from '../../utils/api';
+import { updateUser } from '../../services/api/users-api';
 import { getRoleColor } from '../../styles/design-tokens';
 import type { UserData } from '../../contexts/UserContext';
 
@@ -254,12 +254,8 @@ export function ProfilUnifieModal({
     onSave(updates);
     if (user.id) {
       try {
-        await fetch(`${API_URL}/users/${user.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(updates),
-        });
+        // INIT-019 — migration fetch() → updateUser (client centralisé).
+        await updateUser(user.id, updates);
       } catch (e: any) { console.warn('[ProfilUnifieModal] saveIdentite failed:', e?.message); }
     }
     setIsEditingIdentite(false);
@@ -277,12 +273,8 @@ export function ProfilUnifieModal({
     onSave(updates);
     if (user.id) {
       try {
-        await fetch(`${API_URL}/users/${user.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(updates),
-        });
+        // INIT-019 — migration fetch() → updateUser (client centralisé).
+        await updateUser(user.id, updates);
       } catch (e: any) { console.warn('[ProfilUnifieModal] saveContact failed:', e?.message); }
     }
     setIsEditingContact(false);

@@ -37,6 +37,12 @@ export function Marketplace() {
     // Cet écran n'a PAS de source de données correcte : il lit la mauvaise
     // ressource. Il ne sera pas convergé tant que la vraie n'existe pas — c'est
     // un manque fonctionnel, pas de la dette technique.
+    //
+    // INIT-019 — fetch() légitime : appel volontairement SANS credentials vers
+    // `/caisse/produits` (endpoint filtré par `marchand_id = $1`). Passer par
+    // `apiRequest` ajouterait le cookie de session et renverrait le stock de la
+    // marchande elle-même au lieu de la place de marché. À corriger côté
+    // backend (nouvel endpoint public marketplace), pas côté client.
     fetch(`${API_URL}/caisse/produits`, { headers: { } })
       .then(r => r.json())
       .then(d => {

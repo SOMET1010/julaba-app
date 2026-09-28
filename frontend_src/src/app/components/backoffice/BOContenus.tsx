@@ -9,7 +9,7 @@ import { BO_PRIMARY } from './bo-theme';
 import { fadeInUp, hoverGlow, springSnappy } from './bo-animations';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
 import { toast } from 'sonner';
-import { API_URL } from '../../utils/api';
+import { boGetCommunication } from '../../services/backoffice-api';
 
 type ContenuType = 'faq' | 'banniere' | 'message_systeme' | 'onboarding' | 'template_notif';
 
@@ -39,10 +39,8 @@ export function BOContenus() {
   const [contenus, setContenus] = useState<Contenu[]>([]);
 
   React.useEffect(() => {
-    fetch(`${API_URL}/communication`, {
-      credentials: 'include',
-    })
-      .then(r => r.ok ? r.json() : null)
+    // INIT-019 — migration fetch() → boGetCommunication (client centralisé).
+    boGetCommunication()
       .then(d => {
         const msgs = d?.messages || [];
         if (msgs.length > 0) {

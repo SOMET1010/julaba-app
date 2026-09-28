@@ -4,13 +4,52 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 
+/**
+ * Body de POST /cycles — valeurs brutes issues du JSON client.
+ *
+ * On conserve des types permissifs (`unknown`) plutôt que de prétendre
+ * connaître la forme exacte (le frontend envoie tantôt des nombres, tantôt
+ * des chaînes pour `surface`/`quantite_estimee`). Le driver pg accepte ces
+ * valeurs telles quelles ; le schéma DB valide les types réels.
+ */
+interface CreateCycleBody {
+  culture: unknown;
+  surface: unknown;
+  parcelle?: unknown;
+  date_plantation: unknown;
+  date_recolte_estimee: unknown;
+  quantite_estimee?: unknown;
+  notes?: unknown;
+  photo_url?: unknown;
+  status?: unknown;
+}
+
+/**
+ * Body de PATCH /cycles/:id — tous les champs sont optionnels.
+ * Les champs additionnels (date_recolte_reelle, quantite_reelle) ne sont
+ * présents que dans le PATCH (pas dans le POST initial).
+ */
+type UpdateCycleBody = Partial<CreateCycleBody> & {
+  date_recolte_reelle?: unknown;
+  quantite_reelle?: unknown;
+};
+
+// Champs autorisés au PATCH (allow-list explicite — empêche la modification
+// de colonnes hors périmètre comme `user_id` ou `created_at`).
+const UPDATE_ALLOWED_FIELDS: readonly string[] = [
+  'culture', 'surface', 'parcelle', 'date_recolte_estimee', 'date_recolte_reelle',
+  'quantite_estimee', 'quantite_reelle', 'status', 'notes', 'photo_url',
+];
+
 @UseGuards(JwtAuthGuard)
 @Controller('cycles')
 export class CyclesRestController {
   constructor(private dataSource: DataSource) {}
 
   @Get()
-  async findAll(@CurrentUser() user: User, @Query() query: any) {
+  async findAll(@CurrentUser() user: User, @Query() _query: Record<string, string>) {
+    // _query est réservé pour une future pagination (cf. common/paginate.ts).
+    // Non utilisé aujourd'hui : on renvoie tous les cycles du user sans limite.
     const cycles = await this.dataSource.query(
       'SELECT * FROM cycles WHERE user_id = $1 ORDER BY created_at DESC',
       [user.id]
@@ -27,7 +66,7 @@ export class CyclesRestController {
   }
 
   @Post()
-  async create(@Body() body: any, @CurrentUser() user: User) {
+  async create(@Body() body: CreateCycleBody, @CurrentUser() user: User) {
     const result = await this.dataSource.query(
       `INSERT INTO cycles (user_id, culture, surface, parcelle, date_plantation, date_recolte_estimee, quantite_estimee, notes, photo_url, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
@@ -39,16 +78,15 @@ export class CyclesRestController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() body: any, @CurrentUser() user: User) {
-    const fields = [];
-    const values = [];
+  async update(@Param('id') id: string, @Body() body: UpdateCycleBody, @CurrentUser() user: User) {
+    const fields: string[] = [];
+    const values: unknown[] = [];
     let i = 1;
-    const allowed = ['culture', 'surface', 'parcelle', 'date_recolte_estimee', 'date_recolte_reelle',
-                     'quantite_estimee', 'quantite_reelle', 'status', 'notes', 'photo_url'];
-    for (const key of allowed) {
-      if (body[key] !== undefined) {
+    for (const key of UPDATE_ALLOWED_FIELDS) {
+      const v = (body as Record<string, unknown>)[key];
+      if (v !== undefined) {
         fields.push(`${key} = $${i++}`);
-        values.push(body[key]);
+        values.push(v);
       }
     }
     if (fields.length === 0) return { success: false };

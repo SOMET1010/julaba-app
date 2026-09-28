@@ -24,7 +24,8 @@ import { useZones, type Zone } from '../../contexts/ZoneContext';
 import { useCooperativesListe } from '../../hooks/useCooperativesListe';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../services/api/api-client';
+import { apiRequest, HttpError } from '../../services/api/api-client';
+import { getUserByPhone } from '../../services/api/users-api';
 import { toast } from 'sonner';
 import { SOUS_PROFILS_MARCHAND, type SousProfilMarchand } from '../../types/sousProfilMarchand';
 /* ═══════════════════════════════════════════════════
@@ -1055,18 +1056,18 @@ export function FicheIdentificationDynamique() {
       telAbortRef.current = new AbortController();
       setVerificationTel('checking');
       const phone = '+225' + cleaned;
-      fetch(`${API_URL}/users/by-phone/${encodeURIComponent(phone)}`, {
-        credentials: 'include',
-        signal: telAbortRef.current.signal,
-      })
-        .then(res => {
+      // INIT-019 — migration fetch() → getUserByPhone (client centralisé).
+      // L'AbortSignal est transmis à `apiRequest` pour annuler la requête en
+      // vol quand l'utilisateur tape un nouveau numéro. Les autres erreurs
+      // HTTP (5xx, réseau) replacent la verification sur « idle » — l'erreur
+      // 404 est convertie en `null` par `getUserByPhone` (« disponible »).
+      getUserByPhone(phone, { signal: telAbortRef.current.signal })
+        .then((user) => {
           if (!isMountedRef.current) return;
-          if (res.ok) {
+          if (user) {
             setVerificationTel('exists');
-          } else if (res.status === 404) {
-            setVerificationTel('available');
           } else {
-            setVerificationTel('idle');
+            setVerificationTel('available');
           }
         })
         .catch((e) => {
@@ -1874,6 +1875,10 @@ export function FicheIdentificationDynamique() {
       // Upload photo séparé (non bloquant : succès partiel toléré)
       if (data.photo && acteurId) {
         try {
+          // INIT-019 — fetch() légitime : `data.photo` est une `data:` URL
+          // (base64 issue de la compression canvas, pas une URL backend).
+          // On la convertit en Blob pour la ré-envoyer en multipart vers
+          // `/users/:id/photo` via `apiRequest` (qui, lui, est centralisé).
           const photoBlob = await (await fetch(data.photo, { signal: controller.signal })).blob();
           const ext = photoBlob.type.split('/')[1] || 'jpg';
           const photoFile = new File([photoBlob], `photo_${acteurId}.${ext}`, { type: photoBlob.type });

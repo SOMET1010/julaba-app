@@ -14,6 +14,7 @@
 import { apiRequest as _apiRequest } from './api-client';
 import { API_URL } from '../../utils/api';
 import type { StockServeur } from '../../types/vente';
+import type { MouvementApi } from '../../services/mouvementsStock';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);
@@ -39,4 +40,30 @@ export async function modifierStock(id: string, payload: Record<string, unknown>
 export async function supprimerStock(id: string): Promise<unknown> {
   if (!id?.trim()) throw new Error('ID stock requis');
   return apiRequest(`/stocks/${id}`, { method: 'DELETE' });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MOUVEMENTS DE STOCK (INIT-019)
+//
+// Vit auparavant en `fetch()` direct dans `GestionStock.tsx` (marchand). Le
+// rafraîchissement silencieux du jeton sur 401 ne s'appliquait pas : une
+// session expirée faisait silencieusement disparaître l'historique des
+// mouvements au lieu de se renouveler.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface MouvementStockApi extends MouvementApi {}
+
+/**
+ * Récupère la liste des mouvements de stock du marchand connecté.
+ * Si `produitId` est fourni, ne renvoie que les mouvements du produit
+ * correspondant (filtre backend). Le serveur renvoie `{ mouvements: [...] }`.
+ */
+export async function fetchMouvementsStock(
+  produitId?: string,
+  options: RequestInit = {},
+): Promise<{ mouvements: MouvementStockApi[] }> {
+  const endpoint = produitId
+    ? `/stocks/${encodeURIComponent(produitId)}/mouvements`
+    : '/stocks/mouvements';
+  return apiRequest<{ mouvements: MouvementStockApi[] }>(endpoint, options);
 }

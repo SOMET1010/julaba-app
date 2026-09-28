@@ -25,13 +25,13 @@ import { useShortcuts } from '../../contexts/ShortcutsContext';
 import { BO_PRIMARY } from './bo-theme';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
-import { API_URL } from '../../utils/api';
 import {
   boGetAdminsEnAttente,
   boRejectAdmin,
   boValidateAdmin,
   type AdminEnAttente,
 } from '../../services/backoffice-api';
+import { relancerIdentificateur } from '../../services/api/notifications-api';
 import {
   TYPE_COLORS,
   STATUT_CONFIG,
@@ -900,17 +900,12 @@ export function BOEnrolement() {
 
   const handleRelancerIdentificateur = async (identificateurId: string, dossierId: string) => {
     try {
-      const res = await fetch(`${API_URL}/notifications/relancer-identificateur`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          identificateurId,
-          dossierId,
-          type: 'brouillon_abandonne',
-        }),
+      // INIT-019 — migration fetch() → relancerIdentificateur (client centralisé).
+      await relancerIdentificateur({
+        identificateurId,
+        dossierId,
+        type: 'brouillon_abandonne',
       });
-      if (!res.ok) throw new Error(String(res.status));
       toast.success('Notification envoyée à l’identificateur.');
     } catch (err) {
       console.warn('[BOEnrolement] relancer failed:', err instanceof Error ? err.message : err);

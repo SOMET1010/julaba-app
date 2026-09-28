@@ -158,3 +158,22 @@ export async function notifyStatutChange(data: {
     body: JSON.stringify(data),
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RELANCE IDENTIFICATEUR (INIT-019)
+//
+// Vit auparavant en `fetch()` direct dans `BOEnrolement.tsx`. Permet au BO de
+// relancer un identificateur qui a abandonné un dossier en brouillon.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function relancerIdentificateur(data: {
+  identificateurId: string;
+  dossierId: string;
+  type: string;
+}): Promise<{ success?: boolean }> {
+  return apiRequest<{ success?: boolean }>('/notifications/relancer-identificateur', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}

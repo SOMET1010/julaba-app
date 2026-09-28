@@ -7,7 +7,7 @@ import {
 import { BO_PRIMARY } from './bo-theme';
 import { fadeInUp, hoverGlow } from './bo-animations';
 import { toast } from 'sonner';
-import { API_URL } from '../../utils/api';
+import { boGetCron, boToggleCronJob, boRetryCronJob } from '../../services/backoffice-api';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 
 type TaskStatut = 'actif' | 'pause' | 'erreur' | 'termine';
@@ -48,11 +48,8 @@ export function BOCronDashboard() {
 
   React.useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API_URL}/cron`, {
-      credentials: 'include',
-      signal: controller.signal,
-    })
-      .then(r => { if (!r.ok) throw new Error(`Erreur HTTP ${r.status}`); return r.json(); })
+    // INIT-019 — migration fetch() → boGetCron (client centralisé).
+    boGetCron({ signal: controller.signal })
       .then(d => {
         const jobs = Array.isArray(d?.jobs) ? d.jobs : Array.isArray(d) ? d : [];
         if (jobs.length === 0) toast.info('Aucune tâche cron disponible');
@@ -70,11 +67,6 @@ export function BOCronDashboard() {
           derniereErreur: j.derniere_erreur || null,
         }));
         setTasks(mapped);
-      })
-      .catch(err => {
-        if (err.name === 'AbortError') return;
-        console.warn('[BOCronDashboard] fetch cron failed:', err instanceof Error ? err.message : err);
-        toast.error('Erreur chargement des tâches cron');
       });
     return () => controller.abort();
   }, []);
@@ -88,11 +80,8 @@ export function BOCronDashboard() {
 
   const handleToggle = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/cron/${id}/toggle`, {
-        method: 'PATCH',
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Erreur toggle cron');
+      // INIT-019 — migration fetch() → boToggleCronJob (client centralisé).
+      await boToggleCronJob(id);
       setTasks(prev => prev.map(t => {
         if (t.id !== id) return t;
         const newStatut: TaskStatut = t.statut === 'actif' ? 'pause' : 'actif';
@@ -107,11 +96,8 @@ export function BOCronDashboard() {
 
   const handleRetry = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/cron/${id}/retry`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Erreur retry cron');
+      // INIT-019 — migration fetch() → boRetryCronJob (client centralisé).
+      await boRetryCronJob(id);
       setTasks(prev => prev.map(t => t.id === id ? { ...t, statut: 'actif' as const, derniereErreur: null } : t));
       toast.success('Tâche relancée');
     } catch (err) {

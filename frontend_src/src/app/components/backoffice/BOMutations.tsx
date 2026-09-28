@@ -13,7 +13,8 @@ import {
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
-import { API_URL } from '../../utils/api';
+import { fetchMutations, deciderMutation } from '../../services/api/mutations-api';
+import { HttpError } from '../../services/api/api-client';
 import { toast } from 'sonner';
 import { BO_PRIMARY } from './bo-theme';
 
@@ -68,14 +69,10 @@ export function BOMutations() {
     abortRef.current = new AbortController();
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/mutations`, {
-        credentials: 'include',
-        signal: abortRef.current.signal,
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (isMountedRef.current && Array.isArray(data.data)) {
-        setMutations(data.data.map((m: MutationItem) => normalizeMutation(m)));
+      // INIT-019 — migration fetch() → fetchMutations (client centralisé).
+      const data = await fetchMutations();
+      if (isMountedRef.current && Array.isArray(data.mutations)) {
+        setMutations(data.mutations.map((m: MutationItem) => normalizeMutation(m)));
       }
     } catch (e: unknown) {
       const err = e as { name?: string; message?: string };
@@ -339,26 +336,23 @@ function DecisionModal({ mutation, boUserRole, onClose, onSuccess }: DecisionMod
     abortRef.current = new AbortController();
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/mutations/${mutation.id}/decision`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ decision, motif: motif.trim() || undefined }),
-        signal: abortRef.current.signal,
-      });
+      // INIT-019 — migration fetch() → deciderMutation (client centralisé).
+      await deciderMutation(mutation.id, decision, motif.trim() || undefined);
       if (!isMountedRef.current) return;
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error((err as { message?: string })?.message || 'Erreur lors de la décision');
-        return;
-      }
       toast.success('Décision enregistrée');
       onSuccess();
     } catch (e: unknown) {
       const err = e as { name?: string; message?: string };
       if (err?.name === 'AbortError') return;
       console.warn('[DecisionModal] submit failed:', err?.message);
-      if (isMountedRef.current) toast.error('Erreur réseau. Réessaie.');
+      if (!isMountedRef.current) return;
+      // `deciderMutation` lève une `HttpError` portant `.message` (corps JSON
+      // serveur) — on l'affiche telle quelle si elle est lisible.
+      if (e instanceof HttpError && e.message) {
+        toast.error(e.message || 'Erreur lors de la décision');
+      } else {
+        toast.error('Erreur réseau. Réessaie.');
+      }
     } finally {
       if (isMountedRef.current) setIsSubmitting(false);
     }

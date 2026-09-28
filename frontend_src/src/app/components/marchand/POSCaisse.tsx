@@ -26,6 +26,7 @@ import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
 import { ETAT_INITIAL, empreintePanier, reduire, type EffetEncaissement, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
 import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
+import { useTranslation } from 'react-i18next';
 
 // PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Les constantes `P` et `BG`
 // portaient l'ancienne charte ; la caisse lit maintenant la charte de la
@@ -52,6 +53,7 @@ const CAISSE_CREDIT_ACTIF: boolean = false;
 const CAISSE_MOBILE_MONEY_ACTIF: boolean = false;
 
 function POSCaisseInner() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   // PRODUIT PRÉSÉLECTIONNÉ — arrive par l'ÉTAT DE ROUTE, jamais par une
@@ -146,7 +148,7 @@ function POSCaisseInner() {
     setRefChoisie(r);
     setAdoptionMessage(null);
     setLibreDesc(r.nom);
-    dire(`${r.nom}. Quel est ton prix ?`);
+    dire(t('posCaisse.voixQuelEstTonPrix', { nom: r.nom }));
   };
 
   /**
@@ -164,8 +166,8 @@ function POSCaisseInner() {
     if (!refChoisie || adoptionEnCours) return;
     const prix = Number(libreMontant);
     if (!prix || prix <= 0) {
-      setAdoptionMessage('Il faut indiquer ton prix de vente.');
-      dire('Il faut indiquer ton prix');
+      setAdoptionMessage(t('posCaisse.voixIlFautPrix'));
+      dire(t('posCaisse.voixIlFautPrix'));
       vibrerErreur();
       return;
     }
@@ -176,8 +178,8 @@ function POSCaisseInner() {
         default_code: refChoisie.default_code, prix, unite: refUnite, stock: 0,
       });
       if (!res.ok || !res.produit) {
-        setAdoptionMessage(res.message || "Impossible d'ajouter cet article.");
-        dire(res.message || "Impossible d'ajouter cet article");
+        setAdoptionMessage(res.message || t('posCaisse.voixImpossibleAjouter'));
+        dire(res.message || t('posCaisse.voixImpossibleAjouter'));
         vibrerErreur();
         return;
       }
@@ -188,7 +190,7 @@ function POSCaisseInner() {
         unite: res.produit.unite,
       } as any, 1);
       vibrerSucces();
-      dire(`${res.produit.nom} ajouté à ton catalogue et au panier`);
+      dire(t('posCaisse.voixAjouteCataloguePanier', { nom: res.produit.nom }));
       fermerAutreArticle();
     } finally {
       setAdoptionEnCours(false);
@@ -253,12 +255,12 @@ function POSCaisseInner() {
     if (paiementEnCoursRef.current) return; // anti double-clic (synchrone)
     if (cart.length === 0) return;
     if (total <= 0) {
-      dire('Montant total invalide');
+      dire(t('posCaisse.voixMontantTotalInvalide'));
       return;
     }
     if (paymentMethod === 'credit') return;
-    if (paymentMethod === 'cash' && insuffisant) { dire('Montant reçu insuffisant'); return; }
-    if (paymentMethod === 'mobile_money' && !mmOperator) { dire('Choisis l\'opérateur'); return; }
+    if (paymentMethod === 'cash' && insuffisant) { dire(t('posCaisse.voixRecuInsuffisant')); return; }
+    if (paymentMethod === 'mobile_money' && !mmOperator) { dire(t('posCaisse.voixChoisirOperateur')); return; }
     const estMM = paymentMethod === 'mobile_money';
     const moyen = estMM ? getMobileOperator(mmOperator as string).name : 'Espèces';
     paiementEnCoursRef.current = true;
@@ -317,11 +319,11 @@ function POSCaisseInner() {
       // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
       // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
       vibrerSucces();
-      dire(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs${avertRupture ? '. ' + avertRupture : ''}`);
+      dire(t('posCaisse.voixVenteEnregistree', { total: total.toLocaleString('fr-FR') }) + (avertRupture ? '. ' + avertRupture : ''));
     } catch (e) {
       console.error(e);
       vibrerErreur();
-      dire("La vente n'a pas pu être enregistrée. Réessaie.");
+      dire(t('posCaisse.voixVenteEchouee'));
     }
     finally { paiementEnCoursRef.current = false; setIsProcessing(false); }
   };
@@ -467,7 +469,7 @@ function POSCaisseInner() {
     void refreshProducts();
     // Confirmation parlée ET sentie aussi pour la vente à crédit.
     vibrerSucces();
-    dire(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
+    dire(t('posCaisse.voixVenteCreditEnregistree', { total: total.toLocaleString('fr-FR') }));
     // Recharge les totaux du jour (la vente à crédit doit apparaître : convention A).
     void reloadTransactions?.();
     setLastSale({ montant: total, moyen: 'Crédit', monnaie: 0, produits: details });
@@ -528,26 +530,26 @@ function POSCaisseInner() {
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)', marginTop:'var(--caisse-esp-2)', flexWrap:'wrap' }}>
             <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)' }}>
-              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.productId, item.quantite-1)} aria-label={`Un ${item.nom} de moins`}
+              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.productId, item.quantite-1)} aria-label={t('posCaisse.ariaUnDeMoins', { nom: item.nom })}
                 style={{ width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', borderRadius:'50%', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-succes)', color:'var(--caisse-vert-fonce)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
                 <Minus size={ICONE} strokeWidth={2.5} />
               </motion.button>
               {estNegoce ? (
                 /* Quantité TAPÉE directement (indispensable en gros). */
                 <input key={`q-${item.productId}-${item.quantite}`} defaultValue={item.quantite}
-                  inputMode="numeric" aria-label={`Quantité de ${item.nom}`}
+                  inputMode="numeric" aria-label={t('posCaisse.ariaQuantiteDe', { nom: item.nom })}
                   onBlur={e => {
                     const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
                     if (v > 0 && v !== item.quantite) {
                       updateCartItemQuantity(item.productId, v);
-                      dire(`${item.nom} : ${v}`);
+                      dire(t('posCaisse.voixQuantiteChangee', { nom: item.nom, valeur: v }));
                     } else { e.target.value = String(item.quantite); }
                   }}
                   style={{ width:56, minHeight:'var(--caisse-cible-tactile)', border:'1.5px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-2)', padding:'0 var(--caisse-esp-1)', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', textAlign:'center', background:'var(--caisse-ivoire)', fontVariantNumeric:'tabular-nums' }} />
               ) : (
                 <span style={{ minWidth:32, textAlign:'center', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{item.quantite}</span>
               )}
-              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.productId, item.quantite+1)} aria-label={`Un ${item.nom} de plus`}
+              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.productId, item.quantite+1)} aria-label={t('posCaisse.ariaUnDePlus', { nom: item.nom })}
                 style={{ width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', borderRadius:'50%', border:'none', background:'var(--caisse-vert)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
                 <Plus size={ICONE} strokeWidth={2.5} />
               </motion.button>
@@ -568,12 +570,12 @@ function POSCaisseInner() {
               {estNegoce ? (
                 /* Prix CONVENU pour cette vente — modifiable (négoce). */
                 <input key={`p-${item.productId}-${item.prix}`} defaultValue={item.prix}
-                  inputMode="numeric" aria-label={`Prix unitaire convenu pour ${item.nom}`}
+                  inputMode="numeric" aria-label={t('posCaisse.ariaPrixUnitaireConvenu', { nom: item.nom })}
                   onBlur={e => {
                     const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
                     if (v > 0 && v !== item.prix) {
                       updateCartItemPrice(item.productId, v);
-                      dire(`${item.nom} : ${v.toLocaleString('fr-FR')} francs l'unité`);
+                      dire(t('posCaisse.voixPrixUnitaireChange', { nom: item.nom, valeur: v.toLocaleString('fr-FR') }));
                     } else { e.target.value = String(item.prix); }
                   }}
                   style={{ width:72, minHeight:'var(--caisse-cible-tactile)', border:'1.5px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-2)', padding:'0 var(--caisse-esp-1)', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', textAlign:'right', background:'var(--caisse-ivoire)', fontVariantNumeric:'tabular-nums' }} />
@@ -582,7 +584,7 @@ function POSCaisseInner() {
               )}
               <span>F</span>
             </div>
-            <motion.button type="button" whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={`Enlever ${item.nom}`}
+            <motion.button type="button" whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={t('posCaisse.ariaEnlever', { nom: item.nom })}
               style={{ marginLeft:'auto', width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', background:'none', border:'none', borderRadius:'var(--caisse-rayon-2)', color:'var(--caisse-gris-texte)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
               <Trash2 size={ICONE} />
             </motion.button>
@@ -606,10 +608,10 @@ function POSCaisseInner() {
   // dix l'auraient mise à deux écrans de défilement. Le même bouton, dans les
   // deux dispositions ; il parle toujours (« touche pour entendre »).
   const renderCartTotal = () => (
-    <button type="button" onClick={() => dire(`Total : ${total.toLocaleString('fr-FR')} francs`)}
-      aria-label={`Total ${total.toLocaleString('fr-FR')} francs — touche pour entendre`}
+    <button type="button" onClick={() => dire(t('posCaisse.voixTotal', { total: total.toLocaleString('fr-FR') }))}
+      aria-label={t('posCaisse.ariaTotalEntendre', { total: total.toLocaleString('fr-FR') })}
       style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-3)', background:'var(--caisse-succes)', border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-3) var(--caisse-esp-4)', minHeight:64, cursor:'pointer', fontFamily:'inherit' }}>
-      <span style={{ font:'var(--caisse-font-h1)', fontSize:24, color:'var(--encre)' }}>Total</span>
+      <span style={{ font:'var(--caisse-font-h1)', fontSize:24, color:'var(--encre)' }}>{t('posCaisse.labelTotal')}</span>
       <span style={{ font:'var(--caisse-font-h1)', fontSize:34, lineHeight:'40px', color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums' }}>{total.toLocaleString('fr-FR')} F</span>
     </button>
   );
@@ -618,7 +620,7 @@ function POSCaisseInner() {
     <>
       {/* Le total s'ENTEND d'un toucher (tout montant affiché doit
           pouvoir être entendu — docs/INCLUSION.md §2.2). */}
-      <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:'0 0 var(--caisse-esp-2)' }}>Paiement</h2>
+      <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:'0 0 var(--caisse-esp-2)' }}>{t('posCaisse.sectionPaiement')}</h2>
 
       {/* Moyen de paiement — espèces / mobile money (déclaré) / crédit.
           En pilote il n'y a qu'un chip : il ne s'étire pas sur toute la
@@ -628,28 +630,28 @@ function POSCaisseInner() {
           style={{ flex:'0 1 auto', minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit',
             border: paymentMethod==='cash' ? '2px solid var(--caisse-vert)' : '1.5px solid var(--commerce-line)',
             background: paymentMethod==='cash' ? 'var(--caisse-succes)' : 'var(--caisse-ivoire)', color: paymentMethod==='cash' ? 'var(--caisse-vert-fonce)' : 'var(--caisse-gris-texte)' }}>
-          Espèces
+          {t('posCaisse.boutonEspeces')}
         </button>
         {CAISSE_MOBILE_MONEY_ACTIF && (
         <button type="button" onClick={() => setPaymentMethod('mobile_money')}
           style={{ flex:1, minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit', lineHeight:1.15,
             border: paymentMethod==='mobile_money' ? '2px solid var(--caisse-vert)' : '1.5px solid var(--commerce-line)',
             background: paymentMethod==='mobile_money' ? 'var(--caisse-succes)' : 'var(--caisse-ivoire)', color: paymentMethod==='mobile_money' ? 'var(--caisse-vert-fonce)' : 'var(--caisse-gris-texte)' }}>
-          Mobile money
+          {t('posCaisse.boutonMobileMoney')}
         </button>
         )}
         {CAISSE_CREDIT_ACTIF && (
         <button type="button" onClick={() => { setPaymentMethod('credit'); setShowCredit(true); }}
           style={{ flex:1, minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit',
             border:'1.5px solid var(--commerce-line)', background:'var(--caisse-ivoire)', color:'var(--caisse-gris-texte)' }}>
-          Crédit
+          {t('posCaisse.boutonCredit')}
         </button>
         )}
 
         {/* Pilote ESPÈCES : crédit et/ou mobile money désactivés (voir #16). */}
         {(!CAISSE_CREDIT_ACTIF || !CAISSE_MOBILE_MONEY_ACTIF) && (
           <div style={{ font:'var(--caisse-font-legende)', color:'var(--caisse-gris-texte)' }}>
-            Caisse pilote : espèces uniquement.
+            {t('posCaisse.mentionPiloteEspeces')}
           </div>
         )}
       </div>
@@ -693,7 +695,7 @@ function POSCaisseInner() {
           ))}
           <button type="button" onClick={() => setMontantRecu(String(total))}
             style={{ flex:1, minWidth:104, minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-succes)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-            Compte juste
+            {t('posCaisse.boutonCompteJuste')}
           </button>
         </div>
 
@@ -719,10 +721,10 @@ function POSCaisseInner() {
               </span>
               <p style={{ flex:1, minWidth:0, margin:0, font:'var(--caisse-font-texte)', fontSize:18, lineHeight:'26px', fontWeight:600, color:'var(--encre)', alignSelf:'center' }}>{relectureAffichee}</p>
             </div>
-            <button type="button" onClick={() => speak(relectureAffichee)} aria-label="Réécouter la relecture"
+            <button type="button" onClick={() => speak(relectureAffichee)} aria-label={t('posCaisse.ariaReecouterRelecture')}
               style={{ alignSelf:'flex-end', display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)', minWidth:'var(--caisse-cible-tactile)', minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-4)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
               <Volume2 aria-hidden="true" size={20} />
-              Réécouter
+              {t('posCaisse.boutonReecouter')}
             </button>
           </div>
         )}
@@ -736,9 +738,9 @@ function POSCaisseInner() {
           </div>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-1)', minHeight:'var(--caisse-cible-tactile)' }}>
-              <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>Reçu :</span>
+              <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>{t('posCaisse.labelRecu')}</span>
               {recu > 0 && (
-                <button type="button" aria-label="Effacer le montant reçu" onClick={() => setMontantRecu('')}
+                <button type="button" aria-label={t('posCaisse.ariaEffacerRecu')} onClick={() => setMontantRecu('')}
                   style={{ width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', borderRadius:'50%', border:'none', background:'transparent', color:'var(--caisse-alerte)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0, flexShrink:0 }}>
                   <X size={ICONE} />
                 </button>
@@ -748,17 +750,17 @@ function POSCaisseInner() {
               {/* minWidth:0 — sans lui, un input vide garde un min-content flexbox
                   qui peut dépasser un conteneur étroit (panneau permanent 400px,
                   repéré en recette visuelle) au lieu de rétrécir avec flex:1. */}
-              <input value={recuEnSaisie || recu === 0 ? montantRecu : recu.toLocaleString('fr-FR')} onFocus={() => setRecuEnSaisie(true)} onBlur={() => setRecuEnSaisie(false)} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—" aria-label="Montant reçu"
+              <input value={recuEnSaisie || recu === 0 ? montantRecu : recu.toLocaleString('fr-FR')} onFocus={() => setRecuEnSaisie(true)} onBlur={() => setRecuEnSaisie(false)} onChange={e => setMontantRecu(e.target.value.replace(/[^\d]/g,''))} inputMode="numeric" placeholder="—" aria-label={t('posCaisse.ariaMontantRecu')}
                 style={{ flex:1, minWidth:0, width:'100%', minHeight:'var(--caisse-cible-tactile)', border:'none', outline:'none', textAlign:'left', font:'var(--caisse-font-h1)', fontSize:26, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums', padding:0 }} />
               <span style={{ font:'var(--caisse-font-h1)', fontSize:26, color:'var(--encre)' }}>F</span>
             </div>
           </div>
           <div aria-hidden="true" style={{ width:1, background:'var(--commerce-line)', flexShrink:0 }} />
           {recu > 0 && !insuffisant ? (
-          <button type="button" onClick={() => dire(`Monnaie à rendre : ${formatF(monnaie)} francs`)}
-            aria-label={`Monnaie à rendre ${formatF(monnaie)} francs — touche pour entendre`}
+          <button type="button" onClick={() => dire(t('posCaisse.voixMonnaieRendue', { monnaie: formatF(monnaie) }))}
+            aria-label={t('posCaisse.ariaMonnaieRendue', { monnaie: formatF(monnaie) })}
             style={{ flex:1, minWidth:0, background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
-            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>Monnaie :</div>
+            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>{t('posCaisse.labelMonnaie')}</div>
             <div style={{ font:'var(--caisse-font-h1)', fontSize:26, color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>{formatF(monnaie)} F</div>
             {/* La monnaie EN COUPURES concrètes : « 2000 ×1 · 500 ×1 » */}
             {monnaie > 0 && monnaieDecomposee.lignes.length > 0 && (
@@ -778,13 +780,13 @@ function POSCaisseInner() {
           </button>
           ) : (
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>Monnaie :</div>
+            <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>{t('posCaisse.labelMonnaie')}</div>
             <div style={{ font:'var(--caisse-font-h1)', fontSize:26, color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>—</div>
           </div>
           )}
         </div>
         {insuffisant && (
-          <div role="alert" style={{ marginTop:'var(--caisse-esp-2)', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--caisse-alerte)' }}>Montant reçu insuffisant</div>
+          <div role="alert" style={{ marginTop:'var(--caisse-esp-2)', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--caisse-alerte)' }}>{t('posCaisse.alerteRecuInsuffisant')}</div>
         )}
       </div>
       )}
@@ -796,10 +798,10 @@ function POSCaisseInner() {
         // CTA unique et fort (mockup validé) : « Payer en espèces » plutôt
         // qu'un « Valider » générique — le moyen de paiement pilote est déjà
         // les espèces par défaut, ce texte le dit directement.
-        const label = isProcessing ? 'Traitement...'
+        const label = isProcessing ? t('posCaisse.boutonTraitement')
           : paymentMethod === 'mobile_money'
-            ? (mmOperator ? `Valider — payé par ${getMobileOperator(mmOperator).name}` : 'Choisis l\'opérateur')
-            : (monnaie > 0 ? `Payer en espèces · rendre ${monnaie.toLocaleString('fr-FR')} F` : 'Payer en espèces');
+            ? (mmOperator ? t('posCaisse.boutonValiderOperateur', { operateur: getMobileOperator(mmOperator).name }) : t('posCaisse.boutonChoisirOperateur'))
+            : (monnaie > 0 ? t('posCaisse.boutonPayerRendre', { monnaie: monnaie.toLocaleString('fr-FR') }) : t('posCaisse.boutonPayerEspeces'));
         return (
           <motion.button whileTap={{ scale: bloque ? 1 : 0.97 }} onClick={handlePay} disabled={bloque}
             style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-3)', border:'none', borderBottom: bloque ? 'none' : '4px solid var(--caisse-vert-fonce)', borderRadius:'var(--caisse-rayon-4)', padding:'var(--caisse-esp-4) var(--caisse-esp-3)', minHeight:72, font:'var(--caisse-font-bouton)', fontSize:22, lineHeight:'28px', color:'white', cursor: bloque ? 'not-allowed':'pointer', textWrap:'balance', background: bloque ? 'var(--caisse-gris-texte)' : 'var(--caisse-vert)' }}>
@@ -813,7 +815,7 @@ function POSCaisseInner() {
           écran qui ne sert pas à vendre — elle dit pour qui on le fait. */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-1)', marginTop:'var(--caisse-esp-3)', font:'var(--caisse-font-legende)', fontStyle:'italic', color:'var(--caisse-vert)' }}>
         <Leaf size={14} aria-hidden="true" />
-        <span>Des marchés plus forts, des familles plus heureuses</span>
+        <span>{t('posCaisse.legendSignature')}</span>
       </div>
     </>
   );
@@ -821,7 +823,7 @@ function POSCaisseInner() {
   return (
     <SubPageLayout
       role="marchand"
-      title="Caisse du jour"
+      title={t('posCaisse.titre')}
       variante="caisse"
       rightContent={
         <div style={{ display:'flex', gap:'var(--caisse-esp-2)', alignItems:'center' }}>
@@ -830,12 +832,12 @@ function POSCaisseInner() {
               validé), la donnée existe déjà globalement (useApp().isOnline) —
               reste lisible sans mot : le point vert ou rouge, et « Hors-ligne »
               remplace le souhait quand il n'y a pas de réseau. */}
-          <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)', minHeight:'var(--caisse-cible-tactile)' }} aria-label={isOnline ? 'En ligne' : 'Hors-ligne'}>
+          <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)', minHeight:'var(--caisse-cible-tactile)' }} aria-label={isOnline ? t('posCaisse.ariaEnLigne') : t('posCaisse.ariaHorsLigne')}>
             <div style={{ textAlign:'left' }}>
               <div style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', whiteSpace:'nowrap' }}>{(d => d.charAt(0).toUpperCase() + d.slice(1))(new Date().toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' }))}</div>
               <div style={{ font:'var(--caisse-font-legende)', color: isOnline ? 'var(--caisse-gris-texte)' : 'var(--caisse-alerte)', display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', whiteSpace:'nowrap' }}>
                 <span aria-hidden="true" style={{ width:8, height:8, borderRadius:'50%', background: isOnline ? 'var(--caisse-vert)' : 'var(--caisse-alerte)', flexShrink:0 }} />
-                {isOnline ? 'Bonnes ventes !' : 'Hors-ligne'}
+                {isOnline ? t('posCaisse.statutEnLigne') : t('posCaisse.statutHorsLigne')}
               </div>
             </div>
           </div>
@@ -843,12 +845,12 @@ function POSCaisseInner() {
           <motion.button whileTap={{ scale: nbItems > 0 ? 0.95 : 1 }}
             onClick={() => {
               // On n'ouvre le crédit QUE si le panier n'est pas vide (B4).
-              if (nbItems === 0) { dire('Ajoute d\'abord des produits au panier.'); return; }
+              if (nbItems === 0) { dire(t('posCaisse.voixAjouterDabord')); return; }
               setPaymentMethod('credit'); setShowCredit(true);
             }}
             style={{ minHeight:'var(--caisse-cible-tactile)', borderRadius:'var(--caisse-rayon-3)', background:'var(--caisse-ivoire)', border:'1px solid var(--commerce-line)', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 var(--caisse-esp-3)', gap:'var(--caisse-esp-1)', cursor: nbItems > 0 ? 'pointer' : 'not-allowed', opacity: nbItems > 0 ? 1 : 0.5 }}>
             <FileText size={ICONE} color="var(--caisse-vert)" />
-            <span style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)' }}>À crédit</span>
+            <span style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)' }}>{t('posCaisse.boutonACredit')}</span>
           </motion.button>
           )}
           {/* PLUS DE BOUTON « PANIER » ICI (lot A — VOIX-01).
@@ -907,12 +909,12 @@ function POSCaisseInner() {
             reste entière et ce bouton n'existe pas (cf. .pos-grille-apercu
             dans styles/commerce.css). */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
-          <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>Produits</h2>
+          <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>{t('posCaisse.sectionProduits')}</h2>
           {filtered.length > 4 && (
             <div className="lg:hidden">
               <button type="button" onClick={() => setVoirPlusProduits(v => !v)} aria-expanded={voirPlusProduits}
                 style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', minHeight:'var(--caisse-cible-tactile)', padding:'0 var(--caisse-esp-2) 0 var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'1px solid var(--commerce-line)', background:'var(--caisse-ivoire)', color:'var(--encre)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-                {voirPlusProduits ? 'Voir moins' : 'Voir plus'}
+                {voirPlusProduits ? t('posCaisse.boutonVoirMoins') : t('posCaisse.boutonVoirPlus')}
                 <ChevronRight size={ICONE} aria-hidden="true" style={{ transform: voirPlusProduits ? 'rotate(90deg)' : 'none' }} />
               </button>
             </div>
@@ -953,9 +955,9 @@ function POSCaisseInner() {
           <span aria-hidden="true" style={{ display:'flex', alignItems:'center', flexShrink:0, color:'var(--caisse-gris-texte)' }}>
             <Search size={18} />
           </span>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Chercher un produit…"
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('posCaisse.placeholderChercherProduit')}
             style={{ flex:1, border:'none', outline:'none', background:'transparent', font:'var(--caisse-font-texte)', lineHeight:'18px', color:'var(--encre)', fontFamily:'inherit', minWidth:0 }} />
-          {search && <motion.button type="button" aria-label="Effacer la recherche" whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, flexShrink:0, color:'var(--caisse-gris-texte)', display:'flex' }}>
+          {search && <motion.button type="button" aria-label={t('posCaisse.ariaEffacerRecherche')} whileTap={{ scale:0.9 }} onClick={() => setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, flexShrink:0, color:'var(--caisse-gris-texte)', display:'flex' }}>
             <X size={ICONE} />
           </motion.button>}
         </label>
@@ -963,7 +965,7 @@ function POSCaisseInner() {
         {/* AUTRE ARTICLE — vendre un montant libre, sans produit listé (Phase 3) */}
         <motion.button type="button" whileTap={{ scale:0.98 }} onClick={() => setShowLibre(true)}
           style={{ minHeight:'var(--caisse-cible-tactile)', padding:'0 var(--caisse-esp-3) 0 var(--caisse-esp-2)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px dashed var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-1)', whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0 }}>
-          <Plus size={ICONE} aria-hidden="true" /> Autre article
+          <Plus size={ICONE} aria-hidden="true" /> {t('posCaisse.boutonAutreArticle')}
         </motion.button>
         </div>
 
@@ -980,10 +982,10 @@ function POSCaisseInner() {
           {filtered.length === 0 ? (
             <div style={{ textAlign:'center', padding:'var(--caisse-esp-7) 0', color:'var(--caisse-gris-texte)', font:'var(--caisse-font-texte)' }}>
               <Package size={48} style={{ margin:'0 auto var(--caisse-esp-3)', opacity:0.4 }} />
-              <p style={{ marginBottom:'var(--caisse-esp-4)' }}>Aucun produit</p>
+              <p style={{ marginBottom:'var(--caisse-esp-4)' }}>{t('posCaisse.emptyAucunProduit')}</p>
               <motion.button type="button" whileTap={{ scale:0.97 }} onClick={() => setShowLibre(true)}
                 style={{ minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-3) var(--caisse-esp-5)', borderRadius:'var(--caisse-rayon-4)', border:'none', background:'var(--caisse-vert)', color:'white', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
-                + Autre article
+                {t('posCaisse.boutonAutreArticlePlus')}
               </motion.button>
             </div>
           ) : (
@@ -991,10 +993,10 @@ function POSCaisseInner() {
               {filtered.map((p, i) => {
                 const inCart = cart.find(c => c.productId === p.id);
                 const enPromo = promoActive(p as any);
-                const rapide = topProducts.some(t => t.id === p.id);
+                const rapide = topProducts.some(tp => tp.id === p.id);
                 return (
                   <motion.button key={p.id} type="button" initial={{ opacity:0, scale:0.95 }} animate={{ opacity:1, scale:1 }} transition={{ delay: i*0.04 }} whileTap={{ scale:0.96 }}
-                    onClick={() => ajouterAuPanier(p)} aria-label={`Ajouter ${p.nom} au panier`}
+                    onClick={() => ajouterAuPanier(p)} aria-label={t('posCaisse.ariaAjouterProduit', { nom: p.nom })}
                     style={{ background:'var(--caisse-ivoire)', border: inCart ? '2px solid var(--caisse-vert)' : '1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-3)', overflow:'hidden', padding:0, cursor:'pointer', fontFamily:'inherit', textAlign:'center', minWidth:0 }}>
                     <div style={{ position:'relative', width:'100%', aspectRatio:'4 / 3', background:'var(--caisse-sable)', overflow:'hidden' }}>
                       {/* La photo REMPLIT la vignette (F2 : « la densité est trop
@@ -1008,7 +1010,7 @@ function POSCaisseInner() {
                         </div>
                       )}
                       {rapide && !inCart && (
-                        <div title="Vente rapide : parmi tes produits les plus vendus" style={{ position:'absolute', bottom:'var(--caisse-esp-1)', right:'var(--caisse-esp-1)', width:24, height:24, borderRadius:'50%', background:'var(--caisse-vert-fonce)', color:'white', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <div title={t('posCaisse.titleVenteRapide')} style={{ position:'absolute', bottom:'var(--caisse-esp-1)', right:'var(--caisse-esp-1)', width:24, height:24, borderRadius:'50%', background:'var(--caisse-vert-fonce)', color:'white', display:'flex', alignItems:'center', justifyContent:'center' }}>
                           <Zap size={14} aria-hidden="true" />
                         </div>
                       )}
@@ -1050,19 +1052,19 @@ function POSCaisseInner() {
         <section className="lg:hidden" style={{ marginBottom:'var(--caisse-esp-5)' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
             <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>
-              Panier actuel{nbItems > 0 && <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}> ({nbItems})</span>}
+              {t('posCaisse.sectionPanierActuel')}{nbItems > 0 && <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}> ({nbItems})</span>}
             </h2>
             {nbItems > 0 && (
               <button type="button" onClick={clearCart}
                 style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', minHeight:'var(--caisse-cible-tactile)', padding:'0 var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'none', background:'var(--caisse-sable)', color:'var(--encre)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                 <Trash2 size={ICONE} aria-hidden="true" color="var(--caisse-gris-texte)" />
-                Vider le panier
+                {t('posCaisse.boutonViderPanier')}
               </button>
             )}
           </div>
           {nbItems === 0 ? (
             <div style={{ background:'var(--caisse-ivoire)', border:'1.5px dashed var(--commerce-line)', borderRadius:'var(--caisse-rayon-4)', textAlign:'center', padding:'var(--caisse-esp-5) var(--caisse-esp-4)', color:'var(--caisse-gris-texte)', font:'var(--caisse-font-texte)' }}>
-              Touche un produit pour l'ajouter au panier.
+              {t('posCaisse.emptyPanier')}
             </div>
           ) : (
             <>
@@ -1084,18 +1086,18 @@ function POSCaisseInner() {
       <aside className="hidden lg:flex lg:flex-col" style={{ width:400, flexShrink:0, position:'sticky', top:100, maxHeight:'calc(100vh - 120px)', background:'var(--caisse-ivoire)', border:'1px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-4)', marginTop:'var(--caisse-esp-4)', overflowY:'auto' }}>
         <div style={{ padding:'var(--caisse-esp-4) var(--caisse-esp-4) var(--caisse-esp-2)', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', flexShrink:0 }}>
           <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>
-            Panier actuel {nbItems > 0 && <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>({nbItems})</span>}
+            {t('posCaisse.sectionPanierActuel')} {nbItems > 0 && <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}>({nbItems})</span>}
           </h2>
           {nbItems > 0 && (
             <button type="button" onClick={clearCart} style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)', minHeight:'var(--caisse-cible-tactile)', padding:'0 var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'none', background:'var(--caisse-sable)', color:'var(--encre)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
               <Trash2 size={ICONE} aria-hidden="true" color="var(--caisse-gris-texte)" />
-              Vider
+              {t('posCaisse.boutonVider')}
             </button>
           )}
         </div>
         {nbItems === 0 ? (
           <div style={{ textAlign:'center', padding:'var(--caisse-esp-7) var(--caisse-esp-4)', color:'var(--caisse-gris-texte)', font:'var(--caisse-font-texte)' }}>
-            Touche un produit pour l'ajouter au panier.
+            {t('posCaisse.emptyPanier')}
           </div>
         ) : (
           <>
@@ -1142,14 +1144,14 @@ function POSCaisseInner() {
             initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
             onClick={fermerAutreArticle}
             style={{ position:'fixed', inset:0, zIndex:110, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}
-            role="dialog" aria-modal="true" aria-label="Autre article"
+            role="dialog" aria-modal="true" aria-label={t('posCaisse.ariaModalAutreArticle')}
           >
             <motion.div
               initial={{ y:40 }} animate={{ y:0 }} exit={{ y:40 }}
               onClick={e => e.stopPropagation()}
               style={{ width:'100%', maxWidth:480, background:'var(--caisse-ivoire)', borderTopLeftRadius:'var(--caisse-rayon-5)', borderTopRightRadius:'var(--caisse-rayon-5)', padding:'var(--caisse-esp-5) var(--caisse-esp-4) calc(var(--caisse-esp-5) + env(safe-area-inset-bottom))' }}
             >
-              <div style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', marginBottom:'var(--caisse-esp-4)' }}>Autre article</div>
+              <div style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', marginBottom:'var(--caisse-esp-4)' }}>{t('posCaisse.titreAutreArticle')}</div>
 
               {/* ── 1. Chercher dans le catalogue maître (Odoo) ────────────
                   La recherche est LOCALE (voir useCatalogueMaitre) : elle
@@ -1157,11 +1159,11 @@ function POSCaisseInner() {
                   chaque lettre tapée. */}
               {!refChoisie && (
                 <>
-                  <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Chercher un produit</label>
+                  <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>{t('posCaisse.labelChercherProduit')}</label>
                   <input
                     value={refRecherche}
                     onChange={e => setRefRecherche(e.target.value)}
-                    placeholder="ex. tomate, igname…"
+                    placeholder={t('posCaisse.placeholderExTomate')}
                     style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:8, fontSize:15, color:'var(--encre)', outline:'none', fontFamily:'inherit' }}
                   />
                   {refRecherche.trim().length > 0 && (() => {
@@ -1169,7 +1171,7 @@ function POSCaisseInner() {
                     if (trouves.length === 0) {
                       return (
                         <div style={{ fontSize:13, color:'var(--encre-3)', marginBottom:12, lineHeight:1.5 }}>
-                          Rien trouvé sous ce nom. Tu peux quand même vendre un montant libre ci-dessous.
+                          {t('posCaisse.rienTrouve')}
                         </div>
                       );
                     }
@@ -1186,7 +1188,7 @@ function POSCaisseInner() {
                             >
                               <div style={{ fontSize:15, fontWeight:700, color:'var(--encre)' }}>{r.nom}</div>
                               <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:2 }}>
-                                {deja ? 'Déjà dans ta caisse' : (r.categorie || 'Catalogue JULABA')}
+                                {deja ? t('posCaisse.dejaDansCaisse') : (r.categorie || 'Catalogue JULABA')}
                               </div>
                             </button>
                           );
@@ -1198,12 +1200,12 @@ function POSCaisseInner() {
                     // On le DIT plutôt que de laisser croire que la liste est
                     // à jour : elle est utilisable, simplement pas fraîche.
                     <div style={{ fontSize:11, color:'var(--encre-3)', marginBottom:10 }}>
-                      Liste enregistrée sur ce téléphone (pas de réseau).
+                      {t('posCaisse.listeCachee')}
                     </div>
                   )}
                   <div style={{ display:'flex', alignItems:'center', gap:10, margin:'4px 0 14px' }}>
                     <div style={{ flex:1, height:1, background:'var(--trait)' }} />
-                    <span style={{ fontSize:11, fontWeight:700, color:'var(--encre-3)' }}>OU MONTANT LIBRE</span>
+                    <span style={{ fontSize:11, fontWeight:700, color:'var(--encre-3)' }}>{t('posCaisse.labelOuMontantLibre')}</span>
                     <div style={{ flex:1, height:1, background:'var(--trait)' }} />
                   </div>
                 </>
@@ -1219,14 +1221,14 @@ function POSCaisseInner() {
                     </div>
                     <button type="button" onClick={() => { setRefChoisie(null); setLibreDesc(''); setAdoptionMessage(null); }}
                       style={{ background:'none', border:'none', color:'var(--caisse-vert)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit', padding:'var(--caisse-esp-2)', minHeight:'var(--caisse-cible-tactile)' }}>
-                      Changer
+                      {t('posCaisse.boutonChanger')}
                     </button>
                   </div>
                 </div>
               )}
 
               <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>
-                {refChoisie ? 'Ton prix de vente' : 'Montant'}
+                {refChoisie ? t('posCaisse.labelTonPrixVente') : t('posCaisse.labelMontant')}
               </label>
               <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:14 }}>
                 <input
@@ -1241,7 +1243,7 @@ function POSCaisseInner() {
               {/* Unité LOCALE : c'est elle qui sait si elle vend au tas ou au kilo. */}
               {refChoisie && (
                 <>
-                  <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Tu vends par…</label>
+                  <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>{t('posCaisse.labelTuVendsPar')}</label>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6, marginBottom:14 }}>
                     {['unité', 'tas', 'kg', 'sac', 'bassine', 'régime'].map(u => (
                       <button type="button" key={u} onClick={() => setRefUnite(u)}
@@ -1255,11 +1257,11 @@ function POSCaisseInner() {
 
               {!refChoisie && (
                 <>
-                  <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Quoi ? (facultatif)</label>
+                  <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>{t('posCaisse.labelQuoiFacultatif')}</label>
                   <input
                     value={libreDesc}
                     onChange={e => setLibreDesc(e.target.value)}
-                    placeholder="ex. bananes"
+                    placeholder={t('posCaisse.placeholderExBananes')}
                     style={{ width:'100%', boxSizing:'border-box', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:12, fontSize:15, color:'var(--encre)', outline:'none', fontFamily:'inherit' }}
                   />
                   {/* L'UNITÉ SE CHOISIT, ELLE N'EST PLUS INVENTÉE (lot E) : les
@@ -1284,7 +1286,7 @@ function POSCaisseInner() {
                 disabled={!libreMontant || Number(libreMontant) <= 0 || adoptionEnCours}
                 style={{ width:'100%', padding:'var(--caisse-esp-4)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'none', color:'white', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit', background: (!libreMontant || Number(libreMontant) <= 0 || adoptionEnCours) ? 'var(--caisse-gris-texte)' : 'var(--caisse-vert)' }}
               >
-                {adoptionEnCours ? 'Ajout…' : refChoisie ? 'Ajouter à mon catalogue' : 'Ajouter'}
+                {adoptionEnCours ? t('posCaisse.boutonAjoutEnCours') : refChoisie ? t('posCaisse.boutonAjouterCatalogue') : t('posCaisse.boutonAjouter')}
               </button>
             </motion.div>
           </motion.div>
@@ -1299,7 +1301,7 @@ function POSCaisseInner() {
             <div style={{ width:88, height:88, borderRadius:'50%', background:'var(--caisse-succes)', display:'grid', placeItems:'center', marginBottom:'var(--caisse-esp-4)' }}>
               <Check size={48} color="var(--caisse-vert)" />
             </div>
-            <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-vert)', marginBottom:'var(--caisse-esp-2)' }}>Vente réussie</div>
+            <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-vert)', marginBottom:'var(--caisse-esp-2)' }}>{t('posCaisse.titreVenteReussie')}</div>
             <div style={{ font:'var(--caisse-font-h1)', fontSize:36, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{lastSale.montant.toLocaleString('fr-FR')} F</div>
             <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', marginTop:'var(--caisse-esp-2)' }}>
               {lastSale.moyen}{lastSale.monnaie > 0 ? ` · rendu ${lastSale.monnaie.toLocaleString('fr-FR')} F` : ''}
@@ -1308,12 +1310,12 @@ function POSCaisseInner() {
               <button type="button"
                 onClick={() => { void partagerRecu({ montant: lastSale.montant, produits: lastSale.produits, mode_paiement: lastSale.moyen, created_at: new Date().toISOString() } as any, marchandNom); }}
                 style={{ width:'100%', padding:'var(--caisse-esp-4)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
-                Envoyer le reçu (WhatsApp)
+                {t('posCaisse.boutonEnvoyerRecu')}
               </button>
               <button type="button"
                 onClick={() => { setShowSuccess(false); setLastSale(null); }}
                 style={{ width:'100%', padding:'var(--caisse-esp-4)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'none', background:'var(--caisse-vert)', color:'white', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
-                Nouvelle vente
+                {t('posCaisse.boutonNouvelleVente')}
               </button>
             </div>
           </motion.div>

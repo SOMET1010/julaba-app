@@ -816,34 +816,69 @@ export async function boGetModeration() {
   } catch { return { signalements: [], total: 0 }; }
 }
 
-export async function boGetLivraison() {
+export async function boGetLivraison(options: RequestInit = {}) {
   try {
-    return await boApiRequest<any>('/commandes');
+    // INIT-019 — endpoint corrigé : `/admin/livraison` (et non `/commandes`,
+    // qui n'existe pas côté backend). Les composants BO LIVRAISON l'appelaient
+    // en `fetch()` direct — on centralise ici.
+    return await boApiRequest<any>('/admin/livraison', options);
   } catch { return { livraisons: [], total: 0 }; }
 }
 
-export async function boGetCommunication() {
+export async function boGetCommunication(options: RequestInit = {}) {
   try {
-    return await boApiRequest<any>('/notifications');
-  } catch { return { messages: [], campagnes: [] }; }
+    // INIT-019 — endpoint corrigé : `/communication` (et non `/notifications`,
+    // qui renvoie une forme différente). Les composants BO CONTENUS et BO
+    // COMMUNICATION l'appelaient en `fetch()` direct.
+    return await boApiRequest<any>('/communication', options);
+  } catch { return { messages: [], campagnes: [], templates: [] }; }
 }
 
-export async function boGetCron() {
+export async function boGetCron(options: RequestInit = {}) {
   try {
-    return await boApiRequest<any>('/rapport/cron');
+    // INIT-019 — endpoint corrigé : `/cron` (et non `/rapport/cron`).
+    return await boApiRequest<any>('/cron', options);
   } catch { return { jobs: [] }; }
 }
 
-export async function boGetAnalytics() {
+export async function boGetAnalytics(options: RequestInit = {}) {
   try {
-    return await boApiRequest<any>('/rapport/analytics');
+    // INIT-019 — endpoint corrigé : `/admin/analytics` (et non
+    // `/rapport/analytics`).
+    return await boApiRequest<any>('/admin/analytics', options);
   } catch { return { total_users: 0, by_role: [], daily_active: [], funnel: [] }; }
 }
 
-export async function boGetMonitoring() {
+export async function boGetMonitoring(options: RequestInit = {}) {
   try {
-    return await boApiRequest<any>('/rapport/monitoring');
+    // INIT-019 — endpoint corrigé : `/admin/monitoring` (et non
+    // `/rapport/monitoring`).
+    return await boApiRequest<any>('/admin/monitoring', options);
   } catch { return { services: [] }; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXTENSIONS INIT-019 — méthodes ajoutées pour absorber les `fetch()` directs
+// restants dans les composants BO. Ces méthodes passent par `boApiRequest` :
+// timeout 30s, mutex de rafraîchissement 401, Authorization BO via sessionStorage.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Bascule le statut d'une tâche cron (actif ↔ pause). */
+export async function boToggleCronJob(id: string): Promise<any> {
+  return boApiRequest<any>(`/cron/${id}/toggle`, { method: 'PATCH' });
+}
+
+/** Relance immédiatement une tâche cron. */
+export async function boRetryCronJob(id: string): Promise<any> {
+  return boApiRequest<any>(`/cron/${id}/retry`, { method: 'POST' });
+}
+
+/** Assigne un livreur à une course de livraison. */
+export async function boAssignerLivreur(courseId: string, livreur: string): Promise<any> {
+  return boApiRequest<any>(`/admin/livraison/${courseId}/assign`, {
+    method: 'PATCH',
+    body: JSON.stringify({ livreur }),
+  });
 }
 
 // ── Zones ─────────────────────────────────────────────────────

@@ -109,13 +109,18 @@ for (const [nom, code] of [["POSCaisse", codeCaisse], ["MicroVenteCaisse", codeM
 }
 
 console.log("\n[5] La maquette est là où on la cherche");
+// INIT-020 — Les chaînes visibles ont migré vers i18n (`fr.json`). Le test
+// vérifie la présence d'une chaîne SOIT dans le code du composant (cas
+// historique) SOIT dans le fichier de locales (post-migration i18next).
+const frJson = lire("../../../app/i18n/locales/fr.json");
+const dans = (code: string, chaine: string) => new RegExp(chaine).test(code) || new RegExp(chaine).test(frJson);
 ok(/Que voulez-vous vendre \?/.test(codeMicro) && /<h1\b/.test(codeMicro), "MicroVenteCaisse : « Que voulez-vous vendre ? » est le H1");
 ok(/pour terminer/.test(codeMicro) && /cart\.length > 0 &&/.test(codeMicro), "et rappelle « Dis “encaisser” pour terminer » quand le panier n'est pas vide (lecture seule)");
 ok(/J'ai compris :/.test(codeMicro), "le chip « J'ai compris : … » existe");
-ok(/Payer en espèces/.test(codeCaisse) && /<Banknote\b/.test(codeCaisse), "POSCaisse : « Payer en espèces » avec l'icône billet");
-ok(/Vider le panier/.test(codeCaisse) && /Panier actuel/.test(codeCaisse), "« Panier actuel » et « Vider le panier »");
-ok(/Des marchés plus forts, des familles plus heureuses/.test(codeCaisse), "la signature en légende");
-ok(/var\(--caisse-succes\)/.test(codeCaisse) && /Total/.test(codeCaisse), "la barre Total est sur fond succès");
+ok(dans(codeCaisse, "Payer en espèces") && /<Banknote\b/.test(codeCaisse), "POSCaisse : « Payer en espèces » avec l'icône billet");
+ok(dans(codeCaisse, "Vider le panier") && dans(codeCaisse, "Panier actuel"), "« Panier actuel » et « Vider le panier »");
+ok(dans(codeCaisse, "Des marchés plus forts, des familles plus heureuses"), "la signature en légende");
+ok(/var\(--caisse-succes\)/.test(codeCaisse) && dans(codeCaisse, "Total"), "la barre Total est sur fond succès");
 ok(/variante="caisse"/.test(codeCaisse), "l'en-tête clair passe par la variante de SubPageLayout, sans changer les autres écrans");
 
 console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
