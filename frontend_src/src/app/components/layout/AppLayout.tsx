@@ -15,6 +15,7 @@ import { NotificationToastContainer } from '../shared/NotificationToast';
 import * as audioManager from '../../services/audioManager';
 import { TantieSagesseModal } from '../assistant/TantieSagesseModal';
 import * as vtrace from '../../utils/voiceTrace'; // VOICE-01 : « arrivée sur un écran » dans le journal de voix
+import { vlogPartager } from '../../utils/voiceDebug';
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -144,6 +145,51 @@ export function AppLayout() {
         onClose={() => setTataOuverte(false)}
         role={user.role}
       />
+
+      {/* ── 🐞 RAPPORT DE TEST, ATTEIGNABLE DEPUIS N'IMPORTE QUEL ÉCRAN ──────
+          RÉGLAGE DE PÉRIODE — demande de Patrick, 28/09, et son mot exact :
+          « s'il est sur la première page il est impossible de revenir dessus
+          quand on est sur une page ».
+
+          LE DÉFAUT QU'IL DÉCRIT. Le rapport vivait à deux endroits seulement :
+          l'écran de connexion (qu'on a quitté) et les Paramètres (deux gestes
+          depuis la Caisse). Or c'est PENDANT l'anomalie qu'il faut l'attraper.
+          Le journal, lui, n'était pas en cause : il est en anneau, recopié
+          dans localStorage à chaque événement, et il survit au changement
+          d'écran comme au redémarrage. C'était le BOUTON qui manquait, pas la
+          trace.
+
+          POURQUOI ICI. `AppLayout` enveloppe toutes les pages connectées : un
+          seul bouton, tous les écrans — plutôt qu'un par page, dont la moitié
+          finirait par manquer.
+
+          PLACÉ À GAUCHE, AU-DESSUS DE LA BARRE DU BAS : ni sous le micro (qui
+          est au centre de la BottomBar), ni sur la pastille « Mode hors ligne »
+          (en haut, au centre). Rien de ce qui sert à vendre n'est recouvert.
+
+          À RETIRER QUAND LE PILOTE SERA QUALIFIÉ. Ce n'est pas un élément de
+          la charte : c'est un instrument de recette. */}
+      <button
+        type="button"
+        aria-label="Rapport de test — copier le journal"
+        onClick={async () => {
+          const r = await vlogPartager();
+          if (r.methode === 'copie') toast.success('Rapport copié — colle-le dans la conversation.');
+          else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
+        }}
+        className="lg:left-[292px] xl:left-[332px]"
+        style={{
+          position: 'fixed', left: 12, bottom: 96, zIndex: 60,
+          display: 'flex', alignItems: 'center', gap: 8,
+          minHeight: 56, padding: '10px 18px',
+          fontSize: 17, lineHeight: '22px', fontWeight: 800, fontFamily: 'inherit',
+          color: '#7A4A24', background: '#F5D6BD', border: '2px solid #D9A87A',
+          borderRadius: 999, boxShadow: '0 4px 14px rgba(0,0,0,0.18)', cursor: 'pointer',
+        }}
+      >
+        <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
+        Rapport
+      </button>
 
       {/* Dev Profile Switcher - Only in development */}
       {import.meta.env.DEV && <ProfileSwitcher />}
