@@ -10,7 +10,13 @@ import {
 import { useBackOffice } from '../../contexts/BackOfficeContext';
 import { BO_PRIMARY, BO_DARK } from './bo-theme';
 import { toast } from 'sonner';
-import { API_URL } from '../../utils/api';
+// INIT-019 — migration vers le service centralisé
+import {
+  boGetWalletsConfigParametres,
+  boGetAdminMonitoring,
+  boPutWalletsConfigParametres,
+  boResetWalletsConfigParametres,
+} from '../../services/backoffice-api';
 
 interface ParamSection {
   id: string;
@@ -246,13 +252,12 @@ export function BOParametres() {
     const loadConfig = async () => {
       setLoadingConfig(true);
       try {
-        const [paramRes, monitoringRes] = await Promise.all([
-          fetch(`${API_URL}/admin/wallets/config/parametres`, { credentials: 'include' }),
-          fetch(`${API_URL}/admin/monitoring`, { credentials: 'include' }),
+        // INIT-019 — migration vers le service centralisé
+        const [cfg, monitoring] = await Promise.all([
+          boGetWalletsConfigParametres().catch(() => ({} as Record<string, string>)),
+          boGetAdminMonitoring(),
         ]);
-        const cfg = paramRes.ok ? await paramRes.json() : {};
-        const monitoring = monitoringRes.ok ? await monitoringRes.json() : {};
-        const data: Record<string, string> = cfg && typeof cfg === 'object' ? cfg : {};
+        const data: Record<string, string> = cfg && typeof cfg === 'object' ? (cfg as Record<string, string>) : {};
 
         setScoring({
           poidsTransactions: toNum(data.scoring_poids_transactions),
@@ -389,13 +394,8 @@ export function BOParametres() {
         platform_message_maintenance: plateforme.messageMaintenace,
         platform_duree_maintenance_h: String(plateforme.dureeMaintenanceH),
       };
-      const res = await fetch(`${API_URL}/admin/wallets/config/parametres`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
+      const res = await boPutWalletsConfigParametres(payload);
+      if (!res) {
         toast.error('Échec de sauvegarde des paramètres');
         return false;
       }
@@ -420,11 +420,8 @@ export function BOParametres() {
 
   const handleReset = async (section: string) => {
     try {
-      const res = await fetch(`${API_URL}/admin/wallets/config/parametres/reset?section=${section}`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error();
+      // INIT-019 — migration vers le service centralisé
+      await boResetWalletsConfigParametres(section);
       toast.success(`Paramètres "${section}" réinitialisés`);
     } catch (err) {
       console.warn('[BOParametres] handleReset failed:', err instanceof Error ? err.message : err);

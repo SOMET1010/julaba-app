@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import {
   boGetUserFlags,
   boResolveUserFlag,
+  boGetMarches,
+  boUpdateMarche,
   type FlagResolutionAction,
   type UserFlagItem,
   type UserFlagType,
@@ -22,7 +24,6 @@ import { UniversalRechercheBO } from './universal/UniversalRechercheBO';
 import { UniversalFiltreBO, type FilterGroup } from './universal/UniversalFiltreBO';
 import { UniversalSectionCardBO } from './universal/UniversalSectionCardBO';
 import { UniversalActionButtonBO } from './universal/UniversalActionButtonBO';
-import { API_URL } from '../../utils/api';
 
 type SignalementStatut = 'nouveau' | 'en_cours' | 'traite' | 'rejete';
 
@@ -129,13 +130,9 @@ export function BOModeration() {
   const loadMarchesEnAttente = async () => {
     setMarchesLoading(true);
     try {
-      const res = await fetch(`${API_URL}/marches?statut=en_attente`, {
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) setMarchesEnAttente(data);
-      }
+      // INIT-019 — migration vers le service centralisé (timeout 30s, mutex refresh, HttpError typée)
+      const data = await boGetMarches({ statut: 'en_attente' });
+      if (Array.isArray(data)) setMarchesEnAttente(data);
     } catch (e: any) {
       console.warn('[BOModeration] loadMarchesEnAttente failed:', e?.message);
     } finally {
@@ -151,16 +148,10 @@ export function BOModeration() {
 
   const handleValiderMarche = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/marches/${id}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ statut: 'actif' }),
-      });
-      if (res.ok) {
-        setMarchesEnAttente(prev => prev.filter(m => m.id !== id));
-        toast.success('Marché validé et ajouté à la liste officielle');
-      }
+      // INIT-019 — migration vers boUpdateMarche
+      await boUpdateMarche(id, { statut: 'actif' });
+      setMarchesEnAttente(prev => prev.filter(m => m.id !== id));
+      toast.success('Marché validé et ajouté à la liste officielle');
     } catch (e: any) {
       console.warn('[BOModeration] handleValiderMarche failed:', e?.message);
       toast.error('Erreur lors de la validation');
@@ -169,16 +160,10 @@ export function BOModeration() {
 
   const handleRejeterMarche = async (id: string) => {
     try {
-      const res = await fetch(`${API_URL}/marches/${id}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ statut: 'rejete', actif: false }),
-      });
-      if (res.ok) {
-        setMarchesEnAttente(prev => prev.filter(m => m.id !== id));
-        toast.info('Marché rejeté');
-      }
+      // INIT-019 — migration vers boUpdateMarche
+      await boUpdateMarche(id, { statut: 'rejete', actif: false });
+      setMarchesEnAttente(prev => prev.filter(m => m.id !== id));
+      toast.info('Marché rejeté');
     } catch (e: any) {
       console.warn('[BOModeration] handleRejeterMarche failed:', e?.message);
       toast.error('Erreur lors du rejet');

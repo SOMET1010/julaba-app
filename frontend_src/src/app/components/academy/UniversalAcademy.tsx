@@ -29,7 +29,8 @@ import {
 } from './academyQuestions';
 import { ROLE_COLORS } from './academyConfig';
 import tataLouImg from "../../../assets/images/tantie-icon-marchand.png";
-import { API_URL } from '../../utils/api';
+// INIT-019 — migration vers le service centralisé
+import { getAcademyMyProgress, getAcademyQuestions } from '../../services/api/academy-api';
 
 // ── Icon registry ────────────────────────────────────────────────────────────
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
@@ -277,10 +278,8 @@ export function UniversalAcademy() {
 
   // Charger la progression depuis l'API au montage
   useEffect(() => {
-    fetch(`${API_URL}/academy/my-progress`, {
-      credentials: 'include',
-    })
-      .then(r => r.ok ? r.json() : null)
+    // INIT-019 — migration vers getAcademyMyProgress
+    getAcademyMyProgress()
       .then(data => {
         if (data?.progress && Array.isArray(data.progress)) {
           const completedLessons = data.progress
@@ -320,12 +319,8 @@ export function UniversalAcademy() {
   // Start lesson - fetch questions from backend
   const startLesson = async (chapter: number, lesson: number) => {
     try {
-      const res = await fetch(`${API_URL}/academy/questions?role=${role}&chapter=${chapter}`, {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Erreur chargement questions');
-      const data = await res.json();
-      const rawQuestions = (data.questions || data.data || []) as any[];
+      // INIT-019 — migration vers getAcademyQuestions (retourne déjà un tableau)
+      const rawQuestions = await getAcademyQuestions(role, chapter) as any[];
 
       // Mapper le format backend vers le format AcademyQuestion attendu par le gameplay
       const pool: AcademyQuestion[] = rawQuestions

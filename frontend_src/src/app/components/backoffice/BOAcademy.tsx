@@ -15,7 +15,13 @@ import { toast } from 'sonner';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { UserRole } from '../academy/types';
 import { ImagePickerField } from '../shared/ImagePickerField';
-import { API_URL } from '../../utils/api';
+// INIT-019 — migration vers le service centralisé
+import {
+  getAcademyModules,
+  getAcademyStats,
+  getAcademyQuestions,
+  academyMutation,
+} from '../../services/api/academy-api';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -112,14 +118,8 @@ const CHAPTER_THEMES: Record<string, {ch1:string;ch2:string;ch3:string;icons:[st
 
 
 const boApi = async (path: string, method = 'GET', body?: any) => {
-  const r = await fetch(`${API_URL}${path}`, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error(data?.message || `HTTP ${r.status}`);
-  return data;
+  // INIT-019 — migration vers le service centralisé (timeout 30s, mutex refresh, HttpError typée)
+  return academyMutation(path, method as 'POST' | 'PATCH' | 'DELETE', body);
 };
 
 export function BOAcademy() {
@@ -129,28 +129,19 @@ export function BOAcademy() {
   const [academyStats, setAcademyStats] = React.useState<any>(null);
 
   React.useEffect(() => {
-    const h = { };
-    fetch(`${API_URL}/academy/modules`, { headers: h })
-      .then(r => r.json())
-      .then(d => setModules((d.modules || []).map((m: any) => ({
-        ...m,
-        nbInscrits: m.nbInscrits || m.nb_inscrits || 0,
-        tauxCompletion: m.tauxCompletion || m.taux_completion || 0,
-        dateCreation: m.dateCreation || m.created_at || '',
-      }))))
+    // INIT-019 — migration vers getAcademyModules / getAcademyStats
+    getAcademyModules()
+      .then(d => setModules(d))
       .catch(() => {});
-    fetch(`${API_URL}/academy/stats`, { headers: h })
-      .then(r => r.json())
+    getAcademyStats()
       .then(setAcademyStats)
       .catch(() => {});
   }, []);
   React.useEffect(() => {
-    fetch(`${API_URL}/academy/modules`, { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) return;
-        const list = Array.isArray(data) ? data : (data.modules || data.data || []);
-        setAvailableModules(list.map((m: any) => ({ id: m.id, titre: m.titre, profil: m.profil || 'tous' })));
+    // INIT-019 — migration vers getAcademyModules
+    getAcademyModules()
+      .then(list => {
+        setAvailableModules(list.map((m) => ({ id: m.id, titre: m.titre, profil: m.profil || 'tous' })));
       })
       .catch(() => {});
   }, []);
@@ -181,14 +172,8 @@ export function BOAcademy() {
     const key = `${role}-${ch}`;
     if (questionsCache[key]) return;
     try {
-      const r = await fetch(`${API_URL}/academy/questions?role=${role}&chapter=${ch}`, { credentials: 'include', headers: { } });
-      const d = await r.json();
-      const qs = (d.questions || []).map((q: any) => ({
-        ...q,
-        correctIndex: q.correctIndex ?? q.correct_index ?? 0,
-        active: q.actif ?? q.active ?? true,
-        options: (q.options || []).map((o: any) => typeof o === 'string' ? { text: o, icon: 'circle' } : o),
-      }));
+      // INIT-019 — migration vers getAcademyQuestions
+      const qs = await getAcademyQuestions(role, ch);
       setQuestionsCache(prev => ({ ...prev, [key]: qs }));
     } catch (e) { void e; }
   };
