@@ -3,19 +3,22 @@
 **Photo fidèle de `main`.** La branche `claude/clever-allen-dnr8by` que ce
 registre suivait jusqu'à la révision 20 a été fusionnée dans `main` (PR #246,
 20/09/2026) ; `main` en est désormais la seule référence auditée (REL-01).
-**Révision 21 — WS-01 ouverte : l'authentification WebSocket ne revalide pas
-l'état du compte en base (angle mort trouvé par contre-audit indépendant d'un
-audit tiers, jamais couvert par le mandat HYGIÈNE-1).**
+**Révision 21 — WS-01 et STK-05 ouvertes : l'authentification WebSocket ne
+revalide pas l'état du compte en base, et deux politiques de survente
+opposées coexistent selon le modèle de stock (marchand vs producteur) sans
+que la contradiction ait jamais été nommée. Les deux trouvées par
+contre-audit indépendant d'un audit tiers, hors du mandat HYGIÈNE-1.**
 Révision 21 : **contre-audit du 28/09/2026** sur `main` (`53cd010`), en
 réponse à un audit externe (`.ai/AUDITS/AUDIT-002-2026-09-28.md`) dont
 Patrick doutait. Périmètre vérifié : SEC-01/SECRET-01/WS-01 (sécurité),
 SCHEMA-01/05/06 (schéma), MONEY-01/STK-01/02/03 (argent, stock) — preuve par
-lecture de code, `fichier:ligne`, comme l'exige ce registre. Neuf des dix
+lecture de code, `fichier:ligne`, comme l'exige ce registre. Huit des dix
 constats de l'audit externe recoupaient des lignes déjà connues (parfois avec
 un contexte manquant côté audit externe — ex. SCHEMA-01 ne cite pas le
-garde-fou CI SCHEMA-PILOTE, pourtant déjà en place et déjà efficace). **Un
-seul point neuf et confirmé : WS-01**, ajouté ci-dessous. L'audit externe lui
-même n'a jamais consulté ce registre ni ses garde-fous CI.
+garde-fou CI SCHEMA-PILOTE, pourtant déjà en place et déjà efficace ;
+MONEY-01 redit ARG-04/I6 sans rien y ajouter). **Deux points neufs et
+confirmés : WS-01 et STK-05**, ajoutés ci-dessous. L'audit externe lui-même
+n'a jamais consulté ce registre ni ses garde-fous CI.
 Révision 20 : **contre-audit n°4 sur `96c7b64`** (passe UI-03 + UI-02, `62636e6`).
 **Chemin d'argent : 0 ligne de diff** sur `machineEncaissement`, `grammaireEncaissement`,
 `localIntent`, `CaisseContext`, `vendreVocalUnifie` ; `POSCaisse` : `recuEnSaisie`
@@ -157,7 +160,7 @@ n'existe plus aucun chemin métier où un humain interne choisit, lit ou dicte l
 PIN d'un autre.
 Le détail de chaque correction est dans la colonne « preuve ».
 
-**Compte courant : 33 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 49 OUVERT** *(recompté ligne à ligne à la révision 21 : 87 lignes ; WS-01 ajoutée OUVERTE, trouvée par contre-audit indépendant, hors mandat HYGIÈNE-1)*.
+**Compte courant : 33 FERMÉ · 5 HORS PÉRIMÈTRE JUSTIFIÉ · 50 OUVERT** *(recompté ligne à ligne à la révision 21 : 88 lignes ; WS-01 et STK-05 ajoutées OUVERTES, toutes deux trouvées par contre-audit indépendant du 28/09/2026)*.
 
 État d'origine :
 (19 commits devant `main`, qui est à `59b9142`).
@@ -218,7 +221,7 @@ reste multiple.
 | **ARG-11** | **P1** | **OUVERT** | **Condition bloquante de réouverture du crédit.** `CAISSE_CREDIT_ACTIF` ne repasse à `true` qu'une fois TOUT ce qui suit fermé — et la liste de la révision 7 était **incomplète**, le contre-audit l'a corrigée. **Restent ouverts : ARG-04** (idempotence de la *création* — `CreerCreditData` ne dédoublonne pas le crédit lui-même, `blockers.spec.ts` I4 toujours `it.failing`), **I6 — MAIS SA SPÉCIFICATION EST PÉRIMÉE** : `blockers.spec.ts` exige encore une ligne `caisse_transactions.type = 'credit'`, alors que la convention de caisse est `vente` / `depense` / `acompte_credit` / `reglement_credit` — `'credit'` n'en fait pas partie. **Le viser tel quel ferait implémenter une mauvaise cible.** Le vrai besoin est plus large : une vente à crédit doit produire une trace de vente comptablement correcte **et** décrémenter le stock atomiquement. **I6 est à réécrire avant tout chantier de réactivation**, **CLIENT-02**, **TYPE-02** | — | ARGENT-4 + 4b traitent l'**encaissement** et sa **clôture**. Rien d'autre |
 | **ARG-12** / I5 réel | **P1** | **FERMÉ** | *Ouverte et fermée dans le même lot, au contre-audit.* Le vrai client (`caisse-api.ts`) n'envoyait **aucune** clé : le serveur en fabriquait une avec `Date.now()`, donc deux envois de la même tentative encaissaient **deux fois** — pendant que `blockers.spec.ts` I5 restait vert, puisqu'il fournissait la clé lui-même. Les trois fonctions client envoient désormais une clé ; test dédié sur le vrai client ; le serveur **refuse** un acompte sans clé au lieu d'en deviner une | `a959ec5` — « un test qui fournit ce que le vrai client ne fournit pas ne teste pas le vrai client ». I5 est annoté pour dire ce qu'il prouve et ce qu'il ne prouve pas | — |
 | **REL-01** | **P1 sortie** | **FERMÉ** | *Défaut de chaîne de FABRICATION, pas de produit, trouvé au contre-audit du `main` fusionné.* `apk.yml` construisait par défaut `claude/clever-allen-dnr8by` et la recette terrain disait de laisser les valeurs par défaut — option B incluse. L'APK aurait été **tracé comme venant d'une branche de travail**, pas du `main` qui a traversé la chaîne de preuve | `335b483` — au moment de la fusion les deux arbres étaient identiques (`main` n'a qu'un merge commit de plus), donc le binaire aurait été le même ; **dès le commit suivant sur `main`, la construction devenait réellement périmée sans que rien ne le signale** | — |
-| **ARG-04** | P1 dormant | **OUVERT** | `POST /caisse/credits` sans `idempotency_key` — vérifié : la seule clé du fichier est celle de l'acompte | — | Idempotence de création. **Avant réactivation du crédit** |
+| **ARG-04** | P1 dormant | **OUVERT** | `POST /caisse/credits` sans `idempotency_key` — vérifié : la seule clé du fichier est celle de l'acompte. **Reconfirmé au contre-audit du 28/09/2026** : `credits.controller.ts:72-81` fait un `INSERT INTO credits` inconditionnel — aucune clé, aucun `ON CONFLICT`, sur la création elle-même ; `blockers.spec.ts:64`, I4, toujours `it.failing` | — | Idempotence de création. **Avant réactivation du crédit.** Un audit externe (`.ai/AUDITS/AUDIT-002-2026-09-28.md`, MONEY-01) reformule ce même constat (I4/I5/I6) sans rien y ajouter — I5 est bien fermé (vérifié côté vrai client `caisse-api.ts:242-289`, pas seulement le test), I6 reste périmé à réécrire, cf. ARG-11 |
 | **ARG-05** | P1 | **FERMÉ** | Atomicité crédit / client / caisse / audit : les quatre écritures dans la même transaction, les quatre ou aucune. Verrou `FOR UPDATE` : deux paiements simultanés s'additionnent au lieu de s'écraser | `45e99ff` — un test exige qu'un encaissement refusé ne laisse **rien** derrière lui | — |
 | **ARG-06** | P2 modèle | **OUVERT** | `caisse-transaction.entity.ts` porte toujours **2 colonnes** `marge` et `benefice`, alimentées par la même valeur | Côté écran, un seul champ depuis `ed9321b` | La fusion des colonnes demande une migration. Le serveur écrit encore deux fois le même chiffre |
 | **ARG-07** | P2 | **OUVERT** | « Bénéfice » ambigu entre marge commerciale et résultat ventes−dépenses | — | Deux concepts à nommer distinctement |
@@ -231,8 +234,9 @@ reste multiple.
 |---|---|---|---|---|---|
 | **STK-01** | **P0 publication** | **FERMÉ** | `db-init.service.ts` crée désormais `stock_operation_idempotency` et son index, DDL identique à la migration `1781500000000`. Deux tests sur une base bâtie par DbInit **seul** (aucune table `migrations`) : la table existe, et l'`INSERT` réel du contrôleur s'exécute. Les deux échouaient avant | `6ef6560` | — *(la dette de mécanisme reste SCHEMA-03 : DbInit et les migrations ne convergent pas, ils sont maintenus en parallèle)* |
 | **STK-02** | P2 modèle | **OUVERT** | `stock = 0` confond « épuisé » et « non suivi » | ADR-0003 #6, différé par arbitrage | Séparer quantité de `suivi_stock` |
-| **STK-03** | P2 architecture | **OUVERT** | Deux modèles coexistent : `produits` (marchand) et `stocks` (producteur/coopérateur) | `974de94` rend la dualité **explicite** (les alertes interrogent les deux) au lieu de la subir | Les deux tables demeurent |
-| **STK-04** | P2 | **OUVERT** | Les réapprovisionnements manuels ne passent pas par le ledger | — | Décider si tout mouvement doit être historisé |
+| **STK-03** | P2 architecture | **OUVERT** | Deux modèles coexistent : `produits` (marchand) et `stocks` (producteur/coopérateur). **Reconfirmé au contre-audit du 28/09/2026** : `stocks-rest.controller.ts:90-146` branche toujours sur le rôle (`cooperateur`/`producteur` → `stocks`, sinon → `produits`) ; `alertes.service.ts:90-109` interroge bien les deux via `UNION ALL` | `974de94` rend la dualité **explicite** (les alertes interrogent les deux) au lieu de la subir | Les deux tables demeurent. **Voir STK-05** : la dualité ne porte pas seulement sur le schéma, elle porte aussi sur la **règle métier de survente**, qui diverge entre les deux modèles — trouvé au contre-audit, jamais nommé jusqu'ici |
+| **STK-04** | P2 | **OUVERT** | Les réapprovisionnements manuels ne passent pas par le ledger. **Reconfirmé au contre-audit du 28/09/2026** : `stocks-rest.controller.ts:162-172` (`PATCH /stocks/:id`) fait un `UPDATE produits SET stock=...` direct, sans écriture dans `stock_mouvements` — le commentaire du fichier (l.25-26) le documente lui-même en citant STK-04 | — | Décider si tout mouvement doit être historisé. Un audit externe (STK-02) redécouvre ce même point sans rien y ajouter |
+| **STK-05** | **P1 produit** | **OUVERT** | **Trouvée au contre-audit du 28/09/2026, en réponse à AUDIT-002 (STK-03 externe : « survente à trancher »).** La doctrine existe bel et bien côté marchand — `.ai/REQUIREMENTS.md:129`, invariant I3 : « survente tracée (vendre > stock accepté, jamais clampé silencieusement) », et le code la tient : `caisse-rest.controller.ts:533-549` — `retranchee = Math.min(demandee, Math.max(0, stockAvant))`, `manquant = demandee - retranchee`, jamais de blocage, journalisé (cf. ARG-01/B3). **Mais côté producteur/coopérateur (modèle `stocks`, cf. STK-03), la règle est l'INVERSE** : `docs/adr/ADR-0001-decrement-stock-vente.md`, I-E ligne 82 — « demande > disponible ⇒ 409, aucun effet ». **Deux politiques de survente opposées coexistent, une par modèle de stock, sans que la contradiction ait jamais été nommée** | — *(trouvée au contre-audit, non tranchée : ce n'est pas à l'agent de choisir)* | AUDIT-002 (STK-03 externe) prétend qu'aucune doctrine n'existe côté marchand — c'est faux, elle existe et elle est testée. La vraie question, qu'AUDIT-002 ne pose pas, est : **la marchande et le producteur doivent-ils vivre sous la même règle de survente, ou est-ce un choix produit légitimement différent selon l'acteur ? À trancher par Patrick** |
 
 # UNITÉS
 
