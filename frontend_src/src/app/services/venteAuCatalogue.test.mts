@@ -12,7 +12,7 @@
  * Lancer : npm run test:vente-au-catalogue
  */
 import { readFileSync } from 'node:fs';
-import { lireVenteAuCatalogue } from './venteAuCatalogue.js';
+import { lireVenteAuCatalogue, venteSansProduit, aNommeUnInconnu } from './venteAuCatalogue.js';
 import { libelleVenteComprise } from './ecouteCaisse.js';
 import { apparierProduit } from './venteVocale.js';
 import { intentLocalCaisse } from '../voice-offline/localIntent.js';
@@ -127,7 +127,39 @@ console.log('\n[5] LA MESURE, SUR LES 198 PRODUITS DU CATALOGUE MAÎTRE');
   ok(redemande <= 2, `au plus deux produits redemandent le prix (doublon du catalogue) : ${redemande}`);
 }
 
-console.log('\n[6] LA PREUVE TRAVERSE — l\'écran relit bien SON catalogue');
+console.log('\n[6] CAT-02 — elle nomme ce qu\'elle ne vend PAS');
+{
+  // Reproduit dans un vrai navigateur : le panier recevait « 1 × Produit
+  // vocal = 2 F » parce qu'`extraire`, sans produit à quoi rattacher le
+  // nombre, le range en MONTANT.
+  const a = intentLocalCaisse('vends deux mangues séchées')?.action;
+  ok(a?.type === 'vendre' && a.montant === 2 && !a.produit,
+     `le moteur lit « deux » comme 2 francs : ${JSON.stringify(a)}`);
+  const c = venteSansProduit(a, 'vends deux mangues séchées');
+  ok(c?.quantite === 2 && c?.montant === 0,
+     `« deux » redevient une quantité, et AUCUN prix n'est inventé : ${JSON.stringify(c)}`);
+}
+{
+  // L'ARTICLE LIBRE VOCAL N'EST PAS TOUCHÉ. C'est un usage réel : elle vend
+  // quelque chose qu'elle ne veut pas nommer, pour un montant. Le
+  // discriminant n'est pas la taille du nombre — « vends 50 » deviendrait
+  // cinquante articles — c'est qu'elle a NOMMÉ quelque chose après.
+  for (const phrase of ['vends 500', 'vends pour 500', 'vends à 500', 'vends 50', 'vends cinq cents']) {
+    const a = intentLocalCaisse(phrase)?.action;
+    ok(venteSansProduit(a, phrase) === null, `« ${phrase} » reste un article libre — rien ne lui est retiré`);
+  }
+}
+{
+  ok(aNommeUnInconnu('vends deux mangues séchées') === true, 'elle a nommé quelque chose');
+  ok(aNommeUnInconnu('vends 500') === false, 'là, elle n\'a rien nommé');
+  ok(aNommeUnInconnu('vends deux tas de tomates') === false,
+     'et un produit CONNU n\'est pas un inconnu — le moteur l\'a déjà pris');
+  const a = intentLocalCaisse('vends 50 mangues séchées')?.action;
+  ok(venteSansProduit(a, 'vends 50 mangues séchées')?.quantite === 50,
+     'cinquante mangues séchées sont cinquante, pas cinquante francs');
+}
+
+console.log('\n[7] LA PREUVE TRAVERSE — l\'écran relit bien SON catalogue');
 {
   const src = readFileSync(new URL('../components/marchand/MicroVenteCaisse.tsx', import.meta.url), 'utf8');
   ok((src.match(/lireVenteAuCatalogue\(/g) ?? []).length >= 3,
@@ -146,8 +178,10 @@ console.log('\n[6] LA PREUVE TRAVERSE — l\'écran relit bien SON catalogue');
   // celui où la vente part.
   ok(/const reluAuCatalogue = lireVenteAuCatalogue\(data\.transcript \|\| '', products\);/.test(src),
      'onAction — LE chemin que le moteur emprunte — relit d\'abord son catalogue');
-  ok(/const vente = reluAuCatalogue \?\? action;/.test(src),
+  ok(/const vente = reluAuCatalogue \?\? \(corrige/.test(src),
      'et son catalogue passe AVANT le lexique, le moteur restant le repli');
+  ok(/venteSansProduit\(action, data\.transcript/.test(src),
+     'CAT-02 — et le nombre orphelin est corrigé LÀ AUSSI, sur le vrai chemin');
   ok(/lireVenteAuCatalogue\(texte, products\) \?\? \(local\?\.action\?\.type === 'vendre'/.test(src),
      'le secours garde la même règle : catalogue d\'abord, moteur ensuite');
   ok(/if \(local && local\.action\?\.type !== 'vendre'\) return;/.test(src),

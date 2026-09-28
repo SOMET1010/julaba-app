@@ -54,7 +54,7 @@ import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncais
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
 import { produitPourVente } from '../../services/preselectionVente';
-import { lireVenteAuCatalogue } from '../../services/venteAuCatalogue';
+import { lireVenteAuCatalogue, venteSansProduit } from '../../services/venteAuCatalogue';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
 import { t } from '../../i18n/voice/runtime';
 import type { LigneProvisoire } from '../../services/ligneProvisoire';
@@ -336,7 +336,22 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
          * `null` au moindre doute — auquel cas le moteur garde la main.
          */
         const reluAuCatalogue = lireVenteAuCatalogue(data.transcript || '', products);
-        const vente = reluAuCatalogue ?? action;
+        /**
+         * CAT-02 — ET QUAND ELLE NOMME CE QU'ELLE NE VEND PAS.
+         *
+         * « vends deux mangues séchées », produit absent de sa boutique : le
+         * moteur rend { vendre, montant: 2 } et une ligne « Produit vocal » à
+         * DEUX FRANCS partait au panier, en silence. Arbitrage de Patrick,
+         * 28/09 : « ferme le produit vocal hors catalogue ».
+         *
+         * L'ARTICLE LIBRE VOCAL N'EST PAS TOUCHÉ : « vends 500 », « vends pour
+         * 500 », « vends à 500 » continuent de poser leur ligne. Le
+         * discriminant n'est pas la taille du nombre — ce serait une devinette
+         * et « vends 50 » deviendrait cinquante articles — c'est qu'elle a
+         * NOMMÉ quelque chose après le nombre.
+         */
+        const corrige = reluAuCatalogue ? null : venteSansProduit(action, data.transcript || '');
+        const vente = reluAuCatalogue ?? (corrige ? { ...action, ...corrige } : action);
         // MONTANT FACULTATIF : le prix est résolu en aval par
         // vendreVocalUnifie, seul à disposer du catalogue. `0` y signifie
         // « rien n'a été dicté » ; un montant réellement prononcé prime.

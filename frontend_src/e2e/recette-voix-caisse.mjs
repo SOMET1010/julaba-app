@@ -221,6 +221,37 @@ try {
     console.log(`\n   — journal de voix (${j.length} entrées, 20 dernières) —`);
     for (const e of j.slice(-20)) console.log(`     ${e.ev} ${JSON.stringify(e.d || {}).slice(0, 150)}`);
   }
+  // ═══════════════════════════════════════════════════════════════════════
+  etape('CAT-02 — elle nomme un produit qu\'elle NE VEND PAS');
+  {
+    const avant = await totalPanier();
+    await dire('vends deux mangues séchées');
+    const lignes = await montrePanier('panier');
+    await page.screenshot({ path: `${OUT}/05-hors-catalogue.png`, fullPage: true }).catch(() => {});
+    ok(!lignes.some((l) => /Produit vocal/i.test(l.nom || '')),
+       'AUCUNE ligne « Produit vocal » — c\'est le défaut que Patrick a fait fermer');
+    const apres = await totalPanier();
+    ok(apres === avant, 'et pas un franc de plus au panier', `${avant} F → ${apres} F`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  etape('Non-régression — l\'article libre vocal continue de passer');
+  {
+    // CAT-02 a fait ce qu'il doit : Tata DEMANDE le prix du produit qu'elle
+    // ne connaît pas, et la saisie guidée s'ouvre par-dessus le micro. Ce
+    // n'est pas un défaut, c'est la suite du parcours — on la referme comme
+    // la marchande le ferait, en revenant à sa caisse. Le panier survit.
+    await page.goto(`${BASE}/marchand/caisse`, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(4000);
+    const avant = await totalPanier();
+    await dire('vends pour 500');
+    const apres = await totalPanier();
+    await montrePanier('panier');
+    await page.screenshot({ path: `${OUT}/06-article-libre.png`, fullPage: true }).catch(() => {});
+    ok(apres === avant + 500,
+       'un montant dicté sans produit nommé pose toujours sa ligne', `${avant} F → ${apres} F`);
+  }
+
   console.log(`\n${echecs === 0 ? '✓ RECETTE VOIX : aucun échec' : `✗ RECETTE VOIX : ${echecs} échec(s)`}`);
   console.log(`   captures : ${OUT}/0*.png`);
 } catch (e) {
