@@ -2,6 +2,7 @@
   "name": "julaba-app",
   "version": "5.0.0",
   "private": true,
+  "license": "MIT",
   "workspaces": [
     "frontend_src",
     "backend"
