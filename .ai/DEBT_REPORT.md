@@ -79,8 +79,8 @@
 ### ARCHITECTURE (nouvelles dettes)
 | ID | Description | Priorité | Effort | Statut |
 |---|---|---|---|---|
-| ARCH-NEW-1 | 2 contrôleurs dupliqués : `cycles-rest` + `producteur/cycles`, `recoltes-rest` + `producteur/recoltes` | P2 | M | OUVERT (audit) |
-| ARCH-NEW-2 | Catalogue produit hardcodé dans `caisse-rest.controller.ts` (15 produits vivriers + 2ᵉ classe `CatalogueController`) | P2 | M | OUVERT (audit) |
+| ARCH-NEW-1 | 2 contrôleurs dupliqués : `cycles-rest` + `producteur/cycles`, `recoltes-rest` + `producteur/recoltes` | P2 | M | **FERMÉ (INIT-011)** |
+| ARCH-NEW-2 | Catalogue produit hardcodé dans `caisse-rest.controller.ts` (15 produits vivriers + 2ᵉ classe `CatalogueController`) | P2 | M | **FERMÉ (INIT-012, 2026-09-29)** — Donnée migrée vers table `caisse_produits` (entité `CaisseProduit` + `CaisseProduitsService` + seed idempotent dans `DbInitService`). Tableau `CATALOGUE` supprimé, `CatalogueController` transformé en wrapper mince. |
 | ARCH-NEW-3 | `DbInitService` redondant avec migrations (765 LOC DDL idempotent) | P2 | L | OUVERT (audit, ADR-0002) |
 | ARCH-NEW-4 | 3 modules "doublons" : `tickets/` vs `tickets-rest/`, `audit/` vs `audit-rest/`, `commandes/` (entités) vs `commandes-rest/` (controller) | P3 | M | OUVERT (audit) |
 | ARCH-NEW-5 | `misc-rest.controller.ts` : 14 routes sous préfixe `''` (vide) — routes disparates à regrouper | P3 | M | OUVERT (audit) |
