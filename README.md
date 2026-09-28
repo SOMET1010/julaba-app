@@ -84,7 +84,7 @@ julaba-app/
 ├── backend/                 # NestJS : src/ + migrations TypeORM + tests (unit, invariants)
 ├── frontend_src/            # React + Vite : src/app/{pages,services,contexts,hooks,voice-offline}
 ├── android/                 # Projet Capacitor Android + scripts/installer-voix.sh
-├── database/                # init.sql (référence historique)
+├── database/                # (historique — schéma géré par migrations TypeORM + DbInitService)
 ├── docs/                    # Documentation vivante (ADR, dette, invariants, parcours…)
 ├── .ai/                     # Cockpit multi-agents (audit, dette, conformité, handoffs)
 ├── coordination/            # Bus IA↔humain (instructions, statut, preuves)

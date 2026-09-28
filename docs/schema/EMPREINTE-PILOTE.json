@@ -1,7 +1,7 @@
 {
   "genereLe": "2026-09-19",
-  "tables": 60,
-  "colonnes": 684,
+  "tables": 61,
+  "colonnes": 694,
   "parTable": {
     "academy_modules": [
       "created_at",
@@ -99,6 +99,18 @@
       "nouveau_fond",
       "origine",
       "session_id"
+    ],
+    "caisse_produits": [
+      "actif",
+      "categorie",
+      "created_at",
+      "id",
+      "mots_cles",
+      "nom",
+      "prix_achat",
+      "prix_vente",
+      "unite",
+      "updated_at"
     ],
     "caisse_sessions": [
       "caisse_theorique",

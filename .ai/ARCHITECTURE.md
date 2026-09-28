@@ -57,8 +57,8 @@
 - **`stocks-rest/`** -- decrement atomique (ADR-0001)
 - **`commandes/`** + `commandes-rest/` -- paiement, negotiation, livraison
 - **`cooperatives-rest/`** -- 953 LOC, 28 routes
-- **`cycles-rest/`** + `producteur/cycles/` -- ATTENTION : **2 controleurs dupliques** (dette)
-- **`recoltes-rest/`** + `producteur/recoltes/` -- ATTENTION : **2 controleurs dupliques** (dette)
+- **`cycles-rest/`** -- controleur canonique (fusion INIT-011 : `producteur/cycles/cycles.controller.ts` supprime, route `POST :id/complete` rapatriee)
+- **`recoltes-rest/`** -- controleur canonique (fusion INIT-011 : `producteur/recoltes/recoltes.controller.ts` supprime, route `GET :id` rapatriee)
 - **`publications/`** + `publications-rest/`
 - **`notifications/`** + `events/` (WebSocket Gateway)
 - **`database/`** -- TypeORM config, 27 migrations, DbInit idempotent, seed-demo
@@ -224,16 +224,28 @@ ThemeProvider
 
 ## 8. Dette structurelle majeure (top 10)
 
-1. **2 controleurs dupliques** (`cycles-rest` + `producteur/cycles`, `recoltes-rest` + `producteur/recoltes`) -- routes qui se chevauchent.
-2. **Catalogue produit hardcode** dans `caisse-rest.controller.ts` (15 produits vivriers) -- devrait etre en base.
-3. **God context `AppContext.tsx`** (1351 LOC) + 16 providers imbriques.
-4. **2 design systems BO paralleles** (`components/ui/*` + `components/backoffice/universal/Universal*BO`).
-5. **Typage faible massif** : 476 `any` back + 787 `any` front.
-6. **SQL brut massif** : 592 `manager.query()` back.
-7. **`DbInitService` redondant avec migrations** (765 LOC) -- ADR-0002 documente la convergence.
-8. **`database/init.sql` obsolete** (vestige pre-migrations, dangereux si execute).
-9. **Dependances frontend parasites** dans `backend/package.json` (`@capacitor/cli`, `react-router`).
-10. **3 doctrines schema paralleles** (SCHEMA-01/02/03 P1 OUVERT).
+1. **God context `AppContext.tsx`** (1351 LOC) + 16 providers imbriques.
+2. **2 design systems BO paralleles** (`components/ui/*` + `components/backoffice/universal/Universal*BO`).
+3. **Typage faible massif** : 476 `any` back + 787 `any` front.
+4. **SQL brut massif** : 592 `manager.query()` back.
+5. **`DbInitService` redondant avec migrations** (765 LOC) -- ADR-0002 documente la convergence.
+6. **`database/init.sql` obsolete** (vestige pre-migrations, dangereux si execute).
+7. **Dependances frontend parasites** dans `backend/package.json` (`@capacitor/cli`, `react-router`).
+8. **3 doctrines schema paralleles** (SCHEMA-01/02/03 P1 OUVERT).
+
+> FERME (INIT-011) : « 2 controleurs dupliques » (`cycles-rest` + `producteur/cycles`,
+> `recoltes-rest` + `producteur/recoltes`) -- les controleurs `producteur/` etaient
+> en realite du code mort (modules non importes dans `AppModule`). La fusion a
+> consolide les routes uniques (`POST :id/complete` et `GET :id`) dans les
+> controleurs `-rest` canoniques et supprime les controleurs dupliques.
+
+> FERME (INIT-012) : « Catalogue produit hardcode dans `caisse-rest.controller.ts` »
+> (21 produits vivriers + 2ᵉ classe `CatalogueController`) -- la donnee a migre vers
+> la table `caisse_produits` (entite TypeORM `CaisseProduit` + service
+> `CaisseProduitsService` + seed idempotent dans `DbInitService`). Le tableau
+> `CATALOGUE` TS est supprime ; le `CatalogueController` subsiste comme wrapper
+> mince qui delegue au service en preservant le contrat API public
+> (`GET /catalogue`, `GET /catalogue/categories`). Voir `DEBT_REPORT.md` ARCH-NEW-2.
 
 ## 9. Forces architecturales remarquables
 
