@@ -67,4 +67,27 @@ export class CyclesRestController {
     await this.dataSource.query('DELETE FROM cycles WHERE id = $1 AND user_id = $2', [id, user.id]);
     return { success: true };
   }
+
+  // Fusion INIT-011 : route ajoutée depuis producteur/cycles/cycles.controller.ts
+  // (supprimé). Le frontend (cycles-api.ts) appelle cette opération via
+  // PATCH /:id avec status='completed', mais on conserve la route explicite
+  // POST /:id/complete pour compatibilité ascendante et sémantique métier.
+  @Post(':id/complete')
+  async complete(
+    @Param('id') id: string,
+    @Body() body: { dateRecolteReelle: string; quantiteReelle: number },
+    @CurrentUser() user: User,
+  ) {
+    const result = await this.dataSource.query(
+      `UPDATE cycles
+       SET status = 'completed',
+           date_recolte_reelle = $3,
+           quantite_reelle = $4,
+           updated_at = NOW()
+       WHERE id = $1 AND user_id = $2
+       RETURNING *`,
+      [id, user.id, body.dateRecolteReelle, body.quantiteReelle],
+    );
+    return { cycle: result[0] || null };
+  }
 }

@@ -5,7 +5,7 @@
 ## État au 2026-09-29
 
 - **Total tâches** : 12 (toutes issues de l'audit initial)
-- **Terminées** : 0
+- **Terminées** : 2 (INIT-011, INIT-012)
 - **En cours** : 1 (INIT-010)
 - **Bloquées** : 0
 
@@ -33,8 +33,8 @@
 
 | ID | Epic | Description | Rôle | Statut | Priorité |
 |---|---|---|---|---|---|
-| INIT-011 | Architecture | Fusionner contrôleurs dupliqués : `cycles-rest` + `producteur/cycles`, `recoltes-rest` + `producteur/recoltes` | Back | TODO | P2 |
-| INIT-012 | Dette | Migrer `CATALOGUE` hardcodé (15 produits vivriers dans `caisse-rest.controller.ts`) vers `caisse_produits` ou référentiel maître Odoo | Back | TODO | P2 |
+| INIT-011 | Architecture | Fusionner contrôleurs dupliqués : `cycles-rest` + `producteur/cycles`, `recoltes-rest` + `producteur/recoltes` | Back | **TERMINÉ** | P2 |
+| INIT-012 | Dette | Migrer `CATALOGUE` hardcodé (15 produits vivriers dans `caisse-rest.controller.ts`) vers `caisse_produits` ou référentiel maître Odoo | Back | **TERMINÉ** | P2 |
 
 ## Tâches reportées (backlog futur)
 

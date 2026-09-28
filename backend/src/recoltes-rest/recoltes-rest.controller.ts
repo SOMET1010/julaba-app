@@ -22,6 +22,16 @@ export class RecoltesRestController {
     return { recoltes, total };
   }
 
+  // Fusion INIT-011 : route ajoutée depuis producteur/recoltes/recoltes.controller.ts
+  // (supprimé). L'implementation d'origine renvoyait l'entite nue ; on wrappe
+  // dans { recolte } pour rester coherent avec les autres reponses de ce
+  // controleur canonique.
+  @Get(":id")
+  async findOne(@Param("id") id: string, @CurrentUser() user: User) {
+    const recolte = await this.repo.findOne({ where: { id, userId: user.id } });
+    return { recolte };
+  }
+
   @Post()
   async create(@Body() body: any, @CurrentUser() user: User) {
     const rawDate = body.date_recolte || body.dateRecolte;

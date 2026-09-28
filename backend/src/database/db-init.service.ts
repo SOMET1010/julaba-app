@@ -205,6 +205,92 @@ export class DbInitService {
       this.logger.warn('Erreur création tables caisse_sessions/produits: ' + message);
     }
 
+    // ── Catalogue vivrier local (caisse_produits) ───────────────────────────
+    // INIT-012 : ce catalogue vivait en dur dans `caisse-rest.controller.ts`
+    // (constante `CATALOGUE` + 2ᵉ classe `CatalogueController`). La table
+    // `caisse_produits` portée par l'entité TypeORM `CaisseProduit` n'est
+    // garantie d'exister qu'ici (en prod, `synchronize` et `migrationsRun`
+    // sont OFF — même raison que `caisse_sessions`/`produits`/`catalogue_maitre`
+    // ci-dessus). DDL idempotent.
+    //
+    // Différence avec `catalogue_maitre` : `caisse_produits` est un catalogue
+    // vivrier LOCAL (sans Odoo), avec prix indicatifs d'achat/vente. C'est
+    // l'aide-mémoire de la saisie guidée, pas un référentiel maître.
+    try {
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS caisse_produits (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          nom text NOT NULL,
+          categorie text,
+          unite text,
+          prix_achat numeric DEFAULT 0,
+          prix_vente numeric DEFAULT 0,
+          mots_cles text[] DEFAULT '{}'::text[],
+          actif boolean NOT NULL DEFAULT true,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_caisse_produits_nom ON caisse_produits (lower(nom));`,
+      );
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_caisse_produits_categorie ON caisse_produits (categorie);`,
+      );
+
+      // SEED initial : si la table est vide, on y injecte les 21 produits
+      // vivriers historiques (riz, tomate, manioc, etc.) extraits à l'identique
+      // de l'ancien tableau `CATALOGUE` hardcodé. Idempotent : ne réinjecte
+      // rien si la table contient déjà au moins une ligne (la donnée peut être
+      // éditée/maintenue en base sans être écrasée au redémarrage).
+      const [{ count: nbProduits }] = await this.dataSource.query(
+        `SELECT count(*)::int AS count FROM caisse_produits`,
+      );
+      if (Number(nbProduits) === 0) {
+        // Liste extraite à l'identique de l'ancien `CATALOGUE` (21 produits).
+        // `prix_achat`/`prix_vente` en XOF, `mots_cles` en tableau text[] natif.
+        const produits: ReadonlyArray<{
+          nom: string; categorie: string; unite: string;
+          prixAchat: number; prixVente: number; mots_cles: ReadonlyArray<string>;
+        }> = [
+          { nom: 'Riz',            categorie: 'cereales',       unite: 'kg',     prixAchat: 400,  prixVente: 500,  mots_cles: ['riz', 'rice'] },
+          { nom: 'Tomate',         categorie: 'legumes',        unite: 'kg',     prixAchat: 300,  prixVente: 400,  mots_cles: ['tomate', 'tomato'] },
+          { nom: 'Aubergine',      categorie: 'legumes',        unite: 'kg',     prixAchat: 700,  prixVente: 800,  mots_cles: ['aubergine', 'eggplant'] },
+          { nom: 'Piment',         categorie: 'legumes',        unite: 'tas',    prixAchat: 100,  prixVente: 150,  mots_cles: ['piment', 'pepper'] },
+          { nom: 'Gombo',          categorie: 'legumes',        unite: 'tas',    prixAchat: 120,  prixVente: 150,  mots_cles: ['gombo', 'okra'] },
+          { nom: 'Manioc',         categorie: 'tubercules',     unite: 'kg',     prixAchat: 150,  prixVente: 200,  mots_cles: ['manioc', 'cassava'] },
+          { nom: 'Igname',         categorie: 'tubercules',     unite: 'kg',     prixAchat: 350,  prixVente: 400,  mots_cles: ['igname', 'yam'] },
+          { nom: 'Maïs',           categorie: 'cereales',       unite: 'kg',     prixAchat: 200,  prixVente: 250,  mots_cles: ['mais', 'maïs', 'corn'] },
+          { nom: 'Banane',         categorie: 'fruits',         unite: 'régime', prixAchat: 500,  prixVente: 700,  mots_cles: ['banane', 'banana'] },
+          { nom: 'Plantain',       categorie: 'fruits',         unite: 'régime', prixAchat: 600,  prixVente: 800,  mots_cles: ['plantain', 'alloco'] },
+          { nom: 'Oignon',         categorie: 'legumes',        unite: 'kg',     prixAchat: 300,  prixVente: 400,  mots_cles: ['oignon', 'onion'] },
+          { nom: 'Avocat',         categorie: 'fruits',         unite: 'pièce',  prixAchat: 100,  prixVente: 150,  mots_cles: ['avocat', 'avocado'] },
+          { nom: 'Huile de palme', categorie: 'condiments',     unite: 'L',      prixAchat: 1400, prixVente: 1500, mots_cles: ['huile', 'palm oil'] },
+          { nom: 'Mangue',         categorie: 'fruits',         unite: 'kg',     prixAchat: 200,  prixVente: 300,  mots_cles: ['mangue', 'mango'] },
+          { nom: 'Ananas',         categorie: 'fruits',         unite: 'pièce',  prixAchat: 300,  prixVente: 400,  mots_cles: ['ananas', 'pineapple'] },
+          { nom: 'Arachide',       categorie: 'cereales',       unite: 'kg',     prixAchat: 600,  prixVente: 700,  mots_cles: ['arachide', 'peanut'] },
+          { nom: 'Cacao',          categorie: 'agriculture',    unite: 'kg',     prixAchat: 1100, prixVente: 1200, mots_cles: ['cacao', 'cocoa'] },
+          { nom: 'Café robusta',   categorie: 'agriculture',    unite: 'kg',     prixAchat: 800,  prixVente: 900,  mots_cles: ['cafe', 'café', 'robusta'] },
+          { nom: 'Anacarde',       categorie: 'agriculture',    unite: 'kg',     prixAchat: 600,  prixVente: 650,  mots_cles: ['anacarde', 'cajou', 'cashew'] },
+          { nom: 'Attiéké',        categorie: 'transformation', unite: 'kg',     prixAchat: 400,  prixVente: 500,  mots_cles: ['attieke', 'attiéké'] },
+          { nom: 'Gari',           categorie: 'transformation', unite: 'kg',     prixAchat: 350,  prixVente: 450,  mots_cles: ['gari'] },
+        ];
+        for (const p of produits) {
+          await this.dataSource.query(
+            `INSERT INTO caisse_produits (nom, categorie, unite, prix_achat, prix_vente, mots_cles, actif)
+             VALUES ($1, $2, $3, $4, $5, $6::text[], true)`,
+            [p.nom, p.categorie, p.unite, p.prixAchat, p.prixVente, p.mots_cles],
+          );
+        }
+        this.logger.log(`Table caisse_produits seedée avec ${produits.length} produits vivriers`);
+      } else {
+        this.logger.log(`Table caisse_produits déjà peuplée (${nbProduits} lignes) — seed ignoré`);
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur création/seed table caisse_produits: ' + message);
+    }
+
     // ── Garde-fou anti double-comptage (idempotence) ─────────────────────────
     // Le contrôleur vérifie la clé avant d'insérer (SELECT puis INSERT), mais ce
     // motif est vulnérable à une course : deux requêtes concurrentes (double-tap,
