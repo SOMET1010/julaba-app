@@ -24,13 +24,27 @@
  */
 
 /** Les trois questions, dans l'ordre où elles se posent. */
-export type EtapeAjout = 'nom' | 'unite' | 'prix';
+/**
+ * STK-04 — UNE QUATRIÈME ÉTAPE, ET ELLE SE SAUTE.
+ *
+ * STK-03 §2 tenait à trois questions, et il avait raison : « chaque champ en
+ * plus est une occasion d'abandonner ». La quantité n'en devient donc pas une
+ * quatrième obligatoire — elle est proposée APRÈS le prix, avec un bouton pour
+ * passer. Le produit est déjà complet quand elle arrive : on ne lui demande
+ * rien pour avancer, on lui offre de préciser.
+ */
+export type EtapeAjout = 'nom' | 'unite' | 'prix' | 'quantite';
 
 /** Ce qu'on a d'elle jusqu'ici. `prix: null` = elle ne l'a pas encore donné. */
 export interface BrouillonProduit {
   readonly nom: string;
   readonly unite: string;
   readonly prix: number | null;
+  /** STK-04 — ce qu'elle a répondu à « Tu en as combien ? », ou rien du tout.
+   *  `undefined` = la question n'a pas encore été posée ; `null` = elle l'a
+   *  PASSÉE. Les deux mènent au même stock inconnu, et c'est voulu : on ne
+   *  distingue pas « pas encore demandé » de « elle n'a pas voulu dire ». */
+  readonly quantite?: number | null;
 }
 
 /**
@@ -53,7 +67,8 @@ const propre = (s: string) => s.trim();
 export function etapeCourante(b: BrouillonProduit): EtapeAjout {
   if (!propre(b.nom)) return 'nom';
   if (!propre(b.unite)) return 'unite';
-  return 'prix';
+  if (prixDelle(b.prix) == null) return 'prix';
+  return 'quantite';
 }
 
 /**
@@ -104,7 +119,10 @@ export function peutValider(etape: EtapeAjout, b: BrouillonProduit): boolean {
 export function etapeSuivante(etape: EtapeAjout): EtapeAjout {
   if (etape === 'nom') return 'unite';
   if (etape === 'unite') return 'prix';
-  return 'prix';
+  // STK-04 — après le prix, on PROPOSE la quantité. Le produit est déjà
+  // complet à cet instant : cette étape ne conditionne rien, elle précise.
+  if (etape === 'prix') return 'quantite';
+  return 'quantite';
 }
 
 /**
@@ -214,8 +232,18 @@ export interface ProduitACreer {
   readonly nom: string;
   readonly prix: number;
   readonly unite: string;
-  /** Elle n'a pas compté son stock : on n'invente pas une quantité. */
-  readonly stock: 0;
+  /**
+   * STK-04 — `null` = ELLE NE L'A PAS DIT. Jamais 0.
+   *
+   * Arbitrage de Patrick, 29/09 : « je ne laisserais pas 0 signifier à la fois
+   * "zéro produit" et "quantité inconnue" ». Un produit entrait à 0 et l'alerte
+   * criait « Plus de X ! » sur un produit qu'elle venait de poser — alors
+   * qu'elle en a peut-être un plein sac.
+   *
+   * La quatrième question est FACULTATIVE : si elle répond, on part de son
+   * chiffre ; si elle passe, le stock reste inconnu et se tait.
+   */
+  readonly stock: number | null;
   /** PAS NOTÉE, et c'est dit ainsi. « autre » serait une catégorie inventée —
    *  un mot qu'elle n'a pas prononcé et qui se lirait ensuite comme un fait. */
   readonly categorie: '';
@@ -227,7 +255,21 @@ export function produitACreer(b: BrouillonProduit): ProduitACreer | null {
     nom: propre(b.nom),
     prix: prixDelle(b.prix)!,
     unite: propre(b.unite),
-    stock: 0,
+    // Sa quantité si elle l'a donnée, `null` sinon. On n'invente rien, et
+    // surtout pas un zéro qui voudrait dire deux choses.
+    stock: quantiteDelle(b.quantite),
     categorie: '',
   };
+}
+
+/**
+ * La quantité telle qu'elle l'a donnée, ou `null` si elle a passé la question.
+ * Un nombre négatif ou absurde n'est pas une quantité : on ne le corrige pas
+ * en 0 — ce serait réintroduire le mensonge — on le traite comme non dit.
+ */
+export function quantiteDelle(v: unknown): number | null {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.trunc(n);
 }

@@ -43,7 +43,11 @@ console.log('[1] KPONAN → TAS → 1500 : le parcours complet');
   ok(aCreer?.nom === 'Kponan', `le nom qu'ELLE a donné — ${aCreer?.nom}`);
   ok(aCreer?.unite === 'tas', 'SON unité');
   ok(aCreer?.prix === 1500, `SON prix — ${aCreer?.prix}`);
-  ok(aCreer?.stock === 0, 'aucune quantité inventée : elle n\'a pas compté son stock');
+  // STK-04 — L'INTENTION NE CHANGE PAS, LA VALEUR EST PLUS HONNÊTE.
+  // C'était `0` ; or 0 voulait dire deux choses — « zéro produit » et « elle
+  // n'a pas dit ». L'alerte criait donc « Plus de X ! » sur un produit qu'elle
+  // venait de poser. `null` ne dit qu'une chose : elle ne l'a pas dit.
+  ok(aCreer?.stock === null, 'aucune quantité inventée : elle n\'a pas compté son stock');
   ok(aCreer?.categorie === '', 'et aucune catégorie inventée — « autre » serait un mot qu\'elle n\'a pas dit');
 }
 
@@ -205,9 +209,13 @@ console.log("\n[6] SON NOM S'ÉCRIT EN ENTIER — RECETTE DTDI DU 24/09");
      "ni un prix à zéro — il entrerait en caisse");
   ok(peutValider('prix', { nom: 'Tomate', unite: 'tas', prix: 500 }) === true,
      "un vrai prix, oui");
-  ok(etapeSuivante('nom') === 'unite' && etapeSuivante('unite') === 'prix'
-     && etapeSuivante('prix') === 'prix',
+  // STK-04 — l'ordre des TROIS questions obligatoires est inchangé ; le prix
+  // mène désormais à la quatrième, qui est FACULTATIVE (arbitrage du 29/09).
+  // Ce qu'elle protégeait — « on ne réordonne pas le parcours » — tient.
+  ok(etapeSuivante('nom') === 'unite' && etapeSuivante('unite') === 'prix',
      "et l'ordre des questions ne change pas");
+  ok(etapeSuivante('prix') === 'quantite' && etapeSuivante('quantite') === 'quantite',
+     "le prix mène à la quantité, et la quantité ne mène nulle part : c'est la dernière");
 
   // L'ÉCRAN NE DÉRIVE PLUS SON AFFICHAGE DE LA FRAPPE.
   const ap = readFileSync(
@@ -255,7 +263,36 @@ console.log("\n[7] CE QU'ELLE ENTEND N'EST PAS CE QU'ON AFFICHE");
      'il passe par le rendu vocal, comme les trois autres écrans du catalogue');
 }
 
+// ── STK-04 — LA QUATRIÈME QUESTION, ET ELLE SE SAUTE ────────────────────────
+//
+// Arbitrage de Patrick, 29/09 : « quantité facultative, pas obligatoire […] si
+// elle passe, on conserve un stock inconnu, et il faut alors empêcher toute
+// alerte rupture ». STK-03 §2 tient : on ne rallonge pas le parcours
+// OBLIGATOIRE, on propose une précision après que le produit est déjà complet.
+{
+  console.log('\n[STK-04] La quantité est proposée, jamais exigée');
+  const complet: BrouillonProduit = { nom: 'Kponan', unite: 'tas', prix: 1500 };
+  ok(produitPret(complet) === true,
+     'le produit est VALIDE sans quantité — le parcours obligatoire reste à trois questions');
+  ok(peutValider('quantite', complet) === true,
+     'et on peut toujours avancer depuis la quatrième étape, même sans rien y répondre');
+  ok(etapeCourante(complet) === 'quantite',
+     'et la quatrième étape est proposée une fois le prix donné');
+
+  ok(produitACreer(complet)?.stock === null, 'elle passe : le stock reste INCONNU');
+  ok(produitACreer({ ...complet, quantite: 12 })?.stock === 12, 'elle répond 12 : on part de SON chiffre');
+  ok(produitACreer({ ...complet, quantite: 0 })?.stock === 0,
+     'elle répond zéro : c\'est une réponse, et elle vaut zéro — pas inconnu');
+  ok(produitACreer({ ...complet, quantite: null })?.stock === null, 'elle passe explicitement : inconnu');
+  ok(produitACreer({ ...complet, quantite: -4 })?.stock === null,
+     'une quantité absurde n\'est pas corrigée en 0 — ce serait remettre le mensonge');
+  ok(produitACreer({ ...complet, quantite: 7.8 })?.stock === 7,
+     'un nombre à virgule est tronqué, pas arrondi vers le haut');
+}
+
+
 console.log(echecs === 0
   ? '\n✅ Trois questions, son prix, un seul enregistrement.\n'
   : `\n❌ ${echecs} échec(s)\n`);
 process.exit(echecs === 0 ? 0 : 1);
+

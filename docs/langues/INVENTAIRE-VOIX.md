@@ -8,19 +8,19 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **407** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 425 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **408** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 426 |
 | — littéraux (phrase fixe en dur) | 192 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 84 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 75 |
 | — relais (`dire = (t) => speak(t)`) | 20 |
-| — clés i18n (`speakMessage('…')`, `t('…')`) | 54 |
+| — clés i18n (`speakMessage('…')`, `t('…')`) | 55 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **237** |
 | Dont dynamiques (avec variables) | 84 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **55** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **468** |
 | Fichiers avec au moins un site d'appel | 78 |
-| Attributs `aria-label` (lecteur d'écran uniquement) | 306 — **hors parcours vocal**, voir §8 |
+| Attributs `aria-label` (lecteur d'écran uniquement) | 310 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
 
@@ -35,7 +35,7 @@
 | `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 6 | 3 | 4 | 0 | 2 | 1 |
 | `components/wallet/RechargeWalletModal.tsx` | wallet | 14 | 10 | 4 | 0 | 0 | 0 | 6 |
 | `components/auth/LoginPassword.tsx` | auth | 12 | 7 | 1 | 5 | 0 | 0 | 0 |
-| `components/marchand/AjoutProduitGuide.tsx` | autre | 10 | 0 | 0 | 2 | 1 | 7 | 0 |
+| `components/marchand/AjoutProduitGuide.tsx` | autre | 11 | 0 | 0 | 2 | 1 | 8 | 0 |
 | `components/marchand/MarchandModals.tsx` | marchand_autre | 10 | 4 | 6 | 0 | 0 | 0 | 10 |
 | `components/marchand/MicroVenteCaisse.tsx` | vente | 10 | 0 | 0 | 3 | 2 | 6 | 0 |
 | `components/producteur/ProducteurProduction.tsx` | producteur | 9 | 6 | 2 | 1 | 0 | 0 | 0 |
@@ -119,7 +119,7 @@
 | auth | 24 | 17 | 0 |
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 18 | 9 | 1 |
-| autre | 13 | 1 | 0 |
+| autre | 14 | 1 | 0 |
 | depense | 9 | 8 | 2 |
 | credit | 8 | 7 | 4 |
 | backoffice | 5 | 4 | 0 |
@@ -270,15 +270,16 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
 | 92 | `speak` | relais | t |  |  |
-| 147 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
-| 165 | `direMessage` | cle_i18n | STOCK_047 |  |  |
-| 166 | `direMessage` | cle_i18n | STOCK_048 |  |  |
-| 167 | `direMessage` | cle_i18n | STOCK_049 |  |  |
-| 180 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
-| 189 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
-| 192 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 200 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
-| 247 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
+| 153 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
+| 171 | `direMessage` | cle_i18n | STOCK_047 |  |  |
+| 172 | `direMessage` | cle_i18n | STOCK_048 |  |  |
+| 173 | `direMessage` | cle_i18n | STOCK_049 |  |  |
+| 174 | `direMessage` | cle_i18n | STOCK_054 |  |  |
+| 198 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
+| 207 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
+| 210 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 218 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
+| 265 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
 
 ### `components/marchand/BesoinMarchand.tsx` — marchand_autre
 
@@ -386,7 +387,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 130 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_CONNUE |  |  |
 | 131 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_PARTIELLE |  |  |
 | 132 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_ILLISIBLE |  |  |
-| 357 | `speakMessage` | cle_i18n | ACCUEIL_JOURNEE_ROUVERTE |  |  |
+| 372 | `speakMessage` | cle_i18n | ACCUEIL_JOURNEE_ROUVERTE |  |  |
 
 ### `components/marchand/MarchandAlertes.tsx` — marchand_autre
 
@@ -440,17 +441,17 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 164 | `speak` | relais | texte |  |  |
-| 167 | `speakMessage` | relais | id |  |  |
-| 221 | `speakMessage` | cle_i18n | TATA_AJOUT_PANIER |  |  |
-| 352 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
-| 365 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
-| 395 | `speakMessage` | dynamique | ...introMessage() |  |  |
-| 501 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
-| 503 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
-| 512 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
-| 657 | `speak` | dynamique | dernierePhraseRef.current |  |  |
-| 657 | `speak` | dynamique | introLigne() |  |  |
+| 165 | `speak` | relais | texte |  |  |
+| 168 | `speakMessage` | relais | id |  |  |
+| 222 | `speakMessage` | cle_i18n | TATA_AJOUT_PANIER |  |  |
+| 391 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
+| 404 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
+| 434 | `speakMessage` | dynamique | ...introMessage() |  |  |
+| 592 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
+| 594 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
+| 603 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
+| 752 | `speak` | dynamique | dernierePhraseRef.current |  |  |
+| 752 | `speak` | dynamique | introLigne() |  |  |
 
 ### `components/marchand/PinConfirmModal.tsx` — auth
 
@@ -483,22 +484,22 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 360 | `direMessage` | cle_i18n | TATA_MONTANT_TOTAL_INVALIDE |  |  |
 | 364 | `direMessage` | cle_i18n | TATA_MONTANT_RECU_INSUFFISANT |  |  |
 | 365 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
-| 434 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
-| 435 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
-| 447 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
-| 448 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
-| 471 | `dire` | dynamique | raison |  |  |
-| 473 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 546 | `speak` | dynamique | effet.texteParle |  |  |
-| 580 | `speak` | dynamique | effet.texteParle |  |  |
-| 610 | `dire` | dynamique | relu.texteParle |  |  |
-| 632 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
-| 706 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
-| 739 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
-| 772 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
-| 914 | `speak` | dynamique | relectureAffichee |  |  |
-| 950 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
-| 1038 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
+| 439 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
+| 440 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
+| 452 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
+| 453 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
+| 476 | `dire` | dynamique | raison |  |  |
+| 478 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 555 | `speak` | dynamique | effet.texteParle |  |  |
+| 589 | `speak` | dynamique | effet.texteParle |  |  |
+| 619 | `dire` | dynamique | relu.texteParle |  |  |
+| 644 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
+| 718 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
+| 751 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
+| 784 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
+| 926 | `speak` | dynamique | relectureAffichee |  |  |
+| 962 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
+| 1058 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
 
 ### `components/marchand/ProtectionSociale.tsx` — marchand_autre
 
@@ -820,7 +821,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 751 | `speak` | cle_i18n | REGLAGE_VOIX_ESSENTIEL |  |  |
 | 751 | `speak` | cle_i18n | REGLAGE_VOIX_COMPLET |  |  |
 | 936 | `speak` | literal | Export en cours |  |  |
-| 1053 | `speak` | literal | Déconnexion en cours |  |  |
+| 1071 | `speak` | literal | Déconnexion en cours |  |  |
 
 ### `components/ui/UniversalKPI.tsx` — partage
 
@@ -890,8 +891,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 338 | `speakMessage` | relais | id |  |  |
-| 450 | `direMessage` | dynamique | annonce.cle |  |  |
+| 356 | `speakMessage` | relais | id |  |  |
+| 468 | `direMessage` | dynamique | annonce.cle |  |  |
 
 ### `contexts/ObjectifContext.tsx` — marchand_autre
 
@@ -1610,7 +1611,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 ## 8. Ce qui n'est PAS dans le parcours vocal (et pourquoi)
 
-- **`aria-label` (306)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
+- **`aria-label` (310)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
 - **Toasts** (`toast.success(…)`) et libellés d'écran : affichés, jamais dits. Hors inventaire vocal.
 - **`texteDyu`** de `loginVoiceScript.ts` : traduction dioula de travail, NON validée (le fichier le dit). Elle n'est ni activée ni reprise : Manus tranche.
 

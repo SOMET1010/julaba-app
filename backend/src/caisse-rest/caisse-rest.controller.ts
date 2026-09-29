@@ -87,6 +87,30 @@ export function categorieDepense(valeur: unknown): string | null {
  * serait parti en caisse à zéro franc. Un champ vidé n'est pas une décision de
  * vendre gratuitement — c'est un champ vidé, et on n'y touche pas.
  */
+/**
+ * STK-04 — « ELLE N'A PAS DIT COMBIEN » N'EST PAS « ZÉRO ».
+ *
+ * Arbitrage de Patrick, 29/09 : « je ne laisserais pas 0 signifier à la fois
+ * "zéro produit" et "quantité inconnue" ».
+ *
+ * Cette route écrivait `body.stock || 0`. Le parcours d'ajout ne réclame pas la
+ * quantité (STK-03 §2) : tout produit entrait donc à 0, et l'alerte criait
+ * « Plus de X ! » sur un produit qu'elle venait de poser.
+ *
+ * LA COLONNE SAIT DÉJÀ LE DIRE : `stock numeric DEFAULT 0`, sans NOT NULL.
+ * Aucune migration n'est nécessaire.
+ *
+ * ET LE CHEMIN D'ARGENT NE BOUGE PAS, c'est mesuré : la vente relit le stock
+ * par `COALESCE(stock, 0)`, donc un stock inconnu se comporte exactement comme
+ * avant pour le décrément et le registre des mouvements. Ce lot ne change que
+ * ce qu'on AFFIRME, jamais ce qu'on compte.
+ */
+function stockSaisiOuInconnu(v: unknown): number | null {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 function nombreSaisi(v: unknown): number {
   if (typeof v === 'string' && v.trim() === '') return NaN; // écarté par l'appelant
   return Number(v);
@@ -883,7 +907,7 @@ export class CaisseRestController {
   async createProduit(@Body() body: any, @CurrentUser() user: User) {
     const result = await this.dataSource.query(
       'INSERT INTO produits (marchand_id, nom, prix, prix_achat, categorie, stock, unite, image, seuil_alerte, date_peremption, prix_promo, promo_fin) VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
-      [user.id, nomDeProduitSaisi(body.nom), body.prix || 0, Number(body.prix_achat) || 0, body.categorie || 'Général', body.stock || 0, uniteDeProduitSaisie(body.unite), body.image || null,
+      [user.id, nomDeProduitSaisi(body.nom), body.prix || 0, Number(body.prix_achat) || 0, body.categorie || 'Général', stockSaisiOuInconnu(body.stock), uniteDeProduitSaisie(body.unite), body.image || null,
        body.seuil_alerte != null ? Number(body.seuil_alerte) : 10, body.date_peremption || null,
        body.prix_promo != null && body.prix_promo !== '' ? Number(body.prix_promo) : null, body.promo_fin || null]
     );

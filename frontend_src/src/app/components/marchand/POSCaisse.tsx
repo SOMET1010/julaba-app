@@ -1210,10 +1210,19 @@ function POSCaisseInner() {
           </motion.button>}
         </label>
 
-        {/* AUTRE ARTICLE — vendre un montant libre, sans produit listé (Phase 3) */}
+        {/* ── DEUX PORTES, ET ELLES RESTENT SECONDAIRES — recette du 27/09 ──
+            Le testeur voulait retirer « + Autre article ». Arbitrage de
+            Patrick, 29/09 : « le testeur a raison sur l'encombrement, pas sur
+            la fonction […] son étal d'abord, le catalogue ensuite ».
+            Ce bouton n'ouvre pas UN geste mais DEUX, et son nom n'en disait
+            aucun : chercher un produit dans le référentiel maître (198
+            références), ou vendre un montant libre quand rien ne correspond.
+            « Autre article » ne nommait ni l'un ni l'autre.
+            Il reste visuellement en retrait — bordure en tirets, fond ivoire,
+            à côté du filtre — pour ne pas concurrencer ses propres produits. */}
         <motion.button type="button" whileTap={{ scale:0.98 }} onClick={() => setShowLibre(true)}
           style={{ minHeight:'var(--caisse-cible-tactile)', padding:'0 var(--caisse-esp-3) 0 var(--caisse-esp-2)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px dashed var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-1)', whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0 }}>
-          <Plus size={ICONE} aria-hidden="true" /> Autre article
+          <Plus size={ICONE} aria-hidden="true" /> Chercher un autre produit
         </motion.button>
         </div>
 
@@ -1264,7 +1273,7 @@ function POSCaisseInner() {
               )}
               <motion.button type="button" whileTap={{ scale:0.97 }} onClick={() => setShowLibre(true)}
                 style={{ minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-3) var(--caisse-esp-5)', borderRadius:'var(--caisse-rayon-4)', border:'none', background:'var(--caisse-vert)', color:'white', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
-                + Autre article
+                Chercher un autre produit
               </motion.button>
             </div>
           ) : (
@@ -1423,14 +1432,14 @@ function POSCaisseInner() {
             initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
             onClick={fermerAutreArticle}
             style={{ position:'fixed', inset:0, zIndex:110, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}
-            role="dialog" aria-modal="true" aria-label="Autre article"
+            role="dialog" aria-modal="true" aria-label="Chercher un autre produit"
           >
             <motion.div
               initial={{ y:40 }} animate={{ y:0 }} exit={{ y:40 }}
               onClick={e => e.stopPropagation()}
               style={{ width:'100%', maxWidth:480, background:'var(--caisse-ivoire)', borderTopLeftRadius:'var(--caisse-rayon-5)', borderTopRightRadius:'var(--caisse-rayon-5)', padding:'var(--caisse-esp-5) var(--caisse-esp-4) calc(var(--caisse-esp-5) + env(safe-area-inset-bottom))' }}
             >
-              <div style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', marginBottom:'var(--caisse-esp-4)' }}>Autre article</div>
+              <div style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', marginBottom:'var(--caisse-esp-4)' }}>Chercher un autre produit</div>
 
               {/* CE QU'ELLE VIENT DE DIRE, RENDU VISIBLE (21/09/2026). La
                   feuille s'ouvrait vide alors que « cinq tomates » venait
@@ -1504,7 +1513,12 @@ function POSCaisseInner() {
                   )}
                   <div style={{ display:'flex', alignItems:'center', gap:10, margin:'4px 0 14px' }}>
                     <div style={{ flex:1, height:1, background:'var(--trait)' }} />
-                    <span style={{ fontSize:11, fontWeight:700, color:'var(--encre-3)' }}>OU MONTANT LIBRE</span>
+                    {/* LA SECONDE PORTE EST NOMMÉE PAR CE QUI L'AMÈNE. « OU
+                        MONTANT LIBRE » décrivait le MÉCANISME ; « Produit non
+                        trouvé » décrit la SITUATION de la marchande — c'est la
+                        même règle que partout ici : on nomme son geste, pas le
+                        nôtre. */}
+                    <span style={{ fontSize:11, fontWeight:700, color:'var(--encre-3)' }}>PRODUIT NON TROUVÉ</span>
                     <div style={{ flex:1, height:1, background:'var(--trait)' }} />
                   </div>
                 </>
