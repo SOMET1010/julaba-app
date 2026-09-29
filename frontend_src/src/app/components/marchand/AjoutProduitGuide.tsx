@@ -109,8 +109,14 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
     void rendreMessage(m, dire);
   };
 
+  /** STK-04 — ce qu'elle a répondu à « Tu en as combien ? ». Vide = pas dit. */
+  const [quantite, setQuantite] = useState('');
   const brouillon: BrouillonProduit = {
     nom, unite,
+    // `undefined` tant qu'elle n'a rien tapé : le stock restera INCONNU, et
+    // c'est tout l'objet de STK-04 — jamais un zéro qui voudrait dire deux
+    // choses.
+    quantite: quantite === '' ? null : Number(quantite),
     // Le champ est vide tant qu'elle n'a rien tapé : `null`, pas zéro. Un
     // zéro se laisserait enregistrer.
     prix: prix === '' ? null : Number(prix),
@@ -165,28 +171,40 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
     if (etapeVue === 'nom') direMessage('STOCK_047');
     else if (etapeVue === 'unite') direMessage('STOCK_048', { nom });
     else if (etapeVue === 'prix') direMessage('STOCK_049', { unite });
+    else if (etapeVue === 'quantite') direMessage('STOCK_054');
     // On ne redit pas la question à chaque frappe : seul le changement
     // d'ÉTAPE la déclenche.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etapeVue]);
 
-  const poser = async () => {
+  /**
+   * `quantiteForcee` — STK-04. « Je ne sais pas » doit poser le produit avec un
+   * stock INCONNU, même si elle avait déjà tapé un chiffre avant de changer
+   * d'avis. Un `setQuantite('')` suivi d'un `poser()` ne suffirait pas : React
+   * ne remet pas l'état à jour avant la fin du gestionnaire, et on
+   * enregistrerait le chiffre qu'elle vient justement de renier. On passe donc
+   * la valeur, on ne la relit pas.
+   */
+  const poser = async (quantiteForcee?: null) => {
     if (enCours) return;
+    const aPoser = quantiteForcee === null
+      ? produitACreer({ ...brouillon, quantite: null })
+      : aCreer;
     // STK-24 — le bouton final n'est plus `disabled` : il reçoit le clic pour
     // pouvoir DIRE ce qui manque. `enCours` reste un verrou dur : sur
     // l'argent, un double-clic poserait deux fois le même produit.
-    if (!aCreer) {
+    if (!aPoser) {
       const refus = raisonDuRefus(etapeVue, brouillon);
       if (refus) direMessage(PHRASE_DU_REFUS[refus]);
       return;
     }
     setEnCours(true);
     try {
-      await addProduct(aCreer as never);
+      await addProduct(aPoser as never);
       // Son étal se relit : la tuile doit être là TOUT DE SUITE, sinon elle
       // croit que ça n'a pas marché et recommence.
       await refreshProducts();
-      direMessage('TATA_PRODUIT_POSE', { produit: aCreer.nom, montant: aCreer.prix, unite: aCreer.unite });
+      direMessage('TATA_PRODUIT_POSE', { produit: aPoser.nom, montant: aPoser.prix, unite: aPoser.unite });
       onPose();
     } catch {
       direMessage('TATA_VENTE_ECHEC');
@@ -318,12 +336,58 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
             {/* Gris tant qu'elle n'a pas donné son prix — mais il RÉPOND, et dit
                 ce qui manque (STK-24). `enCours` reste un vrai verrou : sur
                 l'argent, un double-clic poserait deux fois le même produit. */}
-            <button type="button" onClick={poser} disabled={enCours}
+            {/* STK-04 — LE ✓ NE POSE PLUS, IL AVANCE. Le produit est déjà
+                complet ici ; l'étape suivante ne conditionne rien, elle
+                PROPOSE la quantité — et elle se saute d'un geste. */}
+            <button type="button" onClick={() => { if (aCreer) setEtapeVue('quantite'); else avancer(); }} disabled={enCours}
               aria-disabled={!aCreer} aria-label="C'est bon"
               style={{ minHeight: CIBLE + 8, borderRadius: 12, border: 'none', background: aCreer ? VERT : 'var(--commerce-line)', color: 'white', fontSize: 20, fontWeight: 800, cursor: aCreer ? 'pointer' : 'not-allowed', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Check size={22} />
             </button>
           </div>
+        </>
+      )}
+
+      {/* ── STK-04 — TU EN AS COMBIEN ? ────────────────────────────────────
+          Arbitrage de Patrick, 29/09 : « quatrième question facultative […]
+          si elle passe, on conserve un stock inconnu, et il faut alors
+          empêcher toute alerte rupture ».
+
+          DEUX SORTIES AUSSI VISIBLES L'UNE QUE L'AUTRE, et c'est la moitié du
+          correctif : si « Enregistrer » était mis en avant et « Je ne sais
+          pas » relégué en petit, la question redeviendrait obligatoire dans
+          les faits pour celle qui ne lit pas. STK-03 §2 tient — le parcours
+          obligatoire reste à trois questions.
+
+          ET SON ZÉRO EST UNE RÉPONSE. Si elle tape 0, le stock vaut zéro : elle
+          a dit qu'elle n'en avait plus. C'est « passer » qui laisse inconnu. */}
+      {etapeVue === 'quantite' && (
+        <>
+          <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
+            Tu en as combien ?
+          </p>
+          <div aria-live="polite" style={{ minHeight: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: `2px solid ${quantite ? VERT : 'var(--commerce-gray-100)'}`, borderRadius: 14, fontSize: 26, fontWeight: 800, color: 'var(--encre)' }}>
+            {quantite ? `${Number(quantite).toLocaleString('fr-FR')} ${unite}` : '—'}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {CHIFFRES.map(d => (
+              <button key={d} type="button" onClick={() => setQuantite(q => (q + d).slice(0, 6))}
+                style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>{d}</button>
+            ))}
+            <button type="button" onClick={() => setQuantite(q => q.slice(0, -1))} aria-label="Effacer un chiffre"
+              style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: ORANGE, cursor: 'pointer', fontFamily: 'inherit' }}>⌫</button>
+            <button type="button" onClick={() => setQuantite(q => (q + '0').slice(0, 6))}
+              style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>0</button>
+            <button type="button" onClick={() => { void poser(); }} disabled={enCours} aria-label="Enregistrer"
+              style={{ minHeight: CIBLE + 8, borderRadius: 12, border: 'none', background: VERT, color: 'white', fontSize: 20, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Check size={22} />
+            </button>
+          </div>
+          <button type="button" onClick={() => { void poser(null); }} disabled={enCours}
+            aria-label="Je ne sais pas combien j'en ai"
+            style={{ minHeight: CIBLE + 8, borderRadius: 14, border: `2px solid ${ORANGE}`, background: 'white', color: ORANGE, fontSize: 17, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Je ne sais pas
+          </button>
         </>
       )}
 

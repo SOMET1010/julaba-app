@@ -34,7 +34,22 @@ export interface AlerteStockMemo {
 export interface ProduitVivant {
   id: string;
   nom: string;
-  stock: number;
+  /**
+   * STK-04 — LE STOCK PEUT ÊTRE INCONNU, ET CE N'EST PAS ZÉRO.
+   *
+   * Arbitrage de Patrick, 29/09 : « je ne laisserais pas 0 signifier à la fois
+   * "zéro produit" et "quantité inconnue". C'est une ambiguïté métier qui
+   * finira par contaminer alertes, inventaire et argent. »
+   *
+   * Le parcours d'ajout ne réclame pas la quantité (STK-03 §2) : un produit
+   * entrait donc dans l'étal à 0, et l'alerte criait « Plus de X ! » sur un
+   * produit qu'elle venait de poser et dont elle a peut-être un plein sac.
+   *
+   * `null` = ELLE NE L'A JAMAIS DIT. C'est la même forme que partout ailleurs
+   * dans ce dépôt : une valeur absente ne se lit pas, elle ne se remplace pas
+   * par un zéro (voir `etatCaisseAccueil`, `perteSemantique`).
+   */
+  stock: number | null;
   unite?: string | null;
   seuilAlerte?: number | null;
 }
@@ -64,6 +79,12 @@ export function messageAlerteStock(
 
   // Produit supprimé ou introuvable : l'alerte ne veut plus rien dire.
   if (!p) return null;
+
+  // STK-04 — ON NE CRIE PAS RUPTURE SUR UN STOCK QU'ELLE N'A JAMAIS DONNÉ.
+  // C'est le premier des deux sens du zéro, et le seul qu'on puisse fermer
+  // ici : « inconnu » se tait. « zéro » continue de parler, parce qu'un vrai
+  // zéro est une information — elle a tout vendu, et elle doit le savoir.
+  if (p.stock == null) return null;
 
   const stock = Number(p.stock);
   if (!Number.isFinite(stock)) return null;
