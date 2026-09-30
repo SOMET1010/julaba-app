@@ -12,7 +12,7 @@
  * Lancer : npm run test:vente-au-catalogue
  */
 import { readFileSync } from 'node:fs';
-import { lireVenteAuCatalogue, venteSansProduit, aNommeUnInconnu } from './venteAuCatalogue.js';
+import { lireVenteAuCatalogue, venteSansProduit, aNommeUnInconnu, compteUneUnite } from './venteAuCatalogue.js';
 import { libelleVenteComprise } from './ecouteCaisse.js';
 import { apparierProduit } from './venteVocale.js';
 import { intentLocalCaisse } from '../voice-offline/localIntent.js';
@@ -157,6 +157,43 @@ console.log('\n[6] CAT-02 — elle nomme ce qu\'elle ne vend PAS');
   const a = intentLocalCaisse('vends 50 mangues séchées')?.action;
   ok(venteSansProduit(a, 'vends 50 mangues séchées')?.quantite === 50,
      'cinquante mangues séchées sont cinquante, pas cinquante francs');
+}
+
+console.log('\n[6 bis] CAT-03 — une unité prononcée COMPTE, elle aussi');
+{
+  // Arbitrage de Patrick, 30/09, sur la question que je lui avais posée :
+  // « "vends deux tas" — un nombre, une unité, aucun produit : 2 tas à prix
+  // demandé, ou un article libre à 2 F ? » — « oui ajoute le prix ».
+  //
+  // MESURÉ AVANT la correction, et c'est ce qui motivait la question :
+  //     « vends deux tas »    → LIGNE LIBRE à 2 F
+  //     « vends trois kilos » → LIGNE LIBRE à 3 F
+  // CAT-02 ne les attrapait pas : son discriminant était « a-t-elle NOMMÉ
+  // quelque chose », et « tas » n'est pas un nom, c'est une mesure.
+  for (const [phrase, qte] of [
+    ['vends deux tas', 2], ['vends deux sacs', 2],
+    ['vends trois kilos', 3], ['vends deux kg', 2],
+  ] as const) {
+    const a = intentLocalCaisse(phrase)?.action;
+    const c = venteSansProduit(a, phrase);
+    ok(c?.quantite === qte && c?.montant === 0,
+       `« ${phrase} » → ${qte} à prix demandé, jamais ${qte} francs : ${JSON.stringify(c)}`);
+  }
+  ok(compteUneUnite('vends deux tas') === true, 'une unité de la liste du moteur compte');
+  ok(compteUneUnite('vends deux kg') === true, 'une abréviation aussi (elle est dans l\'autre liste)');
+  // `de` figure dans MOTS_UNITE pour la TRAVERSÉE (« deux tas DE piment »),
+  // mais il ne mesure rien : le retenir ferait de « vends deux de » une quantité.
+  ok(compteUneUnite('vends deux de') === false, 'mais « de » ne mesure rien');
+  ok(compteUneUnite('vends deux francs') === false,
+     'et « francs » n\'est pas une unité — c\'est un marqueur de montant');
+}
+{
+  // L'ARTICLE LIBRE RESTE INTACT — c'est la contrainte de CAT-02, et elle vaut
+  // toujours : elle vend quelque chose qu'elle ne veut pas nommer, pour un prix.
+  for (const phrase of ['vends 500', 'vends pour 500', 'vends à 500', 'vends deux francs']) {
+    ok(venteSansProduit(intentLocalCaisse(phrase)?.action, phrase) === null,
+       `« ${phrase} » reste un article libre — rien ne lui est retiré`);
+  }
 }
 
 console.log('\n[7] LA PREUVE TRAVERSE — l\'écran relit bien SON catalogue');
