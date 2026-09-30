@@ -38,6 +38,7 @@
  */
 import { extraire, UNITES, DIZAINES, MOTS_UNITE, MARQUEURS_AVANT, MARQUEURS_APRES } from '../voice-offline/extraction';
 import { INTENTIONS_MAP, PRODUITS_FORMES } from '../voice-offline/vocabulaire';
+import { UNITES_INVARIABLES } from './accordFrancais';
 import { interditDeVendre } from '../voice-offline/localIntent';
 import { detecterEncaissement } from '../voice-offline/grammaireEncaissement';
 
@@ -254,6 +255,41 @@ export function aNommeUnInconnu(texte: string): boolean {
   return mots(texte).some((m) => m.length >= 3 && !motOutil(m));
 }
 
+/**
+ * CAT-03 — UNE UNITÉ PRONONCÉE COMPTE, ELLE AUSSI.
+ *
+ * Arbitrage de Patrick, 30/09, sur la question que je lui avais posée :
+ * « "vends deux tas" — un nombre, une unité, aucun produit : 2 tas à prix
+ * demandé, ou un article libre à 2 F ? » — « oui ajoute le prix ».
+ *
+ * CE QUI ÉTAIT MESURÉ AVANT, et qui motivait la question :
+ *
+ *     « vends deux tas »    → LIGNE LIBRE à 2 F
+ *     « vends deux sacs »   → LIGNE LIBRE à 2 F
+ *     « vends trois kilos » → LIGNE LIBRE à 3 F
+ *
+ * CAT-02 ne les attrapait pas : son discriminant était « a-t-elle NOMMÉ
+ * quelque chose », et « tas » n'est pas un nom, c'est une mesure. Mais une
+ * mesure COMPTE : « deux tas », c'est deux fois quelque chose, jamais deux
+ * francs. Le nombre qui précède une unité est donc une quantité.
+ *
+ * LES DEUX LISTES SONT CELLES DU DÉPÔT, jamais une troisième écrite ici :
+ * `MOTS_UNITE` (les mots que l'extraction traverse déjà pour rattacher un
+ * nombre à un produit) et `UNITES_INVARIABLES` (les abréviations : kg, l, cl…,
+ * absentes de la première). Deux listes qui divergent finiraient par vendre
+ * deux francs de gombo.
+ *
+ * `de` EST EXCLU : il figure dans `MOTS_UNITE` pour la traversée (« deux tas
+ * DE piment »), mais il ne mesure rien. Le retenir ferait de « vends deux de »
+ * une quantité.
+ * `franc` / `francs` ne sont dans aucune des deux : « vends deux francs »
+ * reste un article libre à 2 F, et c'est juste.
+ */
+export function compteUneUnite(texte: string): boolean {
+  return mots(texte).some((m) =>
+    (MOTS_UNITE.has(m) && m !== 'de') || UNITES_INVARIABLES.has(m));
+}
+
 /** Ce qu'une vente SANS produit doit réellement porter. */
 export interface VenteSansProduit {
   readonly quantite: number;
@@ -279,8 +315,9 @@ export function venteSansProduit(
   // Deux nombres séparés : la quantité est déjà à sa place.
   if (p.quantite != null) return null;
   if (p.montant == null) return null;
-  // Elle n'a rien nommé : « vends 500 » reste un article libre à 500 F.
-  if (!aNommeUnInconnu(texte)) return null;
+  // Elle n'a rien nommé ET n'a compté aucune unité : « vends 500 » reste un
+  // article libre à 500 F, et c'est un usage réel qu'on ne lui retire pas.
+  if (!aNommeUnInconnu(texte) && !compteUneUnite(texte)) return null;
 
   // Elle a nommé quelque chose, et le nombre le COMPTE. Aucune ligne à
   // N francs ne part : le prix sera demandé, comme pour tout produit dont on
