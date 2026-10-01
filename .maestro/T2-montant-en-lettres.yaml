@@ -1,0 +1,36 @@
+# T2 — LE SON RÉELLEMENT AUDIBLE.
+#
+# ⚠️ CE FLOW NE PROUVE PAS T2. Maestro n'ENTEND pas : il n'existe aucun moyen de
+# relever ce qui sort du haut-parleur. « Entend-on la phrase, et le montant en
+# LETTRES ? » reste un geste HUMAIN.
+#
+# CE QU'IL PROUVE : le pendant ÉCRIT du même montant. Si l'écran affiche un
+# montant, la forme parlée part du même nombre (`ARGENT_ENONCE`, un seul chemin)
+# — donc un montant faux à l'écran est un montant faux dans l'oreille. C'est la
+# moitié de T2 qu'une machine peut tenir, et elle vaut d'être tenue.
+appId: com.julaba.app
+name: T2 — le montant écrit est juste (l'audible reste humain)
+tags:
+  - avecCompte
+  - caisse
+  - partiel
+---
+- runFlow: 00-login.yaml
+- runFlow: commun/aller-a-la-caisse.yaml
+
+# On vend par le TACTILE — c'est le chemin que ce banc sait jouer seul — puis on
+# lit le total. Le premier produit de son étal, quel qu'il soit.
+- tapOn:
+    index: 0
+    text: "F$"
+    optional: true
+- takeScreenshot: T2-apres-un-produit
+
+- assertVisible: "Total"
+- assertNotVisible: "NaN"
+- assertNotVisible: "undefined"
+
+# AUCUN MONTANT NÉGATIF NE DOIT EXISTER sur une caisse. S'il y en a un, c'est un
+# défaut d'argent, donc bloquant au sens de CLOTURE-CAISSE-VOCALE §5.
+- assertNotVisible:
+    text: "-[0-9]+ ?F"

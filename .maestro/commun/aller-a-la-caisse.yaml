@@ -1,0 +1,12 @@
+# Depuis l'accueil marchande, ouvrir la caisse. Utilisé par tous les flows qui
+# testent la vente : un seul endroit à corriger si le chemin change.
+appId: com.julaba.app
+---
+- extendedWaitUntil:
+    visible: "Ta caisse"
+    timeout: 45000
+- tapOn:
+    text: "Vendre|Caisse|Ma caisse"
+- extendedWaitUntil:
+    visible: "Total"
+    timeout: 30000
