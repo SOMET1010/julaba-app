@@ -236,68 +236,20 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          # L'AUDIO RESTE ACTIVÉ, délibérément : l'application parle au démarrage
-          # (sherpa TTS). Avec `-noaudio`, un échec de synthèse se présenterait
-          # comme un défaut de la caisse.
+          # L'AUDIO : je n'ajoute pas `-noaudio`, mais le run #1 m'a appris que ça
+          # ne change rien — le runner n'a PAS de PulseAudio (« Could not init
+          # `pa' audio driver », « pulseaudio: Failed to initialize PA context »).
+          # Donc EN CI IL N'Y A PAS DE SON, quoi qu'on demande. L'application doit
+          # survivre à ça, et c'est une raison de plus pour que T2 (« entend-on le
+          # montant en lettres ? ») reste un geste humain sur un vrai téléphone.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot-save -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
-          script: |
-            set -o pipefail
-            adb wait-for-device
-            adb shell settings put global window_animation_scale 0
-            adb shell settings put global transition_animation_scale 0
-            adb shell settings put global animator_duration_scale 0
-
-            echo "::group::Installation de l APK"
-            adb uninstall com.julaba.app || true
-            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-            echo "::endgroup::"
-
-            mkdir -p rapports/captures rapports/debug
-
-            # Le logcat tourne PENDANT les flows : quand un flow tombe, la cause
-            # est souvent une exception Java ou une erreur de WebView que l'arbre
-            # de vue ne montre pas.
-            adb logcat -c
-            adb logcat > rapports/logcat.txt 2>&1 &
-
-            # LE CODE DE SORTIE EST RETENU, PAS PROPAGÉ TOUT DE SUITE : si
-            # `maestro test` arrêtait le script ici, la collecte ci-dessous ne
-            # tournerait pas et on perdrait captures, arbre de vue et logcat —
-            # exactement quand ils servent. On collecte, PUIS on échoue.
-            echec=0
-            if [ "$AVEC_COMPTE" = "true" ]; then
-              echo "Flows joués : $FLOWS (avec compte)"
-              maestro test "$FLOWS" \
-                -e MAESTRO_PHONE="$MAESTRO_PHONE" \
-                -e MAESTRO_PIN="$MAESTRO_PIN" \
-                --format junit --output rapports/junit.xml \
-                --debug-output rapports/debug || echec=$?
-            else
-              echo "Flows joués : étiquette sansCompte UNIQUEMENT (secrets absents)"
-              maestro test .maestro/ --include-tags=sansCompte \
-                --format junit --output rapports/junit.xml \
-                --debug-output rapports/debug || echec=$?
-            fi
-
-            echo "::group::Collecte des traces"
-            # `upload-artifact` n'expanse pas `~` de façon fiable : on rapatrie
-            # tout sous `rapports/`, un seul chemin à publier.
-            cp -r "$HOME/.maestro/tests" rapports/maestro-tests 2>/dev/null || true
-            # Les `takeScreenshot: nom` écrivent dans le répertoire courant.
-            find . -maxdepth 1 -name '*.png' -exec mv {} rapports/captures/ \; 2>/dev/null || true
-            # Une capture de l'écran final, quel qu'il soit : quand un flow tombe
-            # sur un écran inattendu, c'est la première chose qu'on veut voir.
-            adb exec-out screencap -p > rapports/captures/zz-ecran-final.png 2>/dev/null || true
-            # Le logcat est volumineux : on garde tout, plus un extrait des lignes
-            # qui parlent de l'application et de sa WebView.
-            grep -aE "julaba|chromium|Capacitor|sherpa|AndroidRuntime|FATAL" rapports/logcat.txt \
-              > rapports/logcat-julaba.txt 2>/dev/null || true
-            kill %1 2>/dev/null || true
-            ls -la rapports/ rapports/captures/ || true
-            echo "::endgroup::"
-
-            exit $echec
+          # UNE SEULE COMMANDE, et c'est la leçon des runs #1 et #2 : cette
+          # action lance CHAQUE LIGNE de `script:` dans un `sh -c` SÉPARÉ (dash).
+          # Une variable n'y survit pas d'une ligne à l'autre et un `if`
+          # multi-lignes est impossible — mesuré deux fois. Tout vit donc dans
+          # `.maestro/ci/jouer.sh`, en bash véritable, testable à la main.
+          script: bash .maestro/ci/jouer.sh
 
       # `always()` : les captures et le logcat servent SURTOUT quand le banc est
       # rouge. Les perdre en cas d'échec, c'est perdre la seule trace.
