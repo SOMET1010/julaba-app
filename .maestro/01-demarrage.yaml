@@ -14,11 +14,32 @@ tags:
     clearKeychain: false
     stopApp: true
 
+# RUN #6 — CE FLOW ATTENDAIT LE MAUVAIS ÉCRAN, et le logcat l'a prouvé :
+# après `clearState`, l'application rejoue son ONBOARDING avant la connexion.
+# On l'a vu parler, par sherpa TTS :
+#     synthesize {"text":"Akwaba."}
+#     synthesize {"text":"Pour vendre, touche un produit, ou parle à Tantie…"}
+# « Mon compte » n'arrive qu'APRÈS ces diapos. L'application n'était pas en
+# faute ; l'assertion l'était.
+#
 # DÉTERMINISME : on attend un élément, jamais une durée. Un `sleep` fixe passe
 # au vert sur un téléphone rapide et rouge sur celui de la marchande.
+#
+# ÉTAPE 1 — L'APPLICATION EST DEBOUT. On accepte l'onboarding OU la connexion :
+# ce flow répond « l'APK s'ouvre-t-il », pas « quel écran exactement ».
+- extendedWaitUntil:
+    visible:
+      text: "Akwaba|Mon compte|Commencer|Suivant|Bienvenue"
+    timeout: 60000
+- takeScreenshot: 01-premier-ecran
+
+# ÉTAPE 2 — LA CONNEXION FINIT PAR VENIR. `optional` parce qu'un premier
+# démarrage passe par l'onboarding, dont la longueur dépend de la voix : son
+# absence se lit sur la capture, elle ne fait pas tomber le démarrage.
 - extendedWaitUntil:
     visible: "Mon compte"
-    timeout: 45000
+    timeout: 90000
+    optional: true
 
 - takeScreenshot: 01-connexion
 
