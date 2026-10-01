@@ -1,0 +1,29 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# BANC E2E ANDROID — MAESTRO
+#
+# Pourquoi ce banc existe, et c'est une leçon payée le 01/10/2026 : le défaut
+# F4NT-A (`extraction.ts`, une classe de caractères vide qui faisait d'« un tas
+# d'oignon » UN FRANC) était INATTEIGNABLE par les 125 maillons de `verify`, les
+# 252 invariants d'argent ET la recette navigateur. Pas par négligence : le stub
+# de transcription de la recette rend ce qu'on y ÉCRIT, donc des apostrophes
+# droites. Seul sherpa-onnx, sur l'appareil, produit l'apostrophe courbe.
+#
+# Ce banc ne remplace rien. Il couvre ce qu'aucun test en machine ne peut voir :
+# l'application RÉELLE, dans sa WebView, sur un Android.
+#
+# CE QU'IL NE SAIT PAS FAIRE, et il faut le savoir avant de lire un vert :
+#   · il ne PARLE pas (aucun moyen d'injecter de l'audio dans le micro) ;
+#   · il n'ENTEND pas (aucun moyen de relever le son sorti).
+# Donc T1, T2 et T3 restent des gestes HUMAINS. Les flows qui les portent
+# vérifient tout le reste du chemin et le disent en tête.
+#
+# CE N'EST PAS DÉFINITIF — nuance de Patrick, 01/10 : un dispositif complémentaire
+# (injection audio côté émulateur, ou banc physique) les rendrait automatisables.
+# Lot nommé et daté, après la clôture de la caisse vocale. Voir README.md.
+# ─────────────────────────────────────────────────────────────────────────────
+appId: com.julaba.app
+
+# AUCUN IDENTIFIANT DANS CE DÉPÔT — ALERTE-SEC-01 : 29 identifiants en clair
+# dorment déjà dans un dépôt public, on ne recommence pas. Le numéro et le code
+# arrivent par l'environnement :
+#     maestro test .maestro/00-login.yaml -e MAESTRO_PHONE=... -e MAESTRO_PIN=...
