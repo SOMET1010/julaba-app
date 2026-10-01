@@ -40,6 +40,24 @@ un Android.**
 la parole, et chacun le dit dans son en-tête. Les cinq gestes de
 `docs/terrain/FICHE-TESTEUR-CAISSE-VOCALE.md` restent nécessaires.
 
+### Ce n'est pas une impossibilité — c'est la limite de CE lot
+
+Nuance de Patrick, 01/10 : « Maestro seul ne génère pas naturellement la parole
+ni ne valide le son comme un humain ; mais on peut compléter le dispositif plus
+tard avec injection audio/ADB ou un banc spécialisé. »
+
+C'est juste, et la formulation compte : écrire « jamais » inscrirait une
+impossibilité là où il y a un périmètre, et plus personne ne chercherait la
+solution. Deux pistes existent, **nommées, datées, et non ouvertes ici** :
+
+- **injection audio côté émulateur** — l'émulateur Android peut recevoir une
+  source audio ; un fichier WAV de « Tomate mille francs » rendrait T1 et T3
+  automatisables ;
+- **banc physique** — un téléphone, un haut-parleur qui joue le fichier devant
+  son micro, et un enregistrement de la sortie pour T2.
+
+À regarder **après la clôture de la caisse vocale**, pas pendant.
+
 ---
 
 ## Installer

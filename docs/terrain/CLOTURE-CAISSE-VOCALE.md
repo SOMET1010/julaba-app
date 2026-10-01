@@ -61,8 +61,22 @@ Cinq familles, parce que cinq choses n'existent pas dans un navigateur :
 | **T3** | **Le micro réel** (bruit, distance, accent) | Une phrase longue au marché : est-elle coupée ? |
 | **T4** | **Le hors-ligne réel** | Vendre avion activé, puis rallumer : une seule vente en base ? |
 | **T5** | **L'écran réel** | Le panier et le total sont-ils lisibles sans défiler ? |
+| **PAN-01** | **Le panier après fermeture de l'app** | Deux articles, fermer l'application pour de bon, rouvrir : le panier et son total sont-ils les mêmes ? |
+| **P0.1** | **Deux prix libres distincts** | 500 puis 300 : le total affiche-t-il 800, sur deux lignes ? |
 
-**Cinq gestes, pas dix blocs.** Chacun tient en une minute.
+**Sept RELEVÉS, pas dix blocs** — et « relevés », pas « gestes », parce que
+« sept gestes » désigne déjà la BOUCLE MÉTIER du §1 (ouvrir → ajouter → prix →
+quantité → vendre → encaisser → entendre). Deux sens pour une même expression
+finiraient par désigner deux choses dans deux comptes rendus.
+
+Chacun tient en une minute. PAN-01 et P0.1 ont
+été ajoutés par Patrick le 01/10 à la liste des gestes terrain ; ils relèvent du
+**premier** critère bloquant de la §5 (« écrire un montant faux, ou perdre une
+vente »), pas d'un nouveau — la §5 ne bouge pas.
+
+Ces deux-là sont aussi couverts **entièrement** par le banc Maestro (`.maestro/`),
+donc la règle du §2 s'applique dès que le banc tourne : **si la machine le prouve,
+le terrain ne le rejoue pas.**
 
 ---
 
@@ -72,8 +86,9 @@ Le dossier est **FERMÉ** quand les trois sont vrais **sur un même SHA** :
 
 1. **La machine est verte** — recette voix 7/7, 252 invariants, 125 maillons
    verts *sauf* les refigeages en attente, qui sont les tiens.
-2. **Les cinq gestes T1→T5 sont passés** sur un APK, et le SHA est écrit en
-   tête du compte rendu.
+2. **Les sept relevés (T1→T5, PAN-01, P0.1) sont passés** sur un APK, et le SHA
+   est écrit en tête du compte rendu. Ceux que le banc Maestro prouve
+   entièrement comptent dès qu'il tourne — règle du §2.
 3. **Zéro défaut BLOQUANT ouvert** au sens de la §5.
 
 Rien d'autre ne bloque. Ni le nombre de défauts non bloquants, ni la dette, ni
@@ -132,7 +147,7 @@ toutes « je n'ai pas bien compris ».
 | Critère | État |
 |---|---|
 | 1. Machine verte | **OUI** — 7/7 recette, 252 invariants, **125 maillons** dont 122 verts — les 3 rouges sont tes refigeages |
-| 2. Cinq gestes T1→T5 | **T1 joué une fois, deux bloquants trouvés et corrigés** — à rejouer, puis T2→T5 |
+| 2. Sept relevés | **T1 joué une fois, deux bloquants trouvés et corrigés** — à rejouer sur `85f6ea6`, puis T2→T5, PAN-01, P0.1 |
 | 3. Zéro bloquant ouvert | **OUI** après ce lot |
 
 Par la règle §8.1, les deux défauts étant bloquants : nouveau SHA, et **les cinq
@@ -152,9 +167,9 @@ l'agent (pas de `/dev/kvm`, pas de `vmx/svm`, pas de SDK — vérifié) ; le che
 est la CI, où `apk.yml` tourne déjà sur `ubuntu-latest`. **Arbitrage en attente
 de Patrick**, pas ouvert ici.
 
-## 8. Ce que je fais si tu trouves un défaut pendant ces cinq gestes
+## 8. Ce que je fais si tu trouves un défaut pendant ces relevés
 
-1. **Bloquant** (§5) → je corrige, nouveau SHA, et **tu rejoues les cinq**.
+1. **Bloquant** (§5) → je corrige, nouveau SHA, et **tu rejoues les sept**.
 2. **Non bloquant** → je l'écris dans un lot nommé, **je ne le corrige pas**,
    et **la clôture continue**.
 

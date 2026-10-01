@@ -16,6 +16,10 @@
 #   · il n'ENTEND pas (aucun moyen de relever le son sorti).
 # Donc T1, T2 et T3 restent des gestes HUMAINS. Les flows qui les portent
 # vérifient tout le reste du chemin et le disent en tête.
+#
+# CE N'EST PAS DÉFINITIF — nuance de Patrick, 01/10 : un dispositif complémentaire
+# (injection audio côté émulateur, ou banc physique) les rendrait automatisables.
+# Lot nommé et daté, après la clôture de la caisse vocale. Voir README.md.
 # ─────────────────────────────────────────────────────────────────────────────
 appId: com.julaba.app
 

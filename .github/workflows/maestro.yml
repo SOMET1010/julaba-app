@@ -16,10 +16,20 @@ name: Banc E2E Android — Maestro
 # Ce workflow couvre ce trou, et rien d'autre : l'application RÉELLE, dans sa
 # WebView, sur un Android qui démarre pour de vrai.
 #
-# CE QU'IL NE SAURA JAMAIS PROUVER — à lire avant d'interpréter un vert :
-#   · Maestro ne PARLE pas (aucune injection d'audio dans le micro) ;
-#   · Maestro n'ENTEND pas (aucun relevé du son sorti).
-# Donc T1, T2 et T3 restent des gestes HUMAINS (docs/terrain/FICHE-TESTEUR-…).
+# CE QUE CE LOT NE PROUVE PAS — à lire avant d'interpréter un vert :
+#   · Maestro ne PARLE pas : il n'injecte pas d'audio dans le micro ;
+#   · Maestro n'ENTEND pas : il ne relève pas le son sorti.
+# Donc T1, T2 et T3 restent des gestes HUMAINS pour l'instant
+# (docs/terrain/FICHE-TESTEUR-CAISSE-VOCALE.md).
+#
+# CE N'EST PAS UNE IMPOSSIBILITÉ, et la nuance est de Patrick (01/10) : un
+# dispositif COMPLÉMENTAIRE pourrait les couvrir — injection audio côté
+# émulateur, ou un banc physique qui joue un fichier devant le micro et relève
+# la sortie. Rien de tout ça n'est dans ce lot, et ce n'est pas ouvert ici : lot
+# nommé et daté, après la clôture de la caisse vocale.
+#
+# La formulation compte : écrire « jamais » inscrirait une impossibilité là où
+# il y a une limite de périmètre, et personne ne chercherait plus la solution.
 #
 # IL NE TOUCHE À RIEN : aucun push, aucune PR, aucune écriture dans le dépôt,
 # et il ne remplace ni ci.yml ni apk.yml.
