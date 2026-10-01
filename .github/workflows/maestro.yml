@@ -1,0 +1,321 @@
+name: Banc E2E Android — Maestro
+
+# BANC E2E SUR ANDROID RÉEL, À LA DEMANDE.
+#
+# POURQUOI IL EXISTE. Le 01/10/2026, le rapport terrain F4NT a trouvé un défaut
+# d'ARGENT inatteignable par tout ce qu'on avait : `extraction.ts` contenait
+# `.replace(/['']/g, "'")` dont les deux caractères étaient l'apostrophe DROITE
+# — un no-op. sherpa-onnx rend la COURBE, donc « un tas d'oignon » perdait son
+# produit et le « un » devenait UN FRANC.
+#
+# Ni les 123 maillons d'alors, ni les 252 invariants d'argent, ni la recette
+# navigateur ne pouvaient le voir, et PAS par négligence : le stub de
+# transcription de la recette rend ce qu'on y ÉCRIT, donc des apostrophes
+# droites. Seul sherpa, sur l'appareil, produit la courbe.
+#
+# Ce workflow couvre ce trou, et rien d'autre : l'application RÉELLE, dans sa
+# WebView, sur un Android qui démarre pour de vrai.
+#
+# CE QU'IL NE SAURA JAMAIS PROUVER — à lire avant d'interpréter un vert :
+#   · Maestro ne PARLE pas (aucune injection d'audio dans le micro) ;
+#   · Maestro n'ENTEND pas (aucun relevé du son sorti).
+# Donc T1, T2 et T3 restent des gestes HUMAINS (docs/terrain/FICHE-TESTEUR-…).
+#
+# IL NE TOUCHE À RIEN : aucun push, aucune PR, aucune écriture dans le dépôt,
+# et il ne remplace ni ci.yml ni apk.yml.
+
+on:
+  workflow_dispatch:
+    inputs:
+      branche:
+        # Même doctrine que apk.yml (REL-01) : la vérité de sortie est `main`.
+        # Une branche de travail reste saisissable pour un passage exploratoire ;
+        # ce qui change, c'est ce qu'on obtient SANS Y PENSER.
+        description: 'Branche à tester (défaut : main, la seule auditée)'
+        required: true
+        default: 'main'
+      flows:
+        # DÉFAUT VOLONTAIREMENT MINIMAL : `01-demarrage.yaml` est le SEUL flow
+        # qui ne demande aucun identifiant. Lancer tout `.maestro/` sans secrets
+        # configurés ferait échouer neuf flows sur dix à la connexion, et ce
+        # rouge ne dirait rien sur l'application.
+        description: 'Flows à jouer (ex: .maestro/ ou .maestro/PAN-01-panier-apres-fermeture.yaml)'
+        required: true
+        default: '.maestro/01-demarrage.yaml'
+      api_level:
+        description: 'Niveau d API de l émulateur (34 = Android 14)'
+        required: true
+        default: '34'
+      api_url:
+        description: 'VITE_API_URL — lue AU BUILD, pas à l exécution'
+        required: true
+        default: 'https://julaba-api.onrender.com/api/v1'
+
+# Deux passages concurrents se disputeraient le même KVM : on sérialise.
+concurrency:
+  group: maestro-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  banc:
+    name: Jouer les flows sur un Android qui démarre
+    runs-on: ubuntu-latest
+    # Build ~3 min + démarrage de l'émulateur ~5 min + les flows. Large, parce
+    # qu'un timeout trop court se lit comme un échec de l'application.
+    timeout-minutes: 75
+
+    steps:
+      - name: Checkout de la branche demandée
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.branche }}
+
+      # ── CE QUI EST JOUABLE DÉPEND DES SECRETS, ET ON LE DIT AVANT ─────────
+      # Neuf flows sur dix ont besoin d'un compte. Sans secrets, on ne les joue
+      # PAS : un rouge à la connexion ne dirait rien sur la caisse. Le résumé du
+      # run porte la raison, pour que personne ne cherche un défaut inexistant.
+      - name: Déterminer ce qui est jouable
+        id: portee
+        env:
+          TEL: ${{ secrets.MAESTRO_PHONE }}
+          PIN: ${{ secrets.MAESTRO_PIN }}
+        run: |
+          if [ -n "$TEL" ] && [ -n "$PIN" ]; then
+            echo "avec_compte=true" >> "$GITHUB_OUTPUT"
+            echo "✓ Secrets MAESTRO_PHONE et MAESTRO_PIN présents : tous les flows sont jouables." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "avec_compte=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Flows authentifiés NON joués"
+              echo ""
+              echo "Les secrets \`MAESTRO_PHONE\` et \`MAESTRO_PIN\` ne sont pas configurés."
+              echo "Seuls les flows étiquetés \`sansCompte\` sont joués — c'est-à-dire"
+              echo "\`01-demarrage.yaml\` : l'APK s'ouvre-t-il jusqu'à son écran de connexion."
+              echo ""
+              echo "Ce n'est PAS un échec. Pour jouer la caisse, poser les deux secrets"
+              echo "dans Settings → Secrets and variables → Actions."
+              echo ""
+              echo "> Les identifiants ne doivent jamais être écrits dans un fichier du dépôt"
+              echo "> (ALERTE-SEC-01). Les secrets d'Actions sont faits pour ça."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Setup Node.js 22 (LTS)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      # JDK 21 : imposé par capacitor-android 8, compilé en source release 21.
+      # Avec un JDK 17 la construction s'arrête sur « invalid source release: 21 ».
+      - name: Setup JDK 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Installer la plateforme Android 36
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Install (workspaces, racine)
+        run: npm ci
+
+      # LE VALIDATEUR AVANT L'ÉMULATEUR, et c'est l'ordre qui compte : une faute
+      # comme `assertVisble` passe le parseur YAML et n'échouerait qu'après le
+      # build ET le démarrage de l'émulateur, dix minutes plus tard. Il refuse
+      # aussi tout identifiant écrit en dur dans un flow.
+      - name: Valider les flows (vocabulaire, runFlow, aucun identifiant en dur)
+        run: node .maestro/valider.mjs
+
+      - name: Construire le front
+        env:
+          VITE_API_URL: ${{ inputs.api_url }}
+        run: npm run build -w frontend_src
+
+      - name: Copier le front dans le projet Android
+        run: npx cap sync android
+
+      # Sans cette vérification, l'APK se construirait et ne joindrait aucun
+      # backend : la connexion échouerait sur « Réponse inattendue » et on
+      # chercherait le défaut dans la caisse. Déjà payé une fois (1958d6a).
+      - name: Vérifier que l URL de l API est bien dans le bundle copié
+        env:
+          API_URL: ${{ inputs.api_url }}
+        run: |
+          cible="android/app/src/main/assets/public/assets"
+          if ! grep -rqF "$API_URL" "$cible"; then
+            echo "::error::L URL de l API est absente du bundle copié. L APK ne joindrait aucun backend."
+            exit 1
+          fi
+          echo "✓ URL de l API présente dans le bundle copié."
+
+      - name: Cache de la voix hors-ligne (AAR + modèle FR)
+        uses: actions/cache@v4
+        with:
+          path: |
+            android/app/libs
+            android/app/src/main/assets/sherpa-kroko-fr
+          key: voix-hors-ligne-${{ hashFiles('android/scripts/installer-voix.sh') }}
+
+      - name: Poser la voix hors-ligne
+        working-directory: android
+        run: ./scripts/installer-voix.sh
+
+      - name: Construire l APK de debug
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      # L'AAR sherpa-onnx fournit arm64, armv7 ET x86_64 (android/app/build.gradle:38),
+      # donc un émulateur x86_64 peut charger le natif. On le VÉRIFIE sur l'APK
+      # produit plutôt que de s'en souvenir : sans la bonne ABI, l'application
+      # s'installe et plante au premier appel natif, et le flow accuserait la caisse.
+      - name: Vérifier que l APK porte bien l ABI x86_64
+        run: |
+          outils=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          apk=android/app/build/outputs/apk/debug/app-debug.apk
+          abis=$("$outils/aapt2" dump badging "$apk" | grep -oE "native-code: .*" || true)
+          echo "ABI de l APK : ${abis:-aucune déclarée}"
+          if [ -n "$abis" ] && ! echo "$abis" | grep -q "x86_64"; then
+            echo "::error::L APK ne porte pas d ABI x86_64 — il plantera sur l émulateur."
+            echo "Relancer avec un émulateur arm64, ou ajouter l ABI à l AAR."
+            exit 1
+          fi
+          echo "✓ ABI compatible avec un émulateur x86_64."
+
+      - name: Relever le SHA réellement construit
+        id: source
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      # ── MAESTRO ────────────────────────────────────────────────────────────
+      - name: Installer Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Version de Maestro
+        run: maestro -v
+
+      # KVM : sans ces règles, l'émulateur démarre en émulation logicielle et
+      # met dix fois plus de temps — jusqu'au timeout, qui se lirait comme un
+      # échec de l'application.
+      - name: Activer KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
+      - name: Jouer les flows sur l émulateur
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          MAESTRO_PHONE: ${{ secrets.MAESTRO_PHONE }}
+          MAESTRO_PIN: ${{ secrets.MAESTRO_PIN }}
+          AVEC_COMPTE: ${{ steps.portee.outputs.avec_compte }}
+          FLOWS: ${{ inputs.flows }}
+        with:
+          api-level: ${{ inputs.api_level }}
+          # `google_apis` plutôt que `default` : la WebView d'une image nue est
+          # souvent trop ancienne pour un bundle Vite moderne, et l'application
+          # s'ouvrirait sur un écran blanc qu'on prendrait pour un défaut.
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          # L'AUDIO RESTE ACTIVÉ, délibérément : l'application parle au démarrage
+          # (sherpa TTS). Avec `-noaudio`, un échec de synthèse se présenterait
+          # comme un défaut de la caisse.
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot-save -no-boot-anim -camera-back none -camera-front none
+          disable-animations: true
+          script: |
+            set -o pipefail
+            adb wait-for-device
+            adb shell settings put global window_animation_scale 0
+            adb shell settings put global transition_animation_scale 0
+            adb shell settings put global animator_duration_scale 0
+
+            echo "::group::Installation de l APK"
+            adb uninstall com.julaba.app || true
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            echo "::endgroup::"
+
+            mkdir -p rapports/captures rapports/debug
+
+            # Le logcat tourne PENDANT les flows : quand un flow tombe, la cause
+            # est souvent une exception Java ou une erreur de WebView que l'arbre
+            # de vue ne montre pas.
+            adb logcat -c
+            adb logcat > rapports/logcat.txt 2>&1 &
+
+            # LE CODE DE SORTIE EST RETENU, PAS PROPAGÉ TOUT DE SUITE : si
+            # `maestro test` arrêtait le script ici, la collecte ci-dessous ne
+            # tournerait pas et on perdrait captures, arbre de vue et logcat —
+            # exactement quand ils servent. On collecte, PUIS on échoue.
+            echec=0
+            if [ "$AVEC_COMPTE" = "true" ]; then
+              echo "Flows joués : $FLOWS (avec compte)"
+              maestro test "$FLOWS" \
+                -e MAESTRO_PHONE="$MAESTRO_PHONE" \
+                -e MAESTRO_PIN="$MAESTRO_PIN" \
+                --format junit --output rapports/junit.xml \
+                --debug-output rapports/debug || echec=$?
+            else
+              echo "Flows joués : étiquette sansCompte UNIQUEMENT (secrets absents)"
+              maestro test .maestro/ --include-tags=sansCompte \
+                --format junit --output rapports/junit.xml \
+                --debug-output rapports/debug || echec=$?
+            fi
+
+            echo "::group::Collecte des traces"
+            # `upload-artifact` n'expanse pas `~` de façon fiable : on rapatrie
+            # tout sous `rapports/`, un seul chemin à publier.
+            cp -r "$HOME/.maestro/tests" rapports/maestro-tests 2>/dev/null || true
+            # Les `takeScreenshot: nom` écrivent dans le répertoire courant.
+            find . -maxdepth 1 -name '*.png' -exec mv {} rapports/captures/ \; 2>/dev/null || true
+            # Une capture de l'écran final, quel qu'il soit : quand un flow tombe
+            # sur un écran inattendu, c'est la première chose qu'on veut voir.
+            adb exec-out screencap -p > rapports/captures/zz-ecran-final.png 2>/dev/null || true
+            # Le logcat est volumineux : on garde tout, plus un extrait des lignes
+            # qui parlent de l'application et de sa WebView.
+            grep -aE "julaba|chromium|Capacitor|sherpa|AndroidRuntime|FATAL" rapports/logcat.txt \
+              > rapports/logcat-julaba.txt 2>/dev/null || true
+            kill %1 2>/dev/null || true
+            ls -la rapports/ rapports/captures/ || true
+            echo "::endgroup::"
+
+            exit $echec
+
+      # `always()` : les captures et le logcat servent SURTOUT quand le banc est
+      # rouge. Les perdre en cas d'échec, c'est perdre la seule trace.
+      - name: Publier captures, arbre de vue, logcat et rapport
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-${{ steps.source.outputs.sha || 'inconnu' }}
+          path: rapports/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Résumé
+        if: always()
+        run: |
+          {
+            echo "### Banc Maestro — ${{ steps.source.outputs.sha || 'SHA inconnu' }}"
+            echo ""
+            echo "- branche : \`${{ inputs.branche }}\`"
+            echo "- flows demandés : \`${{ inputs.flows }}\`"
+            echo "- émulateur : API ${{ inputs.api_level }}, google_apis, x86_64"
+            echo "- flows authentifiés : ${{ steps.portee.outputs.avec_compte == 'true' && 'joués' || 'NON joués (secrets absents)' }}"
+            echo ""
+            echo "**T1, T2 et T3 restent des gestes HUMAINS** : Maestro ne parle pas"
+            echo "et n'entend pas. Un vert sur ces trois flows ne prouve pas la"
+            echo "transcription ni le son — voir \`.maestro/README.md\`."
+            echo ""
+            echo "En cas d'échec : l'artefact contient les captures, l'arbre de vue"
+            echo "(\`rapports/debug\`) et le logcat. **On consigne, on ne corrige pas**"
+            echo "dans ce lot : scénario, geste, attendu, observé — jamais la cause supposée."
+          } >> "$GITHUB_STEP_SUMMARY"
