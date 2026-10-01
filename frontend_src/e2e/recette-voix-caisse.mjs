@@ -252,6 +252,37 @@ try {
        'un montant dicté sans produit nommé pose toujours sa ligne', `${avant} F → ${apres} F`);
   }
 
+  // ═══════════════════════════════════════════════════════════════════════
+  etape('F4NT-B — « Tomate mille francs » : un produit et un prix, sans quantité');
+  {
+    // LA PHRASE EXACTE DU RAPPORT TERRAIN F4NT (APK d3cb6ce, 01/10 16h41).
+    // Elle était transcrite parfaitement par sherpa et rendait « je n'ai pas
+    // bien compris » : `extraire` avait produit ET montant, et les deux portes
+    // en aval exigeaient une QUANTITÉ. Ici on le joue dans le bundle de
+    // PRODUCTION, à travers le vrai `onAction` — pas en test pur, parce que
+    // c'est exactement l'erreur qui a coûté CAT-01.
+    const avant = await totalPanier();
+    // CINQUIÈME PIÈGE DE HARNAIS, payé le 01/10 et noté ici comme les quatre
+    // autres : la première version de cette étape exigeait AUCUNE ligne
+    // « Produit vocal » dans le panier. Elle tombait — et le code avait raison.
+    // L'étape [6] vient d'en créer une, LÉGITIMEMENT (« vends pour 500 » est un
+    // article libre, c'est la contrainte de CAT-02). Ce qu'il faut mesurer n'est
+    // pas l'absence d'un état, c'est que CETTE étape n'en AJOUTE pas.
+    const vocalAvant = (await panier()).filter((l) => /Produit vocal/i.test(l.nom || '')).length;
+    await dire('Tomate mille francs');
+    const lignes = await montrePanier('panier');
+    await page.screenshot({ path: `${OUT}/07-f4nt-prix-sans-quantite.png`, fullPage: true }).catch(() => {});
+    const apres = await totalPanier();
+    ok(apres === avant + 1000,
+       'la ligne porte le prix DIT, mille francs', `${avant} F → ${apres} F`);
+    ok(lignes.some((l) => /tomate/i.test(l.nom || '')),
+       'et c\'est bien de la tomate');
+    const vocalApres = lignes.filter((l) => /Produit vocal/i.test(l.nom || '')).length;
+    ok(vocalApres === vocalAvant,
+       'aucun « Produit vocal » AJOUTÉ par cette phrase : CAT-02 tient toujours',
+       `${vocalAvant} → ${vocalApres}`);
+  }
+
   console.log(`\n${echecs === 0 ? '✓ RECETTE VOIX : aucun échec' : `✗ RECETTE VOIX : ${echecs} échec(s)`}`);
   console.log(`   captures : ${OUT}/0*.png`);
 } catch (e) {

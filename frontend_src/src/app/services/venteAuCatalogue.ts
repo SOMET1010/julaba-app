@@ -162,7 +162,27 @@ export function lireVenteAuCatalogue(
   // nombre d'articles — « vends arachide grillée à 500 » garde bien son prix
   // (lecturePrix « unitaire »), et « vends deux arachide grillée à 500 » a
   // déjà ses deux nombres séparés.
-  const nombreOrphelin = p.quantite == null && p.montant != null && p.lecturePrix === null;
+  //
+  // F4NT-B — « FRANCS » EST UNE PREUVE, ET ELLE ÉTAIT JETÉE. 01/10/2026.
+  //
+  // Rapport terrain F4NT. Mesuré avant correction, sur un étal réel :
+  //     « Arachide grillée mille francs » → null   (rien au panier, « pas compris »)
+  //     « attiéké 300 francs »            → null
+  // La cause n'était PAS l'exigence de quantité : c'est que 1000 était pris
+  // pour MILLE ARTICLES, donc rejeté par le plafond de prudence ci-dessous.
+  //
+  // Or la phrase portait le discriminant : elle a dit « FRANCS ». Personne ne
+  // dit « francs » pour compter des tas. `extraire` connaît ce marqueur —
+  // MARQUEURS_APRES, déjà importé ici — et ne le note que dans le calcul du
+  // montant, jamais dans `lecturePrix` (réservé aux marqueurs AVANT : « à
+  // 500 », « pour 500 »). L'information existait dans la phrase, et deux
+  // modules la laissaient tomber.
+  //
+  // C'EST LA LISTE DU DÉPÔT, pas une seconde écrite pour l'occasion : deux
+  // listes de marqueurs de monnaie finiraient par vendre mille tas d'arachide.
+  const direEnFrancs = mots(texte).some((m) => MARQUEURS_APRES.has(m));
+  const nombreOrphelin = p.quantite == null && p.montant != null && p.lecturePrix === null
+    && !direEnFrancs;
   // AU-DELÀ, ON NE DEVINE PLUS. « arachide grillée cinq mille » peut être
   // 5 000 articles comme 5 000 francs : le doute profite au silence, pas à une
   // ligne de dix mille francs ni à un panier de cinq mille tas.
@@ -172,11 +192,18 @@ export function lireVenteAuCatalogue(
   const quantiteLue = nombreOrphelin ? (p.montant as number) : p.quantite;
   const montantLu = nombreOrphelin ? null : p.montant;
 
-  // MÊME EXIGENCE QUE `venteSansVerbe` DANS LE MOTEUR : sans verbe de vente, il
-  // faut au moins une quantité. « Arachide » tout seul, dit au hasard, n'est
-  // pas une vente ; « deux arachides grillées » en est une. On ne remplace pas
-  // une consigne par une plus pauvre.
-  if (p.intention !== 'vente' && quantiteLue == null) return null;
+  // MÊME EXIGENCE QUE `venteSansVerbe` DANS LE MOTEUR, et elle bouge AVEC lui —
+  // F4NT-B, 01/10/2026 : sans verbe de vente, il faut une quantité **OU** un
+  // montant. Jamais ni l'un ni l'autre.
+  //
+  // « Arachide » tout seul, dit au hasard, n'est toujours PAS une vente ;
+  // « deux arachides grillées » en est une ; « arachide grillée mille francs »
+  // en est une aussi, et c'est ce que le terrain a montré. Les deux portes
+  // gardent la MÊME exigence, par construction : si l'une devenait plus
+  // permissive que l'autre, « tomate mille francs » vaudrait une vente pour les
+  // 28 produits du lexique et un « pas compris » pour les 111 autres — la même
+  // phrase avec deux sens selon le produit.
+  if (p.intention !== 'vente' && quantiteLue == null && montantLu == null) return null;
 
   const phrase = mots(texte);
   let retenu: string | null = null;

@@ -156,8 +156,45 @@ function analyser(texte: string, locale: LocaleCode, venteSansVerbeAutorisee: bo
   // « CINQ TOMATES » EST UNE VENTE — mais seulement là où on ne fait que
   // vendre (voir intentLocalCaisse). Ailleurs, ce drapeau est faux et rien ne
   // change : c'est l'appelante qui prend cette responsabilité, nommément.
+  //
+  // F4NT-B — « TOMATE MILLE FRANCS » EST UNE VENTE. 01/10/2026.
+  //
+  // Rapport terrain F4NT : elle dit « Tomate mille francs » sur sa caisse, et
+  // elle entend « je n'ai pas bien compris ». Mesuré avant correction :
+  //
+  //     extraire(« Tomate mille francs ») → produit tomate, MONTANT 1000
+  //     intentLocalCaisse(…)              → NULL
+  //
+  // L'extraction avait TOUT compris — le produit ET le prix. Ce qu'elle n'avait
+  // pas, c'est une quantité, et cette ligne l'EXIGEAIT. L'information existait
+  // et on la jetait : le motif habituel.
+  //
+  // L'ASYMÉTRIE N'AVAIT PAS DE RAISON. Depuis le 18/09, « un tas de piment »
+  // (quantité, aucun montant) est une vente — « le prix, l'application le
+  // connaît ». Mais « tomate mille francs » (montant, aucune quantité) était
+  // jeté, alors que la quantité manquante vaut 1 : c'est le cas NORMAL au
+  // marché, un tas, un prix. Une marchande dit « tomate, mille francs » bien
+  // plus souvent que « vends une tomate à mille francs ».
+  //
+  // DONC : UNE QUANTITÉ **OU** UN MONTANT. Jamais ni l'un ni l'autre.
+  //
+  // CE QUI NE BASCULE PAS, mesuré sur 37 phrases avant d'écrire cette ligne —
+  // et c'est `!!p.produit` qui tient la porte, pas la nouvelle condition :
+  //     « oignon » (produit nu)          → quantité ET montant nuls   → refusé
+  //     « mille francs » (montant nu)    → aucun produit              → refusé
+  //     « combien de tomate »            → quantité ET montant nuls   → refusé
+  //     « combien j'ai vendu »           → idem                       → refusé
+  //     stock, retrait, dépense, encaissement, annulation : main gardée
+  // Aucune question sur les chiffres du jour ne porte de nombre : elles sont
+  // hors d'atteinte par construction, pas par chance.
+  //
+  // AUCUN ARGENT N'EST INVENTÉ ICI. Le montant qui entre est celui qu'elle a
+  // DIT. Sans quantité dite, elle vaut 1 en aval — donc 1 × le prix dit, et
+  // aucune ambiguïté de prix à lever (la règle du 21/09 ne se pose qu'à partir
+  // de deux unités).
   const venteSansVerbe = venteSansVerbeAutorisee
-    && !encaissement && p.intention === null && !!p.produit && p.quantite != null && !interditDeVendre(texte);
+    && !encaissement && p.intention === null && !!p.produit
+    && (p.quantite != null || p.montant != null) && !interditDeVendre(texte);
 
   if (!p.intention && !venteParEncaisse && !venteSansVerbe) return encaissement ? resultatEncaissement(texte, encaissement) : null;
 
