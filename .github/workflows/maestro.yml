@@ -236,13 +236,22 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          # L'AUDIO RESTE ACTIVÉ, délibérément : l'application parle au démarrage
-          # (sherpa TTS). Avec `-noaudio`, un échec de synthèse se présenterait
-          # comme un défaut de la caisse.
+          # L'AUDIO : je n'ajoute pas `-noaudio`, mais le run #1 m'a appris que ça
+          # ne change rien — le runner n'a PAS de PulseAudio (« Could not init
+          # `pa' audio driver », « pulseaudio: Failed to initialize PA context »).
+          # Donc EN CI IL N'Y A PAS DE SON, quoi qu'on demande. L'application doit
+          # survivre à ça, et c'est une raison de plus pour que T2 (« entend-on le
+          # montant en lettres ? ») reste un geste humain sur un vrai téléphone.
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot-save -no-boot-anim -camera-back none -camera-front none
           disable-animations: true
           script: |
-            set -o pipefail
+            # PAS DE `set -o pipefail` ICI, et c'est mesuré : cette action exécute
+            # le `script` avec `/usr/bin/sh` (dash), pas bash. Le run #1 est mort
+            # sur cette seule ligne — « sh: 1: set: Illegal option -o pipefail » —
+            # alors que l'émulateur avait démarré correctement (boot en 35 s).
+            # Rien ne la remplace : le script gère déjà son code de sortie
+            # explicitement (`echec=$?` puis `exit $echec`), et `set -e` serait
+            # PIRE — il tuerait le script avant la collecte des traces.
             adb wait-for-device
             adb shell settings put global window_animation_scale 0
             adb shell settings put global transition_animation_scale 0
@@ -293,7 +302,9 @@ jobs:
             # qui parlent de l'application et de sa WebView.
             grep -aE "julaba|chromium|Capacitor|sherpa|AndroidRuntime|FATAL" rapports/logcat.txt \
               > rapports/logcat-julaba.txt 2>/dev/null || true
-            kill %1 2>/dev/null || true
+            # `kill %1` dépend du job control, que dash n'active pas hors mode
+            # interactif : on tue le logcat par son nom, ce qui marche partout.
+            pkill -f "adb logcat" 2>/dev/null || true
             ls -la rapports/ rapports/captures/ || true
             echo "::endgroup::"
 
