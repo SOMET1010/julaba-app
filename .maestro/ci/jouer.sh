@@ -77,4 +77,21 @@ kill "$PID_LOGCAT" 2>/dev/null || true
 ls -la "$RAPPORTS/" "$RAPPORTS/captures/" || true
 echo "::endgroup::"
 
+# LA CAUSE DOIT ÊTRE DANS LE LOG, PAS SEULEMENT DANS LE ZIP — run #5 : le flow
+# a échoué en 3 s et le log ne disait QUE « 1/1 Flow Failed ». Il fallait
+# télécharger un artefact pour savoir pourquoi, ce qui rend chaque diagnostic
+# dépendant d'un accès au dépôt. Une trace qui n'arrive pas jusqu'à l'œil ne
+# sert à rien : c'est le même motif que tout ce qu'on corrige dans ce projet.
+if [ "$echec" != "0" ]; then
+  echo "::group::POURQUOI LE FLOW A ÉCHOUÉ"
+  [ -f "$RAPPORTS/junit.xml" ] && { echo "— junit.xml —"; cat "$RAPPORTS/junit.xml"; echo; }
+  # Maestro écrit le détail de la commande fautive dans son arbre de vue.
+  find "$RAPPORTS/debug" -name '*.txt' -o -name '*.log' 2>/dev/null | head -4 | while read -r f; do
+    echo "— $(basename "$f") (40 dernières lignes) —"; tail -40 "$f"; echo
+  done
+  echo "— logcat, lignes de l application (30 dernières) —"
+  tail -30 "$RAPPORTS/logcat-julaba.txt" 2>/dev/null || true
+  echo "::endgroup::"
+fi
+
 exit "$echec"
