@@ -96,8 +96,28 @@ if [ "$echec" != "0" ]; then
   #   · Maestro ne lit pas le contenu de la WEBVIEW Capacitor → AUCUN flow ne
   #     pourra jamais marcher, et le banc entier est à repenser.
   # La hiérarchie de vue tranche en une ligne. Sans elle, on devine.
-  echo "— ce que Maestro VOIT réellement à l écran —"
-  maestro hierarchy 2>&1 | head -120 || echo "(hierarchy indisponible)"
+  # Run #8 : un `head -120` brut n'a montré que `com.android.systemui` — la
+  # barre de statut — donc rien de concluant : une hiérarchie COMMENCE par là.
+  # On ne tronque plus, on FILTRE, et on compte : la question est « Maestro
+  # voit-il du texte de JULABA », pas « à quoi ressemble l'arbre ».
+  maestro hierarchy > "$RAPPORTS/hierarchie.json" 2>&1 || true
+  if [ -s "$RAPPORTS/hierarchie.json" ]; then
+    echo "— TEXTES que Maestro voit (tous paquets confondus) —"
+    grep -oE '"(text|accessibilityText|hintText)" : "[^"]+"' "$RAPPORTS/hierarchie.json" \
+      | sort -u | head -40
+    echo
+    echo "— NŒUDS de l application (resource-id julaba) —"
+    n=$(grep -c 'com.julaba.app' "$RAPPORTS/hierarchie.json" || true)
+    echo "occurrences de « com.julaba.app » dans la hiérarchie : ${n:-0}"
+    grep -oE '"(resource-id|class)" : "[^"]*(julaba|WebView|webkit)[^"]*"' "$RAPPORTS/hierarchie.json" \
+      | sort -u | head -15
+    echo
+    echo "LECTURE : s il n y a AUCUN texte de JULABA mais un nœud WebView,"
+    echo "          Maestro ne lit pas le contenu HTML — le banc est à repenser."
+    echo "          S il y a des textes, ce sont mes libellés qui sont faux."
+  else
+    echo "(hierarchy indisponible)"
+  fi
   echo
   echo "— logcat, lignes de l application (30 dernières) —"
   tail -30 "$RAPPORTS/logcat-julaba.txt" 2>/dev/null || true
