@@ -43,7 +43,7 @@ bash frontend_src/e2e/run-recette-voix.sh
 | encaisser | recette, étape 3 | « Elle doit 200 francs. Touche les billets. » |
 | entendre | gardes i18n | 1 000 se dit « mille francs » |
 
-Plus : **252 invariants d'argent**, **123 maillons**, **8 invariants offline**.
+Plus : **252 invariants d'argent**, **125 maillons**, **8 invariants offline**.
 
 **Règle : si la machine le prouve, le terrain ne le rejoue pas.** C'est ce qui
 rend la recette terrain *finie* au lieu d'*infinie*.
@@ -70,7 +70,7 @@ Cinq familles, parce que cinq choses n'existent pas dans un navigateur :
 
 Le dossier est **FERMÉ** quand les trois sont vrais **sur un même SHA** :
 
-1. **La machine est verte** — recette voix 6/6, 252 invariants, 123 maillons
+1. **La machine est verte** — recette voix 7/7, 252 invariants, 125 maillons
    verts *sauf* les refigeages en attente, qui sont les tiens.
 2. **Les cinq gestes T1→T5 sont passés** sur un APK, et le SHA est écrit en
    tête du compte rendu.
@@ -117,20 +117,40 @@ Aucun de ces lots ne bloque la clôture de la caisse vocale.
 
 ---
 
-## 7. Où on en est aujourd'hui — `af06ba2`
+## 7. Où on en est aujourd'hui — après le rapport F4NT (01/10)
+
+**Le premier geste T1 a été joué, et il a trouvé deux bloquants.** Rapport
+terrain F4NT, APK `d3cb6ce`, Samsung SM-S938B sous Android 16. Trois phrases
+dites sur la caisse, **toutes transcrites correctement par sherpa-onnx**,
+toutes « je n'ai pas bien compris ».
+
+| # | Défaut | Critère §5 | État |
+|---|---|---|---|
+| **F4NT-A** | l'apostrophe typographique (U+2019) de sherpa faisait perdre le produit, et le « un » de « un tas » devenait **1 franc** | montant faux | **corrigé** |
+| **F4NT-B** | « Tomate mille francs » jeté : `extraire` avait produit ET montant, les deux portes en aval exigeaient une **quantité** | geste « vendre » bloqué | **corrigé** |
 
 | Critère | État |
 |---|---|
-| 1. Machine verte | **OUI** — 6/6, 252, 120/123 (3 refigeages réservés) |
-| 2. Cinq gestes T1→T5 | **NON FAIT** — aucun passé depuis les corrections |
-| 3. Zéro bloquant ouvert | **OUI** à ma connaissance |
+| 1. Machine verte | **OUI** — 7/7 recette, 252 invariants, **125 maillons** dont 122 verts — les 3 rouges sont tes refigeages |
+| 2. Cinq gestes T1→T5 | **T1 joué une fois, deux bloquants trouvés et corrigés** — à rejouer, puis T2→T5 |
+| 3. Zéro bloquant ouvert | **OUI** après ce lot |
 
-**Il manque une seule chose : les cinq gestes, une fois, sur un APK.**
+Par la règle §8.1, les deux défauts étant bloquants : nouveau SHA, et **les cinq
+gestes se rejouent**.
 
-C'est une demi-heure, pas une semaine. Et si les cinq passent, **le dossier est
-fermé** — on écrit la date, et on ouvre le suivant.
+### Ce que F4NT a appris sur la MÉTHODE, et ça compte plus que les deux correctifs
 
----
+**F4NT-A était inatteignable par tout ce qu'on avait.** Ni les 123 maillons
+d'alors, ni
+les 252 invariants, ni la recette navigateur ne pouvaient la voir, et pas par
+négligence : le stub de transcription de la recette rend **ce qu'on y écrit**,
+donc des apostrophes droites. Seul sherpa, sur l'appareil, produit la courbe.
+
+Le constat qui en découle, et qui rejoint l'audit du 01/10 : **il manque un banc
+E2E sur APK réel.** Un émulateur Android ne peut pas tourner dans la session de
+l'agent (pas de `/dev/kvm`, pas de `vmx/svm`, pas de SDK — vérifié) ; le chemin
+est la CI, où `apk.yml` tourne déjà sur `ubuntu-latest`. **Arbitrage en attente
+de Patrick**, pas ouvert ici.
 
 ## 8. Ce que je fais si tu trouves un défaut pendant ces cinq gestes
 
