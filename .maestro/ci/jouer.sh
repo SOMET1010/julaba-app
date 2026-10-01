@@ -33,12 +33,85 @@ adb shell settings put global window_animation_scale 0 || true
 adb shell settings put global transition_animation_scale 0 || true
 adb shell settings put global animator_duration_scale 0 || true
 
+# ── RUN #9 : CE QUE MAESTRO VOYAIT N'ÉTAIT PAS JULABA ──────────────────────
+# La hiérarchie ne contenait que la barre de statut et « Pixel Launcher isn't
+# responding / Close app / Wait » : une boîte ANR du LANCEUR couvrait l'écran,
+# et `launchApp` avait mis VINGT-SIX MINUTES. Aucune conclusion sur la WebView
+# n'était possible — l'application n'était simplement pas au premier plan.
+#
+# `hide_error_dialogs` supprime ces boîtes ANR/crash du système. Ce n'est pas
+# masquer un défaut de JULABA : un ANR du Pixel Launcher n'est pas le nôtre, et
+# il nous aveuglait.
+adb shell settings put global hide_error_dialogs 1 || true
+
 echo "::group::Installation de l APK"
 adb uninstall com.julaba.app || true
 adb install -r "$APK"
 echo "::endgroup::"
 
 mkdir -p "$RAPPORTS/captures" "$RAPPORTS/debug"
+
+# ── LA PRÉCONDITION : JULABA AU PREMIER PLAN, PROUVÉ, AVANT TOUT LE RESTE ──
+# Tant qu'elle n'est pas établie, rien de ce qu'on mesure ensuite ne vaut.
+# `dumpsys activity activities` dit QUI est résumée : c'est une preuve, pas une
+# attente arbitraire.
+echo "::group::Précondition — JULABA au premier plan"
+adb shell am force-stop com.julaba.app || true
+adb shell monkey -p com.julaba.app -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
+FOREGROUND=non
+for i in $(seq 1 60); do
+  # On écarte tout dialogue système qui se serait glissé par-dessus.
+  top=$(adb shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | head -1)
+  case "$top" in
+    *com.julaba.app*) FOREGROUND=oui; break ;;
+  esac
+  # Une boîte « ne répond pas » encore visible malgré hide_error_dialogs : on la ferme.
+  adb shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
+  sleep 2
+done
+echo "activité résumée : ${top:-(inconnue)}"
+echo "JULABA au premier plan : $FOREGROUND (après $((i*2)) s)"
+echo "::endgroup::"
+
+# ── MODE SONDE : on répond à UNE question, on ne joue AUCUN flow ───────────
+# Demandé par Patrick après le run #9 : « le prochain run doit répondre à une
+# seule question binaire — JULABA est-elle foreground et Maestro voit-il son
+# contenu ? » Pas de flow, pas de test métier, pas de nouvelle variable.
+if [ "$FLOWS" = "SONDE" ]; then
+  echo "::group::SONDE — ce que Maestro voit, JULABA au premier plan"
+  adb exec-out screencap -p > "$RAPPORTS/captures/sonde-ecran.png" 2>/dev/null || true
+  maestro hierarchy > "$RAPPORTS/hierarchie.json" 2>&1 || true
+  textes=$(grep -cE '"(text|accessibilityText)" : "[^"]+"' "$RAPPORTS/hierarchie.json" 2>/dev/null || echo 0)
+  julaba=$(grep -c 'com.julaba.app' "$RAPPORTS/hierarchie.json" 2>/dev/null || echo 0)
+  webview=$(grep -cE 'WebView|webkit|chromium' "$RAPPORTS/hierarchie.json" 2>/dev/null || echo 0)
+  echo "  JULABA au premier plan .......... $FOREGROUND"
+  echo "  textes visibles (tous paquets) .. $textes"
+  echo "  nœuds « com.julaba.app » ........ $julaba"
+  echo "  nœuds WebView / chromium ........ $webview"
+  echo
+  echo "  — les textes, dédoublonnés —"
+  grep -oE '"(text|accessibilityText)" : "[^"]+"' "$RAPPORTS/hierarchie.json" 2>/dev/null | sort -u | head -40
+  echo
+  if [ "$FOREGROUND" != "oui" ]; then
+    echo "  VERDICT : PRÉCONDITION NON TENUE — JULABA n'est pas au premier plan."
+    echo "            Aucune conclusion sur la WebView n'est valable."
+    sortie=1
+  elif [ "$julaba" -gt 0 ]; then
+    echo "  VERDICT : Maestro VOIT des nœuds de JULABA → le banc tient,"
+    echo "            ce sont les libellés des flows qui sont à corriger."
+    sortie=0
+  elif [ "$webview" -gt 0 ]; then
+    echo "  VERDICT : WebView présente mais AUCUN nœud JULABA → contenu HTML"
+    echo "            opaque. C'est l'arbitrage data-testid / accessibilité."
+    sortie=1
+  else
+    echo "  VERDICT : ni nœud JULABA ni WebView — à regarder sur la capture."
+    sortie=1
+  fi
+  echo "::endgroup::"
+  pkill -f "adb logcat" 2>/dev/null || true
+  exit "$sortie"
+fi
 
 # Le logcat tourne PENDANT les flows : quand un flow tombe, la cause est souvent
 # une exception Java ou une erreur de WebView qu'aucun arbre de vue ne montre.
@@ -119,8 +192,11 @@ if [ "$echec" != "0" ]; then
     echo "(hierarchy indisponible)"
   fi
   echo
-  echo "— logcat, lignes de l application (30 dernières) —"
-  tail -30 "$RAPPORTS/logcat-julaba.txt" 2>/dev/null || true
+  # LES WAV EN BASE64 SONT ÉCARTÉS : chaque synthèse imprime des dizaines de
+  # milliers de caractères qui noient les neuf lignes utiles. Trois lectures de
+  # log y sont passées.
+  echo "— logcat, lignes de l application (30 dernières, sans les WAV) —"
+  grep -v '"wav":' "$RAPPORTS/logcat-julaba.txt" 2>/dev/null | cut -c1-240 | tail -30 || true
   echo "::endgroup::"
 fi
 

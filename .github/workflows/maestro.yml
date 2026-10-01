@@ -49,9 +49,9 @@ on:
         # qui ne demande aucun identifiant. Lancer tout `.maestro/` sans secrets
         # configurés ferait échouer neuf flows sur dix à la connexion, et ce
         # rouge ne dirait rien sur l'application.
-        description: 'Flows à jouer (ex: .maestro/ ou .maestro/PAN-01-panier-apres-fermeture.yaml)'
+        description: 'SONDE (précondition + ce que Maestro voit, aucun flow) ou un chemin .maestro/…'
         required: true
-        default: '.maestro/01-demarrage.yaml'
+        default: 'SONDE'
       api_level:
         description: 'Niveau d API de l émulateur (34 = Android 14)'
         required: true
@@ -230,6 +230,15 @@ jobs:
           FLOWS: ${{ inputs.flows }}
         with:
           api-level: ${{ inputs.api_level }}
+          # RUN #9 : `launchApp` a mis VINGT-SIX MINUTES et le Pixel Launcher a
+          # fini en ANR. L'émulateur manquait de souffle — profil Pixel 6 avec
+          # 2 cœurs et la RAM par défaut, pendant qu'une WebView charge un APK
+          # de 197 Mo et précharge des dizaines de MP3. On lui en donne assez
+          # pour que la lenteur ne se lise plus comme un défaut de l'application.
+          cores: 4
+          ram-size: 4096M
+          heap-size: 1024M
+          disk-size: 8192M
           # `google_apis` plutôt que `default` : la WebView d'une image nue est
           # souvent trop ancienne pour un bundle Vite moderne, et l'application
           # s'ouvrirait sur un écran blanc qu'on prendrait pour un défaut.
