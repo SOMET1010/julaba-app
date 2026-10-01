@@ -76,8 +76,48 @@ export function vlog(ev: string, data?: unknown): void {
 }
 
 /** Contexte appareil / version / réseau (en tête du rapport). */
+/**
+ * UN REPÈRE COURT, ET L'ÉCRAN D'OÙ LE RAPPORT PART — 01/10/2026.
+ *
+ * Patrick sort de la boucle de test : « des testeurs vont le faire ». Change
+ * tout pour cet instrument. Quand c'était lui, un rapport arrivait seul, dans
+ * la conversation, juste après le geste — le contexte était implicite.
+ *
+ * Avec plusieurs testeurs, cinq rapports arrivent ensemble et PLUS RIEN ne dit
+ * lequel correspond à quel geste. Le rapport décrivait tout du système et rien
+ * de la situation.
+ *
+ * DEUX LIGNES SUFFISENT, et aucune ne demande au testeur de taper quoi que ce
+ * soit sur un téléphone, au marché, après un défaut :
+ *   · un REPÈRE de quatre caractères, qu'il annonce à l'oral ou écrit à côté
+ *     (« c'est le rapport 7K2P ») — et qui se retrouve dans le texte collé ;
+ *   · le DERNIER ÉCRAN visité, que le journal connaît déjà (événement ECRAN).
+ *
+ * On ne LUI demande rien de plus : ce qu'on peut déduire, on le déduit.
+ */
+function repereCourt(): string {
+  // Pas un identifiant : un repère de conversation. Quatre caractères qui se
+  // lisent au téléphone sans confusion (ni O/0 ni I/1).
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let r = '';
+  try {
+    for (let i = 0; i < 4; i++) r += alphabet[Math.floor(Math.random() * alphabet.length)];
+  } catch { return '????'; }
+  return r;
+}
+
+function dernierEcran(): string {
+  try {
+    const e = vtrace.entrees().filter((x) => x.ev === 'ECRAN').pop();
+    const chemin = e?.d?.chemin;
+    return typeof chemin === 'string' && chemin ? chemin : '(aucun écran dans le journal)';
+  } catch { return '(illisible)'; }
+}
+
 function contexteRapport(): string[] {
   const l: string[] = ['=== CONTEXTE ==='];
+  l.push(`repère: ${repereCourt()}`);
+  l.push(`dernier écran: ${dernierEcran()}`);
   try { l.push(`version: ${typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '?'}`); } catch { l.push('version: ?'); }
   try { l.push(`build: ${typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : '?'}`); } catch { l.push('build: ?'); }
   try { l.push(`date: ${new Date().toISOString()}`); } catch { /* ignore */ }
