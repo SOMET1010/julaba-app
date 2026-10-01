@@ -89,6 +89,16 @@ if [ "$echec" != "0" ]; then
   find "$RAPPORTS/debug" -name '*.txt' -o -name '*.log' 2>/dev/null | head -4 | while read -r f; do
     echo "— $(basename "$f") (40 dernières lignes) —"; tail -40 "$f"; echo
   done
+  # LA QUESTION QUI DÉCIDE DE TOUT LE BANC — run #7 : l'application DIT
+  # « Akwaba » (sherpa TTS le synthétise, c'est dans le logcat) et Maestro ne le
+  # voit pas. Deux causes possibles, et elles n'ont rien à voir :
+  #   · mes libellés sont faux → on corrige un flow ;
+  #   · Maestro ne lit pas le contenu de la WEBVIEW Capacitor → AUCUN flow ne
+  #     pourra jamais marcher, et le banc entier est à repenser.
+  # La hiérarchie de vue tranche en une ligne. Sans elle, on devine.
+  echo "— ce que Maestro VOIT réellement à l écran —"
+  maestro hierarchy 2>&1 | head -120 || echo "(hierarchy indisponible)"
+  echo
   echo "— logcat, lignes de l application (30 dernières) —"
   tail -30 "$RAPPORTS/logcat-julaba.txt" 2>/dev/null || true
   echo "::endgroup::"
