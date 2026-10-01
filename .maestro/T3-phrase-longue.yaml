@@ -1,0 +1,41 @@
+# T3 — LE MICRO RÉEL (bruit, distance, accent, phrase longue).
+#
+# ⚠️ CE FLOW NE PROUVE PAS T3. Une phrase longue au marché, avec du bruit, reste
+# un geste HUMAIN — Maestro ne parle pas et ne fait pas de bruit.
+#
+# CE QU'IL PROUVE : la DURÉE D'ÉCOUTE. MIC-01 coupait le micro à 6 000 ms
+# toujours, parce que `aParle` était lu sur une source morte. Le plafond légitime
+# est `ECOUTE_MAX_MS` = 12 000 ms (services/ecouteCaisse.ts). Ce flow mesure que
+# l'écoute tient AU MOINS 8 secondes sans se refermer d'elle-même : au-dessus de
+# l'ancien défaut, en dessous du plafond, donc ni l'un ni l'autre par hasard.
+appId: com.julaba.app
+name: T3 — l'écoute tient au moins 8 s sans se refermer seule
+tags:
+  - avecCompte
+  - caisse
+  - partiel
+---
+- runFlow: 00-login.yaml
+- runFlow: commun/aller-a-la-caisse.yaml
+
+- tapOn: "Appuie pour parler"
+- extendedWaitUntil:
+    visible: "Appuie pour terminer"
+    timeout: 20000
+
+# LA SEULE ATTENTE FIXE DE TOUT CE BANC, et elle est LE SUJET du test : on ne
+# peut pas mesurer une durée en attendant un élément. 8 000 ms est choisi pour
+# être franchement au-dessus des 6 000 ms du défaut MIC-01 et franchement en
+# dessous des 12 000 ms du plafond.
+- extendedWaitUntil:
+    notVisible: "Appuie pour terminer"
+    timeout: 8000
+    optional: true
+
+# Si le micro s'est refermé AVANT 8 s sans qu'on ait parlé, le libellé est
+# revenu à « parler » — et c'est le défaut MIC-01 de retour. Cette assertion
+# ÉCHOUE alors, et la capture le montre.
+- assertVisible: "Appuie pour terminer"
+- takeScreenshot: T3-ecoute-8s
+
+- tapOn: "Appuie pour terminer"

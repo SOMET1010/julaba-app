@@ -1,0 +1,49 @@
+# PAN-01 — LE PANIER SURVIT À LA FERMETURE DE L'APPLICATION.
+#
+# Le banc le prouve ENTIÈREMENT, et c'est exactement le genre de chose qu'aucun
+# test en machine ne voit : il faut TUER le processus, pas recharger une page.
+#
+# LE SCÉNARIO RÉEL : elle est en train de servir, le téléphone s'éteint ou
+# Android tue l'application pour récupérer de la mémoire. Si le panier est perdu,
+# elle a encaissé de mémoire — ou pas encaissé du tout.
+appId: com.julaba.app
+name: PAN-01 — le panier est encore là après fermeture et réouverture
+tags:
+  - avecCompte
+  - caisse
+  - panier
+---
+- runFlow: 00-login.yaml
+- runFlow: commun/aller-a-la-caisse.yaml
+
+# ── ON MET QUELQUE CHOSE AU PANIER ─────────────────────────────────────────
+- tapOn:
+    index: 0
+    text: "F$"
+    optional: true
+- assertVisible: "Total"
+- assertNotVisible: "NaN"
+- takeScreenshot: PAN-01-panier-avant-fermeture
+
+# On relève le total AVANT, pour le comparer APRÈS. C'est la seule façon de
+# prouver « le panier est le MÊME » plutôt que « un panier existe ».
+- copyTextFrom:
+    text: "[0-9][0-9 ]* ?F"
+    index: 0
+- evalScript: ${output.totalAvant = maestro.copiedText}
+
+# ── ON TUE L'APPLICATION ───────────────────────────────────────────────────
+# `stopApp` termine le processus. `clearState` est VOLONTAIREMENT absent : on
+# teste la persistance, pas un démarrage à froid.
+- stopApp
+- launchApp:
+    stopApp: false
+    clearState: false
+
+# ── LE PANIER DOIT ÊTRE LÀ ─────────────────────────────────────────────────
+- extendedWaitUntil:
+    visible: "Total"
+    timeout: 60000
+- takeScreenshot: PAN-01-panier-apres-reouverture
+- assertVisible: ${output.totalAvant}
+- assertNotVisible: "NaN"

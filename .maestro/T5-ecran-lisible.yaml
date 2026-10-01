@@ -1,0 +1,41 @@
+# T5 — L'ÉCRAN RÉEL. Le banc le prouve ENTIÈREMENT, et c'est précieux : « le
+# panier et le total sont-ils lisibles SANS DÉFILER ? »
+#
+# Pourquoi ça compte autant : la marchande encaisse debout, une main prise. Si le
+# total est sous la ligne de flottaison, elle ne le voit pas — et une
+# information qu'elle ne voit pas n'existe pas.
+appId: com.julaba.app
+name: T5 — le total et le panier sont visibles sans défiler
+tags:
+  - avecCompte
+  - caisse
+  - ecran
+---
+- runFlow: 00-login.yaml
+- runFlow: commun/aller-a-la-caisse.yaml
+
+# Deux produits au panier : un panier à une ligne tient toujours à l'écran, le
+# défaut n'apparaît qu'à partir de plusieurs lignes.
+- tapOn:
+    index: 0
+    text: "F$"
+    optional: true
+- tapOn:
+    index: 1
+    text: "F$"
+    optional: true
+- takeScreenshot: T5-panier-deux-lignes
+
+# SANS AUCUN DÉFILEMENT : ces trois assertions tombent si l'élément existe mais
+# n'est pas dans la zone visible.
+- assertVisible: "Total"
+- assertVisible: "Encaisser"
+- assertNotVisible: "NaN"
+
+# Et le geste suivant est atteignable du pouce, pas seulement présent dans le DOM.
+- tapOn: "Encaisser"
+- extendedWaitUntil:
+    visible:
+      text: "Montant reçu|billets|rends"
+    timeout: 30000
+- takeScreenshot: T5-encaissement
