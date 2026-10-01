@@ -1,0 +1,25 @@
+# OUVERTURE DE LA CAISSE — le deuxième des sept gestes du dossier caisse vocale.
+#
+# Ce qu'il vérifie vraiment : la caisse s'ouvre, elle montre un total, et elle
+# n'affiche AUCUN NaN. Le NaN est le défaut qu'on a vu deux fois (A1) : un
+# montant qui n'existe pas encore et qu'on affiche quand même.
+appId: com.julaba.app
+name: 02 — la caisse s'ouvre et montre un total lisible
+tags:
+  - avecCompte
+  - caisse
+---
+- runFlow: 00-login.yaml
+- runFlow: commun/aller-a-la-caisse.yaml
+- takeScreenshot: 02-caisse-ouverte
+
+# A1 — « aucune information importante uniquement en texte », et surtout aucun
+# montant faux. NaN, undefined et null ne doivent JAMAIS atteindre l'écran
+# d'une marchande qui ne lit pas : elle demanderait à quelqu'un de lui lire.
+- assertNotVisible: "NaN"
+- assertNotVisible: "undefined"
+- assertNotVisible: "Infinity"
+
+# Les deux portes de la vente sont offertes, et nommées.
+- assertVisible: "Vendre à la voix"
+- assertVisible: "Toucher les produits"

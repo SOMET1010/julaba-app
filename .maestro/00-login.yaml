@@ -1,0 +1,45 @@
+# CONNEXION — numéro puis code secret, par le clavier.
+#
+# IDENTIFIANTS : jamais dans ce fichier. Ils arrivent par l'environnement.
+#     maestro test .maestro/00-login.yaml -e MAESTRO_PHONE=0XXXXXXXXX -e MAESTRO_PIN=XXXX
+#
+# POURQUOI LE CLAVIER ET PAS LA DICTÉE : la dictée du numéro fonctionne (mesuré
+# sur le rapport F4NT, « zéro cinq zéro cinq… » → 0505584444, LOGIN_HTTP 200),
+# mais Maestro ne peut pas PARLER. Le clavier est le chemin que ce banc sait
+# jouer ; la dictée reste un geste humain.
+appId: com.julaba.app
+name: 00 — connexion au compte marchande
+tags:
+  - avecCompte
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "Mon compte"
+    timeout: 45000
+
+# ── LE NUMÉRO ──────────────────────────────────────────────────────────────
+- tapOn: "Taper mon numéro sur le clavier"
+- extendedWaitUntil:
+    visible: "Chiffre 1"
+    timeout: 15000
+# Chaque chiffre est touché sur SON bouton — c'est le geste de la marchande,
+# pas une injection de texte dans un champ qui n'existe pas.
+- runFlow:
+    file: commun/taper-numero.yaml
+
+# ── LE CODE SECRET ─────────────────────────────────────────────────────────
+- tapOn: "Utiliser mon code"
+- extendedWaitUntil:
+    visible: "Code secret à 4 chiffres"
+    timeout: 15000
+- runFlow:
+    file: commun/taper-code.yaml
+
+# ── ARRIVÉE ────────────────────────────────────────────────────────────────
+# « Ta caisse aujourd'hui » est la phrase de l'accueil marchande. Si elle
+# n'apparaît pas, la connexion a échoué — et la capture dit sur quel écran.
+- extendedWaitUntil:
+    visible: "Ta caisse"
+    timeout: 60000
+- takeScreenshot: 00-accueil-marchande

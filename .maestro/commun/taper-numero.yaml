@@ -1,0 +1,10 @@
+# Les dix chiffres du numéro, un par un, sur les vrais boutons.
+# `MAESTRO_PHONE` est lu caractère par caractère : aucun numéro n'est écrit ici.
+appId: com.julaba.app
+---
+- evalScript: ${output.n = MAESTRO_PHONE}
+- repeat:
+    times: ${MAESTRO_PHONE.length}
+    commands:
+      - tapOn: "Chiffre ${output.n.charAt(0)}"
+      - evalScript: ${output.n = output.n.substring(1)}

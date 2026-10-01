@@ -1,0 +1,42 @@
+# T1 — LA TRANSCRIPTION.
+#
+# ⚠️ CE FLOW NE PROUVE PAS T1, et c'est écrit ici pour que personne ne lise son
+# vert comme une preuve. Maestro ne peut pas PARLER : aucun moyen d'injecter de
+# l'audio dans le micro d'un téléphone. La transcription elle-même reste un
+# geste HUMAIN (fiche testeur, geste T1, puis 🐞 Rapport).
+#
+# CE QU'IL PROUVE, et qui vaut quand même : le micro s'arme, l'écran bascule en
+# écoute, et il en SORT — c'est-à-dire que l'appui n'enferme pas la marchande
+# dans un écran d'où elle ne peut plus rien faire. MIC-01 était exactement ça.
+appId: com.julaba.app
+name: T1 — le micro s'arme et se relâche (la parole reste humaine)
+tags:
+  - avecCompte
+  - caisse
+  - partiel
+---
+- runFlow: 00-login.yaml
+- runFlow: commun/aller-a-la-caisse.yaml
+
+- assertVisible: "Appuie pour parler"
+- takeScreenshot: T1-avant-micro
+
+- tapOn: "Appuie pour parler"
+
+# L'ÉCOUTE A BIEN COMMENCÉ : le libellé du MÊME bouton bascule. C'est un piège
+# déjà payé sur la recette navigateur — attendre la disparition du bouton se
+# satisfaisait en 93 ms, avant tout enregistrement.
+- extendedWaitUntil:
+    visible: "Appuie pour terminer"
+    timeout: 20000
+- takeScreenshot: T1-en-ecoute
+
+# ON SORT DE L'ÉCOUTE. Sans parole, l'application doit revenir d'elle-même (ou
+# sur un second appui) à un état où la marchande peut agir. Un micro qui ne se
+# relâche pas est un écran mort.
+- tapOn: "Appuie pour terminer"
+- extendedWaitUntil:
+    visible: "Appuie pour parler"
+    timeout: 45000
+- takeScreenshot: T1-apres-micro
+- assertNotVisible: "NaN"
