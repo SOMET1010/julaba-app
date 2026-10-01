@@ -24,11 +24,11 @@ tags:
 - takeScreenshot: P0-1-porte-article-libre
 
 # ⚠️ LIMITE ASSUMÉE : la saisie du montant libre dépend d'un pavé dont les
-# libellés varient selon l'écran. Les deux saisies ci-dessous sont `optional` —
-# si elles ne trouvent pas leur cible, le flow ne mentira pas en vert : les
-# assertions de total qui suivent, elles, ne sont PAS optionnelles et tomberont.
+# libellés varient selon l'écran. Les `inputText` ci-dessous ne portent PAS
+# `optional` — Maestro ne l'accepte pas sur cette commande (run #4 : « Invalid
+# Command Format: inputText »), et c'est aussi plus honnête : si le champ n'est
+# pas là, le flow le DIT au lieu de passer en silence.
 - inputText: "500"
-  optional: true
 - tapOn:
     text: "Ajouter|Valider|Enregistrer"
     optional: true
@@ -38,7 +38,6 @@ tags:
     text: "PRODUIT NON TROUVÉ|Chercher un autre produit"
     optional: true
 - inputText: "300"
-  optional: true
 - tapOn:
     text: "Ajouter|Valider|Enregistrer"
     optional: true
