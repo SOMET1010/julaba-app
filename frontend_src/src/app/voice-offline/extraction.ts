@@ -209,7 +209,28 @@ export const MOTS_UNITE = new Set([
 function normalise(text: string): string {
   return text
     .toLowerCase()
-    .replace(/['']/g, "'")
+    // L'APOSTROPHE DU TÉLÉPHONE — F4NT, 01/10/2026, et c'est la cause d'un
+    // « je n'ai pas compris » sur une phrase parfaitement transcrite.
+    //
+    // sherpa-onnx rend « un tas d'oignon » avec l'apostrophe TYPOGRAPHIQUE
+    // (U+2019). Cette ligne existait déjà pour ça — et elle ne faisait RIEN :
+    // sa classe de caractères contenait deux fois l'apostrophe DROITE (U+0027),
+    // donc elle remplaçait U+0027 par U+0027. Vérifié dans tout l'historique du
+    // fichier : U+2019 n'y a jamais figuré. Ce n'est pas une régression, c'est
+    // une ligne née vide.
+    //
+    // CE QUE ÇA COÛTAIT, mesuré sur la transcription exacte du rapport :
+    //   « un tas d'oignon » (U+0027) → produit oignon, quantité 1   ✓
+    //   « un tas d'oignon » (U+2019) → produit NUL, et montant = 1  ✗
+    // Le « un » de « un tas », privé de son produit, devenait UN FRANC. Une
+    // information existait, et l'apostrophe la faisait changer de sens — le
+    // motif que ce dépôt traque partout.
+    //
+    // LES CARACTÈRES SONT ÉCRITS EN ÉCHAPPEMENTS, délibérément. Un caractère
+    // littéral peut se perdre (c'est ce qui est arrivé) ; `\u2019` ne peut pas.
+    // U+2018/U+2019 apostrophes typographiques, U+02BC lettre apostrophe,
+    // U+2032 prime — les quatre formes qu'un moteur de dictée peut rendre.
+    .replace(/[\u2018\u2019\u02BC\u2032]/g, "'")
     .replace(/j'ai\b/g, "j' ai")
     .replace(/\bd'/g, 'de ')
     .replace(/\bl'/g, 'le ')
