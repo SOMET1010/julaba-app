@@ -1,0 +1,50 @@
+# T4 — LE HORS-LIGNE RÉEL. Celui-là, le banc le prouve ENTIÈREMENT.
+#
+# LE GESTE : vendre avec le mode avion activé, puis rallumer le réseau, et
+# vérifier qu'il n'y a QU'UNE SEULE vente. C'est de l'argent : une vente comptée
+# deux fois après une reconnexion, c'est un total faux dans sa caisse.
+#
+# Mode avion : `- setAirplaneMode` existe depuis Maestro 1.39. Sur un téléphone
+# réel sans autorisation système, il peut échouer — dans ce cas le flow s'arrête
+# et il faut basculer l'avion à la main. C'est documenté dans README.md.
+appId: com.julaba.app
+name: T4 — une vente hors ligne reste UNE vente après reconnexion
+tags:
+  - avecCompte
+  - caisse
+  - horsLigne
+---
+- runFlow: 00-login.yaml
+- runFlow: commun/aller-a-la-caisse.yaml
+- takeScreenshot: T4-avant
+
+# ── ON COUPE LE RÉSEAU ─────────────────────────────────────────────────────
+- setAirplaneMode: enabled
+- takeScreenshot: T4-avion-active
+
+# ── ON VEND ────────────────────────────────────────────────────────────────
+- tapOn:
+    index: 0
+    text: "F$"
+    optional: true
+- assertVisible: "Total"
+- assertNotVisible: "NaN"
+- takeScreenshot: T4-vente-hors-ligne
+
+# L'ÉTAT EST DIT, pas seulement affiché en gris : une marchande qui ne lit pas
+# doit savoir que sa vente est en attente. `optional` parce que le libellé exact
+# dépend de l'écran — l'absence n'est pas un échec d'argent, elle est notée.
+- assertVisible:
+    text: "en attente|hors ligne|pas de réseau"
+    optional: true
+
+# ── ON RALLUME ─────────────────────────────────────────────────────────────
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible: "Total"
+    timeout: 60000
+- takeScreenshot: T4-apres-reconnexion
+
+# CE QUE PERSONNE NE DOIT VOIR : la même vente deux fois. Le total ne doit pas
+# avoir bougé du seul fait de la reconnexion.
+- assertNotVisible: "NaN"

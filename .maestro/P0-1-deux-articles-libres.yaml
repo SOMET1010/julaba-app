@@ -1,0 +1,53 @@
+# P0.1 — DEUX ARTICLES LIBRES DISTINCTS RESTENT DEUX LIGNES.
+#
+# POURQUOI CE SCÉNARIO EXISTE : l'article libre (un montant sans produit nommé)
+# n'a pas de nom propre — il s'appelle « Produit vocal ». Si la fusion de panier
+# les rapproche par le NOM, deux articles libres de 500 F et 300 F deviennent une
+# seule ligne, et le total peut mentir.
+#
+# C'est de l'argent, donc bloquant au sens de CLOTURE-CAISSE-VOCALE §5 si ça
+# tombe. Le banc le prouve ENTIÈREMENT.
+appId: com.julaba.app
+name: P0.1 — deux articles libres distincts font deux lignes, et le bon total
+tags:
+  - avecCompte
+  - caisse
+  - panier
+---
+- runFlow: 00-login.yaml
+- runFlow: commun/aller-a-la-caisse.yaml
+
+# L'article libre s'atteint par « PRODUIT NON TROUVÉ » (nommé ainsi depuis le
+# 29/09 : on nomme SA situation, pas notre mécanisme).
+- tapOn:
+    text: "PRODUIT NON TROUVÉ|Chercher un autre produit"
+- takeScreenshot: P0-1-porte-article-libre
+
+# ⚠️ LIMITE ASSUMÉE : la saisie du montant libre dépend d'un pavé dont les
+# libellés varient selon l'écran. Les deux saisies ci-dessous sont `optional` —
+# si elles ne trouvent pas leur cible, le flow ne mentira pas en vert : les
+# assertions de total qui suivent, elles, ne sont PAS optionnelles et tomberont.
+- inputText: "500"
+  optional: true
+- tapOn:
+    text: "Ajouter|Valider|Enregistrer"
+    optional: true
+- takeScreenshot: P0-1-premier-article-libre
+
+- tapOn:
+    text: "PRODUIT NON TROUVÉ|Chercher un autre produit"
+    optional: true
+- inputText: "300"
+  optional: true
+- tapOn:
+    text: "Ajouter|Valider|Enregistrer"
+    optional: true
+- takeScreenshot: P0-1-deux-articles-libres
+
+# ── CE QUI COMPTE : LE TOTAL ───────────────────────────────────────────────
+# 500 + 300 = 800. Si la fusion a rapproché les deux lignes par leur nom, le
+# total sera faux — et cette assertion le dira.
+- assertVisible: "Total"
+- assertNotVisible: "NaN"
+- assertVisible:
+    text: "800"

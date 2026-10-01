@@ -1,0 +1,10 @@
+# Les quatre chiffres du code secret, un par un.
+# `MAESTRO_PIN` est lu caractère par caractère : aucun code n'est écrit ici.
+appId: com.julaba.app
+---
+- evalScript: ${output.p = MAESTRO_PIN}
+- repeat:
+    times: ${MAESTRO_PIN.length}
+    commands:
+      - tapOn: "Chiffre ${output.p.charAt(0)}"
+      - evalScript: ${output.p = output.p.substring(1)}
