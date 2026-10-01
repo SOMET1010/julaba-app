@@ -143,6 +143,69 @@ marchande.
 
 ---
 
+## Le jouer en CI (`.github/workflows/maestro.yml`)
+
+Le job construit l'APK, démarre un émulateur Android (API 34, `google_apis`,
+x86_64, KVM activé), installe l'APK et joue les flows.
+
+### ⚠️ Un blocage à lever UNE FOIS
+
+GitHub ne permet de déclencher un `workflow_dispatch` que si le fichier du
+workflow existe **sur la branche par défaut**. `maestro.yml` est sur
+`claude/clever-allen-dnr8by` : l'API répond donc `404 Not Found`, et le workflow
+n'apparaît pas dans la liste des workflows déclenchables (vérifié : les dix
+workflows listés pointent tous sur `main`).
+
+**Tant que `maestro.yml` n'est pas sur `main`, personne ne peut lancer ce job** —
+ni l'agent, ni le bouton « Run workflow » de l'interface. Une fois le fichier sur
+`main`, il se lance normalement, **sur n'importe quelle branche** via l'entrée
+`branche`.
+
+### Lancer
+
+Actions → *Banc E2E Android — Maestro* → **Run workflow**, puis :
+
+| Entrée | Valeur |
+|---|---|
+| `branche` | la branche à tester (défaut `main`, doctrine REL-01 comme `apk.yml`) |
+| `flows` | `.maestro/01-demarrage.yaml` par défaut — le **seul** flow sans identifiant |
+| `api_level` | `34` |
+| `api_url` | `https://julaba-api.onrender.com/api/v1` |
+
+### Pour jouer la caisse, deux secrets
+
+`Settings → Secrets and variables → Actions` :
+
+- `MAESTRO_PHONE` — le numéro du compte de test
+- `MAESTRO_PIN` — son code
+
+**Sans eux, le job ne rougit pas** : il joue l'étiquette `sansCompte` et écrit
+dans son résumé pourquoi les autres n'ont pas tourné. Neuf flows sur dix ont
+besoin d'un compte, et neuf échecs à la connexion ne diraient rien sur la caisse.
+
+> Les identifiants ne vont **jamais** dans un fichier du dépôt — ALERTE-SEC-01.
+> Les secrets d'Actions sont faits pour ça, et `valider.mjs` refuse activement
+> tout numéro ou code écrit en dur dans un flow.
+
+### Ce que le run publie, même en échec
+
+L'artefact `maestro-<sha>` contient :
+
+- les **captures nommées** des flows, plus une capture de l'**écran final** quel
+  qu'il soit — quand un flow tombe sur un écran inattendu, c'est la première
+  chose à regarder ;
+- `rapports/debug/` — l'**arbre de vue complet** à chaque commande, l'équivalent
+  du 🐞 Rapport ;
+- `rapports/logcat.txt` et un extrait filtré (`julaba`, `chromium`, `Capacitor`,
+  `sherpa`, `AndroidRuntime`, `FATAL`) — une exception Java n'apparaît dans aucun
+  arbre de vue ;
+- `rapports/junit.xml`.
+
+Le script retient le code de sortie de `maestro test`, **collecte, puis échoue** :
+sinon on perdrait les traces exactement quand elles servent.
+
+---
+
 ## Validation sans appareil
 
 ```sh
