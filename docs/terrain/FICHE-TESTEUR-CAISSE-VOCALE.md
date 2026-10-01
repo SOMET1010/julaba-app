@@ -1,6 +1,6 @@
 # Fiche testeur — la caisse qui parle
 
-> **Cinq gestes. Une demi-heure. Vous n'avez pas besoin de connaître
+> **Sept relevés. Une petite heure. Vous n'avez pas besoin de connaître
 > l'application.**
 >
 > Vous testez une caisse pour des marchandes de marché, **dont beaucoup ne
@@ -50,7 +50,7 @@ Si tout se passe bien : dites-le aussi. « Geste 3 : OK » est une information.
 
 ---
 
-## Les cinq gestes
+## Les sept relevés
 
 ### 1 · Est-ce qu'elle vous entend vraiment ?
 
@@ -124,6 +124,39 @@ Regardez aussi : les chiffres sont-ils assez gros **en plein soleil** ?
 
 ---
 
+### 6 · Est-ce que le panier survit si l'application se ferme ?
+
+Celui-là arrive pour de vrai : le téléphone s'éteint, ou Android ferme
+l'application tout seul pour faire de la place. Si le panier est perdu, elle a
+encaissé **de mémoire** — ou n'a pas encaissé du tout.
+
+1. Mettez **2 articles** au panier. **Notez le total** sur un papier.
+2. **Fermez complètement l'application** — pas le bouton retour : la liste des
+   applications ouvertes, puis balayez JULABA pour la fermer.
+3. **Rouvrez** JULABA.
+
+**Les deux articles sont-ils encore là, avec le même total ?**
+
+Si le panier est vide ou si le total a changé : **c'est un cas qui arrête tout.**
+
+---
+
+### 7 · Deux prix libres de suite, est-ce que le compte est bon ?
+
+Un « prix libre » c'est quand elle vend quelque chose sans le nommer — elle dit
+juste un montant. Deux de suite, ils n'ont pas de nom pour les distinguer, et
+c'est là que le total peut mentir.
+
+1. Panier **vide** pour commencer.
+2. Un premier article libre à **500**.
+3. Un second article libre à **300**.
+
+**Le total affiche-t-il 800 ?** Et voyez-vous bien **deux lignes**, pas une ?
+
+Si le total n'est pas 800 : **c'est un cas qui arrête tout.**
+
+---
+
 ## Ce qui n'est PAS à tester
 
 Pour ne pas vous disperser : **le profil, la photo, la carte, les marchés, les
@@ -138,11 +171,13 @@ mais ne vous y attardez pas.
 Si vous rencontrez **l'un de ces trois cas**, prévenez immédiatement sans
 continuer :
 
-1. **Un montant faux enregistré** — le panier ou le reçu n'affiche pas ce que
-   vous avez vendu.
+1. **Un montant faux enregistré, ou une vente perdue** — le panier ou le reçu
+   n'affiche pas ce que vous avez vendu. C'est le cas d'un **panier perdu** après
+   fermeture (geste 6), et d'un **total qui n'est pas 800** sur deux prix libres
+   de 500 et 300 (geste 7).
 2. **Un montant faux dit à voix haute** — elle annonce un chiffre qui n'est pas
    celui de l'écran.
-3. **Un des cinq gestes impossible à terminer.**
+3. **Un des sept relevés impossible à terminer.**
 
 Tout le reste — un mot mal tourné, un bouton mal placé, une lenteur — se note et
 **ne vous empêche pas de continuer**.
@@ -151,5 +186,5 @@ Tout le reste — un mot mal tourné, un bouton mal placé, une lenteur — se n
 
 ## En une ligne
 
-> **Installez. Notez les 7 caractères de version. Faites les cinq gestes.
+> **Installez. Notez les 7 caractères de version. Faites les sept relevés.
 > Touchez 🐞 dès que ça cloche. Dites le repère. N'expliquez pas pourquoi.**
