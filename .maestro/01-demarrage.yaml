@@ -1,0 +1,29 @@
+# DÉMARRAGE — le seul flow qui ne demande AUCUN identifiant.
+#
+# Il répond à une question simple et souvent fausse : l'APK s'ouvre-t-il, et
+# arrive-t-il jusqu'à son écran de connexion ? C'est aussi le flow qui prouve
+# que le BANC lui-même fonctionne : s'il tombe, inutile de lire les autres.
+appId: com.julaba.app
+name: 01 — l'application démarre et montre sa connexion
+tags:
+  - sansCompte
+  - fumee
+---
+- clearState
+- launchApp:
+    clearKeychain: false
+    stopApp: true
+
+# DÉTERMINISME : on attend un élément, jamais une durée. Un `sleep` fixe passe
+# au vert sur un téléphone rapide et rouge sur celui de la marchande.
+- extendedWaitUntil:
+    visible: "Mon compte"
+    timeout: 45000
+
+- takeScreenshot: 01-connexion
+
+# LA VERSION EST LISIBLE À L'ŒIL NU. Un compte rendu sans SHA est inutilisable,
+# et on l'a déjà payé une fois (APK 0459dc0, construit sur un verify rouge).
+- assertVisible:
+    text: "v[0-9].*"
+    optional: true
