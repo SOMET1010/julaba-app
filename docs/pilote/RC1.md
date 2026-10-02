@@ -80,6 +80,15 @@ Accepter n'est pas ignorer : chacune de ces lignes a son entrée datée dans
 **Autorisé :** les **P0 / P1 bloquants** au sens de la question ci-dessus, et
 rien d'autre.
 
+> ## **Un FAIL ne rouvre pas le produit, il rouvre une ligne.**
+>
+> Règle de gouvernance, retenue par Patrick le 02/10/2026. C'est elle qui
+> empêche le prochain défaut terrain de relancer architecture, OSS, UX et voix
+> en même temps. Un défaut bloquant se corrige **lui**, et on repasse la fiche.
+>
+> Et quand quelqu'un dit « on pourrait améliorer… », la réponse opérationnelle
+> tient en un mot : **POST-PILOTE**.
+
 **Et ça contraint l'agent autant que l'équipe** — c'est la même contrainte que
 la §5 de la clôture : un défaut non bloquant trouvé en chemin se **consigne**
 et ne se corrige pas. Même petit. Même si ça prend cinq minutes. C'est la
