@@ -1,0 +1,27 @@
+# CARTE, ÉTAPE 4 — un « Continuer » de plus. Rien ne dit qu'il n'y en a qu'un ;
+# si l'écran de l'étape 3 n'en porte pas, ce geste `optional` ne coûte rien.
+appId: com.julaba.app
+name: carte 4 — second « Continuer »
+tags:
+  - carte
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "JÙLABA"
+    timeout: 90000
+- tapOn:
+    text: "Écouter et entrer"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn:
+    text: "Continuer"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn:
+    text: "Continuer"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 10000
