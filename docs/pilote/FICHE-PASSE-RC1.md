@@ -80,11 +80,32 @@ consigne le montant attendu, le montant affiché, et le geste exact.
 
 ---
 
+## 5 · Crédit introuvable  *(preuve de configuration, pas un critère de qualité)*
+
+| | |
+|---|---|
+| **geste** | parcourir la caisse et l'historique **sans chercher à faire un crédit** : regarder les moyens de paiement proposés, puis les onglets de « mes ventes » |
+| **attendu** | **« Crédit », « À crédit » et l'onglet « Crédits » sont INTROUVABLES** |
+| **observé** | |
+| | ☐ PASS ☐ **FAIL** |
+
+> **Pourquoi ce contrôle existe.** Le crédit et l'acompte sont **hors pilote**
+> (`CAISSE_CREDIT_ACTIF=false`), parce que les invariants **I4, I5 et I6** sont
+> rouges : un crédit rejoué crée deux dettes, un acompte rejoué encaisse deux
+> fois. Une garde automatique (`test:credit-hors-pilote`) vérifie le **source**
+> à chaque `verify` ; **celui-ci vérifie le BUILD**, qui est ce que la marchande
+> tient en main.
+>
+> Un FAIL ici n'est pas un défaut d'interface : c'est **un risque d'argent qui
+> rentre dans le pilote**.
+
+---
+
 ## Verdict
 
 | | |
 |---|---|
-| **les 4 PASS**, et la fiche vocale sans bloquant au sens §5 | **RC1 EST FIGÉE** |
+| **les 5 PASS**, et la fiche vocale sans bloquant au sens §5 | **RC1 — Caisse EST FIGÉE** |
 | **un seul FAIL** | **RC1 échoue** — on corrige ce défaut-là, **et rien d'autre** |
 
 Un FAIL ne rouvre pas le produit : il rouvre **une ligne**. Tout ce qu'on
