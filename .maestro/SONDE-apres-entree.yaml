@@ -1,0 +1,63 @@
+# SONDE — QUE VOIT-ON APRÈS « ÉCOUTER ET ENTRER » ?
+#
+# UNE SEULE QUESTION, AUCUNE ASSERTION FONCTIONNELLE. Ce fichier ne teste rien :
+# il OBSERVE. Il ne doit donc jamais échouer pour une raison métier, et un rouge
+# ici ne dirait rien sur JULABA.
+#
+# POURQUOI IL EXISTE — run #13. Le flow `00-login` a touché « Écouter et entrer »
+# pour de vrai (bouton `android.widget.Button`, tap à 540,2095), l'application a
+# RÉPONDU (sherpa TTS : « Akwaba. » puis « Pour vendre, touche un produit, ou
+# parle à Tantie Nanti Lou. On est ensemble. »), puis le geste suivant est tombé
+# sur `Taper mon numéro sur le clavier` — introuvable.
+#
+# ET LE RELEVÉ D'APRÈS-COUP NE TRANCHAIT PAS : pris 37 s plus tard, il montrait
+# ENCORE les textes de l'écran d'entrée, PLUS un menu « Copy / Select all /
+# Share / Read aloud » — le menu de sélection de texte de la WebView. Deux
+# lectures incompatibles, aucune preuve :
+#   · le tap a été reçu comme un APPUI LONG, le bouton n'a jamais été activé ;
+#   · le bouton a été activé, l'application PARLE d'abord, et la navigation
+#     arrive après la phrase — que le flow n'a pas attendue.
+#
+# On ne corrige pas sur une hypothèse. Cette sonde prend QUATRE relevés espacés
+# après le tap : la série dit si l'écran bouge, et quand.
+#
+# `00-login.yaml` N'EST PAS MODIFIÉ tant que cette sonde n'a pas parlé.
+appId: com.julaba.app
+name: SONDE — l écran après « Écouter et entrer »
+tags:
+  - sonde
+---
+- launchApp:
+    stopApp: true
+
+# Le seul libellé affirmé ici, et il est MESURÉ (run #11, confirmé au run #13).
+- extendedWaitUntil:
+    visible: "JÙLABA"
+    timeout: 90000
+- takeScreenshot: sonde-0-avant-le-tap
+
+# LE GESTE OBSERVÉ. `optional` parce qu'un rouge sur ce tap n'apprendrait rien
+# de plus que le run #13 : ce qu'on veut, c'est la SUITE.
+- tapOn:
+    text: "Écouter et entrer"
+    optional: true
+
+# ── LA SÉRIE ───────────────────────────────────────────────────────────────
+# Chaque capture coûte environ 3 s (mesuré au run #13 : 00:50:24,995 →
+# 00:50:28,082), et `waitForAnimationToEnd` rend la main dès que l'écran est
+# stable. Les quatre relevés couvrent donc largement la phrase parlée, qui
+# durait ~5 s au run #13. Si l'écran change, on verra À QUEL MOMENT.
+- takeScreenshot: sonde-1-juste-apres
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: sonde-2-apres-stabilisation
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: sonde-3-plus-tard
+- waitForAnimationToEnd:
+    timeout: 10000
+- takeScreenshot: sonde-4-fin
+
+# AUCUN `assertVisible` : le relevé de hiérarchie du harnais (systématique
+# depuis ce lot) imprime les textes réellement présents à la fin. C'est LUI le
+# livrable, pas le vert de ce fichier.

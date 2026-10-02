@@ -151,6 +151,49 @@ else
     --debug-output "$RAPPORTS/debug" || echec=$?
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────
+# RELEVÉ DE HIÉRARCHIE — SYSTÉMATIQUE, PAS SEULEMENT À L'ÉCHEC.
+#
+# Run #13 : le flow est tombé sur `Taper mon numéro sur le clavier`, et la
+# hiérarchie relevée 37 s plus tard montrait encore l'écran d'ENTRÉE plus un
+# menu « Copy / Select all / Share » — donc deux lectures possibles, et aucune
+# preuve pour trancher. Il manquait l'état de l'écran AU MOMENT du geste.
+#
+# Et le trou était structurel : la hiérarchie n'était relevée QUE si `maestro
+# test` tombait. Un flow qui PASSE ne montrait rien — donc une sonde conçue
+# pour observer un écran ne pouvait rien rapporter sans échouer exprès. On ne
+# construit pas un instrument de mesure qui n'écrit que quand il casse.
+# ─────────────────────────────────────────────────────────────────────────────
+relever_hierarchie() {
+  # $1 = nom du fichier, $2 = ce qu'on regarde (affiché en tête)
+  fichier="$RAPPORTS/${1:-hierarchie}.json"
+  echo "— ÉTAT DE L ÉCRAN : ${2:-fin du passage} —"
+  maestro hierarchy > "$fichier" 2>&1 || true
+  if [ ! -s "$fichier" ]; then
+    echo "(hierarchy indisponible)"
+    return 0
+  fi
+  echo "— TEXTES que Maestro voit (tous paquets confondus) —"
+  grep -oE '"(text|accessibilityText|hintText)" : "[^"]+"' "$fichier" \
+    | sort -u | head -40
+  echo
+  echo "— NŒUDS de l application (resource-id julaba) —"
+  n=$(grep -c 'com.julaba.app' "$fichier" || true)
+  echo "occurrences de « com.julaba.app » dans la hiérarchie : ${n:-0}"
+  grep -oE '"(resource-id|class)" : "[^"]*(julaba|WebView|webkit)[^"]*"' "$fichier" \
+    | sort -u | head -15
+  echo
+  # Run #7 : l'application DIT « Akwaba » (sherpa TTS le synthétise, c'est au
+  # logcat) et Maestro ne le voit pas. Deux causes qui n'ont rien à voir :
+  #   · mes libellés sont faux → on corrige un flow ;
+  #   · Maestro ne lit pas la WEBVIEW → aucun flow ne marchera, banc à repenser.
+  # Run #11 a tranché : Maestro LIT la WebView. La lecture reste imprimée parce
+  # qu'elle redeviendra la bonne question le jour où la WebView changera.
+  echo "LECTURE : s il n y a AUCUN texte de JULABA mais un nœud WebView,"
+  echo "          Maestro ne lit pas le contenu HTML — le banc est à repenser."
+  echo "          S il y a des textes, ce sont mes libellés qui sont faux."
+}
+
 echo "::group::Collecte des traces"
 cp -r "$HOME/.maestro/tests" "$RAPPORTS/maestro-tests" 2>/dev/null || true
 # Les `takeScreenshot: nom` écrivent dans le répertoire courant.
@@ -162,6 +205,12 @@ grep -aE "julaba|chromium|Capacitor|sherpa|AndroidRuntime|FATAL" "$RAPPORTS/logc
   > "$RAPPORTS/logcat-julaba.txt" 2>/dev/null || true
 kill "$PID_LOGCAT" 2>/dev/null || true
 ls -la "$RAPPORTS/" "$RAPPORTS/captures/" || true
+echo "::endgroup::"
+
+# LE RELEVÉ PART DANS TOUS LES CAS : un vert qui ne dit pas CE QU IL A VU ne
+# sert qu une fois. C est ce relevé qui donne les libellés du flow suivant.
+echo "::group::CE QUE MAESTRO VOIT À LA FIN DU PASSAGE"
+relever_hierarchie "hierarchie" "après le dernier geste du flow"
 echo "::endgroup::"
 
 # LA CAUSE DOIT ÊTRE DANS LE LOG, PAS SEULEMENT DANS LE ZIP — run #5 : le flow
@@ -176,36 +225,6 @@ if [ "$echec" != "0" ]; then
   find "$RAPPORTS/debug" -name '*.txt' -o -name '*.log' 2>/dev/null | head -4 | while read -r f; do
     echo "— $(basename "$f") (40 dernières lignes) —"; tail -40 "$f"; echo
   done
-  # LA QUESTION QUI DÉCIDE DE TOUT LE BANC — run #7 : l'application DIT
-  # « Akwaba » (sherpa TTS le synthétise, c'est dans le logcat) et Maestro ne le
-  # voit pas. Deux causes possibles, et elles n'ont rien à voir :
-  #   · mes libellés sont faux → on corrige un flow ;
-  #   · Maestro ne lit pas le contenu de la WEBVIEW Capacitor → AUCUN flow ne
-  #     pourra jamais marcher, et le banc entier est à repenser.
-  # La hiérarchie de vue tranche en une ligne. Sans elle, on devine.
-  # Run #8 : un `head -120` brut n'a montré que `com.android.systemui` — la
-  # barre de statut — donc rien de concluant : une hiérarchie COMMENCE par là.
-  # On ne tronque plus, on FILTRE, et on compte : la question est « Maestro
-  # voit-il du texte de JULABA », pas « à quoi ressemble l'arbre ».
-  maestro hierarchy > "$RAPPORTS/hierarchie.json" 2>&1 || true
-  if [ -s "$RAPPORTS/hierarchie.json" ]; then
-    echo "— TEXTES que Maestro voit (tous paquets confondus) —"
-    grep -oE '"(text|accessibilityText|hintText)" : "[^"]+"' "$RAPPORTS/hierarchie.json" \
-      | sort -u | head -40
-    echo
-    echo "— NŒUDS de l application (resource-id julaba) —"
-    n=$(grep -c 'com.julaba.app' "$RAPPORTS/hierarchie.json" || true)
-    echo "occurrences de « com.julaba.app » dans la hiérarchie : ${n:-0}"
-    grep -oE '"(resource-id|class)" : "[^"]*(julaba|WebView|webkit)[^"]*"' "$RAPPORTS/hierarchie.json" \
-      | sort -u | head -15
-    echo
-    echo "LECTURE : s il n y a AUCUN texte de JULABA mais un nœud WebView,"
-    echo "          Maestro ne lit pas le contenu HTML — le banc est à repenser."
-    echo "          S il y a des textes, ce sont mes libellés qui sont faux."
-  else
-    echo "(hierarchy indisponible)"
-  fi
-  echo
   # LES WAV EN BASE64 SONT ÉCARTÉS : chaque synthèse imprime des dizaines de
   # milliers de caractères qui noient les neuf lignes utiles. Trois lectures de
   # log y sont passées.
