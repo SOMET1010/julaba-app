@@ -4,13 +4,29 @@ Ce que JULABA **adopte**, **adapte** ou **refuse** de l'écosystème open source
 et sur quelle **preuve**. Un lot n'entre ici qu'avec un run, un commit ou un
 fichier de mesure qu'on peut rouvrir.
 
-> Règle du registre : un statut sans lien de preuve n'est pas un statut, c'est
-> une opinion. Et « documenter une dette ne la ferme pas » — la colonne
-> *Réserve* dit ce qui reste ouvert, elle ne s'efface pas toute seule.
+> **Règle du registre** : un statut sans lien de preuve n'est pas un statut,
+> c'est une opinion. Et « documenter une dette ne la ferme pas » — ce qui reste
+> ouvert est écrit, et ne s'efface pas tout seul.
+
+> ## RÈGLE D'ARRÊT DES SPIKES — Patrick, 02/10/2026
+>
+> **Preuve en 1 à 3 expériences. Ensuite : ADOPTER / REJETER / BACKLOG.**
+> Pas dix itérations pour perfectionner un spike.
+>
+> **Un spike OSS a un budget d'essai ET une condition d'arrêt.** Sans elles, on
+> passe deux jours à prouver qu'un outil de test fonctionne pendant que la
+> vendeuse n'a rien gagné. C'est exactement ce qui est arrivé à OSS-01 entre
+> les runs #13 et #16.
+>
+> **Et le critère d'entrée, qui prime sur tout le reste** : aucun nouveau
+> framework ni harnais sans **démonstration préalable d'un gain produit ou de
+> code supprimé**. Un composant open source n'entre que là où JULABA a
+> développé maison quelque chose qu'une brique éprouvée remplace **et** où le
+> produit s'en trouve concrètement amélioré.
 
 | Lot | Sujet | Statut | Décidé le |
 |---|---|---|---|
-| **OSS-01** | Maestro — banc E2E Android | **ADOPTÉ / BANC OPÉRATIONNEL** | 02/10/2026 |
+| **OSS-01** | Maestro — banc E2E Android | **SUFFISANT / GELÉ** — validé techniquement, non industrialisé | 02/10/2026 |
 | **OSS-02** | Sherpa VAD contre MIC-01 | **SPIKE LIVRÉ — aucune décision de remplacement** | 02/10/2026 |
 | **OSS-03** | TanStack Query | NON OUVERT | — |
 | **OSS-04** | EventBus | NON OUVERT | — |
@@ -19,9 +35,25 @@ fichier de mesure qu'on peut rouvrir.
 
 ## OSS-01 — Maestro, banc E2E Android
 
-**Statut : ADOPTÉ / BANC OPÉRATIONNEL.**
-**Réserve : 1 flow prouvé vert, 9 flows à qualifier** (secrets + observation
-réelle des libellés).
+**Statut : SUFFISANT / GELÉ** — décision de Patrick, 02/10/2026.
+Validé **techniquement**, **non industrialisé**. On conserve le flow vert comme
+preuve que la technologie fonctionne. **On ne cherche pas 10/10 flows.** Les
+autres scénarios sont du **backlog d'industrialisation**, pas un préalable au
+produit.
+
+> **Pourquoi le gel, et la raison est juste** : à partir du run #13, le travail
+> a basculé du produit vers l'outil. Apprendre comment Maestro tape sur chaque
+> écran n'améliore pas la caisse de la marchande. Les runs #14, #15 et #16 ont
+> servi à perfectionner l'instrument ; le #16 a été **annulé** le jour même.
+
+| ce qui est prouvé | |
+|---|---|
+| build APK en CI | ✅ |
+| émulateur Android | ✅ |
+| WebView accessible à Maestro, **sans `data-testid`** | ✅ |
+| interaction UI (tap qui atteint l'application) | ✅ |
+| **premier flow E2E vert** | ✅ run #12 |
+| extension aux autres parcours | **backlog** |
 
 ### Ce qui est prouvé
 
