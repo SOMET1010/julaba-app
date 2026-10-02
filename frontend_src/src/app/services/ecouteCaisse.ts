@@ -86,13 +86,81 @@ export const AVANT_PREMIER_MOT_MS = 6000;
  * rafraîchi à chaque image). C'est lui qui dit qu'une voix porte.
  */
 
-/** Le niveau (0-100) au-dessus duquel on considère qu'une voix porte.
- *  Au-dessus du bruit d'une pièce calme, sous une parole normale. */
+/** Le niveau (0-100) au-dessus duquel on considère qu'une voix porte, QUAND on
+ *  n'a pas pu mesurer le fond. Au-dessus du bruit d'une pièce calme, sous une
+ *  parole normale. C'est le repli de `seuilDeParole`, plus son défaut. */
 export const NIVEAU_PAROLE = 12;
 
-/** Vrai quand le micro entend une voix, à cet instant. */
-export function parleMaintenant(niveau: number): boolean {
-  return Number.isFinite(niveau) && niveau >= NIVEAU_PAROLE;
+/**
+ * MIC-02B — LE SEUIL S'ADAPTE AU FOND, PARCE QU'UN MARCHÉ N'EST PAS UNE PIÈCE.
+ *
+ * `NIVEAU_PAROLE = 12` était un seuil FIXE, et le banc OSS-02 a mesuré ce qu'il
+ * coûte sous un bruit continu (`spike/oss-02-vad/EXPERIENCE-2.md`) :
+ *   · sur du bruit SEUL, il déclarait qu'elle parlait dès 0,00 s — un FAUX
+ *     POSITIF : le micro restait ouvert sur rien, puis se fermait pour
+ *     « silence », et la marchande recevait une réponse à une phrase qu'elle
+ *     n'avait pas dite ;
+ *   · sous du bruit AVEC parole, il ouvrait à 0,03 s au lieu de 1,34 s — le
+ *     début capté n'était pas de la voix.
+ * Au marché, ce n'est pas un cas limite : c'est la journée entière.
+ *
+ * LA RÈGLE : on écoute le fond avant d'écouter la voix. Le seuil devient
+ * `plancher + MARGE_VOIX`. En pièce calme le plancher est proche de zéro et le
+ * seuil tombe SOUS 12 — c'est ce qui rattrape une voix faible. Au marché il
+ * monte avec le fond — c'est ce qui supprime le faux positif.
+ *
+ * MESURÉ SUR LES 8 CAS DU BANC, MÊME VÉRITÉ TERRAIN : défauts cumulés 5,34 →
+ * 2,98. Le faux positif disparaît. Régressions : latence de fin +0,2 s sur deux
+ * cas, départ −0,03 s sur un autre.
+ *
+ * CE QUI RESTE IMPARFAIT, et il faut le savoir : sous bruit + parole, le départ
+ * passe à 0,42 s au lieu de 1,34. On capte encore ~0,9 s de fond avant la voix.
+ * Sherpa VAD fait mieux (1,48 s) et reste candidat post-pilote — mais ce bruit
+ * entre dans la transcription, il ne fabrique pas de montant.
+ */
+
+/** Ce qu'une voix doit dépasser le fond pour compter comme une voix. */
+export const MARGE_VOIX = 6;
+
+/** La durée pendant laquelle on écoute le FOND, au tout début, avant d'écouter
+ *  la voix. C'est le temps qu'elle met à approcher le micro de sa bouche. */
+export const ECOUTE_PLANCHER_MS = 400;
+
+/**
+ * Le plancher de bruit, à partir des niveaux relevés pendant
+ * `ECOUTE_PLANCHER_MS`. MÉDIANE, et pas moyenne : un claquement de cageot, un
+ * raclement de gorge, et une moyenne porterait le plancher — donc le seuil —
+ * pour toute la phrase. La médiane ne bouge pas pour un échantillon isolé.
+ *
+ * Rend `null` quand il n'y a rien à mesurer : l'appelant retombe alors sur
+ * `NIVEAU_PAROLE`, et le comportement est exactement celui d'avant ce lot.
+ */
+export function plancherDeBruit(niveaux: readonly number[]): number | null {
+  const valides = niveaux.filter((n) => Number.isFinite(n) && n >= 0);
+  if (valides.length === 0) return null;
+  const tries = [...valides].sort((a, b) => a - b);
+  return tries[Math.floor(tries.length / 2)];
+}
+
+/**
+ * Le seuil à retenir pour toute la durée d'une écoute.
+ *
+ * IL EST CALCULÉ UNE FOIS ET FIGÉ — contrainte de Patrick, 02/10/2026, et elle
+ * est juste : un seuil recalculé en continu monterait avec la voix de la
+ * marchande elle-même. Plus elle parle fort, plus le seuil grimpe, et il finit
+ * par passer AU-DESSUS d'elle : le micro se fermerait au milieu de sa phrase,
+ * d'autant plus vite qu'elle parle. Un capteur ne se règle pas sur ce qu'il est
+ * en train de mesurer.
+ */
+export function seuilDeParole(plancher: number | null): number {
+  if (plancher === null || !Number.isFinite(plancher)) return NIVEAU_PAROLE;
+  return Math.max(0, plancher) + MARGE_VOIX;
+}
+
+/** Vrai quand le micro entend une voix, à cet instant. Le seuil est celui de
+ *  l'écoute en cours ; sans seuil, c'est `NIVEAU_PAROLE`, comme avant. */
+export function parleMaintenant(niveau: number, seuil: number = NIVEAU_PAROLE): boolean {
+  return Number.isFinite(niveau) && niveau >= seuil;
 }
 
 export interface FaitsEcoute {
