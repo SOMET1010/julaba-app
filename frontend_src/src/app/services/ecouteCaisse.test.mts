@@ -32,6 +32,15 @@ console.log('[1] Quand cesser d\'écouter');
   const fin = finDEcoute({ ...base, msDepuisDernierMot: SILENCE_FIN_MS });
   ok(fin.cesser === true && fin.raison === 'silence',
      `${SILENCE_FIN_MS} ms de silence closent la phrase — c'est le geste qui manquait`);
+
+  // MIC-02A — LA GARDE DE PATRICK, 02/10/2026. Le banc OSS-02 a mesuré qu'à
+  // 1 500 ms une hésitation de 2 s fermait le micro à 4,26 s alors qu'elle
+  // parlait jusqu'à 5,50 s. Cette garde dit la règle en clair : DEUX SECONDES
+  // D'HÉSITATION RESTENT DANS LA MÊME PHRASE. Elle est écrite en millisecondes
+  // ABSOLUES, pas en `SILENCE_FIN_MS - 1` : une garde qui se recalcule depuis
+  // la constante qu'elle surveille ne surveille rien.
+  ok(finDEcoute({ ...base, msDepuisDernierMot: 2000 }).cesser === false,
+     'deux secondes d\'hésitation restent DANS la phrase — elle regarde son étal, elle cherche son prix');
 }
 {
   // LE CAS DE PATRICK : elle parle SANS S'ARRÊTER. Sans plafond, le micro

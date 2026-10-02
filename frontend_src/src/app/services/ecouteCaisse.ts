@@ -36,9 +36,27 @@ import { plurielNom } from './accordFrancais';
 
 // ── 1. QUAND CESSER D'ÉCOUTER ──────────────────────────────────────────────
 
-/** Le silence qui clôt une phrase. Assez long pour qu'elle hésite, assez court
- *  pour qu'elle n'ait pas à y penser. */
-export const SILENCE_FIN_MS = 1500;
+/**
+ * Le silence qui clôt une phrase. Assez long pour qu'elle hésite, assez court
+ * pour qu'elle n'ait pas à y penser.
+ *
+ * MIC-02A — 1 500 ms COUPAIT LA PHRASE EN DEUX. Arbitrage de Patrick,
+ * 02/10/2026, sur mesure du banc OSS-02 (`spike/oss-02-vad/EXPERIENCE-2.md`) :
+ * une marchande qui hésite deux secondes — elle regarde son étal, elle cherche
+ * son prix, elle reprend — voyait le micro se fermer à 4,26 s alors qu'elle
+ * parlait encore jusqu'à 5,50 s. Sa phrase partait en deux morceaux, et une
+ * demi-phrase sur une vente, c'est un montant faux ou une vente perdue.
+ *
+ * LE COÛT EST MESURÉ ET IL EST PETIT : +0,51 s d'attente après une phrase
+ * normale (2,27 s → 2,78 s). Et il faut connaître ce second chiffre : l'attente
+ * RESSENTIE n'est pas le réglage. La queue de voix — souffle, réverbération —
+ * maintient le niveau au-dessus du seuil ~0,8 s après la dernière syllabe. Donc
+ * 2 200 ms se vivent comme 2,8 s. C'est ce chiffre-là qui a été arbitré.
+ *
+ * `AVANT_PREMIER_MOT_MS` et `ECOUTE_MAX_MS` ne bougent pas :
+ * 6 s pour commencer → 2,2 s pour hésiter → 12 s au plafond.
+ */
+export const SILENCE_FIN_MS = 2200;
 
 /** Le plafond dur. Une vente au marché se dit en quelques secondes : au-delà,
  *  ce n'est plus une phrase, c'est une conversation — et ce n'est pas à nous. */
