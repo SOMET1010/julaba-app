@@ -58,16 +58,27 @@ mkdir -p "$RAPPORTS/captures" "$RAPPORTS/debug"
 echo "::group::Précondition — JULABA au premier plan"
 adb shell am force-stop com.julaba.app || true
 adb shell monkey -p com.julaba.app -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
+# RUN #10 : CETTE BOUCLE FERMAIT L'APPLICATION ELLE-MÊME. Elle envoyait
+# KEYCODE_BACK à CHAQUE tour, sans condition : `monkey` lançait JULABA, le BACK
+# la renvoyait au lanceur, soixante fois de suite. Résultat mesuré — l'écran est
+# resté sur l'accueil Android pendant 120 s (Chrome, Gmail, Messages, Photos…)
+# et la sonde a conclu « précondition non tenue », à juste titre.
+# Le BACK ne part DÉSORMAIS que si un dialogue est vraiment détecté, et l'app
+# est RELANCÉE quand elle n'est pas devant — au lieu d'être fermée.
 FOREGROUND=non
-for i in $(seq 1 60); do
-  # On écarte tout dialogue système qui se serait glissé par-dessus.
+for i in $(seq 1 45); do
   top=$(adb shell dumpsys activity activities 2>/dev/null | grep -E 'mResumedActivity|topResumedActivity' | head -1)
   case "$top" in
     *com.julaba.app*) FOREGROUND=oui; break ;;
   esac
-  # Une boîte « ne répond pas » encore visible malgré hide_error_dialogs : on la ferme.
-  adb shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
-  sleep 2
+  # Un dialogue système par-dessus ? ALORS seulement on le ferme.
+  if adb shell dumpsys window 2>/dev/null | grep -qE 'Application Error|isn.t responding|aerr|AppErrorDialog'; then
+    echo "  (dialogue système détecté — fermeture)"
+    adb shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
+  fi
+  # Sinon : on (re)lance, parce que ne rien faire ne la met pas devant.
+  adb shell monkey -p com.julaba.app -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
+  sleep 3
 done
 echo "activité résumée : ${top:-(inconnue)}"
 echo "JULABA au premier plan : $FOREGROUND (après $((i*2)) s)"
@@ -81,9 +92,12 @@ if [ "$FLOWS" = "SONDE" ]; then
   echo "::group::SONDE — ce que Maestro voit, JULABA au premier plan"
   adb exec-out screencap -p > "$RAPPORTS/captures/sonde-ecran.png" 2>/dev/null || true
   maestro hierarchy > "$RAPPORTS/hierarchie.json" 2>&1 || true
-  textes=$(grep -cE '"(text|accessibilityText)" : "[^"]+"' "$RAPPORTS/hierarchie.json" 2>/dev/null || echo 0)
-  julaba=$(grep -c 'com.julaba.app' "$RAPPORTS/hierarchie.json" 2>/dev/null || echo 0)
-  webview=$(grep -cE 'WebView|webkit|chromium' "$RAPPORTS/hierarchie.json" 2>/dev/null || echo 0)
+  # `grep -c` imprime DÉJÀ 0 quand il ne trouve rien ; le `|| echo 0` en
+  # ajoutait un second, et le compte s'affichait sur deux lignes (run #10).
+  compte () { grep -cE "$1" "$RAPPORTS/hierarchie.json" 2>/dev/null | head -1 || true; }
+  textes=$(compte '"(text|accessibilityText)" : "[^"]+"')
+  julaba=$(compte 'com\.julaba\.app')
+  webview=$(compte 'WebView|webkit|chromium')
   echo "  JULABA au premier plan .......... $FOREGROUND"
   echo "  textes visibles (tous paquets) .. $textes"
   echo "  nœuds « com.julaba.app » ........ $julaba"
