@@ -25,6 +25,7 @@ import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMai
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { FournisseurDemandePrix, MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
+import { BoutonDirePrix } from './BoutonDirePrix';
 import { ETAT_INITIAL, empreintePanier, reduire, type EffetEncaissement, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
 import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { PaveMontant } from '../shared/PaveMontant';
@@ -1543,6 +1544,33 @@ function POSCaisseInner() {
               <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>
                 {refChoisie ? 'Ton prix de vente' : 'Montant'}
               </label>
+
+              {/* VOX-03 — ELLE PEUT DIRE SON PRIX, ICI AUSSI.
+                  Mesuré sur l'APK `ca2e817`, journal du 02/10 21:38 : Tantie
+                  demande « Piment. Quel est ton prix ? », puis TRENTE-HUIT
+                  SECONDES passent SANS un seul `ECOUTE_DEBUT`. Les 10 000 F sont
+                  entrés au clavier. La question était posée à la voix, la
+                  réponse exigée au doigt — sur l'écran de l'ARGENT, devant
+                  précisément la personne pour qui cette application existe.
+
+                  `BoutonDirePrix` (VOX-03) existait déjà, testé, et vivait dans
+                  `SaisieGuidee` et `AjoutProduitGuide`. Il manquait ICI, sur le
+                  chemin qui s'ouvre quand une vente DICTÉE n'a pas de prix —
+                  c'est-à-dire le chemin de la marchande qui parle.
+
+                  PAS DE `ouvrirToutSeul` sur cet écran-ci, et c'est délibéré :
+                  la question est déjà dite par `ouvrirPrixManquant`
+                  (`TATA_QUEL_PRIX`). Ouvrir le micro tout seul 250 ms plus tard
+                  le ferait écouter Tantie en train de parler, et transcrire sa
+                  propre question. Elle appuie, elle dit son prix.
+
+                  Le clavier reste dessous, inchangé, pour qui préfère taper. */}
+              {guidageVocal() && (
+                <div style={{ marginTop: 6 }}>
+                  <BoutonDirePrix onMontant={(m) => setLibreMontant(String(m))} />
+                </div>
+              )}
+
               <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:14 }}>
                 <input
                   value={libreMontant}
