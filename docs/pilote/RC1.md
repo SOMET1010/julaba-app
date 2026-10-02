@@ -94,7 +94,10 @@ raison pour laquelle on n'avait jamais fini.
 Contient **MIC-02A** (`SILENCE_FIN_MS` 2200) et **MIC-02B** (seuil adaptatif).
 Sans voix dioula, sans montants dioula.
 
-**Statut : en attente de la passe terrain sur les huit critères.**
+**Statut : CANDIDATE RC1** — validé par Patrick le 02/10/2026. Ce n'est plus
+« un APK encore en amélioration ». On ne cherche plus ce qu'on peut améliorer :
+on cherche **uniquement** si l'un des huit critères de sortie échoue de manière
+bloquante.
 
 S'il n'y a **aucun défaut bloquant**, on fige — **même s'il existe encore un
 meilleur réglage possible**, et on sait déjà qu'il en existe un : voir
