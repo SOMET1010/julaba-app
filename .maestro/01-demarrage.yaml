@@ -14,37 +14,36 @@ tags:
     clearKeychain: false
     stopApp: true
 
-# RUN #6 — CE FLOW ATTENDAIT LE MAUVAIS ÉCRAN, et le logcat l'a prouvé :
-# après `clearState`, l'application rejoue son ONBOARDING avant la connexion.
-# On l'a vu parler, par sherpa TTS :
-#     synthesize {"text":"Akwaba."}
-#     synthesize {"text":"Pour vendre, touche un produit, ou parle à Tantie…"}
-# « Mon compte » n'arrive qu'APRÈS ces diapos. L'application n'était pas en
-# faute ; l'assertion l'était.
+# LES LIBELLÉS DE CE FLOW SONT MESURÉS, PLUS DEVINÉS — run #11 (SONDE).
 #
-# DÉTERMINISME : on attend un élément, jamais une durée. Un `sleep` fixe passe
-# au vert sur un téléphone rapide et rouge sur celui de la marchande.
+# Pendant six runs ce flow a attendu « Mon compte ». Ce texte n'existe pas :
+# l'écran affiche « Mon commerce ». Et j'attendais aussi « Akwaba » — un mot
+# que l'application PRONONCE (sherpa TTS le synthétise, c'est dans le logcat)
+# mais qu'elle N'ÉCRIT JAMAIS. J'avais pris une phrase entendue pour un texte
+# affiché.
 #
-# ÉTAPE 1 — L'APPLICATION EST DEBOUT. On accepte l'onboarding OU la connexion :
-# ce flow répond « l'APK s'ouvre-t-il », pas « quel écran exactement ».
+# CE QUE LA SONDE A RELEVÉ, écran d'entrée, JULABA au premier plan en 4 s :
+#     « JÙLABA »                                    « Mon commerce »
+#     « Jùlaba - Plateforme d'inclusion économique » « Écouter et entrer »
+#     « Ton commerce, dans ta main. »               « Écouter Tantie Nanti Lou »
+#     « Vends. Compte. Avance. »                    « ANSUT »
+# 17 textes, 1 nœud `com.julaba.app`, 2 nœuds WebView : le contenu HTML est
+# bien lisible par Maestro — l'instrumentation `data-testid` n'est pas requise.
 - extendedWaitUntil:
-    visible:
-      text: "Akwaba|Mon compte|Commencer|Suivant|Bienvenue"
-    timeout: 60000
-- takeScreenshot: 01-premier-ecran
-
-# ÉTAPE 2 — LA CONNEXION FINIT PAR VENIR. `optional` parce qu'un premier
-# démarrage passe par l'onboarding, dont la longueur dépend de la voix : son
-# absence se lit sur la capture, elle ne fait pas tomber le démarrage.
-- extendedWaitUntil:
-    visible: "Mon compte"
+    visible: "JÙLABA"
     timeout: 90000
-    optional: true
 
 - takeScreenshot: 01-connexion
 
 # LA VERSION EST LISIBLE À L'ŒIL NU. Un compte rendu sans SHA est inutilisable,
 # et on l'a déjà payé une fois (APK 0459dc0, construit sur un verify rouge).
+# L'ENTRÉE EST NOMMÉE, et c'est son nom à elle : « Mon commerce », pas
+# « Mon compte ». Les deux portes de l'écran d'entrée sont vérifiées.
+- assertVisible: "Mon commerce"
+- assertVisible: "Écouter et entrer"
+
+# La version est en bas de l'écran. `optional` : un compte rendu sans elle est
+# inutilisable, mais son absence n'empêche pas l'application de démarrer.
 - assertVisible:
     text: "v[0-9].*"
     optional: true
