@@ -1,0 +1,74 @@
+# SONDE — LE PARCOURS DE CONNEXION ENTIER, EN UN SEUL RUN.
+#
+# AUCUNE ASSERTION. Tous les gestes sont `optional` : un libellé absent n'arrête
+# pas la sonde, elle passe au suivant. Ce fichier ne peut donc pas « échouer »
+# au sens métier, et son vert ne prouve rien — ce n'est pas un test.
+#
+# CE QUI PRODUIT LE RÉSULTAT, c'est l'ENREGISTREUR D'ÉCRANS du harnais
+# (`ci/jouer.sh`), qui relève l'arbre de vue chaque seconde par
+# `adb shell uiautomator dump` et garde chaque écran DIFFÉRENT du précédent,
+# avec sa capture. La carte du parcours sort dans le log du run.
+#
+# POURQUOI CE CHANGEMENT DE MÉTHODE. Jusqu'au run #14, le banc ne relevait qu'un
+# écran par passage : celui de la fin. Corriger `00-login` (dix gestes) aurait
+# donc demandé dix runs de six minutes. Le coût n'était pas dans l'émulateur, il
+# était dans la méthode — on mesurait un point là où il fallait une trajectoire.
+#
+# LES LIBELLÉS TENTÉS CI-DESSOUS SONT DE DEUX SORTES, et la distinction tient :
+#   · MESURÉS — « JÙLABA », « Écouter et entrer » (run #11/#13), « Continuer »
+#     (run #14) ;
+#   · SUPPOSÉS — tout le reste, hérité de `00-login`, jamais vu sur un écran.
+# Un supposé qui ne répond pas n'est PAS une information sur JULABA : c'est un
+# libellé à corriger, et la carte dira par quoi.
+appId: com.julaba.app
+name: SONDE — parcours de connexion, carte complète
+tags:
+  - sonde
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "JÙLABA"
+    timeout: 90000
+
+# ── ÉCRAN D'ENTRÉE (mesuré, run #11 et #13) ────────────────────────────────
+- tapOn:
+    text: "Écouter et entrer"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ── PRÉSENTATION DE TANTIE NANTI LOU (mesuré, run #14) ─────────────────────
+# L'écran dit : « Moi, c'est Tantie Nanti Lou. », « Ton guide dans le marché »,
+# « Tu peux toucher, parler et écouter. Je reste avec toi. », et son geste est
+# « Continuer ». Rien ne dit qu'il n'y en a qu'un : on en tente plusieurs.
+- tapOn:
+    text: "Continuer"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    text: "Continuer"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    text: "Continuer|Commencer|C'est parti"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# ── AU-DELÀ : TOUT EST SUPPOSÉ ─────────────────────────────────────────────
+# Ces libellés viennent de `00-login`, écrits avant toute mesure. On les tente
+# pour aller aussi loin que possible ; la carte dira lesquels existent.
+- tapOn:
+    text: "Mon commerce"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 8000
+- tapOn:
+    text: "Taper mon numéro sur le clavier|Taper mon numéro|Mon numéro"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: parcours-fin
