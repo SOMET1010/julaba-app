@@ -20,9 +20,16 @@ consulter « mes ventes ».
 
 ---
 
-## ⚠ LE TROU QUE LA MATRICE RÉVÈLE D'ABORD
+## CRÉDIT ET ACOMPTE — HORS PILOTE, NEUTRALISÉS
 
-**I4, I5 et I6 sont ROUGES** (`docs/invariants/TABLEAU_DE_BORD.md`) :
+**Décision de Patrick, 02/10/2026 : NON, la vente à crédit et l'acompte ne font
+pas partie du pilote.**
+
+> **Crédit / acompte : HORS PILOTE** — neutralisés par `CAISSE_CREDIT_ACTIF=false`
+> dans la caisse et l'historique. **Toute réactivation exige la fermeture
+> préalable de I4, I5 et I6.**
+
+### Pourquoi la question se posait
 
 | | |
 |---|---|
@@ -30,21 +37,55 @@ consulter « mes ventes ».
 | **I5** | idempotence **acompte** — un acompte rejoué encaisse **deux fois** |
 | **I6** | traçabilité **crédit** — une vente à crédit **ne laisse aucune trace en caisse** |
 
-Ce sont des défauts d'**argent**, et le pilote se joue **au marché, avec du
-réseau instable** — c'est-à-dire exactement les conditions du rejeu.
+Trois défauts d'**argent** (`docs/invariants/TABLEAU_DE_BORD.md`), face au critère
+n° 2 du feu vert J15 : « zéro perte ou doublon d'argent sur les 2 semaines,
+**rejeux offline compris** ». Le pilote se joue au marché, avec du réseau
+instable — les conditions exactes du rejeu.
 
-> **QUESTION BLOQUANTE — À DÉFINIR, et elle appartient à Patrick :**
-> **la vente à crédit et l'acompte sont-ils utilisés pendant le pilote ?**
->
-> - **Oui** → I4/I5/I6 sont **bloquants** au sens de la §5 (« écrire un montant
->   faux »), et ils remontent avant J0. Ils ne peuvent pas rester en backlog.
-> - **Non** → il faut **le garantir**, pas l'espérer : si l'écran est
->   accessible, une marchande l'utilisera. Il faut alors dire comment on
->   l'empêche, et le vérifier.
->
-> Le critère n° 2 du feu vert J15 est « **zéro perte ou doublon d'argent sur
-> les 2 semaines, rejeux offline compris** ». Il est en contradiction directe
-> avec trois invariants rouges.
+### La preuve de configuration
+
+Le verrou **n'est pas une intention, il est dans le code** — vérifié, pas
+supposé :
+
+| | |
+|---|---|
+| `POSCaisse.tsx:50` | `const CAISSE_CREDIT_ACTIF: boolean = false;` |
+| `VentesPassees.tsx:45` | `const CAISSE_CREDIT_ACTIF = false;` |
+| bouton, modale et handler crédit | montés **uniquement** sous le verrou (3 occurrences) |
+| onglet « Crédits » de l'historique | n'existe **que** sous le verrou |
+| dépendance à une variable d'environnement | **aucune** — figé au build |
+
+Qu'il soit une **constante en dur** et non une variable d'environnement est ce
+qui en fait une garantie : aucune configuration de déploiement ne peut le
+rallumer.
+
+### La nuance qui doit rester écrite
+
+**Le verrou ferme l'ÉCRITURE, pas la LECTURE.** `fetchCredits` tourne toujours
+au montage de l'historique, délibérément (correctif du 18/09/2026) : sans lui,
+une marchande ayant 10 000 F d'espèces et 5 000 F de crédits **anciens** voyait
+10 000 F dans « Toutes ». Lire ne crée aucune dette — **I4, I5 et I6 portent
+tous sur l'écriture**, et aucun chemin d'écriture n'est atteignable.
+
+### Garde automatique
+
+`frontend_src/src/app/services/creditHorsPilote.test.mts`, maillon
+**`test:credit-hors-pilote`** de `verify` (jamais dans `test:ci`, figé à 44).
+
+Elle tombe si quelqu'un repasse le flag à `true`, démonte un conditionnement, ou
+fait dépendre le verrou d'une variable d'environnement. **Sans elle, un `const`
+changé dans six semaines ne serait relié à trois invariants rouges par
+personne.**
+
+> **Limite, et elle est dans le fichier** : la garde lit le **source**, pas
+> l'APK. Le **contrôle visuel sur le build pilote** reste demandé avant J0 —
+> « Crédit », « À crédit » et l'onglet « Crédits » doivent être introuvables.
+> Il est porté par la fiche de passe, ci-dessous.
+
+### Statut
+
+**HORS PILOTE NEUTRALISÉ** — non bloquant J0, **bloquant avant toute
+réactivation du crédit**.
 
 ---
 
@@ -64,7 +105,7 @@ Légende : **preuve existante** = ce qui est déjà vérifié et où.
 | **Caisse — vente vocale** | **oui** | vendre sans lire | **RC1 — Caisse, critère 2** + 7 relevés de la fiche vocale | — | non |
 | **Caisse — encaissement** | **oui** | le bon montant | **RC1 — Caisse, critère 3** ; invariants argent-4, argent-4b, CAI-02, CAI-09 | — | non |
 | **Panier / persistance** | **oui** | ne pas perdre une vente | **RC1 — Caisse, critère 4** (PAN-01, P0.1) | — | non |
-| **Hors-ligne / rejeu** | **oui** | réseau instable au marché | **RC1 — Caisse, critère 8** ; **I2 idempotence vente 🟢** ; `test:vente-hors-ligne-statut`, `test:vente-synchronisee`, `test:refus-hors-ligne-commande` | **I7 🟡** — rejeu de file non testé spécifiquement ; **I4/I5 🔴** si crédit/acompte | **voir ci-dessus** |
+| **Hors-ligne / rejeu** | **oui** | réseau instable au marché | **RC1 — Caisse, critère 8** ; **I2 idempotence vente 🟢** ; `test:vente-hors-ligne-statut`, `test:vente-synchronisee`, `test:refus-hors-ligne-commande` | **I7 🟡** — rejeu de file non testé spécifiquement. I4/I5 **sans objet** : crédit et acompte neutralisés | non |
 | **Dépense** (1 à J0) | **oui** | le cahier de dépenses | invariants DEP-01 (libellé), DEP-02 (catégorie), `argent-depense-jour-comptable` ; `test:depense-libelle`, `test:categorie-depense` | **jamais jouée sur l'APK** dans une passe | **à vérifier** |
 | **« Mes ventes » / historique** | **oui** | consulter ce qu'elle a vendu | `test:ventes-historique-etat`, `test:resume-periode`, ARG-02 (unité historique) | **jamais jouée sur l'APK** dans une passe | **à vérifier** |
 | **Résumé de caisse / clôture** | **oui** | fond de caisse, écart déclaré (§4) | `caisse-fond-declare`, `argent-4b-cloture-encaissements`, CAI-02 | — | non |
