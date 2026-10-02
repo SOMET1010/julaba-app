@@ -27,7 +27,7 @@ fichier de mesure qu'on peut rouvrir.
 | Lot | Sujet | Statut | Décidé le |
 |---|---|---|---|
 | **OSS-01** | Maestro — banc E2E Android | **SUFFISANT / GELÉ** — validé techniquement, non industrialisé | 02/10/2026 |
-| **OSS-02** | Sherpa VAD contre MIC-01 | **SPIKE LIVRÉ — aucune décision de remplacement** | 02/10/2026 |
+| **OSS-02** | Sherpa VAD contre MIC-01 | **REJETÉ pour le pilote** — candidat post-pilote | 02/10/2026 |
 | **OSS-03** | TanStack Query | NON OUVERT | — |
 | **OSS-04** | EventBus | NON OUVERT | — |
 
@@ -138,8 +138,57 @@ par la voix, c'est l'erreur à ne pas faire. De même, l'écran dit
 
 ## OSS-02 — Sherpa VAD contre MIC-01
 
-**Statut : SPIKE LIVRÉ. Aucune décision de remplacement.**
-Aucun fichier de production touché, conformément au cadrage.
+**Statut : REJETÉ pour le pilote.** Candidat post-pilote.
+Décision de Patrick, 02/10/2026, après **deux** expériences — la règle d'arrêt
+a été tenue.
+
+**Pourquoi le rejet, et ce n'est pas un rejet technique** : Sherpa VAD est très
+bon. Mais « la détection vocale maison » fait **quatre lignes** — un seuil fixe
+`NIVEAU_PAROLE = 12` dans `ecouteCaisse.ts`. Le remplacer demanderait un
+pipeline de **streaming audio natif** : `parleMaintenant` est temps réel, et la
+chaîne actuelle est `MediaRecorder → blob → sherpa`, sans flux continu. Quatre
+lignes supprimées contre un chantier d'architecture : le critère d'entrée du
+registre ne passe pas.
+
+**Et une relecture du code a corrigé la lecture du spike #1** : sur les trois
+défauts mesurés de MIC-01, deux viennent du **seuil fixe** (le bruit déclenche,
+le bruit masque le début) et le troisième — l'hésitation coupe la phrase — vient
+de `SILENCE_FIN_MS`, un **nombre**, pas de l'analyseur. Aucun VAD ne corrige un
+nombre. Le « 7 sur 8 » du spike #1 est juste ; sa lecture était incomplète.
+
+### Expérience #2 — seuil adaptatif, et c'est elle qui tranche
+
+Le plancher de bruit est mesuré sur les 400 premières ms (médiane), le seuil
+devient `plancher + 6`. Résultat sur les 8 mêmes cas, même vérité terrain :
+
+- le **faux positif sur bruit constant disparaît** — le cas qui coûte une vente
+  au marché ;
+- régressions mesurées : latence de fin **+0,2 s**, départ **−0,03 s**. Rien de
+  notable ;
+- **défauts cumulés 5,34 → 2,98**, soit −44 %.
+
+Détail, tableau complet et limites : [`spike/oss-02-vad/EXPERIENCE-2.md`](../../spike/oss-02-vad/EXPERIENCE-2.md).
+
+### Arbitrage produit pris au passage : `SILENCE_FIN_MS` 1500 → 2200 ms
+
+Décision de Patrick. Pour une marchande qui hésite, regarde son étal ou cherche
+son prix, 1,5 s est agressif — et le banc le prouve : à 1 500 ms une hésitation
+de 2 s **coupe la phrase en deux** (fermeture à 4,26 s alors qu'elle parle
+jusqu'à 5,50 s). À 2 200 ms, plus de coupure.
+
+`AVANT_PREMIER_MOT_MS = 6000` et `ECOUTE_MAX_MS = 12000` **ne changent pas** :
+6 s pour commencer → 2,2 s pour hésiter → 12 s au plafond.
+
+**Les deux gardes demandées avant production sont mesurées** :
+
+| garde | résultat |
+|---|---|
+| une pause de 2 s reste dans la même phrase | **oui** à 2 200 ms |
+| attente après une phrase normale | 2,27 s → **2,78 s** (+0,51 s) |
+
+Et le chiffre qui compte n'est pas 2,2 s : la **queue de voix** maintient le
+niveau ~0,8 s après la dernière syllabe, donc le réglage **se ressent comme
+2,8 s**. C'est ce chiffre-là qu'on arbitre.
 
 **Résultat mesuré : Sherpa VAD gagne 7 cas sur 8, égalité sur le huitième.
 MIC-01 n'en gagne aucun.** Trois défauts de MIC-01, mesurés : le bruit
