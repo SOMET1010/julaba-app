@@ -127,6 +127,49 @@ if [ "$FLOWS" = "SONDE" ]; then
   exit "$sortie"
 fi
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ENREGISTREUR D'ÉCRANS — LA CARTE DU PARCOURS EN UN SEUL RUN.
+#
+# Jusqu'au run #14, le banc ne relevait QU'UN écran : celui de la fin. Chaque
+# run n'apprenait donc qu'un libellé, à six minutes pièce, et corriger un flow
+# de dix gestes demandait dix runs. Le coût n'était pas dans l'émulateur, il
+# était dans la MÉTHODE.
+#
+# `adb shell uiautomator dump` lit l'arbre de vue SANS passer par Maestro : les
+# deux ne se disputent rien, et on peut échantillonner pendant que le flow joue.
+# On ne garde que les écrans DIFFÉRENTS du précédent — un parcours de dix
+# écrans tient alors en dix relevés, horodatés, dans l'ordre réel.
+#
+# C'est ce qui remplace « un écran par run » par « tout le parcours par run ».
+# ─────────────────────────────────────────────────────────────────────────────
+mkdir -p "$RAPPORTS/ecrans"
+enregistrer_ecrans() {
+  precedent=""
+  n=0
+  i=0
+  while [ "$i" -lt 600 ]; do
+    i=$((i + 1))
+    if adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1; then
+      adb shell cat /sdcard/ui.xml 2>/dev/null > /tmp/ui-courant.xml || true
+      # Les textes visibles, dédoublonnés et triés : c'est la SIGNATURE de l'écran.
+      textes=$(grep -oE 'text="[^"]+"' /tmp/ui-courant.xml 2>/dev/null \
+        | sed 's/^text="//; s/"$//' | sort -u)
+      if [ -n "$textes" ] && [ "$textes" != "$precedent" ]; then
+        n=$((n + 1))
+        {
+          echo "ÉCRAN $(printf '%02d' "$n") — t+${i}×1s"
+          echo "$textes" | sed 's/^/    /'
+        } > "$RAPPORTS/ecrans/ecran-$(printf '%02d' "$n").txt"
+        adb exec-out screencap -p > "$RAPPORTS/captures/ecran-$(printf '%02d' "$n").png" 2>/dev/null || true
+        precedent="$textes"
+      fi
+    fi
+    sleep 1
+  done
+}
+enregistrer_ecrans &
+PID_ECRANS=$!
+
 # Le logcat tourne PENDANT les flows : quand un flow tombe, la cause est souvent
 # une exception Java ou une erreur de WebView qu'aucun arbre de vue ne montre.
 adb logcat -c || true
@@ -204,11 +247,26 @@ adb exec-out screencap -p > "$RAPPORTS/captures/zz-ecran-final.png" 2>/dev/null 
 grep -aE "julaba|chromium|Capacitor|sherpa|AndroidRuntime|FATAL" "$RAPPORTS/logcat.txt" \
   > "$RAPPORTS/logcat-julaba.txt" 2>/dev/null || true
 kill "$PID_LOGCAT" 2>/dev/null || true
+kill "$PID_ECRANS" 2>/dev/null || true
 ls -la "$RAPPORTS/" "$RAPPORTS/captures/" || true
 echo "::endgroup::"
 
 # LE RELEVÉ PART DANS TOUS LES CAS : un vert qui ne dit pas CE QU IL A VU ne
 # sert qu une fois. C est ce relevé qui donne les libellés du flow suivant.
+# LA CARTE DU PARCOURS — tous les écrans traversés, dans l'ordre, avec leurs
+# libellés RÉELS. C'est ce qui permet de corriger un flow entier d'un coup au
+# lieu d'un geste par run.
+echo "::group::CARTE DU PARCOURS — tous les écrans traversés"
+nb=$(ls "$RAPPORTS/ecrans/" 2>/dev/null | wc -l | tr -d ' ')
+echo "écrans distincts relevés : ${nb:-0}"
+echo
+for f in "$RAPPORTS"/ecrans/ecran-*.txt; do
+  [ -f "$f" ] || continue
+  cat "$f"
+  echo
+done
+echo "::endgroup::"
+
 echo "::group::CE QUE MAESTRO VOIT À LA FIN DU PASSAGE"
 relever_hierarchie "hierarchie" "après le dernier geste du flow"
 echo "::endgroup::"
