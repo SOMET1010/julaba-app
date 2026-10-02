@@ -8,6 +8,7 @@
 import {
   finDEcoute, afficheEcoute, libelleVenteComprise,
   SILENCE_FIN_MS, ECOUTE_MAX_MS, AVANT_PREMIER_MOT_MS,
+  plancherDeBruit, seuilDeParole, parleMaintenant, NIVEAU_PAROLE, MARGE_VOIX,
 } from './ecouteCaisse.js';
 
 let echecs = 0;
@@ -65,6 +66,40 @@ console.log('[1] Quand cesser d\'écouter');
 }
 ok(finDEcoute({ ecoute: false, aParle: true, msDepuisDernierMot: 99999, msDepuisOuverture: 99999 }).cesser === false,
    'micro fermé : rien à cesser, et surtout aucune boucle');
+
+console.log('\n[1 bis] MIC-02B — le seuil s\'adapte au fond, puis il ne bouge plus');
+{
+  // LA MÉDIANE, PAS LA MOYENNE. Un claquement de cageot au milieu d'un fond
+  // calme : la moyenne monterait, la médiane non. Si le plancher montait pour
+  // un seul échantillon, le seuil monterait pour toute la phrase.
+  ok(plancherDeBruit([2, 2, 2, 90, 2, 2, 2]) === 2,
+     'un bruit isolé ne relève pas le plancher — c\'est une médiane, pas une moyenne');
+
+  // PIÈCE CALME : le seuil tombe SOUS l'ancien 12, et c'est ce qui rattrape une
+  // voix faible — celle d'une marchande qui parle doucement ou tient mal le
+  // téléphone.
+  ok(seuilDeParole(plancherDeBruit([0, 1, 0, 1, 0])) < NIVEAU_PAROLE,
+     'en pièce calme, on entend PLUS bas qu\'avant : une voix faible n\'est plus perdue');
+
+  // MARCHÉ BRUYANT : le seuil monte avec le fond. Sans ça, le bruit seul
+  // déclarait qu\'elle parlait — un faux positif mesuré au banc OSS-02.
+  const marche = seuilDeParole(plancherDeBruit([18, 20, 19, 21, 20]));
+  ok(marche > NIVEAU_PAROLE && !parleMaintenant(20, marche),
+     'au marché, le fond ne passe plus pour une voix — le faux positif est fermé');
+  ok(parleMaintenant(marche + 1, marche),
+     'mais une voix qui porte AU-DESSUS du fond reste entendue');
+
+  // LE REPLI. Sans mesure, le comportement est EXACTEMENT celui d'avant ce lot.
+  ok(seuilDeParole(null) === NIVEAU_PAROLE && seuilDeParole(plancherDeBruit([])) === NIVEAU_PAROLE,
+     'sans fond mesurable, on retombe sur NIVEAU_PAROLE — jamais sur un seuil inventé');
+  ok(parleMaintenant(NIVEAU_PAROLE) === true && parleMaintenant(NIVEAU_PAROLE - 1) === false,
+     'et l\'appel sans seuil se comporte comme avant, au niveau près');
+
+  ok(seuilDeParole(10) === 10 + MARGE_VOIX,
+     'le seuil est bien le fond PLUS la marge, et rien d\'autre');
+  ok(seuilDeParole(-5) === MARGE_VOIX,
+     'un plancher absurde ne fabrique pas un seuil négatif');
+}
 
 console.log('\n[2] « J\'ai compris » ne se dit que si on a compris');
 {

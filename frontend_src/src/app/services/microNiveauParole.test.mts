@@ -109,8 +109,25 @@ console.log('\n[4] LA PREUVE TRAVERSE — l\'écran ne peut pas revenir à l\'an
      `« aParle » vient de la mesure du son : ${boucle.split('\n').find(l => l.includes('aParle')) ?? ''}`);
   ok(!/liveTranscript|texteVuRef/.test(boucle),
      'et PLUS de liveTranscript dans les faits d\'écoute — la source morte ne peut pas revenir');
-  ok(/parleMaintenant\(niveauRef\.current\)/.test(src),
+  // MIC-02B — le seuil n'est plus le même pour toutes les écoutes (il s'adapte
+  // au fond), donc l'appel porte un second argument. Le LIBELLÉ de cette garde
+  // ne change pas : elle surveille toujours que le NIVEAU du micro arrive à la
+  // règle pure. Elle surveille en plus que le seuil vient de l'écoute en cours.
+  ok(/parleMaintenant\(niveauRef\.current,\s*seuilRef\.current\)/.test(src),
      'le niveau du micro est bien lu par la règle pure');
+
+  // MIC-02B — LA CONTRAINTE DE PATRICK, 02/10/2026, TENUE PAR UNE GARDE.
+  // Le plancher doit être FIGÉ au début de l'écoute, jamais recalculé : sinon
+  // la voix de la marchande relèverait le seuil au fur et à mesure qu'elle
+  // parle, jusqu'à passer au-dessus d'elle — le micro se fermerait au milieu de
+  // sa phrase, d'autant plus vite qu'elle parle fort.
+  const affectationsSeuil = (src.match(/seuilRef\.current\s*=/g) ?? []).length;
+  ok(affectationsSeuil === 3,
+     `le seuil n'est posé qu'aux remises à zéro et UNE fois par écoute (${affectationsSeuil} affectations)`);
+  ok(/clearInterval\(releveFond\)/.test(src),
+     'le relevé du fond s\'arrête de lui-même : il ne tourne pas pendant qu\'elle parle');
+  ok(!/setInterval\([\s\S]{0,400}seuilRef\.current\s*=\s*seuilDeParole[\s\S]{0,200}\}, 250\)/.test(src),
+     'et le seuil n\'est PAS recalculé dans la boucle de décision');
   // Le niveau change à chaque image : dans les dépendances, il détruirait
   // l'intervalle soixante fois par seconde et le silence ne s'accumulerait
   // jamais. C'est l'erreur qui rendrait ce correctif inopérant en silence.

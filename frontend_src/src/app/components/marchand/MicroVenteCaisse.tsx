@@ -48,7 +48,8 @@ import { useObjectif } from '../../contexts/ObjectifContext';
 import { useStock, type StockItem } from '../../contexts/StockContext';
 import { extraire } from '../../voice-offline/extraction';
 import { intentLocal, intentLocalCaisse } from '../../voice-offline/localIntent';
-import { finDEcoute, afficheEcoute, libelleVenteComprise, parleMaintenant, ECOUTE_MAX_MS } from '../../services/ecouteCaisse';
+import { finDEcoute, afficheEcoute, libelleVenteComprise, parleMaintenant, plancherDeBruit, seuilDeParole,
+         NIVEAU_PAROLE, ECOUTE_PLANCHER_MS, ECOUTE_MAX_MS } from '../../services/ecouteCaisse';
 import { gesteDuMicro, sortieVisible, type EtatVoix } from '../../services/gesteDuMicro';
 import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
@@ -481,6 +482,10 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   const ouvertureRef = useRef(0);
   const dernierSonRef = useRef(0);
   const aParleRef = useRef(false);
+  /** MIC-02B — le seuil de CETTE écoute. Posé une fois, jamais recalculé. */
+  const seuilRef = useRef(NIVEAU_PAROLE);
+  /** Les niveaux du FOND, relevés avant qu'elle parle. Vidé à chaque écoute. */
+  const fondRef = useRef<number[]>([]);
   // Le niveau change à chaque image : on le lit dans un ref, JAMAIS dans les
   // dépendances de l'effet — sinon l'intervalle serait détruit et recréé
   // soixante fois par seconde, et la mesure du silence repartirait à zéro.
@@ -489,22 +494,61 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // `isRecording` est déclaré plus bas ; on lit la source, pas son alias.
   const ecouteEnCours = state === 'listening';
   useEffect(() => {
-    if (!ecouteEnCours) { ouvertureRef.current = 0; aParleRef.current = false; return; }
+    if (!ecouteEnCours) {
+      ouvertureRef.current = 0;
+      aParleRef.current = false;
+      seuilRef.current = NIVEAU_PAROLE;   // l'écoute suivante remesurera son fond
+      fondRef.current = [];
+      return;
+    }
     const maintenant = Date.now();
     if (!ouvertureRef.current) {
       ouvertureRef.current = maintenant;
       dernierSonRef.current = maintenant;
       aParleRef.current = false;
+      seuilRef.current = NIVEAU_PAROLE;
+      fondRef.current = [];
     }
+
+    /**
+     * MIC-02B — ON ÉCOUTE LE FOND AVANT D'ÉCOUTER LA VOIX.
+     *
+     * Ce relevé-ci bat à 40 ms, pas à 250 : sur `ECOUTE_PLANCHER_MS` (400 ms),
+     * la boucle de décision ne donnerait qu'UNE OU DEUX mesures, et une médiane
+     * sur deux points n'est pas une médiane. Il s'arrête de lui-même dès le
+     * plancher posé — il ne tourne donc que pendant la demi-seconde du début.
+     */
+    const releveFond = setInterval(() => {
+      const t0 = ouvertureRef.current;
+      if (!t0) { clearInterval(releveFond); return; }
+      if (Date.now() - t0 < ECOUTE_PLANCHER_MS) {
+        fondRef.current.push(niveauRef.current);
+        return;
+      }
+      // LE SEUIL EST POSÉ ICI, UNE SEULE FOIS, ET PLUS RIEN NE LE TOUCHE.
+      // Le recalculer en continu le ferait monter avec la voix de la marchande
+      // elle-même, jusqu'à passer au-dessus d'elle : le micro se fermerait au
+      // milieu de sa phrase, d'autant plus vite qu'elle parle fort.
+      seuilRef.current = seuilDeParole(plancherDeBruit(fondRef.current));
+      clearInterval(releveFond);
+    }, 40);
 
     const t = setInterval(() => {
       const t0 = ouvertureRef.current;
       if (!t0) return;
-      // Échantillonné toutes les 250 ms : il faut six mesures consécutives
-      // sous le seuil pour atteindre SILENCE_FIN_MS, ce qui laisse passer les
-      // creux entre deux syllabes sans couper au milieu d'un mot.
-      if (parleMaintenant(niveauRef.current)) {
-        aParleRef.current = true;
+      // Tant que le fond n'est pas mesuré, on ne déclare pas qu'elle parle :
+      // ces 400 ms-là sont du bruit par construction.
+      if (Date.now() - t0 >= ECOUTE_PLANCHER_MS) {
+        // Échantillonné toutes les 250 ms : il faut neuf mesures consécutives
+        // sous le seuil pour atteindre SILENCE_FIN_MS, ce qui laisse passer les
+        // creux entre deux syllabes sans couper au milieu d'un mot.
+        if (parleMaintenant(niveauRef.current, seuilRef.current)) {
+          aParleRef.current = true;
+          dernierSonRef.current = Date.now();
+        }
+      } else {
+        // Le compteur de silence ne court pas pendant qu'on écoute le fond :
+        // sinon ces 400 ms s'imputeraient à son hésitation.
         dernierSonRef.current = Date.now();
       }
       const fin = finDEcoute({
@@ -517,7 +561,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       ouvertureRef.current = 0;   // une seule fermeture par écoute
       handleMicClick();
     }, 250);
-    return () => clearInterval(t);
+    return () => { clearInterval(t); clearInterval(releveFond); };
   }, [ecouteEnCours, handleMicClick]);
 
   /**
