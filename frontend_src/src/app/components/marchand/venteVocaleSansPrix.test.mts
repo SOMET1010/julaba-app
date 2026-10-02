@@ -177,5 +177,41 @@ ok(/setLibreMontant\(''\)/.test(caisse), "le montant, lui, reste VIDE : c'est à
 ok(/quantiteDictee/.test(caisse), 'et la quantité dite part sur la ligne, pas 1 par défaut');
 ok(!/venteDictee[\s\S]{0,200}prixVente|dernierPrix|moyennePrix/.test(caisse), 'aucun prix de repli n\'est pioché ailleurs');
 
+
+// ── VOX-03 — L'ÉCRAN DU PRIX DE LA CAISSE A UN MICRO ────────────────────────
+//
+// MESURÉ SUR L'APK `ca2e817`, journal du 02/10/2026 21:38 :
+//
+//     21:38:52.627  TTS  « Piment. Quel est ton prix ? »
+//     21:38:54.423  TTS_FIN
+//        ... 38 secondes, AUCUN ECOUTE_DEBUT ...
+//     21:39:33.369  TTS  « 5 Piments, dix mille francs. »
+//
+// Le micro ne s'est jamais rouvert : les 10 000 F sont entrés AU CLAVIER. La
+// question était posée à la voix, la réponse exigée au doigt — sur l'écran de
+// l'argent, devant une marchande qui ne lit pas. C'est exactement le défaut que
+// `docs/REGLE-VOICE-FIRST.md` nomme : « la voix disparaît précisément au moment
+// où la charge cognitive augmente ».
+//
+// `BoutonDirePrix` existait, testé, dans `SaisieGuidee` et `AjoutProduitGuide`.
+// Il manquait sur CE chemin-ci — celui qui s'ouvre quand une vente DICTÉE n'a
+// pas de prix, c'est-à-dire le chemin de la marchande qui parle.
+console.log('\n[VOX-03] L\'écran du prix de la caisse a un micro');
+{
+  ok(/import \{ BoutonDirePrix \}/.test(caisse),
+     'POSCaisse importe BoutonDirePrix — la brique existante, pas une seconde');
+  ok(/<BoutonDirePrix onMontant=\{\(m\) => setLibreMontant\(String\(m\)\)\}/.test(caisse),
+     'le montant dit remplit le MÊME champ que le clavier — une seule source de prix');
+  ok(/\{guidageVocal\(\) && \([\s\S]{0,200}<BoutonDirePrix/.test(caisse),
+     'et il ne s\'affiche pas quand elle a coupé le guidage vocal');
+  // PAS d'ouverture automatique ICI, et c'est une décision : la question est
+  // déjà dite par `ouvrirPrixManquant`. Un micro qui s'ouvrirait 250 ms après
+  // écouterait Tantie parler et transcrirait sa propre question.
+  ok(!/<BoutonDirePrix[\s\S]{0,120}ouvrirToutSeul/.test(caisse),
+     'sans `ouvrirToutSeul` : le micro n\'écoute pas Tantie poser sa question');
+  ok(/value=\{libreMontant\}/.test(caisse),
+     'le clavier reste, inchangé, pour qui préfère taper');
+}
+
 console.log(echecs === 0 ? '\n✅ Tout est vert\n' : `\n❌ ${echecs} échec(s)\n`);
 process.exit(echecs === 0 ? 0 : 1);
