@@ -1,0 +1,18 @@
+# CARTE, ÉTAPE 2 — après « Écouter et entrer ».
+# Mesuré au run #14 : l'écran devient la présentation de Tantie Nanti Lou.
+# NON reproduit au #13 ni au #15 : c'est précisément ce que cette étape vérifie.
+appId: com.julaba.app
+name: carte 2 — après « Écouter et entrer »
+tags:
+  - carte
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "JÙLABA"
+    timeout: 90000
+- tapOn:
+    text: "Écouter et entrer"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 10000
