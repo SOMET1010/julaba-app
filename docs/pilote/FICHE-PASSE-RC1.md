@@ -1,4 +1,7 @@
-# Fiche de passe RC1 — décision de sortie de version
+# Fiche de passe RC1 — Caisse
+
+**Décision de sortie de version POUR LA CAISSE**, et pour elle seule. Le feu
+vert de lancement est une autre décision : [`GO-PILOTE-JULABA.md`](GO-PILOTE-JULABA.md).
 
 **Pour l'encadrant, pas pour la marchande.** Elle **complète** la fiche vocale
 (`docs/terrain/FICHE-TESTEUR-CAISSE-VOCALE.md`), elle ne la remplace pas.
