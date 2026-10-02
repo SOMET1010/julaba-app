@@ -1,6 +1,20 @@
-# JULABA PILOTE RC1 — la définition de « assez bon pour livrer »
+# RC1 — CAISSE : la définition de « assez bon pour livrer »
 
-**Jalon déclaré par Patrick, 02/10/2026.**
+> ## ⚠ CE DOCUMENT NE COUVRE QUE LA CAISSE
+>
+> **Correction de Patrick, 02/10/2026** : dire « version pilote de JULABA »
+> était aller trop loin. Ce qui est figé ici, c'est le **parcours de vente** —
+> vente tactile et vocale, encaissement, panier, persistance, hors-ligne.
+>
+> **Ce n'est PAS une preuve que la plateforme est prête au lancement.** Le
+> pilote utilise aussi l'inscription, le catalogue, les dépenses, l'historique,
+> la synchronisation et l'infrastructure, qui ne sont pas jugés ici.
+>
+> La décision de lancement s'appelle **GO PILOTE JULABA** et vit dans
+> [`GO-PILOTE-JULABA.md`](GO-PILOTE-JULABA.md). Tant que sa matrice contient un
+> trou bloquant, **RC1 — Caisse verte ne vaut pas feu vert**.
+
+**Jalon déclaré par Patrick, 02/10/2026. Périmètre : la caisse.**
 
 > C'est ce qui manquait : une définition de « assez bon pour livrer ». Sans
 > elle, on peut continuer six semaines et toujours trouver une amélioration
@@ -32,10 +46,10 @@ S'il faut un jour changer la règle, on change la §5 — pas ce document.
 
 ---
 
-## Les huit critères de sortie
+## Les huit critères de sortie — DE LA CAISSE
 
-Un APK devient **version candidate stable** quand les huit tiennent **sur le
-terrain**, pas sur le banc :
+La **caisse** d'un APK est candidate stable quand les huit tiennent **sur le
+terrain**, pas sur le banc. Ils ne disent rien du reste de la plateforme :
 
 | | critère |
 |---|---|
