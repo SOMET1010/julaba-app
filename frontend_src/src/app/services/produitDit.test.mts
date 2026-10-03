@@ -118,6 +118,95 @@ console.log("\n[6] L'ÉCRAN DU STOCK EST VRAIMENT REBRANCHÉ");
   ok(/depart\?\.prix/.test(guide), "ni le prix, quand elle l'a dit");
 }
 
+console.log("\n[7] STK-05b — « DEUX MANIOCS » : SON ÉTAL SERT AUSSI À ENTENDRE");
+{
+  // LE DÉFAUT, journal du 03/10, écran `/marchand/stock`. Elle dit « Deux
+  // maniocs », trois fois, et reçoit « Je n'ai pas entendu de produit ». Le
+  // manioc est sur son étal. Mesuré avant correction :
+  //     extraire("Deux maniocs") → produit null → produitDit NULL
+  //     extraire("Deux manioc")  → manioc       → OK
+  // et la MÊME phrase passait déjà à la caisse (`lireVenteAuCatalogue`).
+  const ETAL_M = [{ nom: 'Manioc' }, { nom: 'Piment' }];
+  const r = produitDit('Deux maniocs', ETAL_M);
+  ok(r !== null, "« Deux maniocs » n'est plus refusé");
+  ok(r?.brouillon.nom === 'Manioc', "c'est le Manioc DE SON ÉTAL, avec son orthographe à elle");
+  ok(r?.reconnu === 'Manioc', 'et il est reconnu, pas seulement recopié');
+  ok(r?.quantite === 2, 'les deux sont gardés — le « deux » n\'est pas un prix de 2 F');
+  ok(r?.brouillon.prix === null, "aucun prix inventé : elle n'en a pas dit");
+  // Le pluriel seul suffit, comme « gombo » seul suffit en [3].
+  ok(produitDit('maniocs', ETAL_M)?.reconnu === 'Manioc', '« maniocs » seul suffit à commencer');
+  // Et le reste du journal du 03/10 n'a pas bougé.
+  ok(produitDit('Deux manioc', ETAL_M)?.quantite === 2, '« Deux manioc » (singulier) marche toujours');
+  ok(produitDit('Puis cinq piments', ETAL_M)?.reconnu === 'Piment', '« Puis cinq piments » aussi');
+}
+
+console.log("\n[8] LE REPLI LIT SON ÉTAL, PAS UNE LISTE ÉCRITE DANS LE CODE");
+{
+  // DEUX VERROUS, ET IL FAUT LES DEUX. La table `PRODUITS_FORMES` est écrite à
+  // la main : 28 noms canoniques contre les 198 du catalogue du pilote. Ces
+  // produits-ci n'y sont PAS, et ne doivent pas y être — c'est précisément le
+  // trou que le repli rattrape, pour tous les noms que personne n'écrira.
+  const ETAL_X = [{ nom: 'Kplala' }, { nom: 'Pois de terre' }];
+  const r = produitDit('deux kplalas', ETAL_X);
+  ok(r?.reconnu === 'Kplala', 'un produit de son étal inconnu du lexique est reconnu');
+  ok(r?.quantite === 2, 'et son « deux » reste une quantité, pas deux francs');
+  // Le nom doit être prononcé EN ENTIER : même règle que la caisse.
+  ok(produitDit('trois pois de terre', ETAL_X)?.reconnu === 'Pois de terre',
+     'un nom en trois mots est reconnu quand elle le dit en entier');
+
+  // ON N'A PAS COMMENCÉ À TOUT ACCEPTER. Hors de son étal ET hors du lexique,
+  // c'est toujours `null` : l'écran le dit, il n'ouvre pas un formulaire vide.
+  ok(produitDit('deux mangues séchées', ETAL_X) === null,
+     "un produit qu'elle ne vend pas et que le lexique ignore → null");
+  // « Croisignam » : bruit réel du journal du 03/10.
+  ok(produitDit('Croisignam', ETAL_X) === null, '« Croisignam » (bruit du journal) → null');
+  ok(produitDit('deux kplalas', []) === null, 'étal vide : rien à quoi se raccrocher → null');
+
+  // L'AMBIGUÏTÉ NE SE TRANCHE PAS DAVANTAGE QU'EN [4]. Deux produits de son
+  // étal également présents et aussi précis l'un que l'autre : on refuse. Ici
+  // le refus est total, car sans mot venu du lexique il ne resterait rien
+  // d'elle à garder — mieux vaut redemander que toucher le mauvais produit.
+  ok(produitDit('deux kplalas et du pois', [{ nom: 'Kplala' }, { nom: 'Pois' }]) === null,
+     'deux produits de son étal possibles : AUCUN choisi à sa place');
+
+  // RIEN N'EST INVENTÉ SUR SON ARGENT. « cinq mille » sans « francs » et sans
+  // marqueur de prix peut être 5 000 tas comme 5 000 F : ni l'un ni l'autre
+  // n'est retenu, le parcours en trois questions le lui demandera.
+  const doute = produitDit('kplala cinq mille', ETAL_X);
+  ok(doute?.reconnu === 'Kplala', 'le produit nommé reste reconnu');
+  ok(doute?.brouillon.prix === null && doute?.quantite === null,
+     "un nombre orphelin trop grand n'est ni un prix ni une quantité");
+  // Mais ce qu'elle dit clairement est gardé, tel quel.
+  ok(produitDit('kplala à 500', ETAL_X)?.brouillon.prix === 500, '« à 500 » reste un prix de 500');
+  // CE QU'ON N'A PAS ÉLARGI, ET C'EST VOULU. `extraire` ne rattache une unité
+  // qu'à un produit de SON lexique à lui : « trois tas de kplala » rend
+  // `uniteParlee: null`. On ne lui en invente donc aucune, et on n'écrit pas
+  // ici une seconde lecture d'unité — le parcours en trois questions la
+  // demande, c'est sa raison d'être.
+  const tas = produitDit('trois tas de kplala', ETAL_X);
+  ok(tas?.quantite === 3, 'les trois sont gardés');
+  ok(tas?.brouillon.unite === '', "aucune unité inventée quand le moteur n'en rattache pas");
+  ok(tas?.manque === 'unite', "et c'est l'unité qu'on lui demande ensuite");
+}
+
+console.log("\n[9] UNE SEULE FAÇON DE RECONNAÎTRE UN PRODUIT, PARTAGÉE AVEC LA CAISSE");
+{
+  // LE DÉFAUT DE FOND était que la caisse comprenait « deux maniocs » et que
+  // le stock le refusait. Écrire ici une SECONDE reconnaissance aurait refermé
+  // le symptôme en rouvrant la cause : deux chemins qui divergent. Le repli
+  // doit passer par la fonction de la caisse, et par elle seule.
+  const src = readFileSync(new URL('./produitDit.ts', import.meta.url), 'utf-8');
+  ok(/import \{[^}]*nomDeSonEtal[^}]*\} from '\.\/venteAuCatalogue'/.test(src),
+     'le repli passe par `nomDeSonEtal` de la caisse, pas par une seconde écriture');
+  ok(/relireNombres/.test(src), 'et les nombres sont relus par la même règle que la caisse');
+  // La caisse, elle, doit vraiment avoir été rebranchée dessus — sinon les
+  // deux chemins existent encore, l'un en bas de l'autre.
+  const cat = readFileSync(new URL('./venteAuCatalogue.ts', import.meta.url), 'utf-8');
+  ok(/export function nomDeSonEtal\(/.test(cat), 'la fonction partagée est bien exportée là-bas');
+  ok((cat.match(/contientSuite\(phrase, nom\)/g) || []).length === 1,
+     "la boucle de reconnaissance n'existe qu'à UN seul endroit");
+}
+
 console.log(echecs === 0
   ? '\n✅ Elle dit son produit ; on ne lui demande que ce qui manque.\n'
   : `\n❌ ${echecs} échec(s)\n`);

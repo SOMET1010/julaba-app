@@ -99,6 +99,125 @@ function contientSuite(phrase: string[], nom: string[]): boolean {
 }
 
 /**
+ * LE NOM DE SON ÉTAL, ENTENDU EN ENTIER DANS LA PHRASE — ou rien.
+ *
+ * C'est le cœur de CAT-01, sorti de `lireVenteAuCatalogue` le 03/10 pour
+ * STK-05b. POURQUOI LE SORTIR : l'écran du stock refusait « Deux maniocs »
+ * alors que le Manioc est sur son étal, pendant que la caisse comprenait la
+ * MÊME phrase par cette logique-ci. Deux écrans, deux réponses opposées sur
+ * le même mot. Lui écrire une seconde reconnaissance à part aurait donné DEUX
+ * façons de reconnaître un produit — donc, tôt ou tard, deux réponses qui
+ * divergent encore. Les deux écrans appellent désormais cette fonction, et
+ * elle seule.
+ *
+ * ELLE NE DÉCIDE RIEN D'AUTRE QU'UN NOM : ni vente, ni prix, ni quantité. Les
+ * interdits de la caisse (« ajoute », « annule »…) restent chez la caisse —
+ * sur l'écran du stock, « ajoute du manioc » est au contraire exactement ce
+ * qu'on attend d'elle.
+ *
+ * ET ELLE REFUSE LE DOUTE : deux noms de son étal également présents et aussi
+ * précis l'un que l'autre, c'est `null`. On ne touche pas au mauvais produit.
+ */
+export function nomDeSonEtal(
+  texte: string,
+  produits: readonly ProduitNomme[] | null | undefined,
+): string | null {
+  if (!texte || !texte.trim() || !produits || produits.length === 0) return null;
+  const phrase = mots(texte);
+  let retenu: string | null = null;
+  let longueur = 0;
+  let ambigu = false;
+  for (const prod of produits) {
+    const nom = mots(prod.nom || '');
+    if (!contientSuite(phrase, nom)) continue;
+    // LE PLUS PRÉCIS GAGNE : « riz importé long grain » l'emporte sur « riz ».
+    // C'est le seul cas où choisir est sûr — le nom le plus long est contenu
+    // dans la phrase, donc elle l'a bien prononcé en entier.
+    if (nom.length > longueur) { retenu = prod.nom; longueur = nom.length; ambigu = false; }
+    else if (nom.length === longueur && prod.nom !== retenu) ambigu = true;
+  }
+  return !retenu || ambigu ? null : retenu;
+}
+
+/** Au-delà, un nombre orphelin n'est plus une quantité sûre — voir `relireNombres`. */
+const MAX_QUANTITE_DITE = 100;
+
+/** Les deux nombres de la phrase, remis chacun à sa place. */
+export interface NombresRelus {
+  /** Le nombre d'ARTICLES : quantité dite, ou nombre orphelin récupéré. */
+  readonly quantite: number | null;
+  /** L'ARGENT dit, et lui seul. */
+  readonly montant: number | null;
+  /** Nombre orphelin au-delà du plafond : ni quantité sûre, ni prix sûr. */
+  readonly douteux: boolean;
+}
+
+/**
+ * LE NOMBRE ORPHELIN EST UNE QUANTITÉ, PAS UN PRIX.
+ *
+ * C'EST UN DÉFAUT D'ARGENT, mesuré sur `0459dc0` en écrivant ce module.
+ * Sans produit reconnu, `extraire` n'a rien à quoi rattacher le nombre et le
+ * range en MONTANT :
+ *
+ *   « vends deux arachide grillée » → { produit: null, quantite: null,
+ *                                       montant: 2, lecturePrix: null }
+ *
+ * et une ligne « Produit vocal » à 2 F partait au panier, en silence, pendant
+ * que l'écran affichait « Je n'ai pas compris. Redis-moi. » Comparaison avec
+ * un produit CONNU du lexique, qui donne la vérité :
+ *   « vends deux tomate » → { produit: 'tomate', quantite: 2, montant: null }
+ *
+ * CE QUI DISTINGUE LES DEUX, ET CE N'EST PAS UNE DEVINETTE : un vrai prix
+ * arrive derrière un marqueur (« à », « pour »), et `extraire` le note dans
+ * `lecturePrix`. Un nombre SEUL, sans marqueur et sans produit, est le nombre
+ * d'articles — « vends arachide grillée à 500 » garde bien son prix
+ * (lecturePrix « unitaire »), et « vends deux arachide grillée à 500 » a déjà
+ * ses deux nombres séparés.
+ *
+ * F4NT-B — « FRANCS » EST UNE PREUVE, ET ELLE ÉTAIT JETÉE. 01/10/2026.
+ *
+ * Rapport terrain F4NT. Mesuré avant correction, sur un étal réel :
+ *     « Arachide grillée mille francs » → null   (rien au panier, « pas compris »)
+ *     « attiéké 300 francs »            → null
+ * La cause n'était PAS l'exigence de quantité : c'est que 1000 était pris pour
+ * MILLE ARTICLES, donc rejeté par le plafond de prudence ci-dessous.
+ *
+ * Or la phrase portait le discriminant : elle a dit « FRANCS ». Personne ne
+ * dit « francs » pour compter des tas. `extraire` connaît ce marqueur —
+ * MARQUEURS_APRES, déjà importé ici — et ne le note que dans le calcul du
+ * montant, jamais dans `lecturePrix` (réservé aux marqueurs AVANT : « à 500 »,
+ * « pour 500 »). L'information existait dans la phrase, et deux modules la
+ * laissaient tomber.
+ *
+ * C'EST LA LISTE DU DÉPÔT, pas une seconde écrite pour l'occasion : deux
+ * listes de marqueurs de monnaie finiraient par vendre mille tas d'arachide.
+ *
+ * AU-DELÀ DU PLAFOND, ON NE DEVINE PLUS (`douteux`). « arachide grillée cinq
+ * mille » peut être 5 000 articles comme 5 000 francs : le doute profite au
+ * silence, pas à une ligne de dix mille francs ni à un panier de cinq mille
+ * tas. Chaque appelant en tire alors SA conséquence — la caisse refuse la
+ * phrase entière, l'écran du stock garde le produit et jette les deux
+ * nombres, parce qu'il a trois questions pour les redemander et que le panier
+ * n'en a aucune. Ce qu'aucun des deux ne fait, c'est choisir.
+ *
+ * STK-05b, 03/10 : sortie de `lireVenteAuCatalogue` pour que l'écran du stock
+ * relise ses nombres de la MÊME façon. Deux lectures du même « deux »
+ * finiraient par donner deux quantités.
+ */
+export function relireNombres(
+  texte: string,
+  p: { quantite: number | null; montant: number | null; lecturePrix: 'unitaire' | 'total' | null },
+): NombresRelus {
+  const direEnFrancs = mots(texte || '').some((m) => MARQUEURS_APRES.has(m));
+  const orphelin = p.quantite == null && p.montant != null && p.lecturePrix === null
+    && !direEnFrancs;
+  if (!orphelin) return { quantite: p.quantite, montant: p.montant, douteux: false };
+  const n = p.montant as number;
+  if (n > MAX_QUANTITE_DITE) return { quantite: null, montant: null, douteux: true };
+  return { quantite: n, montant: null, douteux: false };
+}
+
+/**
  * Lit la phrase contre SON catalogue. `null` dès qu'il y a le moindre doute —
  * et le doute profite toujours au silence, jamais à une ligne inventée.
  */
@@ -144,53 +263,17 @@ export function lireVenteAuCatalogue(
 
   // ── LE NOMBRE ORPHELIN EST UNE QUANTITÉ, PAS UN PRIX ────────────────────
   //
-  // C'EST UN DÉFAUT D'ARGENT, mesuré sur `0459dc0` en écrivant ce module.
-  // Sans produit reconnu, `extraire` n'a rien à quoi rattacher le nombre et
-  // le range en MONTANT :
-  //
-  //   « vends deux arachide grillée » → { produit: null, quantite: null,
-  //                                       montant: 2, lecturePrix: null }
-  //
-  // et une ligne « Produit vocal » à 2 F partait au panier, en silence,
-  // pendant que l'écran affichait « Je n'ai pas compris. Redis-moi. »
-  // Comparaison avec un produit CONNU du lexique, qui donne la vérité :
-  //   « vends deux tomate » → { produit: 'tomate', quantite: 2, montant: null }
-  //
-  // CE QUI DISTINGUE LES DEUX, ET CE N'EST PAS UNE DEVINETTE : un vrai prix
-  // arrive derrière un marqueur (« à », « pour »), et `extraire` le note dans
-  // `lecturePrix`. Un nombre SEUL, sans marqueur et sans produit, est le
-  // nombre d'articles — « vends arachide grillée à 500 » garde bien son prix
-  // (lecturePrix « unitaire »), et « vends deux arachide grillée à 500 » a
-  // déjà ses deux nombres séparés.
-  //
-  // F4NT-B — « FRANCS » EST UNE PREUVE, ET ELLE ÉTAIT JETÉE. 01/10/2026.
-  //
-  // Rapport terrain F4NT. Mesuré avant correction, sur un étal réel :
-  //     « Arachide grillée mille francs » → null   (rien au panier, « pas compris »)
-  //     « attiéké 300 francs »            → null
-  // La cause n'était PAS l'exigence de quantité : c'est que 1000 était pris
-  // pour MILLE ARTICLES, donc rejeté par le plafond de prudence ci-dessous.
-  //
-  // Or la phrase portait le discriminant : elle a dit « FRANCS ». Personne ne
-  // dit « francs » pour compter des tas. `extraire` connaît ce marqueur —
-  // MARQUEURS_APRES, déjà importé ici — et ne le note que dans le calcul du
-  // montant, jamais dans `lecturePrix` (réservé aux marqueurs AVANT : « à
-  // 500 », « pour 500 »). L'information existait dans la phrase, et deux
-  // modules la laissaient tomber.
-  //
-  // C'EST LA LISTE DU DÉPÔT, pas une seconde écrite pour l'occasion : deux
-  // listes de marqueurs de monnaie finiraient par vendre mille tas d'arachide.
-  const direEnFrancs = mots(texte).some((m) => MARQUEURS_APRES.has(m));
-  const nombreOrphelin = p.quantite == null && p.montant != null && p.lecturePrix === null
-    && !direEnFrancs;
-  // AU-DELÀ, ON NE DEVINE PLUS. « arachide grillée cinq mille » peut être
-  // 5 000 articles comme 5 000 francs : le doute profite au silence, pas à une
-  // ligne de dix mille francs ni à un panier de cinq mille tas.
-  const MAX_QUANTITE_DITE = 100;
-  if (nombreOrphelin && (p.montant as number) > MAX_QUANTITE_DITE) return null;
+  // La règle entière, sa trace terrain et son plafond sont dans
+  // `relireNombres` ci-dessus — sortis d'ici le 03/10 (STK-05b) pour que
+  // l'écran du stock relise ses nombres de la MÊME façon. Deux lectures du
+  // même « deux » finiraient par donner deux quantités.
+  const nombres = relireNombres(texte, p);
+  // AU-DELÀ DU PLAFOND, LA CAISSE SE TAIT. C'est d'ici que part une ligne
+  // d'argent, et elle n'a aucune question à poser pour lever le doute.
+  if (nombres.douteux) return null;
+  const quantiteLue = nombres.quantite;
+  const montantLu = nombres.montant;
 
-  const quantiteLue = nombreOrphelin ? (p.montant as number) : p.quantite;
-  const montantLu = nombreOrphelin ? null : p.montant;
 
   // MÊME EXIGENCE QUE `venteSansVerbe` DANS LE MOTEUR, et elle bouge AVEC lui —
   // F4NT-B, 01/10/2026 : sans verbe de vente, il faut une quantité **OU** un
@@ -205,20 +288,10 @@ export function lireVenteAuCatalogue(
   // phrase avec deux sens selon le produit.
   if (p.intention !== 'vente' && quantiteLue == null && montantLu == null) return null;
 
-  const phrase = mots(texte);
-  let retenu: string | null = null;
-  let longueur = 0;
-  let ambigu = false;
-  for (const prod of produits) {
-    const nom = mots(prod.nom || '');
-    if (!contientSuite(phrase, nom)) continue;
-    // LE PLUS PRÉCIS GAGNE : « riz importé long grain » l'emporte sur « riz ».
-    // C'est le seul cas où choisir est sûr — le nom le plus long est contenu
-    // dans la phrase, donc elle l'a bien prononcé en entier.
-    if (nom.length > longueur) { retenu = prod.nom; longueur = nom.length; ambigu = false; }
-    else if (nom.length === longueur && prod.nom !== retenu) ambigu = true;
-  }
-  if (!retenu || ambigu) return null;
+  // SON NOM, PAR LA SEULE FONCTION QUI SACHE LE RECONNAÎTRE — `nomDeSonEtal`,
+  // que l'écran du stock appelle désormais lui aussi (STK-05b).
+  const retenu = nomDeSonEtal(texte, produits);
+  if (!retenu) return null;
 
   const quantite = quantiteLue != null && quantiteLue > 0 ? Math.trunc(quantiteLue) : 1;
   const vente: VenteAuCatalogue = {
