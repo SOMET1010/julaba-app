@@ -163,12 +163,14 @@ export async function boGetMe(): Promise<BOUser> {
   return handleResponse(res);
 }
 
+// BO-1 : le serveur ne rend plus que le nom des super_admin (plus de
+// téléphone ni d'identifiant interne sur cette route publique).
 export async function boGetContactsRecoveryBo(signal?: AbortSignal): Promise<{
-  contacts: Array<{ id: string; firstName: string; lastName: string; phone: string }>;
+  contacts: Array<{ firstName: string; lastName: string }>;
 }> {
   const res = await fetch(`${API_URL}/auth/contacts-recovery-bo`, { signal });
   if (!res.ok) throw new Error(String(res.status));
-  return res.json() as Promise<{ contacts: Array<{ id: string; firstName: string; lastName: string; phone: string }> }>;
+  return res.json() as Promise<{ contacts: Array<{ firstName: string; lastName: string }> }>;
 }
 
 export async function boWebAuthnAuthenticateOptions(phone: string, signal?: AbortSignal): Promise<Record<string, unknown> & { userId?: string; error?: string }> {

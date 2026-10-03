@@ -91,13 +91,18 @@ export class AuthController {
     return this.authService.checkPhone(phone);
   }
 
+  // BO-1 : route PUBLIQUE (modale « mot de passe oublié » du login BO). Elle
+  // rendait l'id et le TÉLÉPHONE des super_admin — leur identifiant de
+  // connexion, offert à quiconque voulait les hameçonner (audit bo-b §2.3).
+  // Strict nécessaire : le nom, pour savoir qui joindre par les canaux
+  // internes. Ni numéro, ni identifiant interne.
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Get('contacts-recovery-bo')
   @HttpCode(HttpStatus.OK)
   async contactsRecoveryBo() {
     const rows = await this.userRepo.manager.query(
       `
-      SELECT id, first_name AS "firstName", last_name AS "lastName", phone
+      SELECT first_name AS "firstName", last_name AS "lastName"
       FROM users
       WHERE role = 'super_admin' AND status = 'actif'
       ORDER BY created_at ASC
