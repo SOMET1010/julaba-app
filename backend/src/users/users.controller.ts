@@ -1,4 +1,4 @@
-import { SkipThrottle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { exigerAutoriteSur, exigerPermissionBO } from '../auth/bo-autorisation';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { buildMeta } from '../common/paginate';
@@ -486,7 +486,12 @@ export class UsersController {
     return { success: true, message: 'Utilisateur archivé' };
   }
 
+  // BO-1 / SEC-10 : le nouveau code part par SMS (voir UsersService). C'est
+  // aussi le « renvoyer le code » après un SMS_NON_DELIVRE. La temporisation
+  // empêche d'en faire un robinet à SMS (le contrôleur est en @SkipThrottle).
   @Post(':id/admin-reset-password')
+  @SkipThrottle({ default: false })
+  @Throttle({ default: { limit: 5, ttl: 600000 } })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin')
   @HttpCode(HttpStatus.OK)

@@ -30,6 +30,8 @@ import {
   boCreateBackofficeUser,
   type CreateBackofficeUserPayload,
   type CreateBackofficeUserResult,
+  type RemiseParSms,
+  texteRemiseSms,
 } from '../../services/backoffice-api';
 import { toast } from 'sonner';
 import { SOUS_PROFILS_MARCHAND, type SousProfilMarchand } from '../../types/sousProfilMarchand';
@@ -1154,7 +1156,7 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
   const [verificationTel, setVerificationTel] = useState<'idle' | 'checking' | 'exists' | 'available'>('idle');
   const [gpsCapturing, setGpsCapturing] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [createdPassword, setCreatedPassword] = useState<string | null>(null);
+  const [createdRemise, setCreatedRemise] = useState<RemiseParSms | null>(null);
   // P0.0 (ADR-002) : code d'activation à usage unique pour un acteur non-admin
   // créé via le back-office — le compte naît en_attente_activation, ce code est
   // la seule façon de l'activer. Résiduel accepté : l'admin BO le voit à l'écran.
@@ -2159,16 +2161,17 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
         setField('numeroId', result.id || refDisplayEntite);
         submittedNumeroRef.current = result.id || refDisplayEntite;
         clearDraftAndCancelDebounce();
-        if (result.defaultPassword) {
-          setCreatedPassword(result.defaultPassword);
+        if (result.remise) {
+          setCreatedRemise(result.remise);
           setCreatedActivationCode(null);
-          toast.success('Compte créé avec succès.');
+          if (result.remise.smsEnvoye) toast.success(`Compte créé. ${texteRemiseSms(result).texte}`);
+          else toast.error(`Compte créé, mais : ${texteRemiseSms(result).texte}`, { duration: 15000 });
         } else if (result.activationCode) {
-          setCreatedPassword(null);
+          setCreatedRemise(null);
           setCreatedActivationCode(result.activationCode);
           toast.success("Compte créé, en attente d'activation. Transmets le code affiché à l'acteur.");
         } else {
-          setCreatedPassword(null);
+          setCreatedRemise(null);
           setCreatedActivationCode(null);
           toast.success('Compte créé en attente de validation par un super_admin.');
         }
@@ -2179,10 +2182,10 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
         }
         if (!isMountedRef.current) return;
         setSubmitted(true);
-        // Pas de retour auto quand un mot de passe OU un code d'activation à
-        // usage unique doit être lu/transmis — seulement quand ni l'un ni
+        // Pas de retour auto quand le résultat de la remise par SMS OU un code
+        // d'activation à usage unique doit être lu — seulement quand ni l'un ni
         // l'autre n'est présent (cas "en attente de validation super_admin").
-        if (!result.defaultPassword && !result.activationCode) {
+        if (!result.remise && !result.activationCode) {
           submitTimeoutRef.current = setTimeout(() => {
             if (isMountedRef.current) onSuccess();
           }, 3000);
@@ -2291,16 +2294,17 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
 
       clearDraftAndCancelDebounce();
 
-      if (result.defaultPassword) {
-        setCreatedPassword(result.defaultPassword);
+      if (result.remise) {
+        setCreatedRemise(result.remise);
         setCreatedActivationCode(null);
-        toast.success('Compte créé avec succès.');
+        if (result.remise.smsEnvoye) toast.success(`Compte créé. ${texteRemiseSms(result).texte}`);
+        else toast.error(`Compte créé, mais : ${texteRemiseSms(result).texte}`, { duration: 15000 });
       } else if (result.activationCode) {
-        setCreatedPassword(null);
+        setCreatedRemise(null);
         setCreatedActivationCode(result.activationCode);
         toast.success("Compte créé, en attente d'activation. Transmets le code affiché à l'acteur.");
       } else {
-        setCreatedPassword(null);
+        setCreatedRemise(null);
         setCreatedActivationCode(null);
         toast.success('Compte créé en attente de validation par un super_admin.');
       }
@@ -2311,7 +2315,7 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
       }
       if (!isMountedRef.current) return;
       setSubmitted(true);
-      if (!result.defaultPassword && !result.activationCode) {
+      if (!result.remise && !result.activationCode) {
         submitTimeoutRef.current = setTimeout(() => {
           if (isMountedRef.current) onSuccess();
         }, 3000);
@@ -2542,13 +2546,13 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
             className="text-center text-gray-900 mb-1"
             style={{ fontSize: '1.7rem', fontWeight: 900 }}
           >
-            {createdPassword || createdActivationCode ? 'Compte créé !' : 'Dossier envoyé !'}
+            {createdRemise || createdActivationCode ? 'Compte créé !' : 'Dossier envoyé !'}
           </h2>
           <p className="text-center text-gray-500 mb-2" style={{ fontSize: '1rem' }}>
             {data.prenoms} {data.nom}
           </p>
           <p className="text-center mb-6" style={{ color: cfg!.color, fontSize: '0.92rem', fontWeight: 700 }}>
-            {createdPassword
+            {createdRemise
               ? `Compte ${cfg!.label} actif`
               : createdActivationCode
                 ? `Compte ${cfg!.label} en attente d'activation`
@@ -2610,11 +2614,11 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
           {/* Workflow — cette carte décrit le circuit de VALIDATION d'un dossier
               (24-48h). Elle n'a rien à voir avec l'activation du compte, qui
               est instantanée via le code ci-dessus. Un compte créé via le
-              back-office (createdPassword / createdActivationCode) existe déjà
+              back-office (createdRemise / createdActivationCode) existe déjà
               et n'attend AUCUNE approbation superviseur pour exister : on
               n'affiche donc cette carte que pour le cas réellement en attente
               (dossier complémentaire soumis pour ré-examen). */}
-          {!createdPassword && !createdActivationCode && (
+          {!createdRemise && !createdActivationCode && (
           <div className="bg-white rounded-3xl border-2 border-amber-200 p-5 mb-4 shadow-sm">
             <div className="flex items-center gap-3 mb-4 pb-4 border-b-2 border-gray-100">
               <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center">
@@ -2670,7 +2674,7 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
           </div>
           )}
 
-          {!createdPassword && !createdActivationCode && (
+          {!createdRemise && !createdActivationCode && (
             <div className="bg-blue-50 rounded-2xl border-2 border-blue-100 p-4 mb-4 flex gap-3">
               <Info className="w-6 h-6 text-blue-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div>
@@ -2681,34 +2685,25 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
               </div>
             </div>
           )}
-          {createdPassword && (
-            <div className="bg-amber-50 rounded-2xl border-2 border-amber-200 p-4 mb-4">
-              <div className="flex gap-3 mb-3">
-                <ShieldCheck className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+          {/* BO-1 / SEC-10 (décision Patrick, 03/10/2026) : le mot de passe d'un
+              compte BO part par SMS au téléphone du compte. Il n'est NI reçu NI
+              affiché ici : seul le numéro masqué l'est. SMS en échec : on le
+              dit, sans jamais retomber sur l'affichage du code. */}
+          {createdRemise && (
+            <div
+              role={createdRemise.smsEnvoye ? 'status' : 'alert'}
+              className={`rounded-2xl border-2 p-4 mb-4 ${createdRemise.smsEnvoye ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}
+            >
+              <div className="flex gap-3">
+                <ShieldCheck className={`w-6 h-6 flex-shrink-0 mt-0.5 ${createdRemise.smsEnvoye ? 'text-emerald-600' : 'text-red-600'}`} aria-hidden="true" />
                 <div>
-                  <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#92400E' }}>Mot de passe initial</p>
-                  <p style={{ fontSize: '0.82rem', color: '#B45309', lineHeight: '1.5', marginTop: 4 }}>
-                    Communique-le à l'utilisateur. Il sera demandé de le changer à la première connexion. Ce mot de passe ne sera plus affiché.
+                  <p style={{ fontSize: '0.9rem', fontWeight: 700, color: createdRemise.smsEnvoye ? '#065F46' : '#991B1B' }}>
+                    {createdRemise.smsEnvoye ? 'Mot de passe envoyé par SMS' : 'SMS non envoyé'}
+                  </p>
+                  <p style={{ fontSize: '0.82rem', color: createdRemise.smsEnvoye ? '#047857' : '#B91C1C', lineHeight: '1.5', marginTop: 4 }}>
+                    {texteRemiseSms({ remise: createdRemise }).texte}
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 bg-white rounded-xl border-2 border-amber-200 p-3">
-                <code style={{ flex: 1, fontSize: '1.05rem', fontWeight: 700, color: '#1a1a1a', letterSpacing: '0.05em', fontFamily: 'ui-monospace, SFMono-Regular, monospace', wordBreak: 'break-all' }}>
-                  {createdPassword}
-                </code>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard?.writeText(createdPassword).then(
-                      () => toast.success('Mot de passe copié'),
-                      () => toast.error('Copie impossible'),
-                    );
-                  }}
-                  className="shrink-0 px-3 py-2 rounded-lg font-bold text-white text-sm"
-                  style={{ background: '#D97706' }}
-                >
-                  Copier
-                </button>
               </div>
             </div>
           )}
@@ -2723,7 +2718,7 @@ export function FicheIdentificationDynamiqueBO({ onClose, onSuccess }: {
             <p style={{ fontSize: '0.75rem', color: 'var(--encre-4)', marginTop: 4 }}>Conserve ce numéro pour le suivi</p>
           </div>
 
-          {(createdPassword || createdActivationCode) ? (
+          {(createdRemise || createdActivationCode) ? (
             <button
               type="button"
               onClick={() => onSuccess()}

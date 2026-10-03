@@ -194,8 +194,11 @@ describe('Invariant P0.0 (back-office) — POST /users/backoffice/create ne réi
       });
 
     expect(res.status).toBe(201);
-    expect(typeof res.body.defaultPassword).toBe('string');
-    expect(res.body.defaultPassword).not.toBe('0000');
+    // BO-1 / SEC-10 : le mot de passe réel existe, mais il part par SMS au
+    // téléphone du compte — la réponse ne le porte plus (voir bo1-sec10).
+    expect(res.body.defaultPassword).toBeUndefined();
+    expect(res.body.motDePasseInitial).toBeUndefined();
+    expect(res.body.remise?.canal).toBe('sms');
     expect(res.body.activationCode).toBeUndefined();
     expect(res.body.status).toBe(UserStatus.ACTIF);
 

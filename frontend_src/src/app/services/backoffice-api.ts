@@ -163,12 +163,14 @@ export async function boGetMe(): Promise<BOUser> {
   return handleResponse(res);
 }
 
+// BO-1 : le serveur ne rend plus que le nom des super_admin (plus de
+// téléphone ni d'identifiant interne sur cette route publique).
 export async function boGetContactsRecoveryBo(signal?: AbortSignal): Promise<{
-  contacts: Array<{ id: string; firstName: string; lastName: string; phone: string }>;
+  contacts: Array<{ firstName: string; lastName: string }>;
 }> {
   const res = await fetch(`${API_URL}/auth/contacts-recovery-bo`, { signal });
   if (!res.ok) throw new Error(String(res.status));
-  return res.json() as Promise<{ contacts: Array<{ id: string; firstName: string; lastName: string; phone: string }> }>;
+  return res.json() as Promise<{ contacts: Array<{ firstName: string; lastName: string }> }>;
 }
 
 export async function boWebAuthnAuthenticateOptions(phone: string, signal?: AbortSignal): Promise<Record<string, unknown> & { userId?: string; error?: string }> {
@@ -1052,8 +1054,9 @@ export async function boCreateBOUser(data: any) {
     : null;
   if (!phone) throw new Error('Numéro de téléphone requis');
   // Création de compte BO via l'endpoint authentifié dédié (réservé super_admin).
-  // L'ancien passage par /auth/signup (public) est supprimé : le mot de passe est
-  // généré côté serveur et renvoyé dans motDePasseInitial.
+  // L'ancien passage par /auth/signup (public) est supprimé. BO-1 / SEC-10 : le
+  // mot de passe est généré côté serveur et part par SMS au téléphone du compte ;
+  // la réponse ne porte que `remise` (numéro masqué), jamais le secret.
   return apiPost('/users/backoffice-account', {
     phone,
     firstName: data.prenom,
@@ -1074,7 +1077,35 @@ export async function updateBOUserActif(id: string, actif: boolean) {
   return apiPatch(`/users/${id}`, { status });
 }
 
-export async function boAdminResetPassword(userId: string) {
+// BO-1 / SEC-10 + SEC-08b (décision Patrick, 03/10/2026) : le code d'un compte
+// BO est remis par SMS, jamais affiché. Le serveur ne renvoie que ceci.
+export interface RemiseParSms {
+  canal: 'sms';
+  smsEnvoye: boolean;
+  telephoneMasque: string;
+}
+
+export interface ResultatRemise {
+  success?: boolean;
+  code?: string;
+  message?: string;
+  remise?: RemiseParSms;
+}
+
+/**
+ * Texte à afficher après une création ou une réinitialisation. Jamais de
+ * secret : seulement le numéro masqué, ou l'échec d'envoi dit tel quel.
+ */
+export function texteRemiseSms(res: ResultatRemise | null | undefined): { ok: boolean; texte: string } {
+  const remise = res?.remise;
+  if (!remise) return { ok: false, texte: 'Aucune confirmation d\'envoi du code par SMS.' };
+  return remise.smsEnvoye
+    ? { ok: true, texte: `Code envoyé par SMS au ${remise.telephoneMasque}.` }
+    : { ok: false, texte: `Le SMS n'a pas pu être envoyé au ${remise.telephoneMasque}. Aucun code n'est affiché : relancez « Réinitialiser le mot de passe » pour renvoyer un nouveau code.` };
+}
+
+/** Réinitialise le mot de passe : le nouveau code part par SMS (super_admin). */
+export async function boAdminResetPassword(userId: string): Promise<ResultatRemise> {
   return apiPost(`/users/${userId}/admin-reset-password`, {});
 }
 
@@ -1099,6 +1130,9 @@ export interface BoCreateAdminResult {
   id: string;
   status: string;
   message: string;
+  // BO-1 / SEC-10 : création directe ou validation — le code part par SMS.
+  remise?: RemiseParSms;
+  code?: string;
 }
 
 export type AdminEnAttente = {
@@ -1198,7 +1232,9 @@ export interface CreateBackofficeUserResult {
   id: string;
   status: string;
   message: string;
-  defaultPassword?: string;
+  // BO-1 / SEC-10 : compte admin — le mot de passe part par SMS (`remise`).
+  remise?: RemiseParSms;
+  code?: string;
   // P0.0 (ADR-002) : présent pour tout acteur non-admin (marchand, producteur,
   // cooperateur, institution, identificateur) — le compte naît en_attente_activation
   // et ce code, à usage unique et expirant (30 min), est LA seule façon de
