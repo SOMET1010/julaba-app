@@ -107,6 +107,7 @@
     "test:fusion-panier": "node scripts/test-fusion-panier.mjs",
     "test:prix-catalogue": "tsx src/app/services/prixCatalogueVocal.test.mts",
     "test:verrou-connexion": "node scripts/test-verrou-connexion.mjs",
+    "test:recuperation-admin": "node scripts/test-recuperation-admin.mjs",
     "test:source-vente": "node scripts/test-source-vente.mjs",
     "test:cible-tactile": "node scripts/test-cible-tactile.mjs",
     "test:icones": "node scripts/test-icones.mjs",
