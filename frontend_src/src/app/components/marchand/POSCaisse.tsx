@@ -26,6 +26,7 @@ import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { FournisseurDemandePrix, MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
 import { BoutonDirePrix } from './BoutonDirePrix';
+import { resoudrePrix } from '../../services/ligneProvisoire';
 import { ETAT_INITIAL, empreintePanier, reduire, type EffetEncaissement, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
 import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { PaveMontant } from '../shared/PaveMontant';
@@ -110,6 +111,8 @@ function POSCaisseInner() {
   // montant libre » pour deux tas. La vente serait juste sur l'ARGENT et fausse
   // sur la QUANTITÉ — donc sur le produit vedette et sur ses statistiques.
   const [libreQte, setLibreQte] = useState(1);
+  /** AMB-01 — le prix DIT, tant qu'on ne sait pas s'il vaut pour un ou pour tous. */
+  const [prixDitAArbitrer, setPrixDitAArbitrer] = useState<{ montant: number; quantite: number } | null>(null);
   // « Autre article » sert maintenant DEUX gestes : chercher dans le
   // référentiel maître (Odoo) pour ajouter un vrai article à son catalogue,
   // ou vendre un montant libre quand rien ne correspond. Le second reste
@@ -343,7 +346,7 @@ function POSCaisseInner() {
     dire(ligneAjouteeDeuxFormes({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }).texteParle);
     // L'unité revient au défaut : sinon le « tas » de la vente précédente
     // collerait, en silence, à l'article libre suivant.
-    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setLibreQte(1); setShowLibre(false); setVenteDictee(null);
+    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setLibreQte(1); setShowLibre(false); setVenteDictee(null); setPrixDitAArbitrer(null);
   };
 
   const total = getTotalCart();
@@ -1600,7 +1603,28 @@ function POSCaisseInner() {
                     ouvrirToutSeul
                     question={texteMessage('TATA_QUEL_PRIX', { produit: libreDesc || venteDictee?.nom || '' })}
                     dire={dire}
-                    onMontant={(m) => setLibreMontant(String(m))}
+                    onMontant={(m) => {
+                      // AMB-01 — ON NE DEVINE PAS ENTRE « CHACUN » ET « EN TOUT ».
+                      //
+                      // Mesuré le 03/10/2026 : « cinq piments » puis « cinq cents
+                      // francs » écrivait 2 500 F — 500 pris pour un prix UNITAIRE,
+                      // sans rien demander. C'était juste ce jour-là ; « donne-moi
+                      // cinq piments, c'est mille francs » aurait écrit 5 000 F.
+                      //
+                      // L'application sait déjà ne pas deviner : `TATA_AMBIGUITE`
+                      // est marqué `critiqueArgent: true` et `prixVocal` le lève
+                      // dès que la quantité dépasse un. Ce chemin-ci ne le
+                      // consultait pas — parce que la voix a été branchée sur un
+                      // formulaire tactile, où le champ est un prix unitaire par
+                      // construction. On rebranche la question.
+                      const qteDite = venteDictee?.quantite ?? libreQte;
+                      if (m > 0 && qteDite > 1) {
+                        setPrixDitAArbitrer({ montant: m, quantite: qteDite });
+                        direMessage('TATA_AMBIGUITE', { montant: m, quantite: String(qteDite) });
+                        return;
+                      }
+                      setLibreMontant(String(m));
+                    }}
                   />
                 </div>
               )}
@@ -1625,6 +1649,36 @@ function POSCaisseInner() {
                 />
                 <span style={{ fontSize:16, fontWeight:700, color:'var(--encre-3)' }}>F</span>
               </div>
+
+              {/* AMB-01 — DEUX RÉPONSES, ET CHACUNE DIT CE QU'ELLE VA ÉCRIRE.
+                  Pas « unitaire / total » : ces mots-là ne sont pas ceux du
+                  marché. Et chaque bouton porte le TOTAL qui entrera au panier,
+                  pour qu'aucun des deux ne réserve de surprise. */}
+              {prixDitAArbitrer && (
+                <div style={{ display:'grid', gap:8, marginBottom:14 }}>
+                  {(() => {
+                    const { montant, quantite } = prixDitAArbitrer;
+                    const chacun = resoudrePrix(quantite, montant, 'unitaire', null);
+                    const enTout = resoudrePrix(quantite, montant, 'total', null);
+                    const poser = (r: { prixUnitaire: number | null }) => {
+                      setLibreMontant(String(r.prixUnitaire ?? montant));
+                      setPrixDitAArbitrer(null);
+                    };
+                    return (
+                      <>
+                        <button type="button" onClick={() => poser(chacun)}
+                          style={{ padding:'var(--caisse-esp-3)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'2px solid var(--caisse-vert)', background:'white', color:'var(--encre)', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
+                          {formatF(montant)} F chacun — total {formatF((chacun.prixUnitaire ?? 0) * quantite)} F
+                        </button>
+                        <button type="button" onClick={() => poser(enTout)}
+                          style={{ padding:'var(--caisse-esp-3)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'2px solid var(--caisse-vert)', background:'white', color:'var(--encre)', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
+                          {formatF(montant)} F en tout — {formatF(enTout.prixUnitaire ?? 0)} F chacun
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
 
               {/* Unité LOCALE : c'est elle qui sait si elle vend au tas ou au kilo. */}
               {refChoisie && (
