@@ -15,6 +15,15 @@
  * reposait, lui, sur la bonne foi de qui l'exécutait.
  *
  *   node ci/prouver-invariants.mjs --base <ref> [--sortie <fichier>]
+ *                                  [--deleguer '<motif>=<code>']
+ *
+ * `--deleguer` (CI seulement, 03/10/2026). Les invariants backend exigent un
+ * PostgreSQL, monté par le job `invariants-backend` (`invariants.yml`, APPELÉ
+ * plutôt que recopié). Le job du verdict ne peut donc pas les rejouer. Une
+ * commande qui contient <motif> n'est PAS lancée ici : elle entre au journal
+ * avec le <code> du job qui l'a réellement jouée (0 s'il est vert, sinon non
+ * nul) et sa provenance (`delegue`). Rien n'est écarté : une commande déléguée
+ * en échec entre en échec, et le garde la refuse comme les autres.
  *
  * CE QU'IL FAIT. Il demande au garde la liste des invariants EXIGÉS par le
  * diff, les lance UN PAR UN, relève le code de sortie de chacun immédiatement,
@@ -44,6 +53,16 @@ const opt = (nom) => { const i = argv.indexOf(nom); return i === -1 ? null : arg
 
 const BASE = opt('--base');
 const SORTIE = resolve(opt('--sortie') ?? join(RACINE, 'ci', 'preuve-invariants.json'));
+const DELEGUER = opt('--deleguer');
+let delegation = null;
+if (DELEGUER !== null) {
+  const m = /^(.+)=(-?\d+)$/.exec(DELEGUER);
+  if (!m || !m[1].trim()) {
+    console.error("Usage : --deleguer '<motif>=<code>' (ex. '-w backend=0')");
+    process.exit(2);
+  }
+  delegation = { motif: m[1].trim(), code: Number(m[2]) };
+}
 
 if (!BASE) {
   console.error('Usage : node ci/prouver-invariants.mjs --base <ref> [--sortie <fichier>]');
@@ -82,6 +101,14 @@ console.log(`\nPREUVE DES INVARIANTS — ${commandes.length} commande(s), arbre 
 const journal = [];
 let echecs = 0;
 for (const commande of commandes) {
+  if (delegation && commande.includes(delegation.motif)) {
+    const instant = new Date().toISOString();
+    journal.push({ commande, code: delegation.code, debut: instant, fin: instant, dureeMs: 0,
+      delegue: `job CI dédié (motif « ${delegation.motif} »), même commit` });
+    if (delegation.code !== 0) echecs++;
+    console.log(`  ${delegation.code === 0 ? '✓' : '✗'} (${delegation.code}) ${commande}   ← délégué au job dédié`);
+    continue;
+  }
   const debut = new Date().toISOString();
   const t0 = Date.now();
   // `shell: true` parce qu'une commande d'invariant est une ligne npm, pas un

@@ -133,42 +133,30 @@ jobs:
       - name: Install (workspaces, racine)
         run: npm ci
 
-      - name: Invariants frontend des zones touchées
-        # Chaque commande exigée qui n'est pas backend tourne ici. Une commande
-        # n'entre dans la PREUVE que si elle est sortie en 0 : le gate ne croit
-        # pas sur parole qu'un invariant a tourné, il lit la liste de ce qui a
-        # réellement été vert.
+      - name: Le journal d'exécution des invariants (preuve JSON, GARDE-03)
+        # GARDE-03 (24af733) : le gate n'accepte plus qu'un JOURNAL produit par
+        # `ci/prouver-invariants.mjs`, dont l'arbre est le HEAD vérifié. Cette
+        # étape écrivait encore une liste en texte (`preuve.txt`) : le gate la
+        # refusait à chaque PR, quoi qu'aient donné les invariants.
+        #
+        # Le journal est produit ICI, sur le commit que le verdict vérifie.
+        # Les invariants frontend y sont joués un par un. Les invariants
+        # backend ont tourné dans `invariants-backend` (PostgreSQL, montage
+        # APPELÉ, pas recopié — sur le même commit) : ils entrent au journal
+        # avec le résultat réel de ce job, et leur provenance. Un job backend
+        # absent, annulé ou rouge entre en ÉCHEC, et le gate le refuse.
+        #
+        # On ne fait PAS échouer cette étape : c'est le VERDICT — une seule
+        # place — qui refuse, avec le rapport complet sous les yeux.
         run: |
-          node ci/garde-argent.mjs --base "${{ needs.detection.outputs.base }}" --liste-invariants > exigees.txt
-          : > preuve.txt
-          echec=0
-          while IFS= read -r cmd; do
-            [ -z "$cmd" ] && continue
-            case "$cmd" in *"-w backend"*) continue ;; esac
-            echo "── $cmd"
-            if eval "$cmd"; then echo "$cmd" >> preuve.txt; else echo "✗ ÉCHEC : $cmd"; echec=1; fi
-          done < exigees.txt
-          # On ne fait PAS échouer cette étape : un invariant rouge n'entre pas
-          # dans la preuve, et c'est le VERDICT — une seule place — qui refuse.
-          # Sans cela, l'étape de verdict serait sautée et la PR n'aurait jamais
-          # le rapport complet sous les yeux.
-          if [ "$echec" = 1 ]; then echo "→ des invariants sont rouges : le verdict refusera."; fi
-
-      - name: La preuve du backend, si son job a réussi
-        if: needs.invariants-backend.result == 'success'
-        run: |
-          grep -- '-w backend' exigees.txt >> preuve.txt || true
-          echo "── invariants backend : job \`invariants-backend\` vert, versé à la preuve"
-
-      - name: Le backend était exigé et n'a pas été vert
-        if: needs.detection.outputs.postgres == 'true' && needs.invariants-backend.result != 'success'
-        run: |
-          echo "✗ Une zone d'argent backend est touchée et \`invariants-backend\` n'est pas vert"
-          echo "  (résultat : ${{ needs.invariants-backend.result }})."
-          echo "  La preuve restera incomplète et le verdict refusera — c'est voulu."
+          if [ "${{ needs.invariants-backend.result }}" = "success" ]; then CODE_BACKEND=0; else CODE_BACKEND=1; fi
+          echo "invariants-backend : ${{ needs.invariants-backend.result }} → code $CODE_BACKEND au journal"
+          node ci/prouver-invariants.mjs --base "${{ needs.detection.outputs.base }}" --sortie preuve.json \
+            --deleguer "-w backend=$CODE_BACKEND" \
+            || echo "→ des invariants sont rouges : le verdict refusera."
 
       - name: GARDE-ARGENT — verdict
         # Périmètre recalculé, invariants déclarés existants, chaîne `test:ci`
         # gelée relue dans git, empreinte des gardes, `GARDE-ASSOUPLIE`, et
         # enfin la preuve que les invariants exigés ont bien tourné.
-        run: node ci/garde-argent.mjs --base "${{ needs.detection.outputs.base }}" --preuve preuve.txt
+        run: node ci/garde-argent.mjs --base "${{ needs.detection.outputs.base }}" --preuve preuve.json
