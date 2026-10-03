@@ -200,7 +200,7 @@ console.log('\n[VOX-03] L\'écran du prix de la caisse a un micro');
 {
   ok(/import \{ BoutonDirePrix \}/.test(caisse),
      'POSCaisse importe BoutonDirePrix — la brique existante, pas une seconde');
-  ok(/<BoutonDirePrix[\s\S]{0,300}onMontant=\{\(m\) => setLibreMontant\(String\(m\)\)\}/.test(caisse),
+  ok(/<BoutonDirePrix[\s\S]{0,400}onMontant=\{\(m\) =>[\s\S]{0,2000}setLibreMontant\(String\(m\)\);/.test(caisse),
      'le montant dit remplit le MÊME champ que le clavier — une seule source de prix');
   ok(/\{guidageVocal\(\) && \([\s\S]{0,200}<BoutonDirePrix/.test(caisse),
      'et il ne s\'affiche pas quand elle a coupé le guidage vocal');
@@ -235,6 +235,33 @@ console.log('\n[VOX-03] L\'écran du prix de la caisse a un micro');
   // ce qu'on lui dit de faire.
   ok(/autoFocus=\{!guidageVocal\(\)\}/.test(caisse),
      'le pavé numérique ne s\'ouvre pas tout seul quand le guidage vocal parle');
+
+  // AMB-01 — LE PRIX DIT NE SE DEVINE PAS ENTRE « CHACUN » ET « EN TOUT ».
+  //
+  // Mesuré sur l'APK `e758a37`, 03/10/2026 : « cinq piments » puis « cinq cents
+  // francs » a écrit 2 500 F — 500 pris pour un prix UNITAIRE, sans rien
+  // demander. C'était juste ce jour-là (Patrick voulait bien dire 500 F le
+  // piment). Mais « donne-moi cinq piments, c'est mille francs » aurait écrit
+  // 5 000 F, et l'aurait ANNONCÉ comme un fait.
+  //
+  // L'application savait déjà ne pas deviner : `TATA_AMBIGUITE` est marqué
+  // `critiqueArgent: true` et `prixVocal` le lève dès que la quantité dépasse
+  // un. Ce chemin ne le consultait pas — la voix avait été branchée sur un
+  // formulaire tactile, où le champ EST un prix unitaire par construction.
+  ok(/setPrixDitAArbitrer\(\{ montant: m, quantite: qteDite \}\)/.test(caisse),
+     'un prix DIT sur plusieurs unités n\'entre pas dans le champ sans être arbitré');
+  ok(/direMessage\('TATA_AMBIGUITE'/.test(caisse),
+     'et Tantie pose la question — celle qui existe déjà, pas une nouvelle');
+  ok(/if \(m > 0 && qteDite > 1\)/.test(caisse),
+     'sur UNE seule unité il n\'y a rien à arbitrer : le prix entre directement');
+  // LA RÈGLE VIT AILLEURS, PURE ET TESTÉE. En réécrire une seconde ici, ce
+  // serait deux façons de diviser un prix — donc deux totaux possibles.
+  ok(/import \{ resoudrePrix \} from '\.\.\/\.\.\/services\/ligneProvisoire'/.test(caisse),
+     'le partage du prix passe par `resoudrePrix`, jamais par une division écrite ici');
+  // ET CHAQUE RÉPONSE DIT CE QU'ELLE VA ÉCRIRE : un bouton « en tout » qui ne
+  // montrerait pas le prix par unité laisserait découvrir le total APRÈS coup.
+  ok(/chacun — total \{formatF/.test(caisse) && /en tout — \{formatF/.test(caisse),
+     'chaque réponse porte le montant qu\'elle va écrire, avant qu\'elle choisisse');
 }
 
 console.log(echecs === 0 ? '\n✅ Tout est vert\n' : `\n❌ ${echecs} échec(s)\n`);
