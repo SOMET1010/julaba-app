@@ -75,30 +75,44 @@ export class AdminWalletsController {
     return this.adminWalletsService.debloquerWallet(userId, admin.id);
   }
 
+  // ── J5 (décision Patrick, 03/10/2026) ───────────────────────────────────
+  // Créditer, débiter ou remettre à zéro un wallet depuis le back-office est
+  // réservé au super_admin, avec un motif obligatoire. Le service écrit le
+  // journal (auteur, cible, montant, motif, horodatage) dans la MÊME
+  // transaction que le mouvement : si le journal échoue, rien ne bouge.
   @Post(':userId/reinitialiser')
+  @Roles('super_admin')
   reinitialiserWallet(
     @Param('userId') userId: string,
     @Body('confirmation') confirmation: string,
+    @Body('motif') motif: string,
+    @CurrentUser() admin: User,
   ) {
-    return this.adminWalletsService.reinitialiserWallet(userId, confirmation);
+    return this.adminWalletsService.reinitialiserWallet(userId, confirmation, motif, admin.id);
   }
 
   @Post(':userId/credit')
+  @Roles('super_admin')
   creditWallet(
     @Param('userId') userId: string,
     @Body('montant') montant: number,
-    @Body('description', new DefaultValuePipe('Crédit manuel admin')) description: string,
+    @Body('motif') motif: string,
+    @Body('description') description: string,
+    @CurrentUser() admin: User,
   ) {
-    return this.adminWalletsService.creditWallet(userId, montant, description);
+    return this.adminWalletsService.creditWallet(userId, montant, motif ?? description, admin.id);
   }
 
   @Post(':userId/debit')
+  @Roles('super_admin')
   debitWallet(
     @Param('userId') userId: string,
     @Body('montant') montant: number,
-    @Body('description', new DefaultValuePipe('Débit manuel admin')) description: string,
+    @Body('motif') motif: string,
+    @Body('description') description: string,
+    @CurrentUser() admin: User,
   ) {
-    return this.adminWalletsService.debitWallet(userId, montant, description);
+    return this.adminWalletsService.debitWallet(userId, montant, motif ?? description, admin.id);
   }
 
   @Get('export/csv')
