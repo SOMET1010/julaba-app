@@ -8,19 +8,19 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **407** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 425 |
-| — littéraux (phrase fixe en dur) | 192 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **412** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 430 |
+| — littéraux (phrase fixe en dur) | 196 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 84 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 75 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 76 |
 | — relais (`dire = (t) => speak(t)`) | 20 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 54 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **237** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **241** |
 | Dont dynamiques (avec variables) | 84 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **55** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **468** |
-| Fichiers avec au moins un site d'appel | 78 |
-| Attributs `aria-label` (lecteur d'écran uniquement) | 310 — **hors parcours vocal**, voir §8 |
+| Fichiers avec au moins un site d'appel | 79 |
+| Attributs `aria-label` (lecteur d'écran uniquement) | 322 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
 
@@ -59,6 +59,7 @@
 | `components/shared/ScoreResumeCard.tsx` | partage | 5 | 0 | 1 | 4 | 0 | 0 | 0 |
 | `components/wallet/WalletCard.tsx` | wallet | 5 | 7 | 0 | 0 | 0 | 0 | 2 |
 | `pages/CollecteVoix.tsx` | pages | 5 | 1 | 0 | 3 | 1 | 0 | 0 |
+| `pages/marchand/MesDonnees.tsx` | pages | 5 | 4 | 0 | 1 | 0 | 0 | 0 |
 | `components/auth/ActivationScreen.tsx` | auth | 4 | 2 | 0 | 1 | 1 | 0 | 0 |
 | `components/shared/ReceptionPaiementModal.tsx` | partage | 4 | 2 | 1 | 1 | 0 | 0 | 0 |
 | `components/shared/UniversalParametres.tsx` | marchand_autre | 4 | 3 | 0 | 0 | 0 | 2 | 0 |
@@ -120,10 +121,10 @@
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 18 | 9 | 1 |
 | autre | 14 | 1 | 0 |
+| pages | 10 | 5 | 0 |
 | depense | 9 | 8 | 2 |
 | credit | 8 | 7 | 4 |
 | backoffice | 5 | 4 | 0 |
-| pages | 5 | 1 | 0 |
 | academy | 2 | 0 | 0 |
 | contexte | 2 | 1 | 1 |
 | marketplace | 1 | 1 | 1 |
@@ -172,7 +173,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 1087 | `parle` | literal | C'est effacé net. |  |  |
 | 1299 | `parle` | dynamique | chiffresEpeles(phone) |  |  |
 | 1393 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
-| 1634 | `parle` | template | Version {__APP_VERSION__}, {__BUILD_ID__} | `__APP_VERSION__` `__BUILD_ID__` |  |
+| 1628 | `parle` | template | Version {__APP_VERSION__}, {__BUILD_ID__} | `__APP_VERSION__` `__BUILD_ID__` |  |
 
 ### `components/backoffice/BOLayout.tsx` — backoffice
 
@@ -820,7 +821,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 751 | `speak` | cle_i18n | REGLAGE_VOIX_ESSENTIEL |  |  |
 | 751 | `speak` | cle_i18n | REGLAGE_VOIX_COMPLET |  |  |
 | 936 | `speak` | literal | Export en cours |  |  |
-| 1071 | `speak` | literal | Déconnexion en cours |  |  |
+| 1075 | `speak` | literal | Déconnexion en cours |  |  |
 
 ### `components/ui/UniversalKPI.tsx` — partage
 
@@ -934,6 +935,16 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 110 | `parle` | dynamique | 'On refait celle-là. ' + (v.raisons[0] === 'silence (rien d\'audible détecté)' ? 'Je n\'ai rien entendu.' : 'Le son n\'est pas net.') |  |  |
 | 128 | `parle` | literal | Merci ! |  |  |
 | 149 | `parle` | dynamique | prompt.consigne |  |  |
+
+### `pages/marchand/MesDonnees.tsx` — pages
+
+| Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
+|---:|---|---|---|---|:-:|
+| 192 | `speak` | literal | Ton compte a été anonymisé. Ton argent a été conservé. |  |  |
+| 431 | `speak` | dynamique | texte |  |  |
+| 438 | `speak` | literal | Demande d'accès enregistrée. Tu recevras un récapitulatif de tes données par message. |  |  |
+| 441 | `speak` | literal | Pour corriger une donnée, je t'emmène à ton profil. |  |  |
+| 446 | `speak` | literal | Demande d'opposition enregistrée. Une personne du support te contactera. |  |  |
 
 ### `services/elevenlabs.ts` — moteur_vocal
 
@@ -1610,7 +1621,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 ## 8. Ce qui n'est PAS dans le parcours vocal (et pourquoi)
 
-- **`aria-label` (310)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
+- **`aria-label` (322)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
 - **Toasts** (`toast.success(…)`) et libellés d'écran : affichés, jamais dits. Hors inventaire vocal.
 - **`texteDyu`** de `loginVoiceScript.ts` : traduction dioula de travail, NON validée (le fichier le dit). Elle n'est ni activée ni reprise : Manus tranche.
 
