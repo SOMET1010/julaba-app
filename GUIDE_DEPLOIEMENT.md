@@ -1,5 +1,24 @@
 # 🚀 JULABA — Guide de Déploiement OVH VPS
 
+> ⚠️ **AVERTISSEMENT — Ce document décrit la chaîne secondaire, pas la production réelle.**
+>
+> Depuis le 13/08/2026 (`JULABA_DECISIONS.md` §9), formalisé par
+> `ADR-0004 — Cible de production : Render` (28/09/2026), **la production réelle
+> JULABA est sur Render** (`julaba-db` + `julaba-api` + `julaba-web`, auto-déploiement
+> sur `main`). Ce guide OVH VPS décrit la **chaîne secondaire** conservée pour
+> **disaster recovery** et **tests** : elle n'est **pas utilisée pour servir la prod
+> en conditions nominales**.
+>
+> - **Pour la prod réelle** : voir `docs/DEPLOIEMENT_RENDER.md` et `render.yaml`.
+> - **Pour la doctrine CI/CD** : voir `ci/README.md`.
+> - **Pour la décision complète** : voir `docs/adr/ADR-0004-cible-production-render.md`.
+>
+> Le contenu OVH ci-dessous est conservé tel quel — il reste le runbook de la
+> chaîne DR. Pour activer cette chaîne (exercice DR ou bascule), déclencher
+> manuellement `.github/workflows/deploy.yml` (`workflow_dispatch`).
+
+---
+
 ## Architecture cible
 
 ```

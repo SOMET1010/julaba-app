@@ -1,7 +1,15 @@
 # ADR-0002 — Convergence du schéma vers des migrations reproductibles (#10)
 
 - **Statut** : Accepté (plan) — exécution **étagée**, base de prod vivante.
-- **Date** : 2026-08-15
+  - Étapes 1-3 : ✅ RÉALISÉES.
+  - **Étape 4 : préparée par runbook, en attente de validation humaine pour
+    exécution** (voir `docs/etape4/RUNBOOK-BASCULE-MIGRATIONS.md`, tâche
+    INIT-010). La bascule précédente (2026-08-15, procès-verbal
+    `docs/etape4/BASCULE-EXECUTEE-2026-08-15.md`) a été invalidée par l'incident
+    du 18/09/2026 (`caisse_transaction_status_enum already exists`) — les
+    migrations sont depuis lors **désactivées en prod**
+    (`DB_MIGRATIONS_RUN=false` dans `render.yaml`).
+- **Date** : 2026-08-15 (initial) — mise à jour étape 4 : 2026-09-29 (INIT-010).
 - **Périmètre** : mécanisme de construction/évolution du schéma Postgres. **Aucune
   perte de données** ; la base de prod est la source de vérité, on ne la
   reconstruit jamais à partir de zéro.
@@ -118,18 +126,40 @@ On **ne big-bang pas**. Migration étagée, chaque étape non destructive et vé
   identiques** (FK incluse) ; suite d'invariants **45/45 verte** APRÈS retrait du
   nettoyage `afterAll` ajouté en #12 (dont ce drift était la cause).
 
-**Étape 4 — bascule. 🟡 PLAN PRÊT (2026-08-15) — exécution en attente d'audit + Go.**
-- Runbook détaillé : `docs/etape4/RUNBOOK-bascule-migrations.md` (audit prod
-  lecture seule → Go/No-Go → exécution ordonnée → rollback). **Aucune action prod
-  tant que l'audit n'a pas validé les critères Go.**
-- Nuance clé : la bascule n'est PAS un `--fake` global. Prod ≈ état **baseline** →
-  on `--fake` la baseline (schéma déjà présent) puis on **exécute réellement**
-  `FixSchemaDrifts` (uuid + FK + drop colonnes fantômes).
+**Étape 4 — bascule. 🟡 PRÉPARÉE PAR RUNBOOK (2026-09-29, INIT-010) — en attente de validation humaine pour exécution.**
+- **Runbook de bascule** : `docs/etape4/RUNBOOK-BASCULE-MIGRATIONS.md` (runbook
+  opérationnel détaillé, supersede le runbook historique
+  `docs/etape4/RUNBOOK-bascule-migrations.md` de 2026-08-15). Il décrit :
+  pré-requis obligatoires (backup vérifié, CI verte, `verify:dbinit-subsumed`
+  vert, validation Patrick), pré-validation staging, procédure de bascule prod
+  pas-à-pas (audit A1 + `--fake` du ledger + bascule drapeau Render + smoke
+  tests), plan de rollback (< 5 min), critères de succès, post-bascule (retrait
+  `DbInitService` différé), risques et mitigations, validation humaine.
+- **Aucune action prod** tant que la checklist de validation humaine (section 9
+  du runbook) n'est pas intégralement cochée (Go Patrick + Go Alex + créneau de
+  maintenance planifié + backup vérifié + tests staging verts).
+- **Lot de code préalable obligatoire** (hors présent runbook, à merger avant
+  exécution) : rendre la baseline `1780200000000-BaselineSchema` idempotente
+  (`CREATE TYPE IF NOT EXISTS` / `DO $$ … EXCEPTION WHEN duplicate_object $$`)
+  pour qu'elle puisse adopter un schéma existant sans planter — exactement le
+  défaut qui a tué le boot le 18/09/2026. Le test
+  `backend/test/unit/migrations-prod.spec.ts` (qui ASSERT aujourd'hui
+  intentionnellement que la baseline n'est PAS idempotente) doit être mis à jour
+  dans le même lot.
+- Nuance clé (reprise du runbook historique) : la bascule n'est PAS un `--fake`
+  global. Prod ≈ état **baseline** → on `--fake` la baseline (schéma déjà
+  présent) puis on **exécute réellement** `FixSchemaDrifts` (uuid + FK + drop
+  colonnes fantômes) — sauf si l'audit A1 prouve que `FixSchemaDrifts` est déjà
+  appliqué (cas de la prod post-2026-08-15 si le schéma a été conservé), auquel
+  cas les deux lignes sont fakers.
 - Références committées pour l'audit : `docs/etape4/schema-attendu-prod-actuelle.fp`
-  (état attendu avant) et `schema-attendu-apres-bascule.fp` (après).
+  (état attendu avant) et `schema-attendu-apres-bascule.fp` (après), méthode
+  d'empreinte dans `docs/etape4/schema-fingerprint.sql`.
 - Ensuite : `DB_MIGRATIONS_RUN=true`, `synchronize` off ; **gate CI** « schéma
   reproductible » (branche `npm run verify:dbinit-subsumed` + un check baseline) ;
-  retrait de `DbInit` dans un lot ultérieur une fois la bascule confirmée saine.
+  retrait de `DbInit` dans un lot ultérieur (ADR-0005 à créer) une fois la
+  bascule confirmée saine pendant 1 semaine — ferme alors SCHEMA-01/02/03 au
+  registre maître.
 
 ## Conséquences
 
