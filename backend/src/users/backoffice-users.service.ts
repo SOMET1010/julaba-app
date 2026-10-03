@@ -22,6 +22,7 @@ import { generateInitialPassword } from '../auth/auth.service';
 import { ActivationService } from '../auth/activation.service';
 import { PinCryptoService } from '../auth/pin-crypto.service';
 import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
+import { RemiseParSms, remiseParSms, messageRemise } from './remise-code-bo';
 import { genererPinIdentificateurAcceptable } from '../auth/pin-identificateur';
 
 const ADMIN_ROLES: UserRole[] = [
@@ -66,9 +67,9 @@ export class BackofficeUsersService {
     id: string;
     status: string;
     message: string;
-    defaultPassword?: string;
-    motDePasseInitial?: string;
     activationCode?: string;
+    remise?: RemiseParSms;
+    code?: string;
   }> {
     const targetIsAdmin = ADMIN_ROLES.includes(dto.role);
     const isActeurMetier = ACTEUR_METIER_ROLES.includes(dto.role);
@@ -186,8 +187,9 @@ export class BackofficeUsersService {
       // par l'ADR-002 (« vérifie s'il existe un rôle légitime… »). Pourquoi c'est
       // différent du trou fermé par P0.0 : (1) le mot de passe n'est PAS une
       // constante publique comme '0000' — il est généré aléatoirement à CHAQUE
-      // création (generateInitialPassword(), 12 caractères) et n'est affiché
-      // qu'une seule fois, à l'admin créateur ; (2) « quiconque connaît le numéro »
+      // création (generateInitialPassword(), 12 caractères) et, depuis BO-1,
+      // n'est remis QUE par SMS au téléphone du compte (jamais à l'admin) ;
+      // (2) « quiconque connaît le numéro »
       // ne peut donc rien tenter : il lui faudrait aussi ce secret aléatoire
       // jamais réutilisé ailleurs ; (3) le créateur est un super_admin, déjà
       // authentifié comme administrateur de confiance — ce n'est pas l'exploit de
@@ -407,13 +409,18 @@ export class BackofficeUsersService {
 
     if (targetIsAdmin) {
       // Cas ADMIN créé par un super_admin (voir commentaire plus haut) : mot de
-      // passe aléatoire réel, affiché une seule fois — comportement inchangé.
+      // passe aléatoire réel. BO-1 / SEC-10 (décision Patrick, 03/10/2026) : il
+      // part par SMS au téléphone du compte et ne repasse JAMAIS par cette
+      // réponse — le créateur ne le connaît pas. SMS en échec : on le dit
+      // (`SMS_NON_DELIVRE`), on n'affiche pas le code.
+      const smsEnvoye = await this.feedbakSms.notifyMotDePasseBo(saved.phone, defaultPassword, 'creation');
+      const remise = remiseParSms(saved.phone, smsEnvoye);
       return {
         id: saved.id,
         status: saved.status,
-        message: `Compte créé avec succès. Mot de passe initial : ${defaultPassword}. L'utilisateur devra le changer au premier login.`,
-        defaultPassword,
-        motDePasseInitial: defaultPassword,
+        message: messageRemise('Compte créé.', remise),
+        remise,
+        ...(smsEnvoye ? {} : { code: 'SMS_NON_DELIVRE' }),
       };
     }
 

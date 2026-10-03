@@ -91,13 +91,18 @@ export class AuthController {
     return this.authService.checkPhone(phone);
   }
 
+  // BO-1 : route PUBLIQUE (modale « mot de passe oublié » du login BO). Elle
+  // rendait l'id et le TÉLÉPHONE des super_admin — leur identifiant de
+  // connexion, offert à quiconque voulait les hameçonner (audit bo-b §2.3).
+  // Strict nécessaire : le nom, pour savoir qui joindre par les canaux
+  // internes. Ni numéro, ni identifiant interne.
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Get('contacts-recovery-bo')
   @HttpCode(HttpStatus.OK)
   async contactsRecoveryBo() {
     const rows = await this.userRepo.manager.query(
       `
-      SELECT id, first_name AS "firstName", last_name AS "lastName", phone
+      SELECT first_name AS "firstName", last_name AS "lastName"
       FROM users
       WHERE role = 'super_admin' AND status = 'actif'
       ORDER BY created_at ASC
@@ -463,34 +468,16 @@ export class AuthController {
     return { success: true, message: 'Toutes les sessions révoquées' };
   }
 
-  @Post('reset-user-password')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('super_admin', 'admin')
-  @HttpCode(HttpStatus.OK)
-  async resetUserPassword(@Body() body: { userId: string; newPassword: string }, @Request() req: any) {
-    if (!body.userId) return { success: false, message: 'userId requis' };
-    if (!body.newPassword || body.newPassword.length < 4) return { success: false, message: 'Mot de passe trop court (4 caractères minimum)' };
-    const user = await this.userRepo.findOne({ where: { id: body.userId } });
-    if (!user) return { success: false, message: 'Utilisateur introuvable' };
-    const bcrypt = require('bcryptjs');
-    await this.userRepo.update(user.id, {
-      passwordHash: await bcrypt.hash(body.newPassword, 10),
-      mustChangePassword: true,
-    } as any);
-    // Audit de cette action sensible (jamais le mot de passe en clair, ni son hash).
-    await this.auditService.log({
-      userId: req.user?.id ?? null,
-      action: 'PASSWORD_RESET',
-      entite: 'user',
-      entiteId: user.id,
-      details: {
-        changedBy: req.user?.id ?? null,
-        targetRole: (user as any).role ?? null,
-      },
-      ip: req.ip ?? null,
-    });
-    return { success: true, message: 'Mot de passe réinitialisé' };
-  }
+  // ── BO-1 / SEC-08b : PLUS PERSONNE NE TAPE LE MOT DE PASSE D'UN AUTRE ─────
+  //
+  // CE QU'IL Y AVAIT ICI. `POST reset-user-password {userId, newPassword}` :
+  // l'administrateur choisissait le mot de passe d'un autre compte (BOActeurDetail
+  // le tirait avec `Math.random` puis l'affichait pour copie). Il le connaissait
+  // donc, par construction.
+  //
+  // CE QUI LE REMPLACE : `POST /users/:id/admin-reset-password` (super_admin),
+  // qui tire le code côté serveur et l'envoie par SMS au téléphone du compte
+  // — décision de Patrick du 03/10/2026. Aucune réponse ne le porte.
 
   // ── SEC-08 : PLUS PERSONNE NE CHOISIT LE PIN D'UN AUTRE ──────────────────
   //

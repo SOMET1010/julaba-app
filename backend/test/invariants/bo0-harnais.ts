@@ -13,6 +13,7 @@ import * as request from 'supertest';
 import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../../src/app.module';
 import { DbInitService } from '../../src/database/db-init.service';
+import { SmsService } from '../../src/sms/sms.service';
 import { User, UserStatus } from '../../src/users/entities/user.entity';
 
 export interface CompteTest {
@@ -29,13 +30,20 @@ export interface HarnaisBO0 {
   close: () => Promise<void>;
 }
 
-export async function monterHarnais(): Promise<HarnaisBO0> {
-  const mod = await Test.createTestingModule({ imports: [AppModule] })
+export interface OptionsHarnais {
+  // BO-1 : remplace l'envoi SMS réel (même interception que sec-2) pour lire
+  // le seul exemplaire d'un code remis par SMS.
+  sms?: { sendSms: (phone: string, message: string) => Promise<{ success: boolean; error?: string }> };
+}
+
+export async function monterHarnais(options: OptionsHarnais = {}): Promise<HarnaisBO0> {
+  let builder = Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(ThrottlerStorage)
     .useValue({
       increment: async () => ({ totalHits: 1, timeToExpire: 60000, isBlocked: false, timeToBlockExpire: 0 }),
-    })
-    .compile();
+    });
+  if (options.sms) builder = builder.overrideProvider(SmsService).useValue(options.sms);
+  const mod = await builder.compile();
   const app = mod.createNestApplication();
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
