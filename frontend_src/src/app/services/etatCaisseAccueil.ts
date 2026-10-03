@@ -84,6 +84,24 @@ export interface FaitsCaisseAccueil {
   readonly aDesDonnees: boolean;
   /** Combien de VENTES attendent d'être envoyées depuis ce téléphone. */
   readonly ventesEnFile: number;
+  /**
+   * ACC-03 — OÙ EN EST LA LECTURE DE LA JOURNÉE DE CAISSE
+   * (services/lectureSessionCaisse.ts), qui est une lecture réseau DISTINCTE
+   * de celle des transactions.
+   *
+   * POURQUOI CE CHAMP EXISTE. `getTodayStats` vaut
+   * `(currentSession?.fondInitial || 0) + encaisse − cahier` : le total repose
+   * sur DEUX réponses du serveur. `lecture` ci-dessus n'en couvre qu'une.
+   * Terrain 03/10 : les transactions arrivent, `lecture` passe à `lu`, le fond
+   * initial n'est pas encore là, le calcul rend 0 — et l'accueil a dit « zéro
+   * franc » pour 100 F réels.
+   *
+   * ET SURTOUT PAS UN BOOLÉEN. `false` voudrait dire à la fois « pas encore »
+   * et « ça a échoué » : deux sens pour une donnée, c'est le défaut même qu'on
+   * ferme. Les quatre valeurs les séparent, et les deux mènent à des phrases
+   * différentes — se taire, ou annoncer un plancher.
+   */
+  readonly lectureSession: LectureHistorique;
 }
 
 export function etatCaisseAccueil(faits: FaitsCaisseAccueil): EtatCaisseAccueil {
@@ -108,8 +126,37 @@ export function etatCaisseAccueil(faits: FaitsCaisseAccueil): EtatCaisseAccueil 
       : { type: 'attente', ventesEnFile };
   }
 
-  // LE SERVEUR A RÉPONDU — mais s'il reste des ventes non envoyées sur ce
-  // téléphone, le serveur ne les connaît pas : son total est un plancher.
+  // ACC-03 — LES VENTES SONT LÀ, LA JOURNÉE DE CAISSE NON.
+  //
+  // C'est l'instant exact du terrain, et il ne durait que quelques secondes :
+  // `fetchCaisseTransactions` a répondu, `fetchSessionDuJour` pas encore. Le
+  // fond initial manque au total, qui rend alors un zéro parfaitement formé —
+  // et sans ce test, la branche ci-dessous le présentait comme `connue`,
+  // c'est-à-dire comme une RÉPONSE. La voix l'a dit.
+  //
+  // L'ÉCHEC DE LA SESSION N'EFFACE PAS LES VENTES. Si la journée de caisse est
+  // illisible mais que des transactions sont arrivées, cet argent a existé :
+  // on le garde, en plancher, sans prétendre que c'est le total. C'est la même
+  // règle que l'échec des transactions quinze lignes plus haut.
+  if (faits.lectureSession === 'echec') {
+    return faits.aDesDonnees
+      ? { type: 'partielle', montant: faits.montant, ventesEnFile, raison: 'echec' }
+      : { type: 'illisible', ventesEnFile };
+  }
+  if (faits.lectureSession === 'jamais' || faits.lectureSession === 'chargement') {
+    return faits.aDesDonnees
+      ? { type: 'partielle', montant: faits.montant, ventesEnFile, raison: 'chargement' }
+      : { type: 'attente', ventesEnFile };
+  }
+
+  // LES DEUX LECTURES ONT ABOUTI — mais s'il reste des ventes non envoyées sur
+  // ce téléphone, le serveur ne les connaît pas : son total est un plancher.
+  //
+  // ET C'EST ICI, ET SEULEMENT ICI, QUE ZÉRO PEUT SE DIRE. Une marchande qui
+  // n'a pas ouvert sa journée et n'a rien vendu reçoit `{session: null}` et
+  // une liste vide : deux réponses, pas deux silences. « Ta caisse
+  // aujourd'hui : zéro franc » est alors VRAI, et elle a le droit de
+  // l'entendre.
   return ventesEnFile > 0
     ? { type: 'partielle', montant: faits.montant, ventesEnFile, raison: 'ventes-en-file' }
     : { type: 'connue', montant: faits.montant, ventesEnFile };
