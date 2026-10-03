@@ -4,8 +4,6 @@ import { API_URL } from '../../utils/api';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   AlertCircle,
-  Eye,
-  EyeOff,
   Key,
   Loader2,
   Plus,
@@ -17,9 +15,12 @@ import { BO_PRIMARY, BO_DARK } from './bo-theme';
 
 type PartnerType = 'bank' | 'microfinance' | 'institution';
 
+// BO-1 : le serveur ne renvoie plus jamais la clé dans la liste ni après
+// modification — seulement `key_apercu`. La clé complète n'existe côté écran
+// qu'une fois, dans la réponse de création (`newSecret`).
 interface PartnerApiKeyRow {
   id: string;
-  key: string;
+  key_apercu: string;
   name: string;
   partner_type: string;
   is_active: boolean;
@@ -34,11 +35,6 @@ const PARTNER_TYPE_LABELS: Record<PartnerType, string> = {
   institution: 'Institution',
 };
 
-function maskKey(key: string): string {
-  if (key.length <= 14) return '••••••••';
-  return `${key.slice(0, 8)}…${key.slice(-4)}`;
-}
-
 function parseUsageCount(v: unknown): number {
   if (typeof v === 'number' && !Number.isNaN(v)) return v;
   if (typeof v === 'string') return parseInt(v, 10) || 0;
@@ -46,10 +42,10 @@ function parseUsageCount(v: unknown): number {
 }
 
 function normalizeRow(raw: Record<string, unknown>): PartnerApiKeyRow | null {
-  if (typeof raw.id !== 'string' || typeof raw.key !== 'string') return null;
+  if (typeof raw.id !== 'string') return null;
   return {
     id: raw.id,
-    key: raw.key,
+    key_apercu: typeof raw.key_apercu === 'string' ? raw.key_apercu : '••••••••',
     name: typeof raw.name === 'string' ? raw.name : '',
     partner_type: typeof raw.partner_type === 'string' ? raw.partner_type : '',
     is_active: Boolean(raw.is_active),
@@ -97,7 +93,6 @@ export function BOApiKeys() {
   const [partnerType, setPartnerType] = useState<PartnerType>('bank');
   const [saving, setSaving] = useState(false);
   const [patchingId, setPatchingId] = useState<string | null>(null);
-  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [newSecret, setNewSecret] = useState<{
     key: string;
     name: string;
@@ -143,15 +138,6 @@ export function BOApiKeys() {
     };
   }, [loadKeys]);
 
-  const toggleReveal = (id: string) => {
-    setRevealedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
   const generateKey = async () => {
     setError(null);
     const name = partnerName.trim();
@@ -187,9 +173,10 @@ export function BOApiKeys() {
         throw new Error('Réponse serveur invalide.');
       }
       const row = normalizeRow(data as Record<string, unknown>);
-      if (!row?.key) throw new Error('Clé non renvoyée par le serveur.');
+      const cle = (data as { key?: unknown }).key;
+      if (!row || typeof cle !== 'string') throw new Error('Clé non renvoyée par le serveur.');
       setNewSecret({
-        key: row.key,
+        key: cle,
         name: row.name,
         partner_type: row.partner_type,
       });
@@ -315,8 +302,9 @@ export function BOApiKeys() {
                 <Key className="w-6 h-6 text-amber-700 shrink-0 mt-0.5" />
                 <div>
                   <p id="new-secret-title" className="font-black text-amber-950 text-sm">
-                    Copie cette clé maintenant : elle ne sera plus affichée en
-                    clair après fermeture de ce message.
+                    Copie cette clé maintenant et transmets-la au partenaire :
+                    elle ne pourra plus être relue depuis le back-office. En cas
+                    de perte, désactive-la et crée-en une autre.
                   </p>
                   <p className="text-xs text-amber-900/80 mt-1 font-semibold">
                     {newSecret.name} ·{' '}
@@ -509,23 +497,9 @@ export function BOApiKeys() {
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2 min-w-0 max-w-xs">
-                          <span className="font-mono text-xs truncate text-gray-800">
-                            {revealedIds.has(r.id) ? r.key : maskKey(r.key)}
+                          <span className="font-mono text-xs truncate text-gray-800" title="Aperçu : la clé complète n'est montrée qu'à sa création">
+                            {r.key_apercu}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => toggleReveal(r.id)}
-                            className="w-8 h-8 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0"
-                            aria-label={revealedIds.has(r.id) ? 'Masquer la clé' : 'Afficher la clé'}
-                            aria-pressed={revealedIds.has(r.id)}
-                            title={revealedIds.has(r.id) ? 'Masquer' : 'Afficher'}
-                          >
-                            {revealedIds.has(r.id) ? (
-                              <EyeOff className="w-4 h-4 text-gray-600" />
-                            ) : (
-                              <Eye className="w-4 h-4 text-gray-600" />
-                            )}
-                          </button>
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
@@ -616,21 +590,8 @@ export function BOApiKeys() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[11px] break-all text-gray-800 flex-1">
-                      {revealedIds.has(r.id) ? r.key : maskKey(r.key)}
+                      {r.key_apercu}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => toggleReveal(r.id)}
-                      className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0"
-                      aria-label={revealedIds.has(r.id) ? 'Masquer la clé' : 'Afficher la clé'}
-                      aria-pressed={revealedIds.has(r.id)}
-                    >
-                      {revealedIds.has(r.id) ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
                   </div>
                   <p className="text-xs text-gray-500">
                     Appels :{' '}
