@@ -1,3 +1,5 @@
+import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
+import { RemiseParSms, remiseParSms, messageRemise } from './remise-code-bo';
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -16,6 +18,7 @@ export class UsersService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly feedbakSms: FeedbakSmsService,
   ) {}
 
   /**
@@ -491,9 +494,22 @@ export class UsersService {
       .slice(0, 30);
   }
 
-  async adminResetPassword(targetUserId: string, performedByUserId: string): Promise<{ success: boolean; defaultPassword: string; motDePasseInitial: string }> {
+  // BO-1 / SEC-10 + SEC-08b (décision Patrick, 03/10/2026) : réinitialiser =
+  // tirer un nouveau mot de passe, l'envoyer par SMS au téléphone du compte, et
+  // ne le dire à PERSONNE d'autre — pas même au super_admin qui a cliqué. C'est
+  // aussi la voie de « renvoi du code » : on ne relit jamais un secret stocké,
+  // on en tire un nouveau. Les sessions ouvertes tombent (refresh tokens
+  // révoqués), comme pour le PIN identificateur (SEC-2).
+  async adminResetPassword(
+    targetUserId: string,
+    performedByUserId: string,
+  ): Promise<{ success: boolean; code?: string; message: string; remise: RemiseParSms }> {
     const user = await this.userRepository.findOne({ where: { id: targetUserId } });
     if (!user) throw new NotFoundException('Utilisateur introuvable');
+    if (!user.phone) {
+      // Sans numéro, pas de canal : on ne réinitialise pas dans le vide.
+      throw new BadRequestException('Ce compte n\'a pas de numéro : le code ne peut pas être envoyé par SMS');
+    }
 
     const defaultPassword = generateInitialPassword();
     const passwordHash = await bcrypt.hash(defaultPassword, 10);
@@ -508,9 +524,23 @@ export class UsersService {
       action: 'PASSWORD_ADMIN_RESET',
       entite: 'user',
       entiteId: targetUserId,
-      details: { role: user.role },
+      details: { role: user.role, canal: 'sms' },
     });
 
-    return { success: true, defaultPassword, motDePasseInitial: defaultPassword };
+    await this.dataSource.query(
+      `UPDATE refresh_tokens SET revoked = true, used = true WHERE user_id = $1 AND revoked = false`,
+      [targetUserId],
+    );
+
+    // Le mot de passe est déjà changé même si le SMS n'est pas parti : on ne
+    // revient pas sur l'invalidation d'un secret. L'écran dit la vérité.
+    const smsEnvoye = await this.feedbakSms.notifyMotDePasseBo(user.phone, defaultPassword, 'reinitialisation');
+    const remise = remiseParSms(user.phone, smsEnvoye);
+    return {
+      success: smsEnvoye,
+      ...(smsEnvoye ? {} : { code: 'SMS_NON_DELIVRE' }),
+      message: messageRemise('Mot de passe réinitialisé.', remise),
+      remise,
+    };
   }
 }

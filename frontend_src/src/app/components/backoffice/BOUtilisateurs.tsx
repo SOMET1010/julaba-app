@@ -20,7 +20,7 @@ import { BO_PRIMARY, BO_DARK } from './bo-theme';
 import { toast } from 'sonner';
 import { CIV_REGIONS_LIST } from '../../data/civ-geography';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
-import { boAdminResetPassword } from '../../services/backoffice-api';
+import { boAdminResetPassword, texteRemiseSms } from '../../services/backoffice-api';
 
 // ─── Configuration des rôles RBAC ────────────────────────────────────────────
 type RoleConf = { label: string; color: string; icon: LucideIcon; desc: string };
@@ -646,12 +646,10 @@ export function BOUtilisateurs() {
         role: form.role,
         region: form.region,
       });
-      const motDePasse = res?.motDePasseInitial;
-      toast.success(
-        motDePasse
-          ? `Compte créé pour ${form.prenom} ${form.nom}. Mot de passe initial : ${motDePasse}. À communiquer, l’utilisateur devra le changer à sa première connexion.`
-          : `Compte créé pour ${form.prenom} ${form.nom}. L’utilisateur devra définir son mot de passe à sa première connexion.`,
-      );
+      // BO-1 / SEC-10 : le mot de passe part par SMS, jamais à l'écran.
+      const remise = texteRemiseSms(res);
+      if (remise.ok) toast.success(`Compte créé pour ${form.prenom} ${form.nom}. ${remise.texte}`);
+      else toast.error(`Compte créé pour ${form.prenom} ${form.nom}, mais : ${remise.texte}`, { duration: 15000 });
       setForm({ prenom: '', nom: '', telephone: '', role: 'admin_national', region: 'National', actif: true, metier: '', metierCustom: '' });
       setShowCreate(false);
     } catch (err) {
@@ -667,12 +665,10 @@ export function BOUtilisateurs() {
     setIsResetting(true);
     try {
       const res = await boAdminResetPassword(resetTarget.id);
-      const motDePasse = res?.motDePasseInitial;
-      toast.success(
-        motDePasse
-          ? `Mot de passe réinitialisé pour ${resetTarget.nom}. Nouveau mot de passe : ${motDePasse}. À communiquer, il devra le changer à la prochaine connexion.`
-          : `Mot de passe réinitialisé pour ${resetTarget.nom}`,
-      );
+      // BO-1 / SEC-10 : le nouveau code part par SMS, jamais à l'écran.
+      const remise = texteRemiseSms(res);
+      if (remise.ok) toast.success(`Mot de passe réinitialisé pour ${resetTarget.nom}. ${remise.texte}`);
+      else toast.error(`Mot de passe réinitialisé pour ${resetTarget.nom}, mais : ${remise.texte}`, { duration: 15000 });
       setResetTarget(null);
     } catch (err) {
       console.warn('[BOUtilisateurs] reset password failed:', err instanceof Error ? err.message : err);
