@@ -573,7 +573,7 @@ Routes presentes a l'identique sous /marchand, /producteur, /cooperative, /insti
 | /pay/:marchandId | PayPage | public | components/wallet/PayPage.tsx |
 | /pay/success, /pay/error, /paiement/success, /paiement/failed | PaySuccessPage | public | components/wallet/PaySuccessPage.tsx (page resultat minimale : "Paiement effectue" ou "Paiement echoue" selon presence de "error" dans l'URL, bouton unique "Retour") |
 | * | NotFound | public | pages/NotFound.tsx |
-| /dev-mode, /database, /create-super-admin, /admin-recovery, /setup-marchand | pages diagnostiques | DEV uniquement (`import.meta.env.DEV`) | DevModeHome (redirige vers / et rend null), DatabaseViewer (visualiseur statique du schema, lecture seule), CreateSuperAdmin (bootstrap usage unique, POST /auth/create-super-admin), AdminRecovery (outil d'urgence multi-modes protege par cle JULABA_RECOVERY_2026), SetupMarchand (tests connexion + creation marchands de test) |
+| /dev-mode, /database, /create-super-admin, /setup-marchand | pages diagnostiques | DEV uniquement (`import.meta.env.DEV`) | DevModeHome (redirige vers / et rend null), DatabaseViewer (visualiseur statique du schema, lecture seule), CreateSuperAdmin (bootstrap usage unique, POST /auth/create-super-admin), SetupMarchand (tests connexion + creation marchands de test) |
 
 ---
 

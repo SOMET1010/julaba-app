@@ -31,7 +31,6 @@ const EXCLUS = [
   '/components/dev/',
   '/components/identificateur/', // agent professionnel formé (enrôlement) : « biométrie » est un terme métier
   '/services/backoffice-api',
-  '/pages/AdminRecovery',
   '.test.mts',
   '.spec.',
 ];
