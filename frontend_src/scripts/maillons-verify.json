@@ -31,6 +31,7 @@
     "test:source-vente",
     "test:verrou-connexion",
     "test:recuperation-admin",
+    "test:carte-xss",
     "test:prix-catalogue",
     "test:fusion-panier",
     "test:stats-multi",
