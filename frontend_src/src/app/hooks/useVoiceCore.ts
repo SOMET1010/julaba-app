@@ -629,7 +629,13 @@ export function useVoiceCore({
     const bypassed = (confirmationBypassIntents ?? []).includes(data.intent);
     vtrace.info('EXECUTION', { intent: data.intent, action: data.action?.type ?? null, bypass: bypassed, confirme: confirmed, confirmationDemandee: data.needsConfirmation });
 
-    if (!bypassed) {
+    if (!bypassed && confirmed) {
+      // Déjà confirmé : `data.response` EST la question (« ...c'est bien
+      // ça ? »), déjà posée, et confirmAction vient de dire « J'ai compris ».
+      // La reposer après le « oui » faisait entendre deux fois la question.
+      setResponse(data); setTranscript(data.transcript || userText);
+      setLiveTranscript("");
+    } else if (!bypassed) {
       setResponse(data); setTranscript(data.transcript || userText);
       clearTypewriter();
       typewriterRef.current = startTypewriter(data.response || "", setLiveTranscript, 25);
