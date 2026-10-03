@@ -6,6 +6,7 @@ import { apiRequest as _apiRequest } from './api-client';
 import { API_URL } from '../../utils/api';
 import type { LigneDeVente, ProduitServeur, SessionCaisseServeur, CreditServeur } from '../../types/vente';
 import { noterLectureHistorique } from '../lectureHistorique';
+import { noterLectureSessionCaisse } from '../lectureSessionCaisse';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);
@@ -385,7 +386,28 @@ export async function supprimerProduitCaisse(id: string): Promise<unknown> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function fetchSessionDuJour(date: string): Promise<{ session: SessionCaisseServeur | null }> {
-  return apiRequest<{ session: SessionCaisseServeur | null }>(`/caisse/session/${date}`);
+  // ON NOTE SI LE SERVEUR A RÉPONDU — ACC-03, et rien d'autre ne change ici.
+  //
+  // `AppContext:519` appelle ceci avec `.catch(() => null)` : vu d'en haut,
+  // « la journée n'est pas ouverte » et « le serveur n'a pas répondu » rendent
+  // tous les deux `null`. Le fond initial manque alors au calcul de la caisse,
+  // qui rend 0 — et l'accueil annonçait ce zéro à voix haute (terrain 03/10,
+  // « Ta caisse aujourd'hui : zéro franc » pour 100 F réels).
+  //
+  // Le seul endroit qui SAIT est ici. On observe, on RELANCE l'erreur telle
+  // quelle : aucun appelant ne voit une différence.
+  //
+  // UNE SESSION ABSENTE EST UNE RÉPONSE : `{ session: null }` vaut `lu`. Elle
+  // n'a pas ouvert sa journée, c'est un fait, pas une ignorance.
+  noterLectureSessionCaisse('chargement');
+  try {
+    const r = await apiRequest<{ session: SessionCaisseServeur | null }>(`/caisse/session/${date}`);
+    noterLectureSessionCaisse('lu');
+    return r;
+  } catch (e) {
+    noterLectureSessionCaisse('echec');
+    throw e;
+  }
 }
 
 export async function ouvrirSession(fondInitial: number, notes?: string): Promise<{ session: SessionCaisseServeur; fond_conserve?: boolean }> {

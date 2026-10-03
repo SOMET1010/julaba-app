@@ -46,13 +46,14 @@ console.log('\nA1 — la voix de l\'accueil ne parle pas avant d\'avoir lu (terr
 /** L'instant du montage, tel qu'il se produit sur le téléphone de Patrick. */
 const AU_MONTAGE: FaitsCaisseAccueil = {
   lecture: 'chargement',
+  lectureSession: 'lu',  // ACC-03 : ce banc-ci porte sur l'autre lecture
   montant: 0,          // getTodayStats n'a pas encore les transactions
   aDesDonnees: true,   // mais la session du jour, elle, est déjà connue
   ventesEnFile: 0,
 };
 /** Le même écran, une fraction de seconde plus tard. */
 const APRES_LECTURE: FaitsCaisseAccueil = {
-  lecture: 'lu', montant: 3150, aDesDonnees: true, ventesEnFile: 0,
+  lecture: 'lu', lectureSession: 'lu', montant: 3150, aDesDonnees: true, ventesEnFile: 0,
 };
 
 console.log('[1] L\'instant du montage');
@@ -73,7 +74,7 @@ console.log('\n[2] Une fraction de seconde plus tard');
 
 console.log('\n[3] UN VRAI ZÉRO RESTE UNE RÉPONSE — on ne se tait pas sur le montant');
 {
-  const e = etatCaisseAccueil({ lecture: 'lu', montant: 0, aDesDonnees: true, ventesEnFile: 0 });
+  const e = etatCaisseAccueil({ lecture: 'lu', lectureSession: 'lu', montant: 0, aDesDonnees: true, ventesEnFile: 0 });
   ok(e.type === 'connue' && e.montant === 0, 'serveur répondu, rien vendu : la caisse EST à zéro');
   ok(caisseDigneDEtreDite(e) === true,
      'elle a le droit de l\'entendre — le discriminant est la LECTURE, pas le montant');
@@ -81,21 +82,21 @@ console.log('\n[3] UN VRAI ZÉRO RESTE UNE RÉPONSE — on ne se tait pas sur le
 
 console.log('\n[4] Les autres états, un par un');
 {
-  const attente = etatCaisseAccueil({ lecture: 'jamais', montant: 0, aDesDonnees: false, ventesEnFile: 0 });
+  const attente = etatCaisseAccueil({ lecture: 'jamais', lectureSession: 'lu', montant: 0, aDesDonnees: false, ventesEnFile: 0 });
   ok(attente.type === 'attente' && caisseDigneDEtreDite(attente) === false,
      'rien lu, rien en mémoire : silence, comme avant');
 
-  const illisible = etatCaisseAccueil({ lecture: 'echec', montant: Number.NaN, aDesDonnees: false, ventesEnFile: 0 });
+  const illisible = etatCaisseAccueil({ lecture: 'echec', lectureSession: 'lu', montant: Number.NaN, aDesDonnees: false, ventesEnFile: 0 });
   ok(illisible.type === 'illisible' && caisseDigneDEtreDite(illisible) === true,
      'lecture échouée : elle DOIT l\'entendre — se taire lui laisserait croire que tout va bien');
 
   // Un plancher RÉEL : la panne est survenue après qu'on a lu quelque chose.
-  const planchePanne = etatCaisseAccueil({ lecture: 'echec', montant: 3150, aDesDonnees: true, ventesEnFile: 0 });
+  const planchePanne = etatCaisseAccueil({ lecture: 'echec', lectureSession: 'lu', montant: 3150, aDesDonnees: true, ventesEnFile: 0 });
   ok(planchePanne.type === 'partielle' && caisseDigneDEtreDite(planchePanne) === true,
      '« au moins 3 150 F » après une panne : c\'est un chiffre réel, il se dit');
 
   // Un plancher RÉEL : des ventes dorment sur le téléphone.
-  const plancherFile = etatCaisseAccueil({ lecture: 'lu', montant: 3150, aDesDonnees: true, ventesEnFile: 2 });
+  const plancherFile = etatCaisseAccueil({ lecture: 'lu', lectureSession: 'lu', montant: 3150, aDesDonnees: true, ventesEnFile: 2 });
   ok(plancherFile.type === 'partielle' && caisseDigneDEtreDite(plancherFile) === true,
      '« au moins 3 150 F » avec deux ventes en file : réel aussi, il se dit');
 }

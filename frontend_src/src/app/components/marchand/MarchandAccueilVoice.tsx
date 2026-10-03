@@ -18,6 +18,7 @@ import { useMontantsPrives } from '../../hooks/useMontantsPrives';
 import { direAccueilMarchand } from '../../services/accueilMarchandVoix';
 import { etatCaisseAccueil, caisseDigneDEtreDite } from '../../services/etatCaisseAccueil';
 import { useLectureHistorique } from '../../hooks/useLectureHistorique';
+import { useLectureSessionCaisse } from '../../hooks/useLectureSessionCaisse';
 import { ventesEnAttenteEnvoi } from '../../voice-offline/incidentsHorsLigne';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
 import { guidageVocal } from '../../utils/accessMode';
@@ -46,6 +47,12 @@ function MarchandAccueilVoiceInner() {
   // qui change, c'est le DROIT de l'afficher : la règle vit dans un module pur
   // (services/etatCaisseAccueil.ts), relisible seul, et non éparpillée ici.
   const etatLecture = useLectureHistorique();
+  // ACC-03 — LA DEUXIÈME LECTURE. La caisse du jour n'est pas que les ventes :
+  // `getTodayStats` y ajoute le fond initial, qui vient d'un AUTRE appel
+  // réseau. Tant que celui-ci n'a pas répondu, le total est en train de se
+  // faire — et c'est pendant ces quelques secondes que la voix annonçait
+  // « zéro franc » (terrain 03/10, pour 100 F réels).
+  const etatLectureSession = useLectureSessionCaisse();
   const [ventesEnFile, setVentesEnFile] = useState(0);
   useEffect(() => {
     let vivant = true;
@@ -59,6 +66,7 @@ function MarchandAccueilVoiceInner() {
   const aDesDonnees = (transactions?.length ?? 0) > 0 || currentSession != null;
   const etatCaisse = etatCaisseAccueil({
     lecture: etatLecture,
+    lectureSession: etatLectureSession,
     montant: stats?.caisse ?? Number.NaN,
     aDesDonnees,
     ventesEnFile,
