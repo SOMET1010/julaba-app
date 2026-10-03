@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { exigerAutoriteSur, exigerPermissionBO } from '../auth/bo-autorisation';
+import { DataSource, EntityManager } from 'typeorm';
 import { User, UserStatus } from '../users/entities/user.entity';
 import { WalletsService } from '../wallets/wallets.service';
 import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
@@ -238,11 +239,44 @@ export class AdminWalletsService {
     return { transactions, total: countResult.total };
   }
 
-  async creditWallet(userId: string, montant: number, description: string): Promise<void> {
-    if (montant <= 0) throw new BadRequestException('Montant invalide');
+  // ── J5 : mouvements d'argent du back-office ──────────────────────────────
+  // Réservés au super_admin (garde du contrôleur). Chaque mouvement écrit sa
+  // ligne d'audit_logs DANS la transaction du mouvement : auteur (user_id),
+  // cible (entite_id), montant, motif, soldes avant/après, horodatage
+  // (created_at). Une panne du journal annule donc le mouvement.
+  private exigerMotif(motif: unknown): string {
+    const m = typeof motif === 'string' ? motif.trim() : '';
+    if (!m) throw new BadRequestException('Motif obligatoire');
+    if (m.length > 500) throw new BadRequestException('Motif trop long (500 caractères max)');
+    return m;
+  }
+
+  private exigerMontant(montant: unknown): number {
+    const n = Number(montant);
+    if (!Number.isFinite(n) || n <= 0) throw new BadRequestException('Montant invalide');
+    return n;
+  }
+
+  private async journaliserMouvement(
+    em: EntityManager,
+    auteurId: string,
+    action: 'WALLET_CREDIT_ADMIN' | 'WALLET_DEBIT_ADMIN' | 'WALLET_REINITIALISATION_ADMIN',
+    cibleId: string,
+    details: { montant: number; motif: string; solde_avant: number; solde_apres: number },
+  ): Promise<void> {
+    await em.query(
+      `INSERT INTO audit_logs (user_id, action, entite, entite_id, details) VALUES ($1,$2,'wallet',$3,$4)`,
+      [auteurId, action, cibleId, JSON.stringify(details)],
+    );
+  }
+
+  async creditWallet(userId: string, montant: number, motif: string, auteurId: string): Promise<void> {
+    const m = this.exigerMontant(montant);
+    const raison = this.exigerMotif(motif);
+    if (!auteurId) throw new BadRequestException('Auteur requis');
     await this.dataSource.transaction(async (em) => {
       const [wallet] = await em.query(
-        `SELECT id FROM wallets WHERE user_id = $1 FOR UPDATE`,
+        `SELECT id, solde FROM wallets WHERE user_id = $1 FOR UPDATE`,
         [userId],
       );
       if (!wallet) throw new NotFoundException('Wallet introuvable');
@@ -252,18 +286,24 @@ export class AdminWalletsService {
       await this.walletsService.assertCompteActif(userId, em);
       await em.query(
         `UPDATE wallets SET solde = solde + $1, updated_at = NOW() WHERE user_id = $2`,
-        [montant, userId],
+        [m, userId],
       );
       await em.query(
-        `INSERT INTO wallet_transactions (user_id, type, montant, description, statut)
-         VALUES ($1, 'credit', $2, $3, 'completed')`,
-        [userId, montant, description],
+        `INSERT INTO wallet_transactions (user_id, type, montant, description, statut, metadata)
+         VALUES ($1, 'credit', $2, $3, 'completed', $4)`,
+        [userId, m, raison, JSON.stringify({ source: 'admin', auteur_id: auteurId })],
       );
+      const avant = Number(wallet.solde);
+      await this.journaliserMouvement(em, auteurId, 'WALLET_CREDIT_ADMIN', userId, {
+        montant: m, motif: raison, solde_avant: avant, solde_apres: avant + m,
+      });
     });
   }
 
-  async debitWallet(userId: string, montant: number, description: string): Promise<void> {
-    if (montant <= 0) throw new BadRequestException('Montant invalide');
+  async debitWallet(userId: string, montant: number, motif: string, auteurId: string): Promise<void> {
+    const m = this.exigerMontant(montant);
+    const raison = this.exigerMotif(motif);
+    if (!auteurId) throw new BadRequestException('Auteur requis');
     await this.dataSource.transaction(async (em) => {
       const [wallet] = await em.query(
         `SELECT id, solde, solde_bloque FROM wallets WHERE user_id = $1 FOR UPDATE`,
@@ -272,17 +312,28 @@ export class AdminWalletsService {
       if (!wallet) throw new NotFoundException('Wallet introuvable');
       await this.walletsService.assertCompteActif(userId, em);
       const disponible = Number(wallet.solde) - Number(wallet.solde_bloque);
-      if (disponible < montant) throw new BadRequestException(`Solde insuffisant: ${disponible} FCFA disponible`);
+      if (disponible < m) throw new BadRequestException(`Solde insuffisant: ${disponible} FCFA disponible`);
       await em.query(
         `UPDATE wallets SET solde = solde - $1, updated_at = NOW() WHERE user_id = $2`,
-        [montant, userId],
+        [m, userId],
       );
       await em.query(
-        `INSERT INTO wallet_transactions (user_id, type, montant, description, statut)
-         VALUES ($1, 'debit', $2, $3, 'completed')`,
-        [userId, montant, description],
+        `INSERT INTO wallet_transactions (user_id, type, montant, description, statut, metadata)
+         VALUES ($1, 'debit', $2, $3, 'completed', $4)`,
+        [userId, m, raison, JSON.stringify({ source: 'admin', auteur_id: auteurId })],
       );
+      const avant = Number(wallet.solde);
+      await this.journaliserMouvement(em, auteurId, 'WALLET_DEBIT_ADMIN', userId, {
+        montant: m, motif: raison, solde_avant: avant, solde_apres: avant - m,
+      });
     });
+  }
+
+  private exigerDroitDeSuspendre(admin: User, cible: User): void {
+    if (!admin) throw new ForbiddenException('Auteur requis');
+    if (admin.id === cible.id) throw new ForbiddenException('Un compte ne se bloque pas lui-même');
+    exigerAutoriteSur(admin, cible);
+    exigerPermissionBO(admin, 'acteurs.suspend');
   }
 
   // Blocage RÉEL d'un compte : bascule users.status sur 'suspendu'. C'est la
@@ -292,12 +343,16 @@ export class AdminWalletsService {
   // un champ de blocage séparé sur `wallets` : ce serait un second calcul du
   // même concept, interdit par CONSTITUTION.md §2. `users.status = 'suspendu'`
   // bloque aussi la connexion elle-même (voir JwtStrategy.validate).
-  async bloquerWallet(userId: string, raison: string, adminId?: string): Promise<{ success: true }> {
+  async bloquerWallet(userId: string, raison: string, admin: User): Promise<{ success: true }> {
+    const adminId = admin?.id;
     return this.dataSource.transaction(async (em) => {
       const [wallet] = await em.query(`SELECT id FROM wallets WHERE user_id = $1`, [userId]);
       if (!wallet) throw new NotFoundException('Wallet introuvable');
       const user = await em.findOne(User, { where: { id: userId } });
       if (!user) throw new NotFoundException('Utilisateur introuvable');
+      // BO-0 / S3 + J6 : bloquer = suspendre le compte. Seul le super_admin
+      // suspend un compte du back-office ; ailleurs, `acteurs.suspend` requis.
+      this.exigerDroitDeSuspendre(admin, user);
 
       user.status = UserStatus.SUSPENDU;
       await em.save(User, user);
@@ -317,12 +372,14 @@ export class AdminWalletsService {
     });
   }
 
-  async debloquerWallet(userId: string, adminId?: string): Promise<{ success: true }> {
+  async debloquerWallet(userId: string, admin: User): Promise<{ success: true }> {
+    const adminId = admin?.id;
     return this.dataSource.transaction(async (em) => {
       const [wallet] = await em.query(`SELECT id FROM wallets WHERE user_id = $1`, [userId]);
       if (!wallet) throw new NotFoundException('Wallet introuvable');
       const user = await em.findOne(User, { where: { id: userId } });
       if (!user) throw new NotFoundException('Utilisateur introuvable');
+      this.exigerDroitDeSuspendre(admin, user);
 
       user.status = UserStatus.ACTIF;
       await em.save(User, user);
@@ -340,8 +397,10 @@ export class AdminWalletsService {
     });
   }
 
-  async reinitialiserWallet(userId: string, confirmation: string): Promise<void> {
+  async reinitialiserWallet(userId: string, confirmation: string, motif: string, auteurId: string): Promise<void> {
     if (confirmation !== 'CONFIRMER') throw new BadRequestException('Confirmation invalide');
+    const raison = this.exigerMotif(motif);
+    if (!auteurId) throw new BadRequestException('Auteur requis');
     await this.dataSource.transaction(async (em) => {
       const [wallet] = await em.query(
         `SELECT id, solde FROM wallets WHERE user_id = $1 FOR UPDATE`,
@@ -351,15 +410,18 @@ export class AdminWalletsService {
       const soldeActuel = Number(wallet.solde);
       if (soldeActuel > 0) {
         await em.query(
-          `INSERT INTO wallet_transactions (user_id, type, montant, description, statut)
-           VALUES ($1, 'debit', $2, 'REINITIALISATION ADMIN', 'completed')`,
-          [userId, soldeActuel],
+          `INSERT INTO wallet_transactions (user_id, type, montant, description, statut, metadata)
+           VALUES ($1, 'debit', $2, 'REINITIALISATION ADMIN', 'completed', $3)`,
+          [userId, soldeActuel, JSON.stringify({ source: 'admin', auteur_id: auteurId, motif: raison })],
         );
       }
       await em.query(
         `UPDATE wallets SET solde = 0, solde_bloque = 0, updated_at = NOW() WHERE user_id = $1`,
         [userId],
       );
+      await this.journaliserMouvement(em, auteurId, 'WALLET_REINITIALISATION_ADMIN', userId, {
+        montant: soldeActuel, motif: raison, solde_avant: soldeActuel, solde_apres: 0,
+      });
     });
   }
 

@@ -1606,12 +1606,6 @@ export function LoginPassword() {
         </AnimatePresence>
       </motion.div>
 
-      {/* Lien secours admin — uniquement sur le portail backoffice (jamais marchande). */}
-      {window.location.pathname.includes('backoffice') && (
-        <a href="/admin-recovery" style={{ margin: '12px 0', color: 'var(--encre-4)', fontSize: 11, textDecoration: 'none' }}>
-          Problème de connexion admin ?
-        </a>
-      )}
       {/* Pied de page OUTILS — MODE DÉVELOPPEUR uniquement (5 tapes coin haut-gauche).
           Masqué pour la marchande : l'écran ne montre que Tata + champ + micro + clavier. */}
       {devMode && (

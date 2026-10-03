@@ -341,8 +341,17 @@ export class UsersService {
     }
   }
 
-  async remove(id: string): Promise<void> {
-    await this.userRepository.update(id, { status: UserStatus.SUPPRIME, deletedAt: new Date() });
+  // BO-0 : la suppression (archivage) laisse une ligne d'audit avec son
+  // auteur, dans la même transaction : pas de suppression sans trace.
+  async remove(id: string, actorId: string, ip?: string): Promise<void> {
+    await this.dataSource.transaction(async (em) => {
+      await em.update(User, id, { status: UserStatus.SUPPRIME, deletedAt: new Date() });
+      await em.query(
+        `INSERT INTO audit_logs (user_id, action, entite, entite_id, details, ip, created_at)
+         VALUES ($1, 'suppression', 'user', $2, $3, $4, NOW())`,
+        [actorId, id, JSON.stringify({ description: 'Compte archivé depuis le back-office' }), ip || null],
+      );
+    });
   }
 
   async update(id: string, updates: Partial<User>, actorId?: string, ip?: string): Promise<User> {

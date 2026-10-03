@@ -248,22 +248,26 @@ export function BOKeiwa() {
   const handleAction = async () => {
     if (!actionModal) return;
     try {
+      // J5 : crédit, débit et remise à zéro exigent un motif (journalisé
+      // côté serveur avec l'auteur, la cible et le montant).
+      const motif = actionDesc.trim();
+      if (actionModal.type !== 'bloquer' && !motif) { toast.error('Motif obligatoire'); return; }
       if (actionModal.type === 'credit') {
         const m = parseInt(actionMontant);
         if (isNaN(m) || m <= 0) { toast.error('Montant invalide'); return; }
-        await boCreditWallet(actionModal.wallet.user_id, m, actionDesc || 'Credit manuel admin');
+        await boCreditWallet(actionModal.wallet.user_id, m, motif);
         toast.success(`${m.toLocaleString('fr-FR')} FCFA crédités`);
       } else if (actionModal.type === 'debit') {
         const m = parseInt(actionMontant);
         if (isNaN(m) || m <= 0) { toast.error('Montant invalide'); return; }
-        await boDebitWallet(actionModal.wallet.user_id, m, actionDesc || 'Debit manuel admin');
+        await boDebitWallet(actionModal.wallet.user_id, m, motif);
         toast.success(`${m.toLocaleString('fr-FR')} FCFA débités`);
       } else if (actionModal.type === 'bloquer') {
         await apiPost(`/admin/wallets/${actionModal.wallet.user_id}/bloquer`, { raison: actionDesc });
         toast.success('Portefeuille bloqué');
       } else if (actionModal.type === 'reinit') {
         if (actionConfirm !== 'CONFIRMER') { toast.error('Tapez CONFIRMER pour valider'); return; }
-        await apiPost(`/admin/wallets/${actionModal.wallet.user_id}/reinitialiser`, { confirmation: 'CONFIRMER' });
+        await apiPost(`/admin/wallets/${actionModal.wallet.user_id}/reinitialiser`, { confirmation: 'CONFIRMER', motif });
         toast.success('Solde réinitialisé');
       }
       setActionModal(null); setActionMontant(''); setActionDesc(''); setActionConfirm('');
@@ -875,7 +879,7 @@ export function BOKeiwa() {
                 </div>
               )}
               <div style={{ marginBottom: 20 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5a3a', marginBottom: 6 }}>{actionModal.type === 'bloquer' ? 'Raison du blocage' : 'Description (optionnel)'}</p>
+                <p style={{ fontSize: 12, fontWeight: 600, color: '#7a5a3a', marginBottom: 6 }}>{actionModal.type === 'bloquer' ? 'Raison du blocage' : 'Motif (obligatoire)'}</p>
                 <input type="text" value={actionDesc} onChange={e => setActionDesc(e.target.value)} placeholder={actionModal.type === 'bloquer' ? 'Ex: Activité suspecte' : 'Raison...'} style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid rgba(198,106,44,0.2)', fontSize: 14, outline: 'none', fontFamily: 'system-ui', boxSizing: 'border-box' }}/>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>

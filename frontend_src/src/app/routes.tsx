@@ -31,7 +31,6 @@ const isDev = import.meta.env.DEV;
 const diagnosticRoutes = isDev ? [
   { path: "/database", element: L(() => import("./pages/DatabaseViewer")), errorElement: <ErrorFallback /> },
   { path: "/create-super-admin", element: L(() => import("./pages/CreateSuperAdmin")), errorElement: <ErrorFallback /> },
-  { path: "/admin-recovery", element: L(() => import("./pages/AdminRecovery")), errorElement: <ErrorFallback /> },
   { path: "/setup-marchand", element: L(() => import("./pages/SetupMarchand")), errorElement: <ErrorFallback /> },
 ] : [];
 
