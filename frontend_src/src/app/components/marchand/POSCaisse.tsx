@@ -116,6 +116,43 @@ function POSCaisseInner() {
   /** Posé AVANT le rendu suivant : un `useState` arriverait trop tard entre
    *  deux relevés de dictée espacés de quelques dizaines de millisecondes. */
   const arbitrageDemandeRef = useRef(false);
+  /**
+   * AMB-02 — PENDANT L'ARBITRAGE, LA FEUILLE NE DOIT RIEN DEMANDER D'ÉCRIT.
+   *
+   * AMB-01 pose la bonne question (« 500 F chacun ? 500 F en tout ? ») sur deux
+   * grands boutons qui portent chacun leur total. Mais elle la pose SUR LE MÊME
+   * PANNEAU que le champ du montant — un champ de saisie, `inputMode="numeric"`,
+   * qui appelle le pavé numérique d'Android dès qu'on le touche.
+   *
+   * Pour celle qui ne lit pas, ce qui s'ouvre alors n'est pas une question à
+   * deux réponses : c'est un FORMULAIRE, donc « l'application me demande
+   * d'écrire ». Elle se bloque — au moment précis où il ne lui reste qu'à
+   * toucher l'une des deux cases. QTE-03 avait déjà retiré l'`autoFocus` pour
+   * que le pavé ne s'impose plus ; il reste à ne pas PROPOSER d'écrire pendant
+   * qu'on attend un choix.
+   *
+   * CE N'EST VRAI QUE QUAND ON LUI PARLE. Pour le profil « je lis »
+   * (`guidageVocal()` faux), le clavier est la voie NORMALE d'entrée du prix :
+   * la feuille ne bouge pas d'un pixel. Même logique qu'`autoFocus`, ligne plus
+   * bas — on ne retire jamais à l'une ce qui sert à l'autre.
+   *
+   * CE QUI RESTE À L'ÉCRAN : le rappel de ce qu'elle a dit, et les deux grands
+   * boutons. Tout ce qui se remplit disparaît — le champ du montant et son pavé
+   * numérique, la recherche au catalogue, le libellé, le choix d'unité, le
+   * « combien », le bouton « Ajouter » (qui est de toute façon désactivé tant
+   * qu'aucun prix n'est posé). Une question à deux réponses, et rien d'autre.
+   *
+   * CE QUI RESTE AUSSI, ET IL LE FAUT : `BoutonDirePrix`. Le masquer le
+   * DÉMONTERAIT, et son `ouvrirToutSeul` reposerait « Quel est ton prix ? » en
+   * rouvrant le micro au retour de l'arbitrage — on ferait rentrer par la
+   * fenêtre la boucle de questions que `arbitrageDemandeRef` vient de fermer.
+   * Ce n'est pas un champ à remplir : c'est le micro, et il ne demande rien
+   * d'écrit.
+   *
+   * ET C'EST TRANSITOIRE : dès que l'un des deux boutons est touché,
+   * `prixDitAArbitrer` retombe à `null` et la feuille reprend sa forme, inchangée.
+   */
+  const arbitrageSansClavier = !!prixDitAArbitrer && guidageVocal();
   // « Autre article » sert maintenant DEUX gestes : chercher dans le
   // référentiel maître (Odoo) pour ajouter un vrai article à son catalogue,
   // ou vendre un montant libre quand rien ne correspond. Le second reste
@@ -1502,7 +1539,7 @@ function POSCaisseInner() {
                   La recherche est LOCALE (voir useCatalogueMaitre) : elle
                   fonctionne hors ligne et ne déclenche pas un appel réseau à
                   chaque lettre tapée. */}
-              {!refChoisie && (
+              {!refChoisie && !arbitrageSansClavier && (
                 <>
                   <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Chercher un produit</label>
                   <input
@@ -1650,6 +1687,11 @@ function POSCaisseInner() {
                 </div>
               )}
 
+              {/* AMB-02 — pendant l'arbitrage parlé, aucun champ, donc aucun
+                  pavé numérique : il ne reste que les deux réponses à toucher.
+                  Sans guidage vocal, cette ligne est toujours vraie et la
+                  feuille est celle d'avant, au caractère près. */}
+              {!arbitrageSansClavier && (
               <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:14 }}>
                 <input
                   value={libreMontant}
@@ -1670,6 +1712,7 @@ function POSCaisseInner() {
                 />
                 <span style={{ fontSize:16, fontWeight:700, color:'var(--encre-3)' }}>F</span>
               </div>
+              )}
 
               {/* AMB-01 — DEUX RÉPONSES, ET CHACUNE DIT CE QU'ELLE VA ÉCRIRE.
                   Pas « unitaire / total » : ces mots-là ne sont pas ceux du
@@ -1702,8 +1745,10 @@ function POSCaisseInner() {
                 </div>
               )}
 
-              {/* Unité LOCALE : c'est elle qui sait si elle vend au tas ou au kilo. */}
-              {refChoisie && (
+              {/* Unité LOCALE : c'est elle qui sait si elle vend au tas ou au kilo.
+                  AMB-02 : muette pendant l'arbitrage parlé — un sélecteur est
+                  encore une chose à remplir. */}
+              {refChoisie && !arbitrageSansClavier && (
                 <>
                   <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Tu vends par…</label>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6, marginBottom:14 }}>
@@ -1717,7 +1762,7 @@ function POSCaisseInner() {
                 </>
               )}
 
-              {!refChoisie && (
+              {!refChoisie && !arbitrageSansClavier && (
                 <>
                   <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Quoi ? (facultatif)</label>
                   <input
@@ -1761,6 +1806,7 @@ function POSCaisseInner() {
                 </div>
               )}
 
+              {!arbitrageSansClavier && (
               <button
                 type="button"
                 onClick={refChoisie ? adopterReference : ajouterMontantLibre}
@@ -1769,6 +1815,7 @@ function POSCaisseInner() {
               >
                 {adoptionEnCours ? 'Ajout…' : refChoisie ? 'Ajouter à mon catalogue' : 'Ajouter'}
               </button>
+              )}
             </motion.div>
           </motion.div>
         )}
