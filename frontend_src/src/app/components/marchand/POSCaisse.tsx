@@ -1605,7 +1605,18 @@ function POSCaisseInner() {
                 <input
                   value={libreMontant}
                   onChange={e => setLibreMontant(e.target.value.replace(/[^\d]/g, ''))}
-                  inputMode="numeric" autoFocus placeholder="0"
+                  inputMode="numeric" placeholder="0"
+                  // QTE-03 — PAS DE CLAVIER QUAND ON LUI PARLE.
+                  //
+                  // Capture de Patrick, APK `ea7b8e2`, 03/10/2026 : l'écran
+                  // demande le prix à la voix, et Android ouvre AUSSITÔT son
+                  // pavé numérique, qui couvre la moitié de l'écran — le
+                  // bouton « Dire le prix » compris. `autoFocus` le réclamait.
+                  //
+                  // Pour une marchande qui ne lit pas, c'est l'inverse exact de
+                  // ce que la page lui dit de faire. Le clavier reste là pour
+                  // qui veut taper : il ne s'impose simplement plus.
+                  autoFocus={!guidageVocal()}
                   style={{ flex:1, border:'none', outline:'none', fontSize:26, fontWeight:800, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums' }}
                 />
                 <span style={{ fontSize:16, fontWeight:700, color:'var(--encre-3)' }}>F</span>

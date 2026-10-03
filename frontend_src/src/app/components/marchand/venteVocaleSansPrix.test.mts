@@ -227,6 +227,14 @@ console.log('\n[VOX-03] L\'écran du prix de la caisse a un micro');
      'la quantité DITE est posée dans l\'état que l\'écran affiche, pas seulement dans celui qu\'il enregistre');
   ok(/value=\{libreMontant\}/.test(caisse),
      'le clavier reste, inchangé, pour qui préfère taper');
+
+  // QTE-03 — ET IL NE S'IMPOSE PAS. Capture du 03/10/2026 : `autoFocus` faisait
+  // ouvrir le pavé numérique d'Android par-dessus la moitié de l'écran — le
+  // bouton « Dire le prix » compris — alors que la page venait de demander le
+  // prix à la voix. Pour une marchande qui ne lit pas, c'est l'inverse exact de
+  // ce qu'on lui dit de faire.
+  ok(/autoFocus=\{!guidageVocal\(\)\}/.test(caisse),
+     'le pavé numérique ne s\'ouvre pas tout seul quand le guidage vocal parle');
 }
 
 console.log(echecs === 0 ? '\n✅ Tout est vert\n' : `\n❌ ${echecs} échec(s)\n`);
