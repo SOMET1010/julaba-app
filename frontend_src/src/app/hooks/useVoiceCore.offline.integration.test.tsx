@@ -99,7 +99,11 @@ ok(networkCalls === 0, "avec clip Tata : le vrai hook n’effectue aucun appel r
 localTtsCalls = 0;
 localClipCalls = 0;
 await act(async () => { await core!.speak("Montant dynamique : 1 250 francs"); });
-ok(localTtsCalls === 0 && localClipCalls === 0, "sans clip Tata : le vrai hook ne lance ni voix navigateur ni clip de secours");
+// « Le filet parle partout » — arbitrage de Patrick du 25/09/2026 (commit
+// 6a142d2) : sans clip de Tata, la synthèse prend le relais. L'ancienne
+// attente (« ni voix navigateur ni clip ») était la règle « Choix B » que
+// cette décision a abolie : une phrase importante ne se tait plus.
+ok(localTtsCalls === 1 && localClipCalls === 0, "sans clip Tata : le filet parle — une seule synthèse, aucun clip (décision du 25/09)");
 
 audioManager.__resetPlayers();
 audioManager.__reset();
