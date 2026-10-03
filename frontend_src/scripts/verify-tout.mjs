@@ -50,10 +50,13 @@ const { maillons } = JSON.parse(
 /** Les rouges attendus, à l'identique du terrain. Ils ne sont PAS tolérés —
  *  `verify` sort quand même en 1 — ils sont seulement SIGNALÉS comme connus,
  *  pour qu'un rouge NOUVEAU se voie au premier coup d'œil. */
+// GUÉRIS, RETIRÉS DE CETTE LISTE — l'historique reste ici, pas dans une mémoire :
+//   · test:i18n-source — 03/10/2026. `docs/langues/INVENTAIRE-VOIX.md` annonçait
+//     408 sites d'appel pour 407 réels ; un lot antérieur en avait retiré un sans
+//     régénérer. Les phrases distinctes concordaient déjà : rien n'était perdu.
 const CONNUS = new Map([
   ['test:voix-trace-source', 'VOICE-01 — 4 empreintes figées, refigeage réservé à Patrick'],
   ['test:garde-argent', 'état de référence 4 entrés / 14 perdues'],
-  ['test:i18n-source', 'inventaire 408 ≠ source 407 — antérieur au 03/10'],
   ['test:i18n-empreintes-argent', 'empreinte intentLocal — antérieur au 03/10'],
 ]);
 
