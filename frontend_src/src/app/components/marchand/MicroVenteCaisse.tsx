@@ -61,7 +61,7 @@ import { t } from '../../i18n/voice/runtime';
 import type { LigneProvisoire } from '../../services/ligneProvisoire';
 import { resumeQuantite } from '../../services/dialoguesTata';
 import { guidageVocal } from '../../utils/accessMode';
-import { vibrerSucces } from '../../utils/haptique';
+import { vibrerSucces, vibrerTic } from '../../utils/haptique';
 import { SaisieGuidee } from './SaisieGuidee';
 import tataAccueil from '../../../assets/redesign/tata-accueil.webp';
 
@@ -543,6 +543,44 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         // sous le seuil pour atteindre SILENCE_FIN_MS, ce qui laisse passer les
         // creux entre deux syllabes sans couper au milieu d'un mot.
         if (parleMaintenant(niveauRef.current, seuilRef.current)) {
+          /**
+           * VOX-06 — RIEN DANS SA MAIN NE LUI DISAIT QU'ON L'ENTEND.
+           *
+           * Entre le moment où elle parle et la réponse de Tantie, il ne se
+           * passait RIEN : pas de son (le micro est ouvert, Tantie se tait
+           * exprès), pas de texte (elle ne lit pas, et `afficheEcoute` rend
+           * `{type:'ecoute'}` sans un mot — « PENDANT L'ÉCOUTE, AUCUN TEXTE »),
+           * pas de vibration. Plusieurs secondes de vide. Devant un appareil
+           * qui ne répond pas, le réflexe humain est de répéter ou de CRIER —
+           * ce qui dégrade la reconnaissance et creuse le trou qu'on décrit.
+           *
+           * Le franchissement du seuil était DÉJÀ calculé ici, pour savoir
+           * quand fermer le micro. Personne ne s'en servait pour sa main.
+           *
+           * UNE SEULE FOIS PAR ÉCOUTE. Ce relevé bat toutes les 250 ms tant
+           * qu'elle parle : vibrer à chaque passage ferait trembler le
+           * téléphone en continu, et un signal qui ne s'arrête plus n'est plus
+           * un signal, c'est une panne.
+           *
+           * LE DRAPEAU EST `aParleRef`, PAS UN SECOND REF ET SURTOUT PAS UN
+           * `useState`. Il porte exactement le fait qu'on cherche — « a-t-elle
+           * déjà franchi le seuil dans cette écoute ? » — et il est remis à
+           * faux aux DEUX remises à zéro plus haut (micro refermé, micro
+           * rouvert), donc chaque nouvelle écoute a droit à son accusé de
+           * réception. Un `useState` serait la régression déjà vécue sur
+           * `BoutonDirePrix` : deux relevés espacés de 30 ms liraient tous les
+           * deux l'ancienne valeur, et le téléphone vibrerait deux fois.
+           *
+           * LE TIC, ET PAS UN AUTRE MOTIF. 15 ms, le plus court du répertoire :
+           * il dit « je t'ai entendue », jamais « c'est passé » (succès,
+           * 35-60-35) ni « attention » (erreur, 180). Il ne promet aucune
+           * vente — à cet instant, rien n'est encore compris.
+           */
+          if (!aParleRef.current) {
+            // Un appareil sans vibreur (iOS Safari, desktop) ne doit pas
+            // emporter avec lui la boucle qui ferme le micro.
+            try { vibrerTic(); } catch { /* jamais bloquant */ }
+          }
           aParleRef.current = true;
           dernierSonRef.current = Date.now();
         }

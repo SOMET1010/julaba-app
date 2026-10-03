@@ -264,5 +264,65 @@ console.log('\n[VOX-03] L\'écran du prix de la caisse a un micro');
      'chaque réponse porte le montant qu\'elle va écrire, avant qu\'elle choisisse');
 }
 
+
+// ── AMB-02 — LA FEUILLE D'ARBITRAGE NE DOIT PAS RESSEMBLER À UN FORMULAIRE ──
+//
+// AMB-01 pose la bonne question sur deux grands boutons tactiles qui portent
+// chacun leur total. Mais elle la pose SUR LE MÊME PANNEAU que le champ du
+// montant (`inputMode="numeric"`, donc le pavé numérique d'Android au premier
+// contact), la recherche au catalogue, le libellé, le choix d'unité et le
+// « combien ».
+//
+// Pour une marchande qui ne lit pas, ce qui s'ouvre alors n'est pas une
+// question à deux réponses : c'est un FORMULAIRE — « l'application me demande
+// d'écrire » — et elle se bloque, au moment précis où il ne lui reste qu'à
+// toucher l'une des deux cases. C'est la doctrine maison prise à revers :
+// aucune information importante uniquement en texte, et surtout aucune
+// DEMANDE importante qui ne se comprenne qu'en lisant.
+//
+// QTE-03 avait retiré l'`autoFocus` pour que le pavé ne s'IMPOSE plus ; il
+// restait à ne pas PROPOSER d'écrire pendant qu'on attend un choix.
+console.log("\n[AMB-02] Pendant l'arbitrage parlé, il ne reste que les deux réponses");
+{
+  ok(/const arbitrageSansClavier = !!prixDitAArbitrer && guidageVocal\(\);/.test(caisse),
+     'le masquage a un nom, et il exige les DEUX faits : un prix à arbitrer ET le guidage vocal');
+  // LE PROFIL « JE LIS » NE PERD RIEN. Sans guidage vocal, `arbitrageSansClavier`
+  // est faux par construction : chaque garde ci-dessous est alors toujours
+  // vraie et la feuille est celle d'avant, au caractère près. Même logique
+  // qu'`autoFocus={!guidageVocal()}` — on ne retire jamais à l'une ce qui sert
+  // à l'autre.
+  ok(/&& guidageVocal\(\)/.test(caisse) && !/const arbitrageSansClavier = !!prixDitAArbitrer;/.test(caisse),
+     'sans guidage vocal, le clavier est la voie normale et rien ne disparaît');
+
+  ok(/\{!arbitrageSansClavier && \([\s\S]{0,300}<input\s+value=\{libreMontant\}/.test(caisse),
+     'le champ du montant — donc le pavé numérique d\'Android — disparaît pendant l\'arbitrage');
+  ok(/\{refChoisie && !arbitrageSansClavier && \(/.test(caisse),
+     'le sélecteur d\'unités aussi : un sélecteur est encore une chose à remplir');
+  const massques = (caisse.match(/\{!refChoisie && !arbitrageSansClavier && \(/g) || []).length;
+  ok(massques === 2,
+     `la recherche au catalogue et le bloc « Quoi ? / unité / combien » disparaissent également (${massques}/2)`);
+  ok(/\{!arbitrageSansClavier && \(\s*<button\s+type="button"\s+onClick=\{refChoisie \? adopterReference : ajouterMontantLibre\}/.test(caisse),
+     'et le bouton « Ajouter », de toute façon désactivé sans prix, ne traîne pas sous les deux réponses');
+
+  // CE QUI RESTE, ET QUI DOIT RESTER.
+  ok(/\{prixDitAArbitrer && \(/.test(caisse) && !/\{prixDitAArbitrer && !arbitrageSansClavier/.test(caisse),
+     'les deux blocs d\'arbitrage, eux, ne sont jamais masqués — c\'est tout ce qu\'il reste à toucher');
+  ok(/data-test="rappel-dictee"/.test(caisse) && !/\{venteDictee && !arbitrageSansClavier/.test(caisse),
+     'le rappel de ce qu\'elle a dit reste : il ne demande rien, il lui rend sa phrase');
+  // `BoutonDirePrix` N'EST PAS MASQUÉ, ET C'EST UNE RÈGLE, PAS UN OUBLI. Le
+  // masquer le DÉMONTERAIT, et son `ouvrirToutSeul` reposerait « Quel est ton
+  // prix ? » au retour de l'arbitrage — la boucle de questions que
+  // `arbitrageDemandeRef` vient tout juste de fermer rentrerait par la fenêtre.
+  const avantMicro = caisse.slice(Math.max(0, caisse.indexOf('<BoutonDirePrix') - 300), caisse.indexOf('<BoutonDirePrix'));
+  ok(!/arbitrageSansClavier/.test(avantMicro),
+     'le micro, lui, survit à l\'arbitrage : le démonter relancerait la question à chaque retour');
+
+  // ET LE RETOUR À LA NORMALE N'EST PAS UNE PROMESSE : il est dans le même
+  // geste que l'arbitrage. Les deux boutons remettent `prixDitAArbitrer` à
+  // `null`, donc `arbitrageSansClavier` à faux, donc la feuille entière.
+  ok(/const poser = \(r: \{ prixUnitaire: number \| null \}\) => \{[\s\S]{0,200}setPrixDitAArbitrer\(null\);/.test(caisse),
+     'toucher une des deux réponses rend la feuille complète dans le même geste');
+}
+
 console.log(echecs === 0 ? '\n✅ Tout est vert\n' : `\n❌ ${echecs} échec(s)\n`);
 process.exit(echecs === 0 ? 0 : 1);

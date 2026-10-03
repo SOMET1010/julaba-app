@@ -175,6 +175,97 @@ console.log('\n[5] La règle, énoncée comme telle');
      'AUCUNE transcription, si claire soit-elle, ne produit « J\'ai compris » à elle seule');
 }
 
+/**
+ * VOX-06 — ELLE PARLE, ET RIEN DANS SA MAIN NE LUI DIT QU'ON L'ENTEND.
+ *
+ * LE DÉFAUT. `vibrerTic` n'était appelé que par `PaveMontant`, c'est-à-dire au
+ * CLAVIER. Le flux vocal n'en avait aucun. Or pendant qu'elle parle il ne se
+ * passe rien du tout : pas de son (le micro est ouvert, Tantie se tait
+ * exprès), pas de texte (`afficheEcoute` rend `{type:'ecoute'}`, et c'est la
+ * règle — « PENDANT L'ÉCOUTE, AUCUN TEXTE »), pas de vibration. Plusieurs
+ * secondes de vide devant une marchande qui ne lit pas. Le réflexe est de
+ * répéter ou de crier, ce qui dégrade la reconnaissance : le silence de
+ * l'appareil fabrique lui-même l'échec qu'il va annoncer.
+ *
+ * LA RÈGLE QU'ON FIGE ICI : un tic, au PREMIER franchissement du seuil, et un
+ * seul par écoute. Le relevé bat toutes les 250 ms ; sans drapeau, trois
+ * secondes de parole feraient douze vibrations — un téléphone qui tremble en
+ * continu n'est plus un signal, c'est une panne.
+ *
+ * POURQUOI LA BOUCLE EST REJOUÉE ICI. Le drapeau vit dans `MicroVenteCaisse`
+ * (c'est `aParleRef`, qui porte déjà exactement ce fait), et un ref React ne
+ * se teste pas sans DOM. Ce banc rejoue donc l'algorithme de l'écran sur le
+ * module PUR qu'il appelle vraiment — `parleMaintenant`, `seuilDeParole`,
+ * `finDEcoute` — et `caisseMicroPermanent` vérifie, en lisant la source, que
+ * l'écran tient bien cette version-là. Les deux ensemble, pas l'un sans
+ * l'autre : la même méthode que MIC-01.
+ */
+console.log('\nVOX-06 — sa main sait qu\'on l\'entend, une fois et une seule');
+
+interface Ecoute { vibrations: number; premierTicMs: number | null; raison: string | null }
+function rejouerEcoute(niveauA: (ms: number) => number, seuil = NIVEAU_PAROLE): Ecoute {
+  // Exactement la boucle de l'écran : relevé toutes les 250 ms, le drapeau
+  // « elle a déjà parlé » sert d'accusé de réception déjà envoyé.
+  let aParle = false, dernierSon = 0, vibrations = 0, premierTicMs: number | null = null;
+  for (let ms = 250; ms <= ECOUTE_MAX_MS; ms += 250) {
+    if (parleMaintenant(niveauA(ms), seuil)) {
+      if (!aParle) { vibrations++; premierTicMs = ms; }
+      aParle = true;
+      dernierSon = ms;
+    }
+    const fin = finDEcoute({ ecoute: true, aParle, msDepuisDernierMot: ms - dernierSon, msDepuisOuverture: ms });
+    if (fin.cesser) return { vibrations, premierTicMs, raison: fin.raison };
+  }
+  return { vibrations, premierTicMs, raison: null };
+}
+
+{
+  // Elle appuie, elle hésite une seconde, puis elle dit sa vente pendant 3 s.
+  const parle = (ms: number) => (ms >= 1000 && ms <= 4000 ? 40 : 0);
+  const e = rejouerEcoute(parle);
+  ok(e.vibrations === 1, `une vibration, et une seule, sur toute l'écoute (obtenu ${e.vibrations})`);
+  ok(e.premierTicMs === 1000, `elle arrive au PREMIER mot, pas à la fin du traitement (obtenu ${e.premierTicMs} ms)`);
+  // Ce que coûterait l'oubli du drapeau, chiffré : le relevé ne s'arrête pas
+  // de battre parce qu'elle parle.
+  let sansDrapeau = 0;
+  for (let ms = 250; ms <= 4000; ms += 250) if (parleMaintenant(parle(ms), NIVEAU_PAROLE)) sansDrapeau++;
+  ok(sansDrapeau > 10 && e.vibrations === 1,
+     `sans drapeau le téléphone vibrerait ${sansDrapeau} fois sur la même phrase — c'est la panne, pas le signal`);
+}
+{
+  // MIC-02A rejoué côté main : deux secondes d'hésitation restent DANS la même
+  // phrase, donc le même accusé de réception. On ne lui retique pas dessus.
+  const hesite = (ms: number) => (ms <= 1500 || ms >= 3500 ? 40 : 0);
+  const e = rejouerEcoute(hesite);
+  ok(e.vibrations === 1, `elle hésite au milieu de sa phrase : toujours UNE vibration (obtenu ${e.vibrations})`);
+}
+{
+  // Le cas qui compte autant que l'autre : elle n'a rien dit. Vibrer là serait
+  // mentir — « je t'ai entendue » alors que le micro n'a rien eu.
+  const e = rejouerEcoute(() => 0);
+  ok(e.vibrations === 0 && e.raison === 'rien-dit',
+     `seuil jamais franchi : aucune vibration (obtenu ${e.vibrations}, fin « ${e.raison} »)`);
+  // Et le fond du marché n'est pas une voix : MIC-02B l'a déjà dit pour la
+  // fermeture du micro, c'est la même vérité pour sa main.
+  const fond = rejouerEcoute(() => NIVEAU_PAROLE - 1);
+  ok(fond.vibrations === 0, `un bruit sous le seuil ne fabrique pas d'accusé de réception (obtenu ${fond.vibrations})`);
+  const seuilMarche = seuilDeParole(plancherDeBruit([18, 20, 19, 21, 19]));
+  const bruitMarche = rejouerEcoute(() => 21, seuilMarche);
+  ok(bruitMarche.vibrations === 0,
+     `au marché, le seuil monte avec le fond (${seuilMarche}) et le fond ne vibre pas (obtenu ${bruitMarche.vibrations})`);
+  ok(rejouerEcoute((ms) => (ms >= 1000 ? seuilMarche + 5 : 19), seuilMarche).vibrations === 1,
+     'mais sa voix, elle, passe — et vibre une fois');
+}
+{
+  // LE PIÈGE DE L'UNICITÉ MAL POSÉE : un drapeau porté par la session, et non
+  // par l'écoute, ne vibrerait plus jamais après la première phrase de la
+  // journée. Chaque ouverture du micro est une écoute neuve.
+  const parle = (ms: number) => (ms >= 500 && ms <= 2500 ? 40 : 0);
+  const deux = [rejouerEcoute(parle), rejouerEcoute(parle)];
+  ok(deux.every(e => e.vibrations === 1),
+     `deux écoutes successives : un tic chacune (obtenu ${JSON.stringify(deux.map(e => e.vibrations))})`);
+}
+
 console.log(echecs === 0
   ? '\n✅ Le micro s\'arrête quand elle s\'arrête, et ne lui renvoie plus ses mots.\n'
   : `\n❌ ${echecs} règle(s) violée(s).\n`);
