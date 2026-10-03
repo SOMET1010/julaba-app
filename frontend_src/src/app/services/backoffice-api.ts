@@ -1419,12 +1419,14 @@ export async function boGetUserWallet(userId: string): Promise<{ wallet: BOWalle
   return apiGet(`/admin/wallets/${userId}`);
 }
 
-export async function boCreditWallet(userId: string, montant: number, description: string): Promise<void> {
-  return apiPost(`/admin/wallets/${userId}/credit`, { montant, description });
+// J5 : réservé au super_admin côté serveur ; le motif est obligatoire et
+// journalisé (auteur, cible, montant, motif, horodatage).
+export async function boCreditWallet(userId: string, montant: number, motif: string): Promise<void> {
+  return apiPost(`/admin/wallets/${userId}/credit`, { montant, motif });
 }
 
-export async function boDebitWallet(userId: string, montant: number, description: string): Promise<void> {
-  return apiPost(`/admin/wallets/${userId}/debit`, { montant, description });
+export async function boDebitWallet(userId: string, montant: number, motif: string): Promise<void> {
+  return apiPost(`/admin/wallets/${userId}/debit`, { montant, motif });
 }
 
 export async function boUpdateTransaction(id: string, data: { statut: string; motif?: string }): Promise<void> {

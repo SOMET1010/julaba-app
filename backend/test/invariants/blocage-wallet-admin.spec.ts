@@ -39,6 +39,7 @@ describe("Invariant B3 — blocage réel d'un wallet (bloquer/débloquer)", () =
   let ds: DataSource;
   let jwt: JwtService;
   let adminToken: string;
+  let superToken: string;
   let vendeurId: string;
   let vendeurToken: string;
   let acheteurId: string;
@@ -70,6 +71,15 @@ describe("Invariant B3 — blocage réel d'un wallet (bloquer/débloquer)", () =
       role: UserRole.ADMIN_GENERAL, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     adminToken = await jwt.signAsync({ sub: admin.id, phone: admin.phone, role: admin.role }, { secret: process.env.JWT_SECRET });
+
+    // J5 (BO-0) : créditer/débiter un wallet depuis le BO est réservé au
+    // super_admin. Les crédits/débits de ce fichier passent donc par lui, pour
+    // que B3b/B3d testent bien le BLOCAGE et non le refus de rôle.
+    const superAdmin: any = await repo.save(repo.create({
+      phone: '+2250700058009', firstName: 'Super', lastName: 'Blocage', genre: 'femme',
+      role: UserRole.SUPER_ADMIN, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+    } as any));
+    superToken = await jwt.signAsync({ sub: superAdmin.id, phone: superAdmin.phone, role: superAdmin.role }, { secret: process.env.JWT_SECRET });
 
     const vendeur: any = await repo.save(repo.create({
       phone: '+2250700058001', firstName: 'Vendeur', lastName: 'Blocage', genre: 'homme',
@@ -183,13 +193,13 @@ describe("Invariant B3 — blocage réel d'un wallet (bloquer/débloquer)", () =
 
     const credit = await api()
       .post(`/api/v1/admin/wallets/${acheteurId}/credit`)
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${superToken}`)
       .send({ montant: 1000, description: 'Tentative crédit sur compte bloqué' });
     expect(credit.status).toBe(403);
 
     const debit = await api()
       .post(`/api/v1/admin/wallets/${acheteurId}/debit`)
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${superToken}`)
       .send({ montant: 1000, description: 'Tentative débit sur compte bloqué' });
     expect(debit.status).toBe(403);
 
@@ -223,7 +233,7 @@ describe("Invariant B3 — blocage réel d'un wallet (bloquer/débloquer)", () =
     const soldeAvant = await soldesDe(acheteurId);
     const credit = await api()
       .post(`/api/v1/admin/wallets/${acheteurId}/credit`)
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${superToken}`)
       .send({ montant: 1000, description: 'Crédit après déblocage' });
     expect(credit.status).toBe(201);
     expect(await soldesDe(acheteurId)).toBe(soldeAvant + 1000);
