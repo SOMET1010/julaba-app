@@ -32,6 +32,7 @@ import { Mic, Loader } from 'lucide-react';
 import { startLiveDictation } from '../../voice-offline/offlineStt';
 import { stopAllVoice } from '../../services/audioManager';
 import { montantDit } from '../../services/montantDit';
+import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
 
 const ORANGE = 'var(--commerce-action)';
 /** Même cible tactile que le reste de la caisse : un doigt, pas un curseur. */
@@ -75,7 +76,11 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Pr
     // et transcrit sa propre voix. On coupe tout avant d'ouvrir l'oreille.
     try { stopAllVoice(); } catch { /* ignore */ }
     try {
-      const flux = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // MIC-01 — anti-écho : le micro s'ouvre JUSTE APRÈS la question dite par
+      // Tantie. Nu (`{ audio: true }`), il reprenait le haut-parleur et le
+      // moteur transcrivait l'application elle-même. Le réglage vit dans
+      // `services/contraintesMicro` — une seule liste pour tous les micros.
+      const flux = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
       fluxRef.current = flux;
       setEcoute(true);
       const handle = await startLiveDictation(flux, (texte, estFinal) => {

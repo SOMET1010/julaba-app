@@ -33,6 +33,7 @@ import { startLiveDictation } from '../../voice-offline/offlineStt';
 const MICRO_INDISPONIBLE = 'Le micro ne répond pas. Touche « Ajouter un produit ».';
 import { stopAllVoice } from '../../services/audioManager';
 import { produitDit, type EcouteProduit } from '../../services/produitDit';
+import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
 
 const ORANGE = 'var(--commerce-action)';
 const CIBLE = 44;
@@ -69,7 +70,11 @@ export function BoutonDireProduit({ sesProduits, onProduit, dire }: Props) {
     // VERROU PAROLE / ÉCOUTE : si Tantie parle encore, le micro l'entend elle.
     try { stopAllVoice(); } catch { /* ignore */ }
     try {
-      const flux = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // MIC-01 — anti-écho : le micro s'ouvre JUSTE APRÈS la question dite par
+      // Tantie. Nu (`{ audio: true }`), il reprenait le haut-parleur et le
+      // moteur transcrivait l'application elle-même. Le réglage vit dans
+      // `services/contraintesMicro` — une seule liste pour tous les micros.
+      const flux = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
       fluxRef.current = flux;
       setEcoute(true);
       const handle = await startLiveDictation(flux, (texte, estFinal) => {
