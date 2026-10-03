@@ -85,6 +85,7 @@ import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 import { glyphePourChiffre } from '../../services/clavierImage';
 import { retourFrappe, type EtapeSaisie } from '../../services/retourDeFrappe';
 import { parlerAvantConnexion } from '../../services/paroleEntree';
+import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
 
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
@@ -549,7 +550,11 @@ export function LoginPassword() {
     vlog('MIC_ASK');
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // MIC-01 — anti-écho : la dictée du numéro et du code s'ouvre juste
+      // après la consigne dite. Nu, ce micro entendait le haut-parleur, et des
+      // chiffres venus de la voix de Tantie entraient dans le numéro de
+      // téléphone. Réglage unique : `services/contraintesMicro`.
+      stream = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
       vlog('MIC_OK');
     } catch (e) {
       vlog('MIC_DENIED', String(e));
