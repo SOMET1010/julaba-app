@@ -334,11 +334,12 @@ export class UsersService {
         status: r.status,
       }));
     } catch (error: any) {
+      // SEC-04 (registre dette) : ne pas journaliser le terme de recherche saisi
+      // (donnée personnelle). On log uniquement les infos techniques SQL.
       console.error('[searchActorsForIdentificateur] ERREUR SQL :', {
         message: error?.message,
         code: error?.code,
         detail: error?.detail,
-        query: trimmed,
       });
       return [];
     }

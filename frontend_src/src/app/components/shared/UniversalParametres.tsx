@@ -6,7 +6,7 @@ import {
   AlertTriangle, Save, Check, X, ChevronRight, LogOut, Trash2,
   MapPin, Target, BarChart3, Users, Leaf, Calendar, Download,
   Headphones,
-  Building2, Store, UserCheck,
+  Building2, Store, UserCheck, FileText,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { ModeAccesSwitcher } from './ModeAccesSwitcher';
@@ -979,6 +979,10 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             />
             <RowAction label="Support et aide" sublabel="Contacter l'équipe JÙLABA" icon={Headphones}
               onClick={() => navigate(`/${role}/support`)} />
+            {role === 'marchand' && (
+              <RowAction label="Mes données" sublabel="Loi ivoirienne n°2013-450 — voir, corriger, supprimer" icon={FileText}
+                onClick={() => navigate('/marchand/mes-donnees')} />
+            )}
             <RowAction label="Supprimer mon compte" sublabel="Suppression définitive et irréversible" danger icon={Trash2}
               onClick={() => setShowDeleteAccount(true)} />
             <RowAction label="Se déconnecter" sublabel="Retour à la connexion" danger icon={LogOut}

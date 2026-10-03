@@ -2,6 +2,7 @@
   "name": "julaba-frontend",
   "private": true,
   "version": "5.0.0",
+  "license": "MIT",
   "appVersion": "5.0.0.20",
   "type": "module",
   "scripts": {
