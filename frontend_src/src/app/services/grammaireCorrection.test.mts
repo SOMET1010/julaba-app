@@ -51,7 +51,11 @@ eq(interpreterReponse('non enlève ça'), { type: 'suppression' }, "« non enlè
 eq(interpreterReponse('non annule'), { type: 'annulation' }, "« non annule » → annulation");
 
 console.log("Hors grammaire / vide");
-eq(interpreterReponse('euh bon ben'), { type: 'confirmation' }, "« bon » reconnu comme confirmation faible");
+// VOIX-08 (5d17ee3, 27/09) : « bon » ISOLÉ n'est plus un oui — « bon alors »
+// est une hésitation, et sur une confirmation d'argent le doute ne profite
+// jamais au oui. « c'est bon », explicite, reste une confirmation.
+eq(interpreterReponse('euh bon ben'), { type: 'ambigu' }, "« euh bon ben » → ambigu (VOIX-08 : le doute ne profite jamais au oui)");
+eq(interpreterReponse("c'est bon"), { type: 'confirmation' }, "« c'est bon » reste une confirmation explicite");
 eq(interpreterReponse('la lune est bleue'), { type: 'ambigu' }, "phrase hors sujet → ambigu");
 eq(interpreterReponse(''), { type: 'ambigu' }, "vide → ambigu");
 
