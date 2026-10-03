@@ -113,6 +113,9 @@ function POSCaisseInner() {
   const [libreQte, setLibreQte] = useState(1);
   /** AMB-01 — le prix DIT, tant qu'on ne sait pas s'il vaut pour un ou pour tous. */
   const [prixDitAArbitrer, setPrixDitAArbitrer] = useState<{ montant: number; quantite: number } | null>(null);
+  /** Posé AVANT le rendu suivant : un `useState` arriverait trop tard entre
+   *  deux relevés de dictée espacés de quelques dizaines de millisecondes. */
+  const arbitrageDemandeRef = useRef(false);
   // « Autre article » sert maintenant DEUX gestes : chercher dans le
   // référentiel maître (Odoo) pour ajouter un vrai article à son catalogue,
   // ou vendre un montant libre quand rien ne correspond. Le second reste
@@ -228,6 +231,7 @@ function POSCaisseInner() {
     // où elle décide. Sur l'argent, c'est la même faute : on ne donne jamais
     // deux sens à la même donnée.
     setLibreQte(qte);
+    arbitrageDemandeRef.current = false;
     setAdoptionMessage(null);
     setLibreMontant('');
     setLibreDesc(propre);
@@ -346,7 +350,7 @@ function POSCaisseInner() {
     dire(ligneAjouteeDeuxFormes({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }).texteParle);
     // L'unité revient au défaut : sinon le « tas » de la vente précédente
     // collerait, en silence, à l'article libre suivant.
-    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setLibreQte(1); setShowLibre(false); setVenteDictee(null); setPrixDitAArbitrer(null);
+    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setLibreQte(1); setShowLibre(false); setVenteDictee(null); setPrixDitAArbitrer(null); arbitrageDemandeRef.current = false;
   };
 
   const total = getTotalCart();
@@ -1619,10 +1623,27 @@ function POSCaisseInner() {
                       // construction. On rebranche la question.
                       const qteDite = venteDictee?.quantite ?? libreQte;
                       if (m > 0 && qteDite > 1) {
+                        // UNE SEULE FOIS, ET C'EST LE CŒUR DU CORRECTIF.
+                        //
+                        // Terrain, 03/10/2026 : la question partait EN BOUCLE et
+                        // la réponse n'était jamais retenue. `BoutonDirePrix`
+                        // appelle `onMontant` à CHAQUE transcription partielle
+                        // — « en direct, elle voit monter ». Chaque relevé de
+                        // Sherpa reposait donc la question et écrasait le choix
+                        // qu'elle venait de faire.
+                        //
+                        // Le ref tranche AVANT tout `setState` : deux relevés
+                        // séparés de 30 ms verraient tous deux l'état encore à
+                        // `null` et poseraient la question deux fois.
+                        if (arbitrageDemandeRef.current) return;
+                        arbitrageDemandeRef.current = true;
                         setPrixDitAArbitrer({ montant: m, quantite: qteDite });
                         direMessage('TATA_AMBIGUITE', { montant: m, quantite: String(qteDite) });
                         return;
                       }
+                      // Et tant que l'arbitrage est ouvert, aucun relevé suivant
+                      // ne vient remplir le champ dans son dos.
+                      if (arbitrageDemandeRef.current) return;
                       setLibreMontant(String(m));
                     }}
                   />
@@ -1663,6 +1684,7 @@ function POSCaisseInner() {
                     const poser = (r: { prixUnitaire: number | null }) => {
                       setLibreMontant(String(r.prixUnitaire ?? montant));
                       setPrixDitAArbitrer(null);
+                      arbitrageDemandeRef.current = false;
                     };
                     return (
                       <>
