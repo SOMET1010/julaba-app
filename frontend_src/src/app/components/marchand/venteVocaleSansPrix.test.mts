@@ -200,15 +200,31 @@ console.log('\n[VOX-03] L\'écran du prix de la caisse a un micro');
 {
   ok(/import \{ BoutonDirePrix \}/.test(caisse),
      'POSCaisse importe BoutonDirePrix — la brique existante, pas une seconde');
-  ok(/<BoutonDirePrix onMontant=\{\(m\) => setLibreMontant\(String\(m\)\)\}/.test(caisse),
+  ok(/<BoutonDirePrix[\s\S]{0,300}onMontant=\{\(m\) => setLibreMontant\(String\(m\)\)\}/.test(caisse),
      'le montant dit remplit le MÊME champ que le clavier — une seule source de prix');
   ok(/\{guidageVocal\(\) && \([\s\S]{0,200}<BoutonDirePrix/.test(caisse),
      'et il ne s\'affiche pas quand elle a coupé le guidage vocal');
-  // PAS d'ouverture automatique ICI, et c'est une décision : la question est
-  // déjà dite par `ouvrirPrixManquant`. Un micro qui s'ouvrirait 250 ms après
-  // écouterait Tantie parler et transcrirait sa propre question.
-  ok(!/<BoutonDirePrix[\s\S]{0,120}ouvrirToutSeul/.test(caisse),
-     'sans `ouvrirToutSeul` : le micro n\'écoute pas Tantie poser sa question');
+  // QTE-02 — LE MICRO S'OUVRE TOUT SEUL, ET C'EST LA RÈGLE.
+  //
+  // Constat de Patrick, 03/10/2026 : « si elle ne sait pas lire, elle
+  // n'appuiera jamais dessus. » Un bouton qu'il faut savoir trouver ne sert
+  // pas une marchande qui ne lit pas. L'ordre importe autant que l'ouverture :
+  // `BoutonDirePrix` DIT la question, attend, PUIS écoute — sinon le micro
+  // transcrit Tantie en train de parler.
+  ok(/<BoutonDirePrix[\s\S]{0,200}ouvrirToutSeul/.test(caisse),
+     'le micro s\'ouvre TOUT SEUL : elle n\'a pas à savoir qu\'un bouton existe');
+  ok(/<BoutonDirePrix[\s\S]{0,300}question=\{texteMessage\('TATA_QUEL_PRIX'/.test(caisse),
+     'et c\'est LUI qui pose la question, dans le bon ordre');
+  ok(!/direMessage\('TATA_QUEL_PRIX'/.test(caisse),
+     'l\'écran ne la dit plus : une seule voix, jamais deux fois la même question');
+
+  // QTE-01 — L'ÉCRAN DIT CE QUE LE PANIER VA RECEVOIR.
+  // Mesuré sur `a525fe6` : « cinq piments », prix 2 000 F, écran « Combien ? 1
+  // · Total : 2 000 F » pendant que le panier recevait CINQ piments pour
+  // 10 000 F. L'ajout lit `venteDictee`, l'affichage lit `libreQte` — et rien
+  // ne posait `libreQte`.
+  ok(/setVenteDictee\(\{ nom: propre, quantite: qte[\s\S]{0,900}setLibreQte\(qte\)/.test(caisse),
+     'la quantité DITE est posée dans l\'état que l\'écran affiche, pas seulement dans celui qu\'il enregistre');
   ok(/value=\{libreMontant\}/.test(caisse),
      'le clavier reste, inchangé, pour qui préfère taper');
 }
