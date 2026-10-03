@@ -30,6 +30,7 @@ import { ETAT_INITIAL, empreintePanier, reduire, type EffetEncaissement, type Et
 import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { PaveMontant } from '../shared/PaveMontant';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
+import { t as texteMessage } from '../../i18n/voice/runtime';
 import { t } from '../../i18n/voice/runtime';
 import { avertirEtalGarde } from '../../services/etatCatalogueCaisse';
 
@@ -206,6 +207,20 @@ function POSCaisseInner() {
     const qte = quantite > 0 ? quantite : 1;
     const uniteDite = unite || 'unité';
     setVenteDictee({ nom: propre, quantite: qte, unite: uniteDite });
+    // QTE-01 — L'ÉCRAN DOIT DIRE CE QUE LE PANIER VA RECEVOIR.
+    //
+    // Mesuré sur l'APK `a525fe6`, 03/10/2026 : « cinq piments », prix dit
+    // 2 000 F, et l'écran affichait « Combien ? 1 · Total : 2 000 F » pendant
+    // que `ajouterMontantLibre` ajoutait bien CINQ piments pour 10 000 F.
+    //
+    // Les deux lisaient des états DIFFÉRENTS : l'ajout prend `venteDictee`
+    // (« la dictée prime quand elle a parlé »), l'affichage prend `libreQte`,
+    // qui restait à son défaut de 1 parce que rien ne le posait ici.
+    //
+    // Ce n'était pas une vente fausse — c'était un ÉCRAN faux, au moment exact
+    // où elle décide. Sur l'argent, c'est la même faute : on ne donne jamais
+    // deux sens à la même donnée.
+    setLibreQte(qte);
     setAdoptionMessage(null);
     setLibreMontant('');
     setLibreDesc(propre);
@@ -229,14 +244,24 @@ function POSCaisseInner() {
       direMessage('TATA_AMBIGUITE', { montant, quantite: String(qte) });
       return;
     }
-    direMessage('TATA_QUEL_PRIX', { produit: propre });
+    // QTE-02 — LA QUESTION EST DITE PAR LE BOUTON, QUI ÉCOUTE ENSUITE.
+    //
+    // Constat de Patrick, 03/10/2026 : « en vocal on est obligé d'appuyer sur
+    // le micro pour parler ; si elle ne sait pas lire, elle n'appuiera jamais
+    // dessus. » Il a raison, et ma décision précédente était fausse : j'avais
+    // écarté l'ouverture automatique pour une raison TECHNIQUE (le micro
+    // risquait d'écouter Tantie poser sa question) en oubliant que le bouton
+    // ne sert à rien s'il faut savoir qu'il est là.
+    //
+    // `BoutonDirePrix` sait déjà faire les deux dans le bon ordre : il DIT la
+    // question, attend 1 400 ms, PUIS ouvre le micro. L'écran ne dit donc plus
+    // la question lui-même — sinon elle serait prononcée deux fois.
   };
 
   const choisirReference = (r: ReferenceMaitre) => {
     setRefChoisie(r);
     setAdoptionMessage(null);
     setLibreDesc(r.nom);
-    direMessage('TATA_QUEL_PRIX', { produit: r.nom });
   };
 
   /**
@@ -1567,7 +1592,12 @@ function POSCaisseInner() {
                   Le clavier reste dessous, inchangé, pour qui préfère taper. */}
               {guidageVocal() && (
                 <div style={{ marginTop: 6 }}>
-                  <BoutonDirePrix onMontant={(m) => setLibreMontant(String(m))} />
+                  <BoutonDirePrix
+                    ouvrirToutSeul
+                    question={texteMessage('TATA_QUEL_PRIX', { produit: libreDesc || venteDictee?.nom || '' })}
+                    dire={dire}
+                    onMontant={(m) => setLibreMontant(String(m))}
+                  />
                 </div>
               )}
 
