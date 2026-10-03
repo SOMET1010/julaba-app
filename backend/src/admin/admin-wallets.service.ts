@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { exigerAutoriteSur, exigerPermissionBO } from '../auth/bo-autorisation';
 import { DataSource, EntityManager } from 'typeorm';
 import { User, UserStatus } from '../users/entities/user.entity';
 import { WalletsService } from '../wallets/wallets.service';
@@ -328,6 +329,13 @@ export class AdminWalletsService {
     });
   }
 
+  private exigerDroitDeSuspendre(admin: User, cible: User): void {
+    if (!admin) throw new ForbiddenException('Auteur requis');
+    if (admin.id === cible.id) throw new ForbiddenException('Un compte ne se bloque pas lui-même');
+    exigerAutoriteSur(admin, cible);
+    exigerPermissionBO(admin, 'acteurs.suspend');
+  }
+
   // Blocage RÉEL d'un compte : bascule users.status sur 'suspendu'. C'est la
   // SEULE source de vérité pour le blocage (cf. WalletsService.assertCompteActif,
   // appelé par tous les points d'écriture wallet — crédit/débit admin, retrait
@@ -335,12 +343,16 @@ export class AdminWalletsService {
   // un champ de blocage séparé sur `wallets` : ce serait un second calcul du
   // même concept, interdit par CONSTITUTION.md §2. `users.status = 'suspendu'`
   // bloque aussi la connexion elle-même (voir JwtStrategy.validate).
-  async bloquerWallet(userId: string, raison: string, adminId?: string): Promise<{ success: true }> {
+  async bloquerWallet(userId: string, raison: string, admin: User): Promise<{ success: true }> {
+    const adminId = admin?.id;
     return this.dataSource.transaction(async (em) => {
       const [wallet] = await em.query(`SELECT id FROM wallets WHERE user_id = $1`, [userId]);
       if (!wallet) throw new NotFoundException('Wallet introuvable');
       const user = await em.findOne(User, { where: { id: userId } });
       if (!user) throw new NotFoundException('Utilisateur introuvable');
+      // BO-0 / S3 + J6 : bloquer = suspendre le compte. Seul le super_admin
+      // suspend un compte du back-office ; ailleurs, `acteurs.suspend` requis.
+      this.exigerDroitDeSuspendre(admin, user);
 
       user.status = UserStatus.SUSPENDU;
       await em.save(User, user);
@@ -360,12 +372,14 @@ export class AdminWalletsService {
     });
   }
 
-  async debloquerWallet(userId: string, adminId?: string): Promise<{ success: true }> {
+  async debloquerWallet(userId: string, admin: User): Promise<{ success: true }> {
+    const adminId = admin?.id;
     return this.dataSource.transaction(async (em) => {
       const [wallet] = await em.query(`SELECT id FROM wallets WHERE user_id = $1`, [userId]);
       if (!wallet) throw new NotFoundException('Wallet introuvable');
       const user = await em.findOne(User, { where: { id: userId } });
       if (!user) throw new NotFoundException('Utilisateur introuvable');
+      this.exigerDroitDeSuspendre(admin, user);
 
       user.status = UserStatus.ACTIF;
       await em.save(User, user);

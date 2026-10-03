@@ -1,4 +1,5 @@
 import { SkipThrottle } from '@nestjs/throttler';
+import { exigerAutoriteSur, exigerPermissionBO } from '../auth/bo-autorisation';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { buildMeta } from '../common/paginate';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -274,6 +275,25 @@ export class UsersController {
     const existingUser = await this.usersService.findOne(id);
     const ancienZoneId = existingUser?.zoneId;
 
+    // BO-0 / S3 + J6 : hiérarchie et permissions vérifiées côté serveur.
+    // Seul le super_admin gère les comptes du back-office ; nul hors
+    // super_admin n'écrit de permissions ni ne touche à son propre statut.
+    if (!isOwner) exigerAutoriteSur(req.user, existingUser);
+    if (body.role && req.user.role !== 'super_admin') {
+      throw new ForbiddenException('Modification de rôle réservée au super_admin');
+    }
+    if (isAdmin && req.user.role !== 'super_admin') {
+      if (body.boPermissions !== undefined) {
+        throw new ForbiddenException('Attribution de permissions réservée au super_admin');
+      }
+      if (body.status !== undefined) {
+        if (isOwner) throw new ForbiddenException('Un compte ne modifie pas son propre statut');
+        exigerPermissionBO(req.user, 'acteurs.suspend');
+      }
+      const autresChamps = Object.keys(body).filter((k) => k !== 'status' && body[k] !== undefined);
+      if (!isOwner && autresChamps.length > 0) exigerPermissionBO(req.user, 'acteurs.write');
+    }
+
     if (isIdentificateur && !isOwner) {
       const memeZone = existingUser.zoneId && req.user.zoneId && existingUser.zoneId === req.user.zoneId;
       if (!memeZone) {
@@ -300,10 +320,6 @@ export class UsersController {
     const safeBody: Record<string, any> = {};
     for (const key of ALLOWED_FIELDS) {
       if (body[key] !== undefined) safeBody[key] = body[key];
-    }
-    // Blocage modification de rôle sauf super_admin
-    if (body.role && req.user.role !== 'super_admin') {
-      throw new ForbiddenException('Modification de rôle réservée au super_admin');
     }
     const updated = await this.usersService.update(id, safeBody, actorId, ip);
     if (body.zoneId && body.zoneId !== ancienZoneId) {
@@ -452,11 +468,21 @@ export class UsersController {
     return { success: true, message: 'Permissions mises à jour', bo_permissions: body.bo_permissions };
   }
 
+  // BO-0 / S3 + J6 : supprimer exige la permission `acteurs.delete` ; un
+  // compte du back-office ne peut être supprimé que par le super_admin, et
+  // personne ne se supprime lui-même ici (voir DELETE /auth/account). La
+  // suppression est journalisée avec son auteur, dans la même transaction.
   @Roles('ADMIN')
   @UseGuards(RolesGuard)
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    await this.usersService.remove(id);
+  async remove(@Param('id') id: string, @Request() req: any) {
+    if (req.user?.id === id) {
+      throw new ForbiddenException('Suppression de son propre compte impossible depuis le back-office');
+    }
+    const cible = await this.usersService.findOne(id);
+    exigerAutoriteSur(req.user, cible);
+    exigerPermissionBO(req.user, 'acteurs.delete');
+    await this.usersService.remove(id, req.user.id, req.ip);
     return { success: true, message: 'Utilisateur archivé' };
   }
 

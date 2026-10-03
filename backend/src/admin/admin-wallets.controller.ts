@@ -64,7 +64,7 @@ export class AdminWalletsController {
     @Body('raison', new DefaultValuePipe('Blocage administratif')) raison: string,
     @CurrentUser() admin: User,
   ) {
-    return this.adminWalletsService.bloquerWallet(userId, raison, admin.id);
+    return this.adminWalletsService.bloquerWallet(userId, raison, admin);
   }
 
   @Post(':userId/debloquer')
@@ -72,7 +72,7 @@ export class AdminWalletsController {
     @Param('userId') userId: string,
     @CurrentUser() admin: User,
   ) {
-    return this.adminWalletsService.debloquerWallet(userId, admin.id);
+    return this.adminWalletsService.debloquerWallet(userId, admin);
   }
 
   // ── J5 (décision Patrick, 03/10/2026) ───────────────────────────────────
