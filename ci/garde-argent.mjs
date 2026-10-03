@@ -350,14 +350,39 @@ function empreinteFichier(chemin) {
 const lireJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const pkgFront = () => lireJson(join(RACINE, 'frontend_src', 'package.json'));
 
+/**
+ * Les maillons de `verify`, dans l'ordre — des NOMS de scripts.
+ *
+ * Deux formes, une seule vérité. Jusqu'au 03/10 (VER-01, VER-02), `verify`
+ * était une chaîne `npm run a && npm run b…` dans package.json. Depuis, c'est
+ * `node scripts/verify-tout.mjs`, qui lit `scripts/maillons-verify.json`. Le
+ * gate ne lisait que la première forme : il ne voyait plus AUCUNE garde, et
+ * accusait toutes les gardes d'être « débranchées ». On lit donc ce que
+ * `verify` exécute vraiment. Un fichier de maillons illisible n'est jamais
+ * une liste vide : c'est un refus — un gate muet est le pire des cas.
+ */
+function maillonsDeVerify(pkg) {
+  const chaine = pkg.scripts?.verify ?? '';
+  if (/(?:^|\s)node\s+(?:\.\/)?scripts\/verify-tout\.mjs(?:\s|$)/.test(chaine)) {
+    const f = join(RACINE, 'frontend_src', 'scripts', 'maillons-verify.json');
+    let maillons;
+    try { maillons = lireJson(f).maillons; } catch (e) {
+      throw new Error(`verify passe par verify-tout.mjs mais ${relative(RACINE, f)} est illisible : ${e.message}`);
+    }
+    if (!Array.isArray(maillons) || !maillons.length || maillons.some((m) => typeof m !== 'string')) {
+      throw new Error(`verify passe par verify-tout.mjs mais ${relative(RACINE, f)} ne porte aucune liste « maillons » valide`);
+    }
+    return maillons.map((m) => m.trim());
+  }
+  return chaine.split('&&').map((s) => s.trim())
+    .filter((m) => m.startsWith('npm run ')).map((m) => m.slice(8).trim());
+}
+
 /** Les gardes sont DÉRIVÉES de la chaîne `verify`, pas recopiées. */
 function gardesDerivees() {
   const pkg = pkgFront();
-  const chaine = pkg.scripts?.verify ?? '';
   const gardes = [];
-  for (const maillon of chaine.split('&&').map((s) => s.trim())) {
-    if (!maillon.startsWith('npm run ')) continue;
-    const nom = maillon.slice(8).trim();
+  for (const nom of maillonsDeVerify(pkg)) {
     const cmd = pkg.scripts?.[nom];
     if (!cmd) continue;
     const m = cmd.match(/(?:^|\s)(?:tsx|node)\s+(\S+)/);
@@ -631,7 +656,7 @@ dire(`\n${GRAS('[2] Les invariants déclarés par zone')}`);
   // Le gate se protège lui-même : débranché de `verify`, il ne dirait plus rien
   // — et personne ne le verrait, puisque c'est lui qui aurait dû le dire.
   if (!BAC_A_SABLE) {
-    const dansVerify = /npm run test:garde-argent(\s|$)/.test(pkgF.scripts?.verify ?? '');
+    const dansVerify = maillonsDeVerify(pkgF).includes('test:garde-argent');
     if (dansVerify) dire('  ✓ `test:garde-argent` est bien branché dans `verify`');
     else rater('`test:garde-argent` a été débranché de `verify` : le garde-fou ne tournerait plus');
   }

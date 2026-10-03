@@ -427,6 +427,47 @@ console.log('\n[9] Une preuve d’argent rédigée à la main est refusée');
   verifier('un journal produit sur un arbre non commité est refusé', rSale.code === 1, rSale.sortie);
 }
 
+// ── Scénario 10 — `verify` passe par verify-tout.mjs (VER-01/02) ─────────
+// Depuis le 03/10, `verify` vaut `node scripts/verify-tout.mjs` et la liste
+// des maillons vit dans `scripts/maillons-verify.json`. Le gate ne lisait que
+// la chaîne `npm run … && …` : il ne voyait plus AUCUNE garde, déclarait les
+// 57 « débranchées » et criait au desserrement. Il doit lire ce que `verify`
+// exécute vraiment — et rester capable de voir une garde qu'on retire.
+console.log('\n[10] `verify` délègue à verify-tout.mjs : les gardes restent vues');
+{
+  const passerAuRunner = (r, maillons) => {
+    const pkg = JSON.parse(readFileSync(join(r, 'frontend_src/package.json'), 'utf8'));
+    pkg.scripts.verify = 'node scripts/verify-tout.mjs';
+    ecrire(r, 'frontend_src/package.json', JSON.stringify(pkg, null, 2) + '\n');
+    if (maillons !== undefined) ecrire(r, 'frontend_src/scripts/maillons-verify.json', JSON.stringify(maillons, null, 2) + '\n');
+  };
+  {
+    const r = bacASable();
+    passerAuRunner(r, { maillons: ['test:caisse-un-seul-micro', 'test:paiement-fixture'] });
+    commit(r, 'outillage: verify passe par le runner');
+    const { code, sortie } = gateVerbeux(r, ['--base', 'HEAD~1']);
+    verifier('les mêmes gardes, lues dans maillons-verify.json : le gate reste vert (sortie 0)', code === 0, `sortie ${code} :\n${sortie}`);
+    verifier('aucune garde n’est déclarée « plus branchée »', !/n’est plus branchée/.test(sortie), sortie);
+    verifier('les deux gardes frontend et l’invariant backend sont comptés', /(?<!\d)3 gardes branchées dans verify/.test(sortie), sortie);
+  }
+  {
+    const r = bacASable();
+    passerAuRunner(r, { maillons: ['test:paiement-fixture'] });
+    commit(r, 'outillage: verify passe par le runner, une garde en moins');
+    const { code, sortie } = gateVerbeux(r, ['--base', 'HEAD~1']);
+    verifier('une garde retirée de maillons-verify.json est REFUSÉE (sortie ≠ 0)', code !== 0, `sortie ${code} :\n${sortie}`);
+    verifier('et elle est nommée', /caisseUnSeulMicro\.test\.mts n’est plus branchée/.test(sortie), sortie);
+  }
+  {
+    const r = bacASable();
+    passerAuRunner(r, { maillons: [] });
+    commit(r, 'outillage: verify passe par le runner, liste vide');
+    const { code, sortie } = gateVerbeux(r, ['--base', 'HEAD~1']);
+    verifier('une liste de maillons vide n’est pas « zéro garde » : le gate refuse', code !== 0, `sortie ${code} :\n${sortie}`);
+    verifier('et dit pourquoi', /maillons-verify\.json ne porte aucune liste/.test(sortie), sortie);
+  }
+}
+
 // ── Scénario 8 — le dépôt réel : périmètre et empreintes à jour ────────────
 console.log('\n[8] Le dépôt réel : périmètre figé et empreintes des gardes à jour');
 {
