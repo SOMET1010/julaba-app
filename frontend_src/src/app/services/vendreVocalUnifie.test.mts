@@ -216,7 +216,11 @@ function main() {
     const dit = h.appelsSpeak.join(" ");
     ok(dit.length > 0, "Tata parle après la vente");
     ok(/5/.test(dit), "la QUANTITÉ est prononcée (5)");
-    ok(/1\s*500/.test(dit), "le MONTANT est prononcé (1 500)");
+    // Le montant se DIT en toutes lettres depuis le 22/09 (5a91820, puis
+    // 7f13b15 « deux formes, un seul appel ») : la forme écrite « 1 500 »
+    // faisait épeler « un cinq zéro zéro » à la synthèse. On vérifie donc la
+    // forme PARLÉE — le montant est bien prononcé, et c'est le bon.
+    ok(/mille cinq cents/i.test(dit), "le MONTANT est prononcé (mille cinq cents)");
     ok(/tomate/i.test(dit), "le PRODUIT est prononcé");
     ok(
       /compris/i.test(dit),
