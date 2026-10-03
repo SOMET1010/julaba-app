@@ -46,7 +46,10 @@ interface Props {
   ouvrirToutSeul?: boolean;
   /** Dit avant d'écouter. Rien n'est écouté tant que Tantie parle. */
   question?: string;
-  dire?: (texte: string) => void;
+  /** VOX-05a — si cette fonction rend une promesse, on ATTEND la fin réelle de
+   *  la parole. Sinon on retombe sur le délai fixe, pour les appelants qui ne
+   *  savent pas dire quand ils ont fini. */
+  dire?: (texte: string) => void | Promise<void>;
 }
 
 export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Props) {
@@ -99,9 +102,43 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Pr
     demarreRef.current = true;
     // Tantie pose la question, PUIS on écoute. L'inverse lui ferait entendre
     // sa propre question et transcrire n'importe quoi.
-    if (question && dire) dire(question);
-    const t = setTimeout(() => { void ecouter(); }, question ? 1400 : 250);
-    return () => clearTimeout(t);
+    //
+    // VOX-05a — ON ATTEND LA FIN RÉELLE, PLUS UN DÉLAI FIXE.
+    //
+    // Mesuré sur l'APK `ea7b8e2`, journal du 03/10/2026 :
+    //     01:59:47.531  TTS « Piment. Quel est ton prix ? »
+    //     01:59:48.934  TTS_COUPEE depuisMs:1393      ← la question est coupée
+    //     01:59:49.221  ECOUTE_DEBUT
+    // Les 1 400 ms étaient une DEVINETTE sur la durée d'une phrase qu'on ne
+    // connaît qu'à l'exécution : « Piment. Quel est ton prix ? » passait de
+    // justesse, un nom de produit plus long serait tronqué net.
+    //
+    // Or la fin réelle est connue : `AppContext.speak` fait
+    // `await audioManager.speak(...)`. Il suffisait de l'attendre.
+    //
+    // LE DÉLAI RESTE EN REPLI pour un appelant dont le `dire` ne rend rien —
+    // `SaisieGuidee` et `AjoutProduitGuide` passent le leur sans promesse, et
+    // leur comportement ne change pas d'une milliseconde.
+    let annule = false;
+    let minuteur: ReturnType<typeof setTimeout> | null = null;
+    const ouvrir = () => { if (!annule) void ecouter(); };
+
+    if (question && dire) {
+      const parle = dire(question) as unknown;
+      if (parle && typeof (parle as Promise<void>).then === 'function') {
+        // Une marge courte après la dernière syllabe : le haut-parleur finit
+        // de rendre, et le micro n'avale pas la queue de la voix de Tantie.
+        void (parle as Promise<void>).then(
+          () => { minuteur = setTimeout(ouvrir, 250); },
+          () => { minuteur = setTimeout(ouvrir, 250); },
+        );
+      } else {
+        minuteur = setTimeout(ouvrir, 1400);
+      }
+    } else {
+      minuteur = setTimeout(ouvrir, 250);
+    }
+    return () => { annule = true; if (minuteur) clearTimeout(minuteur); };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule ouverture par écran
   }, []);
 

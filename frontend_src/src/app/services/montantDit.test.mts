@@ -109,6 +109,22 @@ console.log('\n[5] LES DEUX ÉCRANS DU PRIX LAISSENT PARLER — ET AUCUN NE FAIT
   ok(!/parseInt|parseFloat|Number\(/.test(bouton),
      'et personne d\'autre ne relit un montant dans ce fichier');
   ok(/startLiveDictation\(/.test(bouton), 'et réutilise la dictée existante, sans en réécrire une');
+
+  // VOX-05a — ON ATTEND LA FIN RÉELLE DE LA PAROLE, PAS UNE DURÉE DEVINÉE.
+  //
+  // Mesuré sur l'APK `ea7b8e2`, journal du 03/10/2026 :
+  //     01:59:47.531  TTS « Piment. Quel est ton prix ? »
+  //     01:59:48.934  TTS_COUPEE depuisMs:1393   ← la question coupée
+  //     01:59:49.221  ECOUTE_DEBUT
+  // Les 1 400 ms étaient une devinette sur la durée d'une phrase qu'on ne
+  // connaît qu'à l'exécution. Elle passait de justesse ici ; un nom de produit
+  // plus long aurait été tronqué net, devant une marchande qui ne lit pas.
+  ok(/typeof \(parle as Promise<void>\)\.then === 'function'/.test(bouton),
+     'le micro attend la FIN de la parole quand l\'appelant sait la dire');
+  // LE DÉLAI RESTE EN REPLI : `SaisieGuidee` et `AjoutProduitGuide` passent un
+  // `dire` qui ne rend rien, et leur comportement ne doit pas bouger.
+  ok(/setTimeout\(ouvrir, 1400\)/.test(bouton),
+     'et retombe sur le délai pour un appelant qui ne sait pas dire quand il a fini');
 }
 
 console.log(echecs === 0

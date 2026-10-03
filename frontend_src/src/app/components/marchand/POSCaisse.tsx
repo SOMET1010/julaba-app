@@ -77,7 +77,11 @@ function POSCaisseInner() {
   const estNegoce = sousProfil === 'demi_grossiste' || sousProfil === 'grossiste';
   // Confirmations vocales AUTO selon le profil (le même que la connexion) :
   // silencieuses en mode 'lecture' (l'écran affiche déjà tout), parlées en voix/mixte.
-  const dire = (t: string) => { if (guidageVocal()) speak(t); };
+  // VOX-05a — `speak` est `async` et attend la fin RÉELLE de la parole
+  // (`await audioManager.speak`). On rend sa promesse : c'est elle qui permet
+  // à `BoutonDirePrix` d'ouvrir le micro quand Tantie a fini, et non après un
+  // délai deviné. Les appelants qui l'ignorent ne changent pas de comportement.
+  const dire = (t: string) => { if (guidageVocal()) return speak(t) as unknown as void | Promise<void>; };
   // LES PHRASES SONT DES CLÉS (lot langues, 20/09/2026). `direMessage` suit
   // la même règle de profil que `dire`, mais résout une clé du catalogue i18n
   // dans la langue active et la remet au rendu vocal (contrat-audio.ts), dont
