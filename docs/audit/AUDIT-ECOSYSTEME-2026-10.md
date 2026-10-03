@@ -188,7 +188,152 @@ La page publique `AdminRecovery`, hors menu BO, s'y ajoute en 🔴.
 
 ---
 
-## 3. Proposition : plan de stabilisation du back-office
+## 3. MARCHAND — hors caisse
+
+Détail : [`marchand-producteur.md`](ecosysteme-2026-10/marchand-producteur.md).
+La caisse (POSCaisse, vente, encaissement, panier, clôture, VentesPassees) relève de RC1 : elle n'est pas auditée ici.
+
+| Écran | Statut | Preuve |
+|---|---|---|
+| Accueil (`MarchandAccueilVoice`) | ✅ | Données réelles ; un montant inconnu n'est pas affiché comme 0 (`MarchandAccueilVoice.tsx:41-78`) ; tuile Keiwa retirée (l. 212) |
+| Stock / étal (`GestionStock`) | 🟡 | `/stocks` réel (`stocks-rest.controller.ts:90-145`) ; mouvements repliés sur `[]` en cas d'erreur (`GestionStock.tsx:439-446`) ; dettes STK-02/03/04 connues |
+| Dépenses | 🟡 | Écriture idempotente, file hors ligne correcte (`CaisseContext.tsx:650-675`). Lecture : **faux zéro**, « 0 F » et « Aucune dépense » quand les données ne sont pas chargées |
+| Alertes | 🟡 | « Tout va bien, stock bien garni » sur un stock vide ou non chargé (`MarchandAlertes.tsx`) |
+| Profil (« Moi », `UniversalProfil`) | 🟡 | Ouvre Academy, Coopérative, Tontines, Protection sociale, Fidélité et le PIN Keiwa (`UniversalProfil.tsx:293-363,633-639,684`) |
+| Support | 🟠 pilote | **Faux numéros** affichés si `support_config` est vide en base (`SupportConfigContext.tsx:59-62`). Contenu réel de la base en prod : **À DÉFINIR**, à constater avant J0 |
+| Commandes | 🟠 pilote | Hors pilote, mais c'est l'un des **3 onglets** de la barre du bas (`roleConfig.ts:105`). Il donne accès à « récupérer paiement » (keiwa) |
+| Marché virtuel | 🟠 | Affiche « Paiement … effectué avec succès » alors qu'il ne crée que des commandes `en_attente` ; le n° de carte saisi est jeté ; `POST /signalements` n'existe pas côté back |
+| Tontines | 🔴 hors pilote | « Cotiser » débite réellement le wallet d'un seul toucher, sans PIN (`TontineDetail.tsx:63-71` → `tontines.service.ts:213`) |
+| Protection sociale | 🔴 hors pilote | Le mode keiwa débite **sans contrepartie** ; deux envois font deux débits (`protection-sociale.controller.ts:93-134`) |
+| Ma coopérative | 🔴 comptable | « Payer ma cotisation : 25 000 F » écrit une entrée **validée** dans la trésorerie sans qu'aucun argent ne bouge ; répétable ; affiche « payée avec succès » même en cas d'échec (`MaCooperative.tsx:156-165`) |
+| Fidélité | 🟡 hors pilote | Points réels et idempotents ; montant d'achat déclaratif |
+| Keiwa | 🟡 | Plus de porte dans le menu, mais la route reste ouverte par URL (`routes.tsx:79-84`) |
+
+**Écrans hors pilote atteignables depuis le menu marchand avec une action d'argent** : Commandes (onglet du bas, plus Tantie), Marché virtuel (Tantie, Alertes), Tontines, Protection sociale, Coopérative (tous depuis « Moi »). GO-PILOTE pose la question de leur masquage sans la trancher : **arbitrage de Patrick, toujours ouvert**.
+
+**Transmis au responsable RC1, non audité ici** :
+- `MicroVenteCaisse.tsx:410` navigue vers `/marchand/ventes`, qui n'existe pas ;
+- `TantieSagesseModal.tsx:155` clôture à `action.montant || 0`.
+
+## 4. PRODUCTEUR (hors pilote)
+
+| Écran | Statut | Preuve |
+|---|---|---|
+| Accueil / stats | ✅/🟡 | `GET /producteur/stats` réel ; une erreur de `/scores/me` s'affiche comme 0 (`RoleDashboard.tsx:148-164`) |
+| Déclarer une récolte | ✅ | `POST /recoltes` |
+| Publier / modifier une publication | ✅ | `POST/PATCH/DELETE /publications` ; l'index unique n'existe que dans DbInit (`db-init.service.ts:694-719`) |
+| Production : nouvelle plantation | 🟠 | Le front lit `res.id`, le back renvoie `{cycle}` : la plantation fantôme a des champs vides et une date invalide (`ProducteurContext.tsx:238`) — **reproduit par sonde** |
+| Commandes du producteur | 🟠 | Le front lit `data.data`, le back renvoie `{commandes, meta}` : liste **toujours vide** (`ProducteurContext.tsx:650`) — **reproduit par sonde** |
+| Liens | 🟠 | `/producteur/revenus` est un lien mort (`Stocks.tsx:561`) ; `/producteur/stocks` et `/producteur/publier-recolte` sont orphelins |
+| `POST /publications/republier` | 🟠 probable | Cast vers `marche_virtuel_type_enum`, absent du schéma de référence. Type en prod : **À DÉFINIR** |
+| Backend `/revenus` | ⏳ | Jamais appelé ; « revenu » = prix × quantité de toutes les récoltes |
+
+## 5. IDENTIFICATEUR — l'enrôlement, porte du J0
+
+Détail : [`identificateur-coop-institution.md`](ecosysteme-2026-10/identificateur-coop-institution.md).
+
+| Élément | Statut | Preuve |
+|---|---|---|
+| Enrôlement nominal (`/identificateur/fiche-identification` → `POST /identifications/create-with-acteur`) | 🟡 | Compte `en_attente_activation` + code d'activation **affiché à l'identificateur**. **Aucun SMS** ne transmet ce code ; il expire en 30 min (`activation.service.ts:9`) ; **aucune route ne permet de le réémettre** |
+| Activation (`/activation` → `POST /auth/activer`) | ✅ | Code à usage unique, secrets triviaux refusés, consommation atomique |
+| **Skill `identifier`** (chemin J0 cité par GO-PILOTE) | 🔴 | Passe par `POST /auth/signup`, public, qui crée un compte **ACTIF avec le mot de passe par défaut des acteurs**, sans SMS ni activation (`auth.controller.ts:64-83` ; `auth.service.ts:108-148`) |
+| Enrôlement : cas d'échec | 🔴 par lecture | `signup` crée le wallet hors transaction ; le nettoyage `DELETE FROM users` heurte la FK `wallets.user_id` (pas de CASCADE). Résultat : un compte orphelin ACTIF, connectable avec le mot de passe par défaut, et un numéro bloqué. **Non exécuté**, à confirmer par un invariant |
+| Contrôle de rôle sur `create-with-acteur` | 🟠 | Seul `JwtAuthGuard` (`identifications.controller.ts:20`) : **n'importe quel rôle connecté peut enrôler** |
+| Auto-validation | 🟠 | Un identificateur peut passer **son propre** dossier à validé (`identifications.controller.ts:485-503`) |
+| PIN identificateur avant soumission | 🟡 | Vérifié dans l'interface seulement, pas côté serveur |
+| Création d'identificateur + PIN par SMS (SEC-08) | ✅ | PIN tiré par `randomInt`, chiffré, envoyé par SMS, jamais rendu |
+| Cloisonnement par zone | 🟡 | Respecté en écriture ; **lecture nationale** (`search-identificateur`, `by-phone`, `users/:id`) |
+| Missions, historique acteur | ❌ | 403 (`missions.controller.ts:15` avec `'admin'` minuscule ; `users/:id/historique` réservé au super_admin), erreurs avalées en listes vides |
+| ONECI `/oneci/lookup/:nni` | 🔴 | Ouvert à **tout compte connecté** ; répond `found: true` même quand ONECI n'a renvoyé que des erreurs (`oneci.service.ts:31-32`) |
+
+## 6. COOPÉRATIVE (hors pilote)
+
+| Élément | Statut | Preuve |
+|---|---|---|
+| Gestion des membres | ❌ | Le back rend l'**id user**, les actions attendent l'**id d'adhésion** : 404 sur suspendre, exclure, rôle et supprimer (`cooperatives-rest.controller.ts:120-127` contre `:503,517,538`). Noms vides dans `CooperativeContext.tsx:170-172` |
+| Accès (26 routes à contrôles inline) | 🔴 | `resolveUserCooperative` (`:57-70`) ne filtre ni le statut ni `actif`. Une adhésion **en attente**, que n'importe qui crée via `rejoindre/:id`, ouvre la trésorerie, les données personnelles des membres, des cotisations auto-validées et la distribution du stock commun. `consolider` accepte un `cooperative_id` venu du client |
+| `ma-cooperative` sans `actif=true` | 🟡 | JULABA_DECISIONS §10 **toujours vrai** (tri par `date_adhesion`, et non par `created_at` comme l'écrit le §10) |
+| Trésorerie président | ✅ | Contrôle président appliqué (`:194-240`) |
+| Commandes groupées | ⏳ | Neutralisées (`[]`, `persisted:false`) |
+
+## 7. INSTITUTION
+
+| Élément | Statut | Preuve |
+|---|---|---|
+| Accès aux données | ❌ | `InstitutionScopeGuard` exige `institutions.responsable_id = user.id` (`institution-scope.guard.ts:68-83`). **Aucun chemin produit ne crée ce lien** (signup refuse le rôle, la création BO ne crée pas la ligne, `POST/PATCH /institutions` refusent `responsable_id`). D'où 403 partout, affiché comme des zéros |
+| `/admin/analytics/{roles,produits,graphique,alertes}`, `/admin/config` | ❌ | Routes **inexistantes** (`InstitutionContext.tsx:134-181`) ; `/admin/analytics` et `/audit` sont `@Roles('ADMIN')`, qui exclut `institution` |
+| Graphiques | 🟡 démo | `DATA_EVOLUTION` en dur (`useInstitutionData.ts:21-29`) ; courbe d'inscriptions fabriquée (`Analytics.tsx:61-72`) |
+| Actions (suspendre un acteur, valider une transaction) | ❌ | 403 (rôles serveur qui excluent `institution`) |
+| Chemins de `InstitutionLayout` | ✅/🟠 | Tous dans `routes.tsx:129-138` ; l'onglet Audit est masqué (`audit-trail` absent de la liste en dur) |
+
+## 8. WALLET / KEIWA / ARGENT (hors pilote — tout en 🔴)
+
+Détail : [`argent-wallet.md`](ecosysteme-2026-10/argent-wallet.md). No-Go Keiwa est une contrainte permanente du pilote, mais **rien côté serveur ne l'applique** : les routes sont montées et vivantes.
+
+| Élément | Statut | Preuve |
+|---|---|---|
+| **`vente_directe` payée en keiwa** | 🔴 **reproduit** | Le vendeur choisit l'acheteur et le total, puis débite le wallet de cet acheteur (SONDES S1). L'`id` de la victime s'obtient à partir de son téléphone via `POST /wallets/me/rechercher-destinataire` |
+| Paiement keiwa d'une commande (parcours normal) | 🟡 | Atomique et idempotent (invariant K1 vert), mais c'est le **vendeur** qui débite, sans contrôle « livrée » côté serveur ; `POST /commandes` accepte aussi un statut `confirmee` ou `livree` envoyé par le client |
+| Crédit / débit / remise à zéro admin | 🔴 **reproduit** | Voir BO, SONDES S2 |
+| `/wallets/public/pay-callback` et cron B-Pay | 🔴 | Crédit commité dans une transaction **séparée** du marquage `COMPLETED` (`wallets-public.controller.ts:100`, `bpay.cron.ts:81`) : double crédit possible si la suite échoue. `pay-callback` n'a aucune authentification, mais un faux appel ne crée pas d'argent (statut revérifié auprès de B-Pay) |
+| `/bpay/callback` | 🟡 | Secret partagé comparé simplement (pas de HMAC) ; montant lu en base. Valeur de `BPAY_WEBHOOK_SECRET` en prod : **À DÉFINIR** |
+| Retrait mobile | 🔴 | Sur un timeout B-Pay, le wallet est **recrédité** alors que le cashin a pu partir : double paiement possible. Pas d'idempotence ; `PENDING_WITHDRAW` jamais réconciliés (`wallets.controller.ts:63-120`) |
+| Transfert de compte à compte | ✅ logique / 🟠 accès | Verrous ordonnés, idempotence (T1 vert). **Aucun PIN côté serveur** |
+| Protection sociale (keiwa) | 🔴 | Débit vers nulle part ; `randomUUID` à chaque requête, donc aucune idempotence |
+| Tontines | ✅/🟡 | Transaction unique (TN vert) ; ni plafond ni consentement des membres |
+| Escrow | ⏳ | Module vide, aucune route ; le front **simule** le blocage des fonds (`WalletContext.tsx:113-137`) ; `releaseFunds` (code mort) débite sans créditer |
+| Fidélité | 🟡 | Points idempotents ; `utiliser` lit sans `FOR UPDATE` |
+| Score financier / API partenaire | 🟡 / 🟠 | Self ou admin respecté ; l'API partenaire rend le **solde exact** de n'importe quel utilisateur, sans consentement |
+| `/scores` | ⏳ | `score: 0` en dur |
+| Modèle des soldes | 🟠 | Soldes **stockés et mutés** par 5 chemins (dont du SQL brut), sans contrôle `solde == Σ journal` ni contrainte `solde >= 0`. ADR-001 ne couvre que la caisse |
+| Tableau de bord des invariants | 🟡 périmé | I5 y figure encore 🔴 alors que son test est bloquant (`blockers.spec.ts:98`) ; aucun invariant wallet (K1, B3, T1, TN, PS1) n'y figure |
+
+## 9. ACADEMY, ASSISTANT, MARCHÉ, MARKETPLACE et MODULES BACKEND RESTANTS
+
+Détail, avec l'inventaire ligne à ligne des 61 dossiers de `backend/src` : [`academy-marche-modules.md`](ecosysteme-2026-10/academy-marche-modules.md).
+
+| Élément | Statut | Preuve |
+|---|---|---|
+| Academy (app) | 🟡 | La progression n'est **jamais enregistrée** ; aucune question en base par défaut (pas de seed) |
+| Assistant Tantie | 🟡 | Actions métier OK, erreurs avalées (`TantieSagesseModal.tsx:167`) ; ouvre le marché et les commandes (hors pilote) |
+| Marketplace `/marketplace` | ⏳ | Route orpheline ; lit `/caisse/produits`, donc le catalogue de la marchande elle-même (exception déjà nommée dans PASSATION) |
+| `components/dev/ProfileSwitcher` | ✅ | Non accessible en prod (montages sous `import.meta.env.DEV`) |
+| Évaluations | 🔴 | Avec une fausse commande `livree` (statut accepté du client), n'importe qui peut noter n'importe qui, sans limite (`evaluations-rest.controller.ts:59-83`) |
+| Catalogue maître | ✅ | Aucune colonne prix ; prix > 0 imposé à l'adoption |
+| Odoo gateway | ✅ | `ODOO_POC_ENABLED` et `ODOO_REAL_WRITE_ENABLED` fermés par défaut |
+| Websocket `events` | 🔴 | Ventes et dépenses diffusées à la room `all` (constat vérifié, voir top 10) |
+| Notifications | 🟠 | `notify-member` permet à un marchand de notifier n'importe quel userId ; `POST /notifications` accepte une metadata libre |
+| Collisions de routes | ❌/🟡 | 3 réelles : `GET /transactions` (connue), **`GET /users/flags` (nouvelle, S4)**, `GET /admin/health` |
+| Code mort | ⏳ | `ansut` (jamais importé), `escrow` et `tickets` (modules vides), `producteur/{cycles,recoltes,publications}` (jamais montés : `routes.tsv` les comptait, d'où 360 au lieu de **349 routes montées**), `boutique`, `dossiers-rest` et `revenus` (montés, 0 appelant), `SmsService.sendOtp`, `AcademyWidget`, mock `NOTIFS_MARCHE` |
+| Tables hors migration | 🟠 | `cron_jobs_config` créée par le service au démarrage ; `support_config` créée dans un **GET** ; index unique de `publications` posé par DbInit **après** l'ouverture du port (500 possible juste après un démarrage) ; `api_keys` (SCHEMA-05) et `keiwa_config_items` (SCHEMA-06) absentes sur base neuve |
+
+## À DÉFINIR — consolidé (ce que cet audit ne pouvait pas vérifier)
+
+1. **Production** :
+   - type réel de `stocks.zone_id` (tranche si Zones est cassé en prod) ;
+   - valeurs de `JWT_EXPIRES_IN`, `COOKIE_SAMESITE` et `BPAY_WEBHOOK_SECRET` ;
+   - front et API sur le même site ou non (cookie BO, `/marketplace`) ;
+   - présence de lignes dans `api_keys` et `support_config` ;
+   - CSP du front (portée réelle du XSS).
+2. **Serveur déployé** : les routes `test-login`, `reset-super-admin-password` et `recover-super-admin` y existent-elles, et acceptent-elles la clé en dur d'`AdminRecovery.tsx` ?
+3. **Doctrine, à trancher par Patrick** :
+   - `bo_permissions` doit-il devenir une autorisation serveur ?
+   - périmètre attendu d'operateur_terrain et de gestionnaire_zone ;
+   - qui peut créditer ou débiter un wallet, et avec quel journal (ADR) ;
+   - masquage des écrans hors pilote porteurs d'argent ;
+   - chemin officiel d'enrôlement J0 et transmission du code d'activation ;
+   - qui rattache une institution à son responsable.
+4. **B-Pay** : comportement quand un retrait expire de notre côté ; destination des cotisations CNPS/CNAM payées en keiwa.
+5. **CI** : date d'apparition des 3 rouges de `test:ci` (clone superficiel : `8ea0a43` est le plus ancien commit testé, déjà rouge).
+6. **Non exécutés, déduits du code** :
+   - orphelin ACTIF au cas d'échec de `create-with-acteur` ;
+   - prise de compte par injection WebAuthn via `PATCH /acteurs/:id` ;
+   - double crédit B-Pay sur échec de notification.
+
+---
+
+
+## 10. Proposition : plan de stabilisation du back-office
 
 > **Proposition, non codée.** L'ordre et le découpage sont soumis à Patrick. Chaque lot est court, se prouve **rouge d'abord** (méthode du dépôt : reproduction par le code), et ne touche **pas** la caisse (RC1). Les sondes de [`SONDES.md`](ecosysteme-2026-10/SONDES.md) sont les tests rouges de départ des lots BO-0 et ARGENT-0.
 
@@ -212,7 +357,3 @@ La page publique `AdminRecovery`, hors menu BO, s'y ajoute en 🔴.
 - trancher le chemin d'enrôlement (skill `identifier` = signup ACTIF avec le mot de passe par défaut, ou fiche identificateur + code d'activation) ;
 - trancher le masquage des écrans hors pilote qui portent des actions d'argent (tontine, protection sociale, commandes, coopérative) ;
 - couper la diffusion websocket des ventes à la room `all`.
-
----
-
-*Sections détaillées des autres domaines : à suivre dans le commit suivant.*
