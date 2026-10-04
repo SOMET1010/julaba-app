@@ -186,6 +186,19 @@ export class DbInitService {
       // parfaitement naître hors référentiel (vente libre, article local que
       // personne n'a encore catalogué) — l'adoption est une facilité, pas un
       // passage obligé.
+      // SAISIE BRUTE d'une recolte — voir migration 1782300000000. `quantite`
+      // reste en kilos ; ces trois colonnes conservent ce que le producteur a
+      // REELLEMENT tape, pour que la conversion cesse d'etre irreversible.
+      // Nullables : les lignes historiques restent valides.
+      await this.dataSource.query(
+        `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS quantite_saisie numeric;`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS unite_saisie character varying(50);`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS facteur_saisie numeric;`,
+      );
       await this.dataSource.query(
         `ALTER TABLE produits ADD COLUMN IF NOT EXISTS default_code text;`,
       );

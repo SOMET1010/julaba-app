@@ -61,6 +61,15 @@ export class RecoltesRestController {
       photoUrl: body.photo_url || null,
       stockDisponible: quantite,
       stockVendu: 0,
+      // La saisie brute est RECOPIEE telle quelle, sans recalcul : le serveur
+      // n'a pas a redeviner ce que l'ecran a converti. Absente (ancien client)
+      // -> null, jamais une valeur inventee.
+      quantiteSaisie: Number.isFinite(Number(body.quantite_saisie)) && body.quantite_saisie !== null && body.quantite_saisie !== undefined
+        ? Number(body.quantite_saisie) : null,
+      uniteSaisie: typeof body.unite_saisie === 'string' && body.unite_saisie.trim() !== ''
+        ? body.unite_saisie.trim() : null,
+      facteurSaisie: Number.isFinite(Number(body.facteur_saisie)) && body.facteur_saisie !== null && body.facteur_saisie !== undefined
+        ? Number(body.facteur_saisie) : null,
     });
     const saved = await this.repo.save(recolte);
     return { recolte: saved, ...saved };

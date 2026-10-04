@@ -10,6 +10,7 @@ import {
   IMG_PRODUIT_MANIOC, IMG_PRODUIT_IGNAME, IMG_PRODUIT_MAIS, IMG_PRODUIT_RIZ,
   IMG_PRODUIT_BANANE, IMG_PRODUIT_OIGNON, IMG_PRODUIT_AVOCAT, IMG_PRODUIT_AUTRE
 } from '../../assets/images';
+import { convertirRecolte } from '../../services/conversionRecolte';
 const imgTomate    = IMG_PRODUIT_TOMATE;
 const imgAubergine = IMG_PRODUIT_AUBERGINE;
 const imgPiment    = IMG_PRODUIT_PIMENT;
@@ -213,7 +214,16 @@ export function RecolteForm() {
   const timeoutIdsRef = useRef<number[]>([]);
 
   const uniteObj = UNITES.find(u => u.id === unite) || UNITES[0];
-  const quantiteEnKg = quantite ? Math.round(Number(quantite) * uniteObj.facteur * 10) / 10 : 0;
+  // Conversion deportee dans une fonction PURE et testee
+  // (services/conversionRecolte.ts) : c'est elle qui garantit l'identite
+  // monetaire ET rend la saisie brute, jusqu'ici detruite.
+  const converti = convertirRecolte({
+    quantiteSaisie: quantite ? Number(quantite) : 0,
+    uniteSaisie: uniteObj.id,
+    facteur: uniteObj.facteur,
+    prixSaisi: prixUnitaire === '' ? '' : Number(prixUnitaire),
+  });
+  const quantiteEnKg = converti.quantiteEnKg;
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -264,15 +274,10 @@ export function RecolteForm() {
       return;
     }
     setIsSubmitting(true);
-    // Bug argent (écart recette « unités ») : la quantité est normalisée en kg
-    // (quantiteEnKg = quantite × facteur), mais le prix est saisi PAR UNITÉ D'ORIGINE
-    // (« Prix par tonne/sac/tas… ») ; le stocker brut avec une quantité en kg gonflait
-    // « Valeur stock » / « Revenus » par le facteur (×1000 tonne, ×100 sac, ×50 tas…).
-    // On convertit donc le prix en PRIX PAR KG pour rester cohérent avec quantiteEnKg :
-    // quantiteEnKg × prixParKg = quantite × prixSaisi (la vraie valeur).
-    const prixParKg = prixUnitaire !== '' && uniteObj.facteur > 0
-      ? Math.round((Number(prixUnitaire) / uniteObj.facteur) * 100) / 100
-      : 0;
+    // Le prix par kilo vient de la meme fonction pure : l'identite
+    // `quantiteEnKg × prixParKg = quantiteSaisie × prixSaisi` y est TESTEE
+    // (conversionRecolte.test.mts), au lieu d'etre promise en commentaire.
+    const prixParKg = converti.prixParKg;
     try {
       await createRecolte({
         cycle_id: cycleIdFromUrl || undefined,
@@ -283,6 +288,12 @@ export function RecolteForm() {
         date_recolte: dateRecolte || new Date().toISOString().split('T')[0],
         localisation: localisation || '',
         prix_unitaire: prixParKg,
+        // CE QUI ETAIT DETRUIT. « 3 paniers » devenait `quantite=30, unite='kg'`
+        // et la saisie disparaissait. On la persiste desormais A COTE, sans
+        // toucher a `quantite` : la conversion devient reversible.
+        quantite_saisie: converti.quantiteSaisie,
+        unite_saisie: converti.uniteSaisie,
+        facteur_saisie: converti.facteur,
         parcelle: undefined,
         notes: undefined,
         photo_url: photoPreview || undefined,
@@ -291,7 +302,15 @@ export function RecolteForm() {
       setVisible(false);
       // Confirmation PARLÉE : sans ça, une non-lectrice ne sait même pas que sa
       // récolte est enregistrée (l'écran se ferme simplement).
-      speak(`C'est enregistré ! ${quantiteEnKg} kilos de ${cultureName}.`);
+      // ON NE DIT PLUS UN POIDS INVENTE COMME UN FAIT. Elle a dit « 3 paniers » :
+      // annoncer « 30 kilos » masquait que ces kilos sont une ESTIMATION (le
+      // facteur est global, pas propre au produit). On redit sa saisie, puis le
+      // poids avec le mot qui convient — « environ ».
+      speak(
+        uniteObj.facteur === 1
+          ? `C'est enregistré ! ${converti.quantiteSaisie} kilos de ${cultureName}.`
+          : `C'est enregistré ! ${converti.quantiteSaisie} ${uniteObj.abbr} de ${cultureName}, soit environ ${quantiteEnKg} kilos.`,
+      );
       scheduleTimeout(() => navigate('/producteur/production'), 320);
     } catch (err: unknown) {
       setIsSubmitting(false);

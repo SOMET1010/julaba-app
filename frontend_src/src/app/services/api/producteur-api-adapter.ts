@@ -84,19 +84,19 @@ export const cyclesApiAdapter = {
 // RÉCOLTES
 // ============================================================================
 
-export interface CreateRecolteData {
-  /** Localisation libre et photo (transmises au backend, colonnes réelles). */
-  localisation?: string;
+/**
+ * DERIVE de `recoltesApi.CreateRecolteData` au lieu d'en etre une COPIE.
+ *
+ * Les deux interfaces coexistaient et listaient les memes champs : ajouter la
+ * saisie brute d'une recolte aurait demande de l'ecrire DEUX fois, et la
+ * prochaine divergence serait passee inapercue. Ici l'adapter ne garde que ce
+ * qui lui est propre : `photo_url`, et `qualite` qu'il exige (l'API la tolere
+ * absente).
+ */
+export interface CreateRecolteData extends recoltesApi.CreateRecolteData {
+  /** Localisation libre et photo (transmises au backend, colonnes reelles). */
   photo_url?: string;
-  cycle_id?: string;
-  produit: string;
-  quantite: number;
-  unite: string;
   qualite: 'standard' | 'premium' | 'bio';
-  date_recolte: string;
-  prix_unitaire: number;
-  parcelle?: string;
-  notes?: string;
 }
 
 export interface UpdateRecolteData {
