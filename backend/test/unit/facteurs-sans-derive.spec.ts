@@ -112,3 +112,41 @@ describe('Campagne — la liste à peser colle au référentiel semé', () => {
     expect(facteursDeLEcran().tas).toBe(50);
   });
 });
+
+// ── Le vocabulaire recopié dans le script ne doit pas vieillir non plus ──────
+//
+// Le script d'audit recopie `UNITES_COURANTES` pour sa colonne
+// « dans_vocabulaire ». Le lot « vocabulaire d'unités » a renommé « régimes »
+// en « régime » et « pièce » en « unité » : sans ce test, le rapport aurait
+// classé en « saisie libre » des unités parfaitement officielles.
+describe('Audit du facteur — le vocabulaire recopié ne vieillit pas', () => {
+  const UNITES_TS = join(RACINE, 'frontend_src', 'src', 'app', 'config', 'unites.ts');
+
+  /** `UNITES_COURANTES` tel que le dépôt le définit, littéraux ou dictionnaire. */
+  function vocabulaireDuDepot(): string[] {
+    const src = readFileSync(UNITES_TS, 'utf8');
+    const dico: Record<string, string> = {};
+    for (const m of src.matchAll(/^\s{2}([A-Z_]+):\s*'([^']+)'/gm)) dico[m[1]] = m[2];
+    const bloc = src.match(/UNITES_COURANTES[^=]*=\s*\[([\s\S]*?)\]/);
+    if (!bloc) throw new Error('UNITES_COURANTES introuvable');
+    return [...bloc[1].matchAll(/UNITES\.([A-Z_]+)|'([^']+)'/g)]
+      .map((m) => (m[1] ? dico[m[1]] : m[2]))
+      .filter(Boolean);
+  }
+
+  function vocabulaireDuScript(): string[] {
+    const src = readFileSync(AUDIT, 'utf8');
+    const bloc = src.match(/const UNITES_COURANTES = \[([\s\S]*?)\];/);
+    if (!bloc) throw new Error('UNITES_COURANTES introuvable dans le script');
+    return [...bloc[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  }
+
+  it('le balayage retrouve les deux listes (non-vacuité)', () => {
+    expect(vocabulaireDuDepot().length).toBeGreaterThanOrEqual(8);
+    expect(vocabulaireDuScript().length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('la liste du script est celle du dépôt, à l’orthographe près', () => {
+    expect(vocabulaireDuScript()).toEqual(vocabulaireDuDepot());
+  });
+});

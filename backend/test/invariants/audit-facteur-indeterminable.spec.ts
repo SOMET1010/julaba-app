@@ -186,9 +186,39 @@ describe('Audit — le facteur d’une récolte passée est indéterminable', ()
   // Les unités que les écrans de stock proposent, mais pour lesquelles AUCUN
   // facteur n'est défini. « régimes » est le cas le plus coûteux : c'est la
   // banane plantain, et un régime pèse de 8 à 30 kg selon la variété.
-  it('quatre unités du vocabulaire partagé n’ont aucun facteur', () => {
-    const UNITES_COURANTES = ['kg', 'sac', 'tonne', 'tas', 'régimes', 'carton', 'L', 'pièce'];
-    const sansFacteur = UNITES_COURANTES.filter((u) => !(u.toLowerCase() in FACTEUR));
-    expect(sansFacteur).toEqual(['régimes', 'carton', 'L', 'pièce']);
+  //
+  // La liste n'est PAS recopiée ici : elle est LUE dans `config/unites.ts`, et
+  // comparée à celle que le rapport d'audit annonce. Une recopie aurait
+  // continué de passer au vert en affirmant un vocabulaire périmé — c'est
+  // exactement ce qui est arrivé quand le lot « vocabulaire d'unités » a
+  // renommé « régimes » en « régime » et « pièce » en « unité ».
+  it('les unités proposées sans facteur sont exactement celles que le rapport annonce', () => {
+    const { readFileSync } = require('node:fs') as typeof import('node:fs');
+    const { join } = require('node:path') as typeof import('node:path');
+    const racine = join(__dirname, '..', '..', '..');
+
+    // 1) ce que le dépôt PROPOSE réellement à la saisie de stock
+    const src = readFileSync(join(racine, 'frontend_src', 'src', 'app', 'config', 'unites.ts'), 'utf8');
+    const dico: Record<string, string> = {};
+    for (const m of src.matchAll(/^\s{2}([A-Z_]+):\s*'([^']+)'/gm)) dico[m[1]] = m[2];
+    const bloc = src.match(/UNITES_COURANTES[^=]*=\s*\[([\s\S]*?)\]/);
+    expect(bloc).not.toBeNull();
+    const proposees = [...bloc![1].matchAll(/UNITES\.([A-Z_]+)|'([^']+)'/g)]
+      .map((m) => (m[1] ? dico[m[1]] : m[2]))
+      .filter(Boolean);
+    expect(proposees.length).toBeGreaterThanOrEqual(8); // non-vacuité du balayage
+
+    const sansFacteur = proposees.filter((u) => !(u.toLowerCase() in FACTEUR));
+
+    // 2) ce que le rapport d'audit annonce, dans sa propre table
+    const doc = readFileSync(join(racine, 'docs', 'AUDIT_FACTEUR_PAR_PRODUIT.md'), 'utf8');
+    const ligne = doc.split('\n').find((l) => l.startsWith('| Proposées à la saisie'));
+    expect(ligne).toBeDefined();
+    const annoncees = ligne!.split('|')[2].replace(/\*/g, '').split(',').map((x) => x.trim()).filter(Boolean);
+
+    // 3) le rapport doit dire la vérité sur le dépôt. S'il ne la dit plus,
+    //    c'est le rapport qu'on corrige — pas ce test qu'on assouplit.
+    expect(annoncees).toEqual(sansFacteur);
+    expect(sansFacteur.length).toBeGreaterThanOrEqual(3);
   });
 });
