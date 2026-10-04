@@ -657,7 +657,12 @@ export class CaisseRestController {
   @Delete('produits/:id')
   async deleteProduit(@Param('id') id: string, @CurrentUser() user: User) {
     await this.dataSource.query(
-      'UPDATE produits SET actif = false WHERE id = $1 AND marchand_id = $2::text',
+      // `default_code = NULL` : retirer un article rend sa reference Odoo
+      // adoptable a nouveau. Sans cela elle restait comptee parmi les
+      // « adoptees » et toute re-adoption repondait 409 sur un article
+      // que la marchande ne voit plus.
+      `UPDATE produits SET actif = false, default_code = NULL, updated_at = NOW()
+        WHERE id = $1 AND marchand_id = $2::text`,
       [id, user.id]
     );
     return { success: true };
