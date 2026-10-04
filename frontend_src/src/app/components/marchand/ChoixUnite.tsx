@@ -22,9 +22,12 @@
  * (il passe son `dire`, déjà gardé par `guidageVocal()`).
  */
 import type { CSSProperties } from 'react';
+import { UNITES_CAISSE } from '../../config/unites';
 
 /** Les unités de la caisse, dans l'ordre où elle les propose déjà. */
-export const UNITES_CHOIX = ['unité', 'tas', 'kg', 'sac', 'bassine', 'régime'] as const;
+// Puise dans le dictionnaire unique (config/unites.ts) : plus aucune
+// orthographe locale. Le CHOIX des 6 unites, lui, reste propre a la caisse.
+export const UNITES_CHOIX = UNITES_CAISSE;
 export type UniteChoix = (typeof UNITES_CHOIX)[number];
 
 /** Hauteur minimale d'une cible tactile, en pixels — même règle que les billets. */
