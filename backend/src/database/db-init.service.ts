@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
+import { CONTRAINTES_ARGENT_STOCK, sqlAjoutIdempotent } from './contraintes-argent-stock';
 
 @Injectable()
 export class DbInitService {
@@ -415,6 +416,17 @@ export class DbInitService {
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS ix_stock_operation_idempotency_marchand
          ON stock_operation_idempotency (marchand_id, created_at DESC);`,
+      );
+      // Invariants d'argent et de stock TENUS PAR LA BASE (voir
+      // contraintes-argent-stock.ts pour le « pourquoi » de chacune). DbInit est
+      // la seule DDL garantie en prod (`migrationsRun` est OFF) : la migration
+      // 1782200000000 porte le meme SQL, fige, et un test unitaire interdit la
+      // derive entre les deux.
+      for (const contrainte of CONTRAINTES_ARGENT_STOCK) {
+        await this.dataSource.query(sqlAjoutIdempotent(contrainte));
+      }
+      this.logger.log(
+        `Contraintes argent/stock verifiees (${CONTRAINTES_ARGENT_STOCK.length}, NOT VALID : l'historique n'est pas inspecte)`,
       );
       this.logger.log('Ledger stock_mouvements (append-only) vérifié');
     } catch (e: unknown) {
