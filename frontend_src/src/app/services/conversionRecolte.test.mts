@@ -59,5 +59,24 @@ ok(!/Number\(prixUnitaire\)\s*\/\s*uniteObj\.facteur/.test(src),
 ok(!/Number\(quantite\)\s*\*\s*uniteObj\.facteur/.test(src),
    'le poids n’est plus recalculé en dur dans l’écran');
 
+console.log('\nla confirmation PARLEE annonce une estimation, pas un fait');
+// LE POINT DE DOCTRINE DU LOT. Dire « 30 kilos » a quelqu'un qui a dit
+// « 3 paniers » presente une estimation comme une mesure. Le mot « environ »
+// n'est pas cosmetique : c'est la seule chose qui distingue les deux.
+const phraseEstimee = src.match(/soit environ \$\{quantiteEnKg\} kilos/);
+ok(!!phraseEstimee, 'un facteur ≠ 1 annonce « soit environ … kilos »');
+// La saisie reelle est redite AVANT le poids : elle a dit « 3 paniers », on le
+// lui confirme dans ses mots.
+ok(/\$\{converti\.quantiteSaisie\}\s*\$\{uniteObj\.abbr\}/.test(src),
+   'la saisie est redite dans l’unité du producteur');
+// Et quand le facteur vaut 1, le poids EST une mesure : pas d'« environ ».
+const brancheKg = src.match(/uniteObj\.facteur === 1\s*\n\s*\?\s*(`[^`]*`)/);
+ok(!!brancheKg, 'la branche « facteur = 1 » existe');
+ok(!!brancheKg && !/environ/.test(brancheKg[1]),
+   'en kilos, on n’ajoute pas « environ » — c’est une mesure, pas une estimation');
+// L'ancienne formule affirmative ne doit plus exister nulle part.
+ok(!/C'est enregistré ! \$\{quantiteEnKg\} kilos/.test(src),
+   'la phrase qui affirmait le poids converti a disparu');
+
 if (failures > 0) { console.log(`\n${failures} test(s) en échec.`); process.exit(1); }
 console.log('\nTous les tests conversionRecolte sont verts ✅');

@@ -161,6 +161,89 @@ describe('Invariant — la saisie brute d’une récolte survit', () => {
     expect(l.facteur_saisie).toBeNull();
   }, 60000);
 
+  // ── COMPATIBILITE ARRIERE : une ligne d'AVANT ce lot ────────────────────
+  //
+  // Toutes les recoltes deja en production portent trois NULL. Le lot serait
+  // inutile s'il les rendait fragiles. On en fabrique une par SQL direct —
+  // exactement la forme que la production contient — et on exige qu'elle reste
+  // LISIBLE, MODIFIABLE et PUBLIABLE, sans qu'aucun chemin n'invente la saisie
+  // manquante.
+  describe('une recolte historique (trois NULL) reste pleinement utilisable', () => {
+    let idAncien: string;
+
+    beforeAll(async () => {
+      const [l] = await ds.query(
+        `INSERT INTO recoltes
+           (user_id, produit, quantite, unite, qualite, date_recolte, statut,
+            prix_unitaire, stock_disponible, stock_vendu)
+         VALUES ($1, 'Igname historique', 300, 'kg', 'standard', CURRENT_DATE,
+                 'declaree', 60, 300, 0)
+         RETURNING id`,
+        [producteurId],
+      );
+      idAncien = l.id;
+      // La prémisse du test : la ligne porte bien trois NULL.
+      const avant = await enBase(idAncien);
+      expect(avant.quantite_saisie).toBeNull();
+      expect(avant.unite_saisie).toBeNull();
+      expect(avant.facteur_saisie).toBeNull();
+    });
+
+    it('LISIBLE — la liste la renvoie, et ne comble pas les trous', async () => {
+      const r = await auth(request(app.getHttpServer()).get('/api/v1/recoltes'));
+      expect(r.status).toBe(200);
+      const trouvee = r.body.recoltes.find((x: { id: string }) => x.id === idAncien);
+      expect(trouvee).toBeDefined();
+      // AUCUNE INVENTION : les champs absents restent absents.
+      expect(trouvee.quantiteSaisie ?? null).toBeNull();
+      expect(trouvee.uniteSaisie ?? null).toBeNull();
+      expect(trouvee.facteurSaisie ?? null).toBeNull();
+      // Et le poids historique est rendu tel quel.
+      expect(Number(trouvee.quantite)).toBe(300);
+      expect(trouvee.unite).toBe('kg');
+    });
+
+    it('AFFICHABLE — la fiche unitaire repond', async () => {
+      const r = await auth(request(app.getHttpServer()).get(`/api/v1/recoltes/${idAncien}`));
+      expect(r.status).toBe(200);
+      expect(r.body.recolte.id).toBe(idAncien);
+      expect(r.body.recolte.uniteSaisie ?? null).toBeNull();
+    });
+
+    it('EXPLOITABLE — elle se modifie encore, et les NULL ne se remplissent pas tout seuls', async () => {
+      const r = await auth(request(app.getHttpServer()).patch(`/api/v1/recoltes/${idAncien}`))
+        .send({ statut: 'validee', notes: 'controle terrain' });
+      expect(r.status).toBe(200);
+      const apres = await enBase(idAncien);
+      expect(apres.quantite_saisie).toBeNull();
+      expect(apres.unite_saisie).toBeNull();
+      expect(apres.facteur_saisie).toBeNull();
+      expect(Number(apres.quantite)).toBe(300);
+    });
+
+    it('PUBLIABLE — elle part au marche comme avant', async () => {
+      const ligne = await enBase(idAncien);
+      const r = await auth(request(app.getHttpServer()).post('/api/v1/publications'))
+        .send({
+          produit: 'Igname historique', culture: 'Igname',
+          quantite_disponible: Number(ligne.quantite),
+          unite: ligne.unite,
+          prix_unitaire: Number(ligne.prix_unitaire),
+          qualite: 'standard', localisation: 'Korhogo',
+          date_recolte: '2026-10-01', description: 'ligne anterieure au lot',
+        });
+      expect([200, 201]).toContain(r.status);
+      // La publication porte le poids historique, pas une estimation refaite.
+      const [pub] = await ds.query(
+        `SELECT quantite_disponible, unite FROM publications
+          WHERE user_id = $1 AND produit = 'Igname historique'`,
+        [producteurId],
+      );
+      expect(Number(pub.quantite_disponible)).toBe(300);
+      expect(pub.unite).toBe('kg');
+    });
+  });
+
   it('une saisie illisible ne devient pas un chiffre', async () => {
     const r = await declarer({
       produit: 'Igname', quantite: 50, unite: 'kg', qualite: 'standard',
