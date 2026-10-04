@@ -9,6 +9,7 @@ import { dateOperationValide } from './date-operation';
 import { resumeMargeDesLignes, coutDesLignesCoutees } from './marge-vente';
 import { CaisseTransaction, TransactionStatus } from './caisse-transaction.entity';
 import { restituerStock } from './stock-restitution';
+import { ajusterStockAvecMouvement } from '../stocks-rest/ajustement-stock';
 import { AlertesService } from '../notifications/alertes.service';
 import { CaisseProduitsService } from './caisse-produits.service';
 import { CaisseProduit } from './caisse-produit.entity';
@@ -641,7 +642,13 @@ export class CaisseRestController {
 
   @Put('produits/:id')
   async updateProduit(@Param('id') id: string, @Body() body: any, @CurrentUser() user: User) {
-    const result = await this.dataSource.query(
+    // UNE SEULE TRANSACTION : le stock et sa ligne de ledger ne peuvent plus
+    // diverger. `ajusterStockAvecMouvement` verrouille la ligne, ecrit le
+    // mouvement 'ajustement' et pose la nouvelle valeur ; l'UPDATE ci-dessous
+    // la reecrit a l'identique (le reste des champs est son vrai travail).
+    return this.dataSource.transaction(async (m) => {
+    await ajusterStockAvecMouvement(m, { marchandId: user.id, produitId: id, stockDemande: body.stock });
+    const result = await m.query(
       `UPDATE produits SET nom=$1, prix=$2, prix_achat=$3, categorie=$4, stock=$5, unite=$6,
        seuil_alerte=COALESCE($7, seuil_alerte), date_peremption=COALESCE($8, date_peremption),
        prix_promo=$9, promo_fin=$10, updated_at=NOW()
@@ -652,6 +659,7 @@ export class CaisseRestController {
        id, user.id]
     );
     return { produit: result[0] };
+    });
   }
 
   @Delete('produits/:id')

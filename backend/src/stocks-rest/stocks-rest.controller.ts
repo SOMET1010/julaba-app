@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
+import { ajusterStockAvecMouvement } from './ajustement-stock';
 import { Stock } from './stock.entity';
 import { mapLedgerRows } from './mouvement-mapper';
 
@@ -184,6 +185,11 @@ export class StocksRestController {
            body.image||null, id, user.id]
         );
       } else {
+        // Le stock passe par le ledger, pas par le COALESCE ci-dessous : on
+        // passe donc `null` en $2 pour que la valeur posee ici soit conservee.
+        await ajusterStockAvecMouvement(manager, {
+          marchandId: user.id, produitId: id, stockDemande: body.quantite,
+        });
         await manager.query(
           `UPDATE produits SET nom=COALESCE($1,nom), stock=COALESCE($2,stock), prix=COALESCE($3,prix),
            prix_achat=COALESCE($4,prix_achat), unite=COALESCE($5,unite), categorie=COALESCE($6,categorie),
@@ -191,7 +197,7 @@ export class StocksRestController {
            prix_promo=CASE WHEN $11::boolean THEN $9 ELSE prix_promo END,
            promo_fin=CASE WHEN $11::boolean THEN $10 ELSE promo_fin END, updated_at=now()
            WHERE id=$12 AND marchand_id=$13`,
-          [body.nom||body.produit||null, body.quantite!=null?Number(body.quantite):null,
+          [body.nom||body.produit||null, null, // $2 : deja pose par l'ajustement tracable
            body.prix!=null?Number(body.prix):null,
            body.prix_achat!=null?Number(body.prix_achat):null,
            body.unite||null, body.categorie||null,
