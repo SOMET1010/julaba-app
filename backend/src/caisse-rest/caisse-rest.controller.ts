@@ -12,6 +12,8 @@ import { restituerStock } from './stock-restitution';
 import { AlertesService } from '../notifications/alertes.service';
 import { CaisseProduitsService } from './caisse-produits.service';
 import { CaisseProduit } from './caisse-produit.entity';
+import { AuditService } from '../audit/audit.service';
+import { lignesRetournees } from '../catalogue-maitre/catalogue-maitre.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('caisse')
@@ -23,7 +25,31 @@ export class CaisseRestController {
     private dataSource: DataSource,
     @Optional() private alertesService?: AlertesService,
     @Optional() private eventsGateway?: EventsGateway,
+    // OPTIONNEL, et appele en `?.` : un test qui instancie ce controleur a la
+    // main (caisse-fond-declare.spec.ts) ne doit pas avoir a le fournir, et
+    // surtout l'audit ne doit JAMAIS se trouver sur le chemin critique de
+    // l'argent. `AuditService.log` avale deja ses erreurs (audit.service.ts).
+    @Optional() private audit?: AuditService,
   ) {}
+
+  /**
+   * JOURNALISER SANS JAMAIS CASSER L'ARGENT.
+   *
+   * `AuditService.log` avale deja ses propres erreurs, mais cela ne suffit
+   * pas : un `void service.log(...)` propagerait une levee SYNCHRONE (un
+   * service mal injecte, un double mal cable en test). Ce point de passage
+   * unique rend la garantie STRUCTURELLE — et testable, ce qu'une promesse
+   * dans un commentaire n'est pas.
+   *
+   * Pas d'`await` : l'audit n'est pas sur le chemin critique.
+   */
+  private journaliser(input: Parameters<AuditService['log']>[0]): void {
+    try {
+      void this.audit?.log(input)?.catch?.(() => undefined);
+    } catch {
+      /* l'audit ne casse jamais une vente, une annulation ni une suppression */
+    }
+  }
 
   // Liste PLAFONNÉE : sans borne, un historique de plusieurs années revenait en
   // entier à chaque ouverture de la caisse (réponse de plusieurs Mo sur un
@@ -59,7 +85,8 @@ export class CaisseRestController {
    */
   @Patch('transactions/:id/annuler')
   async annulerVente(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
-    return this.dataSource.transaction(async (m) => {
+    let statutAvant: TransactionStatus | undefined;
+    const resultat = await this.dataSource.transaction(async (m) => {
       const tx = await m.findOne(CaisseTransaction, { where: { id } });
       // On ne divulgue pas l'existence d'une vente d'autrui : introuvable.
       if (!tx || tx.user_id !== user.id) throw new NotFoundException('Vente introuvable');
@@ -74,12 +101,26 @@ export class CaisseRestController {
         throw new BadRequestException('Seule une vente du jour peut être annulée. Pour une vente plus ancienne, contacte un responsable.');
       }
 
+      // Capture AVANT la mutation : `m.save` ecrase le statut EN PLACE et
+      // aucune table metier ne conserve l'ancien.
+      statutAvant = tx.statut;
       tx.statut = TransactionStatus.ANNULEE;
       tx.motif = 'Annulation par le marchand';
       await m.save(tx);
       const restitutions = await restituerStock(m, id);
       return { id, statut: tx.statut, restitutions };
     });
+    // APRES le commit, jamais dedans : `AuditService` ecrit hors transaction,
+    // donc un rollback laisserait une ligne d'audit affirmant une annulation
+    // qui n'a pas eu lieu.
+    this.journaliser({
+      userId: user.id,
+      action: 'transaction.annulee',
+      entite: 'caisse_transaction',
+      entiteId: id,
+      details: { statut_avant: statutAvant, statut_apres: resultat.statut, motif: 'Annulation par le marchand' },
+    });
+    return resultat;
   }
 
   @Post('transactions')
@@ -641,30 +682,96 @@ export class CaisseRestController {
 
   @Put('produits/:id')
   async updateProduit(@Param('id') id: string, @Body() body: any, @CurrentUser() user: User) {
+    // CTE `avant` : l'instantane est pris au DEBUT de l'instruction, donc il
+    // voit la ligne d'AVANT l'UPDATE. Une seule requete, donc aucune fenetre
+    // ou un autre ecrivain pourrait fausser la valeur journalisee — ce qu'un
+    // SELECT prealable, non atomique, aurait laisse passer.
     const result = await this.dataSource.query(
-      `UPDATE produits SET nom=$1, prix=$2, prix_achat=$3, categorie=$4, stock=$5, unite=$6,
+      `WITH avant AS (
+         SELECT prix, prix_achat FROM produits WHERE id=$11 AND marchand_id=$12::text
+       )
+       UPDATE produits SET nom=$1, prix=$2, prix_achat=$3, categorie=$4, stock=$5, unite=$6,
        seuil_alerte=COALESCE($7, seuil_alerte), date_peremption=COALESCE($8, date_peremption),
        prix_promo=$9, promo_fin=$10, updated_at=NOW()
-       WHERE id=$11 AND marchand_id=$12::text RETURNING *`,
+       WHERE id=$11 AND marchand_id=$12::text
+       RETURNING *, (SELECT prix FROM avant) AS __prix_avant,
+                    (SELECT prix_achat FROM avant) AS __prix_achat_avant`,
       [body.nom, body.prix, Number(body.prix_achat) || 0, body.categorie, body.stock, body.unite,
        body.seuil_alerte != null ? Number(body.seuil_alerte) : null, body.date_peremption || null,
        body.prix_promo != null && body.prix_promo !== '' ? Number(body.prix_promo) : null, body.promo_fin || null,
        id, user.id]
     );
-    return { produit: result[0] };
+    // `UPDATE … RETURNING` renvoie `[rows, affectedCount]` sous TypeORM —
+    // MESURE, pas suppose (un INSERT, lui, renvoie les lignes directement).
+    // `lignesRetournees` porte deja cette connaissance ailleurs dans le depot
+    // (catalogue-maitre.service.ts) : on la reutilise au lieu d'en ecrire une
+    // seconde copie.
+    const lignes = lignesRetournees(result);
+    const ligne = lignes[0] as Record<string, unknown> | undefined;
+    if (ligne) {
+      const avant = { prix: Number(ligne.__prix_avant), prix_achat: Number(ligne.__prix_achat_avant) };
+      const apres = { prix: Number(ligne.prix), prix_achat: Number(ligne.prix_achat) };
+      // RIEN DE DETRUIT, RIEN A JOURNALISER. Auditer une edition qui ne touche
+      // ni le prix ni le prix d'achat ne serait que du bruit : le reste des
+      // champs n'est pas une information perdue.
+      if (avant.prix !== apres.prix || avant.prix_achat !== apres.prix_achat) {
+        this.journaliser({
+          userId: user.id,
+          action: 'produit.modifie',
+          entite: 'produit',
+          entiteId: id,
+          details: {
+            prix_avant: avant.prix, prix_apres: apres.prix,
+            prix_achat_avant: avant.prix_achat, prix_achat_apres: apres.prix_achat,
+          },
+        });
+      }
+      // REPONSE INCHANGEE. Avant ce lot, la route rendait `result[0]` —
+      // c'est-a-dire, vu la forme ci-dessus, le TABLEAU de lignes et non une
+      // ligne. C'est un defaut PREEXISTANT du contrat (`{ produit: [ … ] }`),
+      // que ce lot ne corrige PAS : le frontend ignore cette reponse
+      // (StockContext fait `await` sans la lire), et changer un contrat
+      // d'API n'est pas le sujet d'une tranche d'audit. On rend donc
+      // exactement la meme chose, debarrassee des deux champs techniques.
+      return { produit: lignes.map(({ __prix_avant, __prix_achat_avant, ...reste }) => reste) };
+    }
+    return { produit: result?.[0] };
   }
 
   @Delete('produits/:id')
   async deleteProduit(@Param('id') id: string, @CurrentUser() user: User) {
-    await this.dataSource.query(
+    const retour = await this.dataSource.query(
       // `default_code = NULL` : retirer un article rend sa reference Odoo
       // adoptable a nouveau. Sans cela elle restait comptee parmi les
       // « adoptees » et toute re-adoption repondait 409 sur un article
       // que la marchande ne voit plus.
-      `UPDATE produits SET actif = false, default_code = NULL, updated_at = NOW()
-        WHERE id = $1 AND marchand_id = $2::text`,
+      //
+      // C'est AUSSI la seule information que cette route detruit : le
+      // `default_code` d'avant n'existe plus nulle part. Meme CTE que l'edition
+      // pour le capturer dans la MEME instruction.
+      `WITH avant AS (
+         SELECT default_code, actif FROM produits WHERE id = $1 AND marchand_id = $2::text
+       )
+       UPDATE produits SET actif = false, default_code = NULL, updated_at = NOW()
+        WHERE id = $1 AND marchand_id = $2::text
+        RETURNING (SELECT default_code FROM avant) AS default_code_avant,
+                  (SELECT actif FROM avant) AS actif_avant, actif AS actif_apres`,
       [id, user.id]
     );
+    const avant = lignesRetournees(retour)[0] as Record<string, unknown> | undefined;
+    if (avant) {
+      this.journaliser({
+        userId: user.id,
+        action: 'produit.desactive',
+        entite: 'produit',
+        entiteId: id,
+        details: {
+          default_code_avant: avant.default_code_avant ?? null,
+          actif_avant: avant.actif_avant,
+          actif_apres: avant.actif_apres,
+        },
+      });
+    }
     return { success: true };
   }
 }
