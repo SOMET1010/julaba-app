@@ -101,7 +101,7 @@ export class StocksRestController {
           quantite: Number(p.stock) || 0,
           prix: Number(p.prix) || 0,
           prix_achat: Number(p.prix_achat) || 0,
-          unite: p.unite || 'unite',
+          unite: p.unite || 'unité',
           categorie: p.categorie || 'General',
           actif: p.actif !== false,
           image: p.image || null,
@@ -159,7 +159,7 @@ export class StocksRestController {
       `INSERT INTO produits (marchand_id, nom, stock, prix, prix_achat, unite, categorie, image, seuil_alerte, date_peremption, prix_promo, promo_fin, actif)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, true) RETURNING *`,
       [user.id, body.nom || body.produit, Number(body.quantite) || 0, Number(body.prix) || 0,
-       Number(body.prix_achat) || 0, body.unite || 'unite', body.categorie || 'General', body.image || null,
+       Number(body.prix_achat) || 0, body.unite || 'unité', body.categorie || 'General', body.image || null,
        body.seuil_alerte != null ? Number(body.seuil_alerte) : 10, body.date_peremption || null,
        body.prix_promo != null && body.prix_promo !== '' ? Number(body.prix_promo) : null, body.promo_fin || null]
     ).then((r: any) => r[0]);

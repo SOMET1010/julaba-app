@@ -20,6 +20,7 @@ import { getImageByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
 import { phraseRelecture, phraseLigneAjoutee, type EtatEncaissement as EtatRelu } from '../../services/relectureSpontanee';
 import { ChoixUnite } from './ChoixUnite';
+import { UNITES_CAISSE } from '../../config/unites';
 import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMaitre';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
@@ -1243,7 +1244,7 @@ function POSCaisseInner() {
                 <>
                   <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Tu vends par…</label>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6, marginBottom:14 }}>
-                    {['unité', 'tas', 'kg', 'sac', 'bassine', 'régime'].map(u => (
+                    {UNITES_CAISSE.map(u => (
                       <button type="button" key={u} onClick={() => setRefUnite(u)}
                         style={{ border:`1.5px solid ${refUnite === u ? 'var(--caisse-vert)' : 'var(--commerce-line)'}`, background: refUnite === u ? 'var(--caisse-succes)' : 'white', color: refUnite === u ? 'var(--caisse-vert-fonce)' : 'var(--caisse-gris-texte)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', minHeight:'var(--caisse-cible-tactile)', minWidth:'var(--caisse-cible-tactile)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                         {u}

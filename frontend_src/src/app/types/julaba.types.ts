@@ -151,7 +151,11 @@ export interface Commande {
   // Produit
   productName: string;
   quantity: number; // kg
-  uniteProduit: 'kg' | 'tonne' | 'sac' | 'unite';
+  // Elargi en `string` : cette union etait un MENSONGE. L'API accepte
+  // `unite?: string`, `SelectWithAutre` autorise la saisie libre, et la
+  // caisse proposait deja 'tas' et 'bassine' — absents de l'union. Le
+  // vocabulaire CONSEILLE est dans config/unites.ts, pas ici.
+  uniteProduit: string;
   
   // Prix
   prixInitial: number; // FCFA/kg proposé par acheteur
@@ -223,7 +227,9 @@ export interface Recolte {
   categorieProduit: 'LEGUME' | 'FRUIT' | 'CEREALE' | 'TUBERCULE' | 'AUTRE';
   quantiteRecoltee: number; // kg
   stockRestant: number; // kg disponible (décrémente à chaque vente)
-  unite: 'kg' | 'tonne' | 'sac';
+  // Elargi en `string` : RecolteForm propose deja 'tas', 'cagette',
+  // 'panier' et 'botte', tous absents de l'ancienne union.
+  unite: string;
   
   // Qualité et traçabilité
   qualite: RecolteQuality;
