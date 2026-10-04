@@ -106,20 +106,23 @@ describe('Invariant — stock recalculable depuis le ledger', () => {
     expect(bilan.verdict).toBe('reconcilie');
   }, 60000);
 
-  it('PUT /caisse/produits/:id modifie le stock SANS mouvement — l’écart est détecté et chiffré', async () => {
+  it('un ecart injecte en SQL est detecte et CHIFFRE', async () => {
     const c = await creerProduit('Manioc-REC', 50);
     const produitId = exige2xx(c, 'POST /caisse/produits').body.produit.id;
     const v = await vendre({ montant: '2000', produits: [{ nom: 'Manioc-REC', quantite: 10 }], idempotency_key: 'REC-2' });
     exige2xx(v, 'POST /caisse/vente');
-    expect((await bilanDeCetteMarchande()).verdict).toBe('reconcilie');  // 40, cohérent
+    expect((await bilanDeCetteMarchande()).verdict).toBe('reconcilie');  // 40, coherent
 
-    // LA VRAIE ROUTE. Une marchande qui corrige son stock à l'écran passe ici.
-    const put = await auth(request(app.getHttpServer()).put(`/api/v1/caisse/produits/${produitId}`)).send({
-      nom: 'Manioc-REC', prix: 200, prix_achat: 0, categorie: 'Général', stock: 999, unite: 'kg',
-    });
-    expect(put.status).toBe(200);
+    // POURQUOI UN UPDATE BRUT, ET PLUS UNE ROUTE. Ce test passait d'abord par
+    // `PUT /caisse/produits/:id`, qui bougeait le stock sans rien ecrire au
+    // ledger. Cette route ECRIT desormais son mouvement — voir
+    // `ajustement-stock-tracable.spec.ts`, qui le prouve. Il n'existe donc plus
+    // de chemin applicatif vers un ecart : la seule facon d'en fabriquer un est
+    // d'ecrire en base a cote du code. C'est exactement ce que ce detecteur doit
+    // continuer de voir — une restauration maladroite, un script d'exploitation,
+    // une future route qui oublierait le ledger.
+    await ds.query('UPDATE produits SET stock = 999 WHERE id = $1', [produitId]);
 
-    // Aucun mouvement n'a été écrit : le ledger ignore ces 959 unités.
     const nbMvts = (await ds.query(
       'SELECT count(*)::int n FROM stock_mouvements WHERE produit_id = $1', [produitId],
     ))[0].n;
@@ -129,9 +132,9 @@ describe('Invariant — stock recalculable depuis le ledger', () => {
     expect(bilan.verdict).toBe('ecart');
     const ligne = bilan.ecarts.find((e: { produit_id: string }) => e.produit_id === produitId);
     expect(ligne).toBeDefined();
-    expect(Number(ligne.stock_attendu)).toBe(40);       // 50 − 10, selon le ledger
+    expect(Number(ligne.stock_attendu)).toBe(40);       // 50 - 10, selon le ledger
     expect(Number(ligne.stock_constate)).toBe(999);     // ce que dit le cache
-    expect(Number(ligne.ecart)).toBe(959);              // l'écart, chiffré
+    expect(Number(ligne.ecart)).toBe(959);              // l'ecart, chiffre
   }, 60000);
 
   it('l’ordre du ledger reste déterminable — aucun mouvement ambigu', async () => {
