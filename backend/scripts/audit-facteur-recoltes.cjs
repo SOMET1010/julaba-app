@@ -23,6 +23,11 @@
 const { Client } = require('pg');
 
 const AFFICHER_SQL = process.argv.includes('--sql');
+// `--campagne` : au lieu du rapport, émet en CSV la LISTE DE PRIORITÉ des
+// couples (produit × conditionnement) à aller peser. Elle sort des données
+// réelles, pas d'une intuition : on va mesurer ce qui est effectivement
+// utilisé, en commençant par ce qui l'est le plus.
+const CAMPAGNE = process.argv.includes('--campagne');
 
 // ── La table de facteurs AUDITÉE ────────────────────────────────────────────
 // Recopie de RecolteForm.tsx:169-175. Elle est GLOBALE : le même « panier »
@@ -38,6 +43,14 @@ const FACTEURS = {
   panier: 10,
   botte: 0.5,
 };
+
+// Unités de MASSE (et de volume exact) : le facteur y est une DÉFINITION, pas
+// une moyenne. Rien à peser. Tout le reste est un contenant présumé, donc
+// candidat à la campagne — on préfère proposer une pesée de trop qu'en manquer.
+const UNITES_DE_MASSE = new Set([
+  'kg', 'kgs', 'kilo', 'kilos', 'kilogramme', 'kilogrammes',
+  'g', 'gramme', 'grammes', 't', 'tonne', 'tonnes',
+]);
 
 // Vocabulaire d'unités partagé par les écrans de STOCK
 // (frontend_src/src/app/config/unites.ts). Volontairement distinct : c'est la
@@ -106,6 +119,43 @@ async function main() {
         WHERE table_schema='public' AND table_name=$1 AND column_name=$2`,
       [table, colonne],
     )).length > 0;
+
+  // ═══ MODE CAMPAGNE ════════════════════════════════════════════════════════
+  if (CAMPAGNE) {
+    const couples = await q(
+      `WITH tout AS (
+         SELECT 'stocks'          AS source, produit AS produit, unite, proprietaire_id::text AS detenteur FROM stocks
+         UNION ALL
+         SELECT 'produits'        AS source, nom     AS produit, unite, marchand_id::text     AS detenteur FROM produits
+         UNION ALL
+         SELECT 'caisse_produits' AS source, nom     AS produit, unite, NULL                  AS detenteur FROM caisse_produits
+       )
+       SELECT lower(btrim(produit)) AS produit,
+              lower(btrim(unite))   AS conditionnement,
+              count(*)::int         AS lignes,
+              count(DISTINCT detenteur)::int AS detenteurs,
+              string_agg(DISTINCT source, '+' ORDER BY source) AS sources
+         FROM tout
+        WHERE btrim(coalesce(unite, '')) <> '' AND btrim(coalesce(produit, '')) <> ''
+        GROUP BY 1, 2
+        ORDER BY count(*) DESC, 1, 2`,
+    );
+    const aPeser = couples.filter((c) => !UNITES_DE_MASSE.has(c.conditionnement));
+    console.log('produit;conditionnement;lignes;detenteurs;sources;facteur_actuel;a_peser');
+    for (const c of couples) {
+      const f = Object.prototype.hasOwnProperty.call(FACTEURS, c.conditionnement)
+        ? FACTEURS[c.conditionnement] : '';
+      const peser = UNITES_DE_MASSE.has(c.conditionnement) ? 'non (unite de masse)' : 'OUI';
+      console.log(`${c.produit};${c.conditionnement};${c.lignes};${c.detenteurs};${c.sources};${f};${peser}`);
+    }
+    console.error(
+      `\n  ${couples.length} couple(s) observe(s), dont \x1b[1m${aPeser.length} a peser\x1b[0m.\n` +
+      `  Les noms de produit sont RECOPIES tels qu'ils sont saisis (texte libre) :\n` +
+      `  ils ne sont pas normalises, et deux orthographes font deux lignes.\n`,
+    );
+    await client.end();
+    return;
+  }
 
   console.log(`\x1b[1m\nAUDIT — facteur de conversion par produit\x1b[0m`);
   console.log(sousTitre(`base : ${client.database} @ ${client.host}:${client.port}`));
