@@ -191,13 +191,13 @@ export class DbInitService {
       // REELLEMENT tape, pour que la conversion cesse d'etre irreversible.
       // Nullables : les lignes historiques restent valides.
       await this.dataSource.query(
-        `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS quantite_saisie numeric;`,
+        `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS quantite_saisie numeric(12,3);`,
       );
       await this.dataSource.query(
         `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS unite_saisie character varying(50);`,
       );
       await this.dataSource.query(
-        `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS facteur_saisie numeric;`,
+        `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS facteur_saisie numeric(12,4);`,
       );
       await this.dataSource.query(
         `ALTER TABLE produits ADD COLUMN IF NOT EXISTS default_code text;`,

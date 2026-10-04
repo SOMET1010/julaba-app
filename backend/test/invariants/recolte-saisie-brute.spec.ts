@@ -113,6 +113,25 @@ describe('Invariant — la saisie brute d’une récolte survit', () => {
     expect(apresInit.map((c: { column_name: string }) => c.column_name)).toEqual(
       ['facteur_saisie', 'quantite_saisie', 'unite_saisie'],
     );
+
+    // ET LE TYPE, PAS SEULEMENT LE NOM. Mesure : db-init ecrivait `numeric` nu
+    // la ou l'entite declare numeric(12,3)/(12,4). Resultat, une base de
+    // production et une base neuve n'avaient PAS le meme type — et aucun gate
+    // ne le voyait : `verify:dbinit-subsumed` compare migration <-> db-init
+    // (tous deux nus) et l'empreinte du pilote ne retient que les NOMS.
+    // Deux chemins de construction doivent donner la meme colonne, sinon
+    // « ca marche en test » ne dit rien de la production.
+    const types = await ds.query(
+      `SELECT column_name, data_type, numeric_precision, numeric_scale,
+              character_maximum_length
+         FROM information_schema.columns
+        WHERE table_name = 'recoltes' AND column_name = ANY($1::text[])`,
+      [['quantite_saisie', 'unite_saisie', 'facteur_saisie']],
+    );
+    const parNom = Object.fromEntries(types.map((c: Record<string, unknown>) => [c.column_name, c]));
+    expect([parNom.quantite_saisie.numeric_precision, parNom.quantite_saisie.numeric_scale]).toEqual([12, 3]);
+    expect([parNom.facteur_saisie.numeric_precision, parNom.facteur_saisie.numeric_scale]).toEqual([12, 4]);
+    expect(parNom.unite_saisie.character_maximum_length).toBe(50);
   }, 60000);
 
   it('« 3 paniers » : le poids reste en kg, ET la saisie est conservée', async () => {

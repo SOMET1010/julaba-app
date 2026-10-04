@@ -22,9 +22,9 @@ export class RecolteSaisieBrute1782300000000 implements MigrationInterface {
   name = 'RecolteSaisieBrute1782300000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS quantite_saisie numeric');
+    await queryRunner.query('ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS quantite_saisie numeric(12,3)');
     await queryRunner.query('ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS unite_saisie character varying(50)');
-    await queryRunner.query('ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS facteur_saisie numeric');
+    await queryRunner.query('ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS facteur_saisie numeric(12,4)');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
