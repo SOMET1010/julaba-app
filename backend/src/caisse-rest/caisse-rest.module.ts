@@ -13,9 +13,13 @@ import { CaisseProduit } from './caisse-produit.entity';
 import { CaisseProduitsService } from './caisse-produits.service';
 import { VoiceModule } from '../voice/voice.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+// ODOO-L2 : la caisse peut faire suivre une vente vers Odoo. L'import n'active
+// RIEN par lui-même — le pont reste muet tant qu'ODOO_PONT_VENTE_ENABLED n'est
+// pas posé (voir pont-vente-odoo.service.ts).
+import { OdooGatewayModule } from '../odoo-gateway/odoo-gateway.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CaisseTransaction, ObjectifJournalier, RaccourciVocal, CaisseProduit]), VoiceModule, NotificationsModule],
+  imports: [TypeOrmModule.forFeature([CaisseTransaction, ObjectifJournalier, RaccourciVocal, CaisseProduit]), VoiceModule, NotificationsModule, OdooGatewayModule],
   controllers: [
     CreditsController,CaisseRestController, ObjectifsController, RapportHebdoController, RaccourcisController,
     CatalogueController

@@ -6,6 +6,10 @@ import { ODOO_CLIENT, OdooClient } from './odoo-client.interface';
 import { OdooMockClient } from './odoo-mock.client';
 import { OdooRealClient } from './odoo-real.client';
 import { lireConfigOdooReel, lireModeClientOdoo } from './odoo-client.config';
+import { DataSource } from 'typeorm';
+import { JOURNAL_SYNC } from './sync-journal';
+import { SyncJournalPostgres } from './sync-journal-postgres';
+import { PontVenteOdooService } from './pont-vente-odoo.service';
 
 function creerOdooClient(): OdooClient {
   if (lireModeClientOdoo() === 'real') {
@@ -29,17 +33,31 @@ function creerOdooClient(): OdooClient {
  * DÉSACTIVÉ PAR DÉFAUT : voir OdooPocEnabledGuard — importer ce module dans
  * AppModule ne rend PAS `/odoo-poc/*` utilisable ; il faut en plus
  * ODOO_POC_ENABLED=true (démo/dev uniquement).
+ *
+ * JOURNAL PERSISTÉ — ODOO-L1, 05/10/2026. Le journal de synchronisation est
+ * désormais fourni par injection, et c'est la version Postgres qui tourne ici.
+ * Avant ce lot il vivait dans une Map du service : un redémarrage l'effaçait,
+ * et rejouer un `operationId` recréait un mouvement. Le service accepte
+ * toujours de s'en passer (il retombe alors sur la mémoire) — c'est ce dont
+ * les bancs ont besoin, et ce n'est JAMAIS ce qui tourne en production, parce
+ * que ce module fournit toujours le token.
  */
 @Module({
   controllers: [OdooGatewayController],
   providers: [
     OdooGatewayService,
     OdooPocEnabledGuard,
+    PontVenteOdooService,
     { provide: ODOO_CLIENT, useFactory: creerOdooClient },
+    {
+      provide: JOURNAL_SYNC,
+      useFactory: (dataSource: DataSource) => new SyncJournalPostgres(dataSource),
+      inject: [DataSource],
+    },
   ],
   // Exporte pour le referentiel maitre (CatalogueMaitreModule) : celui-ci
   // reutilise CE service, donc le meme client, la meme allowlist et le meme
   // verrou d'ecriture. Aucun second acces a Odoo n'est ouvert.
-  exports: [OdooGatewayService],
+  exports: [OdooGatewayService, PontVenteOdooService],
 })
 export class OdooGatewayModule {}

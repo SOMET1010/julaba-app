@@ -39,7 +39,11 @@ export class OdooGatewayController {
   }
 
   @Get('journal/:operationId')
-  journalUn(@Param('operationId') operationId: string) {
-    return this.gateway.getJournal(operationId) ?? null;
+  async journalUn(@Param('operationId') operationId: string) {
+    // `await` OBLIGATOIRE depuis ODOO-L1 : le journal lit désormais la base,
+    // donc `getJournal` rend une promesse. Sans attendre, `?? null` porterait
+    // sur la promesse — jamais nulle — et la route rendrait `undefined` pour
+    // une opération introuvable au lieu du `null` que le contrat annonce.
+    return (await this.gateway.getJournal(operationId)) ?? null;
   }
 }

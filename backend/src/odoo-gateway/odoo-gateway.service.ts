@@ -1,8 +1,8 @@
-import { BadGatewayException, BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, ConflictException, Inject, Injectable, Optional } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { ODOO_CLIENT, OdooClient } from './odoo-client.interface';
-import { SyncJournal, SyncJournalEntry } from './sync-journal';
+import { JOURNAL_SYNC, JournalSync, SyncJournalMemoire, SyncJournalEntry } from './sync-journal';
 import {
   versJulaba,
   estArticleCatalogue,
@@ -37,7 +37,16 @@ export type MouvementStockCommand = MouvementStockDto;
  */
 @Injectable()
 export class OdooGatewayService {
-  private readonly journal = new SyncJournal();
+  /**
+   * ODOO-L1 — LE JOURNAL EST DÉSORMAIS FOURNI, PLUS FABRIQUÉ ICI.
+   *
+   * En production, le module injecte `SyncJournalPostgres` : l'idempotence
+   * survit alors à un redémarrage, ce qui était LE trou de ce Gateway.
+   * Sans injection, on retombe sur la mémoire — le comportement d'avant, et
+   * celui dont les bancs ont besoin pour prouver la logique de rejeu sans
+   * base. Le défaut est donc sûr, mais il n'est plus le seul possible.
+   */
+  private readonly journal: JournalSync;
 
   /**
    * Opérations Odoo actuellement en vol, par `operationId`. Sans ce
@@ -51,7 +60,12 @@ export class OdooGatewayService {
    */
   private readonly enCours = new Map<string, Promise<SyncJournalEntry>>();
 
-  constructor(@Inject(ODOO_CLIENT) private readonly odooClient: OdooClient) {}
+  constructor(
+    @Inject(ODOO_CLIENT) private readonly odooClient: OdooClient,
+    @Optional() @Inject(JOURNAL_SYNC) journal?: JournalSync,
+  ) {
+    this.journal = journal ?? new SyncJournalMemoire();
+  }
 
   /**
    * `currency_id` est demandé au même titre que le prix, et non par curiosité :
@@ -118,11 +132,11 @@ export class OdooGatewayService {
     return rows.length > 0 ? rows[0].qty_available : null;
   }
 
-  getJournal(operationId: string): SyncJournalEntry | undefined {
+  getJournal(operationId: string): Promise<SyncJournalEntry | undefined> {
     return this.journal.get(operationId);
   }
 
-  listJournal(): SyncJournalEntry[] {
+  listJournal(): Promise<SyncJournalEntry[]> {
     return this.journal.list();
   }
 
@@ -155,7 +169,7 @@ export class OdooGatewayService {
     this.validerCommande(cmd);
 
     const snapshot = JSON.stringify({ odooProductId: cmd.odooProductId, quantite: cmd.quantite, type: cmd.type });
-    const existant = this.journal.get(cmd.operationId);
+    const existant = await this.journal.get(cmd.operationId);
 
     if (existant) {
       if (existant.payloadSnapshot !== snapshot) {
@@ -186,7 +200,7 @@ export class OdooGatewayService {
 
     const execution = (async (): Promise<SyncJournalEntry> => {
       try {
-        this.journal.upsert({
+        await this.journal.upsert({
           operationId: cmd.operationId,
           domaine: 'stock_move',
           odooModel: 'stock.move',
@@ -195,7 +209,7 @@ export class OdooGatewayService {
           tentatives,
           creeLe,
         });
-        this.journal.upsert({
+        await this.journal.upsert({
           operationId: cmd.operationId,
           domaine: 'stock_move',
           odooModel: 'stock.move',
@@ -210,7 +224,7 @@ export class OdooGatewayService {
           product_qty: cmd.quantite,
           type: cmd.type,
         });
-        return this.journal.upsert({
+        return await this.journal.upsert({
           operationId: cmd.operationId,
           domaine: 'stock_move',
           odooModel: 'stock.move',
@@ -223,7 +237,7 @@ export class OdooGatewayService {
         });
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
-        return this.journal.upsert({
+        return await this.journal.upsert({
           operationId: cmd.operationId,
           domaine: 'stock_move',
           odooModel: 'stock.move',

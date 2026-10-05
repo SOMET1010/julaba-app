@@ -24,6 +24,24 @@ export function lireModeClientOdoo(env: NodeJS.ProcessEnv = process.env): OdooCl
 }
 
 /**
+ * LE PONT VENTE → ODOO EST-IL ACTIF ? — ODOO-L2, 05/10/2026.
+ *
+ * UN INTERRUPTEUR À LUI, ET PAS `ODOO_POC_ENABLED`. Il aurait été tentant de
+ * réutiliser le flag existant : il est déjà là, et il garde déjà la
+ * passerelle. Mais « les routes /odoo-poc sont ouvertes pour une démo » et
+ * « chaque vente d'une marchande part vers Odoo » sont DEUX décisions, prises
+ * par deux personnes à deux moments. Les fondre dans un seul interrupteur,
+ * c'est donner deux sens à la même donnée — et c'est la règle que ce dépôt
+ * s'est donnée après l'avoir payée.
+ *
+ * FAUX PAR DÉFAUT, et la valeur doit être exactement `'true'`. Tant que
+ * personne ne l'a écrit, une vente ne quitte pas JULABA.
+ */
+export function lirePontVenteActif(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.ODOO_PONT_VENTE_ENABLED === 'true';
+}
+
+/**
  * Échec explicite au démarrage plutôt qu'un repli silencieux vers le mock :
  * si `ODOO_CLIENT_MODE=real` est demandé sans secrets, on veut un crash au
  * boot (visible immédiatement), pas une app qui tourne en pensant parler à

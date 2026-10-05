@@ -656,6 +656,8 @@ dire(`\n${GRAS('[2] Les invariants déclarés par zone')}`);
   // Le gate se protège lui-même : débranché de `verify`, il ne dirait plus rien
   // — et personne ne le verrait, puisque c'est lui qui aurait dû le dire.
   if (!BAC_A_SABLE) {
+    // VER-03 : on cherche dans ce que `verify` EXÉCUTE, pas dans le texte de
+    // la chaîne — depuis VER-01 elle n'en porte plus la liste.
     const dansVerify = maillonsDeVerify(pkgF).includes('test:garde-argent');
     if (dansVerify) dire('  ✓ `test:garde-argent` est bien branché dans `verify`');
     else rater('`test:garde-argent` a été débranché de `verify` : le garde-fou ne tournerait plus');
