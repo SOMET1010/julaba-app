@@ -10,6 +10,7 @@ avant toute fin de session.
 | branche du livrable | **`release/rc1`** |
 | dernier commit | `dbb77a3` — versionCode croissant, preuve en base, protocole de recette |
 | `npm run check` | ✅ **6 verts / 0 rouge, exit 0** (seul `garde-argent` reste 🟠 informatif) |
+| CI `RC1 — intégration et Postgres` | ✅ **verte sur `b740a89`**, les deux jobs : garde-fous **et** invariants sur PostgreSQL réel |
 | dépôt | `SOMET1010/julaba-app` |
 
 ---
@@ -58,8 +59,8 @@ Branche **`release/rc1`**. Tout le code livré y est porté sur le `main` actuel
 | | critère | état | preuve |
 |---|---|---|---|
 | 1 | tout le code livré rassemblé sur une branche, sans conflit | ✅ | `release/rc1`, 20 commits au-dessus de `main` |
-| 2 | `npm run check` vert | ✅ | **6 verts / 0 rouge, exit 0** — typecheck ×2, lint 0 alerte, knip, duplication, 325 tests unitaires |
-| 3 | les invariants joués sur un **vrai** Postgres | ✅ | PostgreSQL **16.13**, 298 invariants, 297 verts. Index `ux_caisse_tx_user_idempotency_key` **UNIQUE (user_id, idempotency_key)** relevé en base ; même clé acceptée pour deux marchandes, refusée pour la même ; `23505` provoqué puis rattrapé |
+| 2 | `npm run check` vert | ✅ | **6 verts / 0 rouge, exit 0** — typecheck ×2, lint 0 alerte, knip, duplication, 325 tests unitaires. Le hook `pre-push` l'a exigé lui-même, **sans contournement**, et la **CI le rejoue** (job « Garde-fous RC1 » vert) |
+| 3 | les invariants joués sur un **vrai** Postgres | ✅ | **validé deux fois : en CI** (job « Invariants RC1 sur PostgreSQL réel », conteneur, vert sur `b740a89`) **et en local** sur PostgreSQL **16.13**, 298 invariants, 297 verts. Index `ux_caisse_tx_user_idempotency_key` **UNIQUE (user_id, idempotency_key)** relevé en base ; même clé acceptée pour deux marchandes, refusée pour la même ; `23505` provoqué puis rattrapé |
 | 4 | APK signé avec une **clé stable**, mise à jour par-dessus sans désinstaller | ⏳ | chaîne prête : 4 secrets exigés avant le build, échec explicite si absents, **aucun repli sur la clé de debug**. `versionCode` désormais **strictement croissant**. **Attend les secrets de Patrick.** |
 | 5 | scénario terrain rejoué sur l'appareil | ⏳ | protocole prêt : `docs/recette/RECETTE-RC1.md`, 10 étapes, PASS/FAIL objectif, traces à capturer. **Attend un S24 Ultra.** |
 | 6 | STATUS à jour avec le sha de l'APK et le journal de l'appareil | ⏳ | après le premier run |
