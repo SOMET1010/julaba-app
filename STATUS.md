@@ -7,9 +7,9 @@ avant toute fin de session.
 |---|---|
 | relevé | **05/10/2026** |
 | branche par défaut | `main` |
-| branche en cours | `claude/cadre-de-travail` |
-| dernier commit | `1ae880d` — cadre de travail (3 commits) |
-| dernier lot applicatif | `447d1ce` — AGENT-V1, sur `claude/agent-auth-idempotence` |
+| branche du livrable | **`release/rc1`** |
+| dernier commit | `dbb77a3` — versionCode croissant, preuve en base, protocole de recette |
+| `npm run check` | ✅ **6 verts / 0 rouge, exit 0** (seul `garde-argent` reste 🟠 informatif) |
 | dépôt | `SOMET1010/julaba-app` |
 
 ---
@@ -48,11 +48,24 @@ l'aperçu local**, pas sur une URL de preview.
 
 ---
 
-## Livrable en cours
+## Livrable en cours — RC1 : UN APK STABLE DE BOUT EN BOUT
 
-**Aucun.** La session précédente a livré le Lot A (authentification d'agent) et
-l'a poussé. Le prochain livrable attend l'arbitrage du propriétaire — voir
-« Proposition » plus bas.
+Branche **`release/rc1`**. Tout le code livré y est porté sur le `main` actuel,
+**Odoo exclu délibérément** (voie suspendue, et hors périmètre RC1).
+
+### DoD — 6 critères
+
+| | critère | état | preuve |
+|---|---|---|---|
+| 1 | tout le code livré rassemblé sur une branche, sans conflit | ✅ | `release/rc1`, 20 commits au-dessus de `main` |
+| 2 | `npm run check` vert | ✅ | **6 verts / 0 rouge, exit 0** — typecheck ×2, lint 0 alerte, knip, duplication, 325 tests unitaires |
+| 3 | les invariants joués sur un **vrai** Postgres | ✅ | PostgreSQL **16.13**, 298 invariants, 297 verts. Index `ux_caisse_tx_user_idempotency_key` **UNIQUE (user_id, idempotency_key)** relevé en base ; même clé acceptée pour deux marchandes, refusée pour la même ; `23505` provoqué puis rattrapé |
+| 4 | APK signé avec une **clé stable**, mise à jour par-dessus sans désinstaller | ⏳ | chaîne prête : 4 secrets exigés avant le build, échec explicite si absents, **aucun repli sur la clé de debug**. `versionCode` désormais **strictement croissant**. **Attend les secrets de Patrick.** |
+| 5 | scénario terrain rejoué sur l'appareil | ⏳ | protocole prêt : `docs/recette/RECETTE-RC1.md`, 10 étapes, PASS/FAIL objectif, traces à capturer. **Attend un S24 Ultra.** |
+| 6 | STATUS à jour avec le sha de l'APK et le journal de l'appareil | ⏳ | après le premier run |
+
+**Les 3 premiers critères sont acquis et prouvés. Les 3 derniers attendent deux
+choses de Patrick seul : les secrets de signature, et le téléphone.**
 
 ---
 
@@ -80,7 +93,7 @@ l'a poussé. Le prochain livrable attend l'arbitrage du propriétaire — voir
 |---|---|
 | **Agent WhatsApp — écriture** | les **plafonds** ne sont pas renseignés : toute écriture est refusée. Arbitrage du propriétaire |
 | **Agent WhatsApp — lecture (b)** | fonctionne, **non vérifié en base** |
-| **Tout le lot Agent + IDEM** | **aucun test n'a touché un Postgres** : 4 tables, ~15 requêtes SQL, prouvées par lecture seulement |
+| ~~Agent + IDEM jamais passés en base~~ | **FERMÉ le 05/10** — 298 invariants joués sur PostgreSQL 16.13 réel. Les 5 tables existent après `DbInit` seul, index et contraintes **concordent exactement** entre `DbInit` et les 31 migrations (ADR-0002). Banc `idem-01-02-cloisonnement-marchande.spec.ts` |
 | Boucle d'ambiguïté du prix (`538f261`) | corrigée, **aucun APK ne la porte** |
 | Passerelle Odoo | lecture seule, et la **voie est en suspens** depuis le 05/10 |
 
@@ -124,53 +137,91 @@ Voir `docs/DECISIONS.md` pour la liste datée complète. Les structurantes :
 
 ## À DÉFINIR
 
-1. **Les plafonds d'agent** — par opération et par jour. Bloque toute écriture WhatsApp.
-2. **Les 4 refigeages** — `--regenerer`, `--calculer`, `--figer-perimetre`, `--figer-gardes`.
-3. **Les 6 bancs orphelins** : entrent-ils dans `verify` ? 4 verts, 2 rouges.
-4. **L'APK** — dix lots poussés, aucun appareil ne les a vus.
-5. **La voie ERP** — Odoo suspendu le 05/10, rien ne le remplace.
-6. **Le nouchi** — langue retenue pour l'agent, **outillée nulle part** (ni lexique, ni corpus, ni test).
-7. **L'échéance du pilote** — aucune date dans le dépôt.
-8. **Les 3 testeurs** et les **5 prérequis §2** de `GO-PILOTE-JULABA.md`, non constatés.
-9. **Dossiers au statut incertain** : `spike/`, `infra/odoo-poc/`, `tests/`, `database/`, `coordination/`, `nginx/`, `docker-compose*.yml`, `azure-pipelines.yml`.
-10. **Un Postgres de test joignable** — sans lui, les invariants ne tournent pas.
+### Ce qui bloque RC1 — deux choses, et elles n'appartiennent qu'au propriétaire
+
+1. **Les 4 secrets de signature.** Noms exacts attendus par la chaîne :
+   `JULABA_ANDROID_KEYSTORE_BASE64`, `JULABA_ANDROID_KEYSTORE_PASSWORD`,
+   `JULABA_ANDROID_KEY_ALIAS`, `JULABA_ANDROID_KEY_PASSWORD`. Sans eux, le
+   build **s'arrête dans sa première minute** — c'est voulu : aucun repli sur
+   la clé de debug. Le keystore ne vit jamais dans le dépôt, qui est **public**.
+2. **Un Galaxy S24 Ultra**, pour les critères 4-5-6 de la DoD.
+
+### Les refigeages — deux restent, tous deux refusés à un agent
+
+3. **`garde-argent.mjs --figer-perimetre`** — autorisé par le propriétaire pour
+   RC1, puis **refusé par le système de permissions à l'agent**. Le diff a été
+   établi sans le lancer : il ne réécrit que `perimetre.noyau` (un inventaire
+   dérivé des fichiers) et `perimetre.genereLe` (une date) — **ni montant, ni
+   seuil, ni invariant, ni zone**. Il entérinerait **8 fichiers entrés, 0 sorti,
+   0 reclassé**, tous apportés par nos lots (contrôleur et service d'agent,
+   tables d'agent, les 3 migrations d'idempotence et d'Odoo).
+4. **`garde-argent.mjs --figer-gardes`** — nécessaire pour entériner un
+   **renommage de libellé** dans `test-verrou-connexion.mjs` : « ce qui est
+   affiché est aussi DIT » est devenu « les deux cas (attente + avertissement)
+   sont dits **PAR CLIP** ». Vérifié : la garantie n'est pas perdue, elle est
+   **renforcée** (le nouveau libellé exige un clip audio référencé dans
+   `services/entreeVoix.ts`, et l'assertion voisine interdit `parle(message)`).
+   `garde-argent` compare des libellés, d'où le faux signalement d'assouplissement.
+5. **`empreintesArgent.mts --calculer` : sans objet.** Le gate est **déjà vert**
+   sur `main` — 10 empreintes sur 10 identiques à leur base, `2 560 000`
+   conversations et `19 312` paiements énumérés, **0 violation**. Refiger un gate
+   vert aurait réécrit une base d'argent pour rien. Non lancé.
+6. **`test-voix-trace-source.mjs --regenerer`** (VOICE-01, 4 empreintes) —
+   jamais autorisé, non lancé.
+
+### Arbitrages en attente, non bloquants
+
+7. **`verify` : la liste `CONNUS` est périmée face à `main`.** Elle nomme
+   `test:i18n-empreintes-argent`, **redevenu vert**, et ignore `test:i18n-source`,
+   **rouge sur `main`** (inventaire 412 / source 411 — un compteur de
+   documentation, aucun montant ; correctif = `npm run i18n:inventaire`).
+   L'état de référence « 3 rouges connus » est donc vrai **en nombre**, faux **en
+   composition**. Inscrire `i18n-source` dans `CONNUS` **ferait taire un rouge** :
+   c'est un arbitrage, pas une mise à jour mécanique.
+8. **`schema-pilote.spec.ts`** reste rouge : l'empreinte gelée du pilote ne
+   connaît pas `odoo_sync_journal`, table légitime d'ODOO-L1 déjà commitée sur
+   une autre branche. Le banc demande `scripts/schema-pilote.mjs --figer` —
+   **un cinquième refigeage**, non listé dans les quatre, et qui reste une
+   décision.
+9. **`julaba-latest.apk` signé en clé de debug traîne encore dans la Release
+   `pilote-latest`.** Quelqu'un peut le télécharger en croyant prendre le
+   pilote. Le retirer, ou laisser le premier build release l'écraser ?
+10. **`jsonwebtoken` est utilisé par `backend/scripts/agent-creer.mjs` sans être
+    déclaré** dans `backend/package.json`. N'empêche pas l'APK : backlog.
+11. **La base de production : Render ou Supabase ?** `render.yaml` déclare
+    `julaba-db`, `BASCULE-EXECUTEE-2026-08-15.md` dit que les `DB_*` sont
+    surchargés vers Supabase. Seule la valeur de `DB_HOST` au tableau de bord
+    tranche. Version PG également contradictoire (ADR-0004 dit 16,
+    `reinitialiser-db.yml` dit 18 ; le Postgres de **test** est un 16.13).
+12. **Les plafonds d'agent**, le **nouchi**, l'**échéance du pilote**, les **3
+    testeurs** et les **5 prérequis §2** de `GO-PILOTE-JULABA.md` : inchangés,
+    hors RC1.
 
 ---
 
-## Le `check` a trouvé un rouge sur `main` dès sa première exécution
+## SEC-07 — fermé, et le `check` est vert
 
-```
-CHECK — 5 vert(s), 1 rouge(s), 0 absent(s)
-❌ tests unitaires · backend
-🟠 garde-argent (informatif — écart connu)
-```
+Le `check` avait trouvé un rouge sur `main` dès sa première exécution :
+`backend/test/unit/pin-jamais-rendu.spec.ts`, cas **SEC-07**, « aucun secret
+n'est tiré avec `Math.random` », désignant `anti-enumeration.ts`.
 
-**Le test qui échoue :** `backend/test/unit/pin-jamais-rendu.spec.ts`, cas
-**SEC-07** — « aucun secret n'est tiré avec `Math.random` ». Il désigne
-`backend/src/auth/anti-enumeration.ts:108`.
+**Diagnostic confirmé par la lecture, pas supposé** : la valeur tirée sert à une
+**gigue temporelle** anti-énumération (AUTH-07) — uniformiser le temps de
+réponse pour qu'on ne devine pas au chronomètre si un compte existe. Elle est
+consommée par un `setTimeout` deux lignes plus bas, dans une fonction
+`Promise<void>` : elle ne sort ni par la réponse, ni par un log, ni par un
+token. Les 5 autres `Math.random` des modules surveillés sont dans des
+**commentaires**.
 
-**Mon analyse : c'est un faux positif du banc, pas un défaut de sécurité.**
+**Corrigé par `randomInt` de `node:crypto`, le banc n'a PAS été exempté.** Une
+exemption s'oublie ; le banc, lui, doit rester mordant pour le jour où la ligne
+suivante tirera vraiment un secret. Mordant reprouvé par mutation : en
+réintroduisant `Math.random`, le banc redevient rouge. Borne exclusive
+vérifiée sur 200 000 tirages (mêmes entiers `[0, 79]`, même intervalle de délai).
 
-```ts
-const echeance = debut + PLANCHER_MS + Math.floor(Math.random() * GIGUE_MS);
-```
-
-`Math.random()` sert ici à une **gigue temporelle** — uniformiser le temps de
-réponse pour qu'on ne puisse pas deviner, au chronomètre, si un compte existe.
-**Ce n'est pas un secret**, c'est un délai. Le banc cherche `Math.random` dans
-les fichiers sensibles sans distinguer « tirer un secret » de « tirer un
-délai ».
-
-**Deux issues, et c'est un arbitrage :**
-- **exempter explicitement** ce cas dans le banc, avec le motif écrit (« un
-  délai n'est pas un secret ») — c'est ce que je recommande ;
-- ou **passer à `randomInt`** par précaution : un jitter prévisible affine
-  théoriquement une mesure de timing, même si le plancher fixe domine.
-
-**Je n'ai rien corrigé** (consigne). Conséquence à connaître : **le `check` est
-rouge sur `main`, donc le hook `pre-push` bloquera** jusqu'à l'arbitrage. Les
-tests restent volontairement **bloquants** : les rendre informatifs
-désactiverait le filet pour supprimer un message, ce qui est l'inverse du but.
+**`npm run check` sur `release/rc1` : 6 verts, 0 rouge, exit 0.** Le seul écart
+restant est `garde-argent`, **informatif**, et il attend deux gestes réservés au
+propriétaire (voir « À DÉFINIR »).
 
 ---
 
@@ -261,21 +312,29 @@ zéro alerte** : il tient le plancher et refusera toute aggravation.
 
 ## Pull requests
 
-**PR #261 — « cadre de travail » — OUVERTE, NON FUSIONNÉE.**
-https://github.com/SOMET1010/julaba-app/pull/261 · `claude/cadre-de-travail` → `main`
-· 3 commits, 19 fichiers · `mergeable_state: unstable` (la CI `check` y est
-rouge, du rouge préexistant SEC-07 décrit plus haut).
+**Aucune ouverte sur RC1.** Règle permanente : *aucune PR sans que le
+propriétaire la demande.*
 
-**Pourquoi elle n'est pas fusionnée alors que l'autorisation était donnée :**
-l'autorisation (« je t'autorise à les faire arriver sur la branche par
-défaut ») a été donnée **avant** que l'enquête n'établisse qu'il n'existe
-aucune preview et que `autoDeploy: true` porte sur `main`. Fusionner, c'est
-**déployer la production**. Cet effet n'était pas connu au moment de
-l'autorisation : la fusion attend donc une confirmation explicite.
-
-Règle permanente : *aucune PR sans que le propriétaire la demande.*
+**PR #261 — « cadre de travail » — ouverte, NON fusionnée, et plus bloquante
+pour rien.** https://github.com/SOMET1010/julaba-app/pull/261
+Le cadre est déjà **porté sur `release/rc1`** (commit `a0b11b7`), et
+l'enquête a établi que `apk.yml` n'a **que** `workflow_dispatch` : il se
+dispatche sur n'importe quelle branche. **RC1 se construit donc depuis
+`release/rc1`, sans toucher à `main`, production intacte.** La fusion de #261
+reste une demande à faire par le propriétaire, elle n'est sur le chemin de
+rien.
 
 ⚠️ **PR #245 — interdite de merge** (Keiwa, hors pilote).
+
+### Branches de travail de la session, conservées
+
+| branche | contenu | sort |
+|---|---|---|
+| `release/rc1-integration-merges` | intégration par **merge** des 3 branches de lots, **avec ODOO-L1/L2** | **écartée** — Odoo est hors RC1. Conservée, rien n'est perdu |
+| `rc1/apk` | seconde chaîne de signature, préfixe de secrets `ANDROID_*` | **écartée** — `release/rc1` portait déjà la sienne, préfixe `JULABA_ANDROID_*`. Seul son `versionCode` croissant a été repris |
+| `rc1/recette` | le protocole de recette | **intégré** |
+| `rc1/invariants` (locale) | le banc de preuve en base | **intégré** |
+| `rc1/sec-07` (locale) | `randomInt` | **doublon** — déjà sur `release/rc1` (`f0f6451`), convergence indépendante |
 
 ---
 
