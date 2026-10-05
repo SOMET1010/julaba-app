@@ -146,6 +146,28 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // ── SERVEUR DE DÉVELOPPEMENT (sandbox) ────────────────────────────────────
+  // Le frontend écoute sur 3000 (port unique exposé par la passerelle du
+  // sandbox) et proxifie /api vers le backend NestJS (port 3001) : même
+  // origine, donc pas de CORS à gérer en dev.
+  server: {
+    host: true,
+    port: 3000,
+    strictPort: true,
+    // Le sandbox plafonne fs.inotify.max_user_watches à 8192 (non modifiable
+    // sans root) : Vite dépasse la limite au démarrage → ENOSPC. Le polling
+    // contourne proprement la limite, au prix d'un peu de CPU.
+    watch: {
+      usePolling: true,
+      interval: 800,
+    },
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: "../frontend/dist",
     emptyOutDir: true,

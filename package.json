@@ -49,5 +49,12 @@
     "fast-csv": "^4.3.6",
     "qs": "^6.14.0",
     "uuid": "^11.1.1"
+  },
+  "allowScripts": {
+    "@scarf/scarf@1.4.0": true,
+    "@sentry/node-cpu-profiler@2.4.4": true,
+    "core-js@3.50.0": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
   }
 }
