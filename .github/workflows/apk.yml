@@ -10,9 +10,9 @@ name: APK pilote — construction à la demande
 # déclenche sur aucun push ni aucune PR, seulement à la main. Il ne déploie
 # rien, ne publie rien, n'écrit pas dans le dépôt.
 #
-# L'APK produit est un APK de DEBUG, signé avec la clé de debug : installable
-# à la main sur un téléphone (« sources inconnues »), pas publiable sur un
-# store. C'est exactement le périmètre du pilote (décision Patrick, 15/09/2026).
+# RC1 utilise une clé de RELEASE stable fournie exclusivement par GitHub Secrets.
+# La clé n'entre jamais dans le dépôt. Deux builds RC1 gardent ainsi la même
+# identité Android et peuvent se mettre à jour l'un par-dessus l'autre.
 
 on:
   workflow_dispatch:
@@ -79,7 +79,7 @@ permissions:
 
 jobs:
   apk:
-    name: Construire l APK de debug
+    name: Construire l APK RC1 signé
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -171,9 +171,28 @@ jobs:
           JULABA_VOIX_DYU: ${{ inputs.voix_dyu == 'true' && '1' || '0' }}
         run: ./scripts/installer-voix.sh
 
-      - name: Construire l APK de debug
+      - name: Vérifier les secrets de signature RC1
+        env:
+          KEYSTORE_B64: ${{ secrets.JULABA_ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.JULABA_ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.JULABA_ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.JULABA_ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_B64" || { echo "::error::JULABA_ANDROID_KEYSTORE_BASE64 absent"; exit 1; }
+          test -n "$STORE_PASSWORD" || { echo "::error::JULABA_ANDROID_KEYSTORE_PASSWORD absent"; exit 1; }
+          test -n "$KEY_ALIAS" || { echo "::error::JULABA_ANDROID_KEY_ALIAS absent"; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo "::error::JULABA_ANDROID_KEY_PASSWORD absent"; exit 1; }
+          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/julaba-release.jks"
+          chmod 600 "$RUNNER_TEMP/julaba-release.jks"
+
+      - name: Construire l APK RC1 signé
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        env:
+          JULABA_RELEASE_STORE_FILE: ${{ runner.temp }}/julaba-release.jks
+          JULABA_RELEASE_STORE_PASSWORD: ${{ secrets.JULABA_ANDROID_KEYSTORE_PASSWORD }}
+          JULABA_RELEASE_KEY_ALIAS: ${{ secrets.JULABA_ANDROID_KEY_ALIAS }}
+          JULABA_RELEASE_KEY_PASSWORD: ${{ secrets.JULABA_ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
 
       # Un APK qui se construit n'est pas un APK qui s'installe. Le telephone
       # ne dit que « probleme avec le fichier de l'application » : cette etape
@@ -182,7 +201,7 @@ jobs:
       - name: Verifier l APK produit (signature, integrite, empreinte)
         working-directory: android
         run: |
-          apk=app/build/outputs/apk/debug/app-debug.apk
+          apk=app/build/outputs/apk/release/app-release.apk
           outils=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
 
           echo "::group::Taille et empreinte (a comparer avec le fichier telecharge)"
@@ -215,15 +234,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: julaba-apk-${{ steps.source.outputs.sha }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
       - name: Préparer l APK pour téléchargement équipe
         run: |
           mkdir -p dist-apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk \
+          cp android/app/build/outputs/apk/release/app-release.apk \
             dist-apk/julaba-${{ steps.source.outputs.sha }}.apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk \
+          cp android/app/build/outputs/apk/release/app-release.apk \
             dist-apk/julaba-latest.apk
 
       - name: Publier dans GitHub Releases
