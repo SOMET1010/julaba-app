@@ -30,6 +30,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(req: Request, payload: any) {
+    if (payload?.typ === 'agent') {
+      throw new UnauthorizedException("Un jeton d'agent n'ouvre pas de session utilisateur");
+    }
     const user = await this.userRepository.findOne({ where: { id: payload.sub } });
     if (!user) throw new UnauthorizedException("Utilisateur introuvable");
     if (user.status === UserStatus.SUSPENDU) throw new UnauthorizedException('Compte suspendu');
