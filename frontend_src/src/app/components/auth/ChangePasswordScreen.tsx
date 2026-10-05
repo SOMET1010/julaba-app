@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
 import { getBoAccessToken } from '../../services/backoffice-api';
+import { lireCodeActuel } from '../../services/codeActuelMemoire';
 import { API_URL } from '../../utils/api';
 import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
 import { glyphePourChiffre } from '../../services/clavierImage';
@@ -32,12 +33,18 @@ export function ChangePasswordScreen() {
   const navigate = useNavigate();
   const { user, setUser } = useApp();
   const bo = useBackOfficeOptional();
-  const location = useLocation();
   // Le code que la personne VIENT de taper pour ouvrir sa session. L'écran de
   // connexion nous le passe : lui redemander « ton mot de passe actuel » cinq
   // secondes après l'avoir saisi n'apporte aucune sécurité (la session est
   // déjà ouverte) et bloque net quelqu'un qui ne lit pas.
-  const codeDeConnexion = (location.state as { codeActuel?: string } | null)?.codeActuel || '';
+  //
+  // AUTH-02 — PAR LE CANAL MÉMOIRE, PLUS PAR history.state. L'ancienne lecture
+  // `location.state?.codeActuel` couplait ce code à l'entrée d'historique du
+  // navigateur, où il SURVIVAIT au rechargement, lisible sur le téléphone
+  // laissé au comptoir. Le canal mémoire (services/codeActuelMemoire) est
+  // ONE-SHOT : la lecture ci-dessous l'efface — il ne réapparaît ni en
+  // avançant, ni en reculant dans l'historique, ni après un reload.
+  const codeDeConnexion = lireCodeActuel();
   const [oldPassword, setOldPassword] = useState(codeDeConnexion);
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');

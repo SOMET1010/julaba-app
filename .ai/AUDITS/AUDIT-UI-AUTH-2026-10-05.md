@@ -138,3 +138,21 @@
 | Clavier | Tab/Enter sur pavé | ✅ R6 |
 | Console | zéro erreur, zéro fuite PIN | ✅ R10 + statique |
 | Design system | tokens/cibles/modale | ⚠️ AUTH-05/08/09/16 |
+
+## 11. Suivi — CORRECTIONS P1 APPLIQUÉES (05/10/2026, même journée)
+
+Les 5 constats P1 ont été corrigés le jour même. Tableau de clôture (preuves : gardes CI + recette navigateur, citées en colonne 3) :
+
+| Constat | Correction appliquée | Preuve de clôture |
+|---|---|---|
+| **AUTH-01** · garde entrée unique rouge/orpheline | **Tranché : les ROUTES se mettent au niveau de la garde.** `/welcome` et `/login` renvoient à `/` par `Navigate replace` (routes.tsx) — EntryGate reste le seul juge du splash, de l'onboarding et du rôle. La garde est **réinscrite dans la chaîne `verify`** (maillons-verify.json) et retirée de `horsVerify`. | `test:entree-unique` ✅ VERT · runtime : `/login` → `/` (EntryGate, splash affiché) |
+| **AUTH-02** · PIN dans `history.state` | **Canal mémoire one-shot** `services/codeActuelMemoire.ts` : dépôt juste avant `navigate('/change-password')`, lecture consommatrice (one-shot), expiration 60 s, zéro stockage/URL/historique. Nouvelle garde `test:canal-code` (inscrite dans `verify`). | `test:canal-code` ✅ VERT · runtime : `history.state.usr = null`, aucun `codeActuel` |
+| **AUTH-03** · verrou inaudible | **Clips existants, jamais de durée inventée** : palier 5 min → `ui-125` (VRAIE voix, « Réessaie dans 5 minutes ») ; paliers 15 min+ → `login-30` (lot A, geste sans durée fausse) ; `verrouCinqMinutes`/`dernierEssai`/`mauvaisCodeAttention` ajoutés à `ENTREE_VOICE_CLIPS`. Découverte en corrigeant : le clip `codeErreur` générique est un « prototype » muet en production → les 2 essais restants disent `login-28` (lot A). **Garde renforcée** : plus de `parle(message)` possible, chaque clé référencée doit exister avec son fichier embarqué. | `test:verrou-connexion` ✅ VERT (11 vérifs dont texte→clip + fichiers) · runtime : 3 échecs sur Bénito → bannière « Attends 5 minutes » + **requête GET `/voix/tata/ui-125.mp3` (206)** capturée = clip réellement joué ; 2ᵉ essai Michelle → **login-28.mp3 (206)** |
+| **AUTH-04** · réécoute muette | **Feedback non audio** (reco 1 de l'audit) : surbrillance chiffre par chiffre + tick haptique par chiffre (`relireNumero`), bouton renommé « Revoir mon numéro » (icône œil, jamais le haut-parleur qui promettait un son), 44×44 px. Le même balayage remplace la relecture muette de la dictée ; `parleSuite` ne reçoit plus de segment sans clip. NUM-02 respecté : le numéro n'est JAMAIS énoncé. | runtime : 10 chiffres rendus, 1 illuminé pendant le balayage, 0 après fin ; annulation à toute frappe + au démontage |
+| **AUTH-05** · modale non conforme | **Radix Dialog** (`@radix-ui/react-dialog` 1.1.23) : focus trap natif, ESC actif, retour de focus, `aria-modal="true"` exposé, question en vrai `Title`. **Fond non-refusant** : ESC / Fermer / tap sur le fond ferment SANS noter de refus — seuls « Non » (et l'échec d'enrôlement) mémorisent. « Fermer » 32→**44×44 px** ; focus initial sur « Oui, je veux ». | runtime : ESC ferme ✅ ; modale REVENU après reload après ESC **et** après tap fond = refus non noté ✅ ; Tab reste dans la modale ✅ ; Fermer mesuré 44×44 ✅ ; focus initial « Oui, je veux » ✅ |
+
+**Coût de gouvernance assumé du lot** : la référence voix-trace (`scripts/fixtures/parole-3917bb7.json`) a été mise à jour de façon **chirurgicale** — seule l'entrée `appels['components/auth/LoginPassword.tsx']` a été recalculée (17 → 15 appels : les 2 `parle(message)` verrou/avertissement, la relecture muette de la dictée et `parle(chiffresEpeles(phone))` disparaissent ; script one-shot `scripts/maj-reference-parole-login.mjs`, diff consultable). Les 4 empreintes rouges VOICE-01, propriété de Patrick, n'ont **pas** été re-figées (`test:voix-trace-source` : mêmes 4 échecs qu'avant lot, zéro nouveau).
+
+**Ne pas oublier** : le test du verrou a laissé le compte démo de Bénito (`+2250960606060`) en verrou serveur de 5 minutes — il s'est levé seul.
+
+**P2 restants** : AUTH-06..17 inchangés (voir §6) — prochain lot suggéré : AUTH-08/09 (garde charte/cible étendu à l'auth) puis AUTH-10 (découpage LoginPassword, ~1 700 lignes au 05/10).

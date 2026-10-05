@@ -4,11 +4,9 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { RootLayout } from './components/layout/RootLayout';
 import { AppLayout } from './components/layout/AppLayout';
 import { EntryGate } from './components/auth/EntryGate';
-import { LoginPassword } from './components/auth/LoginPassword';
 import { ChangePasswordScreen } from './components/auth/ChangePasswordScreen';
 import { ActivationScreen } from './components/auth/ActivationScreen';
 import { UnregisteredPhone } from './components/auth/UnregisteredPhone';
-import { Welcome } from './components/auth/Welcome';
 import { BORoot } from './components/backoffice/BORoot';
 import { BOLogin } from './components/backoffice/BOLogin';
 import { IdentificateurLayout } from './components/identificateur/IdentificateurLayout';
@@ -40,8 +38,20 @@ export const router = createBrowserRouter([
     children: [
       { path: "/", element: <EntryGate /> },
       { path: "/non-enregistre", element: <UnregisteredPhone /> },
-      { path: "/welcome", element: <Welcome /> },
-      { path: "/login", element: <LoginPassword /> },
+      // AUTH-01 (audit UI auth 05/10/2026) — UNE SEULE PORTE D'ENTRÉE, et la
+      // garde `test:entree-unique` remise à VIVANTE (elle est repassée dans la
+      // chaîne `verify`). /welcome et /login montaient Welcome et
+      // LoginPassword EN DIRECT — un état hérité du snapshot d'origine,
+      // jamais arbitré : deux chemins d'entrée parallèles à EntryGate, qui
+      // contournaient ses drapeaux (splash, onboarding) et sa redirection par
+      // rôle. Un lien profond vers /login faisait voir l'écran de connexion à
+      // une personne DÉJÀ connectée ; EntryGate, lui, l'aurait renvoyée vers
+      // son interface. Toute entrée passe donc par `/` : EntryGate reste le
+      // SEUL juge du splash, de l'onboarding et du rôle (« logique centralisée
+      // unique », en-tête d'EntryGate.tsx) — et la garde vérifie de nouveau
+      // qu'aucun écran d'entrée ne peut être monté hors d'elle.
+      { path: "/welcome", element: <Navigate to="/" replace /> },
+      { path: "/login", element: <Navigate to="/" replace /> },
       { path: '/change-password', element: <ChangePasswordScreen /> },
       { path: '/activation', element: <ActivationScreen /> },
       // Console interne du Studio Voice (enregistrement des clips de Tata) —

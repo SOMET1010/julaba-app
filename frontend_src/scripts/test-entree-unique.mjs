@@ -2,6 +2,24 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * Garde-fou : la PORTE D'ENTRÉE EST UNIQUE — et cette garde est de nouveau
+ * VIVANTE (réinscrite dans la chaîne `verify` le 05/10/2026, AUTH-01).
+ *
+ * L'HISTOIRE DE CETTE GARDE, POUR NE PAS LA REJOUER. Écrite pour empêcher
+ * Welcome/LoginPassword d'être montés hors EntryGate, elle s'est retrouvée
+ * ORPHELINE (hors `verify`) pendant que `routes.tsx` — état hérité du
+ * snapshot d'origine — remontait les deux écrans en direct. Une garde rouge,
+ * jamais exécutée, contredisant les routes : le pire des deux mondes
+ * (« une garde qui ne s'exécute pas n'est pas une garde » — verify-tout.mjs).
+ *
+ * LE TRANCHÉ DU 05/10/2026 (audit UI auth, AUTH-01) : ce sont les ROUTES qui
+ * se sont mises au niveau de la garde. /welcome et /login renvoient à `/` par
+ * `Navigate replace` — EntryGate reste le seul juge du splash, de
+ * l'onboarding et du rôle (drapeaux + redirection par rôle). Le détail et le
+ * pourquoi sont dans routes.tsx, à l'endroit des deux routes.
+ */
+
 const ici = dirname(fileURLToPath(import.meta.url));
 const routes = readFileSync(join(ici, '..', 'src/app/routes.tsx'), 'utf8');
 const maestro = readFileSync(join(ici, '..', '..', 'maestro/02-connexion.yaml'), 'utf8');
