@@ -104,7 +104,7 @@ describe('Schéma — ce que DbInit pose suffit, sans aucune migration', () => {
     await expect(
       ds.query(
         `INSERT INTO stock_operation_idempotency (idempotency_key, stock_id, marchand_id)
-         VALUES ($1, $2, $3) ON CONFLICT (idempotency_key) DO NOTHING
+         VALUES ($1, $2, $3) ON CONFLICT (marchand_id, idempotency_key) DO NOTHING
          RETURNING idempotency_key`,
         ['schema-test-key', 'stock-1', 'schema-test'],
       ),
