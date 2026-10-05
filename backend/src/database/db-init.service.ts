@@ -300,11 +300,14 @@ export class DbInitService {
     // `synchronize` ; on le garantit donc ici aussi (IF NOT EXISTS, idempotent).
     try {
       await this.dataSource.query(`
-        CREATE UNIQUE INDEX IF NOT EXISTS ux_caisse_tx_idempotency_key
-        ON caisse_transactions (idempotency_key)
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_caisse_tx_user_idempotency_key
+        ON caisse_transactions (user_id, idempotency_key)
         WHERE idempotency_key IS NOT NULL;
       `);
-      this.logger.log('Index unique idempotency_key vérifié (anti double-comptage)');
+      await this.dataSource.query(
+        `DROP INDEX IF EXISTS ux_caisse_tx_idempotency_key;`,
+      );
+      this.logger.log('Index unique (user_id, idempotency_key) vérifié (anti double-comptage, IDEM-01)');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur index idempotency_key: ' + message);
@@ -402,6 +405,14 @@ export class DbInitService {
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS ix_stock_operation_idempotency_marchand
          ON stock_operation_idempotency (marchand_id, created_at DESC);`,
+      );
+      await this.dataSource.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS ux_stock_op_idem_marchand
+         ON stock_operation_idempotency (marchand_id, idempotency_key);`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE stock_operation_idempotency
+         DROP CONSTRAINT IF EXISTS stock_operation_idempotency_pkey;`,
       );
       this.logger.log('Ledger stock_mouvements (append-only) vérifié');
     } catch (e: unknown) {
