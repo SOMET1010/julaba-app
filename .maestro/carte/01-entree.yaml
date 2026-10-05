@@ -1,0 +1,11 @@
+# CARTE, ÉTAPE 1 — l'écran d'entrée. Point zéro, déjà mesuré aux runs #11/#13.
+appId: com.julaba.app
+name: carte 1 — entrée
+tags:
+  - carte
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "JÙLABA"
+    timeout: 90000

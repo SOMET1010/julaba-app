@@ -70,6 +70,28 @@ export function getImageByNom(nom: string): string {
   return p?.image || IMG_PRODUIT_AUTRE;
 }
 
+/** Repli 100 % embarqué pour la caisse. La photo reste prioritaire quand elle
+ * charge, mais une vendeuse ne voit jamais un panier générique à la place d'un
+ * produit courant quand le réseau tombe. */
+export function getPictogrammeByNom(nom: string): string {
+  const q = nom.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const pictos: Array<[string[], string]> = [
+    [['riz'], '🍚'], [['tomate'], '🍅'], [['aubergine'], '🍆'],
+    [['piment'], '🌶️'], [['gombo'], '🫛'], [['manioc'], '🥔'],
+    [['igname', 'patate douce'], '🍠'], [['mais'], '🌽'],
+    [['banane', 'plantain'], '🍌'], [['oignon'], '🧅'], [['avocat'], '🥑'],
+    [['huile'], '🫙'], [['mangue'], '🥭'], [['ananas'], '🍍'],
+    [['arachide'], '🥜'], [['carotte'], '🥕'], [['concombre', 'courgette'], '🥒'],
+    [['chou', 'laitue'], '🥬'], [['brocoli'], '🥦'], [['haricot'], '🫘'],
+    [['citron'], '🍋'], [['orange'], '🍊'], [['pasteque'], '🍉'],
+    [['papaye'], '🍈'], [['fraise'], '🍓'], [['coco'], '🥥'],
+    [['cafe'], '☕'], [['poisson'], '🐟'], [['poulet'], '🍗'],
+    [['oeuf'], '🥚'], [['pain'], '🍞'],
+  ];
+  const trouve = pictos.find(([mots]) => mots.some(mot => q.includes(mot)));
+  return emojiTile(trouve?.[1] || '🧺');
+}
+
 export function getCleImage(nom: string): string {
   const map: Record<string, string> = {
     'Riz': 'riz', 'Tomate': 'tomate', 'Aubergine': 'aubergine',

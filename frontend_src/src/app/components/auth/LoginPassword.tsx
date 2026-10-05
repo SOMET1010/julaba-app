@@ -15,9 +15,66 @@ import { BrandSignature } from '../shared/BrandSignature';
 import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits, fusionnerChiffresDictes } from '../../utils/frenchDigits';
-import { tataUiClipForText } from '../../services/tataUiClips';
-import { voixSecoursNom } from '../../services/elevenlabs';
-import { speak as managerSpeak, speakClipOrText } from '../../services/audioManager';
+import { direEntree, direEntreeTexte, ENTREE_VOICE_CLIPS, type EntreeVoiceKey } from '../../services/entreeVoix';
+import { tParle } from '../../i18n/voice/runtime';
+import type { MessageId } from '../../i18n/voice/types';
+
+/**
+ * ── NUM-01 — CET ÉCRAN ÉTAIT MUET, ET SON BOUTON D'ÉCOUTE AUSSI ───────────
+ *
+ * Banc terrain, écran 3 : « MUET » au montage et sous les quatorze éléments,
+ * avec une impasse — « Écouter Tantie Nanti Lou » touché, rien ne bouge.
+ * `direEntree` ne joue qu'un clip enregistré ; dans tout build livré le
+ * drapeau des prototypes est éteint, donc il n'y en a pas, donc rien.
+ *
+ * `direEntree` RAPPORTE désormais ce qu'il en advient. Le texte ne part que
+ * s'il ne reste rien à dire : jamais par-dessus le clip, et jamais après une
+ * coupure — ici, taper un chiffre coupe la consigne, et ce silence est la
+ * décision de la marchande.
+ *
+ * AKW-02 RESPECTÉE. On ne passe pas par `speakMessage`, dont le rendu finit
+ * dans `AppContext.speak` et s'y fait refuser (`role-non-marchand`) : sur cet
+ * écran personne n'est encore connecté — c'est l'écran QUI CONNECTE. On garde
+ * la CLÉ de catalogue et on la remet au moteur audio directement. Le muet
+ * global reste respecté : il vit dans `audioManager`, pas dans la garde de rôle.
+ */
+const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
+  numero: 'ENTREE_NUMERO',
+  numeroVoix: 'ENTREE_NUMERO_VOIX',
+  code: 'ENTREE_CODE',
+  codeErreur: 'ENTREE_CODE_ERREUR',
+  connexionIndisponible: 'ENTREE_CONNEXION',
+  reconnaissance: 'ENTREE_RECONNAISSANCE',
+  // Ces deux-là ont toujours un clip (lot A) : le repli texte ne sert
+  // jamais. La clé est renseignée quand même — le type l'exige, et une
+  // table à trou finirait par mentir le jour où le clip disparaît.
+  pinImages: 'AUTH_21',
+  pinChiffres: 'AUTH_22',
+  effacement: 'AUTH_24',
+  numeroIncomplet: 'AUTH_11',
+  reconnaissanceEchouee: 'AUTH_26',
+  tropDEssais: 'AUTH_30',
+  microIndisponible: 'AUTH_16',
+  codeVide: 'AUTH_19',
+  serveurLent: 'AUTH_33',
+  choixEnregistre: 'AUTH_35',
+  choixConserve: 'AUTH_36',
+  dicteeIncomprise: 'ENTREE_NUMERO',
+  microProbleme: 'ENTREE_NUMERO',
+  microPret: 'AUTH_17',
+  numeroPasDIci: 'AUTH_12',
+};
+
+/** Le clip s'il existe, sinon la phrase — une seule sortie, jamais deux. */
+function direConsigne(key: EntreeVoiceKey): Promise<void> {
+  return direEntree(key)
+    // AKW-02 — QUATRIÈME PORTE, TROUVÉE EN FERMANT LES TROIS AUTRES : cet
+    // écran parlait AUSSI par le moteur en direct, à côté de son propre
+    // `parle()`. Deux portes dans un seul fichier — la preuve qu'une porte
+    // non nommée s'en fait toujours une autre.
+    .then((r) => (r.doitDireLeTexte ? parlerAvantConnexion('connexion', tParle(CLE_CATALOGUE[key])).then(() => undefined) : undefined))
+    .catch(() => { /* une consigne qui casse ne bloque jamais la connexion */ });
+}
 import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
@@ -26,7 +83,9 @@ import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../servi
 import { salutation } from '../../utils/appellation';
 import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 import { glyphePourChiffre } from '../../services/clavierImage';
-import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
+import { retourFrappe, type EtapeSaisie } from '../../services/retourDeFrappe';
+import { parlerAvantConnexion } from '../../services/paroleEntree';
+import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
 
 // Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
 // le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
@@ -118,6 +177,10 @@ export function LoginPassword() {
   // signal de certification MINIMAL (design v0.3). Fausse aujourd'hui sur le web
   // et sur l'APK sans moteur → le NUMÉRO se saisit au PAVÉ, sans micro trompeur.
   // (Lot 5 remplacera ce signal par une certification vocale complète.)
+  // La sonde répétée du moteur hors-ligne proposée par Manus (verifierOfflineModel)
+  // N'EST PAS reprise ici : c'est le lot B3 du plan de récupération, une
+  // correction fonctionnelle qui doit entrer avec sa reproduction et son test,
+  // pas dans un lot visuel.
   const voixEcouteDispo = (() => { try { return offlineModelReady(); } catch { return false; } })();
   // Le pavé est la référence : toujours visible tant que la voix n'écoute pas.
   const clavierVisible = showKeypad || !voixEcouteDispo;
@@ -138,7 +201,12 @@ export function LoginPassword() {
       // Annonce le CHANGEMENT DE MODE, jamais le PIN — la correspondance est
       // publique (variante A), donc rien de secret n'est dit ici.
       if (guidageVocal(accessMode)) {
-        parle(next ? 'Maintenant, des images à la place des chiffres.' : 'Retour aux chiffres.');
+        // Textes alignés MOT POUR MOT sur les clips login-21 / login-22
+        // (services/entreeVoix.ts). `direEntreeTexte` retrouve la clé par le
+        // texte : un mot d'écart et l'écran redevient muet, sans rien signaler.
+        parle(next
+          ? 'Voilà les photos qui sont sorties à la place des chiffres. Ton code n\'a pas changé.'
+          : 'Voilà les chiffres maintenant. Mets ton code comme d\'habitude.');
       }
       return next;
     });
@@ -176,43 +244,17 @@ export function LoginPassword() {
     }
   };
 
-  // Accueil personnalisé : si une marchande est déjà connue sur ce téléphone, on
-  // la salue par son prénom (ton « vous », chaleureux et respectueux).
-  // Source de vérité : le COMPTE MÉMORISÉ (comptesMemorises, survit à la
-  // déconnexion) ; julaba_auth_user en simple repli (effacé au logout).
-  const cachedPrenom = (() => {
-    const memorise = (compteConnu?.prenom || '').trim();
-    if (memorise) return memorise;
-    try {
-      const u = JSON.parse(localStorage.getItem('julaba_auth_user') || 'null');
-      return (u?.firstName || u?.first_name || u?.prenom || '').toString().trim();
-    } catch { return ''; }
-  })();
-  // Le nom qu'elle a choisi dans sa fiche (voir utils/appellation). Sur cet
-  // écran elle n'est pas encore authentifiée : il vient du compte reconnu sur
-  // l'appareil. Un compte mémorisé avant ce correctif ne le porte pas — on
-  // emploie alors son prénom seul, et son choix sera appris à l'entrée
-  // suivante.
-  const greetTitle = `${salutation(compteConnu?.appellation, cachedPrenom)} !`;
-  const greetSub = cachedPrenom
-    ? 'Je suis heureuse de vous revoir aujourd’hui.'
-    : 'Je suis Tata Nanti Lou. Je serai à vos côtés pour vous aider.';
-
-  // « Écouter Tata » : accueil vocal. On utilise la VOIX DU NAVIGATEUR (fiable et
-  // correcte) — le clip enregistré /voix/tata/phrase-1.mp3 côté serveur contenait
-  // une phrase de CAISSE (« vendu 10 tomates… »), rien à voir avec le login.
-  // Quand un vrai enregistrement d'accueil sera fourni, on pourra le rebrancher.
+  // « Écouter Tantie » : chaque étape pointe vers un clip local de la MÊME voix.
+  // Aucun prénom ni code n'est synthétisé dynamiquement : le texte reste visible,
+  // et l'audio ne prononce jamais de donnée personnelle ou secrète.
   const ecouterTata = () => {
     setTataSpeaking(true);
-    // La consigne suit l'ÉTAPE : accueil reconnu (geste unique) ou numéro à dire.
-    const consigne = step === 'reconnaissance' && compteConnu
-      ? (compteConnu.biometrie
-        ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
-        : 'Touche le grand bouton et entre ton code.')
-      : 'Dis ton numéro, ou tape-le.';
-    // UNE SEULE voix de secours dans toute l'appli (speakBrowser) : même voix FR,
-    // même débit, même timbre partout → fini le « mélange de voix ».
-    try { managerSpeak(`${greetTitle}. ${greetSub}. ${consigne}`).finally(() => setTataSpeaking(false)); }
+    const key: EntreeVoiceKey = step === 'phone'
+      ? (voixEcouteDispo ? 'numeroVoix' : 'numero')
+      : step === 'reconnaissance' && compteConnu?.biometrie
+        ? 'reconnaissance'
+        : 'code';
+    try { void direConsigne(key).finally(() => setTataSpeaking(false)); }
     catch { setTataSpeaking(false); }
     setTimeout(() => setTataSpeaking(false), 8000); // filet
   };
@@ -239,19 +281,17 @@ export function LoginPassword() {
     phoneRef.current = phone;
   }, [phone]);
 
-  // Voix pour la connexion (écran AVANT connexion → on utilise la voix intégrée
-  // du navigateur). Une vendeuse qui ne lit pas peut ainsi entendre les consignes
-  // et les erreurs au lieu de devoir lire un petit texte.
-  // Voix intégrée du téléphone (hors-ligne, PAS Internet) — dernier recours. On
-  // Toute la voix de cet écran passe par l'audioManager (créneau exclusif,
-  // hygiène post-audit C3) : clip de la VRAIE Tata quand la phrase correspond à
-  // un clip enregistré, sinon voix de secours FR — le repli est géré DANS le
-  // même créneau, donc jamais deux voix superposées, et stopAllVoice() coupe tout.
+  // Une phrase fixe n'est dite que si son clip Tantie exact est embarqué.
+  // Aucune voix navigateur étrangère ne remplace un clip manquant.
+  // AKW-02 — LA VOIE D'ENTRÉE EST NOMMÉE. Cet écran parlait par
+  // `direEntreeTexte`, qui court-circuite la garde de rôle de
+  // `AppContext.speak` — légitime ici (personne n'est connecté), mais aucune
+  // règle ne disait qui avait le droit de le faire. La permission se demande.
   const parle = (texte: string) => {
     if (!texte) return;
-    let clip: string | null = null;
-    try { clip = tataUiClipForText(texte); } catch { /* ignore */ }
-    try { void speakClipOrText({ clipUrl: clip ?? undefined, text: texte }); } catch { /* ignore */ }
+    // `direEntreeTexte` reste le CANAL — clip exact, aucune voix étrangère en
+    // repli. La primitive décide seulement si la porte s'ouvre.
+    void parlerAvantConnexion('connexion', texte, direEntreeTexte);
   };
   // Enchaîne PLUSIEURS prises de parole sans qu'elles se coupent. audioManager
   // ne sert qu'un créneau exclusif à la fois et toute nouvelle demande annule
@@ -260,9 +300,7 @@ export function LoginPassword() {
   const parleSuite = async (...textes: (string | null | undefined)[]) => {
     for (const texte of textes) {
       if (!texte) continue;
-      let clip: string | null = null;
-      try { clip = tataUiClipForText(texte); } catch { /* ignore */ }
-      try { await speakClipOrText({ clipUrl: clip ?? undefined, text: texte }); } catch { /* ignore */ }
+      try { await direEntreeTexte(texte); } catch { /* ignore */ }
     }
   };
   // Chiffres détachés pour la relecture : « 0 7 0 9 … » et non « sept cent... ».
@@ -289,38 +327,24 @@ export function LoginPassword() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { if (error) { vibrerErreur(); if (guidageVocal(accessMode)) parle(error); } }, [error]);
-  // VOIX-V5 — la consigne du code était la SEULE des trois étapes sans filet
-  // de rattrapage audio (les deux autres l'ont : voir direAccueilReconnaissance
-  // et direConsigneNumero). Une marchande connue de l'appareil mais SANS
-  // biométrie atterrit directement ici — step vaut 'password' dès le premier
-  // rendu (état initial plus haut). La consigne partait donc avant tout geste
-  // dans la page et la politique autoplay la coupait EN SILENCE, définitivement
-  // pour la session : l'écran PIN restait muet.
-  //
-  // Le filet n'est armé QUE si 'password' est l'étape de MONTAGE — le seul cas
-  // où l'audio est encore verrouillé. Arrivée depuis 'reconnaissance' ou
-  // 'phone', le geste de navigation a déjà débloqué l'audio et la consigne est
-  // passée : réarmer la rejouerait par-dessus la frappe du code.
-  const arriveeDirecteSurCode = useRef(step === 'password').current;
+  // La consigne est tentée à l'arrivée puis reste disponible sur le cadenas.
+  // Aucun écouteur global ne la relance sur ce même toucher : deux lectures
+  // simultanées s'annulaient avec AbortError sur le web.
   const direConsigneCode = useCallback(() => {
     if (step !== 'password') return;
-    if (!guidageVocal(accessMode)) return; // mode lecture : pas de consigne auto
-    parle('Entre ton code secret à 4 chiffres');
+    if (!guidageVocal(accessMode)) return; // lecture explicitement choisie : pas de consigne auto
+    void direConsigne('code');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, accessMode]);
 
   useEffect(() => {
     if (step === 'password') {
-      vlog('VOIX_CODE_TENTEE', { arriveeDirecte: arriveeDirecteSurCode, guidage: guidageVocal(accessMode) });
+      vlog('VOIX_CODE_TENTEE', { guidage: guidageVocal(accessMode) });
     }
     direConsigneCode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  useAudioUnlockFallback(
-    () => { vlog('VOIX_CODE_REJOUEE_APRES_GESTE'); direConsigneCode(); },
-    arriveeDirecteSurCode && step === 'password' && guidageVocal(accessMode),
-  );
   // « Tata se souvient de moi » : à l'arrivée, Tata SALUE par le prénom et dit le
   // geste à faire — l'écran n'a rien à lire. (Une seule fois, au montage.)
   // FILET DE RATTRAPAGE : cet écran ('reconnaissance') peut être le TOUT
@@ -330,11 +354,7 @@ export function LoginPassword() {
   // Même filet que Welcome.tsx/OnboardingSlides.tsx.
   const direAccueilReconnaissance = useCallback(() => {
     if (!(step === 'reconnaissance' && compteConnu && guidageVocal(accessMode))) return;
-    const salut = `${salutation(compteConnu.appellation, compteConnu.prenom)} !`;
-    const geste = compteConnu.biometrie
-      ? 'Touche le grand bouton, ton téléphone va te reconnaître.'
-      : 'Touche le grand bouton et entre ton code.';
-    try { void managerSpeak(`${salut} ${geste}`); } catch { /* ignore */ }
+    try { void direConsigne(compteConnu.biometrie ? 'reconnaissance' : 'code'); } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, compteConnu, accessMode]);
 
@@ -343,11 +363,10 @@ export function LoginPassword() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useAudioUnlockFallback(direAccueilReconnaissance, step === 'reconnaissance' && !!compteConnu && guidageVocal(accessMode));
   // Tata propose l'adaptation (mode 'auto') : elle le DIT (une fois) — c'est une
   // question, pas un réglage à trouver. On l'énonce dès l'affichage.
   useEffect(() => {
-    if (suggestion && !suggReponse) { try { void managerSpeak(suggestion.texte); } catch { /* ignore */ } }
+    if (suggestion && !suggReponse) parle(suggestion.texte);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Réponse à la proposition de Tata : oui → on adopte le mode ; non → on met en pause.
@@ -355,10 +374,10 @@ export function LoginPassword() {
     if (!suggestion) return;
     if (oui) {
       setAccessMode(suggestion.mode);
-      parle('C\'est fait. Je m\'adapte à toi.');
+      parle('D\'accord, c\'est calé comme ça.');
     } else {
       marquerDemande();
-      parle('D\'accord, on ne change rien.');
+      parle('D\'accord, on continue comme d\'habitude.');
     }
     setSuggReponse(true);
   };
@@ -415,6 +434,10 @@ export function LoginPassword() {
           body: JSON.stringify({ phone: curr.startsWith('+225') ? curr : '+225' + curr }),
           signal: abortRef.current.signal,
         });
+        // MANUS REND ICI `check-phone` BLOQUANT (res.ok exigé, puis erreur au
+        // lieu de l'étape code). C'est le point C7 du plan de récupération :
+        // un changement de PARCOURS d'authentification, non repris. Le parcours
+        // reste le nôtre — un contrôle qui ne répond pas ne ferme pas la porte.
         let data: { exists?: boolean };
         try {
           data = await res.json();
@@ -459,7 +482,7 @@ export function LoginPassword() {
     setError('');
     if (sliced.length === 10) {
       if (!numeroCIComplet(sliced, TEST_PHONES)) {
-        setError('Numéro non reconnu, réessaie ou tape-le');
+        setError('Regarde bien, y\'a un chiffre qui n\'est pas bon dedans. Si tu veux, tape ton numéro directement ici.');
         return;
       }
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
@@ -520,14 +543,18 @@ export function LoginPassword() {
     if (isListening) { vlog('RE_TAP_STOP'); arreterEcoute(); return; }
     vlogStart('dictée'); vlog('BUILD', cfg.buildTag);
     vlog('MODEL_READY', { ready: offlineModelReady(), installed: offlineModelInstalled() });
-    vlog('TTS_VOICE', voixSecoursNom());
+    vlog('VOIX_ENTREE', 'Tantie Nanti Lou · clips locaux uniquement');
 
     if (!offlineModelReady()) { vlog('STT_NOT_READY'); cfg.siPasPrete(); return; }
 
     vlog('MIC_ASK');
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // MIC-01 — anti-écho : la dictée du numéro et du code s'ouvre juste
+      // après la consigne dite. Nu, ce micro entendait le haut-parleur, et des
+      // chiffres venus de la voix de Tantie entraient dans le numéro de
+      // téléphone. Réglage unique : `services/contraintesMicro`.
+      stream = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
       vlog('MIC_OK');
     } catch (e) {
       vlog('MIC_DENIED', String(e));
@@ -632,6 +659,15 @@ export function LoginPassword() {
     //     compris. Tape ton numéro, ou réessaie. ») et ui-100 existent et
     //     disent la bonne chose — « ou réessaie » comprise.
     //
+    //     CORRIGÉ LE 26/09/2026, et le point 3 méritait d'être relu : choisir
+    //     la phrase de ui-058 NE SUFFISAIT PAS. `parle()` ne consulte pas
+    //     `tataUiClips` — il passe par `direEntreeTexte`, qui ne connaît que
+    //     l'index de `services/entreeVoix.ts`. Les deux clips existaient, la
+    //     phrase tombait pile dessus, et rien ne sortait quand même. Il a
+    //     fallu leur ajouter une CLÉ là-bas (`dicteeIncomprise`,
+    //     `microProbleme`). Un commentaire vrai le jour où il est écrit peut
+    //     cesser de l'être sans que personne ne le voie.
+    //
     // On relit donc TOUJOURS ce qui a été compris, puis on dit une phrase
     // RÉELLEMENT ENREGISTRÉE. Le clavier reste le filet, il n'est plus la
     // seule porte : le micro demeure atteignable et la phrase le nomme.
@@ -650,7 +686,15 @@ export function LoginPassword() {
         setError(num.length >= 10
           ? 'Vérifie ton numéro : touche le micro pour redire, ou corrige 👇'
           : 'Il manque des chiffres : touche le micro pour redire, ou complète 👇');
-        void parleSuite(relecture, "Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+        // AUTH-11. Trop court : on DIT ce qui manque, au lieu du générique.
+        // L'écran l'écrivait déjà — l'information existait, seule la marchande
+        // qui lit y avait droit. Texte aligné mot pour mot sur login-11.
+        // Numéro complet mais invalide : on garde le générique, qui donne le
+        // GESTE. Le clip AUTH_12 nomme mieux le défaut mais ne dit pas quoi
+        // faire ; on ne troque pas une consigne contre une plus pauvre.
+        void parleSuite(relecture, num.length >= 10
+          ? "Je n'ai pas compris. Tape ton numéro, ou réessaie."
+          : 'Il manque encore des chiffres dedans. Continue.');
         return;
       }
       setError("Je n'ai pas compris. Touche le micro pour redire, ou tape 👇");
@@ -662,7 +706,7 @@ export function LoginPassword() {
     // ui-058) plutôt qu'une phrase sur mesure qui serait muette. Aucun clip ne
     // dit « autorise le micro » — le texte écrit le précise, la voix dit au
     // moins qu'il y a un problème et qu'on peut réessayer.
-    siMicRefuse: () => { setError('Autorise le micro, ou tape ton numéro 👇'); void parleSuite('Problème avec le micro — réessaie'); setShowKeypad(true); },
+    siMicRefuse: () => { setError('Le micro ne prend pas là. Faut taper ton numéro ici.'); void parleSuite('Problème avec le micro — réessaie'); setShowKeypad(true); },
     siEchec: () => { setShowKeypad(true); void parleSuite("Je n'ai pas compris. Tape ton numéro, ou réessaie."); },
   });
 
@@ -674,35 +718,13 @@ export function LoginPassword() {
 
   // Tata parle DÈS L'ENTRÉE dans l'écran numéro.
   //
-  // AVANT : on supposait qu'à ce stade du parcours (après Welcome +
-  // Onboarding, dans la même session SPA) un geste utilisateur avait déjà eu
-  // lieu, donc rien ne bloquait la voix — un filet de rattrapage avait même
-  // été essayé puis RETIRÉ pour cette raison. CORRECTIF (silence encore
-  // constaté en recette terrain sur CET écran précisément) : cette hypothèse
-  // est FAUSSE dès qu'on revient dans l'app après l'avoir quittée — EntryGate
-  // saute directement à cet écran (drapeaux julaba_seen_splash et
-  // julaba_completed_onboarding persistés en localStorage), sans passer par
-  // Welcome/Onboarding dans CETTE page fraîchement chargée, donc sans aucun
-  // geste préalable pour débloquer l'audio.
-  //
-  // Le filet est donc RÉINTRODUIT, mais SANS le piège de la version d'avant :
-  // l'ancien filet filtrait la cible du geste (closest sur button/img) et,
-  // comme l'écouteur était en mode « une seule fois », un premier tap sur le
-  // gros micro consommait l'écouteur SANS jamais jouer le son — silence pour
-  // le reste de la session. Le nouveau filet (useAudioUnlockFallback) ne
-  // filtre RIEN : le tout premier toucher, où qu'il tombe, rejoue la même
-  // consigne — comme sur Welcome.tsx et OnboardingSlides.tsx.
-  //
   // On explique aussi le GESTE, pas seulement le champ ("tape un chiffre à la
   // fois, les ronds se remplissent") — lire seulement "entre ton numéro" ne
   // suffit pas à quelqu'un qui ne lit pas et n'a jamais vu cet écran.
   const direConsigneNumero = useCallback(() => {
     if (step !== 'phone') return;
-    if (!guidageVocal(accessMode)) return; // mode lecture : pas d'accueil vocal auto
-    const consigne = voixEcouteDispo
-      ? 'Pour entrer, dis ton numéro à voix haute, ou tape les chiffres un par un. Les ronds en haut se rempliront.'
-      : 'Tape les chiffres de ton numéro, un par un. Les ronds en haut se rempliront.';
-    parle(consigne);
+    if (!guidageVocal(accessMode)) return; // lecture explicitement choisie : pas d'accueil vocal auto
+    void direConsigne(voixEcouteDispo ? 'numeroVoix' : 'numero');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, accessMode, voixEcouteDispo]);
 
@@ -710,8 +732,6 @@ export function LoginPassword() {
     direConsigneNumero();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
-
-  useAudioUnlockFallback(direConsigneNumero, step === 'phone' && guidageVocal(accessMode));
 
   useEffect(() => {
     const tel = document.querySelector('input[autocomplete="tel"]') as HTMLInputElement | null;
@@ -781,11 +801,11 @@ export function LoginPassword() {
       } else {
         // Mots de la MARCHANDE (pas « biométrie ») : dire le problème et le geste
         // de secours. L'effet vocal sur `error` l'énonce automatiquement.
-        setError('Ton téléphone ne t\'a pas reconnue. Utilise ton code.');
+        setError('Ça n\'a pas pris. On passe par ton code directement.');
       }
     } catch (err) {
       console.warn('[LoginPassword] biometric failed:', err instanceof Error ? err.message : err);
-      setError('La reconnaissance n\'a pas marché ici. Utilise ton code.');
+      setError('Ça n\'a pas pris. On passe par ton code directement.');
     } finally {
       setIsLoading(false);
     }
@@ -793,9 +813,20 @@ export function LoginPassword() {
 
   const handleLogin = async (pinOverride?: string, retry = 0) => {
     const pwd = pinOverride ?? pinInput;
-    if (phone.length !== 10) { setError('Le numéro doit contenir 10 chiffres'); return; }
+    // DEUX GARDES DÉFENSIVES, ET LE BANC A MONTRÉ QU'ELLES NE SE DÉCLENCHENT
+    // PAS — 26/09/2026. Le bouton « C'est mon numéro » est `disabled` tant
+    // qu'il manque des chiffres, et `handleLogin` n'est appelé qu'avec quatre
+    // chiffres déjà saisis (l.1046, l.1525). Ces deux `setError` sont donc
+    // INATTEIGNABLES par l'interface d'aujourd'hui.
+    //
+    // On les garde : le jour où un bouton cesse d'être désactivé, ou qu'un
+    // raccourci clavier ouvre un autre chemin, elles redeviennent le seul
+    // filet. Mais on ne les compte PAS comme des phrases qu'une marchande
+    // entendra — la première reste atteignable par la DICTÉE (`onFinal`), la
+    // seconde par rien du tout.
+    if (phone.length !== 10) { setError('Il manque encore des chiffres dedans. Continue.'); return; }
     if (import.meta.env.DEV && phone === '0501604040') { setShowDevButton(true); setError(''); return; }
-    if (!pwd || pwd.length === 0) { setError('Entre ton mot de passe'); return; }
+    if (!pwd || pwd.length === 0) { setError('Bon, mets les quatre chiffres de ton code secret.'); return; }
     setIsLoading(true); setError('');
     // Espion de connexion : trace l'URL réellement appelée + le résultat, visible
     // dans « 🐞 Rapport de test ». Permet de diagnostiquer « Erreur de connexion »
@@ -833,7 +864,7 @@ export function LoginPassword() {
       } catch (err) {
         console.warn('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
         vlog('LOGIN_JSON_FAIL', { msg: err instanceof Error ? err.message : String(err) });
-        setError('Réponse inattendue. Réessaie dans un instant.');
+        setError('Ça n\'a pas bien répondu. Attends un petit moment, puis reprends.');
         setIsLoading(false);
         return;
       }
@@ -841,7 +872,7 @@ export function LoginPassword() {
         // Trop de tentatives en 1 minute (rate-limiter) : ce N'EST PAS un mauvais
         // code -> on ne compte pas d'échec et on affiche un message clair.
         if (response.status === 429) {
-          setError('Trop d\'essais. Attends une minute puis réessaie.');
+          setError('Tu as trop forcé. Patiente un peu d\'abord avant de réessayer.');
           setPinInput(""); setIsLoading(false); return;
         }
         // Source de vérité backend : verrouillage total après 9 échecs cumulés.
@@ -864,7 +895,7 @@ export function LoginPassword() {
         const restants = typeof result.essaisRestants === 'number' ? result.essaisRestants : null;
         const message = restants !== null && restants <= 2
           ? `Ce n'est pas le bon code. Attention : encore ${restants} essai${restants > 1 ? 's' : ''}, après il faudra attendre.`
-          : "Ce n'est pas le bon code. Réessaie.";
+          : ENTREE_VOICE_CLIPS.codeErreur.texte;
         setError(message);
         try { parle(message); } catch { /* la voix n'est jamais bloquante */ }
         setPinInput(""); setIsLoading(false); return;
@@ -884,7 +915,7 @@ export function LoginPassword() {
       } catch { /* ignore */ }
       const user = result.user;
       if (!user) {
-        setError('Réponse serveur invalide');
+        setError('Ça n\'a pas marché comme il faut. Reprends depuis le début.');
         setIsLoading(false);
         return;
       }
@@ -955,11 +986,11 @@ export function LoginPassword() {
       // temps au serveur de démarrer, plutôt que d'échouer sèchement.
       const estReseau = err instanceof TypeError;
       if (estReseau && retry < 2) {
-        setError('Réveil du serveur… reconnexion automatique, patiente 🔄');
+        setError('Ça pèse un peu. Patiente, je suis en train de relancer.');
         setTimeout(() => { handleLogin(pwd, retry + 1); }, 7000);
         return;
       }
-      setError('Connexion impossible. Le serveur se réveille (~1 min) — réessaie dans un instant.');
+      setError(ENTREE_VOICE_CLIPS.connexionIndisponible.texte);
       setIsLoading(false);
     } finally {
       setIsLoading(false);
@@ -978,6 +1009,30 @@ export function LoginPassword() {
     if (newCount >= 5) { setShowDevButton(true); setLogoClickCount(0); }
   };
 
+  // NUM-03 — UN APPUI SE SENT, DANS LES DEUX ÉTAPES.
+  //
+  // L'étape NUMÉRO vibrait, l'étape CODE ne rendait RIEN : ni vibration, ni
+  // son. Quatre chiffres à chaque connexion — le geste le plus répété de
+  // l'application — sans aucun signe que l'appui a compté. Les deux vivaient
+  // dans cette même fonction : l'une avait reçu son correctif, l'autre pas.
+  //
+  // La règle sort donc de l'écran (`services/retourDeFrappe`), et elle garde
+  // NUM-02 : le chiffre n'est JAMAIS dit à voix haute. Au marché elle est
+  // entourée. La main sait, l'oreille ne saura pas.
+  // CE HELPER NE FAIT QUE VIBRER, ET C'EST VOICE-01 QUI L'A DÉCIDÉ.
+  //
+  // Il portait aussi la parole (`parle(r.ditVoixHaute)`). La garde de
+  // traçabilité vocale l'a refusé : elle fige les appels de parole de cet
+  // écran À LA LETTRE, arguments compris, et `parle('Effacé.')` devenu
+  // `parle(r.ditVoixHaute)` casse la trace. Elle a raison — ce qui est dit à
+  // une marchande ne doit pas changer de forme au détour d'un refactor.
+  //
+  // La parole reste donc EXACTEMENT où elle était. Ce module décide du retour
+  // TACTILE, qui est le trou réel : l'étape CODE ne rendait rien.
+  const rendreALaMain = (etape: EtapeSaisie, geste: 'chiffre' | 'effacement') => {
+    try { navigator.vibrate?.([...retourFrappe(etape, geste).vibration]); } catch { /* ignore */ }
+  };
+
   const handleKeyPress = (digit: string) => {
     if (isLoading || isFinalizingDictation || (step === 'phone' && isListening)) return;
     dernierCanalRef.current = 'clavier'; // elle TAPE (apprentissage 'auto')
@@ -986,13 +1041,11 @@ export function LoginPassword() {
         const next = phone + digit;
         setPhone(next);
         setError('');
-        // Retour tactile à CHAQUE chiffre tapé — perceptible sans lire ni entendre,
-        // et sans jamais révéler le chiffre à voix haute (confidentialité du numéro).
-        try { navigator.vibrate?.(12); } catch { /* ignore */ }
+        rendreALaMain('numero', 'chiffre');
         if (import.meta.env.DEV && next === '0501604040') setShowDevButton(true);
         if (next.length === 10) {
           if (!numeroCIComplet(next, TEST_PHONES)) {
-            setError('Préfixe invalide');
+            setError('Ce numéro-là ne commence pas comme un numéro d\'ici. Regarde bien le début.');
             return;
           }
           if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
@@ -1004,6 +1057,8 @@ export function LoginPassword() {
         const next = pinInput + digit;
         setPinInput(next);
         setError('');
+        // C'ÉTAIT LE TROU : cette branche ne rendait rien du tout.
+        rendreALaMain('code', 'chiffre');
         if (next.length === 4) setTimeout(() => { void handleLogin(next); }, 300);
       }
     }
@@ -1022,17 +1077,21 @@ export function LoginPassword() {
     if (step === 'phone') {
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
       setPhone(p => p.slice(0, -1));
-      // Effacer est ANNONCÉ — geste distinct du simple ajout d'un chiffre (motif
-      // de vibration différent) + un mot dit à voix haute. « Effacé » ne révèle
-      // aucun chiffre : rien à cacher, contrairement au numéro lui-même.
-      try { navigator.vibrate?.([10, 30, 10]); } catch { /* ignore */ }
-      if (guidageVocal(accessMode)) parle('Effacé.');
+      // Effacer est un AUTRE geste : motif distinct, et un mot — « Effacé » ne
+      // révèle aucun chiffre, contrairement au numéro lui-même.
+      rendreALaMain('numero', 'effacement');
+      // Texte aligné MOT POUR MOT sur le clip login-24 (AUTH_24). Il ne dit
+      // toujours rien de ce qui a été tapé — la règle du commentaire ci-dessus
+      // tient. Avant cet alignement, aucune clé ne portait « Effacé. » : le mot
+      // était prononcé par personne.
+      if (guidageVocal(accessMode)) parle('C\'est effacé net.');
     } else {
       if (pinInput.length === 0) {
         retourDepuisCode();
       } else {
         const next = pinInput.slice(0, -1);
         setPinInput(next);
+        rendreALaMain('code', 'effacement');
       }
     }
     setError('');
@@ -1086,15 +1145,15 @@ export function LoginPassword() {
         </div>
         <h1>{step === 'phone' ? 'Ton numéro' : step === 'password' ? 'Ton code secret' : salutation(compteConnu?.appellation, compteConnu?.prenom)}</h1>
         <div className="login-guide">
-          <img src={tataNantiLou} alt="Tata Nanti Lou" />
+          <img src={tataNantiLou} alt="Tantie Nanti Lou" />
           <button type="button" onClick={ecouterTata} className="login-replay"
-            aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tata Nanti Lou'}>
+            aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tantie Nanti Lou'}>
             <Volume2 aria-hidden="true" size={26} />
           </button>
         </div>
         {step === 'password' && <button type="button" onClick={retourDepuisCode} className="login-help" disabled={isLoading}><ChevronLeft aria-hidden="true" size={22} />Retour</button>}
         {devMode && (
-          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tata Nanti Lou · dev</span>
+          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tantie Nanti Lou · dev</span>
         )}
       </motion.div>
 
@@ -1331,7 +1390,7 @@ export function LoginPassword() {
               >
                 <InstallerOffline onReady={() => {
                   setShowVoiceInstall(false);
-                  parle('Voilà, tu peux parler maintenant. Touche le micro et dis ton numéro.');
+                  parle('C\'est bon maintenant. Appuie sur le micro et puis parle.');
                 }} />
               </motion.div>
             )}
@@ -1450,7 +1509,7 @@ export function LoginPassword() {
             <button
               type="button"
               aria-label="Ton code secret — touche pour écouter"
-              onClick={() => parle('Entre ton code secret à 4 chiffres')}
+              onClick={() => { void direConsigne('code'); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '2px 0 4px', display: 'flex', justifyContent: 'center', width: '100%' }}
             >
               <span style={{ fontSize: 30, lineHeight: 1 }}>🔒</span>
@@ -1547,12 +1606,6 @@ export function LoginPassword() {
         </AnimatePresence>
       </motion.div>
 
-      {/* Lien secours admin — uniquement sur le portail backoffice (jamais marchande). */}
-      {window.location.pathname.includes('backoffice') && (
-        <a href="/admin-recovery" style={{ margin: '12px 0', color: 'var(--encre-4)', fontSize: 11, textDecoration: 'none' }}>
-          Problème de connexion admin ?
-        </a>
-      )}
       {/* Pied de page OUTILS — MODE DÉVELOPPEUR uniquement (5 tapes coin haut-gauche).
           Masqué pour la marchande : l'écran ne montre que Tata + champ + micro + clavier. */}
       {devMode && (
@@ -1587,9 +1640,10 @@ export function LoginPassword() {
             if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
             else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
           }}
-          style={{ marginTop: 8, fontSize: 11, fontWeight: 700, color: '#8A5A34', background: '#F5D6BD', border: 'none', borderRadius: 10, padding: '7px 14px', cursor: 'pointer' }}
+          style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 56, fontSize: 18, lineHeight: '24px', fontWeight: 800, color: '#7A4A24', background: '#F5D6BD', border: '2px solid #D9A87A', borderRadius: 14, padding: '12px 22px', cursor: 'pointer' }}
         >
-          🐞 Rapport de test
+          <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
+          Rapport de test
         </button>
       </motion.div>
       )}

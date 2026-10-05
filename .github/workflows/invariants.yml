@@ -14,6 +14,14 @@ on:
     branches: [main]
   push:
     branches: [main]
+  # AJOUT PUREMENT ADDITIF (garde-argent) — ce workflow devient APPELABLE.
+  # `garde-argent.yml` doit faire tourner les invariants backend contre un vrai
+  # PostgreSQL quand une zone d'argent backend est touchée. Plutôt que de
+  # recopier le service `postgres`, ses variables et sa sonde de santé — une
+  # copie qui aurait divergé au premier changement —, il APPELLE ce job-ci.
+  # Les deux déclencheurs ci-dessus sont inchangés : ce workflow continue de
+  # tourner seul, exactement comme avant.
+  workflow_call:
 
 permissions:
   contents: read

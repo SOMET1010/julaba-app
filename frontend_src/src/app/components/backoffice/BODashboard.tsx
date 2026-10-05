@@ -1,13 +1,21 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users, TrendingUp, Wallet, Target, AlertTriangle,
   CheckCircle2, Clock, XCircle, BarChart3, MapPin,
-  Activity, ShieldAlert,
+  Activity, ShieldAlert, HelpCircle,
   UserCheck, Zap, Award, Bell,
   ChevronRight, ChevronDown, RefreshCw, Eye, HeartPulse,
 } from 'lucide-react';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
+import {
+  kpisTableauDeBord, motDuKpi, nombreDuKpi, explicationDuKpi, sousTitreZones, lue,
+  type AffichageKpi,
+} from '../../services/etatLectureBO';
+import {
+  sectionDe, motDeSection, explicationDeSection, alertesBO, urgentes,
+  objectifsBO, pourcentageBarre, type AffichageSection,
+} from './etatSectionsBO';
 import { BO_PRIMARY, BO_DARK, BO_LIGHT } from './bo-theme';
 import { useNavigate } from 'react-router';
 import {
@@ -24,9 +32,79 @@ import { BOProgressBar } from './BOProgressBar';
 import { UniversalDropdownMenuBO } from './universal/UniversalDropdownMenuBO';
 import { UniversalSectionCardBO } from './universal/UniversalSectionCardBO';
 
+/**
+ * CE QU'UNE TUILE REÇOIT — BO-01.
+ *
+ * Un compteur rend l'un de TROIS états, et la tuile les sert différemment :
+ *
+ *   nombre        → `animatedTarget`, le compteur animé d'avant. ZÉRO COMPRIS :
+ *                   un zéro lu est une réponse, et il s'affiche comme telle.
+ *   chargement    → le mot « Lecture… », et AUCUN nombre. Pas de zéro qui
+ *                   clignote en attendant la réponse.
+ *   indisponible  → le mot « Indisponible », et la RAISON dans l'explication
+ *                   (la tuile s'ouvre au clic) : l'agent doit pouvoir décider
+ *                   quoi faire, pas seulement constater qu'il manque un chiffre.
+ *
+ * `animatedTarget` est laissé à `undefined` hors du cas « nombre » : c'est lui
+ * qui, dans `UniversalKPI`, décide d'afficher un compteur plutôt qu'un texte.
+ * Le laisser à `0` remettrait exactement le faux zéro qu'on ferme ici.
+ */
+function kpiTuile(kpi: AffichageKpi, format?: (n: number) => string) {
+  const n = nombreDuKpi(kpi);
+  const mot = motDuKpi(kpi);
+  return {
+    animatedTarget: format ? undefined : n,
+    value: format && n !== undefined ? format(n) : (mot ?? undefined),
+    explication: explicationDuKpi(kpi),
+  };
+}
+
+/** Le volume, écrit court au-dessus du million — inchangé. */
+function montantCourt(v: number): string {
+  return v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v.toLocaleString('fr-FR');
+}
+
 function normalizePhone(p?: string | null): string {
   if (!p) return '';
   return String(p).replace(/[\s\-().]/g, '').replace(/^\+225/, '').replace(/^00225/, '').replace(/^225/, '');
+}
+
+/** Les couleurs des quatre barres. Elles n'appartiennent pas à la règle : une
+ *  couleur ne dit rien de vrai ou de faux sur un chiffre. */
+const COULEURS_OBJECTIFS: Record<string, string> = {
+  'Acteurs enrôlés': BO_PRIMARY,
+  'Digitalisation': '#3B82F6',
+  'Taux validation': '#10B981',
+  'Inclusion sociale': '#8B5CF6',
+};
+
+/**
+ * CE QU'ON MONTRE À LA PLACE D'UNE SECTION QU'ON N'A PAS PU LIRE — BO-03.
+ *
+ * Surtout pas le vide, et surtout pas une phrase qui AFFIRME le vide :
+ * « Aucune donnée disponible » et « Tout est en ordre » étaient les deux
+ * mensonges de cet écran. On dit ce qu'on ne sait pas, et pourquoi.
+ */
+function SectionNonLue({ etat, hauteur }: { etat: AffichageSection<unknown>; hauteur?: string }) {
+  const mot = motDeSection(etat);
+  if (mot === null) return null;
+  return (
+    <div className={`${hauteur ?? 'py-8'} flex flex-col items-center justify-center text-center px-4 gap-1.5`}>
+      <span className="text-sm font-bold text-gray-500">{mot}</span>
+      <span className="text-xs text-gray-400 max-w-xs">{explicationDeSection(etat)}</span>
+    </div>
+  );
+}
+
+/** Le contenu n'est dessiné que sur `donnees` : la garantie de BO-01, appliquée
+ *  à un bloc d'écran au lieu d'un compteur. */
+function BlocSection<T>({ etat, hauteur, children }: {
+  etat: AffichageSection<T>;
+  hauteur?: string;
+  children: (valeur: T) => ReactNode;
+}) {
+  if (etat.type !== 'donnees') return <SectionNonLue etat={etat} hauteur={hauteur} />;
+  return <>{children(etat.valeur)}</>;
 }
 
 export function BODashboard() {
@@ -34,15 +112,11 @@ export function BODashboard() {
 
   const acteurs = Array.isArray(_bo.acteurs) ? _bo.acteurs : [];
   const transactions = Array.isArray(_bo.transactions) ? _bo.transactions : [];
-  const transactionsTotal = _bo.transactionsTotal ?? transactions.length;
   const dossiers = Array.isArray(_bo.dossiers) ? _bo.dossiers : [];
-  const zones = Array.isArray(_bo.zones) ? _bo.zones : [];
   const zonesMap = _bo.zonesMap || {};
-  const missions = Array.isArray(_bo.missions) ? _bo.missions : [];
   const navigate = useNavigate();
   const ws = useWebSocket(true);
   const rt = useRealtime(true);
-  const effectiveStats = rt.stats ?? _bo.stats;
   const isLiveActivity = rt.activity.length > 0 && !rt.error;
 
   const timelineChartData = useMemo(
@@ -75,15 +149,56 @@ export function BODashboard() {
     return () => clearInterval(clock);
   }, []);
 
-  // ─── KPIs calculés depuis les vraies données ──────────────────────────────
-  const totalActeurs = effectiveStats?.total_acteurs ?? acteurs.length;
-  const actifs = effectiveStats?.utilisateurs_actifs ?? acteurs.filter(a => a.statut === 'actif').length;
-  const suspendus = acteurs.filter(a => a.statut === 'suspendu').length;
-  const enAttente = dossiers.filter(d => d.statut === 'en_attente').length;
-  const volumeTotal = effectiveStats?.montant_total ?? transactions.reduce((s, t) => s + (t.montant || 0), 0);
+  // ─── LES SEPT COMPTEURS — BO-01 ───────────────────────────────────────────
+  //
+  // CE QUI ÉTAIT ÉCRIT ICI, et le commentaire d'origine disait « KPIs - 100 %
+  // données réelles » juste au-dessus des tuiles :
+  //
+  //   const acteurs  = Array.isArray(_bo.acteurs)  ? _bo.acteurs  : [];
+  //   const dossiers = Array.isArray(_bo.dossiers) ? _bo.dossiers : [];
+  //   const totalActeurs = effectiveStats?.total_acteurs ?? acteurs.length;
+  //
+  // Une lecture qui échouait laissait la liste à `[]`, et les sept compteurs
+  // affichaient ZÉRO. « 0 marchande active dans cette zone » ne veut pas dire
+  // la même chose selon qu'on l'a comptée ou qu'on n'a pas pu la lire — et une
+  // institution taille un programme sur ce genre de nombre.
+  //
+  // La règle vit dans services/etatLectureBO, pure et testée seule : la mesure
+  // n'est appelée QUE sur une lecture réussie. Un zéro LU s'affiche ; un zéro
+  // fabriqué n'existe plus. Chaque source garde son propre échec : une panne
+  // des zones n'efface pas le compte des acteurs.
+  const kpis = kpisTableauDeBord({
+    // Le temps réel prime sur les statistiques chargées, comme avant ; quand il
+    // n'a rien, on retombe sur l'état de lecture du contexte — pas sur `null`.
+    stats: rt.stats ? lue(rt.stats) : _bo.lectures.stats,
+    acteurs: _bo.lectures.acteurs,
+    dossiers: _bo.lectures.dossiers,
+    zones: _bo.lectures.zones,
+    transactions: _bo.lectures.transactions,
+  });
+
+  // ─── BO-03 : LE RESTE DE L'ÉCRAN PASSE PAR LA MÊME RÈGLE ─────────────────
+  //
+  // CE QUI ÉTAIT ÉCRIT ICI, et que BO-01 avait nommé sans le prendre :
+  //
+  //   const totalActeurs = effectiveStats?.total_acteurs ?? acteurs.length;
+  //   const suspendus    = acteurs.filter(a => a.statut === 'suspendu').length;
+  //   const enAttente    = dossiers.filter(d => d.statut === 'en_attente').length;
+  //
+  // Ces cinq nombres alimentaient les alertes, les graphiques et les barres de
+  // progression. Quand la lecture échouait, les listes valaient `[]`, les cinq
+  // valaient 0 — et l'écran affichait « Aucune alerte activée — Tout est en
+  // ordre », « Taux validation 0 % », « Aucune donnée régionale disponible ».
+  // Une panne se présentait comme une bonne nouvelle.
+  //
+  // Ils n'existent plus. Chaque section demande ses sources à `sectionDe` et
+  // ne calcule QUE si elles ont toutes été lues.
 
   // ─── Données graphique : croissance mensuelle des acteurs ─────────────────
-  const monthlyData = useMemo(() => {
+  // Deux sources, et il les faut TOUTES LES DEUX : un graphique « acteurs et
+  // transactions par mois » tracé sur une seule des deux est faux. `sectionDe`
+  // n'appelle le calcul que si les deux ont été lues.
+  const sectionCroissance = useMemo(() => sectionDe([_bo.lectures.acteurs, _bo.lectures.transactions], () => {
     const moisLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
     const now = new Date();
     const months: { mois: string; acteurs: number; transactions: number; volume: number }[] = [];
@@ -106,10 +221,10 @@ export function BODashboard() {
       });
     }
     return months;
-  }, [acteurs, transactions, monthsRange]);
+  }), [_bo.lectures.acteurs, _bo.lectures.transactions, acteurs, transactions, monthsRange]);
 
   // ─── Répartition par région ───────────────────────────────────────────────
-  const regionData = useMemo(() => {
+  const sectionRegions = useMemo(() => sectionDe([_bo.lectures.acteurs, _bo.lectures.transactions], () => {
     const REGION_COLORS = [BO_PRIMARY, '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4'];
     const map: Record<string, { name: string; count: number; volume: number }> = {};
     acteurs.forEach(a => {
@@ -132,10 +247,10 @@ export function BODashboard() {
         volume: Math.round(d.volume / 1000000),
         color: REGION_COLORS[i % REGION_COLORS.length],
       }));
-  }, [acteurs, transactions]);
+  }), [_bo.lectures.acteurs, _bo.lectures.transactions, acteurs, transactions]);
 
   // ─── Répartition par type d'acteur ───────────────────────────────────────
-  const typeData = useMemo(() => {
+  const sectionRepartition = useMemo(() => sectionDe([_bo.lectures.acteurs], () => {
     const TYPE_CONFIG: Record<string, { label: string; color: string }> = {
       marchand: { label: 'Marchands', color: '#B74725' },
       producteur: { label: 'Producteurs', color: '#2E8B57' },
@@ -155,66 +270,22 @@ export function BODashboard() {
         color: TYPE_CONFIG[type]?.color || 'var(--encre-4)',
       }))
       .sort((a, b) => b.value - a.value);
-  }, [acteurs]);
+  }), [_bo.lectures.acteurs, acteurs]);
 
-  // ─── Alertes générées depuis les vraies données ───────────────────────────
-  const alertes = useMemo(() => {
-    const list: { id: number; type: string; icon: any; titre: string; desc: string; temps: string; region: string }[] = [];
-
-    // Dossiers en attente depuis longtemps
-    if (enAttente > 0) {
-      list.push({
-        id: 1,
-        type: 'warning',
-        icon: Clock,
-        titre: `${enAttente} dossier${enAttente > 1 ? 's' : ''} en attente`,
-        desc: `${enAttente} dossier${enAttente > 1 ? 's' : ''} sans traitement`,
-        temps: 'maintenant',
-        region: 'National',
-      });
-    }
-
-    // Acteurs suspendus
-    if (suspendus > 0) {
-      list.push({
-        id: 2,
-        type: 'critical',
-        icon: ShieldAlert,
-        titre: `${suspendus} acteur${suspendus > 1 ? 's' : ''} suspendu${suspendus > 1 ? 's' : ''}`,
-        desc: `${suspendus} compte${suspendus > 1 ? 's' : ''} actuellement suspendu${suspendus > 1 ? 's' : ''}`,
-        temps: 'maintenant',
-        region: 'National',
-      });
-    }
-
-    // Missions en cours
-    const missionsEnCours = missions.filter(m => m.statut === 'en_cours');
-    if (missionsEnCours.length > 0) {
-      list.push({
-        id: 4,
-        type: 'info',
-        icon: Target,
-        titre: `${missionsEnCours.length} mission${missionsEnCours.length > 1 ? 's' : ''} active${missionsEnCours.length > 1 ? 's' : ''}`,
-        desc: `${missionsEnCours.length} mission${missionsEnCours.length > 1 ? 's' : ''} en cours sur le terrain`,
-        temps: 'maintenant',
-        region: 'National',
-      });
-    }
-
-    if (list.length === 0) {
-      list.push({
-        id: 0,
-        type: 'info',
-        icon: CheckCircle2,
-        titre: 'Aucune alerte activée',
-        desc: 'Tout est en ordre. Aucune action urgente requise.',
-        temps: 'maintenant',
-        region: 'National',
-      });
-    }
-
-    return list;
-  }, [enAttente, suspendus, missions]);
+  // ─── Alertes — la seule section qui tolère une lecture partielle ──────────
+  //
+  // AVANT : les trois compteurs valaient 0 en cas de panne, la liste restait
+  // vide, et l'écran affichait « Aucune alerte activée — Tout est en ordre.
+  // Aucune action urgente requise. » sur un back-office qui n'avait rien lu.
+  //
+  // MAINTENANT : une source lue produit ses alertes ; une source qu'on n'a pas
+  // pu lire produit une alerte qui LE DIT, avec sa raison ; et la phrase
+  // rassurante n'est produite que si les trois ont répondu.
+  const alertes = useMemo(() => alertesBO({
+    dossiers: _bo.lectures.dossiers,
+    acteurs: _bo.lectures.acteurs,
+    missions: _bo.lectures.missions,
+  }), [_bo.lectures.dossiers, _bo.lectures.acteurs, _bo.lectures.missions]);
 
   // ─── Ticker : dernières transactions réelles ──────────────────────────────
   const tickerItems = useMemo(() => {
@@ -230,7 +301,7 @@ export function BODashboard() {
   }, [transactions]);
 
   // ─── Top 5 identificateurs ────────────────────────────────────────────────
-  const topIdentificateurs = useMemo(() => {
+  const sectionIdentificateurs = useMemo(() => sectionDe([_bo.lectures.acteurs, _bo.lectures.dossiers], () => {
     const identActeurs = acteurs.filter(a => a.type === 'identificateur');
     if (identActeurs.length === 0) return [];
     const dossiersParIdent: Record<string, number> = {};
@@ -255,31 +326,31 @@ export function BODashboard() {
       })
       .sort((a, b) => b.dossiers - a.dossiers)
       .slice(0, 5);
-  }, [acteurs, dossiers, zonesMap]);
+  }), [_bo.lectures.acteurs, _bo.lectures.dossiers, acteurs, dossiers, zonesMap]);
 
-  // ─── Objectifs nationaux calculés ───────────────────────────────────────
-  const objectifs = useMemo(() => {
-    const tauxValidation = totalActeurs > 0 ? Math.round((actifs / totalActeurs) * 100) : 0;
-    const acteursAvecPhoto = acteurs.filter(a => a.photoUrl && String(a.photoUrl).trim() !== '').length;
-    const digitalisation = totalActeurs > 0 ? Math.round((acteursAvecPhoto / Math.max(totalActeurs, 1)) * 100) : 0;
-    const femmesActives = acteurs.filter(a => a.genre === 'femme' && a.statut === 'actif').length;
-    const inclusionSociale = totalActeurs > 0 ? Math.round((femmesActives / Math.max(totalActeurs, 1)) * 100) : 0;
-
-    return [
-      { label: 'Acteurs enrôlés', current: totalActeurs, target: 15000, color: BO_PRIMARY, estimation: false },
-      { label: 'Digitalisation', current: digitalisation, target: 90, color: '#3B82F6', suffix: '%', estimation: true },
-      { label: 'Taux validation', current: tauxValidation, target: 95, color: '#10B981', suffix: '%', estimation: false },
-      { label: 'Inclusion sociale', current: inclusionSociale, target: 75, color: '#8B5CF6', suffix: '%', estimation: true },
-    ];
-  }, [totalActeurs, actifs, acteurs]);
+  // ─── Objectifs nationaux — les quatre barres de progression ──────────────
+  //
+  // Trois des quatre sont des POURCENTAGES d'un total. Sans le total, elles
+  // n'existent pas — et l'écran écrivait `totalActeurs > 0 ? … : 0`, donc 0 %
+  // quand rien n'avait été lu. Une barre à 0 % face à une cible de 95 % se lit
+  // comme un échec de terrain, pas comme une absence de mesure.
+  //
+  // Les couleurs restent ici : la règle dit ce qui est vrai, l'écran dit à
+  // quoi ça ressemble.
+  const sectionObjectifs = useMemo(
+    () => objectifsBO(kpis.totalActeurs, kpis.actifs, _bo.lectures.acteurs),
+    [kpis.totalActeurs, kpis.actifs, _bo.lectures.acteurs],
+  );
 
   // ─── Actions rapides ─────────────────────────────────────────────────────
   const quickActions = [
-    { label: 'Valider dossiers', icon: CheckCircle2, path: '/backoffice/enrolement', color: '#10B981', badge: enAttente || null },
+    { label: 'Valider dossiers', icon: CheckCircle2, path: '/backoffice/enrolement', color: '#10B981', badge: kpis.enAttente.type === 'nombre' && kpis.enAttente.valeur > 0 ? kpis.enAttente.valeur : null },
     { label: 'Supervision', icon: Eye, path: '/backoffice/supervision', color: '#3B82F6' },
     { label: 'Rapports', icon: BarChart3, path: '/backoffice/rapports', color: '#8B5CF6' },
     { label: 'Acteurs', icon: Users, path: '/backoffice/acteurs', color: BO_PRIMARY },
-    { label: 'Missions', icon: Target, path: '/backoffice/missions', color: '#10B981', badge: missions.filter(m => m.statut === 'en_cours').length || null },
+    { label: 'Missions', icon: Target, path: '/backoffice/missions', color: '#10B981', badge: _bo.lectures.missions.type === 'lue'
+        ? (_bo.lectures.missions.valeur.filter(m => m.statut === 'en_cours').length || null)
+        : null },
   ];
 
   // ─── Ticker auto-scroll ───────────────────────────────────────────────────
@@ -293,7 +364,6 @@ export function BODashboard() {
 
   const currentTicker = tickerItems[tickerIndex] || tickerItems[0];
 
-  const maxRegionActeurs = regionData[0]?.acteurs || 1;
   const liveStatus = (() => {
     if (rt.connected && ws.isConnected && !rt.error) {
       return {
@@ -420,28 +490,35 @@ export function BODashboard() {
       </motion.div>
       )}
 
-      {/* KPIs - 100 % données réelles */}
+      {/* LES SEPT COMPTEURS — BO-01.
+          Chacun passe par `kpiTuile` : un nombre LU s'affiche (zéro compris),
+          une lecture en cours dit « Lecture… », une lecture échouée dit
+          « Indisponible » et porte sa raison dans l'explication. Aucun de ces
+          trois cas ne peut plus en devenir un autre. */}
       {_bo.hasPermission('dashboard.read') && (
       <KPIGrid>
-        <UniversalKPI label="Total acteurs" animatedTarget={totalActeurs} sub="enregistrés" icon={Users} color={BO_PRIMARY} onClick={() => navigate('/backoffice/acteurs')} delay={0} />
-        <UniversalKPI label="Acteurs actifs" animatedTarget={actifs} sub="du total" icon={UserCheck} color="#10B981" onClick={() => navigate('/backoffice/acteurs')} delay={0.04} />
+        <UniversalKPI label="Total acteurs" {...kpiTuile(kpis.totalActeurs)} sub="enregistrés" icon={Users} color={BO_PRIMARY} onClick={() => navigate('/backoffice/acteurs')} delay={0} />
+        <UniversalKPI label="Acteurs actifs" {...kpiTuile(kpis.actifs)} sub="du total" icon={UserCheck} color="#10B981" onClick={() => navigate('/backoffice/acteurs')} delay={0.04} />
         <UniversalKPI
           label="Volume total"
-          value={volumeTotal >= 1000000 ? `${(volumeTotal / 1000000).toFixed(1)}M` : (volumeTotal || 0).toLocaleString('fr-FR')}
-          suffix="FCFA"
+          {...kpiTuile(kpis.volumeTotal, montantCourt)}
+          suffix={kpis.volumeTotal.type === 'nombre' ? 'FCFA' : undefined}
           sub="toutes transactions"
           icon={Wallet}
           color="#3B82F6"
           onClick={() => navigate('/backoffice/supervision')}
           delay={0.08}
         />
-        <UniversalKPI label="Suspendus" animatedTarget={suspendus} sub="acteurs" icon={XCircle} color="#EF4444" iconAnimation="pulse" onClick={() => navigate('/backoffice/acteurs')} delay={0.16} />
-        <UniversalKPI label="En attente" animatedTarget={enAttente} sub="dossiers à valider" icon={Clock} color="#F59E0B" iconAnimation={enAttente > 0 ? 'pulse' : 'float'} onClick={() => navigate('/backoffice/enrolement')} delay={0.2} />
-        <UniversalKPI label="Transactions" animatedTarget={transactionsTotal} sub="enregistrées" icon={Activity} color={BO_DARK} onClick={() => navigate('/backoffice/supervision')} delay={0.24} />
+        <UniversalKPI label="Suspendus" {...kpiTuile(kpis.suspendus)} sub="acteurs" icon={XCircle} color="#EF4444" iconAnimation="pulse" onClick={() => navigate('/backoffice/acteurs')} delay={0.16} />
+        <UniversalKPI label="En attente" {...kpiTuile(kpis.enAttente)} sub="dossiers à valider"
+          icon={Clock} color="#F59E0B"
+          iconAnimation={kpis.enAttente.type === 'nombre' && kpis.enAttente.valeur > 0 ? 'pulse' : 'float'}
+          onClick={() => navigate('/backoffice/enrolement')} delay={0.2} />
+        <UniversalKPI label="Transactions" {...kpiTuile(kpis.transactions)} sub="enregistrées" icon={Activity} color={BO_DARK} onClick={() => navigate('/backoffice/supervision')} delay={0.24} />
         <UniversalKPI
           label="Zones actives"
-          animatedTarget={zones.filter(z => z.actif === true).length}
-          sub={`sur ${zones.length} zones`}
+          {...kpiTuile(kpis.zonesActives)}
+          sub={sousTitreZones(kpis.zonesTotal)}
           icon={MapPin}
           color="#B74725"
           onClick={() => navigate('/backoffice/zones')}
@@ -536,7 +613,8 @@ export function BODashboard() {
             }
           >
             <p className="text-xs text-gray-700 mb-4">Nouveaux acteurs et transactions par mois</p>
-            {monthlyData.every(m => m.acteurs === 0 && m.transactions === 0) ? (
+            <BlocSection etat={sectionCroissance} hauteur="h-[210px]">{(monthlyData) => (
+            monthlyData.every(m => m.acteurs === 0 && m.transactions === 0) ? (
               <div className="h-[210px] flex items-center justify-center text-gray-400 text-sm font-semibold">
                 Aucune donnée disponible
               </div>
@@ -592,7 +670,8 @@ export function BODashboard() {
                   </div>
                 </motion.div>
               </motion.div>
-            )}
+            )
+            )}</BlocSection>
           </UniversalSectionCardBO>
         </div>
         )}
@@ -610,7 +689,8 @@ export function BODashboard() {
             className="h-full"
           >
             <p className="text-xs text-gray-700 mb-4">Par type d'acteur</p>
-            {typeData.length === 0 ? (
+            <BlocSection etat={sectionRepartition} hauteur="h-[150px]">{(typeData) => (
+            typeData.length === 0 ? (
               <div className="h-[150px] flex items-center justify-center text-gray-400 text-sm font-semibold">
                 Aucun acteur enregistré
               </div>
@@ -692,7 +772,8 @@ export function BODashboard() {
                   ))}
                 </div>
               </>
-            )}
+            )
+            )}</BlocSection>
           </UniversalSectionCardBO>
         </div>
         )}
@@ -714,9 +795,11 @@ export function BODashboard() {
         }
       >
         <p className="text-xs text-gray-700 mb-4">Progression vers les cibles fixées</p>
+        <BlocSection etat={sectionObjectifs}>{(objectifs) => (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {objectifs.map((obj, i) => {
-            const pct = Math.min(Math.round(obj.suffix ? obj.current : (obj.current / obj.target) * 100), 100);
+            const pct = pourcentageBarre(obj);
+            const couleur = COULEURS_OBJECTIFS[obj.label] ?? BO_PRIMARY;
             return (
               <motion.div
                 key={obj.label}
@@ -734,7 +817,7 @@ export function BODashboard() {
                   </div>
                   <motion.span
                     className="text-xs font-black"
-                    style={{ color: obj.color }}
+                    style={{ color: couleur }}
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.5 + i * 0.06, type: 'spring', stiffness: 300 }}
@@ -742,7 +825,7 @@ export function BODashboard() {
                     {pct}%
                   </motion.span>
                 </div>
-                <BOProgressBar value={pct} color={obj.color} height="md" delay={0.3 + i * 0.1} className="mb-2" />
+                <BOProgressBar value={pct} color={couleur} height="md" delay={0.3 + i * 0.1} className="mb-2" />
                 <div className="flex justify-between text-[10px] text-gray-400">
                   <span>{obj.suffix ? `${obj.current}${obj.suffix}` : (obj.current || 0).toLocaleString()}</span>
                   <span>Cible : {obj.suffix ? `${obj.target}${obj.suffix}` : (obj.target || 0).toLocaleString()}</span>
@@ -751,6 +834,7 @@ export function BODashboard() {
             );
           })}
         </div>
+        )}</BlocSection>
       </UniversalSectionCardBO>
       )}
 
@@ -780,7 +864,10 @@ export function BODashboard() {
           }
         >
           <p className="text-xs text-gray-700 mb-4">Acteurs et volume (M FCFA)</p>
-          {regionData.length === 0 ? (
+          <BlocSection etat={sectionRegions} hauteur="h-32">{(regionData) => {
+          const maxRegionActeurs = regionData[0]?.acteurs || 1;
+          return (
+          regionData.length === 0 ? (
             <div className="h-32 flex items-center justify-center text-gray-400 text-sm font-semibold">
               Aucune donnée régionale disponible
             </div>
@@ -828,7 +915,9 @@ export function BODashboard() {
                 </motion.div>
               ))}
             </div>
-          )}
+          )
+          );
+          }}</BlocSection>
         </UniversalSectionCardBO>
         )}
 
@@ -839,15 +928,15 @@ export function BODashboard() {
           icon={Bell}
           iconAnimated={true}
           variant={
-            alertes.some(a => a.type === 'critical') ? 'danger'
-              : alertes.some(a => a.type === 'warning') ? 'warning'
+            alertes.some(a => a.ton === 'critical') ? 'danger'
+              : alertes.some(a => a.ton === 'warning') ? 'warning'
                 : 'info'
           }
           delay={0.25}
           shimmer={true}
           className="h-full"
           headerActions={
-            alertes.some(a => a.type !== 'info') ? (
+            urgentes(alertes) > 0 ? (
               <motion.div
                 className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-red-50 border-2 border-red-200"
                 animate={{ scale: [1, 1.05, 1] }}
@@ -855,7 +944,7 @@ export function BODashboard() {
               >
                 <Zap className="w-3.5 h-3.5 text-red-600" />
                 <span className="text-xs font-bold text-red-600">
-                  {alertes.filter(a => a.type !== 'info').length} urgentes
+                  {urgentes(alertes)} urgentes
                 </span>
               </motion.div>
             ) : null
@@ -863,14 +952,21 @@ export function BODashboard() {
         >
           <div className="space-y-3">
             {alertes.map((alerte, i) => {
-              const Icon = alerte.icon || Bell;
-              const isCritical = alerte.type === 'critical';
-              const isWarning = alerte.type === 'warning';
+              // Une source qu'on n'a pas pu lire a son propre ton : ni rouge
+              // (ce n'est pas une urgence constatée), ni bleu (ce n'est pas une
+              // information rassurante). C'est un trou, et il se voit.
+              const isInconnu = alerte.ton === 'inconnu';
+              const Icon = isInconnu ? HelpCircle
+                : alerte.ton === 'critical' ? ShieldAlert
+                  : alerte.ton === 'warning' ? Clock
+                    : alerte.id === 4 ? Target : CheckCircle2;
+              const isCritical = alerte.ton === 'critical';
+              const isWarning = alerte.ton === 'warning';
               return (
                 <motion.button
                   key={alerte.id}
                   onClick={() => setActiveAlerte(activeAlerte === alerte.id ? null : alerte.id)}
-                  className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${isCritical ? 'bg-red-50 border-red-200' : isWarning ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}
+                  className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${isInconnu ? 'bg-gray-50 border-gray-300 border-dashed' : isCritical ? 'bg-red-50 border-red-200' : isWarning ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}
                   initial={{ opacity: 0, x: -15 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 + i * 0.08 }}
@@ -878,9 +974,9 @@ export function BODashboard() {
                   whileTap={{ scale: 0.99 }}
                 >
                   <div className="flex items-start gap-3">
-                    <motion.div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isCritical ? 'bg-red-100' : isWarning ? 'bg-orange-100' : 'bg-blue-100'}`}
+                    <motion.div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isInconnu ? 'bg-gray-200' : isCritical ? 'bg-red-100' : isWarning ? 'bg-orange-100' : 'bg-blue-100'}`}
                       animate={isCritical ? { scale: [1, 1.1, 1], opacity: [1, 0.85, 1] } : {}} transition={{ duration: 1.5, repeat: Infinity }}>
-                      <Icon className={`w-5 h-5 ${isCritical ? 'text-red-600' : isWarning ? 'text-orange-600' : 'text-blue-600'}`} />
+                      <Icon className={`w-5 h-5 ${isInconnu ? 'text-gray-600' : isCritical ? 'text-red-600' : isWarning ? 'text-orange-600' : 'text-blue-600'}`} />
                     </motion.div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
@@ -931,7 +1027,8 @@ export function BODashboard() {
         }
       >
         <p className="text-xs text-gray-700 mb-4">Top identificateurs - dossiers traités</p>
-        {topIdentificateurs.length === 0 ? (
+        <BlocSection etat={sectionIdentificateurs}>{(topIdentificateurs) => (
+        topIdentificateurs.length === 0 ? (
           <div className="py-10 flex flex-col items-center justify-center text-gray-400">
             <Users className="w-10 h-10 mb-2 opacity-30" />
             <p className="text-sm font-semibold">Aucun identificateur enregistré</p>
@@ -978,7 +1075,8 @@ export function BODashboard() {
               );
             })}
           </div>
-        )}
+        )
+        )}</BlocSection>
       </UniversalSectionCardBO>
       )}
 

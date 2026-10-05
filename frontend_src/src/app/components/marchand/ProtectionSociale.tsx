@@ -24,7 +24,7 @@ import {
   type Cotisation,
 } from '../../services/protectionSociale.service';
 
-const COLOR = '#E67E22';
+const COLOR = 'var(--herite-orange)';
 const ORG_STYLE: Record<Organisme, { color: string; icon: React.ElementType }> = {
   CNPS: { color: '#2E7D32', icon: Shield },
   CNAM: { color: '#1565C0', icon: HeartPulse },
@@ -177,8 +177,8 @@ export function ProtectionSociale() {
                 <span
                   className="text-xs px-2.5 py-1 rounded-full font-semibold"
                   style={{
-                    color: a.statut === 'actif' ? '#166534' : a.statut === 'en_cours' ? st.color : 'var(--encre-3)',
-                    backgroundColor: a.statut === 'non_enrole' ? '#F3F4F6' : `${st.color}18`,
+                    color: a.statut === 'actif' ? 'var(--color-green-800)' : a.statut === 'en_cours' ? st.color : 'var(--encre-3)',
+                    backgroundColor: a.statut === 'non_enrole' ? 'var(--color-gray-100)' : `${st.color}18`,
                   }}
                 >
                   {a.statut === 'actif' ? 'Actif' : a.statut === 'en_cours' ? 'En cours' : 'Non enrôlé'}
@@ -287,8 +287,8 @@ export function ProtectionSociale() {
                       onClick={() => setFormOrg(o)}
                       className="py-3 rounded-2xl border-2 font-semibold text-sm flex flex-col items-center gap-1"
                       style={{
-                        borderColor: actif ? st.color : '#E5E7EB',
-                        backgroundColor: actif ? `${st.color}12` : '#fff',
+                        borderColor: actif ? st.color : 'var(--border)',
+                        backgroundColor: actif ? `${st.color}12` : 'var(--herite-blanc-pur)',
                         color: actif ? st.color : 'var(--encre-3)',
                       }}
                     >
@@ -324,8 +324,8 @@ export function ProtectionSociale() {
                     onClick={() => setMode(mp)}
                     className="flex-1 py-2 rounded-xl border-2 text-xs font-semibold capitalize"
                     style={{
-                      borderColor: mode === mp ? COLOR : '#E5E7EB',
-                      backgroundColor: mode === mp ? `${COLOR}12` : '#fff',
+                      borderColor: mode === mp ? COLOR : 'var(--border)',
+                      backgroundColor: mode === mp ? `${COLOR}12` : 'var(--herite-blanc-pur)',
                       color: mode === mp ? COLOR : 'var(--encre-3)',
                     }}
                   >

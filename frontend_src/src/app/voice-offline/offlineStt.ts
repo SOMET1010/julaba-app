@@ -19,6 +19,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 
 import { nativeStt } from './nativeStt';
+import * as vtrace from '../utils/voiceTrace'; // VOICE-01 : moteur STT, transcript brut, durée — observation seule
 
 // Drapeau PERSISTANT : le moteur natif a déjà répondu « disponible » sur cet
 // appareil. Permet à offlineModelInstalled() (synchrone) d'être juste dès le
@@ -39,15 +40,36 @@ export function offlineModelInstalled(): boolean {
   try { return localStorage.getItem(INSTALL_KEY) === '1'; } catch { return false; }
 }
 
-/** Sonde le moteur natif (idempotent, partagé). Met à jour les drapeaux. */
+/**
+ * Sonde le moteur natif. Met à jour les drapeaux.
+ *
+ * UN « NON » NE VAUT QUE POUR L'INSTANT OÙ IL EST DIT — B3, 21/09/2026.
+ * Sur Android, le plugin natif s'enregistre APRÈS le premier écran ; la sonde
+ * de démarrage (`warmOfflineModelIfInstalled`, appelée par `main.tsx` en tâche
+ * de fond) tombe donc régulièrement sur un moteur pas encore monté. La
+ * promesse était gardée telle quelle pour TOUTE la session — seule une
+ * exception la remettait à zéro, jamais un `false` — si bien que le micro
+ * restait mort jusqu'au prochain lancement de l'application alors que le
+ * moteur était là une seconde plus tard. C'est le « micro lent au démarrage »
+ * remonté du terrain.
+ *
+ * Ce qui reste mémorisé, et c'est la raison d'être de ce cache : un OUI
+ * (`engineReady`, on ne resonde plus à chaque phrase) et la sonde EN VOL (N
+ * appels simultanés au démarrage ne déclenchent qu'une sonde).
+ */
 function probeEngine(): Promise<boolean> {
+  if (engineReady) return Promise.resolve(true); // déjà confirmé : rien à redemander
   if (!probePromise) {
     probePromise = (async () => {
       const ok = await nativeStt.isAvailable();
       engineReady = ok;
+      vtrace.info('STT_SONDE', { moteur: 'sherpa-native', disponible: ok });
       if (ok) { try { localStorage.setItem(INSTALL_KEY, '1'); } catch { /* ignore */ } }
       return ok;
-    })().catch(() => { probePromise = null; return false; });
+    })()
+      // Négatif : on oublie, pour pouvoir redemander au prochain besoin.
+      .then((ok) => { if (!ok) probePromise = null; return ok; })
+      .catch(() => { probePromise = null; return false; });
   }
   return probePromise;
 }
@@ -126,6 +148,7 @@ export async function startLiveDictation(
     }
   };
   dbg('LIVE_WIRED');
+  vtrace.ecoute('debut', 'offlineStt.startLiveDictation', { moteur: 'sherpa-native', sampleRate: ctx.sampleRate, etat: ctx.state });
 
   const concat = (): Float32Array => {
     const out = new Float32Array(totalSamples);
@@ -144,7 +167,9 @@ export async function startLiveDictation(
     if (busy) return '';
     busy = true;
     try {
+      const _t0 = vtrace.top();
       const texte = await nativeStt.transcribe(concat(), ctx.sampleRate);
+      vtrace.sttFin('offlineStt.startLiveDictation', 'sherpa-native', texte, _t0, { finale, secondesAudio: Math.round((totalSamples / ctx.sampleRate) * 10) / 10 });
       if (!stopped || finale) onText(texte, finale);
       return texte;
     } catch { return ''; }
@@ -160,6 +185,7 @@ export async function startLiveDictation(
   const stop = async (): Promise<void> => {
     if (stopped) return;
     stopped = true;
+    vtrace.ecoute('fin', 'offlineStt.startLiveDictation');
     clearInterval(timer);
     try { processor.onaudioprocess = null as unknown as (ev: AudioProcessingEvent) => void; } catch { /* */ }
     try { processor.disconnect(); } catch { /* */ }
@@ -196,5 +222,6 @@ export async function transcribeWav(wav: Blob | ArrayBuffer, useGrammar = true, 
   await ensureOfflineModel();
   const arrayBuf = wav instanceof Blob ? await wav.arrayBuffer() : wav.slice(0);
   const audioBuf = await getCtx().decodeAudioData(arrayBuf as ArrayBuffer);
+  vtrace.info('STT_MOTEUR', { moteur: 'sherpa-native', sampleRate: audioBuf.sampleRate, secondesAudio: Math.round(audioBuf.duration * 10) / 10 });
   return nativeStt.transcribe(audioBuf.getChannelData(0), audioBuf.sampleRate);
 }

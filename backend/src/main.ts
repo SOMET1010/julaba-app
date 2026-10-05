@@ -154,7 +154,26 @@ async function bootstrap() {
     if (origin && allowedOrigins.includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+      // PUT MANQUAIT — retour terrain du 24/09 : « Erreur, Impossible de
+      // modifier le stock », et l'agent de test du 25/09 :
+      // `saveInlineEdit failed: Failed to fetch`.
+      //
+      // La modification d'un produit part en `PUT /caisse/produits/:id`
+      // (client d'API du front, ligne 367) et la route existe bien
+      // (caisse-rest.controller.ts:872). Mais cette ligne ne déclarait pas
+      // PUT : le navigateur recevait « méthodes autorisées : GET, POST,
+      // PATCH, DELETE, OPTIONS », refusait le préflight, et la requête ne
+      // PARTAIT JAMAIS. Côté serveur, rien à voir dans les journaux — la
+      // requête n'y arrivait pas.
+      //
+      // C'est pour ça que la vente marchait (POST) et pas le stock (PUT).
+      // Et c'est pour ça que le correctif STK-06 du 24/09, pourtant juste,
+      // restait invisible : il corrigeait ce que le serveur ÉCRIT, quand le
+      // problème était que la requête n'arrivait pas jusqu'à lui.
+      //
+      // La liste est vérifiée par `test/unit/cors-methodes.spec.ts` : toute
+      // méthode employée par le front doit y figurer.
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
       res.setHeader('Vary', 'Origin');
     }

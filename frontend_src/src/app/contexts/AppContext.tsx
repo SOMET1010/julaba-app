@@ -40,6 +40,8 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 import { normalizeRole } from '../types/constants';
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import * as audioManager from '../services/audioManager';
+import * as vtrace from '../utils/voiceTrace';
+import { normaliserNiveau, NIVEAU_VOIX_PAR_DEFAUT, type NiveauVoix } from '../i18n/voice/niveauVoix'; // VOICE-01 : journal de voix (observation seule)
 import { API_URL } from '../utils/api';
 import { rafraichirSession, apiRequest } from '../services/api/api-client';
 import * as caisseApi from '../services/api/caisse-api';
@@ -217,6 +219,10 @@ interface AppContextType {
   speak: (text: string) => void;
   voiceMuted: boolean;
   toggleVoiceMuted: () => void;
+  /** Combien Tantie parle (B5). « complet » par défaut — un réglage ne peut
+   *  JAMAIS taire une phrase critique pour l'argent, voir i18n/voice/niveauVoix.ts. */
+  niveauVoix: NiveauVoix;
+  setNiveauVoix: (n: NiveauVoix) => void;
   isSpeaking: boolean;
   speakingText: string;
   
@@ -300,6 +306,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceMuted, setVoiceMuted] = useState(() => localStorage.getItem('julaba_voice_muted') === 'true');
+  // NIVEAU DE VOIX (B5). `normaliserNiveau` refuse de transformer une absence
+  // de choix — ou un ancien niveau numérique « 0 » resté en mémoire — en
+  // silence : sans choix explicite, on parle.
+  const [niveauVoix, setNiveauVoixEtat] = useState<NiveauVoix>(() => {
+    try { return normaliserNiveau(localStorage.getItem('julaba_niveau_voix')); } catch { return NIVEAU_VOIX_PAR_DEFAUT; }
+  });
+  const setNiveauVoix = (n: NiveauVoix) => {
+    setNiveauVoixEtat(n);
+    try { localStorage.setItem('julaba_niveau_voix', n); } catch { /* stockage indisponible */ }
+    vtrace.info('NIVEAU_VOIX', { niveau: n });
+  };
   const toggleVoiceMuted = () => setVoiceMuted(prev => { const next = !prev; localStorage.setItem('julaba_voice_muted', String(next)); return next; });
   const [userInteracted, setUserInteracted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -461,7 +478,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           price: Number(tx.montant) || 0,
           montant: Number(tx.montant) || 0,
           source: tx.source || 'kassa',
-          category: tx.description ? tx.description.toLowerCase() : (tx.produit || '').toLowerCase(),
+          // DEP-02 : `category` PORTE UNE CATÉGORIE. Cette ligne y mettait le
+          // MOTIF en minuscules (« taxe mairie », « médicaments ») — un champ
+          // nommé « catégorie » qui contenait du texte libre, et sur lequel le
+          // camembert « dépenses par catégorie » groupait. Deux sens sur une
+          // même donnée, et la vraie catégorie touchée n'arrivait jamais
+          // jusqu'ici. On lit maintenant la colonne, et rien d'autre : absente
+          // = absente, ce que l'écran sait nommer.
+          category: tx.category,
           details: tx.details || null,
           // `??` ET NON `||` — corrigé le 18/09/2026. En JavaScript `0 || x`
           // vaut `x` : un bénéfice serveur valant EXACTEMENT ZÉRO déclenchait
@@ -700,8 +724,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ═══════════════════════════════════════════════════════════════════
   
   const speak = async (text: string) => {
+    vtrace.ttsAppel('AppContext.speak', text, { role: user?.role ?? null, muet: voiceMuted });
     if (!text?.trim()) return;
+    if (user?.role !== 'marchand') vtrace.ttsIgnoree('AppContext.speak', text, 'role-non-marchand');
     if (user?.role !== 'marchand') return;
+    if (voiceMuted) vtrace.ttsIgnoree('AppContext.speak', text, 'muet');
     if (voiceMuted) return;
     // Plus de garde « if (isSpeaking) return » : une action utilisateur DOIT
     // pouvoir interrompre l'annonce en cours. Le chef d'orchestre (audioManager)
@@ -798,7 +825,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ? {
             montant: transaction.price * transaction.quantity,
             description: transaction.productName || '',
-            categorie: transaction.category || 'autre',
+            // DEP-02 : la catégorie part telle qu'elle a été TOUCHÉE, ou
+            // pas du tout. Le `|| 'autre'` envoyait « autre » sur une dépense
+            // sans catégorie — un CHOIX possible de la marchande, collé sur
+            // une absence de choix.
+            categorie: transaction.category,
             mode_paiement: transaction.paymentMethod || 'especes',
           }
         : {
@@ -1069,6 +1100,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           price: Number(tx.montant) || 0,
           montant: Number(tx.montant) || 0,
           source: tx.source || 'kassa',
+          // Cette seconde projection des MÊMES lignes ne lisait pas `category`
+          // du tout : après un rechargement, la catégorie d'une dépense
+          // disparaissait de l'écran. Deux lectures d'une même table qui ne
+          // rendent pas la même chose — on les aligne.
+          category: tx.category,
           details: tx.details || null,
           // `??` ET NON `||` — corrigé le 18/09/2026. En JavaScript `0 || x`
           // vaut `x` : un bénéfice serveur valant EXACTEMENT ZÉRO déclenchait
@@ -1148,6 +1184,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (customStart && customEnd) {
           startDate.setTime(new Date(customStart).getTime());
           endDate.setTime(new Date(customEnd).getTime());
+          // LE DERNIER JOUR COMPTE — 25/09/2026.
+          //
+          // Les trois autres périodes bornent leur fin à 23:59:59.999 ; celle-ci
+          // ne le faisait pas. `new Date('2026-09-25')` vaut MINUIT, donc toute
+          // vente de la journée tombait hors de la période.
+          //
+          // Mesuré par l'agent de test : « Perso du 25/09 au 25/09 affiche 0,
+          // alors qu'Aujourd'hui affiche 11 750 » — et « Perso du 01/09 au
+          // 25/09 » donnait 3 500, MOINS que les 7 derniers jours. Une période
+          // plus longue qui montre moins d'argent : la marchande ne peut que
+          // conclure qu'elle a perdu des ventes.
+          //
+          // Quand elle choisit « du 1er au 25 », elle veut le 25 dedans.
+          startDate.setHours(0, 0, 0, 0);
+          endDate.setHours(23, 59, 59, 999);
         }
         break;
     }
@@ -1261,6 +1312,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     speak,
     voiceMuted,
     toggleVoiceMuted,
+    niveauVoix,
+    setNiveauVoix,
     isSpeaking,
     speakingText,
     roleColor,
@@ -1320,6 +1373,8 @@ export function useApp() {
       speak: () => {},
       voiceMuted: false,
       toggleVoiceMuted: () => {},
+      niveauVoix: NIVEAU_VOIX_PAR_DEFAUT,
+      setNiveauVoix: () => {},
       isSpeaking: false,
       speakingText: '',
       roleColor: '#C46210',

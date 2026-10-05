@@ -30,18 +30,20 @@ import { guidageVocal } from '../../utils/accessMode';
 import { quantiteAvecUnite } from '../../utils/unite.utils';
 import { creerLigneProvisoire, type LigneProvisoire } from '../../services/ligneProvisoire';
 import { phrasePrixManquant, phraseQuantiteManquante } from '../../services/dialoguesTata';
+import { resoudreMessage, t } from '../../i18n/voice/runtime';
+import { rendreMessage } from '../../i18n/voice/contrat-audio';
 import { BoutonReecouter, ConfirmationLigne } from './ConfirmationLigne';
-import { CATALOGUE_PRODUITS, getImageByNom, rechercherProduitCatalogue } from '../../data/catalogue-produits';
+import { AjoutProduitGuide } from './AjoutProduitGuide';
+import { BoutonDirePrix } from './BoutonDirePrix';
+// STK-03 — on ne lit plus `CATALOGUE_PRODUITS` : ses 37 entrées portent des
+// PRIX qui ne sont pas ceux de la marchande. Les deux fonctions qui restent ne
+// servent qu'à retrouver une IMAGE par son nom, jamais un prix.
+import { getImageByNom, rechercherProduitCatalogue } from '../../data/catalogue-produits';
+import { vueDeLEtal, type ProduitDeLEtal } from '../../services/etalDeLaMarchande';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
 
-const ORANGE = '#B74725';
-
-/** Étape 1, dite : la photo est le geste, la voix le nomme. */
-const QUESTION_PRODUIT = 'Touche la photo de ce que tu as vendu.';
-
-/** Un montant à DIRE : « 1 500 francs », jamais « 1 500 F » (la synthèse lit « F » comme une lettre). */
-const francs = (n: number) => `${Math.round(n).toLocaleString('fr-FR')} francs`;
+const ORANGE = 'var(--commerce-action)';
 
 /** Résultat d'appariement au catalogue (fourni par le parent, qui connaît les produits). */
 export interface AppariementCatalogue {
@@ -52,6 +54,9 @@ export interface AppariementCatalogue {
 }
 
 interface Props {
+  /** SON étal : les produits qu'elle vend, à SES prix. STK-03 — c'est la SEULE
+   *  source des tuiles. Vide = aucune tuile, jamais un catalogue de secours. */
+  etal: readonly ProduitDeLEtal[];
   /** Reçoit la ligne CONFIRMÉE (statut 'confirmee'). Le parent l'ajoute au panier. */
   onValider: (l: LigneProvisoire) => void;
   /** Apparie le nom tapé à un produit du catalogue (null si inconnu → ligne libre). */
@@ -64,10 +69,14 @@ interface Props {
 
 const CHIFFRES_CLAVIER = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
-export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix }: Props) {
+export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initialPrix }: Props) {
   const [etape, setEtape] = useState<'saisie' | 'confirmation'>('saisie');
-  const catalogueInitial = initialProduit ? rechercherProduitCatalogue(initialProduit) : null;
-  const prixConnuInitial = initialPrix ?? catalogueInitial?.prixVente ?? null;
+  // STK-03 — LE PRIX PRÉ-REMPLI NE PEUT VENIR QUE D'ELLE. Il lisait
+  // `rechercherProduitCatalogue(nom)?.prixVente` en repli : le prix du
+  // catalogue en dur se posait dans le formulaire sans qu'elle l'ait dit, et
+  // `prixModifiable` passait à false — elle ne pouvait même pas le corriger.
+  // `initialPrix` vient du produit PRÉSÉLECTIONNÉ de son étal : c'est le sien.
+  const prixConnuInitial = initialPrix ?? null;
 
   const [produit, setProduit] = useState(initialProduit || '');
   const [quantite, setQuantite] = useState(1);
@@ -79,7 +88,12 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
   const [prixModifiable, setPrixModifiable] = useState(prixConnuInitial == null);
   // Repli rare : produit absent du catalogue-images → un mot à taper, pas plus.
   const [autreOuvert, setAutreOuvert] = useState(false);
+  // STK-03 §2 — poser un produit sur son étal n'est pas vendre : c'est un
+  // autre geste, et il a son propre écran.
+  const [poseOuverte, setPoseOuverte] = useState(false);
 
+  // STK-03 — l'écran ne décide pas s'il a des tuiles : la règle le dit.
+  const vue = vueDeLEtal(etal);
   const produitImage = produit ? (rechercherProduitCatalogue(produit)?.image || getImageByNom(produit)) : '';
   const produitChoisi = produit.trim().length >= 2;
 
@@ -92,14 +106,24 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
     dernierePhraseRef.current = t;
     if (guidageVocal()) speak(t);
   };
+  // Même règle, pour une CLÉ du catalogue i18n : résolue dans la langue
+  // active, retenue pour « réécouter », remise au rendu vocal (défaut : speak).
+  const direMessage = (id: string, vars?: Record<string, string | number>) => {
+    const m = resoudreMessage(id, vars);
+    dernierePhraseRef.current = m.texte;
+    if (guidageVocal()) void rendreMessage(m, speak);
+  };
   // L'unité sert à dire « 3 tas » plutôt que « 3 » — la même que celle qui
   // ira sur la ligne (apparier), pas une devinette.
   const uniteProduit = produitChoisi && apparier ? (apparier(produit)?.unite ?? null) : null;
   // La question de l'étape EN COURS. Quand elle tape un nom libre (« Pas dans
   // la liste »), on ne redit pas le nom à chaque lettre : « ce produit ».
+  // Étape 1, dite : la photo est le geste, la voix le nomme (TATA_REPLI_TOUCHE_PHOTO).
+  // Étal vide : la phrase dite est la question du premier produit, pas
+  // « touche la photo » — il n'y a aucune photo à toucher.
   const questionEtape = !produitChoisi
-    ? QUESTION_PRODUIT
-    : `${phraseQuantiteManquante(autreOuvert ? '' : produit)} ${prixModifiable ? phrasePrixManquant() : `Le prix est de ${francs(parseInt(prix || '0', 10) || 0)}.`}`;
+    ? (vue.type === 'premier-produit' ? t('TATA_ETAL_VIDE') : t('TATA_REPLI_TOUCHE_PHOTO'))
+    : `${phraseQuantiteManquante(autreOuvert ? '' : produit)} ${prixModifiable ? phrasePrixManquant() : t('TATA_REPLI_PRIX_CONNU', { montant: Math.round(parseInt(prix || '0', 10) || 0) })}`;
   // Posée au CHANGEMENT d'étape, jamais à chaque rendu — et pas pendant que
   // ConfirmationLigne est affichée : c'est elle qui parle alors.
   useEffect(() => {
@@ -107,9 +131,12 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
     if (dernierePhraseRef.current !== questionEtape) dire(questionEtape);
   }, [etape, produitChoisi, prixModifiable, autreOuvert]); // eslint-disable-line react-hooks/exhaustive-deps -- la phrase est relue au moment où l'étape change
 
-  const choisirProduit = (nom: string, prixVente: number) => {
+  // STK-03 — le paramètre s'appelait `prixVente`, le nom du champ du catalogue
+  // générique. Un mot qui désigne deux choses finit par les confondre : ici le
+  // prix vient de SA tuile, donc d'elle.
+  const choisirProduit = (nom: string, prixDelle: number) => {
     setProduit(nom);
-    setPrix(String(prixVente));
+    setPrix(String(prixDelle));
     setPrixModifiable(false);
   };
 
@@ -124,7 +151,9 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
   // la phrase précédente, donc taper vite ne fait entendre que la dernière.
   const taperPrix = (valeur: string) => {
     setPrix(valeur);
-    dire(valeur ? francs(parseInt(valeur, 10)) : 'Prix effacé.');
+    // Un montant à DIRE : « 1 500 francs », jamais « 1 500 F » (la synthèse lit « F » comme une lettre).
+    if (valeur) direMessage('TATA_MONTANT_DEVISE', { montant: Math.round(parseInt(valeur, 10)) });
+    else direMessage('TATA_PRIX_EFFACE');
   };
   const appuyerChiffre = (d: string) => taperPrix((prix === '0' ? d : prix + d).slice(0, 6));
   const effacerChiffre = () => taperPrix(prix.slice(0, -1));
@@ -151,6 +180,17 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
 
   const recommencer = () => { setEtape('saisie'); setLigne(null); };
 
+  // STK-03 §2 — SES unités déjà employées passent devant celles du marché.
+  if (poseOuverte) {
+    return (
+      <AjoutProduitGuide
+        sesUnites={etal.map(p => p.unite ?? '').filter(Boolean)}
+        onPose={() => setPoseOuverte(false)}
+        onAnnuler={() => setPoseOuverte(false)}
+      />
+    );
+  }
+
   if (etape === 'confirmation' && ligne) {
     return (
       <ConfirmationLigne
@@ -172,24 +212,54 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
   const pret = produitChoisi && parseInt(prix || '0', 10) > 0;
 
   return (
-    <div style={{ background: '#FFFCF7', border: '1.5px solid #F0E4D4', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ background: 'var(--commerce-surface)', border: '1.5px solid var(--commerce-gray-100)', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <p style={{ fontSize: 13, fontWeight: 800, color: ORANGE, letterSpacing: '0.05em', margin: 0 }}>SAISIR SANS PARLER</p>
+        {/* CAI-11 — LE PANNEAU PORTE LE NOM DU GESTE QUI L'OUVRE.
+            Il s'intitulait « SAISIR SANS PARLER ». Troisième nom pour le même
+            geste, après « Choisir à l'écran » (CAI-08) et l'icône clavier
+            (CAI-10). Deux fautes, les mêmes qu'avant : « saisir » n'est pas un
+            geste de la main — on saisit au clavier, on ne saisit pas un
+            légume ; et « sans parler » se définit par ce qu'on NE fait pas,
+            ce qui ne dit toujours pas quoi faire. Le bouton dit « Toucher les
+            produits » : le panneau qu'il ouvre le dit aussi, au mot près.
+            Arbitrage de Patrick, 23/09/2026. */}
+        <p style={{ fontSize: 13, fontWeight: 800, color: ORANGE, letterSpacing: '0.05em', margin: 0 }}>TOUCHER LES PRODUITS</p>
         <BoutonReecouter phrase={() => dernierePhraseRef.current || questionEtape} />
       </div>
 
       {/* ÉTAPE 1 — PRODUIT : on touche une photo, jamais un nom à écrire. */}
       {!produitChoisi ? (
         <div>
+          {/* STK-03 — PREMIER JOUR : SON ÉTAL EST VIDE.
+              Retirer les 37 tuiles était juste ; laisser à leur place une
+              grille vide et un lien souligné ne l'est pas. Une marchande qui
+              ne lit pas y trouvait une surface blanche et aucun geste. Un
+              écran vide qui ne dit pas quoi faire est plus dur qu'un écran
+              faux : le faux, au moins, se corrige. On pose donc la question,
+              et on donne le geste — en une seule cible, large. */}
+          {vue.type === 'premier-produit' ? (
+            <button type="button" onClick={() => setPoseOuverte(true)}
+              aria-label={t('TATA_ETAL_VIDE')}
+              style={{ width: '100%', minHeight: 120, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+                background: 'white', border: `2px dashed ${ORANGE}`, borderRadius: 18, padding: 18, cursor: 'pointer', fontFamily: 'inherit' }}>
+              <span style={{ fontSize: 34, lineHeight: 1 }} aria-hidden="true">👆</span>
+              <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--encre)', textAlign: 'center' }}>{t('TATA_ETAL_VIDE')}</span>
+            </button>
+          ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            {CATALOGUE_PRODUITS.filter(p => p.nom !== 'Autre').map(p => (
-              <motion.button key={p.nom} whileTap={{ scale: 0.94 }} onClick={() => choisirProduit(p.nom, p.prixVente)}
+            {vue.tuiles.map(p => (
+              <motion.button key={p.id} whileTap={{ scale: 0.94 }} onClick={() => choisirProduit(p.nom, p.prix)}
                 style={{ border: '2px solid var(--trait)', borderRadius: 14, padding: 6, background: 'white', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontFamily: 'inherit' }}>
                 <ImageWithFallback src={p.image} alt={p.nom} fallbackSrc={vignetteProduit(p.nom)} style={{ width: '100%', aspectRatio: '1', borderRadius: 10, objectFit: 'cover' }} />
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--encre)' }}>{p.nom}</span>
+                {/* SON prix, sur la tuile. Elle ne va pas le chercher ailleurs. */}
+                <span style={{ fontSize: 11, fontWeight: 800, color: ORANGE }}>
+                  {p.prix.toLocaleString('fr-FR')} F / {p.unite}
+                </span>
               </motion.button>
             ))}
           </div>
+          )}
           {!autreOuvert ? (
             <button type="button" onClick={() => setAutreOuvert(true)}
               style={{ marginTop: 10, background: 'none', border: 'none', color: 'var(--encre-4)', fontSize: 12, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -197,14 +267,14 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
             </button>
           ) : (
             <input autoFocus value={produit} onChange={e => setProduit(e.target.value)} placeholder="Nom du produit"
-              style={{ marginTop: 10, width: '100%', boxSizing: 'border-box', border: '1.5px solid #e5e0d8', borderRadius: 12, padding: '12px 14px', fontSize: 16, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
+              style={{ marginTop: 10, width: '100%', boxSizing: 'border-box', border: '1.5px solid var(--commerce-gray-100)', borderRadius: 12, padding: '12px 14px', fontSize: 16, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
           )}
         </div>
       ) : (
         // Produit choisi : confirmation en photo, pas en texte à relire.
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#FFF3EB', border: `1.5px solid ${ORANGE}40`, borderRadius: 14, padding: '8px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--commerce-orange-50)', border: `1.5px solid ${ORANGE}40`, borderRadius: 14, padding: '8px 10px' }}>
           {produitImage && <img src={produitImage} alt={produit} style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />}
-          <span style={{ flex: 1, fontSize: 15, fontWeight: 800, color: '#1F2937' }}>{produit}</span>
+          <span style={{ flex: 1, fontSize: 15, fontWeight: 800, color: 'var(--color-gray-800)' }}>{produit}</span>
           <button type="button" onClick={changerProduit}
             style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
             Changer
@@ -218,7 +288,7 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
           <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--encre-4)', textAlign: 'center', margin: '0 0 8px' }}>Combien ?</p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
             <motion.button whileTap={{ scale: 0.9 }} aria-label="Moins" onClick={() => changerQuantite(Math.max(1, quantite - 1))}
-              style={{ width: 52, height: 52, borderRadius: 14, background: 'white', border: '1.5px solid #e5e0d8', fontSize: 26, fontWeight: 800, color: '#555', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
+              style={{ width: 52, height: 52, borderRadius: 14, background: 'white', border: '1.5px solid var(--commerce-gray-100)', fontSize: 26, fontWeight: 800, color: 'var(--herite-gris-33)', cursor: 'pointer', flexShrink: 0 }}>−</motion.button>
             <span style={{ fontSize: 42, fontWeight: 900, color: 'var(--encre)', minWidth: 60, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{quantite}</span>
             <motion.button whileTap={{ scale: 0.9 }} aria-label="Plus" onClick={() => changerQuantite(quantite + 1)}
               style={{ width: 52, height: 52, borderRadius: 14, background: ORANGE, border: 'none', fontSize: 26, fontWeight: 800, color: 'white', cursor: 'pointer', flexShrink: 0 }}>+</motion.button>
@@ -237,38 +307,54 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
               </button>
             )}
           </div>
-          <div style={{ textAlign: 'center', fontSize: 36, fontWeight: 900, color: prix ? 'var(--encre)' : '#c7bfb2', fontVariantNumeric: 'tabular-nums', marginBottom: prixModifiable ? 10 : 0 }}>
+          <div style={{ textAlign: 'center', fontSize: 36, fontWeight: 900, color: prix ? 'var(--encre)' : 'var(--herite-taupe)', fontVariantNumeric: 'tabular-nums', marginBottom: prixModifiable ? 10 : 0 }}>
             {prix || '—'}{prix ? ' F' : ''}
           </div>
           {prixModifiable && (
+            <>
+            {/* VOX-03 — ELLE PEUT DIRE SON PRIX.
+                Cet écran n'avait AUCUN micro : un pavé de chiffres et un champ
+                texte, devant une marchande qui ne lit pas. Et c'est l'écran de
+                l'ARGENT. Constat de Patrick sur le terrain, 24/09 : « il me
+                demande mon prix, mais avec une interface pour saisir — si je ne
+                sais pas lire ? »
+                Le micro s'ouvre tout seul, Tantie pose la question, le clavier
+                reste juste dessous pour qui préfère taper. */}
+            <BoutonDirePrix
+              ouvrirToutSeul
+              question={phrasePrixManquant()}
+              dire={dire}
+              onMontant={(m) => taperPrix(String(m))}
+            />
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {CHIFFRES_CLAVIER.map(d => (
                 <button key={d} type="button" onClick={() => appuyerChiffre(d)}
-                  style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
                   {d}
                 </button>
               ))}
               <button type="button" onClick={() => taperPrix('')}
-                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 14, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 14, fontWeight: 800, color: 'var(--herite-gris-53)', cursor: 'pointer', fontFamily: 'inherit' }}>
                 C
               </button>
               <button type="button" onClick={() => appuyerChiffre('0')}
-                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
                 0
               </button>
               <button type="button" onClick={effacerChiffre} aria-label="Effacer un chiffre"
-                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid #e5e0d8', background: 'white', fontSize: 16, fontWeight: 800, color: '#888', cursor: 'pointer', fontFamily: 'inherit' }}>
+                style={{ minHeight: 52, borderRadius: 12, border: '1.5px solid var(--commerce-gray-100)', background: 'white', fontSize: 16, fontWeight: 800, color: 'var(--herite-gris-53)', cursor: 'pointer', fontFamily: 'inherit' }}>
                 ⌫
               </button>
             </div>
+            </>
           )}
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
           {(['unitaire', 'total'] as const).map(m => (
-            <button key={m} onClick={() => { setMode(m); dire(m === 'unitaire' ? "Prix d'un seul." : 'Prix du tout.'); }}
+            <button key={m} onClick={() => { setMode(m); direMessage(m === 'unitaire' ? 'TATA_PRIX_D_UN_SEUL' : 'TATA_PRIX_DU_TOUT'); }}
               style={{ flex: 1, minHeight: 44, borderRadius: 12, fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit',
-                border: `1.5px solid ${mode === m ? ORANGE : '#e5e0d8'}`, background: mode === m ? '#FDE9D6' : 'white', color: mode === m ? ORANGE : '#888' }}>
+                border: `1.5px solid ${mode === m ? ORANGE : 'var(--commerce-gray-100)'}`, background: mode === m ? 'var(--color-orange-100)' : 'white', color: mode === m ? ORANGE : 'var(--herite-gris-53)' }}>
               {m === 'unitaire' ? "Prix d'un" : 'Prix du tout'}
             </button>
           ))}
@@ -276,7 +362,7 @@ export function SaisieGuidee({ onValider, apparier, initialProduit, initialPrix 
 
         <motion.button whileTap={{ scale: 0.97 }} disabled={!pret} onClick={verifier}
           style={{ minHeight: 52, borderRadius: 16, fontWeight: 800, fontSize: 16, border: 'none', fontFamily: 'inherit',
-            background: pret ? ORANGE : '#e0d5c8', color: 'white', cursor: pret ? 'pointer' : 'default' }}>
+            background: pret ? ORANGE : 'var(--commerce-line)', color: 'white', cursor: pret ? 'pointer' : 'default' }}>
           Vérifier
         </motion.button>
       </>)}

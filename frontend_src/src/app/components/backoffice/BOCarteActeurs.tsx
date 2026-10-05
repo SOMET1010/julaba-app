@@ -7,6 +7,7 @@ import { BO_PRIMARY } from "./bo-theme";
 import { API_URL } from "../../utils/api";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { construirePopupActeur } from "./carte-popup";
 
 const COLORS: Record<string, string> = {
   marchand: "#B74725",
@@ -127,28 +128,14 @@ export function BOCarteActeurs() {
       const color = COLORS[p.type_acteur as keyof typeof COLORS] || BO_PRIMARY;
       const letter = ({ marchand: 'M', producteur: 'P', cooperative: 'C', identificateur: 'I' } as Record<string, string>)[p.type_acteur] || '?';
       const marker = L.marker([Number(p.latitude), Number(p.longitude)], { icon: makeIcon(color, letter) });
-      marker.bindPopup(`
-        <div style="padding:12px 14px;min-width:180px;font-family:system-ui,sans-serif">
-          <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:${color};margin-bottom:3px">${p.type_acteur}</div>
-          <div style="font-size:14px;font-weight:800;color:#1a1a1a;margin-bottom:2px">${p.acteur_nom || "Acteur"}</div>
-          <div style="font-size:11px;color:#888;margin-bottom:8px">${p.commune || p.region || ""}</div>
-          <div style="display:flex;gap:6px;align-items:center">
-            <span style="display:inline-block;font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px;background:#DCFCE7;color:#16a34a">${p.statut || "Actif"}</span>
-            <button onclick="window.__selectActeur && window.__selectActeur(\'${p.id}\')" style="font-size:10px;font-weight:700;color:${color};background:none;border:1px solid ${color};border-radius:8px;padding:2px 8px;cursor:pointer">Voir la fiche</button>
-          </div>
-        </div>
-      `, { maxWidth: 220 });
+      // BO-1 : nœuds DOM + textContent, plus de gabarit HTML (XSS stocké).
+      marker.bindPopup(construirePopupActeur(document, p, color, (id) => {
+        const choisi = geoPoints.find(x => x.id === id);
+        if (choisi) setSelectedActeur(choisi);
+      }), { maxWidth: 220 });
       layersRef.current[p.type_acteur]?.addLayer(marker);
     });
   }, [geoPoints, activeRoles, activeKPI]);
-
-  useEffect(() => {
-    (window as any).__selectActeur = (id: string) => {
-      const p = geoPoints.find(x => x.id === id);
-      if (p) setSelectedActeur(p);
-    };
-    return () => { delete (window as any).__selectActeur; };
-  }, [geoPoints]);
 
   const toggleRole = (role: string) => {
     const next = { ...activeRoles, [role]: !activeRoles[role] };

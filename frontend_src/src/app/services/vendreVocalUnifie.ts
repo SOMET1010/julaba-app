@@ -26,9 +26,10 @@ import {
   doitProposerCreation,
   type ProduitAppariable,
 } from './venteVocale';
-import { phraseCompris } from './dialoguesTata';
+import { ambiguiteDeuxFormes, phraseAmbiguite, phraseCompris } from './dialoguesTata';
 import { resoudrePrixVocal } from './prixVocal';
 import { uniteEntendue } from '../utils/unite.utils';
+import { t, tParle } from '../i18n/voice/runtime';
 
 /**
  * Forme minimale attendue par `CaisseContext.addToCart` — reprise ici plutôt
@@ -86,6 +87,70 @@ export interface DependancesVendreVocalUnifie {
   planifier: (effet: () => void, delaiMs: number) => void;
   /** Remplace `guidageVocal()` — préférence globale, jamais lue directement ici. */
   guidageVocalActif: () => boolean;
+  /**
+   * LE PRIX INTROUVABLE SE DEMANDE — correctif du 21/09/2026, terrain.
+   *
+   * Sans ce crochet, ce module ne savait que DIRE qu'il lui manquait le prix,
+   * et seulement si le guidage vocal était actif. Sur le compte de Patrick
+   * (catalogue VIDE, profil « je lis »), cela voulait dire : bandeau vert
+   * « J'ai compris : Cinq tomates », puis RIEN — pas de ligne, pas un mot, pas
+   * un écran. Une vente comprise disparaissait, et l'écran affirmait avoir
+   * compris.
+   *
+   * L'appelant qui fournit ce crochet reçoit la vente comprise et conduit la
+   * marchande à donner le prix — dans la caisse, c'est le chemin d'adoption
+   * qui existe déjà (`POSCaisse`) : « {produit}. Quel est ton prix ? », puis
+   * l'article entre au catalogue ET au panier. On n'invente toujours RIEN :
+   * aucune ligne n'est ajoutée ici tant que le prix n'a pas été donné.
+   *
+   * Optionnel : un appelant qui ne sait pas demander (ex. la modale Tantie)
+   * garde l'ancien comportement — Tata explique, et on s'arrête.
+   */
+  demanderPrix?: (demande: {
+    /** Nom du produit tel qu'on l'a compris (catalogue si apparié, sinon dit). */
+    nom: string;
+    /** Quantité dite — pour qu'elle n'ait pas à la redire. */
+    quantite: number;
+    /** Unité prononcée, ou null si elle n'en a pas dit. */
+    unite: string | null;
+    /** Pourquoi on demande : aucun prix connu, unité qui ne concorde pas, ou
+     *  montant dicté dont on ne sait pas s'il vaut pour un ou pour tous. */
+    raison: 'prix_manquant' | 'unite_incompatible' | 'ambiguite_prix';
+    /** Le montant dicté, UNIQUEMENT pour `ambiguite_prix` : c'est lui qu'on
+     *  lui relit (« 500, c'est le prix d'un seul, ou de tous les 3 ? »). */
+    montant?: number;
+  }) => void;
+  /**
+   * LE DERNIER VERROU CONTRE LE SILENCE — 22/09/2026, deuxième passage de
+   * Patrick sur le même défaut.
+   *
+   * La branche « pas de prix » avait deux issues, et une TROISIÈME que
+   * personne n'avait regardée : quand l'appelant ne sait pas demander
+   * (`demanderPrix` absent) ET que le guidage vocal est coupé (profil « je
+   * lis »), cette fonction RETOURNAIT SANS RIEN FAIRE. Pas de ligne — c'est
+   * la règle, et elle est bonne —, mais pas un mot NI un écran : une vente
+   * comprise disparaissait sous un bandeau « J'ai compris ». C'est exactement
+   * ce que décrit Patrick : « visuellement ET sonorement muet ».
+   *
+   * Ce crochet ferme cette issue. Il est appelé CHAQUE FOIS qu'aucun écran de
+   * prix ne prendra le relais, et il reçoit la phrase DÉJÀ RÉSOLUE depuis le
+   * catalogue i18n — la même que celle qui part à la voix, pour que l'écrit
+   * et le dit ne puissent pas diverger. À l'appelant de la rendre visible
+   * (toast, bandeau) ; il ne construit aucun texte lui-même.
+   *
+   * Optionnel dans le TYPE seulement, pour ne pas casser les harnais de test
+   * existants. Les deux surfaces réelles le câblent, et un garde de source
+   * (`venteSansSilence.test.mts`) interdit qu'une troisième l'oublie.
+   */
+  signalerBlocage?: (info: {
+    /** La phrase à MONTRER — résolue par ce module, jamais écrite en dur ailleurs. */
+    texte: string;
+    /** Pourquoi la vente s'arrête ici. */
+    raison: 'prix_manquant' | 'unite_incompatible' | 'ambiguite_prix';
+    /** Le produit tel que compris, et la quantité dite : de quoi pré-remplir un repli. */
+    nom: string;
+    quantite: number;
+  }) => void;
 }
 
 /**
@@ -106,14 +171,20 @@ export interface DependancesVendreVocalUnifie {
  *      dit prime sur le prix enregistré ;
  *   2. sinon, prix du catalogue × quantité ;
  *   3. sinon (produit inconnu, ou prix catalogue à zéro) : AUCUNE ligne,
- *      aucune écriture, et Tata le DIT. Inventer un prix, c'est fausser son
- *      argent ; se taire, c'est lui laisser croire que la vente est passée.
+ *      aucune écriture — et la vente n'est pas perdue pour autant : le prix
+ *      est DEMANDÉ (`demanderPrix`), ou à défaut Tata le dit. Inventer un
+ *      prix, c'est fausser son argent ; se taire, c'est lui laisser croire
+ *      que la vente est passée.
  */
 export function vendreVocalUnifie(
   nomParle: string | undefined,
   quantite: number,
-  /** Total dicté. `0` (ou absent) signifie « rien n'a été dicté » — le prix du
-   *  catalogue prend alors le relais. */
+  /** MONTANT dicté — et non « total », comme cette ligne l'a dit trop
+   *  longtemps. « Trois tas de tomates à 500 » annonce un prix À L'UNITÉ :
+   *  lire ce 500 comme le total de la vente l'enregistrait à son tiers.
+   *  Ce qu'il représente est décidé en aval par `resoudrePrixVocal`, qui
+   *  relaie `ligneProvisoire.resoudrePrix`. `0` (ou absent) signifie « rien
+   *  n'a été dicté » — le prix du catalogue prend alors le relais. */
   montant: number,
   deps: DependancesVendreVocalUnifie,
   /** Unité RÉELLEMENT prononcée (« tas », « kilos »…), telle que l'extraction
@@ -121,6 +192,12 @@ export function vendreVocalUnifie(
    *  catalogue est le bon — et quand il ne l'est pas, c'est SON mot qu'on lui
    *  redit (« Tu dis kilos… »), pas notre graphie. */
   uniteDictee?: string | null,
+  /** CE QUE LA GRAMMAIRE A ENTENDU du montant — « à » (unitaire), « pour » ou
+   *  une négociation (total), `null` si la phrase ne tranche pas. Vient de
+   *  `extraction.lecturePrix`. Sans elle, un montant dicté sur une quantité
+   *  supérieure à 1 que le catalogue ne confirme pas reste AMBIGU, et la
+   *  vente attend une clarification au lieu d'être inventée. */
+  lectureDictee?: 'unitaire' | 'total' | null,
 ): void {
   const produitCat = apparierProduit(nomParle || '', deps.products);
   const qte = quantite > 0 ? quantite : 1;
@@ -135,25 +212,67 @@ export function vendreVocalUnifie(
     produit: produitCat as never,
     uniteParlee: uniteDictee,
     nomParle,
+    lectureDictee,
   });
 
   if (prix.type !== 'prix') {
+    // LA VENTE COMPRISE NE DISPARAÎT PLUS (21/09/2026). Quand l'appelant sait
+    // demander un prix, on lui passe la main : la marchande finit sa vente en
+    // donnant le montant, au lieu de recommencer sa phrase. C'est un ÉCRAN
+    // autant qu'une parole : elle le voit même quand elle a coupé la voix —
+    // c'est exactement le cas de terrain. Aucune ligne n'est ajoutée ici.
+    if (deps.demanderPrix) {
+      deps.demanderPrix({
+        nom: prix.nom || (nomParle || '').trim(),
+        quantite: qte,
+        unite: uniteEntendue(uniteDictee),
+        raison: prix.type,
+        // L'ambiguïté se pose en lui RELISANT son propre chiffre : « 500,
+        // c'est le prix d'un seul, ou de tous les 3 ? ». Sans le montant,
+        // l'écran redemanderait un prix qu'elle vient de donner.
+        ...(prix.type === 'ambiguite_prix' ? { montant: prix.montant } : {}),
+      });
+      return;
+    }
     // On ne devine JAMAIS un prix, et on ne se tait pas non plus : le silence,
     // pour quelqu'un qui ne lit pas, veut dire « cette application ne marche
     // pas ». Chaque refus a son mot, pour qu'elle sache quoi redire.
-    if (deps.guidageVocalActif()) {
-      if (prix.type === 'unite_incompatible') {
-        deps.speak(
-          `Tu dis ${prix.uniteParlee}, mais ${prix.nom} est au prix du ${prix.uniteCatalogue}. Dis-moi combien tu l'as vendu.`,
-        );
-      } else {
-        deps.speak(
-          prix.nom
-            ? `Je n'ai pas le prix de ${prix.nom}. Redis-moi combien tu l'as vendu.`
-            : "Je n'ai pas compris le prix. Redis-moi combien tu as vendu.",
-        );
-      }
-    }
+    //
+    // LA PHRASE EST CONSTRUITE UNE SEULE FOIS, puis empruntée par les DEUX
+    // canaux (22/09/2026). Avant, elle n'existait qu'à l'intérieur du `if
+    // (guidageVocalActif())` : profil « je lis » + appelant sans écran de
+    // prix = aucun canal, donc rien du tout. L'écrit ne peut plus manquer, et
+    // il ne peut plus dire autre chose que le dit.
+    // DEUX FORMES, MÊME SOURCE — terrain du 24/09. La phrase reste construite
+    // une seule fois, mais elle porte désormais sa forme ÉCRAN et sa forme
+    // DITE : « 1 500 F » se lit, « mille cinq cents francs » s'entend. Avec
+    // une seule forme, la synthèse épelait « 1 zéro zéro zéro ».
+    const refusDeuxFormes: { texte: string; texteParle: string } =
+      prix.type === 'unite_incompatible'
+        ? (() => {
+            const v = { uniteParlee: prix.uniteParlee, produit: prix.nom, uniteCatalogue: prix.uniteCatalogue };
+            return { texte: t('TATA_UNITE_INCOMPATIBLE', v), texteParle: tParle('TATA_UNITE_INCOMPATIBLE', v) };
+          })()
+        : prix.type === 'ambiguite_prix'
+          // On lui repose SA question, avec SES chiffres — et on ne pose rien
+          // au panier tant qu'elle n'a pas répondu.
+          ? ambiguiteDeuxFormes(prix.quantite, prix.montant)
+          : prix.nom
+            ? (() => {
+                const v = { produit: prix.nom };
+                return { texte: t('TATA_PRIX_INCONNU_PRODUIT', v), texteParle: tParle('TATA_PRIX_INCONNU_PRODUIT', v) };
+              })()
+            : { texte: t('TATA_PRIX_INCOMPRIS'), texteParle: tParle('TATA_PRIX_INCOMPRIS') };
+    const refus = refusDeuxFormes.texte;
+    // VU, toujours — même quand Tata se tait.
+    deps.signalerBlocage?.({
+      texte: refus,
+      raison: prix.type,
+      nom: prix.nom || (nomParle || '').trim(),
+      quantite: qte,
+    });
+    // ENTENDU, quand le guidage vocal est actif — inchangé.
+    if (deps.guidageVocalActif()) deps.speak(refusDeuxFormes.texteParle);
     return;
   }
 
@@ -222,7 +341,7 @@ export function vendreVocalUnifie(
         deps.planifier(() => {
           deps.proposerCreationProduit({ nom: nomPropre, prix: ligne.prix });
           if (deps.guidageVocalActif()) {
-            deps.speak(`Je ne connais pas ${nomPropre} dans ta boutique. Je l'ajoute ?`);
+            deps.speak(t('TATA_PRODUIT_INCONNU_AJOUTER', { produit: nomPropre }));
           }
         }, 2200);
       }

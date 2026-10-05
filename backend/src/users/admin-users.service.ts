@@ -1,3 +1,5 @@
+import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
+import { RemiseParSms, remiseParSms, messageRemise } from './remise-code-bo';
 import {
   Injectable,
   BadRequestException,
@@ -26,6 +28,7 @@ export class AdminUsersService {
     private readonly usersRepo: Repository<User>,
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
+    private readonly feedbakSms: FeedbakSmsService,
   ) {}
 
   async getAdminsPending(): Promise<Array<{
@@ -74,7 +77,7 @@ export class AdminUsersService {
     dto: CreateAdminUserDto,
     creator: { id: string; role: string },
     ip?: string,
-  ): Promise<{ id: string; status: string; message: string; motDePasseInitial?: string }> {
+  ): Promise<{ id: string; status: string; message: string; remise?: RemiseParSms; code?: string }> {
     if (
       creator.role !== UserRole.SUPER_ADMIN &&
       creator.role !== UserRole.ADMIN_GENERAL
@@ -157,11 +160,15 @@ export class AdminUsersService {
         ip: ip ?? null,
       });
 
+      // BO-1 / SEC-10 : le mot de passe part par SMS, jamais dans la réponse.
+      const smsEnvoye = await this.feedbakSms.notifyMotDePasseBo(saved.phone, defaultPassword, 'creation');
+      const remise = remiseParSms(saved.phone, smsEnvoye);
       return {
         id: saved.id,
         status: saved.status,
-        message: `Compte admin créé avec succès. Mot de passe initial : ${defaultPassword}. L'utilisateur devra le changer au premier login.`,
-        motDePasseInitial: defaultPassword,
+        message: messageRemise('Compte admin créé.', remise),
+        remise,
+        ...(smsEnvoye ? {} : { code: 'SMS_NON_DELIVRE' }),
       };
     }
 
@@ -227,7 +234,7 @@ export class AdminUsersService {
     id: string,
     validator: { id: string },
     ip?: string,
-  ): Promise<{ id: string; status: string; message: string; motDePasseInitial?: string }> {
+  ): Promise<{ id: string; status: string; message: string; remise?: RemiseParSms; code?: string }> {
     const user = await this.usersRepo.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException('Compte admin introuvable');
@@ -281,11 +288,15 @@ export class AdminUsersService {
       }
     }
 
+    // BO-1 / SEC-10 : le mot de passe part par SMS, jamais dans la réponse.
+    const smsEnvoye = await this.feedbakSms.notifyMotDePasseBo(user.phone, defaultPassword, 'creation');
+    const remise = remiseParSms(user.phone, smsEnvoye);
     return {
       id,
       status: UserStatus.ACTIF,
-      message: `Compte admin validé. Mot de passe initial : ${defaultPassword}. L'utilisateur devra le changer au premier login.`,
-      motDePasseInitial: defaultPassword,
+      message: messageRemise('Compte admin validé.', remise),
+      remise,
+      ...(smsEnvoye ? {} : { code: 'SMS_NON_DELIVRE' }),
     };
   }
 

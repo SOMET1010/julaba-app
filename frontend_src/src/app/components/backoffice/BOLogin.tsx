@@ -71,7 +71,7 @@ export function BOLogin() {
   const [restoredFromStorage, setRestoredFromStorage] = useState(false);
   const [prefersDarkScheme, setPrefersDarkScheme] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
-  const [recoveryContacts, setRecoveryContacts] = useState<Array<{ id: string; firstName: string; lastName: string; phone: string }>>([]);
+  const [recoveryContacts, setRecoveryContacts] = useState<Array<{ firstName: string; lastName: string }>>([]);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [bioLoading, setBioLoading] = useState(false);
   const [canUseBiometric, setCanUseBiometric] = useState(false);
@@ -558,7 +558,7 @@ export function BOLogin() {
               Mot de passe oublié
             </h2>
             <p style={styles.modalText}>
-              Pour réinitialiser votre mot de passe, contactez l&apos;un de vos super administrateurs :
+              Pour réinitialiser votre mot de passe, contactez l&apos;un de vos super administrateurs par vos canaux internes. Le nouveau code vous sera envoyé par SMS :
             </p>
             {recoveryLoading ? (
               <p style={styles.modalText}>Chargement...</p>
@@ -566,15 +566,11 @@ export function BOLogin() {
               <p style={styles.modalText}>Aucun contact disponible pour le moment.</p>
             ) : (
               <ul style={styles.modalList}>
-                {recoveryContacts.map((c) => (
-                  <li key={c.id} style={styles.modalLi}>
+                {recoveryContacts.map((c, i) => (
+                  <li key={i} style={styles.modalLi}>
                     <span style={{ fontWeight: 600 }}>
                       {c.firstName} {c.lastName}
                     </span>
-                    {' · '}
-                    <a href={`tel:${c.phone.replace(/\s/g, '')}`} style={{ color: ICON_BRAND }}>
-                      {c.phone}
-                    </a>
                   </li>
                 ))}
               </ul>

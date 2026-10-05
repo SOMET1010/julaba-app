@@ -87,8 +87,13 @@ describe('Invariant R7 — annulation vente → remise en stock (🟢)', () => {
   });
 
   const auth = (r: request.Test) => r.set('Authorization', `Bearer ${token}`);
+  // ARG-19, 27/09/2026 — `unite` AJOUTÉE : elle est EXIGÉE par le serveur
+  // depuis `6161dd7` (25/09). `uniteDeProduitSaisie` refuse une création sans
+  // elle — « Jamais fabriquée : sans elle, une quantité ne veut rien dire ».
+  // Cette suite n'avait pas suivi : sa préparation recevait un 400 et les
+  // assertions tombaient plus loin, sur un stock introuvable (`NaN`).
   const createProduit = (nom: string, stock: number) =>
-    auth(request(app.getHttpServer()).post('/api/v1/caisse/produits')).send({ nom, stock, prix: 200 });
+    auth(request(app.getHttpServer()).post('/api/v1/caisse/produits')).send({ nom, stock, prix: 200, unite: 'kg' });
   const vendre = (body: any) => auth(request(app.getHttpServer()).post('/api/v1/caisse/vente')).send(body);
   const stockOf = async (nom: string) =>
     Number((await ds.query('SELECT stock FROM produits WHERE marchand_id=$1::text AND lower(nom)=lower($2)', [marchandId, nom]))[0]?.stock);

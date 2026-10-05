@@ -127,7 +127,7 @@ Convention : la colonne Roles indique les roles requis par decorateur `@Roles(..
 | DELETE | /auth/account | authentifie | {password} | Suppression douce (anonymise, statut REJETE) | 255 |
 | POST | /auth/logout | public | {refreshToken?} + cookie | Deconnexion, vide cookies | 277 |
 | POST | /auth/logout-all | authentifie | - | Revoque toutes les sessions | 288 |
-| POST | /auth/reset-user-password | super_admin, admin | {userId, newPassword} | Reinitialise le mot de passe d'un utilisateur | 299 |
+| ~~POST~~ | ~~/auth/reset-user-password~~ | — | — | Supprimee en BO-1 (SEC-08b) : remplacee par /users/:id/admin-reset-password (code par SMS) | — |
 | POST | /auth/identificateur/:id/pin | super_admin, admin_general | id, {pin} | PIN chiffre identificateur (audite) | 316 |
 | POST | /auth/identificateur/me/verify-pin | identificateur | {pin} | L'identificateur verifie son PIN | 343 |
 | POST | /auth/identificateur/me/change-pin | identificateur | {oldPin, newPin} | Change son PIN, notifie par SMS | 371 |
@@ -163,7 +163,7 @@ Convention : la colonne Roles indique les roles requis par decorateur `@Roles(..
 | POST | /users/:id/photo | controle in-code (admin/proprietaire/identificateur) | id, fichier | Upload photo acteur (5 Mo, image) | 341 |
 | PATCH | /users/:id/bo-permissions | super_admin | id, {bo_permissions} | Met a jour la matrice de permissions BO | 394 |
 | DELETE | /users/:id | ADMIN | id | Archive (suppression douce) | 457 |
-| POST | /users/:id/admin-reset-password | super_admin | id | Reset mot de passe par admin | 463 |
+| POST | /users/:id/admin-reset-password | super_admin | id | Reset mot de passe : nouveau code envoye par SMS au compte, jamais renvoye (BO-1) | 463 |
 
 ### 3.3 Module admin (`backend/src/admin/`, prefixe `admin`, classe sous `@Roles('ADMIN')`)
 
@@ -573,7 +573,7 @@ Routes presentes a l'identique sous /marchand, /producteur, /cooperative, /insti
 | /pay/:marchandId | PayPage | public | components/wallet/PayPage.tsx |
 | /pay/success, /pay/error, /paiement/success, /paiement/failed | PaySuccessPage | public | components/wallet/PaySuccessPage.tsx (page resultat minimale : "Paiement effectue" ou "Paiement echoue" selon presence de "error" dans l'URL, bouton unique "Retour") |
 | * | NotFound | public | pages/NotFound.tsx |
-| /dev-mode, /database, /create-super-admin, /admin-recovery, /setup-marchand | pages diagnostiques | DEV uniquement (`import.meta.env.DEV`) | DevModeHome (redirige vers / et rend null), DatabaseViewer (visualiseur statique du schema, lecture seule), CreateSuperAdmin (bootstrap usage unique, POST /auth/create-super-admin), AdminRecovery (outil d'urgence multi-modes protege par cle JULABA_RECOVERY_2026), SetupMarchand (tests connexion + creation marchands de test) |
+| /dev-mode, /database, /create-super-admin, /setup-marchand | pages diagnostiques | DEV uniquement (`import.meta.env.DEV`) | DevModeHome (redirige vers / et rend null), DatabaseViewer (visualiseur statique du schema, lecture seule), CreateSuperAdmin (bootstrap usage unique, POST /auth/create-super-admin), SetupMarchand (tests connexion + creation marchands de test) |
 
 ---
 

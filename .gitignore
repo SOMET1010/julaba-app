@@ -40,3 +40,14 @@ erreur.txt
 # Build frontend versionne par erreur (la source est dans frontend_src/, build via frontend_src/Dockerfile)
 frontend/
 frontend_src/tsconfig.tsbuildinfo
+
+# Fichier intermediaire du banc de capture (apercu-caisse/capture.mjs, jetable)
+frontend_src/apercu-caisse/.viewport-2x.png
+
+# Journal d'execution des invariants (ci/prouver-invariants.mjs).
+# Jetable par construction : il porte le SHA de l'arbre sur lequel il a tourne,
+# donc le commiter l'invaliderait lui-meme. Il se reproduit a chaque passe.
+ci/preuve-invariants.json
+
+# Sorties du script d’ingestion (produites à l’arrivée d’un lot, jamais versionnées)
+docs/voix/ENTREES-TATA-UI-CLIPS.txt

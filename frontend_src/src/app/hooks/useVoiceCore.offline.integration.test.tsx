@@ -57,6 +57,7 @@ let core: Core | null = null;
 let onActionCalls = 0;
 let localTtsCalls = 0;
 let localClipCalls = 0;
+const dit: string[] = [];
 
 function Harness() {
   const value = useVoiceCore({
@@ -69,12 +70,14 @@ function Harness() {
 
 audioManager.__reset();
 audioManager.__setPlayers(
-  () => {
+  (text) => {
     localTtsCalls++;
+    dit.push(`synthèse:${text}`);
     return { promise: Promise.resolve("ended"), stop() {} };
   },
-  () => {
+  (source) => {
     localClipCalls++;
+    dit.push(`clip:${source.url ?? "base64"}`);
     return { promise: Promise.resolve("ended"), stop() {} };
   },
 );
@@ -93,13 +96,32 @@ const queued = JSON.parse(localStorage.getItem("julaba_offline_voice_queue") || 
 ok(onActionCalls === 0, "hors ligne : le vrai callback onAction n’est pas appelé");
 ok(queued.length === 1 && queued[0].text === "J'ai vendu 3 tomates à 500 francs", "hors ligne : la vraie file locale reçoit la commande");
 ok(core!.liveTranscript.includes("synchronisée"), "hors ligne : le message de synchronisation est exposé par le hook");
-ok(localClipCalls === 1 && localTtsCalls === 0, "avec clip Tata : le vrai hook lance une seule lecture sans voix navigateur");
+// La question porte un montant dynamique : sans clip, le filet la dit
+// (décision du 25/09/2026, « le filet parle partout »). Elle est dite UNE
+// fois. Après le « oui », Tata dit « J'ai compris » (clip ui-057) et
+// enregistre — elle ne repose pas « c'est bien ça ? » sur une vente déjà
+// confirmée.
+const QUESTION = "synthèse:Vente de 3 tomates pour 500 francs, c'est bien ça ?";
+ok(
+  JSON.stringify(dit) === JSON.stringify([QUESTION, "clip:/voix/tata/ui-057.mp3"]),
+  `confirmation : la question est dite une seule fois, puis « J'ai compris » (${JSON.stringify(dit)})`,
+);
 ok(networkCalls === 0, "avec clip Tata : le vrai hook n’effectue aucun appel réseau");
+
+// Un second « oui » (bouton ou voix) après la confirmation n'envoie rien.
+await act(async () => { await core!.confirmAction(); });
+await act(async () => { await core!.sendText("oui"); });
+const apres = JSON.parse(localStorage.getItem("julaba_offline_voice_queue") || "[]") as unknown[];
+ok(apres.length === 1 && onActionCalls === 0, "un second « oui » après la confirmation ne crée pas de seconde vente");
 
 localTtsCalls = 0;
 localClipCalls = 0;
 await act(async () => { await core!.speak("Montant dynamique : 1 250 francs"); });
-ok(localTtsCalls === 0 && localClipCalls === 0, "sans clip Tata : le vrai hook ne lance ni voix navigateur ni clip de secours");
+// « Le filet parle partout » — arbitrage de Patrick du 25/09/2026 (commit
+// 6a142d2) : sans clip de Tata, la synthèse prend le relais. L'ancienne
+// attente (« ni voix navigateur ni clip ») était la règle « Choix B » que
+// cette décision a abolie : une phrase importante ne se tait plus.
+ok(localTtsCalls === 1 && localClipCalls === 0, "sans clip Tata : le filet parle — une seule synthèse, aucun clip (décision du 25/09)");
 
 audioManager.__resetPlayers();
 audioManager.__reset();

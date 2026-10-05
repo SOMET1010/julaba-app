@@ -3,6 +3,25 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import * as audioManager from '../services/audioManager';
 import { nextObjectifAlert } from './objectifAlerts';
 import { API_URL } from '../utils/api';
+import { creerSpeakMessage } from '../i18n/voice/speakMessage';
+
+/**
+ * VOIX-09 — le montant passe par le CATALOGUE, plus par `toLocaleString`.
+ *
+ * La phrase était composée à la main : `${montant.toLocaleString('fr-FR')}`
+ * glisse une espace fine insécable (U+202F) dans « 2 000 », la synthèse reçoit
+ * un nombre coupé et l'épelle — « 2 zéro zéro zéro ». C'était le dernier site
+ * du défaut #4 relevé au terrain le 23/09.
+ *
+ * ON GARDE LE CANAL EXACT. `audioManager.speak(..., { priority: 'user' })` est
+ * conservé tel quel : seule la fabrication du texte change. Passer par
+ * `useSpeakMessage` aurait emprunté le `speak` du contexte applicatif et donc
+ * changé la priorité, ce que rien ne demandait.
+ */
+const direObjectif = creerSpeakMessage((texte) => { audioManager.speak(texte, { priority: 'user' }); });
+const direObjectif80 = creerSpeakMessage((texte) => {
+  audioManager.speakAuto(texte, { dedupeKey: 'objectif-80', minRepeatMs: 5 * 60 * 1000 });
+});
 
 interface ObjectifState {
   objectif: number;
@@ -74,7 +93,9 @@ export function ObjectifProvider({ children, ventes }: { children: React.ReactNo
       setState(s => ({ ...s, alerte50: true }));
       fetch(`${API_URL}/objectifs/alerte`, { method: 'PATCH', credentials: 'include', headers: headers(), body: JSON.stringify({ alerte50: true }) });
     } else if (alert === 'p80') {
-      audioManager.speakAuto(`Bravo ! Tu es à 80% de ton objectif. Plus que ${Math.round(state.objectif - ventes).toLocaleString('fr-FR')} FCFA, allez courage !`, { dedupeKey: 'objectif-80', minRepeatMs: 5 * 60 * 1000 });
+      // VOIX-09 — ce montant aussi partait brut. Même canal (`speakAuto` et sa
+      // déduplication), seule la fabrication du texte change.
+      direObjectif80('OBJECTIF_80', { montant: Math.round(state.objectif - ventes) });
       setState(s => ({ ...s, alerte80: true }));
       fetch(`${API_URL}/objectifs/alerte`, { method: 'PATCH', credentials: 'include', headers: headers(), body: JSON.stringify({ alerte80: true }) });
     } else if (alert === 'p100') {
@@ -94,7 +115,7 @@ export function ObjectifProvider({ children, ventes }: { children: React.ReactNo
       if (res.ok) {
         const data = await res.json();
         setState(data);
-        audioManager.speak(`Super ! Ton objectif du jour est fixé à ${montant.toLocaleString('fr-FR')} FCFA. Bonne chance ma chère !`, { priority: 'user' });
+        direObjectif('OBJECTIF_FIXE', { montant });
       }
     } catch (e) { void e; }
     setLoading(false);

@@ -1,0 +1,22 @@
+# CARTE, ÉTAPE 3 — après « Continuer » (libellé MESURÉ au run #14).
+# Ce qu'il y a derrière n'a jamais été vu : c'est la question de cette étape.
+appId: com.julaba.app
+name: carte 3 — après « Continuer »
+tags:
+  - carte
+---
+- launchApp:
+    stopApp: true
+- extendedWaitUntil:
+    visible: "JÙLABA"
+    timeout: 90000
+- tapOn:
+    text: "Écouter et entrer"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn:
+    text: "Continuer"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 10000

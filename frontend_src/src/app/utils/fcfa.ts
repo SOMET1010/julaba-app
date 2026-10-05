@@ -1,4 +1,4 @@
-import { DEVISE_PARLEE } from '../config/devise';
+import { lexique, t } from '../i18n/voice/runtime';
 /**
  * Billets et pièces FCFA (inclusion — docs/INCLUSION.md §2.2). Module PUR.
  *
@@ -16,15 +16,17 @@ export interface Coupure {
   couleur: string;
   /** Couleur du texte lisible sur ce fond. */
   encre: string;
+  /** Thème simplifié du recto, utilisé comme repère non contrefaisant. */
+  repere?: 'technologie' | 'agriculture' | 'transport' | 'education';
 }
 
 /** Coupures proposées à l'encaissement (billets puis pièces, décroissant). */
 export const COUPURES: Coupure[] = [
-  { valeur: 10000, forme: 'billet', couleur: '#7B5AA6', encre: '#FFFFFF' }, // violet
-  { valeur: 5000,  forme: 'billet', couleur: '#3E7CB1', encre: '#FFFFFF' }, // bleu-vert
-  { valeur: 2000,  forme: 'billet', couleur: '#2E8B6F', encre: '#FFFFFF' }, // vert
-  { valeur: 1000,  forme: 'billet', couleur: '#B0503C', encre: '#FFFFFF' }, // rouge-brun
-  { valeur: 500,   forme: 'billet', couleur: '#C98A2D', encre: '#FFFFFF' }, // ocre
+  { valeur: 10000, forme: 'billet', couleur: '#76539D', encre: '#FFFFFF', repere: 'technologie' }, // BCEAO : violet
+  { valeur: 5000,  forme: 'billet', couleur: '#347A4B', encre: '#FFFFFF', repere: 'agriculture' },  // BCEAO : vert
+  { valeur: 2000,  forme: 'billet', couleur: '#3577AE', encre: '#FFFFFF', repere: 'transport' },    // BCEAO : bleu
+  { valeur: 1000,  forme: 'billet', couleur: '#B34E45', encre: '#FFFFFF', repere: 'education' },   // BCEAO : rouge
+  { valeur: 500,   forme: 'piece',  couleur: '#C9B037', encre: '#4A3A10' }, // bicolore dorée
   { valeur: 250,   forme: 'piece',  couleur: '#C9B037', encre: '#4A3A10' }, // dorée
   { valeur: 200,   forme: 'piece',  couleur: '#BFC5CC', encre: '#3A4148' }, // argentée
   { valeur: 100,   forme: 'piece',  couleur: '#BFC5CC', encre: '#3A4148' },
@@ -83,12 +85,9 @@ export function formatF(montant: number): string {
 
 /** « dix mille francs » à dire à voix haute pour une coupure touchée. */
 export function direCoupure(valeur: number): string {
-  const noms: Record<number, string> = {
-    10000: 'dix mille', 5000: 'cinq mille', 2000: 'deux mille', 1000: 'mille',
-    500: 'cinq cents', 250: 'deux cent cinquante', 200: 'deux cents',
-    100: 'cent', 50: 'cinquante', 25: 'vingt-cinq',
-  };
-  // « francs » vient de config/devise.ts — HYGIÈNE-1 axe 3 (ADR-0003, #5).
-  // C'était le dernier endroit du parcours monnaie à écrire le mot lui-même.
-  return `${noms[valeur] ?? formatF(valeur)} ${DEVISE_PARLEE}`;
+  // Les noms des coupures sont du LEXIQUE de la langue (i18n/voice/locales/
+  // fr-ci/lexicon.ts, monnaie.coupures) et « francs » reste celui de
+  // config/devise.ts, lu par le gabarit TATA_MONTANT_DEVISE (« {montant} {devise} »).
+  const nom = lexique().monnaie.coupures[valeur] ?? formatF(valeur);
+  return t('TATA_MONTANT_DEVISE', { montant: nom });
 }

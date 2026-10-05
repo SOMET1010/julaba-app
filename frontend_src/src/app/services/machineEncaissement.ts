@@ -28,6 +28,8 @@
 // primitive métier (`handlePay`), la même que le bouton tactile.
 // ──────────────────────────────────────────────────────────────────────────
 
+import { t, tParle } from '../i18n/voice/runtime';
+
 /** Les trois nombres qui font la vente, figés au moment de la relecture. */
 export interface EmpreinteFinanciere {
   /** Total à payer, en francs. */
@@ -40,7 +42,25 @@ export interface EmpreinteFinanciere {
 
 /** Une ligne de panier, réduite à ce qui change le montant dû. */
 export interface LigneFinanciere {
-  productId: string;
+  /**
+   * L'IDENTITÉ DE LA LIGNE — P0.1, 27/09/2026. Ce champ s'appelait
+   * `productId` ; il portait en réalité l'identité de la ligne, puisque les
+   * articles libres y mettaient un `libre-1758…` unique.
+   *
+   * CE N'EST PAS UN RENOMMAGE MÉCANIQUE, et le vérifier était nécessaire :
+   * l'invariant protégé ici est « ces lignes EXACTES n'ont pas changé »
+   * (voir `memeEmpreinte`, et la branche qui retombe en préparation quand le
+   * compte relu a bougé). Y mettre le nouveau `productId`, désormais nullable,
+   * l'aurait AFFAIBLI — mesuré :
+   *
+   *   elle efface « Autre article 500 » et le retape à l'identique
+   *     avec l'identité de ligne : libre-AAA:1:500 ≠ libre-BBB:1:500 → détecté
+   *     avec un productId nullable :      null:1:500 =      null:1:500 → INVISIBLE
+   *
+   * On aurait payé un panier qu'elle n'avait pas relu. Le tri, lui, neutralise
+   * l'ORDRE — pas l'identité.
+   */
+  ligneId: string;
   quantite: number;
   total: number;
 }
@@ -53,7 +73,7 @@ export interface LigneFinanciere {
  */
 export function empreintePanier(lignes: readonly LigneFinanciere[]): string {
   return lignes
-    .map(l => `${l.productId}:${l.quantite}:${Math.round(l.total)}`)
+    .map(l => `${l.ligneId}:${l.quantite}:${Math.round(l.total)}`)
     .sort()
     .join('|');
 }
@@ -86,15 +106,47 @@ export type EvenementEncaissement =
   /** Le panier ou le montant reçu vient de changer. */
   | 'etat_financier_change';
 
+/**
+ * DEUX FORMES, PARCE QU'IL Y A DEUX ORGANES — ARG-17, 27/09/2026.
+ *
+ * Cet effet ne portait qu'un `texte`, et `POSCaisse` s'en servait pour LES
+ * DEUX sorties : `setRelectureAffichee(effet.texte)` pour l'œil,
+ * `speak(effet.texte)` pour l'oreille. Une seule chaîne pour deux organes.
+ *
+ * Mesuré de bout en bout : « Elle doit 2 000 francs. » porte une espace fine
+ * insécable (U+202F) — c'est ce qui la rend lisible. Aucun étage en aval ne la
+ * retire : `AppContext.speak` ne fait qu'un `replace(/[<>]/g, '')`, puis
+ * `audioManager.speak` choisit un canal sans toucher aux nombres. La synthèse
+ * reçoit donc un nombre coupé et l'épelle : « 2 zéro zéro zéro », au moment
+ * précis où la marchande doit entendre COMBIEN ON LUI DOIT.
+ *
+ * Le dépôt portait déjà la réponse — `tParle()`, documenté comme « la chaîne
+ * qui part au moteur de synthèse », et le patron `PhraseDeuxFormes` qu'emploient
+ * déjà `dialoguesTata` et `relectureSpontanee`. La machine ne s'en servait pas.
+ *
+ * `texte` NE BOUGE PAS : `texteParle` est un ajout. L'empreinte d'argent
+ * (gate 8) ne hache que `effet.texte` — elle reste donc identique, et c'est
+ * voulu : aucune décision financière ne change, seulement ce qu'on entend.
+ */
 export type EffetEncaissement =
   | { type: 'rien' }
-  | { type: 'dire'; texte: string }
+  | { type: 'dire'; texte: string; texteParle: string }
   /** L'écran doit appeler la primitive de paiement — après avoir dit `texte`. */
-  | { type: 'encaisser'; texte: string };
+  | { type: 'encaisser'; texte: string; texteParle: string };
 
 export const ETAT_INITIAL: EtatEncaissement = { phase: 'repos' };
 
-const fr = (n: number) => Math.round(n).toLocaleString('fr-FR');
+// LES PHRASES VIENNENT DU CATALOGUE I18N (lot langues, 20/09/2026) : ce module
+// ne connaît plus le français, seulement des clés TATA_* et les trois nombres.
+// Le texte rendu est UNE chaîne, dite ET affichée (garde-fou
+// caisseRelectureAffichee) ; en fr-ci elle est identique au caractère près à
+// celle de 576fd62 (preuve : validators/empreintesArgent.mts). On arrondit
+// ici comme avant ; le formatage « fr-FR » (espaces insécables) est celui de
+// la locale, appliqué par le runtime.
+const r = (n: number) => Math.round(n);
+
+/** L'écran et l'oreille, portés ensemble. Même patron que `PhraseDeuxFormes`. */
+interface Formes { texte: string; texteParle: string }
 
 export function memeEmpreinte(a: EmpreinteFinanciere, b: EmpreinteFinanciere): boolean {
   return a.total === b.total && a.recu === b.recu && a.lignes === b.lignes;
@@ -106,15 +158,23 @@ export function memeEmpreinte(a: EmpreinteFinanciere, b: EmpreinteFinanciere): b
  * doit, ce qu'elle a donné, ce qu'on lui rend.
  */
 export function phraseRelecture(fin: EtatFinancier): string {
-  if (fin.monnaie === 0) {
-    return `Elle doit ${fr(fin.total)} francs. Elle t'a donné ${fr(fin.recu)}. Compte juste. Je valide ?`;
-  }
-  return `Elle doit ${fr(fin.total)} francs. Elle t'a donné ${fr(fin.recu)}. Tu rends ${fr(fin.monnaie)}. Je valide ?`;
+  return relecture(fin).texte;
 }
 
-const PANIER_VIDE = "Ton panier est vide. Dis-moi d'abord ce que tu vends.";
-const COMPTE_LES_BILLETS = (total: number) =>
-  `Elle doit ${fr(total)} francs. Touche les billets qu'elle te donne.`;
+/** Les deux formes d'une même clé : l'écran et l'oreille, jamais la même chaîne. */
+function formes(id: Parameters<typeof t>[0], vars?: Parameters<typeof t>[1]): Formes {
+  return { texte: t(id, vars), texteParle: tParle(id, vars) };
+}
+
+function relecture(fin: EtatFinancier): Formes {
+  if (fin.monnaie === 0) {
+    return formes('TATA_RELECTURE_COMPTE_JUSTE', { total: r(fin.total), recu: r(fin.recu) });
+  }
+  return formes('TATA_RELECTURE_MONNAIE', { total: r(fin.total), recu: r(fin.recu), monnaie: r(fin.monnaie) });
+}
+
+const PANIER_VIDE = () => formes('TATA_PANIER_VIDE_DIS_VENTE');
+const COMPTE_LES_BILLETS = (total: number) => formes('TATA_TOUCHE_LES_BILLETS', { total: r(total) });
 
 /**
  * Ouvre — ou rouvre — une confirmation sur l'état ACTUEL. Jamais un paiement :
@@ -123,14 +183,14 @@ const COMPTE_LES_BILLETS = (total: number) =>
  */
 function demanderConfirmation(fin: EtatFinancier): { etat: EtatEncaissement; effet: EffetEncaissement } {
   if (fin.panierVide || fin.total <= 0) {
-    return { etat: { phase: 'repos' }, effet: { type: 'dire', texte: PANIER_VIDE } };
+    return { etat: { phase: 'repos' }, effet: { type: 'dire', ...PANIER_VIDE() } };
   }
   if (!fin.suffisant) {
-    return { etat: { phase: 'preparation' }, effet: { type: 'dire', texte: COMPTE_LES_BILLETS(fin.total) } };
+    return { etat: { phase: 'preparation' }, effet: { type: 'dire', ...COMPTE_LES_BILLETS(fin.total) } };
   }
   return {
     etat: { phase: 'attente_confirmation', empreinte: fin.empreinte },
-    effet: { type: 'dire', texte: phraseRelecture(fin) },
+    effet: { type: 'dire', ...relecture(fin) },
   };
 }
 
@@ -172,7 +232,7 @@ export function reduire(
       if (enPreparation && fin.suffisant) {
         return {
           etat: { phase: 'attente_confirmation', empreinte: fin.empreinte },
-          effet: { type: 'dire', texte: phraseRelecture(fin) },
+          effet: { type: 'dire', ...relecture(fin) },
         };
       }
       // Ça ne couvre pas encore : elle compte, Tata se tait.
@@ -183,18 +243,18 @@ export function reduire(
     case 'annuler_validation':
       // Le doute profite toujours au refus.
       if (etat.phase === 'repos') return { etat, effet: { type: 'rien' } };
-      return { etat: { phase: 'repos' }, effet: { type: 'dire', texte: "D'accord, je ne valide pas." } };
+      return { etat: { phase: 'repos' }, effet: { type: 'dire', ...formes('TATA_NE_VALIDE_PAS') } };
 
     case 'combien_doit': {
       // LECTURE SEULE : l'état ne bouge pas. Poser une question ne doit ni
       // ouvrir ni fermer une confirmation en cours.
       if (fin.panierVide || fin.total <= 0) {
-        return { etat, effet: { type: 'dire', texte: 'Ton panier est vide.' } };
+        return { etat, effet: { type: 'dire', ...formes('TATA_PANIER_VIDE') } };
       }
-      const texte = fin.recu > 0 && fin.suffisant
-        ? `Elle doit ${fr(fin.total)} francs. Elle t'a donné ${fr(fin.recu)}. Tu rends ${fr(fin.monnaie)}.`
-        : `Elle doit ${fr(fin.total)} francs.`;
-      return { etat, effet: { type: 'dire', texte } };
+      const dit = fin.recu > 0 && fin.suffisant
+        ? formes('TATA_DOIT_DONNE_RENDS', { total: r(fin.total), recu: r(fin.recu), monnaie: r(fin.monnaie) })
+        : formes('TATA_DOIT', { total: r(fin.total) });
+      return { etat, effet: { type: 'dire', ...dit } };
     }
 
     case 'encaisser':
@@ -215,7 +275,7 @@ export function reduire(
         && fin.suffisant
         && fin.total > 0
       ) {
-        return { etat: { phase: 'repos' }, effet: { type: 'encaisser', texte: '' } };
+        return { etat: { phase: 'repos' }, effet: { type: 'encaisser', texte: '', texteParle: '' } };
       }
       // Arrivée trop tôt, ou sur un compte qui a changé : Tata relit le
       // compte d'aujourd'hui et redemande. Une première occurrence de
@@ -223,7 +283,15 @@ export function reduire(
       if (etat.phase === 'attente_confirmation') {
         const suite = demanderConfirmation(fin);
         if (suite.effet.type === 'dire') {
-          return { ...suite, effet: { type: 'dire', texte: `Le compte a changé. ${suite.effet.texte}` } };
+          // La suite est ENCHÂSSÉE dans les deux formes : l'écran reçoit la
+          // relecture écran, l'oreille la relecture parlée. Composer une seule
+          // fois puis réutiliser la chaîne pour les deux rendrait le montant
+          // épelable à nouveau, à l'endroit même où le compte vient de changer.
+          return { ...suite, effet: {
+            type: 'dire',
+            texte: t('TATA_COMPTE_A_CHANGE', { suite: suite.effet.texte }),
+            texteParle: tParle('TATA_COMPTE_A_CHANGE', { suite: suite.effet.texteParle }),
+          } };
         }
         return suite;
       }

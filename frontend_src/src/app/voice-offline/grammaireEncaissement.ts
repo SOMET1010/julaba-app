@@ -42,6 +42,9 @@
 // bruit est exactement le genre d'erreur qu'on ne veut pas découvrir le soir.
 // ──────────────────────────────────────────────────────────────────────────
 
+import { compilerMotif, localeActive, normaliserReference, variantesIntention } from '../i18n/voice/runtime';
+import type { LocaleCode } from '../i18n/voice/types';
+
 export type IntentionEncaissement =
   /** « encaisse » — PRÉPARE l'encaissement. N'écrit jamais d'argent. */
   | 'encaisser'
@@ -67,80 +70,87 @@ export function estIntentionEncaissement(type: string): type is IntentionEncaiss
   return (INTENTIONS_ENCAISSEMENT as readonly string[]).includes(type);
 }
 
+// ── LES VARIANTES SONT DES DONNÉES DE LANGUE (lot langues, 20/09/2026) ────
+// Les quatre listes qui vivaient ici (liste blanche de validation, annulation,
+// préparation, question) ont DÉMÉNAGÉ, à l'identique, dans
+// i18n/voice/locales/fr-ci/intents.ts. Ce module garde la LOGIQUE — l'ordre
+// des tests, la phrase entière ou rien, le doute qui profite au refus — et la
+// lit pour la langue demandée. Une langue sans variantes validées pour
+// l'argent retombe sur celles de fr-ci, tracé (runtime.variantesIntention).
+// Preuve que rien n'a bougé pour le français : empreintesArgent.mts
+// (empreinte `grammaire` identique à 576fd62 sur ~900 phrases).
+//
+// Normalisation : celle de la locale (fr-ci : minuscules, sans accents,
+// ponctuation aplatie, bordée d'espaces — la reconnaissance vocale est
+// irrégulière sur les accents, la détection ne doit jamais en dépendre).
+
+type Normaliser = (texte: string) => string;
+
 /**
- * Minuscules, sans accents, ponctuation aplatie, bordée d'espaces. La
- * reconnaissance vocale est irrégulière sur les accents : la détection ne doit
- * jamais en dépendre. Les bords en espace permettent d'écrire `\bmot\b` sans
- * se soucier du début et de la fin de phrase.
+ * Chaque intention porte SA normalisation : celle de la locale qui a servi ses
+ * variantes (I18N-01, contre-audit du 20/09/2026). Avec la préférence
+ * « dioula » et une locale dyu-ci sans intentions validées, les variantes
+ * viennent de fr-ci — et doivent être comparées avec la normalisation de
+ * fr-ci, pas avec celle de dyu-ci (qui remplace tout [^a-z0-9] par un espace
+ * et cassait « oui c'est bon valide »). La normalisation n'est jamais celle de
+ * la locale DEMANDÉE ; en fr-ci, les quatre sont la référence : comportement
+ * identique à 576fd62 (empreinte `grammaire`, calculée par locale).
  */
-function normaliser(texte: string): string {
-  return ` ${texte
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/['’`]/g, "'")
-    .replace(/[.,!;:?]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()} `;
+interface Reconnaisseurs {
+  /** Liste blanche FERMÉE : la phrase entière normalisée, ou rien. */
+  validation: { liste: ReadonlySet<string>; normaliser: Normaliser };
+  annulation: { motif: RegExp; normaliser: Normaliser };
+  encaisser: { motif: RegExp; normaliser: Normaliser };
+  combienDoit: { motif: RegExp; normaliser: Normaliser };
 }
 
-// ── VALIDATION FINALE : LISTE BLANCHE ─────────────────────────────────────
-// Chaque entrée est une réponse AUTONOME, écrite sous sa forme normalisée
-// (minuscules, sans accents, ponctuation aplatie) : « Oui, valide ! »,
-// « oui validé » et « oui valide » sont la même entrée. On compare la phrase
-// entière — jamais une sous-chaîne. Fermée par choix : voir l'en-tête.
-const REPONSES_VALIDATION: ReadonlySet<string> = new Set([
-  'oui valide',
-  'oui je valide',
-  'ouais valide',
-  'ouais je valide',
-  'valide oui',
-  "oui c'est bon valide",
-  'oui on valide',
-  'oui valide ca',
-]);
+/** Une expression qui ne reconnaît rien : ce qu'on obtient si une langue n'a AUCUNE variante, même en repli. */
+const RIEN = /(?!)/;
 
-// ── ANNULATION ────────────────────────────────────────────────────────────
-// Large volontairement : abandonner ne coûte rien, se tromper en payant coûte
-// de l'argent. Le doute profite donc TOUJOURS au refus.
-const ANNULATION = /\b(non|annule|annuler|attends|attend|arrete|arreter|pas encore|laisse)\b/;
-
-// ── PRÉPARATION DE L'ENCAISSEMENT ─────────────────────────────────────────
-// « encaisse » sous ses formes réellement dites, plus deux tournures
-// naturelles sans ambiguïté. On n'admet PAS « fini », « c'est tout » ou
-// « voilà » seuls : ce sont des mots de conversation ordinaire, et il n'y a
-// aucune raison de faire basculer un écran d'argent sur un mot qui traîne.
-const ENCAISSER = /\b(encaisse|encaisser|encaissement|encaissons)\b|\b(termine|terminer|finis|finir) (la )?vente\b/;
-
-// ── QUESTION « COMBIEN ELLE DOIT » ────────────────────────────────────────
-// Lecture seule : aucune écriture possible, on peut donc être plus accueillant.
-// Reste borné à la DETTE DE LA CLIENTE et au TOTAL DU PANIER — jamais aux
-// statistiques du jour, qui appartiennent à intentionsCaisse.ts (« combien
-// j'ai vendu aujourd'hui » ne doit pas être détourné ici).
-const COMBIEN_DOIT = /\bcombien (elle|il|la cliente|le client) doi(t|s)\b|\belle doit combien\b|\bil doit combien\b|\bca fait combien\b|\bc'est combien\b|\b(le |mon |)total\b/;
+function reconnaisseurs(locale: LocaleCode): Reconnaisseurs {
+  const motif = (id: 'INT_ANNULER_VALIDATION' | 'INT_ENCAISSER' | 'INT_COMBIEN_DOIT') => {
+    const v = variantesIntention(id, locale);
+    return {
+      motif: v && v.variantes.mode === 'motif' ? compilerMotif(v.variantes) : RIEN,
+      normaliser: v?.normaliser ?? normaliserReference,
+    };
+  };
+  const v = variantesIntention('INT_OUI_VALIDE', locale);
+  return {
+    // Une liste blanche est OBLIGATOIREMENT en mode phrase entière : tout autre
+    // mode ne valide rien (validateCriticalMessages l'interdit en amont).
+    validation: {
+      liste: v && v.variantes.mode === 'phrase_entiere' ? new Set(v.variantes.phrases) : new Set<string>(),
+      normaliser: v?.normaliser ?? normaliserReference,
+    },
+    annulation: motif('INT_ANNULER_VALIDATION'),
+    encaisser: motif('INT_ENCAISSER'),
+    combienDoit: motif('INT_COMBIEN_DOIT'),
+  };
+}
 
 /**
  * Reconnaît une intention d'encaissement dans une phrase dictée.
  * `null` = ce n'est pas une phrase d'encaissement ; l'appelant continue son
  * parcours normal (vente, dépense, question…).
  */
-export function detecterEncaissement(texte: string): IntentionEncaissement | null {
+export function detecterEncaissement(texte: string, locale: LocaleCode = localeActive()): IntentionEncaissement | null {
   if (!texte || !texte.trim()) return null;
-  const t = normaliser(texte);
+  const r = reconnaisseurs(locale);
 
   // L'ANNULATION PASSE AVANT TOUT. « non, pas valide » contient « valid » :
   // si la validation était testée d'abord, un refus deviendrait un paiement.
   // C'est l'ordre de ces deux blocs qui rend ce module sûr.
-  if (ANNULATION.test(t)) return 'annuler_validation';
+  if (r.annulation.motif.test(r.annulation.normaliser(texte))) return 'annuler_validation';
 
   // La phrase ENTIÈRE, ou rien. « oui je valide pas », « oui valide la
   // dépense », « ma cliente a dit oui valide » ne sont dans aucune liste :
   // elles ne valent rien ici, et retombent en « je n'ai pas compris ».
-  if (REPONSES_VALIDATION.has(t.trim())) return 'oui_valide';
+  if (r.validation.liste.has(r.validation.normaliser(texte).trim())) return 'oui_valide';
 
-  if (ENCAISSER.test(t)) return 'encaisser';
+  if (r.encaisser.motif.test(r.encaisser.normaliser(texte))) return 'encaisser';
 
-  if (COMBIEN_DOIT.test(t)) return 'combien_doit';
+  if (r.combienDoit.motif.test(r.combienDoit.normaliser(texte))) return 'combien_doit';
 
   return null;
 }

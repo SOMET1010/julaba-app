@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router';
 import {
   Wallet,
   TrendingUp,
@@ -35,12 +36,32 @@ import {
 } from 'recharts';
 
 import { Montant, MontantCard } from '../shared/Montant';
+import { useSpeakMessage } from '../../i18n/voice/speakMessage';
+import { t } from '../../i18n/voice/runtime';
+import {
+  ouverturePhrasePeriode, complementPeriode, type PeriodeResume,
+} from '../../services/resumePeriode';
+import { categorieDeLaDepense } from '../../services/categorieDepense';
 
-type Period = 'today' | '7days' | '30days' | 'custom';
+/**
+ * HIS-01 — LA PÉRIODE N'EST PLUS ÉCRITE EN DUR.
+ *
+ * La liste des périodes vit désormais dans `services/resumePeriode.ts`, avec
+ * les mots qui les nomment. Deux endroits qui énuméraient les mêmes quatre
+ * valeurs finissaient par diverger : c'est ainsi qu'« Aujourd'hui » s'est
+ * retrouvé collé au total d'un mois.
+ */
+type Period = PeriodeResume;
 
 export function ResumeCaisse() {
-  const { getFinancialSummary, getSalesHistory, transactions, currentSession, speak, isOnline } = useApp();
+  const { getFinancialSummary, getSalesHistory, transactions, currentSession, isOnline } = useApp();
+  const navigate = useNavigate();
   const { stocks } = useStock();
+  // La voix passe par le catalogue : c'est le SEUL chemin qui produise la
+  // forme PARLÉE des montants (« trente-trois mille six cents francs »).
+  // `speak(texte)` envoyait « 33 600 », que le moteur épelait « trois zéro
+  // zéro zéro » — la faute fermée le 22/09 sur la caisse, encore vivante ici.
+  const speakMessage = useSpeakMessage();
   
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('today');
   const [customStart, setCustomStart] = useState('');
@@ -146,11 +167,18 @@ export function ResumeCaisse() {
       (t) => t.type === 'depense' && new Date(t.date) >= startDate
     );
 
-    // Grouper par catégorie
+    // GROUPER PAR CATÉGORIE — DEP-02.
+    //
+    // Cette boucle groupait sur `t.category`, qui contenait en réalité le MOTIF
+    // de la dépense en minuscules (« taxe mairie », « médicaments »). Le
+    // camembert affichait donc une part par texte saisi, sous le titre
+    // « catégories ». Il lit maintenant la catégorie réellement enregistrée, et
+    // les dépenses qui n'en ont pas font une part À PART, nommée — pas une
+    // part « Autres » qu'on confondrait avec la catégorie « Autre ».
     const groupedByCategory: Record<string, number> = {};
     filteredTransactions.forEach((t) => {
-      const category = t.category || 'Autres';
-      groupedByCategory[category] = (groupedByCategory[category] || 0) + t.price * t.quantity;
+      const lue = categorieDeLaDepense({ category: t.category });
+      groupedByCategory[lue.libelle] = (groupedByCategory[lue.libelle] || 0) + t.price * t.quantity;
     });
 
     return Object.entries(groupedByCategory).map(([name, value]) => ({
@@ -193,7 +221,7 @@ export function ResumeCaisse() {
 
   const soldeActuel = (currentSession?.fondInitial || 0) + financialData.totalVentes - financialData.totalCahier;
 
-  const COLORS = ['#B74725', '#00563B', '#2072AF', '#702963', '#F59E0B', '#EF4444'];
+  const COLORS = ['var(--commerce-action)', 'var(--commerce-green)', 'var(--herite-bleu)', '#702963', 'var(--herite-ambre)', 'var(--color-red-500)'];
 
   const periodLabels: Record<Period, string> = {
     today: "Aujourd'hui",
@@ -235,8 +263,50 @@ export function ResumeCaisse() {
     ) || null;
   }, [stocks]);
 
+  // ── LE BILAN DE TANTIE LOU — HIS-01 ────────────────────────────────────────
+  //
+  // LE DÉFAUT FERMÉ ICI, mot pour mot depuis la recette terrain (MAR-HIS-001) :
+  // « je sélectionne la périodicité "Ce mois" et il est affiché "Aujourd'hui tu
+  // as gagné 33 600 francs" ». Les chiffres, eux, étaient justes — ils venaient
+  // bien de la période choisie. C'est la PHRASE qui mentait sur ce qu'ils
+  // comptaient, parce que « Aujourd'hui » et « du jour » étaient écrits en dur.
+  // Une marchande qui lit ça sur le total d'un mois croit avoir fait une
+  // journée exceptionnelle.
+  //
+  // UNE SEULE SOURCE POUR L'ŒIL ET POUR L'OREILLE. Les deux phrases se
+  // construisent maintenant à partir des MÊMES clés du catalogue, avec la
+  // MÊME période. Elles ne peuvent plus diverger : c'était le cas avant, la
+  // phrase affichée et la phrase dite se recopiaient l'une l'autre à la main.
+  const variablesBilan = {
+    periode: ouverturePhrasePeriode(selectedPeriod),
+    ventes: financialData.totalVentes,
+    depenses: financialData.totalCahier,
+  };
+  const phraseBilan = financialData.beneficeNet >= 0
+    ? (financialData.totalCahier === 0
+        ? t('RESUME_BILAN_SANS_DEPENSE', variablesBilan)
+        : t('RESUME_BILAN_GAGNE', variablesBilan))
+    : t('RESUME_BILAN_PERTE', { periode: ouverturePhrasePeriode(selectedPeriod) });
+
+  const direLeResume = () => {
+    const vars = {
+      complement: complementPeriode(selectedPeriod),
+      ventes: financialData.totalVentes,
+      depenses: financialData.totalCahier,
+      solde: soldeActuel,
+    };
+    if (financialData.beneficeNet >= 0) speakMessage('RESUME_DETAIL', { ...vars, heure: heurePointe });
+    else speakMessage('RESUME_DETAIL_PERTE', vars);
+  };
+
+  // « MES VENTES » — 25/09/2026. L'écran s'appelait « Résumé détaillé » alors
+  // que la seule porte qui y mène dit « Mes ventes ». La marchande touchait un
+  // mot et en lisait un autre : pour une non-lectrice guidée par la voix, la
+  // porte et la destination ne se répondaient pas. « Résumé détaillé » datait
+  // du temps où deux portes menaient à deux écrans de chiffres — il n'en reste
+  // qu'une (portesChiffres.test.mts).
   return (
-    <SubPageLayout role="marchand" title="Résumé détaillé">
+    <SubPageLayout role="marchand" title="Mes ventes">
         <div style={{ padding:'14px 0 0', display:'flex', flexDirection:'column', gap:12 }}>
 
           {/* ── KPIs 2x2 JUSTE SOUS LE HEADER ── */}
@@ -246,7 +316,7 @@ export function ResumeCaisse() {
               animatedTarget={financialData.totalVentes}
               suffix="FCFA"
               icon={TrendingUp}
-              color="#16a34a"
+              color="var(--color-green-600)"
               bgColor="rgba(240,253,244,0.85)"
               borderColor="rgba(34,197,94,0.4)"
               iconAnimation="bounce"
@@ -258,7 +328,7 @@ export function ResumeCaisse() {
               animatedTarget={financialData.totalCahier}
               suffix="FCFA"
               icon={TrendingDown}
-              color="#dc2626"
+              color="var(--destructive)"
               bgColor="rgba(254,242,242,0.85)"
               borderColor="rgba(239,68,68,0.4)"
               iconAnimation="pulse"
@@ -270,7 +340,7 @@ export function ResumeCaisse() {
               animatedTarget={Math.abs(financialData.beneficeNet)}
               suffix="FCFA"
               icon={Banknote}
-              color={financialData.beneficeNet >= 0 ? '#2563eb' : '#dc2626'}
+              color={financialData.beneficeNet >= 0 ? 'var(--herite-bleu-vif)' : 'var(--destructive)'}
               bgColor={financialData.beneficeNet >= 0 ? 'rgba(239,246,255,0.85)' : 'rgba(254,242,242,0.85)'}
               borderColor={financialData.beneficeNet >= 0 ? 'rgba(59,130,246,0.4)' : 'rgba(239,68,68,0.4)'}
               iconAnimation="spin"
@@ -282,7 +352,7 @@ export function ResumeCaisse() {
               animatedTarget={soldeActuel}
               suffix="FCFA"
               icon={Wallet}
-              color="#ea580c"
+              color="var(--color-orange-600)"
               bgColor="rgba(255,247,237,0.85)"
               borderColor="rgba(249,115,22,0.4)"
               iconAnimation="float"
@@ -295,7 +365,7 @@ export function ResumeCaisse() {
           {/* ── SÉLECTEUR PÉRIODE iOS ── */}
           <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:4, display:'flex', position:'relative' }}>
             <motion.div
-              style={{ position:'absolute', top:4, height:'calc(100% - 8px)', background:'#AF5B23', borderRadius:12, boxShadow:'0 2px 8px rgba(175,91,35,0.3)' }}
+              style={{ position:'absolute', top:4, height:'calc(100% - 8px)', background:'var(--commerce-action)', borderRadius:12, boxShadow:'0 2px 8px rgba(175,91,35,0.3)' }}
               animate={{
                 left: selectedPeriod === 'today' ? '4px' : selectedPeriod === '7days' ? 'calc(25% + 1px)' : selectedPeriod === '30days' ? 'calc(50% + 1px)' : 'calc(75% + 1px)',
                 width: 'calc(25% - 3px)'
@@ -325,59 +395,58 @@ export function ResumeCaisse() {
 
           {/* ── TANTIE LOU ── */}
           <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:18, padding:'12px 14px', display:'flex', alignItems:'center', gap:12 }}>
-            <div style={{ width:44, height:44, borderRadius:'50%', background:'#FFF3EA', border:'2px solid #AF5B23', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#AF5B23" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <div style={{ width:44, height:44, borderRadius:'50%', background:'var(--commerce-orange-50)', border:'2px solid var(--commerce-action)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--commerce-action)" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:12, fontWeight:700, color:'var(--encre)', lineHeight:1.5 }}>
-                {financialData.beneficeNet >= 0
-                  ? `Aujourd'hui tu as gagné ${financialData.totalVentes.toLocaleString('fr-FR')} francs. ${financialData.totalCahier === 0 ? "Tu as rien dépensé. Bravo !" : `Tu as dépensé ${financialData.totalCahier.toLocaleString('fr-FR')} francs.`}`
-                  : `Attention ! Tu as plus dépensé que gagné aujourd'hui. Fais attention à tes dépenses.`
-                }
+                {phraseBilan}
               </div>
-              <div style={{ fontSize:10, color:'var(--encre-4)', marginTop:2 }}>Tata Nanti Lou · appuie sur lecture</div>
+              <div style={{ fontSize:10, color:'var(--encre-4)', marginTop:2 }}>Tantie Nanti Lou · appuie sur lecture</div>
             </div>
-            <motion.button whileTap={{ scale:0.9 }} onClick={() => {
-              const resume = financialData.beneficeNet >= 0
-                ? `Résumé du jour. Ventes: ${financialData.totalVentes.toLocaleString('fr-FR')} francs. Dépenses: ${financialData.totalCahier.toLocaleString('fr-FR')} francs. Solde actuel: ${soldeActuel.toLocaleString('fr-FR')} francs. Heure de pointe: ${heurePointe}.`
-                : `Attention. Tu as plus dépensé que gagné. Ventes: ${financialData.totalVentes.toLocaleString('fr-FR')} francs. Dépenses: ${financialData.totalCahier.toLocaleString('fr-FR')} francs. Solde actuel: ${soldeActuel.toLocaleString('fr-FR')} francs.`;
-              speak(resume);
-            }}
-              style={{ width:36, height:36, borderRadius:'50%', background:'#AF5B23', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+            <motion.button whileTap={{ scale:0.9 }} onClick={direLeResume}
+              style={{ width:36, height:36, borderRadius:'50%', background:'var(--commerce-action)', border:'none', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </motion.button>
           </div>
 
           {/* ── HEURE DE POINTE ── */}
           <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:'12px 14px', display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ width:38, height:38, borderRadius:'50%', background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <Clock size={18} color="#AF5B23" />
+            <div style={{ width:38, height:38, borderRadius:'50%', background:'var(--commerce-orange-50)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <Clock size={18} color="var(--commerce-action)" />
             </div>
             <div style={{ flex:1 }}>
               <div style={{ fontSize:12, fontWeight:900, color:'var(--encre)' }}>Tu vends le plus à cette heure</div>
-              <div style={{ fontSize:11, color:'#888', marginTop:2 }}>Sois bien approvisionnée</div>
+              <div style={{ fontSize:11, color:'var(--herite-gris-53)', marginTop:2 }}>Sois bien approvisionnée</div>
             </div>
-            <div style={{ background:'#AF5B23', color:'white', fontSize:12, fontWeight:900, padding:'5px 12px', borderRadius:20, whiteSpace:'nowrap' }}>{heurePointe}</div>
+            <div style={{ background:'var(--commerce-action)', color:'white', fontSize:12, fontWeight:900, padding:'5px 12px', borderRadius:20, whiteSpace:'nowrap' }}>{heurePointe}</div>
           </div>
 
           {/* ── GRAPHE ANIMÉ ── */}
           {evolutionData.length > 0 && (
             <div style={{ background:'white', borderRadius:18, padding:14, border:'1.5px solid var(--trait)' }}>
               <div style={{ fontSize:13, fontWeight:900, color:'var(--encre)', marginBottom:4 }}>Évolution de tes ventes</div>
-              <div style={{ fontSize:12, fontWeight:700, color:'#16a34a', marginBottom:10, display:'flex', alignItems:'center', gap:4 }}>
-                <TrendingUp size={13} color="#16a34a" />
+              <div style={{ fontSize:12, fontWeight:700, color:'var(--color-green-600)', marginBottom:10, display:'flex', alignItems:'center', gap:4 }}>
+                <TrendingUp size={13} color="var(--color-green-600)" />
                 {financialData.totalVentes > 0 ? "Tu vends bien !" : "Pas encore de ventes"}
               </div>
               <div style={{ height:120 }}>
                 <ResponsiveContainer width="100%" height={120}>
                   <LineChart data={evolutionData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f5f0eb" />
-                    <XAxis dataKey="day" stroke="#ddd" style={{ fontSize:'10px' }} tick={{ fill:'#aaa' }} />
-                    <YAxis stroke="#ddd" style={{ fontSize:'10px' }} tick={{ fill:'#aaa' }} width={40} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--commerce-paper)" />
+                    <XAxis dataKey="day" stroke="var(--herite-gris-87)" style={{ fontSize:'10px' }} tick={{ fill:'var(--herite-gris-40)' }} />
+                    {/* GRADUATIONS RÉGULIÈRES — 25/09/2026. Sans contrainte,
+                        Recharts choisissait seul et sautait une graduation :
+                        l'agent de test a relevé « 0, 2000, 4000, 8000 », sans
+                        6000. Sur une échelle de MONTANTS, un pas irrégulier
+                        fait mal lire la courbe — deux hauteurs égales ne
+                        valent alors pas le même argent. `allowDecimals` à
+                        false : un demi-franc n'existe pas. */}
+                    <YAxis stroke="var(--herite-gris-87)" style={{ fontSize:'10px' }} tick={{ fill:'var(--herite-gris-40)' }} width={40} tickCount={5} allowDecimals={false} domain={[0, 'auto']} />
                     <Tooltip contentStyle={{ backgroundColor:'white', border:'1.5px solid var(--trait)', borderRadius:12, fontSize:11 }}
                       formatter={(v: number) => `${(v||0).toLocaleString('fr-FR')} FCFA`} />
-                    <Line type="monotone" dataKey="solde" stroke="#AF5B23" strokeWidth={2.5}
-                      dot={{ fill:'#AF5B23', r:3 }} activeDot={{ r:5 }}
+                    <Line type="monotone" dataKey="solde" stroke="var(--commerce-action)" strokeWidth={2.5}
+                      dot={{ fill:'var(--commerce-action)', r:3 }} activeDot={{ r:5 }}
                       animationDuration={1500} animationEasing="ease-out" />
                   </LineChart>
                 </ResponsiveContainer>
@@ -387,18 +456,22 @@ export function ResumeCaisse() {
 
           {/* ── PRODUIT STAR ── */}
           {produitStar && (
-            <div style={{ background:'white', border:'2px solid #AF5B23', borderRadius:18, padding:14, display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ width:56, height:56, borderRadius:14, background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#AF5B23" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <div style={{ background:'white', border:'2px solid var(--commerce-action)', borderRadius:18, padding:14, display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ width:56, height:56, borderRadius:14, background:'var(--commerce-orange-50)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--commerce-action)" strokeWidth="2" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               </div>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:10, fontWeight:900, color:'#AF5B23', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:2 }}>Produit star du jour</div>
+                <div style={{ fontSize:10, fontWeight:900, color:'var(--commerce-action)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:2 }}>Produit star du jour</div>
                 <div style={{ fontSize:18, fontWeight:900, color:'var(--encre)' }}>{produitStar.productName}</div>
-                <div style={{ fontSize:11, color:'#888', fontWeight:700, marginTop:2 }}>{produitStar.quantity} vente{produitStar.quantity > 1 ? 's' : ''}</div>
+                {/* « VENDUS », PAS « VENTES » — la carte du produit star disait encore
+                  « 2 ventes » pour UNE vente de 2 tas, alors que la liste juste
+                  en dessous était corrigée. Deux endroits lisaient la même
+                  donnée, un seul avait été repris (agent de test, 25/09). */}
+              <div style={{ fontSize:11, color:'var(--herite-gris-53)', fontWeight:700, marginTop:2 }}>{produitStar.quantity} vendu{produitStar.quantity > 1 ? 's' : ''}</div>
               </div>
               <div style={{ textAlign:'right' }}>
-                <div style={{ fontSize:20, fontWeight:900, color:'#AF5B23' }}>{(produitStar.total||0).toLocaleString('fr-FR')}</div>
-                <div style={{ fontSize:11, fontWeight:700, color:'#AF5B23' }}>FCFA</div>
+                <div style={{ fontSize:20, fontWeight:900, color:'var(--commerce-action)' }}>{(produitStar.total||0).toLocaleString('fr-FR')}</div>
+                <div style={{ fontSize:11, fontWeight:700, color:'var(--commerce-action)' }}>FCFA</div>
               </div>
             </div>
           )}
@@ -407,21 +480,40 @@ export function ResumeCaisse() {
           {topProduits.length > 0 && (
             <div style={{ background:'white', borderRadius:18, padding:14, border:'1.5px solid var(--trait)' }}>
               <div style={{ fontSize:13, fontWeight:900, color:'var(--encre)', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#AF5B23" strokeWidth="2.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--commerce-action)" strokeWidth="2.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 Tes meilleurs produits
               </div>
               {topProduits.slice(0,5).map((p, i) => (
-                <div key={p.productName} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom: i < Math.min(topProduits.length,5)-1 ? '1px solid #f5f0eb' : 'none' }}>
-                  <div style={{ width:28, height:28, borderRadius:'50%', background: i===0?'#AF5B23':i===1?'#888':'#b45309', color:'white', fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{i+1}</div>
+                <div key={p.productName} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 0', borderBottom: i < Math.min(topProduits.length,5)-1 ? '1px solid var(--commerce-paper)' : 'none' }}>
+                  <div style={{ width:28, height:28, borderRadius:'50%', background: i===0?'var(--commerce-action)':i===1?'var(--herite-gris-53)':'var(--herite-orange-brule)', color:'white', fontSize:13, fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{i+1}</div>
                   <div style={{ flex:1, fontSize:14, fontWeight:900, color:'var(--encre)' }}>{p.productName}</div>
                   <div style={{ textAlign:'right' }}>
-                    <div style={{ fontSize:14, fontWeight:900, color:'#AF5B23' }}>{(p.total||0).toLocaleString('fr-FR')} FCFA</div>
-                    <div style={{ fontSize:10, fontWeight:700, color:'var(--encre-4)' }}>{p.quantity} vente{p.quantity>1?'s':''}</div>
+                    <div style={{ fontSize:14, fontWeight:900, color:'var(--commerce-action)' }}>{(p.total||0).toLocaleString('fr-FR')} FCFA</div>
+                    {/* « VENDUS », PAS « VENTES » — 25/09/2026.
+                        `quantity` est la QUANTITÉ vendue : AppContext le dit
+                        mot pour mot (« quantite = vraie quantite »). L'écran
+                        la lisait comme un NOMBRE DE VENTES : une seule vente
+                        de 2 tas s'affichait « 2 ventes ». Une même donnée,
+                        deux sens — et celui affiché était faux. */}
+                    <div style={{ fontSize:10, fontWeight:700, color:'var(--encre-4)' }}>{p.quantity} vendu{p.quantity>1?'s':''}</div>
                   </div>
                 </div>
               ))}
             </div>
           )}
+
+          {/* LE DÉTAIL S'OUVRE D'ICI, ET SEULEMENT D'ICI — 24/09/2026.
+              « Mes ventes » (accueil) ouvre CE résumé : « combien j'ai fait
+              aujourd'hui », la question du soir. La liste vente par vente est
+              un DÉTAIL de cette réponse, pas une destination concurrente.
+              C'était l'inverse, et sept portes menaient aux deux écrans. */}
+          <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/ventes-passees')}
+            style={{ width:'100%', background:'white', border:'2px solid var(--trait)', borderRadius:18, padding:'15px 14px', display:'flex', alignItems:'center', gap:11, cursor:'pointer', fontFamily:'inherit', marginTop:12 }}>
+            <div style={{ width:38, height:38, borderRadius:12, background:'var(--commerce-orange-50)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--commerce-action)" strokeWidth="2.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <span style={{ fontSize:15, fontWeight:900, color:'var(--encre)' }}>Voir chaque vente</span>
+          </motion.button>
 
         </div>
     </SubPageLayout>

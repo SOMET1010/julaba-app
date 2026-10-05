@@ -21,22 +21,42 @@
 // ──────────────────────────────────────────────────────────────────────────
 
 import { extraire } from './extraction';
+import { MOTS_PAS_UNE_VENTE } from './vocabulaire';
 import { detecterEncaissement, type IntentionEncaissement } from './grammaireEncaissement';
 import { plurielNom } from '../services/dialoguesTata';
-
-const fmt = (n: number) => n.toLocaleString('fr-FR');
+import { localeActive, t } from '../i18n/voice/runtime';
+import type { LocaleCode } from '../i18n/voice/types';
 
 // Réponse minimale au MÊME format que le serveur (champs utiles au flux).
 export interface LocalVoiceResult {
   transcript: string;
   normalizedText: string;
   intent: string;
-  action: { type: string; montant?: number; produit?: string; quantite?: number; description?: string };
+  /**
+   * VOIX-07 — `unite` est ADDITIF. Elle était extraite par `extraire`
+   * (`uniteParlee`) puis jetée ici : l'action n'avait pas de champ pour elle.
+   * Aucun champ existant ne bouge ; ce qui ne la lit pas ne voit rien changer.
+   */
+  action: { type: string; montant?: number; produit?: string; quantite?: number; unite?: string; description?: string };
   response: string;
   needsConfirmation: boolean;
   audioBase64: null;
   navigate: null;
   offline: true;
+}
+
+/**
+ * La phrase porte-t-elle un mot qui interdit de la lire comme une vente ?
+ *
+ * EXPORTÉE POUR CAT-01, et pour une seule raison : la lecture au catalogue de
+ * la caisse doit refuser EXACTEMENT les mêmes phrases que celle-ci. Deux
+ * listes d'interdits finiraient par diverger, et la divergence se paierait en
+ * ventes inventées. Le corps ne bouge pas d'une ligne — seul le mot-clé
+ * `export` est ajouté, donc aucun comportement du moteur ne change.
+ */
+export function interditDeVendre(texte: string): boolean {
+  const mots = texte.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter(Boolean);
+  return mots.some((m) => MOTS_PAS_UNE_VENTE.includes(m));
 }
 
 /**
@@ -64,7 +84,43 @@ function resultatEncaissement(texte: string, intention: IntentionEncaissement): 
  * @param texte transcription brute (STT on-device)
  * @returns la réponse locale, ou null si non reconnu avec assez de confiance.
  */
-export function intentLocal(texte: string): LocalVoiceResult | null {
+export function intentLocal(texte: string, locale: LocaleCode = localeActive()): LocalVoiceResult | null {
+  return analyser(texte, locale, false);
+}
+
+/**
+ * LA MÊME LECTURE, SUR UNE SURFACE QUI NE FAIT QUE VENDRE — 21/09/2026.
+ *
+ * Patrick dicte « cinq tomates » sur la CAISSE. L'extraction comprend tout
+ * (produit=tomate, quantité=5), mais `intention` reste nulle faute de verbe :
+ * `intentLocal` rendait donc `null`, la phrase était jetée, et il ne restait
+ * à l'écran que le bandeau « J'ai compris : Cinq tomates » au-dessus de rien.
+ * Ses mots : « il ne fais que ecrire ce que jai dis 3 tomates et cest tout ».
+ *
+ * Une marchande ne dit pas « vends trois tomates » : elle dit « trois
+ * tomates ». Le verbe, sur cet écran-là, c'est le geste d'avoir appuyé sur le
+ * micro de sa caisse.
+ *
+ * POURQUOI UNE SECONDE PORTE, ET PAS UN ASSOUPLISSEMENT D'`intentLocal`.
+ * `intentLocal` est lue par TOUTES les surfaces (stock, assistante, rejeu
+ * hors ligne) : « trois tomates » n'y veut pas dire la même chose partout, et
+ * son comportement est gelé par l'empreinte d'argent du lot i18n
+ * (`i18n/voice/validators/empreintesArgent.mts`). Cette fonction-ci est
+ * demandée NOMMÉMENT par la caisse, et par elle seule ; ailleurs, rien ne
+ * change.
+ *
+ * Elle reste étroite par construction : il faut un PRODUIT du lexique fermé
+ * ET une QUANTITÉ ; toute autre intention (dépense, crédit, solde…) garde la
+ * main ; l'encaissement aussi (« annule les 3 tomates » reste une
+ * annulation) ; et un mot de stock ou de retrait ferme la porte
+ * (`MOTS_PAS_UNE_VENTE`). Elle n'écrit toujours AUCUN argent : sans montant,
+ * le prix reste à résoudre en aval, et à défaut il est DEMANDÉ.
+ */
+export function intentLocalCaisse(texte: string, locale: LocaleCode = localeActive()): LocalVoiceResult | null {
+  return analyser(texte, locale, true);
+}
+
+function analyser(texte: string, locale: LocaleCode, venteSansVerbeAutorisee: boolean): LocalVoiceResult | null {
   if (!texte || !texte.trim()) return null;
 
   // L'ENCAISSEMENT EST CONSULTÉ EN PREMIER (VOIX-01, lot C). « Combien elle
@@ -91,12 +147,56 @@ export function intentLocal(texte: string): LocalVoiceResult | null {
   // la vente gagner ne coûte rien sur l'argent, alors que l'avaler en
   // silence coûterait la ligne. « oui valide » et « combien elle doit »,
   // eux, sont rendus tout de suite.
-  const encaissement = detecterEncaissement(texte);
+  const encaissement = detecterEncaissement(texte, locale);
   if (encaissement === 'oui_valide' || encaissement === 'combien_doit') return resultatEncaissement(texte, encaissement);
 
   const p = extraire(texte);
   const venteParEncaisse = encaissement === 'encaisser' && p.intention === null && !!p.produit;
-  if (!p.intention && !venteParEncaisse) return encaissement ? resultatEncaissement(texte, encaissement) : null;
+
+  // « CINQ TOMATES » EST UNE VENTE — mais seulement là où on ne fait que
+  // vendre (voir intentLocalCaisse). Ailleurs, ce drapeau est faux et rien ne
+  // change : c'est l'appelante qui prend cette responsabilité, nommément.
+  //
+  // F4NT-B — « TOMATE MILLE FRANCS » EST UNE VENTE. 01/10/2026.
+  //
+  // Rapport terrain F4NT : elle dit « Tomate mille francs » sur sa caisse, et
+  // elle entend « je n'ai pas bien compris ». Mesuré avant correction :
+  //
+  //     extraire(« Tomate mille francs ») → produit tomate, MONTANT 1000
+  //     intentLocalCaisse(…)              → NULL
+  //
+  // L'extraction avait TOUT compris — le produit ET le prix. Ce qu'elle n'avait
+  // pas, c'est une quantité, et cette ligne l'EXIGEAIT. L'information existait
+  // et on la jetait : le motif habituel.
+  //
+  // L'ASYMÉTRIE N'AVAIT PAS DE RAISON. Depuis le 18/09, « un tas de piment »
+  // (quantité, aucun montant) est une vente — « le prix, l'application le
+  // connaît ». Mais « tomate mille francs » (montant, aucune quantité) était
+  // jeté, alors que la quantité manquante vaut 1 : c'est le cas NORMAL au
+  // marché, un tas, un prix. Une marchande dit « tomate, mille francs » bien
+  // plus souvent que « vends une tomate à mille francs ».
+  //
+  // DONC : UNE QUANTITÉ **OU** UN MONTANT. Jamais ni l'un ni l'autre.
+  //
+  // CE QUI NE BASCULE PAS, mesuré sur 37 phrases avant d'écrire cette ligne —
+  // et c'est `!!p.produit` qui tient la porte, pas la nouvelle condition :
+  //     « oignon » (produit nu)          → quantité ET montant nuls   → refusé
+  //     « mille francs » (montant nu)    → aucun produit              → refusé
+  //     « combien de tomate »            → quantité ET montant nuls   → refusé
+  //     « combien j'ai vendu »           → idem                       → refusé
+  //     stock, retrait, dépense, encaissement, annulation : main gardée
+  // Aucune question sur les chiffres du jour ne porte de nombre : elles sont
+  // hors d'atteinte par construction, pas par chance.
+  //
+  // AUCUN ARGENT N'EST INVENTÉ ICI. Le montant qui entre est celui qu'elle a
+  // DIT. Sans quantité dite, elle vaut 1 en aval — donc 1 × le prix dit, et
+  // aucune ambiguïté de prix à lever (la règle du 21/09 ne se pose qu'à partir
+  // de deux unités).
+  const venteSansVerbe = venteSansVerbeAutorisee
+    && !encaissement && p.intention === null && !!p.produit
+    && (p.quantite != null || p.montant != null) && !interditDeVendre(texte);
+
+  if (!p.intention && !venteParEncaisse && !venteSansVerbe) return encaissement ? resultatEncaissement(texte, encaissement) : null;
 
   // On ne traite localement que le transactionnel financier sûr (vente/dépense).
   // Le reste (soldes, questions ouvertes) reste au serveur quand on est en ligne.
@@ -114,7 +214,7 @@ export function intentLocal(texte: string): LocalVoiceResult | null {
   // ce qu'on a payé.
   let type: string | null = null;
   let intent: string | null = null;
-  if ((p.intention === 'vente' || venteParEncaisse) && (p.montant != null || p.produit)) { type = 'vendre'; intent = 'vendre'; }
+  if ((p.intention === 'vente' || venteParEncaisse || venteSansVerbe) && (p.montant != null || p.produit)) { type = 'vendre'; intent = 'vendre'; }
   else if (p.intention === 'depense' && p.montant != null) { type = 'depense'; intent = 'depense'; }
   // Pas de vente ni de dépense reconnue : un refus ou un « encaisse » entendu
   // plus haut vaut alors pour ce qu'il est.
@@ -123,21 +223,54 @@ export function intentLocal(texte: string): LocalVoiceResult | null {
   const action: LocalVoiceResult['action'] = { type };
   if (p.produit) action.produit = p.produit;
   if (p.quantite != null) action.quantite = p.quantite;
+  // TELLE QU'ELLE L'A DITE. `uniteParlee` arrive déjà accordée par sa bouche
+  // — « sac » ou « sacs », « kilo » ou « kilos », « tas » invariable. La
+  // ré-accorder reviendrait à lui rendre NOTRE mot à la place du sien, et à
+  // se tromper sur les invariables.
+  if (p.uniteParlee) action.unite = p.uniteParlee;
   if (p.montant != null) action.montant = p.montant;
   if (intent === 'depense' && p.produit) action.description = p.produit;
 
   // Accord du pluriel (« Vente de 2 tomates », pas « 2 tomate ») — même règle
   // que les dialogues de la vente guidée.
+  /**
+   * CE QU'ELLE ENTEND EN RETOUR DOIT ÊTRE CE QU'ELLE A DIT — VOIX-07.
+   *
+   * Elle disait « 5 sacs de riz à 20 000 » et Tata répondait « Vente de 5 riz
+   * pour 20 000 francs, c'est bien ça ? ». Puis elle attendait un OUI.
+   *
+   * Ce n'était pas un défaut d'affichage : la CONFIRMATION portait sur une
+   * phrase amputée. Cinq sacs à 20 000 et cinq unités de riz à 20 000 ne sont
+   * pas la même vente, et c'est elle qui validait la seconde.
+   *
+   * La composition avec unité existait déjà — `TATA_QUANTITE_UNITE_PRODUIT`,
+   * dont `resumeQuantite` se sert pour l'écran. On la réutilise plutôt que
+   * d'en écrire une seconde : deux compositions finiraient par diverger, et
+   * c'est exactement l'écart qu'on est en train de fermer.
+   *
+   * Avec unité le produit reste au SINGULIER (« 2 tas de piment ») : c'est
+   * l'unité qui porte le nombre. Sans unité, il s'accorde comme avant.
+   */
   const nomProduit = p.produit
     ? (p.quantite && p.quantite > 1 ? plurielNom(p.produit) : p.produit)
-    : 'produit';
+    : t('TATA_PRODUIT_GENERIQUE', {}, locale);
+  const avecUnite = !!(p.uniteParlee && p.produit);
+  // Le bloc « 2 tas de piment » part ENTIER dans {produit} : la clé garde la
+  // main sur l'ordre des morceaux, pour une langue qui les rangerait autrement.
+  const blocProduit = avecUnite
+    ? t('TATA_QUANTITE_UNITE_PRODUIT',
+        { quantite: String(p.quantite ?? 1), unite: p.uniteParlee!, produit: p.produit! }, locale)
+        .replace(/\s+/g, ' ').trim()
+    : nomProduit;
   // Sans montant dicté, on n'en ANNONCE aucun : le prix sera celui du
   // catalogue, et affirmer un chiffre qu'on n'a pas serait pire que se taire.
-  const partMontant = p.montant != null ? ` pour ${fmt(p.montant)} francs` : '';
+  // Phrases du catalogue i18n : les morceaux (quantité, montant, produit)
+  // sont eux-mêmes des clés, pour qu'une langue puisse les ordonner autrement.
+  const partMontant = p.montant != null ? t('TATA_PART_POUR_MONTANT', { montant: p.montant }, locale) : '';
   const response =
     intent === 'vendre'
-      ? `Vente de ${p.quantite ? `${p.quantite} ` : ''}${nomProduit}${partMontant}, c'est bien ça ?`
-      : `Dépense de ${fmt(p.montant!)} francs${p.produit ? ` pour ${p.produit}` : ''}, c'est bien ça ?`;
+      ? t('TATA_CONFIRME_VENTE', { quantite: avecUnite ? '' : (p.quantite ? t('TATA_PART_QUANTITE', { quantite: String(p.quantite) }, locale) : ''), produit: blocProduit, montant: partMontant }, locale)
+      : t('TATA_CONFIRME_DEPENSE', { montant: p.montant!, produit: p.produit ? t('TATA_PART_POUR_PRODUIT', { produit: p.produit }, locale) : '' }, locale);
 
   return {
     transcript: texte,

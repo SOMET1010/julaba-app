@@ -1,0 +1,8 @@
+﻿"fichier","texte_a_enregistrer","origine"
+"stk-10.wav","Qu'est-ce que tu vends ?","STOCK_047 · Première question du parcours guidé (étape « nom »)"
+"stk-11.wav","Je n'ai pas son nom. Dis-le, ou tape-le.","STOCK_050 · Elle a appuyé sur « C'est bon » sans rien mettre"
+"stk-12.wav","C'est trop court pour un nom. Mets au moins deux lettres.","STOCK_051 · Nom d'une seule lettre — elle a presque fini, on la fait CONTINUER"
+"stk-13.wav","Choisis d'abord comment tu le vends.","STOCK_052 · Aucune unité touchée"
+"stk-14.wav","Il manque le prix. Tape-le.","STOCK_053 · Prix absent ou nul — phrase d'argent"
+"stk-15.wav","Je n'ai pas entendu de produit. Dis-moi ce que tu vends.","STOCK_046 · Micro ouvert, rien reconnu"
+"stk-16.wav","Le micro ne répond pas. Touche « Ajouter un produit ».","STK-22 · Le micro lui-même est indisponible"

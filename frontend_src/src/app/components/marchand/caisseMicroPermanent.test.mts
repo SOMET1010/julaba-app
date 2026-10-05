@@ -75,8 +75,22 @@ ok(/<MicroVenteCaisse\s+produitPreselectionne=\{produitPreselectionne\}/.test(co
 // recevait toujours `action.produit` seul. Elle touchait Tomate, disait
 // « trois tas », et Tata redemandait un prix que l'application connaissait
 // déjà. L'écran savait ; la voix avait oublié.
-ok(/vendreUnifie\(produitPourVente\(action\.produit,\s*produitPreselectionne\)/.test(codeMicro),
+// CAT-01 (28/09) — la source du NOM a changé, pas la règle. `vente` est la
+// relecture au catalogue de la marchande quand elle a reconnu un de SES
+// produits, et l'action du moteur sinon. Le présélectionné, lui, est passé
+// exactement comme avant : c'est ce que cette garde protège.
+// L'assertion est RENFORCÉE, pas affaiblie : elle exige en plus que le nom
+// vienne de `vente` — sans quoi on retomberait sur `action.produit`, qui est
+// `undefined` pour les 111 produits hors lexique, et la vente repartirait en
+// « Produit vocal ». C'est le défaut que la recette navigateur a trouvé.
+ok(/vendreUnifie\(produitPourVente\(vente\.produit,\s*produitPreselectionne\)/.test(codeMicro),
   "la vente dictée passe le produit présélectionné au moteur (produitPourVente)");
+ok(/const vente = reluAuCatalogue \?\? \(corrige \? \{ \.\.\.action, \.\.\.corrige \} : action\);/.test(codeMicro),
+  "et le nom vient d'ABORD du catalogue de la marchande, le moteur en repli");
+// CAT-02 — et quand elle nomme ce qu'elle ne vend pas, le nombre orphelin est
+// une quantité, pas un prix : aucune ligne « Produit vocal » à 2 F.
+ok(/const corrige = reluAuCatalogue \? null : venteSansProduit\(action, data\.transcript \|\| ''\);/.test(codeMicro),
+  "un produit nommé mais inconnu ne devient jamais une ligne à N francs");
 ok(/vendreUnifie\(produitPourVente\(r\.action\.produit,\s*produitPreselectionne\)/.test(codeMicro),
   "un raccourci résolu en vente s'en souvient aussi — c'est le même acte métier");
 
@@ -89,8 +103,20 @@ ok(/onClick=\{allerCaisse\}\s+aria-label="Vendre"/.test(codeAccueil),
 console.log("\n[3] Le micro est CÂBLÉ, pas seulement affiché");
 ok(/useVoiceCore\(\{/.test(codeMicro),
   "le composant du micro monte lui-même le moteur vocal (useVoiceCore)");
-ok(/onClick=\{handleMicClick\}/.test(codeMicro),
-  "le bouton micro appelle le moteur — pas un gestionnaire décoratif");
+// VOX-02 — ASSERTION REMPLACÉE PAR UNE PLUS FORTE, PAS RETIRÉE.
+//
+// Elle exigeait `onClick={handleMicClick}` en direct. Or `handleMicClick` (dans
+// `useVoiceCore`, figé par VOICE-01) ne traite pas l'état `confirming` : en
+// exiger l'appel DIRECT, c'était exiger le trou qui a bloqué le téléphone de
+// Patrick le 23/09. L'écran passe désormais par `toucherLeMicro`, qui consulte
+// une règle EXHAUSTIVE sur les sept états et appelle le moteur ensuite.
+//
+// La nouvelle exigence est plus forte : le bouton doit mener au moteur ET par
+// une règle qui ne peut pas oublier un état.
+ok(/onClick=\{toucherLeMicro\}/.test(codeMicro),
+  "le bouton micro passe par la règle des sept états — pas un gestionnaire décoratif");
+ok(/gesteDuMicro\(/.test(codeMicro) && /handleMicClick\(\)/.test(codeMicro),
+  "et cette règle mène BIEN au moteur vocal (handleMicClick), pas dans le vide");
 // useObjectif()/useRaccourcis() ne LÈVENT PAS d'erreur sans provider : ils
 // retombent sur des valeurs nulles. On obtiendrait un micro qui a l'air de
 // marcher, c'est-à-dire exactement la dette qu'on ferme.
@@ -133,6 +159,50 @@ const fichiers: string[] = [];
 const importeurs = fichiers.filter(f => /from\s+['"][^'"]*VenteVocaleModal['"]/.test(readFileSync(f, "utf8")));
 ok(importeurs.length === 0,
   `aucun fichier ne l'importe (${importeurs.length} trouvé(s)${importeurs.length ? " : " + importeurs.join(", ") : ""})`);
+
+console.log("\n[6] VOX-06 — le premier mot se SENT, une fois et une seule");
+// LE DÉFAUT QU'ON FERME. `vibrerTic` n'était appelé QUE par `PaveMontant` :
+// au clavier. Dans le flux vocal, entre le moment où elle parle et la réponse
+// de Tantie, il ne se passait RIEN — pas de son (le micro est ouvert, Tantie
+// se tait exprès), pas de texte (c'est la règle : « PENDANT L'ÉCOUTE, AUCUN
+// TEXTE »), pas de vibration. Devant un appareil muet, on répète ou on crie,
+// et la reconnaissance se dégrade : le silence fabriquait l'échec.
+//
+// POURQUOI LIRE LA SOURCE. La règle elle-même est rejouée sur le module pur
+// par `ecouteCaisse.test.mts` (section VOX-06) : une vibration par écoute,
+// aucune si le seuil n'est jamais franchi. Ce qui ne se prouve qu'ICI, c'est
+// que l'écran tient CETTE version-là — un ref, pas un état, au bon endroit de
+// la boucle. Rien de tout cela ne casse bruyamment : un tic manquant ne lève
+// aucune erreur, il laisse juste une marchande dans le vide.
+ok(/import \{ vibrerSucces, vibrerTic \} from '\.\.\/\.\.\/utils\/haptique'/.test(codeMicro),
+  "le flux vocal tire le tic du répertoire haptique commun (pas un `navigator.vibrate` écrit ici)");
+const ticsMicro = (codeMicro.match(/vibrerTic\(\)/g) || []).length;
+ok(ticsMicro === 1,
+  `vibrerTic n'est appelé qu'à UN seul endroit du micro (${ticsMicro} trouvé(s)) : deux points d'appel, c'est deux vibrations`);
+// LE POINT D'APPEL EXACT. Il doit être SOUS le test de franchissement du
+// seuil — celui qui sait déjà quand une voix porte — et SOUS le drapeau qui
+// dit qu'on l'a déjà saluée. Le relevé bat toutes les 250 ms : un tic hors du
+// drapeau, c'est un téléphone qui tremble en continu.
+ok(/if \(parleMaintenant\(niveauRef\.current, seuilRef\.current\)\) \{\s*if \(!aParleRef\.current\) \{\s*try \{ vibrerTic\(\); \} catch/.test(codeMicro),
+  "le tic part au PREMIER franchissement du seuil, sous le drapeau `aParleRef` — jamais à chaque relevé");
+// UN REF, PAS UN ÉTAT. Deux relevés espacés de 30 ms liraient tous les deux
+// l'ancienne valeur d'un `useState` et vibreraient deux fois : c'est la
+// régression déjà vécue sur `BoutonDirePrix` (la question partait en boucle).
+ok(/const aParleRef = useRef\(false\)/.test(codeMicro),
+  "le drapeau est un `useRef` : un `useState` se lirait en retard entre deux relevés");
+ok(!/useState\([^)]*\)[^\n]*[Vv]ibr/.test(codeMicro),
+  "et aucun état React ne double ce drapeau");
+// REMIS À ZÉRO À CHAQUE OUVERTURE, SINON LE TIC NE SE PRODUIT PLUS JAMAIS
+// APRÈS LA PREMIÈRE PHRASE DE LA JOURNÉE : micro refermé, et micro rouvert.
+const remises = (codeMicro.match(/aParleRef\.current = false;/g) || []).length;
+ok(remises === 2,
+  `le drapeau retombe aux DEUX remises à zéro de l'écoute (${remises} trouvée(s)) : chaque ouverture du micro est une écoute neuve`);
+// UN APPAREIL SANS VIBREUR NE DOIT RIEN CASSER. `haptique` avale déjà l'absence
+// d'API, mais la boucle qui FERME le micro passe par ici : si quoi que ce soit
+// remontait, le micro resterait ouvert. Même précaution que `PaveMontant` et
+// `ChangePasswordScreen`.
+ok(/try \{ vibrerTic\(\); \} catch/.test(codeMicro),
+  "l'appel est protégé : un téléphone sans vibreur n'emporte pas la fermeture du micro");
 
 console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
 if (failures > 0) process.exit(1);

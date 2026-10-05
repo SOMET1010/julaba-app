@@ -77,3 +77,32 @@ endpoints**. Le stock/ledger post-annulation est arbitré par **psql**
 > produit : la base montre sans ambiguïté `stock=100` et `net_ledger=0`
 > (2 mouvements : vente −30, restitution +30). À ne pas réinterpréter plus tard
 > comme un défaut de la boucle espèces.
+
+## RECETTE VOIX DE LA CAISSE
+
+```sh
+bash frontend_src/e2e/run-recette-voix.sh
+```
+
+Quatre étapes, jouées dans un vrai Chromium contre la vraie pile (PostgreSQL
+neuf + backend + bundle de production) : l'annonce de l'accueil (A1), une vente
+d'un produit HORS du lexique du moteur (CAT-01), « encaisser » (ENC-01), et la
+non-régression d'une vente ordinaire.
+
+**Ce qui tourne pour de vrai** : le backend, la base, le bundle de production,
+`useVoiceCore`, `MicroVenteCaisse`, `POSCaisse`, la machine d'encaissement, le
+panier, l'argent. Un vrai micro (périphérique de test de Chrome), un vrai clic
+sur le vrai bouton, et la parole est relevée à la source (`speechSynthesis`).
+
+**Ce qui ne tourne pas, et la recette ne prétend pas le contraire** :
+sherpa-onnx, qui n'existe que dans l'APK. `offlineStt` est remplacé par un stub
+(`e2e/stub/`) que le script pilote. Donc **tout ce qui est en aval de la
+transcription est prouvé ici ; la transcription elle-même ne l'est pas** — elle
+reste à vérifier sur le téléphone, par le 🐞 Rapport de test.
+
+**Pourquoi elle existe.** Patrick, 28/09 : « tu dois faire toi-même une recette
+pas à pas sinon c'est injouable ». Au premier passage utile, elle a trouvé un
+défaut d'argent que 124 maillons de `verify` laissaient passer : le panier
+recevait « 1 × Produit vocal = 2 F » là où la marchande vendait deux arachides
+à 100 F. Les tests purs de CAT-01 étaient verts — ils prouvaient la composition
+écrite, pas le chemin que l'application emprunte.

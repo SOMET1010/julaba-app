@@ -36,9 +36,16 @@ function makeThrowingStore(): cs.KVStore {
   };
 }
 
-const ITEM = (o: Partial<cs.PersistedCartItem> = {}): cs.PersistedCartItem => ({
-  productId: "p1", nom: "Tomate", prix: 500, quantite: 2, ...o,
-});
+// P0.1 : `ligneId` et `productIdCatalogue` sont désormais garantis en sortie
+// de `sanitizeItems`. Cette fabrique représente une ligne DÉJÀ migrée ; les
+// cas d'entrée v1 (sans ces champs) sont construits à la main plus bas.
+const ITEM = (o: Partial<cs.PersistedCartItem> = {}): cs.PersistedCartItem => {
+  const productId = o.productId ?? "p1";
+  // `ligneId` SUIT `productId` par défaut : c'est exactement ce que fait la
+  // migration. Le figer en dur ferait diverger la fabrique de la règle.
+  return { ligneId: productId, productIdCatalogue: null,
+           productId, nom: "Tomate", prix: 500, quantite: 2, ...o };
+};
 const NOW = Date.parse("2026-08-10T12:00:00.000Z");
 const NOW_ISO = new Date(NOW).toISOString();
 
@@ -47,8 +54,21 @@ function main() {
   {
     const items = [ITEM(), ITEM({ productId: "p2", nom: "Piment", prix: 100, quantite: 5 })];
     const env = cs.parseCart(cs.serializeCart(items, NOW_ISO));
-    eq(env?.items, items, "les lignes valides survivent au round-trip");
-    eq(env?.v, 1, "enveloppe versionnée v=1");
+    // P0.1 (27/09) : la comparaison d'objet entier ne tient plus, la v3 ajoute
+    // `ligneId` et `productIdCatalogue`. On vérifie MIEUX qu'avant : les
+    // champs d'origine survivent À L'IDENTIQUE, et la séparation est faite.
+    for (const [i, attendu] of items.entries()) {
+      const obtenu = env?.items[i] as Record<string, unknown> | undefined;
+      eq(obtenu?.nom, attendu.nom, `ligne ${i} : nom conservé`);
+      eq(obtenu?.prix, attendu.prix, `ligne ${i} : prix conservé`);
+      eq(obtenu?.quantite, attendu.quantite, `ligne ${i} : quantité conservée`);
+      eq(obtenu?.ligneId, attendu.productId, `ligne ${i} : l'ancien productId devient l'identité de LIGNE`);
+      eq(obtenu?.productIdCatalogue, null, `ligne ${i} : « ${attendu.productId} » n'est pas un UUID → pas un produit catalogue`);
+    }
+    // PAN-01 (27/09) : on écrit désormais en v2 — quatre champs de plus,
+    // aucun retiré. La v1 reste LUE (voir « un panier v1 se recharge »).
+    // P0.1 : version courante 3 (identité ligne/produit). v1 et v2 restent lues.
+    eq(env?.v, 3, "enveloppe versionnée v=3");
   }
 
   console.log("\n[2] Lignes malformées écartées");
@@ -75,7 +95,14 @@ function main() {
     eq(cs.parseCart("{ pas du json"), null, "JSON invalide → null");
     eq(cs.parseCart(null), null, "null → null");
     eq(cs.parseCart(""), null, "chaîne vide → null");
-    eq(cs.parseCart(JSON.stringify({ v: 2, items: [] })), null, "version inconnue → null");
+    // PAN-01 : `v: 2` servait ici d'exemple de version inconnue — il est
+    // devenu la version COURANTE. On prend une version qui ne peut pas être
+    // rattrapée par un lot futur, plutôt que la suivante immédiate.
+    eq(cs.parseCart(JSON.stringify({ v: 99, items: [] })), null, "version inconnue → null");
+    // La v1 reste LUE et ressort migrée en v2. Ce n'est pas `parseCart` qui
+    // écarte un panier vide — c'est `loadCart`, et il le fait plus bas.
+    eq(cs.parseCart(JSON.stringify({ v: 1, items: [] }))?.v, 3, "v1 → lue, et rendue en version courante");
+    eq(cs.parseCart(JSON.stringify({ v: 2, items: [] }))?.v, 3, "v2 → lue, et rendue en version courante");
   }
 
   console.log("\n[4] Un panier vide n'est jamais restauré");

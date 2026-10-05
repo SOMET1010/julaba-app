@@ -241,7 +241,7 @@ export default function StudioVoix() {
       zip.file('manifeste.json', JSON.stringify(manifeste, null, 2));
       const lignesLisez = manifeste.map((m) => `${m.fichier}${m.valide ? '' : '  [BROUILLON — non validé]'}  —  ${m.groupe}\n    « ${m.texte} »`).join('\n\n');
       zip.file('LISEZ-MOI.txt',
-        `Pack voix Tata Nanti Lou — export du studio d'enregistrement\n` +
+        `Pack voix Tantie Nanti Lou — export du studio d'enregistrement\n` +
         `${manifeste.length} fichier(s) MP3 mono, ~96 kb/s (aligné sur les clips existants).\n` +
         `Déposer les fichiers dans frontend_src/public/voix/tata/ puis les raccorder\n` +
         `dans le code (tataUiClips.ts / onboardingVoix.ts selon le cas).\n\n${lignesLisez}\n`

@@ -121,4 +121,45 @@ it('aucune route tierce n’accepte un PIN fourni dans le corps', () => {
     }
     expect(coupables).toEqual([]);
   });
+
+  // BO-1 / SEC-10 — même règle pour le mot de passe d'un compte BO (décision
+  // Patrick, 03/10/2026 : remise par SMS uniquement). Aucune réponse ne
+  // transporte un mot de passe, ni en champ, ni recopié dans `message`.
+  it('aucune réponse ne transporte un mot de passe (SEC-10)', () => {
+    const coupables: string[] = [];
+    const SECRET = /\b(defaultPassword|motDePasseInitial|motDePasse|newPassword|password)\b/;
+    for (const f of sensibles) {
+      const code = codeNu(readFileSync(f, 'utf8'));
+      for (const m of code.matchAll(/\breturn\s*\{[^}]*\}/g)) {
+        // Les chaînes entre apostrophes sont du texte (« phone et password
+        // requis »), pas un champ : on les neutralise avant de chercher.
+        if (SECRET.test(m[0].replace(/'[^'\n]*'/g, "''"))) coupables.push(`${f} → ${m[0].replace(/\s+/g, ' ').slice(0, 110)}`);
+      }
+      for (const m of code.matchAll(/`[^`]*\$\{\s*(defaultPassword|motDePasseInitial|newPassword)\s*\}[^`]*`/g)) {
+        if (!/notifyMotDePasseBo|Mot de passe provisoire|Nouveau mot de passe/.test(m[0])) {
+          coupables.push(`${f} → ${m[0].slice(0, 110)}`);
+        }
+      }
+    }
+    expect(coupables).toEqual([]);
+  });
+
+  // BO-1 / SEC-08b — personne ne tape le mot de passe d'un AUTRE compte. Seul
+  // `change-password` (l'appelant change le sien, ancien mot de passe exigé)
+  // accepte un `newPassword` dans son corps.
+  it('aucune route n’accepte le mot de passe d’un tiers dans son corps (SEC-08b)', () => {
+    const coupables: string[] = [];
+    for (const f of sensibles) {
+      const code = codeNu(readFileSync(f, 'utf8'));
+      for (const bloc of code.split(/(?=@(?:Get|Post|Patch|Put|Delete)\()/)) {
+        const route = bloc.match(/@(?:Get|Post|Patch|Put|Delete)\(\s*['"`]([^'"`]*)['"`]/);
+        if (!route || route[1] === 'change-password') continue;
+        const methode = bloc.match(/async\s+\w+\s*\(([\s\S]*?)\)\s*(?::[\s\S]*?)?\{/);
+        if (methode && /@Body\(/.test(methode[1]) && /\bnewPassword\b/.test(methode[1])) {
+          coupables.push(`${f} → ${route[1]}`);
+        }
+      }
+    }
+    expect(coupables).toEqual([]);
+  });
 });

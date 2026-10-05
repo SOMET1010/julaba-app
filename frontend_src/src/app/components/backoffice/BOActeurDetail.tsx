@@ -6,15 +6,14 @@ import {
   CheckCircle2, Clock,
   UserX, RotateCcw, Key, UserCog, FileText, Activity,
   X, Save, Paperclip, Zap, ChevronDown, ChevronUp, ChevronRight,
-  Flag, Trash2, TrendingUp, Wallet, Copy, RefreshCw,
+  Flag, Trash2, TrendingUp, Wallet,
 } from 'lucide-react';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
 import { BO_DARK, BO_PRIMARY, BO_LIGHT, BO_MEDIUM, BO_TINT } from './bo-theme';
 import { BOProgressBar } from './BOProgressBar';
 import { UniversalKPI } from '../ui/UniversalKPI';
 import { toast } from 'sonner';
-import { API_URL } from '../../utils/api';
-import { boChangeSousProfilMarchand, boGetUserFlags, boUpdateActeur, type UserFlag } from '../../services/backoffice-api';
+import { boAdminResetPassword, boChangeSousProfilMarchand, boGetUserFlags, boUpdateActeur, texteRemiseSms, type RemiseParSms, type UserFlag } from '../../services/backoffice-api';
 import { SOUS_PROFILS_MARCHAND } from '../../types/sousProfilMarchand';
 import { CAN_VIEW_ALERTS } from '../../utils/permissions-bo';
 import { getContextualTabLabel, ROLE_OPTIONS, STATUT_CONFIG, TYPE_COLORS } from '../../utils/role-config';
@@ -71,10 +70,9 @@ export function BOActeurDetail() {
   const [newRole, setNewRole] = useState('');
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
-  const [resetPasswordMode, setResetPasswordMode] = useState<'random' | 'manual'>('random');
-  const [resetPasswordManualValue, setResetPasswordManualValue] = useState('');
-  const [resetPasswordResult, setResetPasswordResult] = useState<string | null>(null);
-  const [resetPasswordCopied, setResetPasswordCopied] = useState(false);
+  // BO-1 / SEC-10 + SEC-08b : on ne garde que le résultat de la remise par SMS
+  // (numéro masqué), jamais le mot de passe.
+  const [resetRemise, setResetRemise] = useState<RemiseParSms | null>(null);
   const [editObjectif, setEditObjectif] = useState<string>('');
   const [editPrime, setEditPrime] = useState<string>('');
   const [savingObjectif, setSavingObjectif] = useState(false);
@@ -261,10 +259,7 @@ export function BOActeurDetail() {
     if (criticalActionLoading) return;
 
     if (action === 'reset_mdp') {
-      setResetPasswordMode('random');
-      setResetPasswordManualValue('');
-      setResetPasswordResult(null);
-      setResetPasswordCopied(false);
+      setResetRemise(null);
       setShowResetPasswordModal(true);
       setShowConfirm(null);
       return;
@@ -350,60 +345,18 @@ export function BOActeurDetail() {
     }
   };
 
-  const generateRandomPassword = () => {
-    // Lisible à l'oral/au téléphone : pas de caractères ambigus (0/O, 1/l/I).
-    const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    let out = '';
-    for (let i = 0; i < 8; i++) {
-      out += alphabet[Math.floor(Math.random() * alphabet.length)];
-    }
-    return out;
-  };
-
-  const copyResetPassword = async () => {
-    if (!resetPasswordResult) return;
-    try {
-      await navigator.clipboard.writeText(resetPasswordResult);
-      setResetPasswordCopied(true);
-      toast.success('Mot de passe copié dans le presse-papiers');
-    } catch (err) {
-      console.warn('[BOActeurDetail] copy reset password failed:', err instanceof Error ? err.message : err);
-      toast.error('Copie impossible : recopie-le manuellement');
-    }
-  };
-
+  // BO-1 / SEC-08b (décision Patrick, 03/10/2026) : le BO ne choisit plus, ne
+  // génère plus et n'affiche plus le mot de passe d'un autre compte. Le serveur
+  // tire le code et l'envoie par SMS au téléphone du compte (super_admin).
   const handleResetPassword = async () => {
-    const newPassword = resetPasswordMode === 'manual'
-      ? resetPasswordManualValue.trim()
-      : generateRandomPassword();
-
-    if (newPassword.length < 4) {
-      toast.error('Le mot de passe doit contenir au moins 4 caractères');
-      return;
-    }
-
+    if (resetPasswordLoading) return;
     setResetPasswordLoading(true);
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 15000);
-
     try {
-      const response = await fetch(`${API_URL}/auth/reset-user-password`, {
-        credentials: 'include',
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: acteur.id, newPassword }),
-        signal: controller.signal,
-      });
-
-      const result = await response.json();
-
-      clearTimeout(timeout);
-      if (!response.ok || result.error || result.success === false) {
-        toast.error(result.error || result.message || 'Erreur lors de la réinitialisation');
-        setResetPasswordLoading(false);
+      const res = await boAdminResetPassword(acteur.id);
+      if (!res?.remise) {
+        toast.error(res?.message || 'Erreur lors de la réinitialisation');
         return;
       }
-
       if (boUser) addAuditLog({
         action: 'RESET mot de passe',
         utilisateurBO: `${boUser.prenom} ${boUser.nom}`,
@@ -411,22 +364,16 @@ export function BOActeurDetail() {
         acteurImpacte: `${acteur.prenoms} ${acteur.nom}`,
         module: 'Acteurs',
       });
-
-      // Le mot de passe défini n'est jamais renvoyé par le serveur : on affiche
-      // celui que le BO vient lui-même de choisir/générer, pour qu'il puisse
-      // le transmettre à l'acteur (SMS non disponible pour cette action).
-      setResetPasswordCopied(false);
-      setResetPasswordResult(newPassword);
-      toast.success(`Mot de passe réinitialisé pour ${acteur.prenoms} ${acteur.nom}`);
+      setResetRemise(res.remise);
+      const remise = texteRemiseSms(res);
+      if (remise.ok) toast.success(`Mot de passe réinitialisé pour ${acteur.prenoms} ${acteur.nom}. ${remise.texte}`);
+      else toast.error(`Mot de passe réinitialisé, mais : ${remise.texte}`, { duration: 15000 });
     } catch (err) {
-      if ((err as any)?.name === 'AbortError') {
-        toast.error('La requête a pris trop de temps. Réessaie.');
-      } else {
-        console.warn('[BOActeurDetail] resetPassword failed:', err instanceof Error ? err.message : err);
-        toast.error('Erreur lors de la réinitialisation');
-      }
+      console.warn('[BOActeurDetail] resetPassword failed:', err instanceof Error ? err.message : err);
+      toast.error(err instanceof Error && err.message === '403'
+        ? 'Réservé au super administrateur'
+        : 'Erreur lors de la réinitialisation');
     } finally {
-      clearTimeout(timeout);
       setResetPasswordLoading(false);
     }
   };
@@ -1201,84 +1148,36 @@ export function BOActeurDetail() {
                 </button>
               </div>
 
-              {resetPasswordResult ? (
+              {resetRemise ? (
                 <>
-                  <div className="rounded-2xl border-2 p-4 mb-4 bg-amber-50" style={{ borderColor: '#f59e0b' }}>
-                    <p className="text-xs font-black text-amber-950 mb-2">
-                      Copie ce mot de passe maintenant : il ne sera plus affiché après fermeture de cette fenêtre. Transmets-le toi-même à {acteur.prenoms} {acteur.nom} (aucun SMS n'est envoyé par cette action).
+                  <div
+                    role={resetRemise.smsEnvoye ? 'status' : 'alert'}
+                    className={`rounded-2xl border-2 p-4 mb-4 ${resetRemise.smsEnvoye ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}
+                  >
+                    <p className={`text-sm font-bold ${resetRemise.smsEnvoye ? 'text-emerald-900' : 'text-red-900'}`}>
+                      {texteRemiseSms({ remise: resetRemise }).texte}
                     </p>
-                    <div className="rounded-xl border-2 border-amber-200 bg-white px-4 py-3 font-mono text-base tracking-wider text-gray-900 text-center select-all">
-                      {resetPasswordResult}
-                    </div>
                   </div>
-                  <div className="flex gap-3">
-                    <motion.button onClick={() => void copyResetPassword()}
-                      className="flex-1 py-3 rounded-2xl font-bold text-sm border-2 bg-white flex items-center justify-center gap-2"
-                      style={{ borderColor: BO_PRIMARY, color: BO_DARK }}
-                      whileTap={{ scale: 0.97 }}>
-                      <Copy className="w-4 h-4" style={{ color: BO_PRIMARY }} />
-                      {resetPasswordCopied ? 'Copié !' : 'Copier'}
-                    </motion.button>
-                    <button onClick={() => setShowResetPasswordModal(false)}
-                      className="flex-1 py-3 rounded-2xl font-bold text-white"
-                      style={{ backgroundColor: BO_PRIMARY }}>
-                      J'ai transmis le mot de passe
-                    </button>
-                  </div>
+                  <button onClick={() => setShowResetPasswordModal(false)}
+                    className="w-full py-3 rounded-2xl font-bold text-white"
+                    style={{ backgroundColor: BO_PRIMARY }}>
+                    Fermer
+                  </button>
                 </>
               ) : (
                 <>
                   <p className="text-sm text-gray-600 mb-4">
-                    Choisis un nouveau mot de passe pour {acteur.prenoms} {acteur.nom}. Il devra le changer à sa prochaine connexion. Aucun SMS n'est envoyé automatiquement : c'est à toi de le lui transmettre.
+                    Un nouveau mot de passe sera généré pour {acteur.prenoms} {acteur.nom} et envoyé par SMS à son téléphone. Il ne sera pas affiché ici. L'ancien cessera de fonctionner et ses sessions ouvertes seront fermées.
                   </p>
-
-                  <div className="flex gap-2 mb-4">
-                    <button
-                      type="button"
-                      onClick={() => setResetPasswordMode('random')}
-                      className="flex-1 py-2.5 rounded-2xl border-2 font-bold text-sm flex items-center justify-center gap-1.5"
-                      style={resetPasswordMode === 'random'
-                        ? { borderColor: BO_PRIMARY, backgroundColor: BO_TINT, color: BO_DARK }
-                        : { borderColor: '#e5e7eb', color: '#6b7280' }}>
-                      <RefreshCw className="w-3.5 h-3.5" /> Générer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setResetPasswordMode('manual')}
-                      className="flex-1 py-2.5 rounded-2xl border-2 font-bold text-sm flex items-center justify-center gap-1.5"
-                      style={resetPasswordMode === 'manual'
-                        ? { borderColor: BO_PRIMARY, backgroundColor: BO_TINT, color: BO_DARK }
-                        : { borderColor: '#e5e7eb', color: '#6b7280' }}>
-                      <Key className="w-3.5 h-3.5" /> Saisir moi-même
-                    </button>
-                  </div>
-
-                  {resetPasswordMode === 'manual' && (
-                    <div className="mb-4">
-                      <label htmlFor="reset-mdp-manual" className="block text-xs font-semibold text-gray-600 mb-2">
-                        Nouveau mot de passe (4 caractères minimum)
-                      </label>
-                      <input
-                        id="reset-mdp-manual"
-                        type="text"
-                        value={resetPasswordManualValue}
-                        onChange={e => setResetPasswordManualValue(e.target.value)}
-                        maxLength={64}
-                        className="rounded-2xl border-2 border-gray-200 w-full py-3 px-4 text-sm font-medium focus:outline-none font-mono"
-                        placeholder="Ex : 0000 (code de test)"
-                        autoComplete="off"
-                      />
-                    </div>
-                  )}
 
                   <div className="flex gap-3">
                     <button onClick={() => setShowResetPasswordModal(false)} className="flex-1 py-3 rounded-2xl border-2 border-gray-200 font-bold text-gray-700">Annuler</button>
                     <motion.button onClick={handleResetPassword}
-                      disabled={resetPasswordLoading || (resetPasswordMode === 'manual' && resetPasswordManualValue.trim().length < 4)}
+                      disabled={resetPasswordLoading}
                       className="flex-1 py-3 rounded-2xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ backgroundColor: BO_PRIMARY }}
                       whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
-                      <Key className="w-4 h-4" /> {resetPasswordLoading ? 'Réinitialisation...' : 'Réinitialiser'}
+                      <Key className="w-4 h-4" /> {resetPasswordLoading ? 'Envoi...' : 'Réinitialiser et envoyer par SMS'}
                     </motion.button>
                   </div>
                 </>

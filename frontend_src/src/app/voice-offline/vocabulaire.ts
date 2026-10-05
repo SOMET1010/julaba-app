@@ -29,7 +29,42 @@ export const PRODUITS: string[] = [
   'haricot', 'maïs', 'mais', 'foutou', 'orange',
 ];
 
-// Formes normalisées pour la détection (sans accents)
+/**
+ * Formes normalisées pour la détection (sans accents).
+ *
+ * STK-05b — « DEUX MANIOCS » N'ÉTAIT PAS COMPRIS. Journal du 03/10, écran
+ * `/marchand/stock`. Elle dit « Deux maniocs », trois fois, et reçoit « Je
+ * n'ai pas entendu de produit. Dis-moi ce que tu vends. » Le manioc est sur
+ * son étal. Mesuré :
+ *
+ *     extraire("Deux maniocs") → produit null   (et 2 rangé en MONTANT)
+ *     extraire("Deux manioc")  → produit manioc
+ *
+ * La cause tenait en une ligne manquante ici : `manioc: 'manioc'` sans
+ * `maniocs`. Même trou pour `viande`, `foutou`, `lait`. Les pluriels ajoutés
+ * ci-dessous le bouchent.
+ *
+ * CETTE TABLE RESTERA INCOMPLÈTE, ET C'EST SA NATURE, PAS UN OUBLI.
+ * C'est une liste de formes ÉCRITE À LA MAIN : 28 noms canoniques face aux
+ * 198 produits du catalogue maître du pilote. Chaque forme qu'une marchande
+ * dit et que personne n'a pensé à écrire ici est un produit refusé. Et on ne
+ * peut pas plus deviner ses mots qu'on ne peut deviner son argent : « deux
+ * attiékés », « des gombos secs », un nom bété ou dioula de son quartier.
+ *
+ * LE RATTRAPAGE N'EST DONC PAS DANS CETTE TABLE, IL EST DANS SON ÉTAL. Quand
+ * cette liste ne reconnaît rien, `nomDeSonEtal` (services/venteAuCatalogue.ts)
+ * relit la phrase contre les produits QU'ELLE VEND — à la marque de pluriel
+ * près, par la même règle `racine()`. La caisse s'en sert depuis CAT-01, et
+ * l'écran du stock depuis STK-05b : c'est ce repli, et non l'allongement sans
+ * fin de cette table, qui ferme le défaut pour de bon.
+ *
+ * ON N'AJOUTE DONC ICI QUE LES PLURIELS QU'UNE MARCHANDE DIT VRAIMENT.
+ * `sel`, `riz`, `huile`, `ail`, `sucre`, `farine` n'ont pas de pluriel usuel
+ * au marché : on compte des sacs de riz, des bidons d'huile, des gousses
+ * d'ail — jamais « deux riz ». Écrire `rizs: 'riz'` ne lui
+ * servirait à rien et ferait croire la table complète. `jus` est invariable :
+ * sa forme plurielle est déjà la clé `jus`.
+ */
 export const PRODUITS_FORMES: Record<string, string> = {
   tomate: 'tomate', tomates: 'tomate',
   piment: 'piment', piments: 'piment',
@@ -42,12 +77,14 @@ export const PRODUITS_FORMES: Record<string, string> = {
   'banane plantains': 'banane plantain',
   'bananes plantains': 'banane plantain',
   igname: 'igname', ignames: 'igname',
-  manioc: 'manioc',
+  // STK-05b : « Deux maniocs » — le pluriel manquant du journal du 03/10.
+  manioc: 'manioc', maniocs: 'manioc',
   aubergine: 'aubergine', aubergines: 'aubergine',
   oignon: 'oignon', oignons: 'oignon',
   ail: 'ail',
   poisson: 'poisson', poissons: 'poisson',
-  viande: 'viande',
+  // « deux viandes » = deux parts : elle le dit, on l'écoute.
+  viande: 'viande', viandes: 'viande',
   poulet: 'poulet', poulets: 'poulet',
   huile: 'huile',
   sel: 'sel',
@@ -55,12 +92,14 @@ export const PRODUITS_FORMES: Record<string, string> = {
   riz: 'riz',
   haricot: 'haricot', haricots: 'haricot',
   maïs: 'maïs', mais: 'maïs',
-  foutou: 'foutou',
+  foutou: 'foutou', foutous: 'foutou',
   orange: 'orange', oranges: 'orange',
   // Produits courants entendus au marché
   savon: 'savon', savons: 'savon', farine: 'farine',
   jus: 'jus', bière: 'bière', biere: 'bière', bières: 'bière',
-  biscuit: 'biscuit', biscuits: 'biscuit', lait: 'lait',
+  biscuit: 'biscuit', biscuits: 'biscuit',
+  // « deux laits » : les sachets et les boîtes se comptent.
+  lait: 'lait', laits: 'lait',
 };
 
 export const INTENTIONS_MAP: Record<string, Intention> = {
@@ -88,6 +127,26 @@ export const INTENTIONS_MAP: Record<string, Intention> = {
   arrivé: 'reappro', arrivés: 'reappro', arrivée: 'reappro', arrivées: 'reappro',
   épuisé: 'reappro', epuise: 'reappro',
 };
+
+/**
+ * MOTS QUI DISENT « CE N'EST PAS UNE VENTE » — 21/09/2026.
+ *
+ * Ils ne portent AUCUNE intention (ils ne sont pas dans INTENTIONS_MAP, et une
+ * phrase qui n'en porte pas d'autre ne mène nulle part — c'était déjà vrai
+ * avant). Ils servent de garde-fou à la règle « quantité + produit, sans
+ * verbe, vaut vente » de la caisse : « ajoute 10 tomates au stock » ou
+ * « enlève 2 tomates » ne doivent pas devenir des ventes du seul fait qu'on a
+ * assoupli cette règle. Dans le doute, on ne vend pas.
+ */
+export const MOTS_PAS_UNE_VENTE: readonly string[] = Object.freeze([
+  'ajoute', 'ajouter', 'ajoutes', 'ajoutez',
+  'enleve', 'enlever', 'enleves', 'enlevez',
+  'retire', 'retirer', 'retires', 'retirez',
+  'supprime', 'supprimer', 'supprimes',
+  'stock', 'stocks', 'inventaire',
+  'perdu', 'perdue', 'perte', 'pertes',
+  'jete', 'jetee', 'casse', 'cassee', 'pourri', 'pourrie', 'pourris',
+]);
 
 export const PHRASES_T1: PhraseCible[] = [
   {

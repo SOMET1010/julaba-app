@@ -22,22 +22,36 @@ import './styles/login.css';
 import { appliquerConfortAuDemarrage } from './app/utils/confortVisuel';
 appliquerConfortAuDemarrage();
 
-// ── Auth mobile : jeton en en-tête Authorization ──────────────────────────────
+// ── Auth mobile : jeton en en-tête Authorization — FILET TEMPORAIRE ──────────
 // Les cookies cross-domaine (julaba-web ↔ julaba-api) sont BLOQUÉS par les
 // navigateurs mobiles (surtout en navigation privée) → la connexion « réussissait »
 // puis l'appli te croyait déconnectée (« retour au début »). On envoie donc le
 // jeton stocké (localStorage) en en-tête sur chaque appel à NOTRE API. Le backend
 // accepte déjà « Authorization: Bearer … » en plus du cookie → connexion fiable
 // partout, sans dépendre du cookie.
+//
+// STATUT (API-04, 20/09/2026) : ce patch n'est PLUS ce qui porte la couche API.
+// `services/api/api-client.ts` pose l'en-tête lui-même, à chaque essai, jeton
+// relu au moment de l'appel (rejeu après rafraîchissement et file hors-ligne
+// compris — tenu par `test:api-authorization`, qui tourne SANS ce patch).
+//
+// Il reste un FILET pour ce qui n'est pas encore passé par la couche : les
+// `fetch()` directs vers notre API hors `services/api/` (dette API-10 —
+// 164 appels dans 50 fichiers à la date ci-dessus : AppContext, authService,
+// les écrans identificateur, le back-office…). Ce compte est RE-MESURÉ à
+// chaque exécution de `test:api-authorization` ; le jour où il tombe à zéro,
+// ce test rougit pour exiger le retrait de ce bloc. Ne pas le retirer avant.
+//
+// Typé (TYPE-03) : `fetch` reçoit une chaîne, une `URL` ou une `Request`.
 (() => {
   const origFetch = window.fetch.bind(window);
-  window.fetch = (input: any, init: any = {}) => {
+  window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
     try {
-      const url = typeof input === 'string' ? input : (input?.url || '');
-      if (url && url.includes('/api/v1')) {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : input.href;
+      if (url.includes('/api/v1')) {
         const token = localStorage.getItem('julaba_access_token');
         if (token) {
-          const headers = new Headers(init.headers || (typeof input !== 'string' ? input.headers : undefined));
+          const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
           if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
           init = { ...init, headers };
         }
@@ -46,6 +60,22 @@ appliquerConfortAuDemarrage();
     return origFetch(input, init);
   };
 })();
+
+// ── Routage audio Bluetooth ─────────────────────────────────────────────────
+// Une marchande au marché a les mains pleines et le téléphone au fond du pagne :
+// il faut que la voix de Tantie arrive dans son oreillette et, si elle en porte
+// une, que ce soit SON micro qui écoute. Le routage s'installe ICI, en un seul
+// point, parce qu'il enveloppe `getUserMedia` — exactement comme le filet
+// `window.fetch` juste au-dessus. Tous les micros de l'application en héritent
+// sans qu'aucun écran ne change, et surtout sans rouvrir `useVoiceCore.ts`,
+// `audioManager.ts` ni `offlineStt.ts`, qui sont gelés au caractère près.
+//
+// Non-opération complète hors APK Android (le plugin natif n'existe pas sur le
+// web), et toute erreur est avalée : le routage ne peut pas faire perdre une
+// vente — au pire, la marchande entend Tantie comme aujourd'hui.
+import('./app/services/routageAudio')
+  .then(({ installerRoutageAudio }) => installerRoutageAudio())
+  .catch(() => { /* ignore */ });
 
 // Ré-échauffe le modèle vocal hors-ligne s'il a déjà été installé sur cet appareil.
 // (Le drapeau d'installation est persistant ; le modèle en mémoire, lui, est perdu

@@ -1,31 +1,41 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Delete } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import TATA_BLEU from '../../../assets/images/tata-nanti-lou.png';
 import { emojiTile } from '../../utils/emojiTile';
+import { SyncEchecsBanner } from './SyncEchecsBanner';
+import { PaveMontant } from '../shared/PaveMontant';
+import {
+  CATEGORIES_DEPENSE, libelleParId, type IdCategorieDepense,
+} from '../../services/categorieDepense';
 
-const P = '#AF5B23';
-const BG = '#F6F0E4';
+const P = 'var(--commerce-action)';
+const BG = 'var(--commerce-paper)';
 
-const QUICK_ACTIONS = [
-  // Vignettes LOCALES : ces trois images étaient servies par un hébergeur
-  // distant. Sans réseau — le cas courant au marché — une marchande qui ne
-  // lit pas voyait trois cases vides et ne pouvait plus choisir sa catégorie.
-  // Même correction que les tuiles de l'accueil (#157).
-  { id:'transport',   label:'Transports',  img: emojiTile('🚌') },
-  { id:'repas',       label:'Nourritures', img: emojiTile('🍚') },
-  { id:'taxe_mairie', label:'Taxe mairie', img: emojiTile('🏛️') },
-];
+// LES ONZE CATÉGORIES VIENNENT DE `services/categorieDepense.ts` — DEP-02.
+// Elles étaient écrites ici, en deux morceaux, et une TROISIÈME fois dans
+// `MarchandDepenses.tsx` sous forme de mots-clés. Trois listes de la même
+// chose : celle qui affiche ne connaissait ni « Taxe mairie » ni « École ».
+const EN_HAUT: readonly IdCategorieDepense[] = ['transport', 'repas', 'taxe_mairie'];
 
-const OTHER_CATS = [
-  'Loyer', 'Famille', 'Tontine', 'Santé',
-  'Téléphone', 'Marchandise', 'École', 'Autre',
-];
+// Vignettes LOCALES : ces trois images étaient servies par un hébergeur
+// distant. Sans réseau — le cas courant au marché — une marchande qui ne
+// lit pas voyait trois cases vides et ne pouvait plus choisir sa catégorie.
+// Même correction que les tuiles de l'accueil (#157).
+const VIGNETTE: Readonly<Record<string, string>> = {
+  transport:   emojiTile('🚌'),
+  repas:       emojiTile('🍚'),
+  taxe_mairie: emojiTile('🏛️'),
+};
+
+const QUICK_ACTIONS = EN_HAUT.map(id => ({ id, label: libelleParId(id), img: VIGNETTE[id] }));
+const AUTRES_CATEGORIES = CATEGORIES_DEPENSE.filter(c => !EN_HAUT.includes(c.id));
 
 function getVocalHint(): string {
   const h = new Date().getHours();
@@ -43,6 +53,12 @@ export function DepenseForm() {
   const { enregistrerDepense, transactions } = useCaisse();
   const [step, setStep]               = useState<1|2>(1);
   const [description, setDescription] = useState('');
+  // LA CATÉGORIE TOUCHÉE — DEP-02. `undefined` tant qu'elle n'en a touché
+  // aucune, et ça reste `undefined` si elle écrit ou dicte son motif : on
+  // n'invente pas une catégorie à partir de ses mots (c'est ce que faisait
+  // l'écran d'en face). Une dépense sans catégorie s'affiche « Catégorie pas
+  // notée » — une réponse, pas un trou.
+  const [categorie, setCategorie] = useState<IdCategorieDepense | undefined>(undefined);
   const [montant, setMontant]         = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   // Verrou SYNCHRONE anti double-clic (l'état React ne bloque qu'au render suivant).
@@ -60,7 +76,10 @@ export function DepenseForm() {
         const desc = String(a.description || a.categorie || '').trim() || 'Dépense';
         const montant = Number(a.montant);
         try {
-          await enregistrerDepense(montant, desc);
+          // Dictée : aucune catégorie n'a été TOUCHÉE. On envoie celle qui
+          // est éventuellement sélectionnée à l'écran, jamais une déduite des
+          // mots dictés.
+          await enregistrerDepense(montant, desc, categorie);
           await reloadTransactions();
           await speak('Dépense enregistrée');
           setDescription('');
@@ -83,24 +102,20 @@ export function DepenseForm() {
   const handleMic = () => { if (isListening) stopRecording(); else startRecording(); };
   const isConfirming = voiceState === 'confirming';
 
-  const handleKey = (k: string) => {
-    if (k === '<') { setMontant(p => p.slice(0, -1)); return; }
-    if (k === '000') { setMontant(p => p === '0' || p === '' ? p : p + '000'); return; }
-    if (montant.length >= 8) return;
-    setMontant(p => p === '0' ? k : p + k);
-  };
-
   const handleSave = async () => {
     if (enregEnCoursRef.current) return; // anti double-clic (synchrone)
-    if (!description.trim() || !montant || montant === '0') return;
+    if ((!description.trim() && !categorie) || !montant || montant === '0') return;
     const m = Number(montant);
     if (!m || m <= 0 || isNaN(m)) return;
     enregEnCoursRef.current = true;
     setIsProcessing(true);
     try {
-      await enregistrerDepense(m, description.trim());
+      // Le motif qu'elle a donné prime TOUJOURS. S'il n'y en a pas, le libellé
+      // de la catégorie sert d'intitulé — mais il ne l'a jamais remplacé.
+      const motif = description.trim() || (categorie ? libelleParId(categorie) : '');
+      await enregistrerDepense(m, motif, categorie);
       await reloadTransactions();
-      speak('Dépense de ' + m.toLocaleString() + ' francs enregistrée');
+      speak('Dépense de ' + nombreEnMotsFr(m) + ' francs enregistrée');
       navigate(-1);
     } catch (e: any) { console.warn('[DepenseForm] handleSave failed:', e?.message); speak("Erreur lors de l'enregistrement"); }
     finally { enregEnCoursRef.current = false; setIsProcessing(false); }
@@ -116,9 +131,39 @@ export function DepenseForm() {
     if (eleve && !avertEleveRef.current) { avertEleveRef.current = true; speak('Attention, le montant est élevé. Vérifie bien.'); }
     if (!eleve) avertEleveRef.current = false;
   }, [montantNum, speak]);
-  const montantColor = montantNum === 0 ? P : montantNum <= 2000 ? '#1D9E75' : montantNum > 20000 ? '#E24B4A' : P;
+  const montantColor = montantNum === 0 ? P : montantNum <= 2000 ? 'var(--herite-vert-eau)' : montantNum > 20000 ? 'var(--herite-rouge)' : P;
   const montantHint = montantNum > 20000 ? 'Montant élevé — vérifie !' : montantNum > 0 && montantNum <= 2000 ? 'Petit montant' : '';
-  const canProceed = description.trim().length > 0;
+  // LA CATÉGORIE N'EST PLUS LE MOTIF — DEP-03, 25/09/2026.
+  //
+  // Agent de test : « j'ai tapé "sac de charbon", touché Transports,
+  // enregistré → la liste affiche "Transports · Transports", et côté serveur
+  // le motif est vide. » Et dans l'autre sens : « le champ contenait déjà
+  // "Transports" et ma saisie s'est collée derrière — Transportssac de
+  // charbon. » Aucun chemin ne gardait les deux.
+  //
+  // LA CAUSE : toucher une catégorie faisait `setDescription(libellé)`. Le
+  // MOTIF (ce qu'elle a acheté) et la CATÉGORIE (dans quel panier ça tombe)
+  // sont deux informations différentes, et elles partageaient un seul champ —
+  // « ne jamais donner deux sens à la même donnée ». DEP-02 avait déjà fermé
+  // la moitié de cette histoire : la catégorie ÉTAIT DEVINÉE depuis le motif.
+  // Elle est désormais lue ; c'est l'inverse qui restait à faire.
+  //
+  // Elle peut donc avancer avec l'un OU l'autre : une catégorie touchée
+  // suffit, un motif écrit aussi.
+  const canProceed = description.trim().length > 0 || !!categorie;
+
+  // CE QUI S'AFFICHE À L'ÉTAPE DU MONTANT — 25/09/2026.
+  //
+  // Depuis DEP-03, toucher une catégorie n'écrit plus dans le motif : c'est ce
+  // qu'on voulait. Mais l'en-tête de l'étape 2 lisait `description` — donc une
+  // marchande qui touche seulement « Transports » voyait un en-tête VIDE et
+  // « Dernier : — ». Relevé par l'agent de test le 25/09, et c'est une
+  // régression de ce correctif-là.
+  //
+  // L'intitulé est ce qu'elle a écrit ; à défaut, la catégorie qu'elle a
+  // touchée. Le motif n'est jamais remplacé — il est seulement SUPPLÉÉ quand
+  // il n'y en a pas. C'est la même règle qu'à l'enregistrement.
+  const intitule = description.trim() || (categorie ? libelleParId(categorie) : '');
   const canSave = canProceed && montant && montant !== '0';
   const derniereDepense = useMemo(() => {
     const desc = description.trim().toLowerCase();
@@ -133,7 +178,7 @@ export function DepenseForm() {
   // ══════════════════════════════════════════════════════════
   // STEP 1
   // ══════════════════════════════════════════════════════════
-  const PC = '#B74725';
+  const PC = 'var(--commerce-action)';
   if (isConfirming && pendingResponse) return (
     <div style={{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'flex-end',justifyContent:'center'}}>
       <div style={{background:'white',borderRadius:'24px 24px 0 0',padding:24,width:'100%',maxWidth:420}}>
@@ -159,19 +204,21 @@ export function DepenseForm() {
         <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')}
           style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid #8f4418' }} />
+          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'var(--herite-jaune)', borderRadius:'50%', border:'1.5px solid var(--commerce-orange-700)' }} />
         </motion.button>
       }
       bottomAction={
         <div style={{ flexShrink:0, padding:'12px 14px 28px', background:BG, borderTop:'1px solid var(--trait)' }}>
           <motion.button whileTap={{ scale:0.97 }} onClick={() => { if (canProceed) setStep(2); }}
-            style={{ width:'100%', background: canProceed ? P : '#E0E0E0', color: canProceed ? 'white' : 'var(--encre-4)', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor: canProceed ? 'pointer' : 'default', fontFamily:'inherit', boxShadow: canProceed ? `0 4px 16px ${P}55` : 'none', transition:'all 0.2s' }}>
-            + Noter une dépense
+            style={{ width:'100%', background: canProceed ? P : 'var(--herite-gris-88)', color: canProceed ? 'white' : 'var(--encre-4)', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor: canProceed ? 'pointer' : 'default', fontFamily:'inherit', boxShadow: canProceed ? `0 4px 16px ${P}55` : 'none', transition:'all 0.2s' }}>
+            + Faire une dépense
           </motion.button>
         </div>
       }
     >
       <div style={{ flex:1, overflowY:'auto', padding:'16px 0 16px', display:'flex', flexDirection:'column', gap:14 }}>
+
+        <SyncEchecsBanner />
 
         {/* ACTIONS RAPIDES */}
         <div>
@@ -179,14 +226,14 @@ export function DepenseForm() {
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
             {QUICK_ACTIONS.map((q, i) => (
               <motion.button key={q.id} whileTap={{ scale:0.94 }}
-                onClick={() => { setDescription(q.label); setStep(2); }}
-                style={{ borderRadius:16, overflow:'hidden', border:`2px solid ${description===q.label ? P : 'transparent'}`, cursor:'pointer', padding:0, position:'relative', height:110, fontFamily:'inherit' }}>
+                onClick={() => { setCategorie(q.id); setStep(2); }}
+                style={{ borderRadius:16, overflow:'hidden', border:`2px solid ${categorie===q.id ? P : 'transparent'}`, cursor:'pointer', padding:0, position:'relative', height:110, fontFamily:'inherit' }}>
                 <img src={q.img} alt={q.label} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                 <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom,rgba(0,0,0,0) 30%,rgba(0,0,0,0.65) 100%)' }} />
                 <motion.div style={{ position:'absolute', top:0, left:0, width:'40%', height:'100%', background:'linear-gradient(90deg,transparent,rgba(255,255,255,0.28),transparent)', pointerEvents:'none' }}
                   animate={{ x:['-130%','-130%','-130%','280%'], opacity:[0,0,1,0] }}
                   transition={{ duration:4.5, repeat:Infinity, ease:'linear', times:[0,0.70,0.72,1], delay: i * 1.3 }} />
-                {description===q.label && (
+                {categorie===q.id && (
                   <div style={{ position:'absolute', top:6, right:6, width:20, height:20, borderRadius:'50%', background:P, display:'flex', alignItems:'center', justifyContent:'center' }}>
                     <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 3.5,6.5 9,1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </div>
@@ -200,19 +247,19 @@ export function DepenseForm() {
         {/* CHAMP MANUEL */}
         <div>
           <div style={{ fontSize:11, fontWeight:700, color:'var(--encre-4)', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>Ou décris ta dépense</div>
-          <div style={{ background:'white', border:`1.5px solid ${canProceed ? P : '#EDE7DE'}`, borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', gap:10, transition:'border-color 0.2s' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={canProceed ? P : '#aaa'} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <div style={{ background:'white', border:`1.5px solid ${canProceed ? P : 'var(--commerce-gray-100)'}`, borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', gap:10, transition:'border-color 0.2s' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={canProceed ? P : 'var(--herite-gris-40)'} strokeWidth="2" strokeLinecap="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             <input
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={e => { setDescription(e.target.value); setCategorie(undefined); }}
               onKeyDown={e => { if (e.key === 'Enter' && canProceed) setStep(2); }}
               placeholder='Ex: "Médicaments", "Électricité"...'
               style={{ flex:1, border:'none', outline:'none', fontSize:13, color:'var(--encre)', background:'transparent', fontFamily:'inherit' }}
             />
             {description && (
-              <motion.button whileTap={{ scale:0.9 }} onClick={() => setDescription('')}
+              <motion.button whileTap={{ scale:0.9 }} onClick={() => { setDescription(''); setCategorie(undefined); }}
                 style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-40)" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </motion.button>
             )}
           </div>
@@ -235,11 +282,11 @@ export function DepenseForm() {
             {showOthers && (
               <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }} transition={{ duration:0.25 }} style={{ overflow:'hidden' }}>
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8 }}>
-                  {OTHER_CATS.map(label => (
-                    <motion.button key={label} whileTap={{ scale:0.95 }}
-                      onClick={() => { setDescription(label); setStep(2); }}
-                      style={{ padding:'11px 8px', borderRadius:14, border:`1.5px solid ${description===label ? P : '#EDE7DE'}`, background: description===label ? P : 'white', color: description===label ? 'white' : '#5a4030', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s', textAlign:'center' }}>
-                      {label}
+                  {AUTRES_CATEGORIES.map(c => (
+                    <motion.button key={c.id} whileTap={{ scale:0.95 }}
+                      onClick={() => { setCategorie(c.id); setStep(2); }}
+                      style={{ padding:'11px 8px', borderRadius:14, border:`1.5px solid ${categorie===c.id ? P : 'var(--commerce-gray-100)'}`, background: categorie===c.id ? P : 'white', color: categorie===c.id ? 'white' : 'var(--encre-3)', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit', transition:'all 0.2s', textAlign:'center' }}>
+                      {c.libelle}
                     </motion.button>
                   ))}
                 </div>
@@ -250,14 +297,14 @@ export function DepenseForm() {
 
         {/* TATA NANTI LOU + MICRO */}
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, paddingTop:8, borderTop:'1px solid var(--trait)' }}>
-          <motion.img src={TATA_BLEU} alt="Tata Nanti Lou"
+          <motion.img src={TATA_BLEU} alt="Tantie Nanti Lou"
             style={{ width:160, height:160, objectFit:'contain', filter:'drop-shadow(0 12px 28px rgba(175,91,35,0.2))' }}
             animate={{ y:[0,-7,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut' }} />
           <motion.button whileTap={{ scale:0.9 }} onClick={handleMic} style={{ background:'none', border:'none', cursor:'pointer', padding:8 }}>
             <svg width="38" height="38" viewBox="0 0 22 22" fill="none">
-              <rect x="7" y="2" width="8" height="12" rx="4" fill={isListening ? '#ef4444' : P}/>
-              <path d="M4 11c0 3.9 3.1 7 7 7s7-3.1 7-7" stroke={isListening ? '#ef4444' : P} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-              <line x1="11" y1="18" x2="11" y2="21" stroke={isListening ? '#ef4444' : P} strokeWidth="1.8" strokeLinecap="round"/>
+              <rect x="7" y="2" width="8" height="12" rx="4" fill={isListening ? 'var(--color-red-500)' : P}/>
+              <path d="M4 11c0 3.9 3.1 7 7 7s7-3.1 7-7" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
+              <line x1="11" y1="18" x2="11" y2="21" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
           </motion.button>
           <div style={{ fontSize:12, color:'#B8937A', fontStyle:'italic', textAlign:'center' }}>{vocalHint}</div>
@@ -278,13 +325,13 @@ export function DepenseForm() {
         <motion.button whileTap={{ scale:0.9 }} onClick={() => navigate('/marchand/alertes')}
           style={{ width:38, height:38, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'#FFD166', borderRadius:'50%', border:'1.5px solid #8f4418' }} />
+          <span style={{ position:'absolute', top:8, right:8, width:7, height:7, background:'var(--herite-jaune)', borderRadius:'50%', border:'1.5px solid var(--commerce-orange-700)' }} />
         </motion.button>
       }
       bottomAction={
         <div style={{ flexShrink:0, padding:'8px 16px 32px', background:BG }}>
           <motion.button whileTap={{ scale:0.97 }} onClick={handleSave} disabled={isProcessing || !canSave}
-            style={{ width:'100%', background: !canSave ? '#E0E0E0' : P, color: !canSave ? 'var(--encre-4)' : 'white', border:'none', borderRadius:20, padding:'18px 0', fontSize:16, fontWeight:800, cursor: !canSave ? 'default' : 'pointer', fontFamily:'inherit', boxShadow: !canSave ? 'none' : `0 4px 16px ${P}55`, transition:'all 0.2s' }}>
+            style={{ width:'100%', background: !canSave ? 'var(--herite-gris-88)' : P, color: !canSave ? 'var(--encre-4)' : 'white', border:'none', borderRadius:20, padding:'18px 0', fontSize:16, fontWeight:800, cursor: !canSave ? 'default' : 'pointer', fontFamily:'inherit', boxShadow: !canSave ? 'none' : `0 4px 16px ${P}55`, transition:'all 0.2s' }}>
             {isProcessing ? 'Enregistrement...' : 'Enregistrer la dépense'}
           </motion.button>
         </div>
@@ -292,21 +339,31 @@ export function DepenseForm() {
     >
       <div style={{ flex:1, overflowY:'auto', padding:'14px 16px 16px' }}>
 
-        {/* Description + Changer */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-          <span style={{ fontSize:15, fontWeight:800, color:P }}>{description}</span>
+        <SyncEchecsBanner />
+
+        {/* Ce qu'elle a choisi + le bouton pour y revenir.
+            « Changer » tout court ne disait pas CE QUE ça change : Patrick l'a
+            relevé sur la recette (MAR-DEP-001). Le bouton le nomme, et il passe
+            sous la ligne pour que la phrase entière tienne sur 390 px sans
+            écraser le motif. */}
+        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
+          <span style={{ fontSize:15, fontWeight:800, color:P }}>{intitule}</span>
           <motion.button whileTap={{ scale:0.95 }} onClick={() => setStep(1)}
-            style={{ background:P, color:'white', border:'none', borderRadius:10, padding:'8px 16px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
-            Changer
+            aria-label="Changer la catégorie de dépense"
+            style={{ alignSelf:'flex-start', background:P, color:'white', border:'none', borderRadius:10, padding:'10px 16px', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>
+            Changer la catégorie de dépense
           </motion.button>
         </div>
 
-        {/* Montant */}
-        <div style={{ textAlign:'center', padding:'8px 0 4px' }}>
-          <motion.div key={montant} initial={{ y:8, opacity:0 }} animate={{ y:0, opacity:1 }} transition={{ duration:0.15 }}
-            style={{ fontSize:64, fontWeight:900, color:montantColor, letterSpacing:'-3px', lineHeight:1, transition:'color 0.3s' }}>
-            {montantNum.toLocaleString('fr-FR')}
-          </motion.div>
+        {/* Montant — pavé XXL partagé avec la caisse. */}
+        <PaveMontant
+          value={montant}
+          onChange={setMontant}
+          color={montantColor}
+          ariaLabel="Montant de la dépense"
+          onSpeak={(m) => { if (m > 0) void speak(`${nombreEnMotsFr(m)} francs`); }}
+        />
+        <div style={{ textAlign:'center', padding:'0 0 4px' }}>
           <div style={{ fontSize:12, height:18, marginTop:4, color:montantColor, fontStyle:'italic', opacity: montantHint ? 1 : 0 }}>
             {montantHint}
           </div>
@@ -314,29 +371,19 @@ export function DepenseForm() {
 
         {/* Historique */}
         <div style={{ textAlign:'center', marginBottom:14 }}>
-          <span style={{ fontSize:11, color:'var(--encre-4)' }}>Dernier {description.toLowerCase()} : </span>
+          <span style={{ fontSize:11, color:'var(--encre-4)' }}>Dernier {intitule.toLowerCase()} : </span>
           <span style={{ fontSize:11, color:P, fontWeight:700 }}>
             {derniereDepense ? `${derniereDepense.toLocaleString('fr-FR')} F` : '—'}
           </span>
-        </div>
-
-        {/* Clavier */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:16 }}>
-          {['1','2','3','4','5','6','7','8','9','000','0','<'].map(k => (
-            <motion.button key={k} whileTap={{ scale:0.86 }} onClick={() => handleKey(k)}
-              style={{ background: k==='0' ? P : k==='<' ? '#EBEBEB' : '#FDE8D8', border:'none', borderRadius:14, padding:'18px 0', fontSize:24, fontWeight:800, color: k==='0' ? 'white' : k==='<' ? '#888' : P, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'inherit' }}>
-              {k === '<' ? <Delete size={24} color="#888" /> : k}
-            </motion.button>
-          ))}
         </div>
 
         {/* Micro */}
         <div style={{ display:'flex', justifyContent:'center', marginBottom:8 }}>
           <motion.button whileTap={{ scale:0.9 }} onClick={handleMic} style={{ background:'none', border:'none', cursor:'pointer', padding:8 }}>
             <svg width="38" height="38" viewBox="0 0 22 22" fill="none">
-              <rect x="7" y="2" width="8" height="12" rx="4" fill={isListening ? '#ef4444' : P}/>
-              <path d="M4 11c0 3.9 3.1 7 7 7s7-3.1 7-7" stroke={isListening ? '#ef4444' : P} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-              <line x1="11" y1="18" x2="11" y2="21" stroke={isListening ? '#ef4444' : P} strokeWidth="1.8" strokeLinecap="round"/>
+              <rect x="7" y="2" width="8" height="12" rx="4" fill={isListening ? 'var(--color-red-500)' : P}/>
+              <path d="M4 11c0 3.9 3.1 7 7 7s7-3.1 7-7" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
+              <line x1="11" y1="18" x2="11" y2="21" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
           </motion.button>
         </div>

@@ -15,7 +15,10 @@ export type ProduitCaisseTata = {
 
 export type TataMarchandDependencies = {
   produits: ProduitCaisseTata[];
-  enregistrerDepense: (montant: number, notes: string) => Promise<void>;
+  /** Le second argument est le MOTIF de la dépense, sous son nom canonique
+   *  `description` (DEP-01) — il s'appelait `notes` ici aussi, alors que rien
+   *  côté serveur ne lisait ce nom. */
+  enregistrerDepense: (montant: number, description: string) => Promise<void>;
   mettreAJourStock: (id: string, data: { quantite: number }) => Promise<void>;
 };
 

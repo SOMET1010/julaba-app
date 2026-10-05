@@ -1,17 +1,26 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import {
-  Calendar, DollarSign, AlertCircle, Package, Receipt, Wallet,
+  Calendar, DollarSign, AlertCircle, Package, Wallet,
   TrendingUp, Award, FileText, X, Check, ChevronDown, ChevronUp,
   ArrowRight, Star, Clock, User, Phone, MapPin, Search, Plus,
   Minus, Trash2, Edit2, Eye, Download, Share2, Info, Loader2,
   RefreshCw, BarChart2, PieChart, TrendingDown, Send, Printer
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { droitDeFermerLaJournee, type EtatCaisseAccueil } from '../../services/etatCaisseAccueil';
 import { stopAllAudio } from '../../services/elevenlabs';
 import { Montant, MontantCard } from '../shared/Montant';
+// MONTANTS PRIVÉS — le même geste que sur les autres écrans marchand
+// (MarchandAlertes, MarchandDepenses, GestionStock, MarcheVirtuel) : quand
+// elle a masqué ses montants, ils le restent DANS LES MODALES aussi. Un
+// récapitulatif de journée ouvert devant une cliente était jusqu'ici le seul
+// endroit où le chiffre d'affaires réapparaissait en grand. Le hook et la
+// prop `masque` existent déjà : on ne fait que les brancher ici.
+import { useMontantsPrives } from '../../hooks/useMontantsPrives';
 
 import {
   IMG_BILLET_500, IMG_BILLET_1000, IMG_BILLET_2000, IMG_BILLET_5000, IMG_BILLET_10000,
@@ -99,16 +108,16 @@ function StyledButton({ onClick, variant = 'primary', disabled, children, classN
     success: 'text-white shadow-lg hover:shadow-xl',
   };
 
-  let bgColor = '#B74725';
-  if (variant === 'danger') bgColor = '#DC2626';
-  if (variant === 'success') bgColor = '#16A34A';
+  let bgColor = 'var(--commerce-action)';
+  if (variant === 'danger') bgColor = 'var(--destructive)';
+  if (variant === 'success') bgColor = 'var(--color-green-600)';
 
   return (
     <motion.button
       onClick={onClick}
       disabled={disabled}
       className={`${baseStyle} ${variantStyles[variant]} ${fullWidth ? 'w-full' : ''} ${className}`}
-      style={variant === 'primary' || variant === 'success' ? { backgroundColor: bgColor } : variant === 'outline' ? { borderWidth: '2px', borderColor: '#E5E7EB' } : undefined}
+      style={variant === 'primary' || variant === 'success' ? { backgroundColor: bgColor } : variant === 'outline' ? { borderWidth: '2px', borderColor: 'var(--border)' } : undefined}
       whileHover={!disabled ? { scale: 1.02 } : {}}
       whileTap={!disabled ? { scale: 0.98 } : {}}
     >
@@ -143,7 +152,7 @@ function StyledInput({ id, type, placeholder, value, onChange, error, autoFocus,
           ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
           : 'border-gray-300 focus:ring-orange-100'
       } disabled:bg-gray-100 disabled:cursor-not-allowed`}
-      style={!error ? { borderWidth: '2px', borderColor: '#D1D5DB' } : undefined}
+      style={!error ? { borderWidth: '2px', borderColor: 'var(--color-gray-300)' } : undefined}
     />
   );
 }
@@ -182,7 +191,7 @@ function MontantFCFAInput({ id, value, onChange, placeholder, error, autoFocus, 
           ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
           : 'border-gray-300 focus:ring-orange-100'
       } disabled:bg-gray-100 disabled:cursor-not-allowed`}
-      style={!error ? { borderWidth: '2px', borderColor: '#D1D5DB' } : undefined}
+      style={!error ? { borderWidth: '2px', borderColor: 'var(--color-gray-300)' } : undefined}
     />
   );
 }
@@ -327,7 +336,7 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
     const newValue = currentValue + montant;
     setFondInitial(newValue.toString());
     setError('');
-    void speak(`${formatMontantFR(montant)} Francs CFA ajoutés. Total : ${formatMontantFR(newValue || 0)} Francs CFA`);
+    void speak(`${nombreEnMotsFr(montant)} Francs CFA ajoutés. Total : ${nombreEnMotsFr(newValue || 0)} Francs CFA`);
   };
 
   const handlePieceClick = (montant: number) => {
@@ -335,7 +344,7 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
     const newValue = currentValue + montant;
     setFondInitial(newValue.toString());
     setError('');
-    void speak(`${formatMontantFR(montant)} Francs CFA ajoutés. Total : ${formatMontantFR(newValue || 0)} Francs CFA`);
+    void speak(`${nombreEnMotsFr(montant)} Francs CFA ajoutés. Total : ${nombreEnMotsFr(newValue || 0)} Francs CFA`);
   };
 
   const handleInputChange = (value: string) => {
@@ -366,14 +375,14 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
     openDay(montant);
     onClose();
     stopAllAudio();
-    setTimeout(() => { void speak(`Ta journée est ouverte avec ${formatMontantFR(montant || 0)} Francs CFA`); }, 500);
+    setTimeout(() => { void speak(`Ta journée est ouverte avec ${nombreEnMotsFr(montant || 0)} Francs CFA`); }, 500);
     setFondInitial('');
     setError('');
   };
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: 'var(--commerce-action)' }}>
         {/* Header */}
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
@@ -381,10 +390,10 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <Calendar className="w-7 h-7" style={{ color: '#B74725' }} />
+              <Calendar className="w-7 h-7" style={{ color: 'var(--commerce-action)' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--commerce-action)' }}>
                 Ouvre ta journée
               </h2>
             </div>
@@ -440,28 +449,37 @@ export function OpenDayModal({ isOpen, onClose }: OpenDayModalProps) {
 interface EditFondModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentFond: number;
+  /** ACC-02 — ABSENT veut dire INCONNU, et c'est le point. La prop valait
+   *  `currentSession?.fondInitial || 0` : sans session lue, l'écran proposait
+   *  « Fond actuel : 0 FCFA » et pré-remplissait le champ avec zéro. Une
+   *  marchande qui valide sans y penser écrase son vrai fond par zéro — et
+   *  toute sa caisse théorique du jour avec. C'est le « montant toujours 0 F »
+   *  que la recette terrain a relevé (MAR-CAI-001). */
+  currentFond?: number;
 }
 
 export function EditFondModal({ isOpen, onClose, currentFond }: EditFondModalProps) {
   const { updateFondInitial, speak } = useApp();
-  const [nouveauFond, setNouveauFond] = useState(currentFond.toString());
+  const fondConnu = typeof currentFond === 'number' && Number.isFinite(currentFond);
+  // Champ VIDE quand on ne sait pas : elle tape son vrai fond, elle ne
+  // confirme pas un zéro qu'on lui a soufflé.
+  const [nouveauFond, setNouveauFond] = useState(fondConnu ? String(currentFond) : '');
   useEffect(() => {
-    if (isOpen) setNouveauFond(currentFond.toString());
-  }, [isOpen, currentFond]);
+    if (isOpen) setNouveauFond(fondConnu ? String(currentFond) : '');
+  }, [isOpen, currentFond, fondConnu]);
 
   const handleBilletClick = (montant: number) => {
     const currentValue = parseFloat(nouveauFond) || 0;
     const newValue = currentValue + montant;
     setNouveauFond(newValue.toString());
-    void speak(`${formatMontantFR(montant)} Francs CFA ajoutés. Total : ${formatMontantFR(newValue || 0)} Francs CFA`);
+    void speak(`${nombreEnMotsFr(montant)} Francs CFA ajoutés. Total : ${nombreEnMotsFr(newValue || 0)} Francs CFA`);
   };
 
   const handlePieceClick = (montant: number) => {
     const currentValue = parseFloat(nouveauFond) || 0;
     const newValue = currentValue + montant;
     setNouveauFond(newValue.toString());
-    void speak(`${formatMontantFR(montant)} Francs CFA ajoutés. Total : ${formatMontantFR(newValue || 0)} Francs CFA`);
+    void speak(`${nombreEnMotsFr(montant)} Francs CFA ajoutés. Total : ${nombreEnMotsFr(newValue || 0)} Francs CFA`);
   };
 
   const handleSubmit = () => {
@@ -471,23 +489,23 @@ export function EditFondModal({ isOpen, onClose, currentFond }: EditFondModalPro
       return;
     }
     updateFondInitial(montant);
-    void speak(`Ton fond de caisse est maintenant de ${formatMontantFR(montant || 0)} Francs CFA`);
+    void speak(`Ton fond de caisse est maintenant de ${nombreEnMotsFr(montant || 0)} Francs CFA`);
     onClose();
   };
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: 'var(--commerce-action)' }}>
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <DollarSign className="w-7 h-7" style={{ color: '#B74725' }} />
+              <DollarSign className="w-7 h-7" style={{ color: 'var(--commerce-action)' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--commerce-action)' }}>
                 Modifier le fond
               </h2>
             </div>
@@ -512,7 +530,7 @@ export function EditFondModal({ isOpen, onClose, currentFond }: EditFondModalPro
               onChange={(rawValue) => setNouveauFond(rawValue)}
             />
             <p className="text-sm text-gray-500 mt-2 font-medium">
-              Fond actuel : {formatMontantFR(currentFond || 0)} FCFA
+              Fond actuel : {fondConnu ? `${formatMontantFR(currentFond as number)} FCFA` : '— (pas encore lu)'}
             </p>
           </div>
         </div>
@@ -539,10 +557,15 @@ interface CloseDayModalProps {
     caisse: number;
     nombreVentes: number;
   };
+  /** ACC-02 — d'où viennent ces chiffres, et ce qu'on a le droit d'en faire.
+   *  La clôture est un CONSTAT daté : la refuser sur des chiffres non lus est
+   *  la seule position tenable (services/etatCaisseAccueil). */
+  etatCaisse?: EtatCaisseAccueil;
 }
 
-export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
-  const { closeDay, speak, getSalesHistory, getFinancialSummary } = useApp();
+export function CloseDayModal({ isOpen, onClose, stats, etatCaisse }: CloseDayModalProps) {
+  const { closeDay, speak, getSalesHistory, getFinancialSummary, currentSession } = useApp();
+  const { montantsMasques } = useMontantsPrives();
   const navigate = useNavigate();
   // LE CHAMP DE COMPTAGE PART VIDE, ET C'EST ESSENTIEL.
   //
@@ -585,21 +608,33 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
     }
   };
 
-  const handleNavigateToSales = () => {
-    onClose();
-    navigate('/marchand/ventes-passees');
-  };
-
   const handleNavigateToCaisse = () => {
     onClose();
     navigate('/marchand/resume-caisse');
   };
 
+  // ACC-02 — LE DROIT DE FERMER. Sans état fourni (appelants historiques), le
+  // comportement d'avant reste : on ne casse aucun écran qu'on n'a pas mesuré.
+  // UNE JOURNÉE DÉJÀ FERMÉE NE SE REFERME PAS — 25/09/2026. L'agent de test :
+  // « La re-fermeture est acceptée : même toast, Journée clôturée avec succès. »
+  // Le serveur refusait bien (CAI-10), son écart de −250 était intact — c'est
+  // l'écran qui annonçait un succès, parce que `closeDay` avale l'erreur en
+  // `console.warn`. La marchande repartait avec un chiffre que la base ne
+  // porte pas. On empêche le geste plutôt que de rattraper son échec.
+  const dejaFermee = !!currentSession && currentSession.opened === false && !!currentSession.closedAt;
+  const droit = etatCaisse ? droitDeFermerLaJournee(etatCaisse, dejaFermee) : (dejaFermee ? droitDeFermerLaJournee({ type: 'connue', caisse: 0 } as any, true) : null);
+  const fermetureInterdite = droit ? !droit.permis : false;
+  const chiffresIncomplets = droit?.permis === true && droit.exact === false;
+
   const marge = stats.ventes - stats.cahier;
   // `null` tant qu'elle n'a rien compté : pas d'écart AVANT la mesure. Avec le
   // repli `|| '0'` d'avant, un champ vide affichait un écart égal à moins la
   // caisse entière — un chiffre alarmant et faux, montré avant tout comptage.
-  const ecart = comptageReel.trim() === '' ? null : parseFloat(comptageReel) - stats.caisse;
+  // Et il ne se calcule PAS DU TOUT sur une caisse théorique inconnue : le
+  // résultat serait « tout ce que tu as compté est un excédent ».
+  const ecart = (comptageReel.trim() === '' || fermetureInterdite)
+    ? null
+    : parseFloat(comptageReel) - stats.caisse;
 
   const day = new Date().toISOString().split('T')[0];
 
@@ -645,33 +680,70 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
           </p>
         </div>
 
+        {/* ACC-02 — ON DIT POURQUOI, ET CE QU'IL FAUT FAIRE. Un bouton grisé
+            sans explication est un mur ; une marchande en conclut que
+            l'application est cassée et ferme autrement. */}
+        {fermetureInterdite && (
+          <div role="alert" className="mx-6 mb-4 p-4 rounded-2xl border bg-amber-50" style={{ borderColor: '#FCD34D' }}>
+            {droit && droit.permis === false && droit.raison === 'deja-fermee' ? (
+              <>
+                <p className="text-sm font-semibold text-gray-900">
+                  Ta journée est déjà fermée.
+                </p>
+                <p className="text-sm text-gray-700 mt-1">
+                  Ton comptage du soir est gardé. Si tu veux recompter, rouvre
+                  d’abord ta journée depuis l’accueil.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-gray-900">
+                  Je n’ai pas pu lire les chiffres de ta journée.
+                </p>
+                <p className="text-sm text-gray-700 mt-1">
+                  Ce n’est pas zéro. Fermer maintenant écrirait un écart faux, pour toujours.
+                  Réessaie quand le réseau revient.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+        {chiffresIncomplets && (
+          <div role="status" className="mx-6 mb-4 p-4 rounded-2xl border bg-amber-50" style={{ borderColor: '#FCD34D' }}>
+            <p className="text-sm text-gray-800">
+              Ces chiffres sont <strong>incomplets</strong> : des ventes sont encore gardées sur ce
+              téléphone. Tu peux fermer, mais l’écart sera approximatif.
+            </p>
+          </div>
+        )}
+
         <div className="px-6 pb-6 space-y-3">
-          <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: '#86EFAC' }}>
+          <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: 'var(--color-green-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Ventes du jour</p>
-            <MontantCard accentColor="#10B981" className="rounded-xl">
-              <Montant value={stats.ventes} size="xl" color="#15803d" />
+            <MontantCard accentColor="var(--herite-vert-menthe)" className="rounded-xl">
+              <Montant value={stats.ventes} size="xl" color="var(--color-green-700)" masque={montantsMasques} />
             </MontantCard>
             <p className="text-xs text-gray-500 mt-1">{stats.nombreVentes} vente{stats.nombreVentes > 1 ? 's' : ''}</p>
           </div>
 
-          <div className="p-4 rounded-2xl border bg-red-50" style={{ borderColor: '#FCA5A5' }}>
+          <div className="p-4 rounded-2xl border bg-red-50" style={{ borderColor: 'var(--color-red-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Cahier du jour</p>
-            <MontantCard accentColor="#EF4444" className="rounded-xl">
-              <Montant value={stats.cahier} size="xl" color="#b91c1c" />
+            <MontantCard accentColor="var(--color-red-500)" className="rounded-xl">
+              <Montant value={stats.cahier} size="xl" color="var(--color-red-700)" masque={montantsMasques} />
             </MontantCard>
           </div>
 
-          <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? '#86EFAC' : '#FCA5A5' }}>
+          <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? 'var(--color-green-300)' : 'var(--color-red-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Marge</p>
-            <MontantCard accentColor={marge >= 0 ? '#10B981' : '#EF4444'} className="rounded-xl">
-              <Montant value={marge} size="xl" color={marge >= 0 ? '#15803d' : '#b91c1c'} showPlus />
+            <MontantCard accentColor={marge >= 0 ? 'var(--herite-vert-menthe)' : 'var(--color-red-500)'} className="rounded-xl">
+              <Montant value={marge} size="xl" color={marge >= 0 ? 'var(--color-green-700)' : 'var(--color-red-700)'} showPlus masque={montantsMasques} />
             </MontantCard>
           </div>
 
-          <div className="p-4 rounded-2xl border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }}>
+          <div className="p-4 rounded-2xl border" style={{ backgroundColor: 'var(--color-orange-50)', borderColor: 'var(--color-orange-200)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Caisse théorique</p>
-            <MontantCard accentColor="#B74725" className="rounded-xl">
-              <Montant value={stats.caisse} size="xl" color="#B74725" />
+            <MontantCard accentColor="var(--commerce-action)" className="rounded-xl">
+              <Montant value={stats.caisse} size="xl" color="var(--commerce-action)" masque={montantsMasques} />
             </MontantCard>
           </div>
 
@@ -686,7 +758,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
             />
             {ecart !== null && ecart !== 0 && (
               <p className={`text-xs font-medium mt-2 ${ecart > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                Écart: <Montant value={ecart} size="sm" color={ecart > 0 ? '#16a34a' : '#dc2626'} showPlus />
+                Écart: <Montant value={ecart} size="sm" color={ecart > 0 ? 'var(--color-green-600)' : 'var(--destructive)'} showPlus masque={montantsMasques} />
               </p>
             )}
           </div>
@@ -702,7 +774,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
                 className="w-full flex items-center justify-between text-left"
               >
                 <div className="flex items-center gap-2">
-                  <Package className="w-4 h-4" style={{ color: '#B74725' }} />
+                  <Package className="w-4 h-4" style={{ color: 'var(--commerce-action)' }} />
                   <p className="text-xs font-bold text-gray-700">Analyse détaillée</p>
                 </div>
                 <motion.div
@@ -728,7 +800,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
                         <div className="flex items-center gap-2">
                           <div
                             className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                            style={{ backgroundColor: '#B74725' }}
+                            style={{ backgroundColor: 'var(--commerce-action)' }}
                           >
                             {index + 1}
                           </div>
@@ -737,8 +809,8 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
                             <p className="text-xs text-gray-500">{product.quantity} unité{product.quantity > 1 ? 's' : ''}</p>
                           </div>
                         </div>
-                        <p className="text-xs font-bold" style={{ color: '#B74725' }}>
-                          {formatMontantFR(product.total || 0)} FCFA
+                        <p className="text-xs font-bold" style={{ color: 'var(--commerce-action)' }}>
+                          {montantsMasques ? '••••• FCFA' : `${formatMontantFR(product.total || 0)} FCFA`}
                         </p>
                       </div>
                     ))}
@@ -748,28 +820,22 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
             </motion.div>
           )}
 
-          {/* Boutons de navigation */}
-          <div className="grid grid-cols-2 gap-2 pt-2">
-            <motion.button
-              onClick={handleNavigateToSales}
-              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[#B74725] transition-colors whitespace-nowrap"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              disabled={isClosing}
-            >
-              <Receipt className="w-4 h-4 flex-shrink-0" style={{ color: '#B74725' }} />
-              <span className="text-xs font-semibold text-gray-700">Ventes</span>
-            </motion.button>
-
+          {/* UNE SEULE PORTE VERS LES CHIFFRES — 24/09/2026.
+              Il y en avait deux ici, côte à côte, même taille et même icône
+              orange : « Ventes » et « Résumé caisse ». Deux écrans de chiffres
+              différents, indiscernables pour une marchande qui ne lit pas.
+              Le résumé est la réponse à « combien j'ai fait » ; le détail
+              vente par vente s'ouvre DEPUIS ce résumé. */}
+          <div className="pt-2">
             <motion.button
               onClick={handleNavigateToCaisse}
-              className="flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[#B74725] transition-colors whitespace-nowrap"
+              className="w-full flex items-center justify-center gap-2 px-2 py-2.5 rounded-xl bg-white border border-gray-300 hover:border-[var(--commerce-action)] transition-colors whitespace-nowrap"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               disabled={isClosing}
             >
-              <Wallet className="w-4 h-4 flex-shrink-0" style={{ color: '#B74725' }} />
-              <span className="text-xs font-semibold text-gray-700">Résumé caisse</span>
+              <Wallet className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--commerce-action)' }} />
+              <span className="text-xs font-semibold text-gray-700">Combien j'ai fait aujourd'hui</span>
             </motion.button>
           </div>
         </div>
@@ -781,7 +847,7 @@ export function CloseDayModal({ isOpen, onClose, stats }: CloseDayModalProps) {
           <StyledButton
             variant="danger"
             onClick={handleClose}
-            disabled={isClosing}
+            disabled={isClosing || fermetureInterdite}
             className="flex-1"
           >
             {isClosing ? 'Fermeture...' : 'Fermer la caisse'}
@@ -819,16 +885,16 @@ export function StatsVentesModal({ isOpen, onClose, montant }: StatsVentesModalP
         </div>
 
         <div className="px-6 pb-6">
-          <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-green-50 to-green-100 border" style={{ borderColor: '#86EFAC' }}>
+          <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-green-50 to-green-100 border" style={{ borderColor: 'var(--color-green-300)' }}>
             <p className="text-sm font-semibold text-gray-600 mb-2">Total des ventes</p>
-            <MontantCard accentColor="#10B981" className="rounded-xl">
+            <MontantCard accentColor="var(--herite-vert-menthe)" className="rounded-xl">
               <motion.div
                 className="flex justify-center"
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 200 }}
               >
-                <Montant value={montant} size="2xl" color="#15803d" />
+                <Montant value={montant} size="2xl" color="var(--color-green-700)" />
               </motion.div>
             </MontantCard>
           </div>
@@ -875,11 +941,11 @@ export function StatsMargeModal({ isOpen, onClose, marge }: StatsMargeModalProps
         </div>
 
         <div className="px-6 pb-6">
-          <div className={`text-center p-8 rounded-2xl bg-gradient-to-br border ${isPositive ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100'}`} style={{ borderColor: isPositive ? '#86EFAC' : '#FCA5A5' }}>
+          <div className={`text-center p-8 rounded-2xl bg-gradient-to-br border ${isPositive ? 'from-green-50 to-green-100' : 'from-red-50 to-red-100'}`} style={{ borderColor: isPositive ? 'var(--color-green-300)' : 'var(--color-red-300)' }}>
             <p className="text-sm font-semibold text-gray-600 mb-2">Marge</p>
-            <MontantCard accentColor={isPositive ? '#10B981' : '#EF4444'} className="rounded-xl">
+            <MontantCard accentColor={isPositive ? 'var(--herite-vert-menthe)' : 'var(--color-red-500)'} className="rounded-xl">
               <div className="flex justify-center">
-                <Montant value={marge} size="2xl" color={isPositive ? '#15803d' : '#b91c1c'} showPlus />
+                <Montant value={marge} size="2xl" color={isPositive ? 'var(--color-green-700)' : 'var(--color-red-700)'} showPlus />
               </div>
             </MontantCard>
           </div>
@@ -925,17 +991,17 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: 'var(--commerce-action)' }}>
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <Award className="w-7 h-7" style={{ color: '#B74725' }} />
+              <Award className="w-7 h-7" style={{ color: 'var(--commerce-action)' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--commerce-action)' }}>
                 Mes Points JULABA
               </h2>
             </div>
@@ -946,10 +1012,10 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
         </div>
 
         <div className="px-6 pb-6">
-          <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 border mb-6" style={{ borderColor: '#FED7AA' }}>
+          <div className="text-center p-8 rounded-2xl bg-gradient-to-br from-orange-50 to-orange-100 border mb-6" style={{ borderColor: 'var(--color-orange-200)' }}>
             <motion.p
               className="text-6xl font-bold"
-              style={{ color: '#B74725' }}
+              style={{ color: 'var(--commerce-action)' }}
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 200 }}
@@ -974,8 +1040,8 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }}>
-            <p className="text-sm font-bold mb-2" style={{ color: '#B74725' }}>
+          <div className="p-4 rounded-2xl border" style={{ backgroundColor: 'var(--color-orange-50)', borderColor: 'var(--color-orange-200)' }}>
+            <p className="text-sm font-bold mb-2" style={{ color: 'var(--commerce-action)' }}>
               C'est déjà !
             </p>
             <p className="text-sm text-gray-600 leading-relaxed">
@@ -995,6 +1061,9 @@ export function ScoreModal({ isOpen, onClose }: ScoreModalProps) {
 }
 
 interface ResumeModalProps {
+  /** ACC-02 — même règle que la clôture : ces chiffres viennent d'une lecture
+   *  qui a pu échouer. On ne les présente pas comme des faits acquis. */
+  etatCaisse?: EtatCaisseAccueil;
   isOpen: boolean;
   onClose: () => void;
   stats: {
@@ -1009,64 +1078,72 @@ interface ResumeModalProps {
   onModifierFond?: () => void;
 }
 
-export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifierFond }: ResumeModalProps) {
+export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifierFond, etatCaisse }: ResumeModalProps) {
+  // Les chiffres sont-ils lus ? Sans état fourni, on ne change rien.
+  const chiffresLus = etatCaisse ? droitDeFermerLaJournee(etatCaisse).permis : true;
   const marge = stats.ventes - stats.cahier;
+  const { montantsMasques } = useMontantsPrives();
 
   return (
     <BaseModal isOpen={isOpen} onClose={onClose}>
-      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: '#B74725' }}>
+      <div className="bg-white rounded-3xl border-4 shadow-2xl overflow-hidden" style={{ borderColor: 'var(--commerce-action)' }}>
         <div className="p-6 pb-4">
           <div className="flex items-center gap-4 mb-3">
             <div
               className="w-14 h-14 rounded-full flex items-center justify-center"
               style={{ backgroundColor: 'rgba(196, 98, 16, 0.15)' }}
             >
-              <FileText className="w-7 h-7" style={{ color: '#B74725' }} />
+              <FileText className="w-7 h-7" style={{ color: 'var(--commerce-action)' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold" style={{ color: '#B74725' }}>
+              <h2 className="text-2xl font-bold" style={{ color: 'var(--commerce-action)' }}>
                 Résumé du jour
               </h2>
             </div>
           </div>
+          {!chiffresLus && (
+            <div role="alert" className="mb-3 p-3 rounded-2xl border bg-amber-50" style={{ borderColor: '#FCD34D' }}>
+              <p className="text-sm font-semibold text-gray-900">Je n’ai pas pu lire tes chiffres.</p>
+              <p className="text-sm text-gray-700 mt-1">
+                Ce n’est pas zéro — ton argent est là. Réessaie quand le réseau revient.
+              </p>
+            </div>
+          )}
           <p className="text-gray-600 text-sm leading-relaxed">
             Voici un aperçu complet de ta journée.
           </p>
         </div>
 
         <div className="px-6 pb-6 space-y-3">
-          <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: '#86EFAC' }}>
+          <div className="p-4 rounded-2xl border bg-green-50" style={{ borderColor: 'var(--color-green-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Ventes du jour</p>
-            <MontantCard accentColor="#10B981" className="rounded-xl">
-              <Montant value={stats.ventes} size="xl" color="#15803d" />
+            <MontantCard accentColor="var(--herite-vert-menthe)" className="rounded-xl">
+              <Montant value={stats.ventes} size="xl" color="var(--color-green-700)" masque={montantsMasques} />
             </MontantCard>
             <p className="text-xs text-gray-500 mt-1">{stats.nombreVentes} vente{stats.nombreVentes > 1 ? 's' : ''}</p>
           </div>
 
-          <div className="p-4 rounded-2xl border bg-red-50" style={{ borderColor: '#FCA5A5' }}>
+          <div className="p-4 rounded-2xl border bg-red-50" style={{ borderColor: 'var(--color-red-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Cahier du jour</p>
-            <MontantCard accentColor="#EF4444" className="rounded-xl">
-              <Montant value={stats.cahier} size="xl" color="#b91c1c" />
+            <MontantCard accentColor="var(--color-red-500)" className="rounded-xl">
+              <Montant value={stats.cahier} size="xl" color="var(--color-red-700)" masque={montantsMasques} />
             </MontantCard>
           </div>
 
-          <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? '#86EFAC' : '#FCA5A5' }}>
+          <div className={`p-4 rounded-2xl border ${marge >= 0 ? 'bg-green-50' : 'bg-red-50'}`} style={{ borderColor: marge >= 0 ? 'var(--color-green-300)' : 'var(--color-red-300)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Marge</p>
-            <MontantCard accentColor={marge >= 0 ? '#10B981' : '#EF4444'} className="rounded-xl">
-              <Montant value={marge} size="xl" color={marge >= 0 ? '#15803d' : '#b91c1c'} showPlus />
+            <MontantCard accentColor={marge >= 0 ? 'var(--herite-vert-menthe)' : 'var(--color-red-500)'} className="rounded-xl">
+              <Montant value={marge} size="xl" color={marge >= 0 ? 'var(--color-green-700)' : 'var(--color-red-700)'} showPlus masque={montantsMasques} />
             </MontantCard>
           </div>
 
-          <div className="p-4 rounded-2xl border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }}>
+          <div className="p-4 rounded-2xl border" style={{ backgroundColor: 'var(--color-orange-50)', borderColor: 'var(--color-orange-200)' }}>
             <p className="text-xs font-semibold text-gray-600 mb-1">Caisse théorique</p>
-            <MontantCard accentColor="#B74725" className="rounded-xl">
-              <Montant value={stats.caisse} size="xl" color="#B74725" />
+            <MontantCard accentColor="var(--commerce-action)" className="rounded-xl">
+              <Montant value={stats.caisse} size="xl" color="var(--commerce-action)" masque={montantsMasques} />
             </MontantCard>
           </div>
 
-          <div className="p-4 rounded-2xl bg-gray-50 border border-gray-300">
-            <p className="text-xs font-semibold text-gray-700 mb-2">Comptage réel</p>
-          </div>
         </div>
 
         <div className="px-6 pb-6 space-y-2">
@@ -1076,7 +1153,7 @@ export function ResumeModal({ isOpen, onClose, stats, onFermerJournee, onModifie
               onClick={onFermerJournee}
               className="w-full py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold"
             >
-              Fermer ma journée
+              Compter et fermer ma journée
             </button>
           )}
           {onModifierFond && (

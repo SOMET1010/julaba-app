@@ -33,9 +33,9 @@
  * qui écrit de l'argent vivent dans POSCaisse — la frontière de ce fichier
  * reste : remplir le panier, jamais encaisser.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, AudioLines, CheckCircle, Keyboard, Loader, Mic, Volume2 } from 'lucide-react';
+import { AlertCircle, AudioLines, CheckCircle, Hand, Loader, Mic, Volume2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
@@ -47,16 +47,23 @@ import { useRaccourcis } from '../../contexts/RaccourcisContext';
 import { useObjectif } from '../../contexts/ObjectifContext';
 import { useStock, type StockItem } from '../../contexts/StockContext';
 import { extraire } from '../../voice-offline/extraction';
+import { intentLocal, intentLocalCaisse } from '../../voice-offline/localIntent';
+import { finDEcoute, afficheEcoute, libelleVenteComprise, parleMaintenant, plancherDeBruit, seuilDeParole,
+         NIVEAU_PAROLE, ECOUTE_PLANCHER_MS, ECOUTE_MAX_MS } from '../../services/ecouteCaisse';
+import { gesteDuMicro, sortieVisible, type EtatVoix } from '../../services/gesteDuMicro';
 import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
 import { produitPourVente } from '../../services/preselectionVente';
-import { AJOUT_PANIER } from '../../services/dialoguesTata';
+import { lireVenteAuCatalogue, venteSansProduit } from '../../services/venteAuCatalogue';
+import { useSpeakMessage } from '../../i18n/voice/speakMessage';
+import { t } from '../../i18n/voice/runtime';
 import type { LigneProvisoire } from '../../services/ligneProvisoire';
+import { resumeQuantite } from '../../services/dialoguesTata';
 import { guidageVocal } from '../../utils/accessMode';
-import { vibrerSucces } from '../../utils/haptique';
+import { vibrerSucces, vibrerTic } from '../../utils/haptique';
 import { SaisieGuidee } from './SaisieGuidee';
-import tantieImg from '../../../assets/images/tantie-vente-vocale.png';
+import tataAccueil from '../../../assets/redesign/tata-accueil.webp';
 
 // PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Le lot B avait recopié
 // l'orange et le vert de la planche dans ce fichier : deux sources de vérité
@@ -98,10 +105,50 @@ interface Props {
   onIntentionEncaissement: (intention: IntentionEncaissement) => void;
 }
 
+/**
+ * UNE VENTE COMPRISE DONT LE PRIX MANQUE (21/09/2026, terrain).
+ *
+ * Le produit dicté n'est pas au catalogue — et celui d'une nouvelle marchande
+ * est VIDE — ou il y est sans prix de vente. Ce composant ne sait pas demander
+ * un prix ; la caisse, elle, a déjà le chemin qui le fait (chercher la
+ * référence, « Quel est ton prix ? », puis adopter l'article au catalogue ET
+ * au panier). Elle s'abonne donc à cette demande, et l'ouvre PRÉ-REMPLIE.
+ *
+ * POURQUOI UN CONTEXTE ET PAS UNE PROP. Le micro est rendu SANS AUCUNE
+ * CONDITION, sur une ligne que le garde-fou `caisseMicroPermanent.test.mts`
+ * lit au caractère près — c'est ce qui garantit qu'il ne disparaît à aucun
+ * moment de la vente. On ne touche donc pas à cette ligne : l'abonnement
+ * passe par le fournisseur ci-dessous, que la caisse monte au-dessus du micro,
+ * comme elle monte déjà les providers Raccourcis et Objectif.
+ *
+ * Sans fournisseur, rien ne change : Tata explique qu'elle n'a pas le prix
+ * (comportement d'avant), et aucune ligne n'entre au panier.
+ */
+export type DemandePrixVocal = (demande: {
+  nom: string; quantite: number; unite: string | null;
+  /** Pourquoi l'écran s'ouvre : prix introuvable, unité qui ne concorde pas,
+   *  ou montant dicté dont on ne sait pas s'il vaut pour un ou pour tous. */
+  raison?: 'prix_manquant' | 'unite_incompatible' | 'ambiguite_prix';
+  /** Son montant, pour le cas `ambiguite_prix` : on le lui relit. */
+  montant?: number;
+}) => void;
+
+const CtxDemandePrix = createContext<DemandePrixVocal | null>(null);
+
+export function FournisseurDemandePrix({ demander, children }: { demander: DemandePrixVocal; children: React.ReactNode }) {
+  return <CtxDemandePrix.Provider value={demander}>{children}</CtxDemandePrix.Provider>;
+}
+
 export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEncaissement }: Props) {
+  const demanderPrixAuParent = useContext(CtxDemandePrix);
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
   const { user, currentSession, getTodayStats, speak } = useApp();
+  // Les phrases de Tata sont des CLÉS du catalogue i18n (lot langues) : ce
+  // composant ne connaît plus le français. `speakMessage` résout la clé dans
+  // la langue active et la remet au rendu vocal (contrat-audio.ts), dont le
+  // défaut est ce même `speak`.
+  const speakMessage = useSpeakMessage();
   // `cart` en LECTURE SEULE (lot F) : sert au seul rappel « Dis "encaisser"
   // pour terminer », affiché quand il y a quelque chose à encaisser. Ce
   // composant continue de REMPLIR le panier ; il ne le lit que pour le dire.
@@ -118,6 +165,9 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     dernierePhraseRef.current = texte;
     speak(texte);
   }, [speak]);
+  const direEtRetenirMessage = useCallback((id: string, vars?: Record<string, string | number>) => {
+    dernierePhraseRef.current = speakMessage(id, vars).texte;
+  }, [speakMessage]);
 
   const objectifCtx = useObjectif();
   const objectif = objectifCtx?.objectif ?? 0;
@@ -163,16 +213,73 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       addToCart({ id: 'libre-' + l.id, nom: l.nomAffiche, prix: prixU, categorie: 'Autre', stock: 0, unite: l.unite }, l.quantite, totalExact, 'vocal');
     }
     vibrerSucces();
-    toast.success(`C'est dans le panier : ${l.quantite} × ${l.nomAffiche}`);
-    if (guidageVocal()) speak(AJOUT_PANIER);
+    // CE QUI EST DIT DOIT AUSSI ÊTRE ÉCRIT — retour terrain du 24/09.
+    // Ici on composait `${l.quantite} × ${l.nomAffiche}` à la main : « 2 tas de
+    // piments » revenait « 2 × piment ». L'unité ÉTAIT connue (`l.unite`), elle
+    // était jetée au dernier mètre, et Tata la disait pourtant à voix haute.
+    // Entendre une chose et en voir une autre, c'est l'écran qui la contredit
+    // sur sa propre vente. `resumeQuantite` compose déjà, avec l'accord.
+    toast.success(`C'est dans le panier : ${resumeQuantite(l)}`);
+    if (guidageVocal()) speakMessage('TATA_AJOUT_PANIER');
     setSaisieOuverte(false);
   };
 
+  /**
+   * LA VENTE DICTÉE PART AU PANIER — un seul chemin, deux appelants.
+   *
+   * `uniteParlee` : l'unité RÉELLEMENT prononcée (« un TAS de piment »). Sans
+   * elle, reprendre le prix du catalogue peut être faux — un tas n'est pas un
+   * kilo, et l'écart se paie sur l'argent de la marchande.
+   *
+   * Hissée hors de `onAction` (21/09/2026) : la relecture de caisse (voir
+   * l'effet plus bas) l'appelle aussi, et il ne doit exister qu'UNE façon
+   * d'ajouter une vente dictée au panier.
+   */
+  const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number, uniteParlee?: string | null, lectureDictee?: 'unitaire' | 'total' | null) =>
+    vendreVocalUnifie(nomParle, quantite, montant, {
+      products,
+      addToCart,
+      speak: direEtRetenir,
+      vibrerSucces,
+      notifierAjoutPanier: (message) => toast.success(message),
+      proposerCreationProduit: (p) => setPropositionProduit(p),
+      stockage: window.localStorage,
+      estEnLigne: () => navigator.onLine !== false,
+      planifier: (effet, delaiMs) => setTimeout(effet, delaiMs),
+      guidageVocalActif: () => guidageVocal(),
+      creerIdLigne: () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`),
+      // AUCUN PRIX TROUVÉ → ON LE DEMANDE, on ne se tait pas. La caisse ouvre
+      // son écran « Autre article » PRÉ-REMPLI (nom et quantité dits) et pose
+      // la question ; la ligne n'entrera au panier qu'une fois le prix donné.
+      // Voir FournisseurDemandePrix, plus haut dans ce fichier.
+      demanderPrix: demanderPrixAuParent
+        ? ({ nom, quantite: qteDite, unite, raison, montant: montantDit }) => {
+          setSaisieOuverte(false);
+          demanderPrixAuParent({ nom, quantite: qteDite, unite, raison, montant: montantDit });
+        }
+        : undefined,
+      // AUCUN ÉCRAN DE PRIX AU-DESSUS → ON NE SE TAIT PAS POUR AUTANT.
+      // Sans fournisseur (caisse montée sans `FournisseurDemandePrix`) et avec
+      // le guidage vocal coupé, cette vente comprise se terminait en silence
+      // absolu sous le bandeau « J'ai compris ». Ici, le repli tactile de
+      // CETTE surface s'ouvre et la phrase — celle du catalogue i18n, résolue
+      // par vendreVocalUnifie, jamais réécrite ici — s'affiche.
+      signalerBlocage: ({ texte }) => {
+        setSaisieOuverte(true);
+        toast.warning(texte);
+        dernierePhraseRef.current = texte; // « réécouter » la dit, même différée
+      },
+    }, uniteParlee, lectureDictee);
+
   const {
-    state, response, pendingResponse, transcript, liveTranscript, error,
-    handleMicClick, reset, confirmAction, cancelAction, isSpeaking,
+    state, response, pendingResponse, transcript, liveTranscript, error, volume,
+    handleMicClick, reset, confirmAction, cancelAction, isSpeaking, startRecording,
   } = useVoiceCore({
-    maxRecordingSeconds: 60,
+    // VOX-01 — 60 s était la cause directe du paragraphe de six lignes que
+    // Patrick a vu à l'écran : le micro accumulait une minute de tout ce qui
+    // passait. Une vente au marché se dit en quelques secondes. C'est un
+    // FILET : la fin de phrase, elle, se détecte au silence (voir plus bas).
+    maxRecordingSeconds: Math.ceil(ECOUTE_MAX_MS / 1000),
     context: {
       caisse: stats.caisse || 0, ventes: stats.ventes || 0, depenses: caisseStats?.cahierJour || 0,
       sessionOpen: !!(currentSession?.opened),
@@ -206,32 +313,52 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       // touche pas.
       if (data.action?.type && estIntentionEncaissement(data.action.type)) { onIntentionEncaissement(data.action.type); return; }
 
-      // `uniteParlee` : l'unité RÉELLEMENT prononcée (« un TAS de piment »).
-      // Sans elle, reprendre le prix du catalogue peut être faux — un tas
-      // n'est pas un kilo, et l'écart se paie sur l'argent de la marchande.
-      const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number, uniteParlee?: string | null) =>
-        vendreVocalUnifie(nomParle, quantite, montant, {
-          products,
-          addToCart,
-          speak: direEtRetenir,
-          vibrerSucces,
-          notifierAjoutPanier: (message) => toast.success(message),
-          proposerCreationProduit: (p) => setPropositionProduit(p),
-          stockage: window.localStorage,
-          estEnLigne: () => navigator.onLine !== false,
-          planifier: (effet, delaiMs) => setTimeout(effet, delaiMs),
-          guidageVocalActif: () => guidageVocal(),
-          creerIdLigne: () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`),
-        }, uniteParlee);
-
       const action = data.action;
       if (action?.type === 'vendre') {
+        /**
+         * CAT-01 — C'EST ICI QUE ÇA SE JOUE, ET NULLE PART AILLEURS.
+         *
+         * Trouvé en JOUANT la recette dans un vrai navigateur, pas en lisant
+         * le code : le panier recevait « 1 × Produit vocal = 2 F » alors que
+         * les tests purs de CAT-01 étaient verts.
+         *
+         * POURQUOI. La relecture au catalogue avait été branchée sur l'effet
+         * de SECOURS — celui qui ne tourne que si `intentLocal` n'a RIEN
+         * compris. Or `intentLocal` comprend, et comprend mal : sans produit
+         * dans son lexique, il rend { vendre, montant: 2 } où « deux » est
+         * devenu DEUX FRANCS. Le moteur agit donc en premier, par ce
+         * gestionnaire-ci, et le secours n'est jamais atteint.
+         *
+         * Une porte de plus en aval ne sert à rien quand l'amont répond déjà.
+         *
+         * SON CATALOGUE PASSE DEVANT. La relecture ne rend quelque chose que
+         * si le nom d'un de SES produits est prononcé en entier : c'est une
+         * preuve plus forte que le mot canonique du lexique, et elle rend
+         * `null` au moindre doute — auquel cas le moteur garde la main.
+         */
+        const reluAuCatalogue = lireVenteAuCatalogue(data.transcript || '', products);
+        /**
+         * CAT-02 — ET QUAND ELLE NOMME CE QU'ELLE NE VEND PAS.
+         *
+         * « vends deux mangues séchées », produit absent de sa boutique : le
+         * moteur rend { vendre, montant: 2 } et une ligne « Produit vocal » à
+         * DEUX FRANCS partait au panier, en silence. Arbitrage de Patrick,
+         * 28/09 : « ferme le produit vocal hors catalogue ».
+         *
+         * L'ARTICLE LIBRE VOCAL N'EST PAS TOUCHÉ : « vends 500 », « vends pour
+         * 500 », « vends à 500 » continuent de poser leur ligne. Le
+         * discriminant n'est pas la taille du nombre — ce serait une devinette
+         * et « vends 50 » deviendrait cinquante articles — c'est qu'elle a
+         * NOMMÉ quelque chose après le nombre.
+         */
+        const corrige = reluAuCatalogue ? null : venteSansProduit(action, data.transcript || '');
+        const vente = reluAuCatalogue ?? (corrige ? { ...action, ...corrige } : action);
         // MONTANT FACULTATIF : le prix est résolu en aval par
         // vendreVocalUnifie, seul à disposer du catalogue. `0` y signifie
         // « rien n'a été dicté » ; un montant réellement prononcé prime.
-        const brut = Number(action.montant);
+        const brut = Number(vente.montant);
         const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
-        const quantite = action.quantite || 1;
+        const quantite = vente.quantite || 1;
         // LE PRODUIT DÉJÀ TOUCHÉ N'EST PAS À REDIRE (lot B2). Elle vient de
         // toucher « Tomate » dans Mon stock et dit « trois tas » : sans ce
         // repli, le moteur recevait `undefined`, n'appariait rien, et Tata
@@ -239,7 +366,13 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         // vide. La parole prime toujours : « deux kilos d'oignons » vend des
         // oignons. Seul le NOM est repris ; l'unité et le prix restent
         // l'affaire de resoudrePrixVocal (voir preselectionVente.ts).
-        vendreUnifie(produitPourVente(action.produit, produitPreselectionne), quantite, montant, extraire(data.transcript || '').uniteParlee);
+        {
+          // MÊME lecture, MÊME phrase : l'unité prononcée et ce que le montant
+          // veut dire (« à » / « pour » / négociation) viennent de la même
+          // extraction, jamais de deux relectures qui pourraient diverger.
+          const lu = extraire(data.transcript || '');
+          vendreUnifie(produitPourVente(vente.produit, produitPreselectionne), quantite, montant, lu.uniteParlee, lu.lecturePrix);
+        }
       } else if (action?.type === 'utiliser_raccourci') {
         const r = matchRaccourci ? matchRaccourci(action.declencheur || data.transcript || '') : null;
         if (r?.action?.type === 'vendre') {
@@ -256,7 +389,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         } else if (r?.action?.type === 'depense') {
           const montant = r.action.montant || 0;
           if (!montant || montant <= 0 || isNaN(montant)) {
-            direEtRetenir("Je n'ai pas compris combien tu as dépensé. Redis-moi le montant.");
+            direEtRetenirMessage('TATA_DEPENSE_MONTANT_INCOMPRIS');
             return;
           }
           await enregistrerDepense(montant, r.action.description || r.nom);
@@ -269,7 +402,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
           // montant : sans cette phrase, rien ne s'affiche, rien ne se dit,
           // rien ne vibre — elle croit sa dépense notée. Aucun catalogue ne
           // peut fournir le prix d'une dépense : on ne peut que le redemander.
-          direEtRetenir("Je n'ai pas compris combien tu as dépensé. Redis-moi le montant.");
+          direEtRetenirMessage('TATA_DEPENSE_MONTANT_INCOMPRIS');
           return;
         }
         await enregistrerDepense(montant, action.description || 'Dépense vocale');
@@ -289,17 +422,246 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // Retour terrain : la marchande ne comprenait ni qu'il fallait appuyer, ni
   // pourquoi parler. Un mot dit à voix haute vaut mieux que la même
   // explication écrite en haut de l'écran — qu'elle ne lit pas.
-  const introLigne = useCallback(() => (
+  // Une clé et ses variables ; le texte résolu sert aussi à « réécouter ».
+  const introMessage = useCallback((): [string, Record<string, string | number>] => (
     produitPreselectionne
-      ? `Appuie sur le micro, et dis ce que tu as vendu de ${produitPreselectionne.nom}.`
-      : 'Que voulez-vous vendre ?'
+      ? ['TATA_MICRO_INTRO_PRESELECTION', { produit: produitPreselectionne.nom }]
+      : ['TATA_QUE_VENDRE', {}]
   ), [produitPreselectionne]);
+  const introLigne = useCallback(() => t(...introMessage()), [introMessage]);
 
   useEffect(() => {
     if (!guidageVocal()) return;
-    speak(introLigne());
+    speakMessage(...introMessage());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule fois à l'arrivée sur la caisse, pas à chaque re-render
   }, []);
+
+  /**
+   * LA RELECTURE DE CAISSE — « cinq tomates » est une vente ici (21/09/2026).
+   *
+   * LE DÉFAUT, vu sur un vrai téléphone : Patrick dicte « cinq tomates ». Le
+   * bandeau vert affiche « J'ai compris : Cinq tomates »… et il ne se passe
+   * plus RIEN. La raison est dans `intentLocal` : l'extraction a bien vu le
+   * produit et la quantité, mais aucun VERBE (« vends », « vendu ») n'a été
+   * prononcé, alors l'énoncé est rendu `null` et jeté. Ses mots : « il ne
+   * fais que ecrire ce que jai dis 3 tomates et cest tout ».
+   *
+   * Or une marchande ne dit pas « vends trois tomates ». Elle dit « trois
+   * tomates » : sur CET écran, le verbe, c'est le geste d'avoir appuyé sur le
+   * micro de sa caisse. C'est vrai ici et nulle part ailleurs — dans « Mon
+   * stock » ou chez l'assistante, la même phrase ne veut pas dire vendre.
+   *
+   * POURQUOI ICI, ET PAS DANS LE MOTEUR. `intentLocal` sert toutes les
+   * surfaces et son comportement est gelé par l'empreinte d'argent du lot
+   * i18n ; `useVoiceCore` l'est par le garde-fou d'observabilité (seules des
+   * lignes de journal peuvent y entrer). Cet écran-ci, lui, est fait pour
+   * bouger — et c'est lui, et lui seul, qui porte cette lecture. Elle ne
+   * s'applique QU'À CE QUE LE MOTEUR N'A PAS COMPRIS (`intentLocal` nul),
+   * donc elle ne peut rien recouvrir ni doubler.
+   *
+   * ELLE N'ÉCRIT AUCUN ARGENT. Elle aboutit au même `vendreUnifie` que la
+   * dictée ordinaire : sans montant dicté, le prix vient du catalogue, et
+   * à défaut il est DEMANDÉ. Jamais une ligne à 0 F.
+   */
+  // ── VOX-01 — LE MICRO S'ARRÊTE QUAND ELLE S'ARRÊTE ───────────────────────
+  //
+  // `useVoiceCore` est FIGÉ par VOICE-01 : on ne lui ajoute rien. Mais il
+  // expose déjà ce qu'il faut — `liveTranscript` qui grandit, et
+  // `handleMicClick` qui referme. La détection de fin vit donc ICI, dans
+  // l'écran, et la règle elle-même dans un module pur (services/ecouteCaisse).
+  //
+  // L'écran du NUMÉRO avait ce mécanisme depuis toujours (« minuteur
+  // d'apaisement »). L'écran de l'ARGENT n'avait rien : c'est ce qui a produit
+  // le paragraphe de six lignes.
+  //
+  // MIC-01 — CE QUI PROUVE QU'ELLE PARLE, C'EST LE SON. Cette boucle lisait
+  // `liveTranscript`, que `useVoiceCore` ne remplit JAMAIS pendant l'écoute :
+  // `aParle` valait toujours faux et le micro se fermait à 6 000 s'écoulées
+  // avec la raison « elle n'a rien dit », en pleine phrase. C'est le défaut
+  // terrain de l'APK 0459dc0. Le NIVEAU du micro, lui, est vivant en direct.
+  const ouvertureRef = useRef(0);
+  const dernierSonRef = useRef(0);
+  const aParleRef = useRef(false);
+  /** MIC-02B — le seuil de CETTE écoute. Posé une fois, jamais recalculé. */
+  const seuilRef = useRef(NIVEAU_PAROLE);
+  /** Les niveaux du FOND, relevés avant qu'elle parle. Vidé à chaque écoute. */
+  const fondRef = useRef<number[]>([]);
+  // Le niveau change à chaque image : on le lit dans un ref, JAMAIS dans les
+  // dépendances de l'effet — sinon l'intervalle serait détruit et recréé
+  // soixante fois par seconde, et la mesure du silence repartirait à zéro.
+  const niveauRef = useRef(0);
+  niveauRef.current = volume;
+  // `isRecording` est déclaré plus bas ; on lit la source, pas son alias.
+  const ecouteEnCours = state === 'listening';
+  useEffect(() => {
+    if (!ecouteEnCours) {
+      ouvertureRef.current = 0;
+      aParleRef.current = false;
+      seuilRef.current = NIVEAU_PAROLE;   // l'écoute suivante remesurera son fond
+      fondRef.current = [];
+      return;
+    }
+    const maintenant = Date.now();
+    if (!ouvertureRef.current) {
+      ouvertureRef.current = maintenant;
+      dernierSonRef.current = maintenant;
+      aParleRef.current = false;
+      seuilRef.current = NIVEAU_PAROLE;
+      fondRef.current = [];
+    }
+
+    /**
+     * MIC-02B — ON ÉCOUTE LE FOND AVANT D'ÉCOUTER LA VOIX.
+     *
+     * Ce relevé-ci bat à 40 ms, pas à 250 : sur `ECOUTE_PLANCHER_MS` (400 ms),
+     * la boucle de décision ne donnerait qu'UNE OU DEUX mesures, et une médiane
+     * sur deux points n'est pas une médiane. Il s'arrête de lui-même dès le
+     * plancher posé — il ne tourne donc que pendant la demi-seconde du début.
+     */
+    const releveFond = setInterval(() => {
+      const t0 = ouvertureRef.current;
+      if (!t0) { clearInterval(releveFond); return; }
+      if (Date.now() - t0 < ECOUTE_PLANCHER_MS) {
+        fondRef.current.push(niveauRef.current);
+        return;
+      }
+      // LE SEUIL EST POSÉ ICI, UNE SEULE FOIS, ET PLUS RIEN NE LE TOUCHE.
+      // Le recalculer en continu le ferait monter avec la voix de la marchande
+      // elle-même, jusqu'à passer au-dessus d'elle : le micro se fermerait au
+      // milieu de sa phrase, d'autant plus vite qu'elle parle fort.
+      seuilRef.current = seuilDeParole(plancherDeBruit(fondRef.current));
+      clearInterval(releveFond);
+    }, 40);
+
+    const t = setInterval(() => {
+      const t0 = ouvertureRef.current;
+      if (!t0) return;
+      // Tant que le fond n'est pas mesuré, on ne déclare pas qu'elle parle :
+      // ces 400 ms-là sont du bruit par construction.
+      if (Date.now() - t0 >= ECOUTE_PLANCHER_MS) {
+        // Échantillonné toutes les 250 ms : il faut neuf mesures consécutives
+        // sous le seuil pour atteindre SILENCE_FIN_MS, ce qui laisse passer les
+        // creux entre deux syllabes sans couper au milieu d'un mot.
+        if (parleMaintenant(niveauRef.current, seuilRef.current)) {
+          /**
+           * VOX-06 — RIEN DANS SA MAIN NE LUI DISAIT QU'ON L'ENTEND.
+           *
+           * Entre le moment où elle parle et la réponse de Tantie, il ne se
+           * passait RIEN : pas de son (le micro est ouvert, Tantie se tait
+           * exprès), pas de texte (elle ne lit pas, et `afficheEcoute` rend
+           * `{type:'ecoute'}` sans un mot — « PENDANT L'ÉCOUTE, AUCUN TEXTE »),
+           * pas de vibration. Plusieurs secondes de vide. Devant un appareil
+           * qui ne répond pas, le réflexe humain est de répéter ou de CRIER —
+           * ce qui dégrade la reconnaissance et creuse le trou qu'on décrit.
+           *
+           * Le franchissement du seuil était DÉJÀ calculé ici, pour savoir
+           * quand fermer le micro. Personne ne s'en servait pour sa main.
+           *
+           * UNE SEULE FOIS PAR ÉCOUTE. Ce relevé bat toutes les 250 ms tant
+           * qu'elle parle : vibrer à chaque passage ferait trembler le
+           * téléphone en continu, et un signal qui ne s'arrête plus n'est plus
+           * un signal, c'est une panne.
+           *
+           * LE DRAPEAU EST `aParleRef`, PAS UN SECOND REF ET SURTOUT PAS UN
+           * `useState`. Il porte exactement le fait qu'on cherche — « a-t-elle
+           * déjà franchi le seuil dans cette écoute ? » — et il est remis à
+           * faux aux DEUX remises à zéro plus haut (micro refermé, micro
+           * rouvert), donc chaque nouvelle écoute a droit à son accusé de
+           * réception. Un `useState` serait la régression déjà vécue sur
+           * `BoutonDirePrix` : deux relevés espacés de 30 ms liraient tous les
+           * deux l'ancienne valeur, et le téléphone vibrerait deux fois.
+           *
+           * LE TIC, ET PAS UN AUTRE MOTIF. 15 ms, le plus court du répertoire :
+           * il dit « je t'ai entendue », jamais « c'est passé » (succès,
+           * 35-60-35) ni « attention » (erreur, 180). Il ne promet aucune
+           * vente — à cet instant, rien n'est encore compris.
+           */
+          if (!aParleRef.current) {
+            // Un appareil sans vibreur (iOS Safari, desktop) ne doit pas
+            // emporter avec lui la boucle qui ferme le micro.
+            try { vibrerTic(); } catch { /* jamais bloquant */ }
+          }
+          aParleRef.current = true;
+          dernierSonRef.current = Date.now();
+        }
+      } else {
+        // Le compteur de silence ne court pas pendant qu'on écoute le fond :
+        // sinon ces 400 ms s'imputeraient à son hésitation.
+        dernierSonRef.current = Date.now();
+      }
+      const fin = finDEcoute({
+        ecoute: true,
+        aParle: aParleRef.current,
+        msDepuisDernierMot: Date.now() - dernierSonRef.current,
+        msDepuisOuverture: Date.now() - t0,
+      });
+      if (!fin.cesser) return;
+      ouvertureRef.current = 0;   // une seule fermeture par écoute
+      handleMicClick();
+    }, 250);
+    return () => { clearInterval(t); clearInterval(releveFond); };
+  }, [ecouteEnCours, handleMicClick]);
+
+  /**
+   * CE QUE LE MOTEUR A TIRÉ DE LA PHRASE — une seule lecture, deux usages.
+   *
+   * ENC-01 : `intentLocalCaisse` était appelée ici pour la vente, et une
+   * seconde fois plus bas pour la relecture. Le bandeau, lui, ne connaissait
+   * que la vente — d'où « Je n'ai pas compris » sur un « encaisser »
+   * parfaitement reconnu. La lecture rend maintenant DEUX faits au bandeau :
+   * qu'une intention est sortie (`analyse`), et la vente mise en mots
+   * (`compris`). L'effet de relecture plus bas garde son propre appel : il ne
+   * juge pas ce qui s'affiche, il décide d'une écriture au panier.
+   */
+  const analyse = useMemo(() => intentLocalCaisse((transcript || '').trim()), [transcript]);
+  /**
+   * CAT-01 — SON CATALOGUE, RELU PAR L'ÉCRAN.
+   *
+   * 111 des 198 produits du catalogue maître sont absents du lexique du
+   * moteur. Cette relecture ne s'applique qu'à ce qu'il n'a pas su nommer, et
+   * elle n'écrit rien : elle rend une intention au même format, que le même
+   * `vendreUnifie` traite ensuite, prix du catalogue compris.
+   */
+  const venteCatalogue = useMemo(
+    () => lireVenteAuCatalogue((transcript || '').trim(), products),
+    [transcript, products],
+  );
+  /** CE QUE LE MOTEUR A RÉELLEMENT EXTRAIT — jamais ce qu'il a entendu.
+   *  `null` tant qu'aucune VENTE n'est sortie de la phrase. Le catalogue de
+   *  la marchande passe avant le lexique en dur : quand il a reconnu un de
+   *  SES produits, c'est son nom à elle qui s'affiche. */
+  const actionVente = useMemo(
+    () => (analyse?.action?.type === 'vendre' || !analyse ? (venteCatalogue ?? analyse?.action) : analyse.action),
+    [analyse, venteCatalogue],
+  );
+  const compris = useMemo(() => libelleVenteComprise(actionVente), [actionVente]);
+
+  const dernierRelu = useRef<string>('');
+  useEffect(() => {
+    const texte = (transcript || '').trim();
+    if (!texte || texte === dernierRelu.current) return;
+    dernierRelu.current = texte;
+    // Le moteur a compris : il a déjà agi, on ne repasse pas derrière lui.
+    if (intentLocal(texte)) return;
+    const local = intentLocalCaisse(texte);
+    // Une intention qui n'est PAS une vente (encaissement, dépense) est
+    // traitée ailleurs : on ne la relit pas en vente.
+    if (local && local.action?.type !== 'vendre') return;
+    // CAT-01 — son catalogue d'abord, le lexique du moteur ensuite.
+    const vente = lireVenteAuCatalogue(texte, products) ?? (local?.action?.type === 'vendre' ? local.action : null);
+    if (!vente) return;
+    const brut = Number(vente.montant);
+    const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
+    const lu = extraire(texte);
+    vendreUnifie(
+      produitPourVente(vente.produit, produitPreselectionne),
+      vente.quantite || 1,
+      montant,
+      lu.uniteParlee,
+      lu.lecturePrix,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une relecture par transcription, pas à chaque rendu
+  }, [transcript]);
 
   // Oui → création au prix unitaire DICTÉ (elle le corrigera dans Mon stock si
   // besoin) ; stock 0. Non → refus mémorisé pour CE produit.
@@ -309,9 +671,9 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     try {
       await addProduct({ nom: propositionProduit.nom, prix: propositionProduit.prix, categorie: 'Autre', stock: 0, unite: 'unité' });
       vibrerSucces();
-      if (guidageVocal()) speak(`C'est fait. ${propositionProduit.nom} est dans ta boutique.`);
+      if (guidageVocal()) speakMessage('TATA_PRODUIT_AJOUTE_BOUTIQUE', { produit: propositionProduit.nom });
     } catch {
-      if (guidageVocal()) speak("Ça n'a pas marché. Tu pourras l'ajouter depuis Mon stock.");
+      if (guidageVocal()) speakMessage('TATA_AJOUT_BOUTIQUE_ECHEC');
     } finally {
       setCreationEnCours(false);
       setPropositionProduit(null);
@@ -320,12 +682,48 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   const refuserCreation = () => {
     if (!propositionProduit) return;
     try { noterRefusCreation(window.localStorage, propositionProduit.nom); } catch { /* ignore */ }
-    if (guidageVocal()) speak("D'accord, on ne change rien.");
+    if (guidageVocal()) speakMessage('TATA_ON_NE_CHANGE_RIEN');
     setPropositionProduit(null);
   };
 
   const isRecording = state === 'listening';
+  /** VOX-01 — ce que la bulle a le droit d'afficher. La règle est pure
+   *  (services/ecouteCaisse) et garantit que la phrase entendue ne ressort
+   *  jamais ici. Calculée AVANT le rendu, et non dans une fonction anonyme
+   *  glissée dans le JSX : `caisseMicroPermanent` interdit à ce fichier de
+   *  rendre un vide, et il a raison — le micro ne se retire jamais de
+   *  lui-même. Le garde-fou lit le source brut, commentaires compris, donc
+   *  l'expression qu'il cherche ne s'écrit nulle part ici. */
+  // CAI-07 — `saisieOuverte` entre dans les faits : tant que la saisie guidée
+  // est ouverte, c'est ELLE qui parle, et son `ConfirmationLigne` porte le
+  // seul « J'ai compris » qui engage l'argent. Le bandeau du micro se retire.
+  // ENC-01 — `intentionComprise` entre dans les faits : une phrase comprise
+  // qui n'est pas une vente (les quatre commandes d'encaissement, une
+  // dépense) a déjà sa réponse ailleurs, et le bandeau se retire au lieu de
+  // démentir le moteur.
+  const vueEcoute = afficheEcoute({ ecoute: isRecording, transcription: transcript || '', compris, saisieOuverte, intentionComprise: !!(analyse || venteCatalogue) });
   const isLoading = state === 'processing' || state === 'thinking';
+  /**
+   * VOX-02 — L'APPUI SUR LE MICRO RÉPOND DANS LES SEPT ÉTATS.
+   *
+   * `handleMicClick` (dans `useVoiceCore`, FIGÉ par VOICE-01) ne traite pas
+   * `confirming` : l'appui n'y faisait RIEN. Et vendre est une intention
+   * financière, donc le piège se refermait sur le geste le plus courant.
+   *
+   * On ne touche pas au fichier figé : l'écran DÉCIDE avant d'appeler, avec
+   * une règle exhaustive que le compilateur tient.
+   */
+  const toucherLeMicro = () => {
+    if (gesteDuMicro(state as EtatVoix) === 'reprendre') {
+      // Une question attend, et elle appuie pour PARLER : on abandonne la
+      // question et on rouvre l'oreille dans le même geste.
+      cancelAction();
+      void startRecording();
+      return;
+    }
+    handleMicClick();
+  };
+
   const isConfirming = state === 'confirming';
   const isError = state === 'error';
   const isDone = state === 'idle' && !!response;
@@ -333,33 +731,57 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // La bulle de Tata : une INVITATION à répondre, pas une annonce (arbitrage
   // du 20/09/2026, maquette verte). Au repos elle ne répète pas le grand titre
   // qui est juste au-dessus (UI-02) : « Dis-moi ce que tu vends » — et non
-  // « Je vous écoute », parce que le micro n'écoute pas encore ; ce qui est DIT
+  // « Je t'écoute », parce que le micro n'écoute pas encore ; ce qui est DIT
   // à l'arrivée reste la question du titre (introLigne).
-  const bulle = isRecording ? 'Je vous écoute'
+  // CAI-02 : Tantie TUTOIE. Le catalogue vocal ne porte pas un vouvoiement ;
+  // cette bulle en portait un, seule de tout l'écran avec le grand titre.
+  const bulle = isRecording ? 'Je t’écoute'
     : isLoading ? 'Un instant…'
-    : isSpeaking ? 'Tata parle…'
-    : isError ? "Je n'ai pas compris"
+    : isSpeaking ? 'Tantie parle…'
+    // LA PHRASE DE L'ÉCHEC EST CELLE QU'ON FERA ENREGISTRER — 25/09/2026.
+    //
+    // Elle disait « Je n'ai pas compris » : trois mots, AUCUN clip, donc
+    // AUCUNE VOIX. Une marchande qui ne lit pas se retrouvait devant un écran
+    // muet et ne savait pas quoi faire.
+    //
+    // Le seul clip existant qui en approche porte « Je n'ai pas compris. Tape
+    // ton numéro, ou réessaie. » — la phrase du LOGIN, qui n'a aucun sens dans
+    // la caisse. Deux formulations de la même idée, une seule a une voix.
+    //
+    // Texte choisi par Patrick le 25/09. Il dit à la marchande CE QU'ELLE
+    // DOIT FAIRE, pas seulement que ça a raté. La phrase affichée est
+    // désormais MOT POUR MOT celle à enregistrer en ui-138.mp3 : le jour où
+    // le fichier arrive, `tataUiClipForText` l'associe sans qu'on touche à
+    // rien. Le contrat est figé par `clipEchecCaisse.test.mts`.
+    : isError ? "Je n'ai pas compris. Touche le micro et redis-moi."
     : produitPreselectionne ? `Dis ce que tu as vendu de ${produitPreselectionne.nom}`
     : 'Dis-moi ce que tu vends';
 
   return (
     <section
       aria-label="Vendre à la voix"
-      style={{ background: 'var(--caisse-sable)', borderRadius: 'var(--caisse-rayon-5)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', marginBottom: 'var(--caisse-esp-4)' }}
+      className="caisse-voice-guide"
+      style={{ marginBottom: 'var(--caisse-esp-4)' }}
     >
       {/* LA QUESTION — écrite ET dite. Elle est écrite pour celle qui lit, et
           prononcée à l'arrivée pour celle qui ne lit pas : aucune information
           importante ne doit exister uniquement sous forme de texte.
           C'est le GRAND TITRE de la maquette (Inter semibold 28/34) : la seule
           question de l'écran, en plus gros que tout le reste. La marge
-          négative de 4 px lui rend les 374 px dont elle a besoin à 390 px pour
-          tenir sur UNE ligne (mesuré) ; plus étroit, elle se coupe en deux
-          lignes équilibrées (text-wrap: balance), jamais avec le « ? » orphelin. */}
-      <h1 style={{ textAlign: 'center', font: 'var(--caisse-font-h1)', color: 'var(--encre)', margin: '0 calc(-1 * var(--caisse-esp-1)) var(--caisse-esp-2)', textWrap: 'balance' }}>
-        {produitPreselectionne ? produitPreselectionne.nom : 'Que voulez-vous vendre ?'}
+          question est posée sur une PASTILLE claire (.caisse-voice-question),
+          détachée du fond de marché de la carte : à 390 px elle tient sur une
+          ligne ; plus étroit, elle se coupe en deux lignes équilibrées
+          (text-wrap: balance), jamais avec le « ? » orphelin. */}
+      <h1 className="caisse-voice-question" style={{ font: 'var(--caisse-font-h1)', textWrap: 'balance' }}>
+        {/* CAI-02 — LA QUESTION N'EST PLUS ÉCRITE DEUX FOIS. Elle vivait ici en
+            dur ET dans le catalogue (`TATA_QUE_VENDRE`), qui est ce qui se DIT
+            au montage. Deux copies d'une même phrase finissent toujours par
+            diverger — et c'est par là que le vouvoiement a survécu à l'oral
+            après avoir été vu à l'écran. Une seule source, désormais. */}
+        {produitPreselectionne ? produitPreselectionne.nom : t('TATA_QUE_VENDRE')}
       </h1>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--caisse-esp-3)' }}>
+      <div className="caisse-voice-row">
         {/* LE MICRO. Énorme, orange, au centre, et PERMANENT : il ne rétrécit
             pas, ne se déplace pas et ne disparaît à aucun moment de la vente
             — ni panier vide, ni panier plein, ni pendant l'encaissement. Un
@@ -377,7 +799,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
           ))}
           <motion.button
             type="button"
-            onClick={handleMicClick}
+            onClick={toucherLeMicro}
             disabled={isLoading}
             aria-label={isRecording ? 'Appuie pour terminer' : 'Appuie pour parler'}
             whileTap={{ scale: 0.93 }}
@@ -404,14 +826,17 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         {/* Tata — le visage et la bulle, comme la maquette : l'avatar en haut
             à droite, la bulle dessous avec son haut-parleur. Le haut-parleur
             DIT ce que la bulle affiche : la bulle n'est pas une légende à lire. */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--caisse-esp-1)', minWidth: 0, flex: 1 }}>
-          <img src={tantieImg} alt="" aria-hidden="true"
-            style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', flexShrink: 0, border: '3px solid var(--caisse-succes)', background: 'var(--caisse-succes)' }} />
+        <div className="caisse-voice-tata-side">
+          {/* Tata en portrait DÉTOURÉ (92 × 102), et non plus en pastille de
+              48 px : à la taille d'une icône, une photo de visage n'est plus
+              un visage. */}
+          <img src={tataAccueil} alt="" aria-hidden="true" className="caisse-voice-tata" />
           <button type="button" onClick={() => speak(dernierePhraseRef.current || introLigne())}
-            aria-label={dernierePhraseRef.current ? "Réécouter ce que Tata a compris" : 'Réécouter la question'}
-            style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', background: 'white', border: 'none', borderRadius: 'var(--caisse-rayon-4)', borderTopRightRadius: 'var(--caisse-rayon-1)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)', cursor: 'pointer', fontFamily: 'inherit', minWidth: 0, maxWidth: '100%', textAlign: 'left' }}>
-            <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--caisse-succes)', color: 'var(--caisse-vert)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Volume2 size={20} />
+            aria-label={dernierePhraseRef.current ? "Réécouter ce que Tantie a compris" : 'Réécouter la question'}
+            className="caisse-voice-bubble"
+            style={{ gap: 'var(--caisse-esp-2)', borderRadius: 'var(--caisse-rayon-4)', borderTopRightRadius: 'var(--caisse-rayon-1)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)' }}>
+            <span aria-hidden="true" style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--caisse-succes)', color: 'var(--caisse-vert)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Volume2 size={ICONE} />
             </span>
             <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>{bulle}</span>
           </button>
@@ -419,25 +844,56 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
               un autre écran : la saisie guidée s'ouvre ici, et les photos des
               produits sont déjà juste en dessous, dans la grille de cette page.
               SECONDAIRE (UI-03) : un lien discret sous la bulle, sans cadre —
-              44 px de haut quand même, c'est un doigt qui le touche. */}
+              44 px de haut quand même, c'est un doigt qui le touche.
+
+              CAI-08 — « TOUCHER LES PRODUITS », arbitrage de Patrick du 22/09.
+              Ce bouton disait « Choisir à l'écran », et ses mots à lui :
+              « j'ai mis deux heures à comprendre ce que ça voulait dire ».
+              Deux fautes dans quatre mots. « Choisir » ne nomme aucun geste —
+              on choisit avec la tête, pas avec la main. Et « à l'écran » ne
+              distingue rien : la voix aussi part d'un bouton à l'écran.
+              Surtout, l'accueil annonce DÉJÀ la caisse par « Parler ou toucher
+              les produits » : le même geste avait deux langues, et une
+              marchande qui ne lit pas se fait lire l'accueil, retient
+              « toucher les produits », et ne le retrouvait nulle part.
+              L'étiquette lue et le texte vu sont désormais LA MÊME phrase :
+              deux libellés pour un bouton, c'est deux boutons pour qui ne voit
+              pas la même chose que qui n'entend pas.
+
+              CAI-10 — ET L'ICÔNE EST UN NOM, ELLE AUSSI. Elle est restée un
+              CLAVIER après CAI-08 : la phrase disait « toucher », l'image
+              disait « écrire », et le bouton ouvre une grille de photos où
+              l'on n'écrit rien. Pour une marchande qui ne lit pas, l'icône
+              n'accompagne pas le message — elle EST le message, et c'est le
+              seul qu'elle reçoive. Une main, donc : le geste de son corps,
+              celui que la phrase nomme déjà. */}
           <button type="button" onClick={() => setSaisieOuverte(v => !v)}
-            aria-label="Saisir sans parler"
+            aria-label="Toucher les produits"
             style={{ display: 'flex', alignItems: 'center', gap: 'var(--caisse-esp-1)', minHeight: 'var(--caisse-cible-tactile)', background: saisieOuverte ? 'var(--caisse-orange-voix)' : 'transparent', border: 'none', borderRadius: 'var(--caisse-rayon-3)', padding: '0 var(--caisse-esp-2)', cursor: 'pointer', fontFamily: 'inherit' }}>
-            <Keyboard size={20} color={saisieOuverte ? 'white' : 'var(--caisse-gris-texte)'} />
-            <span style={{ font: 'var(--caisse-font-legende)', fontSize: 14, lineHeight: '18px', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--caisse-gris-texte)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Saisir sans parler</span>
+            <Hand size={20} color={saisieOuverte ? 'white' : 'var(--caisse-gris-texte)'} />
+            <span style={{ font: 'var(--caisse-font-legende)', fontSize: 14, lineHeight: '18px', fontWeight: 600, color: saisieOuverte ? 'white' : 'var(--caisse-gris-texte)', textDecoration: 'underline', textUnderlineOffset: 3 }}>Toucher les produits</span>
           </button>
         </div>
       </div>
 
       {/* CE QUE TATA A COMPRIS — visible, et déjà dit par le moteur. Le chip
           vert « J'ai compris : … » de la maquette. */}
-      {isRecording && liveTranscript && (
-        <p style={{ textAlign: 'center', marginTop: 'var(--caisse-esp-3)', font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--caisse-gris-texte)' }}>« {liveTranscript} »</p>
-      )}
-      {!isRecording && transcript && (
+      {/* VOX-01 — CE QUE CETTE BULLE A LE DROIT DE DIRE.
+          Elle affichait la TRANSCRIPTION BRUTE sous un « J'ai compris », et
+          Patrick y a lu six lignes de sa propre voix pendant qu'aucune vente
+          ne partait. Deux fautes en une : « compris » voulait dire
+          « entendu », et la sortie de la machine passait pour de l'interface.
+          La règle vit dans services/ecouteCaisse — pure, et tenue par un test
+          qui vérifie que la phrase entendue ne ressort JAMAIS d'ici. */}
+      {vueEcoute.type === 'compris' && (
         <div style={{ marginTop: 'var(--caisse-esp-3)', background: 'var(--caisse-succes)', borderRadius: 'var(--caisse-rayon-4)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--caisse-esp-2)' }}>
           <CheckCircle size={ICONE} color="var(--caisse-vert)" style={{ flexShrink: 0 }} />
-          <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>J'ai compris : {transcript}</span>
+          <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>J'ai compris : {vueEcoute.libelle}</span>
+        </div>
+      )}
+      {vueEcoute.type === 'incompris' && (
+        <div role="status" style={{ marginTop: 'var(--caisse-esp-3)', background: 'var(--caisse-sable)', borderRadius: 'var(--caisse-rayon-4)', padding: 'var(--caisse-esp-2) var(--caisse-esp-3)', textAlign: 'center' }}>
+          <span style={{ font: 'var(--caisse-font-texte)', fontWeight: 600, color: 'var(--encre)' }}>Je n’ai pas compris. Redis-moi.</span>
         </div>
       )}
       {isError && error && (
@@ -496,16 +952,22 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         )}
       </AnimatePresence>
 
-      {(isDone || isError) && (
+      {/* VOX-02 — UNE SORTIE EXISTE DÈS QUE L'ÉCRAN ATTEND QUELQUE CHOSE.
+          Elle ne s'affichait que si `isDone || isError` : deux états sur sept.
+          Partout ailleurs, aucun geste ne remettait l'écran à zéro — et avec un
+          micro inerte en `confirming`, l'écran était mort. Patrick, 23/09 :
+          « Je dois sortir mais il n'y a pas de vrai bouton pour sortir. » */}
+      {sortieVisible(state as EtatVoix, !!response) && (
         <button type="button" onClick={reset}
           style={{ width: '100%', marginTop: 'var(--caisse-esp-3)', minHeight: 'var(--caisse-cible-tactile)', padding: 'var(--caisse-esp-3) 0', borderRadius: 'var(--caisse-rayon-4)', font: 'var(--caisse-font-bouton)', color: 'white', background: 'var(--caisse-orange-voix)', cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}>
-          Reparler à Tata
+          Parler encore à Tantie
         </button>
       )}
 
       {saisieOuverte && (
         <div style={{ marginTop: 'var(--caisse-esp-3)' }}>
           <SaisieGuidee
+            etal={products}
             onValider={ajouterLigneAuPanier}
             apparier={(nom) => {
               const p = apparierProduit(nom, products);

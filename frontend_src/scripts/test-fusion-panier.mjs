@@ -54,16 +54,41 @@ verifier(
   'c’est la forme exacte qui faisait perdre 200 F sur deux prix négociés.',
 );
 
+// P0.1 (27/09) — CES DEUX ASSERTIONS LISAIENT LA FORME DU CODE DANS
+// `CaisseContext`. La règle de fusion a déménagé dans `services/panierLignes.ts`,
+// module pur créé pour la porter : le contexte la RÉIMPLÉMENTAIT en parallèle,
+// et deux implémentations de la même règle finissent par diverger.
+//
+// C'est exactement le cas décrit plus bas, le 19/09 : « c'était l'assertion qui
+// était attachée à une écriture particulière ». On vérifie donc la GARANTIE, et
+// là où elle vit — en exécutant la règle, plus en lisant sa forme.
+const panierLignes = readFileSync(
+  new URL('../src/app/services/panierLignes.ts', import.meta.url), 'utf8');
+
 verifier(
-  'elle ADDITIONNE les deux totaux réels',
-  /totalExact:\s*\(item\.totalExact \?\? item\.prix \* item\.quantite\)/.test(code),
-  'le total de chaque côté est son totalExact, sinon prix × quantité.',
+  'la règle de fusion vit dans le module pur, pas réécrite dans le contexte',
+  /import \{[^}]*ajouterAuPanier[^}]*\} from '\.\.\/services\/panierLignes'/.test(code)
+    && !/const existing = cart\.find/.test(code),
+  'deux implémentations de la même règle finissent toujours par diverger.',
 );
 
 verifier(
-  'le nouveau côté passe par prixEffectif, comme le reste de la caisse',
-  /\(totalExact \?\? prixEffectif\(product\) \* quantite\)/.test(code),
+  'elle ADDITIONNE les deux totaux réels',
+  /totalAvant \+ totalAjoute/.test(panierLignes)
+    && /existante\.totalExact \?\? existante\.prix \* existante\.quantite/.test(panierLignes),
+  'le total de chaque côté est son totalExact, sinon prix × quantité — sinon on reperd les 200 F du 18/09.',
+);
+
+verifier(
+  'le prix promo est appliqué AVANT d’entrer dans la règle',
+  /prix: prixEffectif\(product\)/.test(code),
   'sans quoi une promotion s’appliquerait à la création de ligne mais pas à la fusion.',
+);
+
+verifier(
+  'la fusion reste conditionnelle à un produit catalogue réel',
+  /produit\.id\s*\n?\s*\? panier\.find/.test(panierLignes),
+  '`null === null` ferait fusionner tous les articles libres entre eux.',
 );
 
 // RÉÉCRIT LE 19/09/2026 (HYGIÈNE-1 axe 2). Cette vérification lisait la FORME

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
-import { TrendingUp, ShoppingBag, Calendar, Clock } from 'lucide-react';
+import { TrendingUp, ShoppingBag, Calendar, Clock, Eye, EyeOff, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../../contexts/AppContext';
@@ -9,68 +9,75 @@ import { eventBus, EVENTS } from '../../services/eventBus';
 import { fr } from 'date-fns/locale';
 import TATA_BLEU from '../../../assets/images/tata-nanti-lou.png';
 import { NotificationButton } from './NotificationButton';
+import { SyncEchecsBanner } from './SyncEchecsBanner';
+import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
 
-const P = '#AF5B23';
-const BG = '#F6F0E4';
+const P = 'var(--commerce-action)';
+const BG = 'var(--commerce-paper)';
 
 type Period = 'today' | 'month' | 'all';
 
-// ── Détection catégorie par mots-clés ─────────────────────────
-const CAT_RULES: { id: string; label: string; keywords: string[]; color: string; bg: string; border: string; icon: React.ReactNode }[] = [
-  {
-    id: 'transport', label: 'Transport', color: '#AF5B23', bg: '#FFF3EA', border: '#f5d5a8',
-    keywords: ['transport','yango','taxi','moto','bus','gbaka','woro','carburant','essence','uber'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#AF5B23" strokeWidth="2" strokeLinecap="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-  },
-  {
-    id: 'repas', label: 'Repas', color: '#E24B4A', bg: '#FEF3F2', border: '#fca5a5',
-    keywords: ['repas','manger','nourriture','restaurant','maquis','attiéké','attieke','riz','alloco','foutou','placali','kedjenou','soupe','dejeuner','dîner','petit-dejeuner'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2" strokeLinecap="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
-  },
-  {
-    id: 'loyer', label: 'Loyer', color: '#378ADD', bg: '#F0F4FF', border: '#b5d4f4',
-    keywords: ['loyer','maison','chambre','studio','logement','appartement','location','propriétaire'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#378ADD" strokeWidth="2" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-  },
-  {
-    id: 'tontine', label: 'Tontine', color: '#7F77DD', bg: '#FDF4FF', border: '#cecbf6',
-    keywords: ['tontine','cotisation','association','nath','tour'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7F77DD" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-  },
-  {
-    id: 'sante', label: 'Santé', color: '#1D9E75', bg: '#F0FFF4', border: '#9fe1cb',
-    keywords: ['sante','santé','pharmacie','médicament','medicament','docteur','médecin','medecin','hôpital','hopital','clinique','ordonnance','consultation'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-  },
-  {
-    id: 'telephone', label: 'Téléphone', color: '#B74725', bg: '#F6F0E4', border: '#f5d5a8',
-    keywords: ['telephone','téléphone','credit','crédit','forfait','airtime','mtn','orange','moov','wave','recharge'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B74725" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-  },
-  {
-    id: 'famille', label: 'Famille', color: '#E24B4A', bg: '#FFF0F0', border: '#fca5a5',
-    keywords: ['famille','enfant','enfants','fils','fille','mari','femme','parent','mère','mere','père','pere','frère','frere','sœur','soeur','school','école','ecole','scolarité','scolarite'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-  },
-  {
-    id: 'marchandise', label: 'Marchandise', color: '#1D9E75', bg: '#F0FAF5', border: '#9fe1cb',
-    keywords: ['marchandise','stock','achat','produit','légume','legume','tomate','piment','igname','manioc','banane','riz','oignon','gombo','aubergine'],
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2" strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-  },
-];
+// ── LA CATÉGORIE : LUE, PLUS DEVINÉE — DEP-02 ──────────────────
+//
+// CE QUI ÉTAIT ICI. Une table de 8 catégories × ~15 mots-clés français, et un
+// `detectCat(description)` qui cherchait ces mots dans le motif de la dépense
+// pour en RECONSTRUIRE la catégorie — parce que personne ne l'avait
+// enregistrée. C'est l'interdit central de ce dépôt : une information qui pèse
+// sur l'argent est conservée, ou nommée perdue, jamais reconstruite en aval.
+//
+// ET ELLE SE TROMPAIT SUR L'ÉCRAN D'EN FACE. Le formulaire propose onze
+// catégories ; cette table en connaissait neuf. « Taxe mairie » n'avait aucun
+// mot-clé → « Autre ». « École » tombait sur le mot-clé `école` de FAMILLE →
+// la dépense de scolarité devenait « Famille ». Deux des onze choix qu'elle
+// peut toucher ne pouvaient PAS revenir tels qu'elle les avait faits.
+//
+// Le choix voyage maintenant jusqu'à la colonne `category`. Ici, on le lit.
+// Il ne reste de l'ancienne table que ses COULEURS et ses ICÔNES — de la
+// décoration, qui n'a jamais eu d'incidence sur l'argent.
+import { CATEGORIES_DEPENSE, categorieDeLaDepense, type IdCategorieDepense } from '../../services/categorieDepense';
+import { useSpeakMessage } from '../../i18n/voice/speakMessage';
 
-const CAT_AUTRE = {
-  id: 'autre', label: 'Autre', color: 'var(--encre-3)', bg: '#F5F5F5', border: '#ddd',
-  icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+interface ApparenceCategorie { color: string; bg: string; border: string; icon: React.ReactNode }
+
+const svg = (stroke: string, chemin: React.ReactNode): React.ReactNode => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth="2" strokeLinecap="round">{chemin}</svg>
+);
+const GENS = <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>;
+
+const APPARENCE: Readonly<Record<IdCategorieDepense, ApparenceCategorie>> = {
+  transport:   { color:'var(--commerce-action)', bg:'var(--commerce-orange-50)', border:'var(--color-orange-200)', icon: svg('var(--commerce-action)', <><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></>) },
+  repas:       { color:'var(--herite-rouge)', bg:'var(--color-red-50)', border:'var(--color-red-300)', icon: svg('var(--herite-rouge)', <><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>) },
+  taxe_mairie: { color:'#7F77DD', bg:'#F4F3FE', border:'#cecbf6', icon: svg('#7F77DD', <><line x1="3" y1="21" x2="21" y2="21"/><line x1="5" y1="21" x2="5" y2="10"/><line x1="19" y1="21" x2="19" y2="10"/><line x1="12" y1="21" x2="12" y2="10"/><polygon points="3 10 12 3 21 10"/></>) },
+  loyer:       { color:'#378ADD', bg:'var(--color-gray-100)', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>) },
+  famille:     { color:'var(--herite-rouge)', bg:'var(--color-red-50)', border:'var(--color-red-300)', icon: svg('var(--herite-rouge)', GENS) },
+  tontine:     { color:'#7F77DD', bg:'var(--color-purple-50)', border:'#cecbf6', icon: svg('#7F77DD', GENS) },
+  sante:       { color:'var(--herite-vert-eau)', bg:'var(--color-green-50)', border:'var(--herite-vert-pale)', icon: svg('var(--herite-vert-eau)', <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>) },
+  telephone:   { color:'var(--commerce-action)', bg:'var(--commerce-paper)', border:'var(--color-orange-200)', icon: svg('var(--commerce-action)', <><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></>) },
+  marchandise: { color:'var(--herite-vert-eau)', bg:'var(--color-green-50)', border:'var(--herite-vert-pale)', icon: svg('var(--herite-vert-eau)', <><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></>) },
+  ecole:       { color:'#378ADD', bg:'var(--color-gray-100)', border:'#b5d4f4', icon: svg('#378ADD', <><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></>) },
+  autre:       { color:'var(--herite-gris-53)', bg:'var(--muted)', border:'var(--herite-gris-87)', icon: svg('var(--herite-gris-53)', <><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>) },
 };
 
-function detectCat(description: string) {
-  const d = (description || '').toLowerCase();
-  for (const cat of CAT_RULES) {
-    if (cat.keywords.some(k => d.includes(k))) return cat;
-  }
-  return CAT_AUTRE;
+// L'APPARENCE DU « PAS NOTÉ ». Volontairement DIFFÉRENTE de celle d'« Autre » :
+// une non-lectrice distingue les pastilles, pas les mots. Confondre les deux
+// remettrait les deux sens sur une même donnée.
+const SANS_CATEGORIE: ApparenceCategorie = {
+  color:'#9A8F84', bg:'var(--caisse-ivoire)', border:'#E4DCD2',
+  icon: svg('#9A8F84', <><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></>),
+};
+
+/** Ce qu'il faut pour PEINDRE une dépense — son libellé de catégorie et ses
+ *  couleurs. Rien n'est déduit du texte : on lit ce qui a été enregistré. */
+function apparenceDepense(d: any): ApparenceCategorie & { label: string } {
+  const lue = categorieDeLaDepense(d);
+  return lue.connue
+    ? { ...APPARENCE[lue.id], label: lue.libelle }
+    : { ...SANS_CATEGORIE, label: lue.libelle };
 }
+
+/** Les catégories vraiment présentes dans une liste — pour les filtres, si un
+ *  jour on en ajoute. Exportée nulle part : elle documente l'ordre canonique. */
+void CATEGORIES_DEPENSE;
 
 // ── Surlignage recherche ──────────────────────────────────────
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -88,9 +95,9 @@ function Highlight({ text, query }: { text: string; query: string }) {
 }
 
 // ── Card dépense dépliable ────────────────────────────────────
-function DepenseCard({ d, index, query }: { d: any; index: number; query: string }) {
+function DepenseCard({ d, index, query, montantsMasques }: { d: any; index: number; query: string; montantsMasques: boolean }) {
   const [open, setOpen] = useState(false);
-  const cat = detectCat(d.productName || d.description || '');
+  const cat = apparenceDepense(d);
   const montant = d.montant || d.price || 0;
   const dateObj = new Date(d.date);
 
@@ -114,9 +121,9 @@ function DepenseCard({ d, index, query }: { d: any; index: number; query: string
           </div>
         </div>
         <div style={{ textAlign:'right', flexShrink:0 }}>
-          <div style={{ fontSize:17, fontWeight:900, color:'#ef4444' }}>-{montant.toLocaleString('fr-FR')} F</div>
+          <div style={{ fontSize:17, fontWeight:900, color:'var(--color-red-500)' }}>{montantsMasques ? '••••• F' : `-${montant.toLocaleString('fr-FR')} F`}</div>
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration:0.25 }} style={{ display:'flex', justifyContent:'flex-end', marginTop:2 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-80)" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
           </motion.div>
         </div>
       </div>
@@ -128,7 +135,7 @@ function DepenseCard({ d, index, query }: { d: any; index: number; query: string
             initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }}
             transition={{ duration:0.25, ease:[0.4,0,0.2,1] }}
             style={{ overflow:'hidden' }}>
-            <div style={{ borderTop:'1px solid #f5f0eb', padding:'12px 14px', background:'#FDFAF7', display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ borderTop:'1px solid var(--commerce-paper)', padding:'12px 14px', background:'var(--commerce-surface)', display:'flex', flexDirection:'column', gap:8 }}>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Date complète</span>
                 <span style={{ fontSize:12, fontWeight:700, color:'var(--encre)' }}>{format(dateObj, 'dd MMMM yyyy à HH:mm', { locale:fr })}</span>
@@ -141,7 +148,7 @@ function DepenseCard({ d, index, query }: { d: any; index: number; query: string
               </div>
               <div style={{ display:'flex', justifyContent:'space-between' }}>
                 <span style={{ fontSize:12, color:'var(--encre-4)', fontWeight:600 }}>Montant</span>
-                <span style={{ fontSize:14, fontWeight:900, color:'#ef4444' }}>{montant.toLocaleString('fr-FR')} FCFA</span>
+                <span style={{ fontSize:14, fontWeight:900, color:'var(--color-red-500)' }}>{montantPrive(montant, montantsMasques, 'FCFA')}</span>
               </div>
             </div>
           </motion.div>
@@ -157,11 +164,13 @@ export function MarchandDepenses() {
   const { transactions, reloadTransactions, speak } = useApp();
   const [period, setPeriod] = useState<Period>('today');
   const [search, setSearch] = useState('');
+  const [showOutils, setShowOutils] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const sliderRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(false);
+  const { montantsMasques, basculerMontants } = useMontantsPrives();
 
   useEffect(() => {
     if (mountedRef.current) return;
@@ -199,18 +208,31 @@ export function MarchandDepenses() {
 
   // Écran « Mes dépenses » : on annonce à voix haute les dépenses du jour dès que
   // les données arrivent (une seule fois) -> une non-lectrice sait sans lire.
+  /**
+   * VOIX-09 — UNE SEULE composition, et elle passe par le catalogue.
+   *
+   * La même phrase était écrite DEUX FOIS, chacune avec son `toLocaleString`.
+   * Celui-ci glisse une espace fine insécable dans « 2 000 » : la synthèse
+   * reçoit un nombre coupé et l'épelle — « 2 zéro zéro zéro ». Deux copies,
+   * c'était aussi deux occasions de diverger.
+   */
+  const direDepense = useSpeakMessage();
+  const direDepenseDuJour = () => {
+    if (kpiToday > 0) direDepense('DEPENSE_DU_JOUR', { montant: kpiToday });
+    else speak("Tu n'as pas encore de dépense aujourd'hui.");
+  };
+
   const dejaAnnonce = useRef(false);
   useEffect(() => {
-    if (dejaAnnonce.current || allDepenses.length === 0) return;
+    if (dejaAnnonce.current || allDepenses.length === 0 || montantsMasques) return;
     dejaAnnonce.current = true;
-    speak(kpiToday > 0
-      ? `Aujourd'hui tu as dépensé ${kpiToday.toLocaleString('fr-FR')} francs.`
-      : "Tu n'as pas encore de dépense aujourd'hui.");
-  }, [allDepenses, kpiToday, speak]);
+    direDepenseDuJour();
+  }, [allDepenses, kpiToday, speak, montantsMasques]);
 
-  const direTotal = () => speak(kpiToday > 0
-    ? `Aujourd'hui tu as dépensé ${kpiToday.toLocaleString('fr-FR')} francs.`
-    : "Tu n'as pas encore de dépense aujourd'hui.");
+  const direTotal = () => {
+    if (montantsMasques) { speak('Tes montants sont cachés.'); return; }
+    direDepenseDuJour();
+  };
 
   // Filtrage par période
   const byPeriod = useMemo(() => {
@@ -237,7 +259,7 @@ export function MarchandDepenses() {
     <div style={{ minHeight:'100vh', background:BG, fontFamily:'Plus Jakarta Sans, system-ui, sans-serif', display:'flex', flexDirection:'column' }}>
 
       {/* HEADER */}
-      <div style={{ background:`linear-gradient(160deg,${P} 0%,#8f4418 100%)`, padding:'0 16px 18px', flexShrink:0 }}>
+      <div style={{ background:`linear-gradient(160deg,${P} 0%,var(--commerce-orange-700) 100%)`, padding:'0 16px 18px', flexShrink:0 }}>
         <div style={{ height:16 }} />
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -248,6 +270,11 @@ export function MarchandDepenses() {
             <span style={{ fontSize:19, fontWeight:900, color:'white', letterSpacing:'-0.3px' }}>Mes dépenses</span>
           </div>
           <div style={{ display:'flex', gap:7 }}>
+            <motion.button whileTap={{ scale:0.9 }} onClick={basculerMontants}
+              aria-label={montantsMasques ? 'Montrer mes montants' : 'Cacher mes montants'}
+              style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+              {montantsMasques ? <EyeOff size={19} color="white" /> : <Eye size={19} color="white" />}
+            </motion.button>
             <motion.button whileTap={{ scale:0.9 }} onClick={direTotal} aria-label="Écouter les dépenses du jour"
               style={{ width:44, height:44, borderRadius:13, background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
@@ -263,14 +290,38 @@ export function MarchandDepenses() {
       {/* CONTENU */}
       <div style={{ flex:1, overflowY:'auto', padding:'14px 14px 100px', display:'flex', flexDirection:'column', gap:12 }}>
 
+        <SyncEchecsBanner />
+
+        <motion.button whileTap={{ scale:0.99 }} onClick={() => setShowOutils(v => !v)}
+          aria-expanded={showOutils}
+          style={{ width:'100%', minHeight:54, background:'white', border:'1.5px solid var(--trait)', borderRadius:16, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
+          <div>
+            <div style={{ fontSize:15, fontWeight:900, color:'var(--encre)' }}>Mes chiffres et filtres</div>
+            <div style={{ fontSize:12, color:'var(--encre-4)', marginTop:2 }}>
+              {montantsMasques ? 'Montants cachés' : `Aujourd'hui : ${kpiToday.toLocaleString('fr-FR')} F`}
+            </div>
+          </div>
+          <motion.span animate={{ rotate: showOutils ? 180 : 0 }} style={{ display:'flex', flexShrink:0 }}>
+            <ChevronDown size={22} color={P} />
+          </motion.span>
+        </motion.button>
+
+        <AnimatePresence initial={false}>
+        {showOutils && (
+        <motion.div initial={{ height:0, opacity:0 }} animate={{ height:'auto', opacity:1 }} exit={{ height:0, opacity:0 }}
+          style={{ overflow:'hidden', display:'flex', flexDirection:'column', gap:12 }}>
         {/* KPIs 2x2 standard */}
-        <KPIGrid cols={2}>
+        {montantsMasques ? (
+          <div style={{ minHeight:76, borderRadius:16, border:'1.5px dashed var(--commerce-line)', background:'rgba(255,255,255,0.7)', display:'flex', alignItems:'center', justifyContent:'center', gap:10, color:'var(--encre-3)', fontWeight:800 }}>
+            <EyeOff size={22} /> Montants cachés
+          </div>
+        ) : <KPIGrid cols={2}>
           <UniversalKPI
             label="Aujourd'hui"
-            animatedTarget={kpiToday}
+            value={kpiToday.toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={TrendingUp}
-            color="#ea580c"
+            color="var(--color-orange-600)"
             bgColor="rgba(255,247,237,0.85)"
             borderColor="rgba(249,115,22,0.4)"
             iconAnimation="bounce"
@@ -281,10 +332,10 @@ export function MarchandDepenses() {
           />
           <UniversalKPI
             label="Ce mois"
-            animatedTarget={kpiMonth}
+            value={kpiMonth.toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={Calendar}
-            color="#2563eb"
+            color="var(--herite-bleu-vif)"
             bgColor="rgba(239,246,255,0.85)"
             borderColor="rgba(59,130,246,0.4)"
             iconAnimation="pulse"
@@ -294,10 +345,10 @@ export function MarchandDepenses() {
           />
           <UniversalKPI
             label="Total général"
-            animatedTarget={kpiTotal}
+            value={kpiTotal.toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={ShoppingBag}
-            color="#16a34a"
+            color="var(--color-green-600)"
             bgColor="rgba(240,253,244,0.85)"
             borderColor="rgba(34,197,94,0.4)"
             iconAnimation="spin"
@@ -307,17 +358,17 @@ export function MarchandDepenses() {
           />
           <UniversalKPI
             label="Moy. journalière"
-            animatedTarget={Math.round(kpiMonth / Math.max(new Date().getDate(), 1))}
+            value={Math.round(kpiMonth / Math.max(new Date().getDate(), 1)).toLocaleString('fr-FR')}
             suffix="FCFA"
             icon={Clock}
-            color="#7c3aed"
+            color="var(--herite-violet)"
             bgColor="rgba(245,243,255,0.85)"
             borderColor="rgba(139,92,246,0.4)"
             iconAnimation="float"
             explication="Combien tu dépenses en moyenne chaque jour ce mois-ci."
             formule="Moyenne = Dépenses du mois ÷ Nombre de jours écoulés"
           />
-        </KPIGrid>
+        </KPIGrid>}
 
         {/* Barre recherche */}
         {/* height 46 + padding horizontal seul : la zone tapable du champ suit
@@ -325,7 +376,7 @@ export function MarchandDepenses() {
             VERTICAL, la boite de contenu restait celle du texte — 20px — et
             l'etirement ne donnait rien. Meme forme que la recherche du stock. */}
         <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'0 14px', height:46, display:'flex', alignItems:'center', gap:8 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-40)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Rechercher une dépense..."
@@ -334,7 +385,7 @@ export function MarchandDepenses() {
           {search && (
             <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} aria-label="Effacer la recherche"
               style={{ flexShrink:0, width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', background:'none', border:'none', cursor:'pointer', padding:0, color:'var(--encre-4)' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-40)" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </motion.button>
           )}
         </div>
@@ -362,10 +413,10 @@ export function MarchandDepenses() {
             style={{ width:'100%', background:'white', border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', fontFamily:'inherit' }}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-              <span style={{ fontSize:13, fontWeight:600, color:'#555' }}>Filtres avancés</span>
+              <span style={{ fontSize:13, fontWeight:600, color:'var(--herite-gris-33)' }}>Filtres avancés</span>
             </div>
             <motion.span animate={{ rotate: showFilters ? 180 : 0 }} transition={{ duration:0.25 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-40)" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
             </motion.span>
           </motion.button>
           <AnimatePresence>
@@ -384,7 +435,7 @@ export function MarchandDepenses() {
                   </div>
                   {(startDate || endDate) && (
                     <motion.button whileTap={{ scale:0.97 }} onClick={() => { setStartDate(''); setEndDate(''); }}
-                      style={{ gridColumn:'1/-1', background:'#f5f0eb', border:'none', borderRadius:10, padding:'8px', fontSize:12, fontWeight:700, color:'var(--encre-3)', cursor:'pointer', fontFamily:'inherit' }}>
+                      style={{ gridColumn:'1/-1', background:'var(--commerce-paper)', border:'none', borderRadius:10, padding:'8px', fontSize:12, fontWeight:700, color:'var(--encre-3)', cursor:'pointer', fontFamily:'inherit' }}>
                       Réinitialiser
                     </motion.button>
                   )}
@@ -393,12 +444,15 @@ export function MarchandDepenses() {
             )}
           </AnimatePresence>
         </div>
+        </motion.div>
+        )}
+        </AnimatePresence>
 
         {/* Liste */}
         {depenses.length === 0 ? (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }}
             style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12, padding:'40px 24px', textAlign:'center' }}>
-            <img src={TATA_BLEU} style={{ width:120, height:120, objectFit:'contain' }} alt="Tata Nanti Lou" />
+            <img src={TATA_BLEU} style={{ width:120, height:120, objectFit:'contain' }} alt="Tantie Nanti Lou" />
             <p style={{ fontSize:16, fontWeight:800, color:'var(--encre)', margin:0 }}>
               {search ? 'Aucune dépense trouvée' : 'Aucune dépense'}
             </p>
@@ -409,7 +463,7 @@ export function MarchandDepenses() {
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {depenses.map((d: any, i: number) => (
-              <DepenseCard key={d.id || i} d={d} index={i} query={search} />
+              <DepenseCard key={d.id || i} d={d} index={i} query={search} montantsMasques={montantsMasques} />
             ))}
           </div>
         )}
@@ -418,7 +472,7 @@ export function MarchandDepenses() {
       <div style={{ position:'fixed', bottom:0, left:0, right:0, padding:'12px 14px 28px', background:`linear-gradient(to top,${BG} 70%,transparent)`, zIndex:10 }}>
         <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/depense')}
           style={{ width:'100%', background:P, color:'white', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor:'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, letterSpacing:'-0.2px' }}>
-          + Noter une dépense
+          + Faire une dépense
         </motion.button>
       </div>
     </div>
