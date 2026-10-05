@@ -5,6 +5,23 @@ Les passations détaillées restent dans `docs/passation/`.
 
 ---
 
+## 05/10/2026 (suite) — clôture de PR #259
+
+Décision de Patrick : GO pour les trois refigeages, ODOO-L1/L2 hors pilote,
+les 6 bancs orphelins renvoyés à un lot qualité séparé.
+
+- Tête avant refigeage : `e6d5333` (identique au diagnostic, + JOURNAL seul).
+- Refigeages (`b77a5d9`) : périmètre 4 entrés / 1 sorti ; gardes 188 fichiers,
+  3083 assertions ; empreinte `intentLocal` seule changée.
+- Local : `verify` 131/132 (reste `test:voix-trace-source`, VOICE-01, ancien,
+  hors lot) ; `test:ci` vert ; tsc 0 ; backend 251/251.
+- CI sur `b77a5d9` : 6/6 verte, dont « Verdict du garde-fou ».
+- **#259 fusionnée : `main` = `ea499ab`** (merge commit).
+
+Prochain lot (non lancé) : APK depuis `ea499ab`, puis recette pilote.
+
+---
+
 ## 05/10/2026 — état réel avant fusion dans `main`
 
 Branche : `claude/integration-main` (PR #259), tête mesurée `3381cc6`.
