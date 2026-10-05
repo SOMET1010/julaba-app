@@ -2,6 +2,11 @@ apply plugin: 'com.android.application'
 // Kotlin : le plugin natif SherpaStt (reconnaissance vocale hors-ligne) est en Kotlin.
 apply plugin: 'org.jetbrains.kotlin.android'
 
+def julabaReleaseStoreFile = System.getenv("JULABA_RELEASE_STORE_FILE")
+def julabaReleaseStorePassword = System.getenv("JULABA_RELEASE_STORE_PASSWORD")
+def julabaReleaseKeyAlias = System.getenv("JULABA_RELEASE_KEY_ALIAS")
+def julabaReleaseKeyPassword = System.getenv("JULABA_RELEASE_KEY_PASSWORD")
+
 android {
     namespace = "com.julaba.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -18,8 +23,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (julabaReleaseStoreFile && julabaReleaseStorePassword && julabaReleaseKeyAlias && julabaReleaseKeyPassword) {
+                storeFile file(julabaReleaseStoreFile)
+                storePassword julabaReleaseStorePassword
+                keyAlias julabaReleaseKeyAlias
+                keyPassword julabaReleaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
