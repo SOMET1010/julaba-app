@@ -12,6 +12,7 @@ import { restituerStock } from './stock-restitution';
 import { identifiantProduit } from '../commun/identifiant-produit';
 import { nomDeProduitSaisi, uniteDeProduitSaisie } from '../commun/produit-saisi';
 import { exigerJourneeOuverte } from './journee-ouverte';
+import { PontVenteOdooService } from '../odoo-gateway/pont-vente-odoo.service';
 import { AlertesService } from '../notifications/alertes.service';
 import { mouvementDeLigne } from '../commun/reconciliation-stock';
 
@@ -178,6 +179,10 @@ export class CaisseRestController {
     private dataSource: DataSource,
     @Optional() private alertesService?: AlertesService,
     @Optional() private eventsGateway?: EventsGateway,
+    // ODOO-L2 : optionnel, comme ses voisins — la caisse doit pouvoir
+    // s'instancier sans passerelle (bancs, et tout déploiement qui n'a pas
+    // branché Odoo).
+    @Optional() private pontOdoo?: PontVenteOdooService,
   ) {}
 
   // Liste PLAFONNÉE : sans borne, un historique de plusieurs années revenait en
@@ -821,6 +826,22 @@ export class CaisseRestController {
     // Effets de bord post-commit (hors transaction).
     this.eventsGateway?.emitTransactionCreated({ ...result, type: 'vente', userId: user.id });
     this.alertesService?.checkStockApreVente(user.id, nomProduit).catch((e: any) => this.logger?.warn(`[CAISSE] checkStock: ${e.message}`));
+    // ODOO-L2 — LA VENTE PART VERS ODOO, ET JAMAIS AVANT CET INSTANT.
+    //
+    // Ici, et pas dans la transaction trente lignes plus haut : un appel
+    // réseau dans une transaction Postgres la tient ouverte le temps du
+    // réseau, et un timeout Odoo ferait ANNULER une vente déjà valide. La
+    // vente est acquise avant que cette ligne ne s'exécute, et le reste quoi
+    // qu'il arrive ensuite.
+    //
+    // `void` + `.catch` comme la ligne au-dessus : on ne fait pas attendre la
+    // marchande pour une synchronisation, et on ne lui renvoie jamais une
+    // erreur d'Odoo. Muet tant qu'ODOO_PONT_VENTE_ENABLED n'est pas posé.
+    void this.pontOdoo?.suivreVente({
+      idempotencyKey: idemKey,
+      lignes: lignesVendues.map((l) => ({ id: l.id, qte: l.qte })),
+      marchandId: user.id,
+    }).catch((e: any) => this.logger?.warn(`[CAISSE] pont Odoo: ${e?.message}`));
     return { transaction: result };
   }
 

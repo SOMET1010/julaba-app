@@ -9,6 +9,7 @@ import { lireConfigOdooReel, lireModeClientOdoo } from './odoo-client.config';
 import { DataSource } from 'typeorm';
 import { JOURNAL_SYNC } from './sync-journal';
 import { SyncJournalPostgres } from './sync-journal-postgres';
+import { PontVenteOdooService } from './pont-vente-odoo.service';
 
 function creerOdooClient(): OdooClient {
   if (lireModeClientOdoo() === 'real') {
@@ -46,6 +47,7 @@ function creerOdooClient(): OdooClient {
   providers: [
     OdooGatewayService,
     OdooPocEnabledGuard,
+    PontVenteOdooService,
     { provide: ODOO_CLIENT, useFactory: creerOdooClient },
     {
       provide: JOURNAL_SYNC,
@@ -56,6 +58,6 @@ function creerOdooClient(): OdooClient {
   // Exporte pour le referentiel maitre (CatalogueMaitreModule) : celui-ci
   // reutilise CE service, donc le meme client, la meme allowlist et le meme
   // verrou d'ecriture. Aucun second acces a Odoo n'est ouvert.
-  exports: [OdooGatewayService],
+  exports: [OdooGatewayService, PontVenteOdooService],
 })
 export class OdooGatewayModule {}
