@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { DDL_AGENT } from '../agent/agent-tables';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
@@ -426,6 +427,21 @@ export class DbInitService {
          ON odoo_sync_journal (etat, cree_le DESC);`,
       );
       this.logger.log('Journal de synchronisation Odoo (odoo_sync_journal) vérifié');
+
+      // ── AGENT-A1/A2 : compte de service, code SMS, délégation ──────────────
+      //
+      // Un agent serveur n'est PAS un utilisateur : aucune ligne de `users` ne
+      // lui correspond, et il n'a ni téléphone, ni mot de passe, ni PIN. Lui
+      // donner un compte utilisateur, c'est ouvrir la porte qu'on veut fermer.
+      //
+      // Le DDL vit dans `src/agent/agent-tables.ts`, en UN seul endroit, et la
+      // migration 1782500000000 itère sur la même constante. Deux copies d'un
+      // schéma finissent toujours par diverger ; une seule chaîne ne le peut
+      // pas. Règle « DbInit ⊆ migrations » (ADR-0002).
+      for (const ddl of DDL_AGENT) {
+        await this.dataSource.query(ddl);
+      }
+      this.logger.log('Tables agent (service, code de délégation, délégation) vérifiées');
       this.logger.log('Ledger stock_mouvements (append-only) vérifié');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
