@@ -20,6 +20,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     CreditsController,CaisseRestController, ObjectifsController, RapportHebdoController, RaccourcisController,
     CatalogueController
   ],
-  providers: [CaisseProduitsService],
+  providers: [CaisseProduitsService, CaisseRestController],
+  exports: [CaisseRestController],
 })
 export class CaisseRestModule {}
