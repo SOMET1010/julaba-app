@@ -29,7 +29,8 @@
  * de numéro, de PIN ou de mot de passe. Ce n'est pas un oubli : c'est
  * l'invariant du lot, et `portee-agent.ts` le nomme.
  */
-import { BadRequestException, Body, Controller, ForbiddenException, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { AuthGuard } from '@nestjs/passport';
 import { CaisseRestController } from '../caisse-rest/caisse-rest.controller';
 import { AgentService } from './agent.service';
@@ -51,7 +52,98 @@ export class AgentCaisseController {
   constructor(
     private readonly caisse: CaisseRestController,
     private readonly agents: AgentService,
+    private readonly dataSource: DataSource,
   ) {}
+
+  /**
+   * CE QUE L'AGENT A LE DROIT DE DIRE SUR LA CAISSE DU JOUR — étape (b).
+   *
+   * LA LEÇON LA PLUS CHÈRE DE CE PROJET EST ICI. Le 03/10, la voix de
+   * l'accueil a annoncé « Ta caisse aujourd'hui : zéro franc » à une
+   * marchande qui avait 100 F : la journée de caisse n'était pas encore lue,
+   * le fond initial manquait, et le calcul rendait un zéro parfaitement
+   * formé. L'écran s'est corrigé tout seul au rendu suivant. La phrase dite,
+   * non — et un agent vocal ne se reprend pas davantage.
+   *
+   * `montant` EST DONC ABSENT quand il n'est pas affirmable. Pas `null`, pas
+   * `0` : absent. C'est le même dessin que `etatCaisseAccueil.ts` côté
+   * application — « la forme de la réponse est la garantie » : l'agent ne
+   * peut pas prononcer un chiffre qu'il n'a pas reçu.
+   *
+   * `journeeOuverte: false` NE VEUT PAS DIRE « zéro ». Il veut dire « elle
+   * n'a pas ouvert sa journée » — et dans ce cas le fond initial est
+   * réellement absent, pas inconnu : la caisse vaut ce que valent les ventes.
+   * C'est une réponse, et elle se dit.
+   */
+  @Get('aujourdhui')
+  @PorteeRequise('lecture')
+  async aujourdhui(@Req() req: any) {
+    const marchandId: string = req.marchandDelegue;
+    const [session] = await this.dataSource.query(
+      `SELECT fond_initial FROM caisse_sessions
+        WHERE marchand_id = $1 AND date = CURRENT_DATE LIMIT 1`,
+      [marchandId],
+    );
+    const [totaux] = await this.dataSource.query(
+      `SELECT
+         COALESCE(SUM(CASE WHEN type = 'vente'   THEN montant ELSE 0 END), 0) AS ventes,
+         COALESCE(SUM(CASE WHEN type = 'depense' THEN montant ELSE 0 END), 0) AS depenses,
+         COUNT(*) FILTER (WHERE type = 'vente') AS nb_ventes
+       FROM caisse_transactions
+       WHERE user_id = $1 AND created_at::date = CURRENT_DATE`,
+      [marchandId],
+    );
+
+    // `|| 0` EST INTERDIT ICI, ET C'EST TOUT L'OBJET DU LOT ACC-03.
+    //
+    // Ce bloc l'a d'abord utilisé, et un test l'a pris en défaut : avec un
+    // `fond_initial` illisible, `Number(x) || 0` rendait 0, le total devenait
+    // 0, et l'état se disait `connue`. C'est MOT POUR MOT le défaut du
+    // 03/10 — « Ta caisse aujourd'hui : zéro franc » pour 100 F réels. Un
+    // `|| 0` ne répare pas une donnée manquante, il la déguise en réponse.
+    //
+    // Ici, ce qui n'est pas un nombre fini rend l'état ILLISIBLE, et `montant`
+    // est alors absent de la réponse. L'agent ne peut pas prononcer un
+    // chiffre qu'il n'a pas reçu.
+    const nombreOuRien = (v: unknown): number | null => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    const journeeOuverte = !!session;
+    const ventes = nombreOuRien(totaux?.ventes);
+    const depenses = nombreOuRien(totaux?.depenses);
+    // Journée non ouverte : le fond est réellement ABSENT, pas illisible — il
+    // vaut zéro parce qu'elle n'a pas ouvert sa caisse. C'est une réponse.
+    const fond = journeeOuverte ? nombreOuRien(session.fond_initial) : 0;
+    const nbVentes = nombreOuRien(totaux?.nb_ventes) ?? 0;
+
+    if (ventes === null || depenses === null || fond === null) {
+      return { etat: 'illisible', journeeOuverte, nbVentes };
+    }
+    const montant = fond + ventes - depenses;
+    if (!Number.isFinite(montant)) {
+      return { etat: 'illisible', journeeOuverte, nbVentes };
+    }
+    return { etat: 'connue', montant, ventes, depenses, journeeOuverte, nbVentes };
+  }
+
+  /**
+   * Les dernières ventes du jour, pour que l'agent puisse répondre « tu as
+   * vendu quoi aujourd'hui ? ». PLAFONNÉE à 20 : une note vocale ne lit pas
+   * cent lignes, et une réponse longue est une réponse que personne n'écoute.
+   */
+  @Get('ventes-du-jour')
+  @PorteeRequise('lecture')
+  async ventesDuJour(@Req() req: any) {
+    const lignes = await this.dataSource.query(
+      `SELECT montant, description, quantite, created_at
+         FROM caisse_transactions
+        WHERE user_id = $1 AND type = 'vente' AND created_at::date = CURRENT_DATE
+        ORDER BY created_at DESC LIMIT 20`,
+      [req.marchandDelegue],
+    );
+    return { ventes: lignes };
+  }
 
   /** Le plafond, vérifié avant toute écriture. Rend le montant lu. */
   private async verifierPlafond(agent: PrincipalAgent, marchandId: string, brut: unknown): Promise<number> {
