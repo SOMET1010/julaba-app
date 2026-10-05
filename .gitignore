@@ -51,3 +51,7 @@ ci/preuve-invariants.json
 
 # Sorties du script d’ingestion (produites à l’arrivée d’un lot, jamais versionnées)
 docs/voix/ENTREES-TATA-UI-CLIPS.txt
+
+# Sorties brutes du tooling sandbox (journaux d’outils, jamais versionnés — peuvent contenir des échos d’URL authentifiées)
+tool-results/
+/bun.lock
