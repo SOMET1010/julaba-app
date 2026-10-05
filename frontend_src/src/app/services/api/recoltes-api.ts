@@ -48,6 +48,12 @@ export interface CreateRecolteData {
   date_recolte: string;
   parcelle?: string;
   notes?: string;
+  /** SAISIE BRUTE — ce que le producteur a tape, avant conversion en kilos.
+   *  `quantite` reste en kg ; ces trois champs la rendent reversible.
+   *  Voir services/conversionRecolte.ts. */
+  quantite_saisie?: number;
+  unite_saisie?: string;
+  facteur_saisie?: number;
 }
 
 export interface UpdateRecolteData {

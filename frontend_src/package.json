@@ -73,6 +73,7 @@
     "test:geste-micro": "tsx src/app/services/gesteDuMicro.test.mts",
     "test:micro-contraint": "tsx src/app/services/microContraint.test.mts",
     "test:caisse-relecture-affichee": "tsx src/app/components/marchand/caisseRelectureAffichee.test.mts",
+    "test:conversion-recolte": "tsx src/app/services/conversionRecolte.test.mts",
     "test:relecture-spontanee": "tsx src/app/services/relectureSpontanee.test.mts",
     "test:repli-parle": "tsx src/app/components/marchand/repliParle.test.mts",
     "test:vente-sans-prix": "tsx src/app/components/marchand/venteVocaleSansPrix.test.mts",

@@ -1,7 +1,7 @@
 {
-  "genereLe": "2026-09-19",
+  "genereLe": "2026-10-04",
   "tables": 61,
-  "colonnes": 694,
+  "colonnes": 697,
   "parTable": {
     "academy_modules": [
       "created_at",
@@ -566,6 +566,7 @@
       "created_at",
       "cycle_id",
       "date_recolte",
+      "facteur_saisie",
       "id",
       "notes",
       "parcelle",
@@ -574,10 +575,12 @@
       "produit",
       "qualite",
       "quantite",
+      "quantite_saisie",
       "statut",
       "stock_disponible",
       "stock_vendu",
       "unite",
+      "unite_saisie",
       "updated_at",
       "user_id"
     ],
