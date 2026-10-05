@@ -75,3 +75,26 @@ Stage Summary:
 - Décision AUTH-01 tranchée vers « une seule porte d'entrée » (Navigate) — cohérent avec l'intention de la garde et l'en-tête d'EntryGate ; la garde est redevenue VIVANTE dans verify
 - Découverte utile : le clip codeErreur est « prototype » (muet en build livré) — documenté dans entreeVoix.ts ; le trou AUTH-ERR générique (restants>2) reste OUVERT hors périmètre P1
 - P2 restants : AUTH-06..17 (prochain lot suggéré : AUTH-08/09 gardes charte/cible, puis AUTH-10 découpage LoginPassword ~1700 l.)
+
+---
+Task ID: 4
+Agent: Z.ai Code (orchestrateur)
+Task: Vérification finale d'intégrité post-correction P1 (reprise après coupure de contexte)
+
+Work Log:
+- État git : arbre propre, 2 commits de correction P1 présents sur main (745c730, 4bef809)
+- Artefacts AUTH-02 en place : services/codeActuelMemoire.ts + scripts/test-canal-code.mjs
+- routes.tsx:53-54 : /welcome et /login → <Navigate to="/" replace /> (AUTH-01 tranché)
+- Gardes re-exécutées : test:entree-unique ✅ VERT, test:canal-code ✅ VERT (7/7), test:verrou-connexion ✅ VERT (texte→clip + fichiers embarqués)
+- API : login POST /api/v1/auth/login (+2250726262626/1234) → 200 Michelle Walebo (marchand) via proxy Vite
+- Recette agent-browser (390×844) : EntryGate → onboarding → écran numéro (pavé complet) → « Revoir mon numéro » présent
+- AUTH-04 re-vérifié live : balayage = 1 chiffre illuminé (computedStyle boxShadow ≠ none) puis 0 après fin
+- AUTH-05 re-vérifié live : role=dialog, aria-modal="true", focus initial « Oui, je veux », Fermer 44×44 px, ESC ferme (le check à 1,2 s captait l'animation Radix — fermée à 2 s), reload → modale revient = refus non noté
+- history.state propre (aucun codeActuel) (AUTH-02)
+- Console : zéro erreur page ; seuls warnings attendus en dev (wallet keiwa absent, WS timeout)
+- Navigateur fermé proprement
+
+Stage Summary:
+- Les 5 P1 (AUTH-01..05) restent fermés et re-vérifiés de bout en bout après la coupure de contexte : gardes vertes + runtime conforme
+- App fonctionnelle : parcours complet Entrée → Numéro → PIN → /marchand sans erreur
+- P2 restants (AUTH-06..17) hors périmètre — prochain lot suggéré : AUTH-08/09 (gardes charte/cible) puis AUTH-10 (découpage LoginPassword)
