@@ -92,6 +92,27 @@ function court(texte: unknown, max = 160): string {
   return s.length > max ? s.slice(0, max) + '…' : s;
 }
 
+/**
+ * AUTH-13 (audit UI auth 05/10/2026) — MASQUE LES 6 DERNIERS CHIFFRES d'une
+ * séquence de chiffres identifiante (≥ 7 chiffres, séparateurs simples
+ * tolérés : « 0726262626 » comme « 07 26 26 26 26 »). Le transcript garde son
+ * DIAGNOSTIC (les premiers chiffres et la longueur — « qu'a entendu le STT ? »)
+ * sans transporter un numéro complet, que le journal persiste en localStorage
+ * et embarque au rapport partageable. Les partielles < 7 chiffres restent
+ * lisibles : un préfixe seul ne désigne personne. Idempotent (les « • » ne
+ * sont pas des chiffres).
+ */
+export function masquerChiffresSensibles(texte: string): string {
+  if (!texte) return texte;
+  return texte.replace(/(?:\d[\s.\-]?){7,}/g, (seq) => {
+    let vus = 0;
+    return seq.replace(/\d/g, (c) => {
+      vus += 1;
+      return vus <= 4 ? c : '•';
+    });
+  });
+}
+
 /** Pile COURTE : les 2 premiers cadres hors de ce module et de l'audioManager. */
 function pile(): string {
   try {
@@ -200,9 +221,9 @@ export function sttDebut(source: string, detail?: Record<string, unknown>): numb
   return maintenant();
 }
 
-/** Fin de transcription : moteur, transcript BRUT (non tronqué au sens, 300 car.), durée. */
+/** Fin de transcription : moteur, transcript (AUTH-13 : chiffres identifiants masqués), durée. */
 export function sttFin(source: string, moteur: string, transcript: string, depuis: number, detail?: Record<string, unknown>): void {
-  tracer('STT_FIN', { source, moteur, transcript: court(transcript, 300), vide: !transcript, dureeMs: maintenant() - depuis, ...(detail || {}) });
+  tracer('STT_FIN', { source, moteur, transcript: court(masquerChiffresSensibles(transcript), 300), vide: !transcript, dureeMs: maintenant() - depuis, ...(detail || {}) });
 }
 
 /** Intention retenue pour un transcript, ou null → « pas_compris ». */
@@ -212,13 +233,13 @@ export function intention(
   resultat: { intent?: string; action?: { type?: string; produit?: string; quantite?: number; montant?: number; description?: string }; response?: string; needsConfirmation?: boolean } | null | undefined,
 ): void {
   if (!resultat) {
-    tracer('INTENTION', { source, transcript: court(transcript, 300), compris: false, intent: 'pas_compris' });
+    tracer('INTENTION', { source, transcript: court(masquerChiffresSensibles(transcript), 300), compris: false, intent: 'pas_compris' });
     return;
   }
   const a = resultat.action || {};
   tracer('INTENTION', {
     source,
-    transcript: court(transcript, 300),
+    transcript: court(masquerChiffresSensibles(transcript), 300),
     compris: true,
     intent: resultat.intent ?? null,
     action: a.type ?? null,

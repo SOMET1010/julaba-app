@@ -32,6 +32,7 @@
     "test:verrou-connexion",
     "test:entree-unique",
     "test:canal-code",
+    "test:auth-charte",
     "test:recuperation-admin",
     "test:carte-xss",
     "test:prix-catalogue",

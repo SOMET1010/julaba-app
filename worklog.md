@@ -98,3 +98,30 @@ Stage Summary:
 - Les 5 P1 (AUTH-01..05) restent fermés et re-vérifiés de bout en bout après la coupure de contexte : gardes vertes + runtime conforme
 - App fonctionnelle : parcours complet Entrée → Numéro → PIN → /marchand sans erreur
 - P2 restants (AUTH-06..17) hors périmètre — prochain lot suggéré : AUTH-08/09 (gardes charte/cible) puis AUTH-10 (découpage LoginPassword)
+
+---
+Task ID: 5
+Agent: Z.ai Code (orchestrateur)
+Task: Corriger les P2 actionnables de l'audit UI auth (AUTH-08..11, 13, 15..17) + inscrire AUTH-06/07/12/14 au registre de dette
+
+Work Log:
+- Lecture des normes .ai (ACCESSIBILITY_GUIDE §4/5/6, DESIGN_SYSTEM §9, DEBT_REPORT) + des gardes de référence (caisseCharte.test.mts, test-cible-tactile.mjs, tokens.test.mts) avant toute édition
+- AUTH-16 : 5 surfaces LoginPassword migrées sur jetons (--commerce-surface ×4, --commerce-paper pour le plateau pavé) ; feuille modale restée #fff littéral AVEC justification (textes bruns littéraux → illisibles en sombre)
+- AUTH-15 : 4 SVG dessinés main → icônes lucide (Keyboard, Delete ×2, Check, Play)
+- AUTH-17 : « Vérification... » → role="status" + aria-live="polite"
+- AUTH-09 : « Modifier » 44×16,5→85×44 px, bascule images ≥44 px, + minHeight 44 sur 4 autres cibles ; garde test-cible-tactile ÉTENDU à l'auth (4 cibles : Modifier, bascule, Revoir mon numéro, Fermer modale)
+- AUTH-11 : ChangePasswordScreen (autoComplete current/new-password ×3 + aria-invalid + aria-describedby) ; ActivationScreen (idem + one-time-code sur le code reçu)
+- AUTH-13 : voiceTrace.masquerChiffresSensibles() (≥7 chiffres → 4 gardés + 6 « • ») appliqué à la source (sttFin/intention → localStorage) ET défensivement dans vlogDump (anneau + dictée, idempotent) ; test tsx direct : 0726262626→0726••••••, format espacé géré, mots intacts
+- AUTH-08 : garde authCharte.test.mts (tsx, modèle caisseCharte) — charte FERMÉE de 31 valeurs nommées avec rôle, budgets hex FIGÉS par fichier (26/13/9/0/7/0/1/0/4/0), jetons consommés vérifiés déclarés, migrations exigées ; migrations réalisées au passage : #B74725→var(--commerce-action) ×9 (LoginPassword ×4, ChangePwd ROLE_COLORS, PropoReco ×2+gradient, Activation P), #F5D6BD→var(--commerce-apricot) ×2 ; garde inscrit dans maillons-verify.json (après test:canal-code) + package.json (test:auth-charte)
+- AUTH-10 : LoginPassword 1759→1525 l. — 4 modules extraits : hooks/useDicteeLive.ts (rouage STT complet, cfg.onCanalVoix pour le canal « voix »), hooks/useDevMode.ts, components/auth/BanniereErreur.tsx (bannière ×3→×1, margeBas paramétrée), components/auth/PaveSaisie.tsx (pavé ×2→×1, empreinteDisabled SÉPARÉE pour préserver la logique d'activation `phone.length===0`)
+- Contrat vocal vérifié MÉCANIQUEMENT : inventaire des appels parle/parleSuite de LoginPassword = 15/15 identique à la référence parole-3917bb7 (même script que la garde)
+- Correction en chemin : fenêtre de recherche du garde cible-tactile élargie (style AVANT le marqueur) ; coquille `mavais` corrigée ; import vlogStart déplacé en tête du hook
+- Gardes finales (exit 0) : typecheck, auth-charte, cible-tactile, comptes, tokens, verrou-connexion, entree-unique, canal-code, parole-entree, entree-numero-voix, clips-embarques, route-access, maillons-orphelins ; voix-trace-source = mêmes 4 rouges VOICE-01 (Patrick), zéro nouveau
+- Recette agent-browser (390×844) : EntryGate → onboarding → écran numéro (pavé PaveSaisie) → numéro Michelle → Revoir mon numéro mesuré 44×44 → PIN → « Modifier » mesuré 85×44 → login → /marchand → modale Radix (aria-modal, focus « Oui, je veux », ESC ferme) → zéro erreur console
+- Documentation : AUDIT-UI-AUTH §12 (tableau de clôture P2 + état des gardes + recette), AUDIT_REPORT.md (synthèse clôture P1+P2), DEBT_REPORT.md (section AUTH : AUTH-06/07/12/14 + AUTH-ERR)
+
+Stage Summary:
+- 9 P2 actionnables fermés avec preuve de garde ET preuve runtime ; 4 dettes assumées + AUTH-ERR tracées au registre (DEBT_REPORT.md)
+- Nouveaux artefacts : authCharte.test.mts (charte fermée + budgets), useDicteeLive.ts, useDevMode.ts, BanniereErreur.tsx, PaveSaisie.tsx ; test-cible-tactile étendu à l'auth ; test:auth-charte dans verify
+- Décisions : charte auth FERMÉE avec budgets figés (une couleur nouvelle = échec, baisser un budget = progrès) ; feuille modale #fff documentée exception ; empreinteDisabled séparée dans PaveSaisie (régression d'activation évitée)
+- P2 restants hors code : AUTH-06/07/12/14 (registre) — auth frontend prête pour un prochain lot : AUTH-07 côté backend

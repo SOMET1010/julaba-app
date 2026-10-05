@@ -20,7 +20,9 @@ import { vibrerErreur, vibrerSucces } from '../../utils/haptique';
 const ROLES_A_CODE = ['marchand', 'producteur', 'cooperateur', 'cooperative'];
 
 const ROLE_COLORS: Record<string, { primary: string; bg: string; border: string }> = {
-  marchand: { primary: '#B74725', bg: 'rgba(255,247,237,0.9)', border: 'rgba(198,106,44,0.3)' },
+  // AUTH-08 — l'action commerce se LIT (token commerce.css), elle ne se
+  // recopie plus : un seul endroit décide de la teinte.
+  marchand: { primary: 'var(--commerce-action)', bg: 'rgba(255,247,237,0.9)', border: 'rgba(198,106,44,0.3)' },
   producteur: { primary: '#4CAF50', bg: 'rgba(240,253,244,0.9)', border: 'rgba(76,175,80,0.3)' },
   cooperateur: { primary: '#2E7D32', bg: 'rgba(232,245,233,0.9)', border: 'rgba(46,125,50,0.3)' },
   identificateur: { primary: '#8B5CF6', bg: 'rgba(245,243,255,0.9)', border: 'rgba(139,92,246,0.3)' },
@@ -354,9 +356,15 @@ export function ChangePasswordScreen() {
         >
           <div>
             <label htmlFor="change-pwd-old" className="block text-sm font-bold text-gray-700 mb-2">Mot de passe actuel</label>
+            {/* AUTH-11 — le champ SUIT son état : aria-invalid quand l'envoi a
+                échoué, aria-describedby vers l'erreur associée, et l'
+                autoComplete adapté à chaque champ (au lieu d'aucun). */}
             <input
               id="change-pwd-old"
               type="password"
+              autoComplete="current-password"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'change-pwd-erreur' : undefined}
               value={oldPassword}
               onChange={e => setOldPassword(e.target.value)}
               placeholder="Mot de passe actuel"
@@ -370,6 +378,9 @@ export function ChangePasswordScreen() {
               <input
                 id="change-pwd-new"
                 type={showPwd ? 'text' : 'password'}
+                autoComplete="new-password"
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? 'change-pwd-erreur' : undefined}
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 placeholder="Nouveau mot de passe (minimum 4 caractères)"
@@ -394,6 +405,9 @@ export function ChangePasswordScreen() {
             <input
               id="change-pwd-confirm"
               type={showPwd ? 'text' : 'password'}
+              autoComplete="new-password"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'change-pwd-erreur' : undefined}
               value={confirm}
               onChange={e => setConfirm(e.target.value)}
               placeholder="Confirmez le mot de passe"
@@ -402,7 +416,7 @@ export function ChangePasswordScreen() {
             />
           </div>
           {error && (
-            <p role="alert" aria-live="assertive" className="text-red-500 text-sm font-semibold">
+            <p id="change-pwd-erreur" role="alert" aria-live="assertive" className="text-red-500 text-sm font-semibold">
               {error}
             </p>
           )}
