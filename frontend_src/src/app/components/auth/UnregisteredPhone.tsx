@@ -9,6 +9,8 @@ import { motion } from 'motion/react';
 import { ArrowRight, Phone, UserX } from 'lucide-react';
 import { Button } from '../ui/button';
 import { getSystemSettings } from '../../utils/api';
+// AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
+import { warnDev } from '../../utils/warnDev';
 
 /**
  * Masque partiellement un numéro de téléphone pour limiter l’exposition PII.
@@ -51,7 +53,7 @@ export function UnregisteredPhone() {
       }
     }).catch((err) => {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      console.warn('[UnregisteredPhone] getSystemSettings failed:', err instanceof Error ? err.message : err);
+      warnDev('[UnregisteredPhone] getSystemSettings failed:', err instanceof Error ? err.message : err);
     });
   }, []);
 

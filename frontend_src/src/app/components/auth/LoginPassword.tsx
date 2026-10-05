@@ -118,16 +118,26 @@ import { PaveSaisie } from './PaveSaisie';
  *   · components/auth/PaveSaisie.tsx     — le pavé ×2 → ×1.
  */
 import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
+// AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
+import { warnDev } from '../../utils/warnDev';
 /**
- * BACKLOG ESCALATION P0 BACKEND (à traiter côté serveur, hors périmètre frontend) :
+ * BACKLOG ESCALATION P0 BACKEND :
  * 1. /auth/check-phone : timing attack possible (énumération comptes existants)
- *    -> backend doit retourner réponse uniforme + délai constant
+ *    -> FAIT côté serveur le 05/10/2026 (AUTH-07, audit UI auth) : toute
+ *    réponse — y compris appel malformé — attend une échéance uniforme
+ *    (plancher 300 ms + gigue, indépendants du résultat). Voir
+ *    backend/src/auth/anti-enumeration.ts.
  * 2. /auth/login : rate limit côté serveur — FAIT le 18/09/2026. L'échelle
  *    d'attente vit dans backend/src/auth/verrou-pin.ts, le compteur RAM de cet
  *    écran (cosmétique, contournable par un rechargement) a été supprimé.
  * 3. TEST_PHONES bypass régex actif en PRODUCTION (décision métier ANSUT)
- *    -> backend doit logger ces accès + valider liste autorisée
- * Ne PAS retirer ces protections frontend tant que le backend ne les implémente pas.
+ *    -> FAIT côté serveur le 05/10/2026 (AUTH-07) : chaque accès login /
+ *    check-phone à un numéro de recette est LOGUÉ par le backend, numéro
+ *    MASQUÉ. La liste miroir vit dans backend/src/auth/anti-enumeration.ts.
+ *    (« valider liste autorisée » reste à trancher côté métier : une liste
+ *    serveur autoritaire, par environnement, est inscrite à la dette.)
+ * Les protections frontend ci-dessous RESTENT : la réponse reste distincte
+ * (c'est le parcours produit /non-enregistre), seul le TEMPS est uniformisé.
  */
 // PLUS DE COMPTEUR ICI, ET C'EST LE CORRECTIF DU 18/09/2026.
 //
@@ -465,7 +475,7 @@ export function LoginPassword() {
         try {
           data = await res.json();
         } catch (err) {
-          console.warn('[LoginPassword] check-phone json parse failed:', err instanceof Error ? err.message : err);
+          warnDev('[LoginPassword] check-phone json parse failed:', err instanceof Error ? err.message : err);
           if (phoneRef.current === curr) {
             setStep('password');
             setIsLoading(false);
@@ -487,7 +497,7 @@ export function LoginPassword() {
         focusPin();
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        console.warn('[LoginPassword] check-phone fetch failed:', err instanceof Error ? err.message : err);
+        warnDev('[LoginPassword] check-phone fetch failed:', err instanceof Error ? err.message : err);
         if (phoneRef.current !== curr) {
           setIsLoading(false);
           return;
@@ -697,7 +707,7 @@ export function LoginPassword() {
         setError('Ça n\'a pas pris. On passe par ton code directement.');
       }
     } catch (err) {
-      console.warn('[LoginPassword] biometric failed:', err instanceof Error ? err.message : err);
+      warnDev('[LoginPassword] biometric failed:', err instanceof Error ? err.message : err);
       setError('Ça n\'a pas pris. On passe par ton code directement.');
     } finally {
       setIsLoading(false);
@@ -755,7 +765,7 @@ export function LoginPassword() {
       try {
         result = await response.json();
       } catch (err) {
-        console.warn('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
+        warnDev('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
         vlog('LOGIN_JSON_FAIL', { msg: err instanceof Error ? err.message : String(err) });
         setError('Ça n\'a pas bien répondu. Attends un petit moment, puis reprends.');
         setIsLoading(false);
@@ -907,7 +917,7 @@ export function LoginPassword() {
       setIsLoading(false);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      console.warn('[LoginPassword] login failed:', err instanceof Error ? err.message : err);
+      warnDev('[LoginPassword] login failed:', err instanceof Error ? err.message : err);
       vlog('LOGIN_FAIL', { name: err instanceof Error ? err.name : '', msg: err instanceof Error ? err.message : String(err), retry });
       // « Failed to fetch » = souvent le backend gratuit encore en train de se
       // réveiller. On RETENTE automatiquement (jusqu'à 2 fois) en laissant le

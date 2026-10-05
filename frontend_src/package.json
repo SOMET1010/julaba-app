@@ -187,7 +187,9 @@
     "test:accueil-caisse-dite": "tsx src/app/services/accueilCaisseDite.test.mts",
     "test:credit-hors-pilote": "tsx src/app/services/creditHorsPilote.test.mts",
     "test:maillons-orphelins": "node scripts/test-maillons-orphelins.mjs",
-    "test:auth-charte": "tsx src/app/components/auth/authCharte.test.mts"
+    "test:auth-charte": "tsx src/app/components/auth/authCharte.test.mts",
+    "test:enum-check-phone": "node scripts/test-enum-check-phone.mjs",
+    "test:warn-dev": "node scripts/test-warn-dev.mjs"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

@@ -13,6 +13,8 @@ import { tataUiClipForText } from '../../services/tataUiClips';
 import { speakClipOrText } from '../../services/audioManager';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerErreur, vibrerSucces } from '../../utils/haptique';
+// AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
+import { warnDev } from '../../utils/warnDev';
 
 // Rôles qui se connectent avec un CODE À 4 CHIFFRES (pavé, glyphes images,
 // voix). Le back-office garde un vrai mot de passe texte : on ne ramène pas
@@ -132,7 +134,7 @@ export function ChangePasswordScreen() {
           const d = await res.json();
           backendMsg = typeof d?.message === 'string' ? d.message : '';
         } catch (err) {
-          console.warn('[ChangePasswordScreen] error response parse failed:', err instanceof Error ? err.message : err);
+          warnDev('[ChangePasswordScreen] error response parse failed:', err instanceof Error ? err.message : err);
         }
         let userMsg: string;
         if (res.status === 401) {
@@ -177,7 +179,7 @@ export function ChangePasswordScreen() {
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      console.warn('[ChangePasswordScreen] change-password failed:', err instanceof Error ? err.message : err);
+      warnDev('[ChangePasswordScreen] change-password failed:', err instanceof Error ? err.message : err);
       setError('Erreur de connexion');
     } finally {
       setLoading(false);
