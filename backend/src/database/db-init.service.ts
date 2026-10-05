@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { DDL_AGENT } from '../agent/agent-tables';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
@@ -298,13 +299,52 @@ export class DbInitService {
     // DOUBLONS d'argent. Seul un index UNIQUE au niveau base élimine la course.
     // La migration le pose, mais elle ne tourne pas sur une base construite par
     // `synchronize` ; on le garantit donc ici aussi (IF NOT EXISTS, idempotent).
+    //
+    // IDEM-01, 05/10/2026 — LA PORTÉE DE CETTE UNICITÉ ÉTAIT TROP LARGE.
+    //
+    // L'index posé ici portait sur `idempotency_key` SEULE, alors que la
+    // lecture préalable du contrôleur cherche sur `(idempotency_key, user_id)`
+    // (caisse-rest.controller.ts). Les deux ne parlaient pas de la même chose.
+    //
+    // Conséquence, sur l'argent : si deux marchandes présentent la même clé,
+    // la seconde écriture viole l'index ; le rattrapage `23505` relit avec SON
+    // `user_id`, ne trouve rien, et l'erreur remonte. Sa vente est perdue sans
+    // explication. Le cas était théorique tant que la clé venait du téléphone
+    // de la marchande ; il cesse de l'être dès qu'un agent serveur dérive la
+    // clé d'un identifiant de message (voir docs/integration/
+    // API-AGENT-SERVEUR.md).
+    //
+    // ON ALIGNE SUR CE QUE LA MAISON FAIT DÉJÀ AILLEURS, on n'invente rien :
+    // `fidelite_evenements` porte `(marchand_id, idempotency_key)` et
+    // `wallet_transactions` porte `(idempotency_key, user_id, type)`. Les deux
+    // index corrects sont les plus récents ; celui-ci est le plus ancien.
+    //
+    // CRÉER AVANT DE SUPPRIMER, et l'ordre est la moitié du correctif :
+    // l'inverser laisserait une fenêtre — même d'une seconde — pendant
+    // laquelle deux requêtes concurrentes pourraient toutes deux insérer. La
+    // protection ne doit jamais être absente, seulement remplacée.
+    //
+    // AUCUN RISQUE SUR LES DONNÉES EXISTANTES, et c'est démontrable :
+    // l'unicité de `idempotency_key` seule est STRICTEMENT PLUS FORTE que
+    // celle de `(user_id, idempotency_key)`. Toute ligne qui satisfait
+    // l'ancienne satisfait donc la nouvelle — la création ne peut pas échouer
+    // sur l'existant, et il n'y a rien à nettoyer.
+    //
+    // Le `DROP` prend un verrou bref : il retire une entrée du catalogue, son
+    // coût ne dépend pas de la taille de la table. Si un déploiement devait se
+    // faire en pleine journée de marché, `DROP INDEX CONCURRENTLY` reste
+    // possible à la main — il ne peut pas vivre ici, car il refuse de tourner
+    // dans une transaction.
     try {
       await this.dataSource.query(`
-        CREATE UNIQUE INDEX IF NOT EXISTS ux_caisse_tx_idempotency_key
-        ON caisse_transactions (idempotency_key)
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_caisse_tx_user_idempotency_key
+        ON caisse_transactions (user_id, idempotency_key)
         WHERE idempotency_key IS NOT NULL;
       `);
-      this.logger.log('Index unique idempotency_key vérifié (anti double-comptage)');
+      await this.dataSource.query(
+        `DROP INDEX IF EXISTS ux_caisse_tx_idempotency_key;`,
+      );
+      this.logger.log('Index unique (user_id, idempotency_key) vérifié (anti double-comptage, IDEM-01)');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur index idempotency_key: ' + message);
@@ -403,6 +443,38 @@ export class DbInitService {
         `CREATE INDEX IF NOT EXISTS ix_stock_operation_idempotency_marchand
          ON stock_operation_idempotency (marchand_id, created_at DESC);`,
       );
+      //
+      // IDEM-02, 05/10/2026 — ICI, LA CLÉ PARTAGÉE NE RENVOYAIT PAS UNE
+      // ERREUR : ELLE RENVOYAIT UN SUCCÈS.
+      //
+      // `idempotency_key` était PRIMARY KEY à elle seule, et
+      // `stocks-rest.controller.ts` insérait avec
+      // `ON CONFLICT (idempotency_key) DO NOTHING RETURNING`. Quand la clé
+      // appartenait à une AUTRE marchande : rien n'était inséré,
+      // `inserted.length === 0`, la mise à jour de stock n'était PAS exécutée
+      // — et la route répondait `{ success: true, replayed: true }`.
+      //
+      // C'est pire que le défaut jumeau de la caisse (IDEM-01, index plus
+      // haut) : là-bas une erreur remonte, et quelqu'un la voit. Ici la
+      // marchande est informée que son stock est corrigé alors qu'il ne l'est
+      // pas, et l'écart ne se découvre qu'à l'inventaire.
+      //
+      // L'INDEX COMPOSITE EST CRÉÉ AVANT QUE LA CLÉ PRIMAIRE NE TOMBE : une
+      // table n'a qu'une clé primaire, on ne peut donc pas les permuter d'un
+      // geste. En créant d'abord l'index, les deux protections se recouvrent,
+      // et il n'existe aucun instant où la table est sans garde.
+      //
+      // Sans risque sur l'existant, même démonstration qu'en IDEM-01 :
+      // l'unicité de la clé seule est strictement plus forte que celle du
+      // couple.
+      await this.dataSource.query(
+        `CREATE UNIQUE INDEX IF NOT EXISTS ux_stock_op_idem_marchand
+         ON stock_operation_idempotency (marchand_id, idempotency_key);`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE stock_operation_idempotency
+         DROP CONSTRAINT IF EXISTS stock_operation_idempotency_pkey;`,
+      );
       // ── ODOO-L1 : le journal de synchronisation Odoo ────────────────────────
       //
       // `sync-journal.ts` portait depuis le premier jour l'aveu de sa propre
@@ -441,6 +513,21 @@ export class DbInitService {
          ON odoo_sync_journal (etat, cree_le DESC);`,
       );
       this.logger.log('Journal de synchronisation Odoo (odoo_sync_journal) vérifié');
+
+      // ── AGENT-A1/A2 : compte de service, code SMS, délégation ──────────────
+      //
+      // Un agent serveur n'est PAS un utilisateur : aucune ligne de `users` ne
+      // lui correspond, et il n'a ni téléphone, ni mot de passe, ni PIN. Lui
+      // donner un compte utilisateur, c'est ouvrir la porte qu'on veut fermer.
+      //
+      // Le DDL vit dans `src/agent/agent-tables.ts`, en UN seul endroit, et la
+      // migration 1782500000000 itère sur la même constante. Deux copies d'un
+      // schéma finissent toujours par diverger ; une seule chaîne ne le peut
+      // pas. Règle « DbInit ⊆ migrations » (ADR-0002).
+      for (const ddl of DDL_AGENT) {
+        await this.dataSource.query(ddl);
+      }
+      this.logger.log('Tables agent (service, code de délégation, délégation) vérifiées');
       this.logger.log('Ledger stock_mouvements (append-only) vérifié');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);

@@ -24,6 +24,10 @@ import { TontinesModule } from './tontines/tontines.module';
 import { StocksRestModule } from './stocks-rest/stocks-rest.module';
 import { CaisseRestModule } from './caisse-rest/caisse-rest.module';
 import { OdooGatewayModule } from './odoo-gateway/odoo-gateway.module';
+// AGENT-A1..A4 : importer ce module N'OUVRE RIEN — aucune route ne répond sans
+// jeton d'agent, aucune écriture sans délégation accordée par SMS, et aucune
+// écriture du tout tant que les plafonds ne sont pas renseignés.
+import { AgentModule } from './agent/agent.module';
 import { CatalogueMaitreModule } from './catalogue-maitre/catalogue-maitre.module';
 import { InstitutionsModule } from './institutions/institutions.module';
 import { IdentificationsModule } from './identifications/identifications.module';
@@ -123,6 +127,7 @@ import { ProtectionSocialeModule } from './protection-sociale/protection-sociale
     // Routes /odoo-poc/* désactivées par défaut : ODOO_POC_ENABLED=true requis
     // (voir OdooPocEnabledGuard) — l'import du module seul ne les active pas.
     OdooGatewayModule,
+    AgentModule,
     CatalogueMaitreModule,
     InstitutionsModule,
     IdentificationsModule,

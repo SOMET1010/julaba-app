@@ -86,9 +86,24 @@ opposée.
 | **B** | **Jeton délégué de courte durée.** La marchande déclenche depuis l'application une autorisation WhatsApp limitée dans le temps. | à construire, mais ne stocke aucun identifiant durable |
 | **C** | **L'agent détient les identifiants.** | **aucun développement, et le plus dangereux.** Non recommandé |
 
-**À DÉFINIR — aucune de ces voies n'est choisie, et aucune n'est implémentée.**
-Tant que ce point n'est pas tranché, **(b) consultation seule** est déjà
-réalisable en C sur un **compte de test**, jamais sur une marchande réelle.
+### TRANCHÉ LE 05/10/2026 — c'est la voie A
+
+Patrick a retenu le **compte de service avec délégation explicite**, avec ces
+bornes, qui font partie de la décision et pas de son habillage :
+
+- **jeton machine à portée limitée** : créer des ventes, des dépenses et des
+  mouvements de stock, et lire. **Rien d'autre.**
+- **limite de requêtes** et **plafond de montant par opération** ;
+- **délégation par marchande** : elle relie son numéro WhatsApp à son compte
+  par un **code de confirmation**. L'agent n'agit pour personne qui ne l'ait
+  pas dit ;
+- **révocable** par marchande **et** globalement ;
+- **chaque écriture tracée** avec `source = whatsapp`.
+
+**Rien de tout cela n'existe encore** : c'est le chantier en cours dans
+`julaba-app`. Tant qu'il n'est pas livré, **(b) consultation seule** reste le
+seul usage possible, sur un **compte de test**, jamais sur une marchande
+réelle.
 
 ### Détails pratiques
 
@@ -259,17 +274,45 @@ clé, la seconde écriture viole l'index ; le rattrapage cherche alors la
 transaction avec *son* `user_id`, **ne la trouve pas**, et l'erreur remonte.
 La vente est perdue sans explication claire.
 
-> **Règle pour l'agent : les clés doivent être uniques GLOBALEMENT, pas par
-> marchande.** Un format qui le garantit :
+**ET C'EST PIRE SUR LE STOCK.** `PATCH /stocks/:id` fait
+`INSERT INTO stock_operation_idempotency … ON CONFLICT (idempotency_key) DO
+NOTHING RETURNING` — sans aucun filtre sur la marchande. Si la clé appartient
+à une AUTRE marchande, rien n'est inséré, la mise à jour de stock n'est **pas
+exécutée**, et la route répond `{ success: true, replayed: true }`. La caisse,
+elle, remonte au moins une erreur : ici, l'agent reçoit un **succès** pour une
+opération qui n'a pas eu lieu.
+
+> **Correction décidée le 05/10, en cours dans `julaba-app`** : index unique
+> `(user_id, idempotency_key)` — la forme que `fidelite_evenements` utilise
+> déjà. Tant qu'elle n'est pas livrée, la règle de préfixe ci-dessus s'applique.
+
+> **Règle de l'agent, arrêtée le 05/10 :**
 >
 > ```
-> wa-<identifiant marchande>-<identifiant message WhatsApp>
+> <identifiant du message WhatsApp>-<numéro de ligne>
 > ```
 >
-> L'identifiant de message WhatsApp est déjà unique et **stable au rejeu** —
-> c'est exactement la propriété recherchée. **Ne jamais utiliser un horodatage
-> ni un tirage aléatoire** : deux envois du même message donneraient deux
-> clés, donc deux ventes.
+> **POURQUOI LE NUMÉRO DE LIGNE.** Une note vocale porte souvent PLUSIEURS
+> ventes : « trois tas de piment et deux maniocs » est une seule note, deux
+> lignes, deux appels à `POST /caisse/vente`. Sans numéro de ligne, les deux
+> partageraient la même clé : la seconde serait prise pour un rejeu de la
+> première, et **la deuxième vente disparaîtrait en silence** — l'API
+> rendrait la première transaction, et l'agent croirait avoir tout
+> enregistré.
+>
+> La numérotation suit l'ordre des ventes **dans l'énoncé**, pas l'ordre
+> d'envoi : elle doit être la même si la note est rejouée.
+>
+> **POURQUOI L'IDENTIFIANT DE MESSAGE.** Il est déjà unique et **stable au
+> rejeu** — exactement la propriété recherchée. **Ne jamais utiliser un
+> horodatage ni un tirage aléatoire** : deux envois du même message
+> donneraient deux clés, donc deux ventes.
+>
+> **PORTÉE DE LA CLÉ.** Tant que la correction d'idempotence (ci-dessous)
+> n'est pas livrée, l'unicité doit être **globale** : préfixer par
+> l'identifiant de la marchande, `wa-<marchande>-<message>-<ligne>`. Une fois
+> l'index passé en `(user_id, idempotency_key)`, le préfixe devient inutile —
+> mais il ne gêne pas, et une clé déjà émise ne se renomme pas.
 
 ### La propriété à garantir de bout en bout
 
@@ -314,11 +357,14 @@ responsable du reste.
 
 ## 8 · CE QUE CETTE FICHE NE DIT PAS — À DÉFINIR
 
-- le mécanisme d'authentification d'un agent serveur (§2) — **rien n'existe** ;
+- ~~le mécanisme d'authentification d'un agent serveur~~ — **tranché le
+  05/10 : voie A** (§2). Reste à CONSTRUIRE : rien n'existe encore ;
 - les seuils exacts du `ThrottlerGuard` ;
 - s'il faut tracer l'origine WhatsApp au-delà du champ `source` ;
 - la conduite à tenir quand la marchande ne confirme pas, ou confirme à moitié ;
 - la conservation des notes vocales (donnée personnelle, consentement) ;
-- les trois parlers visés : le code porte le **dioula/mandingue**
-  (`nombresMandingue.ts` : variétés `mandingue`, `bambara`, `dioula-ci`) et le
-  **français de Côte d'Ivoire**. Cela fait deux, pas trois.
+- **les trois langues sont arrêtées le 05/10 : français, dioula, nouchi.**
+  Le code porte aujourd'hui le **dioula/mandingue** (`nombresMandingue.ts` :
+  variétés `mandingue`, `bambara`, `dioula-ci`) et le **français de Côte
+  d'Ivoire**. **Le nouchi n'est pas outillé** : ni lexique, ni corpus, ni
+  test. À DÉFINIR : ce que « nouchi » couvre exactement côté reconnaissance.

@@ -58,3 +58,43 @@ clés). Sans elles, la vente et le cœur du produit marchent quand même.
   démarrage du backend (`DB_MIGRATIONS_RUN=true`).
 - **Cookies** : `COOKIE_SAMESITE=none` est déjà réglé pour que la connexion marche entre
   les deux domaines Render.
+
+---
+
+## Index uniques : quand préparer un `DROP INDEX CONCURRENTLY` à la main
+
+**Doctrine arrêtée le 05/10/2026 (IDEM-01/02).** Elle vaut pour toute
+migration qui remplace un index unique par un autre.
+
+1. **La migration reste normale.** Aucune logique hybride, aucune branche
+   « si production » cachée dans un fichier de migration. Ce qui est écrit
+   est ce qui s'exécute, partout.
+2. **La migration crée le nouvel index AVANT de supprimer l'ancien.** La
+   protection est remplacée, jamais absente — pas même une seconde, pendant
+   laquelle deux requêtes concurrentes passeraient toutes les deux.
+3. **En période sensible — une journée de marché, une heure de forte
+   affluence — on prépare à la main**, AVANT le déploiement :
+
+   ```sql
+   -- Hors transaction. CONCURRENTLY refuse d'y tourner, et c'est pour ça
+   -- qu'il ne peut pas vivre dans une migration TypeORM.
+   DROP INDEX CONCURRENTLY IF EXISTS <ancien_index>;
+   ```
+
+   La migration passera ensuite sans rien avoir à supprimer : son
+   `DROP INDEX IF EXISTS` ne trouvera plus rien, et c'est exactement ce qu'on
+   veut d'une opération idempotente.
+
+**Pourquoi ce n'est pas dans le code.** Un `DROP INDEX` retire une entrée du
+catalogue : son coût ne dépend pas de la taille de la table, et le verrou est
+bref. Le seul risque réel est d'attendre la fin des transactions en cours.
+Introduire une procédure spéciale dans la migration pour un déploiement
+hypothétique coûterait plus — en complexité permanente — que la gêne qu'elle
+éviterait une fois.
+
+**Index concernés par cette doctrine à ce jour :**
+
+| table | ancien | nouveau |
+|---|---|---|
+| `caisse_transactions` | `ux_caisse_tx_idempotency_key` *(clé seule)* | `ux_caisse_tx_user_idempotency_key` *(user_id, clé)* |
+| `stock_operation_idempotency` | `…_pkey` *(clé seule)* | `ux_stock_op_idem_marchand` *(marchand_id, clé)* |

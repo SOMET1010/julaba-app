@@ -24,6 +24,14 @@ import { OdooGatewayModule } from '../odoo-gateway/odoo-gateway.module';
     CreditsController,CaisseRestController, ObjectifsController, RapportHebdoController, RaccourcisController,
     CatalogueController
   ],
-  providers: [CaisseProduitsService],
+  // AGENT-A4 : `CaisseRestController` est AUSSI un provider exporté, pour que
+  // le contrôleur d'agent puisse l'appeler au lieu de réimplémenter la vente.
+  // C'est inhabituel, et c'est le prix d'un invariant qui compte plus : il n'y
+  // a qu'UN chemin de vente, celui qui porte l'idempotence, le mouvement de
+  // stock dans la même transaction et la marge ligne par ligne. Un second
+  // chemin aurait divergé — le dépôt a déjà fermé une autre route de vente
+  // pour cette raison exacte.
+  providers: [CaisseProduitsService, CaisseRestController],
+  exports: [CaisseRestController],
 })
 export class CaisseRestModule {}
