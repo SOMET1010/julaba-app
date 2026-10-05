@@ -153,3 +153,43 @@ Stage Summary:
 - Nouveaux artefacts : backend/src/auth/anti-enumeration.ts, frontend_src/src/app/utils/warnDev.ts, scripts/test-enum-check-phone.mjs, scripts/test-warn-dev.mjs
 - Décision : le corps de réponse check-phone reste distinct (exists) — c'est le parcours produit /non-enregistre ; seul le TEMPS est uniformisé ; les protections frontend restent tant que la liste serveur n'est pas autoritaire par environnement
 - Il reste au registre : AUTH-06 (architecture cookie httpOnly), AUTH-12 (i18n visuel XL), AUTH-07-sous-dette (liste autoritaire), AUTH-14b (écoute ops), AUTH-ERR (clip voix, Patrick)
+
+---
+Task ID: 7
+Agent: Z.ai Code (orchestrateur)
+Task: Pousser les commits vers GitHub avec le nom d'utilisateur SOMET1010
+
+Work Log:
+- Diagnostic : remote origin était configuré avec le token comme nom d'utilisateur (https://TOKEN@github.com/...) — format refusé par GitHub pour les push
+- 2052 fichiers « modifiés » identifiés comme purs changements de mode (100644→100755, artefact sandbox) → core.fileMode=false pour éliminer le bruit
+- Remote réécrit : https://SOMET1010:TOKEN@github.com/SOMET1010/julaba-app.git
+- git push origin main : ea499ab..be584af ✅ — main synchronisé avec origin/main
+
+Stage Summary:
+- 6 commits poussés (P1 745c730/4bef809, P2 lot 1 fa5386b/bd08f39, P2 lot 2 AUTH-07/14 be584af, + 1 commit tooling f85057c)
+- main == origin/main ; seuls restent locaux : .zscripts/dev.pid (runtime sandbox) et fichiers non versionnés sandbox
+
+---
+Task ID: 8
+Agent: Z.ai Code (orchestrateur)
+Task: Dernier lot audit auth — AUTH-06 tranchée (ADR-002) + AUTH-07-sous-dette + AUTH-14b + reconstitution runtime sandbox
+
+Work Log:
+- DÉCOUVERTE : sandbox reconstruit (15:27) — PostgreSQL, backend/.env, node_modules workspace et serveurs perdus ; code intact
+- Runtime reconstitué : binaires zonky 16.4 retéléchargés (/home/z/pg, bin/bin après extraction imbriquée), cluster réinitialisé (julaba/trust/socket /tmp), base julaba_dev recréée via client pg, backend/.env régénéré (secrets dev NEUFS, AUTH_TELEPHONES_TEST incluse), npm install racine (hoisting workspaces OK), backend + Vite relancés (double-fork setsid — le premier essai sans sous-shell a été fauché entre deux commandes)
+- AUTH-06 TRANCHÉE : ADR-002 (.ai/ADR/ADR-002-jetons-auth-web-cookie-mobile-stockage.md, statut accepté) — voie DUELLE : WEB = cookies httpOnly seuls (le backend les posait déjà, stratégie cookieOrBearer, checkSession déjà cookie-first) ; APK natif = localStorage + Bearer inchangés (rotation avec successeur)
+- Implémentation : nouveau coffre utils/stockerJetonsSiMobile.ts (SEUL écrivain des clés, no-op web via estMobileNatif/Capacitor.isNativePlatform) ; LoginPassword ×2 migrés (setItem directs supprimés) ; lectures/purges conservées (chemin APK + tolérance jetons hérités lus SANS réécriture)
+- Nouvelle garde test:coffre-web (9 vérifs) inscrite package.json + maillons-verify.json (après test:warn-dev) ; bloc BACKLOG ESCALATION LoginPassword mis à jour (item 3 liste autoritaire FAITE + item 4 ADR-002)
+- AUTH-07-sous-dette : anti-enumeration.ts — AUTH_TELEPHONES_TEST fait foi (chargerTelephonesTest, filtre 10 chiffres), Set en dur renommé TELEPHONES_TEST_CODE (repli dev), lecture PARESSEUSE au premier usage (le dotenv de ConfigModule tourne APRÈS l'import du module — 1er boot montrait source=code, corrigé) ; AuthService.onModuleInit journalise source+taille sans citer les numéros ; backend/.env dev aligné (6 numéros)
+- Garde test:enum-check-phone ÉTENDUE (15 vérifs : env + filtre + accesseur CHARGÉ + journal boot sans PII + alignement .env↔miroir + miroir code↔frontend) — 1 auto-correction (regex accesseur après refactor paresseux)
+- AUTH-14b : runbook « Écoute ops — accès recette ANSUT » inséré dans HANDOFF/SECURITY_TO_TEAM.md (patterns, commandes comptage, seuil alerte, alerte source=code en prod)
+- Documentation : audit §14 (tableau de clôture + gouvernance + recette + découverte sandbox), DEBT_REPORT (AUTH-06/07-sous-dette/14b FERMÉES ; sous-dette CSRF Origin inscrite dans ADR-002), AUDIT_REPORT (synthèse)
+- Gardes finales exit 0 : typecheck, lint, tsc backend, coffre-web, enum-check-phone, warn-dev, entree-unique, canal-code, verrou-connexion, cible-tactile, comptes, tokens, auth-charte, maillons-orphelins, api-authorization, parole-entree, clips-embarques
+- Recette agent-browser (390×844) : EntryGate → tutoriel → numéro 0700000009 (base fraîche : Awa Koné, mot de passe 1234 — le jeu démo diffère de l'ancien .env) → check-phone uniforme invisible → PIN → /marchand → modale Radix fermée sans refus → localStorage access:null/refresh:null + cookies access_token/refresh_token présents → RELOAD → session restaurée par cookie, localStorage toujours vide → console zéro erreur → logout → EntryGate, 0 cookie auth
+- Preuves runtime AUTH-07-sous-dette : boot `TEST_PHONES actifs : source=env, 6 numéros (masqués)` ; check-phone recette 0840404040→200 en 386 ms / réel 0726262626→200 en 325 ms ; WARN `accès TEST_PHONE 08 •• •• 40 40` pour l'un, rien pour l'autre
+
+Stage Summary:
+- AUTH-06 FERMÉE : décision ADR-002 acceptée et IMPLÉMENTÉE côté web (plus aucun jeton JS en localStorage web ; recette reload-par-cookie prouvée) ; APK inchangé par design
+- AUTH-07-sous-dette FERMÉE : liste autoritaire par env + journal de boot + garde alignement ; AUTH-14b FERMÉE : runbook livré
+- Restent au registre : AUTH-12 (i18n visuel XL), AUTH-ERR (clip voix, Patrick), + sous-dette CSRF (vérification serveur Origin sur mutations auth, ADR-002)
+- Runtime sandbox reconstitué de bout en bout ; base démo fraîche : Awa Koné +2250700000009 (marchande, 1234)

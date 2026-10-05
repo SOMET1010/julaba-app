@@ -10,7 +10,14 @@ import { attenteApresEchecs, essaisAvantAttente, attenteEnClair, estVerrouHerite
 // AUTH-07 (audit UI auth 05/10/2026) — anti-énumération : les numéros de
 // recette ANSUT se LOGUENT (masqués), et check-phone répond à une échéance
 // uniforme. Voir anti-enumeration.ts, qui porte la décision.
-import { estTelephoneTest, repondreAEcheanceUniforme } from './anti-enumeration';
+// AUTH-07-sous-dette : la liste autoritaire vit dans l'ENV (AUTH_TELEPHONES_TEST) ;
+// le démarrage dit QUELLE liste écoute (source + taille, jamais les numéros).
+import {
+  estTelephoneTest,
+  repondreAEcheanceUniforme,
+  sourceListeTelephonesTest,
+  tailleListeTelephonesTest,
+} from './anti-enumeration';
 import { masquerTelephone } from '../users/remise-code-bo';
 import * as crypto from 'crypto';
 import { randomBytes } from 'crypto';
@@ -84,6 +91,13 @@ function generateInitialPassword(): string {
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+
+  /** AUTH-07-sous-dette : au boot, dire quelle liste TEST_PHONES écoute (sans les citer). */
+  onModuleInit() {
+    this.logger.log(
+      `TEST_PHONES actifs : source=${sourceListeTelephonesTest()}, ${tailleListeTelephonesTest()} numéros (masqués)`,
+    );
+  }
 
   constructor(
     @InjectRepository(User)

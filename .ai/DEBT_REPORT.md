@@ -158,14 +158,14 @@
 
 ## AUTH (lot P2 audit UI auth — 05/10/2026)
 
-Dettes relevées par l'audit UI auth (`AUDITS/AUDIT-UI-AUTH-2026-10-05.md`). Les 9 P2 actionnables frontend (AUTH-08..11, 13, 15..17) ont été corrigés le jour même (§12 du rapport d'audit), puis AUTH-07 et AUTH-14 à leur tour (§13). Restent les décisions d'architecture et de produit :
+Dettes relevées par l'audit UI auth (`AUDITS/AUDIT-UI-AUTH-2026-10-05.md`). Les 9 P2 actionnables frontend (AUTH-08..11, 13, 15..17) ont été corrigés le jour même (§12 du rapport d'audit), puis AUTH-07 et AUTH-14 (§13), puis AUTH-06 (ADR-002) + AUTH-07-sous-dette + AUTH-14b (§14). Ne restent que les dettes de PRODUIT/hors périmètre :
 
 | ID | Description | Priorité | Effort | Statut |
 |---|---|---|---|---|
-| AUTH-06 | JWT access + refresh en localStorage (décision documentée en code : auth mobile sans cookie cross-domaine) | P2 | L | OUVERT (audit) — à terme cookie httpOnly même-domaine ; décision d'architecture à trancher avec le déploiement mobile |
-| AUTH-07-sous-dette | Liste TEST_PHONES SERVEUR autoritaire par environnement (env var / config) — la liste miroir dans `anti-enumeration.ts` et LoginPassword doit être tenue À DEUX MAINS aujourd'hui ; la garde `test:enum-check-phone` vérifie le miroir, mais une liste unique côté serveur reste l'objectif (« valider liste autorisée » du bloc d'escalation) | P3 | S | OUVERT (§13) |
+| AUTH-06 | JWT access + refresh en localStorage | P2 | L | **FERMÉE (05/10/2026, §14)** — tranchée par **ADR-002** (`.ai/ADR/`) : voie DUELLE assumée — WEB = cookies httpOnly seuls (plus AUCUN jeton écrit en JS, coffre unique `stockerJetonsSiMobile` no-op web, garde `test:coffre-web`) ; APK = localStorage + Bearer inchangés (cookies cross-domaine bloqués, rotation avec successeur). Recette : session restaurée au reload par cookie, localStorage vide. Sous-dette inscrite : vérification serveur `Origin` sur mutations auth (CSRF, cf. ADR-002) |
+| AUTH-07-sous-dette | Liste TEST_PHONES SERVEUR autoritaire par environnement | P3 | S | **FERMÉE (05/10/2026, §14)** — `AUTH_TELEPHONES_TEST` fait foi (lecture PARESSEUSE au premier usage : le dotenv de ConfigModule tourne après l'import du module) ; le Set en dur n'est que le repli dev ; le boot journalise `source=env, N numéros (masqués)` ; garde `test:enum-check-phone` étendue (charge env, filtre 10 chiffres, alignement .env↔miroir) ; runtime vérifié (`source=env, 6 numéros`, journalisation recette active) |
 | AUTH-12 | UI auth 100 % français hardcodé (la voix est i18nisée fr-ci/dyu-ci/bm/bci, pas le texte) | P3 | XL | OUVERT (audit) — dette i18n visuelle connue du repo |
-| AUTH-14b | Bruit de logs prod : surveiller que le silenciage frontend (warnDev, §13) suffit — le log SERVEUR des accès TEST_PHONES (AUTH-07) est volontairement actif en prod pour COMPTER les accès recette | P3 | S | OUVERT (§13) — écoute ops à prévoir |
+| AUTH-14b | Bruit de logs prod : surveiller que le silenciage frontend (warnDev, §13) suffit — le log SERVEUR des accès TEST_PHONES (AUTH-07) est volontairement actif en prod pour COMPTER les accès recette | P3 | S | **FERMÉE (05/10/2026, §14)** — runbook livré dans `HANDOFF/SECURITY_TO_TEAM.md` (patterns, commandes de comptage, seuil d'alerte, alerte `source=code` en prod = .env incomplet) ; branchement réel à la centralisation de logs prod noté |
 | AUTH-ERR | Trou vocal verrou : > 2 essais restants → clip `codeErreur` « prototype » muet en build livré (trou découvert en fermant AUTH-03, P1) | P3 | S | OUVERT (lot P1) — besoin d'un clip lot A « Ce n'est pas le bon code » |
 
 ## Recommandation globale
