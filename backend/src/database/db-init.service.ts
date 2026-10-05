@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { DDL_AGENT } from '../agent/agent-tables';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
@@ -418,6 +419,17 @@ export class DbInitService {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur ledger stock_mouvements: ' + message);
+    }
+
+    // ── AGENT-A1/A2 : compte de service, code SMS, délégation ──────────────
+    try {
+      for (const ddl of DDL_AGENT) {
+        await this.dataSource.query(ddl);
+      }
+      this.logger.log('Tables agent (service, code de délégation, délégation) vérifiées');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur tables agent: ' + message);
     }
 
     // ── B2 : réservation de stock sur commande (marché virtuel) ──────────────
