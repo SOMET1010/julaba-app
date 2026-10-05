@@ -317,6 +317,44 @@ export class DbInitService {
         `CREATE INDEX IF NOT EXISTS ix_stock_operation_idempotency_marchand
          ON stock_operation_idempotency (marchand_id, created_at DESC);`,
       );
+      // ── ODOO-L1 : le journal de synchronisation Odoo ────────────────────────
+      //
+      // `sync-journal.ts` portait depuis le premier jour l'aveu de sa propre
+      // limite : le journal vivait dans une Map, « un redémarrage du serveur
+      // vide ce journal, et rejouer un operationId recréerait un nouveau
+      // mouvement ». Sur Render, un redéploiement suffit.
+      //
+      // `operation_id` est PRIMARY KEY, et c'est ELLE qui tient l'idempotence
+      // — pas la lecture préalable. Deux rejeux simultanés peuvent lire
+      // « rien » au même instant ; un seul peut insérer. Même raisonnement que
+      // `ux_caisse_tx_idempotency_key` quelques dizaines de lignes plus haut.
+      //
+      // Les dates sont en `bigint` (millisecondes) parce que le contrat
+      // `SyncJournalEntry` les compare et les trie sous cette forme ;
+      // `created_at` en `timestamptz` est là pour l'œil humain.
+      //
+      // DDL identique à la migration 1782200000000. Règle « DbInit ⊆
+      // migrations » (ADR-0002).
+      await this.dataSource.query(`
+        CREATE TABLE IF NOT EXISTS odoo_sync_journal (
+          operation_id varchar(200) PRIMARY KEY,
+          domaine varchar(64) NOT NULL,
+          odoo_model varchar(128) NOT NULL,
+          odoo_record_id bigint,
+          etat varchar(16) NOT NULL,
+          payload_snapshot text NOT NULL,
+          tentatives integer NOT NULL DEFAULT 0,
+          derniere_erreur text,
+          cree_le bigint NOT NULL,
+          confirme_le bigint,
+          created_at timestamptz NOT NULL DEFAULT now()
+        );
+      `);
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS ix_odoo_sync_journal_etat
+         ON odoo_sync_journal (etat, cree_le DESC);`,
+      );
+      this.logger.log('Journal de synchronisation Odoo (odoo_sync_journal) vérifié');
       this.logger.log('Ledger stock_mouvements (append-only) vérifié');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);

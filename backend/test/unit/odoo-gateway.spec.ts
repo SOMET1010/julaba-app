@@ -202,6 +202,70 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
     expect(stockApres2).toBe(stockApres1); // le stock n'a pas bougé une 2e fois
   });
 
+  // ── ODOO-L1 — L'IDEMPOTENCE SURVIT AU REDÉMARRAGE ──────────────────────────
+  //
+  // Le défaut que ce lot ferme, et `sync-journal.ts` l'écrivait lui-même :
+  // « un redémarrage du serveur vide ce journal, et rejouer un operationId
+  // après un redémarrage recréerait un nouveau mouvement ». Sur Render, un
+  // redéploiement suffit.
+  //
+  // CE QUE CE TEST PROUVE, ET COMMENT. Un redémarrage, c'est un service qui
+  // repart à neuf devant un journal qui, LUI, a survécu. On ne simule donc pas
+  // le temps : on construit DEUX services successifs — deux processus — et on
+  // leur donne LE MÊME journal, ce qu'une table fait par nature. Le second ne
+  // doit ni rappeler Odoo, ni rebouger le stock.
+  //
+  // CE QU'IL NE PROUVE PAS : que Postgres tienne la contrainte. Ça, c'est le
+  // rôle de la clé primaire sur `operation_id` et de SCHEMA-PILOTE, qui vérifie
+  // que la table existe après le seul chemin autorisé. Ici on prouve que le
+  // service LIT le journal qu'on lui donne au lieu d'un état caché — et c'est
+  // exactement ce qui manquait.
+  it('ODOO-L1 : rejeu APRÈS redémarrage — journal survivant, aucun second mouvement', async () => {
+    const journalQuiSurvit = new SyncJournal();
+    const cmd = { operationId: 'op-apres-redemarrage', odooProductId: 104, quantite: 2, type: 'in' as const };
+
+    // Premier processus.
+    const clientAvant = new OdooMockClient();
+    const espionAvant = jest.spyOn(clientAvant, 'execute');
+    const avantRedemarrage = new OdooGatewayService(clientAvant, journalQuiSurvit);
+    const r1 = await avantRedemarrage.simulerMouvementStock(cmd);
+    const mouvementsAvant = espionAvant.mock.calls.filter(([m, me]) => m === 'stock.move' && me === 'create').length;
+
+    // Le processus meurt. Le journal, lui, est en base : il reste.
+    const clientApres = new OdooMockClient();
+    const espionApres = jest.spyOn(clientApres, 'execute');
+    const apresRedemarrage = new OdooGatewayService(clientApres, journalQuiSurvit);
+    const r2 = await apresRedemarrage.simulerMouvementStock(cmd);
+    const mouvementsApres = espionApres.mock.calls.filter(([m, me]) => m === 'stock.move' && me === 'create').length;
+
+    expect(mouvementsAvant).toBe(1);
+    expect(mouvementsApres).toBe(0);              // AUCUN appel Odoo au rejeu
+    expect(r2).toEqual(r1);                        // même entrée, même odooRecordId
+    expect(r2.etat).toBe('confirmed');
+    expect((await apresRedemarrage.listJournal()).filter((e) => e.operationId === cmd.operationId)).toHaveLength(1);
+  });
+
+  // LE MÊME SCÉNARIO SANS JOURNAL SURVIVANT — la preuve que le test ci-dessus
+  // mord. Sans lui, on pourrait croire que l'idempotence vient d'ailleurs.
+  // Deux services, deux journaux neufs : le mouvement part DEUX fois. C'est
+  // très exactement ce qui se passait en production avant ce lot.
+  it('ODOO-L1 : sans journal survivant, le rejeu recrée un mouvement — le défaut d\'origine', async () => {
+    const cmd = { operationId: 'op-sans-survie', odooProductId: 104, quantite: 2, type: 'in' as const };
+
+    const clientA = new OdooMockClient();
+    const espionA = jest.spyOn(clientA, 'execute');
+    await new OdooGatewayService(clientA, new SyncJournal()).simulerMouvementStock(cmd);
+
+    const clientB = new OdooMockClient();
+    const espionB = jest.spyOn(clientB, 'execute');
+    await new OdooGatewayService(clientB, new SyncJournal()).simulerMouvementStock(cmd);
+
+    const creations = (espion: jest.SpyInstance) =>
+      espion.mock.calls.filter(([m, me]) => m === 'stock.move' && me === 'create').length;
+    expect(creations(espionA)).toBe(1);
+    expect(creations(espionB)).toBe(1); // le second mouvement — le défaut
+  });
+
   it('conflit : même operationId + payload différent → rejeté explicitement', async () => {
     await service.simulerMouvementStock({
       operationId: 'op-conflit', odooProductId: 105, quantite: 2, type: 'in',
@@ -215,10 +279,10 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
 
   it("le journal expose l'historique des opérations", async () => {
     await service.simulerMouvementStock({ operationId: 'op-journal', odooProductId: 106, quantite: 1, type: 'in' });
-    const entry = service.getJournal('op-journal');
+    const entry = await service.getJournal('op-journal');
     expect(entry).toBeDefined();
     expect(entry?.etat).toBe('confirmed');
-    expect(service.listJournal().some((e) => e.operationId === 'op-journal')).toBe(true);
+    expect((await service.listJournal()).some((e) => e.operationId === 'op-journal')).toBe(true);
   });
 
   it('écrit réellement pending → syncing → confirmed (pas un état mort)', async () => {
@@ -298,7 +362,7 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
       await expect(
         service.simulerMouvementStock({ operationId: '', odooProductId: 101, quantite: 1, type: 'in' }),
       ).rejects.toThrow();
-      expect(service.getJournal('')).toBeUndefined();
+      expect(await service.getJournal('')).toBeUndefined();
       expect(executeSpy).not.toHaveBeenCalled();
       executeSpy.mockRestore();
     });
@@ -307,7 +371,7 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
       await expect(
         service.simulerMouvementStock({ operationId: 'op-neg-id', odooProductId: -10, quantite: 1, type: 'in' }),
       ).rejects.toThrow();
-      expect(service.getJournal('op-neg-id')).toBeUndefined();
+      expect(await service.getJournal('op-neg-id')).toBeUndefined();
     });
 
     it('rejette une quantite négative ou nulle', async () => {
@@ -330,7 +394,7 @@ describe('OdooGatewayService (POC structurel — catalogue + stock)', () => {
           type: 'toto',
         }),
       ).rejects.toThrow();
-      expect(service.getJournal('op-type-invalide')).toBeUndefined();
+      expect(await service.getJournal('op-type-invalide')).toBeUndefined();
       expect(await service.lireStock(101)).toBe(stockAvant); // aucune mutation silencieuse
     });
   });
