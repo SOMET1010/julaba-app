@@ -145,7 +145,56 @@ endroit qui le sache.
 
 ---
 
-## 6. Ce qui reste à trancher sur la structure
+## 6. Déploiement — et l'absence de preview
+
+Établi par l'enquête du 05/10, et **ADR-0004** (28/09, « Accepté ») tranche la
+cible :
+
+| | |
+|---|---|
+| **Render** | **la production réelle.** `julaba-api` (Node, plan `starter`), `julaba-web` (statique), `julaba-db` (Postgres `basic_256mb`). `autoDeploy: true` sur la branche **`main`** |
+| OVH / Docker | chaîne de **secours dormante** — `deploy.yml` en `workflow_dispatch` manuel seulement. L'ancien déclencheur visait `master`, branche inexistante : il n'a jamais tourné |
+| Azure | **miroir muet** — `azure-pipelines.yml` porte `trigger: none`, et le PAT a expiré le 08/09. `docker-compose.prod.yml` est un vestige |
+
+### IL N'Y A AUCUNE PREVIEW, et c'est une décision
+
+`render.yaml` ne déclare ni `previews:`, ni `previewsEnabled`, ni
+`pullRequestPreviewsEnabled`. Donc **pousser sur une branche ≠ `main` ne
+produit aucune URL**, et **pousser sur `main` déploie la production** — il n'y
+a pas d'étage intermédiaire.
+
+Ce n'est pas un oubli : `coordination/JULABA-STATUS.md` le dit — « la recette
+par un agent web est **ABANDONNÉE** : elle exigeait une preview Render, donc
+de toucher au Blueprint, donc un chantier infra que **Patrick refuse à ce
+stade** (16/09) ». Le backlog prévoit des previews **sur le seul site
+statique**, le backend payant étant explicitement exclu (une preview du
+backend serait une dépense réelle).
+
+**Conséquence sur la façon de travailler :** pour voir tourner du code, trois
+voies seulement — fusionner dans `main` (c'est-à-dire en production),
+construire un **APK** (`apk.yml`, déclenchable à la main, artefact
+`julaba-apk-<sha7>`), ou activer les previews de PR au tableau de bord Render.
+
+### Les bases
+
+Il n'existe **aucune base de preview ni de staging** : aucune migration ne
+peut être jouée hors production sur un hôte. Les seuls bacs à sable sont
+**locaux ou en CI** : le Postgres jetable des invariants
+(`scripts/pg-test-local.sh start`, port 55432, base `julaba_test`, recréée à
+chaque passe, avec un garde `assertBaseDeTest()` qui refuse toute base dont le
+nom ne contient pas `test`).
+
+> ⚠️ **Contradiction non résolue, et elle compte** : `render.yaml` déclare
+> `julaba-db` chez Render, mais `docs/etape4/BASCULE-EXECUTEE-2026-08-15.md`
+> affirme que les `DB_*` sont **surchargés au tableau de bord vers Supabase**.
+> Les documents postérieurs (ADR-0004, `.ai/PROJECT_CONTEXT.md`) disent Render.
+> **Seul le tableau de bord Render tranchera** (`julaba-api` → *Environment* →
+> `DB_HOST`). La version de Postgres est elle aussi contradictoire : 16 selon
+> l'ADR, 18 selon `reinitialiser-db.yml`.
+
+---
+
+## 7. Ce qui reste à trancher sur la structure
 
 - **`spike/oss-02-vad/`** — expérience **rejetée**, 24 fichiers. À supprimer ?
 - **`infra/odoo-poc/`** — la voie Odoo est en suspens. À garder ?
