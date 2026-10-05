@@ -206,9 +206,21 @@ export class StocksRestController {
     };
     if (key) {
       const applied = await this.repo.manager.transaction(async (manager) => {
+        // IDEM-02, 05/10/2026 — LE CONFLIT SE JUGE PAR MARCHANDE.
+        //
+        // `ON CONFLICT (idempotency_key)` portait sur la clé SEULE. Si elle
+        // appartenait à une autre marchande, rien n'était inséré, `execute`
+        // n'était pas appelé — et la route répondait quand même
+        // `{ success: true, replayed: true }`. Sa correction de stock
+        // disparaissait en silence, et l'écart n'apparaissait qu'à
+        // l'inventaire.
+        //
+        // Un rejeu, c'est LA MÊME marchande qui refait LA MÊME opération. La
+        // clé d'une autre n'est pas un rejeu : c'est une autre opération, et
+        // elle doit s'exécuter.
         const inserted = await manager.query(
           `INSERT INTO stock_operation_idempotency (idempotency_key, stock_id, marchand_id)
-           VALUES ($1, $2, $3) ON CONFLICT (idempotency_key) DO NOTHING
+           VALUES ($1, $2, $3) ON CONFLICT (marchand_id, idempotency_key) DO NOTHING
            RETURNING idempotency_key`,
           [key, id, user.id],
         );
