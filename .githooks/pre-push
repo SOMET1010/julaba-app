@@ -1,0 +1,33 @@
+#!/usr/bin/env sh
+#
+# Le script « check » passe avant chaque push — cadre de travail, 05/10/2026.
+#
+# PAS DE HUSKY, ET C'EST UN CHOIX. La règle de la maison est « aucun nouveau
+# framework ni harnais sans démonstration préalable d'un gain ». Un hook git
+# natif fait exactement le même travail, sans dépendance, sans étape
+# d'installation au `npm install`, et reste lisible par qui ne connaît pas
+# l'outil.
+#
+# Pour l'activer (une fois par clone) :   npm run hooks:install
+# Pour passer outre en cas d'urgence :    git push --no-verify
+#
+# `--no-verify` existe et c'est volontaire : un garde-fou qu'on ne peut pas
+# contourner finit par être désactivé pour de bon. Mieux vaut un contournement
+# visible et exceptionnel.
+set -e
+
+echo "▶ check avant push…"
+if npm run --silent check; then
+  echo "✅ check passé — push autorisé"
+  exit 0
+fi
+
+cat <<'MSG'
+
+✗ Le script « check » a échoué : le push est arrêté.
+
+  Corrige, ou relance avec --no-verify si tu sais pourquoi tu passes outre.
+  Détail des catégories : npm run check
+
+MSG
+exit 1
