@@ -5,6 +5,8 @@
 import { apiRequest as _apiRequest } from './api-client';
 import { API_URL } from '../../utils/api';
 import type { LigneDeVente, ProduitServeur, SessionCaisseServeur, CreditServeur } from '../../types/vente';
+import { noterLectureHistorique } from '../lectureHistorique';
+import { noterLectureSessionCaisse } from '../lectureSessionCaisse';
 
 function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   return _apiRequest<T>(API_URL, endpoint, options);
@@ -54,7 +56,32 @@ export interface EnregistrerVenteData {
 
 export interface EnregistrerDepenseData {
   montant: number;
-  notes?: string;
+  /** LE MOTIF DE LA DÉPENSE — « transport marché », « taxe mairie ».
+   *
+   *  Ce champ s'appelait `notes`, et c'était tout le défaut (DEP-01) : le
+   *  serveur lisait `description`, la colonne et l'entité s'appellent
+   *  `description`, et le téléphone envoyait `notes`. Le motif tombait dans le
+   *  vide, silencieusement — à la saisie comme au rejeu hors ligne. Une
+   *  dépense sans motif n'est plus une dépense, c'est un trou dans la caisse
+   *  du soir.
+   *
+   *  `description` est le nom CANONIQUE, et il n'y en a plus qu'un ici. Le
+   *  serveur accepte encore `notes` en TRANSITION, pour ne pas perdre les
+   *  files hors ligne déjà posées sur les téléphones installés ; ce n'est pas
+   *  une forme à réintroduire. */
+  description?: string;
+  /**
+   * LA CATÉGORIE TOUCHÉE — DEP-02.
+   *
+   * L'identifiant, pas le libellé : `'taxe_mairie'`, jamais « Taxe mairie ».
+   * Le libellé est du texte affichable, il change avec la langue et il ne
+   * distingue rien ; l'identifiant est le CHOIX de la marchande.
+   *
+   * Absent = elle n'en a pas donné. Le serveur écrit alors `null`, et l'écran
+   * dit « Catégorie pas notée ». Surtout pas un repli sur « autre », qui est
+   * l'une des onze réponses possibles.
+   */
+  categorie?: import('../categorieDepense').IdCategorieDepense;
   /** Clé d'idempotence : le backend ne compte pas deux fois la même dépense. */
   idempotency_key?: string;
 }
@@ -83,15 +110,29 @@ export async function fetchCaisseTransactions(): Promise<{ transactions: CaisseT
   // On pagine donc jusqu'au bout. Le plafond de 50 pages n'est pas une limite
   // de confort : c'est un garde-fou contre une boucle infinie si le serveur
   // cessait de décroître. Il couvre 50 000 transactions.
+  //
+  // ON NOTE SI LE SERVEUR A RÉPONDU — HIST-01, et rien d'autre ne change ici.
+  // `AppContext.reloadTransactions` avale l'échec de cet appel ; l'écran
+  // « Mes ventes » présentait donc une absence de réponse comme une réponse
+  // (« Pas encore de ventes enregistrées », 0 FCFA, 0 bénéfice) alors que
+  // Patrick avait vendu. Le seul endroit qui SAIT est ici. On observe, on
+  // RELANCE l'erreur telle quelle : aucun appelant ne voit une différence, le
+  // nombre de pages, l'ordre et le contenu rendus sont ceux d'avant.
   const toutes: CaisseTransaction[] = [];
-  for (let page = 1; page <= PAGES_MAX; page++) {
-    const data = await apiRequest<{ transactions?: CaisseTransaction[] } | CaisseTransaction[]>(`/caisse/transactions?limit=${PAR_PAGE}&page=${page}`);
-    const lot: CaisseTransaction[] = Array.isArray(data) ? data : (data.transactions || []);
-    toutes.push(...lot);
-    // Page incomplète = dernière page. C'est le seul signal fiable quel que
-    // soit le format de réponse (tableau nu ou objet paginé).
-    if (lot.length < PAR_PAGE) break;
+  try {
+    for (let page = 1; page <= PAGES_MAX; page++) {
+      const data = await apiRequest<{ transactions?: CaisseTransaction[] } | CaisseTransaction[]>(`/caisse/transactions?limit=${PAR_PAGE}&page=${page}`);
+      const lot: CaisseTransaction[] = Array.isArray(data) ? data : (data.transactions || []);
+      toutes.push(...lot);
+      // Page incomplète = dernière page. C'est le seul signal fiable quel que
+      // soit le format de réponse (tableau nu ou objet paginé).
+      if (lot.length < PAR_PAGE) break;
+    }
+  } catch (e) {
+    noterLectureHistorique('echec');
+    throw e;
   }
+  noterLectureHistorique('lu'); // même si `toutes` est vide : zéro EST une réponse.
   return { transactions: toutes };
 }
 
@@ -345,7 +386,28 @@ export async function supprimerProduitCaisse(id: string): Promise<unknown> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function fetchSessionDuJour(date: string): Promise<{ session: SessionCaisseServeur | null }> {
-  return apiRequest<{ session: SessionCaisseServeur | null }>(`/caisse/session/${date}`);
+  // ON NOTE SI LE SERVEUR A RÉPONDU — ACC-03, et rien d'autre ne change ici.
+  //
+  // `AppContext:519` appelle ceci avec `.catch(() => null)` : vu d'en haut,
+  // « la journée n'est pas ouverte » et « le serveur n'a pas répondu » rendent
+  // tous les deux `null`. Le fond initial manque alors au calcul de la caisse,
+  // qui rend 0 — et l'accueil annonçait ce zéro à voix haute (terrain 03/10,
+  // « Ta caisse aujourd'hui : zéro franc » pour 100 F réels).
+  //
+  // Le seul endroit qui SAIT est ici. On observe, on RELANCE l'erreur telle
+  // quelle : aucun appelant ne voit une différence.
+  //
+  // UNE SESSION ABSENTE EST UNE RÉPONSE : `{ session: null }` vaut `lu`. Elle
+  // n'a pas ouvert sa journée, c'est un fait, pas une ignorance.
+  noterLectureSessionCaisse('chargement');
+  try {
+    const r = await apiRequest<{ session: SessionCaisseServeur | null }>(`/caisse/session/${date}`);
+    noterLectureSessionCaisse('lu');
+    return r;
+  } catch (e) {
+    noterLectureSessionCaisse('echec');
+    throw e;
+  }
 }
 
 export async function ouvrirSession(fondInitial: number, notes?: string): Promise<{ session: SessionCaisseServeur; fond_conserve?: boolean }> {

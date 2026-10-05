@@ -3,8 +3,9 @@
  * Vérifie que les phrases §6 collent EXACTEMENT à la spec, selon l'état de la ligne.
  */
 import {
+  confirmationDeuxFormes, ambiguiteDeuxFormes,
   resumeQuantite, resumeLigne, phraseConfirmation, phraseCorrectionRecue,
-  phraseAmbiguite, phrasePrixManquant, phraseQuantiteManquante,
+  phraseAmbiguite, phrasePrixManquant, phraseQuantiteManquante, phraseCompris,
 } from "./dialoguesTata.js";
 import { creerLigneProvisoire } from "./ligneProvisoire.js";
 
@@ -48,6 +49,44 @@ eq(resumeQuantite(sacs), "3 sacs de riz", "avec unité + pluriel → unité au p
 eq(resumeQuantite(uni), "3 tas de tomate", "« tas » invariable (finit par s) → « 3 tas de tomate »");
 const kg = creerLigneProvisoire({ nomParle: 'riz', quantite: 2, montant: 500, prixExplicite: 'unitaire', unite: 'kg' }, { produitId: 'p', nomCatalogue: 'Riz local' }, O);
 eq(resumeQuantite(kg), "2 kg de Riz local", "abréviation « kg » invariable → « 2 kg », pas « kgs »");
+
+
+// ── CE QU'ELLE ENTEND N'EST PAS CE QU'ON AFFICHE ──────────────────────────
+//
+// Terrain du 24/09, Patrick : « dans la vente aussi il dit 2 zéro zéro francs ».
+//
+// MESURÉ. `t(...)` rend la forme ÉCRAN (`resoudreMessage(...).texte`) — avec
+// son espace fine insécable, que la synthèse épelle. `tParle(...)` rend la
+// forme DITE. Le module des phrases de Tantie comptait 19 appels à `t` et
+// ZÉRO à `tParle`, dont six portant un montant.
+//
+// MAIS ON NE BASCULE PAS TOUT : `ConfirmationLigne` AFFICHE la phrase autant
+// qu'il la dit, et revendique « impossible de diverger ». Mettre « deux mille
+// francs » à l'écran remplacerait un défaut par un autre. La réponse du dépôt
+// existe déjà — `relectureDeuxFormes` : DEUX formes issues du MÊME appel.
+console.log("\n[argent] la phrase dite porte le montant en toutes lettres");
+{
+  const ok = (c: boolean, label: string) => {
+    if (c) console.log("  ✅", label);
+    else { console.log("  ❌", label); failures++; }
+  };
+  // Ce qui n'est QUE dit : la forme parlée, directement.
+  const dit = phraseCompris({ nom: 'piment', quantite: 2, total: 2000, unite: 'tas' });
+  ok(/deux mille/.test(dit), "« j'ai compris » dit « deux mille », pas « 2 000 »");
+  ok(!/2\u202f000|2\u00a0000/.test(dit), 'et plus aucune espace fine ne part au moteur');
+
+  // Ce qui est AFFICHÉ et dit : les deux formes, du même appel.
+  const l = creerLigneProvisoire(
+    { nomParle: 'piment', quantite: 2, montant: 2000, prixExplicite: 'total', unite: 'tas' },
+    { produitId: 'p', nomCatalogue: 'Piment' }, O);
+  const c = confirmationDeuxFormes(l);
+  ok(/2\u202f000|2\u00a0000|2 000/.test(c.texte), "à l'ŒIL : « 2 000 » reste lisible");
+  ok(/deux mille/.test(c.texteParle), "à l'OREILLE : « deux mille »");
+  ok(c.texte !== c.texteParle, 'les deux formes sont bien distinctes');
+
+  const a = ambiguiteDeuxFormes(2, 1000);
+  ok(/mille/.test(a.texteParle), "l'ambiguïté se dit aussi en toutes lettres");
+}
 
 if (failures > 0) { console.log(`\n${failures} test(s) en échec.`); process.exit(1); }
 console.log("\nTous les tests dialoguesTata sont verts ✅");

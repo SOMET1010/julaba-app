@@ -1,0 +1,121 @@
+
+── Écran 1 — Entrée — Akwaba (premier écran du téléphone)
+
+── Écran 2 — Entrée — Tantie Nanti Lou se présente
+
+── Écran 3 — Entrée — Ton numéro (connexion)
+
+── Écran 4 — Accueil marchand — le comptoir
+
+── Écran 5 — Caisse — la surface de vente
+
+╔══════════════════════════════════════════════════════════════════════════════════════╗
+║  BANC TERRAIN — parcours de la marchande, catalogue VIDE, sans réseau, 390 × 844      ║
+╚══════════════════════════════════════════════════════════════════════════════════════╝
+
+  Seuil de charte : part de jetons --caisse-* ≥ 0.5 ET au moins un jeton.
+  Clips « prototype » : éteints (comme un build livré)
+  Éléments touchés par écran : 24 dans le tronc, 12 dans la couronne.
+  Catalogue : aucune lecture n'aboutit (marché sans réseau)
+
+
+  LE CHEMIN — ce qu’elle traverse, dans l’ordre, pour vendre
+  Écran                             Charte                  Voix                              Ne mène nulle part
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  1. Entrée — Akwaba (premier écr…  0 jet / 0 dur (0 %)     1 au montage, 2/2 au geste        0/2
+  2. Entrée — Tantie Nanti Lou se…  0 jet / 1 dur (0 %)     1 au montage, 3/3 au geste        0/3
+  3. Entrée — Ton numéro (connexi…  0 jet / 46 dur (0 %)    1 au montage, 1/14 au geste       0/14
+  4. Accueil marchand — le compto…  17 jet / 3 dur (85 %)   1 au montage, 5/15 au geste       0/15
+  5. Caisse — la surface de vente   501 jet / 0 dur (100 …  1 au montage, 3/10 au geste       0/10
+
+  ── Ce que le banc a vu, écran par écran ──────────────────────────────────────────
+
+  ÉCRAN 1 — Entrée — Akwaba (premier écran du téléphone)   (/)
+     capture   : /home/user/julaba-app/docs/parcours/captures/parcours-1-5/1-entree-akwaba.png
+     charte    : hors charte (aucun jeton — feuille tierce) — 0 jetons --caisse-*, 0 couleurs en dur
+                 src/app/components/auth/Welcome.tsx : 0 jet / 0 dur
+     voix      : 1 demande(s) au montage ; 2 élément(s) sur 2 parlent sous le doigt.
+                 « Écouter Tantie Nanti Lou » → 1 demande(s)
+                 « Écouter et entrer » → 1 demande(s)
+     à l'œil   : largeur de défilement 390 px (écran 390)
+     touchable : 2 élément(s) visibles
+     impasses  : aucune
+     zéro      : rien à reprocher — l'écran n'affirme aucun vide chiffré.
+     passage   : « Écouter et entrer » ouvre l'écran suivant
+     erreur    : [console] Failed to load resource: net::ERR_FAILED
+
+  ÉCRAN 2 — Entrée — Tantie Nanti Lou se présente   (/)
+     capture   : /home/user/julaba-app/docs/parcours/captures/parcours-1-5/2-entree-presentation.png
+     charte    : hors charte (zéro jeton) — 0 jetons --caisse-*, 1 couleurs en dur
+                 src/app/components/auth/OnboardingSlides.tsx : 0 jet / 1 dur
+     voix      : 1 demande(s) au montage ; 3 élément(s) sur 3 parlent sous le doigt.
+                 « Réécouter Tantie Nanti Lou » → 1 demande(s)
+                 « Continuer » → 2 demande(s)
+                 « Ton guide dans le marché Moi, c'est Tantie Nanti » → 2 demande(s)
+     à l'œil   : largeur de défilement 390 px (écran 390)
+     touchable : 3 élément(s) visibles
+     impasses  : aucune
+     zéro      : rien à reprocher — l'écran n'affirme aucun vide chiffré.
+     passage   : « Continuer » ouvre l'écran suivant
+
+  ÉCRAN 3 — Entrée — Ton numéro (connexion)   (/)
+     capture   : /home/user/julaba-app/docs/parcours/captures/parcours-1-5/3-entree-numero.png
+     charte    : hors charte (zéro jeton) — 0 jetons --caisse-*, 46 couleurs en dur
+                 src/app/components/auth/LoginPassword.tsx : 0 jet / 46 dur
+     voix      : 1 demande(s) au montage ; 1 élément(s) sur 14 parlent sous le doigt.
+                 « Écouter Tantie Nanti Lou » → 1 demande(s)
+     à l'œil   : largeur de défilement 390 px (écran 390)
+     touchable : 14 élément(s) visibles
+     impasses  : aucune
+     (touchés en insistant, l'animation n'était pas posée : Connexion par empreinte | C’est mon numéro)
+     à vérifier: 1 élément(s) ne changent QUE le DOM (aucun mot, aucune adresse, aucune voix) :
+                 · « Effacer le dernier chiffre »
+     zéro      : rien à reprocher — l'écran n'affirme aucun vide chiffré.
+     passage   : AUCUN élément touché n'ouvre l'écran suivant
+
+  ÉCRAN 4 — Accueil marchand — le comptoir   (/marchand)
+     capture   : /home/user/julaba-app/docs/parcours/captures/parcours-1-5/4-accueil-marchand.png
+     charte    : dans la charte — 17 jetons --caisse-*, 3 couleurs en dur
+                 src/app/components/marchand/MarchandHome.tsx : 0 jet / 0 dur
+                 src/app/components/marchand/MarchandAccueilVoice.tsx : 17 jet / 0 dur
+                 src/app/components/layout/AppLayout.tsx : 0 jet / 3 dur
+     voix      : 1 demande(s) au montage ; 5 élément(s) sur 15 parlent sous le doigt.
+                 « Écouter le message de bienvenue » → 1 demande(s) [ACCUEIL_COMPTOIR]
+                 « Écouter Tata dire bonjour » → 1 demande(s) [ACCUEIL_COMPTOIR]
+                 « Écouter ma caisse » → 1 demande(s) [ACCUEIL_CAISSE_ILLISIBLE]
+                 « Vendre » → 1 demande(s) [TATA_QUE_VENDRE]
+                 « Mes ventes » → 1 demande(s) [TATA_VENTES_PAS_LUES]
+     à l'œil   : largeur de défilement 390 px (écran 390)
+     touchable : 15 élément(s) visibles
+     impasses  : aucune
+     à vérifier: 1 élément(s) ne changent QUE le DOM (aucun mot, aucune adresse, aucune voix) :
+                 · « Accueil »
+     zéro      : rien à reprocher — l'écran n'affirme aucun vide chiffré.
+     passage   : « Vendre » ouvre l'écran suivant
+     erreur    : [console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)
+    at http://127.0.0.1:5197/src/app/services/api/api-client.ts:122:11
+    at async loadNotifications (http://127.0.0.1:5197/src/a
+
+  ÉCRAN 5 — Caisse — la surface de vente   (/marchand/caisse)
+     capture   : /home/user/julaba-app/docs/parcours/captures/parcours-1-5/5-caisse.png
+     charte    : dans la charte — 501 jetons --caisse-*, 0 couleurs en dur
+                 src/app/components/marchand/POSCaisse.tsx : 395 jet / 0 dur
+                 src/app/components/marchand/MicroVenteCaisse.tsx : 94 jet / 0 dur
+                 src/app/components/marchand/ChoixUnite.tsx : 12 jet / 0 dur
+     voix      : 1 demande(s) au montage ; 3 élément(s) sur 10 parlent sous le doigt.
+                 « Réécouter la question » → 1 demande(s)
+                 « Choisir la vente à l’écran » → 1 demande(s)
+                 « Accueil » → 1 demande(s) [ACCUEIL_CAISSE_ILLISIBLE]
+     à l'œil   : largeur de défilement 390 px (écran 390)
+     touchable : 10 élément(s) visibles
+     impasses  : aucune
+     zéro      : rien à reprocher — l'écran n'affirme aucun vide chiffré.
+     erreur    : [console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)
+    at http://127.0.0.1:5197/src/app/services/api/api-client.ts:122:11
+    at async loadNotifications (http://127.0.0.1:5197/src/a
+
+  Rapport complet : /home/user/julaba-app/docs/parcours/captures/parcours-1-5/banc-terrain-partiel-1-2-3-4-5.json
+  Requêtes sorties de la machine : 0 (16 bloquées — l'écran est jugé hors réseau).
+
+  ✗ Le parcours n'est PAS praticable en l'état — voir ci-dessus.
+

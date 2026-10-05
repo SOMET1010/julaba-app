@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router';
 import { useNotifications, JulabaNotification, NotifType } from '../../contexts/NotificationsContext';
 import { useApp } from '../../contexts/AppContext';
+import { useAlertesVivantes } from '../../hooks/useAlertesVivantes';
 import {
   CreditCard, ShoppingCart, Package, CheckCircle,
   AlertTriangle, Users, FileText, Zap, Star, Shield,
@@ -378,7 +379,13 @@ interface NotificationToastContainerProps {
 }
 
 export function NotificationToastContainer({ accentColor = '#B74725', userRole = 'marchand' }: NotificationToastContainerProps) {
-  const { notifications } = useNotifications();
+  // LES ALERTES DE STOCK SONT RELUES AU STOCK D'AUJOURD'HUI — 25/09/2026.
+  // Agent de test : « Stock bas pour gombo : il te reste 1 tas » affiché alors
+  // qu'il y en avait 24, et la notification revenait sur chaque écran. Le
+  // serveur fige son texte à la création ; ce hook le reconstruit sur l'étal
+  // actuel, et retire l'alerte quand le stock est remonté.
+  const { notifications: notificationsBrutes } = useNotifications();
+  const notifications = useAlertesVivantes(notificationsBrutes);
   const { user } = useApp();
   const [visible, setVisible] = useState<JulabaNotification[]>([]);
   const [detailNotif, setDetailNotif] = useState<JulabaNotification | null>(null);

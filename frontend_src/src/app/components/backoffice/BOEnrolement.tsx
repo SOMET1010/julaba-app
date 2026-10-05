@@ -30,6 +30,7 @@ import {
   boGetAdminsEnAttente,
   boRejectAdmin,
   boValidateAdmin,
+  texteRemiseSms,
   type AdminEnAttente,
 } from '../../services/backoffice-api';
 import {
@@ -756,9 +757,12 @@ export function BOEnrolement() {
     if (!selectedAdmin || processingAdminId) return;
     setProcessingAdminId(selectedAdmin.id);
     try {
-      await boValidateAdmin(selectedAdmin.id);
+      const res = await boValidateAdmin(selectedAdmin.id);
       if (!isMountedRef.current) return;
-      toast.success(`Compte administrateur validé pour ${formatAdminName(selectedAdmin)}`);
+      // BO-1 / SEC-10 : le mot de passe part par SMS, jamais à l'écran.
+      const remise = texteRemiseSms(res);
+      if (remise.ok) toast.success(`Compte administrateur validé pour ${formatAdminName(selectedAdmin)}. ${remise.texte}`);
+      else toast.error(`Compte administrateur validé pour ${formatAdminName(selectedAdmin)}, mais : ${remise.texte}`, { duration: 15000 });
       setShowValidateModal(false);
       setSelectedAdmin(null);
       await loadAdminsPending();

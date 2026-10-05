@@ -113,6 +113,18 @@ export class FeedbakSmsService {
     return this.send(phone, message, 'PIN_IDENTIFICATEUR_RESET');
   }
 
+  // BO-1 / SEC-10 : SEUL exemplaire du mot de passe d'un compte back-office
+  // (création, validation, réinitialisation). Même discipline que le PIN : le
+  // corps n'est jamais journalisé (`send` ne trace que l'événement), et le
+  // retour booléen devient `SMS_NON_DELIVRE` chez l'appelant. Le message tient
+  // sous 160 caractères : `SmsService` tronque au-delà.
+  async notifyMotDePasseBo(phone: string, motDePasse: string, motif: 'creation' | 'reinitialisation'): Promise<boolean> {
+    const message = motif === 'creation'
+      ? `Julaba back-office : votre compte est cree. Mot de passe provisoire : ${motDePasse} . A changer a la 1re connexion. Ne le donnez a personne.`
+      : `Julaba back-office : mot de passe reinitialise. Nouveau mot de passe : ${motDePasse} . L'ancien ne marche plus. Ne le donnez a personne.`;
+    return this.send(phone, message, motif === 'creation' ? 'MDP_BO_CREE' : 'MDP_BO_REINITIALISE');
+  }
+
   async notifyPinChanged(phone: string, prenom: string): Promise<void> {
     // Aucun secret ici, mais elle était bloquée de la même façon :
     // l'identificateur n'était jamais averti qu'on avait changé son code —

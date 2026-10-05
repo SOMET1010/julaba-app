@@ -63,9 +63,17 @@ verifier(
   'la ligne est la seule à savoir qui l’a créée ; la vente en hérite.',
 );
 
+// P0.1 (27/09) — la règle de fusion a déménagé de `CaisseContext` vers
+// `services/panierLignes.ts`, module pur. Cette assertion lisait la forme du
+// code dans le contexte ; elle vérifie maintenant la même garantie là où la
+// règle vit. Comportement mesuré inchangé : une ligne dictée puis complétée au
+// doigt garde bien `origine: 'vocal'`.
+const panierLignes = readFileSync(
+  new URL('../src/app/services/panierLignes.ts', import.meta.url), 'utf8');
+
 verifier(
   'l’origine SURVIT à la fusion de deux lignes',
-  /\.\.\.\(origine \? \{ origine \} : \{\}\)/.test(contexte),
+  /origine === 'vocal' \|\| l\.origine === 'vocal'/.test(panierLignes),
   'un panier dicté puis complété au doigt reste un panier où la voix a servi.',
 );
 

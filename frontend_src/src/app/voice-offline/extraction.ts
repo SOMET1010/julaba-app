@@ -16,13 +16,29 @@ export interface ExtractionResult {
    *  Ce champ n'est pas utilisé pour apparier : il sert à savoir si l'on PEUT
    *  reprendre le prix du catalogue sans rien inventer. */
   uniteParlee: string | null;
+  /** CE QUE LE MONTANT VEUT DIRE — « à » ou « pour », et ce n'est pas la même
+   *  vente (21/09/2026, décision de Patrick).
+   *
+   *  « Trois tas de tomates À 500 » = 500 LE TAS → 1 500 F.
+   *  « Trois tas de tomates POUR 500 » = 500 LE LOT → 500 F.
+   *  Un triple d'écart, et le parseur connaissait DÉJÀ la différence : `à` et
+   *  `pour` sont tous deux dans `MARQUEURS_AVANT`, où ils servaient seulement
+   *  à reconnaître un montant, après quoi on oubliait lequel des deux avait
+   *  été prononcé. C'est cet oubli qui obligeait l'aval à DEVINER.
+   *
+   *  `null` = la phrase ne tranche pas. On ne devine alors rien ici : c'est
+   *  `resoudrePrix` qui essaie avec le catalogue, et à défaut on DEMANDE. */
+  lecturePrix: 'unitaire' | 'total' | null;
 }
 
 // ──────────────────────────────────────────────
 // Parseur de nombres en lettres françaises
 // ──────────────────────────────────────────────
 
-const UNITES: Record<string, number> = {
+// Tables EXPORTÉES pour le lexique i18n (i18n/voice/locales/fr-ci/lexicon.ts) :
+// une seule source, jamais recopiée. Le parseur ci-dessous reste le seul à
+// les interpréter.
+export const UNITES: Record<string, number> = {
   zéro: 0, zero: 0,
   un: 1, une: 1,
   deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9,
@@ -36,7 +52,7 @@ const UNITES: Record<string, number> = {
   'soixante-et-onze': 71,
 };
 
-const DIZAINES: Record<string, number> = {
+export const DIZAINES: Record<string, number> = {
   vingt: 20, trente: 30, quarante: 40, cinquante: 50, soixante: 60,
   'soixante-dix': 70,
   'soixante-onze': 71, 'soixante-douze': 72, 'soixante-treize': 73,
@@ -126,11 +142,59 @@ function extractNumberTokens(words: string[]): NumberToken[] {
 // ──────────────────────────────────────────────
 
 // Marqueurs AVANT le nombre → montant (« à 2000 », « pour 1000 »)
-const MARQUEURS_AVANT = new Set(['à', 'a', 'pour']);
+export const MARQUEURS_AVANT = new Set(['à', 'a', 'pour']);
+// Lequel des deux, et ce que ça VEUT DIRE (voir ExtractionResult.lecturePrix) :
+// « à » attache le montant à l'unité, « pour » au lot entier.
+export const MARQUEURS_UNITAIRE = new Set(['à', 'a']);
+export const MARQUEURS_TOTAL = new Set(['pour']);
+
+/**
+ * ARG-12 — « À » NE TRANCHE RIEN, ET LE PRENDRE POUR UNE DÉCISION ÉTAIT DÉJÀ
+ * DEVINER.
+ *
+ * Le testeur du 23/09 : « 2 tas de piments à 1000 → il applique le prix
+ * unitaire de 1000. À corriger. » Au marché, selon les habitudes, ce même
+ * « à 1000 » veut dire 1 000 le tas OU 1 000 pour les deux. Trancher d'un
+ * côté fait perdre de l'argent de l'autre : « 5 tas de gombos à 1500 »
+ * posait 7 500 F au panier alors qu'elle pouvait vouloir dire 1 500.
+ *
+ * ARBITRAGE DE PATRICK : quand la quantité est multiple et qu'aucun mot ne
+ * tranche, ON DEMANDE. Et seulement là — « l'ambiguïté n'est levée que
+ * lorsqu'elle existe vraiment ». Une question de trop sur chaque vente ferait
+ * abandonner l'outil aussi sûrement qu'un faux prix.
+ *
+ * CES MOTS-LÀ TRANCHENT VRAIMENT, eux. Ils nomment explicitement l'unité ou
+ * l'ensemble ; il n'y a plus rien à demander.
+ */
+export const DIT_EXPLICITEMENT_UNITE = /\b(chacun|chacune|chaque|le unit[ée]|l'unit[ée]|la pi[èe]ce|le kilo|le kg|le tas|le sac|le panier|la botte|le r[ée]gime|le litre|le sachet|la bassine)(?![a-zàâçéèêëîïôûùüÿñ])/i;
+export const DIT_EXPLICITEMENT_LOT = /\b(le tout|en tout|les deux|les trois|les quatre|les cinq|les six|l(es)? ensemble)(?![a-zàâçéèêëîïôûùüÿñ])/i;
+/**
+ * LA NÉGOCIATION PORTE SUR LE LOT — toujours. « Je te fais 1 300 » sur trois
+ * tas, c'est 1 300 pour les trois : personne ne négocie à la hausse. Ces
+ * tournures priment donc sur « à », parce qu'on dit « je te fais les trois
+ * tas À 1 300 » sans que ce 1 300 devienne un prix unitaire.
+ *
+ * Volontairement étroit : des tournures qui désignent explicitement
+ * l'ENSEMBLE ou le geste commercial, jamais un mot isolé qui pourrait
+ * apparaître ailleurs.
+ *
+ * DEUX ABSENTES, ET CE N'EST PAS UN OUBLI. « Je te LAISSE 1 300 » et « AU
+ * TOTAL 1 300 » sont bien des négociations en français de marché, mais la
+ * grammaire d'encaissement les prend AVANT nous, et à raison : « laisse » y
+ * vaut abandon (le doute profite au refus) et « total » y vaut « combien elle
+ * doit ». Les mettre ici ne les rattraperait pas — la phrase n'arrive jamais
+ * jusqu'à l'extraction — et laisserait croire qu'on les gère. Les réconcilier
+ * demanderait de toucher cette grammaire-là, ce qui n'est pas ce lot.
+ */
+export const TOURNURES_TOTAL: string[] = [
+  'je te fais', 'je te le fais', 'je te la fais', 'je te les fais',
+  'je te mets', 'le tout', 'tout ca', 'tout ça', 'en tout',
+  'dernier prix', 'prix final',
+];
 // Marqueurs APRÈS le nombre → montant (« 2000 francs »)
-const MARQUEURS_APRES = new Set(['francs', 'franc']);
+export const MARQUEURS_APRES = new Set(['francs', 'franc']);
 // Mots intermédiaires tolérés entre le nombre et le produit (pour la quantité)
-const MOTS_UNITE = new Set([
+export const MOTS_UNITE = new Set([
   'tas', 'sac', 'sacs', 'kilo', 'kilos', 'kilogramme', 'kilogrammes',
   'bidon', 'bidons', 'botte', 'bottes', 'sachet', 'sachets', 'boite', 'boites',
   'paquet', 'paquets', 'morceau', 'morceaux', 'litre', 'litres', 'régime', 'regime', 'regimes', 'régimes',
@@ -145,7 +209,28 @@ const MOTS_UNITE = new Set([
 function normalise(text: string): string {
   return text
     .toLowerCase()
-    .replace(/['']/g, "'")
+    // L'APOSTROPHE DU TÉLÉPHONE — F4NT, 01/10/2026, et c'est la cause d'un
+    // « je n'ai pas compris » sur une phrase parfaitement transcrite.
+    //
+    // sherpa-onnx rend « un tas d'oignon » avec l'apostrophe TYPOGRAPHIQUE
+    // (U+2019). Cette ligne existait déjà pour ça — et elle ne faisait RIEN :
+    // sa classe de caractères contenait deux fois l'apostrophe DROITE (U+0027),
+    // donc elle remplaçait U+0027 par U+0027. Vérifié dans tout l'historique du
+    // fichier : U+2019 n'y a jamais figuré. Ce n'est pas une régression, c'est
+    // une ligne née vide.
+    //
+    // CE QUE ÇA COÛTAIT, mesuré sur la transcription exacte du rapport :
+    //   « un tas d'oignon » (U+0027) → produit oignon, quantité 1   ✓
+    //   « un tas d'oignon » (U+2019) → produit NUL, et montant = 1  ✗
+    // Le « un » de « un tas », privé de son produit, devenait UN FRANC. Une
+    // information existait, et l'apostrophe la faisait changer de sens — le
+    // motif que ce dépôt traque partout.
+    //
+    // LES CARACTÈRES SONT ÉCRITS EN ÉCHAPPEMENTS, délibérément. Un caractère
+    // littéral peut se perdre (c'est ce qui est arrivé) ; `\u2019` ne peut pas.
+    // U+2018/U+2019 apostrophes typographiques, U+02BC lettre apostrophe,
+    // U+2032 prime — les quatre formes qu'un moteur de dictée peut rendre.
+    .replace(/[\u2018\u2019\u02BC\u2032]/g, "'")
     .replace(/j'ai\b/g, "j' ai")
     .replace(/\bd'/g, 'de ')
     .replace(/\bl'/g, 'le ')
@@ -196,9 +281,17 @@ export function extraire(transcription: string): ExtractionResult {
 
   let uniteParlee: string | null = null;
 
+  // La négociation se lit sur la PHRASE ENTIÈRE, pas sur le voisinage du
+  // nombre : « les trois tas, je te fais 1 300 » a son geste commercial loin
+  // du montant. Sans accent, pour que « ça » et « ca » se valent.
+  const sansAccent = texte.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const negociationDuLot = TOURNURES_TOTAL.some(
+    (tour) => sansAccent.includes(tour.normalize('NFD').replace(/[̀-ͯ]/g, '')),
+  );
+
   // 3. Tokens numériques
   const numTokens = extractNumberTokens(mots);
-  if (numTokens.length === 0) return { intention, produit, quantite: null, montant: null, uniteParlee };
+  if (numTokens.length === 0) return { intention, produit, quantite: null, montant: null, uniteParlee, lecturePrix: null };
 
   // ────────────────────────────────────────────────────────────────────
   // RÈGLES DE PRÉCÉDENCE — immuable, chaque règle s'applique ou non,
@@ -211,6 +304,9 @@ export function extraire(transcription: string): ExtractionResult {
 
   const marqueMontant = new Set<number>(); // index dans numTokens
   const marqueQuantite = new Set<number>();
+  // Le mot qui introduit chaque montant reconnu — c'est lui qui dira si le
+  // chiffre est un prix unitaire ou le prix du lot.
+  const motAvantMontant = new Map<number, string>();
 
   for (let idx = 0; idx < numTokens.length; idx++) {
     const tok = numTokens[idx];
@@ -219,6 +315,7 @@ export function extraire(transcription: string): ExtractionResult {
 
     if ((avant && MARQUEURS_AVANT.has(avant)) || (apres && MARQUEURS_APRES.has(apres))) {
       marqueMontant.add(idx);
+      if (avant && MARQUEURS_AVANT.has(avant)) motAvantMontant.set(idx, avant);
     }
   }
 
@@ -249,13 +346,35 @@ export function extraire(transcription: string): ExtractionResult {
   // Étape C : résoudre à partir des marques
   let montant: number | null = null;
   let quantite: number | null = null;
+  let lecturePrix: 'unitaire' | 'total' | null = null;
+  let aDitA = false;
 
   if (marqueMontant.size > 0) {
-    montant = numTokens[Math.max(...marqueMontant)].value; // prend le dernier marqué montant
+    const idxMontant = Math.max(...marqueMontant);
+    montant = numTokens[idxMontant].value; // prend le dernier marqué montant
+    // C'EST SON MOT QUI TRANCHE, pas notre devinette. « à » → prix de l'unité,
+    // « pour » → prix du lot. « 2000 francs » sans préposition ne dit rien :
+    // on laisse `null`, et l'aval demandera plutôt que d'inventer.
+    const intro = motAvantMontant.get(idxMontant);
+    // ARG-12 — L'ORDRE COMPTE. Un mot qui nomme EXPLICITEMENT l'unité ou le
+    // lot prime sur la préposition : « à 1000 chacun » n'a rien d'ambigu,
+    // « les deux tas à 1000 » non plus. On les lit AVANT de regarder « à ».
+    if (DIT_EXPLICITEMENT_LOT.test(texte)) lecturePrix = 'total';
+    else if (DIT_EXPLICITEMENT_UNITE.test(texte)) lecturePrix = 'unitaire';
+    else if (intro && MARQUEURS_TOTAL.has(intro)) lecturePrix = 'total';
+    else if (intro && MARQUEURS_UNITAIRE.has(intro)) {
+      // « À » SEUL NE DIT RIEN QUAND IL Y EN A PLUSIEURS. On retient qu'il a
+      // été prononcé ; la décision attend de connaître la quantité, juste
+      // dessous — sur une seule unité il n'existe aucune autre lecture, et
+      // demander serait une question pour rien.
+      aDitA = true;
+    }
   }
   if (marqueQuantite.size > 0) {
     quantite = numTokens[Math.min(...marqueQuantite)].value;
   }
+
+
 
   // Étape D : tokens non encore assignés → heuristique de dernier recours
   const assignes = new Set([...marqueMontant, ...marqueQuantite]);
@@ -283,7 +402,23 @@ export function extraire(transcription: string): ExtractionResult {
     quantite = null;
   }
 
-  return { intention, produit, quantite, montant, uniteParlee };
+  // La négociation porte sur le lot, et elle prime : « les trois tas, je te
+  // fais 1 300 » reste 1 300 pour les trois, même si un « à » traîne dans la
+  // phrase. Personne ne négocie à la hausse.
+  if (negociationDuLot && montant != null) lecturePrix = 'total';
+
+  // ARG-12 — L'AMBIGUÏTÉ N'EXISTE QU'AU PLURIEL, ET LA QUANTITÉ N'EST SÛRE
+  // QU'ICI. L'heuristique de dernier recours (étape D) peut encore l'assigner
+  // plus haut ; décider avant elle faisait lire « 2 tas à 1000 » comme une
+  // seule unité. « un tas à 1000 » ne peut vouloir dire qu'une chose ;
+  // « 2 tas à 1000 » en veut dire deux. On ne laisse donc `null` — c'est-à-dire
+  // « demande » — que là où la question a un sens. Patrick : « l'ambiguïté
+  // n'est levée que lorsqu'elle existe vraiment ».
+  if (aDitA && lecturePrix === null && (quantite == null || quantite <= 1)) {
+    lecturePrix = 'unitaire';
+  }
+
+  return { intention, produit, quantite, montant, uniteParlee, lecturePrix };
 }
 
 // ──────────────────────────────────────────────

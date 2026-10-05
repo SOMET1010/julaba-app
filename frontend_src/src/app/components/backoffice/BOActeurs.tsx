@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
 import type { Acteur } from '../../services/backoffice-api';
-import { boAdminResetPassword, boGetDuplicates, boGetUserFlags } from '../../services/backoffice-api';
+import { boAdminResetPassword, boGetDuplicates, boGetUserFlags, texteRemiseSms } from '../../services/backoffice-api';
 import { CAN_CREATE_ADMIN, CAN_VIEW_ALERTS, CAN_SIGNAL } from '../../utils/permissions-bo';
 import SignalementModal from './SignalementModal';
 import { BO_PRIMARY } from './bo-theme';
@@ -546,12 +546,14 @@ export function BOActeurs() {
     setConfirmAction({
       open: true,
       title: 'Réinitialiser le mot de passe ?',
-      message: `Un nouveau mot de passe temporaire sera généré pour ${acteurName}.`,
+      message: `Un nouveau mot de passe temporaire sera généré pour ${acteurName} et envoyé par SMS à son téléphone. Il ne sera pas affiché.`,
       severity: 'warning',
       onConfirm: async () => {
         try {
-          await boAdminResetPassword(acteur.id);
-          toast.success('Mot de passe réinitialisé');
+          // BO-1 / SEC-10 : le code part par SMS, jamais à l'écran.
+          const remise = texteRemiseSms(await boAdminResetPassword(acteur.id));
+          if (remise.ok) toast.success(`Mot de passe réinitialisé. ${remise.texte}`);
+          else toast.error(`Mot de passe réinitialisé, mais : ${remise.texte}`, { duration: 15000 });
         } catch (err) {
           toast.error(err instanceof Error ? err.message : 'Erreur lors de la réinitialisation');
         } finally {

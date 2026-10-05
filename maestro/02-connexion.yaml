@@ -8,6 +8,12 @@ appId: com.julaba.app
     timeout: 90000
 - tapOn: "Commencer"
 - extendedWaitUntil:
+    visible: "Moi, c'est Tata Nanti Lou"
+    timeout: 20000
+# L'accueil de Tata est une étape réelle. La flèche possède un libellé accessible,
+# donc le test utilise le même geste qu'une utilisatrice TalkBack.
+- tapOn: "Continuer"
+- extendedWaitUntil:
     visible: "Ton numéro"
     timeout: 20000
 # Le pavé doit être là : une marchande qui ne lit pas tape des chiffres, elle

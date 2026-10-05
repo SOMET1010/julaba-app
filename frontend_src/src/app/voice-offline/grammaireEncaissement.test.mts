@@ -20,6 +20,8 @@
  * Ce test ne dit rien du paiement : reconnaître « oui valide » n'autorise
  * rien, c'est machineEncaissement.test.mts qui prouve la porte.
  */
+import { readFileSync } from 'node:fs';
+import { intentLocal } from './localIntent.js';
 import { detecterEncaissement, INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncaissement } from './grammaireEncaissement.js';
 
 let echecs = 0;
@@ -160,6 +162,48 @@ for (const i of ['encaisser', 'combien_doit', 'oui_valide', 'annuler_validation'
 }
 ok(!estIntentionEncaissement('vendre') && !estIntentionEncaissement('depense') && !estIntentionEncaissement(''),
   'ni « vendre », ni « depense », ni la chaîne vide');
+
+console.log("\n[8] LE MOT QUE L'ÉCRAN DICTE EST CELUI QUE LA MACHINE COMPREND");
+{
+  // Retour terrain du 24/09 : « à la fonctionnalité Encaisser, "Dis Encaisser
+  // pour terminer", on a beaucoup répété Encaisser, il met "Je n'ai pas
+  // compris, redis-moi" ».
+  //
+  // MESURÉ le 24/09, sur le code d'aujourd'hui : NON REPRODUIT. La grammaire
+  // reconnaît toutes les formes, et `intentLocal` les transmet. Le retour porte
+  // sur l'APK `6a3663e` (23/09 19h25), soit DEUX HEURES avant VOX-02 — l'écran
+  // mort après la première vente. Or l'encaissement arrive juste après une
+  // vente : le micro était inerte, elle répétait dans le vide.
+  //
+  // On ne corrige donc rien ici. On FIGE ce qui a été mesuré, pour que ce
+  // chemin ne se casse plus en silence — c'est exactement le défaut STK-05,
+  // où l'écran dictait une phrase que plus rien ne comprenait.
+
+  // 1. Le mot imprimé à l'écran, relu dans le source — pas recopié à la main.
+  const micro = readFileSync(
+    new URL('../components/marchand/MicroVenteCaisse.tsx', import.meta.url), 'utf-8');
+  const dicte = micro.match(/Dis\s*<strong>«\s*([a-zà-ÿ']+)\s*»<\/strong>/i)?.[1];
+  ok(!!dicte, `l'écran dicte bien un mot (${JSON.stringify(dicte)})`);
+
+  // 2. Ce mot EXACT doit être compris. Sinon l'écran donne tort à la marchande.
+  ok(!!dicte && detecterEncaissement(dicte) === 'encaisser',
+     `« ${dicte} » — le mot dicté est compris par la grammaire`);
+  ok(!!dicte && intentLocal(dicte)?.intent === 'encaisser',
+     `« ${dicte} » — et il traverse jusqu'à l'intention, pas seulement la grammaire`);
+
+  // 3. Les formes qu'une marchande emploie vraiment.
+  for (const f of ['encaisser', 'encaisse', 'on encaisse', "c'est bon encaisse",
+                   'ok encaisser', 'oui encaisser', 'encaisser.']) {
+    ok(detecterEncaissement(f) === 'encaisser', `« ${f} » est reconnu`);
+  }
+
+  // 4. ET CE QUI NE DOIT PAS PASSER NE PASSE PAS. Sur l'argent, une porte
+  //    large est pire qu'une porte fermée : « c'est fini » n'est pas un ordre
+  //    d'encaisser tant que le produit n'en a pas décidé ainsi.
+  for (const f of ['termine', "c'est fini", 'bonjour', '']) {
+    ok(detecterEncaissement(f) === null, `« ${f} » n'encaisse PAS`);
+  }
+}
 
 console.log(echecs === 0 ? '\nTous les tests de la grammaire passent.' : `\n${echecs} échec(s).`);
 if (echecs > 0) process.exit(1);

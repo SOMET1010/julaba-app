@@ -10,14 +10,32 @@ import type { LucideIcon } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { guidageVocal } from '../../utils/accessMode';
 
-function formatKPI(n: number): string {
+/**
+ * UN MONTANT NE S'ABRÈGE PAS — 25/09/2026.
+ *
+ * Agent de test : « les cartes arrondissent : 10K pour 10 250, 15K pour
+ * 15 250. » Sur de l'argent, ces 250 francs disparaissent de l'écran de la
+ * marchande. Elle compte ses billets le soir contre un chiffre qui n'est pas
+ * le sien.
+ *
+ * `argent` dit s'il s'agit d'un montant. Quand c'est le cas, on écrit le
+ * nombre en entier — c'est la doctrine de ce dépôt : sur l'argent, la preuve
+ * doit traverser. Un compteur (nombre de ventes, de produits) peut encore
+ * s'abréger : personne ne recompte ses billets avec.
+ */
+function formatKPI(n: number, argent = false): string {
+  if (argent) return n.toLocaleString('fr-FR');
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace('.0','') + 'M';
   if (n >= 10_000)    return Math.round(n / 1_000) + 'K';
   return n.toLocaleString('fr-FR');
 }
 
+/** Ce suffixe désigne-t-il de l'argent ? */
+const estUnMontant = (suffix?: string): boolean =>
+  !!suffix && /^(FCFA|F|XOF|francs?)$/i.test(suffix.trim());
+
 // ─── CountUp ─────────────────────────────────────────────────────────────────
-function AnimatedCounter({ target, duration = 1000 }: { target: number; duration?: number }) {
+function AnimatedCounter({ target, duration = 1000, argent = false }: { target: number; duration?: number; argent?: boolean }) {
   const [count, setCount] = useState(0);
   const startTime = useRef<number | null>(null);
   const rafRef = useRef<number>(0);
@@ -34,7 +52,7 @@ function AnimatedCounter({ target, duration = 1000 }: { target: number; duration
     rafRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(rafRef.current);
   }, [target, duration]);
-  return <>{formatKPI(count || 0)}</>;
+  return <>{formatKPI(count || 0, argent)}</>;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,6 +68,8 @@ export interface UniversalKPIProps {
   label: string;
   value?: string;
   animatedTarget?: number;
+  /** Cache la valeur à l'écran et interdit sa lecture vocale. */
+  masque?: boolean;
   suffix?: string;
   prefix?: string;
   icon: LucideIcon | React.ElementType | any;
@@ -178,7 +198,7 @@ function KPIDetailModal({
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 export function UniversalKPI({
-  label, value, animatedTarget, suffix, prefix,
+  label, value, animatedTarget, masque = false, suffix, prefix,
   icon: Icon, color,
   bgColor, borderColor,
   iconAnimation = 'float',
@@ -197,6 +217,7 @@ export function UniversalKPI({
   // voix dit le nombre COMPLET (« douze mille cinq cents francs »).
   const { speak } = useApp();
   const direKPI = () => {
+    if (masque) return;
     if (!guidageVocal()) return;
     const v = animatedTarget !== undefined ? animatedTarget
       : (typeof value === 'string' && value.trim() !== '' ? value : null);
@@ -212,10 +233,6 @@ export function UniversalKPI({
     onClick?.();
   };
 
-  const displayValue = animatedTarget !== undefined
-    ? animatedTarget
-    : (typeof value === 'string' ? parseFloat(value) || 0 : 0);
-
   return (
     <>
       <motion.button type="button" onClick={handleClick}
@@ -230,8 +247,10 @@ export function UniversalKPI({
           <div style={{ display:'flex', flexWrap:'wrap', alignItems:'baseline', gap:3, flex:1 }}>
             <span style={{ fontSize:22, fontWeight:900, color, lineHeight:1.15, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:'100%' }}>
               {prefix}
-              {animatedTarget !== undefined
-                ? <AnimatedCounter target={animatedTarget} />
+              {masque
+                ? '•••••'
+                : animatedTarget !== undefined
+                ? <AnimatedCounter target={animatedTarget} argent={estUnMontant(suffix)} />
                 : value}
             </span>
             {suffix && <span style={{ fontSize:11, fontWeight:700, color }}>{suffix}</span>}
@@ -257,7 +276,7 @@ export function UniversalKPI({
       <KPIDetailModal
         open={modalOpen} onClose={() => setModalOpen(false)}
         label={label}
-        value={animatedTarget !== undefined ? animatedTarget : (value || 0)}
+        value={masque ? '•••••' : (animatedTarget !== undefined ? animatedTarget : (value || 0))}
         suffix={suffix} color={color} bgColor={bg} borderColor={border}
         explication={explication} formule={formule} details={details}
       />

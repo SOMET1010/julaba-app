@@ -9,9 +9,21 @@ import { DataSource } from 'typeorm';
 
 const PARTNER_TYPES = new Set(['bank', 'microfinance', 'institution']);
 
+// BO-1 (SEC-01 du contre-audit) : une clé partenaire n'est plus JAMAIS
+// relisible. Elle n'est transmise qu'une fois, dans la réponse de création —
+// seul moment où on peut la remettre au partenaire. Liste et modification ne
+// portent qu'un aperçu (préfixe + 4 caractères), inexploitable seul.
+//
+// RESTE OUVERT (hors de ce lot, écrit dans la PR) : la clé est encore STOCKÉE en
+// clair et comparée en clair (`api-key.guard.ts`). Le hachage au repos demande
+// une migration de `api_keys`, table elle-même absente des migrations
+// (SCHEMA-05).
+const APERCU = `left(key, 11) || '…' AS key_apercu`;
+const COLONNES_PUBLIQUES = `id, ${APERCU}, name, partner_type, is_active, rate_limit, usage_count, last_used_at, created_at`;
+
 export interface PartnerApiKeyRow {
   id: string;
-  key: string;
+  key_apercu: string;
   name: string;
   partner_type: string;
   is_active: boolean;
@@ -32,14 +44,15 @@ export class PartnerApiKeysService {
 
   async findAll(): Promise<PartnerApiKeyRow[]> {
     const rows = (await this.ds.query(
-      `SELECT id, key, name, partner_type, is_active, rate_limit, usage_count, last_used_at, created_at
+      `SELECT ${COLONNES_PUBLIQUES}
        FROM api_keys
        ORDER BY created_at DESC`,
     )) as PartnerApiKeyRow[];
     return rows;
   }
 
-  async create(name: string, partnerType: string): Promise<PartnerApiKeyRow> {
+  /** Seule réponse qui porte la clé complète : la création, une fois. */
+  async create(name: string, partnerType: string): Promise<PartnerApiKeyRow & { key: string }> {
     const trimmed = name?.trim();
     if (!trimmed) {
       throw new BadRequestException('Le nom du partenaire est requis.');
@@ -54,9 +67,9 @@ export class PartnerApiKeysService {
     const inserted = (await this.ds.query(
       `INSERT INTO api_keys (key, name, partner_type, is_active, rate_limit, usage_count)
        VALUES ($1, $2, $3, true, 1000, 0)
-       RETURNING id, key, name, partner_type, is_active, rate_limit, usage_count, last_used_at, created_at`,
+       RETURNING key, ${COLONNES_PUBLIQUES}`,
       [key, trimmed, pt],
-    )) as PartnerApiKeyRow[];
+    )) as Array<PartnerApiKeyRow & { key: string }>;
     const row = inserted[0];
     if (!row) {
       throw new BadRequestException('Impossible de créer la clé.');
@@ -75,7 +88,7 @@ export class PartnerApiKeysService {
     }
     const updated = (await this.ds.query(
       `UPDATE api_keys SET is_active = $2 WHERE id = $1
-       RETURNING id, key, name, partner_type, is_active, rate_limit, usage_count, last_used_at, created_at`,
+       RETURNING ${COLONNES_PUBLIQUES}`,
       [id, isActive],
     )) as PartnerApiKeyRow[];
     if (!updated[0]) {

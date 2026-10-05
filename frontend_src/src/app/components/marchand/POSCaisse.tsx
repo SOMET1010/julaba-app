@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Plus, Minus, Trash2, X, Check, Package, FileText, Banknote, ChevronRight, Leaf, Zap, Volume2 } from 'lucide-react';
-import { useCaisse } from '../../contexts/CaisseContext';
+import { toast } from 'sonner';
+import { Search, Plus, Minus, Trash2, X, Check, Package, FileText, Banknote, ChevronRight, Leaf, Zap, Volume2, CloudOff, Smartphone } from 'lucide-react';
+import { useCaisse, type StatutEnregistrement } from '../../contexts/CaisseContext';
 import { SyncEchecsBanner } from './SyncEchecsBanner';
 import { useApp } from '../../contexts/AppContext';
 import { useNavigate, useLocation } from 'react-router';
@@ -10,22 +11,29 @@ import { CreditModal } from './CreditModal';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { promoActive, prixEffectif, remisePct } from '../../utils/promo.utils';
 import { partagerRecu } from '../../utils/recu.utils';
-import { uniteSeule } from '../../utils/unite.utils';
+import { quantiteAvecUnite, uniteSeule } from '../../utils/unite.utils';
 import { MOBILE_OPERATORS, getMobileOperator } from '../../types/payment';
 import { COUPURES, decomposerMonnaie, direCoupure, formatF } from '../../utils/fcfa';
 import { BilletDessine, PieceDessinee } from './CoupureDessinee';
 import { avertissementRupture } from '../../services/ruptureStock';
-import { vibrerSucces, vibrerErreur, vibrerTic } from '../../utils/haptique';
-import { getImageByNom } from '../../data/catalogue-produits';
+import { vibrerSucces, vibrerErreur, vibrerTic, vibrerAttente } from '../../utils/haptique';
+import { getPictogrammeByNom } from '../../data/catalogue-produits';
 import { guidageVocal } from '../../utils/accessMode';
-import { phraseRelecture, phraseLigneAjoutee, type EtatEncaissement as EtatRelu } from '../../services/relectureSpontanee';
+import { relectureDeuxFormes, ligneAjouteeDeuxFormes, type EtatEncaissement as EtatRelu } from '../../services/relectureSpontanee';
 import { ChoixUnite } from './ChoixUnite';
 import { useCatalogueMaitre, ReferenceMaitre } from '../../hooks/useCatalogueMaitre';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
-import { MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
+import { FournisseurDemandePrix, MicroVenteCaisse, type ProduitPreselectionne } from './MicroVenteCaisse';
+import { BoutonDirePrix } from './BoutonDirePrix';
+import { resoudrePrix } from '../../services/ligneProvisoire';
 import { ETAT_INITIAL, empreintePanier, reduire, type EffetEncaissement, type EtatEncaissement, type EtatFinancier } from '../../services/machineEncaissement';
 import type { IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
+import { PaveMontant } from '../shared/PaveMontant';
+import { useSpeakMessage } from '../../i18n/voice/speakMessage';
+import { t as texteMessage } from '../../i18n/voice/runtime';
+import { t } from '../../i18n/voice/runtime';
+import { avertirEtalGarde } from '../../services/etatCatalogueCaisse';
 
 // PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Les constantes `P` et `BG`
 // portaient l'ancienne charte ; la caisse lit maintenant la charte de la
@@ -60,7 +68,7 @@ function POSCaisseInner() {
   // convention déjà en place dans JULABA (voir RoleDashboard, LoginPassword…),
   // donc lisible, testable, et vide quand on arrive autrement.
   const produitPreselectionne = ((location.state as { produitPreselectionne?: ProduitPreselectionne } | null)?.produitPreselectionne) ?? null;
-  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, refreshProducts, transactions } = useCaisse();
+  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, refreshProducts, transactions, etatCatalogue } = useCaisse();
   const { speak, reloadTransactions, user, isOnline } = useApp();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Ma boutique';
   // La caisse SUIT le sous-profil (docs/SOUS_PROFILS_MARCHAND.md) : en négoce
@@ -70,7 +78,19 @@ function POSCaisseInner() {
   const estNegoce = sousProfil === 'demi_grossiste' || sousProfil === 'grossiste';
   // Confirmations vocales AUTO selon le profil (le même que la connexion) :
   // silencieuses en mode 'lecture' (l'écran affiche déjà tout), parlées en voix/mixte.
-  const dire = (t: string) => { if (guidageVocal()) speak(t); };
+  // VOX-05a — `speak` est `async` et attend la fin RÉELLE de la parole
+  // (`await audioManager.speak`). On rend sa promesse : c'est elle qui permet
+  // à `BoutonDirePrix` d'ouvrir le micro quand Tantie a fini, et non après un
+  // délai deviné. Les appelants qui l'ignorent ne changent pas de comportement.
+  const dire = (t: string) => { if (guidageVocal()) return speak(t) as unknown as void | Promise<void>; };
+  // LES PHRASES SONT DES CLÉS (lot langues, 20/09/2026). `direMessage` suit
+  // la même règle de profil que `dire`, mais résout une clé du catalogue i18n
+  // dans la langue active et la remet au rendu vocal (contrat-audio.ts), dont
+  // le défaut est ce même `speak`. Les phrases de la MACHINE d'encaissement
+  // (`effet.texte`) ne passent pas ici : elles sont déjà résolues par la
+  // machine et restent dites ET affichées telles quelles.
+  const speakMessage = useSpeakMessage();
+  const direMessage = (id: string, vars?: Record<string, string | number>) => { if (guidageVocal()) speakMessage(id, vars); };
 
   const [search, setSearch] = useState('');
   // Aperçu produits sur téléphone (lot A) : la grille est repliée à quelques
@@ -85,6 +105,54 @@ function POSCaisseInner() {
   const [showLibre, setShowLibre] = useState(false);
   const [libreMontant, setLibreMontant] = useState('');
   const [libreDesc, setLibreDesc] = useState('');
+  // COMBIEN, AU DOIGT — 25/09/2026. La quantité existait déjà quand la vente
+  // était DICTÉE (`quantiteDictee`) ; ouverte au doigt, la feuille restait à 1.
+  // L'agent de test : « une marchande risque d'entrer directement 2 000 F comme
+  // montant libre » pour deux tas. La vente serait juste sur l'ARGENT et fausse
+  // sur la QUANTITÉ — donc sur le produit vedette et sur ses statistiques.
+  const [libreQte, setLibreQte] = useState(1);
+  /** AMB-01 — le prix DIT, tant qu'on ne sait pas s'il vaut pour un ou pour tous. */
+  const [prixDitAArbitrer, setPrixDitAArbitrer] = useState<{ montant: number; quantite: number } | null>(null);
+  /** Posé AVANT le rendu suivant : un `useState` arriverait trop tard entre
+   *  deux relevés de dictée espacés de quelques dizaines de millisecondes. */
+  const arbitrageDemandeRef = useRef(false);
+  /**
+   * AMB-02 — PENDANT L'ARBITRAGE, LA FEUILLE NE DOIT RIEN DEMANDER D'ÉCRIT.
+   *
+   * AMB-01 pose la bonne question (« 500 F chacun ? 500 F en tout ? ») sur deux
+   * grands boutons qui portent chacun leur total. Mais elle la pose SUR LE MÊME
+   * PANNEAU que le champ du montant — un champ de saisie, `inputMode="numeric"`,
+   * qui appelle le pavé numérique d'Android dès qu'on le touche.
+   *
+   * Pour celle qui ne lit pas, ce qui s'ouvre alors n'est pas une question à
+   * deux réponses : c'est un FORMULAIRE, donc « l'application me demande
+   * d'écrire ». Elle se bloque — au moment précis où il ne lui reste qu'à
+   * toucher l'une des deux cases. QTE-03 avait déjà retiré l'`autoFocus` pour
+   * que le pavé ne s'impose plus ; il reste à ne pas PROPOSER d'écrire pendant
+   * qu'on attend un choix.
+   *
+   * CE N'EST VRAI QUE QUAND ON LUI PARLE. Pour le profil « je lis »
+   * (`guidageVocal()` faux), le clavier est la voie NORMALE d'entrée du prix :
+   * la feuille ne bouge pas d'un pixel. Même logique qu'`autoFocus`, ligne plus
+   * bas — on ne retire jamais à l'une ce qui sert à l'autre.
+   *
+   * CE QUI RESTE À L'ÉCRAN : le rappel de ce qu'elle a dit, et les deux grands
+   * boutons. Tout ce qui se remplit disparaît — le champ du montant et son pavé
+   * numérique, la recherche au catalogue, le libellé, le choix d'unité, le
+   * « combien », le bouton « Ajouter » (qui est de toute façon désactivé tant
+   * qu'aucun prix n'est posé). Une question à deux réponses, et rien d'autre.
+   *
+   * CE QUI RESTE AUSSI, ET IL LE FAUT : `BoutonDirePrix`. Le masquer le
+   * DÉMONTERAIT, et son `ouvrirToutSeul` reposerait « Quel est ton prix ? » en
+   * rouvrant le micro au retour de l'arbitrage — on ferait rentrer par la
+   * fenêtre la boucle de questions que `arbitrageDemandeRef` vient de fermer.
+   * Ce n'est pas un champ à remplir : c'est le micro, et il ne demande rien
+   * d'écrit.
+   *
+   * ET C'EST TRANSITOIRE : dès que l'un des deux boutons est touché,
+   * `prixDitAArbitrer` retombe à `null` et la feuille reprend sa forme, inchangée.
+   */
+  const arbitrageSansClavier = !!prixDitAArbitrer && guidageVocal();
   // « Autre article » sert maintenant DEUX gestes : chercher dans le
   // référentiel maître (Odoo) pour ajouter un vrai article à son catalogue,
   // ou vendre un montant libre quand rien ne correspond. Le second reste
@@ -101,15 +169,37 @@ function POSCaisseInner() {
   const [libreUnite, setLibreUnite] = useState('unité');
   const [adoptionEnCours, setAdoptionEnCours] = useState(false);
   const [adoptionMessage, setAdoptionMessage] = useState<string | null>(null);
+  // CE QU'ELLE VIENT DE DICTER, quand il n'en manque que le prix (21/09/2026).
+  // Porte le nom, la QUANTITÉ et l'unité entendus : sans elle, la feuille
+  // « Autre article » s'ouvrait vide et la marchande devait tout retaper —
+  // alors que « cinq tomates » venait d'être compris. `null` = la feuille a
+  // été ouverte au doigt, comme avant.
+  const [venteDictee, setVenteDictee] = useState<{ nom: string; quantite: number; unite: string } | null>(null);
 
   // Encaissement (Phase 3, lots 2-4) : montant reçu (espèces) + écran « Vente réussie ».
   const [montantRecu, setMontantRecu] = useState('');
+  // CHIFFRES OU COUPURES — un choix d'AFFICHAGE, rien d'autre. Les deux
+  // chemins écrivent le même `montantRecu` par le même `setMontantRecu` :
+  // celle qui touche les billets et celle qui tape le montant produisent
+  // exactement la même vérité. Aucun calcul, aucune garde, aucun envoi ne
+  // dépend de ce choix — il ne décide que de ce qui est dessiné.
+  //
+  // LE DÉFAUT RESTE « COUPURES », et c'est délibéré (lot A9). La maquette
+  // Manus ouvre sur le pavé de chiffres ; ce serait déplacer le geste premier
+  // de la caisse. Toucher les billets qu'on vient de recevoir est le geste du
+  // marché (inclusion §2.2) et c'est celui que ce socle rend par défaut depuis
+  // le lot F — le mettre derrière un onglet changerait le parcours, pas son
+  // habillage. Le pavé est AJOUTÉ comme second chemin, à un doigt d'ici.
+  const [saisieEspeces, setSaisieEspeces] = useState<'chiffres' | 'coupures'>('coupures');
   // UI-02 — AFFICHAGE SEULEMENT : le champ montre « 5 000 » hors saisie et la
   // valeur brute pendant qu'elle tape (le curseur ne se bat pas avec les
   // espaces de milliers). `montantRecu` et son `onChange` restent la seule
   // vérité ; ce booléen ne dit que si le clavier est ouvert sur ce champ.
   const [recuEnSaisie, setRecuEnSaisie] = useState(false);
-  const [lastSale, setLastSale] = useState<{ montant: number; moyen: string; monnaie: number; produits: any[] } | null>(null);
+  // `statut` : ce que la vente est VRAIMENT devenue (OFF-01). Il vient du
+  // contexte de caisse et de nulle part ailleurs — l'écran ne le redéduit
+  // jamais de `navigator.onLine`, qui ment quand l'envoi tombe.
+  const [lastSale, setLastSale] = useState<{ montant: number; moyen: string; monnaie: number; produits: any[]; statut: StatutEnregistrement } | null>(null);
   // Mobile money DÉCLARÉ (Chemin A) : opérateur choisi, aucune intégration/argent.
   const [mmOperator, setMmOperator] = useState<string | null>(null);
 
@@ -128,25 +218,98 @@ function POSCaisseInner() {
     // chiffre. Le calcul se fait AVANT que l'état ne bouge, sur le panier du
     // rendu courant : un seul addToCart par geste, même fusion de ligne que
     // CaisseContext.addToCart.
-    const existante = cart.find(i => i.productId === p.id);
+    const existante = cart.find(i => i.productIdCatalogue === p.id);
     const q = (existante?.quantite ?? 0) + 1;
     const prixU = prixEffectif(p);
     const totalLigne = (existante?.totalExact ?? (existante ? existante.prix * existante.quantite : 0)) + prixU;
     addToCart(p, 1);
-    dire(phraseLigneAjoutee({ nom: p?.nom || p?.name || 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }));
+    dire(ligneAjouteeDeuxFormes({ nom: p?.nom || p?.name || 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }).texteParle);
   };
 
   const fermerAutreArticle = () => {
     setShowLibre(false);
     setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité');
     setRefRecherche(''); setRefChoisie(null); setRefUnite('unité'); setAdoptionMessage(null);
+    setVenteDictee(null);
+  };
+
+  /**
+   * LA VENTE DICTÉE DONT LE PRIX MANQUE ARRIVE ICI — 21/09/2026, terrain.
+   *
+   * Elle dit « cinq tomates », son catalogue est vide : jusqu'ici l'écran
+   * affichait « J'ai compris : Cinq tomates » et il ne se passait plus RIEN —
+   * ni ligne, ni question, ni un mot. Elle n'avait aucun moyen de savoir
+   * qu'il fallait appuyer sur « + Autre article ».
+   *
+   * On ne réécrit pas de chemin : on branche celui qui existe déjà et qui
+   * fait exactement ce qu'il faut — chercher la référence, demander SON prix
+   * (`TATA_QUEL_PRIX`), puis adopter l'article au catalogue ET au panier
+   * (`TATA_ARTICLE_AJOUTE_CATALOGUE`). La seule différence : il s'ouvre
+   * PRÉ-REMPLI de ce qu'elle a dit — le nom, la quantité, l'unité — pour
+   * qu'il ne reste que le prix à donner. Et tant qu'il n'est pas donné,
+   * aucune ligne n'entre au panier : jamais une vente sans montant.
+   */
+  const ouvrirPrixManquant = ({ nom, quantite, unite, raison, montant }: { nom: string; quantite: number; unite: string | null; raison?: 'prix_manquant' | 'unite_incompatible' | 'ambiguite_prix'; montant?: number }) => {
+    const propre = (nom || '').trim();
+    const qte = quantite > 0 ? quantite : 1;
+    const uniteDite = unite || 'unité';
+    setVenteDictee({ nom: propre, quantite: qte, unite: uniteDite });
+    // QTE-01 — L'ÉCRAN DOIT DIRE CE QUE LE PANIER VA RECEVOIR.
+    //
+    // Mesuré sur l'APK `a525fe6`, 03/10/2026 : « cinq piments », prix dit
+    // 2 000 F, et l'écran affichait « Combien ? 1 · Total : 2 000 F » pendant
+    // que `ajouterMontantLibre` ajoutait bien CINQ piments pour 10 000 F.
+    //
+    // Les deux lisaient des états DIFFÉRENTS : l'ajout prend `venteDictee`
+    // (« la dictée prime quand elle a parlé »), l'affichage prend `libreQte`,
+    // qui restait à son défaut de 1 parce que rien ne le posait ici.
+    //
+    // Ce n'était pas une vente fausse — c'était un ÉCRAN faux, au moment exact
+    // où elle décide. Sur l'argent, c'est la même faute : on ne donne jamais
+    // deux sens à la même donnée.
+    setLibreQte(qte);
+    arbitrageDemandeRef.current = false;
+    setAdoptionMessage(null);
+    setLibreMontant('');
+    setLibreDesc(propre);
+    setLibreUnite(uniteDite);
+    setRefUnite(uniteDite);
+    setRefRecherche(propre);
+    setShowLibre(true);
+    // Une référence du catalogue maître porte le MÊME nom : on la choisit pour
+    // elle, et son prix la fera entrer dans son catalogue (elle n'aura plus
+    // jamais à le redonner). Sinon on reste sur le montant libre, pré-rempli.
+    const exacte = catalogueMaitre.rechercher(propre)
+      .find(r => r.nom.trim().toLowerCase() === propre.toLowerCase() && !catalogueMaitre.estAdoptee(r.default_code));
+    if (exacte) { choisirReference(exacte); return; }
+    setRefChoisie(null);
+    // DEUX RAISONS D'OUVRIR CET ÉCRAN, DEUX QUESTIONS. Le prix introuvable se
+    // demande (« Quel est ton prix ? ») ; le montant AMBIGU se fait préciser
+    // en lui relisant SON chiffre (« 500, c'est le prix d'un seul, ou de tous
+    // les 3 ? »). Redemander « quel est ton prix » à quelqu'un qui vient de le
+    // dire, c'est lui faire croire qu'on ne l'a pas entendue.
+    if (raison === 'ambiguite_prix' && montant != null) {
+      direMessage('TATA_AMBIGUITE', { montant, quantite: String(qte) });
+      return;
+    }
+    // QTE-02 — LA QUESTION EST DITE PAR LE BOUTON, QUI ÉCOUTE ENSUITE.
+    //
+    // Constat de Patrick, 03/10/2026 : « en vocal on est obligé d'appuyer sur
+    // le micro pour parler ; si elle ne sait pas lire, elle n'appuiera jamais
+    // dessus. » Il a raison, et ma décision précédente était fausse : j'avais
+    // écarté l'ouverture automatique pour une raison TECHNIQUE (le micro
+    // risquait d'écouter Tantie poser sa question) en oubliant que le bouton
+    // ne sert à rien s'il faut savoir qu'il est là.
+    //
+    // `BoutonDirePrix` sait déjà faire les deux dans le bon ordre : il DIT la
+    // question, attend 1 400 ms, PUIS ouvre le micro. L'écran ne dit donc plus
+    // la question lui-même — sinon elle serait prononcée deux fois.
   };
 
   const choisirReference = (r: ReferenceMaitre) => {
     setRefChoisie(r);
     setAdoptionMessage(null);
     setLibreDesc(r.nom);
-    dire(`${r.nom}. Quel est ton prix ?`);
   };
 
   /**
@@ -160,12 +323,15 @@ function POSCaisseInner() {
    * après l'avoir ajouté serait un pas de plus pour rien, devant une cliente
    * qui attend.
    */
+  /** Quantité à poser sur la ligne : celle qu'elle a DITE, sinon 1 (geste tactile). */
+  const quantiteDictee = venteDictee?.quantite && venteDictee.quantite > 0 ? venteDictee.quantite : 1;
+
   const adopterReference = async () => {
     if (!refChoisie || adoptionEnCours) return;
     const prix = Number(libreMontant);
     if (!prix || prix <= 0) {
       setAdoptionMessage('Il faut indiquer ton prix de vente.');
-      dire('Il faut indiquer ton prix');
+      direMessage('TATA_INDIQUE_PRIX');
       vibrerErreur();
       return;
     }
@@ -177,18 +343,24 @@ function POSCaisseInner() {
       });
       if (!res.ok || !res.produit) {
         setAdoptionMessage(res.message || "Impossible d'ajouter cet article.");
-        dire(res.message || "Impossible d'ajouter cet article");
+        dire(res.message || t('TATA_ARTICLE_IMPOSSIBLE'));
         vibrerErreur();
         return;
       }
       await refreshProducts();
+      // LA QUANTITÉ DITE COMPTE (21/09/2026). Ouverte au doigt, la feuille
+      // ajoute 1 comme avant ; ouverte par « cinq tomates », elle ajoute 5 —
+      // sinon la marchande donnerait son prix, verrait une seule tomate, et
+      // devrait recommencer quatre fois. Le prix qu'elle vient de poser est
+      // celui d'UNE unité (c'est la question de TATA_QUEL_PRIX) : le total de
+      // la ligne est ce prix multiplié, jamais un chiffre inventé.
       addToCart({
         id: res.produit.id, nom: res.produit.nom, prix: Number(res.produit.prix),
         categorie: res.produit.categorie, stock: Number(res.produit.stock),
         unite: res.produit.unite,
-      } as any, 1);
+      } as any, quantiteDictee);
       vibrerSucces();
-      dire(`${res.produit.nom} ajouté à ton catalogue et au panier`);
+      direMessage('TATA_ARTICLE_AJOUTE_CATALOGUE', { produit: res.produit.nom });
       fermerAutreArticle();
     } finally {
       setAdoptionEnCours(false);
@@ -205,11 +377,17 @@ function POSCaisseInner() {
       id: `libre-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
       nom, prix: montant, prix_achat: 0, categorie: 'Autre', stock: 0, unite: libreUnite,
     };
-    addToCart(produitLibre, 1);
-    dire(phraseLigneAjoutee({ nom, quantite: 1, unite: libreUnite, totalLigne: montant, totalPanier: total + montant }));
+    // Même règle que l'adoption : la quantité DITE compte, et le montant posé
+    // est celui d'une unité. Ouverte au doigt, la feuille reste à 1 — rien ne
+    // change pour le geste tactile.
+    // La dictée prime quand elle a parlé ; sinon c'est ce que le doigt a posé.
+    const qte = venteDictee?.quantite && venteDictee.quantite > 0 ? venteDictee.quantite : Math.max(1, libreQte);
+    const totalLigne = montant * qte;
+    addToCart(produitLibre, qte);
+    dire(ligneAjouteeDeuxFormes({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }).texteParle);
     // L'unité revient au défaut : sinon le « tas » de la vente précédente
     // collerait, en silence, à l'article libre suivant.
-    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setShowLibre(false);
+    setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setLibreQte(1); setShowLibre(false); setVenteDictee(null); setPrixDitAArbitrer(null); arbitrageDemandeRef.current = false;
   };
 
   const total = getTotalCart();
@@ -253,19 +431,22 @@ function POSCaisseInner() {
     if (paiementEnCoursRef.current) return; // anti double-clic (synchrone)
     if (cart.length === 0) return;
     if (total <= 0) {
-      dire('Montant total invalide');
+      direMessage('TATA_MONTANT_TOTAL_INVALIDE');
       return;
     }
     if (paymentMethod === 'credit') return;
-    if (paymentMethod === 'cash' && insuffisant) { dire('Montant reçu insuffisant'); return; }
-    if (paymentMethod === 'mobile_money' && !mmOperator) { dire('Choisis l\'opérateur'); return; }
+    if (paymentMethod === 'cash' && insuffisant) { direMessage('TATA_MONTANT_RECU_INSUFFISANT'); return; }
+    if (paymentMethod === 'mobile_money' && !mmOperator) { direMessage('TATA_CHOISIS_OPERATEUR'); return; }
     const estMM = paymentMethod === 'mobile_money';
     const moyen = estMM ? getMobileOperator(mmOperator as string).name : 'Espèces';
     paiementEnCoursRef.current = true;
     setIsProcessing(true);
     try {
       const details = cart.map(i => ({
-        productId: i.productId,
+        // P0.1 — SEUL l'identifiant CATALOGUE traverse. L'identité de ligne
+        // est technique : la laisser passer pour un produit est exactement ce
+        // que `identifiantProduit` (ARG-16) devait rattraper côté serveur.
+        productId: i.productIdCatalogue ?? undefined,
         nom: i.nom,
         quantite: i.quantite,
         prix: i.prix,
@@ -287,13 +468,19 @@ function POSCaisseInner() {
       // puis complété au doigt reste un panier où la voix a servi, et c'est ce
       // qu'elle cherchera dans « Par la voix ».
       const source = cart.some((i) => i.origine === 'vocal') ? 'vocal' : 'kassa';
-      await enregistrerVente(total, details, moyen, undefined, source);
+      // CE QUE LA VENTE EST DEVENUE — OFF-01, 21/09/2026. Le résultat était
+      // jeté : les trois issues d'`enregistrerVente` (hors ligne, acceptée par
+      // le serveur, envoi tombé alors que le navigateur se croyait en ligne)
+      // rendaient `undefined` et s'annonçaient toutes « Vente réussie ».
+      const resultat = await enregistrerVente(total, details, moyen, undefined, source);
       // Rupture éventuelle (décision n°6) : calculée AVANT le décrément optimiste.
       // Le serveur borne déjà le stock à 0 et journalise le manquant (I3) ; ici on
       // AVERTIT à la voix au lieu de plancher en silence. La vente passe toujours.
       const avertRupture = avertissementRupture(
         details
           .map((i) => {
+            // `details` est déjà le payload serveur : son `productId` porte
+            // l'identifiant CATALOGUE (ou rien), pas l'identité de ligne.
             const p = products.find((pp) => pp.id === i.productId);
             return p ? { nom: i.nom, quantite: i.quantite, stockAvant: p.stock || 0 } : null;
           })
@@ -307,21 +494,63 @@ function POSCaisseInner() {
       // décrément serveur (stock trop haut, divergence stock/ledger). On reflète
       // désormais l'état autoritaire par un simple refetch.
       void refreshProducts();
-      // Écran « Vente réussie » (Phase 3, lot 4) — capturé AVANT de vider le panier.
-      setLastSale({ montant: total, moyen, monnaie: estMM ? 0 : monnaie, produits: details });
+      // Écran de fin (Phase 3, lot 4) — capturé AVANT de vider le panier. Il
+      // porte le statut : c'est lui qui décide ce que l'écran dit.
+      setLastSale({ montant: total, moyen, monnaie: estMM ? 0 : monnaie, produits: details, statut: resultat.statut });
+      // LE PANIER EST VIDÉ DANS LES DEUX CAS, et c'est voulu : confirmée ou
+      // seulement gardée, la vente est PRISE EN CHARGE (file durable, clé
+      // d'idempotence, rejeu automatique). La laisser au panier la ferait
+      // ressaisir, donc compter deux fois.
       clearCart();
       setPaymentMethod('cash');
       setMmOperator(null);
       setMontantRecu('');
       setShowSuccess(true);
-      // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
-      // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
-      vibrerSucces();
-      dire(`Vente enregistrée. ${total.toLocaleString('fr-FR')} francs${avertRupture ? '. ' + avertRupture : ''}`);
+      if (resultat.statut === 'confirmee') {
+        // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
+        // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
+        vibrerSucces();
+        if (avertRupture) direMessage('TATA_VENTE_ENREGISTREE_RUPTURE', { total, avertissement: avertRupture });
+        else direMessage('TATA_VENTE_ENREGISTREE', { total });
+      } else {
+        // EN ATTENTE D'ENVOI. Aucun signe de succès : pas de `vibrerSucces()`,
+        // et surtout pas sous un autre nom. Mais l'attente DOIT se sentir —
+        // arbitrage de Patrick du 21/09/2026, qui ferme VOIX-06 : sans canal
+        // tactile, l'état ne tenait plus qu'au TTS, et une marchande qui
+        // n'entend pas (bruit du marché, voix coupée) et qui ne lit pas
+        // n'avait plus rien. Une impulsion COURTE et UNIQUE (90 ms) : ni la
+        // double du succès, ni la longue de l'erreur.
+        vibrerAttente();
+        // Et elle s'ENTEND aussi : doctrine voix — aucune information
+        // importante uniquement à l'écran.
+        if (avertRupture) direMessage('TATA_VENTE_GARDEE_TELEPHONE_RUPTURE', { total, avertissement: avertRupture });
+        else direMessage('TATA_VENTE_GARDEE_TELEPHONE', { total });
+      }
     } catch (e) {
       console.error(e);
       vibrerErreur();
-      dire("La vente n'a pas pu être enregistrée. Réessaie.");
+      // LE SERVEUR DIT POURQUOI — 25/09/2026. Agent de test : après la
+      // fermeture de la journée, « Payer en espèces » ne faisait RIEN. Ni
+      // message, ni voix. Or le serveur répondait, mot pour mot : « Ta journée
+      // de caisse est fermée. Rouvre-la pour continuer. » — une phrase déjà
+      // écrite POUR LA MARCHANDE, que ce `catch` remplaçait par un générique.
+      //
+      // Une caisse qui refuse une vente sans dire pourquoi est une caisse
+      // morte : elle touche, rien ne se passe, elle recommence. C'est le
+      // scénario vécu par l'agent, qui a dû aller lire la console.
+      //
+      // On DIT et on ÉCRIT la raison quand le serveur en donne une (4xx : une
+      // vraie réponse métier, pas une panne). Sinon le message générique reste.
+      const httpStatus = (e as { status?: unknown } | null)?.status;
+      const raison = typeof httpStatus === 'number' && httpStatus >= 400 && httpStatus < 500
+        ? String((e as Error).message ?? '').trim()
+        : '';
+      if (raison) {
+        toast.error(raison);
+        dire(raison);
+      } else {
+        direMessage('TATA_VENTE_ECHEC');
+      }
     }
     finally { paiementEnCoursRef.current = false; setIsProcessing(false); }
   };
@@ -353,7 +582,11 @@ function POSCaisseInner() {
     empreinte: {
       total,
       recu,
-      lignes: empreintePanier(cart.map(i => ({ productId: i.productId, quantite: i.quantite, total: i.totalExact ?? i.prix * i.quantite }))),
+      // P0.1 — l'empreinte protège « ces lignes EXACTES n'ont pas changé », donc
+      // elle prend l'identité de LIGNE. Avec un identifiant catalogue nullable,
+      // deux articles libres différents auraient la même signature et un panier
+      // modifié passerait pour celui qu'elle a relu.
+      lignes: empreintePanier(cart.map(i => ({ ligneId: i.ligneId, quantite: i.quantite, total: i.totalExact ?? i.prix * i.quantite }))),
     },
   };
   // UN REF, PAS UN useState, et c'est une décision de sécurité : la
@@ -388,7 +621,12 @@ function POSCaisseInner() {
     // micro (MicroVenteCaisse parle par `speak`). Et l'écran montre la même
     // phrase, pour celle qui n'a pas entendu — le bruit, le doute.
     afficherRelecture(etat, effet);
-    if (effet.texte) speak(effet.texte);
+    // ARG-17 — LA FORME PARLÉE, et c'est ici que ça compte le plus : le
+    // commentaire ci-dessus le dit, cette phrase EST la garantie. Elle
+    // s'apprête à confirmer un compte ; l'entendre « 2 zéro zéro zéro » ne lui
+    // apprend rien. Second site du défaut, que ni l'audit externe ni moi
+    // n'avions vu — c'est la garde qui l'a trouvé.
+    if (effet.texteParle) speak(effet.texteParle);
     if (effet.type === 'encaisser') void handlePay();
   };
   // Le moteur vocal tient son gestionnaire dans des fermetures qui peuvent
@@ -418,7 +656,11 @@ function POSCaisseInner() {
     const { etat, effet } = reduire(etatEncaissementRef.current, 'etat_financier_change', etatFinancierRef.current);
     etatEncaissementRef.current = etat;
     afficherRelecture(etat, effet);
-    if (effet.type === 'dire') speak(effet.texte);
+    // ARG-17 — L'OREILLE REÇOIT LA FORME PARLÉE, PAS LA FORME ÉCRAN.
+    // Ici partait `effet.texte`, celui-là même qu'on affiche : « Elle doit
+    // 2 000 francs. » avec son espace fine insécable, que la synthèse épelle
+    // « 2 zéro zéro zéro ». Au moment où elle doit entendre combien on lui doit.
+    if (effet.type === 'dire') speak(effet.texteParle);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ne réagit qu'à l'empreinte financière ; `speak` est stable (contexte), `afficherRelecture` n'est qu'un setter
   }, [cleEmpreinte]);
 
@@ -441,11 +683,14 @@ function POSCaisseInner() {
   const dernierEtatReluRef = useRef<EtatRelu | null>(null);
   useEffect(() => {
     const etat: EtatRelu = { total, recu, nbLignes: cart.length };
-    const phrase = phraseRelecture(etat, dernierEtatReluRef.current);
+    // DEUX FORMES, UNE SOURCE (22/09/2026) : on AFFICHE `texte` (inchangé) et
+    // on DIT `texteParle` — « Il manque trois mille francs » au lieu de
+    // « 3 000 », que le moteur de synthèse épelait « trois zéro zéro zéro ».
+    const relu = relectureDeuxFormes(etat, dernierEtatReluRef.current);
     dernierEtatReluRef.current = etat;
-    if (!phrase) return;
+    if (!relu) return;
     const machineParle = etatEncaissementRef.current.phase !== 'repos' && recu >= total;
-    if (!machineParle) dire(phrase);
+    if (!machineParle) dire(relu.texteParle);
   }, [total, recu, cart.length]);
 
   // Crédit désactivé en pilote espèces (CAISSE_CREDIT_ACTIF=false) : ce handler
@@ -455,7 +700,10 @@ function POSCaisseInner() {
   // refreshProducts(), jamais par un PUT absolu depuis l'écran de caisse.
   const handleCreditSuccess = () => {
     const details = cart.map(i => ({
-      productId: i.productId,
+      // P0.1 — même règle que le chemin espèces : seul l'identifiant
+      // CATALOGUE traverse. Ce chemin est désactivé en pilote, mais il ne doit
+      // pas être le seul à pouvoir renvoyer une identité de ligne au serveur.
+      productId: i.productIdCatalogue ?? undefined,
       nom: i.nom,
       quantite: i.quantite,
       prix: i.prix,
@@ -467,10 +715,11 @@ function POSCaisseInner() {
     void refreshProducts();
     // Confirmation parlée ET sentie aussi pour la vente à crédit.
     vibrerSucces();
-    dire(`Vente à crédit enregistrée. ${total.toLocaleString('fr-FR')} francs`);
+    direMessage('TATA_VENTE_CREDIT_ENREGISTREE', { total });
     // Recharge les totaux du jour (la vente à crédit doit apparaître : convention A).
     void reloadTransactions?.();
-    setLastSale({ montant: total, moyen: 'Crédit', monnaie: 0, produits: details });
+    // Le crédit a déjà son accusé de réception serveur quand ce handler tourne.
+    setLastSale({ montant: total, moyen: 'Crédit', monnaie: 0, produits: details, statut: 'confirmee' });
     clearCart();
     setPaymentMethod('cash');
     setMontantRecu('');
@@ -519,35 +768,35 @@ function POSCaisseInner() {
   const renderCartLines = () => (
     <>
       {cart.map(item => (
-        <div key={item.productId} style={{ padding:'var(--caisse-esp-3) 0', borderBottom:'1px solid var(--commerce-line)' }}>
+        <div key={item.ligneId} style={{ padding:'var(--caisse-esp-3) 0', borderBottom:'1px solid var(--commerce-line)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)' }}>
-            <ImageWithFallback src={products.find(p => p.id === item.productId)?.image || undefined} fallbackSrc={getImageByNom(item.nom)} alt="" aria-hidden="true"
+            <ImageWithFallback src={products.find(p => p.id === item.productIdCatalogue)?.image || undefined} fallbackSrc={getPictogrammeByNom(item.nom)} alt="" aria-hidden="true"
               style={{ width:44, height:44, borderRadius:'var(--caisse-rayon-2)', objectFit:'cover', flexShrink:0, background:'var(--caisse-sable)' }} />
             <div style={{ flex:1, minWidth:0, font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{item.nom}</div>
             <div style={{ font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--caisse-vert-fonce)', fontVariantNumeric:'tabular-nums', whiteSpace:'nowrap' }}>{(item.totalExact ?? item.prix * item.quantite).toLocaleString('fr-FR')} F</div>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-2)', marginTop:'var(--caisse-esp-2)', flexWrap:'wrap' }}>
             <div style={{ display:'flex', alignItems:'center', gap:'var(--caisse-esp-1)' }}>
-              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.productId, item.quantite-1)} aria-label={`Un ${item.nom} de moins`}
+              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.ligneId, item.quantite-1)} aria-label={`Un ${item.nom} de moins`}
                 style={{ width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', borderRadius:'50%', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-succes)', color:'var(--caisse-vert-fonce)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
                 <Minus size={ICONE} strokeWidth={2.5} />
               </motion.button>
               {estNegoce ? (
                 /* Quantité TAPÉE directement (indispensable en gros). */
-                <input key={`q-${item.productId}-${item.quantite}`} defaultValue={item.quantite}
+                <input key={`q-${item.ligneId}-${item.quantite}`} defaultValue={item.quantite}
                   inputMode="numeric" aria-label={`Quantité de ${item.nom}`}
                   onBlur={e => {
                     const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
                     if (v > 0 && v !== item.quantite) {
-                      updateCartItemQuantity(item.productId, v);
-                      dire(`${item.nom} : ${v}`);
+                      updateCartItemQuantity(item.ligneId, v);
+                      direMessage('TATA_QUANTITE_LIGNE', { produit: item.nom, quantite: String(v) });
                     } else { e.target.value = String(item.quantite); }
                   }}
                   style={{ width:56, minHeight:'var(--caisse-cible-tactile)', border:'1.5px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-2)', padding:'0 var(--caisse-esp-1)', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', textAlign:'center', background:'var(--caisse-ivoire)', fontVariantNumeric:'tabular-nums' }} />
               ) : (
                 <span style={{ minWidth:32, textAlign:'center', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{item.quantite}</span>
               )}
-              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.productId, item.quantite+1)} aria-label={`Un ${item.nom} de plus`}
+              <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => updateCartItemQuantity(item.ligneId, item.quantite+1)} aria-label={`Un ${item.nom} de plus`}
                 style={{ width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', borderRadius:'50%', border:'none', background:'var(--caisse-vert)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
                 <Plus size={ICONE} strokeWidth={2.5} />
               </motion.button>
@@ -567,13 +816,13 @@ function POSCaisseInner() {
               <span>·</span>
               {estNegoce ? (
                 /* Prix CONVENU pour cette vente — modifiable (négoce). */
-                <input key={`p-${item.productId}-${item.prix}`} defaultValue={item.prix}
+                <input key={`p-${item.ligneId}-${item.prix}`} defaultValue={item.prix}
                   inputMode="numeric" aria-label={`Prix unitaire convenu pour ${item.nom}`}
                   onBlur={e => {
                     const v = parseInt(e.target.value.replace(/[^\d]/g, '')) || 0;
                     if (v > 0 && v !== item.prix) {
-                      updateCartItemPrice(item.productId, v);
-                      dire(`${item.nom} : ${v.toLocaleString('fr-FR')} francs l'unité`);
+                      updateCartItemPrice(item.ligneId, v);
+                      direMessage('TATA_PRIX_UNITE_LIGNE', { produit: item.nom, prix: v });
                     } else { e.target.value = String(item.prix); }
                   }}
                   style={{ width:72, minHeight:'var(--caisse-cible-tactile)', border:'1.5px solid var(--commerce-line)', borderRadius:'var(--caisse-rayon-2)', padding:'0 var(--caisse-esp-1)', font:'var(--caisse-font-texte)', fontWeight:600, color:'var(--encre)', textAlign:'right', background:'var(--caisse-ivoire)', fontVariantNumeric:'tabular-nums' }} />
@@ -582,7 +831,7 @@ function POSCaisseInner() {
               )}
               <span>F</span>
             </div>
-            <motion.button type="button" whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.productId)} aria-label={`Enlever ${item.nom}`}
+            <motion.button type="button" whileTap={{ scale:0.9 }} onClick={() => removeFromCart(item.ligneId)} aria-label={`Enlever ${item.nom}`}
               style={{ marginLeft:'auto', width:'var(--caisse-cible-tactile)', height:'var(--caisse-cible-tactile)', background:'none', border:'none', borderRadius:'var(--caisse-rayon-2)', color:'var(--caisse-gris-texte)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', padding:0 }}>
               <Trash2 size={ICONE} />
             </motion.button>
@@ -606,7 +855,7 @@ function POSCaisseInner() {
   // dix l'auraient mise à deux écrans de défilement. Le même bouton, dans les
   // deux dispositions ; il parle toujours (« touche pour entendre »).
   const renderCartTotal = () => (
-    <button type="button" onClick={() => dire(`Total : ${total.toLocaleString('fr-FR')} francs`)}
+    <button type="button" onClick={() => direMessage('TATA_TOTAL', { total })}
       aria-label={`Total ${total.toLocaleString('fr-FR')} francs — touche pour entendre`}
       style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-3)', background:'var(--caisse-succes)', border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-3) var(--caisse-esp-4)', minHeight:64, cursor:'pointer', fontFamily:'inherit' }}>
       <span style={{ font:'var(--caisse-font-h1)', fontSize:24, color:'var(--encre)' }}>Total</span>
@@ -677,25 +926,54 @@ function POSCaisseInner() {
           avant de payer est la monnaie à rendre. */}
       {paymentMethod === 'cash' && (
       <div style={{ marginBottom:'var(--caisse-esp-4)' }}>
-        {/* Les billets qu'elle vient de recevoir : un toucher = un billet
-            ajouté (et dit à voix haute). Couleurs proches des vraies coupures. */}
-        {/* alignItems:'flex-end' : les billets n'ont plus tous la même hauteur
-            (les vraies coupures non plus). Alignés par le bas, ils se lisent
-            comme une liasse posée sur la table, pas comme une grille bancale. */}
-        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'flex-end' }}>
-          {COUPURES.filter(c => c.forme === 'billet').map(c => (
-            <BilletDessine key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
-          ))}
-        </div>
-        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginTop:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'center' }}>
-          {COUPURES.filter(c => c.forme === 'piece').map(c => (
-            <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
-          ))}
-          <button type="button" onClick={() => setMontantRecu(String(total))}
-            style={{ flex:1, minWidth:104, minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-succes)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
-            Compte juste
+        {/* CHIFFRES OU COUPURES — le choix de la maquette. Deux façons
+            d'entrer LE MÊME montant reçu : celle qui compte de tête tape, celle
+            qui a les billets en main les touche. `aria-pressed` dit lequel est
+            actif à une lectrice d'écran ; les deux cibles font 56 px de haut
+            (.caisse-cash-choice, styles/commerce.css). */}
+        <div role="group" aria-label="Comment entrer le montant reçu" className="caisse-cash-choice">
+          <button type="button" aria-pressed={saisieEspeces === 'chiffres'} onClick={() => setSaisieEspeces('chiffres')}>
+            <span aria-hidden="true">1 2 3</span><strong>Chiffres</strong>
+          </button>
+          <button type="button" aria-pressed={saisieEspeces === 'coupures'} onClick={() => setSaisieEspeces('coupures')}>
+            <Banknote aria-hidden="true" size={ICONE} /><strong>Billets · Pièces</strong>
           </button>
         </div>
+
+        {saisieEspeces === 'chiffres' ? (
+          /* Le PAVÉ de la maquette : grandes touches, montant en grand, aucune
+             dépendance au clavier système. Il écrit dans le même `montantRecu`
+             que les coupures — `onChange={setMontantRecu}`, rien de plus. */
+          <PaveMontant value={montantRecu} onChange={setMontantRecu} color="var(--caisse-vert)"
+            ariaLabel="Montant reçu de la cliente" />
+        ) : (
+          <>
+            {/* Les billets qu'elle vient de recevoir : un toucher = un billet
+                ajouté (et dit à voix haute). Couleurs proches des vraies coupures. */}
+            {/* alignItems:'flex-end' : les billets n'ont plus tous la même hauteur
+                (les vraies coupures non plus). Alignés par le bas, ils se lisent
+                comme une liasse posée sur la table, pas comme une grille bancale. */}
+            <div style={{ display:'flex', gap:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'flex-end' }}>
+              {COUPURES.filter(c => c.forme === 'billet').map(c => (
+                <BilletDessine key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
+              ))}
+            </div>
+            <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginTop:'var(--caisse-esp-2)', flexWrap:'wrap', alignItems:'center' }}>
+              {COUPURES.filter(c => c.forme === 'piece').map(c => (
+                <PieceDessinee key={c.valeur} coupure={c} onTouche={() => ajouterCoupure(c.valeur)} />
+              ))}
+            </div>
+          </>
+        )}
+        {/* « COMPTE JUSTE » SORT DE LA RANGÉE DE PIÈCES et devient pleine
+            largeur, sous les deux modes : c'est le geste de celle qui ne compte
+            pas les billets. Il porte le total, pour qu'elle voie ce qu'elle
+            valide. Le `onClick` n'a pas changé. (Le « montant reçu obligatoire »
+            de Manus est HORS de ce lot : catégorie C, non arbitré.) */}
+        <button type="button" onClick={() => setMontantRecu(String(total))}
+          className="caisse-compte-juste">
+          Compte juste · {formatF(total)} F
+        </button>
 
         {/* LA RELECTURE FINANCIÈRE, ÉCRITE. Exactement la phrase que Tata
             vient de dire — la même chaîne, pas une reconstruction — là où
@@ -755,7 +1033,7 @@ function POSCaisseInner() {
           </div>
           <div aria-hidden="true" style={{ width:1, background:'var(--commerce-line)', flexShrink:0 }} />
           {recu > 0 && !insuffisant ? (
-          <button type="button" onClick={() => dire(`Monnaie à rendre : ${formatF(monnaie)} francs`)}
+          <button type="button" onClick={() => direMessage('TATA_MONNAIE_A_RENDRE', { monnaie })}
             aria-label={`Monnaie à rendre ${formatF(monnaie)} francs — touche pour entendre`}
             style={{ flex:1, minWidth:0, background:'none', border:'none', padding:0, cursor:'pointer', fontFamily:'inherit', textAlign:'left' }}>
             <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', minHeight:'var(--caisse-cible-tactile)', display:'flex', alignItems:'center' }}>Monnaie :</div>
@@ -821,7 +1099,15 @@ function POSCaisseInner() {
   return (
     <SubPageLayout
       role="marchand"
-      title="Caisse du jour"
+      /* RECETTE DU 27/09 — LE TITRE NOMME LE GESTE, PAS LE LIEU.
+         On arrive ici par le bouton « Vendre », et l'écran s'annonçait
+         « Caisse du jour ». Pour une marchande qui se fait lire l'écran, le
+         bouton touché et le titre entendu ne se répondaient pas : elle ne
+         pouvait pas savoir qu'elle était arrivée où elle voulait. Même règle
+         que CAI-08 — l'étiquette du bouton et le titre de l'écran sont LE
+         MÊME MOT. La date et « Bonnes ventes ! » restent juste en dessous :
+         rien de ce que « Caisse du jour » disait n'est perdu. */
+      title="Vendre"
       variante="caisse"
       rightContent={
         <div style={{ display:'flex', gap:'var(--caisse-esp-2)', alignItems:'center' }}>
@@ -843,7 +1129,7 @@ function POSCaisseInner() {
           <motion.button whileTap={{ scale: nbItems > 0 ? 0.95 : 1 }}
             onClick={() => {
               // On n'ouvre le crédit QUE si le panier n'est pas vide (B4).
-              if (nbItems === 0) { dire('Ajoute d\'abord des produits au panier.'); return; }
+              if (nbItems === 0) { direMessage('TATA_AJOUTE_PRODUITS_D_ABORD'); return; }
               setPaymentMethod('credit'); setShowCredit(true);
             }}
             style={{ minHeight:'var(--caisse-cible-tactile)', borderRadius:'var(--caisse-rayon-3)', background:'var(--caisse-ivoire)', border:'1px solid var(--commerce-line)', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 var(--caisse-esp-3)', gap:'var(--caisse-esp-1)', cursor: nbItems > 0 ? 'pointer' : 'not-allowed', opacity: nbItems > 0 ? 1 : 0.5 }}>
@@ -881,7 +1167,45 @@ function POSCaisseInner() {
             `onIntentionEncaissement` (lot C) : le micro RECONNAÎT « encaisse »
             et « oui valide », c'est cette page qui décide — elle seule tient
             le compte et la primitive de paiement. */}
+        <FournisseurDemandePrix demander={ouvrirPrixManquant}>
         <MicroVenteCaisse produitPreselectionne={produitPreselectionne} onIntentionEncaissement={onIntentionEncaissement} />
+        </FournisseurDemandePrix>
+
+        {/* RACCOURCI DE CONTINUITÉ — LE TOTAL AU PREMIER ÉCRAN (règle du
+            premier écran, tranchée par Patrick : « sur la caisse portrait le
+            Total doit rester visible sans défilement »). Il apparaît dès
+            qu'un article est au panier, AU-DESSUS DU PLI (mesuré au banc,
+            390x844 : y 520-590), et c'est cette position statique qui satisfait
+            la règle. LIMITE CONNUE, dette UI-05 : sa CSS porte bien
+            `position: sticky`, mais le conteneur parent (l. 925, `overflowY:
+            auto`, antérieur à ce lot) devient son scrollport et ne défile
+            jamais sur téléphone — l'épinglage ne s'active donc pas. Un total
+            reste malgré tout visible en continu : le raccourci sort vers
+            y 590, la barre Total entre vers y 335 de défilement.
+            IL NE PAIE RIEN ET N'OUVRE AUCUN ÉCRAN : « Encaisser » fait
+            seulement défiler vers le panier complet, déjà présent plus bas sur
+            la même surface — la règle « une seule surface » (lot A) tient.
+            `role="group"`, ET NON `role="status"` que Manus emploie ici : la
+            seule région vivante de cet écran est la relecture financière
+            (« Elle doit…, elle t'a donné…, tu rends… »). Avec deux `status`,
+            c'est le raccourci — plus haut dans le DOM — qui est lu et mesuré à
+            la place du compte : relevé au banc, qui rapportait « Panier · 6 /
+            2 900 F » là où il attend la relecture. */}
+        {nbItems > 0 && (
+          <div className="caisse-panier-raccourci" role="group" aria-label={`Panier : ${nbItems} article${nbItems > 1 ? 's' : ''}, total ${formatF(total)} francs`}>
+            <div className="caisse-panier-raccourci-total">
+              <span>Panier · {nbItems}</span>
+              <strong>{formatF(total)} F</strong>
+            </div>
+            <button type="button" onClick={() => {
+              document.getElementById('caisse-paiement-mobile')?.scrollIntoView({ behavior:'smooth', block:'start' });
+            }}>
+              <Banknote size={ICONE} aria-hidden="true" />
+              <span>Encaisser</span>
+              <ChevronRight size={ICONE} aria-hidden="true" />
+            </button>
+          </div>
+        )}
         {/* UNE ÉTIQUETTE, PAS UNE BOÎTE — le défaut relevé par Patrick le 18/09.
             Il a tapé « banane » et rien n'est arrivé dans le champ : l'écran a
             continué d'afficher l'oignon. La cause n'était pas le filtre, elle
@@ -906,7 +1230,7 @@ function POSCaisseInner() {
             Au-dessus de 1024 px le panier est à CÔTÉ, pas dessous : la grille y
             reste entière et ce bouton n'existe pas (cf. .pos-grille-apercu
             dans styles/commerce.css). */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-1)' }}>
           <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>Produits</h2>
           {filtered.length > 4 && (
             <div className="lg:hidden">
@@ -923,7 +1247,7 @@ function POSCaisseInner() {
             deux outils, pas deux sections — la maquette n'en montre aucun, ils
             restent pour celle qui a trente produits ou vend un article qui
             n'est pas listé. */}
-        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
+        <div style={{ display:'flex', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-1)' }}>
         {/* UNE ÉTIQUETTE, PAS UNE BOÎTE — le défaut relevé par Patrick le 18/09.
             Il a tapé « banane » et rien n'est arrivé dans le champ : l'écran a
             continué d'afficher l'oignon. La cause n'était pas le filtre, elle
@@ -960,10 +1284,19 @@ function POSCaisseInner() {
           </motion.button>}
         </label>
 
-        {/* AUTRE ARTICLE — vendre un montant libre, sans produit listé (Phase 3) */}
+        {/* ── DEUX PORTES, ET ELLES RESTENT SECONDAIRES — recette du 27/09 ──
+            Le testeur voulait retirer « + Autre article ». Arbitrage de
+            Patrick, 29/09 : « le testeur a raison sur l'encombrement, pas sur
+            la fonction […] son étal d'abord, le catalogue ensuite ».
+            Ce bouton n'ouvre pas UN geste mais DEUX, et son nom n'en disait
+            aucun : chercher un produit dans le référentiel maître (198
+            références), ou vendre un montant libre quand rien ne correspond.
+            « Autre article » ne nommait ni l'un ni l'autre.
+            Il reste visuellement en retrait — bordure en tirets, fond ivoire,
+            à côté du filtre — pour ne pas concurrencer ses propres produits. */}
         <motion.button type="button" whileTap={{ scale:0.98 }} onClick={() => setShowLibre(true)}
           style={{ minHeight:'var(--caisse-cible-tactile)', padding:'0 var(--caisse-esp-3) 0 var(--caisse-esp-2)', borderRadius:'var(--caisse-rayon-3)', border:'1.5px dashed var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-1)', whiteSpace:'nowrap', fontFamily:'inherit', flexShrink:0 }}>
-          <Plus size={ICONE} aria-hidden="true" /> Autre article
+          <Plus size={ICONE} aria-hidden="true" /> Chercher un autre produit
         </motion.button>
         </div>
 
@@ -977,19 +1310,50 @@ function POSCaisseInner() {
             vendus (`topProducts`, calculé sur ses ventes réelles) portent un
             éclair au lieu d'une section à part qui les affichait deux fois. */}
         <div style={{ marginBottom:'var(--caisse-esp-4)' }}>
+          {/* CAI-06 — CET ÉTAL VIENT DU TÉLÉPHONE, ET ON LE DIT.
+              L'état `memoire` était calculé depuis CAI-01 et jamais montré :
+              dès qu'il y avait des produits, la grille s'affichait telle
+              quelle, qu'ils viennent du serveur ou d'un souvenir vieux de
+              trois jours. Une liste périmée présentée comme à jour.
+
+              ON INFORME, ON N'ALARME PAS, ET ON NE BLOQUE RIEN. Au marché il
+              n'y a pas de réseau : c'est la situation NORMALE. Le bandeau se
+              pose AU-DESSUS de la grille, qui reste entière et touchable — un
+              avertissement qui fermerait la caisse la fermerait tous les
+              jours. Les mots sont ceux de l'objet qu'elle tient : « ce
+              téléphone », jamais « cache », « serveur » ni « synchronisation ». */}
+          {avertirEtalGarde(etatCatalogue) && (
+            <div role="status" style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-3)', padding:'var(--caisse-esp-2) var(--caisse-esp-3)', background:'var(--caisse-sable)', borderRadius:'var(--caisse-rayon-3)', font:'var(--caisse-font-legende)', color:'var(--caisse-gris-texte)' }}>
+              <Smartphone size={16} aria-hidden="true" style={{ flexShrink:0 }} />
+              <span>{t('CAISSE_ETAL_GARDE')}</span>
+            </div>
+          )}
           {filtered.length === 0 ? (
             <div style={{ textAlign:'center', padding:'var(--caisse-esp-7) 0', color:'var(--caisse-gris-texte)', font:'var(--caisse-font-texte)' }}>
               <Package size={48} style={{ margin:'0 auto var(--caisse-esp-3)', opacity:0.4 }} />
-              <p style={{ marginBottom:'var(--caisse-esp-4)' }}>Aucun produit</p>
+              {/* CAI-01 — « AUCUN PRODUIT » N'EST DIT QUE SI LE SERVEUR L'A RÉPONDU.
+                  Le banc : « l'écran a demandé au serveur, n'a rien obtenu, et
+                  affirme quand même "Aucun produit" ». C'est l'écran de VENTE :
+                  une marchande qui lit ça range son téléphone. Trois situations,
+                  trois phrases — jamais une seule pour toutes. */}
+              {etatCatalogue.type === 'illisible' ? (
+                <p style={{ marginBottom:'var(--caisse-esp-4)' }}>
+                  Je n’ai pas pu lire tes produits. Ce n’est pas vide&nbsp;: réessaie.
+                </p>
+              ) : etatCatalogue.type === 'attente' ? (
+                <p style={{ marginBottom:'var(--caisse-esp-4)' }}>Je vais chercher tes produits…</p>
+              ) : (
+                <p style={{ marginBottom:'var(--caisse-esp-4)' }}>Aucun produit</p>
+              )}
               <motion.button type="button" whileTap={{ scale:0.97 }} onClick={() => setShowLibre(true)}
                 style={{ minHeight:'var(--caisse-cible-tactile)', padding:'var(--caisse-esp-3) var(--caisse-esp-5)', borderRadius:'var(--caisse-rayon-4)', border:'none', background:'var(--caisse-vert)', color:'white', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
-                + Autre article
+                Chercher un autre produit
               </motion.button>
             </div>
           ) : (
             <div className={voirPlusProduits ? 'pos-grille' : 'pos-grille pos-grille-apercu'}>
               {filtered.map((p, i) => {
-                const inCart = cart.find(c => c.productId === p.id);
+                const inCart = cart.find(c => c.productIdCatalogue === p.id);
                 const enPromo = promoActive(p as any);
                 const rapide = topProducts.some(t => t.id === p.id);
                 return (
@@ -1000,7 +1364,7 @@ function POSCaisseInner() {
                       {/* La photo REMPLIT la vignette (F2 : « la densité est trop
                           forte ») : les vignettes emoji hors ligne ont une marge
                           interne, on les grossit légèrement dans leur cadre. */}
-                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getImageByNom(p.nom)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', transform:'scale(1.22)' }} />
+                      <ImageWithFallback src={p.image || undefined} fallbackSrc={getPictogrammeByNom(p.nom)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', transform:'scale(1.22)' }} />
                       <StockBadge stock={p.stock || 0} />
                       {enPromo && (
                         <div style={{ position:'absolute', top:'var(--caisse-esp-1)', right:'var(--caisse-esp-1)', background:'var(--caisse-alerte)', borderRadius:'var(--caisse-rayon-2)', padding:'2px 6px', font:'var(--caisse-font-legende)', fontWeight:600, color:'white' }}>
@@ -1047,7 +1411,7 @@ function POSCaisseInner() {
             produits, et se rejoignent en faisant défiler — jamais en ouvrant.
             Même `renderCartLines()` / `renderCartFooter()` que le panneau de
             droite : une seule logique, deux dispositions. */}
-        <section className="lg:hidden" style={{ marginBottom:'var(--caisse-esp-5)' }}>
+        <section className="lg:hidden" id="caisse-paiement-mobile" style={{ marginBottom:'var(--caisse-esp-5)', scrollMarginTop:'var(--caisse-esp-3)' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:'var(--caisse-esp-2)', marginBottom:'var(--caisse-esp-2)' }}>
             <h2 style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', margin:0 }}>
               Panier actuel{nbItems > 0 && <span style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)' }}> ({nbItems})</span>}
@@ -1142,20 +1506,40 @@ function POSCaisseInner() {
             initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
             onClick={fermerAutreArticle}
             style={{ position:'fixed', inset:0, zIndex:110, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}
-            role="dialog" aria-modal="true" aria-label="Autre article"
+            role="dialog" aria-modal="true" aria-label="Chercher un autre produit"
           >
             <motion.div
               initial={{ y:40 }} animate={{ y:0 }} exit={{ y:40 }}
               onClick={e => e.stopPropagation()}
               style={{ width:'100%', maxWidth:480, background:'var(--caisse-ivoire)', borderTopLeftRadius:'var(--caisse-rayon-5)', borderTopRightRadius:'var(--caisse-rayon-5)', padding:'var(--caisse-esp-5) var(--caisse-esp-4) calc(var(--caisse-esp-5) + env(safe-area-inset-bottom))' }}
             >
-              <div style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', marginBottom:'var(--caisse-esp-4)' }}>Autre article</div>
+              <div style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', marginBottom:'var(--caisse-esp-4)' }}>Chercher un autre produit</div>
+
+              {/* CE QU'ELLE VIENT DE DIRE, RENDU VISIBLE (21/09/2026). La
+                  feuille s'ouvrait vide alors que « cinq tomates » venait
+                  d'être compris : elle devait tout retaper. Ici, sa phrase est
+                  rappelée telle qu'entendue, et le total se calcule sous ses
+                  yeux dès qu'elle pose son prix — aucun chiffre n'est inventé,
+                  c'est son prix multiplié par ce qu'elle a dit. */}
+              {venteDictee && (
+                <div data-test="rappel-dictee"
+                  style={{ border:'1.5px solid var(--caisse-vert)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-3)', marginBottom:'var(--caisse-esp-4)', background:'var(--caisse-succes)' }}>
+                  <div style={{ font:'var(--caisse-font-texte)', fontWeight:700, color:'var(--encre)' }}>
+                    {quantiteAvecUnite(venteDictee.quantite, venteDictee.unite)} de {venteDictee.nom}
+                  </div>
+                  <div style={{ fontSize:12, color:'var(--encre-3)', marginTop:2 }}>
+                    {Number(libreMontant) > 0
+                      ? `Total : ${formatF(Number(libreMontant) * venteDictee.quantite)} F`
+                      : 'Il ne manque que ton prix.'}
+                  </div>
+                </div>
+              )}
 
               {/* ── 1. Chercher dans le catalogue maître (Odoo) ────────────
                   La recherche est LOCALE (voir useCatalogueMaitre) : elle
                   fonctionne hors ligne et ne déclenche pas un appel réseau à
                   chaque lettre tapée. */}
-              {!refChoisie && (
+              {!refChoisie && !arbitrageSansClavier && (
                 <>
                   <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Chercher un produit</label>
                   <input
@@ -1203,7 +1587,12 @@ function POSCaisseInner() {
                   )}
                   <div style={{ display:'flex', alignItems:'center', gap:10, margin:'4px 0 14px' }}>
                     <div style={{ flex:1, height:1, background:'var(--trait)' }} />
-                    <span style={{ fontSize:11, fontWeight:700, color:'var(--encre-3)' }}>OU MONTANT LIBRE</span>
+                    {/* LA SECONDE PORTE EST NOMMÉE PAR CE QUI L'AMÈNE. « OU
+                        MONTANT LIBRE » décrivait le MÉCANISME ; « Produit non
+                        trouvé » décrit la SITUATION de la marchande — c'est la
+                        même règle que partout ici : on nomme son geste, pas le
+                        nôtre. */}
+                    <span style={{ fontSize:11, fontWeight:700, color:'var(--encre-3)' }}>PRODUIT NON TROUVÉ</span>
                     <div style={{ flex:1, height:1, background:'var(--trait)' }} />
                   </div>
                 </>
@@ -1228,18 +1617,138 @@ function POSCaisseInner() {
               <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>
                 {refChoisie ? 'Ton prix de vente' : 'Montant'}
               </label>
+
+              {/* VOX-03 — ELLE PEUT DIRE SON PRIX, ICI AUSSI.
+                  Mesuré sur l'APK `ca2e817`, journal du 02/10 21:38 : Tantie
+                  demande « Piment. Quel est ton prix ? », puis TRENTE-HUIT
+                  SECONDES passent SANS un seul `ECOUTE_DEBUT`. Les 10 000 F sont
+                  entrés au clavier. La question était posée à la voix, la
+                  réponse exigée au doigt — sur l'écran de l'ARGENT, devant
+                  précisément la personne pour qui cette application existe.
+
+                  `BoutonDirePrix` (VOX-03) existait déjà, testé, et vivait dans
+                  `SaisieGuidee` et `AjoutProduitGuide`. Il manquait ICI, sur le
+                  chemin qui s'ouvre quand une vente DICTÉE n'a pas de prix —
+                  c'est-à-dire le chemin de la marchande qui parle.
+
+                  PAS DE `ouvrirToutSeul` sur cet écran-ci, et c'est délibéré :
+                  la question est déjà dite par `ouvrirPrixManquant`
+                  (`TATA_QUEL_PRIX`). Ouvrir le micro tout seul 250 ms plus tard
+                  le ferait écouter Tantie en train de parler, et transcrire sa
+                  propre question. Elle appuie, elle dit son prix.
+
+                  Le clavier reste dessous, inchangé, pour qui préfère taper. */}
+              {guidageVocal() && (
+                <div style={{ marginTop: 6 }}>
+                  <BoutonDirePrix
+                    ouvrirToutSeul
+                    question={texteMessage('TATA_QUEL_PRIX', { produit: libreDesc || venteDictee?.nom || '' })}
+                    dire={dire}
+                    onMontant={(m) => {
+                      // AMB-01 — ON NE DEVINE PAS ENTRE « CHACUN » ET « EN TOUT ».
+                      //
+                      // Mesuré le 03/10/2026 : « cinq piments » puis « cinq cents
+                      // francs » écrivait 2 500 F — 500 pris pour un prix UNITAIRE,
+                      // sans rien demander. C'était juste ce jour-là ; « donne-moi
+                      // cinq piments, c'est mille francs » aurait écrit 5 000 F.
+                      //
+                      // L'application sait déjà ne pas deviner : `TATA_AMBIGUITE`
+                      // est marqué `critiqueArgent: true` et `prixVocal` le lève
+                      // dès que la quantité dépasse un. Ce chemin-ci ne le
+                      // consultait pas — parce que la voix a été branchée sur un
+                      // formulaire tactile, où le champ est un prix unitaire par
+                      // construction. On rebranche la question.
+                      const qteDite = venteDictee?.quantite ?? libreQte;
+                      if (m > 0 && qteDite > 1) {
+                        // UNE SEULE FOIS, ET C'EST LE CŒUR DU CORRECTIF.
+                        //
+                        // Terrain, 03/10/2026 : la question partait EN BOUCLE et
+                        // la réponse n'était jamais retenue. `BoutonDirePrix`
+                        // appelle `onMontant` à CHAQUE transcription partielle
+                        // — « en direct, elle voit monter ». Chaque relevé de
+                        // Sherpa reposait donc la question et écrasait le choix
+                        // qu'elle venait de faire.
+                        //
+                        // Le ref tranche AVANT tout `setState` : deux relevés
+                        // séparés de 30 ms verraient tous deux l'état encore à
+                        // `null` et poseraient la question deux fois.
+                        if (arbitrageDemandeRef.current) return;
+                        arbitrageDemandeRef.current = true;
+                        setPrixDitAArbitrer({ montant: m, quantite: qteDite });
+                        direMessage('TATA_AMBIGUITE', { montant: m, quantite: String(qteDite) });
+                        return;
+                      }
+                      // Et tant que l'arbitrage est ouvert, aucun relevé suivant
+                      // ne vient remplir le champ dans son dos.
+                      if (arbitrageDemandeRef.current) return;
+                      setLibreMontant(String(m));
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* AMB-02 — pendant l'arbitrage parlé, aucun champ, donc aucun
+                  pavé numérique : il ne reste que les deux réponses à toucher.
+                  Sans guidage vocal, cette ligne est toujours vraie et la
+                  feuille est celle d'avant, au caractère près. */}
+              {!arbitrageSansClavier && (
               <div style={{ display:'flex', alignItems:'center', gap:8, border:'1.5px solid var(--trait)', borderRadius:14, padding:'12px 14px', marginTop:6, marginBottom:14 }}>
                 <input
                   value={libreMontant}
                   onChange={e => setLibreMontant(e.target.value.replace(/[^\d]/g, ''))}
-                  inputMode="numeric" autoFocus placeholder="0"
+                  inputMode="numeric" placeholder="0"
+                  // QTE-03 — PAS DE CLAVIER QUAND ON LUI PARLE.
+                  //
+                  // Capture de Patrick, APK `ea7b8e2`, 03/10/2026 : l'écran
+                  // demande le prix à la voix, et Android ouvre AUSSITÔT son
+                  // pavé numérique, qui couvre la moitié de l'écran — le
+                  // bouton « Dire le prix » compris. `autoFocus` le réclamait.
+                  //
+                  // Pour une marchande qui ne lit pas, c'est l'inverse exact de
+                  // ce que la page lui dit de faire. Le clavier reste là pour
+                  // qui veut taper : il ne s'impose simplement plus.
+                  autoFocus={!guidageVocal()}
                   style={{ flex:1, border:'none', outline:'none', fontSize:26, fontWeight:800, color:'var(--encre)', background:'transparent', fontVariantNumeric:'tabular-nums' }}
                 />
                 <span style={{ fontSize:16, fontWeight:700, color:'var(--encre-3)' }}>F</span>
               </div>
+              )}
 
-              {/* Unité LOCALE : c'est elle qui sait si elle vend au tas ou au kilo. */}
-              {refChoisie && (
+              {/* AMB-01 — DEUX RÉPONSES, ET CHACUNE DIT CE QU'ELLE VA ÉCRIRE.
+                  Pas « unitaire / total » : ces mots-là ne sont pas ceux du
+                  marché. Et chaque bouton porte le TOTAL qui entrera au panier,
+                  pour qu'aucun des deux ne réserve de surprise. */}
+              {prixDitAArbitrer && (
+                <div style={{ display:'grid', gap:8, marginBottom:14 }}>
+                  {(() => {
+                    const { montant, quantite } = prixDitAArbitrer;
+                    const chacun = resoudrePrix(quantite, montant, 'unitaire', null);
+                    const enTout = resoudrePrix(quantite, montant, 'total', null);
+                    const poser = (r: { prixUnitaire: number | null }) => {
+                      setLibreMontant(String(r.prixUnitaire ?? montant));
+                      setPrixDitAArbitrer(null);
+                      arbitrageDemandeRef.current = false;
+                    };
+                    return (
+                      <>
+                        <button type="button" onClick={() => poser(chacun)}
+                          style={{ padding:'var(--caisse-esp-3)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'2px solid var(--caisse-vert)', background:'white', color:'var(--encre)', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
+                          {formatF(montant)} F chacun — total {formatF((chacun.prixUnitaire ?? 0) * quantite)} F
+                        </button>
+                        <button type="button" onClick={() => poser(enTout)}
+                          style={{ padding:'var(--caisse-esp-3)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'2px solid var(--caisse-vert)', background:'white', color:'var(--encre)', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
+                          {formatF(montant)} F en tout — {formatF(enTout.prixUnitaire ?? 0)} F chacun
+                        </button>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Unité LOCALE : c'est elle qui sait si elle vend au tas ou au kilo.
+                  AMB-02 : muette pendant l'arbitrage parlé — un sélecteur est
+                  encore une chose à remplir. */}
+              {refChoisie && !arbitrageSansClavier && (
                 <>
                   <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Tu vends par…</label>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:6, marginBottom:14 }}>
@@ -1253,7 +1762,7 @@ function POSCaisseInner() {
                 </>
               )}
 
-              {!refChoisie && (
+              {!refChoisie && !arbitrageSansClavier && (
                 <>
                   <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Quoi ? (facultatif)</label>
                   <input
@@ -1269,6 +1778,25 @@ function POSCaisseInner() {
                   <div style={{ marginBottom:18 }}>
                     <ChoixUnite valeur={libreUnite} onChoisir={setLibreUnite} dire={dire} />
                   </div>
+                  {/* COMBIEN — les mêmes gestes que dans le panier (moins, plus),
+                      cibles de 44 px. Sans ce champ, la marchande qui vend deux
+                      tas posait 2 000 F : la vente était juste sur l'argent et
+                      fausse sur la quantité. */}
+                  <label style={{ fontSize:12, fontWeight:700, color:'var(--encre-3)' }}>Combien ?</label>
+                  <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:6, marginBottom:18 }}>
+                    <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => setLibreQte(q => Math.max(1, q - 1))}
+                      aria-label="Un de moins"
+                      style={{ width:48, height:48, borderRadius:14, border:'1.5px solid var(--trait)', background:'white', fontSize:22, fontWeight:900, color:'var(--encre)', cursor:'pointer', fontFamily:'inherit' }}>−</motion.button>
+                    <div aria-live="polite" style={{ minWidth:56, textAlign:'center', fontSize:22, fontWeight:900, color:'var(--encre)' }}>{libreQte}</div>
+                    <motion.button type="button" whileTap={{ scale:0.86 }} onClick={() => setLibreQte(q => q + 1)}
+                      aria-label="Un de plus"
+                      style={{ width:48, height:48, borderRadius:14, border:'1.5px solid var(--trait)', background:'white', fontSize:22, fontWeight:900, color:'var(--encre)', cursor:'pointer', fontFamily:'inherit' }}>+</motion.button>
+                    {Number(libreMontant) > 0 && (
+                      <div style={{ marginLeft:'auto', fontSize:13, fontWeight:800, color:'var(--encre-3)' }}>
+                        Total : {formatF(Number(libreMontant) * Math.max(1, libreQte))} F
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 
@@ -1278,6 +1806,7 @@ function POSCaisseInner() {
                 </div>
               )}
 
+              {!arbitrageSansClavier && (
               <button
                 type="button"
                 onClick={refChoisie ? adopterReference : ajouterMontantLibre}
@@ -1286,27 +1815,52 @@ function POSCaisseInner() {
               >
                 {adoptionEnCours ? 'Ajout…' : refChoisie ? 'Ajouter à mon catalogue' : 'Ajouter'}
               </button>
+              )}
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Écran « Vente réussie » (Phase 3, lot 4) */}
+      {/* Écran de fin de vente (Phase 3, lot 4) — confirmée OU gardée (OFF-01) */}
       <AnimatePresence>
         {showSuccess && lastSale && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
             style={{ position:'fixed', inset:0, zIndex:120, background:'var(--caisse-sable)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'var(--caisse-esp-5)', textAlign:'center' }}>
-            <div style={{ width:88, height:88, borderRadius:'50%', background:'var(--caisse-succes)', display:'grid', placeItems:'center', marginBottom:'var(--caisse-esp-4)' }}>
-              <Check size={48} color="var(--caisse-vert)" />
+            <div style={{ width:88, height:88, borderRadius:'50%', background: lastSale.statut === 'confirmee' ? 'var(--caisse-succes)' : 'var(--caisse-ivoire)', display:'grid', placeItems:'center', marginBottom:'var(--caisse-esp-4)' }}>
+              {lastSale.statut === 'confirmee'
+                ? <Check size={48} color="var(--caisse-vert)" aria-hidden="true" />
+                : <CloudOff size={48} color="var(--caisse-gris-texte)" aria-hidden="true" />}
             </div>
-            <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-vert)', marginBottom:'var(--caisse-esp-2)' }}>Vente réussie</div>
+            {/* TOUJOURS PAS de `role="status"` ni d'`aria-live` ici — mais plus
+                pour la même raison. OFF-01 est FERMÉE : cet écran ne dit plus
+                « réussie » sur une vente qui n'est que gardée, et les deux
+                issues sont PARLÉES par Tata (`TATA_VENTE_ENREGISTREE*` /
+                `TATA_VENTE_GARDEE_TELEPHONE*`). Annoncer en plus la région à
+                un lecteur d'écran ferait DIRE DEUX FOIS la même chose, à deux
+                voix qui se recouvrent. En faire une région annoncée reste
+                possible et se décide avec Patrick : c'est de la doctrine voix,
+                pas de la correction de dette. Ni Manus ni la base ne l'ont. */}
+            {lastSale.statut === 'confirmee' ? (
+              <div style={{ font:'var(--caisse-font-h2)', color:'var(--caisse-vert)', marginBottom:'var(--caisse-esp-2)' }}>Vente réussie</div>
+            ) : (
+              <div style={{ font:'var(--caisse-font-h2)', color:'var(--encre)', marginBottom:'var(--caisse-esp-2)' }}>Vente gardée sur le téléphone</div>
+            )}
             <div style={{ font:'var(--caisse-font-h1)', fontSize:36, color:'var(--encre)', fontVariantNumeric:'tabular-nums' }}>{lastSale.montant.toLocaleString('fr-FR')} F</div>
             <div style={{ font:'var(--caisse-font-texte)', color:'var(--caisse-gris-texte)', marginTop:'var(--caisse-esp-2)' }}>
               {lastSale.moyen}{lastSale.monnaie > 0 ? ` · rendu ${lastSale.monnaie.toLocaleString('fr-FR')} F` : ''}
             </div>
+            {lastSale.statut !== 'confirmee' && (
+              <div style={{ font:'var(--caisse-font-texte)', color:'var(--encre)', marginTop:'var(--caisse-esp-3)', maxWidth:360 }}>
+                En attente d'envoi. Je l'envoie dès que le réseau revient.
+              </div>
+            )}
             <div style={{ width:'100%', maxWidth:360, marginTop:'var(--caisse-esp-6)', display:'flex', flexDirection:'column', gap:'var(--caisse-esp-3)' }}>
+              {/* LE REÇU PART MÊME HORS LIGNE — décision de Patrick, OFF-01.
+                  La vente a eu lieu devant la cliente ; elle a droit à sa
+                  trace. Mais le reçu porte alors son acheminement réel, pris
+                  sur `lastSale.statut` et jamais redéduit de `navigator.onLine`. */}
               <button type="button"
-                onClick={() => { void partagerRecu({ montant: lastSale.montant, produits: lastSale.produits, mode_paiement: lastSale.moyen, created_at: new Date().toISOString() } as any, marchandNom); }}
+                onClick={() => { void partagerRecu({ montant: lastSale.montant, produits: lastSale.produits, mode_paiement: lastSale.moyen, created_at: new Date().toISOString(), statutSynchronisation: lastSale.statut } as any, marchandNom); }}
                 style={{ width:'100%', padding:'var(--caisse-esp-4)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'1.5px solid var(--caisse-vert)', background:'var(--caisse-ivoire)', color:'var(--caisse-vert-fonce)', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit' }}>
                 Envoyer le reçu (WhatsApp)
               </button>

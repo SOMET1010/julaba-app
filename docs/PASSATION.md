@@ -44,7 +44,7 @@ elle refera ce qui est déjà fait.
 ```
 node ci/check-tsc-baseline.mjs          → 0 erreur (cliquet)
 npm run verify -w frontend_src          → vert (56 scripts)
-npm run test:ci -w frontend_src         → vert, GELÉ et NON MODIFIÉ
+npm run test:ci -w frontend_src         → GELÉ et NON MODIFIÉ — ROUGE sur 3 tests (voir note)
 npm run test:unit -w backend            → 196 tests verts
 npm run build -w frontend_src           → vert
 npm run build -w backend                → vert
@@ -54,6 +54,15 @@ npm run build -w backend                → vert
 npx jest --config backend/jest-invariants.config.cjs --runInBand --forceExit
                                         → 39 suites / 188 tests verts
 ```
+
+> **Correction du 03/10/2026 (intégration `claude/integration-main`).** La
+> mention « `test:ci` vert » ci-dessus est **fausse aujourd'hui** : mesurée test
+> par test sur `claude/clever-allen-dnr8by` (`98e6981`) comme sur l'intégration,
+> `test:ci` est **rouge sur 3 tests préexistants** — `test:vendre-unifie`,
+> `test:offline-voice-hook`, `test:correction` (41 verts sur 44). Comme la
+> chaîne est enchaînée par `&&`, `npm run test:ci` s'arrête au premier
+> (`test:vendre-unifie`) et sort en 1. Ce ne sont pas des régressions de
+> l'intégration : ils sont identiques sur la branche de travail seule.
 
 ### Les 12 commits du 19/09, dans l'ordre
 

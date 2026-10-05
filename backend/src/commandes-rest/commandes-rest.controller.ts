@@ -102,6 +102,15 @@ export class CommandesRestController {
       throw new BadRequestException('Vente directe : recolte_id requis (rattacher la vente à une récolte)');
     }
 
+    // BO-0 / S1 : une vente directe est créée par le VENDEUR. Elle ne porte
+    // aucun consentement de l'acheteur, donc elle ne peut jamais être réglée
+    // en keiwa (ce serait débiter le wallet d'un tiers choisi librement).
+    // Seul l'acheteur qui crée lui-même sa commande en keiwa consent au débit.
+    const modePaiementDemande = String(body.mode_paiement || body.modePaiement || '').toLowerCase();
+    if (isVenteDirecte && modePaiementDemande === 'keiwa') {
+      throw new BadRequestException('Vente directe : paiement keiwa interdit (aucun consentement de l\'acheteur)');
+    }
+
     const rawAcheteur = body.acheteur_id ?? body.acheteurId;
     const acheteurIdTrimmed =
       rawAcheteur != null && String(rawAcheteur).trim() !== '' ? String(rawAcheteur).trim() : null;
@@ -227,6 +236,12 @@ export class CommandesRestController {
         return { dejaPaye: false };
       }
 
+      // BO-0 / S1 : défense en profondeur pour les lignes antérieures au
+      // refus à la création. Une vente directe n'a pas été créée par
+      // l'acheteur : la débiter serait un débit sans consentement.
+      if (cmd.type === 'vente_directe') {
+        throw new ForbiddenException('Vente directe : débit keiwa de l\'acheteur interdit');
+      }
       if (!cmd.acheteurId) {
         throw new BadRequestException('Acheteur introuvable pour paiement keiwa');
       }

@@ -37,6 +37,17 @@ const COMMANDES = new Set([
   'hideKeyboard', 'killApp', 'addMedia',
 ]);
 
+/** `optional` n'est accepté que sur les commandes à sélecteur et `runFlow`.
+ *  Le run #4 est mort sur « Invalid Command Format: inputText » — un
+ *  `optional: true` posé sur `inputText`. Ce validateur ne regardait QUE le nom
+ *  des commandes, donc il l'a laissé passer, et Maestro refuse le fichier au
+ *  PARSING : un seul flow invalide empêche TOUS les autres de tourner, même
+ *  ceux filtrés par `--include-tags`. */
+const ACCEPTE_OPTIONAL = new Set([
+  'tapOn', 'doubleTapOn', 'longPressOn', 'assertVisible', 'assertNotVisible',
+  'extendedWaitUntil', 'scrollUntilVisible', 'copyTextFrom', 'runFlow', 'eraseText',
+]);
+
 let erreurs = 0;
 const ko = (f, m) => { console.log(`  ✗ ${f} — ${m}`); erreurs++; };
 
@@ -94,6 +105,19 @@ for (const f of liste) {
     const nom = m[1];
     // ── 1 · VOCABULAIRE
     if (!COMMANDES.has(nom)) ko(f, `ligne ${i + 1} : commande inconnue « ${nom} »`);
+    // ── 1bis · `optional` SUR UNE COMMANDE QUI NE LE PREND PAS
+    // On regarde la commande elle-même et les lignes indentées qui la suivent.
+    if (!ACCEPTE_OPTIONAL.has(nom)) {
+      for (let k = i; k < lignes.length; k++) {
+        if (k > i && /^- /.test(lignes[k])) break;        // commande suivante
+        if (k > i && /^\S/.test(lignes[k])) break;         // fin du bloc
+        if (/(^|\s)optional:\s*true/.test(lignes[k])) {
+          ko(f, `ligne ${k + 1} : « optional » n'est pas accepté sur « ${nom} » — Maestro refuse le fichier au parsing`);
+          break;
+        }
+      }
+    }
+
     // ── 2 · LES runFlow POINTENT SUR UN FICHIER EXISTANT
     if (nom === 'runFlow') {
       const sur1 = l.match(/^- runFlow:\s*(\S.*)$/);

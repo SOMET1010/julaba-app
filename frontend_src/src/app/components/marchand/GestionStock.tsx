@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { suggererProduits, getImageByNom, rechercherProduitCatalogue, CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
-import { Package, TrendingUp, AlertCircle, Plus, Search, Trash2, X, Mic, MicOff, Edit3, Receipt, Wallet, BarChart3 } from 'lucide-react';
+import { Package, TrendingUp, AlertCircle, Plus, Search, Trash2, X, Mic, MicOff, Edit3, BarChart3, Eye, EyeOff, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { Montant } from '../shared/Montant';
+import { prixDicte } from '../../services/prixDeLaMarchande';
+import { AjoutProduitGuide } from './AjoutProduitGuide';
+import { BoutonDireProduit } from './BoutonDireProduit';
+import type { EcouteProduit } from '../../services/produitDit';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useUser } from '../../contexts/UserContext';
@@ -24,8 +29,9 @@ import { API_URL } from '../../utils/api';
 import { mapApiMouvements, quantiteMouvement, mentionUniteInconnue, type MouvementUI } from '../../services/mouvementsStock';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
+import { useMontantsPrives } from '../../hooks/useMontantsPrives';
 
-const P = '#AF5B23';
+const P = 'var(--commerce-action)';
 
 interface Stock {
   id: string; name: string; image: string;
@@ -35,31 +41,14 @@ interface Stock {
   promoPrice?: number | null; promoFin?: string | null;
 }
 
-function AnimatedNumber({ value, color, size = 28 }: { value: number; color: string; size?: number }) {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    let start = 0; const end = value;
-    if (start === end) { setDisplay(end); return; }
-    const step = (end - start) / (800 / 16);
-    let current = start;
-    const timer = setInterval(() => {
-      current += step;
-      if ((step > 0 && current >= end) || (step < 0 && current <= end)) { setDisplay(end); clearInterval(timer); }
-      else setDisplay(Math.round(current));
-    }, 16);
-    return () => clearInterval(timer);
-  }, [value]);
-  return <span style={{ fontSize: size, fontWeight: 900, color }}>{display.toLocaleString('fr-FR')}</span>;
-}
-
-function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => void; onDelete: () => void }) {
+function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Stock; montantsMasques: boolean; onTap: () => void; onDelete: () => void }) {
   const x = useMotionValue(0);
   const deleteOpacity = useTransform(x, [-72, -20], [1, 0]);
   const isLow = stock.quantity < stock.threshold;
   const isEmpty = stock.quantity <= 0;
   const benefice = stock.salePrice - stock.purchasePrice;
   const marginPct = stock.purchasePrice > 0 ? Math.round((benefice / stock.purchasePrice) * 100) : 0;
-  const borderColor = isEmpty ? '#dc2626' : isLow ? '#ef4444' : '#16a34a';
+  const borderColor = isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--color-green-600)';
   const stockPct = Math.min(100, Math.round((stock.quantity / Math.max(stock.threshold * 2, 1)) * 100));
 
   return (
@@ -67,7 +56,7 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
       {/* Fond swipe suppression */}
       <motion.div style={{
         position: 'absolute', right: 0, top: 0, bottom: 0, width: 72,
-        background: '#ef4444', display: 'flex', alignItems: 'center',
+        background: 'var(--color-red-500)', display: 'flex', alignItems: 'center',
         justifyContent: 'center', borderRadius: 22, opacity: deleteOpacity,
       }}>
         <Trash2 size={20} color="white" />
@@ -103,7 +92,7 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
             borderRadius: 22,
             overflow: 'hidden',
             cursor: 'pointer',
-            background: '#fff',
+            background: 'var(--herite-blanc-pur)',
             minWidth: 0,
           }}
         >
@@ -125,19 +114,19 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
               position: 'absolute', top: 8, left: 8,
               background: isEmpty ? 'rgba(220,38,38,0.92)' : isLow ? 'rgba(239,68,68,0.92)' : 'rgba(22,163,74,0.92)',
               borderRadius: 30, padding: '2px 8px',
-              fontSize: 8, fontWeight: 900, color: '#fff',
+              fontSize: 8, fontWeight: 900, color: 'var(--herite-blanc-pur)',
               textTransform: 'uppercase', letterSpacing: '0.4px',
             }}>
               {isEmpty ? '✕ Rupture' : isLow ? '⚠ Stock bas' : '✓ En stock'}
             </div>
             {/* Pill marge haut droite */}
-            {marginPct !== 0 && (
+            {!montantsMasques && marginPct !== 0 && (
               <div style={{
                 position: 'absolute', top: 8, right: 8,
                 background: 'rgba(255,255,255,0.2)',
                 backdropFilter: 'blur(4px)',
                 borderRadius: 30, padding: '2px 7px',
-                fontSize: 8, fontWeight: 900, color: '#fff',
+                fontSize: 8, fontWeight: 900, color: 'var(--herite-blanc-pur)',
               }}>
                 {marginPct > 0 ? '+' : ''}{marginPct}%
               </div>
@@ -145,7 +134,7 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
             {/* Nom produit bas gauche */}
             <div style={{
               position: 'absolute', bottom: 8, left: 10,
-              fontSize: 14, fontWeight: 900, color: '#fff',
+              fontSize: 14, fontWeight: 900, color: 'var(--herite-blanc-pur)',
               textShadow: '0 1px 6px rgba(0,0,0,0.55)',
             }}>
               {stock.name}
@@ -153,21 +142,19 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
           </div>
 
           {/* Corps blanc */}
-          <div style={{ padding: '11px 10px 13px', background: '#fff' }}>
+          <div style={{ padding: '11px 10px 13px', background: 'var(--herite-blanc-pur)' }}>
 
             {/* Quantité centrée */}
             <div style={{
               display: 'flex', alignItems: 'baseline', justifyContent: 'center',
               gap: 4, marginBottom: 8,
             }}>
-              <AnimatedNumber
-                value={stock.quantity}
-                color={isEmpty ? '#dc2626' : isLow ? '#ef4444' : '#16a34a'}
-                size={40}
-              />
+              <span style={{ fontSize:40, fontWeight:900, color:isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--color-green-600)' }}>
+                {stock.quantity.toLocaleString('fr-FR')}
+              </span>
               <span style={{
                 fontSize: 13, fontWeight: 700,
-                color: isEmpty ? '#dc2626' : isLow ? '#ef4444' : 'var(--encre-4)',
+                color: isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--encre-4)',
               }}>
                 {stock.unit}
               </span>
@@ -177,13 +164,13 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
             <div style={{ marginBottom: 10 }}>
               <div style={{
                 display: 'flex', justifyContent: 'space-between',
-                fontSize: 8, fontWeight: 700, color: '#ccc',
+                fontSize: 8, fontWeight: 700, color: 'var(--herite-gris-80)',
                 textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 4,
               }}>
                 <span>Stock</span>
                 <span>seuil : {stock.threshold} {stock.unit}</span>
               </div>
-              <div style={{ background: '#f0ebe3', borderRadius: 20, height: 5, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--commerce-gray-100)', borderRadius: 20, height: 5, overflow: 'hidden' }}>
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${stockPct}%` }}
@@ -191,47 +178,47 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
                   style={{
                     height: '100%', borderRadius: 20,
                     background: isEmpty
-                      ? '#dc2626'
+                      ? 'var(--destructive)'
                       : isLow
-                        ? 'linear-gradient(90deg,#fb923c,#ef4444)'
-                        : 'linear-gradient(90deg,#4ade80,#16a34a)',
+                        ? 'linear-gradient(90deg,var(--color-orange-400),var(--color-red-500))'
+                        : 'linear-gradient(90deg,var(--color-green-400),var(--color-green-600))',
                   }}
                 />
               </div>
             </div>
 
             {/* Séparateur */}
-            <div style={{ height: 1, background: '#f5f0ea', marginBottom: 10 }} />
+            <div style={{ height: 1, background: 'var(--commerce-paper)', marginBottom: 10 }} />
 
             {/* Prix Achat / Vente */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
               <div style={{
-                background: '#FFF7F0', border: '1.5px solid #FDDFC4',
+                background: 'var(--julaba-ivoire)', border: '1.5px solid var(--julaba-sable)',
                 borderRadius: 12, padding: '7px 6px', textAlign: 'center',
               }}>
                 <div style={{
-                  fontSize: 8, fontWeight: 900, color: '#C2410C',
+                  fontSize: 8, fontWeight: 900, color: 'var(--color-orange-700)',
                   textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3,
                 }}>Achat</div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: '#EA580C', lineHeight: 1 }}>
-                  {(stock.purchasePrice || 0).toLocaleString('fr-FR')}
+                <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--color-orange-600)', lineHeight: 1 }}>
+                  {montantsMasques ? '•••••' : (stock.purchasePrice || 0).toLocaleString('fr-FR')}
                 </div>
-                <div style={{ fontSize: 8, fontWeight: 600, color: '#C2410C', opacity: 0.65, marginTop: 2 }}>
+                <div style={{ fontSize: 8, fontWeight: 600, color: 'var(--color-orange-700)', opacity: 0.65, marginTop: 2 }}>
                   FCFA/{stock.unit}
                 </div>
               </div>
               <div style={{
-                background: '#F0FDF4', border: '1.5px solid #BBF7D0',
+                background: 'var(--color-green-50)', border: '1.5px solid var(--color-green-200)',
                 borderRadius: 12, padding: '7px 6px', textAlign: 'center',
               }}>
                 <div style={{
-                  fontSize: 8, fontWeight: 900, color: '#15803D',
+                  fontSize: 8, fontWeight: 900, color: 'var(--color-green-700)',
                   textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3,
                 }}>Vente</div>
-                <div style={{ fontSize: 13, fontWeight: 900, color: '#16A34A', lineHeight: 1 }}>
-                  {(stock.salePrice || 0).toLocaleString('fr-FR')}
+                <div style={{ fontSize: 13, fontWeight: 900, color: 'var(--color-green-600)', lineHeight: 1 }}>
+                  {montantsMasques ? '•••••' : (stock.salePrice || 0).toLocaleString('fr-FR')}
                 </div>
-                <div style={{ fontSize: 8, fontWeight: 600, color: '#15803D', opacity: 0.65, marginTop: 2 }}>
+                <div style={{ fontSize: 8, fontWeight: 600, color: 'var(--color-green-700)', opacity: 0.65, marginTop: 2 }}>
                   FCFA/{stock.unit}
                 </div>
               </div>
@@ -244,37 +231,66 @@ function SwipeableCard({ stock, onTap, onDelete }: { stock: Stock; onTap: () => 
   );
 }
 
+/** La saisie d'un produit. `''` = pas encore saisi — ce n'est ni un montant,
+ *  ni un zero, et le distinguer est tout l'objet de STK-02. */
+type SaisieProduit = {
+  name: string; image: string; quantity: number; unit: string;
+  purchasePrice: number | ''; salePrice: number | '';
+  threshold: number; category: string; datePeremption: string;
+  promoPrice: number | string; promoFin: string;
+};
+
 export function GestionStock() {
   const navigate = useNavigate();
   const { user } = useUser();
   const { showToast, ToastContainer } = useToast();
   const { products, addProduct, updateProduct, deleteProduct, refreshProducts } = useCaisse();
-  const { speak, setIsModalOpen } = useApp();
+  const { speak, setIsModalOpen, isOnline } = useApp();
+  const { montantsMasques, basculerMontants } = useMontantsPrives();
   // Retour vocal des ERREURS DE FORMULAIRE selon le profil (muet en 'lecture', où
   // le toast suffit). Les réponses aux COMMANDES VOCALES, elles, parlent toujours.
   const dire = (t: string) => { if (guidageVocal()) speak(t); };
   const stockCtx = useStock();
 
   /** Caisse (Kassa) + API /stocks : fusion par nom, la caisse prime pour qu'un produit créé en Kassa apparaisse même si /stocks n'est pas vide. */
+  // UNE SEULE SOURCE POUR L'ÉTAL — 25/09/2026, arbitrage de Patrick.
+  //
+  // CE QU'IL Y AVAIT. Cette liste FUSIONNAIT deux sources — `products`
+  // (/caisse/produits) et `stockCtx.stock` (/stocks) — puis dédoublonnait PAR
+  // NOM dans une Map. Deux effets, tous deux mauvais :
+  //
+  //  · l'agent de test du 25/09 a vu DEUX « Piment » (15 et 6) dans la caisse
+  //    et UN SEUL ici : le dédoublonnage en cachait un, en silence. La
+  //    marchande ne peut pas corriger ce qu'elle ne voit pas ;
+  //  · pire, `byName.set(...)` garde le DERNIER écrit. Modifier « Piment »
+  //    depuis cet écran touchait donc une ligne au hasard des deux.
+  //
+  // MESURÉ : les deux routes lisent LA MÊME TABLE `produits`. Il n'y a jamais
+  // eu deux tables — seulement deux lectures, et deux lignes réellement créées
+  // sous le même nom. `/caisse/produits` filtre `actif = true` ; `/stocks` ne
+  // le fait pas et rend aussi les produits désactivés, qui n'ont rien à faire
+  // dans l'étal.
+  //
+  // DÉSORMAIS : `products` fait foi, et RIEN N'EST DÉDOUBLONNÉ. Deux produits
+  // de même nom s'affichent tous les deux, chacun avec son `id` : la marchande
+  // les voit, et peut en supprimer un. Montrer la vérité vaut mieux que cacher
+  // le doublon — « ne jamais donner deux sens à la même donnée ».
+  //
+  // LE REPLI n'est PAS une fusion : il ne sert que si `products` est vide (API
+  // muette ET cache froid). Jamais les deux listes en même temps.
   const stocks: Stock[] = useMemo(() => {
-    const seen = new Set<string>();
-    const fromCaisse: Stock[] = (!products || !Array.isArray(products)) ? [] : products
-      .filter(p => {
-        if (seen.has(p.id)) return false;
-        seen.add(p.id);
-        return true;
-      })
-      .map(p => ({
-        id: p.id, name: p.nom, image: p.image || '',
-        quantity: p.stock || 0, unit: p.unite,
-        purchasePrice: Number(p.prix_achat ?? 0) || 0,
-        salePrice: p.prix || 0,
-        threshold: (p as any).seuil_alerte || 10,
-        category: (p.categorie || 'autres').toLowerCase(),
-        promoPrice: (p as any).prix_promo != null ? Number((p as any).prix_promo) : null,
-        promoFin: (p as any).promo_fin || null,
-      }));
-    const fromApi: Stock[] = stockCtx.stock.map(s => ({
+    const duCatalogue: Stock[] = (!products || !Array.isArray(products)) ? [] : products.map(p => ({
+      id: p.id, name: p.nom, image: p.image || '',
+      quantity: p.stock || 0, unit: p.unite,
+      purchasePrice: Number(p.prix_achat ?? 0) || 0,
+      salePrice: p.prix || 0,
+      threshold: (p as any).seuil_alerte || 10,
+      category: (p.categorie || 'autres').toLowerCase(),
+      promoPrice: (p as any).prix_promo != null ? Number((p as any).prix_promo) : null,
+      promoFin: (p as any).promo_fin || null,
+    }));
+    if (duCatalogue.length > 0) return duCatalogue;
+    return stockCtx.stock.map(s => ({
       id: s.id, name: s.produit, image: '',
       quantity: s.quantite, unit: s.unite,
       purchasePrice: (s as any).prixAchat || 0,
@@ -282,10 +298,6 @@ export function GestionStock() {
       threshold: (s as any).seuilAlerte || 10,
       category: ((s as any).categorie || 'autres').toLowerCase(),
     }));
-    const byName = new Map<string, Stock>();
-    for (const s of fromApi) byName.set(s.name.toLowerCase().trim(), s);
-    for (const s of fromCaisse) byName.set(s.name.toLowerCase().trim(), s);
-    return Array.from(byName.values());
   }, [products, stockCtx.stock]);
 
   const [search, setSearch] = useState('');
@@ -297,9 +309,17 @@ export function GestionStock() {
   const [showValue, setShowValue] = useState(false);
   const [reappQty, setReappQty] = useState('');
   const [isListening, setIsListening] = useState(false);
+  /** STK-05 — ce qu'elle vient de dire, qui preremplit le parcours guide. */
+  const [departDit, setDepartDit] = useState<EcouteProduit['brouillon'] | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false); // repli des champs optionnels de l'ajout produit
   const dicteeNomRef = useRef(false); // true = la prochaine reconnaissance vocale remplit le NOM du produit (pas une commande)
-  const [newStock, setNewStock] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'autre', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
+  // STK-02 — LE TYPE DISAIT `number`, LE CODE ECRIVAIT `'' as any`.
+  //
+  // Un champ de prix a trois etats, pas deux : un montant, zero, ou PAS ENCORE
+  // SAISI. Le type n'en connaissait que deux, alors les gestionnaires de
+  // saisie contournaient avec un cast — et un cast est un endroit ou le
+  // compilateur cesse de nous aider. On l'ecrit tel qu'il est.
+  const [newStock, setNewStock] = useState<SaisieProduit>({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:'', salePrice:'', threshold:10, category:'autre', datePeremption:'', promoPrice:'', promoFin:'' });
   const [inlineEdit, setInlineEdit] = useState(false);
   const [editForm, setEditForm] = useState({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'autre', datePeremption:'', promoPrice:'' as number|string, promoFin:'' });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -359,52 +379,33 @@ export function GestionStock() {
       const a: any = data.action || {};
       const text = (data.transcript || '').toLowerCase();
 
-      // ── AJOUT / RÉAPPRO PAR LA VOIX ────────────────────────────────────────
-      // « Ajoute 10 piments à 500 » : plus besoin de taper le formulaire. Si le
-      // produit existe déjà -> on réapprovisionne ; sinon on le CRÉE (avec le prix
-      // dit, ou le prix du catalogue), et sa photo est trouvée automatiquement.
-      if (a.type === 'ajouter_stock' || data.intent === 'ajouter_stock') {
-        const nom = String(a.produit || '').trim();
-        const qte = Number(a.quantite) || 0;
-        const prix = Number(a.prix ?? a.montant) || 0;
-        if (!nom) { speak('Quel produit veux-tu ajouter ?'); return; }
-        if (qte <= 0) { speak(`Combien de ${nom} veux-tu ajouter ?`); return; }
-
-        const existant = stocks.find(s =>
-          s.name?.toLowerCase() === nom.toLowerCase() ||
-          s.name?.toLowerCase().includes(nom.toLowerCase()));
-        if (existant) {
-          const newQty = (existant.quantity || 0) + qte;
-          try {
-            await updateProduct(existant.id, { stock: newQty });
-            stockCtx.updateStock(existant.id, { quantite: newQty });
-            speak(`${qte} ${existant.unit} de ${existant.name} ajoutés. Tu as maintenant ${newQty} ${existant.unit}.`);
-          } catch { speak("Ça n'a pas marché. Réessaie, s'il te plaît."); }
-          return;
-        }
-        // Nouveau produit -> création (prix dit, sinon prix du catalogue).
-        const cat = rechercherProduitCatalogue(nom);
-        const prixVente = prix > 0 ? prix : (cat?.prixVente || 0);
-        try {
-          await addProduct({
-            nom, categorie: cat?.categorie || 'autre',
-            prix: prixVente, prix_achat: cat?.prixAchat || 0,
-            stock: qte, unite: cat?.unite || 'kg',
-            image: cat?.image || getImageByNom(nom), seuil_alerte: 10,
-          } as any);
-          speak(prixVente > 0
-            ? `C'est fait ! ${qte} ${cat?.unite || 'kg'} de ${nom} à ${prixVente.toLocaleString('fr-FR')} francs, ajoutés au stock.`
-            : `${nom} ajouté au stock. Dis-moi son prix quand tu veux.`);
-        } catch { speak("Ça n'a pas marché. Réessaie, s'il te plaît."); }
-        return;
-      }
+      // LE BLOC `ajouter_stock` A ÉTÉ RETIRÉ — STK-05, 24/09.
+      //
+      // Il attendait une action que RIEN ne produisait : `ajouter_stock` avait
+      // quatre occurrences dans le dépôt, toutes consommatrices, aucun
+      // producteur. `intentLocal` ne fabrique que `vendre` et `depense`, et le
+      // mot « ajoute » est dans `MOTS_PAS_UNE_VENTE` — il ferme une porte au
+      // lieu d'en ouvrir une. Ce bloc n'a jamais pu s'exécuter.
+      //
+      // Il portait en plus une SECONDE NAISSANCE de produit : catégorie, unité
+      // et seuil d'alerte repris d'un catalogue générique, stock initial qu'elle
+      // n'avait pas compté. C'est STK-03g, que l'autre naissance avait déjà
+      // payé. Deux naissances, deux règles — et celle-ci ne recevait jamais les
+      // correctifs de l'autre.
+      //
+      // L'ajout par la voix passe maintenant par `BoutonDireProduit` →
+      // `produitDit` → `AjoutProduitGuide` : un seul chemin de création.
 
       if (text.includes('alerte') || text.includes('stock bas')) {
         const low = stocks.filter(s => s.quantity < s.threshold);
         speak(low.length === 0 ? 'Tous tes stocks sont bons' : `${low.length} produits en stock bas : ${low.map(s => s.name).join(', ')}`);
       } else if (text.includes('valeur')) {
+        if (montantsMasques) {
+          speak("Tes montants sont cachés. Appuie sur l'œil pour les afficher.");
+          return;
+        }
         const val = stocks.reduce((s, p) => s + p.quantity * p.salePrice, 0);
-        speak(`La valeur totale est ${val.toLocaleString('fr-FR')} francs`);
+        speak(`La valeur totale est ${nombreEnMotsFr(val)} francs`);
       }
     },
     onError: () => setIsListening(false),
@@ -462,30 +463,21 @@ export function GestionStock() {
     return () => { vivant = false; };
   }, [selectedStock?.id, chargerMouvements]);
 
-  const addStockItem = async () => {
-    if (!newStock.name?.trim()) { toast.error('Nom du produit requis'); dire('Saisis le nom du produit'); return; }
-    if (newStock.salePrice <= 0) { toast.error('Prix de vente invalide'); dire('Le prix de vente n\'est pas bon. Redis le prix.'); return; }
-    if (newStock.quantity < 0) { toast.error('Quantité invalide'); speak('La quantité n\'est pas bonne.'); return; }
-    // B2 (recette « prix d'achat 0 ») : on N'EMPÊCHE PAS l'ajout sans prix d'achat
-    // (dons, auto-production, marchandise à crédit, coût réellement inconnu), mais on
-    // prévient honnêtement — sans coût, on ne peut pas calculer le bénéfice.
-    if (!(newStock.purchasePrice > 0)) {
-      toast.warning("Sans prix d'achat, on ne pourra pas calculer ton bénéfice.");
-      dire("Tu n'as pas mis le prix d'achat. On ne pourra pas calculer ton bénéfice.");
-    }
-    const cat = rechercherProduitCatalogue(newStock.name);
-    try {
-      await addProduct({ nom:newStock.name, categorie: cat?.categorie || newStock.category, prix:newStock.salePrice, prix_achat:newStock.purchasePrice, stock:newStock.quantity, unite:newStock.unit, image:cat?.image||newStock.image||'', seuil_alerte: Number(newStock.threshold) || 10, date_peremption: newStock.datePeremption || null, prix_promo: newStock.promoPrice !== '' ? Number(newStock.promoPrice) : null, promo_fin: newStock.promoFin || null } as any);
-      toast.success('Produit ajouté');
-      speak(`${newStock.quantity || 0} ${newStock.unit} de ${newStock.name} ajouté au stock`);
-      showToast(`${newStock.name} ajouté au stock`, 'success');
-      setShowAdd(false);
-      setNewStock({ name:'', image:'', quantity:0, unit:'kg', purchasePrice:0, salePrice:0, threshold:10, category:'cereales', datePeremption:'', promoPrice:'', promoFin:'' });
-    } catch {
-      toast.error('Opération impossible. Réessaie.');
-      speak("Ça n'a pas marché. Réessaie, s'il te plaît.");
-    }
-  };
+  // STK-03c — `addStockItem` A DISPARU AVEC SON FORMULAIRE.
+  //
+  // Il était la SECONDE naissance d'un produit : il reprenait la catégorie et
+  // l'image d'une entrée du catalogue générique (`rechercherProduitCatalogue`),
+  // imposait un seuil d'alerte par défaut, et acceptait un stock initial que
+  // la marchande n'avait pas compté. Deux naissances, c'est deux règles — et
+  // celle-ci n'a jamais reçu les correctifs de l'autre.
+  //
+  // La création passe désormais par `AjoutProduitGuide`, le même écran que la
+  // caisse : son nom, son unité, son prix. Rien d'autre.
+  //
+  // CE QUI RESTE ICI est ce que le stock sait faire et que la caisse ne fait
+  // pas : MODIFIER et RÉAPPROVISIONNER un produit DÉJÀ adopté. Là, les champs
+  // gardent leur sens — elle corrige ce qu'elle a elle-même posé.
+
 
   const updateQty = async (id: string, qty: number) => {
     stockCtx.updateStock(id, { quantite: qty });
@@ -581,10 +573,24 @@ export function GestionStock() {
       else await addProduct(champs);
       void stockCtx.updateStock(id, { quantite: editForm.quantity, prixUnitaire: editForm.salePrice })
         .catch((e: any) => console.warn('[GestionStock] stockCtx.updateStock failed:', e?.message));
+      // CE QUE L'ÉCRAN AFFIRME DOIT ÊTRE CE QUE LE SERVEUR ÉCRIT — 25/09/2026.
+      //
+      // Agent de test : « quand on enregistre le champ vide, l'écran affiche
+      // quand même "Produit mis à jour". Pendant quelques secondes la fiche
+      // indique "Épuisé", un stock vide et 0 FCFA, jusqu'au rechargement. »
+      //
+      // Le serveur, lui, avait raison : STK-06 lui fait IGNORER un champ vidé
+      // (« la présence de la clé décide, jamais la vérité de sa valeur »). Mais
+      // l'écran, lui, recopiait le champ vide dans son état local et annonçait
+      // un succès. Les données n'étaient pas touchées — la marchande pouvait
+      // croire qu'elle venait de vider son stock.
+      //
+      // Même règle des deux côtés : un champ vidé ne touche pas à la quantité.
+      const quantiteVidee = String(editForm.quantity ?? '').trim() === '';
       setSelectedStock({
         ...selectedStock,
         name: editForm.name,
-        quantity: editForm.quantity,
+        quantity: quantiteVidee ? selectedStock.quantity : editForm.quantity,
         unit: editForm.unit,
         purchasePrice: editForm.purchasePrice,
         salePrice: editForm.salePrice,
@@ -595,8 +601,13 @@ export function GestionStock() {
         promoFin: editForm.promoFin || null,
       });
       setInlineEdit(false);
-      speak(`${editForm.name} mis à jour`);
-      showToast('Produit mis à jour', 'success');
+      // On ne félicite pas d'une quantité qu'on n'a pas écrite : on dit ce qui
+      // s'est passé, et ce qu'il reste à faire.
+      const dit = quantiteVidee
+        ? `${editForm.name} mis à jour. La quantité n'a pas changé : indique un nombre.`
+        : `${editForm.name} mis à jour`;
+      speak(dit);
+      showToast(quantiteVidee ? 'Mis à jour — indique une quantité' : 'Produit mis à jour', quantiteVidee ? 'info' : 'success');
     } catch (err: unknown) {
       toast.error('Erreur lors de la sauvegarde');
       speak("Ça n'a pas été enregistré. Réessaie, s'il te plaît.");
@@ -612,6 +623,12 @@ export function GestionStock() {
       subtitle={`${stocks.length} produit${stocks.length > 1 ? 's' : ''} · ${lowStocks.length} alerte${lowStocks.length > 1 ? 's' : ''}`}
       rightContent={
         <div style={{ display: 'flex', gap: 7 }}>
+          <motion.button whileTap={{ scale: 0.9 }}
+            onClick={() => { if (!montantsMasques) setSortByMargin(false); basculerMontants(); }}
+            aria-label={montantsMasques ? 'Afficher les montants' : 'Cacher les montants'}
+            style={{ width:44, height:44, borderRadius:14, background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.28)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+            {montantsMasques ? <EyeOff size={19} color="white" /> : <Eye size={19} color="white" />}
+          </motion.button>
           {/* Alertes de stock : icône DÉLIBÉRÉMENT différente de la cloche
               Notifications (même icône que celle-ci ailleurs prêtait à
               confusion — audit accueil/tuiles). Alertes de rupture, distinct
@@ -620,7 +637,7 @@ export function GestionStock() {
             style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
             <AlertCircle size={19} color="rgba(255,255,255,0.9)" strokeWidth={2} />
             {lowStocks.length > 0 && (
-              <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, padding: '0 3px', background: '#ef4444', borderRadius: 9, fontSize: 9, fontWeight: 900, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid rgba(143,68,24,0.9)' }}>
+              <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, padding: '0 3px', background: 'var(--color-red-500)', borderRadius: 9, fontSize: 9, fontWeight: 900, color: 'var(--herite-blanc-pur)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid rgba(143,68,24,0.9)' }}>
                 {lowStocks.length > 9 ? '9+' : lowStocks.length}
               </span>
             )}
@@ -631,36 +648,42 @@ export function GestionStock() {
     >
         <div style={{ padding:'14px 0 0' }}>
 
+          {!isOnline && (
+            <div role="status" style={{ marginBottom:12, background:'var(--color-orange-50)', border:'1.5px solid var(--color-orange-300)', borderRadius:16, padding:'11px 12px', display:'flex', gap:10, alignItems:'flex-start' }}>
+              <WifiOff size={20} color="var(--color-orange-700)" style={{ flexShrink:0, marginTop:1 }} />
+              <div style={{ fontSize:13, lineHeight:1.4, color:'var(--color-orange-900)' }}><strong>Hors connexion.</strong> Tu vois le stock gardé sur ce téléphone. Les changements seront confirmés quand le réseau revient.</div>
+            </div>
+          )}
+
           <KPIGrid cols={2}>
-            <UniversalKPI label="Produits" animatedTarget={stocks.length} icon={Package} color="#2563eb" bgColor="rgba(239,246,255,0.9)" borderColor="rgba(59,130,246,0.35)" iconAnimation="bounce" onClick={() => setActiveKPI('all')} active={activeKPI==='all'} />
-            <UniversalKPI label="Alertes" animatedTarget={lowStocks.length} icon={AlertCircle} color="#ea580c" bgColor="rgba(255,247,237,0.9)" borderColor="rgba(249,115,22,0.35)" iconAnimation="pulse" onClick={() => setActiveKPI(activeKPI==='alerts'?'all':'alerts')} active={activeKPI==='alerts'} />
-            <UniversalKPI label="Valeur stock" animatedTarget={totalValue} suffix="FCFA" icon={TrendingUp} color="#16a34a" bgColor="rgba(240,253,244,0.9)" borderColor="rgba(34,197,94,0.35)" iconAnimation="float" onClick={() => setShowValue(true)} />
-            <UniversalKPI label="Prix moyen" animatedTarget={stocks.length > 0 ? Math.round(totalValue / stocks.length) : 0} suffix="FCFA" icon={BarChart3} color="#9F8170" bgColor="rgba(249,244,240,0.9)" borderColor="rgba(159,129,112,0.35)" iconAnimation="float" />
+            <UniversalKPI label="Produits" animatedTarget={stocks.length} icon={Package} color="var(--herite-bleu-vif)" bgColor="rgba(239,246,255,0.9)" borderColor="rgba(59,130,246,0.35)" iconAnimation="bounce" onClick={() => setActiveKPI('all')} active={activeKPI==='all'} />
+            <UniversalKPI label="Alertes" animatedTarget={lowStocks.length} icon={AlertCircle} color="var(--color-orange-600)" bgColor="rgba(255,247,237,0.9)" borderColor="rgba(249,115,22,0.35)" iconAnimation="pulse" onClick={() => setActiveKPI(activeKPI==='alerts'?'all':'alerts')} active={activeKPI==='alerts'} />
+            <UniversalKPI label="Valeur stock" value={totalValue.toLocaleString('fr-FR')} masque={montantsMasques} suffix="FCFA" icon={TrendingUp} color="var(--color-green-600)" bgColor="rgba(240,253,244,0.9)" borderColor="rgba(34,197,94,0.35)" iconAnimation="none" onClick={() => setShowValue(true)} />
+            <UniversalKPI label="Prix moyen" value={(stocks.length > 0 ? Math.round(totalValue / stocks.length) : 0).toLocaleString('fr-FR')} masque={montantsMasques} suffix="FCFA" icon={BarChart3} color="#9F8170" bgColor="rgba(249,244,240,0.9)" borderColor="rgba(159,129,112,0.35)" iconAnimation="none" />
           </KPIGrid>
 
-          {/* Raccourcis */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12 }}>
-            <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/ventes-passees')}
-              style={{ background:'white', border:'2px solid var(--trait)', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
-              <div style={{ width:30, height:30, borderRadius:9, background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Receipt size={14} color={P} /></div>
-              <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Ventes passées</span>
-            </motion.button>
-            <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/resume-caisse')}
-              style={{ background:'white', border:'2px solid var(--trait)', borderRadius:16, padding:'11px 10px', display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontFamily:'inherit' }}>
-              <div style={{ width:30, height:30, borderRadius:9, background:'#FFF3EA', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}><Wallet size={14} color={P} /></div>
-              {/* Renommé « Résumé détaillé » : distinct du « Résumé du jour »
-                  (fenêtre rapide de l'accueil, avec fermer-journée/fond) —
-                  même nom que deux endroits différents prêtait à confusion
-                  (audit accueil/tuiles). Celui-ci va plus loin (heure de
-                  pointe, etc.), mais c'est un complément, pas le même écran. */}
-              <span style={{ fontSize:12, fontWeight:700, color:'#374151' }}>Résumé détaillé</span>
-            </motion.button>
-          </div>
+          {/* LES DEUX PORTES VERS LES CHIFFRES SONT PARTIES D'ICI — 24/09/2026.
+              Décision déjà rendue : « "Résumé caisse" n'est plus une
+              destination concurrente : il appartient à "Mes ventes" », et
+              « "Ventes passées" et "Résumé détaillé" cessent d'être deux
+              portes depuis le stock ».
+
+              CE QU'IL Y AVAIT. Deux boutons côte à côte, même taille, même
+              fond, même couleur d'icône, menant à deux écrans de chiffres
+              différents — dans l'écran du STOCK. Une marchande qui ne lit pas
+              n'a aucun moyen de les distinguer.
+
+              Mesuré le 24/09 : SEPT portes menaient à ces deux écrans depuis
+              le parcours marchande. Il en reste UNE, la tuile « Mes ventes »
+              de l'accueil, qui ouvre le résumé du jour ; le détail vente par
+              vente s'ouvre DEPUIS ce résumé.
+
+              Le stock montre l'étal, pas les chiffres (STK-03). */}
 
           {/* Recherche + Top marge */}
           <div style={{ display:'flex', gap:8, marginBottom:12, minWidth:0 }}>
             <div style={{ flex:1, minWidth:0, background:'white', border:'1.5px solid var(--trait)', borderRadius:12, padding:'0 12px', display:'flex', alignItems:'center', gap:8, height:46 }}>
-              <Search size={15} color="#aaa" />
+              <Search size={15} color="var(--herite-gris-40)" />
               {/* alignSelf stretch : le champ occupe toute la HAUTEUR de la barre
                   (46px). Sans cela sa zone tapable ne faisait que 21px — la
                   hauteur du texte — dans une barre deux fois plus haute. */}
@@ -670,41 +693,44 @@ export function GestionStock() {
                   ne les atteint pas. Ils tiennent dans la barre de 46px. */}
               {search && <motion.button whileTap={{ scale:0.9 }} onClick={() => setSearch('')} aria-label="Effacer la recherche"
                 style={{ flexShrink:0, width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', background:'none', border:'none', cursor:'pointer', padding:0 }}>
-                <X size={16} color="#aaa" />
+                <X size={16} color="var(--herite-gris-40)" />
               </motion.button>}
               <motion.button whileTap={{ scale:0.9 }} onClick={toggleMic} aria-label={isListening ? 'Arrêter la recherche vocale' : 'Chercher en parlant'}
                 style={{ flexShrink:0, width:44, height:44, display:'flex', alignItems:'center', justifyContent:'center', background:'none', border:'none', cursor:'pointer', padding:0 }}>
-                {isListening ? <MicOff size={18} color={P} /> : <Mic size={18} color="#aaa" />}
+                {isListening ? <MicOff size={18} color={P} /> : <Mic size={18} color="var(--herite-gris-40)" />}
               </motion.button>
             </div>
-            <motion.button whileTap={{ scale:0.95 }} onClick={() => setSortByMargin(!sortByMargin)}
-              style={{ background:sortByMargin?P:'white', border:`1.5px solid ${sortByMargin?P:'#EDE7DE'}`, borderRadius:12, padding:'0 10px', display:'flex', alignItems:'center', gap:5, height:46, cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
+            {!montantsMasques && <motion.button whileTap={{ scale:0.95 }} onClick={() => setSortByMargin(!sortByMargin)}
+              style={{ background:sortByMargin?P:'white', border:`1.5px solid ${sortByMargin?P:'var(--commerce-gray-100)'}`, borderRadius:12, padding:'0 10px', display:'flex', alignItems:'center', gap:5, height:46, cursor:'pointer', fontFamily:'inherit', flexShrink:0 }}>
               <TrendingUp size={13} color={sortByMargin?'white':P} />
               <span style={{ fontSize:11, fontWeight:700, color:sortByMargin?'white':P, whiteSpace:'nowrap' }}>Top marge</span>
-            </motion.button>
+            </motion.button>}
           </div>
 
-          {/* Ajout PAR LA VOIX — la voie principale pour une non-lectrice.
-              Elle appuie, dit « ajoute 10 piments à 500 », et c'est créé. */}
-          <motion.button whileTap={{ scale:0.98 }} onClick={toggleMic}
-            aria-label={isListening ? 'J\'écoute, parle' : 'Ajouter un produit en parlant'}
-            style={{ width:'100%', minHeight:56, marginBottom:10, borderRadius:16, border:'none', cursor:'pointer', fontFamily:'inherit',
-              background: isListening ? '#1D9E75' : `linear-gradient(145deg, ${P}, #8f4418)`, color:'white',
-              display:'flex', alignItems:'center', justifyContent:'center', gap:10, padding:'10px 16px', boxShadow:'0 4px 16px rgba(175,91,35,0.28)' }}>
-            {isListening ? <MicOff size={22} /> : <Mic size={22} />}
-            <div style={{ textAlign:'left', lineHeight:1.15 }}>
-              <div style={{ fontSize:16, fontWeight:900 }}>{isListening ? 'Je t\'écoute…' : 'Ajouter en parlant'}</div>
-              <div style={{ fontSize:11.5, fontWeight:600, opacity:0.9 }}>{isListening ? 'dis : « ajoute 10 piments à 500 »' : 'appuie et dis ton produit'}</div>
-            </div>
-          </motion.button>
+          {/* AJOUT PAR LA VOIX — la voie principale pour une non-lectrice.
+              STK-05 : ce bouton dictait « dis : "ajoute 10 piments a 500" » et
+              rien ne comprenait cette phrase. Il ecoute vraiment maintenant, et
+              ce qu'elle donne prerempli le parcours guide : on ne lui redemande
+              que ce qui manque. Plus d'exemple syntaxique — elle ne le lit pas. */}
+          <div style={{ marginBottom: 10 }}>
+            <BoutonDireProduit
+              sesProduits={(products || []).map(p => ({ nom: p.nom }))}
+              dire={speak}
+              onProduit={(lu) => { setDepartDit(lu.brouillon); setShowAdd(true); }}
+            />
+          </div>
 
-          {/* Ajouter un produit à l'écrit : l'AUTRE façon de faire le même
-              geste que le gros bouton vocal au-dessus — pas « Vendre », qui
-              n'a rien à voir avec la gestion du stock et est déjà accessible
-              en un geste depuis l'accueil (audit accueil/tuiles). */}
+          {/* « ÉCRIRE » N'EXISTE PLUS — STK-18, décision de Patrick.
+              Le geste est « Ajouter un produit ». Parler et toucher n'en sont
+              que des MOYENS ; nommer l'un d'eux « Écrire » en faisait un geste
+              à part, et le mot lui-même désigne ce que la marchande ne sait
+              pas faire. Les deux boutons ouvrent le même parcours guidé
+              (setShowAdd) : l'un après l'avoir écoutée, l'autre directement.
+              Pas « Vendre », qui n'a rien à voir avec la gestion du stock et
+              est déjà accessible en un geste depuis l'accueil. */}
           <motion.button whileTap={{ scale:0.97 }} onClick={() => setShowAdd(true)}
             style={{ width:'100%', background:'white', border:`2px solid ${P}`, borderRadius:14, padding:'12px 0', fontSize:14, fontWeight:800, color:P, cursor:'pointer', fontFamily:'inherit', display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginBottom:14 }}>
-            <Package size={16} /> Écrire
+            <Package size={16} /> Ajouter un produit
           </motion.button>
 
           {/* Grille swipeable */}
@@ -713,6 +739,7 @@ export function GestionStock() {
               <SwipeableCard
                 key={stock.id}
                 stock={stock}
+                montantsMasques={montantsMasques}
                 onTap={() => {
                   setSelectedStock(stock);
                   setShowEdit(true);
@@ -724,7 +751,7 @@ export function GestionStock() {
             ))}
             {filtered.length === 0 && (
               <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px 0' }}>
-                <Package size={48} color="#EDE7DE" style={{ margin: '0 auto 12px' }} />
+                <Package size={48} color="var(--commerce-gray-100)" style={{ margin: '0 auto 12px' }} />
                 <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--encre)', marginBottom: 6 }}>Aucun produit</div>
                 {search ? (
                   <div style={{ fontSize: 13, color: 'var(--encre-4)' }}>Aucun résultat pour "{search}"</div>
@@ -755,14 +782,14 @@ export function GestionStock() {
                   const isPlus = m.qty > 0;
                   return (
                     <motion.div key={i} initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.1 }}
-                      style={{ flex:1, background:isPlus?'#F0FAF5':'#FEF2F2', borderRadius:14, padding:'10px 6px', textAlign:'center', border:`1.5px solid ${isPlus?'#9fe1cb':'#fca5a5'}` }}>
-                      <div style={{ width:38, height:38, borderRadius:'50%', background:isPlus?'#16a34a':'#ef4444', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 5px' }}>
+                      style={{ flex:1, background:isPlus?'var(--color-green-50)':'var(--color-red-50)', borderRadius:14, padding:'10px 6px', textAlign:'center', border:`1.5px solid ${isPlus?'var(--herite-vert-pale)':'var(--color-red-300)'}` }}>
+                      <div style={{ width:38, height:38, borderRadius:'50%', background:isPlus?'var(--color-green-600)':'var(--color-red-500)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 5px' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
                           {isPlus?<><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></>:<><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></>}
                         </svg>
                       </div>
-                      <div style={{ fontSize:17, fontWeight:900, color:isPlus?'#16a34a':'#ef4444' }}>{isPlus?'+':'−'}{m.qtyAffichee}</div>
-                      <div style={{ fontSize:9, fontWeight:700, color:isPlus?'#16a34a':'#ef4444' }}>{m.uniteConnue ? `${m.unit} ${m.name}` : m.name}</div>
+                      <div style={{ fontSize:17, fontWeight:900, color:isPlus?'var(--color-green-600)':'var(--color-red-500)' }}>{isPlus?'+':'−'}{m.qtyAffichee}</div>
+                      <div style={{ fontSize:9, fontWeight:700, color:isPlus?'var(--color-green-600)':'var(--color-red-500)' }}>{m.uniteConnue ? `${m.unit} ${m.name}` : m.name}</div>
                       {mentionUniteInconnue(m) && (
                         // ARG-02 : on ne comble pas le blanc avec l'unité du
                         // catalogue d'aujourd'hui. On dit qu'on ne sait pas.
@@ -772,7 +799,7 @@ export function GestionStock() {
                         // Le stock enregistré ne couvrait pas cette sortie. On le
                         // DIT : sans ça, son stock reste à zéro et rien ne lui
                         // apprend ce qu'elle a réellement écoulé.
-                        <div style={{ fontSize:9, fontWeight:800, color:'#b45309', marginTop:2 }}>⚠ hors stock</div>
+                        <div style={{ fontSize:9, fontWeight:800, color:'var(--herite-orange-brule)', marginTop:2 }}>⚠ hors stock</div>
                       )}
                       <div style={{ fontSize:9, color:'var(--encre-4)', marginTop:2 }}>{m.day}</div>
                     </motion.div>
@@ -784,7 +811,18 @@ export function GestionStock() {
         </div>
     </SubPageLayout>
 
-      {/* MODAL AJOUT */}
+      {/* MODAL AJOUT — STK-03c.
+          IL AFFICHAIT LES 37 TUILES GÉNÉRIQUES. Toucher « Igname » posait le
+          nom « Igname » — alors que le référentiel en connaît NEUF (Kponan,
+          Bêtê-Bêtê, Florido, Krenglè, Lokpa, Assawa…), à quatre prix
+          différents. Elle adoptait donc un produit qui n'était pas le sien,
+          puis lui collait son prix : le prix juste sur le mauvais nom.
+          Et le formulaire réclamait catégorie, stock, seuil, prix d'achat,
+          péremption, promo — sept champs pour poser un légume.
+
+          C'EST LE MÊME GESTE QUE DANS LA CAISSE, donc c'est le MÊME écran.
+          Un second formulaire, si fidèle soit-il, est un second endroit où la
+          règle peut changer sans l'autre. */}
       <AnimatePresence>
         {showAdd && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
@@ -793,7 +831,7 @@ export function GestionStock() {
             <motion.div initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }} transition={{ type:'spring', damping:25 }}
               onClick={e => e.stopPropagation()}
               style={{ background:'white', borderRadius:'24px 24px 0 0', width:'100%', maxHeight:'90vh', overflowY:'auto', fontFamily:'system-ui,sans-serif' }}>
-              <div style={{ background:`linear-gradient(160deg,${P},#8f4418)`, padding:'14px 16px 20px' }}>
+              <div style={{ background:`linear-gradient(160deg,${P},var(--commerce-orange-700))`, padding:'14px 16px 20px' }}>
                 <div style={{ width:40, height:4, background:'rgba(255,255,255,0.3)', borderRadius:2, margin:'0 auto 14px' }} />
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div style={{ fontSize:20, fontWeight:900, color:'white' }}>Ajouter un produit</div>
@@ -803,147 +841,20 @@ export function GestionStock() {
                   </motion.button>
                 </div>
               </div>
-              <div style={{ padding:16, display:'flex', flexDirection:'column', gap:14 }}>
-                {/* Catalogue 100 % IMAGES : toucher une photo remplit tout (nom, unité,
-                    prix, catégorie) et dit le nom à voix haute — aucun texte à taper.
-                    Conçu pour une vendeuse qui ne lit pas. */}
-                <div>
-                  <div style={{ fontSize:14, fontWeight:800, color:'var(--encre-2)', marginBottom:8 }}>👇 Touche ton produit</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8 }}>
-                    {CATALOGUE_PRODUITS.filter(p => p.nom !== 'Autre').map(p => {
-                      const actif = newStock.name === p.nom;
-                      return (
-                        <motion.button key={p.nom} whileTap={{ scale:0.94 }}
-                          onClick={() => {
-                            setNewStock({ ...newStock, name:p.nom, image:p.image, unit:p.unite, purchasePrice:p.prixAchat, salePrice:p.prixVente, category:p.categorie });
-                            speak(p.nom);
-                          }}
-                          style={{ border: actif ? `3px solid ${P}` : '2px solid var(--trait)', borderRadius:14, padding:6, background: actif ? '#FFF3EA' : 'white', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:4, fontFamily:'inherit' }}>
-                          <ImageWithFallback src={p.image} alt={p.nom} fallbackSrc={vignetteProduit(p.nom)} style={{ width:'100%', aspectRatio:'1', borderRadius:10, objectFit:'cover' }} />
-                          <div style={{ fontSize:12, fontWeight:700, color:'var(--encre)' }}>{p.nom}</div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                  {newStock.name && (
-                    <div style={{ marginTop:10, fontSize:13, fontWeight:700, color:P, textAlign:'center' }}>
-                      ✓ {newStock.name} — indique la quantité puis « Ajouter »
-                    </div>
-                  )}
-                  <div style={{ fontSize:12, color:'var(--encre-4)', textAlign:'center', marginTop:10 }}>Pas dans la liste ? Écris son nom ci-dessous.</div>
-                </div>
-                {(() => {
-                  const cat = rechercherProduitCatalogue(newStock.name);
-                  return cat ? (
-                    <div style={{ display:'flex', alignItems:'center', gap:12, padding:12, background:'#FFF3EA', border:`2px solid ${P}`, borderRadius:14 }}>
-                      <ImageWithFallback src={cat.image} alt={newStock.name} fallbackSrc={vignetteProduit(newStock.name)} style={{ width:56, height:56, borderRadius:10, objectFit:'cover' }} />
-                      <div>
-                        <div style={{ fontSize:10, fontWeight:800, color:P, textTransform:'uppercase', letterSpacing:'0.1em' }}>Image officielle Julaba</div>
-                        <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{newStock.name}</div>
-                      </div>
-                    </div>
-                  ) : (
-                    <ImagePickerField label="Photo du produit" value={newStock.image||''} onChange={url => setNewStock({...newStock, image:url})} primaryColor={P} shape="rect" size={96} />
-                  );
-                })()}
-                <div style={{ position:'relative' }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)' }}>Nom du produit</label>
-                    {/* Dicter le nom : capte la parole et remplit le champ (cf. dicteeNomRef).
-                        Pour une vendeuse qui ne lit/écrit pas et dont le produit n'est pas au catalogue. */}
-                    <motion.button type="button" whileTap={{ scale:0.92 }} aria-label="Dire le nom du produit"
-                      onClick={() => { dicteeNomRef.current = true; setIsListening(true); startRecording(); }}
-                      style={{ display:'flex', alignItems:'center', gap:6, background: isListening ? P : '#F0E7DE', color: isListening ? 'white' : P, border:'none', borderRadius:10, padding:'6px 12px', fontSize:12, fontWeight:800, cursor:'pointer', fontFamily:'inherit' }}>
-                      {isListening ? <MicOff size={14} /> : <Mic size={14} />} Dis le nom
-                    </motion.button>
-                  </div>
-                  <input value={newStock.name} onFocus={() => dire('Nom du produit')} onChange={e => setNewStock({...newStock, name:e.target.value})} placeholder="Ex: Tomate, Riz, Gombo..."
-                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  {newStock.name.length >= 2 && suggererProduits(newStock.name).length > 0 && !suggererProduits(newStock.name).some(p => p.nom === newStock.name) && (
-                    <div style={{ position:'absolute', zIndex:50, width:'100%', marginTop:4, background:'white', borderRadius:14, border:'2px solid #FFF3EA', boxShadow:'0 8px 24px rgba(0,0,0,0.12)', overflow:'hidden' }}>
-                      {suggererProduits(newStock.name).map(p => (
-                        <button key={p.nom} onClick={() => setNewStock({...newStock, name:p.nom, image:p.image, unit:p.unite, purchasePrice:p.prixAchat, salePrice:p.prixVente, category:p.categorie})}
-                          style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'none', border:'none', cursor:'pointer', fontFamily:'inherit', borderBottom:'1px solid #f5f0eb' }}>
-                          <ImageWithFallback src={p.image} alt={p.nom} fallbackSrc={vignetteProduit(p.nom)} style={{ width:40, height:40, borderRadius:8, objectFit:'cover' }} />
-                          <div style={{ textAlign:'left' }}>
-                            <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{p.nom}</div>
-                            <div style={{ fontSize:11, color:'var(--encre-4)' }}>{p.categorie} · {p.unite} · {p.prixVente} FCFA</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Quantité</label>
-                    {/* Réglage au doigt (− / +) pour éviter de taper un nombre. */}
-                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                      <motion.button type="button" whileTap={{ scale:0.9 }} aria-label="Moins"
-                        onClick={() => setNewStock({...newStock, quantity: Math.max(0, (Number(newStock.quantity)||0) - 1)})}
-                        style={{ width:44, height:46, flexShrink:0, borderRadius:12, border:'none', background:'#F0E7DE', color:P, fontSize:24, fontWeight:900, cursor:'pointer' }}>−</motion.button>
-                      <input type="number" value={newStock.quantity} onChange={e => setNewStock({...newStock, quantity:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                        style={{ width:'100%', minWidth:0, padding:'12px 6px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:18, fontWeight:800, textAlign:'center', fontFamily:'inherit', boxSizing:'border-box' }} />
-                      <motion.button type="button" whileTap={{ scale:0.9 }} aria-label="Plus"
-                        onClick={() => setNewStock({...newStock, quantity: (Number(newStock.quantity)||0) + 1})}
-                        style={{ width:44, height:46, flexShrink:0, borderRadius:12, border:'none', background:P, color:'white', fontSize:24, fontWeight:900, cursor:'pointer' }}>+</motion.button>
-                    </div>
-                  </div>
-                  <SelectWithAutre label="Unité" value={newStock.unit} onChange={v => setNewStock({...newStock, unit:v})} options={UNITES_COURANTES} primaryColor={P} placeholder="Ex: bouteille..." />
-                </div>
-                {/* Prix de vente : champ ESSENTIEL, toujours visible (seul obligatoire avec le nom). */}
-                <div>
-                  <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix vente (FCFA)</label>
-                  <input type="number" value={newStock.salePrice} onFocus={() => dire('Prix de vente')} onChange={e => setNewStock({...newStock, salePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                    style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                </div>
-
-                {/* Repli : les champs optionnels (prix d'achat, seuil, péremption, promo)
-                    sont masqués par défaut pour ne pas noyer une vendeuse qui ne lit pas.
-                    Seuls Nom + Prix de vente sont nécessaires ; le reste s'ouvre à la demande. */}
-                <button type="button" onClick={() => { const v = !showAdvanced; setShowAdvanced(v); dire(v ? 'Plus de détails' : 'Moins de détails'); }}
-                  style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, background:'none', border:'none', color:P, fontSize:13, fontWeight:800, cursor:'pointer', fontFamily:'inherit', padding:'4px 0' }}>
-                  {showAdvanced ? 'Moins de détails ▾' : 'Plus de détails ▸'}
-                </button>
-
-                {showAdvanced && (<>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Prix achat (FCFA) <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
-                    <input type="number" value={newStock.purchasePrice} onFocus={() => dire("Prix d'achat, facultatif")} onChange={e => setNewStock({...newStock, purchasePrice:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Seuil d'alerte</label>
-                    <input type="number" value={newStock.threshold} onChange={e => setNewStock({...newStock, threshold:e.target.value === '' ? '' as any : Number(e.target.value)})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Date de péremption <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
-                    <input type="date" value={newStock.datePeremption} onChange={e => setNewStock({...newStock, datePeremption:e.target.value})}
-                      style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                  </div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                    <div>
-                      <label style={{ fontSize:13, fontWeight:700, color:'#C0392B', display:'block', marginBottom:6 }}>🏷️ Prix promo <span style={{ color:'var(--encre-4)', fontWeight:500 }}>(facultatif)</span></label>
-                      <input type="number" value={newStock.promoPrice} placeholder="ex : 400" onChange={e => setNewStock({...newStock, promoPrice:e.target.value === '' ? '' : Number(e.target.value)})}
-                        style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid #F1D3CE', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize:13, fontWeight:700, color:'var(--encre-2)', display:'block', marginBottom:6 }}>Fin promo</label>
-                      <input type="date" value={newStock.promoFin} onChange={e => setNewStock({...newStock, promoFin:e.target.value})}
-                        style={{ width:'100%', padding:'12px 14px', borderRadius:12, border:'1.5px solid var(--trait)', outline:'none', fontSize:15, fontFamily:'inherit', boxSizing:'border-box' }} />
-                    </div>
-                  </div>
-                </>)}
-                <motion.button whileTap={{ scale:0.97 }} onClick={addStockItem}
-                  style={{ width:'100%', background:P, border:'none', borderRadius:16, padding:'17px 0', fontSize:17, fontWeight:800, color:'white', cursor:'pointer', fontFamily:'inherit' }}>
-                  Ajouter au stock
-                </motion.button>
+              <div style={{ padding:16 }}>
+                {/* SES unités déjà employées passent devant celles du marché. */}
+                <AjoutProduitGuide
+                  sesUnites={(products || []).map(p => p.unite || '').filter(Boolean)}
+                  depart={departDit ?? undefined}
+                  onPose={() => { setShowAdd(false); setDepartDit(null); void refreshProducts(); }}
+                  onAnnuler={() => { setShowAdd(false); setDepartDit(null); }}
+                />
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
 
       {/* MODAL EDITION */}
       <AnimatePresence>
@@ -984,7 +895,7 @@ export function GestionStock() {
                         Seuil : {selectedStock.threshold} {selectedStock.unit}
                       </span>
                       <span style={{
-                        background: selectedStock.quantity <= 0 ? '#dc2626' : selectedStock.quantity < selectedStock.threshold ? '#ef4444' : '#16a34a',
+                        background: selectedStock.quantity <= 0 ? 'var(--destructive)' : selectedStock.quantity < selectedStock.threshold ? 'var(--color-red-500)' : 'var(--color-green-600)',
                         color: 'white', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 800,
                       }}>
                         {selectedStock.quantity <= 0 ? 'Rupture' : selectedStock.quantity < selectedStock.threshold ? 'Stock bas' : 'En stock'}
@@ -1011,29 +922,29 @@ export function GestionStock() {
                       Prix & Marge
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                      <div style={{ background: '#FFF7F0', border: '1.5px solid #FDDFC4', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
-                        <div style={{ fontSize: 8, fontWeight: 900, color: '#C2410C', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Achat</div>
-                        <div style={{ fontSize: 20, fontWeight: 900, color: '#EA580C', lineHeight: 1, marginBottom: 2 }}>
+                      <div style={{ background: 'var(--julaba-ivoire)', border: '1.5px solid var(--julaba-sable)', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 8, fontWeight: 900, color: 'var(--color-orange-700)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Achat</div>
+                        <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--color-orange-600)', lineHeight: 1, marginBottom: 2 }}>
                           {(selectedStock.purchasePrice || 0).toLocaleString('fr-FR')}
                         </div>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: '#C2410C', opacity: 0.65, marginBottom: 5 }}>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--color-orange-700)', opacity: 0.65, marginBottom: 5 }}>
                           FCFA / {selectedStock.unit}
                         </div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: '#C2410C' }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-orange-700)' }}>
                           {selectedStock.purchasePrice > 0
                             ? `Marge : ${(selectedStock.salePrice - selectedStock.purchasePrice).toLocaleString('fr-FR')} FCFA`
                             : 'Bénéfice inconnu'}
                         </div>
                       </div>
-                      <div style={{ background: '#F0FDF4', border: '1.5px solid #BBF7D0', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
-                        <div style={{ fontSize: 8, fontWeight: 900, color: '#15803D', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Vente</div>
-                        <div style={{ fontSize: 20, fontWeight: 900, color: '#16A34A', lineHeight: 1, marginBottom: 2 }}>
+                      <div style={{ background: 'var(--color-green-50)', border: '1.5px solid var(--color-green-200)', borderRadius: 14, padding: '12px 10px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 8, fontWeight: 900, color: 'var(--color-green-700)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Vente</div>
+                        <div style={{ fontSize: 20, fontWeight: 900, color: 'var(--color-green-600)', lineHeight: 1, marginBottom: 2 }}>
                           {(selectedStock.salePrice || 0).toLocaleString('fr-FR')}
                         </div>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: '#15803D', opacity: 0.65, marginBottom: 5 }}>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--color-green-700)', opacity: 0.65, marginBottom: 5 }}>
                           FCFA / {selectedStock.unit}
                         </div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: '#15803D' }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-green-700)' }}>
                           {selectedStock.purchasePrice > 0
                             ? `+${Math.round(((selectedStock.salePrice - selectedStock.purchasePrice) / selectedStock.purchasePrice) * 100)}% bénéfice`
                             : '— bénéfice'
@@ -1043,13 +954,13 @@ export function GestionStock() {
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: '#f5f0ea' }} />
+                  <div style={{ height: 1, background: 'var(--commerce-paper)' }} />
 
                   {/* 2. STOCK ACTUEL */}
-                  <div style={{ background: '#FFF8F3', border: '1.5px solid #FDDFC4', borderRadius: 16, padding: '12px 14px' }}>
+                  <div style={{ background: 'var(--caisse-ivoire)', border: '1.5px solid var(--julaba-sable)', borderRadius: 16, padding: '12px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                       <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Stock actuel</span>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#EA580C' }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--color-orange-600)' }}>
                         {Math.min(100, Math.round((selectedStock.quantity / Math.max(selectedStock.threshold * 2, 1)) * 100))}%
                       </span>
                     </div>
@@ -1057,16 +968,14 @@ export function GestionStock() {
                       <motion.button
                         whileTap={{ scale: 0.88 }}
                         onClick={() => updateQty(selectedStock.id, Math.max(0, selectedStock.quantity - 1))}
-                        style={{ width: 44, height: 44, borderRadius: 12, background: 'white', border: '1.5px solid #e5e0d8', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                        style={{ width: 44, height: 44, borderRadius: 12, background: 'white', border: '1.5px solid var(--commerce-gray-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
                       >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--herite-gris-33)" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </motion.button>
                       <div style={{ textAlign: 'center' }}>
-                        <AnimatedNumber
-                          value={selectedStock.quantity}
-                          color={selectedStock.quantity <= 0 ? '#dc2626' : selectedStock.quantity < selectedStock.threshold ? '#ef4444' : '#16a34a'}
-                          size={44}
-                        />
+                        <span style={{ fontSize:44, fontWeight:900, color:selectedStock.quantity <= 0 ? 'var(--destructive)' : selectedStock.quantity < selectedStock.threshold ? 'var(--color-red-500)' : 'var(--color-green-600)' }}>
+                          {selectedStock.quantity.toLocaleString('fr-FR')}
+                        </span>
                         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre-4)', marginTop: 2 }}>{selectedStock.unit}</div>
                       </div>
                       <motion.button
@@ -1077,7 +986,7 @@ export function GestionStock() {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </motion.button>
                     </div>
-                    <div style={{ background: '#f0ebe3', borderRadius: 20, height: 5, overflow: 'hidden', marginBottom: 6 }}>
+                    <div style={{ background: 'var(--commerce-gray-100)', borderRadius: 20, height: 5, overflow: 'hidden', marginBottom: 6 }}>
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(100, Math.round((selectedStock.quantity / Math.max(selectedStock.threshold * 2, 1)) * 100))}%` }}
@@ -1085,15 +994,15 @@ export function GestionStock() {
                         style={{
                           height: '100%', borderRadius: 20,
                           background: selectedStock.quantity <= 0
-                            ? '#dc2626'
+                            ? 'var(--destructive)'
                             : selectedStock.quantity < selectedStock.threshold
-                              ? 'linear-gradient(90deg,#fb923c,#ef4444)'
-                              : 'linear-gradient(90deg,#4ade80,#16a34a)',
+                              ? 'linear-gradient(90deg,var(--color-orange-400),var(--color-red-500))'
+                              : 'linear-gradient(90deg,var(--color-green-400),var(--color-green-600))',
                         }}
                       />
                     </div>
                     {selectedStock.quantity < selectedStock.threshold && (
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', marginTop: 4 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-red-500)', marginTop: 4 }}>
                         Stock bas — réapprovisionner
                       </div>
                     )}
@@ -1101,25 +1010,25 @@ export function GestionStock() {
 
                   {/* 3. VALEUR + DERNIER MOUVEMENT */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <div style={{ background: '#F8F5F2', borderRadius: 12, padding: '10px 12px' }}>
+                    <div style={{ background: 'var(--caisse-ivoire)', borderRadius: 12, padding: '10px 12px' }}>
                       <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Valeur stock</div>
                       <div style={{ fontSize: 16, fontWeight: 900, color: 'var(--encre)' }}>
                         {(selectedStock.quantity * selectedStock.salePrice || 0).toLocaleString('fr-FR')}
                       </div>
                       <div style={{ fontSize: 9, color: 'var(--encre-4)', fontWeight: 600, marginTop: 2 }}>FCFA total</div>
                     </div>
-                    <div style={{ background: '#F8F5F2', borderRadius: 12, padding: '10px 12px' }}>
+                    <div style={{ background: 'var(--caisse-ivoire)', borderRadius: 12, padding: '10px 12px' }}>
                       <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Dernier mouvement</div>
                       <div style={{ fontSize: 14, fontWeight: 900, color: 'var(--encre)' }}>
                         {produitMouvements[0]?.day || '—'}
                       </div>
-                      <div style={{ fontSize: 9, fontWeight: 700, color: produitMouvements[0]?.qty > 0 ? '#16a34a' : '#ef4444', marginTop: 2 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, color: produitMouvements[0]?.qty > 0 ? 'var(--color-green-600)' : 'var(--color-red-500)', marginTop: 2 }}>
                         {produitMouvements[0] ? quantiteMouvement(produitMouvements[0], produitMouvements[0].qty) : '—'}
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: '#f5f0ea' }} />
+                  <div style={{ height: 1, background: 'var(--commerce-paper)' }} />
 
                   {/* 4. REAPPROVISIONNER */}
                   <div style={{ border: '1.5px solid var(--trait)', borderRadius: 16, padding: '12px 14px' }}>
@@ -1146,7 +1055,7 @@ export function GestionStock() {
                     </div>
                   </div>
 
-                  <div style={{ height: 1, background: '#f5f0ea' }} />
+                  <div style={{ height: 1, background: 'var(--commerce-paper)' }} />
 
                   {/* 5. DERNIERS MOUVEMENTS */}
                   <div>
@@ -1158,11 +1067,11 @@ export function GestionStock() {
                         Aucune vente enregistrée pour ce produit.
                       </div>
                     ) : produitMouvements.map((m, i) => (
-                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < produitMouvements.length - 1 ? '1px solid #f5f0ea' : 'none' }}>
-                        <div style={{ width: 30, height: 30, borderRadius: 10, background: m.qty > 0 ? '#DCFCE7' : '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderBottom: i < produitMouvements.length - 1 ? '1px solid var(--commerce-paper)' : 'none' }}>
+                        <div style={{ width: 30, height: 30, borderRadius: 10, background: m.qty > 0 ? 'var(--color-green-100)' : 'var(--color-red-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {m.qty > 0
-                            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-green-600)" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-red-500)" strokeWidth="3" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                           }
                         </div>
                         <div style={{ flex: 1 }}>
@@ -1171,7 +1080,7 @@ export function GestionStock() {
                             {m.day}{mentionUniteInconnue(m) ? ` · ${mentionUniteInconnue(m)}` : ''}
                           </div>
                         </div>
-                        <span style={{ fontSize: 13, fontWeight: 900, color: m.qty > 0 ? '#16a34a' : '#ef4444' }}>
+                        <span style={{ fontSize: 13, fontWeight: 900, color: m.qty > 0 ? 'var(--color-green-600)' : 'var(--color-red-500)' }}>
                           {quantiteMouvement(m, m.qty)}
                         </span>
                       </div>
@@ -1184,7 +1093,7 @@ export function GestionStock() {
                 {inlineEdit && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 700, color: '#555', display: 'block', marginBottom: 6 }}>Nom du produit</label>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--herite-gris-33)', display: 'block', marginBottom: 6 }}>Nom du produit</label>
                     <input
                       value={editForm.name}
                       onChange={e => setEditForm({ ...editForm, name: e.target.value })}
@@ -1193,7 +1102,7 @@ export function GestionStock() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
-                      <label style={{ fontSize: 12, fontWeight: 700, color: '#555', display: 'block', marginBottom: 6 }}>Quantité</label>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--herite-gris-33)', display: 'block', marginBottom: 6 }}>Quantité</label>
                       <input
                         type="number"
                         value={editForm.quantity}
@@ -1212,7 +1121,7 @@ export function GestionStock() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                     <div>
-                      <label style={{ fontSize: 12, fontWeight: 700, color: '#555', display: 'block', marginBottom: 6 }}>Prix achat (FCFA)</label>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--herite-gris-33)', display: 'block', marginBottom: 6 }}>Prix achat (FCFA)</label>
                       <input
                         type="number"
                         value={editForm.purchasePrice}
@@ -1221,7 +1130,7 @@ export function GestionStock() {
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: 12, fontWeight: 700, color: '#555', display: 'block', marginBottom: 6 }}>Prix vente (FCFA)</label>
+                      <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--herite-gris-33)', display: 'block', marginBottom: 6 }}>Prix vente (FCFA)</label>
                       <input
                         type="number"
                         value={editForm.salePrice}
@@ -1230,7 +1139,7 @@ export function GestionStock() {
                       />
                     </div>
                   </div>
-                  <div style={{ background: '#FFF8F3', border: '1.5px solid #FDDFC4', borderRadius: 14, padding: '11px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ background: 'var(--caisse-ivoire)', border: '1.5px solid var(--julaba-sable)', borderRadius: 14, padding: '11px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--encre-4)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Marge</span>
                     <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                       <div style={{ textAlign: 'right' }}>
@@ -1244,7 +1153,7 @@ export function GestionStock() {
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--encre-4)', marginBottom: 2 }}>%</div>
-                        <div style={{ fontSize: 17, fontWeight: 900, color: editForm.purchasePrice > 0 ? '#16a34a' : 'var(--encre-4)' }}>
+                        <div style={{ fontSize: 17, fontWeight: 900, color: editForm.purchasePrice > 0 ? 'var(--color-green-600)' : 'var(--encre-4)' }}>
                           {editForm.purchasePrice > 0
                             ? `+${Math.round(((editForm.salePrice - editForm.purchasePrice) / editForm.purchasePrice) * 100)}%`
                             : '—'
@@ -1363,7 +1272,7 @@ export function GestionStock() {
                       type="button"
                       whileTap={{ scale: 0.97 }}
                       onClick={() => deleteItem(selectedStock.id)}
-                      style={{ width: '100%', padding: '11px 0', borderRadius: 14, background: 'white', border: '1.5px solid #fca5a5', fontSize: 13, fontWeight: 700, color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit' }}
+                      style={{ width: '100%', padding: '11px 0', borderRadius: 14, background: 'white', border: '1.5px solid var(--color-red-300)', fontSize: 13, fontWeight: 700, color: 'var(--color-red-500)', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                       Supprimer ce produit
                     </motion.button>
@@ -1410,7 +1319,7 @@ export function GestionStock() {
               <motion.div initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }} transition={{ type:'spring', damping:25 }}
                 onClick={e => e.stopPropagation()}
                 style={{ background:'white', borderRadius:'24px 24px 0 0', width:'100%', maxHeight:'85vh', overflowY:'auto', fontFamily:'system-ui,sans-serif' }}>
-                <div style={{ background:'linear-gradient(160deg,#1D9E75,#0f6e56)', padding:'14px 16px 20px' }}>
+                <div style={{ background:'linear-gradient(160deg,var(--herite-vert-eau),var(--julaba-vert-feuille))', padding:'14px 16px 20px' }}>
                   <div style={{ width:40, height:4, background:'rgba(255,255,255,0.3)', borderRadius:2, margin:'0 auto 14px' }} />
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div style={{ fontSize:20, fontWeight:900, color:'white' }}>Valeur du stock</div>
@@ -1423,42 +1332,42 @@ export function GestionStock() {
                 <div style={{ padding:16, display:'flex', flexDirection:'column', gap:12 }}>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                     {[
-                      { label:'Valeur achat', value:totalBuy, color:'#ef4444', bg:'#FEF2F2' },
-                      { label:'Valeur vente', value:totalSell, color:'#1D9E75', bg:'#F0FAF5' },
+                      { label:'Valeur achat', value:totalBuy, color:'var(--color-red-500)', bg:'var(--color-red-50)' },
+                      { label:'Valeur vente', value:totalSell, color:'var(--herite-vert-eau)', bg:'var(--color-green-50)' },
                     ].map((k) => (
                       <div key={k.label} style={{ background:k.bg, borderRadius:14, padding:14, border:`1.5px solid ${k.color}33` }}>
                         <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>{k.label}</div>
-                        <Montant value={k.value} size="md" color={k.color} />
+                        <Montant value={k.value} size="md" color={k.color} masque={montantsMasques} />
                       </div>
                     ))}
-                    <div style={{ background:'#FFF3EA', borderRadius:14, padding:14, border:`1.5px solid ${P}33` }}>
+                    <div style={{ background:'var(--commerce-orange-50)', borderRadius:14, padding:14, border:`1.5px solid ${P}33` }}>
                       <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>Marge totale</div>
                       {margeConnue
-                        ? <Montant value={marge} size="md" color={P} />
+                        ? <Montant value={marge} size="md" color={P} masque={montantsMasques} />
                         : <div style={{ fontSize:22, fontWeight:900, color:'var(--encre-4)' }}>—</div>}
                     </div>
-                    <div style={{ background:'#F5F0FF', borderRadius:14, padding:14, border:'1.5px solid #a78bfa33' }}>
+                    <div style={{ background:'var(--color-purple-50)', borderRadius:14, padding:14, border:'1.5px solid #a78bfa33' }}>
                       <div style={{ fontSize:11, color:'var(--encre-4)', fontWeight:700, marginBottom:6 }}>ROI</div>
-                      <div style={{ fontSize:22, fontWeight:900, color: margeConnue ? '#7c3aed' : 'var(--encre-4)' }}>{margeConnue ? `+${roi}%` : '—'}</div>
+                      <div style={{ fontSize:22, fontWeight:900, color: margeConnue ? 'var(--herite-violet)' : 'var(--encre-4)' }}>{montantsMasques ? '•••••' : (margeConnue ? `+${roi}%` : '—')}</div>
                     </div>
                   </div>
                   {!margeConnue && (
-                    <div style={{ fontSize:11, fontWeight:700, color:'#C2410C', background:'#FFF7ED', border:'1.5px solid #FED7AA', borderRadius:12, padding:'10px 12px' }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:'var(--color-orange-700)', background:'var(--color-orange-50)', border:'1.5px solid var(--color-orange-200)', borderRadius:12, padding:'10px 12px' }}>
                       ⚠ {sansCout} produit{sansCout > 1 ? 's' : ''} sans prix d'achat — renseigne-le pour voir ta marge réelle.
                     </div>
                   )}
                   <div style={{ background:'white', border:'1.5px solid var(--trait)', borderRadius:14, overflow:'hidden' }}>
-                    <div style={{ padding:'12px 14px', borderBottom:'1px solid #f5f0eb', fontSize:13, fontWeight:800, color:'var(--encre)' }}>Top 3 produits</div>
+                    <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--commerce-paper)', fontSize:13, fontWeight:800, color:'var(--encre)' }}>Top 3 produits</div>
                     {stocks.map(s=>({...s,val:s.quantity*s.salePrice})).sort((a,b)=>b.val-a.val).slice(0,3).map((p,i) => (
-                      <div key={p.id} style={{ padding:'12px 14px', borderBottom:i<2?'1px solid #f5f0eb':'none', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div key={p.id} style={{ padding:'12px 14px', borderBottom:i<2?'1px solid var(--commerce-paper)':'none', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                          <div style={{ width:28, height:28, borderRadius:8, background:i===0?'#f59e0b':i===1?'#9ca3af':'#c97316', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:'white' }}>{i+1}</div>
+                          <div style={{ width:28, height:28, borderRadius:8, background:i===0?'var(--herite-ambre)':i===1?'var(--color-gray-400)':'#c97316', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:900, color:'white' }}>{i+1}</div>
                           <div>
                             <div style={{ fontSize:14, fontWeight:700, color:'var(--encre)' }}>{p.name}</div>
                             <div style={{ fontSize:11, color:'var(--encre-4)' }}>{p.quantity} {p.unit}</div>
                           </div>
                         </div>
-                        <Montant value={p.val} size="sm" color="#1D9E75" />
+                        <Montant value={p.val} size="sm" color="var(--herite-vert-eau)" masque={montantsMasques} />
                       </div>
                     ))}
                   </div>

@@ -107,10 +107,13 @@ const brancheChangement = codeMachine.match(/case 'etat_financier_change':[\s\S]
 ok(brancheChangement !== null, 'la machine a une branche `etat_financier_change`');
 ok(brancheChangement !== null && !/type:\s*'encaisser'/.test(brancheChangement[0]),
   'cette branche ne contient aucun `type: \'encaisser\'` : un changement de panier ou de reçu ne paie jamais');
-ok(brancheChangement !== null && /phraseRelecture\(/.test(brancheChangement[0]),
-  'mais elle sait relire (phraseRelecture) : c\'est Tata qui relit d\'elle-même quand les billets couvrent');
+// ARG-17 — le producteur interne s'appelle `relecture()` depuis qu'il rend les
+// DEUX formes (écran et parlée) ; `phraseRelecture` reste exporté et lui
+// délègue. Ce qui est tenu ici est inchangé : cette branche RELIT.
+ok(brancheChangement !== null && /(phraseRelecture|relecture)\(fin\)/.test(brancheChangement[0]),
+  'mais elle sait relire : c\'est Tata qui relit d\'elle-même quand les billets couvrent');
 const blocEffet = codeCaisse.match(/useEffect\(\(\) => \{[\s\S]{0,600}?'etat_financier_change'[\s\S]*?\}, \[cleEmpreinte\]\)/);
-ok(blocEffet !== null && /if \(effet\.type === 'dire'\) speak\(effet\.texte\)/.test(blocEffet[0]),
+ok(blocEffet !== null && /if \(effet\.type === 'dire'\) speak\(effet\.texteParle\)/.test(blocEffet[0]),
   'le useEffect de POSCaisse DIT l\'effet `dire` rendu par ce changement (sinon la relecture spontanée serait muette)');
 ok(blocEffet !== null && !/handlePay/.test(blocEffet[0]),
   'et ce useEffect ne contient pas `handlePay` : il parle, il ne paie pas');
@@ -168,9 +171,9 @@ ok(intentLocal('vends 3 tomates à 500 francs')?.action.type !== undefined && !e
 }
 
 console.log('\n[B2] La chaîne complète : phrase → intentLocal → machine, sur le compte réel');
-// Le panier tel que POSCaisse le voit : lignes (productId, quantite, total exact ou prix × quantité).
-const panier = (lignes: Array<{ productId: string; quantite: number; prix: number; totalExact?: number }>, recu: number): EtatFinancier => {
-  const l = lignes.map(i => ({ productId: i.productId, quantite: i.quantite, total: i.totalExact ?? i.prix * i.quantite }));
+// Le panier tel que POSCaisse le voit : lignes (ligneId, quantite, total exact ou prix × quantité).
+const panier = (lignes: Array<{ ligneId: string; quantite: number; prix: number; totalExact?: number }>, recu: number): EtatFinancier => {
+  const l = lignes.map(i => ({ ligneId: i.ligneId, quantite: i.quantite, total: i.totalExact ?? i.prix * i.quantite }));
   const total = l.reduce((s, x) => s + x.total, 0);
   const insuffisant = recu > 0 && recu < total;
   return { panierVide: l.length === 0, total, recu, monnaie: Math.max(0, recu - total), suffisant: recu > 0 && !insuffisant, empreinte: { total, recu, lignes: empreintePanier(l) } };
@@ -184,7 +187,7 @@ function parler(etat: EtatEncaissement, phrase: string, f: EtatFinancier) {
   return { ...reduire(etat, evenement, f), type };
 }
 {
-  const f = panier([{ productId: 'tomate', quantite: 4, prix: 500 }, { productId: 'oignon', quantite: 2, prix: 1000 }], 5000);
+  const f = panier([{ ligneId: 'tomate', quantite: 4, prix: 500 }, { ligneId: 'oignon', quantite: 2, prix: 1000 }], 5000);
   let etat: EtatEncaissement = ETAT_INITIAL;
   let s = parler(etat, 'combien elle doit ?', f); etat = s.etat;
   ok(s.effet.type === 'dire' && etat.phase === 'repos', '« combien elle doit ? » → Tata annonce, état inchangé');
@@ -199,13 +202,13 @@ function parler(etat: EtatEncaissement, phrase: string, f: EtatFinancier) {
   s = parler(etat, "d'accord", f); etat = s.etat;
   ok(s.type == null && etat.phase === 'attente_confirmation', '« d\'accord » → rien non plus');
   // Un article de plus pendant que la cliente cherche sa monnaie : 6 000.
-  const f2 = panier([{ productId: 'tomate', quantite: 4, prix: 500 }, { productId: 'oignon', quantite: 2, prix: 1000 }, { productId: 'piment', quantite: 1, prix: 2000 }], 5000);
+  const f2 = panier([{ ligneId: 'tomate', quantite: 4, prix: 500 }, { ligneId: 'oignon', quantite: 2, prix: 1000 }, { ligneId: 'piment', quantite: 1, prix: 2000 }], 5000);
   const inval = reduire(etat, 'etat_financier_change', f2); etat = inval.etat;
   s = parler(etat, 'oui valide', f2); etat = s.etat;
   ok(s.effet.type !== 'encaisser', 'panier passé à 6 000 → « oui valide » ne paie PAS');
   ok(s.effet.type === 'dire' && s.effet.texte.includes((6000).toLocaleString('fr-FR')), 'Tata relit le nouveau compte (6 000)');
   // Elle touche un billet de 5 000 de plus : 10 000 reçus.
-  const f3 = panier([{ productId: 'tomate', quantite: 4, prix: 500 }, { productId: 'oignon', quantite: 2, prix: 1000 }, { productId: 'piment', quantite: 1, prix: 2000 }], 10000);
+  const f3 = panier([{ ligneId: 'tomate', quantite: 4, prix: 500 }, { ligneId: 'oignon', quantite: 2, prix: 1000 }, { ligneId: 'piment', quantite: 1, prix: 2000 }], 10000);
   etat = reduire(etat, 'etat_financier_change', f3).etat;
   s = parler(etat, 'on encaisse', f3); etat = s.etat;
   ok(s.effet.type === 'dire' && s.effet.texte === phraseRelecture(f3), '« on encaisse » → relecture 6 000 / reçu 10 000 / rends 4 000');
@@ -219,7 +222,7 @@ function parler(etat: EtatEncaissement, phrase: string, f: EtatFinancier) {
   // « oui valide » ne doit produire AUCUN effet `encaisser`. Sur b752c78,
   // « oui je valide pas » traversait grammaire → intentLocal → machine et
   // payait le compte relu.
-  const f = panier([{ productId: 'tomate', quantite: 4, prix: 500 }, { productId: 'oignon', quantite: 2, prix: 1000 }], 5000);
+  const f = panier([{ ligneId: 'tomate', quantite: 4, prix: 500 }, { ligneId: 'oignon', quantite: 2, prix: 1000 }], 5000);
   for (const refus of ['oui je valide pas', 'oui valide pas', 'oui, je valide pas', 'oui valide la dépense', 'ma cliente a dit oui valide', 'oui je valide mon panier plus tard', 'ok valide', 'ça va valider', "ouais c'est ça", 'oui', "d'accord", 'valide']) {
     const attente = reduire(ETAT_INITIAL, 'encaisser', f).etat;
     const s = parler(attente, refus, f);
@@ -231,14 +234,14 @@ function parler(etat: EtatEncaissement, phrase: string, f: EtatFinancier) {
 {
   // Total exact d'une ligne dictée (500 F pour 3) : c'est lui qui entre dans
   // l'empreinte, pas prix × quantité — comme dans handlePay.
-  const a = panier([{ productId: 'tomate', quantite: 3, prix: 167, totalExact: 500 }], 500);
-  const b = panier([{ productId: 'tomate', quantite: 3, prix: 167 }], 500);
+  const a = panier([{ ligneId: 'tomate', quantite: 3, prix: 167, totalExact: 500 }], 500);
+  const b = panier([{ ligneId: 'tomate', quantite: 3, prix: 167 }], 500);
   ok(a.empreinte.lignes !== b.empreinte.lignes && a.total === 500, 'l\'empreinte suit le total EXACT de la ligne (500), pas 3 × 167');
 }
 
 console.log('\n[B3] `etat_financier_change` n\'émet jamais `encaisser`, quel que soit l\'état');
 {
-  const T = { productId: 'tomate', quantite: 4, prix: 500 };
+  const T = { ligneId: 'tomate', quantite: 4, prix: 500 };
   const fins = [panier([], 0), panier([T], 0), panier([T], 1000), panier([T], 2000), panier([T], 5000)];
   const etats: EtatEncaissement[] = [
     { phase: 'repos' }, { phase: 'preparation' },

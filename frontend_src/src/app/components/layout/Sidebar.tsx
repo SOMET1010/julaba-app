@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router';
+import { ICONES_NAVIGATION } from './iconesNavigation';
 import { motion } from 'motion/react';
 import { Home, ShoppingCart, Mic, Package, User, Menu, X, ShoppingBag, Warehouse, TrendingUp, UserCheck, BarChart3, Users, LogOut, UserPlus, Truck } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
@@ -17,19 +18,11 @@ interface SidebarProps {
 }
 
 // Map des icônes disponibles
-const ICON_MAP: Record<string, any> = {
-  Home,
-  Store: ShoppingCart,
-  Package,
-  User,
-  ShoppingCart,
-  Sprout: Warehouse,
-  Users,
-  UserCheck,
-  UserPlus,
-  BarChart3,
-  Truck,
-};
+// LA MÊME TABLE QUE LA BARRE DU BAS — 25/09/2026. Celle d'ici ignorait
+// `ShoppingBag` (d'où deux maisons) et donnait à `Store` un CADDIE là où la
+// barre du bas affichait un magasin : la même entrée changeait de dessin
+// selon la largeur de l'écran.
+const ICON_MAP = ICONES_NAVIGATION;
 
 export function Sidebar({ role, onMicClick }: SidebarProps) {
   const navigate = useNavigate();
@@ -53,8 +46,6 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
     : profileUser
       ? `${(profileUser.prenoms || '?').charAt(0)}${(profileUser.nom || '').charAt(0)}`
       : '?';
-  const [isListening, setIsListening] = useState(false);
-
   // Utiliser roleConfig pour obtenir la couleur et les items
   const roleConfig = getRoleConfig(role);
   const activeColor = getRoleColor(role);
@@ -75,10 +66,10 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
       path: item.path,
       isMic: false,
     })),
-    // Ajouter Tata Nanti Lou à la fin pour Desktop
+    // Ajouter Tantie Nanti Lou à la fin pour Desktop
     {
       id: 'mic',
-      label: 'Tata Nanti Lou',
+      label: 'Tantie Nanti Lou',
       icon: Mic,
       path: null,
       isMic: true,
@@ -87,11 +78,7 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
 
   const handleTabClick = (tab: typeof tabs[0]) => {
     if (tab.isMic) {
-      // Activate Tata Nanti Lou
-      setIsListening(!isListening);
-      if (onMicClick) {
-        onMicClick();
-      }
+      onMicClick?.();
     } else if (tab.path) {
       navigate(tab.path);
     }
@@ -131,8 +118,8 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
             if (micTab) handleTabClick(micTab);
           }}>
           <Mic aria-hidden="true" size={24} />
-          <span><span className="block font-semibold">Tata Nanti Lou</span>
-            <span className="block text-sm">{isListening ? "Je t'écoute..." : "Besoin d'aide ?"}</span>
+          <span><span className="block font-semibold">Tantie Nanti Lou</span>
+            <span className="block text-sm">Besoin d'aide ?</span>
           </span>
         </button>
         {(appUser || profileUser) && (

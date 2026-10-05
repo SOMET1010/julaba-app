@@ -135,7 +135,7 @@ export const ROLE_CONFIG: Record<
   },
 };
 
-// « Langue de Tata Nanti Lou » vit désormais UNIQUEMENT dans Réglages (elle y
+// « Langue de Tantie Nanti Lou » vit désormais UNIQUEMENT dans Réglages (elle y
 // était déjà, correctement nommée) : ce doublon exact — même réglage
 // (useLangPref), même modale, juste étiqueté « Langue » ici — est supprimé
 // plutôt que renommé (audit accueil/profil).
