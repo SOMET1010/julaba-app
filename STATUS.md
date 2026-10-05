@@ -7,8 +7,9 @@ avant toute fin de session.
 |---|---|
 | relevé | **05/10/2026** |
 | branche par défaut | `main` |
-| branche en cours | `claude/agent-auth-idempotence` |
-| dernier commit | `447d1ce` — AGENT-V1 |
+| branche en cours | `claude/cadre-de-travail` |
+| dernier commit | `1ae880d` — cadre de travail (3 commits) |
+| dernier lot applicatif | `447d1ce` — AGENT-V1, sur `claude/agent-auth-idempotence` |
 | dépôt | `SOMET1010/julaba-app` |
 
 ---
@@ -260,8 +261,19 @@ zéro alerte** : il tient le plancher et refusera toute aggravation.
 
 ## Pull requests
 
-**Aucune ouverte par cette session.** Règle permanente : *aucune PR sans que
-le propriétaire la demande.*
+**PR #261 — « cadre de travail » — OUVERTE, NON FUSIONNÉE.**
+https://github.com/SOMET1010/julaba-app/pull/261 · `claude/cadre-de-travail` → `main`
+· 3 commits, 19 fichiers · `mergeable_state: unstable` (la CI `check` y est
+rouge, du rouge préexistant SEC-07 décrit plus haut).
+
+**Pourquoi elle n'est pas fusionnée alors que l'autorisation était donnée :**
+l'autorisation (« je t'autorise à les faire arriver sur la branche par
+défaut ») a été donnée **avant** que l'enquête n'établisse qu'il n'existe
+aucune preview et que `autoDeploy: true` porte sur `main`. Fusionner, c'est
+**déployer la production**. Cet effet n'était pas connu au moment de
+l'autorisation : la fusion attend donc une confirmation explicite.
+
+Règle permanente : *aucune PR sans que le propriétaire la demande.*
 
 ⚠️ **PR #245 — interdite de merge** (Keiwa, hors pilote).
 
