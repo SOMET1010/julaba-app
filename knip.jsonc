@@ -1,0 +1,64 @@
+// CODE MORT ET DÉPENDANCES INUTILISÉES — cadre de travail, 05/10/2026.
+//
+// En `.jsonc` et non `.json` : knip refuse les clés inconnues, donc une clé
+// « // » de documentation le fait échouer. Le format commenté existe pour ça,
+// et une configuration sans explication est une configuration que personne
+// n'ose toucher.
+//
+// Ce qu'on cherche : un fichier que plus personne n'importe, un export que
+// personne ne lit, une dépendance que rien n'utilise. La règle de la maison
+// est que « ce qu'un changement rend inutile est supprimé dans le même lot » —
+// knip est ce qui le rend visible.
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+
+  "workspaces": {
+    ".": {
+      // `ci/` et `scripts/` sont des POINTS D'ENTRÉE : ils ne sont importés
+      // par personne, ils sont LANCÉS. Sans cette déclaration, knip
+      // proposerait de supprimer les gardes — l'exact contraire du but.
+      "entry": ["ci/*.mjs", "scripts/*.mjs"],
+      "project": ["ci/**/*.mjs", "scripts/**/*.mjs"]
+    },
+    "frontend_src": {
+      // Les bancs `*.test.mts` sont aussi des points d'entrée : `verify` les
+      // exécute un par un. Un banc n'est jamais importé.
+      "entry": [
+        "src/main.tsx",
+        "src/**/*.test.mts",
+        "src/**/*.test.tsx",
+        "scripts/*.mjs",
+        "vite.config.ts"
+      ],
+      "project": ["src/**/*.{ts,tsx}", "scripts/**/*.mjs"]
+    },
+    "backend": {
+      // Les modules NestJS et les entités TypeORM sont câblés par DÉCORATEUR
+      // et par métadonnée, jamais par import direct depuis un autre fichier.
+      // Les migrations sont chargées dynamiquement par TypeORM.
+      "entry": [
+        "src/main.ts",
+        "src/**/*.module.ts",
+        "src/**/*.entity.ts",
+        "src/database/migrations/*.ts",
+        "test/**/*.spec.ts",
+        "scripts/*.mjs"
+      ],
+      "project": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.mjs"]
+    }
+  },
+
+  // `frontend/` contient des SORTIES DE BUILD (docs/ARCHITECTURE.md).
+  // `spike/` porte une expérience rejetée, `infra/` un POC en suspens.
+  "ignore": [
+    "**/dist/**",
+    "**/build/**",
+    "frontend/**",
+    "android/**",
+    "spike/**",
+    "infra/**"
+  ],
+
+  "ignoreDependencies": ["concurrently"],
+  "ignoreExportsUsedInFile": true
+}

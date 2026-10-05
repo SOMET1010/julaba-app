@@ -13,6 +13,40 @@ avant toute fin de session.
 
 ---
 
+## ⚠️ LE FAIT QUI CHANGE LE CADRE : IL N'Y A AUCUNE PREVIEW
+
+Établi par l'enquête du 05/10, trois preuves convergentes :
+
+- `render.yaml` ne déclare **ni `previews:`, ni `previewsEnabled`, ni
+  `pullRequestPreviewsEnabled`** (vérifié : 0 occurrence) ;
+- `coordination/JULABA-STATUS.md` : « la recette par un agent web est
+  **ABANDONNÉE** : elle exigeait une **preview Render**, donc de toucher au
+  Blueprint, donc un chantier infra que **Patrick refuse à ce stade** (16/09) » ;
+- `docs/etape4/RUNBOOK-BASCULE-MIGRATIONS.md` §3.1 : « ☐ Créer un **preview
+  environment** sur Render » — **case non cochée**.
+
+**Conséquences, et elles portent sur la méthode de travail :**
+
+| | |
+|---|---|
+| pousser sur une branche ≠ `main` | **ne produit AUCUNE URL consultable** |
+| pousser sur `main` | **déploie la PRODUCTION** — `autoDeploy: true`, et les deux URLs `onrender.com` *sont* la prod |
+| il n'y a **pas d'étage intermédiaire** | ni preview, ni staging |
+
+Donc, en l'état, **l'agent recette ne peut vérifier aucune DoD « sur la
+preview déployée »** : il n'y a que trois façons de voir tourner du code —
+fusionner dans `main` (c'est-à-dire en production), construire un **APK**
+(`apk.yml`, déclenchable à la main), ou activer les previews de PR sur
+`julaba-web` au tableau de bord Render (geste infra, jamais fait, et le
+backlog le limite explicitement **au site statique** : une preview du backend
+payant serait une dépense réelle).
+
+**C'est l'accès manquant n° 1.** Tant qu'il n'est pas levé, la DoD d'un
+livrable d'interface doit s'appuyer sur un **APK** ou sur des **captures de
+l'aperçu local**, pas sur une URL de preview.
+
+---
+
 ## Livrable en cours
 
 **Aucun.** La session précédente a livré le Lot A (authentification d'agent) et
@@ -102,6 +136,45 @@ Voir `docs/DECISIONS.md` pour la liste datée complète. Les structurantes :
 
 ---
 
+## Écart anti-spaghetti — mesuré le 05/10, rien corrigé
+
+Les seuils sont réglés **au niveau actuel** : ils empêchent l'aggravation sans
+bloquer. Ils se resserrent quand la dette baisse, jamais l'inverse.
+
+| catégorie | mesure réelle | seuil posé | alertes |
+|---|---|---|---|
+| fichiers > 300 lignes | **185 fichiers**, max **6 644** (`FicheIdentificationDynamiqueBO.tsx`) | `max-lines: 6700` | 0 |
+| fonction la plus longue | **2 262 lignes** (même fichier) | `max-lines-per-function: 2300` | 0 |
+| complexité maximale | **166** (`FicheIdentificationDynamique.tsx`) | `complexity: 170` | 0 |
+| duplication | **3,87 %** — 7 453 lignes sur 192 516, **301 clones** | `threshold: 4` | 0 |
+| code mort et dépendances | **396 problèmes** : 41 fichiers inutilisés, **55 dépendances inutilisées**, 239 exports non lus, 28 exports en double | `--max-issues 400` | 0 |
+| imports circulaires | `import/no-cycle` en **erreur** dès maintenant — seul seuil serré d'emblée | — | 0 |
+| typage | `strict` déjà actif sur les deux workspaces | — | 0 |
+
+**Les trois points les plus gênants** — les plus coûteux au quotidien, pas les
+plus gros chiffres :
+
+1. **Deux fichiers de 6 644 et 5 753 lignes** (`FicheIdentificationDynamiqueBO`
+   et `FicheIdentificationDynamique`), dont une **fonction unique de 2 262
+   lignes** à complexité 166. Personne ne peut relire ça, donc personne ne le
+   modifie sans risque — et ils portent l'identification, c'est-à-dire
+   l'entrée de tout acteur. **Et ils se ressemblent** : 283 lignes dupliquées
+   entre deux `RecolteForm`, le même motif entre `MarchandAlertes` et
+   `ProducteurAlertes`. C'est la duplication la plus coûteuse du dépôt :
+   corriger un défaut oblige à le corriger deux fois, et on en oublie une.
+2. **55 dépendances inutilisées.** Chacune est du temps d'installation, du
+   poids, et une surface de sécurité pour rien. C'est aussi le signe que des
+   lots passés n'ont pas « supprimé ce qu'ils rendaient inutile ».
+3. **Le code portait 46 directives `eslint-disable` pour un eslint qui
+   n'existait pas** (vérifié : aucune configuration, aucune dépendance avant
+   ce jour). Des développeurs ont écrit des exemptions contre un outil absent
+   — autrement dit, la règle était connue et personne ne pouvait la vérifier.
+
+**Rien n'a été corrigé**, conformément à la consigne. Le lint est **vert à
+zéro alerte** : il tient le plancher et refusera toute aggravation.
+
+---
+
 ## Backlog
 
 - Limite de requêtes **propre à l'agent** (seul le `ThrottlerGuard` global s'applique).
@@ -110,6 +183,41 @@ Voir `docs/DECISIONS.md` pour la liste datée complète. Les structurantes :
 - Les deux frottements consignés le 03/10 : **aucun bip** sur le chemin `BoutonDirePrix` ; **l'écoute dure 11 s** même quand le prix est compris en 2 s.
 - Diagnostiquer `test:entree-unique` et `test:nom-tantie`.
 - Réduire la dette anti-spaghetti (**ne rien corriger avant arbitrage**).
+
+---
+
+## Accès — ce qui marche, ce qui manque
+
+| sujet | état |
+|---|---|
+| GitHub | ✅ `gh api` pleinement fonctionnel sur `julaba-app` (**permissions admin**). `julaba-whatsapp-agent` accessible après `add_repo` |
+| Déploiement | ✅ `autoDeploy: true` sur `julaba-api` et `julaba-web` — **mais sur `main`, donc en production** |
+| **Preview par branche** | ❌ **n'existe pas** (voir l'encadré en tête) |
+| URLs de prod | ❌ **intestables depuis cette session** : l'egress refuse `julaba-api.onrender.com`, `julaba-web.onrender.com` et `julaba.online` (`connect_rejected`, 403 du proxy). À vérifier depuis un navigateur |
+| Base de production | ⚠️ **contradiction non résolue** : `render.yaml` déclare `julaba-db` (Render), mais `docs/etape4/BASCULE-EXECUTEE-2026-08-15.md` affirme que les `DB_*` sont **surchargés au tableau de bord vers Supabase**. Seul le tableau de bord Render tranchera (`julaba-api` → *Environment* → `DB_HOST`) |
+| Version Postgres | ⚠️ contradiction : ADR-0004 dit **16**, `reinitialiser-db.yml` dit **18** |
+| **Base de preview / staging** | ❌ **elle n'existe pas** — aucune migration ne peut être jouée hors production sur un hôte |
+| **Postgres de test** | ⚠️ injoignable **en l'état**, mais **à un geste près** : `scripts/pg-test-local.sh start` existe et Postgres 16 est installé localement. **C'est ce qui débloquerait les invariants** — jamais exécutés sur le lot Agent ni sur IDEM |
+| Sauvegardes | ✅ `sauvegarde-db.yml` tourne chaque nuit ; artefact vérifié le 05/10 (~75,8 Ko) |
+| Variables d'env | ✅ `backend/.env.example` les documente toutes (placeholders) |
+| APK | ✅ `apk.yml` déclenchable à la main, artefact `julaba-apk-<sha7>`, Release `pilote-latest`. ⚠️ **signé avec la clé de debug** → chaque build signe différemment, donc toute mise à jour exige une **désinstallation, qui efface les données de la marchande**. Bloquant avant distribution |
+| Docker / Azure | tranché par **ADR-0004** (28/09) : Render = prod ; OVH/Docker = secours **dormant** (manuel) ; Azure = miroir **muet**, PAT expiré le 08/09 ; `docker-compose.prod.yml` = vestige |
+| Lovable | ❌ **aucune trace** dans le dépôt — hors stack |
+| Supabase | vestiges de commentaires seulement, **aucune dépendance npm**. Mais voir la contradiction sur la base de prod |
+
+### ⚠️ Alertes de sécurité remontées par l'enquête
+
+1. **Le dépôt `julaba-app` est PUBLIC** (`"visibility":"public"`, vérifié par API).
+2. **Mots de passe par défaut écrits en dur** : `backend/src/auth/auth.service.ts`
+   **lignes 42-43**, appliqués à toute inscription réelle. Dans un dépôt public.
+   `generateInitialPassword()` existe déjà au même endroit (l. 69-76).
+3. **Un ancien secret est cité en clair** dans `.ai/SECURITY_AUDIT.md` l. 117,
+   avec mention qu'il subsiste dans l'historique GitHub et Azure.
+4. **ALERTE-SEC-01 toujours ouverte** : 29 identifiants en clair dans
+   `akoun-dev/julaba` (public), dont 7 mots de passe back-office partageant une
+   seule valeur.
+
+*Aucune valeur de secret n'est reproduite ici — seulement les emplacements.*
 
 ---
 
