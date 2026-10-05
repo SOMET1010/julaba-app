@@ -18,7 +18,15 @@ les 6 bancs orphelins renvoyés à un lot qualité séparé.
 - CI sur `b77a5d9` : 6/6 verte, dont « Verdict du garde-fou ».
 - **#259 fusionnée : `main` = `ea499ab`** (merge commit).
 
-Prochain lot (non lancé) : APK depuis `ea499ab`, puis recette pilote.
+- **APK construit depuis `ea499ab`** (GO Patrick) : run 37277252742, vert.
+  `julaba-ea499ab.apk` (= `julaba-latest.apk`) sur la release `pilote-latest`,
+  272 976 125 octets, SHA-256
+  `1a2f3d9327716828e3b6002327bb1deea6ae0661b88d82b4eae7e6ec69a580aa`.
+  Debug, signature v2 vérifiée, `com.julaba.app`, targetSdk 36.
+  Options : API `https://julaba-api.onrender.com/api/v1`, voix dioula NON,
+  argent dioula NON, clips prototypes NON (défauts du workflow).
+
+Prochain lot : recette pilote sur 2–3 téléphones avec cet APK.
 
 ---
 
