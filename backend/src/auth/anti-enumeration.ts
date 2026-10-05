@@ -13,6 +13,8 @@
 // CE FICHIER PORTE LES DEUX OUTILS, pour que ni l'un ni l'autre ne soit
 // réimplémenté au coup par coup dans un service.
 
+import { randomInt } from 'node:crypto';
+
 // ── 1. Numéros de recette ANSUT ────────────────────────────────────────────
 // AUTORITÉ (AUTH-07-sous-dette, 05/10/2026) : la liste qui fait FOI est la
 // variable d'environnement AUTH_TELEPHONES_TEST du backend — 10 chiffres
@@ -105,7 +107,7 @@ const GIGUE_MS = 80;
  * travail, puis appelle ceci juste avant de retourner la réponse.
  */
 export async function repondreAEcheanceUniforme(debut: number): Promise<void> {
-  const echeance = debut + PLANCHER_MS + Math.floor(Math.random() * GIGUE_MS);
+  const echeance = debut + PLANCHER_MS + randomInt(GIGUE_MS);
   const reste = echeance - Date.now();
   if (reste > 0) await new Promise((resoudre) => setTimeout(resoudre, reste));
 }
