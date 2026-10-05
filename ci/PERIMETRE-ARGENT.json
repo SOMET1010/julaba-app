@@ -817,16 +817,6 @@
         "caisse_transactions"
       ]
     },
-    "database/init.sql": {
-      "zones": [
-        "enregistrement-vente",
-        "paiement"
-      ],
-      "symboles": [
-        "caisse_transactions",
-        "mode_paiement"
-      ]
-    },
     "frontend_src/src/app/App.tsx": {
       "zones": [
         "caisse-context"
@@ -1188,6 +1178,14 @@
         "idempotency_key"
       ]
     },
+    "frontend_src/src/app/services/grammaireCorrection.ts": {
+      "zones": [
+        "local-intent"
+      ],
+      "symboles": [
+        "localIntent"
+      ]
+    },
     "frontend_src/src/app/services/ligneProvisoire.ts": {
       "zones": [
         "enregistrement-vente"
@@ -1218,6 +1216,14 @@
       ],
       "symboles": [
         "beneficeDepuisDetails"
+      ]
+    },
+    "frontend_src/src/app/services/panierLignes.ts": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
       ]
     },
     "frontend_src/src/app/services/premierProduit.ts": {
@@ -1277,6 +1283,17 @@
         "handlePay"
       ]
     },
+    "frontend_src/src/app/services/venteAuCatalogue.ts": {
+      "zones": [
+        "grammaire-intention-financiere",
+        "local-intent"
+      ],
+      "symboles": [
+        "detecterEncaissement",
+        "grammaireEncaissement",
+        "localIntent"
+      ]
+    },
     "frontend_src/src/app/types/payment.ts": {
       "zones": [
         "paiement"
@@ -1307,6 +1324,14 @@
       ],
       "symboles": [
         "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/voice-offline/grammaireAcquiescement.ts": {
+      "zones": [
+        "local-intent"
+      ],
+      "symboles": [
+        "localIntent"
       ]
     },
     "frontend_src/src/app/voice-offline/grammaireEncaissement.ts": {
@@ -1352,5 +1377,5 @@
       ]
     }
   },
-  "genereLe": "2026-09-23"
+  "genereLe": "2026-10-05"
 }

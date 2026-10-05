@@ -43,7 +43,11 @@ export const EMPREINTES_BASE = {
   // la fonction de base ignore le second argument, donc chaque locale y répond
   // comme fr-ci. L'ancienne valeur (corpus historique seul) était 0dd33503….
   grammaire: '63edc90fc7e3b924064fd15f0a94038ec1e9626d90602b62eaccebd8a0e2aa9d',
-  intentLocal: 'f6c8bc76ebd92dcccddb9424b86ab749d70b3053db3c8dfccd07535d90dcaedd',
+  // REFIGÉE le 05/10/2026 sur décision de Patrick (clôture PR #259) : lot
+  // « unité » — 14 phrases sur 844 gagnent leur unité, aucun montant, quantité,
+  // produit ni intention ne change (passation SESSION-2026-10-03 §3.4).
+  // Ancienne valeur : f6c8bc76ebd92dcccddb9424b86ab749d70b3053db3c8dfccd07535d90dcaedd.
+  intentLocal: '86044262df2ac1a388f91bf9b449b48e9ec7b014605045420709975f948bff6c',
   dialogues: 'a28182d631c714a973e9a1ac7f49a447d5f64a561c87462802b81f847d89cb09',
   relecture: 'dcb722cc97358781a2a3eb0e2d58b89bee9c5dd6051dc90c0bf03a17bc64dd89',
   // REFIGÉE le 21/09/2026 — la seule empreinte de cette table qui ne vienne
