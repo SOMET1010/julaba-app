@@ -85,6 +85,38 @@ if (source.includes('</label>') === false) {
   rate('aucune </label> fermante — le balisage est cassé');
 }
 
+// ── EXTENSION AUTH (AUTH-09, audit UI auth 05/10/2026) ────────────────────
+// Le garde ne scannait que POSCaisse ; l'audit a MESURÉ au navigateur des
+// cibles < 44 px sur l'écran qui connecte : « Modifier » 44×16,5 px, bascule
+// « Utiliser des images » 149×30 px. La règle est la même, ici : une cible
+// tactile de l'auth fait au moins 44 px de haut (ACCESSIBILITY_GUIDE §4/§5).
+const AUTH_MIN = 44;
+const cibleAuth = (fichier, marqueur, quoi, motifTaille) => {
+  const srcAuth = readFileSync(join(ICI, '..', 'src', 'app', 'components', 'auth', fichier), 'utf8');
+  const lignesAuth = srcAuth.split('\n');
+  const i = lignesAuth.findIndex((l) => l.includes(marqueur));
+  if (i === -1) {
+    rate(`auth · ${quoi} : marqueur introuvable (${marqueur}) — l'écran a changé ?`);
+    return;
+  }
+  // On cherche la taille dans une fenêtre AUTOUR de la déclaration : le style
+  // peut précéder l'aria-label (bouton d'une ligne) ou le suivre.
+  const fenetre = lignesAuth.slice(Math.max(0, i - 4), i + 14).join('\n');
+  const m = motifTaille.exec(fenetre);
+  if (!m) rate(`auth · ${quoi} : taille introuvable près de « ${marqueur} »`);
+  else if (Number(m[1]) >= AUTH_MIN) passe(`auth · ${quoi} : cible ≥ ${AUTH_MIN} px (${m[1]} px)`);
+  else rate(`auth · ${quoi} : cible de ${m[1]} px — en dessous de ${AUTH_MIN} px`);
+};
+
+cibleAuth('LoginPassword.tsx', '>Modifier</motion.button>', 'bouton « Modifier » (changer le numéro)',
+  /minHeight:\s*(\d+)/);
+cibleAuth('LoginPassword.tsx', "'Afficher des images à la place des chiffres'", 'bascule images du code',
+  /minHeight:\s*(\d+)/);
+cibleAuth('LoginPassword.tsx', '"Revoir mon numéro"', 'bouton « Revoir mon numéro »',
+  /width:\s*(\d+),\s*height:\s*(\d+)/);
+cibleAuth('PropositionReconnaissance.tsx', 'aria-label="Fermer"', 'bouton « Fermer » de la modale reconnaissance',
+  /width:\s*(\d+),\s*height:\s*(\d+)/);
+
 if (echecs > 0) {
   console.log('\n✗ cible tactile — échec');
   process.exit(1);

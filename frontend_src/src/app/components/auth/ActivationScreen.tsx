@@ -22,7 +22,8 @@ function parle(texte: string): void {
 // secret utilisable : elle saisit le code d'activation reçu (lu par l'identificateur)
 // et POSE SON propre code. Après succès, elle se connecte avec ce code.
 // UX minimale (fonctionnelle) ; le mot de passe imagé (déc.3) la remplacera.
-const P = '#B74725';
+// AUTH-08 — l'action commerce se LIT (token commerce.css), elle ne se recopie plus.
+const P = 'var(--commerce-action)';
 const BG = 'rgba(255,247,237,0.9)';
 const BORDER = 'rgba(198,106,44,0.3)';
 const PINS_INTERDITS = new Set(['0000', '1234']);
@@ -116,7 +117,13 @@ export function ActivationScreen() {
           className="bg-white rounded-3xl p-6 shadow-xl border-2 space-y-4" style={{ borderColor: BORDER }}>
           <div>
             <label htmlFor="activation-code" className="block text-sm font-bold text-gray-700 mb-2">Code d'activation</label>
-            <input id="activation-code" type="text" inputMode="text" autoCapitalize="none" autoComplete="off"
+            {/* AUTH-11 — code reçu par SMS : one-time-code est ici le VRAI
+                sens (là où le PIN de connexion le discutait) ; les deux champs
+                du code choisi gardent new-password, et les erreurs sont
+                associées (aria-invalid + aria-describedby). */}
+            <input id="activation-code" type="text" inputMode="text" autoCapitalize="none" autoComplete="one-time-code"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'activation-erreur' : undefined}
               value={code} onChange={e => setCode(e.target.value)} placeholder="Code reçu à l'enrôlement"
               className="w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold"
               style={{ borderColor: BORDER }} />
@@ -124,6 +131,8 @@ export function ActivationScreen() {
           <div>
             <label htmlFor="activation-pin" className="block text-sm font-bold text-gray-700 mb-2">Ton code secret</label>
             <input id="activation-pin" type="password" inputMode="numeric" autoComplete="new-password"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'activation-erreur' : undefined}
               value={pin} onChange={e => setPin(e.target.value)} placeholder="Choisis ton code (4 chiffres minimum)"
               className="w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold tracking-widest"
               style={{ borderColor: BORDER }} />
@@ -131,11 +140,13 @@ export function ActivationScreen() {
           <div>
             <label htmlFor="activation-confirm" className="block text-sm font-bold text-gray-700 mb-2">Répète ton code</label>
             <input id="activation-confirm" type="password" inputMode="numeric" autoComplete="new-password"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'activation-erreur' : undefined}
               value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Répète le même code"
               className="w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold tracking-widest"
               style={{ borderColor: BORDER }} />
           </div>
-          {error && <p role="alert" aria-live="assertive" className="text-red-500 text-sm font-semibold">{error}</p>}
+          {error && <p id="activation-erreur" role="alert" aria-live="assertive" className="text-red-500 text-sm font-semibold">{error}</p>}
           <motion.button type="submit" disabled={loading}
             className="w-full py-4 rounded-2xl font-black text-white text-lg disabled:opacity-50"
             style={{ backgroundColor: P }} whileHover={loading ? {} : { scale: 1.02 }} whileTap={loading ? {} : { scale: 0.98 }}>

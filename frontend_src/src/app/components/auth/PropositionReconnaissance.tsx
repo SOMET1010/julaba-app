@@ -152,6 +152,10 @@ export function PropositionReconnaissance() {
                 transition={{ type: 'spring', damping: 28 }}
                 style={{
                   position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 121,
+                  // Feuille TOUJOURS CLAIRE, à dessein : ses textes sont des bruns
+                  // littéraux de la charte auth (voir authCharte.test.mts) — la
+                  // passer au jeton sombre les rendrait illisibles. La migration
+                  // commence par les textes (→ --encre), pas par la feuille.
                   margin: '0 auto', width: '100%', maxWidth: 480, background: '#fff',
                   borderTopLeftRadius: 26, borderTopRightRadius: 26,
                   padding: '22px 20px calc(24px + env(safe-area-inset-bottom))',
@@ -167,7 +171,7 @@ export function PropositionReconnaissance() {
                   </button>
                 </DialogPrimitive.Close>
                 <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(198,106,44,0.1)', display: 'grid', placeItems: 'center', margin: '0 auto 12px' }}>
-                  <Fingerprint style={{ width: 32, height: 32, color: '#B74725' }} />
+                  <Fingerprint style={{ width: 32, height: 32, color: 'var(--commerce-action)' }} />
                 </div>
                 {/* AUTH-05 — la question est un vrai `Title` de dialogue (le
                     lecteur d'écran la nomme à l'entrée dans la modale). */}
@@ -178,16 +182,16 @@ export function PropositionReconnaissance() {
                 </DialogPrimitive.Title>
                 <button type="button" onClick={() => { void direAccueilMarchand('reconnaissanceProposition'); }}
                   aria-label="Écouter Tantie Nanti Lou"
-                  style={{ width: 52, height: 52, margin: '0 auto 16px', borderRadius: '50%', border: '2px solid rgba(198,106,44,0.35)', background: '#fff7ef', color: '#B74725', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+                  style={{ width: 52, height: 52, margin: '0 auto 16px', borderRadius: '50%', border: '2px solid rgba(198,106,44,0.35)', background: '#fff7ef', color: 'var(--commerce-action)', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
                   <Volume2 aria-hidden="true" size={25} />
                 </button>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button type="button" onClick={repondreNon} disabled={enCours}
-                    style={{ flex: 1, padding: '15px 0', borderRadius: 16, fontWeight: 800, fontSize: 15, color: '#8A5A34', background: '#fff', border: '2px solid rgba(198,106,44,0.35)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    style={{ flex: 1, padding: '15px 0', borderRadius: 16, fontWeight: 800, fontSize: 15, color: '#8A5A34', background: 'var(--commerce-surface)', border: '2px solid rgba(198,106,44,0.35)', cursor: 'pointer', fontFamily: 'inherit' }}>
                     Non
                   </button>
                   <button ref={ouiRef} type="button" onClick={repondreOui} disabled={enCours}
-                    style={{ flex: 1.4, padding: '15px 0', borderRadius: 16, fontWeight: 800, fontSize: 15, color: '#fff', background: enCours ? '#CBB9A8' : 'linear-gradient(135deg, #EE8E3C, #B74725)', border: 'none', cursor: enCours ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
+                    style={{ flex: 1.4, padding: '15px 0', borderRadius: 16, fontWeight: 800, fontSize: 15, color: '#fff', background: enCours ? '#CBB9A8' : 'linear-gradient(135deg, #EE8E3C, var(--commerce-action))', border: 'none', cursor: enCours ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
                     {enCours ? 'Un instant…' : 'Oui, je veux'}
                   </button>
                 </div>

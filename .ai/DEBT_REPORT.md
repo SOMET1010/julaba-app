@@ -155,6 +155,21 @@
 ### P3 (backlog)
 - 20 dettes à traiter opportunistiquement
 
+
+## AUTH (lot P2 audit UI auth — 05/10/2026)
+
+Dettes ASSUMÉES relevées par l'audit UI auth (`AUDITS/AUDIT-UI-AUTH-2026-10-05.md`) et non corrigées de code — hors périmètre frontend ou décision documentée :
+
+| ID | Description | Priorité | Effort | Statut |
+|---|---|---|---|---|
+| AUTH-06 | JWT access + refresh en localStorage (décision documentée en code : auth mobile sans cookie cross-domaine) | P2 | L | OUVERT (audit) — à terme cookie httpOnly même-domaine |
+| AUTH-07 | TEST_PHONES actifs en prod (décision métier ANSUT) + énumération check-phone (timing attack) | P2 | M | OUVERT (audit) — côté SERVEUR : réponse uniforme + délai constant + log des accès TEST_PHONES |
+| AUTH-12 | UI auth 100 % français hardcodé (la voix est i18nisée fr-ci/dyu-ci/bm/bci, pas le texte) | P3 | XL | OUVERT (audit) — dette i18n visuelle connue du repo |
+| AUTH-14 | 13 `console.warn` auth (aucun PIN/password/montant — vérifié) : bruit à silencier en prod | P3 | S | OUVERT (audit) — préservé conformément à PROJECT_CONTEXT §8.7 |
+| AUTH-ERR | Trou vocal verrou : > 2 essais restants → clip `codeErreur` « prototype » muet en build livré (trou découvert en fermant AUTH-03, P1) | P3 | S | OUVERT (lot P1) — besoin d'un clip lot A « Ce n'est pas le bon code » |
+
+Les 9 autres P2 de l'audit (AUTH-08..11, 13, 15..17 + cibles) ont été corrigés le jour même (§12 du rapport d'audit).
+
 ## Recommandation globale
 
 Le projet présente une dette **maîtrisée et tracée** (registre à 20 révisions, auto-correction documentée). Aucune dette P0 bloquante à part les 4 dettes de gouvernance (README, LICENSE, fusion branche, .env.example) qui sont des actions de quelques heures chacune.

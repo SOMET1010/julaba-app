@@ -1,10 +1,11 @@
 import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
-import { stopAllVoice } from '../../services/audioManager';
-import { stopIntro } from '../../services/onboardingVoix';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, AlertCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, ChevronLeft, Eye } from 'lucide-react';
+// AUTH-15 — les icônes viennent de la bibliothèque du DS (lucide), plus de
+// trait SVG dessiné à la main par écran. (Le clavier et l'effacement vivent
+// désormais dans PaveSaisie ; la bannière porte sa propre AlertCircle.)
+import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, ChevronLeft, Eye, Keyboard, Check, Play } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
@@ -14,7 +15,6 @@ import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { BrandSignature } from '../shared/BrandSignature';
 import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
-import { extractPhoneDigits, fusionnerChiffresDictes } from '../../utils/frenchDigits';
 import { direEntree, direEntreeTexte, ENTREE_VOICE_CLIPS, type EntreeVoiceKey } from '../../services/entreeVoix';
 import { deposerCodeActuel } from '../../services/codeActuelMemoire';
 import { tParle } from '../../i18n/voice/runtime';
@@ -83,7 +83,9 @@ function direConsigne(key: EntreeVoiceKey): Promise<void> {
     .then((r) => (r.doitDireLeTexte ? parlerAvantConnexion('connexion', tParle(CLE_CATALOGUE[key])).then(() => undefined) : undefined))
     .catch(() => { /* une consigne qui casse ne bloque jamais la connexion */ });
 }
-import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
+// (offlineModelInstalled, startLiveDictation et la mécanique du moteur vivent
+// dans hooks/useDicteeLive ; l'écran ne garde que la sonde de disponibilité.)
+import { offlineModelReady } from '../../voice-offline/offlineStt';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
@@ -93,20 +95,28 @@ import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 import { glyphePourChiffre } from '../../services/clavierImage';
 import { retourFrappe, type EtapeSaisie } from '../../services/retourDeFrappe';
 import { parlerAvantConnexion } from '../../services/paroleEntree';
-import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
+// AUTH-10 — le ROUAGE de dictée vit dans son hook ; l'écran garde la POLITIQUE
+// (consignes, erreurs, aiguillage — donc le contrat vocal parle()).
+import { useDicteeLive } from '../../hooks/useDicteeLive';
+// AUTH-10 — le geste caché du mode développeur, sorti de l'écran.
+import { useDevMode } from '../../hooks/useDevMode';
+// AUTH-10 — les blocs dupliqués du JSX, une seule source chacun.
+import { BanniereErreur } from './BanniereErreur';
+import { PaveSaisie } from './PaveSaisie';
 
-// Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
-// le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
-type DicteeCfg = {
-  max: number;                       // nb de chiffres attendus (10 = numéro, 4 = code)
-  estComplet: (d: string) => boolean; // quand la valeur est « bonne » → on s'arrête
-  onLive: (d: string) => void;        // remplissage à l'écran au fil de la voix
-  onFinal: (d: string) => void;       // valeur figée → aiguillage
-  buildTag: string;
-  siPasPrete: () => void;             // moteur pas installé
-  siMicRefuse: () => void;            // micro refusé
-  siEchec: () => void;                // démarrage moteur échoué
-};
+/**
+ * ── AUTH-10 (audit UI auth 05/10/2026) — LoginPassword redimensionné ─────────
+ *
+ * L'écran qui CONNECTE portait 1 700+ lignes : le rouage de dictée, le pavé
+ * DEUX FOIS, la bannière d'erreur TROIS FOIS, le mode développeur, le
+ * catalogue de voix, les deux étapes de saisie. Quatre pièces partent sans
+ * changer UN SEUL appel de parole (la garde voix-trace fige l'inventaire
+ * `parle()` de CE fichier — les consignes et leurs clips restent écrits ici) :
+ *   · hooks/useDicteeLive.ts  — micro, moteur STT, partielles, filets ;
+ *   · hooks/useDevMode.ts     — le geste caché 5 tapes ;
+ *   · components/auth/BanniereErreur.tsx — la bannière ×3 → ×1 ;
+ *   · components/auth/PaveSaisie.tsx     — le pavé ×2 → ×1.
+ */
 import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
 /**
  * BACKLOG ESCALATION P0 BACKEND (à traiter côté serveur, hors périmètre frontend) :
@@ -172,11 +182,11 @@ export function LoginPassword() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
-  const [showDevButton, setShowDevButton] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [step, setStep] = useState<'reconnaissance' | 'phone' | 'password'>(compteConnu ? (compteConnu.biometrie ? 'reconnaissance' : 'password') : 'phone');
-  const [isListening, setIsListening] = useState(false);
-  const [isFinalizingDictation, setIsFinalizingDictation] = useState(false);
+  // AUTH-10 — isListening / isFinalizingDictation et toute la mécanique de
+  // dictée EN DIRECT vivent dans useDicteeLive ; l'écran consomme la surface.
+  const { isListening, isFinalizingDictation, demarrerDictee } = useDicteeLive();
   // Mode d'accès EFFECTIF (résout 'auto' via l'usage observé) : l'écran S'ADAPTE
   // (lecture = clavier direct, mixte = les deux, voix = micro au centre).
   const accessMode: EffectiveMode = getEffectiveMode();
@@ -232,25 +242,10 @@ export function LoginPassword() {
   const [showVoiceInstall, setShowVoiceInstall] = useState(false);    // proposer d'installer la voix (consenti)
   // MODE DÉVELOPPEUR (caché) : outils de test (rapport, version, tutoriel…). Masqué
   // pour la marchande (expérience simple). On l'active en tapant 5× le coin haut-gauche.
-  const [devMode, setDevMode] = useState<boolean>(() => {
-    try { return import.meta.env.DEV || localStorage.getItem('julaba_dev_mode') === '1'; } catch { return false; }
-  });
-  const devTapRef = useRef<{ n: number; t: number }>({ n: 0, t: 0 });
-  const toggleDevMode = () => {
-    const now = Date.now();
-    const s = devTapRef.current;
-    s.n = (now - s.t < 600) ? s.n + 1 : 1;
-    s.t = now;
-    if (s.n >= 5) {
-      s.n = 0;
-      setDevMode((v) => {
-        const nv = !v;
-        try { localStorage.setItem('julaba_dev_mode', nv ? '1' : '0'); } catch { /* ignore */ }
-        try { navigator.vibrate?.(nv ? [30, 40, 30] : 20); } catch { /* ignore */ }
-        return nv;
-      });
-    }
-  };
+  // AUTH-10 — le geste et son état vivent dans useDevMode ; le drapeau
+  // showDevButton (ci-dessous) reste ici : d'autres chemins l'allument.
+  const { devMode, toggleDevMode } = useDevMode();
+  const [showDevButton, setShowDevButton] = useState(false);
 
   // « Écouter Tantie » : chaque étape pointe vers un clip local de la MÊME voix.
   // Aucun prénom ni code n'est synthétisé dynamiquement : le texte reste visible,
@@ -270,20 +265,6 @@ export function LoginPassword() {
   const abortRef = useRef<AbortController | null>(null);
   const navigateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusPinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const micStartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Dictée EN DIRECT : poignée d'arrêt du moteur, garde anti-double-fin, meilleurs
-  // chiffres entendus jusqu'ici, minuteur d'apaisement (fin de phrase incomplète).
-  const liveStopRef = useRef<null | (() => Promise<void>)>(null);
-  const dictDoneRef = useRef(false);
-  const bestDigitsRef = useRef('');
-  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Minuteur de STABILITÉ des 10 chiffres : quand on atteint 10 sur un partiel, on
-  // attend que la valeur ne bouge plus (le temps qu'un « vingt » devienne « vingt-six »)
-  // avant de figer. Évite de couper un nombre composé à moitié formé.
-  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastTenRef = useRef('');
-  const dictCfgRef = useRef<DicteeCfg | null>(null); // config de la dictée en cours
   const phoneRef = useRef(phone);
   useEffect(() => {
     phoneRef.current = phone;
@@ -537,147 +518,10 @@ export function LoginPassword() {
   // DÈS QU'ON A UN NUMÉRO COMPLET ET VALIDE (10 chiffres, règle CI) — jamais sur un
   // minuteur. Clavier = filet. Aucune reconnaissance navigateur (Internet).
 
-  // Termine la dictée avec les chiffres retenus : range le micro, coupe le moteur,
-  // puis AIGUILLE selon la config en cours (numéro ou code).
-  //
-  // CORRECTIF (numéro erroné affiché en recette, ex. « 70 00 00 00 00 ») :
-  // digitsBruts n'est qu'un INSTANTANÉ — la dernière passe intermédiaire à
-  // 900 ms, sur un tampon audio qui pouvait encore être incomplet. Le moteur
-  // fait ENSUITE, dans stop(), une VRAIE repasse finale (re-transcription de
-  // TOUT l'audio capté depuis le début, la plus fiable) — mais l'ancien code
-  // AIGUILLAIT déjà cfg.onFinal(...) avec l'instantané, PUIS jetait le
-  // résultat de cette repasse finale (le handler onText l'ignorait car
-  // dictDoneRef.current était déjà vrai). On décidait donc sur un texte
-  // partiellement traité au lieu du résultat définitif du STT. On attend
-  // maintenant la fin de stop() (qui met à jour bestDigitsRef via la
-  // repasse finale, cf. le handler onText plus bas) avant de conclure.
-  const finaliserDictee = (digitsBruts: string) => {
-    if (dictDoneRef.current) return;
-    dictDoneRef.current = true;
-    setIsFinalizingDictation(true);
-    const cfg = dictCfgRef.current;
-    if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
-    if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
-    if (micStartTimeoutRef.current) { clearTimeout(micStartTimeoutRef.current); micStartTimeoutRef.current = null; }
-    const stopFn = liveStopRef.current;
-    liveStopRef.current = null;
-    setIsListening(false); // retour visuel immédiat (micro éteint), avant même la repasse finale
-    const conclure = () => {
-      try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
-      mediaStreamRef.current = null;
-      // bestDigitsRef a pu être mis à jour par la repasse finale pendant l'attente
-      // de stopFn() (cf. onText) ; sinon on retombe sur l'instantané reçu.
-      const digits = (bestDigitsRef.current || digitsBruts).slice(0, cfg?.max ?? 10);
-      vlog('FINALISE', { digits, n: digits.length, ok: cfg ? cfg.estComplet(digits) : false });
-      try { cfg?.onFinal(digits); } finally { setIsFinalizingDictation(false); }
-    };
-    if (stopFn) { void stopFn().then(conclure, conclure); } else { conclure(); }
-  };
-
-  // Re-tap micro / filet → on termine avec ce qui a été compris jusqu'ici.
-  const arreterEcoute = () => { finaliserDictee(bestDigitsRef.current); };
-
-  // ── LE ROUAGE UNIQUE de dictée EN DIRECT (numéro ET code) ───────────────────
-  // On transcrit pendant qu'elle parle ; les chiffres se remplissent à l'écran ;
-  // on s'ARRÊTE dès que la valeur est complète et valide (jamais sur un minuteur).
-  // Gère les nombres composés (« vingt-six » : on ne fige pas sur le « vingt »).
-  const demarrerDictee = async (cfg: DicteeCfg) => {
-    if (isListening) { vlog('RE_TAP_STOP'); arreterEcoute(); return; }
-    vlogStart('dictée'); vlog('BUILD', cfg.buildTag);
-    vlog('MODEL_READY', { ready: offlineModelReady(), installed: offlineModelInstalled() });
-    vlog('VOIX_ENTREE', 'Tantie Nanti Lou · clips locaux uniquement');
-
-    if (!offlineModelReady()) { vlog('STT_NOT_READY'); cfg.siPasPrete(); return; }
-
-    vlog('MIC_ASK');
-    let stream: MediaStream;
-    try {
-      // MIC-01 — anti-écho : la dictée du numéro et du code s'ouvre juste
-      // après la consigne dite. Nu, ce micro entendait le haut-parleur, et des
-      // chiffres venus de la voix de Tantie entraient dans le numéro de
-      // téléphone. Réglage unique : `services/contraintesMicro`.
-      stream = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
-      vlog('MIC_OK');
-    } catch (e) {
-      vlog('MIC_DENIED', String(e));
-      cfg.siMicRefuse();
-      return;
-    }
-    mediaStreamRef.current = stream;
-    dictCfgRef.current = cfg;
-    dernierCanalRef.current = 'voix'; // elle a choisi de PARLER (apprentissage 'auto')
-    aTenteVoixRef.current = true;      // trace conservée même si la dictée échoue
-
-    // Réinitialise l'état de dictée pour cette session d'écoute.
-    dictDoneRef.current = false;
-    bestDigitsRef.current = '';
-    lastTenRef.current = '';
-    if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
-    if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
-    setError('');
-    // Verrou parole/écoute (audit voix C1) : couper TOUTES les voix (clips du
-    // manager, clip local de parle(), intro d'onboarding, synthèse) — le seul
-    // speechSynthesis.cancel() laissait les clips HTMLAudio jouer dans le micro.
-    try { stopAllVoice(); } catch { /* ignore */ }
-    try { stopIntro(); } catch { /* ignore */ }
-    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
-
-    let handle: { stop: () => Promise<void> };
-    try {
-      handle = await startLiveDictation(stream, (texte, estFinal) => {
-        // Une repasse FINALE (estFinal) fait TOUJOURS autorité sur bestDigitsRef,
-        // même après le début de la finalisation (dictDoneRef déjà vrai) : c'est
-        // elle que finaliserDictee() attend pour conclure sur le résultat
-        // définitif du STT plutôt que sur un instantané intermédiaire (cf. le
-        // commentaire de finaliserDictee). Seule la suite du handler (remplissage
-        // écran, auto-arrêt) ne doit plus s'exécuter une fois la dictée finalisée.
-        if (dictDoneRef.current && !estFinal) return;
-        const digits = extractPhoneDigits(texte || '').slice(0, cfg.max);
-        if (estFinal || digits.length > bestDigitsRef.current.length) {
-          vlog('TXT', { fin: estFinal, brut: (texte || '').slice(0, 40), digits });
-        }
-        // Le résultat FINAL fait autorité (corrige) ; un partiel ne fait que grandir.
-        bestDigitsRef.current = fusionnerChiffresDictes(estFinal, digits, bestDigitsRef.current);
-        if (dictDoneRef.current) return; // déjà en cours de finalisation : bestDigitsRef mis à jour, rien d'autre à faire
-        const best = bestDigitsRef.current;
-        cfg.onLive(best); // remplissage EN DIRECT (contrôle à l'œil)
-        // Valeur complète + valide → on s'arrête. Nombre composé (« vingt-six »)
-        // arrive en 2 temps : on ne fige PAS sur un partiel, on attend la fin de
-        // phrase du moteur OU une valeur STABLE ~0,8 s (le « six » corrige le « vingt »).
-        if (best.length >= cfg.max && cfg.estComplet(best)) {
-          if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
-          if (estFinal) { finaliserDictee(best); return; }
-          if (best !== lastTenRef.current) {
-            lastTenRef.current = best;
-            if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
-            confirmTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 800);
-          }
-          return;
-        }
-        if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
-        lastTenRef.current = '';
-        // Incomplet : ~1,6 s pour continuer (sans jamais couper), sinon on termine.
-        if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
-        if (estFinal) {
-          settleTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 1600);
-        }
-      }, undefined, (tag, data) => vlog(tag, data));
-      vlog('LIVE_START');
-    } catch (e) {
-      vlog('LIVE_FAIL', String(e));
-      try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
-      mediaStreamRef.current = null;
-      cfg.siEchec();
-      return;
-    }
-    liveStopRef.current = handle.stop;
-
-    setIsListening(true);
-    try { navigator.vibrate?.(60); } catch { /* ignore */ }
-    // Filet DUR ultime : 15 s (garde-fou anti micro-ouvert, PAS un couperet de dictée).
-    if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
-    micStartTimeoutRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 15000);
-  };
+  // ── AUTH-10 — LE ROUAGE DE DICTÉE EST PARTI DANS hooks/useDicteeLive.ts.
+  // (finaliserDictee, arreterEcoute et demarrerDictee y vivent, à l'identique,
+  // commentaires compris.) L'écran garde la POLITIQUE : quand écouter, quoi
+  // faire des chiffres entendus, quoi dire — voir dicterNumero ci-dessous.
 
   // Dictée du NUMÉRO (10 chiffres, règle CI).
   const dicterNumero = () => demarrerDictee({
@@ -748,6 +592,10 @@ export function LoginPassword() {
       void parleSuite("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
     },
     buildTag: 'sherpa-login-live-v2-relecture',
+    // AUTH-10 — le canal « elle a choisi de PARLER » : le hook SIGNALE (micro
+    // obtenu), l'écran note (apprentissage 'auto' ; trace conservée même si la
+    // dictée échoue ensuite).
+    onCanalVoix: () => { dernierCanalRef.current = 'voix'; aTenteVoixRef.current = true; },
     siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro."); },
     // Micro refusé / moteur en échec : on dit les clips existants (ui-100,
     // ui-058) plutôt qu'une phrase sur mesure qui serait muette. Aucun clip ne
@@ -787,14 +635,10 @@ export function LoginPassword() {
       abortRef.current?.abort();
       if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
       if (focusPinTimeoutRef.current) clearTimeout(focusPinTimeoutRef.current);
-      if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
-      if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
-      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
       // AUTH-04 — un balayage de relecture en cours ne survit pas à l'écran.
       annulerRelecture();
-      // Coupe une dictée EN DIRECT en cours (moteur + micro) au démontage.
-      try { void liveStopRef.current?.(); } catch { /* ignore */ }
-      try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+      // (La dictée EN DIRECT se coupe elle-même : useDicteeLive nettoie son
+      // micro, son moteur et ses minuteurs à son propre démontage — AUTH-10.)
       if (phoneToPasswordTimeout.current) {
         clearTimeout(phoneToPasswordTimeout.current);
         phoneToPasswordTimeout.current = null;
@@ -1282,18 +1126,7 @@ export function LoginPassword() {
                 {compteConnu.photo ? <img src={compteConnu.photo} alt="" /> : <span className="login-account-placeholder"><UserRound aria-hidden="true" size={40} /></span>}
                 <p>Mon compte</p>
               </div>
-              <AnimatePresence>
-                {error && (
-                  <motion.div key="reco-error-banner"
-                    initial={{ opacity: 0, y: -8, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -8, height: 0 }}
-                    transition={{ duration: 0.2 }} style={{ overflow: 'hidden', width: '100%' }}>
-                    <div role="alert" aria-live="assertive" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <AlertCircle style={{ width: 16, height: 16, color: '#dc2626', flexShrink: 0 }} />
-                      <p style={{ fontSize: 13, color: '#dc2626', margin: 0, fontWeight: 500 }}>{error}</p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <BanniereErreur cle="reco-error-banner" message={error} />
               {/* UN SEUL grand geste, comme le grand micro du parcours classique :
                   reconnaissance (visage/doigt) si elle marche ici, sinon le code. */}
               {compteConnu.biometrie ? (
@@ -1335,14 +1168,16 @@ export function LoginPassword() {
               {/* Secours toujours visible : son code à 4 chiffres — sans redonner le numéro. */}
               {compteConnu.biometrie && (
                 <button type="button" onClick={() => { setError(''); setStep('password'); }}
-                  style={{ marginTop: 4, padding: '13px 26px', borderRadius: 16, border: '2px solid rgba(198,106,44,0.35)', background: '#fff', color: '#8A5A34', fontWeight: 800, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  // AUTH-16 — surface sur token (le #fff en dur rendait hybride
+                  // en mode sombre) ; AUTH-09 — cible ≥ 44 px.
+                  style={{ marginTop: 4, padding: '13px 26px', minHeight: 44, borderRadius: 16, border: '2px solid rgba(198,106,44,0.35)', background: 'var(--commerce-surface)', color: '#8A5A34', fontWeight: 800, fontSize: 15, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <KeyRound aria-hidden="true" size={22} /> Utiliser mon code
                 </button>
               )}
               {/* Téléphone partagé : quelqu'un d'autre peut entrer — sans rien effacer. */}
               <button type="button"
                 onClick={() => { setStep('phone'); setPhone(''); setPinInput(''); setError(''); }}
-                style={{ marginTop: 2, background: 'none', border: 'none', color: 'var(--encre-3)', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '8px 12px' }}>
+                style={{ marginTop: 2, minHeight: 44, background: 'none', border: 'none', color: 'var(--encre-3)', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '8px 12px' }}>
                 <Users aria-hidden="true" size={22} /> Changer de compte
               </button>
             </motion.div>
@@ -1362,10 +1197,11 @@ export function LoginPassword() {
                 style={{ background: '#EEF4FF', border: '1px solid #C7D8FF', borderRadius: 16, padding: '12px 14px', marginBottom: 6 }}>
                 <p style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#1e3a8a', textAlign: 'center' }}>{suggestion.texte}</p>
                 <div style={{ display: 'flex', gap: 10 }}>
+                  {/* AUTH-09 — cibles ≥ 44 px ; AUTH-16 — surface sur token. */}
                   <button type="button" onClick={() => repondreSuggestion(false)}
-                    style={{ flex: 1, padding: '11px 0', borderRadius: 12, fontWeight: 800, fontSize: 14, color: '#1e3a8a', background: '#fff', border: '2px solid #C7D8FF', cursor: 'pointer' }}>Non</button>
+                    style={{ flex: 1, padding: '11px 0', minHeight: 44, borderRadius: 12, fontWeight: 800, fontSize: 14, color: '#1e3a8a', background: 'var(--commerce-surface)', border: '2px solid #C7D8FF', cursor: 'pointer' }}>Non</button>
                   <button type="button" onClick={() => repondreSuggestion(true)}
-                    style={{ flex: 1, padding: '11px 0', borderRadius: 12, fontWeight: 800, fontSize: 14, color: '#fff', background: '#2563eb', border: 'none', cursor: 'pointer' }}>Oui, adapte</button>
+                    style={{ flex: 1, padding: '11px 0', minHeight: 44, borderRadius: 12, fontWeight: 800, fontSize: 14, color: '#fff', background: '#2563eb', border: 'none', cursor: 'pointer' }}>Oui, adapte</button>
                 </div>
               </motion.div>
             )}
@@ -1447,36 +1283,16 @@ export function LoginPassword() {
                 : numeroSaisi ? 'Redire mon numéro' : 'Dire mon numéro'}</span>
             </motion.button>
             )}
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  key="phone-error-banner"
-                  initial={{ opacity: 0, y: -8, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: 'auto' }}
-                  exit={{ opacity: 0, y: -8, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                  style={{ overflow: 'hidden', width: '100%' }}
-                >
-                  <div role="alert" aria-live="assertive" style={{
-                    background: '#fef2f2',
-                    border: '1px solid #fecaca',
-                    borderRadius: 12,
-                    padding: '10px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginBottom: 8,
-                  }}>
-                    <AlertCircle style={{ width: 16, height: 16, color: '#dc2626', flexShrink: 0 }} />
-                    <p style={{ fontSize: 13, color: '#dc2626', margin: 0, fontWeight: 500 }}>{error}</p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <BanniereErreur cle="phone-error-banner" message={error} margeBas={8} />
             {isLoading && step === 'phone' && (
+              // AUTH-17 — une attente EST un statut : les lecteurs d'écran
+              // l'annoncent (role="status" + aria-live polite), au lieu d'un
+              // texte qui change sans jamais être dit.
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
+                role="status"
+                aria-live="polite"
                 style={{ textAlign: 'center', padding: '4px 0' }}
               >
                 <p style={{ fontSize: 11, color: 'rgba(198,106,44,0.6)', margin: 0 }}>
@@ -1505,8 +1321,8 @@ export function LoginPassword() {
             {voixEcouteDispo && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 22 }}>
               <button type="button" aria-label="Taper mon numéro sur le clavier" onClick={() => setShowKeypad(v => !v)}
-                style={{ width: 58, height: 58, borderRadius: 18, background: showKeypad ? '#DB7A2C' : '#F5D6BD', color: showKeypad ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
-                <svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M9 13h6"/></svg>
+                style={{ width: 58, height: 58, borderRadius: 18, background: showKeypad ? '#DB7A2C' : 'var(--commerce-apricot)', color: showKeypad ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
+                <Keyboard aria-hidden="true" size={27} />
               </button>
             </div>
             )}
@@ -1514,31 +1330,20 @@ export function LoginPassword() {
             {clavierVisible && (
             <>
             <div style={{
-              width: '100%', boxSizing: 'border-box', background: '#FFF9F2', borderRadius: 22, marginTop: 6,
+              // AUTH-16 — papier du système (au lieu d'un ivoire en dur) : le
+              // mode sombre le surcharge proprement (commerce.css html.dark).
+              width: '100%', boxSizing: 'border-box', background: 'var(--commerce-paper)', borderRadius: 22, marginTop: 6,
               overflow: 'hidden', boxShadow: '0 2px 12px rgba(120,60,20,0.08)', border: '1px solid #F0E0CD',
               position: 'relative', paddingBottom: 12,
             }}>
-              <div className="login-keypad">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
-                  <motion.button type="button" key={d} disabled={isLoading || isListening} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress(d)}
-                    className="login-key"
-                    whileTap={{ scale: 0.9 }}
-                  >{d}</motion.button>
-                ))}
-                <motion.button type="button" disabled={isLoading || phone.length === 0} aria-label="Connexion par empreinte" onPointerDown={(e) => e.preventDefault()} onClick={handleBiometric}
-                  className="login-key"
-                  whileTap={{ scale: 0.9, opacity: 1 }}>
-                  <Fingerprint style={{ width: 22, height: 22, color: '#B74725' }} />
-                </motion.button>
-                <motion.button type="button" disabled={isLoading || isListening} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
-                  className="login-key"
-                  whileTap={{ scale: 0.9 }}>0</motion.button>
-                <motion.button type="button" aria-label="Effacer le dernier chiffre" onPointerDown={(e) => e.preventDefault()} onClick={handleKeyDelete}
-                  className="login-key"
-                  whileTap={{ scale: 0.9, opacity: 1 }}>
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B74725" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
-                </motion.button>
-              </div>
+              <PaveSaisie
+                disabled={isLoading || isListening}
+                empreinteDisabled={isLoading || phone.length === 0}
+                onChiffre={handleKeyPress}
+                surEffacer={handleKeyDelete}
+                surEmpreinte={handleBiometric}
+                empreinteLabel="Connexion par empreinte"
+              />
             </div>
             </>
             )}
@@ -1558,12 +1363,13 @@ export function LoginPassword() {
               style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8, pointerEvents: step === 'password' ? 'auto' : 'none' }}
             >
             <div style={{
-              width: '100%', background: '#fff', borderRadius: 16,
+              // AUTH-16 — surface sur token (mode sombre cohérent).
+              width: '100%', background: 'var(--commerce-surface)', borderRadius: 16,
               padding: '22px 18px', display: 'flex', alignItems: 'center', gap: 10,
               boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
             }}>
               <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#2E8B57" strokeWidth="3" strokeLinecap="round"><path d="M20 6 9 17l-5-5" /></svg>
+                <Check aria-hidden="true" size={10} strokeWidth={3} color="#2E8B57" />
               </div>
               <span style={{ flex: 1, fontSize: 15, color: '#3d1a08', fontWeight: 500, letterSpacing: 1.5 }}>
                 {formatPhoneNumber(phone)}
@@ -1580,50 +1386,29 @@ export function LoginPassword() {
                     tel?.focus();
                   }, 50);
                 }}
-                style={{ fontSize: 11, color: 'rgba(198,106,44,0.65)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
+                // AUTH-09 — cible ≥ 44 px (mesurée 44×16,5 px en R5 : le
+                // geste « changer de numéro » était presque impossible au
+                // doigt) + taille de texte lisible.
+                style={{ minHeight: 44, padding: '12px 16px', fontSize: 13, color: 'rgba(198,106,44,0.65)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
                 whileTap={{ scale: 0.95 }}
               >Modifier</motion.button>
             </div>
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  key="pin-error-banner"
-                  initial={{ opacity: 0, y: -8, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: 'auto' }}
-                  exit={{ opacity: 0, y: -8, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                  style={{ overflow: 'hidden', width: '100%' }}
-                >
-                  <div role="alert" aria-live="assertive" style={{
-                    background: '#fef2f2',
-                    border: '1px solid #fecaca',
-                    borderRadius: 12,
-                    padding: '10px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginBottom: 8,
-                  }}>
-                    <AlertCircle style={{ width: 16, height: 16, color: '#dc2626', flexShrink: 0 }} />
-                    <p style={{ fontSize: 13, color: '#dc2626', margin: 0, fontWeight: 500 }}>{error}</p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <BanniereErreur cle="pin-error-banner" message={error} margeBas={8} />
             {/* Cadenas SEUL (icône) — Tata dit « entre ton code », l'écran ne l'écrit pas.
                 On touche le cadenas pour réentendre la consigne. */}
             <button
               type="button"
               aria-label="Ton code secret — touche pour écouter"
               onClick={() => { void direConsigne('code'); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '2px 0 4px', display: 'flex', justifyContent: 'center', width: '100%' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '2px 0 4px', minHeight: 44, display: 'flex', justifyContent: 'center', width: '100%' }}
             >
               <span style={{ fontSize: 30, lineHeight: 1 }}>🔒</span>
             </button>
             {/* AUDIT B5 : plus de micro sur le code — un secret ne se dit pas.
                 Le pavé reste le chemin ; la reconnaissance évite même le code. */}
             <div style={{
-              width: '100%', background: '#fff', borderRadius: 22,
+              // AUTH-16 — surface sur token (mode sombre cohérent).
+              width: '100%', background: 'var(--commerce-surface)', borderRadius: 22,
               overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
               position: 'relative',
               paddingBottom: 8,
@@ -1667,42 +1452,24 @@ export function LoginPassword() {
                   tabIndex={0}
                 />
               </div>
-              <div className="login-keypad">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
-                  <motion.button type="button" key={d} disabled={isLoading} aria-label={pinEnImages ? glyphePourChiffre(d, true) : `Chiffre ${d}`} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress(d)}
-                    className="login-key"
-                    whileTap={{ scale: 0.9 }}
-                  ><span className={pinEnImages ? 'login-key-image' : undefined}>{glyphePourChiffre(d, pinEnImages)}</span></motion.button>
-                ))}
-                <motion.button
-                  type="button"
-                  disabled={isLoading || phone.length === 0}
-                  aria-label="Ton téléphone te reconnaît — touche pour entrer"
-                  onPointerDown={(e) => e.preventDefault()}
-                  onClick={handleBiometric}
-                  className="login-key"
-                  whileTap={{ scale: 0.9, opacity: 1 }}
-                >
-                  <Fingerprint style={{ width: 22, height: 22, color: '#B74725' }} />
-                </motion.button>
-                <motion.button type="button" disabled={isLoading} aria-label={pinEnImages ? glyphePourChiffre('0', true) : 'Chiffre 0'} onPointerDown={(e) => e.preventDefault()} onClick={() => handleKeyPress('0')}
-                  className="login-key"
-                  whileTap={{ scale: 0.9 }}
-                ><span className={pinEnImages ? 'login-key-image' : undefined}>{glyphePourChiffre('0', pinEnImages)}</span></motion.button>
-                <motion.button type="button" aria-label="Effacer le dernier chiffre" onPointerDown={(e) => e.preventDefault()} onClick={handleKeyDelete}
-                  className="login-key"
-                  whileTap={{ scale: 0.9, opacity: 1 }}
-                >
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B74725" strokeWidth="2" strokeLinecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" /><line x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18" y2="15" /></svg>
-                </motion.button>
-              </div>
+              <PaveSaisie
+                disabled={isLoading}
+                empreinteDisabled={isLoading || phone.length === 0}
+                onChiffre={handleKeyPress}
+                surEffacer={handleKeyDelete}
+                surEmpreinte={handleBiometric}
+                empreinteLabel="Ton téléphone te reconnaît — touche pour entrer"
+                ariaLabelPour={(d) => (pinEnImages ? glyphePourChiffre(d, true) : `Chiffre ${d}`)}
+                contenuPour={(d) => <span className={pinEnImages ? 'login-key-image' : undefined}>{glyphePourChiffre(d, pinEnImages)}</span>}
+              />
               {/* Bascule OPT-IN, jamais le mode par défaut (doc « mot de passe imagé »,
                   variante A) : la correspondance chiffre↔image est fixe et publique —
                   seul le glyphe affiché change, le PIN envoyé reste les mêmes chiffres. */}
               <div style={{ display: 'flex', justifyContent: 'center', padding: '2px 0 12px' }}>
                 <button type="button" onClick={basculerPinEnImages}
                   aria-label={pinEnImages ? 'Revenir aux chiffres' : 'Afficher des images à la place des chiffres'}
-                  style={{ background: 'none', border: 'none', color: '#8A5A34', fontSize: 12, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '6px 10px' }}>
+                  // AUTH-09 — cible ≥ 44 px (mesurée 149×30 px en R5).
+                  style={{ background: 'none', border: 'none', color: '#8A5A34', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '12px 18px', minHeight: 44 }}>
                   {pinEnImages ? '🔢 Revenir aux chiffres' : '🍅 Utiliser des images'}
                 </button>
               </div>
@@ -1724,9 +1491,9 @@ export function LoginPassword() {
         <button
           type="button"
           onClick={() => { localStorage.removeItem('julaba_completed_onboarding'); window.location.href = '/'; }}
-          style={{ border: '1px solid rgba(124,98,80,0.3)', borderRadius: 22, padding: '9px 22px', color: '#7C6250', fontSize: 12, fontWeight: 600, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          style={{ border: '1px solid rgba(124,98,80,0.3)', borderRadius: 22, padding: '10px 22px', minHeight: 44, color: '#7C6250', fontSize: 12, fontWeight: 600, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}
         >
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#7C6250" strokeWidth="2.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+          <Play aria-hidden="true" size={10} strokeWidth={2.5} color="#7C6250" />
           Revoir le tutoriel
         </button>
         <p style={{ fontSize: 10, color: 'var(--encre-4)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>By Icône Solution</p>
@@ -1746,7 +1513,7 @@ export function LoginPassword() {
             if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
             else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
           }}
-          style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 56, fontSize: 18, lineHeight: '24px', fontWeight: 800, color: '#7A4A24', background: '#F5D6BD', border: '2px solid #D9A87A', borderRadius: 14, padding: '12px 22px', cursor: 'pointer' }}
+          style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 56, fontSize: 18, lineHeight: '24px', fontWeight: 800, color: '#7A4A24', background: 'var(--commerce-apricot)', border: '2px solid #D9A87A', borderRadius: 14, padding: '12px 22px', cursor: 'pointer' }}
         >
           <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
           Rapport de test

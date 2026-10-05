@@ -14,6 +14,10 @@
 
 import { voixSecoursNom } from '../services/elevenlabs';
 import * as vtrace from './voiceTrace';
+// AUTH-13 — le masque vit dans voiceTrace (à la source du journal de voix) ;
+// le dump le re-applique DÉFENSIVEMENT : l'anneau persisté en localStorage par
+// une version antérieure peut encore porter des chiffres non masqués.
+import { masquerChiffresSensibles } from './voiceTrace';
 
 interface LogEntry { t: number; ev: string; data?: unknown }
 
@@ -159,11 +163,16 @@ function voixRetenueRapport(): string[] {
 
 /** Construit le texte du rapport (à copier / partager). */
 export function vlogDump(): string {
+  // AUTH-13 — TOUT ce qui entre dans le rapport passe par le masque : les
+  // transcripts du journal de voix (déjà masqués à la source, mais l'anneau
+  // localStorage peut dater d'avant le correctif) comme le journal de dictée
+  // (chiffres extraits, partielles). Idempotent, donc le double passage est
+  // sans effet sur du texte déjà masqué.
   const lignes = buffer.map((e) => {
     const ms = String(e.t).padStart(6, ' ');
     let d = '';
     if (e.data !== undefined) {
-      try { d = ' ' + (typeof e.data === 'string' ? e.data : JSON.stringify(e.data)); } catch { d = ' [?]'; }
+      try { d = ' ' + (typeof e.data === 'string' ? masquerChiffresSensibles(e.data) : masquerChiffresSensibles(JSON.stringify(e.data))); } catch { d = ' [?]'; }
     }
     return `+${ms}ms  ${e.ev}${d}`;
   });
@@ -171,13 +180,13 @@ export function vlogDump(): string {
   // (« qu'a entendu le STT quand elle a dit cinq tomates ? »).
   const dernier = vtrace.dernierTranscript();
   const derniereIntention = vtrace.entrees().filter((e) => e.ev === 'INTENTION').pop();
-  const anneau = vtrace.rendu();
+  const anneau = masquerChiffresSensibles(vtrace.rendu());
   return [
     ...contexteRapport(),
     '',
     '=== DERNIER TRANSCRIPT BRUT ===',
-    dernier ? `« ${dernier} »` : '(aucune dictée dans le journal)',
-    derniereIntention ? `dernière intention: ${JSON.stringify(derniereIntention.d)}` : 'dernière intention: (aucune)',
+    dernier ? `« ${masquerChiffresSensibles(dernier)} »` : '(aucune dictée dans le journal)',
+    derniereIntention ? `dernière intention: ${masquerChiffresSensibles(JSON.stringify(derniereIntention.d))}` : 'dernière intention: (aucune)',
     '',
     ...voixRetenueRapport(),
     '',
