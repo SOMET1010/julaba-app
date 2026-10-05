@@ -9,14 +9,14 @@
 | Mesure | Valeur |
 |---|---|
 | Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **412** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 430 |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 431 |
 | — littéraux (phrase fixe en dur) | 196 |
-| — gabarits (`${…}`, phrase dynamique à variables) | 84 |
+| — gabarits (`${…}`, phrase dynamique à variables) | 85 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 76 |
 | — relais (`dire = (t) => speak(t)`) | 20 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 54 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **241** |
-| Dont dynamiques (avec variables) | 84 |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **242** |
+| Dont dynamiques (avec variables) | 85 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **55** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **468** |
 | Fichiers avec au moins un site d'appel | 79 |
@@ -67,7 +67,7 @@
 | `components/cooperative/Stock.tsx` | stock | 3 | 2 | 1 | 0 | 0 | 0 | 0 |
 | `components/cooperative/TresorerieCooperative.tsx` | cooperative | 3 | 2 | 1 | 0 | 0 | 0 | 2 |
 | `components/marchand/Fidelite.tsx` | marchand_autre | 3 | 1 | 2 | 0 | 0 | 0 | 2 |
-| `components/producteur/RecolteForm.tsx` | producteur | 3 | 2 | 1 | 0 | 0 | 0 | 0 |
+| `components/producteur/RecolteForm.tsx` | producteur | 3 | 2 | 2 | 0 | 0 | 0 | 0 |
 | `components/shared/DocumentsCertificationsModalUniversal.tsx` | partage | 3 | 3 | 0 | 0 | 0 | 0 | 0 |
 | `services/vendreVocalUnifie.ts` | vente | 3 | 0 | 0 | 2 | 0 | 1 | 0 |
 | `components/academy/UniversalAcademy.tsx` | academy | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
@@ -110,7 +110,7 @@
 
 | Domaine | Appels | Phrases (littéraux + gabarits) | Critiques argent |
 |---|---:|---:|---:|
-| producteur | 71 | 71 | 6 |
+| producteur | 71 | 72 | 6 |
 | marchand_autre | 55 | 39 | 15 |
 | stock | 40 | 38 | 3 |
 | partage | 37 | 24 | 0 |
@@ -693,9 +693,10 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 263 | `speak` | literal | Dis-moi la quantité que tu as récoltée. |  |  |
-| 294 | `speak` | template | C'est enregistré ! {quantiteEnKg} kilos de {cultureName}. | `quantiteEnKg` `cultureName` |  |
-| 301 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 273 | `speak` | literal | Dis-moi la quantité que tu as récoltée. |  |  |
+| 309 | `speak` | template | C'est enregistré ! {quantiteSaisie} kilos de {cultureName}. | `quantiteSaisie` `cultureName` |  |
+| 309 | `speak` | template | C'est enregistré ! {quantiteSaisie} {abbr} de {cultureName}, soit environ {quantiteEnKg} kilos. | `quantiteSaisie` `abbr` `cultureName` `quantiteEnKg` |  |
+| 320 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
 
 ### `components/producteur/Revenus.tsx` — producteur
 
@@ -910,21 +911,21 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 273 | `speakClipOrText` | dynamique | { clipUrl: choice.mode === "clip" ? clipUrl : undefined, text } |  |  |
 | 293 | `speakClipOrText` | relais | fallback |  |  |
 | 566 | `ttsSpeak` | relais | text |  |  |
-| 653 | `ttsSpeak` | dynamique | data.response |  |  |
-| 653 | `ttsSpeak` | dynamique | ack |  |  |
-| 708 | `ttsSpeak` | dynamique | m |  |  |
-| 749 | `ttsSpeak` | dynamique | data.response |  |  |
-| 782 | `ttsSpeak` | literal | J'ai compris |  |  |
-| 793 | `ttsSpeak` | literal | D'accord, j'annule. Pas de souci. |  |  |
-| 827 | `ttsSpeak` | dynamique | phrase |  |  |
-| 878 | `ttsSpeak` | literal | Je prépare ta voix, un petit instant. |  |  |
-| 900 | `ttsSpeak` | literal | Dis oui pour valider, ou non pour annuler. |  | € |
-| 903 | `ttsSpeak` | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |  |
-| 919 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
-| 920 | `ttsSpeak` | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |  |
-| 956 | `ttsSpeak` | dynamique | msg |  |  |
-| 988 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
-| 992 | `ttsSpeak` | literal | Je n'ai pas réussi, réessaie. |  |  |
+| 659 | `ttsSpeak` | dynamique | data.response |  |  |
+| 659 | `ttsSpeak` | dynamique | ack |  |  |
+| 714 | `ttsSpeak` | dynamique | m |  |  |
+| 755 | `ttsSpeak` | dynamique | data.response |  |  |
+| 788 | `ttsSpeak` | literal | J'ai compris |  |  |
+| 799 | `ttsSpeak` | literal | D'accord, j'annule. Pas de souci. |  |  |
+| 833 | `ttsSpeak` | dynamique | phrase |  |  |
+| 884 | `ttsSpeak` | literal | Je prépare ta voix, un petit instant. |  |  |
+| 906 | `ttsSpeak` | literal | Dis oui pour valider, ou non pour annuler. |  | € |
+| 909 | `ttsSpeak` | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |  |
+| 925 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
+| 926 | `ttsSpeak` | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |  |
+| 962 | `ttsSpeak` | dynamique | msg |  |  |
+| 994 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
+| 998 | `ttsSpeak` | literal | Je n'ai pas réussi, réessaie. |  |  |
 
 ### `pages/CollecteVoix.tsx` — pages
 
@@ -1422,27 +1423,27 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 | 242 | literal | voix-desactivee (julaba_voice_disabled) |  |
 | 409 | template | Le pack vocal {lang} n’est pas encore installé. Le texte reste disponible, sans utiliser Internet. | `lang` |
 | 539 | literal | Analyse en cours... |  |
-| 705 | literal | Enregistrement impossible. |  |
-| 782 | literal | J'ai compris |  |
-| 793 | literal | D'accord, j'annule. Pas de souci. |  |
-| 802 | literal | ma chère |  |
-| 838 | literal | J'écoute... |  |
-| 877 | literal | Je prépare ta voix… |  |
-| 878 | literal | Je prépare ta voix, un petit instant. |  |
-| 900 | literal | Dis oui pour valider, ou non pour annuler. |  |
-| 903 | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |
-| 919 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
-| 920 | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |
-| 930 | literal | moteur voix indisponible ou transcription échouée (ensureOfflineModel / transcribeWav) |  |
-| 951 | literal | La dictée n'est disponible que dans l'application. Ici, touche les produits. |  |
-| 953 | literal | Je n'ai pas réussi à préparer ta voix. Réessaie. |  |
-| 954 | literal | Je n'ai pas réussi à t'écouter, réessaie. |  |
-| 988 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
-| 992 | literal | Je n'ai pas réussi, réessaie. |  |
-| 1019 | literal | Micro non accessible dans cette application. Ouvre Jùlaba dans Safari ou Chrome pour utiliser la voix. |  |
-| 1055 | literal | Microphone inaccessible. Vérifie les permissions. |  |
-| 1058 | literal | Accès au micro refusé. Autorise le micro pour Jùlaba dans les réglages de ton téléphone. |  |
-| 1060 | literal | Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie. |  |
+| 711 | literal | Enregistrement impossible. |  |
+| 788 | literal | J'ai compris |  |
+| 799 | literal | D'accord, j'annule. Pas de souci. |  |
+| 808 | literal | ma chère |  |
+| 844 | literal | J'écoute... |  |
+| 883 | literal | Je prépare ta voix… |  |
+| 884 | literal | Je prépare ta voix, un petit instant. |  |
+| 906 | literal | Dis oui pour valider, ou non pour annuler. |  |
+| 909 | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |
+| 925 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
+| 926 | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |
+| 936 | literal | moteur voix indisponible ou transcription échouée (ensureOfflineModel / transcribeWav) |  |
+| 957 | literal | La dictée n'est disponible que dans l'application. Ici, touche les produits. |  |
+| 959 | literal | Je n'ai pas réussi à préparer ta voix. Réessaie. |  |
+| 960 | literal | Je n'ai pas réussi à t'écouter, réessaie. |  |
+| 994 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
+| 998 | literal | Je n'ai pas réussi, réessaie. |  |
+| 1025 | literal | Micro non accessible dans cette application. Ouvre Jùlaba dans Safari ou Chrome pour utiliser la voix. |  |
+| 1061 | literal | Microphone inaccessible. Vérifie les permissions. |  |
+| 1064 | literal | Accès au micro refusé. Autorise le micro pour Jùlaba dans les réglages de ton téléphone. |  |
+| 1066 | literal | Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie. |  |
 
 ### `services/dialoguesTata.ts` — dialogues purs de la vente guidée (0)
 
