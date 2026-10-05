@@ -1,0 +1,42 @@
+{
+  "$schema": "https://raw.githubusercontent.com/kucherenko/jscpd/master/packages/jscpd/schema.json",
+  "//": [
+    "DUPLICATION — cadre de travail, 05/10/2026.",
+    "",
+    "MESURÉ LE 05/10 : 3,87 % (7 453 lignes dupliquées sur 192 516), 301 clones.",
+    "Le seuil est à 4 % — juste au-dessus. Il empêche l'aggravation sans rien",
+    "bloquer, et se resserre quand la dette baisse.",
+    "",
+    "`threshold` est le POURCENTAGE de duplication toléré, et il est réglé au",
+    "niveau ACTUEL du dépôt, arrondi au-dessus. Le but de ce lot est",
+    "d'empêcher l'AGGRAVATION, pas de refondre 873 fichiers d'un coup.",
+    "Il se resserre quand la dette baisse — jamais l'inverse.",
+    "",
+    "On mesure la SOURCE, jamais le généré : `frontend/` contient des sorties",
+    "de build (voir docs/ARCHITECTURE.md), et compter leurs clones ne dirait",
+    "rien de la qualité du code qu'on écrit.",
+    "",
+    "Les fichiers de test sont exclus du décompte. Une duplication y est",
+    "souvent VOULUE : trois cas qui se ressemblent et dont on veut voir la",
+    "différence d'un coup d'œil sont plus lisibles que trois appels à une",
+    "fabrique partagée. La règle anti-spaghetti vise le code de production."
+  ],
+  "threshold": 4,
+  "minTokens": 50,
+  "minLines": 10,
+  "reporters": ["consoleFull"],
+  "absolute": false,
+  "gitignore": true,
+  "path": ["frontend_src/src", "backend/src"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/test/**",
+    "**/__tests__/**",
+    "**/migrations/**",
+    "**/*.d.ts"
+  ]
+}
