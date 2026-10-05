@@ -40,7 +40,7 @@ export interface ResultatSynchronisation {
  * Un compteur faux dans un rapport de synchronisation n'est pas cosmétique :
  * c'est lui qui répond « le référentiel a-t-il bougé ? ».
  */
-function lignesRetournees(res: unknown): Array<Record<string, unknown>> {
+export function lignesRetournees(res: unknown): Array<Record<string, unknown>> {
   if (
     Array.isArray(res) && res.length === 2 &&
     Array.isArray(res[0]) && typeof res[1] === 'number'

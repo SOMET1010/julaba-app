@@ -90,7 +90,9 @@ export class StocksRestController {
   @Get()
   async findAll(@CurrentUser() user: User) {
     const produits = await this.repo.manager.query(
-      'SELECT id, nom, stock, prix, prix_achat, unite, categorie, actif, image, seuil_alerte, date_peremption, prix_promo, promo_fin, created_at FROM produits WHERE marchand_id = $1',
+      // `actif = true` : meme filtre que GET /caisse/produits (caisse-rest:625).
+      // Sans lui, un article retire reapparaissait ICI et nulle part ailleurs.
+      'SELECT id, nom, stock, prix, prix_achat, unite, categorie, actif, image, seuil_alerte, date_peremption, prix_promo, promo_fin, created_at FROM produits WHERE marchand_id = $1 AND actif = true',
       [user.id]
     );
     if (produits && produits.length > 0) {
@@ -270,7 +272,18 @@ export class StocksRestController {
       await this.repo.manager.query('DELETE FROM stocks WHERE id=$1 AND proprietaire_id=$2', [id, user.id]);
       return { success: true };
     }
-    await this.repo.manager.query('DELETE FROM produits WHERE id=$1 AND marchand_id=$2', [id, user.id]);
+    // DESACTIVATION, jamais effacement. `stock_mouvements` reference `produit_id`
+    // sans cle etrangere : effacer la ligne laisserait le ledger pointer dans le
+    // vide, et annuler une vente de cet article rendrait l'argent SANS rendre le
+    // stock (stock-restitution.ts:47). `default_code` est annule pour que la
+    // reference Odoo redevienne adoptable — sans quoi l'article serait a la fois
+    // invisible et interdit (ux_produits_marchand_default_code ne filtre pas
+    // `actif`).
+    await this.repo.manager.query(
+      `UPDATE produits SET actif = false, default_code = NULL, updated_at = NOW()
+        WHERE id = $1 AND marchand_id = $2::text`,
+      [id, user.id],
+    );
     return { success: true };
   }
 }

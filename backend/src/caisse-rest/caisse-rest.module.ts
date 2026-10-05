@@ -1,5 +1,6 @@
 import { CatalogueController } from './caisse-rest.controller';
 import { Module } from '@nestjs/common';
+import { AuditModule } from '../audit/audit.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CreditsController } from './credits.controller';
 import { CaisseRestController } from './caisse-rest.controller';
@@ -15,7 +16,7 @@ import { VoiceModule } from '../voice/voice.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CaisseTransaction, ObjectifJournalier, RaccourciVocal, CaisseProduit]), VoiceModule, NotificationsModule],
+  imports: [TypeOrmModule.forFeature([CaisseTransaction, ObjectifJournalier, RaccourciVocal, CaisseProduit]), VoiceModule, NotificationsModule, AuditModule],
   controllers: [
     CreditsController,CaisseRestController, ObjectifsController, RapportHebdoController, RaccourcisController,
     CatalogueController
