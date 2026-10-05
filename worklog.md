@@ -193,3 +193,18 @@ Stage Summary:
 - AUTH-07-sous-dette FERMÉE : liste autoritaire par env + journal de boot + garde alignement ; AUTH-14b FERMÉE : runbook livré
 - Restent au registre : AUTH-12 (i18n visuel XL), AUTH-ERR (clip voix, Patrick), + sous-dette CSRF (vérification serveur Origin sur mutations auth, ADR-002)
 - Runtime sandbox reconstitué de bout en bout ; base démo fraîche : Awa Koné +2250700000009 (marchande, 1234)
+
+---
+Task ID: 8-bis (incident push)
+Agent: Z.ai Code (orchestrateur)
+Task: Résoudre le refus de push GitHub Push Protection
+
+Work Log:
+- Push du lot 8 refusé (GH013) : le commit AUTO du tooling sandbox fd9c0ac (15:31, message UUID) avait versionné tool-results/bash_*.txt — sortie brute persistée de git remote -v contenant le token GitHub en clair (lignes 2071-2072)
+- Résolution : rebase --onto be584af fd9c0ac (commit auto retiré de l'historique, mon lot rejoué proprement → 01634fe) ; le fichier porteur du secret a disparu de l'arbre avec lui
+- Hygiène : .gitignore += tool-results/ et /bun.lock (le repo référence package-lock.json, npm est le gestionnaire ; commit 20f1a3b) — le tooling ne re-committera plus ces sorties
+- Push final OK : be584af..20f1a3b main → main ; AUCUN token n'a atteint GitHub (protection active et efficace) ; le token lui-même reste valide et n'a pas fuité
+
+Stage Summary:
+- Leçon consignée : les sorties brutes des outils qui echo des URLs authentifiées ne doivent JAMAIS être versionnées — .gitignore verrouillé au nom du répertoire (tool-results/)
+- main == origin/main à 20f1a3b
