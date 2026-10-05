@@ -1,0 +1,902 @@
+     1→import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
+     2→import { stopAllVoice } from '../../services/audioManager';
+     3→import { stopIntro } from '../../services/onboardingVoix';
+     4→import { useState, useRef, useEffect, useCallback } from 'react';
+     5→import { useNavigate } from 'react-router';
+     6→import { motion, AnimatePresence } from 'motion/react';
+     7→import { CheckCircle, AlertCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, ChevronLeft } from 'lucide-react';
+     8→import { useApp } from '../../contexts/AppContext';
+     9→import { useUser } from '../../contexts/UserContext';
+    10→import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
+    11→import { ProfileSwitcher } from '../dev/ProfileSwitcher';
+    12→import logoJulaba from '../../../assets/images/logo-julaba.svg';
+    13→import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
+    14→import { BrandSignature } from '../shared/BrandSignature';
+    15→import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
+    16→import { API_URL } from '../../utils/api';
+    17→import { extractPhoneDigits, fusionnerChiffresDictes } from '../../utils/frenchDigits';
+    18→import { direEntree, direEntreeTexte, ENTREE_VOICE_CLIPS, type EntreeVoiceKey } from '../../services/entreeVoix';
+    19→import { tParle } from '../../i18n/voice/runtime';
+    20→import type { MessageId } from '../../i18n/voice/types';
+    21→
+    22→/**
+    23→ * ── NUM-01 — CET ÉCRAN ÉTAIT MUET, ET SON BOUTON D'ÉCOUTE AUSSI ───────────
+    24→ *
+    25→ * Banc terrain, écran 3 : « MUET » au montage et sous les quatorze éléments,
+    26→ * avec une impasse — « Écouter Tantie Nanti Lou » touché, rien ne bouge.
+    27→ * `direEntree` ne joue qu'un clip enregistré ; dans tout build livré le
+    28→ * drapeau des prototypes est éteint, donc il n'y en a pas, donc rien.
+    29→ *
+    30→ * `direEntree` RAPPORTE désormais ce qu'il en advient. Le texte ne part que
+    31→ * s'il ne reste rien à dire : jamais par-dessus le clip, et jamais après une
+    32→ * coupure — ici, taper un chiffre coupe la consigne, et ce silence est la
+    33→ * décision de la marchande.
+    34→ *
+    35→ * AKW-02 RESPECTÉE. On ne passe pas par `speakMessage`, dont le rendu finit
+    36→ * dans `AppContext.speak` et s'y fait refuser (`role-non-marchand`) : sur cet
+    37→ * écran personne n'est encore connecté — c'est l'écran QUI CONNECTE. On garde
+    38→ * la CLÉ de catalogue et on la remet au moteur audio directement. Le muet
+    39→ * global reste respecté : il vit dans `audioManager`, pas dans la garde de rôle.
+    40→ */
+    41→const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
+    42→  numero: 'ENTREE_NUMERO',
+    43→  numeroVoix: 'ENTREE_NUMERO_VOIX',
+    44→  code: 'ENTREE_CODE',
+    45→  codeErreur: 'ENTREE_CODE_ERREUR',
+    46→  connexionIndisponible: 'ENTREE_CONNEXION',
+    47→  reconnaissance: 'ENTREE_RECONNAISSANCE',
+    48→  // Ces deux-là ont toujours un clip (lot A) : le repli texte ne sert
+    49→  // jamais. La clé est renseignée quand même — le type l'exige, et une
+    50→  // table à trou finirait par mentir le jour où le clip disparaît.
+    51→  pinImages: 'AUTH_21',
+    52→  pinChiffres: 'AUTH_22',
+    53→  effacement: 'AUTH_24',
+    54→  numeroIncomplet: 'AUTH_11',
+    55→  reconnaissanceEchouee: 'AUTH_26',
+    56→  tropDEssais: 'AUTH_30',
+    57→  microIndisponible: 'AUTH_16',
+    58→  codeVide: 'AUTH_19',
+    59→  serveurLent: 'AUTH_33',
+    60→  choixEnregistre: 'AUTH_35',
+    61→  choixConserve: 'AUTH_36',
+    62→  dicteeIncomprise: 'ENTREE_NUMERO',
+    63→  microProbleme: 'ENTREE_NUMERO',
+    64→  microPret: 'AUTH_17',
+    65→  numeroPasDIci: 'AUTH_12',
+    66→};
+    67→
+    68→/** Le clip s'il existe, sinon la phrase — une seule sortie, jamais deux. */
+    69→function direConsigne(key: EntreeVoiceKey): Promise<void> {
+    70→  return direEntree(key)
+    71→    // AKW-02 — QUATRIÈME PORTE, TROUVÉE EN FERMANT LES TROIS AUTRES : cet
+    72→    // écran parlait AUSSI par le moteur en direct, à côté de son propre
+    73→    // `parle()`. Deux portes dans un seul fichier — la preuve qu'une porte
+    74→    // non nommée s'en fait toujours une autre.
+    75→    .then((r) => (r.doitDireLeTexte ? parlerAvantConnexion('connexion', tParle(CLE_CATALOGUE[key])).then(() => undefined) : undefined))
+    76→    .catch(() => { /* une consigne qui casse ne bloque jamais la connexion */ });
+    77→}
+    78→import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../../voice-offline/offlineStt';
+    79→import { InstallerOffline } from '../../voice-offline/InstallerOffline';
+    80→import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
+    81→import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
+    82→import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../services/comptesMemorises';
+    83→import { salutation } from '../../utils/appellation';
+    84→import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
+    85→import { glyphePourChiffre } from '../../services/clavierImage';
+    86→import { retourFrappe, type EtapeSaisie } from '../../services/retourDeFrappe';
+    87→import { parlerAvantConnexion } from '../../services/paroleEntree';
+    88→import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
+    89→
+    90→// Configuration d'une dictée de chiffres EN DIRECT (numéro OU code). Le moteur est
+    91→// le MÊME (un seul rouage) ; seuls la longueur, la validité et l'aiguillage changent.
+    92→type DicteeCfg = {
+    93→  max: number;                       // nb de chiffres attendus (10 = numéro, 4 = code)
+    94→  estComplet: (d: string) => boolean; // quand la valeur est « bonne » → on s'arrête
+    95→  onLive: (d: string) => void;        // remplissage à l'écran au fil de la voix
+    96→  onFinal: (d: string) => void;       // valeur figée → aiguillage
+    97→  buildTag: string;
+    98→  siPasPrete: () => void;             // moteur pas installé
+    99→  siMicRefuse: () => void;            // micro refusé
+   100→  siEchec: () => void;                // démarrage moteur échoué
+   101→};
+   102→import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
+   103→/**
+   104→ * BACKLOG ESCALATION P0 BACKEND (à traiter côté serveur, hors périmètre frontend) :
+   105→ * 1. /auth/check-phone : timing attack possible (énumération comptes existants)
+   106→ *    -> backend doit retourner réponse uniforme + délai constant
+   107→ * 2. /auth/login : rate limit côté serveur — FAIT le 18/09/2026. L'échelle
+   108→ *    d'attente vit dans backend/src/auth/verrou-pin.ts, le compteur RAM de cet
+   109→ *    écran (cosmétique, contournable par un rechargement) a été supprimé.
+   110→ * 3. TEST_PHONES bypass régex actif en PRODUCTION (décision métier ANSUT)
+   111→ *    -> backend doit logger ces accès + valider liste autorisée
+   112→ * Ne PAS retirer ces protections frontend tant que le backend ne les implémente pas.
+   113→ */
+   114→// PLUS DE COMPTEUR ICI, ET C'EST LE CORRECTIF DU 18/09/2026.
+   115→//
+   116→// Cet écran tenait sa propre échelle de paliers (3 → 5 min, 6 → 15 min, 9 →
+   117→// blocage total), en mémoire JavaScript. Son propre commentaire l'avouait :
+   118→// « cosmétique pour l'instant ». Elle disparaissait au moindre rechargement ou
+   119→// à la réinstallation de l'APK — donc elle ne protégeait rien.
+   120→//
+   121→// Pendant ce temps le SERVEUR, lui, n'avait aucun palier : il comptait jusqu'à
+   122→// 9 puis posait un verrou de 100 ans. L'intention douce était décorative, la
+   123→// règle brutale était réelle.
+   124→//
+   125→// L'échelle vit désormais côté serveur (backend/src/auth/verrou-pin.ts), où
+   126→// elle compte vraiment, et elle n'est JAMAIS définitive. Cet écran ne fait plus
+   127→// que DIRE ce que le serveur répond : combien d'essais restent, ou combien de
+   128→// temps attendre.
+   129→/**
+   130→ * Numéros de test attribués au client institutionnel ANSUT pour la recette.
+   131→ * Ces numéros bypassent la regex de préfixe opérateur (01/05/07/09/21/25/27)
+   132→ * car ils n'appartiennent pas aux opérateurs télécom standards.
+   133→ *
+   134→ * MAINTENIR cette liste à jour si ANSUT/DGE ajoute des comptes test.
+   135→ * Format : 10 chiffres sans le préfixe pays (+225).
+   136→ *
+   137→ * Actif en développement ET en production (décision métier).
+   138→ */
+   139→const TEST_PHONES = new Set<string>([
+   140→  '0840404040', // Anvo KOBENAN (test ANSUT)
+   141→  '0850505050', // Zadi MIAN (test ANSUT)
+   142→  '0860606060', // Adele EHUI (test ANSUT)
+   143→  '0820202020', // Yves KOUKOUGNON (test ANSUT)
+   144→  '2100000000', // Compte institutionnel ANSUT
+   145→  '2200000000', // Compte institutionnel DGE
+   146→]);
+   147→
+   148→export function LoginPassword() {
+   149→  const navigate = useNavigate();
+   150→  const { setUser: setAppUser, setAccessToken, refreshUserData } = useApp();
+   151→  const { setUser: setUserProfile } = useUser();
+   152→  const backOfficeCtx = useBackOfficeOptional();
+   153→  const setBOUser = backOfficeCtx?.setBOUser ?? (() => {});
+   154→
+   155→  // « Tata se souvient de moi » (connexion inclusive, lot 1) : si une personne
+   156→  // est déjà connue sur CE téléphone, Tata l'accueille par son prénom et ne lui
+   157→  // redemande JAMAIS ses 10 chiffres — reconnaissance (visage/doigt) ou code.
+   158→  // « Ce n'est pas moi » ramène au parcours classique (téléphone partagé).
+   159→  const [compteConnu] = useState<CompteMemorise | null>(() => {
+   160→    try { return dernierCompte(window.localStorage); } catch { return null; }
+   161→  });
+   162→  const [phone, setPhone] = useState(compteConnu?.phone ?? '');
+   163→  const [password, setPassword] = useState('');
+   164→  const [error, setError] = useState('');
+   165→  const [isLoading, setIsLoading] = useState(false);
+   166→  const [logoClickCount, setLogoClickCount] = useState(0);
+   167→  const [showDevButton, setShowDevButton] = useState(false);
+   168→  const [pinInput, setPinInput] = useState('');
+   169→  const [step, setStep] = useState<'reconnaissance' | 'phone' | 'password'>(compteConnu ? (compteConnu.biometrie ? 'reconnaissance' : 'password') : 'phone');
+   170→  const [isListening, setIsListening] = useState(false);
+   171→  const [isFinalizingDictation, setIsFinalizingDictation] = useState(false);
+   172→  // Mode d'accès EFFECTIF (résout 'auto' via l'usage observé) : l'écran S'ADAPTE
+   173→  // (lecture = clavier direct, mixte = les deux, voix = micro au centre).
+   174→  const accessMode: EffectiveMode = getEffectiveMode();
+   175→  const [showKeypad, setShowKeypad] = useState(clavierParDefaut(accessMode)); // ouvert d'office en mode lecture
+   176→  // Voix (écoute) réellement disponible sur l'appareil (moteur natif prêt) :
+   177→  // signal de certification MINIMAL (design v0.3). Fausse aujourd'hui sur le web
+   178→  // et sur l'APK sans moteur → le NUMÉRO se saisit au PAVÉ, sans micro trompeur.
+   179→  // (Lot 5 remplacera ce signal par une certification vocale complète.)
+   180→  // La sonde répétée du moteur hors-ligne proposée par Manus (verifierOfflineModel)
+   181→  // N'EST PAS reprise ici : c'est le lot B3 du plan de récupération, une
+   182→  // correction fonctionnelle qui doit entrer avec sa reproduction et son test,
+   183→  // pas dans un lot visuel.
+   184→  const voixEcouteDispo = (() => { try { return offlineModelReady(); } catch { return false; } })();
+   185→  // Le pavé est la référence : toujours visible tant que la voix n'écoute pas.
+   186→  const clavierVisible = showKeypad || !voixEcouteDispo;
+   187→  // Un numéro est déjà là (dicté ou tapé) : l'écran n'a plus à le DEMANDER,
+   188→  // seulement à proposer de le refaire. Sert à départager les deux boutons.
+   189→  const numeroSaisi = phone.length > 0;
+   190→  // Clavier imagé (variante A, doc « mot de passe imagé ») : correspondance
+   191→  // FIXE et publique chiffre→image sur le pavé PIN, en OPTION — jamais le mode
+   192→  // par défaut (personne n'est surprise par un pavé déjà connu). Le PIN envoyé
+   193→  // reste les mêmes chiffres ; seul le glyphe affiché change.
+   194→  const [pinEnImages, setPinEnImages] = useState<boolean>(() => {
+   195→    try { return localStorage.getItem('julaba_pin_images') === '1'; } catch { return false; }
+   196→  });
+   197→  const basculerPinEnImages = () => {
+   198→    setPinEnImages((v) => {
+   199→      const next = !v;
+   200→      try { localStorage.setItem('julaba_pin_images', next ? '1' : '0'); } catch { /* ignore */ }
+   201→      // Annonce le CHANGEMENT DE MODE, jamais le PIN — la correspondance est
+   202→      // publique (variante A), donc rien de secret n'est dit ici.
+   203→      if (guidageVocal(accessMode)) {
+   204→        // Textes alignés MOT POUR MOT sur les clips login-21 / login-22
+   205→        // (services/entreeVoix.ts). `direEntreeTexte` retrouve la clé par le
+   206→        // texte : un mot d'écart et l'écran redevient muet, sans rien signaler.
+   207→        parle(next
+   208→          ? 'Voilà les photos qui sont sorties à la place des chiffres. Ton code n\'a pas changé.'
+   209→          : 'Voilà les chiffres maintenant. Mets ton code comme d\'habitude.');
+   210→      }
+   211→      return next;
+   212→    });
+   213→  };
+   214→  // Canal utilisé pour CETTE identification (clavier / voix) → apprentissage 'auto'.
+   215→  const dernierCanalRef = useRef<'clavier' | 'voix' | null>(null);
+   216→  // Une dictée a-t-elle été TENTÉE pendant cette connexion ? Sert à ne pas
+   217→  // compter comme « préférence clavier » un repli que l'app a imposé.
+   218→  const aTenteVoixRef = useRef(false);
+   219→  // Proposition d'adaptation de Tata (mode 'auto' + préférence franche observée).
+   220→  const [suggestion] = useState(() => suggestionAuto());
+   221→  const [suggReponse, setSuggReponse] = useState(false); // déjà répondu → on masque
+   222→  const [tataSpeaking, setTataSpeaking] = useState(false);
+   223→  const [operateur, setOperateur] = useState<Operateur | null>(null); // opérateur déduit du numéro
+   224→  const [showVoiceInstall, setShowVoiceInstall] = useState(false);    // proposer d'installer la voix (consenti)
+   225→  // MODE DÉVELOPPEUR (caché) : outils de test (rapport, version, tutoriel…). Masqué
+   226→  // pour la marchande (expérience simple). On l'active en tapant 5× le coin haut-gauche.
+   227→  const [devMode, setDevMode] = useState<boolean>(() => {
+   228→    try { return import.meta.env.DEV || localStorage.getItem('julaba_dev_mode') === '1'; } catch { return false; }
+   229→  });
+   230→  const devTapRef = useRef<{ n: number; t: number }>({ n: 0, t: 0 });
+   231→  const toggleDevMode = () => {
+   232→    const now = Date.now();
+   233→    const s = devTapRef.current;
+   234→    s.n = (now - s.t < 600) ? s.n + 1 : 1;
+   235→    s.t = now;
+   236→    if (s.n >= 5) {
+   237→      s.n = 0;
+   238→      setDevMode((v) => {
+   239→        const nv = !v;
+   240→        try { localStorage.setItem('julaba_dev_mode', nv ? '1' : '0'); } catch { /* ignore */ }
+   241→        try { navigator.vibrate?.(nv ? [30, 40, 30] : 20); } catch { /* ignore */ }
+   242→        return nv;
+   243→      });
+   244→    }
+   245→  };
+   246→
+   247→  // « Écouter Tantie » : chaque étape pointe vers un clip local de la MÊME voix.
+   248→  // Aucun prénom ni code n'est synthétisé dynamiquement : le texte reste visible,
+   249→  // et l'audio ne prononce jamais de donnée personnelle ou secrète.
+   250→  const ecouterTata = () => {
+   251→    setTataSpeaking(true);
+   252→    const key: EntreeVoiceKey = step === 'phone'
+   253→      ? (voixEcouteDispo ? 'numeroVoix' : 'numero')
+   254→      : step === 'reconnaissance' && compteConnu?.biometrie
+   255→        ? 'reconnaissance'
+   256→        : 'code';
+   257→    try { void direConsigne(key).finally(() => setTataSpeaking(false)); }
+   258→    catch { setTataSpeaking(false); }
+   259→    setTimeout(() => setTataSpeaking(false), 8000); // filet
+   260→  };
+   261→  const phoneToPasswordTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+   262→  const abortRef = useRef<AbortController | null>(null);
+   263→  const navigateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   264→  const focusPinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   265→  const mediaStreamRef = useRef<MediaStream | null>(null);
+   266→  const micStartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   267→  // Dictée EN DIRECT : poignée d'arrêt du moteur, garde anti-double-fin, meilleurs
+   268→  // chiffres entendus jusqu'ici, minuteur d'apaisement (fin de phrase incomplète).
+   269→  const liveStopRef = useRef<null | (() => Promise<void>)>(null);
+   270→  const dictDoneRef = useRef(false);
+   271→  const bestDigitsRef = useRef('');
+   272→  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   273→  // Minuteur de STABILITÉ des 10 chiffres : quand on atteint 10 sur un partiel, on
+   274→  // attend que la valeur ne bouge plus (le temps qu'un « vingt » devienne « vingt-six »)
+   275→  // avant de figer. Évite de couper un nombre composé à moitié formé.
+   276→  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   277→  const lastTenRef = useRef('');
+   278→  const dictCfgRef = useRef<DicteeCfg | null>(null); // config de la dictée en cours
+   279→  const phoneRef = useRef(phone);
+   280→  useEffect(() => {
+   281→    phoneRef.current = phone;
+   282→  }, [phone]);
+   283→
+   284→  // Une phrase fixe n'est dite que si son clip Tantie exact est embarqué.
+   285→  // Aucune voix navigateur étrangère ne remplace un clip manquant.
+   286→  // AKW-02 — LA VOIE D'ENTRÉE EST NOMMÉE. Cet écran parlait par
+   287→  // `direEntreeTexte`, qui court-circuite la garde de rôle de
+   288→  // `AppContext.speak` — légitime ici (personne n'est connecté), mais aucune
+   289→  // règle ne disait qui avait le droit de le faire. La permission se demande.
+   290→  const parle = (texte: string) => {
+   291→    if (!texte) return;
+   292→    // `direEntreeTexte` reste le CANAL — clip exact, aucune voix étrangère en
+   293→    // repli. La primitive décide seulement si la porte s'ouvre.
+   294→    void parlerAvantConnexion('connexion', texte, direEntreeTexte);
+   295→  };
+   296→  // Enchaîne PLUSIEURS prises de parole sans qu'elles se coupent. audioManager
+   297→  // ne sert qu'un créneau exclusif à la fois et toute nouvelle demande annule
+   298→  // la précédente (generation) : deux `parle()` de suite ne laissent entendre
+   299→  // que le second. On attend donc la fin de chacune avant la suivante.
+   300→  const parleSuite = async (...textes: (string | null | undefined)[]) => {
+   301→    for (const texte of textes) {
+   302→      if (!texte) continue;
+   303→      try { await direEntreeTexte(texte); } catch { /* ignore */ }
+   304→    }
+   305→  };
+   306→  // Chiffres détachés pour la relecture : « 0 7 0 9 … » et non « sept cent... ».
+   307→  const chiffresEpeles = (d: string) => d.split('').join(' ');
+   308→  // GUIDAGE VOCAL selon le mode : en mode « lecture » (elle lit vite), on ne parle
+   309→  // PAS automatiquement (le texte suffit). En mixte/voix, Tata annonce erreurs et
+   310→  // consignes. La lecture manuelle (toucher Tata, le cadenas…) reste toujours possible.
+   311→  // L'erreur se SENT (vibration longue) quel que soit le profil — et se dit
+   312→  // en guidage vocal. Une sourde ou une marchande dans le bruit la perçoit.
+   313→  // Journal de diagnostic ouvert dès l'ARRIVÉE sur l'écran, et non plus
+   314→  // seulement au démarrage d'une dictée (voir vlogStart('dictée') plus bas) :
+   315→  // sans cela, « 🐞 Rapport de test » ne contenait rien pour une marchande qui
+   316→  // ne dicte pas — or c'est précisément le cas où la voix manque. vlogStart
+   317→  // enregistre déjà la présence de speechSynthesis et les voix FR du téléphone.
+   318→  // Doit rester le PREMIER effet du composant : les suivants y écrivent.
+   319→  useEffect(() => {
+   320→    vlogStart('login');
+   321→    vlog('LOGIN_ETAPE_INITIALE', {
+   322→      step,
+   323→      compteConnu: !!compteConnu,
+   324→      biometrie: compteConnu?.biometrie ?? null,
+   325→      guidage: guidageVocal(accessMode),
+   326→    });
+   327→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   328→  }, []);
+   329→  useEffect(() => { if (error) { vibrerErreur(); if (guidageVocal(accessMode)) parle(error); } }, [error]);
+   330→  // La consigne est tentée à l'arrivée puis reste disponible sur le cadenas.
+   331→  // Aucun écouteur global ne la relance sur ce même toucher : deux lectures
+   332→  // simultanées s'annulaient avec AbortError sur le web.
+   333→  const direConsigneCode = useCallback(() => {
+   334→    if (step !== 'password') return;
+   335→    if (!guidageVocal(accessMode)) return; // lecture explicitement choisie : pas de consigne auto
+   336→    void direConsigne('code');
+   337→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   338→  }, [step, accessMode]);
+   339→
+   340→  useEffect(() => {
+   341→    if (step === 'password') {
+   342→      vlog('VOIX_CODE_TENTEE', { guidage: guidageVocal(accessMode) });
+   343→    }
+   344→    direConsigneCode();
+   345→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   346→  }, [step]);
+   347→
+   348→  // « Tata se souvient de moi » : à l'arrivée, Tata SALUE par le prénom et dit le
+   349→  // geste à faire — l'écran n'a rien à lire. (Une seule fois, au montage.)
+   350→  // FILET DE RATTRAPAGE : cet écran ('reconnaissance') peut être le TOUT
+   351→  // PREMIER de la page à un retour d'app (EntryGate saute Welcome/Onboarding
+   352→  // via ses drapeaux persistés dès que compteConnu existe) — sans geste
+   353→  // préalable dans CETTE session, l'audio reste bloqué par le navigateur.
+   354→  // Même filet que Welcome.tsx/OnboardingSlides.tsx.
+   355→  const direAccueilReconnaissance = useCallback(() => {
+   356→    if (!(step === 'reconnaissance' && compteConnu && guidageVocal(accessMode))) return;
+   357→    try { void direConsigne(compteConnu.biometrie ? 'reconnaissance' : 'code'); } catch { /* ignore */ }
+   358→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   359→  }, [step, compteConnu, accessMode]);
+   360→
+   361→  useEffect(() => {
+   362→    direAccueilReconnaissance();
+   363→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   364→  }, []);
+   365→
+   366→  // Tata propose l'adaptation (mode 'auto') : elle le DIT (une fois) — c'est une
+   367→  // question, pas un réglage à trouver. On l'énonce dès l'affichage.
+   368→  useEffect(() => {
+   369→    if (suggestion && !suggReponse) parle(suggestion.texte);
+   370→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   371→  }, []);
+   372→  // Réponse à la proposition de Tata : oui → on adopte le mode ; non → on met en pause.
+   373→  const repondreSuggestion = (oui: boolean) => {
+   374→    if (!suggestion) return;
+   375→    if (oui) {
+   376→      setAccessMode(suggestion.mode);
+   377→      parle('D\'accord, c\'est calé comme ça.');
+   378→    } else {
+   379→      marquerDemande();
+   380→      parle('D\'accord, on continue comme d\'habitude.');
+   381→    }
+   382→    setSuggReponse(true);
+   383→  };
+   384→
+   385→  // Pré-réveil du backend. Sur Render gratuit, le serveur se met EN VEILLE après
+   386→  // inactivité et met ~50 s à redémarrer ; la 1re requête de login tombait alors
+   387→  // dans le vide → « Erreur de connexion ». On envoie un ping /health dès que
+   388→  // l'écran s'affiche (pendant que l'utilisatrice tape son numéro/code), pour que
+   389→  // le serveur soit déjà réveillé au moment du « Se connecter ». Silencieux.
+   390→  useEffect(() => {
+   391→    let annule = false;
+   392→    const reveiller = () => { try { fetch(`${API_URL}/health`, { method: 'GET', cache: 'no-store' }).catch(() => {}); } catch { /* ignore */ } };
+   393→    reveiller();
+   394→    // Un 2e ping ~8 s après, au cas où le 1er a lancé le démarrage sans le finir.
+   395→    const t = setTimeout(() => { if (!annule) reveiller(); }, 8000);
+   396→    return () => { annule = true; clearTimeout(t); };
+   397→  }, []);
+   398→
+   399→  const scheduleTransitionToPasswordAfterCheck = (confirmedPhone: string) => {
+   400→    if (isLoading || isListening || isFinalizingDictation || !numeroCIComplet(confirmedPhone, TEST_PHONES)) return;
+   401→    setIsLoading(true);
+   402→    if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
+   403→    phoneToPasswordTimeout.current = setTimeout(async () => {
+   404→      const curr = confirmedPhone;
+   405→      if (phoneRef.current !== curr) { setIsLoading(false); return; }
+   406→
+   407→      if (import.meta.env.DEV && curr === '0501604040') {
+   408→        setIsLoading(false);
+   409→        setStep('password');
+   410→        if (focusPinTimeoutRef.current) clearTimeout(focusPinTimeoutRef.current);
+   411→        focusPinTimeoutRef.current = setTimeout(() => {
+   412→          const pinEl = document.querySelector('input[autocomplete="one-time-code"]') as HTMLInputElement | null;
+   413→          pinEl?.focus();
+   414→        }, 50);
+   415→        return;
+   416→      }
+   417→
+   418→      const focusPin = () => {
+   419→        if (focusPinTimeoutRef.current) clearTimeout(focusPinTimeoutRef.current);
+   420→        focusPinTimeoutRef.current = setTimeout(() => {
+   421→          const pinEl = document.querySelector('input[autocomplete="one-time-code"]') as HTMLInputElement | null;
+   422→          pinEl?.focus();
+   423→        }, 50);
+   424→      };
+   425→
+   426→      try {
+   427→        setIsLoading(true);
+   428→        abortRef.current?.abort();
+   429→        abortRef.current = new AbortController();
+   430→        const res = await fetch(`${API_URL}/auth/check-phone`, {
+   431→          method: 'POST',
+   432→          credentials: 'include',
+   433→          headers: { 'Content-Type': 'application/json' },
+   434→          body: JSON.stringify({ phone: curr.startsWith('+225') ? curr : '+225' + curr }),
+   435→          signal: abortRef.current.signal,
+   436→        });
+   437→        // MANUS REND ICI `check-phone` BLOQUANT (res.ok exigé, puis erreur au
+   438→        // lieu de l'étape code). C'est le point C7 du plan de récupération :
+   439→        // un changement de PARCOURS d'authentification, non repris. Le parcours
+   440→        // reste le nôtre — un contrôle qui ne répond pas ne ferme pas la porte.
+   441→        let data: { exists?: boolean };
+   442→        try {
+   443→          data = await res.json();
+   444→        } catch (err) {
+   445→          console.warn('[LoginPassword] check-phone json parse failed:', err instanceof Error ? err.message : err);
+   446→          if (phoneRef.current === curr) {
+   447→            setStep('password');
+   448→            setIsLoading(false);
+   449→            focusPin();
+   450→          }
+   451→          return;
+   452→        }
+   453→        if (phoneRef.current !== curr) {
+   454→          setIsLoading(false);
+   455→          return;
+   456→        }
+   457→        if (!data.exists) {
+   458→          setIsLoading(false);
+   459→          navigate('/non-enregistre', { state: { phone: curr } });
+   460→          return;
+   461→        }
+   462→        setStep('password');
+   463→        setIsLoading(false);
+   464→        focusPin();
+   465→      } catch (err) {
+   466→        if (err instanceof DOMException && err.name === 'AbortError') return;
+   467→        console.warn('[LoginPassword] check-phone fetch failed:', err instanceof Error ? err.message : err);
+   468→        if (phoneRef.current !== curr) {
+   469→          setIsLoading(false);
+   470→          return;
+   471→        }
+   472→        setStep('password');
+   473→        setIsLoading(false);
+   474→        focusPin();
+   475→      }
+   476→    }, 500);
+   477→  };
+   478→
+   479→  // Remplit le champ numéro à partir d'une suite de chiffres (dictée vocale ou clavier).
+   480→  const remplirNumero = (sliced: string) => {
+   481→    setPhone(sliced);
+   482→    setError('');
+   483→    if (sliced.length === 10) {
+   484→      if (!numeroCIComplet(sliced, TEST_PHONES)) {
+   485→        setError('Regarde bien, y\'a un chiffre qui n\'est pas bon dedans. Si tu veux, tape ton numéro directement ici.');
+   486→        return;
+   487→      }
+   488→      if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
+   489→      // Le numéro complet reste affiché jusqu’à sa confirmation explicite.
+   490→    }
+   491→  };
+   492→
+   493→  // Dictée vocale du numéro — 100 % HORS-LIGNE via sherpa-onnx (natif), EN DIRECT. On transcrit
+   494→  // pendant qu'elle parle : les chiffres se remplissent à l'écran et on s'ARRÊTE
+   495→  // DÈS QU'ON A UN NUMÉRO COMPLET ET VALIDE (10 chiffres, règle CI) — jamais sur un
+   496→  // minuteur. Clavier = filet. Aucune reconnaissance navigateur (Internet).
+   497→
+   498→  // Termine la dictée avec les chiffres retenus : range le micro, coupe le moteur,
+   499→  // puis AIGUILLE selon la config en cours (numéro ou code).
+   500→  //
+   501→  // CORRECTIF (numéro erroné affiché en recette, ex. « 70 00 00 00 00 ») :
+   502→  // digitsBruts n'est qu'un INSTANTANÉ — la dernière passe intermédiaire à
+   503→  // 900 ms, sur un tampon audio qui pouvait encore être incomplet. Le moteur
+   504→  // fait ENSUITE, dans stop(), une VRAIE repasse finale (re-transcription de
+   505→  // TOUT l'audio capté depuis le début, la plus fiable) — mais l'ancien code
+   506→  // AIGUILLAIT déjà cfg.onFinal(...) avec l'instantané, PUIS jetait le
+   507→  // résultat de cette repasse finale (le handler onText l'ignorait car
+   508→  // dictDoneRef.current était déjà vrai). On décidait donc sur un texte
+   509→  // partiellement traité au lieu du résultat définitif du STT. On attend
+   510→  // maintenant la fin de stop() (qui met à jour bestDigitsRef via la
+   511→  // repasse finale, cf. le handler onText plus bas) avant de conclure.
+   512→  const finaliserDictee = (digitsBruts: string) => {
+   513→    if (dictDoneRef.current) return;
+   514→    dictDoneRef.current = true;
+   515→    setIsFinalizingDictation(true);
+   516→    const cfg = dictCfgRef.current;
+   517→    if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
+   518→    if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
+   519→    if (micStartTimeoutRef.current) { clearTimeout(micStartTimeoutRef.current); micStartTimeoutRef.current = null; }
+   520→    const stopFn = liveStopRef.current;
+   521→    liveStopRef.current = null;
+   522→    setIsListening(false); // retour visuel immédiat (micro éteint), avant même la repasse finale
+   523→    const conclure = () => {
+   524→      try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+   525→      mediaStreamRef.current = null;
+   526→      // bestDigitsRef a pu être mis à jour par la repasse finale pendant l'attente
+   527→      // de stopFn() (cf. onText) ; sinon on retombe sur l'instantané reçu.
+   528→      const digits = (bestDigitsRef.current || digitsBruts).slice(0, cfg?.max ?? 10);
+   529→      vlog('FINALISE', { digits, n: digits.length, ok: cfg ? cfg.estComplet(digits) : false });
+   530→      try { cfg?.onFinal(digits); } finally { setIsFinalizingDictation(false); }
+   531→    };
+   532→    if (stopFn) { void stopFn().then(conclure, conclure); } else { conclure(); }
+   533→  };
+   534→
+   535→  // Re-tap micro / filet → on termine avec ce qui a été compris jusqu'ici.
+   536→  const arreterEcoute = () => { finaliserDictee(bestDigitsRef.current); };
+   537→
+   538→  // ── LE ROUAGE UNIQUE de dictée EN DIRECT (numéro ET code) ───────────────────
+   539→  // On transcrit pendant qu'elle parle ; les chiffres se remplissent à l'écran ;
+   540→  // on s'ARRÊTE dès que la valeur est complète et valide (jamais sur un minuteur).
+   541→  // Gère les nombres composés (« vingt-six » : on ne fige pas sur le « vingt »).
+   542→  const demarrerDictee = async (cfg: DicteeCfg) => {
+   543→    if (isListening) { vlog('RE_TAP_STOP'); arreterEcoute(); return; }
+   544→    vlogStart('dictée'); vlog('BUILD', cfg.buildTag);
+   545→    vlog('MODEL_READY', { ready: offlineModelReady(), installed: offlineModelInstalled() });
+   546→    vlog('VOIX_ENTREE', 'Tantie Nanti Lou · clips locaux uniquement');
+   547→
+   548→    if (!offlineModelReady()) { vlog('STT_NOT_READY'); cfg.siPasPrete(); return; }
+   549→
+   550→    vlog('MIC_ASK');
+   551→    let stream: MediaStream;
+   552→    try {
+   553→      // MIC-01 — anti-écho : la dictée du numéro et du code s'ouvre juste
+   554→      // après la consigne dite. Nu, ce micro entendait le haut-parleur, et des
+   555→      // chiffres venus de la voix de Tantie entraient dans le numéro de
+   556→      // téléphone. Réglage unique : `services/contraintesMicro`.
+   557→      stream = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
+   558→      vlog('MIC_OK');
+   559→    } catch (e) {
+   560→      vlog('MIC_DENIED', String(e));
+   561→      cfg.siMicRefuse();
+   562→      return;
+   563→    }
+   564→    mediaStreamRef.current = stream;
+   565→    dictCfgRef.current = cfg;
+   566→    dernierCanalRef.current = 'voix'; // elle a choisi de PARLER (apprentissage 'auto')
+   567→    aTenteVoixRef.current = true;      // trace conservée même si la dictée échoue
+   568→
+   569→    // Réinitialise l'état de dictée pour cette session d'écoute.
+   570→    dictDoneRef.current = false;
+   571→    bestDigitsRef.current = '';
+   572→    lastTenRef.current = '';
+   573→    if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
+   574→    if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
+   575→    setError('');
+   576→    // Verrou parole/écoute (audit voix C1) : couper TOUTES les voix (clips du
+   577→    // manager, clip local de parle(), intro d'onboarding, synthèse) — le seul
+   578→    // speechSynthesis.cancel() laissait les clips HTMLAudio jouer dans le micro.
+   579→    try { stopAllVoice(); } catch { /* ignore */ }
+   580→    try { stopIntro(); } catch { /* ignore */ }
+   581→    try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+   582→
+   583→    let handle: { stop: () => Promise<void> };
+   584→    try {
+   585→      handle = await startLiveDictation(stream, (texte, estFinal) => {
+   586→        // Une repasse FINALE (estFinal) fait TOUJOURS autorité sur bestDigitsRef,
+   587→        // même après le début de la finalisation (dictDoneRef déjà vrai) : c'est
+   588→        // elle que finaliserDictee() attend pour conclure sur le résultat
+   589→        // définitif du STT plutôt que sur un instantané intermédiaire (cf. le
+   590→        // commentaire de finaliserDictee). Seule la suite du handler (remplissage
+   591→        // écran, auto-arrêt) ne doit plus s'exécuter une fois la dictée finalisée.
+   592→        if (dictDoneRef.current && !estFinal) return;
+   593→        const digits = extractPhoneDigits(texte || '').slice(0, cfg.max);
+   594→        if (estFinal || digits.length > bestDigitsRef.current.length) {
+   595→          vlog('TXT', { fin: estFinal, brut: (texte || '').slice(0, 40), digits });
+   596→        }
+   597→        // Le résultat FINAL fait autorité (corrige) ; un partiel ne fait que grandir.
+   598→        bestDigitsRef.current = fusionnerChiffresDictes(estFinal, digits, bestDigitsRef.current);
+   599→        if (dictDoneRef.current) return; // déjà en cours de finalisation : bestDigitsRef mis à jour, rien d'autre à faire
+   600→        const best = bestDigitsRef.current;
+   601→        cfg.onLive(best); // remplissage EN DIRECT (contrôle à l'œil)
+   602→        // Valeur complète + valide → on s'arrête. Nombre composé (« vingt-six »)
+   603→        // arrive en 2 temps : on ne fige PAS sur un partiel, on attend la fin de
+   604→        // phrase du moteur OU une valeur STABLE ~0,8 s (le « six » corrige le « vingt »).
+   605→        if (best.length >= cfg.max && cfg.estComplet(best)) {
+   606→          if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
+   607→          if (estFinal) { finaliserDictee(best); return; }
+   608→          if (best !== lastTenRef.current) {
+   609→            lastTenRef.current = best;
+   610→            if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+   611→            confirmTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 800);
+   612→          }
+   613→          return;
+   614→        }
+   615→        if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
+   616→        lastTenRef.current = '';
+   617→        // Incomplet : ~1,6 s pour continuer (sans jamais couper), sinon on termine.
+   618→        if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
+   619→        if (estFinal) {
+   620→          settleTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 1600);
+   621→        }
+   622→      }, undefined, (tag, data) => vlog(tag, data));
+   623→      vlog('LIVE_START');
+   624→    } catch (e) {
+   625→      vlog('LIVE_FAIL', String(e));
+   626→      try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+   627→      mediaStreamRef.current = null;
+   628→      cfg.siEchec();
+   629→      return;
+   630→    }
+   631→    liveStopRef.current = handle.stop;
+   632→
+   633→    setIsListening(true);
+   634→    try { navigator.vibrate?.(60); } catch { /* ignore */ }
+   635→    // Filet DUR ultime : 15 s (garde-fou anti micro-ouvert, PAS un couperet de dictée).
+   636→    if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
+   637→    micStartTimeoutRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 15000);
+   638→  };
+   639→
+   640→  // Dictée du NUMÉRO (10 chiffres, règle CI).
+   641→  const dicterNumero = () => demarrerDictee({
+   642→    max: 10,
+   643→    estComplet: (d) => numeroCIComplet(d, TEST_PHONES),
+   644→    onLive: (d) => { setPhone(d); setOperateur(operateurDe(d)); },
+   645→    // FIN DE DICTÉE — REFAIT (défaut remonté en recette le 16/09/2026 : « quand
+   646→    // je me trompe en dictant, il continue et ne me donne aucune option vocale
+   647→    // de le modifier »). Trois défauts tenaient ensemble :
+   648→    //
+   649→    //  1. AUCUNE RELECTURE. Tata ne redisait jamais ce qu'elle avait compris.
+   650→    //     Une marchande qui ne lit pas n'avait donc AUCUN moyen de constater
+   651→    //     l'erreur — et si les chiffres avalés formaient quand même un numéro
+   652→    //     valide, la connexion partait sur un autre compte SANS aucun signal.
+   653→    //  2. TOUTES LES SORTIES RENVOYAIENT AU CLAVIER, c'est-à-dire précisément
+   654→    //     à ce qu'elle ne peut pas faire. Aucune issue à la voix.
+   655→    //  3. CES PHRASES N'ONT PAS DE CLIP. `parle()` joue un enregistrement quand
+   656→    //     la phrase en a un, sinon il retombe sur la synthèse — muette dans
+   657→    //     l'APK. Les variantes écrites à la main ci-dessus étaient donc
+   658→    //     SILENCIEUSES sur le téléphone, alors que ui-058 (« Je n'ai pas
+   659→    //     compris. Tape ton numéro, ou réessaie. ») et ui-100 existent et
+   660→    //     disent la bonne chose — « ou réessaie » comprise.
+   661→    //
+   662→    //     CORRIGÉ LE 26/09/2026, et le point 3 méritait d'être relu : choisir
+   663→    //     la phrase de ui-058 NE SUFFISAIT PAS. `parle()` ne consulte pas
+   664→    //     `tataUiClips` — il passe par `direEntreeTexte`, qui ne connaît que
+   665→    //     l'index de `services/entreeVoix.ts`. Les deux clips existaient, la
+   666→    //     phrase tombait pile dessus, et rien ne sortait quand même. Il a
+   667→    //     fallu leur ajouter une CLÉ là-bas (`dicteeIncomprise`,
+   668→    //     `microProbleme`). Un commentaire vrai le jour où il est écrit peut
+   669→    //     cesser de l'être sans que personne ne le voie.
+   670→    //
+   671→    // On relit donc TOUJOURS ce qui a été compris, puis on dit une phrase
+   672→    // RÉELLEMENT ENREGISTRÉE. Le clavier reste le filet, il n'est plus la
+   673→    // seule porte : le micro demeure atteignable et la phrase le nomme.
+   674→    onFinal: (num) => {
+   675→      const relecture = num ? `J'ai compris. ${chiffresEpeles(num)}` : '';
+   676→      if (num.length >= 10 && numeroCIComplet(num, TEST_PHONES)) {
+   677→        try { navigator.vibrate?.(30); } catch { /* ignore */ }
+   678→        remplirNumero(num);
+   679→        void parleSuite(relecture);
+   680→        return;
+   681→      }
+   682→      try { vibrerErreur(); } catch { /* ignore */ }
+   683→      setShowKeypad(true);
+   684→      if (num.length > 0) {
+   685→        setPhone(num);
+   686→        setError(num.length >= 10
+   687→          ? 'Vérifie ton numéro : touche le micro pour redire, ou corrige 👇'
+   688→          : 'Il manque des chiffres : touche le micro pour redire, ou complète 👇');
+   689→        // AUTH-11. Trop court : on DIT ce qui manque, au lieu du générique.
+   690→        // L'écran l'écrivait déjà — l'information existait, seule la marchande
+   691→        // qui lit y avait droit. Texte aligné mot pour mot sur login-11.
+   692→        // Numéro complet mais invalide : on garde le générique, qui donne le
+   693→        // GESTE. Le clip AUTH_12 nomme mieux le défaut mais ne dit pas quoi
+   694→        // faire ; on ne troque pas une consigne contre une plus pauvre.
+   695→        void parleSuite(relecture, num.length >= 10
+   696→          ? "Je n'ai pas compris. Tape ton numéro, ou réessaie."
+   697→          : 'Il manque encore des chiffres dedans. Continue.');
+   698→        return;
+   699→      }
+   700→      setError("Je n'ai pas compris. Touche le micro pour redire, ou tape 👇");
+   701→      void parleSuite("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+   702→    },
+   703→    buildTag: 'sherpa-login-live-v2-relecture',
+   704→    siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro."); },
+   705→    // Micro refusé / moteur en échec : on dit les clips existants (ui-100,
+   706→    // ui-058) plutôt qu'une phrase sur mesure qui serait muette. Aucun clip ne
+   707→    // dit « autorise le micro » — le texte écrit le précise, la voix dit au
+   708→    // moins qu'il y a un problème et qu'on peut réessayer.
+   709→    siMicRefuse: () => { setError('Le micro ne prend pas là. Faut taper ton numéro ici.'); void parleSuite('Problème avec le micro — réessaie'); setShowKeypad(true); },
+   710→    siEchec: () => { setShowKeypad(true); void parleSuite("Je n'ai pas compris. Tape ton numéro, ou réessaie."); },
+   711→  });
+   712→
+   713→  // AUDIT UX B5 (11/08/2026) : le CODE SECRET ne se dicte JAMAIS à voix
+   714→  // haute — un marché est un lieu public, même chuchoté c'est un secret
+   715→  // divulgué. L'ancienne dictée du code est SUPPRIMÉE : le code s'entre au
+   716→  // pavé (ou par la reconnaissance « Tata me reconnaît »). La dictée
+   717→  // vocale reste réservée au NUMÉRO de téléphone.
+   718→
+   719→  // Tata parle DÈS L'ENTRÉE dans l'écran numéro.
+   720→  //
+   721→  // On explique aussi le GESTE, pas seulement le champ ("tape un chiffre à la
+   722→  // fois, les ronds se remplissent") — lire seulement "entre ton numéro" ne
+   723→  // suffit pas à quelqu'un qui ne lit pas et n'a jamais vu cet écran.
+   724→  const direConsigneNumero = useCallback(() => {
+   725→    if (step !== 'phone') return;
+   726→    if (!guidageVocal(accessMode)) return; // lecture explicitement choisie : pas d'accueil vocal auto
+   727→    void direConsigne(voixEcouteDispo ? 'numeroVoix' : 'numero');
+   728→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   729→  }, [step, accessMode, voixEcouteDispo]);
+   730→
+   731→  useEffect(() => {
+   732→    direConsigneNumero();
+   733→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   734→  }, [step]);
+   735→
+   736→  useEffect(() => {
+   737→    const tel = document.querySelector('input[autocomplete="tel"]') as HTMLInputElement | null;
+   738→    tel?.focus();
+   739→    return () => {
+   740→      abortRef.current?.abort();
+   741→      if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
+   742→      if (focusPinTimeoutRef.current) clearTimeout(focusPinTimeoutRef.current);
+   743→      if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
+   744→      if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+   745→      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+   746→      // Coupe une dictée EN DIRECT en cours (moteur + micro) au démontage.
+   747→      try { void liveStopRef.current?.(); } catch { /* ignore */ }
+   748→      try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+   749→      if (phoneToPasswordTimeout.current) {
+   750→        clearTimeout(phoneToPasswordTimeout.current);
+   751→        phoneToPasswordTimeout.current = null;
+   752→      }
+   753→    };
+   754→  }, []);
+   755→
+   756→  /** Une attente, dite comme on la dirait à quelqu'un qui n'a pas de montre. */
+   757→  const attenteEnClair = (ms: number): string => {
+   758→    const minutes = Math.max(1, Math.round(ms / 60000));
+   759→    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+   760→    const heures = Math.round(minutes / 60);
+   761→    return `${heures} heure${heures > 1 ? 's' : ''}`;
+   762→  };
+   763→
+   764→  // Mémorise la personne sur CE téléphone après une entrée réussie (lot 1) —
+   765→  // jamais bloquant : si le stockage échoue, la connexion continue normalement.
+   766→  const memoriserApresEntree = (u: Record<string, unknown> | undefined, biometrie: boolean) => {
+   767→    try {
+   768→      const prenom = String((u as any)?.firstName || (u as any)?.first_name || (u as any)?.prenoms || '').trim();
+   769→      const photoBrute = (u as any)?.photo;
+   770→      const photo = typeof photoBrute === 'string' && photoBrute ? photoBrute : undefined;
+   771→      // Son choix est mémorisé avec le prénom : sans lui, l'écran de connexion
+   772→      // ne peut pas l'appeler comme elle l'a demandé au retour suivant.
+   773→      const appellationChoisie = String((u as any)?.appellation || '').trim() || undefined;
+   774→      memoriserCompte(window.localStorage, { phone, prenom, photo, ...(appellationChoisie ? { appellation: appellationChoisie } : {}), ...(biometrie ? { biometrie: true } : {}) }, new Date().toISOString());
+   775→    } catch { /* ignore */ }
+   776→  };
+   777→
+   778→  const handleBiometric = async () => {
+   779→    setIsLoading(true);
+   780→    try {
+   781→      const result = await authenticateWebAuthn(phone);
+   782→      if (result.success && result.user) {
+   783→        setAppUser(result.user);
+   784→        setUserProfile(result.user);
+   785→        // La reconnaissance a marché ICI → au prochain retour, geste unique.
+   786→        memoriserApresEntree(result.user as Record<string, unknown>, true);
+   787→        vibrerSucces();
+   788→        // Persiste le jeton (auth mobile sans cookie cross-domaine), comme la connexion par code.
+   789→        try {
+   790→          if (result.accessToken) localStorage.setItem('julaba_access_token', result.accessToken);
+   791→          if ((result as { refreshToken?: string }).refreshToken) localStorage.setItem('julaba_refresh_token', (result as { refreshToken?: string }).refreshToken!);
+   792→        } catch { /* ignore */ }
+   793→        if (result.accessToken) { setAccessToken(result.accessToken); setTimeout(() => refreshUserData(), 100); }
+   794→        window.dispatchEvent(new CustomEvent('julaba:token-ready'));
+   795→        const roleRoutes: Record<string, string> = {
+   796→          ...ROLE_ROUTES,
+   797→          super_admin: '/backoffice/dashboard',
+   798→          admin: '/backoffice/dashboard',
+   799→        };
+   800→        navigate(roleRoutes[normalizeRole(result.user.role)] || '/marchand');
+   801→      } else {
+   802→        // Mots de la MARCHANDE (pas « biométrie ») : dire le problème et le geste
+   803→        // de secours. L'effet vocal sur `error` l'énonce automatiquement.
+   804→        setError('Ça n\'a pas pris. On passe par ton code directement.');
+   805→      }
+   806→    } catch (err) {
+   807→      console.warn('[LoginPassword] biometric failed:', err instanceof Error ? err.message : err);
+   808→      setError('Ça n\'a pas pris. On passe par ton code directement.');
+   809→    } finally {
+   810→      setIsLoading(false);
+   811→    }
+   812→  };
+   813→
+   814→  const handleLogin = async (pinOverride?: string, retry = 0) => {
+   815→    const pwd = pinOverride ?? pinInput;
+   816→    // DEUX GARDES DÉFENSIVES, ET LE BANC A MONTRÉ QU'ELLES NE SE DÉCLENCHENT
+   817→    // PAS — 26/09/2026. Le bouton « C'est mon numéro » est `disabled` tant
+   818→    // qu'il manque des chiffres, et `handleLogin` n'est appelé qu'avec quatre
+   819→    // chiffres déjà saisis (l.1046, l.1525). Ces deux `setError` sont donc
+   820→    // INATTEIGNABLES par l'interface d'aujourd'hui.
+   821→    //
+   822→    // On les garde : le jour où un bouton cesse d'être désactivé, ou qu'un
+   823→    // raccourci clavier ouvre un autre chemin, elles redeviennent le seul
+   824→    // filet. Mais on ne les compte PAS comme des phrases qu'une marchande
+   825→    // entendra — la première reste atteignable par la DICTÉE (`onFinal`), la
+   826→    // seconde par rien du tout.
+   827→    if (phone.length !== 10) { setError('Il manque encore des chiffres dedans. Continue.'); return; }
+   828→    if (import.meta.env.DEV && phone === '0501604040') { setShowDevButton(true); setError(''); return; }
+   829→    if (!pwd || pwd.length === 0) { setError('Bon, mets les quatre chiffres de ton code secret.'); return; }
+   830→    setIsLoading(true); setError('');
+   831→    // Espion de connexion : trace l'URL réellement appelée + le résultat, visible
+   832→    // dans « 🐞 Rapport de test ». Permet de diagnostiquer « Erreur de connexion »
+   833→    // (URL fausse ? CORS ? statut HTTP ?) sans outils développeur.
+   834→    vlog('LOGIN_TRY', { url: `${API_URL}/auth/login` });
+   835→    try {
+   836→      const controller = new AbortController();
+   837→      const response = await fetch(`${API_URL}/auth/login`, {
+   838→        method: 'POST',
+   839→        headers: { 'Content-Type': 'application/json' },
+   840→        credentials: 'include',
+   841→        body: JSON.stringify({ phone: phone.startsWith("+225") ? phone : "+225" + phone, password: pwd }),
+   842→        signal: controller.signal,
+   843→      });
+   844→      vlog('LOGIN_HTTP', { status: response.status, ok: response.ok });
+   845→      let result: {
+   846→        error?: string;
+   847→        user?: {
+   848→          role?: string;
+   849→          mustChangePassword?: boolean;
+   850→          id?: string;
+   851→          phone?: string;
+   852→          lastName?: string;
+   853→          last_name?: string;
+   854→          firstName?: string;
+   855→          first_name?: string;
+   856→          region?: string;
+   857→          [key: string]: unknown;
+   858→        };
+   859→        accessToken?: string;
+   860→        [key: string]: unknown;
+   861→      };
+   862→      try {
+   863→        result = await response.json();
+   864→      } catch (err) {
+   865→        console.warn('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
+   866→        vlog('LOGIN_JSON_FAIL', { msg: err instanceof Error ? err.message : String(err) });
+   867→        setError('Ça n\'a pas bien répondu. Attends un petit moment, puis reprends.');
+   868→        setIsLoading(false);
+   869→        return;
+   870→      }
+   871→      if (!response.ok || result.error) {
+   872→        // Trop de tentatives en 1 minute (rate-limiter) : ce N'EST PAS un mauvais
+   873→        // code -> on ne compte pas d'échec et on affiche un message clair.
+   874→        if (response.status === 429) {
+   875→          setError('Tu as trop forcé. Patiente un peu d\'abord avant de réessayer.');
+   876→          setPinInput(""); setIsLoading(false); return;
+   877→        }
+   878→        // Source de vérité backend : verrouillage total après 9 échecs cumulés.
+   879→        // Prioritaire sur le compteur RAM (qui ne sert qu'à l'affichage progressif 5/15 min).
+   880→        // ATTENTE EN COURS. Le serveur donne la durée : on la dit, et surtout on
+   881→        // la FAIT ENTENDRE. « Compte bloqué » sans durée ni voix, pour quelqu'un
+   882→        // qui ne lit pas, c'est une caisse qui disparaît sans explication.
+   883→        if (result.locked === true) {
+   884→          const attente = typeof result.attenteMs === 'number' ? result.attenteMs : 0;
+   885→          const message = attente > 0
+   886→            ? `Trop d'essais. Attends ${attenteEnClair(attente)}, puis réessaie.`
+   887→            : "Trop d'essais. Attends un moment, puis réessaie.";
+   888→          setError(message);
+   889→          try { parle(message); } catch { /* la voix n'est jamais bloquante */ }
+   890→          setPinInput(""); setIsLoading(false); return;
+   891→        }
+   892→        // AVERTISSEMENT AVANT LE PALIER. Rien ne prévenait : on tombait dans
+   893→        // l'attente sans la voir venir. Le compte des essais vient du SERVEUR —
+   894→        // le compteur local d'avant mentait dès le premier rechargement.
+   895→        const restants = typeof result.essaisRestants === 'number' ? result.essaisRestants : null;
+   896→        const message = restants !== null && restants <= 2
+   897→          ? `Ce n'est pas le bon code. Attention : encore ${restants} essai${restants > 1 ? 's' : ''}, après il faudra attendre.`
+   898→          : ENTREE_VOICE_CLIPS.codeErreur.texte;
+   899→        setError(message);
+   900→        try { parle(message); } catch { /* la voix n'est jamais bloquante */ }
+
+[showing lines 1-900 of 1653; use offset=901 with limit to continue reading]

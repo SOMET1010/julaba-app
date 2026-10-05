@@ -127,3 +127,7 @@ Source : `docs/dette/REGISTRE-MAITRE.md` (révision 20, contre-audit n°4 sur `9
 ## Détails complets
 
 Voir `AUDITS/AUDIT-001-2026-09-28.md` pour le rapport complet.
+
+## Audits ciblés (compléments)
+
+- **AUDIT-UI-AUTH — 2026-10-05** (`AUDITS/AUDIT-UI-AUTH-2026-10-05.md`) : interface d'authentification complète (8 écrans, 3 100 lignes). Score **66/100** 🟠. Statique + runtime navigateur + gardes CI. 5 P1 (garde entrée-unique rouge orphelin AUTH-01, PIN dans `history.state` AUTH-02, verrou/annonce inaudibles AUTH-03, « Réécouter mon numéro » muet AUTH-04, modale reconnaissance sans focus trap ni ESC avec refus définitif par clic backdrop AUTH-05), 12 P2. PIN jamais journalisé ✅, PII masquée ✅, fail-closed ✅, zéro erreur console ✅. Actions prioritaires : AUTH-02→03/04→05→01.

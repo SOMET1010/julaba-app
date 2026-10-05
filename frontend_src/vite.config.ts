@@ -154,6 +154,10 @@ export default defineConfig({
     host: true,
     port: 3000,
     strictPort: true,
+    // Le panneau de prévisualisation du sandbox accède à l'app via un domaine
+    // externe (…fcapp.run) : Vite 6 bloque par défaut les hosts inconnus.
+    // `allowedHosts: true` autorise tous les hosts (dev sandbox uniquement).
+    allowedHosts: true,
     // Le sandbox plafonne fs.inotify.max_user_watches à 8192 (non modifiable
     // sans root) : Vite dépasse la limite au démarrage → ENOSPC. Le polling
     // contourne proprement la limite, au prix d'un peu de CPU.
