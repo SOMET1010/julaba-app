@@ -53,9 +53,19 @@ captures/
 .idea/navEditor.xml
 
 # Keystore files
-# Uncomment the following lines if you do not want to check your keystore files in.
-#*.jks
-#*.keystore
+# DÉCOMMENTÉS LE 05/10/2026, ET ILS LE RESTENT.
+# Le dépôt est PUBLIC (ALERTE-SEC-01). Le keystore du pilote est l'identité de
+# signature de l'application : qui l'obtient peut publier un APK que les
+# téléphones des marchandes accepteront comme une mise à jour légitime. Il
+# n'entre jamais dans git — il vit chez Patrick et dans les secrets GitHub.
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pepk
+*.bks
+keystore.properties
+signing.properties
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild

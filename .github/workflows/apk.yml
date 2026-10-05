@@ -8,11 +8,26 @@ name: APK pilote — construction à la demande
 #
 # Ce workflow ne touche PAS au filet d'intégration (ci.yml) : il ne se
 # déclenche sur aucun push ni aucune PR, seulement à la main. Il ne déploie
-# rien, ne publie rien, n'écrit pas dans le dépôt.
+# rien, ne publie rien dans le dépôt, n'y écrit pas.
 #
-# L'APK produit est un APK de DEBUG, signé avec la clé de debug : installable
-# à la main sur un téléphone (« sources inconnues »), pas publiable sur un
-# store. C'est exactement le périmètre du pilote (décision Patrick, 15/09/2026).
+# DEUX VARIANTES, ET LA DIFFÉRENCE N'EST PAS COSMÉTIQUE.
+#
+#   release (défaut) — signé avec le keystore du pilote, fourni par les
+#     secrets GitHub. C'est la SEULE variante distribuable à une marchande :
+#     tous les APK signés par ce keystore portent la même identité, donc une
+#     mise à jour s'installe PAR-DESSUS, sans désinstallation, sans perdre la
+#     caisse. Si les secrets manquent, la construction ÉCHOUE — jamais de
+#     repli sur la clé de debug.
+#
+#   debug — signé avec la clé de debug du runner, régénérée à chaque fois :
+#     chaque APK porte une identité DIFFÉRENTE. Installable à la main
+#     (« sources inconnues ») pour une mesure jetable, mais toute mise à jour
+#     exige de désinstaller, ce qui EFFACE les données locales. À ne jamais
+#     remettre à une marchande qui tient sa comptabilité dessus. Cette
+#     variante ne va pas dans la Release `pilote-latest`.
+#
+# C'était le défaut de ce workflow jusqu'au 05/10/2026 : il ne produisait que
+# du debug, et le publiait comme APK de pilote.
 
 on:
   workflow_dispatch:
@@ -34,6 +49,17 @@ on:
         description: 'Branche à construire (défaut : main, la seule auditée)'
         required: true
         default: 'main'
+      variante:
+        # Le défaut est `release` parce que le défaut doit être la chose
+        # distribuable. Un APK de debug remis par inadvertance à une marchande
+        # coûte sa comptabilité à la première mise à jour.
+        description: 'release = signé avec le keystore du pilote (distribuable) · debug = jetable, identité différente à chaque build'
+        required: true
+        type: choice
+        default: 'release'
+        options:
+          - release
+          - debug
       api_url:
         description: 'VITE_API_URL — sans elle, l app n atteint aucun backend'
         required: true
@@ -79,11 +105,43 @@ permissions:
 
 jobs:
   apk:
-    name: Construire l APK de debug
+    name: Construire l APK du pilote
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
     steps:
+      # PREMIÈRE ÉTAPE, AVANT TOUTE MINUTE DÉPENSÉE : si la variante release
+      # est demandée sans ses secrets, on s'arrête ici. Le gradle refuserait
+      # aussi (android/app/build.gradle), mais 20 minutes plus tard, après le
+      # téléchargement de 150 Mo de voix.
+      #
+      # On ne teste que la PRÉSENCE : aucune valeur n'est affichée, ni
+      # longueur, ni préfixe. Le dépôt est public (ALERTE-SEC-01).
+      - name: Exiger les secrets de signature (variante release)
+        if: inputs.variante == 'release'
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          manquants=""
+          [ -n "$KEYSTORE_B64" ]      || manquants="$manquants ANDROID_KEYSTORE_BASE64"
+          [ -n "$KEYSTORE_PASSWORD" ] || manquants="$manquants ANDROID_KEYSTORE_PASSWORD"
+          [ -n "$KEY_ALIAS" ]         || manquants="$manquants ANDROID_KEY_ALIAS"
+          [ -n "$KEY_PASSWORD" ]      || manquants="$manquants ANDROID_KEY_PASSWORD"
+          if [ -n "$manquants" ]; then
+            echo "::error::Secrets de signature absents :$manquants"
+            echo "Un APK de pilote doit porter TOUJOURS LA MÊME signature, sinon la"
+            echo "mise à jour exige une désinstallation, qui efface la caisse de la"
+            echo "marchande. Aucun repli sur la clé de debug n'est prévu : ce serait"
+            echo "exactement le défaut qu'on ferme."
+            echo "Poser les secrets du dépôt (Settings → Secrets and variables →"
+            echo "Actions), ou relancer avec variante = debug pour un APK jetable."
+            exit 1
+          fi
+          echo "✓ Les quatre secrets de signature sont présents."
+
       - name: Checkout de la branche demandée
         uses: actions/checkout@v5
         with:
@@ -171,62 +229,198 @@ jobs:
           JULABA_VOIX_DYU: ${{ inputs.voix_dyu == 'true' && '1' || '0' }}
         run: ./scripts/installer-voix.sh
 
-      - name: Construire l APK de debug
+      - name: Relever le SHA reellement construit
+        id: source
+        # github.sha est celui de la branche DEPUIS LAQUELLE le workflow est
+        # dispatche, PAS celui du code construit (inputs.branche). Nommer
+        # l'APK avec lui ferait croire qu'on teste autre chose. Sur un pilote,
+        # savoir quel code tourne sur le telephone n'est pas un detail.
+        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      # versionCode : UN ENTIER QUI NE DÉCROÎT JAMAIS, ET QUI CHANGE À CHAQUE
+      # CONSTRUCTION.
+      #
+      # Il était figé à 1 dans android/app/build.gradle, et ce workflow ne
+      # l'incrémentait pas : deux APK successifs étaient indiscernables, donc
+      # on ne pouvait pas dire quelle version tourne sur le téléphone d'une
+      # marchande. Android refuse par ailleurs d'installer par-dessus un
+      # versionCode INFÉRIEUR (INSTALL_FAILED_VERSION_DOWNGRADE).
+      #
+      # On compte les SECONDES écoulées depuis le 01/01/2026 UTC. Pourquoi pas
+      # github.run_number : ce compteur est propre au fichier de workflow et
+      # REPART À 1 s'il est renommé ou recréé — il produirait alors un
+      # versionCode plus petit, et condamnerait définitivement la mise à jour
+      # des téléphones déjà équipés. L'horloge, elle, ne revient pas en
+      # arrière. Les secondes plutôt que les minutes pour qu'il soit impossible
+      # que deux constructions partagent le même numéro.
+      #
+      # Ordre de grandeur : ~24 millions aujourd'hui, +31,5 millions par an,
+      # pour une limite Android de 2 100 000 000 — soit ~66 ans de marge.
+      #
+      # Lisible depuis l'APK, sans le dépôt :
+      #   aapt2 dump badging julaba.apk | grep ^package
+      # donne versionCode et versionName : le plus grand versionCode est le
+      # plus récent, et versionName porte le sha court du code construit.
+      - name: Calculer versionCode et versionName
+        id: version
+        run: |
+          base=$(date -u -d '2026-01-01T00:00:00Z' +%s)
+          maintenant=$(date -u +%s)
+          code=$(( maintenant - base ))
+          if [ "$code" -le 0 ]; then
+            echo "::error::versionCode calculé non positif ($code) — horloge du runner ?"
+            exit 1
+          fi
+          nom="1.0-${{ steps.source.outputs.sha }}"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "nom=$nom" >> "$GITHUB_OUTPUT"
+          echo "versionCode=$code  versionName=$nom"
+
+      # Le keystore est écrit dans RUNNER_TEMP, JAMAIS dans l'arbre de travail :
+      # un fichier hors du dépôt ne peut pas être commité par accident, et le
+      # runner est détruit à la fin du job. Les mots de passe ne passent pas
+      # par ici : ils sont injectés directement dans l'étape gradle.
+      - name: Poser le keystore de release
+        if: inputs.variante == 'release'
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          chemin="$RUNNER_TEMP/julaba-release.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$chemin"
+          if [ ! -s "$chemin" ]; then
+            echo "::error::Le keystore décodé est vide — ANDROID_KEYSTORE_BASE64 n est pas un base64 valide."
+            echo "Le poser avec : base64 -w0 julaba-release.jks (sans retour à la ligne)."
+            exit 1
+          fi
+          chmod 600 "$chemin"
+          echo "JULABA_KEYSTORE_FILE=$chemin" >> "$GITHUB_ENV"
+          echo "✓ Keystore posé hors du dépôt ($(stat -c%s "$chemin") octets)."
+
+      - name: Construire l APK (${{ inputs.variante }})
+        id: build
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        env:
+          # Vides pour la variante debug : le gradle voit alors une signature
+          # non fournie, et seules les taches de debug restent permises.
+          JULABA_KEYSTORE_FILE: ${{ env.JULABA_KEYSTORE_FILE }}
+          JULABA_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          JULABA_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          JULABA_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          JULABA_VERSION_CODE: ${{ steps.version.outputs.code }}
+          JULABA_VERSION_NAME: ${{ steps.version.outputs.nom }}
+        run: |
+          if [ "${{ inputs.variante }}" = "release" ]; then
+            ./gradlew assembleRelease --no-daemon
+            apk=app/build/outputs/apk/release/app-release.apk
+          else
+            ./gradlew assembleDebug --no-daemon
+            apk=app/build/outputs/apk/debug/app-debug.apk
+          fi
+          # Un app-release-unsigned.apk signifierait que gradle a construit
+          # sans signature : on refuse de le publier.
+          if [ ! -f "$apk" ]; then
+            echo "::error::APK attendu absent : $apk"
+            ls -l app/build/outputs/apk/*/ || true
+            exit 1
+          fi
+          echo "apk=android/$apk" >> "$GITHUB_OUTPUT"
 
       # Un APK qui se construit n'est pas un APK qui s'installe. Le telephone
       # ne dit que « probleme avec le fichier de l'application » : cette etape
       # produit ici les elements qui distinguent un APK mal forme d'un
       # telechargement abime chez celui qui l'installe.
+      #
+      # Elle fait en plus la verification qui compte pour le pilote : que
+      # l'APK de release ne soit PAS signe par une cle de debug, et qu'il
+      # porte la MEME empreinte de certificat que les precedents.
       - name: Verifier l APK produit (signature, integrite, empreinte)
-        working-directory: android
+        env:
+          APK: ${{ steps.build.outputs.apk }}
+          EMPREINTE_ATTENDUE: ${{ secrets.ANDROID_SIGNING_CERT_SHA256 }}
         run: |
-          apk=app/build/outputs/apk/debug/app-debug.apk
           outils=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
 
-          echo "::group::Taille et empreinte (a comparer avec le fichier telecharge)"
-          ls -l "$apk"
-          echo "octets : $(stat -c%s "$apk")"
-          sha256sum "$apk"
+          echo "::group::Taille et empreinte du fichier (a comparer apres telechargement)"
+          ls -l "$APK"
+          echo "octets : $(stat -c%s "$APK")"
+          sha256sum "$APK"
           echo "::endgroup::"
 
           echo "::group::Archive lisible de bout en bout"
-          unzip -t "$apk" > /dev/null && echo "✓ archive integre"
+          unzip -t "$APK" > /dev/null && echo "✓ archive integre"
           echo "::endgroup::"
 
           echo "::group::Signature"
-          "$outils/apksigner" verify --verbose --print-certs "$apk"
+          "$outils/apksigner" verify --verbose --print-certs "$APK" | tee /tmp/certs.txt
           echo "::endgroup::"
 
           echo "::group::Identite et niveaux d API"
-          "$outils/aapt2" dump badging "$apk" | grep -E "^package|sdkVersion|targetSdkVersion|native-code"
+          "$outils/aapt2" dump badging "$APK" \
+            | grep -E "^package|sdkVersion|targetSdkVersion|native-code"
           echo "::endgroup::"
 
-      # github.sha est celui de main (le workflow est dispatche depuis main),
-      # PAS celui du code construit. Nommer l'APK avec lui ferait croire qu'on
-      # teste main. Sur un pilote, savoir quel code tourne sur le telephone
-      # n'est pas un detail : on prend le SHA reellement construit.
-      - name: Relever le SHA reellement construit
-        id: source
-        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          empreinte=$(awk '/SHA-256 digest/ {print $NF; exit}' /tmp/certs.txt)
+          echo "Empreinte SHA-256 du certificat de signature : $empreinte"
+
+          if [ "${{ inputs.variante }}" = "release" ]; then
+            # Le certificat de debug d'Android porte toujours ce sujet. S'il
+            # apparait ici, c'est que la signature de release n'a pas pris :
+            # c'est LE piege qu'on ferme, il doit arreter la construction.
+            if grep -q 'CN=Android Debug' /tmp/certs.txt; then
+              echo "::error::L APK de release est signe par une CLE DE DEBUG. Construction refusee."
+              exit 1
+            fi
+            if [ -z "$empreinte" ]; then
+              echo "::error::Aucune empreinte de certificat lisible : l APK n est pas signe."
+              exit 1
+            fi
+            if [ -n "$EMPREINTE_ATTENDUE" ] && [ "$empreinte" != "$EMPREINTE_ATTENDUE" ]; then
+              echo "::error::Empreinte de certificat DIFFERENTE de celle attendue."
+              echo "Un APK signe par une autre cle ne s installe pas par-dessus : la"
+              echo "mise a jour exigerait une desinstallation, qui efface la caisse."
+              echo "Verifier ANDROID_KEYSTORE_BASE64 / ANDROID_KEY_ALIAS."
+              exit 1
+            fi
+            if [ -z "$EMPREINTE_ATTENDUE" ]; then
+              echo "::warning::Secret ANDROID_SIGNING_CERT_SHA256 non pose : l identite de"
+              echo "signature n est pas verrouillee. Le poser avec l empreinte ci-dessus"
+              echo "fait echouer tout futur APK signe par une autre cle."
+            fi
+          fi
+
+          {
+            echo "### APK ${{ inputs.variante }} — \`${{ steps.source.outputs.sha }}\`"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| branche | \`${{ inputs.branche }}\` |"
+            echo "| versionCode | \`${{ steps.version.outputs.code }}\` |"
+            echo "| versionName | \`${{ steps.version.outputs.nom }}\` |"
+            echo "| empreinte du certificat (SHA-256) | \`$empreinte\` |"
+            echo "| sha256 du fichier APK | \`$(sha256sum "$APK" | cut -d' ' -f1)\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publier l APK
         uses: actions/upload-artifact@v4
         with:
-          name: julaba-apk-${{ steps.source.outputs.sha }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: julaba-apk-${{ steps.source.outputs.sha }}-${{ inputs.variante }}
+          path: ${{ steps.build.outputs.apk }}
           if-no-files-found: error
           retention-days: 14
+
+      # La Release `pilote-latest` est ce que l'equipe terrain telecharge : elle
+      # ne recoit QUE des APK de release signes. Y publier un APK de debug
+      # condamnerait la prochaine mise a jour des telephones deja equipes.
       - name: Préparer l APK pour téléchargement équipe
+        if: inputs.variante == 'release'
         run: |
           mkdir -p dist-apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk \
-            dist-apk/julaba-${{ steps.source.outputs.sha }}.apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk \
-            dist-apk/julaba-latest.apk
+          cp "${{ steps.build.outputs.apk }}" \
+            "dist-apk/julaba-${{ steps.source.outputs.sha }}.apk"
+          cp "${{ steps.build.outputs.apk }}" dist-apk/julaba-latest.apk
 
       - name: Publier dans GitHub Releases
+        if: inputs.variante == 'release'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: pilote-latest

@@ -2,15 +2,78 @@ apply plugin: 'com.android.application'
 // Kotlin : le plugin natif SherpaStt (reconnaissance vocale hors-ligne) est en Kotlin.
 apply plugin: 'org.jetbrains.kotlin.android'
 
+// ────────────────────────────────────────────────────────────────────────────
+// SIGNATURE DE RELEASE — UNE SEULE IDENTITE, POUR TOUTE LA VIE DU PILOTE.
+//
+// Android identifie une application par le couple (applicationId, certificat
+// de signature). Deux APK signes par deux certificats differents sont, pour le
+// telephone, DEUX APPLICATIONS ETRANGERES : la mise a jour est refusee
+// (INSTALL_FAILED_UPDATE_INCOMPATIBLE) et la seule issue est de desinstaller,
+// ce qui efface la base locale — donc la comptabilite de la marchande.
+//
+// Jusqu'ici l'APK du pilote etait signe par la cle de DEBUG, regeneree par
+// machine et par runner CI : chaque construction portait une identite
+// differente. C'est le defaut que ce bloc ferme.
+//
+// Les quatre valeurs viennent de l'ENVIRONNEMENT, jamais du depot (depot
+// PUBLIC, ALERTE-SEC-01) : aucun keystore, aucun mot de passe, aucun alias
+// n'est ecrit dans un fichier suivi par git. Aucune valeur par defaut non
+// plus : une signature de release a moitie configuree doit S'ARRETER, pas se
+// deviner. Le repli silencieux sur la cle de debug est precisement le piege
+// qu'on ferme, donc il n'existe pas ici.
+def environnement = System.getenv()
+def exigencesSignature = [
+    JULABA_KEYSTORE_FILE    : environnement['JULABA_KEYSTORE_FILE'],
+    JULABA_KEYSTORE_PASSWORD: environnement['JULABA_KEYSTORE_PASSWORD'],
+    JULABA_KEY_ALIAS        : environnement['JULABA_KEY_ALIAS'],
+    JULABA_KEY_PASSWORD     : environnement['JULABA_KEY_PASSWORD'],
+]
+// Noms seulement : on ne journalise jamais une valeur.
+def signatureManquante = exigencesSignature.findAll { nom, valeur ->
+    valeur == null || valeur.trim().isEmpty()
+}.keySet()
+def signatureFournie = signatureManquante.isEmpty()
+
+// versionCode : il etait FIGE A 1 ici, et le workflow ne l'incrementait pas —
+// deux APK successifs etaient donc indiscernables, et on ne pouvait pas dire
+// quelle version tourne sur le telephone d'une marchande. Une mise a jour qui
+// s'installe par-dessus exige en plus un entier qui ne DECROIT jamais.
+// Il est desormais calcule par la CI (secondes ecoulees depuis le 01/01/2026
+// UTC, cf. .github/workflows/apk.yml) et passe par l'environnement :
+// strictement croissant, different a chaque construction, et independant du
+// numero de run GitHub (qui repartirait a 1 si le fichier de workflow etait
+// renomme, produisant un versionCode plus petit).
+// Hors CI, le defaut 1 preserve le comportement d'une construction locale.
+def versionCodeFourni = environnement['JULABA_VERSION_CODE']
+if (versionCodeFourni != null && !(versionCodeFourni.trim() ==~ /[1-9][0-9]*/)) {
+    throw new GradleException(
+        "JULABA_VERSION_CODE doit etre un entier strictement positif " +
+        "(un versionCode qui decroit interdit toute mise a jour)."
+    )
+}
+
 android {
     namespace = "com.julaba.app"
     compileSdk = rootProject.ext.compileSdkVersion
+    signingConfigs {
+        // Declaree UNIQUEMENT si les quatre valeurs sont la : une config de
+        // signature incomplete ferait echouer la configuration de Gradle sur
+        // un message d'AGP, au lieu du message explicite ecrit plus bas.
+        if (signatureFournie) {
+            release {
+                storeFile file(exigencesSignature.JULABA_KEYSTORE_FILE)
+                storePassword exigencesSignature.JULABA_KEYSTORE_PASSWORD
+                keyAlias exigencesSignature.JULABA_KEY_ALIAS
+                keyPassword exigencesSignature.JULABA_KEY_PASSWORD
+            }
+        }
+    }
     defaultConfig {
         applicationId "com.julaba.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode versionCodeFourni ? versionCodeFourni.trim() as int : 1
+        versionName environnement['JULABA_VERSION_NAME'] ?: "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -22,7 +85,34 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (signatureFournie) {
+                signingConfig signingConfigs.release
+            }
+            // Pas de `else` : aucune cle de secours, aucun repli sur debug.
+            // Sans signingConfig, la tache de release est de toute facon
+            // arretee ci-dessous, avant d'avoir produit quoi que ce soit.
         }
+    }
+}
+
+// ARRET NET SI LA SIGNATURE MANQUE — et seulement pour une tache de release :
+// assembleDebug reste utilisable sans aucun secret.
+gradle.taskGraph.whenReady { graphe ->
+    def tachesRelease = graphe.allTasks.findAll {
+        it.name ==~ /(?i).*(assemble|bundle|package)Release.*/
+    }
+    if (!tachesRelease.isEmpty() && !signatureFournie) {
+        throw new GradleException(
+            "Signature de release absente : " + signatureManquante.join(', ') + ".\n" +
+            "Un APK de release non signe par la cle du pilote ne s'installerait\n" +
+            "pas par-dessus l'application d'une marchande : la mise a jour\n" +
+            "exigerait une desinstallation, qui efface sa caisse.\n" +
+            "Poser les secrets GitHub ANDROID_KEYSTORE_BASE64,\n" +
+            "ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD\n" +
+            "(cf. .github/workflows/apk.yml), ou construire la variante debug.\n" +
+            "AUCUN repli sur la cle de debug : ce serait signer une identite\n" +
+            "differente a chaque construction."
+        )
     }
 }
 

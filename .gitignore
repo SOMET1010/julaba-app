@@ -52,6 +52,25 @@ ci/preuve-invariants.json
 # Sorties du script d’ingestion (produites à l’arrivée d’un lot, jamais versionnées)
 docs/voix/ENTREES-TATA-UI-CLIPS.txt
 
+# Signature Android : le keystore du pilote et tout ce qui l'ouvre.
+# Dépôt PUBLIC (ALERTE-SEC-01). Ce keystore EST l'identité de l'application :
+# qui l'obtient peut pousser aux marchandes un APK que leur téléphone
+# accepterait comme une mise à jour légitime. Et perdu, plus aucune mise à
+# jour n'est possible pour les téléphones déjà équipés. Il ne vit QUE chez
+# Patrick (sauvegarde hors dépôt) et dans les secrets GitHub du dépôt.
+# Motifs ici en plus d'android/.gitignore : un keystore se dépose souvent à la
+# racine, « juste le temps d'un build ».
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pepk
+*.bks
+keystore.properties
+signing.properties
+*.jks.base64
+*.keystore.base64
+
 # Sorties brutes du tooling sandbox (journaux d’outils, jamais versionnés — peuvent contenir des échos d’URL authentifiées)
 tool-results/
 /bun.lock
