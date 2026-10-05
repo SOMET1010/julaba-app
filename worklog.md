@@ -29,3 +29,24 @@ Stage Summary:
 - Comptes démo disponibles (SEED_DEMO=true) : téléphone +225XXXXXXXXXX / mot de passe 1234 (ex: +2250726262626 Michelle Walebo marchand)
 - Modifications code : frontend_src/vite.config.ts (bloc server pour sandbox), backend/.env (créé, non versionné), Caddyfile sandbox inchangé
 - Logs serveurs : backend-dev.log, frontend-dev.log à la racine du projet
+
+---
+Task ID: 2
+Agent: Z.ai Code (orchestrateur) + agent Audit (Explore) 
+Task: Audit de l'interface auth en respectant les normes du dossier .ai + fix blocage host Vite
+
+Work Log:
+- Fix vite.config.ts : ajout server.allowedHosts (le panneau de preview du sandbox accède via un domaine externe *.fcapp.run, Vite 6 bloquait le host) + redémarrage Vite (frontend-dev.log)
+- Règle d'or .ai respectée : lecture de .ai/README.md, PROJECT_CONTEXT.md (vision voice-first, §8 règles critiques), ACCESSIBILITY_GUIDE.md (§4/5/6 = règles obligatoires), DESIGN_SYSTEM.md (§9 conventions), AUDIT-002 + AUDIT-ACTEUR-MARCHAND (formats de référence)
+- Audit statique délégué à l'agent Audit : 8 fichiers auth (3 100 lignes) + supports (comptesMemorises.ts, entreeVoix.ts, paroleEntree.ts, login.css, voiceTrace/voiceDebug) — 17 constats AUTH-01..17 (5 P1, 12 P2), 12 points forts, checklist a11y, scores proposés
+- Gardes CI auth exécutés : test:verrou-connexion ✅ VERT, test:comptes ✅ VERT, test:tokens ✅ VERT ; test-entree-unique ❌ ROUGE (4 échecs, orphelin hors verify, arbitré dans maillons-verify.json:147), test-nom-tantie-nanti-lou ❌ ROUGE (orphelin)
+- Audit runtime Agent Browser (10 tests R1-R10) : parcours EntryGate→Onboarding→Numéro→PIN→/marchand OK ; verrou PIN : message serveur en role="alert" ✅ ; cibles tactiles MESURÉES : « Modifier » 44×16,5 px ❌, bascule images 149×30 px ❌, modale « Fermer » 32×32 px ❌ ; ESC sur modale custom inopérant (pas de focus trap) ❌ ; /non-enregistre : PII masquée « XXXXXX 6780 » ✅ ; clavier Tab/Enter ✅ ; zéro erreur console ✅
+- Rapport d'audit rédigé au format .ai : .ai/AUDITS/AUDIT-UI-AUTH-2026-10-05.md (scores : a11y 68, sécurité 74, DS 58, qualité 66 → global 66/100)
+- AUDIT_REPORT.md : section « Audits ciblés » ajoutée avec référence + synthèse (règle un fichier = un écrivain respectée)
+- Note : commit f85057c constaté sur main (infrastructure sandbox .zscripts/skills auto-committée par le tooling, aucun fichier projet concerné)
+
+Stage Summary:
+- Rapport d'audit auth complet : .ai/AUDITS/AUDIT-UI-AUTH-2026-10-05.md — score 66/100 🟠 (au-dessus du seuil PROD 60)
+- Top 5 actions : AUTH-02 (PIN hors history.state), AUTH-03/04 (rendre audibles verrou + réécouter — cœur voice-first), AUTH-05 (Radix Dialog + backdrop non-refusant), AUTH-01 (trancher garde entrée unique), AUTH-08/09 (gardes couleurs/cibles étendus à l'auth)
+- Sécurité auth confirmée solide : PIN jamais journalisé, verrou serveur-driven, fail-closed, PII masquée
+- Aucun code projet modifié par l'audit (lecture seule) ; seul vite.config.ts a été retouché pour le fix allowedHosts (déjà modifié en Task 1 pour le sandbox)

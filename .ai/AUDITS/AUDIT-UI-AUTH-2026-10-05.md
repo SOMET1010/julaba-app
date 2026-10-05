@@ -1,0 +1,140 @@
+# AUDIT INTERFACE AUTH — 2026-10-05
+
+## 1. Identité et périmètre
+
+- **Objet** : interface d'authentification frontend (parcours d'entrée complet)
+- **Type** : audit UI/UX + code statique + recette runtime (navigateur réel)
+- **Fichiers audités** : `frontend_src/src/app/components/auth/` (8 fichiers, 3 100 lignes) + supports (`comptesMemorises.ts`, `entreeVoix.ts`, `paroleEntree.ts`, `login.css`, `voiceTrace.ts`, `voiceDebug.ts`, scripts de garde)
+- **Écrans couverts** : EntryGate (`/`), Welcome/OnboardingSlides, Ton numéro, Ton code secret, Activation (`/activation`), Changement de mot de passe (`/change-password`), Numéro non enregistré (`/non-enregistre`), PropositionReconnaissance (modale post-login)
+- **Référentiels** : `ACCESSIBILITY_GUIDE.md` (§4/§5/§6), `DESIGN_SYSTEM.md` (§9), `PROJECT_CONTEXT.md` (§1 doctrine voice-first, §8 règles critiques), `CONSTITUTION.md`
+- **Méthode** : lecture statique ligne à ligne (agent Audit) + exécution réelle des parcours dans un navigateur headless + exécution des gardes CI auth
+- **Auditeur** : AGENT AUDIT (système multi-agents)
+- **Limitation** : audio non vérifiable headless (audibilité des clips inférée du code + catalogue) ; lecteur d'écran (NVDA/VoiceOver) non testé ; les 3 confits visuels testés sur tokens CSS mais pas validés œil humain.
+
+## 2. Synthèse exécutive
+
+- **Score global interface auth : 66/100** 🟠 (au-dessus du seuil PROD 60, en-dessous du standard interne 75)
+- L'auth est **fonctionnellement solide et sûre** (PIN jamais journalisé, verrou serveur, fail-closed, PII masquée) avec une **discipline vocale réelle** (clips attestés, porte de parole unique).
+- Deux **trous voice-first concrets** sur l'écran qui connecte : les messages de **verrouillage dynamiques sont silencieux** (le pire message possible à perdre pour une non-lectrice) et le bouton **« Réécouter mon numéro » ne dit rien** par construction.
+- Une **garde rouge orpheline** (`test-entree-unique`) contredit les routes réelles — incohérence de gouvernance à trancher.
+- **Dette design system concentrée** : ~70 couleurs hardcodées, modale custom sans focus trap, 3 cibles tactiles < 44 px, un fichier de 1 652 lignes.
+
+## 3. Scores par dimension
+
+| Dimension | Score | Justification courte |
+|---|---:|---|
+| Accessibilité (a11y .ai) | 68/100 | ARIA dense, haptique, focus mgmt réels ; mais verrou silencieux, modale non Radix, 3 cibles < 44 px mesurées, aucun garde a11y automatisé couvrant l'auth |
+| Sécurité | 74/100 | PIN jamais logué ni stocké, verrou serveur, fail-closed, PINS_INTERDITS activation ; déduits : PIN dans `history.state`, refresh token localStorage, TEST_PHONES prod |
+| Conformité design system | 58/100 | `login.css` conforme tokens ; mais ~70 hex inline, SVG dessinés main ×4, HTML brut au lieu de `ui/`, aucun garde couleurs sur l'auth |
+| Qualité du code | 66/100 | Commentaires de décision exemplaires, modules purs testés ; mais 1 652 lignes, bannière ×3, pavé ×2, doc divergente du comportement |
+| **Recette runtime (navigateur)** | **Pas de blocant** | Parcours complet numéro→PIN→marchand OK, /non-enregistre OK, zéro erreur console, clavier Tab/Enter OK |
+
+## 4. Preuves runtime (navigateur headless, 2026-10-05, build v5.0.0.20)
+
+| # | Test exécuté | Résultat |
+|---|---|---|
+| R1 | EntryGate `/` : boutons vocaux labellisés, heading h1 | ✅ conforme |
+| R2 | Onboarding : « Réécouter Tantie Nanti Lou » + « Continuer » | ✅ conforme |
+| R3 | Écran numéro : pavé 109×64 px, boutons ARIA explicites, `C'est mon numéro` disabled < 10 chiffres, empreinte disabled sans compte mémorisé | ✅ conforme |
+| R4 | Saisie Michelle (+2250726262626) → PIN faux ×6 : message serveur en `role="alert"` — « Ce n'est pas le bon code. Attention : encore 2 essais… » | ✅ ARIA, ❌ inaudible (AUTH-03) |
+| R5 | Mesure cibles : **« Modifier » 44×16,5 px** ❌, **bascule images 149×30 px** ❌, **modale « Fermer » 32×32 px** ❌ ; pavé/effacer/Oui conformes | ❌ AUTH-09/AUTH-05 confirmés |
+| R6 | Clavier seul : Tab focus « Chiffre 1 »→« Chiffre 2 », Enter active | ✅ conforme |
+| R7 | ESC sur modale PropositionReconnaissance : **reste ouverte** (pas de trap, pas d'ESC handler) | ❌ AUTH-05 confirmé |
+| R8 | Numéro inconnu → `/non-enregistre` : PII masquée « XXXXXX 6780 », alert ARIA, sortie claire | ✅ conforme |
+| R9 | Login complet PIN 1234 → `/marchand`, dashboard Michelle, modale reconnaissance affichée | ✅ fonctionnel |
+| R10 | Console + page errors sur tout le parcours | ✅ **zéro erreur** |
+
+## 5. Résultats des gardes CI auth (exécutés)
+
+| Garde | État | Lecture |
+|---|---|---|
+| `test:verrou-connexion` | ✅ VERT | serveur décide, écran affiche et dit (syntaxique) |
+| `test:comptes` (comptesMemorises) | ✅ VERT | 7 groupes : LRU, quota, biométrie, oubli |
+| `test:tokens` | ✅ VERT | cohérence tokens.css, aucun token fantôme |
+| `test:entree-unique` | ❌ **ROUGE (4 échecs)** | orphelin hors `verify` ; `routes.tsx:43-44` monte Welcome/LoginPassword en direct ; arbitrage Patrick dans `maillons-verify.json:147` |
+| `test:nom-tantie-nanti-lou` | ❌ **ROUGE** | orphelin ; 14 occurrences hors `auth/` (dont `services/loginVoiceScript.ts`) |
+
+## 6. Constats (priorisés)
+
+### P1 — Majeurs
+
+**AUTH-01 · Garde « entrée unique » rouge et hors CI.** `test-entree-unique.mjs` interdit de monter `<Welcome/>`/`<LoginPassword/>` hors EntryGate ; `routes.tsx:43-44` le fait. La garde est orpheline (hors `verify-tout.mjs`) et l'écart arbitré dans `maillons-verify.json:147`. « Une garde qui ne s'exécute pas n'est pas une garde » (`verify-tout.mjs:24`). **Reco** : trancher — réécrire la garde pour légaliser les 2 routes (avec pourquoi), ou remettre les `Navigate`.
+
+**AUTH-02 · PIN transmis via `location.state` vers /change-password.** `LoginPassword.tsx:933` `navigate('/change-password', { state: { codeActuel: pwd } })` — React Router persiste dans `window.history.state` (survit au reload). L'intention produit est bonne (ne pas redemander), le canal est en cause. **Reco** : canal mémoire one-shot (contexte/module) ou `{ replace: true }` + effacement après lecture.
+
+**AUTH-03 · Messages de verrouillage dynamiques inaudibles.** Le verrou dit « attends N minutes » via `parle(message)` (`LoginPassword.tsx:885-900`), mais `direEntreeTexte` (`entreeVoix.ts:396-398`) refuse toute phrase sans clip exact — les messages interpolés ne matchent rien. Pour une non-lectrice, le délai d'attente du verrou (règle §8.4 : 3→5 min, 6→15 min, 9+→1 h) n'est dit à **aucune** étape dynamique. Le garde `test-verrou-connexion` ne vérifie que la présence de `parle(message)`, pas l'audibilité. **Reco** : grammaire segmentée en clips (« attends / cinq / minutes ») ou synthèse contrôlée ; renforcer le garde texte→clip.
+
+**AUTH-04 · « Réécouter mon numéro » muet par construction.** `LoginPassword.tsx:1298-1301` : bouton unique-but-vocal → `parle(chiffresEpeles(phone))` → phrase dynamique sans clip → silence (`entreeVoix.ts:383-391` : repli volontairement absent pour ne pas énoncer le numéro au marché). Idem la « relecture toujours dite » promise l.671-679 (`parleSuite`). **Reco** : feedback non audio (surbrillance chiffre par chiffre + haptique) ou clip générique ; ou retirer l'affordance.
+
+**AUTH-05 · Modale PropositionReconnaissance non conforme (confirmé runtime R5/R7).** Dialog custom `motion.div` (`PropositionReconnaissance.tsx:96-101`) : pas de focus trap, pas d'ESC (vérifié), pas de retour focus ; « Fermer » 32×32 px (< 44) ; **clic backdrop = refus définitif mémorisé** (`noterRefusProposition`) — un tap mal placé supprime la proposition pour toujours. **Reco** : Radix `Dialog` (DS §9), cible ≥ 44 px, backdrop non-refusant.
+
+### P2 — Mineurs
+
+| ID | Constat | Preuve | Reco |
+|---|---|---|---|
+| AUTH-06 | JWT access + refresh en localStorage (décision documentée en code) | `LoginPassword.tsx:790-791, 958-959` | registre dette ; à terme cookie httpOnly même-domaine |
+| AUTH-07 | TEST_PHONES actifs en prod + énumération check-phone (assumé, backlog) | `LoginPassword.tsx:104-146` | log serveur des accès TEST_PHONES, réponse uniforme |
+| AUTH-08 | ~70 couleurs hardcodées dans l'auth (LoginPassword 41, ChangePwd 11, PropoReco 10, UnregPhone 4, Activation 3) — aucun garde équivalent à `caisseCharte` | grep fichiers auth | garde `authCharte.test.mts` ou migration tokens |
+| AUTH-09 | Cibles < 44 px mesurées runtime : « Modifier » 16,5 px, bascule images 30 px ; garde `test-cible-tactile` ne scanne que POSCaisse | R5 | corriger CSS + étendre la garde à l'auth |
+| AUTH-10 | `LoginPassword.tsx` 1 652 lignes : catalogue voix, dev-mode disséminé ×4, dictée, check-phone, login, pavé ×2, bannière ×3, SVG dupliqué | blocs l.41-1652 | extraire `ErrorBanner`, `LoginKeypad`, `useDicteeLive`, `useDevMode` (contrat vocal `parle()` inchangé, l.1022-1031) |
+| AUTH-11 | Pas d'`aria-invalid`/`aria-describedby` (Activation, ChangePwd) ; `autoComplete` absent des 3 champs ChangePwd ; PIN `one-time-code` discutable | `ActivationScreen.tsx:138`, `ChangePasswordScreen.tsx:397` | associer erreurs + autocomplete |
+| AUTH-12 | UI 100 % français hardcodé ; la voix i18nisée (fr-ci/dyu-ci/bm/bci) mais pas le texte | `LoginPassword.tsx:1146, 1442` | i18n visuel à terme (dette repo connue) |
+| AUTH-13 | Transcripts STT (numéro dicté) persistés localStorage 200 événements + inclus au rapport dev partageable (PIN non concerné) | `voiceTrace.ts:71-72`, `voiceDebug.ts:178-180` | masquer les 6 derniers chiffres au dump |
+| AUTH-14 | 13 `console.warn` auth — vérifié : aucun PIN/password/montant ✅ ; bruit prod | EntryGate ×4, LoginPassword ×5, ChangePwd ×2 | préservé (conforme §8.7), silencier en prod |
+| AUTH-15 | SVG inline dessinés main ×4 au lieu de lucide/Tabler | `LoginPassword.tsx:1403, 1433, 1590` | icônes DS |
+| AUTH-16 | Surfaces inline `#fff`/`#FFF9F2` → rendu hybride mode sombre | `LoginPassword.tsx:1411, 1454, 1519` | tokens `--commerce-paper` |
+| AUTH-17 | « Vérification... » sans `aria-live`/`role="status"` | `LoginPassword.tsx:1370-1380` | `role="status"` |
+
+## 7. Points forts confirmés (statique + runtime)
+
+1. **PIN jamais journalisé** — vérifié : 13 `console.*` sans données sensibles, dictée du code supprimée et justifiée (`LoginPassword.tsx:713-717`), `vlog` ne trace que l'URL (§8.7 ✅)
+2. **Aucun PIN/jeton dans `comptesMemorises`** — type fermé phone/prénom/photo/biométrie, validateur strict, testé (7 groupes verts)
+3. **Verrou PIN serveur-driven** — échelle d'attente serveur, écran affiche ET dit (garde vert), runtime R4 confirme le compte d'essais serveur
+4. **Rôles fail-closed** — rôle inconnu → logout forcé + toast + retour login (`EntryGate.tsx:92-100`, §8.8 ✅)
+5. **P0.0/ADR-002 incarné** — activation par code à usage unique, PIN posé par la marchande, `PINS_INTERDITS = {'0000','1234'}`, double saisie + voix
+6. **Masquage PII confirmé runtime** — « Le numéro XXXXXX 6780 n'est pas encore enregistré » (R8)
+7. **ARIA dense et correct** — `aria-label` systématiques, `aria-pressed` micro/œil, bannières `role="alert" aria-live="assertive"`
+8. **Haptique systématique** — `vibrerErreur/Succes` + retour de frappe à chaque touche des 2 étapes
+9. **Focus management réel** — focus auto champ tel, focus PIN post-transition, nettoyage complet timers/micro au démontage
+10. **Architecture vocale disciplinée** — porte de parole unique pré-connexion (`paroleEntree.ts:35`), clips tricolores honnêtes `atteste/lotA/prototype`
+11. **Fail-closed réseau maîtrisé** — check-phone en échec ne bloque pas (décision C7), retry auto ×2, 429/locked traités
+12. **Zéro erreur console** sur tout le parcours runtime (R10)
+
+## 8. Checklist a11y .ai (ACCESSIBILITY_GUIDE §6)
+
+- [x] Voice-first pensé dès la conception (clips attestés, porte unique) — **mais** 4 trous vocaux dynamiques (AUTH-03/04)
+- [ ] Cible tactile ≥ 44 px — **3 boutons en dessous mesurés** (AUTH-09)
+- [x] Contrastes tokens `--encre*`/`--commerce-*` conformes — **mais** surfaces inline hors système (AUTH-16)
+- [x] Navigation clavier pavé/formulaires (R6) — **mais** modale non claviersable proprement (AUTH-05)
+- [x] ARIA labels/rôles/alertes denses et corrects
+- [ ] Modale : focus trap + retour focus — **non conforme** (AUTH-05)
+- [x] Formulaires : `<label htmlFor>` présents — **mais** erreurs non associées (AUTH-11)
+- [x] Notifications critiques en `role="alert" aria-live="assertive"` — **mais** « Vérification... » sans live (AUTH-17)
+- [x] `reduce_animations` honoré (`MotionConfig`, `App.tsx:58`) ; entrées 0,6 s à revérifier (AUTH-A8)
+- [ ] Pas de couleur hardcodée — **non conforme** (~70 hex, AUTH-08)
+- [ ] Test lecteur d'écran — non réalisé (limitation d'audit)
+- [x] Pas de `console.*` sensible (AUTH-14)
+
+## 9. Actions prioritaires
+
+1. **AUTH-02** — sortir le PIN de `history.state` (canal mémoire one-shot) *(sécurité, rapide)*
+2. **AUTH-03 + AUTH-04** — rendre audibles le verrou et la réécoute (grammaire segments/clips) + renforcer `test-verrou-connexion` texte→clip *(voice-first, cœur produit)*
+3. **AUTH-05** — Radix Dialog + backdrop non-refusant + cibles 44 px *(a11y, risque produit : refus accidentel définitif)*
+4. **AUTH-01** — trancher la garde entrée unique et resynchroniser test↔routes *(gouvernance)*
+5. **AUTH-08/09** — garde charte/cible étendu à l'auth (cliquer-modifiable : 3 boutons CSS d'abord)
+6. **AUTH-10** — découpage `LoginPassword.tsx` en 4 modules (sans toucher au contrat vocal)
+
+## 10. Matrice de recette auth (statut après audit)
+
+| Domaine | Critère | Statut |
+|---|---|---|
+| Connexion | numéro+PIN → dashboard rôle correct | ✅ R9 |
+| Verrou PIN | serveur décide, écran affiche | ✅ R4 (audibilité ❌ AUTH-03) |
+| Compte inconnu | /non-enregistre, PII masquée, sortie claire | ✅ R8 |
+| Activation | code usage unique, PIN interdits, double saisie | ✅ statique |
+| WebAuthn | disabled sans compte mémorisé | ✅ R3 |
+| Session | tokens persistés, refresh rotation | ✅ (AUTH-06 assumé) |
+| Fail-closed | rôle inconnu, réseau en échec | ✅ statique |
+| Clavier | Tab/Enter sur pavé | ✅ R6 |
+| Console | zéro erreur, zéro fuite PIN | ✅ R10 + statique |
+| Design system | tokens/cibles/modale | ⚠️ AUTH-05/08/09/16 |
