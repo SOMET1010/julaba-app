@@ -350,14 +350,57 @@ function empreinteFichier(chemin) {
 const lireJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const pkgFront = () => lireJson(join(RACINE, 'frontend_src', 'package.json'));
 
-/** Les gardes sont DÉRIVÉES de la chaîne `verify`, pas recopiées. */
+/**
+ * LES MAILLONS QUE `verify` EXÉCUTE — sous SES DEUX FORMES. VER-03, 05/10/2026.
+ *
+ * LE DÉFAUT QU'ON FERME, ET IL A AVEUGLÉ CE GARDE-FOU PENDANT DEUX JOURS.
+ * Jusqu'à VER-01, `scripts.verify` ÉTAIT la liste : une chaîne de 129
+ * `npm run … && …`, que ce fichier découpait sur `&&`. VER-01 l'a remplacée
+ * par un appel au runner exhaustif, et la liste a déménagé dans
+ * `frontend_src/scripts/maillons-verify.json`.
+ *
+ * Ce découpage ne rendait alors plus RIEN. Mesuré sur `98b54cc` : le périmètre
+ * passe de 4 à 8 entrées non déclarées, les assertions « perdues » de 14 à
+ * 110, et le gate s'accuse lui-même d'avoir été débranché. Trois symptômes,
+ * une seule cause — et aucun n'était un vrai défaut d'argent.
+ *
+ * C'est le pire des échecs pour un garde-fou : il n'a pas crié au loup, il a
+ * cessé de voir le troupeau. Un refus de plus ressemble à une régression ; en
+ * réalité il ne surveillait plus que les invariants backend.
+ *
+ * ON LIT DONC LES DEUX FORMES, et on ne choisit pas pour l'avenir : tant que
+ * `verify` peut être une chaîne `&&` (c'est encore le cas de `test:ci`, figé),
+ * les deux doivent être comprises. La forme présente l'emporte, jamais un
+ * repli silencieux sur une liste vide.
+ */
+function maillonsDeVerify(pkg) {
+  const chaine = pkg.scripts?.verify ?? '';
+  const parChaine = chaine
+    .split('&&')
+    .map((s) => s.trim())
+    .filter((m) => m.startsWith('npm run '))
+    .map((m) => m.slice(8).trim());
+  if (parChaine.length > 0) return parChaine;
+
+  // Forme VER-01 : `verify` délègue au runner, la liste vit dans son JSON.
+  // Absent ou illisible, on rend une liste VIDE — et c'est volontaire : le
+  // contrôle « combien de gardes ? » plus bas s'en apercevra et refusera,
+  // plutôt que de laisser passer un périmètre calculé sur du vent.
+  const f = join(RACINE, 'frontend_src', 'scripts', 'maillons-verify.json');
+  if (!existsSync(f)) return [];
+  try {
+    const j = lireJson(f);
+    return Array.isArray(j?.maillons) ? j.maillons : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Les gardes sont DÉRIVÉES de ce que `verify` exécute, pas recopiées. */
 function gardesDerivees() {
   const pkg = pkgFront();
-  const chaine = pkg.scripts?.verify ?? '';
   const gardes = [];
-  for (const maillon of chaine.split('&&').map((s) => s.trim())) {
-    if (!maillon.startsWith('npm run ')) continue;
-    const nom = maillon.slice(8).trim();
+  for (const nom of maillonsDeVerify(pkg)) {
     const cmd = pkg.scripts?.[nom];
     if (!cmd) continue;
     const m = cmd.match(/(?:^|\s)(?:tsx|node)\s+(\S+)/);
@@ -631,7 +674,9 @@ dire(`\n${GRAS('[2] Les invariants déclarés par zone')}`);
   // Le gate se protège lui-même : débranché de `verify`, il ne dirait plus rien
   // — et personne ne le verrait, puisque c'est lui qui aurait dû le dire.
   if (!BAC_A_SABLE) {
-    const dansVerify = /npm run test:garde-argent(\s|$)/.test(pkgF.scripts?.verify ?? '');
+    // VER-03 : on cherche dans ce que `verify` EXÉCUTE, pas dans le texte de
+    // la chaîne — depuis VER-01 elle n'en porte plus la liste.
+    const dansVerify = maillonsDeVerify(pkgF).includes('test:garde-argent');
     if (dansVerify) dire('  ✓ `test:garde-argent` est bien branché dans `verify`');
     else rater('`test:garde-argent` a été débranché de `verify` : le garde-fou ne tournerait plus');
   }
