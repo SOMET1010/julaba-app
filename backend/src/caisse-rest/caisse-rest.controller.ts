@@ -698,7 +698,13 @@ export class CaisseRestController {
     // Les deux cohabitent sans se gener : l'ajustement touche `stock`, la CTE
     // lit `prix` et `prix_achat`. Et la CTE tourne desormais DANS la
     // transaction (`m.query`), ce qui ne peut que resserrer sa garantie.
-    return this.dataSource.transaction(async (m) => {
+    // L'AUDIT EST SORTI DE LA TRANSACTION, ET C'EST MESURE. `AuditService.log`
+    // ecrit via `this.dataSource`, donc sur une AUTRE connexion : une ligne
+    // d'audit ecrite a l'interieur SURVIT a un rollback (prouve par
+    // audit-hors-transaction.spec.ts, 1 ligne restante). Journaliser avant le
+    // commit aurait donc permis d'auditer un changement de prix qui n'a jamais
+    // eu lieu. La transaction rend ce qu'il faut ; on journalise APRES.
+    const { brut, lignes } = await this.dataSource.transaction(async (m) => {
     await ajusterStockAvecMouvement(m, { marchandId: user.id, produitId: id, stockDemande: body.stock });
     const result = await m.query(
       `WITH avant AS (
@@ -719,8 +725,12 @@ export class CaisseRestController {
     // MESURE, pas suppose (un INSERT, lui, renvoie les lignes directement).
     // `lignesRetournees` porte deja cette connaissance ailleurs dans le depot
     // (catalogue-maitre.service.ts) : on la reutilise au lieu d'en ecrire une
-    // seconde copie.
-    const lignes = lignesRetournees(result);
+    // seconde copie. On rend AUSSI la forme brute : la reponse d'origine, quand
+    // aucune ligne ne correspond, vaut `result[0]` — soit le tableau vide. Ne
+    // pas la preserver changerait un contrat d'API, hors sujet d'un lot d'audit.
+    return { brut: result, lignes: lignesRetournees(result) };
+    });
+
     const ligne = lignes[0] as Record<string, unknown> | undefined;
     if (ligne) {
       const avant = { prix: Number(ligne.__prix_avant), prix_achat: Number(ligne.__prix_achat_avant) };
@@ -749,8 +759,7 @@ export class CaisseRestController {
       // exactement la meme chose, debarrassee des deux champs techniques.
       return { produit: lignes.map(({ __prix_avant, __prix_achat_avant, ...reste }) => reste) };
     }
-    return { produit: result?.[0] };
-    });
+    return { produit: brut?.[0] };
   }
 
   @Delete('produits/:id')
