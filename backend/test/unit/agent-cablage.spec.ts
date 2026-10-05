@@ -141,14 +141,14 @@ describe('AGENT-A4 — ce que le serveur impose', () => {
 
   it('`source` EST IMPOSÉ À whatsapp, même si le corps dit autre chose', async () => {
     const recu: any[] = [];
-    const c = new AgentCaisseController(caisse(recu), agents());
+    const c = new AgentCaisseController(caisse(recu), agents(), {} as any);
     await c.vente({ montant: 2000, idempotency_key: 'k', source: 'kassa' }, req());
     expect(recu[0].body.source).toBe('whatsapp');
   });
 
   it('LA MARCHANDE EST CELLE DE LA GARDE, jamais celle que le corps désigne', async () => {
     const recu: any[] = [];
-    const c = new AgentCaisseController(caisse(recu), agents());
+    const c = new AgentCaisseController(caisse(recu), agents(), {} as any);
     await c.vente(
       { montant: 2000, idempotency_key: 'k', user_id: 'm-999', marchand_id: 'm-999' },
       req(),
@@ -157,17 +157,14 @@ describe('AGENT-A4 — ce que le serveur impose', () => {
   });
 
   it('refuse une écriture sans idempotency_key — un rejeu serait indiscernable', async () => {
-    const c = new AgentCaisseController(caisse([]), agents());
+    const c = new AgentCaisseController(caisse([]), agents(), {} as any);
     await expect(c.vente({ montant: 2000 }, req())).rejects.toThrow(BadRequestException);
     await expect(c.depense({ montant: 500 }, req())).rejects.toThrow(BadRequestException);
   });
 
   it('PLAFOND NON DÉFINI : rien n’est écrit, et le refus le dit', async () => {
     const recu: any[] = [];
-    const c = new AgentCaisseController(
-      caisse(recu),
-      agents(),
-    );
+    const c = new AgentCaisseController(caisse(recu), agents(), {} as any);
     const sansPlafond = { ...req(), user: principal({ plafonds: { parOperation: null, parJour: null } }) };
     await expect(c.vente({ montant: 100, idempotency_key: 'k' }, sansPlafond))
       .rejects.toThrow(/non défini/i);
@@ -176,14 +173,57 @@ describe('AGENT-A4 — ce que le serveur impose', () => {
 
   it('refuse au-dessus du plafond, et au-dessus du cumul du jour', async () => {
     const recu: any[] = [];
-    const c = new AgentCaisseController(caisse(recu), agents(0));
+    const c = new AgentCaisseController(caisse(recu), agents(0), {} as any);
     await expect(c.vente({ montant: 20_001, idempotency_key: 'k' }, req()))
       .rejects.toThrow(/par opération/i);
 
-    const cPlein = new AgentCaisseController(caisse(recu), agents(99_000));
+    const cPlein = new AgentCaisseController(caisse(recu), agents(99_000), {} as any);
     await expect(cPlein.vente({ montant: 5_000, idempotency_key: 'k' }, req()))
       .rejects.toThrow(/journalier/i);
     expect(recu).toHaveLength(0);
+  });
+
+  it('LA LECTURE MARCHE SANS PLAFOND — c’est l’étape (b), et elle n’écrit rien', async () => {
+    // Patrick veut (b) consultation d'abord. Un plafond non défini bloque les
+    // ÉCRITURES ; il ne doit pas empêcher de répondre « ta caisse ».
+    const base = {
+      query: async (sql: string) =>
+        /caisse_sessions/.test(sql) ? [{ fond_initial: 1000 }] : [{ ventes: 2500, depenses: 500, nb_ventes: 3 }],
+    } as any;
+    const c = new AgentCaisseController(caisse([]), agents(), base);
+    const r: any = await c.aujourdhui({ user: principal({ plafonds: { parOperation: null, parJour: null } }), marchandDelegue: 'm-1' });
+    expect(r).toMatchObject({ etat: 'connue', montant: 3000, journeeOuverte: true, nbVentes: 3 });
+  });
+
+  it('JOURNÉE NON OUVERTE : la caisse vaut les ventes, et c’est une RÉPONSE', async () => {
+    const base = {
+      query: async (sql: string) =>
+        /caisse_sessions/.test(sql) ? [] : [{ ventes: 800, depenses: 0, nb_ventes: 2 }],
+    } as any;
+    const c = new AgentCaisseController(caisse([]), agents(), base);
+    const r: any = await c.aujourdhui({ user: principal(), marchandDelegue: 'm-1' });
+    expect(r).toMatchObject({ etat: 'connue', montant: 800, journeeOuverte: false });
+  });
+
+  it('UN MONTANT NON FINI N’EST PAS RENDU — l’agent ne dira jamais « NaN francs »', async () => {
+    // La leçon du 03/10 : « Ta caisse aujourd'hui : zéro franc » pour 100 F
+    // réels. Une phrase dite ne se reprend pas. `montant` est ABSENT, pas 0.
+    const base = {
+      query: async (sql: string) =>
+        /caisse_sessions/.test(sql) ? [{ fond_initial: 'illisible' }] : [{ ventes: NaN, depenses: 0, nb_ventes: 0 }],
+    } as any;
+    const c = new AgentCaisseController(caisse([]), agents(), base);
+    const r: any = await c.aujourdhui({ user: principal(), marchandDelegue: 'm-1' });
+    expect(r.etat).toBe('illisible');
+    expect(r).not.toHaveProperty('montant');
+  });
+
+  it('la lecture ne porte QUE sur la marchande déléguée', async () => {
+    let params: unknown[] = [];
+    const base = { query: async (_s: string, p: unknown[]) => { params = p; return []; } } as any;
+    const c = new AgentCaisseController(caisse([]), agents(), base);
+    await c.ventesDuJour({ user: principal(), marchandDelegue: 'm-7' });
+    expect(params).toEqual(['m-7']);
   });
 
   it('UN SEUL CHEMIN DE VENTE : le contrôleur d’agent APPELLE celui de la caisse', () => {
@@ -195,7 +235,9 @@ describe('AGENT-A4 — ce que le serveur impose', () => {
     expect(src).toMatch(/this\.caisse\.enregistrerVente/);
     expect(src).toMatch(/this\.caisse\.enregistrerDepense/);
     // Aucun SQL, aucun dépôt : la vente ne s'écrit pas ici.
-    expect(src).not.toMatch(/INSERT INTO|repo\.save|queryRunner/);
+    // Les SELECT de lecture sont permis ; une ÉCRITURE ici serait un second
+    // chemin de vente, et c'est ce qu'on interdit.
+    expect(src).not.toMatch(/INSERT INTO|UPDATE |repo\.save|queryRunner/);
   });
 
   it('AUCUNE route d’agent ne touche compte, PIN, mot de passe ni récupération', () => {
