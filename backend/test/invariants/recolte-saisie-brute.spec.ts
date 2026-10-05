@@ -19,6 +19,13 @@ import { DataSource } from 'typeorm';
 import * as request from 'supertest';
 import { AppModule } from '../../src/app.module';
 import { DbInitService } from '../../src/database/db-init.service';
+import {
+  NOM_CONTRAINTE_SAISIE_BRUTE,
+  CHECK_SAISIE_BRUTE,
+  valideSaisieBrute,
+  normaliseSaisieBrute,
+} from '../../src/database/contrainte-saisie-recolte';
+import { CAS_SAISIE_BRUTE } from '../cas-saisie-brute';
 
 describe('Invariant — la saisie brute d’une récolte survit', () => {
   let app: INestApplication;
@@ -275,4 +282,122 @@ describe('Invariant — la saisie brute d’une récolte survit', () => {
     expect(l.unite_saisie).toBeNull();
     expect(l.facteur_saisie).toBeNull();
   }, 60000);
+
+  // ── L'INTEGRITE DU TRIPLET ──────────────────────────────────────────────
+  //
+  // Nee de la revue contradictoire : six attaques par l'API reelle passaient
+  // toutes en 201. Avant ce lot la saisie etait PERDUE ; sans ces gardes elle
+  // pouvait MENTIR — « 3 paniers de 10 kg » pour 999 kg, ou « -3 paniers ».
+  describe('la saisie structuree est atomique, positive et coherente', () => {
+    // On n'affirme ICI que l'existence et le PREDICAT. L'etat de validation
+    // (NOT VALID) depend du chemin qui a bati la base — `synchronize` la cree
+    // validee sur une base neuve, `db-init` la pose NOT VALID en mise a
+    // niveau. L'affirmer ici rendrait ce test dependant de l'ORDRE des suites,
+    // qui partagent la meme base. Il est donc verifie la ou il est
+    // deterministe : recoltes-upgrade-egale-neuve.spec.ts.
+    it('la contrainte existe sur la table, avec le predicat attendu', async () => {
+      const [c] = await ds.query(
+        `SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint
+          WHERE conrelid = 'recoltes'::regclass AND conname = $1`,
+        [NOM_CONTRAINTE_SAISIE_BRUTE],
+      );
+      expect(c).toBeDefined();
+      expect(c.def).toContain('btrim');
+      expect(c.def).toContain('round');
+    });
+
+    // LA GARDE CONTRE LA DERIVE. La regle est ecrite DEUX fois : en SQL pour
+    // que la base la tienne, en TypeScript pour que l'erreur soit lisible. Ce
+    // test execute le predicat SQL en base sur la MEME table de cas que le
+    // test unitaire du validateur, et exige le meme verdict partout.
+    it('le predicat SQL et le validateur API rendent le MEME verdict', async () => {
+      for (const cas of CAS_SAISIE_BRUTE) {
+        // On evalue le SQL sur les valeurs NORMALISEES : ce sont celles que
+        // l'API ecrit reellement.
+        const n = normaliseSaisieBrute(cas);
+        const [r] = await ds.query(
+          `SELECT (${CHECK_SAISIE_BRUTE}) AS ok
+             FROM (SELECT $1::numeric AS quantite, $2::numeric AS quantite_saisie,
+                          $3::varchar AS unite_saisie, $4::numeric AS facteur_saisie) t`,
+          [n.quantite, n.quantiteSaisie, n.uniteSaisie, n.facteurSaisie],
+        );
+        const sqlAccepte = r.ok === true;
+        const apiAccepte = valideSaisieBrute(cas) === null;
+        expect({ cas: cas.libelle, sql: sqlAccepte, api: apiAccepte })
+          .toEqual({ cas: cas.libelle, sql: cas.accepte, api: cas.accepte });
+      }
+    }, 60000);
+
+    // Les QUATRE familles, par la vraie route, avec un message comprehensible.
+    const PRODUIT_REFUS = 'GomboRefuse';
+    const refuse = (corps: Record<string, unknown>) => declarer({
+      produit: PRODUIT_REFUS, quantite: 30, unite: 'kg', qualite: 'standard',
+      date_recolte: '2026-10-05', prix_unitaire: 200, ...corps,
+    });
+
+    it('FAMILLE 1 — triplet partiel : refuse en 400, pas en 23514', async () => {
+      const r = await refuse({ quantite_saisie: 3, unite_saisie: 'panier' });
+      expect(r.status).toBe(400);
+      expect(String(r.body.message)).toMatch(/incomplète/i);
+      expect(String(r.body.message)).not.toMatch(/23514|constraint/i);
+    }, 60000);
+
+    it('FAMILLE 2 — negatif : refuse, meme quand -3 × -10 = 30', async () => {
+      const r = await refuse({ quantite_saisie: -3, unite_saisie: 'panier', facteur_saisie: -10 });
+      expect(r.status).toBe(400);
+      expect(String(r.body.message)).toMatch(/positive/i);
+    }, 60000);
+
+    it('FAMILLE 3 — unite vide : refusee', async () => {
+      const r = await refuse({ quantite_saisie: 3, unite_saisie: '  ', facteur_saisie: 10 });
+      expect(r.status).toBe(400);
+    }, 60000);
+
+    it('FAMILLE 4 — quantite contradictoire : refusee, et le message CHIFFRE l’ecart', async () => {
+      const r = await refuse({ quantite: 999, quantite_saisie: 3, unite_saisie: 'panier', facteur_saisie: 10 });
+      expect(r.status).toBe(400);
+      expect(String(r.body.message)).toMatch(/Incohérence/);
+      expect(String(r.body.message)).toContain('30');   // ce que le triplet donne
+      expect(String(r.body.message)).toContain('999');  // ce qui etait annonce
+    }, 60000);
+
+    it('et rien de tout cela n’a ete ecrit en base', async () => {
+      const [r] = await ds.query(
+        `SELECT count(*)::int n FROM recoltes
+          WHERE user_id = $1 AND produit = $2`, [producteurId, PRODUIT_REFUS],
+      );
+      expect(r.n).toBe(0);
+    }, 60000);
+
+    // Modifier le poids d'une ligne qui porte sa saisie casserait la coherence.
+    // Mesure : aucun ecran n'appelle cette route — on la protege quand meme.
+    it('PATCH du poids sur une ligne qui porte sa saisie : refuse en 400', async () => {
+      const cree = await declarer({
+        produit: 'Patch', quantite: 30, unite: 'kg', qualite: 'standard',
+        date_recolte: '2026-10-05', prix_unitaire: 200,
+        quantite_saisie: 3, unite_saisie: 'panier', facteur_saisie: 10,
+      });
+      expect([200, 201]).toContain(cree.status);
+      const r = await auth(request(app.getHttpServer()).patch(`/api/v1/recoltes/${cree.body.recolte.id}`))
+        .send({ quantite: 999 });
+      expect(r.status).toBe(400);
+      expect(String(r.body.message)).toMatch(/redeclarer cette saisie/i);
+      // Et le poids n'a pas bouge.
+      const l = await enBase(cree.body.recolte.id);
+      expect(Number(l.quantite)).toBe(30);
+    }, 60000);
+
+    // Une ligne SANS saisie reste librement modifiable : la garde ne gene que
+    // ce qu'elle doit garder.
+    it('PATCH du poids sur une ligne SANS saisie : toujours accepte', async () => {
+      const cree = await declarer({
+        produit: 'PatchNu', quantite: 40, unite: 'kg', qualite: 'standard',
+        date_recolte: '2026-10-05', prix_unitaire: 200,
+      });
+      const r = await auth(request(app.getHttpServer()).patch(`/api/v1/recoltes/${cree.body.recolte.id}`))
+        .send({ quantite: 999 });
+      expect(r.status).toBe(200);
+      expect(Number((await enBase(cree.body.recolte.id)).quantite)).toBe(999);
+    }, 60000);
+  });
 });

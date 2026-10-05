@@ -7,10 +7,15 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Check,
 } from 'typeorm';
 import { User } from '../../../users/entities/user.entity';
 import { Cycle } from '../../cycles/entities/cycle.entity';
 import { Publication } from '../../publications/entities/publication.entity';
+import {
+  CHECK_SAISIE_BRUTE,
+  NOM_CONTRAINTE_SAISIE_BRUTE,
+} from '../../../database/contrainte-saisie-recolte';
 
 export enum RecolteQualite {
   STANDARD = 'standard',
@@ -24,7 +29,12 @@ export enum RecolteStatut {
   VENDUE = 'vendue',
 }
 
+// La regle d'integrite du triplet de saisie brute vient d'UN SEUL endroit
+// (database/contrainte-saisie-recolte.ts), partage avec la migration, db-init
+// et la frontiere API. Declaree ici, `synchronize` la pose aussi sur une base
+// neuve — les trois chemins de construction convergent.
 @Entity('recoltes')
+@Check(NOM_CONTRAINTE_SAISIE_BRUTE, CHECK_SAISIE_BRUTE)
 export class Recolte {
   @PrimaryGeneratedColumn('uuid')
   id: string;

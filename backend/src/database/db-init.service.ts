@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { sqlAjoutIdempotent as sqlAjoutIdempotentSaisieBrute } from './contrainte-saisie-recolte';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
@@ -199,6 +200,8 @@ export class DbInitService {
       await this.dataSource.query(
         `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS facteur_saisie numeric(12,4);`,
       );
+      // La garde d'integrite du triplet, idempotente (rejouee a chaque boot).
+      await this.dataSource.query(sqlAjoutIdempotentSaisieBrute());
       await this.dataSource.query(
         `ALTER TABLE produits ADD COLUMN IF NOT EXISTS default_code text;`,
       );

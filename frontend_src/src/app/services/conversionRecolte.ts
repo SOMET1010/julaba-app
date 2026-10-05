@@ -65,17 +65,3 @@ export function convertirRecolte(s: SaisieRecolte): RecolteConvertie {
   };
 }
 
-/**
- * La conversion est-elle RÉVERSIBLE depuis ce qui a été enregistré ?
- *
- * Invariant du lot : `quantite ≈ quantiteSaisie × facteur`. Si une ligne le
- * viole, c'est que la saisie brute et le poids ne racontent pas la même
- * histoire — et l'un des deux est faux. Tolérance au dixième, l'arrondi de
- * l'écran.
- */
-export function conversionReversible(
-  ligne: { quantite: number; quantite_saisie: number | null; facteur_saisie: number | null },
-): boolean {
-  if (ligne.quantite_saisie == null || ligne.facteur_saisie == null) return false;
-  return Math.abs(auDixieme(ligne.quantite_saisie * ligne.facteur_saisie) - ligne.quantite) < 0.11;
-}

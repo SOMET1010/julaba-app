@@ -6,7 +6,7 @@
  *   2. la SAISIE BRUTE ressort, donc la conversion devient réversible — c'est
  *      elle qui était détruite.
  */
-import { convertirRecolte, conversionReversible } from './conversionRecolte.js';
+import { convertirRecolte } from './conversionRecolte.js';
 import { readFileSync } from 'node:fs';
 
 let failures = 0;
@@ -36,12 +36,6 @@ console.log('\nentrées dégradées : aucune invention');
 eq(convertirRecolte({ quantiteSaisie: 0, uniteSaisie: 'kg', facteur: 1, prixSaisi: '' }).prixParKg, 0, 'prix vide → 0, pas NaN');
 eq(convertirRecolte({ quantiteSaisie: NaN, uniteSaisie: 'kg', facteur: 1, prixSaisi: 5 }).quantiteSaisie, 0, 'quantité illisible → 0');
 eq(convertirRecolte({ quantiteSaisie: 2, uniteSaisie: 'kg', facteur: 0, prixSaisi: 10 }).facteur, 1, 'facteur 0 → 1, jamais de division par zéro');
-
-console.log('\nréversibilité — l’invariant du lot');
-ok(conversionReversible({ quantite: 30, quantite_saisie: 3, facteur_saisie: 10 }), '3 × 10 = 30 → réversible');
-ok(conversionReversible({ quantite: 1500, quantite_saisie: 1.5, facteur_saisie: 1000 }), '1,5 t → réversible');
-ok(!conversionReversible({ quantite: 30, quantite_saisie: 3, facteur_saisie: 50 }), 'facteur incohérent → NON réversible');
-ok(!conversionReversible({ quantite: 30, quantite_saisie: null, facteur_saisie: null }), 'ligne historique sans saisie → NON réversible (et c’est honnête)');
 
 console.log('\nl’écran ENVOIE bien la saisie brute — sinon rien de ce qui précède ne sert');
 // Garde-fou sur la SOURCE, meme convention que caissePiloteEspeces.test.mts :
