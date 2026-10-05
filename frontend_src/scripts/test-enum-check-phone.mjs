@@ -18,7 +18,11 @@
  *   4. les listes frontend (LoginPassword) et backend sont des MIROIRS
  *      exacts — une liste divergente fait qu'on logue un numéro que
  *      l'écran accepte, ou l'inverse ;
- *   5. l'escalation frontend documente le FAIT côté serveur.
+ *   5. la liste SERVEUR AUTORITAIRE (AUTH-07-sous-dette) : AUTH_TELEPHONES_TEST
+ *      est lue, filtrée (10 chiffres), et le démarrage dit quelle liste
+ *      écoute (source + taille, jamais les numéros) ; un .env présent doit
+ *      être ALIGNÉ sur le miroir (dev) ;
+ *   6. l'escalation frontend documente le FAIT côté serveur.
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -63,6 +67,22 @@ if (moduleExiste) {
     'le backend doit reconnaître les numéros de recette pour les loguer.',
   );
 
+  // 5. La liste AUTORITAIRE par environnement (AUTH-07-sous-dette).
+  verifier(
+    'la liste autoritaire se charge de l\'ENV (AUTH_TELEPHONES_TEST)',
+    /export function chargerTelephonesTest/.test(ant) && /AUTH_TELEPHONES_TEST/.test(ant),
+    'sans env autoritaire, la liste recette se tient à deux mains dans le code.',
+  );
+  verifier(
+    'l\'ENV est filtrée : seuls les numéros à 10 chiffres entrent dans la liste',
+    /length === 10/.test(ant),
+    'un morceau malformé de la variable ne doit pas devenir un numéro logué.',
+  );
+  verifier(
+    'estTelephoneTest interroge la liste CHARGÉE (env ou repli), pas un Set figé',
+    /chargeeSiBesoin\(\)\.liste\.has\(local\)/.test(ant),
+  );
+
   // 4. Miroir exact des deux listes (frontend LoginPassword ↔ backend module).
   // On extrait les numéros UNIQUEMENT dans le bloc de DÉCLARATION du Set —
   // les écrans contiennent d'autres numéros à 10 chiffres (support, démo)
@@ -77,7 +97,7 @@ if (moduleExiste) {
     return new Set(trouve.map((n) => n.slice(1, -1)));
   };
   const listeFront = blocListe(lire('src/app/components/auth/LoginPassword.tsx'), 'TEST_PHONES');
-  const listeBack = blocListe(antBrut, 'TELEPHONES_TEST');
+  const listeBack = blocListe(antBrut, 'TELEPHONES_TEST_CODE');
   const miroir = listeFront.size > 0
     && listeFront.size === listeBack.size
     && [...listeFront].every((n) => listeBack.has(n));
@@ -110,6 +130,47 @@ if (moduleExiste) {
     /estTelephoneTest\(loginDto\.phone\)/.test(loginBloc),
     'la connexion est le premier accès d\'un compte de recette.',
   );
+
+  // 5bis. Le démarrage dit quelle liste écoute (jamais les numéros eux-mêmes).
+  verifier(
+    'le démarrage journalise la source et la taille de la liste active',
+    /sourceListeTelephonesTest/.test(service) && /tailleListeTelephonesTest/.test(service) && /onModuleInit/.test(service),
+    'sans ce journal, on ne sait pas quel environnement logue quoi.',
+  );
+  verifier(
+    'le journal de démarrage ne cite AUCUN numéro',
+    !/TEST_PHONES actifs[^\n]*[0-9]{10}/.test(service),
+    'la PII recette ne va pas non plus dans le journal de boot.',
+  );
+
+  // 5ter. Un .env présent doit être ALIGNÉ sur le miroir (en dev, l'env fait foi).
+  const cheminEnv = join(ICI, '..', '..', 'backend', '.env');
+  if (existsSync(cheminEnv)) {
+    const envBrut = readFileSync(cheminEnv, 'utf8');
+    const ligne = envBrut.split('\n').find((l) => l.startsWith('AUTH_TELEPHONES_TEST='));
+    if (ligne) {
+      const envListe = new Set(
+        ligne.slice('AUTH_TELEPHONES_TEST='.length)
+          .split(/[;,\s]+/)
+          .map((m) => m.replace(/\D/g, ''))
+          .filter((m) => m.length === 10),
+      );
+      const aligne = listeFront.size > 0
+        && envListe.size === listeFront.size
+        && [...listeFront].every((n) => envListe.has(n));
+      verifier(
+        `backend/.env AUTH_TELEPHONES_TEST aligné sur le miroir (${envListe.size} numéros)`,
+        aligne,
+        'en dev l\'env fait foi : divergent, il fait taire la journalisation d\'un numéro que l\'écran accepte.',
+      );
+    } else {
+      verifier(
+        'backend/.env présent : AUTH_TELEPHONES_TEST déclaré (liste autoritaire explicite)',
+        false,
+        'repli code acceptable, mais un .env explicite verrouille l\'environnement.',
+      );
+    }
+  }
 }
 
 const controleur = sansCommentaires(lireBackend('src/auth/auth.controller.ts'));

@@ -35,6 +35,7 @@
     "test:auth-charte",
     "test:enum-check-phone",
     "test:warn-dev",
+    "test:coffre-web",
     "test:recuperation-admin",
     "test:carte-xss",
     "test:prix-catalogue",

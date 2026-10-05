@@ -120,6 +120,9 @@ import { PaveSaisie } from './PaveSaisie';
 import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
 // AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
 import { warnDev } from '../../utils/warnDev';
+// AUTH-06 / ADR-002 — unique écrivain des clés jetons : pose les jetons en APK
+// seulement ; sur WEB les cookies httpOnly portent la session, rien ne s'écrit.
+import { stockerJetonsSiMobile } from '../../utils/stockerJetonsSiMobile';
 /**
  * BACKLOG ESCALATION P0 BACKEND :
  * 1. /auth/check-phone : timing attack possible (énumération comptes existants)
@@ -134,8 +137,13 @@ import { warnDev } from '../../utils/warnDev';
  *    -> FAIT côté serveur le 05/10/2026 (AUTH-07) : chaque accès login /
  *    check-phone à un numéro de recette est LOGUÉ par le backend, numéro
  *    MASQUÉ. La liste miroir vit dans backend/src/auth/anti-enumeration.ts.
- *    (« valider liste autorisée » reste à trancher côté métier : une liste
- *    serveur autoritaire, par environnement, est inscrite à la dette.)
+ *    La liste SERVEUR AUTORITAIRE par environnement est FAITE
+ *    (AUTH-07-sous-dette, 05/10/2026) : AUTH_TELEPHONES_TEST dans l'env du
+ *    backend fait foi ; le Set en dur n'est que le repli de développement.
+ * 4. Jetons en localStorage : la voie duelle est tranchée par ADR-002
+ *    (.ai/ADR/) — sur WEB les cookies httpOnly portent la session et RIEN ne
+ *    s'écrit ; l'écriture vit dans utils/stockerJetonsSiMobile.ts, seul
+ *    endroit du frontend où ces clés existent (garde test:coffre-web).
  * Les protections frontend ci-dessous RESTENT : la réponse reste distincte
  * (c'est le parcours produit /non-enregistre), seul le TEMPS est uniformisé.
  */
@@ -688,11 +696,10 @@ export function LoginPassword() {
         // La reconnaissance a marché ICI → au prochain retour, geste unique.
         memoriserApresEntree(result.user as Record<string, unknown>, true);
         vibrerSucces();
-        // Persiste le jeton (auth mobile sans cookie cross-domaine), comme la connexion par code.
-        try {
-          if (result.accessToken) localStorage.setItem('julaba_access_token', result.accessToken);
-          if ((result as { refreshToken?: string }).refreshToken) localStorage.setItem('julaba_refresh_token', (result as { refreshToken?: string }).refreshToken!);
-        } catch { /* ignore */ }
+        // AUTH-06 / ADR-002 : en APK le jeton se pose en localStorage (cookies
+        // cross-domaine bloqués) ; sur WEB il reste dans les cookies httpOnly —
+        // le coffre ne fait rien ici.
+        stockerJetonsSiMobile(result.accessToken, (result as { refreshToken?: string }).refreshToken);
         if (result.accessToken) { setAccessToken(result.accessToken); setTimeout(() => refreshUserData(), 100); }
         window.dispatchEvent(new CustomEvent('julaba:token-ready'));
         const roleRoutes: Record<string, string> = {
@@ -890,12 +897,10 @@ export function LoginPassword() {
         // (le drapeau « la reconnaissance marche ici » déjà acquis est conservé).
         memoriserApresEntree(user as Record<string, unknown>, false);
         vibrerSucces();
-        // Auth mobile : on STOCKE le jeton (cookie cross-domaine bloqué sur mobile).
-        // L'intercepteur fetch l'enverra en en-tête Authorization sur chaque appel.
-        try {
-          if (result.accessToken) localStorage.setItem('julaba_access_token', result.accessToken);
-          if ((result as any).refreshToken) localStorage.setItem('julaba_refresh_token', (result as any).refreshToken);
-        } catch { /* ignore */ }
+        // AUTH-06 / ADR-002 : même porte que la connexion vocale — en APK le
+        // coffre pose le jeton (l'intercepteur fetch l'enverra en Bearer), sur
+        // WEB les cookies httpOnly suffisent et rien ne s'écrit ici.
+        stockerJetonsSiMobile(result.accessToken, (result as { refreshToken?: string }).refreshToken);
         if (result.accessToken) {
           setAccessToken(result.accessToken);
           setTimeout(() => refreshUserData(), 100);
