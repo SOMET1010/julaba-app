@@ -4,7 +4,7 @@ import { stopIntro } from '../../services/onboardingVoix';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, AlertCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, ChevronLeft } from 'lucide-react';
+import { CheckCircle, AlertCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, ChevronLeft, Eye } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
@@ -16,6 +16,7 @@ import { authenticateWebAuthn } from '../../hooks/useWebAuthn';
 import { API_URL } from '../../utils/api';
 import { extractPhoneDigits, fusionnerChiffresDictes } from '../../utils/frenchDigits';
 import { direEntree, direEntreeTexte, ENTREE_VOICE_CLIPS, type EntreeVoiceKey } from '../../services/entreeVoix';
+import { deposerCodeActuel } from '../../services/codeActuelMemoire';
 import { tParle } from '../../i18n/voice/runtime';
 import type { MessageId } from '../../i18n/voice/types';
 
@@ -63,6 +64,13 @@ const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
   microProbleme: 'ENTREE_NUMERO',
   microPret: 'AUTH_17',
   numeroPasDIci: 'AUTH_12',
+  // AUTH-03 — clés du verrou AUDIBLE. Le repli texte (tParle) ne sert
+  // qu'en théorie : les deux clips sont toujours disponibles (ui-125 est
+  // une vraie voix, login-29 un clip du lot A). Les clés gardent la table
+  // complète — une table à trou finirait par mentir.
+  verrouCinqMinutes: 'AUTH_30',
+  dernierEssai: 'AUTH_29',
+  mauvaisCodeAttention: 'AUTH_28',
 };
 
 /** Le clip s'il existe, sinon la phrase — une seule sortie, jamais deux. */
@@ -303,8 +311,42 @@ export function LoginPassword() {
       try { await direEntreeTexte(texte); } catch { /* ignore */ }
     }
   };
-  // Chiffres détachés pour la relecture : « 0 7 0 9 … » et non « sept cent... ».
-  const chiffresEpeles = (d: string) => d.split('').join(' ');
+  // ── AUTH-04 — « REVOIR MON NUMÉRO » : ça SE VOIT et SE SENT, ça ne S'ENTEND PAS.
+  //
+  // L'ancien bouton promettait une écoute (« Réécouter mon numéro ») et se
+  // taisait PAR CONSTRUCTION : il disait `parle(chiffresEpeles(phone))`, une
+  // phrase dynamique sans clip — et `direEntreeTexte` refuse volontairement
+  // tout repli parlé pour ne JAMAIS énoncer le numéro à voix haute, au marché
+  // (NUM-02). Un bouton muet, c'est une promesse que l'app ne tient pas.
+  //
+  // La relecture devient un retour NON AUDIO : chaque chiffre s'illumine à
+  // tour de rôle (surbrillance), avec un tick haptique par chiffre — la main
+  // suit, l'oreille ne saura pas. Le même balayage sert à la dictée : quand
+  // Tata a compris un numéro, elle le MONTRE au lieu d'une phrase « J'ai
+  // compris. 0 7 … » elle aussi muette.
+  const [relecturePos, setRelecturePos] = useState(-1); // -1 = balayage inactif
+  const relectureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const annulerRelecture = () => {
+    if (relectureTimerRef.current) { clearInterval(relectureTimerRef.current); relectureTimerRef.current = null; }
+    setRelecturePos(-1);
+  };
+  const relireNumero = (chiffres: string) => {
+    annulerRelecture();
+    if (!chiffres) return;
+    let i = 0;
+    setRelecturePos(0);
+    try { navigator.vibrate?.(18); } catch { /* ignore */ }
+    relectureTimerRef.current = setInterval(() => {
+      i += 1;
+      if (i >= chiffres.length) {
+        if (relectureTimerRef.current) { clearInterval(relectureTimerRef.current); relectureTimerRef.current = null; }
+        setTimeout(() => setRelecturePos(-1), 450);
+        return;
+      }
+      setRelecturePos(i);
+      try { navigator.vibrate?.(18); } catch { /* ignore */ }
+    }, 450);
+  };
   // GUIDAGE VOCAL selon le mode : en mode « lecture » (elle lit vite), on ne parle
   // PAS automatiquement (le texte suffit). En mixte/voix, Tata annonce erreurs et
   // consignes. La lecture manuelle (toucher Tata, le cadenas…) reste toujours possible.
@@ -672,11 +714,13 @@ export function LoginPassword() {
     // RÉELLEMENT ENREGISTRÉE. Le clavier reste le filet, il n'est plus la
     // seule porte : le micro demeure atteignable et la phrase le nomme.
     onFinal: (num) => {
-      const relecture = num ? `J'ai compris. ${chiffresEpeles(num)}` : '';
       if (num.length >= 10 && numeroCIComplet(num, TEST_PHONES)) {
         try { navigator.vibrate?.(30); } catch { /* ignore */ }
         remplirNumero(num);
-        void parleSuite(relecture);
+        // AUTH-04 — la relecture SE MONTRE (surbrillance chiffre par chiffre
+        // + haptique). La phrase « J'ai compris. 0 7 … » n'avait aucun clip :
+        // elle promettait une voix et se taisait.
+        relireNumero(num);
         return;
       }
       try { vibrerErreur(); } catch { /* ignore */ }
@@ -692,7 +736,10 @@ export function LoginPassword() {
         // Numéro complet mais invalide : on garde le générique, qui donne le
         // GESTE. Le clip AUTH_12 nomme mieux le défaut mais ne dit pas quoi
         // faire ; on ne troque pas une consigne contre une plus pauvre.
-        void parleSuite(relecture, num.length >= 10
+        // AUTH-04 — la relecture muette qui ouvrait la suite est retirée :
+        // seuls les textes AVEC clip sont dits (le clip « relecture » de la
+        // dictée est remplacé par le balayage visuel ci-dessus).
+        void parleSuite(num.length >= 10
           ? "Je n'ai pas compris. Tape ton numéro, ou réessaie."
           : 'Il manque encore des chiffres dedans. Continue.');
         return;
@@ -743,6 +790,8 @@ export function LoginPassword() {
       if (micStartTimeoutRef.current) clearTimeout(micStartTimeoutRef.current);
       if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      // AUTH-04 — un balayage de relecture en cours ne survit pas à l'écran.
+      annulerRelecture();
       // Coupe une dictée EN DIRECT en cours (moteur + micro) au démontage.
       try { void liveStopRef.current?.(); } catch { /* ignore */ }
       try { mediaStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
@@ -882,11 +931,23 @@ export function LoginPassword() {
         // qui ne lit pas, c'est une caisse qui disparaît sans explication.
         if (result.locked === true) {
           const attente = typeof result.attenteMs === 'number' ? result.attenteMs : 0;
+          const minutes = Math.max(1, Math.round(attente / 60000));
           const message = attente > 0
             ? `Trop d'essais. Attends ${attenteEnClair(attente)}, puis réessaie.`
             : "Trop d'essais. Attends un moment, puis réessaie.";
           setError(message);
-          try { parle(message); } catch { /* la voix n'est jamais bloquante */ }
+          // AUTH-03 — CE QUI EST DIT DOIT ÊTRE ENTENDU. La phrase interpolée
+          // ci-dessus partait à `parle()` sans clip : `direEntreeTexte` ne
+          // joue qu'une phrase ENREGISTRÉE, elle restait donc muette — le
+          // délai du verrou, information vitale pour une non-lectrice, n'était
+          // dit À AUCUN palier. On dit maintenant une phrase RÉELLEMENT
+          // ENREGISTRÉE, choisie selon l'attente : ui-125 (VRAIE voix) dit
+          // exactement le palier 5 minutes ; les autres paliers reçoivent le
+          // clip login-30 (« Tu as trop forcé. Patiente… »), qui garde le
+          // geste sans JAMAIS énoncer une durée fausse. La durée exacte reste
+          // AFFICHÉE ci-dessus, et le garde `test:verrou-connexion` empêche
+          // le retour de la phrase interpolée.
+          try { parle(minutes === 5 ? ENTREE_VOICE_CLIPS.verrouCinqMinutes.texte : ENTREE_VOICE_CLIPS.tropDEssais.texte); } catch { /* la voix n'est jamais bloquante */ }
           setPinInput(""); setIsLoading(false); return;
         }
         // AVERTISSEMENT AVANT LE PALIER. Rien ne prévenait : on tombait dans
@@ -897,7 +958,21 @@ export function LoginPassword() {
           ? `Ce n'est pas le bon code. Attention : encore ${restants} essai${restants > 1 ? 's' : ''}, après il faudra attendre.`
           : ENTREE_VOICE_CLIPS.codeErreur.texte;
         setError(message);
-        try { parle(message); } catch { /* la voix n'est jamais bloquante */ }
+        // AUTH-03 — avertissement AUDIBLE, par clip TOUJOURS DISPONIBLE :
+        // une seule chance → login-29 le dit EXACTEMENT (« Il te reste une
+        // seule chance », la vraie gravité du moment) ; deux chances →
+        // login-28 (lot A) — le clip générique codeErreur est un « prototype »,
+        // muet dans tout build livré ; au-delà → codeErreur (trou AUTH-ERR
+        // documenté, hors périmètre P1). Aucune mention de compte n'est faite
+        // en voix qui ne soit pas enregistrée ; la mention « encore N essais »
+        // reste ÉCRITE dans la bannière.
+        try {
+          parle(restants === 1
+            ? ENTREE_VOICE_CLIPS.dernierEssai.texte
+            : restants === 2
+              ? ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte
+              : ENTREE_VOICE_CLIPS.codeErreur.texte);
+        } catch { /* la voix n'est jamais bloquante */ }
         setPinInput(""); setIsLoading(false); return;
       }
       // Apprentissage 'auto' : on note comment elle s'est identifiée (clavier/voix).
@@ -930,7 +1005,16 @@ export function LoginPassword() {
           // n'a plus à le redemander. Le lui redemander cinq secondes après
           // l'avoir tapé n'ajoute aucune sécurité — la session est déjà
           // ouverte — et bloque net quelqu'un qui ne lit pas.
-          navigate('/change-password', { state: { codeActuel: pwd } });
+          //
+          // AUTH-02 — PAR LE CANAL MÉMOIRE, PLUS PAR history.state. L'ancien
+          // `navigate('/change-password', { state: { codeActuel: pwd } })`
+          // laissait le code dans `window.history.state`, où il survit au
+          // rechargement, lisible sur le téléphone laissé au comptoir. Le
+          // canal mémoire (services/codeActuelMemoire) vit le temps de la
+          // navigation seule, ne touche aucun stockage, et s'efface dès sa
+          // lecture.
+          deposerCodeActuel(pwd);
+          navigate('/change-password');
         }, 1500);
         return;
       }
@@ -1035,6 +1119,7 @@ export function LoginPassword() {
 
   const handleKeyPress = (digit: string) => {
     if (isLoading || isFinalizingDictation || (step === 'phone' && isListening)) return;
+    annulerRelecture(); // AUTH-04 — elle agit : le balayage s'efface
     dernierCanalRef.current = 'clavier'; // elle TAPE (apprentissage 'auto')
     if (step === 'phone') {
       if (phone.length < 10) {
@@ -1074,6 +1159,7 @@ export function LoginPassword() {
 
   const handleKeyDelete = () => {
     if (isLoading || isFinalizingDictation || (step === 'phone' && isListening)) return;
+    annulerRelecture(); // AUTH-04 — elle agit : le balayage s'efface
     if (step === 'phone') {
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
       setPhone(p => p.slice(0, -1));
@@ -1285,19 +1371,39 @@ export function LoginPassword() {
             )}
             {/* Chiffres EN DIRECT — on voit les nombres apparaître au fur et à mesure.
                 Les chiffres se lisent même sans savoir lire ; c'est le vrai contrôle
-                « elle m'entend ». « J'écoute… » quand le micro est ouvert sans chiffre. */}
+                « elle m'entend ». « J'écoute… » quand le micro est ouvert sans chiffre.
+                AUTH-04 : chaque chiffre peut S'ILLUMINER à tour de rôle (relecture). */}
             <div className="login-number">
               <span style={{ color: 'var(--encre-3)' }}>+225</span>
               <span className="login-number-value" aria-label={phone.length ? 'Numéro saisi' : 'Numéro à saisir'}>
-                {(phone.match(/.{1,2}/g) || []).join(' ') || '— — — — —'}
+                {phone.length ? (phone.match(/.{1,2}/g) || []).map((paire, gi, groupes) => (
+                  <span key={gi} style={{ display: 'inline-block', marginRight: gi < groupes.length - 1 ? '0.4em' : 0 }}>
+                    {paire.split('').map((c, di) => {
+                      const idx = gi * 2 + di;
+                      const illumine = idx === relecturePos;
+                      return (
+                        <span key={di} style={illumine ? {
+                          background: 'rgba(47,143,99,0.16)',
+                          borderRadius: 6,
+                          boxShadow: '0 0 0 3px rgba(47,143,99,0.20)',
+                        } : undefined}>{c}</span>
+                      );
+                    })}
+                  </span>
+                )) : '— — — — —'}
               </span>
               {/* CORRECTIF : ce bouton n'apparaissait qu'à 10 chiffres pile —
                   donc jamais dans le cas qui en a le plus besoin, celui où la
                   dictée a avalé un chiffre. Il est désormais là dès le premier
-                  chiffre saisi, dicté ou tapé. */}
+                  chiffre saisi, dicté ou tapé.
+                  AUTH-04 — « REVOIR mon numéro » (et non « réécouter ») : le
+                  balayage SE VOIT (surbrillance) et SE SENT (tick haptique),
+                  il ne S'ENTEND pas — on ne prononce jamais le numéro à voix
+                  haute, au marché (NUM-02). L'icône œil remplace le haut-parleur
+                  qui promettait un son jamais venu. */}
               {phone.length > 0 && <button type="button" className="login-replay" style={{ width: 44, height: 44, flexShrink: 0 }}
-                disabled={isListening || isLoading} onClick={() => parle(chiffresEpeles(phone))} aria-label="Réécouter mon numéro">
-                <Volume2 aria-hidden="true" size={20} />
+                disabled={isListening || isLoading} onClick={() => relireNumero(phone)} aria-label="Revoir mon numéro">
+                <Eye aria-hidden="true" size={20} />
               </button>}
             </div>
             {/* Un point vert par chiffre entendu — on voit que ça avance, sans lire */}

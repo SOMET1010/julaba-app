@@ -1,5 +1,6 @@
 /**
- * Garde-fou : l'écran de connexion ne doit PLUS tenir son propre verrou.
+ * Garde-fou : l'écran de connexion ne doit PLUS tenir son propre verrou,
+ * et CE QUE LE VERROU DIT DOIT ÊTRE ENTENDU (AUTH-03).
  *
  * LE DÉFAUT QU'ON EMPÊCHE DE REVENIR. Cet écran portait une échelle de paliers
  * (3 → 5 min, 6 → 15 min, 9 → blocage total) dans un objet JavaScript en
@@ -16,8 +17,16 @@
  *   2. ce que le serveur répond doit être DIT À LA VOIX, pas seulement écrit.
  *      Un « compte bloqué » muet, pour quelqu'un qui ne lit pas, c'est une
  *      caisse qui disparaît sans explication.
+ *
+ * LA TROISIÈME RÈGLE, AJOUTÉE PAR LE LOT AUTH-03 (05/10/2026) :
+ *   3. ce qui part à `parle()` doit référencer un CLIP EXISTANT. La garde
+ *      d'origine comptait des `parle(message)` : la phrase interpolée
+ *      (« Attends 5 minutes… ») passait la garde et restait MUETTE, car
+ *      `direEntreeTexte` ne joue qu'une phrase enregistrée. La garde vérifie
+ *      désormais que les appels de parole du verrou citent une clé de
+ *      `services/entreeVoix.ts` — et que le fichier audio existe vraiment.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,7 +44,7 @@ const verifier = (quoi, ok, pourquoi) => {
   if (pourquoi) console.log(`      ${pourquoi}`);
 };
 
-console.log('\nL’écran de connexion ne rejuge plus le verrou');
+console.log('\nL’écran de connexion ne rejuge plus le verrou, et le verrou SE DIT');
 
 // On cherche du CODE, pas les commentaires qui racontent l'incident.
 const code = src
@@ -68,14 +77,48 @@ verifier(
   'c’est lui qui évite le blocage : rien ne prévenait avant.',
 );
 
+// ── AUTH-03 : audibilité, pas juste présence ───────────────────────────────
+
 verifier(
-  'ce qui est affiché est aussi DIT',
-  (code.match(/parle\(message\)/g) || []).length >= 2,
-  'les deux cas comptent : l’attente ET l’avertissement.',
+  'la phrase interpolée n’est plus envoyée à la voix',
+  !/parle\(message\)/.test(code),
+  '`parle(message)` = texte dynamique sans clip = marchande muette.',
 );
+
+verifier(
+  'les deux cas (attente + avertissement) sont dits PAR CLIP',
+  (code.match(/parle\(\s*[^)]*ENTREE_VOICE_CLIPS\./g) || []).length >= 2,
+  'ce qui est dit doit référencer une clé de services/entreeVoix.ts (AUTH-03).',
+);
+
+// Chaque clé citée dans le flux verrou existe, avec un fichier audio embarqué.
+// Deux formes de `file:` cohabitent : littéral '/voix/...' ou gabarit
+// `${BASE}/...` (BASE = '/voix/fr-CI/prototype' — les 6 clips prototype).
+const entree = readFileSync(
+  join(ICI, '..', 'src', 'app', 'services', 'entreeVoix.ts'),
+  'utf8',
+);
+const mBase = entree.match(/const BASE\s*=\s*'([^']+)'/);
+const BASE = mBase ? mBase[1] : '';
+const CLES = ['verrouCinqMinutes', 'dernierEssai', 'mauvaisCodeAttention', 'tropDEssais', 'codeErreur'];
+for (const cle of CLES) {
+  // Fin de bloc = `\n  }` (indentation des entrées), pas le PREMIER `}` :
+  // les clips prototype écrivent `file: \`${BASE}/...\`` et ce `}` de
+  // `${BASE}` tronquerait une capture non-greedy.
+  const bloc = entree.match(new RegExp(`\\b${cle}\\s*:\\s*\\{[\\s\\S]*?\\n  \\}`));
+  const mFile = bloc && bloc[0].match(/file:\s*('([^']+)'|`([^`]+)`)/);
+  verifier(`clip « ${cle} » déclaré dans entreeVoix.ts avec un fichier`, !!mFile);
+  if (mFile) {
+    const brut = mFile[2] ?? mFile[3];
+    const fichierRel = brut.replace('${BASE}', BASE);
+    const fichier = join(ICI, '..', 'public', fichierRel);
+    verifier(`fichier audio ${fichierRel} embarqué dans public/`, existsSync(fichier),
+      'un clip déclaré mais absent du disque, c’est un silence qui se croit parlé.');
+  }
+}
 
 if (echecs > 0) {
   console.log('\n✗ verrou de connexion — échec');
   process.exit(1);
 }
-console.log('\n✓ verrou de connexion — le serveur décide, l’écran dit et parle');
+console.log('\n✓ verrou de connexion — le serveur décide, l’écran dit ET SE FAIT ENTENDRE');

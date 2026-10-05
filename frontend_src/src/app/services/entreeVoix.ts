@@ -23,7 +23,11 @@ export type EntreeVoiceKey =
   | 'dicteeIncomprise'
   | 'microProbleme'
   | 'microPret'
-  | 'numeroPasDIci';
+  | 'numeroPasDIci'
+  // ── AUTH-03 — LE VERROU ET LE DERNIER ESSAI, DITS PAR CLIP ────────────────
+  | 'verrouCinqMinutes'
+  | 'dernierEssai'
+  | 'mauvaisCodeAttention';
 
 export interface EntreeVoiceClip {
   file: string;
@@ -300,6 +304,52 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   numeroPasDIci: {
     file: '/voix/tata/login-12-14.mp3',
     texte: 'Regarde bien, y\'a un chiffre qui n\'est pas bon dedans. Si tu veux, tape ton numéro directement ici.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── LE VERROU DIT SON DÉLAI, PAR CLIP — AUTH-03, 05/10/2026 ───────────────
+  //
+  // LE DÉFAUT QUE CE LOT FERME. Le verrou du serveur dit « attends N minutes »
+  // via une phrase INTERPOLÉE (`Trop d'essais. Attends ${attenteEnClair(ms)}…`)
+  // : aucune clé ne la porte, `direEntreeTexte` ne la trouve pas, l'écran se
+  // tait. Pour une non-lectrice, le délai d'attente — l'information VITALE du
+  // verrou — n'était dit à aucun palier. Le garde `test:verrou-connexion`
+  // n'exigeait que la présence de `parle(...)`, pas l'audibilité.
+  //
+  // LA GRAMMAIRE EST RESTÉE HONNÊTE : on ne fabrique pas « attends / cinq /
+  // minutes » en sciant des clips qui n'existent pas (« attends », « minutes »,
+  // « quinze » n'ont jamais été enregistrés). On dit ce qui EXISTE, exactement :
+  //
+  //  · palier 5 minutes → ui-125, en VRAIE voix : « Trop de tentatives
+  //    incorrectes. Réessaie dans 5 minutes. » — le délai est dit, pile.
+  //  · paliers 15 minutes et au-delà → login-30 : « Tu as trop forcé.
+  //    Patiente un peu d'abord avant de réessayer. » — le geste est dit, la
+  //    durée reste AFFICHÉE ; on ne fait jamais dire à Tantie une durée
+  //    qu'elle n'a pas enregistrée.
+  //
+  // Le garde `test:verrou-connexion` est renforcé dans le même lot : il
+  // vérifie désormais que ce qui part à `parle()` référence une clé de CE
+  // fichier, et que le fichier audio existe dans `public/`.
+  verrouCinqMinutes: {
+    file: '/voix/tata/ui-125.mp3',
+    texte: 'Trop de tentatives incorrectes. Réessaie dans 5 minutes.',
+    atteste: true,
+  },
+  dernierEssai: {
+    file: '/voix/tata/login-29.mp3',
+    texte: 'Attention, hein ! Il te reste une seule chance. Prends bien ton temps.',
+    atteste: false,
+    lotA: true,
+  },
+  // Deux essais restants : le clip du mauvais code GENÉRIQUE (codeErreur) est
+  // un clip « prototype » — muet dans tout build livré, le drapeau de préview
+  // éteint. Le warning « encore 2 essais » serait donc resté silencieux en
+  // production… login-28 (lot A, toujours embarqué) dit le même moment avec
+  // la gravité qu'il mérite : code pas bon, ET regarde bien avant de reprendre.
+  mauvaisCodeAttention: {
+    file: '/voix/tata/login-28.mp3',
+    texte: 'Le numéro ou le code n\'est pas bon, deh. Regarde bien avant de reprendre.',
     atteste: false,
     lotA: true,
   },

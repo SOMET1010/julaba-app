@@ -30,6 +30,8 @@
     "test:cible-tactile",
     "test:source-vente",
     "test:verrou-connexion",
+    "test:entree-unique",
+    "test:canal-code",
     "test:recuperation-admin",
     "test:carte-xss",
     "test:prix-catalogue",
@@ -144,7 +146,6 @@
     "test:intentions": "À STATUER — orphelin découvert le 03/10/2026. Vert.",
     "test:montants-prives": "À STATUER — orphelin découvert le 03/10/2026. Vert.",
     "test:accueil-pilote": "À STATUER — orphelin découvert le 03/10/2026. Vert.",
-    "test:entree-unique": "À STATUER — orphelin découvert le 03/10/2026. ROUGE (4 échecs). L entrer dans verify ferait passer l état de référence de 4 à 5 rouges : arbitrage de Patrick.",
     "test:nom-tantie": "À STATUER — orphelin découvert le 03/10/2026. ROUGE. Même arbitrage."
   }
 }

@@ -50,3 +50,28 @@ Stage Summary:
 - Top 5 actions : AUTH-02 (PIN hors history.state), AUTH-03/04 (rendre audibles verrou + réécouter — cœur voice-first), AUTH-05 (Radix Dialog + backdrop non-refusant), AUTH-01 (trancher garde entrée unique), AUTH-08/09 (gardes couleurs/cibles étendus à l'auth)
 - Sécurité auth confirmée solide : PIN jamais journalisé, verrou serveur-driven, fail-closed, PII masquée
 - Aucun code projet modifié par l'audit (lecture seule) ; seul vite.config.ts a été retouché pour le fix allowedHosts (déjà modifié en Task 1 pour le sandbox)
+
+---
+Task ID: 3
+Agent: Z.ai Code (orchestrateur)
+Task: Corriger les 5 constats P1 de l'audit UI auth (AUTH-01..05)
+
+Work Log:
+- Lecture des normes .ai (ACCESSIBILITY_GUIDE §4/5/6, DESIGN_SYSTEM §9, verify-tout.mjs) + des fichiers concernés (LoginPassword 1653 l., entreeVoix.ts, paroleEntree.ts, PropositionReconnaissance, ChangePasswordScreen, routes.tsx, gardes CI, registre voix 212 clips)
+- AUTH-01 (tranché) : /welcome et /login redeviennent <Navigate to="/" replace/> dans routes.tsx (les imports directs Welcome/LoginPassword venaient du snapshot d'origine 3a3b77e, la garde a été écrite APRÈS) ; EntryGate redevient le seul juge ; garde test:entree-unique réinscrite dans maillons-verify.json (verify) et retirée de horsVerify ; en-tête de la garde documente le tranché
+- AUTH-02 : nouveau canal mémoire one-shot services/codeActuelMemoire.ts (deposerCodeActuel/lireCodeActuel, 60 s, zéro stockage) ; LoginPassword dépose avant navigate('/change-password') ; ChangePasswordScreen lit le canal (useLocation retiré) ; nouvelle garde test-canal-code.mjs inscrite dans verify
+- AUTH-03 : grammaire par clips EXISTANTS (jamais de durée inventée) — verrouCinqMinutes (ui-125, VRAIE voix, palier 5 min pile), dernierEssai (login-29, lot A), mauvaisCodeAttention (login-28, lot A — découverte : codeErreur générique est un clip prototype muet en prod) ; CLE_CATALOGUE complété (AUTH_30/AUTH_29/AUTH_28) ; test-verrou-connexion RENFORCÉ : interdit parle(message), exige parle(ENTREE_VOICE_CLIPS.*) ×2, vérifie clé + fichier audio embarqué
+- AUTH-04 : relecture du numéro → feedback NON audio (reco audit n°1) : surbrillance chiffre par chiffre + tick haptique (relireNumero, 450 ms/chiffre), bouton renommé « Revoir mon numéro » (icône œil lucide, 44×44), balayage étendu à la fin de dictée, annulation sur frappe/démontage ; chiffresEpeles retiré ; parleSuite ne reçoit plus de segment sans clip
+- AUTH-05 : PropositionReconnaissance réécrite sur Radix Dialog 1.1.23 (focus trap, ESC, retour focus, aria-modal="true" explicite, Title réel) ; fond/ESC/Fermer = fermeture SANS refus (seul « Non » note le refus) ; Fermer 32→44 px ; focus initial sur « Oui, je veux »
+- Référence voix-trace mise à jour CHIRURGICALEMENT (script one-shot scripts/maj-reference-parole-login.mjs) : seule appels['LoginPassword.tsx'] recalculée (17→15) ; les 4 empreintes rouges VOICE-01 de Patrick NON re-figées (même état qu'avant, zéro nouveau rouge)
+- package.json : +test:canal-code ; maillons-verify.json : +test:entree-unique, +test:canal-code, -test:entree-unique horsVerify
+- Gardes exécutés : verrou-connexion ✅, entree-unique ✅ (7/7), canal-code ✅ (7/7), comptes ✅, tokens ✅, parole-entree ✅, akwaba-voix ✅, entree-numero-voix ✅, voix-connexion-lot-a ✅, clips-embarques ✅, route-access ✅, maillons-orphelins ✅, voix-trace-source = mêmes 4 rouges connus (0 nouveau), tsc -b ✅, lint ✅
+- Recette agent-browser (390×844) : /login→/ (AUTH-01 ✅) ; pavé→numéro→bouton Revoir 44×44 + balayage 1 chiffre illuminé puis 0 (AUTH-04 ✅) ; PIN faux ×2 → bannière + GET login-28.mp3 206 (AUTH-03 ✅) ; verrou Bénito 3 échecs → « Attends 5 minutes » + GET ui-125.mp3 206 (AUTH-03 ✅, verrou levé seul depuis) ; login Michelle → modale Radix : role=dialog, aria-modal, Fermer 44×44, focus « Oui, je veux », ESC ferme, reload→modale revient après ESC et après tap fond = refus non noté, Tab reste dans la modale (AUTH-05 ✅) ; history.state sans codeActuel (AUTH-02 ✅) ; zéro erreur console
+- Audit mis à jour : .ai/AUDITS/AUDIT-UI-AUTH-2026-10-05.md §11 « Corrections P1 appliquées » (tableau de clôture + preuves)
+
+Stage Summary:
+- Les 5 P1 d'audit auth sont fermés avec preuve de garde ET preuve runtime ; score audit projeté en forte hausse (a11y, voice-first, gouvernance)
+- Nouveaux artefacts : services/codeActuelMemoire.ts, scripts/test-canal-code.mjs, scripts/maj-reference-parole-login.mjs ; 3 clés voix (verrouCinqMinutes/dernierEssai/mauvaisCodeAttention) branchées sur des clips toujours disponibles
+- Décision AUTH-01 tranchée vers « une seule porte d'entrée » (Navigate) — cohérent avec l'intention de la garde et l'en-tête d'EntryGate ; la garde est redevenue VIVANTE dans verify
+- Découverte utile : le clip codeErreur est « prototype » (muet en build livré) — documenté dans entreeVoix.ts ; le trou AUTH-ERR générique (restants>2) reste OUVERT hors périmètre P1
+- P2 restants : AUTH-06..17 (prochain lot suggéré : AUTH-08/09 gardes charte/cible, puis AUTH-10 découpage LoginPassword ~1700 l.)
