@@ -136,6 +136,43 @@ Voir `docs/DECISIONS.md` pour la liste datée complète. Les structurantes :
 
 ---
 
+## Le `check` a trouvé un rouge sur `main` dès sa première exécution
+
+```
+CHECK — 5 vert(s), 1 rouge(s), 0 absent(s)
+❌ tests unitaires · backend
+🟠 garde-argent (informatif — écart connu)
+```
+
+**Le test qui échoue :** `backend/test/unit/pin-jamais-rendu.spec.ts`, cas
+**SEC-07** — « aucun secret n'est tiré avec `Math.random` ». Il désigne
+`backend/src/auth/anti-enumeration.ts:108`.
+
+**Mon analyse : c'est un faux positif du banc, pas un défaut de sécurité.**
+
+```ts
+const echeance = debut + PLANCHER_MS + Math.floor(Math.random() * GIGUE_MS);
+```
+
+`Math.random()` sert ici à une **gigue temporelle** — uniformiser le temps de
+réponse pour qu'on ne puisse pas deviner, au chronomètre, si un compte existe.
+**Ce n'est pas un secret**, c'est un délai. Le banc cherche `Math.random` dans
+les fichiers sensibles sans distinguer « tirer un secret » de « tirer un
+délai ».
+
+**Deux issues, et c'est un arbitrage :**
+- **exempter explicitement** ce cas dans le banc, avec le motif écrit (« un
+  délai n'est pas un secret ») — c'est ce que je recommande ;
+- ou **passer à `randomInt`** par précaution : un jitter prévisible affine
+  théoriquement une mesure de timing, même si le plancher fixe domine.
+
+**Je n'ai rien corrigé** (consigne). Conséquence à connaître : **le `check` est
+rouge sur `main`, donc le hook `pre-push` bloquera** jusqu'à l'arbitrage. Les
+tests restent volontairement **bloquants** : les rendre informatifs
+désactiverait le filet pour supprimer un message, ce qui est l'inverse du but.
+
+---
+
 ## Écart anti-spaghetti — mesuré le 05/10, rien corrigé
 
 Les seuils sont réglés **au niveau actuel** : ils empêchent l'aggravation sans
