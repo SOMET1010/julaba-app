@@ -185,10 +185,31 @@ jobs:
           echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/julaba-release.jks"
           chmod 600 "$RUNNER_TEMP/julaba-release.jks"
 
+      # Le versionCode ne doit JAMAIS reculer ni stagner : un numero fige empeche
+      # de savoir quelle version une marchande porte, et un numero plus petit
+      # condamne la mise a jour de son telephone. On prend les secondes ecoulees
+      # depuis le 01/01/2026 UTC : une horloge n'est jamais remise a zero, au
+      # contraire d'un compteur de run GitHub, qui repart a 1 si le workflow est
+      # renomme. Le build.gradle refuse une valeur illisible, il ne replie pas.
+      - name: Calculer le numero de version
+        run: |
+          set -euo pipefail
+          CODE=$(( $(date -u +%s) - 1767225600 ))
+          if [ "$CODE" -le 0 ]; then
+            echo "::error::horloge du runner anterieure au 01/01/2026 : versionCode $CODE"
+            exit 1
+          fi
+          SHA7=$(git rev-parse --short=7 HEAD)
+          echo "JULABA_VERSION_CODE=$CODE" >> "$GITHUB_ENV"
+          echo "JULABA_VERSION_NAME=1.0-$SHA7" >> "$GITHUB_ENV"
+          echo "versionCode=$CODE  versionName=1.0-$SHA7" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Construire l APK RC1 signé
         working-directory: android
         env:
           JULABA_RELEASE_STORE_FILE: ${{ runner.temp }}/julaba-release.jks
+          JULABA_VERSION_CODE: ${{ env.JULABA_VERSION_CODE }}
+          JULABA_VERSION_NAME: ${{ env.JULABA_VERSION_NAME }}
           JULABA_RELEASE_STORE_PASSWORD: ${{ secrets.JULABA_ANDROID_KEYSTORE_PASSWORD }}
           JULABA_RELEASE_KEY_ALIAS: ${{ secrets.JULABA_ANDROID_KEY_ALIAS }}
           JULABA_RELEASE_KEY_PASSWORD: ${{ secrets.JULABA_ANDROID_KEY_PASSWORD }}

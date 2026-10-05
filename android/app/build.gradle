@@ -7,6 +7,35 @@ def julabaReleaseStorePassword = System.getenv("JULABA_RELEASE_STORE_PASSWORD")
 def julabaReleaseKeyAlias = System.getenv("JULABA_RELEASE_KEY_ALIAS")
 def julabaReleaseKeyPassword = System.getenv("JULABA_RELEASE_KEY_PASSWORD")
 
+// RC1 — LE NUMERO DE VERSION VIENT DE LA CI, JAMAIS D'UN LITTERAL.
+//
+// Un versionCode fige a 1 ne distingue aucun build du suivant : on ne peut plus
+// savoir quelle version une marchande a sur son telephone. Pire, un numero qui
+// RECULE condamne definitivement la mise a jour des appareils deja equipes
+// (INSTALL_FAILED_VERSION_DOWNGRADE), et la seule issue est une desinstallation,
+// qui efface sa caisse.
+//
+// La CI passe les secondes ecoulees depuis le 01/01/2026 UTC. Une horloge ne
+// revient pas en arriere, contrairement a un compteur de run GitHub, qui repart
+// a 1 si le workflow est renomme ou recree. Marge : ~66 ans avant la limite
+// Android de 2 100 000 000.
+//
+// Une valeur fournie mais illisible ARRETE la construction. Jamais de repli
+// silencieux sur 1 : c'est exactement le genre de retombee muette qui a fait
+// distribuer des APK signes en cle de debug pendant des mois.
+def julabaVersionCodeFourni = System.getenv("JULABA_VERSION_CODE")
+def julabaVersionCode = 1
+if (julabaVersionCodeFourni != null && !julabaVersionCodeFourni.trim().isEmpty()) {
+    def brut = julabaVersionCodeFourni.trim()
+    if (!(brut ==~ /\d+/) || (brut as long) <= 0L || (brut as long) > 2100000000L) {
+        throw new GradleException(
+            "JULABA_VERSION_CODE illisible ou hors limites : « " + brut + " ». " +
+            "Attendu : un entier strictement positif, au plus 2100000000.")
+    }
+    julabaVersionCode = brut as int
+}
+def julabaVersionName = System.getenv("JULABA_VERSION_NAME") ?: "1.0"
+
 android {
     namespace = "com.julaba.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -14,8 +43,8 @@ android {
         applicationId "com.julaba.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode julabaVersionCode
+        versionName julabaVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
